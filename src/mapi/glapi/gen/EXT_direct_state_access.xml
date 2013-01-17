@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE OpenGLAPI SYSTEM "gl_API.dtd">
+
+<!-- Note: no GLX protocol info yet. -->
+
+<OpenGLAPI>
+
+<category name="GL_EXT_direct_state_access" number="353">
+
+   <!--
+      This extension is unusual in that it is ALL interactions
+      with specific GL versions and other extensions.
+   -->
+
+</category>
+
+</OpenGLAPI>
