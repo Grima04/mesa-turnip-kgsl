@@ -817,6 +817,8 @@ struct _mesa_glsl_parse_state {
    bool EXT_geometry_point_size_warn;
    bool EXT_geometry_shader_enable;
    bool EXT_geometry_shader_warn;
+   bool EXT_gpu_shader4_enable;
+   bool EXT_gpu_shader4_warn;
    bool EXT_gpu_shader5_enable;
    bool EXT_gpu_shader5_warn;
    bool EXT_primitive_bounding_box_enable;
