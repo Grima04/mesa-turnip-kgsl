@@ -541,16 +541,24 @@ u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
    uint32_t unused_vb_mask =
       mgr->ve->incompatible_vb_mask_all | mgr->incompatible_vb_mask |
       ~mgr->enabled_vb_mask;
+   uint32_t unused_vb_mask_orig;
+   boolean insufficient_buffers = false;
+
+   /* No vertex buffers available at all */
+   if (!unused_vb_mask)
+      return FALSE;
 
    memset(fallback_vbs, ~0, sizeof(fallback_vbs));
 
    /* Find free slots for each type if needed. */
+   unused_vb_mask_orig = unused_vb_mask;
    for (type = 0; type < VB_NUM; type++) {
       if (mask[type]) {
          uint32_t index;
 
          if (!unused_vb_mask) {
-            return FALSE;
+            insufficient_buffers = true;
+            break;
          }
 
          index = ffs(unused_vb_mask) - 1;
@@ -558,6 +566,17 @@ u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
          unused_vb_mask &= ~(1 << index);
          /*printf("found slot=%i for type=%i\n", index, type);*/
       }
+   }
+
+   if (insufficient_buffers) {
+      /* not enough vbs for all types supported by the hardware, they will have to share one
+       * buffer */
+      uint32_t index = ffs(unused_vb_mask_orig) - 1;
+      /* When sharing one vertex buffer use per-vertex frequency for everything. */
+      fallback_vbs[VB_VERTEX] = index;
+      mask[VB_VERTEX] = mask[VB_VERTEX] | mask[VB_CONST] | mask[VB_INSTANCE];
+      mask[VB_CONST] = 0;
+      mask[VB_INSTANCE] = 0;
    }
 
    for (type = 0; type < VB_NUM; type++) {
