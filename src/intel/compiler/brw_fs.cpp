@@ -925,6 +925,7 @@ fs_inst::components_read(unsigned i) const
       }
 
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+   case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
       /* Scattered logical opcodes use the following params:
        * src[0] Surface coordinates
        * src[1] Surface operation source (ignored for reads)
@@ -937,6 +938,7 @@ fs_inst::components_read(unsigned i) const
       return i == SURFACE_LOGICAL_SRC_DATA ? 0 : 1;
 
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
+   case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
       assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
              src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
       return 1;
@@ -5462,6 +5464,13 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
       break;
 
+   case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
+   case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
+      sfid =  devinfo->gen >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
+              devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+                                  BRW_DATAPORT_READ_TARGET_RENDER_CACHE;
+      break;
+
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
@@ -5513,6 +5522,18 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       desc = brw_dp_byte_scattered_rw_desc(devinfo, inst->exec_size,
                                            arg.ud, /* bit_size */
                                            true    /* write */);
+      break;
+
+   case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
+      assert(arg.ud == 32); /* bit_size */
+      desc = brw_dp_dword_scattered_rw_desc(devinfo, inst->exec_size,
+                                            false  /* write */);
+      break;
+
+   case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
+      assert(arg.ud == 32); /* bit_size */
+      desc = brw_dp_dword_scattered_rw_desc(devinfo, inst->exec_size,
+                                            true   /* write */);
       break;
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
@@ -5874,6 +5895,8 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
+      case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
+      case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
@@ -6468,6 +6491,8 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+   case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
+   case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
       return MIN2(16, inst->exec_size);
 
    case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:

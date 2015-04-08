@@ -698,6 +698,37 @@ brw_dp_byte_scattered_rw_desc(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
+brw_dp_dword_scattered_rw_desc(const struct gen_device_info *devinfo,
+                               unsigned exec_size,
+                               bool write)
+{
+   assert(exec_size == 8 || exec_size == 16);
+
+   unsigned msg_type;
+   if (write) {
+      if (devinfo->gen >= 6) {
+         msg_type = GEN6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE;
+      } else {
+         msg_type = BRW_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE;
+      }
+   } else {
+      if (devinfo->gen >= 7) {
+         msg_type = GEN7_DATAPORT_DC_DWORD_SCATTERED_READ;
+      } else if (devinfo->gen > 4 || devinfo->is_g4x) {
+         msg_type = G45_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ;
+      } else {
+         msg_type = BRW_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ;
+      }
+   }
+
+   const unsigned msg_control =
+      SET_BITS(1, 1, 1) | /* Legacy SIMD Mode */
+      SET_BITS(exec_size == 16, 0, 0);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
 brw_dp_a64_untyped_surface_rw_desc(const struct gen_device_info *devinfo,
                                    unsigned exec_size, /**< 0 for SIMD4x2 */
                                    unsigned num_channels,
