@@ -296,7 +296,7 @@ void draw_pt_so_emit( struct pt_so_emit *emit,
       }
    }
 
-   render->set_stream_output_info(render,
+   render->set_stream_output_info(render, 0,
                                   emit->emitted_primitives,
                                   emit->generated_primitives);
 }
