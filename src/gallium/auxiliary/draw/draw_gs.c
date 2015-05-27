@@ -89,9 +89,9 @@ tgsi_fetch_gs_outputs(struct draw_geometry_shader *shader,
     */
 
    for (prim_idx = 0; prim_idx < num_primitives; ++prim_idx) {
-      unsigned num_verts_per_prim = machine->Primitives[prim_idx];
+      unsigned num_verts_per_prim = machine->Primitives[prim_idx][0];
       shader->primitive_lengths[prim_idx + shader->emitted_primitives] =
-         machine->Primitives[prim_idx];
+         machine->Primitives[prim_idx][0];
       shader->emitted_vertices += num_verts_per_prim;
       for (j = 0; j < num_verts_per_prim; j++, current_idx++) {
          int idx = current_idx * shader->info.num_outputs;
@@ -696,7 +696,7 @@ draw_gs_init( struct draw_context *draw )
       if (!draw->gs.tgsi.machine)
          return FALSE;
 
-      draw->gs.tgsi.machine->Primitives = align_malloc(
+      draw->gs.tgsi.machine->Primitives[0] = align_malloc(
          MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector), 16);
       if (!draw->gs.tgsi.machine->Primitives)
          return FALSE;

@@ -948,7 +948,22 @@ enum tgsi_exec_datatype {
 #define TEMP_OUTPUT_C      TGSI_EXEC_TEMP_OUTPUT_C
 #define TEMP_PRIMITIVE_I   TGSI_EXEC_TEMP_PRIMITIVE_I
 #define TEMP_PRIMITIVE_C   TGSI_EXEC_TEMP_PRIMITIVE_C
+#define TEMP_PRIMITIVE_S1_I   TGSI_EXEC_TEMP_PRIMITIVE_S1_I
+#define TEMP_PRIMITIVE_S1_C   TGSI_EXEC_TEMP_PRIMITIVE_S1_C
+#define TEMP_PRIMITIVE_S2_I   TGSI_EXEC_TEMP_PRIMITIVE_S2_I
+#define TEMP_PRIMITIVE_S2_C   TGSI_EXEC_TEMP_PRIMITIVE_S2_C
+#define TEMP_PRIMITIVE_S3_I   TGSI_EXEC_TEMP_PRIMITIVE_S3_I
+#define TEMP_PRIMITIVE_S3_C   TGSI_EXEC_TEMP_PRIMITIVE_S3_C
 
+static const struct {
+   int idx;
+   int chan;
+} temp_prim_idxs[] = {
+   { TEMP_PRIMITIVE_I, TEMP_PRIMITIVE_C },
+   { TEMP_PRIMITIVE_S1_I, TEMP_PRIMITIVE_S1_C },
+   { TEMP_PRIMITIVE_S2_I, TEMP_PRIMITIVE_S2_C },
+   { TEMP_PRIMITIVE_S3_I, TEMP_PRIMITIVE_S3_C },
+};
 
 /** The execution mask depends on the conditional mask and the loop mask */
 #define UPDATE_EXEC_MASK(MACH) \
@@ -2055,35 +2070,52 @@ exec_kill(struct tgsi_exec_machine *mach)
 }
 
 static void
-emit_vertex(struct tgsi_exec_machine *mach)
+emit_vertex(struct tgsi_exec_machine *mach,
+            const struct tgsi_full_instruction *inst)
 {
+   union tgsi_exec_channel r[1];
+   unsigned stream_id;
+   unsigned *prim_count;
    /* FIXME: check for exec mask correctly
    unsigned i;
    for (i = 0; i < TGSI_QUAD_SIZE; ++i) {
          if ((mach->ExecMask & (1 << i)))
    */
+   IFETCH(&r[0], 0, TGSI_CHAN_X);
+   stream_id = r[0].u[0];
+   prim_count = &mach->Temps[temp_prim_idxs[stream_id].idx].xyzw[temp_prim_idxs[stream_id].chan].u[0];
    if (mach->ExecMask) {
-      if (mach->Primitives[mach->Temps[TEMP_PRIMITIVE_I].xyzw[TEMP_PRIMITIVE_C].u[0]] >= mach->MaxOutputVertices)
+      if (mach->Primitives[stream_id][*prim_count] >= mach->MaxOutputVertices)
          return;
 
+      if (mach->Primitives[stream_id][*prim_count] == 0)
+         mach->PrimitiveOffsets[stream_id][*prim_count] = mach->Temps[TEMP_OUTPUT_I].xyzw[TEMP_OUTPUT_C].u[0];
       mach->Temps[TEMP_OUTPUT_I].xyzw[TEMP_OUTPUT_C].u[0] += mach->NumOutputs;
-      mach->Primitives[mach->Temps[TEMP_PRIMITIVE_I].xyzw[TEMP_PRIMITIVE_C].u[0]]++;
+      mach->Primitives[stream_id][*prim_count]++;
    }
 }
 
 static void
-emit_primitive(struct tgsi_exec_machine *mach)
+emit_primitive(struct tgsi_exec_machine *mach,
+               const struct tgsi_full_instruction *inst)
 {
-   unsigned *prim_count = &mach->Temps[TEMP_PRIMITIVE_I].xyzw[TEMP_PRIMITIVE_C].u[0];
+   unsigned *prim_count;
+   union tgsi_exec_channel r[1];
+   unsigned stream_id = 0;
    /* FIXME: check for exec mask correctly
    unsigned i;
    for (i = 0; i < TGSI_QUAD_SIZE; ++i) {
          if ((mach->ExecMask & (1 << i)))
    */
+   if (inst) {
+      IFETCH(&r[0], 0, TGSI_CHAN_X);
+      stream_id = r[0].u[0];
+   }
+   prim_count = &mach->Temps[temp_prim_idxs[stream_id].idx].xyzw[temp_prim_idxs[stream_id].chan].u[0];
    if (mach->ExecMask) {
       ++(*prim_count);
       debug_assert((*prim_count * mach->NumOutputs) < mach->MaxGeometryShaderOutputs);
-      mach->Primitives[*prim_count] = 0;
+      mach->Primitives[stream_id][*prim_count] = 0;
    }
 }
 
@@ -2092,9 +2124,9 @@ conditional_emit_primitive(struct tgsi_exec_machine *mach)
 {
    if (PIPE_SHADER_GEOMETRY == mach->ShaderType) {
       int emitted_verts =
-         mach->Primitives[mach->Temps[TEMP_PRIMITIVE_I].xyzw[TEMP_PRIMITIVE_C].u[0]];
+         mach->Primitives[0][mach->Temps[temp_prim_idxs[0].idx].xyzw[temp_prim_idxs[0].chan].u[0]];
       if (emitted_verts) {
-         emit_primitive(mach);
+         emit_primitive(mach, NULL);
       }
    }
 }
@@ -5529,11 +5561,11 @@ exec_instruction(
       break;
 
    case TGSI_OPCODE_EMIT:
-      emit_vertex(mach);
+      emit_vertex(mach, inst);
       break;
 
    case TGSI_OPCODE_ENDPRIM:
-      emit_primitive(mach);
+      emit_primitive(mach, inst);
       break;
 
    case TGSI_OPCODE_BGNLOOP:
@@ -6119,8 +6151,10 @@ tgsi_exec_machine_setup_masks(struct tgsi_exec_machine *mach)
    mach->Temps[TEMP_OUTPUT_I].xyzw[TEMP_OUTPUT_C].u[0] = 0;
 
    if (mach->ShaderType == PIPE_SHADER_GEOMETRY) {
-      mach->Temps[TEMP_PRIMITIVE_I].xyzw[TEMP_PRIMITIVE_C].u[0] = 0;
-      mach->Primitives[0] = 0;
+      for (unsigned i = 0; i < TGSI_MAX_VERTEX_STREAMS; i++) {
+         mach->Temps[temp_prim_idxs[i].idx].xyzw[temp_prim_idxs[i].chan].u[0] = 0;
+         mach->Primitives[i][0] = 0;
+      }
       /* GS runs on a single primitive for now */
       default_mask = 0x1;
    }
