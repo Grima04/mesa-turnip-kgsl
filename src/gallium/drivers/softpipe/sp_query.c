@@ -107,8 +107,8 @@ softpipe_begin_query(struct pipe_context *pipe, struct pipe_query *q)
       break;
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
-      sq->so.num_primitives_written = softpipe->so_stats.num_primitives_written;
-      sq->so.primitives_storage_needed = softpipe->so_stats.primitives_storage_needed;
+      sq->so.num_primitives_written = softpipe->so_stats[sq->index].num_primitives_written;
+      sq->so.primitives_storage_needed = softpipe->so_stats[sq->index].primitives_storage_needed;
       break;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
       sq->so.num_primitives_written = softpipe->so_stats[sq->index].num_primitives_written;

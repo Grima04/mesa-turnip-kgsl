@@ -237,16 +237,17 @@ fetch_pipeline_generic(struct draw_pt_middle_end *middle,
    struct draw_context *draw = fpme->draw;
    struct draw_vertex_shader *vshader = draw->vs.vertex_shader;
    struct draw_geometry_shader *gshader = draw->gs.geometry_shader;
-   struct draw_prim_info gs_prim_info;
+   struct draw_prim_info gs_prim_info[TGSI_MAX_VERTEX_STREAMS];
    struct draw_vertex_info fetched_vert_info;
    struct draw_vertex_info vs_vert_info;
-   struct draw_vertex_info gs_vert_info;
+   struct draw_vertex_info gs_vert_info[TGSI_MAX_VERTEX_STREAMS];
    struct draw_vertex_info *vert_info;
    struct draw_prim_info ia_prim_info;
    struct draw_vertex_info ia_vert_info;
    const struct draw_prim_info *prim_info = in_prim_info;
    boolean free_prim_info = FALSE;
    unsigned opt = fpme->opt;
+   int num_vertex_streams = 1;
 
    fetched_vert_info.count = fetch_info->count;
    fetched_vert_info.vertex_size = fpme->vertex_size;
@@ -298,12 +299,13 @@ fetch_pipeline_generic(struct draw_pt_middle_end *middle,
                                vert_info,
                                prim_info,
                                &vshader->info,
-                               &gs_vert_info,
-                               &gs_prim_info);
+                               gs_vert_info,
+                               gs_prim_info);
 
       FREE(vert_info->verts);
-      vert_info = &gs_vert_info;
-      prim_info = &gs_prim_info;
+      vert_info = &gs_vert_info[0];
+      prim_info = &gs_prim_info[0];
+      num_vertex_streams = gshader->num_vertex_streams;
 
       /*
        * pt emit can only handle ushort number of vertices (see
@@ -343,7 +345,7 @@ fetch_pipeline_generic(struct draw_pt_middle_end *middle,
     * XXX: Stream output surely needs to respect the prim_info->elt
     *      lists.
     */
-   draw_pt_so_emit( fpme->so_emit, vert_info, prim_info );
+   draw_pt_so_emit( fpme->so_emit, num_vertex_streams, vert_info, prim_info );
 
    draw_stats_clipper_primitives(draw, prim_info);
 
