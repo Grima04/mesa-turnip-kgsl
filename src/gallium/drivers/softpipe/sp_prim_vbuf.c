@@ -602,8 +602,8 @@ sp_vbuf_so_info(struct vbuf_render *vbr, uint stream, uint primitives, uint prim
    struct softpipe_vbuf_render *cvbr = softpipe_vbuf_render(vbr);
    struct softpipe_context *softpipe = cvbr->softpipe;
 
-   softpipe->so_stats.num_primitives_written += primitives;
-   softpipe->so_stats.primitives_storage_needed += prim_generated;
+   softpipe->so_stats[stream].num_primitives_written += primitives;
+   softpipe->so_stats[stream].primitives_storage_needed += prim_generated;
 }
 
 static void
