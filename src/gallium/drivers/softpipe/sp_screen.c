@@ -65,6 +65,7 @@ softpipe_get_name(struct pipe_screen *screen)
 static int
 softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
 {
+   struct softpipe_screen *sp_screen = softpipe_screen(screen);
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
@@ -122,7 +123,10 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
       return 1024;
    case PIPE_CAP_MAX_VERTEX_STREAMS:
-      return 1;
+      if (sp_screen->use_llvm)
+         return 1;
+      else
+         return PIPE_MAX_VERTEX_STREAMS;
    case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
       return 2048;
    case PIPE_CAP_PRIMITIVE_RESTART:

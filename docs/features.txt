@@ -123,7 +123,7 @@ GL 4.0, GLSL 4.00 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, virgl
   - Packing/bitfield/conversion functions               DONE (freedreno, softpipe)
   - Enhanced textureGather                              DONE (freedreno, softpipe)
   - Geometry shader instancing                          DONE (llvmpipe, softpipe)
-  - Geometry shader multiple streams                    DONE ()
+  - Geometry shader multiple streams                    DONE (softpipe)
   - Enhanced per-sample shading                         DONE ()
   - Interpolation functions                             DONE ()
   - New overload resolution rules                       DONE
