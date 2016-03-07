@@ -70,6 +70,7 @@ libintel_compiler_files = files(
   'brw_interpolation_map.c',
   'brw_ir.h',
   'brw_ir_allocator.h',
+  'brw_ir_analysis.h',
   'brw_ir_fs.h',
   'brw_ir_vec4.h',
   'brw_nir.h',
