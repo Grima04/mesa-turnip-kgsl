@@ -37,6 +37,52 @@ namespace brw {
        */
       DEPENDENCY_NOTHING = 0,
       /**
+       * The analysis depends on the set of instructions in the program and
+       * their naming.  Note that because instructions are named sequentially
+       * by IP this implies a dependency on the control flow edges between
+       * instructions.  This will be signaled whenever instructions are
+       * inserted, removed or reordered in the program.
+       */
+      DEPENDENCY_INSTRUCTION_IDENTITY = 0x1,
+      /**
+       * The analysis is sensitive to the detailed semantics of instructions
+       * in the program, where "detailed" means any change in the instruction
+       * data structures other than the linked-list pointers (which are
+       * already covered by DEPENDENCY_INSTRUCTION_IDENTITY).  E.g. changing
+       * the negate or abs flags of an instruction source would signal this
+       * flag alone because it would preserve all other instruction dependency
+       * classes.
+       */
+      DEPENDENCY_INSTRUCTION_DETAIL = 0x2,
+      /**
+       * The analysis depends on the set of data flow edges between
+       * instructions.  This will be signaled whenever the dataflow relation
+       * between instructions has potentially changed, e.g. when the VGRF
+       * index of an instruction source or destination changes (in which case
+       * it will appear in combination with DEPENDENCY_INSTRUCTION_DETAIL), or
+       * when data-dependent instructions are reordered (in which case it will
+       * appear in combination with DEPENDENCY_INSTRUCTION_IDENTITY).
+       */
+      DEPENDENCY_INSTRUCTION_DATA_FLOW = 0x4,
+      /**
+       * The analysis depends on all instruction dependency classes.  These
+       * will typically be signaled simultaneously when inserting or removing
+       * instructions in the program (or if you're feeling too lazy to read
+       * through your optimization pass to figure out which of the instruction
+       * dependency classes above it invalidates).
+       */
+      DEPENDENCY_INSTRUCTIONS = 0x7,
+      /**
+       * The analysis depends on the set of VGRFs in the program and their
+       * naming.  This will be signaled when VGRFs are allocated or released.
+       */
+      DEPENDENCY_VARIABLES = 0x8,
+      /**
+       * The analysis depends on the set of basic blocks in the program, their
+       * control flow edges and naming.
+       */
+      DEPENDENCY_BLOCKS = 0x10,
+      /**
        * The analysis depends on the program being literally the same (good
        * luck...), any change in the input invalidates previous analysis
        * computations.
