@@ -25,11 +25,9 @@
 #define BRW_SHADER_H
 
 #include <stdint.h>
-#include "brw_ir.h"
+#include "brw_cfg.h"
 #include "brw_compiler.h"
 #include "compiler/nir/nir.h"
-
-struct cfg_t;
 
 #ifdef __cplusplus
 #include "brw_ir_allocator.h"

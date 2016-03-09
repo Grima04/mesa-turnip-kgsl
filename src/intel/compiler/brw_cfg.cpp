@@ -26,6 +26,7 @@
  */
 
 #include "brw_cfg.h"
+#include "brw_shader.h"
 
 /** @file brw_cfg.cpp
  *

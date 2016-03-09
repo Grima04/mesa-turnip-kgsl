@@ -28,7 +28,7 @@
 #ifndef BRW_CFG_H
 #define BRW_CFG_H
 
-#include "brw_shader.h"
+#include "brw_ir.h"
 
 struct bblock_t;
 
@@ -70,7 +70,8 @@ struct bblock_link {
    enum bblock_link_kind kind;
 };
 
-struct backend_instruction;
+struct backend_shader;
+struct cfg_t;
 
 struct bblock_t {
 #ifdef __cplusplus

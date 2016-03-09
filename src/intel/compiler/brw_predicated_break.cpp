@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "brw_cfg.h"
+#include "brw_shader.h"
 
 using namespace brw;
 
