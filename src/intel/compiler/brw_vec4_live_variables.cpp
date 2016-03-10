@@ -335,7 +335,7 @@ vec4_visitor::var_range_end(unsigned v, unsigned n) const
 }
 
 bool
-vec4_visitor::virtual_grf_interferes(int a, int b)
+vec4_visitor::virtual_grf_interferes(int a, int b) const
 {
    return !((var_range_end(8 * alloc.offsets[a], 8 * alloc.sizes[a]) <=
              var_range_start(8 * alloc.offsets[b], 8 * alloc.sizes[b])) ||

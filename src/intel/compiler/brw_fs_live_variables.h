@@ -81,7 +81,7 @@ public:
    fs_live_variables(fs_visitor *v, const cfg_t *cfg);
    ~fs_live_variables();
 
-   bool vars_interfere(int a, int b);
+   bool vars_interfere(int a, int b) const;
    int var_from_reg(const fs_reg &reg) const
    {
       return var_from_vgrf[reg.nr] + reg.offset / REG_SIZE;

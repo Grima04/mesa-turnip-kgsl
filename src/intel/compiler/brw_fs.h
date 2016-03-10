@@ -151,7 +151,7 @@ public:
    bool remove_extra_rounding_modes();
 
    bool opt_sampler_eot();
-   bool virtual_grf_interferes(int a, int b);
+   bool virtual_grf_interferes(int a, int b) const;
    void schedule_instructions(instruction_scheduler_mode mode);
    void insert_gen4_send_dependency_workarounds();
    void insert_gen4_pre_send_dependency_workarounds(bblock_t *block,

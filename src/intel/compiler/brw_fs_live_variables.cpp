@@ -352,14 +352,14 @@ fs_visitor::calculate_live_intervals()
 }
 
 bool
-fs_live_variables::vars_interfere(int a, int b)
+fs_live_variables::vars_interfere(int a, int b) const
 {
    return !(end[b] <= start[a] ||
             end[a] <= start[b]);
 }
 
 bool
-fs_visitor::virtual_grf_interferes(int a, int b)
+fs_visitor::virtual_grf_interferes(int a, int b) const
 {
    return !(virtual_grf_end[a] <= virtual_grf_start[b] ||
             virtual_grf_end[b] <= virtual_grf_start[a]);
