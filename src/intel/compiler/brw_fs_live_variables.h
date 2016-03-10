@@ -35,46 +35,46 @@ struct cfg_t;
 
 namespace brw {
 
-struct fs_block_data {
-   /**
-    * Which variables are defined before being used in the block.
-    *
-    * Note that for our purposes, "defined" means unconditionally, completely
-    * defined.
-    */
-   BITSET_WORD *def;
-
-   /**
-    * Which variables are used before being defined in the block.
-    */
-   BITSET_WORD *use;
-
-   /** Which defs reach the entry point of the block. */
-   BITSET_WORD *livein;
-
-   /** Which defs reach the exit point of the block. */
-   BITSET_WORD *liveout;
-
-   /**
-    * Variables such that the entry point of the block may be reached from any
-    * of their definitions.
-    */
-   BITSET_WORD *defin;
-
-   /**
-    * Variables such that the exit point of the block may be reached from any
-    * of their definitions.
-    */
-   BITSET_WORD *defout;
-
-   BITSET_WORD flag_def[1];
-   BITSET_WORD flag_use[1];
-   BITSET_WORD flag_livein[1];
-   BITSET_WORD flag_liveout[1];
-};
-
 class fs_live_variables {
 public:
+   struct block_data {
+      /**
+       * Which variables are defined before being used in the block.
+       *
+       * Note that for our purposes, "defined" means unconditionally, completely
+       * defined.
+       */
+      BITSET_WORD *def;
+
+      /**
+       * Which variables are used before being defined in the block.
+       */
+      BITSET_WORD *use;
+
+      /** Which defs reach the entry point of the block. */
+      BITSET_WORD *livein;
+
+      /** Which defs reach the exit point of the block. */
+      BITSET_WORD *liveout;
+
+      /**
+       * Variables such that the entry point of the block may be reached from any
+       * of their definitions.
+       */
+      BITSET_WORD *defin;
+
+      /**
+       * Variables such that the exit point of the block may be reached from any
+       * of their definitions.
+       */
+      BITSET_WORD *defout;
+
+      BITSET_WORD flag_def[1];
+      BITSET_WORD flag_use[1];
+      BITSET_WORD flag_livein[1];
+      BITSET_WORD flag_liveout[1];
+   };
+
    DECLARE_RALLOC_CXX_OPERATORS(fs_live_variables)
 
    fs_live_variables(fs_visitor *v, const cfg_t *cfg);
@@ -110,13 +110,13 @@ public:
    /** @} */
 
    /** Per-basic-block information on live variables */
-   struct fs_block_data *block_data;
+   struct block_data *block_data;
 
 protected:
    void setup_def_use();
-   void setup_one_read(struct fs_block_data *bd, fs_inst *inst, int ip,
+   void setup_one_read(struct block_data *bd, fs_inst *inst, int ip,
                        const fs_reg &reg);
-   void setup_one_write(struct fs_block_data *bd, fs_inst *inst, int ip,
+   void setup_one_write(struct block_data *bd, fs_inst *inst, int ip,
                         const fs_reg &reg);
    void compute_live_variables();
    void compute_start_end();

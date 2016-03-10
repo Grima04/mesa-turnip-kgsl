@@ -33,34 +33,34 @@
 
 namespace brw {
 
-struct vec4_block_data {
-   /**
-    * Which variables are defined before being used in the block.
-    *
-    * Note that for our purposes, "defined" means unconditionally, completely
-    * defined.
-    */
-   BITSET_WORD *def;
-
-   /**
-    * Which variables are used before being defined in the block.
-    */
-   BITSET_WORD *use;
-
-   /** Which defs reach the entry point of the block. */
-   BITSET_WORD *livein;
-
-   /** Which defs reach the exit point of the block. */
-   BITSET_WORD *liveout;
-
-   BITSET_WORD flag_def[1];
-   BITSET_WORD flag_use[1];
-   BITSET_WORD flag_livein[1];
-   BITSET_WORD flag_liveout[1];
-};
-
 class vec4_live_variables {
 public:
+   struct block_data {
+      /**
+       * Which variables are defined before being used in the block.
+       *
+       * Note that for our purposes, "defined" means unconditionally, completely
+       * defined.
+       */
+      BITSET_WORD *def;
+
+      /**
+       * Which variables are used before being defined in the block.
+       */
+      BITSET_WORD *use;
+
+      /** Which defs reach the entry point of the block. */
+      BITSET_WORD *livein;
+
+      /** Which defs reach the exit point of the block. */
+      BITSET_WORD *liveout;
+
+      BITSET_WORD flag_def[1];
+      BITSET_WORD flag_use[1];
+      BITSET_WORD flag_livein[1];
+      BITSET_WORD flag_liveout[1];
+   };
+
    DECLARE_RALLOC_CXX_OPERATORS(vec4_live_variables)
 
    vec4_live_variables(const simple_allocator &alloc, cfg_t *cfg);
@@ -70,7 +70,7 @@ public:
    int bitset_words;
 
    /** Per-basic-block information on live variables */
-   struct vec4_block_data *block_data;
+   struct block_data *block_data;
 
 protected:
    void setup_def_use();
