@@ -68,6 +68,9 @@ public:
    vec4_live_variables(const backend_shader *s);
    ~vec4_live_variables();
 
+   bool
+   validate(const backend_shader *s) const;
+
    int num_vars;
    int bitset_words;
 

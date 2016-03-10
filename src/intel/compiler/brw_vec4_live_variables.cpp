@@ -291,6 +291,49 @@ vec4_visitor::invalidate_live_intervals()
    live_intervals = NULL;
 }
 
+static bool
+check_register_live_range(const vec4_live_variables *live, int ip,
+                          unsigned var, unsigned n)
+{
+   for (unsigned j = 0; j < n; j += 4) {
+      if (var + j >= unsigned(live->num_vars) ||
+          live->start[var + j] > ip || live->end[var + j] < ip)
+         return false;
+   }
+
+   return true;
+}
+
+bool
+vec4_live_variables::validate(const backend_shader *s) const
+{
+   unsigned ip = 0;
+
+   foreach_block_and_inst(block, vec4_instruction, inst, s->cfg) {
+      for (unsigned c = 0; c < 4; c++) {
+         if (inst->dst.writemask & (1 << c)) {
+            for (unsigned i = 0; i < 3; i++) {
+               if (inst->src[i].file == VGRF &&
+                   !check_register_live_range(this, ip,
+                                              var_from_reg(alloc, inst->src[i], c),
+                                              regs_read(inst, i)))
+                  return false;
+            }
+
+            if (inst->dst.file == VGRF &&
+                !check_register_live_range(this, ip,
+                                           var_from_reg(alloc, inst->dst, c),
+                                           regs_written(inst)))
+               return false;
+         }
+      }
+
+      ip++;
+   }
+
+   return true;
+}
+
 int
 vec4_live_variables::var_range_start(unsigned v, unsigned n) const
 {
