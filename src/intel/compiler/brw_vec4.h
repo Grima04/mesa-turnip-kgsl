@@ -105,8 +105,6 @@ public:
 
    int first_non_payload_grf;
    unsigned int max_grf;
-   int *virtual_grf_start;
-   int *virtual_grf_end;
    brw::vec4_live_variables *live_intervals;
 
    bool need_all_constants_in_pull_buffer;
@@ -143,9 +141,6 @@ public:
    bool opt_vector_float();
    bool opt_reduce_swizzle();
    bool dead_code_eliminate();
-   int var_range_start(unsigned v, unsigned n) const;
-   int var_range_end(unsigned v, unsigned n) const;
-   bool virtual_grf_interferes(int a, int b) const;
    bool opt_cmod_propagation();
    bool opt_copy_propagation(bool do_constant_prop = true);
    bool opt_cse_local(bblock_t *block);

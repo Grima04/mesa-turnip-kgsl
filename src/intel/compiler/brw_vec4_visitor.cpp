@@ -1854,8 +1854,6 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
 
    memset(this->output_num_components, 0, sizeof(this->output_num_components));
 
-   this->virtual_grf_start = NULL;
-   this->virtual_grf_end = NULL;
    this->live_intervals = NULL;
 
    this->max_grf = devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;

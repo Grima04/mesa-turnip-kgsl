@@ -219,8 +219,7 @@ vec4_live_variables::~vec4_live_variables()
  * We could expose per-channel live intervals to the consumer based on the
  * information we computed in vec4_live_variables, except that our only
  * current user is virtual_grf_interferes().  So we instead union the
- * per-channel ranges into a per-vgrf range for virtual_grf_start[] and
- * virtual_grf_end[].
+ * per-channel ranges into a per-vgrf range for vgrf_start[] and vgrf_end[].
  *
  * We could potentially have virtual_grf_interferes() do the test per-channel,
  * which would let some interesting register allocation occur (particularly on
@@ -238,10 +237,6 @@ vec4_visitor::calculate_live_intervals()
 
    int *start = ralloc_array(mem_ctx, int, this->alloc.total_size * 8);
    int *end = ralloc_array(mem_ctx, int, this->alloc.total_size * 8);
-   ralloc_free(this->virtual_grf_start);
-   ralloc_free(this->virtual_grf_end);
-   this->virtual_grf_start = start;
-   this->virtual_grf_end = end;
 
    for (unsigned i = 0; i < this->alloc.total_size * 8; i++) {
       start[i] = MAX_INSTRUCTION;
@@ -286,6 +281,11 @@ vec4_visitor::calculate_live_intervals()
     * this point we're distilling it down to vgrfs.
     */
    this->live_intervals = new(mem_ctx) vec4_live_variables(alloc, cfg);
+   /* XXX -- This belongs in the constructor of vec4_live_variables, will be
+    * cleaned up later.
+    */
+   this->live_intervals->start = start;
+   this->live_intervals->end = end;
 
    foreach_block (block, cfg) {
       const struct vec4_live_variables::block_data *bd =
@@ -308,34 +308,39 @@ vec4_visitor::calculate_live_intervals()
 void
 vec4_visitor::invalidate_live_intervals()
 {
+   /* XXX -- This belongs in the destructor of vec4_live_variables, will be
+    * cleaned up later.
+    */
+   ralloc_free(live_intervals->start);
+   ralloc_free(live_intervals->end);
    ralloc_free(live_intervals);
    live_intervals = NULL;
 }
 
 int
-vec4_visitor::var_range_start(unsigned v, unsigned n) const
+vec4_live_variables::var_range_start(unsigned v, unsigned n) const
 {
-   int start = INT_MAX;
+   int ip = INT_MAX;
 
    for (unsigned i = 0; i < n; i++)
-      start = MIN2(start, virtual_grf_start[v + i]);
+      ip = MIN2(ip, start[v + i]);
 
-   return start;
+   return ip;
 }
 
 int
-vec4_visitor::var_range_end(unsigned v, unsigned n) const
+vec4_live_variables::var_range_end(unsigned v, unsigned n) const
 {
-   int end = INT_MIN;
+   int ip = INT_MIN;
 
    for (unsigned i = 0; i < n; i++)
-      end = MAX2(end, virtual_grf_end[v + i]);
+      ip = MAX2(ip, end[v + i]);
 
-   return end;
+   return ip;
 }
 
 bool
-vec4_visitor::virtual_grf_interferes(int a, int b) const
+vec4_live_variables::vgrfs_interfere(int a, int b) const
 {
    return !((var_range_end(8 * alloc.offsets[a], 8 * alloc.sizes[a]) <=
              var_range_start(8 * alloc.offsets[b], 8 * alloc.sizes[b])) ||

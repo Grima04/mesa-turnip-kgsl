@@ -215,7 +215,7 @@ vec4_visitor::reg_allocate()
       ra_set_node_class(g, i, compiler->vec4_reg_set.classes[size - 1]);
 
       for (unsigned j = 0; j < i; j++) {
-	 if (virtual_grf_interferes(i, j)) {
+	 if (live_intervals->vgrfs_interfere(i, j)) {
 	    ra_add_node_interference(g, i, j);
 	 }
       }

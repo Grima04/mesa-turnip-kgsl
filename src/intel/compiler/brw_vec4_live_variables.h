@@ -72,6 +72,17 @@ public:
    /** Per-basic-block information on live variables */
    struct block_data *block_data;
 
+   /** @{
+    * Final computed live ranges for each variable.
+    */
+   int *start;
+   int *end;
+   /** @} */
+
+   int var_range_start(unsigned v, unsigned n) const;
+   int var_range_end(unsigned v, unsigned n) const;
+   bool vgrfs_interfere(int a, int b) const;
+
 protected:
    void setup_def_use();
    void compute_live_variables();

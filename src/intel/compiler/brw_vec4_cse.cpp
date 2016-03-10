@@ -288,7 +288,8 @@ vec4_visitor::opt_cse_local(bblock_t *block)
              * more -- a sure sign they'll fail operands_match().
              */
             if (src->file == VGRF) {
-               if (var_range_end(var_from_reg(alloc, dst_reg(*src)), 8) < ip) {
+               if (live_intervals->var_range_end(
+                      var_from_reg(alloc, *src), 8) < ip) {
                   entry->remove();
                   ralloc_free(entry);
                   break;
