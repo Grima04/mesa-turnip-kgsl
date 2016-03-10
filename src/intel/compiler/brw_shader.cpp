@@ -703,7 +703,7 @@ backend_shader::backend_shader(const struct brw_compiler *compiler,
      nir(shader),
      stage_prog_data(stage_prog_data),
      mem_ctx(mem_ctx),
-     cfg(NULL),
+     cfg(NULL), idom_analysis(this),
      stage(shader->info.stage)
 {
    debug_enabled = INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage);
@@ -1248,6 +1248,7 @@ backend_shader::calculate_cfg()
 void
 backend_shader::invalidate_analysis(brw::analysis_dependency_class c)
 {
+   idom_analysis.invalidate(c);
 }
 
 extern "C" const unsigned *

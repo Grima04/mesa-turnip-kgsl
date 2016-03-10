@@ -34,6 +34,8 @@
  * blocks with successor/predecessor edges connecting them.
  */
 
+using namespace brw;
+
 static bblock_t *
 pop_stack(exec_list *list)
 {
@@ -168,7 +170,6 @@ cfg_t::cfg_t(exec_list *instructions)
    block_list.make_empty();
    blocks = NULL;
    num_blocks = 0;
-   idom_dirty = true;
    cycle_count = 0;
 
    bblock_t *cur = NULL;
@@ -462,7 +463,6 @@ cfg_t::remove_block(bblock_t *block)
 
    this->blocks[this->num_blocks - 1]->num = this->num_blocks - 2;
    this->num_blocks--;
-   idom_dirty = true;
 }
 
 bblock_t *
@@ -501,8 +501,7 @@ cfg_t::make_block_array()
 void
 cfg_t::dump(backend_shader *s)
 {
-   if (idom_dirty)
-      calculate_idom();
+   const idom_tree *idom = (s ? &s->idom_analysis.require() : NULL);
 
    foreach_block (block, this) {
       if (block->idom)
@@ -536,19 +535,18 @@ cfg_t::dump(backend_shader *s)
  * (less than 1000 nodes) that this algorithm is significantly faster than
  * others like Lengauer-Tarjan.
  */
-void
-cfg_t::calculate_idom()
+idom_tree::idom_tree(const backend_shader *s)
 {
-   foreach_block(block, this) {
+   foreach_block(block, s->cfg) {
       block->idom = NULL;
    }
-   blocks[0]->idom = blocks[0];
+   s->cfg->blocks[0]->idom = s->cfg->blocks[0];
 
    bool changed;
    do {
       changed = false;
 
-      foreach_block(block, this) {
+      foreach_block(block, s->cfg) {
          if (block->num == 0)
             continue;
 
@@ -569,12 +567,10 @@ cfg_t::calculate_idom()
          }
       }
    } while (changed);
-
-   idom_dirty = false;
 }
 
 bblock_t *
-cfg_t::intersect(bblock_t *b1, bblock_t *b2)
+idom_tree::intersect(bblock_t *b1, bblock_t *b2) const
 {
    /* Note, the comparisons here are the opposite of what the paper says
     * because we index blocks from beginning -> end (i.e. reverse post-order)
@@ -591,6 +587,18 @@ cfg_t::intersect(bblock_t *b1, bblock_t *b2)
 }
 
 void
+idom_tree::dump(const backend_shader *s) const
+{
+   printf("digraph DominanceTree {\n");
+   foreach_block(block, s->cfg) {
+      if (block->idom) {
+         printf("\t%d -> %d\n", block->idom->num, block->num);
+      }
+   }
+   printf("}\n");
+}
+
+void
 cfg_t::dump_cfg()
 {
    printf("digraph CFG {\n");
@@ -599,18 +607,6 @@ cfg_t::dump_cfg()
 
       foreach_list_typed_safe (bblock_link, child, link, &block->children) {
          printf("\t%d -> %d\n", b, child->block->num);
-      }
-   }
-   printf("}\n");
-}
-
-void
-cfg_t::dump_domtree()
-{
-   printf("digraph DominanceTree {\n");
-   foreach_block(block, this) {
-      if (block->idom) {
-         printf("\t%d -> %d\n", block->idom->num, block->num);
       }
    }
    printf("}\n");

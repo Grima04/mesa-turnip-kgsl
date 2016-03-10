@@ -29,6 +29,9 @@
 #define BRW_CFG_H
 
 #include "brw_ir.h"
+#ifdef __cplusplus
+#include "brw_ir_analysis.h"
+#endif
 
 struct bblock_t;
 
@@ -311,12 +314,9 @@ struct cfg_t {
    bblock_t *new_block();
    void set_next_block(bblock_t **cur, bblock_t *block, int ip);
    void make_block_array();
-   void calculate_idom();
-   static bblock_t *intersect(bblock_t *b1, bblock_t *b2);
 
    void dump(backend_shader *s);
    void dump_cfg();
-   void dump_domtree();
 #endif
    void *mem_ctx;
 
@@ -324,8 +324,6 @@ struct cfg_t {
    struct exec_list block_list;
    struct bblock_t **blocks;
    int num_blocks;
-
-   bool idom_dirty;
 
    unsigned cycle_count;
 };
@@ -381,5 +379,35 @@ struct cfg_t {
    for (__type *__scan_inst = (__type *)__inst->prev;          \
         !__scan_inst->is_head_sentinel();                      \
         __scan_inst = (__type *)__scan_inst->prev)
+
+#ifdef __cplusplus
+namespace brw {
+   /**
+    * Immediate dominator tree analysis of a shader.
+    */
+   struct idom_tree {
+      idom_tree(const backend_shader *s);
+
+      bool
+      validate(const backend_shader *) const
+      {
+         /* FINISHME */
+         return true;
+      }
+
+      analysis_dependency_class
+      dependency_class() const
+      {
+         return DEPENDENCY_BLOCKS;
+      }
+
+      bblock_t *
+      intersect(bblock_t *b1, bblock_t *b2) const;
+
+      void
+      dump(const backend_shader *s) const;
+   };
+}
+#endif
 
 #endif /* BRW_CFG_H */
