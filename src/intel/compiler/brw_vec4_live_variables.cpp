@@ -25,7 +25,7 @@
  *
  */
 
-#include "brw_cfg.h"
+#include "brw_vec4.h"
 #include "brw_vec4_live_variables.h"
 
 using namespace brw;

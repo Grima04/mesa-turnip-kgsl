@@ -26,7 +26,6 @@
 #include "brw_cfg.h"
 #include "brw_nir.h"
 #include "brw_vec4_builder.h"
-#include "brw_vec4_live_variables.h"
 #include "brw_vec4_vs.h"
 #include "brw_dead_control_flow.h"
 #include "dev/gen_debug.h"

@@ -28,8 +28,8 @@
 #ifndef BRW_VEC4_LIVE_VARIABLES_H
 #define BRW_VEC4_LIVE_VARIABLES_H
 
+#include "brw_ir_vec4.h"
 #include "util/bitset.h"
-#include "brw_vec4.h"
 
 namespace brw {
 

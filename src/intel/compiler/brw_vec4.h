@@ -29,6 +29,7 @@
 #ifdef __cplusplus
 #include "brw_ir_vec4.h"
 #include "brw_vec4_builder.h"
+#include "brw_vec4_live_variables.h"
 #endif
 
 #include "compiler/glsl/ir.h"
@@ -52,9 +53,6 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
 } /* extern "C" */
 
 namespace brw {
-
-class vec4_live_variables;
-
 /**
  * The vertex shader front-end.
  *
