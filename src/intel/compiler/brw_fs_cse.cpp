@@ -360,7 +360,8 @@ fs_visitor::opt_cse_local(bblock_t *block, int &ip)
             /* Kill any AEB entries using registers that don't get reused any
              * more -- a sure sign they'll fail operands_match().
              */
-            if (src_reg->file == VGRF && virtual_grf_end[src_reg->nr] < ip) {
+            if (src_reg->file == VGRF &&
+                live_intervals->vgrf_end[src_reg->nr] < ip) {
                entry->remove();
                ralloc_free(entry);
                break;

@@ -151,7 +151,6 @@ public:
    bool remove_extra_rounding_modes();
 
    bool opt_sampler_eot();
-   bool virtual_grf_interferes(int a, int b) const;
    void schedule_instructions(instruction_scheduler_mode mode);
    void insert_gen4_send_dependency_workarounds();
    void insert_gen4_pre_send_dependency_workarounds(bblock_t *block,
@@ -320,8 +319,8 @@ public:
 
    const struct brw_vue_map *input_vue_map;
 
-   int *virtual_grf_start;
-   int *virtual_grf_end;
+   int *param_size;
+
    brw::fs_live_variables *live_intervals;
 
    int *regs_live_at_ip;

@@ -754,8 +754,8 @@ fs_instruction_scheduler::setup_liveness(cfg_t *cfg)
     */
    for (int block = 0; block < cfg->num_blocks - 1; block++) {
       for (int i = 0; i < grf_count; i++) {
-         if (v->virtual_grf_start[i] <= cfg->blocks[block]->end_ip &&
-             v->virtual_grf_end[i] >= cfg->blocks[block + 1]->start_ip) {
+         if (v->live_intervals->vgrf_start[i] <= cfg->blocks[block]->end_ip &&
+             v->live_intervals->vgrf_end[i] >= cfg->blocks[block + 1]->start_ip) {
             if (!BITSET_TEST(livein[block + 1], i)) {
                 reg_pressure_in[block + 1] += v->alloc.sizes[i];
                 BITSET_SET(livein[block + 1], i);

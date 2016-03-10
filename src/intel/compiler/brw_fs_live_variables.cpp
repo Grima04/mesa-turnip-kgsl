@@ -282,6 +282,13 @@ fs_live_variables::fs_live_variables(fs_visitor *v, const cfg_t *cfg)
       end[i] = -1;
    }
 
+   vgrf_start = ralloc_array(mem_ctx, int, num_vgrfs);
+   vgrf_end = ralloc_array(mem_ctx, int, num_vgrfs);
+   for (int i = 0; i < num_vgrfs; i++) {
+      vgrf_start[i] = MAX_INSTRUCTION;
+      vgrf_end[i] = -1;
+   }
+
    block_data = rzalloc_array(mem_ctx, struct block_data, cfg->num_blocks);
 
    bitset_words = BITSET_WORDS(num_vars);
@@ -302,6 +309,13 @@ fs_live_variables::fs_live_variables(fs_visitor *v, const cfg_t *cfg)
    setup_def_use();
    compute_live_variables();
    compute_start_end();
+
+   /* Merge the per-component live ranges to whole VGRF live ranges. */
+   for (int i = 0; i < num_vars; i++) {
+      const unsigned vgrf = vgrf_from_var[i];
+      vgrf_start[vgrf] = MIN2(vgrf_start[vgrf], start[i]);
+      vgrf_end[vgrf] = MAX2(vgrf_end[vgrf], end[i]);
+   }
 }
 
 fs_live_variables::~fs_live_variables()
@@ -328,27 +342,7 @@ fs_visitor::calculate_live_intervals()
    if (this->live_intervals)
       return;
 
-   int num_vgrfs = this->alloc.count;
-   ralloc_free(this->virtual_grf_start);
-   ralloc_free(this->virtual_grf_end);
-   virtual_grf_start = ralloc_array(mem_ctx, int, num_vgrfs);
-   virtual_grf_end = ralloc_array(mem_ctx, int, num_vgrfs);
-
-   for (int i = 0; i < num_vgrfs; i++) {
-      virtual_grf_start[i] = MAX_INSTRUCTION;
-      virtual_grf_end[i] = -1;
-   }
-
    this->live_intervals = new(mem_ctx) fs_live_variables(this, cfg);
-
-   /* Merge the per-component live ranges to whole VGRF live ranges. */
-   for (int i = 0; i < live_intervals->num_vars; i++) {
-      int vgrf = live_intervals->vgrf_from_var[i];
-      virtual_grf_start[vgrf] = MIN2(virtual_grf_start[vgrf],
-                                     live_intervals->start[i]);
-      virtual_grf_end[vgrf] = MAX2(virtual_grf_end[vgrf],
-                                   live_intervals->end[i]);
-   }
 }
 
 bool
@@ -359,8 +353,8 @@ fs_live_variables::vars_interfere(int a, int b) const
 }
 
 bool
-fs_visitor::virtual_grf_interferes(int a, int b) const
+fs_live_variables::vgrfs_interfere(int a, int b) const
 {
-   return !(virtual_grf_end[a] <= virtual_grf_start[b] ||
-            virtual_grf_end[b] <= virtual_grf_start[a]);
+   return !(vgrf_end[a] <= vgrf_start[b] ||
+            vgrf_end[b] <= vgrf_start[a]);
 }

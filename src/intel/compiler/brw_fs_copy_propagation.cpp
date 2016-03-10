@@ -1035,8 +1035,8 @@ fs_visitor::opt_copy_propagation()
       for (unsigned a = 0; a < ACP_HASH_SIZE; a++) {
          foreach_in_list_safe(acp_entry, entry, &out_acp[block->num][a]) {
             assert(entry->dst.file == VGRF);
-            if (block->start_ip <= virtual_grf_start[entry->dst.nr] &&
-                virtual_grf_end[entry->dst.nr] <= block->end_ip)
+            if (block->start_ip <= live_intervals->vgrf_start[entry->dst.nr] &&
+                live_intervals->vgrf_end[entry->dst.nr] <= block->end_ip)
                entry->remove();
          }
       }

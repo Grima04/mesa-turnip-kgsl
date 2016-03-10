@@ -82,6 +82,7 @@ public:
    ~fs_live_variables();
 
    bool vars_interfere(int a, int b) const;
+   bool vgrfs_interfere(int a, int b) const;
    int var_from_reg(const fs_reg &reg) const
    {
       return var_from_vgrf[reg.nr] + reg.offset / REG_SIZE;
@@ -108,6 +109,13 @@ public:
     */
    int *start;
    int *end;
+   /** @} */
+
+   /** @{
+    * Final computed live ranges for each VGRF.
+    */
+   int *vgrf_start;
+   int *vgrf_end;
    /** @} */
 
    /** Per-basic-block information on live variables */

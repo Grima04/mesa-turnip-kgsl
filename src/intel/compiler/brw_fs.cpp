@@ -2037,7 +2037,7 @@ fs_visitor::split_virtual_grfs()
 }
 
 /**
- * Remove unused virtual GRFs and compact the virtual_grf_* arrays.
+ * Remove unused virtual GRFs and compact the vgrf_* arrays.
  *
  * During code generation, we create tons of temporary variables, many of
  * which get immediately killed and are never used again.  Yet, in later
@@ -3117,7 +3117,7 @@ fs_visitor::compute_to_mrf()
       /* Can't compute-to-MRF this GRF if someone else was going to
        * read it later.
        */
-      if (this->virtual_grf_end[inst->src[0].nr] > ip)
+      if (live_intervals->vgrf_end[inst->src[0].nr] > ip)
 	 continue;
 
       /* Found a move of a GRF to a MRF.  Let's see if we can go rewrite the
@@ -7372,7 +7372,8 @@ fs_visitor::calculate_register_pressure()
    regs_live_at_ip = rzalloc_array(mem_ctx, int, num_instructions);
 
    for (unsigned reg = 0; reg < alloc.count; reg++) {
-      for (int ip = virtual_grf_start[reg]; ip <= virtual_grf_end[reg]; ip++)
+      for (int ip = live_intervals->vgrf_start[reg];
+           ip <= live_intervals->vgrf_end[reg]; ip++)
          regs_live_at_ip[ip] += alloc.sizes[reg];
    }
 }

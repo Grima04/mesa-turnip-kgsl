@@ -567,7 +567,7 @@ fs_reg_alloc::setup_live_interference(unsigned node,
       if (payload_last_use_ip[i] == -1)
          continue;
 
-      /* Note that we use a <= comparison, unlike virtual_grf_interferes(),
+      /* Note that we use a <= comparison, unlike vgrfs_interfere(),
        * in order to not have to worry about the uniform issue described in
        * calculate_live_intervals().
        */
@@ -590,8 +590,8 @@ fs_reg_alloc::setup_live_interference(unsigned node,
    for (unsigned n2 = first_vgrf_node;
         n2 < (unsigned)first_spill_node && n2 < node; n2++) {
       unsigned vgrf = n2 - first_vgrf_node;
-      if (!(node_end_ip <= fs->virtual_grf_start[vgrf] ||
-            fs->virtual_grf_end[vgrf] <= node_start_ip))
+      if (!(node_end_ip <= fs->live_intervals->vgrf_start[vgrf] ||
+            fs->live_intervals->vgrf_end[vgrf] <= node_start_ip))
          ra_add_node_interference(g, node, n2);
    }
 }
@@ -812,8 +812,8 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    /* Add interference based on the live range of the register */
    for (unsigned i = 0; i < fs->alloc.count; i++) {
       setup_live_interference(first_vgrf_node + i,
-                              fs->virtual_grf_start[i],
-                              fs->virtual_grf_end[i]);
+                              fs->live_intervals->vgrf_start[i],
+                              fs->live_intervals->vgrf_end[i]);
    }
 
    /* Add interference based on the instructions in which a register is used.
@@ -953,7 +953,7 @@ fs_reg_alloc::set_spill_costs()
       if (no_spill[i])
          continue;
 
-      int live_length = fs->virtual_grf_end[i] - fs->virtual_grf_start[i];
+      int live_length = fs->live_intervals->vgrf_end[i] - fs->live_intervals->vgrf_start[i];
       if (live_length <= 0)
          continue;
 

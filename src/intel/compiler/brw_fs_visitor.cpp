@@ -933,8 +933,6 @@ fs_visitor::init()
    this->first_non_payload_grf = 0;
    this->max_grf = devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
 
-   this->virtual_grf_start = NULL;
-   this->virtual_grf_end = NULL;
    this->live_intervals = NULL;
    this->regs_live_at_ip = NULL;
 
