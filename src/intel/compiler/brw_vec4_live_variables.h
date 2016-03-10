@@ -86,6 +86,7 @@ public:
 protected:
    void setup_def_use();
    void compute_live_variables();
+   void compute_start_end();
 
    const simple_allocator &alloc;
    cfg_t *cfg;

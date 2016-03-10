@@ -30,6 +30,8 @@
 
 using namespace brw;
 
+#define MAX_INSTRUCTION (1 << 30)
+
 /** @file brw_vec4_live_variables.cpp
  *
  * Support for computing at the basic block level which variables
@@ -40,7 +42,7 @@ using namespace brw;
  */
 
 /**
- * Sets up the use[] and def[] arrays.
+ * Sets up the use/def arrays and block-local approximation of the live ranges.
  *
  * The basic-block-level live variable analysis needs to know which
  * variables get used before they're completely defined, and which
@@ -73,12 +75,16 @@ vec4_live_variables::setup_def_use()
       foreach_inst_in_block(vec4_instruction, inst, block) {
          struct block_data *bd = &block_data[block->num];
 
-	 /* Set use[] for this instruction */
+         /* Set up the instruction uses. */
 	 for (unsigned int i = 0; i < 3; i++) {
 	    if (inst->src[i].file == VGRF) {
                for (unsigned j = 0; j < DIV_ROUND_UP(inst->size_read(i), 16); j++) {
                   for (int c = 0; c < 4; c++) {
                      const unsigned v = var_from_reg(alloc, inst->src[i], c, j);
+
+                     start[v] = MIN2(start[v], ip);
+                     end[v] = ip;
+
                      if (!BITSET_TEST(bd->def, v))
                         BITSET_SET(bd->use, v);
                   }
@@ -92,17 +98,22 @@ vec4_live_variables::setup_def_use()
             }
          }
 
-	 /* Check for unconditional writes to whole registers. These
-	  * are the things that screen off preceding definitions of a
-	  * variable, and thus qualify for being in def[].
-	  */
-	 if (inst->dst.file == VGRF &&
-	     (!inst->predicate || inst->opcode == BRW_OPCODE_SEL)) {
+         /* Set up the instruction defs. */
+         if (inst->dst.file == VGRF) {
             for (unsigned i = 0; i < DIV_ROUND_UP(inst->size_written, 16); i++) {
                for (int c = 0; c < 4; c++) {
                   if (inst->dst.writemask & (1 << c)) {
                      const unsigned v = var_from_reg(alloc, inst->dst, c, i);
-                     if (!BITSET_TEST(bd->use, v))
+
+                     start[v] = MIN2(start[v], ip);
+                     end[v] = ip;
+
+                     /* Check for unconditional register writes, these are the
+                      * things that screen off preceding definitions of a
+                      * variable, and thus qualify for being in def[].
+                      */
+                     if ((!inst->predicate || inst->opcode == BRW_OPCODE_SEL) &&
+                         !BITSET_TEST(bd->use, v))
                         BITSET_SET(bd->def, v);
                   }
                }
@@ -180,6 +191,30 @@ vec4_live_variables::compute_live_variables()
    }
 }
 
+/**
+ * Extend the start/end ranges for each variable to account for the
+ * new information calculated from control flow.
+ */
+void
+vec4_live_variables::compute_start_end()
+{
+   foreach_block (block, cfg) {
+      const struct block_data &bd = block_data[block->num];
+
+      for (int i = 0; i < num_vars; i++) {
+         if (BITSET_TEST(bd.livein, i)) {
+            start[i] = MIN2(start[i], block->start_ip);
+            end[i] = MAX2(end[i], block->start_ip);
+         }
+
+         if (BITSET_TEST(bd.liveout, i)) {
+            start[i] = MIN2(start[i], block->end_ip);
+            end[i] = MAX2(end[i], block->end_ip);
+         }
+      }
+   }
+}
+
 vec4_live_variables::vec4_live_variables(const simple_allocator &alloc,
                                          cfg_t *cfg)
    : alloc(alloc), cfg(cfg)
@@ -187,6 +222,14 @@ vec4_live_variables::vec4_live_variables(const simple_allocator &alloc,
    mem_ctx = ralloc_context(NULL);
 
    num_vars = alloc.total_size * 8;
+   start = ralloc_array(mem_ctx, int, num_vars);
+   end = ralloc_array(mem_ctx, int, num_vars);
+
+   for (int i = 0; i < num_vars; i++) {
+      start[i] = MAX_INSTRUCTION;
+      end[i] = -1;
+   }
+
    block_data = rzalloc_array(mem_ctx, struct block_data, cfg->num_blocks);
 
    bitset_words = BITSET_WORDS(num_vars);
@@ -204,14 +247,13 @@ vec4_live_variables::vec4_live_variables(const simple_allocator &alloc,
 
    setup_def_use();
    compute_live_variables();
+   compute_start_end();
 }
 
 vec4_live_variables::~vec4_live_variables()
 {
    ralloc_free(mem_ctx);
 }
-
-#define MAX_INSTRUCTION (1 << 30)
 
 /**
  * Computes a conservative start/end of the live intervals for each virtual GRF.
@@ -235,84 +277,17 @@ vec4_visitor::calculate_live_intervals()
    if (this->live_intervals)
       return;
 
-   int *start = ralloc_array(mem_ctx, int, this->alloc.total_size * 8);
-   int *end = ralloc_array(mem_ctx, int, this->alloc.total_size * 8);
-
-   for (unsigned i = 0; i < this->alloc.total_size * 8; i++) {
-      start[i] = MAX_INSTRUCTION;
-      end[i] = -1;
-   }
-
-   /* Start by setting up the intervals with no knowledge of control
-    * flow.
-    */
-   int ip = 0;
-   foreach_block_and_inst(block, vec4_instruction, inst, cfg) {
-      for (unsigned int i = 0; i < 3; i++) {
-	 if (inst->src[i].file == VGRF) {
-            for (unsigned j = 0; j < DIV_ROUND_UP(inst->size_read(i), 16); j++) {
-               for (int c = 0; c < 4; c++) {
-                  const unsigned v = var_from_reg(alloc, inst->src[i], c, j);
-                  start[v] = MIN2(start[v], ip);
-                  end[v] = ip;
-               }
-            }
-	 }
-      }
-
-      if (inst->dst.file == VGRF) {
-         for (unsigned i = 0; i < DIV_ROUND_UP(inst->size_written, 16); i++) {
-            for (int c = 0; c < 4; c++) {
-               if (inst->dst.writemask & (1 << c)) {
-                  const unsigned v = var_from_reg(alloc, inst->dst, c, i);
-                  start[v] = MIN2(start[v], ip);
-                  end[v] = ip;
-               }
-            }
-         }
-      }
-
-      ip++;
-   }
-
    /* Now, extend those intervals using our analysis of control flow.
     *
     * The control flow-aware analysis was done at a channel level, while at
     * this point we're distilling it down to vgrfs.
     */
    this->live_intervals = new(mem_ctx) vec4_live_variables(alloc, cfg);
-   /* XXX -- This belongs in the constructor of vec4_live_variables, will be
-    * cleaned up later.
-    */
-   this->live_intervals->start = start;
-   this->live_intervals->end = end;
-
-   foreach_block (block, cfg) {
-      const struct vec4_live_variables::block_data *bd =
-         &live_intervals->block_data[block->num];
-
-      for (int i = 0; i < live_intervals->num_vars; i++) {
-         if (BITSET_TEST(bd->livein, i)) {
-            start[i] = MIN2(start[i], block->start_ip);
-            end[i] = MAX2(end[i], block->start_ip);
-         }
-
-         if (BITSET_TEST(bd->liveout, i)) {
-            start[i] = MIN2(start[i], block->end_ip);
-            end[i] = MAX2(end[i], block->end_ip);
-         }
-      }
-   }
 }
 
 void
 vec4_visitor::invalidate_live_intervals()
 {
-   /* XXX -- This belongs in the destructor of vec4_live_variables, will be
-    * cleaned up later.
-    */
-   ralloc_free(live_intervals->start);
-   ralloc_free(live_intervals->end);
    ralloc_free(live_intervals);
    live_intervals = NULL;
 }
