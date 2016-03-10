@@ -81,6 +81,8 @@ public:
    fs_live_variables(const backend_shader *s);
    ~fs_live_variables();
 
+   bool validate(const backend_shader *s) const;
+
    bool vars_interfere(int a, int b) const;
    bool vgrfs_interfere(int a, int b) const;
    int var_from_reg(const fs_reg &reg) const

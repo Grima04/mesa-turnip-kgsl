@@ -323,6 +323,47 @@ fs_live_variables::~fs_live_variables()
    ralloc_free(mem_ctx);
 }
 
+static bool
+check_register_live_range(const fs_live_variables *live, int ip,
+                          const fs_reg &reg, unsigned n)
+{
+   const unsigned var = live->var_from_reg(reg);
+
+   if (var + n > unsigned(live->num_vars) ||
+       live->vgrf_start[reg.nr] > ip || live->vgrf_end[reg.nr] < ip)
+      return false;
+
+   for (unsigned j = 0; j < n; j++) {
+      if (live->start[var + j] > ip || live->end[var + j] < ip)
+         return false;
+   }
+
+   return true;
+}
+
+bool
+fs_live_variables::validate(const backend_shader *s) const
+{
+   int ip = 0;
+
+   foreach_block_and_inst(block, fs_inst, inst, s->cfg) {
+      for (unsigned i = 0; i < inst->sources; i++) {
+         if (inst->src[i].file == VGRF &&
+             !check_register_live_range(this, ip,
+                                        inst->src[i], regs_read(inst, i)))
+            return false;
+      }
+
+      if (inst->dst.file == VGRF &&
+          !check_register_live_range(this, ip, inst->dst, regs_written(inst)))
+         return false;
+
+      ip++;
+   }
+
+   return true;
+}
+
 void
 fs_visitor::invalidate_live_intervals()
 {
