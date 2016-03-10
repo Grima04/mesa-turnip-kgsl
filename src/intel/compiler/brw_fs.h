@@ -31,6 +31,7 @@
 #include "brw_shader.h"
 #include "brw_ir_fs.h"
 #include "brw_fs_builder.h"
+#include "brw_fs_live_variables.h"
 #include "compiler/nir/nir.h"
 
 struct bblock_t;
@@ -39,7 +40,6 @@ namespace {
 }
 
 namespace brw {
-   class fs_live_variables;
 }
 
 struct brw_gs_compile;

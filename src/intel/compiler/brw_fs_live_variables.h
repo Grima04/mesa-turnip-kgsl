@@ -28,10 +28,11 @@
 #ifndef BRW_FS_LIVE_VARIABLES_H
 #define BRW_FS_LIVE_VARIABLES_H
 
-#include "brw_fs.h"
+#include "brw_ir_fs.h"
 #include "util/bitset.h"
 
 struct cfg_t;
+class fs_visitor;
 
 namespace brw {
 
