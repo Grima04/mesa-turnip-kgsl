@@ -63,7 +63,7 @@ push_stack(exec_list *list, void *mem_ctx, bblock_t *block)
 }
 
 bblock_t::bblock_t(cfg_t *cfg) :
-   cfg(cfg), idom(NULL), start_ip(0), end_ip(0), num(0), cycle_count(0)
+   cfg(cfg), start_ip(0), end_ip(0), num(0), cycle_count(0)
 {
    instructions.make_empty();
    parents.make_empty();
@@ -504,8 +504,9 @@ cfg_t::dump(backend_shader *s)
    const idom_tree *idom = (s ? &s->idom_analysis.require() : NULL);
 
    foreach_block (block, this) {
-      if (block->idom)
-         fprintf(stderr, "START B%d IDOM(B%d)", block->num, block->idom->num);
+      if (idom && idom->parent(block))
+         fprintf(stderr, "START B%d IDOM(B%d)", block->num,
+                 idom->parent(block)->num);
       else
          fprintf(stderr, "START B%d IDOM(none)", block->num);
 
@@ -535,14 +536,14 @@ cfg_t::dump(backend_shader *s)
  * (less than 1000 nodes) that this algorithm is significantly faster than
  * others like Lengauer-Tarjan.
  */
-idom_tree::idom_tree(const backend_shader *s)
+idom_tree::idom_tree(const backend_shader *s) :
+   num_parents(s->cfg->num_blocks),
+   parents(new bblock_t *[num_parents]())
 {
-   foreach_block(block, s->cfg) {
-      block->idom = NULL;
-   }
-   s->cfg->blocks[0]->idom = s->cfg->blocks[0];
-
    bool changed;
+
+   parents[0] = s->cfg->blocks[0];
+
    do {
       changed = false;
 
@@ -551,22 +552,27 @@ idom_tree::idom_tree(const backend_shader *s)
             continue;
 
          bblock_t *new_idom = NULL;
-         foreach_list_typed(bblock_link, parent, link, &block->parents) {
-            if (parent->block->idom) {
+         foreach_list_typed(bblock_link, parent_link, link, &block->parents) {
+            if (parent(parent_link->block)) {
                if (new_idom == NULL) {
-                  new_idom = parent->block;
-               } else if (parent->block->idom != NULL) {
-                  new_idom = intersect(parent->block, new_idom);
+                  new_idom = parent_link->block;
+               } else if (parent(parent_link->block) != NULL) {
+                  new_idom = intersect(parent_link->block, new_idom);
                }
             }
          }
 
-         if (block->idom != new_idom) {
-            block->idom = new_idom;
+         if (parent(block) != new_idom) {
+            parents[block->num] = new_idom;
             changed = true;
          }
       }
    } while (changed);
+}
+
+idom_tree::~idom_tree()
+{
+   delete[] parents;
 }
 
 bblock_t *
@@ -578,23 +584,20 @@ idom_tree::intersect(bblock_t *b1, bblock_t *b2) const
     */
    while (b1->num != b2->num) {
       while (b1->num > b2->num)
-         b1 = b1->idom;
+         b1 = parent(b1);
       while (b2->num > b1->num)
-         b2 = b2->idom;
+         b2 = parent(b2);
    }
    assert(b1);
    return b1;
 }
 
 void
-idom_tree::dump(const backend_shader *s) const
+idom_tree::dump() const
 {
    printf("digraph DominanceTree {\n");
-   foreach_block(block, s->cfg) {
-      if (block->idom) {
-         printf("\t%d -> %d\n", block->idom->num, block->num);
-      }
-   }
+   for (unsigned i = 0; i < num_parents; i++)
+      printf("\t%d -> %d\n", parents[i]->num, i);
    printf("}\n");
 }
 

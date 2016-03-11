@@ -111,7 +111,6 @@ struct bblock_t {
 
    struct exec_node link;
    struct cfg_t *cfg;
-   struct bblock_t *idom;
 
    int start_ip;
    int end_ip;
@@ -387,6 +386,7 @@ namespace brw {
     */
    struct idom_tree {
       idom_tree(const backend_shader *s);
+      ~idom_tree();
 
       bool
       validate(const backend_shader *) const
@@ -401,11 +401,29 @@ namespace brw {
          return DEPENDENCY_BLOCKS;
       }
 
+      const bblock_t *
+      parent(const bblock_t *b) const
+      {
+         assert(unsigned(b->num) < num_parents);
+         return parents[b->num];
+      }
+
+      bblock_t *
+      parent(bblock_t *b) const
+      {
+         assert(unsigned(b->num) < num_parents);
+         return parents[b->num];
+      }
+
       bblock_t *
       intersect(bblock_t *b1, bblock_t *b2) const;
 
       void
-      dump(const backend_shader *s) const;
+      dump() const;
+
+   private:
+      unsigned num_parents;
+      bblock_t **parents;
    };
 }
 #endif
