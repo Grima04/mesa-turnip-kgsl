@@ -554,11 +554,8 @@ idom_tree::idom_tree(const backend_shader *s) :
          bblock_t *new_idom = NULL;
          foreach_list_typed(bblock_link, parent_link, link, &block->parents) {
             if (parent(parent_link->block)) {
-               if (new_idom == NULL) {
-                  new_idom = parent_link->block;
-               } else if (parent(parent_link->block) != NULL) {
-                  new_idom = intersect(parent_link->block, new_idom);
-               }
+               new_idom = (new_idom ? intersect(new_idom, parent_link->block) :
+                           parent_link->block);
             }
          }
 
