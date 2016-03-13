@@ -6975,11 +6975,11 @@ fs_visitor::dump_instructions(const char *name)
    }
 
    if (cfg) {
-      calculate_register_pressure();
-      int ip = 0, max_pressure = 0;
+      const register_pressure &rp = regpressure_analysis.require();
+      unsigned ip = 0, max_pressure = 0;
       foreach_block_and_inst(block, backend_instruction, inst, cfg) {
-         max_pressure = MAX2(max_pressure, regs_live_at_ip[ip]);
-         fprintf(file, "{%3d} %4d: ", regs_live_at_ip[ip], ip);
+         max_pressure = MAX2(max_pressure, rp.regs_live_at_ip[ip]);
+         fprintf(file, "{%3d} %4d: ", rp.regs_live_at_ip[ip], ip);
          dump_instruction(inst, file);
          ip++;
       }
@@ -7359,21 +7359,24 @@ fs_visitor::setup_cs_payload()
    payload.num_regs = 1;
 }
 
-void
-fs_visitor::calculate_register_pressure()
+brw::register_pressure::register_pressure(const fs_visitor *v)
 {
-   const fs_live_variables &live = live_analysis.require();
-
+   const fs_live_variables &live = v->live_analysis.require();
    unsigned num_instructions = 0;
-   foreach_block(block, cfg)
+   foreach_block(block, v->cfg)
       num_instructions += block->instructions.length();
 
-   regs_live_at_ip = rzalloc_array(mem_ctx, int, num_instructions);
+   regs_live_at_ip = new unsigned[num_instructions]();
 
-   for (unsigned reg = 0; reg < alloc.count; reg++) {
+   for (unsigned reg = 0; reg < v->alloc.count; reg++) {
       for (int ip = live.vgrf_start[reg]; ip <= live.vgrf_end[reg]; ip++)
-         regs_live_at_ip[ip] += alloc.sizes[reg];
+         regs_live_at_ip[ip] += v->alloc.sizes[reg];
    }
+}
+
+brw::register_pressure::~register_pressure()
+{
+   delete[] regs_live_at_ip;
 }
 
 void
@@ -7381,6 +7384,7 @@ fs_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 {
    backend_shader::invalidate_analysis(c);
    live_analysis.invalidate(c);
+   regpressure_analysis.invalidate(c);
 }
 
 void

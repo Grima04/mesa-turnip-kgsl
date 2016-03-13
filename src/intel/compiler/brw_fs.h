@@ -39,7 +39,34 @@ namespace {
    struct acp_entry;
 }
 
+class fs_visitor;
+
 namespace brw {
+   /**
+    * Register pressure analysis of a shader.  Estimates how many registers
+    * are live at any point of the program in GRF units.
+    */
+   struct register_pressure {
+      register_pressure(const fs_visitor *v);
+      ~register_pressure();
+
+      analysis_dependency_class
+      dependency_class() const
+      {
+         return (DEPENDENCY_INSTRUCTION_IDENTITY |
+                 DEPENDENCY_INSTRUCTION_DATA_FLOW |
+                 DEPENDENCY_VARIABLES);
+      }
+
+      bool
+      validate(const fs_visitor *) const
+      {
+         /* FINISHME */
+         return true;
+      }
+
+      unsigned *regs_live_at_ip;
+   };
 }
 
 struct brw_gs_compile;
@@ -126,7 +153,6 @@ public:
                       unsigned *out_pull_index);
    void lower_constant_loads();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
-   void calculate_register_pressure();
    void validate();
    bool opt_algebraic();
    bool opt_redundant_discard_jumps();
@@ -322,8 +348,8 @@ public:
 
    BRW_ANALYSIS(live_analysis, brw::fs_live_variables,
                 backend_shader *) live_analysis;
-
-   int *regs_live_at_ip;
+   BRW_ANALYSIS(regpressure_analysis, brw::register_pressure,
+                fs_visitor *) regpressure_analysis;
 
    /** Number of uniform variable components visited. */
    unsigned uniforms;

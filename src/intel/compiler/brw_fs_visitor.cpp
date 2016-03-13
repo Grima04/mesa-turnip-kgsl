@@ -886,7 +886,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
    : backend_shader(compiler, log_data, mem_ctx, shader, prog_data),
      key(key), gs_compile(NULL), prog_data(prog_data),
      input_vue_map(input_vue_map),
-     live_analysis(this),
+     live_analysis(this), regpressure_analysis(this),
      dispatch_width(dispatch_width),
      shader_time_index(shader_time_index),
      bld(fs_builder(this, dispatch_width).at_end())
@@ -904,7 +904,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                     &prog_data->base.base),
      key(&c->key.base), gs_compile(c),
      prog_data(&prog_data->base.base),
-     live_analysis(this),
+     live_analysis(this), regpressure_analysis(this),
      dispatch_width(8),
      shader_time_index(shader_time_index),
      bld(fs_builder(this, dispatch_width).at_end())
@@ -934,8 +934,6 @@ fs_visitor::init()
    this->runtime_check_aads_emit = false;
    this->first_non_payload_grf = 0;
    this->max_grf = devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
-
-   this->regs_live_at_ip = NULL;
 
    this->uniforms = 0;
    this->last_scratch = 0;
