@@ -28,6 +28,7 @@
 #ifndef BRW_FS_LIVE_VARIABLES_H
 #define BRW_FS_LIVE_VARIABLES_H
 
+#include "brw_ir_analysis.h"
 #include "brw_ir_fs.h"
 #include "util/bitset.h"
 
@@ -76,12 +77,18 @@ public:
       BITSET_WORD flag_liveout[1];
    };
 
-   DECLARE_RALLOC_CXX_OPERATORS(fs_live_variables)
-
    fs_live_variables(const backend_shader *s);
    ~fs_live_variables();
 
    bool validate(const backend_shader *s) const;
+
+   analysis_dependency_class
+   dependency_class() const
+   {
+      return (DEPENDENCY_INSTRUCTION_IDENTITY |
+              DEPENDENCY_INSTRUCTION_DATA_FLOW |
+              DEPENDENCY_VARIABLES);
+   }
 
    bool vars_interfere(int a, int b) const;
    bool vgrfs_interfere(int a, int b) const;

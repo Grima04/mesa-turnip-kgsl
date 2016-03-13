@@ -410,7 +410,8 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
 class fs_reg_alloc {
 public:
    fs_reg_alloc(fs_visitor *fs):
-      fs(fs), devinfo(fs->devinfo), compiler(fs->compiler), g(NULL),
+      fs(fs), devinfo(fs->devinfo), compiler(fs->compiler),
+      live(fs->live_analysis.require()), g(NULL),
       have_spill_costs(false)
    {
       mem_ctx = ralloc_context(NULL);
@@ -457,6 +458,7 @@ private:
    fs_visitor *fs;
    const gen_device_info *devinfo;
    const brw_compiler *compiler;
+   const fs_live_variables &live;
 
    /* Which compiler->fs_reg_sets[] to use */
    int rsi;
@@ -590,8 +592,8 @@ fs_reg_alloc::setup_live_interference(unsigned node,
    for (unsigned n2 = first_vgrf_node;
         n2 < (unsigned)first_spill_node && n2 < node; n2++) {
       unsigned vgrf = n2 - first_vgrf_node;
-      if (!(node_end_ip <= fs->live_intervals->vgrf_start[vgrf] ||
-            fs->live_intervals->vgrf_end[vgrf] <= node_start_ip))
+      if (!(node_end_ip <= live.vgrf_start[vgrf] ||
+            live.vgrf_end[vgrf] <= node_start_ip))
          ra_add_node_interference(g, node, n2);
    }
 }
@@ -740,7 +742,6 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    node_count += fs->alloc.count;
    first_spill_node = node_count;
 
-   fs->calculate_live_intervals();
    fs->calculate_payload_ranges(payload_node_count,
                                 payload_last_use_ip);
 
@@ -812,8 +813,8 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    /* Add interference based on the live range of the register */
    for (unsigned i = 0; i < fs->alloc.count; i++) {
       setup_live_interference(first_vgrf_node + i,
-                              fs->live_intervals->vgrf_start[i],
-                              fs->live_intervals->vgrf_end[i]);
+                              live.vgrf_start[i],
+                              live.vgrf_end[i]);
    }
 
    /* Add interference based on the instructions in which a register is used.
@@ -953,7 +954,7 @@ fs_reg_alloc::set_spill_costs()
       if (no_spill[i])
          continue;
 
-      int live_length = fs->live_intervals->vgrf_end[i] - fs->live_intervals->vgrf_start[i];
+      int live_length = live.vgrf_end[i] - live.vgrf_start[i];
       if (live_length <= 0)
          continue;
 

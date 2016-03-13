@@ -367,23 +367,9 @@ fs_live_variables::validate(const backend_shader *s) const
 void
 fs_visitor::invalidate_live_intervals()
 {
-   ralloc_free(live_intervals);
-   live_intervals = NULL;
-}
-
-/**
- * Compute the live intervals for each virtual GRF.
- *
- * This uses the per-component use/def data, but combines it to produce
- * information about whole VGRFs.
- */
-void
-fs_visitor::calculate_live_intervals()
-{
-   if (this->live_intervals)
-      return;
-
-   this->live_intervals = new(mem_ctx) fs_live_variables(this);
+   /* XXX -- Leave this around for the moment to keep the fs_vistor object
+    * concrete.
+    */
 }
 
 bool

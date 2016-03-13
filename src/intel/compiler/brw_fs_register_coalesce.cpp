@@ -97,17 +97,17 @@ is_coalesce_candidate(const fs_visitor *v, const fs_inst *inst)
 }
 
 static bool
-can_coalesce_vars(brw::fs_live_variables *live_intervals,
+can_coalesce_vars(const fs_live_variables &live,
                   const cfg_t *cfg, const fs_inst *inst,
                   int dst_var, int src_var)
 {
-   if (!live_intervals->vars_interfere(src_var, dst_var))
+   if (!live.vars_interfere(src_var, dst_var))
       return true;
 
-   int dst_start = live_intervals->start[dst_var];
-   int dst_end = live_intervals->end[dst_var];
-   int src_start = live_intervals->start[src_var];
-   int src_end = live_intervals->end[src_var];
+   int dst_start = live.start[dst_var];
+   int dst_end = live.end[dst_var];
+   int src_start = live.start[src_var];
+   int src_end = live.end[src_var];
 
    /* Variables interfere and one line range isn't a subset of the other. */
    if ((dst_end > src_end && src_start < dst_start) ||
@@ -155,9 +155,7 @@ bool
 fs_visitor::register_coalesce()
 {
    bool progress = false;
-
-   calculate_live_intervals();
-
+   fs_live_variables &live = live_analysis.require();
    int src_size = 0;
    int channels_remaining = 0;
    unsigned src_reg = ~0u, dst_reg = ~0u;
@@ -227,11 +225,10 @@ fs_visitor::register_coalesce()
             break;
          }
 
-         dst_var[i] = live_intervals->var_from_vgrf[dst_reg] + dst_reg_offset[i];
-         src_var[i] = live_intervals->var_from_vgrf[src_reg] + i;
+         dst_var[i] = live.var_from_vgrf[dst_reg] + dst_reg_offset[i];
+         src_var[i] = live.var_from_vgrf[src_reg] + i;
 
-         if (!can_coalesce_vars(live_intervals, cfg, inst,
-                                dst_var[i], src_var[i])) {
+         if (!can_coalesce_vars(live, cfg, inst, dst_var[i], src_var[i])) {
             can_coalesce = false;
             src_reg = ~0u;
             break;
@@ -273,12 +270,10 @@ fs_visitor::register_coalesce()
       }
 
       for (int i = 0; i < src_size; i++) {
-         live_intervals->start[dst_var[i]] =
-            MIN2(live_intervals->start[dst_var[i]],
-                 live_intervals->start[src_var[i]]);
-         live_intervals->end[dst_var[i]] =
-            MAX2(live_intervals->end[dst_var[i]],
-                 live_intervals->end[src_var[i]]);
+         live.start[dst_var[i]] = MIN2(live.start[dst_var[i]],
+                                       live.start[src_var[i]]);
+         live.end[dst_var[i]] = MAX2(live.end[dst_var[i]],
+                                     live.end[src_var[i]]);
       }
       src_reg = ~0u;
    }

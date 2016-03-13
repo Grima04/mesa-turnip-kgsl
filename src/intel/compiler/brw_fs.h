@@ -127,13 +127,13 @@ public:
    void lower_constant_loads();
    void invalidate_live_intervals();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
-   void calculate_live_intervals();
    void calculate_register_pressure();
    void validate();
    bool opt_algebraic();
    bool opt_redundant_discard_jumps();
    bool opt_cse();
-   bool opt_cse_local(bblock_t *block, int &ip);
+   bool opt_cse_local(const brw::fs_live_variables &live, bblock_t *block, int &ip);
+
    bool opt_copy_propagation();
    bool try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry);
    bool try_constant_propagate(fs_inst *inst, acp_entry *entry);
@@ -321,7 +321,8 @@ public:
 
    int *param_size;
 
-   brw::fs_live_variables *live_intervals;
+   BRW_ANALYSIS(live_analysis, brw::fs_live_variables,
+                backend_shader *) live_analysis;
 
    int *regs_live_at_ip;
 

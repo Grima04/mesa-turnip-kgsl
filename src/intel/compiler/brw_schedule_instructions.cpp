@@ -730,21 +730,23 @@ fs_instruction_scheduler::count_reads_remaining(backend_instruction *be)
 void
 fs_instruction_scheduler::setup_liveness(cfg_t *cfg)
 {
+   const fs_live_variables &live = v->live_analysis.require();
+
    /* First, compute liveness on a per-GRF level using the in/out sets from
     * liveness calculation.
     */
    for (int block = 0; block < cfg->num_blocks; block++) {
-      for (int i = 0; i < v->live_intervals->num_vars; i++) {
-         if (BITSET_TEST(v->live_intervals->block_data[block].livein, i)) {
-            int vgrf = v->live_intervals->vgrf_from_var[i];
+      for (int i = 0; i < live.num_vars; i++) {
+         if (BITSET_TEST(live.block_data[block].livein, i)) {
+            int vgrf = live.vgrf_from_var[i];
             if (!BITSET_TEST(livein[block], vgrf)) {
                reg_pressure_in[block] += v->alloc.sizes[vgrf];
                BITSET_SET(livein[block], vgrf);
             }
          }
 
-         if (BITSET_TEST(v->live_intervals->block_data[block].liveout, i))
-            BITSET_SET(liveout[block], v->live_intervals->vgrf_from_var[i]);
+         if (BITSET_TEST(live.block_data[block].liveout, i))
+            BITSET_SET(liveout[block], live.vgrf_from_var[i]);
       }
    }
 
@@ -754,8 +756,8 @@ fs_instruction_scheduler::setup_liveness(cfg_t *cfg)
     */
    for (int block = 0; block < cfg->num_blocks - 1; block++) {
       for (int i = 0; i < grf_count; i++) {
-         if (v->live_intervals->vgrf_start[i] <= cfg->blocks[block]->end_ip &&
-             v->live_intervals->vgrf_end[i] >= cfg->blocks[block + 1]->start_ip) {
+         if (live.vgrf_start[i] <= cfg->blocks[block]->end_ip &&
+             live.vgrf_end[i] >= cfg->blocks[block + 1]->start_ip) {
             if (!BITSET_TEST(livein[block + 1], i)) {
                 reg_pressure_in[block + 1] += v->alloc.sizes[i];
                 BITSET_SET(livein[block + 1], i);
@@ -1826,9 +1828,6 @@ instruction_scheduler::run(cfg_t *cfg)
 void
 fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
 {
-   if (mode != SCHEDULE_POST)
-      calculate_live_intervals();
-
    int grf_count;
    if (mode == SCHEDULE_POST)
       grf_count = grf_used;

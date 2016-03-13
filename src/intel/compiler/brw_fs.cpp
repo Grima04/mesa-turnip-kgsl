@@ -3099,7 +3099,7 @@ fs_visitor::compute_to_mrf()
    if (devinfo->gen >= 7)
       return false;
 
-   calculate_live_intervals();
+   const fs_live_variables &live = live_analysis.require();
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
       int ip = next_ip;
@@ -3117,7 +3117,7 @@ fs_visitor::compute_to_mrf()
       /* Can't compute-to-MRF this GRF if someone else was going to
        * read it later.
        */
-      if (live_intervals->vgrf_end[inst->src[0].nr] > ip)
+      if (live.vgrf_end[inst->src[0].nr] > ip)
 	 continue;
 
       /* Found a move of a GRF to a MRF.  Let's see if we can go rewrite the
@@ -7362,8 +7362,7 @@ fs_visitor::setup_cs_payload()
 void
 fs_visitor::calculate_register_pressure()
 {
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
-   calculate_live_intervals();
+   const fs_live_variables &live = live_analysis.require();
 
    unsigned num_instructions = 0;
    foreach_block(block, cfg)
@@ -7372,8 +7371,7 @@ fs_visitor::calculate_register_pressure()
    regs_live_at_ip = rzalloc_array(mem_ctx, int, num_instructions);
 
    for (unsigned reg = 0; reg < alloc.count; reg++) {
-      for (int ip = live_intervals->vgrf_start[reg];
-           ip <= live_intervals->vgrf_end[reg]; ip++)
+      for (int ip = live.vgrf_start[reg]; ip <= live.vgrf_end[reg]; ip++)
          regs_live_at_ip[ip] += alloc.sizes[reg];
    }
 }
@@ -7382,6 +7380,7 @@ void
 fs_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 {
    backend_shader::invalidate_analysis(c);
+   live_analysis.invalidate(c);
 }
 
 void
@@ -7668,15 +7667,15 @@ fs_visitor::fixup_nomask_control_flow()
    unsigned depth = 0;
    bool progress = false;
 
-   calculate_live_intervals();
+   const fs_live_variables &live_vars = live_analysis.require();
 
    /* Scan the program backwards in order to be able to easily determine
     * whether the flag register is live at any point.
     */
    foreach_block_reverse_safe(block, cfg) {
-      BITSET_WORD flag_liveout = live_intervals->block_data[block->num]
+      BITSET_WORD flag_liveout = live_vars.block_data[block->num]
                                                .flag_liveout[0];
-      STATIC_ASSERT(ARRAY_SIZE(live_intervals->block_data[0].flag_liveout) == 1);
+      STATIC_ASSERT(ARRAY_SIZE(live_vars.block_data[0].flag_liveout) == 1);
 
       foreach_inst_in_block_reverse_safe(fs_inst, inst, block) {
          if (!inst->predicate && inst->exec_size >= 8)
