@@ -126,7 +126,7 @@ fs_live_variables::setup_def_use()
             }
 	 }
 
-         bd->flag_use[0] |= inst->flags_read(v->devinfo) & ~bd->flag_def[0];
+         bd->flag_use[0] |= inst->flags_read(devinfo) & ~bd->flag_def[0];
 
          /* Set def[] for this instruction */
          if (inst->dst.file == VGRF) {
@@ -255,22 +255,22 @@ fs_live_variables::compute_start_end()
    }
 }
 
-fs_live_variables::fs_live_variables(fs_visitor *v, const cfg_t *cfg)
-   : v(v), cfg(cfg)
+fs_live_variables::fs_live_variables(const backend_shader *s)
+   : devinfo(s->devinfo), cfg(s->cfg)
 {
    mem_ctx = ralloc_context(NULL);
 
-   num_vgrfs = v->alloc.count;
+   num_vgrfs = s->alloc.count;
    num_vars = 0;
    var_from_vgrf = rzalloc_array(mem_ctx, int, num_vgrfs);
    for (int i = 0; i < num_vgrfs; i++) {
       var_from_vgrf[i] = num_vars;
-      num_vars += v->alloc.sizes[i];
+      num_vars += s->alloc.sizes[i];
    }
 
    vgrf_from_var = rzalloc_array(mem_ctx, int, num_vars);
    for (int i = 0; i < num_vgrfs; i++) {
-      for (unsigned j = 0; j < v->alloc.sizes[i]; j++) {
+      for (unsigned j = 0; j < s->alloc.sizes[i]; j++) {
          vgrf_from_var[var_from_vgrf[i] + j] = i;
       }
    }
@@ -342,7 +342,7 @@ fs_visitor::calculate_live_intervals()
    if (this->live_intervals)
       return;
 
-   this->live_intervals = new(mem_ctx) fs_live_variables(this, cfg);
+   this->live_intervals = new(mem_ctx) fs_live_variables(this);
 }
 
 bool

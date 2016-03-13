@@ -32,7 +32,7 @@
 #include "util/bitset.h"
 
 struct cfg_t;
-class fs_visitor;
+struct backend_shader;
 
 namespace brw {
 
@@ -78,7 +78,7 @@ public:
 
    DECLARE_RALLOC_CXX_OPERATORS(fs_live_variables)
 
-   fs_live_variables(fs_visitor *v, const cfg_t *cfg);
+   fs_live_variables(const backend_shader *s);
    ~fs_live_variables();
 
    bool vars_interfere(int a, int b) const;
@@ -130,10 +130,9 @@ protected:
    void compute_live_variables();
    void compute_start_end();
 
-   fs_visitor *v;
+   const struct gen_device_info *devinfo;
    const cfg_t *cfg;
    void *mem_ctx;
-
 };
 
 } /* namespace brw */
