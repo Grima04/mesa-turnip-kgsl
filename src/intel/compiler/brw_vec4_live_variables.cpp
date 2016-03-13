@@ -215,9 +215,8 @@ vec4_live_variables::compute_start_end()
    }
 }
 
-vec4_live_variables::vec4_live_variables(const simple_allocator &alloc,
-                                         cfg_t *cfg)
-   : alloc(alloc), cfg(cfg)
+vec4_live_variables::vec4_live_variables(const backend_shader *s)
+   : alloc(s->alloc), cfg(s->cfg)
 {
    mem_ctx = ralloc_context(NULL);
 
@@ -282,7 +281,7 @@ vec4_visitor::calculate_live_intervals()
     * The control flow-aware analysis was done at a channel level, while at
     * this point we're distilling it down to vgrfs.
     */
-   this->live_intervals = new(mem_ctx) vec4_live_variables(alloc, cfg);
+   this->live_intervals = new(mem_ctx) vec4_live_variables(this);
 }
 
 void

@@ -31,6 +31,8 @@
 #include "brw_ir_vec4.h"
 #include "util/bitset.h"
 
+struct backend_shader;
+
 namespace brw {
 
 class vec4_live_variables {
@@ -63,7 +65,7 @@ public:
 
    DECLARE_RALLOC_CXX_OPERATORS(vec4_live_variables)
 
-   vec4_live_variables(const simple_allocator &alloc, cfg_t *cfg);
+   vec4_live_variables(const backend_shader *s);
    ~vec4_live_variables();
 
    int num_vars;
