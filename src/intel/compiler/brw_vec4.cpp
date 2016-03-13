@@ -1253,8 +1253,7 @@ vec4_visitor::opt_register_coalesce()
 {
    bool progress = false;
    int next_ip = 0;
-
-   calculate_live_intervals();
+   const vec4_live_variables &live = live_analysis.require();
 
    foreach_block_and_inst_safe (block, vec4_instruction, inst, cfg) {
       int ip = next_ip;
@@ -1296,8 +1295,7 @@ vec4_visitor::opt_register_coalesce()
       /* Can't coalesce this GRF if someone else was going to
        * read it later.
        */
-      if (live_intervals->var_range_end(
-            var_from_reg(alloc, dst_reg(inst->src[0])), 8) > ip)
+      if (live.var_range_end(var_from_reg(alloc, dst_reg(inst->src[0])), 8) > ip)
 	 continue;
 
       /* We need to check interference with the final destination between this
@@ -2672,6 +2670,7 @@ void
 vec4_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 {
    backend_shader::invalidate_analysis(c);
+   live_analysis.invalidate(c);
 }
 
 bool

@@ -105,7 +105,8 @@ public:
 
    int first_non_payload_grf;
    unsigned int max_grf;
-   brw::vec4_live_variables *live_intervals;
+   BRW_ANALYSIS(live_analysis, brw::vec4_live_variables,
+                backend_shader *) live_analysis;
 
    bool need_all_constants_in_pull_buffer;
 
@@ -134,7 +135,6 @@ public:
    void move_push_constants_to_pull_constants();
    void split_uniform_registers();
    void pack_uniform_registers();
-   void calculate_live_intervals();
    void invalidate_live_intervals();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void split_virtual_grfs();
@@ -143,7 +143,7 @@ public:
    bool dead_code_eliminate();
    bool opt_cmod_propagation();
    bool opt_copy_propagation(bool do_constant_prop = true);
-   bool opt_cse_local(bblock_t *block);
+   bool opt_cse_local(bblock_t *block, const vec4_live_variables &live);
    bool opt_cse();
    bool opt_algebraic();
    bool opt_register_coalesce();

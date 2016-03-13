@@ -254,41 +254,12 @@ vec4_live_variables::~vec4_live_variables()
    ralloc_free(mem_ctx);
 }
 
-/**
- * Computes a conservative start/end of the live intervals for each virtual GRF.
- *
- * We could expose per-channel live intervals to the consumer based on the
- * information we computed in vec4_live_variables, except that our only
- * current user is virtual_grf_interferes().  So we instead union the
- * per-channel ranges into a per-vgrf range for vgrf_start[] and vgrf_end[].
- *
- * We could potentially have virtual_grf_interferes() do the test per-channel,
- * which would let some interesting register allocation occur (particularly on
- * code-generated GLSL sequences from the Cg compiler which does register
- * allocation at the GLSL level and thus reuses components of the variable
- * with distinct lifetimes).  But right now the complexity of doing so doesn't
- * seem worth it, since having virtual_grf_interferes() be cheap is important
- * for register allocation performance.
- */
-void
-vec4_visitor::calculate_live_intervals()
-{
-   if (this->live_intervals)
-      return;
-
-   /* Now, extend those intervals using our analysis of control flow.
-    *
-    * The control flow-aware analysis was done at a channel level, while at
-    * this point we're distilling it down to vgrfs.
-    */
-   this->live_intervals = new(mem_ctx) vec4_live_variables(this);
-}
-
 void
 vec4_visitor::invalidate_live_intervals()
 {
-   ralloc_free(live_intervals);
-   live_intervals = NULL;
+   /* XXX -- Leave this around for the moment to keep the vec4_vistor object
+    * concrete.
+    */
 }
 
 static bool

@@ -29,6 +29,7 @@
 #define BRW_VEC4_LIVE_VARIABLES_H
 
 #include "brw_ir_vec4.h"
+#include "brw_ir_analysis.h"
 #include "util/bitset.h"
 
 struct backend_shader;
@@ -63,13 +64,19 @@ public:
       BITSET_WORD flag_liveout[1];
    };
 
-   DECLARE_RALLOC_CXX_OPERATORS(vec4_live_variables)
-
    vec4_live_variables(const backend_shader *s);
    ~vec4_live_variables();
 
    bool
    validate(const backend_shader *s) const;
+
+   analysis_dependency_class
+   dependency_class() const
+   {
+      return (DEPENDENCY_INSTRUCTION_IDENTITY |
+              DEPENDENCY_INSTRUCTION_DATA_FLOW |
+              DEPENDENCY_VARIABLES);
+   }
 
    int num_vars;
    int bitset_words;
