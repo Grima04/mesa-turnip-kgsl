@@ -7362,9 +7362,8 @@ fs_visitor::setup_cs_payload()
 brw::register_pressure::register_pressure(const fs_visitor *v)
 {
    const fs_live_variables &live = v->live_analysis.require();
-   unsigned num_instructions = 0;
-   foreach_block(block, v->cfg)
-      num_instructions += block->instructions.length();
+   const unsigned num_instructions = v->cfg->num_blocks ?
+      v->cfg->blocks[v->cfg->num_blocks - 1]->end_ip + 1 : 0;
 
    regs_live_at_ip = new unsigned[num_instructions]();
 
