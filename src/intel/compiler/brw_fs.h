@@ -126,6 +126,7 @@ public:
                       unsigned *out_pull_index);
    void lower_constant_loads();
    void invalidate_live_intervals();
+   virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void calculate_live_intervals();
    void calculate_register_pressure();
    void validate();

@@ -1245,6 +1245,13 @@ backend_shader::calculate_cfg()
    cfg = new(mem_ctx) cfg_t(&this->instructions);
 }
 
+void
+backend_shader::invalidate_analysis(brw::analysis_dependency_class c)
+{
+   if (c)
+      invalidate_live_intervals();
+}
+
 extern "C" const unsigned *
 brw_compile_tes(const struct brw_compiler *compiler,
                 void *log_data,

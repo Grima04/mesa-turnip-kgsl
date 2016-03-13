@@ -138,7 +138,7 @@ opt_predicated_break(backend_shader *s)
    }
 
    if (progress)
-      s->invalidate_live_intervals();
+      s->invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

@@ -34,6 +34,8 @@
  * yet in the tail end of this block.
  */
 
+using namespace brw;
+
 /**
  * Is it safe to eliminate the instruction?
  */
@@ -142,7 +144,7 @@ fs_visitor::dead_code_eliminate()
    ralloc_free(flag_live);
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

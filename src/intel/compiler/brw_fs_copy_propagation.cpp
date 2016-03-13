@@ -1067,7 +1067,7 @@ fs_visitor::opt_copy_propagation()
    ralloc_free(copy_prop_ctx);
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

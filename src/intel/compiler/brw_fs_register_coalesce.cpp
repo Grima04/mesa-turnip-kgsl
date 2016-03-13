@@ -44,6 +44,8 @@
 #include "brw_cfg.h"
 #include "brw_fs_live_variables.h"
 
+using namespace brw;
+
 static bool
 is_nop_mov(const fs_inst *inst)
 {
@@ -288,7 +290,7 @@ fs_visitor::register_coalesce()
          }
       }
 
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
    }
 
    return progress;

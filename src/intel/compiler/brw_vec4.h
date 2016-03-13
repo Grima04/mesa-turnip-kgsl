@@ -138,6 +138,7 @@ public:
    void pack_uniform_registers();
    void calculate_live_intervals();
    void invalidate_live_intervals();
+   virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void split_virtual_grfs();
    bool opt_vector_float();
    bool opt_reduce_swizzle();

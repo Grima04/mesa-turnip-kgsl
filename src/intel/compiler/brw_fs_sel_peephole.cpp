@@ -215,7 +215,7 @@ fs_visitor::opt_peephole_sel()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

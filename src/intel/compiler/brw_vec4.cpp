@@ -496,7 +496,7 @@ vec4_visitor::opt_vector_float()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -577,7 +577,7 @@ vec4_visitor::opt_reduce_swizzle()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -904,7 +904,7 @@ vec4_visitor::opt_algebraic()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -1474,7 +1474,7 @@ vec4_visitor::opt_register_coalesce()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -1523,6 +1523,9 @@ vec4_visitor::eliminate_find_live_channel()
          break;
       }
    }
+
+   if (progress)
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -1598,7 +1601,7 @@ vec4_visitor::split_virtual_grfs()
          }
       }
    }
-   invalidate_live_intervals();
+   invalidate_analysis(DEPENDENCY_EVERYTHING);
 }
 
 void
@@ -1901,7 +1904,7 @@ vec4_visitor::lower_minmax()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -2037,7 +2040,7 @@ vec4_visitor::fixup_3src_null_dest()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 }
 
 void
@@ -2365,7 +2368,7 @@ vec4_visitor::lower_simd_width()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -2522,7 +2525,7 @@ vec4_visitor::scalarize_df()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -2565,7 +2568,7 @@ vec4_visitor::lower_64bit_mad_to_mul_add()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }
@@ -2660,6 +2663,12 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
       hw_reg->swizzle = BRW_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
                                      swizzle1 * 2, swizzle1 * 2 + 1);
    }
+}
+
+void
+vec4_visitor::invalidate_analysis(brw::analysis_dependency_class c)
+{
+   backend_shader::invalidate_analysis(c);
 }
 
 bool

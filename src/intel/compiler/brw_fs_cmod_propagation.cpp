@@ -48,6 +48,8 @@
  * exists and therefore remove the instruction.
  */
 
+using namespace brw;
+
 static bool
 cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
                           fs_inst *inst)
@@ -446,7 +448,7 @@ fs_visitor::opt_cmod_propagation()
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

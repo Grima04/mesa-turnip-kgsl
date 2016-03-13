@@ -559,7 +559,7 @@ vec4_visitor::opt_copy_propagation(bool do_constant_prop)
    }
 
    if (progress)
-      invalidate_live_intervals();
+      invalidate_analysis(DEPENDENCY_EVERYTHING);
 
    return progress;
 }

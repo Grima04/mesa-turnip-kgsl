@@ -30,6 +30,7 @@
 #include "compiler/nir/nir.h"
 
 #ifdef __cplusplus
+#include "brw_ir_analysis.h"
 #include "brw_ir_allocator.h"
 
 enum instruction_scheduler_mode {
@@ -84,6 +85,7 @@ public:
    void calculate_cfg();
 
    virtual void invalidate_live_intervals() = 0;
+   virtual void invalidate_analysis(brw::analysis_dependency_class c);
 };
 
 bool brw_texture_offset(const nir_tex_instr *tex, unsigned src,
