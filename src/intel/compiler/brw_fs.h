@@ -125,7 +125,6 @@ public:
    bool get_pull_locs(const fs_reg &src, unsigned *out_surf_index,
                       unsigned *out_pull_index);
    void lower_constant_loads();
-   void invalidate_live_intervals();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void calculate_register_pressure();
    void validate();

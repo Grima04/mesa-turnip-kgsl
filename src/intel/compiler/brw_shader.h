@@ -84,7 +84,6 @@ public:
 
    void calculate_cfg();
 
-   virtual void invalidate_live_intervals() = 0;
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
 };
 

@@ -1248,8 +1248,6 @@ backend_shader::calculate_cfg()
 void
 backend_shader::invalidate_analysis(brw::analysis_dependency_class c)
 {
-   if (c)
-      invalidate_live_intervals();
 }
 
 extern "C" const unsigned *

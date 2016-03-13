@@ -254,14 +254,6 @@ vec4_live_variables::~vec4_live_variables()
    ralloc_free(mem_ctx);
 }
 
-void
-vec4_visitor::invalidate_live_intervals()
-{
-   /* XXX -- Leave this around for the moment to keep the vec4_vistor object
-    * concrete.
-    */
-}
-
 static bool
 check_register_live_range(const vec4_live_variables *live, int ip,
                           unsigned var, unsigned n)

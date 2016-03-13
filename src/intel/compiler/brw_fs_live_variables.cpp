@@ -364,14 +364,6 @@ fs_live_variables::validate(const backend_shader *s) const
    return true;
 }
 
-void
-fs_visitor::invalidate_live_intervals()
-{
-   /* XXX -- Leave this around for the moment to keep the fs_vistor object
-    * concrete.
-    */
-}
-
 bool
 fs_live_variables::vars_interfere(int a, int b) const
 {

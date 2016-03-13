@@ -135,7 +135,6 @@ public:
    void move_push_constants_to_pull_constants();
    void split_uniform_registers();
    void pack_uniform_registers();
-   void invalidate_live_intervals();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void split_virtual_grfs();
    bool opt_vector_float();
