@@ -115,7 +115,7 @@ dead_control_flow_eliminate(backend_shader *s)
    }
 
    if (progress)
-      s->invalidate_analysis(DEPENDENCY_EVERYTHING);
+      s->invalidate_analysis(DEPENDENCY_BLOCKS | DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }

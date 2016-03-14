@@ -215,7 +215,7 @@ fs_visitor::opt_peephole_sel()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }

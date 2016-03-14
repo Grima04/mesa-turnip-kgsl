@@ -2029,7 +2029,7 @@ fs_visitor::split_virtual_grfs()
          }
       }
    }
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL | DEPENDENCY_VARIABLES);
 
    delete[] split_points;
    delete[] new_virtual_grf;
@@ -2074,7 +2074,7 @@ fs_visitor::compact_virtual_grfs()
       } else {
          remap_table[i] = new_index;
          alloc.sizes[new_index] = alloc.sizes[i];
-         invalidate_analysis(DEPENDENCY_EVERYTHING);
+         invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL | DEPENDENCY_VARIABLES);
          ++new_index;
       }
    }
@@ -2537,7 +2537,7 @@ fs_visitor::lower_constant_loads()
          inst->remove(block);
       }
    }
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
 
 bool
@@ -2817,7 +2817,8 @@ fs_visitor::opt_algebraic()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DATA_FLOW |
+                          DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -2868,7 +2869,7 @@ fs_visitor::opt_zero_samples()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -2965,7 +2966,7 @@ fs_visitor::opt_sampler_eot()
     * flag and submit a header together with the sampler message as required
     * by the hardware.
     */
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
    return true;
 }
 
@@ -3018,7 +3019,8 @@ fs_visitor::opt_register_renaming()
    }
 
    if (progress) {
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL |
+                          DEPENDENCY_VARIABLES);
 
       for (unsigned i = 0; i < ARRAY_SIZE(delta_xy); i++) {
          if (delta_xy[i].file == VGRF && remap[delta_xy[i].nr] != ~0u) {
@@ -3066,7 +3068,7 @@ fs_visitor::opt_redundant_discard_jumps()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -3260,7 +3262,7 @@ fs_visitor::compute_to_mrf()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -3318,7 +3320,7 @@ fs_visitor::eliminate_find_live_channel()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -3466,7 +3468,7 @@ fs_visitor::remove_duplicate_mrf_writes()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -3515,7 +3517,7 @@ fs_visitor::remove_extra_rounding_modes()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -3696,7 +3698,7 @@ fs_visitor::insert_gen4_send_dependency_workarounds()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
 
 /**
@@ -3736,7 +3738,7 @@ fs_visitor::lower_uniform_pull_constant_loads()
          inst->header_size = 1;
          inst->mlen = 1;
 
-         invalidate_analysis(DEPENDENCY_EVERYTHING);
+         invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
       } else {
          /* Before register allocation, we didn't tell the scheduler about the
           * MRF we use.  We know it's safe to use this MRF because nothing
@@ -3854,7 +3856,7 @@ fs_visitor::lower_load_payload()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -4154,7 +4156,7 @@ fs_visitor::lower_integer_multiplication()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -4184,7 +4186,7 @@ fs_visitor::lower_minmax()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -4273,7 +4275,7 @@ fs_visitor::lower_sub_sat()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -5985,7 +5987,7 @@ fs_visitor::lower_logical_sends()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -6870,7 +6872,7 @@ fs_visitor::lower_simd_width()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -6951,7 +6953,7 @@ fs_visitor::lower_barycentrics()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -7593,7 +7595,7 @@ fs_visitor::fixup_sends_duplicate_payload()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -7616,7 +7618,8 @@ fs_visitor::fixup_3src_null_dest()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL |
+                          DEPENDENCY_VARIABLES);
 }
 
 /**
@@ -7759,7 +7762,7 @@ fs_visitor::fixup_nomask_control_flow()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }

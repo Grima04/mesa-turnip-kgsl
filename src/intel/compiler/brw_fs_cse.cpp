@@ -389,7 +389,7 @@ fs_visitor::opt_cse()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }

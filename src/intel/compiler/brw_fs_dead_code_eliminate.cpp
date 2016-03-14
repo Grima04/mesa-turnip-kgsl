@@ -144,7 +144,7 @@ fs_visitor::dead_code_eliminate()
    ralloc_free(flag_live);
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }

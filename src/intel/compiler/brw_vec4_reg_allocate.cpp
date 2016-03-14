@@ -540,7 +540,7 @@ vec4_visitor::spill_reg(unsigned spill_reg_nr)
       }
    }
 
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 }
 
 } /* namespace brw */

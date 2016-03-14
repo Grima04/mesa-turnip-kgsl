@@ -290,7 +290,7 @@ fs_visitor::register_coalesce()
          }
       }
 
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
    }
 
    return progress;

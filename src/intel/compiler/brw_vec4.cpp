@@ -496,7 +496,7 @@ vec4_visitor::opt_vector_float()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -577,7 +577,7 @@ vec4_visitor::opt_reduce_swizzle()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -904,7 +904,8 @@ vec4_visitor::opt_algebraic()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DATA_FLOW |
+                          DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -1474,7 +1475,7 @@ vec4_visitor::opt_register_coalesce()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -1525,7 +1526,7 @@ vec4_visitor::eliminate_find_live_channel()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL);
 
    return progress;
 }
@@ -1601,7 +1602,7 @@ vec4_visitor::split_virtual_grfs()
          }
       }
    }
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL | DEPENDENCY_VARIABLES);
 }
 
 void
@@ -1904,7 +1905,7 @@ vec4_visitor::lower_minmax()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -2040,7 +2041,8 @@ vec4_visitor::fixup_3src_null_dest()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL |
+                          DEPENDENCY_VARIABLES);
 }
 
 void
@@ -2368,7 +2370,7 @@ vec4_visitor::lower_simd_width()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }
@@ -2525,7 +2527,7 @@ vec4_visitor::scalarize_df()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
@@ -2568,7 +2570,7 @@ vec4_visitor::lower_64bit_mad_to_mul_add()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return progress;
 }

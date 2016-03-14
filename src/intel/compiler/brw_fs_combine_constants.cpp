@@ -559,7 +559,7 @@ fs_visitor::opt_combine_constants()
    }
 
    ralloc_free(const_ctx);
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
 
    return true;
 }

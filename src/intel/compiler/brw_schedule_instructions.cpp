@@ -1839,7 +1839,7 @@ fs_visitor::schedule_instructions(instruction_scheduler_mode mode)
                                   cfg->num_blocks, mode);
    sched.run(cfg);
 
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }
 
 void
@@ -1848,5 +1848,5 @@ vec4_visitor::opt_schedule_instructions()
    vec4_instruction_scheduler sched(this, prog_data->total_grf);
    sched.run(cfg);
 
-   invalidate_analysis(DEPENDENCY_EVERYTHING);
+   invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 }

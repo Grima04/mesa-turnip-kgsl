@@ -448,7 +448,7 @@ fs_visitor::opt_cmod_propagation()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }

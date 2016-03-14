@@ -49,7 +49,7 @@ fs_visitor::lower_pack()
    }
 
    if (progress)
-      invalidate_analysis(DEPENDENCY_EVERYTHING);
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
 
    return progress;
 }
