@@ -542,7 +542,6 @@ public:
       this->grf_count = grf_count;
       this->hw_reg_count = hw_reg_count;
       this->instructions.make_empty();
-      this->instructions_to_schedule = 0;
       this->post_reg_alloc = (mode == SCHEDULE_POST);
       this->mode = mode;
       if (!post_reg_alloc) {
@@ -613,7 +612,6 @@ public:
    void *mem_ctx;
 
    bool post_reg_alloc;
-   int instructions_to_schedule;
    int grf_count;
    unsigned hw_reg_count;
    int reg_pressure;
@@ -925,8 +923,6 @@ instruction_scheduler::add_insts_from_block(bblock_t *block)
 
       instructions.push_tail(n);
    }
-
-   this->instructions_to_schedule = block->end_ip - block->start_ip + 1;
 }
 
 /** Computation of the delay member of each node. */
@@ -1674,6 +1670,8 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
 {
    const struct gen_device_info *devinfo = bs->devinfo;
    int time = 0;
+   int instructions_to_schedule = block->end_ip - block->start_ip + 1;
+
    if (!post_reg_alloc)
       reg_pressure = reg_pressure_in[block->num];
    block_idx = block->num;
