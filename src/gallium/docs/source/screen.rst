@@ -564,6 +564,7 @@ The integer capabilities:
   as opposed to writing gl_PointSize for every point.
 * ``PIPE_CAP_TWO_SIDED_COLOR``: Driver supports two-sided coloring.
 * ``PIPE_CAP_CLIP_PLANES``: Driver supports user-defined clip-planes.
+* ``PIPE_CAP_MAX_VERTEX_BUFFERS``: Number of supported vertex buffers.
 
 .. _pipe_capf:
 
