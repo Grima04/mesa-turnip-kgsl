@@ -180,6 +180,8 @@ struct u_vbuf {
    uint32_t incompatible_vb_mask; /* each bit describes a corresp. buffer */
    /* Which buffer has a non-zero stride. */
    uint32_t nonzero_stride_vb_mask; /* each bit describes a corresp. buffer */
+   /* Which buffers are allowed (supported by hardware). */
+   uint32_t allowed_vb_mask;
 };
 
 static void *
@@ -287,6 +289,8 @@ boolean u_vbuf_get_caps(struct pipe_screen *screen, struct u_vbuf_caps *caps,
                          PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY);
    caps->user_vertex_buffers =
       screen->get_param(screen, PIPE_CAP_USER_VERTEX_BUFFERS);
+   caps->max_vertex_buffers =
+      screen->get_param(screen, PIPE_CAP_MAX_VERTEX_BUFFERS);
 
    if (!caps->buffer_offset_unaligned ||
        !caps->buffer_stride_unaligned ||
@@ -308,6 +312,7 @@ u_vbuf_create(struct pipe_context *pipe, struct u_vbuf_caps *caps)
    mgr->cso_cache = cso_cache_create();
    mgr->translate_cache = translate_cache_create();
    memset(mgr->fallback_vbs, ~0, sizeof(mgr->fallback_vbs));
+   mgr->allowed_vb_mask = u_bit_consecutive(0, mgr->caps.max_vertex_buffers);
 
    mgr->has_signed_vb_offset =
       pipe->screen->get_param(pipe->screen,
