@@ -147,7 +147,7 @@ dst_reg::equals(const dst_reg &r) const
 }
 
 bool
-vec4_instruction::is_send_from_grf()
+vec4_instruction::is_send_from_grf() const
 {
    switch (opcode) {
    case SHADER_OPCODE_SHADER_TIME_ADD:
@@ -1605,15 +1605,15 @@ vec4_visitor::split_virtual_grfs()
 }
 
 void
-vec4_visitor::dump_instruction(backend_instruction *be_inst)
+vec4_visitor::dump_instruction(const backend_instruction *be_inst) const
 {
    dump_instruction(be_inst, stderr);
 }
 
 void
-vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
+vec4_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) const
 {
-   vec4_instruction *inst = (vec4_instruction *)be_inst;
+   const vec4_instruction *inst = (const vec4_instruction *)be_inst;
 
    if (inst->predicate) {
       fprintf(file, "(%cf%d.%d%s) ",

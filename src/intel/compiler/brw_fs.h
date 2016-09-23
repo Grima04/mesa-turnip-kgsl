@@ -145,7 +145,7 @@ public:
    bool assign_regs(bool allow_spilling, bool spill_all);
    void assign_regs_trivial();
    void calculate_payload_ranges(int payload_node_count,
-                                 int *payload_last_use_ip);
+                                 int *payload_last_use_ip) const;
    void split_virtual_grfs();
    bool compact_virtual_grfs();
    void assign_constant_locations();
@@ -330,10 +330,10 @@ public:
 
    fs_reg interp_reg(int location, int channel);
 
-   virtual void dump_instructions();
-   virtual void dump_instructions(const char *name);
-   void dump_instruction(backend_instruction *inst);
-   void dump_instruction(backend_instruction *inst, FILE *file);
+   virtual void dump_instructions() const;
+   virtual void dump_instructions(const char *name) const;
+   void dump_instruction(const backend_instruction *inst) const;
+   void dump_instruction(const backend_instruction *inst, FILE *file) const;
 
    const brw_base_prog_key *const key;
    const struct brw_sampler_prog_key_data *key_tex;

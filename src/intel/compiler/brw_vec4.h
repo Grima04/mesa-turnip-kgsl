@@ -305,8 +305,8 @@ public:
 
    src_reg get_timestamp();
 
-   void dump_instruction(backend_instruction *inst);
-   void dump_instruction(backend_instruction *inst, FILE *file);
+   void dump_instruction(const backend_instruction *inst) const;
+   void dump_instruction(const backend_instruction *inst, FILE *file) const;
 
    bool is_high_sampler(src_reg sampler);
 

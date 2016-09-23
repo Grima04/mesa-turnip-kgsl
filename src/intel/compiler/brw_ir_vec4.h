@@ -285,7 +285,7 @@ public:
    bool sol_final_write; /**< gen6: send commit message */
    unsigned sol_vertex; /**< gen6: used for setting dst index in SVB header */
 
-   bool is_send_from_grf();
+   bool is_send_from_grf() const;
    unsigned size_read(unsigned arg) const;
    bool can_reswizzle(const struct gen_device_info *devinfo, int dst_writemask,
                       int swizzle, int swizzle_mask);

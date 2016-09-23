@@ -1201,13 +1201,13 @@ backend_instruction::remove(bblock_t *block)
 }
 
 void
-backend_shader::dump_instructions()
+backend_shader::dump_instructions() const
 {
    dump_instructions(NULL);
 }
 
 void
-backend_shader::dump_instructions(const char *name)
+backend_shader::dump_instructions(const char *name) const
 {
    FILE *file = stderr;
    if (name && geteuid() != 0) {

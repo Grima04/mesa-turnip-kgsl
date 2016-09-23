@@ -331,7 +331,7 @@ count_to_loop_end(const bblock_t *block)
 }
 
 void fs_visitor::calculate_payload_ranges(int payload_node_count,
-                                          int *payload_last_use_ip)
+                                          int *payload_last_use_ip) const
 {
    int loop_depth = 0;
    int loop_end_ip = 0;
@@ -444,7 +444,7 @@ public:
 private:
    void setup_live_interference(unsigned node,
                                 int node_start_ip, int node_end_ip);
-   void setup_inst_interference(fs_inst *inst);
+   void setup_inst_interference(const fs_inst *inst);
 
    void build_interference_graph(bool allow_spilling);
    void discard_interference_graph();
@@ -490,7 +490,7 @@ private:
  * contents.
  */
 static void
-get_used_mrfs(fs_visitor *v, bool *mrf_used)
+get_used_mrfs(const fs_visitor *v, bool *mrf_used)
 {
    int reg_width = v->dispatch_width / 8;
 
@@ -599,7 +599,7 @@ fs_reg_alloc::setup_live_interference(unsigned node,
 }
 
 void
-fs_reg_alloc::setup_inst_interference(fs_inst *inst)
+fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
 {
    /* Certain instructions can't safely use the same register for their
     * sources and destination.  Add interference.

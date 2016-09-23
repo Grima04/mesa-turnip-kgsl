@@ -6959,13 +6959,13 @@ fs_visitor::lower_barycentrics()
 }
 
 void
-fs_visitor::dump_instructions()
+fs_visitor::dump_instructions() const
 {
    dump_instructions(NULL);
 }
 
 void
-fs_visitor::dump_instructions(const char *name)
+fs_visitor::dump_instructions(const char *name) const
 {
    FILE *file = stderr;
    if (name && geteuid() != 0) {
@@ -6998,15 +6998,15 @@ fs_visitor::dump_instructions(const char *name)
 }
 
 void
-fs_visitor::dump_instruction(backend_instruction *be_inst)
+fs_visitor::dump_instruction(const backend_instruction *be_inst) const
 {
    dump_instruction(be_inst, stderr);
 }
 
 void
-fs_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
+fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) const
 {
-   fs_inst *inst = (fs_inst *)be_inst;
+   const fs_inst *inst = (const fs_inst *)be_inst;
 
    if (inst->predicate) {
       fprintf(file, "(%cf%d.%d) ",

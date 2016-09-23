@@ -79,10 +79,10 @@ public:
 
    brw::simple_allocator alloc;
 
-   virtual void dump_instruction(backend_instruction *inst) = 0;
-   virtual void dump_instruction(backend_instruction *inst, FILE *file) = 0;
-   virtual void dump_instructions();
-   virtual void dump_instructions(const char *name);
+   virtual void dump_instruction(const backend_instruction *inst) const = 0;
+   virtual void dump_instruction(const backend_instruction *inst, FILE *file) const = 0;
+   virtual void dump_instructions() const;
+   virtual void dump_instructions(const char *name) const;
 
    void calculate_cfg();
 
