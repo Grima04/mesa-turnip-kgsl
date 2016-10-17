@@ -952,7 +952,7 @@ fs_visitor::init()
    this->pull_constant_loc = NULL;
    this->push_constant_loc = NULL;
 
-   this->promoted_constants = 0,
+   this->shader_stats.promoted_constants = 0,
 
    this->grf_used = 0;
    this->spilled_any_registers = false;

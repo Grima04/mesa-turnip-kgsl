@@ -52,6 +52,10 @@ offset(const fs_reg &reg, const brw::fs_builder &bld, unsigned delta)
 
 #define UBO_START ((1 << 16) - 4)
 
+struct shader_stats {
+   unsigned promoted_constants;
+};
+
 /**
  * The fragment shader front-end.
  *
@@ -389,7 +393,8 @@ public:
 
    int shader_time_index;
 
-   unsigned promoted_constants;
+   struct shader_stats shader_stats;
+
    brw::fs_builder bld;
 
 private:
@@ -413,7 +418,7 @@ public:
    fs_generator(const struct brw_compiler *compiler, void *log_data,
                 void *mem_ctx,
                 struct brw_stage_prog_data *prog_data,
-                unsigned promoted_constants,
+                struct shader_stats shader_stats,
                 bool runtime_check_aads_emit,
                 gl_shader_stage stage);
    ~fs_generator();
@@ -517,7 +522,7 @@ private:
    unsigned dispatch_width; /**< 8, 16 or 32 */
 
    exec_list discard_halt_patches;
-   unsigned promoted_constants;
+   struct shader_stats shader_stats;
    bool runtime_check_aads_emit;
    bool debug_flag;
    const char *shader_name;

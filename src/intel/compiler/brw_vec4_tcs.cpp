@@ -487,7 +487,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
 
       fs_generator g(compiler, log_data, mem_ctx,
-                     &prog_data->base.base, v.promoted_constants, false,
+                     &prog_data->base.base, v.shader_stats, false,
                      MESA_SHADER_TESS_CTRL);
       if (unlikely(INTEL_DEBUG & DEBUG_TCS)) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
