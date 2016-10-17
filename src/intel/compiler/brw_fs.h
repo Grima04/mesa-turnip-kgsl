@@ -53,6 +53,7 @@ offset(const fs_reg &reg, const brw::fs_builder &bld, unsigned delta)
 #define UBO_START ((1 << 16) - 4)
 
 struct shader_stats {
+   const char *scheduler_mode;
    unsigned promoted_constants;
 };
 

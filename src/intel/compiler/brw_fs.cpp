@@ -7213,6 +7213,12 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       SCHEDULE_PRE_LIFO,
    };
 
+   static const char *scheduler_mode_name[] = {
+      "top-down",
+      "non-lifo",
+      "lifo"
+   };
+
    bool spill_all = allow_spilling && (INTEL_DEBUG & DEBUG_SPILL_FS);
 
    /* Try each scheduling heuristic to see if it can successfully register
@@ -7221,6 +7227,7 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
     */
    for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
       schedule_instructions(pre_modes[i]);
+      this->shader_stats.scheduler_mode = scheduler_mode_name[i];
 
       if (0) {
          assign_regs_trivial();

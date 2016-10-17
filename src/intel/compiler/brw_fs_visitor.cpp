@@ -952,6 +952,7 @@ fs_visitor::init()
    this->pull_constant_loc = NULL;
    this->push_constant_loc = NULL;
 
+   this->shader_stats.scheduler_mode = NULL;
    this->shader_stats.promoted_constants = 0,
 
    this->grf_used = 0;
