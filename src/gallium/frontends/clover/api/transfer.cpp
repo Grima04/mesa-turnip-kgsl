@@ -120,6 +120,12 @@ namespace {
          throw error(CL_INVALID_VALUE);
 
       switch (img.type()) {
+      case CL_MEM_OBJECT_IMAGE1D: {
+         const size_t max = dev.max_image_size();
+         if (img.width() > max)
+            throw error(CL_INVALID_IMAGE_SIZE);
+         break;
+      }
       case CL_MEM_OBJECT_IMAGE2D: {
          const size_t max = dev.max_image_size();
          if (img.width() > max || img.height() > max)

@@ -214,6 +214,20 @@ clCreateImageWithProperties(cl_context d_ctx,
       util_format_get_blocksize(translate_format(*format)) * desc->image_width;
 
    switch (desc->image_type) {
+   case CL_MEM_OBJECT_IMAGE1D:
+      if (!desc->image_width)
+         throw error(CL_INVALID_IMAGE_SIZE);
+
+      if (all_of([=](const device &dev) {
+               const size_t max = dev.max_image_size();
+               return (desc->image_width > max);
+            }, ctx.devices()))
+         throw error(CL_INVALID_IMAGE_SIZE);
+
+      return new image1d(ctx, properties, flags, format,
+                         desc->image_width,
+                         row_pitch, host_ptr);
+
    case CL_MEM_OBJECT_IMAGE2D:
       if (!desc->image_width || !desc->image_height)
          throw error(CL_INVALID_IMAGE_SIZE);
@@ -250,7 +264,6 @@ clCreateImageWithProperties(cl_context d_ctx,
                          slice_pitch, host_ptr);
    }
 
-   case CL_MEM_OBJECT_IMAGE1D:
    case CL_MEM_OBJECT_IMAGE1D_ARRAY:
    case CL_MEM_OBJECT_IMAGE1D_BUFFER:
    case CL_MEM_OBJECT_IMAGE2D_ARRAY:
