@@ -38,7 +38,6 @@
 #include "vc4_context.h"
 #include "vc4_qpu.h"
 #include "vc4_qir.h"
-#include "mesa/state_tracker/st_glsl_types.h"
 
 static struct qreg
 ntq_get_src(struct vc4_compile *c, nir_src src, int i);
@@ -49,12 +48,6 @@ static int
 type_size(const struct glsl_type *type)
 {
    return glsl_count_attribute_slots(type, false);
-}
-
-static int
-uniforms_type_size(const struct glsl_type *type)
-{
-        return st_glsl_storage_type_size(type, false);
 }
 
 static void
@@ -99,43 +92,17 @@ static struct qreg
 indirect_uniform_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 {
         struct qreg indirect_offset = ntq_get_src(c, intr->src[0], 0);
-        uint32_t offset = nir_intrinsic_base(intr);
-        struct vc4_compiler_ubo_range *range = NULL;
-        unsigned i;
-        for (i = 0; i < c->num_uniform_ranges; i++) {
-                range = &c->ubo_ranges[i];
-                if (offset >= range->src_offset &&
-                    offset < range->src_offset + range->size) {
-                        break;
-                }
-        }
-        /* The driver-location-based offset always has to be within a declared
-         * uniform range.
-         */
-        assert(range);
-        if (!range->used) {
-                range->used = true;
-                range->dst_offset = c->next_ubo_dst_offset;
-                c->next_ubo_dst_offset += range->size;
-                c->num_ubo_ranges++;
-        }
-
-        offset -= range->src_offset;
-
-        /* Adjust for where we stored the TGSI register base. */
-        indirect_offset = qir_ADD(c, indirect_offset,
-                                  qir_uniform_ui(c, (range->dst_offset +
-                                                     offset)));
 
         /* Clamp to [0, array size).  Note that MIN/MAX are signed. */
+        uint32_t range = nir_intrinsic_range(intr);
         indirect_offset = qir_MAX(c, indirect_offset, qir_uniform_ui(c, 0));
         indirect_offset = qir_MIN_NOIMM(c, indirect_offset,
-                                        qir_uniform_ui(c, (range->dst_offset +
-                                                           range->size - 4)));
+                                        qir_uniform_ui(c, range - 4));
 
         qir_ADD_dest(c, qir_reg(QFILE_TEX_S_DIRECT, 0),
                      indirect_offset,
-                     qir_uniform(c, QUNIFORM_UBO0_ADDR, 0));
+                     qir_uniform(c, QUNIFORM_UBO0_ADDR,
+                                 nir_intrinsic_base(intr)));
 
         c->num_texture_samples++;
 
@@ -857,24 +824,6 @@ add_output(struct vc4_compile *c,
 
         c->output_slots[decl_offset].slot = slot;
         c->output_slots[decl_offset].swizzle = swizzle;
-}
-
-static void
-declare_uniform_range(struct vc4_compile *c, uint32_t start, uint32_t size)
-{
-        unsigned array_id = c->num_uniform_ranges++;
-        if (array_id >= c->ubo_ranges_array_size) {
-                c->ubo_ranges_array_size = MAX2(c->ubo_ranges_array_size * 2,
-                                                array_id + 1);
-                c->ubo_ranges = reralloc(c, c->ubo_ranges,
-                                         struct vc4_compiler_ubo_range,
-                                         c->ubo_ranges_array_size);
-        }
-
-        c->ubo_ranges[array_id].dst_offset = 0;
-        c->ubo_ranges[array_id].src_offset = start;
-        c->ubo_ranges[array_id].size = size;
-        c->ubo_ranges[array_id].used = false;
 }
 
 static bool
@@ -1698,19 +1647,6 @@ ntq_setup_outputs(struct vc4_compile *c)
         }
 }
 
-static void
-ntq_setup_uniforms(struct vc4_compile *c)
-{
-        nir_foreach_variable(var, &c->s->uniforms) {
-                uint32_t vec4_count = uniforms_type_size(var->type);
-                unsigned vec4_size = 4 * sizeof(float);
-
-                declare_uniform_range(c, var->data.driver_location * vec4_size,
-                                      vec4_count * vec4_size);
-
-        }
-}
-
 /**
  * Sets up the mapping from nir_register to struct qreg *.
  *
@@ -2216,7 +2152,6 @@ nir_to_qir(struct vc4_compile *c)
 
         ntq_setup_inputs(c);
         ntq_setup_outputs(c);
-        ntq_setup_uniforms(c);
 
         /* Find the main function and emit the body. */
         nir_foreach_function(function, c->s) {
@@ -2676,39 +2611,6 @@ vc4_get_compiled_shader(struct vc4_context *vc4, enum qstage stage,
         }
 
         shader->fs_threaded = c->fs_threaded;
-
-        /* Copy the compiler UBO range state to the compiled shader, dropping
-         * out arrays that were never referenced by an indirect load.
-         *
-         * (Note that QIR dead code elimination of an array access still
-         * leaves that array alive, though)
-         */
-        if (c->num_ubo_ranges) {
-                shader->num_ubo_ranges = c->num_ubo_ranges;
-                shader->ubo_ranges = ralloc_array(shader, struct vc4_ubo_range,
-                                                  c->num_ubo_ranges);
-                uint32_t j = 0;
-                for (int i = 0; i < c->num_uniform_ranges; i++) {
-                        struct vc4_compiler_ubo_range *range =
-                                &c->ubo_ranges[i];
-                        if (!range->used)
-                                continue;
-
-                        shader->ubo_ranges[j].dst_offset = range->dst_offset;
-                        shader->ubo_ranges[j].src_offset = range->src_offset;
-                        shader->ubo_ranges[j].size = range->size;
-                        shader->ubo_size += c->ubo_ranges[i].size;
-                        j++;
-                }
-        }
-        if (shader->ubo_size) {
-                if (vc4_debug & VC4_DEBUG_SHADERDB) {
-                        fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d UBO uniforms\n",
-                                qir_get_stage_name(c->stage),
-                                c->program_id, c->variant_id,
-                                shader->ubo_size / 4);
-                }
-        }
 
         if ((vc4_debug & VC4_DEBUG_SHADERDB) && stage == QSTAGE_FRAG) {
                 fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d FS threads\n",
