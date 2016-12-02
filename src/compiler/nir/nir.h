@@ -2359,6 +2359,9 @@ typedef struct nir_shader {
     */
    unsigned num_inputs, num_uniforms, num_outputs, num_shared;
 
+   /** Size in bytes of required scratch space */
+   unsigned scratch_size;
+
    /** Constant data associated with this shader.
     *
     * Constant data is loaded through load_constant intrinsics.  See also
@@ -3011,6 +3014,11 @@ bool nir_lower_locals_to_regs(nir_shader *shader);
 void nir_lower_io_to_temporaries(nir_shader *shader,
                                  nir_function_impl *entrypoint,
                                  bool outputs, bool inputs);
+
+bool nir_lower_vars_to_scratch(nir_shader *shader,
+                               nir_variable_mode modes,
+                               int size_threshold,
+                               glsl_type_size_align_func size_align);
 
 void nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint);
 

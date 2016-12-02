@@ -143,6 +143,7 @@ files_libnir = files(
   'nir_lower_phis_to_scalar.c',
   'nir_lower_regs_to_ssa.c',
   'nir_lower_returns.c',
+  'nir_lower_scratch.c',
   'nir_lower_subgroups.c',
   'nir_lower_system_values.c',
   'nir_lower_tex.c',

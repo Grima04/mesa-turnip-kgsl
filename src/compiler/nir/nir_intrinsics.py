@@ -654,6 +654,8 @@ load("constant", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 load("global", 1, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 # src[] = { address }.
 load("kernel_input", 1, [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, CAN_REORDER])
+# src[] = { offset }.
+load("scratch", 1, [ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 
 # Stores work the same way as loads, except now the first source is the value
 # to store and the second (and possibly third) source specify where to store
@@ -673,7 +675,8 @@ store("ssbo", 3, [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 store("shared", 2, [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, address }.
 store("global", 2, [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
-
+# src[] = { value, offset }.
+store("scratch", 2, [ALIGN_MUL, ALIGN_OFFSET, WRMASK])
 
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold
