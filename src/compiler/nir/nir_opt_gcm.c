@@ -279,6 +279,8 @@ gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
       if (state->blocks[block->index].loop_depth <
           state->blocks[best->index].loop_depth)
          best = block;
+      else if (block == instr->block)
+         best = block;
 
       if (block == early_block)
          break;
