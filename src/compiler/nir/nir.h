@@ -2406,12 +2406,19 @@ typedef struct nir_block {
     * dom_pre_index and dom_post_index for this block, which makes testing if
     * a given block is dominated by another block an O(1) operation.
     */
-   unsigned dom_pre_index, dom_post_index;
+   int16_t dom_pre_index, dom_post_index;
 
    /* live in and out for this block; used for liveness analysis */
    BITSET_WORD *live_in;
    BITSET_WORD *live_out;
 } nir_block;
+
+static inline bool
+nir_block_is_reachable(nir_block *b)
+{
+   /* See also nir_block_dominates */
+   return b->dom_post_index != -1;
+}
 
 static inline nir_instr *
 nir_block_first_instr(nir_block *block)
