@@ -343,11 +343,11 @@ gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
    nir_block *early_block =
       state->instr_infos[def->parent_instr->index].early_block;
 
-   /* Some instructions may never be used.  We'll just schedule them early and
-    * let dead code clean them up.
+   /* Some instructions may never be used.  Flag them and the instruction
+    * placement code will get rid of them for us.
     */
    if (lca == NULL) {
-      def->parent_instr->block = early_block;
+      def->parent_instr->block = NULL;
       return true;
    }
 
@@ -410,6 +410,23 @@ gcm_place_instr_def(nir_ssa_def *def, void *state)
    return false;
 }
 
+static bool
+gcm_replace_def_with_undef(nir_ssa_def *def, void *void_state)
+{
+   struct gcm_state *state = void_state;
+
+   if (list_is_empty(&def->uses) && list_is_empty(&def->if_uses))
+      return true;
+
+   nir_ssa_undef_instr *undef =
+      nir_ssa_undef_instr_create(state->impl->function->shader,
+                                 def->num_components, def->bit_size);
+   nir_instr_insert(nir_before_cf_list(&state->impl->body), &undef->instr);
+   nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(&undef->def));
+
+   return true;
+}
+
 /** Places an instrution back into the program
  *
  * The earlier passes of GCM simply choose blocks for each instruction and
@@ -432,6 +449,12 @@ gcm_place_instr(nir_instr *instr, struct gcm_state *state)
       return;
 
    instr->pass_flags |= GCM_INSTR_PLACED;
+
+   if (instr->block == NULL) {
+      nir_foreach_ssa_def(instr, gcm_replace_def_with_undef, state);
+      nir_instr_remove(instr);
+      return;
+   }
 
    /* Phi nodes are our once source of back-edges.  Since right now we are
     * only doing scheduling within blocks, we don't need to worry about
