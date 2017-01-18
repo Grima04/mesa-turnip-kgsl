@@ -266,6 +266,25 @@ gcm_schedule_early_instr(nir_instr *instr, struct gcm_state *state)
    nir_foreach_src(instr, gcm_schedule_early_src, state);
 }
 
+static nir_block *
+gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
+                           nir_block *late_block, struct gcm_state *state)
+{
+   assert(nir_block_dominates(early_block, late_block));
+
+   nir_block *best = late_block;
+   for (nir_block *block = late_block; block != NULL; block = block->imm_dom) {
+      if (state->blocks[block->index].loop_depth <
+          state->blocks[best->index].loop_depth)
+         best = block;
+
+      if (block == early_block)
+         break;
+   }
+
+   return best;
+}
+
 static void
 gcm_schedule_late_instr(nir_instr *instr, struct gcm_state *state);
 
@@ -335,17 +354,8 @@ gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
     * We now walk up the dominance tree and pick the lowest block that is
     * as far outside loops as we can get.
     */
-   assert(nir_block_dominates(early_block, lca));
-   nir_block *best = lca;
-   for (nir_block *block = lca; block != NULL; block = block->imm_dom) {
-      if (state->blocks[block->index].loop_depth <
-          state->blocks[best->index].loop_depth)
-         best = block;
-
-      if (block == early_block)
-         break;
-   }
-   def->parent_instr->block = best;
+   def->parent_instr->block =
+      gcm_choose_block_for_instr(def->parent_instr, early_block, lca, state);
 
    return true;
 }
