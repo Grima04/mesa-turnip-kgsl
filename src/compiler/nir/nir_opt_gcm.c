@@ -48,6 +48,10 @@ struct gcm_block_info {
    nir_instr *last_instr;
 };
 
+struct gcm_instr_info {
+   nir_block *early_block;
+};
+
 /* Flags used in the instr->pass_flags field for various instruction states */
 enum {
    GCM_INSTR_PINNED =            (1 << 0),
@@ -68,6 +72,9 @@ struct gcm_state {
    struct exec_list instrs;
 
    struct gcm_block_info *blocks;
+
+   unsigned num_instrs;
+   struct gcm_instr_info *instr_infos;
 };
 
 /* Recursively walks the CFG and builds the block_info structure */
@@ -108,8 +115,13 @@ gcm_build_block_info(struct exec_list *cf_list, struct gcm_state *state,
 static void
 gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
 {
+   state->num_instrs = 0;
+
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
+         /* Index the instructions for use in gcm_state::instrs */
+         instr->index = state->num_instrs++;
+
          switch (instr->type) {
          case nir_instr_type_alu:
             switch (nir_instr_as_alu(instr)->op) {
@@ -204,8 +216,11 @@ gcm_schedule_early_src(nir_src *src, void *void_state)
     * all of the sources must lie on the same branch of the dominance tree.
     * Therefore, we can just go ahead and just compare indices.
     */
-   if (instr->block->index < src->ssa->parent_instr->block->index)
-      instr->block = src->ssa->parent_instr->block;
+   struct gcm_instr_info *src_info =
+      &state->instr_infos[src->ssa->parent_instr->index];
+   struct gcm_instr_info *info = &state->instr_infos[instr->index];
+   if (info->early_block->index < src_info->early_block->index)
+      info->early_block = src_info->early_block;
 
    /* We need to restore the state instruction because it may have been
     * changed through the gcm_schedule_early_instr call above.  Since we
@@ -222,7 +237,8 @@ gcm_schedule_early_src(nir_src *src, void *void_state)
  * This function performs a recursive depth-first search starting at the
  * given instruction and proceeding through the sources to schedule
  * instructions as early as they can possibly go in the dominance tree.
- * The instructions are "scheduled" by updating their instr->block field.
+ * The instructions are "scheduled" by updating the early_block field of
+ * the corresponding gcm_instr_state entry.
  */
 static void
 gcm_schedule_early_instr(nir_instr *instr, struct gcm_state *state)
@@ -232,17 +248,19 @@ gcm_schedule_early_instr(nir_instr *instr, struct gcm_state *state)
 
    instr->pass_flags |= GCM_INSTR_SCHEDULED_EARLY;
 
-   /* Pinned instructions are already scheduled so we don't need to do
-    * anything.  Also, bailing here keeps us from ever following the
-    * sources of phi nodes which can be back-edges.
+   /* Pinned instructions always get scheduled in their original block so we
+    * don't need to do anything.  Also, bailing here keeps us from ever
+    * following the sources of phi nodes which can be back-edges.
     */
-   if (instr->pass_flags & GCM_INSTR_PINNED)
+   if (instr->pass_flags & GCM_INSTR_PINNED) {
+      state->instr_infos[instr->index].early_block = instr->block;
       return;
+   }
 
    /* Start with the instruction at the top.  As we iterate over the
     * sources, it will get moved down as needed.
     */
-   instr->block = nir_start_block(state->impl);
+   state->instr_infos[instr->index].early_block = nir_start_block(state->impl);
    state->instr = instr;
 
    nir_foreach_src(instr, gcm_schedule_early_src, state);
@@ -301,24 +319,30 @@ gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
       lca = nir_dominance_lca(lca, pred_block);
    }
 
-   /* Some instructions may never be used.  We'll just leave them scheduled
-    * early and let dead code clean them up.
+   nir_block *early_block =
+      state->instr_infos[def->parent_instr->index].early_block;
+
+   /* Some instructions may never be used.  We'll just schedule them early and
+    * let dead code clean them up.
     */
-   if (lca == NULL)
+   if (lca == NULL) {
+      def->parent_instr->block = early_block;
       return true;
+   }
 
    /* We now have the LCA of all of the uses.  If our invariants hold,
     * this is dominated by the block that we chose when scheduling early.
     * We now walk up the dominance tree and pick the lowest block that is
     * as far outside loops as we can get.
     */
+   assert(nir_block_dominates(early_block, lca));
    nir_block *best = lca;
    for (nir_block *block = lca; block != NULL; block = block->imm_dom) {
       if (state->blocks[block->index].loop_depth <
           state->blocks[best->index].loop_depth)
          best = block;
 
-      if (block == def->parent_instr->block)
+      if (block == early_block)
          break;
    }
    def->parent_instr->block = best;
@@ -457,6 +481,9 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
 
    gcm_pin_instructions(impl, &state);
 
+   state.instr_infos =
+      rzalloc_array(NULL, struct gcm_instr_info, state.num_instrs);
+
    bool progress = false;
    if (value_number) {
       struct set *gvn_set = nir_instr_set_create(NULL);
@@ -482,6 +509,7 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    }
 
    ralloc_free(state.blocks);
+   ralloc_free(state.instr_infos);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);
