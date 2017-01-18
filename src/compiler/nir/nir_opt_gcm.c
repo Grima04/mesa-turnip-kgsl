@@ -64,6 +64,8 @@ struct gcm_state {
    nir_function_impl *impl;
    nir_instr *instr;
 
+   bool progress;
+
    /* The list of non-pinned instructions.  As we do the late scheduling,
     * we pull non-pinned instructions out of their blocks and place them in
     * this list.  This saves us from having linked-list problems when we go
@@ -354,8 +356,13 @@ gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
     * We now walk up the dominance tree and pick the lowest block that is
     * as far outside loops as we can get.
     */
-   def->parent_instr->block =
+   nir_block *best_block =
       gcm_choose_block_for_instr(def->parent_instr, early_block, lca, state);
+
+   if (def->parent_instr->block != best_block)
+      state->progress = true;
+
+   def->parent_instr->block = best_block;
 
    return true;
 }
@@ -484,6 +491,7 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
 
    state.impl = impl;
    state.instr = NULL;
+   state.progress = false;
    exec_list_make_empty(&state.instrs);
    state.blocks = rzalloc_array(NULL, struct gcm_block_info, impl->num_blocks);
 
@@ -494,13 +502,12 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    state.instr_infos =
       rzalloc_array(NULL, struct gcm_instr_info, state.num_instrs);
 
-   bool progress = false;
    if (value_number) {
       struct set *gvn_set = nir_instr_set_create(NULL);
       foreach_list_typed_safe(nir_instr, instr, node, &state.instrs) {
          if (nir_instr_set_add_or_rewrite(gvn_set, instr)) {
             nir_instr_remove(instr);
-            progress = true;
+            state.progress = true;
          }
       }
       nir_instr_set_destroy(gvn_set);
@@ -524,7 +531,7 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);
 
-   return progress;
+   return state.progress;
 }
 
 bool
