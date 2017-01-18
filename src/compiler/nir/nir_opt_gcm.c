@@ -105,79 +105,76 @@ gcm_build_block_info(struct exec_list *cf_list, struct gcm_state *state,
  * After this is completed, all instructions' pass_flags fields will be set
  * to either GCM_INSTR_PINNED or 0.
  */
-static bool
-gcm_pin_instructions_block(nir_block *block, struct gcm_state *state)
+static void
+gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
 {
-   nir_foreach_instr_safe(instr, block) {
-      switch (instr->type) {
-      case nir_instr_type_alu:
-         switch (nir_instr_as_alu(instr)->op) {
-         case nir_op_fddx:
-         case nir_op_fddy:
-         case nir_op_fddx_fine:
-         case nir_op_fddy_fine:
-         case nir_op_fddx_coarse:
-         case nir_op_fddy_coarse:
-            /* These can only go in uniform control flow; pin them for now */
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_alu:
+            switch (nir_instr_as_alu(instr)->op) {
+            case nir_op_fddx:
+            case nir_op_fddy:
+            case nir_op_fddx_fine:
+            case nir_op_fddy_fine:
+            case nir_op_fddx_coarse:
+            case nir_op_fddy_coarse:
+               /* These can only go in uniform control flow; pin them for now */
+               instr->pass_flags = GCM_INSTR_PINNED;
+               break;
+
+            default:
+               instr->pass_flags = 0;
+               break;
+            }
+            break;
+
+         case nir_instr_type_tex:
+            if (nir_tex_instr_has_implicit_derivative(nir_instr_as_tex(instr)))
+               instr->pass_flags = GCM_INSTR_PINNED;
+            break;
+
+         case nir_instr_type_deref:
+         case nir_instr_type_load_const:
+            instr->pass_flags = 0;
+            break;
+
+         case nir_instr_type_intrinsic: {
+            if (nir_intrinsic_can_reorder(nir_instr_as_intrinsic(instr))) {
+               instr->pass_flags = 0;
+            } else {
+               instr->pass_flags = GCM_INSTR_PINNED;
+            }
+            break;
+         }
+
+         case nir_instr_type_jump:
+         case nir_instr_type_ssa_undef:
+         case nir_instr_type_phi:
             instr->pass_flags = GCM_INSTR_PINNED;
             break;
 
          default:
-            instr->pass_flags = 0;
-            break;
+            unreachable("Invalid instruction type in GCM");
          }
-         break;
 
-      case nir_instr_type_deref:
-         instr->pass_flags = 0;
-         break;
-
-      case nir_instr_type_tex:
-         if (nir_tex_instr_has_implicit_derivative(nir_instr_as_tex(instr)))
-            instr->pass_flags = GCM_INSTR_PINNED;
-         break;
-
-      case nir_instr_type_load_const:
-         instr->pass_flags = 0;
-         break;
-
-      case nir_instr_type_intrinsic: {
-         if (nir_intrinsic_can_reorder(nir_instr_as_intrinsic(instr))) {
-            instr->pass_flags = 0;
-         } else {
-            instr->pass_flags = GCM_INSTR_PINNED;
+         if (!(instr->pass_flags & GCM_INSTR_PINNED)) {
+            /* If this is an unpinned instruction, go ahead and pull it out of
+             * the program and put it on the instrs list.  This has a couple
+             * of benifits.  First, it makes the scheduling algorithm more
+             * efficient because we can avoid walking over basic blocks and
+             * pinned instructions.  Second, it keeps us from causing linked
+             * list confusion when we're trying to put everything in its
+             * proper place at the end of the pass.
+             *
+             * Note that we don't use nir_instr_remove here because that also
+             * cleans up uses and defs and we want to keep that information.
+             */
+            exec_node_remove(&instr->node);
+            exec_list_push_tail(&state->instrs, &instr->node);
          }
-         break;
-      }
-
-      case nir_instr_type_jump:
-      case nir_instr_type_ssa_undef:
-      case nir_instr_type_phi:
-         instr->pass_flags = GCM_INSTR_PINNED;
-         break;
-
-      default:
-         unreachable("Invalid instruction type in GCM");
-      }
-
-      if (!(instr->pass_flags & GCM_INSTR_PINNED)) {
-         /* If this is an unpinned instruction, go ahead and pull it out of
-          * the program and put it on the instrs list.  This has a couple
-          * of benifits.  First, it makes the scheduling algorithm more
-          * efficient because we can avoid walking over basic blocks and
-          * pinned instructions.  Second, it keeps us from causing linked
-          * list confusion when we're trying to put everything in its
-          * proper place at the end of the pass.
-          *
-          * Note that we don't use nir_instr_remove here because that also
-          * cleans up uses and defs and we want to keep that information.
-          */
-         exec_node_remove(&instr->node);
-         exec_list_push_tail(&state->instrs, &instr->node);
       }
    }
-
-   return true;
 }
 
 static void
@@ -458,9 +455,7 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
 
    gcm_build_block_info(&impl->body, &state, 0);
 
-   nir_foreach_block(block, impl) {
-      gcm_pin_instructions_block(block, &state);
-   }
+   gcm_pin_instructions(impl, &state);
 
    bool progress = false;
    if (value_number) {
