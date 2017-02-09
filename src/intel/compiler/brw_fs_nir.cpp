@@ -1155,6 +1155,65 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
    case nir_op_inot:
       if (devinfo->gen >= 8) {
+         nir_alu_instr *const inot_src_instr =
+            nir_src_as_alu_instr(&instr->src[0].src);
+
+         if (inot_src_instr != NULL &&
+             (inot_src_instr->op == nir_op_ior ||
+              inot_src_instr->op == nir_op_ixor ||
+              inot_src_instr->op == nir_op_iand) &&
+             !inot_src_instr->src[0].abs &&
+             !inot_src_instr->src[0].negate &&
+             !inot_src_instr->src[1].abs &&
+             !inot_src_instr->src[1].negate) {
+            /* The sources of the source logical instruction are now the
+             * sources of the instruction that will be generated.
+             */
+            prepare_alu_destination_and_sources(bld, inot_src_instr, op, false);
+            resolve_inot_sources(bld, inot_src_instr, op);
+
+            /* Smash all of the sources and destination to be signed.  This
+             * doesn't matter for the operation of the instruction, but cmod
+             * propagation fails on unsigned sources with negation (due to
+             * fs_inst::can_do_cmod returning false).
+             */
+            result.type =
+               brw_type_for_nir_type(devinfo,
+                                     (nir_alu_type)(nir_type_int |
+                                                    nir_dest_bit_size(instr->dest.dest)));
+            op[0].type =
+               brw_type_for_nir_type(devinfo,
+                                     (nir_alu_type)(nir_type_int |
+                                                    nir_src_bit_size(inot_src_instr->src[0].src)));
+            op[1].type =
+               brw_type_for_nir_type(devinfo,
+                                     (nir_alu_type)(nir_type_int |
+                                                    nir_src_bit_size(inot_src_instr->src[1].src)));
+
+            /* For XOR, only invert one of the sources.  Arbitrarily choose
+             * the first source.
+             */
+            op[0].negate = !op[0].negate;
+            if (inot_src_instr->op != nir_op_ixor)
+               op[1].negate = !op[1].negate;
+
+            switch (inot_src_instr->op) {
+            case nir_op_ior:
+               bld.AND(result, op[0], op[1]);
+               return;
+
+            case nir_op_iand:
+               bld.OR(result, op[0], op[1]);
+               return;
+
+            case nir_op_ixor:
+               bld.XOR(result, op[0], op[1]);
+               return;
+
+            default:
+               unreachable("impossible opcode");
+            }
+         }
          op[0] = resolve_source_modifiers(op[0]);
       }
       bld.NOT(result, op[0]);
