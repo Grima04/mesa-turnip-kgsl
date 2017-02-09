@@ -733,6 +733,27 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
 }
 
 void
+fs_visitor::resolve_inot_sources(const fs_builder &bld, nir_alu_instr *instr,
+                                 fs_reg *op)
+{
+   for (unsigned i = 0; i < 2; i++) {
+      nir_alu_instr *const inot_instr =
+         nir_src_as_alu_instr(&instr->src[i].src);
+
+      if (inot_instr != NULL && inot_instr->op == nir_op_inot &&
+          !inot_instr->src[0].abs && !inot_instr->src[0].negate) {
+         /* The source of the inot is now the source of instr. */
+         prepare_alu_destination_and_sources(bld, inot_instr, &op[i], false);
+
+         assert(!op[i].negate);
+         op[i].negate = true;
+      } else {
+         op[i] = resolve_source_modifiers(op[i]);
+      }
+   }
+}
+
+void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
    struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
@@ -1140,22 +1161,19 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    case nir_op_ixor:
       if (devinfo->gen >= 8) {
-         op[0] = resolve_source_modifiers(op[0]);
-         op[1] = resolve_source_modifiers(op[1]);
+         resolve_inot_sources(bld, instr, op);
       }
       bld.XOR(result, op[0], op[1]);
       break;
    case nir_op_ior:
       if (devinfo->gen >= 8) {
-         op[0] = resolve_source_modifiers(op[0]);
-         op[1] = resolve_source_modifiers(op[1]);
+         resolve_inot_sources(bld, instr, op);
       }
       bld.OR(result, op[0], op[1]);
       break;
    case nir_op_iand:
       if (devinfo->gen >= 8) {
-         op[0] = resolve_source_modifiers(op[0]);
-         op[1] = resolve_source_modifiers(op[1]);
+         resolve_inot_sources(bld, instr, op);
       }
       bld.AND(result, op[0], op[1]);
       break;

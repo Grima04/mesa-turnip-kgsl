@@ -390,6 +390,9 @@ private:
                                               nir_alu_instr *instr,
                                               fs_reg *op,
                                               bool need_dest);
+
+   void resolve_inot_sources(const brw::fs_builder &bld, nir_alu_instr *instr,
+                             fs_reg *op);
 };
 
 /**
