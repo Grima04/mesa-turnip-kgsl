@@ -189,7 +189,7 @@
    sizeof(*v) == sizeof(uint64_t) ? atomic_inc_64_nv((uint64_t *)(v)) : \
                                     (assert(!"should not get here"), 0))
 
-#define p_atomic_dec(v) ((void) \
+#define p_atomic_dec(v) (void) ( \
    sizeof(*v) == sizeof(uint8_t)  ? atomic_dec_8 ((uint8_t  *)(v)) : \
    sizeof(*v) == sizeof(uint16_t) ? atomic_dec_16((uint16_t *)(v)) : \
    sizeof(*v) == sizeof(uint32_t) ? atomic_dec_32((uint32_t *)(v)) : \
@@ -203,7 +203,7 @@
    sizeof(*v) == sizeof(uint64_t) ? atomic_dec_64_nv((uint64_t *)(v)) : \
                                     (assert(!"should not get here"), 0))
 
-#define p_atomic_add(v, i) ((void)				     \
+#define p_atomic_add(v, i) (void) ( \
    sizeof(*v) == sizeof(uint8_t)  ? atomic_add_8 ((uint8_t  *)(v), (i)) : \
    sizeof(*v) == sizeof(uint16_t) ? atomic_add_16((uint16_t *)(v), (i)) : \
    sizeof(*v) == sizeof(uint32_t) ? atomic_add_32((uint32_t *)(v), (i)) : \
