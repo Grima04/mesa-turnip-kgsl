@@ -230,7 +230,7 @@ rcp_result_denorm:
    and b32 $r1 $r1 0x800fffff
    // 0x3e800000: 1/4
    $p0 cvt f64 $r6d f32 0x3e800000
-   sched 0x2f 0x28 0x2c 0x2e 0x2e 0x00 0x00
+   sched 0x2f 0x28 0x2c 0x2e 0x2a 0x20 0x27
    // 0x3f000000: 1/2
    (not $p0) cvt f64 $r6d f32 0x3f000000
    add b32 $r1 $r1 0x00100000
@@ -238,7 +238,74 @@ rcp_result_denorm:
 rcp_end:
    ret
 
+// RSQ F64
+//
+// INPUT:   $r0d
+// OUTPUT:  $r0d
+// CLOBBER: $r2 - $r9, $p0 - $p1
+//
 gk110_rsq_f64:
+   // Before getting initial result rsqrt64h, two special cases should be
+   // handled first.
+   // 1. NaN: set the highest bit in mantissa so it'll be surely recognized
+   //    as NaN in rsqrt64h
+   set $p0 0x1 gtu f64 abs $r0d 0x7ff0000000000000
+   $p0 or b32 $r1 $r1 0x00080000
+   and b32 $r2 $r1 0x7fffffff
+   sched 0x27 0x20 0x28 0x2c 0x25 0x28 0x28
+   // 2. denorms and small normal values: using their original value will
+   //    lose precision either at rsqrt64h or the first step in newton-raphson
+   //    steps below. Take 2 as a threshold in exponent field, and multiply
+   //    with 2^54 if the exponent is smaller or equal. (will multiply 2^27
+   //    to recover in the end)
+   ext u32 $r3 $r1 0xb14
+   set b32 $p1 0x1 le u32 $r3 0x2
+   or b32 $r2 $r0 $r2
+   $p1 mul rn f64 $r0d $r0d 0x4350000000000000
+   rsqrt64h f32 $r5 $r1
+   // rsqrt64h will give correct result for 0/inf/nan, the following logic
+   // checks whether the input is one of those (exponent is 0x7ff or all 0
+   // except for the sign bit)
+   set b32 $r6 ne u32 $r3 0x7ff
+   and b32 $r2 $r2 $r6
+   sched 0x28 0x2b 0x20 0x27 0x28 0x2e 0x28
+   set b32 $p0 0x1 ne u32 $r2 0x0
+   $p0 bra #rsq_norm
+   // For 0/inf/nan, make sure the sign bit agrees with input and return
+   and b32 $r1 $r1 0x80000000
+   mov b32 $r0 0x0
+   or b32 $r1 $r1 $r5
+   ret
+rsq_norm:
+   // For others, do 4 Newton-Raphson steps with the formula:
+   //     RSQ_{n + 1} = RSQ_{n} * (1.5 - 0.5 * x * RSQ_{n} * RSQ_{n})
+   // In the code below, each step is written as:
+   //     tmp1 = 0.5 * x * RSQ_{n}
+   //     tmp2 = -RSQ_{n} * tmp1 + 0.5
+   //     RSQ_{n + 1} = RSQ_{n} * tmp2 + RSQ_{n}
+   mov b32 $r4 0x0
+   sched 0x2f 0x29 0x29 0x29 0x29 0x29 0x29
+   // 0x3f000000: 1/2
+   cvt f64 $r8d f32 0x3f000000
+   mul rn f64 $r2d $r0d $r8d
+   mul rn f64 $r0d $r2d $r4d
+   fma rn f64 $r6d neg $r4d $r0d $r8d
+   fma rn f64 $r4d $r4d $r6d $r4d
+   mul rn f64 $r0d $r2d $r4d
+   fma rn f64 $r6d neg $r4d $r0d $r8d
+   sched 0x29 0x29 0x29 0x29 0x29 0x29 0x29
+   fma rn f64 $r4d $r4d $r6d $r4d
+   mul rn f64 $r0d $r2d $r4d
+   fma rn f64 $r6d neg $r4d $r0d $r8d
+   fma rn f64 $r4d $r4d $r6d $r4d
+   mul rn f64 $r0d $r2d $r4d
+   fma rn f64 $r6d neg $r4d $r0d $r8d
+   fma rn f64 $r4d $r4d $r6d $r4d
+   sched 0x29 0x20 0x28 0x2e 0x00 0x00 0x00
+   // Multiply 2^27 to result for small inputs to recover
+   $p1 mul rn f64 $r4d $r4d 0x41a0000000000000
+   mov b32 $r1 $r5
+   mov b32 $r0 $r4
    ret
 
 .section #gk110_builtin_offsets
