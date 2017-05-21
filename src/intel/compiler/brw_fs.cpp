@@ -7332,8 +7332,6 @@ fs_visitor::run_vs()
    if (failed)
       return false;
 
-   compute_clip_distance();
-
    emit_urb_writes();
 
    if (shader_time_index >= 0)

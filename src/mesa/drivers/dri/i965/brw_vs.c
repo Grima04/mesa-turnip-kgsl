@@ -149,6 +149,11 @@ brw_codegen_vs_prog(struct brw_context *brw,
                                  &prog_data.base.base);
    }
 
+   if (key->nr_userclip_plane_consts > 0) {
+      brw_nir_lower_legacy_clipping(nir, key->nr_userclip_plane_consts,
+                                    &prog_data.base.base);
+   }
+
    uint64_t outputs_written =
       brw_vs_outputs_written(brw, key, nir->info.outputs_written);
 

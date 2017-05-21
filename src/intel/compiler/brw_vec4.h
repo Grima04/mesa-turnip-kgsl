@@ -109,7 +109,6 @@ public:
    int *virtual_grf_start;
    int *virtual_grf_end;
    brw::vec4_live_variables *live_intervals;
-   dst_reg userplane[MAX_CLIP_PLANES];
 
    bool need_all_constants_in_pull_buffer;
 

@@ -80,8 +80,6 @@ public:
 
    fs_reg vgrf(const glsl_type *const type);
    void import_uniforms(fs_visitor *v);
-   void setup_uniform_clipplane_values();
-   void compute_clip_distance();
 
    void VARYING_PULL_CONSTANT_LOAD(const brw::fs_builder &bld,
                                    const fs_reg &dst,
@@ -380,7 +378,6 @@ public:
    fs_reg pixel_w;
    fs_reg delta_xy[BRW_BARYCENTRIC_MODE_COUNT];
    fs_reg shader_start_time;
-   fs_reg userplane[MAX_CLIP_PLANES];
    fs_reg final_gs_vertex_count;
    fs_reg control_data_bits;
    fs_reg invocation_id;
