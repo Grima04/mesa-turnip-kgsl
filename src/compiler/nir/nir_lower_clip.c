@@ -198,6 +198,7 @@ lower_clip_vs(nir_function_impl *impl, unsigned ucp_enables,
 bool
 nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables)
 {
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    int clipvertex = -1;
    int position = -1;
    int maxloc = -1;
@@ -249,10 +250,7 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables)
       out[1] =
          create_clipdist_var(shader, ++maxloc, true, VARYING_SLOT_CLIP_DIST1);
 
-   nir_foreach_function(function, shader) {
-      if (!strcmp(function->name, "main"))
-         lower_clip_vs(function->impl, ucp_enables, cv, out);
-   }
+   lower_clip_vs(impl, ucp_enables, cv, out);
 
    return true;
 }
