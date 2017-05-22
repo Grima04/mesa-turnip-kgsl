@@ -159,9 +159,9 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_ssa_def *clipdist[MAX_CLIP_PLANES];
    nir_builder b;
-   int clipvertex = -1;
-   int position = -1;
    int maxloc = -1;
+   nir_variable *position = NULL;
+   nir_variable *clipvertex = NULL;
    nir_ssa_def *cv;
    nir_variable *out[2] = { NULL };
 
@@ -184,20 +184,12 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables)
 
    /* find clipvertex/position outputs: */
    nir_foreach_variable(var, &shader->outputs) {
-      int loc = var->data.driver_location;
-
-      /* keep track of last used driver-location.. we'll be
-       * appending CLIP_DIST0/CLIP_DIST1 after last existing
-       * output:
-       */
-      maxloc = MAX2(maxloc, loc);
-
       switch (var->data.location) {
       case VARYING_SLOT_POS:
-         position = loc;
+         position = var;
          break;
       case VARYING_SLOT_CLIP_VERTEX:
-         clipvertex = loc;
+         clipvertex = var;
          break;
       case VARYING_SLOT_CLIP_DIST0:
       case VARYING_SLOT_CLIP_DIST1:
@@ -209,10 +201,10 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables)
       }
    }
 
-   if (clipvertex != -1)
-      cv = find_output(shader, clipvertex);
-   else if (position != -1)
-      cv = find_output(shader, position);
+   if (clipvertex)
+      cv = find_output(shader, clipvertex->data.driver_location);
+   else if (position)
+      cv = find_output(shader, position->data.driver_location);
    else
       return false;
 
