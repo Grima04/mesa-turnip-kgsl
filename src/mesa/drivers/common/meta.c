@@ -1680,7 +1680,6 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    const GLuint stencilMax = (1 << ctx->DrawBuffer->Visual.stencilBits) - 1;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
    struct vertex verts[4];
-   int i;
 
    metaSave = (MESA_META_ALPHA_TEST |
                MESA_META_BLEND |
@@ -1714,17 +1713,22 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    assert(!fb->_IntegerBuffers);
    if (glsl) {
       meta_glsl_clear_init(ctx, clear);
+
+      _mesa_meta_use_program(ctx, clear->ShaderProg);
+      _mesa_Uniform4fv(0, 1, ctx->Color.ClearColor.f);
    } else {
       _mesa_meta_setup_vertex_objects(ctx, &clear->VAO, &clear->buf_obj, false,
                                       3, 0, 4);
 
       /* setup projection matrix */
       _mesa_load_identity_matrix(ctx, &ctx->ProjectionMatrixStack);
-   }
 
-   if (glsl) {
-      _mesa_meta_use_program(ctx, clear->ShaderProg);
-      _mesa_Uniform4fv(0, 1, ctx->Color.ClearColor.f);
+      for (int i = 0; i < 4; i++) {
+         verts[i].r = ctx->Color.ClearColor.f[0];
+         verts[i].g = ctx->Color.ClearColor.f[1];
+         verts[i].b = ctx->Color.ClearColor.f[2];
+         verts[i].a = ctx->Color.ClearColor.f[3];
+      }
    }
 
    /* GL_COLOR_BUFFER_BIT */
@@ -1784,15 +1788,6 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    verts[3].x = x0;
    verts[3].y = y1;
    verts[3].z = z;
-
-   if (!glsl) {
-      for (i = 0; i < 4; i++) {
-         verts[i].r = ctx->Color.ClearColor.f[0];
-         verts[i].g = ctx->Color.ClearColor.f[1];
-         verts[i].b = ctx->Color.ClearColor.f[2];
-         verts[i].a = ctx->Color.ClearColor.f[3];
-      }
-   }
 
    /* upload new vertex data */
    _mesa_buffer_data(ctx, clear->buf_obj, GL_NONE, sizeof(verts), verts,
