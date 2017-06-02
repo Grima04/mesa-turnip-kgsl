@@ -133,7 +133,6 @@ struct save_state
    struct gl_stencil_attrib Stencil;
 
    /** MESA_META_TRANSFORM */
-   GLenum MatrixMode;
    GLfloat ModelviewMatrix[16];
    GLfloat ProjectionMatrix[16];
    GLfloat TextureMatrix[16];

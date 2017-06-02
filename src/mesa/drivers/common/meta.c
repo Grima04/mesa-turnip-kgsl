@@ -686,31 +686,31 @@ _mesa_meta_begin(struct gl_context *ctx, GLbitfield state)
    }
 
    if (state & MESA_META_TRANSFORM) {
-      GLuint activeTexture = ctx->Texture.CurrentUnit;
       memcpy(save->ModelviewMatrix, ctx->ModelviewMatrixStack.Top->m,
              16 * sizeof(GLfloat));
       memcpy(save->ProjectionMatrix, ctx->ProjectionMatrixStack.Top->m,
              16 * sizeof(GLfloat));
       memcpy(save->TextureMatrix, ctx->TextureMatrixStack[0].Top->m,
              16 * sizeof(GLfloat));
-      save->MatrixMode = ctx->Transform.MatrixMode;
-      /* set 1:1 vertex:pixel coordinate transform */
-      _mesa_ActiveTexture(GL_TEXTURE0);
-      _mesa_MatrixMode(GL_TEXTURE);
-      _mesa_LoadIdentity();
-      _mesa_ActiveTexture(GL_TEXTURE0 + activeTexture);
-      _mesa_MatrixMode(GL_MODELVIEW);
-      _mesa_LoadIdentity();
-      _mesa_MatrixMode(GL_PROJECTION);
-      _mesa_LoadIdentity();
 
-      /* glOrtho with width = 0 or height = 0 generates GL_INVALID_VALUE.
-       * This can occur when there is no draw buffer.
+      /* set 1:1 vertex:pixel coordinate transform */
+      _mesa_load_identity_matrix(ctx, &ctx->ModelviewMatrixStack);
+      _mesa_load_identity_matrix(ctx, &ctx->TextureMatrixStack[0]);
+
+      /* _math_float_ortho with width = 0 or height = 0 will have a divide by
+       * zero.  This can occur when there is no draw buffer.
        */
-      if (ctx->DrawBuffer->Width != 0 && ctx->DrawBuffer->Height != 0)
-         _mesa_Ortho(0.0, ctx->DrawBuffer->Width,
-                     0.0, ctx->DrawBuffer->Height,
-                     -1.0, 1.0);
+      if (ctx->DrawBuffer->Width != 0 && ctx->DrawBuffer->Height != 0) {
+         float m[16];
+
+         _math_float_ortho(m,
+                           0.0f, (float) ctx->DrawBuffer->Width,
+                           0.0f, (float) ctx->DrawBuffer->Height,
+                           -1.0f, 1.0f);
+         _mesa_load_matrix(ctx, &ctx->ProjectionMatrixStack, m);
+      } else {
+         _mesa_load_identity_matrix(ctx, &ctx->ProjectionMatrixStack);
+      }
 
       if (ctx->Extensions.ARB_clip_control) {
          save->ClipOrigin = ctx->Transform.ClipOrigin;
@@ -1102,19 +1102,9 @@ _mesa_meta_end(struct gl_context *ctx)
    }
 
    if (state & MESA_META_TRANSFORM) {
-      GLuint activeTexture = ctx->Texture.CurrentUnit;
-      _mesa_ActiveTexture(GL_TEXTURE0);
-      _mesa_MatrixMode(GL_TEXTURE);
-      _mesa_LoadMatrixf(save->TextureMatrix);
-      _mesa_ActiveTexture(GL_TEXTURE0 + activeTexture);
-
-      _mesa_MatrixMode(GL_MODELVIEW);
-      _mesa_LoadMatrixf(save->ModelviewMatrix);
-
-      _mesa_MatrixMode(GL_PROJECTION);
-      _mesa_LoadMatrixf(save->ProjectionMatrix);
-
-      _mesa_MatrixMode(save->MatrixMode);
+      _mesa_load_matrix(ctx, &ctx->ModelviewMatrixStack, save->ModelviewMatrix);
+      _mesa_load_matrix(ctx, &ctx->ProjectionMatrixStack, save->ProjectionMatrix);
+      _mesa_load_matrix(ctx, &ctx->TextureMatrixStack[0], save->TextureMatrix);
 
       if (ctx->Extensions.ARB_clip_control)
          _mesa_ClipControl(save->ClipOrigin, save->ClipDepthMode);
@@ -1500,8 +1490,7 @@ _mesa_meta_setup_ff_tnl_for_blit(struct gl_context *ctx,
                                    0);
 
    /* setup projection matrix */
-   _mesa_MatrixMode(GL_PROJECTION);
-   _mesa_LoadIdentity();
+   _mesa_load_identity_matrix(ctx, &ctx->ProjectionMatrixStack);
 }
 
 /**
