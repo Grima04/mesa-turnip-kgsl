@@ -1679,7 +1679,6 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    GLbitfield metaSave;
    const GLuint stencilMax = (1 << ctx->DrawBuffer->Visual.stencilBits) - 1;
    struct gl_framebuffer *fb = ctx->DrawBuffer;
-   float x0, y0, x1, y1, z;
    struct vertex verts[4];
    int i;
 
@@ -1715,21 +1714,12 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    assert(!fb->_IntegerBuffers);
    if (glsl) {
       meta_glsl_clear_init(ctx, clear);
-
-      x0 = ((float) fb->_Xmin / fb->Width)  * 2.0f - 1.0f;
-      y0 = ((float) fb->_Ymin / fb->Height) * 2.0f - 1.0f;
-      x1 = ((float) fb->_Xmax / fb->Width)  * 2.0f - 1.0f;
-      y1 = ((float) fb->_Ymax / fb->Height) * 2.0f - 1.0f;
-      z = -invert_z(ctx->Depth.Clear);
    } else {
       _mesa_meta_setup_vertex_objects(ctx, &clear->VAO, &clear->buf_obj, false,
                                       3, 0, 4);
 
-      x0 = (float) fb->_Xmin;
-      y0 = (float) fb->_Ymin;
-      x1 = (float) fb->_Xmax;
-      y1 = (float) fb->_Ymax;
-      z = invert_z(ctx->Depth.Clear);
+      /* setup projection matrix */
+      _mesa_load_identity_matrix(ctx, &ctx->ProjectionMatrixStack);
    }
 
    if (glsl) {
@@ -1776,6 +1766,12 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
    }
 
    /* vertex positions */
+   const float x0 = ((float) fb->_Xmin / fb->Width)  * 2.0f - 1.0f;
+   const float y0 = ((float) fb->_Ymin / fb->Height) * 2.0f - 1.0f;
+   const float x1 = ((float) fb->_Xmax / fb->Width)  * 2.0f - 1.0f;
+   const float y1 = ((float) fb->_Ymax / fb->Height) * 2.0f - 1.0f;
+   const float z = -invert_z(ctx->Depth.Clear);
+
    verts[0].x = x0;
    verts[0].y = y0;
    verts[0].z = z;
