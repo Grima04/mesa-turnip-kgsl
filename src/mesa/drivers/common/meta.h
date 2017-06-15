@@ -318,7 +318,6 @@ struct clear_state
    GLuint VAO;
    struct gl_buffer_object *buf_obj;
    struct gl_shader_program *ShaderProg;
-   struct gl_shader_program *IntegerShaderProg;
 };
 
 

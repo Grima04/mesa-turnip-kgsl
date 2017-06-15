@@ -1542,7 +1542,6 @@ meta_glsl_clear_init(struct gl_context *ctx, struct clear_state *clear)
       "{\n"
       "   gl_FragColor = color;\n"
       "}\n";
-   bool has_integer_textures;
 
    _mesa_meta_setup_vertex_objects(ctx, &clear->VAO, &clear->buf_obj, true,
                                    3, 0, 0);
@@ -1552,49 +1551,6 @@ meta_glsl_clear_init(struct gl_context *ctx, struct clear_state *clear)
 
    _mesa_meta_compile_and_link_program(ctx, vs_source, fs_source, "meta clear",
                                        &clear->ShaderProg);
-
-   has_integer_textures = _mesa_is_gles3(ctx) ||
-      (_mesa_is_desktop_gl(ctx) && ctx->Const.GLSLVersion >= 130);
-
-   if (has_integer_textures) {
-      void *shader_source_mem_ctx = ralloc_context(NULL);
-      const char *vs_int_source =
-         ralloc_asprintf(shader_source_mem_ctx,
-                         "#version 130\n"
-                         "#extension GL_AMD_vertex_shader_layer : enable\n"
-                         "#extension GL_ARB_draw_instanced : enable\n"
-                         "#extension GL_ARB_explicit_attrib_location :enable\n"
-                         "layout(location = 0) in vec4 position;\n"
-                         "void main()\n"
-                         "{\n"
-                         "#ifdef GL_AMD_vertex_shader_layer\n"
-                         "   gl_Layer = gl_InstanceID;\n"
-                         "#endif\n"
-                         "   gl_Position = position;\n"
-                         "}\n");
-      const char *fs_int_source =
-         ralloc_asprintf(shader_source_mem_ctx,
-                         "#version 130\n"
-                         "#extension GL_ARB_explicit_attrib_location :enable\n"
-                         "#extension GL_ARB_explicit_uniform_location :enable\n"
-                         "layout(location = 0) uniform ivec4 color;\n"
-                         "out ivec4 out_color;\n"
-                         "\n"
-                         "void main()\n"
-                         "{\n"
-                         "   out_color = color;\n"
-                         "}\n");
-
-      _mesa_meta_compile_and_link_program(ctx, vs_int_source, fs_int_source,
-                                          "integer clear",
-                                          &clear->IntegerShaderProg);
-      ralloc_free(shader_source_mem_ctx);
-
-      /* Note that user-defined out attributes get automatically assigned
-       * locations starting from 0, so we don't need to explicitly
-       * BindFragDataLocation to 0.
-       */
-   }
 }
 
 static void
@@ -1606,10 +1562,6 @@ meta_glsl_clear_cleanup(struct gl_context *ctx, struct clear_state *clear)
    clear->VAO = 0;
    _mesa_reference_buffer_object(ctx, &clear->buf_obj, NULL);
    _mesa_reference_shader_program(ctx, &clear->ShaderProg, NULL);
-
-   if (clear->IntegerShaderProg) {
-      _mesa_reference_shader_program(ctx, &clear->IntegerShaderProg, NULL);
-   }
 }
 
 static void
@@ -1771,6 +1723,7 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
 
    _mesa_meta_begin(ctx, metaSave);
 
+   assert(!fb->_IntegerBuffers);
    if (glsl) {
       meta_glsl_clear_init(ctx, clear);
 
@@ -1790,11 +1743,7 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
       z = invert_z(ctx->Depth.Clear);
    }
 
-   if (fb->_IntegerBuffers) {
-      assert(glsl);
-      _mesa_meta_use_program(ctx, clear->IntegerShaderProg);
-      _mesa_Uniform4iv(0, 1, ctx->Color.ClearColor.i);
-   } else if (glsl) {
+   if (glsl) {
       _mesa_meta_use_program(ctx, clear->ShaderProg);
       _mesa_Uniform4fv(0, 1, ctx->Color.ClearColor.f);
    }
