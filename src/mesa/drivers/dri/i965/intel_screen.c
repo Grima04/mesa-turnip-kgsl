@@ -34,6 +34,7 @@
 #include "main/hash.h"
 #include "main/fbobject.h"
 #include "main/version.h"
+#include "main/glthread.h"
 #include "swrast/s_renderbuffer.h"
 #include "util/ralloc.h"
 #include "util/disk_cache.h"
@@ -62,6 +63,7 @@ DRI_CONF_BEGIN
 	 DRI_CONF_DESC_END
       DRI_CONF_OPT_END
       DRI_CONF_MESA_NO_ERROR("false")
+      DRI_CONF_MESA_GLTHREAD("false")
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_QUALITY
@@ -147,6 +149,8 @@ intel_dri2_flush_with_flags(__DRIcontext *cPriv,
       return;
 
    struct gl_context *ctx = &brw->ctx;
+
+   _mesa_glthread_finish(ctx);
 
    FLUSH_VERTICES(ctx, 0);
 
