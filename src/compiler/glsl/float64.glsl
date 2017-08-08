@@ -797,3 +797,64 @@ __fmul64(uint64_t a, uint64_t b)
    }
    return __roundAndPackFloat64(zSign, zExp, zFrac0, zFrac1, zFrac2);
 }
+
+/* Shifts the 64-bit value formed by concatenating `a0' and `a1' right by the
+ * number of bits given in `count'.  Any bits shifted off are lost.  The value
+ * of `count' can be arbitrarily large; in particular, if `count' is greater
+ * than 64, the result will be 0.  The result is broken into two 32-bit pieces
+ * which are stored at the locations pointed to by `z0Ptr' and `z1Ptr'.
+ */
+void
+__shift64Right(uint a0, uint a1,
+               int count,
+               out uint z0Ptr,
+               out uint z1Ptr)
+{
+   uint z0;
+   uint z1;
+   int negCount = (-count) & 31;
+
+   z0 = 0u;
+   z0 = mix(z0, (a0 >> count), count < 32);
+   z0 = mix(z0, a0, count == 0);
+
+   z1 = mix(0u, (a0 >> (count & 31)), count < 64);
+   z1 = mix(z1, (a0<<negCount) | (a1>>count), count < 32);
+   z1 = mix(z1, a0, count == 0);
+
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Returns the result of converting the double-precision floating-point value
+ * `a' to the unsigned integer format.  The conversion is performed according
+ * to the IEEE Standard for Floating-Point Arithmetic.
+ */
+uint
+__fp64_to_uint(uint64_t a)
+{
+   uint aFracLo = __extractFloat64FracLo(a);
+   uint aFracHi = __extractFloat64FracHi(a);
+   int aExp = __extractFloat64Exp(a);
+   uint aSign = __extractFloat64Sign(a);
+
+   if ((aExp == 0x7FF) && ((aFracHi | aFracLo) != 0u))
+      return 0xFFFFFFFFu;
+
+   aFracHi |= mix(0u, 0x00100000u, aExp != 0);
+
+   int shiftDist = 0x427 - aExp;
+   if (0 < shiftDist)
+      __shift64RightJamming(aFracHi, aFracLo, shiftDist, aFracHi, aFracLo);
+
+   if ((aFracHi & 0xFFFFF000u) != 0u)
+      return mix(~0u, 0u, (aSign != 0u));
+
+   uint z = 0u;
+   uint zero = 0u;
+   __shift64Right(aFracHi, aFracLo, 12, zero, z);
+
+   uint expt = mix(~0u, 0u, (aSign != 0u));
+
+   return mix(z, expt, (aSign != 0u) && (z != 0u));
+}
