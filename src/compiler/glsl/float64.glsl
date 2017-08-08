@@ -44,6 +44,7 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 #extension GL_ARB_shader_bit_encoding : enable
 #extension GL_EXT_shader_integer_mix : enable
+#extension GL_MESA_shader_integer_functions : enable
 
 #pragma warning(off)
 
@@ -215,4 +216,436 @@ __fge64(uint64_t a, uint64_t b)
       return false;
 
    return !__flt64_nonnan(a, b);
+}
+
+/* Adds the 64-bit value formed by concatenating `a0' and `a1' to the 64-bit
+ * value formed by concatenating `b0' and `b1'.  Addition is modulo 2^64, so
+ * any carry out is lost.  The result is broken into two 32-bit pieces which
+ * are stored at the locations pointed to by `z0Ptr' and `z1Ptr'.
+ */
+void
+__add64(uint a0, uint a1, uint b0, uint b1,
+        out uint z0Ptr,
+        out uint z1Ptr)
+{
+   uint z1 = a1 + b1;
+   z1Ptr = z1;
+   z0Ptr = a0 + b0 + uint(z1 < a1);
+}
+
+
+/* Subtracts the 64-bit value formed by concatenating `b0' and `b1' from the
+ * 64-bit value formed by concatenating `a0' and `a1'.  Subtraction is modulo
+ * 2^64, so any borrow out (carry out) is lost.  The result is broken into two
+ * 32-bit pieces which are stored at the locations pointed to by `z0Ptr' and
+ * `z1Ptr'.
+ */
+void
+__sub64(uint a0, uint a1, uint b0, uint b1,
+        out uint z0Ptr,
+        out uint z1Ptr)
+{
+   z1Ptr = a1 - b1;
+   z0Ptr = a0 - b0 - uint(a1 < b1);
+}
+
+/* Shifts the 64-bit value formed by concatenating `a0' and `a1' right by the
+ * number of bits given in `count'.  If any nonzero bits are shifted off, they
+ * are "jammed" into the least significant bit of the result by setting the
+ * least significant bit to 1.  The value of `count' can be arbitrarily large;
+ * in particular, if `count' is greater than 64, the result will be either 0
+ * or 1, depending on whether the concatenation of `a0' and `a1' is zero or
+ * nonzero.  The result is broken into two 32-bit pieces which are stored at
+ * the locations pointed to by `z0Ptr' and `z1Ptr'.
+ */
+void
+__shift64RightJamming(uint a0,
+                      uint a1,
+                      int count,
+                      out uint z0Ptr,
+                      out uint z1Ptr)
+{
+   uint z0;
+   uint z1;
+   int negCount = (-count) & 31;
+
+   z0 = mix(0u, a0, count == 0);
+   z0 = mix(z0, (a0 >> count), count < 32);
+
+   z1 = uint((a0 | a1) != 0u); /* count >= 64 */
+   uint z1_lt64 = (a0>>(count & 31)) | uint(((a0<<negCount) | a1) != 0u);
+   z1 = mix(z1, z1_lt64, count < 64);
+   z1 = mix(z1, (a0 | uint(a1 != 0u)), count == 32);
+   uint z1_lt32 = (a0<<negCount) | (a1>>count) | uint ((a1<<negCount) != 0u);
+   z1 = mix(z1, z1_lt32, count < 32);
+   z1 = mix(z1, a1, count == 0);
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Shifts the 96-bit value formed by concatenating `a0', `a1', and `a2' right
+ * by 32 _plus_ the number of bits given in `count'.  The shifted result is
+ * at most 64 nonzero bits; these are broken into two 32-bit pieces which are
+ * stored at the locations pointed to by `z0Ptr' and `z1Ptr'.  The bits shifted
+ * off form a third 32-bit result as follows:  The _last_ bit shifted off is
+ * the most-significant bit of the extra result, and the other 31 bits of the
+ * extra result are all zero if and only if _all_but_the_last_ bits shifted off
+ * were all zero.  This extra result is stored in the location pointed to by
+ * `z2Ptr'.  The value of `count' can be arbitrarily large.
+ *     (This routine makes more sense if `a0', `a1', and `a2' are considered
+ * to form a fixed-point value with binary point between `a1' and `a2'.  This
+ * fixed-point value is shifted right by the number of bits given in `count',
+ * and the integer part of the result is returned at the locations pointed to
+ * by `z0Ptr' and `z1Ptr'.  The fractional part of the result may be slightly
+ * corrupted as described above, and is returned at the location pointed to by
+ * `z2Ptr'.)
+ */
+void
+__shift64ExtraRightJamming(uint a0, uint a1, uint a2,
+                           int count,
+                           out uint z0Ptr,
+                           out uint z1Ptr,
+                           out uint z2Ptr)
+{
+   uint z0 = 0u;
+   uint z1;
+   uint z2;
+   int negCount = (-count) & 31;
+
+   z2 = mix(uint(a0 != 0u), a0, count == 64);
+   z2 = mix(z2, a0 << negCount, count < 64);
+   z2 = mix(z2, a1 << negCount, count < 32);
+
+   z1 = mix(0u, (a0 >> (count & 31)), count < 64);
+   z1 = mix(z1, (a0<<negCount) | (a1>>count), count < 32);
+
+   a2 = mix(a2 | a1, a2, count < 32);
+   z0 = mix(z0, a0 >> count, count < 32);
+   z2 |= uint(a2 != 0u);
+
+   z0 = mix(z0, 0u, (count == 32));
+   z1 = mix(z1, a0, (count == 32));
+   z2 = mix(z2, a1, (count == 32));
+   z0 = mix(z0, a0, (count == 0));
+   z1 = mix(z1, a1, (count == 0));
+   z2 = mix(z2, a2, (count == 0));
+   z2Ptr = z2;
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Shifts the 64-bit value formed by concatenating `a0' and `a1' left by the
+ * number of bits given in `count'.  Any bits shifted off are lost.  The value
+ * of `count' must be less than 32.  The result is broken into two 32-bit
+ * pieces which are stored at the locations pointed to by `z0Ptr' and `z1Ptr'.
+ */
+void
+__shortShift64Left(uint a0, uint a1,
+                   int count,
+                   out uint z0Ptr,
+                   out uint z1Ptr)
+{
+   z1Ptr = a1<<count;
+   z0Ptr = mix((a0 << count | (a1 >> ((-count) & 31))), a0, count == 0);
+}
+
+/* Packs the sign `zSign', the exponent `zExp', and the significand formed by
+ * the concatenation of `zFrac0' and `zFrac1' into a double-precision floating-
+ * point value, returning the result.  After being shifted into the proper
+ * positions, the three fields `zSign', `zExp', and `zFrac0' are simply added
+ * together to form the most significant 32 bits of the result.  This means
+ * that any integer portion of `zFrac0' will be added into the exponent.  Since
+ * a properly normalized significand will have an integer portion equal to 1,
+ * the `zExp' input should be 1 less than the desired result exponent whenever
+ * `zFrac0' and `zFrac1' concatenated form a complete, normalized significand.
+ */
+uint64_t
+__packFloat64(uint zSign, int zExp, uint zFrac0, uint zFrac1)
+{
+   uvec2 z;
+
+   z.y = (zSign << 31) + (uint(zExp) << 20) + zFrac0;
+   z.x = zFrac1;
+   return packUint2x32(z);
+}
+
+/* Takes an abstract floating-point value having sign `zSign', exponent `zExp',
+ * and extended significand formed by the concatenation of `zFrac0', `zFrac1',
+ * and `zFrac2', and returns the proper double-precision floating-point value
+ * corresponding to the abstract input.  Ordinarily, the abstract value is
+ * simply rounded and packed into the double-precision format, with the inexact
+ * exception raised if the abstract input cannot be represented exactly.
+ * However, if the abstract value is too large, the overflow and inexact
+ * exceptions are raised and an infinity or maximal finite value is returned.
+ * If the abstract value is too small, the input value is rounded to a
+ * subnormal number, and the underflow and inexact exceptions are raised if the
+ * abstract input cannot be represented exactly as a subnormal double-precision
+ * floating-point number.
+ *     The input significand must be normalized or smaller.  If the input
+ * significand is not normalized, `zExp' must be 0; in that case, the result
+ * returned is a subnormal number, and it must not require rounding.  In the
+ * usual case that the input significand is normalized, `zExp' must be 1 less
+ * than the "true" floating-point exponent.  The handling of underflow and
+ * overflow follows the IEEE Standard for Floating-Point Arithmetic.
+ */
+uint64_t
+__roundAndPackFloat64(uint zSign,
+                      int zExp,
+                      uint zFrac0,
+                      uint zFrac1,
+                      uint zFrac2)
+{
+   bool roundNearestEven;
+   bool increment;
+
+   roundNearestEven = FLOAT_ROUNDING_MODE == FLOAT_ROUND_NEAREST_EVEN;
+   increment = int(zFrac2) < 0;
+   if (!roundNearestEven) {
+      if (FLOAT_ROUNDING_MODE == FLOAT_ROUND_TO_ZERO) {
+         increment = false;
+      } else {
+         if (zSign != 0u) {
+            increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) &&
+               (zFrac2 != 0u);
+         } else {
+            increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_UP) &&
+               (zFrac2 != 0u);
+         }
+      }
+   }
+   if (0x7FD <= zExp) {
+      if ((0x7FD < zExp) ||
+         ((zExp == 0x7FD) &&
+            (0x001FFFFFu == zFrac0 && 0xFFFFFFFFu == zFrac1) &&
+               increment)) {
+         if ((FLOAT_ROUNDING_MODE == FLOAT_ROUND_TO_ZERO) ||
+            ((zSign != 0u) && (FLOAT_ROUNDING_MODE == FLOAT_ROUND_UP)) ||
+               ((zSign == 0u) && (FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN))) {
+            return __packFloat64(zSign, 0x7FE, 0x000FFFFFu, 0xFFFFFFFFu);
+         }
+         return __packFloat64(zSign, 0x7FF, 0u, 0u);
+      }
+      if (zExp < 0) {
+         __shift64ExtraRightJamming(
+            zFrac0, zFrac1, zFrac2, -zExp, zFrac0, zFrac1, zFrac2);
+         zExp = 0;
+         if (roundNearestEven) {
+            increment = zFrac2 < 0u;
+         } else {
+            if (zSign != 0u) {
+               increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) &&
+                  (zFrac2 != 0u);
+            } else {
+               increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_UP) &&
+                  (zFrac2 != 0u);
+            }
+         }
+      }
+   }
+   if (increment) {
+      __add64(zFrac0, zFrac1, 0u, 1u, zFrac0, zFrac1);
+      zFrac1 &= ~((zFrac2 + uint(zFrac2 == 0u)) & uint(roundNearestEven));
+   } else {
+      zExp = mix(zExp, 0, (zFrac0 | zFrac1) == 0u);
+   }
+   return __packFloat64(zSign, zExp, zFrac0, zFrac1);
+}
+
+/* Returns the number of leading 0 bits before the most-significant 1 bit of
+ * `a'.  If `a' is zero, 32 is returned.
+ */
+int
+__countLeadingZeros32(uint a)
+{
+   int shiftCount;
+   shiftCount = mix(31 - findMSB(a), 32, a == 0u);
+   return shiftCount;
+}
+
+/* Takes an abstract floating-point value having sign `zSign', exponent `zExp',
+ * and significand formed by the concatenation of `zSig0' and `zSig1', and
+ * returns the proper double-precision floating-point value corresponding
+ * to the abstract input.  This routine is just like `__roundAndPackFloat64'
+ * except that the input significand has fewer bits and does not have to be
+ * normalized.  In all cases, `zExp' must be 1 less than the "true" floating-
+ * point exponent.
+ */
+uint64_t
+__normalizeRoundAndPackFloat64(uint zSign,
+                               int zExp,
+                               uint zFrac0,
+                               uint zFrac1)
+{
+   int shiftCount;
+   uint zFrac2;
+
+   if (zFrac0 == 0u) {
+      zExp -= 32;
+      zFrac0 = zFrac1;
+      zFrac1 = 0u;
+   }
+
+   shiftCount = __countLeadingZeros32(zFrac0) - 11;
+   if (0 <= shiftCount) {
+      zFrac2 = 0u;
+      __shortShift64Left(zFrac0, zFrac1, shiftCount, zFrac0, zFrac1);
+   } else {
+      __shift64ExtraRightJamming(
+         zFrac0, zFrac1, 0u, -shiftCount, zFrac0, zFrac1, zFrac2);
+   }
+   zExp -= shiftCount;
+   return __roundAndPackFloat64(zSign, zExp, zFrac0, zFrac1, zFrac2);
+}
+
+/* Takes two double-precision floating-point values `a' and `b', one of which
+ * is a NaN, and returns the appropriate NaN result.
+ */
+uint64_t
+__propagateFloat64NaN(uint64_t __a, uint64_t __b)
+{
+   bool aIsNaN = __is_nan(__a);
+   bool bIsNaN = __is_nan(__b);
+   uvec2 a = unpackUint2x32(__a);
+   uvec2 b = unpackUint2x32(__b);
+   a.y |= 0x00080000u;
+   b.y |= 0x00080000u;
+
+   return packUint2x32(mix(b, mix(a, b, bvec2(bIsNaN, bIsNaN)), bvec2(aIsNaN, aIsNaN)));
+}
+
+/* Returns the result of adding the double-precision floating-point values
+ * `a' and `b'.  The operation is performed according to the IEEE Standard for
+ * Floating-Point Arithmetic.
+ */
+uint64_t
+__fadd64(uint64_t a, uint64_t b)
+{
+   uint aSign = __extractFloat64Sign(a);
+   uint bSign = __extractFloat64Sign(b);
+   uint aFracLo = __extractFloat64FracLo(a);
+   uint aFracHi = __extractFloat64FracHi(a);
+   uint bFracLo = __extractFloat64FracLo(b);
+   uint bFracHi = __extractFloat64FracHi(b);
+   int aExp = __extractFloat64Exp(a);
+   int bExp = __extractFloat64Exp(b);
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+   int expDiff = aExp - bExp;
+   if (aSign == bSign) {
+      uint zFrac2 = 0u;
+      int zExp;
+      bool orig_exp_diff_is_zero = (expDiff == 0);
+
+      if (orig_exp_diff_is_zero) {
+         if (aExp == 0x7FF) {
+            bool propagate = (aFracHi | aFracLo | bFracHi | bFracLo) != 0u;
+            return mix(a, __propagateFloat64NaN(a, b), propagate);
+         }
+         __add64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
+         if (aExp == 0)
+            return __packFloat64(aSign, 0, zFrac0, zFrac1);
+         zFrac2 = 0u;
+         zFrac0 |= 0x00200000u;
+         zExp = aExp;
+         __shift64ExtraRightJamming(
+            zFrac0, zFrac1, zFrac2, 1, zFrac0, zFrac1, zFrac2);
+      } else if (0 < expDiff) {
+         if (aExp == 0x7FF) {
+            bool propagate = (aFracHi | aFracLo) != 0u;
+            return mix(a, __propagateFloat64NaN(a, b), propagate);
+         }
+
+         expDiff = mix(expDiff, expDiff - 1, bExp == 0);
+         bFracHi = mix(bFracHi | 0x00100000u, bFracHi, bExp == 0);
+         __shift64ExtraRightJamming(
+            bFracHi, bFracLo, 0u, expDiff, bFracHi, bFracLo, zFrac2);
+         zExp = aExp;
+      } else if (expDiff < 0) {
+         if (bExp == 0x7FF) {
+            bool propagate = (bFracHi | bFracLo) != 0u;
+            return mix(__packFloat64(aSign, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
+         }
+         expDiff = mix(expDiff, expDiff + 1, aExp == 0);
+         aFracHi = mix(aFracHi | 0x00100000u, aFracHi, aExp == 0);
+         __shift64ExtraRightJamming(
+            aFracHi, aFracLo, 0u, - expDiff, aFracHi, aFracLo, zFrac2);
+         zExp = bExp;
+      }
+      if (!orig_exp_diff_is_zero) {
+         aFracHi |= 0x00100000u;
+         __add64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
+         --zExp;
+         if (!(zFrac0 < 0x00200000u)) {
+            __shift64ExtraRightJamming(zFrac0, zFrac1, zFrac2, 1, zFrac0, zFrac1, zFrac2);
+            ++zExp;
+         }
+      }
+      return __roundAndPackFloat64(aSign, zExp, zFrac0, zFrac1, zFrac2);
+
+   } else {
+      int zExp;
+
+      __shortShift64Left(aFracHi, aFracLo, 10, aFracHi, aFracLo);
+      __shortShift64Left(bFracHi, bFracLo, 10, bFracHi, bFracLo);
+      if (0 < expDiff) {
+         if (aExp == 0x7FF) {
+            bool propagate = (aFracHi | aFracLo) != 0u;
+            return mix(a, __propagateFloat64NaN(a, b), propagate);
+         }
+         expDiff = mix(expDiff, expDiff - 1, bExp == 0);
+         bFracHi = mix(bFracHi | 0x40000000u, bFracHi, bExp == 0);
+         __shift64RightJamming(bFracHi, bFracLo, expDiff, bFracHi, bFracLo);
+         aFracHi |= 0x40000000u;
+         __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
+         zExp = aExp;
+         --zExp;
+         return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
+      }
+      if (expDiff < 0) {
+         if (bExp == 0x7FF) {
+            bool propagate = (bFracHi | bFracLo) != 0u;
+            return mix(__packFloat64(aSign ^ 1u, 0x7ff, 0u, 0u), __propagateFloat64NaN(a, b), propagate);
+         }
+         expDiff = mix(expDiff, expDiff + 1, aExp == 0);
+         aFracHi = mix(aFracHi | 0x40000000u, aFracHi, aExp == 0);
+         __shift64RightJamming(aFracHi, aFracLo, - expDiff, aFracHi, aFracLo);
+         bFracHi |= 0x40000000u;
+         __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
+         zExp = bExp;
+         aSign ^= 1u;
+         --zExp;
+         return __normalizeRoundAndPackFloat64(aSign, zExp - 10, zFrac0, zFrac1);
+      }
+      if (aExp == 0x7FF) {
+          bool propagate = (aFracHi | aFracLo | bFracHi | bFracLo) != 0u;
+         return mix(0xFFFFFFFFFFFFFFFFUL, __propagateFloat64NaN(a, b), propagate);
+      }
+      bExp = mix(bExp, 1, aExp == 0);
+      aExp = mix(aExp, 1, aExp == 0);
+      bool zexp_normal = false;
+      bool blta = true;
+      if (bFracHi < aFracHi) {
+         __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
+         zexp_normal = true;
+      }
+      else if (aFracHi < bFracHi) {
+         __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
+         blta = false;
+         zexp_normal = true;
+      }
+      else if (bFracLo < aFracLo) {
+         __sub64(aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1);
+         zexp_normal = true;
+      }
+      else if (aFracLo < bFracLo) {
+         __sub64(bFracHi, bFracLo, aFracHi, aFracLo, zFrac0, zFrac1);
+          blta = false;
+          zexp_normal = true;
+      }
+      zExp = mix(bExp, aExp, blta);
+      aSign = mix(aSign ^ 1u, aSign, blta);
+      uint64_t retval_0 = __packFloat64(uint(FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN), 0, 0u, 0u);
+      uint64_t retval_1 = __normalizeRoundAndPackFloat64(aSign, zExp - 11, zFrac0, zFrac1);
+      return mix(retval_0, retval_1, zexp_normal);
+   }
 }
