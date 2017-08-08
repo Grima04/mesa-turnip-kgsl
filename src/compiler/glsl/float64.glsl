@@ -103,3 +103,59 @@ __fsign64(uint64_t __a)
    retval.y = mix((a.y & 0x80000000u) | 0x3FF00000u, 0u, (a.y << 1 | a.x) == 0u);
    return packUint2x32(retval);
 }
+
+/* Returns the fraction bits of the double-precision floating-point value `a'.*/
+uint
+__extractFloat64FracLo(uint64_t a)
+{
+   return unpackUint2x32(a).x;
+}
+
+uint
+__extractFloat64FracHi(uint64_t a)
+{
+   return unpackUint2x32(a).y & 0x000FFFFFu;
+}
+
+/* Returns the exponent bits of the double-precision floating-point value `a'.*/
+int
+__extractFloat64Exp(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   return int((a.y>>20) & 0x7FFu);
+}
+
+bool
+__feq64_nonnan(uint64_t __a, uint64_t __b)
+{
+   uvec2 a = unpackUint2x32(__a);
+   uvec2 b = unpackUint2x32(__b);
+   return (a.x == b.x) &&
+          ((a.y == b.y) || ((a.x == 0u) && (((a.y | b.y)<<1) == 0u)));
+}
+
+/* Returns true if the double-precision floating-point value `a' is equal to the
+ * corresponding value `b', and false otherwise.  The comparison is performed
+ * according to the IEEE Standard for Floating-Point Arithmetic.
+ */
+bool
+__feq64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a) || __is_nan(b))
+      return false;
+
+   return __feq64_nonnan(a, b);
+}
+
+/* Returns true if the double-precision floating-point value `a' is not equal
+ * to the corresponding value `b', and false otherwise.  The comparison is
+ * performed according to the IEEE Standard for Floating-Point Arithmetic.
+ */
+bool
+__fne64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a) || __is_nan(b))
+      return true;
+
+   return !__feq64_nonnan(a, b);
+}
