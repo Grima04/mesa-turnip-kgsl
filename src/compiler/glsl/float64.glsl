@@ -159,3 +159,10 @@ __fne64(uint64_t a, uint64_t b)
 
    return !__feq64_nonnan(a, b);
 }
+
+/* Returns the sign bit of the double-precision floating-point value `a'.*/
+uint
+__extractFloat64Sign(uint64_t a)
+{
+   return unpackUint2x32(a).y >> 31;
+}
