@@ -649,3 +649,151 @@ __fadd64(uint64_t a, uint64_t b)
       return mix(retval_0, retval_1, zexp_normal);
    }
 }
+
+/* Multiplies `a' by `b' to obtain a 64-bit product.  The product is broken
+ * into two 32-bit pieces which are stored at the locations pointed to by
+ * `z0Ptr' and `z1Ptr'.
+ */
+void
+__mul32To64(uint a, uint b, out uint z0Ptr, out uint z1Ptr)
+{
+   uint aLow = a & 0x0000FFFFu;
+   uint aHigh = a>>16;
+   uint bLow = b & 0x0000FFFFu;
+   uint bHigh = b>>16;
+   uint z1 = aLow * bLow;
+   uint zMiddleA = aLow * bHigh;
+   uint zMiddleB = aHigh * bLow;
+   uint z0 = aHigh * bHigh;
+   zMiddleA += zMiddleB;
+   z0 += ((uint(zMiddleA < zMiddleB)) << 16) + (zMiddleA >> 16);
+   zMiddleA <<= 16;
+   z1 += zMiddleA;
+   z0 += uint(z1 < zMiddleA);
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Multiplies the 64-bit value formed by concatenating `a0' and `a1' to the
+ * 64-bit value formed by concatenating `b0' and `b1' to obtain a 128-bit
+ * product.  The product is broken into four 32-bit pieces which are stored at
+ * the locations pointed to by `z0Ptr', `z1Ptr', `z2Ptr', and `z3Ptr'.
+ */
+void
+__mul64To128(uint a0, uint a1, uint b0, uint b1,
+             out uint z0Ptr,
+             out uint z1Ptr,
+             out uint z2Ptr,
+             out uint z3Ptr)
+{
+   uint z0 = 0u;
+   uint z1 = 0u;
+   uint z2 = 0u;
+   uint z3 = 0u;
+   uint more1 = 0u;
+   uint more2 = 0u;
+
+   __mul32To64(a1, b1, z2, z3);
+   __mul32To64(a1, b0, z1, more2);
+   __add64(z1, more2, 0u, z2, z1, z2);
+   __mul32To64(a0, b0, z0, more1);
+   __add64(z0, more1, 0u, z1, z0, z1);
+   __mul32To64(a0, b1, more1, more2);
+   __add64(more1, more2, 0u, z2, more1, z2);
+   __add64(z0, z1, 0u, more1, z0, z1);
+   z3Ptr = z3;
+   z2Ptr = z2;
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Normalizes the subnormal double-precision floating-point value represented
+ * by the denormalized significand formed by the concatenation of `aFrac0' and
+ * `aFrac1'.  The normalized exponent is stored at the location pointed to by
+ * `zExpPtr'.  The most significant 21 bits of the normalized significand are
+ * stored at the location pointed to by `zFrac0Ptr', and the least significant
+ * 32 bits of the normalized significand are stored at the location pointed to
+ * by `zFrac1Ptr'.
+ */
+void
+__normalizeFloat64Subnormal(uint aFrac0, uint aFrac1,
+                            out int zExpPtr,
+                            out uint zFrac0Ptr,
+                            out uint zFrac1Ptr)
+{
+   int shiftCount;
+   uint temp_zfrac0, temp_zfrac1;
+   shiftCount = __countLeadingZeros32(mix(aFrac0, aFrac1, aFrac0 == 0u)) - 11;
+   zExpPtr = mix(1 - shiftCount, -shiftCount - 31, aFrac0 == 0u);
+
+   temp_zfrac0 = mix(aFrac1<<shiftCount, aFrac1>>(-shiftCount), shiftCount < 0);
+   temp_zfrac1 = mix(0u, aFrac1<<(shiftCount & 31), shiftCount < 0);
+
+   __shortShift64Left(aFrac0, aFrac1, shiftCount, zFrac0Ptr, zFrac1Ptr);
+
+   zFrac0Ptr = mix(zFrac0Ptr, temp_zfrac0, aFrac0 == 0);
+   zFrac1Ptr = mix(zFrac1Ptr, temp_zfrac1, aFrac0 == 0);
+}
+
+/* Returns the result of multiplying the double-precision floating-point values
+ * `a' and `b'.  The operation is performed according to the IEEE Standard for
+ * Floating-Point Arithmetic.
+ */
+uint64_t
+__fmul64(uint64_t a, uint64_t b)
+{
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+   uint zFrac2 = 0u;
+   uint zFrac3 = 0u;
+   int zExp;
+
+   uint aFracLo = __extractFloat64FracLo(a);
+   uint aFracHi = __extractFloat64FracHi(a);
+   uint bFracLo = __extractFloat64FracLo(b);
+   uint bFracHi = __extractFloat64FracHi(b);
+   int aExp = __extractFloat64Exp(a);
+   uint aSign = __extractFloat64Sign(a);
+   int bExp = __extractFloat64Exp(b);
+   uint bSign = __extractFloat64Sign(b);
+   uint zSign = aSign ^ bSign;
+   if (aExp == 0x7FF) {
+      if (((aFracHi | aFracLo) != 0u) ||
+         ((bExp == 0x7FF) && ((bFracHi | bFracLo) != 0u))) {
+         return __propagateFloat64NaN(a, b);
+      }
+      if ((uint(bExp) | bFracHi | bFracLo) == 0u)
+            return 0xFFFFFFFFFFFFFFFFUL;
+      return __packFloat64(zSign, 0x7FF, 0u, 0u);
+   }
+   if (bExp == 0x7FF) {
+      if ((bFracHi | bFracLo) != 0u)
+         return __propagateFloat64NaN(a, b);
+      if ((uint(aExp) | aFracHi | aFracLo) == 0u)
+         return 0xFFFFFFFFFFFFFFFFUL;
+      return __packFloat64(zSign, 0x7FF, 0u, 0u);
+   }
+   if (aExp == 0) {
+      if ((aFracHi | aFracLo) == 0u)
+         return __packFloat64(zSign, 0, 0u, 0u);
+      __normalizeFloat64Subnormal(aFracHi, aFracLo, aExp, aFracHi, aFracLo);
+   }
+   if (bExp == 0) {
+      if ((bFracHi | bFracLo) == 0u)
+         return __packFloat64(zSign, 0, 0u, 0u);
+      __normalizeFloat64Subnormal(bFracHi, bFracLo, bExp, bFracHi, bFracLo);
+   }
+   zExp = aExp + bExp - 0x400;
+   aFracHi |= 0x00100000u;
+   __shortShift64Left(bFracHi, bFracLo, 12, bFracHi, bFracLo);
+   __mul64To128(
+      aFracHi, aFracLo, bFracHi, bFracLo, zFrac0, zFrac1, zFrac2, zFrac3);
+   __add64(zFrac0, zFrac1, aFracHi, aFracLo, zFrac0, zFrac1);
+   zFrac2 |= uint(zFrac3 != 0u);
+   if (0x00200000u <= zFrac0) {
+      __shift64ExtraRightJamming(
+         zFrac0, zFrac1, zFrac2, 1, zFrac0, zFrac1, zFrac2);
+      ++zExp;
+   }
+   return __roundAndPackFloat64(zSign, zExp, zFrac0, zFrac1, zFrac2);
+}
