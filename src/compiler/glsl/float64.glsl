@@ -43,6 +43,7 @@
 #version 430
 #extension GL_ARB_gpu_shader_int64 : enable
 #extension GL_ARB_shader_bit_encoding : enable
+#extension GL_EXT_shader_integer_mix : enable
 
 #pragma warning(off)
 
@@ -65,5 +66,30 @@ __fabs64(uint64_t __a)
 {
    uvec2 a = unpackUint2x32(__a);
    a.y &= 0x7FFFFFFFu;
+   return packUint2x32(a);
+}
+
+/* Returns 1 if the double-precision floating-point value `a' is a NaN;
+ * otherwise returns 0.
+ */
+bool
+__is_nan(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   return (0xFFE00000u <= (a.y<<1)) &&
+      ((a.x != 0u) || ((a.y & 0x000FFFFFu) != 0u));
+}
+
+/* Negate value of a Float64 :
+ * Toggle the sign bit
+ */
+uint64_t
+__fneg64(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   uint t = a.y;
+
+   t ^= (1u << 31);
+   a.y = mix(t, a.y, __is_nan(__a));
    return packUint2x32(a);
 }
