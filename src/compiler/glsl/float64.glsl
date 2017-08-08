@@ -166,3 +166,53 @@ __extractFloat64Sign(uint64_t a)
 {
    return unpackUint2x32(a).y >> 31;
 }
+
+/* Returns true if the 64-bit value formed by concatenating `a0' and `a1' is less
+ * than the 64-bit value formed by concatenating `b0' and `b1'.  Otherwise,
+ * returns false.
+ */
+bool
+lt64(uint a0, uint a1, uint b0, uint b1)
+{
+   return (a0 < b0) || ((a0 == b0) && (a1 < b1));
+}
+
+bool
+__flt64_nonnan(uint64_t __a, uint64_t __b)
+{
+   uvec2 a = unpackUint2x32(__a);
+   uvec2 b = unpackUint2x32(__b);
+   uint aSign = __extractFloat64Sign(__a);
+   uint bSign = __extractFloat64Sign(__b);
+   if (aSign != bSign)
+      return (aSign != 0u) && ((((a.y | b.y)<<1) | a.x | b.x) != 0u);
+
+   return mix(lt64(a.y, a.x, b.y, b.x), lt64(b.y, b.x, a.y, a.x), aSign != 0u);
+}
+
+/* Returns true if the double-precision floating-point value `a' is less than
+ * the corresponding value `b', and false otherwise.  The comparison is performed
+ * according to the IEEE Standard for Floating-Point Arithmetic.
+ */
+bool
+__flt64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a) || __is_nan(b))
+      return false;
+
+   return __flt64_nonnan(a, b);
+}
+
+/* Returns true if the double-precision floating-point value `a' is greater
+ * than or equal to * the corresponding value `b', and false otherwise.  The
+ * comparison is performed * according to the IEEE Standard for Floating-Point
+ * Arithmetic.
+ */
+bool
+__fge64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a) || __is_nan(b))
+      return false;
+
+   return !__flt64_nonnan(a, b);
+}
