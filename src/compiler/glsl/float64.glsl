@@ -56,3 +56,14 @@
 #define FLOAT_ROUND_DOWN            2
 #define FLOAT_ROUND_UP              3
 #define FLOAT_ROUNDING_MODE         FLOAT_ROUND_NEAREST_EVEN
+
+/* Absolute value of a Float64 :
+ * Clear the sign bit
+ */
+uint64_t
+__fabs64(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   a.y &= 0x7FFFFFFFu;
+   return packUint2x32(a);
+}
