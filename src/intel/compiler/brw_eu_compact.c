@@ -1491,6 +1491,12 @@ brw_init_compaction_tables(const struct gen_device_info *devinfo)
    assert(gen11_datatype_table[ARRAY_SIZE(gen11_datatype_table) - 1] != 0);
 
    switch (devinfo->gen) {
+   case 12:
+      control_index_table = NULL;
+      datatype_table = NULL;
+      subreg_table = NULL;
+      src_index_table = NULL;
+      break;
    case 11:
       control_index_table = gen8_control_index_table;
       datatype_table = gen11_datatype_table;
@@ -1533,7 +1539,7 @@ void
 brw_compact_instructions(struct brw_codegen *p, int start_offset,
                          struct disasm_info *disasm)
 {
-   if (unlikely(INTEL_DEBUG & DEBUG_NO_COMPACTION))
+   if (unlikely(INTEL_DEBUG & DEBUG_NO_COMPACTION) || p->devinfo->gen > 11)
       return;
 
    const struct gen_device_info *devinfo = p->devinfo;
