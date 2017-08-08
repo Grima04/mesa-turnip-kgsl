@@ -93,3 +93,13 @@ __fneg64(uint64_t __a)
    a.y = mix(t, a.y, __is_nan(__a));
    return packUint2x32(a);
 }
+
+uint64_t
+__fsign64(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   uvec2 retval;
+   retval.x = 0u;
+   retval.y = mix((a.y & 0x80000000u) | 0x3FF00000u, 0u, (a.y << 1 | a.x) == 0u);
+   return packUint2x32(retval);
+}
