@@ -1045,3 +1045,41 @@ __fp64_to_fp32(uint64_t __a)
    zFrac = mix(zFrac, zFrac | 0x40000000u, aExp != 0);
    return __roundAndPackFloat32(aSign, aExp - 0x381, zFrac);
 }
+
+/* Returns the result of converting the single-precision floating-point value
+ * `a' to the double-precision floating-point format.
+ */
+uint64_t
+__fp32_to_fp64(float f)
+{
+   uint a = floatBitsToUint(f);
+   uint aFrac = a & 0x007FFFFFu;
+   int aExp = int((a>>23) & 0xFFu);
+   uint aSign = a>>31;
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+
+   if (aExp == 0xFF) {
+      if (aFrac != 0u) {
+         uint nanLo = 0u;
+         uint nanHi = a<<9;
+         __shift64Right(nanHi, nanLo, 12, nanHi, nanLo);
+         nanHi |= ((aSign<<31) | 0x7FF80000u);
+         return packUint2x32(uvec2(nanLo, nanHi));
+      }
+      return __packFloat64(aSign, 0x7FF, 0u, 0u);
+    }
+
+   if (aExp == 0) {
+      if (aFrac == 0u)
+         return __packFloat64(aSign, 0, 0u, 0u);
+      /* Normalize subnormal */
+      int shiftCount = __countLeadingZeros32(aFrac) - 8;
+      aFrac <<= shiftCount;
+      aExp = 1 - shiftCount;
+      --aExp;
+   }
+
+   __shift64Right(aFrac, 0u, 3, zFrac0, zFrac1);
+   return __packFloat64(aSign, aExp + 0x380, zFrac0, zFrac1);
+}
