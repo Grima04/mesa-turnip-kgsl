@@ -1083,3 +1083,275 @@ __fp32_to_fp64(float f)
    __shift64Right(aFrac, 0u, 3, zFrac0, zFrac1);
    return __packFloat64(aSign, aExp + 0x380, zFrac0, zFrac1);
 }
+
+/* Adds the 96-bit value formed by concatenating `a0', `a1', and `a2' to the
+ * 96-bit value formed by concatenating `b0', `b1', and `b2'.  Addition is
+ * modulo 2^96, so any carry out is lost.  The result is broken into three
+ * 32-bit pieces which are stored at the locations pointed to by `z0Ptr',
+ * `z1Ptr', and `z2Ptr'.
+ */
+void
+__add96(uint a0, uint a1, uint a2,
+        uint b0, uint b1, uint b2,
+        out uint z0Ptr,
+        out uint z1Ptr,
+        out uint z2Ptr)
+{
+   uint z2 = a2 + b2;
+   uint carry1 = uint(z2 < a2);
+   uint z1 = a1 + b1;
+   uint carry0 = uint(z1 < a1);
+   uint z0 = a0 + b0;
+   z1 += carry1;
+   z0 += uint(z1 < carry1);
+   z0 += carry0;
+   z2Ptr = z2;
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Subtracts the 96-bit value formed by concatenating `b0', `b1', and `b2' from
+ * the 96-bit value formed by concatenating `a0', `a1', and `a2'.  Subtraction
+ * is modulo 2^96, so any borrow out (carry out) is lost.  The result is broken
+ * into three 32-bit pieces which are stored at the locations pointed to by
+ * `z0Ptr', `z1Ptr', and `z2Ptr'.
+ */
+void
+__sub96(uint a0, uint a1, uint a2,
+        uint b0, uint b1, uint b2,
+        out uint z0Ptr,
+        out uint z1Ptr,
+        out uint z2Ptr)
+{
+   uint z2 = a2 - b2;
+   uint borrow1 = uint(a2 < b2);
+   uint z1 = a1 - b1;
+   uint borrow0 = uint(a1 < b1);
+   uint z0 = a0 - b0;
+   z0 -= uint(z1 < borrow1);
+   z1 -= borrow1;
+   z0 -= borrow0;
+   z2Ptr = z2;
+   z1Ptr = z1;
+   z0Ptr = z0;
+}
+
+/* Returns an approximation to the 32-bit integer quotient obtained by dividing
+ * `b' into the 64-bit value formed by concatenating `a0' and `a1'.  The
+ * divisor `b' must be at least 2^31.  If q is the exact quotient truncated
+ * toward zero, the approximation returned lies between q and q + 2 inclusive.
+ * If the exact quotient q is larger than 32 bits, the maximum positive 32-bit
+ * unsigned integer is returned.
+ */
+uint
+__estimateDiv64To32(uint a0, uint a1, uint b)
+{
+   uint b0;
+   uint b1;
+   uint rem0 = 0u;
+   uint rem1 = 0u;
+   uint term0 = 0u;
+   uint term1 = 0u;
+   uint z;
+
+   if (b <= a0)
+      return 0xFFFFFFFFu;
+   b0 = b>>16;
+   z = (b0<<16 <= a0) ? 0xFFFF0000u : (a0 / b0)<<16;
+   __mul32To64(b, z, term0, term1);
+   __sub64(a0, a1, term0, term1, rem0, rem1);
+   while (int(rem0) < 0) {
+      z -= 0x10000u;
+      b1 = b<<16;
+      __add64(rem0, rem1, b0, b1, rem0, rem1);
+   }
+   rem0 = (rem0<<16) | (rem1>>16);
+   z |= (b0<<16 <= rem0) ? 0xFFFFu : rem0 / b0;
+   return z;
+}
+
+uint
+__sqrtOddAdjustments(int index)
+{
+   uint res = 0u;
+   if (index == 0)
+      res = 0x0004u;
+   if (index == 1)
+      res = 0x0022u;
+   if (index == 2)
+      res = 0x005Du;
+   if (index == 3)
+      res = 0x00B1u;
+   if (index == 4)
+      res = 0x011Du;
+   if (index == 5)
+      res = 0x019Fu;
+   if (index == 6)
+      res = 0x0236u;
+   if (index == 7)
+      res = 0x02E0u;
+   if (index == 8)
+      res = 0x039Cu;
+   if (index == 9)
+      res = 0x0468u;
+   if (index == 10)
+      res = 0x0545u;
+   if (index == 11)
+      res = 0x631u;
+   if (index == 12)
+      res = 0x072Bu;
+   if (index == 13)
+      res = 0x0832u;
+   if (index == 14)
+      res = 0x0946u;
+   if (index == 15)
+      res = 0x0A67u;
+
+   return res;
+}
+
+uint
+__sqrtEvenAdjustments(int index)
+{
+   uint res = 0u;
+   if (index == 0)
+      res = 0x0A2Du;
+   if (index == 1)
+      res = 0x08AFu;
+   if (index == 2)
+      res = 0x075Au;
+   if (index == 3)
+      res = 0x0629u;
+   if (index == 4)
+      res = 0x051Au;
+   if (index == 5)
+      res = 0x0429u;
+   if (index == 6)
+      res = 0x0356u;
+   if (index == 7)
+      res = 0x029Eu;
+   if (index == 8)
+      res = 0x0200u;
+   if (index == 9)
+      res = 0x0179u;
+   if (index == 10)
+      res = 0x0109u;
+   if (index == 11)
+      res = 0x00AFu;
+   if (index == 12)
+      res = 0x0068u;
+   if (index == 13)
+      res = 0x0034u;
+   if (index == 14)
+      res = 0x0012u;
+   if (index == 15)
+      res = 0x0002u;
+
+   return res;
+}
+
+/* Returns an approximation to the square root of the 32-bit significand given
+ * by `a'.  Considered as an integer, `a' must be at least 2^31.  If bit 0 of
+ * `aExp' (the least significant bit) is 1, the integer returned approximates
+ * 2^31*sqrt(`a'/2^31), where `a' is considered an integer.  If bit 0 of `aExp'
+ * is 0, the integer returned approximates 2^31*sqrt(`a'/2^30).  In either
+ * case, the approximation returned lies strictly within +/-2 of the exact
+ * value.
+ */
+uint
+__estimateSqrt32(int aExp, uint a)
+{
+   uint z;
+
+   int index = int(a>>27 & 15u);
+   if ((aExp & 1) != 0) {
+      z = 0x4000u + (a>>17) - __sqrtOddAdjustments(index);
+      z = ((a / z)<<14) + (z<<15);
+      a >>= 1;
+   } else {
+      z = 0x8000u + (a>>17) - __sqrtEvenAdjustments(index);
+      z = a / z + z;
+      z = (0x20000u <= z) ? 0xFFFF8000u : (z<<15);
+      if (z <= a)
+         return uint(int(a)>>1);
+   }
+   return ((__estimateDiv64To32(a, 0u, z))>>1) + (z>>1);
+}
+
+/* Returns the square root of the double-precision floating-point value `a'.
+ * The operation is performed according to the IEEE Standard for Floating-Point
+ * Arithmetic.
+ */
+uint64_t
+__fsqrt64(uint64_t a)
+{
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+   uint zFrac2 = 0u;
+   uint doubleZFrac0 = 0u;
+   uint rem0 = 0u;
+   uint rem1 = 0u;
+   uint rem2 = 0u;
+   uint rem3 = 0u;
+   uint term0 = 0u;
+   uint term1 = 0u;
+   uint term2 = 0u;
+   uint term3 = 0u;
+   uint64_t default_nan = 0xFFFFFFFFFFFFFFFFUL;
+
+   uint aFracLo = __extractFloat64FracLo(a);
+   uint aFracHi = __extractFloat64FracHi(a);
+   int aExp = __extractFloat64Exp(a);
+   uint aSign = __extractFloat64Sign(a);
+   if (aExp == 0x7FF) {
+      if ((aFracHi | aFracLo) != 0u)
+         return __propagateFloat64NaN(a, a);
+      if (aSign == 0u)
+         return a;
+      return default_nan;
+   }
+   if (aSign != 0u) {
+      if ((uint(aExp) | aFracHi | aFracLo) == 0u)
+         return a;
+      return default_nan;
+   }
+   if (aExp == 0) {
+      if ((aFracHi | aFracLo) == 0u)
+         return __packFloat64(0u, 0, 0u, 0u);
+      __normalizeFloat64Subnormal(aFracHi, aFracLo, aExp, aFracHi, aFracLo);
+   }
+   int zExp = ((aExp - 0x3FF)>>1) + 0x3FE;
+   aFracHi |= 0x00100000u;
+   __shortShift64Left(aFracHi, aFracLo, 11, term0, term1);
+   zFrac0 = (__estimateSqrt32(aExp, term0)>>1) + 1u;
+   if (zFrac0 == 0u)
+      zFrac0 = 0x7FFFFFFFu;
+   doubleZFrac0 = zFrac0 + zFrac0;
+   __shortShift64Left(aFracHi, aFracLo, 9 - (aExp & 1), aFracHi, aFracLo);
+   __mul32To64(zFrac0, zFrac0, term0, term1);
+   __sub64(aFracHi, aFracLo, term0, term1, rem0, rem1);
+   while (int(rem0) < 0) {
+      --zFrac0;
+      doubleZFrac0 -= 2u;
+      __add64(rem0, rem1, 0u, doubleZFrac0 | 1u, rem0, rem1);
+   }
+   zFrac1 = __estimateDiv64To32(rem1, 0u, doubleZFrac0);
+   if ((zFrac1 & 0x1FFu) <= 5u) {
+      if (zFrac1 == 0u)
+         zFrac1 = 1u;
+      __mul32To64(doubleZFrac0, zFrac1, term1, term2);
+      __sub64(rem1, 0u, term1, term2, rem1, rem2);
+      __mul32To64(zFrac1, zFrac1, term2, term3);
+      __sub96(rem1, rem2, 0u, 0u, term2, term3, rem1, rem2, rem3);
+      while (int(rem1) < 0) {
+         --zFrac1;
+         __shortShift64Left(0u, zFrac1, 1, term2, term3);
+         term3 |= 1u;
+         term2 |= doubleZFrac0;
+         __add96(rem1, rem2, rem3, 0u, term2, term3, rem1, rem2, rem3);
+      }
+      zFrac1 |= uint((rem1 | rem2 | rem3) != 0u);
+   }
+   __shift64ExtraRightJamming(zFrac0, zFrac1, 0u, 10, zFrac0, zFrac1, zFrac2);
+   return __roundAndPackFloat64(0u, zExp, zFrac0, zFrac1, zFrac2);
+}
