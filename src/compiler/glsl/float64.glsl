@@ -858,3 +858,25 @@ __fp64_to_uint(uint64_t a)
 
    return mix(z, expt, (aSign != 0u) && (z != 0u));
 }
+
+uint64_t
+__uint_to_fp64(uint a)
+{
+   if (a == 0u)
+      return 0ul;
+
+   int shiftDist = __countLeadingZeros32(a) + 21;
+
+   uint aHigh = 0u;
+   uint aLow = 0u;
+   int negCount = (- shiftDist) & 31;
+
+   aHigh = mix(0u, a<< shiftDist - 32, shiftDist < 64);
+   aLow = 0u;
+   aHigh = mix(aHigh, 0u, shiftDist == 0);
+   aLow = mix(aLow, a, shiftDist ==0);
+   aHigh = mix(aHigh, a >> negCount, shiftDist < 32);
+   aLow = mix(aLow, a << shiftDist, shiftDist < 32);
+
+   return __packFloat64(0u, 0x432 - shiftDist, aHigh, aLow);
+}
