@@ -1377,3 +1377,45 @@ __ftrunc64(uint64_t __a)
    zHi = mix(zHi, a.y, unbiasedExp > 52);
    return packUint2x32(uvec2(zLo, zHi));
 }
+
+uint64_t
+__fround64(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   int unbiasedExp = __extractFloat64Exp(__a) - 1023;
+   uint aHi = a.y;
+   uint aLo = a.x;
+
+   if (unbiasedExp < 20) {
+      if (unbiasedExp < 0) {
+         aHi &= 0x80000000u;
+         if (unbiasedExp == -1 && aLo != 0u)
+            aHi |= (1023u << 20);
+         aLo = 0u;
+      } else {
+         uint maskExp = 0x000FFFFFu >> unbiasedExp;
+         /* a is an integral value */
+         if (((aHi & maskExp) == 0u) && (aLo == 0u))
+            return __a;
+
+         aHi += 0x00080000u >> unbiasedExp;
+         aHi &= ~maskExp;
+         aLo = 0u;
+      }
+   } else if (unbiasedExp > 51 || unbiasedExp == 1024) {
+      return __a;
+   } else {
+      uint maskExp = 0xFFFFFFFFu >> (unbiasedExp - 20);
+      if ((aLo & maskExp) == 0u)
+         return __a;
+      uint tmp = aLo + (1u << (51 - unbiasedExp));
+      if(tmp < aLo)
+         aHi += 1u;
+      aLo = tmp;
+      aLo &= ~maskExp;
+   }
+
+   a.x = aLo;
+   a.y = aHi;
+   return packUint2x32(a);
+}
