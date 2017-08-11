@@ -1355,3 +1355,25 @@ __fsqrt64(uint64_t a)
    __shift64ExtraRightJamming(zFrac0, zFrac1, 0u, 10, zFrac0, zFrac1, zFrac2);
    return __roundAndPackFloat64(0u, zExp, zFrac0, zFrac1, zFrac2);
 }
+
+uint64_t
+__ftrunc64(uint64_t __a)
+{
+   uvec2 a = unpackUint2x32(__a);
+   int aExp = __extractFloat64Exp(__a);
+   uint zLo;
+   uint zHi;
+
+   int unbiasedExp = aExp - 1023;
+   int fracBits = 52 - unbiasedExp;
+   uint maskLo = mix(~0u << fracBits, 0u, fracBits >= 32);
+   uint maskHi = mix(~0u << (fracBits - 32), ~0u, fracBits < 33);
+   zLo = maskLo & a.x;
+   zHi = maskHi & a.y;
+
+   zLo = mix(zLo, 0u, unbiasedExp < 0);
+   zHi = mix(zHi, 0u, unbiasedExp < 0);
+   zLo = mix(zLo, a.x, unbiasedExp > 52);
+   zHi = mix(zHi, a.y, unbiasedExp > 52);
+   return packUint2x32(uvec2(zLo, zHi));
+}
