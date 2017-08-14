@@ -129,7 +129,7 @@ NVC0LegalizeSSA::handleRCPRSQ(Instruction *i)
    bld.mkSplit(src, 4, i->getSrc(0));
 
    int chip = prog->getTarget()->getChipset();
-   if (chip >= NVISA_GK20A_CHIPSET && chip < NVISA_GM107_CHIPSET) {
+   if (chip >= NVISA_GK104_CHIPSET && chip < NVISA_GM107_CHIPSET) {
       handleRCPRSQLib(i, src);
       return;
    }
