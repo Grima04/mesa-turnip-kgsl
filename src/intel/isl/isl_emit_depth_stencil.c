@@ -130,7 +130,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #endif
 
    if (info->stencil_surf) {
-#if GEN_GEN >= 7
+#if GEN_GEN >= 7 && GEN_GEN < 12
       db.StencilWriteEnable = true;
 #endif
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
