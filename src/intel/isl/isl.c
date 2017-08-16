@@ -1900,6 +1900,9 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
    case 11:                                        \
       isl_gen11_##func(__VA_ARGS__);               \
       break;                                       \
+   case 12:                                        \
+      isl_gen12_##func(__VA_ARGS__);               \
+      break;                                       \
    default:                                        \
       assert(!"Unknown hardware generation");      \
    }
