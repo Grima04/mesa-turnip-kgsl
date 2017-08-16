@@ -704,12 +704,17 @@
       <value name="SURFTYPE_NULL" value="7"/>
     </field>
     <field name="Surface QPitch" start="32" end="46" type="uint"/>
+    <field name="Sample Tap Discard Disable" start="47" end="47" type="bool"/>
+    <field name="Double Fetch Disable" start="49" end="49" type="bool"/>
+    <field name="Corner Texel Mode" start="50" end="50" type="uint"/>
     <field name="Base Mip Level" start="51" end="55" type="u4.1"/>
     <field name="MOCS" start="56" end="62" type="uint"/>
     <field name="Enable Unorm Path In Color Pipe" start="63" end="63" type="bool"/>
     <field name="Width" start="64" end="77" type="uint"/>
     <field name="Height" start="80" end="93" type="uint"/>
     <field name="Surface Pitch" start="96" end="113" type="uint"/>
+    <field name="Null Probing Enable" start="114" end="114" type="uint"/>
+    <field name="Standard Tiling Mode Extensions" start="115" end="115" type="uint"/>
     <field name="Tile Address Mapping Mode" start="116" end="116" type="uint">
       <value name="Gen9" value="0"/>
       <value name="Gen10+" value="1"/>
@@ -757,13 +762,15 @@
       <value name="AUX_NONE" value="0"/>
       <value name="AUX_CCS_D" value="1"/>
       <value name="AUX_APPEND" value="2"/>
-      <value name="AUX_HIZ" value="3"/>
+      <value name="AUX_MCS_LCE" value="4"/>
       <value name="AUX_CCS_E" value="5"/>
     </field>
     <field name="Y Offset for U or UV Plane" start="192" end="205" type="uint"/>
     <field name="Auxiliary Surface Pitch" start="195" end="203" type="uint"/>
+    <field name="YUV Interpolation Enable" start="207" end="207" type="bool"/>
     <field name="Auxiliary Surface QPitch" start="208" end="222" type="uint"/>
     <field name="X Offset for U or UV Plane" start="208" end="221" type="uint"/>
+    <field name="Half Pitch for Chroma" start="222" end="222" type="uint"/>
     <field name="Separate UV Plane Enable" start="223" end="223" type="bool"/>
     <field name="Resource Min LOD" start="224" end="235" type="u4.8"/>
     <field name="Shader Channel Select Alpha" start="240" end="242" type="Shader Channel Select"/>
@@ -773,22 +780,14 @@
     <field name="Memory Compression Enable" start="254" end="254" type="bool"/>
     <field name="Memory Compression Mode" start="255" end="255" type="uint">
       <value name="Horizontal" value="0"/>
-      <value name="Vertical" value="1"/>
     </field>
     <field name="Surface Base Address" start="256" end="319" type="address"/>
     <field name="Quilt Width" start="320" end="324" type="uint"/>
     <field name="Quilt Height" start="325" end="329" type="uint"/>
     <field name="Clear Value Address Enable" start="330" end="330" type="bool"/>
+    <field name="Caching Expanded Formats" start="331" end="331" type="uint"/>
     <field name="Auxiliary Surface Base Address" start="332" end="383" type="address"/>
-    <field name="Auxiliary Table Index for Media Compressed Surface" start="341" end="351" type="uint"/>
-    <field name="Y Offset for V Plane" start="352" end="365" type="uint"/>
-    <field name="X Offset for V Plane" start="368" end="381" type="uint"/>
-    <field name="Red Clear Color" start="384" end="415" type="int"/>
-    <field name="Clear Color Conversion Enable" start="389" end="389" type="uint"/>
     <field name="Clear Value Address" start="390" end="431" type="address"/>
-    <field name="Green Clear Color" start="416" end="447" type="int"/>
-    <field name="Blue Clear Color" start="448" end="479" type="int"/>
-    <field name="Alpha Clear Color" start="480" end="511" type="int"/>
   </struct>
 
   <struct name="ROUNDINGPRECISIONTABLE_3_BITS" length="1">
