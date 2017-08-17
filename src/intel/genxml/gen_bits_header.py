@@ -25,6 +25,7 @@ from __future__ import (
 
 import argparse
 import os
+import re
 import xml.parsers.expat
 
 from mako.template import Template
@@ -130,33 +131,10 @@ ${emit_per_gen_prop_func(field, 'start')}
 
 #endif /* ${guard} */""", output_encoding='utf-8')
 
+alphanum_nono = re.compile(r'[ /\[\]()\-:.,=>#&*"+\\]+')
 def to_alphanum(name):
-    substitutions = {
-        ' ': '',
-        '/': '',
-        '[': '',
-        ']': '',
-        '(': '',
-        ')': '',
-        '-': '',
-        ':': '',
-        '.': '',
-        ',': '',
-        '=': '',
-        '>': '',
-        '#': '',
-        'α': 'alpha',
-        '&': '',
-        '*': '',
-        '"': '',
-        '+': '',
-        '\'': '',
-    }
-
-    for i, j in substitutions.items():
-        name = name.replace(i, j)
-
-    return name
+    global alphanum_nono
+    return alphanum_nono.sub('', name).replace('α', 'alpha')
 
 def safe_name(name):
     name = to_alphanum(name)
