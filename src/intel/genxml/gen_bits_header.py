@@ -182,12 +182,13 @@ class Container(object):
             self.length_by_gen[gen] = xml_attrs['length']
 
     def get_field(self, field_name, create=False):
-        if field_name not in self.fields:
+        key = to_alphanum(field_name)
+        if key not in self.fields:
             if create:
-                self.fields[field_name] = Field(self, field_name)
+                self.fields[key] = Field(self, field_name)
             else:
                 return None
-        return self.fields[field_name]
+        return self.fields[key]
 
     def has_prop(self, prop):
         if prop == 'length':
