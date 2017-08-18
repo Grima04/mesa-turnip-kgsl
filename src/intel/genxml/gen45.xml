@@ -135,7 +135,7 @@
     </field>
     <field name="Illegal Opcode Exception Enable" start="45" end="45" type="bool"/>
     <field name="Mask Stack Exception Enable" start="43" end="43" type="bool"/>
-    <field name="Software  Exception Enable" start="39" end="39" type="bool"/>
+    <field name="Software Exception Enable" start="39" end="39" type="bool"/>
     <field name="Scratch Space Base Pointer" start="74" end="95" type="address"/>
     <field name="Per-Thread Scratch Space" start="64" end="67" type="uint"/>
     <field name="Constant URB Entry Read Length" start="121" end="126" type="uint"/>
@@ -255,7 +255,7 @@
     </field>
     <field name="Illegal Opcode Exception Enable" start="45" end="45" type="bool"/>
     <field name="Mask Stack Exception Enable" start="43" end="43" type="bool"/>
-    <field name="Software  Exception Enable" start="39" end="39" type="bool"/>
+    <field name="Software Exception Enable" start="39" end="39" type="bool"/>
     <field name="Scratch Space Base Pointer" start="74" end="95" type="address"/>
     <field name="Per-Thread Scratch Space" start="64" end="67" type="uint"/>
     <field name="Constant URB Entry Read Length" start="121" end="126" type="uint"/>
@@ -420,7 +420,7 @@
     </field>
     <field name="Illegal Opcode Exception Enable" start="45" end="45" type="bool"/>
     <field name="Mask Stack Exception Enable" start="43" end="43" type="bool"/>
-    <field name="Software  Exception Enable" start="39" end="39" type="bool"/>
+    <field name="Software Exception Enable" start="39" end="39" type="bool"/>
     <field name="Scratch Space Base Pointer" start="74" end="95" type="address"/>
     <field name="Per-Thread Scratch Space" start="64" end="67" type="uint"/>
     <field name="Constant URB Entry Read Length" start="121" end="126" type="uint"/>
@@ -542,7 +542,7 @@
     </field>
     <field name="Illegal Opcode Exception Enable" start="45" end="45" type="bool"/>
     <field name="Mask Stack Exception Enable" start="43" end="43" type="bool"/>
-    <field name="Software  Exception Enable" start="39" end="39" type="bool"/>
+    <field name="Software Exception Enable" start="39" end="39" type="bool"/>
     <field name="Scratch Space Base Pointer" start="74" end="95" type="address"/>
     <field name="Per-Thread Scratch Space" start="64" end="67" type="uint"/>
     <field name="Constant URB Entry Read Length" start="121" end="126" type="uint"/>
@@ -576,7 +576,7 @@
     <field name="Depth Coefficient URB Read Offset" start="40" end="45" type="uint"/>
     <field name="Illegal Opcode Exception Enable" start="36" end="36" type="bool"/>
     <field name="Mask Stack Exception Enable" start="34" end="34" type="bool"/>
-    <field name="Software  Exception Enable" start="33" end="33" type="bool"/>
+    <field name="Software Exception Enable" start="33" end="33" type="bool"/>
     <field name="Scratch Space Base Pointer" start="74" end="95" type="address"/>
     <field name="Per-Thread Scratch Space" start="64" end="67" type="uint"/>
     <field name="Constant URB Entry Read Length" start="121" end="126" type="uint"/>
