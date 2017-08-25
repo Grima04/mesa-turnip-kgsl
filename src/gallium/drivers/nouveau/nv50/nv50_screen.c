@@ -156,6 +156,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return NV50_MAX_WINDOW_RECTANGLES;
    case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
       return 16 * 1024 * 1024;
+   case PIPE_CAP_MAX_VARYINGS:
+      return 15;
 
    /* supported caps */
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:

@@ -488,6 +488,10 @@ The integer capabilities:
   supports switching the format between sRGB and linear for a surface that is
   used as destination in draw and blit calls.
 * ``PIPE_CAP_NIR_COMPACT_ARRAYS``: True if the compiler backend supports NIR's compact array feature, for all shader stages.
+* ``PIPE_CAP_MAX_VARYINGS``: The maximum number of fragment shader
+  varyings. This will generally correspond to
+  ``PIPE_SHADER_CAP_MAX_INPUTS`` for the fragment shader, but in some
+  cases may be a smaller number.
 
 .. _pipe_capf:
 

@@ -182,6 +182,13 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return class_3d >= GM200_3D_CLASS ? 8 : 0;
    case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
       return 64 * 1024 * 1024;
+   case PIPE_CAP_MAX_VARYINGS:
+      /* NOTE: These only count our slots for GENERIC varyings.
+       * The address space may be larger, but the actual hard limit seems to be
+       * less than what the address space layout permits, so don't add TEXCOORD,
+       * COLOR, etc. here.
+       */
+      return 0x1f0 / 16;
 
    /* supported caps */
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
@@ -394,18 +401,6 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
       return 16;
    case PIPE_SHADER_CAP_MAX_INPUTS:
-      if (shader == PIPE_SHADER_VERTEX)
-         return 32;
-      /* NOTE: These only count our slots for GENERIC varyings.
-       * The address space may be larger, but the actual hard limit seems to be
-       * less than what the address space layout permits, so don't add TEXCOORD,
-       * COLOR, etc. here.
-       */
-      if (shader == PIPE_SHADER_FRAGMENT)
-         return 0x1f0 / 16;
-      /* Actually this counts CLIPVERTEX, which occupies the last generic slot,
-       * and excludes 0x60 per-patch inputs.
-       */
       return 0x200 / 16;
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
       return 32;

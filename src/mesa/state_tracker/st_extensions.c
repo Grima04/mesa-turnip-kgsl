@@ -365,10 +365,7 @@ void st_init_limits(struct pipe_screen *screen,
    c->Program[MESA_SHADER_VERTEX].MaxAttribs =
       MIN2(c->Program[MESA_SHADER_VERTEX].MaxAttribs, 16);
 
-   /* PIPE_SHADER_CAP_MAX_INPUTS for the FS specifies the maximum number
-    * of inputs. It's always 2 colors + N generic inputs. */
-   c->MaxVarying = screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
-                                            PIPE_SHADER_CAP_MAX_INPUTS);
+   c->MaxVarying = screen->get_param(screen, PIPE_CAP_MAX_VARYINGS);
    c->MaxVarying = MIN2(c->MaxVarying, MAX_VARYING);
    c->MaxGeometryOutputVertices =
       screen->get_param(screen, PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES);

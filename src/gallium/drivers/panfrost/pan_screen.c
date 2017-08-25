@@ -250,6 +250,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
 
+        case PIPE_CAP_MAX_VARYINGS:
+                return 16;
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }
