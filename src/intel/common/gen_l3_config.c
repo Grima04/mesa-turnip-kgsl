@@ -170,6 +170,7 @@ get_l3_configs(const struct gen_device_info *devinfo)
       return cnl_l3_configs;
 
    case 11:
+   case 12:
       return icl_l3_configs;
 
    default:
