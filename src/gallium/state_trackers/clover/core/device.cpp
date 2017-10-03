@@ -272,3 +272,9 @@ device::device_clc_version() const {
          debug_get_option("CLOVER_DEVICE_CLC_VERSION_OVERRIDE", "1.1");
    return device_clc_version;
 }
+
+bool
+device::supports_ir(enum pipe_shader_ir ir) const {
+   return pipe->get_shader_param(pipe, PIPE_SHADER_COMPUTE,
+                                 PIPE_SHADER_CAP_SUPPORTED_IRS) & (1 << ir);
+}
