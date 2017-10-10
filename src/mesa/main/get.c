@@ -34,6 +34,7 @@
 #include "get.h"
 #include "macros.h"
 #include "mtypes.h"
+#include "spirv_extensions.h"
 #include "state.h"
 #include "texcompress.h"
 #include "texstate.h"
@@ -521,6 +522,7 @@ EXTRA_EXT(NV_conservative_raster_dilate);
 EXTRA_EXT(NV_conservative_raster_pre_snap_triangles);
 EXTRA_EXT(ARB_sample_locations);
 EXTRA_EXT(AMD_framebuffer_multisample_advanced);
+EXTRA_EXT(ARB_spirv_extensions);
 
 static const int
 extra_ARB_color_buffer_float_or_glcore[] = {
@@ -1234,6 +1236,10 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       if (ctx->Const.NumProgramBinaryFormats > 0) {
          v->value_int_n.ints[0] = GL_PROGRAM_BINARY_FORMAT_MESA;
       }
+      break;
+   /* ARB_spirv_extensions */
+   case GL_NUM_SPIR_V_EXTENSIONS:
+      v->value_int = _mesa_get_spirv_extension_count(ctx);
       break;
    /* GL_EXT_disjoint_timer_query */
    case GL_GPU_DISJOINT_EXT:
