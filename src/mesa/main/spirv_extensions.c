@@ -32,13 +32,30 @@
 GLuint
 _mesa_get_spirv_extension_count(struct gl_context *ctx)
 {
-   return 0;
+   if (ctx->Const.SpirVExtensions == NULL)
+      return 0;
+
+   return ctx->Const.SpirVExtensions->count;
 }
 
 const GLubyte *
 _mesa_get_enabled_spirv_extension(struct gl_context *ctx,
                                   GLuint index)
 {
+   unsigned int n = 0;
+
+   if (ctx->Const.SpirVExtensions == NULL)
+      return (const GLubyte *) 0;
+
+   for (unsigned int i = 0; i < SPV_EXTENSIONS_COUNT; i++) {
+      if (ctx->Const.SpirVExtensions->supported[i]) {
+         if (n == index)
+            return (const GLubyte *) _mesa_spirv_extensions_to_string(i);
+         else
+            n++;
+      }
+   }
+
    return (const GLubyte *) 0;
 }
 
