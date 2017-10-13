@@ -40,3 +40,25 @@ _mesa_get_enabled_spirv_extension(struct gl_context *ctx,
 {
    return (const GLubyte *) 0;
 }
+
+const char *
+_mesa_spirv_extensions_to_string(enum SpvExtension ext)
+{
+#define STR(x) case x: return #x;
+   switch (ext) {
+   STR(SPV_KHR_16bit_storage);
+   STR(SPV_KHR_device_group);
+   STR(SPV_KHR_multiview);
+   STR(SPV_KHR_shader_ballot);
+   STR(SPV_KHR_shader_draw_parameters);
+   STR(SPV_KHR_storage_buffer_storage_class);
+   STR(SPV_KHR_subgroup_vote);
+   STR(SPV_KHR_variable_pointers);
+   STR(SPV_AMD_gcn_shader);
+   case SPV_EXTENSIONS_COUNT:
+      unreachable("Unknown SPIR-V extension");
+   }
+#undef STR
+
+   return "unknown";
+}
