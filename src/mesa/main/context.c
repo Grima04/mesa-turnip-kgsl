@@ -1403,6 +1403,8 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_compiler_types)
    if (ctx == _mesa_get_current_context()) {
       _mesa_make_current(NULL, NULL, NULL);
    }
+
+   free(ctx->Const.SpirVExtensions);
 }
 
 

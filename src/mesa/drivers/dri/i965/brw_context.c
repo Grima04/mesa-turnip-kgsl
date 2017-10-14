@@ -46,6 +46,7 @@
 #include "main/framebuffer.h"
 #include "main/stencil.h"
 #include "main/state.h"
+#include "main/spirv_extensions.h"
 
 #include "vbo/vbo.h"
 
@@ -1126,8 +1127,16 @@ brwCreateContext(gl_api api,
    _mesa_compute_version(ctx);
 
    /* GL_ARB_gl_spirv */
-   if (ctx->Extensions.ARB_gl_spirv)
+   if (ctx->Extensions.ARB_gl_spirv) {
       brw_initialize_spirv_supported_capabilities(brw);
+
+      if (ctx->Extensions.ARB_spirv_extensions) {
+         /* GL_ARB_spirv_extensions */
+         ctx->Const.SpirVExtensions = MALLOC_STRUCT(spirv_supported_extensions);
+         _mesa_fill_supported_spirv_extensions(ctx->Const.SpirVExtensions,
+                                               &ctx->Const.SpirVCapabilities);
+      }
+   }
 
    _mesa_initialize_dispatch_tables(ctx);
    _mesa_initialize_vbo_vtxfmt(ctx);
