@@ -323,7 +323,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		info->name = "RAVEN2";
 	}
 
-	if (info->family >= CHIP_VEGA10)
+	if (info->family >= CHIP_NAVI10)
+		info->chip_class = GFX10;
+	else if (info->family >= CHIP_VEGA10)
 		info->chip_class = GFX9;
 	else if (info->family >= CHIP_TONGA)
 		info->chip_class = GFX8;
@@ -413,7 +415,11 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		fprintf(stderr, "amdgpu: clock crystal frequency is 0, timestamps will be wrong\n");
 		info->clock_crystal_freq = 1;
 	}
-	info->tcc_cache_line_size = 64; /* TC L2 line size on GCN */
+	if (info->chip_class >= GFX10) {
+		info->tcc_cache_line_size = 128;
+	} else {
+		info->tcc_cache_line_size = 64;
+	}
 	info->gb_addr_config = amdinfo->gb_addr_cfg;
 	if (info->chip_class == GFX9) {
 		info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(amdinfo->gb_addr_cfg);
