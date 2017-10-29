@@ -407,6 +407,17 @@ static void etna_reset_gpu_state(struct etna_context *ctx)
       etna_set_state(stream, VIVS_RS_SINGLE_BUFFER, COND(ctx->specs.single_buffer, VIVS_RS_SINGLE_BUFFER_ENABLE));
    }
 
+   if (ctx->specs.halti >= 5) {
+      /* TXDESC cache flush - do this once at the beginning, as texture
+       * descriptors are only written by the CPU once, then patched by the kernel
+       * before command stream submission. It does not need flushing if the
+       * referenced image data changes.
+       */
+      etna_set_state(stream, VIVS_GL_FLUSH_CACHE,
+            VIVS_GL_FLUSH_CACHE_DESCRIPTOR_UNK12 |
+            VIVS_GL_FLUSH_CACHE_DESCRIPTOR_UNK13);
+   }
+
    ctx->dirty = ~0L;
    ctx->dirty_sampler_views = ~0L;
 }
@@ -586,6 +597,20 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->dummy_rt_reloc.bo = ctx->dummy_rt;
    ctx->dummy_rt_reloc.offset = 0;
    ctx->dummy_rt_reloc.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
+
+   if (screen->specs.halti >= 5) {
+      /* Create an empty dummy texture descriptor */
+      ctx->dummy_desc_bo = etna_bo_new(ctx->screen->dev, 0x100, DRM_ETNA_GEM_CACHE_WC);
+      if (!ctx->dummy_desc_bo)
+         goto fail;
+      uint32_t *buf = etna_bo_map(ctx->dummy_desc_bo);
+      etna_bo_cpu_prep(ctx->dummy_desc_bo, DRM_ETNA_PREP_WRITE);
+      memset(buf, 0, 0x100);
+      etna_bo_cpu_fini(ctx->dummy_desc_bo);
+      ctx->DUMMY_DESC_ADDR.bo = ctx->dummy_desc_bo;
+      ctx->DUMMY_DESC_ADDR.offset = 0;
+      ctx->DUMMY_DESC_ADDR.flags = ETNA_RELOC_READ;
+   }
 
    return pctx;
 
