@@ -38,6 +38,9 @@ cache:
 - '%LOCALAPPDATA%\pip\Cache -> appveyor.yml'
 - win_flex_bison-2.5.15.zip
 - llvm-5.0.1-msvc2017-mtd.7z
+- C:\pkgcache
+- 'C:\cygwin64\home\%USERNAME%\.ccache'
+- 'C:\cygwin\home\%USERNAME%\.ccache'
 
 os: Visual Studio 2017
 
@@ -47,17 +50,23 @@ init:
 - git config --global core.autocrlf true
 
 environment:
-  WINFLEXBISON_VERSION: 2.5.15
-  LLVM_ARCHIVE: llvm-5.0.1-msvc2017-mtd.7z
+  matrix:
+  - compiler: msvc
+    WINFLEXBISON_VERSION: 2.5.15
+    LLVM_ARCHIVE: llvm-5.0.1-msvc2017-mtd.7z
+  - compiler: cygwin
+    arch: x64
 
 install:
-- call scripts\appveyor_msvc.bat install
+- call scripts\appveyor_%compiler%.bat install
 
 build_script:
-- call scripts\appveyor_msvc.bat build_script
+- call scripts\appveyor_%compiler%.bat build_script
 
 after_build:
-- call scripts\appveyor_msvc.bat after_build
+- call scripts\appveyor_%compiler%.bat after_build
+
+test: off
 
 # It's possible to setup notification here, as described in
 # http://www.appveyor.com/docs/notifications#appveyor-yml-configuration , but
