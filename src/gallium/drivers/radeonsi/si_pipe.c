@@ -448,6 +448,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx->ctx)
 		goto fail;
 
+	if (sscreen->info.chip_class == GFX10)
+		sscreen->debug_flags |= DBG(NO_ASYNC_DMA); /* TODO-GFX10: implement this */
 	if (sscreen->info.num_sdma_rings && !(sscreen->debug_flags & DBG(NO_ASYNC_DMA))) {
 		sctx->dma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA,
 						   (void*)si_flush_dma_cs,
