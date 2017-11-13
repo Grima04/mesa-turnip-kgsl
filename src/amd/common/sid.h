@@ -2129,9 +2129,9 @@
 #define   S_008F14_MIN_LOD(x)                                         (((unsigned)(x) & 0xFFF) << 8)
 #define   G_008F14_MIN_LOD(x)                                         (((x) >> 8) & 0xFFF)
 #define   C_008F14_MIN_LOD                                            0xFFF000FF
-#define   S_008F14_DATA_FORMAT_GFX6(x)                                (((unsigned)(x) & 0x3F) << 20)
-#define   G_008F14_DATA_FORMAT_GFX6(x)                                (((x) >> 20) & 0x3F)
-#define   C_008F14_DATA_FORMAT_GFX6                                   0xFC0FFFFF
+#define   S_008F14_DATA_FORMAT(x)                                     (((unsigned)(x) & 0x3F) << 20)
+#define   G_008F14_DATA_FORMAT(x)                                     (((x) >> 20) & 0x3F)
+#define   C_008F14_DATA_FORMAT                                        0xFC0FFFFF
 #define     V_008F14_IMG_DATA_FORMAT_INVALID                        0x00
 #define     V_008F14_IMG_DATA_FORMAT_8                              0x01
 #define     V_008F14_IMG_DATA_FORMAT_16                             0x02
@@ -2196,9 +2196,9 @@
 #define     V_008F14_IMG_DATA_FORMAT_32_AS_8                        0x3D /* not on stoney */
 #define     V_008F14_IMG_DATA_FORMAT_32_AS_8_8                      0x3E /* not on stoney */
 #define     V_008F14_IMG_DATA_FORMAT_32_AS_32_32_32_32              0x3F
-#define   S_008F14_NUM_FORMAT_GFX6(x)                                 (((unsigned)(x) & 0x0F) << 26)
-#define   G_008F14_NUM_FORMAT_GFX6(x)                                 (((x) >> 26) & 0x0F)
-#define   C_008F14_NUM_FORMAT_GFX6                                    0xC3FFFFFF
+#define   S_008F14_NUM_FORMAT(x)                                      (((unsigned)(x) & 0x0F) << 26)
+#define   G_008F14_NUM_FORMAT(x)                                      (((x) >> 26) & 0x0F)
+#define   C_008F14_NUM_FORMAT                                         0xC3FFFFFF
 #define     V_008F14_IMG_NUM_FORMAT_UNORM                           0x00
 #define     V_008F14_IMG_NUM_FORMAT_SNORM                           0x01
 #define     V_008F14_IMG_NUM_FORMAT_USCALED                         0x02

@@ -1243,10 +1243,10 @@ si_lower_gather4_integer(struct si_shader_context *ctx,
 
 		uint32_t wa_num_format =
 			return_type == TGSI_RETURN_TYPE_UINT ?
-			S_008F14_NUM_FORMAT_GFX6(V_008F14_IMG_NUM_FORMAT_USCALED) :
-			S_008F14_NUM_FORMAT_GFX6(V_008F14_IMG_NUM_FORMAT_SSCALED);
+			S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_USCALED) :
+			S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_SSCALED);
 		wa_formats = LLVMBuildAnd(builder, formats,
-					  LLVMConstInt(ctx->i32, C_008F14_NUM_FORMAT_GFX6, false),
+					  LLVMConstInt(ctx->i32, C_008F14_NUM_FORMAT, false),
 					  "");
 		wa_formats = LLVMBuildOr(builder, wa_formats,
 					LLVMConstInt(ctx->i32, wa_num_format, false), "");
