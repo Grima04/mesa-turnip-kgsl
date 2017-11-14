@@ -1,5 +1,3 @@
-glx@glx-make-current,Crash
-glx@glx-multi-window-single-context,Fail
 glx@glx-multithread-buffer,Fail
 glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail

@@ -9,8 +9,6 @@ glx/glx-copy-sub-buffer samples=32: skip
 glx/glx-copy-sub-buffer samples=4: skip
 glx/glx-copy-sub-buffer samples=6: skip
 glx/glx-copy-sub-buffer samples=8: skip
-glx/glx-make-current: fail
-glx/glx-multi-window-single-context: fail
 glx/glx-multithread-makecurrent-1: skip
 glx/glx-multithread-makecurrent-2: skip
 glx/glx-multithread-makecurrent-3: skip

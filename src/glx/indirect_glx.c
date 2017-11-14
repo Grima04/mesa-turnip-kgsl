@@ -61,135 +61,40 @@ indirect_destroy_context(struct glx_context *gc)
    free((char *) gc);
 }
 
-static Bool
-SendMakeCurrentRequest(Display * dpy, GLXContextID gc_id,
-                       GLXContextTag gc_tag, GLXDrawable draw,
-                       GLXDrawable read, GLXContextTag *out_tag)
-{
-   xGLXMakeCurrentReply reply;
-   Bool ret;
-   int opcode = __glXSetupForCommand(dpy);
-
-   LockDisplay(dpy);
-
-   if (draw == read) {
-      xGLXMakeCurrentReq *req;
-
-      GetReq(GLXMakeCurrent, req);
-      req->reqType = opcode;
-      req->glxCode = X_GLXMakeCurrent;
-      req->drawable = draw;
-      req->context = gc_id;
-      req->oldContextTag = gc_tag;
-   }
-   else {
-      struct glx_display *priv = __glXInitialize(dpy);
-
-      /* If the server can support the GLX 1.3 version, we should
-       * perfer that.  Not only that, some servers support GLX 1.3 but
-       * not the SGI extension.
-       */
-
-      if ((priv->majorVersion > 1) || (priv->minorVersion >= 3)) {
-         xGLXMakeContextCurrentReq *req;
-
-         GetReq(GLXMakeContextCurrent, req);
-         req->reqType = opcode;
-         req->glxCode = X_GLXMakeContextCurrent;
-         req->drawable = draw;
-         req->readdrawable = read;
-         req->context = gc_id;
-         req->oldContextTag = gc_tag;
-      }
-      else {
-         xGLXVendorPrivateWithReplyReq *vpreq;
-         xGLXMakeCurrentReadSGIReq *req;
-
-         GetReqExtra(GLXVendorPrivateWithReply,
-                     sz_xGLXMakeCurrentReadSGIReq -
-                     sz_xGLXVendorPrivateWithReplyReq, vpreq);
-         req = (xGLXMakeCurrentReadSGIReq *) vpreq;
-         req->reqType = opcode;
-         req->glxCode = X_GLXVendorPrivateWithReply;
-         req->vendorCode = X_GLXvop_MakeCurrentReadSGI;
-         req->drawable = draw;
-         req->readable = read;
-         req->context = gc_id;
-         req->oldContextTag = gc_tag;
-      }
-   }
-
-   ret = _XReply(dpy, (xReply *) &reply, 0, False);
-
-   if (out_tag)
-      *out_tag = reply.contextTag;
-
-   UnlockDisplay(dpy);
-   SyncHandle();
-
-   return ret;
-}
-
 static int
 indirect_bind_context(struct glx_context *gc, struct glx_context *old,
 		      GLXDrawable draw, GLXDrawable read)
 {
-   GLXContextTag tag;
-   Display *dpy = gc->psc->dpy;
-   Bool sent;
+   __GLXattribute *state = gc->client_state_private;
 
-   if (old != &dummyContext && !old->isDirect && old->psc->dpy == dpy) {
-      tag = old->currentContextTag;
-      old->currentContextTag = 0;
-   } else {
-      tag = 0;
+   if (!IndirectAPI)
+      IndirectAPI = __glXNewIndirectAPI();
+   _glapi_set_dispatch(IndirectAPI);
+
+   /* The indirect vertex array state must to be initialised after we
+    * have setup the context, as it needs to query server attributes.
+    *
+    * At the point this is called gc->currentDpy is not initialized
+    * nor is the thread's current context actually set. Hence the
+    * cleverness before the GetString calls.
+    */
+   if (state && state->array_state == NULL) {
+      gc->currentDpy = gc->psc->dpy;
+      __glXSetCurrentContext(gc);
+      __indirect_glGetString(GL_EXTENSIONS);
+      __indirect_glGetString(GL_VERSION);
+      __glXInitVertexArrayState(gc);
    }
 
-   sent = SendMakeCurrentRequest(dpy, gc->xid, tag, draw, read,
-				 &gc->currentContextTag);
+   if (state != NULL && state->array_state != NULL)
+      return Success;
 
-   if (sent) {
-      if (!IndirectAPI)
-         IndirectAPI = __glXNewIndirectAPI();
-      _glapi_set_dispatch(IndirectAPI);
-
-      /* The indirect vertex array state must to be initialised after we
-       * have setup the context, as it needs to query server attributes.
-       *
-       * At the point this is called gc->currentDpy is not initialized
-       * nor is the thread's current context actually set. Hence the
-       * cleverness before the GetString calls.
-       */
-      __GLXattribute *state = gc->client_state_private;
-      if (state && state->array_state == NULL) {
-         gc->currentDpy = gc->psc->dpy;
-         __glXSetCurrentContext(gc);
-         __indirect_glGetString(GL_EXTENSIONS);
-         __indirect_glGetString(GL_VERSION);
-         __glXInitVertexArrayState(gc);
-      }
-   }
-
-   return !sent;
+   return BadAlloc;
 }
 
 static void
 indirect_unbind_context(struct glx_context *gc, struct glx_context *new)
 {
-   Display *dpy = gc->psc->dpy;
-
-   if (gc == new)
-      return;
-   
-   /* We are either switching to no context, away from an indirect
-    * context to a direct context or from one dpy to another and have
-    * to send a request to the dpy to unbind the previous context.
-    */
-   if (!new || new->isDirect || new->psc->dpy != dpy) {
-      SendMakeCurrentRequest(dpy, None, gc->currentContextTag, None, None,
-                             NULL);
-      gc->currentContextTag = 0;
-   }
 }
 
 static void
