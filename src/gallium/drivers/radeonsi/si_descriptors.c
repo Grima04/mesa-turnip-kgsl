@@ -1518,8 +1518,6 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 			  S_008F0C_INDEX_STRIDE(index_stride) |
 			  S_008F0C_ADD_TID_ENABLE(add_tid);
 
@@ -1527,6 +1525,15 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot,
 			assert(!swizzle || element_size == 1); /* always 4 bytes on GFX9 */
 		else
 			desc[3] |= S_008F0C_ELEMENT_SIZE(element_size);
+
+		if (sctx->chip_class >= GFX10) {
+			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 
 		pipe_resource_reference(&buffers->buffers[slot], buffer);
 		radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
