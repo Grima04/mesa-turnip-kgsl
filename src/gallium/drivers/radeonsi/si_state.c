@@ -4231,12 +4231,21 @@ si_create_sampler_view_custom(struct pipe_context *ctx,
 				   width, height, depth,
 				   view->state, view->fmask_state);
 
-	unsigned num_format = G_008F14_NUM_FORMAT(view->state[1]);
-	view->is_integer =
-		num_format == V_008F14_IMG_NUM_FORMAT_USCALED ||
-		num_format == V_008F14_IMG_NUM_FORMAT_SSCALED ||
-		num_format == V_008F14_IMG_NUM_FORMAT_UINT ||
-		num_format == V_008F14_IMG_NUM_FORMAT_SINT;
+	const struct util_format_description *desc = util_format_description(pipe_format);
+	view->is_integer = false;
+
+	for (unsigned i = 0; i < desc->nr_channels; ++i) {
+		if (desc->channel[i].type == UTIL_FORMAT_TYPE_VOID)
+			continue;
+
+		/* Whether the number format is {U,S}{SCALED,INT} */
+		view->is_integer =
+			(desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED ||
+			 desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED) &&
+			(desc->channel[i].pure_integer || !desc->channel[i].normalized);
+		break;
+	}
+
 	view->base_level_info = &surflevel[base_level];
 	view->base_level = base_level;
 	view->block_width = util_format_get_blockwidth(pipe_format);
