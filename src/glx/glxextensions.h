@@ -51,6 +51,7 @@ enum
    EXT_fbconfig_packed_float_bit,
    EXT_framebuffer_sRGB_bit,
    EXT_import_context_bit,
+   EXT_no_config_context_bit,
    EXT_swap_control_bit,
    EXT_swap_control_tear_bit,
    EXT_texture_from_pixmap_bit,
@@ -259,7 +260,7 @@ struct glx_context;
 
 extern GLboolean __glXExtensionBitIsEnabled(struct glx_screen *psc,
                                             unsigned bit);
-extern const char *__glXGetClientExtensions(void);
+extern const char *__glXGetClientExtensions(Display *dpy);
 extern void __glXCalculateUsableExtensions(struct glx_screen *psc,
                                            GLboolean
                                            display_is_direct_capable,

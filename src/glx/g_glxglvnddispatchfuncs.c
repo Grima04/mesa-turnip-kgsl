@@ -161,7 +161,19 @@ static GLXContext dispatch_CreateContextAttribsARB(Display *dpy,
     __GLXvendorInfo *dd;
     GLXContext ret;
 
-    dd = GetDispatchFromFBConfig(dpy, config);
+    if (config) {
+       dd = GetDispatchFromFBConfig(dpy, config);
+    } else if (attrib_list) {
+       int i, screen;
+
+       for (i = 0; attrib_list[i * 2] != None; i++) {
+          if (attrib_list[i * 2] == GLX_SCREEN) {
+             screen = attrib_list[i * 2 + 1];
+             dd = GetDispatchFromDrawable(dpy, RootWindow(dpy, screen));
+             break;
+          }
+       }
+    }
     if (dd == NULL)
         return None;
 

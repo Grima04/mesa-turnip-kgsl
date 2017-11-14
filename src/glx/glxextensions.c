@@ -96,6 +96,7 @@ static const struct extension_info known_glx_extensions[] = {
    { GLX(EXT_fbconfig_packed_float),      Y, N },
    { GLX(EXT_framebuffer_sRGB),           Y, N },
    { GLX(EXT_import_context),             Y, N },
+   { GLX(EXT_no_config_context),          N, N },
    { GLX(EXT_swap_control),               N, Y },
    { GLX(EXT_swap_control_tear),          N, Y },
    { GLX(EXT_texture_from_pixmap),        N, N },
@@ -624,7 +625,7 @@ __glXGetStringFromTable(const struct extension_info *ext,
  * Get the string of client library supported extensions.
  */
 const char *
-__glXGetClientExtensions(void)
+__glXGetClientExtensions(Display *dpy)
 {
    if (__glXGLXClientExtensions == NULL) {
       __glXExtensionsCtr();
