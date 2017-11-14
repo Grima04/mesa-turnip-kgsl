@@ -284,9 +284,13 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
 		return 15; /* 16384 */
 	case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
+		if (sscreen->info.chip_class >= GFX10)
+			return 14;
 		/* textures support 8192, but layered rendering supports 2048 */
 		return 12;
 	case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
+		if (sscreen->info.chip_class >= GFX10)
+			return 8192;
 		/* textures support 8192, but layered rendering supports 2048 */
 		return 2048;
 
