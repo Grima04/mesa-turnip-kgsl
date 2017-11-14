@@ -2008,6 +2008,15 @@ static unsigned si_tex_dim(struct si_screen *sscreen, struct si_texture *tex,
 
 static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe_format format)
 {
+	struct si_screen *sscreen = (struct si_screen *)screen;
+
+	if (sscreen->info.chip_class >= GFX10) {
+		const struct gfx10_format *fmt = &gfx10_format_table[format];
+		if (!fmt->img_format || fmt->buffers_only)
+			return false;
+		return true;
+	}
+
 	const struct util_format_description *desc = util_format_description(format);
 	if (!desc)
 		return false;
@@ -2136,6 +2145,7 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen,
 					      enum pipe_format format,
 					      unsigned usage)
 {
+	struct si_screen *sscreen = (struct si_screen *)screen;
 	const struct util_format_description *desc;
 	int first_non_void;
 	unsigned data_format;
@@ -2163,6 +2173,13 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen,
 			if (!usage)
 				return 0;
 		}
+	}
+
+	if (sscreen->info.chip_class >= GFX10) {
+		const struct gfx10_format *fmt = &gfx10_format_table[format];
+		if (!fmt->img_format || fmt->img_format >= 128)
+			return 0;
+		return usage;
 	}
 
 	first_non_void = util_format_get_first_non_void_channel(format);
