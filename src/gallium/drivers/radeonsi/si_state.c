@@ -3736,7 +3736,7 @@ static unsigned gfx9_border_color_swizzle(const unsigned char swizzle[4])
 /**
  * Build the sampler view descriptor for a texture.
  */
-void
+static void
 si_make_texture_descriptor(struct si_screen *screen,
 			   struct si_texture *tex,
 			   bool sampler,
@@ -4224,7 +4224,7 @@ si_create_sampler_view_custom(struct pipe_context *ctx,
 						state->u.tex.first_level,
 						state->format);
 
-	si_make_texture_descriptor(sctx->screen, tex, true,
+	sctx->screen->make_texture_descriptor(sctx->screen, tex, true,
 				   state->target, pipe_format, state_swizzle,
 				   first_level, last_level,
 				   state->u.tex.first_layer, last_layer,
@@ -4970,6 +4970,8 @@ void si_init_state_functions(struct si_context *sctx)
 void si_init_screen_state_functions(struct si_screen *sscreen)
 {
 	sscreen->b.is_format_supported = si_is_format_supported;
+
+	sscreen->make_texture_descriptor = si_make_texture_descriptor;
 }
 
 static void si_set_grbm_gfx_index(struct si_context *sctx,

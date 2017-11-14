@@ -742,7 +742,7 @@ static void si_set_shader_image_desc(struct si_context *ctx,
 			hw_level = 0;
 		}
 
-		si_make_texture_descriptor(screen, tex,
+		screen->make_texture_descriptor(screen, tex,
 					   false, res->b.b.target,
 					   view->format, swizzle,
 					   hw_level, hw_level,

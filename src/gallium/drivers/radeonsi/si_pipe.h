@@ -457,6 +457,19 @@ struct si_screen {
 	uint64_t			debug_flags;
 	char				renderer_string[183];
 
+	void (*make_texture_descriptor)(
+			struct si_screen *screen,
+			struct si_texture *tex,
+			bool sampler,
+			enum pipe_texture_target target,
+			enum pipe_format pipe_format,
+			const unsigned char state_swizzle[4],
+			unsigned first_level, unsigned last_level,
+			unsigned first_layer, unsigned last_layer,
+			unsigned width, unsigned height, unsigned depth,
+			uint32_t *state,
+			uint32_t *fmask_state);
+
 	unsigned			pa_sc_raster_config;
 	unsigned			pa_sc_raster_config_1;
 	unsigned			se_tile_repeat;

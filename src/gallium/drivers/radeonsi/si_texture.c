@@ -683,7 +683,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 	bool is_array = util_texture_is_array(res->target);
 	uint32_t desc[8];
 
-	si_make_texture_descriptor(sscreen, tex, true,
+	sscreen->make_texture_descriptor(sscreen, tex, true,
 				   res->target, res->format,
 				   swizzle, 0, res->last_level, 0,
 				   is_array ? res->array_size - 1 : 0,

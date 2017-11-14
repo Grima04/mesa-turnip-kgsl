@@ -536,18 +536,6 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 			  enum pipe_format format,
 			  unsigned offset, unsigned size,
 			  uint32_t *state);
-void
-si_make_texture_descriptor(struct si_screen *screen,
-			   struct si_texture *tex,
-			   bool sampler,
-			   enum pipe_texture_target target,
-			   enum pipe_format pipe_format,
-			   const unsigned char state_swizzle[4],
-			   unsigned first_level, unsigned last_level,
-			   unsigned first_layer, unsigned last_layer,
-			   unsigned width, unsigned height, unsigned depth,
-			   uint32_t *state,
-			   uint32_t *fmask_state);
 struct pipe_sampler_view *
 si_create_sampler_view_custom(struct pipe_context *ctx,
 			      struct pipe_resource *texture,
