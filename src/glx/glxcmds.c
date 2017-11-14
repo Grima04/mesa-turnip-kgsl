@@ -238,7 +238,7 @@ validate_renderType_against_config(const struct glx_config *config,
 {
    /* GLX_EXT_no_config_context supports any render type */
    if (!config)
-      return True;
+      return renderType == GLX_DONT_CARE;
 
    switch (renderType) {
       case GLX_RGBA_TYPE:
@@ -268,6 +268,9 @@ glx_context_init(struct glx_context *gc,
    gc->config = config;
    gc->isDirect = GL_TRUE;
    gc->currentContextTag = -1;
+
+   if (!config)
+      gc->renderType = GLX_DONT_CARE;
 
    return True;
 }
