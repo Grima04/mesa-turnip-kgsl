@@ -341,7 +341,6 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 
 	if (sscreen->info.chip_class >= GFX8) {
 		state[6] &= C_008F28_COMPRESSION_EN;
-		state[7] = 0;
 
 		if (vi_dcc_enabled(tex, first_level)) {
 			meta_va = (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) +
@@ -357,13 +356,39 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 			meta_va = tex->buffer.gpu_address + tex->htile_offset;
 		}
 
-		if (meta_va) {
+		if (meta_va)
 			state[6] |= S_008F28_COMPRESSION_EN(1);
-			state[7] = meta_va >> 8;
-		}
 	}
 
-	if (sscreen->info.chip_class >= GFX9) {
+	if (sscreen->info.chip_class >= GFX8 && sscreen->info.chip_class <= GFX9)
+		state[7] = meta_va >> 8;
+
+	if (sscreen->info.chip_class >= GFX10) {
+		state[3] &= C_00A00C_SW_MODE;
+
+		if (is_stencil) {
+			state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
+		} else {
+			state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode);
+		}
+
+		state[6] &= C_00A018_META_DATA_ADDRESS_LO &
+			    C_00A018_META_PIPE_ALIGNED;
+
+		if (meta_va) {
+			struct gfx9_surf_meta_flags meta;
+
+			if (tex->dcc_offset)
+				meta = tex->surface.u.gfx9.dcc;
+			else
+				meta = tex->surface.u.gfx9.htile;
+
+			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
+				    S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8);
+		}
+
+		state[7] = meta_va >> 16;
+	} else if (sscreen->info.chip_class >= GFX9) {
 		state[3] &= C_008F1C_SW_MODE;
 		state[4] &= C_008F20_PITCH;
 
