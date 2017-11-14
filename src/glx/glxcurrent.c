@@ -165,17 +165,100 @@ glXGetCurrentDrawable(void)
    return gc->currentDrawable;
 }
 
-/**
- * Make a particular context current.
- *
- * \note This is in this file so that it can access dummyContext.
- */
+static Bool
+SendMakeCurrentRequest(Display * dpy, GLXContextID gc_id,
+                       GLXContextTag gc_tag, GLXDrawable draw,
+                       GLXDrawable read, GLXContextTag *out_tag)
+{
+   xGLXMakeCurrentReply reply;
+   Bool ret;
+   int opcode = __glXSetupForCommand(dpy);
+
+   LockDisplay(dpy);
+
+   if (draw == read) {
+      xGLXMakeCurrentReq *req;
+
+      GetReq(GLXMakeCurrent, req);
+      req->reqType = opcode;
+      req->glxCode = X_GLXMakeCurrent;
+      req->drawable = draw;
+      req->context = gc_id;
+      req->oldContextTag = gc_tag;
+   }
+   else {
+      struct glx_display *priv = __glXInitialize(dpy);
+
+      if ((priv->majorVersion > 1) || (priv->minorVersion >= 3)) {
+         xGLXMakeContextCurrentReq *req;
+
+         GetReq(GLXMakeContextCurrent, req);
+         req->reqType = opcode;
+         req->glxCode = X_GLXMakeContextCurrent;
+         req->drawable = draw;
+         req->readdrawable = read;
+         req->context = gc_id;
+         req->oldContextTag = gc_tag;
+      }
+      else {
+         xGLXVendorPrivateWithReplyReq *vpreq;
+         xGLXMakeCurrentReadSGIReq *req;
+
+         GetReqExtra(GLXVendorPrivateWithReply,
+                     sz_xGLXMakeCurrentReadSGIReq -
+                     sz_xGLXVendorPrivateWithReplyReq, vpreq);
+         req = (xGLXMakeCurrentReadSGIReq *) vpreq;
+         req->reqType = opcode;
+         req->glxCode = X_GLXVendorPrivateWithReply;
+         req->vendorCode = X_GLXvop_MakeCurrentReadSGI;
+         req->drawable = draw;
+         req->readable = read;
+         req->context = gc_id;
+         req->oldContextTag = gc_tag;
+      }
+   }
+
+   ret = _XReply(dpy, (xReply *) &reply, 0, False);
+
+
+   if (ret == 1)
+      *out_tag = reply.contextTag;
+
+   UnlockDisplay(dpy);
+   SyncHandle();
+
+   return ret;
+}
+
+static void
+SetGC(struct glx_context *gc, Display *dpy, GLXDrawable draw, GLXDrawable read)
+{
+   gc->currentDpy = dpy;
+   gc->currentDrawable = draw;
+   gc->currentReadable = read;
+}
+
+static Bool
+should_send(Display *dpy, struct glx_context *gc)
+{
+   /* always send for indirect contexts */
+   if (!gc->isDirect)
+      return 1;
+
+   /* don't send for broken servers. */
+   if (VendorRelease(dpy) < 12006000 || VendorRelease(dpy) >= 40000000)
+      return 0;
+
+   return 1;
+}
+
 static Bool
 MakeContextCurrent(Display * dpy, GLXDrawable draw,
                    GLXDrawable read, GLXContext gc_user)
 {
    struct glx_context *gc = (struct glx_context *) gc_user;
    struct glx_context *oldGC = __glXGetCurrentContext();
+   Bool ret = GL_FALSE;
 
    /* Make sure that the new context has a nonzero ID.  In the request,
     * a zero context ID is used only to mean that we bind to no current
@@ -186,66 +269,97 @@ MakeContextCurrent(Display * dpy, GLXDrawable draw,
    }
 
    _glapi_check_multithread();
-
    __glXLock();
+
    if (oldGC == gc &&
-       gc->currentDrawable == draw && gc->currentReadable == read) {
-      __glXUnlock();
-      return True;
+       gc->currentDrawable == draw &&
+       gc->currentReadable == read) {
+      /* Same context and drawables: no op, just return */
+      ret = GL_TRUE;
    }
 
-   /* can't have only one be 0 */
-   if (!!draw != !!read) {
-      __glXUnlock();
-      __glXSendError(dpy, BadMatch, None, X_GLXMakeContextCurrent, True);
-      return False;
-   }
-
-   if (oldGC != &dummyContext) {
-      if (--oldGC->thread_refcount == 0) {
-	 oldGC->vtable->unbind(oldGC, gc);
-	 oldGC->currentDpy = 0;
+   else if (oldGC == gc) {
+      /* Same context and new drawables: update drawable bindings */
+      if (should_send(dpy, gc)) {
+         if (!SendMakeCurrentRequest(dpy, gc->xid, gc->currentContextTag,
+                                     draw, read, &gc->currentContextTag)) {
+            goto out;
+         }
       }
-   }
 
-   if (gc) {
-      /* Attempt to bind the context.  We do this before mucking with
-       * gc and __glXSetCurrentContext to properly handle our state in
-       * case of an error.
-       *
-       * If an error occurs, set the Null context since we've already
-       * blown away our old context.  The caller is responsible for
-       * figuring out how to handle setting a valid context.
-       */
-      if (gc->vtable->bind(gc, oldGC, draw, read) != Success) {
+      if (gc->vtable->bind(gc, gc, draw, read) != Success) {
          __glXSetCurrentContextNull();
-         __glXUnlock();
-         __glXSendError(dpy, GLXBadContext, None, X_GLXMakeContextCurrent,
-                        False);
-         return GL_FALSE;
+         goto out;
       }
+   }
 
-      if (gc->thread_refcount == 0) {
-         gc->currentDpy = dpy;
-         gc->currentDrawable = draw;
-         gc->currentReadable = read;
+   else {
+      /* Different contexts: release the old, bind the new */
+      GLXContextTag oldTag = oldGC->currentContextTag;
+
+      if (oldGC != &dummyContext) {
+
+         if (--oldGC->thread_refcount == 0) {
+            if (oldGC->xid != None &&
+                should_send(dpy, oldGC) &&
+                !SendMakeCurrentRequest(dpy, None, oldTag, None, None,
+					&oldGC->currentContextTag)) {
+               goto out;
+            }
+
+            oldGC->vtable->unbind(oldGC, gc);
+
+            if (oldGC->xid == None) {
+               /* destroyed context, free it */
+               oldGC->vtable->destroy(oldGC);
+               oldTag = 0;
+            } else {
+               SetGC(oldGC, NULL, None, None);
+               oldTag = oldGC->currentContextTag;
+            }
+         }
       }
-      gc->thread_refcount++;
-      __glXSetCurrentContext(gc);
-   } else {
       __glXSetCurrentContextNull();
-   }
 
-   if (oldGC->thread_refcount == 0 && oldGC != &dummyContext && oldGC->xid == None) {
-      /* We are switching away from a context that was
-       * previously destroyed, so we need to free the memory
-       * for the old handle. */
-      oldGC->vtable->destroy(oldGC);
-   }
+      if (gc) {
+         /*
+          * MESA_multithread_makecurrent makes this complicated. We need to
+          * send the request if the new context is
+          *
+          * a) indirect (may be current to another client), or
+          * b) (direct and) newly being made current, or
+          * c) (direct and) being bound to new drawables
+          */
+         Bool new_drawables = gc->currentReadable != read ||
+                              gc->currentDrawable != draw;
 
+         if (should_send(dpy, gc)) {
+            if (!gc->isDirect || !gc->thread_refcount || new_drawables) {
+               if (!SendMakeCurrentRequest(dpy, gc->xid, oldTag, draw, read,
+                                           &gc->currentContextTag)) {
+                  goto out;
+               }
+            }
+         }
+
+         if (gc->vtable->bind(gc, oldGC, draw, read) != Success) {
+            __glXSendError(dpy, GLXBadContext, None, X_GLXMakeContextCurrent,
+                           False);
+            goto out;
+         }
+
+         if (gc->thread_refcount == 0) {
+            SetGC(gc, dpy, draw, read);
+         }
+         gc->thread_refcount++;
+         __glXSetCurrentContext(gc);
+      }
+   }
+   ret = GL_TRUE;
+
+out:
    __glXUnlock();
-
-   return GL_TRUE;
+   return ret;
 }
 
 
