@@ -34,6 +34,17 @@
 #include "util/u_upload_mgr.h"
 #include "util/fast_idiv_by_const.h"
 
+struct gfx10_format {
+    unsigned img_format:9;
+
+    /* Various formats are only supported with workarounds for vertex fetch,
+     * and some 32_32_32 formats are supported natively, but only for buffers
+     * (possibly with some image support, actually, but no filtering). */
+    bool buffers_only:1;
+};
+
+#include "gfx10_format_table.h"
+
 static unsigned si_map_swizzle(unsigned swizzle)
 {
 	switch (swizzle) {

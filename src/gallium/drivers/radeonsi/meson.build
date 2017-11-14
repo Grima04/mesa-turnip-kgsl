@@ -99,9 +99,21 @@ si_driinfo_h = custom_target(
   capture : true,
 )
 
+gfx10_format_table_h = custom_target(
+  'gfx10_format_table.h',
+  input : files(
+    'gfx10_format_table.py',
+    '../../auxiliary/util/u_format.csv', '../../../amd/registers/gfx10-rsrc.json'
+  ),
+  output : 'gfx10_format_table.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+  depend_files : ['../../../amd/registers/regdb.py']
+)
+
 libradeonsi = static_library(
   'radeonsi',
-  [files_libradeonsi, si_driinfo_h, sid_tables_h],
+  [files_libradeonsi, si_driinfo_h, sid_tables_h, gfx10_format_table_h],
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common,
     inc_gallium_drivers,
