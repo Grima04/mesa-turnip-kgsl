@@ -4871,11 +4871,19 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 				   S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
 				   S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
 
-		unsigned data_format, num_format;
-		data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
-		num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
-		v->rsrc_word3[i] |= S_008F0C_NUM_FORMAT(num_format) |
-				    S_008F0C_DATA_FORMAT(data_format);
+		if (sscreen->info.chip_class >= GFX10) {
+			const struct gfx10_format *fmt =
+				&gfx10_format_table[elements[i].src_format];
+			assert(fmt->img_format != 0 && fmt->img_format < 128);
+			v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) |
+					    S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			unsigned data_format, num_format;
+			data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
+			num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
+			v->rsrc_word3[i] |= S_008F0C_NUM_FORMAT(num_format) |
+					    S_008F0C_DATA_FORMAT(data_format);
+		}
 	}
 
 	if (v->instance_divisor_is_fetched) {

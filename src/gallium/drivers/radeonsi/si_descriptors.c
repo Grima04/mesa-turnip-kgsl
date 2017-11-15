@@ -1167,11 +1167,20 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 		}
 		assert(num_records >= 0 && num_records <= UINT_MAX);
 
+		uint32_t rsrc_word3 = velems->rsrc_word3[i];
+
+		/* OOB_SELECT chooses the out-of-bounds check:
+		 *  - 1: index >= NUM_RECORDS (Structured)
+		 *  - 3: offset >= NUM_RECORDS (Raw)
+		 */
+		if (sctx->chip_class >= GFX10)
+			rsrc_word3 |= S_008F0C_OOB_SELECT(vb->stride ? 1 : 3);
+
 		desc[0] = va;
 		desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) |
 			  S_008F04_STRIDE(vb->stride);
 		desc[2] = num_records;
-		desc[3] = velems->rsrc_word3[i];
+		desc[3] = rsrc_word3;
 
 		if (first_vb_use_mask & (1 << i)) {
 			radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
