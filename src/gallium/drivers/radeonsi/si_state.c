@@ -3353,8 +3353,12 @@ static void si_emit_msaa_sample_locs(struct si_context *sctx)
 
 	/* On Polaris, the small primitive filter uses the sample locations
 	 * even when MSAA is off, so we need to make sure they're set to 0.
+	 *
+	 * GFX10 uses sample locations unconditionally, so they always need
+	 * to be set up.
 	 */
-	if ((nr_samples >= 2 || has_msaa_sample_loc_bug) &&
+	if ((nr_samples >= 2 || has_msaa_sample_loc_bug ||
+	     sctx->chip_class >= GFX10) &&
 	    nr_samples != sctx->sample_locs_num_samples) {
 		sctx->sample_locs_num_samples = nr_samples;
 		si_emit_sample_locations(cs, nr_samples);
