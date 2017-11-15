@@ -1408,9 +1408,11 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 		 *
 		 * TC-compatible HTILE promotes Z16 and Z24 to Z32_FLOAT,
 		 * so the depth comparison value isn't clamped for Z16 and
-		 * Z24 anymore. Do it manually here.
+		 * Z24 anymore. Do it manually here for GFX8-9; GFX10 has
+		 * an explicitly clamped 32-bit float format.
 		 */
-		if (ctx->screen->info.chip_class >= GFX8) {
+		if (ctx->screen->info.chip_class >= GFX8 &&
+		    ctx->screen->info.chip_class <= GFX9) {
 			LLVMValueRef upgraded;
 			LLVMValueRef clamped;
 			upgraded = LLVMBuildExtractElement(ctx->ac.builder, args.sampler,

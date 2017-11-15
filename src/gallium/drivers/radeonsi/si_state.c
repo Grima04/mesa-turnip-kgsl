@@ -3769,24 +3769,26 @@ gfx10_make_texture_descriptor(struct si_screen *screen,
 {
 	struct pipe_resource *res = &tex->buffer.b.b;
 	const struct util_format_description *desc;
-	const struct gfx10_format *fmt;
+	unsigned img_format;
 	unsigned char swizzle[4];
 	unsigned type;
 	uint64_t va;
 
 	desc = util_format_description(pipe_format);
-	fmt = &gfx10_format_table[pipe_format];
+	img_format = gfx10_format_table[pipe_format].img_format;
 
 	if (desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS) {
 		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
 		const unsigned char swizzle_yyyy[4] = {1, 1, 1, 1};
 		const unsigned char swizzle_wwww[4] = {3, 3, 3, 3};
+		bool is_stencil = false;
 
 		switch (pipe_format) {
 		case PIPE_FORMAT_S8_UINT_Z24_UNORM:
 		case PIPE_FORMAT_X32_S8X24_UINT:
 		case PIPE_FORMAT_X8Z24_UNORM:
 			util_format_compose_swizzles(swizzle_yyyy, state_swizzle, swizzle);
+			is_stencil = true;
 			break;
 		case PIPE_FORMAT_X24S8_UINT:
 			/*
@@ -3795,9 +3797,16 @@ gfx10_make_texture_descriptor(struct si_screen *screen,
 			 * GL45-CTS.texture_cube_map_array.sampling on VI.
 			 */
 			util_format_compose_swizzles(swizzle_wwww, state_swizzle, swizzle);
+			is_stencil = true;
 			break;
 		default:
 			util_format_compose_swizzles(swizzle_xxxx, state_swizzle, swizzle);
+			is_stencil = pipe_format == PIPE_FORMAT_S8_UINT;
+		}
+
+		if (tex->upgraded_depth && !is_stencil) {
+			assert(img_format == V_008F0C_IMG_FORMAT_32_FLOAT);
+			img_format = V_008F0C_IMG_FORMAT_32_FLOAT_CLAMP;
 		}
 	} else {
 		util_format_compose_swizzles(desc->swizzle, state_swizzle, swizzle);
@@ -3825,7 +3834,7 @@ gfx10_make_texture_descriptor(struct si_screen *screen,
 		depth = res->array_size / 6;
 
 	state[0] = 0;
-	state[1] = S_00A004_FORMAT(fmt->img_format) |
+	state[1] = S_00A004_FORMAT(img_format) |
 		   S_00A004_WIDTH_LO(width - 1);
 	state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) |
 		   S_00A008_HEIGHT(height - 1) |
@@ -4624,12 +4633,13 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
 		clamped_border_color.f[i] = CLAMP(state->border_color.f[0], 0, 1);
 	}
 
-	if (memcmp(&state->border_color, &clamped_border_color, sizeof(clamped_border_color)) == 0)
-		rstate->upgraded_depth_val[3] |= S_008F3C_UPGRADED_DEPTH(1);
-	else
+	if (memcmp(&state->border_color, &clamped_border_color, sizeof(clamped_border_color)) == 0) {
+		if (sscreen->info.chip_class <= GFX9)
+			rstate->upgraded_depth_val[3] |= S_008F3C_UPGRADED_DEPTH(1);
+	} else {
 		rstate->upgraded_depth_val[3] =
-			si_translate_border_color(sctx, state, &clamped_border_color, false) |
-			S_008F3C_UPGRADED_DEPTH(1);
+			si_translate_border_color(sctx, state, &clamped_border_color, false);
+	}
 
 	return rstate;
 }
