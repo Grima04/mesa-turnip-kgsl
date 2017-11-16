@@ -21,6 +21,7 @@
 files_libradeonsi = files(
   'cik_sdma.c',
   'driinfo_radeonsi.h',
+  'gfx10_shader_ngg.c',
   'si_blit.c',
   'si_buffer.c',
   'si_build_pm4.h',

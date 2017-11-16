@@ -4412,6 +4412,10 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 static unsigned si_get_max_workgroup_size(const struct si_shader *shader)
 {
 	switch (shader->selector->type) {
+	case PIPE_SHADER_VERTEX:
+	case PIPE_SHADER_TESS_EVAL:
+		return shader->key.as_ngg ? 128 : 0;
+
 	case PIPE_SHADER_TESS_CTRL:
 		/* Return this so that LLVM doesn't remove s_barrier
 		 * instructions on chips where we use s_barrier. */
@@ -4582,7 +4586,7 @@ static void create_function(struct si_shader_context *ctx)
 	if (ctx->screen->info.chip_class >= GFX9) {
 		if (shader->key.as_ls || type == PIPE_SHADER_TESS_CTRL)
 			type = SI_SHADER_MERGED_VERTEX_TESSCTRL; /* LS or HS */
-		else if (shader->key.as_es || type == PIPE_SHADER_GEOMETRY)
+		else if (shader->key.as_es || shader->key.as_ngg || type == PIPE_SHADER_GEOMETRY)
 			type = SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY;
 	}
 
@@ -4708,7 +4712,12 @@ static void create_function(struct si_shader_context *ctx)
 		/* SPI_SHADER_USER_DATA_ADDR_LO/HI_GS */
 		declare_per_stage_desc_pointers(ctx, &fninfo,
 						ctx->type == PIPE_SHADER_GEOMETRY);
-		ctx->param_gs2vs_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
+
+		if (ctx->shader->key.as_ngg)
+			add_arg_assign(&fninfo, ARG_SGPR, ctx->i32, &ctx->gs_tg_info);
+		else
+			ctx->param_gs2vs_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
+
 		ctx->param_merged_wave_info = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_offchip_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_merged_scratch_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
@@ -4716,11 +4725,17 @@ static void create_function(struct si_shader_context *ctx)
 		add_arg(&fninfo, ARG_SGPR, ctx->i32); /* unused (SPI_SHADER_PGM_LO/HI_GS >> 24) */
 
 		declare_global_desc_pointers(ctx, &fninfo);
-		declare_per_stage_desc_pointers(ctx, &fninfo,
-						(ctx->type == PIPE_SHADER_VERTEX ||
-						 ctx->type == PIPE_SHADER_TESS_EVAL));
+		if (ctx->type != PIPE_SHADER_VERTEX || !vs_blit_property) {
+			declare_per_stage_desc_pointers(ctx, &fninfo,
+							(ctx->type == PIPE_SHADER_VERTEX ||
+							 ctx->type == PIPE_SHADER_TESS_EVAL));
+		}
+
 		if (ctx->type == PIPE_SHADER_VERTEX) {
-			declare_vs_specific_input_sgprs(ctx, &fninfo);
+			if (vs_blit_property)
+				declare_vs_blit_inputs(ctx, &fninfo, vs_blit_property);
+			else
+				declare_vs_specific_input_sgprs(ctx, &fninfo);
 		} else {
 			ctx->param_vs_state_bits = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 			ctx->param_tcs_offchip_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
@@ -4747,8 +4762,9 @@ static void create_function(struct si_shader_context *ctx)
 			declare_tes_input_vgprs(ctx, &fninfo);
 		}
 
-		if (ctx->type == PIPE_SHADER_VERTEX ||
-		    ctx->type == PIPE_SHADER_TESS_EVAL) {
+		if (ctx->shader->key.as_es &&
+		    (ctx->type == PIPE_SHADER_VERTEX ||
+		     ctx->type == PIPE_SHADER_TESS_EVAL)) {
 			unsigned num_user_sgprs;
 
 			if (ctx->type == PIPE_SHADER_VERTEX)
@@ -5925,6 +5941,8 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
 		else if (shader->key.opt.vs_as_prim_discard_cs)
 			ctx->abi.emit_outputs = si_llvm_emit_prim_discard_cs_epilogue;
+		else if (shader->key.as_ngg)
+			ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
 		else
 			ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 		bld_base->emit_epilogue = si_tgsi_emit_epilogue;
@@ -5948,8 +5966,12 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 		ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 		if (shader->key.as_es)
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
-		else
-			ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
+		else {
+			if (shader->key.as_ngg)
+				ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
+			else
+				ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
+		}
 		bld_base->emit_epilogue = si_tgsi_emit_epilogue;
 		break;
 	case PIPE_SHADER_GEOMETRY:
@@ -5994,6 +6016,10 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 	 *
 	 * For monolithic merged shaders, the first shader is wrapped in an
 	 * if-block together with its prolog in si_build_wrapper_function.
+	 *
+	 * NGG vertex and tess eval shaders running as the last
+	 * vertex/geometry stage handle execution explicitly using
+	 * if-statements.
 	 */
 	if (ctx->screen->info.chip_class >= GFX9) {
 		if (!shader->is_monolithic &&
@@ -6005,28 +6031,50 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			si_init_exec_from_input(ctx,
 						ctx->param_merged_wave_info, 0);
 		} else if (ctx->type == PIPE_SHADER_TESS_CTRL ||
-			   ctx->type == PIPE_SHADER_GEOMETRY) {
+			   ctx->type == PIPE_SHADER_GEOMETRY ||
+			   shader->key.as_ngg) {
+			LLVMValueRef num_threads;
+			bool nested_barrier;
+
 			if (!shader->is_monolithic)
 				ac_init_exec_full_mask(&ctx->ac);
 
-			LLVMValueRef num_threads = si_unpack_param(ctx, ctx->param_merged_wave_info, 8, 8);
+			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
+			    ctx->type == PIPE_SHADER_GEOMETRY) {
+				/* Number of patches / primitives */
+				num_threads = si_unpack_param(ctx, ctx->param_merged_wave_info, 8, 8);
+				nested_barrier = true;
+			} else {
+				/* Number of vertices */
+				num_threads = si_unpack_param(ctx, ctx->param_merged_wave_info, 0, 8);
+				nested_barrier = false;
+			}
+
 			LLVMValueRef ena =
 				LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
 					    ac_get_thread_id(&ctx->ac), num_threads, "");
 			lp_build_if(&ctx->merged_wrap_if_state, &ctx->gallivm, ena);
 
-			/* The barrier must execute for all shaders in a
-			 * threadgroup.
-			 *
-			 * Execute the barrier inside the conditional block,
-			 * so that empty waves can jump directly to s_endpgm,
-			 * which will also signal the barrier.
-			 *
-			 * If the shader is TCS and the TCS epilog is present
-			 * and contains a barrier, it will wait there and then
-			 * reach s_endpgm.
-			 */
-			si_llvm_emit_barrier(NULL, bld_base, NULL);
+			if (nested_barrier) {
+				/* Execute a barrier before the second shader in
+				 * a merged shader.
+				 *
+				 * Execute the barrier inside the conditional block,
+				 * so that empty waves can jump directly to s_endpgm,
+				 * which will also signal the barrier.
+				 *
+				 * This is possible in gfx9, because an empty wave
+				 * for the second shader does not participate in
+				 * the epilogue. With NGG, empty waves may still
+				 * be required to export data (e.g. GS output vertices),
+				 * so we cannot let them exit early.
+				 *
+				 * If the shader is TCS and the TCS epilog is present
+				 * and contains a barrier, it will wait there and then
+				 * reach s_endpgm.
+				 */
+				si_llvm_emit_barrier(NULL, bld_base, NULL);
+			}
 		}
 	}
 
@@ -6098,6 +6146,8 @@ static void si_get_vs_prolog_key(const struct tgsi_shader_info *info,
 		key->vs_prolog.num_merged_next_stage_vgprs = 2;
 	} else if (shader_out->selector->type == PIPE_SHADER_GEOMETRY) {
 		key->vs_prolog.as_es = 1;
+		key->vs_prolog.num_merged_next_stage_vgprs = 5;
+	} else if (shader_out->key.as_ngg) {
 		key->vs_prolog.num_merged_next_stage_vgprs = 5;
 	}
 
@@ -7227,6 +7277,21 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 					   key->vs_prolog.num_input_sgprs + i, "");
 	}
 
+	struct lp_build_if_state wrap_if_state;
+	LLVMValueRef original_ret = ret;
+	bool wrapped = false;
+
+	if (key->vs_prolog.is_monolithic && key->vs_prolog.as_ngg) {
+		LLVMValueRef num_threads;
+		LLVMValueRef ena;
+
+		num_threads = si_unpack_param(ctx, 3, 0, 8);
+		ena = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
+					ac_get_thread_id(&ctx->ac), num_threads, "");
+		lp_build_if(&wrap_if_state, &ctx->gallivm, ena);
+		wrapped = true;
+	}
+
 	/* Compute vertex load indices from instance divisors. */
 	LLVMValueRef instance_divisor_constbuf = NULL;
 
@@ -7280,6 +7345,20 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		index = ac_to_float(&ctx->ac, index);
 		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, index,
 					   fninfo.num_params + i, "");
+	}
+
+	if (wrapped) {
+		lp_build_endif(&wrap_if_state);
+
+		LLVMValueRef values[2] = {
+			ret,
+			original_ret
+		};
+		LLVMBasicBlockRef bbs[2] = {
+			wrap_if_state.true_block,
+			wrap_if_state.entry_block
+		};
+		ret = ac_build_phi(&ctx->ac, LLVMTypeOf(ret), 2, values, bbs);
 	}
 
 	si_llvm_build_ret(ctx, ret);

@@ -1128,7 +1128,7 @@ void si_llvm_create_func(struct si_shader_context *ctx,
 	if (ctx->screen->info.chip_class >= GFX9) {
 		if (ctx->shader->key.as_ls)
 			real_shader_type = PIPE_SHADER_TESS_CTRL;
-		else if (ctx->shader->key.as_es)
+		else if (ctx->shader->key.as_es || ctx->shader->key.as_ngg)
 			real_shader_type = PIPE_SHADER_GEOMETRY;
 	}
 

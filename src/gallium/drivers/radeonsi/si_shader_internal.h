@@ -186,6 +186,13 @@ struct si_shader_context {
 	int param_tes_rel_patch_id;
 	/* HW ES */
 	int param_es2gs_offset;
+	/* HW GS */
+	/* On gfx10:
+	 *  - bits 0..10: ordered_wave_id
+	 *  - bits 12..20: number of vertices in group
+	 *  - bits 22..30: number of primitives in group
+	 */
+	LLVMValueRef gs_tg_info;
 	/* API GS */
 	int param_gs2vs_offset;
 	int param_gs_wave_id; /* GFX6 */
@@ -371,5 +378,9 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir);
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
 			     unsigned param, unsigned rshift,
 			     unsigned bitwidth);
+
+void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
+			     unsigned max_outputs,
+			     LLVMValueRef *addrs);
 
 #endif
