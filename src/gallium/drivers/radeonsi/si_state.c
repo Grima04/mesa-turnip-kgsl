@@ -2524,7 +2524,23 @@ static void si_initialize_color_surface(struct si_context *sctx,
 		}
 	}
 
-	if (sctx->chip_class >= GFX8) {
+	if (sctx->chip_class >= GFX10) {
+		unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
+
+		/* amdvlk: [min-compressed-block-size] should be set to 32 for dGPU and
+		   64 for APU because all of our APUs to date use DIMMs which have
+		   a request granularity size of 64B while all other chips have a
+		   32B request size */
+		if (!sctx->screen->info.has_dedicated_vram)
+			min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
+
+		surf->cb_dcc_control =
+			S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
+			S_028C78_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
+			S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
+			S_028C78_INDEPENDENT_64B_BLOCKS(0) |
+			S_028C78_INDEPENDENT_128B_BLOCKS(1);
+	} else if (sctx->chip_class >= GFX8) {
 		unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
 		unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
 
@@ -2553,15 +2569,24 @@ static void si_initialize_color_surface(struct si_context *sctx,
 		color_attrib |= S_028C74_FMASK_BANK_HEIGHT(bankh);
 	}
 
+	/* GFX10 field has the same base shift as the GFX6 field */
 	unsigned color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
-			      S_028C6C_SLICE_MAX_GFX6(surf->base.u.tex.last_layer);
+			      S_028C6C_SLICE_MAX_GFX10(surf->base.u.tex.last_layer);
+	unsigned mip0_depth = util_max_layer(&tex->buffer.b.b, 0);
 
-	if (sctx->chip_class >= GFX9) {
-		unsigned mip0_depth = util_max_layer(&tex->buffer.b.b, 0);
+	if (sctx->chip_class >= GFX10) {
+		color_view |= S_028C6C_MIP_LEVEL_GFX10(surf->base.u.tex.level);
 
+		surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(mip0_depth) |
+					 S_028EE0_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type) |
+					 S_028EE0_RESOURCE_LEVEL(1);
+	} else if (sctx->chip_class >= GFX9) {
 		color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
 		color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
 				S_028C74_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type);
+	}
+
+	if (sctx->chip_class >= GFX9) {
 		surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(surf->width0 - 1) |
 					 S_028C68_MIP0_HEIGHT(surf->height0 - 1) |
 					 S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
@@ -3155,7 +3180,52 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			cb_dcc_base |= tex->surface.tile_swizzle;
 		}
 
-		if (sctx->chip_class >= GFX9) {
+		if (sctx->chip_class >= GFX10) {
+			unsigned cb_color_attrib3;
+
+			/* Set mutable surface parameters. */
+			cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
+			cb_color_base |= tex->surface.tile_swizzle;
+			if (!tex->fmask_offset)
+				cb_color_fmask = cb_color_base;
+			if (cb->base.u.tex.level > 0)
+				cb_color_cmask = cb_color_base;
+
+			cb_color_attrib3 = cb->cb_color_attrib3 |
+					   S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode) |
+					   S_028EE0_FMASK_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
+					   S_028EE0_CMASK_PIPE_ALIGNED(tex->surface.u.gfx9.cmask.pipe_aligned) |
+					   S_028EE0_DCC_PIPE_ALIGNED(tex->surface.u.gfx9.dcc.pipe_aligned);
+
+			radeon_set_context_reg_seq(cs, R_028C60_CB_COLOR0_BASE + i * 0x3C, 14);
+			radeon_emit(cs, cb_color_base);		/* CB_COLOR0_BASE */
+			radeon_emit(cs, 0);			/* hole */
+			radeon_emit(cs, 0);			/* hole */
+			radeon_emit(cs, cb->cb_color_view);	/* CB_COLOR0_VIEW */
+			radeon_emit(cs, cb_color_info);		/* CB_COLOR0_INFO */
+			radeon_emit(cs, cb_color_attrib);	/* CB_COLOR0_ATTRIB */
+			radeon_emit(cs, cb->cb_dcc_control);	/* CB_COLOR0_DCC_CONTROL */
+			radeon_emit(cs, cb_color_cmask);	/* CB_COLOR0_CMASK */
+			radeon_emit(cs, 0);			/* hole */
+			radeon_emit(cs, cb_color_fmask);	/* CB_COLOR0_FMASK */
+			radeon_emit(cs, 0);			/* hole */
+			radeon_emit(cs, tex->color_clear_value[0]); /* CB_COLOR0_CLEAR_WORD0 */
+			radeon_emit(cs, tex->color_clear_value[1]); /* CB_COLOR0_CLEAR_WORD1 */
+			radeon_emit(cs, cb_dcc_base);		/* CB_COLOR0_DCC_BASE */
+
+			radeon_set_context_reg(cs, R_028E40_CB_COLOR0_BASE_EXT + i * 4,
+					       cb_color_base >> 32);
+			radeon_set_context_reg(cs, R_028E60_CB_COLOR0_CMASK_BASE_EXT + i * 4,
+					       cb_color_cmask >> 32);
+			radeon_set_context_reg(cs, R_028E80_CB_COLOR0_FMASK_BASE_EXT + i * 4,
+					       cb_color_fmask >> 32);
+			radeon_set_context_reg(cs, R_028EA0_CB_COLOR0_DCC_BASE_EXT + i * 4,
+					       cb_dcc_base >> 32);
+			radeon_set_context_reg(cs, R_028EC0_CB_COLOR0_ATTRIB2 + i * 4,
+					       cb->cb_color_attrib2);
+			radeon_set_context_reg(cs, R_028EE0_CB_COLOR0_ATTRIB3 + i * 4,
+					       cb_color_attrib3);
+		} else if (sctx->chip_class >= GFX9) {
 			struct gfx9_surf_meta_flags meta;
 
 			if (tex->dcc_offset)
