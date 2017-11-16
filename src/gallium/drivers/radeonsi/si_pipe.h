@@ -385,12 +385,12 @@ struct si_surface {
 	uint64_t db_htile_data_base;
 	unsigned db_depth_info;
 	unsigned db_z_info;
-	unsigned db_z_info2;		/* GFX9+ */
+	unsigned db_z_info2;		/* GFX9 only */
 	unsigned db_depth_view;
 	unsigned db_depth_size;
 	unsigned db_depth_slice;
 	unsigned db_stencil_info;
-	unsigned db_stencil_info2;	/* GFX9+ */
+	unsigned db_stencil_info2;	/* GFX9 only */
 	unsigned db_htile_surface;
 };
 

@@ -2623,6 +2623,11 @@ static void si_init_depth_surface(struct si_context *sctx,
 	surf->db_htile_data_base = 0;
 	surf->db_htile_surface = 0;
 
+	if (sctx->chip_class >= GFX10) {
+		surf->db_depth_view |= S_028008_SLICE_START_HI(surf->base.u.tex.first_layer >> 11) |
+				       S_028008_SLICE_MAX_HI(surf->base.u.tex.last_layer >> 11);
+	}
+
 	if (sctx->chip_class >= GFX9) {
 		assert(tex->surface.u.gfx9.surf_offset == 0);
 		surf->db_depth_base = tex->buffer.gpu_address >> 8;
@@ -2634,8 +2639,11 @@ static void si_init_depth_surface(struct si_context *sctx,
 			 S_028038_MAXMIP(tex->buffer.b.b.last_level);
 		s_info = S_02803C_FORMAT(stencil_format) |
 			 S_02803C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
-		surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.surf.epitch);
-		surf->db_stencil_info2 = S_02806C_EPITCH(tex->surface.u.gfx9.stencil.epitch);
+
+		if (sctx->chip_class == GFX9) {
+			surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.surf.epitch);
+			surf->db_stencil_info2 = S_02806C_EPITCH(tex->surface.u.gfx9.stencil.epitch);
+		}
 		surf->db_depth_view |= S_028008_MIPID(level);
 		surf->db_depth_size = S_02801C_X_MAX(tex->buffer.b.b.width0 - 1) |
 				      S_02801C_Y_MAX(tex->buffer.b.b.height0 - 1);
@@ -2651,9 +2659,15 @@ static void si_init_depth_surface(struct si_context *sctx,
 				    tex->buffer.b.b.nr_samples > 1)
 					max_zplanes = 2;
 
-				z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes + 1) |
-					  S_028038_ITERATE_FLUSH(1);
-				s_info |= S_02803C_ITERATE_FLUSH(1);
+				z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes + 1);
+
+				if (sctx->chip_class >= GFX10) {
+					z_info |= S_028040_ITERATE_FLUSH(1);
+					s_info |= S_028044_ITERATE_FLUSH(1);
+				} else {
+					z_info |= S_028038_ITERATE_FLUSH(1);
+					s_info |= S_02803C_ITERATE_FLUSH(1);
+				}
 			}
 
 			if (tex->surface.has_stencil) {
@@ -2669,8 +2683,11 @@ static void si_init_depth_surface(struct si_context *sctx,
 			surf->db_htile_data_base = (tex->buffer.gpu_address +
 						    tex->htile_offset) >> 8;
 			surf->db_htile_surface = S_028ABC_FULL_CACHE(1) |
-						 S_028ABC_PIPE_ALIGNED(tex->surface.u.gfx9.htile.pipe_aligned) |
-						 S_028ABC_RB_ALIGNED(tex->surface.u.gfx9.htile.rb_aligned);
+						 S_028ABC_PIPE_ALIGNED(tex->surface.u.gfx9.htile.pipe_aligned);
+			if (sctx->chip_class == GFX9) {
+				surf->db_htile_surface |=
+					S_028ABC_RB_ALIGNED(tex->surface.u.gfx9.htile.rb_aligned);
+			}
 		}
 	} else {
 		/* GFX6-GFX8 */
@@ -3340,7 +3357,27 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 					      RADEON_PRIO_DEPTH_BUFFER_MSAA :
 					      RADEON_PRIO_DEPTH_BUFFER);
 
-		if (sctx->chip_class >= GFX9) {
+		if (sctx->chip_class >= GFX10) {
+			radeon_set_context_reg(cs, R_028014_DB_HTILE_DATA_BASE, zb->db_htile_data_base);
+			radeon_set_context_reg(cs, R_02801C_DB_DEPTH_SIZE_XY, zb->db_depth_size);
+
+			radeon_set_context_reg_seq(cs, R_02803C_DB_DEPTH_INFO, 7);
+			radeon_emit(cs, S_02803C_RESOURCE_LEVEL(1));	/* DB_DEPTH_INFO */
+			radeon_emit(cs, zb->db_z_info |			/* DB_Z_INFO */
+				    S_028038_ZRANGE_PRECISION(tex->depth_clear_value != 0));
+			radeon_emit(cs, zb->db_stencil_info);		/* DB_STENCIL_INFO */
+			radeon_emit(cs, zb->db_depth_base);		/* DB_Z_READ_BASE */
+			radeon_emit(cs, zb->db_stencil_base);		/* DB_STENCIL_READ_BASE */
+			radeon_emit(cs, zb->db_depth_base);		/* DB_Z_WRITE_BASE */
+			radeon_emit(cs, zb->db_stencil_base);		/* DB_STENCIL_WRITE_BASE */
+
+			radeon_set_context_reg_seq(cs, R_028068_DB_Z_READ_BASE_HI, 5);
+			radeon_emit(cs, zb->db_depth_base >> 32);	/* DB_Z_READ_BASE_HI */
+			radeon_emit(cs, zb->db_stencil_base >> 32);	/* DB_STENCIL_READ_BASE_HI */
+			radeon_emit(cs, zb->db_depth_base >> 32);	/* DB_Z_WRITE_BASE_HI */
+			radeon_emit(cs, zb->db_stencil_base >> 32);	/* DB_STENCIL_WRITE_BASE_HI */
+			radeon_emit(cs, zb->db_htile_data_base >> 32);	/* DB_HTILE_DATA_BASE_HI */
+		} else if (sctx->chip_class >= GFX9) {
 			radeon_set_context_reg_seq(cs, R_028014_DB_HTILE_DATA_BASE, 3);
 			radeon_emit(cs, zb->db_htile_data_base);	/* DB_HTILE_DATA_BASE */
 			radeon_emit(cs, S_028018_BASE_HI(zb->db_htile_data_base >> 32)); /* DB_HTILE_DATA_BASE_HI */
@@ -3385,7 +3422,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 		radeon_set_context_reg(cs, R_028008_DB_DEPTH_VIEW, zb->db_depth_view);
 		radeon_set_context_reg(cs, R_028ABC_DB_HTILE_SURFACE, zb->db_htile_surface);
 	} else if (sctx->framebuffer.dirty_zsbuf) {
-		if (sctx->chip_class >= GFX9)
+		if (sctx->chip_class == GFX9)
 			radeon_set_context_reg_seq(cs, R_028038_DB_Z_INFO, 2);
 		else
 			radeon_set_context_reg_seq(cs, R_028040_DB_Z_INFO, 2);

@@ -316,7 +316,10 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
 		SI_TRACKED_PA_SC_BINNER_CNTL_0,
 		S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
 		S_028C44_DISABLE_START_OF_PRIM(1));
-	radeon_opt_set_context_reg(sctx, R_028060_DB_DFSM_CONTROL,
+
+	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
+							     : R_028060_DB_DFSM_CONTROL;
+	radeon_opt_set_context_reg(sctx, db_dfsm_control,
 				   SI_TRACKED_DB_DFSM_CONTROL,
 				   S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF) |
 				   S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
@@ -428,7 +431,10 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
 		S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
 		S_028C44_OPTIMAL_BIN_SELECTION(1));
-	radeon_opt_set_context_reg(sctx, R_028060_DB_DFSM_CONTROL,
+
+	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
+							     : R_028060_DB_DFSM_CONTROL;
+	radeon_opt_set_context_reg(sctx, db_dfsm_control,
 				   SI_TRACKED_DB_DFSM_CONTROL,
 				   S_028060_PUNCHOUT_MODE(punchout_mode) |
 				   S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
