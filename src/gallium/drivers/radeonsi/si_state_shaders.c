@@ -3410,23 +3410,28 @@ bool si_update_shaders(struct si_context *sctx)
 
 	key.index = 0;
 
-	/* Update stages before GS. */
-	if (sctx->tes_shader.cso) {
+	if (sctx->tes_shader.cso)
 		key.u.tess = 1;
+	if (sctx->gs_shader.cso)
+		key.u.gs = 1;
 
+	if (sctx->chip_class >= GFX10) {
+		key.u.ngg = sctx->ngg;
+
+		if (sctx->gs_shader.cso)
+			key.u.streamout = !!sctx->gs_shader.cso->so.num_outputs;
+		else if (sctx->tes_shader.cso)
+			key.u.streamout = !!sctx->tes_shader.cso->so.num_outputs;
+		else
+			key.u.streamout = !!sctx->vs_shader.cso->so.num_outputs;
+	}
+
+	/* Update TCS and TES. */
+	if (sctx->tes_shader.cso) {
 		if (!sctx->tess_rings) {
 			si_init_tess_factor_ring(sctx);
 			if (!sctx->tess_rings)
 				return false;
-		}
-
-		/* VS as LS */
-		if (sctx->chip_class <= GFX8) {
-			r = si_shader_select(ctx, &sctx->vs_shader,
-					     &compiler_state);
-			if (r)
-				return false;
-			si_pm4_bind_state(sctx, ls, sctx->vs_shader.current->pm4);
 		}
 
 		if (sctx->tcs_shader.cso) {
@@ -3451,61 +3456,68 @@ bool si_update_shaders(struct si_context *sctx)
 					  sctx->fixed_func_tcs_shader.current->pm4);
 		}
 
-		if (sctx->gs_shader.cso) {
-			/* TES as ES */
-			if (sctx->chip_class <= GFX8) {
-				r = si_shader_select(ctx, &sctx->tes_shader,
-						     &compiler_state);
-				if (r)
-					return false;
-				si_pm4_bind_state(sctx, es, sctx->tes_shader.current->pm4);
-			}
-		} else {
-			/* TES as VS */
-			r = si_shader_select(ctx, &sctx->tes_shader,
-					     &compiler_state);
+		if (!sctx->gs_shader.cso || sctx->chip_class <= GFX8) {
+			r = si_shader_select(ctx, &sctx->tes_shader, &compiler_state);
 			if (r)
 				return false;
-			si_pm4_bind_state(sctx, vs, sctx->tes_shader.current->pm4);
-		}
-	} else if (sctx->gs_shader.cso) {
-		if (sctx->chip_class <= GFX8) {
-			/* VS as ES */
-			r = si_shader_select(ctx, &sctx->vs_shader,
-					     &compiler_state);
-			if (r)
-				return false;
-			si_pm4_bind_state(sctx, es, sctx->vs_shader.current->pm4);
 
-			si_pm4_bind_state(sctx, ls, NULL);
-			si_pm4_bind_state(sctx, hs, NULL);
+			if (sctx->gs_shader.cso) {
+				/* TES as ES */
+				assert(sctx->chip_class <= GFX8);
+				si_pm4_bind_state(sctx, es, sctx->tes_shader.current->pm4);
+			} else if (key.u.ngg) {
+				si_pm4_bind_state(sctx, gs, sctx->tes_shader.current->pm4);
+			} else {
+				si_pm4_bind_state(sctx, vs, sctx->tes_shader.current->pm4);
+			}
 		}
 	} else {
-		/* VS as VS */
-		r = si_shader_select(ctx, &sctx->vs_shader, &compiler_state);
-		if (r)
-			return false;
-		si_pm4_bind_state(sctx, vs, sctx->vs_shader.current->pm4);
-		si_pm4_bind_state(sctx, ls, NULL);
+		if (sctx->chip_class <= GFX8)
+			si_pm4_bind_state(sctx, ls, NULL);
 		si_pm4_bind_state(sctx, hs, NULL);
 	}
 
 	/* Update GS. */
 	if (sctx->gs_shader.cso) {
-		key.u.gs = 1;
-
 		r = si_shader_select(ctx, &sctx->gs_shader, &compiler_state);
 		if (r)
 			return false;
 		si_pm4_bind_state(sctx, gs, sctx->gs_shader.current->pm4);
-		si_pm4_bind_state(sctx, vs, sctx->gs_shader.cso->gs_copy_shader->pm4);
+		if (!key.u.ngg) {
+			si_pm4_bind_state(sctx, vs, sctx->gs_shader.cso->gs_copy_shader->pm4);
 
-		if (!si_update_gs_ring_buffers(sctx))
-			return false;
+			if (!si_update_gs_ring_buffers(sctx))
+				return false;
+		} else {
+			si_pm4_bind_state(sctx, vs, NULL);
+		}
 	} else {
-		si_pm4_bind_state(sctx, gs, NULL);
-		if (sctx->chip_class <= GFX8)
-			si_pm4_bind_state(sctx, es, NULL);
+		if (!key.u.ngg) {
+			si_pm4_bind_state(sctx, gs, NULL);
+			if (sctx->chip_class <= GFX8)
+				si_pm4_bind_state(sctx, es, NULL);
+		}
+	}
+
+	/* Update VS. */
+	if ((!key.u.tess && !key.u.gs) || sctx->chip_class <= GFX8) {
+		r = si_shader_select(ctx, &sctx->vs_shader, &compiler_state);
+		if (r)
+			return false;
+
+		if (!key.u.tess && !key.u.gs) {
+			if (key.u.ngg) {
+				si_pm4_bind_state(sctx, gs, sctx->vs_shader.current->pm4);
+				si_pm4_bind_state(sctx, vs, NULL);
+			} else {
+				si_pm4_bind_state(sctx, vs, sctx->vs_shader.current->pm4);
+			}
+		} else if (sctx->tes_shader.cso) {
+			si_pm4_bind_state(sctx, ls, sctx->vs_shader.current->pm4);
+		} else {
+			assert(sctx->gs_shader.cso);
+			si_pm4_bind_state(sctx, es, sctx->vs_shader.current->pm4);
+		}
 	}
 
 	si_update_vgt_shader_config(sctx, key);
