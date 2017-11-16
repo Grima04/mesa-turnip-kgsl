@@ -47,14 +47,6 @@ static const char scratch_rsrc_dword0_symbol[] =
 static const char scratch_rsrc_dword1_symbol[] =
 	"SCRATCH_RSRC_DWORD1";
 
-struct si_shader_output_values
-{
-	LLVMValueRef values[4];
-	unsigned semantic_name;
-	unsigned semantic_index;
-	ubyte vertex_stream[4];
-};
-
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
 			       struct ac_llvm_compiler *compiler);
@@ -2870,10 +2862,12 @@ static void si_vertex_color_clamping(struct si_shader_context *ctx,
 	}
 }
 
-/* Generate export instructions for hardware VS shader stage */
-static void si_llvm_export_vs(struct si_shader_context *ctx,
-			      struct si_shader_output_values *outputs,
-			      unsigned noutput)
+/* Generate export instructions for hardware VS shader stage or NGG GS stage
+ * (position and parameter data only).
+ */
+void si_llvm_export_vs(struct si_shader_context *ctx,
+		       struct si_shader_output_values *outputs,
+		       unsigned noutput)
 {
 	struct si_shader *shader = ctx->shader;
 	struct ac_export_args pos_args[4] = {};

@@ -60,6 +60,13 @@ struct si_function_info {
 	unsigned num_params;
 };
 
+struct si_shader_output_values {
+	LLVMValueRef values[4];
+	unsigned semantic_name;
+	unsigned semantic_index;
+	ubyte vertex_stream[4];
+};
+
 struct si_shader_context {
 	struct lp_build_tgsi_context bld_base;
 	struct gallivm_state gallivm;
@@ -338,6 +345,10 @@ void si_load_system_value(struct si_shader_context *ctx,
 void si_declare_compute_memory(struct si_shader_context *ctx);
 void si_tgsi_declare_compute_memory(struct si_shader_context *ctx,
 				    const struct tgsi_full_declaration *decl);
+
+void si_llvm_export_vs(struct si_shader_context *ctx,
+		       struct si_shader_output_values *outputs,
+		       unsigned noutput);
 
 void si_llvm_load_input_vs(
 	struct si_shader_context *ctx,
