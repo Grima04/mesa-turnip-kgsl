@@ -455,7 +455,7 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 		S_030960_EN_INST_OPT_ADV(sscreen->info.chip_class >= GFX9);
 }
 
-void si_init_ia_multi_vgt_param_table(struct si_context *sctx)
+static void si_init_ia_multi_vgt_param_table(struct si_context *sctx)
 {
 	for (int prim = 0; prim <= SI_PRIM_RECTANGLE_LIST; prim++)
 	for (int uses_instancing = 0; uses_instancing < 2; uses_instancing++)
@@ -1248,7 +1248,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 	si_emit_draw_registers(sctx, info, num_patches);
 }
 
-void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
+static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
@@ -1528,13 +1528,14 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 		pipe_resource_reference(&indexbuf, NULL);
 }
 
-void si_draw_rectangle(struct blitter_context *blitter,
-		       void *vertex_elements_cso,
-		       blitter_get_vs_func get_vs,
-		       int x1, int y1, int x2, int y2,
-		       float depth, unsigned num_instances,
-		       enum blitter_attrib_type type,
-		       const union blitter_attrib *attrib)
+static void
+si_draw_rectangle(struct blitter_context *blitter,
+		  void *vertex_elements_cso,
+		  blitter_get_vs_func get_vs,
+		  int x1, int y1, int x2, int y2,
+		  float depth, unsigned num_instances,
+		  enum blitter_attrib_type type,
+		  const union blitter_attrib *attrib)
 {
 	struct pipe_context *pipe = util_blitter_get_pipe(blitter);
 	struct si_context *sctx = (struct si_context*)pipe;
@@ -1591,4 +1592,13 @@ void si_trace_emit(struct si_context *sctx)
 
 	if (sctx->log)
 		u_log_flush(sctx->log);
+}
+
+void si_init_draw_functions(struct si_context *sctx)
+{
+	sctx->b.draw_vbo = si_draw_vbo;
+
+	sctx->blitter->draw_rectangle = si_draw_rectangle;
+
+	si_init_ia_multi_vgt_param_table(sctx);
 }

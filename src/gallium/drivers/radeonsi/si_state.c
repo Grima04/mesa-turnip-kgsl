@@ -4825,8 +4825,6 @@ void si_init_state_functions(struct si_context *sctx)
 
 	sctx->b.set_active_query_state = si_set_active_query_state;
 
-	sctx->b.draw_vbo = si_draw_vbo;
-
 	si_init_config(sctx);
 }
 

@@ -541,17 +541,9 @@ void si_get_active_slot_masks(const struct tgsi_shader_info *info,
 			      uint64_t *samplers_and_images);
 
 /* si_state_draw.c */
-void si_init_ia_multi_vgt_param_table(struct si_context *sctx);
 void si_emit_cache_flush(struct si_context *sctx);
-void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *dinfo);
-void si_draw_rectangle(struct blitter_context *blitter,
-		       void *vertex_elements_cso,
-		       blitter_get_vs_func get_vs,
-		       int x1, int y1, int x2, int y2,
-		       float depth, unsigned num_instances,
-		       enum blitter_attrib_type type,
-		       const union blitter_attrib *attrib);
 void si_trace_emit(struct si_context *sctx);
+void si_init_draw_functions(struct si_context *sctx);
 
 /* si_state_msaa.c */
 void si_init_msaa_functions(struct si_context *sctx);

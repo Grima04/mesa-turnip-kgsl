@@ -501,7 +501,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	si_init_state_functions(sctx);
 	si_init_shader_functions(sctx);
 	si_init_viewport_functions(sctx);
-	si_init_ia_multi_vgt_param_table(sctx);
 
 	if (sctx->chip_class >= CIK)
 		cik_init_sdma_functions(sctx);
@@ -522,8 +521,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	sctx->blitter = util_blitter_create(&sctx->b);
 	if (sctx->blitter == NULL)
 		goto fail;
-	sctx->blitter->draw_rectangle = si_draw_rectangle;
 	sctx->blitter->skip_viewport_restore = true;
+
+	si_init_draw_functions(sctx);
 
 	sctx->sample_mask = 0xffff;
 
