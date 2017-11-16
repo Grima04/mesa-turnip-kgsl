@@ -65,9 +65,11 @@
 #define SI_CONTEXT_FLUSH_FOR_RENDER_COND (1 << 2)
 /* Instruction cache. */
 #define SI_CONTEXT_INV_ICACHE		(1 << 3)
-/* Scalar L1 cache. */
+/* Scalar cache. (GFX6-9: scalar L1; GFX10: scalar L0)
+ * GFX10: This also invalidates the L1 shader array cache. */
 #define SI_CONTEXT_INV_SCACHE		(1 << 4)
-/* Vector L1 cache. */
+/* Vector cache. (GFX6-9: vector L1; GFX10: vector L0)
+ * GFX10: This also invalidates the L1 shader array cache. */
 #define SI_CONTEXT_INV_VCACHE		(1 << 5)
 /* L2 cache + L2 metadata cache writeback & invalidate.
  * GFX6-8: Used by shaders only. GFX9-10: Used by everything. */
