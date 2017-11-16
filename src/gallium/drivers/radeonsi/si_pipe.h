@@ -862,6 +862,9 @@ struct si_context {
 	struct pipe_device_reset_callback device_reset_callback;
 	struct u_log_context		*log;
 	void				*query_result_shader;
+
+	void (*emit_cache_flush)(struct si_context *ctx);
+
 	struct blitter_context		*blitter;
 	void				*custom_dsa_flush;
 	void				*custom_blend_resolve;

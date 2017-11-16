@@ -1904,7 +1904,7 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
 	 */
 	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 			 SI_CONTEXT_CS_PARTIAL_FLUSH;
-	si_emit_cache_flush(sctx);
+	sctx->emit_cache_flush(sctx);
 
 	util_dynarray_foreach(&sctx->resident_tex_handles,
 			      struct si_texture_handle *, tex_handle) {
@@ -1930,7 +1930,7 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
 
 	/* Invalidate L1 because it doesn't know that L2 changed. */
 	sctx->flags |= SI_CONTEXT_INV_SCACHE;
-	si_emit_cache_flush(sctx);
+	sctx->emit_cache_flush(sctx);
 
 	sctx->bindless_descriptors_dirty = false;
 }

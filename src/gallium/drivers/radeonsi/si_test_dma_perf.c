@@ -253,7 +253,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
 					/* Flush L2, so that we don't just test L2 cache performance. */
 					if (!test_sdma) {
 						sctx->flags |= SI_CONTEXT_WB_L2;
-						si_emit_cache_flush(sctx);
+						sctx->emit_cache_flush(sctx);
 					}
 
 					ctx->end_query(ctx, q[iter]);

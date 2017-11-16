@@ -434,7 +434,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 		       SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_LRU) |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_LRU);
-	si_emit_cache_flush(sctx);
+	sctx->emit_cache_flush(sctx);
 
 	/* Save states. */
 	void *saved_cs = sctx->cs_shader_state.program;

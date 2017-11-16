@@ -935,7 +935,7 @@ static void si_launch_grid(
 	}
 
 	if (sctx->flags)
-		si_emit_cache_flush(sctx);
+		sctx->emit_cache_flush(sctx);
 
 	if (!si_switch_compute_shader(sctx, program, &program->shader,
 					code_object, info->pc))

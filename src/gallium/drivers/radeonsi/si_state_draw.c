@@ -981,6 +981,8 @@ void si_emit_cache_flush(struct si_context *sctx)
 				(flags & SI_CONTEXT_CS_PARTIAL_FLUSH &&
 				 sctx->compute_is_busy);
 
+	assert(sctx->chip_class <= GFX9);
+
 	if (flags & SI_CONTEXT_FLUSH_AND_INV_CB)
 		sctx->num_cb_cache_flushes++;
 	if (flags & SI_CONTEXT_FLUSH_AND_INV_DB)
@@ -1744,7 +1746,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		/* Emit all states except possibly render condition. */
 		si_emit_all_states(sctx, info, prim, instance_count,
 				   primitive_restart, masked_atoms);
-		si_emit_cache_flush(sctx);
+		sctx->emit_cache_flush(sctx);
 		/* <-- CUs are idle here. */
 
 		if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond))
@@ -1772,7 +1774,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		 * states, and draw at the end.
 		 */
 		if (sctx->flags)
-			si_emit_cache_flush(sctx);
+			sctx->emit_cache_flush(sctx);
 
 		/* Only prefetch the API VS and VBO descriptors. */
 		if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)

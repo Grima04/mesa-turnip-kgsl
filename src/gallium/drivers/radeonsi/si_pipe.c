@@ -487,6 +487,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		goto fail;
 
 	/* Initialize context functions used by graphics and compute. */
+	sctx->emit_cache_flush = si_emit_cache_flush;
 	sctx->b.emit_string_marker = si_emit_string_marker;
 	sctx->b.set_debug_callback = si_set_debug_callback;
 	sctx->b.set_log_context = si_set_log_context;
