@@ -384,16 +384,21 @@ struct si_shader_selector {
 
 /* Valid shader configurations:
  *
- * API shaders       VS | TCS | TES | GS |pass| PS
- * are compiled as:     |     |     |    |thru|
- *                      |     |     |    |    |
- * Only VS & PS:     VS |     |     |    |    | PS
- * GFX6 - with GS:   ES |     |     | GS | VS | PS
- *      - with tess: LS | HS  | VS  |    |    | PS
- *      - with both: LS | HS  | ES  | GS | VS | PS
- * GFX9 - with GS:   -> |     |     | GS | VS | PS
- *      - with tess: -> | HS  | VS  |    |    | PS
- *      - with both: -> | HS  | ->  | GS | VS | PS
+ * API shaders           VS | TCS | TES | GS |pass| PS
+ * are compiled as:         |     |     |    |thru|
+ *                          |     |     |    |    |
+ * Only VS & PS:         VS |     |     |    |    | PS
+ * GFX6     - with GS:   ES |     |     | GS | VS | PS
+ *          - with tess: LS | HS  | VS  |    |    | PS
+ *          - with both: LS | HS  | ES  | GS | VS | PS
+ * GFX9     - with GS:   -> |     |     | GS | VS | PS
+ *          - with tess: -> | HS  | VS  |    |    | PS
+ *          - with both: -> | HS  | ->  | GS | VS | PS
+ *                          |     |     |    |    |
+ * NGG      - VS & PS:   GS |     |     |    |    | PS
+ * (GFX10+) - with GS:   -> |     |     | GS |    | PS
+ *          - with tess: -> | HS  | GS  |    |    | PS
+ *          - with both: -> | HS  | ->  | GS |    | PS
  *
  * -> = merged with the next stage
  */
