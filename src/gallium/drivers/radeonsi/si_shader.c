@@ -5399,6 +5399,8 @@ const char *si_get_shader_name(const struct si_shader *shader, unsigned processo
 			return "Vertex Shader as LS";
 		else if (shader->key.opt.vs_as_prim_discard_cs)
 			return "Vertex Shader as Primitive Discard CS";
+		else if (shader->key.as_ngg)
+			return "Vertex Shader as ESGS";
 		else
 			return "Vertex Shader as VS";
 	case PIPE_SHADER_TESS_CTRL:
@@ -5406,6 +5408,8 @@ const char *si_get_shader_name(const struct si_shader *shader, unsigned processo
 	case PIPE_SHADER_TESS_EVAL:
 		if (shader->key.as_es)
 			return "Tessellation Evaluation Shader as ES";
+		else if (shader->key.as_ngg)
+			return "Tessellation Evaluation Shader as ESGS";
 		else
 			return "Tessellation Evaluation Shader as VS";
 	case PIPE_SHADER_GEOMETRY:
