@@ -83,7 +83,8 @@ static bool llvm_type_is_64bit(struct si_shader_context *ctx,
 	return false;
 }
 
-static bool is_merged_shader(struct si_shader_context *ctx)
+/** Whether the shader runs as a combination of multiple API shaders */
+static bool is_multi_part_shader(struct si_shader_context *ctx)
 {
 	if (ctx->screen->info.chip_class <= GFX8)
 		return false;
@@ -92,6 +93,12 @@ static bool is_merged_shader(struct si_shader_context *ctx)
 	       ctx->shader->key.as_es ||
 	       ctx->type == PIPE_SHADER_TESS_CTRL ||
 	       ctx->type == PIPE_SHADER_GEOMETRY;
+}
+
+/** Whether the shader runs on a merged HW stage (LSHS or ESGS) */
+static bool is_merged_shader(struct si_shader_context *ctx)
+{
+	return ctx->shader->key.as_ngg || is_multi_part_shader(ctx);
 }
 
 void si_init_function_info(struct si_function_info *fninfo)
@@ -6543,7 +6550,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 
 		/* Merged shaders are executed conditionally depending
 		 * on the number of enabled threads passed in the input SGPRs. */
-		if (is_merged_shader(ctx) && part == 0) {
+		if (is_multi_part_shader(ctx) && part == 0) {
 			LLVMValueRef ena, count = initial[3];
 
 			count = LLVMBuildAnd(builder, count,
@@ -6605,7 +6612,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 
 		ret = ac_build_call(&ctx->ac, parts[part], in, num_params);
 
-		if (is_merged_shader(ctx) &&
+		if (is_multi_part_shader(ctx) &&
 		    part + 1 == next_shader_first_part) {
 			lp_build_endif(&if_state);
 
