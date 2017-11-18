@@ -244,9 +244,18 @@ _mesa_longest_attribute_name_length(struct gl_shader_program *shProg)
       if (res->Type == GL_PROGRAM_INPUT &&
           res->StageReferences & (1 << MESA_SHADER_VERTEX)) {
 
-          const size_t length = strlen(RESOURCE_VAR(res)->name);
-          if (length >= longest)
-             longest = length + 1;
+         /* From the ARB_gl_spirv spec:
+          *
+          *   "If pname is ACTIVE_ATTRIBUTE_MAX_LENGTH, the length of the
+          *    longest active attribute name, including a null terminator, is
+          *    returned.  If no active attributes exist, zero is returned. If
+          *    no name reflection information is available, one is returned."
+          */
+         const size_t length = RESOURCE_VAR(res)->name != NULL ?
+            strlen(RESOURCE_VAR(res)->name) : 0;
+
+         if (length >= longest)
+            longest = length + 1;
       }
    }
 

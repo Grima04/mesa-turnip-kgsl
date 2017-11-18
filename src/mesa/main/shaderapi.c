@@ -649,6 +649,13 @@ check_tes_query(struct gl_context *ctx, const struct gl_shader_program *shProg)
    return false;
 }
 
+/**
+ * Return the length of a string, or 0 if the pointer passed in is NULL
+ */
+static size_t strlen_or_zero(const char *s)
+{
+   return s ? strlen(s) : 0;
+}
 
 /**
  * glGetProgramiv() - get shader program state.
@@ -736,11 +743,23 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
          if (shProg->data->UniformStorage[i].is_shader_storage)
             continue;
 
+         /* From ARB_gl_spirv spec:
+          *
+          *   "If pname is ACTIVE_UNIFORM_MAX_LENGTH, the length of the
+          *    longest active uniform name, including a null terminator, is
+          *    returned. If no active uniforms exist, zero is returned. If no
+          *    name reflection information is available, one is returned."
+          *
+          * We are setting 0 here, as below it will add 1 for the NUL character.
+          */
+         const GLint base_len =
+            strlen_or_zero(shProg->data->UniformStorage[i].name);
+
 	 /* Add one for the terminating NUL character for a non-array, and
 	  * 4 for the "[0]" and the NUL for an array.
 	  */
-         const GLint len = strlen(shProg->data->UniformStorage[i].name) + 1 +
-             ((shProg->data->UniformStorage[i].array_elements != 0) ? 3 : 0);
+         const GLint len = base_len + 1 +
+            ((shProg->data->UniformStorage[i].array_elements != 0) ? 3 : 0);
 
 	 if (len > max_len)
 	    max_len = len;
@@ -818,9 +837,16 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
          break;
 
       for (i = 0; i < shProg->data->NumUniformBlocks; i++) {
-	 /* Add one for the terminating NUL character.
+	 /* Add one for the terminating NUL character. Name can be NULL, in
+          * that case, from ARB_gl_spirv:
+          *   "If pname is ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, the length of
+          *    the longest active uniform block name, including the null
+          *    terminator, is returned. If no active uniform blocks exist,
+          *    zero is returned. If no name reflection information is
+          *    available, one is returned."
 	  */
-         const GLint len = strlen(shProg->data->UniformBlocks[i].Name) + 1;
+         const GLint len =
+            strlen_or_zero(shProg->data->UniformBlocks[i].Name) + 1;
 
 	 if (len > max_len)
 	    max_len = len;
