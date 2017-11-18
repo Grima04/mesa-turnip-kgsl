@@ -38,6 +38,7 @@
 #include <xf86drm.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include "amd/common/ac_llvm_util.h"
 #include "amd/common/sid.h"
 #include "amd/common/gfx9d.h"
 
@@ -50,6 +51,39 @@ static simple_mtx_t dev_tab_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 
 DEBUG_GET_ONCE_BOOL_OPTION(all_bos, "RADEON_ALL_BOS", false)
 
+static void handle_env_var_force_family(struct amdgpu_winsys *ws)
+{
+      const char *family = debug_get_option("SI_FORCE_FAMILY", NULL);
+      unsigned i;
+
+      if (!family)
+               return;
+
+      for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
+         if (!strcmp(family, ac_get_llvm_processor_name(i))) {
+            /* Override family and chip_class. */
+            ws->info.family = i;
+            ws->info.name = "GCN-NOOP";
+
+            if (i >= CHIP_VEGA10)
+               ws->info.chip_class = GFX9;
+            else if (i >= CHIP_TONGA)
+               ws->info.chip_class = VI;
+            else if (i >= CHIP_BONAIRE)
+               ws->info.chip_class = CIK;
+            else
+               ws->info.chip_class = SI;
+
+            /* Don't submit any IBs. */
+            setenv("RADEON_NOOP", "1", 1);
+            return;
+         }
+      }
+
+      fprintf(stderr, "radeonsi: Unknown family: %s\n", family);
+      exit(1);
+}
+
 /* Helper function to do the ioctls needed for setup and init. */
 static bool do_winsys_init(struct amdgpu_winsys *ws,
                            const struct pipe_screen_config *config,
@@ -57,6 +91,8 @@ static bool do_winsys_init(struct amdgpu_winsys *ws,
 {
    if (!ac_query_gpu_info(fd, ws->dev, &ws->info, &ws->amdinfo))
       goto fail;
+
+   handle_env_var_force_family(ws);
 
    ws->addrlib = amdgpu_addr_create(&ws->info, &ws->amdinfo, &ws->info.max_alignment);
    if (!ws->addrlib) {

@@ -725,39 +725,6 @@ static void si_init_gs_info(struct si_screen *sscreen)
 							sscreen->info.family);
 }
 
-static void si_handle_env_var_force_family(struct si_screen *sscreen)
-{
-	const char *family = debug_get_option("SI_FORCE_FAMILY", NULL);
-	unsigned i;
-
-	if (!family)
-		return;
-
-	for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
-		if (!strcmp(family, ac_get_llvm_processor_name(i))) {
-			/* Override family and chip_class. */
-			sscreen->info.family = i;
-			sscreen->info.name = "GCN-NOOP";
-
-			if (i >= CHIP_VEGA10)
-				sscreen->info.chip_class = GFX9;
-			else if (i >= CHIP_TONGA)
-				sscreen->info.chip_class = VI;
-			else if (i >= CHIP_BONAIRE)
-				sscreen->info.chip_class = CIK;
-			else
-				sscreen->info.chip_class = SI;
-
-			/* Don't submit any IBs. */
-			setenv("RADEON_NOOP", "1", 1);
-			return;
-		}
-	}
-
-	fprintf(stderr, "radeonsi: Unknown family: %s\n", family);
-	exit(1);
-}
-
 static void si_test_vmfault(struct si_screen *sscreen)
 {
 	struct pipe_context *ctx = sscreen->aux_context;
@@ -878,7 +845,6 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 
 	sscreen->ws = ws;
 	ws->query_info(ws, &sscreen->info);
-	si_handle_env_var_force_family(sscreen);
 
 	if (sscreen->info.chip_class >= GFX9) {
 		sscreen->se_tile_repeat = 32 * sscreen->info.max_se;
