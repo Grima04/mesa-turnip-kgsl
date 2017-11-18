@@ -5539,6 +5539,21 @@ static void si_init_config(struct si_context *sctx)
 			       S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
 	}
 
+	if (sctx->chip_class >= GFX10) {
+		/* Break up a pixel wave if it contains deallocs for more than
+		 * half the parameter cache.
+		 *
+		 * To avoid a deadlock where pixel waves aren't launched
+		 * because they're waiting for more pixels while the frontend
+		 * is stuck waiting for PC space, the maximum allowed value is
+		 * the size of the PC minus the largest possible allocation for
+		 * a single primitive shader subgroup.
+		 */
+		si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
+			       S_028C50_MAX_DEALLOCS_IN_WAVE(512));
+		si_pm4_set_reg(pm4, R_028838_PA_CL_NGG_CNTL, 0); /* TODO edge flags? */
+	}
+
 	if (sctx->chip_class >= GFX8) {
 		unsigned vgt_tess_distribution;
 
