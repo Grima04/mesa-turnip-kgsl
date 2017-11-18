@@ -1180,7 +1180,7 @@ static void si_emit_shader_ps(struct si_context *sctx)
 		sctx->context_roll = true;
 }
 
-static void si_shader_ps(struct si_shader *shader)
+static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 {
 	struct tgsi_shader_info *info = &shader->selector->info;
 	struct si_pm4_state *pm4;
@@ -1301,11 +1301,17 @@ static void si_shader_ps(struct si_shader *shader)
 	si_pm4_set_reg(pm4, R_00B020_SPI_SHADER_PGM_LO_PS, va >> 8);
 	si_pm4_set_reg(pm4, R_00B024_SPI_SHADER_PGM_HI_PS, S_00B024_MEM_BASE(va >> 40));
 
-	si_pm4_set_reg(pm4, R_00B028_SPI_SHADER_PGM_RSRC1_PS,
-		       S_00B028_VGPRS((shader->config.num_vgprs - 1) / 4) |
-		       S_00B028_SGPRS((shader->config.num_sgprs - 1) / 8) |
-		       S_00B028_DX10_CLAMP(1) |
-		       S_00B028_FLOAT_MODE(shader->config.float_mode));
+	uint32_t rsrc1 =
+		S_00B028_VGPRS((shader->config.num_vgprs - 1) / 4) |
+		S_00B028_DX10_CLAMP(1) |
+		S_00B028_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+		S_00B028_FLOAT_MODE(shader->config.float_mode);
+
+	if (sscreen->info.chip_class < GFX10) {
+		rsrc1 |= S_00B028_SGPRS((shader->config.num_sgprs - 1) / 8);
+	}
+
+	si_pm4_set_reg(pm4, R_00B028_SPI_SHADER_PGM_RSRC1_PS, rsrc1);
 	si_pm4_set_reg(pm4, R_00B02C_SPI_SHADER_PGM_RSRC2_PS,
 		       S_00B02C_EXTRA_LDS_SIZE(shader->config.lds_size) |
 		       S_00B02C_USER_SGPR(SI_PS_NUM_USER_SGPR) |
@@ -1337,7 +1343,7 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen,
 		si_shader_gs(sscreen, shader);
 		break;
 	case PIPE_SHADER_FRAGMENT:
-		si_shader_ps(shader);
+		si_shader_ps(sscreen, shader);
 		break;
 	default:
 		assert(0);
