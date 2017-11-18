@@ -189,9 +189,14 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
 		shader->config.rsrc1 =
 			S_00B848_VGPRS((shader->config.num_vgprs - 1) / 4) |
-			S_00B848_SGPRS((shader->config.num_sgprs - 1) / 8) |
 			S_00B848_DX10_CLAMP(1) |
+			S_00B848_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
 			S_00B848_FLOAT_MODE(shader->config.float_mode);
+
+		if (program->screen->info.chip_class < GFX10) {
+			shader->config.rsrc1 |=
+				S_00B848_SGPRS((shader->config.num_sgprs - 1) / 8);
+		}
 
 		shader->config.rsrc2 =
 			S_00B84C_USER_SGPR(user_sgprs) |
@@ -342,7 +347,8 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 	uint64_t bc_va;
 
 	radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
-	/* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1 */
+	/* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1,
+	 * renamed COMPUTE_DESTINATION_EN_SEn on gfx10. */
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 
@@ -355,6 +361,9 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 		radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) |
 		                S_00B858_SH1_CU_EN(0xffff));
 	}
+
+	if (sctx->chip_class >= GFX10)
+		radeon_set_sh_reg(cs, R_00B8A0_COMPUTE_PGM_RSRC3, 0);
 
 	/* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID
 	 * and is now per pipe, so it should be handled in the
