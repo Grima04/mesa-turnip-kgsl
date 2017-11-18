@@ -5471,6 +5471,19 @@ static void si_init_config(struct si_context *sctx)
 	}
 
 	if (sctx->chip_class >= GFX7) {
+		if (sctx->chip_class >= GFX10) {
+			/* Logical CUs 16 - 31 */
+			si_pm4_set_reg(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
+				       S_00B404_CU_EN(0xffff));
+			si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+				       S_00B204_CU_EN(0xffff) |
+				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
+			si_pm4_set_reg(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
+				       S_00B104_CU_EN(0xffff));
+			si_pm4_set_reg(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
+				       S_00B004_CU_EN(0xffff));
+		}
+
 		if (sctx->chip_class >= GFX9) {
 			si_pm4_set_reg(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
 				       S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
@@ -5513,18 +5526,15 @@ static void si_init_config(struct si_context *sctx)
 			 * wave per SIMD on num_cu - 2.
 			 */
 			late_alloc_limit = (num_cu_per_sh - 2) * 4;
-
-			/* The limit is 0-based, so 0 means 1. */
-			assert(late_alloc_limit > 0 && late_alloc_limit <= 64);
-			late_alloc_limit -= 1;
 		}
 
 		/* VS can't execute on one CU if the limit is > 2. */
 		si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-			       S_00B118_CU_EN(late_alloc_limit > 2 ? 0xfffe : 0xffff) |
-			       S_00B118_WAVE_LIMIT(0x3F));
+			S_00B118_CU_EN(late_alloc_limit > 2 ? 0xfffe : 0xffff) |
+			S_00B118_WAVE_LIMIT(0x3F));
 		si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS,
-			       S_00B11C_LIMIT(late_alloc_limit));
+			S_00B11C_LIMIT(late_alloc_limit));
+
 		si_pm4_set_reg(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
 			       S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
 	}
