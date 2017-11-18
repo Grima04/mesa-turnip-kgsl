@@ -2087,22 +2087,32 @@ static void si_set_user_data_base(struct si_context *sctx,
 	}
 }
 
-/* This must be called when these shaders are changed from non-NULL to NULL
- * and vice versa:
+/* This must be called when these are changed between enabled and disabled
  * - geometry shader
- * - tessellation control shader
  * - tessellation evaluation shader
+ * - NGG
  */
 void si_shader_change_notify(struct si_context *sctx)
 {
 	/* VS can be bound as VS, ES, or LS. */
 	if (sctx->tes_shader.cso) {
-		if (sctx->chip_class >= GFX9) {
+		if (sctx->chip_class >= GFX10) {
+			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
+					      R_00B430_SPI_SHADER_USER_DATA_HS_0);
+		} else if (sctx->chip_class >= GFX9) {
 			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
 					      R_00B430_SPI_SHADER_USER_DATA_LS_0);
 		} else {
 			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
 					      R_00B530_SPI_SHADER_USER_DATA_LS_0);
+		}
+	} else if (sctx->chip_class >= GFX10) {
+		if (sctx->ngg || sctx->gs_shader.cso) {
+			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
+					      R_00B230_SPI_SHADER_USER_DATA_GS_0);
+		} else {
+			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
+					      R_00B130_SPI_SHADER_USER_DATA_VS_0);
 		}
 	} else if (sctx->gs_shader.cso) {
 		si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
@@ -2114,12 +2124,21 @@ void si_shader_change_notify(struct si_context *sctx)
 
 	/* TES can be bound as ES, VS, or not bound. */
 	if (sctx->tes_shader.cso) {
-		if (sctx->gs_shader.cso)
+		if (sctx->chip_class >= GFX10) {
+			if (sctx->ngg || sctx->gs_shader.cso) {
+				si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
+						      R_00B230_SPI_SHADER_USER_DATA_GS_0);
+			} else {
+				si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
+						      R_00B130_SPI_SHADER_USER_DATA_VS_0);
+			}
+		} else if (sctx->gs_shader.cso) {
 			si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
 					      R_00B330_SPI_SHADER_USER_DATA_ES_0);
-		else
+		} else {
 			si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
 					      R_00B130_SPI_SHADER_USER_DATA_VS_0);
+		}
 	} else {
 		si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL, 0);
 	}
@@ -2801,9 +2820,14 @@ void si_init_all_descriptors(struct si_context *sctx)
 	sctx->atoms.s.shader_pointers.emit = si_emit_graphics_shader_pointers;
 
 	/* Set default and immutable mappings. */
-	si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B130_SPI_SHADER_USER_DATA_VS_0);
+	if (sctx->ngg) {
+		assert(sctx->chip_class >= GFX10);
+		si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B230_SPI_SHADER_USER_DATA_GS_0);
+	} else {
+		si_set_user_data_base(sctx, PIPE_SHADER_VERTEX, R_00B130_SPI_SHADER_USER_DATA_VS_0);
+	}
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class == GFX9) {
 		si_set_user_data_base(sctx, PIPE_SHADER_TESS_CTRL,
 				      R_00B430_SPI_SHADER_USER_DATA_LS_0);
 		si_set_user_data_base(sctx, PIPE_SHADER_GEOMETRY,
