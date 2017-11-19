@@ -269,6 +269,8 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
 		ac_dump_reg(f, ib->chip_class, R_0301F8_CP_COHER_BASE, ac_ib_get(ib), ~0);
 		ac_dump_reg(f, ib->chip_class, R_0301E4_CP_COHER_BASE_HI, ac_ib_get(ib), ~0);
 		print_named_value(f, "POLL_INTERVAL", ac_ib_get(ib), 16);
+		if (ib->chip_class >= GFX10)
+			ac_dump_reg(f, ib->chip_class, R_586_GCR_CNTL, ac_ib_get(ib), ~0);
 		break;
 	case PKT3_SURFACE_SYNC:
 		if (ib->chip_class >= GFX7) {
@@ -316,17 +318,21 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
 	}
 	case PKT3_RELEASE_MEM: {
 		uint32_t event_dw = ac_ib_get(ib);
-		ac_dump_reg(f, ib->chip_class, R_028A90_VGT_EVENT_INITIATOR, event_dw,
-			    S_028A90_EVENT_TYPE(~0));
-		print_named_value(f, "EVENT_INDEX", (event_dw >> 8) & 0xf, 4);
-		print_named_value(f, "TCL1_VOL_ACTION_ENA", (event_dw >> 12) & 0x1, 1);
-		print_named_value(f, "TC_VOL_ACTION_ENA", (event_dw >> 13) & 0x1, 1);
-		print_named_value(f, "TC_WB_ACTION_ENA", (event_dw >> 15) & 0x1, 1);
-		print_named_value(f, "TCL1_ACTION_ENA", (event_dw >> 16) & 0x1, 1);
-		print_named_value(f, "TC_ACTION_ENA", (event_dw >> 17) & 0x1, 1);
-		print_named_value(f, "TC_NC_ACTION_ENA", (event_dw >> 19) & 0x1, 1);
-		print_named_value(f, "TC_WC_ACTION_ENA", (event_dw >> 20) & 0x1, 1);
-		print_named_value(f, "TC_MD_ACTION_ENA", (event_dw >> 21) & 0x1, 1);
+		if (ib->chip_class >= GFX10) {
+			ac_dump_reg(f, ib->chip_class, R_490_RELEASE_MEM_OP, event_dw, ~0u);
+		} else {
+			ac_dump_reg(f, ib->chip_class, R_028A90_VGT_EVENT_INITIATOR, event_dw,
+				    S_028A90_EVENT_TYPE(~0));
+			print_named_value(f, "EVENT_INDEX", (event_dw >> 8) & 0xf, 4);
+			print_named_value(f, "TCL1_VOL_ACTION_ENA", (event_dw >> 12) & 0x1, 1);
+			print_named_value(f, "TC_VOL_ACTION_ENA", (event_dw >> 13) & 0x1, 1);
+			print_named_value(f, "TC_WB_ACTION_ENA", (event_dw >> 15) & 0x1, 1);
+			print_named_value(f, "TCL1_ACTION_ENA", (event_dw >> 16) & 0x1, 1);
+			print_named_value(f, "TC_ACTION_ENA", (event_dw >> 17) & 0x1, 1);
+			print_named_value(f, "TC_NC_ACTION_ENA", (event_dw >> 19) & 0x1, 1);
+			print_named_value(f, "TC_WC_ACTION_ENA", (event_dw >> 20) & 0x1, 1);
+			print_named_value(f, "TC_MD_ACTION_ENA", (event_dw >> 21) & 0x1, 1);
+		}
 		uint32_t sel_dw = ac_ib_get(ib);
 		print_named_value(f, "DST_SEL", (sel_dw >> 16) & 0x3, 2);
 		print_named_value(f, "INT_SEL", (sel_dw >> 24) & 0x7, 3);
