@@ -5456,7 +5456,11 @@ static void si_init_config(struct si_context *sctx)
 		si_pm4_set_reg(pm4, R_02800C_DB_RENDER_OVERRIDE, 0);
 	}
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class >= GFX10) {
+		si_pm4_set_reg(pm4, R_030964_GE_MAX_VTX_INDX, ~0);
+		si_pm4_set_reg(pm4, R_030924_GE_MIN_VTX_INDX, 0);
+		si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
+	} else if (sctx->chip_class >= GFX9) {
 		si_pm4_set_reg(pm4, R_030920_VGT_MAX_VTX_INDX, ~0);
 		si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
 		si_pm4_set_reg(pm4, R_030928_VGT_INDX_OFFSET, 0);
