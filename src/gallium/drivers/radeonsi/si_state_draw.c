@@ -620,15 +620,14 @@ static inline bool si_prim_restart_index_changed(struct si_context *sctx,
 		sctx->last_restart_index == SI_RESTART_INDEX_UNKNOWN);
 }
 
-static void si_emit_draw_registers(struct si_context *sctx,
-				   const struct pipe_draw_info *info,
-				   enum pipe_prim_type prim,
-				   unsigned num_patches,
-				   unsigned instance_count,
-				   bool primitive_restart)
+static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
+				       const struct pipe_draw_info *info,
+				       enum pipe_prim_type prim,
+				       unsigned num_patches,
+				       unsigned instance_count,
+				       bool primitive_restart)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	unsigned vgt_prim = si_conv_pipe_prim(prim);
 	unsigned ia_multi_vgt_param;
 
 	ia_multi_vgt_param = si_get_ia_multi_vgt_param(sctx, info, prim, num_patches,
@@ -647,6 +646,60 @@ static void si_emit_draw_registers(struct si_context *sctx,
 
 		sctx->last_multi_vgt_param = ia_multi_vgt_param;
 	}
+}
+
+/* GFX10 removed IA_MULTI_VGT_PARAM in exchange for GE_CNTL.
+ * We overload last_multi_vgt_param.
+ */
+static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
+{
+	if (sctx->ngg)
+		return; /* set during PM4 emit */
+
+	union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
+	unsigned primgroup_size;
+	unsigned vertgroup_size;
+
+	if (sctx->tes_shader.cso) {
+		primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
+		vertgroup_size = 0;
+	} else if (sctx->gs_shader.cso) {
+		unsigned vgt_gs_onchip_cntl = sctx->gs_shader.current->ctx_reg.gs.vgt_gs_onchip_cntl;
+		primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
+		vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
+	} else {
+		primgroup_size = 128; /* recommended without a GS and tess */
+		vertgroup_size = 0;
+	}
+
+	unsigned ge_cntl =
+		S_03096C_PRIM_GRP_SIZE(primgroup_size) |
+		S_03096C_VERT_GRP_SIZE(vertgroup_size) |
+		S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled) |
+		S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
+
+	if (ge_cntl != sctx->last_multi_vgt_param) {
+		radeon_set_uconfig_reg(sctx->gfx_cs, R_03096C_GE_CNTL, ge_cntl);
+		sctx->last_multi_vgt_param = ge_cntl;
+	}
+}
+
+static void si_emit_draw_registers(struct si_context *sctx,
+				   const struct pipe_draw_info *info,
+				   enum pipe_prim_type prim,
+				   unsigned num_patches,
+				   unsigned instance_count,
+				   bool primitive_restart)
+{
+	struct radeon_cmdbuf *cs = sctx->gfx_cs;
+	unsigned vgt_prim = si_conv_pipe_prim(info->mode);
+
+	if (sctx->chip_class >= GFX10)
+		gfx10_emit_ge_cntl(sctx, num_patches);
+	else
+		si_emit_ia_multi_vgt_param(sctx, info, prim, num_patches,
+					   instance_count, primitive_restart);
+
 	if (vgt_prim != sctx->last_prim) {
 		if (sctx->chip_class >= GFX7)
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
