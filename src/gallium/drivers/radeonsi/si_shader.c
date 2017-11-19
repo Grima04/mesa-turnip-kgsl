@@ -4553,6 +4553,30 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 	}
 }
 
+static void declare_vs_blit_inputs(struct si_shader_context *ctx,
+				   struct si_function_info *fninfo,
+				   unsigned vs_blit_property)
+{
+	ctx->param_vs_blit_inputs = fninfo->num_params;
+	add_arg(fninfo, ARG_SGPR, ctx->i32); /* i16 x1, y1 */
+	add_arg(fninfo, ARG_SGPR, ctx->i32); /* i16 x2, y2 */
+	add_arg(fninfo, ARG_SGPR, ctx->f32); /* depth */
+
+	if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* color0 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* color1 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* color2 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* color3 */
+	} else if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD) {
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.x1 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.y1 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.x2 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.y2 */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.z */
+		add_arg(fninfo, ARG_SGPR, ctx->f32); /* texcoord.w */
+	}
+}
+
 static void declare_tes_input_vgprs(struct si_shader_context *ctx,
 				    struct si_function_info *fninfo)
 {
@@ -4597,24 +4621,7 @@ static void create_function(struct si_shader_context *ctx)
 		declare_global_desc_pointers(ctx, &fninfo);
 
 		if (vs_blit_property) {
-			ctx->param_vs_blit_inputs = fninfo.num_params;
-			add_arg(&fninfo, ARG_SGPR, ctx->i32); /* i16 x1, y1 */
-			add_arg(&fninfo, ARG_SGPR, ctx->i32); /* i16 x2, y2 */
-			add_arg(&fninfo, ARG_SGPR, ctx->f32); /* depth */
-
-			if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* color0 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* color1 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* color2 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* color3 */
-			} else if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD) {
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.x1 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.y1 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.x2 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.y2 */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.z */
-				add_arg(&fninfo, ARG_SGPR, ctx->f32); /* texcoord.w */
-			}
+			declare_vs_blit_inputs(ctx, &fninfo, vs_blit_property);
 
 			/* VGPRs */
 			declare_vs_input_vgprs(ctx, &fninfo, &num_prolog_vgprs);
