@@ -67,7 +67,7 @@ endif
 if with_gallium_freedreno
   subdir('freedreno')
 endif
-if with_dri_i965 or with_intel_vk
+if with_dri_i965 or with_intel_vk or with_gallium_iris
   subdir('intel')
 endif
 subdir('mesa')

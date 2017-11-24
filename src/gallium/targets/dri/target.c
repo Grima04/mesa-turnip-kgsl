@@ -38,8 +38,8 @@ PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
 DEFINE_LOADER_DRM_ENTRYPOINT(i915)
 #endif
 
-#if defined(GALLIUM_ILO)
-DEFINE_LOADER_DRM_ENTRYPOINT(i965)
+#if defined(GALLIUM_IRIS)
+DEFINE_LOADER_DRM_ENTRYPOINT(iris)
 #endif
 
 #if defined(GALLIUM_NOUVEAU)

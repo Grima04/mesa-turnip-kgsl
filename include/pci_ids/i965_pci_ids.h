@@ -1,3 +1,4 @@
+#ifndef IRIS
 CHIPSET(0x29A2, i965,    "Intel(R) 965G")
 CHIPSET(0x2992, i965,    "Intel(R) 965Q")
 CHIPSET(0x2982, i965,    "Intel(R) 965G")
@@ -91,6 +92,11 @@ CHIPSET(0x0F32, byt,     "Intel(R) Bay Trail")
 CHIPSET(0x0F33, byt,     "Intel(R) Bay Trail")
 CHIPSET(0x0157, byt,     "Intel(R) Bay Trail")
 CHIPSET(0x0155, byt,     "Intel(R) Bay Trail")
+CHIPSET(0x22B0, chv,     "Intel(R) HD Graphics (Cherrytrail)")
+CHIPSET(0x22B1, chv,     "Intel(R) HD Graphics XXX (Braswell)") /* Overridden in brw_get_renderer_string */
+CHIPSET(0x22B2, chv,     "Intel(R) HD Graphics (Cherryview)")
+CHIPSET(0x22B3, chv,     "Intel(R) HD Graphics (Cherryview)")
+#endif
 CHIPSET(0x1602, bdw_gt1, "Intel(R) Broadwell GT1")
 CHIPSET(0x1606, bdw_gt1, "Intel(R) Broadwell GT1")
 CHIPSET(0x160A, bdw_gt1, "Intel(R) Broadwell GT1")
@@ -109,10 +115,6 @@ CHIPSET(0x162A, bdw_gt3, "Intel(R) Iris Pro P6300 (Broadwell GT3e)")
 CHIPSET(0x162B, bdw_gt3, "Intel(R) Iris 6100 (Broadwell GT3)")
 CHIPSET(0x162D, bdw_gt3, "Intel(R) Broadwell GT3")
 CHIPSET(0x162E, bdw_gt3, "Intel(R) Broadwell GT3")
-CHIPSET(0x22B0, chv,     "Intel(R) HD Graphics (Cherrytrail)")
-CHIPSET(0x22B1, chv,     "Intel(R) HD Graphics XXX (Braswell)") /* Overridden in brw_get_renderer_string */
-CHIPSET(0x22B2, chv,     "Intel(R) HD Graphics (Cherryview)")
-CHIPSET(0x22B3, chv,     "Intel(R) HD Graphics (Cherryview)")
 CHIPSET(0x1902, skl_gt1, "Intel(R) HD Graphics 510 (Skylake GT1)")
 CHIPSET(0x1906, skl_gt1, "Intel(R) HD Graphics 510 (Skylake GT1)")
 CHIPSET(0x190A, skl_gt1, "Intel(R) Skylake GT1")
