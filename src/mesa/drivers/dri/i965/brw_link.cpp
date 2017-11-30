@@ -269,6 +269,10 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
 
    /* SPIR-V programs use a NIR linker */
    if (shProg->data->spirv) {
+      if (!gl_nir_link_uniform_blocks(ctx, shProg)) {
+         return GL_FALSE;
+      }
+
       if (!gl_nir_link_uniforms(ctx, shProg))
          return GL_FALSE;
 
