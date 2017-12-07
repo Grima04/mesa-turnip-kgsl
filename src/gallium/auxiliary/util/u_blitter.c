@@ -123,7 +123,8 @@ struct blitter_context_priv
    void *sampler_state_rect_linear;
 
    /* Rasterizer state. */
-   void *rs_state, *rs_state_scissor, *rs_discard_state;
+   void *rs_state[2][2];  /**< [scissor][msaa] */
+   void *rs_discard_state;
 
    /* Destination surface dimensions. */
    unsigned dst_width;
@@ -278,13 +279,19 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    rs_state.flatshade = 1;
    rs_state.depth_clip_near = 1;
    rs_state.depth_clip_far = 1;
-   ctx->rs_state = pipe->create_rasterizer_state(pipe, &rs_state);
 
-   rs_state.scissor = 1;
-   ctx->rs_state_scissor = pipe->create_rasterizer_state(pipe, &rs_state);
+   unsigned scissor, msaa;
+   for (scissor = 0; scissor < 2; scissor++) {
+      for (msaa = 0; msaa < 2; msaa++) {
+         rs_state.scissor = scissor;
+         rs_state.multisample = msaa;
+         ctx->rs_state[scissor][msaa] =
+            pipe->create_rasterizer_state(pipe, &rs_state);
+      }
+   }
 
    if (ctx->has_stream_out) {
-      rs_state.scissor = 0;
+      rs_state.scissor = rs_state.multisample = 0;
       rs_state.rasterizer_discard = 1;
       ctx->rs_discard_state = pipe->create_rasterizer_state(pipe, &rs_state);
    }
@@ -459,8 +466,13 @@ void util_blitter_destroy(struct blitter_context *blitter)
    pipe->delete_depth_stencil_alpha_state(pipe, ctx->dsa_write_depth_stencil);
    pipe->delete_depth_stencil_alpha_state(pipe, ctx->dsa_keep_depth_write_stencil);
 
-   pipe->delete_rasterizer_state(pipe, ctx->rs_state);
-   pipe->delete_rasterizer_state(pipe, ctx->rs_state_scissor);
+   unsigned scissor, msaa;
+   for (scissor = 0; scissor < 2; scissor++) {
+      for (msaa = 0; msaa < 2; msaa++) {
+         pipe->delete_rasterizer_state(pipe, ctx->rs_state[scissor][msaa]);
+      }
+   }
+
    if (ctx->rs_discard_state)
       pipe->delete_rasterizer_state(pipe, ctx->rs_discard_state);
    if (ctx->vs)
@@ -1228,15 +1240,15 @@ void util_blitter_cache_all_shaders(struct blitter_context *blitter)
 }
 
 static void blitter_set_common_draw_rect_state(struct blitter_context_priv *ctx,
-                                               bool scissor)
+                                               bool scissor, bool msaa)
 {
    struct pipe_context *pipe = ctx->base.pipe;
 
    if (ctx->base.saved_num_window_rectangles)
       pipe->set_window_rectangles(pipe, false, 0, NULL);
 
-   pipe->bind_rasterizer_state(pipe, scissor ? ctx->rs_state_scissor
-                                             : ctx->rs_state);
+   pipe->bind_rasterizer_state(pipe, ctx->rs_state[scissor][msaa]);
+
    if (ctx->has_geometry_shader)
       pipe->bind_gs_state(pipe, NULL);
    if (ctx->has_tessellation) {
@@ -1422,7 +1434,7 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
    if (num_layers > 1 && ctx->has_layered) {
       blitter_get_vs_func get_vs = get_vs_layered;
 
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs,
                               0, 0, width, height,
                               (float) depth, num_layers, type, &attrib);
@@ -1434,7 +1446,7 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
       else
          get_vs = get_vs_passthrough_pos;
 
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs,
                               0, 0, width, height,
                               (float) depth, 1, type, &attrib);
@@ -1988,7 +2000,7 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
       pipe->set_scissor_states(pipe, 0, 1, scissor);
    }
 
-   blitter_set_common_draw_rect_state(ctx, scissor != NULL);
+   blitter_set_common_draw_rect_state(ctx, scissor != NULL, dst_samples > 1);
 
    do_blits(ctx, dst, dstbox, src, src_width0, src_height0,
             srcbox, blit_depth || blit_stencil, use_txf);
@@ -2095,7 +2107,7 @@ void util_blitter_generate_mipmap(struct blitter_context *blitter,
    pipe->bind_sampler_states(pipe, PIPE_SHADER_FRAGMENT,
                              0, 1, &sampler_state);
 
-   blitter_set_common_draw_rect_state(ctx, false);
+   blitter_set_common_draw_rect_state(ctx, false, false);
 
    for (src_level = base_level; src_level < last_level; src_level++) {
       struct pipe_box dstbox = {0}, srcbox = {0};
@@ -2187,12 +2199,12 @@ void util_blitter_clear_render_target(struct blitter_context *blitter,
 
    num_layers = dstsurf->u.tex.last_layer - dstsurf->u.tex.first_layer + 1;
    if (num_layers > 1 && ctx->has_layered) {
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_layered,
                               dstx, dsty, dstx+width, dsty+height, 0,
                               num_layers, UTIL_BLITTER_ATTRIB_COLOR, &attrib);
    } else {
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state,
                               get_vs_passthrough_pos_generic,
                               dstx, dsty, dstx+width, dsty+height, 0,
@@ -2266,12 +2278,12 @@ void util_blitter_clear_depth_stencil(struct blitter_context *blitter,
 
    num_layers = dstsurf->u.tex.last_layer - dstsurf->u.tex.first_layer + 1;
    if (num_layers > 1 && ctx->has_layered) {
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_layered,
                               dstx, dsty, dstx+width, dsty+height, depth,
                               num_layers, UTIL_BLITTER_ATTRIB_NONE, NULL);
    } else {
-      blitter_set_common_draw_rect_state(ctx, false);
+      blitter_set_common_draw_rect_state(ctx, false, false);
       blitter->draw_rectangle(blitter, ctx->velem_state,
                               get_vs_passthrough_pos,
                               dstx, dsty, dstx+width, dsty+height, depth, 1,
@@ -2331,7 +2343,7 @@ void util_blitter_custom_depth_stencil(struct blitter_context *blitter,
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, sample_mask);
 
-   blitter_set_common_draw_rect_state(ctx, false);
+   blitter_set_common_draw_rect_state(ctx, false, false);
    blitter_set_dst_dimensions(ctx, zsurf->width, zsurf->height);
    blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_passthrough_pos,
                            0, 0, zsurf->width, zsurf->height, depth,
@@ -2531,7 +2543,7 @@ void util_blitter_custom_resolve_color(struct blitter_context *blitter,
    fb_state.zsbuf = NULL;
    pipe->set_framebuffer_state(pipe, &fb_state);
 
-   blitter_set_common_draw_rect_state(ctx, false);
+   blitter_set_common_draw_rect_state(ctx, false, false);
    blitter_set_dst_dimensions(ctx, src->width0, src->height0);
    blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_passthrough_pos,
                            0, 0, src->width0, src->height0,
@@ -2581,7 +2593,7 @@ void util_blitter_custom_color(struct blitter_context *blitter,
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
 
-   blitter_set_common_draw_rect_state(ctx, false);
+   blitter_set_common_draw_rect_state(ctx, false, false);
    blitter_set_dst_dimensions(ctx, dstsurf->width, dstsurf->height);
    blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_passthrough_pos,
                            0, 0, dstsurf->width, dstsurf->height,
@@ -2643,7 +2655,7 @@ void util_blitter_custom_shader(struct blitter_context *blitter,
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
 
-   blitter_set_common_draw_rect_state(ctx, false);
+   blitter_set_common_draw_rect_state(ctx, false, false);
    blitter_set_dst_dimensions(ctx, dstsurf->width, dstsurf->height);
    blitter->draw_rectangle(blitter, ctx->velem_state, get_custom_vs,
                            0, 0, dstsurf->width, dstsurf->height,
