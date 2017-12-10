@@ -180,6 +180,8 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
    if (nv_dbg)
       nouveau_mesa_debug = atoi(nv_dbg);
 
+   screen->prefer_nir = debug_get_bool_option("NV50_PROG_USE_NIR", false);
+
    /* These must be set before any failure is possible, as the cleanup
     * paths assume they're responsible for deleting them.
     */

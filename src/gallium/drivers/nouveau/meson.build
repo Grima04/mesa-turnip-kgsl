@@ -131,6 +131,7 @@ files_libnouveau = files(
   'codegen/nv50_ir_emit_nv50.cpp',
   'codegen/nv50_ir_from_common.cpp',
   'codegen/nv50_ir_from_common.h',
+  'codegen/nv50_ir_from_nir.cpp',
   'codegen/nv50_ir_from_tgsi.cpp',
   'codegen/nv50_ir_graph.cpp',
   'codegen/nv50_ir_graph.h',
@@ -210,9 +211,9 @@ files_libnouveau = files(
 
 libnouveau = static_library(
   'nouveau',
-  [files_libnouveau],
+  [files_libnouveau, nir_opcodes_h],
   include_directories : [
-    inc_src, inc_include, inc_gallium, inc_gallium_aux,
+    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_common,
   ],
   c_args : [c_vis_args],
   cpp_args : [cpp_vis_args],
@@ -224,12 +225,12 @@ nouveau_compiler = executable(
   'nouveau_compiler.c',
   include_directories : [inc_src, inc_include, inc_gallium, inc_gallium_aux],
   dependencies : [dep_libdrm, dep_libdrm_nouveau],
-  link_with : [libnouveau, libgallium, libmesa_util],
+  link_with : [libnouveau, libgallium, libmesa_util, libnir],
   build_by_default : with_tools.contains('nouveau'),
   install : with_tools.contains('nouveau'),
 )
 
 driver_nouveau = declare_dependency(
   compile_args : '-DGALLIUM_NOUVEAU',
-  link_with : [libnouveauwinsys, libnouveau],
+  link_with : [libnouveauwinsys, libnouveau, libnir],
 )
