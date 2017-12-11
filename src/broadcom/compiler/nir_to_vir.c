@@ -1693,6 +1693,32 @@ ntq_emit_ssa_undef(struct v3d_compile *c, nir_ssa_undef_instr *instr)
 }
 
 static void
+ntq_emit_image_size(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        assert(instr->intrinsic == nir_intrinsic_image_deref_size);
+        nir_variable *var = nir_intrinsic_get_var(instr, 0);
+        unsigned image_index = var->data.driver_location;
+        const struct glsl_type *sampler_type = glsl_without_array(var->type);
+        bool is_array = glsl_sampler_type_is_array(sampler_type);
+
+        ntq_store_dest(c, &instr->dest, 0,
+                       vir_uniform(c, QUNIFORM_IMAGE_WIDTH, image_index));
+        if (instr->num_components > 1) {
+                ntq_store_dest(c, &instr->dest, 1,
+                               vir_uniform(c, QUNIFORM_IMAGE_HEIGHT,
+                                           image_index));
+        }
+        if (instr->num_components > 2) {
+                ntq_store_dest(c, &instr->dest, 2,
+                               vir_uniform(c,
+                                           is_array ?
+                                           QUNIFORM_IMAGE_ARRAY_SIZE :
+                                           QUNIFORM_IMAGE_DEPTH,
+                                           image_index));
+        }
+}
+
+static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         unsigned offset;
@@ -1732,6 +1758,19 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ssbo:
         case nir_intrinsic_store_ssbo:
                 ntq_emit_tmu_general(c, instr);
+                break;
+
+        case nir_intrinsic_image_deref_load:
+        case nir_intrinsic_image_deref_store:
+        case nir_intrinsic_image_deref_atomic_add:
+        case nir_intrinsic_image_deref_atomic_min:
+        case nir_intrinsic_image_deref_atomic_max:
+        case nir_intrinsic_image_deref_atomic_and:
+        case nir_intrinsic_image_deref_atomic_or:
+        case nir_intrinsic_image_deref_atomic_xor:
+        case nir_intrinsic_image_deref_atomic_exchange:
+        case nir_intrinsic_image_deref_atomic_comp_swap:
+                v3d40_vir_emit_image_load_store(c, instr);
                 break;
 
         case nir_intrinsic_get_buffer_size:
@@ -1807,6 +1846,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                       offset + instr->num_components);
                 break;
 
+        case nir_intrinsic_image_deref_size:
+                ntq_emit_image_size(c, instr);
+                break;
+
         case nir_intrinsic_discard:
                 if (c->execute.file != QFILE_NULL) {
                         vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
@@ -1846,6 +1889,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_memory_barrier:
         case nir_intrinsic_memory_barrier_atomic_counter:
         case nir_intrinsic_memory_barrier_buffer:
+        case nir_intrinsic_memory_barrier_image:
                 /* We don't do any instruction scheduling of these NIR
                  * instructions between each other, so we just need to make
                  * sure that the TMU operations before the barrier are flushed
@@ -2066,6 +2110,10 @@ static void
 ntq_emit_instr(struct v3d_compile *c, nir_instr *instr)
 {
         switch (instr->type) {
+        case nir_instr_type_deref:
+                /* ignored, will be walked by the intrinsic using it. */
+                break;
+
         case nir_instr_type_alu:
                 ntq_emit_alu(c, nir_instr_as_alu(instr));
                 break;

@@ -61,6 +61,12 @@ vir_dump_uniform(enum quniform_contents contents,
                         v3d_tmu_config_data_get_value(data));
                 break;
 
+        case QUNIFORM_IMAGE_TMU_CONFIG_P0:
+                fprintf(stderr, "img[%d].p0 | 0x%x",
+                        v3d_tmu_config_data_get_unit(data),
+                        v3d_tmu_config_data_get_value(data));
+                break;
+
         case QUNIFORM_TEXTURE_WIDTH:
                 fprintf(stderr, "tex[%d].width", data);
                 break;
@@ -75,6 +81,19 @@ vir_dump_uniform(enum quniform_contents contents,
                 break;
         case QUNIFORM_TEXTURE_LEVELS:
                 fprintf(stderr, "tex[%d].levels", data);
+                break;
+
+        case QUNIFORM_IMAGE_WIDTH:
+                fprintf(stderr, "img[%d].width", data);
+                break;
+        case QUNIFORM_IMAGE_HEIGHT:
+                fprintf(stderr, "img[%d].height", data);
+                break;
+        case QUNIFORM_IMAGE_DEPTH:
+                fprintf(stderr, "img[%d].depth", data);
+                break;
+        case QUNIFORM_IMAGE_ARRAY_SIZE:
+                fprintf(stderr, "img[%d].array_size", data);
                 break;
 
         case QUNIFORM_UBO_ADDR:

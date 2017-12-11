@@ -884,7 +884,7 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
                         tex.srgb = false;
                 } else {
                         tex.texture_type = v3d_get_tex_format(&screen->devinfo,
-                                                               cso->format);
+                                                              cso->format);
                 }
         };
 
@@ -1033,6 +1033,97 @@ v3d_set_shader_buffers(struct pipe_context *pctx,
         v3d->dirty |= VC5_DIRTY_SSBO;
 }
 
+static void
+v3d_create_image_view_texture_shader_state(struct v3d_context *v3d,
+                                           struct v3d_shaderimg_stateobj *so,
+                                           int img)
+{
+#if V3D_VERSION >= 40
+        struct v3d_image_view *iview = &so->si[img];
+
+        void *map;
+        u_upload_alloc(v3d->uploader, 0, cl_packet_length(TEXTURE_SHADER_STATE),
+                       32,
+                       &iview->tex_state_offset,
+                       &iview->tex_state,
+                       &map);
+
+        struct pipe_resource *prsc = iview->base.resource;
+
+        v3dx_pack(map, TEXTURE_SHADER_STATE, tex) {
+                v3d_setup_texture_shader_state(&tex, prsc,
+                                               iview->base.u.tex.level,
+                                               iview->base.u.tex.level,
+                                               iview->base.u.tex.first_layer,
+                                               iview->base.u.tex.last_layer);
+
+                tex.swizzle_r = translate_swizzle(PIPE_SWIZZLE_X);
+                tex.swizzle_g = translate_swizzle(PIPE_SWIZZLE_Y);
+                tex.swizzle_b = translate_swizzle(PIPE_SWIZZLE_Z);
+                tex.swizzle_a = translate_swizzle(PIPE_SWIZZLE_W);
+
+                tex.texture_type = v3d_get_tex_format(&v3d->screen->devinfo,
+                                                      iview->base.format);
+        };
+#else /* V3D_VERSION < 40 */
+        /* V3D 3.x doesn't use support shader image load/store operations on
+         * textures, so it would get lowered in the shader to general memory
+         * acceses.
+         */
+#endif
+}
+
+static void
+v3d_set_shader_images(struct pipe_context *pctx,
+                      enum pipe_shader_type shader,
+                      unsigned start, unsigned count,
+                      const struct pipe_image_view *images)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+        struct v3d_shaderimg_stateobj *so = &v3d->shaderimg[shader];
+
+        if (images) {
+                for (unsigned i = 0; i < count; i++) {
+                        unsigned n = i + start;
+                        struct v3d_image_view *iview = &so->si[n];
+
+                        if ((iview->base.resource == images[i].resource) &&
+                            (iview->base.format == images[i].format) &&
+                            (iview->base.access == images[i].access) &&
+                            !memcmp(&iview->base.u, &images[i].u,
+                                    sizeof(iview->base.u)))
+                                continue;
+
+                        util_copy_image_view(&iview->base, &images[i]);
+
+                        if (iview->base.resource) {
+                                so->enabled_mask |= 1 << n;
+                                v3d_create_image_view_texture_shader_state(v3d,
+                                                                           so,
+                                                                           n);
+                        } else {
+                                so->enabled_mask &= ~(1 << n);
+                                pipe_resource_reference(&iview->tex_state, NULL);
+                        }
+                }
+        } else {
+                for (unsigned i = 0; i < count; i++) {
+                        unsigned n = i + start;
+                        struct v3d_image_view *iview = &so->si[n];
+
+                        pipe_resource_reference(&iview->base.resource, NULL);
+                        pipe_resource_reference(&iview->tex_state, NULL);
+                }
+
+                if (count == 32)
+                        so->enabled_mask = 0;
+                else
+                        so->enabled_mask &= ~(((1 << count) - 1) << start);
+        }
+
+        v3d->dirty |= VC5_DIRTY_SHADER_IMAGE;
+}
+
 void
 v3dX(state_init)(struct pipe_context *pctx)
 {
@@ -1073,6 +1164,7 @@ v3dX(state_init)(struct pipe_context *pctx)
         pctx->set_sampler_views = v3d_set_sampler_views;
 
         pctx->set_shader_buffers = v3d_set_shader_buffers;
+        pctx->set_shader_images = v3d_set_shader_images;
 
         pctx->create_stream_output_target = v3d_create_stream_output_target;
         pctx->stream_output_target_destroy = v3d_stream_output_target_destroy;

@@ -148,6 +148,13 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                 if (cb->buffer)
                         v3d_flush_jobs_writing_resource(v3d, cb->buffer);
         }
+
+        /* Flush writes to our image views */
+        foreach_bit(i, v3d->shaderimg[s].enabled_mask) {
+                struct v3d_image_view *view = &v3d->shaderimg[s].si[i];
+
+                v3d_flush_jobs_writing_resource(v3d, view->base.resource);
+        }
 }
 
 static void
@@ -485,6 +492,12 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 foreach_bit(i, v3d->ssbo[s].enabled_mask) {
                         v3d_job_add_write_resource(job,
                                                    v3d->ssbo[s].sb[i].buffer);
+                        job->tmu_dirty_rcl = true;
+                }
+
+                foreach_bit(i, v3d->shaderimg[s].enabled_mask) {
+                        v3d_job_add_write_resource(job,
+                                                   v3d->shaderimg[s].si[i].base.resource);
                         job->tmu_dirty_rcl = true;
                 }
         }

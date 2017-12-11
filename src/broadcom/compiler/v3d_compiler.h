@@ -230,6 +230,8 @@ enum quniform_contents {
         QUNIFORM_TMU_CONFIG_P0,
         QUNIFORM_TMU_CONFIG_P1,
 
+        QUNIFORM_IMAGE_TMU_CONFIG_P0,
+
         QUNIFORM_TEXTURE_FIRST_LEVEL,
 
         QUNIFORM_TEXTURE_WIDTH,
@@ -248,6 +250,12 @@ enum quniform_contents {
 
         /* Returns the size of the SSBO given by the data value. */
         QUNIFORM_GET_BUFFER_SIZE,
+
+        /* Sizes (in pixels) of a shader image given by the data value. */
+        QUNIFORM_IMAGE_WIDTH,
+        QUNIFORM_IMAGE_HEIGHT,
+        QUNIFORM_IMAGE_DEPTH,
+        QUNIFORM_IMAGE_ARRAY_SIZE,
 
         QUNIFORM_ALPHA_REF,
 
@@ -792,18 +800,23 @@ bool vir_opt_vpm(struct v3d_compile *c);
 void v3d_nir_lower_blend(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_io(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_txf_ms(nir_shader *s, struct v3d_compile *c);
+void v3d_nir_lower_image_load_store(nir_shader *s);
 void vir_lower_uniforms(struct v3d_compile *c);
 
 void v3d33_vir_vpm_read_setup(struct v3d_compile *c, int num_components);
 void v3d33_vir_vpm_write_setup(struct v3d_compile *c);
 void v3d33_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr);
 void v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr);
+void v3d40_vir_emit_image_load_store(struct v3d_compile *c,
+                                     nir_intrinsic_instr *instr);
 
 void v3d_vir_to_qpu(struct v3d_compile *c, struct qpu_reg *temp_registers);
 uint32_t v3d_qpu_schedule_instructions(struct v3d_compile *c);
 void qpu_validate(struct v3d_compile *c);
 struct qpu_reg *v3d_register_allocate(struct v3d_compile *c, bool *spilled);
 bool vir_init_reg_sets(struct v3d_compiler *compiler);
+
+bool v3d_gl_format_is_return_32(GLenum format);
 
 void vir_PF(struct v3d_compile *c, struct qreg src, enum v3d_qpu_pf pf);
 
