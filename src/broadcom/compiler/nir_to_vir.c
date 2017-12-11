@@ -107,16 +107,89 @@ vir_emit_thrsw(struct v3d_compile *c)
         c->last_thrsw_at_top_level = (c->execute.file == QFILE_NULL);
 }
 
+static uint32_t
+v3d_general_tmu_op(nir_intrinsic_instr *instr)
+{
+        switch (instr->intrinsic) {
+        case nir_intrinsic_load_ssbo:
+        case nir_intrinsic_load_ubo:
+        case nir_intrinsic_load_uniform:
+                return GENERAL_TMU_READ_OP_READ;
+        case nir_intrinsic_store_ssbo:
+                return GENERAL_TMU_WRITE_OP_WRITE;
+        case nir_intrinsic_ssbo_atomic_add:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_ADD_WRAP;
+        case nir_intrinsic_ssbo_atomic_imin:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_SMIN;
+        case nir_intrinsic_ssbo_atomic_umin:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_UMIN;
+        case nir_intrinsic_ssbo_atomic_imax:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_SMAX;
+        case nir_intrinsic_ssbo_atomic_umax:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_UMAX;
+        case nir_intrinsic_ssbo_atomic_and:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_AND;
+        case nir_intrinsic_ssbo_atomic_or:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_OR;
+        case nir_intrinsic_ssbo_atomic_xor:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_XOR;
+        case nir_intrinsic_ssbo_atomic_exchange:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_XCHG;
+        case nir_intrinsic_ssbo_atomic_comp_swap:
+                return GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG;
+        default:
+                unreachable("unknown intrinsic op");
+        }
+}
+
 /**
- * Implements indirect uniform loads through the TMU general memory access
- * interface.
+ * Implements indirect uniform loads and SSBO accesses through the TMU general
+ * memory access interface.
  */
 static void
 ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
-        uint32_t tmu_op = GENERAL_TMU_READ_OP_READ;
-        bool has_index = instr->intrinsic == nir_intrinsic_load_ubo;
-        int offset_src = 0 + has_index;
+        /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
+         * wants to have support for inc/dec?
+         */
+
+        uint32_t tmu_op = v3d_general_tmu_op(instr);
+        bool is_store = instr->intrinsic == nir_intrinsic_store_ssbo;
+
+        int offset_src;
+        int tmu_writes = 1; /* address */
+        if (instr->intrinsic == nir_intrinsic_load_uniform) {
+                offset_src = 0;
+        } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
+                   instr->intrinsic == nir_intrinsic_load_ubo) {
+                offset_src = 1;
+        } else if (is_store) {
+                offset_src = 2;
+                for (int i = 0; i < instr->num_components; i++) {
+                        vir_MOV_dest(c,
+                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                                     ntq_get_src(c, instr->src[0], i));
+                        tmu_writes++;
+                }
+        } else {
+                offset_src = 1;
+                vir_MOV_dest(c,
+                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                             ntq_get_src(c, instr->src[2], 0));
+                tmu_writes++;
+                if (tmu_op == GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG) {
+                        vir_MOV_dest(c,
+                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                                     ntq_get_src(c, instr->src[3], 0));
+                        tmu_writes++;
+                }
+        }
+
+        /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
+         * storing at the same time.
+         */
+        while (tmu_writes > 16 / c->threads)
+                c->threads /= 2;
 
         struct qreg offset;
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
@@ -149,12 +222,16 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
                 if (base != 0)
                         offset = vir_ADD(c, offset, vir_uniform_ui(c, base));
-        } else {
+        } else if (instr->intrinsic == nir_intrinsic_load_ubo) {
                 /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
                  * 1 (0 is gallium's constant buffer 0).
                  */
                 offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
                                      nir_src_as_uint(instr->src[0]) + 1);
+        } else {
+                offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
+                                     nir_src_as_uint(instr->src[is_store ?
+                                                                1 : 0]));
         }
 
         uint32_t config = (0xffffff00 |
@@ -166,6 +243,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 config |= (GENERAL_TMU_LOOKUP_TYPE_VEC2 +
                            instr->num_components - 2);
         }
+
+        if (c->execute.file != QFILE_NULL)
+                vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
 
         struct qreg dest;
         if (config == ~0)
@@ -188,10 +268,17 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         vir_uniform_ui(c, config);
         }
 
+        if (c->execute.file != QFILE_NULL)
+                vir_set_cond(tmu, V3D_QPU_COND_IFA);
+
         vir_emit_thrsw(c);
 
+        /* Read the result, or wait for the TMU op to complete. */
         for (int i = 0; i < nir_intrinsic_dest_components(instr); i++)
                 ntq_store_dest(c, &instr->dest, i, vir_MOV(c, vir_LDTMU(c)));
+
+        if (nir_intrinsic_dest_components(instr) == 0)
+                vir_TMUWT(c);
 }
 
 static struct qreg *
@@ -1549,6 +1636,9 @@ ntq_setup_uniforms(struct v3d_compile *c)
                                                                  false);
                 unsigned vec4_size = 4 * sizeof(float);
 
+                if (var->data.mode != nir_var_uniform)
+                        continue;
+
                 declare_uniform_range(c, var->data.driver_location * vec4_size,
                                       vec4_count * vec4_size);
 
@@ -1627,6 +1717,27 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_ubo:
                 ntq_emit_tmu_general(c, instr);
+                break;
+
+        case nir_intrinsic_ssbo_atomic_add:
+        case nir_intrinsic_ssbo_atomic_imin:
+        case nir_intrinsic_ssbo_atomic_umin:
+        case nir_intrinsic_ssbo_atomic_imax:
+        case nir_intrinsic_ssbo_atomic_umax:
+        case nir_intrinsic_ssbo_atomic_and:
+        case nir_intrinsic_ssbo_atomic_or:
+        case nir_intrinsic_ssbo_atomic_xor:
+        case nir_intrinsic_ssbo_atomic_exchange:
+        case nir_intrinsic_ssbo_atomic_comp_swap:
+        case nir_intrinsic_load_ssbo:
+        case nir_intrinsic_store_ssbo:
+                ntq_emit_tmu_general(c, instr);
+                break;
+
+        case nir_intrinsic_get_buffer_size:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_GET_BUFFER_SIZE,
+                                           nir_src_as_uint(instr->src[0])));
                 break;
 
         case nir_intrinsic_load_user_clip_plane:
@@ -1731,6 +1842,18 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
                 break;
         }
+
+        case nir_intrinsic_memory_barrier:
+        case nir_intrinsic_memory_barrier_atomic_counter:
+        case nir_intrinsic_memory_barrier_buffer:
+                /* We don't do any instruction scheduling of these NIR
+                 * instructions between each other, so we just need to make
+                 * sure that the TMU operations before the barrier are flushed
+                 * before the ones after the barrier.  That is currently
+                 * handled by having a THRSW in each of them and a LDTMU
+                 * series or a TMUWT after.
+                 */
+                break;
 
         default:
                 fprintf(stderr, "Unknown intrinsic: ");

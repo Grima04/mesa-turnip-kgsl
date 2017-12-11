@@ -66,6 +66,16 @@ v3d_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
 }
 
 static void
+v3d_memory_barrier(struct pipe_context *pctx, unsigned int flags)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+
+        /* We only need to flush jobs writing to SSBOs/images. */
+        perf_debug("Flushing all jobs for glMemoryBarrier(), could do better");
+        v3d_flush(pctx);
+}
+
+static void
 v3d_set_debug_callback(struct pipe_context *pctx,
                        const struct pipe_debug_callback *cb)
 {
@@ -172,6 +182,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->priv = priv;
         pctx->destroy = v3d_context_destroy;
         pctx->flush = v3d_pipe_flush;
+        pctx->memory_barrier = v3d_memory_barrier;
         pctx->set_debug_callback = v3d_set_debug_callback;
         pctx->invalidate_resource = v3d_invalidate_resource;
         pctx->get_sample_position = v3d_get_sample_position;

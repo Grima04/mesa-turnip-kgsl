@@ -478,6 +478,17 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 job->submit.in_sync_bcl = v3d->out_sync;
         }
 
+        /* Mark SSBOs as being written.  We don't actually know which ones are
+         * read vs written, so just assume the worst
+         */
+        for (int s = 0; s < PIPE_SHADER_TYPES; s++) {
+                foreach_bit(i, v3d->ssbo[s].enabled_mask) {
+                        v3d_job_add_write_resource(job,
+                                                   v3d->ssbo[s].sb[i].buffer);
+                        job->tmu_dirty_rcl = true;
+                }
+        }
+
         /* Get space to emit our draw call into the BCL, using a branch to
          * jump to a new BO if necessary.
          */

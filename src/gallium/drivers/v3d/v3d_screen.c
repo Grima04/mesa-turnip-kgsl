@@ -299,8 +299,11 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
         case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-        case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
                 return VC5_MAX_TEXTURE_SAMPLERS;
+
+        case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+                return PIPE_MAX_SHADER_BUFFERS;
+
         case PIPE_SHADER_CAP_PREFERRED_IR:
                 return PIPE_SHADER_IR_NIR;
         case PIPE_SHADER_CAP_SUPPORTED_IRS:

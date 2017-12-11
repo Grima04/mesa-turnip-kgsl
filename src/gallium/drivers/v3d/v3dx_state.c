@@ -986,6 +986,53 @@ v3d_set_stream_output_targets(struct pipe_context *pctx,
         ctx->dirty |= VC5_DIRTY_STREAMOUT;
 }
 
+static void
+v3d_set_shader_buffers(struct pipe_context *pctx,
+                       enum pipe_shader_type shader,
+                       unsigned start, unsigned count,
+                       const struct pipe_shader_buffer *buffers)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+        struct v3d_ssbo_stateobj *so = &v3d->ssbo[shader];
+        unsigned mask = 0;
+
+        if (buffers) {
+                for (unsigned i = 0; i < count; i++) {
+                        unsigned n = i + start;
+                        struct pipe_shader_buffer *buf = &so->sb[n];
+
+                        if ((buf->buffer == buffers[i].buffer) &&
+                            (buf->buffer_offset == buffers[i].buffer_offset) &&
+                            (buf->buffer_size == buffers[i].buffer_size))
+                                continue;
+
+                        mask |= 1 << n;
+
+                        buf->buffer_offset = buffers[i].buffer_offset;
+                        buf->buffer_size = buffers[i].buffer_size;
+                        pipe_resource_reference(&buf->buffer, buffers[i].buffer);
+
+                        if (buf->buffer)
+                                so->enabled_mask |= 1 << n;
+                        else
+                                so->enabled_mask &= ~(1 << n);
+                }
+        } else {
+                mask = ((1 << count) - 1) << start;
+
+                for (unsigned i = 0; i < count; i++) {
+                        unsigned n = i + start;
+                        struct pipe_shader_buffer *buf = &so->sb[n];
+
+                        pipe_resource_reference(&buf->buffer, NULL);
+                }
+
+                so->enabled_mask &= ~mask;
+        }
+
+        v3d->dirty |= VC5_DIRTY_SSBO;
+}
+
 void
 v3dX(state_init)(struct pipe_context *pctx)
 {
@@ -1024,6 +1071,8 @@ v3dX(state_init)(struct pipe_context *pctx)
         pctx->create_sampler_view = v3d_create_sampler_view;
         pctx->sampler_view_destroy = v3d_sampler_view_destroy;
         pctx->set_sampler_views = v3d_set_sampler_views;
+
+        pctx->set_shader_buffers = v3d_set_shader_buffers;
 
         pctx->create_stream_output_target = v3d_create_stream_output_target;
         pctx->stream_output_target_destroy = v3d_stream_output_target_destroy;

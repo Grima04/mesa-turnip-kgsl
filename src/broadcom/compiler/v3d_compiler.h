@@ -243,6 +243,12 @@ enum quniform_contents {
         QUNIFORM_TEXRECT_SCALE_X,
         QUNIFORM_TEXRECT_SCALE_Y,
 
+        /* Returns the base offset of the SSBO given by the data value. */
+        QUNIFORM_SSBO_OFFSET,
+
+        /* Returns the size of the SSBO given by the data value. */
+        QUNIFORM_GET_BUFFER_SIZE,
+
         QUNIFORM_ALPHA_REF,
 
         /**

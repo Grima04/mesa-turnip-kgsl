@@ -276,6 +276,21 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                         }
                         break;
 
+                case QUNIFORM_SSBO_OFFSET: {
+                        struct pipe_shader_buffer *sb =
+                                &v3d->ssbo[stage].sb[data];
+
+                        cl_aligned_reloc(&job->indirect, &uniforms,
+                                         v3d_resource(sb->buffer)->bo,
+                                         sb->buffer_offset);
+                        break;
+                }
+
+                case QUNIFORM_GET_BUFFER_SIZE:
+                        cl_aligned_u32(&uniforms,
+                                       v3d->ssbo[stage].sb[data].buffer_size);
+                        break;
+
                 case QUNIFORM_TEXTURE_FIRST_LEVEL:
                         cl_aligned_f(&uniforms,
                                      texstate->textures[data]->u.tex.first_level);
@@ -360,6 +375,11 @@ v3d_set_shader_uniform_dirty_flags(struct v3d_compiled_shader *shader)
                          * compiling for, but it's not passed in.
                          */
                         dirty |= VC5_DIRTY_FRAGTEX | VC5_DIRTY_VERTTEX;
+                        break;
+
+                case QUNIFORM_SSBO_OFFSET:
+                case QUNIFORM_GET_BUFFER_SIZE:
+                        dirty |= VC5_DIRTY_SSBO;
                         break;
 
                 case QUNIFORM_ALPHA_REF:

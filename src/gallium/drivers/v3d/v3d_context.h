@@ -82,6 +82,7 @@ void v3d_job_add_bo(struct v3d_job *job, struct v3d_bo *bo);
 #define VC5_DIRTY_OQ            (1 << 28)
 #define VC5_DIRTY_CENTROID_FLAGS (1 << 29)
 #define VC5_DIRTY_NOPERSPECTIVE_FLAGS (1 << 30)
+#define VC5_DIRTY_SSBO          (1 << 31)
 
 #define VC5_MAX_FS_INPUTS 64
 
@@ -201,6 +202,11 @@ struct v3d_streamout_stateobj {
         /* Number of vertices we've written into the buffer so far. */
         uint32_t offsets[PIPE_MAX_SO_BUFFERS];
         unsigned num_targets;
+};
+
+struct v3d_ssbo_stateobj {
+        struct pipe_shader_buffer sb[PIPE_MAX_SHADER_BUFFERS];
+        uint32_t enabled_mask;
 };
 
 /* Hash table key for v3d->jobs */
@@ -433,6 +439,7 @@ struct v3d_context {
         struct pipe_poly_stipple stipple;
         struct pipe_clip_state clip;
         struct pipe_viewport_state viewport;
+        struct v3d_ssbo_stateobj ssbo[PIPE_SHADER_TYPES];
         struct v3d_constbuf_stateobj constbuf[PIPE_SHADER_TYPES];
         struct v3d_texture_stateobj tex[PIPE_SHADER_TYPES];
         struct v3d_vertexbuf_stateobj vertexbuf;

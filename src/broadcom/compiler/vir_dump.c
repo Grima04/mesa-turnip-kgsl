@@ -81,6 +81,14 @@ vir_dump_uniform(enum quniform_contents contents,
                 fprintf(stderr, "ubo[%d]", data);
                 break;
 
+        case QUNIFORM_SSBO_OFFSET:
+                fprintf(stderr, "ssbo[%d]", data);
+                break;
+
+        case QUNIFORM_GET_BUFFER_SIZE:
+                fprintf(stderr, "ssbo_size[%d]", data);
+                break;
+
         default:
                 if (quniform_contents_is_texture_p0(contents)) {
                         fprintf(stderr, "tex[%d].p0: 0x%08x",
