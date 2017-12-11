@@ -145,6 +145,8 @@ private:
    BasicBlock *exit;
    Value *zero;
 
+   int clipVertexOutput;
+
    union {
       struct {
          Value *position;
@@ -155,7 +157,8 @@ private:
 Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info)
    : ConverterCommon(prog, info),
      nir(nir),
-     curLoopDepth(0)
+     curLoopDepth(0),
+     clipVertexOutput(-1)
 {
    zero = mkImm((uint32_t)0);
 }
@@ -1082,8 +1085,15 @@ bool Converter::assignSlots() {
          case TGSI_SEMANTIC_CLIPDIST:
             info->io.genUserClip = -1;
             break;
+         case TGSI_SEMANTIC_CLIPVERTEX:
+            clipVertexOutput = vary;
+            break;
          case TGSI_SEMANTIC_EDGEFLAG:
             info->io.edgeFlagOut = vary;
+            break;
+         case TGSI_SEMANTIC_POSITION:
+            if (clipVertexOutput < 0)
+               clipVertexOutput = vary;
             break;
          default:
             break;
@@ -1346,6 +1356,11 @@ Converter::visit(nir_function *function)
 
    setPosition(entry, true);
 
+   if (info->io.genUserClip > 0) {
+      for (int c = 0; c < 4; ++c)
+         clipVtx[c] = getScratch();
+   }
+
    switch (prog->getType()) {
    case Program::TYPE_TESSELLATION_CONTROL:
       outBase = mkOp2v(
@@ -1371,6 +1386,9 @@ Converter::visit(nir_function *function)
 
    bb->cfg.attach(&exit->cfg, Graph::Edge::TREE);
    setPosition(exit, true);
+
+   if (info->io.genUserClip > 0)
+      handleUserClipPlanes();
 
    // TODO: for non main function this needs to be a OP_RETURN
    mkOp(OP_EXIT, TYPE_NONE, NULL)->terminator = 1;
@@ -1539,6 +1557,43 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t coffset = getIndirect(insn, 0, 0, indirect);
       for (uint8_t i = 0; i < insn->num_components; ++i) {
          loadFrom(FILE_MEMORY_CONST, 0, dType, newDefs[i], 16 * coffset, i, indirect);
+      }
+      break;
+   }
+   case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output: {
+      Value *indirect;
+      DataType dType = getSType(insn->src[0], false, false);
+      uint32_t idx = getIndirect(insn, op == nir_intrinsic_store_output ? 1 : 2, 0, indirect);
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         if (!((1u << i) & nir_intrinsic_write_mask(insn)))
+            continue;
+
+         uint8_t offset = 0;
+         Value *src = getSrc(&insn->src[0], i);
+         switch (prog->getType()) {
+         case Program::TYPE_FRAGMENT: {
+            if (info->out[idx].sn == TGSI_SEMANTIC_POSITION) {
+               // TGSI uses a different interface than NIR, TGSI stores that
+               // value in the z component, NIR in X
+               offset += 2;
+               src = mkOp1v(OP_SAT, TYPE_F32, getScratch(), src);
+            }
+            break;
+         }
+         case Program::TYPE_VERTEX: {
+            if (info->io.genUserClip > 0 && idx == clipVertexOutput) {
+               mkMov(clipVtx[i], src);
+               src = clipVtx[i];
+            }
+            break;
+         }
+         default:
+            break;
+         }
+
+         storeTo(insn, FILE_SHADER_OUTPUT, OP_EXPORT, dType, src, idx, i + offset, indirect);
       }
       break;
    }
