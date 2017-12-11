@@ -1597,6 +1597,141 @@ Converter::visit(nir_intrinsic_instr *insn)
       }
       break;
    }
+   case nir_intrinsic_load_input:
+   case nir_intrinsic_load_interpolated_input:
+   case nir_intrinsic_load_output: {
+      LValues &newDefs = convert(&insn->dest);
+
+      // FBFetch
+      if (prog->getType() == Program::TYPE_FRAGMENT &&
+          op == nir_intrinsic_load_output) {
+         std::vector<Value*> defs, srcs;
+         uint8_t mask = 0;
+
+         srcs.push_back(getSSA());
+         srcs.push_back(getSSA());
+         Value *x = mkOp1v(OP_RDSV, TYPE_F32, getSSA(), mkSysVal(SV_POSITION, 0));
+         Value *y = mkOp1v(OP_RDSV, TYPE_F32, getSSA(), mkSysVal(SV_POSITION, 1));
+         mkCvt(OP_CVT, TYPE_U32, srcs[0], TYPE_F32, x)->rnd = ROUND_Z;
+         mkCvt(OP_CVT, TYPE_U32, srcs[1], TYPE_F32, y)->rnd = ROUND_Z;
+
+         srcs.push_back(mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_LAYER, 0)));
+         srcs.push_back(mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_SAMPLE_INDEX, 0)));
+
+         for (uint8_t i = 0u; i < insn->num_components; ++i) {
+            defs.push_back(newDefs[i]);
+            mask |= 1 << i;
+         }
+
+         TexInstruction *texi = mkTex(OP_TXF, TEX_TARGET_2D_MS_ARRAY, 0, 0, defs, srcs);
+         texi->tex.levelZero = 1;
+         texi->tex.mask = mask;
+         texi->tex.useOffsets = 0;
+         texi->tex.r = 0xffff;
+         texi->tex.s = 0xffff;
+
+         info->prop.fp.readsFramebuffer = true;
+         break;
+      }
+
+      const DataType dType = getDType(insn);
+      Value *indirect;
+      bool input = op != nir_intrinsic_load_output;
+      operation nvirOp;
+      uint32_t mode = 0;
+
+      uint32_t idx = getIndirect(insn, op == nir_intrinsic_load_interpolated_input ? 1 : 0, 0, indirect);
+      nv50_ir_varying& vary = input ? info->in[idx] : info->out[idx];
+
+      // see load_barycentric_* handling
+      if (prog->getType() == Program::TYPE_FRAGMENT) {
+         mode = translateInterpMode(&vary, nvirOp);
+         if (op == nir_intrinsic_load_interpolated_input) {
+            ImmediateValue immMode;
+            if (getSrc(&insn->src[0], 1)->getUniqueInsn()->src(0).getImmediate(immMode))
+               mode |= immMode.reg.data.u32;
+         }
+      }
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         uint32_t address = getSlotAddress(insn, idx, i);
+         Symbol *sym = mkSymbol(input ? FILE_SHADER_INPUT : FILE_SHADER_OUTPUT, 0, dType, address);
+         if (prog->getType() == Program::TYPE_FRAGMENT) {
+            int s = 1;
+            if (typeSizeof(dType) == 8) {
+               Value *lo = getSSA();
+               Value *hi = getSSA();
+               Instruction *interp;
+
+               interp = mkOp1(nvirOp, TYPE_U32, lo, sym);
+               if (nvirOp == OP_PINTERP)
+                  interp->setSrc(s++, fp.position);
+               if (mode & NV50_IR_INTERP_OFFSET)
+                  interp->setSrc(s++, getSrc(&insn->src[0], 0));
+               interp->setInterpolate(mode);
+               interp->setIndirect(0, 0, indirect);
+
+               Symbol *sym1 = mkSymbol(input ? FILE_SHADER_INPUT : FILE_SHADER_OUTPUT, 0, dType, address + 4);
+               interp = mkOp1(nvirOp, TYPE_U32, hi, sym1);
+               if (nvirOp == OP_PINTERP)
+                  interp->setSrc(s++, fp.position);
+               if (mode & NV50_IR_INTERP_OFFSET)
+                  interp->setSrc(s++, getSrc(&insn->src[0], 0));
+               interp->setInterpolate(mode);
+               interp->setIndirect(0, 0, indirect);
+
+               mkOp2(OP_MERGE, dType, newDefs[i], lo, hi);
+            } else {
+               Instruction *interp = mkOp1(nvirOp, dType, newDefs[i], sym);
+               if (nvirOp == OP_PINTERP)
+                  interp->setSrc(s++, fp.position);
+               if (mode & NV50_IR_INTERP_OFFSET)
+                  interp->setSrc(s++, getSrc(&insn->src[0], 0));
+               interp->setInterpolate(mode);
+               interp->setIndirect(0, 0, indirect);
+            }
+         } else {
+            mkLoad(dType, newDefs[i], sym, indirect)->perPatch = vary.patch;
+         }
+      }
+      break;
+   }
+   case nir_intrinsic_load_barycentric_at_offset:
+   case nir_intrinsic_load_barycentric_at_sample:
+   case nir_intrinsic_load_barycentric_centroid:
+   case nir_intrinsic_load_barycentric_pixel:
+   case nir_intrinsic_load_barycentric_sample: {
+      LValues &newDefs = convert(&insn->dest);
+      uint32_t mode;
+
+      if (op == nir_intrinsic_load_barycentric_centroid ||
+          op == nir_intrinsic_load_barycentric_sample) {
+         mode = NV50_IR_INTERP_CENTROID;
+      } else if (op == nir_intrinsic_load_barycentric_at_offset) {
+         Value *offs[2];
+         for (uint8_t c = 0; c < 2; c++) {
+            offs[c] = getScratch();
+            mkOp2(OP_MIN, TYPE_F32, offs[c], getSrc(&insn->src[0], c), loadImm(NULL, 0.4375f));
+            mkOp2(OP_MAX, TYPE_F32, offs[c], offs[c], loadImm(NULL, -0.5f));
+            mkOp2(OP_MUL, TYPE_F32, offs[c], offs[c], loadImm(NULL, 4096.0f));
+            mkCvt(OP_CVT, TYPE_S32, offs[c], TYPE_F32, offs[c]);
+         }
+         mkOp3v(OP_INSBF, TYPE_U32, newDefs[0], offs[1], mkImm(0x1010), offs[0]);
+
+         mode = NV50_IR_INTERP_OFFSET;
+      } else if (op == nir_intrinsic_load_barycentric_pixel) {
+         mode = NV50_IR_INTERP_DEFAULT;
+      } else if (op == nir_intrinsic_load_barycentric_at_sample) {
+         info->prop.fp.readsSampleLocations = true;
+         mkOp1(OP_PIXLD, TYPE_U32, newDefs[0], getSrc(&insn->src[0], 0))->subOp = NV50_IR_SUBOP_PIXLD_OFFSET;
+         mode = NV50_IR_INTERP_OFFSET;
+      } else {
+         unreachable("all intrinsics already handled above");
+      }
+
+      loadImm(newDefs[1], mode);
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
