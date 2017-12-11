@@ -65,6 +65,7 @@ public:
 private:
    typedef std::vector<LValue*> LValues;
    typedef unordered_map<unsigned, LValues> NirDefMap;
+   typedef unordered_map<unsigned, uint32_t> NirArrayLMemOffsets;
    typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
    TexTarget convert(glsl_sampler_dim, bool isArray, bool isShadow);
@@ -149,6 +150,7 @@ private:
 
    NirDefMap ssaDefs;
    NirDefMap regDefs;
+   NirArrayLMemOffsets regToLmemOffset;
    NirBlockMap blocks;
    unsigned int curLoopDepth;
 
@@ -1353,6 +1355,7 @@ Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
 bool
 Converter::parseNIR()
 {
+   info->bin.tlsSpace = 0;
    info->io.clipDistances = nir->info.clip_distance_array_size;
    info->io.cullDistances = nir->info.cull_distance_array_size;
 
@@ -1442,6 +1445,16 @@ Converter::visit(nir_function *function)
    }
    default:
       break;
+   }
+
+   nir_foreach_register(reg, &function->impl->registers) {
+      if (reg->num_array_elems) {
+         // TODO: packed variables would be nice, but MemoryOpt fails
+         // replace 4 with reg->num_components
+         uint32_t size = 4 * reg->num_array_elems * (reg->bit_size / 8);
+         regToLmemOffset[reg->index] = info->bin.tlsSpace;
+         info->bin.tlsSpace += size;
+      }
    }
 
    nir_index_ssa_defs(function->impl);
@@ -2199,6 +2212,51 @@ Converter::visit(nir_alu_instr *insn)
    //   2. they basically just merge multiple values into one data type
    case nir_op_imov:
    case nir_op_fmov:
+      if (!insn->dest.dest.is_ssa && insn->dest.dest.reg.reg->num_array_elems) {
+         nir_reg_dest& reg = insn->dest.dest.reg;
+         uint32_t goffset = regToLmemOffset[reg.reg->index];
+         uint8_t comps = reg.reg->num_components;
+         uint8_t size = reg.reg->bit_size / 8;
+         uint8_t csize = 4 * size; // TODO after fixing MemoryOpts: comps * size;
+         uint32_t aoffset = csize * reg.base_offset;
+         Value *indirect = NULL;
+
+         if (reg.indirect)
+            indirect = mkOp2v(OP_MUL, TYPE_U32, getSSA(4, FILE_ADDRESS),
+                              getSrc(reg.indirect, 0), mkImm(csize));
+
+         for (uint8_t i = 0u; i < comps; ++i) {
+            if (!((1u << i) & insn->dest.write_mask))
+               continue;
+
+            Symbol *sym = mkSymbol(FILE_MEMORY_LOCAL, 0, dType, goffset + aoffset + i * size);
+            mkStore(OP_STORE, dType, sym, indirect, getSrc(&insn->src[0], i));
+         }
+         break;
+      } else if (!insn->src[0].src.is_ssa && insn->src[0].src.reg.reg->num_array_elems) {
+         LValues &newDefs = convert(&insn->dest);
+         nir_reg_src& reg = insn->src[0].src.reg;
+         uint32_t goffset = regToLmemOffset[reg.reg->index];
+         // uint8_t comps = reg.reg->num_components;
+         uint8_t size = reg.reg->bit_size / 8;
+         uint8_t csize = 4 * size; // TODO after fixing MemoryOpts: comps * size;
+         uint32_t aoffset = csize * reg.base_offset;
+         Value *indirect = NULL;
+
+         if (reg.indirect)
+            indirect = mkOp2v(OP_MUL, TYPE_U32, getSSA(4, FILE_ADDRESS), getSrc(reg.indirect, 0), mkImm(csize));
+
+         for (uint8_t i = 0u; i < newDefs.size(); ++i)
+            loadFrom(FILE_MEMORY_LOCAL, 0, dType, newDefs[i], goffset + aoffset, i, indirect);
+
+         break;
+      } else {
+         LValues &newDefs = convert(&insn->dest);
+         for (LValues::size_type c = 0u; c < newDefs.size(); ++c) {
+            mkMov(newDefs[c], getSrc(&insn->src[0], c), dType);
+         }
+      }
+      break;
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
