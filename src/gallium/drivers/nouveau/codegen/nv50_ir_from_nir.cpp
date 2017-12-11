@@ -86,6 +86,13 @@ private:
    uint32_t getIndirect(nir_src *, uint8_t, Value *&);
    uint32_t getIndirect(nir_intrinsic_instr *, uint8_t s, uint8_t c, Value *&);
 
+   uint32_t getSlotAddress(nir_intrinsic_instr *, uint8_t idx, uint8_t slot);
+
+   void setInterpolate(nv50_ir_varying *,
+                       uint8_t,
+                       bool centroid,
+                       unsigned semantics);
+
    bool isFloatType(nir_alu_type);
    bool isSignedType(nir_alu_type);
    bool isResultFloat(nir_op);
@@ -97,6 +104,8 @@ private:
 
    std::vector<DataType> getSTypes(nir_alu_instr *);
    DataType getSType(nir_src &, bool isFloat, bool isSigned);
+
+   bool assignSlots();
 
    nir_shader *nir;
 
@@ -332,6 +341,634 @@ Converter::getIndirect(nir_intrinsic_instr *insn, uint8_t s, uint8_t c, Value *&
    return idx;
 }
 
+static void
+vert_attrib_to_tgsi_semantic(gl_vert_attrib slot, unsigned *name, unsigned *index)
+{
+   assert(name && index);
+
+   if (slot >= VERT_ATTRIB_MAX) {
+      ERROR("invalid varying slot %u\n", slot);
+      assert(false);
+      return;
+   }
+
+   if (slot >= VERT_ATTRIB_GENERIC0 &&
+       slot < VERT_ATTRIB_GENERIC0 + VERT_ATTRIB_GENERIC_MAX) {
+      *name = TGSI_SEMANTIC_GENERIC;
+      *index = slot - VERT_ATTRIB_GENERIC0;
+      return;
+   }
+
+   if (slot >= VERT_ATTRIB_TEX0 &&
+       slot < VERT_ATTRIB_TEX0 + VERT_ATTRIB_TEX_MAX) {
+      *name = TGSI_SEMANTIC_TEXCOORD;
+      *index = slot - VERT_ATTRIB_TEX0;
+      return;
+   }
+
+   switch (slot) {
+   case VERT_ATTRIB_COLOR0:
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = 0;
+      break;
+   case VERT_ATTRIB_COLOR1:
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = 1;
+      break;
+   case VERT_ATTRIB_EDGEFLAG:
+      *name = TGSI_SEMANTIC_EDGEFLAG;
+      *index = 0;
+      break;
+   case VERT_ATTRIB_FOG:
+      *name = TGSI_SEMANTIC_FOG;
+      *index = 0;
+      break;
+   case VERT_ATTRIB_NORMAL:
+      *name = TGSI_SEMANTIC_NORMAL;
+      *index = 0;
+      break;
+   case VERT_ATTRIB_POS:
+      *name = TGSI_SEMANTIC_POSITION;
+      *index = 0;
+      break;
+   case VERT_ATTRIB_POINT_SIZE:
+      *name = TGSI_SEMANTIC_PSIZE;
+      *index = 0;
+      break;
+   default:
+      ERROR("unknown vert attrib slot %u\n", slot);
+      assert(false);
+      break;
+   }
+}
+
+static void
+varying_slot_to_tgsi_semantic(gl_varying_slot slot, unsigned *name, unsigned *index)
+{
+   assert(name && index);
+
+   if (slot >= VARYING_SLOT_TESS_MAX) {
+      ERROR("invalid varying slot %u\n", slot);
+      assert(false);
+      return;
+   }
+
+   if (slot >= VARYING_SLOT_PATCH0) {
+      *name = TGSI_SEMANTIC_PATCH;
+      *index = slot - VARYING_SLOT_PATCH0;
+      return;
+   }
+
+   if (slot >= VARYING_SLOT_VAR0) {
+      *name = TGSI_SEMANTIC_GENERIC;
+      *index = slot - VARYING_SLOT_VAR0;
+      return;
+   }
+
+   if (slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7) {
+      *name = TGSI_SEMANTIC_TEXCOORD;
+      *index = slot - VARYING_SLOT_TEX0;
+      return;
+   }
+
+   switch (slot) {
+   case VARYING_SLOT_BFC0:
+      *name = TGSI_SEMANTIC_BCOLOR;
+      *index = 0;
+      break;
+   case VARYING_SLOT_BFC1:
+      *name = TGSI_SEMANTIC_BCOLOR;
+      *index = 1;
+      break;
+   case VARYING_SLOT_CLIP_DIST0:
+      *name = TGSI_SEMANTIC_CLIPDIST;
+      *index = 0;
+      break;
+   case VARYING_SLOT_CLIP_DIST1:
+      *name = TGSI_SEMANTIC_CLIPDIST;
+      *index = 1;
+      break;
+   case VARYING_SLOT_CLIP_VERTEX:
+      *name = TGSI_SEMANTIC_CLIPVERTEX;
+      *index = 0;
+      break;
+   case VARYING_SLOT_COL0:
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = 0;
+      break;
+   case VARYING_SLOT_COL1:
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = 1;
+      break;
+   case VARYING_SLOT_EDGE:
+      *name = TGSI_SEMANTIC_EDGEFLAG;
+      *index = 0;
+      break;
+   case VARYING_SLOT_FACE:
+      *name = TGSI_SEMANTIC_FACE;
+      *index = 0;
+      break;
+   case VARYING_SLOT_FOGC:
+      *name = TGSI_SEMANTIC_FOG;
+      *index = 0;
+      break;
+   case VARYING_SLOT_LAYER:
+      *name = TGSI_SEMANTIC_LAYER;
+      *index = 0;
+      break;
+   case VARYING_SLOT_PNTC:
+      *name = TGSI_SEMANTIC_PCOORD;
+      *index = 0;
+      break;
+   case VARYING_SLOT_POS:
+      *name = TGSI_SEMANTIC_POSITION;
+      *index = 0;
+      break;
+   case VARYING_SLOT_PRIMITIVE_ID:
+      *name = TGSI_SEMANTIC_PRIMID;
+      *index = 0;
+      break;
+   case VARYING_SLOT_PSIZ:
+      *name = TGSI_SEMANTIC_PSIZE;
+      *index = 0;
+      break;
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+      *name = TGSI_SEMANTIC_TESSINNER;
+      *index = 0;
+      break;
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+      *name = TGSI_SEMANTIC_TESSOUTER;
+      *index = 0;
+      break;
+   case VARYING_SLOT_VIEWPORT:
+      *name = TGSI_SEMANTIC_VIEWPORT_INDEX;
+      *index = 0;
+      break;
+   default:
+      ERROR("unknown varying slot %u\n", slot);
+      assert(false);
+      break;
+   }
+}
+
+static void
+frag_result_to_tgsi_semantic(unsigned slot, unsigned *name, unsigned *index)
+{
+   if (slot >= FRAG_RESULT_DATA0) {
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = slot - FRAG_RESULT_COLOR - 2; // intentional
+      return;
+   }
+
+   switch (slot) {
+   case FRAG_RESULT_COLOR:
+      *name = TGSI_SEMANTIC_COLOR;
+      *index = 0;
+      break;
+   case FRAG_RESULT_DEPTH:
+      *name = TGSI_SEMANTIC_POSITION;
+      *index = 0;
+      break;
+   case FRAG_RESULT_SAMPLE_MASK:
+      *name = TGSI_SEMANTIC_SAMPLEMASK;
+      *index = 0;
+      break;
+   default:
+      ERROR("unknown frag result slot %u\n", slot);
+      assert(false);
+      break;
+   }
+}
+
+// copy of _mesa_sysval_to_semantic
+static void
+system_val_to_tgsi_semantic(unsigned val, unsigned *name, unsigned *index)
+{
+   *index = 0;
+   switch (val) {
+   // Vertex shader
+   case SYSTEM_VALUE_VERTEX_ID:
+      *name = TGSI_SEMANTIC_VERTEXID;
+      break;
+   case SYSTEM_VALUE_INSTANCE_ID:
+      *name = TGSI_SEMANTIC_INSTANCEID;
+      break;
+   case SYSTEM_VALUE_VERTEX_ID_ZERO_BASE:
+      *name = TGSI_SEMANTIC_VERTEXID_NOBASE;
+      break;
+   case SYSTEM_VALUE_BASE_VERTEX:
+      *name = TGSI_SEMANTIC_BASEVERTEX;
+      break;
+   case SYSTEM_VALUE_BASE_INSTANCE:
+      *name = TGSI_SEMANTIC_BASEINSTANCE;
+      break;
+   case SYSTEM_VALUE_DRAW_ID:
+      *name = TGSI_SEMANTIC_DRAWID;
+      break;
+
+   // Geometry shader
+   case SYSTEM_VALUE_INVOCATION_ID:
+      *name = TGSI_SEMANTIC_INVOCATIONID;
+      break;
+
+   // Fragment shader
+   case SYSTEM_VALUE_FRAG_COORD:
+      *name = TGSI_SEMANTIC_POSITION;
+      break;
+   case SYSTEM_VALUE_FRONT_FACE:
+      *name = TGSI_SEMANTIC_FACE;
+      break;
+   case SYSTEM_VALUE_SAMPLE_ID:
+      *name = TGSI_SEMANTIC_SAMPLEID;
+      break;
+   case SYSTEM_VALUE_SAMPLE_POS:
+      *name = TGSI_SEMANTIC_SAMPLEPOS;
+      break;
+   case SYSTEM_VALUE_SAMPLE_MASK_IN:
+      *name = TGSI_SEMANTIC_SAMPLEMASK;
+      break;
+   case SYSTEM_VALUE_HELPER_INVOCATION:
+      *name = TGSI_SEMANTIC_HELPER_INVOCATION;
+      break;
+
+   // Tessellation shader
+   case SYSTEM_VALUE_TESS_COORD:
+      *name = TGSI_SEMANTIC_TESSCOORD;
+      break;
+   case SYSTEM_VALUE_VERTICES_IN:
+      *name = TGSI_SEMANTIC_VERTICESIN;
+      break;
+   case SYSTEM_VALUE_PRIMITIVE_ID:
+      *name = TGSI_SEMANTIC_PRIMID;
+      break;
+   case SYSTEM_VALUE_TESS_LEVEL_OUTER:
+      *name = TGSI_SEMANTIC_TESSOUTER;
+      break;
+   case SYSTEM_VALUE_TESS_LEVEL_INNER:
+      *name = TGSI_SEMANTIC_TESSINNER;
+      break;
+
+   // Compute shader
+   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
+      *name = TGSI_SEMANTIC_THREAD_ID;
+      break;
+   case SYSTEM_VALUE_WORK_GROUP_ID:
+      *name = TGSI_SEMANTIC_BLOCK_ID;
+      break;
+   case SYSTEM_VALUE_NUM_WORK_GROUPS:
+      *name = TGSI_SEMANTIC_GRID_SIZE;
+      break;
+   case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
+      *name = TGSI_SEMANTIC_BLOCK_SIZE;
+      break;
+
+   // ARB_shader_ballot
+   case SYSTEM_VALUE_SUBGROUP_SIZE:
+      *name = TGSI_SEMANTIC_SUBGROUP_SIZE;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_INVOCATION:
+      *name = TGSI_SEMANTIC_SUBGROUP_INVOCATION;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
+      *name = TGSI_SEMANTIC_SUBGROUP_EQ_MASK;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_GE_MASK:
+      *name = TGSI_SEMANTIC_SUBGROUP_GE_MASK;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_GT_MASK:
+      *name = TGSI_SEMANTIC_SUBGROUP_GT_MASK;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_LE_MASK:
+      *name = TGSI_SEMANTIC_SUBGROUP_LE_MASK;
+      break;
+   case SYSTEM_VALUE_SUBGROUP_LT_MASK:
+      *name = TGSI_SEMANTIC_SUBGROUP_LT_MASK;
+      break;
+
+   default:
+      ERROR("unknown system value %u\n", val);
+      assert(false);
+      break;
+   }
+}
+
+void
+Converter::setInterpolate(nv50_ir_varying *var,
+                          uint8_t mode,
+                          bool centroid,
+                          unsigned semantic)
+{
+   switch (mode) {
+   case INTERP_MODE_FLAT:
+      var->flat = 1;
+      break;
+   case INTERP_MODE_NONE:
+      if (semantic == TGSI_SEMANTIC_COLOR)
+         var->sc = 1;
+      else if (semantic == TGSI_SEMANTIC_POSITION)
+         var->linear = 1;
+      break;
+   case INTERP_MODE_NOPERSPECTIVE:
+      var->linear = 1;
+      break;
+   case INTERP_MODE_SMOOTH:
+      break;
+   }
+   var->centroid = centroid;
+}
+
+static uint16_t
+calcSlots(const glsl_type *type, Program::Type stage, const shader_info &info,
+          bool input, const nir_variable *var)
+{
+   if (!type->is_array())
+      return type->count_attribute_slots(false);
+
+   uint16_t slots;
+   switch (stage) {
+   case Program::TYPE_GEOMETRY:
+      slots = type->uniform_locations();
+      if (input)
+         slots /= info.gs.vertices_in;
+      break;
+   case Program::TYPE_TESSELLATION_CONTROL:
+   case Program::TYPE_TESSELLATION_EVAL:
+      // remove first dimension
+      if (var->data.patch || (!input && stage == Program::TYPE_TESSELLATION_EVAL))
+         slots = type->uniform_locations();
+      else
+         slots = type->fields.array->uniform_locations();
+      break;
+   default:
+      slots = type->count_attribute_slots(false);
+      break;
+   }
+
+   return slots;
+}
+
+bool Converter::assignSlots() {
+   unsigned name;
+   unsigned index;
+
+   info->io.viewportId = -1;
+   info->numInputs = 0;
+
+   // we have to fixup the uniform locations for arrays
+   unsigned numImages = 0;
+   nir_foreach_variable(var, &nir->uniforms) {
+      const glsl_type *type = var->type;
+      if (!type->without_array()->is_image())
+         continue;
+      var->data.driver_location = numImages;
+      numImages += type->is_array() ? type->arrays_of_arrays_size() : 1;
+   }
+
+   nir_foreach_variable(var, &nir->inputs) {
+      const glsl_type *type = var->type;
+      int slot = var->data.location;
+      uint16_t slots = calcSlots(type, prog->getType(), nir->info, true, var);
+      uint32_t comp = type->is_array() ? type->without_array()->component_slots()
+                                       : type->component_slots();
+      uint32_t frac = var->data.location_frac;
+      uint32_t vary = var->data.driver_location;
+
+      if (glsl_base_type_is_64bit(type->without_array()->base_type)) {
+         if (comp > 2)
+            slots *= 2;
+      }
+
+      assert(vary + slots <= PIPE_MAX_SHADER_INPUTS);
+
+      switch(prog->getType()) {
+      case Program::TYPE_FRAGMENT:
+         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         for (uint16_t i = 0; i < slots; ++i) {
+            setInterpolate(&info->in[vary + i], var->data.interpolation,
+                           var->data.centroid | var->data.sample, name);
+         }
+         break;
+      case Program::TYPE_GEOMETRY:
+         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         break;
+      case Program::TYPE_TESSELLATION_CONTROL:
+      case Program::TYPE_TESSELLATION_EVAL:
+         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+         if (var->data.patch && name == TGSI_SEMANTIC_PATCH)
+            info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
+         break;
+      case Program::TYPE_VERTEX:
+         vert_attrib_to_tgsi_semantic((gl_vert_attrib)slot, &name, &index);
+         switch (name) {
+         case TGSI_SEMANTIC_EDGEFLAG:
+            info->io.edgeFlagIn = vary;
+            break;
+         default:
+            break;
+         }
+         break;
+      default:
+         ERROR("unknown shader type %u in assignSlots\n", prog->getType());
+         return false;
+      }
+
+      for (uint16_t i = 0u; i < slots; ++i, ++vary) {
+         info->in[vary].id = vary;
+         info->in[vary].patch = var->data.patch;
+         info->in[vary].sn = name;
+         info->in[vary].si = index + i;
+         if (glsl_base_type_is_64bit(type->without_array()->base_type))
+            if (i & 0x1)
+               info->in[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) >> 0x4);
+            else
+               info->in[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) & 0xf);
+         else
+            info->in[vary].mask |= ((1 << comp) - 1) << frac;
+      }
+      info->numInputs = std::max<uint8_t>(info->numInputs, vary);
+   }
+
+   info->numOutputs = 0;
+   nir_foreach_variable(var, &nir->outputs) {
+      const glsl_type *type = var->type;
+      int slot = var->data.location;
+      uint16_t slots = calcSlots(type, prog->getType(), nir->info, false, var);
+      uint32_t comp = type->is_array() ? type->without_array()->component_slots()
+                                       : type->component_slots();
+      uint32_t frac = var->data.location_frac;
+      uint32_t vary = var->data.driver_location;
+
+      if (glsl_base_type_is_64bit(type->without_array()->base_type)) {
+         if (comp > 2)
+            slots *= 2;
+      }
+
+      assert(vary < PIPE_MAX_SHADER_OUTPUTS);
+
+      switch(prog->getType()) {
+      case Program::TYPE_FRAGMENT:
+         frag_result_to_tgsi_semantic((gl_frag_result)slot, &name, &index);
+         switch (name) {
+         case TGSI_SEMANTIC_COLOR:
+            if (!var->data.fb_fetch_output)
+               info->prop.fp.numColourResults++;
+            info->prop.fp.separateFragData = true;
+            // sometimes we get FRAG_RESULT_DATAX with data.index 0
+            // sometimes we get FRAG_RESULT_DATA0 with data.index X
+            index = index == 0 ? var->data.index : index;
+            break;
+         case TGSI_SEMANTIC_POSITION:
+            info->io.fragDepth = vary;
+            info->prop.fp.writesDepth = true;
+            break;
+         case TGSI_SEMANTIC_SAMPLEMASK:
+            info->io.sampleMask = vary;
+            break;
+         default:
+            break;
+         }
+         break;
+      case Program::TYPE_GEOMETRY:
+      case Program::TYPE_TESSELLATION_CONTROL:
+      case Program::TYPE_TESSELLATION_EVAL:
+      case Program::TYPE_VERTEX:
+         varying_slot_to_tgsi_semantic((gl_varying_slot)slot, &name, &index);
+
+         if (var->data.patch && name != TGSI_SEMANTIC_TESSINNER &&
+             name != TGSI_SEMANTIC_TESSOUTER)
+            info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
+
+         switch (name) {
+         case TGSI_SEMANTIC_CLIPDIST:
+            info->io.genUserClip = -1;
+            break;
+         case TGSI_SEMANTIC_EDGEFLAG:
+            info->io.edgeFlagOut = vary;
+            break;
+         default:
+            break;
+         }
+         break;
+      default:
+         ERROR("unknown shader type %u in assignSlots\n", prog->getType());
+         return false;
+      }
+
+      for (uint16_t i = 0u; i < slots; ++i, ++vary) {
+         info->out[vary].id = vary;
+         info->out[vary].patch = var->data.patch;
+         info->out[vary].sn = name;
+         info->out[vary].si = index + i;
+         if (glsl_base_type_is_64bit(type->without_array()->base_type))
+            if (i & 0x1)
+               info->out[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) >> 0x4);
+            else
+               info->out[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) & 0xf);
+         else
+            info->out[vary].mask |= ((1 << comp) - 1) << frac;
+
+         if (nir->info.outputs_read & 1ll << slot)
+            info->out[vary].oread = 1;
+      }
+      info->numOutputs = std::max<uint8_t>(info->numOutputs, vary);
+   }
+
+   info->numSysVals = 0;
+   for (uint8_t i = 0; i < 64; ++i) {
+      if (!(nir->info.system_values_read & 1ll << i))
+         continue;
+
+      system_val_to_tgsi_semantic(i, &name, &index);
+      info->sv[info->numSysVals].sn = name;
+      info->sv[info->numSysVals].si = index;
+      info->sv[info->numSysVals].input = 0; // TODO inferSysValDirection(sn);
+
+      switch (i) {
+      case SYSTEM_VALUE_INSTANCE_ID:
+         info->io.instanceId = info->numSysVals;
+         break;
+      case SYSTEM_VALUE_TESS_LEVEL_INNER:
+      case SYSTEM_VALUE_TESS_LEVEL_OUTER:
+         info->sv[info->numSysVals].patch = 1;
+         break;
+      case SYSTEM_VALUE_VERTEX_ID:
+         info->io.vertexId = info->numSysVals;
+         break;
+      default:
+         break;
+      }
+
+      info->numSysVals += 1;
+   }
+
+   if (info->io.genUserClip > 0) {
+      info->io.clipDistances = info->io.genUserClip;
+
+      const unsigned int nOut = (info->io.genUserClip + 3) / 4;
+
+      for (unsigned int n = 0; n < nOut; ++n) {
+         unsigned int i = info->numOutputs++;
+         info->out[i].id = i;
+         info->out[i].sn = TGSI_SEMANTIC_CLIPDIST;
+         info->out[i].si = n;
+         info->out[i].mask = ((1 << info->io.clipDistances) - 1) >> (n * 4);
+      }
+   }
+
+   return info->assignSlots(info) == 0;
+}
+
+uint32_t
+Converter::getSlotAddress(nir_intrinsic_instr *insn, uint8_t idx, uint8_t slot)
+{
+   DataType ty;
+   int offset = nir_intrinsic_component(insn);
+   bool input;
+
+   if (nir_intrinsic_infos[insn->intrinsic].has_dest)
+      ty = getDType(insn);
+   else
+      ty = getSType(insn->src[0], false, false);
+
+   switch (insn->intrinsic) {
+   case nir_intrinsic_load_input:
+   case nir_intrinsic_load_interpolated_input:
+   case nir_intrinsic_load_per_vertex_input:
+      input = true;
+      break;
+   case nir_intrinsic_load_output:
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output:
+      input = false;
+      break;
+   default:
+      ERROR("unknown intrinsic in getSlotAddress %s",
+            nir_intrinsic_infos[insn->intrinsic].name);
+      input = false;
+      assert(false);
+      break;
+   }
+
+   if (typeSizeof(ty) == 8) {
+      slot *= 2;
+      slot += offset;
+      if (slot >= 4) {
+         idx += 1;
+         slot -= 4;
+      }
+   } else {
+      slot += offset;
+   }
+
+   assert(slot < 4);
+   assert(!input || idx < PIPE_MAX_SHADER_INPUTS);
+   assert(input || idx < PIPE_MAX_SHADER_OUTPUTS);
+
+   const nv50_ir_varying *vary = input ? info->in : info->out;
+   return vary[idx].slot[slot] * 4;
+}
+
 bool
 Converter::run()
 {
@@ -367,6 +1004,11 @@ Converter::run()
 
    // Garbage collect dead instructions
    nir_sweep(nir);
+
+   if (!assignSlots()) {
+      ERROR("Couldn't assign slots!\n");
+      return false;
+   }
 
    if (prog->dbgFlags & NV50_IR_DEBUG_BASIC)
       nir_print_shader(nir, stderr);
