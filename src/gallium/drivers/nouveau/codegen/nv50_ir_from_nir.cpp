@@ -123,6 +123,7 @@ private:
    bool visit(nir_if *);
    bool visit(nir_instr *);
    bool visit(nir_jump_instr *);
+   bool visit(nir_load_const_instr*);
    bool visit(nir_loop *);
 
    nir_shader *nir;
@@ -1314,6 +1315,8 @@ Converter::visit(nir_instr *insn)
    switch (insn->type) {
    case nir_instr_type_jump:
       return visit(nir_instr_as_jump(insn));
+   case nir_instr_type_load_const:
+      return visit(nir_instr_as_load_const(insn));
    default:
       ERROR("unknown nir_instr type %u\n", insn->type);
       return false;
@@ -1345,6 +1348,31 @@ Converter::visit(nir_jump_instr *insn)
       return false;
    }
 
+   return true;
+}
+
+bool
+Converter::visit(nir_load_const_instr *insn)
+{
+   assert(insn->def.bit_size <= 64);
+
+   LValues &newDefs = convert(&insn->def);
+   for (int i = 0; i < insn->def.num_components; i++) {
+      switch (insn->def.bit_size) {
+      case 64:
+         loadImm(newDefs[i], insn->value.u64[i]);
+         break;
+      case 32:
+         loadImm(newDefs[i], insn->value.u32[i]);
+         break;
+      case 16:
+         loadImm(newDefs[i], insn->value.u16[i]);
+         break;
+      case 8:
+         loadImm(newDefs[i], insn->value.u8[i]);
+         break;
+      }
+   }
    return true;
 }
 
