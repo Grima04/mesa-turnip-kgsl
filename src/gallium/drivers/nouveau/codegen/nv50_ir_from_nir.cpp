@@ -1532,6 +1532,16 @@ Converter::visit(nir_intrinsic_instr *insn)
    nir_intrinsic_op op = insn->intrinsic;
 
    switch (op) {
+   case nir_intrinsic_load_uniform: {
+      LValues &newDefs = convert(&insn->dest);
+      const DataType dType = getDType(insn);
+      Value *indirect;
+      uint32_t coffset = getIndirect(insn, 0, 0, indirect);
+      for (uint8_t i = 0; i < insn->num_components; ++i) {
+         loadFrom(FILE_MEMORY_CONST, 0, dType, newDefs[i], 16 * coffset, i, indirect);
+      }
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
