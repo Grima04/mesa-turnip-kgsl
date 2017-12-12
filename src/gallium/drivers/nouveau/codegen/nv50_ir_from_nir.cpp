@@ -31,7 +31,22 @@
 #include "codegen/nv50_ir_lowering_helper.h"
 #include "codegen/nv50_ir_util.h"
 
+#if __cplusplus >= 201103L
+#include <unordered_map>
+#else
+#include <tr1/unordered_map>
+#endif
+#include <vector>
+
 namespace {
+
+#if __cplusplus >= 201103L
+using std::hash;
+using std::unordered_map;
+#else
+using std::tr1::hash;
+using std::tr1::unordered_map;
+#endif
 
 using namespace nv50_ir;
 
@@ -48,12 +63,147 @@ public:
 
    bool run();
 private:
+   typedef std::vector<LValue *> LValues;
+   typedef unordered_map<unsigned, LValues> NirDefMap;
+
+   LValues& convert(nir_alu_dest *);
+   LValues& convert(nir_dest *);
+   LValues& convert(nir_register *);
+   LValues& convert(nir_ssa_def *);
+
+   Value* getSrc(nir_alu_src *, uint8_t component = 0);
+   Value* getSrc(nir_register *, uint8_t);
+   Value* getSrc(nir_src *, uint8_t, bool indirect = false);
+   Value* getSrc(nir_ssa_def *, uint8_t);
+
+   // returned value is the constant part of the given source (either the
+   // nir_src or the selected source component of an intrinsic). Even though
+   // this is mostly an optimization to be able to skip indirects in a few
+   // cases, sometimes we require immediate values or set some fileds on
+   // instructions (e.g. tex) in order for codegen to consume those.
+   // If the found value has not a constant part, the Value gets returned
+   // through the Value parameter.
+   uint32_t getIndirect(nir_src *, uint8_t, Value *&);
+   uint32_t getIndirect(nir_intrinsic_instr *, uint8_t s, uint8_t c, Value *&);
+
    nir_shader *nir;
+
+   NirDefMap ssaDefs;
+   NirDefMap regDefs;
 };
 
 Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info)
    : ConverterCommon(prog, info),
      nir(nir) {}
+
+Converter::LValues&
+Converter::convert(nir_dest *dest)
+{
+   if (dest->is_ssa)
+      return convert(&dest->ssa);
+   if (dest->reg.indirect) {
+      ERROR("no support for indirects.");
+      assert(false);
+   }
+   return convert(dest->reg.reg);
+}
+
+Converter::LValues&
+Converter::convert(nir_register *reg)
+{
+   NirDefMap::iterator it = regDefs.find(reg->index);
+   if (it != regDefs.end())
+      return it->second;
+
+   LValues newDef(reg->num_components);
+   for (uint8_t i = 0; i < reg->num_components; i++)
+      newDef[i] = getScratch(std::max(4, reg->bit_size / 8));
+   return regDefs[reg->index] = newDef;
+}
+
+Converter::LValues&
+Converter::convert(nir_ssa_def *def)
+{
+   NirDefMap::iterator it = ssaDefs.find(def->index);
+   if (it != ssaDefs.end())
+      return it->second;
+
+   LValues newDef(def->num_components);
+   for (uint8_t i = 0; i < def->num_components; i++)
+      newDef[i] = getSSA(std::max(4, def->bit_size / 8));
+   return ssaDefs[def->index] = newDef;
+}
+
+Value*
+Converter::getSrc(nir_alu_src *src, uint8_t component)
+{
+   if (src->abs || src->negate) {
+      ERROR("modifiers currently not supported on nir_alu_src\n");
+      assert(false);
+   }
+   return getSrc(&src->src, src->swizzle[component]);
+}
+
+Value*
+Converter::getSrc(nir_register *reg, uint8_t idx)
+{
+   NirDefMap::iterator it = regDefs.find(reg->index);
+   if (it == regDefs.end())
+      return convert(reg)[idx];
+   return it->second[idx];
+}
+
+Value*
+Converter::getSrc(nir_src *src, uint8_t idx, bool indirect)
+{
+   if (src->is_ssa)
+      return getSrc(src->ssa, idx);
+
+   if (src->reg.indirect) {
+      if (indirect)
+         return getSrc(src->reg.indirect, idx);
+      ERROR("no support for indirects.");
+      assert(false);
+      return NULL;
+   }
+
+   return getSrc(src->reg.reg, idx);
+}
+
+Value*
+Converter::getSrc(nir_ssa_def *src, uint8_t idx)
+{
+   NirDefMap::iterator it = ssaDefs.find(src->index);
+   if (it == ssaDefs.end()) {
+      ERROR("SSA value %u not found\n", src->index);
+      assert(false);
+      return NULL;
+   }
+   return it->second[idx];
+}
+
+uint32_t
+Converter::getIndirect(nir_src *src, uint8_t idx, Value *&indirect)
+{
+   nir_const_value *offset = nir_src_as_const_value(*src);
+
+   if (offset) {
+      indirect = NULL;
+      return offset->u32[0];
+   }
+
+   indirect = getSrc(src, idx, true);
+   return 0;
+}
+
+uint32_t
+Converter::getIndirect(nir_intrinsic_instr *insn, uint8_t s, uint8_t c, Value *&indirect)
+{
+   int32_t idx = nir_intrinsic_base(insn) + getIndirect(&insn->src[s], c, indirect);
+   if (indirect)
+      indirect = mkOp2v(OP_SHL, TYPE_U32, getSSA(4, FILE_ADDRESS), indirect, loadImm(NULL, 4));
+   return idx;
+}
 
 bool
 Converter::run()
