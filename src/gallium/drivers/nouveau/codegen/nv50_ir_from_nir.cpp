@@ -67,6 +67,7 @@ private:
    typedef unordered_map<unsigned, LValues> NirDefMap;
    typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
+   TexTarget convert(glsl_sampler_dim, bool isArray, bool isShadow);
    LValues& convert(nir_alu_dest *);
    BasicBlock* convert(nir_block *);
    LValues& convert(nir_dest *);
@@ -116,6 +117,7 @@ private:
    DataType getSType(nir_src &, bool isFloat, bool isSigned);
 
    operation getOperation(nir_op);
+   operation getOperation(nir_texop);
    operation preOperationNeeded(nir_op);
 
    int getSubOp(nir_op);
@@ -136,6 +138,10 @@ private:
    bool visit(nir_load_const_instr*);
    bool visit(nir_loop *);
    bool visit(nir_ssa_undef_instr *);
+   bool visit(nir_tex_instr *);
+
+   // tex stuff
+   Value* applyProjection(Value *src, Value *proj);
 
    nir_shader *nir;
 
@@ -416,6 +422,36 @@ Converter::getOperation(nir_op op)
       return OP_XOR;
    default:
       ERROR("couldn't get operation for op %s\n", nir_op_infos[op].name);
+      assert(false);
+      return OP_NOP;
+   }
+}
+
+operation
+Converter::getOperation(nir_texop op)
+{
+   switch (op) {
+   case nir_texop_tex:
+      return OP_TEX;
+   case nir_texop_lod:
+      return OP_TXLQ;
+   case nir_texop_txb:
+      return OP_TXB;
+   case nir_texop_txd:
+      return OP_TXD;
+   case nir_texop_txf:
+   case nir_texop_txf_ms:
+      return OP_TXF;
+   case nir_texop_tg4:
+      return OP_TXG;
+   case nir_texop_txl:
+      return OP_TXL;
+   case nir_texop_query_levels:
+   case nir_texop_texture_samples:
+   case nir_texop_txs:
+      return OP_TXQ;
+   default:
+      ERROR("couldn't get operation for nir_texop %u\n", op);
       assert(false);
       return OP_NOP;
    }
@@ -1541,6 +1577,8 @@ Converter::visit(nir_instr *insn)
       return visit(nir_instr_as_load_const(insn));
    case nir_instr_type_ssa_undef:
       return visit(nir_instr_as_ssa_undef(insn));
+   case nir_instr_type_tex:
+      return visit(nir_instr_as_tex(insn));
    default:
       ERROR("unknown nir_instr type %u\n", insn->type);
       return false;
@@ -2298,6 +2336,202 @@ Converter::visit(nir_ssa_undef_instr *insn)
    LValues &newDefs = convert(&insn->def);
    for (uint8_t i = 0u; i < insn->def.num_components; ++i) {
       mkOp(OP_NOP, TYPE_NONE, newDefs[i]);
+   }
+   return true;
+}
+
+#define CASE_SAMPLER(ty) \
+   case GLSL_SAMPLER_DIM_ ## ty : \
+      if (isArray && !isShadow) \
+         return TEX_TARGET_ ## ty ## _ARRAY; \
+      else if (!isArray && isShadow) \
+         return TEX_TARGET_## ty ## _SHADOW; \
+      else if (isArray && isShadow) \
+         return TEX_TARGET_## ty ## _ARRAY_SHADOW; \
+      else \
+         return TEX_TARGET_ ## ty
+
+TexTarget
+Converter::convert(glsl_sampler_dim dim, bool isArray, bool isShadow)
+{
+   switch (dim) {
+   CASE_SAMPLER(1D);
+   CASE_SAMPLER(2D);
+   CASE_SAMPLER(CUBE);
+   case GLSL_SAMPLER_DIM_3D:
+      return TEX_TARGET_3D;
+   case GLSL_SAMPLER_DIM_MS:
+      if (isArray)
+         return TEX_TARGET_2D_MS_ARRAY;
+      return TEX_TARGET_2D_MS;
+   case GLSL_SAMPLER_DIM_RECT:
+      if (isShadow)
+         return TEX_TARGET_RECT_SHADOW;
+      return TEX_TARGET_RECT;
+   case GLSL_SAMPLER_DIM_BUF:
+      return TEX_TARGET_BUFFER;
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      return TEX_TARGET_2D;
+   default:
+      ERROR("unknown glsl_sampler_dim %u\n", dim);
+      assert(false);
+      return TEX_TARGET_COUNT;
+   }
+}
+#undef CASE_SAMPLER
+
+Value*
+Converter::applyProjection(Value *src, Value *proj)
+{
+   if (!proj)
+      return src;
+   return mkOp2v(OP_MUL, TYPE_F32, getScratch(), src, proj);
+}
+
+bool
+Converter::visit(nir_tex_instr *insn)
+{
+   switch (insn->op) {
+   case nir_texop_lod:
+   case nir_texop_query_levels:
+   case nir_texop_tex:
+   case nir_texop_texture_samples:
+   case nir_texop_tg4:
+   case nir_texop_txb:
+   case nir_texop_txd:
+   case nir_texop_txf:
+   case nir_texop_txf_ms:
+   case nir_texop_txl:
+   case nir_texop_txs: {
+      LValues &newDefs = convert(&insn->dest);
+      std::vector<Value*> srcs;
+      std::vector<Value*> defs;
+      std::vector<nir_src*> offsets;
+      uint8_t mask = 0;
+      bool lz = false;
+      Value *proj = NULL;
+      TexInstruction::Target target = convert(insn->sampler_dim, insn->is_array, insn->is_shadow);
+      operation op = getOperation(insn->op);
+
+      int r, s;
+      int biasIdx = nir_tex_instr_src_index(insn, nir_tex_src_bias);
+      int compIdx = nir_tex_instr_src_index(insn, nir_tex_src_comparator);
+      int coordsIdx = nir_tex_instr_src_index(insn, nir_tex_src_coord);
+      int ddxIdx = nir_tex_instr_src_index(insn, nir_tex_src_ddx);
+      int ddyIdx = nir_tex_instr_src_index(insn, nir_tex_src_ddy);
+      int msIdx = nir_tex_instr_src_index(insn, nir_tex_src_ms_index);
+      int lodIdx = nir_tex_instr_src_index(insn, nir_tex_src_lod);
+      int offsetIdx = nir_tex_instr_src_index(insn, nir_tex_src_offset);
+      int projIdx = nir_tex_instr_src_index(insn, nir_tex_src_projector);
+      int sampOffIdx = nir_tex_instr_src_index(insn, nir_tex_src_sampler_offset);
+      int texOffIdx = nir_tex_instr_src_index(insn, nir_tex_src_texture_offset);
+
+      if (projIdx != -1)
+         proj = mkOp1v(OP_RCP, TYPE_F32, getScratch(), getSrc(&insn->src[projIdx].src, 0));
+
+      srcs.resize(insn->coord_components);
+      for (uint8_t i = 0u; i < insn->coord_components; ++i)
+         srcs[i] = applyProjection(getSrc(&insn->src[coordsIdx].src, i), proj);
+
+      // sometimes we get less args than target.getArgCount, but codegen expects the latter
+      if (insn->coord_components) {
+         uint32_t argCount = target.getArgCount();
+
+         if (target.isMS())
+            argCount -= 1;
+
+         for (uint32_t i = 0u; i < (argCount - insn->coord_components); ++i)
+            srcs.push_back(getSSA());
+      }
+
+      if (insn->op == nir_texop_texture_samples)
+         srcs.push_back(zero);
+      else if (!insn->num_srcs)
+         srcs.push_back(loadImm(NULL, 0));
+      if (biasIdx != -1)
+         srcs.push_back(getSrc(&insn->src[biasIdx].src, 0));
+      if (lodIdx != -1)
+         srcs.push_back(getSrc(&insn->src[lodIdx].src, 0));
+      else if (op == OP_TXF)
+         lz = true;
+      if (msIdx != -1)
+         srcs.push_back(getSrc(&insn->src[msIdx].src, 0));
+      if (offsetIdx != -1)
+         offsets.push_back(&insn->src[offsetIdx].src);
+      if (compIdx != -1)
+         srcs.push_back(applyProjection(getSrc(&insn->src[compIdx].src, 0), proj));
+      if (texOffIdx != -1) {
+         srcs.push_back(getSrc(&insn->src[texOffIdx].src, 0));
+         texOffIdx = srcs.size() - 1;
+      }
+      if (sampOffIdx != -1) {
+         srcs.push_back(getSrc(&insn->src[sampOffIdx].src, 0));
+         sampOffIdx = srcs.size() - 1;
+      }
+
+      r = insn->texture_index;
+      s = insn->sampler_index;
+
+      defs.resize(newDefs.size());
+      for (uint8_t d = 0u; d < newDefs.size(); ++d) {
+         defs[d] = newDefs[d];
+         mask |= 1 << d;
+      }
+      if (target.isMS() || (op == OP_TEX && prog->getType() != Program::TYPE_FRAGMENT))
+         lz = true;
+
+      TexInstruction *texi = mkTex(op, target.getEnum(), r, s, defs, srcs);
+      texi->tex.levelZero = lz;
+      texi->tex.mask = mask;
+
+      if (texOffIdx != -1)
+         texi->tex.rIndirectSrc = texOffIdx;
+      if (sampOffIdx != -1)
+         texi->tex.sIndirectSrc = sampOffIdx;
+
+      switch (insn->op) {
+      case nir_texop_tg4:
+         if (!target.isShadow())
+            texi->tex.gatherComp = insn->component;
+         break;
+      case nir_texop_txs:
+         texi->tex.query = TXQ_DIMS;
+         break;
+      case nir_texop_texture_samples:
+         texi->tex.mask = 0x4;
+         texi->tex.query = TXQ_TYPE;
+         break;
+      case nir_texop_query_levels:
+         texi->tex.mask = 0x8;
+         texi->tex.query = TXQ_DIMS;
+         break;
+      default:
+         break;
+      }
+
+      texi->tex.useOffsets = offsets.size();
+      if (texi->tex.useOffsets) {
+         for (uint8_t s = 0; s < texi->tex.useOffsets; ++s) {
+            for (uint32_t c = 0u; c < 3; ++c) {
+               uint8_t s2 = std::min(c, target.getDim() - 1);
+               texi->offset[s][c].set(getSrc(offsets[s], s2));
+               texi->offset[s][c].setInsn(texi);
+            }
+         }
+      }
+
+      if (ddxIdx != -1 && ddyIdx != -1) {
+         for (uint8_t c = 0u; c < target.getDim() + target.isCube(); ++c) {
+            texi->dPdx[c].set(getSrc(&insn->src[ddxIdx].src, c));
+            texi->dPdy[c].set(getSrc(&insn->src[ddyIdx].src, c));
+         }
+      }
+
+      break;
+   }
+   default:
+      ERROR("unknown nir_texop %u\n", insn->op);
+      return false;
    }
    return true;
 }
