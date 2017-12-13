@@ -70,6 +70,7 @@ private:
    LValues& convert(nir_alu_dest *);
    BasicBlock* convert(nir_block *);
    LValues& convert(nir_dest *);
+   SVSemantic convert(nir_intrinsic_op);
    LValues& convert(nir_register *);
    LValues& convert(nir_ssa_def *);
 
@@ -1544,6 +1545,70 @@ Converter::visit(nir_instr *insn)
    return true;
 }
 
+SVSemantic
+Converter::convert(nir_intrinsic_op intr)
+{
+   switch (intr) {
+   case nir_intrinsic_load_base_vertex:
+      return SV_BASEVERTEX;
+   case nir_intrinsic_load_base_instance:
+      return SV_BASEINSTANCE;
+   case nir_intrinsic_load_draw_id:
+      return SV_DRAWID;
+   case nir_intrinsic_load_front_face:
+      return SV_FACE;
+   case nir_intrinsic_load_helper_invocation:
+      return SV_THREAD_KILL;
+   case nir_intrinsic_load_instance_id:
+      return SV_INSTANCE_ID;
+   case nir_intrinsic_load_invocation_id:
+      return SV_INVOCATION_ID;
+   case nir_intrinsic_load_local_group_size:
+      return SV_NTID;
+   case nir_intrinsic_load_local_invocation_id:
+      return SV_TID;
+   case nir_intrinsic_load_num_work_groups:
+      return SV_NCTAID;
+   case nir_intrinsic_load_patch_vertices_in:
+      return SV_VERTEX_COUNT;
+   case nir_intrinsic_load_primitive_id:
+      return SV_PRIMITIVE_ID;
+   case nir_intrinsic_load_sample_id:
+      return SV_SAMPLE_INDEX;
+   case nir_intrinsic_load_sample_mask_in:
+      return SV_SAMPLE_MASK;
+   case nir_intrinsic_load_sample_pos:
+      return SV_SAMPLE_POS;
+   case nir_intrinsic_load_subgroup_eq_mask:
+      return SV_LANEMASK_EQ;
+   case nir_intrinsic_load_subgroup_ge_mask:
+      return SV_LANEMASK_GE;
+   case nir_intrinsic_load_subgroup_gt_mask:
+      return SV_LANEMASK_GT;
+   case nir_intrinsic_load_subgroup_le_mask:
+      return SV_LANEMASK_LE;
+   case nir_intrinsic_load_subgroup_lt_mask:
+      return SV_LANEMASK_LT;
+   case nir_intrinsic_load_subgroup_invocation:
+      return SV_LANEID;
+   case nir_intrinsic_load_tess_coord:
+      return SV_TESS_COORD;
+   case nir_intrinsic_load_tess_level_inner:
+      return SV_TESS_INNER;
+   case nir_intrinsic_load_tess_level_outer:
+      return SV_TESS_OUTER;
+   case nir_intrinsic_load_vertex_id:
+      return SV_VERTEX_ID;
+   case nir_intrinsic_load_work_group_id:
+      return SV_CTAID;
+   default:
+      ERROR("unknown SVSemantic for nir_intrinsic_op %s\n",
+            nir_intrinsic_infos[intr].name);
+      assert(false);
+      return SV_LAST;
+   }
+}
+
 bool
 Converter::visit(nir_intrinsic_instr *insn)
 {
@@ -1744,6 +1809,63 @@ Converter::visit(nir_intrinsic_instr *insn)
       }
       mkCmp(OP_SET, CC_NE, TYPE_U8, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
       mkOp(OP_DISCARD, TYPE_NONE, NULL)->setPredicate(CC_P, pred);
+      break;
+   }
+   case nir_intrinsic_load_base_vertex:
+   case nir_intrinsic_load_base_instance:
+   case nir_intrinsic_load_draw_id:
+   case nir_intrinsic_load_front_face:
+   case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_load_instance_id:
+   case nir_intrinsic_load_invocation_id:
+   case nir_intrinsic_load_local_group_size:
+   case nir_intrinsic_load_local_invocation_id:
+   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_patch_vertices_in:
+   case nir_intrinsic_load_primitive_id:
+   case nir_intrinsic_load_sample_id:
+   case nir_intrinsic_load_sample_mask_in:
+   case nir_intrinsic_load_sample_pos:
+   case nir_intrinsic_load_subgroup_eq_mask:
+   case nir_intrinsic_load_subgroup_ge_mask:
+   case nir_intrinsic_load_subgroup_gt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
+   case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_subgroup_invocation:
+   case nir_intrinsic_load_tess_coord:
+   case nir_intrinsic_load_tess_level_inner:
+   case nir_intrinsic_load_tess_level_outer:
+   case nir_intrinsic_load_vertex_id:
+   case nir_intrinsic_load_work_group_id: {
+      const DataType dType = getDType(insn);
+      SVSemantic sv = convert(op);
+      LValues &newDefs = convert(&insn->dest);
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         Value *def;
+         if (typeSizeof(dType) == 8)
+            def = getSSA();
+         else
+            def = newDefs[i];
+
+         if (sv == SV_TID && info->prop.cp.numThreads[i] == 1) {
+            loadImm(def, 0u);
+         } else {
+            Symbol *sym = mkSysVal(sv, i);
+            Instruction *rdsv = mkOp1(OP_RDSV, TYPE_U32, def, sym);
+            if (sv == SV_TESS_OUTER || sv == SV_TESS_INNER)
+               rdsv->perPatch = 1;
+         }
+
+         if (typeSizeof(dType) == 8)
+            mkOp2(OP_MERGE, dType, newDefs[i], def, loadImm(getSSA(), 0u));
+      }
+      break;
+   }
+   // constants
+   case nir_intrinsic_load_subgroup_size: {
+      LValues &newDefs = convert(&insn->dest);
+      loadImm(newDefs[0], 32u);
       break;
    }
    default:
