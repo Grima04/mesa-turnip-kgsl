@@ -186,6 +186,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
        */
       nir_options->lower_ffma = devinfo->gen < 6;
       nir_options->lower_flrp32 = devinfo->gen < 6 || devinfo->gen >= 11;
+      nir_options->lower_fpow = devinfo->gen >= 12;
 
       nir_options->lower_rotate = devinfo->gen < 11;
       nir_options->lower_bitfield_reverse = devinfo->gen < 7;
