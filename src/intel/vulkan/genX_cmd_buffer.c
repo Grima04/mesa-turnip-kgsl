@@ -1627,7 +1627,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       gen_dump_l3_config(cfg, stderr);
    }
 
-   const bool has_slm = cfg->n[GEN_L3P_SLM];
+   UNUSED const bool has_slm = cfg->n[GEN_L3P_SLM];
 
    /* According to the hardware docs, the L3 partitioning can only be changed
     * while the pipeline is completely drained and the caches are flushed,
@@ -1674,9 +1674,19 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 
    assert(!cfg->n[GEN_L3P_IS] && !cfg->n[GEN_L3P_C] && !cfg->n[GEN_L3P_T]);
 
+#if GEN_GEN >= 12
+#define L3_ALLOCATION_REG GENX(L3ALLOC)
+#define L3_ALLOCATION_REG_num GENX(L3ALLOC_num)
+#else
+#define L3_ALLOCATION_REG GENX(L3CNTLREG)
+#define L3_ALLOCATION_REG_num GENX(L3CNTLREG_num)
+#endif
+
    uint32_t l3cr;
-   anv_pack_struct(&l3cr, GENX(L3CNTLREG),
+   anv_pack_struct(&l3cr, L3_ALLOCATION_REG,
+#if GEN_GEN < 12
                    .SLMEnable = has_slm,
+#endif
 #if GEN_GEN == 11
    /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
     * in L3CNTLREG register. The default setting of the bit is not the
@@ -1691,7 +1701,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                    .AllAllocation = cfg->n[GEN_L3P_ALL]);
 
    /* Set up the L3 partitioning. */
-   emit_lri(&cmd_buffer->batch, GENX(L3CNTLREG_num), l3cr);
+   emit_lri(&cmd_buffer->batch, L3_ALLOCATION_REG_num, l3cr);
 
 #else
 

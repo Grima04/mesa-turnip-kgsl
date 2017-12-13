@@ -607,8 +607,19 @@ iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
                     bool has_slm, bool wants_dc_cache)
 {
    uint32_t reg_val;
-   iris_pack_state(GENX(L3CNTLREG), &reg_val, reg) {
+
+#if GEN_GEN >= 12
+#define L3_ALLOCATION_REG GENX(L3ALLOC)
+#define L3_ALLOCATION_REG_num GENX(L3ALLOC_num)
+#else
+#define L3_ALLOCATION_REG GENX(L3CNTLREG)
+#define L3_ALLOCATION_REG_num GENX(L3CNTLREG_num)
+#endif
+
+   iris_pack_state(L3_ALLOCATION_REG, &reg_val, reg) {
+#if GEN_GEN < 12
       reg.SLMEnable = has_slm;
+#endif
 #if GEN_GEN == 11
       /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
        * in L3CNTLREG register. The default setting of the bit is not the
@@ -622,7 +633,7 @@ iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
       reg.DCAllocation = cfg->n[GEN_L3P_DC];
       reg.AllAllocation = cfg->n[GEN_L3P_ALL];
    }
-   iris_emit_lri(batch, L3CNTLREG, reg_val);
+   _iris_emit_lri(batch, L3_ALLOCATION_REG_num, reg_val);
 }
 
 static void

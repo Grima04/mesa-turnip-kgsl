@@ -6991,11 +6991,10 @@
     <field name="TSG1 Done" start="24" end="24" type="bool"/>
   </register>
 
-  <register name="L3CNTLREG" length="1" num="0x7034">
-    <field name="SLM Enable" start="0" end="0" type="uint"/>
+  <register name="L3ALLOC" length="1" num="0xB134">
+    <field name="Allocation Error" start="0" end="0" type="uint"/>
     <field name="URB Allocation" start="1" end="7" type="uint"/>
-    <field name="Error Detection Behavior Control" start="9" end="9" type="bool"/>
-    <field name="Use Full Ways" start="10" end="10" type="bool"/>
+    <field name="L3 Full Way Allocation Enable" start="9" end="9" type="bool"/>
     <field name="RO Allocation" start="11" end="17" type="uint"/>
     <field name="DC Allocation" start="18" end="24" type="uint"/>
     <field name="All Allocation" start="25" end="31" type="uint"/>
