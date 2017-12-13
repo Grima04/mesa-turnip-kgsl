@@ -117,6 +117,9 @@ anv_device_init_blorp(struct anv_device *device)
    case 11:
       device->blorp.exec = gen11_blorp_exec;
       break;
+   case 12:
+      device->blorp.exec = gen12_blorp_exec;
+      break;
    default:
       unreachable("Unknown hardware generation");
    }

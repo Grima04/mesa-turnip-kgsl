@@ -415,6 +415,8 @@ anv_physical_device_init(struct anv_physical_device *device,
       intel_logw("Bay Trail Vulkan support is incomplete");
    } else if (device->info.gen >= 8 && device->info.gen <= 11) {
       /* Gen8-11 fully supported */
+   } else if (device->info.gen == 12) {
+      intel_logw("Vulkan is not yet fully supported on gen12");
    } else {
       result = vk_errorf(device->instance, device,
                          VK_ERROR_INCOMPATIBLE_DRIVER,
@@ -2125,6 +2127,9 @@ anv_device_init_dispatch(struct anv_device *device)
 {
    const struct anv_device_dispatch_table *genX_table;
    switch (device->info.gen) {
+   case 12:
+      genX_table = &gen12_device_dispatch_table;
+      break;
    case 11:
       genX_table = &gen11_device_dispatch_table;
       break;
@@ -2523,6 +2528,9 @@ VkResult anv_CreateDevice(
       break;
    case 11:
       result = gen11_init_device_state(device);
+      break;
+   case 12:
+      result = gen12_init_device_state(device);
       break;
    default:
       /* Shouldn't get here as we don't create physical devices for any other

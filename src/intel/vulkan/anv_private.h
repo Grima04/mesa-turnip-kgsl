@@ -1506,6 +1506,11 @@ _anv_combine_address(struct anv_batch *batch, void *location,
 #define GEN11_MOCS GEN9_MOCS
 #define GEN11_EXTERNAL_MOCS GEN9_EXTERNAL_MOCS
 
+/* TigerLake MOCS */
+#define GEN12_MOCS GEN9_MOCS
+/* TC=1/LLC Only, LeCC=1/Uncacheable, LRUM=0, L3CC=1/Uncacheable */
+#define GEN12_EXTERNAL_MOCS (3 << 1)
+
 struct anv_device_memory {
    struct list_head                             link;
 
@@ -3807,6 +3812,9 @@ ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_ycbcr_conversion, VkSamplerYcbcrConversion)
 #  include "anv_genX.h"
 #  undef genX
 #  define genX(x) gen11_##x
+#  include "anv_genX.h"
+#  undef genX
+#  define genX(x) gen12_##x
 #  include "anv_genX.h"
 #  undef genX
 #endif

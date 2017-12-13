@@ -45,6 +45,7 @@ LAYERS = [
     'gen9',
     'gen10',
     'gen11',
+    'gen12',
 ]
 
 TEMPLATE_H = Template("""\
@@ -383,6 +384,9 @@ anv_resolve_device_entrypoint(const struct gen_device_info *devinfo, uint32_t in
 {
    const struct anv_device_dispatch_table *genX_table;
    switch (devinfo->gen) {
+   case 12:
+      genX_table = &gen12_device_dispatch_table;
+      break;
    case 11:
       genX_table = &gen11_device_dispatch_table;
       break;
