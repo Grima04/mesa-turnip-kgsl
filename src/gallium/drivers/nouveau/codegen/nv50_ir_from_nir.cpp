@@ -1732,6 +1732,20 @@ Converter::visit(nir_intrinsic_instr *insn)
       loadImm(newDefs[1], mode);
       break;
    }
+   case nir_intrinsic_discard:
+      mkOp(OP_DISCARD, TYPE_NONE, NULL);
+      break;
+   case nir_intrinsic_discard_if: {
+      Value *pred = getSSA(1, FILE_PREDICATE);
+      if (insn->num_components > 1) {
+         ERROR("nir_intrinsic_discard_if only with 1 component supported!\n");
+         assert(false);
+         return false;
+      }
+      mkCmp(OP_SET, CC_NE, TYPE_U8, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
+      mkOp(OP_DISCARD, TYPE_NONE, NULL)->setPredicate(CC_P, pred);
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
