@@ -63,10 +63,12 @@ public:
 
    bool run();
 private:
-   typedef std::vector<LValue *> LValues;
+   typedef std::vector<LValue*> LValues;
    typedef unordered_map<unsigned, LValues> NirDefMap;
+   typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
    LValues& convert(nir_alu_dest *);
+   BasicBlock* convert(nir_block *);
    LValues& convert(nir_dest *);
    LValues& convert(nir_register *);
    LValues& convert(nir_ssa_def *);
@@ -113,16 +115,48 @@ private:
    DataType getSType(nir_src &, bool isFloat, bool isSigned);
 
    bool assignSlots();
+   bool parseNIR();
+
+   bool visit(nir_block *);
+   bool visit(nir_cf_node *);
+   bool visit(nir_function *);
+   bool visit(nir_if *);
+   bool visit(nir_instr *);
+   bool visit(nir_jump_instr *);
+   bool visit(nir_loop *);
 
    nir_shader *nir;
 
    NirDefMap ssaDefs;
    NirDefMap regDefs;
+   NirBlockMap blocks;
+   unsigned int curLoopDepth;
+
+   BasicBlock *exit;
+
+   union {
+      struct {
+         Value *position;
+      } fp;
+   };
 };
 
 Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info)
    : ConverterCommon(prog, info),
-     nir(nir) {}
+     nir(nir),
+     curLoopDepth(0) {}
+
+BasicBlock *
+Converter::convert(nir_block *block)
+{
+   NirBlockMap::iterator it = blocks.find(block->index);
+   if (it != blocks.end())
+      return it->second;
+
+   BasicBlock *bb = new BasicBlock(func);
+   blocks[block->index] = bb;
+   return bb;
+}
 
 bool
 Converter::isFloatType(nir_alu_type type)
@@ -1042,6 +1076,279 @@ Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
 }
 
 bool
+Converter::parseNIR()
+{
+   info->io.clipDistances = nir->info.clip_distance_array_size;
+   info->io.cullDistances = nir->info.cull_distance_array_size;
+
+   switch(prog->getType()) {
+   case Program::TYPE_COMPUTE:
+      info->prop.cp.numThreads[0] = nir->info.cs.local_size[0];
+      info->prop.cp.numThreads[1] = nir->info.cs.local_size[1];
+      info->prop.cp.numThreads[2] = nir->info.cs.local_size[2];
+      info->bin.smemSize = nir->info.cs.shared_size;
+      break;
+   case Program::TYPE_FRAGMENT:
+      info->prop.fp.earlyFragTests = nir->info.fs.early_fragment_tests;
+      info->prop.fp.persampleInvocation =
+         (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_ID) ||
+         (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
+      info->prop.fp.postDepthCoverage = nir->info.fs.post_depth_coverage;
+      info->prop.fp.readsSampleLocations =
+         (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
+      info->prop.fp.usesDiscard = nir->info.fs.uses_discard;
+      info->prop.fp.usesSampleMaskIn =
+         !!(nir->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN);
+      break;
+   case Program::TYPE_GEOMETRY:
+      info->prop.gp.inputPrim = nir->info.gs.input_primitive;
+      info->prop.gp.instanceCount = nir->info.gs.invocations;
+      info->prop.gp.maxVertices = nir->info.gs.vertices_out;
+      info->prop.gp.outputPrim = nir->info.gs.output_primitive;
+      break;
+   case Program::TYPE_TESSELLATION_CONTROL:
+   case Program::TYPE_TESSELLATION_EVAL:
+      if (nir->info.tess.primitive_mode == GL_ISOLINES)
+         info->prop.tp.domain = GL_LINES;
+      else
+         info->prop.tp.domain = nir->info.tess.primitive_mode;
+      info->prop.tp.outputPatchSize = nir->info.tess.tcs_vertices_out;
+      info->prop.tp.outputPrim =
+         nir->info.tess.point_mode ? PIPE_PRIM_POINTS : PIPE_PRIM_TRIANGLES;
+      info->prop.tp.partitioning = (nir->info.tess.spacing + 1) % 3;
+      info->prop.tp.winding = !nir->info.tess.ccw;
+      break;
+   case Program::TYPE_VERTEX:
+      info->prop.vp.usesDrawParameters =
+         (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_VERTEX)) ||
+         (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE)) ||
+         (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID));
+      break;
+   default:
+      break;
+   }
+
+   return true;
+}
+
+bool
+Converter::visit(nir_function *function)
+{
+   // we only support emiting the main function for now
+   assert(!strcmp(function->name, "main"));
+   assert(function->impl);
+
+   // usually the blocks will set everything up, but main is special
+   BasicBlock *entry = new BasicBlock(prog->main);
+   exit = new BasicBlock(prog->main);
+   blocks[nir_start_block(function->impl)->index] = entry;
+   prog->main->setEntry(entry);
+   prog->main->setExit(exit);
+
+   setPosition(entry, true);
+
+   switch (prog->getType()) {
+   case Program::TYPE_TESSELLATION_CONTROL:
+      outBase = mkOp2v(
+         OP_SUB, TYPE_U32, getSSA(),
+         mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_LANEID, 0)),
+         mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_INVOCATION_ID, 0)));
+      break;
+   case Program::TYPE_FRAGMENT: {
+      Symbol *sv = mkSysVal(SV_POSITION, 3);
+      fragCoord[3] = mkOp1v(OP_RDSV, TYPE_F32, getSSA(), sv);
+      fp.position = mkOp1v(OP_RCP, TYPE_F32, fragCoord[3], fragCoord[3]);
+      break;
+   }
+   default:
+      break;
+   }
+
+   nir_index_ssa_defs(function->impl);
+   foreach_list_typed(nir_cf_node, node, node, &function->impl->body) {
+      if (!visit(node))
+         return false;
+   }
+
+   bb->cfg.attach(&exit->cfg, Graph::Edge::TREE);
+   setPosition(exit, true);
+
+   // TODO: for non main function this needs to be a OP_RETURN
+   mkOp(OP_EXIT, TYPE_NONE, NULL)->terminator = 1;
+   return true;
+}
+
+bool
+Converter::visit(nir_cf_node *node)
+{
+   switch (node->type) {
+   case nir_cf_node_block:
+      return visit(nir_cf_node_as_block(node));
+   case nir_cf_node_if:
+      return visit(nir_cf_node_as_if(node));
+   case nir_cf_node_loop:
+      return visit(nir_cf_node_as_loop(node));
+   default:
+      ERROR("unknown nir_cf_node type %u\n", node->type);
+      return false;
+   }
+}
+
+bool
+Converter::visit(nir_block *block)
+{
+   if (!block->predecessors->entries && block->instr_list.is_empty())
+      return true;
+
+   BasicBlock *bb = convert(block);
+
+   setPosition(bb, true);
+   nir_foreach_instr(insn, block) {
+      if (!visit(insn))
+         return false;
+   }
+   return true;
+}
+
+bool
+Converter::visit(nir_if *nif)
+{
+   DataType sType = getSType(nif->condition, false, false);
+   Value *src = getSrc(&nif->condition, 0);
+
+   nir_block *lastThen = nir_if_last_then_block(nif);
+   nir_block *lastElse = nir_if_last_else_block(nif);
+
+   assert(!lastThen->successors[1]);
+   assert(!lastElse->successors[1]);
+
+   BasicBlock *ifBB = convert(nir_if_first_then_block(nif));
+   BasicBlock *elseBB = convert(nir_if_first_else_block(nif));
+
+   bb->cfg.attach(&ifBB->cfg, Graph::Edge::TREE);
+   bb->cfg.attach(&elseBB->cfg, Graph::Edge::TREE);
+
+   // we only insert joinats, if both nodes end up at the end of the if again.
+   // the reason for this to not happens are breaks/continues/ret/... which
+   // have their own handling
+   if (lastThen->successors[0] == lastElse->successors[0])
+      bb->joinAt = mkFlow(OP_JOINAT, convert(lastThen->successors[0]),
+                          CC_ALWAYS, NULL);
+
+   mkFlow(OP_BRA, elseBB, CC_EQ, src)->setType(sType);
+
+   foreach_list_typed(nir_cf_node, node, node, &nif->then_list) {
+      if (!visit(node))
+         return false;
+   }
+   setPosition(convert(lastThen), true);
+   if (!bb->getExit() ||
+       !bb->getExit()->asFlow() ||
+        bb->getExit()->asFlow()->op == OP_JOIN) {
+      BasicBlock *tailBB = convert(lastThen->successors[0]);
+      mkFlow(OP_BRA, tailBB, CC_ALWAYS, NULL);
+      bb->cfg.attach(&tailBB->cfg, Graph::Edge::FORWARD);
+   }
+
+   foreach_list_typed(nir_cf_node, node, node, &nif->else_list) {
+      if (!visit(node))
+         return false;
+   }
+   setPosition(convert(lastElse), true);
+   if (!bb->getExit() ||
+       !bb->getExit()->asFlow() ||
+        bb->getExit()->asFlow()->op == OP_JOIN) {
+      BasicBlock *tailBB = convert(lastElse->successors[0]);
+      mkFlow(OP_BRA, tailBB, CC_ALWAYS, NULL);
+      bb->cfg.attach(&tailBB->cfg, Graph::Edge::FORWARD);
+   }
+
+   if (lastThen->successors[0] == lastElse->successors[0]) {
+      setPosition(convert(lastThen->successors[0]), true);
+      mkFlow(OP_JOIN, NULL, CC_ALWAYS, NULL)->fixed = 1;
+   }
+
+   return true;
+}
+
+bool
+Converter::visit(nir_loop *loop)
+{
+   curLoopDepth += 1;
+   func->loopNestingBound = std::max(func->loopNestingBound, curLoopDepth);
+
+   BasicBlock *loopBB = convert(nir_loop_first_block(loop));
+   BasicBlock *tailBB =
+      convert(nir_cf_node_as_block(nir_cf_node_next(&loop->cf_node)));
+   bb->cfg.attach(&loopBB->cfg, Graph::Edge::TREE);
+
+   mkFlow(OP_PREBREAK, tailBB, CC_ALWAYS, NULL);
+   setPosition(loopBB, false);
+   mkFlow(OP_PRECONT, loopBB, CC_ALWAYS, NULL);
+
+   foreach_list_typed(nir_cf_node, node, node, &loop->body) {
+      if (!visit(node))
+         return false;
+   }
+   Instruction *insn = bb->getExit();
+   if (bb->cfg.incidentCount() != 0) {
+      if (!insn || !insn->asFlow()) {
+         mkFlow(OP_CONT, loopBB, CC_ALWAYS, NULL);
+         bb->cfg.attach(&loopBB->cfg, Graph::Edge::BACK);
+      } else if (insn && insn->op == OP_BRA && !insn->getPredicate() &&
+                 tailBB->cfg.incidentCount() == 0) {
+         // RA doesn't like having blocks around with no incident edge,
+         // so we create a fake one to make it happy
+         bb->cfg.attach(&tailBB->cfg, Graph::Edge::TREE);
+      }
+   }
+
+   curLoopDepth -= 1;
+
+   return true;
+}
+
+bool
+Converter::visit(nir_instr *insn)
+{
+   switch (insn->type) {
+   case nir_instr_type_jump:
+      return visit(nir_instr_as_jump(insn));
+   default:
+      ERROR("unknown nir_instr type %u\n", insn->type);
+      return false;
+   }
+   return true;
+}
+
+bool
+Converter::visit(nir_jump_instr *insn)
+{
+   switch (insn->type) {
+   case nir_jump_return:
+      // TODO: this only works in the main function
+      mkFlow(OP_BRA, exit, CC_ALWAYS, NULL);
+      bb->cfg.attach(&exit->cfg, Graph::Edge::CROSS);
+      break;
+   case nir_jump_break:
+   case nir_jump_continue: {
+      bool isBreak = insn->type == nir_jump_break;
+      nir_block *block = insn->instr.block;
+      assert(!block->successors[1]);
+      BasicBlock *target = convert(block->successors[0]);
+      mkFlow(isBreak ? OP_BREAK : OP_CONT, target, CC_ALWAYS, NULL);
+      bb->cfg.attach(&target->cfg, isBreak ? Graph::Edge::CROSS : Graph::Edge::BACK);
+      break;
+   }
+   default:
+      ERROR("unknown nir_jump_type %u\n", insn->type);
+      return false;
+   }
+
+   return true;
+}
+
+bool
 Converter::run()
 {
    bool progress;
@@ -1077,6 +1384,11 @@ Converter::run()
    // Garbage collect dead instructions
    nir_sweep(nir);
 
+   if (!parseNIR()) {
+      ERROR("Couldn't prase NIR!\n");
+      return false;
+   }
+
    if (!assignSlots()) {
       ERROR("Couldn't assign slots!\n");
       return false;
@@ -1085,7 +1397,12 @@ Converter::run()
    if (prog->dbgFlags & NV50_IR_DEBUG_BASIC)
       nir_print_shader(nir, stderr);
 
-   return false;
+   nir_foreach_function(function, nir) {
+      if (!visit(function))
+         return false;
+   }
+
+   return true;
 }
 
 } // unnamed namespace
