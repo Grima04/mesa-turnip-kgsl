@@ -554,6 +554,7 @@ nvc0_program_dump(struct nvc0_program *prog)
    unsigned pos;
 
    if (prog->type != PIPE_SHADER_COMPUTE) {
+      debug_printf("dumping HDR for type %i\n", prog->type);
       for (pos = 0; pos < ARRAY_SIZE(prog->hdr); ++pos)
          debug_printf("HDR[%02"PRIxPTR"] = 0x%08x\n",
                       pos * sizeof(prog->hdr[0]), prog->hdr[pos]);
