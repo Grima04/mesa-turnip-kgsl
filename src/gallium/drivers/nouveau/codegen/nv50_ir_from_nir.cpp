@@ -498,6 +498,12 @@ int
 Converter::getSubOp(nir_intrinsic_op op)
 {
    switch (op) {
+   case nir_intrinsic_vote_all:
+      return NV50_IR_SUBOP_VOTE_ALL;
+   case nir_intrinsic_vote_any:
+      return NV50_IR_SUBOP_VOTE_ANY;
+   case nir_intrinsic_vote_ieq:
+      return NV50_IR_SUBOP_VOTE_UNI;
    default:
       return 0;
    }
@@ -1931,6 +1937,42 @@ Converter::visit(nir_intrinsic_instr *insn)
       loadImm(newDefs[0], 32u);
       break;
    }
+   case nir_intrinsic_vote_all:
+   case nir_intrinsic_vote_any:
+   case nir_intrinsic_vote_ieq: {
+      LValues &newDefs = convert(&insn->dest);
+      Value *pred = getScratch(1, FILE_PREDICATE);
+      mkCmp(OP_SET, CC_NE, TYPE_U32, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
+      mkOp1(OP_VOTE, TYPE_U32, pred, pred)->subOp = getSubOp(op);
+      mkCvt(OP_CVT, TYPE_U32, newDefs[0], TYPE_U8, pred);
+      break;
+   }
+   case nir_intrinsic_ballot: {
+      LValues &newDefs = convert(&insn->dest);
+      Value *pred = getSSA(1, FILE_PREDICATE);
+      mkCmp(OP_SET, CC_NE, TYPE_U32, pred, TYPE_U32, getSrc(&insn->src[0], 0), zero);
+      mkOp1(OP_VOTE, TYPE_U32, newDefs[0], pred)->subOp = NV50_IR_SUBOP_VOTE_ANY;
+      break;
+   }
+   case nir_intrinsic_read_first_invocation:
+   case nir_intrinsic_read_invocation: {
+      LValues &newDefs = convert(&insn->dest);
+      const DataType dType = getDType(insn);
+      Value *tmp = getScratch();
+
+      if (op == nir_intrinsic_read_first_invocation) {
+         mkOp1(OP_VOTE, TYPE_U32, tmp, mkImm(1))->subOp = NV50_IR_SUBOP_VOTE_ANY;
+         mkOp2(OP_EXTBF, TYPE_U32, tmp, tmp, mkImm(0x2000))->subOp = NV50_IR_SUBOP_EXTBF_REV;
+         mkOp1(OP_BFIND, TYPE_U32, tmp, tmp)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
+      } else
+         tmp = getSrc(&insn->src[1], 0);
+
+      for (uint8_t i = 0; i < insn->num_components; ++i) {
+         mkOp3(OP_SHFL, dType, newDefs[i], getSrc(&insn->src[0], i), tmp, mkImm(0x1f))
+            ->subOp = NV50_IR_SUBOP_SHFL_IDX;
+      }
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
@@ -2566,7 +2608,13 @@ Converter::run()
    if (prog->dbgFlags & NV50_IR_DEBUG_VERBOSE)
       nir_print_shader(nir, stderr);
 
+   struct nir_lower_subgroups_options subgroup_options = {
+      .subgroup_size = 32,
+      .ballot_bit_size = 32,
+   };
+
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, type_size, (nir_lower_io_options)0);
+   NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
