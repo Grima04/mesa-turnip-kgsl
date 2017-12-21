@@ -465,6 +465,10 @@ operation
 Converter::getOperation(nir_intrinsic_op op)
 {
    switch (op) {
+   case nir_intrinsic_emit_vertex:
+      return OP_EMIT;
+   case nir_intrinsic_end_primitive:
+      return OP_RESTART;
    default:
       ERROR("couldn't get operation for nir_intrinsic_op %u\n", op);
       assert(false);
@@ -1984,6 +1988,29 @@ Converter::visit(nir_intrinsic_instr *insn)
          mkOp3(OP_SHFL, dType, newDefs[i], getSrc(&insn->src[0], i), tmp, mkImm(0x1f))
             ->subOp = NV50_IR_SUBOP_SHFL_IDX;
       }
+      break;
+   }
+   case nir_intrinsic_load_per_vertex_input: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *indirectVertex;
+      Value *indirectOffset;
+      uint32_t baseVertex = getIndirect(&insn->src[0], 0, indirectVertex);
+      uint32_t idx = getIndirect(insn, 1, 0, indirectOffset);
+
+      Value *vtxBase = mkOp2v(OP_PFETCH, TYPE_U32, getSSA(4, FILE_ADDRESS),
+                              mkImm(baseVertex), indirectVertex);
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         uint32_t address = getSlotAddress(insn, idx, i);
+         loadFrom(FILE_SHADER_INPUT, 0, dType, newDefs[i], address, 0,
+                  indirectOffset, vtxBase, info->in[idx].patch);
+      }
+      break;
+   }
+   case nir_intrinsic_emit_vertex:
+   case nir_intrinsic_end_primitive: {
+      uint32_t idx = nir_intrinsic_stream_id(insn);
+      mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
       break;
    }
    default:
