@@ -122,6 +122,7 @@ private:
    bool visit(nir_function *);
    bool visit(nir_if *);
    bool visit(nir_instr *);
+   bool visit(nir_intrinsic_instr *);
    bool visit(nir_jump_instr *);
    bool visit(nir_load_const_instr*);
    bool visit(nir_loop *);
@@ -1313,6 +1314,8 @@ bool
 Converter::visit(nir_instr *insn)
 {
    switch (insn->type) {
+   case nir_instr_type_intrinsic:
+      return visit(nir_instr_as_intrinsic(insn));
    case nir_instr_type_jump:
       return visit(nir_instr_as_jump(insn));
    case nir_instr_type_load_const:
@@ -1321,6 +1324,20 @@ Converter::visit(nir_instr *insn)
       ERROR("unknown nir_instr type %u\n", insn->type);
       return false;
    }
+   return true;
+}
+
+bool
+Converter::visit(nir_intrinsic_instr *insn)
+{
+   nir_intrinsic_op op = insn->intrinsic;
+
+   switch (op) {
+   default:
+      ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
+      return false;
+   }
+
    return true;
 }
 
