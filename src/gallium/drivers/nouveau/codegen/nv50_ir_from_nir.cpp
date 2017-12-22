@@ -2013,6 +2013,20 @@ Converter::visit(nir_intrinsic_instr *insn)
       mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
       break;
    }
+   case nir_intrinsic_load_ubo: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *indirectIndex;
+      Value *indirectOffset;
+      uint32_t index = getIndirect(&insn->src[0], 0, indirectIndex) + 1;
+      uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         loadFrom(FILE_MEMORY_CONST, index, dType, newDefs[i], offset, i,
+                  indirectOffset, indirectIndex);
+      }
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
