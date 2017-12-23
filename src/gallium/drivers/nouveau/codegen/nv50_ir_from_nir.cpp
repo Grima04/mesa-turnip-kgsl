@@ -504,6 +504,24 @@ int
 Converter::getSubOp(nir_intrinsic_op op)
 {
    switch (op) {
+   case nir_intrinsic_ssbo_atomic_add:
+      return NV50_IR_SUBOP_ATOM_ADD;
+   case nir_intrinsic_ssbo_atomic_and:
+      return NV50_IR_SUBOP_ATOM_AND;
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+      return NV50_IR_SUBOP_ATOM_CAS;
+   case nir_intrinsic_ssbo_atomic_exchange:
+      return NV50_IR_SUBOP_ATOM_EXCH;
+   case nir_intrinsic_ssbo_atomic_or:
+      return NV50_IR_SUBOP_ATOM_OR;
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+      return NV50_IR_SUBOP_ATOM_MAX;
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+      return NV50_IR_SUBOP_ATOM_MIN;
+   case nir_intrinsic_ssbo_atomic_xor:
+      return NV50_IR_SUBOP_ATOM_XOR;
    case nir_intrinsic_vote_all:
       return NV50_IR_SUBOP_VOTE_ALL;
    case nir_intrinsic_vote_any:
@@ -2025,6 +2043,78 @@ Converter::visit(nir_intrinsic_instr *insn)
          loadFrom(FILE_MEMORY_CONST, index, dType, newDefs[i], offset, i,
                   indirectOffset, indirectIndex);
       }
+      break;
+   }
+   case nir_intrinsic_get_buffer_size: {
+      LValues &newDefs = convert(&insn->dest);
+      const DataType dType = getDType(insn);
+      Value *indirectBuffer;
+      uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
+
+      Symbol *sym = mkSymbol(FILE_MEMORY_BUFFER, buffer, dType, 0);
+      mkOp1(OP_BUFQ, dType, newDefs[0], sym)->setIndirect(0, 0, indirectBuffer);
+      break;
+   }
+   case nir_intrinsic_store_ssbo: {
+      DataType sType = getSType(insn->src[0], false, false);
+      Value *indirectBuffer;
+      Value *indirectOffset;
+      uint32_t buffer = getIndirect(&insn->src[1], 0, indirectBuffer);
+      uint32_t offset = getIndirect(&insn->src[2], 0, indirectOffset);
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         if (!((1u << i) & nir_intrinsic_write_mask(insn)))
+            continue;
+         Symbol *sym = mkSymbol(FILE_MEMORY_BUFFER, buffer, sType,
+                                offset + i * typeSizeof(sType));
+         mkStore(OP_STORE, sType, sym, indirectOffset, getSrc(&insn->src[0], i))
+            ->setIndirect(0, 1, indirectBuffer);
+      }
+      info->io.globalAccess |= 0x2;
+      break;
+   }
+   case nir_intrinsic_load_ssbo: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *indirectBuffer;
+      Value *indirectOffset;
+      uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
+      uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
+
+      for (uint8_t i = 0u; i < insn->num_components; ++i)
+         loadFrom(FILE_MEMORY_BUFFER, buffer, dType, newDefs[i], offset, i,
+                  indirectOffset, indirectBuffer);
+
+      info->io.globalAccess |= 0x1;
+      break;
+   }
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_xor: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *indirectBuffer;
+      Value *indirectOffset;
+      uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
+      uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
+
+      Symbol *sym = mkSymbol(FILE_MEMORY_BUFFER, buffer, dType, offset);
+      Instruction *atom = mkOp2(OP_ATOM, dType, newDefs[0], sym,
+                                getSrc(&insn->src[2], 0));
+      if (op == nir_intrinsic_ssbo_atomic_comp_swap)
+         atom->setSrc(2, getSrc(&insn->src[3], 0));
+      atom->setIndirect(0, 0, indirectOffset);
+      atom->setIndirect(0, 1, indirectBuffer);
+      atom->subOp = getSubOp(op);
+
+      info->io.globalAccess |= 0x2;
       break;
    }
    default:
