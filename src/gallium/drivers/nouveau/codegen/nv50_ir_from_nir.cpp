@@ -585,6 +585,16 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_ssbo_atomic_xor:
       return  NV50_IR_SUBOP_ATOM_XOR;
+
+   case nir_intrinsic_group_memory_barrier:
+   case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_memory_barrier_atomic_counter:
+   case nir_intrinsic_memory_barrier_buffer:
+   case nir_intrinsic_memory_barrier_image:
+      return NV50_IR_SUBOP_MEMBAR(M, GL);
+   case nir_intrinsic_memory_barrier_shared:
+      return NV50_IR_SUBOP_MEMBAR(M, CTA);
+
    case nir_intrinsic_vote_all:
       return NV50_IR_SUBOP_VOTE_ALL;
    case nir_intrinsic_vote_any:
@@ -2398,6 +2408,17 @@ Converter::visit(nir_intrinsic_instr *insn)
       Instruction *bar = mkOp2(OP_BAR, TYPE_U32, NULL, mkImm(0), mkImm(0));
       bar->fixed = 1;
       bar->subOp = NV50_IR_SUBOP_BAR_SYNC;
+      break;
+   }
+   case nir_intrinsic_group_memory_barrier:
+   case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_memory_barrier_atomic_counter:
+   case nir_intrinsic_memory_barrier_buffer:
+   case nir_intrinsic_memory_barrier_image:
+   case nir_intrinsic_memory_barrier_shared: {
+      Instruction *bar = mkOp(OP_MEMBAR, TYPE_NONE, NULL);
+      bar->fixed = 1;
+      bar->subOp = getSubOp(op);
       break;
    }
    default:
