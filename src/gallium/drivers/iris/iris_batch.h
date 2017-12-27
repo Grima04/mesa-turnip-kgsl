@@ -88,6 +88,8 @@ void iris_batch_free(struct iris_batch *batch);
 void iris_require_command_space(struct iris_batch *batch, unsigned size);
 void iris_require_state_space(struct iris_batch *batch, unsigned size);
 void iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size);
+uint32_t iris_emit_state(struct iris_batch *batch, const void *data, int size,
+                         int alignment);
 void *iris_alloc_state(struct iris_batch *batch, int size, int alignment,
                        uint32_t *out_offset);
 

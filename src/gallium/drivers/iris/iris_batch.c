@@ -716,3 +716,14 @@ iris_alloc_state(struct iris_batch *batch,
    *out_offset = offset;
    return batch->statebuf.map_next;
 }
+
+uint32_t
+iris_emit_state(struct iris_batch *batch,
+                const void *data,
+                int size, int alignment)
+{
+   uint32_t out_offset;
+   void *dest = iris_alloc_state(batch, size, alignment, &out_offset);
+   memcpy(dest, data, size);
+   return out_offset;
+}

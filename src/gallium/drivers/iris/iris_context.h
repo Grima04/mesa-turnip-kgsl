@@ -30,6 +30,7 @@
 #include "iris_screen.h"
 
 struct iris_bo;
+struct iris_batch;
 
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_VIEWPORTS 16
@@ -39,7 +40,13 @@ enum iris_dirty {
    IRIS_DIRTY_POLYGON_STIPPLE,
    IRIS_DIRTY_SCISSOR_RECT,
    IRIS_DIRTY_WM_DEPTH_STENCIL,
+   IRIS_DIRTY_CC_VIEWPORT,
+   IRIS_DIRTY_SF_CL_VIEWPORT,
+   IRIS_DIRTY_PS_BLEND,
+   IRIS_DIRTY_BLEND_STATE,
 };
+
+struct iris_depth_stencil_alpha_state;
 
 #define IRIS_NEW_COLOR_CALC_STATE (1ull << IRIS_DIRTY_COLOR_CALC_STATE)
 #define IRIS_NEW_POLYGON_STIPPLE  (1ull << IRIS_DIRTY_POLYGON_STIPPLE)
@@ -53,6 +60,8 @@ struct iris_context {
 
    struct {
       uint64_t dirty;
+      struct iris_blend_state *cso_blend;
+      struct iris_depth_stencil_alpha_state *cso_zsa;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
@@ -74,5 +83,7 @@ iris_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
 void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_state_functions(struct pipe_context *ctx);
+
+void iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch);
 
 #endif
