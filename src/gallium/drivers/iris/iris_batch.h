@@ -39,29 +39,34 @@ struct iris_reloc_list {
    int reloc_array_size;
 };
 
+struct iris_batch_buffer {
+   struct iris_bo *bo;
+   void *map;
+   void *map_next;
+
+   unsigned flush_threshold;
+
+   struct iris_bo *partial_bo;
+   unsigned partial_bytes;
+
+   struct iris_reloc_list relocs;
+};
+
 struct iris_batch {
    struct iris_screen *screen;
    struct pipe_debug_callback *dbg;
 
    /** Current batchbuffer being queued up. */
-   struct iris_bo *cmd_bo;
+   struct iris_batch_buffer cmdbuf;
    /** Current statebuffer being queued up. */
-   struct iris_bo *state_bo;
+   struct iris_batch_buffer statebuf;
 
    /** Last BO submitted to the hardware.  Used for glFinish(). */
    struct iris_bo *last_cmd_bo;
 
    uint32_t hw_ctx_id;
 
-   void *cmd_map_next;
-   void *cmd_map;
-   void *state_map;
-   void *state_map_next;
-
    bool no_wrap;
-
-   struct iris_reloc_list batch_relocs;
-   struct iris_reloc_list state_relocs;
 
    /** The validation list */
    struct drm_i915_gem_exec_object2 *validation_list;

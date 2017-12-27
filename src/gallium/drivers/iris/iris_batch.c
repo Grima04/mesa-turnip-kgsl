@@ -46,7 +46,7 @@
  * at the original target size, so it doesn't grow without bound.
  */
 #define BATCH_SZ (20 * 1024)
-#define STATE_SZ (16 * 1024)
+#define STATE_SZ (18 * 1024)
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
@@ -57,20 +57,23 @@
  */
 #define MAX_STATE_SIZE (64 * 1024)
 
-static unsigned
-iris_batch_used(struct iris_batch *batch)
-{
-   return batch->cmd_map_next - batch->cmd_map;
-}
-
-static unsigned
-iris_state_used(struct iris_batch *batch)
-{
-   return batch->state_map_next - batch->state_map;
-}
-
 static void
 iris_batch_reset(struct iris_batch *batch);
+
+UNUSED static void
+dump_validation_list(struct iris_batch *batch)
+{
+   fprintf(stderr, "Validation list (length %d):\n", batch->exec_count);
+
+   for (int i = 0; i < batch->exec_count; i++) {
+      assert(batch->validation_list[i].handle ==
+             batch->exec_bos[i]->gem_handle);
+      fprintf(stderr, "[%d] = %d %s %p\n", i,
+              batch->validation_list[i].handle,
+              batch->exec_bos[i]->name,
+              batch->exec_bos[i]);
+   }
+}
 
 static bool
 uint_key_compare(const void *a, const void *b)
@@ -93,6 +96,17 @@ init_reloc_list(struct iris_reloc_list *rlist, int count)
                           sizeof(struct drm_i915_gem_relocation_entry));
 }
 
+static void
+create_batch_buffer(struct iris_bufmgr *bufmgr,
+                    struct iris_batch_buffer *buf,
+                    const char *name, unsigned size)
+{
+   buf->bo = iris_bo_alloc(bufmgr, name, size, 4096);
+   buf->bo->kflags |= EXEC_OBJECT_CAPTURE;
+   buf->map = iris_bo_map(NULL, buf->bo, MAP_READ | MAP_WRITE);
+   buf->map_next = buf->map;
+}
+
 void
 iris_batch_init(struct iris_batch *batch,
                 struct iris_screen *screen,
@@ -101,8 +115,8 @@ iris_batch_init(struct iris_batch *batch,
    batch->screen = screen;
    batch->dbg = dbg;
 
-   init_reloc_list(&batch->batch_relocs, 256);
-   init_reloc_list(&batch->state_relocs, 256);
+   init_reloc_list(&batch->cmdbuf.relocs, 256);
+   init_reloc_list(&batch->statebuf.relocs, 256);
 
    batch->exec_count = 0;
    batch->exec_array_size = 100;
@@ -172,24 +186,18 @@ iris_batch_reset(struct iris_batch *batch)
       iris_bo_unreference(batch->last_cmd_bo);
       batch->last_cmd_bo = NULL;
    }
-   batch->last_cmd_bo = batch->cmd_bo;
+   batch->last_cmd_bo = batch->cmdbuf.bo;
 
-   batch->cmd_bo = iris_bo_alloc(bufmgr, "batchbuffer", BATCH_SZ, 4096);
-   batch->cmd_map = iris_bo_map(NULL, batch->cmd_bo, MAP_READ | MAP_WRITE);
-   batch->cmd_map_next = batch->cmd_map;
-
-   batch->state_bo = iris_bo_alloc(bufmgr, "statebuffer", STATE_SZ, 4096);
-   batch->state_bo->kflags = EXEC_OBJECT_CAPTURE;
-   batch->state_map =
-      iris_bo_map(NULL, batch->state_bo, MAP_READ | MAP_WRITE);
+   create_batch_buffer(bufmgr, &batch->cmdbuf, "command buffer", BATCH_SZ);
+   create_batch_buffer(bufmgr, &batch->statebuf, "state buffer", STATE_SZ);
 
    /* Avoid making 0 a valid state offset - otherwise the decoder will try
     * and decode data when we use offset 0 as a null pointer.
     */
-   batch->state_map_next = batch->state_map + 1;
+   batch->statebuf.map_next += 1;
 
-   add_exec_bo(batch, batch->cmd_bo);
-   assert(batch->cmd_bo->index == 0);
+   add_exec_bo(batch, batch->cmdbuf.bo);
+   assert(batch->cmdbuf.bo->index == 0);
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
@@ -202,22 +210,60 @@ iris_batch_reset_and_clear_render_cache(struct iris_batch *batch)
    // XXX: iris_render_cache_set_clear(batch);
 }
 
+static void
+free_batch_buffer(struct iris_batch_buffer *buf)
+{
+   iris_bo_unreference(buf->bo);
+   buf->bo = NULL;
+   buf->map = NULL;
+   buf->map_next = NULL;
+
+   free(buf->relocs.relocs);
+   buf->relocs.relocs = NULL;
+   buf->relocs.reloc_array_size = 0;
+}
+
 void
 iris_batch_free(struct iris_batch *batch)
 {
    for (int i = 0; i < batch->exec_count; i++) {
       iris_bo_unreference(batch->exec_bos[i]);
    }
-   free(batch->batch_relocs.relocs);
-   free(batch->state_relocs.relocs);
    free(batch->exec_bos);
    free(batch->validation_list);
+   free_batch_buffer(&batch->cmdbuf);
+   free_batch_buffer(&batch->statebuf);
 
-   iris_bo_unreference(batch->cmd_bo);
-   iris_bo_unreference(batch->state_bo);
    iris_bo_unreference(batch->last_cmd_bo);
+
    if (batch->state_sizes)
       _mesa_hash_table_destroy(batch->state_sizes, NULL);
+}
+
+/**
+ * Finish copying the old batch/state buffer's contents to the new one
+ * after we tried to "grow" the buffer in an earlier operation.
+ */
+static void
+finish_growing_bos(struct iris_batch_buffer *buf)
+{
+   struct iris_bo *old_bo = buf->partial_bo;
+   if (!old_bo)
+      return;
+
+   void *old_map = old_bo->map_cpu ? old_bo->map_cpu : old_bo->map_wc;
+   memcpy(buf->map, old_map, buf->partial_bytes);
+
+   buf->partial_bo = NULL;
+   buf->partial_bytes = 0;
+
+   iris_bo_unreference(old_bo);
+}
+
+static unsigned
+buffer_bytes_used(struct iris_batch_buffer *buf)
+{
+   return buf->map_next - buf->map;
 }
 
 /**
@@ -231,24 +277,30 @@ iris_batch_free(struct iris_batch *batch)
  */
 static void
 grow_buffer(struct iris_batch *batch,
-            struct iris_bo **bo_ptr,
-            void **map_ptr,
-            void **map_next_ptr,
+            struct iris_batch_buffer *buf,
             unsigned new_size)
 {
    struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
+   struct iris_bo *bo = buf->bo;
 
-   const unsigned existing_bytes = *map_next_ptr - *map_ptr;
+   perf_debug(batch->dbg, "Growing %s - ran out of space\n", bo->name);
 
-   void *old_map = *map_ptr;
-   struct iris_bo *old_bo = *bo_ptr;
+   if (buf->partial_bo) {
+      /* We've already grown once, and now we need to do it again.
+       * Finish our last grow operation so we can start a new one.
+       * This should basically never happen.
+       */
+      perf_debug(batch->dbg, "Had to grow multiple times");
+      finish_growing_bos(buf);
+   }
 
-   struct iris_bo *new_bo = iris_bo_alloc(bufmgr, old_bo->name, new_size, 4096);
+   const unsigned existing_bytes = buffer_bytes_used(buf);
 
-   perf_debug(batch->dbg, "Growing %s - ran out of space\n", old_bo->name);
+   struct iris_bo *new_bo =
+      iris_bo_alloc(bufmgr, bo->name, new_size, bo->align);
 
-   void *new_map = iris_bo_map(NULL, new_bo, MAP_READ | MAP_WRITE);
-   memcpy(new_map, old_map, existing_bytes);
+   buf->map = iris_bo_map(NULL, new_bo, MAP_READ | MAP_WRITE);
+   buf->map_next = buf->map + existing_bytes;
 
    /* Try to put the new BO at the same GTT offset as the old BO (which
     * we're throwing away, so it doesn't need to be there).
@@ -256,52 +308,119 @@ grow_buffer(struct iris_batch *batch,
     * This guarantees that our relocations continue to work: values we've
     * already written into the buffer, values we're going to write into the
     * buffer, and the validation/relocation lists all will match.
+    *
+    * Also preserve kflags for EXEC_OBJECT_CAPTURE.
     */
-   new_bo->gtt_offset = old_bo->gtt_offset;
-   new_bo->index = old_bo->index;
+   new_bo->gtt_offset = bo->gtt_offset;
+   new_bo->index = bo->index;
+   new_bo->kflags = bo->kflags;
 
    /* Batch/state buffers are per-context, and if we've run out of space,
     * we must have actually used them before, so...they will be in the list.
     */
-   assert(old_bo->index < batch->exec_count);
-   assert(batch->exec_bos[old_bo->index] == old_bo);
+   assert(bo->index < batch->exec_count);
+   assert(batch->exec_bos[bo->index] == bo);
 
    /* Update the validation list to use the new BO. */
-   batch->exec_bos[old_bo->index] = new_bo;
-   batch->validation_list[old_bo->index].handle = new_bo->gem_handle;
-   iris_bo_reference(new_bo);
-   iris_bo_unreference(old_bo);
+   batch->exec_bos[bo->index] = new_bo;
+   batch->validation_list[bo->index].handle = new_bo->gem_handle;
 
-   /* Drop the *bo_ptr reference.  This should free the old BO. */
-   iris_bo_unreference(old_bo);
+   /* Exchange the two BOs...without breaking pointers to the old BO.
+    *
+    * Consider this scenario:
+    *
+    * 1. Somebody calls brw_state_batch() to get a region of memory, and
+    *    and then creates a brw_address pointing to brw->batch.state.bo.
+    * 2. They then call brw_state_batch() a second time, which happens to
+    *    grow and replace the state buffer.  They then try to emit a
+    *    relocation to their first section of memory.
+    *
+    * If we replace the brw->batch.state.bo pointer at step 2, we would
+    * break the address created in step 1.  They'd have a pointer to the
+    * old destroyed BO.  Emitting a relocation would add this dead BO to
+    * the validation list...causing /both/ statebuffers to be in the list,
+    * and all kinds of disasters.
+    *
+    * This is not a contrived case - BLORP vertex data upload hits this.
+    *
+    * There are worse scenarios too.  Fences for GL sync objects reference
+    * brw->batch.batch.bo.  If we replaced the batch pointer when growing,
+    * we'd need to chase down every fence and update it to point to the
+    * new BO.  Otherwise, it would refer to a "batch" that never actually
+    * gets submitted, and would fail to trigger.
+    *
+    * To work around both of these issues, we transmutate the buffers in
+    * place, making the existing struct brw_bo represent the new buffer,
+    * and "new_bo" represent the old BO.  This is highly unusual, but it
+    * seems like a necessary evil.
+    *
+    * We also defer the memcpy of the existing batch's contents.  Callers
+    * may make multiple brw_state_batch calls, and retain pointers to the
+    * old BO's map.  We'll perform the memcpy in finish_growing_bo() when
+    * we finally submit the batch, at which point we've finished uploading
+    * state, and nobody should have any old references anymore.
+    *
+    * To do that, we keep a reference to the old BO in grow->partial_bo,
+    * and store the number of bytes to copy in grow->partial_bytes.  We
+    * can monkey with the refcounts directly without atomics because these
+    * are per-context BOs and they can only be touched by this thread.
+    */
+   assert(new_bo->refcount == 1);
+   new_bo->refcount = bo->refcount;
+   bo->refcount = 1;
 
-   *bo_ptr = new_bo;
-   *map_ptr = new_map;
-   *map_next_ptr = new_map + existing_bytes;
+   struct iris_bo tmp;
+   memcpy(&tmp, bo, sizeof(struct iris_bo));
+   memcpy(bo, new_bo, sizeof(struct iris_bo));
+   memcpy(new_bo, &tmp, sizeof(struct iris_bo));
+
+   buf->partial_bo = new_bo; /* the one reference of the OLD bo */
+   buf->partial_bytes = existing_bytes;
 }
+
+static void
+require_buffer_space(struct iris_batch *batch,
+                     struct iris_batch_buffer *buf,
+                     unsigned size,
+                     unsigned flush_threshold,
+                     unsigned max_buffer_size)
+{
+   const unsigned required_bytes = buffer_bytes_used(buf) + size;
+
+   if (!batch->no_wrap && required_bytes >= flush_threshold) {
+      iris_batch_flush(batch);
+   } else if (required_bytes >= buf->bo->size) {
+      grow_buffer(batch, buf,
+                  MIN2(buf->bo->size + buf->bo->size / 2, max_buffer_size));
+      assert(required_bytes < buf->bo->size);
+   }
+}
+
 
 void
 iris_require_command_space(struct iris_batch *batch, unsigned size)
 {
-   if (iris_batch_used(batch) + size >= BATCH_SZ) {
-      if (!batch->no_wrap) {
-         iris_batch_flush(batch);
-      } else {
-         const unsigned new_size =
-            MIN2(batch->cmd_bo->size + batch->cmd_bo->size / 2,
-                 MAX_BATCH_SIZE);
-         grow_buffer(batch, &batch->cmd_bo, &batch->cmd_map,
-                     &batch->cmd_map_next, new_size);
-         assert(iris_batch_used(batch) + size < batch->cmd_bo->size);
-      }
-   }
+   require_buffer_space(batch, &batch->cmdbuf, size, BATCH_SZ, MAX_BATCH_SIZE);
+}
+
+/**
+ * Reserve some space in the statebuffer, or flush.
+ *
+ * This is used to estimate when we're near the end of the batch,
+ * so we can flush early.
+ */
+void
+iris_require_state_space(struct iris_batch *batch, unsigned size)
+{
+   require_buffer_space(batch, &batch->statebuf, size, STATE_SZ,
+                        MAX_STATE_SIZE);
 }
 
 void
 iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 {
    iris_require_command_space(batch, size);
-   memcpy(batch->cmd_map_next, data, size);
+   memcpy(batch->cmdbuf.map_next, data, size);
 }
 
 /**
@@ -315,12 +434,12 @@ iris_new_batch(struct iris_batch *batch)
       iris_bo_unreference(batch->exec_bos[i]);
       batch->exec_bos[i] = NULL;
    }
-   batch->batch_relocs.reloc_count = 0;
-   batch->state_relocs.reloc_count = 0;
+   batch->cmdbuf.relocs.reloc_count = 0;
+   batch->statebuf.relocs.reloc_count = 0;
    batch->exec_count = 0;
    batch->aperture_space = 0;
 
-   iris_bo_unreference(batch->state_bo);
+   iris_bo_unreference(batch->statebuf.bo);
 
    /* Create a new batchbuffer and reset the associated state: */
    iris_batch_reset_and_clear_render_cache(batch);
@@ -348,8 +467,8 @@ iris_finish_batch(struct iris_batch *batch)
 static int
 submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
 {
-   iris_bo_unmap(batch->cmd_bo);
-   iris_bo_unmap(batch->state_bo);
+   iris_bo_unmap(batch->cmdbuf.bo);
+   iris_bo_unmap(batch->statebuf.bo);
 
    /* The requirement for using I915_EXEC_NO_RELOC are:
     *
@@ -363,34 +482,32 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
     *   To avoid stalling, execobject.offset should match the current
     *   address of that object within the active context.
     */
-   int flags = I915_EXEC_NO_RELOC |
-               I915_EXEC_BATCH_FIRST |
-               I915_EXEC_HANDLE_LUT |
-               I915_EXEC_RENDER;
-
    /* Set statebuffer relocations */
-   const unsigned state_index = batch->state_bo->index;
+   const unsigned state_index = batch->statebuf.bo->index;
    if (state_index < batch->exec_count &&
-       batch->exec_bos[state_index] == batch->state_bo) {
+       batch->exec_bos[state_index] == batch->statebuf.bo) {
       struct drm_i915_gem_exec_object2 *entry =
          &batch->validation_list[state_index];
-      assert(entry->handle == batch->state_bo->gem_handle);
-      entry->relocation_count = batch->state_relocs.reloc_count;
-      entry->relocs_ptr = (uintptr_t) batch->state_relocs.relocs;
+      assert(entry->handle == batch->statebuf.bo->gem_handle);
+      entry->relocation_count = batch->statebuf.relocs.reloc_count;
+      entry->relocs_ptr = (uintptr_t) batch->statebuf.relocs.relocs;
    }
 
    /* Set batchbuffer relocations */
    struct drm_i915_gem_exec_object2 *entry = &batch->validation_list[0];
-   assert(entry->handle == batch->cmd_bo->gem_handle);
-   entry->relocation_count = batch->batch_relocs.reloc_count;
-   entry->relocs_ptr = (uintptr_t) batch->batch_relocs.relocs;
+   assert(entry->handle == batch->cmdbuf.bo->gem_handle);
+   entry->relocation_count = batch->cmdbuf.relocs.reloc_count;
+   entry->relocs_ptr = (uintptr_t) batch->cmdbuf.relocs.relocs;
 
    struct drm_i915_gem_execbuffer2 execbuf = {
       .buffers_ptr = (uintptr_t) batch->validation_list,
       .buffer_count = batch->exec_count,
       .batch_start_offset = 0,
-      .batch_len = iris_batch_used(batch),
-      .flags = flags,
+      .batch_len = buffer_bytes_used(&batch->cmdbuf),
+      .flags = I915_EXEC_NO_RELOC |
+               I915_EXEC_BATCH_FIRST |
+               I915_EXEC_HANDLE_LUT |
+               I915_EXEC_RENDER,
       .rsvd1 = batch->hw_ctx_id, /* rsvd1 is actually the context ID */
    };
 
@@ -444,7 +561,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
                         int in_fence_fd, int *out_fence_fd,
                         const char *file, int line)
 {
-   if (iris_batch_used(batch) == 0)
+   if (buffer_bytes_used(&batch->cmdbuf) == 0)
       return 0;
 
    /* Check that we didn't just wrap our batchbuffer at a bad time. */
@@ -453,8 +570,8 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    iris_finish_batch(batch);
 
    if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
-      int bytes_for_commands = iris_batch_used(batch);
-      int bytes_for_state = iris_state_used(batch);
+      int bytes_for_commands = buffer_bytes_used(&batch->cmdbuf);
+      int bytes_for_state = buffer_bytes_used(&batch->statebuf);
       fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5db (%0.1f%%) (pkt),"
               " %5db (%0.1f%%) (state), %4d BOs (%0.1fMb aperture),"
               " %4d batch relocs, %4d state relocs\n", file, line,
@@ -462,8 +579,8 @@ _iris_batch_flush_fence(struct iris_batch *batch,
               bytes_for_state, 100.0f * bytes_for_state / STATE_SZ,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024),
-              batch->batch_relocs.reloc_count,
-              batch->state_relocs.reloc_count);
+              batch->cmdbuf.relocs.reloc_count,
+              batch->statebuf.relocs.reloc_count);
    }
 
    int ret = submit_batch(batch, in_fence_fd, out_fence_fd);
@@ -480,7 +597,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 
    if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
       dbg_printf("waiting for idle\n");
-      iris_bo_wait_rendering(batch->cmd_bo);
+      iris_bo_wait_rendering(batch->cmdbuf.bo);
    }
 
    /* Start a new batch buffer. */
@@ -543,9 +660,9 @@ iris_batch_reloc(struct iris_batch *batch, uint32_t batch_offset,
                  struct iris_bo *target, uint32_t target_offset,
                  unsigned int reloc_flags)
 {
-   assert(batch_offset <= batch->cmd_bo->size - sizeof(uint32_t));
+   assert(batch_offset <= batch->cmdbuf.bo->size - sizeof(uint32_t));
 
-   return emit_reloc(batch, &batch->batch_relocs, batch_offset,
+   return emit_reloc(batch, &batch->cmdbuf.relocs, batch_offset,
                      target, target_offset, reloc_flags);
 }
 
@@ -554,9 +671,9 @@ iris_state_reloc(struct iris_batch *batch, uint32_t state_offset,
                  struct iris_bo *target, uint32_t target_offset,
                  unsigned int reloc_flags)
 {
-   assert(state_offset <= batch->state_bo->size - sizeof(uint32_t));
+   assert(state_offset <= batch->statebuf.bo->size - sizeof(uint32_t));
 
-   return emit_reloc(batch, &batch->state_relocs, state_offset,
+   return emit_reloc(batch, &batch->statebuf.relocs, state_offset,
                      target, target_offset, reloc_flags);
 }
 
@@ -570,19 +687,6 @@ iris_state_entry_size(struct iris_batch *batch, uint32_t offset)
 }
 
 /**
- * Reserve some space in the statebuffer, or flush.
- *
- * This is used to estimate when we're near the end of the batch,
- * so we can flush early.
- */
-void
-iris_require_state_space(struct iris_batch *batch, unsigned size)
-{
-   if (iris_state_used(batch) + size >= STATE_SZ)
-      iris_batch_flush(batch);
-}
-
-/**
  * Allocates a block of space in the batchbuffer for indirect state.
  */
 void *
@@ -590,22 +694,16 @@ iris_alloc_state(struct iris_batch *batch,
                  int size, int alignment,
                  uint32_t *out_offset)
 {
-   assert(size < batch->cmd_bo->size);
+   assert(size < batch->cmdbuf.bo->size);
 
-   if (ALIGN(iris_state_used(batch), alignment) + size >= STATE_SZ) {
-      if (!batch->no_wrap) {
-         iris_batch_flush(batch);
-      } else {
-         const unsigned new_size =
-            MIN2(batch->state_bo->size + batch->state_bo->size / 2,
-                 MAX_STATE_SIZE);
-         grow_buffer(batch, &batch->state_bo, &batch->state_map,
-                     &batch->state_map_next, new_size);
-      }
-   }
+   const unsigned existing_bytes = buffer_bytes_used(&batch->statebuf);
+   unsigned aligned_size =
+      ALIGN(existing_bytes, alignment) - existing_bytes + size;
 
-   unsigned offset = ALIGN(iris_state_used(batch), alignment);
-   assert(offset + size < batch->state_bo->size);
+   require_buffer_space(batch, &batch->statebuf, aligned_size,
+                        STATE_SZ, MAX_STATE_SIZE);
+
+   unsigned offset = ALIGN(buffer_bytes_used(&batch->statebuf), alignment);
 
    if (unlikely(batch->state_sizes)) {
       _mesa_hash_table_insert(batch->state_sizes,
@@ -613,8 +711,8 @@ iris_alloc_state(struct iris_batch *batch,
                               (void *) (uintptr_t) size);
    }
 
-   batch->state_map_next = batch->state_map + offset + size;
+   batch->statebuf.map_next += aligned_size;
 
    *out_offset = offset;
-   return batch->state_map + offset;
+   return batch->statebuf.map_next;
 }
