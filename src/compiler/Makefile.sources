@@ -279,6 +279,7 @@ NIR_FILES = \
 	nir/nir_opt_find_array_copies.c \
 	nir/nir_opt_gcm.c \
 	nir/nir_opt_global_to_local.c \
+	nir/nir_opt_idiv_const.c \
 	nir/nir_opt_if.c \
 	nir/nir_opt_intrinsics.c \
 	nir/nir_opt_loop_unroll.c \
