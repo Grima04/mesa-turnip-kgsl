@@ -570,6 +570,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_cse);
       OPT(nir_opt_peephole_select, 0);
       OPT(nir_opt_intrinsics);
+      OPT(nir_opt_idiv_const, 32);
       OPT(nir_opt_algebraic);
       OPT(nir_opt_constant_folding);
       OPT(nir_opt_dead_cf);
@@ -679,7 +680,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
     */
    OPT(nir_lower_int64, nir_lower_imul64 |
                         nir_lower_isign64 |
-                        nir_lower_divmod64);
+                        nir_lower_divmod64 |
+                        nir_lower_imul_high64);
 
    nir = brw_nir_optimize(nir, compiler, is_scalar, true);
 
