@@ -468,12 +468,47 @@ binop("isub", tint, "", "src0 - src1")
 binop("fmul", tfloat, commutative + associative, "src0 * src1")
 # low 32-bits of signed/unsigned integer multiply
 binop("imul", tint, commutative + associative, "src0 * src1")
+
 # high 32-bits of signed integer multiply
-binop("imul_high", tint32, commutative,
-      "(int32_t)(((int64_t) src0 * (int64_t) src1) >> 32)")
+binop("imul_high", tint, commutative, """
+if (bit_size == 64) {
+   /* We need to do a full 128-bit x 128-bit multiply in order for the sign
+    * extension to work properly.  The casts are kind-of annoying but needed
+    * to prevent compiler warnings.
+    */
+   uint32_t src0_u32[4] = {
+      src0,
+      (int64_t)src0 >> 32,
+      (int64_t)src0 >> 63,
+      (int64_t)src0 >> 63,
+   };
+   uint32_t src1_u32[4] = {
+      src1,
+      (int64_t)src1 >> 32,
+      (int64_t)src1 >> 63,
+      (int64_t)src1 >> 63,
+   };
+   uint32_t prod_u32[4];
+   ubm_mul_u32arr(prod_u32, src0_u32, src1_u32);
+   dst = (uint64_t)prod_u32[2] | ((uint64_t)prod_u32[3] << 32);
+} else {
+   dst = ((int64_t)src0 * (int64_t)src1) >> bit_size;
+}
+""")
+
 # high 32-bits of unsigned integer multiply
-binop("umul_high", tuint32, commutative,
-      "(uint32_t)(((uint64_t) src0 * (uint64_t) src1) >> 32)")
+binop("umul_high", tuint, commutative, """
+if (bit_size == 64) {
+   /* The casts are kind-of annoying but needed to prevent compiler warnings. */
+   uint32_t src0_u32[2] = { src0, (uint64_t)src0 >> 32 };
+   uint32_t src1_u32[2] = { src1, (uint64_t)src1 >> 32 };
+   uint32_t prod_u32[4];
+   ubm_mul_u32arr(prod_u32, src0_u32, src1_u32);
+   dst = (uint64_t)prod_u32[2] | ((uint64_t)prod_u32[3] << 32);
+} else {
+   dst = ((uint64_t)src0 * (uint64_t)src1) >> bit_size;
+}
+""")
 
 binop("fdiv", tfloat, "", "src0 / src1")
 binop("idiv", tint, "", "src1 == 0 ? 0 : (src0 / src1)")
