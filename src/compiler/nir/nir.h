@@ -3106,6 +3106,8 @@ typedef enum {
    nir_lower_isign64 = (1 << 1),
    /** Lower all int64 modulus and division opcodes */
    nir_lower_divmod64 = (1 << 2),
+   /** Lower all 64-bit umul_high and imul_high opcodes */
+   nir_lower_imul_high64 = (1 << 3),
 } nir_lower_int64_options;
 
 bool nir_lower_int64(nir_shader *shader, nir_lower_int64_options options);
