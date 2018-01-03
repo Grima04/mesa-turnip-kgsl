@@ -136,6 +136,8 @@ files_libnouveau = files(
   'codegen/nv50_ir_graph.h',
   'codegen/nv50_ir.h',
   'codegen/nv50_ir_inlines.h',
+  'codegen/nv50_ir_lowering_helper.cpp',
+  'codegen/nv50_ir_lowering_helper.h',
   'codegen/nv50_ir_lowering_nv50.cpp',
   'codegen/nv50_ir_peephole.cpp',
   'codegen/nv50_ir_print.cpp',
