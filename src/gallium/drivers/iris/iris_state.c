@@ -76,6 +76,17 @@ __gen_combine_address(void *user_data, void *location,
    iris_require_command_space(batch, 4 * __genxml_cmd_length(cmd)); \
    iris_pack_command(cmd, batch->cmdbuf.map_next, name)
 
+#define iris_emit_merge(batch, dwords0, dwords1) \
+   do {                                                                 \
+      STATIC_ASSERT(ARRAY_SIZE(dwords0) == ARRAY_SIZE(dwords1));        \
+                                                                        \
+      iris_require_command_space(batch, ARRAY_SIZE(dwords0));           \
+      uint32_t *dw = batch->cmdbuf.map_next;                            \
+      for (uint32_t i = 0; i < ARRAY_SIZE(dwords0); i++)                \
+         dw[i] = (dwords0)[i] | (dwords1)[i];                           \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords0) * 4));   \
+   } while (0)
+
 #include "genxml/genX_pack.h"
 #include "genxml/gen_macros.h"
 
