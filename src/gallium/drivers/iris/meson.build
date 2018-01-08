@@ -41,7 +41,7 @@ foreach v : ['90', '100']
     include_directories : [inc_common, inc_intel],
     c_args : [c_vis_args, no_override_init_args,
               '-DGEN_VERSIONx10=@0@'.format(v)],
-    dependencies : [dep_libdrm],
+    dependencies : [dep_libdrm, dep_valgrind],
   )
   iris_gen_libs += _lib
 endforeach

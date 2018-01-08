@@ -22,6 +22,16 @@
  */
 #include <stdio.h>
 #include <errno.h>
+
+#ifdef HAVE_VALGRIND
+#include <valgrind.h>
+#include <memcheck.h>
+#define VG(x) x
+#define __gen_validate_value(x) VALGRIND_CHECK_MEM_IS_DEFINED(&(x), sizeof(x))
+#else
+#define VG(x)
+#endif
+
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
@@ -51,8 +61,10 @@ __gen_combine_address(void *user_data, void *location,
 #define iris_pack_command(cmd, dst, name)                         \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
-        __genxml_cmd_pack(cmd)(NULL, (void *)dst, &name),         \
-        _dst = NULL)
+        ({ __genxml_cmd_pack(cmd)(NULL, (void *)_dst, &name);     \
+           VG(VALGRIND_CHECK_MEM_IS_DEFINED(_dst, __genxml_cmd_length(cmd) * 4)); \
+           _dst = NULL;                                           \
+           }))
 
 #define iris_pack_state(cmd, dst, name)                           \
    for (struct cmd name = {},                                     \
