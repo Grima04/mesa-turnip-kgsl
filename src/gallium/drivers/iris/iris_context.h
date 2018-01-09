@@ -46,6 +46,7 @@ enum iris_dirty {
    IRIS_DIRTY_BLEND_STATE              = (1ull <<  7),
    IRIS_DIRTY_RASTER                   = (1ull <<  8),
    IRIS_DIRTY_CLIP                     = (1ull <<  9),
+   IRIS_DIRTY_SCISSOR                  = (1ull << 10),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -57,6 +58,7 @@ struct iris_context {
 
    struct {
       uint64_t dirty;
+      unsigned num_scissors;
       struct iris_blend_state *cso_blend;
       struct iris_rasterizer_state *cso_rast;
       struct iris_depth_stencil_alpha_state *cso_zsa;

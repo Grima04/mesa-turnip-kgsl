@@ -742,6 +742,8 @@ iris_set_scissor_states(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
+   ice->state.num_scissors = num_scissors;
+
    for (unsigned i = start_slot; i < start_slot + num_scissors; i++) {
       ice->state.scissors[i] = *state;
    }
@@ -1117,15 +1119,23 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
       iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
    }
 
+   if (dirty & IRIS_DIRTY_SCISSOR) {
+      uint32_t scissor_offset =
+         iris_emit_state(batch, ice->state.scissors,
+                         sizeof(struct pipe_scissor_state) *
+                         ice->state.num_scissors, 32);
+
+      iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
+         ptr.ScissorRectPointer = scissor_offset;
+      }
+   }
+
 #if 0
    l3 configuration
 
    3DSTATE_VIEWPORT_STATE_POINTERS_SF_CL - SF_CLIP_VIEWPORT
      -> pipe_viewport_state for matrix elements, guardband is calculated
         from those.  can calculate screen space from matrix apparently...
-
-   3DSTATE_SCISSOR_STATE_POINTERS - SCISSOR_RECT
-     -> from ice->state.scissors
 
    3DSTATE_PUSH_CONSTANT_ALLOC_*
    3DSTATE_URB_*
