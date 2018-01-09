@@ -655,6 +655,11 @@ iris_create_sampler_state(struct pipe_context *pctx,
    return cso;
 }
 
+static void
+iris_create_view_for_surface()
+{
+}
+
 static struct pipe_sampler_view *
 iris_create_sampler_view(struct pipe_context *ctx,
                          struct pipe_resource *texture,
@@ -674,28 +679,55 @@ iris_create_sampler_view(struct pipe_context *ctx,
    return sampler_view;
 }
 
+struct iris_surface {
+   struct pipe_surface pipe;
+   struct isl_view view;
+   uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
+};
+
 static struct pipe_surface *
 iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,
                     const struct pipe_surface *surf_tmpl)
 {
-   struct pipe_surface *surface = CALLOC_STRUCT(pipe_surface);
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
+   struct pipe_surface *psurf = &surf->pipe;
+   struct iris_resource *itex = (struct iris_resource *) tex;
 
-   if (!surface)
+   if (!surf)
       return NULL;
 
-   pipe_reference_init(&surface->reference, 1);
-   pipe_resource_reference(&surface->texture, tex);
-   surface->context = ctx;
-   surface->format = surf_tmpl->format;
-   surface->width = tex->width0;
-   surface->height = tex->height0;
-   surface->texture = tex;
-   surface->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
-   surface->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
-   surface->u.tex.level = surf_tmpl->u.tex.level;
+   pipe_reference_init(&psurf->reference, 1);
+   pipe_resource_reference(&psurf->texture, tex);
+   psurf->context = ctx;
+   psurf->format = surf_tmpl->format;
+   psurf->width = tex->width0;
+   psurf->height = tex->height0;
+   psurf->texture = tex;
+   psurf->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
+   psurf->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
+   psurf->u.tex.level = surf_tmpl->u.tex.level;
 
-   return surface;
+   surf->view = (struct isl_view) {
+      .format = iris_isl_format_for_pipe_format(surf_tmpl->format),
+      .base_level = surf_tmpl->u.tex.level,
+      .levels = 1,
+      .base_array_layer = surf_tmpl->u.tex.first_layer,
+      .array_len =
+         surf_tmpl->u.tex.last_layer - surf_tmpl->u.tex.first_layer + 1,
+      .swizzle = ISL_SWIZZLE_IDENTITY,
+      .usage = ISL_SURF_USAGE_RENDER_TARGET_BIT,
+   };
+
+   isl_surf_fill_state(&screen->isl_dev, surf->surface_state,
+                       .surf = &itex->surf, .view = &surf->view,
+                       .mocs = MOCS_WB);
+                       // .address = ...
+                       // .aux_surf = 
+                       // .clear_color = clear_color,
+
+   return psurf;
 }
 
 static void
@@ -895,10 +927,34 @@ iris_set_viewport_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
+struct iris_framebuffer_state {
+   struct pipe_framebuffer_state pipe;
+};
+
 static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_framebuffer_state *cso =
+      malloc(sizeof(struct iris_framebuffer_state));
+
+#if 0
+   unsigned i;
+   for (i = 0; i < framebuffer->nr_cbufs; i++)
+      pipe_surface_reference(&cso->pipe.cbufs[i], framebuffer->cbufs[i]);
+   for (; i < vc5->framebuffer.nr_cbufs; i++)
+      pipe_surface_reference(&cso->pipe.cbufs[i], NULL);
+
+   cso->pipe.nr_cbufs = state->nr_cbufs;
+
+   pipe_surface_reference(&cso->pipe.zsbuf, framebuffer->zsbuf);
+
+   // ice->state.cso_fb = cso;
+   // ice->state.dirty |= IRIS_DIRTY_FRAMEBUFFER;
+
+   // XXX: unreference them when destroying context
+#endif
 }
 
 static void
@@ -1224,6 +1280,12 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
 static void
 iris_bind_state(struct pipe_context *ctx, void *state)
 {
+}
+
+static void
+iris_destroy_state(struct iris_context *ice)
+{
+   // XXX: unreference resources/surfaces.
 }
 
 void
