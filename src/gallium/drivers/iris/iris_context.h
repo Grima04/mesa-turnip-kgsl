@@ -36,22 +36,19 @@ struct iris_batch;
 #define IRIS_MAX_VIEWPORTS 16
 
 enum iris_dirty {
-   IRIS_DIRTY_COLOR_CALC_STATE,
-   IRIS_DIRTY_POLYGON_STIPPLE,
-   IRIS_DIRTY_SCISSOR_RECT,
-   IRIS_DIRTY_WM_DEPTH_STENCIL,
-   IRIS_DIRTY_CC_VIEWPORT,
-   IRIS_DIRTY_SF_CL_VIEWPORT,
-   IRIS_DIRTY_PS_BLEND,
-   IRIS_DIRTY_BLEND_STATE,
+   IRIS_DIRTY_COLOR_CALC_STATE         = (1ull <<  0),
+   IRIS_DIRTY_POLYGON_STIPPLE          = (1ull <<  1),
+   IRIS_DIRTY_SCISSOR_RECT             = (1ull <<  2),
+   IRIS_DIRTY_WM_DEPTH_STENCIL         = (1ull <<  3),
+   IRIS_DIRTY_CC_VIEWPORT              = (1ull <<  4),
+   IRIS_DIRTY_SF_CL_VIEWPORT           = (1ull <<  5),
+   IRIS_DIRTY_PS_BLEND                 = (1ull <<  6),
+   IRIS_DIRTY_BLEND_STATE              = (1ull <<  7),
+   IRIS_DIRTY_RASTER                   = (1ull <<  8),
+   IRIS_DIRTY_CLIP                     = (1ull <<  9),
 };
 
 struct iris_depth_stencil_alpha_state;
-
-#define IRIS_NEW_COLOR_CALC_STATE (1ull << IRIS_DIRTY_COLOR_CALC_STATE)
-#define IRIS_NEW_POLYGON_STIPPLE  (1ull << IRIS_DIRTY_POLYGON_STIPPLE)
-#define IRIS_NEW_SCISSOR_RECT     (1ull << IRIS_DIRTY_SCISSOR_RECT)
-#define IRIS_NEW_WM_DEPTH_STENCIL (1ull << IRIS_DIRTY_WM_DEPTH_STENCIL)
 
 struct iris_context {
    struct pipe_context ctx;
@@ -61,6 +58,7 @@ struct iris_context {
    struct {
       uint64_t dirty;
       struct iris_blend_state *cso_blend;
+      struct iris_rasterizer_state *cso_rast;
       struct iris_depth_stencil_alpha_state *cso_zsa;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;

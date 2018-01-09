@@ -530,6 +530,14 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    return cso;
 }
 
+static void
+iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   ice->state.cso_rast = state;
+   ice->state.dirty |= IRIS_DIRTY_RASTER;
+}
+
 static uint32_t
 translate_wrap(unsigned pipe_wrap)
 {
@@ -1092,6 +1100,23 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
       }
    }
 
+   if (dirty & IRIS_DIRTY_CLIP) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+
+      uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
+      iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
+         //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
+         //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
+      }
+      iris_emit_merge(batch, cso->clip, dynamic_clip);
+   }
+
+   if (dirty & IRIS_DIRTY_RASTER) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
+      iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
+   }
+
 #if 0
    l3 configuration
 
@@ -1139,13 +1164,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
    3DSTATE_SO_BUFFER
    3DSTATE_SO_DECL_LIST
 
-   3DSTATE_CLIP
-     -> iris_raster_state + ??? (Non-perspective Bary, ForceZeroRTAIndex)
-
-   3DSTATE_RASTER
-   3DSTATE_SF
-     -> iris_raster_state
-
    3DSTATE_WM
      -> iris_raster_state + FS state (barycentric, EDSC)
    3DSTATE_SBE
@@ -1187,13 +1205,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
      -> ice->state.poly_stipple
    3DSTATE_LINE_STIPPLE
      -> iris_raster_state
-
-   once:
-   3DSTATE_AA_LINE_PARAMETERS
-   3DSTATE_WM_CHROMAKEY
-   3DSTATE_SAMPLE_PATTERN
-   3DSTATE_DRAWING_RECTANGLE
-   3DSTATE_WM_HZ_OP
 #endif
 }
 
@@ -1217,7 +1228,7 @@ iris_init_state_functions(struct pipe_context *ctx)
    ctx->bind_depth_stencil_alpha_state = iris_bind_zsa_state;
    ctx->bind_sampler_states = iris_bind_sampler_states;
    ctx->bind_fs_state = iris_bind_state;
-   ctx->bind_rasterizer_state = iris_bind_state;
+   ctx->bind_rasterizer_state = iris_bind_rasterizer_state;
    ctx->bind_vertex_elements_state = iris_bind_state;
    ctx->bind_compute_state = iris_bind_state;
    ctx->bind_tcs_state = iris_bind_state;
