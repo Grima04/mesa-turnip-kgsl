@@ -93,6 +93,13 @@ private:
                        bool centroid,
                        unsigned semantics);
 
+   Instruction *loadFrom(DataFile, uint8_t, DataType, Value *def, uint32_t base,
+                         uint8_t c, Value *indirect0 = NULL,
+                         Value *indirect1 = NULL, bool patch = false);
+   void storeTo(nir_intrinsic_instr *, DataFile, operation, DataType,
+                Value *src, uint8_t idx, uint8_t c, Value *indirect0 = NULL,
+                Value *indirect1 = NULL);
+
    bool isFloatType(nir_alu_type);
    bool isSignedType(nir_alu_type);
    bool isResultFloat(nir_op);
@@ -967,6 +974,71 @@ Converter::getSlotAddress(nir_intrinsic_instr *insn, uint8_t idx, uint8_t slot)
 
    const nv50_ir_varying *vary = input ? info->in : info->out;
    return vary[idx].slot[slot] * 4;
+}
+
+Instruction *
+Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
+                    uint32_t base, uint8_t c, Value *indirect0,
+                    Value *indirect1, bool patch)
+{
+   unsigned int tySize = typeSizeof(ty);
+
+   if (tySize == 8 &&
+       (file == FILE_MEMORY_CONST || file == FILE_MEMORY_BUFFER || indirect0)) {
+      Value *lo = getSSA();
+      Value *hi = getSSA();
+
+      Instruction *loi =
+         mkLoad(TYPE_U32, lo,
+                mkSymbol(file, i, TYPE_U32, base + c * tySize),
+                indirect0);
+      loi->setIndirect(0, 1, indirect1);
+      loi->perPatch = patch;
+
+      Instruction *hii =
+         mkLoad(TYPE_U32, hi,
+                mkSymbol(file, i, TYPE_U32, base + c * tySize + 4),
+                indirect0);
+      hii->setIndirect(0, 1, indirect1);
+      hii->perPatch = patch;
+
+      return mkOp2(OP_MERGE, ty, def, lo, hi);
+   } else {
+      Instruction *ld =
+         mkLoad(ty, def, mkSymbol(file, i, ty, base + c * tySize), indirect0);
+      ld->setIndirect(0, 1, indirect1);
+      ld->perPatch = patch;
+      return ld;
+   }
+}
+
+void
+Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
+                   DataType ty, Value *src, uint8_t idx, uint8_t c,
+                   Value *indirect0, Value *indirect1)
+{
+   uint8_t size = typeSizeof(ty);
+   uint32_t address = getSlotAddress(insn, idx, c);
+
+   if (size == 8 && indirect0) {
+      Value *split[2];
+      mkSplit(split, 4, src);
+
+      if (op == OP_EXPORT) {
+         split[0] = mkMov(getSSA(), split[0], ty)->getDef(0);
+         split[1] = mkMov(getSSA(), split[1], ty)->getDef(0);
+      }
+
+      mkStore(op, TYPE_U32, mkSymbol(file, 0, TYPE_U32, address), indirect0,
+              split[0])->perPatch = info->out[idx].patch;
+      mkStore(op, TYPE_U32, mkSymbol(file, 0, TYPE_U32, address + 4), indirect0,
+              split[1])->perPatch = info->out[idx].patch;
+   } else {
+      if (op == OP_EXPORT)
+         src = mkMov(getSSA(size), src, ty)->getDef(0);
+      mkStore(op, ty, mkSymbol(file, 0, ty, address), indirect0,
+              src)->perPatch = info->out[idx].patch;
+   }
 }
 
 bool
