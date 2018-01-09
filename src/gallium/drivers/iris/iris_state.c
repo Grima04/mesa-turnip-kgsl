@@ -742,6 +742,7 @@ iris_set_scissor_states(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
+   // XXX: start_slot
    ice->state.num_scissors = num_scissors;
 
    for (unsigned i = start_slot; i < start_slot + num_scissors; i++) {
@@ -859,6 +860,7 @@ iris_set_viewport_states(struct pipe_context *ctx,
                          unsigned num_viewports,
                          const struct pipe_viewport_state *state)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_viewport_state *cso =
       malloc(sizeof(struct iris_viewport_state));
 
@@ -886,6 +888,11 @@ iris_set_viewport_states(struct pipe_context *ctx,
          vp.YMaxViewPort =  y_extent;
       }
    }
+
+   ice->state.cso_vp = cso;
+   // XXX: start_slot
+   ice->state.num_viewports = num_viewports;
+   ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
 static void
@@ -1095,10 +1102,10 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
-      struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
-      iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
-         ptr.CCViewportPointer =
-            iris_emit_state(batch, cso->cc_vp, sizeof(cso->cc_vp), 32);
+      struct iris_viewport_state *cso = ice->state.cso_vp;
+      iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
+         ptr.SFClipViewportPointer =
+            iris_emit_state(batch, cso->sf_cl_vp, sizeof(cso->sf_cl_vp), 64);
       }
    }
 
@@ -1132,10 +1139,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
 
 #if 0
    l3 configuration
-
-   3DSTATE_VIEWPORT_STATE_POINTERS_SF_CL - SF_CLIP_VIEWPORT
-     -> pipe_viewport_state for matrix elements, guardband is calculated
-        from those.  can calculate screen space from matrix apparently...
 
    3DSTATE_PUSH_CONSTANT_ALLOC_*
    3DSTATE_URB_*

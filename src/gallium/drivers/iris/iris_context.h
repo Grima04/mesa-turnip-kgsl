@@ -58,10 +58,12 @@ struct iris_context {
 
    struct {
       uint64_t dirty;
+      unsigned num_viewports; // XXX: can viewports + scissors be different?
       unsigned num_scissors;
       struct iris_blend_state *cso_blend;
       struct iris_rasterizer_state *cso_rast;
       struct iris_depth_stencil_alpha_state *cso_zsa;
+      struct iris_viewport_state *cso_vp;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
