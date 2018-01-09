@@ -2444,6 +2444,14 @@ Converter::visit(nir_intrinsic_instr *insn)
       bar->subOp = getSubOp(op);
       break;
    }
+   case nir_intrinsic_shader_clock: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+
+      loadImm(newDefs[0], 0u);
+      mkOp1(OP_RDSV, dType, newDefs[1], mkSysVal(SV_CLOCK, 0))->fixed = 1;
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
