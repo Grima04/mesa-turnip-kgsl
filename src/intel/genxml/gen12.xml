@@ -678,7 +678,6 @@
     <field name="Vertical Line Stride" start="11" end="11" type="uint"/>
     <field name="Tile Mode" start="12" end="13" type="uint">
       <value name="LINEAR" value="0"/>
-      <value name="WMAJOR" value="1"/>
       <value name="XMAJOR" value="2"/>
       <value name="YMAJOR" value="3"/>
     </field>
