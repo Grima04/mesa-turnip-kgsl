@@ -68,6 +68,7 @@ struct iris_context {
       struct iris_depth_stencil_alpha_state *cso_zsa;
       struct iris_vertex_element_state *cso_vertex_elements;
       struct iris_viewport_state *cso_vp;
+      struct iris_depth_state *cso_depth;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];

@@ -992,6 +992,13 @@ iris_set_viewport_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
+struct iris_depth_state
+{
+   uint32_t depth_buffer[GENX(3DSTATE_DEPTH_BUFFER_length)];
+   uint32_t hier_depth_buffer[GENX(3DSTATE_HIER_DEPTH_BUFFER_length)];
+   uint32_t stencil_buffer[GENX(3DSTATE_STENCIL_BUFFER_length)];
+};
+
 static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
@@ -1018,6 +1025,11 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    pipe_surface_reference(&cso->zsbuf, state->zsbuf);
 
+   struct isl_depth_stencil_hiz_emit_info info = {
+      .mocs = MOCS_WB,
+   };
+
+   // XXX: depth buffers
 }
 
 static void
