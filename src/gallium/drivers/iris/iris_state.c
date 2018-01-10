@@ -156,6 +156,32 @@ UNUSED static void pipe_asserts()
 }
 
 static unsigned
+translate_prim_type(enum pipe_prim_type prim, uint8_t verts_per_patch)
+{
+   assert(prim == PIPE_PRIM_PATCHES || verts_per_patch == 0);
+
+   static const unsigned map[] = {
+      [PIPE_PRIM_POINTS]                   = _3DPRIM_POINTLIST,
+      [PIPE_PRIM_LINES]                    = _3DPRIM_LINELIST,
+      [PIPE_PRIM_LINE_LOOP]                = _3DPRIM_LINELOOP,
+      [PIPE_PRIM_LINE_STRIP]               = _3DPRIM_LINESTRIP,
+      [PIPE_PRIM_TRIANGLES]                = _3DPRIM_TRILIST,
+      [PIPE_PRIM_TRIANGLE_STRIP]           = _3DPRIM_TRISTRIP,
+      [PIPE_PRIM_TRIANGLE_FAN]             = _3DPRIM_TRIFAN,
+      [PIPE_PRIM_QUADS]                    = _3DPRIM_QUADLIST,
+      [PIPE_PRIM_QUAD_STRIP]               = _3DPRIM_QUADSTRIP,
+      [PIPE_PRIM_POLYGON]                  = _3DPRIM_POLYGON,
+      [PIPE_PRIM_LINES_ADJACENCY]          = _3DPRIM_LINELIST_ADJ,
+      [PIPE_PRIM_LINE_STRIP_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
+      [PIPE_PRIM_TRIANGLES_ADJACENCY]      = _3DPRIM_TRILIST_ADJ,
+      [PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
+      [PIPE_PRIM_PATCHES]                  = _3DPRIM_PATCHLIST_1 - 1,
+   };
+
+   return map[prim] + verts_per_patch;
+}
+
+static unsigned
 translate_compare_func(enum pipe_compare_func pipe_func)
 {
    static const unsigned map[] = {
@@ -827,8 +853,12 @@ iris_set_polygon_stipple(struct pipe_context *ctx,
 }
 
 static void
-iris_set_sample_mask(struct pipe_context *pipe, unsigned sample_mask)
+iris_set_sample_mask(struct pipe_context *ctx, unsigned sample_mask)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   ice->state.sample_mask = sample_mask;
+   ice->state.dirty |= IRIS_DIRTY_SAMPLE_MASK;
 }
 
 static void
@@ -1072,6 +1102,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         unsigned start_slot, unsigned count,
                         const struct pipe_vertex_buffer *buffers)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_vertex_buffer_state *cso =
       malloc(sizeof(struct iris_vertex_buffer_state));
 
@@ -1105,7 +1136,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
    }
 
-   /* XXX: actually do something with this! */
+   ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
 }
 
 struct iris_vertex_element_state {
@@ -1205,7 +1236,9 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 }
 
 void
-iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
+iris_upload_render_state(struct iris_context *ice,
+                         struct iris_batch *batch,
+                         struct pipe_draw_info *draw)
 {
    const uint64_t dirty = ice->state.dirty;
 
@@ -1295,6 +1328,13 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
       }
    }
 
+   if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
+      struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
+      // XXX: address!!!
+      iris_batch_emit(batch, cso->vertex_buffers,
+                      sizeof(uint32_t) * cso->length);
+   }
+
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
       struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
       iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
@@ -1317,6 +1357,58 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
       }
    }
 
+   if (dirty & IRIS_DIRTY_SAMPLE_MASK) {
+      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_MASK), ms) {
+         ms.SampleMask = ice->state.sample_mask;
+      }
+   }
+
+   if (1) {
+      iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
+         topo.PrimitiveTopologyType =
+            translate_prim_type(draw->mode, draw->vertices_per_patch);
+      }
+   }
+
+   if (1) {
+      iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
+         vf.IndexedDrawCutIndexEnable = draw->primitive_restart;
+         vf.CutIndex = draw->restart_index;
+      }
+   }
+
+   // draw->index_size > 0
+   if (1) {
+      struct iris_resource *res = (struct iris_resource *)draw->index.resource;
+
+      assert(!draw->has_user_indices);
+
+      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
+         ib.IndexFormat = draw->index_size;
+         ib.MOCS = MOCS_WB;
+         ib.BufferSize = res->bo->size;
+         // XXX: gah, addresses :(  need two different combine address funcs
+         // ib.BufferStartingAddress = res->bo;
+      }
+
+      assert(!draw->indirect); // XXX: indirect support
+
+      iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
+         prim.StartInstanceLocation = draw->start_instance;
+         prim.InstanceCount = draw->instance_count;
+
+         // XXX: this is probably bonkers.
+         prim.StartVertexLocation = draw->start;
+
+         if (draw->index_size) {
+            prim.BaseVertexLocation += draw->index_bias;
+         } else {
+            prim.StartVertexLocation += draw->index_bias;
+         }
+
+         //prim.BaseVertexLocation = ...;
+      }
+   }
 #if 0
    l3 configuration
 
@@ -1370,21 +1462,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
    3DSTATE_STENCIL_BUFFER
    3DSTATE_CLEAR_PARAMS
      -> iris_framebuffer_state?
-
-   3DSTATE_VF_TOPOLOGY
-     -> pipe_draw_info (prim_mode)
-   3DSTATE_VF
-     -> pipe_draw_info (restart_index, primitive_restart)
-
-   3DSTATE_INDEX_BUFFER
-     -> pipe_draw_info (index)
-   3DSTATE_VERTEX_BUFFERS
-     -> pipe_vertex_buffer (set_vertex_buffer hook)
-   3DSTATE_VF_COMPONENT_PACKING
-     -> TODO ???
-
-   3DPRIMITIVE
-     -> pipe_draw_info
 #endif
 }
 

@@ -66,7 +66,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   iris_upload_render_state(ice);
+   iris_upload_render_state(ice, draw);
 
 #if 0
    l3 configuration

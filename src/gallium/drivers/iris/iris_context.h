@@ -50,6 +50,8 @@ enum iris_dirty {
    IRIS_DIRTY_LINE_STIPPLE             = (1ull << 11),
    IRIS_DIRTY_VERTEX_ELEMENTS          = (1ull << 12),
    IRIS_DIRTY_MULTISAMPLE              = (1ull << 13),
+   IRIS_DIRTY_VERTEX_BUFFERS           = (1ull << 14),
+   IRIS_DIRTY_SAMPLE_MASK              = (1ull << 15),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -63,10 +65,12 @@ struct iris_context {
       uint64_t dirty;
       unsigned num_viewports; // XXX: can viewports + scissors be different?
       unsigned num_scissors;
+      unsigned sample_mask;
       struct iris_blend_state *cso_blend;
       struct iris_rasterizer_state *cso_rast;
       struct iris_depth_stencil_alpha_state *cso_zsa;
       struct iris_vertex_element_state *cso_vertex_elements;
+      struct iris_vertex_buffer_state *cso_vertex_buffers;
       struct iris_viewport_state *cso_vp;
       struct iris_depth_state *cso_depth;
       struct pipe_blend_color blend_color;
@@ -92,7 +96,9 @@ iris_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_state_functions(struct pipe_context *ctx);
 
-void iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch);
+void iris_upload_render_state(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              struct pipe_draw_info *draw);
 void iris_destroy_state(struct iris_context *ice);
 
 #endif
