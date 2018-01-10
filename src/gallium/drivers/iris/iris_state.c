@@ -540,14 +540,16 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    struct iris_rasterizer_state *old_cso = ice->state.cso_rast;
    struct iris_rasterizer_state *new_cso = state;
 
-   /* Avoid re-emitting 3DSTATE_LINE_STIPPLE if we can, it's non-pipelined */
-   if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
-       old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
-      ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
-   }
+   if (old_cso) {
+      /* Try to avoid re-emitting 3DSTATE_LINE_STIPPLE, it's non-pipelined */
+      if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
+          old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
+         ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
+      }
 
-   if (old_cso->half_pixel_center != new_cso->half_pixel_center) {
-      ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
+      if (old_cso->half_pixel_center != new_cso->half_pixel_center) {
+         ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
+      }
    }
 
    ice->state.cso_rast = new_cso;
