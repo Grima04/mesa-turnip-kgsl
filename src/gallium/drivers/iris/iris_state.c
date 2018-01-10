@@ -241,6 +241,8 @@ iris_upload_initial_gpu_state(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(3DSTATE_AA_LINE_PARAMETERS), foo);
    iris_emit_cmd(batch, GENX(3DSTATE_WM_CHROMAKEY), foo);
    iris_emit_cmd(batch, GENX(3DSTATE_WM_HZ_OP), foo);
+   /* XXX: may need to set an offset for origin-UL framebuffers */
+   iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 }
 
 static void
@@ -534,7 +536,16 @@ static void
 iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   ice->state.cso_rast = state;
+   struct iris_rasterizer_state *old_cso = ice->state.cso_rast;
+   struct iris_rasterizer_state *new_cso = state;
+
+   /* Avoid re-emitting 3DSTATE_LINE_STIPPLE if we can, it's non-pipelined */
+   if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
+       old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
+      ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
+   }
+
+   ice->state.cso_rast = new_cso;
    ice->state.dirty |= IRIS_DIRTY_RASTER;
 }
 
@@ -1082,7 +1093,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
 struct iris_vertex_element_state {
    uint32_t vertex_elements[1 + 33 * GENX(VERTEX_ELEMENT_STATE_length)];
-   uint32_t vf_instancing[GENX(3DSTATE_VF_INSTANCING_length)];
+   uint32_t vf_instancing[GENX(3DSTATE_VF_INSTANCING_length)][33];
    unsigned count;
 };
 
@@ -1114,7 +1125,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
             iris_isl_format_for_pipe_format(state[i].src_format);
       }
 
-      iris_pack_state(GENX(3DSTATE_VF_INSTANCING), cso->vf_instancing, vi) {
+      iris_pack_state(GENX(3DSTATE_VF_INSTANCING), cso->vf_instancing[i], vi) {
          vi.VertexElementIndex = i;
          vi.InstancingEnable = state[i].instance_divisor > 0;
          vi.InstanceDataStepRate = state[i].instance_divisor;
@@ -1124,6 +1135,15 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    }
 
    return cso;
+}
+
+static void
+iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   ice->state.cso_vertex_elements = state;
+   ice->state.dirty |= IRIS_DIRTY_VERTEX_ELEMENTS;
 }
 
 static void *
@@ -1219,6 +1239,7 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
          //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
          //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
+         // also userclip stuffs...
       }
       iris_emit_merge(batch, cso->clip, dynamic_clip);
    }
@@ -1237,6 +1258,33 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
 
       iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
          ptr.ScissorRectPointer = scissor_offset;
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
+      iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_PATTERN), poly) {
+         for (int i = 0; i < 32; i++) {
+            poly.PatternRow[i] = ice->state.poly_stipple.stipple[i];
+         }
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      iris_emit_cmd(batch, GENX(3DSTATE_LINE_STIPPLE), line) {
+         line.LineStipplePattern = cso->line_stipple_pattern;
+         line.LineStippleInverseRepeatCount = 1.0f / cso->line_stipple_factor;
+         line.LineStippleRepeatCount = cso->line_stipple_factor;
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
+      struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
+      iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
+                      (1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)));
+      for (int i = 0; i < cso->count; i++) {
+         iris_batch_emit(batch, cso->vf_instancing[i],
+                         sizeof(cso->vf_instancing[0]));
       }
    }
 
@@ -1314,13 +1362,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
 
    3DPRIMITIVE
      -> pipe_draw_info
-
-   rare:
-   3DSTATE_POLY_STIPPLE_OFFSET
-   3DSTATE_POLY_STIPPLE_PATTERN
-     -> ice->state.poly_stipple
-   3DSTATE_LINE_STIPPLE
-     -> iris_raster_state
 #endif
 }
 
@@ -1351,7 +1392,7 @@ iris_init_state_functions(struct pipe_context *ctx)
    ctx->bind_sampler_states = iris_bind_sampler_states;
    ctx->bind_fs_state = iris_bind_state;
    ctx->bind_rasterizer_state = iris_bind_rasterizer_state;
-   ctx->bind_vertex_elements_state = iris_bind_state;
+   ctx->bind_vertex_elements_state = iris_bind_vertex_elements_state;
    ctx->bind_compute_state = iris_bind_state;
    ctx->bind_tcs_state = iris_bind_state;
    ctx->bind_tes_state = iris_bind_state;

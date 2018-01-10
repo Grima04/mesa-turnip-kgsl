@@ -47,6 +47,8 @@ enum iris_dirty {
    IRIS_DIRTY_RASTER                   = (1ull <<  8),
    IRIS_DIRTY_CLIP                     = (1ull <<  9),
    IRIS_DIRTY_SCISSOR                  = (1ull << 10),
+   IRIS_DIRTY_LINE_STIPPLE             = (1ull << 11),
+   IRIS_DIRTY_VERTEX_ELEMENTS          = (1ull << 12),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -63,6 +65,7 @@ struct iris_context {
       struct iris_blend_state *cso_blend;
       struct iris_rasterizer_state *cso_rast;
       struct iris_depth_stencil_alpha_state *cso_zsa;
+      struct iris_vertex_element_state *cso_vertex_elements;
       struct iris_viewport_state *cso_vp;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;
