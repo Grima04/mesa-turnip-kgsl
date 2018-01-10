@@ -655,28 +655,75 @@ iris_create_sampler_state(struct pipe_context *pctx,
    return cso;
 }
 
-static void
-iris_create_view_for_surface()
+struct iris_sampler_view {
+   struct pipe_sampler_view pipe;
+   struct isl_view view;
+   uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
+};
+
+/**
+ * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gen7.5+
+ * "Shader Channel Select" enumerations (i.e. HSW_SCS_RED).  The mappings are
+ *
+ * SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W, SWIZZLE_ZERO, SWIZZLE_ONE
+ *         0          1          2          3             4            5
+ *         4          5          6          7             0            1
+ *   SCS_RED, SCS_GREEN,  SCS_BLUE, SCS_ALPHA,     SCS_ZERO,     SCS_ONE
+ *
+ * which is simply adding 4 then modding by 8 (or anding with 7).
+ *
+ * We then may need to apply workarounds for textureGather hardware bugs.
+ */
+static enum isl_channel_select
+pipe_swizzle_to_isl_channel(enum pipe_swizzle swizzle)
 {
+   return (swizzle + 4) & 7;
 }
 
 static struct pipe_sampler_view *
 iris_create_sampler_view(struct pipe_context *ctx,
-                         struct pipe_resource *texture,
-                         const struct pipe_sampler_view *state)
+                         struct pipe_resource *tex,
+                         const struct pipe_sampler_view *tmpl)
 {
-   struct pipe_sampler_view *sampler_view = CALLOC_STRUCT(pipe_sampler_view);
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   struct iris_resource *itex = (struct iris_resource *) tex;
+   struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
 
-   if (!sampler_view)
+   if (!isv)
       return NULL;
 
    /* initialize base object */
-   *sampler_view = *state;
-   sampler_view->texture = NULL;
-   pipe_resource_reference(&sampler_view->texture, texture);
-   pipe_reference_init(&sampler_view->reference, 1);
-   sampler_view->context = ctx;
-   return sampler_view;
+   isv->pipe = *tmpl;
+   isv->pipe.context = ctx;
+   isv->pipe.texture = NULL;
+   pipe_reference_init(&isv->pipe.reference, 1);
+   pipe_resource_reference(&isv->pipe.texture, tex);
+
+   /* XXX: do we need brw_get_texture_swizzle hacks here? */
+
+   isv->view = (struct isl_view) {
+      .format = iris_isl_format_for_pipe_format(tmpl->format),
+      .base_level = tmpl->u.tex.first_level,
+      .levels = tmpl->u.tex.last_level - tmpl->u.tex.first_level + 1,
+      .base_array_layer = tmpl->u.tex.first_layer,
+      .array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1,
+      .swizzle = (struct isl_swizzle) {
+         .r = pipe_swizzle_to_isl_channel(tmpl->swizzle_r),
+         .g = pipe_swizzle_to_isl_channel(tmpl->swizzle_g),
+         .b = pipe_swizzle_to_isl_channel(tmpl->swizzle_b),
+         .a = pipe_swizzle_to_isl_channel(tmpl->swizzle_a),
+      },
+      .usage = ISL_SURF_USAGE_TEXTURE_BIT,
+   };
+
+   isl_surf_fill_state(&screen->isl_dev, isv->surface_state,
+                       .surf = &itex->surf, .view = &isv->view,
+                       .mocs = MOCS_WB);
+                       // .address = ...
+                       // .aux_surf =
+                       // .clear_color = clear_color,
+
+   return &isv->pipe;
 }
 
 struct iris_surface {
@@ -688,7 +735,7 @@ struct iris_surface {
 static struct pipe_surface *
 iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,
-                    const struct pipe_surface *surf_tmpl)
+                    const struct pipe_surface *tmpl)
 {
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
@@ -701,22 +748,22 @@ iris_create_surface(struct pipe_context *ctx,
    pipe_reference_init(&psurf->reference, 1);
    pipe_resource_reference(&psurf->texture, tex);
    psurf->context = ctx;
-   psurf->format = surf_tmpl->format;
+   psurf->format = tmpl->format;
    psurf->width = tex->width0;
    psurf->height = tex->height0;
    psurf->texture = tex;
-   psurf->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
-   psurf->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
-   psurf->u.tex.level = surf_tmpl->u.tex.level;
+   psurf->u.tex.first_layer = tmpl->u.tex.first_layer;
+   psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
+   psurf->u.tex.level = tmpl->u.tex.level;
 
    surf->view = (struct isl_view) {
-      .format = iris_isl_format_for_pipe_format(surf_tmpl->format),
-      .base_level = surf_tmpl->u.tex.level,
+      .format = iris_isl_format_for_pipe_format(tmpl->format),
+      .base_level = tmpl->u.tex.level,
       .levels = 1,
-      .base_array_layer = surf_tmpl->u.tex.first_layer,
-      .array_len =
-         surf_tmpl->u.tex.last_layer - surf_tmpl->u.tex.first_layer + 1,
+      .base_array_layer = tmpl->u.tex.first_layer,
+      .array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1,
       .swizzle = ISL_SWIZZLE_IDENTITY,
+      // XXX: DEPTH_BIt, STENCIL_BIT...CUBE_BIT?  Other bits?!
       .usage = ISL_SURF_USAGE_RENDER_TARGET_BIT,
    };
 
@@ -724,7 +771,7 @@ iris_create_surface(struct pipe_context *ctx,
                        .surf = &itex->surf, .view = &surf->view,
                        .mocs = MOCS_WB);
                        // .address = ...
-                       // .aux_surf = 
+                       // .aux_surf =
                        // .clear_color = clear_color,
 
    return psurf;
@@ -935,11 +982,11 @@ static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
 {
+#if 0
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_framebuffer_state *cso =
       malloc(sizeof(struct iris_framebuffer_state));
 
-#if 0
    unsigned i;
    for (i = 0; i < framebuffer->nr_cbufs; i++)
       pipe_surface_reference(&cso->pipe.cbufs[i], framebuffer->cbufs[i]);
@@ -1151,7 +1198,7 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
-      struct iris_blend_state *cso = ice->state.cso_blend;
+      //struct iris_blend_state *cso = ice->state.cso_blend;
       // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
       // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
       //    (alpha test function/enable) + has writeable RT from ???????
@@ -1282,7 +1329,7 @@ iris_bind_state(struct pipe_context *ctx, void *state)
 {
 }
 
-static void
+void
 iris_destroy_state(struct iris_context *ice)
 {
    // XXX: unreference resources/surfaces.

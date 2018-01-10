@@ -48,7 +48,7 @@ static void *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
 {
-   struct iris_context *ice = (struct iris_context *)ctx;
+   //struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
 
    assert(state->type == PIPE_SHADER_IR_NIR);

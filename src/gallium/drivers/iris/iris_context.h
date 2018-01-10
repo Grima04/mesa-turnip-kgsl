@@ -87,5 +87,6 @@ void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_state_functions(struct pipe_context *ctx);
 
 void iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch);
+void iris_destroy_state(struct iris_context *ice);
 
 #endif
