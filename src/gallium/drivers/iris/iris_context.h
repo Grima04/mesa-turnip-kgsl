@@ -49,6 +49,7 @@ enum iris_dirty {
    IRIS_DIRTY_SCISSOR                  = (1ull << 10),
    IRIS_DIRTY_LINE_STIPPLE             = (1ull << 11),
    IRIS_DIRTY_VERTEX_ELEMENTS          = (1ull << 12),
+   IRIS_DIRTY_MULTISAMPLE              = (1ull << 13),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -71,6 +72,7 @@ struct iris_context {
       struct pipe_poly_stipple poly_stipple;
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
       struct pipe_stencil_ref stencil_ref;
+      struct pipe_framebuffer_state framebuffer;
    } state;
 };
 

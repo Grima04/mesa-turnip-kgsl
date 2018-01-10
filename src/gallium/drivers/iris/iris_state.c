@@ -413,6 +413,7 @@ struct iris_rasterizer_state {
    bool flatshade; /* for shader state */
    bool light_twoside; /* for shader state */
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
+   bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
 
    uint8_t line_stipple_factor;
@@ -450,7 +451,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->line_stipple_factor = state->line_stipple_factor;
    cso->line_stipple_pattern = state->line_stipple_pattern;
    // for 3DSTATE_MULTISAMPLE, if we want it.
-   //cso->half_pixel_center = state->half_pixel_center;
+   cso->half_pixel_center = state->half_pixel_center;
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
       sf.StatisticsEnable = true;
@@ -543,6 +544,10 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
        old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
       ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
+   }
+
+   if (old_cso->half_pixel_center != new_cso->half_pixel_center) {
+      ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
    }
 
    ice->state.cso_rast = new_cso;
@@ -985,34 +990,32 @@ iris_set_viewport_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
-struct iris_framebuffer_state {
-   struct pipe_framebuffer_state pipe;
-};
-
 static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
 {
-#if 0
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_framebuffer_state *cso =
-      malloc(sizeof(struct iris_framebuffer_state));
+   struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
+
+   if (cso->samples != state->samples) {
+      ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
+   }
+
+   cso->width = state->width;
+   cso->height = state->height;
+   cso->layers = state->layers;
+   cso->samples = state->samples;
 
    unsigned i;
-   for (i = 0; i < framebuffer->nr_cbufs; i++)
-      pipe_surface_reference(&cso->pipe.cbufs[i], framebuffer->cbufs[i]);
-   for (; i < vc5->framebuffer.nr_cbufs; i++)
-      pipe_surface_reference(&cso->pipe.cbufs[i], NULL);
+   for (i = 0; i < state->nr_cbufs; i++)
+      pipe_surface_reference(&cso->cbufs[i], state->cbufs[i]);
+   for (; i < cso->nr_cbufs; i++)
+      pipe_surface_reference(&cso->cbufs[i], NULL);
 
-   cso->pipe.nr_cbufs = state->nr_cbufs;
+   cso->nr_cbufs = state->nr_cbufs;
 
-   pipe_surface_reference(&cso->pipe.zsbuf, framebuffer->zsbuf);
+   pipe_surface_reference(&cso->zsbuf, state->zsbuf);
 
-   // ice->state.cso_fb = cso;
-   // ice->state.dirty |= IRIS_DIRTY_FRAMEBUFFER;
-
-   // XXX: unreference them when destroying context
-#endif
 }
 
 static void
@@ -1286,6 +1289,18 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
          iris_batch_emit(batch, cso->vf_instancing[i],
                          sizeof(cso->vf_instancing[0]));
       }
+      for (int i = 0; i < cso->count; i++) {
+         /* TODO: vertexid, instanceid support */
+         iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgvs);
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_MULTISAMPLE) {
+      iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
+         ms.PixelLocation =
+            ice->state.cso_rast->half_pixel_center ? CENTER : UL_CORNER;
+         ms.NumberofMultisamples = ffs(ice->state.framebuffer.samples) - 1;
+      }
    }
 
 #if 0
@@ -1351,12 +1366,6 @@ iris_upload_render_state(struct iris_context *ice, struct iris_batch *batch)
      -> pipe_draw_info (index)
    3DSTATE_VERTEX_BUFFERS
      -> pipe_vertex_buffer (set_vertex_buffer hook)
-   3DSTATE_VERTEX_ELEMENTS
-     -> iris_vertex_element
-   3DSTATE_VF_INSTANCING
-     -> iris_vertex_element
-   3DSTATE_VF_SGVS
-     -> TODO ???
    3DSTATE_VF_COMPONENT_PACKING
      -> TODO ???
 
@@ -1374,6 +1383,10 @@ void
 iris_destroy_state(struct iris_context *ice)
 {
    // XXX: unreference resources/surfaces.
+   for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
+      pipe_surface_reference(&ice->state.framebuffer.cbufs[i], NULL);
+   }
+   pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
 }
 
 void
