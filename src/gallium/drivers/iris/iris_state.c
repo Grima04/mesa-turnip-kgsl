@@ -860,7 +860,7 @@ iris_set_stencil_ref(struct pipe_context *ctx,
 
 
 struct iris_viewport_state {
-   uint32_t sf_cl_vp[GENX(3DSTATE_SF_length)];
+   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length)];
 };
 
 static float
