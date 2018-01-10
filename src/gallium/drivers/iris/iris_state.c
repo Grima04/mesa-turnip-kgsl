@@ -425,7 +425,16 @@ static void
 iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   ice->state.cso_zsa = state;
+   struct iris_depth_stencil_alpha_state *old_cso = ice->state.cso_zsa;
+   struct iris_depth_stencil_alpha_state *new_cso = state;
+
+   if (new_cso) {
+      if (!old_cso || old_cso->alpha.ref_value != new_cso->alpha.ref_value) {
+         ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
+      }
+   }
+
+   ice->state.cso_zsa = new_cso;
    ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
    ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
 }
@@ -566,14 +575,16 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    struct iris_rasterizer_state *old_cso = ice->state.cso_rast;
    struct iris_rasterizer_state *new_cso = state;
 
-   if (old_cso && new_cso) {
+   if (new_cso) {
       /* Try to avoid re-emitting 3DSTATE_LINE_STIPPLE, it's non-pipelined */
-      if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
+      if (!old_cso ||
+          old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
           old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
          ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
       }
 
-      if (old_cso->half_pixel_center != new_cso->half_pixel_center) {
+      if (!old_cso ||
+          old_cso->half_pixel_center != new_cso->half_pixel_center) {
          ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
       }
    }
@@ -1328,6 +1339,27 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
+   if (dirty & IRIS_DIRTY_COLOR_CALC_STATE) {
+      struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
+      uint32_t cc_offset;
+      void *cc_map =
+         iris_alloc_state(batch,
+                          sizeof(uint32_t) * GENX(COLOR_CALC_STATE_length),
+                          64, &cc_offset);
+      iris_pack_state(GENX(COLOR_CALC_STATE), cc_map, cc) {
+         cc.AlphaTestFormat = ALPHATEST_FLOAT32;
+         cc.AlphaReferenceValueAsFLOAT32 = cso->alpha.ref_value;
+         cc.BlendConstantColorRed   = ice->state.blend_color.color[0];
+         cc.BlendConstantColorGreen = ice->state.blend_color.color[1];
+         cc.BlendConstantColorBlue  = ice->state.blend_color.color[2];
+         cc.BlendConstantColorAlpha = ice->state.blend_color.color[3];
+      }
+      iris_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), ptr) {
+         ptr.ColorCalcStatePointer = cc_offset;
+         ptr.ColorCalcStatePointerValid = true;
+      }
+   }
+
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
       // XXX: address!!!
@@ -1416,10 +1448,6 @@ iris_upload_render_state(struct iris_context *ice,
    3DSTATE_URB_*
      -> TODO
 
-   3DSTATE_CC_STATE_POINTERS - COLOR_CALC_STATE
-     -> from ice->state.blend_color + iris_depth_stencil_alpha_state
-        (ref_value)
-
    3DSTATE_CONSTANT_* - push constants
      -> TODO
 
@@ -1434,9 +1462,6 @@ iris_upload_render_state(struct iris_context *ice,
 
    3DSTATE_SAMPLER_STATE_POINTERS_*
      -> TODO
-
-   3DSTATE_MULTISAMPLE
-   3DSTATE_SAMPLE_MASK
 
    3DSTATE_VS
    3DSTATE_HS
