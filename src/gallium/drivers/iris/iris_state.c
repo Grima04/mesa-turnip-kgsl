@@ -566,7 +566,7 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    struct iris_rasterizer_state *old_cso = ice->state.cso_rast;
    struct iris_rasterizer_state *new_cso = state;
 
-   if (old_cso) {
+   if (old_cso && new_cso) {
       /* Try to avoid re-emitting 3DSTATE_LINE_STIPPLE, it's non-pipelined */
       if (old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
           old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
