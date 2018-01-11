@@ -29,8 +29,7 @@ files_lima = files(
   'ir/gp/codegen.h',
   'ir/gp/codegen.c',
   'ir/gp/reduce_scheduler.c',
-  'ir/gp/value_regalloc.c',
-  'ir/gp/physical_regalloc.c',
+  'ir/gp/regalloc.c',
   'ir/gp/disasm.c',
 
   'ir/pp/ppir.h',

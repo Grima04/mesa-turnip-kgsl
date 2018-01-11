@@ -131,8 +131,6 @@ typedef struct {
       GPIR_DEP_OFFSET,    /* def is the offset of use (i.e. temp store) */
       GPIR_DEP_READ_AFTER_WRITE,
       GPIR_DEP_WRITE_AFTER_READ,
-      GPIR_DEP_VREG_READ_AFTER_WRITE,
-      GPIR_DEP_VREG_WRITE_AFTER_READ,
    } type;
 
    /* node execute before succ */
@@ -145,6 +143,9 @@ typedef struct {
    /* for ndoe succ_list */
    struct list_head succ_link;
 } gpir_dep;
+
+struct gpir_instr;
+struct gpir_store_node;
 
 typedef struct gpir_node {
    struct list_head list;
@@ -165,12 +166,14 @@ typedef struct gpir_node {
    int value_reg;
    union {
       struct {
-         int instr;
+         struct gpir_instr *instr;
+         struct gpir_store_node *physreg_store;
          int pos;
          int dist;
          int index;
          bool ready;
          bool inserted;
+         bool max_node, next_max_node;
       } sched;
       struct {
          int parent_index;
@@ -223,7 +226,7 @@ typedef struct {
    struct list_head reg_link;
 } gpir_load_node;
 
-typedef struct {
+typedef struct gpir_store_node {
    gpir_node node;
 
    unsigned index;
@@ -266,14 +269,43 @@ enum gpir_instr_slot {
    GPIR_INSTR_SLOT_DIST_TWO_END   = GPIR_INSTR_SLOT_PASS,
 };
 
-typedef struct {
+typedef struct gpir_instr {
    int index;
    struct list_head list;
 
    gpir_node *slots[GPIR_INSTR_SLOT_NUM];
 
+   /* The number of ALU slots free for moves. */
    int alu_num_slot_free;
+
+   /* The number of ALU slots free for moves, except for the complex slot. */
+   int alu_non_cplx_slot_free;
+
+   /* We need to make sure that we can insert moves in the following cases:
+    * (1) There was a use of a value two cycles ago.
+    * (2) There were more than 5 uses of a value 1 cycle ago (or else we can't
+    *     possibly satisfy (1) for the next cycle).
+    * (3) There is a store instruction scheduled, but not its child.
+    *
+    * The complex slot cannot be used for a move in case (1), since it only
+    * has a FIFO depth of 1, but it can be used for (2) and (3). In order to
+    * ensure that we have enough space for all three, we maintain the
+    * following invariants:
+    *
+    * (1) alu_num_slot_free >= alu_num_slot_needed_by_store +
+    *       alu_num_slot_needed_by_max +
+    *       alu_num_slot_needed_by_next_max
+    * (2) alu_non_cplx_slot_free >= alu_num_slot_needed_by_max
+    */
    int alu_num_slot_needed_by_store;
+   int alu_num_slot_needed_by_max;
+   int alu_num_slot_needed_by_next_max;
+
+   /* Used to communicate to the scheduler how many slots need to be cleared
+    * up in order to satisfy the invariants.
+    */
+   int slot_difference;
+   int non_cplx_slot_difference;
 
    int reg0_use_count;
    bool reg0_is_attr;
@@ -387,18 +419,12 @@ bool gpir_instr_try_insert_node(gpir_instr *instr, gpir_node *node);
 void gpir_instr_remove_node(gpir_instr *instr, gpir_node *node);
 void gpir_instr_print_prog(gpir_compiler *comp);
 
-static inline bool gpir_instr_alu_slot_is_full(gpir_instr *instr)
-{
-   return instr->alu_num_slot_free <= instr->alu_num_slot_needed_by_store;
-}
-
 bool gpir_codegen_acc_same_op(gpir_op op1, gpir_op op2);
 
 bool gpir_pre_rsched_lower_prog(gpir_compiler *comp);
 bool gpir_post_rsched_lower_prog(gpir_compiler *comp);
 bool gpir_reduce_reg_pressure_schedule_prog(gpir_compiler *comp);
-bool gpir_value_regalloc_prog(gpir_compiler *comp);
-bool gpir_physical_regalloc_prog(gpir_compiler *comp);
+bool gpir_regalloc_prog(gpir_compiler *comp);
 bool gpir_schedule_prog(gpir_compiler *comp);
 bool gpir_codegen_prog(gpir_compiler *comp);
 

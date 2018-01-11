@@ -76,9 +76,13 @@ static gpir_codegen_src gpir_get_alu_input(gpir_node *parent, gpir_node *child)
          gpir_codegen_src_load_w, gpir_codegen_src_unused, gpir_codegen_src_unused },
    };
 
-   assert(child->sched.instr - parent->sched.instr < 3);
+   int diff = child->sched.instr->index - parent->sched.instr->index;
+   assert(diff < 3);
+   assert(diff >= 0);
 
-   return slot_to_src[child->sched.pos][child->sched.instr - parent->sched.instr];
+   int src = slot_to_src[child->sched.pos][diff];
+   assert(src != gpir_codegen_src_unused);
+   return src;
 }
 
 static void gpir_codegen_mul0_slot(gpir_codegen_instr *code, gpir_instr *instr)

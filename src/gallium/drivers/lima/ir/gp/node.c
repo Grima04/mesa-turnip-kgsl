@@ -436,8 +436,6 @@ static void gpir_node_print_node(gpir_node *node, int type, int space)
       [GPIR_DEP_OFFSET] = "offset",
       [GPIR_DEP_READ_AFTER_WRITE] = "RaW",
       [GPIR_DEP_WRITE_AFTER_READ] = "WaR",
-      [GPIR_DEP_VREG_READ_AFTER_WRITE] = "vRaW",
-      [GPIR_DEP_VREG_WRITE_AFTER_READ] = "vWaR",
    };
 
    for (int i = 0; i < space; i++)
