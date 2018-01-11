@@ -2161,20 +2161,20 @@ late_optimizations = [
    #      a == -b      true             true        false    false
    #  (a+b) != 0       true             true        true     true
    #      a != -b      false            false       true     true
-   (('flt',          ('fadd', a, b),  0.0), ('flt',          a, ('fneg', b))),
-   (('flt', ('fneg', ('fadd', a, b)), 0.0), ('flt', ('fneg', a),         b)),
-   (('~fge',          ('fadd', a, b),  0.0), ('fge',          a, ('fneg', b))),
-   (('~fge', ('fneg', ('fadd', a, b)), 0.0), ('fge', ('fneg', a),         b)),
-   (('~feq', ('fadd', a, b), 0.0), ('feq', a, ('fneg', b))),
-   (('~fneu', ('fadd', a, b), 0.0), ('fneu', a, ('fneg', b))),
+   (('flt',                        ('fadd(is_used_once)', a, b),  0.0), ('flt',          a, ('fneg', b))),
+   (('flt', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b)), 0.0), ('flt', ('fneg', a),         b)),
+   (('~fge',                        ('fadd(is_used_once)', a, b),  0.0), ('fge',          a, ('fneg', b))),
+   (('~fge', ('fneg(is_used_once)', ('fadd(is_used_once)', a, b)), 0.0), ('fge', ('fneg', a),         b)),
+   (('~feq', ('fadd(is_used_once)', a, b), 0.0), ('feq', a, ('fneg', b))),
+   (('~fneu', ('fadd(is_used_once)', a, b), 0.0), ('fneu', a, ('fneg', b))),
 
    # If either source must be finite, then the original (a+b) cannot produce
    # NaN due to Inf-Inf.  The patterns and the replacements produce the same
    # result if b is NaN. Therefore, the replacements are exact.
-   (('fge',          ('fadd', 'a(is_finite)', b),  0.0), ('fge',          a, ('fneg', b))),
-   (('fge', ('fneg', ('fadd', 'a(is_finite)', b)), 0.0), ('fge', ('fneg', a),         b)),
-   (('feq',  ('fadd', 'a(is_finite)', b), 0.0), ('feq',  a, ('fneg', b))),
-   (('fneu', ('fadd', 'a(is_finite)', b), 0.0), ('fneu', a, ('fneg', b))),
+   (('fge',                        ('fadd(is_used_once)', 'a(is_finite)', b),  0.0), ('fge',          a, ('fneg', b))),
+   (('fge', ('fneg(is_used_once)', ('fadd(is_used_once)', 'a(is_finite)', b)), 0.0), ('fge', ('fneg', a),         b)),
+   (('feq',  ('fadd(is_used_once)', 'a(is_finite)', b), 0.0), ('feq',  a, ('fneg', b))),
+   (('fneu', ('fadd(is_used_once)', 'a(is_finite)', b), 0.0), ('fneu', a, ('fneg', b))),
 
    # nir_lower_to_source_mods will collapse this, but its existence during the
    # optimization loop can prevent other optimizations.
