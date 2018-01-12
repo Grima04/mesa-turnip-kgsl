@@ -78,6 +78,8 @@ struct iris_context {
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
+
+      struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
    } state;
 };
 

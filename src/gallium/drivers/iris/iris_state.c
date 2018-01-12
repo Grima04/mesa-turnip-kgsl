@@ -42,6 +42,7 @@
 #include "intel/common/gen_sample_positions.h"
 #include "iris_batch.h"
 #include "iris_context.h"
+#include "iris_pipe.h"
 #include "iris_resource.h"
 
 #define __gen_address_type unsigned
@@ -710,6 +711,22 @@ iris_create_sampler_state(struct pipe_context *pctx,
    return cso;
 }
 
+static void
+iris_bind_sampler_states(struct pipe_context *ctx,
+                         enum pipe_shader_type p_stage,
+                         unsigned start, unsigned count,
+                         void **states)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
+
+   assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
+
+   for (int i = 0; i < count; i++) {
+      ice->state.samplers[stage][start + i] = states[i];
+   }
+}
+
 struct iris_sampler_view {
    struct pipe_sampler_view pipe;
    struct isl_view view;
@@ -837,14 +854,6 @@ iris_set_sampler_views(struct pipe_context *ctx,
                        enum pipe_shader_type shader,
                        unsigned start, unsigned count,
                        struct pipe_sampler_view **views)
-{
-}
-
-static void
-iris_bind_sampler_states(struct pipe_context *ctx,
-                         enum pipe_shader_type shader,
-                         unsigned start, unsigned count,
-                         void **states)
 {
 }
 
