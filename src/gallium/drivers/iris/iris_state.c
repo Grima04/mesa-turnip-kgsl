@@ -725,6 +725,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    for (int i = 0; i < count; i++) {
       ice->state.samplers[stage][start + i] = states[i];
    }
+
+   ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
 struct iris_sampler_view {
@@ -1404,6 +1406,30 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
+         continue;
+
+      // XXX: get sampler count from shader; don't emit them all...
+      const int count = IRIS_MAX_TEXTURE_SAMPLERS;
+
+      uint32_t offset;
+      uint32_t *map = iris_alloc_state(batch,
+                                       count * 4 * GENX(SAMPLER_STATE_length),
+                                       32, &offset);
+
+      for (int i = 0; i < count; i++) {
+         memcpy(map, ice->state.samplers[stage][i]->sampler_state,
+                4 * GENX(SAMPLER_STATE_length));
+         map += GENX(SAMPLER_STATE_length);
+      }
+
+      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
+         ptr._3DCommandSubOpcode = 43 + stage;
+         ptr.PointertoVSSamplerState = offset;
+      }
+   }
+
    if (1) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
          topo.PrimitiveTopologyType =
@@ -1467,9 +1493,6 @@ iris_upload_render_state(struct iris_context *ice,
    - textures
    - render targets - write and read
    3DSTATE_BINDING_TABLE_POINTERS_*
-     -> TODO
-
-   3DSTATE_SAMPLER_STATE_POINTERS_*
      -> TODO
 
    3DSTATE_VS

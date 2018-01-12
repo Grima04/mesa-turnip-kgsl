@@ -52,6 +52,12 @@ enum iris_dirty {
    IRIS_DIRTY_MULTISAMPLE              = (1ull << 13),
    IRIS_DIRTY_VERTEX_BUFFERS           = (1ull << 14),
    IRIS_DIRTY_SAMPLE_MASK              = (1ull << 15),
+   IRIS_DIRTY_SAMPLER_STATES_VS        = (1ull << 16),
+   IRIS_DIRTY_SAMPLER_STATES_TCS       = (1ull << 17),
+   IRIS_DIRTY_SAMPLER_STATES_TES       = (1ull << 18),
+   IRIS_DIRTY_SAMPLER_STATES_GS        = (1ull << 19),
+   IRIS_DIRTY_SAMPLER_STATES_PS        = (1ull << 20),
+   IRIS_DIRTY_SAMPLER_STATES_CS        = (1ull << 21),
 };
 
 struct iris_depth_stencil_alpha_state;
