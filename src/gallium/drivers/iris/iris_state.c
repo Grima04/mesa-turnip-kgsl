@@ -270,6 +270,15 @@ iris_upload_initial_gpu_state(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(3DSTATE_WM_HZ_OP), foo);
    /* XXX: may need to set an offset for origin-UL framebuffers */
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
+
+   /* Just assign a static partitioning. */
+   for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
+      iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
+         alloc._3DCommandSubOpcode = 18 + i;
+         alloc.ConstantBufferOffset = 6 * i;
+         alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? 8 : 6;
+      }
+   }
 }
 
 static void
@@ -1479,7 +1488,6 @@ iris_upload_render_state(struct iris_context *ice,
 #if 0
    l3 configuration
 
-   3DSTATE_PUSH_CONSTANT_ALLOC_*
    3DSTATE_URB_*
      -> TODO
 
