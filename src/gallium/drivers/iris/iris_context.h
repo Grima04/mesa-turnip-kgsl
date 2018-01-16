@@ -58,6 +58,12 @@ enum iris_dirty {
    IRIS_DIRTY_SAMPLER_STATES_GS        = (1ull << 19),
    IRIS_DIRTY_SAMPLER_STATES_PS        = (1ull << 20),
    IRIS_DIRTY_SAMPLER_STATES_CS        = (1ull << 21),
+   IRIS_DIRTY_UNCOMPILED_VS            = (1ull << 22),
+   IRIS_DIRTY_UNCOMPILED_TCS           = (1ull << 23),
+   IRIS_DIRTY_UNCOMPILED_TES           = (1ull << 24),
+   IRIS_DIRTY_UNCOMPILED_GS            = (1ull << 25),
+   IRIS_DIRTY_UNCOMPILED_FS            = (1ull << 26),
+   IRIS_DIRTY_UNCOMPILED_CS            = (1ull << 27),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -66,6 +72,8 @@ struct iris_context {
    struct pipe_context ctx;
 
    struct pipe_debug_callback dbg;
+
+   struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
 
    struct {
       uint64_t dirty;
@@ -106,7 +114,11 @@ void iris_init_state_functions(struct pipe_context *ctx);
 
 void iris_upload_render_state(struct iris_context *ice,
                               struct iris_batch *batch,
-                              struct pipe_draw_info *draw);
+                              const struct pipe_draw_info *draw);
 void iris_destroy_state(struct iris_context *ice);
+
+void iris_update_compiled_shaders(struct iris_context *ice);
+
+void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
 
 #endif

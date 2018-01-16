@@ -282,11 +282,6 @@ iris_upload_initial_gpu_state(struct iris_context *ice,
 }
 
 static void
-iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
-{
-}
-
-static void
 iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
 {
 }
@@ -1269,7 +1264,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
-                         struct pipe_draw_info *draw)
+                         const struct pipe_draw_info *draw)
 {
    const uint64_t dirty = ice->state.dirty;
 
@@ -1559,14 +1554,9 @@ iris_init_state_functions(struct pipe_context *ctx)
    ctx->bind_blend_state = iris_bind_blend_state;
    ctx->bind_depth_stencil_alpha_state = iris_bind_zsa_state;
    ctx->bind_sampler_states = iris_bind_sampler_states;
-   ctx->bind_fs_state = iris_bind_state;
    ctx->bind_rasterizer_state = iris_bind_rasterizer_state;
    ctx->bind_vertex_elements_state = iris_bind_vertex_elements_state;
    ctx->bind_compute_state = iris_bind_state;
-   ctx->bind_tcs_state = iris_bind_state;
-   ctx->bind_tes_state = iris_bind_state;
-   ctx->bind_gs_state = iris_bind_state;
-   ctx->bind_vs_state = iris_bind_state;
    ctx->delete_blend_state = iris_delete_state;
    ctx->delete_depth_stencil_alpha_state = iris_delete_state;
    ctx->delete_fs_state = iris_delete_state;

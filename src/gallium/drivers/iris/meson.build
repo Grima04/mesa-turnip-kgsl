@@ -24,6 +24,7 @@ files_libiris = files(
   'iris_bufmgr.c',
   'iris_bufmgr.h',
   'iris_context.h',
+  'iris_draw.c',
   'iris_formats.c',
   'iris_pipe.c',
   'iris_program.c',
