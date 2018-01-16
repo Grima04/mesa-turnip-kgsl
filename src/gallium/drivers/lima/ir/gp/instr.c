@@ -408,6 +408,15 @@ bool gpir_instr_try_insert_node(gpir_instr *instr, gpir_node *node)
 
 void gpir_instr_remove_node(gpir_instr *instr, gpir_node *node)
 {
+   assert(node->sched.pos >= 0);
+
+   /* This can happen if we merge duplicate loads in the scheduler. */
+   if (instr->slots[node->sched.pos] != node) {
+      node->sched.pos = -1;
+      node->sched.instr = -1;
+      return;
+   }
+
    if (node->sched.pos >= GPIR_INSTR_SLOT_ALU_BEGIN &&
        node->sched.pos <= GPIR_INSTR_SLOT_ALU_END)
       gpir_instr_remove_alu(instr, node);
@@ -428,6 +437,9 @@ void gpir_instr_remove_node(gpir_instr *instr, gpir_node *node)
 
    if (node->op == gpir_op_complex1 || node->op == gpir_op_select)
       instr->slots[GPIR_INSTR_SLOT_MUL1] = NULL;
+
+   node->sched.pos = -1;
+   node->sched.instr = -1;
 }
 
 void gpir_instr_print_prog(gpir_compiler *comp)
