@@ -50,6 +50,10 @@
 #define VG_NOACCESS_WRITE(__ptr, __val) (*(__ptr) = (__val))
 #endif
 
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0
+#endif
+
 /* Design goals:
  *
  *  - Lock free (except when resizing underlying bos)
