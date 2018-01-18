@@ -1,4 +1,6 @@
 MESA_UTIL_FILES := \
+	anon_file.h \
+	anon_file.c \
 	bigmath.h \
 	bitscan.c \
 	bitscan.h \

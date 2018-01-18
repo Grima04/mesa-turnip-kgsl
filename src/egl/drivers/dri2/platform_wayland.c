@@ -43,6 +43,7 @@
 #include "egl_dri2_fallbacks.h"
 #include "loader.h"
 #include "util/u_vector.h"
+#include "util/anon_file.h"
 #include "eglglobals.h"
 
 #include <wayland-egl-backend.h>
@@ -1588,122 +1589,6 @@ dri2_wl_swrast_get_stride_for_format(int format, int w)
    return w * (dri2_wl_visuals[visual_idx].bpp / 8);
 }
 
-/*
- * Taken from weston shared/os-compatibility.c
- */
-
-#ifndef HAVE_MKOSTEMP
-
-static int
-set_cloexec_or_close(int fd)
-{
-   long flags;
-
-   if (fd == -1)
-      return -1;
-
-   flags = fcntl(fd, F_GETFD);
-   if (flags == -1)
-      goto err;
-
-   if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
-      goto err;
-
-   return fd;
-
-err:
-   close(fd);
-   return -1;
-}
-
-#endif
-
-/*
- * Taken from weston shared/os-compatibility.c
- */
-
-static int
-create_tmpfile_cloexec(char *tmpname)
-{
-   int fd;
-
-#ifdef HAVE_MKOSTEMP
-   fd = mkostemp(tmpname, O_CLOEXEC);
-   if (fd >= 0)
-      unlink(tmpname);
-#else
-   fd = mkstemp(tmpname);
-   if (fd >= 0) {
-      fd = set_cloexec_or_close(fd);
-      unlink(tmpname);
-   }
-#endif
-
-   return fd;
-}
-
-/*
- * Taken from weston shared/os-compatibility.c
- *
- * Create a new, unique, anonymous file of the given size, and
- * return the file descriptor for it. The file descriptor is set
- * CLOEXEC. The file is immediately suitable for mmap()'ing
- * the given size at offset zero.
- *
- * The file should not have a permanent backing store like a disk,
- * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
- *
- * The file name is deleted from the file system.
- *
- * The file is suitable for buffer sharing between processes by
- * transmitting the file descriptor over Unix sockets using the
- * SCM_RIGHTS methods.
- *
- * If the C library implements posix_fallocate(), it is used to
- * guarantee that disk space is available for the file at the
- * given size. If disk space is insufficient, errno is set to ENOSPC.
- * If posix_fallocate() is not supported, program may receive
- * SIGBUS on accessing mmap()'ed file contents instead.
- */
-static int
-os_create_anonymous_file(off_t size)
-{
-   static const char templ[] = "/mesa-shared-XXXXXX";
-   const char *path;
-   char *name;
-   int fd;
-   int ret;
-
-   path = getenv("XDG_RUNTIME_DIR");
-   if (!path) {
-      errno = ENOENT;
-      return -1;
-   }
-
-   name = malloc(strlen(path) + sizeof(templ));
-   if (!name)
-      return -1;
-
-   strcpy(name, path);
-   strcat(name, templ);
-
-   fd = create_tmpfile_cloexec(name);
-
-   free(name);
-
-   if (fd < 0)
-      return -1;
-
-   ret = ftruncate(fd, size);
-   if (ret < 0) {
-      close(fd);
-      return -1;
-   }
-
-   return fd;
-}
-
-
 static EGLBoolean
 dri2_wl_swrast_allocate_buffer(struct dri2_egl_surface *dri2_surf,
                                int format, int w, int h,
@@ -1720,7 +1605,7 @@ dri2_wl_swrast_allocate_buffer(struct dri2_egl_surface *dri2_surf,
    size_map = h * stride;
 
    /* Create a shareable buffer */
-   fd = os_create_anonymous_file(size_map);
+   fd = os_create_anonymous_file(size_map, NULL);
    if (fd < 0)
       return EGL_FALSE;
 

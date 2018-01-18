@@ -27,16 +27,7 @@
 #include <sys/mman.h>
 
 #include "aub_mem.h"
-
-#ifndef HAVE_MEMFD_CREATE
-#include <sys/syscall.h>
-
-static inline int
-memfd_create(const char *name, unsigned int flags)
-{
-   return syscall(SYS_memfd_create, name, flags);
-}
-#endif
+#include "util/anon_file.h"
 
 struct bo_map {
    struct list_head link;
@@ -373,7 +364,7 @@ aub_mem_init(struct aub_mem *mem)
 
    list_inithead(&mem->maps);
 
-   mem->mem_fd = memfd_create("phys memory", 0);
+   mem->mem_fd = os_create_anonymous_file(0, "phys memory");
 
    return mem->mem_fd != -1;
 }

@@ -23,6 +23,8 @@ inc_util = include_directories('.')
 subdir('xmlpool')
 
 files_mesa_util = files(
+  'anon_file.h',
+  'anon_file.c',
   'bigmath.h',
   'bitscan.c',
   'bitscan.h',
