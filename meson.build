@@ -778,6 +778,11 @@ if cc.get_id() == 'gcc' and cc.version().version_compare('< 4.4.6')
   error('When using GCC, version 4.4.6 or later is required.')
 endif
 
+# Support systems without ETIME (e.g. FreeBSD)
+if cc.get_define('ETIME', prefix : '#include <errno.h>') == ''
+  pre_args += '-DETIME=ETIMEDOUT'
+endif
+
 # Define DEBUG for debug builds only (debugoptimized is not included on this one)
 if get_option('buildtype') == 'debug'
   pre_args += '-DDEBUG'
