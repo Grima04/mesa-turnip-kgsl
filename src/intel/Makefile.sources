@@ -221,6 +221,8 @@ ISL_GEN11_FILES = \
 	isl/isl_surface_state.c
 
 ISL_GEN12_FILES = \
+	isl/isl_gen12.c \
+	isl/isl_gen12.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 

@@ -33,6 +33,7 @@
 #include "isl_gen7.h"
 #include "isl_gen8.h"
 #include "isl_gen9.h"
+#include "isl_gen12.h"
 #include "isl_priv.h"
 
 void
@@ -637,7 +638,10 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
       return;
    }
 
-   if (ISL_DEV_GEN(dev) >= 9) {
+   if (ISL_DEV_GEN(dev) >= 12) {
+      isl_gen12_choose_image_alignment_el(dev, info, tiling, dim_layout,
+                                          msaa_layout, image_align_el);
+   } else if (ISL_DEV_GEN(dev) >= 9) {
       isl_gen9_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    } else if (ISL_DEV_GEN(dev) >= 8) {
