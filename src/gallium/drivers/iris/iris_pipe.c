@@ -102,19 +102,25 @@ iris_set_active_query_state(struct pipe_context *pipe, boolean enable)
  * transfer
  */
 static void *
-iris_transfer_map(struct pipe_context *pipe,
+iris_transfer_map(struct pipe_context *ctx,
                   struct pipe_resource *resource,
                   unsigned level,
                   enum pipe_transfer_usage usage,
                   const struct pipe_box *box,
                   struct pipe_transfer **ptransfer)
 {
-   struct pipe_transfer *transfer;
+   struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *)resource;
+   struct pipe_transfer *transfer;
+
+   // PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE
+   // PIPE_TRANSFER_DISCARD_RANGE
+   // PIPE_TRANSFER_MAP_DIRECTLY
 
    transfer = calloc(1, sizeof(struct pipe_transfer));
    if (!transfer)
       return NULL;
+
    pipe_resource_reference(&transfer->resource, resource);
    transfer->level = level;
    transfer->usage = usage;
@@ -123,7 +129,23 @@ iris_transfer_map(struct pipe_context *pipe,
    transfer->layer_stride = 1;
    *ptransfer = transfer;
 
-   return NULL;
+#if 0
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+       iris_batch_references(&ice->batch, res->bo)) {
+      iris_batch_flush(&ice->batch);
+   }
+#endif
+
+   if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
+      return NULL;
+
+   usage &= (PIPE_TRANSFER_READ |
+             PIPE_TRANSFER_WRITE |
+             PIPE_TRANSFER_UNSYNCHRONIZED |
+             PIPE_TRANSFER_PERSISTENT |
+             PIPE_TRANSFER_COHERENT);
+
+   return iris_bo_map(&ice->dbg, res->bo, usage);
 }
 
 static void
