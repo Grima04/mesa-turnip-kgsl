@@ -212,18 +212,18 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
 
-   if (templ->target == PIPE_BUFFER)
-      modifier = DRM_FORMAT_MOD_LINEAR;
-
-   if (templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
-      modifier = DRM_FORMAT_MOD_LINEAR;
-
    if (modifiers_count == 0) {
       /* Display is X-tiled for historical reasons. */
       modifier = (templ->bind & PIPE_BIND_DISPLAY_TARGET) ?
                  I915_FORMAT_MOD_X_TILED : I915_FORMAT_MOD_Y_TILED;
       /* XXX: make sure this doesn't do stupid things for internal textures */
    }
+
+   if (templ->target == PIPE_BUFFER)
+      modifier = DRM_FORMAT_MOD_LINEAR;
+
+   if (templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
+      modifier = DRM_FORMAT_MOD_LINEAR;
 
    if (modifier == DRM_FORMAT_MOD_INVALID) {
       /* User requested specific modifiers */
