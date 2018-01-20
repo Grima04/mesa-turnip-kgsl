@@ -113,8 +113,12 @@ double get_time(void);
 struct pipe_context *
 iris_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
+void iris_init_blit_functions(struct pipe_context *ctx);
+void iris_init_clear_functions(struct pipe_context *ctx);
 void iris_init_program_functions(struct pipe_context *ctx);
+void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_state_functions(struct pipe_context *ctx);
+void iris_init_query_functions(struct pipe_context *ctx);
 
 void iris_upload_render_state(struct iris_context *ice,
                               struct iris_batch *batch,

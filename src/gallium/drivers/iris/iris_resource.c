@@ -30,6 +30,8 @@
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
+#include "iris_batch.h"
+#include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "intel/common/gen_debug.h"
@@ -356,6 +358,115 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    return false;
 }
 
+static void *
+iris_transfer_map(struct pipe_context *ctx,
+                  struct pipe_resource *resource,
+                  unsigned level,
+                  enum pipe_transfer_usage usage,
+                  const struct pipe_box *box,
+                  struct pipe_transfer **ptransfer)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_resource *res = (struct iris_resource *)resource;
+   struct pipe_transfer *transfer;
+
+   // PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE
+   // PIPE_TRANSFER_DISCARD_RANGE
+   // PIPE_TRANSFER_MAP_DIRECTLY
+
+   transfer = calloc(1, sizeof(struct pipe_transfer));
+   if (!transfer)
+      return NULL;
+
+   pipe_resource_reference(&transfer->resource, resource);
+   transfer->level = level;
+   transfer->usage = usage;
+   transfer->box = *box;
+   transfer->stride = 1;
+   transfer->layer_stride = 1;
+   *ptransfer = transfer;
+
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+       iris_batch_references(&ice->render_batch, res->bo)) {
+      iris_batch_flush(&ice->render_batch);
+   }
+
+   if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
+      return NULL;
+
+   usage &= (PIPE_TRANSFER_READ |
+             PIPE_TRANSFER_WRITE |
+             PIPE_TRANSFER_UNSYNCHRONIZED |
+             PIPE_TRANSFER_PERSISTENT |
+             PIPE_TRANSFER_COHERENT);
+
+   return iris_bo_map(&ice->dbg, res->bo, usage);
+}
+
+static void
+iris_transfer_flush_region(struct pipe_context *pipe,
+                           struct pipe_transfer *transfer,
+                           const struct pipe_box *box)
+{
+}
+
+static void
+iris_transfer_unmap(struct pipe_context *pipe,
+                    struct pipe_transfer *transfer)
+{
+   pipe_resource_reference(&transfer->resource, NULL);
+   free(transfer);
+}
+
+static void
+iris_buffer_subdata(struct pipe_context *pipe,
+                    struct pipe_resource *resource,
+                    unsigned usage, unsigned offset,
+                    unsigned size, const void *data)
+{
+}
+
+static void
+iris_texture_subdata(struct pipe_context *pipe,
+                     struct pipe_resource *resource,
+                     unsigned level,
+                     unsigned usage,
+                     const struct pipe_box *box,
+                     const void *data,
+                     unsigned stride,
+                     unsigned layer_stride)
+{
+}
+
+
+static void
+iris_resource_copy_region(struct pipe_context *ctx,
+                          struct pipe_resource *dst,
+                          unsigned dst_level,
+                          unsigned dstx, unsigned dsty, unsigned dstz,
+                          struct pipe_resource *src,
+                          unsigned src_level,
+                          const struct pipe_box *src_box)
+{
+}
+
+static void
+iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
+{
+}
+
+static boolean
+iris_generate_mipmap(struct pipe_context *ctx,
+                     struct pipe_resource *resource,
+                     enum pipe_format format,
+                     unsigned base_level,
+                     unsigned last_level,
+                     unsigned first_layer,
+                     unsigned last_layer)
+{
+   return true;
+}
+
 void
 iris_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
@@ -365,4 +476,16 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_from_handle = iris_resource_from_handle;
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_destroy = iris_resource_destroy;
+}
+
+void
+iris_init_resource_functions(struct pipe_context *ctx)
+{
+   ctx->flush_resource = iris_flush_resource;
+   ctx->transfer_map = iris_transfer_map;
+   ctx->transfer_flush_region = iris_transfer_flush_region;
+   ctx->transfer_unmap = iris_transfer_unmap;
+   ctx->buffer_subdata = iris_buffer_subdata;
+   ctx->texture_subdata = iris_texture_subdata;
+   ctx->resource_copy_region = iris_resource_copy_region;
 }
