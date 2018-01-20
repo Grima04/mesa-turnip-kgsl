@@ -37,6 +37,5 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    struct iris_context *ice = (struct iris_context *) ctx;
 
    iris_update_compiled_shaders(ice);
-   //iris_upload_render_state(ice, &ice->batch, info);
-   iris_upload_render_state(ice, NULL, info);
+   iris_upload_render_state(ice, &ice->render_batch, info);
 }

@@ -27,6 +27,7 @@
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
 #include "intel/common/gen_debug.h"
+#include "iris_batch.h"
 #include "iris_screen.h"
 
 struct iris_bo;
@@ -74,6 +75,9 @@ struct iris_context {
    struct pipe_debug_callback dbg;
 
    struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
+
+   /** The main batch for rendering */
+   struct iris_batch render_batch;
 
    struct {
       uint64_t dirty;

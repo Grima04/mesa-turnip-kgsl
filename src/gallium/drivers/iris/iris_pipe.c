@@ -129,12 +129,10 @@ iris_transfer_map(struct pipe_context *ctx,
    transfer->layer_stride = 1;
    *ptransfer = transfer;
 
-#if 0
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
-       iris_batch_references(&ice->batch, res->bo)) {
-      iris_batch_flush(&ice->batch);
+       iris_batch_references(&ice->render_batch, res->bo)) {
+      iris_batch_flush(&ice->render_batch);
    }
-#endif
 
    if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
       return NULL;
