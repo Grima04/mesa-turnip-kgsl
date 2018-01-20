@@ -449,15 +449,13 @@ struct iris_rasterizer_state {
    uint32_t clip[GENX(3DSTATE_CLIP_length)];
    uint32_t raster[GENX(3DSTATE_RASTER_length)];
    uint32_t wm[GENX(3DSTATE_WM_length)];
+   uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
    bool flatshade; /* for shader state */
    bool light_twoside; /* for shader state */
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
-
-   uint8_t line_stipple_factor;
-   uint16_t line_stipple_pattern;
 };
 
 static void *
@@ -480,16 +478,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
 
       offset_units_unscaled - cap not exposed
    }
-
-   unsigned line_stipple_factor:8;  /**< [1..256] actually */
-   unsigned line_stipple_pattern:16;
    #endif
 
    cso->flatshade = state->flatshade;
    cso->light_twoside = state->light_twoside;
    cso->rasterizer_discard = state->rasterizer_discard;
-   cso->line_stipple_factor = state->line_stipple_factor;
-   cso->line_stipple_pattern = state->line_stipple_pattern;
    // for 3DSTATE_MULTISAMPLE, if we want it.
    cso->half_pixel_center = state->half_pixel_center;
 
@@ -570,6 +563,15 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       // wm.EarlyDepthStencilControl = <comes from FS program> :(
    }
 
+   /* Remap from 0..255 back to 1..256 */
+   const unsigned line_stipple_factor = state->line_stipple_factor + 1;
+
+   iris_pack_command(GENX(3DSTATE_LINE_STIPPLE), cso->line_stipple, line) {
+      line.LineStipplePattern = state->line_stipple_pattern;
+      line.LineStippleInverseRepeatCount = 1.0f / line_stipple_factor;
+      line.LineStippleRepeatCount = line_stipple_factor;
+   }
+
    return cso;
 }
 
@@ -582,9 +584,8 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 
    if (new_cso) {
       /* Try to avoid re-emitting 3DSTATE_LINE_STIPPLE, it's non-pipelined */
-      if (!old_cso ||
-          old_cso->line_stipple_factor != new_cso->line_stipple_factor ||
-          old_cso->line_stipple_pattern != new_cso->line_stipple_pattern) {
+      if (!old_cso || memcmp(old_cso->line_stipple, new_cso->line_stipple,
+                             sizeof(old_cso->line_stipple)) != 0) {
          ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
       }
 
@@ -1326,6 +1327,11 @@ iris_upload_render_state(struct iris_context *ice,
       iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
    }
 
+   if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      iris_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
+   }
+
    if (dirty & IRIS_DIRTY_SCISSOR) {
       uint32_t scissor_offset =
          iris_emit_state(batch, ice->state.scissors,
@@ -1342,15 +1348,6 @@ iris_upload_render_state(struct iris_context *ice,
          for (int i = 0; i < 32; i++) {
             poly.PatternRow[i] = ice->state.poly_stipple.stipple[i];
          }
-      }
-   }
-
-   if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
-      struct iris_rasterizer_state *cso = ice->state.cso_rast;
-      iris_emit_cmd(batch, GENX(3DSTATE_LINE_STIPPLE), line) {
-         line.LineStipplePattern = cso->line_stipple_pattern;
-         line.LineStippleInverseRepeatCount = 1.0f / cso->line_stipple_factor;
-         line.LineStippleRepeatCount = cso->line_stipple_factor;
       }
    }
 
