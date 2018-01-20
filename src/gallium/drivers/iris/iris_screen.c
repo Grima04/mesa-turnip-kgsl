@@ -498,6 +498,8 @@ iris_screen_create(int fd)
    if (!screen->bufmgr)
       return NULL;
 
+   brw_process_intel_debug_variable();
+
    bool hw_has_swizzling = false; // XXX: detect?
    isl_device_init(&screen->isl_dev, &screen->devinfo, hw_has_swizzling);
 
