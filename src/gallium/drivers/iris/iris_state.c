@@ -1439,8 +1439,10 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (1) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
-         vf.IndexedDrawCutIndexEnable = draw->primitive_restart;
-         vf.CutIndex = draw->restart_index;
+         if (draw->primitive_restart) {
+            vf.IndexedDrawCutIndexEnable = true;
+            vf.CutIndex = draw->restart_index;
+         }
       }
    }
 
