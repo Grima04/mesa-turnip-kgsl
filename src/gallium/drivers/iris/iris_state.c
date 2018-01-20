@@ -1445,7 +1445,7 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    // draw->index_size > 0
-   if (1) {
+   if (draw->index_size > 0) {
       struct iris_resource *res = (struct iris_resource *)draw->index.resource;
 
       assert(!draw->has_user_indices);
@@ -1457,24 +1457,24 @@ iris_upload_render_state(struct iris_context *ice,
          // XXX: gah, addresses :(  need two different combine address funcs
          // ib.BufferStartingAddress = res->bo;
       }
+   }
 
-      assert(!draw->indirect); // XXX: indirect support
+   assert(!draw->indirect); // XXX: indirect support
 
-      iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
-         prim.StartInstanceLocation = draw->start_instance;
-         prim.InstanceCount = draw->instance_count;
+   iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
+      prim.StartInstanceLocation = draw->start_instance;
+      prim.InstanceCount = draw->instance_count;
 
-         // XXX: this is probably bonkers.
-         prim.StartVertexLocation = draw->start;
+      // XXX: this is probably bonkers.
+      prim.StartVertexLocation = draw->start;
 
-         if (draw->index_size) {
-            prim.BaseVertexLocation += draw->index_bias;
-         } else {
-            prim.StartVertexLocation += draw->index_bias;
-         }
-
-         //prim.BaseVertexLocation = ...;
+      if (draw->index_size) {
+         prim.BaseVertexLocation += draw->index_bias;
+      } else {
+         prim.StartVertexLocation += draw->index_bias;
       }
+
+      //prim.BaseVertexLocation = ...;
    }
 #if 0
    l3 configuration
