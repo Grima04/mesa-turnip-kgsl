@@ -227,11 +227,10 @@ iris_compile_vs(struct iris_context *ice,
    /* The param and pull_param arrays will be freed by the shader cache. */
    ralloc_steal(NULL, prog_data->param);
    ralloc_steal(NULL, prog_data->pull_param);
-   //brw_upload_cache(&brw->cache, BRW_CACHE_VS_PROG,
-                    //key, sizeof(struct brw_vs_prog_key),
-                    //program, prog_data.base.base.program_size,
-                    //&prog_data, sizeof(prog_data),
-                    //&brw->vs.base.prog_offset, &brw->vs.base.prog_data);
+   iris_upload_cache(ice, IRIS_CACHE_VS, key, sizeof(*key), program,
+                     prog_data->program_size, prog_data, sizeof(vs_prog_data),
+                     &ice->shaders.prog_offset[MESA_SHADER_VERTEX],
+                     &ice->shaders.prog_data[MESA_SHADER_VERTEX]);
    ralloc_free(mem_ctx);
 
    return true;
@@ -248,6 +247,11 @@ iris_update_compiled_vs(struct iris_context *ice)
 {
    struct brw_vs_prog_key key;
    iris_populate_vs_key(ice, &key);
+
+   if (iris_search_cache(ice, IRIS_CACHE_VS, &key, sizeof(key), IRIS_DIRTY_VS,
+                         &ice->shaders.prog_offset[MESA_SHADER_VERTEX],
+                         &ice->shaders.prog_data[MESA_SHADER_VERTEX]))
+      return;
 
    UNUSED bool success =
       iris_compile_vs(ice, ice->shaders.progs[MESA_SHADER_VERTEX], &key);

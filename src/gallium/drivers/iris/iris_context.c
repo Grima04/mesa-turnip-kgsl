@@ -24,6 +24,7 @@
 #include <time.h>
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
+#include "util/ralloc.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
@@ -68,17 +69,19 @@ iris_set_debug_callback(struct pipe_context *ctx,
 static void
 iris_destroy_context(struct pipe_context *ctx)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
+
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
 
-   free(ctx);
+   ralloc_free(ice);
 }
 
 struct pipe_context *
 iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct iris_screen *screen = (struct iris_screen*)pscreen;
-   struct iris_context *ice = calloc(1, sizeof(struct iris_context));
+   struct iris_context *ice = rzalloc(NULL, struct iris_context);
 
    if (!ice)
       return NULL;
@@ -105,6 +108,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_resource_functions(ctx);
    iris_init_state_functions(ctx);
    iris_init_query_functions(ctx);
+
+   iris_init_program_cache(ice);
 
    iris_batch_init(&ice->render_batch, screen, &ice->dbg);
 

@@ -31,6 +31,7 @@ files_libiris = files(
   'iris_formats.c',
   'iris_pipe.h',
   'iris_program.c',
+  'iris_program_cache.c',
   'iris_query.c',
   'iris_resource.c',
   'iris_resource.h',

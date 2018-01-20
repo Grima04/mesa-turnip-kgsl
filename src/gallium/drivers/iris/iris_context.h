@@ -65,9 +65,22 @@ enum iris_dirty {
    IRIS_DIRTY_UNCOMPILED_GS            = (1ull << 25),
    IRIS_DIRTY_UNCOMPILED_FS            = (1ull << 26),
    IRIS_DIRTY_UNCOMPILED_CS            = (1ull << 27),
+   IRIS_DIRTY_VS                       = (1ull << 28),
+   IRIS_DIRTY_TCS                      = (1ull << 29),
+   IRIS_DIRTY_TES                      = (1ull << 30),
+   IRIS_DIRTY_GS                       = (1ull << 31),
+   IRIS_DIRTY_FS                       = (1ull << 32),
+   IRIS_DIRTY_CS                       = (1ull << 33),
 };
 
 struct iris_depth_stencil_alpha_state;
+
+struct iris_program_cache {
+   struct hash_table *table;
+   struct iris_bo *bo;
+   void *map;
+   uint32_t next_offset;
+};
 
 struct iris_context {
    struct pipe_context ctx;
@@ -77,7 +90,10 @@ struct iris_context {
    struct {
       struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
       struct brw_stage_prog_data *prog_data[MESA_SHADER_STAGES];
+      uint32_t *prog_offset[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
+
+      struct iris_program_cache cache;
    } shaders;
 
    /** The main batch for rendering */
@@ -133,4 +149,37 @@ void iris_update_compiled_shaders(struct iris_context *ice);
 
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
 
+enum iris_program_cache_id {
+   IRIS_CACHE_VS  = MESA_SHADER_VERTEX,
+   IRIS_CACHE_TCS = MESA_SHADER_TESS_CTRL,
+   IRIS_CACHE_TES = MESA_SHADER_TESS_EVAL,
+   IRIS_CACHE_GS  = MESA_SHADER_GEOMETRY,
+   IRIS_CACHE_FS  = MESA_SHADER_FRAGMENT,
+   IRIS_CACHE_CS  = MESA_SHADER_COMPUTE,
+   IRIS_CACHE_BLORP,
+};
+
+void iris_init_program_cache(struct iris_context *ice);
+void iris_destroy_program_cache(struct iris_context *ice);
+void iris_print_program_cache(struct iris_context *ice);
+bool iris_search_cache(struct iris_context *ice,
+                       enum iris_program_cache_id cache_id,
+                       const void *key,
+                       unsigned key_size,
+                       uint64_t dirty_flag,
+                       uint32_t *inout_assembly_offset,
+                       void *inout_prog_data);
+void iris_upload_cache(struct iris_context *ice,
+                       enum iris_program_cache_id cache_id,
+                       const void *key,
+                       unsigned key_size,
+                       const void *assembly,
+                       unsigned assembly_size,
+                       const void *prog_data,
+                       unsigned prog_data_size,
+                       uint32_t *out_assembly_offset,
+                       void *out_prog_data);
+const void *iris_find_previous_compile(struct iris_program_cache *cache,
+                                       enum iris_program_cache_id cache_id,
+                                       unsigned program_string_id);
 #endif
