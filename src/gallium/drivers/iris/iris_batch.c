@@ -524,9 +524,14 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       execbuf.flags |= I915_EXEC_FENCE_OUT;
    }
 
+#if 0
    int ret = drm_ioctl(batch->screen->fd, cmd, &execbuf);
    if (ret != 0)
       ret = -errno;
+#else
+   int ret = 0;
+   fprintf(stderr, "execbuf disabled for now\n");
+#endif
 
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
