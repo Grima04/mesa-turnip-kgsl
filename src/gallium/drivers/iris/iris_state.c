@@ -1163,6 +1163,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
    }
 
+   ice->state.cso_vertex_buffers = cso;
    ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
 }
 
