@@ -159,8 +159,6 @@ UNUSED static void pipe_asserts()
 static unsigned
 translate_prim_type(enum pipe_prim_type prim, uint8_t verts_per_patch)
 {
-   assert(prim == PIPE_PRIM_PATCHES || verts_per_patch == 0);
-
    static const unsigned map[] = {
       [PIPE_PRIM_POINTS]                   = _3DPRIM_POINTLIST,
       [PIPE_PRIM_LINES]                    = _3DPRIM_LINELIST,
@@ -179,7 +177,7 @@ translate_prim_type(enum pipe_prim_type prim, uint8_t verts_per_patch)
       [PIPE_PRIM_PATCHES]                  = _3DPRIM_PATCHLIST_1 - 1,
    };
 
-   return map[prim] + verts_per_patch;
+   return map[prim] + (prim == PIPE_PRIM_PATCHES ? verts_per_patch : 0);
 }
 
 static unsigned
