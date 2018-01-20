@@ -467,17 +467,16 @@ iris_getparam_integer(struct iris_screen *screen, int param)
 static void
 iris_shader_debug_log(void *data, const char *fmt, ...)
 {
-   // XXX: is data ice?
-   struct iris_context *ice = data;
-   struct pipe_debug_callback *dbg = &ice->dbg;
-   unsigned msg_id = 0;
+   struct pipe_debug_callback *dbg = data;
+   unsigned id = 0;
    va_list args;
 
    if (!dbg->debug_message)
       return;
 
    va_start(args, fmt);
-   dbg->debug_message(ice, &msg_id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
+
+   dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
    va_end(args);
 }
 

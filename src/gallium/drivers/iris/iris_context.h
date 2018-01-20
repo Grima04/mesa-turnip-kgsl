@@ -74,7 +74,11 @@ struct iris_context {
 
    struct pipe_debug_callback dbg;
 
-   struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
+   struct {
+      struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
+      struct brw_stage_prog_data *prog_data[MESA_SHADER_STAGES];
+      struct brw_vue_map *last_vue_map;
+   } shaders;
 
    /** The main batch for rendering */
    struct iris_batch render_batch;
