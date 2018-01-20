@@ -44,8 +44,6 @@ struct iris_batch_buffer {
    void *map;
    void *map_next;
 
-   unsigned flush_threshold;
-
    struct iris_bo *partial_bo;
    unsigned partial_bytes;
 
