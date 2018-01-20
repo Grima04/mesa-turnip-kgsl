@@ -483,7 +483,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->flatshade = state->flatshade;
    cso->light_twoside = state->light_twoside;
    cso->rasterizer_discard = state->rasterizer_discard;
-   // for 3DSTATE_MULTISAMPLE, if we want it.
    cso->half_pixel_center = state->half_pixel_center;
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
@@ -1398,7 +1397,8 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
          ms.PixelLocation =
             ice->state.cso_rast->half_pixel_center ? CENTER : UL_CORNER;
-         ms.NumberofMultisamples = ffs(ice->state.framebuffer.samples) - 1;
+         if (ice->state.framebuffer.samples > 0)
+            ms.NumberofMultisamples = ffs(ice->state.framebuffer.samples) - 1;
       }
    }
 
