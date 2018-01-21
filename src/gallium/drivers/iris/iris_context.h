@@ -71,6 +71,7 @@ enum iris_dirty {
    IRIS_DIRTY_GS                       = (1ull << 31),
    IRIS_DIRTY_FS                       = (1ull << 32),
    IRIS_DIRTY_CS                       = (1ull << 33),
+   IRIS_DIRTY_STATE_BASE_ADDRESS       = (1ull << 34),
 };
 
 struct iris_depth_stencil_alpha_state;
@@ -140,6 +141,9 @@ void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_state_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 
+void iris_setup_state_base_address(struct iris_context *ice,
+                                   struct iris_batch *batch,
+                                   struct iris_bo *instruction_bo);
 void iris_upload_render_state(struct iris_context *ice,
                               struct iris_batch *batch,
                               const struct pipe_draw_info *draw);

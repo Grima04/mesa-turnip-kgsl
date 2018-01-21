@@ -248,6 +248,12 @@ translate_fill_mode(unsigned pipe_polymode)
    return map[pipe_polymode];
 }
 
+static struct iris_address
+ro_bo(struct brw_bo *bo, uint32_t offset)
+{
+   return (struct iris_address) { .bo = bo, .offset = offset };
+}
+
 static void
 iris_upload_initial_gpu_state(struct iris_context *ice,
                               struct iris_batch *batch)
@@ -1258,6 +1264,52 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
                                struct pipe_stream_output_target **targets,
                                const unsigned *offsets)
 {
+}
+
+void
+iris_setup_state_base_address(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              struct iris_bo *instruction_bo)
+{
+   if (ice->state.dirty & IRIS_DIRTY_STATE_BASE_ADDRESS)
+      ice->state.dirty &= ~IRIS_DIRTY_STATE_BASE_ADDRESS;
+      
+   /* XXX: PIPE_CONTROLs */
+
+#if 0
+   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
+      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
+      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
+      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
+      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
+      sba.InstructionMemoryObjectControlState             = MOCS_WB;
+      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
+
+      sba.GeneralStateBaseAddressModifyEnable   = true;
+      sba.SurfaceStateBaseAddressModifyEnable   = true;
+      sba.DynamicStateBaseAddressModifyEnable   = true;
+      sba.IndirectObjectBaseAddressModifyEnable = true;
+      sba.InstructionBaseAddressModifyEnable    = true;
+      sba.GeneralStateBufferSizeModifyEnable    = true;
+      sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+      sba.IndirectObjectBufferSizeModifyEnable  = true;
+      sba.InstructionBuffersizeModifyEnable     = true;
+
+      sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
+      sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
+      sba.IndirectObjectBaseAddress = 0;
+      sba.InstructionBaseAddress = ro_bo(instruction_bo, 0);
+      sba.BindlessSurfaceStateBaseAddress = 0;
+
+      sba.GeneralStateBufferSize = 0xfffff000;
+      sba.DynamicStateBufferSize = ALIGN(MAX_STATE_SIZE, 4096);
+      sba.IndirectObjectBufferSize = 0xfffff000;
+      sba.InstructionBufferSize = ALIGN(ice->shaders.cache.bo->size, 4096);
+      sba.BindlessSurfaceStateSize = 0;
+   }
+#endif
 }
 
 void
