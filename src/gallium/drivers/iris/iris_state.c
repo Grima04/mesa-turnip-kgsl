@@ -82,29 +82,33 @@ __gen_combine_address(struct iris_batch *batch, void *location,
    iris_require_command_space(batch, 4 * __genxml_cmd_length(cmd)); \
    iris_pack_command(cmd, batch->cmdbuf.map_next, name)
 
-#define iris_emit_merge(batch, dwords0, dwords1) \
+#define iris_emit_merge(batch, dwords0, dwords1, num_dwords)            \
    do {                                                                 \
-      STATIC_ASSERT(ARRAY_SIZE(dwords0) == ARRAY_SIZE(dwords1));        \
-                                                                        \
-      iris_require_command_space(batch, ARRAY_SIZE(dwords0));           \
+      iris_require_command_space(batch, 4 * num_dwords);                \
       uint32_t *dw = batch->cmdbuf.map_next;                            \
-      for (uint32_t i = 0; i < ARRAY_SIZE(dwords0); i++)                \
+      for (uint32_t i = 0; i < num_dwords; i++)                         \
          dw[i] = (dwords0)[i] | (dwords1)[i];                           \
-      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords0) * 4));   \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));                \
    } while (0)
 
-#define iris_emit_with_address(batch, dwords, addr_field, value) \
+#define iris_emit_with_addr(batch, dwords, num_dw, addr_field, addr)    \
    do {                                                                 \
-      STATIC_ASSERT((GENX(addr_field) % 32) == 0);                      \
-      iris_require_command_space(batch, ARRAY_SIZE(dwords));            \
+      STATIC_ASSERT((GENX(addr_field) % 64) == 0);                      \
+      assert(num_dw <= ARRAY_SIZE(dwords));                             \
+      iris_require_command_space(batch, 4 * num_dw);                    \
+      int addr_idx = GENX(addr_field) / 32;                             \
       uint32_t *dw = batch->cmdbuf.map_next;                            \
-      for (uint32_t i = 0; i < ARRAY_SIZE(dwords); i++) {               \
-         if (i == GENX(addr_field) % 32)                                \
-            dw[i] = (dwords)[i] | value;                                \
-         else                                                           \
-            dw[i] = (dwords)[i];                                        \
+      for (uint32_t i = 0; i < addr_idx; i++) {                         \
+         dw[i] = (dwords)[i];                                           \
       }                                                                 \
-      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords) * 4));    \
+      uint64_t *qw = (uint64_t *) &dw[addr_idx];                        \
+      qw = iris_batch_reloc(batch, qw - batch->cmdbuf.map, addr.bo,     \
+                            addr.offset + (dwords)[addr_idx + 1],       \
+                            addr.reloc_flags);                          \
+      for (uint32_t i = addr_idx + 1; i < num_dw; i++) {                \
+         dw[i] = (dwords)[i];                                           \
+      }                                                                 \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dw * 4));                \
    } while (0)
 
 #include "genxml/genX_pack.h"
@@ -1142,7 +1146,7 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 
 struct iris_vertex_buffer_state {
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-   struct iris_bo *bos[33];
+   struct iris_address bos[33];
    unsigned num_buffers;
 };
 
@@ -1151,7 +1155,7 @@ iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
 {
    if (cso) {
       for (unsigned i = 0; i < cso->num_buffers; i++)
-         iris_bo_unreference(cso->bos[i]);
+         iris_bo_unreference(cso->bos[i].bo);
       free(cso);
    }
 }
@@ -1185,9 +1189,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    for (unsigned i = 0; i < count; i++) {
       assert(!buffers[i].is_user_buffer);
 
-      struct iris_resource *res = (void *) buffers->buffer.resource;
+      struct iris_resource *res = (void *) buffers[i].buffer.resource;
       iris_bo_reference(res->bo);
-      cso->bos[i] = res->bo;
+      cso->bos[i] = ro_bo(res->bo, buffers[i].buffer_offset);
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
          vb.VertexBufferIndex = start_slot + i;
@@ -1366,7 +1370,7 @@ iris_upload_render_state(struct iris_context *ice,
          wmds.StencilReferenceValue = p_stencil_refs->ref_value[0];
          wmds.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
       }
-      iris_emit_merge(batch, cso->wmds, stencil_refs);
+      iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
    }
 
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
@@ -1406,7 +1410,7 @@ iris_upload_render_state(struct iris_context *ice,
          //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
          // also userclip stuffs...
       }
-      iris_emit_merge(batch, cso->clip, dynamic_clip);
+      iris_emit_merge(batch, cso->clip, dynamic_clip, ARRAY_SIZE(cso->clip));
    }
 
    if (dirty & IRIS_DIRTY_RASTER) {
@@ -1462,9 +1466,20 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
-      // XXX: address!!!
-      iris_batch_emit(batch, cso->vertex_buffers,
-                      sizeof(uint32_t) * (4 * cso->num_buffers + 1));
+
+      uint32_t addrs[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
+      uint32_t *vb_pack_dest = &addrs[1];
+      addrs[0] = 0;
+
+      for (unsigned i = 0; i < cso->num_buffers; i++) {
+         iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
+            vb.BufferStartingAddress = cso->bos[i];
+         }
+         vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
+      }
+
+      iris_emit_merge(batch, cso->vertex_buffers, addrs,
+                      4 * cso->num_buffers + 1);
    }
 
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
