@@ -90,7 +90,7 @@ struct iris_context {
    struct {
       struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
       struct brw_stage_prog_data *prog_data[MESA_SHADER_STAGES];
-      uint32_t *prog_offset[MESA_SHADER_STAGES];
+      uint32_t prog_offset[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
 
       struct iris_program_cache cache;

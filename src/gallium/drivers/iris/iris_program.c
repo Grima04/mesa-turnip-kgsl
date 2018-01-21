@@ -346,7 +346,10 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct brw_wm_prog_key key;
    iris_populate_fs_key(ice, &key);
 
-   return; // XXX: need to fix FS compiles
+   if (iris_search_cache(ice, IRIS_CACHE_FS, &key, sizeof(key), IRIS_DIRTY_FS,
+                         &ice->shaders.prog_offset[MESA_SHADER_FRAGMENT],
+                         &ice->shaders.prog_data[MESA_SHADER_FRAGMENT]))
+      return;
 
    UNUSED bool success =
       iris_compile_fs(ice, ice->shaders.progs[MESA_SHADER_FRAGMENT], &key,
@@ -356,18 +359,17 @@ iris_update_compiled_fs(struct iris_context *ice)
 static void
 update_last_vue_map(struct iris_context *ice)
 {
-#if 0
-   struct brw_vue_prog_data *vue_prog_data;
+   struct brw_stage_prog_data *prog_data;
 
    if (ice->shaders.progs[MESA_SHADER_GEOMETRY])
-      vue_prog_data = brw_vue_prog_data(brw->gs.base.prog_data);
+      prog_data = ice->shaders.prog_data[MESA_SHADER_GEOMETRY];
    else if (ice->shaders.progs[MESA_SHADER_TESS_EVAL])
-      vue_prog_data = brw_vue_prog_data(brw->tes.base.prog_data);
+      prog_data = ice->shaders.prog_data[MESA_SHADER_TESS_EVAL];
    else
-      vue_prog_data = brw_vue_prog_data(brw->vs.base.prog_data);
+      prog_data = ice->shaders.prog_data[MESA_SHADER_VERTEX];
 
-   brw->vue_map_geom_out = vue_prog_data->vue_map;
-#endif
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   ice->shaders.last_vue_map = &vue_prog_data->vue_map;
 }
 
 void
