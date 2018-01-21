@@ -19,10 +19,15 @@
 # SOFTWARE.
 
 clover_cpp_args = []
+clover_spirv_cpp_args = []
 clover_incs = [inc_include, inc_src, inc_gallium, inc_gallium_aux]
 
 if with_opencl_icd
   clover_cpp_args += '-DHAVE_CLOVER_ICD'
+endif
+
+if with_opencl_spirv
+  clover_spirv_cpp_args += '-DHAVE_CLOVER_SPIRV'
 endif
 
 libclllvm = static_library(
@@ -40,7 +45,7 @@ libclllvm = static_library(
   ),
   include_directories : clover_incs,
   cpp_args : [
-    cpp_vis_args,
+    clover_spirv_cpp_args, cpp_vis_args,
     '-DLIBCLC_INCLUDEDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('includedir')),
     '-DLIBCLC_LIBEXECDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('libexecdir')),
     '-DCLANG_RESOURCE_DIR="@0@"'.format(join_paths(
@@ -111,7 +116,7 @@ libclover = static_library(
   'clover',
   [clover_files, sha1_h],
   include_directories : clover_incs,
-  cpp_args : [clover_cpp_args, cpp_vis_args],
+  cpp_args : [clover_spirv_cpp_args, clover_cpp_args, cpp_vis_args],
   link_with : [libclllvm],
   override_options : clover_cpp_std,
 )

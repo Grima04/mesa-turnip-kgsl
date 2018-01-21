@@ -144,6 +144,12 @@ option(
   description : 'build gallium "clover" OpenCL state tracker.',
 )
 option(
+  'opencl-spirv',
+  type : 'boolean',
+  value : false,
+  description : 'build gallium "clover" OpenCL state tracker with SPIR-V binary support.',
+)
+option(
   'd3d-drivers-path',
   type : 'string',
   value : '',
