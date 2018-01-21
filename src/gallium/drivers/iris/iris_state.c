@@ -45,14 +45,18 @@
 #include "iris_pipe.h"
 #include "iris_resource.h"
 
-#define __gen_address_type unsigned
-#define __gen_user_data void
+#define __gen_address_type struct iris_address
+#define __gen_user_data struct iris_batch
 
 static uint64_t
-__gen_combine_address(void *user_data, void *location,
-                      unsigned address, uint32_t delta)
+__gen_combine_address(struct iris_batch *batch, void *location,
+                      struct iris_address addr, uint32_t delta)
 {
-   return delta;
+   if (addr.bo == NULL)
+      return addr.offset + delta;
+
+   return iris_batch_reloc(batch, location - batch->cmdbuf.map, addr.bo,
+                           addr.offset + delta, addr.reloc_flags);
 }
 
 #define __genxml_cmd_length(cmd) cmd ## _length
@@ -249,7 +253,7 @@ translate_fill_mode(unsigned pipe_polymode)
 }
 
 static struct iris_address
-ro_bo(struct brw_bo *bo, uint32_t offset)
+ro_bo(struct iris_bo *bo, uint32_t offset)
 {
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
