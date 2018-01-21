@@ -93,6 +93,20 @@ __gen_combine_address(struct iris_batch *batch, void *location,
       VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords0) * 4));   \
    } while (0)
 
+#define iris_emit_with_address(batch, dwords, addr_field, value) \
+   do {                                                                 \
+      STATIC_ASSERT((GENX(addr_field) % 32) == 0);                      \
+      iris_require_command_space(batch, ARRAY_SIZE(dwords));            \
+      uint32_t *dw = batch->cmdbuf.map_next;                            \
+      for (uint32_t i = 0; i < ARRAY_SIZE(dwords); i++) {               \
+         if (i == GENX(addr_field) % 32)                                \
+            dw[i] = (dwords)[i] | value;                                \
+         else                                                           \
+            dw[i] = (dwords)[i];                                        \
+      }                                                                 \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords) * 4));    \
+   } while (0)
+
 #include "genxml/genX_pack.h"
 #include "genxml/gen_macros.h"
 
@@ -1128,8 +1142,19 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 
 struct iris_vertex_buffer_state {
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-   unsigned length; /* length of 3DSTATE_VERTEX_BUFFERS in DWords */
+   struct iris_bo *bos[33];
+   unsigned num_buffers;
 };
+
+static void
+iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
+{
+   if (cso) {
+      for (unsigned i = 0; i < cso->num_buffers; i++)
+         iris_bo_unreference(cso->bos[i]);
+      free(cso);
+   }
+}
 
 static void
 iris_set_vertex_buffers(struct pipe_context *ctx,
@@ -1140,12 +1165,6 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    struct iris_vertex_buffer_state *cso =
       malloc(sizeof(struct iris_vertex_buffer_state));
 
-   cso->length = 4 * count - 1;
-
-   iris_pack_state(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
-      vb.DWordLength = cso->length;
-   }
-
    /* If there are no buffers, do nothing.  We can leave the stale
     * 3DSTATE_VERTEX_BUFFERS in place - as long as there are no vertex
     * elements that point to them, it should be fine.
@@ -1153,10 +1172,22 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    if (!buffers)
       return;
 
+   iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
+
+   cso->num_buffers = count;
+
+   iris_pack_state(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
+      vb.DWordLength = 4 * cso->num_buffers - 1;
+   }
+
    uint32_t *vb_pack_dest = &cso->vertex_buffers[1];
 
    for (unsigned i = 0; i < count; i++) {
       assert(!buffers[i].is_user_buffer);
+
+      struct iris_resource *res = (void *) buffers->buffer.resource;
+      iris_bo_reference(res->bo);
+      cso->bos[i] = res->bo;
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
          vb.VertexBufferIndex = start_slot + i;
@@ -1433,7 +1464,7 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
       // XXX: address!!!
       iris_batch_emit(batch, cso->vertex_buffers,
-                      sizeof(uint32_t) * cso->length);
+                      sizeof(uint32_t) * (4 * cso->num_buffers + 1));
    }
 
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
