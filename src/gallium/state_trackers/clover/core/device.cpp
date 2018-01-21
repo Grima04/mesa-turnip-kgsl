@@ -278,3 +278,17 @@ device::supports_ir(enum pipe_shader_ir ir) const {
    return pipe->get_shader_param(pipe, PIPE_SHADER_COMPUTE,
                                  PIPE_SHADER_CAP_SUPPORTED_IRS) & (1 << ir);
 }
+
+std::string
+device::supported_extensions() const {
+   return
+      "cl_khr_byte_addressable_store"
+      " cl_khr_global_int32_base_atomics"
+      " cl_khr_global_int32_extended_atomics"
+      " cl_khr_local_int32_base_atomics"
+      " cl_khr_local_int32_extended_atomics"
+      + std::string(has_int64_atomics() ? " cl_khr_int64_base_atomics" : "")
+      + std::string(has_int64_atomics() ? " cl_khr_int64_extended_atomics" : "")
+      + std::string(has_doubles() ? " cl_khr_fp64" : "")
+      + std::string(has_halves() ? " cl_khr_fp16" : "");
+}
