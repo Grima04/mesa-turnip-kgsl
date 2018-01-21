@@ -1284,8 +1284,9 @@ iris_setup_state_base_address(struct iris_context *ice,
       
    /* XXX: PIPE_CONTROLs */
 
-#if 0
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+   #if 0
+   // XXX: MOCS is stupid for this.
       sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
       sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
       sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
@@ -1293,6 +1294,7 @@ iris_setup_state_base_address(struct iris_context *ice,
       sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
       sba.InstructionMemoryObjectControlState             = MOCS_WB;
       sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
+   #endif
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
       sba.SurfaceStateBaseAddressModifyEnable   = true;
@@ -1307,9 +1309,7 @@ iris_setup_state_base_address(struct iris_context *ice,
 
       sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
       sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
-      sba.IndirectObjectBaseAddress = 0;
-      sba.InstructionBaseAddress = ro_bo(instruction_bo, 0);
-      sba.BindlessSurfaceStateBaseAddress = 0;
+      sba.InstructionBaseAddress =  ro_bo(instruction_bo, 0);
 
       sba.GeneralStateBufferSize = 0xfffff000;
       sba.DynamicStateBufferSize = ALIGN(MAX_STATE_SIZE, 4096);
@@ -1317,7 +1317,6 @@ iris_setup_state_base_address(struct iris_context *ice,
       sba.InstructionBufferSize = ALIGN(ice->shaders.cache.bo->size, 4096);
       sba.BindlessSurfaceStateSize = 0;
    }
-#endif
 }
 
 void
