@@ -63,6 +63,10 @@ iris_create_shader_state(struct pipe_context *ctx,
       return NULL;
 
    nir = brw_preprocess_nir(screen->compiler, nir);
+
+   nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
+                            type_size_scalar_bytes);
+   nir_lower_io(nir, nir_var_uniform, type_size_scalar_bytes, 0);
    //NIR_PASS_V(nir, brw_nir_lower_uniforms, true);
 
    ish->program_id = get_new_program_id(screen);
