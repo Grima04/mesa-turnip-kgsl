@@ -1271,8 +1271,12 @@ iris_setup_state_base_address(struct iris_context *ice,
                               struct iris_batch *batch,
                               struct iris_bo *instruction_bo)
 {
-   if (ice->state.dirty & IRIS_DIRTY_STATE_BASE_ADDRESS)
-      ice->state.dirty &= ~IRIS_DIRTY_STATE_BASE_ADDRESS;
+   if (!(ice->state.dirty & IRIS_DIRTY_STATE_BASE_ADDRESS))
+      return;
+
+   //iris_batchbuffer_flush(...)
+
+   ice->state.dirty &= ~IRIS_DIRTY_STATE_BASE_ADDRESS;
       
    /* XXX: PIPE_CONTROLs */
 

@@ -160,6 +160,8 @@ recreate_cache_bo(struct iris_context *ice, uint32_t size)
       iris_bo_unreference(old_bo);
       iris_bo_unmap(old_bo);
    }
+
+   ice->state.dirty |= IRIS_DIRTY_STATE_BASE_ADDRESS;
 }
 
 const void *
