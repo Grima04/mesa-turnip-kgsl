@@ -108,12 +108,16 @@ create_batch_buffer(struct iris_bufmgr *bufmgr,
 }
 
 void
-iris_batch_init(struct iris_batch *batch,
+iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
-                struct pipe_debug_callback *dbg)
+                struct pipe_debug_callback *dbg,
+                uint8_t ring)
 {
    batch->screen = screen;
    batch->dbg = dbg;
+
+   assert((ring & ~I915_EXEC_RING_MASK) == 0);
+   batch->ring = ring;
 
    init_reloc_list(&batch->cmdbuf.relocs, 256);
    init_reloc_list(&batch->statebuf.relocs, 256);
@@ -504,10 +508,10 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       .buffer_count = batch->exec_count,
       .batch_start_offset = 0,
       .batch_len = buffer_bytes_used(&batch->cmdbuf),
-      .flags = I915_EXEC_NO_RELOC |
+      .flags = batch->ring |
+               I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
-               I915_EXEC_HANDLE_LUT |
-               I915_EXEC_RENDER,
+               I915_EXEC_HANDLE_LUT,
       .rsvd1 = batch->hw_ctx_id, /* rsvd1 is actually the context ID */
    };
 

@@ -28,6 +28,7 @@
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
+#include "i915_drm.h"
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
@@ -111,7 +112,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    iris_init_program_cache(ice);
 
-   iris_batch_init(&ice->render_batch, screen, &ice->dbg);
+   iris_init_batch(&ice->render_batch, screen, &ice->dbg, I915_EXEC_RENDER);
 
    return ctx;
 }

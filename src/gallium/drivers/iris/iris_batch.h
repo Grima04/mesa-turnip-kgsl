@@ -64,6 +64,9 @@ struct iris_batch {
 
    uint32_t hw_ctx_id;
 
+   /** Which ring this batch targets - a I915_EXEC_RING_MASK value */
+   uint8_t ring;
+
    bool no_wrap;
 
    /** The validation list */
@@ -79,9 +82,10 @@ struct iris_batch {
    struct hash_table *state_sizes;
 };
 
-void iris_batch_init(struct iris_batch *batch,
+void iris_init_batch(struct iris_batch *batch,
                      struct iris_screen *screen,
-                     struct pipe_debug_callback *dbg);
+                     struct pipe_debug_callback *dbg,
+                     uint8_t ring);
 void iris_batch_free(struct iris_batch *batch);
 void iris_require_command_space(struct iris_batch *batch, unsigned size);
 void iris_require_state_space(struct iris_batch *batch, unsigned size);
