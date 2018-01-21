@@ -116,7 +116,9 @@ iris_init_batch(struct iris_batch *batch,
    batch->screen = screen;
    batch->dbg = dbg;
 
+   /* ring should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
    assert((ring & ~I915_EXEC_RING_MASK) == 0);
+   assert(util_bitcount(ring) == 1);
    batch->ring = ring;
 
    init_reloc_list(&batch->cmdbuf.relocs, 256);
@@ -428,28 +430,6 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 }
 
 /**
- * Called when starting a new batch buffer.
- */
-static void
-iris_new_batch(struct iris_batch *batch)
-{
-   /* Unreference any BOs held by the previous batch, and reset counts. */
-   for (int i = 0; i < batch->exec_count; i++) {
-      iris_bo_unreference(batch->exec_bos[i]);
-      batch->exec_bos[i] = NULL;
-   }
-   batch->cmdbuf.relocs.reloc_count = 0;
-   batch->statebuf.relocs.reloc_count = 0;
-   batch->exec_count = 0;
-   batch->aperture_space = 0;
-
-   iris_bo_unreference(batch->statebuf.bo);
-
-   /* Create a new batchbuffer and reset the associated state: */
-   iris_batch_reset_and_clear_render_cache(batch);
-}
-
-/**
  * Called from iris_batch_flush before emitting MI_BATCHBUFFER_END and
  * sending it off.
  *
@@ -609,8 +589,20 @@ _iris_batch_flush_fence(struct iris_batch *batch,
       iris_bo_wait_rendering(batch->cmdbuf.bo);
    }
 
+   /* Clean up after the batch we submitted and prepare for a new one. */
+   for (int i = 0; i < batch->exec_count; i++) {
+      iris_bo_unreference(batch->exec_bos[i]);
+      batch->exec_bos[i] = NULL;
+   }
+   batch->cmdbuf.relocs.reloc_count = 0;
+   batch->statebuf.relocs.reloc_count = 0;
+   batch->exec_count = 0;
+   batch->aperture_space = 0;
+
+   iris_bo_unreference(batch->statebuf.bo);
+
    /* Start a new batch buffer. */
-   iris_new_batch(batch);
+   iris_batch_reset_and_clear_render_cache(batch);
 
    return 0;
 }
