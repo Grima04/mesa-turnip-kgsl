@@ -421,6 +421,7 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 {
    iris_require_command_space(batch, size);
    memcpy(batch->cmdbuf.map_next, data, size);
+   batch->cmdbuf.map_next += size;
 }
 
 /**
