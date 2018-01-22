@@ -38,6 +38,10 @@ iris_flush(struct pipe_context *ctx,
            struct pipe_fence_handle **fence,
            unsigned flags)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
+
+   iris_batch_flush(&ice->render_batch);
+
    if (fence)
       *fence = NULL;
 }
