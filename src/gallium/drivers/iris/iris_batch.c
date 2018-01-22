@@ -690,7 +690,7 @@ iris_alloc_state(struct iris_batch *batch,
                  int size, int alignment,
                  uint32_t *out_offset)
 {
-   assert(size < batch->cmdbuf.bo->size);
+   assert(size < batch->statebuf.bo->size);
 
    const unsigned existing_bytes = buffer_bytes_used(&batch->statebuf);
    unsigned aligned_size =
