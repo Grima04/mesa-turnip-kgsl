@@ -923,15 +923,14 @@ static void
 iris_set_scissor_states(struct pipe_context *ctx,
                         unsigned start_slot,
                         unsigned num_scissors,
-                        const struct pipe_scissor_state *state)
+                        const struct pipe_scissor_state *states)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   // XXX: start_slot
    ice->state.num_scissors = num_scissors;
 
-   for (unsigned i = start_slot; i < start_slot + num_scissors; i++) {
-      ice->state.scissors[i] = *state;
+   for (unsigned i = 0; i < num_scissors; i++) {
+      ice->state.scissors[start_slot + i] = states[i];
    }
 
    ice->state.dirty |= IRIS_DIRTY_SCISSOR_RECT;
@@ -1049,6 +1048,7 @@ iris_set_viewport_states(struct pipe_context *ctx,
    struct iris_viewport_state *cso =
       malloc(sizeof(struct iris_viewport_state));
 
+   // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
    for (unsigned i = start_slot; i < start_slot + num_viewports; i++) {
       float x_extent = extent_from_matrix(&state[i], 0);
       float y_extent = extent_from_matrix(&state[i], 1);
