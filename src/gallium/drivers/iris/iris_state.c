@@ -1498,8 +1498,8 @@ iris_upload_render_state(struct iris_context *ice,
       iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
                       (1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)));
       for (int i = 0; i < cso->count; i++) {
-         iris_batch_emit(batch, cso->vf_instancing[i],
-                         sizeof(cso->vf_instancing[0]));
+         iris_batch_emit(batch, cso->vf_instancing[i], sizeof(uint32_t) *
+                         (cso->count * GENX(3DSTATE_VF_INSTANCING_length)));
       }
       for (int i = 0; i < cso->count; i++) {
          /* TODO: vertexid, instanceid support */
