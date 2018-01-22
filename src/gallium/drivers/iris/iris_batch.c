@@ -25,6 +25,7 @@
 #include "iris_batch.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
+#include "common/gen_decoder.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -47,6 +48,8 @@
  */
 #define BATCH_SZ (20 * 1024)
 #define STATE_SZ (18 * 1024)
+
+static void decode_batch(struct iris_batch *batch);
 
 static void
 iris_batch_reset(struct iris_batch *batch);
@@ -326,13 +329,13 @@ grow_buffer(struct iris_batch *batch,
     *
     * Consider this scenario:
     *
-    * 1. Somebody calls brw_state_batch() to get a region of memory, and
-    *    and then creates a brw_address pointing to brw->batch.state.bo.
-    * 2. They then call brw_state_batch() a second time, which happens to
+    * 1. Somebody calls iris_state_batch() to get a region of memory, and
+    *    and then creates a iris_address pointing to iris->batch.state.bo.
+    * 2. They then call iris_state_batch() a second time, which happens to
     *    grow and replace the state buffer.  They then try to emit a
     *    relocation to their first section of memory.
     *
-    * If we replace the brw->batch.state.bo pointer at step 2, we would
+    * If we replace the iris->batch.state.bo pointer at step 2, we would
     * break the address created in step 1.  They'd have a pointer to the
     * old destroyed BO.  Emitting a relocation would add this dead BO to
     * the validation list...causing /both/ statebuffers to be in the list,
@@ -341,18 +344,18 @@ grow_buffer(struct iris_batch *batch,
     * This is not a contrived case - BLORP vertex data upload hits this.
     *
     * There are worse scenarios too.  Fences for GL sync objects reference
-    * brw->batch.batch.bo.  If we replaced the batch pointer when growing,
+    * iris->batch.batch.bo.  If we replaced the batch pointer when growing,
     * we'd need to chase down every fence and update it to point to the
     * new BO.  Otherwise, it would refer to a "batch" that never actually
     * gets submitted, and would fail to trigger.
     *
     * To work around both of these issues, we transmutate the buffers in
-    * place, making the existing struct brw_bo represent the new buffer,
+    * place, making the existing struct iris_bo represent the new buffer,
     * and "new_bo" represent the old BO.  This is highly unusual, but it
     * seems like a necessary evil.
     *
     * We also defer the memcpy of the existing batch's contents.  Callers
-    * may make multiple brw_state_batch calls, and retain pointers to the
+    * may make multiple iris_state_batch calls, and retain pointers to the
     * old BO's map.  We'll perform the memcpy in finish_growing_bo() when
     * we finally submit the batch, at which point we've finished uploading
     * state, and nobody should have any old references anymore.
@@ -567,12 +570,12 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    if (ret < 0)
       return ret;
 
-   //throttle(brw);
+   //throttle(iris);
 
-   //if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
-      //do_batch_dump(brw);
+   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
+      decode_batch(batch);
 
-   //if (brw->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
+   //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
       //iris_check_for_reset(ice);
 
    if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
@@ -718,4 +721,10 @@ iris_emit_state(struct iris_batch *batch,
    void *dest = iris_alloc_state(batch, size, alignment, &out_offset);
    memcpy(dest, data, size);
    return out_offset;
+}
+
+static void
+decode_batch(struct iris_batch *batch)
+{
+   // XXX: decode the batch
 }
