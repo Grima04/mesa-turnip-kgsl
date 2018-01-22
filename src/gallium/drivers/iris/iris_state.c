@@ -64,6 +64,15 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #define __genxml_cmd_header(cmd) cmd ## _header
 #define __genxml_cmd_pack(cmd) cmd ## _pack
 
+static void *
+get_command_space(struct iris_batch *batch, unsigned bytes)
+{
+   iris_require_command_space(batch, bytes);
+   void *map = batch->cmdbuf.map_next;
+   batch->cmdbuf.map_next += bytes;
+   return map;
+}
+
 #define iris_pack_command(cmd, dst, name)                         \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
@@ -79,25 +88,22 @@ __gen_combine_address(struct iris_batch *batch, void *location,
         _dst = NULL)
 
 #define iris_emit_cmd(batch, cmd, name) \
-   iris_require_command_space(batch, 4 * __genxml_cmd_length(cmd)); \
-   iris_pack_command(cmd, batch->cmdbuf.map_next, name)
+   iris_pack_command(cmd, get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
 
-#define iris_emit_merge(batch, dwords0, dwords1, num_dwords)            \
-   do {                                                                 \
-      iris_require_command_space(batch, 4 * num_dwords);                \
-      uint32_t *dw = batch->cmdbuf.map_next;                            \
-      for (uint32_t i = 0; i < num_dwords; i++)                         \
-         dw[i] = (dwords0)[i] | (dwords1)[i];                           \
-      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));                \
+#define iris_emit_merge(batch, dwords0, dwords1, num_dwords)   \
+   do {                                                        \
+      uint32_t *dw = get_command_space(batch, 4 * num_dwords); \
+      for (uint32_t i = 0; i < num_dwords; i++)                \
+         dw[i] = (dwords0)[i] | (dwords1)[i];                  \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));       \
    } while (0)
 
 #define iris_emit_with_addr(batch, dwords, num_dw, addr_field, addr)    \
    do {                                                                 \
       STATIC_ASSERT((GENX(addr_field) % 64) == 0);                      \
       assert(num_dw <= ARRAY_SIZE(dwords));                             \
-      iris_require_command_space(batch, 4 * num_dw);                    \
       int addr_idx = GENX(addr_field) / 32;                             \
-      uint32_t *dw = batch->cmdbuf.map_next;                            \
+      uint32_t *dw = get_command_space(batch, 4 * num_dw);              \
       for (uint32_t i = 0; i < addr_idx; i++) {                         \
          dw[i] = (dwords)[i];                                           \
       }                                                                 \
