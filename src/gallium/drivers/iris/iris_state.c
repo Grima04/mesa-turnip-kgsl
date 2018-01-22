@@ -1645,7 +1645,7 @@ iris_upload_render_state(struct iris_context *ice,
 }
 
 static void
-iris_bind_state(struct pipe_context *ctx, void *state)
+iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
 }
 
@@ -1679,7 +1679,7 @@ iris_init_state(struct iris_context *ice)
    ctx->bind_sampler_states = iris_bind_sampler_states;
    ctx->bind_rasterizer_state = iris_bind_rasterizer_state;
    ctx->bind_vertex_elements_state = iris_bind_vertex_elements_state;
-   ctx->bind_compute_state = iris_bind_state;
+   ctx->bind_compute_state = iris_bind_compute_state;
    ctx->delete_blend_state = iris_delete_state;
    ctx->delete_depth_stencil_alpha_state = iris_delete_state;
    ctx->delete_fs_state = iris_delete_state;
