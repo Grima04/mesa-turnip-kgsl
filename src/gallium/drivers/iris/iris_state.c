@@ -77,7 +77,6 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
         ({ __genxml_cmd_pack(cmd)(NULL, (void *)_dst, &name);     \
-           VG(VALGRIND_CHECK_MEM_IS_DEFINED(_dst, __genxml_cmd_length(cmd) * 4)); \
            _dst = NULL;                                           \
            }))
 
@@ -1187,7 +1186,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
    cso->num_buffers = count;
 
-   iris_pack_state(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
+   iris_pack_command(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
       vb.DWordLength = 4 * cso->num_buffers - 1;
    }
 
@@ -1205,8 +1204,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          vb.MOCS = MOCS_WB;
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffers[i].stride;
-         //vb.BufferStartingAddress = ro_bo(bo, buffers[i].buffer_offset);
-         //vb.BufferSize = bo->size;
+         vb.BufferSize = res->bo->size;
+         /* vb.BufferStartingAddress is filled in at draw time */
       }
 
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
@@ -1237,7 +1236,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
     *  - create SGV ones
     *  - if those are necessary, use count + 1/2/3... OR in the length
     */
-   iris_pack_state(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve);
+   iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve);
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
 
@@ -1250,7 +1249,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
             iris_isl_format_for_pipe_format(state[i].src_format);
       }
 
-      iris_pack_state(GENX(3DSTATE_VF_INSTANCING), cso->vf_instancing[i], vi) {
+      iris_pack_command(GENX(3DSTATE_VF_INSTANCING), cso->vf_instancing[i], vi) {
          vi.VertexElementIndex = i;
          vi.InstancingEnable = state[i].instance_divisor > 0;
          vi.InstanceDataStepRate = state[i].instance_divisor;
@@ -1478,9 +1477,9 @@ iris_upload_render_state(struct iris_context *ice,
       STATIC_ASSERT((GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32) == 0);
 
       uint64_t *addr = batch->cmdbuf.map_next + sizeof(uint32_t) *
-         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
+         (GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
       uint32_t *delta = cso->vertex_buffers +
-         (2 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
+         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
 
       iris_batch_emit(batch, cso->vertex_buffers,
                       sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
