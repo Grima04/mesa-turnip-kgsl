@@ -138,7 +138,6 @@ void iris_init_blit_functions(struct pipe_context *ctx);
 void iris_init_clear_functions(struct pipe_context *ctx);
 void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_resource_functions(struct pipe_context *ctx);
-void iris_init_state_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 
 void iris_setup_state_base_address(struct iris_context *ice,
@@ -163,6 +162,7 @@ enum iris_program_cache_id {
    IRIS_CACHE_BLORP,
 };
 
+void iris_init_state(struct iris_context *ice);
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
 void iris_print_program_cache(struct iris_context *ice);

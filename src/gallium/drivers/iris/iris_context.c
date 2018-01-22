@@ -111,9 +111,9 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_clear_functions(ctx);
    iris_init_program_functions(ctx);
    iris_init_resource_functions(ctx);
-   iris_init_state_functions(ctx);
    iris_init_query_functions(ctx);
 
+   iris_init_state(ice);
    iris_init_program_cache(ice);
 
    iris_init_batch(&ice->render_batch, screen, &ice->dbg, I915_EXEC_RENDER);

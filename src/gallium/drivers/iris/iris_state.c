@@ -1655,8 +1655,12 @@ iris_destroy_state(struct iris_context *ice)
 }
 
 void
-iris_init_state_functions(struct pipe_context *ctx)
+iris_init_state(struct iris_context *ice)
 {
+   struct pipe_context *ctx = &ice->ctx;
+
+   ice->state.dirty = ~0ull;
+
    ctx->create_blend_state = iris_create_blend_state;
    ctx->create_depth_stencil_alpha_state = iris_create_zsa_state;
    ctx->create_rasterizer_state = iris_create_rasterizer_state;
