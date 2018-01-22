@@ -1535,6 +1535,9 @@ iris_upload_render_state(struct iris_context *ice,
                                        32, &offset);
 
       for (int i = 0; i < count; i++) {
+         // XXX: when we have a correct count, these better be bound
+         if (!ice->state.samplers[stage][i])
+            continue;
          memcpy(map, ice->state.samplers[stage][i]->sampler_state,
                 4 * GENX(SAMPLER_STATE_length));
          map += GENX(SAMPLER_STATE_length);
