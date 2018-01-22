@@ -113,6 +113,7 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 
 #include "genxml/genX_pack.h"
 #include "genxml/gen_macros.h"
+#include "genxml/genX_bits.h"
 
 #define MOCS_WB (2 << 1)
 
@@ -1467,19 +1468,23 @@ iris_upload_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
 
-      uint32_t addrs[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-      uint32_t *vb_pack_dest = &addrs[1];
-      addrs[0] = 0;
+      STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_length) == 4);
+
+      uint64_t *addr = batch->cmdbuf.map_next + sizeof(uint32_t) *
+         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32);
+      uint32_t *delta = cso->vertex_buffers +
+         (2 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32);
+
+      iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
+                      (1 + 4 * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
-            vb.BufferStartingAddress = cso->bos[i];
-         }
-         vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
+         *addr = iris_batch_reloc(batch, (void *) addr - batch->cmdbuf.map,
+                                  cso->bos[i].bo, cso->bos[i].offset +
+                                  *delta, cso->bos[i].reloc_flags);
+         addr = (void *) addr + 16;
+         delta = (void *) delta + 16;
       }
-
-      iris_emit_merge(batch, cso->vertex_buffers, addrs,
-                      4 * cso->num_buffers + 1);
    }
 
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
