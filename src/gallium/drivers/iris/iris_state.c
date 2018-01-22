@@ -1481,8 +1481,8 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t *delta = cso->vertex_buffers +
          (2 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32);
 
-      iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
-                      (1 + 4 * cso->num_buffers));
+      iris_batch_emit(batch, cso->vertex_buffers,
+                      sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
          *addr = iris_batch_reloc(batch, (void *) addr - batch->cmdbuf.map,
