@@ -1475,11 +1475,12 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
 
       STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_length) == 4);
+      STATIC_ASSERT((GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32) == 0);
 
       uint64_t *addr = batch->cmdbuf.map_next + sizeof(uint32_t) *
-         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32);
+         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
       uint32_t *delta = cso->vertex_buffers +
-         (2 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32);
+         (2 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
 
       iris_batch_emit(batch, cso->vertex_buffers,
                       sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
