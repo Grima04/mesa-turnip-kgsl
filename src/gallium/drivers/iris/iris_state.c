@@ -1585,6 +1585,8 @@ iris_upload_render_state(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.StartInstanceLocation = draw->start_instance;
       prim.InstanceCount = draw->instance_count;
+      prim.VertexCountPerInstance = draw->count;
+      prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
 
       // XXX: this is probably bonkers.
       prim.StartVertexLocation = draw->start;
