@@ -84,15 +84,28 @@ struct iris_program_cache {
    uint32_t next_offset;
 };
 
+struct iris_compiled_shader {
+   /** Offset to the start of the assembly in the program cache BO */
+   uint32_t prog_offset;
+
+   /** The program data (owned by the program cache hash table) */
+   struct brw_stage_prog_data *prog_data;
+
+   /**
+    * Shader packets and other data derived from prog_data.  These must be
+    * completely determined from prog_data.
+    */
+   uint8_t derived_data[0];
+};
+
 struct iris_context {
    struct pipe_context ctx;
 
    struct pipe_debug_callback dbg;
 
    struct {
-      struct iris_uncompiled_shader *progs[MESA_SHADER_STAGES];
-      struct brw_stage_prog_data *prog_data[MESA_SHADER_STAGES];
-      uint32_t prog_offset[MESA_SHADER_STAGES];
+      struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
+      struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
 
       struct iris_program_cache cache;
@@ -160,30 +173,21 @@ enum iris_program_cache_id {
    IRIS_CACHE_GS  = MESA_SHADER_GEOMETRY,
    IRIS_CACHE_FS  = MESA_SHADER_FRAGMENT,
    IRIS_CACHE_CS  = MESA_SHADER_COMPUTE,
-   IRIS_CACHE_BLORP,
+   IRIS_CACHE_BLORP_BLIT,
 };
 
 void iris_init_state(struct iris_context *ice);
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
 void iris_print_program_cache(struct iris_context *ice);
-bool iris_search_cache(struct iris_context *ice,
-                       enum iris_program_cache_id cache_id,
-                       const void *key,
-                       unsigned key_size,
-                       uint64_t dirty_flag,
-                       uint32_t *inout_assembly_offset,
-                       void *inout_prog_data);
-void iris_upload_cache(struct iris_context *ice,
-                       enum iris_program_cache_id cache_id,
-                       const void *key,
-                       unsigned key_size,
-                       const void *assembly,
-                       unsigned assembly_size,
-                       const void *prog_data,
-                       unsigned prog_data_size,
-                       uint32_t *out_assembly_offset,
-                       void *out_prog_data);
+bool iris_bind_cached_shader(struct iris_context *ice,
+                             enum iris_program_cache_id cache_id,
+                             const void *key);
+void iris_upload_and_bind_shader(struct iris_context *ice,
+                                 enum iris_program_cache_id cache_id,
+                                 const void *key,
+                                 const void *assembly,
+                                 const struct brw_stage_prog_data *prog_data);
 const void *iris_find_previous_compile(struct iris_program_cache *cache,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
