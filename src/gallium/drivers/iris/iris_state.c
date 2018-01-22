@@ -1367,6 +1367,9 @@ iris_upload_render_state(struct iris_context *ice,
 {
    const uint64_t dirty = ice->state.dirty;
 
+   if (dirty & IRIS_DIRTY_URB) {
+   }
+
    if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
       struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
@@ -1624,6 +1627,7 @@ iris_upload_render_state(struct iris_context *ice,
    3DSTATE_GS
    3DSTATE_PS_EXTRA
    3DSTATE_PS
+
    3DSTATE_STREAMOUT
    3DSTATE_SO_BUFFER
    3DSTATE_SO_DECL_LIST
@@ -1647,6 +1651,212 @@ iris_upload_render_state(struct iris_context *ice,
 static void
 iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
+}
+
+   //pkt.SamplerCount =                                                     \
+      //DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
+   //pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
+      //ffs(stage_state->per_thread_scratch) - 11;                          \
+
+#define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
+   pkt.KernelStartPointer = prog_offset;                                  \
+   pkt.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;  \
+   pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
+                                                                          \
+   pkt.DispatchGRFStartRegisterForURBData =                               \
+      prog_data->dispatch_grf_start_reg;                                  \
+   pkt.prefix##URBEntryReadLength = vue_prog_data->urb_read_length;       \
+   pkt.prefix##URBEntryReadOffset = 0;                                    \
+                                                                          \
+   pkt.StatisticsEnable = true;                                           \
+   pkt.Enable           = true;
+
+static void
+iris_create_vs_state(struct gen_device_info *devinfo,
+                     struct brw_vs_prog_data *vs_prog_data,
+                     unsigned prog_offset)
+{
+   struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   uint32_t vs_state[GENX(3DSTATE_VS_length)];
+
+   iris_pack_command(GENX(3DSTATE_VS), vs_state, vs) {
+      INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
+      vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
+      vs.SIMD8DispatchEnable = true;
+      vs.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+   }
+}
+
+static void
+iris_create_tcs_state(struct gen_device_info *devinfo,
+                      struct brw_tcs_prog_data *tcs_prog_data,
+                      unsigned prog_offset)
+{
+   struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   uint32_t hs_state[GENX(3DSTATE_HS_length)];
+
+   iris_pack_command(GENX(3DSTATE_HS), hs_state, hs) {
+      INIT_THREAD_DISPATCH_FIELDS(hs, Vertex);
+
+      hs.InstanceCount = tcs_prog_data->instances - 1;
+      hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
+      hs.IncludeVertexHandles = true;
+   }
+}
+
+static void
+iris_create_tes_state(struct gen_device_info *devinfo,
+                      struct brw_tes_prog_data *tes_prog_data,
+                      unsigned prog_offset)
+{
+   struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   uint32_t ds_state[GENX(3DSTATE_DS_length)];
+
+   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
+      INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
+
+      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
+      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
+      ds.ComputeWCoordinateEnable =
+         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+
+      ds.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+   }
+}
+
+static void
+iris_create_gs_state(struct gen_device_info *devinfo,
+                     struct brw_gs_prog_data *gs_prog_data,
+                     unsigned prog_offset)
+{
+   struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   uint32_t gs_state[GENX(3DSTATE_GS_length)];
+
+   iris_pack_command(GENX(3DSTATE_GS), gs_state, gs) {
+      INIT_THREAD_DISPATCH_FIELDS(gs, Vertex);
+
+      gs.OutputVertexSize = gs_prog_data->output_vertex_size_hwords * 2 - 1;
+      gs.OutputTopology = gs_prog_data->output_topology;
+      gs.ControlDataHeaderSize =
+         gs_prog_data->control_data_header_size_hwords;
+      gs.InstanceControl = gs_prog_data->invocations - 1;
+      gs.DispatchMode = SIMD8;
+      gs.IncludePrimitiveID = gs_prog_data->include_primitive_id;
+      gs.ControlDataFormat = gs_prog_data->control_data_format;
+      gs.ReorderMode = TRAILING;
+      gs.ExpectedVertexCount = gs_prog_data->vertices_in;
+      gs.MaximumNumberofThreads =
+         GEN_GEN == 8 ? (devinfo->max_gs_threads / 2 - 1)
+                      : (devinfo->max_gs_threads - 1);
+
+      if (gs_prog_data->static_vertex_count != -1) {
+         gs.StaticOutput = true;
+         gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count;
+      }
+      gs.IncludeVertexHandles = vue_prog_data->include_vue_handles;
+
+      gs.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+
+      const int urb_entry_write_offset = 1;
+      const uint32_t urb_entry_output_length =
+         DIV_ROUND_UP(vue_prog_data->vue_map.num_slots, 2) -
+         urb_entry_write_offset;
+
+      gs.VertexURBEntryOutputReadOffset = urb_entry_write_offset;
+      gs.VertexURBEntryOutputLength = MAX2(urb_entry_output_length, 1);
+   }
+}
+
+static void
+iris_create_fs_state(struct gen_device_info *devinfo,
+                      struct brw_wm_prog_data *wm_prog_data,
+                      unsigned prog_offset)
+{
+   struct brw_stage_prog_data *prog_data = &wm_prog_data->base;
+
+   uint32_t ps_state[GENX(3DSTATE_PS_length)];
+   uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)];
+
+   iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
+      ps.VectorMaskEnable = true;
+      //ps.SamplerCount = ...
+      ps.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;
+      ps.FloatingPointMode = prog_data->use_alt_mode;
+      ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
+
+      ps.PushConstantEnable = prog_data->nr_params > 0 ||
+                              prog_data->ubo_ranges[0].length > 0;
+
+      /* From the documentation for this packet:
+       * "If the PS kernel does not need the Position XY Offsets to
+       *  compute a Position Value, then this field should be programmed
+       *  to POSOFFSET_NONE."
+       *
+       * "SW Recommendation: If the PS kernel needs the Position Offsets
+       *  to compute a Position XY value, this field should match Position
+       *  ZW Interpolation Mode to ensure a consistent position.xyzw
+       *  computation."
+       *
+       * We only require XY sample offsets. So, this recommendation doesn't
+       * look useful at the moment.  We might need this in future.
+       */
+      ps.PositionXYOffsetSelect =
+         wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
+      ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
+      ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
+      ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
+
+      // XXX: Disable SIMD32 with 16x MSAA
+
+      ps.DispatchGRFStartRegisterForConstantSetupData0 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
+      ps.DispatchGRFStartRegisterForConstantSetupData1 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
+      ps.DispatchGRFStartRegisterForConstantSetupData2 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
+
+      ps.KernelStartPointer0 =
+         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
+      ps.KernelStartPointer1 =
+         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+      ps.KernelStartPointer2 =
+         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+   }
+
+   iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
+      psx.PixelShaderValid = true;
+      psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
+      psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
+      psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
+      psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
+      psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
+      psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+
+      if (wm_prog_data->uses_sample_mask) {
+         /* TODO: conservative rasterization */
+         if (wm_prog_data->post_depth_coverage)
+            psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
+         else
+            psx.InputCoverageMaskState = ICMS_NORMAL;
+      }
+
+      psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
+      psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
+      psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
+
+      // XXX: UAV bit
+   }
 }
 
 void

@@ -72,6 +72,7 @@ enum iris_dirty {
    IRIS_DIRTY_FS                       = (1ull << 32),
    IRIS_DIRTY_CS                       = (1ull << 33),
    IRIS_DIRTY_STATE_BASE_ADDRESS       = (1ull << 34),
+   IRIS_DIRTY_URB                      = (1ull << 35),
 };
 
 struct iris_depth_stencil_alpha_state;

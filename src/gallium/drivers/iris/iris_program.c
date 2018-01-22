@@ -108,6 +108,9 @@ iris_bind_tes_state(struct pipe_context *ctx, void *hwcso)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
+   if (!!hwcso != !!ice->shaders.progs[MESA_SHADER_TESS_EVAL])
+      ice->state.dirty |= IRIS_DIRTY_URB;
+
    ice->shaders.progs[MESA_SHADER_TESS_EVAL] = hwcso;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TES;
 }
@@ -116,6 +119,9 @@ static void
 iris_bind_gs_state(struct pipe_context *ctx, void *hwcso)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
+
+   if (!!hwcso != !!ice->shaders.progs[MESA_SHADER_GEOMETRY])
+      ice->state.dirty |= IRIS_DIRTY_URB;
 
    ice->shaders.progs[MESA_SHADER_GEOMETRY] = hwcso;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_GS;
@@ -261,6 +267,24 @@ iris_update_compiled_vs(struct iris_context *ice)
       iris_compile_vs(ice, ice->shaders.progs[MESA_SHADER_VERTEX], &key);
 }
 
+static void
+iris_update_compiled_tcs(struct iris_context *ice)
+{
+   // XXX: TCS
+}
+
+static void
+iris_update_compiled_tes(struct iris_context *ice)
+{
+   // XXX: TES
+}
+
+static void
+iris_update_compiled_gs(struct iris_context *ice)
+{
+   // XXX: GS
+}
+
 static bool
 iris_compile_fs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
@@ -379,10 +403,35 @@ update_last_vue_map(struct iris_context *ice)
 void
 iris_update_compiled_shaders(struct iris_context *ice)
 {
+   struct brw_vue_prog_data *old_prog_datas[4];
+   if (!(ice->state.dirty & IRIS_DIRTY_URB)) {
+      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++)
+         old_prog_datas[i] = (void *) ice->shaders.prog_data[i];
+   }
+
    iris_update_compiled_vs(ice);
+   iris_update_compiled_tcs(ice);
+   iris_update_compiled_tes(ice);
+   iris_update_compiled_gs(ice);
    update_last_vue_map(ice);
    iris_update_compiled_fs(ice);
    // ...
+
+   if (!(ice->state.dirty & IRIS_DIRTY_URB)) {
+      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+         struct brw_vue_prog_data *old = old_prog_datas[i];
+         struct brw_vue_prog_data *new = (void *) ice->shaders.prog_data[i];
+         if (!!old != !!new ||
+             (new && new->urb_entry_size != old->urb_entry_size)) {
+            ice->state.dirty |= IRIS_DIRTY_URB;
+            break;
+         }
+      }
+   }
+
+   if (ice->state.dirty & IRIS_DIRTY_URB) {
+      // ... back to the state module :/
+   }
 }
 
 void
