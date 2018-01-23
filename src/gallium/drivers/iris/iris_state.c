@@ -1535,6 +1535,7 @@ iris_upload_render_state(struct iris_context *ice,
       } else {
          if (stage == MESA_SHADER_TESS_EVAL) {
             iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
+            iris_emit_cmd(batch, GENX(3DSTATE_TE), te);
             iris_emit_cmd(batch, GENX(3DSTATE_DS), ds);
          } else if (stage == MESA_SHADER_GEOMETRY) {
             iris_emit_cmd(batch, GENX(3DSTATE_GS), gs);
@@ -1637,14 +1638,6 @@ iris_upload_render_state(struct iris_context *ice,
    3DSTATE_BINDING_TABLE_POINTERS_*
      -> TODO
 
-   3DSTATE_VS
-   3DSTATE_HS
-   3DSTATE_TE
-   3DSTATE_DS
-   3DSTATE_GS
-   3DSTATE_PS_EXTRA
-   3DSTATE_PS
-
    3DSTATE_STREAMOUT
    3DSTATE_SO_BUFFER
    3DSTATE_SO_DECL_LIST
@@ -1729,7 +1722,19 @@ iris_set_tes_state(const struct gen_device_info *devinfo,
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
    struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
 
-   iris_pack_command(GENX(3DSTATE_DS), shader->derived_data, ds) {
+   uint32_t *te_state = shader->derived_data;
+   uint32_t *ds_state = te_state + GENX(3DSTATE_TE_length);
+
+   iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
+      te.Partitioning = tes_prog_data->partitioning;
+      te.OutputTopology = tes_prog_data->output_topology;
+      te.TEDomain = tes_prog_data->domain;
+      te.TEEnable = true;
+      te.MaximumTessellationFactorOdd = 63.0;
+      te.MaximumTessellationFactorNotOdd = 64.0;
+   }
+
+   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
       INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
 
       ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
@@ -1740,6 +1745,7 @@ iris_set_tes_state(const struct gen_device_info *devinfo,
       ds.UserClipDistanceCullTestEnableBitmask =
          vue_prog_data->cull_distance_mask;
    }
+
 }
 
 static void
@@ -1875,7 +1881,7 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
    static const unsigned dwords[] = {
       [IRIS_CACHE_VS] = GENX(3DSTATE_VS_length),
       [IRIS_CACHE_TCS] = GENX(3DSTATE_HS_length),
-      [IRIS_CACHE_TES] = GENX(3DSTATE_DS_length),
+      [IRIS_CACHE_TES] = GENX(3DSTATE_TE_length) + GENX(3DSTATE_DS_length),
       [IRIS_CACHE_GS] = GENX(3DSTATE_GS_length),
       [IRIS_CACHE_FS] =
          GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
