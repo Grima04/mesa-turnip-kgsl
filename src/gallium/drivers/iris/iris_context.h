@@ -36,44 +36,42 @@ struct iris_batch;
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_VIEWPORTS 16
 
-enum iris_dirty {
-   IRIS_DIRTY_COLOR_CALC_STATE         = (1ull <<  0),
-   IRIS_DIRTY_POLYGON_STIPPLE          = (1ull <<  1),
-   IRIS_DIRTY_SCISSOR_RECT             = (1ull <<  2),
-   IRIS_DIRTY_WM_DEPTH_STENCIL         = (1ull <<  3),
-   IRIS_DIRTY_CC_VIEWPORT              = (1ull <<  4),
-   IRIS_DIRTY_SF_CL_VIEWPORT           = (1ull <<  5),
-   IRIS_DIRTY_PS_BLEND                 = (1ull <<  6),
-   IRIS_DIRTY_BLEND_STATE              = (1ull <<  7),
-   IRIS_DIRTY_RASTER                   = (1ull <<  8),
-   IRIS_DIRTY_CLIP                     = (1ull <<  9),
-   IRIS_DIRTY_SCISSOR                  = (1ull << 10),
-   IRIS_DIRTY_LINE_STIPPLE             = (1ull << 11),
-   IRIS_DIRTY_VERTEX_ELEMENTS          = (1ull << 12),
-   IRIS_DIRTY_MULTISAMPLE              = (1ull << 13),
-   IRIS_DIRTY_VERTEX_BUFFERS           = (1ull << 14),
-   IRIS_DIRTY_SAMPLE_MASK              = (1ull << 15),
-   IRIS_DIRTY_SAMPLER_STATES_VS        = (1ull << 16),
-   IRIS_DIRTY_SAMPLER_STATES_TCS       = (1ull << 17),
-   IRIS_DIRTY_SAMPLER_STATES_TES       = (1ull << 18),
-   IRIS_DIRTY_SAMPLER_STATES_GS        = (1ull << 19),
-   IRIS_DIRTY_SAMPLER_STATES_PS        = (1ull << 20),
-   IRIS_DIRTY_SAMPLER_STATES_CS        = (1ull << 21),
-   IRIS_DIRTY_UNCOMPILED_VS            = (1ull << 22),
-   IRIS_DIRTY_UNCOMPILED_TCS           = (1ull << 23),
-   IRIS_DIRTY_UNCOMPILED_TES           = (1ull << 24),
-   IRIS_DIRTY_UNCOMPILED_GS            = (1ull << 25),
-   IRIS_DIRTY_UNCOMPILED_FS            = (1ull << 26),
-   IRIS_DIRTY_UNCOMPILED_CS            = (1ull << 27),
-   IRIS_DIRTY_VS                       = (1ull << 28),
-   IRIS_DIRTY_TCS                      = (1ull << 29),
-   IRIS_DIRTY_TES                      = (1ull << 30),
-   IRIS_DIRTY_GS                       = (1ull << 31),
-   IRIS_DIRTY_FS                       = (1ull << 32),
-   IRIS_DIRTY_CS                       = (1ull << 33),
-   IRIS_DIRTY_STATE_BASE_ADDRESS       = (1ull << 34),
-   IRIS_DIRTY_URB                      = (1ull << 35),
-};
+#define IRIS_DIRTY_COLOR_CALC_STATE         (1ull <<  0)
+#define IRIS_DIRTY_POLYGON_STIPPLE          (1ull <<  1)
+#define IRIS_DIRTY_SCISSOR_RECT             (1ull <<  2)
+#define IRIS_DIRTY_WM_DEPTH_STENCIL         (1ull <<  3)
+#define IRIS_DIRTY_CC_VIEWPORT              (1ull <<  4)
+#define IRIS_DIRTY_SF_CL_VIEWPORT           (1ull <<  5)
+#define IRIS_DIRTY_PS_BLEND                 (1ull <<  6)
+#define IRIS_DIRTY_BLEND_STATE              (1ull <<  7)
+#define IRIS_DIRTY_RASTER                   (1ull <<  8)
+#define IRIS_DIRTY_CLIP                     (1ull <<  9)
+#define IRIS_DIRTY_SCISSOR                  (1ull << 10)
+#define IRIS_DIRTY_LINE_STIPPLE             (1ull << 11)
+#define IRIS_DIRTY_VERTEX_ELEMENTS          (1ull << 12)
+#define IRIS_DIRTY_MULTISAMPLE              (1ull << 13)
+#define IRIS_DIRTY_VERTEX_BUFFERS           (1ull << 14)
+#define IRIS_DIRTY_SAMPLE_MASK              (1ull << 15)
+#define IRIS_DIRTY_SAMPLER_STATES_VS        (1ull << 16)
+#define IRIS_DIRTY_SAMPLER_STATES_TCS       (1ull << 17)
+#define IRIS_DIRTY_SAMPLER_STATES_TES       (1ull << 18)
+#define IRIS_DIRTY_SAMPLER_STATES_GS        (1ull << 19)
+#define IRIS_DIRTY_SAMPLER_STATES_PS        (1ull << 20)
+#define IRIS_DIRTY_SAMPLER_STATES_CS        (1ull << 21)
+#define IRIS_DIRTY_UNCOMPILED_VS            (1ull << 22)
+#define IRIS_DIRTY_UNCOMPILED_TCS           (1ull << 23)
+#define IRIS_DIRTY_UNCOMPILED_TES           (1ull << 24)
+#define IRIS_DIRTY_UNCOMPILED_GS            (1ull << 25)
+#define IRIS_DIRTY_UNCOMPILED_FS            (1ull << 26)
+#define IRIS_DIRTY_UNCOMPILED_CS            (1ull << 27)
+#define IRIS_DIRTY_VS                       (1ull << 28)
+#define IRIS_DIRTY_TCS                      (1ull << 29)
+#define IRIS_DIRTY_TES                      (1ull << 30)
+#define IRIS_DIRTY_GS                       (1ull << 31)
+#define IRIS_DIRTY_FS                       (1ull << 32)
+#define IRIS_DIRTY_CS                       (1ull << 33)
+#define IRIS_DIRTY_STATE_BASE_ADDRESS       (1ull << 34)
+#define IRIS_DIRTY_URB                      (1ull << 35)
 
 struct iris_depth_stencil_alpha_state;
 
