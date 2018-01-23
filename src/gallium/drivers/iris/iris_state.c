@@ -1659,7 +1659,7 @@ iris_bind_compute_state(struct pipe_context *ctx, void *state)
       //ffs(stage_state->per_thread_scratch) - 11;                          \
 
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
-   pkt.KernelStartPointer = prog_offset;                                  \
+   pkt.KernelStartPointer = shader->prog_offset;                          \
    pkt.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;  \
    pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
                                                                           \
@@ -1672,16 +1672,13 @@ iris_bind_compute_state(struct pipe_context *ctx, void *state)
    pkt.Enable           = true;
 
 static void
-iris_create_vs_state(struct gen_device_info *devinfo,
-                     struct brw_vs_prog_data *vs_prog_data,
-                     unsigned prog_offset)
+iris_set_vs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
 {
-   struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
-   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
 
-   uint32_t vs_state[GENX(3DSTATE_VS_length)];
-
-   iris_pack_command(GENX(3DSTATE_VS), vs_state, vs) {
+   iris_pack_command(GENX(3DSTATE_VS), shader->derived_data, vs) {
       INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
       vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
       vs.SIMD8DispatchEnable = true;
@@ -1691,16 +1688,14 @@ iris_create_vs_state(struct gen_device_info *devinfo,
 }
 
 static void
-iris_create_tcs_state(struct gen_device_info *devinfo,
-                      struct brw_tcs_prog_data *tcs_prog_data,
-                      unsigned prog_offset)
+iris_set_tcs_state(const struct gen_device_info *devinfo,
+                   struct iris_compiled_shader *shader)
 {
-   struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
-   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_tcs_prog_data *tcs_prog_data = (void *) prog_data;
 
-   uint32_t hs_state[GENX(3DSTATE_HS_length)];
-
-   iris_pack_command(GENX(3DSTATE_HS), hs_state, hs) {
+   iris_pack_command(GENX(3DSTATE_HS), shader->derived_data, hs) {
       INIT_THREAD_DISPATCH_FIELDS(hs, Vertex);
 
       hs.InstanceCount = tcs_prog_data->instances - 1;
@@ -1710,16 +1705,14 @@ iris_create_tcs_state(struct gen_device_info *devinfo,
 }
 
 static void
-iris_create_tes_state(struct gen_device_info *devinfo,
-                      struct brw_tes_prog_data *tes_prog_data,
-                      unsigned prog_offset)
+iris_set_tes_state(const struct gen_device_info *devinfo,
+                   struct iris_compiled_shader *shader)
 {
-   struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
-   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
 
-   uint32_t ds_state[GENX(3DSTATE_DS_length)];
-
-   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
+   iris_pack_command(GENX(3DSTATE_DS), shader->derived_data, ds) {
       INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
 
       ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
@@ -1733,16 +1726,14 @@ iris_create_tes_state(struct gen_device_info *devinfo,
 }
 
 static void
-iris_create_gs_state(struct gen_device_info *devinfo,
-                     struct brw_gs_prog_data *gs_prog_data,
-                     unsigned prog_offset)
+iris_set_gs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
 {
-   struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
-   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_gs_prog_data *gs_prog_data = (void *) prog_data;
 
-   uint32_t gs_state[GENX(3DSTATE_GS_length)];
-
-   iris_pack_command(GENX(3DSTATE_GS), gs_state, gs) {
+   iris_pack_command(GENX(3DSTATE_GS), shader->derived_data, gs) {
       INIT_THREAD_DISPATCH_FIELDS(gs, Vertex);
 
       gs.OutputVertexSize = gs_prog_data->output_vertex_size_hwords * 2 - 1;
@@ -1779,14 +1770,14 @@ iris_create_gs_state(struct gen_device_info *devinfo,
 }
 
 static void
-iris_create_fs_state(struct gen_device_info *devinfo,
-                      struct brw_wm_prog_data *wm_prog_data,
-                      unsigned prog_offset)
+iris_set_fs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
 {
-   struct brw_stage_prog_data *prog_data = &wm_prog_data->base;
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
 
-   uint32_t ps_state[GENX(3DSTATE_PS_length)];
-   uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)];
+   uint32_t *ps_state = (void *) shader->derived_data;
+   uint32_t *psx_state = ps_state + GENX(3DSTATE_PS_length);
 
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
       ps.VectorMaskEnable = true;
@@ -1827,11 +1818,11 @@ iris_create_fs_state(struct gen_device_info *devinfo,
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
 
       ps.KernelStartPointer0 =
-         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
       ps.KernelStartPointer1 =
-         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
       ps.KernelStartPointer2 =
-         prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
    }
 
    iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
@@ -1856,6 +1847,53 @@ iris_create_fs_state(struct gen_device_info *devinfo,
       psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
 
       // XXX: UAV bit
+   }
+}
+
+unsigned
+iris_derived_program_state_size(enum iris_program_cache_id cache_id)
+{
+   assert(cache_id <= IRIS_CACHE_CS);
+
+   static const unsigned dwords[] = {
+      [IRIS_CACHE_VS] = GENX(3DSTATE_VS_length),
+      [IRIS_CACHE_TCS] = GENX(3DSTATE_HS_length),
+      [IRIS_CACHE_TES] = GENX(3DSTATE_DS_length),
+      [IRIS_CACHE_GS] = GENX(3DSTATE_GS_length),
+      [IRIS_CACHE_FS] =
+         GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
+      [IRIS_CACHE_CS] = 0,
+      [IRIS_CACHE_BLORP_BLIT] = 0,
+   };
+
+   return sizeof(uint32_t) * dwords[cache_id];
+}
+
+void
+iris_set_derived_program_state(const struct gen_device_info *devinfo,
+                               enum iris_program_cache_id cache_id,
+                               struct iris_compiled_shader *shader)
+{
+   switch (cache_id) {
+   case IRIS_CACHE_VS:
+      iris_set_vs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_TCS:
+      iris_set_tcs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_TES:
+      iris_set_tes_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_GS:
+      iris_set_gs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_FS:
+      iris_set_fs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_CS:
+      break;
+   default:
+      break;
    }
 }
 

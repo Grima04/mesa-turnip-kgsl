@@ -180,6 +180,10 @@ void iris_init_state(struct iris_context *ice);
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
 void iris_print_program_cache(struct iris_context *ice);
+unsigned iris_derived_program_state_size(enum iris_program_cache_id cache_id);
+void iris_set_derived_program_state(const struct gen_device_info *devinfo,
+                                    enum iris_program_cache_id cache_id,
+                                    struct iris_compiled_shader *shader);
 bool iris_bind_cached_shader(struct iris_context *ice,
                              enum iris_program_cache_id cache_id,
                              const void *key);
