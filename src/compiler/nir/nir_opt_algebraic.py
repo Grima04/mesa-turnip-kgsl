@@ -764,8 +764,6 @@ optimizations = [
    (('f2u', ('ftrunc', a)), ('f2u', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
    (('i2b', ('iabs', a)), ('i2b', a)),
-   (('fabs', ('b2f', a)), ('b2f', a)),
-   (('iabs', ('b2i', a)), ('b2i', a)),
    (('inot', ('f2b1', a)), ('feq', a, 0.0)),
 
    # Ironically, mark these as imprecise because removing the conversions may
@@ -775,6 +773,14 @@ optimizations = [
    (('~f2i32', ('u2f', 'a@32')), a),
    (('~f2u32', ('i2f', 'a@32')), a),
    (('~f2u32', ('u2f', 'a@32')), a),
+
+   (('ffloor', 'a(is_integral)'), a),
+   (('fceil', 'a(is_integral)'), a),
+   (('ftrunc', 'a(is_integral)'), a),
+   (('ffract', 'a(is_integral)'), 0.0),
+   (('fabs', 'a(is_not_negative)'), a),
+   (('iabs', 'a(is_not_negative)'), a),
+   (('fsat', 'a(is_not_positive)'), 0.0),
 
    # Section 5.4.1 (Conversion and Scalar Constructors) of the GLSL 4.60 spec
    # says:
