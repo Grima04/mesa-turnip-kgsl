@@ -789,7 +789,7 @@ optimizations = [
    (('ilt', ('f2u', a), b), ('ilt', ('f2i', a), b)),
    (('ilt', b, ('f2u', a)), ('ilt', b, ('f2i', a))),
 
-   (('~fmin', ('fabs', a), 1.0), ('fsat', ('fabs', a)), '!options->lower_fsat'),
+   (('~fmin', 'a(is_not_negative)', 1.0), ('fsat', a), '!options->lower_fsat'),
 
    # The result of the multiply must be in [-1, 0], so the result of the ffma
    # must be in [0, 1].
