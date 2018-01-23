@@ -1579,8 +1579,7 @@ iris_upload_render_state(struct iris_context *ice,
          ib.IndexFormat = draw->index_size;
          ib.MOCS = MOCS_WB;
          ib.BufferSize = res->bo->size;
-         // XXX: gah, addresses :(  need two different combine address funcs
-         // ib.BufferStartingAddress = res->bo;
+         ib.BufferStartingAddress = ro_bo(res->bo, 0);
       }
    }
 
