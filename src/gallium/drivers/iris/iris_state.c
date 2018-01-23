@@ -559,6 +559,9 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    }
 
    iris_pack_command(GENX(3DSTATE_CLIP), cso->clip, cl) {
+      /* cl.NonPerspectiveBarycentricEnable is filled in at draw time from
+       * the FS program; cl.ForceZeroRTAIndexEnable is filled in from the FB.
+       */
       cl.StatisticsEnable = true;
       cl.EarlyCullEnable = true;
       cl.UserClipDistanceClipTestEnableBitmask = state->clip_plane_enable;
@@ -570,8 +573,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       cl.ViewportXYClipTestEnable = state->point_tri_clip;
       cl.MinimumPointWidth = 0.125;
       cl.MaximumPointWidth = 255.875;
-      //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
-      //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
 
       if (state->flatshade_first) {
          cl.TriangleStripListProvokingVertexSelect = 2;
@@ -583,14 +584,15 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    }
 
    iris_pack_command(GENX(3DSTATE_WM), cso->wm, wm) {
+      /* wm.BarycentricInterpolationMode and wm.EarlyDepthStencilControl are
+       * filled in at draw time from the FS program.
+       */
       wm.LineAntialiasingRegionWidth = _10pixels;
       wm.LineEndCapAntialiasingRegionWidth = _05pixels;
       wm.PointRasterizationRule = RASTRULE_UPPER_RIGHT;
       wm.StatisticsEnable = true;
       wm.LineStippleEnable = state->line_stipple_enable;
       wm.PolygonStippleEnable = state->poly_stipple_enable;
-      // wm.BarycentricInterpolationMode = <comes from FS program> :(
-      // wm.EarlyDepthStencilControl = <comes from FS program> :(
    }
 
    /* Remap from 0..255 back to 1..256 */
@@ -1366,6 +1368,9 @@ iris_upload_render_state(struct iris_context *ice,
 {
    const uint64_t dirty = ice->state.dirty;
 
+   struct brw_wm_prog_data *wm_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
@@ -1389,7 +1394,7 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
-      //struct iris_blend_state *cso = ice->state.cso_blend;
+      struct iris_blend_state *cso = ice->state.cso_blend;
       // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
       // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
       //    (alpha test function/enable) + has writeable RT from ???????
@@ -1482,15 +1487,19 @@ iris_upload_render_state(struct iris_context *ice,
    // XXX: SOL and so on
 
    if (dirty & IRIS_DIRTY_CLIP) {
-      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
-         //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
-         //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
-         // also userclip stuffs...
+         if (wm_prog_data->barycentric_interp_modes &
+             BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
+            cl.NonPerspectiveBarycentricEnable = true;
+
+         cl.ForceZeroRTAIndexEnable = cso_fb->layers == 0;
       }
-      iris_emit_merge(batch, cso->clip, dynamic_clip, ARRAY_SIZE(cso->clip));
+      iris_emit_merge(batch, cso_rast->clip, dynamic_clip,
+                      ARRAY_SIZE(cso_rast->clip));
    }
 
    if (dirty & IRIS_DIRTY_RASTER) {
@@ -1502,8 +1511,6 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & (IRIS_DIRTY_RASTER | IRIS_DIRTY_FS)) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
-      struct brw_wm_prog_data *wm_prog_data = (void *)
-         ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
       uint32_t dynamic_wm[GENX(3DSTATE_WM_length)];
 
       iris_pack_command(GENX(3DSTATE_WM), &dynamic_wm, wm) {
@@ -1672,8 +1679,6 @@ iris_upload_render_state(struct iris_context *ice,
    3DSTATE_SO_BUFFER
    3DSTATE_SO_DECL_LIST
 
-   3DSTATE_WM
-     -> iris_raster_state + FS state (barycentric, EDSC)
    3DSTATE_SBE
      -> iris_raster_state (point sprite texture coordinate origin)
      -> bunch of shader state...
@@ -1752,7 +1757,7 @@ iris_set_tes_state(const struct gen_device_info *devinfo,
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
    struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
 
-   uint32_t *te_state = shader->derived_data;
+   uint32_t *te_state = (void *) shader->derived_data;
    uint32_t *ds_state = te_state + GENX(3DSTATE_TE_length);
 
    iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
