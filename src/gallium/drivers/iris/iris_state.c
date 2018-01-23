@@ -1322,7 +1322,7 @@ iris_setup_state_base_address(struct iris_context *ice,
    //iris_batchbuffer_flush(...)
 
    ice->state.dirty &= ~IRIS_DIRTY_STATE_BASE_ADDRESS;
-      
+
    /* XXX: PIPE_CONTROLs */
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -1367,39 +1367,12 @@ iris_upload_render_state(struct iris_context *ice,
 {
    const uint64_t dirty = ice->state.dirty;
 
-   if (dirty & IRIS_DIRTY_URB) {
-   }
-
-   if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
-      struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
-      struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
-
-      uint32_t stencil_refs[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
-      iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), &stencil_refs, wmds) {
-         wmds.StencilReferenceValue = p_stencil_refs->ref_value[0];
-         wmds.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
-      }
-      iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
-   }
-
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
          ptr.CCViewportPointer =
             iris_emit_state(batch, cso->cc_vp, sizeof(cso->cc_vp), 32);
       }
-   }
-
-   if (dirty & IRIS_DIRTY_PS_BLEND) {
-      struct iris_blend_state *cso = ice->state.cso_blend;
-      iris_batch_emit(batch, cso->ps_blend, sizeof(cso->ps_blend));
-   }
-
-   if (dirty & IRIS_DIRTY_BLEND_STATE) {
-      //struct iris_blend_state *cso = ice->state.cso_blend;
-      // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
-      // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
-      //    (alpha test function/enable) + has writeable RT from ???????
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
@@ -1410,46 +1383,17 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   if (dirty & IRIS_DIRTY_CLIP) {
-      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+   /* XXX: L3 State */
 
-      uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
-      iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
-         //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
-         //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
-         // also userclip stuffs...
-      }
-      iris_emit_merge(batch, cso->clip, dynamic_clip, ARRAY_SIZE(cso->clip));
+   if (dirty & IRIS_DIRTY_URB) {
+      /* XXX: URB */
    }
 
-   if (dirty & IRIS_DIRTY_RASTER) {
-      struct iris_rasterizer_state *cso = ice->state.cso_rast;
-      iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
-      iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
-   }
-
-   if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
-      struct iris_rasterizer_state *cso = ice->state.cso_rast;
-      iris_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
-   }
-
-   if (dirty & IRIS_DIRTY_SCISSOR) {
-      uint32_t scissor_offset =
-         iris_emit_state(batch, ice->state.scissors,
-                         sizeof(struct pipe_scissor_state) *
-                         ice->state.num_scissors, 32);
-
-      iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
-         ptr.ScissorRectPointer = scissor_offset;
-      }
-   }
-
-   if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
-      iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_PATTERN), poly) {
-         for (int i = 0; i < 32; i++) {
-            poly.PatternRow[i] = ice->state.poly_stipple.stipple[i];
-         }
-      }
+   if (dirty & IRIS_DIRTY_BLEND_STATE) {
+      //struct iris_blend_state *cso = ice->state.cso_blend;
+      // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
+      // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
+      //    (alpha test function/enable) + has writeable RT from ???????
    }
 
    if (dirty & IRIS_DIRTY_COLOR_CALC_STATE) {
@@ -1470,6 +1414,156 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), ptr) {
          ptr.ColorCalcStatePointer = cc_offset;
          ptr.ColorCalcStatePointerValid = true;
+      }
+   }
+
+   // XXX: 3DSTATE_CONSTANT_XS
+   // XXX: 3DSTATE_BINDING_TABLE_POINTERS_XS
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
+         continue;
+
+      // XXX: get sampler count from shader; don't emit them all...
+      const int count = IRIS_MAX_TEXTURE_SAMPLERS;
+
+      uint32_t offset;
+      uint32_t *map = iris_alloc_state(batch,
+                                       count * 4 * GENX(SAMPLER_STATE_length),
+                                       32, &offset);
+
+      for (int i = 0; i < count; i++) {
+         // XXX: when we have a correct count, these better be bound
+         if (!ice->state.samplers[stage][i])
+            continue;
+         memcpy(map, ice->state.samplers[stage][i]->sampler_state,
+                4 * GENX(SAMPLER_STATE_length));
+         map += GENX(SAMPLER_STATE_length);
+      }
+
+      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
+         ptr._3DCommandSubOpcode = 43 + stage;
+         ptr.PointertoVSSamplerState = offset;
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_MULTISAMPLE) {
+      iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
+         ms.PixelLocation =
+            ice->state.cso_rast->half_pixel_center ? CENTER : UL_CORNER;
+         if (ice->state.framebuffer.samples > 0)
+            ms.NumberofMultisamples = ffs(ice->state.framebuffer.samples) - 1;
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_SAMPLE_MASK) {
+      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_MASK), ms) {
+         ms.SampleMask = ice->state.sample_mask;
+      }
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(dirty & (IRIS_DIRTY_VS << stage)))
+         continue;
+
+      if (ice->shaders.prog[stage]) {
+         iris_batch_emit(batch, ice->shaders.prog[stage]->derived_data,
+                         iris_derived_program_state_size(stage));
+      } else {
+         if (stage == MESA_SHADER_TESS_EVAL) {
+            iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
+            iris_emit_cmd(batch, GENX(3DSTATE_TE), te);
+            iris_emit_cmd(batch, GENX(3DSTATE_DS), ds);
+         } else if (stage == MESA_SHADER_GEOMETRY) {
+            iris_emit_cmd(batch, GENX(3DSTATE_GS), gs);
+         }
+      }
+   }
+
+   // XXX: SOL and so on
+
+   if (dirty & IRIS_DIRTY_CLIP) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+
+      uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
+      iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
+         //.NonPerspectiveBarycentricEnable = <comes from FS prog> :(
+         //.ForceZeroRTAIndexEnable = <comes from FB layers being 0>
+         // also userclip stuffs...
+      }
+      iris_emit_merge(batch, cso->clip, dynamic_clip, ARRAY_SIZE(cso->clip));
+   }
+
+   if (dirty & IRIS_DIRTY_RASTER) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
+      iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
+      // XXX: 3DSTATE_WM
+   }
+
+   // XXX: SBE, SBE_SWIZ
+
+   if (dirty & IRIS_DIRTY_PS_BLEND) {
+      struct iris_blend_state *cso = ice->state.cso_blend;
+      iris_batch_emit(batch, cso->ps_blend, sizeof(cso->ps_blend));
+   }
+
+   if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
+      struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
+      struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
+
+      uint32_t stencil_refs[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
+      iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), &stencil_refs, wmds) {
+         wmds.StencilReferenceValue = p_stencil_refs->ref_value[0];
+         wmds.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
+      }
+      iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
+   }
+
+   if (dirty & IRIS_DIRTY_SCISSOR) {
+      uint32_t scissor_offset =
+         iris_emit_state(batch, ice->state.scissors,
+                         sizeof(struct pipe_scissor_state) *
+                         ice->state.num_scissors, 32);
+
+      iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
+         ptr.ScissorRectPointer = scissor_offset;
+      }
+   }
+
+   // XXX: 3DSTATE_DEPTH_BUFFER and friends
+
+   if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
+      iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_PATTERN), poly) {
+         for (int i = 0; i < 32; i++) {
+            poly.PatternRow[i] = ice->state.poly_stipple.stipple[i];
+         }
+      }
+   }
+
+   if (dirty & IRIS_DIRTY_LINE_STIPPLE) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      iris_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
+   }
+
+   if (1) {
+      iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
+         topo.PrimitiveTopologyType =
+            translate_prim_type(draw->mode, draw->vertices_per_patch);
+      }
+   }
+
+   if (draw->index_size > 0) {
+      struct iris_resource *res = (struct iris_resource *)draw->index.resource;
+
+      assert(!draw->has_user_indices);
+
+      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
+         ib.IndexFormat = draw->index_size;
+         ib.MOCS = MOCS_WB;
+         ib.BufferSize = res->bo->size;
+         // XXX: gah, addresses :(  need two different combine address funcs
+         // ib.BufferStartingAddress = res->bo;
       }
    }
 
@@ -1510,73 +1604,6 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   if (dirty & IRIS_DIRTY_MULTISAMPLE) {
-      iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
-         ms.PixelLocation =
-            ice->state.cso_rast->half_pixel_center ? CENTER : UL_CORNER;
-         if (ice->state.framebuffer.samples > 0)
-            ms.NumberofMultisamples = ffs(ice->state.framebuffer.samples) - 1;
-      }
-   }
-
-   if (dirty & IRIS_DIRTY_SAMPLE_MASK) {
-      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_MASK), ms) {
-         ms.SampleMask = ice->state.sample_mask;
-      }
-   }
-
-   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_VS << stage)))
-         continue;
-
-      if (ice->shaders.prog[stage]) {
-         iris_batch_emit(batch, ice->shaders.prog[stage]->derived_data,
-                         iris_derived_program_state_size(stage));
-      } else {
-         if (stage == MESA_SHADER_TESS_EVAL) {
-            iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
-            iris_emit_cmd(batch, GENX(3DSTATE_TE), te);
-            iris_emit_cmd(batch, GENX(3DSTATE_DS), ds);
-         } else if (stage == MESA_SHADER_GEOMETRY) {
-            iris_emit_cmd(batch, GENX(3DSTATE_GS), gs);
-         }
-      }
-   }
-
-   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
-         continue;
-
-      // XXX: get sampler count from shader; don't emit them all...
-      const int count = IRIS_MAX_TEXTURE_SAMPLERS;
-
-      uint32_t offset;
-      uint32_t *map = iris_alloc_state(batch,
-                                       count * 4 * GENX(SAMPLER_STATE_length),
-                                       32, &offset);
-
-      for (int i = 0; i < count; i++) {
-         // XXX: when we have a correct count, these better be bound
-         if (!ice->state.samplers[stage][i])
-            continue;
-         memcpy(map, ice->state.samplers[stage][i]->sampler_state,
-                4 * GENX(SAMPLER_STATE_length));
-         map += GENX(SAMPLER_STATE_length);
-      }
-
-      iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
-         ptr._3DCommandSubOpcode = 43 + stage;
-         ptr.PointertoVSSamplerState = offset;
-      }
-   }
-
-   if (1) {
-      iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
-         topo.PrimitiveTopologyType =
-            translate_prim_type(draw->mode, draw->vertices_per_patch);
-      }
-   }
-
    if (1) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
          if (draw->primitive_restart) {
@@ -1586,20 +1613,7 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // draw->index_size > 0
-   if (draw->index_size > 0) {
-      struct iris_resource *res = (struct iris_resource *)draw->index.resource;
-
-      assert(!draw->has_user_indices);
-
-      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-         ib.IndexFormat = draw->index_size;
-         ib.MOCS = MOCS_WB;
-         ib.BufferSize = res->bo->size;
-         // XXX: gah, addresses :(  need two different combine address funcs
-         // ib.BufferStartingAddress = res->bo;
-      }
-   }
+   // XXX: Gen8 - PMA fix
 
    assert(!draw->indirect); // XXX: indirect support
 
