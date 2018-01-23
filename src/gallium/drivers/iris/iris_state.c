@@ -1526,6 +1526,23 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(dirty & (IRIS_DIRTY_VS << stage)))
+         continue;
+
+      if (ice->shaders.prog[stage]) {
+         iris_batch_emit(batch, ice->shaders.prog[stage]->derived_data,
+                         iris_derived_program_state_size(stage));
+      } else {
+         if (stage == MESA_SHADER_TESS_EVAL) {
+            iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
+            iris_emit_cmd(batch, GENX(3DSTATE_DS), ds);
+         } else if (stage == MESA_SHADER_GEOMETRY) {
+            iris_emit_cmd(batch, GENX(3DSTATE_GS), gs);
+         }
+      }
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
          continue;
 
