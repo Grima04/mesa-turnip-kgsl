@@ -155,6 +155,7 @@ void iris_init_query_functions(struct pipe_context *ctx);
 void iris_setup_state_base_address(struct iris_context *ice,
                                    struct iris_batch *batch,
                                    struct iris_bo *instruction_bo);
+void iris_upload_initial_gpu_state(struct iris_batch *batch);
 void iris_upload_render_state(struct iris_context *ice,
                               struct iris_batch *batch,
                               const struct pipe_draw_info *draw);

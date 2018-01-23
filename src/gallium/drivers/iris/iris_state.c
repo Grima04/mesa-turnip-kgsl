@@ -282,9 +282,8 @@ ro_bo(struct iris_bo *bo, uint32_t offset)
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
-static void
-iris_upload_initial_gpu_state(struct iris_context *ice,
-                              struct iris_batch *batch)
+void
+iris_upload_initial_gpu_state(struct iris_batch *batch)
 {
    iris_emit_cmd(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = UINT16_MAX;
