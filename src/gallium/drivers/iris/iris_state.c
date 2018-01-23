@@ -1497,7 +1497,25 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
       iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
-      // XXX: 3DSTATE_WM
+
+   }
+
+   if (dirty & (IRIS_DIRTY_RASTER | IRIS_DIRTY_FS)) {
+      struct iris_rasterizer_state *cso = ice->state.cso_rast;
+      struct brw_wm_prog_data *wm_prog_data = (void *)
+         ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+      uint32_t dynamic_wm[GENX(3DSTATE_WM_length)];
+
+      iris_pack_command(GENX(3DSTATE_WM), &dynamic_wm, wm) {
+         wm.BarycentricInterpolationMode =
+            wm_prog_data->barycentric_interp_modes;
+
+         if (wm_prog_data->early_fragment_tests)
+            wm.EarlyDepthStencilControl = EDSC_PREPS;
+         else if (wm_prog_data->has_side_effects)
+            wm.EarlyDepthStencilControl = EDSC_PSEXEC;
+      }
+      iris_emit_merge(batch, cso->wm, dynamic_wm, ARRAY_SIZE(cso->wm));
    }
 
    // XXX: SBE, SBE_SWIZ
