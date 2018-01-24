@@ -178,7 +178,7 @@ TEST_P(validation_test, opcode46)
     *              reserved on Gen 7
     *              "goto" on Gen8+
     */
-   brw_next_insn(p, 46);
+   brw_next_insn(p, brw_opcode_decode(&devinfo, 46));
 
    if (devinfo.gen == 7) {
       EXPECT_FALSE(validate(p));

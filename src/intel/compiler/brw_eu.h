@@ -1248,6 +1248,19 @@ brw_opcode_decode(const struct gen_device_info *devinfo, unsigned hw)
    return desc ? (enum opcode)desc->ir : BRW_OPCODE_ILLEGAL;
 }
 
+static inline void
+brw_inst_set_opcode(const struct gen_device_info *devinfo,
+                    brw_inst *inst, enum opcode opcode)
+{
+   brw_inst_set_hw_opcode(devinfo, inst, brw_opcode_encode(devinfo, opcode));
+}
+
+static inline enum opcode
+brw_inst_opcode(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   return brw_opcode_decode(devinfo, brw_inst_hw_opcode(devinfo, inst));
+}
+
 static inline bool
 is_3src(const struct gen_device_info *devinfo, enum opcode opcode)
 {

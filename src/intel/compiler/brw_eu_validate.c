@@ -310,6 +310,8 @@ inst_uses_src_acc(const struct gen_device_info *devinfo, const brw_inst *inst)
    case BRW_OPCODE_MACH:
    case BRW_OPCODE_SADA2:
       return true;
+   default:
+      break;
    }
 
    /* FIXME: support 3-src instructions */
@@ -389,7 +391,7 @@ static bool
 is_unsupported_inst(const struct gen_device_info *devinfo,
                     const brw_inst *inst)
 {
-   return brw_opcode_desc(devinfo, brw_inst_opcode(devinfo, inst)) == NULL;
+   return brw_inst_opcode(devinfo, inst) == BRW_OPCODE_ILLEGAL;
 }
 
 /**

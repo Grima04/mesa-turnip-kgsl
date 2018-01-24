@@ -192,7 +192,7 @@ F8(no_dd_check,        /* 4+ */  11, 11, /* 8+ */  10,  10)
 F8(no_dd_clear,        /* 4+ */  10, 10, /* 8+ */   9,   9)
 F(access_mode,           8,   8)
 /* Bit 7 is Reserved (for future Opcode expansion) */
-F(opcode,                6,   0)
+F(hw_opcode,             6,   0)
 
 /**
  * Three-source instructions:
@@ -245,7 +245,7 @@ F8(3src_no_dd_clear,    10, 10,  9,  9)
 F8(3src_mask_control,    9,  9, 34, 34)
 F(3src_access_mode,      8,  8)
 /* Bit 7 is Reserved (for future Opcode expansion) */
-F(3src_opcode,           6,  0)
+F(3src_hw_opcode,        6,  0)
 /** @} */
 
 #define REG_TYPE(reg)                                                         \
@@ -1129,7 +1129,7 @@ F(subreg_index,     22, 18)
 F(datatype_index,   17, 13)
 F(control_index,    12,  8)
 F(debug_control,     7,  7)
-F(opcode,            6,  0) /* Same location as brw_inst */
+F(hw_opcode,         6,  0) /* Same location as brw_inst */
 
 /**
  * (Gen8+) Compacted three-source instructions:
@@ -1152,7 +1152,7 @@ FC(3src_dst_reg_nr,     18, 12, devinfo->gen >= 8)
 FC(3src_source_index,   11, 10, devinfo->gen >= 8)
 FC(3src_control_index,   9,  8, devinfo->gen >= 8)
 /* Bit 7 is Reserved (for future Opcode expansion) */
-FC(3src_opcode,          6,  0, devinfo->gen >= 8)
+FC(3src_hw_opcode,       6,  0, devinfo->gen >= 8)
 /** @} */
 
 #undef F

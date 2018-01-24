@@ -2740,6 +2740,8 @@ brw_find_next_block_end(struct brw_codegen *p, int start_offset)
       case BRW_OPCODE_HALT:
          if (depth == 0)
             return offset;
+      default:
+         break;
       }
    }
 
@@ -2845,6 +2847,9 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
          assert(brw_inst_uip(devinfo, insn) != 0);
          assert(brw_inst_jip(devinfo, insn) != 0);
 	 break;
+
+      default:
+         break;
       }
    }
 }
