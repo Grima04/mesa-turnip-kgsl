@@ -246,7 +246,7 @@ iris_upload_and_bind_shader(struct iris_context *ice,
                             enum iris_program_cache_id cache_id,
                             const void *key,
                             const void *assembly,
-                            const struct brw_stage_prog_data *prog_data)
+                            struct brw_stage_prog_data *prog_data)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    struct gen_device_info *devinfo = &screen->devinfo;

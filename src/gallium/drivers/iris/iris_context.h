@@ -190,7 +190,7 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
                                  enum iris_program_cache_id cache_id,
                                  const void *key,
                                  const void *assembly,
-                                 const struct brw_stage_prog_data *prog_data);
+                                 struct brw_stage_prog_data *prog_data);
 const void *iris_find_previous_compile(struct iris_program_cache *cache,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
