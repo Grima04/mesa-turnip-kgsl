@@ -195,100 +195,90 @@ enum PACKED gen10_align1_3src_dst_horizontal_stride {
 /** @} */
 
 enum opcode {
-   /* These are the actual hardware opcodes. */
-   BRW_OPCODE_ILLEGAL = 0,
-   BRW_OPCODE_MOV =	1,
-   BRW_OPCODE_SEL =	2,
-   BRW_OPCODE_MOVI =	3,   /**< G45+ */
-   BRW_OPCODE_NOT =	4,
-   BRW_OPCODE_AND =	5,
-   BRW_OPCODE_OR =	6,
-   BRW_OPCODE_XOR =	7,
-   BRW_OPCODE_SHR =	8,
-   BRW_OPCODE_SHL =	9,
-   BRW_OPCODE_DIM =	10,  /**< Gen7.5 only */ /* Reused */
-   BRW_OPCODE_SMOV =	10,  /**< Gen8+       */ /* Reused */
-   /* Reserved - 11 */
-   BRW_OPCODE_ASR =	12,
-   /* Reserved - 13 */
-   BRW_OPCODE_ROR =	14,  /**< Gen11+ */
-   BRW_OPCODE_ROL =	15,  /**< Gen11+ */
-   BRW_OPCODE_CMP =	16,
-   BRW_OPCODE_CMPN =	17,
-   BRW_OPCODE_CSEL =	18,  /**< Gen8+ */
-   BRW_OPCODE_F32TO16 = 19,  /**< Gen7 only */
-   BRW_OPCODE_F16TO32 = 20,  /**< Gen7 only */
-   /* Reserved - 21-22 */
-   BRW_OPCODE_BFREV =	23,  /**< Gen7+ */
-   BRW_OPCODE_BFE =	24,  /**< Gen7+ */
-   BRW_OPCODE_BFI1 =	25,  /**< Gen7+ */
-   BRW_OPCODE_BFI2 =	26,  /**< Gen7+ */
-   /* Reserved - 27-31 */
-   BRW_OPCODE_JMPI =	32,
-   BRW_OPCODE_BRD =	33,  /**< Gen7+ */
-   BRW_OPCODE_IF =	34,
-   BRW_OPCODE_IFF =	35,  /**< Pre-Gen6    */ /* Reused */
-   BRW_OPCODE_BRC =	35,  /**< Gen7+       */ /* Reused */
-   BRW_OPCODE_ELSE =	36,
-   BRW_OPCODE_ENDIF =	37,
-   BRW_OPCODE_DO =	38,  /**< Pre-Gen6    */ /* Reused */
-   BRW_OPCODE_CASE =	38,  /**< Gen6 only   */ /* Reused */
-   BRW_OPCODE_WHILE =	39,
-   BRW_OPCODE_BREAK =	40,
-   BRW_OPCODE_CONTINUE = 41,
-   BRW_OPCODE_HALT =	42,
-   BRW_OPCODE_CALLA =	43,  /**< Gen7.5+     */
-   BRW_OPCODE_MSAVE =	44,  /**< Pre-Gen6    */ /* Reused */
-   BRW_OPCODE_CALL =	44,  /**< Gen6+       */ /* Reused */
-   BRW_OPCODE_MREST =	45,  /**< Pre-Gen6    */ /* Reused */
-   BRW_OPCODE_RET =	45,  /**< Gen6+       */ /* Reused */
-   BRW_OPCODE_PUSH =	46,  /**< Pre-Gen6    */ /* Reused */
-   BRW_OPCODE_FORK =	46,  /**< Gen6 only   */ /* Reused */
-   BRW_OPCODE_GOTO =	46,  /**< Gen8+       */ /* Reused */
-   BRW_OPCODE_POP =	47,  /**< Pre-Gen6    */
-   BRW_OPCODE_WAIT =	48,
-   BRW_OPCODE_SEND =	49,
-   BRW_OPCODE_SENDC =	50,
-   BRW_OPCODE_SENDS =	51,  /**< Gen9+ */
-   BRW_OPCODE_SENDSC =	52,  /**< Gen9+ */
-   /* Reserved 53-55 */
-   BRW_OPCODE_MATH =	56,  /**< Gen6+ */
-   /* Reserved 57-63 */
-   BRW_OPCODE_ADD =	64,
-   BRW_OPCODE_MUL =	65,
-   BRW_OPCODE_AVG =	66,
-   BRW_OPCODE_FRC =	67,
-   BRW_OPCODE_RNDU =	68,
-   BRW_OPCODE_RNDD =	69,
-   BRW_OPCODE_RNDE =	70,
-   BRW_OPCODE_RNDZ =	71,
-   BRW_OPCODE_MAC =	72,
-   BRW_OPCODE_MACH =	73,
-   BRW_OPCODE_LZD =	74,
-   BRW_OPCODE_FBH =	75,  /**< Gen7+ */
-   BRW_OPCODE_FBL =	76,  /**< Gen7+ */
-   BRW_OPCODE_CBIT =	77,  /**< Gen7+ */
-   BRW_OPCODE_ADDC =	78,  /**< Gen7+ */
-   BRW_OPCODE_SUBB =	79,  /**< Gen7+ */
-   BRW_OPCODE_SAD2 =	80,
-   BRW_OPCODE_SADA2 =	81,
-   /* Reserved 82-83 */
-   BRW_OPCODE_DP4 =	84,
-   BRW_OPCODE_DPH =	85,
-   BRW_OPCODE_DP3 =	86,
-   BRW_OPCODE_DP2 =	87,
-   /* Reserved 88 */
-   BRW_OPCODE_LINE =	89,
-   BRW_OPCODE_PLN =	90,  /**< G45+ */
-   BRW_OPCODE_MAD =	91,  /**< Gen6+ */
-   BRW_OPCODE_LRP =	92,  /**< Gen6+ */
-   BRW_OPCODE_MADM =	93,  /**< Gen8+ */
-   /* Reserved 94-124 */
-   BRW_OPCODE_NENOP =	125, /**< G45 only */
-   BRW_OPCODE_NOP =	126,
-   /* Reserved 127 */
+   /* These are the actual hardware instructions. */
+   BRW_OPCODE_ILLEGAL,
+   BRW_OPCODE_MOV,
+   BRW_OPCODE_SEL,
+   BRW_OPCODE_MOVI, /**< G45+ */
+   BRW_OPCODE_NOT,
+   BRW_OPCODE_AND,
+   BRW_OPCODE_OR,
+   BRW_OPCODE_XOR,
+   BRW_OPCODE_SHR,
+   BRW_OPCODE_SHL,
+   BRW_OPCODE_DIM, /**< Gen7.5 only */
+   BRW_OPCODE_SMOV, /**< Gen8+ */
+   BRW_OPCODE_ASR,
+   BRW_OPCODE_ROR,  /**< Gen11+ */
+   BRW_OPCODE_ROL,  /**< Gen11+ */
+   BRW_OPCODE_CMP,
+   BRW_OPCODE_CMPN,
+   BRW_OPCODE_CSEL, /**< Gen8+ */
+   BRW_OPCODE_F32TO16, /**< Gen7 only */
+   BRW_OPCODE_F16TO32, /**< Gen7 only */
+   BRW_OPCODE_BFREV, /**< Gen7+ */
+   BRW_OPCODE_BFE, /**< Gen7+ */
+   BRW_OPCODE_BFI1, /**< Gen7+ */
+   BRW_OPCODE_BFI2, /**< Gen7+ */
+   BRW_OPCODE_JMPI,
+   BRW_OPCODE_BRD, /**< Gen7+ */
+   BRW_OPCODE_IF,
+   BRW_OPCODE_IFF, /**< Pre-Gen6 */
+   BRW_OPCODE_BRC, /**< Gen7+ */
+   BRW_OPCODE_ELSE,
+   BRW_OPCODE_ENDIF,
+   BRW_OPCODE_DO, /**< Pre-Gen6 */
+   BRW_OPCODE_CASE, /**< Gen6 only */
+   BRW_OPCODE_WHILE,
+   BRW_OPCODE_BREAK,
+   BRW_OPCODE_CONTINUE,
+   BRW_OPCODE_HALT,
+   BRW_OPCODE_CALLA, /**< Gen7.5+ */
+   BRW_OPCODE_MSAVE, /**< Pre-Gen6 */
+   BRW_OPCODE_CALL, /**< Gen6+ */
+   BRW_OPCODE_MREST, /**< Pre-Gen6 */
+   BRW_OPCODE_RET, /**< Gen6+ */
+   BRW_OPCODE_PUSH, /**< Pre-Gen6 */
+   BRW_OPCODE_FORK, /**< Gen6 only */
+   BRW_OPCODE_GOTO, /**< Gen8+ */
+   BRW_OPCODE_POP, /**< Pre-Gen6 */
+   BRW_OPCODE_WAIT,
+   BRW_OPCODE_SEND,
+   BRW_OPCODE_SENDC,
+   BRW_OPCODE_SENDS, /**< Gen9+ */
+   BRW_OPCODE_SENDSC, /**< Gen9+ */
+   BRW_OPCODE_MATH, /**< Gen6+ */
+   BRW_OPCODE_ADD,
+   BRW_OPCODE_MUL,
+   BRW_OPCODE_AVG,
+   BRW_OPCODE_FRC,
+   BRW_OPCODE_RNDU,
+   BRW_OPCODE_RNDD,
+   BRW_OPCODE_RNDE,
+   BRW_OPCODE_RNDZ,
+   BRW_OPCODE_MAC,
+   BRW_OPCODE_MACH,
+   BRW_OPCODE_LZD,
+   BRW_OPCODE_FBH, /**< Gen7+ */
+   BRW_OPCODE_FBL, /**< Gen7+ */
+   BRW_OPCODE_CBIT, /**< Gen7+ */
+   BRW_OPCODE_ADDC, /**< Gen7+ */
+   BRW_OPCODE_SUBB, /**< Gen7+ */
+   BRW_OPCODE_SAD2,
+   BRW_OPCODE_SADA2,
+   BRW_OPCODE_DP4,
+   BRW_OPCODE_DPH,
+   BRW_OPCODE_DP3,
+   BRW_OPCODE_DP2,
+   BRW_OPCODE_LINE,
+   BRW_OPCODE_PLN, /**< G45+ */
+   BRW_OPCODE_MAD, /**< Gen6+ */
+   BRW_OPCODE_LRP, /**< Gen6+ */
+   BRW_OPCODE_MADM, /**< Gen8+ */
+   BRW_OPCODE_NENOP, /**< G45 only */
+   BRW_OPCODE_NOP,
 
-   NUM_BRW_OPCODES = 128,
+   NUM_BRW_OPCODES,
 
    /* These are compiler backend opcodes that get translated into other
     * instructions.
