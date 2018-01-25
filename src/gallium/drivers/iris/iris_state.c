@@ -379,6 +379,8 @@ struct iris_blend_state {
    uint32_t blend_state[GENX(BLEND_STATE_length)];
    uint32_t blend_entries[BRW_MAX_DRAW_BUFFERS *
                           GENX(BLEND_STATE_ENTRY_length)];
+
+   bool alpha_to_coverage; /* for shader key */
 };
 
 static void *
@@ -386,6 +388,8 @@ iris_create_blend_state(struct pipe_context *ctx,
                         const struct pipe_blend_state *state)
 {
    struct iris_blend_state *cso = malloc(sizeof(struct iris_blend_state));
+
+   cso->alpha_to_coverage = state->alpha_to_coverage;
 
    iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
       bs.AlphaToCoverageEnable = state->alpha_to_coverage;
@@ -530,6 +534,7 @@ struct iris_rasterizer_state {
    uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
    bool flatshade; /* for shader state */
+   bool clamp_fragment_color; /* for shader state */
    bool light_twoside; /* for shader state */
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
@@ -559,6 +564,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    #endif
 
    cso->flatshade = state->flatshade;
+   cso->clamp_fragment_color = state->clamp_fragment_color;
    cso->light_twoside = state->light_twoside;
    cso->rasterizer_discard = state->rasterizer_discard;
    cso->half_pixel_center = state->half_pixel_center;
@@ -1400,16 +1406,19 @@ iris_populate_fs_key(const struct iris_context *ice,
 
    /* XXX: dirty flags? */
    struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
-   //struct iris_depth_stencil_alpha_state *zsa = ice->state.framebuffer;
-   // XXX: can't access iris structs outside iris_state.c :(
-   // XXX: maybe just move these to iris_state.c, honestly...they're more
-   // about state than programs...
+   struct iris_depth_stencil_alpha_state *zsa = ice->state.cso_zsa;
+   struct iris_rasterizer_state *rast = ice->state.cso_rast;
+   struct iris_blend_state *blend = ice->state.cso_blend;
 
    key->nr_color_regions = fb->nr_cbufs;
 
+   key->clamp_fragment_color = rast->clamp_fragment_color;
+
+   key->replicate_alpha = fb->nr_cbufs > 1 &&
+      (zsa->alpha.enabled || blend->alpha_to_coverage);
+
    // key->force_dual_color_blend for unigine
 #if 0
-   //key->replicate_alpha = fb->nr_cbufs > 1 && alpha test or alpha to coverage
    if (cso_rast->multisample) {
       key->persample_interp =
          ctx->Multisample.SampleShading &&
