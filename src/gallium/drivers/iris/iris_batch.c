@@ -626,15 +626,20 @@ emit_reloc(struct iris_batch *batch,
 {
    assert(target != NULL);
 
+   unsigned int index = add_exec_bo(batch, target);
+   struct drm_i915_gem_exec_object2 *entry = &batch->validation_list[index];
+
+   if (target->kflags & EXEC_OBJECT_PINNED) {
+      assert(entry->offset == target->gtt_offset);
+      return entry->offset + target_offset;
+   }
+
    if (rlist->reloc_count == rlist->reloc_array_size) {
       rlist->reloc_array_size *= 2;
       rlist->relocs = realloc(rlist->relocs,
                               rlist->reloc_array_size *
                               sizeof(struct drm_i915_gem_relocation_entry));
    }
-
-   unsigned int index = add_exec_bo(batch, target);
-   struct drm_i915_gem_exec_object2 *entry = &batch->validation_list[index];
 
    rlist->relocs[rlist->reloc_count++] =
       (struct drm_i915_gem_relocation_entry) {

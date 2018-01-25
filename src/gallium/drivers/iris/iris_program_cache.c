@@ -150,7 +150,7 @@ recreate_cache_bo(struct iris_context *ice, uint32_t size)
    void *old_map = cache->map;
 
    cache->bo = iris_bo_alloc(screen->bufmgr, "program cache", size, 64);
-   cache->bo->kflags = EXEC_OBJECT_CAPTURE;
+   cache->bo->kflags = EXEC_OBJECT_CAPTURE | EXEC_OBJECT_PINNED;
    cache->map = iris_bo_map(&ice->dbg, cache->bo,
                             MAP_READ | MAP_WRITE | MAP_ASYNC | MAP_PERSISTENT);
 
@@ -161,10 +161,16 @@ recreate_cache_bo(struct iris_context *ice, uint32_t size)
                  (unsigned) old_bo->size / 1024,
                  (unsigned) cache->bo->size / 1024);
 
+      /* Put the new BO just past the old one */
+      cache->bo->gtt_offset = ALIGN(old_bo->gtt_offset + old_bo->size, 4096);
+
       memcpy(cache->map, old_map, cache->next_offset);
 
       iris_bo_unreference(old_bo);
       iris_bo_unmap(old_bo);
+   } else {
+      /* Put the initial cache BO...somewhere. */
+      cache->bo->gtt_offset = 4096 * 10;
    }
 
    ice->state.dirty |= IRIS_DIRTY_STATE_BASE_ADDRESS;
