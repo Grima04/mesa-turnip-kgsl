@@ -282,7 +282,7 @@ ro_bo(struct iris_bo *bo, uint32_t offset)
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
-void
+static void
 iris_upload_initial_gpu_state(struct iris_batch *batch)
 {
    iris_emit_cmd(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
@@ -1312,18 +1312,9 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 {
 }
 
-void
-iris_setup_state_base_address(struct iris_context *ice,
-                              struct iris_batch *batch,
-                              struct iris_bo *instruction_bo)
+static void
+iris_emit_state_base_address(struct iris_batch *batch)
 {
-   if (!(ice->state.dirty & IRIS_DIRTY_STATE_BASE_ADDRESS))
-      return;
-
-   //iris_batchbuffer_flush(...)
-
-   ice->state.dirty &= ~IRIS_DIRTY_STATE_BASE_ADDRESS;
-
    /* XXX: PIPE_CONTROLs */
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -1351,17 +1342,277 @@ iris_setup_state_base_address(struct iris_context *ice,
 
       sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
       sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
-      sba.InstructionBaseAddress =  ro_bo(instruction_bo, 0);
 
       sba.GeneralStateBufferSize = 0xfffff000;
-      sba.DynamicStateBufferSize = ALIGN(MAX_STATE_SIZE, 4096);
       sba.IndirectObjectBufferSize = 0xfffff000;
-      sba.InstructionBufferSize = ALIGN(ice->shaders.cache.bo->size, 4096);
-      sba.BindlessSurfaceStateSize = 0;
+      sba.InstructionBufferSize = 0xfffff000;
+      sba.DynamicStateBufferSize = ALIGN(MAX_STATE_SIZE, 4096);
    }
 }
 
-void
+static void
+iris_bind_compute_state(struct pipe_context *ctx, void *state)
+{
+}
+
+   //pkt.SamplerCount =                                                     \
+      //DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
+   //pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
+      //ffs(stage_state->per_thread_scratch) - 11;                          \
+
+#define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
+   pkt.KernelStartPointer = shader->prog_offset;                          \
+   pkt.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;  \
+   pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
+                                                                          \
+   pkt.DispatchGRFStartRegisterForURBData =                               \
+      prog_data->dispatch_grf_start_reg;                                  \
+   pkt.prefix##URBEntryReadLength = vue_prog_data->urb_read_length;       \
+   pkt.prefix##URBEntryReadOffset = 0;                                    \
+                                                                          \
+   pkt.StatisticsEnable = true;                                           \
+   pkt.Enable           = true;
+
+static void
+iris_set_vs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+
+   iris_pack_command(GENX(3DSTATE_VS), shader->derived_data, vs) {
+      INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
+      vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
+      vs.SIMD8DispatchEnable = true;
+      vs.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+   }
+}
+
+static void
+iris_set_tcs_state(const struct gen_device_info *devinfo,
+                   struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_tcs_prog_data *tcs_prog_data = (void *) prog_data;
+
+   iris_pack_command(GENX(3DSTATE_HS), shader->derived_data, hs) {
+      INIT_THREAD_DISPATCH_FIELDS(hs, Vertex);
+
+      hs.InstanceCount = tcs_prog_data->instances - 1;
+      hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
+      hs.IncludeVertexHandles = true;
+   }
+}
+
+static void
+iris_set_tes_state(const struct gen_device_info *devinfo,
+                   struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
+
+   uint32_t *te_state = (void *) shader->derived_data;
+   uint32_t *ds_state = te_state + GENX(3DSTATE_TE_length);
+
+   iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
+      te.Partitioning = tes_prog_data->partitioning;
+      te.OutputTopology = tes_prog_data->output_topology;
+      te.TEDomain = tes_prog_data->domain;
+      te.TEEnable = true;
+      te.MaximumTessellationFactorOdd = 63.0;
+      te.MaximumTessellationFactorNotOdd = 64.0;
+   }
+
+   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
+      INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
+
+      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
+      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
+      ds.ComputeWCoordinateEnable =
+         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+
+      ds.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+   }
+
+}
+
+static void
+iris_set_gs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_gs_prog_data *gs_prog_data = (void *) prog_data;
+
+   iris_pack_command(GENX(3DSTATE_GS), shader->derived_data, gs) {
+      INIT_THREAD_DISPATCH_FIELDS(gs, Vertex);
+
+      gs.OutputVertexSize = gs_prog_data->output_vertex_size_hwords * 2 - 1;
+      gs.OutputTopology = gs_prog_data->output_topology;
+      gs.ControlDataHeaderSize =
+         gs_prog_data->control_data_header_size_hwords;
+      gs.InstanceControl = gs_prog_data->invocations - 1;
+      gs.DispatchMode = SIMD8;
+      gs.IncludePrimitiveID = gs_prog_data->include_primitive_id;
+      gs.ControlDataFormat = gs_prog_data->control_data_format;
+      gs.ReorderMode = TRAILING;
+      gs.ExpectedVertexCount = gs_prog_data->vertices_in;
+      gs.MaximumNumberofThreads =
+         GEN_GEN == 8 ? (devinfo->max_gs_threads / 2 - 1)
+                      : (devinfo->max_gs_threads - 1);
+
+      if (gs_prog_data->static_vertex_count != -1) {
+         gs.StaticOutput = true;
+         gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count;
+      }
+      gs.IncludeVertexHandles = vue_prog_data->include_vue_handles;
+
+      gs.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+
+      const int urb_entry_write_offset = 1;
+      const uint32_t urb_entry_output_length =
+         DIV_ROUND_UP(vue_prog_data->vue_map.num_slots, 2) -
+         urb_entry_write_offset;
+
+      gs.VertexURBEntryOutputReadOffset = urb_entry_write_offset;
+      gs.VertexURBEntryOutputLength = MAX2(urb_entry_output_length, 1);
+   }
+}
+
+static void
+iris_set_fs_state(const struct gen_device_info *devinfo,
+                  struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
+
+   uint32_t *ps_state = (void *) shader->derived_data;
+   uint32_t *psx_state = ps_state + GENX(3DSTATE_PS_length);
+
+   iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
+      ps.VectorMaskEnable = true;
+      //ps.SamplerCount = ...
+      ps.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;
+      ps.FloatingPointMode = prog_data->use_alt_mode;
+      ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
+
+      ps.PushConstantEnable = prog_data->nr_params > 0 ||
+                              prog_data->ubo_ranges[0].length > 0;
+
+      /* From the documentation for this packet:
+       * "If the PS kernel does not need the Position XY Offsets to
+       *  compute a Position Value, then this field should be programmed
+       *  to POSOFFSET_NONE."
+       *
+       * "SW Recommendation: If the PS kernel needs the Position Offsets
+       *  to compute a Position XY value, this field should match Position
+       *  ZW Interpolation Mode to ensure a consistent position.xyzw
+       *  computation."
+       *
+       * We only require XY sample offsets. So, this recommendation doesn't
+       * look useful at the moment.  We might need this in future.
+       */
+      ps.PositionXYOffsetSelect =
+         wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
+      ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
+      ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
+      ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
+
+      // XXX: Disable SIMD32 with 16x MSAA
+
+      ps.DispatchGRFStartRegisterForConstantSetupData0 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
+      ps.DispatchGRFStartRegisterForConstantSetupData1 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
+      ps.DispatchGRFStartRegisterForConstantSetupData2 =
+         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
+
+      ps.KernelStartPointer0 =
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
+      ps.KernelStartPointer1 =
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+      ps.KernelStartPointer2 =
+         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+   }
+
+   iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
+      psx.PixelShaderValid = true;
+      psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
+      psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
+      psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
+      psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
+      psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
+      psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+
+      if (wm_prog_data->uses_sample_mask) {
+         /* TODO: conservative rasterization */
+         if (wm_prog_data->post_depth_coverage)
+            psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
+         else
+            psx.InputCoverageMaskState = ICMS_NORMAL;
+      }
+
+      psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
+      psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
+      psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
+
+      // XXX: UAV bit
+   }
+}
+
+static unsigned
+iris_derived_program_state_size(enum iris_program_cache_id cache_id)
+{
+   assert(cache_id <= IRIS_CACHE_CS);
+
+   static const unsigned dwords[] = {
+      [IRIS_CACHE_VS] = GENX(3DSTATE_VS_length),
+      [IRIS_CACHE_TCS] = GENX(3DSTATE_HS_length),
+      [IRIS_CACHE_TES] = GENX(3DSTATE_TE_length) + GENX(3DSTATE_DS_length),
+      [IRIS_CACHE_GS] = GENX(3DSTATE_GS_length),
+      [IRIS_CACHE_FS] =
+         GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
+      [IRIS_CACHE_CS] = 0,
+      [IRIS_CACHE_BLORP_BLIT] = 0,
+   };
+
+   return sizeof(uint32_t) * dwords[cache_id];
+}
+
+static void
+iris_set_derived_program_state(const struct gen_device_info *devinfo,
+                               enum iris_program_cache_id cache_id,
+                               struct iris_compiled_shader *shader)
+{
+   switch (cache_id) {
+   case IRIS_CACHE_VS:
+      iris_set_vs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_TCS:
+      iris_set_tcs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_TES:
+      iris_set_tes_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_GS:
+      iris_set_gs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_FS:
+      iris_set_fs_state(devinfo, shader);
+      break;
+   case IRIS_CACHE_CS:
+      break;
+   default:
+      break;
+   }
+}
+
+static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
@@ -1693,269 +1944,9 @@ iris_upload_render_state(struct iris_context *ice,
 #endif
 }
 
-static void
-iris_bind_compute_state(struct pipe_context *ctx, void *state)
-{
-}
 
-   //pkt.SamplerCount =                                                     \
-      //DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
-   //pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
-      //ffs(stage_state->per_thread_scratch) - 11;                          \
-
-#define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
-   pkt.KernelStartPointer = shader->prog_offset;                          \
-   pkt.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;  \
-   pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
-                                                                          \
-   pkt.DispatchGRFStartRegisterForURBData =                               \
-      prog_data->dispatch_grf_start_reg;                                  \
-   pkt.prefix##URBEntryReadLength = vue_prog_data->urb_read_length;       \
-   pkt.prefix##URBEntryReadOffset = 0;                                    \
-                                                                          \
-   pkt.StatisticsEnable = true;                                           \
-   pkt.Enable           = true;
 
 static void
-iris_set_vs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
-{
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
-   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
-
-   iris_pack_command(GENX(3DSTATE_VS), shader->derived_data, vs) {
-      INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
-      vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
-      vs.SIMD8DispatchEnable = true;
-      vs.UserClipDistanceCullTestEnableBitmask =
-         vue_prog_data->cull_distance_mask;
-   }
-}
-
-static void
-iris_set_tcs_state(const struct gen_device_info *devinfo,
-                   struct iris_compiled_shader *shader)
-{
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
-   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
-   struct brw_tcs_prog_data *tcs_prog_data = (void *) prog_data;
-
-   iris_pack_command(GENX(3DSTATE_HS), shader->derived_data, hs) {
-      INIT_THREAD_DISPATCH_FIELDS(hs, Vertex);
-
-      hs.InstanceCount = tcs_prog_data->instances - 1;
-      hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
-      hs.IncludeVertexHandles = true;
-   }
-}
-
-static void
-iris_set_tes_state(const struct gen_device_info *devinfo,
-                   struct iris_compiled_shader *shader)
-{
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
-   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
-   struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
-
-   uint32_t *te_state = (void *) shader->derived_data;
-   uint32_t *ds_state = te_state + GENX(3DSTATE_TE_length);
-
-   iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
-      te.Partitioning = tes_prog_data->partitioning;
-      te.OutputTopology = tes_prog_data->output_topology;
-      te.TEDomain = tes_prog_data->domain;
-      te.TEEnable = true;
-      te.MaximumTessellationFactorOdd = 63.0;
-      te.MaximumTessellationFactorNotOdd = 64.0;
-   }
-
-   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
-      INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
-
-      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
-      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
-      ds.ComputeWCoordinateEnable =
-         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
-
-      ds.UserClipDistanceCullTestEnableBitmask =
-         vue_prog_data->cull_distance_mask;
-   }
-
-}
-
-static void
-iris_set_gs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
-{
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
-   struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
-   struct brw_gs_prog_data *gs_prog_data = (void *) prog_data;
-
-   iris_pack_command(GENX(3DSTATE_GS), shader->derived_data, gs) {
-      INIT_THREAD_DISPATCH_FIELDS(gs, Vertex);
-
-      gs.OutputVertexSize = gs_prog_data->output_vertex_size_hwords * 2 - 1;
-      gs.OutputTopology = gs_prog_data->output_topology;
-      gs.ControlDataHeaderSize =
-         gs_prog_data->control_data_header_size_hwords;
-      gs.InstanceControl = gs_prog_data->invocations - 1;
-      gs.DispatchMode = SIMD8;
-      gs.IncludePrimitiveID = gs_prog_data->include_primitive_id;
-      gs.ControlDataFormat = gs_prog_data->control_data_format;
-      gs.ReorderMode = TRAILING;
-      gs.ExpectedVertexCount = gs_prog_data->vertices_in;
-      gs.MaximumNumberofThreads =
-         GEN_GEN == 8 ? (devinfo->max_gs_threads / 2 - 1)
-                      : (devinfo->max_gs_threads - 1);
-
-      if (gs_prog_data->static_vertex_count != -1) {
-         gs.StaticOutput = true;
-         gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count;
-      }
-      gs.IncludeVertexHandles = vue_prog_data->include_vue_handles;
-
-      gs.UserClipDistanceCullTestEnableBitmask =
-         vue_prog_data->cull_distance_mask;
-
-      const int urb_entry_write_offset = 1;
-      const uint32_t urb_entry_output_length =
-         DIV_ROUND_UP(vue_prog_data->vue_map.num_slots, 2) -
-         urb_entry_write_offset;
-
-      gs.VertexURBEntryOutputReadOffset = urb_entry_write_offset;
-      gs.VertexURBEntryOutputLength = MAX2(urb_entry_output_length, 1);
-   }
-}
-
-static void
-iris_set_fs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
-{
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
-   struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
-
-   uint32_t *ps_state = (void *) shader->derived_data;
-   uint32_t *psx_state = ps_state + GENX(3DSTATE_PS_length);
-
-   iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
-      ps.VectorMaskEnable = true;
-      //ps.SamplerCount = ...
-      ps.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;
-      ps.FloatingPointMode = prog_data->use_alt_mode;
-      ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
-
-      ps.PushConstantEnable = prog_data->nr_params > 0 ||
-                              prog_data->ubo_ranges[0].length > 0;
-
-      /* From the documentation for this packet:
-       * "If the PS kernel does not need the Position XY Offsets to
-       *  compute a Position Value, then this field should be programmed
-       *  to POSOFFSET_NONE."
-       *
-       * "SW Recommendation: If the PS kernel needs the Position Offsets
-       *  to compute a Position XY value, this field should match Position
-       *  ZW Interpolation Mode to ensure a consistent position.xyzw
-       *  computation."
-       *
-       * We only require XY sample offsets. So, this recommendation doesn't
-       * look useful at the moment.  We might need this in future.
-       */
-      ps.PositionXYOffsetSelect =
-         wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
-      ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
-      ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
-      ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
-
-      // XXX: Disable SIMD32 with 16x MSAA
-
-      ps.DispatchGRFStartRegisterForConstantSetupData0 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
-      ps.DispatchGRFStartRegisterForConstantSetupData1 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
-      ps.DispatchGRFStartRegisterForConstantSetupData2 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
-
-      ps.KernelStartPointer0 =
-         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
-      ps.KernelStartPointer1 =
-         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
-      ps.KernelStartPointer2 =
-         shader->prog_offset + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
-   }
-
-   iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
-      psx.PixelShaderValid = true;
-      psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
-      psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
-      psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
-      psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
-      psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
-      psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
-
-      if (wm_prog_data->uses_sample_mask) {
-         /* TODO: conservative rasterization */
-         if (wm_prog_data->post_depth_coverage)
-            psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
-         else
-            psx.InputCoverageMaskState = ICMS_NORMAL;
-      }
-
-      psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
-      psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
-      psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
-
-      // XXX: UAV bit
-   }
-}
-
-unsigned
-iris_derived_program_state_size(enum iris_program_cache_id cache_id)
-{
-   assert(cache_id <= IRIS_CACHE_CS);
-
-   static const unsigned dwords[] = {
-      [IRIS_CACHE_VS] = GENX(3DSTATE_VS_length),
-      [IRIS_CACHE_TCS] = GENX(3DSTATE_HS_length),
-      [IRIS_CACHE_TES] = GENX(3DSTATE_TE_length) + GENX(3DSTATE_DS_length),
-      [IRIS_CACHE_GS] = GENX(3DSTATE_GS_length),
-      [IRIS_CACHE_FS] =
-         GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
-      [IRIS_CACHE_CS] = 0,
-      [IRIS_CACHE_BLORP_BLIT] = 0,
-   };
-
-   return sizeof(uint32_t) * dwords[cache_id];
-}
-
-void
-iris_set_derived_program_state(const struct gen_device_info *devinfo,
-                               enum iris_program_cache_id cache_id,
-                               struct iris_compiled_shader *shader)
-{
-   switch (cache_id) {
-   case IRIS_CACHE_VS:
-      iris_set_vs_state(devinfo, shader);
-      break;
-   case IRIS_CACHE_TCS:
-      iris_set_tcs_state(devinfo, shader);
-      break;
-   case IRIS_CACHE_TES:
-      iris_set_tes_state(devinfo, shader);
-      break;
-   case IRIS_CACHE_GS:
-      iris_set_gs_state(devinfo, shader);
-      break;
-   case IRIS_CACHE_FS:
-      iris_set_fs_state(devinfo, shader);
-      break;
-   case IRIS_CACHE_CS:
-      break;
-   default:
-      break;
-   }
-}
-
-void
 iris_destroy_state(struct iris_context *ice)
 {
    // XXX: unreference resources/surfaces.
@@ -1966,11 +1957,9 @@ iris_destroy_state(struct iris_context *ice)
 }
 
 void
-iris_init_state(struct iris_context *ice)
+genX(init_state)(struct iris_context *ice)
 {
    struct pipe_context *ctx = &ice->ctx;
-
-   ice->state.dirty = ~0ull;
 
    ctx->create_blend_state = iris_create_blend_state;
    ctx->create_depth_stencil_alpha_state = iris_create_zsa_state;
@@ -2015,4 +2004,14 @@ iris_init_state(struct iris_context *ice)
    ctx->create_stream_output_target = iris_create_stream_output_target;
    ctx->stream_output_target_destroy = iris_stream_output_target_destroy;
    ctx->set_stream_output_targets = iris_set_stream_output_targets;
+
+   ice->render_batch.emit_state_base_address = iris_emit_state_base_address;
+   ice->state.upload_render_state = iris_upload_render_state;
+   ice->state.derived_program_state_size = iris_derived_program_state_size;
+   ice->state.set_derived_program_state = iris_set_derived_program_state;
+   ice->state.destroy_state = iris_destroy_state;
+
+   ice->state.dirty = ~0ull;
+
+   iris_upload_initial_gpu_state(&ice->render_batch);
 }

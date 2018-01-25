@@ -89,6 +89,8 @@ struct iris_batch {
 
    /** Map from batch offset to iris_alloc_state data (with DEBUG_BATCH) */
    struct hash_table *state_sizes;
+
+   void (*emit_state_base_address)(struct iris_batch *batch);
 };
 
 void iris_init_batch(struct iris_batch *batch,

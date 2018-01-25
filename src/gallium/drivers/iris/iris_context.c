@@ -84,10 +84,23 @@ iris_destroy_context(struct pipe_context *ctx)
    ralloc_free(ice);
 }
 
+#define genX_call(devinfo, func, ...)             \
+   switch (devinfo->gen) {                        \
+   case 10:                                       \
+      gen10_##func(__VA_ARGS__);                  \
+      break;                                      \
+   case 9:                                        \
+      gen9_##func(__VA_ARGS__);                   \
+      break;                                      \
+   default:                                       \
+      unreachable("Unknown hardware generation"); \
+   }
+
 struct pipe_context *
 iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct iris_screen *screen = (struct iris_screen*)pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_context *ice = rzalloc(NULL, struct iris_context);
 
    if (!ice)
@@ -115,11 +128,10 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_resource_functions(ctx);
    iris_init_query_functions(ctx);
 
-   iris_init_state(ice);
    iris_init_program_cache(ice);
 
    iris_init_batch(&ice->render_batch, screen, &ice->dbg, I915_EXEC_RENDER);
-   iris_upload_initial_gpu_state(&ice->render_batch);
+   genX_call(devinfo, init_state, ice);
 
    return ctx;
 }

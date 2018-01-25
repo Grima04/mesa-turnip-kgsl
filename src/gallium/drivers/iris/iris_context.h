@@ -75,6 +75,16 @@ struct iris_batch;
 
 struct iris_depth_stencil_alpha_state;
 
+enum iris_program_cache_id {
+   IRIS_CACHE_VS  = MESA_SHADER_VERTEX,
+   IRIS_CACHE_TCS = MESA_SHADER_TESS_CTRL,
+   IRIS_CACHE_TES = MESA_SHADER_TESS_EVAL,
+   IRIS_CACHE_GS  = MESA_SHADER_GEOMETRY,
+   IRIS_CACHE_FS  = MESA_SHADER_FRAGMENT,
+   IRIS_CACHE_CS  = MESA_SHADER_COMPUTE,
+   IRIS_CACHE_BLORP_BLIT,
+};
+
 struct iris_program_cache {
    struct hash_table *table;
    struct iris_bo *bo;
@@ -131,6 +141,15 @@ struct iris_context {
       struct pipe_framebuffer_state framebuffer;
 
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
+
+      void (*upload_render_state)(struct iris_context *ice,
+                                  struct iris_batch *batch,
+                                  const struct pipe_draw_info *draw);
+      unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
+      void (*set_derived_program_state)(const struct gen_device_info *devinfo,
+                                        enum iris_program_cache_id cache_id,
+                                        struct iris_compiled_shader *shader);
+      void (*destroy_state)(struct iris_context *ice);
    } state;
 };
 
@@ -151,38 +170,15 @@ void iris_init_clear_functions(struct pipe_context *ctx);
 void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
-
-void iris_setup_state_base_address(struct iris_context *ice,
-                                   struct iris_batch *batch,
-                                   struct iris_bo *instruction_bo);
-void iris_upload_initial_gpu_state(struct iris_batch *batch);
-void iris_upload_render_state(struct iris_context *ice,
-                              struct iris_batch *batch,
-                              const struct pipe_draw_info *draw);
-void iris_destroy_state(struct iris_context *ice);
-
 void iris_update_compiled_shaders(struct iris_context *ice);
 
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
 
-enum iris_program_cache_id {
-   IRIS_CACHE_VS  = MESA_SHADER_VERTEX,
-   IRIS_CACHE_TCS = MESA_SHADER_TESS_CTRL,
-   IRIS_CACHE_TES = MESA_SHADER_TESS_EVAL,
-   IRIS_CACHE_GS  = MESA_SHADER_GEOMETRY,
-   IRIS_CACHE_FS  = MESA_SHADER_FRAGMENT,
-   IRIS_CACHE_CS  = MESA_SHADER_COMPUTE,
-   IRIS_CACHE_BLORP_BLIT,
-};
-
-void iris_init_state(struct iris_context *ice);
+void gen9_init_state(struct iris_context *ice);
+void gen10_init_state(struct iris_context *ice);
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
 void iris_print_program_cache(struct iris_context *ice);
-unsigned iris_derived_program_state_size(enum iris_program_cache_id cache_id);
-void iris_set_derived_program_state(const struct gen_device_info *devinfo,
-                                    enum iris_program_cache_id cache_id,
-                                    struct iris_compiled_shader *shader);
 bool iris_bind_cached_shader(struct iris_context *ice,
                              enum iris_program_cache_id cache_id,
                              const void *key);

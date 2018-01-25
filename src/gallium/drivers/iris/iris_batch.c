@@ -201,6 +201,9 @@ iris_batch_reset(struct iris_batch *batch)
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
+
+   if (batch->ring == I915_EXEC_RENDER)
+      batch->emit_state_base_address(batch);
 }
 
 static void
