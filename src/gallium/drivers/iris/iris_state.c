@@ -38,6 +38,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
 #include "util/u_transfer.h"
+#include "i915_drm.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_sample_positions.h"
 #include "iris_batch.h"
@@ -73,12 +74,15 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
    return map;
 }
 
-#define iris_pack_command(cmd, dst, name)                         \
+#define _iris_pack_command(batch, cmd, dst, name)                 \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
-        ({ __genxml_cmd_pack(cmd)(NULL, (void *)_dst, &name);     \
+        ({ __genxml_cmd_pack(cmd)(batch, (void *)_dst, &name);    \
            _dst = NULL;                                           \
            }))
+
+#define iris_pack_command(cmd, dst, name) \
+   _iris_pack_command(NULL, cmd, dst, name)
 
 #define iris_pack_state(cmd, dst, name)                           \
    for (struct cmd name = {},                                     \
@@ -87,7 +91,7 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
         _dst = NULL)
 
 #define iris_emit_cmd(batch, cmd, name) \
-   iris_pack_command(cmd, get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
+   _iris_pack_command(batch, cmd, get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
 
 #define iris_emit_merge(batch, dwords0, dwords1, num_dwords)   \
    do {                                                        \
@@ -283,8 +287,51 @@ ro_bo(struct iris_bo *bo, uint32_t offset)
 }
 
 static void
-iris_upload_initial_gpu_state(struct iris_batch *batch)
+iris_emit_state_base_address(struct iris_batch *batch)
 {
+   /* XXX: PIPE_CONTROLs */
+
+   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+   #if 0
+   // XXX: MOCS is stupid for this.
+      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
+      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
+      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
+      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
+      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
+      sba.InstructionMemoryObjectControlState             = MOCS_WB;
+      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
+   #endif
+
+      sba.GeneralStateBaseAddressModifyEnable   = true;
+      sba.SurfaceStateBaseAddressModifyEnable   = true;
+      sba.DynamicStateBaseAddressModifyEnable   = true;
+      sba.IndirectObjectBaseAddressModifyEnable = true;
+      sba.InstructionBaseAddressModifyEnable    = true;
+      sba.GeneralStateBufferSizeModifyEnable    = true;
+      sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+      sba.IndirectObjectBufferSizeModifyEnable  = true;
+      sba.InstructionBuffersizeModifyEnable     = true;
+
+      sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
+      sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
+
+      sba.GeneralStateBufferSize   = 0xfffff;
+      sba.IndirectObjectBufferSize = 0xfffff;
+      sba.InstructionBufferSize    = 0xfffff;
+      sba.DynamicStateBufferSize   = ALIGN(MAX_STATE_SIZE, 4096);
+   }
+}
+
+static void
+iris_init_render_context(struct iris_screen *screen,
+                         struct iris_batch *batch,
+                         struct pipe_debug_callback *dbg)
+{
+   batch->emit_state_base_address = iris_emit_state_base_address;
+   iris_init_batch(batch, screen, dbg, I915_EXEC_RENDER);
+
    iris_emit_cmd(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = UINT16_MAX;
       rect.ClippedDrawingRectangleYMax = UINT16_MAX;
@@ -1313,44 +1360,6 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 }
 
 static void
-iris_emit_state_base_address(struct iris_batch *batch)
-{
-   /* XXX: PIPE_CONTROLs */
-
-   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-   #if 0
-   // XXX: MOCS is stupid for this.
-      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
-      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
-      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
-      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
-      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
-      sba.InstructionMemoryObjectControlState             = MOCS_WB;
-      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
-   #endif
-
-      sba.GeneralStateBaseAddressModifyEnable   = true;
-      sba.SurfaceStateBaseAddressModifyEnable   = true;
-      sba.DynamicStateBaseAddressModifyEnable   = true;
-      sba.IndirectObjectBaseAddressModifyEnable = true;
-      sba.InstructionBaseAddressModifyEnable    = true;
-      sba.GeneralStateBufferSizeModifyEnable    = true;
-      sba.DynamicStateBufferSizeModifyEnable    = true;
-      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-      sba.IndirectObjectBufferSizeModifyEnable  = true;
-      sba.InstructionBuffersizeModifyEnable     = true;
-
-      sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
-      sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
-
-      sba.GeneralStateBufferSize = 0xfffff000;
-      sba.IndirectObjectBufferSize = 0xfffff000;
-      sba.InstructionBufferSize = 0xfffff000;
-      sba.DynamicStateBufferSize = ALIGN(MAX_STATE_SIZE, 4096);
-   }
-}
-
-static void
 iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
 }
@@ -2005,13 +2014,11 @@ genX(init_state)(struct iris_context *ice)
    ctx->stream_output_target_destroy = iris_stream_output_target_destroy;
    ctx->set_stream_output_targets = iris_set_stream_output_targets;
 
-   ice->render_batch.emit_state_base_address = iris_emit_state_base_address;
+   ice->state.init_render_context = iris_init_render_context;
    ice->state.upload_render_state = iris_upload_render_state;
    ice->state.derived_program_state_size = iris_derived_program_state_size;
    ice->state.set_derived_program_state = iris_set_derived_program_state;
    ice->state.destroy_state = iris_destroy_state;
 
    ice->state.dirty = ~0ull;
-
-   iris_upload_initial_gpu_state(&ice->render_batch);
 }

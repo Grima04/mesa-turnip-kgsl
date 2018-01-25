@@ -142,6 +142,9 @@ struct iris_context {
 
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
 
+      void (*init_render_context)(struct iris_screen *screen,
+                                  struct iris_batch *batch,
+                                  struct pipe_debug_callback *dbg);
       void (*upload_render_state)(struct iris_context *ice,
                                   struct iris_batch *batch,
                                   const struct pipe_draw_info *draw);

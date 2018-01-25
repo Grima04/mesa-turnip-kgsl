@@ -130,8 +130,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    iris_init_program_cache(ice);
 
-   iris_init_batch(&ice->render_batch, screen, &ice->dbg, I915_EXEC_RENDER);
    genX_call(devinfo, init_state, ice);
+   ice->state.init_render_context(screen, &ice->render_batch, &ice->dbg);
 
    return ctx;
 }
