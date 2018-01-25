@@ -1364,6 +1364,65 @@ iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
 }
 
+static void
+iris_populate_vs_key(const struct iris_context *ice,
+                     struct brw_vs_prog_key *key)
+{
+   memset(key, 0, sizeof(*key));
+}
+
+static void
+iris_populate_tcs_key(const struct iris_context *ice,
+                      struct brw_tcs_prog_key *key)
+{
+   memset(key, 0, sizeof(*key));
+}
+
+static void
+iris_populate_tes_key(const struct iris_context *ice,
+                      struct brw_tes_prog_key *key)
+{
+   memset(key, 0, sizeof(*key));
+}
+
+static void
+iris_populate_gs_key(const struct iris_context *ice,
+                     struct brw_gs_prog_key *key)
+{
+   memset(key, 0, sizeof(*key));
+}
+
+static void
+iris_populate_fs_key(const struct iris_context *ice,
+                     struct brw_wm_prog_key *key)
+{
+   memset(key, 0, sizeof(*key));
+
+   /* XXX: dirty flags? */
+   struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
+   //struct iris_depth_stencil_alpha_state *zsa = ice->state.framebuffer;
+   // XXX: can't access iris structs outside iris_state.c :(
+   // XXX: maybe just move these to iris_state.c, honestly...they're more
+   // about state than programs...
+
+   key->nr_color_regions = fb->nr_cbufs;
+
+   // key->force_dual_color_blend for unigine
+#if 0
+   //key->replicate_alpha = fb->nr_cbufs > 1 && alpha test or alpha to coverage
+   if (cso_rast->multisample) {
+      key->persample_interp =
+         ctx->Multisample.SampleShading &&
+         (ctx->Multisample.MinSampleShadingValue *
+          _mesa_geometric_samples(ctx->DrawBuffer) > 1);
+
+      key->multisample_fbo = fb->samples > 1;
+   }
+#endif
+
+   key->coherent_fb_fetch = true;
+}
+
    //pkt.SamplerCount =                                                     \
       //DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
    //pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
@@ -2014,11 +2073,17 @@ genX(init_state)(struct iris_context *ice)
    ctx->stream_output_target_destroy = iris_stream_output_target_destroy;
    ctx->set_stream_output_targets = iris_set_stream_output_targets;
 
+   ice->state.destroy_state = iris_destroy_state;
    ice->state.init_render_context = iris_init_render_context;
    ice->state.upload_render_state = iris_upload_render_state;
    ice->state.derived_program_state_size = iris_derived_program_state_size;
    ice->state.set_derived_program_state = iris_set_derived_program_state;
-   ice->state.destroy_state = iris_destroy_state;
+   ice->state.populate_vs_key = iris_populate_vs_key;
+   ice->state.populate_tcs_key = iris_populate_tcs_key;
+   ice->state.populate_tes_key = iris_populate_tes_key;
+   ice->state.populate_gs_key = iris_populate_gs_key;
+   ice->state.populate_fs_key = iris_populate_fs_key;
+
 
    ice->state.dirty = ~0ull;
 }

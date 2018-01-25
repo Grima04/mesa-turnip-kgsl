@@ -240,16 +240,10 @@ iris_compile_vs(struct iris_context *ice,
 }
 
 static void
-iris_populate_vs_key(struct iris_context *ice, struct brw_vs_prog_key *key)
-{
-   memset(key, 0, sizeof(*key));
-}
-
-static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
    struct brw_vs_prog_key key;
-   iris_populate_vs_key(ice, &key);
+   ice->state.populate_vs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_VS, &key))
       return;
@@ -317,40 +311,10 @@ iris_compile_fs(struct iris_context *ice,
 }
 
 static void
-iris_populate_fs_key(struct iris_context *ice, struct brw_wm_prog_key *key)
-{
-   memset(key, 0, sizeof(*key));
-
-   /* XXX: dirty flags? */
-   struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
-   //struct iris_depth_stencil_alpha_state *zsa = ice->state.framebuffer;
-   // XXX: can't access iris structs outside iris_state.c :(
-   // XXX: maybe just move these to iris_state.c, honestly...they're more
-   // about state than programs...
-
-   key->nr_color_regions = fb->nr_cbufs;
-
-   // key->force_dual_color_blend for unigine
-#if 0
-   //key->replicate_alpha = fb->nr_cbufs > 1 && alpha test or alpha to coverage
-   if (cso_rast->multisample) {
-      key->persample_interp =
-         ctx->Multisample.SampleShading &&
-         (ctx->Multisample.MinSampleShadingValue *
-          _mesa_geometric_samples(ctx->DrawBuffer) > 1);
-
-      key->multisample_fbo = fb->samples > 1;
-   }
-#endif
-
-   key->coherent_fb_fetch = true;
-}
-
-static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
    struct brw_wm_prog_key key;
-   iris_populate_fs_key(ice, &key);
+   ice->state.populate_fs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_FS, &key))
       return;

@@ -27,6 +27,7 @@
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
 #include "intel/common/gen_debug.h"
+#include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
 #include "iris_screen.h"
 
@@ -142,6 +143,7 @@ struct iris_context {
 
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
 
+      void (*destroy_state)(struct iris_context *ice);
       void (*init_render_context)(struct iris_screen *screen,
                                   struct iris_batch *batch,
                                   struct pipe_debug_callback *dbg);
@@ -152,7 +154,16 @@ struct iris_context {
       void (*set_derived_program_state)(const struct gen_device_info *devinfo,
                                         enum iris_program_cache_id cache_id,
                                         struct iris_compiled_shader *shader);
-      void (*destroy_state)(struct iris_context *ice);
+      void (*populate_vs_key)(const struct iris_context *ice,
+                              struct brw_vs_prog_key *key);
+      void (*populate_tcs_key)(const struct iris_context *ice,
+                               struct brw_tcs_prog_key *key);
+      void (*populate_tes_key)(const struct iris_context *ice,
+                               struct brw_tes_prog_key *key);
+      void (*populate_gs_key)(const struct iris_context *ice,
+                              struct brw_gs_prog_key *key);
+      void (*populate_fs_key)(const struct iris_context *ice,
+                              struct brw_wm_prog_key *key);
    } state;
 };
 
@@ -175,10 +186,17 @@ void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 void iris_update_compiled_shaders(struct iris_context *ice);
 
+/* iris_draw.c */
+
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
+
+/* iris_state.c */
 
 void gen9_init_state(struct iris_context *ice);
 void gen10_init_state(struct iris_context *ice);
+
+/* iris_program_cache.c */
+
 void iris_init_program_cache(struct iris_context *ice);
 void iris_destroy_program_cache(struct iris_context *ice);
 void iris_print_program_cache(struct iris_context *ice);
