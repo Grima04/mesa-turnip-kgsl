@@ -1718,7 +1718,7 @@ iris_upload_render_state(struct iris_context *ice,
    /* XXX: L3 State */
 
    if (dirty & IRIS_DIRTY_URB) {
-      /* XXX: URB */
+      /* XXX: 3DSTATE_URB */
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
@@ -1750,6 +1750,12 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    // XXX: 3DSTATE_CONSTANT_XS
+   // Surfaces:
+   // - pull constants
+   // - ubos/ssbos/abos
+   // - images
+   // - textures
+   // - render targets - write and read
    // XXX: 3DSTATE_BINDING_TABLE_POINTERS_XS
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -1812,7 +1818,10 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // XXX: SOL and so on
+   // XXX: SOL:
+   // 3DSTATE_STREAMOUT
+   // 3DSTATE_SO_BUFFER
+   // 3DSTATE_SO_DECL_LIST
 
    if (dirty & IRIS_DIRTY_CLIP) {
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
@@ -1853,7 +1862,9 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_merge(batch, cso->wm, dynamic_wm, ARRAY_SIZE(cso->wm));
    }
 
-   // XXX: SBE, SBE_SWIZ
+   // XXX: 3DSTATE_SBE, 3DSTATE_SBE_SWIZ
+   // -> iris_raster_state (point sprite texture coordinate origin)
+   // -> bunch of shader state...
 
    if (dirty & IRIS_DIRTY_PS_BLEND) {
       struct iris_blend_state *cso = ice->state.cso_blend;
@@ -1883,7 +1894,10 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // XXX: 3DSTATE_DEPTH_BUFFER and friends
+   // XXX: 3DSTATE_DEPTH_BUFFER
+   // XXX: 3DSTATE_HIER_DEPTH_BUFFER
+   // XXX: 3DSTATE_STENCIL_BUFFER
+   // XXX: 3DSTATE_CLEAR_PARAMS
 
    if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
       iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_PATTERN), poly) {
@@ -1985,43 +1999,7 @@ iris_upload_render_state(struct iris_context *ice,
 
       //prim.BaseVertexLocation = ...;
    }
-#if 0
-   l3 configuration
-
-   3DSTATE_URB_*
-     -> TODO
-
-   3DSTATE_CONSTANT_* - push constants
-     -> TODO
-
-   Surfaces:
-   - pull constants
-   - ubos/ssbos/abos
-   - images
-   - textures
-   - render targets - write and read
-   3DSTATE_BINDING_TABLE_POINTERS_*
-     -> TODO
-
-   3DSTATE_STREAMOUT
-   3DSTATE_SO_BUFFER
-   3DSTATE_SO_DECL_LIST
-
-   3DSTATE_SBE
-     -> iris_raster_state (point sprite texture coordinate origin)
-     -> bunch of shader state...
-   3DSTATE_SBE_SWIZ
-     -> FS state
-
-   3DSTATE_DEPTH_BUFFER
-   3DSTATE_HIER_DEPTH_BUFFER
-   3DSTATE_STENCIL_BUFFER
-   3DSTATE_CLEAR_PARAMS
-     -> iris_framebuffer_state?
-#endif
 }
-
-
 
 static void
 iris_destroy_state(struct iris_context *ice)
