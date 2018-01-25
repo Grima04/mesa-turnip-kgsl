@@ -172,8 +172,6 @@ recreate_cache_bo(struct iris_context *ice, uint32_t size)
       /* Put the initial cache BO...somewhere. */
       cache->bo->gtt_offset = 4096 * 10;
    }
-
-   ice->state.dirty |= IRIS_DIRTY_STATE_BASE_ADDRESS;
 }
 
 const void *

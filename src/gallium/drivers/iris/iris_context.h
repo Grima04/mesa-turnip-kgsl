@@ -71,8 +71,7 @@ struct iris_batch;
 #define IRIS_DIRTY_GS                       (1ull << 31)
 #define IRIS_DIRTY_FS                       (1ull << 32)
 #define IRIS_DIRTY_CS                       (1ull << 33)
-#define IRIS_DIRTY_STATE_BASE_ADDRESS       (1ull << 34)
-#define IRIS_DIRTY_URB                      (1ull << 35)
+#define IRIS_DIRTY_URB                      (1ull << 34)
 
 struct iris_depth_stencil_alpha_state;
 
