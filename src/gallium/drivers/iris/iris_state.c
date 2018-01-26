@@ -1733,6 +1733,15 @@ iris_upload_urb_config(struct iris_context *ice, struct iris_batch *batch)
    }
 }
 
+static const uint32_t push_constant_opcodes[] = {
+   [MESA_SHADER_VERTEX]    = 21,
+   [MESA_SHADER_TESS_CTRL] = 25, /* HS */
+   [MESA_SHADER_TESS_EVAL] = 26, /* DS */
+   [MESA_SHADER_GEOMETRY]  = 22,
+   [MESA_SHADER_FRAGMENT]  = 23,
+   [MESA_SHADER_COMPUTE]   = 0,
+};
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -1793,7 +1802,18 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // XXX: 3DSTATE_CONSTANT_XS
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
+         continue;
+
+      iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
+         pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
+         if (ice->shaders.prog[stage]) {
+            // XXX: 3DSTATE_CONSTANT_XS
+         }
+      }
+   }
+
    // Surfaces:
    // - pull constants
    // - ubos/ssbos/abos
