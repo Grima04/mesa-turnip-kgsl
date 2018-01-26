@@ -92,7 +92,7 @@ struct iris_compiled_shader {
    struct pipe_resource *buffer;
 
    /** Offset where the assembly lives in the BO. */
-   unsigned prog_offset;
+   unsigned offset;
 
    /** Pointer to the assembly in the BO's map. */
    void *map;
