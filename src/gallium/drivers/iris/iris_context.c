@@ -79,6 +79,8 @@ iris_destroy_context(struct pipe_context *ctx)
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
 
+   iris_destroy_program_cache(ice);
+
    iris_batch_free(&ice->render_batch);
 
    ralloc_free(ice);
