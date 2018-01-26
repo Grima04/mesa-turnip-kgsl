@@ -34,6 +34,8 @@
 struct iris_bo;
 struct iris_batch;
 
+#define IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
+
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_VIEWPORTS 16
 
@@ -85,16 +87,15 @@ enum iris_program_cache_id {
    IRIS_CACHE_BLORP_BLIT,
 };
 
-struct iris_program_cache {
-   struct hash_table *table;
-   struct iris_bo *bo;
-   void *map;
-   uint32_t next_offset;
-};
-
 struct iris_compiled_shader {
-   /** Offset to the start of the assembly in the program cache BO */
-   uint32_t prog_offset;
+   /** Buffer containing the uploaded assembly. */
+   struct pipe_resource *buffer;
+
+   /** Offset where the assembly lives in the BO. */
+   unsigned prog_offset;
+
+   /** Pointer to the assembly in the BO's map. */
+   void *map;
 
    /** The program data (owned by the program cache hash table) */
    struct brw_stage_prog_data *prog_data;
@@ -116,7 +117,8 @@ struct iris_context {
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
 
-      struct iris_program_cache cache;
+      struct u_upload_mgr *uploader;
+      struct hash_table *cache;
    } shaders;
 
    /** The main batch for rendering */
@@ -207,7 +209,7 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
                                  const void *key,
                                  const void *assembly,
                                  struct brw_stage_prog_data *prog_data);
-const void *iris_find_previous_compile(struct iris_program_cache *cache,
+const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
 #endif

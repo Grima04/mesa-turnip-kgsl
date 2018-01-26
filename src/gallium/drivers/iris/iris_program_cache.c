@@ -22,12 +22,12 @@
  */
 #include <stdio.h>
 #include <errno.h>
-#include <i915_drm.h>
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "util/u_atomic.h"
+#include "util/u_upload_mgr.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "intel/compiler/brw_compiler.h"
@@ -42,7 +42,7 @@ struct keybox {
 };
 
 static struct keybox *
-make_keybox(struct iris_program_cache *cache,
+make_keybox(void *mem_ctx,
             enum iris_program_cache_id cache_id,
             const void *key)
 {
@@ -57,7 +57,7 @@ make_keybox(struct iris_program_cache *cache,
    };
 
    struct keybox *keybox =
-      ralloc_size(cache->table, sizeof(struct keybox) + key_sizes[cache_id]);
+      ralloc_size(mem_ctx, sizeof(struct keybox) + key_sizes[cache_id]);
 
    keybox->cache_id = cache_id;
    keybox->size = key_sizes[cache_id];
@@ -121,11 +121,9 @@ iris_bind_cached_shader(struct iris_context *ice,
                         enum iris_program_cache_id cache_id,
                         const void *key)
 {
-   struct iris_program_cache *cache = &ice->shaders.cache;
-
-   struct keybox *keybox = make_keybox(cache, cache_id, key);
-
-   struct hash_entry *entry = _mesa_hash_table_search(cache->table, keybox);
+   struct keybox *keybox = make_keybox(ice->shaders.cache, cache_id, key);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(ice->shaders.cache, keybox);
 
    if (!entry)
       return false;
@@ -141,45 +139,12 @@ iris_bind_cached_shader(struct iris_context *ice,
    return true;
 }
 
-static void
-recreate_cache_bo(struct iris_context *ice, uint32_t size)
-{
-   struct iris_program_cache *cache = &ice->shaders.cache;
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   struct iris_bo *old_bo = cache->bo;
-   void *old_map = cache->map;
-
-   cache->bo = iris_bo_alloc(screen->bufmgr, "program cache", size, 64);
-   cache->bo->kflags = EXEC_OBJECT_CAPTURE | EXEC_OBJECT_PINNED;
-   cache->map = iris_bo_map(&ice->dbg, cache->bo,
-                            MAP_READ | MAP_WRITE | MAP_ASYNC | MAP_PERSISTENT);
-
-   /* Copy any existing data that needs to be saved. */
-   if (old_bo) {
-      perf_debug(&ice->dbg,
-                 "Copying to larger program cache: %u kB -> %u kB\n",
-                 (unsigned) old_bo->size / 1024,
-                 (unsigned) cache->bo->size / 1024);
-
-      /* Put the new BO just past the old one */
-      cache->bo->gtt_offset = ALIGN(old_bo->gtt_offset + old_bo->size, 4096);
-
-      memcpy(cache->map, old_map, cache->next_offset);
-
-      iris_bo_unreference(old_bo);
-      iris_bo_unmap(old_bo);
-   } else {
-      /* Put the initial cache BO...somewhere. */
-      cache->bo->gtt_offset = 4096 * 10;
-   }
-}
-
 const void *
-iris_find_previous_compile(struct iris_program_cache *cache,
+iris_find_previous_compile(const struct iris_context *ice,
                            enum iris_program_cache_id cache_id,
                            unsigned program_string_id)
 {
-   hash_table_foreach(cache->table, entry) {
+   hash_table_foreach(ice->shaders.cache, entry) {
       const struct keybox *keybox = entry->key;
       if (keybox->cache_id == cache_id &&
           get_program_string_id(cache_id, keybox->data) == program_string_id) {
@@ -198,46 +163,17 @@ iris_find_previous_compile(struct iris_program_cache *cache,
  * in our backend.  This saves space in the program cache buffer.
  */
 static const struct iris_compiled_shader *
-find_existing_assembly(const struct iris_program_cache *cache,
+find_existing_assembly(struct hash_table *cache,
                        const void *assembly,
                        unsigned assembly_size)
 {
-   hash_table_foreach(cache->table, entry) {
+   hash_table_foreach(cache, entry) {
       const struct iris_compiled_shader *existing = entry->data;
       if (existing->prog_data->program_size == assembly_size &&
-          memcmp(cache->map + existing->prog_offset,
-                 assembly, assembly_size) == 0)
+          memcmp(existing->map, assembly, assembly_size) == 0)
          return existing;
    }
    return NULL;
-}
-
-static uint32_t
-upload_new_assembly(struct iris_context *ice,
-                    const void *assembly,
-                    unsigned size)
-{
-   struct iris_program_cache *cache = &ice->shaders.cache;
-
-   /* Allocate space in the cache BO for our new program. */
-   if (cache->next_offset + size > cache->bo->size) {
-      uint32_t new_size = cache->bo->size * 2;
-
-      while (cache->next_offset + size > new_size)
-         new_size *= 2;
-
-      recreate_cache_bo(ice, new_size);
-   }
-
-   uint32_t offset = cache->next_offset;
-
-   /* Programs are always 64-byte aligned, so set up the next one now */
-   cache->next_offset = ALIGN(offset + size, 64);
-
-   /* Copy data to the buffer */
-   memcpy(cache->map + offset, assembly, size);
-
-   return offset;
 }
 
 /**
@@ -254,9 +190,9 @@ iris_upload_and_bind_shader(struct iris_context *ice,
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    struct gen_device_info *devinfo = &screen->devinfo;
-   struct iris_program_cache *cache = &ice->shaders.cache;
+   struct hash_table *cache = ice->shaders.cache;
    struct iris_compiled_shader *shader =
-      ralloc_size(cache->table, sizeof(struct iris_compiled_shader) +
+      ralloc_size(cache, sizeof(struct iris_compiled_shader) +
                   ice->state.derived_program_state_size(cache_id));
    const struct iris_compiled_shader *existing =
       find_existing_assembly(cache, assembly, prog_data->program_size);
@@ -270,8 +206,10 @@ iris_upload_and_bind_shader(struct iris_context *ice,
    if (existing) {
       shader->prog_offset = existing->prog_offset;
    } else {
-      shader->prog_offset =
-         upload_new_assembly(ice, assembly, prog_data->program_size);
+      shader->buffer = NULL;
+      u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size,
+                     64, &shader->prog_offset, &shader->buffer, &shader->map);
+      memcpy(shader->map, assembly, prog_data->program_size);
    }
 
    shader->prog_data = prog_data;
@@ -284,7 +222,7 @@ iris_upload_and_bind_shader(struct iris_context *ice,
    ice->state.set_derived_program_state(devinfo, cache_id, shader);
 
    struct keybox *keybox = make_keybox(cache, cache_id, key);
-   _mesa_hash_table_insert(cache->table, keybox, shader);
+   _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
 
    if (cache_id <= MESA_SHADER_STAGES) {
       ice->shaders.prog[cache_id] = shader;
@@ -295,33 +233,24 @@ iris_upload_and_bind_shader(struct iris_context *ice,
 void
 iris_init_program_cache(struct iris_context *ice)
 {
-   struct iris_program_cache *cache = &ice->shaders.cache;
+   ice->shaders.cache =
+      _mesa_hash_table_create(ice, keybox_hash, keybox_equals);
 
-   cache->table = _mesa_hash_table_create(ice, keybox_hash, keybox_equals);
-
-   recreate_cache_bo(ice, 16384);
+   ice->shaders.uploader =
+      u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+                      IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE);
 }
 
 void
 iris_destroy_program_cache(struct iris_context *ice)
 {
-   struct iris_program_cache *cache = &ice->shaders.cache;
-
-   /* This can be NULL if context creation failed early on. */
-   if (cache->bo) {
-      iris_bo_unmap(cache->bo);
-      iris_bo_unreference(cache->bo);
-      cache->bo = NULL;
-      cache->map = NULL;
-   }
-
-   cache->next_offset = 0;
-
    for (int i = 0; i < MESA_SHADER_STAGES; i++) {
       ice->shaders.prog[i] = NULL;
    }
 
-   ralloc_free(cache->table);
+   u_upload_destroy(ice->shaders.uploader);
+
+   ralloc_free(ice->shaders.cache);
 }
 
 static const char *
@@ -336,15 +265,14 @@ cache_name(enum iris_program_cache_id cache_id)
 void
 iris_print_program_cache(struct iris_context *ice)
 {
-   struct iris_program_cache *cache = &ice->shaders.cache;
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
-   hash_table_foreach(cache->table, entry) {
+   hash_table_foreach(ice->shaders.cache, entry) {
       const struct keybox *keybox = entry->key;
       struct iris_compiled_shader *shader = entry->data;
       fprintf(stderr, "%s:\n", cache_name(keybox->cache_id));
-      brw_disassemble(devinfo, cache->map, shader->prog_offset,
+      brw_disassemble(devinfo, shader->map, 0,
                       shader->prog_data->program_size, stderr);
    }
 }
