@@ -50,6 +50,8 @@
 #define __gen_address_type struct iris_address
 #define __gen_user_data struct iris_batch
 
+#define ARRAY_BYTES(x) (sizeof(uint32_t) * ARRAY_SIZE(x))
+
 static uint64_t
 __gen_combine_address(struct iris_batch *batch, void *location,
                       struct iris_address addr, uint32_t delta)
@@ -377,9 +379,8 @@ iris_set_blend_color(struct pipe_context *ctx,
 
 struct iris_blend_state {
    uint32_t ps_blend[GENX(3DSTATE_PS_BLEND_length)];
-   uint32_t blend_state[GENX(BLEND_STATE_length)];
-   uint32_t blend_entries[BRW_MAX_DRAW_BUFFERS *
-                          GENX(BLEND_STATE_ENTRY_length)];
+   uint32_t blend_state[GENX(BLEND_STATE_length) +
+                        BRW_MAX_DRAW_BUFFERS * GENX(BLEND_STATE_ENTRY_length)];
 
    bool alpha_to_coverage; /* for shader key */
 };
@@ -389,18 +390,9 @@ iris_create_blend_state(struct pipe_context *ctx,
                         const struct pipe_blend_state *state)
 {
    struct iris_blend_state *cso = malloc(sizeof(struct iris_blend_state));
+   uint32_t *blend_state = cso->blend_state;
 
    cso->alpha_to_coverage = state->alpha_to_coverage;
-
-   iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
-      bs.AlphaToCoverageEnable = state->alpha_to_coverage;
-      bs.IndependentAlphaBlendEnable = state->independent_blend_enable;
-      bs.AlphaToOneEnable = state->alpha_to_one;
-      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
-      bs.ColorDitherEnable = state->dither;
-      //bs.AlphaTestEnable = <comes from alpha state> :(
-      //bs.AlphaTestFunction = <comes from alpha state> :(
-   }
 
    iris_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
       //pb.HasWriteableRT = <comes from somewhere> :(
@@ -416,8 +408,20 @@ iris_create_blend_state(struct pipe_context *ctx,
       pb.DestinationAlphaBlendFactor = state->rt[0].alpha_dst_factor;
    }
 
+   iris_pack_state(GENX(BLEND_STATE), blend_state, bs) {
+      bs.AlphaToCoverageEnable = state->alpha_to_coverage;
+      bs.IndependentAlphaBlendEnable = state->independent_blend_enable;
+      bs.AlphaToOneEnable = state->alpha_to_one;
+      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
+      bs.ColorDitherEnable = state->dither;
+      //bs.AlphaTestEnable = <comes from alpha state> :(
+      //bs.AlphaTestFunction = <comes from alpha state> :(
+   }
+
+   blend_state += GENX(BLEND_STATE_length);
+
    for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
-      iris_pack_state(GENX(BLEND_STATE_ENTRY), &cso->blend_entries[i], be) {
+      iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_state, be) {
          be.LogicOpEnable = state->logicop_enable;
          be.LogicOpFunction = state->logicop_func;
 
@@ -440,6 +444,7 @@ iris_create_blend_state(struct pipe_context *ctx,
          be.WriteDisableBlue  = state->rt[i].colormask & PIPE_MASK_B;
          be.WriteDisableAlpha = state->rt[i].colormask & PIPE_MASK_A;
       }
+      blend_state += GENX(BLEND_STATE_ENTRY_length);
    }
 
    return cso;
@@ -1775,10 +1780,30 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
-      struct iris_blend_state *cso = ice->state.cso_blend;
+      struct iris_blend_state *cso_blend = ice->state.cso_blend;
+      struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
       // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
       // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
       //    (alpha test function/enable) + has writeable RT from ???????
+      uint32_t blend_offset;
+      uint32_t *blend_map =
+         iris_alloc_state(batch, sizeof(cso_blend->blend_state),
+                          64, &blend_offset);
+
+      uint32_t blend_state_header;
+      iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
+         bs.AlphaTestEnable = cso_zsa->alpha.enabled;
+         bs.AlphaTestFunction = translate_compare_func(cso_zsa->alpha.func);
+      }
+
+      blend_map[0] = blend_state_header | cso_blend->blend_state[0];
+      memcpy(&blend_map[1], &cso_blend->blend_state[1],
+             sizeof(cso_blend->blend_state) - sizeof(uint32_t));
+
+      iris_emit_cmd(batch, GENX(3DSTATE_BLEND_STATE_POINTERS), ptr) {
+         ptr.BlendStatePointer = blend_offset;
+         ptr.BlendStatePointerValid = true;
+      }
    }
 
    if (dirty & IRIS_DIRTY_COLOR_CALC_STATE) {
