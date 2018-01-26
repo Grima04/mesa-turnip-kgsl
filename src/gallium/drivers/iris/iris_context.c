@@ -124,6 +124,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->flush = iris_flush;
    ctx->set_debug_callback = iris_set_debug_callback;
 
+   ice->shaders.urb_size = devinfo->urb.size;
+
    iris_init_blit_functions(ctx);
    iris_init_clear_functions(ctx);
    iris_init_program_functions(ctx);

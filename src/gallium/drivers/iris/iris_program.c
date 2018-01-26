@@ -377,10 +377,6 @@ iris_update_compiled_shaders(struct iris_context *ice)
          }
       }
    }
-
-   if (ice->state.dirty & IRIS_DIRTY_URB) {
-      // ... back to the state module :/
-   }
 }
 
 void

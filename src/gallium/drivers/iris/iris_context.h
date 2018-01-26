@@ -119,6 +119,8 @@ struct iris_context {
 
       struct u_upload_mgr *uploader;
       struct hash_table *cache;
+
+      unsigned urb_size;
    } shaders;
 
    /** The main batch for rendering */

@@ -40,6 +40,7 @@
 #include "util/u_transfer.h"
 #include "i915_drm.h"
 #include "intel/compiler/brw_compiler.h"
+#include "intel/common/gen_l3_config.h"
 #include "intel/common/gen_sample_positions.h"
 #include "iris_batch.h"
 #include "iris_context.h"
@@ -1697,6 +1698,42 @@ iris_set_derived_program_state(const struct gen_device_info *devinfo,
 }
 
 static void
+iris_upload_urb_config(struct iris_context *ice, struct iris_batch *batch)
+{
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const unsigned push_size_kB = 32;
+   unsigned entries[4];
+   unsigned start[4];
+   unsigned size[4];
+
+   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+      if (!ice->shaders.prog[i]) {
+         size[i] = 1;
+      } else {
+         struct brw_vue_prog_data *vue_prog_data =
+            (void *) ice->shaders.prog[i]->prog_data;
+         size[i] = vue_prog_data->urb_entry_size;
+      }
+      assert(size[i] != 0);
+   }
+
+   gen_get_urb_config(devinfo, 1024 * push_size_kB,
+                      1024 * ice->shaders.urb_size,
+                      ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
+                      ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
+                      size, entries, start);
+
+   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+      iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
+         urb._3DCommandSubOpcode += i;
+         urb.VSURBStartingAddress     = start[i];
+         urb.VSURBEntryAllocationSize = size[i] - 1;
+         urb.VSNumberofURBEntries     = entries[i];
+      }
+   }
+}
+
+static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
@@ -1725,7 +1762,7 @@ iris_upload_render_state(struct iris_context *ice,
    /* XXX: L3 State */
 
    if (dirty & IRIS_DIRTY_URB) {
-      /* XXX: 3DSTATE_URB */
+      iris_upload_urb_config(ice, batch);
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
