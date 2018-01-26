@@ -395,8 +395,8 @@ iris_create_blend_state(struct pipe_context *ctx,
    cso->alpha_to_coverage = state->alpha_to_coverage;
 
    iris_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
-      //pb.HasWriteableRT = <comes from somewhere> :(
-      //pb.AlphaTestEnable = <comes from alpha state> :(
+      /* pb.HasWriteableRT is filled in at draw time. */
+      /* pb.AlphaTestEnable is filled in at draw time. */
       pb.AlphaToCoverageEnable = state->alpha_to_coverage;
       pb.IndependentAlphaBlendEnable = state->independent_blend_enable;
 
@@ -414,8 +414,7 @@ iris_create_blend_state(struct pipe_context *ctx,
       bs.AlphaToOneEnable = state->alpha_to_one;
       bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
       bs.ColorDitherEnable = state->dither;
-      //bs.AlphaTestEnable = <comes from alpha state> :(
-      //bs.AlphaTestFunction = <comes from alpha state> :(
+      /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
    }
 
    blend_state += GENX(BLEND_STATE_length);
@@ -1956,8 +1955,16 @@ iris_upload_render_state(struct iris_context *ice,
    // -> bunch of shader state...
 
    if (dirty & IRIS_DIRTY_PS_BLEND) {
-      struct iris_blend_state *cso = ice->state.cso_blend;
-      iris_batch_emit(batch, cso->ps_blend, sizeof(cso->ps_blend));
+      struct iris_blend_state *cso_blend = ice->state.cso_blend;
+      struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
+      uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
+      iris_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
+         pb.HasWriteableRT = true; // XXX: comes from somewhere :(
+         pb.AlphaTestEnable = cso_zsa->alpha.enabled;
+      }
+
+      iris_emit_merge(batch, cso_blend->ps_blend, dynamic_pb,
+                      ARRAY_SIZE(cso_blend->ps_blend));
    }
 
    if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
