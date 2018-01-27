@@ -186,6 +186,13 @@ clBuildProgram(cl_program d_prog, cl_uint num_devs,
    if (prog.has_source) {
       prog.compile(devs, opts);
       prog.link(devs, opts, { prog });
+   } else if (any_of([&](const device &dev){
+         return prog.build(dev).binary_type() != CL_PROGRAM_BINARY_TYPE_EXECUTABLE;
+         }, devs)) {
+      // According to the OpenCL 1.2 specification, “if program is created
+      // with clCreateProgramWithBinary, then the program binary must be an
+      // executable binary (not a compiled binary or library).”
+      throw error(CL_INVALID_BINARY);
    }
 
    return CL_SUCCESS;
