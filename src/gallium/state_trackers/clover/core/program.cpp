@@ -26,7 +26,8 @@
 using namespace clover;
 
 program::program(clover::context &ctx, const std::string &source) :
-   has_source(true), context(ctx), _source(source), _kernel_ref_counter(0) {
+   has_source(true), context(ctx), _devices(ctx.devices()), _source(source),
+   _kernel_ref_counter(0) {
 }
 
 program::program(clover::context &ctx,

@@ -41,7 +41,7 @@ namespace {
          throw error(CL_INVALID_OPERATION);
 
       if (any_of([&](const device &dev) {
-               return !count(dev, prog.context().devices());
+               return !count(dev, prog.devices());
             }, objs<allow_empty_tag>(d_devs, num_devs)))
          throw error(CL_INVALID_DEVICE);
    }
@@ -176,8 +176,8 @@ clBuildProgram(cl_program d_prog, cl_uint num_devs,
                void (*pfn_notify)(cl_program, void *),
                void *user_data) try {
    auto &prog = obj(d_prog);
-   auto devs = (d_devs ? objs(d_devs, num_devs) :
-                ref_vector<device>(prog.context().devices()));
+   auto devs =
+      (d_devs ? objs(d_devs, num_devs) : ref_vector<device>(prog.devices()));
    const auto opts = std::string(p_opts ? p_opts : "") + " " +
                      debug_get_option("CLOVER_EXTRA_BUILD_OPTIONS", "");
 
@@ -202,8 +202,8 @@ clCompileProgram(cl_program d_prog, cl_uint num_devs,
                  void (*pfn_notify)(cl_program, void *),
                  void *user_data) try {
    auto &prog = obj(d_prog);
-   auto devs = (d_devs ? objs(d_devs, num_devs) :
-                ref_vector<device>(prog.context().devices()));
+   auto devs =
+       (d_devs ? objs(d_devs, num_devs) : ref_vector<device>(prog.devices()));
    const auto opts = std::string(p_opts ? p_opts : "") + " " +
                      debug_get_option("CLOVER_EXTRA_COMPILE_OPTIONS", "");
    header_map headers;
@@ -279,10 +279,10 @@ clLinkProgram(cl_context d_ctx, cl_uint num_devs, const cl_device_id *d_devs,
    const auto opts = std::string(p_opts ? p_opts : "") + " " +
                      debug_get_option("CLOVER_EXTRA_LINK_OPTIONS", "");
    auto progs = objs(d_progs, num_progs);
-   auto prog = create<program>(ctx);
-   auto devs = validate_link_devices(progs,
-                                     (d_devs ? objs(d_devs, num_devs) :
-                                      ref_vector<device>(ctx.devices())));
+   auto all_devs =
+      (d_devs ? objs(d_devs, num_devs) : ref_vector<device>(ctx.devices()));
+   auto prog = create<program>(ctx, all_devs);
+   auto devs = validate_link_devices(progs, all_devs);
 
    validate_build_common(prog, num_devs, d_devs, pfn_notify, user_data);
 
