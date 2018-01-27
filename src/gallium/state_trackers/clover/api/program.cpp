@@ -250,8 +250,11 @@ clCompileProgram(cl_program d_prog, cl_uint num_devs,
 namespace {
    ref_vector<device>
    validate_link_devices(const ref_vector<program> &progs,
-                         const ref_vector<device> &all_devs) {
+                         const ref_vector<device> &all_devs,
+                         const std::string &opts) {
       std::vector<device *> devs;
+      const bool create_library =
+         opts.find("-create-library") != std::string::npos;
 
       for (auto &dev : all_devs) {
          const auto has_binary = [&](const program &prog) {
@@ -260,10 +263,22 @@ namespace {
                    t == CL_PROGRAM_BINARY_TYPE_LIBRARY;
          };
 
+         // According to the OpenCL 1.2 specification, a library is made of
+         // “compiled binaries specified in input_programs argument to
+         // clLinkProgram“; compiled binaries does not refer to libraries:
+         // “input_programs is an array of program objects that are compiled
+         // binaries or libraries that are to be linked to create the program
+         // executable”.
+         if (create_library && any_of([&](const program &prog) {
+                  const auto t = prog.build(dev).binary_type();
+                  return t != CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT;
+               }, progs))
+            throw error(CL_INVALID_OPERATION);
+
          // According to the CL 1.2 spec, when "all programs specified [..]
          // contain a compiled binary or library for the device [..] a link is
          // performed",
-         if (all_of(has_binary, progs))
+         else if (all_of(has_binary, progs))
             devs.push_back(&dev);
 
          // otherwise if "none of the programs contain a compiled binary or
@@ -289,7 +304,7 @@ clLinkProgram(cl_context d_ctx, cl_uint num_devs, const cl_device_id *d_devs,
    auto all_devs =
       (d_devs ? objs(d_devs, num_devs) : ref_vector<device>(ctx.devices()));
    auto prog = create<program>(ctx, all_devs);
-   auto devs = validate_link_devices(progs, all_devs);
+   auto devs = validate_link_devices(progs, all_devs, opts);
 
    validate_build_common(prog, num_devs, d_devs, pfn_notify, user_data);
 
