@@ -1445,10 +1445,10 @@ iris_populate_fs_key(const struct iris_context *ice,
    memset(key, 0, sizeof(*key));
 
    /* XXX: dirty flags? */
-   struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
-   struct iris_depth_stencil_alpha_state *zsa = ice->state.cso_zsa;
-   struct iris_rasterizer_state *rast = ice->state.cso_rast;
-   struct iris_blend_state *blend = ice->state.cso_blend;
+   const struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
+   const struct iris_depth_stencil_alpha_state *zsa = ice->state.cso_zsa;
+   const struct iris_rasterizer_state *rast = ice->state.cso_rast;
+   const struct iris_blend_state *blend = ice->state.cso_blend;
 
    key->nr_color_regions = fb->nr_cbufs;
 
