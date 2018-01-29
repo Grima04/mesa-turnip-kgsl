@@ -188,6 +188,10 @@ UNUSED static void pipe_asserts()
    PIPE_ASSERT(PIPE_STENCIL_OP_INCR_WRAP == STENCILOP_INCR);
    PIPE_ASSERT(PIPE_STENCIL_OP_DECR_WRAP == STENCILOP_DECR);
    PIPE_ASSERT(PIPE_STENCIL_OP_INVERT == STENCILOP_INVERT);
+
+   /* pipe_sprite_coord_mode happens to match 3DSTATE_SBE */
+   PIPE_ASSERT(PIPE_SPRITE_COORD_UPPER_LEFT == UPPERLEFT);
+   PIPE_ASSERT(PIPE_SPRITE_COORD_LOWER_LEFT == LOWERLEFT);
 #undef PIPE_ASSERT
 }
 
@@ -544,6 +548,7 @@ struct iris_rasterizer_state {
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
+   uint16_t sprite_coord_enable;
 };
 
 static void *
@@ -554,8 +559,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       malloc(sizeof(struct iris_rasterizer_state));
 
 #if 0
-   sprite_coord_mode -> SBE PointSpriteTextureCoordinateOrigin
-   sprite_coord_enable -> SBE PointSpriteTextureCoordinateEnable
    point_quad_rasterization -> SBE?
 
    not necessary?
@@ -573,6 +576,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->light_twoside = state->light_twoside;
    cso->rasterizer_discard = state->rasterizer_discard;
    cso->half_pixel_center = state->half_pixel_center;
+   cso->sprite_coord_mode = state->sprite_coord_mode;
+   cso->sprite_coord_enable = state->sprite_coord_enable;
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
       sf.StatisticsEnable = true;
@@ -1370,6 +1375,36 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 {
 }
 
+#if 0
+static void
+iris_compute_sbe(const struct iris_context *ice,
+                 const struct brw_wm_prog_data *wm_prog_data)
+{
+   uint32_t sbe_map[GENX(3DSTATE_SBE_length)];
+   struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+
+   unsigned urb_read_offset, urb_read_length;
+   brw_compute_sbe_urb_slot_interval(fp->info.inputs_read,
+                                     ice->shaders.last_vue_map,
+                                     &urb_read_offset, &urb_read_length);
+
+   iris_pack_command(GENX(3DSTATE_SBE), sbe_map, sbe) {
+      sbe.AttributeSwizzleEnable = true;
+      sbe.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
+      sbe.PointSpriteTextureCoordinateOrigin = cso_rast->sprite_coord_mode;
+      sbe.VertexURBEntryReadOffset = urb_read_offset;
+      sbe.VertexURBEntryReadLength = urb_read_length;
+      sbe.ForceVertexURBEntryReadOffset = true;
+      sbe.ForceVertexURBEntryReadLength = true;
+      sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
+
+      for (int i = 0; i < urb_read_length * 2; i++) {
+         sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
+      }
+   }
+}
+#endif
+
 static void
 iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
@@ -1950,9 +1985,15 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_merge(batch, cso->wm, dynamic_wm, ARRAY_SIZE(cso->wm));
    }
 
-   // XXX: 3DSTATE_SBE, 3DSTATE_SBE_SWIZ
-   // -> iris_raster_state (point sprite texture coordinate origin)
-   // -> bunch of shader state...
+   if (1) {
+      // XXX: 3DSTATE_SBE, 3DSTATE_SBE_SWIZ
+      // -> iris_raster_state (point sprite texture coordinate origin)
+      // -> bunch of shader state...
+      iris_emit_cmd(batch, GENX(3DSTATE_SBE), sbe) {
+      }
+      iris_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbe) {
+      }
+   }
 
    if (dirty & IRIS_DIRTY_PS_BLEND) {
       struct iris_blend_state *cso_blend = ice->state.cso_blend;
