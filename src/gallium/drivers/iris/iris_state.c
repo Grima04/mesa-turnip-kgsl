@@ -2072,8 +2072,21 @@ iris_upload_render_state(struct iris_context *ice,
       // XXX: 3DSTATE_SBE, 3DSTATE_SBE_SWIZ
       // -> iris_raster_state (point sprite texture coordinate origin)
       // -> bunch of shader state...
+
       iris_emit_cmd(batch, GENX(3DSTATE_SBE), sbe) {
+         sbe.AttributeSwizzleEnable = true;
+         sbe.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
+         sbe.VertexURBEntryReadOffset = 1;
+         sbe.VertexURBEntryReadLength = 1;
+         sbe.ForceVertexURBEntryReadOffset = true;
+         sbe.ForceVertexURBEntryReadLength = true;
+         sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
+
+         for (int i = 0; i < 2; i++) {
+            sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
+         }
       }
+
       iris_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbe) {
       }
    }
