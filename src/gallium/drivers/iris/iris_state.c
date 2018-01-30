@@ -1163,6 +1163,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
    }
 
+   if (cso->nr_cbufs != state->nr_cbufs) {
+      ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+   }
+
    cso->width = state->width;
    cso->height = state->height;
    cso->layers = state->layers;
@@ -1842,14 +1846,13 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
       struct iris_blend_state *cso_blend = ice->state.cso_blend;
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
       struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
-      // XXX: 3DSTATE_BLEND_STATE_POINTERS - BLEND_STATE
-      // -> from iris_blend_state (most) + iris_depth_stencil_alpha_state
-      //    (alpha test function/enable) + has writeable RT from ???????
+      const int num_dwords = 4 * (GENX(BLEND_STATE_length) +
+         cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length));
       uint32_t blend_offset;
       uint32_t *blend_map =
-         iris_alloc_state(batch, sizeof(cso_blend->blend_state),
-                          64, &blend_offset);
+         iris_alloc_state(batch, num_dwords, 64, &blend_offset);
 
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
