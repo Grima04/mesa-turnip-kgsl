@@ -1910,7 +1910,7 @@ iris_upload_render_state(struct iris_context *ice,
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-      if (!shader) // XXX: dirty bits
+      if (!shader) // XXX: dirty bits...also, emit a disable maybe?
          continue;
 
       struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
@@ -1940,7 +1940,8 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
+      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)) ||
+          !ice->shaders.prog[stage])
          continue;
 
       // XXX: get sampler count from shader; don't emit them all...
