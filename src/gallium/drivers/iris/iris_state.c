@@ -1782,6 +1782,32 @@ static const uint32_t push_constant_opcodes[] = {
    [MESA_SHADER_COMPUTE]   = 0,
 };
 
+static uint32_t
+emit_patched_surface_state(struct iris_batch *batch,
+                           uint32_t *surface_state,
+                           const struct iris_resource *res,
+                           unsigned reloc_flags)
+{
+   const int num_dwords = GENX(RENDER_SURFACE_STATE_length);
+   uint32_t offset;
+   uint32_t *dw = iris_alloc_state(batch, 4 * num_dwords, 64, &offset);
+
+   STATIC_ASSERT(GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) % 32 == 0);
+   int addr_idx = GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) / 32;
+   for (uint32_t i = 0; i < addr_idx; i++)
+      dw[i] = surface_state[i];
+
+   uint64_t *qw = (uint64_t *) &dw[addr_idx];
+   // XXX: mt->offset, if needed
+   *qw = iris_state_reloc(batch, (void *)qw - batch->statebuf.map, res->bo,
+                          surface_state[addr_idx + 1], reloc_flags);
+
+   for (uint32_t i = addr_idx + 1; i < num_dwords; i++)
+      dw[i] = surface_state[i];
+
+   return offset;
+}
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -1881,6 +1907,37 @@ iris_upload_render_state(struct iris_context *ice,
    // - textures
    // - render targets - write and read
    // XXX: 3DSTATE_BINDING_TABLE_POINTERS_XS
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+      if (!shader) // XXX: dirty bits
+         continue;
+
+      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+      uint32_t bt_offset = 0;
+      uint32_t *bt_map = NULL;
+
+      if (prog_data->binding_table.size_bytes != 0) {
+         bt_map = iris_alloc_state(batch, prog_data->binding_table.size_bytes,
+                                   64, &bt_offset);
+      }
+
+      iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
+         ptr._3DCommandSubOpcode = 38 + stage;
+         ptr.PointertoVSBindingTable = bt_offset;
+      }
+
+      if (stage == MESA_SHADER_FRAGMENT) {
+         struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+         for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+            struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+            struct iris_resource *res = (void *) surf->pipe.texture;
+
+            *bt_map++ = emit_patched_surface_state(batch, surf->surface_state,
+                                                   res, RELOC_WRITE);
+         }
+      }
+   }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)))
