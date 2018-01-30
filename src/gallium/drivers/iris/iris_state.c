@@ -114,9 +114,10 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
          dw[i] = (dwords)[i];                                           \
       }                                                                 \
       uint64_t *qw = (uint64_t *) &dw[addr_idx];                        \
-      qw = iris_batch_reloc(batch, qw - batch->cmdbuf.map, addr.bo,     \
-                            addr.offset + (dwords)[addr_idx + 1],       \
-                            addr.reloc_flags);                          \
+      *qw = iris_batch_reloc(batch, (void *)qw - batch->cmdbuf.map,     \
+                             addr.bo,                                   \
+                             addr.offset + (dwords)[addr_idx + 1],      \
+                             addr.reloc_flags);                         \
       for (uint32_t i = addr_idx + 1; i < num_dw; i++) {                \
          dw[i] = (dwords)[i];                                           \
       }                                                                 \
