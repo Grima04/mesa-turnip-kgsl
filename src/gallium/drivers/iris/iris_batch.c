@@ -506,7 +506,7 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       execbuf.flags |= I915_EXEC_FENCE_OUT;
    }
 
-#if 0
+#if 1
    int ret = drm_ioctl(batch->screen->fd, cmd, &execbuf);
    if (ret != 0)
       ret = -errno;
