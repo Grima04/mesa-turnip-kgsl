@@ -121,6 +121,8 @@ bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 
+void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo);
+
 uint64_t iris_batch_reloc(struct iris_batch *batch,
                           uint32_t batch_offset,
                           struct iris_bo *target,

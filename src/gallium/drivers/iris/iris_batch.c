@@ -659,6 +659,13 @@ emit_reloc(struct iris_batch *batch,
    return entry->offset + target_offset;
 }
 
+void
+iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo)
+{
+   assert(bo->kflags & EXEC_OBJECT_PINNED);
+   add_exec_bo(batch, bo);
+}
+
 uint64_t
 iris_batch_reloc(struct iris_batch *batch, uint32_t batch_offset,
                  struct iris_bo *target, uint32_t target_offset,

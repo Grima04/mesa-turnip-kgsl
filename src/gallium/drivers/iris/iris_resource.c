@@ -263,6 +263,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       goto fail;
 
    if (templ->flags & IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE) {
+      res->bo->kflags = EXEC_OBJECT_PINNED;
+      res->bo->name = "instruction cache";
       // XXX: p_atomic_add is backwards :(
       res->bo->gtt_offset = __atomic_fetch_add(&screen->next_instruction_address, res->bo->size, __ATOMIC_ACQ_REL);
    }

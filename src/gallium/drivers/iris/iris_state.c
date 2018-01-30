@@ -1989,8 +1989,12 @@ iris_upload_render_state(struct iris_context *ice,
       if (!(dirty & (IRIS_DIRTY_VS << stage)))
          continue;
 
-      if (ice->shaders.prog[stage]) {
-         iris_batch_emit(batch, ice->shaders.prog[stage]->derived_data,
+      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+
+      if (shader) {
+         struct iris_resource *cache = (void *) shader->buffer;
+         iris_use_pinned_bo(batch, cache->bo);
+         iris_batch_emit(batch, shader->derived_data,
                          iris_derived_program_state_size(stage));
       } else {
          if (stage == MESA_SHADER_TESS_EVAL) {
