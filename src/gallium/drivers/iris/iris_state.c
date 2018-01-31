@@ -1016,9 +1016,9 @@ struct iris_viewport_state {
 };
 
 static float
-extent_from_matrix(const struct pipe_viewport_state *state, int axis)
+viewport_extent(const struct pipe_viewport_state *state, int axis, float sign)
 {
-   return fabsf(state->scale[axis]) * state->translate[axis];
+   return copysignf(state->scale[axis], sign) + state->translate[axis];
 }
 
 #if 0
@@ -1116,9 +1116,6 @@ iris_set_viewport_states(struct pipe_context *ctx,
 
    // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
    for (unsigned i = 0; i < num_viewports; i++) {
-      float x_extent = extent_from_matrix(&state[i], 0);
-      float y_extent = extent_from_matrix(&state[i], 1);
-
       iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
          vp.ViewportMatrixElementm00 = state[i].scale[0];
          vp.ViewportMatrixElementm11 = state[i].scale[1];
@@ -1133,10 +1130,10 @@ iris_set_viewport_states(struct pipe_context *ctx,
          vp.XMaxClipGuardband = 1.0;
          vp.YMinClipGuardband = -1.0;
          vp.YMaxClipGuardband = 1.0;
-         vp.XMinViewPort = -x_extent;
-         vp.XMaxViewPort =  x_extent;
-         vp.YMinViewPort = -y_extent;
-         vp.YMaxViewPort =  y_extent;
+         vp.XMinViewPort = viewport_extent(&state[i], 0, -1.0f);
+         vp.XMaxViewPort = viewport_extent(&state[i], 0,  1.0f) - 1;
+         vp.YMinViewPort = viewport_extent(&state[i], 1, -1.0f);
+         vp.YMaxViewPort = viewport_extent(&state[i], 1,  1.0f) - 1;
       }
 
       vp_map += GENX(SF_CLIP_VIEWPORT_length);
