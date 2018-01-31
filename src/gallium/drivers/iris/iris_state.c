@@ -1999,7 +1999,7 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_SAMPLE_MASK) {
       iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_MASK), ms) {
-         ms.SampleMask = ice->state.sample_mask;
+         ms.SampleMask = MAX2(ice->state.sample_mask, 1);
       }
    }
 
