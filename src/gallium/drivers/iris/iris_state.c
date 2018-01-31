@@ -443,10 +443,10 @@ iris_create_blend_state(struct pipe_context *ctx,
          be.DestinationBlendFactor      = state->rt[i].rgb_dst_factor;
          be.DestinationAlphaBlendFactor = state->rt[i].alpha_dst_factor;
 
-         be.WriteDisableRed   = state->rt[i].colormask & PIPE_MASK_R;
-         be.WriteDisableGreen = state->rt[i].colormask & PIPE_MASK_G;
-         be.WriteDisableBlue  = state->rt[i].colormask & PIPE_MASK_B;
-         be.WriteDisableAlpha = state->rt[i].colormask & PIPE_MASK_A;
+         be.WriteDisableRed   = !(state->rt[i].colormask & PIPE_MASK_R);
+         be.WriteDisableGreen = !(state->rt[i].colormask & PIPE_MASK_G);
+         be.WriteDisableBlue  = !(state->rt[i].colormask & PIPE_MASK_B);
+         be.WriteDisableAlpha = !(state->rt[i].colormask & PIPE_MASK_A);
       }
       blend_state += GENX(BLEND_STATE_ENTRY_length);
    }
