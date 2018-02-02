@@ -381,6 +381,16 @@ optimizations = [
    # 0.0 >= fabs(a)
    (('fge', ('fneg', ('fabs', a)), 0.0), ('feq', a, 0.0)),
 
+   # (a >= 0.0) && (a <= 1.0) -> fsat(a) == a
+   (('iand', ('fge', a, 0.0), ('fge', 1.0, a)), ('feq', a, ('fsat', a)), '!options->lower_fsat'),
+
+   # (a < 0.0) || (a > 1.0)
+   # !(!(a < 0.0) && !(a > 1.0))
+   # !((a >= 0.0) && (a <= 1.0))
+   # !(a == fsat(a))
+   # a != fsat(a)
+   (('ior', ('flt', a, 0.0), ('flt', 1.0, a)), ('fne', a, ('fsat', a)), '!options->lower_fsat'),
+
    (('fmax',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('ior', a, b))),
    (('fmax', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@1')), ('fneg', ('b2f', 'b@1'))), ('fneg', ('b2f', ('ior', a, b)))),
    (('fmin',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('iand', a, b))),
