@@ -1623,9 +1623,9 @@ surf_fake_interleaved_msaa(const struct isl_device *isl_dev,
    info->surf.msaa_layout = ISL_MSAA_LAYOUT_NONE;
 }
 
-static void
-surf_retile_w_to_y(const struct isl_device *isl_dev,
-                   struct brw_blorp_surface_info *info)
+void
+blorp_surf_retile_w_to_y(const struct isl_device *isl_dev,
+                         struct brw_blorp_surface_info *info)
 {
    assert(info->surf.tiling == ISL_TILING_W);
 
@@ -1942,7 +1942,7 @@ try_blorp_blit(struct blorp_batch *batch,
       params->y1 = ALIGN(params->y1, y_align) / 2;
 
       /* Retile the surface to Y-tiled */
-      surf_retile_w_to_y(batch->blorp->isl_dev, &params->dst);
+      blorp_surf_retile_w_to_y(batch->blorp->isl_dev, &params->dst);
 
       wm_prog_key->dst_tiled_w = true;
       wm_prog_key->use_kill = true;
@@ -1968,7 +1968,7 @@ try_blorp_blit(struct blorp_batch *batch,
        *
        * TODO: what if this makes the texture size too large?
        */
-      surf_retile_w_to_y(batch->blorp->isl_dev, &params->src);
+      blorp_surf_retile_w_to_y(batch->blorp->isl_dev, &params->src);
 
       wm_prog_key->src_tiled_w = true;
       wm_prog_key->need_src_offset = true;
