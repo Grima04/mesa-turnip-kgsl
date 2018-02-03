@@ -1527,6 +1527,13 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
                                    ISL_AUX_USAGE_NONE, &stencil);
    }
 
+   /* Blorp may choose to clear stencil using RGBA32_UINT for better
+    * performance.  If it does this, we need to flush it out of the depth
+    * cache before rendering to it.
+    */
+   cmd_buffer->state.pending_pipe_bits |=
+      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | ANV_PIPE_CS_STALL_BIT;
+
    blorp_clear_depth_stencil(&batch, &depth, &stencil,
                              level, base_layer, layer_count,
                              area.offset.x, area.offset.y,
@@ -1536,6 +1543,13 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
                              depth_value,
                              (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? 0xff : 0,
                              stencil_value);
+
+   /* Blorp may choose to clear stencil using RGBA32_UINT for better
+    * performance.  If it does this, we need to flush it out of the render
+    * cache before someone starts trying to do stencil on it.
+    */
+   cmd_buffer->state.pending_pipe_bits |=
+      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_CS_STALL_BIT;
 
    struct blorp_surf stencil_shadow;
    if ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&

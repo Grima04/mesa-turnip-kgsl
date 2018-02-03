@@ -565,6 +565,107 @@ blorp_clear(struct blorp_batch *batch,
    }
 }
 
+static bool
+blorp_clear_stencil_as_rgba(struct blorp_batch *batch,
+                            const struct blorp_surf *surf,
+                            uint32_t level, uint32_t start_layer,
+                            uint32_t num_layers,
+                            uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1,
+                            uint8_t stencil_mask, uint8_t stencil_value)
+{
+   /* We only support separate W-tiled stencil for now */
+   if (surf->surf->format != ISL_FORMAT_R8_UINT ||
+       surf->surf->tiling != ISL_TILING_W)
+      return false;
+
+   /* Stencil mask support would require piles of shader magic */
+   if (stencil_mask != 0xff)
+      return false;
+
+   if (surf->surf->samples > 1) {
+      /* Adjust x0, y0, x1, and y1 to be in units of samples */
+      assert(surf->surf->msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED);
+      struct isl_extent2d msaa_px_size_sa =
+         isl_get_interleaved_msaa_px_size_sa(surf->surf->samples);
+
+      x0 *= msaa_px_size_sa.w;
+      y0 *= msaa_px_size_sa.h;
+      x1 *= msaa_px_size_sa.w;
+      y1 *= msaa_px_size_sa.h;
+   }
+
+   /* W-tiles and Y-tiles have the same layout as far as cache lines are
+    * concerned: both are 8x8 cache lines laid out Y-major.  The difference is
+    * entirely in how the data is arranged withing the cache line.  W-tiling
+    * is 8x8 pixels in a swizzled pattern while Y-tiling is 16B by 4 rows
+    * regardless of image format size.  As long as everything is aligned to 8,
+    * we can just treat the W-tiled image as Y-tiled, ignore the layout
+    * difference within a cache line, and blast out data.
+    */
+   if (x0 % 8 != 0 || y0 % 8 != 0 || x1 % 8 != 0 || y1 % 8 != 0)
+      return false;
+
+   struct blorp_params params;
+   blorp_params_init(&params);
+
+   if (!blorp_params_get_clear_kernel(batch, &params, true, false))
+      return false;
+
+   memset(&params.wm_inputs.clear_color, stencil_value,
+          sizeof(params.wm_inputs.clear_color));
+
+   /* The Sandy Bridge PRM Vol. 4 Pt. 2, section 2.11.2.1.1 has the
+    * following footnote to the format table:
+    *
+    *    128 BPE Formats cannot be Tiled Y when used as render targets
+    *
+    * We have to use RGBA16_UINT on SNB.
+    */
+   enum isl_format wide_format;
+   if (ISL_DEV_GEN(batch->blorp->isl_dev) <= 6) {
+      wide_format = ISL_FORMAT_R16G16B16A16_UINT;
+
+      /* For RGBA16_UINT, we need to mask the stencil value otherwise, we risk
+       * clamping giving us the wrong values
+       */
+      for (unsigned i = 0; i < 4; i++)
+         params.wm_inputs.clear_color[i] &= 0xffff;
+   } else {
+      wide_format = ISL_FORMAT_R32G32B32A32_UINT;
+   }
+
+   for (uint32_t a = 0; a < num_layers; a++) {
+      uint32_t layer = start_layer + a;
+
+      brw_blorp_surface_info_init(batch->blorp, &params.dst, surf, level,
+                                  layer, ISL_FORMAT_UNSUPPORTED, true);
+
+      if (surf->surf->samples > 1)
+         blorp_surf_fake_interleaved_msaa(batch->blorp->isl_dev, &params.dst);
+
+      /* Make it Y-tiled */
+      blorp_surf_retile_w_to_y(batch->blorp->isl_dev, &params.dst);
+
+      unsigned wide_Bpp =
+         isl_format_get_layout(wide_format)->bpb / 8;
+
+      params.dst.view.format = params.dst.surf.format = wide_format;
+      assert(params.dst.surf.logical_level0_px.width % wide_Bpp == 0);
+      params.dst.surf.logical_level0_px.width /= wide_Bpp;
+      assert(params.dst.tile_x_sa % wide_Bpp == 0);
+      params.dst.tile_x_sa /= wide_Bpp;
+
+      params.x0 = params.dst.tile_x_sa + x0 / (wide_Bpp / 2);
+      params.y0 = params.dst.tile_y_sa + y0 / 2;
+      params.x1 = params.dst.tile_x_sa + x1 / (wide_Bpp / 2);
+      params.y1 = params.dst.tile_y_sa + y1 / 2;
+
+      batch->blorp->exec(batch, &params);
+   }
+
+   return true;
+}
+
 void
 blorp_clear_depth_stencil(struct blorp_batch *batch,
                           const struct blorp_surf *depth,
@@ -575,6 +676,13 @@ blorp_clear_depth_stencil(struct blorp_batch *batch,
                           bool clear_depth, float depth_value,
                           uint8_t stencil_mask, uint8_t stencil_value)
 {
+   if (!clear_depth && blorp_clear_stencil_as_rgba(batch, stencil, level,
+                                                   start_layer, num_layers,
+                                                   x0, y0, x1, y1,
+                                                   stencil_mask,
+                                                   stencil_value))
+      return;
+
    struct blorp_params params;
    blorp_params_init(&params);
 
