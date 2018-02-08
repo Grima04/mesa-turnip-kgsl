@@ -47,6 +47,11 @@ sha1_h = custom_target(
 )
 
 subdir('gtest')
+if cc.get_id() == 'msvc'
+  subdir('getopt')
+else
+  idep_getopt = null_dep
+endif
 subdir('util')
 subdir('mapi')
 # TODO: opengl
