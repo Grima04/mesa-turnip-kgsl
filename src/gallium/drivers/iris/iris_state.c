@@ -38,6 +38,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
 #include "util/u_transfer.h"
+#include "util/u_upload_mgr.h"
 #include "i915_drm.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_l3_config.h"
@@ -1190,11 +1191,14 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
 static void
 iris_set_constant_buffer(struct pipe_context *ctx,
-                         enum pipe_shader_type shader, uint index,
+                         enum pipe_shader_type p_stage, unsigned index,
                          const struct pipe_constant_buffer *cb)
 {
-}
+   struct iris_context *ice = (struct iris_context *) ctx;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
 
+   util_copy_constant_buffer(&ice->shaders.state[stage].constbuf[index], cb);
+}
 
 static void
 iris_sampler_view_destroy(struct pipe_context *ctx,
@@ -1910,13 +1914,36 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      // XXX: wrong dirty tracking...
       if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
+      struct pipe_constant_buffer *cbuf0 =
+         &ice->shaders.state[stage].constbuf[0];
+
+      if (!ice->shaders.prog[stage] || cbuf0->buffer || !cbuf0->buffer_size)
+         continue;
+
+      struct iris_shader_state *shs = &ice->shaders.state[stage];
+      shs->const_size = cbuf0->buffer_size;
+      u_upload_data(ice->ctx.const_uploader, 0, shs->const_size, 32,
+                    cbuf0->user_buffer, &shs->const_offset,
+                    &shs->push_resource);
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      // XXX: wrong dirty tracking...
+      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
+         continue;
+
+      struct iris_shader_state *shs = &ice->shaders.state[stage];
+      struct iris_resource *res = (void *) shs->push_resource;
+
       iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
          pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
-         if (ice->shaders.prog[stage]) {
-            // XXX: 3DSTATE_CONSTANT_XS
+         if (res) {
+            pkt.ConstantBody.ReadLength[3] = shs->const_size;
+            pkt.ConstantBody.Buffer[3] = ro_bo(res->bo, shs->const_offset);
          }
       }
    }

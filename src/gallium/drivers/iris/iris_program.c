@@ -64,10 +64,15 @@ iris_create_shader_state(struct pipe_context *ctx,
 
    nir = brw_preprocess_nir(screen->compiler, nir);
 
+#if 0
+   /* Reassign uniform locations using type_size_scalar_bytes instead of
+    * the slot based calculation that st_nir uses.
+    */
    nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
                             type_size_scalar_bytes);
    nir_lower_io(nir, nir_var_uniform, type_size_scalar_bytes, 0);
-   //NIR_PASS_V(nir, brw_nir_lower_uniforms, true);
+#endif
+   nir_lower_io(nir, nir_var_uniform, type_size_vec4_bytes, 0);
 
    ish->program_id = get_new_program_id(screen);
    ish->base.type = PIPE_SHADER_IR_NIR;
@@ -199,6 +204,31 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    return next_binding_table_offset;
 }
 
+static void
+iris_setup_uniforms(void *mem_ctx,
+                    nir_shader *nir,
+                    struct brw_stage_prog_data *prog_data)
+{
+   prog_data->nr_params = nir->num_uniforms * 4;
+   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
+
+   nir->num_uniforms *= 16;
+
+   nir_foreach_variable(var, &nir->uniforms) {
+      /* UBO's, atomics and samplers don't take up space */
+      //if (var->interface_type != NULL || var->type->contains_atomic())
+         //continue;
+
+      const unsigned components = glsl_get_components(var->type);
+
+      for (unsigned i = 0; i < 4; i++) {
+         prog_data->param[var->data.driver_location] =
+            i < components ? BRW_PARAM_PARAMETER(var->data.driver_location, i)
+                           : BRW_PARAM_BUILTIN_ZERO;
+      }
+   }
+}
+
 static bool
 iris_compile_vs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
@@ -291,6 +321,8 @@ iris_compile_fs(struct iris_context *ice,
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, &nir->info, prog_data,
                                        MAX2(key->nr_color_regions, 1));
+
+   iris_setup_uniforms(mem_ctx, nir, prog_data);
 
    char *error_str = NULL;
    const unsigned *program =
