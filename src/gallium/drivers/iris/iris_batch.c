@@ -581,10 +581,11 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    }
 
    int ret = submit_batch(batch, in_fence_fd, out_fence_fd);
-   if (ret < 0)
-      return ret;
 
    //throttle(iris);
+
+   if (ret < 0)
+      return ret;
 
    if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
       decode_batch(batch);
