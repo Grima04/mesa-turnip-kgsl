@@ -124,7 +124,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
 
       [PIPE_FORMAT_L8_SRGB]                 = ISL_FORMAT_L8_UNORM_SRGB,
       [PIPE_FORMAT_L8A8_SRGB]               = ISL_FORMAT_L8A8_UNORM_SRGB,
-      //[PIPE_FORMAT_R8G8B8_SRGB]             = ISL_FORMAT_R8G8B8_UNORM_SRGB,
+      [PIPE_FORMAT_R8G8B8_SRGB]             = ISL_FORMAT_R8G8B8_UNORM_SRGB,
       //[PIPE_FORMAT_A8B8G8R8_SRGB]           = ISL_FORMAT_A8B8G8R8_UNORM_SRGB,
       //[PIPE_FORMAT_X8B8G8R8_SRGB]           = ISL_FORMAT_X8B8G8R8_UNORM_SRGB,
       [PIPE_FORMAT_B8G8R8A8_SRGB]           = ISL_FORMAT_B8G8R8A8_UNORM_SRGB,
@@ -380,7 +380,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       //[PIPE_FORMAT_P016]                    = ISL_FORMAT_P016,
 
       //[PIPE_FORMAT_R10G10B10X2_UNORM]       = ISL_FORMAT_R10G10B10X2_UNORM,
-      //[PIPE_FORMAT_A1B5G5R5_UNORM]          = ISL_FORMAT_A1B5G5R5_UNORM,
+      [PIPE_FORMAT_A1B5G5R5_UNORM]          = ISL_FORMAT_A1B5G5R5_UNORM,
       //[PIPE_FORMAT_X1B5G5R5_UNORM]          = ISL_FORMAT_X1B5G5R5_UNORM,
    };
    assert(pf < PIPE_FORMAT_COUNT);
