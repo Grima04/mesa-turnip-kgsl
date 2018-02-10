@@ -57,6 +57,15 @@ libclllvm = static_library(
   override_options : clover_cpp_std,
 )
 
+libclspirv = static_library(
+  'clspirv',
+  files('spirv/invocation.cpp', 'spirv/invocation.hpp'),
+  include_directories : clover_incs,
+  cpp_args : [clover_spirv_cpp_args, cpp_vis_args],
+  dependencies : [dep_spirv_tools],
+  override_options : clover_cpp_std,
+)
+
 clover_files = files(
   'api/context.cpp',
   'api/device.cpp',
@@ -117,6 +126,6 @@ libclover = static_library(
   [clover_files, sha1_h],
   include_directories : clover_incs,
   cpp_args : [clover_spirv_cpp_args, clover_cpp_args, cpp_vis_args],
-  link_with : [libclllvm],
+  link_with : [libclllvm, libclspirv],
   override_options : clover_cpp_std,
 )
