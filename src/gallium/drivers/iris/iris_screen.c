@@ -128,6 +128,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_UMA:
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
    case PIPE_CAP_CLIP_HALFZ:
+   case PIPE_CAP_TGSI_TEXCOORD:
       return true;
 
    case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
@@ -139,7 +140,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
-   case PIPE_CAP_TGSI_TEXCOORD:
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
    case PIPE_CAP_FAKE_SW_MSAA:
    case PIPE_CAP_VERTEXID_NOBASE:
