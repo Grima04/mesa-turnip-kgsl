@@ -508,8 +508,12 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
 
 #if 1
    int ret = drm_ioctl(batch->screen->fd, cmd, &execbuf);
-   if (ret != 0)
+   if (ret != 0) {
       ret = -errno;
+      DBG("execbuf FAILED: errno = %d\n", -ret);
+   } else {
+      DBG("execbuf succeeded\n");
+   }
 #else
    int ret = 0;
    fprintf(stderr, "execbuf disabled for now\n");
