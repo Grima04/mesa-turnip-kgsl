@@ -22,7 +22,6 @@
 
 #include "core/program.hpp"
 #include "llvm/invocation.hpp"
-#include "tgsi/invocation.hpp"
 
 using namespace clover;
 
@@ -51,10 +50,9 @@ program::compile(const ref_vector<device> &devs, const std::string &opts,
          std::string log;
 
          try {
-            const module m = (dev.ir_format() == PIPE_SHADER_IR_TGSI ?
-                              tgsi::compile_program(_source, log) :
-                              llvm::compile_program(_source, headers, dev,
-                                                    opts, log));
+            assert(dev.ir_format() == PIPE_SHADER_IR_NATIVE);
+            const module m = llvm::compile_program(_source, headers, dev, opts,
+                                                   log);
             _builds[&dev] = { m, opts, log };
          } catch (...) {
             _builds[&dev] = { module(), opts, log };
@@ -76,9 +74,8 @@ program::link(const ref_vector<device> &devs, const std::string &opts,
       std::string log = _builds[&dev].log;
 
       try {
-         const module m = (dev.ir_format() == PIPE_SHADER_IR_TGSI ?
-                           tgsi::link_program(ms) :
-                           llvm::link_program(ms, dev, opts, log));
+         assert(dev.ir_format() == PIPE_SHADER_IR_NATIVE);
+         const module m = llvm::link_program(ms, dev, opts, log);
          _builds[&dev] = { m, opts, log };
       } catch (...) {
          _builds[&dev] = { module(), opts, log };

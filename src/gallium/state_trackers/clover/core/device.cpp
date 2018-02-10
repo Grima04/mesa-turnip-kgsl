@@ -244,15 +244,7 @@ device::vendor_name() const {
 
 enum pipe_shader_ir
 device::ir_format() const {
-   int supported_irs =
-      pipe->get_shader_param(pipe, PIPE_SHADER_COMPUTE,
-                             PIPE_SHADER_CAP_SUPPORTED_IRS);
-
-   if (supported_irs & (1 << PIPE_SHADER_IR_NATIVE)) {
-      return PIPE_SHADER_IR_NATIVE;
-   }
-
-   return PIPE_SHADER_IR_TGSI;
+   return PIPE_SHADER_IR_NATIVE;
 }
 
 std::string
