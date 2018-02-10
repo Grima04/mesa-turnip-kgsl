@@ -439,9 +439,15 @@ iris_finish_batch(struct iris_batch *batch)
 {
    batch->no_wrap = true;
 
-   /* Mark the end of the buffer. */
-   const uint32_t MI_BATCH_BUFFER_END = (0xA << 23);
-   iris_batch_emit(batch, &MI_BATCH_BUFFER_END, sizeof(uint32_t));
+   // XXX: ISP DIS
+
+   /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
+    * requires our batch size to be QWord aligned, so we pad it out if
+    * necessary by emitting an extra MI_NOOP after the end.
+    */
+   const uint32_t MI_BATCH_BUFFER_END_AND_NOOP[2]  = { (0xA << 23), 0 };
+   const bool qword_aligned = (buffer_bytes_used(&batch->cmdbuf) % 8) == 0;
+   iris_batch_emit(batch, MI_BATCH_BUFFER_END_AND_NOOP, qword_aligned ? 8 : 4);
 
    batch->no_wrap = false;
 }
