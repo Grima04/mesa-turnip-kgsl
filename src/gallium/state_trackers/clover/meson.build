@@ -53,7 +53,7 @@ libclllvm = static_library(
       dep_llvm.version(), 'include',
     )),
   ],
-  dependencies : [dep_llvm, dep_elf],
+  dependencies : [dep_llvm, dep_elf, dep_llvmspirvlib],
   override_options : clover_cpp_std,
 )
 
