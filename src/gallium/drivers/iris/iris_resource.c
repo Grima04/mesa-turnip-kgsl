@@ -389,8 +389,8 @@ iris_transfer_map(struct pipe_context *ctx,
    transfer->level = level;
    transfer->usage = usage;
    transfer->box = *box;
-   transfer->stride = 1;
-   transfer->layer_stride = 1;
+   transfer->stride = isl_surf_get_row_pitch_B(&res->surf);
+   transfer->layer_stride = isl_surf_get_array_pitch(&res->surf);
    *ptransfer = transfer;
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
