@@ -680,6 +680,30 @@ clover::spirv::is_valid_spirv(const std::vector<char> &binary,
    return spvTool.Validate(reinterpret_cast<const uint32_t *>(binary.data()),
                            binary.size() / 4u);
 }
+
+std::string
+clover::spirv::print_module(const std::vector<char> &binary,
+                            const std::string &opencl_version) {
+   const spv_target_env target_env =
+      convert_opencl_str_to_target_env(opencl_version);
+   spvtools::SpirvTools spvTool(target_env);
+   spv_context spvContext = spvContextCreate(target_env);
+   if (!spvContext)
+      return "Failed to create an spv_context for disassembling the module.";
+
+   spv_text disassembly;
+   spvBinaryToText(spvContext,
+                   reinterpret_cast<const uint32_t *>(binary.data()),
+                   binary.size() / 4u, SPV_BINARY_TO_TEXT_OPTION_NONE,
+                   &disassembly, nullptr);
+   spvContextDestroy(spvContext);
+
+   const std::string disassemblyStr = disassembly->str;
+   spvTextDestroy(disassembly);
+
+   return disassemblyStr;
+}
+
 #else
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
@@ -701,5 +725,11 @@ clover::spirv::link_program(const std::vector<module> &/*modules*/,
                             std::string &r_log) {
    r_log += "SPIR-V support in clover is not enabled.\n";
    throw error(CL_LINKER_NOT_AVAILABLE);
+}
+
+std::string
+clover::spirv::print_module(const std::vector<char> &binary,
+                            const std::string &opencl_version) {
+   return std::string();
 }
 #endif

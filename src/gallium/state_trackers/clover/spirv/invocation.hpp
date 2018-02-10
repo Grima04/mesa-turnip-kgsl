@@ -46,6 +46,10 @@ namespace clover {
       // link dependencies between them.
       module link_program(const std::vector<module> &modules, const device &dev,
                           const std::string &opts, std::string &r_log);
+
+      // Returns a textual representation of the given binary.
+      std::string print_module(const std::vector<char> &binary,
+                               const std::string &opencl_version);
    }
 }
 
