@@ -784,12 +784,14 @@ set_subreg_index(const struct gen_device_info *devinfo, brw_compact_inst *dst,
 }
 
 static bool
-get_src_index(uint16_t uncompacted,
-              uint16_t *compacted)
+set_src0_index(const struct gen_device_info *devinfo,
+               brw_compact_inst *dst, const brw_inst *src)
 {
+   uint16_t uncompacted = brw_inst_bits(src, 88, 77); /* 12b */
+
    for (int i = 0; i < 32; i++) {
       if (src_index_table[i] == uncompacted) {
-	 *compacted = i;
+         brw_compact_inst_set_src0_index(devinfo, dst, i);
 	 return true;
       }
    }
@@ -798,38 +800,25 @@ get_src_index(uint16_t uncompacted,
 }
 
 static bool
-set_src0_index(const struct gen_device_info *devinfo,
-               brw_compact_inst *dst, const brw_inst *src)
-{
-   uint16_t compacted;
-   uint16_t uncompacted = brw_inst_bits(src, 88, 77); /* 12b */
-
-   if (!get_src_index(uncompacted, &compacted))
-      return false;
-
-   brw_compact_inst_set_src0_index(devinfo, dst, compacted);
-
-   return true;
-}
-
-static bool
 set_src1_index(const struct gen_device_info *devinfo, brw_compact_inst *dst,
                const brw_inst *src, bool is_immediate)
 {
-   uint16_t compacted;
-
    if (is_immediate) {
-      compacted = (brw_inst_imm_ud(devinfo, src) >> 8) & 0x1f;
+      uint16_t imm = (brw_inst_imm_ud(devinfo, src) >> 8) & 0x1f;
+      brw_compact_inst_set_src1_index(devinfo, dst, imm);
+      return true;
    } else {
       uint16_t uncompacted = brw_inst_bits(src, 120, 109); /* 12b */
 
-      if (!get_src_index(uncompacted, &compacted))
-         return false;
+      for (int i = 0; i < 32; i++) {
+         if (src_index_table[i] == uncompacted) {
+            brw_compact_inst_set_src1_index(devinfo, dst, i);
+            return true;
+         }
+      }
    }
 
-   brw_compact_inst_set_src1_index(devinfo, dst, compacted);
-
-   return true;
+   return false;
 }
 
 static bool
