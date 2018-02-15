@@ -702,7 +702,8 @@ static const uint64_t gen8_3src_source_index_table[4] = {
 static const uint32_t *control_index_table;
 static const uint32_t *datatype_table;
 static const uint16_t *subreg_table;
-static const uint16_t *src_index_table;
+static const uint16_t *src0_index_table;
+static const uint16_t *src1_index_table;
 
 static bool
 set_control_index(const struct gen_device_info *devinfo,
@@ -790,7 +791,7 @@ set_src0_index(const struct gen_device_info *devinfo,
    uint16_t uncompacted = brw_inst_bits(src, 88, 77); /* 12b */
 
    for (int i = 0; i < 32; i++) {
-      if (src_index_table[i] == uncompacted) {
+      if (src0_index_table[i] == uncompacted) {
          brw_compact_inst_set_src0_index(devinfo, dst, i);
 	 return true;
       }
@@ -811,7 +812,7 @@ set_src1_index(const struct gen_device_info *devinfo, brw_compact_inst *dst,
       uint16_t uncompacted = brw_inst_bits(src, 120, 109); /* 12b */
 
       for (int i = 0; i < 32; i++) {
-         if (src_index_table[i] == uncompacted) {
+         if (src1_index_table[i] == uncompacted) {
             brw_compact_inst_set_src1_index(devinfo, dst, i);
             return true;
          }
@@ -1225,7 +1226,7 @@ set_uncompacted_src0(const struct gen_device_info *devinfo, brw_inst *dst,
                      brw_compact_inst *src)
 {
    uint32_t compacted = brw_compact_inst_src0_index(devinfo, src);
-   uint16_t uncompacted = src_index_table[compacted];
+   uint16_t uncompacted = src0_index_table[compacted];
 
    brw_inst_set_bits(dst, 88, 77, uncompacted);
 }
@@ -1240,7 +1241,7 @@ set_uncompacted_src1(const struct gen_device_info *devinfo, brw_inst *dst,
       brw_inst_set_imm_ud(devinfo, dst, (high5 << 27) >> 19);
    } else {
       uint16_t uncompacted =
-         src_index_table[brw_compact_inst_src1_index(devinfo, src)];
+         src1_index_table[brw_compact_inst_src1_index(devinfo, src)];
 
       brw_inst_set_bits(dst, 120, 109, uncompacted);
    }
@@ -1493,13 +1494,15 @@ brw_init_compaction_tables(const struct gen_device_info *devinfo)
       control_index_table = NULL;
       datatype_table = NULL;
       subreg_table = NULL;
-      src_index_table = NULL;
+      src0_index_table = NULL;
+      src1_index_table = NULL;
       break;
    case 11:
       control_index_table = gen8_control_index_table;
       datatype_table = gen11_datatype_table;
       subreg_table = gen8_subreg_table;
-      src_index_table = gen8_src_index_table;
+      src0_index_table = gen8_src_index_table;
+      src1_index_table = gen8_src_index_table;
       break;
    case 10:
    case 9:
@@ -1507,26 +1510,30 @@ brw_init_compaction_tables(const struct gen_device_info *devinfo)
       control_index_table = gen8_control_index_table;
       datatype_table = gen8_datatype_table;
       subreg_table = gen8_subreg_table;
-      src_index_table = gen8_src_index_table;
+      src0_index_table = gen8_src_index_table;
+      src1_index_table = gen8_src_index_table;
       break;
    case 7:
       control_index_table = gen7_control_index_table;
       datatype_table = gen7_datatype_table;
       subreg_table = gen7_subreg_table;
-      src_index_table = gen7_src_index_table;
+      src0_index_table = gen7_src_index_table;
+      src1_index_table = gen7_src_index_table;
       break;
    case 6:
       control_index_table = gen6_control_index_table;
       datatype_table = gen6_datatype_table;
       subreg_table = gen6_subreg_table;
-      src_index_table = gen6_src_index_table;
+      src0_index_table = gen6_src_index_table;
+      src1_index_table = gen6_src_index_table;
       break;
    case 5:
    case 4:
       control_index_table = g45_control_index_table;
       datatype_table = g45_datatype_table;
       subreg_table = g45_subreg_table;
-      src_index_table = g45_src_index_table;
+      src0_index_table = g45_src_index_table;
+      src1_index_table = g45_src_index_table;
       break;
    default:
       unreachable("unknown generation");
