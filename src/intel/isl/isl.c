@@ -1538,6 +1538,10 @@ isl_surf_init_s(const struct isl_device *dev,
       base_alignment_B = MAX(info->min_alignment_B, tile_size_B);
    }
 
+   if (ISL_DEV_GEN(dev) >= 12) {
+      base_alignment_B = MAX(base_alignment_B, 64 * 1024);
+   }
+
    if (ISL_DEV_GEN(dev) < 9) {
       /* From the Broadwell PRM Vol 5, Surface Layout:
        *
