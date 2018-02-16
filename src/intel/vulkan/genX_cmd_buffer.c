@@ -2107,9 +2107,13 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           * I chose "Stall at Pixel Scoreboard" since that's what we use in
           * mesa and it seems to work fine. The choice is fairly arbitrary.
           */
-         if ((bits & ANV_PIPE_CS_STALL_BIT) &&
-             !(bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_DEPTH_STALL_BIT |
-                       ANV_PIPE_STALL_AT_SCOREBOARD_BIT)))
+         if (pipe.CommandStreamerStallEnable &&
+             !pipe.RenderTargetCacheFlushEnable &&
+             !pipe.DepthCacheFlushEnable &&
+             !pipe.StallAtPixelScoreboard &&
+             !pipe.PostSyncOperation &&
+             !pipe.DepthStallEnable &&
+             !pipe.DCFlushEnable)
             pipe.StallAtPixelScoreboard = true;
       }
 
