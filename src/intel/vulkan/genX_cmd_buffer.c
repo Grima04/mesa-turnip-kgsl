@@ -1315,7 +1315,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
     * we do any more rendering or clearing.
     */
    cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_CS_STALL_BIT;
+      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
 
    for (uint32_t l = 0; l < level_count; l++) {
       uint32_t level = base_level + l;
@@ -1351,7 +1351,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    }
 
    cmd_buffer->state.pending_pipe_bits |=
-      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_CS_STALL_BIT;
+      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
 }
 
 /**
