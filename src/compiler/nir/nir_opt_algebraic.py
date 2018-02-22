@@ -394,6 +394,12 @@ optimizations = [
    (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
    (('ior', ('uge', 2, a), ('ieq', a, 3)), ('uge', 3, a)),
 
+   # The (i2f32, ...) part is an open-coded fsign.  When that is combined with
+   # the bcsel, it's basically copysign(1.0, a).  There is no copysign in NIR,
+   # so emit an open-coded version of that.
+   (('bcsel@32', ('feq', a, 0.0), 1.0, ('i2f32', ('iadd', ('b2i32', ('flt', 0.0, 'a@32')), ('ineg', ('b2i32', ('flt', 'a@32', 0.0)))))),
+    ('ior', 0x3f800000, ('iand', a, 0x80000000))),
+
    (('ior', a, ('ieq', a, False)), True),
    (('ior', a, ('inot', a)), -1),
 
