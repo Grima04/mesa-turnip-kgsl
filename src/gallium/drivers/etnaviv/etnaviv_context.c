@@ -413,9 +413,16 @@ static void etna_reset_gpu_state(struct etna_context *ctx)
        * before command stream submission. It does not need flushing if the
        * referenced image data changes.
        */
+      etna_set_state(stream, VIVS_NTE_DESCRIPTOR_FLUSH, 0);
       etna_set_state(stream, VIVS_GL_FLUSH_CACHE,
             VIVS_GL_FLUSH_CACHE_DESCRIPTOR_UNK12 |
             VIVS_GL_FLUSH_CACHE_DESCRIPTOR_UNK13);
+
+      /* Icache invalidate (should do this on shader change?) */
+      etna_set_state(stream, VIVS_VS_ICACHE_INVALIDATE,
+            VIVS_VS_ICACHE_INVALIDATE_UNK0 | VIVS_VS_ICACHE_INVALIDATE_UNK1 |
+            VIVS_VS_ICACHE_INVALIDATE_UNK2 | VIVS_VS_ICACHE_INVALIDATE_UNK3 |
+            VIVS_VS_ICACHE_INVALIDATE_UNK4);
    }
 
    ctx->dirty = ~0L;
