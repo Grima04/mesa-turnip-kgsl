@@ -2620,6 +2620,42 @@ Converter::visit(nir_intrinsic_instr *insn)
       mkOp1(OP_RDSV, dType, newDefs[1], mkSysVal(SV_CLOCK, 0))->fixed = 1;
       break;
    }
+   case nir_intrinsic_load_global: {
+      const DataType dType = getDType(insn);
+      LValues &newDefs = convert(&insn->dest);
+      Value *indirectOffset;
+      uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
+
+      for (auto i = 0u; i < insn->num_components; ++i)
+         loadFrom(FILE_MEMORY_GLOBAL, 0, dType, newDefs[i], offset, i, indirectOffset);
+
+      info->io.globalAccess |= 0x1;
+      break;
+   }
+   case nir_intrinsic_store_global: {
+      DataType sType = getSType(insn->src[0], false, false);
+
+      for (auto i = 0u; i < insn->num_components; ++i) {
+         if (!((1u << i) & nir_intrinsic_write_mask(insn)))
+            continue;
+         if (typeSizeof(sType) == 8) {
+            Value *split[2];
+            mkSplit(split, 4, getSrc(&insn->src[0], i));
+
+            Symbol *sym = mkSymbol(FILE_MEMORY_GLOBAL, 0, TYPE_U32, i * typeSizeof(sType));
+            mkStore(OP_STORE, TYPE_U32, sym, getSrc(&insn->src[1], 0), split[0]);
+
+            sym = mkSymbol(FILE_MEMORY_GLOBAL, 0, TYPE_U32, i * typeSizeof(sType) + 4);
+            mkStore(OP_STORE, TYPE_U32, sym, getSrc(&insn->src[1], 0), split[1]);
+         } else {
+            Symbol *sym = mkSymbol(FILE_MEMORY_GLOBAL, 0, sType, i * typeSizeof(sType));
+            mkStore(OP_STORE, sType, sym, getSrc(&insn->src[1], 0), getSrc(&insn->src[0], i));
+         }
+      }
+
+      info->io.globalAccess |= 0x2;
+      break;
+   }
    default:
       ERROR("unknown nir_intrinsic_op %s\n", nir_intrinsic_infos[op].name);
       return false;
