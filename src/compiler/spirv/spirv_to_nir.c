@@ -4981,6 +4981,10 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpLifetimeStart:
+   case SpvOpLifetimeStop:
+      break;
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
