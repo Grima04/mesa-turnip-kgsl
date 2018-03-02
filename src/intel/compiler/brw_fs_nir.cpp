@@ -907,10 +907,17 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
+      assert(type_sz(op[0].type) > 2); /* brw_nir_lower_conversions */
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_i2f64:
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
+      assert(type_sz(op[0].type) > 1); /* brw_nir_lower_conversions */
+      /* fallthrough */
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
