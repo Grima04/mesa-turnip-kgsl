@@ -343,6 +343,7 @@ EXT(IBM_texture_mirrored_repeat             , dummy_true                        
 
 EXT(INGR_blend_func_separate                , EXT_blend_func_separate                , GLL,  x ,  x ,  x , 1999)
 
+EXT(INTEL_blackhole_render                  , INTEL_blackhole_render                 ,  30,  30,  x , ES2, 2018)
 EXT(INTEL_conservative_rasterization        , INTEL_conservative_rasterization       ,  x , GLC,  x ,  31, 2013)
 EXT(INTEL_performance_query                 , INTEL_performance_query                , GLL, GLC,  x , ES2, 2013)
 EXT(INTEL_shader_atomic_float_minmax        , INTEL_shader_atomic_float_minmax       , GLL, GLC,  x ,  x , 2018)
