@@ -290,6 +290,31 @@ intel_glFlush(struct gl_context *ctx)
 }
 
 static void
+intel_glEnable(struct gl_context *ctx, GLenum cap, GLboolean state)
+{
+   struct brw_context *brw = brw_context(ctx);
+
+   switch (cap) {
+   case GL_BLACKHOLE_RENDER_INTEL:
+      brw->frontend_noop = state;
+      intel_batchbuffer_flush(brw);
+      intel_batchbuffer_maybe_noop(brw);
+      /* Because we started previous batches with a potential
+       * MI_BATCH_BUFFER_END if NOOP was enabled, that means that anything
+       * that was ever emitted after that never made it to the HW. So when the
+       * blackhole state changes from NOOP->!NOOP reupload the entire state.
+       */
+      if (!brw->frontend_noop) {
+         brw->NewGLState = ~0u;
+         brw->ctx.NewDriverState = ~0ull;
+      }
+      break;
+   default:
+      break;
+   }
+}
+
+static void
 intel_finish(struct gl_context * ctx)
 {
    struct brw_context *brw = brw_context(ctx);
@@ -318,6 +343,7 @@ brw_init_driver_functions(struct brw_context *brw,
    if (!brw->driContext->driScreenPriv->dri2.useInvalidate)
       functions->Viewport = intel_viewport;
 
+   functions->Enable = intel_glEnable;
    functions->Flush = intel_glFlush;
    functions->Finish = intel_finish;
    functions->GetString = intel_get_string;

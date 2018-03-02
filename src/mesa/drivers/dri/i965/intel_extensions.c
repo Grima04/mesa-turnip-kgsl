@@ -315,6 +315,12 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.OES_copy_image = true;
    }
 
+   /* Gen < 6 still uses the blitter. It's somewhat annoying to add support
+    * for blackhole there... Does anybody actually care anymore anyway?
+    */
+   if (devinfo->gen >= 6)
+      ctx->Extensions.INTEL_blackhole_render = true;
+
    if (devinfo->gen >= 8) {
       ctx->Extensions.ARB_gpu_shader_int64 = true;
       /* requires ARB_gpu_shader_int64 */

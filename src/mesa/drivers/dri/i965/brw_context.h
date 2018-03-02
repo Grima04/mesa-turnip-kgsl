@@ -853,6 +853,9 @@ struct brw_context
    /* The last PMA stall bits programmed. */
    uint32_t pma_stall_bits;
 
+   /* Whether INTEL_black_render is active. */
+   bool frontend_noop;
+
    struct {
       struct {
          /**
