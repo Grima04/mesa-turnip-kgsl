@@ -819,6 +819,13 @@ struct_member_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationCPacked:
+      if (b->shader->info.stage != MESA_SHADER_KERNEL)
+         vtn_warn("Decoration only allowed for CL-style kernels: %s",
+                  spirv_decoration_to_string(dec->decoration));
+      else
+         ctx->type->packed = true;
+      break;
+
    case SpvDecorationSaturatedConversion:
    case SpvDecorationFuncParamAttr:
    case SpvDecorationFPRoundingMode:
@@ -979,6 +986,13 @@ type_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationCPacked:
+      if (b->shader->info.stage != MESA_SHADER_KERNEL)
+         vtn_warn("Decoration only allowed for CL-style kernels: %s",
+                  spirv_decoration_to_string(dec->decoration));
+      else
+         type->packed = true;
+      break;
+
    case SpvDecorationSaturatedConversion:
    case SpvDecorationFuncParamAttr:
    case SpvDecorationFPRoundingMode:
@@ -1242,6 +1256,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       val->type->length = num_fields;
       val->type->members = ralloc_array(b, struct vtn_type *, num_fields);
       val->type->offsets = ralloc_array(b, unsigned, num_fields);
+      val->type->packed = false;
 
       NIR_VLA(struct glsl_struct_field, fields, count);
       for (unsigned i = 0; i < num_fields; i++) {
@@ -1266,7 +1281,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       const char *name = val->name ? val->name : "struct";
 
-      val->type->type = glsl_struct_type(fields, num_fields, name);
+      val->type->type = glsl_struct_type(fields, num_fields, name, false);
       break;
    }
 

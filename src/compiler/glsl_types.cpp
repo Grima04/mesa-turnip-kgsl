@@ -94,11 +94,11 @@ glsl_type::glsl_type(GLenum gl_type, glsl_base_type base_type,
 }
 
 glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-                     const char *name) :
+                     const char *name, bool packed) :
    gl_type(0),
    base_type(GLSL_TYPE_STRUCT), sampled_type(GLSL_TYPE_VOID),
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   interface_packing(0), interface_row_major(0),
+   interface_packing(0), interface_row_major(0), packed(packed),
    vector_elements(0), matrix_columns(0),
    length(num_fields), explicit_stride(0)
 {
@@ -1129,9 +1129,10 @@ glsl_type::record_key_hash(const void *a)
 const glsl_type *
 glsl_type::get_struct_instance(const glsl_struct_field *fields,
                                unsigned num_fields,
-                               const char *name)
+                               const char *name,
+                               bool packed)
 {
-   const glsl_type key(fields, num_fields, name);
+   const glsl_type key(fields, num_fields, name, packed);
 
    mtx_lock(&glsl_type::hash_mutex);
 
@@ -1143,7 +1144,7 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    const struct hash_entry *entry = _mesa_hash_table_search(struct_types,
                                                             &key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(fields, num_fields, name);
+      const glsl_type *t = new glsl_type(fields, num_fields, name, packed);
 
       entry = _mesa_hash_table_insert(struct_types, t, (void *) t);
    }
@@ -1151,6 +1152,7 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
    assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_STRUCT);
    assert(((glsl_type *) entry->data)->length == num_fields);
    assert(strcmp(((glsl_type *) entry->data)->name, name) == 0);
+   assert(((glsl_type *) entry->data)->packed == packed);
 
    mtx_unlock(&glsl_type::hash_mutex);
 
@@ -2447,6 +2449,8 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       if (type->is_interface()) {
          blob_write_uint32(blob, type->interface_packing);
          blob_write_uint32(blob, type->interface_row_major);
+      } else {
+         blob_write_uint32(blob, type->packed);
       }
       return;
    case GLSL_TYPE_VOID:
@@ -2535,7 +2539,8 @@ decode_type_from_blob(struct blob_reader *blob)
          t = glsl_type::get_interface_instance(fields, num_fields, packing,
                                                row_major, name);
       } else {
-         t = glsl_type::get_struct_instance(fields, num_fields, name);
+         unsigned packed = blob_read_uint32(blob);
+         t = glsl_type::get_struct_instance(fields, num_fields, name, packed);
       }
 
       free(fields);

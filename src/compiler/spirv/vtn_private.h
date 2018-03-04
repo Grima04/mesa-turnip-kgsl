@@ -335,6 +335,13 @@ struct vtn_type {
           * (i.e. a block that contains only builtins).
           */
          bool builtin_block:1;
+
+         /* for structs and unions it specifies the minimum alignment of the
+          * members. 0 means packed.
+          *
+          * Set by CPacked and Alignment Decorations in kernels.
+          */
+         bool packed:1;
       };
 
       /* Members for pointer types */

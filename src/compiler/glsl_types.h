@@ -176,6 +176,13 @@ struct glsl_type {
    unsigned interface_packing:2;
    unsigned interface_row_major:1;
 
+   /**
+    * For \c GLSL_TYPE_STRUCT this specifies if the struct is packed or not.
+    *
+    * Only used for Compute kernels
+    */
+   unsigned packed:1;
+
 private:
    glsl_type() : mem_ctx(NULL)
    {
@@ -314,7 +321,8 @@ public:
     */
    static const glsl_type *get_struct_instance(const glsl_struct_field *fields,
 					       unsigned num_fields,
-					       const char *name);
+					       const char *name,
+					       bool packed = false);
 
    /**
     * Get the instance of an interface block type
@@ -946,7 +954,7 @@ private:
 
    /** Constructor for record types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name);
+	     const char *name, bool packed = false);
 
    /** Constructor for interface types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,

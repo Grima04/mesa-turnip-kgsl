@@ -193,7 +193,8 @@ const struct glsl_type *glsl_array_type(const struct glsl_type *base,
                                         unsigned explicit_stride);
 
 const struct glsl_type *glsl_struct_type(const struct glsl_struct_field *fields,
-                                         unsigned num_fields, const char *name);
+                                         unsigned num_fields, const char *name,
+                                         bool packed);
 const struct glsl_type *glsl_interface_type(const struct glsl_struct_field *fields,
                                             unsigned num_fields,
                                             enum glsl_interface_packing packing,
