@@ -2554,3 +2554,51 @@ decode_type_from_blob(struct blob_reader *blob)
       return NULL;
    }
 }
+
+unsigned
+glsl_type::cl_alignment() const
+{
+   /* vectors unlike arrays are aligned to their size */
+   if (this->is_scalar() || this->is_vector())
+      return this->cl_size();
+   else if (this->is_array())
+      return this->without_array()->cl_alignment();
+   else if (this->is_struct()) {
+      /* Packed Structs are 0x1 aligned despite their size. */
+      if (this->packed)
+         return 1;
+
+      unsigned res = 1;
+      for (unsigned i = 0; i < this->length; ++i) {
+         struct glsl_struct_field &field = this->fields.structure[i];
+         res = MAX2(res, field.type->cl_alignment());
+      }
+      return res;
+   }
+   return 1;
+}
+
+unsigned
+glsl_type::cl_size() const
+{
+   if (this->is_scalar()) {
+      return glsl_base_type_get_bit_size(this->base_type) / 8;
+   } else if (this->is_vector()) {
+      unsigned vec_elemns = this->vector_elements == 3 ? 4 : this->vector_elements;
+      return vec_elemns * glsl_base_type_get_bit_size(this->base_type) / 8;
+   } else if (this->is_array()) {
+      unsigned size = this->without_array()->cl_size();
+      return size * this->length;
+   } else if (this->is_struct()) {
+      unsigned size = 0;
+      for (unsigned i = 0; i < this->length; ++i) {
+         struct glsl_struct_field &field = this->fields.structure[i];
+         /* if a struct is packed, members don't get aligned */
+         if (!this->packed)
+            size = align(size, field.type->cl_alignment());
+         size += field.type->cl_size();
+      }
+      return size;
+   }
+   return 1;
+}

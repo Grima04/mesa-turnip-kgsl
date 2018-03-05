@@ -667,3 +667,15 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+int
+glsl_get_cl_size(const struct glsl_type *type)
+{
+   return type->cl_size();
+}
+
+int
+glsl_get_cl_alignment(const struct glsl_type *type)
+{
+   return type->cl_alignment();
+}
