@@ -899,10 +899,8 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
    const struct isl_format_layout *dst_fmtl =
       isl_format_get_layout(key->dst_format);
 
-   /* They must be uint formats with the same bit size */
+   /* They must be formats with the same bit size */
    assert(src_fmtl->bpb == dst_fmtl->bpb);
-   assert(src_fmtl->channels.r.type == ISL_UINT);
-   assert(dst_fmtl->channels.r.type == ISL_UINT);
 
    /* They must be in regular color formats (no luminance or alpha) */
    assert(src_fmtl->channels.r.bits > 0);
@@ -929,10 +927,24 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
          dst_fmtl->channels.b.bits,
          dst_fmtl->channels.a.bits,
       };
+
+      assert(src_fmtl->channels.r.type == ISL_UINT ||
+             src_fmtl->channels.r.type == ISL_UNORM);
+      if (src_fmtl->channels.r.type == ISL_UNORM)
+         color = nir_format_float_to_unorm(b, color, src_bits);
       nir_ssa_def *packed =
          nir_format_pack_uint_unmasked(b, color, src_bits, src_channels);
+
+      assert(dst_fmtl->channels.r.type == ISL_UINT ||
+             dst_fmtl->channels.r.type == ISL_UNORM);
       color = nir_format_unpack_uint(b, packed, dst_bits, dst_channels);
+      if (dst_fmtl->channels.r.type == ISL_UNORM)
+         color = nir_format_unorm_to_float(b, color, src_bits);
    } else {
+      /* This path only supports UINT formats */
+      assert(src_fmtl->channels.r.type == ISL_UINT);
+      assert(dst_fmtl->channels.r.type == ISL_UINT);
+
       const unsigned src_bpc = src_fmtl->channels.r.bits;
       const unsigned dst_bpc = dst_fmtl->channels.r.bits;
 
@@ -2425,7 +2437,7 @@ get_copy_format_for_bpb(const struct isl_device *isl_dev, unsigned bpb)
  * operation between the two bit layouts.
  */
 static enum isl_format
-get_ccs_compatible_uint_format(const struct isl_format_layout *fmtl)
+get_ccs_compatible_copy_format(const struct isl_format_layout *fmtl)
 {
    switch (fmtl->format) {
    case ISL_FORMAT_R32G32B32A32_FLOAT:
@@ -2500,6 +2512,25 @@ get_ccs_compatible_uint_format(const struct isl_format_layout *fmtl)
    case ISL_FORMAT_R8G8_UINT:
       return ISL_FORMAT_R8G8_UINT;
 
+   case ISL_FORMAT_B5G5R5X1_UNORM:
+   case ISL_FORMAT_B5G5R5X1_UNORM_SRGB:
+   case ISL_FORMAT_B5G5R5A1_UNORM:
+   case ISL_FORMAT_B5G5R5A1_UNORM_SRGB:
+      return ISL_FORMAT_B5G5R5A1_UNORM;
+
+   case ISL_FORMAT_A4B4G4R4_UNORM:
+   case ISL_FORMAT_B4G4R4A4_UNORM:
+   case ISL_FORMAT_B4G4R4A4_UNORM_SRGB:
+      return ISL_FORMAT_B4G4R4A4_UNORM;
+
+   case ISL_FORMAT_B5G6R5_UNORM:
+   case ISL_FORMAT_B5G6R5_UNORM_SRGB:
+      return ISL_FORMAT_B5G6R5_UNORM;
+
+   case ISL_FORMAT_A1B5G5R5_UNORM:
+      return ISL_FORMAT_A1B5G5R5_UNORM;
+
+   case ISL_FORMAT_A8_UNORM:
    case ISL_FORMAT_R8_UNORM:
    case ISL_FORMAT_R8_SNORM:
    case ISL_FORMAT_R8_SINT:
@@ -2613,9 +2644,9 @@ blorp_copy(struct blorp_batch *batch,
       params.src.view.format = params.src.surf.format;
       params.dst.view.format = params.src.surf.format;
    } else if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
-      params.dst.view.format = get_ccs_compatible_uint_format(dst_fmtl);
+      params.dst.view.format = get_ccs_compatible_copy_format(dst_fmtl);
       if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E) {
-         params.src.view.format = get_ccs_compatible_uint_format(src_fmtl);
+         params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
       } else if (src_fmtl->bpb == dst_fmtl->bpb) {
          params.src.view.format = params.dst.view.format;
       } else {
@@ -2623,7 +2654,7 @@ blorp_copy(struct blorp_batch *batch,
             get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
       }
    } else if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E) {
-      params.src.view.format = get_ccs_compatible_uint_format(src_fmtl);
+      params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
       if (src_fmtl->bpb == dst_fmtl->bpb) {
          params.dst.view.format = params.src.view.format;
       } else {
