@@ -88,12 +88,13 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBallot: {
+   case SpvOpGroupNonUniformBallot: ++w;
+   case SpvOpSubgroupBallotKHR: {
       vtn_fail_if(val->type->type != glsl_vector_type(GLSL_TYPE_UINT, 4),
                   "OpGroupNonUniformBallot must return a uvec4");
       nir_intrinsic_instr *ballot =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_ballot);
-      ballot->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
+      ballot->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[3])->def);
       nir_ssa_dest_init(&ballot->instr, &ballot->dest, 4, 32, NULL);
       ballot->num_components = 4;
       nir_builder_instr_insert(&b->nb, &ballot->instr);
@@ -176,15 +177,17 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBroadcastFirst:
+   case SpvOpGroupNonUniformBroadcastFirst: ++w;
+   case SpvOpSubgroupFirstInvocationKHR:
       vtn_build_subgroup_instr(b, nir_intrinsic_read_first_invocation,
-                               val->ssa, vtn_ssa_value(b, w[4]), NULL, 0, 0);
+                               val->ssa, vtn_ssa_value(b, w[3]), NULL, 0, 0);
       break;
 
-   case SpvOpGroupNonUniformBroadcast:
+   case SpvOpGroupNonUniformBroadcast: ++w;
+   case SpvOpSubgroupReadInvocationKHR:
       vtn_build_subgroup_instr(b, nir_intrinsic_read_invocation,
-                               val->ssa, vtn_ssa_value(b, w[4]),
-                               vtn_ssa_value(b, w[5])->def, 0, 0);
+                               val->ssa, vtn_ssa_value(b, w[3]),
+                               vtn_ssa_value(b, w[4])->def, 0, 0);
       break;
 
    case SpvOpGroupNonUniformAll:
