@@ -147,7 +147,7 @@ namespace clover {
       NULL, // clEnqueueAcquireEGLObjectsKHR
       NULL, // clEnqueueReleaseEGLObjectsKHR
       NULL, // clCreateEventFromEGLSyncKHR
-      NULL, // clCreateCommandQueueWithProperties
+      clCreateCommandQueueWithProperties,
       NULL, // clCreatePipe
       NULL, // clGetPipeInfo
       NULL, // clSVMAlloc
