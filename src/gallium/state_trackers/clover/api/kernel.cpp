@@ -337,9 +337,15 @@ clEnqueueNativeKernel(cl_command_queue d_q, void (*func)(void *),
 CLOVER_API cl_int
 clSetKernelArgSVMPointer(cl_kernel d_kern,
                          cl_uint arg_index,
-                         const void *arg_value) {
-   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
-   return CL_INVALID_VALUE;
+                         const void *arg_value) try {
+   obj(d_kern).args().at(arg_index).set_svm(arg_value);
+   return CL_SUCCESS;
+
+} catch (std::out_of_range &e) {
+   return CL_INVALID_ARG_INDEX;
+
+} catch (error &e) {
+   return e.get();
 }
 
 CLOVER_API cl_int
