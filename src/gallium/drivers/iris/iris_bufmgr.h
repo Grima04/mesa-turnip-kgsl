@@ -44,13 +44,6 @@ struct iris_bo {
     */
    uint64_t size;
 
-   /**
-    * Alignment requirement for object
-    *
-    * Used for GTT mapping & pinning the object.
-    */
-   uint64_t align;
-
    /** Buffer manager context associated with this buffer object */
    struct iris_bufmgr *bufmgr;
 
@@ -152,8 +145,7 @@ struct iris_bo {
    bool cache_coherent;
 };
 
-#define BO_ALLOC_BUSY       (1<<0)
-#define BO_ALLOC_ZEROED     (1<<1)
+#define BO_ALLOC_ZEROED     (1<<0)
 
 /**
  * Allocate a buffer object.
@@ -162,8 +154,9 @@ struct iris_bo {
  * address space or graphics device aperture.  They must be mapped
  * using iris_bo_map() to be used by the CPU.
  */
-struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr, const char *name,
-                              uint64_t size, uint64_t alignment);
+struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr,
+                              const char *name,
+                              uint64_t size);
 
 /**
  * Allocate a tiled buffer object.

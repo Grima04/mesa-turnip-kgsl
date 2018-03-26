@@ -95,7 +95,7 @@ create_batch_buffer(struct iris_bufmgr *bufmgr,
                     struct iris_batch_buffer *buf,
                     const char *name, unsigned size)
 {
-   buf->bo = iris_bo_alloc(bufmgr, name, size, 4096);
+   buf->bo = iris_bo_alloc(bufmgr, name, size);
    buf->bo->kflags |= EXEC_OBJECT_CAPTURE;
    buf->map = iris_bo_map(NULL, buf->bo, MAP_READ | MAP_WRITE);
    buf->map_next = buf->map;
@@ -164,7 +164,6 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
    batch->validation_list[batch->exec_count] =
       (struct drm_i915_gem_exec_object2) {
          .handle = bo->gem_handle,
-         .alignment = bo->align,
          .offset = bo->gtt_offset,
          .flags = bo->kflags,
       };
@@ -300,7 +299,7 @@ grow_buffer(struct iris_batch *batch,
    const unsigned existing_bytes = buffer_bytes_used(buf);
 
    struct iris_bo *new_bo =
-      iris_bo_alloc(bufmgr, bo->name, new_size, bo->align);
+      iris_bo_alloc(bufmgr, bo->name, new_size);
 
    buf->map = iris_bo_map(NULL, new_bo, MAP_READ | MAP_WRITE);
    buf->map_next = buf->map + existing_bytes;
