@@ -838,7 +838,7 @@ struct iris_sampler_view {
 };
 
 /**
- * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gen7.5+
+ * Convert an swizzle enumeration (i.e. PIPE_SWIZZLE_X) to one of the Gen7.5+
  * "Shader Channel Select" enumerations (i.e. HSW_SCS_RED).  The mappings are
  *
  * SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W, SWIZZLE_ZERO, SWIZZLE_ONE
@@ -1975,6 +1975,9 @@ iris_upload_render_state(struct iris_context *ice,
          ptr.PointertoVSBindingTable = bt_offset;
       }
 
+      // XXX: we don't want to stream out surface states here.  we want to
+      // track whether we've emitted them in this statebuffer already, and
+      // reuse them.  need to figure out how best to do that.
       if (stage == MESA_SHADER_FRAGMENT) {
          struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
@@ -1985,6 +1988,26 @@ iris_upload_render_state(struct iris_context *ice,
                                                    res, RELOC_WRITE);
          }
       }
+
+#if 0
+      for (int i = 0; i < TEXTURES; i++) {
+         struct iris_sampler_view *view = SOMEWHERE;
+         struct iris_resource *res = (void *) view->pipe.texture;
+         // XXX: these are per-context??????????? pipe_sampler_view::context
+         *bt_map++ =
+            emit_patched_surface_state(batch, view->surface_state, res, 0);
+         
+      }
+
+      // XXX: not implemented yet
+      assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.ubo_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.ssbo_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.image_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.shader_time_start == 0xd0d0d0d0);
+      //assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
+      //assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
+#endif
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
