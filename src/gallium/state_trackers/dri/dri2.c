@@ -1019,15 +1019,20 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    struct pipe_screen *pscreen = screen->base.screen;
    __DRIimage *img;
    struct pipe_resource templ;
-   unsigned tex_usage;
+   unsigned tex_usage = 0;
    enum pipe_format pf;
    int i;
-
-   tex_usage = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
 
    pf = dri2_format_to_pipe_format (format);
    if (pf == PIPE_FORMAT_NONE)
       return NULL;
+
+   if (pscreen->is_format_supported(pscreen, pf, screen->target, 0, 0,
+                                    PIPE_BIND_RENDER_TARGET))
+      tex_usage |= PIPE_BIND_RENDER_TARGET;
+   if (pscreen->is_format_supported(pscreen, pf, screen->target, 0, 0,
+                                    PIPE_BIND_SAMPLER_VIEW))
+      tex_usage |= PIPE_BIND_SAMPLER_VIEW;
 
    img = CALLOC_STRUCT(__DRIimageRec);
    if (!img)
@@ -1505,22 +1510,22 @@ dri2_query_dma_buf_formats(__DRIscreen *_screen, int max, int *formats,
 {
    struct dri_screen *screen = dri_screen(_screen);
    struct pipe_screen *pscreen = screen->base.screen;
-   const unsigned bind = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
    int i, j;
 
    for (i = 0, j = 0; (i < ARRAY_SIZE(fourcc_formats)) &&
          (j < max || max == 0); i++) {
+      enum pipe_format format = fourcc_to_pipe_format(fourcc_formats[i]);
+
       /* The sRGB format is not a real FourCC as defined by drm_fourcc.h, so we
        * must not leak it out to clients.
        */
       if (fourcc_formats[i] == __DRI_IMAGE_FOURCC_SARGB8888)
          continue;
 
-      if (pscreen->is_format_supported(pscreen,
-                                       fourcc_to_pipe_format(
-                                          fourcc_formats[i]),
-                                       screen->target,
-                                       0, 0, bind)) {
+      if (pscreen->is_format_supported(pscreen, format, screen->target, 0, 0,
+                                       PIPE_BIND_RENDER_TARGET) ||
+          pscreen->is_format_supported(pscreen, format, screen->target, 0, 0,
+                                       PIPE_BIND_SAMPLER_VIEW)) {
          if (j < max)
             formats[j] = fourcc_formats[i];
          j++;
@@ -1538,11 +1543,12 @@ dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
    struct dri_screen *screen = dri_screen(_screen);
    struct pipe_screen *pscreen = screen->base.screen;
    enum pipe_format format = fourcc_to_pipe_format(fourcc);
-   const unsigned usage = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
 
    if (pscreen->query_dmabuf_modifiers != NULL &&
-       pscreen->is_format_supported(pscreen, format, screen->target, 0, 0,
-                                    usage)) {
+       (pscreen->is_format_supported(pscreen, format, screen->target, 0, 0,
+                                     PIPE_BIND_RENDER_TARGET) ||
+        pscreen->is_format_supported(pscreen, format, screen->target, 0, 0,
+                                     PIPE_BIND_SAMPLER_VIEW))) {
       pscreen->query_dmabuf_modifiers(pscreen, format, max, modifiers,
                                       external_only, count);
       return true;
