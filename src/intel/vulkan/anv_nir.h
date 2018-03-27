@@ -31,7 +31,11 @@
 extern "C" {
 #endif
 
-bool anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask);
+bool anv_check_for_primitive_replication(nir_shader **shaders,
+                                         struct anv_graphics_pipeline *pipeline);
+
+bool anv_nir_lower_multiview(nir_shader *shader,
+                             struct anv_graphics_pipeline *pipeline);
 
 bool anv_nir_lower_ycbcr_textures(nir_shader *shader,
                                   const struct anv_pipeline_layout *layout);

@@ -3516,7 +3516,8 @@ void genX(CmdDraw)(
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
     */
-   instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
+   if (!pipeline->use_primitive_replication)
+      instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -3566,7 +3567,8 @@ void genX(CmdDrawIndexed)(
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
     */
-   instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
+   if (!pipeline->use_primitive_replication)
+      instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -3627,7 +3629,8 @@ void genX(CmdDrawIndirectByteCountEXT)(
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  We need to multiply instanceCount by the view count.
     */
-   instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
+   if (!pipeline->use_primitive_replication)
+      instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
    struct gen_mi_builder b;
    gen_mi_builder_init(&b, &cmd_buffer->batch);

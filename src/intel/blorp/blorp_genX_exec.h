@@ -1350,6 +1350,11 @@ blorp_emit_pipeline(struct blorp_batch *batch,
    blorp_emit_ps_config(batch, params);
 
    blorp_emit_cc_viewport(batch);
+
+#if GEN_GEN >= 12
+   /* Disable Primitive Replication. */
+   blorp_emit(batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
+#endif
 }
 
 /******** This is the end of the pipeline setup code ********/

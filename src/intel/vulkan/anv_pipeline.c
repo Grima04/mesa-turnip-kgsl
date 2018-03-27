@@ -687,7 +687,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    if (pipeline->type == ANV_PIPELINE_GRAPHICS) {
       NIR_PASS_V(nir, anv_nir_lower_multiview,
-                 anv_pipeline_to_graphics(pipeline)->subpass->view_mask);
+                 anv_pipeline_to_graphics(pipeline));
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
@@ -735,16 +735,23 @@ anv_pipeline_link_vs(const struct brw_compiler *compiler,
 static void
 anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                         void *mem_ctx,
-                        struct anv_device *device,
+                        struct anv_graphics_pipeline *pipeline,
                         struct anv_pipeline_stage *vs_stage)
 {
+   /* When using Primitive Replication for multiview, each view gets its own
+    * position slot.
+    */
+   uint32_t pos_slots = pipeline->use_primitive_replication ?
+      anv_subpass_view_count(pipeline->subpass) : 1;
+
    brw_compute_vue_map(compiler->devinfo,
                        &vs_stage->prog_data.vs.base.vue_map,
                        vs_stage->nir->info.outputs_written,
-                       vs_stage->nir->info.separate_shader, 1);
+                       vs_stage->nir->info.separate_shader,
+                       pos_slots);
 
    vs_stage->num_stats = 1;
-   vs_stage->code = brw_compile_vs(compiler, device, mem_ctx,
+   vs_stage->code = brw_compile_vs(compiler, pipeline->base.device, mem_ctx,
                                    &vs_stage->key.vs,
                                    &vs_stage->prog_data.vs,
                                    vs_stage->nir, -1,
@@ -1167,6 +1174,27 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    }
 }
 
+static void
+anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
+{
+   /* TODO: Cache this pipeline-wide information. */
+
+   /* Primitive replication depends on information from all the shaders.
+    * Recover this bit from the fact that we have more than one position slot
+    * in the vertex shader when using it.
+    */
+   assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT);
+   int pos_slots = 0;
+   const struct brw_vue_prog_data *vue_prog_data =
+      (const void *) pipeline->shaders[MESA_SHADER_VERTEX]->prog_data;
+   const struct brw_vue_map *vue_map = &vue_prog_data->vue_map;
+   for (int i = 0; i < vue_map->num_slots; i++) {
+      if (vue_map->slot_to_varying[i] == VARYING_SLOT_POS)
+         pos_slots++;
+   }
+   pipeline->use_primitive_replication = pos_slots > 1;
+}
+
 static VkResult
 anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               struct anv_pipeline_cache *cache,
@@ -1295,6 +1323,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
             anv_pipeline_add_executables(&pipeline->base, &stages[s],
                                          pipeline->shaders[s]);
          }
+         anv_pipeline_init_from_cached_graphics(pipeline);
          goto done;
       } else if (found > 0) {
          /* We found some but not all of our shaders.  This shouldn't happen
@@ -1383,6 +1412,23 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       next_stage = &stages[s];
    }
 
+   if (pipeline->base.device->info.gen >= 12 &&
+       pipeline->subpass->view_mask != 0) {
+      /* For some pipelines HW Primitive Replication can be used instead of
+       * instancing to implement Multiview.  This depend on how viewIndex is
+       * used in all the active shaders, so this check can't be done per
+       * individual shaders.
+       */
+      nir_shader *shaders[MESA_SHADER_STAGES] = {};
+      for (unsigned s = 0; s < MESA_SHADER_STAGES; s++)
+         shaders[s] = stages[s].nir;
+
+      pipeline->use_primitive_replication =
+         anv_check_for_primitive_replication(shaders, pipeline);
+   } else {
+      pipeline->use_primitive_replication = false;
+   }
+
    struct anv_pipeline_stage *prev_stage = NULL;
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
@@ -1402,7 +1448,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
       switch (s) {
       case MESA_SHADER_VERTEX:
-         anv_pipeline_compile_vs(compiler, stage_ctx, pipeline->base.device,
+         anv_pipeline_compile_vs(compiler, stage_ctx, pipeline,
                                  &stages[s]);
          break;
       case MESA_SHADER_TESS_CTRL:
@@ -2015,7 +2061,7 @@ anv_pipeline_init(struct anv_graphics_pipeline *pipeline,
     * the instance divisor by the number of views ensure that we repeat the
     * client's per-instance data once for each view.
     */
-   if (pipeline->subpass->view_mask) {
+   if (pipeline->subpass->view_mask && !pipeline->use_primitive_replication) {
       const uint32_t view_count = anv_subpass_view_count(pipeline->subpass);
       for (uint32_t vb = 0; vb < MAX_VBS; vb++) {
          if (pipeline->vb[vb].instanced)

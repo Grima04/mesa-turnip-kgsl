@@ -174,6 +174,7 @@ struct gen_perf_config;
 #define MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS 32
 #define ANV_UBO_BOUNDS_CHECK_ALIGNMENT 32
 #define ANV_SSBO_BOUNDS_CHECK_ALIGNMENT 4
+#define MAX_VIEWS_FOR_PRIMITIVE_REPLICATION 16
 
 /* From the Skylake PRM Vol. 7 "Binding Table Surface State Model":
  *
@@ -3206,6 +3207,11 @@ struct anv_graphics_pipeline {
    bool                                         sample_shading_enable;
    bool                                         kill_pixel;
    bool                                         depth_bounds_test_enable;
+
+   /* When primitive replication is used, subpass->view_mask will describe what
+    * views to replicate.
+    */
+   bool                                         use_primitive_replication;
 
    struct anv_state                             blend_state;
 

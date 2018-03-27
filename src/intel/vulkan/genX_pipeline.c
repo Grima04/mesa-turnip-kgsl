@@ -2106,6 +2106,32 @@ compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
       (ms_info && ms_info->alphaToCoverageEnable);
 }
 
+#if GEN_GEN == 12
+static void
+emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline)
+{
+   if (!pipeline->use_primitive_replication) {
+      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
+      return;
+   }
+
+   uint32_t view_mask = pipeline->subpass->view_mask;
+   int view_count = util_bitcount(view_mask);
+   assert(view_count > 1 && view_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
+
+   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {
+      pr.ReplicaMask = (1 << view_count) - 1;
+      pr.ReplicationCount = view_count - 1;
+
+      int i = 0, view_index;
+      for_each_bit(view_index, view_mask) {
+         pr.RTAIOffset[i] = view_index;
+         i++;
+      }
+   }
+}
+#endif
+
 static VkResult
 genX(graphics_pipeline_create)(
     VkDevice                                    _device,
@@ -2180,6 +2206,10 @@ genX(graphics_pipeline_create)(
                      vp_info,
                      pCreateInfo->pRasterizationState);
    emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState);
+
+#if GEN_GEN == 12
+   emit_3dstate_primitive_replication(pipeline);
+#endif
 
 #if 0
    /* From gen7_vs_state.c */
