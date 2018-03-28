@@ -6971,6 +6971,14 @@
     <field name="DS Invocation Count Report" start="0" end="63" type="uint"/>
   </register>
 
+  <register name="GFX_AUX_TABLE_BASE_ADDR" length="2" num="0x4200">
+    <field name="Address" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="GFX_CCS_AUX_INV" length="1" num="0x4208">
+    <field name="Aux Inv" start="0" end="0" type="bool"/>
+  </register>
+
   <register name="GS_INVOCATION_COUNT" length="2" num="0x2328">
     <field name="GS Invocation Count Report" start="0" end="63" type="uint"/>
   </register>
