@@ -2414,6 +2414,7 @@ struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
    uint32_t                                     current_pipeline;
    const struct gen_l3_config *                 current_l3_config;
+   uint32_t                                     last_aux_map_state;
 
    struct anv_cmd_graphics_state                gfx;
    struct anv_cmd_compute_state                 compute;

@@ -29,6 +29,7 @@
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
 
+#include "common/gen_aux_map.h"
 #include "common/gen_l3_config.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
@@ -2660,6 +2661,34 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.push_constants_dirty &= ~flushed;
 }
 
+#if GEN_GEN >= 12
+void
+genX(cmd_buffer_aux_map_state)(struct anv_cmd_buffer *cmd_buffer)
+{
+   void *aux_map_ctx = cmd_buffer->device->aux_map_ctx;
+   if (!aux_map_ctx)
+      return;
+   uint32_t aux_map_state_num = gen_aux_map_get_state_num(aux_map_ctx);
+   if (cmd_buffer->state.last_aux_map_state != aux_map_state_num) {
+      /* If the aux-map state number increased, then we need to rewrite the
+       * register. Rewriting the register is used to both set the aux-map
+       * translation table address, and also to invalidate any previously
+       * cached translations.
+       */
+      uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num);
+         lri.DataDWord = base_addr & 0xffffffff;
+      }
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num) + 4;
+         lri.DataDWord = base_addr >> 32;
+      }
+      cmd_buffer->state.last_aux_map_state = aux_map_state_num;
+   }
+}
+#endif
+
 void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -2677,6 +2706,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, UINT_MAX, UINT_MAX, 1);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
+
+#if GEN_GEN >= 12
+   genX(cmd_buffer_aux_map_state)(cmd_buffer);
+#endif
 
    if (vb_emit) {
       const uint32_t num_buffers = __builtin_popcount(vb_emit);
@@ -3543,6 +3576,10 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->urb.l3_config);
 
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
+
+#if GEN_GEN >= 12
+   genX(cmd_buffer_aux_map_state)(cmd_buffer);
+#endif
 
    if (cmd_buffer->state.compute.pipeline_dirty) {
       /* From the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:
