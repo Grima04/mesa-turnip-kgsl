@@ -43,7 +43,7 @@
 #include "util/xmlpool.h"
 #include "git_sha1.h"
 #include "vk_util.h"
-#include "common/gen_buffer_alloc.h"
+#include "common/gen_aux_map.h"
 #include "common/gen_defines.h"
 #include "compiler/glsl_types.h"
 
@@ -2655,9 +2655,16 @@ VkResult anv_CreateDevice(
          goto fail_surface_state_pool;
    }
 
+   if (device->info.gen >= 12) {
+      device->aux_map_ctx = gen_aux_map_init(device, &aux_map_allocator,
+                                             &physical_device->info);
+      if (!device->aux_map_ctx)
+         goto fail_binding_table_pool;
+   }
+
    result = anv_bo_init_new(&device->workaround_bo, device, 4096);
    if (result != VK_SUCCESS)
-      goto fail_binding_table_pool;
+      goto fail_surface_aux_map_pool;
 
    if (physical_device->use_softpin)
       device->workaround_bo.flags |= EXEC_OBJECT_PINNED;
@@ -2721,6 +2728,11 @@ VkResult anv_CreateDevice(
    anv_scratch_pool_finish(device, &device->scratch_pool);
    anv_gem_munmap(device->workaround_bo.map, device->workaround_bo.size);
    anv_gem_close(device, device->workaround_bo.gem_handle);
+ fail_surface_aux_map_pool:
+   if (device->info.gen >= 12) {
+      gen_aux_map_finish(device->aux_map_ctx);
+      device->aux_map_ctx = NULL;
+   }
  fail_binding_table_pool:
    if (physical_device->use_softpin)
       anv_state_pool_finish(&device->binding_table_pool);
@@ -2788,6 +2800,11 @@ void anv_DestroyDevice(
    anv_gem_close(device, device->trivial_batch_bo.gem_handle);
    if (device->info.gen >= 10)
       anv_gem_close(device, device->hiz_clear_bo.gem_handle);
+
+   if (device->info.gen >= 12) {
+      gen_aux_map_finish(device->aux_map_ctx);
+      device->aux_map_ctx = NULL;
+   }
 
    if (physical_device->use_softpin)
       anv_state_pool_finish(&device->binding_table_pool);

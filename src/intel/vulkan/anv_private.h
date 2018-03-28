@@ -73,6 +73,7 @@ struct anv_buffer_view;
 struct anv_image_view;
 struct anv_instance;
 
+struct gen_aux_map_context;
 struct gen_l3_config;
 struct gen_perf_config;
 
@@ -1174,6 +1175,8 @@ struct anv_device {
 
     int                                         perf_fd; /* -1 if no opened */
     uint64_t                                    perf_metric; /* 0 if unset */
+
+    struct gen_aux_map_context                  *aux_map_ctx;
 };
 
 static inline struct anv_state_pool *
