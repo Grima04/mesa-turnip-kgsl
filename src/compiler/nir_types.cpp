@@ -146,9 +146,9 @@ glsl_get_aoa_size(const struct glsl_type *type)
 
 unsigned
 glsl_count_attribute_slots(const struct glsl_type *type,
-                           bool is_vertex_input)
+                           bool is_gl_vertex_input)
 {
-   return type->count_attribute_slots(is_vertex_input);
+   return type->count_attribute_slots(is_gl_vertex_input);
 }
 
 unsigned
