@@ -152,11 +152,7 @@ optimizations = [
    (('~fadd@32', ('fmul', a,          ('fadd', 1.0, ('fneg',          c   ) )), ('fmul', b,          c )), ('flrp', a, b, c), '!options->lower_flrp32'),
    (('~fadd@64', ('fmul', a,          ('fadd', 1.0, ('fneg',          c   ) )), ('fmul', b,          c )), ('flrp', a, b, c), '!options->lower_flrp64'),
    # These are the same as the previous three rules, but it depends on
-   # 1-fsat(x) <=> fsat(1-x):
-   #
-   # If x >= 0 and x <= 1: fsat(1 - x) == 1 - fsat(x) trivially
-   # If x < 0: 1 - fsat(x) => 1 - 0 => 1 and fsat(1 - x) => fsat(> 1) => 1
-   # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0
+   # 1-fsat(x) <=> fsat(1-x).  See below.
    (('~fadd@32', ('fmul', a, ('fsat', ('fadd', 1.0, ('fneg',          c   )))), ('fmul', b, ('fsat', c))), ('flrp', a, b, ('fsat', c)), '!options->lower_flrp32'),
    (('~fadd@64', ('fmul', a, ('fsat', ('fadd', 1.0, ('fneg',          c   )))), ('fmul', b, ('fsat', c))), ('flrp', a, b, ('fsat', c)), '!options->lower_flrp64'),
 
@@ -176,6 +172,11 @@ optimizations = [
 
    (('fdot3', ('vec3', a, 0.0, 0.0), b), ('fmul', a, b)),
    (('fdot3', ('vec3', a, b,   0.0), c), ('fdot2', ('vec2', a, b), c)),
+
+   # If x >= 0 and x <= 1: fsat(1 - x) == 1 - fsat(x) trivially
+   # If x < 0: 1 - fsat(x) => 1 - 0 => 1 and fsat(1 - x) => fsat(> 1) => 1
+   # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0
+   (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
 
    # (a * #b + #c) << #d
    # ((a * #b) << #d) + (#c << #d)
@@ -1178,6 +1179,8 @@ late_optimizations = [
 
    (('ior', a, a), a),
    (('iand', a, a), a),
+
+   (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
 
    (('fdot2', a, b), ('fdot_replicated2', a, b), 'options->fdot_replicates'),
    (('fdot3', a, b), ('fdot_replicated3', a, b), 'options->fdot_replicates'),

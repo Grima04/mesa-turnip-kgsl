@@ -174,6 +174,22 @@ is_not_const(nir_alu_instr *instr, unsigned src, UNUSED unsigned num_components,
 }
 
 static inline bool
+is_not_fmul(nir_alu_instr *instr, unsigned src,
+            UNUSED unsigned num_components, UNUSED const uint8_t *swizzle)
+{
+   nir_alu_instr *src_alu =
+      nir_src_as_alu_instr(instr->src[src].src);
+
+   if (src_alu == NULL)
+      return true;
+
+   if (src_alu->op == nir_op_fneg)
+      return is_not_fmul(src_alu, 0, 0, NULL);
+
+   return src_alu->op != nir_op_fmul;
+}
+
+static inline bool
 is_used_once(nir_alu_instr *instr)
 {
    bool zero_if_use = list_empty(&instr->dest.dest.ssa.if_uses);
