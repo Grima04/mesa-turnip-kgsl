@@ -8,6 +8,7 @@ BLORP_FILES = \
 	blorp/blorp_priv.h
 
 COMMON_FILES = \
+	common/gen_buffer_alloc.h \
 	common/gen_clflush.h \
 	common/gen_batch_decoder.c \
 	common/gen_decoder.c \
