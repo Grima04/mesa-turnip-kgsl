@@ -43,6 +43,7 @@
 #include "util/xmlpool.h"
 #include "git_sha1.h"
 #include "vk_util.h"
+#include "common/gen_buffer_alloc.h"
 #include "common/gen_defines.h"
 #include "compiler/glsl_types.h"
 
@@ -2389,6 +2390,47 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 
    return (struct gen_batch_decode_bo) { };
 }
+
+struct gen_aux_map_buffer {
+   struct gen_buffer base;
+   struct anv_state state;
+};
+
+static struct gen_buffer *
+gen_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
+{
+   struct gen_aux_map_buffer *buf = malloc(sizeof(struct gen_aux_map_buffer));
+   if (!buf)
+      return NULL;
+
+   struct anv_device *device = (struct anv_device*)driver_ctx;
+   assert(device->instance->physicalDevice.supports_48bit_addresses &&
+          device->instance->physicalDevice.use_softpin);
+
+   struct anv_state_pool *pool = &device->dynamic_state_pool;
+   buf->state = anv_state_pool_alloc(pool, size, size);
+
+   buf->base.gpu = pool->block_pool.bo->offset + buf->state.offset;
+   buf->base.gpu_end = buf->base.gpu + buf->state.alloc_size;
+   buf->base.map = buf->state.map;
+   buf->base.driver_bo = &buf->state;
+   return &buf->base;
+}
+
+static void
+gen_aux_map_buffer_free(void *driver_ctx, struct gen_buffer *buffer)
+{
+   struct gen_aux_map_buffer *buf = (struct gen_aux_map_buffer*)buffer;
+   struct anv_device *device = (struct anv_device*)driver_ctx;
+   struct anv_state_pool *pool = &device->dynamic_state_pool;
+   anv_state_pool_free(pool, buf->state);
+   free(buf);
+}
+
+static struct gen_mapped_pinned_buffer_alloc aux_map_allocator = {
+   .alloc = gen_aux_map_buffer_alloc,
+   .free = gen_aux_map_buffer_free,
+};
 
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
