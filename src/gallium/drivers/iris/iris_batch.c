@@ -95,7 +95,7 @@ create_batch_buffer(struct iris_bufmgr *bufmgr,
                     struct iris_batch_buffer *buf,
                     const char *name, unsigned size)
 {
-   buf->bo = iris_bo_alloc(bufmgr, name, size);
+   buf->bo = iris_bo_alloc(bufmgr, name, size, IRIS_MEMZONE_OTHER);
    buf->bo->kflags |= EXEC_OBJECT_CAPTURE;
    buf->map = iris_bo_map(NULL, buf->bo, MAP_READ | MAP_WRITE);
    buf->map_next = buf->map;
@@ -299,7 +299,7 @@ grow_buffer(struct iris_batch *batch,
    const unsigned existing_bytes = buffer_bytes_used(buf);
 
    struct iris_bo *new_bo =
-      iris_bo_alloc(bufmgr, bo->name, new_size);
+      iris_bo_alloc(bufmgr, bo->name, new_size, IRIS_MEMZONE_OTHER);
 
    buf->map = iris_bo_map(NULL, new_bo, MAP_READ | MAP_WRITE);
    buf->map_next = buf->map + existing_bytes;

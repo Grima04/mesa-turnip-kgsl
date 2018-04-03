@@ -51,6 +51,8 @@
 #include "util/macros.h"
 #include "util/hash_table.h"
 #include "util/list.h"
+#include "util/u_dynarray.h"
+#include "util/vma.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 #include "string.h"
@@ -93,8 +95,6 @@ drm_ioctl(int fd, unsigned long request, void *arg)
     return ret;
 }
 
-
-
 static inline int
 atomic_add_unless(int *v, int add, int unless)
 {
@@ -105,9 +105,37 @@ atomic_add_unless(int *v, int add, int unless)
    return c == unless;
 }
 
+/*
+ * Idea:
+ *
+ * Have a bitmap-allocator for each BO cache bucket size.  Because bo_alloc
+ * rounds up allocations to the bucket size anyway, we can make 1 bit in the
+ * bitmap represent N pages of memory, where N = <bucket size / page size>.
+ * Allocations and frees always set/unset a single bit.  Because ffsll only
+ * works on uint64_t, use a tree(?) of those.
+ *
+ * Nodes contain a starting address and a uint64_t bitmap.  (pair-of-uint64_t)
+ * Bitmap uses 1 for a free block, 0 for in-use.
+ *
+ * Bucket contains...
+ *
+ *     Dynamic array of nodes.  (pointer, two ints)
+ */
+
+struct vma_bucket_node {
+   uint64_t start_address;
+   uint64_t bitmap;
+};
+
 struct bo_cache_bucket {
+   /** List of cached BOs. */
    struct list_head head;
+
+   /** Size of this bucket, in bytes. */
    uint64_t size;
+
+   /** List of vma_bucket_nodes */
+   struct util_dynarray vma_list[IRIS_MEMZONE_COUNT];
 };
 
 struct iris_bufmgr {
@@ -123,6 +151,8 @@ struct iris_bufmgr {
    struct hash_table *name_table;
    struct hash_table *handle_table;
 
+   struct util_vma_heap vma_allocator[IRIS_MEMZONE_COUNT];
+
    bool has_llc:1;
    bool bo_reuse:1;
 };
@@ -131,6 +161,10 @@ static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
                                   uint32_t stride);
 
 static void bo_free(struct iris_bo *bo);
+
+static uint64_t vma_alloc(struct iris_bufmgr *bufmgr,
+                          enum iris_memory_zone memzone,
+                          uint64_t size, uint64_t alignment);
 
 static uint32_t
 key_hash_uint(const void *key)
@@ -191,6 +225,141 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
           &bufmgr->cache_bucket[index] : NULL;
 }
 
+static enum iris_memory_zone
+memzone_for_address(uint64_t address)
+{
+   const uint64_t _4GB = 1ull << 32;
+
+   if (address >= 3 * _4GB)
+      return IRIS_MEMZONE_OTHER;
+
+   if (address >= 2 * _4GB)
+      return IRIS_MEMZONE_DYNAMIC;
+
+   if (address >= 1 * _4GB)
+      return IRIS_MEMZONE_SURFACE;
+
+   return IRIS_MEMZONE_SHADER;
+}
+
+static uint64_t
+bucket_vma_alloc(struct iris_bufmgr *bufmgr,
+                 struct bo_cache_bucket *bucket,
+                 enum iris_memory_zone memzone)
+{
+   struct util_dynarray *vma_list = &bucket->vma_list[memzone];
+   struct vma_bucket_node *node;
+
+   if (vma_list->size == 0) {
+      /* This bucket allocator is out of space - allocate a new block of
+       * memory from a larger allocator (either another bucket or util_vma).
+       *
+       * Set the first bit used, and return the start address.
+       */
+      node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
+      node->start_address =
+         vma_alloc(bufmgr, memzone, 64ull * bucket->size, bucket->size);
+      node->bitmap = ~1ull;
+      return node->start_address;
+   }
+
+   /* Pick any bit from any node - they're all the right size and free. */
+   node = util_dynarray_top_ptr(vma_list, struct vma_bucket_node);
+   int bit = ffsll(node->bitmap) - 1;
+   assert(bit != -1);
+
+   /* Reserve the memory by clearing the bit. */
+   node->bitmap &= ~(1ull << bit);
+
+   /* If this node is now completely full, remove it from the free list. */
+   if (node->bitmap == 0ull) {
+      (void) util_dynarray_pop(vma_list, struct vma_bucket_node);
+   }
+
+   return node->start_address + bit * bucket->size;
+}
+
+static void
+bucket_vma_free(struct bo_cache_bucket *bucket,
+                uint64_t address,
+                uint64_t size)
+{
+   enum iris_memory_zone memzone = memzone_for_address(address);
+   struct util_dynarray *vma_list = &bucket->vma_list[memzone];
+   const uint64_t node_bytes = 64ull * bucket->size;
+   struct vma_bucket_node *node = NULL;
+
+   uint64_t start = (address / node_bytes) * node_bytes;
+   int bit = (address - start) / bucket->size;
+
+   util_dynarray_foreach(vma_list, struct vma_bucket_node, cur) {
+      if (cur->start_address == start) {
+         node = cur;
+         break;
+      }
+   }
+
+   if (!node) {
+      node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
+      node->start_address = start;
+      node->bitmap = 0ull;
+   }
+
+   node->bitmap |= 1ull << bit;
+
+   /* The block might be entirely free now, and if so, we could return it
+    * to the larger allocator.  But we may as well hang on to it, in case
+    * we get more allocations at this block size.
+    */
+}
+
+static struct bo_cache_bucket *
+get_bucket_allocator(struct iris_bufmgr *bufmgr, uint64_t size)
+{
+   /* Skip using the bucket allocator for very large sizes, as it allocates
+    * 64 of them and this can balloon rather quickly.
+    */
+   if (size > 1024 * PAGE_SIZE)
+      return NULL;
+
+   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size);
+
+   if (bucket && bucket->size == size)
+      return bucket;
+
+   return NULL;
+}
+
+static uint64_t
+vma_alloc(struct iris_bufmgr *bufmgr,
+          enum iris_memory_zone memzone,
+          uint64_t size,
+          uint64_t alignment)
+{
+   struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
+
+   if (bucket)
+      return bucket_vma_alloc(bufmgr, bucket, memzone);
+
+   return util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
+                              alignment);
+}
+
+static void
+vma_free(struct iris_bufmgr *bufmgr,
+         uint64_t address,
+         uint64_t size)
+{
+   struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
+
+   if (bucket) {
+      bucket_vma_free(bucket, address, size);
+   } else {
+      enum iris_memory_zone memzone = memzone_for_address(address);
+      util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
+   }
+}
+
 int
 iris_bo_busy(struct iris_bo *bo)
 {
@@ -237,6 +406,7 @@ static struct iris_bo *
 bo_alloc_internal(struct iris_bufmgr *bufmgr,
                   const char *name,
                   uint64_t size,
+                  enum iris_memory_zone memzone,
                   unsigned flags,
                   uint32_t tiling_mode,
                   uint32_t stride)
@@ -303,7 +473,15 @@ retry:
       }
    }
 
-   if (!alloc_from_cache) {
+   if (alloc_from_cache) {
+      /* If the cached BO isn't in the right memory zone, free the old
+       * memory and assign it a new address.
+       */
+      if (memzone != memzone_for_address(bo->gtt_offset)) {
+         vma_free(bufmgr, bo->gtt_offset, size);
+         bo->gtt_offset = 0;
+      }
+   } else {
       bo = calloc(1, sizeof(*bo));
       if (!bo)
          goto err;
@@ -325,6 +503,7 @@ retry:
       bo->gem_handle = create.handle;
 
       bo->bufmgr = bufmgr;
+      bo->kflags = EXEC_OBJECT_PINNED;
 
       bo->tiling_mode = I915_TILING_NONE;
       bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
@@ -344,6 +523,13 @@ retry:
       };
 
       if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0)
+         goto err_free;
+   }
+
+   if (bo->gtt_offset == 0ull) {
+      bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
+
+      if (bo->gtt_offset == 0ull)
          goto err_free;
    }
 
@@ -370,17 +556,20 @@ err:
 struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
               const char *name,
-              uint64_t size)
+              uint64_t size,
+              enum iris_memory_zone memzone)
 {
-   return bo_alloc_internal(bufmgr, name, size, 0, I915_TILING_NONE, 0);
+   return bo_alloc_internal(bufmgr, name, size, memzone,
+                            0, I915_TILING_NONE, 0);
 }
 
 struct iris_bo *
 iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr, const char *name,
-                    uint64_t size, uint32_t tiling_mode, uint32_t pitch,
-                    unsigned flags)
+                    uint64_t size, enum iris_memory_zone memzone,
+                    uint32_t tiling_mode, uint32_t pitch, unsigned flags)
 {
-   return bo_alloc_internal(bufmgr, name, size, flags, tiling_mode, pitch);
+   return bo_alloc_internal(bufmgr, name, size, memzone,
+                            flags, tiling_mode, pitch);
 }
 
 /**
@@ -435,11 +624,13 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->size = open_arg.size;
    bo->gtt_offset = 0;
    bo->bufmgr = bufmgr;
+   bo->kflags = EXEC_OBJECT_PINNED;
    bo->gem_handle = open_arg.handle;
    bo->name = name;
    bo->global_name = handle;
    bo->reusable = false;
    bo->external = true;
+   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
    _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
@@ -494,6 +685,8 @@ bo_free(struct iris_bo *bo)
       _mesa_hash_table_remove(bufmgr->handle_table, entry);
    }
 
+   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
+
    /* Close this object */
    struct drm_gem_close close = { .handle = bo->gem_handle };
    int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
@@ -542,9 +735,7 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
    if (bufmgr->bo_reuse && bo->reusable && bucket != NULL &&
        iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->free_time = time;
-
       bo->name = NULL;
-      bo->kflags = 0;
 
       list_addtail(&bo->head, &bucket->head);
    } else {
@@ -960,6 +1151,9 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 
          bo_free(bo);
       }
+
+      for (int i = 0; i < IRIS_MEMZONE_COUNT; i++)
+         util_dynarray_fini(&bucket->vma_list[i]);
    }
 
    _mesa_hash_table_destroy(bufmgr->name_table, NULL);
@@ -1052,6 +1246,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
       bo->size = ret;
 
    bo->bufmgr = bufmgr;
+   bo->kflags = EXEC_OBJECT_PINNED;
 
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
@@ -1059,6 +1254,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    bo->name = "prime";
    bo->reusable = false;
    bo->external = true;
+   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
    if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
@@ -1164,6 +1360,8 @@ add_bucket(struct iris_bufmgr *bufmgr, int size)
    assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
 
    list_inithead(&bufmgr->cache_bucket[i].head);
+   for (int i = 0; i < IRIS_MEMZONE_COUNT; i++)
+      util_dynarray_init(&bufmgr->cache_bucket[i].vma_list[i], NULL);
    bufmgr->cache_bucket[i].size = size;
    bufmgr->num_buckets++;
 
@@ -1185,12 +1383,12 @@ init_cache_buckets(struct iris_bufmgr *bufmgr)
     * width/height alignment and rounding of sizes to pages will
     * get us useful cache hit rates anyway)
     */
-   add_bucket(bufmgr, 4096);
-   add_bucket(bufmgr, 4096 * 2);
-   add_bucket(bufmgr, 4096 * 3);
+   add_bucket(bufmgr, PAGE_SIZE);
+   add_bucket(bufmgr, PAGE_SIZE * 2);
+   add_bucket(bufmgr, PAGE_SIZE * 3);
 
    /* Initialize the linked lists for BO reuse cache. */
-   for (size = 4 * 4096; size <= cache_max_size; size *= 2) {
+   for (size = 4 * PAGE_SIZE; size <= cache_max_size; size *= 2) {
       add_bucket(bufmgr, size);
 
       add_bucket(bufmgr, size + size * 1 / 4);
@@ -1283,6 +1481,17 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
    }
 
    bufmgr->has_llc = devinfo->has_llc;
+
+   const uint64_t _4GB = 1ull << 32;
+
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
+                      PAGE_SIZE, _4GB);
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
+                      1 * _4GB, _4GB);
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
+                      2 * _4GB, _4GB);
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
+                      3 * _4GB, (1ull << 48) - 3 * _4GB);
 
    init_cache_buckets(bufmgr);
 

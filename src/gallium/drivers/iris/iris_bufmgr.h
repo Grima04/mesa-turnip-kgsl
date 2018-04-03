@@ -35,6 +35,15 @@
 struct gen_device_info;
 struct pipe_debug_callback;
 
+enum iris_memory_zone {
+   IRIS_MEMZONE_DYNAMIC,
+   IRIS_MEMZONE_SURFACE,
+   IRIS_MEMZONE_SHADER,
+   IRIS_MEMZONE_OTHER,
+};
+
+#define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
+
 struct iris_bo {
    /**
     * Size in bytes of the buffer object.
@@ -51,31 +60,11 @@ struct iris_bo {
    uint32_t gem_handle;
 
    /**
-    * Offset of the buffer inside the Graphics Translation Table.
+    * Virtual address of the buffer inside the PPGTT (Per-Process Graphics
+    * Translation Table).
     *
-    * This is effectively our GPU address for the buffer and we use it
-    * as our base for all state pointers into the buffer. However, since the
-    * kernel may be forced to move it around during the course of the
-    * buffer's lifetime, we can only know where the buffer was on the last
-    * execbuf. We presume, and are usually right, that the buffer will not
-    * move and so we use that last offset for the next batch and by doing
-    * so we can avoid having the kernel perform a relocation fixup pass as
-    * our pointers inside the batch will be using the correct base offset.
-    *
-    * Since we do use it as a base address for the next batch of pointers,
-    * the kernel treats our offset as a request, and if possible will
-    * arrange the buffer to placed at that address (trying to balance
-    * the cost of buffer migration versus the cost of performing
-    * relocations). Furthermore, we can force the kernel to place the buffer,
-    * or report a failure if we specified a conflicting offset, at our chosen
-    * offset by specifying EXEC_OBJECT_PINNED.
-    *
-    * Note the GTT may be either per context, or shared globally across the
-    * system. On a shared system, our buffers have to contend for address
-    * space with both aperture mappings and framebuffers and so are more
-    * likely to be moved. On a full ppGTT system, each batch exists in its
-    * own GTT, and so each buffer may have their own offset within each
-    * context.
+    * Although each hardware context has its own VMA, we assign BO's to the
+    * same address in all contexts, for simplicity.
     */
    uint64_t gtt_offset;
 
@@ -156,7 +145,8 @@ struct iris_bo {
  */
 struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr,
                               const char *name,
-                              uint64_t size);
+                              uint64_t size,
+                              enum iris_memory_zone memzone);
 
 /**
  * Allocate a tiled buffer object.
@@ -174,7 +164,8 @@ struct iris_bo *iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr,
                                     uint64_t size,
                                     uint32_t tiling_mode,
                                     uint32_t pitch,
-                                    unsigned flags);
+                                    unsigned flags,
+                                    enum iris_memory_zone memzone);
 
 /** Takes a reference on a buffer object */
 static inline void

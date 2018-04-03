@@ -256,18 +256,19 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                  .usage = usage,
                  .tiling_flags = 1 << mod_info->tiling);
 
-   res->bo = iris_bo_alloc_tiled(screen->bufmgr, "resource", res->surf.size_B,
+   enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
+   const char *name = "resource";
+   if (templ->flags & IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE) {
+      memzone = IRIS_MEMZONE_SHADER;
+      name = "shader kernels";
+   }
+
+   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,
+                                 IRIS_MEMZONE_OTHER,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, 0);
    if (!res->bo)
       goto fail;
-
-   if (templ->flags & IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE) {
-      res->bo->kflags = EXEC_OBJECT_PINNED;
-      res->bo->name = "instruction cache";
-      // XXX: p_atomic_add is backwards :(
-      res->bo->gtt_offset = __atomic_fetch_add(&screen->next_instruction_address, res->bo->size, __ATOMIC_ACQ_REL);
-   }
 
    return &res->base;
 
