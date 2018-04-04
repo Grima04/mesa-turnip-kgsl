@@ -565,6 +565,8 @@ files_libmesa_gallium = files(
   'state_tracker/st_gen_mipmap.c',
   'state_tracker/st_gen_mipmap.h',
   'state_tracker/st_gl_api.h',
+  'state_tracker/st_glsl_to_ir.cpp',
+  'state_tracker/st_glsl_to_ir.h',
   'state_tracker/st_glsl_to_nir.cpp',
   'state_tracker/st_glsl_to_tgsi.cpp',
   'state_tracker/st_glsl_to_tgsi.h',
