@@ -264,7 +264,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,
-                                 IRIS_MEMZONE_OTHER,
+                                 memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, 0);
    if (!res->bo)
