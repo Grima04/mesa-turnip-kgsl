@@ -1968,6 +1968,7 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t *bt_map = NULL;
 
       if (prog_data->binding_table.size_bytes != 0) {
+         iris_use_pinned_bo(batch, ice->state.binder.bo, false);
          bt_map = iris_binder_reserve(&ice->state.binder,
                                       prog_data->binding_table.size_bytes,
                                       &bt_offset);

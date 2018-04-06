@@ -37,6 +37,9 @@ iris_binder_reserve(struct iris_binder *binder, unsigned size,
    assert(size > 0);
    assert(binder->insert_point + size <= BINDER_SIZE);
 
+   assert((binder->insert_point % 64) == 0);
+   *out_offset = binder->insert_point;
+
    binder->insert_point = align(binder->insert_point + size, 64);
 
    return binder->map + *out_offset;
@@ -48,6 +51,7 @@ iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
    binder->bo =
       iris_bo_alloc(bufmgr, "binder", BINDER_SIZE, IRIS_MEMZONE_BINDER);
    binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
+   binder->insert_point = 64; // XXX: avoid null pointer, it confuses tools
 }
 
 void
