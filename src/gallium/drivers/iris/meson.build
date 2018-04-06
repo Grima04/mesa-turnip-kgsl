@@ -21,6 +21,8 @@
 files_libiris = files(
   'iris_batch.c',
   'iris_batch.h',
+  'iris_binder.c',
+  'iris_binder.h',
   'iris_blit.c',
   'iris_bufmgr.c',
   'iris_bufmgr.h',

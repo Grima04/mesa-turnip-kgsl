@@ -29,10 +29,10 @@
 #include "intel/common/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
+#include "iris_binder.h"
 #include "iris_screen.h"
 
 struct iris_bo;
-struct iris_batch;
 
 #define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
@@ -185,6 +185,7 @@ struct iris_context {
 
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
 
+      struct iris_binder binder;
       struct u_upload_mgr *surface_uploader;
       struct u_upload_mgr *dynamic_uploader;
 

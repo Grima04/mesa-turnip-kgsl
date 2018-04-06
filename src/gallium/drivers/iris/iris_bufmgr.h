@@ -41,8 +41,11 @@ enum iris_memory_zone {
    IRIS_MEMZONE_SURFACE,
    IRIS_MEMZONE_SHADER,
    IRIS_MEMZONE_OTHER,
+
+   IRIS_MEMZONE_BINDER,
 };
 
+/* Intentionally exclude IRIS_MEMZONE_BINDER */
 #define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
 
 struct iris_bo {

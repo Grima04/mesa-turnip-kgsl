@@ -57,10 +57,15 @@ static uint64_t
 __gen_combine_address(struct iris_batch *batch, void *location,
                       struct iris_address addr, uint32_t delta)
 {
-   if (addr.bo)
-      iris_use_pinned_bo(batch, addr.bo, addr.write);
+   uint64_t result = addr.offset + delta;
 
-   return addr.offset + delta;
+   if (addr.bo) {
+      iris_use_pinned_bo(batch, addr.bo, addr.write);
+      /* Assume this is a general address, not relative to a base. */
+      result += addr.bo->gtt_offset;
+   }
+
+   return result;
 }
 
 #define __genxml_cmd_length(cmd) cmd ## _length
@@ -279,13 +284,22 @@ stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
              unsigned size,
              unsigned alignment,
-             unsigned *out_offset)
+             uint32_t *out_offset)
 {
    struct pipe_resource *res = NULL;
    void *ptr = NULL;
 
    u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
-   iris_use_pinned_bo(batch, ((struct iris_resource *) res)->bo, false);
+
+   struct iris_bo *bo = ((struct iris_resource *) res)->bo;
+   iris_use_pinned_bo(batch, bo, false);
+
+   /* Compute an offset from state base address.  It's a 4GB region starting
+    * at 0GB, 4GB, or 8GB, so we can simply drop everything above 32 bits.
+    */
+   assert(bo->gtt_offset < 3 * (1ull << 32));
+   *out_offset += bo->gtt_offset & ((1ull << 32) - 1);
+
    pipe_resource_reference(&res, NULL);
 
    return ptr;
@@ -906,8 +920,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    isl_surf_fill_state(&screen->isl_dev, isv->surface_state,
                        .surf = &itex->surf, .view = &isv->view,
-                       .mocs = MOCS_WB);
-                       // .address = ...
+                       .mocs = MOCS_WB,
+                       .address = itex->bo->gtt_offset);
                        // .aux_surf =
                        // .clear_color = clear_color,
 
@@ -957,8 +971,8 @@ iris_create_surface(struct pipe_context *ctx,
 
    isl_surf_fill_state(&screen->isl_dev, surf->surface_state,
                        .surf = &itex->surf, .view = &surf->view,
-                       .mocs = MOCS_WB);
-                       // .address = ...
+                       .mocs = MOCS_WB,
+                       .address = itex->bo->gtt_offset);
                        // .aux_surf =
                        // .clear_color = clear_color,
 
@@ -1954,9 +1968,9 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t *bt_map = NULL;
 
       if (prog_data->binding_table.size_bytes != 0) {
-         bt_map = stream_state(batch, ice->state.surface_uploader,
-                               prog_data->binding_table.size_bytes,
-                               64, &bt_offset);
+         bt_map = iris_binder_reserve(&ice->state.binder,
+                                      prog_data->binding_table.size_bytes,
+                                      &bt_offset);
       }
 
       iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
@@ -1973,6 +1987,9 @@ iris_upload_render_state(struct iris_context *ice,
             struct iris_surface *surf = (void *) cso_fb->cbufs[i];
             struct iris_resource *res = (void *) surf->pipe.texture;
             iris_use_pinned_bo(batch, res->bo, true);
+            /* emit_state already adjusts for surface base address, so
+             * it already basically subtracts the binder address for us.
+             */
             *bt_map++ =
                emit_state(batch, ice->state.surface_uploader,
                           surf->surface_state,

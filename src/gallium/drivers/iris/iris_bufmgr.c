@@ -236,8 +236,12 @@ memzone_for_address(uint64_t address)
    if (address >= 2 * _4GB)
       return IRIS_MEMZONE_DYNAMIC;
 
-   if (address >= 1 * _4GB)
+   if (address > 1 * _4GB)
       return IRIS_MEMZONE_SURFACE;
+
+   /* The binder isn't in any memory zone. */
+   if (address == 1 * _4GB)
+      return IRIS_MEMZONE_BINDER;
 
    return IRIS_MEMZONE_SHADER;
 }
@@ -336,6 +340,9 @@ vma_alloc(struct iris_bufmgr *bufmgr,
           uint64_t size,
           uint64_t alignment)
 {
+   if (memzone == IRIS_MEMZONE_BINDER)
+      return 1ull << 32;
+
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
 
    if (bucket)

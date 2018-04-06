@@ -80,6 +80,7 @@ iris_destroy_context(struct pipe_context *ctx)
       u_upload_destroy(ctx->stream_uploader);
 
    iris_destroy_program_cache(ice);
+   iris_destroy_binder(&ice->state.binder);
    u_upload_destroy(ice->state.surface_uploader);
    u_upload_destroy(ice->state.dynamic_uploader);
 
@@ -135,6 +136,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_query_functions(ctx);
 
    iris_init_program_cache(ice);
+
+   iris_init_binder(&ice->state.binder, screen->bufmgr);
 
    ice->state.surface_uploader =
       u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
