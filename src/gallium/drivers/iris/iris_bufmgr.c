@@ -503,7 +503,7 @@ retry:
       bo->gem_handle = create.handle;
 
       bo->bufmgr = bufmgr;
-      bo->kflags = EXEC_OBJECT_PINNED;
+      bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
       bo->tiling_mode = I915_TILING_NONE;
       bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
@@ -624,7 +624,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->size = open_arg.size;
    bo->gtt_offset = 0;
    bo->bufmgr = bufmgr;
-   bo->kflags = EXEC_OBJECT_PINNED;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gem_handle = open_arg.handle;
    bo->name = name;
    bo->global_name = handle;
@@ -1246,7 +1246,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
       bo->size = ret;
 
    bo->bufmgr = bufmgr;
-   bo->kflags = EXEC_OBJECT_PINNED;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
