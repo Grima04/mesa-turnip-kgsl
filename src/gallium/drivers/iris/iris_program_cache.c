@@ -238,7 +238,7 @@ iris_init_program_cache(struct iris_context *ice)
 
    ice->shaders.uploader =
       u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
-                      IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE);
+                      IRIS_RESOURCE_FLAG_SHADER_MEMZONE);
 }
 
 void

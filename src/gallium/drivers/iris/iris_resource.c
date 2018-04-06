@@ -258,9 +258,15 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
    const char *name = "resource";
-   if (templ->flags & IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE) {
+   if (templ->flags & IRIS_RESOURCE_FLAG_SHADER_MEMZONE) {
       memzone = IRIS_MEMZONE_SHADER;
       name = "shader kernels";
+   } else if (templ->flags & IRIS_RESOURCE_FLAG_SURFACE_MEMZONE) {
+      memzone = IRIS_MEMZONE_SURFACE;
+      name = "surface state";
+   } else if (templ->flags & IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE) {
+      memzone = IRIS_MEMZONE_DYNAMIC;
+      name = "dynamic state";
    }
 
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,

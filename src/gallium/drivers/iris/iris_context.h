@@ -34,7 +34,9 @@
 struct iris_bo;
 struct iris_batch;
 
-#define IRIS_RESOURCE_FLAG_INSTRUCTION_CACHE (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
+#define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
+#define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
+#define IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 2)
 
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_VIEWPORTS 16
@@ -182,6 +184,9 @@ struct iris_context {
       struct pipe_framebuffer_state framebuffer;
 
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
+
+      struct u_upload_mgr *surface_uploader;
+      struct u_upload_mgr *dynamic_uploader;
 
       void (*destroy_state)(struct iris_context *ice);
       void (*init_render_context)(struct iris_screen *screen,
