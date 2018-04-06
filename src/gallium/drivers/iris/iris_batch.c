@@ -62,10 +62,11 @@ dump_validation_list(struct iris_batch *batch)
    for (int i = 0; i < batch->exec_count; i++) {
       assert(batch->validation_list[i].handle ==
              batch->exec_bos[i]->gem_handle);
-      fprintf(stderr, "[%d] = %d %s %p\n", i,
+      fprintf(stderr, "[%d] = %d %s %p @ %"PRIx64"\n", i,
               batch->validation_list[i].handle,
               batch->exec_bos[i]->name,
-              batch->exec_bos[i]);
+              batch->exec_bos[i],
+              batch->exec_bos[i]->gtt_offset);
    }
 }
 
