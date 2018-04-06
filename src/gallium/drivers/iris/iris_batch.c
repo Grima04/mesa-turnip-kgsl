@@ -571,10 +571,14 @@ iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
 /* This is the only way buffers get added to the validate list.
  */
 void
-iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo)
+iris_use_pinned_bo(struct iris_batch *batch,
+                   struct iris_bo *bo,
+                   bool writable)
 {
    assert(bo->kflags & EXEC_OBJECT_PINNED);
-   add_exec_bo(batch, bo);
+   unsigned index = add_exec_bo(batch, bo);
+   if (writable)
+      batch->validation_list[index].flags |= EXEC_OBJECT_WRITE;
 }
 
 static void

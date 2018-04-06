@@ -57,9 +57,8 @@ static uint64_t
 __gen_combine_address(struct iris_batch *batch, void *location,
                       struct iris_address addr, uint32_t delta)
 {
-   // XXX: reloc flags?
    if (addr.bo)
-      iris_use_pinned_bo(batch, addr.bo);
+      iris_use_pinned_bo(batch, addr.bo, addr.write);
 
    return addr.offset + delta;
 }
@@ -286,7 +285,7 @@ stream_state(struct iris_batch *batch,
    void *ptr = NULL;
 
    u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
-   iris_use_pinned_bo(batch, ((struct iris_resource *) res)->bo);
+   iris_use_pinned_bo(batch, ((struct iris_resource *) res)->bo, false);
    pipe_resource_reference(&res, NULL);
 
    return ptr;
@@ -1973,6 +1972,7 @@ iris_upload_render_state(struct iris_context *ice,
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
             struct iris_surface *surf = (void *) cso_fb->cbufs[i];
             struct iris_resource *res = (void *) surf->pipe.texture;
+            iris_use_pinned_bo(batch, res->bo, true);
             *bt_map++ =
                emit_state(batch, ice->state.surface_uploader,
                           surf->surface_state,
@@ -2051,7 +2051,7 @@ iris_upload_render_state(struct iris_context *ice,
 
       if (shader) {
          struct iris_resource *cache = (void *) shader->buffer;
-         iris_use_pinned_bo(batch, cache->bo);
+         iris_use_pinned_bo(batch, cache->bo, false);
          iris_batch_emit(batch, shader->derived_data,
                          iris_derived_program_state_size(stage));
       } else {
@@ -2221,7 +2221,7 @@ iris_upload_render_state(struct iris_context *ice,
                       sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         iris_use_pinned_bo(batch, cso->bos[i].bo);
+         iris_use_pinned_bo(batch, cso->bos[i].bo, false);
          *addr = cso->bos[i].offset + *delta;
          addr = (void *) addr + 16;
          delta = (void *) delta + 16;

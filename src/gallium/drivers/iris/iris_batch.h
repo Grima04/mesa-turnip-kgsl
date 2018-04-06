@@ -38,8 +38,8 @@
 
 struct iris_address {
    struct iris_bo *bo;
-   unsigned reloc_flags;
    uint64_t offset;
+   bool write;
 };
 
 struct iris_batch_buffer {
@@ -106,6 +106,7 @@ bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 
-void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo);
+void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo,
+                        bool writable);
 
 #endif
