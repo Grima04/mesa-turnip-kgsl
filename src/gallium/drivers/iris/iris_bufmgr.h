@@ -31,6 +31,7 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "util/list.h"
+#include "pipe/p_defines.h"
 
 struct gen_device_info;
 struct pipe_debug_callback;
