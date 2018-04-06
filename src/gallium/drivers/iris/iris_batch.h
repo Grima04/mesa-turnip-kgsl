@@ -39,13 +39,7 @@
 struct iris_address {
    struct iris_bo *bo;
    unsigned reloc_flags;
-   uint32_t offset;
-};
-
-struct iris_reloc_list {
-   struct drm_i915_gem_relocation_entry *relocs;
-   int reloc_count;
-   int reloc_array_size;
+   uint64_t offset;
 };
 
 struct iris_batch_buffer {
@@ -55,8 +49,6 @@ struct iris_batch_buffer {
 
    struct iris_bo *partial_bo;
    unsigned partial_bytes;
-
-   struct iris_reloc_list relocs;
 };
 
 struct iris_batch {
@@ -65,8 +57,6 @@ struct iris_batch {
 
    /** Current batchbuffer being queued up. */
    struct iris_batch_buffer cmdbuf;
-   /** Current statebuffer being queued up. */
-   struct iris_batch_buffer statebuf;
 
    /** Last BO submitted to the hardware.  Used for glFinish(). */
    struct iris_bo *last_cmd_bo;
@@ -99,12 +89,7 @@ void iris_init_batch(struct iris_batch *batch,
                      uint8_t ring);
 void iris_batch_free(struct iris_batch *batch);
 void iris_require_command_space(struct iris_batch *batch, unsigned size);
-void iris_require_state_space(struct iris_batch *batch, unsigned size);
 void iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size);
-uint32_t iris_emit_state(struct iris_batch *batch, const void *data, int size,
-                         int alignment);
-void *iris_alloc_state(struct iris_batch *batch, int size, int alignment,
-                       uint32_t *out_offset);
 
 int _iris_batch_flush_fence(struct iris_batch *batch,
                             int in_fence_fd, int *out_fence_fd,
@@ -123,15 +108,4 @@ bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
 void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo);
 
-uint64_t iris_batch_reloc(struct iris_batch *batch,
-                          uint32_t batch_offset,
-                          struct iris_bo *target,
-                          uint32_t target_offset,
-                          unsigned flags);
-
-uint64_t iris_state_reloc(struct iris_batch *batch,
-                          uint32_t batch_offset,
-                          struct iris_bo *target,
-                          uint32_t target_offset,
-                          unsigned flags);
 #endif

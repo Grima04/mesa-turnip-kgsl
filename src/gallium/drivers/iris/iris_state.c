@@ -57,11 +57,11 @@ static uint64_t
 __gen_combine_address(struct iris_batch *batch, void *location,
                       struct iris_address addr, uint32_t delta)
 {
-   if (addr.bo == NULL)
-      return addr.offset + delta;
+   // XXX: reloc flags?
+   if (addr.bo)
+      iris_use_pinned_bo(batch, addr.bo);
 
-   return iris_batch_reloc(batch, location - batch->cmdbuf.map, addr.bo,
-                           addr.offset + delta, addr.reloc_flags);
+   return addr.offset + delta;
 }
 
 #define __genxml_cmd_length(cmd) cmd ## _length
@@ -103,26 +103,6 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
       for (uint32_t i = 0; i < num_dwords; i++)                \
          dw[i] = (dwords0)[i] | (dwords1)[i];                  \
       VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));       \
-   } while (0)
-
-#define iris_emit_with_addr(batch, dwords, num_dw, addr_field, addr)    \
-   do {                                                                 \
-      STATIC_ASSERT((GENX(addr_field) % 64) == 0);                      \
-      assert(num_dw <= ARRAY_SIZE(dwords));                             \
-      int addr_idx = GENX(addr_field) / 32;                             \
-      uint32_t *dw = get_command_space(batch, 4 * num_dw);              \
-      for (uint32_t i = 0; i < addr_idx; i++) {                         \
-         dw[i] = (dwords)[i];                                           \
-      }                                                                 \
-      uint64_t *qw = (uint64_t *) &dw[addr_idx];                        \
-      *qw = iris_batch_reloc(batch, (void *)qw - batch->cmdbuf.map,     \
-                             addr.bo,                                   \
-                             addr.offset + (dwords)[addr_idx + 1],      \
-                             addr.reloc_flags);                         \
-      for (uint32_t i = addr_idx + 1; i < num_dw; i++) {                \
-         dw[i] = (dwords)[i];                                           \
-      }                                                                 \
-      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dw * 4));                \
    } while (0)
 
 #include "genxml/genX_pack.h"
@@ -290,9 +270,42 @@ translate_fill_mode(unsigned pipe_polymode)
 }
 
 static struct iris_address
-ro_bo(struct iris_bo *bo, uint32_t offset)
+ro_bo(struct iris_bo *bo, uint64_t offset)
 {
    return (struct iris_address) { .bo = bo, .offset = offset };
+}
+
+static uint32_t *
+stream_state(struct iris_batch *batch,
+             struct u_upload_mgr *uploader,
+             unsigned size,
+             unsigned alignment,
+             unsigned *out_offset)
+{
+   struct pipe_resource *res = NULL;
+   void *ptr = NULL;
+
+   u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
+   iris_use_pinned_bo(batch, ((struct iris_resource *) res)->bo);
+   pipe_resource_reference(&res, NULL);
+
+   return ptr;
+}
+
+static uint32_t
+emit_state(struct iris_batch *batch,
+           struct u_upload_mgr *uploader,
+           const void *data,
+           unsigned size,
+           unsigned alignment)
+{
+   unsigned offset = 0;
+   uint32_t *map = stream_state(batch, uploader, size, alignment, &offset);
+
+   if (map)
+      memcpy(map, data, size);
+
+   return offset;
 }
 
 static void
@@ -323,13 +336,13 @@ iris_emit_state_base_address(struct iris_batch *batch)
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.InstructionBuffersizeModifyEnable     = true;
 
-      sba.SurfaceStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
-      sba.DynamicStateBaseAddress = ro_bo(batch->statebuf.bo, 0);
+      sba.SurfaceStateBaseAddress = ro_bo(NULL, 1ull << 32);
+      sba.DynamicStateBaseAddress = ro_bo(NULL, 2 * (1ull << 32));
 
       sba.GeneralStateBufferSize   = 0xfffff;
       sba.IndirectObjectBufferSize = 0xfffff;
       sba.InstructionBufferSize    = 0xfffff;
-      sba.DynamicStateBufferSize   = ALIGN(MAX_STATE_SIZE, 4096);
+      sba.DynamicStateBufferSize   = 0xfffff;
    }
 }
 
@@ -1806,32 +1819,6 @@ static const uint32_t push_constant_opcodes[] = {
    [MESA_SHADER_COMPUTE]   = 0,
 };
 
-static uint32_t
-emit_patched_surface_state(struct iris_batch *batch,
-                           uint32_t *surface_state,
-                           const struct iris_resource *res,
-                           unsigned reloc_flags)
-{
-   const int num_dwords = GENX(RENDER_SURFACE_STATE_length);
-   uint32_t offset;
-   uint32_t *dw = iris_alloc_state(batch, 4 * num_dwords, 64, &offset);
-
-   STATIC_ASSERT(GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) % 32 == 0);
-   int addr_idx = GENX(RENDER_SURFACE_STATE_SurfaceBaseAddress_start) / 32;
-   for (uint32_t i = 0; i < addr_idx; i++)
-      dw[i] = surface_state[i];
-
-   uint64_t *qw = (uint64_t *) &dw[addr_idx];
-   // XXX: mt->offset, if needed
-   *qw = iris_state_reloc(batch, (void *)qw - batch->statebuf.map, res->bo,
-                          surface_state[addr_idx + 1], reloc_flags);
-
-   for (uint32_t i = addr_idx + 1; i < num_dwords; i++)
-      dw[i] = surface_state[i];
-
-   return offset;
-}
-
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -1846,7 +1833,8 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
          ptr.CCViewportPointer =
-            iris_emit_state(batch, cso->cc_vp, sizeof(cso->cc_vp), 32);
+            emit_state(batch, ice->state.dynamic_uploader,
+                       cso->cc_vp, sizeof(cso->cc_vp), 32);
       }
    }
 
@@ -1854,9 +1842,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_viewport_state *cso = ice->state.cso_vp;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer =
-            iris_emit_state(batch, cso->sf_cl_vp,
-                            4 * GENX(SF_CLIP_VIEWPORT_length) *
-                            ice->state.num_viewports, 64);
+            emit_state(batch, ice->state.dynamic_uploader, cso->sf_cl_vp,
+                       4 * GENX(SF_CLIP_VIEWPORT_length) *
+                       ice->state.num_viewports, 64);
       }
    }
 
@@ -1874,7 +1862,8 @@ iris_upload_render_state(struct iris_context *ice,
          cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length));
       uint32_t blend_offset;
       uint32_t *blend_map =
-         iris_alloc_state(batch, num_dwords, 64, &blend_offset);
+         stream_state(batch, ice->state.dynamic_uploader, 4 * num_dwords, 64,
+                      &blend_offset);
 
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
@@ -1896,9 +1885,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
       uint32_t cc_offset;
       void *cc_map =
-         iris_alloc_state(batch,
-                          sizeof(uint32_t) * GENX(COLOR_CALC_STATE_length),
-                          64, &cc_offset);
+         stream_state(batch, ice->state.dynamic_uploader,
+                      sizeof(uint32_t) * GENX(COLOR_CALC_STATE_length),
+                      64, &cc_offset);
       iris_pack_state(GENX(COLOR_CALC_STATE), cc_map, cc) {
          cc.AlphaTestFormat = ALPHATEST_FLOAT32;
          cc.AlphaReferenceValueAsFLOAT32 = cso->alpha.ref_value;
@@ -1966,8 +1955,9 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t *bt_map = NULL;
 
       if (prog_data->binding_table.size_bytes != 0) {
-         bt_map = iris_alloc_state(batch, prog_data->binding_table.size_bytes,
-                                   64, &bt_offset);
+         bt_map = stream_state(batch, ice->state.surface_uploader,
+                               prog_data->binding_table.size_bytes,
+                               64, &bt_offset);
       }
 
       iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
@@ -1983,9 +1973,10 @@ iris_upload_render_state(struct iris_context *ice,
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
             struct iris_surface *surf = (void *) cso_fb->cbufs[i];
             struct iris_resource *res = (void *) surf->pipe.texture;
-
-            *bt_map++ = emit_patched_surface_state(batch, surf->surface_state,
-                                                   res, RELOC_WRITE);
+            *bt_map++ =
+               emit_state(batch, ice->state.surface_uploader,
+                          surf->surface_state,
+                          4 * GENX(RENDER_SURFACE_STATE_length), 64);
          }
       }
 
@@ -1996,7 +1987,6 @@ iris_upload_render_state(struct iris_context *ice,
          // XXX: these are per-context??????????? pipe_sampler_view::context
          *bt_map++ =
             emit_patched_surface_state(batch, view->surface_state, res, 0);
-         
       }
 
       // XXX: not implemented yet
@@ -2019,9 +2009,9 @@ iris_upload_render_state(struct iris_context *ice,
       const int count = IRIS_MAX_TEXTURE_SAMPLERS;
 
       uint32_t offset;
-      uint32_t *map = iris_alloc_state(batch,
-                                       count * 4 * GENX(SAMPLER_STATE_length),
-                                       32, &offset);
+      uint32_t *map = stream_state(batch, ice->state.dynamic_uploader,
+                                   count * 4 * GENX(SAMPLER_STATE_length),
+                                   32, &offset);
 
       for (int i = 0; i < count; i++) {
          // XXX: when we have a correct count, these better be bound
@@ -2169,9 +2159,9 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_SCISSOR) {
       uint32_t scissor_offset =
-         iris_emit_state(batch, ice->state.scissors,
-                         sizeof(struct pipe_scissor_state) *
-                         ice->state.num_scissors, 32);
+         emit_state(batch, ice->state.dynamic_uploader, ice->state.scissors,
+                    sizeof(struct pipe_scissor_state) *
+                    ice->state.num_scissors, 32);
 
       iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
          ptr.ScissorRectPointer = scissor_offset;
@@ -2231,9 +2221,8 @@ iris_upload_render_state(struct iris_context *ice,
                       sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         *addr = iris_batch_reloc(batch, (void *) addr - batch->cmdbuf.map,
-                                  cso->bos[i].bo, cso->bos[i].offset +
-                                  *delta, cso->bos[i].reloc_flags);
+         iris_use_pinned_bo(batch, cso->bos[i].bo);
+         *addr = cso->bos[i].offset + *delta;
          addr = (void *) addr + 16;
          delta = (void *) delta + 16;
       }
