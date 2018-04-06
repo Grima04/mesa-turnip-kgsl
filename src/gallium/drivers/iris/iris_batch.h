@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "common/gen_decoder.h"
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
@@ -77,8 +78,12 @@ struct iris_batch {
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
+#if DEBUG
    /** Map from batch offset to iris_alloc_state data (with DEBUG_BATCH) */
+   // XXX: unused
    struct hash_table *state_sizes;
+   struct gen_batch_decode_ctx decoder;
+#endif
 
    void (*emit_state_base_address)(struct iris_batch *batch);
 };

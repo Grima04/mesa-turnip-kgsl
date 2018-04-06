@@ -25,7 +25,6 @@
 #include "iris_batch.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
-#include "common/gen_decoder.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -68,6 +67,25 @@ dump_validation_list(struct iris_batch *batch)
               batch->exec_bos[i],
               batch->exec_bos[i]->gtt_offset);
    }
+}
+
+static struct gen_batch_decode_bo
+decode_get_bo(void *v_batch, uint64_t address)
+{
+   struct iris_batch *batch = v_batch;
+   struct iris_bo *bo = NULL;
+
+   for (int i = 0; i < batch->exec_count; i++) {
+      if (batch->exec_bos[i]->gtt_offset == address) {
+         return (struct gen_batch_decode_bo) {
+            .addr = address,
+            .size = batch->exec_bos[i]->size,
+            .map = iris_bo_map(batch->dbg, batch->exec_bos[i], MAP_READ),
+         };
+      }
+   }
+
+   return (struct gen_batch_decode_bo) { };
 }
 
 static bool
@@ -117,6 +135,16 @@ iris_init_batch(struct iris_batch *batch,
    if (unlikely(INTEL_DEBUG)) {
       batch->state_sizes =
          _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);
+
+      const unsigned decode_flags =
+         GEN_BATCH_DECODE_FULL |
+         ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
+         GEN_BATCH_DECODE_OFFSETS;
+         GEN_BATCH_DECODE_FLOATS;
+
+      gen_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
+                                stderr, decode_flags, NULL,
+                                decode_get_bo, NULL, batch);
    }
 
    iris_batch_reset(batch);
@@ -216,8 +244,10 @@ iris_batch_free(struct iris_batch *batch)
 
    iris_bo_unreference(batch->last_cmd_bo);
 
-   if (batch->state_sizes)
+   if (batch->state_sizes) {
       _mesa_hash_table_destroy(batch->state_sizes, NULL);
+      gen_batch_decode_ctx_finish(&batch->decoder);
+   }
 }
 
 /**
@@ -522,15 +552,15 @@ _iris_batch_flush_fence(struct iris_batch *batch,
               (float) batch->aperture_space / (1024 * 1024));
    }
 
+   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
+      decode_batch(batch);
+
    int ret = submit_batch(batch, in_fence_fd, out_fence_fd);
 
    //throttle(iris);
 
    if (ret < 0)
       return ret;
-
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
-      decode_batch(batch);
 
    //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
       //iris_check_for_reset(ice);
@@ -584,5 +614,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
 static void
 decode_batch(struct iris_batch *batch)
 {
-   // XXX: decode the batch
+   gen_print_batch(&batch->decoder, batch->cmdbuf.map,
+                   buffer_bytes_used(&batch->cmdbuf),
+                   batch->cmdbuf.bo->gtt_offset);
 }
