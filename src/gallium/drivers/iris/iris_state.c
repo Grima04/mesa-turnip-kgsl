@@ -344,8 +344,12 @@ emit_state(struct iris_batch *batch,
 }
 
 static void
-iris_emit_state_base_address(struct iris_batch *batch)
+iris_init_render_context(struct iris_screen *screen,
+                         struct iris_batch *batch,
+                         struct pipe_debug_callback *dbg)
 {
+   iris_init_batch(batch, screen, dbg, I915_EXEC_RENDER);
+
    /* XXX: PIPE_CONTROLs */
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
@@ -379,15 +383,6 @@ iris_emit_state_base_address(struct iris_batch *batch)
       sba.InstructionBufferSize    = 0xfffff;
       sba.DynamicStateBufferSize   = 0xfffff;
    }
-}
-
-static void
-iris_init_render_context(struct iris_screen *screen,
-                         struct iris_batch *batch,
-                         struct pipe_debug_callback *dbg)
-{
-   batch->emit_state_base_address = iris_emit_state_base_address;
-   iris_init_batch(batch, screen, dbg, I915_EXEC_RENDER);
 
    iris_emit_cmd(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = UINT16_MAX;

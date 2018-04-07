@@ -78,8 +78,6 @@ struct iris_batch {
    struct hash_table *state_sizes;
    struct gen_batch_decode_ctx decoder;
 #endif
-
-   void (*emit_state_base_address)(struct iris_batch *batch);
 };
 
 void iris_init_batch(struct iris_batch *batch,
