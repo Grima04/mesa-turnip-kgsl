@@ -274,15 +274,9 @@ translate_fill_mode(unsigned pipe_polymode)
 }
 
 static struct iris_address
-bo_addr(struct iris_bo *bo)
-{
-   return (struct iris_address) { .offset = bo->gtt_offset };
-}
-
-
-static struct iris_address
 ro_bo(struct iris_bo *bo, uint64_t offset)
 {
+   /* Not for CSOs! */
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
@@ -1310,8 +1304,10 @@ static void
 iris_sampler_view_destroy(struct pipe_context *ctx,
                           struct pipe_sampler_view *state)
 {
+   struct iris_surface *isv = (void *) state;
    pipe_resource_reference(&state->texture, NULL);
-   free(state);
+   pipe_resource_reference(&isv->surface_state_resource, NULL);
+   free(isv);
 }
 
 
