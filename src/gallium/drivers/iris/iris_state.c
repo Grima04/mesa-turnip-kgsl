@@ -2253,7 +2253,8 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SCISSOR) {
-      uint32_t scissor_offset =
+      // XXX: allocate at set_scissor time?
+      uint32_t scissor_offset = ice->state.num_scissors == 0 ? 0 :
          emit_state(batch, ice->state.dynamic_uploader, ice->state.scissors,
                     sizeof(struct pipe_scissor_state) *
                     ice->state.num_scissors, 32);
