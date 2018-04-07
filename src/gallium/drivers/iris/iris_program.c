@@ -288,10 +288,63 @@ iris_update_compiled_tcs(struct iris_context *ice)
    // XXX: TCS
 }
 
+static bool
+iris_compile_tes(struct iris_context *ice,
+                 struct iris_uncompiled_shader *ish,
+                 const struct brw_tes_prog_key *key)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   void *mem_ctx = ralloc_context(NULL);
+   struct brw_tes_prog_data *tes_prog_data =
+      rzalloc(mem_ctx, struct brw_tes_prog_data);
+   struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   assert(ish->base.type == PIPE_SHADER_IR_NIR);
+
+   nir_shader *nir = ish->base.ir.nir;
+
+   assign_common_binding_table_offsets(devinfo, &nir->info, prog_data, 0);
+
+   struct brw_vue_map input_vue_map;
+   brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
+                            key->patch_inputs_read);
+
+   char *error_str = NULL;
+   const unsigned *program =
+      brw_compile_tes(compiler, &ice->dbg, mem_ctx, key, &input_vue_map,
+                      tes_prog_data, nir, NULL, -1, &error_str);
+   if (program == NULL) {
+      dbg_printf("Failed to compile vertex shader: %s\n", error_str);
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data);
+
+   ralloc_free(mem_ctx);
+   return true;
+}
+
+
 static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
-   // XXX: TES
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
+
+   if (!ish)
+      return;
+
+   struct brw_tes_prog_key key;
+   ice->state.populate_tes_key(ice, &key);
+
+   if (iris_bind_cached_shader(ice, IRIS_CACHE_TES, &key))
+      return;
+
+   UNUSED bool success = iris_compile_tes(ice, ish, &key);
 }
 
 static void
