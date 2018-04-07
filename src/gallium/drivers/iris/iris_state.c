@@ -882,7 +882,12 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 struct iris_sampler_view {
    struct pipe_sampler_view pipe;
    struct isl_view view;
-   uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
+
+   /** The resource (BO) holding our SURFACE_STATE. */
+   struct pipe_resource *surface_state_resource;
+   unsigned surface_state_offset;
+
+   //uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
 };
 
 /**
@@ -909,6 +914,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
                          struct pipe_resource *tex,
                          const struct pipe_sampler_view *tmpl)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_resource *itex = (struct iris_resource *) tex;
    struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
@@ -940,7 +946,19 @@ iris_create_sampler_view(struct pipe_context *ctx,
       .usage = ISL_SURF_USAGE_TEXTURE_BIT,
    };
 
-   isl_surf_fill_state(&screen->isl_dev, isv->surface_state,
+   void *map = NULL;
+   u_upload_alloc(ice->state.surface_uploader, 0,
+                  4 * GENX(RENDER_SURFACE_STATE_length), 64,
+                  &isv->surface_state_offset,
+                  &isv->surface_state_resource,
+                  &map);
+   if (!unlikely(map))
+      return NULL;
+
+   isv->surface_state_offset +=
+      bo_offset_from_base_address(isv->surface_state_resource);
+
+   isl_surf_fill_state(&screen->isl_dev, map,
                        .surf = &itex->surf, .view = &isv->view,
                        .mocs = MOCS_WB,
                        .address = itex->bo->gtt_offset);
