@@ -2088,6 +2088,7 @@ iris_upload_render_state(struct iris_context *ice,
       struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
       uint32_t bt_offset = 0;
       uint32_t *bt_map = NULL;
+      int s = 0;
 
       if (prog_data->binding_table.size_bytes != 0) {
          iris_use_pinned_bo(batch, ice->state.binder.bo, false);
@@ -2104,14 +2105,17 @@ iris_upload_render_state(struct iris_context *ice,
       if (stage == MESA_SHADER_FRAGMENT) {
          struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-            *bt_map++ = use_surface(batch, cso_fb->cbufs[i], true);
+            bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
          }
       }
+
+      assert(prog_data->binding_table.texture_start ==
+             ice->state.num_textures[stage] ? s : 0xd0d0d0d0);
 
       for (int i = 0; i < ice->state.num_textures[stage]; i++) {
          struct iris_sampler_view *view = ice->state.textures[stage][i];
          struct iris_resource *res = (void *) view->pipe.texture;
-         *bt_map++ = use_sampler_view(batch, view);
+         bt_map[s++] = use_sampler_view(batch, view);
       }
 
 #if 0

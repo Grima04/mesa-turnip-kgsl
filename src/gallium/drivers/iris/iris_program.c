@@ -155,9 +155,14 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
                                     struct brw_stage_prog_data *prog_data,
                                     uint32_t next_binding_table_offset)
 {
-   prog_data->binding_table.texture_start = next_binding_table_offset;
-   prog_data->binding_table.gather_texture_start = next_binding_table_offset;
-   next_binding_table_offset += info->num_textures;
+   if (info->num_textures) {
+      prog_data->binding_table.texture_start = next_binding_table_offset;
+      prog_data->binding_table.gather_texture_start = next_binding_table_offset;
+      next_binding_table_offset += info->num_textures;
+   } else {
+      prog_data->binding_table.texture_start = 0xd0d0d0d0;
+      prog_data->binding_table.gather_texture_start = 0xd0d0d0d0;
+   }
 
    if (info->num_ubos) {
       //assert(info->num_ubos <= BRW_MAX_UBO);
