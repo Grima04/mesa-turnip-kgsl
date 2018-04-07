@@ -344,12 +344,30 @@ vma_alloc(struct iris_bufmgr *bufmgr,
       return 1ull << 32;
 
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
+   uint64_t addr;
 
-   if (bucket)
-      return bucket_vma_alloc(bufmgr, bucket, memzone);
+   if (bucket) {
+      addr = bucket_vma_alloc(bufmgr, bucket, memzone);
+   } else {
+      addr = util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
+                                 alignment);
+   }
 
-   return util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
-                              alignment);
+   /* Canonicalize the address.
+    *
+    * The Broadwell PRM Vol. 2a, MI_LOAD_REGISTER_MEM::MemoryAddress says:
+    *
+    *    "This field specifies the address of the memory location where the
+    *     register value specified in the DWord above will read from. The
+    *     address specifies the DWord location of the data. Range =
+    *     GraphicsVirtualAddress[63:2] for a DWord register GraphicsAddress
+    *     [63:48] are ignored by the HW and assumed to be in correct
+    *     canonical form [63:48] == [47]."
+    */
+   const int shift = 63 - 47;
+   addr = (((int64_t) addr) << shift) >> shift;
+
+   return addr;
 }
 
 static void
