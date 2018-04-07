@@ -257,7 +257,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                  .tiling_flags = 1 << mod_info->tiling);
 
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
-   const char *name = "resource";
+   const char *name = templ->target == PIPE_BUFFER ? "buffer" : "miptree";
    if (templ->flags & IRIS_RESOURCE_FLAG_SHADER_MEMZONE) {
       memzone = IRIS_MEMZONE_SHADER;
       name = "shader kernels";
