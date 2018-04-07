@@ -890,7 +890,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
       map += GENX(SAMPLER_STATE_length);
    }
 
-   ice->state.num_samplers = count;
+   ice->state.num_samplers[stage] = count;
 
    ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
@@ -1055,10 +1055,22 @@ iris_create_surface(struct pipe_context *ctx,
 
 static void
 iris_set_sampler_views(struct pipe_context *ctx,
-                       enum pipe_shader_type shader,
+                       enum pipe_shader_type p_stage,
                        unsigned start, unsigned count,
                        struct pipe_sampler_view **views)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
+
+   unsigned i;
+   for (i = 0; i < count; i++)
+      pipe_sampler_view_reference(&ice->state.textures[stage][i], views[i]);
+   for (; i < ice->state.num_textures[stage]; i++)
+      pipe_sampler_view_reference(&ice->state.textures[stage][i], NULL);
+
+   ice->state.num_textures[stage] = count;
+
+   // XXX: ice->state.dirty |= (IRIS_DIRTY_BINDING_TABLE_VS << stage);
 }
 
 static void
@@ -1923,12 +1935,23 @@ use_surface(struct iris_batch *batch,
             bool writeable)
 {
    struct iris_surface *surf = (void *) p_surf;
-   struct iris_resource *res = (void *) surf->pipe.texture;
+   struct iris_resource *res = (void *) p_surf->texture;
    struct iris_resource *state_res = (void *) surf->surface_state_resource;
    iris_use_pinned_bo(batch, res->bo, writeable);
    iris_use_pinned_bo(batch, state_res->bo, false);
 
    return surf->surface_state_offset;
+}
+
+static uint32_t
+use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
+{
+   struct iris_resource *res = (void *) isv->pipe.texture;
+   struct iris_resource *state_res = (void *) isv->surface_state_resource;
+   iris_use_pinned_bo(batch, res->bo, false);
+   iris_use_pinned_bo(batch, state_res->bo, false);
+
+   return isv->surface_state_offset;
 }
 
 static void
@@ -2085,12 +2108,12 @@ iris_upload_render_state(struct iris_context *ice,
          }
       }
 
-#if 0
-      for (int i = 0; i < ice->state.num_samplers; i++) {
-         struct iris_sampler_view *view = SOMEWHERE;
+      for (int i = 0; i < ice->state.num_textures[stage]; i++) {
+         struct iris_sampler_view *view = ice->state.textures[stage][i];
          struct iris_resource *res = (void *) view->pipe.texture;
-         *bt_map++ = use_surface(batch, isv, true);
+         *bt_map++ = use_sampler_view(batch, view);
       }
+#if 0
 
       // XXX: not implemented yet
       assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);

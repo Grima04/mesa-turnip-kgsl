@@ -186,7 +186,9 @@ struct iris_context {
       struct pipe_resource *sampler_table_resource[MESA_SHADER_STAGES];
       uint32_t sampler_table_offset[MESA_SHADER_STAGES];
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
-      unsigned num_samplers;
+      struct iris_sampler_view *textures[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
+      unsigned num_samplers[MESA_SHADER_STAGES];
+      unsigned num_textures[MESA_SHADER_STAGES];
 
       struct iris_binder binder;
       struct u_upload_mgr *surface_uploader;
