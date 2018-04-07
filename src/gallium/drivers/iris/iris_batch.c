@@ -495,7 +495,6 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       execbuf.flags |= I915_EXEC_FENCE_OUT;
    }
 
-#if 1
    int ret = drm_ioctl(batch->screen->fd, cmd, &execbuf);
    if (ret != 0) {
       ret = -errno;
@@ -503,24 +502,12 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
    } else {
       DBG("execbuf succeeded\n");
    }
-#else
-   int ret = 0;
-   fprintf(stderr, "execbuf disabled for now\n");
-#endif
 
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
 
       bo->idle = false;
       bo->index = -1;
-
-      /* Update iris_bo::gtt_offset */
-      if (batch->validation_list[i].offset != bo->gtt_offset) {
-         DBG("BO %d migrated: 0x%" PRIx64 " -> 0x%llx\n",
-             bo->gem_handle, bo->gtt_offset,
-             batch->validation_list[i].offset);
-         bo->gtt_offset = batch->validation_list[i].offset;
-      }
    }
 
    if (ret == 0 && out_fence_fd != NULL)
