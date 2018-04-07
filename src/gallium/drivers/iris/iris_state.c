@@ -274,6 +274,13 @@ translate_fill_mode(unsigned pipe_polymode)
 }
 
 static struct iris_address
+bo_addr(struct iris_bo *bo)
+{
+   return (struct iris_address) { .offset = bo->gtt_offset };
+}
+
+
+static struct iris_address
 ro_bo(struct iris_bo *bo, uint64_t offset)
 {
    return (struct iris_address) { .bo = bo, .offset = offset };
@@ -1250,7 +1257,7 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 
 struct iris_vertex_buffer_state {
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-   struct iris_address bos[33];
+   struct iris_bo *bos[33];
    unsigned num_buffers;
 };
 
@@ -1259,7 +1266,7 @@ iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
 {
    if (cso) {
       for (unsigned i = 0; i < cso->num_buffers; i++)
-         iris_bo_unreference(cso->bos[i].bo);
+         iris_bo_unreference(cso->bos[i]);
       free(cso);
    }
 }
@@ -1295,7 +1302,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
       struct iris_resource *res = (void *) buffers[i].buffer.resource;
       iris_bo_reference(res->bo);
-      cso->bos[i] = ro_bo(res->bo, buffers[i].buffer_offset);
+      cso->bos[i] = res->bo;
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
          vb.VertexBufferIndex = start_slot + i;
@@ -1303,7 +1310,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffers[i].stride;
          vb.BufferSize = res->bo->size;
-         /* vb.BufferStartingAddress is filled in at draw time */
+         vb.BufferStartingAddress =
+            ro_bo(NULL, res->bo->gtt_offset + buffers[i].buffer_offset);
       }
 
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
@@ -2230,19 +2238,11 @@ iris_upload_render_state(struct iris_context *ice,
       STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_length) == 4);
       STATIC_ASSERT((GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) % 32) == 0);
 
-      uint64_t *addr = batch->cmdbuf.map_next + sizeof(uint32_t) *
-         (GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
-      uint32_t *delta = cso->vertex_buffers +
-         (1 + GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) / 32);
-
       iris_batch_emit(batch, cso->vertex_buffers,
                       sizeof(uint32_t) * (1 + 4 * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         iris_use_pinned_bo(batch, cso->bos[i].bo, false);
-         *addr = cso->bos[i].offset + *delta;
-         addr = (void *) addr + 16;
-         delta = (void *) delta + 16;
+         iris_use_pinned_bo(batch, cso->bos[i], false);
       }
    }
 
