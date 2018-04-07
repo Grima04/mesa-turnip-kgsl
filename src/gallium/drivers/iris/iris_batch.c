@@ -73,14 +73,16 @@ static struct gen_batch_decode_bo
 decode_get_bo(void *v_batch, uint64_t address)
 {
    struct iris_batch *batch = v_batch;
-   struct iris_bo *bo = NULL;
 
    for (int i = 0; i < batch->exec_count; i++) {
-      if (batch->exec_bos[i]->gtt_offset == address) {
+      struct iris_bo *bo = batch->exec_bos[i];
+      if (address >= bo->gtt_offset &&
+          address < bo->gtt_offset + bo->size) {
          return (struct gen_batch_decode_bo) {
             .addr = address,
-            .size = batch->exec_bos[i]->size,
-            .map = iris_bo_map(batch->dbg, batch->exec_bos[i], MAP_READ),
+            .size = bo->size,
+            .map = iris_bo_map(batch->dbg, bo, MAP_READ) +
+                   (address - bo->gtt_offset),
          };
       }
    }
@@ -139,7 +141,7 @@ iris_init_batch(struct iris_batch *batch,
       const unsigned decode_flags =
          GEN_BATCH_DECODE_FULL |
          ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
-         GEN_BATCH_DECODE_OFFSETS;
+         GEN_BATCH_DECODE_OFFSETS |
          GEN_BATCH_DECODE_FLOATS;
 
       gen_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
@@ -550,6 +552,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
               bytes_for_commands, 100.0f * bytes_for_commands / BATCH_SZ,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
+      dump_validation_list(batch);
    }
 
    if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
