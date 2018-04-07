@@ -872,9 +872,36 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
 
+   /* Assemble the SAMPLER_STATEs into a contiguous chunk of memory
+    * relative to Dynamic State Base Address.
+    */
+   void *map = NULL;
+   u_upload_alloc(ice->state.dynamic_uploader, 0,
+                  count * 4 * GENX(SAMPLER_STATE_length), 32,
+                  &ice->state.sampler_table_offset[stage],
+                  &ice->state.sampler_table_resource[stage],
+                  &map);
+   if (!unlikely(map))
+      return NULL;
+
+   ice->state.sampler_table_offset[stage] +=
+      bo_offset_from_base_address(ice->state.sampler_table_resource[stage]);
+
    for (int i = 0; i < count; i++) {
-      ice->state.samplers[stage][start + i] = states[i];
+      struct iris_sampler_state *state = states[i];
+
+      /* Save a pointer to the iris_sampler_state, a few fields need
+       * to inform draw-time decisions.
+       */
+      ice->state.samplers[stage][start + i] = state;
+
+      if (state)
+         memcpy(map, state->sampler_state, 4 * GENX(SAMPLER_STATE_length));
+
+      map += GENX(SAMPLER_STATE_length);
    }
+
+   ice->state.num_samplers = count;
 
    ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
@@ -2068,12 +2095,10 @@ iris_upload_render_state(struct iris_context *ice,
       }
 
 #if 0
-      for (int i = 0; i < TEXTURES; i++) {
+      for (int i = 0; i < ice->state.num_samplers; i++) {
          struct iris_sampler_view *view = SOMEWHERE;
          struct iris_resource *res = (void *) view->pipe.texture;
-         // XXX: these are per-context??????????? pipe_sampler_view::context
-         *bt_map++ =
-            emit_patched_surface_state(batch, view->surface_state, res, 0);
+         *bt_map++ = use_surface(batch, isv, true);
       }
 
       // XXX: not implemented yet
@@ -2092,26 +2117,9 @@ iris_upload_render_state(struct iris_context *ice,
           !ice->shaders.prog[stage])
          continue;
 
-      // XXX: get sampler count from shader; don't emit them all...
-      const int count = IRIS_MAX_TEXTURE_SAMPLERS;
-
-      uint32_t offset;
-      uint32_t *map = stream_state(batch, ice->state.dynamic_uploader,
-                                   count * 4 * GENX(SAMPLER_STATE_length),
-                                   32, &offset);
-
-      for (int i = 0; i < count; i++) {
-         // XXX: when we have a correct count, these better be bound
-         if (!ice->state.samplers[stage][i])
-            continue;
-         memcpy(map, ice->state.samplers[stage][i]->sampler_state,
-                4 * GENX(SAMPLER_STATE_length));
-         map += GENX(SAMPLER_STATE_length);
-      }
-
       iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
          ptr._3DCommandSubOpcode = 43 + stage;
-         ptr.PointertoVSSamplerState = offset;
+         ptr.PointertoVSSamplerState = ice->state.sampler_table_offset[stage];
       }
    }
 
