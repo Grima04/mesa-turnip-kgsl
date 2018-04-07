@@ -286,6 +286,25 @@ ro_bo(struct iris_bo *bo, uint64_t offset)
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
+/**
+ * Returns the BO's address relative to the appropriate base address.
+ *
+ * All of our base addresses are programmed to the start of a 4GB region,
+ * so simply returning the bottom 32 bits of the BO address will give us
+ * the offset from whatever base address corresponds to that memory region.
+ */
+static uint32_t
+bo_offset_from_base_address(struct pipe_resource *res)
+{
+   struct iris_bo *bo = ((struct iris_resource *) res)->bo;
+
+   /* This only works for buffers in the memory zones corresponding to a
+    * base address - the top, unbounded memory zone doesn't have a base.
+    */
+   assert(bo->gtt_offset < 3 * (1ull << 32));
+   return bo->gtt_offset;
+}
+
 static uint32_t *
 stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
@@ -301,11 +320,7 @@ stream_state(struct iris_batch *batch,
    struct iris_bo *bo = ((struct iris_resource *) res)->bo;
    iris_use_pinned_bo(batch, bo, false);
 
-   /* Compute an offset from state base address.  It's a 4GB region starting
-    * at 0GB, 4GB, or 8GB, so we can simply drop everything above 32 bits.
-    */
-   assert(bo->gtt_offset < 3 * (1ull << 32));
-   *out_offset += bo->gtt_offset & ((1ull << 32) - 1);
+   *out_offset += bo_offset_from_base_address(res);
 
    pipe_resource_reference(&res, NULL);
 
@@ -938,7 +953,12 @@ iris_create_sampler_view(struct pipe_context *ctx,
 struct iris_surface {
    struct pipe_surface pipe;
    struct isl_view view;
-   uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
+
+   /** The resource (BO) holding our SURFACE_STATE. */
+   struct pipe_resource *surface_state_resource;
+   unsigned surface_state_offset;
+
+   // uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
 };
 
 static struct pipe_surface *
@@ -946,6 +966,7 @@ iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,
                     const struct pipe_surface *tmpl)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
    struct pipe_surface *psurf = &surf->pipe;
@@ -976,7 +997,19 @@ iris_create_surface(struct pipe_context *ctx,
       .usage = ISL_SURF_USAGE_RENDER_TARGET_BIT,
    };
 
-   isl_surf_fill_state(&screen->isl_dev, surf->surface_state,
+   void *map = NULL;
+   u_upload_alloc(ice->state.surface_uploader, 0,
+                  4 * GENX(RENDER_SURFACE_STATE_length), 64,
+                  &surf->surface_state_offset,
+                  &surf->surface_state_resource,
+                  &map);
+   if (!unlikely(map))
+      return NULL;
+
+   surf->surface_state_offset +=
+      bo_offset_from_base_address(surf->surface_state_resource);
+
+   isl_surf_fill_state(&screen->isl_dev, map,
                        .surf = &itex->surf, .view = &surf->view,
                        .mocs = MOCS_WB,
                        .address = itex->bo->gtt_offset);
@@ -1243,10 +1276,12 @@ iris_sampler_view_destroy(struct pipe_context *ctx,
 
 
 static void
-iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *surface)
+iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
 {
-   pipe_resource_reference(&surface->texture, NULL);
-   free(surface);
+   struct iris_surface *surf = (void *) p_surf;
+   pipe_resource_reference(&p_surf->texture, NULL);
+   pipe_resource_reference(&surf->surface_state_resource, NULL);
+   free(surf);
 }
 
 static void
@@ -1840,6 +1875,26 @@ static const uint32_t push_constant_opcodes[] = {
    [MESA_SHADER_COMPUTE]   = 0,
 };
 
+/**
+ * Add a surface to the validation list, as well as the buffer containing
+ * the corresponding SURFACE_STATE.
+ *
+ * Returns the binding table entry (offset to SURFACE_STATE).
+ */
+static uint32_t
+use_surface(struct iris_batch *batch,
+            struct pipe_surface *p_surf,
+            bool writeable)
+{
+   struct iris_surface *surf = (void *) p_surf;
+   struct iris_resource *res = (void *) surf->pipe.texture;
+   struct iris_resource *state_res = (void *) surf->surface_state_resource;
+   iris_use_pinned_bo(batch, res->bo, writeable);
+   iris_use_pinned_bo(batch, state_res->bo, false);
+
+   return surf->surface_state_offset;
+}
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -1987,22 +2042,10 @@ iris_upload_render_state(struct iris_context *ice,
          ptr.PointertoVSBindingTable = bt_offset;
       }
 
-      // XXX: we don't want to stream out surface states here.  we want to
-      // track whether we've emitted them in this statebuffer already, and
-      // reuse them.  need to figure out how best to do that.
       if (stage == MESA_SHADER_FRAGMENT) {
          struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-            struct iris_surface *surf = (void *) cso_fb->cbufs[i];
-            struct iris_resource *res = (void *) surf->pipe.texture;
-            iris_use_pinned_bo(batch, res->bo, true);
-            /* emit_state already adjusts for surface base address, so
-             * it already basically subtracts the binder address for us.
-             */
-            *bt_map++ =
-               emit_state(batch, ice->state.surface_uploader,
-                          surf->surface_state,
-                          4 * GENX(RENDER_SURFACE_STATE_length), 64);
+            *bt_map++ = use_surface(batch, cso_fb->cbufs[i], true);
          }
       }
 
