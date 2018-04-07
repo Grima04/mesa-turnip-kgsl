@@ -2113,8 +2113,8 @@ iris_upload_render_state(struct iris_context *ice,
          struct iris_resource *res = (void *) view->pipe.texture;
          *bt_map++ = use_sampler_view(batch, view);
       }
-#if 0
 
+#if 0
       // XXX: not implemented yet
       assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
       assert(prog_data->binding_table.ubo_start == 0xd0d0d0d0);
