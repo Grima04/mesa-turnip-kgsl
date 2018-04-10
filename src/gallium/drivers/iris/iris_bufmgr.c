@@ -261,8 +261,9 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
        * Set the first bit used, and return the start address.
        */
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
-      node->start_address =
-         vma_alloc(bufmgr, memzone, 64ull * bucket->size, bucket->size);
+      node->start_address = vma_alloc(bufmgr, memzone,
+                                      64ull * bucket->size,
+                                      64ull * bucket->size);
       node->bitmap = ~1ull;
       return node->start_address;
    }
