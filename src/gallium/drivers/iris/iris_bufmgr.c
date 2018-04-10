@@ -1386,8 +1386,8 @@ add_bucket(struct iris_bufmgr *bufmgr, int size)
    assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
 
    list_inithead(&bufmgr->cache_bucket[i].head);
-   for (int i = 0; i < IRIS_MEMZONE_COUNT; i++)
-      util_dynarray_init(&bufmgr->cache_bucket[i].vma_list[i], NULL);
+   for (int z = 0; z < IRIS_MEMZONE_COUNT; z++)
+      util_dynarray_init(&bufmgr->cache_bucket[i].vma_list[z], NULL);
    bufmgr->cache_bucket[i].size = size;
    bufmgr->num_buckets++;
 
