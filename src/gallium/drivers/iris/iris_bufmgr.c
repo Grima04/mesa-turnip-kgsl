@@ -504,7 +504,7 @@ retry:
        * memory and assign it a new address.
        */
       if (memzone != memzone_for_address(bo->gtt_offset)) {
-         vma_free(bufmgr, bo->gtt_offset, size);
+         vma_free(bufmgr, bo->gtt_offset, bo_size);
          bo->gtt_offset = 0;
       }
    } else {
