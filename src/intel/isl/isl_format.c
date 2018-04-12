@@ -163,6 +163,7 @@ static const struct surface_format_info format_info[] = {
    SF(  Y,   Y,   x,   x,   Y,   Y,  75,   x,  60,  70,   x, 100,   B10G10R10A2_UNORM)
    SF(  Y,   Y,   x,   x,   Y,   Y,   x,   x,  60,   x,   x, 100,   B10G10R10A2_UNORM_SRGB)
    SF(  Y,   Y,   x,   x,   Y,   Y,   Y,   x,   x,  70,   x, 100,   R11G11B10_FLOAT)
+   SF(120, 120,   x,   x, 120, 120,   x,   x,   x,   x,   x, 120,   R10G10B10_FLOAT_A2_UNORM)
    SF(  Y,   x,   x,   x,   Y,   x,   Y,   Y,   x,  70,  70,  90,   R32_SINT)
    SF(  Y,   x,   x,   x,   Y,   x,   Y,   Y,   x,  70,  70,  90,   R32_UINT)
    SF(  Y,  50,   Y,   x,   Y,   Y,   Y,   Y,   x,  70,  70,  90,   R32_FLOAT)

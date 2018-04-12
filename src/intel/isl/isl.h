@@ -167,6 +167,7 @@ enum isl_format {
    ISL_FORMAT_B10G10R10A2_UNORM =                              209,
    ISL_FORMAT_B10G10R10A2_UNORM_SRGB =                         210,
    ISL_FORMAT_R11G11B10_FLOAT =                                211,
+   ISL_FORMAT_R10G10B10_FLOAT_A2_UNORM =                       213,
    ISL_FORMAT_R32_SINT =                                       214,
    ISL_FORMAT_R32_UINT =                                       215,
    ISL_FORMAT_R32_FLOAT =                                      216,
