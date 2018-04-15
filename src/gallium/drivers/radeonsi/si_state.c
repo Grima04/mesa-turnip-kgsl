@@ -3737,6 +3737,188 @@ static unsigned gfx9_border_color_swizzle(const unsigned char swizzle[4])
  * Build the sampler view descriptor for a texture.
  */
 static void
+gfx10_make_texture_descriptor(struct si_screen *screen,
+			      struct si_texture *tex,
+			      bool sampler,
+			      enum pipe_texture_target target,
+			      enum pipe_format pipe_format,
+			      const unsigned char state_swizzle[4],
+			      unsigned first_level, unsigned last_level,
+			      unsigned first_layer, unsigned last_layer,
+			      unsigned width, unsigned height, unsigned depth,
+			      uint32_t *state,
+			      uint32_t *fmask_state)
+{
+	struct pipe_resource *res = &tex->buffer.b.b;
+	const struct util_format_description *desc;
+	const struct gfx10_format *fmt;
+	unsigned char swizzle[4];
+	unsigned type;
+	uint64_t va;
+
+	desc = util_format_description(pipe_format);
+	fmt = &gfx10_format_table[pipe_format];
+
+	if (desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS) {
+		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
+		const unsigned char swizzle_yyyy[4] = {1, 1, 1, 1};
+		const unsigned char swizzle_wwww[4] = {3, 3, 3, 3};
+
+		switch (pipe_format) {
+		case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+		case PIPE_FORMAT_X32_S8X24_UINT:
+		case PIPE_FORMAT_X8Z24_UNORM:
+			util_format_compose_swizzles(swizzle_yyyy, state_swizzle, swizzle);
+			break;
+		case PIPE_FORMAT_X24S8_UINT:
+			/*
+			 * X24S8 is implemented as an 8_8_8_8 data format, to
+			 * fix texture gathers. This affects at least
+			 * GL45-CTS.texture_cube_map_array.sampling on VI.
+			 */
+			util_format_compose_swizzles(swizzle_wwww, state_swizzle, swizzle);
+			break;
+		default:
+			util_format_compose_swizzles(swizzle_xxxx, state_swizzle, swizzle);
+		}
+	} else {
+		util_format_compose_swizzles(desc->swizzle, state_swizzle, swizzle);
+	}
+
+	if (!sampler &&
+	    (res->target == PIPE_TEXTURE_CUBE ||
+	     res->target == PIPE_TEXTURE_CUBE_ARRAY)) {
+		/* For the purpose of shader images, treat cube maps as 2D
+		 * arrays.
+		 */
+		type = V_008F1C_SQ_RSRC_IMG_2D_ARRAY;
+	} else {
+		type = si_tex_dim(screen, tex, target, res->nr_samples);
+	}
+
+	if (type == V_008F1C_SQ_RSRC_IMG_1D_ARRAY) {
+	        height = 1;
+		depth = res->array_size;
+	} else if (type == V_008F1C_SQ_RSRC_IMG_2D_ARRAY ||
+		   type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
+		if (sampler || res->target != PIPE_TEXTURE_3D)
+			depth = res->array_size;
+	} else if (type == V_008F1C_SQ_RSRC_IMG_CUBE)
+		depth = res->array_size / 6;
+
+	state[0] = 0;
+	state[1] = S_00A004_FORMAT(fmt->img_format) |
+		   S_00A004_WIDTH_LO(width - 1);
+	state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) |
+		   S_00A008_HEIGHT(height - 1) |
+		   S_00A008_RESOURCE_LEVEL(1);
+	state[3] = S_00A00C_DST_SEL_X(si_map_swizzle(swizzle[0])) |
+		   S_00A00C_DST_SEL_Y(si_map_swizzle(swizzle[1])) |
+		   S_00A00C_DST_SEL_Z(si_map_swizzle(swizzle[2])) |
+		   S_00A00C_DST_SEL_W(si_map_swizzle(swizzle[3])) |
+		   S_00A00C_BASE_LEVEL(res->nr_samples > 1 ?
+					0 : first_level) |
+		   S_00A00C_LAST_LEVEL(res->nr_samples > 1 ?
+					util_logbase2(res->nr_samples) :
+					last_level) |
+		   S_00A00C_BC_SWIZZLE(gfx9_border_color_swizzle(desc->swizzle)) |
+		   S_00A00C_TYPE(type);
+	/* Depth is the the last accessible layer on gfx9+. The hw doesn't need
+	 * to know the total number of layers.
+	 */
+	state[4] = S_00A010_DEPTH((type == V_008F1C_SQ_RSRC_IMG_3D && sampler)
+				  ? depth - 1 : last_layer) |
+		   S_00A010_BASE_ARRAY(first_layer);
+	state[5] = S_00A014_ARRAY_PITCH(!!(type == V_008F1C_SQ_RSRC_IMG_3D && !sampler)) |
+		   S_00A014_MAX_MIP(res->nr_samples > 1 ?
+				    util_logbase2(res->nr_samples) :
+				    tex->buffer.b.b.last_level) |
+		   S_00A014_PERF_MOD(4);
+	state[6] = 0;
+	state[7] = 0;
+
+	if (tex->dcc_offset) {
+		state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
+			    S_00A018_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
+			    S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(pipe_format));
+	}
+
+	/* Initialize the sampler view for FMASK. */
+	if (tex->fmask_offset) {
+		uint32_t format;
+
+		va = tex->buffer.gpu_address + tex->fmask_offset;
+
+#define FMASK(s,f) (((unsigned)(MAX2(1, s)) * 16) + (MAX2(1, f)))
+		switch (FMASK(res->nr_samples, res->nr_storage_samples)) {
+		case FMASK(2,1):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S2_F1;
+			break;
+		case FMASK(2,2):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S2_F2;
+			break;
+		case FMASK(4,1):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S4_F1;
+			break;
+		case FMASK(4,2):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S4_F2;
+			break;
+		case FMASK(4,4):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S4_F4;
+			break;
+		case FMASK(8,1):
+			format = V_008F0C_IMG_FORMAT_FMASK8_S8_F1;
+			break;
+		case FMASK(8,2):
+			format = V_008F0C_IMG_FORMAT_FMASK16_S8_F2;
+			break;
+		case FMASK(8,4):
+			format = V_008F0C_IMG_FORMAT_FMASK32_S8_F4;
+			break;
+		case FMASK(8,8):
+			format = V_008F0C_IMG_FORMAT_FMASK32_S8_F8;
+			break;
+		case FMASK(16,1):
+			format = V_008F0C_IMG_FORMAT_FMASK16_S16_F1;
+			break;
+		case FMASK(16,2):
+			format = V_008F0C_IMG_FORMAT_FMASK32_S16_F2;
+			break;
+		case FMASK(16,4):
+			format = V_008F0C_IMG_FORMAT_FMASK64_S16_F4;
+			break;
+		case FMASK(16,8):
+			format = V_008F0C_IMG_FORMAT_FMASK64_S16_F8;
+			break;
+		default:
+			unreachable("invalid nr_samples");
+		}
+#undef FMASK
+		fmask_state[0] = (va >> 8) | tex->surface.fmask_tile_swizzle;
+		fmask_state[1] = S_00A004_BASE_ADDRESS_HI(va >> 40) |
+				 S_00A004_FORMAT(format) |
+				 S_00A004_WIDTH_LO(width - 1);
+		fmask_state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) |
+				 S_00A008_HEIGHT(height - 1) |
+				 S_00A008_RESOURCE_LEVEL(1);
+		fmask_state[3] = S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) |
+				 S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
+				 S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) |
+				 S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
+				 S_00A00C_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
+				 S_00A00C_TYPE(si_tex_dim(screen, tex, target, 0));
+		fmask_state[4] = S_00A010_DEPTH(last_layer) |
+				 S_00A010_BASE_ARRAY(first_layer);
+		fmask_state[5] = 0;
+		fmask_state[6] = S_00A018_META_PIPE_ALIGNED(tex->surface.u.gfx9.cmask.pipe_aligned);
+		fmask_state[7] = 0;
+	}
+}
+
+/**
+ * Build the sampler view descriptor for a texture (SI-GFX9).
+ */
+static void
 si_make_texture_descriptor(struct si_screen *screen,
 			   struct si_texture *tex,
 			   bool sampler,
@@ -4971,7 +5153,11 @@ void si_init_screen_state_functions(struct si_screen *sscreen)
 {
 	sscreen->b.is_format_supported = si_is_format_supported;
 
-	sscreen->make_texture_descriptor = si_make_texture_descriptor;
+	if (sscreen->info.chip_class >= GFX10) {
+		sscreen->make_texture_descriptor = gfx10_make_texture_descriptor;
+	} else {
+		sscreen->make_texture_descriptor = si_make_texture_descriptor;
+	}
 }
 
 static void si_set_grbm_gfx_index(struct si_context *sctx,
