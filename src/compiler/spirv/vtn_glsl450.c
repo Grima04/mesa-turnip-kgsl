@@ -202,17 +202,22 @@ build_log(nir_builder *b, nir_ssa_def *x)
 static nir_ssa_def *
 build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
 {
+   nir_ssa_def *one = nir_imm_floatN_t(b, 1.0f, x->bit_size);
    nir_ssa_def *abs_x = nir_fabs(b, x);
+
+   nir_ssa_def *p0_plus_xp1 = nir_fadd_imm(b, nir_fmul_imm(b, abs_x, p1), p0);
+
+   nir_ssa_def *expr_tail =
+      nir_fadd_imm(b, nir_fmul(b, abs_x,
+                                  nir_fadd_imm(b, nir_fmul(b, abs_x,
+                                                               p0_plus_xp1),
+                                                  M_PI_4f - 1.0f)),
+                      M_PI_2f);
+
    return nir_fmul(b, nir_fsign(b, x),
-                   nir_fsub(b, nir_imm_float(b, M_PI_2f),
-                            nir_fmul(b, nir_fsqrt(b, nir_fsub(b, nir_imm_float(b, 1.0f), abs_x)),
-                                     nir_fadd(b, nir_imm_float(b, M_PI_2f),
-                                              nir_fmul(b, abs_x,
-                                                       nir_fadd(b, nir_imm_float(b, M_PI_4f - 1.0f),
-                                                                nir_fmul(b, abs_x,
-                                                                         nir_fadd(b, nir_imm_float(b, p0),
-                                                                                  nir_fmul(b, abs_x,
-                                                                                           nir_imm_float(b, p1))))))))));
+                      nir_fsub(b, nir_imm_floatN_t(b, M_PI_2f, x->bit_size),
+                                  nir_fmul(b, nir_fsqrt(b, nir_fsub(b, one, abs_x)),
+                                                           expr_tail)));
 }
 
 /**
