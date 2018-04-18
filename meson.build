@@ -775,9 +775,19 @@ if get_option('buildtype') == 'debug'
   pre_args += '-DDEBUG'
 endif
 
-if get_option('shader-cache')
-  pre_args += '-DENABLE_SHADER_CACHE'
-elif with_amd_vk
+with_shader_cache = false
+_shader_cache = get_option('shader-cache')
+if _shader_cache != 'false'
+  if host_machine.system() == 'windows'
+    if _shader_cache == 'true'
+      error('Shader Cache does not currently work on Windows')
+    endif
+  else
+    pre_args += '-DENABLE_SHADER_CACHE'
+    with_shader_cache = true
+  endif
+endif
+if with_amd_vk and not with_shader_cache
   error('Radv requires shader cache support')
 endif
 
@@ -1108,7 +1118,7 @@ if cc.has_function('dl_iterate_phdr')
   pre_args += '-DHAVE_DL_ITERATE_PHDR'
 elif with_intel_vk
   error('Intel "Anvil" Vulkan driver requires the dl_iterate_phdr function')
-elif with_dri_i965 and get_option('shader-cache')
+elif with_dri_i965 and with_shader_cache
   error('Intel i965 GL driver requires dl_iterate_phdr when built with shader caching.')
 endif
 
