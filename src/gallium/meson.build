@@ -207,6 +207,7 @@ if with_gallium_st_nine
 endif
 if with_platform_windows
   subdir('state_trackers/wgl')
+  subdir('targets/libgl-gdi')
 endif
 if with_tests
   subdir('targets/graw-null')
