@@ -2169,6 +2169,7 @@ typedef struct nir_shader_compiler_options {
    bool lower_fpow;
    bool lower_fsat;
    bool lower_fsqrt;
+   bool lower_fmod16;
    bool lower_fmod32;
    bool lower_fmod64;
    /** Lowers ibitfield_extract/ubitfield_extract to ibfe/ubfe. */
