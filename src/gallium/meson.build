@@ -21,6 +21,7 @@
 
 inc_gallium_drivers = include_directories('drivers')
 inc_gallium_winsys = include_directories('winsys')
+inc_gallium_winsys_sw = include_directories('winsys/sw')
 
 subdir('auxiliary')
 subdir('auxiliary/pipe-loader')
@@ -34,6 +35,11 @@ if with_gallium_drisw_kms
   subdir('winsys/sw/kms-dri')
 else
   libswkmsdri = []
+endif
+if with_platform_windows
+  subdir('winsys/sw/gdi')
+else
+  libwsgdi = null_dep
 endif
 subdir('winsys/sw/wrapper')
 if with_platform_haiku
