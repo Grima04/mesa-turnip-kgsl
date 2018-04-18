@@ -36,11 +36,19 @@ shared_glapi_mapi_tmp_h = custom_target(
   capture : true,
 )
 
+_glapi_c_args = []
+if with_platform_windows
+  _glapi_c_args += ['-D_GLAPI_DLL_EXPORTS']
+endif
+
 libglapi = shared_library(
   'glapi',
   [files_mapi_glapi, files_mapi_util, shared_glapi_mapi_tmp_h],
   c_args : [
-    c_msvc_compat_args, c_vis_args, '-DMAPI_MODE_GLAPI',
+    _glapi_c_args,
+    c_msvc_compat_args,
+    c_vis_args,
+    '-DMAPI_MODE_GLAPI',
     '-DMAPI_ABI_HEADER="@0@"'.format(shared_glapi_mapi_tmp_h.full_path()),
     gcc_lto_quirk,
   ],
