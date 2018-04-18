@@ -1450,7 +1450,11 @@ if with_osmesa != 'none'
   if with_osmesa == 'gallium' and not with_gallium_softpipe
     error('OSMesa gallium requires gallium softpipe or llvmpipe.')
   endif
-  osmesa_lib_name = 'OSMesa'
+  if host_machine.system() == 'windows'
+    osmesa_lib_name = 'osmesa'
+  else
+    osmesa_lib_name = 'OSMesa'
+  endif
   osmesa_bits = get_option('osmesa-bits')
   if osmesa_bits != '8'
     if with_dri or with_glx != 'disabled'
