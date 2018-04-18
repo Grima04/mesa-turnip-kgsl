@@ -170,7 +170,8 @@ dst_is_null(const struct gen_device_info *devinfo, const brw_inst *inst)
 static bool
 src0_is_null(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
-   return brw_inst_src0_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
+   return brw_inst_src0_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT &&
+          brw_inst_src0_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
           brw_inst_src0_da_reg_nr(devinfo, inst) == BRW_ARF_NULL;
 }
 
