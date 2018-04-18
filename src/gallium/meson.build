@@ -205,6 +205,9 @@ if with_gallium_st_nine
   subdir('state_trackers/nine')
   subdir('targets/d3dadapter9')
 endif
+if with_platform_windows
+  subdir('state_trackers/wgl')
+endif
 if with_tests
   subdir('targets/graw-null')
   if with_glx == 'gallium-xlib'
