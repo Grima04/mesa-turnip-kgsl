@@ -418,7 +418,9 @@ endif
 
 with_glvnd = get_option('glvnd')
 if with_glvnd
-  if with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  if with_platform_windows
+    error('glvnd cannot be used on Windows')
+  elif with_glx == 'xlib' or with_glx == 'gallium-xlib'
     error('Cannot build glvnd support for GLX that is not DRI based.')
   elif with_glx == 'disabled' and not with_egl
     error('glvnd requires DRI based GLX and/or EGL')
