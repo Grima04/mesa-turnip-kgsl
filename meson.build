@@ -277,10 +277,12 @@ _platforms = get_option('platforms')
 if _platforms.contains('auto')
   if system_has_kms_drm
     _platforms = ['x11', 'wayland', 'drm', 'surfaceless']
-  elif ['darwin', 'windows', 'cygwin'].contains(host_machine.system())
+  elif ['darwin', 'cygwin'].contains(host_machine.system())
     _platforms = ['x11', 'surfaceless']
   elif ['haiku'].contains(host_machine.system())
     _platforms = ['haiku']
+  elif host_machine.system() == 'windows'
+    _platforms = ['windows']
   else
     error('Unknown OS @0@. Please pass -Dplatforms to set platforms. Patches gladly accepted to fix this.'.format(
           host_machine.system()))
@@ -293,6 +295,7 @@ with_platform_wayland = _platforms.contains('wayland')
 with_platform_drm = _platforms.contains('drm')
 with_platform_haiku = _platforms.contains('haiku')
 with_platform_surfaceless = _platforms.contains('surfaceless')
+with_platform_windows = _platforms.contains('windows')
 
 with_platforms = false
 if _platforms.length() != 0 and _platforms != ['']
