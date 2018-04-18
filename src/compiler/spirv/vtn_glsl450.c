@@ -704,8 +704,9 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
 
    case GLSLstd450Acos:
-      val->ssa->def = nir_fsub(nb, nir_imm_float(nb, M_PI_2f),
-                               build_asin(nb, src[0], 0.08132463, -0.02363318));
+      val->ssa->def =
+         nir_fsub(nb, nir_imm_floatN_t(nb, M_PI_2f, src[0]->bit_size),
+                      build_asin(nb, src[0], 0.08132463, -0.02363318));
       return;
 
    case GLSLstd450Atan:
