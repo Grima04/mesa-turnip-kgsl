@@ -885,73 +885,147 @@ endif
 # TODO: this is very incomplete
 if ['linux', 'cygwin', 'gnu', 'gnu/kfreebsd'].contains(host_machine.system())
   pre_args += '-D_GNU_SOURCE'
+elif host_machine.system() == 'windows'
+  pre_args += [
+    '-D_WINDOWS', '-D_WIN32_WINNT=0x0601', '-D_WINVER=0x0601',
+    '-DPIPE_SUBSYSTEM_WINDOWS_USER',
+    '-D_USE_MATH_DEFINES',  # XXX: scons doesn't use this for mingw
+  ]
+  if cc.get_id() == 'msvc'
+    pre_args += [
+      '-DVC_EXTRALEAN',
+      '-D_CRT_SECURE_NO_WARNINGS',
+      '-D_CRT_SECURE_NO_DEPRECATE',
+      '-D_SCL_SECURE_NO_WARNINGS',
+      '-D_SCL_SECURE_NO_DEPRECATE',
+      '-D_ALLOW_KEYWORD_MACROS',
+      '-D_HAS_EXCEPTIONS=0', # Tell C++ STL to not use exceptions
+    ]
+  else
+    pre_args += ['-D__MSVCRT_VERSION__=0x0700']
+  endif
 endif
 
 # Check for generic C arguments
 c_args = []
-foreach a : ['-Werror=implicit-function-declaration',
-             '-Werror=missing-prototypes',
-             '-Werror=return-type',
-             '-Werror=incompatible-pointer-types',
-             '-Werror=format',
-             '-Wformat-security',
-             '-Wno-missing-field-initializers',
-             '-Wno-format-truncation',
-             '-fno-math-errno',
-             '-fno-trapping-math',
-             '-Qunused-arguments']
-  if cc.has_argument(a)
-    c_args += a
-  endif
-endforeach
-
 c_vis_args = []
-if cc.has_argument('-fvisibility=hidden')
-  c_vis_args += '-fvisibility=hidden'
-endif
-
-# Check for generic C++ arguments
-cpp_args = []
-foreach a : ['-Werror=return-type',
-             '-Werror=format',
-             '-Wformat-security',
-             '-Wno-non-virtual-dtor',
-             '-Wno-missing-field-initializers',
-             '-Wno-format-truncation',
-             '-fno-math-errno',
-             '-fno-trapping-math',
-             '-Qunused-arguments']
-  if cpp.has_argument(a)
-    cpp_args += a
-  endif
-endforeach
-
-no_override_init_args = []
-foreach a : ['-Wno-override-init',
-             '-Wno-initializer-overrides']
-  if cc.has_argument(a)
-    no_override_init_args += a
-  endif
-endforeach
-
-cpp_vis_args = []
-if cpp.has_argument('-fvisibility=hidden')
-  cpp_vis_args += '-fvisibility=hidden'
-endif
-
-# Check for C and C++ arguments for MSVC2013 compatibility. These are only used
-# in parts of the mesa code base that need to compile with old versions of
-# MSVC, mainly common code
 c_msvc_compat_args = []
+no_override_init_args = []
+cpp_args = []
+cpp_vis_args = []
 cpp_msvc_compat_args = []
-foreach a : ['-Werror=pointer-arith', '-Werror=vla']
-  if cc.has_argument(a)
-    c_msvc_compat_args += a
+if cc.get_id() == 'msvc'
+  foreach a : ['/wd4018',  # signed/unsigned mismatch
+               '/wd4056',  # overflow in floating-point constant arithmetic
+               '/wd4244',  # conversion from 'type1' to 'type2', possible loss of data
+               '/wd4267',  # 'var' : conversion from 'size_t' to 'type', possible loss of data
+               '/wd4305',  # trancation from 'type1' to 'type2'
+               '/wd4351',  # new behavior: elements of array 'array' will be default initialized
+               '/wd4756',  # overflow in constant arithmetic
+               '/wd4800',  # forcing value to bool 'true' or 'false' (performance warning)
+               '/wd4996',  # disabled deprecated POSIX name warnings
+               '/wd4291']  # no matching operator delete found
+    if cc.has_argument(a)
+      c_args += a
+    endif
+    if cpp.has_argument(a)
+      cpp_args += a
+    endif
+  endforeach
+  if cc.has_argument('-Wmicrosoft-enum-value')  # Clang
+    c_args += '-Wno-microsoft-enum-value'
+    cpp_args += '-Wno-microsoft-enum-value'
   endif
-  if cpp.has_argument(a)
-    cpp_msvc_compat_args += a
+else
+  foreach a : ['-Werror=implicit-function-declaration',
+              '-Werror=missing-prototypes',
+              '-Werror=return-type',
+              '-Werror=incompatible-pointer-types',
+              '-Werror=format',
+              '-Wformat-security',
+              '-Wno-missing-field-initializers',
+              '-Wno-format-truncation',
+              '-fno-math-errno',
+              '-fno-trapping-math',
+              '-Qunused-arguments']
+    if cc.has_argument(a)
+      c_args += a
+    endif
+  endforeach
+
+  # Check for generic C++ arguments
+  foreach a : ['-Werror=return-type',
+               '-Werror=format',
+               '-Wformat-security',
+               '-fno-math-errno', '-fno-trapping-math',
+               '-Qunused-arguments']
+    if cpp.has_argument(a)
+      cpp_args += a
+    endif
+  endforeach
+
+  foreach a : ['-Wno-override-init', '-Wno-initializer-overrides']
+    if cc.has_argument(a)
+      no_override_init_args += a
+    endif
+  endforeach
+
+  if cc.has_argument('-fvisibility=hidden')
+    c_vis_args += '-fvisibility=hidden'
   endif
-endforeach
+
+  foreach a : ['-Werror=return-type',
+               '-Werror=format',
+               '-Wformat-security',
+               '-Wno-non-virtual-dtor',
+               '-Wno-missing-field-initializers',
+               '-Wno-format-truncation',
+               '-fno-math-errno',
+               '-fno-trapping-math',
+               '-Qunused-arguments']
+    if cpp.has_argument(a)
+      cpp_args += a
+    endif
+  endforeach
+
+  # Check for C and C++ arguments for MSVC2013 compatibility. These are only
+  # used in parts of the mesa code base that need to compile with old versions
+  # of MSVC, mainly common code
+  foreach a : ['-Werror=pointer-arith', '-Werror=vla']
+    if cc.has_argument(a)
+      c_msvc_compat_args += a
+    endif
+    if cpp.has_argument(a)
+      cpp_msvc_compat_args += a
+    endif
+  endforeach
+
+  if cpp.has_argument('-fvisibility=hidden')
+    cpp_vis_args += '-fvisibility=hidden'
+  endif
+
+endif
+
+# set linker arguments
+if host_machine.system() == 'windows'
+  if cc.get_id() == 'msvc'
+    add_project_link_arguments(
+      '/fixed:no',
+      '/incremental:no',
+      '/dynamicbase',
+      '/nxcompat',
+      language : ['c', 'cpp'],
+    )
+  else
+    add_project_link_arguments(
+      '-Wl,--nxcompat',
+      '-Wl,--dynamicbase',
+      '-static-libgcc',
+      '-static-libstdc++',
+      language : ['c', 'cpp'],
+    )
+  endif
+endif
 
 if host_machine.cpu_family().startswith('x86')
   pre_args += '-DUSE_SSE41'
@@ -1010,6 +1084,8 @@ if not cc.links('''#include <stdint.h>
                 name : 'GCC 64bit atomics')
   pre_args += '-DMISSING_64BIT_ATOMICS'
 endif
+
+dep_ws2_32 = cc.find_library('ws2_32', required : with_platform_windows)
 
 # TODO: shared/static? Is this even worth doing?
 
@@ -1309,7 +1385,11 @@ if with_llvm
     elif with_gallium_opencl
       error('The Clover OpenCL state tracker requires rtti, you need to turn off clover or use an LLVM built with LLVM_ENABLE_RTTI.')
     endif
-    cpp_args += '-fno-rtti'
+    if cc.get_id() == 'msvc'
+      cpp_args += '/GR-'
+    else
+      cpp_args += '-fno-rtti'
+    endif
   endif
 elif with_amd_vk or with_gallium_radeonsi or with_gallium_swr
   error('The following drivers require LLVM: Radv, RadeonSI, SWR. One of these is enabled, but LLVM is disabled.')
