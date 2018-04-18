@@ -1145,7 +1145,7 @@ foreach h : ['xlocale.h', 'sys/sysctl.h', 'linux/futex.h', 'endian.h', 'dlfcn.h'
   endif
 endforeach
 
-foreach f : ['strtof', 'mkostemp', 'posix_memalign', 'timespec_get', 'memfd_create', 'random_r']
+foreach f : ['strtof', 'mkostemp', 'timespec_get', 'memfd_create', 'random_r']
   if cc.has_function(f)
     pre_args += '-DHAVE_@0@'.format(f.to_upper())
   endif
@@ -1156,6 +1156,16 @@ if cc.has_header_symbol('errno.h', 'program_invocation_name',
    pre_args += '-DHAVE_PROGRAM_INVOCATION_NAME'
 elif with_tools.contains('intel')
   error('Intel tools require the program_invocation_name variable')
+endif
+
+# MinGW provides a __builtin_posix_memalign function, but not a posix_memalign.
+# This means that this check will succeed, but then compilation will later
+# fail. MSVC doesn't have this function at all, so only check for it on
+# non-windows platforms.
+if host_machine.system() != 'windows'
+  if cc.has_function('posix_memalign')
+    pre_args += '-DHAVE_POSIX_MEMALIGN'
+  endif
 endif
 
 # strtod locale support
