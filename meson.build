@@ -320,6 +320,8 @@ if with_glx == 'auto'
     with_glx = 'dri'
   elif with_platform_haiku
     with_glx = 'disabled'
+  elif host_machine.system() == 'windows'
+    with_glx = 'disabled'
   elif with_gallium
     # Even when building just gallium drivers the user probably wants dri
     with_glx = 'dri'
