@@ -290,8 +290,11 @@ build_atan(nir_builder *b, nir_ssa_def *y_over_x)
 static nir_ssa_def *
 build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
 {
-   nir_ssa_def *zero = nir_imm_float(b, 0);
-   nir_ssa_def *one = nir_imm_float(b, 1);
+   assert(y->bit_size == x->bit_size);
+   const uint32_t bit_size = x->bit_size;
+
+   nir_ssa_def *zero = nir_imm_floatN_t(b, 0, bit_size);
+   nir_ssa_def *one = nir_imm_floatN_t(b, 1, bit_size);
 
    /* If we're on the left half-plane rotate the coordinates π/2 clock-wise
     * for the y=0 discontinuity to end up aligned with the vertical
@@ -321,9 +324,10 @@ build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
     * floating point representations with at least the dynamic range of ATI's
     * 24-bit representation.
     */
-   nir_ssa_def *huge = nir_imm_float(b, 1e18f);
+   const double huge_val = bit_size >= 32 ? 1e18 : 16384;
+   nir_ssa_def *huge = nir_imm_floatN_t(b,  huge_val, bit_size);
    nir_ssa_def *scale = nir_bcsel(b, nir_fge(b, nir_fabs(b, t), huge),
-                                  nir_imm_float(b, 0.25), one);
+                                  nir_imm_floatN_t(b, 0.25, bit_size), one);
    nir_ssa_def *rcp_scaled_t = nir_frcp(b, nir_fmul(b, t, scale));
    nir_ssa_def *s_over_t = nir_fmul(b, nir_fmul(b, s, scale), rcp_scaled_t);
 
@@ -350,9 +354,9 @@ build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
    /* Calculate the arctangent and fix up the result if we had flipped the
     * coordinate system.
     */
-   nir_ssa_def *arc = nir_fadd(b, nir_fmul(b, nir_b2f32(b, flip),
-                                           nir_imm_float(b, M_PI_2f)),
-                               build_atan(b, tan));
+   nir_ssa_def *arc =
+      nir_fadd(b, nir_fmul_imm(b, nir_b2f(b, flip, bit_size), M_PI_2f),
+                  build_atan(b, tan));
 
    /* Rather convoluted calculation of the sign of the result.  When x < 0 we
     * cannot use fsign because we need to be able to distinguish between
