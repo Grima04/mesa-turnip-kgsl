@@ -325,7 +325,7 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
    }
 
    /* Set the bit to return the memory. */
-   assert((node->bitmap & (1ull << bit)) != 0ull);
+   assert((node->bitmap & (1ull << bit)) == 0ull);
    node->bitmap |= 1ull << bit;
 
    /* The block might be entirely free now, and if so, we could return it
