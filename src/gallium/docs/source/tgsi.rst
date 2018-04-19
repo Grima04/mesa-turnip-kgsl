@@ -2684,6 +2684,21 @@ These atomic operations may only be used with 32-bit integer image formats.
   resource[offset] = dst_x + src_x
 
 
+.. opcode:: ATOMFADD - Atomic floating point addition
+
+  Syntax: ``ATOMFADD dst, resource, offset, src``
+
+  Example: ``ATOMFADD TEMP[0], BUFFER[0], TEMP[1], TEMP[2]``
+
+  The following operation is performed atomically:
+
+.. math::
+
+  dst_x = resource[offset]
+
+  resource[offset] = dst_x + src_x
+
+
 .. opcode:: ATOMXCHG - Atomic exchange
 
   Syntax: ``ATOMXCHG dst, resource, offset, src``

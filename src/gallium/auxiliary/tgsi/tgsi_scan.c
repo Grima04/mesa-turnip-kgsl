@@ -391,6 +391,7 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ATOMUMAX:
    case TGSI_OPCODE_ATOMIMIN:
    case TGSI_OPCODE_ATOMIMAX:
+   case TGSI_OPCODE_ATOMFADD:
       if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
          info->uses_bindless_images = true;
 
