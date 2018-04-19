@@ -48,6 +48,7 @@
 #include "common/gen_debug.h"
 #include "dev/gen_device_info.h"
 #include "main/macros.h"
+#include "util/debug.h"
 #include "util/macros.h"
 #include "util/hash_table.h"
 #include "util/list.h"
@@ -1391,19 +1392,6 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
    return 0;
 }
 
-/**
- * Enables unlimited caching of buffer objects for reuse.
- *
- * This is potentially very memory expensive, as the cache at each bucket
- * size is only bounded by how many buffers of that size we've managed to have
- * in flight at once.
- */
-void
-iris_bufmgr_enable_reuse(struct iris_bufmgr *bufmgr)
-{
-   bufmgr->bo_reuse = true;
-}
-
 static void
 add_bucket(struct iris_bufmgr *bufmgr, int size)
 {
@@ -1544,6 +1532,9 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
                       2 * _4GB, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
                       3 * _4GB, (1ull << 48) - 3 * _4GB);
+
+   // XXX: driconf
+   bufmgr->bo_reuse = env_var_as_boolean("bo_reuse", true);
 
    init_cache_buckets(bufmgr);
 
