@@ -257,11 +257,16 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
 
    if (vma_list->size == 0) {
       /* This bucket allocator is out of space - allocate a new block of
-       * memory from a larger allocator (either another bucket or util_vma).
+       * memory for 64 blocks from a larger allocator (either a larger
+       * bucket or util_vma).
+       *
+       * We align the address to the node size (64 blocks) so that
+       * bucket_vma_free can easily compute the starting address of this
+       * block by rounding any address we return down to the node size.
        *
        * Set the first bit used, and return the start address.
        */
-      uint64_t node_size = 64ull * bucket->size;
+      const uint64_t node_size = 64ull * bucket->size;
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
       node->start_address = __vma_alloc(bufmgr, memzone, node_size, node_size);
       node->bitmap = ~1ull;
@@ -295,7 +300,12 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
    const uint64_t node_bytes = 64ull * bucket->size;
    struct vma_bucket_node *node = NULL;
 
+   /* bucket_vma_alloc allocates 64 blocks at a time, and aligns it to
+    * that 64 block size.  So, we can round down to get the starting address.
+    */
    uint64_t start = (address / node_bytes) * node_bytes;
+
+   /* Dividing the offset from start by bucket size gives us the bit index. */
    int bit = (address - start) / bucket->size;
 
    assert(start + bit * bucket->size == address);
@@ -308,6 +318,7 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
    }
 
    if (!node) {
+      /* No node - the whole group of 64 blocks must have been in-use. */
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
       node->start_address = start;
       node->bitmap = 0ull;
@@ -348,7 +359,7 @@ __vma_alloc(struct iris_bufmgr *bufmgr,
             uint64_t alignment)
 {
    if (memzone == IRIS_MEMZONE_BINDER)
-      return 1ull << 32;
+      return IRIS_BINDER_ADDRESS;
 
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
    uint64_t addr;
@@ -361,6 +372,7 @@ __vma_alloc(struct iris_bufmgr *bufmgr,
    }
    
    assert((addr >> 48ull) == 0);
+   assert((addr % alignment) == 0);
    return addr;
 }
 
@@ -400,6 +412,9 @@ vma_free(struct iris_bufmgr *bufmgr,
          uint64_t address,
          uint64_t size)
 {
+   if (address == IRIS_BINDER_ADDRESS)
+      return;
+
    /* Un-canonicalize the address; our allocators expect 0 in the high bits */
    address &= (1ull << 48) - 1;
 
