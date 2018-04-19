@@ -162,9 +162,9 @@ static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
 
 static void bo_free(struct iris_bo *bo);
 
-static uint64_t vma_alloc(struct iris_bufmgr *bufmgr,
-                          enum iris_memory_zone memzone,
-                          uint64_t size, uint64_t alignment);
+static uint64_t __vma_alloc(struct iris_bufmgr *bufmgr,
+                            enum iris_memory_zone memzone,
+                            uint64_t size, uint64_t alignment);
 
 static uint32_t
 key_hash_uint(const void *key)
@@ -260,10 +260,9 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
        *
        * Set the first bit used, and return the start address.
        */
+      uint64_t node_size = 64ull * bucket->size;
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
-      node->start_address = vma_alloc(bufmgr, memzone,
-                                      64ull * bucket->size,
-                                      64ull * bucket->size);
+      node->start_address = __vma_alloc(bufmgr, memzone, node_size, node_size);
       node->bitmap = ~1ull;
       return node->start_address;
    }
@@ -271,9 +270,10 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
    /* Pick any bit from any node - they're all the right size and free. */
    node = util_dynarray_top_ptr(vma_list, struct vma_bucket_node);
    int bit = ffsll(node->bitmap) - 1;
-   assert(bit != -1);
+   assert(bit >= 0 && bit <= 63);
 
    /* Reserve the memory by clearing the bit. */
+   assert((node->bitmap & (1ull << bit)) != 0ull);
    node->bitmap &= ~(1ull << bit);
 
    /* If this node is now completely full, remove it from the free list. */
@@ -297,6 +297,8 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
    uint64_t start = (address / node_bytes) * node_bytes;
    int bit = (address - start) / bucket->size;
 
+   assert(start + bit * bucket->size == address);
+
    util_dynarray_foreach(vma_list, struct vma_bucket_node, cur) {
       if (cur->start_address == start) {
          node = cur;
@@ -310,6 +312,8 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
       node->bitmap = 0ull;
    }
 
+   /* Set the bit to return the memory. */
+   assert((node->bitmap & (1ull << bit)) != 0ull);
    node->bitmap |= 1ull << bit;
 
    /* The block might be entirely free now, and if so, we could return it
@@ -335,11 +339,12 @@ get_bucket_allocator(struct iris_bufmgr *bufmgr, uint64_t size)
    return NULL;
 }
 
+/** Like vma_alloc, but returns a non-canonicalized address. */
 static uint64_t
-vma_alloc(struct iris_bufmgr *bufmgr,
-          enum iris_memory_zone memzone,
-          uint64_t size,
-          uint64_t alignment)
+__vma_alloc(struct iris_bufmgr *bufmgr,
+            enum iris_memory_zone memzone,
+            uint64_t size,
+            uint64_t alignment)
 {
    if (memzone == IRIS_MEMZONE_BINDER)
       return 1ull << 32;
@@ -353,6 +358,24 @@ vma_alloc(struct iris_bufmgr *bufmgr,
       addr = util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
                                  alignment);
    }
+   
+   assert((addr >> 48ull) == 0);
+   return addr;
+}
+
+/**
+ * Allocate a section of virtual memory for a buffer, assigning an address.
+ *
+ * This uses either the bucket allocator for the given size, or the large
+ * object allocator (util_vma).
+ */
+static uint64_t
+vma_alloc(struct iris_bufmgr *bufmgr,
+          enum iris_memory_zone memzone,
+          uint64_t size,
+          uint64_t alignment)
+{
+   uint64_t addr = __vma_alloc(bufmgr, memzone, size, alignment);
 
    /* Canonicalize the address.
     *
@@ -376,6 +399,9 @@ vma_free(struct iris_bufmgr *bufmgr,
          uint64_t address,
          uint64_t size)
 {
+   /* Un-canonicalize the address; our allocators expect 0 in the high bits */
+   address &= (1ull << 48) - 1;
+
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
 
    if (bucket) {
@@ -505,7 +531,7 @@ retry:
        */
       if (memzone != memzone_for_address(bo->gtt_offset)) {
          vma_free(bufmgr, bo->gtt_offset, bo_size);
-         bo->gtt_offset = 0;
+         bo->gtt_offset = 0ull;
       }
    } else {
       bo = calloc(1, sizeof(*bo));
