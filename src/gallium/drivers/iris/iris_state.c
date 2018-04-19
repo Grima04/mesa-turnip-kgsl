@@ -870,8 +870,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
                   &ice->state.sampler_table_offset[stage],
                   &ice->state.sampler_table_resource[stage],
                   &map);
-   if (!unlikely(map))
-      return NULL;
+   if (unlikely(!map))
+      return;
 
    ice->state.sampler_table_offset[stage] +=
       bo_offset_from_base_address(ice->state.sampler_table_resource[stage]);
@@ -1063,10 +1063,14 @@ iris_set_sampler_views(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
 
    unsigned i;
-   for (i = 0; i < count; i++)
-      pipe_sampler_view_reference(&ice->state.textures[stage][i], views[i]);
-   for (; i < ice->state.num_textures[stage]; i++)
-      pipe_sampler_view_reference(&ice->state.textures[stage][i], NULL);
+   for (i = 0; i < count; i++) {
+      pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                  &ice->state.textures[stage][i], views[i]);
+   }
+   for (; i < ice->state.num_textures[stage]; i++) {
+      pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                  &ice->state.textures[stage][i], NULL);
+   }
 
    ice->state.num_textures[stage] = count;
 
@@ -1294,9 +1298,9 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    pipe_surface_reference(&cso->zsbuf, state->zsbuf);
 
-   struct isl_depth_stencil_hiz_emit_info info = {
-      .mocs = MOCS_WB,
-   };
+   //struct isl_depth_stencil_hiz_emit_info info = {
+      //.mocs = MOCS_WB,
+   //};
 
    // XXX: depth buffers
 }
@@ -2110,11 +2114,10 @@ iris_upload_render_state(struct iris_context *ice,
       }
 
       assert(prog_data->binding_table.texture_start ==
-             ice->state.num_textures[stage] ? s : 0xd0d0d0d0);
+             (ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
 
       for (int i = 0; i < ice->state.num_textures[stage]; i++) {
          struct iris_sampler_view *view = ice->state.textures[stage][i];
-         struct iris_resource *res = (void *) view->pipe.texture;
          bt_map[s++] = use_sampler_view(batch, view);
       }
 
