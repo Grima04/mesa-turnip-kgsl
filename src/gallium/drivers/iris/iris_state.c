@@ -2393,6 +2393,411 @@ iris_destroy_state(struct iris_context *ice)
    pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
 }
 
+static unsigned
+flags_to_post_sync_op(uint32_t flags)
+{
+   if (flags & PIPE_CONTROL_WRITE_IMMEDIATE)
+      return WriteImmediateData;
+
+   if (flags & PIPE_CONTROL_WRITE_DEPTH_COUNT)
+      return WritePSDepthCount;
+
+   if (flags & PIPE_CONTROL_WRITE_TIMESTAMP)
+      return WriteTimestamp;
+
+   return 0;
+}
+
+/**
+ * Do the given flags have a Post Sync or LRI Post Sync operation?
+ */
+static enum pipe_control_flags
+get_post_sync_flags(enum pipe_control_flags flags)
+{
+   flags &= PIPE_CONTROL_WRITE_IMMEDIATE |
+            PIPE_CONTROL_WRITE_DEPTH_COUNT |
+            PIPE_CONTROL_WRITE_TIMESTAMP |
+            PIPE_CONTROL_LRI_POST_SYNC_OP;
+
+   /* Only one "Post Sync Op" is allowed, and it's mutually exclusive with
+    * "LRI Post Sync Operation".  So more than one bit set would be illegal.
+    */
+   assert(util_bitcount(flags) <= 1);
+
+   return flags;
+}
+
+// XXX: compute support
+#define IS_COMPUTE_PIPELINE(batch) (batch->ring != I915_EXEC_RENDER)
+
+/**
+ * Emit a series of PIPE_CONTROL commands, taking into account any
+ * workarounds necessary to actually accomplish the caller's request.
+ *
+ * Unless otherwise noted, spec quotations in this function come from:
+ *
+ * Synchronization of the 3D Pipeline > PIPE_CONTROL Command > Programming
+ * Restrictions for PIPE_CONTROL.
+ */
+static void
+iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
+                           struct iris_bo *bo, uint32_t offset, uint64_t imm)
+{
+   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   enum pipe_control_flags post_sync_flags = get_post_sync_flags(flags);
+   enum pipe_control_flags non_lri_post_sync_flags =
+      post_sync_flags & ~PIPE_CONTROL_LRI_POST_SYNC_OP;
+
+   /* Recursive PIPE_CONTROL workarounds --------------------------------
+    * (http://knowyourmeme.com/memes/xzibit-yo-dawg)
+    *
+    * We do these first because we want to look at the original operation,
+    * rather than any workarounds we set.
+    */
+   if (GEN_GEN == 9 && (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE)) {
+      /* The PIPE_CONTROL "VF Cache Invalidation Enable" bit description
+       * lists several workarounds:
+       *
+       *    "Project: SKL, KBL, BXT
+       *
+       *     If the VF Cache Invalidation Enable is set to a 1 in a
+       *     PIPE_CONTROL, a separate Null PIPE_CONTROL, all bitfields
+       *     sets to 0, with the VF Cache Invalidation Enable set to 0
+       *     needs to be sent prior to the PIPE_CONTROL with VF Cache
+       *     Invalidation Enable set to a 1."
+       */
+      iris_emit_raw_pipe_control(batch, 0, NULL, 0, 0);
+   }
+
+   if (GEN_GEN == 9 && IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
+      /* Project: SKL / Argument: LRI Post Sync Operation [23]
+       *
+       * "PIPECONTROL command with “Command Streamer Stall Enable” must be
+       *  programmed prior to programming a PIPECONTROL command with "LRI
+       *  Post Sync Operation" in GPGPU mode of operation (i.e when
+       *  PIPELINE_SELECT command is set to GPGPU mode of operation)."
+       *
+       * The same text exists a few rows below for Post Sync Op.
+       */
+      iris_emit_raw_pipe_control(batch, PIPE_CONTROL_CS_STALL, bo, offset, imm);
+   }
+
+   if (GEN_GEN == 10 && (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH)) {
+      /* Cannonlake:
+       * "Before sending a PIPE_CONTROL command with bit 12 set, SW must issue
+       *  another PIPE_CONTROL with Render Target Cache Flush Enable (bit 12)
+       *  = 0 and Pipe Control Flush Enable (bit 7) = 1"
+       */
+      iris_emit_raw_pipe_control(batch, PIPE_CONTROL_FLUSH_ENABLE, bo,
+                                 offset, imm);
+   }
+
+   /* "Flush Types" workarounds ---------------------------------------------
+    * We do these now because they may add post-sync operations or CS stalls.
+    */
+
+   if (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE) {
+      /* Project: BDW, SKL+ (stopping at CNL) / Argument: VF Invalidate
+       *
+       * "'Post Sync Operation' must be enabled to 'Write Immediate Data' or
+       *  'Write PS Depth Count' or 'Write Timestamp'."
+       */
+      if (!bo) {
+         flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         non_lri_post_sync_flags |= PIPE_CONTROL_WRITE_IMMEDIATE;
+         bo = batch->screen->workaround_bo;
+      }
+   }
+
+   /* #1130 from Gen10 workarounds page:
+    *
+    *    "Enable Depth Stall on every Post Sync Op if Render target Cache
+    *     Flush is not enabled in same PIPE CONTROL and Enable Pixel score
+    *     board stall if Render target cache flush is enabled."
+    *
+    * Applicable to CNL B0 and C0 steppings only.
+    *
+    * The wording here is unclear, and this workaround doesn't look anything
+    * like the internal bug report recommendations, but leave it be for now...
+    */
+   if (GEN_GEN == 10) {
+      if (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH) {
+         flags |= PIPE_CONTROL_STALL_AT_SCOREBOARD;
+      } else if (flags & non_lri_post_sync_flags) {
+         flags |= PIPE_CONTROL_DEPTH_STALL;
+      }
+   }
+
+   if (flags & PIPE_CONTROL_DEPTH_STALL) {
+      /* From the PIPE_CONTROL instruction table, bit 13 (Depth Stall Enable):
+       *
+       *    "This bit must be DISABLED for operations other than writing
+       *     PS_DEPTH_COUNT."
+       *
+       * This seems like nonsense.  An Ivybridge workaround requires us to
+       * emit a PIPE_CONTROL with a depth stall and write immediate post-sync
+       * operation.  Gen8+ requires us to emit depth stalls and depth cache
+       * flushes together.  So, it's hard to imagine this means anything other
+       * than "we originally intended this to be used for PS_DEPTH_COUNT".
+       *
+       * We ignore the supposed restriction and do nothing.
+       */
+   }
+
+   if (flags & (PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                PIPE_CONTROL_STALL_AT_SCOREBOARD)) {
+      /* From the PIPE_CONTROL instruction table, bit 12 and bit 1:
+       *
+       *    "This bit must be DISABLED for End-of-pipe (Read) fences,
+       *     PS_DEPTH_COUNT or TIMESTAMP queries."
+       *
+       * TODO: Implement end-of-pipe checking.
+       */
+      assert(!(post_sync_flags & (PIPE_CONTROL_WRITE_DEPTH_COUNT |
+                                  PIPE_CONTROL_WRITE_TIMESTAMP)));
+   }
+
+   if (flags & PIPE_CONTROL_STALL_AT_SCOREBOARD) {
+      /* From the PIPE_CONTROL instruction table, bit 1:
+       *
+       *    "This bit is ignored if Depth Stall Enable is set.
+       *     Further, the render cache is not flushed even if Write Cache
+       *     Flush Enable bit is set."
+       *
+       * We assert that the caller doesn't do this combination, to try and
+       * prevent mistakes.  It shouldn't hurt the GPU, though.
+       */
+      assert(!(flags & (PIPE_CONTROL_DEPTH_STALL |
+                        PIPE_CONTROL_RENDER_TARGET_FLUSH)));
+   }
+
+   /* PIPE_CONTROL page workarounds ------------------------------------- */
+
+   if (GEN_GEN <= 8 && (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE)) {
+      /* From the PIPE_CONTROL page itself:
+       *
+       *    "IVB, HSW, BDW
+       *     Restriction: Pipe_control with CS-stall bit set must be issued
+       *     before a pipe-control command that has the State Cache
+       *     Invalidate bit set."
+       */
+      flags |= PIPE_CONTROL_CS_STALL;
+   }
+
+   if (flags & PIPE_CONTROL_FLUSH_LLC) {
+      /* From the PIPE_CONTROL instruction table, bit 26 (Flush LLC):
+       *
+       *    "Project: ALL
+       *     SW must always program Post-Sync Operation to "Write Immediate
+       *     Data" when Flush LLC is set."
+       *
+       * For now, we just require the caller to do it.
+       */
+      assert(flags & PIPE_CONTROL_WRITE_IMMEDIATE);
+   }
+
+   /* "Post-Sync Operation" workarounds -------------------------------- */
+
+   /* Project: All / Argument: Global Snapshot Count Reset [19]
+    *
+    * "This bit must not be exercised on any product.
+    *  Requires stall bit ([20] of DW1) set."
+    *
+    * We don't use this, so we just assert that it isn't used.  The
+    * PIPE_CONTROL instruction page indicates that they intended this
+    * as a debug feature and don't think it is useful in production,
+    * but it may actually be usable, should we ever want to.
+    */
+   assert((flags & PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET) == 0);
+
+   if (flags & (PIPE_CONTROL_MEDIA_STATE_CLEAR |
+                PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE)) {
+      /* Project: All / Arguments:
+       *
+       * - Generic Media State Clear [16]
+       * - Indirect State Pointers Disable [16]
+       *
+       *    "Requires stall bit ([20] of DW1) set."
+       *
+       * Also, the PIPE_CONTROL instruction table, bit 16 (Generic Media
+       * State Clear) says:
+       *
+       *    "PIPECONTROL command with “Command Streamer Stall Enable” must be
+       *     programmed prior to programming a PIPECONTROL command with "Media
+       *     State Clear" set in GPGPU mode of operation"
+       *
+       * This is a subset of the earlier rule, so there's nothing to do.
+       */
+      flags |= PIPE_CONTROL_CS_STALL;
+   }
+
+   if (flags & PIPE_CONTROL_STORE_DATA_INDEX) {
+      /* Project: All / Argument: Store Data Index
+       *
+       * "Post-Sync Operation ([15:14] of DW1) must be set to something other
+       *  than '0'."
+       *
+       * For now, we just assert that the caller does this.  We might want to
+       * automatically add a write to the workaround BO...
+       */
+      assert(non_lri_post_sync_flags != 0);
+   }
+
+   if (flags & PIPE_CONTROL_SYNC_GFDT) {
+      /* Project: All / Argument: Sync GFDT
+       *
+       * "Post-Sync Operation ([15:14] of DW1) must be set to something other
+       *  than '0' or 0x2520[13] must be set."
+       *
+       * For now, we just assert that the caller does this.
+       */
+      assert(non_lri_post_sync_flags != 0);
+   }
+
+   if (flags & PIPE_CONTROL_TLB_INVALIDATE) {
+      /* Project: IVB+ / Argument: TLB inv
+       *
+       *    "Requires stall bit ([20] of DW1) set."
+       *
+       * Also, from the PIPE_CONTROL instruction table:
+       *
+       *    "Project: SKL+
+       *     Post Sync Operation or CS stall must be set to ensure a TLB
+       *     invalidation occurs.  Otherwise no cycle will occur to the TLB
+       *     cache to invalidate."
+       *
+       * This is not a subset of the earlier rule, so there's nothing to do.
+       */
+      flags |= PIPE_CONTROL_CS_STALL;
+   }
+
+   if (GEN_GEN == 9 && devinfo->gt == 4) {
+      /* TODO: The big Skylake GT4 post sync op workaround */
+   }
+
+   /* "GPGPU specific workarounds" (both post-sync and flush) ------------ */
+
+   if (IS_COMPUTE_PIPELINE(batch)) {
+      if (GEN_GEN >= 9 && (flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE)) {
+         /* Project: SKL+ / Argument: Tex Invalidate
+          * "Requires stall bit ([20] of DW) set for all GPGPU Workloads."
+          */
+         flags |= PIPE_CONTROL_CS_STALL;
+      }
+
+      if (GEN_GEN == 8 && (post_sync_flags ||
+                           (flags & (PIPE_CONTROL_NOTIFY_ENABLE |
+                                     PIPE_CONTROL_DEPTH_STALL |
+                                     PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                     PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                     PIPE_CONTROL_DATA_CACHE_FLUSH)))) {
+         /* Project: BDW / Arguments:
+          *
+          * - LRI Post Sync Operation   [23]
+          * - Post Sync Op              [15:14]
+          * - Notify En                 [8]
+          * - Depth Stall               [13]
+          * - Render Target Cache Flush [12]
+          * - Depth Cache Flush         [0]
+          * - DC Flush Enable           [5]
+          *
+          *    "Requires stall bit ([20] of DW) set for all GPGPU and Media
+          *     Workloads."
+          */
+         flags |= PIPE_CONTROL_CS_STALL;
+
+         /* Also, from the PIPE_CONTROL instruction table, bit 20:
+          *
+          *    "Project: BDW
+          *     This bit must be always set when PIPE_CONTROL command is
+          *     programmed by GPGPU and MEDIA workloads, except for the cases
+          *     when only Read Only Cache Invalidation bits are set (State
+          *     Cache Invalidation Enable, Instruction cache Invalidation
+          *     Enable, Texture Cache Invalidation Enable, Constant Cache
+          *     Invalidation Enable). This is to WA FFDOP CG issue, this WA
+          *     need not implemented when FF_DOP_CG is disable via "Fixed
+          *     Function DOP Clock Gate Disable" bit in RC_PSMI_CTRL register."
+          *
+          * It sounds like we could avoid CS stalls in some cases, but we
+          * don't currently bother.  This list isn't exactly the list above,
+          * either...
+          */
+      }
+   }
+
+   /* "Stall" workarounds ----------------------------------------------
+    * These have to come after the earlier ones because we may have added
+    * some additional CS stalls above.
+    */
+
+   if (GEN_GEN < 9 && (flags & PIPE_CONTROL_CS_STALL)) {
+      /* Project: PRE-SKL, VLV, CHV
+       *
+       * "[All Stepping][All SKUs]:
+       *
+       *  One of the following must also be set:
+       *
+       *  - Render Target Cache Flush Enable ([12] of DW1)
+       *  - Depth Cache Flush Enable ([0] of DW1)
+       *  - Stall at Pixel Scoreboard ([1] of DW1)
+       *  - Depth Stall ([13] of DW1)
+       *  - Post-Sync Operation ([13] of DW1)
+       *  - DC Flush Enable ([5] of DW1)"
+       *
+       * If we don't already have one of those bits set, we choose to add
+       * "Stall at Pixel Scoreboard".  Some of the other bits require a
+       * CS stall as a workaround (see above), which would send us into
+       * an infinite recursion of PIPE_CONTROLs.  "Stall at Pixel Scoreboard"
+       * appears to be safe, so we choose that.
+       */
+      const uint32_t wa_bits = PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                               PIPE_CONTROL_WRITE_IMMEDIATE |
+                               PIPE_CONTROL_WRITE_DEPTH_COUNT |
+                               PIPE_CONTROL_WRITE_TIMESTAMP |
+                               PIPE_CONTROL_STALL_AT_SCOREBOARD |
+                               PIPE_CONTROL_DEPTH_STALL |
+                               PIPE_CONTROL_DATA_CACHE_FLUSH;
+      if (!(flags & wa_bits))
+         flags |= PIPE_CONTROL_STALL_AT_SCOREBOARD;
+   }
+
+   /* Emit --------------------------------------------------------------- */
+
+   iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
+      pc.LRIPostSyncOperation = NoLRIOperation;
+      pc.PipeControlFlushEnable = flags & PIPE_CONTROL_FLUSH_ENABLE;
+      pc.DCFlushEnable = flags & PIPE_CONTROL_DATA_CACHE_FLUSH;
+      pc.StoreDataIndex = 0;
+      pc.CommandStreamerStallEnable = flags & PIPE_CONTROL_CS_STALL;
+      pc.GlobalSnapshotCountReset =
+         flags & PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET;
+      pc.TLBInvalidate = flags & PIPE_CONTROL_TLB_INVALIDATE;
+      pc.GenericMediaStateClear = flags & PIPE_CONTROL_MEDIA_STATE_CLEAR;
+      pc.StallAtPixelScoreboard = flags & PIPE_CONTROL_STALL_AT_SCOREBOARD;
+      pc.RenderTargetCacheFlushEnable =
+         flags & PIPE_CONTROL_RENDER_TARGET_FLUSH;
+      pc.DepthCacheFlushEnable = flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH;
+      pc.StateCacheInvalidationEnable =
+         flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE;
+      pc.VFCacheInvalidationEnable = flags & PIPE_CONTROL_VF_CACHE_INVALIDATE;
+      pc.ConstantCacheInvalidationEnable =
+         flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE;
+      pc.PostSyncOperation = flags_to_post_sync_op(flags);
+      pc.DepthStallEnable = flags & PIPE_CONTROL_DEPTH_STALL;
+      pc.InstructionCacheInvalidateEnable =
+         flags & PIPE_CONTROL_INSTRUCTION_INVALIDATE;
+      pc.NotifyEnable = flags & PIPE_CONTROL_NOTIFY_ENABLE;
+      pc.IndirectStatePointersDisable =
+         flags & PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE;
+      pc.TextureCacheInvalidationEnable =
+         flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
+      pc.Address = ro_bo(bo, offset);
+      pc.ImmediateData = imm;
+   }
+}
+
 void
 genX(init_state)(struct iris_context *ice)
 {
@@ -2445,6 +2850,7 @@ genX(init_state)(struct iris_context *ice)
    ice->state.destroy_state = iris_destroy_state;
    ice->state.init_render_context = iris_init_render_context;
    ice->state.upload_render_state = iris_upload_render_state;
+   ice->state.emit_raw_pipe_control = iris_emit_raw_pipe_control;
    ice->state.derived_program_state_size = iris_derived_program_state_size;
    ice->state.set_derived_program_state = iris_set_derived_program_state;
    ice->state.populate_vs_key = iris_populate_vs_key;
@@ -2452,7 +2858,6 @@ genX(init_state)(struct iris_context *ice)
    ice->state.populate_tes_key = iris_populate_tes_key;
    ice->state.populate_gs_key = iris_populate_gs_key;
    ice->state.populate_fs_key = iris_populate_fs_key;
-
 
    ice->state.dirty = ~0ull;
 }

@@ -398,6 +398,7 @@ static void
 iris_destroy_screen(struct pipe_screen *pscreen)
 {
    struct iris_screen *screen = (struct iris_screen *) pscreen;
+   iris_bo_unreference(screen->workaround_bo);
    ralloc_free(screen);
 }
 
@@ -495,6 +496,11 @@ iris_screen_create(int fd)
 
    screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd);
    if (!screen->bufmgr)
+      return NULL;
+
+   screen->workaround_bo =
+      iris_bo_alloc(screen->bufmgr, "workaround", 4096, IRIS_MEMZONE_OTHER);
+   if (!screen->workaround_bo)
       return NULL;
 
    brw_process_intel_debug_variable();
