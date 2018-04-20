@@ -40,6 +40,7 @@
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
 #include "i915_drm.h"
+#include "nir.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_l3_config.h"
 #include "intel/common/gen_sample_positions.h"
@@ -1521,20 +1522,93 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 {
 }
 
-#if 0
 static void
-iris_compute_sbe(const struct iris_context *ice,
-                 const struct brw_wm_prog_data *wm_prog_data)
+iris_compute_sbe_urb_read_interval(uint64_t fs_input_slots,
+                                   const struct brw_vue_map *last_vue_map,
+                                   bool two_sided_color,
+                                   unsigned *out_offset,
+                                   unsigned *out_length)
 {
-   uint32_t sbe_map[GENX(3DSTATE_SBE_length)];
-   struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+   /* The compiler computes the first URB slot without considering COL/BFC
+    * swizzling (because it doesn't know whether it's enabled), so we need
+    * to do that here too.  This may result in a smaller offset, which
+    * should be safe.
+    */
+   const unsigned first_slot =
+      brw_compute_first_urb_slot_required(fs_input_slots, last_vue_map);
+
+   /* This becomes the URB read offset (counted in pairs of slots). */
+   assert(first_slot % 2 == 0);
+   *out_offset = first_slot / 2;
+
+   /* We need to adjust the inputs read to account for front/back color
+    * swizzling, as it can make the URB length longer.
+    */
+   for (int c = 0; c <= 1; c++) {
+      if (fs_input_slots & (VARYING_BIT_COL0 << c)) {
+         /* If two sided color is enabled, the fragment shader's gl_Color
+          * (COL0) input comes from either the gl_FrontColor (COL0) or
+          * gl_BackColor (BFC0) input varyings.  Mark BFC as used, too.
+          */
+         if (two_sided_color)
+            fs_input_slots |= (VARYING_BIT_BFC0 << c);
+
+         /* If front color isn't written, we opt to give them back color
+          * instead of an undefined value.  Switch from COL to BFC.
+          */
+         if (last_vue_map->varying_to_slot[VARYING_SLOT_COL0 + c] == -1) {
+            fs_input_slots &= ~(VARYING_BIT_COL0 << c);
+            fs_input_slots |= (VARYING_BIT_BFC0 << c);
+         }
+      }
+   }
+
+   /* Compute the minimum URB Read Length necessary for the FS inputs.
+    *
+    * From the Sandy Bridge PRM, Volume 2, Part 1, documentation for
+    * 3DSTATE_SF DWord 1 bits 15:11, "Vertex URB Entry Read Length":
+    *
+    * "This field should be set to the minimum length required to read the
+    *  maximum source attribute.  The maximum source attribute is indicated
+    *  by the maximum value of the enabled Attribute # Source Attribute if
+    *  Attribute Swizzle Enable is set, Number of Output Attributes-1 if
+    *  enable is not set.
+    *  read_length = ceiling((max_source_attr + 1) / 2)
+    *
+    *  [errata] Corruption/Hang possible if length programmed larger than
+    *  recommended"
+    *
+    * Similar text exists for Ivy Bridge.
+    *
+    * We find the last URB slot that's actually read by the FS.
+    */
+   unsigned last_read_slot = last_vue_map->num_slots - 1;
+   while (last_read_slot > first_slot && !(fs_input_slots &
+          (1ull << last_vue_map->slot_to_varying[last_read_slot])))
+      --last_read_slot;
+
+   /* The URB read length is the difference of the two, counted in pairs. */
+   *out_length = DIV_ROUND_UP(last_read_slot - first_slot + 1, 2);
+}
+
+static void
+iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
+{
+   const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+   const struct brw_wm_prog_data *wm_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+   struct pipe_shader_state *p_fs =
+      (void *) ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
+   assert(p_fs->type == PIPE_SHADER_IR_NIR);
+   nir_shader *fs_nir = p_fs->ir.nir;
 
    unsigned urb_read_offset, urb_read_length;
-   brw_compute_sbe_urb_slot_interval(fp->info.inputs_read,
-                                     ice->shaders.last_vue_map,
-                                     &urb_read_offset, &urb_read_length);
+   iris_compute_sbe_urb_read_interval(fs_nir->info.inputs_read,
+                                      ice->shaders.last_vue_map,
+                                      cso_rast->light_twoside,
+                                      &urb_read_offset, &urb_read_length);
 
-   iris_pack_command(GENX(3DSTATE_SBE), sbe_map, sbe) {
+   iris_emit_cmd(batch, GENX(3DSTATE_SBE), sbe) {
       sbe.AttributeSwizzleEnable = true;
       sbe.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
       sbe.PointSpriteTextureCoordinateOrigin = cso_rast->sprite_coord_mode;
@@ -1544,12 +1618,11 @@ iris_compute_sbe(const struct iris_context *ice,
       sbe.ForceVertexURBEntryReadLength = true;
       sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
 
-      for (int i = 0; i < urb_read_length * 2; i++) {
+      for (int i = 0; i < 32; i++) {
          sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
       }
    }
 }
-#endif
 
 static void
 iris_bind_compute_state(struct pipe_context *ctx, void *state)
@@ -2229,21 +2302,7 @@ iris_upload_render_state(struct iris_context *ice,
       // XXX: 3DSTATE_SBE, 3DSTATE_SBE_SWIZ
       // -> iris_raster_state (point sprite texture coordinate origin)
       // -> bunch of shader state...
-
-      iris_emit_cmd(batch, GENX(3DSTATE_SBE), sbe) {
-         sbe.AttributeSwizzleEnable = true;
-         sbe.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
-         sbe.VertexURBEntryReadOffset = 1;
-         sbe.VertexURBEntryReadLength = 1;
-         sbe.ForceVertexURBEntryReadOffset = true;
-         sbe.ForceVertexURBEntryReadLength = true;
-         sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
-
-         for (int i = 0; i < 2; i++) {
-            sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
-         }
-      }
-
+      iris_emit_sbe(batch, ice);
       iris_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbe) {
       }
    }

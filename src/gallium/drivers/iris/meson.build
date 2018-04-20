@@ -47,7 +47,7 @@ foreach v : ['90', '100']
   _lib = static_library(
     'libiris_gen@0@'.format(v),
     ['iris_state.c', gen_xml_pack],
-    include_directories : [inc_common, inc_intel],
+    include_directories : [inc_common, inc_intel, inc_nir],
     c_args : [c_vis_args, no_override_init_args,
               '-DGEN_VERSIONx10=@0@'.format(v)],
     dependencies : [dep_libdrm, dep_valgrind],
