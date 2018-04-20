@@ -1630,10 +1630,20 @@ iris_bind_compute_state(struct pipe_context *ctx, void *state)
 }
 
 static void
+iris_populate_sampler_key(const struct iris_context *ice,
+                          struct brw_sampler_prog_key_data *key)
+{
+   for (int i = 0; i < MAX_SAMPLERS; i++) {
+      key->swizzles[i] = 0x688; /* XYZW */
+   }
+}
+
+static void
 iris_populate_vs_key(const struct iris_context *ice,
                      struct brw_vs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
+   iris_populate_sampler_key(ice, &key->tex);
 }
 
 static void
@@ -1641,6 +1651,7 @@ iris_populate_tcs_key(const struct iris_context *ice,
                       struct brw_tcs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
+   iris_populate_sampler_key(ice, &key->tex);
 }
 
 static void
@@ -1648,6 +1659,7 @@ iris_populate_tes_key(const struct iris_context *ice,
                       struct brw_tes_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
+   iris_populate_sampler_key(ice, &key->tex);
 }
 
 static void
@@ -1655,6 +1667,7 @@ iris_populate_gs_key(const struct iris_context *ice,
                      struct brw_gs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
+   iris_populate_sampler_key(ice, &key->tex);
 }
 
 static void
@@ -1662,6 +1675,7 @@ iris_populate_fs_key(const struct iris_context *ice,
                      struct brw_wm_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
+   iris_populate_sampler_key(ice, &key->tex);
 
    /* XXX: dirty flags? */
    const struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
