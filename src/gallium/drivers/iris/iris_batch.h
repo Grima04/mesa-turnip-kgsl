@@ -48,6 +48,7 @@ struct iris_batch_buffer {
 
 struct iris_batch {
    struct iris_screen *screen;
+   struct iris_vtable *vtbl;
    struct pipe_debug_callback *dbg;
 
    /** Current batchbuffer being queued up. */
@@ -72,6 +73,22 @@ struct iris_batch {
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
+   struct {
+      /**
+       * Set of struct brw_bo * that have been rendered to within this
+       * batchbuffer and would need flushing before being used from another
+       * cache domain that isn't coherent with it (i.e. the sampler).
+       */
+      struct hash_table *render;
+
+      /**
+       * Set of struct brw_bo * that have been used as a depth buffer within
+       * this batchbuffer and would need flushing before being used from
+       * another cache domain that isn't coherent with it (i.e. the sampler).
+       */
+      struct set *depth;
+   } cache;
+
 #if DEBUG
    /** Map from batch offset to iris_alloc_state data (with DEBUG_BATCH) */
    // XXX: unused
@@ -82,6 +99,7 @@ struct iris_batch {
 
 void iris_init_batch(struct iris_batch *batch,
                      struct iris_screen *screen,
+                     struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
                      uint8_t ring);
 void iris_batch_free(struct iris_batch *batch);

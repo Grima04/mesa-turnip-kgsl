@@ -332,9 +332,10 @@ emit_state(struct iris_batch *batch,
 static void
 iris_init_render_context(struct iris_screen *screen,
                          struct iris_batch *batch,
+                         struct iris_vtable *vtbl,
                          struct pipe_debug_callback *dbg)
 {
-   iris_init_batch(batch, screen, dbg, I915_EXEC_RENDER);
+   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
 
    /* XXX: PIPE_CONTROLs */
 
@@ -2912,17 +2913,17 @@ genX(init_state)(struct iris_context *ice)
    ctx->stream_output_target_destroy = iris_stream_output_target_destroy;
    ctx->set_stream_output_targets = iris_set_stream_output_targets;
 
-   ice->state.destroy_state = iris_destroy_state;
-   ice->state.init_render_context = iris_init_render_context;
-   ice->state.upload_render_state = iris_upload_render_state;
-   ice->state.emit_raw_pipe_control = iris_emit_raw_pipe_control;
-   ice->state.derived_program_state_size = iris_derived_program_state_size;
-   ice->state.set_derived_program_state = iris_set_derived_program_state;
-   ice->state.populate_vs_key = iris_populate_vs_key;
-   ice->state.populate_tcs_key = iris_populate_tcs_key;
-   ice->state.populate_tes_key = iris_populate_tes_key;
-   ice->state.populate_gs_key = iris_populate_gs_key;
-   ice->state.populate_fs_key = iris_populate_fs_key;
+   ice->vtbl.destroy_state = iris_destroy_state;
+   ice->vtbl.init_render_context = iris_init_render_context;
+   ice->vtbl.upload_render_state = iris_upload_render_state;
+   ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
+   ice->vtbl.derived_program_state_size = iris_derived_program_state_size;
+   ice->vtbl.set_derived_program_state = iris_set_derived_program_state;
+   ice->vtbl.populate_vs_key = iris_populate_vs_key;
+   ice->vtbl.populate_tcs_key = iris_populate_tcs_key;
+   ice->vtbl.populate_tes_key = iris_populate_tes_key;
+   ice->vtbl.populate_gs_key = iris_populate_gs_key;
+   ice->vtbl.populate_fs_key = iris_populate_fs_key;
 
    ice->state.dirty = ~0ull;
 }

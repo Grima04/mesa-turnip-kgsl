@@ -29,6 +29,7 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "util/hash_table.h"
+#include "util/set.h"
 #include "main/macros.h"
 
 #include <errno.h>
@@ -123,10 +124,12 @@ create_batch_buffer(struct iris_bufmgr *bufmgr,
 void
 iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
+                struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
                 uint8_t ring)
 {
    batch->screen = screen;
+   batch->vtbl = vtbl;
    batch->dbg = dbg;
 
    /* ring should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
@@ -141,6 +144,10 @@ iris_init_batch(struct iris_batch *batch,
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
 
+   batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                                                 _mesa_key_pointer_equal);
+   batch->cache.depth = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                         _mesa_key_pointer_equal);
    if (unlikely(INTEL_DEBUG)) {
       batch->state_sizes =
          _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);
@@ -223,10 +230,10 @@ iris_batch_reset(struct iris_batch *batch)
 }
 
 static void
-iris_batch_reset_and_clear_render_cache(struct iris_batch *batch)
+iris_batch_reset_and_clear_caches(struct iris_batch *batch)
 {
    iris_batch_reset(batch);
-   // XXX: iris_render_cache_set_clear(batch);
+   iris_cache_sets_clear(batch);
 }
 
 static void
@@ -249,6 +256,9 @@ iris_batch_free(struct iris_batch *batch)
    free_batch_buffer(&batch->cmdbuf);
 
    iris_bo_unreference(batch->last_cmd_bo);
+
+   _mesa_hash_table_destroy(batch->cache.render, NULL);
+   _mesa_set_destroy(batch->cache.depth, NULL);
 
    if (batch->state_sizes) {
       _mesa_hash_table_destroy(batch->state_sizes, NULL);
@@ -581,7 +591,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    batch->aperture_space = 0;
 
    /* Start a new batch buffer. */
-   iris_batch_reset_and_clear_render_cache(batch);
+   iris_batch_reset_and_clear_caches(batch);
 
    return 0;
 }

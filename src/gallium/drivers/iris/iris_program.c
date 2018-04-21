@@ -278,7 +278,7 @@ static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
    struct brw_vs_prog_key key;
-   ice->state.populate_vs_key(ice, &key);
+   ice->vtbl.populate_vs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_VS, &key))
       return;
@@ -344,7 +344,7 @@ iris_update_compiled_tes(struct iris_context *ice)
       return;
 
    struct brw_tes_prog_key key;
-   ice->state.populate_tes_key(ice, &key);
+   ice->vtbl.populate_tes_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_TES, &key))
       return;
@@ -404,7 +404,7 @@ static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
    struct brw_wm_prog_key key;
-   ice->state.populate_fs_key(ice, &key);
+   ice->vtbl.populate_fs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_FS, &key))
       return;

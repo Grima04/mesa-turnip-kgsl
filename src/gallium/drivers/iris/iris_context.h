@@ -33,6 +33,7 @@
 #include "iris_screen.h"
 
 struct iris_bo;
+struct iris_context;
 
 #define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
@@ -195,10 +196,40 @@ struct iris_shader_state {
    unsigned const_size;
 };
 
+struct iris_vtable {
+   void (*destroy_state)(struct iris_context *ice);
+   void (*init_render_context)(struct iris_screen *screen,
+                               struct iris_batch *batch,
+                               struct iris_vtable *vtbl,
+                               struct pipe_debug_callback *dbg);
+   void (*upload_render_state)(struct iris_context *ice,
+                               struct iris_batch *batch,
+                               const struct pipe_draw_info *draw);
+   void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
+                                 struct iris_bo *bo, uint32_t offset,
+                                 uint64_t imm);
+   unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
+   void (*set_derived_program_state)(const struct gen_device_info *devinfo,
+                                     enum iris_program_cache_id cache_id,
+                                     struct iris_compiled_shader *shader);
+   void (*populate_vs_key)(const struct iris_context *ice,
+                           struct brw_vs_prog_key *key);
+   void (*populate_tcs_key)(const struct iris_context *ice,
+                            struct brw_tcs_prog_key *key);
+   void (*populate_tes_key)(const struct iris_context *ice,
+                            struct brw_tes_prog_key *key);
+   void (*populate_gs_key)(const struct iris_context *ice,
+                           struct brw_gs_prog_key *key);
+   void (*populate_fs_key)(const struct iris_context *ice,
+                           struct brw_wm_prog_key *key);
+};
+
 struct iris_context {
    struct pipe_context ctx;
 
    struct pipe_debug_callback dbg;
+
+   struct iris_vtable vtbl;
 
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
@@ -247,30 +278,6 @@ struct iris_context {
       // "I'm streaming this out at draw time and never want it again!"
       struct u_upload_mgr *dynamic_uploader;
 
-      void (*destroy_state)(struct iris_context *ice);
-      void (*init_render_context)(struct iris_screen *screen,
-                                  struct iris_batch *batch,
-                                  struct pipe_debug_callback *dbg);
-      void (*upload_render_state)(struct iris_context *ice,
-                                  struct iris_batch *batch,
-                                  const struct pipe_draw_info *draw);
-      void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
-                                    struct iris_bo *bo, uint32_t offset,
-                                    uint64_t imm);
-      unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
-      void (*set_derived_program_state)(const struct gen_device_info *devinfo,
-                                        enum iris_program_cache_id cache_id,
-                                        struct iris_compiled_shader *shader);
-      void (*populate_vs_key)(const struct iris_context *ice,
-                              struct brw_vs_prog_key *key);
-      void (*populate_tcs_key)(const struct iris_context *ice,
-                               struct brw_tcs_prog_key *key);
-      void (*populate_tes_key)(const struct iris_context *ice,
-                               struct brw_tes_prog_key *key);
-      void (*populate_gs_key)(const struct iris_context *ice,
-                              struct brw_gs_prog_key *key);
-      void (*populate_fs_key)(const struct iris_context *ice,
-                              struct brw_wm_prog_key *key);
    } state;
 };
 
@@ -299,16 +306,26 @@ void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
 
 /* iris_pipe_control.c */
 
-void iris_emit_pipe_control_flush(struct iris_context *ice,
-                                  struct iris_batch *batch,
+void iris_emit_pipe_control_flush(struct iris_batch *batch,
                                   uint32_t flags);
-void iris_emit_pipe_control_write(struct iris_context *ice,
-                                  struct iris_batch *batch, uint32_t flags,
+void iris_emit_pipe_control_write(struct iris_batch *batch, uint32_t flags,
                                   struct iris_bo *bo, uint32_t offset,
                                   uint64_t imm);
-void iris_emit_end_of_pipe_sync(struct iris_context *ice,
-                                struct iris_batch *batch,
+void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
                                 uint32_t flags);
+
+void iris_cache_sets_clear(struct iris_batch *batch);
+void iris_cache_flush_for_read(struct iris_batch *batch, struct iris_bo *bo);
+void iris_cache_flush_for_render(struct iris_batch *batch,
+                                 struct iris_bo *bo,
+                                 enum isl_format format,
+                                 enum isl_aux_usage aux_usage);
+void iris_render_cache_add_bo(struct iris_batch *batch,
+                              struct iris_bo *bo,
+                              enum isl_format format,
+                              enum isl_aux_usage aux_usage);
+void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
+void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 
 /* iris_state.c */
 
