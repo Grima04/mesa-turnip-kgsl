@@ -78,10 +78,10 @@ enum iris_memory_zone {
 /* Intentionally exclude IRIS_MEMZONE_BINDER */
 #define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
 
-#define IRIS_MEMZONE_SHADER_START     (0 * (1ull << 32))
-#define IRIS_MEMZONE_SURFACE_START    (1 * (1ull << 32))
-#define IRIS_MEMZONE_DYNAMIC_START    (2 * (1ull << 32))
-#define IRIS_MEMZONE_OTHER_START      (3 * (1ull << 32))
+#define IRIS_MEMZONE_SHADER_START     (0ull * (1ull << 32))
+#define IRIS_MEMZONE_SURFACE_START    (1ull * (1ull << 32))
+#define IRIS_MEMZONE_DYNAMIC_START    (2ull * (1ull << 32))
+#define IRIS_MEMZONE_OTHER_START      (3ull * (1ull << 32))
 
 #define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
 

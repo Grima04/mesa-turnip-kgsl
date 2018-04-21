@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "i915_drm.h"
 #include "common/gen_decoder.h"
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */

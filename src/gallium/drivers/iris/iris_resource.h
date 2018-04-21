@@ -24,6 +24,7 @@
 #define IRIS_RESOURCE_H
 
 #include "pipe/p_state.h"
+#include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
 struct iris_resource {

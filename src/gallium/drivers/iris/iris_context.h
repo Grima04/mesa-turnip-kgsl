@@ -34,6 +34,8 @@
 
 struct iris_bo;
 struct iris_context;
+struct blorp_batch;
+struct blorp_params;
 
 #define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
@@ -208,6 +210,9 @@ struct iris_vtable {
    void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
+   void (*blorp_exec)(struct blorp_batch *blorp_batch,
+                      const struct blorp_params *params);
+
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
    void (*set_derived_program_state)(const struct gen_device_info *devinfo,
                                      enum iris_program_cache_id cache_id,
@@ -326,6 +331,11 @@ void iris_render_cache_add_bo(struct iris_batch *batch,
                               enum isl_aux_usage aux_usage);
 void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
 void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
+
+/* iris_blorp.c */
+
+void gen9_init_blorp(struct iris_context *ice);
+void gen10_init_blorp(struct iris_context *ice);
 
 /* iris_state.c */
 
