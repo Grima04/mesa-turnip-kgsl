@@ -106,23 +106,26 @@ atomic_add_unless(int *v, int add, int unless)
    return c == unless;
 }
 
-/*
- * Idea:
+/**
+ * Iris fixed-size bucketing VMA allocator.
  *
- * Have a bitmap-allocator for each BO cache bucket size.  Because bo_alloc
- * rounds up allocations to the bucket size anyway, we can make 1 bit in the
- * bitmap represent N pages of memory, where N = <bucket size / page size>.
- * Allocations and frees always set/unset a single bit.  Because ffsll only
- * works on uint64_t, use a tree(?) of those.
+ * The BO cache maintains "cache buckets" for buffers of various sizes.
+ * All buffers in a given bucket are identically sized - when allocating,
+ * we always round up to the bucket size.  This means that virtually all
+ * allocations are fixed-size; only buffers which are too large to fit in
+ * a bucket can be variably-sized.
  *
- * Nodes contain a starting address and a uint64_t bitmap.  (pair-of-uint64_t)
- * Bitmap uses 1 for a free block, 0 for in-use.
+ * We create an allocator for each bucket.  Each contains a free-list, where
+ * each node contains a <starting address, 64-bit bitmap> pair.  Each bit
+ * represents a bucket-sized block of memory.  (At the first level, each
+ * bit corresponds to a page.  For the second bucket, bits correspond to
+ * two pages, and so on.)  1 means a block is free, and 0 means it's in-use.
  *
- * Bucket contains...
- *
- *     Dynamic array of nodes.  (pointer, two ints)
+ * This makes allocations cheap - any bit of any node will do.  We can pick
+ * the head of the list and use ffs() to find a free block.  If there are
+ * none, we allocate 64 blocks from a larger allocator - either a bigger
+ * bucketing allocator, or a fallback top-level allocator for large objects.
  */
-
 struct vma_bucket_node {
    uint64_t start_address;
    uint64_t bitmap;
