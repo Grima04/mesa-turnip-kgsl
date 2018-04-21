@@ -3865,7 +3865,7 @@ intel_miptree_get_clear_color(const struct gen_device_info *devinfo,
                               const struct intel_mipmap_tree *mt,
                               enum isl_format view_format, bool sampling,
                               struct brw_bo **clear_color_bo,
-                              uint32_t *clear_color_offset)
+                              uint64_t *clear_color_offset)
 {
    assert(mt->aux_buf);
 

@@ -156,7 +156,7 @@ brw_emit_surface_state(struct brw_context *brw,
    struct isl_surf *aux_surf = NULL;
    uint64_t aux_offset = 0;
    struct brw_bo *clear_bo = NULL;
-   uint32_t clear_offset = 0;
+   uint64_t clear_offset = 0;
 
    if (aux_usage != ISL_AUX_USAGE_NONE) {
       aux_surf = &mt->aux_buf->surf;
