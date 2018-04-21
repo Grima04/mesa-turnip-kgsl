@@ -30,8 +30,6 @@
 struct iris_bo;
 struct iris_bufmgr;
 
-#define IRIS_BINDER_ADDRESS (1ull << 32)
-
 struct iris_binder
 {
    struct iris_bo *bo;

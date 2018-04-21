@@ -229,19 +229,22 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
 static enum iris_memory_zone
 memzone_for_address(uint64_t address)
 {
-   const uint64_t _4GB = 1ull << 32;
+   STATIC_ASSERT(IRIS_MEMZONE_OTHER_START > IRIS_MEMZONE_DYNAMIC_START);
+   STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START > IRIS_MEMZONE_SURFACE_START);
+   STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START > IRIS_MEMZONE_SHADER_START);
+   STATIC_ASSERT(IRIS_BINDER_ADDRESS == IRIS_MEMZONE_SURFACE_START);
 
-   if (address >= 3 * _4GB)
+   if (address >= IRIS_MEMZONE_OTHER_START)
       return IRIS_MEMZONE_OTHER;
 
-   if (address >= 2 * _4GB)
+   if (address >= IRIS_MEMZONE_DYNAMIC_START)
       return IRIS_MEMZONE_DYNAMIC;
 
-   if (address > 1 * _4GB)
+   /* Use > to exclude the binder */
+   if (address > IRIS_MEMZONE_SURFACE_START)
       return IRIS_MEMZONE_SURFACE;
 
-   /* The binder isn't in any memory zone. */
-   if (address == 1 * _4GB)
+   if (address == IRIS_BINDER_ADDRESS)
       return IRIS_MEMZONE_BINDER;
 
    return IRIS_MEMZONE_SHADER;
@@ -1537,16 +1540,18 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
 
    bufmgr->has_llc = devinfo->has_llc;
 
+   STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
 
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
                       PAGE_SIZE, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
-                      1 * _4GB, _4GB);
+                      IRIS_MEMZONE_SURFACE_START, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
-                      2 * _4GB, _4GB);
+                      IRIS_MEMZONE_DYNAMIC_START, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
-                      3 * _4GB, (1ull << 48) - 3 * _4GB);
+                      IRIS_MEMZONE_OTHER_START,
+                      (1ull << 48) - IRIS_MEMZONE_OTHER_START);
 
    // XXX: driconf
    bufmgr->bo_reuse = env_var_as_boolean("bo_reuse", true);

@@ -361,8 +361,9 @@ iris_init_render_context(struct iris_screen *screen,
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.InstructionBuffersizeModifyEnable     = true;
 
-      sba.SurfaceStateBaseAddress = ro_bo(NULL, 1ull << 32);
-      sba.DynamicStateBaseAddress = ro_bo(NULL, 2 * (1ull << 32));
+      sba.InstructionBaseAddress  = ro_bo(NULL, IRIS_MEMZONE_SHADER_START);
+      sba.SurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_SURFACE_START);
+      sba.DynamicStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_DYNAMIC_START);
 
       sba.GeneralStateBufferSize   = 0xfffff;
       sba.IndirectObjectBufferSize = 0xfffff;

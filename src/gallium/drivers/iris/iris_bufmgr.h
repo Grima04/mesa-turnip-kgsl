@@ -36,10 +36,40 @@
 struct gen_device_info;
 struct pipe_debug_callback;
 
+/**
+ * Memory zones.  When allocating a buffer, you can request that it is
+ * placed into a specific region of the virtual address space (PPGTT).
+ *
+ * Most buffers can go anywhere (IRIS_MEMZONE_OTHER).  Some buffers are
+ * accessed via an offset from a base address.  STATE_BASE_ADDRESS has
+ * a maximum 4GB size for each region, so we need to restrict those
+ * buffers to be within 4GB of the base.  Each memory zone corresponds
+ * to a particular base address.
+ *
+ * We lay out the virtual address space as follows:
+ *
+ * - [0,   4K): Nothing  (empty page for null address)
+ * - [4K,  4G): Shaders  (Instruction Base Address)
+ * - [4G,  8G): Surfaces (Surface State Base Address, Bindless ...)
+ * - [8G, 12G): Dynamic  (Dynamic State Base Address)
+ * - [12G, *):  Other    (everything else in the full 48-bit VMA)
+ *
+ * A special 64kB "binder" buffer lives at the start of the surface memory
+ * zone, holding binding tables referring to objects in the rest of the zone.
+ *
+ * Each GL context uses a separate GEM context, which technically gives them
+ * each a separate VMA.  However, we assign address globally, so buffers will
+ * have the same address in all GEM contexts.  This lets us have a single BO
+ * field for the address, which is easy and cheap.
+ *
+ * One exception is the special "binder" BO.  Binders are context-local,
+ * so while there are many of them, all binders are stored at the same
+ * fixed address (in different VMAs).
+ */
 enum iris_memory_zone {
-   IRIS_MEMZONE_DYNAMIC,
-   IRIS_MEMZONE_SURFACE,
    IRIS_MEMZONE_SHADER,
+   IRIS_MEMZONE_SURFACE,
+   IRIS_MEMZONE_DYNAMIC,
    IRIS_MEMZONE_OTHER,
 
    IRIS_MEMZONE_BINDER,
@@ -47,6 +77,13 @@ enum iris_memory_zone {
 
 /* Intentionally exclude IRIS_MEMZONE_BINDER */
 #define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
+
+#define IRIS_MEMZONE_SHADER_START     (0 * (1ull << 32))
+#define IRIS_MEMZONE_SURFACE_START    (1 * (1ull << 32))
+#define IRIS_MEMZONE_DYNAMIC_START    (2 * (1ull << 32))
+#define IRIS_MEMZONE_OTHER_START      (3 * (1ull << 32))
+
+#define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
 
 struct iris_bo {
    /**
