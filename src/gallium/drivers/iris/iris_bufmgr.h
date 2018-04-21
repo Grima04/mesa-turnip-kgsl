@@ -329,5 +329,21 @@ int iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *out);
 
 int drm_ioctl(int fd, unsigned long request, void *arg);
 
+/**
+ * Returns the BO's address relative to the appropriate base address.
+ *
+ * All of our base addresses are programmed to the start of a 4GB region,
+ * so simply returning the bottom 32 bits of the BO address will give us
+ * the offset from whatever base address corresponds to that memory region.
+ */
+static inline uint32_t
+iris_bo_offset_from_base_address(struct iris_bo *bo)
+{
+   /* This only works for buffers in the memory zones corresponding to a
+    * base address - the top, unbounded memory zone doesn't have a base.
+    */
+   assert(bo->gtt_offset < IRIS_MEMZONE_OTHER_START);
+   return bo->gtt_offset;
+}
 
 #endif /* IRIS_BUFMGR_H */

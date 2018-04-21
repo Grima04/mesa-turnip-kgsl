@@ -272,25 +272,6 @@ ro_bo(struct iris_bo *bo, uint64_t offset)
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
-/**
- * Returns the BO's address relative to the appropriate base address.
- *
- * All of our base addresses are programmed to the start of a 4GB region,
- * so simply returning the bottom 32 bits of the BO address will give us
- * the offset from whatever base address corresponds to that memory region.
- */
-static uint32_t
-bo_offset_from_base_address(struct pipe_resource *res)
-{
-   struct iris_bo *bo = ((struct iris_resource *) res)->bo;
-
-   /* This only works for buffers in the memory zones corresponding to a
-    * base address - the top, unbounded memory zone doesn't have a base.
-    */
-   assert(bo->gtt_offset < 3 * (1ull << 32));
-   return bo->gtt_offset;
-}
-
 static uint32_t *
 stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
@@ -303,10 +284,10 @@ stream_state(struct iris_batch *batch,
 
    u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
 
-   struct iris_bo *bo = ((struct iris_resource *) res)->bo;
+   struct iris_bo *bo = iris_resource_bo(res);
    iris_use_pinned_bo(batch, bo, false);
 
-   *out_offset += bo_offset_from_base_address(res);
+   *out_offset += iris_bo_offset_from_base_address(bo);
 
    pipe_resource_reference(&res, NULL);
 
@@ -867,8 +848,9 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    if (unlikely(!map))
       return;
 
+   struct pipe_resource *res = ice->state.sampler_table_resource[stage];
    ice->state.sampler_table_offset[stage] +=
-      bo_offset_from_base_address(ice->state.sampler_table_resource[stage]);
+      iris_bo_offset_from_base_address(iris_resource_bo(res));
 
    for (int i = 0; i < count; i++) {
       struct iris_sampler_state *state = states[i];
@@ -965,8 +947,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
    if (!unlikely(map))
       return NULL;
 
-   isv->surface_state_offset +=
-      bo_offset_from_base_address(isv->surface_state_resource);
+   struct iris_bo *state_bo = iris_resource_bo(isv->surface_state_resource);
+   isv->surface_state_offset += iris_bo_offset_from_base_address(state_bo);
 
    isl_surf_fill_state(&screen->isl_dev, map,
                        .surf = &itex->surf, .view = &isv->view,
@@ -1034,8 +1016,8 @@ iris_create_surface(struct pipe_context *ctx,
    if (!unlikely(map))
       return NULL;
 
-   surf->surface_state_offset +=
-      bo_offset_from_base_address(surf->surface_state_resource);
+   struct iris_bo *state_bo = iris_resource_bo(surf->surface_state_resource);
+   surf->surface_state_offset += iris_bo_offset_from_base_address(state_bo);
 
    isl_surf_fill_state(&screen->isl_dev, map,
                        .surf = &itex->surf, .view = &surf->view,
