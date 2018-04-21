@@ -419,12 +419,20 @@ iris_require_command_space(struct iris_batch *batch, unsigned size)
    require_buffer_space(batch, &batch->cmdbuf, size, BATCH_SZ, MAX_BATCH_SIZE);
 }
 
+void *
+iris_get_command_space(struct iris_batch *batch, unsigned bytes)
+{
+   iris_require_command_space(batch, bytes);
+   void *map = batch->cmdbuf.map_next;
+   batch->cmdbuf.map_next += bytes;
+   return map;
+}
+
 void
 iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 {
-   iris_require_command_space(batch, size);
-   memcpy(batch->cmdbuf.map_next, data, size);
-   batch->cmdbuf.map_next += size;
+   void *map = iris_get_command_space(batch, size);
+   memcpy(map, data, size);
 }
 
 /**

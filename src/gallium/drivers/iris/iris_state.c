@@ -74,15 +74,6 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #define __genxml_cmd_header(cmd) cmd ## _header
 #define __genxml_cmd_pack(cmd) cmd ## _pack
 
-static void *
-get_command_space(struct iris_batch *batch, unsigned bytes)
-{
-   iris_require_command_space(batch, bytes);
-   void *map = batch->cmdbuf.map_next;
-   batch->cmdbuf.map_next += bytes;
-   return map;
-}
-
 #define _iris_pack_command(batch, cmd, dst, name)                 \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
@@ -100,11 +91,11 @@ get_command_space(struct iris_batch *batch, unsigned bytes)
         _dst = NULL)
 
 #define iris_emit_cmd(batch, cmd, name) \
-   _iris_pack_command(batch, cmd, get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
+   _iris_pack_command(batch, cmd, iris_get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
 
 #define iris_emit_merge(batch, dwords0, dwords1, num_dwords)   \
    do {                                                        \
-      uint32_t *dw = get_command_space(batch, 4 * num_dwords); \
+      uint32_t *dw = iris_get_command_space(batch, 4 * num_dwords); \
       for (uint32_t i = 0; i < num_dwords; i++)                \
          dw[i] = (dwords0)[i] | (dwords1)[i];                  \
       VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));       \

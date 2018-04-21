@@ -86,6 +86,7 @@ void iris_init_batch(struct iris_batch *batch,
                      uint8_t ring);
 void iris_batch_free(struct iris_batch *batch);
 void iris_require_command_space(struct iris_batch *batch, unsigned size);
+void *iris_get_command_space(struct iris_batch *batch, unsigned bytes);
 void iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size);
 
 int _iris_batch_flush_fence(struct iris_batch *batch,
