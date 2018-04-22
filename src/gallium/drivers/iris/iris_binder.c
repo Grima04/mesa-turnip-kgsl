@@ -58,5 +58,4 @@ void
 iris_destroy_binder(struct iris_binder *binder)
 {
    iris_bo_unreference(binder->bo);
-   free(binder);
 }
