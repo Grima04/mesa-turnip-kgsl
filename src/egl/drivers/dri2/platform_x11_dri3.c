@@ -122,8 +122,7 @@ dri3_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-dri3_set_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                       EGLint interval)
+dri3_set_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
 
@@ -226,7 +225,7 @@ dri3_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    surf = dri3_create_surface(disp, EGL_WINDOW_BIT, conf,
                               native_window, attrib_list);
    if (surf != NULL)
-      dri3_set_swap_interval(disp->Driver, disp, surf, dri2_dpy->default_swap_interval);
+      dri3_set_swap_interval(disp, surf, dri2_dpy->default_swap_interval);
 
    return surf;
 }

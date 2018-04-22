@@ -52,8 +52,7 @@
 #endif
 
 static EGLBoolean
-dri2_x11_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                       EGLint interval);
+dri2_x11_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval);
 
 uint32_t
 dri2_format_for_depth(struct dri2_egl_display *dri2_dpy, uint32_t depth);
@@ -375,7 +374,7 @@ dri2_x11_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
       surf->SwapInterval = 1;
 
       /* Override that with a driconf-set value. */
-      dri2_x11_swap_interval(disp->Driver, disp, surf, dri2_dpy->default_swap_interval);
+      dri2_x11_swap_interval(disp, surf, dri2_dpy->default_swap_interval);
    }
 
    return surf;
@@ -982,8 +981,7 @@ dri2_x11_post_sub_buffer(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *
 }
 
 static EGLBoolean
-dri2_x11_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                       EGLint interval)
+dri2_x11_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);

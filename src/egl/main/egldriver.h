@@ -115,8 +115,8 @@ struct _egl_driver
                               EGLint buffer);
    EGLBoolean (*ReleaseTexImage)(_EGLDisplay *disp, _EGLSurface *surface,
                                  EGLint buffer);
-   EGLBoolean (*SwapInterval)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surf, EGLint interval);
+   EGLBoolean (*SwapInterval)(_EGLDisplay *disp, _EGLSurface *surf,
+                              EGLint interval);
    EGLBoolean (*SwapBuffers)(const _EGLDriver *drv, _EGLDisplay *disp,
                              _EGLSurface *draw);
    EGLBoolean (*CopyBuffers)(const _EGLDriver *drv, _EGLDisplay *disp,

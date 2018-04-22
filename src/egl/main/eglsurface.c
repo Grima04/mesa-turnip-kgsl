@@ -784,8 +784,7 @@ _eglReleaseTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 
 
 EGLBoolean
-_eglSwapInterval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                 EGLint interval)
+_eglSwapInterval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 {
    return EGL_TRUE;
 }

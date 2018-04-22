@@ -1287,9 +1287,9 @@ eglSwapInterval(EGLDisplay dpy, EGLint interval)
 
    if (surf->SwapInterval != interval) {
       if (drv->SwapInterval)
-         ret = drv->SwapInterval(drv, disp, surf, interval);
+         ret = drv->SwapInterval(disp, surf, interval);
       else
-         ret = _eglSwapInterval(drv, disp, surf, interval);
+         ret = _eglSwapInterval(disp, surf, interval);
    }
    else {
       ret = EGL_TRUE;

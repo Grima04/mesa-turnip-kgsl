@@ -109,8 +109,8 @@ struct dri2_egl_display_vtbl {
    EGLBoolean (*destroy_surface)(_EGLDisplay *disp, _EGLSurface *surface);
 
    /* optional */
-   EGLBoolean (*swap_interval)(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLSurface *surf, EGLint interval);
+   EGLBoolean (*swap_interval)(_EGLDisplay *disp, _EGLSurface *surf,
+                               EGLint interval);
 
    /* mandatory */
    _EGLImage* (*create_image)(const _EGLDriver *drv, _EGLDisplay *disp,

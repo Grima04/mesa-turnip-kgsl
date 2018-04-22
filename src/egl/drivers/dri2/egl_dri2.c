@@ -1934,13 +1934,12 @@ dri2_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
 }
 
 static EGLBoolean
-dri2_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                   EGLint interval)
+dri2_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->swap_interval)
       return EGL_TRUE;
-   return dri2_dpy->vtbl->swap_interval(drv, disp, surf, interval);
+   return dri2_dpy->vtbl->swap_interval(disp, surf, interval);
 }
 
 /**

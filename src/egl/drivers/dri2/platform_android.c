@@ -496,8 +496,7 @@ droid_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-droid_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp,
-                   _EGLSurface *surf, EGLint interval)
+droid_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
    struct ANativeWindow *window = dri2_surf->window;
