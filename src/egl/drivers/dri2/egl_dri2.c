@@ -2108,11 +2108,8 @@ dri2_wait_client(_EGLDisplay *disp, _EGLContext *ctx)
 }
 
 static EGLBoolean
-dri2_wait_native(const _EGLDriver *drv, _EGLDisplay *disp, EGLint engine)
+dri2_wait_native(EGLint engine)
 {
-   (void) drv;
-   (void) disp;
-
    if (engine != EGL_CORE_NATIVE_ENGINE)
       return _eglError(EGL_BAD_PARAMETER, "eglWaitNative");
    /* glXWaitX(); */

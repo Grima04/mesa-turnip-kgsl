@@ -1530,7 +1530,6 @@ eglWaitNative(EGLint engine)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
    _EGLDisplay *disp;
-   const _EGLDriver *drv;
    EGLBoolean ret;
 
    if (!ctx)
@@ -1548,8 +1547,7 @@ eglWaitNative(EGLint engine)
 
    /* a valid current context implies an initialized current display */
    assert(disp->Initialized);
-   drv = disp->Driver;
-   ret = drv->WaitNative(drv, disp, engine);
+   ret = disp->Driver->WaitNative(engine);
 
    RETURN_EGL_EVAL(disp, ret);
 }
