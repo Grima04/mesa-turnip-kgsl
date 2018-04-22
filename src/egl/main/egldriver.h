@@ -156,10 +156,7 @@ struct _egl_driver
    EGLBoolean (*UnbindWaylandDisplayWL)(_EGLDisplay *disp, struct wl_display *display);
    EGLBoolean (*QueryWaylandBufferWL)(_EGLDisplay *displ, struct wl_resource *buffer,
                                       EGLint attribute, EGLint *value);
-
-   struct wl_buffer *(*CreateWaylandBufferFromImageWL)(const _EGLDriver *drv,
-                                                       _EGLDisplay *disp,
-                                                       _EGLImage *img);
+   struct wl_buffer *(*CreateWaylandBufferFromImageWL)(_EGLDisplay *disp, _EGLImage *img);
 
    EGLBoolean (*SwapBuffersWithDamageEXT)(_EGLDisplay *disp, _EGLSurface *surface,
                                           const EGLint *rects, EGLint n_rects);

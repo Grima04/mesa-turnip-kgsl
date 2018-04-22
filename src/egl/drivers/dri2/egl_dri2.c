@@ -2472,13 +2472,12 @@ dri2_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static struct wl_buffer*
-dri2_create_wayland_buffer_from_image(const _EGLDriver *drv, _EGLDisplay *disp,
-                                      _EGLImage *img)
+dri2_create_wayland_buffer_from_image(_EGLDisplay *disp, _EGLImage *img)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->create_wayland_buffer_from_image)
       return NULL;
-   return dri2_dpy->vtbl->create_wayland_buffer_from_image(drv, disp, img);
+   return dri2_dpy->vtbl->create_wayland_buffer_from_image(disp, img);
 }
 
 #ifdef HAVE_LIBDRM

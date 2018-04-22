@@ -2317,7 +2317,7 @@ eglCreateWaylandBufferFromImageWL(EGLDisplay dpy, EGLImage image)
    if (!img)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, NULL);
 
-   ret = drv->CreateWaylandBufferFromImageWL(drv, disp, img);
+   ret = drv->CreateWaylandBufferFromImageWL(disp, img);
 
    RETURN_EGL_EVAL(disp, ret);
 }

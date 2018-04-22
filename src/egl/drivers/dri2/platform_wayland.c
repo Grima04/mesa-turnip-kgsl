@@ -1169,9 +1169,7 @@ dri2_wl_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static struct wl_buffer *
-dri2_wl_create_wayland_buffer_from_image(const _EGLDriver *drv,
-                                          _EGLDisplay *disp,
-                                          _EGLImage *img)
+dri2_wl_create_wayland_buffer_from_image(_EGLDisplay *disp, _EGLImage *img)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(img);
