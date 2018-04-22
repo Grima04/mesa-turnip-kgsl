@@ -1754,7 +1754,7 @@ dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
  * Called via eglMakeCurrent(), drv->MakeCurrent().
  */
 static EGLBoolean
-dri2_make_current(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
                   _EGLSurface *rsurf, _EGLContext *ctx)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);

@@ -278,7 +278,7 @@ haiku_destroy_context(_EGLDisplay *disp, _EGLContext* ctx)
 
 extern "C"
 EGLBoolean
-haiku_make_current(const _EGLDriver* drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+haiku_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
 	_EGLSurface *rsurf, _EGLContext *ctx)
 {
 	CALLED();

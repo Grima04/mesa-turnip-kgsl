@@ -97,7 +97,7 @@ struct _egl_driver
    /* this is the only function (other than Initialize) that may be called
     * with an uninitialized display
     */
-   EGLBoolean (*MakeCurrent)(const _EGLDriver *drv, _EGLDisplay *disp,
+   EGLBoolean (*MakeCurrent)(_EGLDisplay *disp,
                              _EGLSurface *draw, _EGLSurface *read,
                              _EGLContext *ctx);
 

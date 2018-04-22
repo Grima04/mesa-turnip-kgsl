@@ -879,7 +879,7 @@ eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
    if (read_surf && read_surf->Lost)
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_FALSE);
 
-   ret = drv->MakeCurrent(drv, disp, draw_surf, read_surf, context);
+   ret = drv->MakeCurrent(disp, draw_surf, read_surf, context);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1705,11 +1705,9 @@ eglReleaseThread(void)
 
       if (ctx) {
          _EGLDisplay *disp = ctx->Resource.Display;
-         const _EGLDriver *drv;
 
          mtx_lock(&disp->Mutex);
-         drv = disp->Driver;
-         (void) drv->MakeCurrent(drv, disp, NULL, NULL, NULL);
+         (void) disp->Driver->MakeCurrent(disp, NULL, NULL, NULL);
          mtx_unlock(&disp->Mutex);
       }
    }
