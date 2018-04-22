@@ -1296,7 +1296,7 @@ static void
 iris_sampler_view_destroy(struct pipe_context *ctx,
                           struct pipe_sampler_view *state)
 {
-   struct iris_surface *isv = (void *) state;
+   struct iris_sampler_view *isv = (void *) state;
    pipe_resource_reference(&state->texture, NULL);
    pipe_resource_reference(&isv->surface_state_resource, NULL);
    free(isv);
