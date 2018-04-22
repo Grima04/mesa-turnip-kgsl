@@ -2902,16 +2902,13 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
    return res;
 }
 static _EGLImage *
-dri2_create_drm_image_mesa(const _EGLDriver *drv, _EGLDisplay *disp,
-                           const EGLint *attr_list)
+dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img;
    _EGLImageAttribs attrs;
    unsigned int dri_use, valid_mask;
    int format;
-
-   (void) drv;
 
    if (!attr_list) {
       _eglError(EGL_BAD_PARAMETER, __func__);
@@ -2974,13 +2971,11 @@ dri2_create_drm_image_mesa(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_export_drm_image_mesa(const _EGLDriver *drv, _EGLDisplay *disp, _EGLImage *img,
+dri2_export_drm_image_mesa(_EGLDisplay *disp, _EGLImage *img,
                           EGLint *name, EGLint *handle, EGLint *stride)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(img);
-
-   (void) drv;
 
    if (name && !dri2_dpy->image->queryImage(dri2_img->dri_image,
                                             __DRI_IMAGE_ATTRIB_NAME, name))

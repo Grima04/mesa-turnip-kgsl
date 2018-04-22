@@ -2205,7 +2205,7 @@ eglCreateDRMImageMESA(EGLDisplay dpy, const EGLint *attr_list)
    if (!disp->Extensions.MESA_drm_image)
       RETURN_EGL_EVAL(disp, EGL_NO_IMAGE_KHR);
 
-   img = drv->CreateDRMImageMESA(drv, disp, attr_list);
+   img = drv->CreateDRMImageMESA(disp, attr_list);
    ret = (img) ? _eglLinkImage(img) : EGL_NO_IMAGE_KHR;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -2228,7 +2228,7 @@ eglExportDRMImageMESA(EGLDisplay dpy, EGLImage image,
    if (!img)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->ExportDRMImageMESA(drv, disp, img, name, handle, stride);
+   ret = drv->ExportDRMImageMESA(disp, img, name, handle, stride);
 
    RETURN_EGL_EVAL(disp, ret);
 }

@@ -147,11 +147,10 @@ struct _egl_driver
    EGLBoolean (*SwapBuffersRegionNOK)(_EGLDisplay *disp, _EGLSurface *surf,
                                       EGLint numRects, const EGLint *rects);
 
-   _EGLImage *(*CreateDRMImageMESA)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                    const EGLint *attr_list);
-   EGLBoolean (*ExportDRMImageMESA)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                    _EGLImage *img, EGLint *name,
-                                    EGLint *handle, EGLint *stride);
+   _EGLImage *(*CreateDRMImageMESA)(_EGLDisplay *disp, const EGLint *attr_list);
+   EGLBoolean (*ExportDRMImageMESA)(_EGLDisplay *disp, _EGLImage *img,
+                                    EGLint *name, EGLint *handle,
+                                    EGLint *stride);
 
    EGLBoolean (*BindWaylandDisplayWL)(const _EGLDriver *drv, _EGLDisplay *disp,
                                       struct wl_display *display);
