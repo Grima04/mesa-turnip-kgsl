@@ -3467,7 +3467,7 @@ dri2_dup_native_fence_fd(_EGLDisplay *disp, _EGLSync *sync)
 }
 
 static void
-dri2_set_blob_cache_funcs(const _EGLDriver *drv, _EGLDisplay *disp,
+dri2_set_blob_cache_funcs(_EGLDisplay *disp,
                           EGLSetBlobFuncANDROID set,
                           EGLGetBlobFuncANDROID get)
 {

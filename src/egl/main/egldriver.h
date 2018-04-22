@@ -190,9 +190,9 @@ struct _egl_driver
                                          EGLBoolean *external_only,
                                          EGLint *num_modifiers);
 
-   void (*SetBlobCacheFuncsANDROID) (const _EGLDriver *drv, _EGLDisplay *disp,
-                                     EGLSetBlobFuncANDROID set,
-                                     EGLGetBlobFuncANDROID get);
+   void (*SetBlobCacheFuncsANDROID)(_EGLDisplay *disp,
+                                    EGLSetBlobFuncANDROID set,
+                                    EGLGetBlobFuncANDROID get);
 };
 
 

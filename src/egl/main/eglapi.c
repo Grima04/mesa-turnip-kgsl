@@ -2633,7 +2633,7 @@ eglSetBlobCacheFuncsANDROID(EGLDisplay *dpy, EGLSetBlobFuncANDROID set,
    disp->BlobCacheSet = set;
    disp->BlobCacheGet = get;
 
-   drv->SetBlobCacheFuncsANDROID(drv, disp, set, get);
+   drv->SetBlobCacheFuncsANDROID(disp, set, get);
 
    _eglUnlockDisplay(disp);
 }
