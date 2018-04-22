@@ -423,8 +423,7 @@ dri3_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static EGLBoolean
-dri3_copy_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                  void *native_pixmap_target)
+dri3_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_target)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
    xcb_pixmap_t target;

@@ -2074,13 +2074,12 @@ dri2_post_sub_buffer(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf
 }
 
 static EGLBoolean
-dri2_copy_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                  void *native_pixmap_target)
+dri2_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_target)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->copy_buffers)
       return _eglError(EGL_BAD_NATIVE_PIXMAP, "no support for native pixmaps");
-   return dri2_dpy->vtbl->copy_buffers(drv, disp, surf, native_pixmap_target);
+   return dri2_dpy->vtbl->copy_buffers(disp, surf, native_pixmap_target);
 }
 
 static EGLint

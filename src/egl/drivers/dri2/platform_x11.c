@@ -992,8 +992,7 @@ dri2_x11_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
 }
 
 static EGLBoolean
-dri2_x11_copy_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                      void *native_pixmap_target)
+dri2_x11_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_target)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -1002,8 +1001,6 @@ dri2_x11_copy_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *sur
 
    STATIC_ASSERT(sizeof(uintptr_t) == sizeof(native_pixmap_target));
    target = (uintptr_t) native_pixmap_target;
-
-   (void) drv;
 
    dri2_dpy->flush->flush(dri2_surf->dri_drawable);
 
