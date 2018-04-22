@@ -1979,7 +1979,7 @@ dri2_flush_drawable_for_swapbuffers(_EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static EGLBoolean
-dri2_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_swap_buffers(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
@@ -1988,7 +1988,7 @@ dri2_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 
    if (ctx && surf)
       dri2_surf_update_fence_fd(ctx, disp, surf);
-   ret = dri2_dpy->vtbl->swap_buffers(drv, disp, surf);
+   ret = dri2_dpy->vtbl->swap_buffers(disp, surf);
 
    /* SwapBuffers marks the end of the frame; reset the damage region for
     * use again next time.
@@ -2001,8 +2001,7 @@ dri2_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-dri2_swap_buffers_with_damage(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surf,
+dri2_swap_buffers_with_damage(_EGLDisplay *disp, _EGLSurface *surf,
                               const EGLint *rects, EGLint n_rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -2013,10 +2012,10 @@ dri2_swap_buffers_with_damage(const _EGLDriver *drv, _EGLDisplay *disp,
    if (ctx && surf)
       dri2_surf_update_fence_fd(ctx, disp, surf);
    if (dri2_dpy->vtbl->swap_buffers_with_damage)
-      ret = dri2_dpy->vtbl->swap_buffers_with_damage(drv, disp, surf,
+      ret = dri2_dpy->vtbl->swap_buffers_with_damage(disp, surf,
                                                      rects, n_rects);
    else
-      ret = dri2_dpy->vtbl->swap_buffers(drv, disp, surf);
+      ret = dri2_dpy->vtbl->swap_buffers(disp, surf);
 
    /* SwapBuffers marks the end of the frame; reset the damage region for
     * use again next time.
@@ -2029,7 +2028,7 @@ dri2_swap_buffers_with_damage(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_swap_buffers_region(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri2_swap_buffers_region(_EGLDisplay *disp, _EGLSurface *surf,
                          EGLint numRects, const EGLint *rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -2038,7 +2037,7 @@ dri2_swap_buffers_region(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *
 
    if (!dri2_dpy->vtbl->swap_buffers_region)
       return EGL_FALSE;
-   ret = dri2_dpy->vtbl->swap_buffers_region(drv, disp, surf, numRects, rects);
+   ret = dri2_dpy->vtbl->swap_buffers_region(disp, surf, numRects, rects);
 
    /* SwapBuffers marks the end of the frame; reset the damage region for
     * use again next time.

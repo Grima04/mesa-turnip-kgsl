@@ -1333,7 +1333,7 @@ eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
    if (surf->Lost)
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_FALSE);
 
-   ret = drv->SwapBuffers(drv, disp, surf);
+   ret = drv->SwapBuffers(disp, surf);
 
    /* EGL_KHR_partial_update
     * Frame boundary successfully reached,
@@ -1369,7 +1369,7 @@ _eglSwapBuffersWithDamageCommon(_EGLDisplay *disp, _EGLSurface *surf,
    if ((n_rects > 0 && rects == NULL) || n_rects < 0)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->SwapBuffersWithDamageEXT(drv, disp, surf, rects, n_rects);
+   ret = drv->SwapBuffersWithDamageEXT(disp, surf, rects, n_rects);
 
    /* EGL_KHR_partial_update
     * Frame boundary successfully reached,
@@ -2190,7 +2190,7 @@ eglSwapBuffersRegionNOK(EGLDisplay dpy, EGLSurface surface,
        surf != ctx->DrawSurface)
       RETURN_EGL_ERROR(disp, EGL_BAD_SURFACE, EGL_FALSE);
 
-   ret = drv->SwapBuffersRegionNOK(drv, disp, surf, numRects, rects);
+   ret = drv->SwapBuffersRegionNOK(disp, surf, numRects, rects);
 
    RETURN_EGL_EVAL(disp, ret);
 }

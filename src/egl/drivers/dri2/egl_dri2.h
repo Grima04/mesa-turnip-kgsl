@@ -119,18 +119,15 @@ struct dri2_egl_display_vtbl {
                               const EGLint *attr_list);
 
    /* mandatory */
-   EGLBoolean (*swap_buffers)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surf);
+   EGLBoolean (*swap_buffers)(_EGLDisplay *disp, _EGLSurface *surf);
 
    /* optional - falls back to .swap_buffers */
-   EGLBoolean (*swap_buffers_with_damage)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                          _EGLSurface *surface,
+   EGLBoolean (*swap_buffers_with_damage)(_EGLDisplay *disp, _EGLSurface *surface,
                                           const EGLint *rects, EGLint n_rects);
 
    /* optional */
-   EGLBoolean (*swap_buffers_region)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                     _EGLSurface *surf, EGLint numRects,
-                                     const EGLint *rects);
+   EGLBoolean (*swap_buffers_region)(_EGLDisplay *disp, _EGLSurface *surf,
+                                     EGLint numRects, const EGLint *rects);
 
    /* optional */
    EGLBoolean (*post_sub_buffer)(const _EGLDriver *drv, _EGLDisplay *disp,

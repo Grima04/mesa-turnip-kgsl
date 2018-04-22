@@ -117,8 +117,7 @@ struct _egl_driver
                                  EGLint buffer);
    EGLBoolean (*SwapInterval)(_EGLDisplay *disp, _EGLSurface *surf,
                               EGLint interval);
-   EGLBoolean (*SwapBuffers)(const _EGLDriver *drv, _EGLDisplay *disp,
-                             _EGLSurface *draw);
+   EGLBoolean (*SwapBuffers)(_EGLDisplay *disp, _EGLSurface *draw);
    EGLBoolean (*CopyBuffers)(const _EGLDriver *drv, _EGLDisplay *disp,
                              _EGLSurface *surface, void *native_pixmap_target);
    EGLBoolean (*SetDamageRegion)(const _EGLDriver *drv, _EGLDisplay *disp,
@@ -152,9 +151,8 @@ struct _egl_driver
    EGLint (*DupNativeFenceFDANDROID)(const _EGLDriver *drv, _EGLDisplay *disp,
                                      _EGLSync *sync);
 
-   EGLBoolean (*SwapBuffersRegionNOK)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                      _EGLSurface *surf, EGLint numRects,
-                                      const EGLint *rects);
+   EGLBoolean (*SwapBuffersRegionNOK)(_EGLDisplay *disp, _EGLSurface *surf,
+                                      EGLint numRects, const EGLint *rects);
 
    _EGLImage *(*CreateDRMImageMESA)(const _EGLDriver *drv, _EGLDisplay *disp,
                                     const EGLint *attr_list);
@@ -174,8 +172,7 @@ struct _egl_driver
                                                        _EGLDisplay *disp,
                                                        _EGLImage *img);
 
-   EGLBoolean (*SwapBuffersWithDamageEXT)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                          _EGLSurface *surface,
+   EGLBoolean (*SwapBuffersWithDamageEXT)(_EGLDisplay *disp, _EGLSurface *surface,
                                           const EGLint *rects, EGLint n_rects);
 
    EGLBoolean (*PostSubBufferNV)(const _EGLDriver *drv, _EGLDisplay *disp,

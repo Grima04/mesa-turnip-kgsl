@@ -299,7 +299,7 @@ haiku_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
 
 extern "C"
 EGLBoolean
-haiku_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+haiku_swap_buffers(_EGLDisplay *disp, _EGLSurface *surf)
 {
 	struct haiku_egl_surface* surface = haiku_egl_surface(surf);
 

@@ -413,7 +413,7 @@ const __DRIimageLoaderExtension dri3_image_loader_extension = {
 };
 
 static EGLBoolean
-dri3_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
+dri3_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(draw);
 

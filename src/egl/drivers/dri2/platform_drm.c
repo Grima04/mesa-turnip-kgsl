@@ -414,7 +414,7 @@ dri2_drm_flush_front_buffer(__DRIdrawable * driDrawable, void *loaderPrivate)
 }
 
 static EGLBoolean
-dri2_drm_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
+dri2_drm_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
