@@ -1237,7 +1237,7 @@ eglBindTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
 
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
-   ret = drv->BindTexImage(drv, disp, surf, buffer);
+   ret = drv->BindTexImage(disp, surf, buffer);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1253,7 +1253,7 @@ eglReleaseTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
 
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
-   ret = drv->ReleaseTexImage(drv, disp, surf, buffer);
+   ret = drv->ReleaseTexImage(disp, surf, buffer);
 
    RETURN_EGL_EVAL(disp, ret);
 }

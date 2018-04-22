@@ -111,10 +111,10 @@ struct _egl_driver
    EGLBoolean (*DestroySurface)(_EGLDisplay *disp, _EGLSurface *surface);
    EGLBoolean (*QuerySurface)(_EGLDisplay *disp, _EGLSurface *surface,
                               EGLint attribute, EGLint *value);
-   EGLBoolean (*BindTexImage)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surface, EGLint buffer);
-   EGLBoolean (*ReleaseTexImage)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLSurface *surface, EGLint buffer);
+   EGLBoolean (*BindTexImage)(_EGLDisplay *disp, _EGLSurface *surface,
+                              EGLint buffer);
+   EGLBoolean (*ReleaseTexImage)(_EGLDisplay *disp, _EGLSurface *surface,
+                                 EGLint buffer);
    EGLBoolean (*SwapInterval)(const _EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf, EGLint interval);
    EGLBoolean (*SwapBuffers)(const _EGLDriver *drv, _EGLDisplay *disp,

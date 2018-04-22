@@ -719,8 +719,7 @@ _eglSurfaceAttrib(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface
 
 
 EGLBoolean
-_eglBindTexImage(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
-                 EGLint buffer)
+_eglBindTexImage(_EGLDisplay *disp, _EGLSurface *surface, EGLint buffer)
 {
    EGLint texture_type = EGL_PBUFFER_BIT;
 
@@ -749,8 +748,7 @@ _eglBindTexImage(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
 }
 
 EGLBoolean
-_eglReleaseTexImage(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
-                    EGLint buffer)
+_eglReleaseTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 {
    /* Just do basic error checking and return success/fail.
     * Drivers must implement the real stuff.

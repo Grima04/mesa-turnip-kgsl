@@ -2126,8 +2126,7 @@ dri2_wait_native(const _EGLDriver *drv, _EGLDisplay *disp, EGLint engine)
 }
 
 static EGLBoolean
-dri2_bind_tex_image(const _EGLDriver *drv,
-                    _EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
+dri2_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_context *dri2_ctx;
@@ -2138,7 +2137,7 @@ dri2_bind_tex_image(const _EGLDriver *drv,
    ctx = _eglGetCurrentContext();
    dri2_ctx = dri2_egl_context(ctx);
 
-   if (!_eglBindTexImage(drv, disp, surf, buffer))
+   if (!_eglBindTexImage(disp, surf, buffer))
       return EGL_FALSE;
 
    switch (surf->TextureFormat) {
@@ -2170,8 +2169,7 @@ dri2_bind_tex_image(const _EGLDriver *drv,
 }
 
 static EGLBoolean
-dri2_release_tex_image(const _EGLDriver *drv,
-                       _EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
+dri2_release_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_context *dri2_ctx;
@@ -2182,7 +2180,7 @@ dri2_release_tex_image(const _EGLDriver *drv,
    ctx = _eglGetCurrentContext();
    dri2_ctx = dri2_egl_context(ctx);
 
-   if (!_eglReleaseTexImage(drv, disp, surf, buffer))
+   if (!_eglReleaseTexImage(disp, surf, buffer))
       return EGL_FALSE;
 
    switch (surf->TextureTarget) {

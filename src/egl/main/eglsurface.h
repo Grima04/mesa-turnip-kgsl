@@ -190,10 +190,10 @@ _eglSurfaceAttrib(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf, E
 
 
 extern EGLBoolean
-_eglBindTexImage(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf, EGLint buffer);
+_eglBindTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer);
 
 extern EGLBoolean
-_eglReleaseTexImage(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf, EGLint buffer);
+_eglReleaseTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer);
 
 
 extern EGLBoolean
