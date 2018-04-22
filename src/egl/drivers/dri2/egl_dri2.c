@@ -2083,12 +2083,12 @@ dri2_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_targ
 }
 
 static EGLint
-dri2_query_buffer_age(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_query_buffer_age(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->query_buffer_age)
       return 0;
-   return dri2_dpy->vtbl->query_buffer_age(drv, disp, surf);
+   return dri2_dpy->vtbl->query_buffer_age(disp, surf);
 }
 
 static EGLBoolean

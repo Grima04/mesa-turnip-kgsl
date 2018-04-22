@@ -138,8 +138,7 @@ struct dri2_egl_display_vtbl {
                               void *native_pixmap_target);
 
    /* optional */
-   EGLint (*query_buffer_age)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surf);
+   EGLint (*query_buffer_age)(_EGLDisplay *disp, _EGLSurface *surf);
 
    /* optional */
    EGLBoolean (*query_surface)(_EGLDisplay *disp, _EGLSurface *surf,

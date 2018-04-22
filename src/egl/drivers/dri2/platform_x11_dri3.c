@@ -437,7 +437,7 @@ dri3_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_targ
 }
 
 static int
-dri3_query_buffer_age(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri3_query_buffer_age(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
 

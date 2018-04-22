@@ -164,8 +164,7 @@ struct _egl_driver
    EGLBoolean (*PostSubBufferNV)(_EGLDisplay *disp, _EGLSurface *surface,
                                  EGLint x, EGLint y, EGLint width, EGLint height);
 
-   EGLint (*QueryBufferAge)(const _EGLDriver *drv,
-                            _EGLDisplay *disp, _EGLSurface *surface);
+   EGLint (*QueryBufferAge)(_EGLDisplay *disp, _EGLSurface *surface);
    EGLBoolean (*GetSyncValuesCHROMIUM)(_EGLDisplay *disp, _EGLSurface *surface,
                                        EGLuint64KHR *ust, EGLuint64KHR *msc,
                                        EGLuint64KHR *sbc);

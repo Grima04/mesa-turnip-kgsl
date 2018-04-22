@@ -1149,8 +1149,7 @@ dri2_wl_swap_buffers_with_damage(_EGLDisplay *disp,
 }
 
 static EGLint
-dri2_wl_query_buffer_age(const _EGLDriver *drv,
-                         _EGLDisplay *disp, _EGLSurface *surface)
+dri2_wl_query_buffer_age(_EGLDisplay *disp, _EGLSurface *surface)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surface);
 
