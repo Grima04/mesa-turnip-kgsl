@@ -169,13 +169,12 @@ struct _egl_driver
                                        EGLuint64KHR *ust, EGLuint64KHR *msc,
                                        EGLuint64KHR *sbc);
 
-   EGLBoolean (*ExportDMABUFImageQueryMESA)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                            _EGLImage *img, EGLint *fourcc,
-                                            EGLint *nplanes,
+   EGLBoolean (*ExportDMABUFImageQueryMESA)(_EGLDisplay *disp, _EGLImage *img,
+                                            EGLint *fourcc, EGLint *nplanes,
                                             EGLuint64KHR *modifiers);
-   EGLBoolean (*ExportDMABUFImageMESA)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                       _EGLImage *img, EGLint *fds,
-                                       EGLint *strides, EGLint *offsets);
+   EGLBoolean (*ExportDMABUFImageMESA)(_EGLDisplay *disp, _EGLImage *img,
+                                       EGLint *fds, EGLint *strides,
+                                       EGLint *offsets);
 
    int (*GLInteropQueryDeviceInfo)(_EGLDisplay *disp, _EGLContext *ctx,
                                    struct mesa_glinterop_device_info *out);

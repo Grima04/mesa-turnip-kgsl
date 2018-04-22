@@ -2385,8 +2385,7 @@ eglExportDMABUFImageQueryMESA(EGLDisplay dpy, EGLImage image,
    if (!img)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->ExportDMABUFImageQueryMESA(drv, disp, img, fourcc, nplanes,
-                                             modifiers);
+   ret = drv->ExportDMABUFImageQueryMESA(disp, img, fourcc, nplanes, modifiers);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2408,7 +2407,7 @@ eglExportDMABUFImageMESA(EGLDisplay dpy, EGLImage image,
    if (!img)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->ExportDMABUFImageMESA(drv, disp, img, fds, strides, offsets);
+   ret = drv->ExportDMABUFImageMESA(disp, img, fds, strides, offsets);
 
    RETURN_EGL_EVAL(disp, ret);
 }

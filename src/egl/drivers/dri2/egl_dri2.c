@@ -3014,16 +3014,13 @@ dri2_can_export_dma_buf_image(_EGLDisplay *disp, _EGLImage *img)
 }
 
 static EGLBoolean
-dri2_export_dma_buf_image_query_mesa(const _EGLDriver *drv, _EGLDisplay *disp,
-                                     _EGLImage *img,
+dri2_export_dma_buf_image_query_mesa(_EGLDisplay *disp, _EGLImage *img,
                                      EGLint *fourcc, EGLint *nplanes,
                                      EGLuint64KHR *modifiers)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(img);
    int num_planes;
-
-   (void) drv;
 
    if (!dri2_can_export_dma_buf_image(disp, img))
       return EGL_FALSE;
@@ -3059,14 +3056,12 @@ dri2_export_dma_buf_image_query_mesa(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_export_dma_buf_image_mesa(const _EGLDriver *drv, _EGLDisplay *disp, _EGLImage *img,
+dri2_export_dma_buf_image_mesa(_EGLDisplay *disp, _EGLImage *img,
                                int *fds, EGLint *strides, EGLint *offsets)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(img);
    EGLint nplanes;
-
-   (void) drv;
 
    if (!dri2_can_export_dma_buf_image(disp, img))
       return EGL_FALSE;
