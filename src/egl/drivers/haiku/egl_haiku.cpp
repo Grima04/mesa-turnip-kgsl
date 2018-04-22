@@ -237,7 +237,7 @@ haiku_terminate(_EGLDisplay *disp)
 
 extern "C"
 _EGLContext*
-haiku_create_context(const _EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
+haiku_create_context(_EGLDisplay *disp, _EGLConfig *conf,
 	_EGLContext *share_list, const EGLint *attrib_list)
 {
 	CALLED();
@@ -263,7 +263,7 @@ cleanup:
 
 extern "C"
 EGLBoolean
-haiku_destroy_context(const _EGLDriver* drv, _EGLDisplay *disp, _EGLContext* ctx)
+haiku_destroy_context(_EGLDisplay *disp, _EGLContext* ctx)
 {
 	struct haiku_egl_context* context = haiku_egl_context(ctx);
 

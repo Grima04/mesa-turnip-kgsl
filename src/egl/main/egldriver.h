@@ -91,11 +91,9 @@ struct _egl_driver
    char *(*QueryDriverConfig)(_EGLDisplay *disp);
 
    /* context funcs */
-   _EGLContext *(*CreateContext)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLConfig *config, _EGLContext *share_list,
-                                 const EGLint *attrib_list);
-   EGLBoolean (*DestroyContext)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLContext *ctx);
+   _EGLContext *(*CreateContext)(_EGLDisplay *disp, _EGLConfig *config,
+                                 _EGLContext *share_list, const EGLint *attrib_list);
+   EGLBoolean (*DestroyContext)(_EGLDisplay *disp, _EGLContext *ctx);
    /* this is the only function (other than Initialize) that may be called
     * with an uninitialized display
     */

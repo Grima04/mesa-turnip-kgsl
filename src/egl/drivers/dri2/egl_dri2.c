@@ -1466,7 +1466,7 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
  * Called via eglCreateContext(), drv->CreateContext().
  */
 static _EGLContext *
-dri2_create_context(const _EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
+dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
                     _EGLContext *share_list, const EGLint *attrib_list)
 {
    struct dri2_egl_context *dri2_ctx;
@@ -1480,8 +1480,6 @@ dri2_create_context(const _EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
    unsigned error;
    unsigned num_attribs = NUM_ATTRIBS;
    uint32_t ctx_attribs[NUM_ATTRIBS];
-
-   (void) drv;
 
    dri2_ctx = malloc(sizeof *dri2_ctx);
    if (!dri2_ctx) {
@@ -1641,7 +1639,7 @@ dri2_create_context(const _EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
  * Called via eglDestroyContext(), drv->DestroyContext().
  */
 static EGLBoolean
-dri2_destroy_context(const _EGLDriver *drv, _EGLDisplay *disp, _EGLContext *ctx)
+dri2_destroy_context(_EGLDisplay *disp, _EGLContext *ctx)
 {
    struct dri2_egl_context *dri2_ctx = dri2_egl_context(ctx);
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -1866,7 +1864,7 @@ dri2_make_current(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
    dri2_destroy_surface(drv, disp, old_rsurf);
 
    if (old_ctx) {
-      dri2_destroy_context(drv, disp, old_ctx);
+      dri2_destroy_context(disp, old_ctx);
       dri2_display_release(old_disp);
    }
 

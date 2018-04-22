@@ -802,7 +802,7 @@ eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_list,
    if (!share && share_list != EGL_NO_CONTEXT)
       RETURN_EGL_ERROR(disp, EGL_BAD_CONTEXT, EGL_NO_CONTEXT);
 
-   context = drv->CreateContext(drv, disp, conf, share, attrib_list);
+   context = drv->CreateContext(disp, conf, share, attrib_list);
    ret = (context) ? _eglLinkContext(context) : EGL_NO_CONTEXT;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -821,7 +821,7 @@ eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 
    _EGL_CHECK_CONTEXT(disp, context, EGL_FALSE, drv);
    _eglUnlinkContext(context);
-   ret = drv->DestroyContext(drv, disp, context);
+   ret = drv->DestroyContext(disp, context);
 
    RETURN_EGL_EVAL(disp, ret);
 }

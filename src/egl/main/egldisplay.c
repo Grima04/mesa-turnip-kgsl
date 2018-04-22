@@ -304,7 +304,7 @@ _eglReleaseDisplayResources(_EGLDisplay *display)
       list = list->Next;
 
       _eglUnlinkContext(ctx);
-      drv->DestroyContext(drv, display, ctx);
+      drv->DestroyContext(display, ctx);
    }
    assert(!display->ResourceLists[_EGL_RESOURCE_CONTEXT]);
 
