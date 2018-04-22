@@ -317,7 +317,7 @@ device_probe_device_sw(_EGLDisplay *disp)
 }
 
 EGLBoolean
-dri2_initialize_device(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_device(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -357,7 +357,7 @@ dri2_initialize_device(const _EGLDriver *drv, _EGLDisplay *disp)
 
    dri2_setup_screen(disp);
 
-   if (!dri2_add_pbuffer_configs_for_visuals(drv, disp)) {
+   if (!dri2_add_pbuffer_configs_for_visuals(disp)) {
       err = "DRI2: failed to add configs";
       goto cleanup;
    }

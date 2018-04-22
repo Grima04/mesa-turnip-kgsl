@@ -63,7 +63,7 @@ _eglInitializeDisplay(_EGLDisplay *disp)
    if (disp->Options.ForceSoftware)
       _eglLog(_EGL_DEBUG, "Found 'LIBGL_ALWAYS_SOFTWARE' set, will use a CPU renderer");
 
-   if (_eglDriver.Initialize(&_eglDriver, disp)) {
+   if (_eglDriver.Initialize(disp)) {
       disp->Driver = &_eglDriver;
       disp->Initialized = EGL_TRUE;
       return true;
@@ -73,7 +73,7 @@ _eglInitializeDisplay(_EGLDisplay *disp)
       return false;
 
    disp->Options.ForceSoftware = EGL_TRUE;
-   if (!_eglDriver.Initialize(&_eglDriver, disp))
+   if (!_eglDriver.Initialize(disp))
       return false;
 
    disp->Driver = &_eglDriver;

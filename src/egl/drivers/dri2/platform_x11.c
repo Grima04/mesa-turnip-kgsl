@@ -1230,7 +1230,7 @@ dri2_find_screen_for_display(const _EGLDisplay *disp, int fallback_screen)
 }
 
 static EGLBoolean
-dri2_get_xcb_connection(const _EGLDriver *drv, _EGLDisplay *disp,
+dri2_get_xcb_connection(_EGLDisplay *disp,
                         struct dri2_egl_display *dri2_dpy)
 {
    xcb_screen_iterator_t s;
@@ -1269,7 +1269,7 @@ disconnect:
 }
 
 static EGLBoolean
-dri2_initialize_x11_swrast(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_x11_swrast(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -1279,7 +1279,7 @@ dri2_initialize_x11_swrast(const _EGLDriver *drv, _EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
-   if (!dri2_get_xcb_connection(drv, disp, dri2_dpy))
+   if (!dri2_get_xcb_connection(disp, dri2_dpy))
       goto cleanup;
 
    dev = _eglAddDevice(dri2_dpy->fd, true);
@@ -1356,7 +1356,7 @@ static const __DRIextension *dri3_image_loader_extensions[] = {
 };
 
 static EGLBoolean
-dri2_initialize_x11_dri3(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_x11_dri3(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -1366,7 +1366,7 @@ dri2_initialize_x11_dri3(const _EGLDriver *drv, _EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
-   if (!dri2_get_xcb_connection(drv, disp, dri2_dpy))
+   if (!dri2_get_xcb_connection(disp, dri2_dpy))
       goto cleanup;
 
    if (!dri3_x11_connect(dri2_dpy))
@@ -1404,7 +1404,7 @@ dri2_initialize_x11_dri3(const _EGLDriver *drv, _EGLDisplay *disp)
    disp->Extensions.CHROMIUM_sync_control = EGL_TRUE;
    disp->Extensions.EXT_buffer_age = EGL_TRUE;
 
-   dri2_set_WL_bind_wayland_display(drv, disp);
+   dri2_set_WL_bind_wayland_display(disp);
 
    if (!dri2_x11_add_configs_for_visuals(dri2_dpy, disp, false))
       goto cleanup;
@@ -1463,7 +1463,7 @@ static const __DRIextension *dri2_loader_extensions[] = {
 };
 
 static EGLBoolean
-dri2_initialize_x11_dri2(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_x11_dri2(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -1473,7 +1473,7 @@ dri2_initialize_x11_dri2(const _EGLDriver *drv, _EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
-   if (!dri2_get_xcb_connection(drv, disp, dri2_dpy))
+   if (!dri2_get_xcb_connection(disp, dri2_dpy))
       goto cleanup;
 
    if (!dri2_x11_connect(dri2_dpy))
@@ -1514,7 +1514,7 @@ dri2_initialize_x11_dri2(const _EGLDriver *drv, _EGLDisplay *disp)
    disp->Extensions.NV_post_sub_buffer = EGL_TRUE;
    disp->Extensions.CHROMIUM_sync_control = EGL_TRUE;
 
-   dri2_set_WL_bind_wayland_display(drv, disp);
+   dri2_set_WL_bind_wayland_display(disp);
 
    if (!dri2_x11_add_configs_for_visuals(dri2_dpy, disp, true))
       goto cleanup;
@@ -1534,22 +1534,22 @@ dri2_initialize_x11_dri2(const _EGLDriver *drv, _EGLDisplay *disp)
 }
 
 EGLBoolean
-dri2_initialize_x11(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_x11(_EGLDisplay *disp)
 {
    EGLBoolean initialized = EGL_FALSE;
 
    if (!disp->Options.ForceSoftware) {
 #ifdef HAVE_DRI3
       if (!env_var_as_boolean("LIBGL_DRI3_DISABLE", false))
-         initialized = dri2_initialize_x11_dri3(drv, disp);
+         initialized = dri2_initialize_x11_dri3(disp);
 #endif
 
       if (!initialized)
-         initialized = dri2_initialize_x11_dri2(drv, disp);
+         initialized = dri2_initialize_x11_dri2(disp);
    }
 
    if (!initialized)
-      initialized = dri2_initialize_x11_swrast(drv, disp);
+      initialized = dri2_initialize_x11_swrast(disp);
 
    return initialized;
 }

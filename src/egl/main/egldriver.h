@@ -85,7 +85,7 @@ struct mesa_glinterop_export_out;
 struct _egl_driver
 {
    /* driver funcs */
-   EGLBoolean (*Initialize)(const _EGLDriver *, _EGLDisplay *disp);
+   EGLBoolean (*Initialize)(_EGLDisplay *disp);
    EGLBoolean (*Terminate)(const _EGLDriver *, _EGLDisplay *disp);
    const char *(*QueryDriverName)(_EGLDisplay *disp);
    char *(*QueryDriverConfig)(_EGLDisplay *disp);

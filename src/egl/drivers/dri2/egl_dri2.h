@@ -446,7 +446,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
                 const int *rgba_shifts, const unsigned int *rgba_sizes);
 
 EGLBoolean
-dri2_add_pbuffer_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_add_pbuffer_configs_for_visuals(_EGLDisplay *disp);
 
 _EGLImage *
 dri2_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
@@ -459,14 +459,14 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
 
 #ifdef HAVE_X11_PLATFORM
 EGLBoolean
-dri2_initialize_x11(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_x11(_EGLDisplay *disp);
 void
 dri2_teardown_x11(struct dri2_egl_display *dri2_dpy);
 unsigned int
 dri2_x11_get_red_mask_for_depth(struct dri2_egl_display *dri2_dpy, int depth);
 #else
 static inline EGLBoolean
-dri2_initialize_x11(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_x11(_EGLDisplay *disp)
 {
    return _eglError(EGL_NOT_INITIALIZED, "X11 platform not built");
 }
@@ -481,12 +481,12 @@ dri2_x11_get_red_mask_for_depth(struct dri2_egl_display *dri2_dpy, int depth)
 
 #ifdef HAVE_DRM_PLATFORM
 EGLBoolean
-dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_drm(_EGLDisplay *disp);
 void
 dri2_teardown_drm(struct dri2_egl_display *dri2_dpy);
 #else
 static inline EGLBoolean
-dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_drm(_EGLDisplay *disp)
 {
    return _eglError(EGL_NOT_INITIALIZED, "GBM/DRM platform not built");
 }
@@ -496,14 +496,14 @@ dri2_teardown_drm(struct dri2_egl_display *dri2_dpy) {}
 
 #ifdef HAVE_WAYLAND_PLATFORM
 EGLBoolean
-dri2_initialize_wayland(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_wayland(_EGLDisplay *disp);
 void
 dri2_teardown_wayland(struct dri2_egl_display *dri2_dpy);
 bool
 dri2_wl_is_format_supported(void* user_data, uint32_t format);
 #else
 static inline EGLBoolean
-dri2_initialize_wayland(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_wayland(_EGLDisplay *disp)
 {
    return _eglError(EGL_NOT_INITIALIZED, "Wayland platform not built");
 }
@@ -513,20 +513,20 @@ dri2_teardown_wayland(struct dri2_egl_display *dri2_dpy) {}
 
 #ifdef HAVE_ANDROID_PLATFORM
 EGLBoolean
-dri2_initialize_android(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_android(_EGLDisplay *disp);
 #else
 static inline EGLBoolean
-dri2_initialize_android(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_android(_EGLDisplay *disp)
 {
    return _eglError(EGL_NOT_INITIALIZED, "Android platform not built");
 }
 #endif
 
 EGLBoolean
-dri2_initialize_surfaceless(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_surfaceless(_EGLDisplay *disp);
 
 EGLBoolean
-dri2_initialize_device(const _EGLDriver *drv, _EGLDisplay *disp);
+dri2_initialize_device(_EGLDisplay *disp);
 static inline void
 dri2_teardown_device(struct dri2_egl_display *dri2_dpy) { /* noop */ }
 
@@ -538,12 +538,10 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
                     EGLenum colorspace);
 
 static inline void
-dri2_set_WL_bind_wayland_display(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_set_WL_bind_wayland_display(_EGLDisplay *disp)
 {
 #ifdef HAVE_WAYLAND_PLATFORM
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-
-   (void) drv;
 
    if (dri2_dpy->device_name && dri2_dpy->image) {
        if (dri2_dpy->image->base.version >= 10 &&

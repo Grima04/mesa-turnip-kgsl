@@ -610,7 +610,7 @@ swrast_get_image(__DRIdrawable *driDrawable,
 }
 
 static EGLBoolean
-drm_add_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
+drm_add_configs_for_visuals(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const struct gbm_dri_visual *visuals = dri2_dpy->gbm_dri->visual_table;
@@ -682,7 +682,7 @@ static const struct dri2_egl_display_vtbl dri2_drm_display_vtbl = {
 };
 
 EGLBoolean
-dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_drm(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -774,7 +774,7 @@ dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp)
 
    dri2_setup_screen(disp);
 
-   if (!drm_add_configs_for_visuals(drv, disp)) {
+   if (!drm_add_configs_for_visuals(disp)) {
       err = "DRI2: failed to add configs";
       goto cleanup;
    }
@@ -786,7 +786,7 @@ dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp)
 #ifdef HAVE_WAYLAND_PLATFORM
    dri2_dpy->device_name = loader_get_device_name_for_fd(dri2_dpy->fd);
 #endif
-   dri2_set_WL_bind_wayland_display(drv, disp);
+   dri2_set_WL_bind_wayland_display(disp);
 
    /* Fill vtbl last to prevent accidentally calling virtual function during
     * initialization.

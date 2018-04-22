@@ -644,7 +644,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 }
 
 EGLBoolean
-dri2_add_pbuffer_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_add_pbuffer_configs_for_visuals(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    unsigned int format_count[ARRAY_SIZE(dri2_pbuffer_visuals)] = { 0 };
@@ -1142,7 +1142,7 @@ dri2_setup_extensions(_EGLDisplay *disp)
  * called many times (without a eglTerminate in between).
  */
 static EGLBoolean
-dri2_initialize(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize(_EGLDisplay *disp)
 {
    EGLBoolean ret = EGL_FALSE;
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -1168,22 +1168,22 @@ dri2_initialize(const _EGLDriver *drv, _EGLDisplay *disp)
 
    switch (disp->Platform) {
    case _EGL_PLATFORM_SURFACELESS:
-      ret = dri2_initialize_surfaceless(drv, disp);
+      ret = dri2_initialize_surfaceless(disp);
       break;
    case _EGL_PLATFORM_DEVICE:
-      ret = dri2_initialize_device(drv, disp);
+      ret = dri2_initialize_device(disp);
       break;
    case _EGL_PLATFORM_X11:
-      ret = dri2_initialize_x11(drv, disp);
+      ret = dri2_initialize_x11(disp);
       break;
    case _EGL_PLATFORM_DRM:
-      ret = dri2_initialize_drm(drv, disp);
+      ret = dri2_initialize_drm(disp);
       break;
    case _EGL_PLATFORM_WAYLAND:
-      ret = dri2_initialize_wayland(drv, disp);
+      ret = dri2_initialize_wayland(disp);
       break;
    case _EGL_PLATFORM_ANDROID:
-      ret = dri2_initialize_android(drv, disp);
+      ret = dri2_initialize_android(disp);
       break;
    default:
       unreachable("Callers ensure we cannot get here.");

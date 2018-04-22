@@ -1178,7 +1178,7 @@ droid_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
 }
 
 static EGLBoolean
-droid_add_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
+droid_add_configs_for_visuals(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    static const struct {
@@ -1584,7 +1584,7 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
 #endif
 
 EGLBoolean
-dri2_initialize_android(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_android(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    bool device_opened = false;
@@ -1664,7 +1664,7 @@ dri2_initialize_android(const _EGLDriver *drv, _EGLDisplay *disp)
    /* Create configs *after* enabling extensions because presence of DRI
     * driver extensions can affect the capabilities of EGLConfigs.
     */
-   if (!droid_add_configs_for_visuals(drv, disp)) {
+   if (!droid_add_configs_for_visuals(disp)) {
       err = "DRI2: failed to add configs";
       goto cleanup;
    }

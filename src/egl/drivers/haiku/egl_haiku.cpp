@@ -205,7 +205,7 @@ cleanup:
 
 extern "C"
 EGLBoolean
-init_haiku(const _EGLDriver *drv, _EGLDisplay *disp)
+init_haiku(_EGLDisplay *disp)
 {
 	_EGLDevice *dev;
 	CALLED();

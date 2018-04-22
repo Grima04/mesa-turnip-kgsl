@@ -1407,7 +1407,7 @@ static const __DRIextension *image_loader_extensions[] = {
 };
 
 static EGLBoolean
-dri2_wl_add_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_wl_add_configs_for_visuals(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    unsigned int format_count[ARRAY_SIZE(dri2_wl_visuals)] = { 0 };
@@ -1482,7 +1482,7 @@ dri2_wl_add_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
 }
 
 static EGLBoolean
-dri2_initialize_wayland_drm(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_wayland_drm(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -1620,12 +1620,12 @@ dri2_initialize_wayland_drm(const _EGLDriver *drv, _EGLDisplay *disp)
       goto cleanup;
    }
 
-   if (!dri2_wl_add_configs_for_visuals(drv, disp)) {
+   if (!dri2_wl_add_configs_for_visuals(disp)) {
       _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to add configs");
       goto cleanup;
    }
 
-   dri2_set_WL_bind_wayland_display(drv, disp);
+   dri2_set_WL_bind_wayland_display(disp);
    /* When cannot convert EGLImage to wl_buffer when on a different gpu,
     * because the buffer of the EGLImage has likely a tiling mode the server
     * gpu won't support. These is no way to check for now. Thus do not support the
@@ -2019,7 +2019,7 @@ static const __DRIextension *swrast_loader_extensions[] = {
 };
 
 static EGLBoolean
-dri2_initialize_wayland_swrast(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_wayland_swrast(_EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;
@@ -2086,7 +2086,7 @@ dri2_initialize_wayland_swrast(const _EGLDriver *drv, _EGLDisplay *disp)
 
    dri2_wl_setup_swap_interval(disp);
 
-   if (!dri2_wl_add_configs_for_visuals(drv, disp)) {
+   if (!dri2_wl_add_configs_for_visuals(disp)) {
       _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to add configs");
       goto cleanup;
    }
@@ -2104,15 +2104,15 @@ dri2_initialize_wayland_swrast(const _EGLDriver *drv, _EGLDisplay *disp)
 }
 
 EGLBoolean
-dri2_initialize_wayland(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_wayland(_EGLDisplay *disp)
 {
    EGLBoolean initialized = EGL_FALSE;
 
    if (!disp->Options.ForceSoftware)
-      initialized = dri2_initialize_wayland_drm(drv, disp);
+      initialized = dri2_initialize_wayland_drm(disp);
 
    if (!initialized)
-      initialized = dri2_initialize_wayland_swrast(drv, disp);
+      initialized = dri2_initialize_wayland_swrast(disp);
 
    return initialized;
 
