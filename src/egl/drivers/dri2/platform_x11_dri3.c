@@ -366,8 +366,7 @@ dri3_create_image_khr_pixmap_from_buffers(_EGLDisplay *disp, _EGLContext *ctx,
 #endif
 
 static _EGLImage *
-dri3_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
-                      _EGLContext *ctx, EGLenum target,
+dri3_create_image_khr(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
                       EGLClientBuffer buffer, const EGLint *attr_list)
 {
 #ifdef HAVE_DRI3_MODIFIERS
@@ -383,7 +382,7 @@ dri3_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
 #endif
       return dri3_create_image_khr_pixmap(disp, ctx, buffer, attr_list);
    default:
-      return dri2_create_image_khr(drv, disp, ctx, target, buffer, attr_list);
+      return dri2_create_image_khr(disp, ctx, target, buffer, attr_list);
    }
 }
 

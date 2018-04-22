@@ -1120,17 +1120,14 @@ dri2_create_image_khr_pixmap(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 static _EGLImage *
-dri2_x11_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
-			  _EGLContext *ctx, EGLenum target,
-			  EGLClientBuffer buffer, const EGLint *attr_list)
+dri2_x11_create_image_khr(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
+                          EGLClientBuffer buffer, const EGLint *attr_list)
 {
-   (void) drv;
-
    switch (target) {
    case EGL_NATIVE_PIXMAP_KHR:
       return dri2_create_image_khr_pixmap(disp, ctx, buffer, attr_list);
    default:
-      return dri2_create_image_khr(drv, disp, ctx, target, buffer, attr_list);
+      return dri2_create_image_khr(disp, ctx, target, buffer, attr_list);
    }
 }
 

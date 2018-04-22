@@ -2193,12 +2193,11 @@ dri2_release_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 }
 
 static _EGLImage*
-dri2_create_image(const _EGLDriver *drv, _EGLDisplay *disp, _EGLContext *ctx,
-                  EGLenum target, EGLClientBuffer buffer,
-                  const EGLint *attr_list)
+dri2_create_image(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
+                  EGLClientBuffer buffer, const EGLint *attr_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   return dri2_dpy->vtbl->create_image(drv, disp, ctx, target, buffer,
+   return dri2_dpy->vtbl->create_image(disp, ctx, target, buffer,
                                        attr_list);
 }
 
@@ -3114,12 +3113,9 @@ dri2_export_dma_buf_image_mesa(const _EGLDriver *drv, _EGLDisplay *disp, _EGLIma
 #endif
 
 _EGLImage *
-dri2_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
-                      _EGLContext *ctx, EGLenum target,
+dri2_create_image_khr(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
                       EGLClientBuffer buffer, const EGLint *attr_list)
 {
-   (void) drv;
-
    switch (target) {
    case EGL_GL_TEXTURE_2D_KHR:
    case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR:
@@ -3149,12 +3145,10 @@ dri2_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_destroy_image_khr(const _EGLDriver *drv, _EGLDisplay *disp, _EGLImage *image)
+dri2_destroy_image_khr(_EGLDisplay *disp, _EGLImage *image)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(image);
-
-   (void) drv;
 
    dri2_dpy->image->destroyImage(dri2_img->dri_image);
    free(dri2_img);

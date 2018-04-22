@@ -130,12 +130,10 @@ struct _egl_driver
    /* this function may be called from multiple threads at the same time */
    _EGLProc (*GetProcAddress)(const char *procname);
 
-   _EGLImage *(*CreateImageKHR)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLContext *ctx, EGLenum target,
-                                EGLClientBuffer buffer,
+   _EGLImage *(*CreateImageKHR)(_EGLDisplay *disp, _EGLContext *ctx,
+                                EGLenum target, EGLClientBuffer buffer,
                                 const EGLint *attr_list);
-   EGLBoolean (*DestroyImageKHR)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLImage *image);
+   EGLBoolean (*DestroyImageKHR)(_EGLDisplay *disp, _EGLImage *image);
 
    _EGLSync *(*CreateSyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp, EGLenum type,
                               const EGLAttrib *attrib_list);

@@ -324,7 +324,7 @@ _eglReleaseDisplayResources(_EGLDisplay *display)
       list = list->Next;
 
       _eglUnlinkImage(image);
-      drv->DestroyImageKHR(drv, display, image);
+      drv->DestroyImageKHR(display, image);
    }
    assert(!display->ResourceLists[_EGL_RESOURCE_IMAGE]);
 

@@ -1734,8 +1734,7 @@ _eglCreateImageCommon(_EGLDisplay *disp, EGLContext ctx, EGLenum target,
    if (ctx != EGL_NO_CONTEXT && target == EGL_LINUX_DMA_BUF_EXT)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_NO_IMAGE_KHR);
 
-   img = drv->CreateImageKHR(drv, disp, context, target,
-                                 buffer, attr_list);
+   img = drv->CreateImageKHR(disp, context, target, buffer, attr_list);
    ret = (img) ? _eglLinkImage(img) : EGL_NO_IMAGE_KHR;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -1784,7 +1783,7 @@ _eglDestroyImageCommon(_EGLDisplay *disp, _EGLImage *img)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
    _eglUnlinkImage(img);
-   ret = drv->DestroyImageKHR(drv, disp, img);
+   ret = drv->DestroyImageKHR(disp, img);
 
    RETURN_EGL_EVAL(disp, ret);
 }

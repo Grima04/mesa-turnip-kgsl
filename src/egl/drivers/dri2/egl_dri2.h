@@ -113,9 +113,8 @@ struct dri2_egl_display_vtbl {
                                EGLint interval);
 
    /* mandatory */
-   _EGLImage* (*create_image)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLContext *ctx, EGLenum target,
-                              EGLClientBuffer buffer,
+   _EGLImage* (*create_image)(_EGLDisplay *disp, _EGLContext *ctx,
+                              EGLenum target, EGLClientBuffer buffer,
                               const EGLint *attr_list);
 
    /* mandatory */
@@ -441,8 +440,7 @@ EGLBoolean
 dri2_add_pbuffer_configs_for_visuals(_EGLDisplay *disp);
 
 _EGLImage *
-dri2_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
-                      _EGLContext *ctx, EGLenum target,
+dri2_create_image_khr(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
                       EGLClientBuffer buffer, const EGLint *attr_list);
 
 _EGLImage *
