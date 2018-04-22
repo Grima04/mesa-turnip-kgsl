@@ -379,7 +379,7 @@ dri2_x11_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
       surf->SwapInterval = 1;
 
       /* Override that with a driconf-set value. */
-      dri2_x11_swap_interval(drv, disp, surf, dri2_dpy->default_swap_interval);
+      dri2_x11_swap_interval(disp->Driver, disp, surf, dri2_dpy->default_swap_interval);
    }
 
    return surf;
