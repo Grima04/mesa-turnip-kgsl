@@ -2050,7 +2050,7 @@ dri2_swap_buffers_region(_EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static EGLBoolean
-dri2_set_damage_region(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri2_set_damage_region(_EGLDisplay *disp, _EGLSurface *surf,
                        EGLint *rects, EGLint n_rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);

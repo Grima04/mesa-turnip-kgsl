@@ -120,8 +120,8 @@ struct _egl_driver
    EGLBoolean (*SwapBuffers)(_EGLDisplay *disp, _EGLSurface *draw);
    EGLBoolean (*CopyBuffers)(_EGLDisplay *disp, _EGLSurface *surface,
                              void *native_pixmap_target);
-   EGLBoolean (*SetDamageRegion)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLSurface *surface, EGLint *rects, EGLint n_rects);
+   EGLBoolean (*SetDamageRegion)(_EGLDisplay *disp, _EGLSurface *surface,
+                                 EGLint *rects, EGLint n_rects);
 
    /* misc functions */
    EGLBoolean (*WaitClient)(const _EGLDriver *drv, _EGLDisplay *disp,

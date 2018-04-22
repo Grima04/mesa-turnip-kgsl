@@ -1456,7 +1456,7 @@ eglSetDamageRegionKHR(EGLDisplay dpy, EGLSurface surface,
       RETURN_EGL_ERROR(disp, EGL_BAD_ACCESS, EGL_FALSE);
 
    _eglSetDamageRegionKHRClampRects(disp, surf, rects, n_rects);
-   ret = drv->SetDamageRegion(drv, disp, surf, rects, n_rects);
+   ret = drv->SetDamageRegion(disp, surf, rects, n_rects);
 
    if (ret)
       surf->SetDamageRegionCalled = EGL_TRUE;
