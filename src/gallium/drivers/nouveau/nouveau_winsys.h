@@ -46,6 +46,13 @@ PUSH_DATAp(struct nouveau_pushbuf *push, const void *data, uint32_t size)
 }
 
 static inline void
+PUSH_DATAb(struct nouveau_pushbuf *push, const void *data, uint32_t size)
+{
+   memcpy(push->cur, data, size);
+   push->cur += DIV_ROUND_UP(size, 4);
+}
+
+static inline void
 PUSH_DATAf(struct nouveau_pushbuf *push, float f)
 {
    union { float f; uint32_t i; } u;
