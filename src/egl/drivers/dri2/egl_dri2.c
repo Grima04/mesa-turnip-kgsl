@@ -2064,13 +2064,13 @@ dri2_set_damage_region(_EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static EGLBoolean
-dri2_post_sub_buffer(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri2_post_sub_buffer(_EGLDisplay *disp, _EGLSurface *surf,
                      EGLint x, EGLint y, EGLint width, EGLint height)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->post_sub_buffer)
       return EGL_FALSE;
-   return dri2_dpy->vtbl->post_sub_buffer(drv, disp, surf, x, y, width, height);
+   return dri2_dpy->vtbl->post_sub_buffer(disp, surf, x, y, width, height);
 }
 
 static EGLBoolean

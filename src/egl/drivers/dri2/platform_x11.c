@@ -968,8 +968,8 @@ dri2_x11_swap_buffers_region(_EGLDisplay *disp, _EGLSurface *draw,
 }
 
 static EGLBoolean
-dri2_x11_post_sub_buffer(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw,
-		     EGLint x, EGLint y, EGLint width, EGLint height)
+dri2_x11_post_sub_buffer(_EGLDisplay *disp, _EGLSurface *draw,
+                         EGLint x, EGLint y, EGLint width, EGLint height)
 {
    const EGLint rect[4] = { x, y, width, height };
 

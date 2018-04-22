@@ -2338,7 +2338,7 @@ eglPostSubBufferNV(EGLDisplay dpy, EGLSurface surface,
    if (!disp->Extensions.NV_post_sub_buffer)
       RETURN_EGL_EVAL(disp, EGL_FALSE);
 
-   ret = drv->PostSubBufferNV(drv, disp, surf, x, y, width, height);
+   ret = drv->PostSubBufferNV(disp, surf, x, y, width, height);
 
    RETURN_EGL_EVAL(disp, ret);
 }

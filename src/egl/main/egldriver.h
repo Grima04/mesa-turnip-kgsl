@@ -161,9 +161,8 @@ struct _egl_driver
    EGLBoolean (*SwapBuffersWithDamageEXT)(_EGLDisplay *disp, _EGLSurface *surface,
                                           const EGLint *rects, EGLint n_rects);
 
-   EGLBoolean (*PostSubBufferNV)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLSurface *surface, EGLint x, EGLint y,
-                                 EGLint width, EGLint height);
+   EGLBoolean (*PostSubBufferNV)(_EGLDisplay *disp, _EGLSurface *surface,
+                                 EGLint x, EGLint y, EGLint width, EGLint height);
 
    EGLint (*QueryBufferAge)(const _EGLDriver *drv,
                             _EGLDisplay *disp, _EGLSurface *surface);
