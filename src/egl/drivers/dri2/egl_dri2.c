@@ -1898,7 +1898,7 @@ dri2_surface_get_dri_drawable(_EGLSurface *surf)
  * Called from eglGetProcAddress() via drv->GetProcAddress().
  */
 static _EGLProc
-dri2_get_proc_address(const _EGLDriver *drv, const char *procname)
+dri2_get_proc_address(const char *procname)
 {
    return _glapi_get_proc_address(procname);
 }

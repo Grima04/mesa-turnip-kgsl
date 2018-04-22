@@ -85,7 +85,7 @@ __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname)
 {
    if (_eglDriver.GetProcAddress)
-      return _eglDriver.GetProcAddress(&_eglDriver, procname);
+      return _eglDriver.GetProcAddress(procname);
 
    return NULL;
 }
