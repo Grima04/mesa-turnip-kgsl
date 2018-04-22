@@ -672,9 +672,7 @@ eglTerminate(EGLDisplay dpy)
       RETURN_EGL_ERROR(NULL, EGL_BAD_DISPLAY, EGL_FALSE);
 
    if (disp->Initialized) {
-      const _EGLDriver *drv = disp->Driver;
-
-      drv->Terminate(drv, disp);
+      disp->Driver->Terminate(disp);
       /* do not reset disp->Driver */
       disp->ClientAPIsString[0] = 0;
       disp->Initialized = EGL_FALSE;

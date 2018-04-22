@@ -229,7 +229,7 @@ init_haiku(_EGLDisplay *disp)
 
 extern "C"
 EGLBoolean
-haiku_terminate(const _EGLDriver* drv,_EGLDisplay *disp)
+haiku_terminate(_EGLDisplay *disp)
 {
 	return EGL_TRUE;
 }

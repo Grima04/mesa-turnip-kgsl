@@ -1311,7 +1311,7 @@ dri2_egl_surface_free_local_buffers(struct dri2_egl_surface *dri2_surf)
  * called many times (without a eglInitialize in between).
  */
 static EGLBoolean
-dri2_terminate(const _EGLDriver *drv, _EGLDisplay *disp)
+dri2_terminate(_EGLDisplay *disp)
 {
    /* Release all non-current Context/Surfaces. */
    _eglReleaseDisplayResources(disp);

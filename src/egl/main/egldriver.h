@@ -86,7 +86,7 @@ struct _egl_driver
 {
    /* driver funcs */
    EGLBoolean (*Initialize)(_EGLDisplay *disp);
-   EGLBoolean (*Terminate)(const _EGLDriver *, _EGLDisplay *disp);
+   EGLBoolean (*Terminate)(_EGLDisplay *disp);
    const char *(*QueryDriverName)(_EGLDisplay *disp);
    char *(*QueryDriverConfig)(_EGLDisplay *disp);
 
