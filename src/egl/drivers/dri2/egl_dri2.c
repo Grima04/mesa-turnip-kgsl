@@ -3460,7 +3460,7 @@ dri2_destroy_sync(_EGLDisplay *disp, _EGLSync *sync)
 }
 
 static EGLint
-dri2_dup_native_fence_fd(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync)
+dri2_dup_native_fence_fd(_EGLDisplay *disp, _EGLSync *sync)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_sync *dri2_sync = dri2_egl_sync(sync);

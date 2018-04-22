@@ -2158,7 +2158,7 @@ eglDupNativeFenceFDANDROID(EGLDisplay dpy, EGLSync sync)
 
    _EGL_CHECK_SYNC(disp, s, EGL_NO_NATIVE_FENCE_FD_ANDROID, drv);
    assert(disp->Extensions.ANDROID_native_fence_sync);
-   ret = drv->DupNativeFenceFDANDROID(drv, disp, s);
+   ret = drv->DupNativeFenceFDANDROID(disp, s);
 
    RETURN_EGL_EVAL(disp, ret);
 }

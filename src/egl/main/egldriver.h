@@ -142,8 +142,7 @@ struct _egl_driver
                                EGLint flags, EGLTime timeout);
    EGLint (*WaitSyncKHR)(_EGLDisplay *disp, _EGLSync *sync);
    EGLBoolean (*SignalSyncKHR)(_EGLDisplay *disp, _EGLSync *sync, EGLenum mode);
-   EGLint (*DupNativeFenceFDANDROID)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                     _EGLSync *sync);
+   EGLint (*DupNativeFenceFDANDROID)(_EGLDisplay *disp, _EGLSync *sync);
 
    EGLBoolean (*SwapBuffersRegionNOK)(_EGLDisplay *disp, _EGLSurface *surf,
                                       EGLint numRects, const EGLint *rects);
