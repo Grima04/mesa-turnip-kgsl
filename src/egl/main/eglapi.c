@@ -2251,7 +2251,7 @@ eglBindWaylandDisplayWL(EGLDisplay dpy, struct wl_display *display)
    if (!display)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->BindWaylandDisplayWL(drv, disp, display);
+   ret = drv->BindWaylandDisplayWL(disp, display);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2271,7 +2271,7 @@ eglUnbindWaylandDisplayWL(EGLDisplay dpy, struct wl_display *display)
    if (!display)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->UnbindWaylandDisplayWL(drv, disp, display);
+   ret = drv->UnbindWaylandDisplayWL(disp, display);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2292,7 +2292,7 @@ eglQueryWaylandBufferWL(EGLDisplay dpy, struct wl_resource *buffer,
    if (!buffer)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->QueryWaylandBufferWL(drv, disp, buffer, attribute, value);
+   ret = drv->QueryWaylandBufferWL(disp, buffer, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }

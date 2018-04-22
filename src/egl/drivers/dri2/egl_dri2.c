@@ -3207,8 +3207,7 @@ dri2_wl_release_buffer(void *user_data, struct wl_drm_buffer *buffer)
 }
 
 static EGLBoolean
-dri2_bind_wayland_display_wl(const _EGLDriver *drv, _EGLDisplay *disp,
-                             struct wl_display *wl_dpy)
+dri2_bind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const struct wayland_drm_callbacks wl_drm_callbacks = {
@@ -3219,8 +3218,6 @@ dri2_bind_wayland_display_wl(const _EGLDriver *drv, _EGLDisplay *disp,
    };
    int flags = 0;
    uint64_t cap;
-
-   (void) drv;
 
    if (dri2_dpy->wl_server_drm)
            return EGL_FALSE;
@@ -3249,12 +3246,9 @@ dri2_bind_wayland_display_wl(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_unbind_wayland_display_wl(const _EGLDriver *drv, _EGLDisplay *disp,
-                               struct wl_display *wl_dpy)
+dri2_unbind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-
-   (void) drv;
 
    if (!dri2_dpy->wl_server_drm)
            return EGL_FALSE;
@@ -3266,8 +3260,7 @@ dri2_unbind_wayland_display_wl(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_query_wayland_buffer_wl(const _EGLDriver *drv, _EGLDisplay *disp,
-                             struct wl_resource *buffer_resource,
+dri2_query_wayland_buffer_wl(_EGLDisplay *disp, struct wl_resource *buffer_resource,
                              EGLint attribute, EGLint *value)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
