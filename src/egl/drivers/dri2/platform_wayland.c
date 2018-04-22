@@ -307,9 +307,8 @@ get_wl_surface_proxy(struct wl_egl_window *window)
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-dri2_wl_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLConfig *conf, void *native_window,
-                              const EGLint *attrib_list)
+dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                              void *native_window, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
@@ -410,9 +409,8 @@ dri2_wl_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri2_wl_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLConfig *conf, void *native_window,
-                              const EGLint *attrib_list)
+dri2_wl_create_pixmap_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                              void *native_window, const EGLint *attrib_list)
 {
    /* From the EGL_EXT_platform_wayland spec, version 3:
     *
@@ -429,12 +427,10 @@ dri2_wl_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
  * Called via eglDestroySurface(), drv->DestroySurface().
  */
 static EGLBoolean
-dri2_wl_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_wl_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
-
-   (void) drv;
 
    dri2_dpy->core->destroyDrawable(dri2_surf->dri_drawable);
 

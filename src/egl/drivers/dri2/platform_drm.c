@@ -138,9 +138,8 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
 }
 
 static _EGLSurface *
-dri2_drm_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLConfig *conf, void *native_surface,
-                               const EGLint *attrib_list)
+dri2_drm_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                               void *native_surface, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
@@ -148,8 +147,6 @@ dri2_drm_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
    struct gbm_surface *surface = native_surface;
    struct gbm_dri_surface *surf;
    const __DRIconfig *config;
-
-   (void) drv;
 
    dri2_surf = calloc(1, sizeof *dri2_surf);
    if (!dri2_surf) {
@@ -192,9 +189,8 @@ dri2_drm_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri2_drm_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLConfig *conf, void *native_window,
-                               const EGLint *attrib_list)
+dri2_drm_create_pixmap_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                               void *native_window, const EGLint *attrib_list)
 {
    /* From the EGL_MESA_platform_gbm spec, version 5:
     *
@@ -207,7 +203,7 @@ dri2_drm_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_drm_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_drm_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);

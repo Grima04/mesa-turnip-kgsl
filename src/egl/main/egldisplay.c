@@ -314,7 +314,7 @@ _eglReleaseDisplayResources(_EGLDisplay *display)
       list = list->Next;
 
       _eglUnlinkSurface(surf);
-      drv->DestroySurface(drv, display, surf);
+      drv->DestroySurface(display, surf);
    }
    assert(!display->ResourceLists[_EGL_RESOURCE_SURFACE]);
 

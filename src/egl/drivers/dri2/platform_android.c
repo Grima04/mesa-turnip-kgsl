@@ -332,9 +332,8 @@ droid_set_shared_buffer_mode(_EGLDisplay *disp, _EGLSurface *surf, bool mode)
 }
 
 static _EGLSurface *
-droid_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
-		    _EGLConfig *conf, void *native_window,
-		    const EGLint *attrib_list)
+droid_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
+                     void *native_window, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
@@ -445,24 +444,23 @@ cleanup_surface:
 }
 
 static _EGLSurface *
-droid_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                            _EGLConfig *conf, void *native_window,
-                            const EGLint *attrib_list)
+droid_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                            void *native_window, const EGLint *attrib_list)
 {
-   return droid_create_surface(drv, disp, EGL_WINDOW_BIT, conf,
+   return droid_create_surface(disp, EGL_WINDOW_BIT, conf,
                                native_window, attrib_list);
 }
 
 static _EGLSurface *
-droid_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-			    _EGLConfig *conf, const EGLint *attrib_list)
+droid_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                             const EGLint *attrib_list)
 {
-   return droid_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
-			      NULL, attrib_list);
+   return droid_create_surface(disp, EGL_PBUFFER_BIT, conf,
+                               NULL, attrib_list);
 }
 
 static EGLBoolean
-droid_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+droid_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);

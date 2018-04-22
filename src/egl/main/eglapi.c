@@ -968,8 +968,7 @@ _eglCreateWindowSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
    if (_eglNativeSurfaceAlreadyUsed(disp, native_window))
       RETURN_EGL_ERROR(disp, EGL_BAD_ALLOC, EGL_NO_SURFACE);
 
-   surf = drv->CreateWindowSurface(drv, disp, conf, native_window,
-                                       attrib_list);
+   surf = drv->CreateWindowSurface(disp, conf, native_window, attrib_list);
    ret = (surf) ? _eglLinkSurface(surf) : EGL_NO_SURFACE;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -1095,8 +1094,7 @@ _eglCreatePixmapSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
    if (_eglNativeSurfaceAlreadyUsed(disp, native_pixmap))
       RETURN_EGL_ERROR(disp, EGL_BAD_ALLOC, EGL_NO_SURFACE);
 
-   surf = drv->CreatePixmapSurface(drv, disp, conf, native_pixmap,
-                                       attrib_list);
+   surf = drv->CreatePixmapSurface(disp, conf, native_pixmap, attrib_list);
    ret = (surf) ? _eglLinkSurface(surf) : EGL_NO_SURFACE;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -1168,7 +1166,7 @@ eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
    if ((conf->SurfaceType & EGL_PBUFFER_BIT) == 0)
       RETURN_EGL_ERROR(disp, EGL_BAD_MATCH, EGL_NO_SURFACE);
 
-   surf = drv->CreatePbufferSurface(drv, disp, conf, attrib_list);
+   surf = drv->CreatePbufferSurface(disp, conf, attrib_list);
    ret = (surf) ? _eglLinkSurface(surf) : EGL_NO_SURFACE;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -1186,7 +1184,7 @@ eglDestroySurface(EGLDisplay dpy, EGLSurface surface)
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
    _eglUnlinkSurface(surf);
-   ret = drv->DestroySurface(drv, disp, surf);
+   ret = drv->DestroySurface(disp, surf);
 
    RETURN_EGL_EVAL(disp, ret);
 }

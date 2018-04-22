@@ -102,17 +102,13 @@ struct _egl_driver
                              _EGLContext *ctx);
 
    /* surface funcs */
-   _EGLSurface *(*CreateWindowSurface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                       _EGLConfig *config, void *native_window,
-                                       const EGLint *attrib_list);
-   _EGLSurface *(*CreatePixmapSurface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                       _EGLConfig *config, void *native_pixmap,
-                                       const EGLint *attrib_list);
-   _EGLSurface *(*CreatePbufferSurface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                        _EGLConfig *config,
+   _EGLSurface *(*CreateWindowSurface)(_EGLDisplay *disp, _EGLConfig *config,
+                                       void *native_window, const EGLint *attrib_list);
+   _EGLSurface *(*CreatePixmapSurface)(_EGLDisplay *disp, _EGLConfig *config,
+                                       void *native_pixmap, const EGLint *attrib_list);
+   _EGLSurface *(*CreatePbufferSurface)(_EGLDisplay *disp, _EGLConfig *config,
                                         const EGLint *attrib_list);
-   EGLBoolean (*DestroySurface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLSurface *surface);
+   EGLBoolean (*DestroySurface)(_EGLDisplay *disp, _EGLSurface *surface);
    EGLBoolean (*QuerySurface)(const _EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surface, EGLint attribute,
                               EGLint *value);

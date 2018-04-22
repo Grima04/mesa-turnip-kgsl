@@ -76,7 +76,7 @@ struct haiku_egl_surface
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-haiku_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
+haiku_create_window_surface(_EGLDisplay *disp,
 	_EGLConfig *conf, void *native_window, const EGLint *attrib_list)
 {
 	CALLED();
@@ -113,7 +113,7 @@ haiku_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 
 
 static _EGLSurface *
-haiku_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
+haiku_create_pixmap_surface(_EGLDisplay *disp,
 	_EGLConfig *conf, void *native_pixmap, const EGLint *attrib_list)
 {
 	return NULL;
@@ -121,7 +121,7 @@ haiku_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 
 
 static _EGLSurface *
-haiku_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
+haiku_create_pbuffer_surface(_EGLDisplay *disp,
 	_EGLConfig *conf, const EGLint *attrib_list)
 {
 	return NULL;
@@ -129,7 +129,7 @@ haiku_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 
 
 static EGLBoolean
-haiku_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+haiku_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
 	if (_eglPutSurface(surf)) {
 		// XXX: detach haiku_egl_surface::gl from the native window and destroy it

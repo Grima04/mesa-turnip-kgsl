@@ -247,9 +247,8 @@ dri2_x11_get_red_mask_for_depth(struct dri2_egl_display *dri2_dpy, int depth)
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-dri2_x11_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
-                        _EGLConfig *conf, void *native_surface,
-                        const EGLint *attrib_list)
+dri2_x11_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
+                        void *native_surface, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
@@ -258,8 +257,6 @@ dri2_x11_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
    xcb_get_geometry_reply_t *reply;
    xcb_generic_error_t *error;
    const __DRIconfig *config;
-
-   (void) drv;
 
    dri2_surf = calloc(1, sizeof *dri2_surf);
    if (!dri2_surf) {
@@ -363,14 +360,13 @@ dri2_x11_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-dri2_x11_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLConfig *conf, void *native_window,
-                               const EGLint *attrib_list)
+dri2_x11_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                               void *native_window, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    _EGLSurface *surf;
 
-   surf = dri2_x11_create_surface(drv, disp, EGL_WINDOW_BIT, conf,
+   surf = dri2_x11_create_surface(disp, EGL_WINDOW_BIT, conf,
                                   native_window, attrib_list);
    if (surf != NULL) {
       /* When we first create the DRI2 drawable, its swap interval on the
@@ -386,29 +382,26 @@ dri2_x11_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri2_x11_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLConfig *conf, void *native_pixmap,
-                               const EGLint *attrib_list)
+dri2_x11_create_pixmap_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                               void *native_pixmap, const EGLint *attrib_list)
 {
-   return dri2_x11_create_surface(drv, disp, EGL_PIXMAP_BIT, conf,
+   return dri2_x11_create_surface(disp, EGL_PIXMAP_BIT, conf,
                                   native_pixmap, attrib_list);
 }
 
 static _EGLSurface *
-dri2_x11_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLConfig *conf, const EGLint *attrib_list)
+dri2_x11_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                                const EGLint *attrib_list)
 {
-   return dri2_x11_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
+   return dri2_x11_create_surface(disp, EGL_PBUFFER_BIT, conf,
                                   NULL, attrib_list);
 }
 
 static EGLBoolean
-dri2_x11_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_x11_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
-
-   (void) drv;
 
    dri2_dpy->core->destroyDrawable(dri2_surf->dri_drawable);
    

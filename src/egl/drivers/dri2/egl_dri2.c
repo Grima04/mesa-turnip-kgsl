@@ -1693,14 +1693,14 @@ dri2_fini_surface(_EGLSurface *surf)
 }
 
 static EGLBoolean
-dri2_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
    if (!_eglPutSurface(surf))
       return EGL_TRUE;
 
-   return dri2_dpy->vtbl->destroy_surface(drv, disp, surf);
+   return dri2_dpy->vtbl->destroy_surface(disp, surf);
 }
 
 static void
@@ -1860,8 +1860,8 @@ dri2_make_current(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
       }
    }
 
-   dri2_destroy_surface(drv, disp, old_dsurf);
-   dri2_destroy_surface(drv, disp, old_rsurf);
+   dri2_destroy_surface(disp, old_dsurf);
+   dri2_destroy_surface(disp, old_rsurf);
 
    if (old_ctx) {
       dri2_destroy_context(disp, old_ctx);
@@ -1904,35 +1904,33 @@ dri2_get_proc_address(const _EGLDriver *drv, const char *procname)
 }
 
 static _EGLSurface*
-dri2_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, void *native_window,
-                           const EGLint *attrib_list)
+dri2_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                           void *native_window, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   return dri2_dpy->vtbl->create_window_surface(drv, disp, conf, native_window,
+   return dri2_dpy->vtbl->create_window_surface(disp, conf, native_window,
                                                 attrib_list);
 }
 
 static _EGLSurface*
-dri2_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, void *native_pixmap,
-                           const EGLint *attrib_list)
+dri2_create_pixmap_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                           void *native_pixmap, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->create_pixmap_surface)
       return NULL;
-   return dri2_dpy->vtbl->create_pixmap_surface(drv, disp, conf, native_pixmap,
+   return dri2_dpy->vtbl->create_pixmap_surface(disp, conf, native_pixmap,
                                                 attrib_list);
 }
 
 static _EGLSurface*
-dri2_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, const EGLint *attrib_list)
+dri2_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                            const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->create_pbuffer_surface)
       return NULL;
-   return dri2_dpy->vtbl->create_pbuffer_surface(drv, disp, conf, attrib_list);
+   return dri2_dpy->vtbl->create_pbuffer_surface(disp, conf, attrib_list);
 }
 
 static EGLBoolean

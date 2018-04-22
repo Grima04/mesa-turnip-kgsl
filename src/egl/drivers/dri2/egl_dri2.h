@@ -92,25 +92,21 @@ struct dri2_egl_display_vtbl {
    int (*authenticate)(_EGLDisplay *disp, uint32_t id);
 
    /* mandatory */
-   _EGLSurface* (*create_window_surface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                         _EGLConfig *config,
+   _EGLSurface* (*create_window_surface)(_EGLDisplay *disp, _EGLConfig *config,
                                          void *native_window,
                                          const EGLint *attrib_list);
 
    /* optional */
-   _EGLSurface* (*create_pixmap_surface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                         _EGLConfig *config,
+   _EGLSurface* (*create_pixmap_surface)(_EGLDisplay *disp, _EGLConfig *config,
                                          void *native_pixmap,
                                          const EGLint *attrib_list);
 
    /* optional */
-   _EGLSurface* (*create_pbuffer_surface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                          _EGLConfig *config,
+   _EGLSurface* (*create_pbuffer_surface)(_EGLDisplay *disp, _EGLConfig *config,
                                           const EGLint *attrib_list);
 
    /* mandatory */
-   EGLBoolean (*destroy_surface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                 _EGLSurface *surface);
+   EGLBoolean (*destroy_surface)(_EGLDisplay *disp, _EGLSurface *surface);
 
    /* optional */
    EGLBoolean (*swap_interval)(const _EGLDriver *drv, _EGLDisplay *disp,

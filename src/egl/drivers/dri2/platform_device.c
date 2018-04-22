@@ -115,8 +115,8 @@ device_image_get_buffers(__DRIdrawable *driDrawable,
 }
 
 static _EGLSurface *
-dri2_device_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
-                           _EGLConfig *conf, const EGLint *attrib_list)
+dri2_device_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
+                           const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
@@ -160,7 +160,7 @@ dri2_device_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type
 }
 
 static EGLBoolean
-device_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+device_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -175,11 +175,10 @@ device_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *su
 }
 
 static _EGLSurface *
-dri2_device_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                                   _EGLConfig *conf, const EGLint *attrib_list)
+dri2_device_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                                   const EGLint *attrib_list)
 {
-   return dri2_device_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
-                                     attrib_list);
+   return dri2_device_create_surface(disp, EGL_PBUFFER_BIT, conf, attrib_list);
 }
 
 static const struct dri2_egl_display_vtbl dri2_device_display_vtbl = {

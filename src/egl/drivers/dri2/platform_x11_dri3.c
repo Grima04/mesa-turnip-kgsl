@@ -104,13 +104,11 @@ static const struct loader_dri3_vtable egl_dri3_vtable = {
 };
 
 static EGLBoolean
-dri3_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri3_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
    xcb_drawable_t drawable = dri3_surf->loader_drawable.drawable;
-
-   (void) drv;
 
    loader_dri3_drawable_fini(&dri3_surf->loader_drawable);
 
@@ -136,17 +134,14 @@ dri3_set_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *su
 }
 
 static _EGLSurface *
-dri3_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
-                    _EGLConfig *conf, void *native_surface,
-                    const EGLint *attrib_list)
+dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
+                    void *native_surface, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
    struct dri3_egl_surface *dri3_surf;
    const __DRIconfig *dri_config;
    xcb_drawable_t drawable;
-
-   (void) drv;
 
    dri3_surf = calloc(1, sizeof *dri3_surf);
    if (!dri3_surf) {
@@ -222,14 +217,13 @@ dri3_authenticate(_EGLDisplay *disp, uint32_t id)
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-dri3_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, void *native_window,
-                           const EGLint *attrib_list)
+dri3_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                           void *native_window, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    _EGLSurface *surf;
 
-   surf = dri3_create_surface(drv, disp, EGL_WINDOW_BIT, conf,
+   surf = dri3_create_surface(disp, EGL_WINDOW_BIT, conf,
                               native_window, attrib_list);
    if (surf != NULL)
       dri3_set_swap_interval(disp->Driver, disp, surf, dri2_dpy->default_swap_interval);
@@ -238,19 +232,18 @@ dri3_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri3_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, void *native_pixmap,
-                           const EGLint *attrib_list)
+dri3_create_pixmap_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                           void *native_pixmap, const EGLint *attrib_list)
 {
-   return dri3_create_surface(drv, disp, EGL_PIXMAP_BIT, conf,
+   return dri3_create_surface(disp, EGL_PIXMAP_BIT, conf,
                               native_pixmap, attrib_list);
 }
 
 static _EGLSurface *
-dri3_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLConfig *conf, const EGLint *attrib_list)
+dri3_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                            const EGLint *attrib_list)
 {
-   return dri3_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
+   return dri3_create_surface(disp, EGL_PBUFFER_BIT, conf,
                               NULL, attrib_list);
 }
 
