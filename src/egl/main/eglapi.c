@@ -1489,7 +1489,6 @@ _eglWaitClientCommon(void)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
    _EGLDisplay *disp;
-   const _EGLDriver *drv;
    EGLBoolean ret;
 
    if (!ctx)
@@ -1505,8 +1504,7 @@ _eglWaitClientCommon(void)
 
    /* a valid current context implies an initialized current display */
    assert(disp->Initialized);
-   drv = disp->Driver;
-   ret = drv->WaitClient(drv, disp, ctx);
+   ret = disp->Driver->WaitClient(disp, ctx);
 
    RETURN_EGL_EVAL(disp, ret);
 }

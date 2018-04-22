@@ -124,8 +124,7 @@ struct _egl_driver
                                  EGLint *rects, EGLint n_rects);
 
    /* misc functions */
-   EGLBoolean (*WaitClient)(const _EGLDriver *drv, _EGLDisplay *disp,
-                            _EGLContext *ctx);
+   EGLBoolean (*WaitClient)(_EGLDisplay *disp, _EGLContext *ctx);
    EGLBoolean (*WaitNative)(const _EGLDriver *drv, _EGLDisplay *disp,
                             EGLint engine);
 

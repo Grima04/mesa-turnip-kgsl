@@ -2092,13 +2092,11 @@ dri2_query_buffer_age(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *sur
 }
 
 static EGLBoolean
-dri2_wait_client(const _EGLDriver *drv, _EGLDisplay *disp, _EGLContext *ctx)
+dri2_wait_client(_EGLDisplay *disp, _EGLContext *ctx)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    _EGLSurface *surf = ctx->DrawSurface;
    __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
-
-   (void) drv;
 
    /* FIXME: If EGL allows frontbuffer rendering for window surfaces,
     * we need to copy fake to real here.*/
