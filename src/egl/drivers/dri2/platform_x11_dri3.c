@@ -448,9 +448,8 @@ dri3_query_buffer_age(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *sur
 }
 
 static EGLBoolean
-dri3_query_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                   _EGLSurface *surf, EGLint attribute,
-                   EGLint *value)
+dri3_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
+                   EGLint attribute, EGLint *value)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
 
@@ -463,7 +462,7 @@ dri3_query_surface(const _EGLDriver *drv, _EGLDisplay *disp,
       break;
    }
 
-   return _eglQuerySurface(drv, disp, surf, attribute, value);
+   return _eglQuerySurface(disp, surf, attribute, value);
 }
 
 static __DRIdrawable *

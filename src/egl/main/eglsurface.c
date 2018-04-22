@@ -429,7 +429,7 @@ _eglInitSurface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
 
 
 EGLBoolean
-_eglQuerySurface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
+_eglQuerySurface(_EGLDisplay *disp, _EGLSurface *surface,
                  EGLint attribute, EGLint *value)
 {
    switch (attribute) {

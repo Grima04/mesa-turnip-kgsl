@@ -1202,9 +1202,9 @@ eglQuerySurface(EGLDisplay dpy, EGLSurface surface,
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
 
    if (drv->QuerySurface)
-      ret = drv->QuerySurface(drv, disp, surf, attribute, value);
+      ret = drv->QuerySurface(disp, surf, attribute, value);
    else
-      ret = _eglQuerySurface(drv, disp, surf, attribute, value);
+      ret = _eglQuerySurface(disp, surf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }

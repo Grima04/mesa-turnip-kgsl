@@ -1004,7 +1004,7 @@ droid_create_image_from_name(_EGLDisplay *disp, _EGLContext *ctx,
 #endif /* HAVE_DRM_GRALLOC */
 
 static EGLBoolean
-droid_query_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+droid_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
                     EGLint attribute, EGLint *value)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -1026,7 +1026,7 @@ droid_query_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
       default:
          break;
    }
-   return _eglQuerySurface(drv, disp, surf, attribute, value);
+   return _eglQuerySurface(disp, surf, attribute, value);
 }
 
 static _EGLImage *

@@ -109,9 +109,8 @@ struct _egl_driver
    _EGLSurface *(*CreatePbufferSurface)(_EGLDisplay *disp, _EGLConfig *config,
                                         const EGLint *attrib_list);
    EGLBoolean (*DestroySurface)(_EGLDisplay *disp, _EGLSurface *surface);
-   EGLBoolean (*QuerySurface)(const _EGLDriver *drv, _EGLDisplay *disp,
-                              _EGLSurface *surface, EGLint attribute,
-                              EGLint *value);
+   EGLBoolean (*QuerySurface)(_EGLDisplay *disp, _EGLSurface *surface,
+                              EGLint attribute, EGLint *value);
    EGLBoolean (*BindTexImage)(const _EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surface, EGLint buffer);
    EGLBoolean (*ReleaseTexImage)(const _EGLDriver *drv, _EGLDisplay *disp,

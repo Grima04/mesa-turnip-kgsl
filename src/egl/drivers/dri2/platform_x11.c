@@ -430,9 +430,8 @@ dri2_x11_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
  * have.
  */
 static EGLBoolean
-dri2_query_surface(const _EGLDriver *drv, _EGLDisplay *disp,
-                   _EGLSurface *surf, EGLint attribute,
-                   EGLint *value)
+dri2_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
+                   EGLint attribute, EGLint *value)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -451,7 +450,7 @@ dri2_query_surface(const _EGLDriver *drv, _EGLDisplay *disp,
    default:
       break;
    }
-   return _eglQuerySurface(drv, disp, surf, attribute, value);
+   return _eglQuerySurface(disp, surf, attribute, value);
 }
 
 /**

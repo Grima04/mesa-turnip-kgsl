@@ -182,7 +182,7 @@ _eglInitSurface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
 
 
 extern EGLBoolean
-_eglQuerySurface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf, EGLint attribute, EGLint *value);
+_eglQuerySurface(_EGLDisplay *disp, _EGLSurface *surf, EGLint attribute, EGLint *value);
 
 
 extern EGLBoolean

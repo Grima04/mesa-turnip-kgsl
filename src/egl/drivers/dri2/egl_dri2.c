@@ -2473,13 +2473,13 @@ dri2_create_image_khr_texture(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 static EGLBoolean
-dri2_query_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri2_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
                    EGLint attribute, EGLint *value)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (!dri2_dpy->vtbl->query_surface)
-      return _eglQuerySurface(drv, disp, surf, attribute, value);
-   return dri2_dpy->vtbl->query_surface(drv, disp, surf, attribute, value);
+      return _eglQuerySurface(disp, surf, attribute, value);
+   return dri2_dpy->vtbl->query_surface(disp, surf, attribute, value);
 }
 
 static struct wl_buffer*
