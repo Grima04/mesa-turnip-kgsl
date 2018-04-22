@@ -135,15 +135,13 @@ struct _egl_driver
                                 const EGLint *attr_list);
    EGLBoolean (*DestroyImageKHR)(_EGLDisplay *disp, _EGLImage *image);
 
-   _EGLSync *(*CreateSyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp, EGLenum type,
+   _EGLSync *(*CreateSyncKHR)(_EGLDisplay *disp, EGLenum type,
                               const EGLAttrib *attrib_list);
-   EGLBoolean (*DestroySyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp,
-                                _EGLSync *sync);
-   EGLint (*ClientWaitSyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLSync *sync, EGLint flags, EGLTime timeout);
-   EGLint (*WaitSyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync);
-   EGLBoolean (*SignalSyncKHR)(const _EGLDriver *drv, _EGLDisplay *disp,
-                               _EGLSync *sync, EGLenum mode);
+   EGLBoolean (*DestroySyncKHR)(_EGLDisplay *disp, _EGLSync *sync);
+   EGLint (*ClientWaitSyncKHR)(_EGLDisplay *disp, _EGLSync *sync,
+                               EGLint flags, EGLTime timeout);
+   EGLint (*WaitSyncKHR)(_EGLDisplay *disp, _EGLSync *sync);
+   EGLBoolean (*SignalSyncKHR)(_EGLDisplay *disp, _EGLSync *sync, EGLenum mode);
    EGLint (*DupNativeFenceFDANDROID)(const _EGLDriver *drv, _EGLDisplay *disp,
                                      _EGLSync *sync);
 

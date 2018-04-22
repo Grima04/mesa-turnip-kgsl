@@ -3331,8 +3331,7 @@ dri2_egl_unref_sync(struct dri2_egl_display *dri2_dpy,
 }
 
 static _EGLSync *
-dri2_create_sync(const _EGLDriver *drv, _EGLDisplay *disp,
-                 EGLenum type, const EGLAttrib *attrib_list)
+dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -3432,7 +3431,7 @@ dri2_create_sync(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_destroy_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync)
+dri2_destroy_sync(_EGLDisplay *disp, _EGLSync *sync)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_sync *dri2_sync = dri2_egl_sync(sync);
@@ -3497,7 +3496,7 @@ dri2_set_blob_cache_funcs(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLint
-dri2_client_wait_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
+dri2_client_wait_sync(_EGLDisplay *disp, _EGLSync *sync,
                       EGLint flags, EGLTime timeout)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
@@ -3589,8 +3588,7 @@ dri2_client_wait_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
 }
 
 static EGLBoolean
-dri2_signal_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
-                      EGLenum mode)
+dri2_signal_sync(_EGLDisplay *disp, _EGLSync *sync, EGLenum mode)
 {
    struct dri2_egl_sync *dri2_sync = dri2_egl_sync(sync);
    EGLint ret;
@@ -3615,7 +3613,7 @@ dri2_signal_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
 }
 
 static EGLint
-dri2_server_wait_sync(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync)
+dri2_server_wait_sync(_EGLDisplay *disp, _EGLSync *sync)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);

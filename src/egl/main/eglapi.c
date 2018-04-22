@@ -1867,7 +1867,7 @@ _eglCreateSync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list,
       RETURN_EGL_ERROR(disp, invalid_type_error, EGL_NO_SYNC_KHR);
    }
 
-   sync = drv->CreateSyncKHR(drv, disp, type, attrib_list);
+   sync = drv->CreateSyncKHR(disp, type, attrib_list);
    ret = (sync) ? _eglLinkSync(sync) : EGL_NO_SYNC_KHR;
 
    RETURN_EGL_EVAL(disp, ret);
@@ -1935,7 +1935,7 @@ _eglDestroySync(_EGLDisplay *disp, _EGLSync *s)
           disp->Extensions.ANDROID_native_fence_sync);
 
    _eglUnlinkSync(s);
-   ret = drv->DestroySyncKHR(drv, disp, s);
+   ret = drv->DestroySyncKHR(disp, s);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1982,7 +1982,7 @@ _eglClientWaitSyncCommon(_EGLDisplay *disp, EGLDisplay dpy,
    if (s->Type == EGL_SYNC_REUSABLE_KHR)
       _eglUnlockDisplay(dpy);
 
-   ret = drv->ClientWaitSyncKHR(drv, disp, s, flags, timeout);
+   ret = drv->ClientWaitSyncKHR(disp, s, flags, timeout);
 
    /*
     * 'disp' is already unlocked for reusable sync type,
@@ -2035,7 +2035,7 @@ _eglWaitSyncCommon(_EGLDisplay *disp, _EGLSync *s, EGLint flags)
    if (flags != 0)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->WaitSyncKHR(drv, disp, s);
+   ret = drv->WaitSyncKHR(disp, s);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2076,7 +2076,7 @@ eglSignalSyncKHR(EGLDisplay dpy, EGLSync sync, EGLenum mode)
 
    _EGL_CHECK_SYNC(disp, s, EGL_FALSE, drv);
    assert(disp->Extensions.KHR_reusable_sync);
-   ret = drv->SignalSyncKHR(drv, disp, s, mode);
+   ret = drv->SignalSyncKHR(disp, s, mode);
 
    RETURN_EGL_EVAL(disp, ret);
 }

@@ -134,7 +134,7 @@ _eglGetSyncAttrib(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
            sync->Type == EGL_SYNC_CL_EVENT_KHR ||
            sync->Type == EGL_SYNC_REUSABLE_KHR ||
            sync->Type == EGL_SYNC_NATIVE_FENCE_ANDROID))
-         drv->ClientWaitSyncKHR(drv, disp, sync, 0, 0);
+         drv->ClientWaitSyncKHR(disp, sync, 0, 0);
 
       *value = sync->SyncStatus;
       break;

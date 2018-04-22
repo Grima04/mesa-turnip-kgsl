@@ -334,7 +334,7 @@ _eglReleaseDisplayResources(_EGLDisplay *display)
       list = list->Next;
 
       _eglUnlinkSync(sync);
-      drv->DestroySyncKHR(drv, display, sync);
+      drv->DestroySyncKHR(display, sync);
    }
    assert(!display->ResourceLists[_EGL_RESOURCE_SYNC]);
 }
