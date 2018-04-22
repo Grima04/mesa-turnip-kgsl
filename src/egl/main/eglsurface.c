@@ -534,6 +534,7 @@ _eglQuerySurface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
          return _eglError(EGL_BAD_ATTRIBUTE, "eglQuerySurface");
 
       _EGLContext *ctx = _eglGetCurrentContext();
+      const _EGLDriver *drv = disp->Driver;
       EGLint result = drv->QueryBufferAge(drv, disp, surface);
       /* error happened */
       if (result < 0)
