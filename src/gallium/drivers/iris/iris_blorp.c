@@ -60,27 +60,37 @@ blorp_emit_dwords(struct blorp_batch *blorp_batch, unsigned n)
 }
 
 static uint64_t
-blorp_emit_reloc(struct blorp_batch *blorp_batch, UNUSED void *location,
-                 struct blorp_address addr, uint32_t delta)
+combine_and_pin_address(struct blorp_batch *blorp_batch,
+                        struct blorp_address addr)
 {
    struct iris_batch *batch = blorp_batch->driver_batch;
    struct iris_bo *bo = addr.buffer;
-   uint64_t result = addr.offset + delta;
 
-   if (bo) {
-      iris_use_pinned_bo(batch, bo, addr.reloc_flags & RELOC_WRITE);
-      /* Assume this is a general address, not relative to a base. */
-      result += bo->gtt_offset;
-   }
+   iris_use_pinned_bo(batch, bo, addr.reloc_flags & RELOC_WRITE);
 
-   return result;
+   /* Assume this is a general address, not relative to a base. */
+   return bo->gtt_offset + addr.offset;
+}
+
+static uint64_t
+blorp_emit_reloc(struct blorp_batch *blorp_batch, UNUSED void *location,
+                 struct blorp_address addr, uint32_t delta)
+{
+   return combine_and_pin_address(blorp_batch, addr) + delta;
 }
 
 static void
 blorp_surface_reloc(struct blorp_batch *blorp_batch, uint32_t ss_offset,
                     struct blorp_address addr, uint32_t delta)
 {
-   /* Don't do anything, blorp_alloc_binding_table already added the BO. */
+   /* Let blorp_get_surface_address do the pinning. */
+}
+
+static uint64_t
+blorp_get_surface_address(struct blorp_batch *blorp_batch,
+                          struct blorp_address addr)
+{
+   return combine_and_pin_address(blorp_batch, addr);
 }
 
 UNUSED static struct blorp_address
@@ -149,6 +159,36 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
    };
 
    return map;
+}
+
+/**
+ * See vf_invalidate_for_vb_48b_transitions in iris_state.c.
+ * XXX: actually add this
+ */
+static void
+blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
+                                           const struct blorp_address *addrs,
+                                           unsigned num_vbs)
+{
+#if 0
+   struct iris_context *ice = blorp_batch->blorp->driver_ctx;
+   struct iris_batch *batch = blorp_batch->driver_batch;
+   bool need_invalidate = false;
+
+   for (unsigned i = 0; i < num_vbs; i++) {
+      struct iris_bo *bo = addrs[i].buffer;
+      uint16_t high_bits = bo ? bo->gtt_offset >> 32u : 0;
+
+      if (high_bits != ice->state.last_vbo_high_bits[i]) {
+         need_invalidate = true;
+         ice->state.last_vbo_high_bits[i] = high_bits;
+      }
+   }
+
+   if (need_invalidate) {
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE);
+   }
+#endif
 }
 
 static struct blorp_address
@@ -279,5 +319,10 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
 void
 genX(init_blorp)(struct iris_context *ice)
 {
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+
+   blorp_init(&ice->blorp, ice, &screen->isl_dev);
+   ice->blorp.compiler = screen->compiler;
+
    ice->vtbl.blorp_exec = iris_blorp_exec;
 }

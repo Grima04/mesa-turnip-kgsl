@@ -147,6 +147,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
                       IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE);
 
    genX_call(devinfo, init_state, ice);
+   genX_call(devinfo, init_blorp, ice);
    ice->vtbl.init_render_context(screen, &ice->render_batch, &ice->vtbl,
                                  &ice->dbg);
 

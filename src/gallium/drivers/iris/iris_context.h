@@ -26,6 +26,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
+#include "intel/blorp/blorp.h"
 #include "intel/common/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
@@ -248,6 +249,8 @@ struct iris_context {
 
       unsigned urb_size;
    } shaders;
+
+   struct blorp_context blorp;
 
    /** The main batch for rendering */
    struct iris_batch render_batch;
