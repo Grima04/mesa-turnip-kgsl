@@ -2741,8 +2741,8 @@ dri2_check_dma_buf_format(const _EGLImageAttribs *attrs)
 }
 
 static EGLBoolean
-dri2_query_dma_buf_formats(const _EGLDriver *drv, _EGLDisplay *disp,
-                            EGLint max, EGLint *formats, EGLint *count)
+dri2_query_dma_buf_formats(_EGLDisplay *disp, EGLint max,
+                           EGLint *formats, EGLint *count)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    if (max < 0 || (max > 0 && formats == NULL))
@@ -2772,7 +2772,7 @@ dri2_query_dma_buf_formats(const _EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_query_dma_buf_modifiers(const _EGLDriver *drv, _EGLDisplay *disp, EGLint format,
+dri2_query_dma_buf_modifiers(_EGLDisplay *disp, EGLint format,
                              EGLint max, EGLuint64KHR *modifiers,
                              EGLBoolean *external_only, EGLint *count)
 {

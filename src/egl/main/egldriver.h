@@ -182,14 +182,13 @@ struct _egl_driver
                                 struct mesa_glinterop_export_in *in,
                                 struct mesa_glinterop_export_out *out);
 
-   EGLBoolean (*QueryDmaBufFormatsEXT)(const _EGLDriver *drv, _EGLDisplay *disp,
+   EGLBoolean (*QueryDmaBufFormatsEXT)(_EGLDisplay *disp,
                                        EGLint max_formats, EGLint *formats,
                                        EGLint *num_formats);
-   EGLBoolean (*QueryDmaBufModifiersEXT) (const _EGLDriver *drv, _EGLDisplay *disp,
-                                          EGLint format, EGLint max_modifiers,
-                                          EGLuint64KHR *modifiers,
-                                          EGLBoolean *external_only,
-                                          EGLint *num_modifiers);
+   EGLBoolean (*QueryDmaBufModifiersEXT)(_EGLDisplay *disp, EGLint format,
+                                         EGLint max_modifiers, EGLuint64KHR *modifiers,
+                                         EGLBoolean *external_only,
+                                         EGLint *num_modifiers);
 
    void (*SetBlobCacheFuncsANDROID) (const _EGLDriver *drv, _EGLDisplay *disp,
                                      EGLSetBlobFuncANDROID set,

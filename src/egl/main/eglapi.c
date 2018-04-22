@@ -2571,8 +2571,7 @@ eglQueryDmaBufFormatsEXT(EGLDisplay dpy, EGLint max_formats,
 
    _EGL_CHECK_DISPLAY(disp, EGL_FALSE, drv);
 
-   ret = drv->QueryDmaBufFormatsEXT(drv, disp, max_formats, formats,
-                                        num_formats);
+   ret = drv->QueryDmaBufFormatsEXT(disp, max_formats, formats, num_formats);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2590,9 +2589,8 @@ eglQueryDmaBufModifiersEXT(EGLDisplay dpy, EGLint format, EGLint max_modifiers,
 
    _EGL_CHECK_DISPLAY(disp, EGL_FALSE, drv);
 
-   ret = drv->QueryDmaBufModifiersEXT(drv, disp, format, max_modifiers,
-                                          modifiers, external_only,
-                                          num_modifiers);
+   ret = drv->QueryDmaBufModifiersEXT(disp, format, max_modifiers, modifiers,
+                                      external_only, num_modifiers);
 
    RETURN_EGL_EVAL(disp, ret);
 }
