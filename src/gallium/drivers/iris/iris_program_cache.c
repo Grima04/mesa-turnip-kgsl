@@ -34,6 +34,7 @@
 #include "intel/compiler/brw_eu.h"
 #include "intel/compiler/brw_nir.h"
 #include "iris_context.h"
+#include "iris_resource.h"
 
 struct keybox {
    uint8_t size;
@@ -41,10 +42,8 @@ struct keybox {
    uint8_t data[0];
 };
 
-static struct keybox *
-make_keybox(void *mem_ctx,
-            enum iris_program_cache_id cache_id,
-            const void *key)
+static uint32_t
+key_size_for_cache(enum iris_program_cache_id cache_id)
 {
    static const unsigned key_sizes[] = {
       [IRIS_CACHE_VS]         = sizeof(struct brw_vs_prog_key),
@@ -53,15 +52,26 @@ make_keybox(void *mem_ctx,
       [IRIS_CACHE_GS]         = sizeof(struct brw_gs_prog_key),
       [IRIS_CACHE_FS]         = sizeof(struct brw_wm_prog_key),
       [IRIS_CACHE_CS]         = sizeof(struct brw_cs_prog_key),
-      //[IRIS_CACHE_BLORP_BLIT] = sizeof(struct brw_blorp_blit_prog_key),
    };
 
+   /* BLORP keys aren't all the same size. */
+   assert(cache_id != IRIS_CACHE_BLORP);
+
+   return key_sizes[cache_id];
+}
+
+static struct keybox *
+make_keybox(void *mem_ctx,
+            enum iris_program_cache_id cache_id,
+            const void *key,
+            uint32_t key_size)
+{
    struct keybox *keybox =
-      ralloc_size(mem_ctx, sizeof(struct keybox) + key_sizes[cache_id]);
+      ralloc_size(mem_ctx, sizeof(struct keybox) + key_size);
 
    keybox->cache_id = cache_id;
-   keybox->size = key_sizes[cache_id];
-   memcpy(keybox->data, key, key_sizes[cache_id]);
+   keybox->size = key_size;
+   memcpy(keybox->data, key, key_size);
 
    return keybox;
 }
@@ -111,6 +121,20 @@ get_program_string_id(enum iris_program_cache_id cache_id, const void *key)
    }
 }
 
+static struct iris_compiled_shader *
+iris_find_cached_shader(struct iris_context *ice,
+                        enum iris_program_cache_id cache_id,
+                        const void *key,
+                        uint32_t key_size)
+{
+   struct keybox *keybox =
+      make_keybox(ice->shaders.cache, cache_id, key, key_size);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(ice->shaders.cache, keybox);
+
+   return entry ? entry->data : NULL;
+}
+
 /**
  * Looks for a program in the cache and binds it.
  *
@@ -121,17 +145,14 @@ iris_bind_cached_shader(struct iris_context *ice,
                         enum iris_program_cache_id cache_id,
                         const void *key)
 {
-   struct keybox *keybox = make_keybox(ice->shaders.cache, cache_id, key);
-   struct hash_entry *entry =
-      _mesa_hash_table_search(ice->shaders.cache, keybox);
+   unsigned key_size = key_size_for_cache(cache_id);
+   struct iris_compiled_shader *shader =
+      iris_find_cached_shader(ice, cache_id, key, key_size);
 
-   if (!entry)
+   if (!shader)
       return false;
 
-   struct iris_compiled_shader *shader = entry->data;
-
-   if (cache_id <= MESA_SHADER_STAGES &&
-       memcmp(shader, ice->shaders.prog[cache_id], sizeof(*shader)) != 0) {
+   if (memcmp(shader, ice->shaders.prog[cache_id], sizeof(*shader)) != 0) {
       ice->shaders.prog[cache_id] = shader;
       ice->state.dirty |= dirty_flag_for_cache(cache_id);
    }
@@ -176,17 +197,13 @@ find_existing_assembly(struct hash_table *cache,
    return NULL;
 }
 
-/**
- * Upload a new shader to the program cache, and bind it for use.
- *
- * \param prog_data must be ralloc'd and will be stolen.
- */
-void
-iris_upload_and_bind_shader(struct iris_context *ice,
-                            enum iris_program_cache_id cache_id,
-                            const void *key,
-                            const void *assembly,
-                            struct brw_stage_prog_data *prog_data)
+static struct iris_compiled_shader *
+iris_upload_shader(struct iris_context *ice,
+                   enum iris_program_cache_id cache_id,
+                   uint32_t key_size,
+                   const void *key,
+                   const void *assembly,
+                   const struct brw_stage_prog_data *prog_data)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    struct gen_device_info *devinfo = &screen->devinfo;
@@ -214,20 +231,87 @@ iris_upload_and_bind_shader(struct iris_context *ice,
 
    shader->prog_data = prog_data;
 
+   /* Store the 3DSTATE shader packets and other derived state. */
+   ice->vtbl.set_derived_program_state(devinfo, cache_id, shader);
+
+   struct keybox *keybox = make_keybox(cache, cache_id, key, key_size);
+   _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
+
+   return shader;
+}
+
+/**
+ * Upload a new shader to the program cache, and bind it for use.
+ *
+ * \param prog_data must be ralloc'd and will be stolen.
+ */
+void
+iris_upload_and_bind_shader(struct iris_context *ice,
+                            enum iris_program_cache_id cache_id,
+                            const void *key,
+                            const void *assembly,
+                            struct brw_stage_prog_data *prog_data)
+{
+   assert(cache_id != IRIS_CACHE_BLORP);
+
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, cache_id, key_size_for_cache(cache_id), key,
+                         assembly, prog_data);
+
    ralloc_steal(shader, shader->prog_data);
    ralloc_steal(shader->prog_data, prog_data->param);
    ralloc_steal(shader->prog_data, prog_data->pull_param);
 
-   /* Store the 3DSTATE shader packets and other derived state. */
-   ice->vtbl.set_derived_program_state(devinfo, cache_id, shader);
+   ice->shaders.prog[cache_id] = shader;
+   ice->state.dirty |= dirty_flag_for_cache(cache_id);
+}
 
-   struct keybox *keybox = make_keybox(cache, cache_id, key);
-   _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);
+bool
+iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
+                         const void *key, uint32_t key_size,
+                         uint32_t *kernel_out, void *prog_data_out)
+{
+   struct blorp_context *blorp = blorp_batch->blorp;
+   struct iris_context *ice = blorp->driver_ctx;
+   struct iris_batch *batch = blorp_batch->driver_batch;
+   struct iris_compiled_shader *shader =
+      iris_find_cached_shader(ice, IRIS_CACHE_BLORP, key, key_size);
 
-   if (cache_id <= MESA_SHADER_STAGES) {
-      ice->shaders.prog[cache_id] = shader;
-      ice->state.dirty |= dirty_flag_for_cache(cache_id);
-   }
+   if (!shader)
+      return false;
+
+   struct iris_bo *bo = iris_resource_bo(shader->buffer);
+   *kernel_out = iris_bo_offset_from_base_address(bo) + shader->offset;
+   *((void **) prog_data_out) = shader->prog_data;
+
+   iris_use_pinned_bo(batch, bo, false);
+
+   return true;
+}
+
+bool
+iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
+                         const void *key, uint32_t key_size,
+                         const void *kernel, UNUSED uint32_t kernel_size,
+                         const struct brw_stage_prog_data *prog_data,
+                         UNUSED uint32_t prog_data_size,
+                         uint32_t *kernel_out, void *prog_data_out)
+{
+   struct blorp_context *blorp = blorp_batch->blorp;
+   struct iris_context *ice = blorp->driver_ctx;
+   struct iris_batch *batch = blorp_batch->driver_batch;
+
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, IRIS_CACHE_BLORP, key_size, key, kernel,
+                         prog_data);
+
+   struct iris_bo *bo = iris_resource_bo(shader->buffer);
+   *kernel_out = iris_bo_offset_from_base_address(bo) + shader->offset;
+   *((void **) prog_data_out) = shader->prog_data;
+
+   iris_use_pinned_bo(batch, bo, false);
+
+   return true;
 }
 
 void
@@ -256,7 +340,7 @@ iris_destroy_program_cache(struct iris_context *ice)
 static const char *
 cache_name(enum iris_program_cache_id cache_id)
 {
-   if (cache_id == IRIS_CACHE_BLORP_BLIT)
+   if (cache_id == IRIS_CACHE_BLORP)
       return "BLORP";
 
    return _mesa_shader_stage_to_string(cache_id);

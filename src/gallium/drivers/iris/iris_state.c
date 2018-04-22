@@ -1900,7 +1900,7 @@ iris_set_fs_state(const struct gen_device_info *devinfo,
 static unsigned
 iris_derived_program_state_size(enum iris_program_cache_id cache_id)
 {
-   assert(cache_id <= IRIS_CACHE_CS);
+   assert(cache_id <= IRIS_CACHE_BLORP);
 
    static const unsigned dwords[] = {
       [IRIS_CACHE_VS] = GENX(3DSTATE_VS_length),
@@ -1910,7 +1910,7 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
       [IRIS_CACHE_FS] =
          GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
       [IRIS_CACHE_CS] = 0,
-      [IRIS_CACHE_BLORP_BLIT] = 0,
+      [IRIS_CACHE_BLORP] = 0,
    };
 
    return sizeof(uint32_t) * dwords[cache_id];
@@ -1938,6 +1938,7 @@ iris_set_derived_program_state(const struct gen_device_info *devinfo,
       iris_set_fs_state(devinfo, shader);
       break;
    case IRIS_CACHE_CS:
+   case IRIS_CACHE_BLORP:
       break;
    default:
       break;

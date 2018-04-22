@@ -118,7 +118,7 @@ enum iris_program_cache_id {
    IRIS_CACHE_GS  = MESA_SHADER_GEOMETRY,
    IRIS_CACHE_FS  = MESA_SHADER_FRAGMENT,
    IRIS_CACHE_CS  = MESA_SHADER_COMPUTE,
-   IRIS_CACHE_BLORP_BLIT,
+   IRIS_CACHE_BLORP,
 };
 
 /** @{
@@ -211,8 +211,6 @@ struct iris_vtable {
    void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
-   void (*blorp_exec)(struct blorp_batch *blorp_batch,
-                      const struct blorp_params *params);
 
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
    void (*set_derived_program_state)(const struct gen_device_info *devinfo,
@@ -361,4 +359,17 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
+bool iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
+                              const void *key,
+                              uint32_t key_size,
+                              uint32_t *kernel_out,
+                              void *prog_data_out);
+bool iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
+                              const void *key, uint32_t key_size,
+                              const void *kernel, uint32_t kernel_size,
+                              const struct brw_stage_prog_data *prog_data,
+                              uint32_t prog_data_size,
+                              uint32_t *kernel_out,
+                              void *prog_data_out);
+
 #endif

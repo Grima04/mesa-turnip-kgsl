@@ -35,17 +35,20 @@ stream_state(struct iris_batch *batch,
              unsigned size,
              unsigned alignment,
              uint32_t *out_offset,
-             struct iris_bo **out_bo)
+             struct iris_bo **out_bo,
+             bool relative_to_base)
 {
    struct pipe_resource *res = NULL;
    void *ptr = NULL;
 
    u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
 
-   *out_bo = iris_resource_bo(res);
-   iris_use_pinned_bo(batch, *out_bo, false);
+   struct iris_bo *bo = iris_resource_bo(res);
+   iris_use_pinned_bo(batch, bo, false);
 
-   *out_offset += iris_bo_offset_from_base_address(*out_bo);
+   *out_bo = bo;
+   *out_offset += relative_to_base ? iris_bo_offset_from_base_address(bo)
+                                   : bo->gtt_offset;
 
    pipe_resource_reference(&res, NULL);
 
@@ -110,7 +113,7 @@ blorp_alloc_dynamic_state(struct blorp_batch *blorp_batch,
    struct iris_bo *bo;
 
    return stream_state(batch, ice->state.dynamic_uploader,
-                       size, alignment, offset, &bo);
+                       size, alignment, offset, &bo, true);
 }
 
 static void
@@ -133,7 +136,7 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
    for (unsigned i = 0; i < num_entries; i++) {
       surface_maps[i] = stream_state(batch, ice->state.surface_uploader,
                                      state_size, state_alignment,
-                                     &surface_offsets[i], &bo);
+                                     &surface_offsets[i], &bo, true);
       bt_map[i] = surface_offsets[i];
    }
 }
@@ -149,7 +152,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
    uint32_t offset;
 
    void *map = stream_state(batch, ice->ctx.stream_uploader, size, 64,
-                            &offset, &bo);
+                            &offset, &bo, false);
 
    *addr = (struct blorp_address) {
       .buffer = bo,
@@ -323,6 +326,7 @@ genX(init_blorp)(struct iris_context *ice)
 
    blorp_init(&ice->blorp, ice, &screen->isl_dev);
    ice->blorp.compiler = screen->compiler;
-
-   ice->vtbl.blorp_exec = iris_blorp_exec;
+   ice->blorp.lookup_shader = iris_blorp_lookup_shader;
+   ice->blorp.upload_shader = iris_blorp_upload_shader;
+   ice->blorp.exec = iris_blorp_exec;
 }
