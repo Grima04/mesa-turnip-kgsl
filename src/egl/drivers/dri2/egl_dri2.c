@@ -1314,7 +1314,7 @@ static EGLBoolean
 dri2_terminate(const _EGLDriver *drv, _EGLDisplay *disp)
 {
    /* Release all non-current Context/Surfaces. */
-   _eglReleaseDisplayResources(drv, disp);
+   _eglReleaseDisplayResources(disp);
 
    dri2_display_release(disp);
 

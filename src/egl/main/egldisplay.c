@@ -293,9 +293,10 @@ out:
  * Destroy the contexts and surfaces that are linked to the display.
  */
 void
-_eglReleaseDisplayResources(const _EGLDriver *drv, _EGLDisplay *display)
+_eglReleaseDisplayResources(_EGLDisplay *display)
 {
    _EGLResource *list;
+   const _EGLDriver *drv = display->Driver;
 
    list = display->ResourceLists[_EGL_RESOURCE_CONTEXT];
    while (list) {

@@ -207,7 +207,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy, const EGLAttrib *attr);
 
 
 extern void
-_eglReleaseDisplayResources(const _EGLDriver *drv, _EGLDisplay *disp);
+_eglReleaseDisplayResources(_EGLDisplay *disp);
 
 
 extern void
