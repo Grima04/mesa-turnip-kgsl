@@ -221,7 +221,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       /* XXX: make sure this doesn't do stupid things for internal textures */
    }
 
-   if (templ->target == PIPE_BUFFER)
+   if (templ->target == PIPE_BUFFER || templ->usage == PIPE_USAGE_STAGING)
       modifier = DRM_FORMAT_MOD_LINEAR;
 
    if (templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
