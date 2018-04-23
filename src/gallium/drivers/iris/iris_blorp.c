@@ -132,6 +132,7 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
    uint32_t *bt_map = iris_binder_reserve(&ice->state.binder,
                                           num_entries * sizeof(uint32_t),
                                           bt_offset);
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false);
 
    for (unsigned i = 0; i < num_entries; i++) {
       surface_maps[i] = stream_state(batch, ice->state.surface_uploader,

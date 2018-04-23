@@ -33,6 +33,9 @@ void *
 iris_binder_reserve(struct iris_binder *binder, unsigned size,
                     uint32_t *out_offset)
 {
+   /* XXX: if we ever make this allocate a new BO, then make binder_reserve
+    * return the BO, so at least verify use_pinned_bo gets the right one
+    */
    /* XXX: Implement a real ringbuffer, for now just croak if run out */
    assert(size > 0);
    assert(binder->insert_point + size <= BINDER_SIZE);
