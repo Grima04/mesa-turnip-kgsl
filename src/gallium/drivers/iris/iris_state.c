@@ -2026,7 +2026,8 @@ iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
 {
-   const uint64_t dirty = ice->state.dirty;
+   const uint64_t dirty =
+      unlikely(INTEL_DEBUG & DEBUG_REEMIT) ? ~0ull : ice->state.dirty;
 
    struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
