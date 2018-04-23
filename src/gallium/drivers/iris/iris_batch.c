@@ -63,13 +63,12 @@ dump_validation_list(struct iris_batch *batch)
       uint64_t flags = batch->validation_list[i].flags;
       assert(batch->validation_list[i].handle ==
              batch->exec_bos[i]->gem_handle);
-      fprintf(stderr, "[%2d]: %2d %-14s %p %s%-7s @ 0x%016llx (%"PRIu64"B)\n",
+      fprintf(stderr, "[%2d]: %2d %-14s %p %-7s @ 0x%016llx (%"PRIu64"B)\n",
               i,
               batch->validation_list[i].handle,
               batch->exec_bos[i]->name,
               batch->exec_bos[i],
-              (flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) ? "(48b" : "(32b",
-              (flags & EXEC_OBJECT_WRITE) ? " write)" : ")",
+              (flags & EXEC_OBJECT_WRITE) ? "(write)" : "",
               batch->validation_list[i].offset,
               batch->exec_bos[i]->size);
    }
