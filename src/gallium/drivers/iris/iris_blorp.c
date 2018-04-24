@@ -279,11 +279,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    // XXX: PMA - gen8_write_pma_stall_bits(ice, 0);
 #endif
 
-   // XXX: knock this off...land Jason's i965 patches...
-   blorp_emit(blorp_batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
-      rect.ClippedDrawingRectangleXMax = MAX2(params->x1, params->x0) - 1;
-      rect.ClippedDrawingRectangleYMax = MAX2(params->y1, params->y0) - 1;
-   }
+   // XXX: TODO...drawing rectangle...unrevert Jason's patches on master
 
    blorp_exec(blorp_batch, params);
 
