@@ -1384,6 +1384,7 @@ if _llvm != 'false'
     ),
     static : not _shared_llvm,
     method : 'config-tool',
+    fallback : ['llvm', 'dep_llvm'],
   )
   with_llvm = dep_llvm.found()
 endif
@@ -1394,7 +1395,19 @@ if with_llvm
   # LLVM can be built without rtti, turning off rtti changes the ABI of C++
   # programs, so we need to build all C++ code in mesa without rtti as well to
   # ensure that linking works.
-  if dep_llvm.get_configtool_variable('has-rtti') == 'NO'
+  #
+  # In meson 0.51.0 we can use cmake to find LLVM in addittion to meson's
+  # builtin llvm-config based finder. A new generic variable getter method
+  # has also been added, so we'll use that if we can, to cover the cmake case.
+  if dep_llvm.type_name() == 'internal'
+    _rtti = subproject('llvm').get_variable('has_rtti', true)
+  elif meson.version().version_compare('>=0.51')
+    # The CMake finder will return 'ON', the llvm-config will return 'YES'
+    _rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
+  else
+    _rtti = dep_llvm.get_configtool_variable('has-rtti') == 'YES'
+  endif
+  if not _rtti
     if with_gallium_nouveau
       error('The Nouveau driver requires rtti. You either need to turn off nouveau or use an LLVM built with LLVM_ENABLE_RTTI.')
     elif with_gallium_opencl
