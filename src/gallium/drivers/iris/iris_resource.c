@@ -242,19 +242,21 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (templ->target == PIPE_TEXTURE_CUBE)
       usage |= ISL_SURF_USAGE_CUBE_BIT;
 
-   isl_surf_init(&screen->isl_dev, &res->surf,
-                 .dim = target_to_isl_surf_dim(templ->target),
-                 .format = iris_isl_format_for_pipe_format(templ->format),
-                 .width = templ->width0,
-                 .height = templ->height0,
-                 .depth = templ->depth0,
-                 .levels = templ->last_level + 1,
-                 .array_len = templ->array_size,
-                 .samples = MAX2(templ->nr_samples, 1),
-                 .min_alignment_B = 0,
-                 .row_pitch_B = 0,
-                 .usage = usage,
-                 .tiling_flags = 1 << mod_info->tiling);
+   UNUSED const bool isl_surf_created_successfully =
+      isl_surf_init(&screen->isl_dev, &res->surf,
+                    .dim = target_to_isl_surf_dim(templ->target),
+                    .format = iris_isl_format_for_pipe_format(templ->format),
+                    .width = templ->width0,
+                    .height = templ->height0,
+                    .depth = templ->depth0,
+                    .levels = templ->last_level + 1,
+                    .array_len = templ->array_size,
+                    .samples = MAX2(templ->nr_samples, 1),
+                    .min_alignment_B = 0,
+                    .row_pitch_B = 0,
+                    .usage = usage,
+                    .tiling_flags = 1 << mod_info->tiling);
+   assert(isl_surf_created_successfully);
 
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
    const char *name = templ->target == PIPE_BUFFER ? "buffer" : "miptree";
