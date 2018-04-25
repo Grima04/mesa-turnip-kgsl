@@ -38,6 +38,8 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/i915_drm.h"
 
+// XXX: u_transfer_helper...for separate stencil...
+
 enum modifier_priority {
    MODIFIER_PRIORITY_INVALID = 0,
    MODIFIER_PRIORITY_LINEAR,
@@ -131,47 +133,17 @@ pipe_bind_to_isl_usage(unsigned bindings)
 {
    isl_surf_usage_flags_t usage = 0;
 
-   if (bindings & PIPE_BIND_DEPTH_STENCIL)
-      usage |= ISL_SURF_USAGE_DEPTH_BIT | ISL_SURF_USAGE_STENCIL_BIT;
-
    if (bindings & PIPE_BIND_RENDER_TARGET)
       usage |= ISL_SURF_USAGE_RENDER_TARGET_BIT;
 
-   if (bindings & PIPE_BIND_SHADER_IMAGE)
+   if (bindings & PIPE_BIND_SAMPLER_VIEW)
+      usage |= ISL_SURF_USAGE_TEXTURE_BIT;
+
+   if (bindings & (PIPE_BIND_SHADER_IMAGE | PIPE_BIND_SHADER_BUFFER))
       usage |= ISL_SURF_USAGE_STORAGE_BIT;
 
    if (bindings & PIPE_BIND_DISPLAY_TARGET)
       usage |= ISL_SURF_USAGE_DISPLAY_BIT;
-
-   /* XXX: what to do with these? */
-   if (bindings & PIPE_BIND_BLENDABLE)
-      ;
-   if (bindings & PIPE_BIND_SAMPLER_VIEW)
-      ;
-   if (bindings & PIPE_BIND_VERTEX_BUFFER)
-      ;
-   if (bindings & PIPE_BIND_INDEX_BUFFER)
-      ;
-   if (bindings & PIPE_BIND_CONSTANT_BUFFER)
-      ;
-
-   if (bindings & PIPE_BIND_STREAM_OUTPUT)
-      ;
-   if (bindings & PIPE_BIND_CURSOR)
-      ;
-   if (bindings & PIPE_BIND_CUSTOM)
-      ;
-
-   if (bindings & PIPE_BIND_GLOBAL)
-      ;
-   if (bindings & PIPE_BIND_SHADER_BUFFER)
-      ;
-   if (bindings & PIPE_BIND_COMPUTE_RESOURCE)
-      ;
-   if (bindings & PIPE_BIND_COMMAND_ARGS_BUFFER)
-      ;
-   if (bindings & PIPE_BIND_QUERY_BUFFER)
-      ;
 
    return usage;
 }
@@ -212,12 +184,19 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
+   bool depth = util_format_is_depth_or_stencil(templ->format);
+
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
 
-   if (modifiers_count == 0) {
-      /* Display is X-tiled for historical reasons. */
-      modifier = (templ->bind & PIPE_BIND_DISPLAY_TARGET) ?
-                 I915_FORMAT_MOD_X_TILED : I915_FORMAT_MOD_Y_TILED;
+   if (modifiers_count == 0 || !modifiers) {
+      if (depth) {
+         modifier = I915_FORMAT_MOD_Y_TILED;
+      } else if (templ->bind & PIPE_BIND_DISPLAY_TARGET) {
+         /* Display is X-tiled for historical reasons. */
+         modifier = I915_FORMAT_MOD_X_TILED;
+      } else {
+         modifier = I915_FORMAT_MOD_Y_TILED;
+      }
       /* XXX: make sure this doesn't do stupid things for internal textures */
    }
 
@@ -242,10 +221,25 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (templ->target == PIPE_TEXTURE_CUBE)
       usage |= ISL_SURF_USAGE_CUBE_BIT;
 
+   // XXX: separate stencil...
+   enum pipe_format pfmt = templ->format;
+
+   if (util_format_is_depth_or_stencil(pfmt) &&
+       templ->usage != PIPE_USAGE_STAGING)
+      usage |= ISL_SURF_USAGE_DEPTH_BIT;
+
+   if (util_format_is_depth_and_stencil(pfmt)) {
+      // XXX: Z32S8
+      pfmt = PIPE_FORMAT_X8Z24_UNORM;
+   }
+
+   enum isl_format isl_format = iris_isl_format_for_pipe_format(pfmt);
+   assert(isl_format != ISL_FORMAT_UNSUPPORTED);
+
    UNUSED const bool isl_surf_created_successfully =
       isl_surf_init(&screen->isl_dev, &res->surf,
                     .dim = target_to_isl_surf_dim(templ->target),
-                    .format = iris_isl_format_for_pipe_format(templ->format),
+                    .format = isl_format,
                     .width = templ->width0,
                     .height = templ->height0,
                     .depth = templ->depth0,

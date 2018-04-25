@@ -37,6 +37,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
+#include "util/u_format.h"
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
 #include "i915_drm.h"
@@ -980,7 +981,7 @@ iris_create_surface(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
    struct pipe_surface *psurf = &surf->pipe;
-   struct iris_resource *itex = (struct iris_resource *) tex;
+   struct iris_resource *res = (struct iris_resource *) tex;
 
    if (!surf)
       return NULL;
@@ -996,6 +997,14 @@ iris_create_surface(struct pipe_context *ctx,
    psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
    psurf->u.tex.level = tmpl->u.tex.level;
 
+   unsigned usage = 0;
+   if (tmpl->writable)
+      usage = ISL_SURF_USAGE_STORAGE_BIT;
+   else if (util_format_is_depth_or_stencil(tmpl->format))
+      usage = ISL_SURF_USAGE_DEPTH_BIT;
+   else
+      usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+
    surf->view = (struct isl_view) {
       .format = iris_isl_format_for_pipe_format(tmpl->format),
       .base_level = tmpl->u.tex.level,
@@ -1003,9 +1012,13 @@ iris_create_surface(struct pipe_context *ctx,
       .base_array_layer = tmpl->u.tex.first_layer,
       .array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1,
       .swizzle = ISL_SWIZZLE_IDENTITY,
-      // XXX: DEPTH_BIt, STENCIL_BIT...CUBE_BIT?  Other bits?!
-      .usage = ISL_SURF_USAGE_RENDER_TARGET_BIT,
+      .usage = usage,
    };
+
+   /* Bail early for depth/stencil */
+   if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
+                          ISL_SURF_USAGE_STENCIL_BIT))
+      return psurf;
 
    void *map = NULL;
    u_upload_alloc(ice->state.surface_uploader, 0,
@@ -1020,9 +1033,9 @@ iris_create_surface(struct pipe_context *ctx,
    surf->surface_state_offset += iris_bo_offset_from_base_address(state_bo);
 
    isl_surf_fill_state(&screen->isl_dev, map,
-                       .surf = &itex->surf, .view = &surf->view,
+                       .surf = &res->surf, .view = &surf->view,
                        .mocs = MOCS_WB,
-                       .address = itex->bo->gtt_offset);
+                       .address = res->bo->gtt_offset);
                        // .aux_surf =
                        // .clear_color = clear_color,
 
