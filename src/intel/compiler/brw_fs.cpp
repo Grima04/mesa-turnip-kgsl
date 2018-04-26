@@ -5936,18 +5936,27 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case SHADER_OPCODE_EXP2:
    case SHADER_OPCODE_LOG2:
    case SHADER_OPCODE_SIN:
-   case SHADER_OPCODE_COS:
+   case SHADER_OPCODE_COS: {
       /* Unary extended math instructions are limited to SIMD8 on Gen4 and
-       * Gen6.
+       * Gen6. Extended Math Function is limited to SIMD8 with half-float.
        */
-      return (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
-              devinfo->gen == 5 || devinfo->is_g4x ? MIN2(16, inst->exec_size) :
-              MIN2(8, inst->exec_size));
+      if (devinfo->gen == 6 || (devinfo->gen == 4 && !devinfo->is_g4x))
+         return MIN2(8, inst->exec_size);
+      if (inst->dst.type == BRW_REGISTER_TYPE_HF)
+         return MIN2(8, inst->exec_size);
+      return MIN2(16, inst->exec_size);
+   }
 
-   case SHADER_OPCODE_POW:
-      /* SIMD16 is only allowed on Gen7+. */
-      return (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
-              MIN2(8, inst->exec_size));
+   case SHADER_OPCODE_POW: {
+      /* SIMD16 is only allowed on Gen7+. Extended Math Function is limited
+       * to SIMD8 with half-float
+       */
+      if (devinfo->gen < 7)
+         return MIN2(8, inst->exec_size);
+      if (inst->dst.type == BRW_REGISTER_TYPE_HF)
+         return MIN2(8, inst->exec_size);
+      return MIN2(16, inst->exec_size);
+   }
 
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
