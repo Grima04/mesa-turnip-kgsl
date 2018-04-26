@@ -637,6 +637,11 @@ lower_bit_size_callback(const nir_alu_instr *alu, UNUSED void *data)
    case nir_op_irem:
    case nir_op_udiv:
    case nir_op_umod:
+   case nir_op_fceil:
+   case nir_op_ffloor:
+   case nir_op_ffract:
+   case nir_op_fround_even:
+   case nir_op_ftrunc:
       return 32;
    default:
       return 0;
