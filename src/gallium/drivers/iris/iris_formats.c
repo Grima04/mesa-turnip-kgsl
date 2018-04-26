@@ -160,7 +160,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_R10G10B10A2_USCALED]     = ISL_FORMAT_R10G10B10A2_USCALED,
       [PIPE_FORMAT_R11G11B10_FLOAT]         = ISL_FORMAT_R11G11B10_FLOAT,
       [PIPE_FORMAT_R9G9B9E5_FLOAT]          = ISL_FORMAT_R9G9B9E5_SHAREDEXP,
-      //[PIPE_FORMAT_Z32_FLOAT_S8X24_UINT]    = ISL_FORMAT_R32_FLOAT_S8X24_UINT,
+      [PIPE_FORMAT_Z32_FLOAT_S8X24_UINT]    = ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS,
       [PIPE_FORMAT_R1_UNORM]                = ISL_FORMAT_R1_UNORM,
       [PIPE_FORMAT_R10G10B10X2_USCALED]     = ISL_FORMAT_R10G10B10X2_USCALED,
       //[PIPE_FORMAT_R10G10B10X2_SNORM]       = ISL_FORMAT_R10G10B10X2_SNORM,
@@ -400,12 +400,18 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    // XXX: msaa max
-   if (sample_count > 1)
+   if (sample_count > 16)
+      return false;
+
+   if (pformat == PIPE_FORMAT_NONE)
+      return true;
+
+   enum isl_format format = iris_isl_format_for_pipe_format(pformat);
+
+   if (format == ISL_FORMAT_UNSUPPORTED)
       return false;
 
    bool supported = true;
-
-   enum isl_format format = iris_isl_format_for_pipe_format(pformat);
 
    if (sample_count > 1)
       supported &= isl_format_supports_multisampling(devinfo, format);
