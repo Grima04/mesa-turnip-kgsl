@@ -254,6 +254,9 @@ iris_compile_vs(struct iris_context *ice,
 
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, &nir->info, prog_data, 0);
+
+   iris_setup_uniforms(mem_ctx, nir, prog_data);
+
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
