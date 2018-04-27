@@ -51,6 +51,7 @@
 #include <time.h>
 
 #include "errno.h"
+#include "common/gen_aux_map.h"
 #include "common/gen_clflush.h"
 #include "dev/gen_debug.h"
 #include "common/gen_gem.h"
@@ -146,6 +147,8 @@ struct iris_bufmgr {
 
    bool has_llc:1;
    bool bo_reuse:1;
+
+   struct gen_aux_map_context *aux_map_ctx;
 };
 
 static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
@@ -1193,6 +1196,12 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
 void
 iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 {
+   /* Free aux-map buffers */
+   gen_aux_map_finish(bufmgr->aux_map_ctx);
+
+   /* bufmgr will no longer try to free VMA entries in the aux-map */
+   bufmgr->aux_map_ctx = NULL;
+
    mtx_destroy(&bufmgr->lock);
 
    /* Free any cached buffer objects we were going to reuse */
@@ -1560,6 +1569,38 @@ iris_gtt_size(int fd)
    return 0;
 }
 
+static struct gen_buffer *
+gen_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
+{
+   struct gen_buffer *buf = malloc(sizeof(struct gen_buffer));
+   if (!buf)
+      return NULL;
+
+   struct iris_bufmgr *bufmgr = (struct iris_bufmgr *)driver_ctx;
+
+   struct iris_bo *bo =
+      iris_bo_alloc_tiled(bufmgr, "aux-map", size, 64 * 1024,
+                          IRIS_MEMZONE_OTHER, I915_TILING_NONE, 0, 0);
+
+   buf->driver_bo = bo;
+   buf->gpu = bo->gtt_offset;
+   buf->gpu_end = buf->gpu + bo->size;
+   buf->map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
+   return buf;
+}
+
+static void
+gen_aux_map_buffer_free(void *driver_ctx, struct gen_buffer *buffer)
+{
+   iris_bo_unreference((struct iris_bo*)buffer->driver_bo);
+   free(buffer);
+}
+
+static struct gen_mapped_pinned_buffer_alloc aux_map_allocator = {
+   .alloc = gen_aux_map_buffer_alloc,
+   .free = gen_aux_map_buffer_free,
+};
+
 /**
  * Initializes the GEM buffer manager, which uses the kernel to allocate, map,
  * and manage map buffer objections.
@@ -1627,5 +1668,17 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->handle_table =
       _mesa_hash_table_create(NULL, key_hash_uint, key_uint_equal);
 
+   if (devinfo->gen >= 12) {
+      bufmgr->aux_map_ctx = gen_aux_map_init(bufmgr, &aux_map_allocator,
+                                             devinfo);
+      assert(bufmgr->aux_map_ctx);
+   }
+
    return bufmgr;
+}
+
+void*
+iris_bufmgr_get_aux_map_context(struct iris_bufmgr *bufmgr)
+{
+   return bufmgr->aux_map_ctx;
 }
