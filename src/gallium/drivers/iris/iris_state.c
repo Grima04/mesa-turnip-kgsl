@@ -2132,8 +2132,9 @@ iris_upload_render_state(struct iris_context *ice,
          continue;
 
       struct iris_shader_state *shs = &ice->shaders.state[stage];
-      shs->const_size = cbuf0->buffer_size;
-      u_upload_data(ice->ctx.const_uploader, 0, shs->const_size, 32,
+      // XXX: DIV_ROUND_UP(prog_data->nr_params, 8)?
+      shs->const_size = DIV_ROUND_UP(cbuf0->buffer_size, 32);
+      u_upload_data(ice->ctx.const_uploader, 0, 32 * shs->const_size, 32,
                     cbuf0->user_buffer, &shs->const_offset,
                     &shs->push_resource);
    }
