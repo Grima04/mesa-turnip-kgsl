@@ -317,6 +317,10 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                               params->y1 - params->y0, scale);
    }
 
+#if GEN_GEN >= 12
+   genX(emit_aux_map_state)(batch);
+#endif
+
    iris_handle_always_flush_cache(batch);
 
    blorp_exec(blorp_batch, params);

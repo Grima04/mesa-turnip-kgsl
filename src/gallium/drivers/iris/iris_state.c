@@ -98,6 +98,7 @@
 #include "drm-uapi/i915_drm.h"
 #include "nir.h"
 #include "intel/compiler/brw_compiler.h"
+#include "intel/common/gen_aux_map.h"
 #include "intel/common/gen_l3_config.h"
 #include "intel/common/gen_sample_positions.h"
 #include "iris_batch.h"
@@ -4989,6 +4990,30 @@ iris_viewport_zmin_zmax(const struct pipe_viewport_state *vp, bool halfz,
    util_viewport_zmin_zmax(vp, halfz, zmin, zmax);
 }
 
+#if GEN_GEN >= 12
+void
+genX(emit_aux_map_state)(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+   if (!aux_map_ctx)
+      return;
+   uint32_t aux_map_state_num = gen_aux_map_get_state_num(aux_map_ctx);
+   if (batch->last_aux_map_state != aux_map_state_num) {
+      /* If the aux-map state number increased, then we need to rewrite the
+       * register. Rewriting the register is used to both set the aux-map
+       * translation table address, and also to invalidate any previously
+       * cached translations.
+       */
+      uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
+      assert(base_addr != 0 && ALIGN(base_addr, 32 * 1024) == base_addr);
+      iris_load_register_imm64(batch, GENX(GFX_AUX_TABLE_BASE_ADDR_num),
+                               base_addr);
+      batch->last_aux_map_state = aux_map_state_num;
+   }
+}
+#endif
+
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
@@ -5840,6 +5865,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (ice->state.current_hash_scale != 1)
       genX(emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
+
+#if GEN_GEN >= 12
+   genX(emit_aux_map_state)(batch);
+#endif
 }
 
 static void
@@ -6091,6 +6120,10 @@ iris_upload_compute_state(struct iris_context *ice,
 
    if (ice->state.need_border_colors)
       iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
+
+#if GEN_GEN >= 12
+   genX(emit_aux_map_state)(batch);
+#endif
 
    if (dirty & IRIS_DIRTY_CS) {
       /* The MEDIA_VFE_STATE documentation for Gen8+ says:
