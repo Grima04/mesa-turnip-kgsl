@@ -47,6 +47,7 @@
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "intel/common/gen_aux_map.h"
 #include "intel/dev/gen_debug.h"
 #include "isl/isl.h"
 #include "drm-uapi/drm_fourcc.h"
@@ -384,6 +385,19 @@ iris_get_aux_clear_color_state_size(struct iris_screen *screen)
    return devinfo->gen >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
 }
 
+static void
+map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
+{
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   if (devinfo->gen >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
+      void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+      assert(aux_map_ctx);
+      gen_aux_map_add_image(aux_map_ctx, &res->surf, res->bo->gtt_offset,
+                            res->aux.bo->gtt_offset + res->aux.offset);
+      res->bo->aux_map_address = res->aux.bo->gtt_offset;
+   }
+}
+
 /**
  * Configure aux for the resource, but don't allocate it. For images which
  * might be shared with modifiers, we must allocate the image and aux data in
@@ -559,6 +573,8 @@ iris_resource_alloc_separate_aux(struct iris_screen *screen,
    if (!iris_resource_init_aux_buf(res, alloc_flags,
                                    iris_get_aux_clear_color_state_size(screen)))
       return false;
+
+   map_aux_addresses(screen, res);
 
    return true;
 }
@@ -846,6 +862,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
             res->aux.clear_color_offset += aux_offset;
          if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
             aux_enabled = false;
+         map_aux_addresses(screen, res);
       }
    }
 

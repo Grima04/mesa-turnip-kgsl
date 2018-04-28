@@ -395,6 +395,20 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    if (!bo)
       return NULL;
 
+   if (bo->aux_map_address) {
+      /* This buffer was associated with an aux-buffer range. We make sure
+       * that buffers are not reused from the cache while the buffer is (busy)
+       * being used by an executing batch. Since we are here, the buffer is no
+       * longer being used by a batch and the buffer was deleted (in order to
+       * end up in the cache). Therefore its old aux-buffer range can be
+       * removed from the aux-map.
+       */
+      if (bo->bufmgr->aux_map_ctx)
+         gen_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
+                                 bo->size);
+      bo->aux_map_address = 0;
+   }
+
    /* If the cached BO isn't in the right memory zone, or the alignment
     * isn't sufficient, free the old memory and assign it a new address.
     */
@@ -728,6 +742,11 @@ bo_close(struct iris_bo *bo)
    if (ret != 0) {
       DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
           bo->gem_handle, bo->name, strerror(errno));
+   }
+
+   if (bo->aux_map_address && bo->bufmgr->aux_map_ctx) {
+      gen_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
+                              bo->size);
    }
 
    /* Return the VMA for reuse */
