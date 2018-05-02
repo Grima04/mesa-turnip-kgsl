@@ -226,12 +226,7 @@ iris_batch_reset(struct iris_batch *batch)
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
-}
 
-static void
-iris_batch_reset_and_clear_caches(struct iris_batch *batch)
-{
-   iris_batch_reset(batch);
    iris_cache_sets_clear(batch);
 }
 
@@ -456,7 +451,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    batch->aperture_space = 0;
 
    /* Start a new batch buffer. */
-   iris_batch_reset_and_clear_caches(batch);
+   iris_batch_reset(batch);
 
    return 0;
 }
