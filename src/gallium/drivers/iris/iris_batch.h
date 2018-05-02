@@ -42,9 +42,6 @@ struct iris_batch_buffer {
    struct iris_bo *bo;
    void *map;
    void *map_next;
-
-   struct iris_bo *partial_bo;
-   unsigned partial_bytes;
 };
 
 struct iris_batch {

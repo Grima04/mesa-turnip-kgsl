@@ -265,142 +265,10 @@ iris_batch_free(struct iris_batch *batch)
    }
 }
 
-/**
- * Finish copying the old batch/state buffer's contents to the new one
- * after we tried to "grow" the buffer in an earlier operation.
- */
-static void
-finish_growing_bos(struct iris_batch_buffer *buf)
-{
-   struct iris_bo *old_bo = buf->partial_bo;
-   if (!old_bo)
-      return;
-
-   void *old_map = old_bo->map_cpu ? old_bo->map_cpu : old_bo->map_wc;
-   memcpy(buf->map, old_map, buf->partial_bytes);
-
-   buf->partial_bo = NULL;
-   buf->partial_bytes = 0;
-
-   iris_bo_unreference(old_bo);
-}
-
 static unsigned
 buffer_bytes_used(struct iris_batch_buffer *buf)
 {
    return buf->map_next - buf->map;
-}
-
-/**
- * Grow either the batch or state buffer to a new larger size.
- *
- * We can't actually grow buffers, so we allocate a new one, copy over
- * the existing contents, and update our lists to refer to the new one.
- *
- * Note that this is only temporary - each new batch recreates the buffers
- * at their original target size (BATCH_SZ or STATE_SZ).
- */
-static void
-grow_buffer(struct iris_batch *batch,
-            struct iris_batch_buffer *buf,
-            unsigned new_size)
-{
-   struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
-   struct iris_bo *bo = buf->bo;
-
-   perf_debug(batch->dbg, "Growing %s - ran out of space\n", bo->name);
-
-   if (buf->partial_bo) {
-      /* We've already grown once, and now we need to do it again.
-       * Finish our last grow operation so we can start a new one.
-       * This should basically never happen.
-       */
-      perf_debug(batch->dbg, "Had to grow multiple times");
-      finish_growing_bos(buf);
-   }
-
-   const unsigned existing_bytes = buffer_bytes_used(buf);
-
-   struct iris_bo *new_bo =
-      iris_bo_alloc(bufmgr, bo->name, new_size, IRIS_MEMZONE_OTHER);
-
-   buf->map = iris_bo_map(NULL, new_bo, MAP_READ | MAP_WRITE);
-   buf->map_next = buf->map + existing_bytes;
-
-   /* Try to put the new BO at the same GTT offset as the old BO (which
-    * we're throwing away, so it doesn't need to be there).
-    *
-    * This guarantees that our relocations continue to work: values we've
-    * already written into the buffer, values we're going to write into the
-    * buffer, and the validation/relocation lists all will match.
-    *
-    * Also preserve kflags for EXEC_OBJECT_CAPTURE.
-    */
-   new_bo->gtt_offset = bo->gtt_offset;
-   new_bo->index = bo->index;
-   new_bo->kflags = bo->kflags;
-
-   /* Batch/state buffers are per-context, and if we've run out of space,
-    * we must have actually used them before, so...they will be in the list.
-    */
-   assert(bo->index < batch->exec_count);
-   assert(batch->exec_bos[bo->index] == bo);
-
-   /* Update the validation list to use the new BO. */
-   batch->exec_bos[bo->index] = new_bo;
-   batch->validation_list[bo->index].handle = new_bo->gem_handle;
-
-   /* Exchange the two BOs...without breaking pointers to the old BO.
-    *
-    * Consider this scenario:
-    *
-    * 1. Somebody calls iris_state_batch() to get a region of memory, and
-    *    and then creates a iris_address pointing to iris->batch.state.bo.
-    * 2. They then call iris_state_batch() a second time, which happens to
-    *    grow and replace the state buffer.  They then try to emit a
-    *    relocation to their first section of memory.
-    *
-    * If we replace the iris->batch.state.bo pointer at step 2, we would
-    * break the address created in step 1.  They'd have a pointer to the
-    * old destroyed BO.  Emitting a relocation would add this dead BO to
-    * the validation list...causing /both/ statebuffers to be in the list,
-    * and all kinds of disasters.
-    *
-    * This is not a contrived case - BLORP vertex data upload hits this.
-    *
-    * There are worse scenarios too.  Fences for GL sync objects reference
-    * iris->batch.batch.bo.  If we replaced the batch pointer when growing,
-    * we'd need to chase down every fence and update it to point to the
-    * new BO.  Otherwise, it would refer to a "batch" that never actually
-    * gets submitted, and would fail to trigger.
-    *
-    * To work around both of these issues, we transmutate the buffers in
-    * place, making the existing struct iris_bo represent the new buffer,
-    * and "new_bo" represent the old BO.  This is highly unusual, but it
-    * seems like a necessary evil.
-    *
-    * We also defer the memcpy of the existing batch's contents.  Callers
-    * may make multiple iris_state_batch calls, and retain pointers to the
-    * old BO's map.  We'll perform the memcpy in finish_growing_bo() when
-    * we finally submit the batch, at which point we've finished uploading
-    * state, and nobody should have any old references anymore.
-    *
-    * To do that, we keep a reference to the old BO in grow->partial_bo,
-    * and store the number of bytes to copy in grow->partial_bytes.  We
-    * can monkey with the refcounts directly without atomics because these
-    * are per-context BOs and they can only be touched by this thread.
-    */
-   assert(new_bo->refcount == 1);
-   new_bo->refcount = bo->refcount;
-   bo->refcount = 1;
-
-   struct iris_bo tmp;
-   memcpy(&tmp, bo, sizeof(struct iris_bo));
-   memcpy(bo, new_bo, sizeof(struct iris_bo));
-   memcpy(new_bo, &tmp, sizeof(struct iris_bo));
-
-   buf->partial_bo = new_bo; /* the one reference of the OLD bo */
-   buf->partial_bytes = existing_bytes;
 }
 
 static void
@@ -415,9 +283,7 @@ require_buffer_space(struct iris_batch *batch,
    if (!batch->no_wrap && required_bytes >= flush_threshold) {
       iris_batch_flush(batch);
    } else if (required_bytes >= buf->bo->size) {
-      grow_buffer(batch, buf,
-                  MIN2(buf->bo->size + buf->bo->size / 2, max_buffer_size));
-      assert(required_bytes < buf->bo->size);
+      assert(!"Can't grow");
    }
 }
 
