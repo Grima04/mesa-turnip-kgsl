@@ -145,6 +145,7 @@ iris_init_batch(struct iris_batch *batch,
       gen_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
                                 stderr, decode_flags, NULL,
                                 decode_get_bo, NULL, batch);
+      batch->decoder.max_vbo_decoded_lines = 32;
    }
 
    iris_batch_reset(batch);
