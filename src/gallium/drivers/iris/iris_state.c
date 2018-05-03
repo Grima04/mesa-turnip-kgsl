@@ -1419,7 +1419,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
     *  - if those are necessary, use count + 1/2/3... OR in the length
     */
    iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve) {
-      ve.DWordLength = 1 + GENX(VERTEX_ELEMENT_STATE_length) * count;
+      ve.DWordLength =
+         1 + GENX(VERTEX_ELEMENT_STATE_length) * MAX2(count, 1) - 2;
    }
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
