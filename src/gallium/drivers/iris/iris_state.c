@@ -1426,7 +1426,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
 
    for (int i = 0; i < count; i++) {
       enum isl_format isl_format =
-            iris_isl_format_for_pipe_format(state[i].src_format);
+         iris_isl_format_for_pipe_format(state[i].src_format);
       unsigned comp[4] = { VFCOMP_STORE_SRC, VFCOMP_STORE_SRC,
                            VFCOMP_STORE_SRC, VFCOMP_STORE_SRC };
 
@@ -1450,7 +1450,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
          ve.Component3Control = comp[3];
       }
 
-      iris_pack_command(GENX(3DSTATE_VF_INSTANCING), cso->vf_instancing[i], vi) {
+      iris_pack_command(GENX(3DSTATE_VF_INSTANCING),
+                        cso->vf_instancing[i], vi) {
          vi.VertexElementIndex = i;
          vi.InstancingEnable = state[i].instance_divisor > 0;
          vi.InstanceDataStepRate = state[i].instance_divisor;
