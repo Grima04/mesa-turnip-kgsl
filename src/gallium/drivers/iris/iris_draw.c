@@ -35,21 +35,24 @@ void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_batch *batch = &ice->render_batch;
+
+   iris_batch_maybe_flush(batch, 1500);
 
    // XXX: actually do brw_cache_flush_for_*
-   iris_emit_pipe_control_flush(&ice->render_batch,
+   iris_emit_pipe_control_flush(batch,
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                 PIPE_CONTROL_CS_STALL);
 
-   iris_emit_pipe_control_flush(&ice->render_batch,
+   iris_emit_pipe_control_flush(batch,
                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                                 PIPE_CONTROL_CONST_CACHE_INVALIDATE);
 
-   iris_cache_sets_clear(&ice->render_batch);
+   iris_cache_sets_clear(batch);
    // XXX: ^^^
 
 
    iris_update_compiled_shaders(ice);
-   ice->vtbl.upload_render_state(ice, &ice->render_batch, info);
+   ice->vtbl.upload_render_state(ice, batch, info);
 }

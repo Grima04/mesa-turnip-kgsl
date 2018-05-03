@@ -38,29 +38,26 @@ struct iris_address {
    bool write;
 };
 
-struct iris_batch_buffer {
-   struct iris_bo *bo;
-   void *map;
-   void *map_next;
-};
-
 struct iris_batch {
    struct iris_screen *screen;
    struct iris_vtable *vtbl;
    struct pipe_debug_callback *dbg;
 
    /** Current batchbuffer being queued up. */
-   struct iris_batch_buffer cmdbuf;
+   struct iris_bo *bo;
+   void *map;
+   void *map_next;
+   /** Size of the primary batch if we've moved on to a secondary. */
+   unsigned primary_batch_size;
+
 
    /** Last BO submitted to the hardware.  Used for glFinish(). */
-   struct iris_bo *last_cmd_bo;
+   struct iris_bo *last_bo;
 
    uint32_t hw_ctx_id;
 
    /** Which ring this batch targets - a I915_EXEC_RING_MASK value */
    uint8_t ring;
-
-   bool no_wrap;
 
    /** The validation list */
    struct drm_i915_gem_exec_object2 *validation_list;
@@ -101,6 +98,7 @@ void iris_init_batch(struct iris_batch *batch,
                      struct pipe_debug_callback *dbg,
                      uint8_t ring);
 void iris_batch_free(struct iris_batch *batch);
+void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);
 void iris_require_command_space(struct iris_batch *batch, unsigned size);
 void *iris_get_command_space(struct iris_batch *batch, unsigned bytes);
 void iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size);

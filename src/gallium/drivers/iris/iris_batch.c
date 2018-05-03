@@ -37,17 +37,13 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
-/**
- * Target sizes of the batch and state buffers.  We create the initial
- * buffers at these sizes, and flush when they're nearly full.  If we
- * underestimate how close we are to the end, and suddenly need more space
- * in the middle of a draw, we can grow the buffers, and finish the draw.
- * At that point, we'll be over our target size, so the next operation
- * should flush.  Each time we flush the batch, we recreate both buffers
- * at the original target size, so it doesn't grow without bound.
- */
 #define BATCH_SZ (20 * 1024)
-#define STATE_SZ (18 * 1024)
+
+/* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
+ * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus, we may
+ * need an extra 4 bytes to pad out to the nearest QWord.  So reserve 16.
+ */
+#define BATCH_RESERVED 16
 
 static void decode_batch(struct iris_batch *batch);
 
@@ -107,17 +103,6 @@ static uint32_t
 uint_key_hash(const void *key)
 {
    return (uintptr_t) key;
-}
-
-static void
-create_batch_buffer(struct iris_bufmgr *bufmgr,
-                    struct iris_batch_buffer *buf,
-                    const char *name, unsigned size)
-{
-   buf->bo = iris_bo_alloc(bufmgr, name, size, IRIS_MEMZONE_OTHER);
-   buf->bo->kflags |= EXEC_OBJECT_CAPTURE;
-   buf->map = iris_bo_map(NULL, buf->bo, MAP_READ | MAP_WRITE);
-   buf->map_next = buf->map;
 }
 
 void
@@ -208,35 +193,37 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
 }
 
 static void
-iris_batch_reset(struct iris_batch *batch)
+create_batch(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
-   if (batch->last_cmd_bo != NULL) {
-      iris_bo_unreference(batch->last_cmd_bo);
-      batch->last_cmd_bo = NULL;
+   batch->bo = iris_bo_alloc(bufmgr, "command buffer",
+                             BATCH_SZ + BATCH_RESERVED, IRIS_MEMZONE_OTHER);
+   batch->bo->kflags |= EXEC_OBJECT_CAPTURE;
+   batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
+   batch->map_next = batch->map;
+
+   add_exec_bo(batch, batch->bo);
+}
+
+static void
+iris_batch_reset(struct iris_batch *batch)
+{
+   if (batch->last_bo != NULL) {
+      iris_bo_unreference(batch->last_bo);
+      batch->last_bo = NULL;
    }
-   batch->last_cmd_bo = batch->cmdbuf.bo;
+   batch->last_bo = batch->bo;
+   batch->primary_batch_size = 0;
 
-   create_batch_buffer(bufmgr, &batch->cmdbuf, "command buffer", BATCH_SZ);
-
-   add_exec_bo(batch, batch->cmdbuf.bo);
-   assert(batch->cmdbuf.bo->index == 0);
+   create_batch(batch);
+   assert(batch->bo->index == 0);
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
 
    iris_cache_sets_clear(batch);
-}
-
-static void
-free_batch_buffer(struct iris_batch_buffer *buf)
-{
-   iris_bo_unreference(buf->bo);
-   buf->bo = NULL;
-   buf->map = NULL;
-   buf->map_next = NULL;
 }
 
 void
@@ -247,9 +234,12 @@ iris_batch_free(struct iris_batch *batch)
    }
    free(batch->exec_bos);
    free(batch->validation_list);
-   free_batch_buffer(&batch->cmdbuf);
+   iris_bo_unreference(batch->bo);
+   batch->bo = NULL;
+   batch->map = NULL;
+   batch->map_next = NULL;
 
-   iris_bo_unreference(batch->last_cmd_bo);
+   iris_bo_unreference(batch->last_bo);
 
    _mesa_hash_table_destroy(batch->cache.render, NULL);
    _mesa_set_destroy(batch->cache.depth, NULL);
@@ -261,41 +251,51 @@ iris_batch_free(struct iris_batch *batch)
 }
 
 static unsigned
-buffer_bytes_used(struct iris_batch_buffer *buf)
+batch_bytes_used(struct iris_batch *batch)
 {
-   return buf->map_next - buf->map;
+   return batch->map_next - batch->map;
 }
 
-static void
-require_buffer_space(struct iris_batch *batch,
-                     struct iris_batch_buffer *buf,
-                     unsigned size,
-                     unsigned flush_threshold,
-                     unsigned max_buffer_size)
+/**
+ * If we've chained to a secondary batch, or are getting near to the end,
+ * then flush.  This should only be called between draws.
+ */
+void
+iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate)
 {
-   const unsigned required_bytes = buffer_bytes_used(buf) + size;
-
-   if (!batch->no_wrap && required_bytes >= flush_threshold) {
+   if (batch->bo != batch->exec_bos[0] ||
+       batch_bytes_used(batch) + estimate >= BATCH_SZ) {
       iris_batch_flush(batch);
-   } else if (required_bytes >= buf->bo->size) {
-      assert(!"Can't grow");
    }
 }
-
 
 void
 iris_require_command_space(struct iris_batch *batch, unsigned size)
 {
-   require_buffer_space(batch, &batch->cmdbuf, size, BATCH_SZ, MAX_BATCH_SIZE);
+   const unsigned required_bytes = batch_bytes_used(batch) + size;
+
+   if (required_bytes >= BATCH_SZ) {
+      /* No longer held by batch->bo, still held by validation list */
+      iris_bo_unreference(batch->bo);
+      batch->primary_batch_size = batch_bytes_used(batch);
+
+      const uint32_t MI_BATCH_BUFFER_START = (0x31 << 23) | (1 << 8);
+
+      uint32_t *cmd  = batch->map += sizeof(uint32_t);
+      uint64_t *addr = batch->map += sizeof(uint64_t);
+
+      create_batch(batch);
+
+      *cmd = MI_BATCH_BUFFER_START;
+      *addr = batch->bo->gtt_offset;
+   }
 }
 
 void *
 iris_get_command_space(struct iris_batch *batch, unsigned bytes)
 {
    iris_require_command_space(batch, bytes);
-   void *map = batch->cmdbuf.map_next;
-   batch->cmdbuf.map_next += bytes;
-   return map;
+   return batch->map_next += bytes;
 }
 
 void
@@ -315,8 +315,6 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 static void
 iris_finish_batch(struct iris_batch *batch)
 {
-   batch->no_wrap = true;
-
    // XXX: ISP DIS
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
@@ -324,16 +322,14 @@ iris_finish_batch(struct iris_batch *batch)
     * necessary by emitting an extra MI_NOOP after the end.
     */
    const uint32_t MI_BATCH_BUFFER_END_AND_NOOP[2]  = { (0xA << 23), 0 };
-   const bool qword_aligned = (buffer_bytes_used(&batch->cmdbuf) % 8) == 0;
+   const bool qword_aligned = (batch_bytes_used(batch) % 8) == 0;
    iris_batch_emit(batch, MI_BATCH_BUFFER_END_AND_NOOP, qword_aligned ? 8 : 4);
-
-   batch->no_wrap = false;
 }
 
 static int
 submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
 {
-   iris_bo_unmap(batch->cmdbuf.bo);
+   iris_bo_unmap(batch->bo);
 
    /* The requirement for using I915_EXEC_NO_RELOC are:
     *
@@ -351,7 +347,8 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       .buffers_ptr = (uintptr_t) batch->validation_list,
       .buffer_count = batch->exec_count,
       .batch_start_offset = 0,
-      .batch_len = buffer_bytes_used(&batch->cmdbuf),
+      .batch_len = batch->bo == batch->exec_bos[0] ? batch_bytes_used(batch)
+                                                   : batch->primary_batch_size,
       .flags = batch->ring |
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
@@ -405,16 +402,15 @@ _iris_batch_flush_fence(struct iris_batch *batch,
                         int in_fence_fd, int *out_fence_fd,
                         const char *file, int line)
 {
-   if (buffer_bytes_used(&batch->cmdbuf) == 0)
+   if (batch_bytes_used(batch) == 0)
       return 0;
-
-   /* Check that we didn't just wrap our batchbuffer at a bad time. */
-   assert(!batch->no_wrap);
 
    iris_finish_batch(batch);
 
    if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
-      int bytes_for_commands = buffer_bytes_used(&batch->cmdbuf);
+      int bytes_for_commands = batch_bytes_used(batch);
+      if (batch->bo != batch->exec_bos[0])
+         bytes_for_commands += batch->primary_batch_size;
       fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5db (%0.1f%%), "
               "%4d BOs (%0.1fMb aperture)\n",
               file, line,
@@ -424,8 +420,9 @@ _iris_batch_flush_fence(struct iris_batch *batch,
       dump_validation_list(batch);
    }
 
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
+   if (unlikely(INTEL_DEBUG & DEBUG_BATCH)) {
       decode_batch(batch);
+   }
 
    int ret = submit_batch(batch, in_fence_fd, out_fence_fd);
 
@@ -439,7 +436,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 
    if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
       dbg_printf("waiting for idle\n");
-      iris_bo_wait_rendering(batch->cmdbuf.bo);
+      iris_bo_wait_rendering(batch->bo);
    }
 
    /* Clean up after the batch we submitted and prepare for a new one. */
@@ -486,7 +483,12 @@ iris_use_pinned_bo(struct iris_batch *batch,
 static void
 decode_batch(struct iris_batch *batch)
 {
-   gen_print_batch(&batch->decoder, batch->cmdbuf.map,
-                   buffer_bytes_used(&batch->cmdbuf),
-                   batch->cmdbuf.bo->gtt_offset);
+   if (batch->bo != batch->exec_bos[0]) {
+      void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
+      gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
+                      batch->exec_bos[0]->gtt_offset);
+   }
+
+   gen_print_batch(&batch->decoder, batch->map, batch_bytes_used(batch),
+                   batch->bo->gtt_offset);
 }

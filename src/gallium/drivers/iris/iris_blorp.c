@@ -274,8 +274,6 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
       iris_cache_flush_for_depth(batch, params->stencil.addr.buffer);
 
    iris_require_command_space(batch, 1400);
-   //iris_require_statebuffer_space(ice, 600); // XXX: THIS.  Need this.
-   batch->no_wrap = true;
 
    // XXX: Emit L3 state
 
@@ -286,8 +284,6 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    // XXX: TODO...drawing rectangle...unrevert Jason's patches on master
 
    blorp_exec(blorp_batch, params);
-
-   batch->no_wrap = false;
 
    // XXX: aperture checks?
 
