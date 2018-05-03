@@ -275,19 +275,23 @@ iris_require_command_space(struct iris_batch *batch, unsigned size)
    const unsigned required_bytes = batch_bytes_used(batch) + size;
 
    if (required_bytes >= BATCH_SZ) {
+      /* We only support chaining a single time. */
+      assert(batch->bo == batch->exec_bos[0]);
+
+      uint32_t *cmd = batch->map_next;
+      uint64_t *addr = batch->map_next + 4;
+      uint32_t *noop = batch->map_next + 12;
+      batch->map_next += 12;
+
       /* No longer held by batch->bo, still held by validation list */
       iris_bo_unreference(batch->bo);
-      batch->primary_batch_size = batch_bytes_used(batch);
-
-      const uint32_t MI_BATCH_BUFFER_START = (0x31 << 23) | (1 << 8);
-
-      uint32_t *cmd  = batch->map += sizeof(uint32_t);
-      uint64_t *addr = batch->map += sizeof(uint64_t);
-
+      batch->primary_batch_size = ALIGN(batch_bytes_used(batch), 8);
       create_batch(batch);
 
-      *cmd = MI_BATCH_BUFFER_START;
+      /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
+      *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
       *addr = batch->bo->gtt_offset;
+      *noop = 0;
    }
 }
 
@@ -295,7 +299,9 @@ void *
 iris_get_command_space(struct iris_batch *batch, unsigned bytes)
 {
    iris_require_command_space(batch, bytes);
-   return batch->map_next += bytes;
+   void *map = batch->map_next;
+   batch->map_next += bytes;
+   return map;
 }
 
 void
@@ -321,9 +327,13 @@ iris_finish_batch(struct iris_batch *batch)
     * requires our batch size to be QWord aligned, so we pad it out if
     * necessary by emitting an extra MI_NOOP after the end.
     */
-   const uint32_t MI_BATCH_BUFFER_END_AND_NOOP[2]  = { (0xA << 23), 0 };
    const bool qword_aligned = (batch_bytes_used(batch) % 8) == 0;
-   iris_batch_emit(batch, MI_BATCH_BUFFER_END_AND_NOOP, qword_aligned ? 8 : 4);
+   uint32_t *map = batch->map_next;
+
+   map[0] = (0xA << 23);
+   map[1] = 0;
+
+   batch->map_next += qword_aligned ? 8 : 4;
 }
 
 static int
@@ -483,12 +493,14 @@ iris_use_pinned_bo(struct iris_batch *batch,
 static void
 decode_batch(struct iris_batch *batch)
 {
-   if (batch->bo != batch->exec_bos[0]) {
-      void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
-      gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
-                      batch->exec_bos[0]->gtt_offset);
-   }
+   //if (batch->bo != batch->exec_bos[0]) {
+   void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
+   gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
+                   batch->exec_bos[0]->gtt_offset);
 
-   gen_print_batch(&batch->decoder, batch->map, batch_bytes_used(batch),
-                   batch->bo->gtt_offset);
+      //fprintf(stderr, "Secondary batch...\n");
+   //}
+
+   //gen_print_batch(&batch->decoder, batch->map, batch_bytes_used(batch),
+                   //batch->bo->gtt_offset);
 }
