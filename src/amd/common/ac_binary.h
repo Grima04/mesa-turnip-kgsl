@@ -80,6 +80,8 @@ struct ac_shader_config {
 	unsigned spi_ps_input_addr;
 	unsigned float_mode;
 	unsigned scratch_bytes_per_wave;
+	unsigned rsrc1;
+	unsigned rsrc2;
 };
 
 /*
