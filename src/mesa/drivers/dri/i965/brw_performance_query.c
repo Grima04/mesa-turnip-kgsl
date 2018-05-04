@@ -1993,17 +1993,21 @@ compute_topology_builtins(struct brw_context *brw)
    brw->perfquery.sys_vars.eu_threads_count =
       brw->perfquery.sys_vars.n_eus * devinfo->num_thread_per_eu;
 
-   /* At the moment the subslice mask builtin has groups of 3bits for each
+   /* The subslice mask builtin contains bits for all slices. Prior to Gen11
+    * it had groups of 3bits for each slice, on Gen11 it's 8bits for each
     * slice.
     *
     * Ideally equations would be updated to have a slice/subslice query
     * function/operator.
     */
    brw->perfquery.sys_vars.subslice_mask = 0;
+
+   int bits_per_subslice = devinfo->gen == 11 ? 8 : 3;
+
    for (int s = 0; s < util_last_bit(devinfo->slice_masks); s++) {
       for (int ss = 0; ss < (devinfo->subslice_slice_stride * 8); ss++) {
          if (gen_device_info_subslice_available(devinfo, s, ss))
-            brw->perfquery.sys_vars.subslice_mask |= 1UL << (s * 3 + ss);
+            brw->perfquery.sys_vars.subslice_mask |= 1UL << (s * bits_per_subslice + ss);
       }
    }
 }
@@ -2148,6 +2152,8 @@ get_register_queries_function(const struct gen_device_info *devinfo)
    }
    if (devinfo->is_cannonlake)
       return brw_oa_register_queries_cnl;
+   if (devinfo->gen == 11)
+      return brw_oa_register_queries_icl;
 
    return NULL;
 }

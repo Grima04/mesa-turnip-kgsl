@@ -157,6 +157,7 @@ i965_hw_metrics = [
   'cflgt2', 'cflgt3',
   'bxt', 'glk',
   'cnl',
+  'icl',
 ]
 
 i965_hw_metrics_xml_files = []
