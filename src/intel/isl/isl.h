@@ -602,6 +602,21 @@ enum isl_aux_usage {
     * @invariant isl_surf::samples == 1
     */
    ISL_AUX_USAGE_CCS_E,
+
+   /** The auxiliary surface provides full lossless media color compression
+    *
+    * @invariant isl_surf::samples == 1
+    */
+   ISL_AUX_USAGE_MC,
+
+   /** The auxiliary surface is a HiZ surface and CCS is also enabled */
+   ISL_AUX_USAGE_HIZ_CCS,
+
+   /** The auxiliary surface is an MCS and CCS is also enabled
+    *
+    * @invariant isl_surf::samples > 1
+    */
+   ISL_AUX_USAGE_MCS_CCS,
 };
 
 /**
@@ -1640,10 +1655,27 @@ enum isl_tiling
 isl_tiling_from_i915_tiling(uint32_t tiling);
 
 static inline bool
+isl_aux_usage_has_hiz(enum isl_aux_usage usage)
+{
+   return usage == ISL_AUX_USAGE_HIZ ||
+          usage == ISL_AUX_USAGE_HIZ_CCS;
+}
+
+static inline bool
+isl_aux_usage_has_mcs(enum isl_aux_usage usage)
+{
+   return usage == ISL_AUX_USAGE_MCS ||
+          usage == ISL_AUX_USAGE_MCS_CCS;
+}
+
+static inline bool
 isl_aux_usage_has_ccs(enum isl_aux_usage usage)
 {
    return usage == ISL_AUX_USAGE_CCS_D ||
-          usage == ISL_AUX_USAGE_CCS_E;
+          usage == ISL_AUX_USAGE_CCS_E ||
+          usage == ISL_AUX_USAGE_MC ||
+          usage == ISL_AUX_USAGE_HIZ_CCS ||
+          usage == ISL_AUX_USAGE_MCS_CCS;
 }
 
 const struct isl_drm_modifier_info * ATTRIBUTE_CONST
