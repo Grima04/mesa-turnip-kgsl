@@ -91,6 +91,7 @@ static const uint32_t isl_to_gen_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_MCS] = AUX_CCS_E,
    [ISL_AUX_USAGE_CCS_E] = AUX_CCS_E,
+   [ISL_AUX_USAGE_MCS_CCS] = AUX_MCS_LCE,
 };
 #elif GEN_GEN >= 9
 static const uint32_t isl_to_gen_aux_mode[] = {
@@ -546,7 +547,11 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #if GEN_GEN >= 7
    if (info->aux_usage != ISL_AUX_USAGE_NONE) {
       /* Check valid aux usages per-gen */
-      if (GEN_GEN >= 9) {
+      if (GEN_GEN >= 12) {
+         assert(info->aux_usage == ISL_AUX_USAGE_MCS ||
+                info->aux_usage == ISL_AUX_USAGE_CCS_E ||
+                info->aux_usage == ISL_AUX_USAGE_MCS_CCS);
+      } else if (GEN_GEN >= 9) {
          assert(info->aux_usage == ISL_AUX_USAGE_HIZ ||
                 info->aux_usage == ISL_AUX_USAGE_MCS ||
                 info->aux_usage == ISL_AUX_USAGE_CCS_D ||
@@ -560,8 +565,14 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
                 info->aux_usage == ISL_AUX_USAGE_CCS_D);
       }
 
-      /* We must have an auxiliary surface */
-      assert(info->aux_surf);
+      if (GEN_GEN >= 12) {
+         /* We don't need an auxiliary surface for CCS on gen12+ */
+         assert (info->aux_usage == ISL_AUX_USAGE_CCS_E ||
+                 info->aux_usage == ISL_AUX_USAGE_MC || info->aux_surf);
+      } else {
+         /* We must have an auxiliary surface */
+         assert(info->aux_surf);
+      }
 
       /* The docs don't appear to say anything whatsoever about compression
        * and the data port.  Testing seems to indicate that the data port
@@ -595,7 +606,14 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
    }
 
-   if (info->aux_usage != ISL_AUX_USAGE_NONE) {
+   /* The auxiliary buffer info is filled when it's useable by the HW. On
+    * gen12 and above, CCS is controlled by the aux table and not the
+    * auxiliary surface information in SURFACE_STATE.
+    */
+   if (info->aux_usage != ISL_AUX_USAGE_NONE &&
+       ((info->aux_usage != ISL_AUX_USAGE_MC &&
+         info->aux_usage != ISL_AUX_USAGE_CCS_E) || GEN_GEN <= 11)) {
+
       assert(info->aux_surf != NULL);
 
       struct isl_tile_info tile_info;
