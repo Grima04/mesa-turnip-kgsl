@@ -109,6 +109,11 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.SurfaceQPitch =
          isl_surf_get_array_pitch_el_rows(info->depth_surf) >> 2;
 #endif
+
+#if GEN_GEN >= 12
+      db.DepthBufferCompressionEnable =
+         info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS;
+#endif
    }
 
 #if GEN_GEN == 5 || GEN_GEN == 6
@@ -177,8 +182,11 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    };
 
    assert(info->hiz_usage == ISL_AUX_USAGE_NONE ||
-          info->hiz_usage == ISL_AUX_USAGE_HIZ);
-   if (info->hiz_usage == ISL_AUX_USAGE_HIZ) {
+          info->hiz_usage == ISL_AUX_USAGE_HIZ ||
+          info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS);
+   if (info->hiz_usage == ISL_AUX_USAGE_HIZ ||
+       info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS) {
+      assert(GEN_GEN >= 12 || info->hiz_usage == ISL_AUX_USAGE_HIZ);
       db.HierarchicalDepthBufferEnable = true;
 
       hiz.SurfaceBaseAddress = info->hiz_address;
