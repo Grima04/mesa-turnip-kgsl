@@ -85,6 +85,7 @@ struct blorp_params;
 #define IRIS_DIRTY_CONSTANTS_TES            (1ull << 37)
 #define IRIS_DIRTY_CONSTANTS_GS             (1ull << 38)
 #define IRIS_DIRTY_CONSTANTS_FS             (1ull << 39)
+#define IRIS_DIRTY_DEPTH_BUFFER             (1ull << 40)
 
 enum brw_param_domain {
    BRW_PARAM_DOMAIN_BUILTIN = 0,
@@ -270,6 +271,7 @@ struct iris_context {
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
+      struct iris_depth_buffer_state *cso_depthbuffer;
 
       struct pipe_resource *sampler_table_resource[MESA_SHADER_STAGES];
       uint32_t sampler_table_offset[MESA_SHADER_STAGES];

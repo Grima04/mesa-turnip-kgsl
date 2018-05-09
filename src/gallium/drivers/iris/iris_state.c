@@ -1250,11 +1250,12 @@ iris_set_viewport_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
-struct iris_depth_state
+struct iris_depth_buffer_state
 {
-   uint32_t depth_buffer[GENX(3DSTATE_DEPTH_BUFFER_length)];
-   uint32_t hier_depth_buffer[GENX(3DSTATE_HIER_DEPTH_BUFFER_length)];
-   uint32_t stencil_buffer[GENX(3DSTATE_STENCIL_BUFFER_length)];
+   uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
+                    GENX(3DSTATE_STENCIL_BUFFER_length) +
+                    GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
+                    GENX(3DSTATE_CLEAR_PARAMS_length)];
 };
 
 static void
@@ -1262,6 +1263,8 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   struct isl_device *isl_dev = &screen->isl_dev;
    struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
 
    if (cso->samples != state->samples) {
@@ -1287,11 +1290,63 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    pipe_surface_reference(&cso->zsbuf, state->zsbuf);
 
-   //struct isl_depth_stencil_hiz_emit_info info = {
-      //.mocs = MOCS_WB,
-   //};
+   struct iris_depth_buffer_state *cso_z =
+      malloc(sizeof(struct iris_depth_buffer_state));
 
-   // XXX: depth buffers
+   struct isl_view view = {
+      /* Some nice defaults */
+      .base_level = 0,
+      .levels = 1,
+      .base_array_layer = 0,
+      .array_len = 1,
+      .swizzle = ISL_SWIZZLE_IDENTITY,
+   };
+
+   struct isl_depth_stencil_hiz_emit_info info = {
+      .view = &view,
+      .mocs = MOCS_WB,
+   };
+
+   struct iris_resource *zres =
+      (void *) (cso->zsbuf ? cso->zsbuf->texture : NULL);
+
+   if (zres) {
+      view.usage |= ISL_SURF_USAGE_DEPTH_BIT;
+
+      info.depth_surf = &zres->surf;
+      info.depth_address = zres->bo->gtt_offset;
+
+      view.format = zres->surf.format;
+
+      view.base_level = cso->zsbuf->u.tex.level;
+      view.base_array_layer = cso->zsbuf->u.tex.first_layer;
+      view.array_len =
+         cso->zsbuf->u.tex.last_layer - cso->zsbuf->u.tex.first_layer + 1;
+
+      info.hiz_usage = ISL_AUX_USAGE_NONE;
+   }
+
+#if 0
+   if (stencil_mt) {
+      view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
+      info.stencil_surf = &stencil_mt->surf;
+
+      if (!depth_mt) {
+         view.base_level = stencil_irb->mt_level - stencil_irb->mt->first_level;
+         view.base_array_layer = stencil_irb->mt_layer;
+         view.array_len = MAX2(stencil_irb->layer_count, 1);
+         view.format = stencil_mt->surf.format;
+      }
+
+      uint32_t stencil_offset = 0;
+      info.stencil_address = stencil_mt->bo->gtt_offset + stencil_mt->offset;
+   }
+#endif
+
+   isl_emit_depth_stencil_hiz_s(isl_dev, cso_z->packets, &info);
+
+   ice->state.cso_depthbuffer = cso_z;
+   ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
 }
 
 static void
@@ -2353,10 +2408,18 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // XXX: 3DSTATE_DEPTH_BUFFER
-   // XXX: 3DSTATE_HIER_DEPTH_BUFFER
-   // XXX: 3DSTATE_STENCIL_BUFFER
-   // XXX: 3DSTATE_CLEAR_PARAMS
+   if (dirty & IRIS_DIRTY_DEPTH_BUFFER) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      struct iris_depth_buffer_state *cso_z = ice->state.cso_depthbuffer;
+
+      iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
+
+      if (cso_fb->zsbuf) {
+         struct iris_resource *zres = (void *) cso_fb->zsbuf->texture;
+         // XXX: depth might not be writable...
+         iris_use_pinned_bo(batch, zres->bo, true);
+      }
+   }
 
    if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
       iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_PATTERN), poly) {
