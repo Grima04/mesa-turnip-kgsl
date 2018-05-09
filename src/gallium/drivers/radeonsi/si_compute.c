@@ -66,7 +66,7 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 }
 
 static void code_object_to_config(const amd_kernel_code_t *code_object,
-				  struct si_shader_config *out_config) {
+				  struct ac_shader_config *out_config) {
 
 	uint32_t rsrc1 = code_object->compute_pgm_resource_registers;
 	uint32_t rsrc2 = code_object->compute_pgm_resource_registers >> 32;
@@ -249,8 +249,8 @@ static void *si_create_compute_state(
 				return NULL;
 			}
 		} else {
-			si_shader_binary_read_config(&program->shader.binary,
-				     &program->shader.config, 0);
+			ac_shader_binary_read_config(&program->shader.binary,
+				     &program->shader.config, 0, false);
 		}
 		si_shader_dump(sctx->screen, &program->shader, &sctx->debug,
 			       PIPE_SHADER_COMPUTE, stderr, true);
@@ -366,7 +366,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 
 static bool si_setup_compute_scratch_buffer(struct si_context *sctx,
                                             struct si_shader *shader,
-                                            struct si_shader_config *config)
+                                            struct ac_shader_config *config)
 {
 	uint64_t scratch_bo_size, scratch_needed;
 	scratch_bo_size = 0;
@@ -409,8 +409,8 @@ static bool si_switch_compute_shader(struct si_context *sctx,
 				     unsigned offset)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	struct si_shader_config inline_config = {0};
-	struct si_shader_config *config;
+	struct ac_shader_config inline_config = {0};
+	struct ac_shader_config *config;
 	uint64_t shader_va;
 
 	if (sctx->cs_shader_state.emitted_program == program &&
@@ -426,7 +426,7 @@ static bool si_switch_compute_shader(struct si_context *sctx,
 		if (code_object) {
 			code_object_to_config(code_object, config);
 		} else {
-			si_shader_binary_read_config(&shader->binary, config, offset);
+			ac_shader_binary_read_config(&shader->binary, config, offset, false);
 		}
 
 		lds_blocks = config->lds_size;

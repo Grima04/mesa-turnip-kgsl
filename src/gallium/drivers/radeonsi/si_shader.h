@@ -574,22 +574,6 @@ struct si_shader_key {
 /* Restore the pack alignment to default. */
 #pragma pack(pop)
 
-struct si_shader_config {
-	unsigned			num_sgprs;
-	unsigned			num_vgprs;
-	unsigned			spilled_sgprs;
-	unsigned			spilled_vgprs;
-	unsigned			private_mem_vgprs;
-	unsigned			lds_size;
-	unsigned			max_simd_waves;
-	unsigned			spi_ps_input_ena;
-	unsigned			spi_ps_input_addr;
-	unsigned			float_mode;
-	unsigned			scratch_bytes_per_wave;
-	unsigned			rsrc1;
-	unsigned			rsrc2;
-};
-
 /* GCN-specific shader info. */
 struct si_shader_info {
 	ubyte			vs_output_param_offset[SI_MAX_VS_OUTPUTS];
@@ -600,6 +584,8 @@ struct si_shader_info {
 	bool			uses_instanceid;
 	ubyte			nr_pos_exports;
 	ubyte			nr_param_exports;
+	unsigned		private_mem_vgprs;
+	unsigned		max_simd_waves;
 };
 
 struct si_shader {
@@ -627,7 +613,7 @@ struct si_shader {
 
 	/* The following data is all that's needed for binary shaders. */
 	struct ac_shader_binary	binary;
-	struct si_shader_config		config;
+	struct ac_shader_config		config;
 	struct si_shader_info		info;
 
 	/* Shader key + LLVM IR + disassembly + statistics.
@@ -684,7 +670,7 @@ struct si_shader_part {
 	struct si_shader_part *next;
 	union si_shader_part_key key;
 	struct ac_shader_binary binary;
-	struct si_shader_config config;
+	struct ac_shader_config config;
 };
 
 /* si_shader.c */
@@ -714,9 +700,6 @@ void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);
 void si_shader_apply_scratch_relocs(struct si_shader *shader,
 				    uint64_t scratch_va);
-void si_shader_binary_read_config(struct ac_shader_binary *binary,
-				  struct si_shader_config *conf,
-				  unsigned symbol_offset);
 const char *si_get_shader_name(const struct si_shader *shader, unsigned processor);
 
 /* si_shader_nir.c */

@@ -5045,90 +5045,6 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
 	ac_build_kill_if_false(&ctx->ac, bit);
 }
 
-void si_shader_binary_read_config(struct ac_shader_binary *binary,
-				  struct si_shader_config *conf,
-				  unsigned symbol_offset)
-{
-	unsigned i;
-	const unsigned char *config =
-		ac_shader_binary_config_start(binary, symbol_offset);
-	bool really_needs_scratch = false;
-
-	/* LLVM adds SGPR spills to the scratch size.
-	 * Find out if we really need the scratch buffer.
-	 */
-	for (i = 0; i < binary->reloc_count; i++) {
-		const struct ac_shader_reloc *reloc = &binary->relocs[i];
-
-		if (!strcmp(scratch_rsrc_dword0_symbol, reloc->name) ||
-		    !strcmp(scratch_rsrc_dword1_symbol, reloc->name)) {
-			really_needs_scratch = true;
-			break;
-		}
-	}
-
-	/* XXX: We may be able to emit some of these values directly rather than
-	 * extracting fields to be emitted later.
-	 */
-
-	for (i = 0; i < binary->config_size_per_symbol; i+= 8) {
-		unsigned reg = util_le32_to_cpu(*(uint32_t*)(config + i));
-		unsigned value = util_le32_to_cpu(*(uint32_t*)(config + i + 4));
-		switch (reg) {
-		case R_00B028_SPI_SHADER_PGM_RSRC1_PS:
-		case R_00B128_SPI_SHADER_PGM_RSRC1_VS:
-		case R_00B228_SPI_SHADER_PGM_RSRC1_GS:
-		case R_00B428_SPI_SHADER_PGM_RSRC1_HS:
-		case R_00B848_COMPUTE_PGM_RSRC1:
-			conf->num_sgprs = MAX2(conf->num_sgprs, (G_00B028_SGPRS(value) + 1) * 8);
-			conf->num_vgprs = MAX2(conf->num_vgprs, (G_00B028_VGPRS(value) + 1) * 4);
-			conf->float_mode =  G_00B028_FLOAT_MODE(value);
-			conf->rsrc1 = value;
-			break;
-		case R_00B02C_SPI_SHADER_PGM_RSRC2_PS:
-			conf->lds_size = MAX2(conf->lds_size, G_00B02C_EXTRA_LDS_SIZE(value));
-			break;
-		case R_00B84C_COMPUTE_PGM_RSRC2:
-			conf->lds_size = MAX2(conf->lds_size, G_00B84C_LDS_SIZE(value));
-			conf->rsrc2 = value;
-			break;
-		case R_0286CC_SPI_PS_INPUT_ENA:
-			conf->spi_ps_input_ena = value;
-			break;
-		case R_0286D0_SPI_PS_INPUT_ADDR:
-			conf->spi_ps_input_addr = value;
-			break;
-		case R_0286E8_SPI_TMPRING_SIZE:
-		case R_00B860_COMPUTE_TMPRING_SIZE:
-			/* WAVESIZE is in units of 256 dwords. */
-			if (really_needs_scratch)
-				conf->scratch_bytes_per_wave =
-					G_00B860_WAVESIZE(value) * 256 * 4;
-			break;
-		case 0x4: /* SPILLED_SGPRS */
-			conf->spilled_sgprs = value;
-			break;
-		case 0x8: /* SPILLED_VGPRS */
-			conf->spilled_vgprs = value;
-			break;
-		default:
-			{
-				static bool printed;
-
-				if (!printed) {
-					fprintf(stderr, "Warning: LLVM emitted unknown "
-						"config register: 0x%x\n", reg);
-					printed = true;
-				}
-			}
-			break;
-		}
-	}
-
-	if (!conf->spi_ps_input_addr)
-		conf->spi_ps_input_addr = conf->spi_ps_input_ena;
-}
-
 void si_shader_apply_scratch_relocs(struct si_shader *shader,
 				    uint64_t scratch_va)
 {
@@ -5296,7 +5212,7 @@ static void si_shader_dump_disassembly(const struct ac_shader_binary *binary,
 static void si_calculate_max_simd_waves(struct si_shader *shader)
 {
 	struct si_screen *sscreen = shader->selector->screen;
-	struct si_shader_config *conf = &shader->config;
+	struct ac_shader_config *conf = &shader->config;
 	unsigned num_inputs = shader->selector->info.num_inputs;
 	unsigned lds_increment = sscreen->info.chip_class >= GFX7 ? 512 : 256;
 	unsigned lds_per_wave = 0;
@@ -5345,13 +5261,13 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 	if (lds_per_wave)
 		max_simd_waves = MIN2(max_simd_waves, 16384 / lds_per_wave);
 
-	conf->max_simd_waves = max_simd_waves;
+	shader->info.max_simd_waves = max_simd_waves;
 }
 
 void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
 					struct pipe_debug_callback *debug)
 {
-	const struct si_shader_config *conf = &shader->config;
+	const struct ac_shader_config *conf = &shader->config;
 
 	pipe_debug_message(debug, SHADER_INFO,
 			   "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
@@ -5360,8 +5276,8 @@ void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
 			   conf->num_sgprs, conf->num_vgprs,
 			   si_get_shader_binary_size(shader),
 			   conf->lds_size, conf->scratch_bytes_per_wave,
-			   conf->max_simd_waves, conf->spilled_sgprs,
-			   conf->spilled_vgprs, conf->private_mem_vgprs);
+			   shader->info.max_simd_waves, conf->spilled_sgprs,
+			   conf->spilled_vgprs, shader->info.private_mem_vgprs);
 }
 
 static void si_shader_dump_stats(struct si_screen *sscreen,
@@ -5370,7 +5286,7 @@ static void si_shader_dump_stats(struct si_screen *sscreen,
 				 FILE *file,
 				 bool check_debug_option)
 {
-	const struct si_shader_config *conf = &shader->config;
+	const struct ac_shader_config *conf = &shader->config;
 
 	if (!check_debug_option ||
 	    si_can_dump_shader(sscreen, processor)) {
@@ -5394,10 +5310,10 @@ static void si_shader_dump_stats(struct si_screen *sscreen,
 			"********************\n\n\n",
 			conf->num_sgprs, conf->num_vgprs,
 			conf->spilled_sgprs, conf->spilled_vgprs,
-			conf->private_mem_vgprs,
+			shader->info.private_mem_vgprs,
 			si_get_shader_binary_size(shader),
 			conf->lds_size, conf->scratch_bytes_per_wave,
-			conf->max_simd_waves);
+			shader->info.max_simd_waves);
 	}
 }
 
@@ -5484,7 +5400,7 @@ void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
 
 static int si_compile_llvm(struct si_screen *sscreen,
 			   struct ac_shader_binary *binary,
-			   struct si_shader_config *conf,
+			   struct ac_shader_config *conf,
 			   struct ac_llvm_compiler *compiler,
 			   LLVMModuleRef mod,
 			   struct pipe_debug_callback *debug,
@@ -5518,7 +5434,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 			return r;
 	}
 
-	si_shader_binary_read_config(binary, conf, 0);
+	ac_shader_binary_read_config(binary, conf, 0, false);
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
 	 * cost.
@@ -6893,7 +6809,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 
 	if ((debug && debug->debug_message) ||
 	    si_can_dump_shader(sscreen, ctx.type)) {
-		ctx.shader->config.private_mem_vgprs =
+		ctx.shader->info.private_mem_vgprs =
 			ac_count_scratch_private_memory(ctx.main_fn);
 	}
 
@@ -8066,9 +7982,9 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 			shader->config.spilled_vgprs =
 				MAX2(shader->config.spilled_vgprs,
 				     shader->previous_stage->config.spilled_vgprs);
-			shader->config.private_mem_vgprs =
-				MAX2(shader->config.private_mem_vgprs,
-				     shader->previous_stage->config.private_mem_vgprs);
+			shader->info.private_mem_vgprs =
+				MAX2(shader->info.private_mem_vgprs,
+				     shader->previous_stage->info.private_mem_vgprs);
 			shader->config.scratch_bytes_per_wave =
 				MAX2(shader->config.scratch_bytes_per_wave,
 				     shader->previous_stage->config.scratch_bytes_per_wave);
