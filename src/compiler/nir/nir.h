@@ -1306,6 +1306,12 @@ typedef enum {
     */
    NIR_INTRINSIC_TYPE = 20,
 
+   /**
+    * The swizzle mask for the instructions
+    * SwizzleInvocationsAMD and SwizzleInvocationsMaskedAMD
+    */
+   NIR_INTRINSIC_SWIZZLE_MASK = 20,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1411,6 +1417,7 @@ INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
 INTRINSIC_IDX_ACCESSORS(type, TYPE, nir_alu_type)
+INTRINSIC_IDX_ACCESSORS(swizzle_mask, SWIZZLE_MASK, unsigned)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
