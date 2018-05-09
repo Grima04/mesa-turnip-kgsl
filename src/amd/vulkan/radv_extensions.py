@@ -134,6 +134,7 @@ EXTENSIONS = [
     Extension('VK_AMD_gpu_shader_half_float',             1, 'device->rad_info.chip_class >= GFX8 && HAVE_LLVM >= 0x0800'),
     Extension('VK_AMD_gpu_shader_int16',                  1, 'device->rad_info.chip_class >= GFX8'),
     Extension('VK_AMD_rasterization_order',               1, 'device->has_out_of_order_rast'),
+    Extension('VK_AMD_shader_ballot',                     1, 'device->use_shader_ballot'),
     Extension('VK_AMD_shader_core_properties',            1, True),
     Extension('VK_AMD_shader_info',                       1, True),
     Extension('VK_AMD_shader_trinary_minmax',             1, True),

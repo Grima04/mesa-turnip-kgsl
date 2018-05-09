@@ -246,7 +246,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.lower_ubo_ssbo_access_to_offsets = true,
 			.caps = {
 				.amd_gcn_shader = true,
-				.amd_shader_ballot = false,
+				.amd_shader_ballot = device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT,
 				.amd_trinary_minmax = true,
 				.derivative_group = true,
 				.descriptor_array_dynamic_indexing = true,

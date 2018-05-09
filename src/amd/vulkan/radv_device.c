@@ -371,6 +371,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 				       (device->rad_info.chip_class >= GFX8 &&
 				        device->rad_info.me_fw_feature >= 41);
 
+	device->use_shader_ballot = device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT;
+
 	radv_physical_device_init_mem_types(device);
 	radv_fill_device_extension_table(device, &device->supported_extensions);
 
@@ -479,6 +481,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"localbos", RADV_PERFTEST_LOCAL_BOS},
 	{"dccmsaa", RADV_PERFTEST_DCC_MSAA},
 	{"bolist", RADV_PERFTEST_BO_LIST},
+	{"shader_ballot", RADV_PERFTEST_SHADER_BALLOT},
 	{NULL, 0}
 };
 
