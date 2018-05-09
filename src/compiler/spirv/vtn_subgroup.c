@@ -183,7 +183,8 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
                                val->ssa, vtn_ssa_value(b, w[3]), NULL, 0, 0);
       break;
 
-   case SpvOpGroupNonUniformBroadcast: ++w;
+   case SpvOpGroupNonUniformBroadcast:
+   case SpvOpGroupBroadcast: ++w;
    case SpvOpSubgroupReadInvocationKHR:
       vtn_build_subgroup_instr(b, nir_intrinsic_read_invocation,
                                val->ssa, vtn_ssa_value(b, w[3]),
@@ -193,6 +194,8 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    case SpvOpGroupNonUniformAll:
    case SpvOpGroupNonUniformAny:
    case SpvOpGroupNonUniformAllEqual:
+   case SpvOpGroupAll:
+   case SpvOpGroupAny:
    case SpvOpSubgroupAllKHR:
    case SpvOpSubgroupAnyKHR:
    case SpvOpSubgroupAllEqualKHR: {
@@ -201,10 +204,12 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_op op;
       switch (opcode) {
       case SpvOpGroupNonUniformAll:
+      case SpvOpGroupAll:
       case SpvOpSubgroupAllKHR:
          op = nir_intrinsic_vote_all;
          break;
       case SpvOpGroupNonUniformAny:
+      case SpvOpGroupAny:
       case SpvOpSubgroupAnyKHR:
          op = nir_intrinsic_vote_any;
          break;
@@ -232,8 +237,8 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       }
 
       nir_ssa_def *src0;
-      if (opcode == SpvOpGroupNonUniformAll ||
-          opcode == SpvOpGroupNonUniformAny ||
+      if (opcode == SpvOpGroupNonUniformAll || opcode == SpvOpGroupAll ||
+          opcode == SpvOpGroupNonUniformAny || opcode == SpvOpGroupAny ||
           opcode == SpvOpGroupNonUniformAllEqual) {
          src0 = vtn_ssa_value(b, w[4])->def;
       } else {
@@ -319,13 +324,33 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    case SpvOpGroupNonUniformBitwiseXor:
    case SpvOpGroupNonUniformLogicalAnd:
    case SpvOpGroupNonUniformLogicalOr:
-   case SpvOpGroupNonUniformLogicalXor: {
+   case SpvOpGroupNonUniformLogicalXor:
+   case SpvOpGroupIAdd:
+   case SpvOpGroupFAdd:
+   case SpvOpGroupFMin:
+   case SpvOpGroupUMin:
+   case SpvOpGroupSMin:
+   case SpvOpGroupFMax:
+   case SpvOpGroupUMax:
+   case SpvOpGroupSMax:
+   case SpvOpGroupIAddNonUniformAMD:
+   case SpvOpGroupFAddNonUniformAMD:
+   case SpvOpGroupFMinNonUniformAMD:
+   case SpvOpGroupUMinNonUniformAMD:
+   case SpvOpGroupSMinNonUniformAMD:
+   case SpvOpGroupFMaxNonUniformAMD:
+   case SpvOpGroupUMaxNonUniformAMD:
+   case SpvOpGroupSMaxNonUniformAMD: {
       nir_op reduction_op;
       switch (opcode) {
       case SpvOpGroupNonUniformIAdd:
+      case SpvOpGroupIAdd:
+      case SpvOpGroupIAddNonUniformAMD:
          reduction_op = nir_op_iadd;
          break;
       case SpvOpGroupNonUniformFAdd:
+      case SpvOpGroupFAdd:
+      case SpvOpGroupFAddNonUniformAMD:
          reduction_op = nir_op_fadd;
          break;
       case SpvOpGroupNonUniformIMul:
@@ -335,21 +360,33 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
          reduction_op = nir_op_fmul;
          break;
       case SpvOpGroupNonUniformSMin:
+      case SpvOpGroupSMin:
+      case SpvOpGroupSMinNonUniformAMD:
          reduction_op = nir_op_imin;
          break;
       case SpvOpGroupNonUniformUMin:
+      case SpvOpGroupUMin:
+      case SpvOpGroupUMinNonUniformAMD:
          reduction_op = nir_op_umin;
          break;
       case SpvOpGroupNonUniformFMin:
+      case SpvOpGroupFMin:
+      case SpvOpGroupFMinNonUniformAMD:
          reduction_op = nir_op_fmin;
          break;
       case SpvOpGroupNonUniformSMax:
+      case SpvOpGroupSMax:
+      case SpvOpGroupSMaxNonUniformAMD:
          reduction_op = nir_op_imax;
          break;
       case SpvOpGroupNonUniformUMax:
+      case SpvOpGroupUMax:
+      case SpvOpGroupUMaxNonUniformAMD:
          reduction_op = nir_op_umax;
          break;
       case SpvOpGroupNonUniformFMax:
+      case SpvOpGroupFMax:
+      case SpvOpGroupFMaxNonUniformAMD:
          reduction_op = nir_op_fmax;
          break;
       case SpvOpGroupNonUniformBitwiseAnd:
