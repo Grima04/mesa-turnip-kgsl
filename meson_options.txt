@@ -23,7 +23,7 @@ option(
   type : 'array',
   value : ['auto'],
   choices : [
-    '', 'auto', 'x11', 'wayland', 'drm', 'surfaceless', 'haiku', 'android',
+    'auto', 'x11', 'wayland', 'drm', 'surfaceless', 'haiku', 'android',
     'windows',
   ],
   description : 'window systems to support. If this is set to `auto`, all platforms applicable will be enabled.'
@@ -39,7 +39,7 @@ option(
   'dri-drivers',
   type : 'array',
   value : ['auto'],
-  choices : ['', 'auto', 'i915', 'i965', 'r100', 'r200', 'nouveau', 'swrast'],
+  choices : ['auto', 'i915', 'i965', 'r100', 'r200', 'nouveau', 'swrast'],
   description : 'List of dri drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
 option(
@@ -59,7 +59,7 @@ option(
   type : 'array',
   value : ['auto'],
   choices : [
-    '', 'auto', 'kmsro', 'radeonsi', 'r300', 'r600', 'nouveau', 'freedreno',
+    'auto', 'kmsro', 'radeonsi', 'r300', 'r600', 'nouveau', 'freedreno',
     'swrast', 'v3d', 'vc4', 'etnaviv', 'tegra', 'i915', 'svga', 'virgl',
     'swr', 'panfrost', 'iris', 'lima', 'zink'
   ],
@@ -159,7 +159,7 @@ option(
   'vulkan-drivers',
   type : 'array',
   value : ['auto'],
-  choices : ['', 'auto', 'amd', 'freedreno', 'intel'],
+  choices : ['auto', 'amd', 'freedreno', 'intel'],
   description : 'List of vulkan drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
 option(
