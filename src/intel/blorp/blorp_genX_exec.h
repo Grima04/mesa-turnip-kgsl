@@ -827,6 +827,12 @@ blorp_emit_ps_config(struct blorp_batch *batch,
       switch (params->fast_clear_op) {
       case ISL_AUX_OP_NONE:
          break;
+#if GEN_GEN >= 10
+      case ISL_AUX_OP_AMBIGUATE:
+         ps.RenderTargetFastClearEnable = true;
+         ps.RenderTargetResolveType = FAST_CLEAR_0;
+         break;
+#endif
 #if GEN_GEN >= 9
       case ISL_AUX_OP_PARTIAL_RESOLVE:
          ps.RenderTargetResolveType = RESOLVE_PARTIAL;

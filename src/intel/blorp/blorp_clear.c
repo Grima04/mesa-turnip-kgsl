@@ -898,7 +898,11 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
    params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
 
-   if (batch->blorp->isl_dev->info->gen >= 9) {
+   if (batch->blorp->isl_dev->info->gen >= 10) {
+      assert(resolve_op == ISL_AUX_OP_FULL_RESOLVE ||
+             resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE ||
+             resolve_op == ISL_AUX_OP_AMBIGUATE);
+   } else if (batch->blorp->isl_dev->info->gen >= 9) {
       assert(resolve_op == ISL_AUX_OP_FULL_RESOLVE ||
              resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE);
    } else {
@@ -1057,6 +1061,12 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
                     struct blorp_surf *surf,
                     uint32_t level, uint32_t layer)
 {
+   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 10) {
+      /* On gen10 and above, we have a hardware resolve op for this */
+      return blorp_ccs_resolve(batch, surf, level, layer, 1,
+                               surf->surf->format, ISL_AUX_OP_AMBIGUATE);
+   }
+
    struct blorp_params params;
    blorp_params_init(&params);
 
