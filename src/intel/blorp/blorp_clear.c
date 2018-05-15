@@ -1006,8 +1006,8 @@ blorp_ccs_resolve(struct blorp_batch *batch,
       y_scaledown = aux_fmtl->bh / 2;
    }
    params.x0 = params.y0 = 0;
-   params.x1 = minify(params.dst.aux_surf.logical_level0_px.width, level);
-   params.y1 = minify(params.dst.aux_surf.logical_level0_px.height, level);
+   params.x1 = minify(params.dst.surf.logical_level0_px.width, level);
+   params.y1 = minify(params.dst.surf.logical_level0_px.height, level);
    params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
    params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
 
