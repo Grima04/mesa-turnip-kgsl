@@ -372,6 +372,45 @@ build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
 }
 
 static nir_ssa_def *
+build_frexp16(nir_builder *b, nir_ssa_def *x, nir_ssa_def **exponent)
+{
+   assert(x->bit_size == 16);
+
+   nir_ssa_def *abs_x = nir_fabs(b, x);
+   nir_ssa_def *zero = nir_imm_floatN_t(b, 0, 16);
+
+   /* Half-precision floating-point values are stored as
+    *   1 sign bit;
+    *   5 exponent bits;
+    *   10 mantissa bits.
+    *
+    * An exponent shift of 10 will shift the mantissa out, leaving only the
+    * exponent and sign bit (which itself may be zero, if the absolute value
+    * was taken before the bitcast and shift).
+    */
+   nir_ssa_def *exponent_shift = nir_imm_int(b, 10);
+   nir_ssa_def *exponent_bias = nir_imm_intN_t(b, -14, 16);
+
+   nir_ssa_def *sign_mantissa_mask = nir_imm_intN_t(b, 0x83ffu, 16);
+
+   /* Exponent of floating-point values in the range [0.5, 1.0). */
+   nir_ssa_def *exponent_value = nir_imm_intN_t(b, 0x3800u, 16);
+
+   nir_ssa_def *is_not_zero = nir_fne(b, abs_x, zero);
+
+   /* Significand return must be of the same type as the input, but the
+    * exponent must be a 32-bit integer.
+    */
+   *exponent =
+      nir_i2i32(b,
+                nir_iadd(b, nir_ushr(b, abs_x, exponent_shift),
+                            nir_bcsel(b, is_not_zero, exponent_bias, zero)));
+
+   return nir_ior(b, nir_iand(b, x, sign_mantissa_mask),
+                     nir_bcsel(b, is_not_zero, exponent_value, zero));
+}
+
+static nir_ssa_def *
 build_frexp32(nir_builder *b, nir_ssa_def *x, nir_ssa_def **exponent)
 {
    nir_ssa_def *abs_x = nir_fabs(b, x);
@@ -732,8 +771,10 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       nir_ssa_def *exponent;
       if (src[0]->bit_size == 64)
          val->ssa->def = build_frexp64(nb, src[0], &exponent);
-      else
+      else if (src[0]->bit_size == 32)
          val->ssa->def = build_frexp32(nb, src[0], &exponent);
+      else
+         val->ssa->def = build_frexp16(nb, src[0], &exponent);
       nir_store_deref(nb, vtn_nir_deref(b, w[6]), exponent, 0xf);
       return;
    }
@@ -743,8 +784,11 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       if (src[0]->bit_size == 64)
          val->ssa->elems[0]->def = build_frexp64(nb, src[0],
                                                  &val->ssa->elems[1]->def);
-      else
+      else if (src[0]->bit_size == 32)
          val->ssa->elems[0]->def = build_frexp32(nb, src[0],
+                                                 &val->ssa->elems[1]->def);
+      else
+         val->ssa->elems[0]->def = build_frexp16(nb, src[0],
                                                  &val->ssa->elems[1]->def);
       return;
    }
