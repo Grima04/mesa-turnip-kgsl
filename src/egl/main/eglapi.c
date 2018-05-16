@@ -90,6 +90,8 @@
 #include "c11/threads.h"
 #include "util/macros.h"
 
+#include "eglapi.h"
+#include "egldefines.h"
 #include "eglglobals.h"
 #include "eglcontext.h"
 #include "egldisplay.h"

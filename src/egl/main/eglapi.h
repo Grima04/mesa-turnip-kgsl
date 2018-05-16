@@ -31,6 +31,7 @@
 #ifndef EGLAPI_INCLUDED
 #define EGLAPI_INCLUDED
 
+#include "egltypedefs.h"
 
 #ifdef __cplusplus
 extern "C" {

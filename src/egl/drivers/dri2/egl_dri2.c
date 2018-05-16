@@ -58,6 +58,7 @@
 #include "X11/Xlibint.h"
 #endif
 
+#include "egldefines.h"
 #include "egl_dri2.h"
 #include "GL/mesa_glinterop.h"
 #include "loader/loader.h"
