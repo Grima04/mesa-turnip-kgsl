@@ -145,7 +145,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		si_shader_dump(sscreen, shader, debug, PIPE_SHADER_COMPUTE,
 			       stderr, true);
 
-		if (si_shader_binary_upload(sscreen, shader))
+		if (!si_shader_binary_upload(sscreen, shader))
 			program->shader.compilation_failed = true;
 	} else {
 		mtx_unlock(&sscreen->shader_cache_mutex);
@@ -254,7 +254,7 @@ static void *si_create_compute_state(
 		}
 		si_shader_dump(sctx->screen, &program->shader, &sctx->debug,
 			       PIPE_SHADER_COMPUTE, stderr, true);
-		if (si_shader_binary_upload(sctx->screen, &program->shader) < 0) {
+		if (!si_shader_binary_upload(sctx->screen, &program->shader)) {
 			fprintf(stderr, "LLVM failed to upload shader\n");
 			FREE(program);
 			return NULL;
@@ -392,7 +392,7 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx,
 
 		si_shader_apply_scratch_relocs(shader, scratch_va);
 
-		if (si_shader_binary_upload(sctx->screen, shader))
+		if (!si_shader_binary_upload(sctx->screen, shader))
 			return false;
 
 		si_resource_reference(&shader->scratch_bo,

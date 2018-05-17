@@ -3108,7 +3108,6 @@ static int si_update_scratch_buffer(struct si_context *sctx,
 				    struct si_shader *shader)
 {
 	uint64_t scratch_va = sctx->scratch_buffer->gpu_address;
-	int r;
 
 	if (!shader)
 		return 0;
@@ -3139,10 +3138,9 @@ static int si_update_scratch_buffer(struct si_context *sctx,
 	si_shader_apply_scratch_relocs(shader, scratch_va);
 
 	/* Replace the shader bo with a new bo that has the relocs applied. */
-	r = si_shader_binary_upload(sctx->screen, shader);
-	if (r) {
+	if (!si_shader_binary_upload(sctx->screen, shader)) {
 		si_shader_unlock(shader);
-		return r;
+		return -1;
 	}
 
 	/* Update the shader state to use the new shader bo. */

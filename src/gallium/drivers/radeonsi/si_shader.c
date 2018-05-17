@@ -5088,7 +5088,7 @@ static unsigned si_get_shader_binary_size(const struct si_shader *shader)
 	return size + DEBUGGER_NUM_MARKERS * 4;
 }
 
-int si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
+bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
 {
 	const struct ac_shader_binary *prolog =
 		shader->prolog ? &shader->prolog->binary : NULL;
@@ -5118,7 +5118,7 @@ int si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
                                               align(bo_size, SI_CPDMA_ALIGNMENT),
                                               256);
 	if (!shader->bo)
-		return -ENOMEM;
+		return false;
 
 	/* Upload. */
 	ptr = sscreen->ws->buffer_map(shader->bo->buf, NULL,
@@ -5158,7 +5158,7 @@ int si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
 		ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
 	sscreen->ws->buffer_unmap(shader->bo->buf);
-	return 0;
+	return true;
 }
 
 static void si_shader_dump_disassembly(const struct ac_shader_binary *binary,
@@ -5490,7 +5490,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	LLVMBuilderRef builder;
 	struct si_shader_output_values outputs[SI_MAX_VS_OUTPUTS];
 	struct tgsi_shader_info *gsinfo = &gs_selector->info;
-	int i, r;
+	int i;
 
 
 	shader = CALLOC_STRUCT(si_shader);
@@ -5599,22 +5599,22 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	ctx.type = PIPE_SHADER_GEOMETRY; /* override for shader dumping */
 	si_llvm_optimize_module(&ctx);
 
-	r = si_compile_llvm(sscreen, &ctx.shader->binary,
+	bool ok = false;
+	if (si_compile_llvm(sscreen, &ctx.shader->binary,
 			    &ctx.shader->config, ctx.compiler,
 			    ctx.ac.module,
 			    debug, PIPE_SHADER_GEOMETRY,
-			    "GS Copy Shader", false);
-	if (!r) {
+			    "GS Copy Shader", false) == 0) {
 		if (si_can_dump_shader(sscreen, PIPE_SHADER_GEOMETRY))
 			fprintf(stderr, "GS Copy Shader:\n");
 		si_shader_dump(sscreen, ctx.shader, debug,
 			       PIPE_SHADER_GEOMETRY, stderr, true);
-		r = si_shader_binary_upload(sscreen, ctx.shader);
+		ok = si_shader_binary_upload(sscreen, ctx.shader);
 	}
 
 	si_llvm_dispose(&ctx);
 
-	if (r != 0) {
+	if (!ok) {
 		FREE(shader);
 		shader = NULL;
 	} else {
@@ -8011,8 +8011,7 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 		       stderr, true);
 
 	/* Upload. */
-	r = si_shader_binary_upload(sscreen, shader);
-	if (r) {
+	if (!si_shader_binary_upload(sscreen, shader)) {
 		fprintf(stderr, "LLVM failed to upload shader\n");
 		return false;
 	}
