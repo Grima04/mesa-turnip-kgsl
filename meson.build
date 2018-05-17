@@ -1238,7 +1238,7 @@ elif with_dri_i965 and with_shader_cache
 endif
 
 # Determine whether or not the rt library is needed for time functions
-if cc.has_function('clock_gettime')
+if host_machine.system() == 'windows' or cc.has_function('clock_gettime')
   dep_clock = null_dep
 else
   dep_clock = cc.find_library('rt')
