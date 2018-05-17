@@ -52,7 +52,7 @@ pkg.generate(
   libraries_private : gl_priv_libs,
 )
 
-if with_tests
+if with_tests and prog_nm.found()
   test(
     'es1-ABI-check',
     find_program('ABI-check'),
