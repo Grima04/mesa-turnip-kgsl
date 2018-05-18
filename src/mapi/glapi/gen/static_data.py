@@ -1476,6 +1476,7 @@ offsets = {
     "BindMultiTextureEXT": 1440,
     "NamedBufferDataEXT": 1441,
     "NamedBufferSubDataEXT": 1442,
+    "NamedBufferStorageEXT": 1443,
 }
 
 functions = [

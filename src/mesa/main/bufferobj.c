@@ -1937,6 +1937,21 @@ _mesa_BufferStorage(GLenum target, GLsizeiptr size, const GLvoid *data,
                           false, false, false, "glBufferStorage");
 }
 
+void GLAPIENTRY
+_mesa_NamedBufferStorageEXT(GLuint buffer, GLsizeiptr size,
+                            const GLvoid *data, GLbitfield flags)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
+                                     &bufObj, "glNamedBufferStorageEXT"))
+      return;
+
+   inlined_buffer_storage(GL_NONE, buffer, size, data, flags, GL_NONE, 0,
+                          true, false, false, "glNamedBufferStorageEXT");
+}
+
 
 void GLAPIENTRY
 _mesa_BufferStorageMemEXT(GLenum target, GLsizeiptr size,
