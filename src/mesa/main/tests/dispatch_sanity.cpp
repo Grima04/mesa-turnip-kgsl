@@ -1126,8 +1126,8 @@ const struct function common_desktop_functions_possible[] = {
    { "glMatrixMultTransposefEXT", 13, -1 },
    { "glMatrixMultTransposedEXT", 13, -1 },
    /* GL_EXT_direct_state_access - GL 1.5 */
-   //{ "glNamedBufferDataEXT", 15, -1 },
-   //{ "glNamedBufferSubDataEXT", 15, -1 },
+   { "glNamedBufferDataEXT", 15, -1 },
+   { "glNamedBufferSubDataEXT", 15, -1 },
    //{ "glMapNamedBufferEXT", 15, -1 },
    //{ "glUnmapNamedBufferEXT", 15, -1 },
    //{ "glGetNamedBufferParameterivEXT", 15, -1 },

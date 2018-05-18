@@ -222,6 +222,9 @@ _mesa_NamedBufferData_no_error(GLuint buffer, GLsizeiptr size,
 void GLAPIENTRY
 _mesa_NamedBufferData(GLuint buffer, GLsizeiptr size,
                       const GLvoid *data, GLenum usage);
+void GLAPIENTRY
+_mesa_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size,
+                         const GLvoid *data, GLenum usage);
 
 void GLAPIENTRY
 _mesa_BufferSubData_no_error(GLenum target, GLintptr offset,
@@ -236,6 +239,9 @@ _mesa_NamedBufferSubData_no_error(GLuint buffer, GLintptr offset,
 void GLAPIENTRY
 _mesa_NamedBufferSubData(GLuint buffer, GLintptr offset,
                          GLsizeiptr size, const GLvoid *data);
+void GLAPIENTRY
+_mesa_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
+                            GLsizeiptr size, const GLvoid *data);
 
 void GLAPIENTRY
 _mesa_GetBufferSubData(GLenum target, GLintptr offset,

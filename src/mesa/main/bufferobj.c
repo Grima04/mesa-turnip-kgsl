@@ -2169,6 +2169,20 @@ _mesa_NamedBufferData(GLuint buffer, GLsizeiptr size, const GLvoid *data,
                      "glNamedBufferData");
 }
 
+void GLAPIENTRY
+_mesa_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size, const GLvoid *data,
+                         GLenum usage)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
+                                     &bufObj, "glNamedBufferDataEXT"))
+      return;
+
+   _mesa_buffer_data(ctx, bufObj, GL_NONE, size, data, usage,
+                     "glNamedBufferDataEXT");
+}
 
 static bool
 validate_buffer_sub_data(struct gl_context *ctx,
@@ -2295,6 +2309,23 @@ _mesa_NamedBufferSubData(GLuint buffer, GLintptr offset,
 {
    buffer_sub_data(0, buffer, offset, size, data, true, false,
                    "glNamedBufferSubData");
+}
+
+void GLAPIENTRY
+_mesa_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
+                            GLsizeiptr size, const GLvoid *data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
+                                     &bufObj, "glNamedBufferSubDataEXT"))
+      return;
+
+   if (validate_buffer_sub_data(ctx, bufObj, offset, size,
+                                "glNamedBufferSubDataEXT")) {
+      _mesa_buffer_sub_data(ctx, bufObj, offset, size, data);
+   }
 }
 
 

@@ -129,6 +129,21 @@
       <param name="matrixMode" type="GLenum" />
       <param name="m" type="const GLdouble *" />
    </function>
-</category>
+
+   <!-- OpenGL 1.5 -->
+
+   <function name="NamedBufferDataEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="size" type="GLsizeiptr" />
+      <param name="data" type="const GLvoid *" />
+      <param name="usage" type="GLenum" />
+   </function>
+
+   <function name="NamedBufferSubDataEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="offset" type="GLintptr" />
+      <param name="size" type="GLsizeiptr" />
+      <param name="data" type="const GLvoid *" />
+   </function>
 </category>
 </OpenGLAPI>
