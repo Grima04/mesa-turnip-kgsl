@@ -14,7 +14,7 @@
    conform
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Download and Install
    :hidden:
 

@@ -1,6 +1,12 @@
 Compiling and Installing
 ========================
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   meson
+
 #. `Prerequisites for building <#prereq-general>`__
 
    -  `General prerequisites <#prereq-general>`__
