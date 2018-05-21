@@ -732,7 +732,7 @@ eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = _eglGetConfigs(drv, disp, configs, config_size, num_config);
+   ret = _eglGetConfigs(disp, configs, config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -753,7 +753,7 @@ eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = _eglChooseConfig(drv, disp, attrib_list, configs,
+   ret = _eglChooseConfig(disp, attrib_list, configs,
                           config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
@@ -773,7 +773,7 @@ eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_FALSE, drv);
 
-   ret = _eglGetConfigAttrib(drv, disp, conf, attribute, value);
+   ret = _eglGetConfigAttrib(disp, conf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
