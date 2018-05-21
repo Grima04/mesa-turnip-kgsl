@@ -205,6 +205,22 @@ virgl_set_active_query_state(struct pipe_context *pipe, boolean enable)
 {
 }
 
+static void
+virgl_get_query_result_resource(struct pipe_context *ctx,
+                                struct pipe_query *q,
+                                boolean wait,
+                                enum pipe_query_value_type result_type,
+                                int index,
+                                struct pipe_resource *resource,
+                                unsigned offset)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_query *query = virgl_query(q);
+   struct virgl_resource *qbo = (struct virgl_resource *)resource;
+
+   virgl_encode_get_query_result_qbo(vctx, query->handle, qbo, wait, result_type, offset, index);
+}
+
 void virgl_init_query_functions(struct virgl_context *vctx)
 {
    vctx->base.render_condition = virgl_render_condition;
@@ -214,4 +230,5 @@ void virgl_init_query_functions(struct virgl_context *vctx)
    vctx->base.end_query = virgl_end_query;
    vctx->base.get_query_result = virgl_get_query_result;
    vctx->base.set_active_query_state = virgl_set_active_query_state;
+   vctx->base.get_query_result_resource = virgl_get_query_result_resource;
 }

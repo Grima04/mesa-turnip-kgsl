@@ -233,6 +233,7 @@ enum virgl_formats {
 #define VIRGL_CAP_TGSI_COMPONENTS      (1 << 13)
 #define VIRGL_CAP_GUEST_MAY_INIT_LOG   (1 << 14)
 #define VIRGL_CAP_SRGB_WRITE_CONTROL   (1 << 15)
+#define VIRGL_CAP_QBO                  (1 << 16)
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
@@ -246,6 +247,7 @@ enum virgl_formats {
 #define VIRGL_BIND_DISPLAY_TARGET (1 << 7)
 #define VIRGL_BIND_STREAM_OUTPUT (1 << 11)
 #define VIRGL_BIND_SHADER_BUFFER (1 << 14)
+#define VIRGL_BIND_QUERY_BUFFER  (1 << 15)
 #define VIRGL_BIND_CURSOR        (1 << 16)
 #define VIRGL_BIND_CUSTOM        (1 << 17)
 #define VIRGL_BIND_SCANOUT       (1 << 18)

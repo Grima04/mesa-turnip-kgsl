@@ -1075,6 +1075,22 @@ int virgl_encode_host_debug_flagstring(struct virgl_context *ctx,
 
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_SET_DEBUG_FLAGS, 0, sslen));
    virgl_encoder_write_block(ctx->cbuf, (const uint8_t *)flagstring, string_length);
+   return 0;
+}
 
+int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
+                                      uint32_t handle,
+                                      struct virgl_resource *res, boolean wait,
+                                      uint32_t result_type,
+                                      uint32_t offset,
+                                      uint32_t index)
+{
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_GET_QUERY_RESULT_QBO, 0, VIRGL_QUERY_RESULT_QBO_SIZE));
+   virgl_encoder_write_dword(ctx->cbuf, handle);
+   virgl_encoder_write_res(ctx, res);
+   virgl_encoder_write_dword(ctx->cbuf, wait ? 1 : 0);
+   virgl_encoder_write_dword(ctx->cbuf, result_type);
+   virgl_encoder_write_dword(ctx->cbuf, offset);
+   virgl_encoder_write_dword(ctx->cbuf, index);
    return 0;
 }
