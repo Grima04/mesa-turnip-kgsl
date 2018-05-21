@@ -1408,7 +1408,7 @@ eglSwapBuffersWithDamageKHR(EGLDisplay dpy, EGLSurface surface,
  */
 
 static void
-_eglSetDamageRegionKHRClampRects(_EGLDisplay* disp, _EGLSurface* surf,
+_eglSetDamageRegionKHRClampRects(_EGLSurface* surf,
                                  EGLint *rects, EGLint n_rects)
 {
    EGLint i;
@@ -1455,7 +1455,7 @@ eglSetDamageRegionKHR(EGLDisplay dpy, EGLSurface surface,
    if (surf->SetDamageRegionCalled || !surf->BufferAgeRead)
       RETURN_EGL_ERROR(disp, EGL_BAD_ACCESS, EGL_FALSE);
 
-   _eglSetDamageRegionKHRClampRects(disp, surf, rects, n_rects);
+   _eglSetDamageRegionKHRClampRects(surf, rects, n_rects);
    ret = drv->SetDamageRegion(disp, surf, rects, n_rects);
 
    if (ret)
