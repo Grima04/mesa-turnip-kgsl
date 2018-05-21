@@ -38,6 +38,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
+#include "util/u_framebuffer.h"
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
 #include "i915_drm.h"
@@ -1275,20 +1276,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    }
 
-   cso->width = state->width;
-   cso->height = state->height;
-   cso->layers = state->layers;
-   cso->samples = state->samples;
-
-   unsigned i;
-   for (i = 0; i < state->nr_cbufs; i++)
-      pipe_surface_reference(&cso->cbufs[i], state->cbufs[i]);
-   for (; i < cso->nr_cbufs; i++)
-      pipe_surface_reference(&cso->cbufs[i], NULL);
-
-   cso->nr_cbufs = state->nr_cbufs;
-
-   pipe_surface_reference(&cso->zsbuf, state->zsbuf);
+   util_copy_framebuffer_state(cso, state);
 
    struct iris_depth_buffer_state *cso_z =
       malloc(sizeof(struct iris_depth_buffer_state));
