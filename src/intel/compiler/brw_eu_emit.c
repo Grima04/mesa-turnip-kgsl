@@ -843,6 +843,22 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
           */
          brw_inst_set_3src_a16_src_type(devinfo, inst, dest.type);
          brw_inst_set_3src_a16_dst_type(devinfo, inst, dest.type);
+
+         /* From the Bspec, 3D Media GPGPU, Instruction fields, srcType:
+          *
+          *    "Three source instructions can use operands with mixed-mode
+          *     precision. When SrcType field is set to :f or :hf it defines
+          *     precision for source 0 only, and fields Src1Type and Src2Type
+          *     define precision for other source operands:
+          *
+          *     0b = :f. Single precision Float (32-bit).
+          *     1b = :hf. Half precision Float (16-bit)."
+          */
+         if (src1.type == BRW_REGISTER_TYPE_HF)
+            brw_inst_set_3src_a16_src1_type(devinfo, inst, 1);
+
+         if (src2.type == BRW_REGISTER_TYPE_HF)
+            brw_inst_set_3src_a16_src2_type(devinfo, inst, 1);
       }
    }
 
