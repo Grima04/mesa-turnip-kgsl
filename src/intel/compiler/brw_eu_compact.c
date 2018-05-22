@@ -928,8 +928,11 @@ has_3src_unmapped_bits(const struct gen_device_info *devinfo,
       assert(!brw_inst_bits(src, 127, 126) &&
              !brw_inst_bits(src, 105, 105) &&
              !brw_inst_bits(src, 84, 84) &&
-             !brw_inst_bits(src, 36, 35) &&
              !brw_inst_bits(src, 7,  7));
+
+      /* Src1Type and Src2Type, used for mixed-precision floating point */
+      if (brw_inst_bits(src, 36, 35))
+         return true;
    }
 
    return false;
