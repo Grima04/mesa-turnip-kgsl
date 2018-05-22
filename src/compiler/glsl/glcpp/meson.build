@@ -58,7 +58,7 @@ libglcpp = static_library(
 glcpp = executable(
   'glcpp',
   'glcpp.c',
-  dependencies : [dep_m],
+  dependencies : [dep_m, idep_getopt],
   include_directories : [inc_common],
   link_with : [libglcpp, libglsl_util],
   c_args : [c_vis_args, no_override_init_args, c_msvc_compat_args],
