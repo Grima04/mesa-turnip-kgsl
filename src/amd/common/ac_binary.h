@@ -24,6 +24,7 @@
 #ifndef AC_BINARY_H
 #define AC_BINARY_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -96,6 +97,9 @@ const unsigned char *ac_shader_binary_config_start(
 	const struct ac_shader_binary *binary,
 	uint64_t symbol_offset);
 
+void ac_parse_shader_binary_config(const char *data, size_t nbytes,
+				   bool really_needs_scratch,
+				   struct ac_shader_config *conf);
 void ac_shader_binary_read_config(struct ac_shader_binary *binary,
 				  struct ac_shader_config *conf,
 				  unsigned symbol_offset,

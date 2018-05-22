@@ -206,43 +206,16 @@ const unsigned char *ac_shader_binary_config_start(
 	return binary->config;
 }
 
-
-static const char *scratch_rsrc_dword0_symbol =
-	"SCRATCH_RSRC_DWORD0";
-
-static const char *scratch_rsrc_dword1_symbol =
-	"SCRATCH_RSRC_DWORD1";
-
-void ac_shader_binary_read_config(struct ac_shader_binary *binary,
-				  struct ac_shader_config *conf,
-				  unsigned symbol_offset,
-				  bool supports_spill)
+/* Parse configuration data in .AMDGPU.config section format. */
+void ac_parse_shader_binary_config(const char *data, size_t nbytes,
+				   bool really_needs_scratch,
+				   struct ac_shader_config *conf)
 {
-	unsigned i;
-	const unsigned char *config =
-		ac_shader_binary_config_start(binary, symbol_offset);
-	bool really_needs_scratch = false;
 	uint32_t wavesize = 0;
-	/* LLVM adds SGPR spills to the scratch size.
-	 * Find out if we really need the scratch buffer.
-	 */
-	if (supports_spill) {
-		really_needs_scratch = true;
-	} else {
-		for (i = 0; i < binary->reloc_count; i++) {
-			const struct ac_shader_reloc *reloc = &binary->relocs[i];
 
-			if (!strcmp(scratch_rsrc_dword0_symbol, reloc->name) ||
-			    !strcmp(scratch_rsrc_dword1_symbol, reloc->name)) {
-				really_needs_scratch = true;
-				break;
-			}
-		}
-	}
-
-	for (i = 0; i < binary->config_size_per_symbol; i+= 8) {
-		unsigned reg = util_le32_to_cpu(*(uint32_t*)(config + i));
-		unsigned value = util_le32_to_cpu(*(uint32_t*)(config + i + 4));
+	for (size_t i = 0; i < nbytes; i += 8) {
+		unsigned reg = util_le32_to_cpu(*(uint32_t*)(data + i));
+		unsigned value = util_le32_to_cpu(*(uint32_t*)(data + i + 4));
 		switch (reg) {
 		case R_00B028_SPI_SHADER_PGM_RSRC1_PS:
 		case R_00B128_SPI_SHADER_PGM_RSRC1_VS:
@@ -297,6 +270,42 @@ void ac_shader_binary_read_config(struct ac_shader_binary *binary,
 		/* sgprs spills aren't spilling */
 	        conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(wavesize) * 256 * 4;
 	}
+}
+
+static const char *scratch_rsrc_dword0_symbol =
+	"SCRATCH_RSRC_DWORD0";
+
+static const char *scratch_rsrc_dword1_symbol =
+	"SCRATCH_RSRC_DWORD1";
+
+void ac_shader_binary_read_config(struct ac_shader_binary *binary,
+				  struct ac_shader_config *conf,
+				  unsigned symbol_offset,
+				  bool supports_spill)
+{
+	unsigned i;
+	const char *config =
+		(const char *)ac_shader_binary_config_start(binary, symbol_offset);
+	bool really_needs_scratch = false;
+	/* LLVM adds SGPR spills to the scratch size.
+	 * Find out if we really need the scratch buffer.
+	 */
+	if (supports_spill) {
+		really_needs_scratch = true;
+	} else {
+		for (i = 0; i < binary->reloc_count; i++) {
+			const struct ac_shader_reloc *reloc = &binary->relocs[i];
+
+			if (!strcmp(scratch_rsrc_dword0_symbol, reloc->name) ||
+			    !strcmp(scratch_rsrc_dword1_symbol, reloc->name)) {
+				really_needs_scratch = true;
+				break;
+			}
+		}
+	}
+
+	ac_parse_shader_binary_config(config, binary->config_size_per_symbol,
+				      really_needs_scratch, conf);
 }
 
 void ac_shader_binary_clean(struct ac_shader_binary *b)
