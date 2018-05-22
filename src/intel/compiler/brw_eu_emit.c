@@ -797,7 +797,8 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       assert(dest.type == BRW_REGISTER_TYPE_F  ||
              dest.type == BRW_REGISTER_TYPE_DF ||
              dest.type == BRW_REGISTER_TYPE_D  ||
-             dest.type == BRW_REGISTER_TYPE_UD);
+             dest.type == BRW_REGISTER_TYPE_UD ||
+             (dest.type == BRW_REGISTER_TYPE_HF && devinfo->gen >= 8));
       if (devinfo->gen == 6) {
          brw_inst_set_3src_a16_dst_reg_file(devinfo, inst,
                                             dest.file == BRW_MESSAGE_REGISTER_FILE);
