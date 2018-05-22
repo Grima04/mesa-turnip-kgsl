@@ -194,7 +194,8 @@ swr_arch_libs = []
 swr_arch_defines = []
 
 swr_avx_args = cpp.first_supported_argument(
-  '-mavx', '-target-cpu=sandybridge', '-march=core-avx', '-tp=sandybridge',
+  '-target-cpu=sandybridge', '-mavx', '-march=core-avx', '-tp=sandybridge',
+  '/arch:AVX',
 )
 if swr_avx_args == []
   error('Cannot find AVX support for swr. (these are required for SWR an all architectures.)')
@@ -209,13 +210,14 @@ if with_swr_arches.contains('avx')
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
     version : '0.0.0',
+    soversion : host_machine.system() == 'windows' ? '' : '0',
     install : true,
   )
 endif
 
 if with_swr_arches.contains('avx2')
   swr_avx2_args = cpp.first_supported_argument(
-    '-march=core-avx2', '-target-cpu=haswell', '-tp=haswell',
+    '-target-cpu=haswell', '-march=core-avx2', '-tp=haswell', '/arch:AVX2',
   )
   if swr_avx2_args == []
     if cpp.has_argument(['-mavx2', '-mfma', '-mbmi2', '-mf16c'])
@@ -234,6 +236,7 @@ if with_swr_arches.contains('avx2')
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
     version : '0.0.0',
+    soversion : host_machine.system() == 'windows' ? '' : '0',
     install : true,
   )
 endif
@@ -258,6 +261,7 @@ if with_swr_arches.contains('knl')
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
     version : '0.0.0',
+    soversion : host_machine.system() == 'windows' ? '' : '0',
     install : true,
   )
 endif
@@ -279,6 +283,7 @@ if with_swr_arches.contains('skx')
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
     version : '0.0.0',
+    soversion : host_machine.system() == 'windows' ? '' : '0',
     install : true,
   )
 endif
