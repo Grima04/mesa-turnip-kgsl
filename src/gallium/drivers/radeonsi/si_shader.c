@@ -29,8 +29,10 @@
 #include "tgsi/tgsi_util.h"
 #include "tgsi/tgsi_dump.h"
 
+#include "ac_binary.h"
 #include "ac_exp_param.h"
 #include "ac_shader_util.h"
+#include "ac_rtld.h"
 #include "ac_llvm_util.h"
 #include "si_shader_internal.h"
 #include "si_pipe.h"
@@ -5045,168 +5047,157 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
 	ac_build_kill_if_false(&ctx->ac, bit);
 }
 
-void si_shader_apply_scratch_relocs(struct si_shader *shader,
-				    uint64_t scratch_va)
-{
-	unsigned i;
-	uint32_t scratch_rsrc_dword0 = scratch_va;
-	uint32_t scratch_rsrc_dword1 =
-		S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
-
-	/* Enable scratch coalescing. */
-	scratch_rsrc_dword1 |= S_008F04_SWIZZLE_ENABLE(1);
-
-	for (i = 0 ; i < shader->binary.reloc_count; i++) {
-		const struct ac_shader_reloc *reloc =
-					&shader->binary.relocs[i];
-		if (!strcmp(scratch_rsrc_dword0_symbol, reloc->name)) {
-			util_memcpy_cpu_to_le32(shader->binary.code + reloc->offset,
-			&scratch_rsrc_dword0, 4);
-		} else if (!strcmp(scratch_rsrc_dword1_symbol, reloc->name)) {
-			util_memcpy_cpu_to_le32(shader->binary.code + reloc->offset,
-			&scratch_rsrc_dword1, 4);
-		}
-	}
-}
-
 /* For the UMR disassembler. */
 #define DEBUGGER_END_OF_CODE_MARKER	0xbf9f0000 /* invalid instruction */
 #define DEBUGGER_NUM_MARKERS		5
 
-static unsigned si_get_shader_binary_size(const struct si_shader *shader)
+static bool si_shader_binary_open(const struct si_shader *shader,
+				  struct ac_rtld_binary *rtld)
 {
-	unsigned size = shader->binary.code_size;
+	const char *part_elfs[5];
+	size_t part_sizes[5];
+	unsigned num_parts = 0;
 
-	if (shader->prolog)
-		size += shader->prolog->binary.code_size;
-	if (shader->previous_stage)
-		size += shader->previous_stage->binary.code_size;
-	if (shader->prolog2)
-		size += shader->prolog2->binary.code_size;
-	if (shader->epilog)
-		size += shader->epilog->binary.code_size;
-	return size + DEBUGGER_NUM_MARKERS * 4;
+#define add_part(shader_or_part) \
+	if (shader_or_part) { \
+		part_elfs[num_parts] = (shader_or_part)->binary.elf_buffer; \
+		part_sizes[num_parts] = (shader_or_part)->binary.elf_size; \
+		num_parts++; \
+	}
+
+	add_part(shader->prolog);
+	add_part(shader->previous_stage);
+	add_part(shader->prolog2);
+	add_part(shader);
+	add_part(shader->epilog);
+
+#undef add_part
+
+	return ac_rtld_open(rtld, num_parts, part_elfs, part_sizes);
 }
 
-bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
+static unsigned si_get_shader_binary_size(const struct si_shader *shader)
 {
-	const struct ac_shader_binary *prolog =
-		shader->prolog ? &shader->prolog->binary : NULL;
-	const struct ac_shader_binary *previous_stage =
-		shader->previous_stage ? &shader->previous_stage->binary : NULL;
-	const struct ac_shader_binary *prolog2 =
-		shader->prolog2 ? &shader->prolog2->binary : NULL;
-	const struct ac_shader_binary *epilog =
-		shader->epilog ? &shader->epilog->binary : NULL;
-	const struct ac_shader_binary *mainb = &shader->binary;
-	unsigned bo_size = si_get_shader_binary_size(shader) +
-			   (!epilog ? mainb->rodata_size : 0);
-	unsigned char *ptr;
+	struct ac_rtld_binary rtld;
+	si_shader_binary_open(shader, &rtld);
+	return rtld.rx_size;
+}
 
-	assert(!prolog || !prolog->rodata_size);
-	assert(!previous_stage || !previous_stage->rodata_size);
-	assert(!prolog2 || !prolog2->rodata_size);
-	assert((!prolog && !previous_stage && !prolog2 && !epilog) ||
-	       !mainb->rodata_size);
-	assert(!epilog || !epilog->rodata_size);
+
+static bool si_get_external_symbol(void *data, const char *name, uint64_t *value)
+{
+	uint64_t *scratch_va = data;
+
+	if (!strcmp(scratch_rsrc_dword0_symbol, name)) {
+		*value = (uint32_t)*scratch_va;
+		return true;
+	}
+	if (!strcmp(scratch_rsrc_dword1_symbol, name)) {
+		/* Enable scratch coalescing. */
+		*value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32) |
+			 S_008F04_SWIZZLE_ENABLE(1);
+		if (HAVE_LLVM < 0x0800) {
+			/* Old LLVM created an R_ABS32_HI relocation for
+			 * this symbol. */
+			*value <<= 32;
+		}
+		return true;
+	}
+
+	return false;
+}
+
+bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
+			     uint64_t scratch_va)
+{
+	struct ac_rtld_binary binary;
+	if (!si_shader_binary_open(shader, &binary))
+		return false;
 
 	si_resource_reference(&shader->bo, NULL);
 	shader->bo = si_aligned_buffer_create(&sscreen->b,
 					      sscreen->cpdma_prefetch_writes_memory ?
 						0 : SI_RESOURCE_FLAG_READ_ONLY,
                                               PIPE_USAGE_IMMUTABLE,
-                                              align(bo_size, SI_CPDMA_ALIGNMENT),
+                                              align(binary.rx_size, SI_CPDMA_ALIGNMENT),
                                               256);
 	if (!shader->bo)
 		return false;
 
 	/* Upload. */
-	ptr = sscreen->ws->buffer_map(shader->bo->buf, NULL,
+	struct ac_rtld_upload_info u = {};
+	u.binary = &binary;
+	u.get_external_symbol = si_get_external_symbol;
+	u.cb_data = &scratch_va;
+	u.rx_va = shader->bo->gpu_address;
+	u.rx_ptr = sscreen->ws->buffer_map(shader->bo->buf, NULL,
 					PIPE_TRANSFER_READ_WRITE |
 					PIPE_TRANSFER_UNSYNCHRONIZED |
 					RADEON_TRANSFER_TEMPORARY);
+	if (!u.rx_ptr)
+		return false;
 
-	/* Don't use util_memcpy_cpu_to_le32. LLVM binaries are
-	 * endian-independent. */
-	if (prolog) {
-		memcpy(ptr, prolog->code, prolog->code_size);
-		ptr += prolog->code_size;
-	}
-	if (previous_stage) {
-		memcpy(ptr, previous_stage->code, previous_stage->code_size);
-		ptr += previous_stage->code_size;
-	}
-	if (prolog2) {
-		memcpy(ptr, prolog2->code, prolog2->code_size);
-		ptr += prolog2->code_size;
-	}
-
-	memcpy(ptr, mainb->code, mainb->code_size);
-	ptr += mainb->code_size;
-
-	if (epilog) {
-		memcpy(ptr, epilog->code, epilog->code_size);
-		ptr += epilog->code_size;
-	} else if (mainb->rodata_size > 0) {
-		memcpy(ptr, mainb->rodata, mainb->rodata_size);
-		ptr += mainb->rodata_size;
-	}
-
-	/* Add end-of-code markers for the UMR disassembler. */
-	uint32_t *ptr32 = (uint32_t*)ptr;
-	for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
-		ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
+	bool ok = ac_rtld_upload(&u);
 
 	sscreen->ws->buffer_unmap(shader->bo->buf);
-	return true;
+	ac_rtld_close(&binary);
+
+	return ok;
 }
 
-static void si_shader_dump_disassembly(const struct ac_shader_binary *binary,
+static void si_shader_dump_disassembly(const struct si_shader_binary *binary,
 				       struct pipe_debug_callback *debug,
 				       const char *name, FILE *file)
 {
-	char *line, *p;
-	unsigned i, count;
+	struct ac_rtld_binary rtld_binary;
 
-	if (binary->disasm_string) {
-		fprintf(file, "Shader %s disassembly:\n", name);
-		fprintf(file, "%s", binary->disasm_string);
+	if (!ac_rtld_open(&rtld_binary, 1, &binary->elf_buffer, &binary->elf_size))
+		return;
 
-		if (debug && debug->debug_message) {
-			/* Very long debug messages are cut off, so send the
-			 * disassembly one line at a time. This causes more
-			 * overhead, but on the plus side it simplifies
-			 * parsing of resulting logs.
-			 */
-			pipe_debug_message(debug, SHADER_INFO,
-					   "Shader Disassembly Begin");
+	const char *disasm;
+	size_t nbytes;
 
-			line = binary->disasm_string;
-			while (*line) {
-				p = util_strchrnul(line, '\n');
-				count = p - line;
+	if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm, &nbytes))
+		goto out;
 
-				if (count) {
-					pipe_debug_message(debug, SHADER_INFO,
-							   "%.*s", count, line);
-				}
+	fprintf(file, "Shader %s disassembly:\n", name);
+	if (nbytes > INT_MAX) {
+		fprintf(file, "too long\n");
+		goto out;
+	}
 
-				if (!*p)
-					break;
-				line = p + 1;
+	fprintf(file, "%*s", (int)nbytes, disasm);
+
+	if (debug && debug->debug_message) {
+		/* Very long debug messages are cut off, so send the
+		 * disassembly one line at a time. This causes more
+		 * overhead, but on the plus side it simplifies
+		 * parsing of resulting logs.
+		 */
+		pipe_debug_message(debug, SHADER_INFO,
+				   "Shader Disassembly Begin");
+
+		uint64_t line = 0;
+		while (line < nbytes) {
+			int count = nbytes - line;
+			const char *nl = memchr(disasm + line, '\n', nbytes - line);
+			if (nl)
+				count = nl - disasm;
+
+			if (count) {
+				pipe_debug_message(debug, SHADER_INFO,
+						   "%.*s", count, disasm + line);
 			}
 
-			pipe_debug_message(debug, SHADER_INFO,
-					   "Shader Disassembly End");
+			line += count + 1;
 		}
-	} else {
-		fprintf(file, "Shader %s binary:\n", name);
-		for (i = 0; i < binary->code_size; i += 4) {
-			fprintf(file, "@0x%x: %02x%02x%02x%02x\n", i,
-				binary->code[i + 3], binary->code[i + 2],
-				binary->code[i + 1], binary->code[i]);
-		}
+
+		pipe_debug_message(debug, SHADER_INFO,
+				   "Shader Disassembly End");
 	}
+
+out:
+	ac_rtld_close(&rtld_binary);
 }
 
 static void si_calculate_max_simd_waves(struct si_shader *shader)
@@ -5398,8 +5389,21 @@ void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
 			     check_debug_option);
 }
 
+bool si_shader_binary_read_config(struct si_shader_binary *binary,
+				  struct ac_shader_config *conf)
+{
+	struct ac_rtld_binary rtld;
+	if (!ac_rtld_open(&rtld, 1, &binary->elf_buffer, &binary->elf_size))
+		return false;
+
+	bool ok = ac_rtld_read_config(&rtld, conf);
+
+	ac_rtld_close(&rtld);
+	return ok;
+}
+
 static int si_compile_llvm(struct si_screen *sscreen,
-			   struct ac_shader_binary *binary,
+			   struct si_shader_binary *binary,
 			   struct ac_shader_config *conf,
 			   struct ac_llvm_compiler *compiler,
 			   LLVMModuleRef mod,
@@ -5408,7 +5412,6 @@ static int si_compile_llvm(struct si_screen *sscreen,
 			   const char *name,
 			   bool less_optimized)
 {
-	int r = 0;
 	unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
 
 	if (si_can_dump_shader(sscreen, processor)) {
@@ -5428,13 +5431,14 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	}
 
 	if (!si_replace_shader(count, binary)) {
-		r = si_llvm_compile(mod, binary, compiler, debug,
-				    less_optimized);
+		unsigned r = si_llvm_compile(mod, binary, compiler, debug,
+					     less_optimized);
 		if (r)
 			return r;
 	}
 
-	ac_shader_binary_read_config(binary, conf, 0, false);
+	if (!si_shader_binary_read_config(binary, conf))
+		return -1;
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
 	 * cost.
@@ -5450,24 +5454,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	 */
 	conf->float_mode |= V_00B028_FP_64_DENORMS;
 
-	FREE(binary->config);
-	FREE(binary->global_symbol_offsets);
-	binary->config = NULL;
-	binary->global_symbol_offsets = NULL;
-
-	/* Some shaders can't have rodata because their binaries can be
-	 * concatenated.
-	 */
-	if (binary->rodata_size &&
-	    (processor == PIPE_SHADER_VERTEX ||
-	     processor == PIPE_SHADER_TESS_CTRL ||
-	     processor == PIPE_SHADER_TESS_EVAL ||
-	     processor == PIPE_SHADER_FRAGMENT)) {
-		fprintf(stderr, "radeonsi: The shader can't have rodata.");
-		return -EINVAL;
-	}
-
-	return r;
+	return 0;
 }
 
 static void si_llvm_build_ret(struct si_shader_context *ctx, LLVMValueRef ret)
@@ -5609,7 +5596,11 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 			fprintf(stderr, "GS Copy Shader:\n");
 		si_shader_dump(sscreen, ctx.shader, debug,
 			       PIPE_SHADER_GEOMETRY, stderr, true);
-		ok = si_shader_binary_upload(sscreen, ctx.shader);
+
+		if (!ctx.shader->config.scratch_bytes_per_wave)
+			ok = si_shader_binary_upload(sscreen, ctx.shader, 0);
+		else
+			ok = true;
 	}
 
 	si_llvm_dispose(&ctx);
@@ -8011,7 +8002,7 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 		       stderr, true);
 
 	/* Upload. */
-	if (!si_shader_binary_upload(sscreen, shader)) {
+	if (!si_shader_binary_upload(sscreen, shader, 0)) {
 		fprintf(stderr, "LLVM failed to upload shader\n");
 		return false;
 	}
@@ -8027,7 +8018,7 @@ void si_shader_destroy(struct si_shader *shader)
 	si_resource_reference(&shader->bo, NULL);
 
 	if (!shader->is_binary_shared)
-		ac_shader_binary_clean(&shader->binary);
+		si_shader_binary_clean(&shader->binary);
 
 	free(shader->shader_log);
 }

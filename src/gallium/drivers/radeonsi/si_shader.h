@@ -588,6 +588,13 @@ struct si_shader_info {
 	unsigned		max_simd_waves;
 };
 
+struct si_shader_binary {
+	const char *elf_buffer;
+	size_t elf_size;
+
+	char *llvm_ir_string;
+};
+
 struct si_shader {
 	struct si_compiler_ctx_state	compiler_ctx_state;
 
@@ -612,7 +619,7 @@ struct si_shader {
 	bool				is_gs_copy_shader;
 
 	/* The following data is all that's needed for binary shaders. */
-	struct ac_shader_binary	binary;
+	struct si_shader_binary		binary;
 	struct ac_shader_config		config;
 	struct si_shader_info		info;
 
@@ -669,7 +676,7 @@ struct si_shader {
 struct si_shader_part {
 	struct si_shader_part *next;
 	union si_shader_part_key key;
-	struct ac_shader_binary binary;
+	struct si_shader_binary binary;
 	struct ac_shader_config config;
 };
 
@@ -690,7 +697,8 @@ void si_shader_destroy(struct si_shader *shader);
 unsigned si_shader_io_get_unique_index_patch(unsigned semantic_name, unsigned index);
 unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,
 				       unsigned is_varying);
-bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader);
+bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
+			     uint64_t scratch_va);
 void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
 		    struct pipe_debug_callback *debug, unsigned processor,
 		    FILE *f, bool check_debug_option);
@@ -698,9 +706,10 @@ void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
 					struct pipe_debug_callback *debug);
 void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);
-void si_shader_apply_scratch_relocs(struct si_shader *shader,
-				    uint64_t scratch_va);
 const char *si_get_shader_name(const struct si_shader *shader, unsigned processor);
+bool si_shader_binary_read_config(struct si_shader_binary *binary,
+				  struct ac_shader_config *conf);
+void si_shader_binary_clean(struct si_shader_binary *binary);
 
 /* si_shader_nir.c */
 void si_nir_scan_shader(const struct nir_shader *nir,

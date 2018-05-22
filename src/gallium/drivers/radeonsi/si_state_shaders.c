@@ -127,21 +127,21 @@ static uint32_t *read_chunk(uint32_t *ptr, void **data, unsigned *size)
 static void *si_get_shader_binary(struct si_shader *shader)
 {
 	/* There is always a size of data followed by the data itself. */
-	unsigned relocs_size = shader->binary.reloc_count *
-			       sizeof(shader->binary.relocs[0]);
-	unsigned disasm_size = shader->binary.disasm_string ?
-			       strlen(shader->binary.disasm_string) + 1 : 0;
 	unsigned llvm_ir_size = shader->binary.llvm_ir_string ?
 				strlen(shader->binary.llvm_ir_string) + 1 : 0;
+
+	/* Refuse to allocate overly large buffers and guard against integer
+	 * overflow. */
+	if (shader->binary.elf_size > UINT_MAX / 4 ||
+	    llvm_ir_size > UINT_MAX / 4)
+		return NULL;
+
 	unsigned size =
 		4 + /* total size */
 		4 + /* CRC32 of the data below */
 		align(sizeof(shader->config), 4) +
 		align(sizeof(shader->info), 4) +
-		4 + align(shader->binary.code_size, 4) +
-		4 + align(shader->binary.rodata_size, 4) +
-		4 + align(relocs_size, 4) +
-		4 + align(disasm_size, 4) +
+		4 + align(shader->binary.elf_size, 4) +
 		4 + align(llvm_ir_size, 4);
 	void *buffer = CALLOC(1, size);
 	uint32_t *ptr = (uint32_t*)buffer;
@@ -154,10 +154,7 @@ static void *si_get_shader_binary(struct si_shader *shader)
 
 	ptr = write_data(ptr, &shader->config, sizeof(shader->config));
 	ptr = write_data(ptr, &shader->info, sizeof(shader->info));
-	ptr = write_chunk(ptr, shader->binary.code, shader->binary.code_size);
-	ptr = write_chunk(ptr, shader->binary.rodata, shader->binary.rodata_size);
-	ptr = write_chunk(ptr, shader->binary.relocs, relocs_size);
-	ptr = write_chunk(ptr, shader->binary.disasm_string, disasm_size);
+	ptr = write_chunk(ptr, shader->binary.elf_buffer, shader->binary.elf_size);
 	ptr = write_chunk(ptr, shader->binary.llvm_ir_string, llvm_ir_size);
 	assert((char *)ptr - (char *)buffer == size);
 
@@ -175,6 +172,7 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
 	uint32_t size = *ptr++;
 	uint32_t crc32 = *ptr++;
 	unsigned chunk_size;
+	unsigned elf_size;
 
 	if (util_hash_crc32(ptr, size - 8) != crc32) {
 		fprintf(stderr, "radeonsi: binary shader has invalid CRC32\n");
@@ -183,13 +181,9 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
 
 	ptr = read_data(ptr, &shader->config, sizeof(shader->config));
 	ptr = read_data(ptr, &shader->info, sizeof(shader->info));
-	ptr = read_chunk(ptr, (void**)&shader->binary.code,
-			 &shader->binary.code_size);
-	ptr = read_chunk(ptr, (void**)&shader->binary.rodata,
-			 &shader->binary.rodata_size);
-	ptr = read_chunk(ptr, (void**)&shader->binary.relocs, &chunk_size);
-	shader->binary.reloc_count = chunk_size / sizeof(shader->binary.relocs[0]);
-	ptr = read_chunk(ptr, (void**)&shader->binary.disasm_string, &chunk_size);
+	ptr = read_chunk(ptr, (void**)&shader->binary.elf_buffer,
+			 &elf_size);
+	shader->binary.elf_size = elf_size;
 	ptr = read_chunk(ptr, (void**)&shader->binary.llvm_ir_string, &chunk_size);
 
 	return true;
@@ -3132,13 +3126,8 @@ static int si_update_scratch_buffer(struct si_context *sctx,
 
 	assert(sctx->scratch_buffer);
 
-	if (shader->previous_stage)
-		si_shader_apply_scratch_relocs(shader->previous_stage, scratch_va);
-
-	si_shader_apply_scratch_relocs(shader, scratch_va);
-
 	/* Replace the shader bo with a new bo that has the relocs applied. */
-	if (!si_shader_binary_upload(sctx->screen, shader)) {
+	if (!si_shader_binary_upload(sctx->screen, shader, scratch_va)) {
 		si_shader_unlock(shader);
 		return -1;
 	}

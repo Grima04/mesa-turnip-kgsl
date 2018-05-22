@@ -28,6 +28,7 @@
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 
+#include "ac_rtld.h"
 #include "amd_kernel_code_t.h"
 #include "si_build_pm4.h"
 #include "si_compute.h"
@@ -61,8 +62,26 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 	if (!program->use_code_object_v2) {
 		return NULL;
 	}
-	return (const amd_kernel_code_t*)
-		(program->shader.binary.code + symbol_offset);
+
+	struct ac_rtld_binary rtld;
+	if (!ac_rtld_open(&rtld, 1, &program->shader.binary.elf_buffer,
+			  &program->shader.binary.elf_size))
+		return NULL;
+
+	const amd_kernel_code_t *result = NULL;
+	const char *text;
+	size_t size;
+	if (!ac_rtld_get_section_by_name(&rtld, ".text", &text, &size))
+		goto out;
+
+	if (symbol_offset + sizeof(amd_kernel_code_t) > size)
+		goto out;
+
+	result = (const amd_kernel_code_t*)(text + symbol_offset);
+
+out:
+	ac_rtld_close(&rtld);
+	return result;
 }
 
 static void code_object_to_config(const amd_kernel_code_t *code_object,
@@ -145,7 +164,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		si_shader_dump(sscreen, shader, debug, PIPE_SHADER_COMPUTE,
 			       stderr, true);
 
-		if (!si_shader_binary_upload(sscreen, shader))
+		if (!si_shader_binary_upload(sscreen, shader, 0))
 			program->shader.compilation_failed = true;
 	} else {
 		mtx_unlock(&sscreen->shader_cache_mutex);
@@ -237,25 +256,23 @@ static void *si_create_compute_state(
 		header = cso->prog;
 		code = cso->prog + sizeof(struct pipe_llvm_program_header);
 
-		ac_elf_read(code, header->num_bytes, &program->shader.binary);
-		if (program->use_code_object_v2) {
-			const amd_kernel_code_t *code_object =
-				si_compute_get_code_object(program, 0);
-			code_object_to_config(code_object, &program->shader.config);
-			if (program->shader.binary.reloc_count != 0) {
-				fprintf(stderr, "Error: %d unsupported relocations\n",
-					program->shader.binary.reloc_count);
-				FREE(program);
-				return NULL;
-			}
-		} else {
-			ac_shader_binary_read_config(&program->shader.binary,
-				     &program->shader.config, 0, false);
+		program->shader.binary.elf_size = header->num_bytes;
+		program->shader.binary.elf_buffer = malloc(header->num_bytes);
+		if (!program->shader.binary.elf_buffer) {
+			FREE(program);
+			return NULL;
 		}
+		memcpy((void *)program->shader.binary.elf_buffer, code, header->num_bytes);
+
+		const amd_kernel_code_t *code_object =
+			si_compute_get_code_object(program, 0);
+		code_object_to_config(code_object, &program->shader.config);
+
 		si_shader_dump(sctx->screen, &program->shader, &sctx->debug,
 			       PIPE_SHADER_COMPUTE, stderr, true);
-		if (!si_shader_binary_upload(sctx->screen, &program->shader)) {
+		if (!si_shader_binary_upload(sctx->screen, &program->shader, 0)) {
 			fprintf(stderr, "LLVM failed to upload shader\n");
+			free((void *)program->shader.binary.elf_buffer);
 			FREE(program);
 			return NULL;
 		}
@@ -390,9 +407,7 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx,
 	if (sctx->compute_scratch_buffer != shader->scratch_bo && scratch_needed) {
 		uint64_t scratch_va = sctx->compute_scratch_buffer->gpu_address;
 
-		si_shader_apply_scratch_relocs(shader, scratch_va);
-
-		if (!si_shader_binary_upload(sctx->screen, shader))
+		if (!si_shader_binary_upload(sctx->screen, shader, scratch_va))
 			return false;
 
 		si_resource_reference(&shader->scratch_bo,
@@ -423,11 +438,7 @@ static bool si_switch_compute_shader(struct si_context *sctx,
 		unsigned lds_blocks;
 
 		config = &inline_config;
-		if (code_object) {
-			code_object_to_config(code_object, config);
-		} else {
-			ac_shader_binary_read_config(&shader->binary, config, offset, false);
-		}
+		code_object_to_config(code_object, config);
 
 		lds_blocks = config->lds_size;
 		/* XXX: We are over allocating LDS.  For GFX6, the shader reports

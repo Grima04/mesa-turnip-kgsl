@@ -80,7 +80,7 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
  *
  * @returns 0 for success, 1 for failure
  */
-unsigned si_llvm_compile(LLVMModuleRef M, struct ac_shader_binary *binary,
+unsigned si_llvm_compile(LLVMModuleRef M, struct si_shader_binary *binary,
 			 struct ac_llvm_compiler *compiler,
 			 struct pipe_debug_callback *debug,
 			 bool less_optimized)
@@ -100,12 +100,22 @@ unsigned si_llvm_compile(LLVMModuleRef M, struct ac_shader_binary *binary,
 	LLVMContextSetDiagnosticHandler(llvm_ctx, si_diagnostic_handler, &diag);
 
 	/* Compile IR. */
-	if (!ac_compile_module_to_binary(passes, M, binary))
+	if (!ac_compile_module_to_elf(passes, M, (char **)&binary->elf_buffer,
+				      &binary->elf_size))
 		diag.retval = 1;
 
 	if (diag.retval != 0)
 		pipe_debug_message(debug, SHADER_INFO, "LLVM compile failed");
 	return diag.retval;
+}
+
+void si_shader_binary_clean(struct si_shader_binary *binary)
+{
+	free((void *)binary->elf_buffer);
+	binary->elf_buffer = NULL;
+
+	free(binary->llvm_ir_string);
+	binary->llvm_ir_string = NULL;
 }
 
 LLVMTypeRef tgsi2llvmtype(struct lp_build_tgsi_context *bld_base,

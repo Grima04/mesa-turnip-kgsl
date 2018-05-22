@@ -1296,7 +1296,7 @@ void si_log_compute_state(struct si_context *sctx, struct u_log_context *log);
 void si_init_debug_functions(struct si_context *sctx);
 void si_check_vm_faults(struct si_context *sctx,
 			struct radeon_saved_cs *saved, enum ring_type ring);
-bool si_replace_shader(unsigned num, struct ac_shader_binary *binary);
+bool si_replace_shader(unsigned num, struct si_shader_binary *binary);
 
 /* si_dma.c */
 void si_init_dma_functions(struct si_context *sctx);

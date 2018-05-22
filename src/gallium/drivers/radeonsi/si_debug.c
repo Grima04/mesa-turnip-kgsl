@@ -32,6 +32,7 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "ac_debug.h"
+#include "ac_rtld.h"
 
 static void si_dump_bo_list(struct si_context *sctx,
 			    const struct radeon_saved_cs *saved, FILE *f);
@@ -201,15 +202,16 @@ static void si_dump_compute_shader(struct si_context *ctx,
 /**
  * Shader compiles can be overridden with arbitrary ELF objects by setting
  * the environment variable RADEON_REPLACE_SHADERS=num1:filename1[;num2:filename2]
+ *
+ * TODO: key this off some hash
  */
-bool si_replace_shader(unsigned num, struct ac_shader_binary *binary)
+bool si_replace_shader(unsigned num, struct si_shader_binary *binary)
 {
 	const char *p = debug_get_option_replace_shaders();
 	const char *semicolon;
 	char *copy = NULL;
 	FILE *f;
 	long filesize, nread;
-	char *buf = NULL;
 	bool replaced = false;
 
 	if (!p)
@@ -265,23 +267,25 @@ bool si_replace_shader(unsigned num, struct ac_shader_binary *binary)
 	if (fseek(f, 0, SEEK_SET) != 0)
 		goto file_error;
 
-	buf = MALLOC(filesize);
-	if (!buf) {
+	binary->elf_buffer = MALLOC(filesize);
+	if (!binary->elf_buffer) {
 		fprintf(stderr, "out of memory\n");
 		goto out_close;
 	}
 
-	nread = fread(buf, 1, filesize, f);
-	if (nread != filesize)
+	nread = fread((void*)binary->elf_buffer, 1, filesize, f);
+	if (nread != filesize) {
+		FREE((void*)binary->elf_buffer);
+		binary->elf_buffer = NULL;
 		goto file_error;
+	}
 
-	ac_elf_read(buf, filesize, binary);
+	binary->elf_size = nread;
 	replaced = true;
 
 out_close:
 	fclose(f);
 out_free:
-	FREE(buf);
 	free(copy);
 	return replaced;
 
@@ -922,33 +926,52 @@ struct si_shader_inst {
 };
 
 /**
- * Split a disassembly string into instructions and add them to the array
- * pointed to by \p instructions.
+ * Open the given \p binary as \p rtld_binary and split the contained
+ * disassembly string into instructions and add them to the array
+ * pointed to by \p instructions, which must be sufficiently large.
  *
  * Labels are considered to be part of the following instruction.
+ *
+ * The caller must keep \p rtld_binary alive as long as \p instructions are
+ * used and then close it afterwards.
  */
-static void si_add_split_disasm(const char *disasm,
+static void si_add_split_disasm(struct ac_rtld_binary *rtld_binary,
+				struct si_shader_binary *binary,
 				uint64_t *addr,
 				unsigned *num,
 				struct si_shader_inst *instructions)
 {
-	const char *semicolon;
+	if (!ac_rtld_open(rtld_binary, 1, &binary->elf_buffer, &binary->elf_size))
+		return;
 
-	while ((semicolon = strchr(disasm, ';'))) {
+	const char *disasm;
+	size_t nbytes;
+	if (!ac_rtld_get_section_by_name(rtld_binary, ".AMDGPU.disasm",
+					 &disasm, &nbytes))
+		return;
+
+	const char *end = disasm + nbytes;
+	while (disasm < end) {
+		const char *semicolon = memchr(disasm, ';', end - disasm);
+		if (!semicolon)
+			break;
+
 		struct si_shader_inst *inst = &instructions[(*num)++];
-		const char *end = util_strchrnul(semicolon, '\n');
+		const char *inst_end = memchr(semicolon + 1, '\n', end - semicolon - 1);
+		if (!inst_end)
+			inst_end = end;
 
 		inst->text = disasm;
-		inst->textlen = end - disasm;
+		inst->textlen = inst_end - disasm;
 
 		inst->addr = *addr;
 		/* More than 16 chars after ";" means the instruction is 8 bytes long. */
-		inst->size = end - semicolon > 16 ? 8 : 4;
+		inst->size = inst_end - semicolon > 16 ? 8 : 4;
 		*addr += inst->size;
 
-		if (!(*end))
+		if (inst_end == end)
 			break;
-		disasm = end + 1;
+		disasm = inst_end + 1;
 	}
 }
 
@@ -961,7 +984,7 @@ static void si_print_annotated_shader(struct si_shader *shader,
 				      unsigned num_waves,
 				      FILE *f)
 {
-	if (!shader || !shader->binary.disasm_string)
+	if (!shader)
 		return;
 
 	uint64_t start_addr = shader->bo->gpu_address;
@@ -985,25 +1008,26 @@ static void si_print_annotated_shader(struct si_shader *shader,
 	 */
 	unsigned num_inst = 0;
 	uint64_t inst_addr = start_addr;
+	struct ac_rtld_binary rtld_binaries[5] = {};
 	struct si_shader_inst *instructions =
 		calloc(shader->bo->b.b.width0 / 4, sizeof(struct si_shader_inst));
 
 	if (shader->prolog) {
-		si_add_split_disasm(shader->prolog->binary.disasm_string,
+		si_add_split_disasm(&rtld_binaries[0], &shader->prolog->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 	if (shader->previous_stage) {
-		si_add_split_disasm(shader->previous_stage->binary.disasm_string,
+		si_add_split_disasm(&rtld_binaries[1], &shader->previous_stage->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 	if (shader->prolog2) {
-		si_add_split_disasm(shader->prolog2->binary.disasm_string,
+		si_add_split_disasm(&rtld_binaries[2], &shader->prolog2->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
-	si_add_split_disasm(shader->binary.disasm_string,
+	si_add_split_disasm(&rtld_binaries[3], &shader->binary,
 			    &inst_addr, &num_inst, instructions);
 	if (shader->epilog) {
-		si_add_split_disasm(shader->epilog->binary.disasm_string,
+		si_add_split_disasm(&rtld_binaries[4], &shader->epilog->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 
@@ -1041,6 +1065,8 @@ static void si_print_annotated_shader(struct si_shader *shader,
 
 	fprintf(f, "\n\n");
 	free(instructions);
+	for (unsigned i = 0; i < ARRAY_SIZE(rtld_binaries); ++i)
+		ac_rtld_close(&rtld_binaries[i]);
 }
 
 static void si_dump_annotated_shaders(struct si_context *sctx, FILE *f)
