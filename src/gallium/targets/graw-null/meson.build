@@ -21,12 +21,14 @@
 libgraw_util = static_library(
   'graw_util',
   ['graw_util.c'],
+  c_args : [c_vis_args, c_msvc_compat_args],
   include_directories : inc_common,
 )
 
 libgraw_null = shared_library(
   'graw_null',
   ['graw_null.c'],
+  c_args : [c_vis_args, c_msvc_compat_args],
   include_directories : inc_common,
   link_with : libgallium,
   dependencies : idep_mesautil,
