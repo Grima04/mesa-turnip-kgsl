@@ -18,6 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-subdir('trivial')
-subdir('unit')
+if not with_platform_windows
+  # pipe-loader doesn't build on windows.
+  subdir('trivial')
+endif
+if with_gallium_softpipe
+  subdir('unit')
+endif
 subdir('graw')
