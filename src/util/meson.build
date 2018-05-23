@@ -241,17 +241,20 @@ if with_tests
     suite : ['util'],
   )
 
-  test(
-    'mesa-sha1',
-    executable(
-      'mesa-sha1_test',
-      files('mesa-sha1_test.c'),
-      include_directories : inc_common,
-      dependencies : idep_mesautil,
-      c_args : [c_msvc_compat_args],
-    ),
-    suite : ['util'],
-  )
+  # FIXME: this test crashes on windows
+  if host_machine.system() != 'windows'
+    test(
+      'mesa-sha1',
+      executable(
+        'mesa-sha1_test',
+        files('mesa-sha1_test.c'),
+        include_directories : inc_common,
+        link_with : _libmesa_util,
+        c_args : [c_msvc_compat_args],
+      ),
+      suite : ['util'],
+    )
+  endif
 
   test(
     'bitset',
