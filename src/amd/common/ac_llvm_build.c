@@ -2626,8 +2626,7 @@ void ac_build_endloop(struct ac_llvm_context *ctx, int label_id)
 	ctx->flow_depth--;
 }
 
-static void if_cond_emit(struct ac_llvm_context *ctx, LLVMValueRef cond,
-			 int label_id)
+void ac_build_ifcc(struct ac_llvm_context *ctx, LLVMValueRef cond, int label_id)
 {
 	struct ac_llvm_flow *flow = push_flow(ctx);
 	LLVMBasicBlockRef if_block;
@@ -2644,7 +2643,7 @@ void ac_build_if(struct ac_llvm_context *ctx, LLVMValueRef value,
 {
 	LLVMValueRef cond = LLVMBuildFCmp(ctx->builder, LLVMRealUNE,
 					  value, ctx->f32_0, "");
-	if_cond_emit(ctx, cond, label_id);
+	ac_build_ifcc(ctx, cond, label_id);
 }
 
 void ac_build_uif(struct ac_llvm_context *ctx, LLVMValueRef value,
@@ -2653,7 +2652,7 @@ void ac_build_uif(struct ac_llvm_context *ctx, LLVMValueRef value,
 	LLVMValueRef cond = LLVMBuildICmp(ctx->builder, LLVMIntNE,
 					  ac_to_integer(ctx, value),
 					  ctx->i32_0, "");
-	if_cond_emit(ctx, cond, label_id);
+	ac_build_ifcc(ctx, cond, label_id);
 }
 
 LLVMValueRef ac_build_alloca_undef(struct ac_llvm_context *ac, LLVMTypeRef type,

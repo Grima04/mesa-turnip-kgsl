@@ -480,6 +480,7 @@ void ac_build_continue(struct ac_llvm_context *ctx);
 void ac_build_else(struct ac_llvm_context *ctx, int lable_id);
 void ac_build_endif(struct ac_llvm_context *ctx, int lable_id);
 void ac_build_endloop(struct ac_llvm_context *ctx, int lable_id);
+void ac_build_ifcc(struct ac_llvm_context *ctx, LLVMValueRef cond, int label_id);
 void ac_build_if(struct ac_llvm_context *ctx, LLVMValueRef value,
 		 int lable_id);
 void ac_build_uif(struct ac_llvm_context *ctx, LLVMValueRef value,
