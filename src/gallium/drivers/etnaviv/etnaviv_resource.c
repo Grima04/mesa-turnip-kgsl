@@ -556,6 +556,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    level->width = tmpl->width0;
    level->height = tmpl->height0;
    level->depth = tmpl->depth0;
+   level->offset = handle->offset;
 
    /* Determine padding of the imported resource. */
    unsigned paddingX = 0, paddingY = 0;
