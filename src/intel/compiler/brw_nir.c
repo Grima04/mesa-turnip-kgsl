@@ -853,6 +853,26 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(brw_nir_opt_peephole_ffma);
    }
 
+   if (OPT(nir_opt_comparison_pre)) {
+      OPT(nir_copy_prop);
+      OPT(nir_opt_dce);
+      OPT(nir_opt_cse);
+
+      /* Do the select peepehole again.  nir_opt_comparison_pre (combined with
+       * the other optimization passes) will have removed at least one
+       * instruction from one of the branches of the if-statement, so now it
+       * might be under the threshold of conversion to bcsel.
+       *
+       * See brw_nir_optimize for the explanation of is_vec4_tessellation.
+       */
+      const bool is_vec4_tessellation = !is_scalar &&
+         (nir->info.stage == MESA_SHADER_TESS_CTRL ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL);
+      OPT(nir_opt_peephole_select, 0, is_vec4_tessellation, false);
+      OPT(nir_opt_peephole_select, 1, is_vec4_tessellation,
+          compiler->devinfo->gen >= 6);
+   }
+
    OPT(nir_opt_algebraic_late);
 
    OPT(nir_lower_to_source_mods, nir_lower_all_source_mods);
