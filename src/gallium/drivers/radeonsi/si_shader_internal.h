@@ -213,6 +213,9 @@ struct si_shader_context {
 
 	LLVMValueRef invoc0_tess_factors[6]; /* outer[4], inner[2] */
 	LLVMValueRef gs_next_vertex[4];
+	LLVMValueRef gs_curprim_verts[4];
+	LLVMValueRef gs_ngg_emit;
+	LLVMValueRef gs_ngg_scratch;
 	LLVMValueRef postponed_kill;
 	LLVMValueRef return_value;
 
@@ -382,5 +385,9 @@ LLVMValueRef si_unpack_param(struct si_shader_context *ctx,
 void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     unsigned max_outputs,
 			     LLVMValueRef *addrs);
+void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
+			      unsigned stream,
+			      LLVMValueRef *addrs);
+void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
 
 #endif

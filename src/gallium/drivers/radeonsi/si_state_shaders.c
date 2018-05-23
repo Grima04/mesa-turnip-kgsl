@@ -2386,7 +2386,11 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		}
 	}
 
-	/* The GS copy shader is always pre-compiled. */
+	/* The GS copy shader is always pre-compiled.
+	 *
+	 * TODO-GFX10: We could compile the GS copy shader on demand, since it
+	 * is only used in the (rare) non-NGG case.
+	 */
 	if (sel->type == PIPE_SHADER_GEOMETRY) {
 		sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
 		if (!sel->gs_copy_shader) {

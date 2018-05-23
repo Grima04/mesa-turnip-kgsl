@@ -3401,11 +3401,15 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
 /* Pass GS inputs from ES to GS on GFX9. */
 static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 {
+	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef ret = ctx->return_value;
 
 	ret = si_insert_input_ptr(ctx, ret, 0, 0);
 	ret = si_insert_input_ptr(ctx, ret, 1, 1);
-	ret = si_insert_input_ret(ctx, ret, ctx->param_gs2vs_offset, 2);
+	if (ctx->shader->key.as_ngg)
+		ret = LLVMBuildInsertValue(builder, ret, ctx->gs_tg_info, 2, "");
+	else
+		ret = si_insert_input_ret(ctx, ret, ctx->param_gs2vs_offset, 2);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_merged_wave_info, 3);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_merged_scratch_offset, 5);
 
@@ -3555,6 +3559,11 @@ static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
 
 static void emit_gs_epilogue(struct si_shader_context *ctx)
 {
+	if (ctx->shader->key.as_ngg) {
+		gfx10_ngg_gs_emit_epilogue(ctx);
+		return;
+	}
+
 	ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE,
 			 si_get_gs_wave_id(ctx));
 
@@ -4192,6 +4201,12 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi,
 				LLVMValueRef *addrs)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+
+	if (ctx->shader->key.as_ngg) {
+		gfx10_ngg_gs_emit_vertex(ctx, stream, addrs);
+		return;
+	}
+
 	struct tgsi_shader_info *info = &ctx->shader->selector->info;
 	struct si_shader *shader = ctx->shader;
 	struct lp_build_if_state if_state;
@@ -4283,6 +4298,11 @@ static void si_llvm_emit_primitive(struct ac_shader_abi *abi,
 				   unsigned stream)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+
+	if (ctx->shader->key.as_ngg) {
+		LLVMBuildStore(ctx->ac.builder, ctx->ac.i32_0, ctx->gs_curprim_verts[stream]);
+		return;
+	}
 
 	/* Signal primitive cut */
 	ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_CUT | AC_SENDMSG_GS | (stream << 8),
@@ -6087,10 +6107,26 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 	}
 
 	if (ctx->type == PIPE_SHADER_GEOMETRY) {
-		int i;
-		for (i = 0; i < 4; i++) {
+		for (unsigned i = 0; i < 4; i++) {
 			ctx->gs_next_vertex[i] =
 				ac_build_alloca(&ctx->ac, ctx->i32, "");
+		}
+		if (shader->key.as_ngg) {
+			for (unsigned i = 0; i < 4; ++i) {
+				ctx->gs_curprim_verts[i] =
+					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
+			}
+
+			LLVMTypeRef a8i32 = LLVMArrayType(ctx->i32, 8);
+			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
+				a8i32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+			LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(a8i32));
+			LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+
+			ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(ctx->ac.module,
+				LLVMArrayType(ctx->i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
+			LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
+			LLVMSetAlignment(ctx->gs_ngg_emit, 4);
 		}
 	}
 
