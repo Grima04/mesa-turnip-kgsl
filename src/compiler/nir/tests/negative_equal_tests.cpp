@@ -22,6 +22,7 @@
  */
 #include <gtest/gtest.h>
 #include "nir.h"
+#include "nir_builder.h"
 #include "util/half_float.h"
 
 static nir_const_value count_sequence(nir_alu_type base_type, unsigned bits,
@@ -47,6 +48,21 @@ protected:
    nir_const_value c2;
 };
 
+class alu_srcs_negative_equal_test : public ::testing::Test {
+protected:
+   alu_srcs_negative_equal_test()
+   {
+      static const nir_shader_compiler_options options = { };
+      nir_builder_init_simple_shader(&bld, NULL, MESA_SHADER_VERTEX, &options);
+   }
+
+   ~alu_srcs_negative_equal_test()
+   {
+      ralloc_free(bld.shader);
+   }
+
+   struct nir_builder bld;
+};
 
 TEST_F(const_value_negative_equal_test, float32_zero)
 {
@@ -129,6 +145,74 @@ compare_fewer_components(nir_type_int, 32)
 compare_fewer_components(nir_type_uint, 32)
 compare_fewer_components(nir_type_int, 64)
 compare_fewer_components(nir_type_uint, 64)
+
+TEST_F(alu_srcs_negative_equal_test, trivial_float)
+{
+   nir_ssa_def *two = nir_imm_float(&bld, 2.0f);
+   nir_ssa_def *negative_two = nir_imm_float(&bld, -2.0f);
+
+   nir_ssa_def *result = nir_fadd(&bld, two, negative_two);
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);
+
+   ASSERT_NE((void *) 0, instr);
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
+}
+
+TEST_F(alu_srcs_negative_equal_test, trivial_int)
+{
+   nir_ssa_def *two = nir_imm_int(&bld, 2);
+   nir_ssa_def *negative_two = nir_imm_int(&bld, -2);
+
+   nir_ssa_def *result = nir_iadd(&bld, two, negative_two);
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);
+
+   ASSERT_NE((void *) 0, instr);
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
+}
+
+TEST_F(alu_srcs_negative_equal_test, trivial_negation_float)
+{
+   /* Cannot just do the negation of a nir_load_const_instr because
+    * nir_alu_srcs_negative_equal expects that constant folding will convert
+    * fneg(2.0) to just -2.0.
+    */
+   nir_ssa_def *two = nir_imm_float(&bld, 2.0f);
+   nir_ssa_def *two_plus_two = nir_fadd(&bld, two, two);
+   nir_ssa_def *negation = nir_fneg(&bld, two_plus_two);
+
+   nir_ssa_def *result = nir_fadd(&bld, two_plus_two, negation);
+
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);
+
+   ASSERT_NE((void *) 0, instr);
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
+}
+
+TEST_F(alu_srcs_negative_equal_test, trivial_negation_int)
+{
+   /* Cannot just do the negation of a nir_load_const_instr because
+    * nir_alu_srcs_negative_equal expects that constant folding will convert
+    * ineg(2) to just -2.
+    */
+   nir_ssa_def *two = nir_imm_int(&bld, 2);
+   nir_ssa_def *two_plus_two = nir_iadd(&bld, two, two);
+   nir_ssa_def *negation = nir_ineg(&bld, two_plus_two);
+
+   nir_ssa_def *result = nir_iadd(&bld, two_plus_two, negation);
+
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);
+
+   ASSERT_NE((void *) 0, instr);
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
+}
 
 static nir_const_value
 count_sequence(nir_alu_type base_type, unsigned bits, int first)

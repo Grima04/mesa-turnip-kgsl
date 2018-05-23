@@ -997,6 +997,10 @@ bool nir_const_value_negative_equal(const nir_const_value *c1,
 bool nir_alu_srcs_equal(const nir_alu_instr *alu1, const nir_alu_instr *alu2,
                         unsigned src1, unsigned src2);
 
+bool nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
+                                 const nir_alu_instr *alu2,
+                                 unsigned src1, unsigned src2);
+
 typedef enum {
    nir_deref_type_var,
    nir_deref_type_array,
