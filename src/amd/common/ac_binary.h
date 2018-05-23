@@ -75,7 +75,7 @@ struct ac_shader_config {
 	unsigned num_vgprs;
 	unsigned spilled_sgprs;
 	unsigned spilled_vgprs;
-	unsigned lds_size;
+	unsigned lds_size; /* in HW allocation units; i.e 256 bytes on SI, 512 bytes on CI+ */
 	unsigned spi_ps_input_ena;
 	unsigned spi_ps_input_addr;
 	unsigned float_mode;
