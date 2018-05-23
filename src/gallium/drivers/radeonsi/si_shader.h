@@ -643,6 +643,15 @@ struct si_shader {
 	struct ac_shader_config		config;
 	struct si_shader_info		info;
 
+	struct {
+		uint16_t ngg_emit_size; /* in dwords */
+		uint16_t hw_max_esverts;
+		uint16_t max_gsprims;
+		uint16_t max_out_verts;
+		uint16_t prim_amp_factor;
+		bool max_vert_out_per_gs_instance;
+	} ngg;
+
 	/* Shader key + LLVM IR + disassembly + statistics.
 	 * Generated for debug contexts only.
 	 */

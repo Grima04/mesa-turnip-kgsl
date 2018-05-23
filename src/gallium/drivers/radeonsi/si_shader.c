@@ -5156,7 +5156,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 
 #undef add_part
 
-	struct ac_rtld_symbol lds_symbols[1];
+	struct ac_rtld_symbol lds_symbols[2];
 	unsigned num_lds_symbols = 0;
 
 	if (sel && screen->info.chip_class >= GFX9 &&
@@ -5168,6 +5168,13 @@ static bool si_shader_binary_open(struct si_screen *screen,
 		sym->name = "esgs_ring";
 		sym->size = shader->gs_info.esgs_ring_size;
 		sym->align = 64 * 1024;
+	}
+
+	if (shader->key.as_ngg && sel->type == PIPE_SHADER_GEOMETRY) {
+		struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+		sym->name = "ngg_emit";
+		sym->size = shader->ngg.ngg_emit_size * 4;
+		sym->align = 4;
 	}
 
 	bool ok = ac_rtld_open(rtld, (struct ac_rtld_open_info){
@@ -5197,7 +5204,6 @@ static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_sh
 	si_shader_binary_open(screen, shader, &rtld);
 	return rtld.rx_size;
 }
-
 
 static bool si_get_external_symbol(void *data, const char *name, uint64_t *value)
 {
@@ -8219,8 +8225,12 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 		si_calculate_max_simd_waves(shader);
 	}
 
-	if (sscreen->info.chip_class >= GFX9 && sel->type == PIPE_SHADER_GEOMETRY)
+	if (shader->key.as_ngg) {
+		assert(!shader->key.as_es && !shader->key.as_ls);
+		gfx10_ngg_calculate_subgroup_info(shader);
+	} else if (sscreen->info.chip_class >= GFX9 && sel->type == PIPE_SHADER_GEOMETRY) {
 		gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
+	}
 
 	si_fix_resource_usage(sscreen, shader);
 	si_shader_dump(sscreen, shader, debug, sel->info.processor,

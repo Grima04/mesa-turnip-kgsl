@@ -651,3 +651,190 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	}
 	ac_build_endif(&ctx->ac, 5145);
 }
+
+static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts,
+				     unsigned min_verts_per_prim, bool use_adjacency)
+{
+	unsigned max_reuse = max_esverts - min_verts_per_prim;
+	if (use_adjacency)
+		max_reuse /= 2;
+	*max_gsprims = MIN2(*max_gsprims, 1 + max_reuse);
+}
+
+/**
+ * Determine subgroup information like maximum number of vertices and prims.
+ *
+ * This happens before the shader is uploaded, since LDS relocations during
+ * upload depend on the subgroup size.
+ */
+void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
+{
+	const struct si_shader_selector *gs_sel = shader->selector;
+	const struct si_shader_selector *es_sel =
+		shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
+	const enum pipe_shader_type gs_type = gs_sel->type;
+	const unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
+	/* TODO: Specialize for known primitive type without GS. */
+	const unsigned input_prim = gs_type == PIPE_SHADER_GEOMETRY ?
+				    gs_sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM] :
+				    PIPE_PRIM_TRIANGLES;
+	const bool use_adjacency = input_prim >= PIPE_PRIM_LINES_ADJACENCY &&
+				   input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
+	const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
+	const unsigned min_verts_per_prim =
+		gs_type == PIPE_SHADER_GEOMETRY ? max_verts_per_prim : 1;
+
+	/* All these are in dwords: */
+	/* We can't allow using the whole LDS, because GS waves compete with
+	 * other shader stages for LDS space.
+	 *
+	 * Streamout can increase the ESGS buffer size later on, so be more
+	 * conservative with streamout and use 4K dwords. This may be suboptimal.
+	 *
+	 * Otherwise, use the limit of 7K dwords. The reason is that we need
+	 * to leave some headroom for the max_esverts increase at the end.
+	 *
+	 * TODO: We should really take the shader's internal LDS use into
+	 *       account. The linker will fail if the size is greater than
+	 *       8K dwords.
+	 */
+	const unsigned max_lds_size = (gs_sel->so.num_outputs ? 4 : 7) * 1024 - 128;
+	const unsigned target_lds_size = max_lds_size;
+	unsigned esvert_lds_size = 0;
+	unsigned gsprim_lds_size = 0;
+
+	/* All these are per subgroup: */
+	bool max_vert_out_per_gs_instance = false;
+	unsigned max_esverts_base = 256;
+	unsigned max_gsprims_base = 128; /* default prim group size clamp */
+
+	/* Hardware has the following non-natural restrictions on the value
+	 * of GE_CNTL.VERT_GRP_SIZE based on based on the primitive type of
+	 * the draw:
+	 *  - at most 252 for any line input primitive type
+	 *  - at most 251 for any quad input primitive type
+	 *  - at most 251 for triangle strips with adjacency (this happens to
+	 *    be the natural limit for triangle *lists* with adjacency)
+	 */
+	max_esverts_base = MIN2(max_esverts_base, 251 + max_verts_per_prim - 1);
+
+	if (gs_type == PIPE_SHADER_GEOMETRY) {
+		unsigned max_out_verts_per_gsprim =
+			gs_sel->gs_max_out_vertices * gs_num_invocations;
+
+		if (max_out_verts_per_gsprim <= 256) {
+			if (max_out_verts_per_gsprim) {
+				max_gsprims_base = MIN2(max_gsprims_base,
+							256 / max_out_verts_per_gsprim);
+			}
+		} else {
+			/* Use special multi-cycling mode in which each GS
+			 * instance gets its own subgroup. Does not work with
+			 * tessellation. */
+			max_vert_out_per_gs_instance = true;
+			max_gsprims_base = 1;
+			max_out_verts_per_gsprim = gs_sel->gs_max_out_vertices;
+		}
+
+		esvert_lds_size = es_sel->esgs_itemsize / 4;
+		gsprim_lds_size = (gs_sel->gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
+	} else {
+		/* TODO: This needs to be adjusted once LDS use for compaction
+		 * after culling is implemented. */
+	}
+
+	unsigned max_gsprims = max_gsprims_base;
+	unsigned max_esverts = max_esverts_base;
+
+	if (esvert_lds_size)
+		max_esverts = MIN2(max_esverts, target_lds_size / esvert_lds_size);
+	if (gsprim_lds_size)
+		max_gsprims = MIN2(max_gsprims, target_lds_size / gsprim_lds_size);
+
+	max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+	clamp_gsprims_to_esverts(&max_gsprims, max_esverts, min_verts_per_prim, use_adjacency);
+	assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
+
+	if (esvert_lds_size || gsprim_lds_size) {
+		/* Now that we have a rough proportionality between esverts
+		 * and gsprims based on the primitive type, scale both of them
+		 * down simultaneously based on required LDS space.
+		 *
+		 * We could be smarter about this if we knew how much vertex
+		 * reuse to expect.
+		 */
+		unsigned lds_total = max_esverts * esvert_lds_size +
+				     max_gsprims * gsprim_lds_size;
+		if (lds_total > target_lds_size) {
+			max_esverts = max_esverts * target_lds_size / lds_total;
+			max_gsprims = max_gsprims * target_lds_size / lds_total;
+
+			max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+			clamp_gsprims_to_esverts(&max_gsprims, max_esverts,
+						 min_verts_per_prim, use_adjacency);
+			assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
+		}
+	}
+
+	/* Round up towards full wave sizes for better ALU utilization. */
+	if (!max_vert_out_per_gs_instance) {
+		const unsigned wavesize = 64;
+		unsigned orig_max_esverts;
+		unsigned orig_max_gsprims;
+		do {
+			orig_max_esverts = max_esverts;
+			orig_max_gsprims = max_gsprims;
+
+			max_esverts = align(max_esverts, wavesize);
+			max_esverts = MIN2(max_esverts, max_esverts_base);
+			if (esvert_lds_size)
+				max_esverts = MIN2(max_esverts,
+						   (max_lds_size - max_gsprims * gsprim_lds_size) /
+						   esvert_lds_size);
+			max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
+
+			max_gsprims = align(max_gsprims, wavesize);
+			max_gsprims = MIN2(max_gsprims, max_gsprims_base);
+			if (gsprim_lds_size)
+				max_gsprims = MIN2(max_gsprims,
+						   (max_lds_size - max_esverts * esvert_lds_size) /
+						   gsprim_lds_size);
+			clamp_gsprims_to_esverts(&max_gsprims, max_esverts,
+						 min_verts_per_prim, use_adjacency);
+			assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
+		} while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
+	}
+
+	/* Hardware restriction: minimum value of max_esverts */
+	max_esverts = MAX2(max_esverts, 23 + max_verts_per_prim);
+
+	unsigned max_out_vertices =
+		max_vert_out_per_gs_instance ? gs_sel->gs_max_out_vertices :
+		gs_type == PIPE_SHADER_GEOMETRY ?
+		max_gsprims * gs_num_invocations * gs_sel->gs_max_out_vertices :
+		max_esverts;
+	assert(max_out_vertices <= 256);
+
+	unsigned prim_amp_factor = 1;
+	if (gs_type == PIPE_SHADER_GEOMETRY) {
+		/* Number of output primitives per GS input primitive after
+		 * GS instancing. */
+		prim_amp_factor = gs_sel->gs_max_out_vertices;
+	}
+
+	/* The GE only checks against the maximum number of ES verts after
+	 * allocating a full GS primitive. So we need to ensure that whenever
+	 * this check passes, there is enough space for a full primitive without
+	 * vertex reuse.
+	 */
+	shader->ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+	shader->ngg.max_gsprims = max_gsprims;
+	shader->ngg.max_out_verts = max_out_vertices;
+	shader->ngg.prim_amp_factor = prim_amp_factor;
+	shader->ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
+
+	shader->gs_info.esgs_ring_size = 4 * max_esverts * esvert_lds_size;
+	shader->ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
+
+	assert(shader->ngg.hw_max_esverts >= 24); /* HW limitation */
+}
