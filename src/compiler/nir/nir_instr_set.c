@@ -23,6 +23,7 @@
 
 #include "nir_instr_set.h"
 #include "nir_vla.h"
+#include "util/half_float.h"
 
 #define HASH(hash, data) _mesa_fnv32_1a_accumulate((hash), (data))
 
@@ -273,6 +274,107 @@ nir_srcs_equal(nir_src src1, nir_src src2)
                 src1.reg.base_offset == src2.reg.base_offset;
       }
    }
+}
+
+bool
+nir_const_value_negative_equal(const nir_const_value *c1,
+                               const nir_const_value *c2,
+                               unsigned components,
+                               nir_alu_type base_type,
+                               unsigned bits)
+{
+   assert(base_type == nir_alu_type_get_base_type(base_type));
+   assert(base_type != nir_type_invalid);
+
+   /* This can occur for 1-bit Boolean values. */
+   if (bits == 1)
+      return false;
+
+   switch (base_type) {
+   case nir_type_float:
+      switch (bits) {
+      case 16:
+         for (unsigned i = 0; i < components; i++) {
+            if (_mesa_half_to_float(c1->u16[i]) !=
+                -_mesa_half_to_float(c2->u16[i])) {
+               return false;
+            }
+         }
+
+         return true;
+
+      case 32:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->f32[i] != -c2->f32[i])
+               return false;
+         }
+
+         return true;
+
+      case 64:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->f64[i] != -c2->f64[i])
+               return false;
+         }
+
+         return true;
+
+      default:
+         unreachable("unknown bit size");
+      }
+
+      break;
+
+   case nir_type_int:
+   case nir_type_uint:
+      switch (bits) {
+      case 8:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->i8[i] != -c2->i8[i])
+               return false;
+         }
+
+         return true;
+
+      case 16:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->i16[i] != -c2->i16[i])
+               return false;
+         }
+
+         return true;
+         break;
+
+      case 32:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->i32[i] != -c2->i32[i])
+               return false;
+         }
+
+         return true;
+
+      case 64:
+         for (unsigned i = 0; i < components; i++) {
+            if (c1->i64[i] != -c2->i64[i])
+               return false;
+         }
+
+         return true;
+
+      default:
+         unreachable("unknown bit size");
+      }
+
+      break;
+
+   case nir_type_bool:
+      return false;
+
+   default:
+      break;
+   }
+
+   return false;
 }
 
 bool

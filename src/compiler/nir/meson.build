@@ -282,4 +282,16 @@ if with_tests
     ],
     suite : ['compiler', 'nir'],
   )
+
+  test(
+    'negative_equal',
+    executable(
+      'negative_equal',
+      files('tests/negative_equal_tests.cpp'),
+      c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
+      include_directories : [inc_common],
+      dependencies : [dep_thread, idep_gtest, idep_nir],
+      link_with : libmesa_util,
+    )
+  )
 endif
