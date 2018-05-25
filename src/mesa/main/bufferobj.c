@@ -3277,30 +3277,49 @@ _mesa_MapNamedBufferRange_no_error(GLuint buffer, GLintptr offset,
                            "glMapNamedBufferRange");
 }
 
+static void *
+map_named_buffer_range(GLuint buffer, GLintptr offset, GLsizeiptr length,
+                       GLbitfield access, bool dst_ext, const char *func)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_buffer_object *bufObj = NULL;
+
+   if (!ctx->Extensions.ARB_map_buffer_range) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(ARB_map_buffer_range not supported)", func);
+      return NULL;
+   }
+
+   if (dst_ext) {
+      bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+      if (!_mesa_handle_bind_buffer_gen(ctx, buffer, &bufObj, func))
+         return NULL;
+   } else {
+      bufObj = _mesa_lookup_bufferobj_err(ctx, buffer, func);
+      if (!bufObj)
+         return NULL;
+   }
+
+   if (!validate_map_buffer_range(ctx, bufObj, offset, length, access, func))
+      return NULL;
+
+   return map_buffer_range(ctx, bufObj, offset, length, access, func);
+}
+
+void * GLAPIENTRY
+_mesa_MapNamedBufferRangeEXT(GLuint buffer, GLintptr offset, GLsizeiptr length,
+                             GLbitfield access)
+{
+   return map_named_buffer_range(buffer, offset, length, access, true,
+                                 "glMapNamedBufferRangeEXT");
+}
+
 void * GLAPIENTRY
 _mesa_MapNamedBufferRange(GLuint buffer, GLintptr offset, GLsizeiptr length,
                           GLbitfield access)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   struct gl_buffer_object *bufObj;
-
-   if (!ctx->Extensions.ARB_map_buffer_range) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "glMapNamedBufferRange("
-                  "ARB_map_buffer_range not supported)");
-      return NULL;
-   }
-
-   bufObj = _mesa_lookup_bufferobj_err(ctx, buffer, "glMapNamedBufferRange");
-   if (!bufObj)
-      return NULL;
-
-   if (!validate_map_buffer_range(ctx, bufObj, offset, length, access,
-                                  "glMapNamedBufferRange"))
-      return NULL;
-
-   return map_buffer_range(ctx, bufObj, offset, length, access,
-                           "glMapNamedBufferRange");
+   return map_named_buffer_range(buffer, offset, length, access, false,
+                                 "glMapNamedBufferRange");
 }
 
 /**

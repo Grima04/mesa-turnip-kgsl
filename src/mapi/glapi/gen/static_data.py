@@ -1477,6 +1477,7 @@ offsets = {
     "NamedBufferDataEXT": 1441,
     "NamedBufferSubDataEXT": 1442,
     "NamedBufferStorageEXT": 1443,
+    "MapNamedBufferRangeEXT": 1444,
 }
 
 functions = [

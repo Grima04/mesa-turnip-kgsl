@@ -1222,7 +1222,7 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glGetVertexArrayPointervEXT", 30, -1 },
    //{ "glGetVertexArrayIntegeri_vEXT", 30, -1 },
    //{ "glGetVertexArrayPointeri_vEXT", 30, -1 },
-   //{ "glMapNamedBufferRangeEXT", 30, -1 },
+   { "glMapNamedBufferRangeEXT", 30, -1 },
    //{ "glFlushMappedNamedBufferRangeEXT", 30, -1 },
 
    /* GL_ARB_internalformat_query */

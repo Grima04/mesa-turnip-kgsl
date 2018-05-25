@@ -145,5 +145,16 @@
       <param name="size" type="GLsizeiptr" />
       <param name="data" type="const GLvoid *" />
    </function>
+
+   <!-- OpenGL 3.0 -->
+
+   <function name="MapNamedBufferRangeEXT">
+      <return type="GLvoid *" />
+      <param name="buffer" type="GLuint" />
+      <param name="offset" type="GLintptr" />
+      <param name="length" type="GLsizeiptr" />
+      <param name="access" type="GLbitfield" />
+   </function>
+
 </category>
 </OpenGLAPI>
