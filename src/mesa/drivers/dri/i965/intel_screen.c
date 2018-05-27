@@ -2416,7 +2416,7 @@ set_max_gl_versions(struct intel_screen *screen)
  * Return the revision (generally the revid field of the PCI header) of the
  * graphics device.
  */
-int
+static int
 intel_device_get_revision(int fd)
 {
    struct drm_i915_getparam gp;
@@ -2520,6 +2520,8 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
 
    if (!gen_get_device_info(screen->deviceID, &screen->devinfo))
       return NULL;
+
+   screen->devinfo.revision = intel_device_get_revision(dri_screen->fd);
 
    if (!intel_init_bufmgr(screen))
        return NULL;

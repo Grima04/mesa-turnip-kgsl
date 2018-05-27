@@ -2017,7 +2017,6 @@ init_oa_sys_vars(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
-   __DRIscreen *screen = brw->screen->driScrnPriv;
 
    if (!read_sysfs_drm_device_file_uint64(brw, "gt_min_freq_mhz", &min_freq_mhz))
       return false;
@@ -2045,7 +2044,7 @@ init_oa_sys_vars(struct brw_context *brw)
    brw->perfquery.sys_vars.gt_min_freq = min_freq_mhz * 1000000;
    brw->perfquery.sys_vars.gt_max_freq = max_freq_mhz * 1000000;
    brw->perfquery.sys_vars.timestamp_frequency = devinfo->timestamp_frequency;
-   brw->perfquery.sys_vars.revision = intel_device_get_revision(screen->fd);
+   brw->perfquery.sys_vars.revision = devinfo->revision;
    compute_topology_builtins(brw);
 
    return true;

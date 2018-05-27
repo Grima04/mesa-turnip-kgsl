@@ -46,6 +46,7 @@ struct drm_i915_query_topology_info;
 struct gen_device_info
 {
    int gen; /**< Generation number: 4, 5, 6, 7, ... */
+   int revision;
    int gt;
 
    bool is_g4x;
