@@ -27,7 +27,8 @@
 #include <stdint.h>
 
 #include "brw_context.h"
-#include "brw_performance_query_metrics.h"
+
+struct gen_perf_query_info;
 
 /*
  * When currently allocate only one page for pipeline statistics queries. Here
@@ -57,7 +58,7 @@ struct brw_perf_query_object
 {
    struct gl_perf_query_object base;
 
-   const struct brw_perf_query_info *query;
+   const struct gen_perf_query_info *query;
 
    /* See query->kind to know which state below is in use... */
    union {
@@ -141,81 +142,6 @@ struct brw_perf_query_object
       } pipeline_stats;
    };
 };
-
-static inline struct brw_perf_query_info *
-brw_perf_query_append_query_info(struct brw_context *brw)
-{
-   brw->perfquery.queries =
-      reralloc(brw, brw->perfquery.queries,
-               struct brw_perf_query_info, ++brw->perfquery.n_queries);
-
-   return &brw->perfquery.queries[brw->perfquery.n_queries - 1];
-}
-
-static inline void
-brw_perf_query_info_add_stat_reg(struct brw_perf_query_info *query,
-                                 uint32_t reg,
-                                 uint32_t numerator,
-                                 uint32_t denominator,
-                                 const char *name,
-                                 const char *description)
-{
-   struct brw_perf_query_counter *counter;
-
-   assert(query->n_counters < MAX_STAT_COUNTERS);
-
-   counter = &query->counters[query->n_counters];
-   counter->name = name;
-   counter->desc = description;
-   counter->type = GL_PERFQUERY_COUNTER_RAW_INTEL;
-   counter->data_type = GL_PERFQUERY_COUNTER_DATA_UINT64_INTEL;
-   counter->size = sizeof(uint64_t);
-   counter->offset = sizeof(uint64_t) * query->n_counters;
-   counter->pipeline_stat.reg = reg;
-   counter->pipeline_stat.numerator = numerator;
-   counter->pipeline_stat.denominator = denominator;
-
-   query->n_counters++;
-}
-
-static inline void
-brw_perf_query_info_add_basic_stat_reg(struct brw_perf_query_info *query,
-                                       uint32_t reg, const char *name)
-{
-   brw_perf_query_info_add_stat_reg(query, reg, 1, 1, name, name);
-}
-
-/* Accumulate 32bits OA counters */
-static inline void
-brw_perf_query_accumulate_uint32(const uint32_t *report0,
-                                 const uint32_t *report1,
-                                 uint64_t *accumulator)
-{
-   *accumulator += (uint32_t)(*report1 - *report0);
-}
-
-/* Accumulate 40bits OA counters */
-static inline void
-brw_perf_query_accumulate_uint40(int a_index,
-                                 const uint32_t *report0,
-                                 const uint32_t *report1,
-                                 uint64_t *accumulator)
-{
-   const uint8_t *high_bytes0 = (uint8_t *)(report0 + 40);
-   const uint8_t *high_bytes1 = (uint8_t *)(report1 + 40);
-   uint64_t high0 = (uint64_t)(high_bytes0[a_index]) << 32;
-   uint64_t high1 = (uint64_t)(high_bytes1[a_index]) << 32;
-   uint64_t value0 = report0[a_index + 4] | high0;
-   uint64_t value1 = report1[a_index + 4] | high1;
-   uint64_t delta;
-
-   if (value0 > value1)
-      delta = (1ULL << 40) + value1 - value0;
-   else
-      delta = value1 - value0;
-
-   *accumulator += delta;
-}
 
 int brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
                                      struct brw_perf_query_object *obj,

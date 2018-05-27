@@ -57,7 +57,6 @@ files_i965 = files(
   'brw_performance_query.h',
   'brw_performance_query.c',
   'brw_performance_query_mdapi.c',
-  'brw_performance_query_metrics.h',
   'brw_program.c',
   'brw_program.h',
   'brw_program_binary.c',
@@ -149,37 +148,9 @@ foreach v : ['40', '45', '50', '60', '70', '75', '80', '90', '100', '110']
 endforeach
 
 
-i965_hw_metrics = [
-  'hsw',
-  'bdw', 'chv',
-  'sklgt2', 'sklgt3', 'sklgt4',
-  'kblgt2', 'kblgt3',
-  'cflgt2', 'cflgt3',
-  'bxt', 'glk',
-  'cnl',
-  'icl',
-]
-
-i965_hw_metrics_xml_files = []
-foreach hw : i965_hw_metrics
-  i965_hw_metrics_xml_files += 'brw_oa_@0@.xml'.format(hw)
-endforeach
-
-i965_oa_sources = custom_target(
-  'i965-oa-sources',
-  input : i965_hw_metrics_xml_files,
-  output : [ 'brw_oa_metrics.c', 'brw_oa_metrics.h' ],
-  command : [
-    prog_python, files('brw_oa.py'),
-    '--code', '@OUTPUT0@', '--header', '@OUTPUT1@',
-    '@INPUT@',
-  ],
-)
-
 libi965 = static_library(
   'i965',
-  [files_i965, i965_oa_sources, ir_expression_operation_h,
-   xmlpool_options_h],
+  [files_i965, ir_expression_operation_h, xmlpool_options_h],
   include_directories : [
     inc_common, inc_intel, inc_dri_common, inc_util, inc_include,
   ],
@@ -187,7 +158,7 @@ libi965 = static_library(
   cpp_args : [cpp_vis_args, c_sse2_args],
   link_with : [
     i965_gen_libs, libintel_common, libintel_dev, libisl, libintel_compiler,
-    libblorp
+    libblorp, libintel_perf
   ],
   dependencies : [dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml],
 )

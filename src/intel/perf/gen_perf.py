@@ -176,16 +176,16 @@ exp_ops["&&"]   = (2, splice_logical_and)
 
 
 hw_vars = {}
-hw_vars["$EuCoresTotalCount"] = "brw->perfquery.sys_vars.n_eus"
-hw_vars["$EuSlicesTotalCount"] = "brw->perfquery.sys_vars.n_eu_slices"
-hw_vars["$EuSubslicesTotalCount"] = "brw->perfquery.sys_vars.n_eu_sub_slices"
-hw_vars["$EuThreadsCount"] = "brw->perfquery.sys_vars.eu_threads_count"
-hw_vars["$SliceMask"] = "brw->perfquery.sys_vars.slice_mask"
-hw_vars["$SubsliceMask"] = "brw->perfquery.sys_vars.subslice_mask"
-hw_vars["$GpuTimestampFrequency"] = "brw->perfquery.sys_vars.timestamp_frequency"
-hw_vars["$GpuMinFrequency"] = "brw->perfquery.sys_vars.gt_min_freq"
-hw_vars["$GpuMaxFrequency"] = "brw->perfquery.sys_vars.gt_max_freq"
-hw_vars["$SkuRevisionId"] = "brw->perfquery.sys_vars.revision"
+hw_vars["$EuCoresTotalCount"] = "perf->sys_vars.n_eus"
+hw_vars["$EuSlicesTotalCount"] = "perf->sys_vars.n_eu_slices"
+hw_vars["$EuSubslicesTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
+hw_vars["$EuThreadsCount"] = "perf->sys_vars.eu_threads_count"
+hw_vars["$SliceMask"] = "perf->sys_vars.slice_mask"
+hw_vars["$SubsliceMask"] = "perf->sys_vars.subslice_mask"
+hw_vars["$GpuTimestampFrequency"] = "perf->sys_vars.timestamp_frequency"
+hw_vars["$GpuMinFrequency"] = "perf->sys_vars.gt_min_freq"
+hw_vars["$GpuMaxFrequency"] = "perf->sys_vars.gt_max_freq"
+hw_vars["$SkuRevisionId"] = "perf->sys_vars.revision"
 
 def output_rpn_equation_code(set, counter, equation):
     c("/* RPN equation: " + equation + " */")
@@ -207,7 +207,7 @@ def output_rpn_equation_code(set, counter, equation):
                         operand = hw_vars[operand]
                     elif operand in set.counter_vars:
                         reference = set.counter_vars[operand]
-                        operand = set.read_funcs[operand[1:]] + "(brw, query, accumulator)"
+                        operand = set.read_funcs[operand[1:]] + "(perf, query, accumulator)"
                     else:
                         raise Exception("Failed to resolve variable " + operand + " in equation " + equation + " for " + set.name + " :: " + counter.get('name'));
                 args.append(operand)
@@ -227,7 +227,7 @@ def output_rpn_equation_code(set, counter, equation):
     if value in hw_vars:
         value = hw_vars[value]
     if value in set.counter_vars:
-        value = set.read_funcs[value[1:]] + "(brw, query, accumulator)"
+        value = set.read_funcs[value[1:]] + "(perf, query, accumulator)"
 
     c("\nreturn " + value + ";")
 
@@ -278,9 +278,9 @@ def output_counter_read(gen, set, counter):
         read_eq = counter.get('equation')
 
         c("static " + ret_type)
-        c(counter.read_sym + "(MAYBE_UNUSED struct brw_context *brw,\n")
+        c(counter.read_sym + "(MAYBE_UNUSED struct gen_perf *perf,\n")
         c_indent(len(counter.read_sym) + 1)
-        c("const struct brw_perf_query_info *query,\n")
+        c("const struct gen_perf_query_info *query,\n")
         c("uint64_t *accumulator)\n")
         c_outdent(len(counter.read_sym) + 1)
 
@@ -313,7 +313,7 @@ def output_counter_max(gen, set, counter):
             ret_type = "uint64_t"
 
         c("static " + ret_type)
-        c(counter.max_sym() + "(struct brw_context *brw)\n")
+        c(counter.max_sym() + "(struct gen_perf *perf)\n")
         c("{")
         c_indent(3)
         output_rpn_equation_code(set, counter, max_eq)
@@ -375,8 +375,8 @@ def output_counter_report(set, counter, current_offset):
     c("counter->oa_counter_read_" + data_type + " = " + set.read_funcs[counter.get('symbol_name')] + ";\n")
     c("counter->name = \"" + counter.get('name') + "\";\n")
     c("counter->desc = \"" + counter.get('description') + "\";\n")
-    c("counter->type = GL_PERFQUERY_COUNTER_" + semantic_type_uc + "_INTEL;\n")
-    c("counter->data_type = GL_PERFQUERY_COUNTER_DATA_" + data_type_uc + "_INTEL;\n")
+    c("counter->type = GEN_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
+    c("counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ";\n")
     c("counter->raw_max = " + set.max_values[counter.get('symbol_name')] + ";\n")
 
     current_offset = pot_align(current_offset, sizeof(c_type))
@@ -420,7 +420,7 @@ def generate_register_configs(set):
             c_indent(3)
 
         for register in register_config.findall('register'):
-            c("query->%s[query->n_%s++] = (struct brw_perf_query_register_prog) { .reg = %s, .val = %s };" %
+            c("query->%s[query->n_%s++] = (struct gen_perf_query_register_prog) { .reg = %s, .val = %s };" %
               (t, t, register.get('address'), register.get('value')))
 
         if availability:
@@ -429,7 +429,7 @@ def generate_register_configs(set):
         c("\n")
 
 
-# Wraps a <counter> element from the brw_oa_*.xml files.
+# Wraps a <counter> element from the oa-*.xml files.
 class Counter:
     def __init__(self, set, xml):
         self.xml = xml
@@ -501,11 +501,11 @@ class Counter:
             if token[0] == '$' and token not in hw_vars:
                 return "0 /* unsupported (varies over time) */"
 
-        return "{0}__{1}__{2}__max(brw)".format(self.set.gen.chipset,
-                                                self.set.underscore_name,
-                                                self.xml.get('underscore_name'))
+        return "{0}__{1}__{2}__max(perf)".format(self.set.gen.chipset,
+                                                 self.set.underscore_name,
+                                                 self.xml.get('underscore_name'))
 
-# Wraps a <set> element from the brw_oa_*.xml files.
+# Wraps a <set> element from the oa-*.xml files.
 class Set:
     def __init__(self, gen, xml):
         self.gen = gen
@@ -550,7 +550,7 @@ class Set:
         return self.xml.find(path)
 
 
-# Wraps an entire brw_oa_*.xml file.
+# Wraps an entire oa-*.xml file.
 class Gen:
     def __init__(self, filename):
         self.filename = filename
@@ -573,8 +573,8 @@ def main():
 
     args = parser.parse_args()
 
-    header_file = open(args.header, 'w')
     c_file = open(args.code, 'w')
+    header_file = open(args.header, 'w')
 
     gens = []
     for xml_file in args.xml_files:
@@ -612,7 +612,7 @@ def main():
     h(textwrap.dedent("""\
         #pragma once
 
-        struct brw_context;
+        struct gen_perf;
 
         """))
 
@@ -621,6 +621,8 @@ def main():
         #include <stdint.h>
         #include <stdbool.h>
 
+        #include <drm-uapi/i915_drm.h>
+
         #include "util/hash_table.h"
 
         """))
@@ -628,8 +630,7 @@ def main():
     c("#include \"" + os.path.basename(args.header) + "\"")
 
     c(textwrap.dedent("""\
-        #include "brw_context.h"
-        #include "brw_performance_query_metrics.h"
+        #include "perf/gen_perf.h"
 
 
         #define MIN(a, b) ((a < b) ? (a) : (b))
@@ -654,15 +655,15 @@ def main():
             c("\n")
             register_lengths = compute_register_lengths(set);
             for reg_type, reg_length in register_lengths.items():
-                c("static struct brw_perf_query_register_prog {0}_{1}_{2}[{3}];".format(gen.chipset,
+                c("static struct gen_perf_query_register_prog {0}_{1}_{2}[{3}];".format(gen.chipset,
                                                                                         set.underscore_name,
                                                                                         reg_type, reg_length))
 
-            c("\nstatic struct brw_perf_query_counter {0}_{1}_query_counters[{2}];\n".format(gen.chipset, set.underscore_name, len(counters)))
-            c("static struct brw_perf_query_info " + gen.chipset + "_" + set.underscore_name + "_query = {\n")
+            c("\nstatic struct gen_perf_query_counter {0}_{1}_query_counters[{2}];\n".format(gen.chipset, set.underscore_name, len(counters)))
+            c("static struct gen_perf_query_info " + gen.chipset + "_" + set.underscore_name + "_query = {\n")
             c_indent(3)
 
-            c(".kind = OA_COUNTERS,\n")
+            c(".kind = GEN_PERF_QUERY_TYPE_OA,\n")
             c(".name = \"" + set.name + "\",\n")
             c(".guid = \"" + set.hw_config_guid + "\",\n")
 
@@ -700,12 +701,12 @@ def main():
             c("};\n")
 
             c("\nstatic void\n")
-            c("{0}_register_{1}_counter_query(struct brw_context *brw)\n".format(gen.chipset, set.underscore_name))
+            c("{0}_register_{1}_counter_query(struct gen_perf *perf)\n".format(gen.chipset, set.underscore_name))
             c("{\n")
             c_indent(3)
 
-            c("static struct brw_perf_query_info *query = &" + gen.chipset + "_" + set.underscore_name + "_query;\n")
-            c("struct brw_perf_query_counter *counter;\n")
+            c("static struct gen_perf_query_info *query = &" + gen.chipset + "_" + set.underscore_name + "_query;\n")
+            c("struct gen_perf_query_counter *counter;\n")
 
             c("\n")
             c("/* Note: we're assuming there can't be any variation in the definition ")
@@ -726,20 +727,20 @@ def main():
             c_outdent(3)
             c("}");
 
-            c("\n_mesa_hash_table_insert(brw->perfquery.oa_metrics_table, query->guid, query);")
+            c("\n_mesa_hash_table_insert(perf->oa_metrics_table, query->guid, query);")
 
             c_outdent(3)
             c("}\n")
 
-        h("void brw_oa_register_queries_" + gen.chipset + "(struct brw_context *brw);\n")
+        h("void gen_oa_register_queries_" + gen.chipset + "(struct gen_perf *perf);\n")
 
         c("\nvoid")
-        c("brw_oa_register_queries_" + gen.chipset + "(struct brw_context *brw)")
+        c("gen_oa_register_queries_" + gen.chipset + "(struct gen_perf *perf)")
         c("{")
         c_indent(3)
 
         for set in gen.sets:
-            c("{0}_register_{1}_counter_query(brw);".format(gen.chipset, set.underscore_name))
+            c("{0}_register_{1}_counter_query(perf);".format(gen.chipset, set.underscore_name))
 
         c_outdent(3)
         c("}")

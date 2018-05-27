@@ -1,5 +1,4 @@
-# Copyright © 2016 Intel Corporation
-# Copyright © 2016 Mauro Rossi <issor.oruam@gmail.com>
+# Copyright © 2018 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -20,16 +19,34 @@
 # DEALINGS IN THE SOFTWARE.
 #
 
-LOCAL_PATH := $(call my-dir)
+# ---------------------------------------
+# Build libmesa_intel_perf
+# ---------------------------------------
 
-# Import variables
-include $(LOCAL_PATH)/Makefile.sources
+include $(CLEAR_VARS)
 
-include $(LOCAL_PATH)/Android.blorp.mk
-include $(LOCAL_PATH)/Android.common.mk
-include $(LOCAL_PATH)/Android.compiler.mk
-include $(LOCAL_PATH)/Android.dev.mk
-include $(LOCAL_PATH)/Android.genxml.mk
-include $(LOCAL_PATH)/Android.isl.mk
-include $(LOCAL_PATH)/Android.perf.mk
-include $(LOCAL_PATH)/Android.vulkan.mk
+LOCAL_MODULE := libmesa_intel_perf
+
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+intermediates := $(call local-generated-sources-dir)
+
+LOCAL_C_INCLUDES := $(MESA_TOP)/include/drm-uapi
+
+LOCAL_SRC_FILES := $(GEN_PERF_FILES)
+
+LOCAL_GENERATED_SOURCES += $(addprefix $(intermediates)/, \
+	$(GEN_PERF_GENERATED_FILES))
+
+$(intermediates)/perf/gen_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
+	@echo "target Generated: $(PRIVATE_MODULE) <= $(notdir $(@))"
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $< \
+	--code=$@ \
+	--header=$(@:%.c=%.h) \
+	$(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
+
+$(intermediates)/perf/gen_perf_metrics.h: $(intermediates)/perf/gen_perf_metrics.c
+
+include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)

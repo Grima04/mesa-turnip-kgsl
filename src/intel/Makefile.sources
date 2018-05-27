@@ -314,3 +314,27 @@ VULKAN_GEN10_FILES := \
 VULKAN_GEN11_FILES := \
 	vulkan/gen8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
+
+GEN_PERF_XML_FILES = \
+	perf/oa-hsw.xml \
+	perf/oa-bdw.xml \
+	perf/oa-chv.xml \
+	perf/oa-sklgt2.xml \
+	perf/oa-sklgt3.xml \
+	perf/oa-sklgt4.xml \
+	perf/oa-bxt.xml \
+	perf/oa-kblgt2.xml \
+	perf/oa-kblgt3.xml \
+	perf/oa-glk.xml \
+	perf/oa-cflgt2.xml \
+	perf/oa-cflgt3.xml \
+	perf/oa-cnl.xml \
+	perf/oa-icl.xml
+
+GEN_PERF_FILES = \
+	perf/gen_perf.c \
+	perf/gen_perf.h
+
+GEN_PERF_GENERATED_FILES = \
+	perf/gen_perf_metrics.c \
+	perf/gen_perf_metrics.h
