@@ -72,6 +72,9 @@ iris_create_shader_state(struct pipe_context *ctx,
                             type_size_scalar_bytes);
    nir_lower_io(nir, nir_var_uniform, type_size_scalar_bytes, 0);
 #endif
+   nir_foreach_variable(var, &nir->uniforms) {
+      var->data.driver_location *= 4;
+   }
    nir_lower_io(nir, nir_var_uniform, type_size_vec4_bytes, 0);
 
    ish->program_id = get_new_program_id(screen);
