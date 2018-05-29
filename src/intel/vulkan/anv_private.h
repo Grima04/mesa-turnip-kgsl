@@ -3114,6 +3114,11 @@ anv_sanitize_image_offset(const VkImageType imageType,
    }
 }
 
+VkFormatFeatureFlags
+anv_get_image_format_features(const struct gen_device_info *devinfo,
+                              VkFormat vk_format,
+                              const struct anv_format *anv_format,
+                              VkImageTiling vk_tiling);
 
 void anv_fill_buffer_surface_state(struct anv_device *device,
                                    struct anv_state state,

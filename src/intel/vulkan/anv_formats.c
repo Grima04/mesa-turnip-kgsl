@@ -492,11 +492,11 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
 
 // Format capabilities
 
-static VkFormatFeatureFlags
-get_image_format_features(const struct gen_device_info *devinfo,
-                          VkFormat vk_format,
-                          const struct anv_format *anv_format,
-                          VkImageTiling vk_tiling)
+VkFormatFeatureFlags
+anv_get_image_format_features(const struct gen_device_info *devinfo,
+                              VkFormat vk_format,
+                              const struct anv_format *anv_format,
+                              VkImageTiling vk_tiling)
 {
    VkFormatFeatureFlags flags = 0;
 
@@ -743,11 +743,11 @@ void anv_GetPhysicalDeviceFormatProperties(
 
    *pFormatProperties = (VkFormatProperties) {
       .linearTilingFeatures =
-         get_image_format_features(devinfo, vk_format, anv_format,
-                                   VK_IMAGE_TILING_LINEAR),
+         anv_get_image_format_features(devinfo, vk_format, anv_format,
+                                       VK_IMAGE_TILING_LINEAR),
       .optimalTilingFeatures =
-         get_image_format_features(devinfo, vk_format, anv_format,
-                                   VK_IMAGE_TILING_OPTIMAL),
+         anv_get_image_format_features(devinfo, vk_format, anv_format,
+                                       VK_IMAGE_TILING_OPTIMAL),
       .bufferFeatures =
          get_buffer_format_features(devinfo, vk_format, anv_format),
    };
@@ -794,8 +794,8 @@ anv_get_image_format_properties(
    if (format == NULL)
       goto unsupported;
 
-   format_feature_flags = get_image_format_features(devinfo, info->format,
-                                                    format, info->tiling);
+   format_feature_flags = anv_get_image_format_features(devinfo, info->format,
+                                                        format, info->tiling);
 
    switch (info->type) {
    default:
