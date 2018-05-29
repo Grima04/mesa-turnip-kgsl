@@ -29,6 +29,8 @@
 #include <sync/sync.h>
 
 #include "anv_private.h"
+#include "vk_format_info.h"
+#include "vk_util.h"
 
 static int anv_hal_open(const struct hw_module_t* mod, const char* id, struct hw_device_t** dev);
 static int anv_hal_close(struct hw_device_t *dev);
@@ -94,6 +96,123 @@ anv_hal_close(struct hw_device_t *dev)
 {
    /* hwvulkan.h claims that hw_device_t::close() is never called. */
    return -1;
+}
+
+static VkResult
+get_ahw_buffer_format_properties(
+   VkDevice device_h,
+   const struct AHardwareBuffer *buffer,
+   VkAndroidHardwareBufferFormatPropertiesANDROID *pProperties)
+{
+   ANV_FROM_HANDLE(anv_device, device, device_h);
+
+   /* Get a description of buffer contents . */
+   AHardwareBuffer_Desc desc;
+   AHardwareBuffer_describe(buffer, &desc);
+
+   /* Verify description. */
+   uint64_t gpu_usage =
+      AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+      AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT |
+      AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER;
+
+   /* "Buffer must be a valid Android hardware buffer object with at least
+    * one of the AHARDWAREBUFFER_USAGE_GPU_* usage flags."
+    */
+   if (!(desc.usage & (gpu_usage)))
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+
+   /* Fill properties fields based on description. */
+   VkAndroidHardwareBufferFormatPropertiesANDROID *p = pProperties;
+
+   p->format = vk_format_from_android(desc.format);
+
+   const struct anv_format *anv_format = anv_get_format(p->format);
+   p->externalFormat = (uint64_t) (uintptr_t) anv_format;
+
+   /* Default to OPTIMAL tiling but set to linear in case
+    * of AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER usage.
+    */
+   VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+
+   if (desc.usage & AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER)
+      tiling = VK_IMAGE_TILING_LINEAR;
+
+   p->formatFeatures =
+      anv_get_image_format_features(&device->info, p->format, anv_format,
+                                    tiling);
+
+   /* "Images can be created with an external format even if the Android hardware
+    *  buffer has a format which has an equivalent Vulkan format to enable
+    *  consistent handling of images from sources that might use either category
+    *  of format. However, all images created with an external format are subject
+    *  to the valid usage requirements associated with external formats, even if
+    *  the Android hardware buffer’s format has a Vulkan equivalent."
+    *
+    * "The formatFeatures member *must* include
+    *  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT and at least one of
+    *  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT or
+    *  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT"
+    */
+   p->formatFeatures |=
+      VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+   /* "Implementations may not always be able to determine the color model,
+    *  numerical range, or chroma offsets of the image contents, so the values
+    *  in VkAndroidHardwareBufferFormatPropertiesANDROID are only suggestions.
+    *  Applications should treat these values as sensible defaults to use in
+    *  the absence of more reliable information obtained through some other
+    *  means."
+    */
+   p->samplerYcbcrConversionComponents.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+   p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601;
+   p->suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL;
+
+   p->suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+   p->suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+anv_GetAndroidHardwareBufferPropertiesANDROID(
+   VkDevice device_h,
+   const struct AHardwareBuffer *buffer,
+   VkAndroidHardwareBufferPropertiesANDROID *pProperties)
+{
+   ANV_FROM_HANDLE(anv_device, dev, device_h);
+   struct anv_physical_device *pdevice = &dev->instance->physicalDevice;
+
+   VkAndroidHardwareBufferFormatPropertiesANDROID *format_prop =
+      vk_find_struct(pProperties->pNext,
+                     ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID);
+
+   /* Fill format properties of an Android hardware buffer. */
+   if (format_prop)
+      get_ahw_buffer_format_properties(device_h, buffer, format_prop);
+
+   /* NOTE - We support buffers with only one handle but do not error on
+    * multiple handle case. Reason is that we want to support YUV formats
+    * where we have many logical planes but they all point to the same
+    * buffer, like is the case with VK_FORMAT_G8_B8R8_2PLANE_420_UNORM.
+    */
+   const native_handle_t *handle =
+      AHardwareBuffer_getNativeHandle(buffer);
+   int dma_buf = (handle && handle->numFds) ? handle->data[0] : -1;
+   if (dma_buf < 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+
+   /* All memory types. */
+   uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
+
+   pProperties->allocationSize = lseek(dma_buf, 0, SEEK_END);
+   pProperties->memoryTypeBits = memory_types;
+
+   return VK_SUCCESS;
 }
 
 VkResult
