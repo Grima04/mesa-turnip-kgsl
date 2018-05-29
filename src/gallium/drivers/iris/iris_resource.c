@@ -26,6 +26,8 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
+#include "util/os_memory.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
@@ -35,6 +37,7 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "intel/common/gen_debug.h"
+#include "isl/isl.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/i915_drm.h"
 
@@ -368,6 +371,100 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    return false;
 }
 
+struct iris_transfer {
+   struct pipe_transfer base;
+   struct pipe_debug_callback *dbg;
+   void *buffer;
+   void *ptr;
+   int stride;
+
+   void (*unmap)(struct iris_transfer *);
+};
+
+/* Compute extent parameters for use with tiled_memcpy functions.
+ * xs are in units of bytes and ys are in units of strides.
+ */
+static inline void
+tile_extents(struct isl_surf *surf,
+             const struct pipe_box *box,
+             unsigned int level,
+             unsigned int *x1_B, unsigned int *x2_B,
+             unsigned int *y1_el, unsigned int *y2_el)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+   const unsigned cpp = fmtl->bpb / 8;
+
+   assert(box->x % fmtl->bw == 0);
+   assert(box->y % fmtl->bh == 0);
+
+   unsigned x0_el, y0_el;
+   isl_surf_get_image_offset_el(surf, level, box->z, box->z, &x0_el, &y0_el);
+
+   *x1_B = (box->x / fmtl->bw + x0_el) * cpp;
+   *y1_el = box->y / fmtl->bh + y0_el;
+   *x2_B = (DIV_ROUND_UP(box->x + box->width, fmtl->bw) + x0_el) * cpp;
+   *y2_el = DIV_ROUND_UP(box->y + box->height, fmtl->bh) + y0_el;
+}
+
+static void
+iris_unmap_tiled_memcpy(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
+
+   const bool has_swizzling = false; // XXX: swizzling?
+
+   if (xfer->usage & PIPE_TRANSFER_WRITE) {
+      unsigned int x1, x2, y1, y2;
+      tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
+
+      char *dst = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+      // XXX: dst += mt->offset;
+
+      isl_memcpy_linear_to_tiled(x1, x2, y1, y2, dst, map->ptr,
+                                 surf->row_pitch_B, map->stride,
+                                 has_swizzling, surf->tiling, ISL_MEMCPY);
+   }
+   os_free_aligned(map->buffer);
+   map->buffer = map->ptr = NULL;
+}
+
+static void
+iris_map_tiled_memcpy(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
+
+   unsigned int x1, x2, y1, y2;
+   tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
+   map->stride = ALIGN(surf->row_pitch_B, 16);
+
+   /* The tiling and detiling functions require that the linear buffer has
+    * a 16-byte alignment (that is, its `x0` is 16-byte aligned).  Here we
+    * over-allocate the linear buffer to get the proper alignment.
+    */
+   map->buffer =
+      os_malloc_aligned(map->stride * (y2 - y1) + (x1 & 0xf), 16);
+   map->ptr = (char *)map->buffer + (x1 & 0xf);
+   assert(map->buffer);
+
+   const bool has_swizzling = false; // XXX: swizzling?
+
+   // XXX: PIPE_TRANSFER_READ?
+   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+      char *src = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+      // XXX: += mt->offset?
+
+      isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src, map->stride,
+                                 surf->row_pitch_B, has_swizzling,
+                                 surf->tiling, ISL_MEMCPY);
+   }
+
+   map->unmap = iris_unmap_tiled_memcpy;
+}
+
 static void *
 iris_transfer_map(struct pipe_context *ctx,
                   struct pipe_resource *resource,
@@ -378,23 +475,30 @@ iris_transfer_map(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *)resource;
-   struct pipe_transfer *transfer;
+   struct isl_surf *surf = &res->surf;
+
+   if (surf->tiling != ISL_TILING_LINEAR &&
+       (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+      return NULL;
+
+   struct iris_transfer *map = calloc(1, sizeof(struct iris_transfer));
+   struct pipe_transfer *xfer = &map->base;
 
    // PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE
    // PIPE_TRANSFER_DISCARD_RANGE
-   // PIPE_TRANSFER_MAP_DIRECTLY
 
-   transfer = calloc(1, sizeof(struct pipe_transfer));
-   if (!transfer)
+   if (!map)
       return NULL;
 
-   pipe_resource_reference(&transfer->resource, resource);
-   transfer->level = level;
-   transfer->usage = usage;
-   transfer->box = *box;
-   transfer->stride = isl_surf_get_row_pitch_B(&res->surf);
-   transfer->layer_stride = isl_surf_get_array_pitch(&res->surf);
-   *ptransfer = transfer;
+   map->dbg = &ice->dbg;
+
+   pipe_resource_reference(&xfer->resource, resource);
+   xfer->level = level;
+   xfer->usage = usage;
+   xfer->box = *box;
+   xfer->stride = isl_surf_get_row_pitch_B(surf);
+   xfer->layer_stride = isl_surf_get_array_pitch(surf);
+   *ptransfer = xfer;
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
        iris_batch_references(&ice->render_batch, res->bo)) {
@@ -404,13 +508,20 @@ iris_transfer_map(struct pipe_context *ctx,
    if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
       return NULL;
 
-   usage &= (PIPE_TRANSFER_READ |
-             PIPE_TRANSFER_WRITE |
-             PIPE_TRANSFER_UNSYNCHRONIZED |
-             PIPE_TRANSFER_PERSISTENT |
-             PIPE_TRANSFER_COHERENT);
+   xfer->usage &= (PIPE_TRANSFER_READ |
+                   PIPE_TRANSFER_WRITE |
+                   PIPE_TRANSFER_UNSYNCHRONIZED |
+                   PIPE_TRANSFER_PERSISTENT |
+                   PIPE_TRANSFER_COHERENT);
 
-   return iris_bo_map(&ice->dbg, res->bo, usage);
+   if (surf->tiling != ISL_TILING_LINEAR) {
+      iris_map_tiled_memcpy(map);
+   } else {
+      // XXX: apply box
+      map->ptr = iris_bo_map(&ice->dbg, res->bo, xfer->usage);
+   }
+
+   return map->ptr;
 }
 
 static void
@@ -421,11 +532,15 @@ iris_transfer_flush_region(struct pipe_context *pipe,
 }
 
 static void
-iris_transfer_unmap(struct pipe_context *pipe,
-                    struct pipe_transfer *transfer)
+iris_transfer_unmap(struct pipe_context *pipe, struct pipe_transfer *xfer)
 {
-   pipe_resource_reference(&transfer->resource, NULL);
-   free(transfer);
+   struct iris_transfer *map = xfer;
+
+   if (map->unmap)
+      map->unmap(map);
+
+   pipe_resource_reference(&xfer->resource, NULL);
+   free(map);
 }
 
 static void
