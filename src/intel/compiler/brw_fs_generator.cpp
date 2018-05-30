@@ -1278,8 +1278,21 @@ fs_generator::generate_ddy(const fs_inst *inst,
    const uint32_t type_size = type_sz(src.type);
 
    if (inst->opcode == FS_OPCODE_DDY_FINE) {
-      /* produce accurate derivatives */
-      if (devinfo->gen >= 11) {
+      /* produce accurate derivatives.
+       *
+       * From the Broadwell PRM, Volume 7 (3D-Media-GPGPU)
+       * "Register Region Restrictions", Section "1. Special Restrictions":
+       *
+       *    "In Align16 mode, the channel selects and channel enables apply to
+       *     a pair of half-floats, because these parameters are defined for
+       *     DWord elements ONLY. This is applicable when both source and
+       *     destination are half-floats."
+       *
+       * So for half-float operations we use the Gen11+ Align1 path. CHV
+       * inherits its FP16 hardware from SKL, so it is not affected.
+       */
+      if (devinfo->gen >= 11 ||
+          (devinfo->is_broadwell && src.type == BRW_REGISTER_TYPE_HF)) {
          src = stride(src, 0, 2, 1);
          struct brw_reg src_0  = byte_offset(src,  0 * type_size);
          struct brw_reg src_2  = byte_offset(src,  2 * type_size);
