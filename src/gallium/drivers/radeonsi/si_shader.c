@@ -4534,11 +4534,17 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 	if (shader->key.as_ls) {
 		ctx->param_rel_auto_id = add_arg(fninfo, ARG_VGPR, ctx->i32);
 		add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
+		add_arg(fninfo, ARG_VGPR, ctx->i32); /* unused */
+	} else if (ctx->screen->info.chip_class == GFX10 &&
+		   !shader->is_gs_copy_shader) {
+		add_arg(fninfo, ARG_VGPR, ctx->i32); /* user vgpr */
+		add_arg(fninfo, ARG_VGPR, ctx->i32); /* user vgpr */
+		add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
 	} else {
 		add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
 		ctx->param_vs_prim_id = add_arg(fninfo, ARG_VGPR, ctx->i32);
+		add_arg(fninfo, ARG_VGPR, ctx->i32); /* unused */
 	}
-	add_arg(fninfo, ARG_VGPR, ctx->i32); /* unused */
 
 	if (!shader->is_gs_copy_shader) {
 		/* Vertex load indices. */
@@ -7292,7 +7298,10 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	}
 
 	unsigned vertex_id_vgpr = first_vs_vgpr;
-	unsigned instance_id_vgpr = first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1);
+	unsigned instance_id_vgpr =
+		ctx->screen->info.chip_class >= GFX10 ?
+			first_vs_vgpr + 3 :
+			first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1);
 
 	ctx->abi.vertex_id = input_vgprs[vertex_id_vgpr];
 	ctx->abi.instance_id = input_vgprs[instance_id_vgpr];
