@@ -2752,7 +2752,10 @@ void si_init_all_descriptors(struct si_context *sctx)
 			if (i == PIPE_SHADER_TESS_CTRL) {
 				rel_dw_offset = (R_00B408_SPI_SHADER_USER_DATA_ADDR_LO_HS -
 						 R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
-			} else { /* PIPE_SHADER_GEOMETRY */
+			} else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
+				rel_dw_offset = (R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS -
+						 R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
+			} else {
 				rel_dw_offset = (R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS -
 						 R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
 			}
@@ -2770,7 +2773,10 @@ void si_init_all_descriptors(struct si_context *sctx)
 			if (i == PIPE_SHADER_TESS_CTRL) {
 				rel_dw_offset = (R_00B40C_SPI_SHADER_USER_DATA_ADDR_HI_HS -
 						 R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
-			} else { /* PIPE_SHADER_GEOMETRY */
+			} else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
+				rel_dw_offset = (R_00B20C_SPI_SHADER_USER_DATA_ADDR_HI_GS -
+						 R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
+			} else {
 				rel_dw_offset = (R_00B20C_SPI_SHADER_USER_DATA_ADDR_HI_GS -
 						 R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
 			}
