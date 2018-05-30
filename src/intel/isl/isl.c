@@ -656,11 +656,17 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
       if (ISL_DEV_GEN(dev) == 6) {
          /* HiZ surfaces on Sandy Bridge are packed tightly. */
          *image_align_el = isl_extent3d(1, 1, 1);
-      } else {
+      } else if (ISL_DEV_GEN(dev) < 12) {
          /* On gen7+, HiZ surfaces are always aligned to 16x8 pixels in the
           * primary surface which works out to 2x2 HiZ elments.
           */
          *image_align_el = isl_extent3d(2, 2, 1);
+      } else {
+         /* On gen12+, HiZ surfaces are always aligned to 16x16 pixels in the
+          * primary surface which works out to 2x4 HiZ elments.
+          * TODO: Verify
+          */
+         *image_align_el = isl_extent3d(2, 4, 1);
       }
       return;
    }
