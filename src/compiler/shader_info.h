@@ -59,6 +59,7 @@ struct spirv_supported_capabilities {
    bool physical_storage_buffer_address;
    bool post_depth_coverage;
    bool runtime_descriptor_array;
+   bool float_controls;
    bool shader_viewport_index_layer;
    bool stencil_export;
    bool storage_8bit;
