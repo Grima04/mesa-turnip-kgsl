@@ -202,6 +202,20 @@ build_log(nir_builder *b, nir_ssa_def *x)
 static nir_ssa_def *
 build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
 {
+   if (x->bit_size == 16) {
+      /* The polynomial approximation isn't precise enough to meet half-float
+       * precision requirements. Alternatively, we could implement this using
+       * the formula:
+       *
+       * asin(x) = atan2(x, sqrt(1 - x*x))
+       *
+       * But that is very expensive, so instead we just do the polynomial
+       * approximation in 32-bit math and then we convert the result back to
+       * 16-bit.
+       */
+      return nir_f2f16(b, build_asin(b, nir_f2f32(b, x), p0, p1));
+   }
+
    nir_ssa_def *one = nir_imm_floatN_t(b, 1.0f, x->bit_size);
    nir_ssa_def *abs_x = nir_fabs(b, x);
 
