@@ -3156,8 +3156,8 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx,
 		}
 	}
 
-	if (name == TGSI_SEMANTIC_PRIMID)
-		/* PrimID is written after the last output. */
+	if (j == vsinfo->num_outputs && name == TGSI_SEMANTIC_PRIMID)
+		/* PrimID is written after the last output when HW VS is used. */
 		ps_input_cntl |= S_028644_OFFSET(vs->info.vs_output_param_offset[vsinfo->num_outputs]);
 	else if (j == vsinfo->num_outputs && !G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
 		/* No corresponding output found, load defaults into input.
