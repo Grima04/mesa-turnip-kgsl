@@ -34,6 +34,8 @@ using namespace brw;
 void
 fs_visitor::emit_nir_code()
 {
+   emit_shader_float_controls_execution_mode();
+
    /* emit the arrays used for inputs and outputs - load/store intrinsics will
     * be converted to reads/writes of these arrays
     */
