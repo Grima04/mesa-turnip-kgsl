@@ -289,6 +289,20 @@ iris_resource_create(struct pipe_screen *pscreen,
    return iris_resource_create_with_modifiers(pscreen, templ, NULL, 0);
 }
 
+static uint64_t
+tiling_to_modifier(uint32_t tiling)
+{
+   static const uint64_t map[] = {
+      [I915_TILING_NONE]   = DRM_FORMAT_MOD_LINEAR,
+      [I915_TILING_X]      = I915_FORMAT_MOD_X_TILED,
+      [I915_TILING_Y]      = I915_FORMAT_MOD_Y_TILED,
+   };
+
+   assert(tiling < ARRAY_SIZE(map));
+
+   return map[tiling];
+}
+
 static struct pipe_resource *
 iris_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
@@ -308,19 +322,26 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    }
 
    switch (whandle->type) {
-   case WINSYS_HANDLE_TYPE_SHARED:
+   case WINSYS_HANDLE_TYPE_FD:
       res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle);
       break;
-   case WINSYS_HANDLE_TYPE_FD:
+   case WINSYS_HANDLE_TYPE_SHARED:
       res->bo = iris_bo_gem_create_from_name(bufmgr, "winsys image",
                                              whandle->handle);
       break;
    default:
       unreachable("invalid winsys handle type");
    }
+   if (!res->bo)
+	   return NULL;
 
+   uint64_t modifier = whandle->modifier;
+   if (modifier == DRM_FORMAT_MOD_INVALID) {
+	  modifier = tiling_to_modifier(res->bo->tiling_mode);
+   }
    const struct isl_drm_modifier_info *mod_info =
-      isl_drm_modifier_get_info(whandle->modifier);
+      isl_drm_modifier_get_info(modifier);
+   assert(mod_info);
 
    // XXX: usage...
    isl_surf_usage_flags_t isl_usage = ISL_SURF_USAGE_DISPLAY_BIT;
