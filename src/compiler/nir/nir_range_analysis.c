@@ -553,7 +553,28 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       break;
 
    case nir_op_fsat:
-      r = (struct ssa_result_range){ge_zero, analyze_expression(alu, 0, ht).is_integral};
+      r = analyze_expression(alu, 0, ht);
+
+      switch (r.range) {
+      case le_zero:
+      case lt_zero:
+         r.range = eq_zero;
+         r.is_integral = true;
+         break;
+
+      case eq_zero:
+         assert(r.is_integral);
+      case gt_zero:
+      case ge_zero:
+         /* The fsat doesn't add any information in these cases. */
+         break;
+
+      case ne_zero:
+      case unknown:
+         /* Since the result must be in [0, 1], the value must be >= 0. */
+         r.range = ge_zero;
+         break;
+      }
       break;
 
    case nir_op_fsign:
