@@ -76,6 +76,9 @@ llvm_intrinsics = [
     ['LOG2', 'log2', ['a'], ['a']],
     ['FABS', 'fabs', ['a'], ['a']],
     ['EXP2', 'exp2', ['a'], ['a']],
+    ['COS', 'cos', ['a'], ['a']],
+    ['SIN', 'sin', ['a'], ['a']],
+    ['FLOOR', 'floor', ['a'], ['a']],
     ['POW', 'pow', ['a', 'b'], ['a']]
 ]
 
