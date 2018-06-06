@@ -64,19 +64,6 @@ iris_create_shader_state(struct pipe_context *ctx,
 
    nir = brw_preprocess_nir(screen->compiler, nir);
 
-#if 0
-   /* Reassign uniform locations using type_size_scalar_bytes instead of
-    * the slot based calculation that st_nir uses.
-    */
-   nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
-                            type_size_scalar_bytes);
-   nir_lower_io(nir, nir_var_uniform, type_size_scalar_bytes, 0);
-#endif
-   nir_foreach_variable(var, &nir->uniforms) {
-      var->data.driver_location *= 4;
-   }
-   nir_lower_io(nir, nir_var_uniform, type_size_vec4_bytes, 0);
-
    ish->program_id = get_new_program_id(screen);
    ish->base.type = PIPE_SHADER_IR_NIR;
    ish->base.ir.nir = nir;
@@ -154,10 +141,12 @@ iris_bind_fs_state(struct pipe_context *ctx, void *hwcso)
  */
 static uint32_t
 assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
-                                    const struct shader_info *info,
+                                    const struct nir_shader *nir,
                                     struct brw_stage_prog_data *prog_data,
                                     uint32_t next_binding_table_offset)
 {
+   const struct shader_info *info = &nir->info;
+
    if (info->num_textures) {
       prog_data->binding_table.texture_start = next_binding_table_offset;
       prog_data->binding_table.gather_texture_start = next_binding_table_offset;
@@ -167,10 +156,12 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
       prog_data->binding_table.gather_texture_start = 0xd0d0d0d0;
    }
 
-   if (info->num_ubos) {
+   int num_ubos = info->num_ubos + (nir->num_uniforms > 0 ? 1 : 0);
+
+   if (num_ubos) {
       //assert(info->num_ubos <= BRW_MAX_UBO);
       prog_data->binding_table.ubo_start = next_binding_table_offset;
-      next_binding_table_offset += info->num_ubos;
+      next_binding_table_offset += num_ubos;
    } else {
       prog_data->binding_table.ubo_start = 0xd0d0d0d0;
    }
@@ -213,27 +204,40 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
 }
 
 static void
-iris_setup_uniforms(void *mem_ctx,
+iris_setup_uniforms(const struct brw_compiler *compiler,
+                    void *mem_ctx,
                     nir_shader *nir,
                     struct brw_stage_prog_data *prog_data)
 {
-   prog_data->nr_params = nir->num_uniforms * 4;
+   prog_data->nr_params = nir->num_uniforms;
    prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
 
-   nir->num_uniforms *= 16;
-
    nir_foreach_variable(var, &nir->uniforms) {
-      /* UBO's, atomics and samplers don't take up space */
-      //if (var->interface_type != NULL || var->type->contains_atomic())
-         //continue;
-
       const unsigned components = glsl_get_components(var->type);
 
-      for (unsigned i = 0; i < 4; i++) {
+      for (unsigned i = 0; i < components; i++) {
          prog_data->param[var->data.driver_location] =
-            i < components ? BRW_PARAM_PARAMETER(var->data.driver_location, i)
-                           : BRW_PARAM_BUILTIN_ZERO;
+            var->data.driver_location;
       }
+   }
+
+   // XXX: vs clip planes?
+   brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+}
+
+static void
+iris_setup_push_uniform_range(const struct brw_compiler *compiler,
+                              struct brw_stage_prog_data *prog_data)
+{
+   if (prog_data->nr_params) {
+      for (int i = 3; i > 0; i--)
+         prog_data->ubo_ranges[i] = prog_data->ubo_ranges[i - 1];
+
+      prog_data->ubo_ranges[0] = (struct brw_ubo_range) {
+         .block = 0,
+         .start = 0,
+         .length = DIV_ROUND_UP(prog_data->nr_params, 8),
+      };
    }
 }
 
@@ -256,9 +260,9 @@ iris_compile_vs(struct iris_context *ice,
    nir_shader *nir = ish->base.ir.nir;
 
    // XXX: alt mode
-   assign_common_binding_table_offsets(devinfo, &nir->info, prog_data, 0);
+   assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
-   iris_setup_uniforms(mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
@@ -273,6 +277,8 @@ iris_compile_vs(struct iris_context *ice,
       ralloc_free(mem_ctx);
       return false;
    }
+
+   iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_VS, key, program, prog_data);
 
@@ -317,7 +323,7 @@ iris_compile_tes(struct iris_context *ice,
 
    nir_shader *nir = ish->base.ir.nir;
 
-   assign_common_binding_table_offsets(devinfo, &nir->info, prog_data, 0);
+   assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
    struct brw_vue_map input_vue_map;
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
@@ -332,6 +338,8 @@ iris_compile_tes(struct iris_context *ice,
       ralloc_free(mem_ctx);
       return false;
    }
+
+   iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data);
 
@@ -383,10 +391,10 @@ iris_compile_fs(struct iris_context *ice,
    nir_shader *nir = ish->base.ir.nir;
 
    // XXX: alt mode
-   assign_common_binding_table_offsets(devinfo, &nir->info, prog_data,
+   assign_common_binding_table_offsets(devinfo, nir, prog_data,
                                        MAX2(key->nr_color_regions, 1));
 
-   iris_setup_uniforms(mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -399,6 +407,8 @@ iris_compile_fs(struct iris_context *ice,
    }
 
    //brw_alloc_stage_scratch(brw, &brw->wm.base, prog_data.base.total_scratch);
+
+   iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_FS, key, program, prog_data);
 

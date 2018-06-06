@@ -1340,12 +1340,23 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 static void
 iris_set_constant_buffer(struct pipe_context *ctx,
                          enum pipe_shader_type p_stage, unsigned index,
-                         const struct pipe_constant_buffer *cb)
+                         const struct pipe_constant_buffer *input)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    gl_shader_stage stage = stage_from_pipe(p_stage);
+   struct iris_shader_state *shs = &ice->shaders.state[stage];
 
-   util_copy_constant_buffer(&ice->shaders.state[stage].constbuf[index], cb);
+   if (input && (input->buffer || input->user_buffer)) {
+      if (input->user_buffer) {
+         u_upload_data(ctx->const_uploader, 0, input->buffer_size, 32,
+                       input->user_buffer, &shs->const_offset,
+                       &shs->const_resources[index]);
+      } else {
+         pipe_resource_reference(&shs->const_resources[index], input->buffer);
+      }
+   } else {
+      pipe_resource_reference(&shs->const_resources[index], NULL);
+   }
 }
 
 static void
@@ -2170,36 +2181,47 @@ iris_upload_render_state(struct iris_context *ice,
       if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
-      struct pipe_constant_buffer *cbuf0 =
-         &ice->shaders.state[stage].constbuf[0];
-
-      if (!ice->shaders.prog[stage] || cbuf0->buffer || !cbuf0->buffer_size)
-         continue;
-
       struct iris_shader_state *shs = &ice->shaders.state[stage];
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
-      // XXX: DIV_ROUND_UP(prog_data->nr_params, 8)?
-      //shs->const_size = DIV_ROUND_UP(cbuf0->buffer_size, 32);
-      shs->const_size = DIV_ROUND_UP(prog_data->nr_params, 8);
-      u_upload_data(ice->ctx.const_uploader, 0, 32 * shs->const_size, 32,
-                    cbuf0->user_buffer, &shs->const_offset,
-                    &shs->push_resource);
-   }
 
-   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      // XXX: wrong dirty tracking...
-      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
+      if (!shader)
          continue;
 
-      struct iris_shader_state *shs = &ice->shaders.state[stage];
-      struct iris_resource *res = (void *) shs->push_resource;
+      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
       iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
          pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
-         if (res) {
-            pkt.ConstantBody.ReadLength[3] = shs->const_size;
-            pkt.ConstantBody.Buffer[3] = ro_bo(res->bo, shs->const_offset);
+         if (prog_data) {
+            /* The Skylake PRM contains the following restriction:
+             *
+             *    "The driver must ensure The following case does not occur
+             *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
+             *     buffer 3 read length equal to zero committed followed by a
+             *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
+             *     zero committed."
+             *
+             * To avoid this, we program the buffers in the highest slots.
+             * This way, slot 0 is only used if slot 3 is also used.
+             */
+            int n = 3;
+
+            for (int i = 3; i >= 0; i--) {
+               const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
+
+               if (range->length == 0)
+                  continue;
+
+               // XXX: is range->block a constbuf index?  it would be nice
+               struct iris_resource *res =
+                  (void *) shs->const_resources[range->block];
+
+               assert(shs->const_offset % 32 == 0);
+
+               pkt.ConstantBody.ReadLength[n] = range->length;
+               pkt.ConstantBody.Buffer[n] =
+                  ro_bo(res->bo, range->start * 32 + shs->const_offset);
+               n--;
+            }
          }
       }
    }
