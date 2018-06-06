@@ -2117,6 +2117,17 @@ use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
    return isv->surface_state_offset;
 }
 
+static uint32_t
+use_const_buffer(struct iris_batch *batch, struct iris_const_buffer *cbuf)
+{
+   struct iris_resource *res = (void *) cbuf->resource;
+   struct iris_resource *state_res = (void *) cbuf->surface_state_resource;
+   iris_use_pinned_bo(batch, res->bo, false);
+   iris_use_pinned_bo(batch, state_res->bo, false);
+
+   return cbuf->surface_state_offset;
+}
+
 static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
@@ -2153,6 +2164,15 @@ iris_populate_binding_table(struct iris_context *ice,
       bt_map[s++] = use_sampler_view(batch, view);
    }
 
+   // XXX: want the number of BTE's to shorten this loop
+   struct iris_shader_state *shs = &ice->shaders.state[stage];
+   for (int i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
+      struct iris_const_buffer *cbuf = &shs->constbuf[i];
+      if (!cbuf->surface_state_resource)
+         break;
+
+      bt_map[s++] = use_const_buffer(batch, cbuf);
+   }
 #if 0
       // XXX: not implemented yet
       assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
