@@ -23,6 +23,7 @@
  */
 
 #include "iris_batch.h"
+#include "iris_binder.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 
@@ -128,6 +129,8 @@ iris_init_batch(struct iris_batch *batch,
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
 
+   batch->binder.bo = NULL;
+
    batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
    batch->cache.depth = _mesa_set_create(NULL, _mesa_hash_pointer,
@@ -220,6 +223,9 @@ iris_batch_reset(struct iris_batch *batch)
 
    create_batch(batch);
    assert(batch->bo->index == 0);
+
+   iris_destroy_binder(&batch->binder);
+   iris_init_binder(&batch->binder, batch->bo->bufmgr);
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);

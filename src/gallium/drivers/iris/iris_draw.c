@@ -52,8 +52,8 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_cache_sets_clear(batch);
    // XXX: ^^^
 
-
    iris_update_compiled_shaders(ice);
+   iris_binder_reserve_3d(batch, ice->shaders.prog);
    ice->vtbl.upload_render_state(ice, batch, info);
 
    // XXX: don't flush always

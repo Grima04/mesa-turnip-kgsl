@@ -134,10 +134,8 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
 
-   uint32_t *bt_map = iris_binder_reserve(&ice->state.binder,
-                                          num_entries * sizeof(uint32_t),
-                                          bt_offset);
-   iris_use_pinned_bo(batch, ice->state.binder.bo, false);
+   *bt_offset = iris_binder_reserve(batch, num_entries * sizeof(uint32_t));
+   uint32_t *bt_map = batch->binder.map + *bt_offset;
 
    for (unsigned i = 0; i < num_entries; i++) {
       surface_maps[i] = stream_state(batch, ice->state.surface_uploader,

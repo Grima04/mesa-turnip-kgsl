@@ -2093,6 +2093,54 @@ use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
 }
 
 static void
+iris_populate_binding_table(struct iris_context *ice,
+                            struct iris_batch *batch,
+                            gl_shader_stage stage)
+{
+   const struct iris_binder *binder = &batch->binder;
+   struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+   if (!shader)
+      return;
+
+   // Surfaces:
+   // - pull constants
+   // - ubos/ssbos/abos
+   // - images
+   // - textures
+   // - render targets - write and read
+
+   struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+   uint32_t *bt_map = binder->map + binder->bt_offset[stage];
+   int s = 0;
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+         bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
+      }
+   }
+
+   assert(prog_data->binding_table.texture_start ==
+          (ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
+
+   for (int i = 0; i < ice->state.num_textures[stage]; i++) {
+      struct iris_sampler_view *view = ice->state.textures[stage][i];
+      bt_map[s++] = use_sampler_view(batch, view);
+   }
+
+#if 0
+      // XXX: not implemented yet
+      assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.ubo_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.ssbo_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.image_start == 0xd0d0d0d0);
+      assert(prog_data->binding_table.shader_time_start == 0xd0d0d0d0);
+      //assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
+      //assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
+#endif
+}
+
+static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
@@ -2226,61 +2274,19 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   // Surfaces:
-   // - pull constants
-   // - ubos/ssbos/abos
-   // - images
-   // - textures
-   // - render targets - write and read
-   // XXX: 3DSTATE_BINDING_TABLE_POINTERS_XS
+   if (1) { // XXX: DIRTY BINDINGS
+      const struct iris_binder *binder = &batch->binder;
 
-   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-      if (!shader) // XXX: dirty bits...also, emit a disable maybe?
-         continue;
-
-      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
-      uint32_t bt_offset = 0;
-      uint32_t *bt_map = NULL;
-      int s = 0;
-
-      if (prog_data->binding_table.size_bytes != 0) {
-         iris_use_pinned_bo(batch, ice->state.binder.bo, false);
-         bt_map = iris_binder_reserve(&ice->state.binder,
-                                      prog_data->binding_table.size_bytes,
-                                      &bt_offset);
-      }
-
-      iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
-         ptr._3DCommandSubOpcode = 38 + stage;
-         ptr.PointertoVSBindingTable = bt_offset;
-      }
-
-      if (stage == MESA_SHADER_FRAGMENT) {
-         struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-         for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-            bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
+      for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+         iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
+            ptr._3DCommandSubOpcode = 38 + stage;
+            ptr.PointertoVSBindingTable = binder->bt_offset[stage];
          }
       }
 
-      assert(prog_data->binding_table.texture_start ==
-             (ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
-
-      for (int i = 0; i < ice->state.num_textures[stage]; i++) {
-         struct iris_sampler_view *view = ice->state.textures[stage][i];
-         bt_map[s++] = use_sampler_view(batch, view);
+      for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+         iris_populate_binding_table(ice, batch, stage);
       }
-
-#if 0
-      // XXX: not implemented yet
-      assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.ubo_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.ssbo_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.image_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.shader_time_start == 0xd0d0d0d0);
-      //assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
-      //assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
-#endif
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {

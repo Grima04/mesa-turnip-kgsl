@@ -26,22 +26,32 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "compiler/shader_enums.h"
 
 struct iris_bo;
+struct iris_batch;
 struct iris_bufmgr;
+struct iris_compiled_shader;
 
 struct iris_binder
 {
    struct iris_bo *bo;
    void *map;
 
-   /* Insert new entries at this offset (in bytes) */
-   unsigned insert_point;
+   /** Insert new entries at this offset (in bytes) */
+   uint32_t insert_point;
+
+   /**
+    * Last assigned offset for each shader stage's binding table.
+    * Zero is considered invalid and means there's no binding table.
+    */
+   uint32_t bt_offset[MESA_SHADER_STAGES];
 };
 
 void iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr);
 void iris_destroy_binder(struct iris_binder *binder);
-void *iris_binder_reserve(struct iris_binder *binder, unsigned size,
-                          uint32_t *out_offset);
+uint32_t iris_binder_reserve(struct iris_batch *batch, unsigned size);
+void iris_binder_reserve_3d(struct iris_batch *batch,
+                            struct iris_compiled_shader **shaders);
 
 #endif

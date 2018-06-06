@@ -30,7 +30,6 @@
 #include "intel/common/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
-#include "iris_binder.h"
 #include "iris_screen.h"
 
 struct iris_bo;
@@ -256,7 +255,6 @@ struct iris_context {
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
 
-      struct iris_binder binder;
       struct u_upload_mgr *surface_uploader;
       // XXX: may want a separate uploader for "hey I made a CSO!" vs
       // "I'm streaming this out at draw time and never want it again!"

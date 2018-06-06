@@ -25,27 +25,69 @@
 #include "util/u_math.h"
 #include "iris_binder.h"
 #include "iris_bufmgr.h"
+#include "iris_context.h"
 
 /* 64kb */
 #define BINDER_SIZE (64 * 1024)
 
-void *
-iris_binder_reserve(struct iris_binder *binder, unsigned size,
-                    uint32_t *out_offset)
+/**
+ * Reserve a block of space in the binder.
+ */
+uint32_t
+iris_binder_reserve(struct iris_batch *batch, unsigned size)
 {
-   /* XXX: if we ever make this allocate a new BO, then make binder_reserve
-    * return the BO, so at least verify use_pinned_bo gets the right one
-    */
-   /* XXX: Implement a real ringbuffer, for now just croak if run out */
-   assert(size > 0);
-   assert(binder->insert_point + size <= BINDER_SIZE);
+   struct iris_binder *binder = &batch->binder;
 
+   assert(size > 0);
    assert((binder->insert_point % 64) == 0);
-   *out_offset = binder->insert_point;
+
+   /* If we can't fit all stages in the binder, flush the batch which
+    * will cause us to gain a new empty binder.
+    */
+   if (binder->insert_point + size > BINDER_SIZE)
+      iris_batch_flush(batch);
+
+   uint32_t offset = binder->insert_point;
+
+   /* It had better fit now. */
+   assert(offset + size <= BINDER_SIZE);
 
    binder->insert_point = align(binder->insert_point + size, 64);
 
-   return binder->map + *out_offset;
+   iris_use_pinned_bo(batch, binder->bo, false);
+
+   return offset;
+}
+
+/**
+ * Reserve and record binder space for 3D pipeline shader stages.
+ */
+void
+iris_binder_reserve_3d(struct iris_batch *batch,
+                       struct iris_compiled_shader **shaders)
+{
+   struct iris_binder *binder = &batch->binder;
+   unsigned total_size = 0;
+   unsigned sizes[MESA_SHADER_STAGES] = {};
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!shaders[stage])
+         continue;
+
+      const struct brw_stage_prog_data *prog_data =
+         (const void *) shaders[stage]->prog_data;
+
+      sizes[stage] = align(prog_data->binding_table.size_bytes, 64);
+      total_size += sizes[stage];
+   }
+
+   uint32_t offset = iris_binder_reserve(batch, total_size);
+
+   /* Assign space and record the current binding table. */
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      binder->bt_offset[stage] = sizes[stage] > 0 ? offset : 0;
+      offset += sizes[stage];
+   }
 }
 
 void
