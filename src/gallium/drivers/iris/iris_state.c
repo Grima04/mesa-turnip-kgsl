@@ -1345,17 +1345,17 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->shaders.state[stage];
+   struct iris_const_buffer *cbuf = &shs->constbuf[index];
 
    if (input && (input->buffer || input->user_buffer)) {
       if (input->user_buffer) {
          u_upload_data(ctx->const_uploader, 0, input->buffer_size, 32,
-                       input->user_buffer, &shs->const_offset,
-                       &shs->const_resources[index]);
+                       input->user_buffer, &cbuf->offset, &cbuf->res);
       } else {
-         pipe_resource_reference(&shs->const_resources[index], input->buffer);
+         pipe_resource_reference(&cbuf->res, input->buffer);
       }
    } else {
-      pipe_resource_reference(&shs->const_resources[index], NULL);
+      pipe_resource_reference(&cbuf->res, NULL);
    }
 }
 
@@ -2260,14 +2260,14 @@ iris_upload_render_state(struct iris_context *ice,
                   continue;
 
                // XXX: is range->block a constbuf index?  it would be nice
-               struct iris_resource *res =
-                  (void *) shs->const_resources[range->block];
+               struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
+               struct iris_resource *res = (void *) cbuf->res;
 
-               assert(shs->const_offset % 32 == 0);
+               assert(cbuf->offset % 32 == 0);
 
                pkt.ConstantBody.ReadLength[n] = range->length;
                pkt.ConstantBody.Buffer[n] =
-                  ro_bo(res->bo, range->start * 32 + shs->const_offset);
+                  ro_bo(res->bo, range->start * 32 + cbuf->offset);
                n--;
             }
          }

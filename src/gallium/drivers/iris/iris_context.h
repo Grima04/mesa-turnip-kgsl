@@ -169,10 +169,13 @@ struct iris_compiled_shader {
    uint8_t derived_data[0];
 };
 
+struct iris_const_buffer {
+   struct pipe_resource *res;
+   unsigned offset;
+};
+
 struct iris_shader_state {
-   struct pipe_constant_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
-   struct pipe_resource *const_resources[PIPE_MAX_CONSTANT_BUFFERS];
-   unsigned const_offset;
+   struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
 };
 
 struct iris_vtable {
