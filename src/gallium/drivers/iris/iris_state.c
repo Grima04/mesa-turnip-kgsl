@@ -1343,6 +1343,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
                          const struct pipe_constant_buffer *input)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->shaders.state[stage];
    struct iris_const_buffer *cbuf = &shs->constbuf[index];
@@ -1350,12 +1351,36 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    if (input && (input->buffer || input->user_buffer)) {
       if (input->user_buffer) {
          u_upload_data(ctx->const_uploader, 0, input->buffer_size, 32,
-                       input->user_buffer, &cbuf->offset, &cbuf->res);
+                       input->user_buffer, &cbuf->offset, &cbuf->resource);
       } else {
-         pipe_resource_reference(&cbuf->res, input->buffer);
+         pipe_resource_reference(&cbuf->resource, input->buffer);
       }
+
+      void *map = NULL;
+      // XXX: these are not retained forever, use a separate uploader?
+      u_upload_alloc(ice->state.surface_uploader, 0,
+                     4 * GENX(RENDER_SURFACE_STATE_length), 64,
+                     &cbuf->surface_state_offset,
+                     &cbuf->surface_state_resource,
+                     &map);
+      if (!unlikely(map)) {
+         pipe_resource_reference(&cbuf->resource, NULL);
+         return;
+      }
+
+      struct iris_resource *res = (void *) cbuf->resource;
+      struct iris_bo *surf_bo = iris_resource_bo(cbuf->surface_state_resource);
+      cbuf->surface_state_offset += iris_bo_offset_from_base_address(surf_bo);
+
+      isl_buffer_fill_state(&screen->isl_dev, map,
+                            .address = res->bo->gtt_offset,
+                            .size_B = input->buffer_size,
+                            .format = ISL_FORMAT_R32G32B32A32_FLOAT,
+                            .stride_B = 1,
+                            .mocs = MOCS_WB)
    } else {
-      pipe_resource_reference(&cbuf->res, NULL);
+      pipe_resource_reference(&cbuf->resource, NULL);
+      pipe_resource_reference(&cbuf->surface_state_resource, NULL);
    }
 }
 
@@ -2261,7 +2286,7 @@ iris_upload_render_state(struct iris_context *ice,
 
                // XXX: is range->block a constbuf index?  it would be nice
                struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
-               struct iris_resource *res = (void *) cbuf->res;
+               struct iris_resource *res = (void *) cbuf->resource;
 
                assert(cbuf->offset % 32 == 0);
 

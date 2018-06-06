@@ -170,8 +170,13 @@ struct iris_compiled_shader {
 };
 
 struct iris_const_buffer {
-   struct pipe_resource *res;
+   /** The resource and offset for the actual constant data */
+   struct pipe_resource *resource;
    unsigned offset;
+
+   /** The resource and offset for the SURFACE_STATE for pull access. */
+   struct pipe_resource *surface_state_resource;
+   unsigned surface_state_offset;
 };
 
 struct iris_shader_state {
