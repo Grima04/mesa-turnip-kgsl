@@ -87,12 +87,10 @@ struct iris_batch {
       struct set *depth;
    } cache;
 
-#if DEBUG
    /** Map from batch offset to iris_alloc_state data (with DEBUG_BATCH) */
    // XXX: unused
    struct hash_table *state_sizes;
    struct gen_batch_decode_ctx decoder;
-#endif
 };
 
 void iris_init_batch(struct iris_batch *batch,
