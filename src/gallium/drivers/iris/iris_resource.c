@@ -30,6 +30,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
+#include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
 #include "iris_batch.h"
@@ -565,27 +566,6 @@ iris_transfer_unmap(struct pipe_context *pipe, struct pipe_transfer *xfer)
 }
 
 static void
-iris_buffer_subdata(struct pipe_context *pipe,
-                    struct pipe_resource *resource,
-                    unsigned usage, unsigned offset,
-                    unsigned size, const void *data)
-{
-}
-
-static void
-iris_texture_subdata(struct pipe_context *pipe,
-                     struct pipe_resource *resource,
-                     unsigned level,
-                     unsigned usage,
-                     const struct pipe_box *box,
-                     const void *data,
-                     unsigned stride,
-                     unsigned layer_stride)
-{
-}
-
-
-static void
 iris_resource_copy_region(struct pipe_context *ctx,
                           struct pipe_resource *dst,
                           unsigned dst_level,
@@ -631,7 +611,7 @@ iris_init_resource_functions(struct pipe_context *ctx)
    ctx->transfer_map = iris_transfer_map;
    ctx->transfer_flush_region = iris_transfer_flush_region;
    ctx->transfer_unmap = iris_transfer_unmap;
-   ctx->buffer_subdata = iris_buffer_subdata;
-   ctx->texture_subdata = iris_texture_subdata;
+   ctx->buffer_subdata = u_default_buffer_subdata;
+   ctx->texture_subdata = u_default_texture_subdata;
    ctx->resource_copy_region = iris_resource_copy_region;
 }
