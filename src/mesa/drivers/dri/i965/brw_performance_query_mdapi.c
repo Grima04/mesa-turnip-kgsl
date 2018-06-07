@@ -25,96 +25,7 @@
 #include "brw_performance_query.h"
 
 #include "perf/gen_perf.h"
-
-/**
- * Data format expected by MDAPI.
- */
-
-struct mdapi_gen7_metrics {
-   uint64_t TotalTime;
-
-   uint64_t ACounters[45];
-   uint64_t NOACounters[16];
-
-   uint64_t PerfCounter1;
-   uint64_t PerfCounter2;
-   uint32_t SplitOccured;
-   uint32_t CoreFrequencyChanged;
-   uint64_t CoreFrequency;
-   uint32_t ReportId;
-   uint32_t ReportsCount;
-};
-
-#define GTDI_QUERY_BDW_METRICS_OA_COUNT         36
-#define GTDI_QUERY_BDW_METRICS_OA_40b_COUNT     32
-#define GTDI_QUERY_BDW_METRICS_NOA_COUNT        16
-struct mdapi_gen8_metrics {
-   uint64_t TotalTime;
-   uint64_t GPUTicks;
-   uint64_t OaCntr[GTDI_QUERY_BDW_METRICS_OA_COUNT];
-   uint64_t NoaCntr[GTDI_QUERY_BDW_METRICS_NOA_COUNT];
-   uint64_t BeginTimestamp;
-   uint64_t Reserved1;
-   uint64_t Reserved2;
-   uint32_t Reserved3;
-   uint32_t OverrunOccured;
-   uint64_t MarkerUser;
-   uint64_t MarkerDriver;
-
-   uint64_t SliceFrequency;
-   uint64_t UnsliceFrequency;
-   uint64_t PerfCounter1;
-   uint64_t PerfCounter2;
-   uint32_t SplitOccured;
-   uint32_t CoreFrequencyChanged;
-   uint64_t CoreFrequency;
-   uint32_t ReportId;
-   uint32_t ReportsCount;
-};
-
-#define GTDI_MAX_READ_REGS 16
-
-struct mdapi_gen9_metrics {
-   uint64_t TotalTime;
-   uint64_t GPUTicks;
-   uint64_t OaCntr[GTDI_QUERY_BDW_METRICS_OA_COUNT];
-   uint64_t NoaCntr[GTDI_QUERY_BDW_METRICS_NOA_COUNT];
-   uint64_t BeginTimestamp;
-   uint64_t Reserved1;
-   uint64_t Reserved2;
-   uint32_t Reserved3;
-   uint32_t OverrunOccured;
-   uint64_t MarkerUser;
-   uint64_t MarkerDriver;
-
-   uint64_t SliceFrequency;
-   uint64_t UnsliceFrequency;
-   uint64_t PerfCounter1;
-   uint64_t PerfCounter2;
-   uint32_t SplitOccured;
-   uint32_t CoreFrequencyChanged;
-   uint64_t CoreFrequency;
-   uint32_t ReportId;
-   uint32_t ReportsCount;
-
-   uint64_t UserCntr[GTDI_MAX_READ_REGS];
-   uint32_t UserCntrCfgId;
-   uint32_t Reserved4;
-};
-
-struct mdapi_pipeline_metrics {
-   uint64_t IAVertices;
-   uint64_t IAPrimitives;
-   uint64_t VSInvocations;
-   uint64_t GSInvocations;
-   uint64_t GSPrimitives;
-   uint64_t CInvocations;
-   uint64_t CPrimitives;
-   uint64_t PSInvocations;
-   uint64_t HSInvocations;
-   uint64_t DSInvocations;
-   uint64_t CSInvocations;
-};
+#include "perf/gen_perf_mdapi.h"
 
 int
 brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
@@ -126,7 +37,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
 
    switch (devinfo->gen) {
    case 7: {
-      struct mdapi_gen7_metrics *mdapi_data = (struct mdapi_gen7_metrics *) data;
+      struct gen7_mdapi_metrics *mdapi_data = (struct gen7_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -148,7 +59,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
       return sizeof(*mdapi_data);
    }
    case 8: {
-      struct mdapi_gen8_metrics *mdapi_data = (struct mdapi_gen8_metrics *) data;
+      struct gen8_mdapi_metrics *mdapi_data = (struct gen8_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -174,7 +85,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
    case 9:
    case 10:
    case 11: {
-      struct mdapi_gen9_metrics *mdapi_data = (struct mdapi_gen9_metrics *) data;
+      struct gen9_mdapi_metrics *mdapi_data = (struct gen9_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -258,7 +169,7 @@ brw_perf_query_register_mdapi_oa_query(struct brw_context *brw)
       query = gen_perf_query_append_query_info(perf, 1 + 45 + 16 + 7);
       query->oa_format = I915_OA_FORMAT_A45_B8_C8;
 
-      struct mdapi_gen7_metrics metric_data;
+      struct gen7_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);
@@ -283,7 +194,7 @@ brw_perf_query_register_mdapi_oa_query(struct brw_context *brw)
       query = gen_perf_query_append_query_info(perf, 2 + 36 + 16 + 16);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
-      struct mdapi_gen8_metrics metric_data;
+      struct gen8_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);
@@ -320,7 +231,7 @@ brw_perf_query_register_mdapi_oa_query(struct brw_context *brw)
       query = gen_perf_query_append_query_info(perf, 2 + 36 + 16 + 16 + 16 + 2);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
-      struct mdapi_gen9_metrics metric_data;
+      struct gen9_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);

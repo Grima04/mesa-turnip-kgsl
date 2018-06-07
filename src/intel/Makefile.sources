@@ -333,7 +333,8 @@ GEN_PERF_XML_FILES = \
 
 GEN_PERF_FILES = \
 	perf/gen_perf.c \
-	perf/gen_perf.h
+	perf/gen_perf.h \
+	perf/gen_perf_mdapi.h
 
 GEN_PERF_GENERATED_FILES = \
 	perf/gen_perf_metrics.c \
