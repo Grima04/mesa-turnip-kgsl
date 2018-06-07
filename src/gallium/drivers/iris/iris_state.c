@@ -1478,7 +1478,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
 struct iris_vertex_element_state {
    uint32_t vertex_elements[1 + 33 * GENX(VERTEX_ELEMENT_STATE_length)];
-   uint32_t vf_instancing[GENX(3DSTATE_VF_INSTANCING_length)][33];
+   uint32_t vf_instancing[33 * GENX(3DSTATE_VF_INSTANCING_length)];
    unsigned count;
 };
 
@@ -1503,6 +1503,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    }
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
+   uint32_t *vfi_pack_dest = cso->vf_instancing;
 
    for (int i = 0; i < count; i++) {
       enum isl_format isl_format =
@@ -1530,14 +1531,14 @@ iris_create_vertex_elements(struct pipe_context *ctx,
          ve.Component3Control = comp[3];
       }
 
-      iris_pack_command(GENX(3DSTATE_VF_INSTANCING),
-                        cso->vf_instancing[i], vi) {
+      iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
          vi.VertexElementIndex = i;
          vi.InstancingEnable = state[i].instance_divisor > 0;
          vi.InstanceDataStepRate = state[i].instance_divisor;
       }
 
       ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+      vfi_pack_dest += GENX(3DSTATE_VF_INSTANCING_length);
    }
 
    return cso;
@@ -2536,10 +2537,8 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
       iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
                       (1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)));
-      for (int i = 0; i < cso->count; i++) {
-         iris_batch_emit(batch, cso->vf_instancing[i], sizeof(uint32_t) *
-                         GENX(3DSTATE_VF_INSTANCING_length));
-      }
+      iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
+                      cso->count * GENX(3DSTATE_VF_INSTANCING_length));
       for (int i = 0; i < cso->count; i++) {
          /* TODO: vertexid, instanceid support */
          iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgvs);
