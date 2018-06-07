@@ -604,6 +604,8 @@ anv_physical_device_init(struct anv_physical_device *device,
       goto fail;
    }
 
+   device->perf = anv_get_perf(&device->info, fd);
+
    anv_physical_device_get_supported_extensions(device,
                                                 &device->supported_extensions);
 
@@ -625,6 +627,7 @@ anv_physical_device_finish(struct anv_physical_device *device)
    anv_finish_wsi(device);
    anv_physical_device_free_disk_cache(device);
    ralloc_free(device->compiler);
+   ralloc_free(device->perf);
    close(device->local_fd);
    if (device->master_fd >= 0)
       close(device->master_fd);
@@ -2656,6 +2659,8 @@ VkResult anv_CreateDevice(
    anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
+
+   anv_device_perf_init(device);
 
    *pDevice = anv_device_to_handle(device);
 

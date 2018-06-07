@@ -305,6 +305,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_compiler \
 	libmesa_intel_common \
 	libmesa_intel_dev \
+	libmesa_intel_perf \
 	libmesa_vulkan_common \
 	libmesa_vulkan_util \
 	libmesa_anv_gen7 \

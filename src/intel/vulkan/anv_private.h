@@ -74,6 +74,7 @@ struct anv_image_view;
 struct anv_instance;
 
 struct gen_l3_config;
+struct gen_perf_config;
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_intel.h>
@@ -948,6 +949,7 @@ struct anv_physical_device {
     bool                                        supports_48bit_addresses;
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;
+    struct gen_perf_config *                    perf;
     int                                         cmd_parser_version;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
@@ -1169,6 +1171,9 @@ struct anv_device {
      * the cmd_buffer's list.
      */
     struct anv_cmd_buffer                      *cmd_buffer_being_decoded;
+
+    int                                         perf_fd; /* -1 if no opened */
+    uint64_t                                    perf_metric; /* 0 if unset */
 };
 
 static inline struct anv_state_pool *
@@ -2530,6 +2535,9 @@ struct anv_cmd_buffer {
    VkCommandBufferLevel                         level;
 
    struct anv_cmd_state                         state;
+
+   /* Set by SetPerformanceMarkerINTEL, written into queries by CmdBeginQuery */
+   uint64_t                                     intel_perf_marker;
 };
 
 VkResult anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);
@@ -3749,6 +3757,9 @@ anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
    assert(subpass_id < cmd_state->pass->subpass_count);
    return subpass_id;
 }
+
+struct gen_perf_config *anv_get_perf(const struct gen_device_info *devinfo, int fd);
+void anv_device_perf_init(struct anv_device *device);
 
 #define ANV_DEFINE_HANDLE_CASTS(__anv_type, __VkType)                      \
                                                                            \

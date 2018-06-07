@@ -118,6 +118,7 @@ libanv_files = files(
   'anv_nir_lower_push_constants.c',
   'anv_nir_lower_ycbcr_textures.c',
   'anv_pass.c',
+  'anv_perf.c',
   'anv_pipeline.c',
   'anv_pipeline_cache.c',
   'anv_private.h',
@@ -194,6 +195,7 @@ libvulkan_intel = shared_library(
   link_whole : [libanv_common, libanv_gen_libs],
   link_with : [
     libintel_compiler, libintel_dev, libisl, libblorp, libvulkan_wsi,
+    libintel_perf,
   ],
   dependencies : [
     dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
@@ -227,7 +229,7 @@ if with_tests
     link_whole : libanv_common,
     link_with : [
       libanv_gen_libs, libintel_compiler, libintel_common, libintel_dev,
-      libisl, libblorp, libvulkan_wsi,
+      libisl, libblorp, libvulkan_wsi, libintel_perf,
     ],
     dependencies : [
       dep_thread, dep_dl, dep_m, anv_deps,

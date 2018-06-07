@@ -5091,3 +5091,57 @@ void genX(CmdWaitEvents)(
                             bufferMemoryBarrierCount, pBufferMemoryBarriers,
                             imageMemoryBarrierCount, pImageMemoryBarriers);
 }
+
+VkResult genX(CmdSetPerformanceOverrideINTEL)(
+    VkCommandBuffer                             commandBuffer,
+    const VkPerformanceOverrideInfoINTEL*       pOverrideInfo)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   switch (pOverrideInfo->type) {
+   case VK_PERFORMANCE_OVERRIDE_TYPE_NULL_HARDWARE_INTEL: {
+      uint32_t dw;
+
+#if GEN_GEN >= 9
+      anv_pack_struct(&dw, GENX(CS_DEBUG_MODE2),
+                      ._3DRenderingInstructionDisable = pOverrideInfo->enable,
+                      .MediaInstructionDisable = pOverrideInfo->enable,
+                      ._3DRenderingInstructionDisableMask = true,
+                      .MediaInstructionDisableMask = true);
+      emit_lri(&cmd_buffer->batch, GENX(CS_DEBUG_MODE2_num), dw);
+#else
+      anv_pack_struct(&dw, GENX(INSTPM),
+                      ._3DRenderingInstructionDisable = pOverrideInfo->enable,
+                      .MediaInstructionDisable = pOverrideInfo->enable,
+                      ._3DRenderingInstructionDisableMask = true,
+                      .MediaInstructionDisableMask = true);
+      emit_lri(&cmd_buffer->batch, GENX(INSTPM_num), dw);
+#endif
+      break;
+   }
+
+   case VK_PERFORMANCE_OVERRIDE_TYPE_FLUSH_GPU_CACHES_INTEL:
+      if (pOverrideInfo->enable) {
+         /* FLUSH ALL THE THINGS! As requested by the MDAPI team. */
+         cmd_buffer->state.pending_pipe_bits |=
+            ANV_PIPE_FLUSH_BITS |
+            ANV_PIPE_INVALIDATE_BITS;
+         genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+      }
+      break;
+
+   default:
+      unreachable("Invalid override");
+   }
+
+   return VK_SUCCESS;
+}
+
+VkResult genX(CmdSetPerformanceStreamMarkerINTEL)(
+    VkCommandBuffer                             commandBuffer,
+    const VkPerformanceStreamMarkerInfoINTEL*   pMarkerInfo)
+{
+   /* TODO: Waiting on the register to write, might depend on generation. */
+
+   return VK_SUCCESS;
+}
