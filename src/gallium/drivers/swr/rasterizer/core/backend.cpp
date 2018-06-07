@@ -88,7 +88,7 @@ void ProcessComputeBE(DRAW_CONTEXT* pDC,
                     &csContext);
 
     UPDATE_STAT_BE(CsInvocations, state.totalThreadsInGroup);
-    AR_EVENT(CSStats(csContext.stats.numInstExecuted));
+    AR_EVENT(CSStats((HANDLE)&csContext.stats));
 
     RDTSC_END(BEDispatch, 1);
 }

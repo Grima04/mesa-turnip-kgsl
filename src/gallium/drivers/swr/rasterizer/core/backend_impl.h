@@ -1212,7 +1212,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
 
             // update stats
             UPDATE_STAT_BE(PsInvocations, _mm_popcnt_u32(_simd_movemask_ps(activeLanes)));
-            AR_EVENT(PSStats(psContext.stats.numInstExecuted));
+            AR_EVENT(PSStats((HANDLE)&psContext.stats));
 
             // update active lanes to remove any discarded or oMask'd pixels
             activeLanes = _simd_castsi_ps(_simd_and_si(

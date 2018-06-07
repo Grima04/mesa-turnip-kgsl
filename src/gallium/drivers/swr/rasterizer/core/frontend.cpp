@@ -888,7 +888,7 @@ static void GeometryShaderStage(DRAW_CONTEXT* pDC,
 
         // execute the geometry shader
         state.pfnGsFunc(GetPrivateState(pDC), pWorkerData, &gsContext);
-        AR_EVENT(GSStats(gsContext.stats.numInstExecuted));
+        AR_EVENT(GSStats((HANDLE)&gsContext.stats));
 
         for (uint32_t i = 0; i < KNOB_SIMD_WIDTH; ++i)
         {
@@ -1375,7 +1375,7 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
     RDTSC_END(FEHullShader, 0);
 
     UPDATE_STAT_FE(HsInvocations, numPrims);
-    AR_EVENT(HSStats(hsContext.stats.numInstExecuted));
+    AR_EVENT(HSStats((HANDLE)&hsContext.stats));
 
     const uint32_t* pPrimId = (const uint32_t*)&primID;
 
@@ -1443,7 +1443,7 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
             state.pfnDsFunc(GetPrivateState(pDC), pWorkerData, &dsContext);
             RDTSC_END(FEDomainShader, 0);
 
-            AR_EVENT(DSStats(dsContext.stats.numInstExecuted));
+            AR_EVENT(DSStats((HANDLE)&dsContext.stats));
 
             dsInvocations += KNOB_SIMD_WIDTH;
         }
@@ -1950,15 +1950,15 @@ void ProcessDraw(SWR_CONTEXT* pContext, DRAW_CONTEXT* pDC, uint32_t workerId, vo
                     RDTSC_BEGIN(FEVertexShader, pDC->drawId);
 #if USE_SIMD16_VS
                     state.pfnVertexFunc(GetPrivateState(pDC), pWorkerData, &vsContext_lo);
-                    AR_EVENT(VSStats(vsContext_lo.stats.numInstExecuted));
+                    AR_EVENT(VSStats((HANDLE)&vsContext_lo.stats));
 #else
                     state.pfnVertexFunc(GetPrivateState(pDC), pWorkerData, &vsContext_lo);
-                    AR_EVENT(VSStats(vsContext_lo.stats.numInstExecuted));
+                    AR_EVENT(VSStats((HANDLE)&vsContext_lo.stats));
 
                     if ((i + KNOB_SIMD_WIDTH) < endVertex) // 1/2 of KNOB_SIMD16_WIDTH
                     {
                         state.pfnVertexFunc(GetPrivateState(pDC), pWorkerData, &vsContext_hi);
-                        AR_EVENT(VSStats(vsContext_hi.stats.numInstExecuted));
+                        AR_EVENT(VSStats((HANDLE)&vsContext_hi.stats));
                     }
 #endif
                     RDTSC_END(FEVertexShader, 0);
@@ -2214,7 +2214,7 @@ void ProcessDraw(SWR_CONTEXT* pContext, DRAW_CONTEXT* pDC, uint32_t workerId, vo
                     RDTSC_END(FEVertexShader, 0);
 
                     UPDATE_STAT_FE(VsInvocations, GetNumInvocations(i, endVertex));
-                    AR_EVENT(VSStats(vsContext.stats.numInstExecuted));
+                    AR_EVENT(VSStats((HANDLE)&vsContext.stats));
                 }
             }
 

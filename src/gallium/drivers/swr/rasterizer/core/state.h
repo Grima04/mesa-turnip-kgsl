@@ -221,7 +221,18 @@ struct SIMDVERTEX_T
 /////////////////////////////////////////////////////////////////////////
 struct SWR_SHADER_STATS
 {
-    uint32_t numInstExecuted; // This is roughly the API instructions executed and not x86.
+    uint32_t numInstExecuted;      // This is roughly the API instructions executed and not x86.
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
 
 //////////////////////////////////////////////////////////////////////////

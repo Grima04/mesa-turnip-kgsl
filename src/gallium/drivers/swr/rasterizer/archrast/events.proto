@@ -325,34 +325,101 @@ event VSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
 
 event HSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
 
 event DSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
 
 event GSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
+
 };
 
 event PSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
 
 event CSInfo
 {
     uint32_t drawId;
     uint32_t numInstExecuted;
+    uint32_t numSampleExecuted;
+    uint32_t numSampleLExecuted;
+    uint32_t numSampleBExecuted;
+    uint32_t numSampleCExecuted;
+    uint32_t numSampleCLZExecuted;
+    uint32_t numSampleCDExecuted;
+    uint32_t numGather4Executed;
+    uint32_t numGather4CExecuted;
+    uint32_t numGather4CPOExecuted;
+    uint32_t numGather4CPOCExecuted;
+    uint32_t numLodExecuted;
 };
