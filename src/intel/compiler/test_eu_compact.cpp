@@ -243,7 +243,7 @@ gen_f0_0_MOV_GRF_GRF(struct brw_codegen *p)
    struct brw_reg g2 = brw_vec8_grf(2, 0);
 
    brw_push_insn_state(p);
-   brw_set_default_predicate_control(p, true);
+   brw_set_default_predicate_control(p, BRW_PREDICATE_NORMAL);
    brw_MOV(p, g0, g2);
    brw_pop_insn_state(p);
 }
@@ -259,7 +259,7 @@ gen_f0_1_MOV_GRF_GRF(struct brw_codegen *p)
    struct brw_reg g2 = brw_vec8_grf(2, 0);
 
    brw_push_insn_state(p);
-   brw_set_default_predicate_control(p, true);
+   brw_set_default_predicate_control(p, BRW_PREDICATE_NORMAL);
    brw_inst *mov = brw_MOV(p, g0, g2);
    brw_inst_set_flag_subreg_nr(p->devinfo, mov, 1);
    brw_pop_insn_state(p);

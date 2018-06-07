@@ -150,7 +150,7 @@ void brw_inst_set_group(const struct gen_device_info *devinfo,
                         brw_inst *inst, unsigned group);
 void brw_set_default_group(struct brw_codegen *p, unsigned group);
 void brw_set_default_compression_control(struct brw_codegen *p, enum brw_compression c);
-void brw_set_default_predicate_control( struct brw_codegen *p, unsigned pc );
+void brw_set_default_predicate_control(struct brw_codegen *p, enum brw_predicate pc);
 void brw_set_default_predicate_inverse(struct brw_codegen *p, bool predicate_inverse);
 void brw_set_default_flag_reg(struct brw_codegen *p, int reg, int subreg);
 void brw_set_default_acc_write_control(struct brw_codegen *p, unsigned value);
@@ -1189,8 +1189,8 @@ brw_set_desc(struct brw_codegen *p, brw_inst *insn, unsigned desc)
 
 void brw_set_uip_jip(struct brw_codegen *p, int start_offset);
 
-enum brw_conditional_mod brw_negate_cmod(uint32_t cmod);
-enum brw_conditional_mod brw_swap_cmod(uint32_t cmod);
+enum brw_conditional_mod brw_negate_cmod(enum brw_conditional_mod cmod);
+enum brw_conditional_mod brw_swap_cmod(enum brw_conditional_mod cmod);
 
 /* brw_eu_compact.c */
 void brw_init_compaction_tables(const struct gen_device_info *devinfo);

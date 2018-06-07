@@ -41,7 +41,7 @@
 
 /* Returns a conditional modifier that negates the condition. */
 enum brw_conditional_mod
-brw_negate_cmod(uint32_t cmod)
+brw_negate_cmod(enum brw_conditional_mod cmod)
 {
    switch (cmod) {
    case BRW_CONDITIONAL_Z:
@@ -57,7 +57,7 @@ brw_negate_cmod(uint32_t cmod)
    case BRW_CONDITIONAL_LE:
       return BRW_CONDITIONAL_G;
    default:
-      return ~0;
+      unreachable("Can't negate this cmod");
    }
 }
 
@@ -65,7 +65,7 @@ brw_negate_cmod(uint32_t cmod)
  * src1 in e.g. CMP.
  */
 enum brw_conditional_mod
-brw_swap_cmod(uint32_t cmod)
+brw_swap_cmod(enum brw_conditional_mod cmod)
 {
    switch (cmod) {
    case BRW_CONDITIONAL_Z:
@@ -152,7 +152,7 @@ brw_set_default_exec_size(struct brw_codegen *p, unsigned value)
    p->current->exec_size = value;
 }
 
-void brw_set_default_predicate_control( struct brw_codegen *p, unsigned pc )
+void brw_set_default_predicate_control(struct brw_codegen *p, enum brw_predicate pc)
 {
    p->current->predicate = pc;
 }
@@ -379,7 +379,7 @@ bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
 
    p->next_insn_offset = start_offset + sb.st_size;
    p->store_size = (start_offset + sb.st_size) / sizeof(brw_inst);
-   p->store = reralloc_size(p->mem_ctx, p->store, p->next_insn_offset);
+   p->store = (brw_inst *)reralloc_size(p->mem_ctx, p->store, p->next_insn_offset);
    assert(p->store);
 
    read(fd, p->store + start_offset, sb.st_size);
@@ -400,14 +400,14 @@ brw_disassemble(const struct gen_device_info *devinfo,
    bool dump_hex = (INTEL_DEBUG & DEBUG_HEX) != 0;
 
    for (int offset = start; offset < end;) {
-      const brw_inst *insn = assembly + offset;
+      const brw_inst *insn = (const brw_inst *)((char *)assembly + offset);
       brw_inst uncompacted;
       bool compacted = brw_inst_cmpt_control(devinfo, insn);
       if (0)
          fprintf(out, "0x%08x: ", offset);
 
       if (compacted) {
-         brw_compact_inst *compacted = (void *)insn;
+         brw_compact_inst *compacted = (brw_compact_inst *)insn;
          if (dump_hex) {
             unsigned char * insn_ptr = ((unsigned char *)&insn[0]);
             const unsigned int blank_spaces = 24;

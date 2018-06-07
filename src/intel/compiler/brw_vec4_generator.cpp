@@ -1208,7 +1208,7 @@ generate_scratch_write(struct brw_codegen *p,
    /* If the instruction is predicated, we'll predicate the send, not
     * the header setup.
     */
-   brw_set_default_predicate_control(p, false);
+   brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
 
    gen6_resolve_implied_move(p, &header, inst->base_mrf);
 
