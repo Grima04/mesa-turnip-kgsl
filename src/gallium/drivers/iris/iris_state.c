@@ -1373,7 +1373,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       cbuf->surface_state_offset += iris_bo_offset_from_base_address(surf_bo);
 
       isl_buffer_fill_state(&screen->isl_dev, map,
-                            .address = res->bo->gtt_offset,
+                            .address = res->bo->gtt_offset + cbuf->offset,
                             .size_B = input->buffer_size,
                             .format = ISL_FORMAT_R32G32B32A32_FLOAT,
                             .stride_B = 1,
