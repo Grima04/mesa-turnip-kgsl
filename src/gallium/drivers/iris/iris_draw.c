@@ -40,6 +40,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_batch_maybe_flush(batch, 1500);
 
    // XXX: actually do brw_cache_flush_for_*
+   // XXX: CS stall is really expensive
    iris_emit_pipe_control_flush(batch,
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
@@ -56,6 +57,8 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_binder_reserve_3d(batch, ice->shaders.prog);
    ice->vtbl.upload_render_state(ice, batch, info);
 
+   // XXX: ice->state.dirty = 0ull;
+
    // XXX: don't flush always
-   iris_batch_flush(batch);
+   //iris_batch_flush(batch);
 }

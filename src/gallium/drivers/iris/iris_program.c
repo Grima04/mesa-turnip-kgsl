@@ -464,6 +464,7 @@ iris_update_compiled_shaders(struct iris_context *ice)
          old_prog_datas[i] = get_vue_prog_data(ice, i);
    }
 
+   // XXX: dirty bits...
    iris_update_compiled_vs(ice);
    iris_update_compiled_tcs(ice);
    iris_update_compiled_tes(ice);
