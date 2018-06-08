@@ -108,6 +108,10 @@ struct gen9_mdapi_metrics {
    uint32_t Reserved4;
 };
 
+/* Add new definition */
+#define gen10_mdapi_metrics gen9_mdapi_metrics
+#define gen11_mdapi_metrics gen9_mdapi_metrics
+
 struct mdapi_pipeline_metrics {
    uint64_t IAVertices;
    uint64_t IAPrimitives;
