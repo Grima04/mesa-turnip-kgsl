@@ -187,8 +187,7 @@ brw_perf_query_register_mdapi_oa_query(struct brw_context *brw)
 
    query->kind = GEN_PERF_QUERY_TYPE_RAW;
    query->name = "Intel_Raw_Hardware_Counters_Set_0_Query";
-   /* Guid has to matches with MDAPI's. */
-   query->guid = "2f01b241-7014-42a7-9eb6-a925cad3daba";
+   query->guid = GEN_PERF_QUERY_GUID_MDAPI;
 
    {
       /* Accumulation buffer offsets copied from an actual query... */

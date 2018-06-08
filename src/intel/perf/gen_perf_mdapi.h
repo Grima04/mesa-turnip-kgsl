@@ -29,6 +29,9 @@
 struct gen_device_info;
 struct gen_perf_query_result;
 
+/* Guid has to matches with MDAPI's. */
+#define GEN_PERF_QUERY_GUID_MDAPI "2f01b241-7014-42a7-9eb6-a925cad3daba"
+
 /*
  * Data format expected by MDAPI.
  */
