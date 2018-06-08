@@ -26,6 +26,9 @@
 
 #include <stdint.h>
 
+struct gen_device_info;
+struct gen_perf_query_result;
+
 /*
  * Data format expected by MDAPI.
  */
@@ -115,5 +118,10 @@ struct mdapi_pipeline_metrics {
    uint64_t DSInvocations;
    uint64_t CSInvocations;
 };
+
+int gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
+                                      const struct gen_device_info *devinfo,
+                                      const struct gen_perf_query_result *result,
+                                      uint64_t freq_start, uint64_t freq_end);
 
 #endif /* GEN_PERF_MDAPI_H */

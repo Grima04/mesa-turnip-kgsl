@@ -74,6 +74,7 @@
 #include "intel_batchbuffer.h"
 
 #include "perf/gen_perf.h"
+#include "perf/gen_perf_mdapi.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
 
@@ -1488,10 +1489,16 @@ brw_get_perf_query_data(struct gl_context *ctx,
          brw_bo_unmap(obj->oa.bo);
          obj->oa.map = NULL;
       }
-      if (obj->query->kind == GEN_PERF_QUERY_TYPE_OA)
+      if (obj->query->kind == GEN_PERF_QUERY_TYPE_OA) {
          written = get_oa_counter_data(brw, obj, data_size, (uint8_t *)data);
-      else
-         written = brw_perf_query_get_mdapi_oa_data(brw, obj, data_size, (uint8_t *)data);
+      } else {
+         const struct gen_device_info *devinfo = &brw->screen->devinfo;
+
+         written = gen_perf_query_result_write_mdapi((uint8_t *)data, data_size,
+                                                     devinfo, &obj->oa.result,
+                                                     obj->oa.gt_frequency[0],
+                                                     obj->oa.gt_frequency[1]);
+      }
       break;
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:

@@ -15,7 +15,8 @@ foreach hw : gen_hw_metrics
 endforeach
 
 gen_perf_sources = [
-  'gen_perf.c'
+  'gen_perf.c',
+  'gen_perf_mdapi.c',
 ]
 
 gen_perf_sources += custom_target(
