@@ -786,14 +786,18 @@ accumulate_oa_reports(struct brw_context *brw,
             /* Ignore reports that come before the start marker.
              * (Note: takes care to allow overflow of 32bit timestamps)
              */
-            if (brw_timebase_scale(brw, report[1] - start[1]) > 5000000000)
+            if (gen_device_info_timebase_scale(devinfo,
+                                               report[1] - start[1]) > 5000000000) {
                continue;
+            }
 
             /* Ignore reports that come after the end marker.
              * (Note: takes care to allow overflow of 32bit timestamps)
              */
-            if (brw_timebase_scale(brw, report[1] - end[1]) <= 5000000000)
+            if (gen_device_info_timebase_scale(devinfo,
+                                               report[1] - end[1]) <= 5000000000) {
                goto end;
+            }
 
             /* For Gen8+ since the counters continue while other
              * contexts are running we need to discount any unrelated

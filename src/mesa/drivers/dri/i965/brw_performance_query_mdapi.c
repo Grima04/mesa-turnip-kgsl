@@ -54,7 +54,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
       }
 
       mdapi_data->ReportsCount = result->reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
+      mdapi_data->TotalTime = gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
       return sizeof(*mdapi_data);
@@ -74,7 +74,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
 
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
+      mdapi_data->TotalTime = gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
@@ -100,7 +100,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
 
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
+      mdapi_data->TotalTime = gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
