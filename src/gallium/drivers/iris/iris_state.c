@@ -2511,7 +2511,7 @@ iris_upload_render_state(struct iris_context *ice,
       assert(!draw->has_user_indices);
 
       iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-         ib.IndexFormat = draw->index_size;
+         ib.IndexFormat = draw->index_size >> 1;
          ib.MOCS = MOCS_WB;
          ib.BufferSize = res->bo->size;
          ib.BufferStartingAddress = ro_bo(res->bo, 0);
