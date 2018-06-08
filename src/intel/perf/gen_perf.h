@@ -61,6 +61,44 @@ struct gen_pipeline_stat {
    uint32_t denominator;
 };
 
+/*
+ * The largest OA formats we can use include:
+ * For Haswell:
+ *   1 timestamp, 45 A counters, 8 B counters and 8 C counters.
+ * For Gen8+
+ *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
+ */
+#define MAX_OA_REPORT_COUNTERS 62
+
+struct gen_perf_query_result {
+   /**
+    * Storage for the final accumulated OA counters.
+    */
+   uint64_t accumulator[MAX_OA_REPORT_COUNTERS];
+
+   /**
+    * Hw ID used by the context on which the query was running.
+    */
+   uint32_t hw_id;
+
+   /**
+    * Number of reports accumulated to produce the results.
+    */
+   uint32_t reports_accumulated;
+
+   /**
+    * Frequency in the slices of the GT at the begin and end of the
+    * query.
+    */
+   uint64_t slice_frequency[2];
+
+   /**
+    * Frequency in the unslice of the GT at the begin and end of the
+    * query.
+    */
+   uint64_t unslice_frequency[2];
+};
+
 struct gen_perf_query_counter {
    const char *name;
    const char *desc;
@@ -208,38 +246,6 @@ gen_perf_query_info_add_basic_stat_reg(struct gen_perf_query_info *query,
    gen_perf_query_info_add_stat_reg(query, reg, 1, 1, name, name);
 }
 
-/* Accumulate 32bits OA counters */
-static inline void
-gen_perf_query_accumulate_uint32(const uint32_t *report0,
-                                 const uint32_t *report1,
-                                 uint64_t *accumulator)
-{
-   *accumulator += (uint32_t)(*report1 - *report0);
-}
-
-/* Accumulate 40bits OA counters */
-static inline void
-gen_perf_query_accumulate_uint40(int a_index,
-                                 const uint32_t *report0,
-                                 const uint32_t *report1,
-                                 uint64_t *accumulator)
-{
-   const uint8_t *high_bytes0 = (uint8_t *)(report0 + 40);
-   const uint8_t *high_bytes1 = (uint8_t *)(report1 + 40);
-   uint64_t high0 = (uint64_t)(high_bytes0[a_index]) << 32;
-   uint64_t high1 = (uint64_t)(high_bytes1[a_index]) << 32;
-   uint64_t value0 = report0[a_index + 4] | high0;
-   uint64_t value1 = report1[a_index + 4] | high1;
-   uint64_t delta;
-
-   if (value0 > value1)
-      delta = (1ULL << 40) + value1 - value0;
-   else
-      delta = value1 - value0;
-
-   *accumulator += delta;
-}
-
 static inline struct gen_perf *
 gen_perf_new(void *ctx, int (*ioctl_cb)(int, unsigned long, void *))
 {
@@ -254,5 +260,16 @@ bool gen_perf_load_oa_metrics(struct gen_perf *perf, int fd,
                               const struct gen_device_info *devinfo);
 bool gen_perf_load_metric_id(struct gen_perf *perf, const char *guid,
                              uint64_t *metric_id);
+
+void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
+                                            const struct gen_device_info *devinfo,
+                                            const uint32_t *start,
+                                            const uint32_t *end);
+void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
+                                      const struct gen_perf_query_info *query,
+                                      const uint32_t *start,
+                                      const uint32_t *end);
+void gen_perf_query_result_clear(struct gen_perf_query_result *result);
+
 
 #endif /* GEN_PERF_H */

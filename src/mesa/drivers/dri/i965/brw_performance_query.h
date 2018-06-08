@@ -28,6 +28,8 @@
 
 #include "brw_context.h"
 
+#include "perf/gen_perf.h"
+
 struct gen_perf_query_info;
 
 /*
@@ -37,15 +39,6 @@ struct gen_perf_query_info;
 #define STATS_BO_SIZE               4096
 #define STATS_BO_END_OFFSET_BYTES   (STATS_BO_SIZE / 2)
 #define MAX_STAT_COUNTERS           (STATS_BO_END_OFFSET_BYTES / 8)
-
-/*
- * The largest OA formats we can use include:
- * For Haswell:
- *   1 timestamp, 45 A counters, 8 B counters and 8 C counters.
- * For Gen8+
- *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
- */
-#define MAX_OA_REPORT_COUNTERS 62
 
 /**
  * i965 representation of a performance query object.
@@ -94,16 +87,6 @@ struct brw_perf_query_object
          struct exec_node *samples_head;
 
          /**
-          * Storage for the final accumulated OA counters.
-          */
-         uint64_t accumulator[MAX_OA_REPORT_COUNTERS];
-
-         /**
-          * Hw ID used by the context on which the query was running.
-          */
-         uint32_t hw_id;
-
-         /**
           * false while in the unaccumulated_elements list, and set to
           * true when the final, end MI_RPC snapshot has been
           * accumulated.
@@ -111,26 +94,14 @@ struct brw_perf_query_object
          bool results_accumulated;
 
          /**
-          * Number of reports accumulated to produce the results.
-          */
-         uint32_t reports_accumulated;
-
-         /**
           * Frequency of the GT at begin and end of the query.
           */
          uint64_t gt_frequency[2];
 
          /**
-          * Frequency in the slices of the GT at the begin and end of the
-          * query.
+          * Accumulated OA results between begin and end of the query.
           */
-         uint64_t slice_frequency[2];
-
-         /**
-          * Frequency in the unslice of the GT at the begin and end of the
-          * query.
-          */
-         uint64_t unslice_frequency[2];
+         struct gen_perf_query_result result;
       } oa;
 
       struct {

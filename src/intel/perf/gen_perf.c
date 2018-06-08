@@ -433,3 +433,138 @@ gen_perf_load_oa_metrics(struct gen_perf *perf, int fd,
 
    return true;
 }
+
+/* Accumulate 32bits OA counters */
+static inline void
+accumulate_uint32(const uint32_t *report0,
+                  const uint32_t *report1,
+                  uint64_t *accumulator)
+{
+   *accumulator += (uint32_t)(*report1 - *report0);
+}
+
+/* Accumulate 40bits OA counters */
+static inline void
+accumulate_uint40(int a_index,
+                  const uint32_t *report0,
+                  const uint32_t *report1,
+                  uint64_t *accumulator)
+{
+   const uint8_t *high_bytes0 = (uint8_t *)(report0 + 40);
+   const uint8_t *high_bytes1 = (uint8_t *)(report1 + 40);
+   uint64_t high0 = (uint64_t)(high_bytes0[a_index]) << 32;
+   uint64_t high1 = (uint64_t)(high_bytes1[a_index]) << 32;
+   uint64_t value0 = report0[a_index + 4] | high0;
+   uint64_t value1 = report1[a_index + 4] | high1;
+   uint64_t delta;
+
+   if (value0 > value1)
+      delta = (1ULL << 40) + value1 - value0;
+   else
+      delta = value1 - value0;
+
+   *accumulator += delta;
+}
+
+static void
+gen8_read_report_clock_ratios(const uint32_t *report,
+                              uint64_t *slice_freq_hz,
+                              uint64_t *unslice_freq_hz)
+{
+   /* The lower 16bits of the RPT_ID field of the OA reports contains a
+    * snapshot of the bits coming from the RP_FREQ_NORMAL register and is
+    * divided this way :
+    *
+    * RPT_ID[31:25]: RP_FREQ_NORMAL[20:14] (low squashed_slice_clock_frequency)
+    * RPT_ID[10:9]:  RP_FREQ_NORMAL[22:21] (high squashed_slice_clock_frequency)
+    * RPT_ID[8:0]:   RP_FREQ_NORMAL[31:23] (squashed_unslice_clock_frequency)
+    *
+    * RP_FREQ_NORMAL[31:23]: Software Unslice Ratio Request
+    *                        Multiple of 33.33MHz 2xclk (16 MHz 1xclk)
+    *
+    * RP_FREQ_NORMAL[22:14]: Software Slice Ratio Request
+    *                        Multiple of 33.33MHz 2xclk (16 MHz 1xclk)
+    */
+
+   uint32_t unslice_freq = report[0] & 0x1ff;
+   uint32_t slice_freq_low = (report[0] >> 25) & 0x7f;
+   uint32_t slice_freq_high = (report[0] >> 9) & 0x3;
+   uint32_t slice_freq = slice_freq_low | (slice_freq_high << 7);
+
+   *slice_freq_hz = slice_freq * 16666667ULL;
+   *unslice_freq_hz = unslice_freq * 16666667ULL;
+}
+
+void
+gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
+                                       const struct gen_device_info *devinfo,
+                                       const uint32_t *start,
+                                       const uint32_t *end)
+{
+   /* Slice/Unslice frequency is only available in the OA reports when the
+    * "Disable OA reports due to clock ratio change" field in
+    * OA_DEBUG_REGISTER is set to 1. This is how the kernel programs this
+    * global register (see drivers/gpu/drm/i915/i915_perf.c)
+    *
+    * Documentation says this should be available on Gen9+ but experimentation
+    * shows that Gen8 reports similar values, so we enable it there too.
+    */
+   if (devinfo->gen < 8)
+      return;
+
+   gen8_read_report_clock_ratios(start,
+                                 &result->slice_frequency[0],
+                                 &result->unslice_frequency[0]);
+   gen8_read_report_clock_ratios(end,
+                                 &result->slice_frequency[1],
+                                 &result->unslice_frequency[1]);
+}
+
+void
+gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
+                                 const struct gen_perf_query_info *query,
+                                 const uint32_t *start,
+                                 const uint32_t *end)
+{
+   int i, idx = 0;
+
+   result->hw_id = start[2];
+   result->reports_accumulated++;
+
+   switch (query->oa_format) {
+   case I915_OA_FORMAT_A32u40_A4u32_B8_C8:
+      accumulate_uint32(start + 1, end + 1, result->accumulator + idx++); /* timestamp */
+      accumulate_uint32(start + 3, end + 3, result->accumulator + idx++); /* clock */
+
+      /* 32x 40bit A counters... */
+      for (i = 0; i < 32; i++)
+         accumulate_uint40(i, start, end, result->accumulator + idx++);
+
+      /* 4x 32bit A counters... */
+      for (i = 0; i < 4; i++)
+         accumulate_uint32(start + 36 + i, end + 36 + i, result->accumulator + idx++);
+
+      /* 8x 32bit B counters + 8x 32bit C counters... */
+      for (i = 0; i < 16; i++)
+         accumulate_uint32(start + 48 + i, end + 48 + i, result->accumulator + idx++);
+      break;
+
+   case I915_OA_FORMAT_A45_B8_C8:
+      accumulate_uint32(start + 1, end + 1, result->accumulator); /* timestamp */
+
+      for (i = 0; i < 61; i++)
+         accumulate_uint32(start + 3 + i, end + 3 + i, result->accumulator + 1 + i);
+      break;
+
+   default:
+      unreachable("Can't accumulate OA counters in unknown format");
+   }
+
+}
+
+void
+gen_perf_query_result_clear(struct gen_perf_query_result *result)
+{
+   memset(result, 0, sizeof(*result));
+   result->hw_id = 0xffffffff; /* invalid */
+}

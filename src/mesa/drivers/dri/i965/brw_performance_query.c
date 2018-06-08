@@ -542,55 +542,6 @@ drop_from_unaccumulated_query_list(struct brw_context *brw,
    reap_old_sample_buffers(brw);
 }
 
-/**
- * Given pointers to starting and ending OA snapshots, add the deltas for each
- * counter to the results.
- */
-static void
-add_deltas(struct brw_context *brw,
-           struct brw_perf_query_object *obj,
-           const uint32_t *start,
-           const uint32_t *end)
-{
-   const struct gen_perf_query_info *query = obj->query;
-   uint64_t *accumulator = obj->oa.accumulator;
-   int idx = 0;
-   int i;
-
-   obj->oa.reports_accumulated++;
-
-   switch (query->oa_format) {
-   case I915_OA_FORMAT_A32u40_A4u32_B8_C8:
-      gen_perf_query_accumulate_uint32(start + 1, end + 1, accumulator + idx++); /* timestamp */
-      gen_perf_query_accumulate_uint32(start + 3, end + 3, accumulator + idx++); /* clock */
-
-      /* 32x 40bit A counters... */
-      for (i = 0; i < 32; i++)
-         gen_perf_query_accumulate_uint40(i, start, end, accumulator + idx++);
-
-      /* 4x 32bit A counters... */
-      for (i = 0; i < 4; i++)
-         gen_perf_query_accumulate_uint32(start + 36 + i, end + 36 + i,
-                                          accumulator + idx++);
-
-      /* 8x 32bit B counters + 8x 32bit C counters... */
-      for (i = 0; i < 16; i++)
-         gen_perf_query_accumulate_uint32(start + 48 + i, end + 48 + i,
-                                          accumulator + idx++);
-
-      break;
-   case I915_OA_FORMAT_A45_B8_C8:
-      gen_perf_query_accumulate_uint32(start + 1, end + 1, accumulator); /* timestamp */
-
-      for (i = 0; i < 61; i++)
-         gen_perf_query_accumulate_uint32(start + 3 + i, end + 3 + i, accumulator + 1 + i);
-
-      break;
-   default:
-      unreachable("Can't accumulate OA counters in unknown format");
-   }
-}
-
 static bool
 inc_n_oa_users(struct brw_context *brw)
 {
@@ -801,8 +752,6 @@ accumulate_oa_reports(struct brw_context *brw,
       goto error;
    }
 
-   obj->oa.hw_id = start[2];
-
    /* See if we have any periodic reports to accumulate too... */
 
    /* N.B. The oa.samples_head was set when the query began and
@@ -856,11 +805,11 @@ accumulate_oa_reports(struct brw_context *brw,
              * of OA counters while any other context is acctive.
              */
             if (devinfo->gen >= 8) {
-               if (in_ctx && report[2] != obj->oa.hw_id) {
+               if (in_ctx && report[2] != obj->oa.result.hw_id) {
                   DBG("i915 perf: Switch AWAY (observed by ID change)\n");
                   in_ctx = false;
                   out_duration = 0;
-               } else if (in_ctx == false && report[2] == obj->oa.hw_id) {
+               } else if (in_ctx == false && report[2] == obj->oa.result.hw_id) {
                   DBG("i915 perf: Switch TO\n");
                   in_ctx = true;
 
@@ -877,18 +826,20 @@ accumulate_oa_reports(struct brw_context *brw,
                   if (out_duration >= 1)
                      add = false;
                } else if (in_ctx) {
-                  assert(report[2] == obj->oa.hw_id);
+                  assert(report[2] == obj->oa.result.hw_id);
                   DBG("i915 perf: Continuation IN\n");
                } else {
-                  assert(report[2] != obj->oa.hw_id);
+                  assert(report[2] != obj->oa.result.hw_id);
                   DBG("i915 perf: Continuation OUT\n");
                   add = false;
                   out_duration++;
                }
             }
 
-            if (add)
-               add_deltas(brw, obj, last, report);
+            if (add) {
+               gen_perf_query_result_accumulate(&obj->oa.result, obj->query,
+                                                last, report);
+            }
 
             last = report;
 
@@ -907,7 +858,8 @@ accumulate_oa_reports(struct brw_context *brw,
 
 end:
 
-   add_deltas(brw, obj, last, end);
+   gen_perf_query_result_accumulate(&obj->oa.result, obj->query,
+                                    last, end);
 
    DBG("Marking %d accumulated - results gathered\n", o->Id);
 
@@ -1211,8 +1163,7 @@ brw_begin_perf_query(struct gl_context *ctx,
        */
       buf->refcount++;
 
-      obj->oa.hw_id = 0xffffffff;
-      memset(obj->oa.accumulator, 0, sizeof(obj->oa.accumulator));
+      gen_perf_query_result_clear(&obj->oa.result);
       obj->oa.results_accumulated = false;
 
       add_to_unaccumulated_query_list(brw, obj);
@@ -1382,61 +1333,14 @@ brw_is_perf_query_ready(struct gl_context *ctx,
 }
 
 static void
-gen8_read_report_clock_ratios(const uint32_t *report,
-                              uint64_t *slice_freq_hz,
-                              uint64_t *unslice_freq_hz)
-{
-   /* The lower 16bits of the RPT_ID field of the OA reports contains a
-    * snapshot of the bits coming from the RP_FREQ_NORMAL register and is
-    * divided this way :
-    *
-    * RPT_ID[31:25]: RP_FREQ_NORMAL[20:14] (low squashed_slice_clock_frequency)
-    * RPT_ID[10:9]:  RP_FREQ_NORMAL[22:21] (high squashed_slice_clock_frequency)
-    * RPT_ID[8:0]:   RP_FREQ_NORMAL[31:23] (squashed_unslice_clock_frequency)
-    *
-    * RP_FREQ_NORMAL[31:23]: Software Unslice Ratio Request
-    *                        Multiple of 33.33MHz 2xclk (16 MHz 1xclk)
-    *
-    * RP_FREQ_NORMAL[22:14]: Software Slice Ratio Request
-    *                        Multiple of 33.33MHz 2xclk (16 MHz 1xclk)
-    */
-
-   uint32_t unslice_freq = report[0] & 0x1ff;
-   uint32_t slice_freq_low = (report[0] >> 25) & 0x7f;
-   uint32_t slice_freq_high = (report[0] >> 9) & 0x3;
-   uint32_t slice_freq = slice_freq_low | (slice_freq_high << 7);
-
-   *slice_freq_hz = slice_freq * 16666667ULL;
-   *unslice_freq_hz = unslice_freq * 16666667ULL;
-}
-
-static void
 read_slice_unslice_frequencies(struct brw_context *brw,
                                struct brw_perf_query_object *obj)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   uint32_t *begin_report, *end_report;
+   uint32_t *begin_report = obj->oa.map, *end_report = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
 
-   /* Slice/Unslice frequency is only available in the OA reports when the
-    * "Disable OA reports due to clock ratio change" field in
-    * OA_DEBUG_REGISTER is set to 1. This is how the kernel programs this
-    * global register (see drivers/gpu/drm/i915/i915_perf.c)
-    *
-    * Documentation says this should be available on Gen9+ but experimentation
-    * shows that Gen8 reports similar values, so we enable it there too.
-    */
-   if (devinfo->gen < 8)
-      return;
-
-   begin_report = obj->oa.map;
-   end_report = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
-
-   gen8_read_report_clock_ratios(begin_report,
-                                 &obj->oa.slice_frequency[0],
-                                 &obj->oa.unslice_frequency[0]);
-   gen8_read_report_clock_ratios(end_report,
-                                 &obj->oa.slice_frequency[1],
-                                 &obj->oa.unslice_frequency[1]);
+   gen_perf_query_result_read_frequencies(&obj->oa.result,
+                                          devinfo, begin_report, end_report);
 }
 
 static void
@@ -1488,13 +1392,15 @@ get_oa_counter_data(struct brw_context *brw,
          switch (counter->data_type) {
          case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
             out_uint64 = (uint64_t *)(data + counter->offset);
-            *out_uint64 = counter->oa_counter_read_uint64(perf, query,
-                                                          obj->oa.accumulator);
+            *out_uint64 =
+               counter->oa_counter_read_uint64(perf, query,
+                                               obj->oa.result.accumulator);
             break;
          case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
             out_float = (float *)(data + counter->offset);
-            *out_float = counter->oa_counter_read_float(perf, query,
-                                                        obj->oa.accumulator);
+            *out_float =
+               counter->oa_counter_read_float(perf, query,
+                                              obj->oa.result.accumulator);
             break;
          default:
             /* So far we aren't using uint32, double or bool32... */

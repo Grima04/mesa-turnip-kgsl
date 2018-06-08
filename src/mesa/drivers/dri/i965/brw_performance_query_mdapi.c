@@ -34,6 +34,7 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
                                  uint8_t *data)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct gen_perf_query_result *result = &obj->oa.result;
 
    switch (devinfo->gen) {
    case 7: {
@@ -45,15 +46,15 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
       assert(devinfo->is_haswell);
 
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->ACounters); i++)
-         mdapi_data->ACounters[i] = obj->oa.accumulator[1 + i];
+         mdapi_data->ACounters[i] = result->accumulator[1 + i];
 
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->NOACounters); i++) {
          mdapi_data->NOACounters[i] =
-            obj->oa.accumulator[1 + ARRAY_SIZE(mdapi_data->ACounters) + i];
+            result->accumulator[1 + ARRAY_SIZE(mdapi_data->ACounters) + i];
       }
 
-      mdapi_data->ReportsCount = obj->oa.reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, obj->oa.accumulator[0]);
+      mdapi_data->ReportsCount = result->reports_accumulated;
+      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
       return sizeof(*mdapi_data);
@@ -65,20 +66,20 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
          return 0;
 
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->OaCntr); i++)
-         mdapi_data->OaCntr[i] = obj->oa.accumulator[2 + i];
+         mdapi_data->OaCntr[i] = result->accumulator[2 + i];
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->NoaCntr); i++) {
          mdapi_data->NoaCntr[i] =
-            obj->oa.accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
+            result->accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
       }
 
-      mdapi_data->ReportId = obj->oa.hw_id;
-      mdapi_data->ReportsCount = obj->oa.reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, obj->oa.accumulator[0]);
-      mdapi_data->GPUTicks = obj->oa.accumulator[1];
+      mdapi_data->ReportId = result->hw_id;
+      mdapi_data->ReportsCount = result->reports_accumulated;
+      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
+      mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
-      mdapi_data->SliceFrequency = (obj->oa.slice_frequency[0] + obj->oa.slice_frequency[1]) / 2ULL;
-      mdapi_data->UnsliceFrequency = (obj->oa.unslice_frequency[0] + obj->oa.unslice_frequency[1]) / 2ULL;
+      mdapi_data->SliceFrequency = (result->slice_frequency[0] + result->slice_frequency[1]) / 2ULL;
+      mdapi_data->UnsliceFrequency = (result->unslice_frequency[0] + result->unslice_frequency[1]) / 2ULL;
 
       return sizeof(*mdapi_data);
    }
@@ -91,20 +92,20 @@ brw_perf_query_get_mdapi_oa_data(struct brw_context *brw,
          return 0;
 
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->OaCntr); i++)
-         mdapi_data->OaCntr[i] = obj->oa.accumulator[2 + i];
+         mdapi_data->OaCntr[i] = result->accumulator[2 + i];
       for (int i = 0; i < ARRAY_SIZE(mdapi_data->NoaCntr); i++) {
          mdapi_data->NoaCntr[i] =
-            obj->oa.accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
+            result->accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
       }
 
-      mdapi_data->ReportId = obj->oa.hw_id;
-      mdapi_data->ReportsCount = obj->oa.reports_accumulated;
-      mdapi_data->TotalTime = brw_timebase_scale(brw, obj->oa.accumulator[0]);
-      mdapi_data->GPUTicks = obj->oa.accumulator[1];
+      mdapi_data->ReportId = result->hw_id;
+      mdapi_data->ReportsCount = result->reports_accumulated;
+      mdapi_data->TotalTime = brw_timebase_scale(brw, result->accumulator[0]);
+      mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = obj->oa.gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = obj->oa.gt_frequency[0] != obj->oa.gt_frequency[1];
-      mdapi_data->SliceFrequency = (obj->oa.slice_frequency[0] + obj->oa.slice_frequency[1]) / 2ULL;
-      mdapi_data->UnsliceFrequency = (obj->oa.unslice_frequency[0] + obj->oa.unslice_frequency[1]) / 2ULL;
+      mdapi_data->SliceFrequency = (result->slice_frequency[0] + result->slice_frequency[1]) / 2ULL;
+      mdapi_data->UnsliceFrequency = (result->unslice_frequency[0] + result->unslice_frequency[1]) / 2ULL;
 
       return sizeof(*mdapi_data);
    }
