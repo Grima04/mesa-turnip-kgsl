@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#include "dev/gen_device_info.h"
+
 struct gen_device_info;
 struct gen_perf_query_result;
 
@@ -131,5 +133,31 @@ int gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
                                       const struct gen_device_info *devinfo,
                                       const struct gen_perf_query_result *result,
                                       uint64_t freq_start, uint64_t freq_end);
+
+static inline void gen_perf_query_mdapi_write_marker(void *data, uint32_t data_size,
+                                                     const struct gen_device_info *devinfo,
+                                                     uint64_t value)
+{
+   switch (devinfo->gen) {
+   case 8: {
+      if (data_size < sizeof(struct gen8_mdapi_metrics))
+         return;
+      struct gen8_mdapi_metrics *mdapi_data = data;
+      mdapi_data->MarkerUser = value;
+      break;
+   }
+   case 9:
+   case 10:
+   case 11: {
+      if (data_size < sizeof(struct gen9_mdapi_metrics))
+         return;
+      struct gen9_mdapi_metrics *mdapi_data = data;
+      mdapi_data->MarkerUser = value;
+      break;
+   }
+   default:
+      break;
+   }
+}
 
 #endif /* GEN_PERF_MDAPI_H */
