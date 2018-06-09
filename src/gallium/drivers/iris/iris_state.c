@@ -314,6 +314,10 @@ emit_state(struct iris_batch *batch,
    return offset;
 }
 
+#define cso_changed(x) (!old_cso || (old_cso->x != new_cso->x))
+#define cso_changed_memcmp(x) \
+   (!old_cso || memcmp(old_cso->x, new_cso->x, sizeof(old_cso->x)) != 0)
+
 static void
 iris_init_render_context(struct iris_screen *screen,
                          struct iris_batch *batch,
@@ -400,7 +404,10 @@ iris_set_blend_color(struct pipe_context *ctx,
 }
 
 struct iris_blend_state {
+   /** Partial 3DSTATE_PS_BLEND */
    uint32_t ps_blend[GENX(3DSTATE_PS_BLEND_length)];
+
+   /** Partial BLEND_STATE */
    uint32_t blend_state[GENX(BLEND_STATE_length) +
                         BRW_MAX_DRAW_BUFFERS * GENX(BLEND_STATE_ENTRY_length)];
 
@@ -476,15 +483,19 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    ice->state.cso_blend = state;
-   ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
-   ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
+   ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
+   ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
 }
 
 struct iris_depth_stencil_alpha_state {
+   /** Partial 3DSTATE_WM_DEPTH_STENCIL */
    uint32_t wmds[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
+
+   /** Complete CC_VIEWPORT */
    uint32_t cc_vp[GENX(CC_VIEWPORT_length)];
 
-   struct pipe_alpha_state alpha; /* to BLEND_STATE, 3DSTATE_PS_BLEND */
+   /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE */
+   struct pipe_alpha_state alpha;
 };
 
 static void *
@@ -543,9 +554,11 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    struct iris_depth_stencil_alpha_state *new_cso = state;
 
    if (new_cso) {
-      if (!old_cso || old_cso->alpha.ref_value != new_cso->alpha.ref_value) {
+      if (cso_changed(alpha.ref_value))
          ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
-      }
+
+      if (cso_changed(alpha.enabled))
+         ice->state.dirty |= IRIS_DIRTY_PS_BLEND | IRIS_DIRTY_BLEND_STATE;
    }
 
    ice->state.cso_zsa = new_cso;
@@ -565,6 +578,8 @@ struct iris_rasterizer_state {
    bool light_twoside; /* for shader state */
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
+   bool line_stipple_enable;
+   bool poly_stipple_enable;
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
    uint16_t sprite_coord_enable;
 };
@@ -596,6 +611,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->half_pixel_center = state->half_pixel_center;
    cso->sprite_coord_mode = state->sprite_coord_mode;
    cso->sprite_coord_enable = state->sprite_coord_enable;
+   cso->line_stipple_enable = state->line_stipple_enable;
+   cso->poly_stipple_enable = state->poly_stipple_enable;
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
       sf.StatisticsEnable = true;
@@ -618,7 +635,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       }
    }
 
-   /* COMPLETE! */
    iris_pack_command(GENX(3DSTATE_RASTER), cso->raster, rr) {
       rr.FrontWinding = state->front_ccw ? CounterClockwise : Clockwise;
       rr.CullMode = translate_cull_mode(state->cull_face);
@@ -697,15 +713,14 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 
    if (new_cso) {
       /* Try to avoid re-emitting 3DSTATE_LINE_STIPPLE, it's non-pipelined */
-      if (!old_cso || memcmp(old_cso->line_stipple, new_cso->line_stipple,
-                             sizeof(old_cso->line_stipple)) != 0) {
+      if (cso_changed_memcmp(line_stipple))
          ice->state.dirty |= IRIS_DIRTY_LINE_STIPPLE;
-      }
 
-      if (!old_cso ||
-          old_cso->half_pixel_center != new_cso->half_pixel_center) {
+      if (cso_changed(half_pixel_center))
          ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
-      }
+
+      if (cso_changed(line_stipple_enable) || cso_changed(poly_stipple_enable))
+         ice->state.dirty |= IRIS_DIRTY_WM;
    }
 
    ice->state.cso_rast = new_cso;
@@ -882,8 +897,6 @@ struct iris_sampler_view {
    /** The resource (BO) holding our SURFACE_STATE. */
    struct pipe_resource *surface_state_resource;
    unsigned surface_state_offset;
-
-   //uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
 };
 
 /**
@@ -1284,7 +1297,6 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       malloc(sizeof(struct iris_depth_buffer_state));
 
    struct isl_view view = {
-      /* Some nice defaults */
       .base_level = 0,
       .levels = 1,
       .base_array_layer = 0,
@@ -1805,8 +1817,8 @@ KSP(const struct iris_compiled_shader *shader)
    pkt.Enable           = true;
 
 static void
-iris_set_vs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
+iris_store_vs_state(const struct gen_device_info *devinfo,
+                    struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
@@ -1821,8 +1833,8 @@ iris_set_vs_state(const struct gen_device_info *devinfo,
 }
 
 static void
-iris_set_tcs_state(const struct gen_device_info *devinfo,
-                   struct iris_compiled_shader *shader)
+iris_store_tcs_state(const struct gen_device_info *devinfo,
+                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
@@ -1838,8 +1850,8 @@ iris_set_tcs_state(const struct gen_device_info *devinfo,
 }
 
 static void
-iris_set_tes_state(const struct gen_device_info *devinfo,
-                   struct iris_compiled_shader *shader)
+iris_store_tes_state(const struct gen_device_info *devinfo,
+                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
@@ -1872,8 +1884,8 @@ iris_set_tes_state(const struct gen_device_info *devinfo,
 }
 
 static void
-iris_set_gs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
+iris_store_gs_state(const struct gen_device_info *devinfo,
+                    struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
@@ -1916,8 +1928,8 @@ iris_set_gs_state(const struct gen_device_info *devinfo,
 }
 
 static void
-iris_set_fs_state(const struct gen_device_info *devinfo,
-                  struct iris_compiled_shader *shader)
+iris_store_fs_state(const struct gen_device_info *devinfo,
+                    struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_wm_prog_data *wm_prog_data = (void *) shader->prog_data;
@@ -2016,25 +2028,25 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
 }
 
 static void
-iris_set_derived_program_state(const struct gen_device_info *devinfo,
-                               enum iris_program_cache_id cache_id,
-                               struct iris_compiled_shader *shader)
+iris_store_derived_program_state(const struct gen_device_info *devinfo,
+                                 enum iris_program_cache_id cache_id,
+                                 struct iris_compiled_shader *shader)
 {
    switch (cache_id) {
    case IRIS_CACHE_VS:
-      iris_set_vs_state(devinfo, shader);
+      iris_store_vs_state(devinfo, shader);
       break;
    case IRIS_CACHE_TCS:
-      iris_set_tcs_state(devinfo, shader);
+      iris_store_tcs_state(devinfo, shader);
       break;
    case IRIS_CACHE_TES:
-      iris_set_tes_state(devinfo, shader);
+      iris_store_tes_state(devinfo, shader);
       break;
    case IRIS_CACHE_GS:
-      iris_set_gs_state(devinfo, shader);
+      iris_store_gs_state(devinfo, shader);
       break;
    case IRIS_CACHE_FS:
-      iris_set_fs_state(devinfo, shader);
+      iris_store_fs_state(devinfo, shader);
       break;
    case IRIS_CACHE_CS:
    case IRIS_CACHE_BLORP:
@@ -2413,7 +2425,8 @@ iris_upload_render_state(struct iris_context *ice,
 
    }
 
-   if (dirty & (IRIS_DIRTY_RASTER | IRIS_DIRTY_FS)) {
+   /* XXX: FS program updates needs to flag IRIS_DIRTY_WM */
+   if (dirty & IRIS_DIRTY_WM) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       uint32_t dynamic_wm[GENX(3DSTATE_WM_length)];
 
@@ -3048,7 +3061,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.upload_render_state = iris_upload_render_state;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
    ice->vtbl.derived_program_state_size = iris_derived_program_state_size;
-   ice->vtbl.set_derived_program_state = iris_set_derived_program_state;
+   ice->vtbl.store_derived_program_state = iris_store_derived_program_state;
    ice->vtbl.populate_vs_key = iris_populate_vs_key;
    ice->vtbl.populate_tcs_key = iris_populate_tcs_key;
    ice->vtbl.populate_tes_key = iris_populate_tes_key;

@@ -236,7 +236,7 @@ iris_upload_shader(struct iris_context *ice,
    ralloc_steal(shader->prog_data, prog_data->pull_param);
 
    /* Store the 3DSTATE shader packets and other derived state. */
-   ice->vtbl.set_derived_program_state(devinfo, cache_id, shader);
+   ice->vtbl.store_derived_program_state(devinfo, cache_id, shader);
 
    struct keybox *keybox = make_keybox(cache, cache_id, key, key_size);
    _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);

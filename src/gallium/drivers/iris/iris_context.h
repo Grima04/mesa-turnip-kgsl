@@ -85,6 +85,7 @@ struct blorp_params;
 #define IRIS_DIRTY_CONSTANTS_GS             (1ull << 38)
 #define IRIS_DIRTY_CONSTANTS_FS             (1ull << 39)
 #define IRIS_DIRTY_DEPTH_BUFFER             (1ull << 40)
+#define IRIS_DIRTY_WM                       (1ull << 41)
 
 struct iris_depth_stencil_alpha_state;
 
@@ -197,9 +198,9 @@ struct iris_vtable {
                                  uint64_t imm);
 
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
-   void (*set_derived_program_state)(const struct gen_device_info *devinfo,
-                                     enum iris_program_cache_id cache_id,
-                                     struct iris_compiled_shader *shader);
+   void (*store_derived_program_state)(const struct gen_device_info *devinfo,
+                                       enum iris_program_cache_id cache_id,
+                                       struct iris_compiled_shader *shader);
    void (*populate_vs_key)(const struct iris_context *ice,
                            struct brw_vs_prog_key *key);
    void (*populate_tcs_key)(const struct iris_context *ice,
