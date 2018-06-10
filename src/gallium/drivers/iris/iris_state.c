@@ -2522,15 +2522,23 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (draw->index_size > 0) {
-      struct iris_resource *res = (struct iris_resource *)draw->index.resource;
+      struct iris_resource *res = NULL;
+      unsigned offset;
 
-      assert(!draw->has_user_indices);
+      if (draw->has_user_indices) {
+         u_upload_data(ice->ctx.stream_uploader, 0,
+                       draw->count * draw->index_size, 4, draw->index.user,
+                       &offset, (struct pipe_resource **) &res);
+      } else {
+         res = (struct iris_resource *) draw->index.resource;
+         offset = 0;
+      }
 
       iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
          ib.IndexFormat = draw->index_size >> 1;
          ib.MOCS = MOCS_WB;
          ib.BufferSize = res->bo->size;
-         ib.BufferStartingAddress = ro_bo(res->bo, 0);
+         ib.BufferStartingAddress = ro_bo(res->bo, offset);
       }
    }
 
