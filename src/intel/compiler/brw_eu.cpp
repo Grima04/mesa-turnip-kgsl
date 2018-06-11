@@ -463,269 +463,89 @@ enum gen {
 #define GEN_GE(gen) (~GEN_LT(gen))
 #define GEN_LE(gen) (GEN_LT(gen) | (gen))
 
-static const struct opcode_desc opcode_10_descs[] = {
-   { .name = "dim",   .nsrc = 1, .ndst = 1, .gens = GEN75 },
-   { .name = "smov",  .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN8) },
-};
-
-static const struct opcode_desc opcode_35_descs[] = {
-   { .name = "iff",   .nsrc = 0, .ndst = 0, .gens = GEN_LE(GEN5) },
-   { .name = "brc",   .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN7) },
-};
-
-static const struct opcode_desc opcode_38_descs[] = {
-   { .name = "do",    .nsrc = 0, .ndst = 0, .gens = GEN_LE(GEN5) },
-   { .name = "case",  .nsrc = 0, .ndst = 0, .gens = GEN6 },
-};
-
-static const struct opcode_desc opcode_44_descs[] = {
-   { .name = "msave", .nsrc = 0, .ndst = 0, .gens = GEN_LE(GEN5) },
-   { .name = "call",  .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN6) },
-};
-
-static const struct opcode_desc opcode_45_descs[] = {
-   { .name = "mrest", .nsrc = 0, .ndst = 0, .gens = GEN_LE(GEN5) },
-   { .name = "ret",   .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN6) },
-};
-
-static const struct opcode_desc opcode_46_descs[] = {
-   { .name = "push",  .nsrc = 0, .ndst = 0, .gens = GEN_LE(GEN5) },
-   { .name = "fork",  .nsrc = 0, .ndst = 0, .gens = GEN6 },
-   { .name = "goto",  .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN8) },
-};
-
-static const struct opcode_desc opcode_descs[128] = {
-   [BRW_OPCODE_ILLEGAL] = {
-      .name = "illegal", .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_MOV] = {
-      .name = "mov",     .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SEL] = {
-      .name = "sel",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_MOVI] = {
-      .name = "movi",    .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN45),
-   },
-   [BRW_OPCODE_NOT] = {
-      .name = "not",     .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_AND] = {
-      .name = "and",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_OR] = {
-      .name = "or",      .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_XOR] = {
-      .name = "xor",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SHR] = {
-      .name = "shr",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SHL] = {
-      .name = "shl",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [10] = {
-      .table = opcode_10_descs, .size = ARRAY_SIZE(opcode_10_descs),
-   },
-   /* Reserved - 11 */
-   [BRW_OPCODE_ASR] = {
-      .name = "asr",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   /* Reserved - 13 */
-   [BRW_OPCODE_ROR] = {
-      .name = "ror",     .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN11),
-   },
-   [BRW_OPCODE_ROL] = {
-      .name = "rol",     .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN11),
-   },
-   [BRW_OPCODE_CMP] = {
-      .name = "cmp",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_CMPN] = {
-      .name = "cmpn",    .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_CSEL] = {
-      .name = "csel",    .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN8),
-   },
-   [BRW_OPCODE_F32TO16] = {
-      .name = "f32to16", .nsrc = 1, .ndst = 1, .gens = GEN7 | GEN75,
-   },
-   [BRW_OPCODE_F16TO32] = {
-      .name = "f16to32", .nsrc = 1, .ndst = 1, .gens = GEN7 | GEN75,
-   },
-   /* Reserved - 21-22 */
-   [BRW_OPCODE_BFREV] = {
-      .name = "bfrev",   .nsrc = 1, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_BFE] = {
-      .name = "bfe",     .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_BFI1] = {
-      .name = "bfi1",    .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_BFI2] = {
-      .name = "bfi2",    .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   /* Reserved - 27-31 */
-   [BRW_OPCODE_JMPI] = {
-      .name = "jmpi",    .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [33] = {
-      .name = "brd",     .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_IF] = {
-      .name = "if",      .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [35] = {
-      .table = opcode_35_descs, .size = ARRAY_SIZE(opcode_35_descs),
-   },
-   [BRW_OPCODE_ELSE] = {
-      .name = "else",    .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_ENDIF] = {
-      .name = "endif",   .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [38] = {
-      .table = opcode_38_descs, .size = ARRAY_SIZE(opcode_38_descs),
-   },
-   [BRW_OPCODE_WHILE] = {
-      .name = "while",   .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_BREAK] = {
-      .name = "break",   .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_CONTINUE] = {
-      .name = "cont",    .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_HALT] = {
-      .name = "halt",    .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
-   [43] = {
-      .name = "calla",   .nsrc = 0, .ndst = 0, .gens = GEN_GE(GEN75),
-   },
-   [44] = {
-      .table = opcode_44_descs, .size = ARRAY_SIZE(opcode_44_descs),
-   },
-   [45] = {
-      .table = opcode_45_descs, .size = ARRAY_SIZE(opcode_45_descs),
-   },
-   [46] = {
-      .table = opcode_46_descs, .size = ARRAY_SIZE(opcode_46_descs),
-   },
-   [47] = {
-      .name = "pop",     .nsrc = 2, .ndst = 0, .gens = GEN_LE(GEN5),
-   },
-   [BRW_OPCODE_WAIT] = {
-      .name = "wait",    .nsrc = 1, .ndst = 0, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SEND] = {
-      .name = "send",    .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SENDC] = {
-      .name = "sendc",   .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SENDS] = {
-      .name = "sends",   .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN9),
-   },
-   [BRW_OPCODE_SENDSC] = {
-      .name = "sendsc",  .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN9),
-   },
-   /* Reserved 53-55 */
-   [BRW_OPCODE_MATH] = {
-      .name = "math",    .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN6),
-   },
-   /* Reserved 57-63 */
-   [BRW_OPCODE_ADD] = {
-      .name = "add",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_MUL] = {
-      .name = "mul",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_AVG] = {
-      .name = "avg",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_FRC] = {
-      .name = "frc",     .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_RNDU] = {
-      .name = "rndu",    .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_RNDD] = {
-      .name = "rndd",    .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_RNDE] = {
-      .name = "rnde",    .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_RNDZ] = {
-      .name = "rndz",    .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_MAC] = {
-      .name = "mac",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_MACH] = {
-      .name = "mach",    .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_LZD] = {
-      .name = "lzd",     .nsrc = 1, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_FBH] = {
-      .name = "fbh",     .nsrc = 1, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_FBL] = {
-      .name = "fbl",     .nsrc = 1, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_CBIT] = {
-      .name = "cbit",    .nsrc = 1, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_ADDC] = {
-      .name = "addc",    .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_SUBB] = {
-      .name = "subb",    .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN7),
-   },
-   [BRW_OPCODE_SAD2] = {
-      .name = "sad2",    .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_SADA2] = {
-      .name = "sada2",   .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   /* Reserved 82-83 */
-   [BRW_OPCODE_DP4] = {
-      .name = "dp4",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_DPH] = {
-      .name = "dph",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_DP3] = {
-      .name = "dp3",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   [BRW_OPCODE_DP2] = {
-      .name = "dp2",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
-   },
-   /* Reserved 88 */
-   [BRW_OPCODE_LINE] = {
-      .name = "line",    .nsrc = 2, .ndst = 1, .gens = GEN_LE(GEN10),
-   },
-   [BRW_OPCODE_PLN] = {
-      .name = "pln",     .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN45) & GEN_LE(GEN10),
-   },
-   [BRW_OPCODE_MAD] = {
-      .name = "mad",     .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN6),
-   },
-   [BRW_OPCODE_LRP] = {
-      .name = "lrp",     .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN6) & GEN_LE(GEN10),
-   },
-   [93] = {
-      .name = "madm",    .nsrc = 3, .ndst = 1, .gens = GEN_GE(GEN8),
-   },
-   /* Reserved 94-124 */
-   [BRW_OPCODE_NENOP] = {
-      .name = "nenop",   .nsrc = 0, .ndst = 0, .gens = GEN45,
-   },
-   [BRW_OPCODE_NOP] = {
-      .name = "nop",     .nsrc = 0, .ndst = 0, .gens = GEN_ALL,
-   },
+static const struct opcode_desc opcode_descs[] = {
+   /* IR,                 HW,  name,      nsrc, ndst, gens */
+   { BRW_OPCODE_ILLEGAL,  0,   "illegal", 0,    0,    GEN_ALL },
+   { BRW_OPCODE_MOV,      1,   "mov",     1,    1,    GEN_ALL },
+   { BRW_OPCODE_SEL,      2,   "sel",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_MOVI,     3,   "movi",    2,    1,    GEN_GE(GEN45) },
+   { BRW_OPCODE_NOT,      4,   "not",     1,    1,    GEN_ALL },
+   { BRW_OPCODE_AND,      5,   "and",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_OR,       6,   "or",      2,    1,    GEN_ALL },
+   { BRW_OPCODE_XOR,      7,   "xor",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_SHR,      8,   "shr",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_SHL,      9,   "shl",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_DIM,      10,  "dim",     1,    1,    GEN75 },
+   { BRW_OPCODE_SMOV,     10,  "smov",    0,    0,    GEN_GE(GEN8) },
+   { BRW_OPCODE_ASR,      12,  "asr",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_ROR,      14,  "ror",     2,    1,    GEN_GE(GEN11) },
+   { BRW_OPCODE_ROL,      15,  "rol",     2,    1,    GEN_GE(GEN11) },
+   { BRW_OPCODE_CMP,      16,  "cmp",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_CMPN,     17,  "cmpn",    2,    1,    GEN_ALL },
+   { BRW_OPCODE_CSEL,     18,  "csel",    3,    1,    GEN_GE(GEN8) },
+   { BRW_OPCODE_F32TO16,  19,  "f32to16", 1,    1,    GEN7 | GEN75 },
+   { BRW_OPCODE_F16TO32,  20,  "f16to32", 1,    1,    GEN7 | GEN75 },
+   { BRW_OPCODE_BFREV,    23,  "bfrev",   1,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_BFE,      24,  "bfe",     3,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_BFI1,     25,  "bfi1",    2,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_BFI2,     26,  "bfi2",    3,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_JMPI,     32,  "jmpi",    0,    0,    GEN_ALL },
+   { BRW_OPCODE_BRD,      33,  "brd",     0,    0,    GEN_GE(GEN7) },
+   { BRW_OPCODE_IF,       34,  "if",      0,    0,    GEN_ALL },
+   { BRW_OPCODE_IFF,      35,  "iff",     0,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_BRC,      35,  "brc",     0,    0,    GEN_GE(GEN7) },
+   { BRW_OPCODE_ELSE,     36,  "else",    0,    0,    GEN_ALL },
+   { BRW_OPCODE_ENDIF,    37,  "endif",   0,    0,    GEN_ALL },
+   { BRW_OPCODE_DO,       38,  "do",      0,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_CASE,     38,  "case",    0,    0,    GEN6 },
+   { BRW_OPCODE_WHILE,    39,  "while",   0,    0,    GEN_ALL },
+   { BRW_OPCODE_BREAK,    40,  "break",   0,    0,    GEN_ALL },
+   { BRW_OPCODE_CONTINUE, 41,  "cont",    0,    0,    GEN_ALL },
+   { BRW_OPCODE_HALT,     42,  "halt",    0,    0,    GEN_ALL },
+   { BRW_OPCODE_CALLA,    43,  "calla",   0,    0,    GEN_GE(GEN75) },
+   { BRW_OPCODE_MSAVE,    44,  "msave",   0,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_CALL,     44,  "call",    0,    0,    GEN_GE(GEN6) },
+   { BRW_OPCODE_MREST,    45,  "mrest",   0,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_RET,      45,  "ret",     0,    0,    GEN_GE(GEN6) },
+   { BRW_OPCODE_PUSH,     46,  "push",    0,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_FORK,     46,  "fork",    0,    0,    GEN6 },
+   { BRW_OPCODE_GOTO,     46,  "goto",    0,    0,    GEN_GE(GEN8) },
+   { BRW_OPCODE_POP,      47,  "pop",     2,    0,    GEN_LE(GEN5) },
+   { BRW_OPCODE_WAIT,     48,  "wait",    1,    0,    GEN_ALL },
+   { BRW_OPCODE_SEND,     49,  "send",    1,    1,    GEN_ALL },
+   { BRW_OPCODE_SENDC,    50,  "sendc",   1,    1,    GEN_ALL },
+   { BRW_OPCODE_SENDS,    51,  "sends",   2,    1,    GEN_GE(GEN9) },
+   { BRW_OPCODE_SENDSC,   52,  "sendsc",  2,    1,    GEN_GE(GEN9) },
+   { BRW_OPCODE_MATH,     56,  "math",    2,    1,    GEN_GE(GEN6) },
+   { BRW_OPCODE_ADD,      64,  "add",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_MUL,      65,  "mul",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_AVG,      66,  "avg",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_FRC,      67,  "frc",     1,    1,    GEN_ALL },
+   { BRW_OPCODE_RNDU,     68,  "rndu",    1,    1,    GEN_ALL },
+   { BRW_OPCODE_RNDD,     69,  "rndd",    1,    1,    GEN_ALL },
+   { BRW_OPCODE_RNDE,     70,  "rnde",    1,    1,    GEN_ALL },
+   { BRW_OPCODE_RNDZ,     71,  "rndz",    1,    1,    GEN_ALL },
+   { BRW_OPCODE_MAC,      72,  "mac",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_MACH,     73,  "mach",    2,    1,    GEN_ALL },
+   { BRW_OPCODE_LZD,      74,  "lzd",     1,    1,    GEN_ALL },
+   { BRW_OPCODE_FBH,      75,  "fbh",     1,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_FBL,      76,  "fbl",     1,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_CBIT,     77,  "cbit",    1,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_ADDC,     78,  "addc",    2,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_SUBB,     79,  "subb",    2,    1,    GEN_GE(GEN7) },
+   { BRW_OPCODE_SAD2,     80,  "sad2",    2,    1,    GEN_ALL },
+   { BRW_OPCODE_SADA2,    81,  "sada2",   2,    1,    GEN_ALL },
+   { BRW_OPCODE_DP4,      84,  "dp4",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_DPH,      85,  "dph",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_DP3,      86,  "dp3",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_DP2,      87,  "dp2",     2,    1,    GEN_ALL },
+   { BRW_OPCODE_LINE,     89,  "line",    2,    1,    GEN_LE(GEN10) },
+   { BRW_OPCODE_PLN,      90,  "pln",     2,    1,    GEN_GE(GEN45) & GEN_LE(GEN10) },
+   { BRW_OPCODE_MAD,      91,  "mad",     3,    1,    GEN_GE(GEN6) },
+   { BRW_OPCODE_LRP,      92,  "lrp",     3,    1,    GEN_GE(GEN6) & GEN_LE(GEN10) },
+   { BRW_OPCODE_MADM,     93,  "madm",    3,    1,    GEN_GE(GEN8) },
+   { BRW_OPCODE_NENOP,    125, "nenop",   0,    0,    GEN45 },
+   { BRW_OPCODE_NOP,      126, "nop",     0,    0,    GEN_ALL },
 };
 
 static enum gen
@@ -745,27 +565,66 @@ gen_from_devinfo(const struct gen_device_info *devinfo)
    }
 }
 
-/* Return the matching opcode_desc for the specified opcode number and
- * hardware generation, or NULL if the opcode is not supported by the device.
+/**
+ * Look up the opcode_descs[] entry with \p key member matching \p k which is
+ * supported by the device specified by \p devinfo, or NULL if there is no
+ * matching entry.
+ *
+ * This is implemented by using an index data structure (storage for which is
+ * provided by the caller as \p index_gen and \p index_descs) in order to
+ * provide efficient constant-time look-up.
+ */
+static const opcode_desc *
+lookup_opcode_desc(gen *index_gen,
+                   const opcode_desc **index_descs,
+                   unsigned index_size,
+                   unsigned opcode_desc::*key,
+                   const gen_device_info *devinfo,
+                   unsigned k)
+{
+   if (*index_gen != gen_from_devinfo(devinfo)) {
+      *index_gen = gen_from_devinfo(devinfo);
+
+      for (unsigned l = 0; l < index_size; l++)
+         index_descs[l] = NULL;
+
+      for (unsigned i = 0; i < ARRAY_SIZE(opcode_descs); i++) {
+         if (opcode_descs[i].gens & *index_gen) {
+            const unsigned l = opcode_descs[i].*key;
+            assert(l < index_size && !index_descs[l]);
+            index_descs[l] = &opcode_descs[i];
+         }
+      }
+   }
+
+   if (k < index_size)
+      return index_descs[k];
+   else
+      return NULL;
+}
+
+/**
+ * Return the matching opcode_desc for the specified IR opcode and hardware
+ * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
 brw_opcode_desc(const struct gen_device_info *devinfo, enum opcode opcode)
 {
-   if (opcode >= ARRAY_SIZE(opcode_descs))
-      return NULL;
+   static __thread gen index_gen = {};
+   static __thread const opcode_desc *index_descs[NUM_BRW_OPCODES];
+   return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
+                             &opcode_desc::ir, devinfo, opcode);
+}
 
-   enum gen gen = gen_from_devinfo(devinfo);
-   if (opcode_descs[opcode].gens != 0) {
-      if ((opcode_descs[opcode].gens & gen) != 0) {
-         return &opcode_descs[opcode];
-      }
-   } else if (opcode_descs[opcode].table != NULL) {
-      const struct opcode_desc *table = opcode_descs[opcode].table;
-      for (unsigned i = 0; i < opcode_descs[opcode].size; i++) {
-         if ((table[i].gens & gen) != 0) {
-            return &table[i];
-         }
-      }
-   }
-   return NULL;
+/**
+ * Return the matching opcode_desc for the specified HW opcode and hardware
+ * generation, or NULL if the opcode is not supported by the device.
+ */
+const struct opcode_desc *
+brw_opcode_desc_from_hw(const struct gen_device_info *devinfo, unsigned hw)
+{
+   static __thread gen index_gen = {};
+   static __thread const opcode_desc *index_descs[128];
+   return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
+                             &opcode_desc::hw, devinfo, hw);
 }

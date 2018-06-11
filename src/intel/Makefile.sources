@@ -43,7 +43,7 @@ COMPILER_FILES = \
 	compiler/brw_disasm.c \
 	compiler/brw_disasm_info.c \
 	compiler/brw_disasm_info.h \
-	compiler/brw_eu.c \
+	compiler/brw_eu.cpp \
 	compiler/brw_eu_compact.c \
 	compiler/brw_eu_defines.h \
 	compiler/brw_eu_emit.c \

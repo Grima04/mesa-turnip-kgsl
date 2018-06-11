@@ -37,7 +37,7 @@ libintel_compiler_files = files(
   'brw_disasm.c',
   'brw_disasm_info.c',
   'brw_disasm_info.h',
-  'brw_eu.c',
+  'brw_eu.cpp',
   'brw_eu_compact.c',
   'brw_eu_defines.h',
   'brw_eu_emit.c',

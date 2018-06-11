@@ -288,10 +288,12 @@ enum opcode {
    BRW_OPCODE_NOP =	126,
    /* Reserved 127 */
 
+   NUM_BRW_OPCODES = 128,
+
    /* These are compiler backend opcodes that get translated into other
     * instructions.
     */
-   FS_OPCODE_FB_WRITE = 128,
+   FS_OPCODE_FB_WRITE = NUM_BRW_OPCODES,
 
    /**
     * Same as FS_OPCODE_FB_WRITE but expects its arguments separately as
