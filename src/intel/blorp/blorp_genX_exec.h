@@ -1252,6 +1252,12 @@ blorp_emit_pipeline(struct blorp_batch *batch,
    (void)depth_stencil_state_offset;
 #endif
 
+#if GEN_GEN >= 12
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_ALL), pc) {
+      /* Update empty push constants for all stages (bitmask = 11111b) */
+      pc.ShaderUpdateEnable = 0x1f;
+   }
+#else
    blorp_emit(batch, GENX(3DSTATE_CONSTANT_VS), vs);
 #if GEN_GEN >= 7
    blorp_emit(batch, GENX(3DSTATE_CONSTANT_HS), hs);
@@ -1259,6 +1265,7 @@ blorp_emit_pipeline(struct blorp_batch *batch,
 #endif
    blorp_emit(batch, GENX(3DSTATE_CONSTANT_GS), gs);
    blorp_emit(batch, GENX(3DSTATE_CONSTANT_PS), ps);
+#endif
 
    if (params->src.enabled)
       blorp_emit_sampler_state(batch);
