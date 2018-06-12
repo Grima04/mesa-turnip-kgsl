@@ -203,6 +203,16 @@ _mesa_spirv_link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
          }
       }
    }
+
+   /* Compute shaders have additional restrictions. */
+   if ((prog->data->linked_stages & (1 << MESA_SHADER_COMPUTE)) &&
+       (prog->data->linked_stages & ~(1 << MESA_SHADER_COMPUTE))) {
+      ralloc_asprintf_append(&prog->data->InfoLog,
+                             "Compute shaders may not be linked with any other "
+                             "type of shader\n");
+      prog->data->LinkStatus = LINKING_FAILURE;
+      return;
+   }
 }
 
 nir_shader *
