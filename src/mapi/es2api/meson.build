@@ -28,7 +28,7 @@ es2_glapi_mapi_tmp_h = custom_target(
 )
 
 libgles2 = shared_library(
-  'GLESv2',
+  'GLESv2' + get_option('gles-lib-suffix'),
   ['../entry.c', es2_glapi_mapi_tmp_h],
   c_args : [
     c_msvc_compat_args, c_vis_args, '-DMAPI_MODE_BRIDGE',

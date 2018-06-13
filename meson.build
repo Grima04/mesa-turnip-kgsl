@@ -375,6 +375,9 @@ if with_glvnd
   elif with_glx == 'disabled' and not with_egl
     error('glvnd requires DRI based GLX and/or EGL')
   endif
+  if get_option('egl-lib-suffix') != ''
+    error('''EGL lib suffix can't be used with libglvnd''')
+  endif
 endif
 
 if with_vulkan_icd_dir == ''

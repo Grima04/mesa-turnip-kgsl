@@ -143,7 +143,7 @@ if cc.has_function('mincore')
 endif
 
 if not with_glvnd
-  egl_lib_name = 'EGL'
+  egl_lib_name = 'EGL' + get_option('egl-lib-suffix')
   egl_lib_version = '1.0.0'
 else
   egl_lib_name = 'EGL_mesa'

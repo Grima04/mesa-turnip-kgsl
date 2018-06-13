@@ -190,12 +190,12 @@ libEGL_mesa_la_LDFLAGS = \
 
 else # USE_LIBGLVND
 
-lib_LTLIBRARIES = libEGL.la
-libEGL_la_SOURCES =
-libEGL_la_LIBADD = \
+lib_LTLIBRARIES = libEGL@EGL_LIB_SUFFIX@.la
+libEGL@EGL_LIB_SUFFIX@_la_SOURCES =
+libEGL@EGL_LIB_SUFFIX@_la_LIBADD = \
 	libEGL_common.la \
 	$(top_builddir)/src/mapi/shared-glapi/libglapi.la
-libEGL_la_LDFLAGS = \
+libEGL@EGL_LIB_SUFFIX@_la_LDFLAGS = \
 	-no-undefined \
 	-version-number 1:0 \
 	$(BSYMBOLIC) \

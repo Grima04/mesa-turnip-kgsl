@@ -336,3 +336,14 @@ option(
   value : false,
   description : 'Allow work-in-progress freedreno vulkan driver to be enabled',
 )
+option('egl-lib-suffix',
+  type : 'string',
+  value : '',
+  description : 'Suffix to append to EGL library name.  Default: none.'
+)
+option(
+  'gles-lib-suffix',
+  type : 'string',
+  value : '',
+  description : 'Suffix to append to GLES library names.  Default: none.'
+)
