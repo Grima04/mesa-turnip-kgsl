@@ -174,6 +174,24 @@ dri2_wl_visual_idx_from_shm_format(uint32_t shm_format)
    return -1;
 }
 
+bool
+dri2_wl_is_format_supported(void* user_data, uint32_t format)
+{
+   _EGLDisplay *disp = (_EGLDisplay *) user_data;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   int j = dri2_wl_visual_idx_from_fourcc(format);
+
+   if (j == -1)
+      return false;
+
+   for (int i = 0; dri2_dpy->driver_configs[i]; i++)
+      if (j == dri2_wl_visual_idx_from_config(dri2_dpy,
+                                              dri2_dpy->driver_configs[i]))
+         return true;
+
+   return false;
+}
+
 static int
 roundtrip(struct dri2_egl_display *dri2_dpy)
 {
