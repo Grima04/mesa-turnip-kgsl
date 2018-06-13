@@ -586,6 +586,49 @@ decode_ps_kernels(struct gen_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
+decode_3dstate_constant_all(struct gen_batch_decode_ctx *ctx, const uint32_t *p)
+{
+   struct gen_group *inst =
+      gen_spec_find_instruction(ctx->spec, ctx->engine, p);
+   struct gen_group *body =
+      gen_spec_find_struct(ctx->spec, "3DSTATE_CONSTANT_ALL_DATA");
+
+   uint32_t read_length[4];
+   struct gen_batch_decode_bo buffer[4];
+   memset(buffer, 0, sizeof(buffer));
+
+   struct gen_field_iterator outer;
+   gen_field_iterator_init(&outer, inst, p, 0, false);
+   int idx = 0;
+   while (gen_field_iterator_next(&outer)) {
+      if (outer.struct_desc != body)
+         continue;
+
+      struct gen_field_iterator iter;
+      gen_field_iterator_init(&iter, body, &outer.p[outer.start_bit / 32],
+                              0, false);
+      while (gen_field_iterator_next(&iter)) {
+         if (!strcmp(iter.name, "Pointer To Constant Buffer")) {
+            buffer[idx] = ctx_get_bo(ctx, true, iter.raw_value);
+         } else if (!strcmp(iter.name, "Constant Buffer Read Length")) {
+            read_length[idx] = iter.raw_value;
+         }
+      }
+      idx++;
+   }
+
+   for (int i = 0; i < 4; i++) {
+      if (read_length[i] == 0 || buffer[i].map == NULL)
+         continue;
+
+      unsigned size = read_length[i] * 32;
+      fprintf(ctx->fp, "constant buffer %d, size %u\n", i, size);
+
+      ctx_print_buffer(ctx, buffer[i], size, 0, -1);
+   }
+}
+
+static void
 decode_3dstate_constant(struct gen_batch_decode_ctx *ctx, const uint32_t *p)
 {
    struct gen_group *inst = gen_ctx_find_instruction(ctx, p);
@@ -806,6 +849,7 @@ struct custom_decoder {
    { "3DSTATE_CONSTANT_PS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_HS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_DS", decode_3dstate_constant },
+   { "3DSTATE_CONSTANT_ALL", decode_3dstate_constant_all },
 
    { "3DSTATE_BINDING_TABLE_POINTERS", decode_gen6_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_VS", decode_3dstate_binding_table_pointers },
