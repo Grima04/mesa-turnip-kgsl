@@ -2354,6 +2354,10 @@ iris_upload_render_state(struct iris_context *ice,
           !ice->shaders.prog[stage])
          continue;
 
+      struct pipe_resource *res = ice->state.sampler_table_resource[stage];
+      if (res)
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
+
       iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
          ptr._3DCommandSubOpcode = 43 + stage;
          ptr.PointertoVSSamplerState = ice->state.sampler_table_offset[stage];
