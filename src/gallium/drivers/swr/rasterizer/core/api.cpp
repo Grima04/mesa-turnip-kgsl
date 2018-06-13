@@ -740,8 +740,6 @@ void SwrSetViewports(HANDLE                       hContext,
     memcpy(&pState->vp[0], pViewports, sizeof(SWR_VIEWPORT) * numViewports);
     // @todo Faster to copy portions of the SOA or just copy all of it?
     memcpy(&pState->vpMatrices, pMatrices, sizeof(SWR_VIEWPORT_MATRICES));
-
-    updateGuardbands(pState);
 }
 
 void SwrSetScissorRects(HANDLE hContext, uint32_t numScissors, const SWR_RECT* pScissors)
@@ -1050,6 +1048,9 @@ void SetupPipeline(DRAW_CONTEXT* pDC)
         // set up pass-through quantize if depth isn't enabled
         pState->state.pfnQuantizeDepth = QuantizeDepth<R32_FLOAT>;
     }
+
+    // Generate guardbands
+    updateGuardbands(&pState->state);
 }
 
 //////////////////////////////////////////////////////////////////////////
