@@ -91,6 +91,9 @@ struct iris_batch {
    // XXX: unused
    struct hash_table *state_sizes;
    struct gen_batch_decode_ctx decoder;
+
+   /** Have we emitted any draw calls to this batch? */
+   bool contains_draw;
 };
 
 void iris_init_batch(struct iris_batch *batch,

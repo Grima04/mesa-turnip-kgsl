@@ -2201,6 +2201,126 @@ iris_populate_binding_table(struct iris_context *ice,
 }
 
 static void
+iris_use_optional_res(struct iris_batch *batch,
+                      struct pipe_resource *res,
+                      bool writeable)
+{
+   if (res) {
+      struct iris_bo *bo = iris_resource_bo(res);
+      iris_use_pinned_bo(batch, bo, writeable);
+   }
+}
+
+
+/**
+ * Pin any BOs which were installed by a previous batch, and restored
+ * via the hardware logical context mechanism.
+ *
+ * We don't need to re-emit all state every batch - the hardware context
+ * mechanism will save and restore it for us.  This includes pointers to
+ * various BOs...which won't exist unless we ask the kernel to pin them
+ * by adding them to the validation list.
+ *
+ * We can skip buffers if we've re-emitted those packets, as we're
+ * overwriting those stale pointers with new ones, and don't actually
+ * refer to the old BOs.
+ */
+static void
+iris_restore_context_saved_bos(struct iris_context *ice,
+                               struct iris_batch *batch,
+                               const struct pipe_draw_info *draw)
+{
+   // XXX: whack IRIS_SHADER_DIRTY_BINDING_TABLE on new batch
+
+   const uint64_t clean =
+      unlikely(INTEL_DEBUG & DEBUG_REEMIT) ? 0ull : ~ice->state.dirty;
+
+   if (clean & IRIS_DIRTY_CC_VIEWPORT) {
+      iris_use_optional_res(batch, ice->state.last_res.cc_vp, false);
+   }
+
+   if (clean & IRIS_DIRTY_SF_CL_VIEWPORT) {
+      iris_use_optional_res(batch, ice->state.last_res.sf_cl_vp, false);
+   }
+
+   if (clean & IRIS_DIRTY_BLEND_STATE) {
+      iris_use_optional_res(batch, ice->state.last_res.blend, false);
+   }
+
+   if (clean & IRIS_DIRTY_COLOR_CALC_STATE) {
+      iris_use_optional_res(batch, ice->state.last_res.color_calc, false);
+   }
+
+   if (clean & IRIS_DIRTY_SCISSOR) {
+      iris_use_optional_res(batch, ice->state.last_res.scissor, false);
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (clean & (IRIS_DIRTY_CONSTANTS_VS << stage))
+         continue;
+
+      struct iris_shader_state *shs = &ice->shaders.state[stage];
+      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+
+      if (!shader)
+         continue;
+
+      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+
+      for (int i = 0; i < 4; i++) {
+         const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
+
+         if (range->length == 0)
+            continue;
+
+         struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
+         struct iris_resource *res = (void *) cbuf->resource;
+
+         iris_use_pinned_bo(batch, res->bo, false);
+      }
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      struct pipe_resource *res = ice->state.sampler_table_resource[stage];
+      if (res)
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (clean & (IRIS_DIRTY_VS << stage)) {
+         struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+         if (shader)
+            iris_use_pinned_bo(batch, iris_resource_bo(shader->buffer), false);
+
+         // XXX: scratch buffer
+      }
+   }
+
+   // XXX: 3DSTATE_SO_BUFFER
+
+   if (clean & IRIS_DIRTY_DEPTH_BUFFER) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+
+      if (cso_fb->zsbuf) {
+         struct iris_resource *zres = (void *) cso_fb->zsbuf->texture;
+         // XXX: depth might not be writable...
+         iris_use_pinned_bo(batch, zres->bo, true);
+      }
+   }
+
+   if (draw->index_size > 0) {
+      // XXX: index buffer
+   }
+
+   if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
+      struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
+      for (unsigned i = 0; i < cso->num_buffers; i++) {
+         iris_use_pinned_bo(batch, cso->bos[i], false);
+      }
+   }
+}
+
+static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
@@ -2605,6 +2725,11 @@ iris_upload_render_state(struct iris_context *ice,
       }
 
       //prim.BaseVertexLocation = ...;
+   }
+
+   if (!batch->contains_draw) {
+      iris_restore_context_saved_bos(ice, batch, draw);
+      batch->contains_draw = true;
    }
 }
 
