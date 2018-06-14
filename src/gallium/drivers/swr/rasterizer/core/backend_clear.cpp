@@ -38,28 +38,10 @@
 #include <algorithm>
 
 template <SWR_FORMAT format>
-void ClearRasterTile(uint8_t* pTileBuffer, simdvector& value)
-{
-    auto lambda = [&](int32_t comp) {
-        FormatTraits<format>::storeSOA(comp, pTileBuffer, value.v[comp]);
-
-        pTileBuffer += (KNOB_SIMD_WIDTH * FormatTraits<format>::GetBPC(comp) / 8);
-    };
-
-    const uint32_t numIter =
-        (KNOB_TILE_Y_DIM / SIMD_TILE_Y_DIM) * (KNOB_TILE_X_DIM / SIMD_TILE_X_DIM);
-
-    for (uint32_t i = 0; i < numIter; ++i)
-    {
-        UnrollerL<0, FormatTraits<format>::numComps, 1>::step(lambda);
-    }
-}
-
-#if USE_8x2_TILE_BACKEND
-template <SWR_FORMAT format>
 void ClearRasterTile(uint8_t* pTileBuffer, simd16vector& value)
 {
-    auto lambda = [&](int32_t comp) {
+    auto lambda = [&](int32_t comp)
+    {
         FormatTraits<format>::storeSOA(comp, pTileBuffer, value.v[comp]);
 
         pTileBuffer += (KNOB_SIMD16_WIDTH * FormatTraits<format>::GetBPC(comp) / 8);
@@ -74,7 +56,6 @@ void ClearRasterTile(uint8_t* pTileBuffer, simd16vector& value)
     }
 }
 
-#endif
 template <SWR_FORMAT format>
 INLINE void ClearMacroTile(DRAW_CONTEXT*               pDC,
                            HANDLE                      hWorkerPrivateData,
@@ -86,37 +67,22 @@ INLINE void ClearMacroTile(DRAW_CONTEXT*               pDC,
 {
     // convert clear color to hottile format
     // clear color is in RGBA float/uint32
-#if USE_8x2_TILE_BACKEND
+
     simd16vector vClear;
     for (uint32_t comp = 0; comp < FormatTraits<format>::numComps; ++comp)
     {
-        simd16scalar vComp;
-        vComp = _simd16_load1_ps((const float*)&clear[comp]);
+        simd16scalar vComp = _simd16_load1_ps((const float*)&clear[comp]);
+
         if (FormatTraits<format>::isNormalized(comp))
         {
             vComp = _simd16_mul_ps(vComp, _simd16_set1_ps(FormatTraits<format>::fromFloat(comp)));
             vComp = _simd16_castsi_ps(_simd16_cvtps_epi32(vComp));
         }
-        vComp                                         = FormatTraits<format>::pack(comp, vComp);
+        vComp = FormatTraits<format>::pack(comp, vComp);
+
         vClear.v[FormatTraits<format>::swizzle(comp)] = vComp;
     }
 
-#else
-    simdvector vClear;
-    for (uint32_t comp = 0; comp < FormatTraits<format>::numComps; ++comp)
-    {
-        simdscalar vComp;
-        vComp = _simd_load1_ps((const float*)&clear[comp]);
-        if (FormatTraits<format>::isNormalized(comp))
-        {
-            vComp = _simd_mul_ps(vComp, _simd_set1_ps(FormatTraits<format>::fromFloat(comp)));
-            vComp = _simd_castsi_ps(_simd_cvtps_epi32(vComp));
-        }
-        vComp                                         = FormatTraits<format>::pack(comp, vComp);
-        vClear.v[FormatTraits<format>::swizzle(comp)] = vComp;
-    }
-
-#endif
     uint32_t tileX, tileY;
     MacroTileMgr::getTileIndices(macroTile, tileX, tileY);
 

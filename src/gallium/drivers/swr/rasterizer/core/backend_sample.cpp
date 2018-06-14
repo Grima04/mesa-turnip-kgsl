@@ -81,9 +81,9 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
 
         for (uint32_t xx = x; xx < x + KNOB_TILE_X_DIM; xx += SIMD_TILE_X_DIM)
         {
-#if USE_8x2_TILE_BACKEND
             const bool useAlternateOffset = ((xx & SIMD_TILE_X_DIM) != 0);
-#endif
+
+
             if (T::InputCoverage != SWR_INPUT_COVERAGE_NONE)
             {
                 const uint64_t* pCoverageMask =
@@ -252,7 +252,7 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
 
                     // output merger
                     RDTSC_BEGIN(BEOutputMerger, pDC->drawId);
-#if USE_8x2_TILE_BACKEND
+
                     OutputMerger8x2(pDC,
                                     psContext,
                                     psContext.pColorBuffer,
@@ -264,18 +264,6 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
                                     state.psState.renderTargetMask,
                                     useAlternateOffset,
                                     workerId);
-#else
-                    OutputMerger4x2(pDC,
-                                    psContext,
-                                    psContext.pColorBuffer,
-                                    sample,
-                                    &state.blendState,
-                                    state.pfnBlendFunc,
-                                    vCoverageMask,
-                                    depthPassMask,
-                                    state.psState.renderTargetMask,
-                                    workerId);
-#endif
 
                     // do final depth write after all pixel kills
                     if (!state.psState.forceEarlyZ)
@@ -305,7 +293,6 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
                 work.innerCoverageMask >>= (SIMD_TILE_Y_DIM * SIMD_TILE_X_DIM);
             }
 
-#if USE_8x2_TILE_BACKEND
             if (useAlternateOffset)
             {
                 DWORD    rt;
@@ -317,16 +304,7 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
                         (2 * KNOB_SIMD_WIDTH * FormatTraits<KNOB_COLOR_HOT_TILE_FORMAT>::bpp) / 8;
                 }
             }
-#else
-            DWORD rt;
-            uint32_t rtMask = state.colorHottileEnable;
-            while (_BitScanForward(&rt, rtMask))
-            {
-                rtMask &= ~(1 << rt);
-                psContext.pColorBuffer[rt] +=
-                    (KNOB_SIMD_WIDTH * FormatTraits<KNOB_COLOR_HOT_TILE_FORMAT>::bpp) / 8;
-            }
-#endif
+
             pDepthBuffer += (KNOB_SIMD_WIDTH * FormatTraits<KNOB_DEPTH_HOT_TILE_FORMAT>::bpp) / 8;
             pStencilBuffer +=
                 (KNOB_SIMD_WIDTH * FormatTraits<KNOB_STENCIL_HOT_TILE_FORMAT>::bpp) / 8;
