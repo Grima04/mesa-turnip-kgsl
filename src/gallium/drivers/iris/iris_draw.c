@@ -60,5 +60,5 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    // XXX: ice->state.dirty = 0ull;
 
    // XXX: don't flush always
-   //iris_batch_flush(batch);
+   iris_batch_flush(batch);
 }
