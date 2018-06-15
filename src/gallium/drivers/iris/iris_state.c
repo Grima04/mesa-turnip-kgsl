@@ -725,6 +725,7 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 
    ice->state.cso_rast = new_cso;
    ice->state.dirty |= IRIS_DIRTY_RASTER;
+   ice->state.dirty |= IRIS_DIRTY_CLIP;
 }
 
 static uint32_t
@@ -1289,6 +1290,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    }
 
+   if ((cso->layers == 0) == (state->layers == 0)) {
+      ice->state.dirty |= IRIS_DIRTY_CLIP;
+   }
+
    util_copy_framebuffer_state(cso, state);
 
    struct iris_depth_buffer_state *cso_z =
@@ -1398,6 +1403,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       pipe_resource_reference(&cbuf->surface_state_resource, NULL);
    }
 
+   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
    // XXX: maybe not necessary all the time...?
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
 }
@@ -2255,7 +2261,7 @@ iris_restore_context_saved_bos(struct iris_context *ice,
       iris_use_optional_res(batch, ice->state.last_res.color_calc, false);
    }
 
-   if (clean & IRIS_DIRTY_SCISSOR) {
+   if (clean & IRIS_DIRTY_SCISSOR_RECT) {
       iris_use_optional_res(batch, ice->state.last_res.scissor, false);
    }
 
@@ -2358,6 +2364,7 @@ iris_upload_render_state(struct iris_context *ice,
 
    /* XXX: L3 State */
 
+   // XXX: this is only flagged at setup, we assume a static configuration
    if (dirty & IRIS_DIRTY_URB) {
       iris_upload_urb_config(ice, batch);
    }
@@ -2610,7 +2617,7 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
    }
 
-   if (dirty & IRIS_DIRTY_SCISSOR) {
+   if (dirty & IRIS_DIRTY_SCISSOR_RECT) {
       // XXX: allocate at set_scissor time?
       uint32_t scissor_offset = ice->state.num_scissors == 0 ? 0 :
          emit_state(batch, ice->state.dynamic_uploader,

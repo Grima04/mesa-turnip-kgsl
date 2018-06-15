@@ -98,9 +98,10 @@ dirty_flag_for_cache(enum iris_program_cache_id cache_id)
 {
    assert(cache_id <= MESA_SHADER_STAGES);
 
-   // XXX: ugly
+   // XXX: ugly...
+   // XXX: CLIP: toggle if barycentric modes has any NONPERSPECTIVE or not
    if (cache_id == IRIS_CACHE_FS)
-      return IRIS_DIRTY_WM | IRIS_DIRTY_FS;
+      return IRIS_DIRTY_WM | IRIS_DIRTY_FS | IRIS_DIRTY_CLIP;
 
    return IRIS_DIRTY_VS << cache_id;
 }
