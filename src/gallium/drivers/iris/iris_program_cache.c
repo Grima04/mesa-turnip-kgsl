@@ -97,6 +97,11 @@ static uint64_t
 dirty_flag_for_cache(enum iris_program_cache_id cache_id)
 {
    assert(cache_id <= MESA_SHADER_STAGES);
+
+   // XXX: ugly
+   if (cache_id == IRIS_CACHE_FS)
+      return IRIS_DIRTY_WM | IRIS_DIRTY_FS;
+
    return IRIS_DIRTY_VS << cache_id;
 }
 
