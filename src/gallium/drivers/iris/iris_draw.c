@@ -54,6 +54,15 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    // XXX: ^^^
 
    iris_update_compiled_shaders(ice);
+
+   if (iris_binder_is_empty(&batch->binder)) {
+      ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS |
+                          IRIS_DIRTY_BINDINGS_TCS |
+                          IRIS_DIRTY_BINDINGS_TES |
+                          IRIS_DIRTY_BINDINGS_GS |
+                          IRIS_DIRTY_BINDINGS_FS;
+   }
+
    iris_binder_reserve_3d(batch, ice->shaders.prog);
    ice->vtbl.upload_render_state(ice, batch, info);
 

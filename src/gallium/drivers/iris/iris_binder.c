@@ -90,13 +90,22 @@ iris_binder_reserve_3d(struct iris_batch *batch,
    }
 }
 
+/* Avoid using offset 0, tools consider it NULL */
+#define INIT_INSERT_POINT 64
+
 void
 iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
 {
    binder->bo =
       iris_bo_alloc(bufmgr, "binder", BINDER_SIZE, IRIS_MEMZONE_BINDER);
    binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
-   binder->insert_point = 64; // XXX: avoid null pointer, it confuses tools
+   binder->insert_point = INIT_INSERT_POINT;
+}
+
+bool
+iris_binder_is_empty(struct iris_binder *binder)
+{
+   return binder->insert_point <= INIT_INSERT_POINT;
 }
 
 void

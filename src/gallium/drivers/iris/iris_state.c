@@ -984,8 +984,6 @@ struct iris_surface {
    /** The resource (BO) holding our SURFACE_STATE. */
    struct pipe_resource *surface_state_resource;
    unsigned surface_state_offset;
-
-   // uint32_t surface_state[GENX(RENDER_SURFACE_STATE_length)];
 };
 
 static struct pipe_surface *
@@ -1079,7 +1077,7 @@ iris_set_sampler_views(struct pipe_context *ctx,
 
    ice->state.num_textures[stage] = count;
 
-   // XXX: ice->state.dirty |= (IRIS_DIRTY_BINDING_TABLE_VS << stage);
+   ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
 }
 
 static void
@@ -1349,6 +1347,9 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    ice->state.cso_depthbuffer = cso_z;
    ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
+
+   /* Render target change */
+   ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
 }
 
 static void
@@ -1396,6 +1397,9 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       pipe_resource_reference(&cbuf->resource, NULL);
       pipe_resource_reference(&cbuf->surface_state_resource, NULL);
    }
+
+   // XXX: maybe not necessary all the time...?
+   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
 }
 
 static void
@@ -2458,17 +2462,19 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   if (1) { // XXX: DIRTY BINDINGS
-      const struct iris_binder *binder = &batch->binder;
+   struct iris_binder *binder = &batch->binder;
 
-      for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
          iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
             ptr._3DCommandSubOpcode = 38 + stage;
             ptr.PointertoVSBindingTable = binder->bt_offset[stage];
          }
       }
+   }
 
-      for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
          iris_populate_binding_table(ice, batch, stage);
       }
    }

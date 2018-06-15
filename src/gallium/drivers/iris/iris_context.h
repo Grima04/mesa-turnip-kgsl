@@ -86,6 +86,12 @@ struct blorp_params;
 #define IRIS_DIRTY_CONSTANTS_FS             (1ull << 39)
 #define IRIS_DIRTY_DEPTH_BUFFER             (1ull << 40)
 #define IRIS_DIRTY_WM                       (1ull << 41)
+#define IRIS_DIRTY_BINDINGS_VS              (1ull << 42)
+#define IRIS_DIRTY_BINDINGS_TCS             (1ull << 43)
+#define IRIS_DIRTY_BINDINGS_TES             (1ull << 44)
+#define IRIS_DIRTY_BINDINGS_GS              (1ull << 45)
+#define IRIS_DIRTY_BINDINGS_FS              (1ull << 46)
+#define IRIS_DIRTY_BINDINGS_CS              (1ull << 47)
 
 struct iris_depth_stencil_alpha_state;
 
