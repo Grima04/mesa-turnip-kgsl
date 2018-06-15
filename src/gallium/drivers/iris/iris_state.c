@@ -279,21 +279,19 @@ ro_bo(struct iris_bo *bo, uint64_t offset)
 static uint32_t *
 stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
+             struct pipe_resource **out_res,
              unsigned size,
              unsigned alignment,
              uint32_t *out_offset)
 {
-   struct pipe_resource *res = NULL;
    void *ptr = NULL;
 
-   u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
+   u_upload_alloc(uploader, 0, size, alignment, out_offset, out_res, &ptr);
 
-   struct iris_bo *bo = iris_resource_bo(res);
+   struct iris_bo *bo = iris_resource_bo(*out_res);
    iris_use_pinned_bo(batch, bo, false);
 
    *out_offset += iris_bo_offset_from_base_address(bo);
-
-   pipe_resource_reference(&res, NULL);
 
    return ptr;
 }
@@ -301,12 +299,14 @@ stream_state(struct iris_batch *batch,
 static uint32_t
 emit_state(struct iris_batch *batch,
            struct u_upload_mgr *uploader,
+           struct pipe_resource **out_res,
            const void *data,
            unsigned size,
            unsigned alignment)
 {
    unsigned offset = 0;
-   uint32_t *map = stream_state(batch, uploader, size, alignment, &offset);
+   uint32_t *map =
+      stream_state(batch, uploader, out_res, size, alignment, &offset);
 
    if (map)
       memcpy(map, data, size);
@@ -2216,6 +2216,7 @@ iris_upload_render_state(struct iris_context *ice,
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
          ptr.CCViewportPointer =
             emit_state(batch, ice->state.dynamic_uploader,
+                       &ice->state.last_res.cc_vp,
                        cso->cc_vp, sizeof(cso->cc_vp), 32);
       }
    }
@@ -2224,8 +2225,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_viewport_state *cso = ice->state.cso_vp;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer =
-            emit_state(batch, ice->state.dynamic_uploader, cso->sf_cl_vp,
-                       4 * GENX(SF_CLIP_VIEWPORT_length) *
+            emit_state(batch, ice->state.dynamic_uploader,
+                       &ice->state.last_res.sf_cl_vp,
+                       cso->sf_cl_vp, 4 * GENX(SF_CLIP_VIEWPORT_length) *
                        ice->state.num_viewports, 64);
       }
    }
@@ -2244,8 +2246,9 @@ iris_upload_render_state(struct iris_context *ice,
          cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length));
       uint32_t blend_offset;
       uint32_t *blend_map =
-         stream_state(batch, ice->state.dynamic_uploader, 4 * num_dwords, 64,
-                      &blend_offset);
+         stream_state(batch, ice->state.dynamic_uploader,
+                      &ice->state.last_res.blend,
+                      4 * num_dwords, 64, &blend_offset);
 
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
@@ -2268,6 +2271,7 @@ iris_upload_render_state(struct iris_context *ice,
       uint32_t cc_offset;
       void *cc_map =
          stream_state(batch, ice->state.dynamic_uploader,
+                      &ice->state.last_res.color_calc,
                       sizeof(uint32_t) * GENX(COLOR_CALC_STATE_length),
                       64, &cc_offset);
       iris_pack_state(GENX(COLOR_CALC_STATE), cc_map, cc) {
@@ -2483,7 +2487,9 @@ iris_upload_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_SCISSOR) {
       // XXX: allocate at set_scissor time?
       uint32_t scissor_offset = ice->state.num_scissors == 0 ? 0 :
-         emit_state(batch, ice->state.dynamic_uploader, ice->state.scissors,
+         emit_state(batch, ice->state.dynamic_uploader,
+                    &ice->state.last_res.scissor,
+                    ice->state.scissors,
                     sizeof(struct pipe_scissor_state) *
                     ice->state.num_scissors, 32);
 

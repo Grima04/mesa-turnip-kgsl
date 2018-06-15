@@ -269,6 +269,18 @@ struct iris_context {
       // "I'm streaming this out at draw time and never want it again!"
       struct u_upload_mgr *dynamic_uploader;
 
+      /**
+       * Resources containing streamed state which our render context
+       * currently points to.  Used to re-add these to the validation
+       * list when we start a new batch and haven't resubmitted commands.
+       */
+      struct {
+         struct pipe_resource *cc_vp;
+         struct pipe_resource *sf_cl_vp;
+         struct pipe_resource *color_calc;
+         struct pipe_resource *scissor;
+         struct pipe_resource *blend;
+      } last_res;
    } state;
 };
 
