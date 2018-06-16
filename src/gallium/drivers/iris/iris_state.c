@@ -1438,7 +1438,7 @@ iris_delete_state(struct pipe_context *ctx, void *state)
 
 struct iris_vertex_buffer_state {
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-   struct iris_bo *bos[33];
+   struct pipe_resource *resources[33];
    unsigned num_buffers;
 };
 
@@ -1447,7 +1447,7 @@ iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
 {
    if (cso) {
       for (unsigned i = 0; i < cso->num_buffers; i++)
-         iris_bo_unreference(cso->bos[i]);
+         pipe_resource_reference(&cso->resources[i], NULL);
       free(cso);
    }
 }
@@ -1467,7 +1467,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       return;
 
    struct iris_vertex_buffer_state *cso =
-      malloc(sizeof(struct iris_vertex_buffer_state));
+      calloc(1, sizeof(struct iris_vertex_buffer_state));
 
    iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
 
@@ -1482,9 +1482,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    for (unsigned i = 0; i < count; i++) {
       assert(!buffers[i].is_user_buffer);
 
-      struct iris_resource *res = (void *) buffers[i].buffer.resource;
-      iris_bo_reference(res->bo);
-      cso->bos[i] = res->bo;
+      pipe_resource_reference(&cso->resources[i], buffers[i].buffer.resource);
+      struct iris_resource *res = (void *) cso->resources[i];
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
          vb.VertexBufferIndex = start_slot + i;
@@ -2328,7 +2327,8 @@ iris_restore_context_saved_bos(struct iris_context *ice,
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         iris_use_pinned_bo(batch, cso->bos[i], false);
+         struct iris_resource *res = (void *) cso->resources[i];
+         iris_use_pinned_bo(batch, res->bo, false);
       }
    }
 }
@@ -2696,7 +2696,8 @@ iris_upload_render_state(struct iris_context *ice,
                       sizeof(uint32_t) * (1 + vb_dwords * cso->num_buffers));
 
       for (unsigned i = 0; i < cso->num_buffers; i++) {
-         iris_use_pinned_bo(batch, cso->bos[i], false);
+         struct iris_resource *res = (void *) cso->resources[i];
+         iris_use_pinned_bo(batch, res->bo, false);
       }
    }
 
