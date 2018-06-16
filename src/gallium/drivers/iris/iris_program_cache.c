@@ -215,8 +215,8 @@ iris_upload_shader(struct iris_context *ice,
    struct gen_device_info *devinfo = &screen->devinfo;
    struct hash_table *cache = ice->shaders.cache;
    struct iris_compiled_shader *shader =
-      ralloc_size(cache, sizeof(struct iris_compiled_shader) +
-                  ice->vtbl.derived_program_state_size(cache_id));
+      rzalloc_size(cache, sizeof(struct iris_compiled_shader) +
+                   ice->vtbl.derived_program_state_size(cache_id));
    const struct iris_compiled_shader *existing =
       find_existing_assembly(cache, assembly, prog_data->program_size);
 
