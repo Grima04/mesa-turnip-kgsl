@@ -160,14 +160,14 @@ struct iris_compiled_shader {
    /** Buffer containing the uploaded assembly. */
    struct pipe_resource *buffer;
 
-   /** Offset where the assembly lives in the BO. */
-   unsigned offset;
-
    /** Pointer to the assembly in the BO's map. */
    void *map;
 
    /** The program data (owned by the program cache hash table) */
    struct brw_stage_prog_data *prog_data;
+
+   /** Offset where the assembly lives in the BO. */
+   unsigned offset;
 
    /**
     * Shader packets and other data derived from prog_data.  These must be
