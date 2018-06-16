@@ -1260,6 +1260,7 @@ iris_set_viewport_states(struct pipe_context *ctx,
       vp_map += GENX(SF_CLIP_VIEWPORT_length);
    }
 
+   free(ice->state.cso_vp);
    ice->state.cso_vp = cso;
    ice->state.num_viewports = num_viewports;
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
@@ -1456,8 +1457,6 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_vertex_buffer_state *cso =
-      malloc(sizeof(struct iris_vertex_buffer_state));
 
    /* If there are no buffers, do nothing.  We can leave the stale
     * 3DSTATE_VERTEX_BUFFERS in place - as long as there are no vertex
@@ -1465,6 +1464,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
     */
    if (!buffers)
       return;
+
+   struct iris_vertex_buffer_state *cso =
+      malloc(sizeof(struct iris_vertex_buffer_state));
 
    iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
 
@@ -2746,14 +2748,27 @@ iris_upload_render_state(struct iris_context *ice,
    }
 }
 
+/**
+ * State module teardown.
+ */
 static void
 iris_destroy_state(struct iris_context *ice)
 {
+   iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
+
    // XXX: unreference resources/surfaces.
    for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
       pipe_surface_reference(&ice->state.framebuffer.cbufs[i], NULL);
    }
    pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
+
+   free(ice->state.cso_depthbuffer);
+
+   pipe_resource_reference(&ice->state.last_res.cc_vp, NULL);
+   pipe_resource_reference(&ice->state.last_res.sf_cl_vp, NULL);
+   pipe_resource_reference(&ice->state.last_res.color_calc, NULL);
+   pipe_resource_reference(&ice->state.last_res.scissor, NULL);
+   pipe_resource_reference(&ice->state.last_res.blend, NULL);
 }
 
 static unsigned

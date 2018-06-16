@@ -252,6 +252,8 @@ iris_batch_free(struct iris_batch *batch)
    _mesa_hash_table_destroy(batch->cache.render, NULL);
    _mesa_set_destroy(batch->cache.depth, NULL);
 
+   iris_destroy_binder(&batch->binder);
+
    if (batch->state_sizes) {
       _mesa_hash_table_destroy(batch->state_sizes, NULL);
       gen_batch_decode_ctx_finish(&batch->decoder);

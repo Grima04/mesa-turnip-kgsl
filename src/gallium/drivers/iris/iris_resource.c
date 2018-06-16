@@ -159,6 +159,7 @@ iris_resource_destroy(struct pipe_screen *screen,
    struct iris_resource *res = (struct iris_resource *)resource;
 
    iris_bo_unreference(res->bo);
+   free(res);
 }
 
 static struct iris_resource *

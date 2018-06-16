@@ -79,6 +79,7 @@ iris_destroy_context(struct pipe_context *ctx)
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
 
+   ice->vtbl.destroy_state(ice);
    iris_destroy_program_cache(ice);
    u_upload_destroy(ice->state.surface_uploader);
    u_upload_destroy(ice->state.dynamic_uploader);
