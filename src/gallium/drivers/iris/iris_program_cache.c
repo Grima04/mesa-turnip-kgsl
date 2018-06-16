@@ -227,7 +227,9 @@ iris_upload_shader(struct iris_context *ice,
     * backend.
     */
    if (existing) {
+      pipe_resource_reference(&shader->buffer, existing->buffer);
       shader->offset = existing->offset;
+      shader->map = existing->map;
    } else {
       shader->buffer = NULL;
       u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size,
