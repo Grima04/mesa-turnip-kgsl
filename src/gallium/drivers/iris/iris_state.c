@@ -1351,6 +1351,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    isl_emit_depth_stencil_hiz_s(isl_dev, cso_z->packets, &info);
 
+   free(ice->state.cso_depthbuffer);
    ice->state.cso_depthbuffer = cso_z;
    ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
 
@@ -2762,6 +2763,7 @@ iris_destroy_state(struct iris_context *ice)
    }
    pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
 
+   free(ice->state.cso_vp);
    free(ice->state.cso_depthbuffer);
 
    pipe_resource_reference(&ice->state.last_res.cc_vp, NULL);
