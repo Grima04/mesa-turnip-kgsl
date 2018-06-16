@@ -138,6 +138,8 @@ iris_find_cached_shader(struct iris_context *ice,
    struct hash_entry *entry =
       _mesa_hash_table_search(ice->shaders.cache, keybox);
 
+   ralloc_free(keybox);
+
    return entry ? entry->data : NULL;
 }
 
