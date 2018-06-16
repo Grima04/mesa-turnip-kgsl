@@ -2763,6 +2763,9 @@ iris_destroy_state(struct iris_context *ice)
    }
    pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
 
+   for (int stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      pipe_resource_reference(&ice->state.sampler_table_resource[stage], NULL);
+   }
    free(ice->state.cso_vp);
    free(ice->state.cso_depthbuffer);
 
