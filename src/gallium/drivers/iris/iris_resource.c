@@ -468,8 +468,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
     * a 16-byte alignment (that is, its `x0` is 16-byte aligned).  Here we
     * over-allocate the linear buffer to get the proper alignment.
     */
-   map->buffer =
-      os_malloc_aligned(map->stride * (y2 - y1) + (x1 & 0xf), 16);
+   map->buffer = os_malloc_aligned(map->stride * (y2 - y1) + (x1 & 0xf), 16);
    map->ptr = (char *)map->buffer + (x1 & 0xf);
    assert(map->buffer);
 
