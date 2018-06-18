@@ -207,7 +207,7 @@ brw_perf_query_register_mdapi_statistic_query(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (!(devinfo->gen >= 7 && devinfo->gen <= 9))
+   if (!(devinfo->gen >= 7 && devinfo->gen <= 11))
       return;
 
    struct gen_perf_query_info *query =
@@ -246,6 +246,14 @@ brw_perf_query_register_mdapi_statistic_query(struct brw_context *brw)
    if (devinfo->gen >= 7) {
       gen_perf_query_info_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
                                              "N compute shader invocations");
+   }
+
+   if (devinfo->gen >= 10) {
+      /* Reuse existing CS invocation register until we can expose this new
+       * one.
+       */
+      gen_perf_query_info_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
+                                             "Reserved1");
    }
 
    query->data_size = sizeof(uint64_t) * query->n_counters;
