@@ -1803,10 +1803,14 @@ iris_populate_fs_key(const struct iris_context *ice,
    key->coherent_fb_fetch = true;
 }
 
-   //pkt.SamplerCount =                                                     \
-      //DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
-   //pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
-      //ffs(stage_state->per_thread_scratch) - 11;                          \
+#if 0
+   // XXX: these need to go in INIT_THREAD_DISPATCH_FIELDS
+   pkt.SamplerCount =                                                     \
+      DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
+   pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
+      ffs(stage_state->per_thread_scratch) - 11;                          \
+
+#endif
 
 static uint64_t
 KSP(const struct iris_compiled_shader *shader)
@@ -2172,7 +2176,7 @@ iris_populate_binding_table(struct iris_context *ice,
    // - textures
    // - render targets - write and read
 
-   struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+   //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
    int s = 0;
 

@@ -556,7 +556,7 @@ iris_transfer_flush_region(struct pipe_context *pipe,
 static void
 iris_transfer_unmap(struct pipe_context *pipe, struct pipe_transfer *xfer)
 {
-   struct iris_transfer *map = xfer;
+   struct iris_transfer *map = (void *) xfer;
 
    if (map->unmap)
       map->unmap(map);
@@ -579,18 +579,6 @@ iris_resource_copy_region(struct pipe_context *ctx,
 static void
 iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
-}
-
-static boolean
-iris_generate_mipmap(struct pipe_context *ctx,
-                     struct pipe_resource *resource,
-                     enum pipe_format format,
-                     unsigned base_level,
-                     unsigned last_level,
-                     unsigned first_layer,
-                     unsigned last_layer)
-{
-   return true;
 }
 
 void
