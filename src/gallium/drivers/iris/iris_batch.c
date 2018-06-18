@@ -431,12 +431,14 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 
    if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
       int bytes_for_commands = batch_bytes_used(batch);
+      int bytes_for_binder = batch->binder.insert_point;
       if (batch->bo != batch->exec_bos[0])
          bytes_for_commands += batch->primary_batch_size;
-      fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5db (%0.1f%%), "
-              "%4d BOs (%0.1fMb aperture)\n",
+      fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5db (%0.1f%%) "
+              "(cmds), %5db (%0.1f%%) (binder), %4d BOs (%0.1fMb aperture)\n",
               file, line,
               bytes_for_commands, 100.0f * bytes_for_commands / BATCH_SZ,
+              bytes_for_binder, 100.0f * bytes_for_binder / IRIS_BINDER_SIZE,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
       dump_validation_list(batch);

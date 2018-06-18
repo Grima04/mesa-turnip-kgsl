@@ -27,9 +27,6 @@
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 
-/* 64kb */
-#define BINDER_SIZE (64 * 1024)
-
 /**
  * Reserve a block of space in the binder.
  */
@@ -44,13 +41,13 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
    /* If we can't fit all stages in the binder, flush the batch which
     * will cause us to gain a new empty binder.
     */
-   if (binder->insert_point + size > BINDER_SIZE)
+   if (binder->insert_point + size > IRIS_BINDER_SIZE)
       iris_batch_flush(batch);
 
    uint32_t offset = binder->insert_point;
 
    /* It had better fit now. */
-   assert(offset + size <= BINDER_SIZE);
+   assert(offset + size <= IRIS_BINDER_SIZE);
 
    binder->insert_point = align(binder->insert_point + size, 64);
 
@@ -97,7 +94,7 @@ void
 iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
 {
    binder->bo =
-      iris_bo_alloc(bufmgr, "binder", BINDER_SIZE, IRIS_MEMZONE_BINDER);
+      iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE, IRIS_MEMZONE_BINDER);
    binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
    binder->insert_point = INIT_INSERT_POINT;
 }

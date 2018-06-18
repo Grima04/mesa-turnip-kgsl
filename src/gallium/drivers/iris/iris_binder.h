@@ -33,6 +33,8 @@ struct iris_batch;
 struct iris_bufmgr;
 struct iris_compiled_shader;
 
+#define IRIS_BINDER_SIZE (64 * 1024)
+
 struct iris_binder
 {
    struct iris_bo *bo;
