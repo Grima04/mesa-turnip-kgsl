@@ -1445,11 +1445,8 @@ struct iris_vertex_buffer_state {
 static void
 iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
 {
-   if (cso) {
-      for (unsigned i = 0; i < cso->num_buffers; i++)
-         pipe_resource_reference(&cso->resources[i], NULL);
-      free(cso);
-   }
+   for (unsigned i = 0; i < cso->num_buffers; i++)
+      pipe_resource_reference(&cso->resources[i], NULL);
 }
 
 static void
@@ -1458,26 +1455,28 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-
-   /* If there are no buffers, do nothing.  We can leave the stale
-    * 3DSTATE_VERTEX_BUFFERS in place - as long as there are no vertex
-    * elements that point to them, it should be fine.
-    */
-   if (!buffers)
-      return;
-
-   struct iris_vertex_buffer_state *cso =
-      calloc(1, sizeof(struct iris_vertex_buffer_state));
+   struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
 
    iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
+
+   if (!buffers)
+      count = 0;
 
    cso->num_buffers = count;
 
    iris_pack_command(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
-      vb.DWordLength = 4 * cso->num_buffers - 1;
+      vb.DWordLength = 4 * MAX2(cso->num_buffers, 1) - 1;
    }
 
    uint32_t *vb_pack_dest = &cso->vertex_buffers[1];
+
+   if (count == 0) {
+      iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
+         vb.VertexBufferIndex = start_slot;
+         vb.NullVertexBuffer = true;
+         vb.AddressModifyEnable = true;
+      }
+   }
 
    for (unsigned i = 0; i < count; i++) {
       assert(!buffers[i].is_user_buffer);
@@ -1498,7 +1497,6 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
    }
 
-   ice->state.cso_vertex_buffers = cso;
    ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
 }
 
@@ -3248,4 +3246,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.populate_fs_key = iris_populate_fs_key;
 
    ice->state.dirty = ~0ull;
+
+   ice->state.cso_vertex_buffers =
+      calloc(1, sizeof(struct iris_vertex_buffer_state));
 }
