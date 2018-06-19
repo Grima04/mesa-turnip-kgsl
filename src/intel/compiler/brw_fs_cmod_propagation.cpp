@@ -263,10 +263,25 @@ opt_cmod_propagation_local(const gen_device_info *devinfo, bblock_t *block)
                break;
 
             /* Comparisons operate differently for ints and floats */
-            if (scan_inst->dst.type != inst->dst.type &&
-                (scan_inst->dst.type == BRW_REGISTER_TYPE_F ||
-                 inst->dst.type == BRW_REGISTER_TYPE_F))
-               break;
+            if (scan_inst->dst.type != inst->dst.type) {
+               /* We should propagate from a MOV to another instruction in a
+                * sequence like:
+                *
+                *    and(16)         g31<1>UD       g20<8,8,1>UD   g22<8,8,1>UD
+                *    mov.nz.f0(16)   null<1>F       g31<8,8,1>D
+                */
+               if (inst->opcode == BRW_OPCODE_MOV) {
+                  if ((inst->src[0].type != BRW_REGISTER_TYPE_D &&
+                       inst->src[0].type != BRW_REGISTER_TYPE_UD) ||
+                      (scan_inst->dst.type != BRW_REGISTER_TYPE_D &&
+                       scan_inst->dst.type != BRW_REGISTER_TYPE_UD)) {
+                     break;
+                  }
+               } else if (scan_inst->dst.type == BRW_REGISTER_TYPE_F ||
+                          inst->dst.type == BRW_REGISTER_TYPE_F) {
+                  break;
+               }
+            }
 
             /* If the instruction generating inst's source also wrote the
              * flag, and inst is doing a simple .nz comparison, then inst
