@@ -263,7 +263,10 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
 	/* Geometry shader output. */
 	case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
-		return 1024;
+		/* gfx9 has to report 256 to make piglit/gs-max-output pass.
+		 * gfx8 and earlier can do 1024.
+		 */
+		return 256;
 	case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
 		return 4095;
 	case PIPE_CAP_MAX_GS_INVOCATIONS:
