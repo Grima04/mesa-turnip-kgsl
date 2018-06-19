@@ -1140,10 +1140,9 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	}
 
 	/* While it would be nice not to have this flag, we are constrained
-	 * by the reality that LLVM 5.0 doesn't have working VGPR indexing
-	 * on GFX9.
+	 * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
 	 */
-	sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class <= GFX8;
+	sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class != GFX9;
 
 	/* Some chips have RB+ registers, but don't support RB+. Those must
 	 * always disable it.
