@@ -201,13 +201,10 @@ struct simdvertex
     simdvector attrib[SWR_VTX_NUM_SLOTS];
 };
 
-#if ENABLE_AVX512_SIMD16
 struct simd16vertex
 {
     simd16vector attrib[SWR_VTX_NUM_SLOTS];
 };
-
-#endif
 
 template <typename SIMD_T>
 struct SIMDVERTEX_T
@@ -429,11 +426,12 @@ struct SWR_CS_CONTEXT
 // enums
 enum SWR_TILE_MODE
 {
-    SWR_TILE_NONE = 0x0,   // Linear mode (no tiling)
-    SWR_TILE_MODE_WMAJOR,  // W major tiling
-    SWR_TILE_MODE_XMAJOR,  // X major tiling
-    SWR_TILE_MODE_YMAJOR,  // Y major tiling
-    SWR_TILE_SWRZ,         // SWR-Z tiling
+    SWR_TILE_NONE = 0x0,     // Linear mode (no tiling)
+    SWR_TILE_MODE_WMAJOR,    // W major tiling
+    SWR_TILE_MODE_XMAJOR,    // X major tiling
+    SWR_TILE_MODE_YMAJOR,    // Y major tiling
+    SWR_TILE_SWRZ,           // SWR-Z tiling
+
 
     SWR_TILE_MODE_COUNT
 };

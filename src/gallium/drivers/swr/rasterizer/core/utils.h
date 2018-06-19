@@ -44,7 +44,6 @@ struct simdBBox
     simdscalari xmax;
 };
 
-#if ENABLE_AVX512_SIMD16
 struct simd16BBox
 {
     simd16scalari ymin;
@@ -52,7 +51,6 @@ struct simd16BBox
     simd16scalari xmin;
     simd16scalari xmax;
 };
-#endif
 
 template <typename SIMD_T>
 struct SIMDBBOX_T

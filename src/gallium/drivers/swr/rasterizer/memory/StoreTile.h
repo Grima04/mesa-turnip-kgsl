@@ -355,7 +355,7 @@ struct ConvertPixelsSOAtoAOS
         StoreSOA<DstFormat>(src, soaTile);
 
         // Convert from SOA --> AOS
-        FormatTraits<DstFormat>::TransposeT::Transpose_16(soaTile, aosTile);
+        FormatTraits<DstFormat>::TransposeT::Transpose_simd16(soaTile, aosTile);
 
         // Store data into destination
         StorePixels<FormatTraits<DstFormat>::bpp, NumDests>::Store(aosTile, ppDsts);
@@ -382,7 +382,7 @@ struct ConvertPixelsSOAtoAOS<Format, Format>
         OSALIGNSIMD16(uint8_t) aosTile[MAX_RASTER_TILE_BYTES];
 
         // Convert from SOA --> AOS
-        FormatTraits<Format>::TransposeT::Transpose_16(pSrc, aosTile);
+        FormatTraits<Format>::TransposeT::Transpose_simd16(pSrc, aosTile);
 
         // Store data into destination
         StorePixels<FormatTraits<Format>::bpp, NumDests>::Store(aosTile, ppDsts);

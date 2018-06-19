@@ -341,8 +341,6 @@ static SIMDINLINE simdscalar _simd_abs_ps(simdscalar const& a)
     return _simd_castsi_ps(_simd_and_si(ai, _simd_set1_epi32(0x7fffffff)));
 }
 
-#if ENABLE_AVX512_SIMD16
 #include "simd16intrin.h"
-#endif // ENABLE_AVX512_SIMD16
 
 #endif //__SWR_SIMDINTRIN_H__
