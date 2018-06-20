@@ -503,6 +503,14 @@ iris_transfer_map(struct pipe_context *ctx,
        (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
 
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+       iris_batch_references(&ice->render_batch, res->bo)) {
+      iris_batch_flush(&ice->render_batch);
+   }
+
+   if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
+      return NULL;
+
    struct iris_transfer *map = calloc(1, sizeof(struct iris_transfer));
    struct pipe_transfer *xfer = &map->base;
 
@@ -521,14 +529,6 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->stride = isl_surf_get_row_pitch_B(surf);
    xfer->layer_stride = isl_surf_get_array_pitch(surf);
    *ptransfer = xfer;
-
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
-       iris_batch_references(&ice->render_batch, res->bo)) {
-      iris_batch_flush(&ice->render_batch);
-   }
-
-   if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
-      return NULL;
 
    xfer->usage &= (PIPE_TRANSFER_READ |
                    PIPE_TRANSFER_WRITE |
