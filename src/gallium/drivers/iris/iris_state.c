@@ -1688,6 +1688,103 @@ iris_compute_sbe_urb_read_interval(uint64_t fs_input_slots,
 }
 
 static void
+iris_emit_sbe_swiz(struct iris_batch *batch,
+                   const struct iris_context *ice,
+                   unsigned urb_read_offset)
+{
+   struct GENX(SF_OUTPUT_ATTRIBUTE_DETAIL) attr_overrides[16] = {};
+   const struct brw_wm_prog_data *wm_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
+   const struct brw_vue_map *vue_map = ice->shaders.last_vue_map;
+   const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+
+   /* XXX: this should be generated when putting programs in place */
+
+   // XXX: raster->sprite_coord_enable
+
+   for (int fs_attr = 0; fs_attr < VARYING_SLOT_MAX; fs_attr++) {
+      const int input_index = wm_prog_data->urb_setup[fs_attr];
+      if (input_index < 0 || input_index >= 16)
+         continue;
+
+      struct GENX(SF_OUTPUT_ATTRIBUTE_DETAIL) *attr =
+         &attr_overrides[input_index];
+
+      /* Viewport and Layer are stored in the VUE header.  We need to override
+       * them to zero if earlier stages didn't write them, as GL requires that
+       * they read back as zero when not explicitly set.
+       */
+      switch (fs_attr) {
+      case VARYING_SLOT_VIEWPORT:
+      case VARYING_SLOT_LAYER:
+         attr->ComponentOverrideX = true;
+         attr->ComponentOverrideW = true;
+         attr->ConstantSource = CONST_0000;
+
+         if (!(vue_map->slots_valid & VARYING_BIT_LAYER))
+            attr->ComponentOverrideY = true;
+         if (!(vue_map->slots_valid & VARYING_BIT_VIEWPORT))
+            attr->ComponentOverrideZ = true;
+         continue;
+
+      case VARYING_SLOT_PRIMITIVE_ID:
+         attr->ComponentOverrideX = true;
+         attr->ComponentOverrideY = true;
+         attr->ComponentOverrideZ = true;
+         attr->ComponentOverrideW = true;
+         attr->ConstantSource = PRIM_ID;
+         continue;
+
+      default:
+         break;
+      }
+
+      int slot = vue_map->varying_to_slot[fs_attr];
+
+      /* If there was only a back color written but not front, use back
+       * as the color instead of undefined.
+       */
+      if (slot == -1 && fs_attr == VARYING_SLOT_COL0)
+         slot = vue_map->varying_to_slot[VARYING_SLOT_BFC0];
+      if (slot == -1 && fs_attr == VARYING_SLOT_COL1)
+         slot = vue_map->varying_to_slot[VARYING_SLOT_BFC1];
+
+      /* Not written by the previous stage - undefined. */
+      if (slot == -1) {
+         attr->ComponentOverrideX = true;
+         attr->ComponentOverrideY = true;
+         attr->ComponentOverrideZ = true;
+         attr->ComponentOverrideW = true;
+         attr->ConstantSource = CONST_0001_FLOAT;
+         continue;
+      }
+
+      /* Compute the location of the attribute relative to the read offset,
+       * which is counted in 256-bit increments (two 128-bit VUE slots).
+       */
+      const int source_attr = slot - 2 * urb_read_offset;
+      assert(source_attr >= 0 && source_attr <= 32);
+      attr->SourceAttribute = source_attr;
+
+      /* If we are doing two-sided color, and the VUE slot following this one
+       * represents a back-facing color, then we need to instruct the SF unit
+       * to do back-facing swizzling.
+       */
+      if (cso_rast->light_twoside &&
+          ((vue_map->slot_to_varying[slot] == VARYING_SLOT_COL0 &&
+            vue_map->slot_to_varying[slot+1] == VARYING_SLOT_BFC0) ||
+           (vue_map->slot_to_varying[slot] == VARYING_SLOT_COL1 &&
+            vue_map->slot_to_varying[slot+1] == VARYING_SLOT_BFC1)))
+         attr->SwizzleSelect = INPUTATTR_FACING;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbes) {
+      for (int i = 0; i < 16; i++)
+         sbes.Attribute[i] = attr_overrides[i];
+   }
+}
+
+static void
 iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
 {
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
@@ -1718,6 +1815,8 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
          sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
       }
    }
+
+   iris_emit_sbe_swiz(batch, ice, urb_read_offset);
 }
 
 static void
@@ -2597,8 +2696,6 @@ iris_upload_render_state(struct iris_context *ice,
       // -> iris_raster_state (point sprite texture coordinate origin)
       // -> bunch of shader state...
       iris_emit_sbe(batch, ice);
-      iris_emit_cmd(batch, GENX(3DSTATE_SBE_SWIZ), sbe) {
-      }
    }
 
    if (dirty & IRIS_DIRTY_PS_BLEND) {
