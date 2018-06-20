@@ -2290,7 +2290,10 @@ iris_restore_context_saved_bos(struct iris_context *ice,
          struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
          struct iris_resource *res = (void *) cbuf->resource;
 
-         iris_use_pinned_bo(batch, res->bo, false);
+         if (res)
+            iris_use_pinned_bo(batch, res->bo, false);
+         else
+            iris_use_pinned_bo(batch, batch->screen->workaround_bo, false);
       }
    }
 
@@ -2467,7 +2470,8 @@ iris_upload_render_state(struct iris_context *ice,
 
                pkt.ConstantBody.ReadLength[n] = range->length;
                pkt.ConstantBody.Buffer[n] =
-                  ro_bo(res->bo, range->start * 32 + cbuf->offset);
+                  res ? ro_bo(res->bo, range->start * 32 + cbuf->offset)
+                      : ro_bo(batch->screen->workaround_bo, 0);
                n--;
             }
          }
