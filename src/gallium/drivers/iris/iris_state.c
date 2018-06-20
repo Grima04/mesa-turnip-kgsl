@@ -1227,16 +1227,15 @@ calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
 static void
 iris_set_viewport_states(struct pipe_context *ctx,
                          unsigned start_slot,
-                         unsigned num_viewports,
+                         unsigned count,
                          const struct pipe_viewport_state *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_viewport_state *cso =
-      malloc(sizeof(struct iris_viewport_state));
+   struct iris_viewport_state *cso = ice->state.cso_vp;
    uint32_t *vp_map = &cso->sf_cl_vp[start_slot];
 
    // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
-   for (unsigned i = 0; i < num_viewports; i++) {
+   for (unsigned i = start_slot; i < count; i++) {
       iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
          vp.ViewportMatrixElementm00 = state[i].scale[0];
          vp.ViewportMatrixElementm11 = state[i].scale[1];
@@ -1260,8 +1259,7 @@ iris_set_viewport_states(struct pipe_context *ctx,
       vp_map += GENX(SF_CLIP_VIEWPORT_length);
    }
 
-   free(ice->state.cso_vp);
-   ice->state.cso_vp = cso;
+   unsigned num_viewports = start_slot + count;
 
    if (num_viewports != ice->state.num_viewports) {
       ice->state.num_viewports = num_viewports;
@@ -3354,6 +3352,7 @@ genX(init_state)(struct iris_context *ice)
 
    ice->state.dirty = ~0ull;
 
+   ice->state.cso_vp = calloc(1, sizeof(struct iris_viewport_state));
    ice->state.cso_vertex_buffers =
       calloc(1, sizeof(struct iris_vertex_buffer_state));
 }
