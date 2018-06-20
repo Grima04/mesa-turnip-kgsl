@@ -1262,7 +1262,12 @@ iris_set_viewport_states(struct pipe_context *ctx,
 
    free(ice->state.cso_vp);
    ice->state.cso_vp = cso;
-   ice->state.num_viewports = num_viewports;
+
+   if (num_viewports != ice->state.num_viewports) {
+      ice->state.num_viewports = num_viewports;
+      ice->state.dirty |= IRIS_DIRTY_CLIP;
+   }
+
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
@@ -2662,6 +2667,7 @@ iris_upload_render_state(struct iris_context *ice,
             cl.NonPerspectiveBarycentricEnable = true;
 
          cl.ForceZeroRTAIndexEnable = cso_fb->layers == 0;
+         cl.MaximumVPIndex = ice->state.num_viewports - 1;
       }
       iris_emit_merge(batch, cso_rast->clip, dynamic_clip,
                       ARRAY_SIZE(cso_rast->clip));
