@@ -1228,21 +1228,22 @@ static void
 iris_set_viewport_states(struct pipe_context *ctx,
                          unsigned start_slot,
                          unsigned count,
-                         const struct pipe_viewport_state *state)
+                         const struct pipe_viewport_state *states)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_viewport_state *cso = ice->state.cso_vp;
    uint32_t *vp_map = &cso->sf_cl_vp[start_slot];
 
    // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
-   for (unsigned i = start_slot; i < count; i++) {
+   for (unsigned i = 0; i < count; i++) {
+      const struct pipe_viewport_state *state = &states[start_slot + i];
       iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
-         vp.ViewportMatrixElementm00 = state[i].scale[0];
-         vp.ViewportMatrixElementm11 = state[i].scale[1];
-         vp.ViewportMatrixElementm22 = state[i].scale[2];
-         vp.ViewportMatrixElementm30 = state[i].translate[0];
-         vp.ViewportMatrixElementm31 = state[i].translate[1];
-         vp.ViewportMatrixElementm32 = state[i].translate[2];
+         vp.ViewportMatrixElementm00 = state->scale[0];
+         vp.ViewportMatrixElementm11 = state->scale[1];
+         vp.ViewportMatrixElementm22 = state->scale[2];
+         vp.ViewportMatrixElementm30 = state->translate[0];
+         vp.ViewportMatrixElementm31 = state->translate[1];
+         vp.ViewportMatrixElementm32 = state->translate[2];
          /* XXX: in i965 this is computed based on the drawbuffer size,
           * but we don't have that here...
           */
@@ -1250,10 +1251,10 @@ iris_set_viewport_states(struct pipe_context *ctx,
          vp.XMaxClipGuardband = 1.0;
          vp.YMinClipGuardband = -1.0;
          vp.YMaxClipGuardband = 1.0;
-         vp.XMinViewPort = viewport_extent(&state[i], 0, -1.0f);
-         vp.XMaxViewPort = viewport_extent(&state[i], 0,  1.0f) - 1;
-         vp.YMinViewPort = viewport_extent(&state[i], 1, -1.0f);
-         vp.YMaxViewPort = viewport_extent(&state[i], 1,  1.0f) - 1;
+         vp.XMinViewPort = viewport_extent(state, 0, -1.0f);
+         vp.XMaxViewPort = viewport_extent(state, 0,  1.0f) - 1;
+         vp.YMinViewPort = viewport_extent(state, 1, -1.0f);
+         vp.YMaxViewPort = viewport_extent(state, 1,  1.0f) - 1;
       }
 
       vp_map += GENX(SF_CLIP_VIEWPORT_length);
