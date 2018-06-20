@@ -452,7 +452,9 @@ update_last_vue_map(struct iris_context *ice)
       // XXX: could use ctx->Const.MaxViewports for old API efficiency
       ice->state.num_viewports =
          (vue_map->slots_valid & VARYING_BIT_VIEWPORT) ? IRIS_MAX_VIEWPORTS : 1;
-      ice->state.dirty |= IRIS_DIRTY_CLIP | IRIS_DIRTY_SF_CL_VIEWPORT;
+      ice->state.dirty |= IRIS_DIRTY_CLIP |
+                          IRIS_DIRTY_SF_CL_VIEWPORT |
+                          IRIS_DIRTY_SCISSOR_RECT;
       // XXX: CC_VIEWPORT?
    }
 

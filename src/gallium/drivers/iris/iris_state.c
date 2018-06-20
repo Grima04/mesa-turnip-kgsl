@@ -3343,6 +3343,7 @@ genX(init_state)(struct iris_context *ice)
 
    ice->state.dirty = ~0ull;
 
+   ice->state.num_viewports = 1;
    ice->state.cso_vp = calloc(1, sizeof(struct iris_viewport_state));
    ice->state.cso_vertex_buffers =
       calloc(1, sizeof(struct iris_vertex_buffer_state));
