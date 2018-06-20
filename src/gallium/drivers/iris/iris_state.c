@@ -1113,8 +1113,6 @@ iris_set_scissor_states(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   ice->state.num_scissors = num_scissors;
-
    for (unsigned i = 0; i < num_scissors; i++) {
       ice->state.scissors[start_slot + i] = states[i];
    }
@@ -2722,13 +2720,12 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SCISSOR_RECT) {
-      // XXX: allocate at set_scissor time?
-      uint32_t scissor_offset = ice->state.num_scissors == 0 ? 0 :
+      uint32_t scissor_offset =
          emit_state(batch, ice->state.dynamic_uploader,
                     &ice->state.last_res.scissor,
                     ice->state.scissors,
                     sizeof(struct pipe_scissor_state) *
-                    ice->state.num_scissors, 32);
+                    ice->state.num_viewports, 32);
 
       iris_emit_cmd(batch, GENX(3DSTATE_SCISSOR_STATE_POINTERS), ptr) {
          ptr.ScissorRectPointer = scissor_offset;

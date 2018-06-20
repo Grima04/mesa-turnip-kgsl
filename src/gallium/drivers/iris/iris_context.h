@@ -246,8 +246,7 @@ struct iris_context {
 
    struct {
       uint64_t dirty;
-      unsigned num_viewports; // XXX: can viewports + scissors be different?
-      unsigned num_scissors;
+      unsigned num_viewports;
       unsigned sample_mask;
       struct iris_blend_state *cso_blend;
       struct iris_rasterizer_state *cso_rast;
