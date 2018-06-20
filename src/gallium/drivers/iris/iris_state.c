@@ -1259,13 +1259,6 @@ iris_set_viewport_states(struct pipe_context *ctx,
       vp_map += GENX(SF_CLIP_VIEWPORT_length);
    }
 
-   unsigned num_viewports = start_slot + count;
-
-   if (num_viewports != ice->state.num_viewports) {
-      ice->state.num_viewports = num_viewports;
-      ice->state.dirty |= IRIS_DIRTY_CLIP;
-   }
-
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 

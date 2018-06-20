@@ -443,6 +443,19 @@ update_last_vue_map(struct iris_context *ice)
       prog_data = ice->shaders.prog[MESA_SHADER_VERTEX]->prog_data;
 
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+   struct brw_vue_map *vue_map = &vue_prog_data->vue_map;
+   struct brw_vue_map *old_map = ice->shaders.last_vue_map;
+   const uint64_t changed_slots =
+      (old_map ? old_map->slots_valid : 0ull) ^ vue_map->slots_valid;
+
+   if (changed_slots & VARYING_BIT_VIEWPORT) {
+      // XXX: could use ctx->Const.MaxViewports for old API efficiency
+      ice->state.num_viewports =
+         (vue_map->slots_valid & VARYING_BIT_VIEWPORT) ? IRIS_MAX_VIEWPORTS : 1;
+      ice->state.dirty |= IRIS_DIRTY_CLIP | IRIS_DIRTY_SF_CL_VIEWPORT;
+      // XXX: CC_VIEWPORT?
+   }
+
    ice->shaders.last_vue_map = &vue_prog_data->vue_map;
 }
 
