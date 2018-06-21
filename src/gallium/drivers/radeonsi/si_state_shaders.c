@@ -3510,10 +3510,12 @@ static bool si_update_scratch_relocs(struct si_context *sctx)
 	if (r < 0)
 		return false;
 	if (r == 1) {
-		if (sctx->tes_shader.current)
+		if (sctx->vs_shader.current->key.as_ls)
 			si_pm4_bind_state(sctx, ls, sctx->vs_shader.current->pm4);
-		else if (sctx->gs_shader.current)
+		else if (sctx->vs_shader.current->key.as_es)
 			si_pm4_bind_state(sctx, es, sctx->vs_shader.current->pm4);
+		else if (sctx->vs_shader.current->key.as_ngg)
+			si_pm4_bind_state(sctx, gs, sctx->vs_shader.current->pm4);
 		else
 			si_pm4_bind_state(sctx, vs, sctx->vs_shader.current->pm4);
 	}
@@ -3523,8 +3525,10 @@ static bool si_update_scratch_relocs(struct si_context *sctx)
 	if (r < 0)
 		return false;
 	if (r == 1) {
-		if (sctx->gs_shader.current)
+		if (sctx->tes_shader.current->key.as_es)
 			si_pm4_bind_state(sctx, es, sctx->tes_shader.current->pm4);
+		else if (sctx->tes_shader.current->key.as_ngg)
+			si_pm4_bind_state(sctx, gs, sctx->tes_shader.current->pm4);
 		else
 			si_pm4_bind_state(sctx, vs, sctx->tes_shader.current->pm4);
 	}
