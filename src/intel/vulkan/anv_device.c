@@ -1072,6 +1072,15 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+         VkPhysicalDeviceFloat16Int8FeaturesKHR *features = (void *)ext;
+         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
+
+         features->shaderFloat16 = pdevice->info.gen >= 8;
+         features->shaderInt8 = pdevice->info.gen >= 8;
+         break;
+      }
+
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
