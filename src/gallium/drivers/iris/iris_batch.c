@@ -463,8 +463,9 @@ _iris_batch_flush_fence(struct iris_batch *batch,
       }
    } else {
 #ifdef DEBUG
-      fprintf(stderr, "iris: Failed to submit batchbuffer: %s\n",
-              strerror(-ret));
+      const bool color = INTEL_DEBUG & DEBUG_COLOR;
+      fprintf(stderr, "%siris: Failed to submit batchbuffer: %-80s%s\n",
+              color ? "\e[1;41m" : "", strerror(-ret), color ? "\e[0m" : "");
       abort();
 #endif
    }
