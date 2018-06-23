@@ -328,9 +328,6 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 static void
 iris_finish_batch(struct iris_batch *batch)
 {
-   if (batch->bo == batch->exec_bos[0])
-      batch->primary_batch_size = batch_bytes_used(batch);
-
    // XXX: ISP DIS
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
@@ -344,6 +341,9 @@ iris_finish_batch(struct iris_batch *batch)
    map[1] = 0;
 
    batch->map_next += qword_aligned ? 8 : 4;
+
+   if (batch->bo == batch->exec_bos[0])
+      batch->primary_batch_size = batch_bytes_used(batch);
 }
 
 static int
