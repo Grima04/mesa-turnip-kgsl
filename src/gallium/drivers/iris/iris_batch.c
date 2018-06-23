@@ -323,11 +323,7 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 }
 
 /**
- * Called from iris_batch_flush before emitting MI_BATCHBUFFER_END and
- * sending it off.
- *
- * This function can emit state (say, to preserve registers that aren't saved
- * between batches).
+ * Terminate a batch with MI_BATCH_BUFFER_END.
  */
 static void
 iris_finish_batch(struct iris_batch *batch)
