@@ -457,15 +457,20 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 
    //throttle(iris);
 
-   if (ret < 0)
-      return ret;
+   if (ret >= 0) {
+      //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
+         //iris_check_for_reset(ice);
 
-   //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
-      //iris_check_for_reset(ice);
-
-   if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
-      dbg_printf("waiting for idle\n");
-      iris_bo_wait_rendering(batch->bo);
+      if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
+         dbg_printf("waiting for idle\n");
+         iris_bo_wait_rendering(batch->bo);
+      }
+   } else {
+#ifdef DEBUG
+      fprintf(stderr, "iris: Failed to submit batchbuffer: %s\n",
+              strerror(-ret));
+      abort();
+#endif
    }
 
    /* Clean up after the batch we submitted and prepare for a new one. */
