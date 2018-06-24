@@ -738,8 +738,10 @@ translate_wrap(unsigned pipe_wrap)
       [PIPE_TEX_WRAP_CLAMP_TO_BORDER]        = TCM_CLAMP_BORDER,
       [PIPE_TEX_WRAP_MIRROR_REPEAT]          = TCM_MIRROR,
       [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE]   = TCM_MIRROR_ONCE,
-      [PIPE_TEX_WRAP_MIRROR_CLAMP]           = -1, // XXX: ???
-      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1, // XXX: ???
+
+      /* These are unsupported. */
+      [PIPE_TEX_WRAP_MIRROR_CLAMP]           = -1,
+      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1,
    };
    return map[pipe_wrap];
 }
