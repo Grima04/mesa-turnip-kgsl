@@ -308,6 +308,12 @@ void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 void iris_update_compiled_shaders(struct iris_context *ice);
 
+/* iris_blit.c */
+void iris_blorp_surf_for_resource(struct blorp_surf *surf,
+                                  struct pipe_resource *p_res,
+                                  enum isl_aux_usage aux_usage,
+                                  bool is_render_target);
+
 /* iris_draw.c */
 
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);

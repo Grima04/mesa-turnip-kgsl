@@ -32,11 +32,11 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 
-static void
-blorp_surf_for_resource(struct blorp_surf *surf,
-                        struct pipe_resource *p_res,
-                        enum isl_aux_usage aux_usage,
-                        bool is_render_target)
+void
+iris_blorp_surf_for_resource(struct blorp_surf *surf,
+                             struct pipe_resource *p_res,
+                             enum isl_aux_usage aux_usage,
+                             bool is_render_target)
 {
    struct iris_resource *res = (void *) p_res;
 
@@ -72,10 +72,10 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
    struct iris_context *ice = (void *) ctx;
    struct blorp_surf src_surf, dst_surf;
-   blorp_surf_for_resource(&src_surf, info->src.resource, ISL_AUX_USAGE_NONE,
-                           false);
-   blorp_surf_for_resource(&dst_surf, info->dst.resource, ISL_AUX_USAGE_NONE,
-                           true);
+   iris_blorp_surf_for_resource(&src_surf, info->src.resource,
+                                ISL_AUX_USAGE_NONE, false);
+   iris_blorp_surf_for_resource(&dst_surf, info->dst.resource,
+                                ISL_AUX_USAGE_NONE, true);
 
    enum isl_format src_isl_format = iris_get_blorp_format(info->src.format);
    enum isl_format dst_isl_format = iris_get_blorp_format(info->dst.format);

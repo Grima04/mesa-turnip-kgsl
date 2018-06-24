@@ -980,15 +980,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
    return &isv->pipe;
 }
 
-struct iris_surface {
-   struct pipe_surface pipe;
-   struct isl_view view;
-
-   /** The resource (BO) holding our SURFACE_STATE. */
-   struct pipe_resource *surface_state_resource;
-   unsigned surface_state_offset;
-};
-
 static struct pipe_surface *
 iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,

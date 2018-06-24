@@ -44,4 +44,13 @@ iris_resource_bo(struct pipe_resource *p_res)
    return res->bo;
 }
 
+struct iris_surface {
+   struct pipe_surface pipe;
+   struct isl_view view;
+
+   /** The resource (BO) holding our SURFACE_STATE. */
+   struct pipe_resource *surface_state_resource;
+   unsigned surface_state_offset;
+};
+
 #endif

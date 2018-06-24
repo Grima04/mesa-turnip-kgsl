@@ -38,10 +38,44 @@
 static void
 iris_clear(struct pipe_context *ctx,
            unsigned buffers,
-           const union pipe_color_union *color,
+           const union pipe_color_union *p_color,
            double depth,
            unsigned stencil)
 {
+   struct iris_context *ice = (void *) ctx;
+   assert(buffers != 0);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, &ice->render_batch, 0);
+
+   if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
+      fprintf(stderr, "XXX: depth/stencil clears not implemented\n");
+   }
+
+   if (buffers & PIPE_CLEAR_COLOR) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      /* pipe_color_union and isl_color_value are interchangeable */
+      union isl_color_value *clear_color = (void *) p_color;
+      bool color_write_disable[4] = { false, false, false, false };
+
+      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+         if (buffers & (PIPE_CLEAR_COLOR0 << i)) {
+            struct pipe_surface *psurf = cso_fb->cbufs[i];
+            struct iris_surface *isurf = (void *) psurf;
+            struct blorp_surf surf;
+
+            iris_blorp_surf_for_resource(&surf, psurf->texture,
+                                         ISL_AUX_USAGE_NONE, true);
+
+            blorp_clear(&blorp_batch, &surf, isurf->view.format,
+                        ISL_SWIZZLE_IDENTITY, 0, 0, cso_fb->layers,
+                        0, 0, cso_fb->width, cso_fb->height,
+                        *clear_color, color_write_disable);
+         }
+      }
+   }
+
+   blorp_batch_finish(&blorp_batch);
 }
 
 static void
@@ -52,6 +86,7 @@ iris_clear_render_target(struct pipe_context *ctx,
                          unsigned width, unsigned height,
                          bool render_condition_enabled)
 {
+   fprintf(stderr, "XXX: iris_clear_render_target\n");
 }
 
 static void
@@ -64,6 +99,7 @@ iris_clear_depth_stencil(struct pipe_context *ctx,
                          unsigned width, unsigned height,
                          bool render_condition_enabled)
 {
+   fprintf(stderr, "XXX: iris_clear_depth_stencil\n");
 }
 
 void
