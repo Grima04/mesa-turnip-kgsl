@@ -399,6 +399,8 @@ struct iris_transfer {
    struct pipe_debug_callback *dbg;
    void *buffer;
    void *ptr;
+   // XXX: why do we have this, pipe_transfer already has one...
+   // XXX: but it's different for tiled memcpy and I don't recall why
    int stride;
 
    void (*unmap)(struct iris_transfer *);
@@ -460,7 +462,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
 
-   unsigned int x1, x2, y1, y2;
+   unsigned x1, x2, y1, y2;
    tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
    map->stride = ALIGN(surf->row_pitch_B, 16);
 
@@ -485,6 +487,25 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
    }
 
    map->unmap = iris_unmap_tiled_memcpy;
+}
+
+static void
+iris_map_direct(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct pipe_box *box = &xfer->box;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+   const unsigned cpp = fmtl->bpb / 8;
+
+   void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
+
+   // XXX: level, layer, etc
+   assert(xfer->level == 0);
+   assert(box->z == 0);
+
+   map->ptr = ptr + box->y * xfer->stride + box->x * cpp;
 }
 
 static void *
@@ -539,8 +560,7 @@ iris_transfer_map(struct pipe_context *ctx,
    if (surf->tiling != ISL_TILING_LINEAR) {
       iris_map_tiled_memcpy(map);
    } else {
-      // XXX: apply box
-      map->ptr = iris_bo_map(&ice->dbg, res->bo, xfer->usage);
+      iris_map_direct(map);
    }
 
    return map->ptr;
