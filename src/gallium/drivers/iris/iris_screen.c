@@ -87,7 +87,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_OCCLUSION_QUERY:
    case PIPE_CAP_QUERY_TIME_ELAPSED:
    case PIPE_CAP_TEXTURE_SWIZZLE:
-   case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
+   case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
    case PIPE_CAP_BLEND_EQUATION_SEPARATE:
    case PIPE_CAP_SM3:
    case PIPE_CAP_PRIMITIVE_RESTART:
@@ -164,6 +164,12 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_CONSERVATIVE_RASTER_SUBPIXEL_PRECISION_BIAS:
    case PIPE_CAP_CONSERVATIVE_RASTER_POST_DEPTH_COVERAGE:
    case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
+      return false;
+
+   case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
+      /* Intel GPUs don't support PIPE_TEX_WRAP_MIRROR_CLAMP or
+       * PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER.
+       */
       return false;
 
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
