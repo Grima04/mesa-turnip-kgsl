@@ -454,7 +454,8 @@ update_last_vue_map(struct iris_context *ice)
          (vue_map->slots_valid & VARYING_BIT_VIEWPORT) ? IRIS_MAX_VIEWPORTS : 1;
       ice->state.dirty |= IRIS_DIRTY_CLIP |
                           IRIS_DIRTY_SF_CL_VIEWPORT |
-                          IRIS_DIRTY_SCISSOR_RECT;
+                          IRIS_DIRTY_SCISSOR_RECT |
+                          IRIS_DIRTY_UNCOMPILED_FS;
       // XXX: CC_VIEWPORT?
    }
 
@@ -473,22 +474,30 @@ get_vue_prog_data(struct iris_context *ice, gl_shader_stage stage)
 void
 iris_update_compiled_shaders(struct iris_context *ice)
 {
+   const uint64_t dirty = ice->state.dirty;
+
    struct brw_vue_prog_data *old_prog_datas[4];
-   if (!(ice->state.dirty & IRIS_DIRTY_URB)) {
+   if (!(dirty & IRIS_DIRTY_URB)) {
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++)
          old_prog_datas[i] = get_vue_prog_data(ice, i);
    }
 
-   // XXX: dirty bits...
-   iris_update_compiled_vs(ice);
-   iris_update_compiled_tcs(ice);
-   iris_update_compiled_tes(ice);
-   iris_update_compiled_gs(ice);
+   if (dirty & IRIS_DIRTY_UNCOMPILED_VS)
+      iris_update_compiled_vs(ice);
+   if (dirty & IRIS_DIRTY_UNCOMPILED_TCS)
+      iris_update_compiled_tcs(ice);
+   if (dirty & IRIS_DIRTY_UNCOMPILED_TES)
+      iris_update_compiled_tes(ice);
+   if (dirty & IRIS_DIRTY_UNCOMPILED_GS)
+      iris_update_compiled_gs(ice);
+
    update_last_vue_map(ice);
-   iris_update_compiled_fs(ice);
+
+   if (dirty & IRIS_DIRTY_UNCOMPILED_FS)
+      iris_update_compiled_fs(ice);
    // ...
 
-   if (!(ice->state.dirty & IRIS_DIRTY_URB)) {
+   if (!(dirty & IRIS_DIRTY_URB)) {
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          struct brw_vue_prog_data *old = old_prog_datas[i];
          struct brw_vue_prog_data *new = get_vue_prog_data(ice, i);
