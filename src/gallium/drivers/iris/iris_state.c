@@ -2333,8 +2333,7 @@ iris_restore_context_saved_bos(struct iris_context *ice,
 {
    // XXX: whack IRIS_SHADER_DIRTY_BINDING_TABLE on new batch
 
-   const uint64_t clean =
-      unlikely(INTEL_DEBUG & DEBUG_REEMIT) ? 0ull : ~ice->state.dirty;
+   const uint64_t clean = ~ice->state.dirty;
 
    if (clean & IRIS_DIRTY_CC_VIEWPORT) {
       iris_use_optional_res(batch, ice->state.last_res.cc_vp, false);
@@ -2430,8 +2429,7 @@ iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
 {
-   const uint64_t dirty =
-      unlikely(INTEL_DEBUG & DEBUG_REEMIT) ? ~0ull : ice->state.dirty;
+   const uint64_t dirty = ice->state.dirty;
 
    struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;

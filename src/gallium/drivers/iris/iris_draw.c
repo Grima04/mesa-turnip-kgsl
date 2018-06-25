@@ -37,6 +37,9 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_batch *batch = &ice->render_batch;
 
+   if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
+      ice->state.dirty |= ~0ull;
+
    iris_batch_maybe_flush(batch, 1500);
 
    // XXX: actually do brw_cache_flush_for_*
