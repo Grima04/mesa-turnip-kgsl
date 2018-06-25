@@ -68,8 +68,10 @@ iris_clear(struct pipe_context *ctx,
                                          ISL_AUX_USAGE_NONE, true);
 
             blorp_clear(&blorp_batch, &surf, isurf->view.format,
-                        ISL_SWIZZLE_IDENTITY, 0, 0, cso_fb->layers,
-                        0, 0, cso_fb->width, cso_fb->height,
+                        ISL_SWIZZLE_IDENTITY,
+                        psurf->u.tex.level, psurf->u.tex.first_layer,
+                        psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
+                        0, 0, psurf->width, psurf->height,
                         *clear_color, color_write_disable);
          }
       }
