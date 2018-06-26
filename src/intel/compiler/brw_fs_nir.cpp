@@ -802,26 +802,72 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
 }
 
 /**
- * Emit code for nir_op_fsign
+ * Emit code for nir_op_fsign possibly fused with a nir_op_fmul
+ *
+ * If \c instr is not the \c nir_op_fsign, then \c fsign_src is the index of
+ * the source of \c instr that is a \c nir_op_fsign.
  */
 void
 fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
-                       fs_reg result, fs_reg *op)
+                       fs_reg result, fs_reg *op, unsigned fsign_src)
 {
    fs_inst *inst;
 
-   assert(instr->op == nir_op_fsign);
+   assert(instr->op == nir_op_fsign || instr->op == nir_op_fmul);
+   assert(fsign_src < nir_op_infos[instr->op].num_inputs);
 
-   assert(!instr->dest.saturate);
+   if (instr->op != nir_op_fsign) {
+      const nir_alu_instr *const fsign_instr =
+         nir_src_as_alu_instr(instr->src[fsign_src].src);
+
+      assert(!fsign_instr->dest.saturate);
+
+      /* op[fsign_src] has the nominal result of the fsign, and op[1 -
+       * fsign_src] has the other multiply source.  This must be rearranged so
+       * that op[0] is the source of the fsign op[1] is the other multiply
+       * source.
+       */
+      if (fsign_src != 0)
+         op[1] = op[0];
+
+      op[0] = get_nir_src(fsign_instr->src[0].src);
+
+      const nir_alu_type t =
+         (nir_alu_type)(nir_op_infos[instr->op].input_types[0] |
+                        nir_src_bit_size(fsign_instr->src[0].src));
+
+      op[0].type = brw_type_for_nir_type(devinfo, t);
+      op[0].abs = fsign_instr->src[0].abs;
+      op[0].negate = fsign_instr->src[0].negate;
+
+      unsigned channel = 0;
+      if (nir_op_infos[instr->op].output_size == 0) {
+         /* Since NIR is doing the scalarizing for us, we should only ever see
+          * vectorized operations with a single channel.
+          */
+         assert(util_bitcount(instr->dest.write_mask) == 1);
+         channel = ffs(instr->dest.write_mask) - 1;
+      }
+
+      op[0] = offset(op[0], bld, fsign_instr->src[0].swizzle[channel]);
+   } else {
+      assert(!instr->dest.saturate);
+   }
+
    if (op[0].abs) {
       /* Straightforward since the source can be assumed to be either strictly
        * >= 0 or strictly <= 0 depending on the setting of the negate flag.
        */
       set_condmod(BRW_CONDITIONAL_NZ, bld.MOV(result, op[0]));
 
-      inst = (op[0].negate)
-         ? bld.MOV(result, brw_imm_f(-1.0f))
-         : bld.MOV(result, brw_imm_f(1.0f));
+      if (instr->op == nir_op_fsign) {
+         inst = (op[0].negate)
+            ? bld.MOV(result, brw_imm_f(-1.0f))
+            : bld.MOV(result, brw_imm_f(1.0f));
+      } else {
+         op[1].negate = (op[0].negate != op[1].negate);
+         inst = bld.MOV(result, op[1]);
+      }
 
       set_predicate(BRW_PREDICATE_NORMAL, inst);
    } else if (type_sz(op[0].type) < 8) {
@@ -837,7 +883,14 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
       result.type = BRW_REGISTER_TYPE_UD;
       bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
 
-      inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+      if (instr->op == nir_op_fsign)
+         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+      else {
+         /* Use XOR here to get the result sign correct. */
+         inst = bld.XOR(result_int, result_int,
+                        retype(op[1], BRW_REGISTER_TYPE_UD));
+      }
+
       inst->predicate = BRW_PREDICATE_NORMAL;
    } else {
       /* For doubles we do the same but we need to consider:
@@ -857,8 +910,20 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
       bld.AND(r, subscript(op[0], BRW_REGISTER_TYPE_UD, 1),
               brw_imm_ud(0x80000000u));
 
-      set_predicate(BRW_PREDICATE_NORMAL,
-                    bld.OR(r, r, brw_imm_ud(0x3ff00000u)));
+      if (instr->op == nir_op_fsign) {
+         set_predicate(BRW_PREDICATE_NORMAL,
+                       bld.OR(r, r, brw_imm_ud(0x3ff00000u)));
+      } else {
+         /* This could be done better in some cases.  If the scale is an
+          * immediate with the low 32-bits all 0, emitting a separate XOR and
+          * OR would allow an algebraic optimization to remove the OR.  There
+          * are currently zero instances of fsign(double(x))*IMM in shader-db
+          * or any test suite, so it is hard to care at this time.
+          */
+         fs_reg result_int64 = retype(result, BRW_REGISTER_TYPE_UQ);
+         inst = bld.XOR(result_int64, result_int64,
+                        retype(op[1], BRW_REGISTER_TYPE_UQ));
+      }
    }
 }
 
@@ -994,7 +1059,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_fsign:
-      emit_fsign(bld, instr, result, op);
+      emit_fsign(bld, instr, result, op, 0);
       break;
 
    case nir_op_frcp:

@@ -188,7 +188,7 @@ public:
    fs_reg resolve_source_modifiers(const fs_reg &src);
    void emit_discard_jump();
    void emit_fsign(const class brw::fs_builder &, const nir_alu_instr *instr,
-                   fs_reg result, fs_reg *op);
+                   fs_reg result, fs_reg *op, unsigned fsign_src);
    bool opt_peephole_sel();
    bool opt_peephole_csel();
    bool opt_peephole_predicated_break();
