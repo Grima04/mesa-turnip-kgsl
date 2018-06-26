@@ -1873,6 +1873,9 @@ iris_populate_fs_key(const struct iris_context *ice,
    key->replicate_alpha = fb->nr_cbufs > 1 &&
       (zsa->alpha.enabled || blend->alpha_to_coverage);
 
+   /* XXX: only bother if COL0/1 are read */
+   key->flat_shade = rast->flatshade;
+
    // key->force_dual_color_blend for unigine
 #if 0
    if (cso_rast->multisample) {
