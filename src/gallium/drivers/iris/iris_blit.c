@@ -112,8 +112,36 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    blorp_batch_finish(&blorp_batch);
 }
 
+static void
+iris_resource_copy_region(struct pipe_context *ctx,
+                          struct pipe_resource *dst,
+                          unsigned dst_level,
+                          unsigned dstx, unsigned dsty, unsigned dstz,
+                          struct pipe_resource *src,
+                          unsigned src_level,
+                          const struct pipe_box *src_box)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct blorp_surf src_surf, dst_surf;
+   iris_blorp_surf_for_resource(&src_surf, src, ISL_AUX_USAGE_NONE, false);
+   iris_blorp_surf_for_resource(&dst_surf, dst, ISL_AUX_USAGE_NONE, true);
+
+   // XXX: ???
+   unsigned dst_layer = dstz;
+   unsigned src_layer = src_box->z;
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, &ice->render_batch, 0);
+   blorp_copy(&blorp_batch, &src_surf, src_level, src_layer,
+              &dst_surf, dst_level, dst_layer,
+              src_box->x, src_box->y, dstx, dsty,
+              src_box->width, src_box->height);
+   blorp_batch_finish(&blorp_batch);
+}
+
 void
 iris_init_blit_functions(struct pipe_context *ctx)
 {
    ctx->blit = iris_blit;
+   ctx->resource_copy_region = iris_resource_copy_region;
 }

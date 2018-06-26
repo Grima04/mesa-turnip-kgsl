@@ -586,17 +586,6 @@ iris_transfer_unmap(struct pipe_context *pipe, struct pipe_transfer *xfer)
 }
 
 static void
-iris_resource_copy_region(struct pipe_context *ctx,
-                          struct pipe_resource *dst,
-                          unsigned dst_level,
-                          unsigned dstx, unsigned dsty, unsigned dstz,
-                          struct pipe_resource *src,
-                          unsigned src_level,
-                          const struct pipe_box *src_box)
-{
-}
-
-static void
 iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
 }
@@ -621,5 +610,4 @@ iris_init_resource_functions(struct pipe_context *ctx)
    ctx->transfer_unmap = iris_transfer_unmap;
    ctx->buffer_subdata = u_default_buffer_subdata;
    ctx->texture_subdata = u_default_texture_subdata;
-   ctx->resource_copy_region = iris_resource_copy_region;
 }
