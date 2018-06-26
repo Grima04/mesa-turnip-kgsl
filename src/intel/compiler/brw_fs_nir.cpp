@@ -801,6 +801,67 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
    return true;
 }
 
+/**
+ * Emit code for nir_op_fsign
+ */
+void
+fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
+                       fs_reg result, fs_reg *op)
+{
+   fs_inst *inst;
+
+   assert(instr->op == nir_op_fsign);
+
+   assert(!instr->dest.saturate);
+   if (op[0].abs) {
+      /* Straightforward since the source can be assumed to be either strictly
+       * >= 0 or strictly <= 0 depending on the setting of the negate flag.
+       */
+      set_condmod(BRW_CONDITIONAL_NZ, bld.MOV(result, op[0]));
+
+      inst = (op[0].negate)
+         ? bld.MOV(result, brw_imm_f(-1.0f))
+         : bld.MOV(result, brw_imm_f(1.0f));
+
+      set_predicate(BRW_PREDICATE_NORMAL, inst);
+   } else if (type_sz(op[0].type) < 8) {
+      /* AND(val, 0x80000000) gives the sign bit.
+       *
+       * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
+       * zero.
+       */
+      bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
+
+      fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
+      op[0].type = BRW_REGISTER_TYPE_UD;
+      result.type = BRW_REGISTER_TYPE_UD;
+      bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
+
+      inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+      inst->predicate = BRW_PREDICATE_NORMAL;
+   } else {
+      /* For doubles we do the same but we need to consider:
+       *
+       * - 2-src instructions can't operate with 64-bit immediates
+       * - The sign is encoded in the high 32-bit of each DF
+       * - We need to produce a DF result.
+       */
+
+      fs_reg zero = vgrf(glsl_type::double_type);
+      bld.MOV(zero, setup_imm_df(bld, 0.0));
+      bld.CMP(bld.null_reg_df(), op[0], zero, BRW_CONDITIONAL_NZ);
+
+      bld.MOV(result, zero);
+
+      fs_reg r = subscript(result, BRW_REGISTER_TYPE_UD, 1);
+      bld.AND(r, subscript(op[0], BRW_REGISTER_TYPE_UD, 1),
+              brw_imm_ud(0x80000000u));
+
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    bld.OR(r, r, brw_imm_ud(0x3ff00000u)));
+   }
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
@@ -932,72 +993,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_fsign: {
-      assert(!instr->dest.saturate);
-      if (op[0].abs) {
-         /* Straightforward since the source can be assumed to be either
-          * strictly >= 0 or strictly <= 0 depending on the setting of the
-          * negate flag.
-          */
-         set_condmod(BRW_CONDITIONAL_NZ, bld.MOV(result, op[0]));
-
-         inst = (op[0].negate)
-            ? bld.MOV(result, brw_imm_f(-1.0f))
-            : bld.MOV(result, brw_imm_f(1.0f));
-
-         set_predicate(BRW_PREDICATE_NORMAL, inst);
-      } else if (type_sz(op[0].type) == 2) {
-         /* AND(val, 0x8000) gives the sign bit.
-          *
-          * Predicated OR ORs 1.0 (0x3c00) with the sign bit if val is not zero.
-          */
-         fs_reg zero = retype(brw_imm_uw(0), BRW_REGISTER_TYPE_HF);
-         bld.CMP(bld.null_reg_f(), op[0], zero, BRW_CONDITIONAL_NZ);
-
-         op[0].type = BRW_REGISTER_TYPE_UW;
-         result.type = BRW_REGISTER_TYPE_UW;
-         bld.AND(result, op[0], brw_imm_uw(0x8000u));
-
-         inst = bld.OR(result, result, brw_imm_uw(0x3c00u));
-         inst->predicate = BRW_PREDICATE_NORMAL;
-      } else if (type_sz(op[0].type) == 4) {
-         /* AND(val, 0x80000000) gives the sign bit.
-          *
-          * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
-          * zero.
-          */
-         bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
-
-         op[0].type = BRW_REGISTER_TYPE_UD;
-         result.type = BRW_REGISTER_TYPE_UD;
-         bld.AND(result, op[0], brw_imm_ud(0x80000000u));
-
-         inst = bld.OR(result, result, brw_imm_ud(0x3f800000u));
-         inst->predicate = BRW_PREDICATE_NORMAL;
-      } else {
-         /* For doubles we do the same but we need to consider:
-          *
-          * - 2-src instructions can't operate with 64-bit immediates
-          * - The sign is encoded in the high 32-bit of each DF
-          * - We need to produce a DF result.
-          */
-         assert(type_sz(op[0].type) == 8);
-
-         fs_reg zero = vgrf(glsl_type::double_type);
-         bld.MOV(zero, setup_imm_df(bld, 0.0));
-         bld.CMP(bld.null_reg_df(), op[0], zero, BRW_CONDITIONAL_NZ);
-
-         bld.MOV(result, zero);
-
-         fs_reg r = subscript(result, BRW_REGISTER_TYPE_UD, 1);
-         bld.AND(r, subscript(op[0], BRW_REGISTER_TYPE_UD, 1),
-                 brw_imm_ud(0x80000000u));
-
-         set_predicate(BRW_PREDICATE_NORMAL,
-                       bld.OR(r, r, brw_imm_ud(0x3ff00000u)));
-      }
+   case nir_op_fsign:
+      emit_fsign(bld, instr, result, op);
       break;
-   }
 
    case nir_op_frcp:
       inst = bld.emit(SHADER_OPCODE_RCP, result, op[0]);
