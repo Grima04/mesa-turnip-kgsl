@@ -644,7 +644,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       rr.GlobalDepthOffsetEnableSolid = state->offset_tri;
       rr.GlobalDepthOffsetEnableWireframe = state->offset_line;
       rr.GlobalDepthOffsetEnablePoint = state->offset_point;
-      rr.GlobalDepthOffsetConstant = state->offset_units;
+      rr.GlobalDepthOffsetConstant = state->offset_units * 2;
       rr.GlobalDepthOffsetScale = state->offset_scale;
       rr.GlobalDepthOffsetClamp = state->offset_clamp;
       rr.SmoothPointEnable = state->point_smooth;
