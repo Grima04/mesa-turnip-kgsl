@@ -45,8 +45,12 @@ iris_clear(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    assert(buffers != 0);
 
+   struct iris_batch *batch = &ice->render_batch;
+
+   iris_batch_maybe_flush(batch, 1500);
+
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, &ice->render_batch, 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       fprintf(stderr, "XXX: depth/stencil clears not implemented\n");

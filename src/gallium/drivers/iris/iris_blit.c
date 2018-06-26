@@ -99,8 +99,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    GLenum filter =
       info->filter == PIPE_TEX_FILTER_LINEAR ? GL_LINEAR : GL_NEAREST;
 
+   struct iris_batch *batch = &ice->render_batch;
+
+   iris_batch_maybe_flush(batch, 1500);
+
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, &ice->render_batch, 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
    blorp_blit(&blorp_batch, &src_surf, info->src.level, src_layer,
               src_isl_format, src_isl_swizzle,
               &dst_surf, info->dst.level, dst_layer,
@@ -130,8 +134,12 @@ iris_resource_copy_region(struct pipe_context *ctx,
    unsigned dst_layer = dstz;
    unsigned src_layer = src_box->z;
 
+   struct iris_batch *batch = &ice->render_batch;
+
+   iris_batch_maybe_flush(batch, 1500);
+
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, &ice->render_batch, 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
    blorp_copy(&blorp_batch, &src_surf, src_level, src_layer,
               &dst_surf, dst_level, dst_layer,
               src_box->x, src_box->y, dstx, dsty,
