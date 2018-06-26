@@ -3886,6 +3886,23 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer_emit_depth_stencil(cmd_buffer);
 }
 
+static enum blorp_filter
+vk_to_blorp_resolve_mode(VkResolveModeFlagBitsKHR vk_mode)
+{
+   switch (vk_mode) {
+   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR:
+      return BLORP_FILTER_SAMPLE_0;
+   case VK_RESOLVE_MODE_AVERAGE_BIT_KHR:
+      return BLORP_FILTER_AVERAGE;
+   case VK_RESOLVE_MODE_MIN_BIT_KHR:
+      return BLORP_FILTER_MIN_SAMPLE;
+   case VK_RESOLVE_MODE_MAX_BIT_KHR:
+      return BLORP_FILTER_MAX_SAMPLE;
+   default:
+      return BLORP_FILTER_NONE;
+   }
+}
+
 static void
 cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3950,6 +3967,125 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                 render_area.extent.width,
                                 render_area.extent.height,
                                 fb->layers, BLORP_FILTER_NONE);
+      }
+   }
+
+   if (subpass->ds_resolve_attachment) {
+      /* We are about to do some MSAA resolves.  We need to flush so that the
+       * result of writes to the MSAA depth attachments show up in the sampler
+       * when we blit to the single-sampled resolve target.
+       */
+      cmd_buffer->state.pending_pipe_bits |=
+         ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+         ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
+
+      uint32_t src_att = subpass->depth_stencil_attachment->attachment;
+      uint32_t dst_att = subpass->ds_resolve_attachment->attachment;
+
+      assert(src_att < cmd_buffer->state.pass->attachment_count);
+      assert(dst_att < cmd_buffer->state.pass->attachment_count);
+
+      if (cmd_buffer->state.attachments[dst_att].pending_clear_aspects) {
+         /* From the Vulkan 1.0 spec:
+          *
+          *    If the first use of an attachment in a render pass is as a
+          *    resolve attachment, then the loadOp is effectively ignored
+          *    as the resolve is guaranteed to overwrite all pixels in the
+          *    render area.
+          */
+         cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
+      }
+
+      struct anv_image_view *src_iview = fb->attachments[src_att];
+      struct anv_image_view *dst_iview = fb->attachments[dst_att];
+
+      const VkRect2D render_area = cmd_buffer->state.render_area;
+
+      if ((src_iview->image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+          subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
+
+         struct anv_attachment_state *src_state =
+            &cmd_state->attachments[src_att];
+         struct anv_attachment_state *dst_state =
+            &cmd_state->attachments[dst_att];
+
+         /* MSAA resolves sample from the source attachment.  Transition the
+          * depth attachment first to get rid of any HiZ that we may not be
+          * able to handle.
+          */
+         transition_depth_buffer(cmd_buffer, src_iview->image,
+                                 src_state->current_layout,
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+         src_state->aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info, src_iview->image,
+                                    VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+         src_state->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+         /* MSAA resolves write to the resolve attachment as if it were any
+          * other transfer op.  Transition the resolve attachment accordingly.
+          */
+         VkImageLayout dst_initial_layout = dst_state->current_layout;
+
+         /* If our render area is the entire size of the image, we're going to
+          * blow it all away so we can claim the initial layout is UNDEFINED
+          * and we'll get a HiZ ambiguate instead of a resolve.
+          */
+         if (dst_iview->image->type != VK_IMAGE_TYPE_3D &&
+             render_area.offset.x == 0 && render_area.offset.y == 0 &&
+             render_area.extent.width == dst_iview->extent.width &&
+             render_area.extent.height == dst_iview->extent.height)
+            dst_initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+         transition_depth_buffer(cmd_buffer, dst_iview->image,
+                                 dst_initial_layout,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+         dst_state->aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info, dst_iview->image,
+                                    VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+         dst_state->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+         enum blorp_filter filter =
+            vk_to_blorp_resolve_mode(subpass->depth_resolve_mode);
+
+         anv_image_msaa_resolve(cmd_buffer,
+                                src_iview->image, src_state->aux_usage,
+                                src_iview->planes[0].isl.base_level,
+                                src_iview->planes[0].isl.base_array_layer,
+                                dst_iview->image, dst_state->aux_usage,
+                                dst_iview->planes[0].isl.base_level,
+                                dst_iview->planes[0].isl.base_array_layer,
+                                VK_IMAGE_ASPECT_DEPTH_BIT,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.extent.width,
+                                render_area.extent.height,
+                                fb->layers, filter);
+      }
+
+      if ((src_iview->image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+          subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
+
+         enum isl_aux_usage src_aux_usage = ISL_AUX_USAGE_NONE;
+         enum isl_aux_usage dst_aux_usage = ISL_AUX_USAGE_NONE;
+
+         enum blorp_filter filter =
+            vk_to_blorp_resolve_mode(subpass->stencil_resolve_mode);
+
+         anv_image_msaa_resolve(cmd_buffer,
+                                src_iview->image, src_aux_usage,
+                                src_iview->planes[0].isl.base_level,
+                                src_iview->planes[0].isl.base_array_layer,
+                                dst_iview->image, dst_aux_usage,
+                                dst_iview->planes[0].isl.base_level,
+                                dst_iview->planes[0].isl.base_array_layer,
+                                VK_IMAGE_ASPECT_STENCIL_BIT,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.extent.width,
+                                render_area.extent.height,
+                                fb->layers, filter);
       }
    }
 

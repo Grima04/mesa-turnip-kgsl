@@ -1130,6 +1130,34 @@ void anv_GetPhysicalDeviceProperties2(
 
    vk_foreach_struct(ext, pProperties->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: {
+         VkPhysicalDeviceDepthStencilResolvePropertiesKHR *props =
+            (VkPhysicalDeviceDepthStencilResolvePropertiesKHR *)ext;
+
+         /* We support all of the depth resolve modes */
+         props->supportedDepthResolveModes =
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
+            VK_RESOLVE_MODE_AVERAGE_BIT_KHR |
+            VK_RESOLVE_MODE_MIN_BIT_KHR |
+            VK_RESOLVE_MODE_MAX_BIT_KHR;
+
+         /* Average doesn't make sense for stencil so we don't support that */
+         props->supportedStencilResolveModes =
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
+         if (pdevice->info.gen >= 8) {
+            /* The advanced stencil resolve modes currently require stencil
+             * sampling be supported by the hardware.
+             */
+            props->supportedStencilResolveModes |=
+               VK_RESOLVE_MODE_MIN_BIT_KHR |
+               VK_RESOLVE_MODE_MAX_BIT_KHR;
+         }
+
+         props->independentResolveNone = VK_TRUE;
+         props->independentResolve = VK_TRUE;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
          VkPhysicalDeviceDriverPropertiesKHR *driver_props =
             (VkPhysicalDeviceDriverPropertiesKHR *) ext;
