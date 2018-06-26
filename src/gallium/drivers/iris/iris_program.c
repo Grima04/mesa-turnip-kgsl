@@ -325,6 +325,8 @@ iris_compile_tes(struct iris_context *ice,
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+
    struct brw_vue_map input_vue_map;
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
                             key->patch_inputs_read);
@@ -334,7 +336,7 @@ iris_compile_tes(struct iris_context *ice,
       brw_compile_tes(compiler, &ice->dbg, mem_ctx, key, &input_vue_map,
                       tes_prog_data, nir, NULL, -1, &error_str);
    if (program == NULL) {
-      dbg_printf("Failed to compile vertex shader: %s\n", error_str);
+      dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
       ralloc_free(mem_ctx);
       return false;
    }
