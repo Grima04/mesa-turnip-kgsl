@@ -627,11 +627,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       sf.PointWidth = state->point_size;
 
       if (state->flatshade_first) {
+         sf.TriangleFanProvokingVertexSelect = 1;
+      } else {
          sf.TriangleStripListProvokingVertexSelect = 2;
          sf.TriangleFanProvokingVertexSelect = 2;
          sf.LineStripListProvokingVertexSelect = 1;
-      } else {
-         sf.TriangleFanProvokingVertexSelect = 1;
       }
    }
 
@@ -672,11 +672,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       cl.MaximumPointWidth = 255.875;
 
       if (state->flatshade_first) {
+         cl.TriangleFanProvokingVertexSelect = 1;
+      } else {
          cl.TriangleStripListProvokingVertexSelect = 2;
          cl.TriangleFanProvokingVertexSelect = 2;
          cl.LineStripListProvokingVertexSelect = 1;
-      } else {
-         cl.TriangleFanProvokingVertexSelect = 1;
       }
    }
 
