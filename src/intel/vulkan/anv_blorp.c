@@ -1311,7 +1311,7 @@ anv_cmd_buffer_resolve_subpass(struct anv_cmd_buffer *cmd_buffer)
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
 
-   if (subpass->has_resolve) {
+   if (subpass->has_color_resolve) {
       struct blorp_batch batch;
       blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
 
