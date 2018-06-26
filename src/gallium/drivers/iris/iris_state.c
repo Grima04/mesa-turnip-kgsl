@@ -1502,7 +1502,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    struct iris_vertex_element_state *cso =
       malloc(sizeof(struct iris_vertex_element_state));
 
-   cso->count = count;
+   cso->count = MAX2(count, 1);
 
    /* TODO:
     *  - create edge flag one
@@ -1510,12 +1510,25 @@ iris_create_vertex_elements(struct pipe_context *ctx,
     *  - if those are necessary, use count + 1/2/3... OR in the length
     */
    iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve) {
-      ve.DWordLength =
-         1 + GENX(VERTEX_ELEMENT_STATE_length) * MAX2(count, 1) - 2;
+      ve.DWordLength = 1 + GENX(VERTEX_ELEMENT_STATE_length) * cso->count - 2;
    }
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
    uint32_t *vfi_pack_dest = cso->vf_instancing;
+
+   if (count == 0) {
+      iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+         ve.Valid = true;
+         ve.SourceElementFormat = ISL_FORMAT_R32G32B32A32_FLOAT;
+         ve.Component0Control = VFCOMP_STORE_0;
+         ve.Component1Control = VFCOMP_STORE_0;
+         ve.Component2Control = VFCOMP_STORE_0;
+         ve.Component3Control = VFCOMP_STORE_1_FP;
+      }
+
+      iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+      }
+   }
 
    for (int i = 0; i < count; i++) {
       enum isl_format isl_format =
