@@ -24,6 +24,7 @@
 #include "compiler/glsl/ir.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
+#include "nir_search_helpers.h"
 #include "util/u_math.h"
 #include "util/bitscan.h"
 
@@ -927,6 +928,41 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
    }
 }
 
+/**
+ * Deteremine whether sources of a nir_op_fmul can be fused with a nir_op_fsign
+ *
+ * Checks the operands of a \c nir_op_fmul to determine whether or not
+ * \c emit_fsign could fuse the multiplication with the \c sign() calculation.
+ *
+ * \param instr  The multiplication instruction
+ *
+ * \param fsign_src The source of \c instr that may or may not be a
+ *                  \c nir_op_fsign
+ */
+static bool
+can_fuse_fmul_fsign(nir_alu_instr *instr, unsigned fsign_src)
+{
+   assert(instr->op == nir_op_fmul);
+
+   nir_alu_instr *const fsign_instr =
+      nir_src_as_alu_instr(instr->src[fsign_src].src);
+
+   /* Rules:
+    *
+    * 1. instr->src[fsign_src] must be a nir_op_fsign.
+    * 2. The nir_op_fsign can only be used by this multiplication.
+    * 3. The source that is the nir_op_fsign does not have source modifiers.
+    *    \c emit_fsign only examines the source modifiers of the source of the
+    *    \c nir_op_fsign.
+    *
+    * The nir_op_fsign must also not have the saturate modifier, but steps
+    * have already been taken (in nir_opt_algebraic) to ensure that.
+    */
+   return fsign_instr != NULL && fsign_instr->op == nir_op_fsign &&
+          is_used_once(fsign_instr) &&
+          !instr->src[fsign_src].abs && !instr->src[fsign_src].negate;
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
@@ -1132,6 +1168,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_fmul:
+      for (unsigned i = 0; i < 2; i++) {
+         if (can_fuse_fmul_fsign(instr, i)) {
+            emit_fsign(bld, instr, result, op, i);
+            return;
+         }
+      }
+
       inst = bld.MUL(result, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
