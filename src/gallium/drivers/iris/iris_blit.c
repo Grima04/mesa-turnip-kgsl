@@ -112,21 +112,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    blorp_batch_finish(&blorp_batch);
 }
 
-static boolean
-iris_generate_mipmap(struct pipe_context *ctx,
-                     struct pipe_resource *resource,
-                     enum pipe_format format,
-                     unsigned base_level,
-                     unsigned last_level,
-                     unsigned first_layer,
-                     unsigned last_layer)
-{
-   return true;
-}
-
 void
 iris_init_blit_functions(struct pipe_context *ctx)
 {
    ctx->blit = iris_blit;
-   ctx->generate_mipmap = iris_generate_mipmap;
 }
