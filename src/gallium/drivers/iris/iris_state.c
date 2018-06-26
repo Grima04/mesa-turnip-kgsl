@@ -2016,7 +2016,7 @@ iris_store_gs_state(const struct gen_device_info *devinfo,
       gs.ControlDataHeaderSize =
          gs_prog_data->control_data_header_size_hwords;
       gs.InstanceControl = gs_prog_data->invocations - 1;
-      gs.DispatchMode = SIMD8;
+      gs.DispatchMode = DISPATCH_MODE_SIMD8;
       gs.IncludePrimitiveID = gs_prog_data->include_primitive_id;
       gs.ControlDataFormat = gs_prog_data->control_data_format;
       gs.ReorderMode = TRAILING;
