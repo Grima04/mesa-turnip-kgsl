@@ -349,7 +349,6 @@ iris_compile_tes(struct iris_context *ice,
    return true;
 }
 
-
 static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
@@ -368,10 +367,67 @@ iris_update_compiled_tes(struct iris_context *ice)
    UNUSED bool success = iris_compile_tes(ice, ish, &key);
 }
 
+static bool
+iris_compile_gs(struct iris_context *ice,
+                struct iris_uncompiled_shader *ish,
+                const struct brw_gs_prog_key *key)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   void *mem_ctx = ralloc_context(NULL);
+   struct brw_gs_prog_data *gs_prog_data =
+      rzalloc(mem_ctx, struct brw_gs_prog_data);
+   struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   assert(ish->base.type == PIPE_SHADER_IR_NIR);
+
+   nir_shader *nir = ish->base.ir.nir;
+
+   assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
+
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+
+   brw_compute_vue_map(devinfo,
+                       &vue_prog_data->vue_map, nir->info.outputs_written,
+                       nir->info.separate_shader);
+
+   char *error_str = NULL;
+   const unsigned *program =
+      brw_compile_gs(compiler, &ice->dbg, mem_ctx, key, gs_prog_data, nir,
+                     NULL, -1, &error_str);
+   if (program == NULL) {
+      dbg_printf("Failed to compile geometry shader: %s\n", error_str);
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   iris_setup_push_uniform_range(compiler, prog_data);
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_GS, key, program, prog_data);
+
+   ralloc_free(mem_ctx);
+   return true;
+}
+
+
 static void
 iris_update_compiled_gs(struct iris_context *ice)
 {
-   // XXX: GS
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_GEOMETRY];
+
+   if (!ish)
+      return;
+
+   struct brw_gs_prog_key key;
+   ice->vtbl.populate_gs_key(ice, &key);
+
+   if (iris_bind_cached_shader(ice, IRIS_CACHE_GS, &key))
+      return;
+
+   UNUSED bool success = iris_compile_gs(ice, ish, &key);
 }
 
 static bool
