@@ -2784,12 +2784,14 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
       const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
 
-      iris_batch_emit(batch, cso->vertex_buffers,
-                      sizeof(uint32_t) * (1 + vb_dwords * cso->num_buffers));
+      if (cso->num_buffers > 0) {
+         iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
+                         (1 + vb_dwords * cso->num_buffers));
 
-      for (unsigned i = 0; i < cso->num_buffers; i++) {
-         struct iris_resource *res = (void *) cso->resources[i];
-         iris_use_pinned_bo(batch, res->bo, false);
+         for (unsigned i = 0; i < cso->num_buffers; i++) {
+            struct iris_resource *res = (void *) cso->resources[i];
+            iris_use_pinned_bo(batch, res->bo, false);
+         }
       }
    }
 
