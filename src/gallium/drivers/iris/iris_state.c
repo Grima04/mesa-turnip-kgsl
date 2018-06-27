@@ -2260,6 +2260,17 @@ use_const_buffer(struct iris_batch *batch, struct iris_const_buffer *cbuf)
    return cbuf->surface_state_offset;
 }
 
+static uint32_t
+use_null_surface(struct iris_batch *batch, struct iris_context *ice)
+{
+   struct iris_resource *state_res =
+      (void *) ice->state.unbound_tex_surface_state_resource;
+
+   iris_use_pinned_bo(batch, state_res->bo, false);
+
+   return ice->state.unbound_tex_surface_state_offset;
+}
+
 static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
@@ -2293,7 +2304,8 @@ iris_populate_binding_table(struct iris_context *ice,
 
    for (int i = 0; i < ice->state.num_textures[stage]; i++) {
       struct iris_sampler_view *view = ice->state.textures[stage][i];
-      bt_map[s++] = use_sampler_view(batch, view);
+      bt_map[s++] = view ? use_sampler_view(batch, view)
+                         : use_null_surface(batch, ice);
    }
 
    // XXX: want the number of BTE's to shorten this loop
@@ -3293,6 +3305,7 @@ void
 genX(init_state)(struct iris_context *ice)
 {
    struct pipe_context *ctx = &ice->ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
 
    ctx->create_blend_state = iris_create_blend_state;
    ctx->create_depth_stencil_alpha_state = iris_create_zsa_state;
@@ -3356,4 +3369,13 @@ genX(init_state)(struct iris_context *ice)
    ice->state.cso_vp = calloc(1, sizeof(struct iris_viewport_state));
    ice->state.cso_vertex_buffers =
       calloc(1, sizeof(struct iris_vertex_buffer_state));
+
+   /* Make a 1x1x1 null surface for unbound textures */
+   void *null_surf_map = NULL;
+   u_upload_alloc(ice->state.surface_uploader, 0,
+                  4 * GENX(RENDER_SURFACE_STATE_length), 64,
+                  &ice->state.unbound_tex_surface_state_offset,
+                  &ice->state.unbound_tex_surface_state_resource,
+                  &null_surf_map);
+   isl_null_fill_state(&screen->isl_dev, null_surf_map, isl_extent3d(1, 1, 1));
 }

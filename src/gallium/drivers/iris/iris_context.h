@@ -269,6 +269,9 @@ struct iris_context {
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
 
+      struct pipe_resource *unbound_tex_surface_state_resource;
+      unsigned unbound_tex_surface_state_offset;
+
       struct u_upload_mgr *surface_uploader;
       // XXX: may want a separate uploader for "hey I made a CSO!" vs
       // "I'm streaming this out at draw time and never want it again!"
