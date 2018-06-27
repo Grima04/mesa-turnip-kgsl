@@ -43,6 +43,7 @@ iris_clear(struct pipe_context *ctx,
            unsigned stencil)
 {
    struct iris_context *ice = (void *) ctx;
+   struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
    assert(buffers != 0);
 
    struct iris_batch *batch = &ice->render_batch;
@@ -53,11 +54,25 @@ iris_clear(struct pipe_context *ctx,
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
-      fprintf(stderr, "XXX: depth/stencil clears not implemented\n");
+      struct pipe_surface *psurf = cso_fb->zsbuf;
+      struct blorp_surf z_surf;
+      const unsigned num_layers =
+         psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1;
+
+      iris_blorp_surf_for_resource(&z_surf, psurf->texture,
+                                   ISL_AUX_USAGE_NONE, true);
+
+      blorp_clear_depth_stencil(&blorp_batch, &z_surf, NULL /* XXX */,
+                                psurf->u.tex.level, psurf->u.tex.first_layer,
+                                num_layers, 0, 0, psurf->width, psurf->height,
+                                (buffers & PIPE_CLEAR_DEPTH) != 0,
+                                depth, 0 /* XXX */, stencil);
+
+      if (buffers & PIPE_CLEAR_STENCIL)
+         fprintf(stderr, "XXX: stencil clears not implemented\n");
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
-      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
       /* pipe_color_union and isl_color_value are interchangeable */
       union isl_color_value *clear_color = (void *) p_color;
       bool color_write_disable[4] = { false, false, false, false };
