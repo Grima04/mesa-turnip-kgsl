@@ -786,13 +786,15 @@ struct iris_sampler_state {
 };
 
 static void *
-iris_create_sampler_state(struct pipe_context *pctx,
+iris_create_sampler_state(struct pipe_context *ctx,
                           const struct pipe_sampler_state *state)
 {
    struct iris_sampler_state *cso = CALLOC_STRUCT(iris_sampler_state);
 
    if (!cso)
       return NULL;
+
+   memcpy(&cso->base, state, sizeof(*state));
 
    STATIC_ASSERT(PIPE_TEX_FILTER_NEAREST == MAPFILTER_NEAREST);
    STATIC_ASSERT(PIPE_TEX_FILTER_LINEAR == MAPFILTER_LINEAR);
@@ -852,7 +854,7 @@ iris_create_sampler_state(struct pipe_context *pctx,
       samp.MaxLOD = CLAMP(state->max_lod, 0, hw_max_lod);
       samp.TextureLODBias = CLAMP(state->lod_bias, -16, 15);
 
-      //samp.BorderColorPointer = <<comes from elsewhere>>
+      /* .BorderColorPointer is filled in by iris_bind_sampler_states. */
    }
 
    return cso;
@@ -868,9 +870,16 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
+   ice->state.num_samplers[stage] =
+      MAX2(ice->state.num_samplers[stage], start + count);
 
-   /* Assemble the SAMPLER_STATEs into a contiguous chunk of memory
-    * relative to Dynamic State Base Address.
+   for (int i = 0; i < count; i++) {
+      ice->state.samplers[stage][start + i] = states[i];
+   }
+
+   /* Assemble the SAMPLER_STATEs into a contiguous table that lives
+    * in the dynamic state memory zone, so we can point to it via the
+    * 3DSTATE_SAMPLER_STATE_POINTERS_* commands.
     */
    void *map = upload_state(ice->state.dynamic_uploader,
                             &ice->state.sampler_table[stage],
@@ -882,21 +891,39 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    ice->state.sampler_table[stage].offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(res));
 
+   /* Make sure all land in the same BO */
+   iris_border_color_pool_reserve(ice, IRIS_MAX_TEXTURE_SAMPLERS);
+
    for (int i = 0; i < count; i++) {
-      struct iris_sampler_state *state = states[i];
+      struct iris_sampler_state *state = ice->state.samplers[stage][i];
 
       /* Save a pointer to the iris_sampler_state, a few fields need
        * to inform draw-time decisions.
        */
       ice->state.samplers[stage][start + i] = state;
 
-      if (state)
+      if (!state) {
+         memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
+      } else if (!state->needs_border_color) {
          memcpy(map, state->sampler_state, 4 * GENX(SAMPLER_STATE_length));
+      } else {
+         ice->state.need_border_colors = true;
+
+         /* Stream out the border color and merge the pointer. */
+         uint32_t offset =
+            iris_upload_border_color(ice, &state->base.border_color);
+
+         uint32_t dynamic[GENX(SAMPLER_STATE_length)];
+         iris_pack_state(GENX(SAMPLER_STATE), dynamic, dyns) {
+            dyns.BorderColorPointer = offset;
+         }
+
+         for (uint32_t j = 0; j < GENX(SAMPLER_STATE_length); j++)
+            ((uint32_t *) map)[j] = state->sampler_state[j] | dynamic[j];
+      }
 
       map += GENX(SAMPLER_STATE_length);
    }
-
-   ice->state.num_samplers[stage] = count;
 
    ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
@@ -2601,6 +2628,9 @@ iris_upload_render_state(struct iris_context *ice,
          iris_populate_binding_table(ice, batch, stage);
       }
    }
+
+   if (ice->state.need_border_colors)
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)) ||

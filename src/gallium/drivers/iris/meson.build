@@ -24,6 +24,7 @@ files_libiris = files(
   'iris_binder.c',
   'iris_binder.h',
   'iris_blit.c',
+  'iris_border_color.c',
   'iris_bufmgr.c',
   'iris_bufmgr.h',
   'iris_clear.c',

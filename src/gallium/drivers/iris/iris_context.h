@@ -215,6 +215,15 @@ struct iris_vtable {
                            struct brw_wm_prog_key *key);
 };
 
+struct iris_border_color_pool {
+   struct iris_bo *bo;
+   void *map;
+   unsigned insert_point;
+
+   /** Map from border colors to offsets in the buffer. */
+   struct hash_table *ht;
+};
+
 struct iris_context {
    struct pipe_context ctx;
 
@@ -259,6 +268,7 @@ struct iris_context {
       struct iris_depth_buffer_state *cso_depthbuffer;
 
       struct iris_state_ref sampler_table[MESA_SHADER_STAGES];
+      bool need_border_colors;
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
       struct iris_sampler_view *textures[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
       unsigned num_samplers[MESA_SHADER_STAGES];
@@ -270,6 +280,8 @@ struct iris_context {
       // XXX: may want a separate uploader for "hey I made a CSO!" vs
       // "I'm streaming this out at draw time and never want it again!"
       struct u_upload_mgr *dynamic_uploader;
+
+      struct iris_border_color_pool border_color_pool;
 
       /**
        * Resources containing streamed state which our render context
@@ -342,6 +354,13 @@ void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 
 void gen9_init_blorp(struct iris_context *ice);
 void gen10_init_blorp(struct iris_context *ice);
+
+/* iris_border_color.c */
+
+void iris_init_border_color_pool(struct iris_context *ice);
+void iris_border_color_pool_reserve(struct iris_context *ice, unsigned count);
+uint32_t iris_upload_border_color(struct iris_context *ice,
+                                  union pipe_color_union *color);
 
 /* iris_state.c */
 

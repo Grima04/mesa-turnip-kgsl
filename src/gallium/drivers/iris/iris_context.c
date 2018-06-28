@@ -136,6 +136,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_query_functions(ctx);
 
    iris_init_program_cache(ice);
+   iris_init_border_color_pool(ice);
 
    ice->state.surface_uploader =
       u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,

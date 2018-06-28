@@ -59,7 +59,7 @@ struct pipe_debug_callback;
  *
  * A special buffer for border color lives at the start of the dynamic state
  * memory zone.  This unfortunately has to be handled specially because the
- * hardware designers only gave us 24-bit pointers.
+ * SAMPLER_STATE "Indirect State Pointer" field is only a 24-bit pointer.
  *
  * Each GL context uses a separate GEM context, which technically gives them
  * each a separate VMA.  However, we assign address globally, so buffers will
@@ -88,15 +88,11 @@ enum iris_memory_zone {
 #define IRIS_MEMZONE_DYNAMIC_START    (2ull * (1ull << 32))
 #define IRIS_MEMZONE_OTHER_START      (3ull * (1ull << 32))
 
-#define IRIS_BINDER_SIZE (64 * 1024)
 #define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
 #define IRIS_BINDER_SIZE (64 * 1024)
 
-/* This is large enough for every surface in the binder to have a border
- * color, which although unlikely, guarantees we'll never overflow.
- */
-#define IRIS_BORDER_COLOR_POOL_SIZE ((IRIS_BINDER_SIZE / 4) * 64)
 #define IRIS_BORDER_COLOR_POOL_ADDRESS IRIS_MEMZONE_DYNAMIC_START
+#define IRIS_BORDER_COLOR_POOL_SIZE (64 * 1024)
 
 struct iris_bo {
    /**
