@@ -618,7 +618,9 @@ static void si_emit_draw_registers(struct si_context *sctx,
 	/* Draw state. */
 	if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
 		if (sctx->chip_class >= GFX9)
-			radeon_set_uconfig_reg_idx(cs, R_030960_IA_MULTI_VGT_PARAM, 4, ia_multi_vgt_param);
+			radeon_set_uconfig_reg_idx(cs, sctx->screen,
+						   R_030960_IA_MULTI_VGT_PARAM, 4,
+						   ia_multi_vgt_param);
 		else if (sctx->chip_class >= CIK)
 			radeon_set_context_reg_idx(cs, R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
 		else
@@ -628,7 +630,8 @@ static void si_emit_draw_registers(struct si_context *sctx,
 	}
 	if (prim != sctx->last_prim) {
 		if (sctx->chip_class >= CIK)
-			radeon_set_uconfig_reg_idx(cs, R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
+			radeon_set_uconfig_reg_idx(cs, sctx->screen,
+						   R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
 		else
 			radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, prim);
 
@@ -716,8 +719,9 @@ static void si_emit_draw_packets(struct si_context *sctx,
 			}
 
 			if (sctx->chip_class >= GFX9) {
-				radeon_set_uconfig_reg_idx(cs, R_03090C_VGT_INDEX_TYPE,
-							   2, index_type);
+				radeon_set_uconfig_reg_idx(cs, sctx->screen,
+							   R_03090C_VGT_INDEX_TYPE, 2,
+							   index_type);
 			} else {
 				radeon_emit(cs, PKT3(PKT3_INDEX_TYPE, 0, 0));
 				radeon_emit(cs, index_type);
