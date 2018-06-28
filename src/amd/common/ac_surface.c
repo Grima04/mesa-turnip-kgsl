@@ -1004,6 +1004,14 @@ gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib,
 	return 0;
 }
 
+static bool gfx9_is_dcc_capable(const struct radeon_info *info, unsigned sw_mode)
+{
+	if (info->chip_class >= GFX10)
+		return sw_mode == ADDR_SW_64KB_Z_X || sw_mode == ADDR_SW_64KB_R_X;
+
+	return sw_mode != ADDR_SW_LINEAR;
+}
+
 static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 				const struct radeon_info *info,
 				const struct ac_surf_config *config,
@@ -1114,9 +1122,8 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		}
 
 		/* DCC */
-		if (!(surf->flags & RADEON_SURF_DISABLE_DCC) &&
-		    !compressed &&
-		    in->swizzleMode != ADDR_SW_LINEAR) {
+		if (!(surf->flags & RADEON_SURF_DISABLE_DCC) && !compressed &&
+		    gfx9_is_dcc_capable(info, in->swizzleMode)) {
 			ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
 			ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};
 			ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {};
