@@ -84,6 +84,7 @@ enum iris_memory_zone {
 #define IRIS_MEMZONE_OTHER_START      (3ull * (1ull << 32))
 
 #define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
+#define IRIS_BINDER_SIZE (64 * 1024)
 
 struct iris_bo {
    /**

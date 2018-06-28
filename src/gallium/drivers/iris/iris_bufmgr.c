@@ -1549,7 +1549,8 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
                       PAGE_SIZE, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
-                      IRIS_MEMZONE_SURFACE_START, _4GB);
+                      IRIS_MEMZONE_SURFACE_START + IRIS_BINDER_SIZE,
+                      _4GB - IRIS_BINDER_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
                       IRIS_MEMZONE_DYNAMIC_START, _4GB);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
