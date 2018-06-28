@@ -57,6 +57,10 @@ struct pipe_debug_callback;
  * A special 64kB "binder" buffer lives at the start of the surface memory
  * zone, holding binding tables referring to objects in the rest of the zone.
  *
+ * A special buffer for border color lives at the start of the dynamic state
+ * memory zone.  This unfortunately has to be handled specially because the
+ * hardware designers only gave us 24-bit pointers.
+ *
  * Each GL context uses a separate GEM context, which technically gives them
  * each a separate VMA.  However, we assign address globally, so buffers will
  * have the same address in all GEM contexts.  This lets us have a single BO
@@ -73,18 +77,26 @@ enum iris_memory_zone {
    IRIS_MEMZONE_OTHER,
 
    IRIS_MEMZONE_BINDER,
+   IRIS_MEMZONE_BORDER_COLOR_POOL,
 };
 
-/* Intentionally exclude IRIS_MEMZONE_BINDER */
-#define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
+/* Intentionally exclude single buffer "zones" */
+#define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 2)
 
 #define IRIS_MEMZONE_SHADER_START     (0ull * (1ull << 32))
 #define IRIS_MEMZONE_SURFACE_START    (1ull * (1ull << 32))
 #define IRIS_MEMZONE_DYNAMIC_START    (2ull * (1ull << 32))
 #define IRIS_MEMZONE_OTHER_START      (3ull * (1ull << 32))
 
+#define IRIS_BINDER_SIZE (64 * 1024)
 #define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
 #define IRIS_BINDER_SIZE (64 * 1024)
+
+/* This is large enough for every surface in the binder to have a border
+ * color, which although unlikely, guarantees we'll never overflow.
+ */
+#define IRIS_BORDER_COLOR_POOL_SIZE ((IRIS_BINDER_SIZE / 4) * 64)
+#define IRIS_BORDER_COLOR_POOL_ADDRESS IRIS_MEMZONE_DYNAMIC_START
 
 struct iris_bo {
    /**
