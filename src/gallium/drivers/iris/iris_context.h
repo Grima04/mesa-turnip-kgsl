@@ -30,6 +30,7 @@
 #include "intel/common/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
+#include "iris_resource.h"
 #include "iris_screen.h"
 
 struct iris_bo;
@@ -157,17 +158,14 @@ enum pipe_control_flags
 /** @} */
 
 struct iris_compiled_shader {
-   /** Buffer containing the uploaded assembly. */
-   struct pipe_resource *buffer;
+   /** Reference to the uploaded assembly. */
+   struct iris_state_ref assembly;
 
    /** Pointer to the assembly in the BO's map. */
    void *map;
 
    /** The program data (owned by the program cache hash table) */
    struct brw_stage_prog_data *prog_data;
-
-   /** Offset where the assembly lives in the BO. */
-   unsigned offset;
 
    /**
     * Shader packets and other data derived from prog_data.  These must be
@@ -178,12 +176,10 @@ struct iris_compiled_shader {
 
 struct iris_const_buffer {
    /** The resource and offset for the actual constant data */
-   struct pipe_resource *resource;
-   unsigned offset;
+   struct iris_state_ref data;
 
    /** The resource and offset for the SURFACE_STATE for pull access. */
-   struct pipe_resource *surface_state_resource;
-   unsigned surface_state_offset;
+   struct iris_state_ref surface_state;
 };
 
 struct iris_shader_state {
@@ -262,15 +258,13 @@ struct iris_context {
       struct pipe_framebuffer_state framebuffer;
       struct iris_depth_buffer_state *cso_depthbuffer;
 
-      struct pipe_resource *sampler_table_resource[MESA_SHADER_STAGES];
-      uint32_t sampler_table_offset[MESA_SHADER_STAGES];
+      struct iris_state_ref sampler_table[MESA_SHADER_STAGES];
       struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
       struct iris_sampler_view *textures[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
 
-      struct pipe_resource *unbound_tex_surface_state_resource;
-      unsigned unbound_tex_surface_state_offset;
+      struct iris_state_ref unbound_tex;
 
       struct u_upload_mgr *surface_uploader;
       // XXX: may want a separate uploader for "hey I made a CSO!" vs

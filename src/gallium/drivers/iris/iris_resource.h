@@ -33,6 +33,15 @@ struct iris_resource {
    struct iris_bo *bo;
 };
 
+/**
+ * A simple <resource, offset> tuple for storing a reference to a
+ * piece of state stored in a GPU buffer object.
+ */
+struct iris_state_ref {
+   struct pipe_resource *res;
+   uint32_t offset;
+};
+
 enum isl_format iris_isl_format_for_pipe_format(enum pipe_format pf);
 
 void iris_init_screen_resource_functions(struct pipe_screen *pscreen);
@@ -49,8 +58,7 @@ struct iris_surface {
    struct isl_view view;
 
    /** The resource (BO) holding our SURFACE_STATE. */
-   struct pipe_resource *surface_state_resource;
-   unsigned surface_state_offset;
+   struct iris_state_ref surface_state;
 };
 
 #endif

@@ -229,13 +229,14 @@ iris_upload_shader(struct iris_context *ice,
     * backend.
     */
    if (existing) {
-      pipe_resource_reference(&shader->buffer, existing->buffer);
-      shader->offset = existing->offset;
+      pipe_resource_reference(&shader->assembly.res, existing->assembly.res);
+      shader->assembly.offset = existing->assembly.offset;
       shader->map = existing->map;
    } else {
-      shader->buffer = NULL;
-      u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size,
-                     64, &shader->offset, &shader->buffer, &shader->map);
+      shader->assembly.res = NULL;
+      u_upload_alloc(ice->shaders.uploader, 0, prog_data->program_size, 64,
+                     &shader->assembly.offset, &shader->assembly.res,
+                     &shader->map);
       memcpy(shader->map, assembly, prog_data->program_size);
    }
 
@@ -290,8 +291,9 @@ iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
    if (!shader)
       return false;
 
-   struct iris_bo *bo = iris_resource_bo(shader->buffer);
-   *kernel_out = iris_bo_offset_from_base_address(bo) + shader->offset;
+   struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
+   *kernel_out =
+      iris_bo_offset_from_base_address(bo) + shader->assembly.offset;
    *((void **) prog_data_out) = shader->prog_data;
 
    iris_use_pinned_bo(batch, bo, false);
@@ -318,8 +320,9 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
       iris_upload_shader(ice, IRIS_CACHE_BLORP, key_size, key, kernel,
                          prog_data);
 
-   struct iris_bo *bo = iris_resource_bo(shader->buffer);
-   *kernel_out = iris_bo_offset_from_base_address(bo) + shader->offset;
+   struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
+   *kernel_out =
+      iris_bo_offset_from_base_address(bo) + shader->assembly.offset;
    *((void **) prog_data_out) = shader->prog_data;
 
    iris_use_pinned_bo(batch, bo, false);
@@ -347,7 +350,7 @@ iris_destroy_program_cache(struct iris_context *ice)
 
    hash_table_foreach(ice->shaders.cache, entry) {
       struct iris_compiled_shader *shader = entry->data;
-      pipe_resource_reference(&shader->buffer, NULL);
+      pipe_resource_reference(&shader->assembly.res, NULL);
    }
 
    u_upload_destroy(ice->shaders.uploader);
