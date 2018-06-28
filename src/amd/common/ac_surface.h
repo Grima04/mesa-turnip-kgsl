@@ -54,7 +54,7 @@ enum radeon_micro_mode {
     RADEON_MICRO_MODE_DISPLAY = 0,
     RADEON_MICRO_MODE_THIN = 1,
     RADEON_MICRO_MODE_DEPTH = 2,
-    RADEON_MICRO_MODE_ROTATED = 3,
+    RADEON_MICRO_MODE_ROTATED = 3, /* gfx10+: render target */
 };
 
 /* the first 16 bits are reserved for libdrm_radeon, don't use them */

@@ -1612,7 +1612,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 			surf->micro_tile_mode = RADEON_MICRO_MODE_DISPLAY;
 			break;
 
-		/* R = rotated. */
+		/* R = rotated (gfx9), render target (gfx10). */
 		case ADDR_SW_256B_R:
 		case ADDR_SW_4KB_R:
 		case ADDR_SW_64KB_R:
@@ -1622,13 +1622,13 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 		case ADDR_SW_64KB_R_X:
 		case ADDR_SW_VAR_R_X:
 			/* The rotated micro tile mode doesn't work if both CMASK and RB+ are
-			 * used at the same time. This case is not currently expected to occur
-			 * because we don't use rotated. Enforce this restriction on all chips
-			 * to facilitate testing.
+			 * used at the same time. We currently do not use rotated
+			 * in gfx9.
 			 */
-			assert(!"rotate micro tile mode is unsupported");
-			r = ADDR_ERROR;
-			goto error;
+			assert(info->chip_class >= GFX10 ||
+			       !"rotate micro tile mode is unsupported");
+			surf->micro_tile_mode = RADEON_MICRO_MODE_ROTATED;
+			break;
 
 		/* Z = depth. */
 		case ADDR_SW_4KB_Z:
