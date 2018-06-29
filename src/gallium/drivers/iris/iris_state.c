@@ -276,6 +276,13 @@ ro_bo(struct iris_bo *bo, uint64_t offset)
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
+static struct iris_address
+rw_bo(struct iris_bo *bo, uint64_t offset)
+{
+   /* Not for CSOs! */
+   return (struct iris_address) { .bo = bo, .offset = offset, .write = true };
+}
+
 static void *
 upload_state(struct u_upload_mgr *uploader,
              struct iris_state_ref *ref,
@@ -424,6 +431,8 @@ struct iris_genx_state {
    struct iris_viewport_state viewport;
    struct iris_vertex_buffer_state vertex_buffers;
    struct iris_depth_buffer_state depth_buffer;
+
+   uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
 };
 
 static void
@@ -764,6 +773,9 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(line_stipple_enable) || cso_changed(poly_stipple_enable))
          ice->state.dirty |= IRIS_DIRTY_WM;
+
+      if (cso_changed(rasterizer_discard))
+         ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
    ice->state.cso_rast = new_cso;
@@ -1621,30 +1633,60 @@ iris_create_compute_state(struct pipe_context *ctx,
    return malloc(1);
 }
 
+struct iris_stream_output_target {
+   struct pipe_stream_output_target base;
+
+   uint32_t so_buffer[GENX(3DSTATE_SO_BUFFER_length)];
+
+   struct iris_state_ref offset;
+};
+
 static struct pipe_stream_output_target *
 iris_create_stream_output_target(struct pipe_context *ctx,
                                  struct pipe_resource *res,
                                  unsigned buffer_offset,
                                  unsigned buffer_size)
 {
-   struct pipe_stream_output_target *t =
-      CALLOC_STRUCT(pipe_stream_output_target);
-   if (!t)
+   struct iris_stream_output_target *cso = calloc(1, sizeof(*cso));
+   if (!cso)
       return NULL;
 
-   pipe_reference_init(&t->reference, 1);
-   pipe_resource_reference(&t->buffer, res);
-   t->buffer_offset = buffer_offset;
-   t->buffer_size = buffer_size;
-   return t;
+   pipe_reference_init(&cso->base.reference, 1);
+   pipe_resource_reference(&cso->base.buffer, res);
+   cso->base.buffer_offset = buffer_offset;
+   cso->base.buffer_size = buffer_size;
+   cso->base.context = ctx;
+
+   upload_state(ctx->stream_uploader, &cso->offset, 4, 4);
+
+   iris_pack_command(GENX(3DSTATE_SO_BUFFER), cso->so_buffer, sob) {
+      sob.SurfaceBaseAddress =
+         rw_bo(NULL, iris_resource_bo(res)->gtt_offset + buffer_offset);
+      sob.SOBufferEnable = true;
+      sob.StreamOffsetWriteEnable = true;
+      sob.StreamOutputBufferOffsetAddressEnable = true;
+      sob.MOCS = MOCS_WB; // XXX: MOCS
+
+      sob.SurfaceSize = MAX2(buffer_size / 4, 1) - 1;
+      sob.StreamOutputBufferOffsetAddress =
+         rw_bo(NULL, iris_resource_bo(cso->offset.res)->gtt_offset + cso->offset.offset);
+
+      /* .SOBufferIndex and .StreamOffset are filled in later */
+   }
+
+   return &cso->base;
 }
 
 static void
 iris_stream_output_target_destroy(struct pipe_context *ctx,
-                                  struct pipe_stream_output_target *t)
+                                  struct pipe_stream_output_target *state)
 {
-   pipe_resource_reference(&t->buffer, NULL);
-   free(t);
+   struct iris_stream_output_target *cso = (void *) state;
+
+   pipe_resource_reference(&cso->base.buffer, NULL);
+   pipe_resource_reference(&cso->offset.res, NULL);
+
+   free(cso);
 }
 
 static void
@@ -1653,6 +1695,37 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
                                struct pipe_stream_output_target **targets,
                                const unsigned *offsets)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+   uint32_t *so_buffers = ice->state.genx->so_buffers;
+
+   for (unsigned i = 0; i < 4; i++,
+        so_buffers += GENX(3DSTATE_SO_BUFFER_length)) {
+
+      if (i >= num_targets || !targets[i]) {
+         iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob)
+            sob.SOBufferIndex = i;
+         continue;
+      }
+
+      /* Note that offsets[i] will either be 0, causing us to zero
+       * the value in the buffer, or 0xFFFFFFFF, which happens to mean
+       * "continue appending at the existing offset."
+       */
+      assert(offsets[i] == 0 || offsets[i] == 0xFFFFFFFF);
+
+      uint32_t dynamic[GENX(3DSTATE_SO_BUFFER_length)];
+      iris_pack_state(GENX(3DSTATE_SO_BUFFER), dynamic, dyns) {
+         dyns.SOBufferIndex = i;
+         dyns.StreamOffset = offsets[i];
+      }
+
+      struct iris_stream_output_target *tgt = (void *) targets[i];
+      for (uint32_t j = 0; j < GENX(3DSTATE_SO_BUFFER_length); j++) {
+         so_buffers[j] = tgt->so_buffer[j] | dynamic[j];
+      }
+   }
+
+   ice->state.dirty |= IRIS_DIRTY_SO_BUFFERS;
 }
 
 static uint32_t *
@@ -2579,6 +2652,7 @@ iris_upload_render_state(struct iris_context *ice,
 {
    const uint64_t dirty = ice->state.dirty;
 
+   struct iris_genx_state *genx = ice->state.genx;
    struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
 
@@ -2781,6 +2855,11 @@ iris_upload_render_state(struct iris_context *ice,
             iris_emit_cmd(batch, GENX(3DSTATE_GS), gs);
          }
       }
+   }
+
+   if (dirty & IRIS_DIRTY_SO_BUFFERS) {
+      iris_batch_emit(batch, genx->so_buffers,
+                      4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
    }
 
    if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.so_decl_list) {
