@@ -211,7 +211,8 @@ iris_upload_shader(struct iris_context *ice,
                    uint32_t key_size,
                    const void *key,
                    const void *assembly,
-                   struct brw_stage_prog_data *prog_data)
+                   struct brw_stage_prog_data *prog_data,
+                   uint32_t *so_decl_list)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    struct gen_device_info *devinfo = &screen->devinfo;
@@ -241,10 +242,12 @@ iris_upload_shader(struct iris_context *ice,
    }
 
    shader->prog_data = prog_data;
+   shader->so_decl_list = so_decl_list;
 
    ralloc_steal(shader, shader->prog_data);
    ralloc_steal(shader->prog_data, prog_data->param);
    ralloc_steal(shader->prog_data, prog_data->pull_param);
+   ralloc_steal(shader, shader->so_decl_list);
 
    /* Store the 3DSTATE shader packets and other derived state. */
    ice->vtbl.store_derived_program_state(devinfo, cache_id, shader);
@@ -265,13 +268,14 @@ iris_upload_and_bind_shader(struct iris_context *ice,
                             enum iris_program_cache_id cache_id,
                             const void *key,
                             const void *assembly,
-                            struct brw_stage_prog_data *prog_data)
+                            struct brw_stage_prog_data *prog_data,
+                            uint32_t *so_decl_list)
 {
    assert(cache_id != IRIS_CACHE_BLORP);
 
    struct iris_compiled_shader *shader =
       iris_upload_shader(ice, cache_id, key_size_for_cache(cache_id), key,
-                         assembly, prog_data);
+                         assembly, prog_data, so_decl_list);
 
    ice->shaders.prog[cache_id] = shader;
    ice->state.dirty |= dirty_flag_for_cache(cache_id);
@@ -318,7 +322,7 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
 
    struct iris_compiled_shader *shader =
       iris_upload_shader(ice, IRIS_CACHE_BLORP, key_size, key, kernel,
-                         prog_data);
+                         prog_data, NULL);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
    *kernel_out =

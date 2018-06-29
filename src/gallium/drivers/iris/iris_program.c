@@ -67,6 +67,8 @@ iris_create_shader_state(struct pipe_context *ctx,
    ish->program_id = get_new_program_id(screen);
    ish->base.type = PIPE_SHADER_IR_NIR;
    ish->base.ir.nir = nir;
+   memcpy(&ish->base.stream_output, &state->stream_output,
+          sizeof(struct pipe_stream_output_info));
 
    return ish;
 }
@@ -280,7 +282,12 @@ iris_compile_vs(struct iris_context *ice,
 
    iris_setup_push_uniform_range(compiler, prog_data);
 
-   iris_upload_and_bind_shader(ice, IRIS_CACHE_VS, key, program, prog_data);
+   uint32_t *so_decls =
+      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+                                    &vue_prog_data->vue_map);
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_VS, key, program, prog_data,
+                               so_decls);
 
    ralloc_free(mem_ctx);
    return true;
@@ -343,7 +350,12 @@ iris_compile_tes(struct iris_context *ice,
 
    iris_setup_push_uniform_range(compiler, prog_data);
 
-   iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data);
+   uint32_t *so_decls =
+      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+                                    &vue_prog_data->vue_map);
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data,
+                               so_decls);
 
    ralloc_free(mem_ctx);
    return true;
@@ -405,7 +417,12 @@ iris_compile_gs(struct iris_context *ice,
 
    iris_setup_push_uniform_range(compiler, prog_data);
 
-   iris_upload_and_bind_shader(ice, IRIS_CACHE_GS, key, program, prog_data);
+   uint32_t *so_decls =
+      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+                                    &vue_prog_data->vue_map);
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_GS, key, program, prog_data,
+                               so_decls);
 
    ralloc_free(mem_ctx);
    return true;
@@ -468,7 +485,8 @@ iris_compile_fs(struct iris_context *ice,
 
    iris_setup_push_uniform_range(compiler, prog_data);
 
-   iris_upload_and_bind_shader(ice, IRIS_CACHE_FS, key, program, prog_data);
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_FS, key, program, prog_data,
+                               NULL);
 
    ralloc_free(mem_ctx);
    return true;
@@ -488,18 +506,22 @@ iris_update_compiled_fs(struct iris_context *ice)
                       ice->shaders.last_vue_map);
 }
 
-static void
-update_last_vue_map(struct iris_context *ice)
+static struct iris_compiled_shader *
+last_vue_shader(struct iris_context *ice)
 {
-   struct brw_stage_prog_data *prog_data;
-
    if (ice->shaders.prog[MESA_SHADER_GEOMETRY])
-      prog_data = ice->shaders.prog[MESA_SHADER_GEOMETRY]->prog_data;
-   else if (ice->shaders.prog[MESA_SHADER_TESS_EVAL])
-      prog_data = ice->shaders.prog[MESA_SHADER_TESS_EVAL]->prog_data;
-   else
-      prog_data = ice->shaders.prog[MESA_SHADER_VERTEX]->prog_data;
+      return ice->shaders.prog[MESA_SHADER_GEOMETRY];
 
+   if (ice->shaders.prog[MESA_SHADER_TESS_EVAL])
+      return ice->shaders.prog[MESA_SHADER_TESS_EVAL];
+
+   return ice->shaders.prog[MESA_SHADER_VERTEX];
+}
+
+static void
+update_last_vue_map(struct iris_context *ice,
+                    struct brw_stage_prog_data *prog_data)
+{
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
    struct brw_vue_map *vue_map = &vue_prog_data->vue_map;
    struct brw_vue_map *old_map = ice->shaders.last_vue_map;
@@ -553,7 +575,12 @@ iris_update_compiled_shaders(struct iris_context *ice)
    if (dirty & IRIS_DIRTY_UNCOMPILED_GS)
       iris_update_compiled_gs(ice);
 
-   update_last_vue_map(ice);
+   struct iris_compiled_shader *shader = last_vue_shader(ice);
+   update_last_vue_map(ice, shader->prog_data);
+   if (ice->state.so_decl_list != shader->so_decl_list) {
+      ice->state.so_decl_list = shader->so_decl_list;
+      ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST;
+   }
 
    if (dirty & IRIS_DIRTY_UNCOMPILED_FS)
       iris_update_compiled_fs(ice);

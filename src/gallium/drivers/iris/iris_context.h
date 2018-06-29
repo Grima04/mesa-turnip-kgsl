@@ -93,6 +93,9 @@ struct blorp_params;
 #define IRIS_DIRTY_BINDINGS_GS              (1ull << 45)
 #define IRIS_DIRTY_BINDINGS_FS              (1ull << 46)
 #define IRIS_DIRTY_BINDINGS_CS              (1ull << 47)
+#define IRIS_DIRTY_SO_BUFFERS               (1ull << 48)
+#define IRIS_DIRTY_SO_DECL_LIST             (1ull << 49)
+#define IRIS_DIRTY_STREAMOUT                (1ull << 50)
 
 struct iris_depth_stencil_alpha_state;
 
@@ -168,6 +171,11 @@ struct iris_compiled_shader {
    struct brw_stage_prog_data *prog_data;
 
    /**
+    * Derived 3DSTATE_SO_DECL_LIST packet (for transform feedback).
+    */
+   uint32_t *so_decl_list;
+
+   /**
     * Shader packets and other data derived from prog_data.  These must be
     * completely determined from prog_data.
     */
@@ -203,6 +211,8 @@ struct iris_vtable {
    void (*store_derived_program_state)(const struct gen_device_info *devinfo,
                                        enum iris_program_cache_id cache_id,
                                        struct iris_compiled_shader *shader);
+   uint32_t *(*create_so_decl_list)(const struct pipe_stream_output_info *sol,
+                                    const struct brw_vue_map *vue_map);
    void (*populate_vs_key)(const struct iris_context *ice,
                            struct brw_vs_prog_key *key);
    void (*populate_tcs_key)(const struct iris_context *ice,
@@ -273,6 +283,8 @@ struct iris_context {
       struct iris_sampler_view *textures[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
+
+      uint32_t *so_decl_list;
 
       struct iris_state_ref unbound_tex;
 
@@ -379,7 +391,8 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
                                  enum iris_program_cache_id cache_id,
                                  const void *key,
                                  const void *assembly,
-                                 struct brw_stage_prog_data *prog_data);
+                                 struct brw_stage_prog_data *prog_data,
+                                 uint32_t *so_decl_list);
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);

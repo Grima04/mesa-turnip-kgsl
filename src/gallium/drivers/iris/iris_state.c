@@ -1655,6 +1655,96 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
 {
 }
 
+static uint32_t *
+iris_create_so_decl_list(const struct pipe_stream_output_info *info,
+                         const struct brw_vue_map *vue_map)
+{
+   struct GENX(SO_DECL) so_decl[MAX_VERTEX_STREAMS][128];
+   int buffer_mask[MAX_VERTEX_STREAMS] = {0, 0, 0, 0};
+   int next_offset[MAX_VERTEX_STREAMS] = {0, 0, 0, 0};
+   int decls[MAX_VERTEX_STREAMS] = {0, 0, 0, 0};
+   int max_decls = 0;
+   STATIC_ASSERT(ARRAY_SIZE(so_decl[0]) >= MAX_PROGRAM_OUTPUTS);
+
+   if (info->num_outputs == 0)
+      return NULL;
+
+   memset(so_decl, 0, sizeof(so_decl));
+
+   /* Construct the list of SO_DECLs to be emitted.  The formatting of the
+    * command feels strange -- each dword pair contains a SO_DECL per stream.
+    */
+   for (unsigned i = 0; i < info->num_outputs; i++) {
+      const struct pipe_stream_output *output = &info->output[i];
+      const int buffer = output->output_buffer;
+      const int varying = output->register_index;
+      const unsigned stream_id = output->stream;
+      assert(stream_id < MAX_VERTEX_STREAMS);
+
+      buffer_mask[stream_id] |= 1 << buffer;
+
+      assert(vue_map->varying_to_slot[varying] >= 0);
+
+      /* Mesa doesn't store entries for gl_SkipComponents in the Outputs[]
+       * array.  Instead, it simply increments DstOffset for the following
+       * input by the number of components that should be skipped.
+       *
+       * Our hardware is unusual in that it requires us to program SO_DECLs
+       * for fake "hole" components, rather than simply taking the offset
+       * for each real varying.  Each hole can have size 1, 2, 3, or 4; we
+       * program as many size = 4 holes as we can, then a final hole to
+       * accommodate the final 1, 2, or 3 remaining.
+       */
+      int skip_components = output->dst_offset - next_offset[buffer];
+
+      while (skip_components > 0) {
+         so_decl[stream_id][decls[stream_id]++] = (struct GENX(SO_DECL)) {
+            .HoleFlag = 1,
+            .OutputBufferSlot = output->output_buffer,
+            .ComponentMask = (1 << MIN2(skip_components, 4)) - 1,
+         };
+         skip_components -= 4;
+      }
+
+      next_offset[buffer] = output->dst_offset + output->num_components;
+
+      so_decl[stream_id][decls[stream_id]++] = (struct GENX(SO_DECL)) {
+         .OutputBufferSlot = output->output_buffer,
+         .RegisterIndex = vue_map->varying_to_slot[varying],
+         .ComponentMask =
+            ((1 << output->num_components) - 1) << output->start_component,
+      };
+
+      if (decls[stream_id] > max_decls)
+         max_decls = decls[stream_id];
+   }
+
+   uint32_t *dw = ralloc_size(NULL, sizeof(uint32_t) * (3 + 2 * max_decls));
+
+   iris_pack_command(GENX(3DSTATE_SO_DECL_LIST), dw, list) {
+      list.DWordLength = 3 + 2 * max_decls - 2;
+      list.StreamtoBufferSelects0 = buffer_mask[0];
+      list.StreamtoBufferSelects1 = buffer_mask[1];
+      list.StreamtoBufferSelects2 = buffer_mask[2];
+      list.StreamtoBufferSelects3 = buffer_mask[3];
+      list.NumEntries0 = decls[0];
+      list.NumEntries1 = decls[1];
+      list.NumEntries2 = decls[2];
+      list.NumEntries3 = decls[3];
+   }
+
+   for (int i = 0; i < max_decls; i++) {
+      iris_pack_state(GENX(SO_DECL_ENTRY), dw + 2 + i * 2, entry) {
+         entry.Stream0Decl = so_decl[0][i];
+         entry.Stream1Decl = so_decl[1][i];
+         entry.Stream2Decl = so_decl[2][i];
+         entry.Stream3Decl = so_decl[3][i];
+      }
+   }
+
+   return dw;
+}
+
 static void
 iris_compute_sbe_urb_read_interval(uint64_t fs_input_slots,
                                    const struct brw_vue_map *last_vue_map,
@@ -2459,8 +2549,6 @@ iris_restore_context_saved_bos(struct iris_context *ice,
       }
    }
 
-   // XXX: 3DSTATE_SO_BUFFER
-
    if (clean & IRIS_DIRTY_DEPTH_BUFFER) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
@@ -2695,10 +2783,13 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
+   if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.so_decl_list) {
+      iris_batch_emit(batch, ice->state.so_decl_list,
+                      4 * ((ice->state.so_decl_list[0] & 0xff) + 2));
+   }
+
    // XXX: SOL:
    // 3DSTATE_STREAMOUT
-   // 3DSTATE_SO_BUFFER
-   // 3DSTATE_SO_DECL_LIST
 
    if (dirty & IRIS_DIRTY_CLIP) {
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
@@ -3391,6 +3482,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
    ice->vtbl.derived_program_state_size = iris_derived_program_state_size;
    ice->vtbl.store_derived_program_state = iris_store_derived_program_state;
+   ice->vtbl.create_so_decl_list = iris_create_so_decl_list;
    ice->vtbl.populate_vs_key = iris_populate_vs_key;
    ice->vtbl.populate_tcs_key = iris_populate_tcs_key;
    ice->vtbl.populate_tes_key = iris_populate_tes_key;
