@@ -269,8 +269,84 @@ rcp_result_denorm:
 rcp_end:
    ret
 
+// RSQ F64
+//
+// INPUT:   $r0d
+// OUTPUT:  $r0d
+// CLOBBER: $r2 - $r9, $p0 - $p1
+//
 gm107_rsq_f64:
-   sched (st 0x0) (st 0x0) (st 0x0)
+   // Before getting initial result rsqrt64h, two special cases should be
+   // handled first.
+   // 1. NaN: set the highest bit in mantissa so it'll be surely recognized
+   //    as NaN in rsqrt64h
+   sched (st 0xd wr 0x0 wt 0x3f) (st 0xd wt 0x1) (st 0xd)
+   dsetp gtu and $p0 1 abs $r0 0x7ff0000000000000 1
+   $p0 lop32i or $r1 $r1 0x00080000
+   lop32i and $r2 $r1 0x7fffffff
+   // 2. denorms and small normal values: using their original value will
+   //    lose precision either at rsqrt64h or the first step in newton-raphson
+   //    steps below. Take 2 as a threshold in exponent field, and multiply
+   //    with 2^54 if the exponent is smaller or equal. (will multiply 2^27
+   //    to recover in the end)
+   sched (st 0xd) (st 0xd) (st 0xd)
+   bfe u32 $r3 $r1 0xb14
+   isetp le u32 and $p1 1 $r3 0x2 1
+   lop or 1 $r2 $r0 $r2
+   sched (st 0xd wr 0x0) (st 0xd wr 0x0 wt 0x1) (st 0xd)
+   $p1 dmul $r0 $r0 0x4350000000000000
+   mufu rsq64h $r5 $r1
+   // rsqrt64h will give correct result for 0/inf/nan, the following logic
+   // checks whether the input is one of those (exponent is 0x7ff or all 0
+   // except for the sign bit)
+   iset ne u32 and $r6 $r3 0x7ff 1
+   sched (st 0xd) (st 0xd) (st 0xd)
+   lop and 1 $r2 $r2 $r6
+   isetp ne u32 and $p0 1 $r2 0x0 1
+   $p0 bra #rsq_norm
+   // For 0/inf/nan, make sure the sign bit agrees with input and return
+   sched (st 0xd) (st 0xd) (st 0xd wt 0x1)
+   lop32i and $r1 $r1 0x80000000
+   mov $r0 0x0 0xf
+   lop or 1 $r1 $r1 $r5
+   sched (st 0xd) (st 0xf) (st 0xf)
+   ret
+   nop 0
+   nop 0
+rsq_norm:
+   // For others, do 4 Newton-Raphson steps with the formula:
+   //     RSQ_{n + 1} = RSQ_{n} * (1.5 - 0.5 * x * RSQ_{n} * RSQ_{n})
+   // In the code below, each step is written as:
+   //     tmp1 = 0.5 * x * RSQ_{n}
+   //     tmp2 = -RSQ_{n} * tmp1 + 0.5
+   //     RSQ_{n + 1} = RSQ_{n} * tmp2 + RSQ_{n}
+   sched (st 0xd) (st 0xd wr 0x1) (st 0xd wr 0x1 rd 0x0 wt 0x3)
+   mov $r4 0x0 0xf
+   // 0x3f000000: 1/2
+   f2f f32 f64 $r8 0x3f000000
+   dmul $r2 $r0 $r8
+   sched (st 0xd wr 0x0 wt 0x3) (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1)
+   dmul $r0 $r2 $r4
+   dfma $r6 $r0 neg $r4 $r8
+   dfma $r4 $r4 $r6 $r4
+   sched (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1)
+   dmul $r0 $r2 $r4
+   dfma $r6 $r0 neg $r4 $r8
+   dfma $r4 $r4 $r6 $r4
+   sched (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1)
+   dmul $r0 $r2 $r4
+   dfma $r6 $r0 neg $r4 $r8
+   dfma $r4 $r4 $r6 $r4
+   sched (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1) (st 0xd wr 0x0 wt 0x1)
+   dmul $r0 $r2 $r4
+   dfma $r6 $r0 neg $r4 $r8
+   dfma $r4 $r4 $r6 $r4
+   // Multiply 2^27 to result for small inputs to recover
+   sched (st 0xd wr 0x0 wt 0x1) (st 0xd wt 0x1) (st 0xd)
+   $p1 dmul $r4 $r4 0x41a0000000000000
+   mov $r1 $r5 0xf
+   mov $r0 $r4 0xf
+   sched (st 0xd) (st 0xf) (st 0xf)
    ret
    nop 0
    nop 0
