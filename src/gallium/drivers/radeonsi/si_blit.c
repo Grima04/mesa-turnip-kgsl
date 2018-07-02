@@ -1109,6 +1109,12 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx,
 			/* The next fast clear will switch to this mode to
 			 * get direct hw resolve next time if the mode is
 			 * different now.
+			 *
+			 * TODO-GFX10: This does not work in GFX10 because MSAA
+			 * is restricted to 64KB_R_X and 64KB_Z_X swizzle modes.
+			 * In some cases we could change the swizzle of the
+			 * destination texture instead, but the more general
+			 * solution is to implement compute shader resolve.
 			 */
 			src->last_msaa_resolve_target_micro_mode =
 				dst->surface.micro_tile_mode;

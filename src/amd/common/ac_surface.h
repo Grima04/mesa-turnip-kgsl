@@ -70,6 +70,7 @@ enum radeon_micro_mode {
 #define RADEON_SURF_OPTIMIZE_FOR_SPACE          (1 << 25)
 #define RADEON_SURF_SHAREABLE                   (1 << 26)
 #define RADEON_SURF_NO_RENDER_TARGET            (1 << 27)
+#define RADEON_SURF_FORCE_SWIZZLE_MODE          (1 << 28)
 
 struct legacy_surf_level {
     uint64_t                    offset;

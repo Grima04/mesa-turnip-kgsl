@@ -277,7 +277,8 @@ void vi_dcc_clear_level(struct si_context *sctx,
 static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen,
 					   struct si_texture *tex)
 {
-	if (tex->buffer.b.is_shared ||
+	if (sscreen->info.chip_class >= GFX10 ||
+	    tex->buffer.b.is_shared ||
 	    tex->buffer.b.b.nr_samples <= 1 ||
 	    tex->surface.micro_tile_mode == tex->last_msaa_resolve_target_micro_mode)
 		return;
