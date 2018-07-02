@@ -303,7 +303,7 @@ static int si_init_surface(struct si_screen *sscreen,
 		flags |= RADEON_SURF_SHAREABLE;
 	if (is_imported)
 		flags |= RADEON_SURF_IMPORTED | RADEON_SURF_SHAREABLE;
-	if (!(ptex->flags & SI_RESOURCE_FLAG_FORCE_TILING))
+	if (!(ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING))
 		flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
 
 	r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe,
@@ -1293,7 +1293,7 @@ si_choose_tiling(struct si_screen *sscreen,
 		 const struct pipe_resource *templ, bool tc_compatible_htile)
 {
 	const struct util_format_description *desc = util_format_description(templ->format);
-	bool force_tiling = templ->flags & SI_RESOURCE_FLAG_FORCE_TILING;
+	bool force_tiling = templ->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING;
 	bool is_depth_stencil = util_format_is_depth_or_stencil(templ->format) &&
 				!(templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH);
 

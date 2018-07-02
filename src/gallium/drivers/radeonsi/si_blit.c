@@ -1193,7 +1193,7 @@ resolve_to_temp:
 	templ.depth0 = 1;
 	templ.array_size = 1;
 	templ.usage = PIPE_USAGE_DEFAULT;
-	templ.flags = SI_RESOURCE_FLAG_FORCE_TILING |
+	templ.flags = SI_RESOURCE_FLAG_FORCE_MSAA_TILING |
 		      SI_RESOURCE_FLAG_DISABLE_DCC;
 
 	/* The src and dst microtile modes must be the same. */
