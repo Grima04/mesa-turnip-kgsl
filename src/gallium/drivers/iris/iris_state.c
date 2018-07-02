@@ -399,6 +399,33 @@ iris_init_render_context(struct iris_screen *screen,
    }
 }
 
+struct iris_viewport_state {
+   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
+};
+
+struct iris_vertex_buffer_state {
+   uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
+   struct pipe_resource *resources[33];
+   unsigned num_buffers;
+};
+
+struct iris_depth_buffer_state {
+   uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
+                    GENX(3DSTATE_STENCIL_BUFFER_length) +
+                    GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
+                    GENX(3DSTATE_CLEAR_PARAMS_length)];
+};
+
+/**
+ * State that can't be stored directly in iris_context because the data
+ * layout varies per generation.
+ */
+struct iris_genx_state {
+   struct iris_viewport_state viewport;
+   struct iris_vertex_buffer_state vertex_buffers;
+   struct iris_depth_buffer_state depth_buffer;
+};
+
 static void
 iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
 {
@@ -1149,11 +1176,6 @@ iris_set_stencil_ref(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
 }
 
-
-struct iris_viewport_state {
-   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
-};
-
 static float
 viewport_extent(const struct pipe_viewport_state *state, int axis, float sign)
 {
@@ -1249,7 +1271,7 @@ iris_set_viewport_states(struct pipe_context *ctx,
                          const struct pipe_viewport_state *states)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_viewport_state *cso = ice->state.cso_vp;
+   struct iris_viewport_state *cso = &ice->state.genx->viewport;
    uint32_t *vp_map = &cso->sf_cl_vp[start_slot];
 
    // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
@@ -1281,14 +1303,6 @@ iris_set_viewport_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
 
-struct iris_depth_buffer_state
-{
-   uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
-                    GENX(3DSTATE_STENCIL_BUFFER_length) +
-                    GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
-                    GENX(3DSTATE_CLEAR_PARAMS_length)];
-};
-
 static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
@@ -1312,8 +1326,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    util_copy_framebuffer_state(cso, state);
 
-   struct iris_depth_buffer_state *cso_z =
-      malloc(sizeof(struct iris_depth_buffer_state));
+   struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
    struct isl_view view = {
       .base_level = 0,
@@ -1366,8 +1379,6 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    isl_emit_depth_stencil_hiz_s(isl_dev, cso_z->packets, &info);
 
-   free(ice->state.cso_depthbuffer);
-   ice->state.cso_depthbuffer = cso_z;
    ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
 
    /* Render target change */
@@ -1449,12 +1460,6 @@ iris_delete_state(struct pipe_context *ctx, void *state)
    free(state);
 }
 
-struct iris_vertex_buffer_state {
-   uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
-   struct pipe_resource *resources[33];
-   unsigned num_buffers;
-};
-
 static void
 iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
 {
@@ -1468,9 +1473,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
+   struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
 
-   iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
+   iris_free_vertex_buffers(&ice->state.genx->vertex_buffers);
 
    if (!buffers)
       count = 0;
@@ -2465,7 +2470,7 @@ iris_restore_context_saved_bos(struct iris_context *ice,
    }
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
-      struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
+      struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
       for (unsigned i = 0; i < cso->num_buffers; i++) {
          struct iris_resource *res = (void *) cso->resources[i];
          iris_use_pinned_bo(batch, res->bo, false);
@@ -2494,7 +2499,7 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
-      struct iris_viewport_state *cso = ice->state.cso_vp;
+      struct iris_viewport_state *cso = &ice->state.genx->viewport;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer =
             emit_state(batch, ice->state.dynamic_uploader,
@@ -2777,7 +2782,7 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_DEPTH_BUFFER) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-      struct iris_depth_buffer_state *cso_z = ice->state.cso_depthbuffer;
+      struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
 
@@ -2830,7 +2835,7 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
-      struct iris_vertex_buffer_state *cso = ice->state.cso_vertex_buffers;
+      struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
       const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
 
       if (cso->num_buffers > 0) {
@@ -2899,7 +2904,7 @@ iris_upload_render_state(struct iris_context *ice,
 static void
 iris_destroy_state(struct iris_context *ice)
 {
-   iris_free_vertex_buffers(ice->state.cso_vertex_buffers);
+   iris_free_vertex_buffers(&ice->state.genx->vertex_buffers);
 
    // XXX: unreference resources/surfaces.
    for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
@@ -2910,8 +2915,7 @@ iris_destroy_state(struct iris_context *ice)
    for (int stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       pipe_resource_reference(&ice->state.sampler_table[stage].res, NULL);
    }
-   free(ice->state.cso_vp);
-   free(ice->state.cso_depthbuffer);
+   free(ice->state.genx);
 
    pipe_resource_reference(&ice->state.last_res.cc_vp, NULL);
    pipe_resource_reference(&ice->state.last_res.sf_cl_vp, NULL);
@@ -3390,9 +3394,7 @@ genX(init_state)(struct iris_context *ice)
    ice->state.dirty = ~0ull;
 
    ice->state.num_viewports = 1;
-   ice->state.cso_vp = calloc(1, sizeof(struct iris_viewport_state));
-   ice->state.cso_vertex_buffers =
-      calloc(1, sizeof(struct iris_vertex_buffer_state));
+   ice->state.genx = calloc(1, sizeof(struct iris_genx_state));
 
    /* Make a 1x1x1 null surface for unbound textures */
    void *null_surf_map =
