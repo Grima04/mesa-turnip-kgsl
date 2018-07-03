@@ -423,7 +423,9 @@ tile_extents(struct isl_surf *surf,
    assert(box->y % fmtl->bh == 0);
 
    unsigned x0_el, y0_el;
-   isl_surf_get_image_offset_el(surf, level, box->z, box->z, &x0_el, &y0_el);
+   isl_surf_get_image_offset_el(surf, level, box->z,
+                                surf->dim == ISL_SURF_DIM_3D ? box->z : 0,
+                                &x0_el, &y0_el);
 
    *x1_B = (box->x / fmtl->bw + x0_el) * cpp;
    *y1_el = box->y / fmtl->bh + y0_el;
