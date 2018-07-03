@@ -517,6 +517,10 @@ update_last_vue_map(struct iris_context *ice)
       // XXX: CC_VIEWPORT?
    }
 
+   if (changed_slots || (old_map && old_map->separate != vue_map->separate)) {
+      ice->state.dirty |= IRIS_DIRTY_SBE;
+   }
+
    ice->shaders.last_vue_map = &vue_prog_data->vue_map;
 }
 

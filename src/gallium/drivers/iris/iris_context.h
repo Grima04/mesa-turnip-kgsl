@@ -55,7 +55,7 @@ struct blorp_params;
 #define IRIS_DIRTY_BLEND_STATE              (1ull <<  7)
 #define IRIS_DIRTY_RASTER                   (1ull <<  8)
 #define IRIS_DIRTY_CLIP                     (1ull <<  9)
-// XXX: define IRIS_DIRTY_                        (1ull << 10)
+#define IRIS_DIRTY_SBE                      (1ull << 10)
 #define IRIS_DIRTY_LINE_STIPPLE             (1ull << 11)
 #define IRIS_DIRTY_VERTEX_ELEMENTS          (1ull << 12)
 #define IRIS_DIRTY_MULTISAMPLE              (1ull << 13)
