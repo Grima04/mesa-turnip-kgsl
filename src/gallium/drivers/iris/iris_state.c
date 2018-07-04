@@ -1016,7 +1016,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
          .b = pipe_swizzle_to_isl_channel(tmpl->swizzle_b),
          .a = pipe_swizzle_to_isl_channel(tmpl->swizzle_a),
       },
-      .usage = ISL_SURF_USAGE_TEXTURE_BIT,
+      .usage = ISL_SURF_USAGE_TEXTURE_BIT |
+               (itex->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
    };
 
    void *map = upload_state(ice->state.surface_uploader, &isv->surface_state,
