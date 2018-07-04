@@ -558,7 +558,8 @@ iris_transfer_map(struct pipe_context *ctx,
                    PIPE_TRANSFER_WRITE |
                    PIPE_TRANSFER_UNSYNCHRONIZED |
                    PIPE_TRANSFER_PERSISTENT |
-                   PIPE_TRANSFER_COHERENT);
+                   PIPE_TRANSFER_COHERENT |
+                   PIPE_TRANSFER_DISCARD_RANGE);
 
    if (surf->tiling != ISL_TILING_LINEAR) {
       iris_map_tiled_memcpy(map);
