@@ -989,14 +989,23 @@ dri2_create_image_common(__DRIscreen *_screen,
 {
    const struct dri2_format_mapping *map = dri2_get_mapping_by_format(format);
    struct dri_screen *screen = dri_screen(_screen);
+   struct pipe_screen *pscreen = screen->base.screen;
    __DRIimage *img;
    struct pipe_resource templ;
-   unsigned tex_usage;
+   unsigned tex_usage = 0;
 
    if (!map)
       return NULL;
 
-   tex_usage = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
+   if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target,
+                                    0, 0, PIPE_BIND_RENDER_TARGET))
+      tex_usage |= PIPE_BIND_RENDER_TARGET;
+   if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target,
+                                    0, 0, PIPE_BIND_SAMPLER_VIEW))
+      tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+
+   if (!tex_usage)
+      return NULL;
 
    if (use & __DRI_IMAGE_USE_SCANOUT)
       tex_usage |= PIPE_BIND_SCANOUT;
