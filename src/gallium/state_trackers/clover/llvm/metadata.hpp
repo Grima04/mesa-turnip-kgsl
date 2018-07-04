@@ -39,11 +39,11 @@
 namespace clover {
    namespace llvm {
       namespace detail {
-         inline std::vector<const ::llvm::MDNode *>
+         inline iterator_range< ::llvm::NamedMDNode::const_op_iterator>
          get_kernel_nodes(const ::llvm::Module &mod) {
             if (const ::llvm::NamedMDNode *n =
                    mod.getNamedMetadata("opencl.kernels"))
-               return { n->op_begin(), n->op_end() };
+               return range(n->op_begin(), n->op_end());
             else
                return {};
          }
