@@ -399,9 +399,9 @@ struct iris_transfer {
    struct pipe_debug_callback *dbg;
    void *buffer;
    void *ptr;
-   // XXX: why do we have this, pipe_transfer already has one...
-   // XXX: but it's different for tiled memcpy and I don't recall why
-   int stride;
+
+   /** Stride of the temporary image (not the actual surface) */
+   int temp_stride;
 
    void (*unmap)(struct iris_transfer *);
 };
@@ -450,7 +450,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
       // XXX: dst += mt->offset;
 
       isl_memcpy_linear_to_tiled(x1, x2, y1, y2, dst, map->ptr,
-                                 surf->row_pitch_B, map->stride,
+                                 surf->row_pitch_B, map->temp_stride,
                                  has_swizzling, surf->tiling, ISL_MEMCPY);
    }
    os_free_aligned(map->buffer);
@@ -466,13 +466,14 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
    unsigned x1, x2, y1, y2;
    tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
-   map->stride = ALIGN(surf->row_pitch_B, 16);
+   map->temp_stride = ALIGN(surf->row_pitch_B, 16);
 
    /* The tiling and detiling functions require that the linear buffer has
     * a 16-byte alignment (that is, its `x0` is 16-byte aligned).  Here we
     * over-allocate the linear buffer to get the proper alignment.
     */
-   map->buffer = os_malloc_aligned(map->stride * (y2 - y1) + (x1 & 0xf), 16);
+   map->buffer =
+      os_malloc_aligned(map->temp_stride * (y2 - y1) + (x1 & 0xf), 16);
    map->ptr = (char *)map->buffer + (x1 & 0xf);
    assert(map->buffer);
 
@@ -483,9 +484,9 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
       char *src = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
       // XXX: += mt->offset?
 
-      isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src, map->stride,
-                                 surf->row_pitch_B, has_swizzling,
-                                 surf->tiling, ISL_MEMCPY);
+      isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src,
+                                 map->temp_stride, surf->row_pitch_B,
+                                 has_swizzling, surf->tiling, ISL_MEMCPY);
    }
 
    map->unmap = iris_unmap_tiled_memcpy;
