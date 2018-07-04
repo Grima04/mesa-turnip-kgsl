@@ -80,9 +80,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    enum isl_format src_isl_format = iris_get_blorp_format(info->src.format);
    enum isl_format dst_isl_format = iris_get_blorp_format(info->dst.format);
 
-   // XXX: ???
-   unsigned dst_layer = 0;
-   unsigned src_layer = 0;
+   unsigned dst_layer = info->dst.box.z;
+   unsigned src_layer = info->src.box.z;
 
    struct isl_swizzle src_isl_swizzle = ISL_SWIZZLE_IDENTITY;
 
