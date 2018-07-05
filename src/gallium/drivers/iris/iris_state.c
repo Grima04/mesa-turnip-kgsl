@@ -1321,7 +1321,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    }
 
-   if ((cso->layers == 0) == (state->layers == 0)) {
+   if ((cso->layers == 0) != (state->layers == 0)) {
       ice->state.dirty |= IRIS_DIRTY_CLIP;
    }
 
