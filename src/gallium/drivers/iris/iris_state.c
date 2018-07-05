@@ -577,8 +577,13 @@ iris_create_zsa_state(struct pipe_context *ctx,
    }
 
    iris_pack_state(GENX(CC_VIEWPORT), cso->cc_vp, ccvp) {
-      ccvp.MinimumDepth = state->depth.bounds_min;
-      ccvp.MaximumDepth = state->depth.bounds_max;
+      if (state->depth.bounds_test) {
+         ccvp.MinimumDepth = state->depth.bounds_min;
+         ccvp.MaximumDepth = state->depth.bounds_max;
+      } else {
+         ccvp.MinimumDepth = 0.0;
+         ccvp.MaximumDepth = 1.0;
+      }
    }
 
    return cso;
