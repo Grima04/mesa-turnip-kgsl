@@ -497,8 +497,22 @@ iris_shader_debug_log(void *data, const char *fmt, ...)
       return;
 
    va_start(args, fmt);
-
    dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
+   va_end(args);
+}
+
+static void
+iris_shader_perf_log(void *data, const char *fmt, ...)
+{
+   struct pipe_debug_callback *dbg = data;
+   unsigned id = 0;
+   va_list args;
+
+   if (!dbg->debug_message)
+      return;
+
+   va_start(args, fmt);
+   dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
    va_end(args);
 }
 
@@ -531,6 +545,7 @@ iris_screen_create(int fd)
 
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = iris_shader_debug_log;
+   screen->compiler->shader_perf_log = iris_shader_perf_log;
 
    struct pipe_screen *pscreen = &screen->base;
 
