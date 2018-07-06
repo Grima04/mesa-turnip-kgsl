@@ -103,6 +103,7 @@ if __name__ == "__main__":
         collect_data(spirv_info, "ExecutionMode"),
         collect_data(spirv_info, "ExecutionModel"),
         collect_data(spirv_info, "ImageFormat"),
+        collect_data(spirv_info, "MemoryModel"),
         collect_data(spirv_info, "StorageClass"),
         collect_opcodes(spirv_info),
     ]
