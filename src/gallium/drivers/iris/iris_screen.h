@@ -38,6 +38,9 @@ struct iris_bo;
 
 struct iris_screen {
    struct pipe_screen base;
+
+   struct slab_parent_pool transfer_pool;
+
    int fd;
    int pci_id;
 

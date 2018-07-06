@@ -394,18 +394,6 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    return false;
 }
 
-struct iris_transfer {
-   struct pipe_transfer base;
-   struct pipe_debug_callback *dbg;
-   void *buffer;
-   void *ptr;
-
-   /** Stride of the temporary image (not the actual surface) */
-   int temp_stride;
-
-   void (*unmap)(struct iris_transfer *);
-};
-
 /* Compute extent parameters for use with tiled_memcpy functions.
  * xs are in units of bytes and ys are in units of strides.
  */
@@ -535,7 +523,7 @@ iris_transfer_map(struct pipe_context *ctx,
    if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
       return NULL;
 
-   struct iris_transfer *map = calloc(1, sizeof(struct iris_transfer));
+   struct iris_transfer *map = slab_alloc(&ice->transfer_pool);
    struct pipe_transfer *xfer = &map->base;
 
    // PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE
@@ -544,6 +532,7 @@ iris_transfer_map(struct pipe_context *ctx,
    if (!map)
       return NULL;
 
+   memset(map, 0, sizeof(*map));
    map->dbg = &ice->dbg;
 
    pipe_resource_reference(&xfer->resource, resource);
@@ -578,15 +567,16 @@ iris_transfer_flush_region(struct pipe_context *pipe,
 }
 
 static void
-iris_transfer_unmap(struct pipe_context *pipe, struct pipe_transfer *xfer)
+iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
 
    if (map->unmap)
       map->unmap(map);
 
    pipe_resource_reference(&xfer->resource, NULL);
-   free(map);
+   slab_free(&ice->transfer_pool, map);
 }
 
 static void

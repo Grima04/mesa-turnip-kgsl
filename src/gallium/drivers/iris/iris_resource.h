@@ -61,4 +61,16 @@ struct iris_surface {
    struct iris_state_ref surface_state;
 };
 
+struct iris_transfer {
+   struct pipe_transfer base;
+   struct pipe_debug_callback *dbg;
+   void *buffer;
+   void *ptr;
+
+   /** Stride of the temporary image (not the actual surface) */
+   int temp_stride;
+
+   void (*unmap)(struct iris_transfer *);
+};
+
 #endif

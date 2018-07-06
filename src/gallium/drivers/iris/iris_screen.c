@@ -547,6 +547,9 @@ iris_screen_create(int fd)
    screen->compiler->shader_debug_log = iris_shader_debug_log;
    screen->compiler->shader_perf_log = iris_shader_perf_log;
 
+   slab_create_parent(&screen->transfer_pool,
+                      sizeof(struct iris_transfer), 64);
+
    struct pipe_screen *pscreen = &screen->base;
 
    iris_init_screen_resource_functions(pscreen);

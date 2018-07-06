@@ -229,6 +229,8 @@ struct iris_context {
 
    struct pipe_debug_callback dbg;
 
+   struct slab_child_pool transfer_pool;
+
    struct iris_vtable vtbl;
 
    struct {
