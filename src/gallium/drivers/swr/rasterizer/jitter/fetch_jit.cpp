@@ -550,9 +550,6 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
 
         Value* stream = LOAD(streams, {ied.StreamIndex, SWR_VERTEX_BUFFER_STATE_xpData});
 
-        // VGATHER* takes an *i8 src pointer
-        Value* pStreamBase = INT_TO_PTR(stream, PointerType::get(mInt8Ty, 0));
-
         Value* stride  = LOAD(streams, {ied.StreamIndex, SWR_VERTEX_BUFFER_STATE_pitch});
         Value* vStride = VBROADCAST(stride);
 
@@ -620,7 +617,8 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
 
         // calculate byte offset to the start of the VB
         Value* baseOffset     = MUL(Z_EXT(startOffset, mInt64Ty), Z_EXT(stride, mInt64Ty));
-        pStreamBase           = GEP(pStreamBase, baseOffset);
+
+        // VGATHER* takes an *i8 src pointer so that's what stream is
         Value* pStreamBaseGFX = ADD(stream, baseOffset);
 
         // if we have a start offset, subtract from max vertex. Used for OOB check
@@ -698,7 +696,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
         {
             Value* pResults[4];
             CreateGatherOddFormats(
-                (SWR_FORMAT)ied.Format, vGatherMask, pStreamBase, vOffsets, pResults);
+                (SWR_FORMAT)ied.Format, vGatherMask, pStreamBaseGFX, vOffsets, pResults);
             ConvertFormat((SWR_FORMAT)ied.Format, pResults);
 
             for (uint32_t c = 0; c < 4; c += 1)
@@ -733,7 +731,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                 // if we have at least one component out of x or y to fetch
                 if (isComponentEnabled(compMask, 0) || isComponentEnabled(compMask, 1))
                 {
-                    vGatherResult[0] = GATHERPS(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                    vGatherResult[0] = GATHERPS(gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask);
                     // e.g. result of first 8x32bit integer gather for 16bit components
                     // 256i - 0    1    2    3    4    5    6    7
                     //        xyxy xyxy xyxy xyxy xyxy xyxy xyxy xyxy
@@ -744,9 +742,9 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                 if (isComponentEnabled(compMask, 2) || isComponentEnabled(compMask, 3))
                 {
                     // offset base to the next components(zw) in the vertex to gather
-                    pStreamBase = GEP(pStreamBase, C((char)4));
+                    pStreamBaseGFX = ADD(pStreamBaseGFX, C((int64_t)4));
 
-                    vGatherResult[1] = GATHERPS(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                    vGatherResult[1] = GATHERPS(gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask);
                     // e.g. result of second 8x32bit integer gather for 16bit components
                     // 256i - 0    1    2    3    4    5    6    7
                     //        zwzw zwzw zwzw zwzw zwzw zwzw zwzw zwzw
@@ -811,7 +809,6 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                     }
 
                     // offset base to the next component in the vertex to gather
-                    pStreamBase    = GEP(pStreamBase, C((char)4));
                     pStreamBaseGFX = ADD(pStreamBaseGFX, C((int64_t)4));
                 }
             }
@@ -854,9 +851,9 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                                 mVWidth / 2, ConstantFP::get(IRB()->getDoubleTy(), 0.0f));
 
                             Value* pGatherLo =
-                                GATHERPD(vZeroDouble, pStreamBase, vOffsetsLo, vMaskLo);
+                                GATHERPD(vZeroDouble, pStreamBaseGFX, vOffsetsLo, vMaskLo);
                             Value* pGatherHi =
-                                GATHERPD(vZeroDouble, pStreamBase, vOffsetsHi, vMaskHi);
+                                GATHERPD(vZeroDouble, pStreamBaseGFX, vOffsetsHi, vMaskHi);
 
                             pGatherLo = VCVTPD2PS(pGatherLo);
                             pGatherHi = VCVTPD2PS(pGatherHi);
@@ -880,7 +877,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                     }
 
                     // offset base to the next component  in the vertex to gather
-                    pStreamBase = GEP(pStreamBase, C((char)8));
+                    pStreamBaseGFX = ADD(pStreamBaseGFX, C((int64_t)8));
                 }
             }
             break;
@@ -936,7 +933,8 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                 // if we have at least one component to fetch
                 if (compMask)
                 {
-                    Value* vGatherResult = GATHERDD(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                    Value* vGatherResult = GATHERDD(
+                        gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask, 1, GFX_MEM_CLIENT_FETCH);
                     // e.g. result of an 8x32bit integer gather for 8bit components
                     // 256i - 0    1    2    3    4    5    6    7
                     //        xyzw xyzw xyzw xyzw xyzw xyzw xyzw xyzw
@@ -965,7 +963,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                 // if we have at least one component out of x or y to fetch
                 if (isComponentEnabled(compMask, 0) || isComponentEnabled(compMask, 1))
                 {
-                    vGatherResult[0] = GATHERDD(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                    vGatherResult[0] = GATHERDD(gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask);
                     // e.g. result of first 8x32bit integer gather for 16bit components
                     // 256i - 0    1    2    3    4    5    6    7
                     //        xyxy xyxy xyxy xyxy xyxy xyxy xyxy xyxy
@@ -976,9 +974,9 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                 if (isComponentEnabled(compMask, 2) || isComponentEnabled(compMask, 3))
                 {
                     // offset base to the next components(zw) in the vertex to gather
-                    pStreamBase = GEP(pStreamBase, C((char)4));
+                    pStreamBaseGFX = ADD(pStreamBaseGFX, C((int64_t)4));
 
-                    vGatherResult[1] = GATHERDD(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                    vGatherResult[1] = GATHERDD(gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask);
                     // e.g. result of second 8x32bit integer gather for 16bit components
                     // 256i - 0    1    2    3    4    5    6    7
                     //        zwzw zwzw zwzw zwzw zwzw zwzw zwzw zwzw
@@ -1015,7 +1013,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                         if (compCtrl[i] == StoreSrc)
                         {
                             Value* pGather =
-                                GATHERDD(gatherSrc, pStreamBase, vOffsets, vGatherMask);
+                                GATHERDD(gatherSrc, pStreamBaseGFX, vOffsets, vGatherMask);
 
                             if (conversionType == CONVERT_USCALED)
                             {
@@ -1053,7 +1051,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                     }
 
                     // offset base to the next component  in the vertex to gather
-                    pStreamBase = GEP(pStreamBase, C((char)4));
+                    pStreamBaseGFX = ADD(pStreamBaseGFX, C((int64_t)4));
                 }
             }
             break;
