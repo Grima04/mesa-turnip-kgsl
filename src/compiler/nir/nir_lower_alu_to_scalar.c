@@ -145,13 +145,23 @@ lower_alu_instr_scalar(nir_builder *b, nir_instr *instr, void *_data)
        */
       return NULL;
 
+   case nir_op_unpack_half_2x16_flush_to_zero:
    case nir_op_unpack_half_2x16: {
       if (!b->shader->options->lower_unpack_half_2x16)
          return NULL;
 
       nir_ssa_def *packed = nir_ssa_for_alu_src(b, alu, 0);
-      return nir_vec2(b, nir_unpack_half_2x16_split_x(b, packed),
-                         nir_unpack_half_2x16_split_y(b, packed));
+      if (alu->op == nir_op_unpack_half_2x16_flush_to_zero) {
+          return nir_vec2(b,
+                          nir_unpack_half_2x16_split_x_flush_to_zero(b,
+                                                                     packed),
+                          nir_unpack_half_2x16_split_y_flush_to_zero(b,
+                                                                     packed));
+      } else {
+          return nir_vec2(b,
+                          nir_unpack_half_2x16_split_x(b, packed),
+                          nir_unpack_half_2x16_split_y(b, packed));
+      }
    }
 
    case nir_op_pack_uvec2_to_uint: {

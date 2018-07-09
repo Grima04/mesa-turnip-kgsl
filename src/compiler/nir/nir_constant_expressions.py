@@ -258,6 +258,17 @@ pack_half_1x16(float x)
  * Evaluate one component of unpackHalf2x16.
  */
 static float
+unpack_half_1x16_flush_to_zero(uint16_t u)
+{
+   if (0 == (u & 0x7c00))
+      u &= 0x8000;
+   return _mesa_half_to_float(u);
+}
+
+/**
+ * Evaluate one component of unpackHalf2x16.
+ */
+static float
 unpack_half_1x16(uint16_t u)
 {
    return _mesa_half_to_float(u);
