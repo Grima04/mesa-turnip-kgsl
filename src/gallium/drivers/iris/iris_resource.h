@@ -27,6 +27,11 @@
 #include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
+/**
+ * Resources represent a GPU buffer object or image (mipmap tree).
+ *
+ * They contain the storage (BO) and layout information (ISL surface).
+ */
 struct iris_resource {
    struct pipe_resource	base;
    struct isl_surf surf;
@@ -42,17 +47,10 @@ struct iris_state_ref {
    uint32_t offset;
 };
 
-enum isl_format iris_isl_format_for_pipe_format(enum pipe_format pf);
-
-void iris_init_screen_resource_functions(struct pipe_screen *pscreen);
-
-static inline struct iris_bo *
-iris_resource_bo(struct pipe_resource *p_res)
-{
-   struct iris_resource *res = (void *) p_res;
-   return res->bo;
-}
-
+/**
+ * A view of a surface that can be bound to a color render target or
+ * depth/stencil attachment.
+ */
 struct iris_surface {
    struct pipe_surface pipe;
    struct isl_view view;
@@ -61,6 +59,9 @@ struct iris_surface {
    struct iris_state_ref surface_state;
 };
 
+/**
+ * Transfer object - information about a buffer mapping.
+ */
 struct iris_transfer {
    struct pipe_transfer base;
    struct pipe_debug_callback *dbg;
@@ -72,5 +73,16 @@ struct iris_transfer {
 
    void (*unmap)(struct iris_transfer *);
 };
+
+static inline struct iris_bo *
+iris_resource_bo(struct pipe_resource *p_res)
+{
+   struct iris_resource *res = (void *) p_res;
+   return res->bo;
+}
+
+enum isl_format iris_isl_format_for_pipe_format(enum pipe_format pf);
+
+void iris_init_screen_resource_functions(struct pipe_screen *pscreen);
 
 #endif
