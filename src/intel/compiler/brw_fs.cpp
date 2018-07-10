@@ -734,12 +734,31 @@ fs_visitor::limit_dispatch_width(unsigned n, const char *msg)
  * it.
  */
 bool
-fs_inst::is_partial_write() const
+fs_inst::is_partial_reg_write() const
 {
    return ((this->predicate && this->opcode != BRW_OPCODE_SEL) ||
-           (this->exec_size * type_sz(this->dst.type)) < 32 ||
            !this->dst.is_contiguous() ||
+           (this->exec_size * type_sz(this->dst.type)) < REG_SIZE ||
            this->dst.offset % REG_SIZE != 0);
+}
+
+/**
+ * Returns true if the instruction has a flag that means it won't
+ * update an entire variable for the given dispatch width.
+ *
+ * This is only different from is_partial_reg_write() for SIMD8
+ * dispatches of 16-bit (or smaller) instructions.
+ */
+bool
+fs_inst::is_partial_var_write(uint32_t dispatch_width) const
+{
+   const uint32_t type_size = type_sz(this->dst.type);
+   uint32_t var_size = MIN2(REG_SIZE, dispatch_width * type_size);
+
+   return ((this->predicate && this->opcode != BRW_OPCODE_SEL) ||
+           !this->dst.is_contiguous() ||
+           (this->exec_size * type_sz(this->dst.type)) < var_size ||
+           this->dst.offset % var_size != 0);
 }
 
 unsigned
@@ -2956,7 +2975,7 @@ fs_visitor::opt_register_renaming()
       if (depth == 0 &&
           inst->dst.file == VGRF &&
           alloc.sizes[inst->dst.nr] * REG_SIZE == inst->size_written &&
-          !inst->is_partial_write()) {
+          !inst->is_partial_reg_write()) {
          if (remap[dst] == ~0u) {
             remap[dst] = dst;
          } else {
@@ -3160,7 +3179,7 @@ fs_visitor::compute_to_mrf()
       next_ip++;
 
       if (inst->opcode != BRW_OPCODE_MOV ||
-	  inst->is_partial_write() ||
+	  inst->is_partial_reg_write() ||
 	  inst->dst.file != MRF || inst->src[0].file != VGRF ||
 	  inst->dst.type != inst->src[0].type ||
 	  inst->src[0].abs || inst->src[0].negate ||
@@ -3193,7 +3212,7 @@ fs_visitor::compute_to_mrf()
 	     * that writes that reg, but it would require smarter
 	     * tracking.
 	     */
-	    if (scan_inst->is_partial_write())
+	    if (scan_inst->is_partial_reg_write())
 	       break;
 
             /* Handling things not fully contained in the source of the copy
@@ -3511,7 +3530,7 @@ fs_visitor::remove_duplicate_mrf_writes()
       if (inst->opcode == BRW_OPCODE_MOV &&
 	  inst->dst.file == MRF &&
 	  inst->src[0].file != ARF &&
-	  !inst->is_partial_write()) {
+	  !inst->is_partial_reg_write()) {
          last_mrf_move[inst->dst.nr] = inst;
       }
    }

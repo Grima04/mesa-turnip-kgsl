@@ -70,7 +70,7 @@ is_coalesce_candidate(const fs_visitor *v, const fs_inst *inst)
 {
    if ((inst->opcode != BRW_OPCODE_MOV &&
         inst->opcode != SHADER_OPCODE_LOAD_PAYLOAD) ||
-       inst->is_partial_write() ||
+       inst->is_partial_reg_write() ||
        inst->saturate ||
        inst->src[0].file != VGRF ||
        inst->src[0].negate ||

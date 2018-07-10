@@ -252,7 +252,8 @@ fs_visitor::opt_cse_local(bblock_t *block)
    int ip = block->start_ip;
    foreach_inst_in_block(fs_inst, inst, block) {
       /* Skip some cases. */
-      if (is_expression(this, inst) && !inst->is_partial_write() &&
+      if (is_expression(this, inst) &&
+          !inst->is_partial_var_write(dispatch_width) &&
           ((inst->dst.file != ARF && inst->dst.file != FIXED_GRF) ||
            inst->dst.is_null()))
       {

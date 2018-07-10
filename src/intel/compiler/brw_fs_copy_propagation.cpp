@@ -515,7 +515,7 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    /* Compute the first component of the copy that the instruction is
     * reading, and the base byte offset within that component.
     */
-   assert(entry->dst.offset % REG_SIZE == 0 && entry->dst.stride == 1);
+   assert(entry->dst.stride == 1);
    const unsigned component = rel_offset / type_sz(entry->dst.type);
    const unsigned suboffset = rel_offset % type_sz(entry->dst.type);
 
@@ -767,7 +767,7 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
 }
 
 static bool
-can_propagate_from(fs_inst *inst)
+can_propagate_from(fs_inst *inst, unsigned dispatch_width)
 {
    return (inst->opcode == BRW_OPCODE_MOV &&
            inst->dst.file == VGRF &&
@@ -778,7 +778,7 @@ can_propagate_from(fs_inst *inst)
             inst->src[0].file == UNIFORM ||
             inst->src[0].file == IMM) &&
            inst->src[0].type == inst->dst.type &&
-           !inst->is_partial_write());
+           !inst->is_partial_var_write(dispatch_width));
 }
 
 /* Walks a basic block and does copy propagation on it using the acp
@@ -830,7 +830,7 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
       /* If this instruction's source could potentially be folded into the
        * operand of another instruction, add it to the ACP.
        */
-      if (can_propagate_from(inst)) {
+      if (can_propagate_from(inst, dispatch_width)) {
          acp_entry *entry = ralloc(copy_prop_ctx, acp_entry);
          entry->dst = inst->dst;
          entry->src = inst->src[0];

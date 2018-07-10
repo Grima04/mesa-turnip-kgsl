@@ -1054,7 +1054,7 @@ fs_visitor::spill_reg(unsigned spill_reg)
           * write, there should be no need for the unspill since the
           * instruction will be overwriting the whole destination in any case.
 	  */
-         if (inst->is_partial_write() ||
+         if (inst->is_partial_reg_write() ||
              (!inst->force_writemask_all && !per_channel))
             emit_unspill(ubld, spill_src, subset_spill_offset,
                          regs_written(inst));

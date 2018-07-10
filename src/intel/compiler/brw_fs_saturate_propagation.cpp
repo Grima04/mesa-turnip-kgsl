@@ -43,7 +43,8 @@
  */
 
 static bool
-opt_saturate_propagation_local(fs_visitor *v, bblock_t *block)
+opt_saturate_propagation_local(fs_visitor *v, bblock_t *block,
+                               unsigned dispatch_width)
 {
    bool progress = false;
    int ip = block->end_ip + 1;
@@ -66,7 +67,7 @@ opt_saturate_propagation_local(fs_visitor *v, bblock_t *block)
       foreach_inst_in_block_reverse_starting_from(fs_inst, scan_inst, inst) {
          if (regions_overlap(scan_inst->dst, scan_inst->size_written,
                              inst->src[0], inst->size_read(0))) {
-            if (scan_inst->is_partial_write() ||
+            if (scan_inst->is_partial_var_write(dispatch_width) ||
                 (scan_inst->dst.type != inst->dst.type &&
                  !scan_inst->can_change_types()))
                break;
@@ -153,7 +154,7 @@ fs_visitor::opt_saturate_propagation()
    calculate_live_intervals();
 
    foreach_block (block, cfg) {
-      progress = opt_saturate_propagation_local(this, block) || progress;
+      progress = opt_saturate_propagation_local(this, block, dispatch_width) || progress;
    }
 
    /* Live intervals are still valid. */

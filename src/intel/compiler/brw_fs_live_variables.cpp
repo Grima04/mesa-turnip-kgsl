@@ -84,7 +84,7 @@ fs_live_variables::setup_one_write(struct block_data *bd, fs_inst *inst,
     * screens off previous updates of that variable (VGRF channel).
     */
    if (inst->dst.file == VGRF) {
-      if (!inst->is_partial_write() && !BITSET_TEST(bd->use, var))
+      if (!inst->is_partial_reg_write() && !BITSET_TEST(bd->use, var))
          BITSET_SET(bd->def, var);
 
       BITSET_SET(bd->defout, var);

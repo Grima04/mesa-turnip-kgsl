@@ -107,7 +107,7 @@ fs_visitor::dead_code_eliminate()
          }
 
          if (inst->dst.file == VGRF) {
-            if (!inst->is_partial_write()) {
+            if (!inst->is_partial_reg_write()) {
                int var = live_intervals->var_from_reg(inst->dst);
                for (unsigned i = 0; i < regs_written(inst); i++) {
                   BITSET_CLEAR(live, var + i);
