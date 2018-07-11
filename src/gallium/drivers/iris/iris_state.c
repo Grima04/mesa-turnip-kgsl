@@ -1845,7 +1845,7 @@ iris_create_so_decl_list(const struct pipe_stream_output_info *info,
    }
 
    for (int i = 0; i < max_decls; i++) {
-      iris_pack_state(GENX(SO_DECL_ENTRY), so_decl_map + 2 + i * 2, entry) {
+      iris_pack_state(GENX(SO_DECL_ENTRY), so_decl_map + 3 + i * 2, entry) {
          entry.Stream0Decl = so_decl[0][i];
          entry.Stream1Decl = so_decl[1][i];
          entry.Stream2Decl = so_decl[2][i];
