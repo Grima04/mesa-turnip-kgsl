@@ -577,9 +577,9 @@ iris_update_compiled_shaders(struct iris_context *ice)
 
    struct iris_compiled_shader *shader = last_vue_shader(ice);
    update_last_vue_map(ice, shader->prog_data);
-   if (ice->state.so_decl_list != shader->so_decl_list) {
-      ice->state.so_decl_list = shader->so_decl_list;
-      ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST;
+   if (ice->state.streamout != shader->streamout) {
+      ice->state.streamout = shader->streamout;
+      ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST | IRIS_DIRTY_STREAMOUT;
    }
 
    if (dirty & IRIS_DIRTY_UNCOMPILED_FS)

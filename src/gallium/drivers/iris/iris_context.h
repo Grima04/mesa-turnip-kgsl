@@ -171,9 +171,10 @@ struct iris_compiled_shader {
    struct brw_stage_prog_data *prog_data;
 
    /**
-    * Derived 3DSTATE_SO_DECL_LIST packet (for transform feedback).
+    * Derived 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets
+    * (the VUE-based information for transform feedback outputs).
     */
-   uint32_t *so_decl_list;
+   uint32_t *streamout;
 
    /**
     * Shader packets and other data derived from prog_data.  These must be
@@ -284,7 +285,9 @@ struct iris_context {
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
 
-      uint32_t *so_decl_list;
+      /** 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets */
+      bool streamout_active;
+      uint32_t *streamout;
 
       struct iris_state_ref unbound_tex;
 
@@ -392,7 +395,7 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
                                  const void *key,
                                  const void *assembly,
                                  struct brw_stage_prog_data *prog_data,
-                                 uint32_t *so_decl_list);
+                                 uint32_t *streamout);
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);

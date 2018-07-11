@@ -433,6 +433,7 @@ struct iris_genx_state {
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
+   uint32_t streamout[4 * GENX(3DSTATE_STREAMOUT_length)];
 };
 
 static void
@@ -626,6 +627,7 @@ struct iris_rasterizer_state {
    uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
    bool flatshade; /* for shader state */
+   bool flatshade_first; /* for stream output */
    bool clamp_fragment_color; /* for shader state */
    bool light_twoside; /* for shader state */
    bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
@@ -657,6 +659,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    #endif
 
    cso->flatshade = state->flatshade;
+   cso->flatshade_first = state->flatshade_first;
    cso->clamp_fragment_color = state->clamp_fragment_color;
    cso->light_twoside = state->light_twoside;
    cso->rasterizer_discard = state->rasterizer_discard;
@@ -774,7 +777,7 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
       if (cso_changed(line_stipple_enable) || cso_changed(poly_stipple_enable))
          ice->state.dirty |= IRIS_DIRTY_WM;
 
-      if (cso_changed(rasterizer_discard))
+      if (cso_changed(rasterizer_discard) || cso_changed(flatshade_first))
          ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
@@ -1696,7 +1699,18 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
                                const unsigned *offsets)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   uint32_t *so_buffers = ice->state.genx->so_buffers;
+   struct iris_genx_state *genx = ice->state.genx;
+   uint32_t *so_buffers = genx->so_buffers;
+
+   const bool active = num_targets > 0;
+   if (ice->state.streamout_active != active) {
+      ice->state.streamout_active = active;
+      ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+   }
+
+   /* No need to update 3DSTATE_SO_BUFFER unless SOL is active. */
+   if (!active)
+      return;
 
    for (unsigned i = 0; i < 4; i++,
         so_buffers += GENX(3DSTATE_SO_BUFFER_length)) {
@@ -1792,9 +1806,36 @@ iris_create_so_decl_list(const struct pipe_stream_output_info *info,
          max_decls = decls[stream_id];
    }
 
-   uint32_t *dw = ralloc_size(NULL, sizeof(uint32_t) * (3 + 2 * max_decls));
+   unsigned dwords = GENX(3DSTATE_STREAMOUT_length) + (3 + 2 * max_decls);
+   uint32_t *map = ralloc_size(NULL, sizeof(uint32_t) * dwords);
+   uint32_t *so_decl_map = map + GENX(3DSTATE_STREAMOUT_length);
 
-   iris_pack_command(GENX(3DSTATE_SO_DECL_LIST), dw, list) {
+   iris_pack_command(GENX(3DSTATE_STREAMOUT), map, sol) {
+      int urb_entry_read_offset = 0;
+      int urb_entry_read_length = (vue_map->num_slots + 1) / 2 -
+         urb_entry_read_offset;
+
+      /* We always read the whole vertex.  This could be reduced at some
+       * point by reading less and offsetting the register index in the
+       * SO_DECLs.
+       */
+      sol.Stream0VertexReadOffset = urb_entry_read_offset;
+      sol.Stream0VertexReadLength = urb_entry_read_length - 1;
+      sol.Stream1VertexReadOffset = urb_entry_read_offset;
+      sol.Stream1VertexReadLength = urb_entry_read_length - 1;
+      sol.Stream2VertexReadOffset = urb_entry_read_offset;
+      sol.Stream2VertexReadLength = urb_entry_read_length - 1;
+      sol.Stream3VertexReadOffset = urb_entry_read_offset;
+      sol.Stream3VertexReadLength = urb_entry_read_length - 1;
+
+      /* Set buffer pitches; 0 means unbound. */
+      sol.Buffer0SurfacePitch = 4 * info->stride[0];
+      sol.Buffer1SurfacePitch = 4 * info->stride[1];
+      sol.Buffer2SurfacePitch = 4 * info->stride[2];
+      sol.Buffer3SurfacePitch = 4 * info->stride[3];
+   }
+
+   iris_pack_command(GENX(3DSTATE_SO_DECL_LIST), so_decl_map, list) {
       list.DWordLength = 3 + 2 * max_decls - 2;
       list.StreamtoBufferSelects0 = buffer_mask[0];
       list.StreamtoBufferSelects1 = buffer_mask[1];
@@ -1807,7 +1848,7 @@ iris_create_so_decl_list(const struct pipe_stream_output_info *info,
    }
 
    for (int i = 0; i < max_decls; i++) {
-      iris_pack_state(GENX(SO_DECL_ENTRY), dw + 2 + i * 2, entry) {
+      iris_pack_state(GENX(SO_DECL_ENTRY), so_decl_map + 2 + i * 2, entry) {
          entry.Stream0Decl = so_decl[0][i];
          entry.Stream1Decl = so_decl[1][i];
          entry.Stream2Decl = so_decl[2][i];
@@ -1815,7 +1856,7 @@ iris_create_so_decl_list(const struct pipe_stream_output_info *info,
       }
    }
 
-   return dw;
+   return map;
 }
 
 static void
@@ -2862,13 +2903,34 @@ iris_upload_render_state(struct iris_context *ice,
                       4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
    }
 
-   if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.so_decl_list) {
-      iris_batch_emit(batch, ice->state.so_decl_list,
-                      4 * ((ice->state.so_decl_list[0] & 0xff) + 2));
+   if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.streamout) {
+      uint32_t *decl_list =
+         ice->state.streamout + GENX(3DSTATE_STREAMOUT_length);
+      iris_batch_emit(batch, decl_list, 4 * ((decl_list[0] & 0xff) + 2));
    }
 
-   // XXX: SOL:
-   // 3DSTATE_STREAMOUT
+   if (dirty & IRIS_DIRTY_STREAMOUT) {
+      const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+
+      if (!ice->state.streamout_active) {
+         iris_emit_cmd(batch, GENX(3DSTATE_STREAMOUT), sol);
+      } else {
+         uint32_t dynamic_sol[GENX(3DSTATE_STREAMOUT_length)];
+         iris_pack_command(GENX(3DSTATE_STREAMOUT), dynamic_sol, sol) {
+            sol.SOFunctionEnable = true;
+            sol.SOStatisticsEnable = true;
+
+            // XXX: GL_PRIMITIVES_GENERATED query
+            sol.RenderingDisable = cso_rast->rasterizer_discard;
+            sol.ReorderMode = cso_rast->flatshade_first ? LEADING : TRAILING;
+         }
+
+         assert(ice->state.streamout);
+
+         iris_emit_merge(batch, ice->state.streamout, dynamic_sol,
+                         GENX(3DSTATE_STREAMOUT_length));
+      }
+   }
 
    if (dirty & IRIS_DIRTY_CLIP) {
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;

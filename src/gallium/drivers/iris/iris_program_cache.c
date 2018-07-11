@@ -212,7 +212,7 @@ iris_upload_shader(struct iris_context *ice,
                    const void *key,
                    const void *assembly,
                    struct brw_stage_prog_data *prog_data,
-                   uint32_t *so_decl_list)
+                   uint32_t *streamout)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
    struct gen_device_info *devinfo = &screen->devinfo;
@@ -242,12 +242,12 @@ iris_upload_shader(struct iris_context *ice,
    }
 
    shader->prog_data = prog_data;
-   shader->so_decl_list = so_decl_list;
+   shader->streamout = streamout;
 
    ralloc_steal(shader, shader->prog_data);
    ralloc_steal(shader->prog_data, prog_data->param);
    ralloc_steal(shader->prog_data, prog_data->pull_param);
-   ralloc_steal(shader, shader->so_decl_list);
+   ralloc_steal(shader, shader->streamout);
 
    /* Store the 3DSTATE shader packets and other derived state. */
    ice->vtbl.store_derived_program_state(devinfo, cache_id, shader);
@@ -269,13 +269,13 @@ iris_upload_and_bind_shader(struct iris_context *ice,
                             const void *key,
                             const void *assembly,
                             struct brw_stage_prog_data *prog_data,
-                            uint32_t *so_decl_list)
+                            uint32_t *streamout)
 {
    assert(cache_id != IRIS_CACHE_BLORP);
 
    struct iris_compiled_shader *shader =
       iris_upload_shader(ice, cache_id, key_size_for_cache(cache_id), key,
-                         assembly, prog_data, so_decl_list);
+                         assembly, prog_data, streamout);
 
    ice->shaders.prog[cache_id] = shader;
    ice->state.dirty |= dirty_flag_for_cache(cache_id);
