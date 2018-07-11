@@ -1753,9 +1753,6 @@ iris_create_so_decl_list(const struct pipe_stream_output_info *info,
    int max_decls = 0;
    STATIC_ASSERT(ARRAY_SIZE(so_decl[0]) >= MAX_PROGRAM_OUTPUTS);
 
-   if (info->num_outputs == 0)
-      return NULL;
-
    memset(so_decl, 0, sizeof(so_decl));
 
    /* Construct the list of SO_DECLs to be emitted.  The formatting of the
