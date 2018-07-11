@@ -296,14 +296,16 @@ iris_compile_vs(struct iris_context *ice,
 static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
-   struct brw_vs_prog_key key;
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_VERTEX];
+
+   struct brw_vs_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_vs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_VS, &key))
       return;
 
-   UNUSED bool success =
-      iris_compile_vs(ice, ice->shaders.uncompiled[MESA_SHADER_VERTEX], &key);
+   UNUSED bool success = iris_compile_vs(ice, ish, &key);
 }
 
 static void
@@ -370,7 +372,7 @@ iris_update_compiled_tes(struct iris_context *ice)
    if (!ish)
       return;
 
-   struct brw_tes_prog_key key;
+   struct brw_tes_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_tes_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_TES, &key))
@@ -438,7 +440,7 @@ iris_update_compiled_gs(struct iris_context *ice)
    if (!ish)
       return;
 
-   struct brw_gs_prog_key key;
+   struct brw_gs_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_gs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_GS, &key))
@@ -495,15 +497,16 @@ iris_compile_fs(struct iris_context *ice,
 static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
-   struct brw_wm_prog_key key;
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
+   struct brw_wm_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_fs_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_FS, &key))
       return;
 
    UNUSED bool success =
-      iris_compile_fs(ice, ice->shaders.uncompiled[MESA_SHADER_FRAGMENT], &key,
-                      ice->shaders.last_vue_map);
+      iris_compile_fs(ice, ish, &key, ice->shaders.last_vue_map);
 }
 
 static struct iris_compiled_shader *

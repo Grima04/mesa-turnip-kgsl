@@ -2075,7 +2075,6 @@ static void
 iris_populate_vs_key(const struct iris_context *ice,
                      struct brw_vs_prog_key *key)
 {
-   memset(key, 0, sizeof(*key));
    iris_populate_sampler_key(ice, &key->tex);
 }
 
@@ -2083,7 +2082,6 @@ static void
 iris_populate_tcs_key(const struct iris_context *ice,
                       struct brw_tcs_prog_key *key)
 {
-   memset(key, 0, sizeof(*key));
    iris_populate_sampler_key(ice, &key->tex);
 }
 
@@ -2091,7 +2089,6 @@ static void
 iris_populate_tes_key(const struct iris_context *ice,
                       struct brw_tes_prog_key *key)
 {
-   memset(key, 0, sizeof(*key));
    iris_populate_sampler_key(ice, &key->tex);
 }
 
@@ -2099,7 +2096,6 @@ static void
 iris_populate_gs_key(const struct iris_context *ice,
                      struct brw_gs_prog_key *key)
 {
-   memset(key, 0, sizeof(*key));
    iris_populate_sampler_key(ice, &key->tex);
 }
 
@@ -2107,7 +2103,6 @@ static void
 iris_populate_fs_key(const struct iris_context *ice,
                      struct brw_wm_prog_key *key)
 {
-   memset(key, 0, sizeof(*key));
    iris_populate_sampler_key(ice, &key->tex);
 
    /* XXX: dirty flags? */
