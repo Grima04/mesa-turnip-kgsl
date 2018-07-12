@@ -68,9 +68,6 @@ struct iris_transfer {
    void *buffer;
    void *ptr;
 
-   /** Stride of the temporary image (not the actual surface) */
-   int temp_stride;
-
    void (*unmap)(struct iris_transfer *);
 };
 

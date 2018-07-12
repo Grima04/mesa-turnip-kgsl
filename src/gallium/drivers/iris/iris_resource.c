@@ -411,9 +411,11 @@ tile_extents(struct isl_surf *surf,
    assert(box->y % fmtl->bh == 0);
 
    unsigned x0_el, y0_el;
-   isl_surf_get_image_offset_el(surf, level, box->z,
-                                surf->dim == ISL_SURF_DIM_3D ? box->z : 0,
-                                &x0_el, &y0_el);
+   if (surf->dim == ISL_SURF_DIM_3D) {
+      isl_surf_get_image_offset_el(surf, level, 0, box->z, &x0_el, &y0_el);
+   } else {
+      isl_surf_get_image_offset_el(surf, level, box->z, 0, &x0_el, &y0_el);
+   }
 
    *x1_B = (box->x / fmtl->bw + x0_el) * cpp;
    *y1_el = box->y / fmtl->bh + y0_el;
@@ -425,21 +427,26 @@ static void
 iris_unmap_tiled_memcpy(struct iris_transfer *map)
 {
    struct pipe_transfer *xfer = &map->base;
+   struct pipe_box box = xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
 
    const bool has_swizzling = false; // XXX: swizzling?
 
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
-      unsigned int x1, x2, y1, y2;
-      tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
-
       char *dst = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
-      // XXX: dst += mt->offset;
 
-      isl_memcpy_linear_to_tiled(x1, x2, y1, y2, dst, map->ptr,
-                                 surf->row_pitch_B, map->temp_stride,
-                                 has_swizzling, surf->tiling, ISL_MEMCPY);
+      for (int s = 0; s < box.depth; s++) {
+         unsigned int x1, x2, y1, y2;
+         tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
+
+         void *ptr = map->ptr + box.z * xfer->layer_stride;
+
+         isl_memcpy_linear_to_tiled(x1, x2, y1, y2, dst, ptr,
+                                    surf->row_pitch_B, xfer->stride,
+                                    has_swizzling, surf->tiling, ISL_MEMCPY);
+         box.z++;
+      }
    }
    os_free_aligned(map->buffer);
    map->buffer = map->ptr = NULL;
@@ -452,29 +459,38 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
 
+   xfer->stride = ALIGN(surf->row_pitch_B, 16);
+   xfer->layer_stride = xfer->stride * xfer->box.height;
+
    unsigned x1, x2, y1, y2;
    tile_extents(surf, &xfer->box, xfer->level, &x1, &x2, &y1, &y2);
-   map->temp_stride = ALIGN(surf->row_pitch_B, 16);
 
    /* The tiling and detiling functions require that the linear buffer has
     * a 16-byte alignment (that is, its `x0` is 16-byte aligned).  Here we
     * over-allocate the linear buffer to get the proper alignment.
     */
    map->buffer =
-      os_malloc_aligned(map->temp_stride * (y2 - y1) + (x1 & 0xf), 16);
-   map->ptr = (char *)map->buffer + (x1 & 0xf);
+      os_malloc_aligned(xfer->layer_stride * xfer->box.depth, 16);
    assert(map->buffer);
+   map->ptr = (char *)map->buffer + (x1 & 0xf);
 
    const bool has_swizzling = false; // XXX: swizzling?
 
    // XXX: PIPE_TRANSFER_READ?
    if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
       char *src = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
-      // XXX: += mt->offset?
 
-      isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src,
-                                 map->temp_stride, surf->row_pitch_B,
-                                 has_swizzling, surf->tiling, ISL_MEMCPY);
+      struct pipe_box box = xfer->box;
+
+      for (int s = 0; s < box.depth; s++) {
+         unsigned int x1, x2, y1, y2;
+         tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
+
+         isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src,
+                                    xfer->stride, surf->row_pitch_B,
+                                    has_swizzling, surf->tiling, ISL_MEMCPY);
+         box.z++;
+      }
    }
 
    map->unmap = iris_unmap_tiled_memcpy;
@@ -489,6 +505,9 @@ iris_map_direct(struct iris_transfer *map)
    struct isl_surf *surf = &res->surf;
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    const unsigned cpp = fmtl->bpb / 8;
+
+   xfer->stride = isl_surf_get_row_pitch_B(surf);
+   xfer->layer_stride = isl_surf_get_array_pitch(surf);
 
    void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
 
@@ -539,8 +558,6 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->level = level;
    xfer->usage = usage;
    xfer->box = *box;
-   xfer->stride = isl_surf_get_row_pitch_B(surf);
-   xfer->layer_stride = isl_surf_get_array_pitch(surf);
    *ptransfer = xfer;
 
    xfer->usage &= (PIPE_TRANSFER_READ |
