@@ -21,8 +21,9 @@
  * IN THE SOFTWARE.
  */
 
-#include "util/u_format.h"
+#include "util/bitscan.h"
 #include "util/macros.h"
+#include "util/u_format.h"
 
 #include "iris_resource.h"
 #include "iris_screen.h"
@@ -402,7 +403,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    // XXX: msaa max
-   if (sample_count > 16)
+   if (sample_count > 16 || !util_is_power_of_two_or_zero(sample_count))
       return false;
 
    if (pformat == PIPE_FORMAT_NONE)
