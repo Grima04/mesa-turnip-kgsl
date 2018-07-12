@@ -1708,6 +1708,11 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
+   for (int i = 0; i < 4; i++) {
+      pipe_so_target_reference(&ice->state.so_target[i],
+                               i < num_targets ? targets[i] : NULL);
+   }
+
    /* No need to update 3DSTATE_SO_BUFFER unless SOL is active. */
    if (!active)
       return;
@@ -2893,6 +2898,15 @@ iris_upload_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_SO_BUFFERS) {
       iris_batch_emit(batch, genx->so_buffers,
                       4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
+      for (int i = 0; i < 4; i++) {
+         struct iris_stream_output_target *tgt =
+            (void *) ice->state.so_target[i];
+         if (tgt) {
+            iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
+                               true);
+            iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res), true);
+         }
+      }
    }
 
    if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.streamout) {

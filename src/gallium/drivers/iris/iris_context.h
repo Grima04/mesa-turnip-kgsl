@@ -285,8 +285,9 @@ struct iris_context {
       unsigned num_samplers[MESA_SHADER_STAGES];
       unsigned num_textures[MESA_SHADER_STAGES];
 
-      /** 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets */
+      struct pipe_stream_output_target *so_target[PIPE_MAX_SO_BUFFERS];
       bool streamout_active;
+      /** 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets */
       uint32_t *streamout;
 
       struct iris_state_ref unbound_tex;
