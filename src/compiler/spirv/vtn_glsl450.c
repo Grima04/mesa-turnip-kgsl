@@ -646,7 +646,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
 
    case GLSLstd450Cross: {
-      val->ssa->def = nir_cross(nb, src[0], src[1]);
+      val->ssa->def = nir_cross3(nb, src[0], src[1]);
       return;
    }
 

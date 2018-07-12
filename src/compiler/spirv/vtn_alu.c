@@ -636,6 +636,21 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpSignBitSet: {
+      unsigned src_bit_size = glsl_get_bit_size(vtn_src[0]->type);
+      if (src[0]->num_components == 1)
+         val->ssa->def =
+            nir_ushr(&b->nb, src[0], nir_imm_int(&b->nb, src_bit_size - 1));
+      else
+         val->ssa->def =
+            nir_ishr(&b->nb, src[0], nir_imm_int(&b->nb, src_bit_size - 1));
+
+      if (src_bit_size != 32)
+         val->ssa->def = nir_u2u32(&b->nb, val->ssa->def);
+
+      break;
+   }
+
    default: {
       bool swap;
       unsigned src_bit_size = glsl_get_bit_size(vtn_src[0]->type);

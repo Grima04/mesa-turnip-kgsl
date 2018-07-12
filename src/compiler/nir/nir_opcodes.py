@@ -466,8 +466,20 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
 
 binop("fadd", tfloat, commutative + associative, "src0 + src1")
 binop("iadd", tint, commutative + associative, "src0 + src1")
+binop("iadd_sat", tint, commutative + associative, """
+      src1 > 0 ?
+         (src0 + src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 + src1) :
+         (src0 < src0 + src1 ? (1ull << (bit_size - 1))     : src0 + src1)
+""")
 binop("uadd_sat", tuint, commutative,
       "(src0 + src1) < src0 ? UINT64_MAX : (src0 + src1)")
+binop("isub_sat", tint, "", """
+      src1 < 0 ?
+         (src0 - src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 - src1) :
+         (src0 < src0 - src1 ? (1ull << (bit_size - 1))     : src0 - src1)
+""")
+binop("usub_sat", tuint, "", "src0 < src1 ? 0 : src0 - src1")
+
 binop("fsub", tfloat, "", "src0 - src1")
 binop("isub", tint, "", "src0 - src1")
 
@@ -535,6 +547,32 @@ binop_convert("uadd_carry", tuint, tuint, commutative, "src0 + src1 < src0")
 # of the two unsigned arguments.
 
 binop_convert("usub_borrow", tuint, tuint, "", "src0 < src1")
+
+# hadd: (a + b) >> 1 (without overflow)
+# x + y = x - (x & ~y) + (x & ~y) + y - (~x & y) + (~x & y)
+#       =      (x & y) + (x & ~y) +      (x & y) + (~x & y)
+#       = 2 *  (x & y) + (x & ~y) +                (~x & y)
+#       =     ((x & y) << 1) + (x ^ y)
+#
+# Since we know that the bottom bit of (x & y) << 1 is zero,
+#
+# (x + y) >> 1 = (((x & y) << 1) + (x ^ y)) >> 1
+#              =   (x & y) +      ((x ^ y)  >> 1)
+binop("ihadd", tint, commutative, "(src0 & src1) + ((src0 ^ src1) >> 1)")
+binop("uhadd", tuint, commutative, "(src0 & src1) + ((src0 ^ src1) >> 1)")
+
+# rhadd: (a + b + 1) >> 1 (without overflow)
+# x + y + 1 = x + (~x & y) - (~x & y) + y + (x & ~y) - (x & ~y) + 1
+#           =      (x | y) - (~x & y) +      (x | y) - (x & ~y) + 1
+#           = 2 *  (x | y) - ((~x & y) +               (x & ~y)) + 1
+#           =     ((x | y) << 1) - (x ^ y) + 1
+#
+# Since we know that the bottom bit of (x & y) << 1 is zero,
+#
+# (x + y + 1) >> 1 = (x | y) + (-(x ^ y) + 1) >> 1)
+#                  = (x | y) -  ((x ^ y)      >> 1)
+binop("irhadd", tint, commutative, "(src0 | src1) + ((src0 ^ src1) >> 1)")
+binop("urhadd", tuint, commutative, "(src0 | src1) + ((src0 ^ src1) >> 1)")
 
 binop("umod", tuint, "", "src1 == 0 ? 0 : src0 % src1")
 
