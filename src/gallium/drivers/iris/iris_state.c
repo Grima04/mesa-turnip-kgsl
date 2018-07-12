@@ -1169,7 +1169,7 @@ iris_set_sample_mask(struct pipe_context *ctx, unsigned sample_mask)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   ice->state.sample_mask = sample_mask;
+   ice->state.sample_mask = sample_mask == 0xffffffff ? 1 : sample_mask;
    ice->state.dirty |= IRIS_DIRTY_SAMPLE_MASK;
 }
 
