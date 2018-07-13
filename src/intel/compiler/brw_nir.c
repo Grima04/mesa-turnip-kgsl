@@ -628,7 +628,7 @@ static unsigned
 lower_bit_size_callback(const nir_alu_instr *alu, UNUSED void *data)
 {
    assert(alu->dest.dest.is_ssa);
-   if (alu->dest.dest.ssa.bit_size != 16)
+   if (alu->dest.dest.ssa.bit_size >= 32)
       return 0;
 
    const struct brw_compiler *compiler = (const struct brw_compiler *) data;
