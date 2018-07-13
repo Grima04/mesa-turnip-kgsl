@@ -147,6 +147,138 @@ lower_ixor64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 }
 
 static nir_ssa_def *
+lower_ishl64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
+{
+   /* Implemented as
+    *
+    * uint64_t lshift(uint64_t x, int c)
+    * {
+    *    if (c == 0) return x;
+    *
+    *    uint32_t lo = LO(x), hi = HI(x);
+    *
+    *    if (c < 32) {
+    *       uint32_t lo_shifted = lo << c;
+    *       uint32_t hi_shifted = hi << c;
+    *       uint32_t lo_shifted_hi = lo >> abs(32 - c);
+    *       return pack_64(lo_shifted, hi_shifted | lo_shifted_hi);
+    *    } else {
+    *       uint32_t lo_shifted_hi = lo << abs(32 - c);
+    *       return pack_64(0, lo_shifted_hi);
+    *    }
+    * }
+    */
+   nir_ssa_def *x_lo = nir_unpack_64_2x32_split_x(b, x);
+   nir_ssa_def *x_hi = nir_unpack_64_2x32_split_y(b, x);
+
+   nir_ssa_def *reverse_count = nir_iabs(b, nir_iadd(b, y, nir_imm_int(b, -32)));
+   nir_ssa_def *lo_shifted = nir_ishl(b, x_lo, y);
+   nir_ssa_def *hi_shifted = nir_ishl(b, x_hi, y);
+   nir_ssa_def *lo_shifted_hi = nir_ushr(b, x_lo, reverse_count);
+
+   nir_ssa_def *res_if_lt_32 =
+      nir_pack_64_2x32_split(b, lo_shifted,
+                                nir_ior(b, hi_shifted, lo_shifted_hi));
+   nir_ssa_def *res_if_ge_32 =
+      nir_pack_64_2x32_split(b, nir_imm_int(b, 0),
+                                nir_ishl(b, x_lo, reverse_count));
+
+   return nir_bcsel(b,
+                    nir_ieq(b, y, nir_imm_int(b, 0)), x,
+                    nir_bcsel(b, nir_uge(b, y, nir_imm_int(b, 32)),
+                                 res_if_ge_32, res_if_lt_32));
+}
+
+static nir_ssa_def *
+lower_ishr64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
+{
+   /* Implemented as
+    *
+    * uint64_t arshift(uint64_t x, int c)
+    * {
+    *    if (c == 0) return x;
+    *
+    *    uint32_t lo = LO(x);
+    *    int32_t  hi = HI(x);
+    *
+    *    if (c < 32) {
+    *       uint32_t lo_shifted = lo >> c;
+    *       uint32_t hi_shifted = hi >> c;
+    *       uint32_t hi_shifted_lo = hi << abs(32 - c);
+    *       return pack_64(hi_shifted, hi_shifted_lo | lo_shifted);
+    *    } else {
+    *       uint32_t hi_shifted = hi >> 31;
+    *       uint32_t hi_shifted_lo = hi >> abs(32 - c);
+    *       return pack_64(hi_shifted, hi_shifted_lo);
+    *    }
+    * }
+    */
+   nir_ssa_def *x_lo = nir_unpack_64_2x32_split_x(b, x);
+   nir_ssa_def *x_hi = nir_unpack_64_2x32_split_y(b, x);
+
+   nir_ssa_def *reverse_count = nir_iabs(b, nir_iadd(b, y, nir_imm_int(b, -32)));
+   nir_ssa_def *lo_shifted = nir_ushr(b, x_lo, y);
+   nir_ssa_def *hi_shifted = nir_ishr(b, x_hi, y);
+   nir_ssa_def *hi_shifted_lo = nir_ishl(b, x_hi, reverse_count);
+
+   nir_ssa_def *res_if_lt_32 =
+      nir_pack_64_2x32_split(b, nir_ior(b, lo_shifted, hi_shifted_lo),
+                                hi_shifted);
+   nir_ssa_def *res_if_ge_32 =
+      nir_pack_64_2x32_split(b, nir_ishr(b, x_hi, reverse_count),
+                                nir_ishr(b, x_hi, nir_imm_int(b, 31)));
+
+   return nir_bcsel(b,
+                    nir_ieq(b, y, nir_imm_int(b, 0)), x,
+                    nir_bcsel(b, nir_uge(b, y, nir_imm_int(b, 32)),
+                                 res_if_ge_32, res_if_lt_32));
+}
+
+static nir_ssa_def *
+lower_ushr64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
+{
+   /* Implemented as
+    *
+    * uint64_t rshift(uint64_t x, int c)
+    * {
+    *    if (c == 0) return x;
+    *
+    *    uint32_t lo = LO(x), hi = HI(x);
+    *
+    *    if (c < 32) {
+    *       uint32_t lo_shifted = lo >> c;
+    *       uint32_t hi_shifted = hi >> c;
+    *       uint32_t hi_shifted_lo = hi << abs(32 - c);
+    *       return pack_64(hi_shifted, hi_shifted_lo | lo_shifted);
+    *    } else {
+    *       uint32_t hi_shifted_lo = hi >> abs(32 - c);
+    *       return pack_64(0, hi_shifted_lo);
+    *    }
+    * }
+    */
+
+   nir_ssa_def *x_lo = nir_unpack_64_2x32_split_x(b, x);
+   nir_ssa_def *x_hi = nir_unpack_64_2x32_split_y(b, x);
+
+   nir_ssa_def *reverse_count = nir_iabs(b, nir_iadd(b, y, nir_imm_int(b, -32)));
+   nir_ssa_def *lo_shifted = nir_ushr(b, x_lo, y);
+   nir_ssa_def *hi_shifted = nir_ushr(b, x_hi, y);
+   nir_ssa_def *hi_shifted_lo = nir_ishl(b, x_hi, reverse_count);
+
+   nir_ssa_def *res_if_lt_32 =
+      nir_pack_64_2x32_split(b, nir_ior(b, lo_shifted, hi_shifted_lo),
+                                hi_shifted);
+   nir_ssa_def *res_if_ge_32 =
+      nir_pack_64_2x32_split(b, nir_ushr(b, x_hi, reverse_count),
+                                nir_imm_int(b, 0));
+
+   return nir_bcsel(b,
+                    nir_ieq(b, y, nir_imm_int(b, 0)), x,
+                    nir_bcsel(b, nir_uge(b, y, nir_imm_int(b, 32)),
+                                 res_if_ge_32, res_if_lt_32));
+}
+
+static nir_ssa_def *
 lower_iadd64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
 {
    nir_ssa_def *x_lo = nir_unpack_64_2x32_split_x(b, x);
@@ -537,6 +669,10 @@ opcode_to_options_mask(nir_op opcode)
    case nir_op_ixor:
    case nir_op_inot:
       return nir_lower_logic64;
+   case nir_op_ishl:
+   case nir_op_ishr:
+   case nir_op_ushr:
+      return nir_lower_shift64;
    default:
       return 0;
    }
@@ -621,6 +757,12 @@ lower_int64_alu_instr(nir_builder *b, nir_alu_instr *alu)
       return lower_ixor64(b, src[0], src[1]);
    case nir_op_inot:
       return lower_inot64(b, src[0]);
+   case nir_op_ishl:
+      return lower_ishl64(b, src[0], src[1]);
+   case nir_op_ishr:
+      return lower_ishr64(b, src[0], src[1]);
+   case nir_op_ushr:
+      return lower_ushr64(b, src[0], src[1]);
    default:
       unreachable("Invalid ALU opcode to lower");
    }

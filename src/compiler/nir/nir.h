@@ -3190,6 +3190,7 @@ typedef enum {
    nir_lower_ineg64 = (1 << 8),
    nir_lower_logic64 = (1 << 9),
    nir_lower_minmax64 = (1 << 10),
+   nir_lower_shift64 = (1 << 11),
 } nir_lower_int64_options;
 
 bool nir_lower_int64(nir_shader *shader, nir_lower_int64_options options);
