@@ -272,6 +272,7 @@ struct iris_context {
       struct iris_vertex_element_state *cso_vertex_elements;
       struct pipe_blend_color blend_color;
       struct pipe_poly_stipple poly_stipple;
+      struct pipe_viewport_state viewports[IRIS_MAX_VIEWPORTS];
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;

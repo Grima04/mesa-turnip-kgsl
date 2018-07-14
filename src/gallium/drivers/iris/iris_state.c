@@ -43,6 +43,7 @@
 #include "util/u_framebuffer.h"
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
+#include "util/u_viewport.h"
 #include "i915_drm.h"
 #include "nir.h"
 #include "intel/compiler/brw_compiler.h"
@@ -406,10 +407,6 @@ iris_init_render_context(struct iris_screen *screen,
    }
 }
 
-struct iris_viewport_state {
-   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
-};
-
 struct iris_vertex_buffer_state {
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
    struct pipe_resource *resources[33];
@@ -428,7 +425,9 @@ struct iris_depth_buffer_state {
  * layout varies per generation.
  */
 struct iris_genx_state {
-   struct iris_viewport_state viewport;
+   /** SF_CLIP_VIEWPORT */
+   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
+
    struct iris_vertex_buffer_state vertex_buffers;
    struct iris_depth_buffer_state depth_buffer;
 
@@ -539,9 +538,6 @@ struct iris_depth_stencil_alpha_state {
    /** Partial 3DSTATE_WM_DEPTH_STENCIL */
    uint32_t wmds[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
 
-   /** Complete CC_VIEWPORT */
-   uint32_t cc_vp[GENX(CC_VIEWPORT_length)];
-
    /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE */
    struct pipe_alpha_state alpha;
 };
@@ -586,16 +582,6 @@ iris_create_zsa_state(struct pipe_context *ctx,
       /* wmds.[Backface]StencilReferenceValue are merged later */
    }
 
-   iris_pack_state(GENX(CC_VIEWPORT), cso->cc_vp, ccvp) {
-      if (state->depth.bounds_test) {
-         ccvp.MinimumDepth = state->depth.bounds_min;
-         ccvp.MaximumDepth = state->depth.bounds_max;
-      } else {
-         ccvp.MinimumDepth = 0.0;
-         ccvp.MaximumDepth = 1.0;
-      }
-   }
-
    return cso;
 }
 
@@ -626,6 +612,9 @@ struct iris_rasterizer_state {
    uint32_t wm[GENX(3DSTATE_WM_length)];
    uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
+   bool clip_halfz; /* for CC_VIEWPORT */
+   bool depth_clip_near; /* for CC_VIEWPORT */
+   bool depth_clip_far; /* for CC_VIEWPORT */
    bool flatshade; /* for shader state */
    bool flatshade_first; /* for stream output */
    bool clamp_fragment_color; /* for shader state */
@@ -658,6 +647,9 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    }
    #endif
 
+   cso->clip_halfz = state->clip_halfz;
+   cso->depth_clip_near = state->depth_clip_near;
+   cso->depth_clip_far = state->depth_clip_far;
    cso->flatshade = state->flatshade;
    cso->flatshade_first = state->flatshade_first;
    cso->clamp_fragment_color = state->clamp_fragment_color;
@@ -779,6 +771,10 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(rasterizer_discard) || cso_changed(flatshade_first))
          ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+
+      if (cso_changed(depth_clip_near) || cso_changed(depth_clip_far) ||
+          cso_changed(clip_halfz))
+         ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
    }
 
    ice->state.cso_rast = new_cso;
@@ -1292,12 +1288,14 @@ iris_set_viewport_states(struct pipe_context *ctx,
                          const struct pipe_viewport_state *states)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_viewport_state *cso = &ice->state.genx->viewport;
-   uint32_t *vp_map = &cso->sf_cl_vp[start_slot];
+   struct iris_genx_state *genx = ice->state.genx;
+   uint32_t *vp_map = &genx->sf_cl_vp[start_slot];
 
-   // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
    for (unsigned i = 0; i < count; i++) {
-      const struct pipe_viewport_state *state = &states[start_slot + i];
+      const struct pipe_viewport_state *state = &states[i];
+
+      memcpy(&ice->state.viewports[start_slot + i], state, sizeof(*state));
+
       iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
          vp.ViewportMatrixElementm00 = state->scale[0];
          vp.ViewportMatrixElementm11 = state->scale[1];
@@ -1322,6 +1320,10 @@ iris_set_viewport_states(struct pipe_context *ctx,
    }
 
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
+
+   if (ice->state.cso_rast && (!ice->state.cso_rast->depth_clip_near ||
+                               !ice->state.cso_rast->depth_clip_far))
+      ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
 }
 
 static void
@@ -2695,22 +2697,43 @@ iris_upload_render_state(struct iris_context *ice,
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
 
    if (dirty & IRIS_DIRTY_CC_VIEWPORT) {
-      struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
+      const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+      uint32_t cc_vp_address;
+
+      /* XXX: could avoid streaming for depth_clip [0,1] case. */
+      uint32_t *cc_vp_map =
+         stream_state(batch, ice->state.dynamic_uploader,
+                      &ice->state.last_res.cc_vp,
+                      4 * ice->state.num_viewports *
+                      GENX(CC_VIEWPORT_length), 32, &cc_vp_address);
+      for (int i = 0; i < ice->state.num_viewports; i++) {
+         float zmin, zmax;
+         util_viewport_zmin_zmax(&ice->state.viewports[i],
+                                 cso_rast->clip_halfz, &zmin, &zmax);
+         if (cso_rast->depth_clip_near)
+            zmin = 0.0;
+         if (cso_rast->depth_clip_far)
+            zmax = 1.0;
+
+         iris_pack_state(GENX(CC_VIEWPORT), cc_vp_map, ccv) {
+            ccv.MinimumDepth = zmin;
+            ccv.MaximumDepth = zmax;
+         }
+
+         cc_vp_map += GENX(CC_VIEWPORT_length);
+      }
+
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), ptr) {
-         ptr.CCViewportPointer =
-            emit_state(batch, ice->state.dynamic_uploader,
-                       &ice->state.last_res.cc_vp,
-                       cso->cc_vp, sizeof(cso->cc_vp), 32);
+         ptr.CCViewportPointer = cc_vp_address;
       }
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
-      struct iris_viewport_state *cso = &ice->state.genx->viewport;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer =
             emit_state(batch, ice->state.dynamic_uploader,
                        &ice->state.last_res.sf_cl_vp,
-                       cso->sf_cl_vp, 4 * GENX(SF_CLIP_VIEWPORT_length) *
+                       genx->sf_cl_vp, 4 * GENX(SF_CLIP_VIEWPORT_length) *
                        ice->state.num_viewports, 64);
       }
    }
