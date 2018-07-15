@@ -39,6 +39,8 @@ uint32_t radv_translate_buffer_dataformat(const struct vk_format_description *de
 	unsigned type;
 	int i;
 
+	assert(desc->layout != VK_FORMAT_LAYOUT_MULTIPLANE);
+
 	if (desc->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
 		return V_008F0C_BUF_DATA_FORMAT_10_11_11;
 
@@ -110,6 +112,8 @@ uint32_t radv_translate_buffer_dataformat(const struct vk_format_description *de
 uint32_t radv_translate_buffer_numformat(const struct vk_format_description *desc,
 					 int first_non_void)
 {
+	assert(desc->layout != VK_FORMAT_LAYOUT_MULTIPLANE);
+
 	if (desc->format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
 		return V_008F0C_BUF_NUM_FORMAT_FLOAT;
 
@@ -145,6 +149,8 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 {
 	bool uniform = true;
 	int i;
+
+	assert(vk_format_get_plane_count(format) == 1);
 
 	if (!desc)
 		return ~0;
@@ -371,6 +377,8 @@ uint32_t radv_translate_tex_numformat(VkFormat format,
 				      const struct vk_format_description *desc,
 				      int first_non_void)
 {
+	assert(vk_format_get_plane_count(format) == 1);
+
 	switch (format) {
 	case VK_FORMAT_D24_UNORM_S8_UINT:
 		return V_008F14_IMG_NUM_FORMAT_UNORM;
@@ -433,6 +441,9 @@ uint32_t radv_translate_color_numformat(VkFormat format,
 					int first_non_void)
 {
 	unsigned ntype;
+
+	assert(vk_format_get_plane_count(format) == 1);
+
 	if (first_non_void == -1 || desc->channel[first_non_void].type == VK_FORMAT_TYPE_FLOAT)
 		ntype = V_028C70_NUMBER_FLOAT;
 	else {
