@@ -36,7 +36,7 @@
 #include "intel/compiler/brw_compiler.h"
 
 struct iris_query {
-   unsigned query;
+   enum pipe_query_type type;
 };
 
 static struct pipe_query *
@@ -46,12 +46,15 @@ iris_create_query(struct pipe_context *ctx,
 {
    struct iris_query *query = calloc(1, sizeof(struct iris_query));
 
-   return (struct pipe_query *)query;
+   query->type = query_type;
+
+   return (struct pipe_query *) query;
 }
 
 static void
-iris_destroy_query(struct pipe_context *ctx, struct pipe_query *query)
+iris_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
 {
+   struct iris_query *query = (void *) p_query;
    free(query);
 }
 
