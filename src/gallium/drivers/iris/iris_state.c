@@ -3139,7 +3139,52 @@ iris_upload_render_state(struct iris_context *ice,
 
    // XXX: Gen8 - PMA fix
 
-   assert(!draw->indirect); // XXX: indirect support
+#define _3DPRIM_END_OFFSET          0x2420
+#define _3DPRIM_START_VERTEX        0x2430
+#define _3DPRIM_VERTEX_COUNT        0x2434
+#define _3DPRIM_INSTANCE_COUNT      0x2438
+#define _3DPRIM_START_INSTANCE      0x243C
+#define _3DPRIM_BASE_VERTEX         0x2440
+
+   if (draw->indirect) {
+      /* We don't support this MultidrawIndirect. */
+      assert(!draw->indirect->indirect_draw_count);
+
+      struct iris_bo *bo = iris_resource_bo(draw->indirect->buffer);
+      assert(bo);
+
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = _3DPRIM_VERTEX_COUNT;
+         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 0);
+      }
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = _3DPRIM_INSTANCE_COUNT;
+         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 4);
+      }
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = _3DPRIM_START_VERTEX;
+         lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 8);
+      }
+      if (draw->index_size) {
+         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+            lrm.RegisterAddress = _3DPRIM_BASE_VERTEX;
+            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 12);
+         }
+         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+            lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
+            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 16);
+         }
+      } else {
+         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+            lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
+            lrm.MemoryAddress = ro_bo(bo, draw->indirect->offset + 12);
+         }
+         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+            lri.RegisterOffset = _3DPRIM_BASE_VERTEX;
+            lri.DataDWord = 0;
+         }
+      }
+   }
 
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.StartInstanceLocation = draw->start_instance;
@@ -3149,6 +3194,8 @@ iris_upload_render_state(struct iris_context *ice,
 
       // XXX: this is probably bonkers.
       prim.StartVertexLocation = draw->start;
+
+      prim.IndirectParameterEnable = draw->indirect != NULL;
 
       if (draw->index_size) {
          prim.BaseVertexLocation += draw->index_bias;
