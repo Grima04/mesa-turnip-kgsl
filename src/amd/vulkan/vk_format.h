@@ -326,6 +326,19 @@ vk_format_is_compressed(VkFormat format)
 }
 
 static inline bool
+vk_format_is_subsampled(VkFormat format)
+{
+	const struct vk_format_description *desc = vk_format_description(format);
+
+	assert(desc);
+	if (!desc) {
+		return false;
+	}
+
+	return desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED;
+}
+
+static inline bool
 vk_format_has_depth(const struct vk_format_description *desc)
 {
 	return desc->colorspace == VK_FORMAT_COLORSPACE_ZS &&

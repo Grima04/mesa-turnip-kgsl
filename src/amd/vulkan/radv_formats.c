@@ -180,6 +180,18 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 		break;
 	}
 
+	if (desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED) {
+		switch(format) {
+		/* Don't ask me why this looks inverted. PAL does the same. */
+		case VK_FORMAT_G8B8G8R8_422_UNORM:
+			return V_008F14_IMG_DATA_FORMAT_BG_RG;
+		case VK_FORMAT_B8G8R8G8_422_UNORM:
+			return V_008F14_IMG_DATA_FORMAT_GB_GR;
+		default:
+			goto out_unknown;
+		}
+	}
+
 	if (desc->layout == VK_FORMAT_LAYOUT_RGTC) {
 		switch(format) {
 		case VK_FORMAT_BC4_UNORM_BLOCK:

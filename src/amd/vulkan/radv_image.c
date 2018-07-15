@@ -149,6 +149,9 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
 		return false;
 
+	if (vk_format_is_subsampled(pCreateInfo->format))
+		return false;
+
 	/* TODO: Enable DCC for mipmaps and array layers. */
 	if (pCreateInfo->mipLevels > 1 || pCreateInfo->arrayLayers > 1)
 		return false;
