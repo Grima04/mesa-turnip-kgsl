@@ -623,6 +623,8 @@ struct iris_rasterizer_state {
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
    bool line_stipple_enable;
    bool poly_stipple_enable;
+   bool multisample;
+   bool force_persample_interp;
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
    uint16_t sprite_coord_enable;
 };
@@ -647,6 +649,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    }
    #endif
 
+   cso->multisample = state->multisample;
+   cso->force_persample_interp = state->force_persample_interp;
    cso->clip_halfz = state->clip_halfz;
    cso->depth_clip_near = state->depth_clip_near;
    cso->depth_clip_far = state->depth_clip_far;
@@ -2128,19 +2132,15 @@ iris_populate_fs_key(const struct iris_context *ice,
    /* XXX: only bother if COL0/1 are read */
    key->flat_shade = rast->flatshade;
 
-   // key->force_dual_color_blend for unigine
-#if 0
-   if (cso_rast->multisample) {
-      key->persample_interp =
-         ctx->Multisample.SampleShading &&
-         (ctx->Multisample.MinSampleShadingValue *
-          _mesa_geometric_samples(ctx->DrawBuffer) > 1);
-
-      key->multisample_fbo = fb->samples > 1;
-   }
-#endif
+   key->persample_interp = rast->force_persample_interp;
+   key->multisample_fbo = rast->multisample && fb->samples > 1;
 
    key->coherent_fb_fetch = true;
+
+   // XXX: uint64_t input_slots_valid; - for >16 inputs
+
+   // XXX: key->force_dual_color_blend for unigine
+   // XXX: respect hint for high_quality_derivatives:1;
 }
 
 #if 0
