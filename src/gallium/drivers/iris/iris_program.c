@@ -83,21 +83,26 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state)
 }
 
 static void
+bind_state(struct iris_context *ice,
+           struct iris_uncompiled_shader *ish,
+           gl_shader_stage stage)
+{
+   uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
+
+   ice->shaders.uncompiled[stage] = ish;
+   ice->state.dirty |= dirty_bit;
+}
+
+static void
 iris_bind_vs_state(struct pipe_context *ctx, void *state)
 {
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   ice->shaders.uncompiled[MESA_SHADER_VERTEX] = state;
-   ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_VS;
+   bind_state((void *) ctx, state, MESA_SHADER_VERTEX);
 }
 
 static void
 iris_bind_tcs_state(struct pipe_context *ctx, void *state)
 {
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL] = state;
-   ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TCS;
+   bind_state((void *) ctx, state, MESA_SHADER_TESS_CTRL);
 }
 
 static void
@@ -108,8 +113,7 @@ iris_bind_tes_state(struct pipe_context *ctx, void *state)
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL] = state;
-   ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TES;
+   bind_state((void *) ctx, state, MESA_SHADER_TESS_EVAL);
 }
 
 static void
@@ -120,17 +124,13 @@ iris_bind_gs_state(struct pipe_context *ctx, void *state)
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   ice->shaders.uncompiled[MESA_SHADER_GEOMETRY] = state;
-   ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_GS;
+   bind_state((void *) ctx, state, MESA_SHADER_GEOMETRY);
 }
 
 static void
 iris_bind_fs_state(struct pipe_context *ctx, void *state)
 {
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   ice->shaders.uncompiled[MESA_SHADER_FRAGMENT] = state;
-   ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_FS;
+   bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
 }
 
 /**
