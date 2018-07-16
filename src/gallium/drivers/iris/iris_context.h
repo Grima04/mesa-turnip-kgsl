@@ -97,6 +97,22 @@ struct blorp_params;
 #define IRIS_DIRTY_SO_DECL_LIST             (1ull << 49)
 #define IRIS_DIRTY_STREAMOUT                (1ull << 50)
 
+/**
+ * Non-orthogonal state (NOS) dependency flags.
+ *
+ * Shader programs may depend on non-orthogonal state.  These flags are
+ * used to indicate that a shader's key depends on the state provided by
+ * a certain Gallium CSO.
+ */
+enum iris_nos_dep {
+   IRIS_NOS_FRAMEBUFFER,
+   IRIS_NOS_DEPTH_STENCIL_ALPHA,
+   IRIS_NOS_RASTERIZER,
+   IRIS_NOS_BLEND,
+
+   IRIS_NOS_COUNT,
+};
+
 struct iris_depth_stencil_alpha_state;
 
 enum iris_program_cache_id {
@@ -264,6 +280,7 @@ struct iris_context {
 
    struct {
       uint64_t dirty;
+      uint64_t dirty_for_nos[IRIS_NOS_COUNT];
       unsigned num_viewports;
       unsigned sample_mask;
       struct iris_blend_state *cso_blend;

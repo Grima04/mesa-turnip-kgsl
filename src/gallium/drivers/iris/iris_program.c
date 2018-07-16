@@ -42,6 +42,9 @@ get_new_program_id(struct iris_screen *screen)
 struct iris_uncompiled_shader {
    struct pipe_shader_state base;
    unsigned program_id;
+
+   /** Bitfield of (1 << IRIS_NOS_*) flags. */
+   unsigned nos;
 };
 
 // XXX: need unify_interfaces() at link time...
@@ -91,6 +94,13 @@ bind_state(struct iris_context *ice,
 
    ice->shaders.uncompiled[stage] = ish;
    ice->state.dirty |= dirty_bit;
+
+   for (int i = 0; i < IRIS_NOS_COUNT; i++) {
+      if (ish->nos & (1 << i))
+         ice->state.dirty_for_nos[i] |= dirty_bit;
+      else
+         ice->state.dirty_for_nos[i] &= ~dirty_bit;
+   }
 }
 
 static void

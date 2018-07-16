@@ -532,6 +532,7 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
    ice->state.cso_blend = state;
    ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
 }
 
 struct iris_depth_stencil_alpha_state {
@@ -603,6 +604,7 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    ice->state.cso_zsa = new_cso;
    ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
    ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
+   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_DEPTH_STENCIL_ALPHA];
 }
 
 struct iris_rasterizer_state {
@@ -784,6 +786,7 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    ice->state.cso_rast = new_cso;
    ice->state.dirty |= IRIS_DIRTY_RASTER;
    ice->state.dirty |= IRIS_DIRTY_CLIP;
+   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_RASTERIZER];
 }
 
 static uint32_t
@@ -1410,6 +1413,8 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    /* Render target change */
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
+
+   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
 }
 
 static void
