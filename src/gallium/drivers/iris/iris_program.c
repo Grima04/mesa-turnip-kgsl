@@ -117,12 +117,13 @@ bind_state(struct iris_context *ice,
            gl_shader_stage stage)
 {
    uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
+   const uint64_t nos = ish ? ish->nos : 0;
 
    ice->shaders.uncompiled[stage] = ish;
    ice->state.dirty |= dirty_bit;
 
    for (int i = 0; i < IRIS_NOS_COUNT; i++) {
-      if (ish->nos & (1 << i))
+      if (nos & (1 << i))
          ice->state.dirty_for_nos[i] |= dirty_bit;
       else
          ice->state.dirty_for_nos[i] &= ~dirty_bit;
