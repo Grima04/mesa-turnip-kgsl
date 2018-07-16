@@ -73,6 +73,32 @@ iris_create_shader_state(struct pipe_context *ctx,
    memcpy(&ish->base.stream_output, &state->stream_output,
           sizeof(struct pipe_stream_output_info));
 
+   switch (nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+      // XXX: NOS
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      // XXX: NOS
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      // XXX: NOS
+      break;
+   case MESA_SHADER_GEOMETRY:
+      // XXX: NOS
+      break;
+   case MESA_SHADER_FRAGMENT:
+      ish->nos |= IRIS_NOS_FRAMEBUFFER |
+                  IRIS_NOS_DEPTH_STENCIL_ALPHA |
+                  IRIS_NOS_RASTERIZER |
+                  IRIS_NOS_BLEND;
+      break;
+   case MESA_SHADER_COMPUTE:
+      // XXX: NOS
+      break;
+   default:
+      break;
+   }
+
    return ish;
 }
 
