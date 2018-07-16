@@ -352,7 +352,8 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 	
 	if (radv_layout_dcc_compressed(dest_image, dest_image_layout, queue_mask)) {
 		*method = RESOLVE_FRAGMENT;
-	} else if (dest_image->surface.micro_tile_mode != src_image->surface.micro_tile_mode) {
+	} else if (dest_image->planes[0].surface.micro_tile_mode !=
+	           src_image->planes[0].surface.micro_tile_mode) {
 		*method = RESOLVE_COMPUTE;
 	}
 }

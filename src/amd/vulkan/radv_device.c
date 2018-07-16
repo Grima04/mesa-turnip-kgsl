@@ -4142,12 +4142,12 @@ VkDeviceAddress radv_GetBufferDeviceAddressEXT(
 
 
 static inline unsigned
-si_tile_mode_index(const struct radv_image *image, unsigned level, bool stencil)
+si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
 {
 	if (stencil)
-		return image->surface.u.legacy.stencil_tiling_index[level];
+		return plane->surface.u.legacy.stencil_tiling_index[level];
 	else
-		return image->surface.u.legacy.tiling_index[level];
+		return plane->surface.u.legacy.tiling_index[level];
 }
 
 static uint32_t radv_surface_max_layer_count(struct radv_image_view *iview)
@@ -4168,9 +4168,9 @@ radv_init_dcc_control_reg(struct radv_device *device,
 		return 0;
 
 	if (iview->image->info.samples > 1) {
-		if (iview->image->surface.bpe == 1)
+		if (iview->image->planes[0].surface.bpe == 1)
 			max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
-		else if (iview->image->surface.bpe == 2)
+		else if (iview->image->planes[0].surface.bpe == 2)
 			max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
 	}
 
@@ -4215,7 +4215,8 @@ radv_initialise_color_surface(struct radv_device *device,
 	unsigned ntype, format, swap, endian;
 	unsigned blend_clamp = 0, blend_bypass = 0;
 	uint64_t va;
-	const struct radeon_surf *surf = &iview->image->surface;
+	const struct radv_image_plane *plane = &iview->image->planes[0];
+	const struct radeon_surf *surf = &plane->surface;
 
 	desc = vk_format_description(iview->vk_format);
 
@@ -4224,35 +4225,37 @@ radv_initialise_color_surface(struct radv_device *device,
 	/* Intensity is implemented as Red, so treat it that way. */
 	cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1(desc->swizzle[3] == VK_SWIZZLE_1);
 
-	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
+	va = radv_buffer_get_va(iview->bo) + iview->image->offset + plane->offset;
 
 	cb->cb_color_base = va >> 8;
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		struct gfx9_surf_meta_flags meta;
 		if (iview->image->dcc_offset)
-			meta = iview->image->surface.u.gfx9.dcc;
+			meta = surf->u.gfx9.dcc;
 		else
-			meta = iview->image->surface.u.gfx9.cmask;
+			meta = surf->u.gfx9.cmask;
 
-		cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(iview->image->surface.u.gfx9.surf.swizzle_mode) |
-			S_028C74_FMASK_SW_MODE(iview->image->surface.u.gfx9.fmask.swizzle_mode) |
+		cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
+			S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
 			S_028C74_RB_ALIGNED(meta.rb_aligned) |
 			S_028C74_PIPE_ALIGNED(meta.pipe_aligned);
 
-		cb->cb_color_base += iview->image->surface.u.gfx9.surf_offset >> 8;
-		cb->cb_color_base |= iview->image->surface.tile_swizzle;
+		cb->cb_color_base += surf->u.gfx9.surf_offset >> 8;
+		cb->cb_color_base |= surf->tile_swizzle;
+
+		cb->cb_mrt_epitch = S_0287A0_EPITCH(surf->u.gfx9.surf.epitch);
 	} else {
 		const struct legacy_surf_level *level_info = &surf->u.legacy.level[iview->base_mip];
 		unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
 
 		cb->cb_color_base += level_info->offset >> 8;
 		if (level_info->mode == RADEON_SURF_MODE_2D)
-			cb->cb_color_base |= iview->image->surface.tile_swizzle;
+			cb->cb_color_base |= surf->tile_swizzle;
 
 		pitch_tile_max = level_info->nblk_x / 8 - 1;
 		slice_tile_max = (level_info->nblk_x * level_info->nblk_y) / 64 - 1;
-		tile_mode_index = si_tile_mode_index(iview->image, iview->base_mip, false);
+		tile_mode_index = si_tile_mode_index(plane, iview->base_mip, false);
 
 		cb->cb_color_pitch = S_028C64_TILE_MAX(pitch_tile_max);
 		cb->cb_color_slice = S_028C68_TILE_MAX(slice_tile_max);
@@ -4282,7 +4285,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
 	va += iview->image->dcc_offset;
 	cb->cb_dcc_base = va >> 8;
-	cb->cb_dcc_base |= iview->image->surface.tile_swizzle;
+	cb->cb_dcc_base |= surf->tile_swizzle;
 
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
 	cb->cb_color_view = S_028C6C_SLICE_START(iview->base_layer) |
@@ -4365,7 +4368,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	/* This must be set for fast clear to work without FMASK. */
 	if (!radv_image_has_fmask(iview->image) &&
 	    device->physical_device->rad_info.chip_class == SI) {
-		unsigned bankh = util_logbase2(iview->image->surface.u.legacy.bankh);
+		unsigned bankh = util_logbase2(surf->u.legacy.bankh);
 		cb->cb_color_attrib |= S_028C74_FMASK_BANK_HEIGHT(bankh);
 	}
 
@@ -4375,7 +4378,7 @@ radv_initialise_color_surface(struct radv_device *device,
 
 		cb->cb_color_view |= S_028C6C_MIP_LEVEL(iview->base_mip);
 		cb->cb_color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
-			S_028C74_RESOURCE_TYPE(iview->image->surface.u.gfx9.resource_type);
+			S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
 		cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(iview->extent.width - 1) |
 			S_028C68_MIP0_HEIGHT(iview->extent.height - 1) |
 			S_028C68_MAX_MIP(iview->image->info.levels - 1);
@@ -4430,6 +4433,11 @@ radv_initialise_ds_surface(struct radv_device *device,
 	unsigned format, stencil_format;
 	uint64_t va, s_offs, z_offs;
 	bool stencil_only = false;
+	const struct radv_image_plane *plane = &iview->image->planes[0];
+	const struct radeon_surf *surf = &plane->surface;
+
+	assert(vk_format_get_plane_count(iview->image->vk_format) == 1);
+
 	memset(ds, 0, sizeof(*ds));
 	switch (iview->image->vk_format) {
 	case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -4456,7 +4464,7 @@ radv_initialise_ds_surface(struct radv_device *device,
 	}
 
 	format = radv_translate_dbformat(iview->image->vk_format);
-	stencil_format = iview->image->surface.has_stencil ?
+	stencil_format = surf->has_stencil ?
 		V_028044_STENCIL_8 : V_028044_STENCIL_INVALID;
 
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
@@ -4470,19 +4478,19 @@ radv_initialise_ds_surface(struct radv_device *device,
 	s_offs = z_offs = va;
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		assert(iview->image->surface.u.gfx9.surf_offset == 0);
-		s_offs += iview->image->surface.u.gfx9.stencil_offset;
+		assert(surf->u.gfx9.surf_offset == 0);
+		s_offs += surf->u.gfx9.stencil_offset;
 
 		ds->db_z_info = S_028038_FORMAT(format) |
 			S_028038_NUM_SAMPLES(util_logbase2(iview->image->info.samples)) |
-			S_028038_SW_MODE(iview->image->surface.u.gfx9.surf.swizzle_mode) |
+			S_028038_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
 			S_028038_MAXMIP(iview->image->info.levels - 1) |
 			S_028038_ZRANGE_PRECISION(1);
 		ds->db_stencil_info = S_02803C_FORMAT(stencil_format) |
-			S_02803C_SW_MODE(iview->image->surface.u.gfx9.stencil.swizzle_mode);
+			S_02803C_SW_MODE(surf->u.gfx9.stencil.swizzle_mode);
 
-		ds->db_z_info2 = S_028068_EPITCH(iview->image->surface.u.gfx9.surf.epitch);
-		ds->db_stencil_info2 = S_02806C_EPITCH(iview->image->surface.u.gfx9.stencil.epitch);
+		ds->db_z_info2 = S_028068_EPITCH(surf->u.gfx9.surf.epitch);
+		ds->db_stencil_info2 = S_02806C_EPITCH(surf->u.gfx9.stencil.epitch);
 		ds->db_depth_view |= S_028008_MIPID(level);
 
 		ds->db_depth_size = S_02801C_X_MAX(iview->image->info.width - 1) |
@@ -4500,24 +4508,24 @@ radv_initialise_ds_surface(struct radv_device *device,
 				ds->db_stencil_info |= S_02803C_ITERATE_FLUSH(1);
 			}
 
-			if (!iview->image->surface.has_stencil)
+			if (!surf->has_stencil)
 				/* Use all of the htile_buffer for depth if there's no stencil. */
 				ds->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(1);
 			va = radv_buffer_get_va(iview->bo) + iview->image->offset +
 				iview->image->htile_offset;
 			ds->db_htile_data_base = va >> 8;
 			ds->db_htile_surface = S_028ABC_FULL_CACHE(1) |
-				S_028ABC_PIPE_ALIGNED(iview->image->surface.u.gfx9.htile.pipe_aligned) |
-				S_028ABC_RB_ALIGNED(iview->image->surface.u.gfx9.htile.rb_aligned);
+				S_028ABC_PIPE_ALIGNED(surf->u.gfx9.htile.pipe_aligned) |
+				S_028ABC_RB_ALIGNED(surf->u.gfx9.htile.rb_aligned);
 		}
 	} else {
-		const struct legacy_surf_level *level_info = &iview->image->surface.u.legacy.level[level];
+		const struct legacy_surf_level *level_info = &surf->u.legacy.level[level];
 
 		if (stencil_only)
-			level_info = &iview->image->surface.u.legacy.stencil_level[level];
+			level_info = &surf->u.legacy.stencil_level[level];
 
-		z_offs += iview->image->surface.u.legacy.level[level].offset;
-		s_offs += iview->image->surface.u.legacy.stencil_level[level].offset;
+		z_offs += surf->u.legacy.level[level].offset;
+		s_offs += surf->u.legacy.stencil_level[level].offset;
 
 		ds->db_depth_info = S_02803C_ADDR5_SWIZZLE_MASK(!radv_image_is_tc_compat_htile(iview->image));
 		ds->db_z_info = S_028040_FORMAT(format) | S_028040_ZRANGE_PRECISION(1);
@@ -4528,9 +4536,9 @@ radv_initialise_ds_surface(struct radv_device *device,
 
 		if (device->physical_device->rad_info.chip_class >= CIK) {
 			struct radeon_info *info = &device->physical_device->rad_info;
-			unsigned tiling_index = iview->image->surface.u.legacy.tiling_index[level];
-			unsigned stencil_index = iview->image->surface.u.legacy.stencil_tiling_index[level];
-			unsigned macro_index = iview->image->surface.u.legacy.macro_tile_index;
+			unsigned tiling_index = surf->u.legacy.tiling_index[level];
+			unsigned stencil_index = surf->u.legacy.stencil_tiling_index[level];
+			unsigned macro_index = surf->u.legacy.macro_tile_index;
 			unsigned tile_mode = info->si_tile_mode_array[tiling_index];
 			unsigned stencil_tile_mode = info->si_tile_mode_array[stencil_index];
 			unsigned macro_mode = info->cik_macrotile_mode_array[macro_index];
@@ -4548,9 +4556,9 @@ radv_initialise_ds_surface(struct radv_device *device,
 			ds->db_z_info |= S_028040_TILE_SPLIT(G_009910_TILE_SPLIT(tile_mode));
 			ds->db_stencil_info |= S_028044_TILE_SPLIT(G_009910_TILE_SPLIT(stencil_tile_mode));
 		} else {
-			unsigned tile_mode_index = si_tile_mode_index(iview->image, level, false);
+			unsigned tile_mode_index = si_tile_mode_index(&iview->image->planes[0], level, false);
 			ds->db_z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
-			tile_mode_index = si_tile_mode_index(iview->image, level, true);
+			tile_mode_index = si_tile_mode_index(&iview->image->planes[0], level, true);
 			ds->db_stencil_info |= S_028044_TILE_MODE_INDEX(tile_mode_index);
 			if (stencil_only)
 				ds->db_z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
@@ -4563,7 +4571,7 @@ radv_initialise_ds_surface(struct radv_device *device,
 		if (radv_htile_enabled(iview->image, level)) {
 			ds->db_z_info |= S_028040_TILE_SURFACE_ENABLE(1);
 
-			if (!iview->image->surface.has_stencil &&
+			if (!surf->has_stencil &&
 			    !radv_image_is_tc_compat_htile(iview->image))
 				/* Use all of the htile_buffer for depth if there's no stencil. */
 				ds->db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
@@ -4613,10 +4621,10 @@ VkResult radv_CreateFramebuffer(
 		VkImageView _iview = pCreateInfo->pAttachments[i];
 		struct radv_image_view *iview = radv_image_view_from_handle(_iview);
 		framebuffer->attachments[i].attachment = iview;
-		if (iview->aspect_mask & VK_IMAGE_ASPECT_COLOR_BIT) {
-			radv_initialise_color_surface(device, &framebuffer->attachments[i].cb, iview);
-		} else if (iview->aspect_mask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+		if (iview->aspect_mask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
 			radv_initialise_ds_surface(device, &framebuffer->attachments[i].ds, iview);
+		} else {
+			radv_initialise_color_surface(device, &framebuffer->attachments[i].cb, iview);
 		}
 		framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
 		framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
