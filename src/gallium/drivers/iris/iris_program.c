@@ -74,62 +74,62 @@ iris_create_shader_state(struct pipe_context *ctx,
 }
 
 static void
-iris_delete_shader_state(struct pipe_context *ctx, void *hwcso)
+iris_delete_shader_state(struct pipe_context *ctx, void *state)
 {
-   struct iris_uncompiled_shader *ish = hwcso;
+   struct iris_uncompiled_shader *ish = state;
 
    ralloc_free(ish->base.ir.nir);
    free(ish);
 }
 
 static void
-iris_bind_vs_state(struct pipe_context *ctx, void *hwcso)
+iris_bind_vs_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
-   ice->shaders.uncompiled[MESA_SHADER_VERTEX] = hwcso;
+   ice->shaders.uncompiled[MESA_SHADER_VERTEX] = state;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_VS;
 }
 
 static void
-iris_bind_tcs_state(struct pipe_context *ctx, void *hwcso)
+iris_bind_tcs_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
-   ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL] = hwcso;
+   ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL] = state;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TCS;
 }
 
 static void
-iris_bind_tes_state(struct pipe_context *ctx, void *hwcso)
+iris_bind_tes_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
-   if (!!hwcso != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
+   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL] = hwcso;
+   ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL] = state;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TES;
 }
 
 static void
-iris_bind_gs_state(struct pipe_context *ctx, void *hwcso)
+iris_bind_gs_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
-   if (!!hwcso != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
+   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   ice->shaders.uncompiled[MESA_SHADER_GEOMETRY] = hwcso;
+   ice->shaders.uncompiled[MESA_SHADER_GEOMETRY] = state;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_GS;
 }
 
 static void
-iris_bind_fs_state(struct pipe_context *ctx, void *hwcso)
+iris_bind_fs_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
-   ice->shaders.uncompiled[MESA_SHADER_FRAGMENT] = hwcso;
+   ice->shaders.uncompiled[MESA_SHADER_FRAGMENT] = state;
    ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_FS;
 }
 
