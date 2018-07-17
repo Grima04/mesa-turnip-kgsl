@@ -386,10 +386,70 @@ get_unified_tess_slots(const struct iris_context *ice,
    }
 }
 
+static bool
+iris_compile_tcs(struct iris_context *ice,
+                 struct iris_uncompiled_shader *ish,
+                 const struct brw_tcs_prog_key *key)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   void *mem_ctx = ralloc_context(NULL);
+   struct brw_tcs_prog_data *tcs_prog_data =
+      rzalloc(mem_ctx, struct brw_tcs_prog_data);
+   struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
+   struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+
+   assert(ish->base.type == PIPE_SHADER_IR_NIR);
+
+   nir_shader *nir = ish->base.ir.nir;
+
+   assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
+
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+
+   char *error_str = NULL;
+   const unsigned *program =
+      brw_compile_tcs(compiler, &ice->dbg, mem_ctx, key, tcs_prog_data, nir,
+                      -1, &error_str);
+   if (program == NULL) {
+      dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   iris_setup_push_uniform_range(compiler, prog_data);
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_TCS, key, program, prog_data,
+                               NULL);
+
+   ralloc_free(mem_ctx);
+   return true;
+}
+
 static void
 iris_update_compiled_tcs(struct iris_context *ice)
 {
-   // XXX: TCS
+   struct iris_uncompiled_shader *tcs =
+      ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
+
+   if (!tcs)
+      return;
+
+   const struct shader_info *tes_info =
+      get_shader_info(ice, MESA_SHADER_TESS_EVAL);
+   struct brw_tcs_prog_key key = {
+      .program_string_id = tcs->program_id,
+      .tes_primitive_mode = tes_info->tess.primitive_mode,
+   };
+   get_unified_tess_slots(ice, &key.outputs_written,
+                          &key.patch_outputs_written);
+   ice->vtbl.populate_tcs_key(ice, &key);
+
+   if (iris_bind_cached_shader(ice, IRIS_CACHE_TCS, &key))
+      return;
+
+   UNUSED bool success = iris_compile_tcs(ice, tcs, &key);
 }
 
 static bool
