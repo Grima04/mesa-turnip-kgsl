@@ -84,11 +84,7 @@ blit_surf_for_image_level_layer(struct radv_image *image,
 				VkImageLayout layout,
 				const VkImageSubresourceLayers *subres)
 {
-	VkFormat format = image->vk_format;
-	if (subres->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-		format = vk_format_depth_only(format);
-	else if (subres->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-		format = vk_format_stencil_only(format);
+	VkFormat format = radv_get_aspect_format(image, subres->aspectMask);
 
 	if (!radv_image_has_dcc(image) &&
 	    !(radv_image_is_tc_compat_htile(image)))

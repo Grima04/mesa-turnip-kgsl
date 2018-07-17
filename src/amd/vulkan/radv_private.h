@@ -1677,6 +1677,7 @@ struct radv_image_view {
 	VkImageViewType type;
 	VkImageAspectFlags aspect_mask;
 	VkFormat vk_format;
+	unsigned plane_id;
 	uint32_t base_layer;
 	uint32_t layer_count;
 	uint32_t base_mip;
@@ -1712,6 +1713,8 @@ radv_image_from_gralloc(VkDevice device_h,
 void radv_image_view_init(struct radv_image_view *view,
 			  struct radv_device *device,
 			  const VkImageViewCreateInfo* pCreateInfo);
+
+VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 
 struct radv_buffer_view {
 	struct radeon_winsys_bo *bo;

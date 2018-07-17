@@ -4215,7 +4215,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	unsigned ntype, format, swap, endian;
 	unsigned blend_clamp = 0, blend_bypass = 0;
 	uint64_t va;
-	const struct radv_image_plane *plane = &iview->image->planes[0];
+	const struct radv_image_plane *plane = &iview->image->planes[iview->plane_id];
 	const struct radeon_surf *surf = &plane->surface;
 
 	desc = vk_format_description(iview->vk_format);
