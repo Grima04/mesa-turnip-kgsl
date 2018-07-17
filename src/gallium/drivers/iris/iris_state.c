@@ -1061,13 +1061,17 @@ iris_create_sampler_view(struct pipe_context *ctx,
                           // .clear_color = clear_color,
    } else {
       // XXX: what to do about isv->view?  other drivers don't use it for bufs
+      const struct isl_format_layout *fmtl =
+         isl_format_get_layout(isv->view.format);
+      const unsigned cpp = fmtl->bpb / 8;
+
       isl_buffer_fill_state(&screen->isl_dev, map,
                             .address = itex->bo->gtt_offset +
                                        tmpl->u.buf.offset,
                             // XXX: buffer_texture_range_size from i965?
                             .size_B = tmpl->u.buf.size,
                             .format = isv->view.format,
-                            .stride_B = itex->surf.row_pitch_B,
+                            .stride_B = cpp,
                             .mocs = MOCS_WB);
    }
 
