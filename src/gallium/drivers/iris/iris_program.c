@@ -345,6 +345,47 @@ iris_update_compiled_vs(struct iris_context *ice)
    UNUSED bool success = iris_compile_vs(ice, ish, &key);
 }
 
+static const struct shader_info *
+get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
+{
+   const struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[stage];
+
+   if (!ish)
+      return NULL;
+
+   const nir_shader *nir = ish->base.ir.nir;
+   return &nir->info;
+}
+
+/**
+ * Get the union of TCS output and TES input slots.
+ *
+ * TCS and TES need to agree on a common URB entry layout.  In particular,
+ * the data for all patch vertices is stored in a single URB entry (unlike
+ * GS which has one entry per input vertex).  This means that per-vertex
+ * array indexing needs a stride.
+ *
+ * SSO requires locations to match, but doesn't require the number of
+ * outputs/inputs to match (in fact, the TCS often has extra outputs).
+ * So, we need to take the extra step of unifying these on the fly.
+ */
+static void
+get_unified_tess_slots(const struct iris_context *ice,
+                       uint64_t *per_vertex_slots,
+                       uint32_t *per_patch_slots)
+{
+   const struct shader_info *tcs = get_shader_info(ice, MESA_SHADER_TESS_CTRL);
+   const struct shader_info *tes = get_shader_info(ice, MESA_SHADER_TESS_EVAL);
+
+   *per_vertex_slots = tes->inputs_read;
+   *per_patch_slots = tes->patch_inputs_read;
+
+   if (tcs) {
+      *per_vertex_slots |= tcs->inputs_read;
+      *per_patch_slots |= tcs->patch_inputs_read;
+   }
+}
+
 static void
 iris_update_compiled_tcs(struct iris_context *ice)
 {
@@ -410,6 +451,7 @@ iris_update_compiled_tes(struct iris_context *ice)
       return;
 
    struct brw_tes_prog_key key = { .program_string_id = ish->program_id };
+   get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
    ice->vtbl.populate_tes_key(ice, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_TES, &key))
