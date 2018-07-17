@@ -1025,14 +1025,17 @@ iris_create_sampler_view(struct pipe_context *ctx,
    pipe_reference_init(&isv->pipe.reference, 1);
    pipe_resource_reference(&isv->pipe.texture, tex);
 
-   /* XXX: do we need brw_get_texture_swizzle hacks here? */
+   void *map = upload_state(ice->state.surface_uploader, &isv->surface_state,
+                            4 * GENX(RENDER_SURFACE_STATE_length), 64);
+   if (!unlikely(map))
+      return NULL;
 
+   struct iris_bo *state_bo = iris_resource_bo(isv->surface_state.res);
+   isv->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
+
+   /* XXX: do we need brw_get_texture_swizzle hacks here? */
    isv->view = (struct isl_view) {
       .format = iris_isl_format_for_pipe_format(tmpl->format),
-      .base_level = tmpl->u.tex.first_level,
-      .levels = tmpl->u.tex.last_level - tmpl->u.tex.first_level + 1,
-      .base_array_layer = tmpl->u.tex.first_layer,
-      .array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1,
       .swizzle = (struct isl_swizzle) {
          .r = pipe_swizzle_to_isl_channel(tmpl->swizzle_r),
          .g = pipe_swizzle_to_isl_channel(tmpl->swizzle_g),
@@ -1043,20 +1046,30 @@ iris_create_sampler_view(struct pipe_context *ctx,
                (itex->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
    };
 
-   void *map = upload_state(ice->state.surface_uploader, &isv->surface_state,
-                            4 * GENX(RENDER_SURFACE_STATE_length), 64);
-   if (!unlikely(map))
-      return NULL;
+   if (tmpl->target != PIPE_BUFFER) {
+      isv->view.base_level = tmpl->u.tex.first_level;
+      isv->view.levels = tmpl->u.tex.last_level - tmpl->u.tex.first_level + 1;
+      isv->view.base_array_layer = tmpl->u.tex.first_layer;
+      isv->view.array_len =
+         tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
-   struct iris_bo *state_bo = iris_resource_bo(isv->surface_state.res);
-   isv->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
-
-   isl_surf_fill_state(&screen->isl_dev, map,
-                       .surf = &itex->surf, .view = &isv->view,
-                       .mocs = MOCS_WB,
-                       .address = itex->bo->gtt_offset);
-                       // .aux_surf =
-                       // .clear_color = clear_color,
+      isl_surf_fill_state(&screen->isl_dev, map,
+                          .surf = &itex->surf, .view = &isv->view,
+                          .mocs = MOCS_WB,
+                          .address = itex->bo->gtt_offset);
+                          // .aux_surf =
+                          // .clear_color = clear_color,
+   } else {
+      // XXX: what to do about isv->view?  other drivers don't use it for bufs
+      isl_buffer_fill_state(&screen->isl_dev, map,
+                            .address = itex->bo->gtt_offset +
+                                       tmpl->u.buf.offset,
+                            // XXX: buffer_texture_range_size from i965?
+                            .size_B = tmpl->u.buf.size,
+                            .format = isv->view.format,
+                            .stride_B = itex->surf.row_pitch_B,
+                            .mocs = MOCS_WB);
+   }
 
    return &isv->pipe;
 }
