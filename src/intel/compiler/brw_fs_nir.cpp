@@ -876,7 +876,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
                brw_imm_d(brw_rnd_mode_from_nir_op(instr->op)));
       /* fallthrough */
-
+   case nir_op_f2f16:
       /* In theory, it would be better to use BRW_OPCODE_F32TO16. Depending
        * on the HW gen, it is a special hw opcode or just a MOV, and
        * brw_F32TO16 (at brw_eu_emit) would do the work to chose.
@@ -886,19 +886,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        * only for gen8+, it will be better to use directly the MOV, and use
        * BRW_OPCODE_F32TO16 when/if we work for HF support on gen7.
        */
-
-   case nir_op_f2f16:
-   case nir_op_i2f16:
-   case nir_op_u2f16:
       assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
-      inst = bld.MOV(result, op[0]);
-      inst->saturate = instr->dest.saturate;
-      break;
-
-   case nir_op_f2f64:
-   case nir_op_f2i64:
-   case nir_op_f2u64:
-      assert(type_sz(op[0].type) > 2); /* brw_nir_lower_conversions */
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
@@ -919,19 +907,34 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
-      assert(type_sz(op[0].type) > 1); /* brw_nir_lower_conversions */
-      /* fallthrough */
+   case nir_op_f2f64:
+   case nir_op_f2i64:
+   case nir_op_f2u64:
+   case nir_op_i2i32:
+   case nir_op_u2u32:
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
+   case nir_op_i2f16:
+   case nir_op_i2i16:
+   case nir_op_u2f16:
+   case nir_op_u2u16:
    case nir_op_f2i16:
    case nir_op_f2u16:
-   case nir_op_i2i32:
-   case nir_op_u2u32:
-   case nir_op_i2i16:
-   case nir_op_u2u16:
    case nir_op_i2i8:
    case nir_op_u2u8:
+   case nir_op_f2i8:
+   case nir_op_f2u8:
+      if (result.type == BRW_REGISTER_TYPE_B ||
+          result.type == BRW_REGISTER_TYPE_UB ||
+          result.type == BRW_REGISTER_TYPE_HF)
+         assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
+
+      if (op[0].type == BRW_REGISTER_TYPE_B ||
+          op[0].type == BRW_REGISTER_TYPE_UB ||
+          op[0].type == BRW_REGISTER_TYPE_HF)
+         assert(type_sz(result.type) < 8); /* brw_nir_lower_conversions */
+
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
