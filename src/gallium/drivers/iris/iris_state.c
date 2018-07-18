@@ -1581,7 +1581,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    struct iris_vertex_element_state *cso =
       malloc(sizeof(struct iris_vertex_element_state));
 
-   cso->count = MAX2(count, 1);
+   cso->count = count;
 
    /* TODO:
     *  - create edge flag one
@@ -1589,7 +1589,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
     *  - if those are necessary, use count + 1/2/3... OR in the length
     */
    iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve) {
-      ve.DWordLength = 1 + GENX(VERTEX_ELEMENT_STATE_length) * cso->count - 2;
+      ve.DWordLength =
+         1 + GENX(VERTEX_ELEMENT_STATE_length) * MAX2(count, 1) - 2;
    }
 
    uint32_t *ve_pack_dest = &cso->vertex_elements[1];
@@ -3148,10 +3149,11 @@ iris_upload_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
       struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
+      const unsigned entries = MAX2(cso->count, 1);
       iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
-                      (1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)));
+                      (1 + entries * GENX(VERTEX_ELEMENT_STATE_length)));
       iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
-                      cso->count * GENX(3DSTATE_VF_INSTANCING_length));
+                      entries * GENX(3DSTATE_VF_INSTANCING_length));
    }
 
    if (dirty & IRIS_DIRTY_VF_SGVS) {
