@@ -1652,6 +1652,11 @@ static void
 iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_vertex_element_state *old_cso = ice->state.cso_vertex_elements;
+   struct iris_vertex_element_state *new_cso = state;
+
+   if (new_cso && cso_changed(count))
+      ice->state.dirty |= IRIS_DIRTY_VF_SGVS;
 
    ice->state.cso_vertex_elements = state;
    ice->state.dirty |= IRIS_DIRTY_VERTEX_ELEMENTS;
@@ -3147,9 +3152,25 @@ iris_upload_render_state(struct iris_context *ice,
                       (1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)));
       iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
                       cso->count * GENX(3DSTATE_VF_INSTANCING_length));
-      for (int i = 0; i < cso->count; i++) {
-         /* TODO: vertexid, instanceid support */
-         iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgvs);
+   }
+
+   if (dirty & IRIS_DIRTY_VF_SGVS) {
+      const struct brw_vs_prog_data *vs_prog_data = (void *)
+         ice->shaders.prog[MESA_SHADER_VERTEX]->prog_data;
+      struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
+
+      iris_emit_cmd(batch, GENX(3DSTATE_VF_SGVS), sgv) {
+         if (vs_prog_data->uses_vertexid) {
+            sgv.VertexIDEnable = true;
+            sgv.VertexIDComponentNumber = 2;
+            sgv.VertexIDElementOffset = cso->count;
+         }
+
+         if (vs_prog_data->uses_instanceid) {
+            sgv.InstanceIDEnable = true;
+            sgv.InstanceIDComponentNumber = 3;
+            sgv.InstanceIDElementOffset = cso->count;
+         }
       }
    }
 

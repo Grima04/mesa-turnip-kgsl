@@ -96,6 +96,7 @@ struct blorp_params;
 #define IRIS_DIRTY_SO_BUFFERS               (1ull << 48)
 #define IRIS_DIRTY_SO_DECL_LIST             (1ull << 49)
 #define IRIS_DIRTY_STREAMOUT                (1ull << 50)
+#define IRIS_DIRTY_VF_SGVS                  (1ull << 51)
 
 /**
  * Non-orthogonal state (NOS) dependency flags.
