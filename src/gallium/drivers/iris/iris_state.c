@@ -2940,32 +2940,31 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   if (dirty & IRIS_DIRTY_SO_BUFFERS) {
-      iris_batch_emit(batch, genx->so_buffers,
-                      4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
-      for (int i = 0; i < 4; i++) {
-         struct iris_stream_output_target *tgt =
-            (void *) ice->state.so_target[i];
-         if (tgt) {
-            iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
-                               true);
-            iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res), true);
+   if (ice->state.streamout_active) {
+      if (dirty & IRIS_DIRTY_SO_BUFFERS) {
+         iris_batch_emit(batch, genx->so_buffers,
+                         4 * 4 * GENX(3DSTATE_SO_BUFFER_length));
+         for (int i = 0; i < 4; i++) {
+            struct iris_stream_output_target *tgt =
+               (void *) ice->state.so_target[i];
+            if (tgt) {
+               iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
+                                  true);
+               iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
+                                  true);
+            }
          }
       }
-   }
 
-   if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.streamout) {
-      uint32_t *decl_list =
-         ice->state.streamout + GENX(3DSTATE_STREAMOUT_length);
-      iris_batch_emit(batch, decl_list, 4 * ((decl_list[0] & 0xff) + 2));
-   }
+      if ((dirty & IRIS_DIRTY_SO_DECL_LIST) && ice->state.streamout) {
+         uint32_t *decl_list =
+            ice->state.streamout + GENX(3DSTATE_STREAMOUT_length);
+         iris_batch_emit(batch, decl_list, 4 * ((decl_list[0] & 0xff) + 2));
+      }
 
-   if (dirty & IRIS_DIRTY_STREAMOUT) {
-      const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+      if (dirty & IRIS_DIRTY_STREAMOUT) {
+         const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
 
-      if (!ice->state.streamout_active) {
-         iris_emit_cmd(batch, GENX(3DSTATE_STREAMOUT), sol);
-      } else {
          uint32_t dynamic_sol[GENX(3DSTATE_STREAMOUT_length)];
          iris_pack_command(GENX(3DSTATE_STREAMOUT), dynamic_sol, sol) {
             sol.SOFunctionEnable = true;
@@ -2980,6 +2979,10 @@ iris_upload_render_state(struct iris_context *ice,
 
          iris_emit_merge(batch, ice->state.streamout, dynamic_sol,
                          GENX(3DSTATE_STREAMOUT_length));
+      }
+   } else {
+      if (dirty & IRIS_DIRTY_STREAMOUT) {
+         iris_emit_cmd(batch, GENX(3DSTATE_STREAMOUT), sol);
       }
    }
 
