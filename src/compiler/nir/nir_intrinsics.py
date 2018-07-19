@@ -532,7 +532,7 @@ system_value("subgroup_lt_mask", 0, bit_sizes=[32, 64])
 system_value("num_subgroups", 1)
 system_value("subgroup_id", 1)
 system_value("local_group_size", 3)
-system_value("global_invocation_id", 3)
+system_value("global_invocation_id", 3, bit_sizes=[32, 64])
 system_value("work_dim", 1)
 # Driver-specific viewport scale/offset parameters.
 #
