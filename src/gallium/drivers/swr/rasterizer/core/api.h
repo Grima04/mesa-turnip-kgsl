@@ -145,6 +145,9 @@ typedef void(SWR_API* PFN_CLEAR_TILE)(HANDLE                      hPrivateContex
                                       uint32_t                    renderTargetArrayIndex,
                                       const float*                pClearColor);
 
+typedef gfxptr_t(SWR_API* PFN_MAKE_GFXPTR)(HANDLE                 hPrivateContext,
+                                           void*                  sysAddr);
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief Callback to allow driver to update their copy of streamout write offset.
 ///        This is call is made for any draw operation that has streamout enabled
@@ -241,6 +244,7 @@ struct SWR_CREATECONTEXT_INFO
     PFN_LOAD_TILE              pfnLoadTile;
     PFN_STORE_TILE             pfnStoreTile;
     PFN_CLEAR_TILE             pfnClearTile;
+    PFN_MAKE_GFXPTR            pfnMakeGfxPtr;
     PFN_UPDATE_SO_WRITE_OFFSET pfnUpdateSoWriteOffset;
     PFN_UPDATE_STATS           pfnUpdateStats;
     PFN_UPDATE_STATS_FE        pfnUpdateStatsFE;
