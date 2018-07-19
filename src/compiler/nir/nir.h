@@ -1313,6 +1313,9 @@ typedef struct {
     */
    unsigned dest_components;
 
+   /** bitfield of legal bit sizes */
+   unsigned dest_bit_sizes;
+
    /** the number of constant indices used by the intrinsic */
    unsigned num_indices;
 

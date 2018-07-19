@@ -563,8 +563,14 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
    if (nir_intrinsic_infos[instr->intrinsic].has_dest) {
       unsigned components_written = nir_intrinsic_dest_components(instr);
+      unsigned bit_sizes = nir_intrinsic_infos[instr->intrinsic].dest_bit_sizes;
 
       validate_assert(state, components_written > 0);
+
+      if (dest_bit_size && bit_sizes)
+         validate_assert(state, dest_bit_size & bit_sizes);
+      else
+         dest_bit_size = dest_bit_size ? dest_bit_size : bit_sizes;
 
       validate_dest(&instr->dest, state, dest_bit_size, components_written);
    }
