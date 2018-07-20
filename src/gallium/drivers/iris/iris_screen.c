@@ -326,26 +326,27 @@ iris_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
 
 static int
 iris_get_shader_param(struct pipe_screen *pscreen,
-                      enum pipe_shader_type shader,
+                      enum pipe_shader_type p_stage,
                       enum pipe_shader_cap param)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct brw_compiler *compiler = screen->compiler;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
 
    /* this is probably not totally correct.. but it's a start: */
    switch (param) {
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
-      return shader == PIPE_SHADER_FRAGMENT ? 1024 : 16384;
+      return stage == MESA_SHADER_FRAGMENT ? 1024 : 16384;
    case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
-      return shader == PIPE_SHADER_FRAGMENT ? 1024 : 0;
+      return stage == MESA_SHADER_FRAGMENT ? 1024 : 0;
 
    case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
       return UINT_MAX;
 
    case PIPE_SHADER_CAP_MAX_INPUTS:
-      return shader == PIPE_SHADER_VERTEX ? 16 : 32;
+      return stage == MESA_SHADER_VERTEX ? 16 : 32;
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
       return 32;
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
@@ -357,11 +358,11 @@ iris_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
       return 0;
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
-      return !compiler->glsl_compiler_options[shader].EmitNoIndirectInput;
+      return !compiler->glsl_compiler_options[stage].EmitNoIndirectInput;
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
-      return !compiler->glsl_compiler_options[shader].EmitNoIndirectOutput;
+      return !compiler->glsl_compiler_options[stage].EmitNoIndirectOutput;
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
-      return !compiler->glsl_compiler_options[shader].EmitNoIndirectTemp;
+      return !compiler->glsl_compiler_options[stage].EmitNoIndirectTemp;
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       return 1;
    case PIPE_SHADER_CAP_SUBROUTINES:
