@@ -432,6 +432,10 @@ iris_update_compiled_tcs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
+   struct iris_uncompiled_shader *tes =
+      ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
+
+   assert(!(tes && !tcs));
 
    if (!tcs)
       return;
