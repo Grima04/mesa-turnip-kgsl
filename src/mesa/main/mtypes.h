@@ -3506,6 +3506,7 @@ struct gl_framebuffer
    bool _HasAttachments;
 
    GLbitfield _IntegerBuffers;  /**< Which color buffers are integer valued */
+   GLbitfield _RGBBuffers;  /**< Which color buffers have baseformat == RGB */
 
    /* ARB_color_buffer_float */
    GLboolean _AllColorBuffersFixedPoint; /* no integer, no float */

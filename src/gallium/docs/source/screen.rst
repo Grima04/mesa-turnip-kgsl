@@ -482,6 +482,7 @@ The integer capabilities:
   enable EXT_multisampled_render_to_texture.
 * ``PIPE_CAP_TGSI_ATOMFADD``: Atomic floating point adds are supported on
   images, buffers, and shared memory.
+* ``PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND``: True if the driver needs blend state to use zero/one instead of destination alpha for RGB/XRGB formats.
 
 .. _pipe_capf:
 
