@@ -599,6 +599,9 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(alpha.enabled))
          ice->state.dirty |= IRIS_DIRTY_PS_BLEND | IRIS_DIRTY_BLEND_STATE;
+
+      if (cso_changed(alpha.func))
+         ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    }
 
    ice->state.cso_zsa = new_cso;
