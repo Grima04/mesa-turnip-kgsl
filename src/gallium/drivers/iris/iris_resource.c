@@ -235,7 +235,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    if (util_format_is_depth_and_stencil(pfmt)) {
       // XXX: Z32S8
-      pfmt = PIPE_FORMAT_X8Z24_UNORM;
+      pfmt = PIPE_FORMAT_Z24X8_UNORM;
    }
 
    enum isl_format isl_format = iris_isl_format_for_pipe_format(pfmt);
