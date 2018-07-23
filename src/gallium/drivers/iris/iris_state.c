@@ -784,6 +784,9 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
       if (cso_changed(depth_clip_near) || cso_changed(depth_clip_far) ||
           cso_changed(clip_halfz))
          ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
+
+      if (cso_changed(sprite_coord_enable))
+         ice->state.dirty |= IRIS_DIRTY_SBE;
    }
 
    ice->state.cso_rast = new_cso;
@@ -1970,7 +1973,8 @@ iris_compute_sbe_urb_read_interval(uint64_t fs_input_slots,
 static void
 iris_emit_sbe_swiz(struct iris_batch *batch,
                    const struct iris_context *ice,
-                   unsigned urb_read_offset)
+                   unsigned urb_read_offset,
+                   unsigned sprite_coord_enables)
 {
    struct GENX(SF_OUTPUT_ATTRIBUTE_DETAIL) attr_overrides[16] = {};
    const struct brw_wm_prog_data *wm_prog_data = (void *)
@@ -2019,6 +2023,9 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
          break;
       }
 
+      if (sprite_coord_enables & (1 << input_index))
+         continue;
+
       int slot = vue_map->varying_to_slot[fs_attr];
 
       /* If there was only a back color written but not front, use back
@@ -2064,6 +2071,24 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
    }
 }
 
+static unsigned
+iris_calculate_point_sprite_overrides(const struct brw_wm_prog_data *prog_data,
+                                      const struct iris_rasterizer_state *cso)
+{
+   unsigned overrides = 0;
+
+   if (prog_data->urb_setup[VARYING_SLOT_PNTC] != -1)
+      overrides |= 1 << prog_data->urb_setup[VARYING_SLOT_PNTC];
+
+   for (int i = 0; i < 8; i++) {
+      if ((cso->sprite_coord_enable & (1 << i)) &&
+          prog_data->urb_setup[VARYING_SLOT_TEX0 + i] != -1)
+         overrides |= 1 << prog_data->urb_setup[VARYING_SLOT_TEX0 + i];
+   }
+
+   return overrides;
+}
+
 static void
 iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
 {
@@ -2081,6 +2106,9 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
                                       cso_rast->light_twoside,
                                       &urb_read_offset, &urb_read_length);
 
+   unsigned sprite_coord_overrides =
+      iris_calculate_point_sprite_overrides(wm_prog_data, cso_rast);
+
    iris_emit_cmd(batch, GENX(3DSTATE_SBE), sbe) {
       sbe.AttributeSwizzleEnable = true;
       sbe.NumberofSFOutputAttributes = wm_prog_data->num_varying_inputs;
@@ -2090,13 +2118,14 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
       sbe.ForceVertexURBEntryReadOffset = true;
       sbe.ForceVertexURBEntryReadLength = true;
       sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
+      sbe.PointSpriteTextureCoordinateEnable = sprite_coord_overrides;
 
       for (int i = 0; i < 32; i++) {
          sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
       }
    }
 
-   iris_emit_sbe_swiz(batch, ice, urb_read_offset);
+   iris_emit_sbe_swiz(batch, ice, urb_read_offset, sprite_coord_overrides);
 }
 
 static void
