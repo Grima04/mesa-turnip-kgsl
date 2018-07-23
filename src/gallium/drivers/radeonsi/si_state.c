@@ -3194,7 +3194,10 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 
 			cb_dcc_base = ((!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) +
 				       tex->dcc_offset) >> 8;
-			cb_dcc_base |= tex->surface.tile_swizzle;
+
+			unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
+			dcc_tile_swizzle &= (tex->surface.dcc_alignment - 1) >> 8;
+			cb_dcc_base |= dcc_tile_swizzle;
 		}
 
 		if (sctx->chip_class >= GFX10) {

@@ -351,7 +351,9 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 				assert(base_level_info->mode == RADEON_SURF_MODE_2D);
 			}
 
-			meta_va |= (uint32_t)tex->surface.tile_swizzle << 8;
+			unsigned dcc_tile_swizzle = tex->surface.tile_swizzle << 8;
+			dcc_tile_swizzle &= tex->surface.dcc_alignment - 1;
+			meta_va |= dcc_tile_swizzle;
 		} else if (vi_tc_compat_htile_enabled(tex, first_level)) {
 			meta_va = tex->buffer.gpu_address + tex->htile_offset;
 		}
