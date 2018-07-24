@@ -2672,8 +2672,7 @@ iris_populate_binding_table(struct iris_context *ice,
                          : use_null_surface(batch, ice);
    }
 
-   // XXX: want the number of BTE's to shorten this loop
-   for (int i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
+   for (int i = 0; i < 1 + info->num_ubos; i++) {
       struct iris_const_buffer *cbuf = &shs->constbuf[i];
       if (!cbuf->surface_state.res)
          break;
