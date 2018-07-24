@@ -1365,7 +1365,9 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    struct isl_device *isl_dev = &screen->isl_dev;
    struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
 
-   if (cso->samples != state->samples) {
+   unsigned samples = util_framebuffer_get_num_samples(state);
+
+   if (cso->samples != samples) {
       ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
    }
 
@@ -1378,6 +1380,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    }
 
    util_copy_framebuffer_state(cso, state);
+   cso->samples = samples;
 
    struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
