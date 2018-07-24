@@ -210,6 +210,8 @@ struct iris_const_buffer {
 
 struct iris_shader_state {
    struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
+   struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
+   struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];
 };
 
 struct iris_vtable {

@@ -1493,6 +1493,56 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 }
 
 static void
+iris_set_shader_buffers(struct pipe_context *ctx,
+                        enum pipe_shader_type p_stage,
+                        unsigned start_slot, unsigned count,
+                        const struct pipe_shader_buffer *buffers)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
+   struct iris_shader_state *shs = &ice->shaders.state[stage];
+
+   for (unsigned i = 0; i < count; i++) {
+      const struct pipe_shader_buffer *buffer = buffers ? &buffers[i] : NULL;
+
+      if (buffer) {
+         struct iris_resource *res = (void *) buffer->buffer;
+         pipe_resource_reference(&shs->ssbo[start_slot + i], &res->base);
+
+         // XXX: these are not retained forever, use a separate uploader?
+         void *map =
+            upload_state(ice->state.surface_uploader,
+                         &shs->ssbo_surface_state[start_slot + i],
+                         4 * GENX(RENDER_SURFACE_STATE_length), 64);
+         if (!unlikely(map)) {
+            pipe_resource_reference(&shs->ssbo[start_slot + i], NULL);
+            return;
+         }
+
+         struct iris_bo *surf_state_bo =
+            iris_resource_bo(shs->ssbo_surface_state[start_slot + i].res);
+         shs->ssbo_surface_state[start_slot + i].offset +=
+            iris_bo_offset_from_base_address(surf_state_bo);
+
+         isl_buffer_fill_state(&screen->isl_dev, map,
+                               .address =
+                                  res->bo->gtt_offset + buffer->buffer_offset,
+                               .size_B = buffer->buffer_size,
+                               .format = ISL_FORMAT_RAW,
+                               .stride_B = 1,
+                               .mocs = MOCS_WB);
+      } else {
+         pipe_resource_reference(&shs->ssbo[start_slot + i], NULL);
+         pipe_resource_reference(&shs->ssbo_surface_state[start_slot + i].res,
+                                 NULL);
+      }
+   }
+
+   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+}
+
+static void
 iris_sampler_view_destroy(struct pipe_context *ctx,
                           struct pipe_sampler_view *state)
 {
@@ -3760,6 +3810,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_blend_color = iris_set_blend_color;
    ctx->set_clip_state = iris_set_clip_state;
    ctx->set_constant_buffer = iris_set_constant_buffer;
+   ctx->set_shader_buffers = iris_set_shader_buffers;
    ctx->set_sampler_views = iris_set_sampler_views;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
    ctx->set_polygon_stipple = iris_set_polygon_stipple;
