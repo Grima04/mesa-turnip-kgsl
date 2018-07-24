@@ -416,6 +416,8 @@ void iris_print_program_cache(struct iris_context *ice);
 bool iris_bind_cached_shader(struct iris_context *ice,
                              enum iris_program_cache_id cache_id,
                              const void *key);
+void iris_unbind_shader(struct iris_context *ice,
+                        enum iris_program_cache_id cache_id);
 void iris_upload_and_bind_shader(struct iris_context *ice,
                                  enum iris_program_cache_id cache_id,
                                  const void *key,

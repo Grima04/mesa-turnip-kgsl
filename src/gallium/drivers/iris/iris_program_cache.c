@@ -172,6 +172,16 @@ iris_bind_cached_shader(struct iris_context *ice,
    return true;
 }
 
+void
+iris_unbind_shader(struct iris_context *ice,
+                   enum iris_program_cache_id cache_id)
+{
+   if (ice->shaders.prog[cache_id]) {
+      ice->shaders.prog[cache_id] = NULL;
+      ice->state.dirty |= dirty_flag_for_cache(cache_id);
+   }
+}
+
 const void *
 iris_find_previous_compile(const struct iris_context *ice,
                            enum iris_program_cache_id cache_id,

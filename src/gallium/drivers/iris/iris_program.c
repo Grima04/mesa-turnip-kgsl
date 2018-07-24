@@ -439,8 +439,10 @@ iris_update_compiled_tcs(struct iris_context *ice)
 
    assert(!(tes && !tcs));
 
-   if (!tcs)
+   if (!tcs) {
+      iris_unbind_shader(ice, IRIS_CACHE_TCS);
       return;
+   }
 
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
@@ -513,8 +515,10 @@ iris_update_compiled_tes(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
 
-   if (!ish)
+   if (!ish) {
+      iris_unbind_shader(ice, IRIS_CACHE_TES);
       return;
+   }
 
    struct brw_tes_prog_key key = { .program_string_id = ish->program_id };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
@@ -582,8 +586,10 @@ iris_update_compiled_gs(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_GEOMETRY];
 
-   if (!ish)
+   if (!ish) {
+      iris_unbind_shader(ice, IRIS_CACHE_GS);
       return;
+   }
 
    struct brw_gs_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_gs_key(ice, &key);
