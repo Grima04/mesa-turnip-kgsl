@@ -2617,6 +2617,21 @@ use_null_surface(struct iris_batch *batch, struct iris_context *ice)
    return ice->state.unbound_tex.offset;
 }
 
+static uint32_t
+use_ssbo(struct iris_batch *batch, struct iris_context *ice,
+         struct iris_shader_state *shs, int i)
+{
+   if (!shs->ssbo[i])
+      return use_null_surface(batch, ice);
+
+   struct iris_state_ref *surf_state = &shs->ssbo_surface_state[i];
+
+   iris_use_pinned_bo(batch, iris_resource_bo(shs->ssbo[i]), true);
+   iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
+
+   return surf_state->offset;
+}
+
 static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
@@ -2626,6 +2641,9 @@ iris_populate_binding_table(struct iris_context *ice,
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    if (!shader)
       return;
+
+   const struct shader_info *info = iris_get_shader_info(ice, stage);
+   struct iris_shader_state *shs = &ice->shaders.state[stage];
 
    // Surfaces:
    // - pull constants
@@ -2655,7 +2673,6 @@ iris_populate_binding_table(struct iris_context *ice,
    }
 
    // XXX: want the number of BTE's to shorten this loop
-   struct iris_shader_state *shs = &ice->shaders.state[stage];
    for (int i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
       struct iris_const_buffer *cbuf = &shs->constbuf[i];
       if (!cbuf->surface_state.res)
@@ -2663,6 +2680,11 @@ iris_populate_binding_table(struct iris_context *ice,
 
       bt_map[s++] = use_const_buffer(batch, cbuf);
    }
+
+   for (int i = 0; i < info->num_abos + info->num_ssbos; i++) {
+      bt_map[s++] = use_ssbo(batch, ice, shs, i);
+   }
+
 #if 0
       // XXX: not implemented yet
       assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
