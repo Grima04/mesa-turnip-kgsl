@@ -345,8 +345,8 @@ iris_update_compiled_vs(struct iris_context *ice)
    UNUSED bool success = iris_compile_vs(ice, ish, &key);
 }
 
-static const struct shader_info *
-get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
+const struct shader_info *
+iris_get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
 {
    const struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[stage];
 
@@ -374,8 +374,10 @@ get_unified_tess_slots(const struct iris_context *ice,
                        uint64_t *per_vertex_slots,
                        uint32_t *per_patch_slots)
 {
-   const struct shader_info *tcs = get_shader_info(ice, MESA_SHADER_TESS_CTRL);
-   const struct shader_info *tes = get_shader_info(ice, MESA_SHADER_TESS_EVAL);
+   const struct shader_info *tcs =
+      iris_get_shader_info(ice, MESA_SHADER_TESS_CTRL);
+   const struct shader_info *tes =
+      iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
 
    *per_vertex_slots = tes->inputs_read;
    *per_patch_slots = tes->patch_inputs_read;
@@ -441,7 +443,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
       return;
 
    const struct shader_info *tes_info =
-      get_shader_info(ice, MESA_SHADER_TESS_EVAL);
+      iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
    struct brw_tcs_prog_key key = {
       .program_string_id = tcs->program_id,
       .tes_primitive_mode = tes_info->tess.primitive_mode,

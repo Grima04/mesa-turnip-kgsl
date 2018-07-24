@@ -402,6 +402,10 @@ uint32_t iris_upload_border_color(struct iris_context *ice,
 void gen9_init_state(struct iris_context *ice);
 void gen10_init_state(struct iris_context *ice);
 
+/* iris_program.c */
+const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
+                                               gl_shader_stage stage);
+
 /* iris_program_cache.c */
 
 void iris_init_program_cache(struct iris_context *ice);
