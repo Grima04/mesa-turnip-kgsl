@@ -25,6 +25,7 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
+#include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "util/ralloc.h"
 #include "intel/blorp/blorp.h"
@@ -95,8 +96,53 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    int dst_y1 = info->dst.box.y + info->dst.box.height;
    bool mirror_x = false;
    bool mirror_y = false;
-   GLenum filter =
-      info->filter == PIPE_TEX_FILTER_LINEAR ? GL_LINEAR : GL_NEAREST;
+   enum blorp_filter filter;
+
+   if (info->dst.box.width == info->src.box.width &&
+       info->dst.box.height == info->src.box.height) {
+      if (src_surf.surf->samples > 1 && dst_surf.surf->samples <= 1) {
+         /* The OpenGL ES 3.2 specification, section 16.2.1, says:
+          *
+          *    "If the read framebuffer is multisampled (its effective
+          *     value of SAMPLE_BUFFERS is one) and the draw framebuffer
+          *     is not (its value of SAMPLE_BUFFERS is zero), the samples
+          *     corresponding to each pixel location in the source are
+          *     converted to a single sample before being written to the
+          *     destination.  The filter parameter is ignored.  If the
+          *     source formats are integer types or stencil values, a
+          *     single sample’s value is selected for each pixel.  If the
+          *     source formats are floating-point or normalized types,
+          *     the sample values for each pixel are resolved in an
+          *     implementation-dependent manner.  If the source formats
+          *     are depth values, sample values are resolved in an
+          *     implementation-dependent manner where the result will be
+          *     between the minimum and maximum depth values in the pixel."
+          *
+          * When selecting a single sample, we always choose sample 0.
+          */
+         if (util_format_is_depth_or_stencil(info->src.format) ||
+             util_format_is_pure_integer(info->src.format)) {
+            filter = BLORP_FILTER_SAMPLE_0;
+         } else {
+            filter = BLORP_FILTER_AVERAGE;
+         }
+      } else {
+         /* The OpenGL 4.6 specification, section 18.3.1, says:
+          *
+          *    "If the source and destination dimensions are identical,
+          *     no filtering is applied."
+          *
+          * Using BLORP_FILTER_NONE will also handle the upsample case by
+          * replicating the one value in the source to all values in the
+          * destination.
+          */
+         filter = BLORP_FILTER_NONE;
+      }
+   } else if (info->filter == PIPE_TEX_FILTER_LINEAR) {
+      filter = BLORP_FILTER_BILINEAR;
+   } else {
+      filter = BLORP_FILTER_NEAREST;
+   }
 
    struct iris_batch *batch = &ice->render_batch;
 
