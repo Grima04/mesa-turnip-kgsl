@@ -98,8 +98,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    bool mirror_y = false;
    enum blorp_filter filter;
 
-   if (info->dst.box.width == info->src.box.width &&
-       info->dst.box.height == info->src.box.height) {
+   if (abs(info->dst.box.width) == abs(info->src.box.width) &&
+       abs(info->dst.box.height) == abs(info->src.box.height)) {
       if (src_surf.surf->samples > 1 && dst_surf.surf->samples <= 1) {
          /* The OpenGL ES 3.2 specification, section 16.2.1, says:
           *
