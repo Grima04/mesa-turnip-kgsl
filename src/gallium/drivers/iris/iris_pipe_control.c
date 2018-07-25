@@ -246,3 +246,52 @@ iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo)
 {
    _mesa_set_add(batch->cache.depth, bo);
 }
+
+static void
+iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
+{
+   struct iris_context *ice = (void *) ctx;
+
+   // XXX: compute batch?
+
+   flush_depth_and_render_caches(&ice->render_batch);
+}
+
+static void
+iris_memory_barrier(struct pipe_context *ctx, unsigned flags)
+{
+   struct iris_context *ice = (void *) ctx;
+   unsigned bits = PIPE_CONTROL_DATA_CACHE_FLUSH | PIPE_CONTROL_CS_STALL;
+
+   if (flags & (PIPE_BARRIER_VERTEX_BUFFER |
+                PIPE_BARRIER_INDEX_BUFFER |
+                PIPE_BARRIER_INDIRECT_BUFFER)) {
+      bits |= PIPE_CONTROL_VF_CACHE_INVALIDATE;
+   }
+
+   if (flags & PIPE_BARRIER_CONSTANT_BUFFER) {
+      bits |= PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
+              PIPE_CONTROL_CONST_CACHE_INVALIDATE;
+   }
+
+   if (flags & PIPE_BARRIER_TEXTURE) {
+      bits |= PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
+   }
+
+   if (flags & PIPE_BARRIER_FRAMEBUFFER) {
+      bits |= PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
+              PIPE_CONTROL_RENDER_TARGET_FLUSH;
+   }
+
+   // XXX: MAPPED_BUFFER, QUERY_BUFFER, STREAMOUT_BUFFER, GLOBAL_BUFFER?
+   // XXX: compute batch?
+
+   iris_emit_pipe_control_flush(&ice->render_batch, bits);
+}
+
+void
+iris_init_flush_functions(struct pipe_context *ctx)
+{
+   ctx->memory_barrier = iris_memory_barrier;
+   ctx->texture_barrier = iris_texture_barrier;
+}

@@ -136,6 +136,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    iris_init_program_functions(ctx);
    iris_init_resource_functions(ctx);
    iris_init_query_functions(ctx);
+   iris_init_flush_functions(ctx);
 
    iris_init_program_cache(ice);
    iris_init_border_color_pool(ice);

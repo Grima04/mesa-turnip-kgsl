@@ -390,6 +390,8 @@ void iris_render_cache_add_bo(struct iris_batch *batch,
 void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
 void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 
+void iris_init_flush_functions(struct pipe_context *ctx);
+
 /* iris_blorp.c */
 
 void gen9_init_blorp(struct iris_context *ice);
