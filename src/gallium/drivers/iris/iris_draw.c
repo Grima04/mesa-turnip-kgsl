@@ -67,7 +67,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    }
 
    // XXX: don't do this unless things are dirty...
-   iris_binder_reserve_3d(batch, ice->shaders.prog);
+   iris_binder_reserve_3d(batch, ice);
    ice->vtbl.upload_render_state(ice, batch, info);
 
    ice->state.dirty = 0ull;

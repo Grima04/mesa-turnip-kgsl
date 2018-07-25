@@ -61,13 +61,17 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
  */
 void
 iris_binder_reserve_3d(struct iris_batch *batch,
-                       struct iris_compiled_shader **shaders)
+                       struct iris_context *ice)
 {
+   struct iris_compiled_shader **shaders = ice->shaders.prog;
    struct iris_binder *binder = &batch->binder;
    unsigned total_size = 0;
    unsigned sizes[MESA_SHADER_STAGES] = {};
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage)))
+         continue;
+
       if (!shaders[stage])
          continue;
 
@@ -78,10 +82,16 @@ iris_binder_reserve_3d(struct iris_batch *batch,
       total_size += sizes[stage];
    }
 
+   if (total_size == 0)
+      return;
+
    uint32_t offset = iris_binder_reserve(batch, total_size);
 
    /* Assign space and record the current binding table. */
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (!(ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage)))
+         continue;
+
       binder->bt_offset[stage] = sizes[stage] > 0 ? offset : 0;
       offset += sizes[stage];
    }
