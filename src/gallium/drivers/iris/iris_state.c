@@ -1489,6 +1489,8 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
    // XXX: maybe not necessary all the time...?
+   // XXX: we need 3DS_BTP to commit these changes, and if we fell back to
+   // XXX: pull model we may need actual new bindings...
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
 }
 
