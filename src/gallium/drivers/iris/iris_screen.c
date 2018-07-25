@@ -205,6 +205,15 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       /* 3DSTATE_CONSTANT_XS requires the start of UBOs to be 32B aligned */
       return 32;
+   case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
+      /* Choose a cacheline (64 bytes) so that we can safely have the CPU and
+       * GPU writing the same SSBO on non-coherent systems (Atom CPUs).  With
+       * UBOs, the GPU never writes, so there's no problem.  For an SSBO, the
+       * GPU and the CPU can be updating disjoint regions of the buffer
+       * simultaneously and that will break if the regions overlap the same
+       * cacheline.
+       */
+      return 64;
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return 64; // XXX: ?
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
@@ -254,7 +263,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
    case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
    case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
-   case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
    case PIPE_CAP_INVALIDATE_BUFFER:
    case PIPE_CAP_STRING_MARKER:
    case PIPE_CAP_SURFACE_REINTERPRET_BLOCKS:
