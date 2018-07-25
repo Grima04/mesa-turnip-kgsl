@@ -1504,9 +1504,8 @@ iris_set_shader_buffers(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->shaders.state[stage];
 
    for (unsigned i = 0; i < count; i++) {
-      const struct pipe_shader_buffer *buffer = buffers ? &buffers[i] : NULL;
-
-      if (buffer) {
+      if (buffers && buffers[i].buffer) {
+         const struct pipe_shader_buffer *buffer = &buffers[i];
          struct iris_resource *res = (void *) buffer->buffer;
          pipe_resource_reference(&shs->ssbo[start_slot + i], &res->base);
 
