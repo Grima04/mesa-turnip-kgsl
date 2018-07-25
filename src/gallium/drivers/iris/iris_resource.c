@@ -588,9 +588,20 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
 
    if (map->unmap)
       map->unmap(map);
+
+   /* XXX: big ol' hack!  need to re-emit UBOs.  want bind_history? */
+   if (surf->tiling == ISL_TILING_LINEAR) {
+      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS  | IRIS_DIRTY_BINDINGS_VS
+                       |  IRIS_DIRTY_CONSTANTS_TCS | IRIS_DIRTY_BINDINGS_TCS
+                       |  IRIS_DIRTY_CONSTANTS_TES | IRIS_DIRTY_BINDINGS_TES
+                       |  IRIS_DIRTY_CONSTANTS_GS  | IRIS_DIRTY_BINDINGS_GS
+                       |  IRIS_DIRTY_CONSTANTS_FS  | IRIS_DIRTY_BINDINGS_FS;
+   }
 
    pipe_resource_reference(&xfer->resource, NULL);
    slab_free(&ice->transfer_pool, map);
