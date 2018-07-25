@@ -107,7 +107,7 @@ dirty_flag_for_cache(enum iris_program_cache_id cache_id)
    if (cache_id == IRIS_CACHE_VS)
       return IRIS_DIRTY_VS | IRIS_DIRTY_VF_SGVS;
 
-   return IRIS_DIRTY_VS << cache_id;
+   return IRIS_DIRTY_VS << cache_id | IRIS_DIRTY_BINDINGS_VS << cache_id;
 }
 
 static unsigned
