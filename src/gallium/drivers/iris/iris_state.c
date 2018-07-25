@@ -2680,8 +2680,15 @@ iris_populate_binding_table(struct iris_context *ice,
       bt_map[s++] = use_const_buffer(batch, cbuf);
    }
 
-   for (int i = 0; i < info->num_abos + info->num_ssbos; i++) {
-      bt_map[s++] = use_ssbo(batch, ice, shs, i);
+   /* XXX: st is wasting 16 binding table slots for ABOs.  Should add a cap
+    * for changing nir_lower_atomics_to_ssbos setting and buffer_base offset
+    * in st_atom_storagebuf.c so it'll compact them into one range, with
+    * SSBOs starting at info->num_abos.  Ideally it'd reset num_abos to 0 too
+    */
+   if (info->num_abos + info->num_ssbos > 0) {
+      for (int i = 0; i < IRIS_MAX_ABOS + info->num_ssbos; i++) {
+         bt_map[s++] = use_ssbo(batch, ice, shs, i);
+      }
    }
 
 #if 0

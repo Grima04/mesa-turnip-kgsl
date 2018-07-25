@@ -43,6 +43,9 @@ struct blorp_params;
 #define IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 2)
 
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
+/* IRIS_MAX_ABOS and IRIS_MAX_SSBOS must be the same. */
+#define IRIS_MAX_ABOS 16
+#define IRIS_MAX_SSBOS 16
 #define IRIS_MAX_VIEWPORTS 16
 
 #define IRIS_DIRTY_COLOR_CALC_STATE         (1ull <<  0)
