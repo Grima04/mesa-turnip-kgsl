@@ -147,7 +147,7 @@ iris_cache_sets_clear(struct iris_batch *batch)
  * different caches within a batchbuffer, it's all our responsibility.
  */
 static void
-flush_depth_and_render_caches(struct iris_batch *batch, struct iris_bo *bo)
+flush_depth_and_render_caches(struct iris_batch *batch)
 {
    iris_emit_pipe_control_flush(batch,
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
@@ -167,7 +167,7 @@ iris_cache_flush_for_read(struct iris_batch *batch,
 {
    if (_mesa_hash_table_search(batch->cache.render, bo) ||
        _mesa_set_search(batch->cache.depth, bo))
-      flush_depth_and_render_caches(batch, bo);
+      flush_depth_and_render_caches(batch);
 }
 
 static void *
@@ -183,7 +183,7 @@ iris_cache_flush_for_render(struct iris_batch *batch,
                             enum isl_aux_usage aux_usage)
 {
    if (_mesa_set_search(batch->cache.depth, bo))
-      flush_depth_and_render_caches(batch, bo);
+      flush_depth_and_render_caches(batch);
 
    /* Check to see if this bo has been used by a previous rendering operation
     * but with a different format or aux usage.  If it has, flush the render
@@ -210,7 +210,7 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     */
    struct hash_entry *entry = _mesa_hash_table_search(batch->cache.render, bo);
    if (entry && entry->data != format_aux_tuple(format, aux_usage))
-      flush_depth_and_render_caches(batch, bo);
+      flush_depth_and_render_caches(batch);
 }
 
 void
@@ -238,7 +238,7 @@ iris_cache_flush_for_depth(struct iris_batch *batch,
                            struct iris_bo *bo)
 {
    if (_mesa_hash_table_search(batch->cache.render, bo))
-      flush_depth_and_render_caches(batch, bo);
+      flush_depth_and_render_caches(batch);
 }
 
 void
