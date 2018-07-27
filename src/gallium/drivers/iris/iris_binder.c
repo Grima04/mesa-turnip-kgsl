@@ -179,6 +179,24 @@ iris_binder_reserve_3d(struct iris_context *ice)
 }
 
 void
+iris_binder_reserve_compute(struct iris_context *ice)
+{
+   if (!(ice->state.dirty & IRIS_DIRTY_BINDINGS_CS))
+      return;
+
+   struct iris_binder *binder = &ice->state.binder;
+   struct brw_stage_prog_data *prog_data =
+      ice->shaders.prog[MESA_SHADER_COMPUTE]->prog_data;
+
+   unsigned size = prog_data->binding_table.size_bytes;
+
+   if (size == 0)
+      return;
+
+   binder->bt_offset[MESA_SHADER_COMPUTE] = iris_binder_reserve(ice, size);
+}
+
+void
 iris_init_binder(struct iris_context *ice)
 {
    memset(&ice->state.binder, 0, sizeof(struct iris_binder));

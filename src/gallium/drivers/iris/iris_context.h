@@ -277,11 +277,18 @@ struct iris_vtable {
                                struct iris_batch *batch,
                                struct iris_vtable *vtbl,
                                struct pipe_debug_callback *dbg);
+   void (*init_compute_context)(struct iris_screen *screen,
+                                struct iris_batch *batch,
+                                struct iris_vtable *vtbl,
+                                struct pipe_debug_callback *dbg);
    void (*upload_render_state)(struct iris_context *ice,
                                struct iris_batch *batch,
                                const struct pipe_draw_info *draw);
    void (*update_surface_base_address)(struct iris_batch *batch,
                                        struct iris_binder *binder);
+   void (*upload_compute_state)(struct iris_context *ice,
+                                struct iris_batch *batch,
+                                const struct pipe_grid_info *grid);
    void (*load_register_imm32)(struct iris_batch *batch, uint32_t reg,
                                uint32_t val);
    void (*load_register_imm64)(struct iris_batch *batch, uint32_t reg,
@@ -326,6 +333,8 @@ struct iris_vtable {
                            struct brw_gs_prog_key *key);
    void (*populate_fs_key)(const struct iris_context *ice,
                            struct brw_wm_prog_key *key);
+   void (*populate_cs_key)(const struct iris_context *ice,
+                           struct brw_cs_prog_key *key);
 };
 
 /**
@@ -362,6 +371,9 @@ struct iris_context {
 
    /** The main batch for rendering. */
    struct iris_batch render_batch;
+
+   /** The batch for compute shader dispatch */
+   struct iris_batch compute_batch;
 
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
@@ -471,6 +483,8 @@ void iris_init_program_functions(struct pipe_context *ctx);
 void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 void iris_update_compiled_shaders(struct iris_context *ice);
+void iris_update_compiled_compute_shader(struct iris_context *ice);
+
 
 /* iris_blit.c */
 void iris_blorp_surf_for_resource(struct blorp_surf *surf,
@@ -481,6 +495,7 @@ void iris_blorp_surf_for_resource(struct blorp_surf *surf,
 /* iris_draw.c */
 
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info);
+void iris_launch_grid(struct pipe_context *, const struct pipe_grid_info *);
 
 /* iris_pipe_control.c */
 

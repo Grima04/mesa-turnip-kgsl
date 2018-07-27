@@ -610,6 +610,54 @@ iris_init_render_context(struct iris_screen *screen,
    }
 }
 
+static void
+iris_init_compute_context(struct iris_screen *screen,
+                          struct iris_batch *batch,
+                          struct iris_vtable *vtbl,
+                          struct pipe_debug_callback *dbg)
+{
+   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
+
+   /* XXX: PIPE_CONTROLs */
+
+   iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
+      sel.PipelineSelection = GPGPU;
+   }
+
+   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+   #if 0
+   // XXX: MOCS is stupid for this.
+      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
+      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
+      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
+      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
+      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
+      sba.InstructionMemoryObjectControlState             = MOCS_WB;
+      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
+   #endif
+
+      sba.GeneralStateBaseAddressModifyEnable   = true;
+      sba.SurfaceStateBaseAddressModifyEnable   = true;
+      sba.DynamicStateBaseAddressModifyEnable   = true;
+      sba.IndirectObjectBaseAddressModifyEnable = true;
+      sba.InstructionBaseAddressModifyEnable    = true;
+      sba.GeneralStateBufferSizeModifyEnable    = true;
+      sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+      sba.IndirectObjectBufferSizeModifyEnable  = true;
+      sba.InstructionBuffersizeModifyEnable     = true;
+
+      sba.InstructionBaseAddress  = ro_bo(NULL, IRIS_MEMZONE_SHADER_START);
+      sba.SurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_SURFACE_START);
+      sba.DynamicStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_DYNAMIC_START);
+
+      sba.GeneralStateBufferSize   = 0xfffff;
+      sba.IndirectObjectBufferSize = 0xfffff;
+      sba.InstructionBufferSize    = 0xfffff;
+      sba.DynamicStateBufferSize   = 0xfffff;
+   }
+}
+
 struct iris_vertex_buffer_state {
    /** The 3DSTATE_VERTEX_BUFFERS hardware packet. */
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
@@ -645,12 +693,6 @@ struct iris_genx_state {
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
    uint32_t streamout[4 * GENX(3DSTATE_STREAMOUT_length)];
 };
-
-// XXX: move this to iris_draw.c
-static void
-iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
-{
-}
 
 /**
  * The pipe->set_blend_color() driver hook.
@@ -2826,6 +2868,13 @@ iris_populate_fs_key(const struct iris_context *ice,
    // XXX: respect hint for high_quality_derivatives:1;
 }
 
+static void
+iris_populate_cs_key(const struct iris_context *ice,
+                     struct brw_cs_prog_key *key)
+{
+   iris_populate_sampler_key(ice, &key->tex);
+}
+
 #if 0
    // XXX: these need to go in INIT_THREAD_DISPATCH_FIELDS
    pkt.SamplerCount =                                                     \
@@ -3074,6 +3123,26 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
  *
  * This must match the data written by the iris_store_xs_state() functions.
  */
+static void
+iris_store_cs_state(const struct gen_device_info *devinfo,
+                    struct iris_compiled_shader *shader)
+{
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_cs_prog_data *cs_prog_data = (void *) shader->prog_data;
+   void *map = shader->derived_data;
+
+   iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), map, desc) {
+      desc.KernelStartPointer = KSP(shader);
+      desc.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
+      desc.NumberofThreadsinGPGPUThreadGroup = cs_prog_data->threads;
+      desc.SharedLocalMemorySize =
+         encode_slm_size(GEN_GEN, prog_data->total_shared);
+      desc.BarrierEnable = cs_prog_data->uses_barrier;
+      desc.CrossThreadConstantDataReadLength =
+         cs_prog_data->push.cross_thread.regs;
+   }
+}
+
 static unsigned
 iris_derived_program_state_size(enum iris_program_cache_id cache_id)
 {
@@ -3086,7 +3155,7 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
       [IRIS_CACHE_GS] = GENX(3DSTATE_GS_length),
       [IRIS_CACHE_FS] =
          GENX(3DSTATE_PS_length) + GENX(3DSTATE_PS_EXTRA_length),
-      [IRIS_CACHE_CS] = 0,
+      [IRIS_CACHE_CS] = GENX(INTERFACE_DESCRIPTOR_DATA_length),
       [IRIS_CACHE_BLORP] = 0,
    };
 
@@ -3121,6 +3190,7 @@ iris_store_derived_program_state(const struct gen_device_info *devinfo,
       iris_store_fs_state(devinfo, shader);
       break;
    case IRIS_CACHE_CS:
+      iris_store_cs_state(devinfo, shader);
    case IRIS_CACHE_BLORP:
       break;
    default:
@@ -4126,6 +4196,126 @@ iris_upload_render_state(struct iris_context *ice,
    }
 }
 
+static void
+iris_upload_compute_state(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const struct pipe_grid_info *grid)
+{
+   const uint64_t dirty = ice->state.dirty;
+   struct iris_screen *screen = batch->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   struct iris_binder *binder = &ice->state.binder;
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
+   struct iris_compiled_shader *shader =
+      ice->shaders.prog[MESA_SHADER_COMPUTE];
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
+
+   if (dirty & IRIS_DIRTY_BINDINGS_CS)
+      iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
+
+   iris_use_optional_res(batch, shs->sampler_table.res, false);
+   iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false);
+
+   if (ice->state.need_border_colors)
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
+
+   /* The MEDIA_VFE_STATE documentation for Gen8+ says:
+    *
+    *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
+    *    the only bits that are changed are scoreboard related: Scoreboard
+    *    Enable, Scoreboard Type, Scoreboard Mask, Scoreboard * Delta. For
+    *    these scoreboard related states, a MEDIA_STATE_FLUSH is sufficient."
+    */
+   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+
+   iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
+      if (prog_data->total_scratch) {
+         /* Per Thread Scratch Space is in the range [0, 11] where
+          * 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
+          */
+         // XXX: vfe.ScratchSpaceBasePointer
+         //vfe.PerThreadScratchSpace =
+            //ffs(stage_state->per_thread_scratch) - 11;
+      }
+
+      vfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * screen->subslice_total - 1;
+#if GEN_GEN < 11
+      vfe.ResetGatewayTimer =
+         Resettingrelativetimerandlatchingtheglobaltimestamp;
+#endif
+
+      vfe.NumberofURBEntries = 2;
+      vfe.URBEntryAllocationSize = 2;
+
+      // XXX: Use Indirect Payload Storage?
+      vfe.CURBEAllocationSize =
+         ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
+               cs_prog_data->push.cross_thread.regs, 2);
+   }
+
+   // XXX: hack iris_set_constant_buffers to upload compute shader constants
+   // XXX: differently...?
+
+   if (cs_prog_data->push.total.size > 0) {
+      iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
+         curbe.CURBETotalDataLength =
+            ALIGN(cs_prog_data->push.total.size, 64);
+         // XXX: curbe.CURBEDataStartAddress = stage_state->push_const_offset;
+      }
+   }
+
+   struct pipe_resource *desc_res = NULL;
+   uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
+
+   iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
+      idd.SamplerStatePointer = shs->sampler_table.offset;
+      idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
+   }
+
+   for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)
+      desc[i] |= ((uint32_t *) shader->derived_data)[i];
+
+   iris_emit_cmd(batch, GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), load) {
+      load.InterfaceDescriptorTotalLength =
+         GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
+      load.InterfaceDescriptorDataStartAddress =
+         emit_state(batch, ice->state.dynamic_uploader,
+                    &desc_res, desc, sizeof(desc), 32);
+   }
+
+   pipe_resource_reference(&desc_res, NULL);
+
+   // XXX: grid->indirect
+
+   uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
+   uint32_t remainder = group_size & (cs_prog_data->simd_size - 1);
+   uint32_t right_mask;
+
+   if (remainder > 0)
+      right_mask = ~0u >> (32 - remainder);
+   else
+      right_mask = ~0u >> (32 - cs_prog_data->simd_size);
+
+   iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
+      ggw.SIMDSize                   = cs_prog_data->simd_size / 16;
+      ggw.ThreadDepthCounterMaximum  = 0;
+      ggw.ThreadHeightCounterMaximum = 0;
+      ggw.ThreadWidthCounterMaximum  = cs_prog_data->threads - 1;
+      ggw.ThreadGroupIDXDimension    = grid->block[0];
+      ggw.ThreadGroupIDYDimension    = grid->block[1];
+      ggw.ThreadGroupIDZDimension    = grid->block[2];
+      ggw.RightExecutionMask         = right_mask;
+      ggw.BottomExecutionMask        = 0xffffffff;
+   }
+
+   if (!batch->contains_draw) {
+      //iris_restore_context_saved_bos(ice, batch, draw);
+      batch->contains_draw = true;
+   }
+}
+
 /**
  * State module teardown.
  */
@@ -4729,8 +4919,10 @@ genX(init_state)(struct iris_context *ice)
 
    ice->vtbl.destroy_state = iris_destroy_state;
    ice->vtbl.init_render_context = iris_init_render_context;
+   ice->vtbl.init_compute_context = iris_init_compute_context;
    ice->vtbl.upload_render_state = iris_upload_render_state;
    ice->vtbl.update_surface_base_address = iris_update_surface_base_address;
+   ice->vtbl.upload_compute_state = iris_upload_compute_state;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
    ice->vtbl.load_register_imm32 = iris_load_register_imm32;
    ice->vtbl.load_register_imm64 = iris_load_register_imm64;
@@ -4749,6 +4941,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.populate_tes_key = iris_populate_tes_key;
    ice->vtbl.populate_gs_key = iris_populate_gs_key;
    ice->vtbl.populate_fs_key = iris_populate_fs_key;
+   ice->vtbl.populate_cs_key = iris_populate_cs_key;
 
    ice->state.dirty = ~0ull;
 

@@ -53,5 +53,6 @@ void iris_init_binder(struct iris_context *ice);
 void iris_destroy_binder(struct iris_binder *binder);
 uint32_t iris_binder_reserve(struct iris_context *ice, unsigned size);
 void iris_binder_reserve_3d(struct iris_context *ice);
+void iris_binder_reserve_compute(struct iris_context *ice);
 
 #endif

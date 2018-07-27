@@ -74,7 +74,10 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_batch_maybe_flush(batch, 1500);
 
+   // XXX: check if BOs are in use by the other batches (compute), if so flush
+
    iris_update_draw_info(ice, info);
+
    iris_update_compiled_shaders(ice);
 
    iris_predraw_resolve_inputs(ice, batch);
@@ -88,4 +91,31 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    ice->state.dirty = 0ull;
 
    iris_postdraw_update_resolve_tracking(ice, batch);
+}
+
+void
+iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_batch *batch = &ice->compute_batch;
+
+   if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
+      ice->state.dirty |= ~0ull;
+
+   iris_batch_maybe_flush(batch, 1500);
+
+   // XXX: check if BOs are in use by the other batches (render), if so flush
+   //
+   //if (dirty & IRIS_DIRTY_UNCOMPILED_CS)
+      iris_update_compiled_compute_shader(ice);
+
+   // XXX: predraw resolves / cache flushing
+
+   iris_binder_reserve_compute(ice);
+   ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
+   ice->vtbl.upload_compute_state(ice, batch, info);
+
+   ice->state.dirty = 0ull;
+
+   // XXX: postdraw resolve tracking
 }

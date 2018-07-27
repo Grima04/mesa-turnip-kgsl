@@ -51,6 +51,8 @@ struct iris_screen {
    /** Global program_string_id counter (see get_program_string_id()) */
    unsigned program_id;
 
+   unsigned subslice_total;
+
    struct gen_device_info devinfo;
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;

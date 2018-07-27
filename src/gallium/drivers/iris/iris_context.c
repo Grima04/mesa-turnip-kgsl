@@ -208,6 +208,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    genX_call(devinfo, init_blorp, ice);
    ice->vtbl.init_render_context(screen, &ice->render_batch, &ice->vtbl,
                                  &ice->dbg);
+   ice->vtbl.init_compute_context(screen, &ice->compute_batch, &ice->vtbl,
+                                  &ice->dbg);
 
    return ctx;
 }

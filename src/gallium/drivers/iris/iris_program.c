@@ -214,6 +214,7 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    }
 
    // XXX: precompile!
+   // XXX: disallow more than 64KB of shared variables
 
    return ish;
 }
@@ -1002,6 +1003,58 @@ iris_update_compiled_shaders(struct iris_context *ice)
          }
       }
    }
+}
+
+static bool
+iris_compile_cs(struct iris_context *ice,
+                struct iris_uncompiled_shader *ish,
+                const struct brw_cs_prog_key *key)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   void *mem_ctx = ralloc_context(NULL);
+   struct brw_cs_prog_data *cs_prog_data =
+      rzalloc(mem_ctx, struct brw_cs_prog_data);
+   struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
+
+   nir_shader *nir = ish->nir;
+
+   cs_prog_data->binding_table.work_groups_start = 0;
+   assign_common_binding_table_offsets(devinfo, nir, prog_data, 1);
+
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+
+   char *error_str = NULL;
+   const unsigned *program =
+      brw_compile_cs(compiler, &ice->dbg, mem_ctx, key, cs_prog_data,
+                     nir, -1, &error_str);
+   if (program == NULL) {
+      dbg_printf("Failed to compile compute shader: %s\n", error_str);
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   iris_upload_and_bind_shader(ice, IRIS_CACHE_CS, key, program, prog_data,
+                               NULL);
+
+   ralloc_free(mem_ctx);
+   return true;
+}
+
+void
+iris_update_compiled_compute_shader(struct iris_context *ice)
+{
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
+
+   struct brw_cs_prog_key key = { .program_string_id = ish->program_id };
+   ice->vtbl.populate_cs_key(ice, &key);
+
+   if (iris_bind_cached_shader(ice, IRIS_CACHE_CS, &key))
+      return;
+
+   UNUSED bool success = iris_compile_cs(ice, ish, &key);
 }
 
 void

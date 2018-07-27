@@ -587,6 +587,10 @@ iris_screen_create(int fd)
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct iris_transfer), 64);
 
+   screen->subslice_total =
+      iris_getparam_integer(screen, I915_PARAM_SUBSLICE_TOTAL);
+   assert(screen->subslice_total >= 1);
+
    struct pipe_screen *pscreen = &screen->base;
 
    iris_init_screen_resource_functions(pscreen);
