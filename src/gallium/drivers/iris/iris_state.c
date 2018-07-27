@@ -1208,7 +1208,7 @@ iris_set_sample_mask(struct pipe_context *ctx, unsigned sample_mask)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   ice->state.sample_mask = sample_mask == 0xffffffff ? 1 : sample_mask;
+   ice->state.sample_mask = sample_mask & 0xffff;
    ice->state.dirty |= IRIS_DIRTY_SAMPLE_MASK;
 }
 
@@ -3882,6 +3882,7 @@ genX(init_state)(struct iris_context *ice)
 
    ice->state.dirty = ~0ull;
 
+   ice->state.sample_mask = 0xffff;
    ice->state.num_viewports = 1;
    ice->state.genx = calloc(1, sizeof(struct iris_genx_state));
 
