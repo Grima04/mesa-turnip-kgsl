@@ -2133,14 +2133,6 @@ iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= IRIS_DIRTY_VERTEX_ELEMENTS;
 }
 
-static void *
-iris_create_compute_state(struct pipe_context *ctx,
-                          const struct pipe_compute_state *state)
-{
-   // XXX: actually do something
-   return malloc(1);
-}
-
 /**
  * Gallium CSO for stream output (transform feedback) targets.
  */
@@ -2625,12 +2617,6 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
    }
 
    iris_emit_sbe_swiz(batch, ice, urb_read_offset, sprite_coord_overrides);
-}
-
-static void
-iris_bind_compute_state(struct pipe_context *ctx, void *state)
-{
-   // XXX: do something
 }
 
 /* ------------------------------------------------------------------- */
@@ -4398,20 +4384,17 @@ genX(init_state)(struct iris_context *ice)
    ctx->create_sampler_view = iris_create_sampler_view;
    ctx->create_surface = iris_create_surface;
    ctx->create_vertex_elements_state = iris_create_vertex_elements;
-   ctx->create_compute_state = iris_create_compute_state;
    ctx->bind_blend_state = iris_bind_blend_state;
    ctx->bind_depth_stencil_alpha_state = iris_bind_zsa_state;
    ctx->bind_sampler_states = iris_bind_sampler_states;
    ctx->bind_rasterizer_state = iris_bind_rasterizer_state;
    ctx->bind_vertex_elements_state = iris_bind_vertex_elements_state;
-   ctx->bind_compute_state = iris_bind_compute_state;
    ctx->delete_blend_state = iris_delete_state;
    ctx->delete_depth_stencil_alpha_state = iris_delete_state;
    ctx->delete_fs_state = iris_delete_state;
    ctx->delete_rasterizer_state = iris_delete_state;
    ctx->delete_sampler_state = iris_delete_state;
    ctx->delete_vertex_elements_state = iris_delete_state;
-   ctx->delete_compute_state = iris_delete_state;
    ctx->delete_tcs_state = iris_delete_state;
    ctx->delete_tes_state = iris_delete_state;
    ctx->delete_gs_state = iris_delete_state;

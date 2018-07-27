@@ -79,15 +79,12 @@ struct iris_uncompiled_shader {
  * Actual shader compilation to assembly happens later, at first use.
  */
 static void *
-iris_create_shader_state(struct pipe_context *ctx,
-                         const struct pipe_shader_state *state)
+iris_create_uncompiled_shader(struct pipe_context *ctx,
+                              nir_shader *nir,
+                              const struct pipe_stream_output_info *so_info)
 {
    //struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-
-   assert(state->type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = state->ir.nir;
 
    struct iris_uncompiled_shader *ish =
       calloc(1, sizeof(struct iris_uncompiled_shader));
@@ -98,8 +95,8 @@ iris_create_shader_state(struct pipe_context *ctx,
 
    ish->program_id = get_new_program_id(screen);
    ish->nir = nir;
-   memcpy(&ish->stream_output, &state->stream_output,
-          sizeof(struct pipe_stream_output_info));
+   if (so_info)
+      memcpy(&ish->stream_output, so_info, sizeof(*so_info));
 
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
@@ -143,6 +140,25 @@ iris_create_shader_state(struct pipe_context *ctx,
  *
  * Frees the iris_uncompiled_shader.
  */
+static void *
+iris_create_shader_state(struct pipe_context *ctx,
+                         const struct pipe_shader_state *state)
+{
+   assert(state->type == PIPE_SHADER_IR_NIR);
+
+   return iris_create_uncompiled_shader(ctx, state->ir.nir,
+                                        &state->stream_output);
+}
+
+static void *
+iris_create_compute_state(struct pipe_context *ctx,
+                          const struct pipe_compute_state *state)
+{
+   assert(state->ir_type == PIPE_SHADER_IR_NIR);
+
+   return iris_create_uncompiled_shader(ctx, state->prog, NULL);
+}
+
 static void
 iris_delete_shader_state(struct pipe_context *ctx, void *state)
 {
@@ -220,6 +236,12 @@ static void
 iris_bind_fs_state(struct pipe_context *ctx, void *state)
 {
    bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
+}
+
+static void
+iris_bind_cs_state(struct pipe_context *ctx, void *state)
+{
+   bind_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
 /**
@@ -881,16 +903,19 @@ iris_init_program_functions(struct pipe_context *ctx)
    ctx->create_tes_state = iris_create_shader_state;
    ctx->create_gs_state  = iris_create_shader_state;
    ctx->create_fs_state  = iris_create_shader_state;
+   ctx->create_compute_state = iris_create_compute_state;
 
    ctx->delete_vs_state  = iris_delete_shader_state;
    ctx->delete_tcs_state = iris_delete_shader_state;
    ctx->delete_tes_state = iris_delete_shader_state;
    ctx->delete_gs_state  = iris_delete_shader_state;
    ctx->delete_fs_state  = iris_delete_shader_state;
+   ctx->delete_compute_state = iris_delete_shader_state;
 
    ctx->bind_vs_state  = iris_bind_vs_state;
    ctx->bind_tcs_state = iris_bind_tcs_state;
    ctx->bind_tes_state = iris_bind_tes_state;
    ctx->bind_gs_state  = iris_bind_gs_state;
    ctx->bind_fs_state  = iris_bind_fs_state;
+   ctx->bind_compute_state = iris_bind_cs_state;
 }
