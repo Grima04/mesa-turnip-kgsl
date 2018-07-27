@@ -40,7 +40,10 @@ get_new_program_id(struct iris_screen *screen)
 }
 
 struct iris_uncompiled_shader {
-   struct pipe_shader_state base;
+   nir_shader *nir;
+
+   struct pipe_stream_output_info stream_output;
+
    unsigned program_id;
 
    /** Bitfield of (1 << IRIS_NOS_*) flags. */
@@ -68,9 +71,8 @@ iris_create_shader_state(struct pipe_context *ctx,
    nir = brw_preprocess_nir(screen->compiler, nir);
 
    ish->program_id = get_new_program_id(screen);
-   ish->base.type = PIPE_SHADER_IR_NIR;
-   ish->base.ir.nir = nir;
-   memcpy(&ish->base.stream_output, &state->stream_output,
+   ish->nir = nir;
+   memcpy(&ish->stream_output, &state->stream_output,
           sizeof(struct pipe_stream_output_info));
 
    switch (nir->info.stage) {
@@ -107,7 +109,7 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state)
 {
    struct iris_uncompiled_shader *ish = state;
 
-   ralloc_free(ish->base.ir.nir);
+   ralloc_free(ish->nir);
    free(ish);
 }
 
@@ -294,9 +296,7 @@ iris_compile_vs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   assert(ish->base.type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = ish->base.ir.nir;
+   nir_shader *nir = ish->nir;
 
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
@@ -320,7 +320,7 @@ iris_compile_vs(struct iris_context *ice,
    iris_setup_push_uniform_range(compiler, prog_data);
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+      ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_VS, key, program, prog_data,
@@ -353,7 +353,7 @@ iris_get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
    if (!ish)
       return NULL;
 
-   const nir_shader *nir = ish->base.ir.nir;
+   const nir_shader *nir = ish->nir;
    return &nir->info;
 }
 
@@ -402,9 +402,7 @@ iris_compile_tcs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   assert(ish->base.type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = ish->base.ir.nir;
+   nir_shader *nir = ish->nir;
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
@@ -474,9 +472,7 @@ iris_compile_tes(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   assert(ish->base.type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = ish->base.ir.nir;
+   nir_shader *nir = ish->nir;
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
@@ -499,7 +495,7 @@ iris_compile_tes(struct iris_context *ice,
    iris_setup_push_uniform_range(compiler, prog_data);
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+      ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data,
@@ -544,9 +540,7 @@ iris_compile_gs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   assert(ish->base.type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = ish->base.ir.nir;
+   nir_shader *nir = ish->nir;
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
@@ -569,7 +563,7 @@ iris_compile_gs(struct iris_context *ice,
    iris_setup_push_uniform_range(compiler, prog_data);
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->base.stream_output,
+      ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_GS, key, program, prog_data,
@@ -614,9 +608,7 @@ iris_compile_fs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_wm_prog_data);
    struct brw_stage_prog_data *prog_data = &fs_prog_data->base;
 
-   assert(ish->base.type == PIPE_SHADER_IR_NIR);
-
-   nir_shader *nir = ish->base.ir.nir;
+   nir_shader *nir = ish->nir;
 
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, nir, prog_data,

@@ -2162,13 +2162,11 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
    const struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
-   struct pipe_shader_state *p_fs =
-      (void *) ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-   assert(p_fs->type == PIPE_SHADER_IR_NIR);
-   nir_shader *fs_nir = p_fs->ir.nir;
+   const struct shader_info *fs_info =
+      iris_get_shader_info(ice, MESA_SHADER_FRAGMENT);
 
    unsigned urb_read_offset, urb_read_length;
-   iris_compute_sbe_urb_read_interval(fs_nir->info.inputs_read,
+   iris_compute_sbe_urb_read_interval(fs_info->inputs_read,
                                       ice->shaders.last_vue_map,
                                       cso_rast->light_twoside,
                                       &urb_read_offset, &urb_read_length);
