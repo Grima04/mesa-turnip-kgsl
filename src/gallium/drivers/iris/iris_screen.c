@@ -348,7 +348,7 @@ iris_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return 0;
+      return 1 << PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 32;
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
@@ -371,8 +371,67 @@ iris_get_compute_param(struct pipe_screen *pscreen,
                        enum pipe_compute_cap param,
                        void *ret)
 {
-   /* TODO: compute shaders */
-   return 0;
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct brw_compiler *compiler = screen->compiler;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   // XXX: cherryview fusing
+
+   const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
+   const uint32_t max_invocations = 32 * max_threads;
+
+#define RET(x) do {                  \
+   if (ret)                          \
+      memcpy(ret, x, sizeof(x));     \
+   return sizeof(x);                 \
+} while (0)
+
+   switch (param) {
+   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+      RET((uint32_t []){ 32 });
+
+   case PIPE_COMPUTE_CAP_IR_TARGET:
+      if (ret)
+         strcpy(ret, "gen");
+      return 4;
+
+   case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      RET((uint64_t []) { 3 });
+
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      RET(((uint64_t []) { 65535, 65535, 65535 }));
+
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      /* MaxComputeWorkGroupSize[0..2] */
+      RET(((uint64_t []) {max_invocations, max_invocations, max_invocations}));
+
+   case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
+      /* MaxComputeWorkGroupInvocations */
+      RET((uint64_t []) { max_invocations });
+
+   case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+      /* MaxComputeSharedMemorySize */
+      RET((uint64_t []) { 64 * 1024 });
+
+   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
+      RET((uint32_t []) { 1 });
+
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+      RET((uint32_t []) { BRW_SUBGROUP_SIZE });
+
+   case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
+   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
+   case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
+      // XXX: I think these are for Clover...
+      return 0;
+
+   default:
+      unreachable("unknown compute param");
+   }
 }
 
 static uint64_t
