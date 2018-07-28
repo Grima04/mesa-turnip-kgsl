@@ -223,7 +223,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
    isl_surf_usage_flags_t usage = pipe_bind_to_isl_usage(templ->bind);
 
-   if (templ->target == PIPE_TEXTURE_CUBE)
+   if (templ->target == PIPE_TEXTURE_CUBE ||
+       templ->target == PIPE_TEXTURE_CUBE_ARRAY)
       usage |= ISL_SURF_USAGE_CUBE_BIT;
 
    // XXX: separate stencil...
