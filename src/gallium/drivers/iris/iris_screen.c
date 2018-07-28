@@ -117,7 +117,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
    case PIPE_CAP_SAMPLE_SHADING:
-   case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
    case PIPE_CAP_DRAW_INDIRECT:
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
    case PIPE_CAP_TGSI_VS_LAYER_VIEWPORT:
@@ -169,6 +168,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
    case PIPE_CAP_GENERATE_MIPMAP:
    case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
+   case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
       return false;
 
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
