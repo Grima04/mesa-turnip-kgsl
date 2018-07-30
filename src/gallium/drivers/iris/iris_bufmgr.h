@@ -182,6 +182,11 @@ struct iris_bo {
     * Boolean of whether this buffer is cache coherent
     */
    bool cache_coherent;
+
+   /**
+    * Boolean of whether this buffer points into user memory
+    */
+   bool userptr;
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)
@@ -216,6 +221,11 @@ struct iris_bo *iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr,
                                     uint32_t pitch,
                                     unsigned flags,
                                     enum iris_memory_zone memzone);
+
+struct iris_bo *
+iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
+                       void *ptr, size_t size,
+                       enum iris_memory_zone memzone);
 
 /** Takes a reference on a buffer object */
 static inline void

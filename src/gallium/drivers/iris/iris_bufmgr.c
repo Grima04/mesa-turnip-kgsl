@@ -652,6 +652,57 @@ iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr, const char *name,
                             flags, tiling_mode, pitch);
 }
 
+struct iris_bo *
+iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
+                       void *ptr, size_t size,
+                       enum iris_memory_zone memzone)
+{
+   struct iris_bo *bo;
+
+   bo = calloc(1, sizeof(*bo));
+   if (!bo)
+      return NULL;
+
+   struct drm_i915_gem_userptr arg = {
+      .user_ptr = (uintptr_t)ptr,
+      .user_size = size,
+   };
+   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_USERPTR, &arg))
+      goto err_free;
+   bo->gem_handle = arg.handle;
+
+   /* Check the buffer for validity before we try and use it in a batch */
+   struct drm_i915_gem_set_domain sd = {
+      .handle = bo->gem_handle,
+      .read_domains = I915_GEM_DOMAIN_CPU,
+   };
+   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd))
+      goto err_close;
+
+   bo->name = name;
+   bo->size = size;
+   bo->map_cpu = ptr;
+
+   bo->bufmgr = bufmgr;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->gtt_offset = vma_alloc(bufmgr, memzone, size, 1);
+   if (bo->gtt_offset == 0ull)
+      goto err_close;
+
+   p_atomic_set(&bo->refcount, 1);
+   bo->cache_coherent = true;
+   bo->index = -1;
+   bo->idle = true;
+
+   return bo;
+
+err_close:
+   drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &bo->gem_handle);
+err_free:
+   free(bo);
+   return NULL;
+}
+
 /**
  * Returns a iris_bo wrapping the given buffer object handle.
  *
@@ -740,7 +791,7 @@ bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->map_cpu) {
+   if (bo->map_cpu && !bo->userptr) {
       VG_NOACCESS(bo->map_cpu, bo->size);
       munmap(bo->map_cpu, bo->size);
    }
