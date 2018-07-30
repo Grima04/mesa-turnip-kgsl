@@ -35,6 +35,24 @@
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
 
+static void
+split_depth_stencil_resources(struct pipe_resource *res,
+                              struct pipe_resource **out_z,
+                              struct pipe_resource **out_s)
+{
+   const struct util_format_description *desc =
+      util_format_description(res->format);
+
+   if (util_format_has_depth(desc)) {
+      *out_z = res;
+      *out_s = iris_resource_get_separate_stencil(res);
+   } else {
+      assert(util_format_has_stencil(desc));
+      *out_z = NULL;
+      *out_s = res;
+   }
+}
+
 /**
  * The pipe->clear() driver hook.
  *
@@ -60,21 +78,31 @@ iris_clear(struct pipe_context *ctx,
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       struct pipe_surface *psurf = cso_fb->zsbuf;
+      struct pipe_resource *z_res;
+      struct pipe_resource *stencil_res;
       struct blorp_surf z_surf;
+      struct blorp_surf stencil_surf;
       const unsigned num_layers =
          psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1;
 
-      iris_blorp_surf_for_resource(&z_surf, psurf->texture,
-                                   ISL_AUX_USAGE_NONE, true);
+      split_depth_stencil_resources(psurf->texture, &z_res, &stencil_res);
 
-      blorp_clear_depth_stencil(&blorp_batch, &z_surf, NULL /* XXX */,
+      if (z_res) {
+         iris_blorp_surf_for_resource(&z_surf, z_res,
+                                      ISL_AUX_USAGE_NONE, true);
+      }
+
+      if (stencil_res) {
+         iris_blorp_surf_for_resource(&stencil_surf, stencil_res,
+                                      ISL_AUX_USAGE_NONE, true);
+      }
+
+      blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
                                 psurf->u.tex.level, psurf->u.tex.first_layer,
                                 num_layers, 0, 0, psurf->width, psurf->height,
-                                (buffers & PIPE_CLEAR_DEPTH) != 0,
-                                depth, 0 /* XXX */, stencil);
-
-      if (buffers & PIPE_CLEAR_STENCIL)
-         fprintf(stderr, "XXX: stencil clears not implemented\n");
+                                (buffers & PIPE_CLEAR_DEPTH) != 0, depth,
+                                (buffers & PIPE_CLEAR_STENCIL) ? 0xff : 0,
+                                stencil);
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {

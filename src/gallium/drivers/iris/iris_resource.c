@@ -161,6 +161,15 @@ pipe_bind_to_isl_usage(unsigned bindings)
    return usage;
 }
 
+struct pipe_resource *
+iris_resource_get_separate_stencil(struct pipe_resource *p_res)
+{
+   /* For packed depth-stencil, we treat depth as the primary resource
+    * and store S8 as the "second plane" resource.
+    */
+   return p_res->next;
+}
+
 static void
 iris_resource_destroy(struct pipe_screen *screen,
                       struct pipe_resource *resource)
@@ -195,15 +204,17 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
+   const struct util_format_description *format_desc =
+      util_format_description(templ->format);
+
    if (!res)
       return NULL;
 
-   bool depth_or_stencil = util_format_is_depth_or_stencil(templ->format);
-
+   const bool has_depth = util_format_has_depth(format_desc);
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
 
    if (modifiers_count == 0 || !modifiers) {
-      if (depth_or_stencil) {
+      if (has_depth) {
          modifier = I915_FORMAT_MOD_Y_TILED;
       } else if (templ->bind & PIPE_BIND_DISPLAY_TARGET) {
          /* Display is X-tiled for historical reasons. */
@@ -230,14 +241,21 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    const struct isl_drm_modifier_info *mod_info =
       isl_drm_modifier_get_info(modifier);
 
+   enum isl_tiling tiling = templ->format == PIPE_FORMAT_S8_UINT ?
+      ISL_TILING_W : mod_info->tiling;
+
    isl_surf_usage_flags_t usage = pipe_bind_to_isl_usage(templ->bind);
 
    if (templ->target == PIPE_TEXTURE_CUBE ||
        templ->target == PIPE_TEXTURE_CUBE_ARRAY)
       usage |= ISL_SURF_USAGE_CUBE_BIT;
 
-   if (depth_or_stencil && templ->usage != PIPE_USAGE_STAGING)
-      usage |= ISL_SURF_USAGE_DEPTH_BIT;
+   if (templ->usage != PIPE_USAGE_STAGING) {
+      if (templ->format == PIPE_FORMAT_S8_UINT)
+         usage |= ISL_SURF_USAGE_STENCIL_BIT;
+      else if (has_depth)
+         usage |= ISL_SURF_USAGE_DEPTH_BIT;
+   }
 
    enum pipe_format pfmt = templ->format;
 
@@ -265,7 +283,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .min_alignment_B = 0,
                     .row_pitch_B = 0,
                     .usage = usage,
-                    .tiling_flags = 1 << mod_info->tiling);
+                    .tiling_flags = 1 << tiling);
    assert(isl_surf_created_successfully);
 
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
