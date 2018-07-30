@@ -650,6 +650,25 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
 		return;
 	}
 
+	if (desc->layout == VK_FORMAT_LAYOUT_MULTIPLANE ||
+	    desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED) {
+		uint32_t tiling = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+		                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
+		                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+		                  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+		/* The subsampled formats have no support for linear filters. */
+		if (desc->layout != VK_FORMAT_LAYOUT_SUBSAMPLED) {
+			tiling |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
+		}
+
+		/* Fails for unknown reasons with linear tiling & subsampled formats. */
+		out_properties->linearTilingFeatures = desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED ? 0 : tiling;
+		out_properties->optimalTilingFeatures = tiling;
+		out_properties->bufferFeatures = 0;
+		return;
+	}
+
 	if (radv_is_storage_image_format_supported(physical_device, format)) {
 		tiled |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
 		linear |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
@@ -1289,6 +1308,7 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 	RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
 	const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
 	VkExternalImageFormatProperties *external_props = NULL;
+	VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
 	VkResult result;
 
 	result = radv_get_image_format_properties(physical_device, base_info,
@@ -1312,6 +1332,9 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 		switch (s->sType) {
 		case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
 			external_props = (void *) s;
+			break;
+		case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
+			ycbcr_props = (void *) s;
 			break;
 		default:
 			break;
@@ -1345,6 +1368,10 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 					   external_info->handleType);
 			goto fail;
 		}
+	}
+
+	if (ycbcr_props) {
+		ycbcr_props->combinedImageSamplerDescriptorCount = vk_format_get_plane_count(base_info->format);
 	}
 
 	return VK_SUCCESS;
