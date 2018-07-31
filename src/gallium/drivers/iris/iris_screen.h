@@ -39,18 +39,28 @@ struct iris_bo;
 struct iris_screen {
    struct pipe_screen base;
 
+   /** Global slab allocator for iris_transfer_map objects */
    struct slab_parent_pool transfer_pool;
 
+   /** drm device file descriptor */
    int fd;
+
+   /** PCI ID for our GPU device */
    int pci_id;
 
+   /** Global program_string_id counter (see get_program_string_id()) */
    unsigned program_id;
 
    struct gen_device_info devinfo;
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;
-   struct iris_bo *workaround_bo;
    struct brw_compiler *compiler;
+
+   /**
+    * A buffer containing nothing useful, for hardware workarounds that
+    * require scratch writes or reads from some unimportant memory.
+    */
+   struct iris_bo *workaround_bo;
 };
 
 struct pipe_screen *iris_screen_create(int fd);

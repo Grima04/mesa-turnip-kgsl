@@ -20,6 +20,16 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_program.c
+ *
+ * This file contains the driver interface for compiling shaders.
+ *
+ * See iris_program_cache.c for the in-memory program cache where the
+ * compiled shaders are stored.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include "pipe/p_defines.h"
@@ -39,6 +49,15 @@ get_new_program_id(struct iris_screen *screen)
    return p_atomic_inc_return(&screen->program_id);
 }
 
+/**
+ * An uncompiled, API-facing shader.  This is the Gallium CSO for shaders.
+ * It primarily contains the NIR for the shader.
+ *
+ * Each API-facing shader can be compiled into multiple shader variants,
+ * based on non-orthogonal state dependencies, recorded in the shader key.
+ *
+ * See iris_compiled_shader, which represents a compiled shader variant.
+ */
 struct iris_uncompiled_shader {
    nir_shader *nir;
 
@@ -52,6 +71,14 @@ struct iris_uncompiled_shader {
 
 // XXX: need unify_interfaces() at link time...
 
+/**
+ * The pipe->create_[stage]_state() driver hooks.
+ *
+ * Performs basic NIR preprocessing, records any state dependencies, and
+ * returns an iris_uncompiled_shader as the Gallium CSO.
+ *
+ * Actual shader compilation to assembly happens later, at first use.
+ */
 static void *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
@@ -101,9 +128,16 @@ iris_create_shader_state(struct pipe_context *ctx,
       break;
    }
 
+   // XXX: precompile!
+
    return ish;
 }
 
+/**
+ * The pipe->delete_[stage]_state() driver hooks.
+ *
+ * Frees the iris_uncompiled_shader.
+ */
 static void
 iris_delete_shader_state(struct pipe_context *ctx, void *state)
 {
@@ -113,6 +147,12 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state)
    free(ish);
 }
 
+/**
+ * The pipe->bind_[stage]_state() driver hook.
+ *
+ * Binds an uncompiled shader as the current one for a particular stage.
+ * Updates dirty tracking to account for the shader's NOS.
+ */
 static void
 bind_state(struct iris_context *ice,
            struct iris_uncompiled_shader *ish,
@@ -124,6 +164,9 @@ bind_state(struct iris_context *ice,
    ice->shaders.uncompiled[stage] = ish;
    ice->state.dirty |= dirty_bit;
 
+   /* Record that CSOs need to mark IRIS_DIRTY_UNCOMPILED_XS when they change
+    * (or that they no longer need to do so).
+    */
    for (int i = 0; i < IRIS_NOS_COUNT; i++) {
       if (nos & (1 << i))
          ice->state.dirty_for_nos[i] |= dirty_bit;
@@ -149,6 +192,7 @@ iris_bind_tes_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
+   /* Enabling/disabling optional stages requires a URB reconfiguration. */
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
@@ -160,6 +204,7 @@ iris_bind_gs_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
 
+   /* Enabling/disabling optional stages requires a URB reconfiguration. */
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
@@ -244,6 +289,11 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    return next_binding_table_offset;
 }
 
+/**
+ * Associate NIR uniform variables with the prog_data->param[] mechanism
+ * used by the backend.  Also, decide which UBOs we'd like to push in an
+ * ideal situation (though the backend can reduce this).
+ */
 static void
 iris_setup_uniforms(const struct brw_compiler *compiler,
                     void *mem_ctx,
@@ -266,6 +316,11 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 }
 
+/**
+ * If we still have regular uniforms as push constants after the backend
+ * compilation, set up a UBO range for them.  This will be used to fill
+ * out the 3DSTATE_CONSTANT_* packets which cause the data to be pushed.
+ */
 static void
 iris_setup_push_uniform_range(const struct brw_compiler *compiler,
                               struct brw_stage_prog_data *prog_data)
@@ -282,6 +337,9 @@ iris_setup_push_uniform_range(const struct brw_compiler *compiler,
    }
 }
 
+/**
+ * Compile a vertex shader, and upload the assembly.
+ */
 static bool
 iris_compile_vs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
@@ -330,6 +388,11 @@ iris_compile_vs(struct iris_context *ice,
    return true;
 }
 
+/**
+ * Update the current vertex shader variant.
+ *
+ * Fill out the key, look in the cache, compile and bind if needed.
+ */
 static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
@@ -345,6 +408,9 @@ iris_update_compiled_vs(struct iris_context *ice)
    UNUSED bool success = iris_compile_vs(ice, ish, &key);
 }
 
+/**
+ * Get the shader_info for a given stage, or NULL if the stage is disabled.
+ */
 const struct shader_info *
 iris_get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
 {
@@ -388,6 +454,9 @@ get_unified_tess_slots(const struct iris_context *ice,
    }
 }
 
+/**
+ * Compile a tessellation control shader, and upload the assembly.
+ */
 static bool
 iris_compile_tcs(struct iris_context *ice,
                  struct iris_uncompiled_shader *ish,
@@ -427,6 +496,11 @@ iris_compile_tcs(struct iris_context *ice,
    return true;
 }
 
+/**
+ * Update the current tessellation control shader variant.
+ *
+ * Fill out the key, look in the cache, compile and bind if needed.
+ */
 static void
 iris_update_compiled_tcs(struct iris_context *ice)
 {
@@ -458,6 +532,9 @@ iris_update_compiled_tcs(struct iris_context *ice)
    UNUSED bool success = iris_compile_tcs(ice, tcs, &key);
 }
 
+/**
+ * Compile a tessellation evaluation shader, and upload the assembly.
+ */
 static bool
 iris_compile_tes(struct iris_context *ice,
                  struct iris_uncompiled_shader *ish,
@@ -505,6 +582,11 @@ iris_compile_tes(struct iris_context *ice,
    return true;
 }
 
+/**
+ * Update the current tessellation evaluation shader variant.
+ *
+ * Fill out the key, look in the cache, compile and bind if needed.
+ */
 static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
@@ -526,6 +608,9 @@ iris_update_compiled_tes(struct iris_context *ice)
    UNUSED bool success = iris_compile_tes(ice, ish, &key);
 }
 
+/**
+ * Compile a geometry shader, and upload the assembly.
+ */
 static bool
 iris_compile_gs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
@@ -573,7 +658,11 @@ iris_compile_gs(struct iris_context *ice,
    return true;
 }
 
-
+/**
+ * Update the current geometry shader variant.
+ *
+ * Fill out the key, look in the cache, compile and bind if needed.
+ */
 static void
 iris_update_compiled_gs(struct iris_context *ice)
 {
@@ -594,6 +683,9 @@ iris_update_compiled_gs(struct iris_context *ice)
    UNUSED bool success = iris_compile_gs(ice, ish, &key);
 }
 
+/**
+ * Compile a fragment (pixel) shader, and upload the assembly.
+ */
 static bool
 iris_compile_fs(struct iris_context *ice,
                 struct iris_uncompiled_shader *ish,
@@ -637,6 +729,11 @@ iris_compile_fs(struct iris_context *ice,
    return true;
 }
 
+/**
+ * Update the current fragment shader variant.
+ *
+ * Fill out the key, look in the cache, compile and bind if needed.
+ */
 static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
@@ -652,6 +749,11 @@ iris_update_compiled_fs(struct iris_context *ice)
       iris_compile_fs(ice, ish, &key, ice->shaders.last_vue_map);
 }
 
+/**
+ * Get the compiled shader for the last enabled geometry stage.
+ *
+ * This stage is the one which will feed stream output and the rasterizer.
+ */
 static struct iris_compiled_shader *
 last_vue_shader(struct iris_context *ice)
 {
@@ -664,6 +766,12 @@ last_vue_shader(struct iris_context *ice)
    return ice->shaders.prog[MESA_SHADER_VERTEX];
 }
 
+/**
+ * Update the last enabled stage's VUE map.
+ *
+ * When the shader feeding the rasterizer's output interface changes, we
+ * need to re-emit various packets.
+ */
 static void
 update_last_vue_map(struct iris_context *ice,
                     struct brw_stage_prog_data *prog_data)
@@ -692,6 +800,9 @@ update_last_vue_map(struct iris_context *ice,
    ice->shaders.last_vue_map = &vue_prog_data->vue_map;
 }
 
+/**
+ * Get the prog_data for a given stage, or NULL if the stage is disabled.
+ */
 static struct brw_vue_prog_data *
 get_vue_prog_data(struct iris_context *ice, gl_shader_stage stage)
 {
@@ -701,6 +812,13 @@ get_vue_prog_data(struct iris_context *ice, gl_shader_stage stage)
    return (void *) ice->shaders.prog[stage]->prog_data;
 }
 
+/**
+ * Update the current shader variants for the given state.
+ *
+ * This should be called on every draw call to ensure that the correct
+ * shaders are bound.  It will also flag any dirty state triggered by
+ * swapping out those shaders.
+ */
 void
 iris_update_compiled_shaders(struct iris_context *ice)
 {
@@ -732,6 +850,7 @@ iris_update_compiled_shaders(struct iris_context *ice)
       iris_update_compiled_fs(ice);
    // ...
 
+   /* Changing shader interfaces may require a URB configuration. */
    if (!(dirty & IRIS_DIRTY_URB)) {
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          struct brw_vue_prog_data *old = old_prog_datas[i];

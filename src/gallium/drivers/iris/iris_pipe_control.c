@@ -21,6 +21,35 @@
  * IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_pipe_control.c
+ *
+ * PIPE_CONTROL is the main flushing and synchronization primitive on Intel
+ * GPUs.  It can invalidate caches, stall until rendering reaches various
+ * stages of completion, write to memory, and other things.  In a way, it's
+ * a swiss army knife command - it has all kinds of capabilities, but some
+ * significant limitations as well.
+ *
+ * Unfortunately, it's notoriously complicated and difficult to use.  Many
+ * sub-commands can't be used together.  Some are meant to be used at the
+ * top of the pipeline (invalidating caches before drawing), while some are
+ * meant to be used at the end (stalling or flushing after drawing).
+ *
+ * Also, there's a list of restrictions a mile long, which vary by generation.
+ * Do this before doing that, or suffer the consequences (usually a GPU hang).
+ *
+ * This file contains helpers for emitting them safely.  You can simply call
+ * iris_emit_pipe_control_flush() with the desired operations (as logical
+ * PIPE_CONTROL_* bits), and it will take care of splitting it into multiple
+ * PIPE_CONTROL commands as necessary.  The per-generation workarounds are
+ * applied in iris_emit_raw_pipe_control() in iris_state.c.
+ *
+ * This file also contains our cache tracking helpers.  We have sets for
+ * the render cache, depth cache, and so on.  If a BO is in the set, then
+ * it may have data in that cache.  These take care of emitting flushes for
+ * render-to-texture, format reinterpretation issues, and other situations.
+ */
+
 #include "iris_context.h"
 #include "util/hash_table.h"
 #include "util/set.h"

@@ -20,6 +20,13 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_query.c
+ *
+ * XXX: this file is EMPTY.  it will eventually implement query objects!
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include "pipe/p_defines.h"

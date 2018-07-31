@@ -20,6 +20,15 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_resource.c
+ *
+ * Resources are images, buffers, and other objects used by the GPU.
+ *
+ * XXX: explain resources
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include "pipe/p_defines.h"
@@ -336,7 +345,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       unreachable("invalid winsys handle type");
    }
    if (!res->bo)
-	   return NULL;
+      return NULL;
 
    uint64_t modifier = whandle->modifier;
    if (modifier == DRM_FORMAT_MOD_INVALID) {

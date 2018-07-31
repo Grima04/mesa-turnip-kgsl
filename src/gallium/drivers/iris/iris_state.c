@@ -20,6 +20,57 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_state.c
+ *
+ * ============================= GENXML CODE =============================
+ *              [This file is compiled once per generation.]
+ * =======================================================================
+ *
+ * This is the main state upload code.
+ *
+ * Gallium uses Constant State Objects, or CSOs, for most state.  Large,
+ * complex, or highly reusable state can be created once, and bound and
+ * rebound multiple times.  This is modeled with the pipe->create_*_state()
+ * and pipe->bind_*_state() hooks.  Highly dynamic or inexpensive state is
+ * streamed out on the fly, via pipe->set_*_state() hooks.
+ *
+ * OpenGL involves frequently mutating context state, which is mirrored in
+ * core Mesa by highly mutable data structures.  However, most applications
+ * typically draw the same things over and over - from frame to frame, most
+ * of the same objects are still visible and need to be redrawn.  So, rather
+ * than inventing new state all the time, applications usually mutate to swap
+ * between known states that we've seen before.
+ *
+ * Gallium isolates us from this mutation by tracking API state, and
+ * distilling it into a set of Constant State Objects, or CSOs.  Large,
+ * complex, or typically reusable state can be created once, then reused
+ * multiple times.  Drivers can create and store their own associated data.
+ * This create/bind model corresponds to the pipe->create_*_state() and
+ * pipe->bind_*_state() driver hooks.
+ *
+ * Some state is cheap to create, or expected to be highly dynamic.  Rather
+ * than creating and caching piles of CSOs for these, Gallium simply streams
+ * them out, via the pipe->set_*_state() driver hooks.
+ *
+ * To reduce draw time overhead, we try to compute as much state at create
+ * time as possible.  Wherever possible, we translate the Gallium pipe state
+ * to 3DSTATE commands, and store those commands in the CSO.  At draw time,
+ * we can simply memcpy them into a batch buffer.
+ *
+ * No hardware matches the abstraction perfectly, so some commands require
+ * information from multiple CSOs.  In this case, we can store two copies
+ * of the packet (one in each CSO), and simply | together their DWords at
+ * draw time.  Sometimes the second set is trivial (one or two fields), so
+ * we simply pack it at draw time.
+ *
+ * There are two main components in the file below.  First, the CSO hooks
+ * create/bind/track state.  The second are the draw-time upload functions,
+ * iris_upload_render_state() and iris_upload_compute_state(), which read
+ * the context state and emit the commands into the actual batch.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 
@@ -112,6 +163,10 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 
 #define MOCS_WB (2 << 1)
 
+/**
+ * Statically assert that PIPE_* enums match the hardware packets.
+ * (As long as they match, we don't need to translate them.)
+ */
 UNUSED static void pipe_asserts()
 {
 #define PIPE_ASSERT(x) STATIC_ASSERT((int)x)
@@ -270,20 +325,59 @@ translate_fill_mode(unsigned pipe_polymode)
    return map[pipe_polymode];
 }
 
+static unsigned
+translate_mip_filter(enum pipe_tex_mipfilter pipe_mip)
+{
+   static const unsigned map[] = {
+      [PIPE_TEX_MIPFILTER_NEAREST] = MIPFILTER_NEAREST,
+      [PIPE_TEX_MIPFILTER_LINEAR]  = MIPFILTER_LINEAR,
+      [PIPE_TEX_MIPFILTER_NONE]    = MIPFILTER_NONE,
+   };
+   return map[pipe_mip];
+}
+
+static uint32_t
+translate_wrap(unsigned pipe_wrap)
+{
+   static const unsigned map[] = {
+      [PIPE_TEX_WRAP_REPEAT]                 = TCM_WRAP,
+      [PIPE_TEX_WRAP_CLAMP]                  = TCM_HALF_BORDER,
+      [PIPE_TEX_WRAP_CLAMP_TO_EDGE]          = TCM_CLAMP,
+      [PIPE_TEX_WRAP_CLAMP_TO_BORDER]        = TCM_CLAMP_BORDER,
+      [PIPE_TEX_WRAP_MIRROR_REPEAT]          = TCM_MIRROR,
+      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE]   = TCM_MIRROR_ONCE,
+
+      /* These are unsupported. */
+      [PIPE_TEX_WRAP_MIRROR_CLAMP]           = -1,
+      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1,
+   };
+   return map[pipe_wrap];
+}
+
 static struct iris_address
 ro_bo(struct iris_bo *bo, uint64_t offset)
 {
-   /* Not for CSOs! */
+   /* CSOs must pass NULL for bo!  Otherwise it will add the BO to the
+    * validation list at CSO creation time, instead of draw time.
+    */
    return (struct iris_address) { .bo = bo, .offset = offset };
 }
 
 static struct iris_address
 rw_bo(struct iris_bo *bo, uint64_t offset)
 {
-   /* Not for CSOs! */
+   /* CSOs must pass NULL for bo!  Otherwise it will add the BO to the
+    * validation list at CSO creation time, instead of draw time.
+    */
    return (struct iris_address) { .bo = bo, .offset = offset, .write = true };
 }
 
+/**
+ * Allocate space for some indirect state.
+ *
+ * Return a pointer to the map (to fill it out) and a state ref (for
+ * referring to the state in GPU commands).
+ */
 static void *
 upload_state(struct u_upload_mgr *uploader,
              struct iris_state_ref *ref,
@@ -295,6 +389,13 @@ upload_state(struct u_upload_mgr *uploader,
    return p;
 }
 
+/**
+ * Stream out temporary/short-lived state.
+ *
+ * This allocates space, pins the BO, and includes the BO address in the
+ * returned offset (which works because all state lives in 32-bit memory
+ * zones).
+ */
 static uint32_t *
 stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
@@ -315,6 +416,9 @@ stream_state(struct iris_batch *batch,
    return ptr;
 }
 
+/**
+ * stream_state() + memcpy.
+ */
 static uint32_t
 emit_state(struct iris_batch *batch,
            struct u_upload_mgr *uploader,
@@ -333,10 +437,21 @@ emit_state(struct iris_batch *batch,
    return offset;
 }
 
+/**
+ * Did field 'x' change between 'old_cso' and 'new_cso'?
+ *
+ * (If so, we may want to set some dirty flags.)
+ */
 #define cso_changed(x) (!old_cso || (old_cso->x != new_cso->x))
 #define cso_changed_memcmp(x) \
    (!old_cso || memcmp(old_cso->x, new_cso->x, sizeof(old_cso->x)) != 0)
 
+/**
+ * Upload the initial GPU state for a render context.
+ *
+ * This sets some invariant state that needs to be programmed a particular
+ * way, but we never actually change.
+ */
 static void
 iris_init_render_context(struct iris_screen *screen,
                          struct iris_batch *batch,
@@ -347,6 +462,10 @@ iris_init_render_context(struct iris_screen *screen,
 
    /* XXX: PIPE_CONTROLs */
 
+   /* We program STATE_BASE_ADDRESS once at context initialization time.
+    * Each base address points at a 4GB memory zone, and never needs to
+    * change.  See iris_bufmgr.h for a description of the memory zones.
+    */
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
    #if 0
    // XXX: MOCS is stupid for this.
@@ -380,10 +499,17 @@ iris_init_render_context(struct iris_screen *screen,
       sba.DynamicStateBufferSize   = 0xfffff;
    }
 
+   /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
+    * changing it dynamically.  We set it to the maximum size here, and
+    * instead include the render target dimensions in the viewport, so
+    * viewport extents clipping takes care of pruning stray geometry.
+    */
    iris_emit_cmd(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = UINT16_MAX;
       rect.ClippedDrawingRectangleYMax = UINT16_MAX;
    }
+
+   /* Set the initial MSAA sample positions. */
    iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_PATTERN), pat) {
       GEN_SAMPLE_POS_1X(pat._1xSample);
       GEN_SAMPLE_POS_2X(pat._2xSample);
@@ -391,13 +517,22 @@ iris_init_render_context(struct iris_screen *screen,
       GEN_SAMPLE_POS_8X(pat._8xSample);
       GEN_SAMPLE_POS_16X(pat._16xSample);
    }
+
+   /* Use the legacy AA line coverage computation. */
    iris_emit_cmd(batch, GENX(3DSTATE_AA_LINE_PARAMETERS), foo);
+
+   /* Disable chromakeying (it's for media) */
    iris_emit_cmd(batch, GENX(3DSTATE_WM_CHROMAKEY), foo);
+
+   /* We want regular rendering, not special HiZ operations. */
    iris_emit_cmd(batch, GENX(3DSTATE_WM_HZ_OP), foo);
-   /* XXX: may need to set an offset for origin-UL framebuffers */
+
+   /* No polygon stippling offsets are necessary. */
+   // XXX: may need to set an offset for origin-UL framebuffers
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
-   /* Just assign a static partitioning. */
+   /* Set a static partitioning of the push constant area. */
+   // XXX: this may be a bad idea...could starve the push ringbuffers...
    for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
       iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
          alloc._3DCommandSubOpcode = 18 + i;
@@ -408,12 +543,18 @@ iris_init_render_context(struct iris_screen *screen,
 }
 
 struct iris_vertex_buffer_state {
+   /** The 3DSTATE_VERTEX_BUFFERS hardware packet. */
    uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
+
+   /** The resource to source vertex data from. */
    struct pipe_resource *resources[33];
+
+   /** The number of bound vertex buffers. */
    unsigned num_buffers;
 };
 
 struct iris_depth_buffer_state {
+   /* Depth/HiZ/Stencil related hardware packets. */
    uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
                     GENX(3DSTATE_STENCIL_BUFFER_length) +
                     GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
@@ -421,8 +562,10 @@ struct iris_depth_buffer_state {
 };
 
 /**
- * State that can't be stored directly in iris_context because the data
- * layout varies per generation.
+ * Generation-specific context state (ice->state.genx->...).
+ *
+ * Most state can go in iris_context directly, but these encode hardware
+ * packets which vary by generation.
  */
 struct iris_genx_state {
    /** SF_CLIP_VIEWPORT */
@@ -435,21 +578,31 @@ struct iris_genx_state {
    uint32_t streamout[4 * GENX(3DSTATE_STREAMOUT_length)];
 };
 
+// XXX: move this to iris_draw.c
 static void
 iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
 {
 }
 
+/**
+ * The pipe->set_blend_color() driver hook.
+ *
+ * This corresponds to our COLOR_CALC_STATE.
+ */
 static void
 iris_set_blend_color(struct pipe_context *ctx,
                      const struct pipe_blend_color *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
+   /* Our COLOR_CALC_STATE is exactly pipe_blend_color, so just memcpy */
    memcpy(&ice->state.blend_color, state, sizeof(struct pipe_blend_color));
    ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
 }
 
+/**
+ * Gallium CSO for blend state (see pipe_blend_state).
+ */
 struct iris_blend_state {
    /** Partial 3DSTATE_PS_BLEND */
    uint32_t ps_blend[GENX(3DSTATE_PS_BLEND_length)];
@@ -461,6 +614,11 @@ struct iris_blend_state {
    bool alpha_to_coverage; /* for shader key */
 };
 
+/**
+ * The pipe->create_blend_state() driver hook.
+ *
+ * Translates a pipe_blend_state into iris_blend_state.
+ */
 static void *
 iris_create_blend_state(struct pipe_context *ctx,
                         const struct pipe_blend_state *state)
@@ -525,6 +683,11 @@ iris_create_blend_state(struct pipe_context *ctx,
    return cso;
 }
 
+/**
+ * The pipe->bind_blend_state() driver hook.
+ *
+ * Bind a blending CSO and flag related dirty bits.
+ */
 static void
 iris_bind_blend_state(struct pipe_context *ctx, void *state)
 {
@@ -535,14 +698,23 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
 }
 
+/**
+ * Gallium CSO for depth, stencil, and alpha testing state.
+ */
 struct iris_depth_stencil_alpha_state {
-   /** Partial 3DSTATE_WM_DEPTH_STENCIL */
+   /** Partial 3DSTATE_WM_DEPTH_STENCIL. */
    uint32_t wmds[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
 
-   /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE */
+   /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE. */
    struct pipe_alpha_state alpha;
 };
 
+/**
+ * The pipe->create_depth_stencil_alpha_state() driver hook.
+ *
+ * We encode most of 3DSTATE_WM_DEPTH_STENCIL, and just save off the alpha
+ * testing state since we need pieces of it in a variety of places.
+ */
 static void *
 iris_create_zsa_state(struct pipe_context *ctx,
                       const struct pipe_depth_stencil_alpha_state *state)
@@ -586,6 +758,11 @@ iris_create_zsa_state(struct pipe_context *ctx,
    return cso;
 }
 
+/**
+ * The pipe->bind_depth_stencil_alpha_state() driver hook.
+ *
+ * Bind a depth/stencil/alpha CSO and flag related dirty bits.
+ */
 static void
 iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 {
@@ -610,6 +787,9 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_DEPTH_STENCIL_ALPHA];
 }
 
+/**
+ * Gallium CSO for rasterizer state.
+ */
 struct iris_rasterizer_state {
    uint32_t sf[GENX(3DSTATE_SF_length)];
    uint32_t clip[GENX(3DSTATE_CLIP_length)];
@@ -634,6 +814,9 @@ struct iris_rasterizer_state {
    uint16_t sprite_coord_enable;
 };
 
+/**
+ * The pipe->create_rasterizer_state() driver hook.
+ */
 static void *
 iris_create_rasterizer_state(struct pipe_context *ctx,
                              const struct pipe_rasterizer_state *state)
@@ -653,6 +836,9 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       offset_units_unscaled - cap not exposed
    }
    #endif
+
+   // XXX: it may make more sense just to store the pipe_rasterizer_state,
+   // we're copying a lot of booleans here.  But we don't need all of them...
 
    cso->multisample = state->multisample;
    cso->force_persample_interp = state->force_persample_interp;
@@ -760,6 +946,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    return cso;
 }
 
+/**
+ * The pipe->bind_rasterizer_state() driver hook.
+ *
+ * Bind a rasterizer CSO and flag related dirty bits.
+ */
 static void
 iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
 {
@@ -795,26 +986,10 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_RASTERIZER];
 }
 
-static uint32_t
-translate_wrap(unsigned pipe_wrap)
-{
-   static const unsigned map[] = {
-      [PIPE_TEX_WRAP_REPEAT]                 = TCM_WRAP,
-      [PIPE_TEX_WRAP_CLAMP]                  = TCM_HALF_BORDER,
-      [PIPE_TEX_WRAP_CLAMP_TO_EDGE]          = TCM_CLAMP,
-      [PIPE_TEX_WRAP_CLAMP_TO_BORDER]        = TCM_CLAMP_BORDER,
-      [PIPE_TEX_WRAP_MIRROR_REPEAT]          = TCM_MIRROR,
-      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE]   = TCM_MIRROR_ONCE,
-
-      /* These are unsupported. */
-      [PIPE_TEX_WRAP_MIRROR_CLAMP]           = -1,
-      [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1,
-   };
-   return map[pipe_wrap];
-}
-
 /**
  * Return true if the given wrap mode requires the border color to exist.
+ *
+ * (We can skip uploading it if the sampler isn't going to use it.)
  */
 static bool
 wrap_mode_needs_border_color(unsigned wrap_mode)
@@ -822,18 +997,11 @@ wrap_mode_needs_border_color(unsigned wrap_mode)
    return wrap_mode == TCM_CLAMP_BORDER || wrap_mode == TCM_HALF_BORDER;
 }
 
-static unsigned
-translate_mip_filter(enum pipe_tex_mipfilter pipe_mip)
-{
-   static const unsigned map[] = {
-      [PIPE_TEX_MIPFILTER_NEAREST] = MIPFILTER_NEAREST,
-      [PIPE_TEX_MIPFILTER_LINEAR]  = MIPFILTER_LINEAR,
-      [PIPE_TEX_MIPFILTER_NONE]    = MIPFILTER_NONE,
-   };
-   return map[pipe_mip];
-}
-
+/**
+ * Gallium CSO for sampler state.
+ */
 struct iris_sampler_state {
+   // XXX: do we need this
    struct pipe_sampler_state base;
 
    bool needs_border_color;
@@ -841,6 +1009,14 @@ struct iris_sampler_state {
    uint32_t sampler_state[GENX(SAMPLER_STATE_length)];
 };
 
+/**
+ * The pipe->create_sampler_state() driver hook.
+ *
+ * We fill out SAMPLER_STATE (except for the border color pointer), and
+ * store that on the CPU.  It doesn't make sense to upload it to a GPU
+ * buffer object yet, because 3DSTATE_SAMPLER_STATE_POINTERS requires
+ * all bound sampler states to be in contiguous memor.
+ */
 static void *
 iris_create_sampler_state(struct pipe_context *ctx,
                           const struct pipe_sampler_state *state)
@@ -916,6 +1092,21 @@ iris_create_sampler_state(struct pipe_context *ctx,
    return cso;
 }
 
+/**
+ * The pipe->bind_sampler_states() driver hook.
+ *
+ * Now that we know all the sampler states, we upload them all into a
+ * contiguous area of GPU memory, for 3DSTATE_SAMPLER_STATE_POINTERS_*.
+ * We also fill out the border color state pointers at this point.
+ *
+ * We could defer this work to draw time, but we assume that binding
+ * will be less frequent than drawing.
+ */
+// XXX: this may be a bad idea, need to make sure that st/mesa calls us
+// XXX: with the complete set of shaders.  If it makes multiple calls to
+// XXX: things one at a time, we could waste a lot of time assembling things.
+// XXX: it doesn't even BUY us anything to do it here, because we only flag
+// XXX: IRIS_DIRTY_SAMPLER_STATE when this is called...
 static void
 iris_bind_sampler_states(struct pipe_context *ctx,
                          enum pipe_shader_type p_stage,
@@ -984,7 +1175,16 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
+/**
+ * Gallium CSO for sampler views (texture views).
+ *
+ * In addition to the normal pipe_resource, this adds an ISL view
+ * which may reinterpret the format or restrict levels/layers.
+ *
+ * These can also be linear texture buffers.
+ */
 struct iris_sampler_view {
+   // XXX: just store the resource, not the rest of this
    struct pipe_sampler_view pipe;
    struct isl_view view;
 
@@ -993,8 +1193,8 @@ struct iris_sampler_view {
 };
 
 /**
- * Convert an swizzle enumeration (i.e. PIPE_SWIZZLE_X) to one of the Gen7.5+
- * "Shader Channel Select" enumerations (i.e. HSW_SCS_RED).  The mappings are
+ * Convert an swizzle enumeration (i.e. PIPE_SWIZZLE_X) to one of the HW's
+ * "Shader Channel Select" enumerations (i.e. SCS_RED).  The mappings are
  *
  * SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W, SWIZZLE_ZERO, SWIZZLE_ONE
  *         0          1          2          3             4            5
@@ -1002,8 +1202,6 @@ struct iris_sampler_view {
  *   SCS_RED, SCS_GREEN,  SCS_BLUE, SCS_ALPHA,     SCS_ZERO,     SCS_ONE
  *
  * which is simply adding 4 then modding by 8 (or anding with 7).
- *
- * We then may need to apply workarounds for textureGather hardware bugs.
  */
 static enum isl_channel_select
 pipe_swizzle_to_isl_channel(enum pipe_swizzle swizzle)
@@ -1011,6 +1209,9 @@ pipe_swizzle_to_isl_channel(enum pipe_swizzle swizzle)
    return (swizzle + 4) & 7;
 }
 
+/**
+ * The pipe->create_sampler_view() driver hook.
+ */
 static struct pipe_sampler_view *
 iris_create_sampler_view(struct pipe_context *ctx,
                          struct pipe_resource *tex,
@@ -1052,6 +1253,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
                (itex->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
    };
 
+   /* Fill out SURFACE_STATE for this view. */
    if (tmpl->target != PIPE_BUFFER) {
       isv->view.base_level = tmpl->u.tex.first_level;
       isv->view.levels = tmpl->u.tex.last_level - tmpl->u.tex.first_level + 1;
@@ -1084,6 +1286,22 @@ iris_create_sampler_view(struct pipe_context *ctx,
    return &isv->pipe;
 }
 
+static void
+iris_sampler_view_destroy(struct pipe_context *ctx,
+                          struct pipe_sampler_view *state)
+{
+   struct iris_sampler_view *isv = (void *) state;
+   pipe_resource_reference(&state->texture, NULL);
+   pipe_resource_reference(&isv->surface_state.res, NULL);
+   free(isv);
+}
+
+/**
+ * The pipe->create_surface() driver hook.
+ *
+ * In Gallium nomenclature, "surfaces" are a view of a resource that
+ * can be bound as a render target or depth/stencil buffer.
+ */
 static struct pipe_surface *
 iris_create_surface(struct pipe_context *ctx,
                     struct pipe_resource *tex,
@@ -1140,7 +1358,7 @@ iris_create_surface(struct pipe_context *ctx,
       .usage = usage,
    };
 
-   /* Bail early for depth/stencil */
+   /* Bail early for depth/stencil - we don't want SURFACE_STATE for them. */
    if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
                           ISL_SURF_USAGE_STENCIL_BIT))
       return psurf;
@@ -1164,6 +1382,9 @@ iris_create_surface(struct pipe_context *ctx,
    return psurf;
 }
 
+/**
+ * The pipe->set_sampler_views() driver hook.
+ */
 static void
 iris_set_sampler_views(struct pipe_context *ctx,
                        enum pipe_shader_type p_stage,
@@ -1189,11 +1410,24 @@ iris_set_sampler_views(struct pipe_context *ctx,
 }
 
 static void
+iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
+{
+   struct iris_surface *surf = (void *) p_surf;
+   pipe_resource_reference(&p_surf->texture, NULL);
+   pipe_resource_reference(&surf->surface_state.res, NULL);
+   free(surf);
+}
+
+// XXX: actually implement user clip planes
+static void
 iris_set_clip_state(struct pipe_context *ctx,
                     const struct pipe_clip_state *state)
 {
 }
 
+/**
+ * The pipe->set_polygon_stipple() driver hook.
+ */
 static void
 iris_set_polygon_stipple(struct pipe_context *ctx,
                          const struct pipe_poly_stipple *state)
@@ -1203,15 +1437,27 @@ iris_set_polygon_stipple(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_POLYGON_STIPPLE;
 }
 
+/**
+ * The pipe->set_sample_mask() driver hook.
+ */
 static void
 iris_set_sample_mask(struct pipe_context *ctx, unsigned sample_mask)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
+   /* We only support 16x MSAA, so we have 16 bits of sample maks.
+    * st/mesa may pass us 0xffffffff though, meaning "enable all samples".
+    */
    ice->state.sample_mask = sample_mask & 0xffff;
    ice->state.dirty |= IRIS_DIRTY_SAMPLE_MASK;
 }
 
+/**
+ * The pipe->set_scissor_states() driver hook.
+ *
+ * This corresponds to our SCISSOR_RECT state structures.  It's an
+ * exact match, so we just store them, and memcpy them out later.
+ */
 static void
 iris_set_scissor_states(struct pipe_context *ctx,
                         unsigned start_slot,
@@ -1227,6 +1473,11 @@ iris_set_scissor_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SCISSOR_RECT;
 }
 
+/**
+ * The pipe->set_stencil_ref() driver hook.
+ *
+ * This is added to 3DSTATE_WM_DEPTH_STENCIL dynamically at draw time.
+ */
 static void
 iris_set_stencil_ref(struct pipe_context *ctx,
                      const struct pipe_stencil_ref *state)
@@ -1324,6 +1575,13 @@ calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
 }
 #endif
 
+/**
+ * The pipe->set_viewport_states() driver hook.
+ *
+ * This corresponds to our SF_CLIP_VIEWPORT states.  We can't calculate
+ * the guardband yet, as we need the framebuffer dimensions, but we can
+ * at least fill out the rest.
+ */
 static void
 iris_set_viewport_states(struct pipe_context *ctx,
                          unsigned start_slot,
@@ -1369,6 +1627,12 @@ iris_set_viewport_states(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
 }
 
+/**
+ * The pipe->set_framebuffer_state() driver hook.
+ *
+ * Sets the current draw FBO, including color render targets, depth,
+ * and stencil buffers.
+ */
 static void
 iris_set_framebuffer_state(struct pipe_context *ctx,
                            const struct pipe_framebuffer_state *state)
@@ -1462,6 +1726,12 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
 }
 
+/**
+ * The pipe->set_constant_buffer() driver hook.
+ *
+ * This uploads any constant data in user buffers, and references
+ * any UBO resources containing constant data.
+ */
 static void
 iris_set_constant_buffer(struct pipe_context *ctx,
                          enum pipe_shader_type p_stage, unsigned index,
@@ -1513,6 +1783,12 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
 }
 
+/**
+ * The pipe->set_shader_buffers() driver hook.
+ *
+ * This binds SSBOs and ABOs.  Unfortunately, we need to stream out
+ * SURFACE_STATE here, as the buffer offset may change each time.
+ */
 static void
 iris_set_shader_buffers(struct pipe_context *ctx,
                         enum pipe_shader_type p_stage,
@@ -1563,26 +1839,6 @@ iris_set_shader_buffers(struct pipe_context *ctx,
 }
 
 static void
-iris_sampler_view_destroy(struct pipe_context *ctx,
-                          struct pipe_sampler_view *state)
-{
-   struct iris_sampler_view *isv = (void *) state;
-   pipe_resource_reference(&state->texture, NULL);
-   pipe_resource_reference(&isv->surface_state.res, NULL);
-   free(isv);
-}
-
-
-static void
-iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
-{
-   struct iris_surface *surf = (void *) p_surf;
-   pipe_resource_reference(&p_surf->texture, NULL);
-   pipe_resource_reference(&surf->surface_state.res, NULL);
-   free(surf);
-}
-
-static void
 iris_delete_state(struct pipe_context *ctx, void *state)
 {
    free(state);
@@ -1595,6 +1851,11 @@ iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
       pipe_resource_reference(&cso->resources[i], NULL);
 }
 
+/**
+ * The pipe->set_vertex_buffers() driver hook.
+ *
+ * This translates pipe_vertex_buffer to our 3DSTATE_VERTEX_BUFFERS packet.
+ */
 static void
 iris_set_vertex_buffers(struct pipe_context *ctx,
                         unsigned start_slot, unsigned count,
@@ -1646,12 +1907,21 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
 }
 
+/**
+ * Gallium CSO for vertex elements.
+ */
 struct iris_vertex_element_state {
    uint32_t vertex_elements[1 + 33 * GENX(VERTEX_ELEMENT_STATE_length)];
    uint32_t vf_instancing[33 * GENX(3DSTATE_VF_INSTANCING_length)];
    unsigned count;
 };
 
+/**
+ * The pipe->create_vertex_elements() driver hook.
+ *
+ * This translates pipe_vertex_element to our 3DSTATE_VERTEX_ELEMENTS
+ * and 3DSTATE_VF_INSTANCING commands.  SGVs are handled at draw time.
+ */
 static void *
 iris_create_vertex_elements(struct pipe_context *ctx,
                             unsigned count,
@@ -1728,6 +1998,9 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    return cso;
 }
 
+/**
+ * The pipe->bind_vertex_elements_state() driver hook.
+ */
 static void
 iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 {
@@ -1735,6 +2008,9 @@ iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
    struct iris_vertex_element_state *old_cso = ice->state.cso_vertex_elements;
    struct iris_vertex_element_state *new_cso = state;
 
+   /* 3DSTATE_VF_SGVs overrides the last VE, so if the count is changing,
+    * we need to re-emit it to ensure we're overriding the right one.
+    */
    if (new_cso && cso_changed(count))
       ice->state.dirty |= IRIS_DIRTY_VF_SGVS;
 
@@ -1746,17 +2022,30 @@ static void *
 iris_create_compute_state(struct pipe_context *ctx,
                           const struct pipe_compute_state *state)
 {
+   // XXX: actually do something
    return malloc(1);
 }
 
+/**
+ * Gallium CSO for stream output (transform feedback) targets.
+ */
 struct iris_stream_output_target {
    struct pipe_stream_output_target base;
 
    uint32_t so_buffer[GENX(3DSTATE_SO_BUFFER_length)];
 
+   /** Storage holding the offset where we're writing in the buffer */
    struct iris_state_ref offset;
 };
 
+/**
+ * The pipe->create_stream_output_target() driver hook.
+ *
+ * "Target" here refers to a destination buffer.  We translate this into
+ * a 3DSTATE_SO_BUFFER packet.  We can handle most fields, but don't yet
+ * know which buffer this represents, or whether we ought to zero the
+ * write-offsets, or append.  Those are handled in the set() hook.
+ */
 static struct pipe_stream_output_target *
 iris_create_stream_output_target(struct pipe_context *ctx,
                                  struct pipe_resource *res,
@@ -1805,6 +2094,13 @@ iris_stream_output_target_destroy(struct pipe_context *ctx,
    free(cso);
 }
 
+/**
+ * The pipe->set_stream_output_targets() driver hook.
+ *
+ * At this point, we know which targets are bound to a particular index,
+ * and also whether we want to append or start over.  We can finish the
+ * 3DSTATE_SO_BUFFER packets we started earlier.
+ */
 static void
 iris_set_stream_output_targets(struct pipe_context *ctx,
                                unsigned num_targets,
@@ -1860,6 +2156,18 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SO_BUFFERS;
 }
 
+/**
+ * An iris-vtable helper for encoding the 3DSTATE_SO_DECL_LIST and
+ * 3DSTATE_STREAMOUT packets.
+ *
+ * 3DSTATE_SO_DECL_LIST is a list of shader outputs we want the streamout
+ * hardware to record.  We can create it entirely based on the shader, with
+ * no dynamic state dependencies.
+ *
+ * 3DSTATE_STREAMOUT is an annoying mix of shader-based information and
+ * state-based settings.  We capture the shader-related ones here, and merge
+ * the rest in at draw time.
+ */
 static uint32_t *
 iris_create_so_decl_list(const struct pipe_stream_output_info *info,
                          const struct brw_vue_map *vue_map)
@@ -2202,8 +2510,14 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
 static void
 iris_bind_compute_state(struct pipe_context *ctx, void *state)
 {
+   // XXX: do something
 }
 
+/* ------------------------------------------------------------------- */
+
+/**
+ * Set sampler-related program key fields based on the current state.
+ */
 static void
 iris_populate_sampler_key(const struct iris_context *ice,
                           struct brw_sampler_prog_key_data *key)
@@ -2213,6 +2527,9 @@ iris_populate_sampler_key(const struct iris_context *ice,
    }
 }
 
+/**
+ * Populate VS program key fields based on the current state.
+ */
 static void
 iris_populate_vs_key(const struct iris_context *ice,
                      struct brw_vs_prog_key *key)
@@ -2220,6 +2537,9 @@ iris_populate_vs_key(const struct iris_context *ice,
    iris_populate_sampler_key(ice, &key->tex);
 }
 
+/**
+ * Populate TCS program key fields based on the current state.
+ */
 static void
 iris_populate_tcs_key(const struct iris_context *ice,
                       struct brw_tcs_prog_key *key)
@@ -2227,6 +2547,9 @@ iris_populate_tcs_key(const struct iris_context *ice,
    iris_populate_sampler_key(ice, &key->tex);
 }
 
+/**
+ * Populate TES program key fields based on the current state.
+ */
 static void
 iris_populate_tes_key(const struct iris_context *ice,
                       struct brw_tes_prog_key *key)
@@ -2234,6 +2557,9 @@ iris_populate_tes_key(const struct iris_context *ice,
    iris_populate_sampler_key(ice, &key->tex);
 }
 
+/**
+ * Populate GS program key fields based on the current state.
+ */
 static void
 iris_populate_gs_key(const struct iris_context *ice,
                      struct brw_gs_prog_key *key)
@@ -2241,6 +2567,9 @@ iris_populate_gs_key(const struct iris_context *ice,
    iris_populate_sampler_key(ice, &key->tex);
 }
 
+/**
+ * Populate FS program key fields based on the current state.
+ */
 static void
 iris_populate_fs_key(const struct iris_context *ice,
                      struct brw_wm_prog_key *key)
@@ -2303,6 +2632,9 @@ KSP(const struct iris_compiled_shader *shader)
    pkt.StatisticsEnable = true;                                           \
    pkt.Enable           = true;
 
+/**
+ * Encode most of 3DSTATE_VS based on the compiled shader.
+ */
 static void
 iris_store_vs_state(const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
@@ -2319,6 +2651,9 @@ iris_store_vs_state(const struct gen_device_info *devinfo,
    }
 }
 
+/**
+ * Encode most of 3DSTATE_HS based on the compiled shader.
+ */
 static void
 iris_store_tcs_state(const struct gen_device_info *devinfo,
                      struct iris_compiled_shader *shader)
@@ -2336,6 +2671,9 @@ iris_store_tcs_state(const struct gen_device_info *devinfo,
    }
 }
 
+/**
+ * Encode 3DSTATE_TE and most of 3DSTATE_DS based on the compiled shader.
+ */
 static void
 iris_store_tes_state(const struct gen_device_info *devinfo,
                      struct iris_compiled_shader *shader)
@@ -2370,6 +2708,9 @@ iris_store_tes_state(const struct gen_device_info *devinfo,
 
 }
 
+/**
+ * Encode most of 3DSTATE_GS based on the compiled shader.
+ */
 static void
 iris_store_gs_state(const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
@@ -2414,6 +2755,9 @@ iris_store_gs_state(const struct gen_device_info *devinfo,
    }
 }
 
+/**
+ * Encode most of 3DSTATE_PS and 3DSTATE_PS_EXTRA based on the shader.
+ */
 static void
 iris_store_fs_state(const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
@@ -2495,6 +2839,11 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
    }
 }
 
+/**
+ * Compute the size of the derived data (shader command packets).
+ *
+ * This must match the data written by the iris_store_xs_state() functions.
+ */
 static unsigned
 iris_derived_program_state_size(enum iris_program_cache_id cache_id)
 {
@@ -2514,6 +2863,12 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
    return sizeof(uint32_t) * dwords[cache_id];
 }
 
+/**
+ * Create any state packets corresponding to the given shader stage
+ * (i.e. 3DSTATE_VS) and save them as "derived data" in the shader variant.
+ * This means that we can look up a program in the in-memory cache and
+ * get most of the state packet without having to reconstruct it.
+ */
 static void
 iris_store_derived_program_state(const struct gen_device_info *devinfo,
                                  enum iris_program_cache_id cache_id,
@@ -2543,6 +2898,13 @@ iris_store_derived_program_state(const struct gen_device_info *devinfo,
    }
 }
 
+/* ------------------------------------------------------------------- */
+
+/**
+ * Configure the URB.
+ *
+ * XXX: write a real comment.
+ */
 static void
 iris_upload_urb_config(struct iris_context *ice, struct iris_batch *batch)
 {
@@ -2660,6 +3022,13 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
    return surf_state->offset;
 }
 
+/**
+ * Populate the binding table for a given shader stage.
+ *
+ * This fills out the table of pointers to surfaces required by the shader,
+ * and also adds those buffers to the validation list so the kernel can make
+ * resident before running our batch.
+ */
 static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
@@ -2672,13 +3041,6 @@ iris_populate_binding_table(struct iris_context *ice,
 
    const struct shader_info *info = iris_get_shader_info(ice, stage);
    struct iris_shader_state *shs = &ice->shaders.state[stage];
-
-   // Surfaces:
-   // - pull constants
-   // - ubos/ssbos/abos
-   // - images
-   // - textures
-   // - render targets - write and read
 
    //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
@@ -2729,13 +3091,9 @@ iris_populate_binding_table(struct iris_context *ice,
 
 #if 0
       // XXX: not implemented yet
-      assert(prog_data->binding_table.pull_constants_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.ubo_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.ssbo_start == 0xd0d0d0d0);
       assert(prog_data->binding_table.image_start == 0xd0d0d0d0);
-      assert(prog_data->binding_table.shader_time_start == 0xd0d0d0d0);
-      //assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
-      //assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
+      assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
+      assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
 #endif
 }
 
@@ -2750,6 +3108,7 @@ iris_use_optional_res(struct iris_batch *batch,
    }
 }
 
+/* ------------------------------------------------------------------- */
 
 /**
  * Pin any BOs which were installed by a previous batch, and restored
@@ -3435,6 +3794,8 @@ iris_destroy_state(struct iris_context *ice)
    pipe_resource_reference(&ice->state.last_res.blend, NULL);
 }
 
+/* ------------------------------------------------------------------- */
+
 static unsigned
 flags_to_post_sync_op(uint32_t flags)
 {
@@ -3480,6 +3841,9 @@ get_post_sync_flags(enum pipe_control_flags flags)
  *
  * Synchronization of the 3D Pipeline > PIPE_CONTROL Command > Programming
  * Restrictions for PIPE_CONTROL.
+ *
+ * You should not use this function directly.  Use the helpers in
+ * iris_pipe_control.c instead, which may split the pipe control further.
  */
 static void
 iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,

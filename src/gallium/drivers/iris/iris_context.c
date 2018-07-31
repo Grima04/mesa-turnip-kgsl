@@ -42,6 +42,7 @@ iris_flush(struct pipe_context *ctx,
 
    iris_batch_flush(&ice->render_batch);
 
+   // XXX: bogus!!!
    if (fence)
       *fence = NULL;
 }
@@ -59,6 +60,9 @@ get_time(void)
    return tp.tv_sec + tp.tv_nsec / 1000000000.0;
 }
 
+/**
+ * The pipe->set_debug_callback() driver hook.
+ */
 static void
 iris_set_debug_callback(struct pipe_context *ctx,
                         const struct pipe_debug_callback *cb)
@@ -71,6 +75,9 @@ iris_set_debug_callback(struct pipe_context *ctx,
       memset(&ice->dbg, 0, sizeof(ice->dbg));
 }
 
+/**
+ * Destroy a context, freeing any associated memory.
+ */
 static void
 iris_destroy_context(struct pipe_context *ctx)
 {
@@ -103,6 +110,11 @@ iris_destroy_context(struct pipe_context *ctx)
       unreachable("Unknown hardware generation"); \
    }
 
+/**
+ * Create a context.
+ *
+ * This is where each context begins.
+ */
 struct pipe_context *
 iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {

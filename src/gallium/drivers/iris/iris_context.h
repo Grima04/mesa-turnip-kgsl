@@ -38,16 +38,22 @@ struct iris_context;
 struct blorp_batch;
 struct blorp_params;
 
-#define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
-#define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
-#define IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 2)
-
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 /* IRIS_MAX_ABOS and IRIS_MAX_SSBOS must be the same. */
 #define IRIS_MAX_ABOS 16
 #define IRIS_MAX_SSBOS 16
 #define IRIS_MAX_VIEWPORTS 16
 
+/**
+ * Dirty flags.  When state changes, we flag some combination of these
+ * to indicate that particular GPU commands need to be re-emitted.
+ *
+ * Each bit typically corresponds to a single 3DSTATE_* command packet, but
+ * in rare cases they map to a group of related packets that need to be
+ * emitted together.
+ *
+ * See iris_upload_render_state().
+ */
 #define IRIS_DIRTY_COLOR_CALC_STATE         (1ull <<  0)
 #define IRIS_DIRTY_POLYGON_STIPPLE          (1ull <<  1)
 #define IRIS_DIRTY_SCISSOR_RECT             (1ull <<  2)
@@ -106,7 +112,9 @@ struct blorp_params;
  *
  * Shader programs may depend on non-orthogonal state.  These flags are
  * used to indicate that a shader's key depends on the state provided by
- * a certain Gallium CSO.
+ * a certain Gallium CSO.  Changing any CSOs marked as a dependency will
+ * cause the driver to re-compute the shader key, possibly triggering a
+ * shader recompile.
  */
 enum iris_nos_dep {
    IRIS_NOS_FRAMEBUFFER,
@@ -119,6 +127,9 @@ enum iris_nos_dep {
 
 struct iris_depth_stencil_alpha_state;
 
+/**
+ * Cache IDs for the in-memory program cache (ice->shaders.cache).
+ */
 enum iris_program_cache_id {
    IRIS_CACHE_VS  = MESA_SHADER_VERTEX,
    IRIS_CACHE_TCS = MESA_SHADER_TESS_CTRL,
@@ -131,11 +142,11 @@ enum iris_program_cache_id {
 
 /** @{
  *
- * PIPE_CONTROL operation, a combination MI_FLUSH and register write with
- * additional flushing control.
+ * Defines for PIPE_CONTROL operations, which trigger cache flushes,
+ * synchronization, pipelined memory writes, and so on.
  *
- * The bits here are not the actual hardware values.  The actual values
- * shift around a bit per-generation, so we just have flags for each
+ * The bits here are not the actual hardware values.  The actual fields
+ * move between various generations, so we just have flags for each
  * potential operation, and use genxml to encode the actual packet.
  */
 enum pipe_control_flags
@@ -180,6 +191,13 @@ enum pipe_control_flags
 
 /** @} */
 
+/**
+ * A compiled shader variant, containing a pointer to the GPU assembly,
+ * as well as program data and other packets needed by state upload.
+ *
+ * There can be several iris_compiled_shader variants per API-level shader
+ * (iris_uncompiled_shader), due to state-based recompiles (brw_*_prog_key).
+ */
 struct iris_compiled_shader {
    /** Reference to the uploaded assembly. */
    struct iris_state_ref assembly;
@@ -203,6 +221,9 @@ struct iris_compiled_shader {
    uint8_t derived_data[0];
 };
 
+/**
+ * Constant buffer (UBO) information.  See iris_set_const_buffer().
+ */
 struct iris_const_buffer {
    /** The resource and offset for the actual constant data */
    struct iris_state_ref data;
@@ -211,12 +232,18 @@ struct iris_const_buffer {
    struct iris_state_ref surface_state;
 };
 
+/**
+ * API context state that is replicated per shader stage.
+ */
 struct iris_shader_state {
    struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
    struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];
 };
 
+/**
+ * Virtual table for generation-specific (genxml) function calls.
+ */
 struct iris_vtable {
    void (*destroy_state)(struct iris_context *ice);
    void (*init_render_context)(struct iris_screen *screen,
@@ -248,6 +275,11 @@ struct iris_vtable {
                            struct brw_wm_prog_key *key);
 };
 
+/**
+ * A pool containing SAMPLER_BORDER_COLOR_STATE entries.
+ *
+ * See iris_border_color.c for more information.
+ */
 struct iris_border_color_pool {
    struct iris_bo *bo;
    void *map;
@@ -257,14 +289,26 @@ struct iris_border_color_pool {
    struct hash_table *ht;
 };
 
+/**
+ * The API context (derived from pipe_context).
+ *
+ * Most driver state is tracked here.
+ */
 struct iris_context {
    struct pipe_context ctx;
 
+   /** A debug callback for KHR_debug output. */
    struct pipe_debug_callback dbg;
 
+   /** Slab allocator for iris_transfer_map objects. */
    struct slab_child_pool transfer_pool;
 
    struct iris_vtable vtbl;
+
+   struct blorp_context blorp;
+
+   /** The main batch for rendering. */
+   struct iris_batch render_batch;
 
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
@@ -279,14 +323,10 @@ struct iris_context {
       unsigned urb_size;
    } shaders;
 
-   struct blorp_context blorp;
-
-   /** The main batch for rendering */
-   struct iris_batch render_batch;
-
    struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
+
       unsigned num_viewports;
       unsigned sample_mask;
       struct iris_blend_state *cso_blend;
@@ -300,6 +340,7 @@ struct iris_context {
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
 
+      /** GenX-specific current state */
       struct iris_genx_state *genx;
 
       struct iris_state_ref sampler_table[MESA_SHADER_STAGES];

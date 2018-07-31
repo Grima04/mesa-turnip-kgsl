@@ -27,6 +27,10 @@
 #include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
+#define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
+#define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
+#define IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 2)
+
 /**
  * Resources represent a GPU buffer object or image (mipmap tree).
  *
@@ -71,6 +75,9 @@ struct iris_transfer {
    void (*unmap)(struct iris_transfer *);
 };
 
+/**
+ * Unwrap a pipe_resource to get the underlying iris_bo (for convenience).
+ */
 static inline struct iris_bo *
 iris_resource_bo(struct pipe_resource *p_res)
 {

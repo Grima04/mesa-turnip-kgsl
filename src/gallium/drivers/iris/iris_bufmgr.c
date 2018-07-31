@@ -21,6 +21,17 @@
  * IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_bufmgr.c
+ *
+ * The Iris buffer manager.
+ *
+ * XXX: write better comments
+ * - BOs
+ * - Explain BO cache
+ * - main interface to GEM in the kernel
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -380,7 +391,7 @@ __vma_alloc(struct iris_bufmgr *bufmgr,
       addr = util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
                                  alignment);
    }
-   
+
    assert((addr >> 48ull) == 0);
    assert((addr % alignment) == 0);
    return addr;

@@ -68,6 +68,12 @@ iris_get_blorp_format(enum pipe_format pf)
    }
 }
 
+/**
+ * The pipe->blit() driver hook.
+ *
+ * This performs a blit between two surfaces, which copies data but may
+ * also perform format conversion, scaling, flipping, and so on.
+ */
 static void
 iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
@@ -161,6 +167,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    blorp_batch_finish(&blorp_batch);
 }
 
+/**
+ * The pipe->resource_copy_region() driver hook.
+ *
+ * This implements ARB_copy_image semantics - a raw memory copy between
+ * compatible view classes.
+ */
 static void
 iris_resource_copy_region(struct pipe_context *ctx,
                           struct pipe_resource *dst,

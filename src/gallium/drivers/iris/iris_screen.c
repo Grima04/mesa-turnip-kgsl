@@ -20,6 +20,17 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_screen.c
+ *
+ * Screen related driver hooks and capability lists.
+ *
+ * A program may use multiple rendering contexts (iris_context), but
+ * they all share a common screen (iris_screen).  Global driver state
+ * can be stored in the screen; it may be accessed by multiple threads.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include <sys/ioctl.h>

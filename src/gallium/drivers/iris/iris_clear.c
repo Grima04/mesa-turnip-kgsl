@@ -35,6 +35,11 @@
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
 
+/**
+ * The pipe->clear() driver hook.
+ *
+ * This clears buffers attached to the current draw framebuffer.
+ */
 static void
 iris_clear(struct pipe_context *ctx,
            unsigned buffers,

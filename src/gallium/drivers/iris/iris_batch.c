@@ -22,6 +22,23 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_batch.c
+ *
+ * Batchbuffer and command submission module.
+ *
+ * Every API draw call results in a number of GPU commands, which we
+ * collect into a "batch buffer".  Typically, many draw calls are grouped
+ * into a single batch to amortize command submission overhead.
+ *
+ * We submit batches to the kernel using the I915_GEM_EXECBUFFER2 ioctl.
+ * One critical piece of data is the "validation list", which contains a
+ * list of the buffer objects (BOs) which the commands in the GPU need.
+ * The kernel will make sure these are resident and pinned at the correct
+ * virtual memory address before executing our batch.  If a BO is not in
+ * the validation list, it effectively does not exist, so take care.
+ */
+
 #include "iris_batch.h"
 #include "iris_binder.h"
 #include "iris_bufmgr.h"
@@ -46,12 +63,13 @@
  */
 #define BATCH_RESERVED 16
 
-static void decode_batch(struct iris_batch *batch);
-
 static void
 iris_batch_reset(struct iris_batch *batch);
 
-UNUSED static void
+/**
+ * Debugging code to dump the validation list, used by INTEL_DEBUG=submit.
+ */
+static void
 dump_validation_list(struct iris_batch *batch)
 {
    fprintf(stderr, "Validation list (length %d):\n", batch->exec_count);
@@ -72,6 +90,9 @@ dump_validation_list(struct iris_batch *batch)
    }
 }
 
+/**
+ * Return BO information to the batch decoder (for debugging).
+ */
 static struct gen_batch_decode_bo
 decode_get_bo(void *v_batch, uint64_t address)
 {
@@ -93,6 +114,17 @@ decode_get_bo(void *v_batch, uint64_t address)
    }
 
    return (struct gen_batch_decode_bo) { };
+}
+
+/**
+ * Decode the current batch.
+ */
+static void
+decode_batch(struct iris_batch *batch)
+{
+   void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
+   gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
+                   batch->exec_bos[0]->gtt_offset);
 }
 
 static bool
@@ -280,6 +312,13 @@ iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate)
    }
 }
 
+/**
+ * Ensure the current command buffer has \param size bytes of space
+ * remaining.  If not, this creates a secondary batch buffer and emits
+ * a jump from the primary batch to the start of the secondary.
+ *
+ * Most callers want iris_get_command_space() instead.
+ */
 void
 iris_require_command_space(struct iris_batch *batch, unsigned size)
 {
@@ -306,6 +345,12 @@ iris_require_command_space(struct iris_batch *batch, unsigned size)
    }
 }
 
+/**
+ * Allocate space in the current command buffer, and return a pointer
+ * to the mapped area so the caller can write commands there.
+ *
+ * This should be called whenever emitting commands.
+ */
 void *
 iris_get_command_space(struct iris_batch *batch, unsigned bytes)
 {
@@ -315,6 +360,9 @@ iris_get_command_space(struct iris_batch *batch, unsigned bytes)
    return map;
 }
 
+/**
+ * Helper to emit GPU commands - allocates space, copies them there.
+ */
 void
 iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 {
@@ -346,6 +394,9 @@ iris_finish_batch(struct iris_batch *batch)
       batch->primary_batch_size = batch_bytes_used(batch);
 }
 
+/**
+ * Submit the batch to the GPU via execbuffer2.
+ */
 static int
 submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
 {
@@ -410,11 +461,14 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
 }
 
 /**
- * The in_fence_fd is ignored if -1.  Otherwise this function takes ownership
- * of the fd.
+ * Flush the batch buffer, submitting it to the GPU and resetting it so
+ * we're ready to emit the next batch.
  *
- * The out_fence_fd is ignored if NULL. Otherwise, the caller takes ownership
- * of the returned fd.
+ * \param in_fence_fd is ignored if -1.  Otherwise, this function takes
+ * ownership of the fd.
+ *
+ * \param out_fence_fd is ignored if NULL.  Otherwise, the caller must
+ * take ownership of the returned fd.
  */
 int
 _iris_batch_flush_fence(struct iris_batch *batch,
@@ -484,6 +538,11 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    return 0;
 }
 
+/**
+ * Does the current batch refer to the given BO?
+ *
+ * (In other words, is the BO in the current batch's validation list?)
+ */
 bool
 iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
 {
@@ -498,7 +557,11 @@ iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
    return false;
 }
 
-/* This is the only way buffers get added to the validate list.
+/**
+ * Add a buffer to the current batch's validation list.
+ *
+ * You must call this on any BO you wish to use in this batch, to ensure
+ * that it's resident when the GPU commands execute.
  */
 void
 iris_use_pinned_bo(struct iris_batch *batch,
@@ -509,19 +572,4 @@ iris_use_pinned_bo(struct iris_batch *batch,
    unsigned index = add_exec_bo(batch, bo);
    if (writable)
       batch->validation_list[index].flags |= EXEC_OBJECT_WRITE;
-}
-
-static void
-decode_batch(struct iris_batch *batch)
-{
-   //if (batch->bo != batch->exec_bos[0]) {
-   void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
-   gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
-                   batch->exec_bos[0]->gtt_offset);
-
-      //fprintf(stderr, "Secondary batch...\n");
-   //}
-
-   //gen_print_batch(&batch->decoder, batch->map, batch_bytes_used(batch),
-                   //batch->bo->gtt_offset);
 }

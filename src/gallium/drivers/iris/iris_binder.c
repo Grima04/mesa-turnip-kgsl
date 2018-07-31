@@ -21,6 +21,37 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_binder.c
+ *
+ * Shader programs refer to most resources via integer handles.  These are
+ * indexes (BTIs) into a "Binding Table", which is simply a list of pointers
+ * to SURFACE_STATE entries.  Each shader stage has its own binding table,
+ * set by the 3DSTATE_BINDING_TABLE_POINTERS_* commands.  Both the binding
+ * table itself and the SURFACE_STATEs are relative to Surface State Base
+ * Address, so they all live in IRIS_MEMZONE_SURFACE.
+ *
+ * Unfortunately, the hardware designers made 3DSTATE_BINDING_TABLE_POINTERS
+ * only accept a 16-bit pointer.  This means that all binding tables have to
+ * live within the 64kB range starting at Surface State Base Address.  (The
+ * actual SURFACE_STATE entries can live anywhere in the 4GB zone, as the
+ * binding table entries are full 32-bit pointers.)
+ *
+ * We stream out binding tables dynamically, storing them in a single 64kB
+ * "binder" buffer, located at IRIS_BINDER_ADDRESS.  Before emitting a draw
+ * call, we reserve space for any new binding tables needed by bound shaders.
+ * If there is no space, we flush the batch and swap out the binder for a
+ * new empty BO.
+ *
+ * XXX: This should be fancier.  We currently replace the binder with a
+ * fresh BO on every batch, which causes the kernel to stall, trying to
+ * pin the new buffer at the same memory address as the old one.  We ought
+ * to avoid this by using a ringbuffer, tracking the busy section of the BO,
+ * and cycling back around where possible to avoid replacing it at all costs.
+ *
+ * XXX: if we do have to flush, we should emit a performance warning.
+ */
+
 #include <stdlib.h>
 #include "util/u_math.h"
 #include "iris_binder.h"
@@ -28,7 +59,7 @@
 #include "iris_context.h"
 
 /**
- * Reserve a block of space in the binder.
+ * Reserve a block of space in the binder, given the raw size in bytes.
  */
 uint32_t
 iris_binder_reserve(struct iris_batch *batch, unsigned size)
@@ -58,6 +89,9 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
 
 /**
  * Reserve and record binder space for 3D pipeline shader stages.
+ *
+ * Note that you must actually populate the new binding tables after
+ * calling this command - the new area is uninitialized.
  */
 void
 iris_binder_reserve_3d(struct iris_batch *batch,
@@ -109,6 +143,9 @@ iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
    binder->insert_point = INIT_INSERT_POINT;
 }
 
+/**
+ * Is the binder empty?  (If so, old binding table pointers are stale.)
+ */
 bool
 iris_binder_is_empty(struct iris_binder *binder)
 {

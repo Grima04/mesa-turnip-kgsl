@@ -20,6 +20,13 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_draw.c
+ *
+ * The main driver hooks for drawing and launching compute shaders.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include "pipe/p_defines.h"
@@ -31,6 +38,9 @@
 #include "intel/compiler/brw_compiler.h"
 #include "iris_context.h"
 
+/**
+ * The pipe->draw_vbo() driver hook.  Performs a draw on the GPU.
+ */
 void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {

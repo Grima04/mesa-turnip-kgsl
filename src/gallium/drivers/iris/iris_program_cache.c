@@ -20,6 +20,15 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_program_cache.c
+ *
+ * The in-memory program cache.  This is basically a hash table mapping
+ * API-specified shaders and a state key to a compiled variant.  It also
+ * takes care of uploading shader assembly into a BO for use on the GPU.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include "pipe/p_defines.h"

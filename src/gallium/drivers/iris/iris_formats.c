@@ -21,6 +21,13 @@
  * IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_formats.c
+ *
+ * Converts Gallium formats (PIPE_FORMAT_*) to hardware ones (ISL_FORMAT_*).
+ * Provides information about which formats support what features.
+ */
+
 #include "util/bitscan.h"
 #include "util/macros.h"
 #include "util/u_format.h"
@@ -391,6 +398,12 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
    return table[pf];
 }
 
+/**
+ * The pscreen->is_format_supported() driver hook.
+ *
+ * Returns true if the given format is supported for the given usage
+ * (PIPE_BIND_*) and sample count.
+ */
 boolean
 iris_is_format_supported(struct pipe_screen *pscreen,
                          enum pipe_format pformat,

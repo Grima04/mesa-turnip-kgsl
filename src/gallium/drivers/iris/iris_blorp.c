@@ -20,6 +20,21 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+/**
+ * @file iris_blorp.c
+ *
+ * ============================= GENXML CODE =============================
+ *              [This file is compiled once per generation.]
+ * =======================================================================
+ *
+ * GenX specific code for working with BLORP (blitting, resolves, clears
+ * on the 3D engine).  This provides the driver-specific hooks needed to
+ * implement the BLORP API.
+ *
+ * See iris_blit.c, iris_clear.c, and so on.
+ */
+
 #include <assert.h>
 
 #include "iris_batch.h"

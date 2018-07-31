@@ -21,6 +21,28 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * @file iris_border_color.c
+ *
+ * Each SAMPLER_STATE points to a SAMPLER_BORDER_COLOR_STATE entry,
+ * describing the color to return when sampling outside the texture
+ * when using CLAMP_TO_BORDER wrap modes.
+ *
+ * These must be stored relative to Dynamic State Base Address.
+ * Unfortunately, the hardware designers only gave us a 24-bit pointer
+ * rather than an actual graphics address, so it must be stored in the
+ * bottom 16MB of that memory zone.  This means we can't simply use
+ * u_upload_mgr like we do for most state.
+ *
+ * To work around this, we maintain a single "border color pool" BO
+ * which we pin at the base of IRIS_MEMZONE_DYNAMIC.  Since most border
+ * colors are the same (typically black or white), we maintain a hash
+ * table of known colors, and reuse the same entries.  This avoids
+ * wasting a lot of space in the pool.
+ *
+ * If it ever does fill up, we simply flush.
+ */
+
 #include <stdlib.h>
 #include "util/u_math.h"
 #include "iris_binder.h"
@@ -84,6 +106,7 @@ iris_border_color_pool_reserve(struct iris_context *ice, unsigned count)
       (IRIS_BORDER_COLOR_POOL_SIZE - pool->insert_point) / BC_ALIGNMENT;
 
    if (remaining_entries < count) {
+      /* It's safe to flush because we're called outside of state upload. */
       if (iris_batch_references(&ice->render_batch, pool->bo))
          iris_batch_flush(&ice->render_batch);
 
@@ -94,7 +117,8 @@ iris_border_color_pool_reserve(struct iris_context *ice, unsigned count)
 /**
  * Upload a border color (or use a cached version).
  *
- * Returns the offset into the border color pool BO.
+ * Returns the offset into the border color pool BO.  Note that you must
+ * reserve space ahead of time by calling iris_border_color_pool_reserve().
  */
 uint32_t
 iris_upload_border_color(struct iris_context *ice,
