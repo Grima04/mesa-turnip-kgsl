@@ -89,6 +89,7 @@ static int
 iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
@@ -283,6 +284,14 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_MSAA_CONSTRAINTS:
       return 0;
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
+      /* AMD_pinned_memory assumes the flexibility of using client memory
+       * for any buffer (incl. vertex buffers) which rules out the prospect
+       * of using snooped buffers, as using snooped buffers without
+       * cogniscience is likely to be detrimental to performance and require
+       * extensive checking in the driver for correctness, e.g. to prevent
+       * illegal snoop <-> snoop transfers.
+       */
+      return devinfo->has_llc;
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_SHAREABLE_SHADERS:

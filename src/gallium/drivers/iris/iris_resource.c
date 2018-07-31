@@ -363,6 +363,49 @@ tiling_to_modifier(uint32_t tiling)
 }
 
 static struct pipe_resource *
+iris_resource_from_user_memory(struct pipe_screen *pscreen,
+                               const struct pipe_resource *templ,
+                               void *user_memory)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+   struct iris_resource *res = iris_alloc_resource(pscreen, templ);
+   if (!res)
+      return NULL;
+
+   res->bo = iris_bo_create_userptr(bufmgr, "user",
+                                    user_memory, templ->width0,
+                                    IRIS_MEMZONE_OTHER);
+   if (!res->bo) {
+      free(res);
+      return NULL;
+   }
+
+   res->internal_format = templ->format;
+
+   // XXX: usage...
+   isl_surf_usage_flags_t isl_usage = 0;
+
+   isl_surf_init(&screen->isl_dev, &res->surf,
+                 .dim = target_to_isl_surf_dim(templ->target),
+                 .format = iris_isl_format_for_pipe_format(templ->format),
+                 .width = templ->width0,
+                 .height = templ->height0,
+                 .depth = templ->depth0,
+                 .levels = templ->last_level + 1,
+                 .array_len = templ->array_size,
+                 .samples = MAX2(templ->nr_samples, 1),
+                 .min_alignment_B = 0,
+                 .row_pitch_B = 0,
+                 .usage = isl_usage,
+                 .tiling_flags = 1 << ISL_TILING_LINEAR);
+
+   assert(res->bo->tiling_mode == isl_tiling_to_i915_tiling(res->surf.tiling));
+
+   return &res->base;
+}
+
+static struct pipe_resource *
 iris_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
                           struct winsys_handle *whandle,
@@ -850,6 +893,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_create_with_modifiers =
       iris_resource_create_with_modifiers;
    pscreen->resource_create = u_transfer_helper_resource_create;
+   pscreen->resource_from_user_memory = iris_resource_from_user_memory;
    pscreen->resource_from_handle = iris_resource_from_handle;
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
