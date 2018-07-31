@@ -2686,6 +2686,7 @@ iris_populate_binding_table(struct iris_context *ice,
 
    if (stage == MESA_SHADER_FRAGMENT) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      /* Note that cso_fb->nr_cbufs == fs_key->nr_color_regions. */
       if (cso_fb->nr_cbufs) {
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
             if (cso_fb->cbufs[i])
@@ -2693,8 +2694,9 @@ iris_populate_binding_table(struct iris_context *ice,
             else
                bt_map[s++] = use_null_fb_surface(batch, ice);
          }
-      } else
+      } else {
          bt_map[s++] = use_null_fb_surface(batch, ice);
+      }
    }
 
    //assert(prog_data->binding_table.texture_start ==
