@@ -690,6 +690,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
       goto err_close;
 
    p_atomic_set(&bo->refcount, 1);
+   bo->userptr = true;
    bo->cache_coherent = true;
    bo->index = -1;
    bo->idle = true;
