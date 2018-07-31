@@ -3831,7 +3831,7 @@ get_post_sync_flags(enum pipe_control_flags flags)
 }
 
 // XXX: compute support
-#define IS_COMPUTE_PIPELINE(batch) (batch->ring != I915_EXEC_RENDER)
+#define IS_COMPUTE_PIPELINE(batch) (batch->engine != I915_EXEC_RENDER)
 
 /**
  * Emit a series of PIPE_CONTROL commands, taking into account any

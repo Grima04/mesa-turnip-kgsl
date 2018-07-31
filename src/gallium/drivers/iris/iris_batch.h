@@ -56,8 +56,8 @@ struct iris_batch {
 
    uint32_t hw_ctx_id;
 
-   /** Which ring this batch targets - a I915_EXEC_RING_MASK value */
-   uint8_t ring;
+   /** Which engine this batch targets - a I915_EXEC_RING_MASK value */
+   uint8_t engine;
 
    /** The validation list */
    struct drm_i915_gem_exec_object2 *validation_list;

@@ -144,16 +144,16 @@ iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
                 struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
-                uint8_t ring)
+                uint8_t engine)
 {
    batch->screen = screen;
    batch->vtbl = vtbl;
    batch->dbg = dbg;
 
-   /* ring should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
-   assert((ring & ~I915_EXEC_RING_MASK) == 0);
-   assert(util_bitcount(ring) == 1);
-   batch->ring = ring;
+   /* engine should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
+   assert((engine & ~I915_EXEC_RING_MASK) == 0);
+   assert(util_bitcount(engine) == 1);
+   batch->engine = engine;
 
    batch->exec_count = 0;
    batch->exec_array_size = 100;
@@ -419,7 +419,7 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       .buffer_count = batch->exec_count,
       .batch_start_offset = 0,
       .batch_len = batch->primary_batch_size,
-      .flags = batch->ring |
+      .flags = batch->engine |
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
                I915_EXEC_HANDLE_LUT,
