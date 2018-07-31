@@ -15,3 +15,5 @@ CHIPSET(0x9AC0, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 CHIPSET(0x9AC9, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 CHIPSET(0x9AD9, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
 CHIPSET(0x9AF8, tgl_gt2, "TGL GT2", "Intel(R) UHD Graphics")
+
+CHIPSET(0x4905, dg1, "DG1 GT2", "Intel(R) Graphics")

@@ -62,6 +62,7 @@ static const struct {
    { "jsl", 0x4E71 },
    { "tgl", 0x9a49 },
    { "rkl", 0x4c8a },
+   { "dg1", 0x4905 },
 };
 
 /**
@@ -1048,6 +1049,17 @@ static const struct gen_device_info gen_device_info_rkl_gt05 = {
 
 static const struct gen_device_info gen_device_info_rkl_gt1 = {
    GEN12_GT_FEATURES(1),
+};
+
+#define GEN12_DG1_FEATURES                      \
+   GEN12_GT_FEATURES(2),                        \
+   .is_dg1 = true,                              \
+   .has_llc = false,                            \
+   .urb.size = 768,                             \
+   .simulator_id = 30
+
+static const struct gen_device_info gen_device_info_dg1 = {
+   GEN12_DG1_FEATURES,
 };
 
 static void
