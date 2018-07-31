@@ -57,6 +57,7 @@
 #endif
 #include "common/gen_clflush.h"
 #include "common/gen_debug.h"
+#include "common/gen_gem.h"
 #include "dev/gen_device_info.h"
 #include "main/macros.h"
 #include "util/debug.h"
@@ -131,6 +132,7 @@ atomic_add_unless(int *v, int add, int unless)
  * represents a bucket-sized block of memory.  (At the first level, each
  * bit corresponds to a page.  For the second bucket, bits correspond to
  * two pages, and so on.)  1 means a block is free, and 0 means it's in-use.
+ * The lowest bit in the bitmap is for the first block.
  *
  * This makes allocations cheap - any bit of any node will do.  We can pick
  * the head of the list and use ffs() to find a free block.  If there are
@@ -149,7 +151,7 @@ struct bo_cache_bucket {
    /** Size of this bucket, in bytes. */
    uint64_t size;
 
-   /** List of vma_bucket_nodes */
+   /** List of vma_bucket_nodes. */
    struct util_dynarray vma_list[IRIS_MEMZONE_COUNT];
 };
 
@@ -177,9 +179,9 @@ static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
 
 static void bo_free(struct iris_bo *bo);
 
-static uint64_t __vma_alloc(struct iris_bufmgr *bufmgr,
-                            enum iris_memory_zone memzone,
-                            uint64_t size, uint64_t alignment);
+static uint64_t vma_alloc(struct iris_bufmgr *bufmgr,
+                          enum iris_memory_zone memzone,
+                          uint64_t size, uint64_t alignment);
 
 static uint32_t
 key_hash_uint(const void *key)
@@ -247,11 +249,12 @@ memzone_for_address(uint64_t address)
    STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START > IRIS_MEMZONE_SURFACE_START);
    STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START > IRIS_MEMZONE_SHADER_START);
    STATIC_ASSERT(IRIS_BINDER_ADDRESS == IRIS_MEMZONE_SURFACE_START);
+   STATIC_ASSERT(IRIS_BORDER_COLOR_POOL_ADDRESS == IRIS_MEMZONE_DYNAMIC_START);
 
    if (address >= IRIS_MEMZONE_OTHER_START)
       return IRIS_MEMZONE_OTHER;
 
-   if (address == IRIS_MEMZONE_DYNAMIC_START)
+   if (address == IRIS_BORDER_COLOR_POOL_ADDRESS)
       return IRIS_MEMZONE_BORDER_COLOR_POOL;
 
    if (address > IRIS_MEMZONE_DYNAMIC_START)
@@ -287,7 +290,12 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
        */
       const uint64_t node_size = 64ull * bucket->size;
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
-      node->start_address = __vma_alloc(bufmgr, memzone, node_size, node_size);
+
+      if (unlikely(!node))
+         return 0ull;
+
+      uint64_t addr = vma_alloc(bufmgr, memzone, node_size, node_size);
+      node->start_address = gen_48b_address(addr);
       node->bitmap = ~1ull;
       return node->start_address;
    }
@@ -301,18 +309,18 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
    assert((node->bitmap & (1ull << bit)) != 0ull);
    node->bitmap &= ~(1ull << bit);
 
+   uint64_t addr = node->start_address + bit * bucket->size;
+
    /* If this node is now completely full, remove it from the free list. */
    if (node->bitmap == 0ull) {
       (void) util_dynarray_pop(vma_list, struct vma_bucket_node);
    }
 
-   return node->start_address + bit * bucket->size;
+   return addr;
 }
 
 static void
-bucket_vma_free(struct bo_cache_bucket *bucket,
-                uint64_t address,
-                uint64_t size)
+bucket_vma_free(struct bo_cache_bucket *bucket, uint64_t address)
 {
    enum iris_memory_zone memzone = memzone_for_address(address);
    struct util_dynarray *vma_list = &bucket->vma_list[memzone];
@@ -339,6 +347,10 @@ bucket_vma_free(struct bo_cache_bucket *bucket,
    if (!node) {
       /* No node - the whole group of 64 blocks must have been in-use. */
       node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
+
+      if (unlikely(!node))
+         return; /* bogus, leaks some GPU VMA, but nothing we can do... */
+
       node->start_address = start;
       node->bitmap = 0ull;
    }
@@ -370,12 +382,17 @@ get_bucket_allocator(struct iris_bufmgr *bufmgr, uint64_t size)
    return NULL;
 }
 
-/** Like vma_alloc, but returns a non-canonicalized address. */
+/**
+ * Allocate a section of virtual memory for a buffer, assigning an address.
+ *
+ * This uses either the bucket allocator for the given size, or the large
+ * object allocator (util_vma).
+ */
 static uint64_t
-__vma_alloc(struct iris_bufmgr *bufmgr,
-            enum iris_memory_zone memzone,
-            uint64_t size,
-            uint64_t alignment)
+vma_alloc(struct iris_bufmgr *bufmgr,
+          enum iris_memory_zone memzone,
+          uint64_t size,
+          uint64_t alignment)
 {
    if (memzone == IRIS_MEMZONE_BINDER)
       return IRIS_BINDER_ADDRESS;
@@ -394,38 +411,8 @@ __vma_alloc(struct iris_bufmgr *bufmgr,
 
    assert((addr >> 48ull) == 0);
    assert((addr % alignment) == 0);
-   return addr;
-}
 
-/**
- * Allocate a section of virtual memory for a buffer, assigning an address.
- *
- * This uses either the bucket allocator for the given size, or the large
- * object allocator (util_vma).
- */
-static uint64_t
-vma_alloc(struct iris_bufmgr *bufmgr,
-          enum iris_memory_zone memzone,
-          uint64_t size,
-          uint64_t alignment)
-{
-   uint64_t addr = __vma_alloc(bufmgr, memzone, size, alignment);
-
-   /* Canonicalize the address.
-    *
-    * The Broadwell PRM Vol. 2a, MI_LOAD_REGISTER_MEM::MemoryAddress says:
-    *
-    *    "This field specifies the address of the memory location where the
-    *     register value specified in the DWord above will read from. The
-    *     address specifies the DWord location of the data. Range =
-    *     GraphicsVirtualAddress[63:2] for a DWord register GraphicsAddress
-    *     [63:48] are ignored by the HW and assumed to be in correct
-    *     canonical form [63:48] == [47]."
-    */
-   const int shift = 63 - 47;
-   addr = (((int64_t) addr) << shift) >> shift;
-
-   return addr;
+   return gen_canonical_address(addr);
 }
 
 static void
@@ -433,16 +420,20 @@ vma_free(struct iris_bufmgr *bufmgr,
          uint64_t address,
          uint64_t size)
 {
-   if (address == IRIS_BINDER_ADDRESS)
+   if (address == IRIS_BINDER_ADDRESS ||
+       address == IRIS_BORDER_COLOR_POOL_ADDRESS)
       return;
 
-   /* Un-canonicalize the address; our allocators expect 0 in the high bits */
-   address &= (1ull << 48) - 1;
+   /* Un-canonicalize the address. */
+   address = gen_48b_address(address);
+
+   if (address == 0ull)
+      return;
 
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
 
    if (bucket) {
-      bucket_vma_free(bucket, address, size);
+      bucket_vma_free(bucket, address);
    } else {
       enum iris_memory_zone memzone = memzone_for_address(address);
       util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
@@ -592,7 +583,6 @@ retry:
       bo->gem_handle = create.handle;
 
       bo->bufmgr = bufmgr;
-      bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
       bo->tiling_mode = I915_TILING_NONE;
       bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
@@ -615,18 +605,19 @@ retry:
          goto err_free;
    }
 
+   bo->name = name;
+   p_atomic_set(&bo->refcount, 1);
+   bo->reusable = true;
+   bo->cache_coherent = bufmgr->has_llc;
+   bo->index = -1;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+
    if (bo->gtt_offset == 0ull) {
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
 
       if (bo->gtt_offset == 0ull)
          goto err_free;
    }
-
-   bo->name = name;
-   p_atomic_set(&bo->refcount, 1);
-   bo->reusable = true;
-   bo->cache_coherent = bufmgr->has_llc;
-   bo->index = -1;
 
    mtx_unlock(&bufmgr->lock);
 
@@ -713,12 +704,12 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->size = open_arg.size;
    bo->gtt_offset = 0;
    bo->bufmgr = bufmgr;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gem_handle = open_arg.handle;
    bo->name = name;
    bo->global_name = handle;
    bo->reusable = false;
    bo->external = true;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
@@ -774,8 +765,6 @@ bo_free(struct iris_bo *bo)
       _mesa_hash_table_remove(bufmgr->handle_table, entry);
    }
 
-   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
-
    /* Close this object */
    struct drm_gem_close close = { .handle = bo->gem_handle };
    int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
@@ -783,6 +772,9 @@ bo_free(struct iris_bo *bo)
       DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
           bo->gem_handle, bo->name, strerror(errno));
    }
+
+   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
+
    free(bo);
 }
 
@@ -1218,7 +1210,7 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
       .timeout_ns = timeout_ns,
    };
    int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
-   if (ret == -1)
+   if (ret != 0)
       return -errno;
 
    bo->idle = true;
@@ -1241,12 +1233,16 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
          bo_free(bo);
       }
 
-      for (int i = 0; i < IRIS_MEMZONE_COUNT; i++)
-         util_dynarray_fini(&bucket->vma_list[i]);
+      for (int z = 0; z < IRIS_MEMZONE_COUNT; z++)
+         util_dynarray_fini(&bucket->vma_list[z]);
    }
 
    _mesa_hash_table_destroy(bufmgr->name_table, NULL);
    _mesa_hash_table_destroy(bufmgr->handle_table, NULL);
+
+   for (int z = 0; z < IRIS_MEMZONE_COUNT; z++) {
+      util_vma_heap_finish(&bufmgr->vma_allocator[z]);
+   }
 
    free(bufmgr);
 }
@@ -1335,7 +1331,6 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
       bo->size = ret;
 
    bo->bufmgr = bufmgr;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
    bo->gem_handle = handle;
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
@@ -1343,6 +1338,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    bo->name = "prime";
    bo->reusable = false;
    bo->external = true;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
