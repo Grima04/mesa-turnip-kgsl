@@ -1448,6 +1448,12 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    isl_emit_depth_stencil_hiz_s(isl_dev, cso_z->packets, &info);
 
+   /* Make a null surface for unbound buffers */
+   void *null_surf_map =
+      upload_state(ice->state.surface_uploader, &ice->state.null_fb,
+                   4 * GENX(RENDER_SURFACE_STATE_length), 64);
+   isl_null_fill_state(&screen->isl_dev, null_surf_map, isl_extent3d(cso->width, cso->height, cso->layers ? cso->layers : 1));
+
    ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
 
    /* Render target change */
@@ -2630,6 +2636,16 @@ use_null_surface(struct iris_batch *batch, struct iris_context *ice)
 }
 
 static uint32_t
+use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
+{
+   struct iris_bo *state_bo = iris_resource_bo(ice->state.null_fb.res);
+
+   iris_use_pinned_bo(batch, state_bo, false);
+
+   return ice->state.null_fb.offset;
+}
+
+static uint32_t
 use_ssbo(struct iris_batch *batch, struct iris_context *ice,
          struct iris_shader_state *shs, int i)
 {
@@ -2670,9 +2686,15 @@ iris_populate_binding_table(struct iris_context *ice,
 
    if (stage == MESA_SHADER_FRAGMENT) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-         bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
-      }
+      if (cso_fb->nr_cbufs) {
+         for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+            if (cso_fb->cbufs[i])
+               bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
+            else
+               bt_map[s++] = use_null_fb_surface(batch, ice);
+         }
+      } else
+         bt_map[s++] = use_null_fb_surface(batch, ice);
    }
 
    //assert(prog_data->binding_table.texture_start ==

@@ -316,6 +316,8 @@ struct iris_context {
 
       struct iris_state_ref unbound_tex;
 
+      struct iris_state_ref null_fb;
+
       struct u_upload_mgr *surface_uploader;
       // XXX: may want a separate uploader for "hey I made a CSO!" vs
       // "I'm streaming this out at draw time and never want it again!"
