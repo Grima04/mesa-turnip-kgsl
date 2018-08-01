@@ -437,6 +437,8 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
    if (ret != 0) {
       ret = -errno;
       DBG("execbuf FAILED: errno = %d\n", -ret);
+      fprintf(stderr, "execbuf FAILED: errno = %d\n", -ret);
+      abort();
    } else {
       DBG("execbuf succeeded\n");
    }
