@@ -330,18 +330,16 @@ iris_require_command_space(struct iris_batch *batch, unsigned size)
 
       uint32_t *cmd = batch->map_next;
       uint64_t *addr = batch->map_next + 4;
-      uint32_t *noop = batch->map_next + 12;
-      batch->map_next += 12;
+      batch->map_next += 8;
 
       /* No longer held by batch->bo, still held by validation list */
       iris_bo_unreference(batch->bo);
-      batch->primary_batch_size = ALIGN(batch_bytes_used(batch), 8);
+      batch->primary_batch_size = batch_bytes_used(batch);
       create_batch(batch);
 
       /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
       *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
       *addr = batch->bo->gtt_offset;
-      *noop = 0;
    }
 }
 
@@ -378,17 +376,12 @@ iris_finish_batch(struct iris_batch *batch)
 {
    // XXX: ISP DIS
 
-   /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
-    * requires our batch size to be QWord aligned, so we pad it out if
-    * necessary by emitting an extra MI_NOOP after the end.
-    */
-   const bool qword_aligned = (batch_bytes_used(batch) % 8) == 0;
+   /* Emit MI_BATCH_BUFFER_END to finish our batch. */
    uint32_t *map = batch->map_next;
 
    map[0] = (0xA << 23);
-   map[1] = 0;
 
-   batch->map_next += qword_aligned ? 8 : 4;
+   batch->map_next += 4;
 
    if (batch->bo == batch->exec_bos[0])
       batch->primary_batch_size = batch_bytes_used(batch);
@@ -418,7 +411,8 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       .buffers_ptr = (uintptr_t) batch->validation_list,
       .buffer_count = batch->exec_count,
       .batch_start_offset = 0,
-      .batch_len = batch->primary_batch_size,
+      /* This must be QWord aligned. */
+      .batch_len = ALIGN(batch->primary_batch_size, 8),
       .flags = batch->engine |
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
