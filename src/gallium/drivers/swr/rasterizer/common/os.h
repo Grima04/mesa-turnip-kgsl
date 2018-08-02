@@ -59,8 +59,16 @@
 #define INLINE inline
 #pragma inline_depth(0)
 #else
-#define INLINE __forceinline
+// Use of __forceinline increases compile time dramatically in release builds
+// and provides almost 0 measurable benefit.  Disable until we have a compelling
+// use-case
+// #define INLINE __forceinline
+#define INLINE inline
 #endif
+#ifndef FORCEINLINE
+#define FORCEINLINE __forceinline
+#endif
+
 #define DEBUGBREAK __debugbreak()
 
 #define PRAGMA_WARNING_PUSH_DISABLE(...) \
@@ -123,6 +131,9 @@ typedef unsigned int DWORD;
 #define OSALIGN(RWORD, WIDTH) RWORD __attribute__((aligned(WIDTH)))
 #ifndef INLINE
 #define INLINE __inline
+#endif
+#ifndef FORCEINLINE
+#define FORCEINLINE INLINE
 #endif
 #define DEBUGBREAK asm("int $3")
 
