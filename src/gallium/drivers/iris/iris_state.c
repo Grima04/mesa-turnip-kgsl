@@ -1641,6 +1641,8 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct isl_device *isl_dev = &screen->isl_dev;
    struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
+   struct iris_resource *zres;
+   struct iris_resource *stencil_res;
 
    unsigned samples = util_framebuffer_get_num_samples(state);
 
@@ -1674,41 +1676,33 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       .mocs = MOCS_WB,
    };
 
-   struct iris_resource *zres =
-      (void *) (cso->zsbuf ? cso->zsbuf->texture : NULL);
-
-   if (zres) {
-      view.usage |= ISL_SURF_USAGE_DEPTH_BIT;
-
-      info.depth_surf = &zres->surf;
-      info.depth_address = zres->bo->gtt_offset;
-
-      view.format = zres->surf.format;
+   if (cso->zsbuf) {
+      iris_get_depth_stencil_resources(cso->zsbuf->texture, &zres,
+                                       &stencil_res);
 
       view.base_level = cso->zsbuf->u.tex.level;
       view.base_array_layer = cso->zsbuf->u.tex.first_layer;
       view.array_len =
          cso->zsbuf->u.tex.last_layer - cso->zsbuf->u.tex.first_layer + 1;
 
-      info.hiz_usage = ISL_AUX_USAGE_NONE;
-   }
+      if (zres) {
+         view.usage |= ISL_SURF_USAGE_DEPTH_BIT;
 
-#if 0
-   if (stencil_mt) {
-      view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
-      info.stencil_surf = &stencil_mt->surf;
+         info.depth_surf = &zres->surf;
+         info.depth_address = zres->bo->gtt_offset;
+         info.hiz_usage = ISL_AUX_USAGE_NONE;
 
-      if (!depth_mt) {
-         view.base_level = stencil_irb->mt_level - stencil_irb->mt->first_level;
-         view.base_array_layer = stencil_irb->mt_layer;
-         view.array_len = MAX2(stencil_irb->layer_count, 1);
-         view.format = stencil_mt->surf.format;
+         view.format = zres->surf.format;
       }
 
-      uint32_t stencil_offset = 0;
-      info.stencil_address = stencil_mt->bo->gtt_offset + stencil_mt->offset;
+      if (stencil_res) {
+         view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
+         info.stencil_surf = &stencil_res->surf;
+         info.stencil_address = stencil_res->bo->gtt_offset;
+         if (!zres)
+            view.format = stencil_res->surf.format;
+      }
    }
-#endif
 
    isl_emit_depth_stencil_hiz_s(isl_dev, cso_z->packets, &info);
 

@@ -170,6 +170,30 @@ iris_resource_get_separate_stencil(struct pipe_resource *p_res)
    return p_res->next;
 }
 
+void
+iris_get_depth_stencil_resources(struct pipe_resource *res,
+                                 struct iris_resource **out_z,
+                                 struct iris_resource **out_s)
+{
+   if (!res) {
+      *out_z = NULL;
+      *out_s = NULL;
+      return;
+   }
+
+   const struct util_format_description *desc =
+      util_format_description(res->format);
+
+   if (util_format_has_depth(desc)) {
+      *out_z = (void *) res;
+      *out_s = (void *) iris_resource_get_separate_stencil(res);
+   } else {
+      assert(util_format_has_stencil(desc));
+      *out_z = NULL;
+      *out_s = (void *) res;
+   }
+}
+
 static void
 iris_resource_destroy(struct pipe_screen *screen,
                       struct pipe_resource *resource)
