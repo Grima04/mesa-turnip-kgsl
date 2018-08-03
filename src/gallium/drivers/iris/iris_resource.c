@@ -198,12 +198,12 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   bool depth = util_format_is_depth_or_stencil(templ->format);
+   bool depth_or_stencil = util_format_is_depth_or_stencil(templ->format);
 
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
 
    if (modifiers_count == 0 || !modifiers) {
-      if (depth) {
+      if (depth_or_stencil) {
          modifier = I915_FORMAT_MOD_Y_TILED;
       } else if (templ->bind & PIPE_BIND_DISPLAY_TARGET) {
          /* Display is X-tiled for historical reasons. */
@@ -236,16 +236,17 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
        templ->target == PIPE_TEXTURE_CUBE_ARRAY)
       usage |= ISL_SURF_USAGE_CUBE_BIT;
 
-   // XXX: separate stencil...
-   enum pipe_format pfmt = templ->format;
-
-   if (util_format_is_depth_or_stencil(pfmt) &&
-       templ->usage != PIPE_USAGE_STAGING)
+   if (depth_or_stencil && templ->usage != PIPE_USAGE_STAGING)
       usage |= ISL_SURF_USAGE_DEPTH_BIT;
 
+   enum pipe_format pfmt = templ->format;
+
    if (util_format_is_depth_and_stencil(pfmt)) {
-      // XXX: Z32S8
-      pfmt = PIPE_FORMAT_Z24X8_UNORM;
+      struct pipe_resource t = *templ;
+      t.format = PIPE_FORMAT_S8_UINT;
+      res->base.next =
+         iris_resource_create_with_modifiers(pscreen, &t, NULL, 0);
+      pfmt = util_format_get_depth_only(pfmt);
    }
 
    enum isl_format isl_format = iris_isl_format_for_pipe_format(pfmt);
