@@ -436,7 +436,8 @@ iris_is_format_supported(struct pipe_screen *pscreen,
       supported &= format == ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS ||
                    format == ISL_FORMAT_R32_FLOAT ||
                    format == ISL_FORMAT_R24_UNORM_X8_TYPELESS ||
-                   format == ISL_FORMAT_R16_UNORM;
+                   format == ISL_FORMAT_R16_UNORM ||
+                   format == ISL_FORMAT_R8_UINT;
    }
 
    if (usage & PIPE_BIND_RENDER_TARGET)
