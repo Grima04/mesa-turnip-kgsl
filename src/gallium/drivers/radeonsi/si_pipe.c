@@ -26,6 +26,7 @@
 #include "si_pipe.h"
 #include "si_public.h"
 #include "si_shader_internal.h"
+#include "si_compute.h"
 #include "sid.h"
 
 #include "ac_llvm_util.h"
@@ -846,6 +847,32 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 				  shader_debug_flags);
 }
 
+static void si_set_max_shader_compiler_threads(struct pipe_screen *screen,
+					       unsigned max_threads)
+{
+	struct si_screen *sscreen = (struct si_screen *)screen;
+
+	/* This function doesn't allow a greater number of threads than
+	 * the queue had at its creation. */
+	util_queue_adjust_num_threads(&sscreen->shader_compiler_queue,
+				      max_threads);
+	/* Don't change the number of threads on the low priority queue. */
+}
+
+static bool si_is_parallel_shader_compilation_finished(struct pipe_screen *screen,
+						       void *shader,
+						       unsigned shader_type)
+{
+	if (shader_type == PIPE_SHADER_COMPUTE) {
+		struct si_compute *cs = (struct si_compute*)shader;
+
+		return util_queue_fence_is_signalled(&cs->ready);
+	}
+	struct si_shader_selector *sel = (struct si_shader_selector *)shader;
+
+	return util_queue_fence_is_signalled(&sel->ready);
+}
+
 struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 					   const struct pipe_screen_config *config)
 {
@@ -876,6 +903,10 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	/* Set functions first. */
 	sscreen->b.context_create = si_pipe_create_context;
 	sscreen->b.destroy = si_destroy_screen;
+	sscreen->b.set_max_shader_compiler_threads =
+		si_set_max_shader_compiler_threads;
+	sscreen->b.is_parallel_shader_compilation_finished =
+		si_is_parallel_shader_compilation_finished;
 
 	si_init_screen_get_functions(sscreen);
 	si_init_screen_buffer_functions(sscreen);
