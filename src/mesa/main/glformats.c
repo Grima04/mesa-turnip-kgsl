@@ -1379,7 +1379,8 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
    case MESA_FORMAT_LAYOUT_FXT1:
       return _mesa_has_3DFX_texture_compression_FXT1(ctx);
    case MESA_FORMAT_LAYOUT_RGTC:
-      return _mesa_has_ARB_texture_compression_rgtc(ctx);
+      return _mesa_has_ARB_texture_compression_rgtc(ctx) ||
+             _mesa_has_EXT_texture_compression_rgtc(ctx);
    case MESA_FORMAT_LAYOUT_LATC:
       return _mesa_has_EXT_texture_compression_latc(ctx);
    case MESA_FORMAT_LAYOUT_ETC1:
@@ -3126,12 +3127,16 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          return GL_INVALID_OPERATION;
       switch (type) {
       case GL_UNSIGNED_BYTE:
-         if (internalFormat != GL_RG8)
+         if (internalFormat != GL_RG8 &&
+             (!_mesa_has_EXT_texture_compression_rgtc(ctx) ||
+              internalFormat != GL_COMPRESSED_RED_GREEN_RGTC2_EXT))
             return GL_INVALID_OPERATION;
          break;
 
       case GL_BYTE:
-         if (internalFormat != GL_RG8_SNORM)
+         if (internalFormat != GL_RG8_SNORM &&
+             (!_mesa_has_EXT_texture_compression_rgtc(ctx) ||
+              internalFormat != GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT))
             return GL_INVALID_OPERATION;
          break;
 
@@ -3229,12 +3234,16 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
       case GL_UNSIGNED_BYTE:
          if (internalFormat == GL_R8 ||
              ((internalFormat == GL_SR8_EXT) &&
-              _mesa_has_EXT_texture_sRGB_R8(ctx)))
+              _mesa_has_EXT_texture_sRGB_R8(ctx)) ||
+             (internalFormat == GL_COMPRESSED_RED_RGTC1_EXT &&
+              _mesa_has_EXT_texture_compression_rgtc(ctx)))
             break;
          return GL_INVALID_OPERATION;
 
       case GL_BYTE:
-         if (internalFormat != GL_R8_SNORM)
+         if (internalFormat != GL_R8_SNORM &&
+             (!_mesa_has_EXT_texture_compression_rgtc(ctx) ||
+              internalFormat != GL_COMPRESSED_SIGNED_RED_RGTC1_EXT))
             return GL_INVALID_OPERATION;
          break;
 
