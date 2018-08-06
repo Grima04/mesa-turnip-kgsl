@@ -1255,6 +1255,30 @@ late_optimizations = [
    (('~fadd@32', ('fmul(is_used_once)', -2.0, a),  1.0), ('flrp',  1.0, -1.0,          a ), '!options->lower_flrp32'),
    (('~fadd@32', ('fmul(is_used_once)',  2.0, a),  1.0), ('flrp',  1.0, -1.0, ('fneg', a)), '!options->lower_flrp32'),
 
+    # flrp(a, b, a)
+    # a*(1-a) + b*a
+    # a + -a*a + a*b    (1)
+    # a + a*(b - a)
+    # Option 1: ffma(a, (b-a), a)
+    #
+    # Alternately, after (1):
+    # a*(1+b) + -a*a
+    # a*((1+b) + -a)
+    #
+    # Let b=1
+    #
+    # Option 2: ffma(a, 2, -(a*a))
+    # Option 3: ffma(a, 2, (-a)*a)
+    # Option 4: ffma(a, -a, (2*a)
+    # Option 5: a * (2 - a)
+    #
+    # There are a lot of other possible combinations.
+   (('~ffma@32', ('fadd', b, ('fneg', a)), a, a), ('flrp', a, b, a), '!options->lower_flrp32'),
+   (('~ffma@32', a, 2.0, ('fneg', ('fmul', a, a))), ('flrp', a, 1.0, a), '!options->lower_flrp32'),
+   (('~ffma@32', a, 2.0, ('fmul', ('fneg', a), a)), ('flrp', a, 1.0, a), '!options->lower_flrp32'),
+   (('~ffma@32', a, ('fneg', a), ('fmul', 2.0, a)), ('flrp', a, 1.0, a), '!options->lower_flrp32'),
+   (('~fmul@32', a, ('fadd', 2.0, ('fneg', a))),    ('flrp', a, 1.0, a), '!options->lower_flrp32'),
+
    # we do these late so that we don't get in the way of creating ffmas
    (('fmin', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmin', a, b))),
    (('fmax', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmax', a, b))),
