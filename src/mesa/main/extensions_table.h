@@ -20,6 +20,7 @@ EXT(AMD_query_buffer_object                 , ARB_query_buffer_object           
 EXT(AMD_seamless_cubemap_per_texture        , AMD_seamless_cubemap_per_texture       , GLL, GLC,  x ,  x , 2009)
 EXT(AMD_shader_stencil_export               , ARB_shader_stencil_export              , GLL, GLC,  x ,  x , 2009)
 EXT(AMD_shader_trinary_minmax               , dummy_true                             , GLL, GLC,  x ,  x , 2012)
+EXT(AMD_texture_texture4                    , ARB_texture_gather                     , GLL, GLC,  x ,  x , 2008)
 EXT(AMD_vertex_shader_layer                 , AMD_vertex_shader_layer                , GLL, GLC,  x ,  x , 2012)
 EXT(AMD_vertex_shader_viewport_index        , AMD_vertex_shader_viewport_index       , GLL, GLC,  x ,  x , 2012)
 
