@@ -276,6 +276,7 @@ EXT(EXT_texture3D                           , dummy_true                        
 EXT(EXT_texture_array                       , EXT_texture_array                      , GLL, GLC,  x ,  x , 2006)
 EXT(EXT_texture_border_clamp                , ARB_texture_border_clamp               ,  x ,  x ,  x , ES2, 2014)
 EXT(EXT_texture_buffer                      , OES_texture_buffer                     ,  x ,  x ,  x ,  31, 2014)
+EXT(EXT_texture_compression_bptc            , ARB_texture_compression_bptc           ,  x ,  x ,  x ,  30, 2017)
 EXT(EXT_texture_compression_dxt1            , ANGLE_texture_compression_dxt          , GLL, GLC, ES1, ES2, 2004)
 EXT(EXT_texture_compression_latc            , EXT_texture_compression_latc           , GLL,  x ,  x ,  x , 2006)
 EXT(EXT_texture_compression_rgtc            , ARB_texture_compression_rgtc           , GLL, GLC,  x ,  30, 2004)

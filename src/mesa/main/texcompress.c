@@ -327,6 +327,14 @@ _mesa_get_compressed_formats(struct gl_context *ctx, GLint *formats)
       formats[n++] = GL_ETC1_RGB8_OES;
    }
 
+   /* Required by EXT_texture_compression_bptc in GLES. */
+   if (_mesa_has_EXT_texture_compression_bptc(ctx)) {
+      formats[n++] = GL_COMPRESSED_RGBA_BPTC_UNORM;
+      formats[n++] = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
+      formats[n++] = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT;
+      formats[n++] = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
+   }
+
    /* Required by EXT_texture_compression_rgtc in GLES. */
    if (_mesa_is_gles3(ctx) &&
        _mesa_has_EXT_texture_compression_rgtc(ctx)) {
