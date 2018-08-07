@@ -201,15 +201,14 @@ struct util_queue_job {
 /* Put this into your context. */
 struct util_queue {
    char name[14]; /* 13 characters = the thread name without the index */
-   mtx_t finish_lock; /* only for util_queue_finish */
+   mtx_t finish_lock; /* for util_queue_finish and protects threads/num_threads */
    mtx_t lock;
    cnd_t has_queued_cond;
    cnd_t has_space_cond;
    thrd_t *threads;
    unsigned flags;
    int num_queued;
-   unsigned num_threads;
-   int kill_threads;
+   unsigned num_threads; /* decreasing this number will terminate threads */
    int max_jobs;
    int write_idx, read_idx; /* ring buffer pointers */
    struct util_queue_job *jobs;
