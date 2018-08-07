@@ -305,6 +305,37 @@ util_queue_thread_func(void *input)
    return 0;
 }
 
+static bool
+util_queue_create_thread(struct util_queue *queue, unsigned index)
+{
+   struct thread_input *input =
+      (struct thread_input *) malloc(sizeof(struct thread_input));
+   input->queue = queue;
+   input->thread_index = index;
+
+   queue->threads[index] = u_thread_create(util_queue_thread_func, input);
+
+   if (!queue->threads[index]) {
+      free(input);
+      return false;
+   }
+
+   if (queue->flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {
+#if defined(__linux__) && defined(SCHED_IDLE)
+      struct sched_param sched_param = {0};
+
+      /* The nice() function can only set a maximum of 19.
+       * SCHED_IDLE is the same as nice = 20.
+       *
+       * Note that Linux only allows decreasing the priority. The original
+       * priority can't be restored.
+       */
+      pthread_setschedparam(queue->threads[index], SCHED_IDLE, &sched_param);
+#endif
+   }
+   return true;
+}
+
 bool
 util_queue_init(struct util_queue *queue,
                 const char *name,
@@ -364,16 +395,7 @@ util_queue_init(struct util_queue *queue,
 
    /* start threads */
    for (i = 0; i < num_threads; i++) {
-      struct thread_input *input =
-         (struct thread_input *) malloc(sizeof(struct thread_input));
-      input->queue = queue;
-      input->thread_index = i;
-
-      queue->threads[i] = u_thread_create(util_queue_thread_func, input);
-
-      if (!queue->threads[i]) {
-         free(input);
-
+      if (!util_queue_create_thread(queue, i)) {
          if (i == 0) {
             /* no threads created, fail */
             goto fail;
@@ -382,20 +404,6 @@ util_queue_init(struct util_queue *queue,
             queue->num_threads = i;
             break;
          }
-      }
-
-      if (flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {
-   #if defined(__linux__) && defined(SCHED_IDLE)
-         struct sched_param sched_param = {0};
-
-         /* The nice() function can only set a maximum of 19.
-          * SCHED_IDLE is the same as nice = 20.
-          *
-          * Note that Linux only allows decreasing the priority. The original
-          * priority can't be restored.
-          */
-         pthread_setschedparam(queue->threads[i], SCHED_IDLE, &sched_param);
-   #endif
       }
    }
 
