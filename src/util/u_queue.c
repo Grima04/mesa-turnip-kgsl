@@ -592,15 +592,15 @@ void
 util_queue_finish(struct util_queue *queue)
 {
    util_barrier barrier;
-   struct util_queue_fence *fences = malloc(queue->num_threads * sizeof(*fences));
-
-   util_barrier_init(&barrier, queue->num_threads);
+   struct util_queue_fence *fences;
 
    /* If 2 threads were adding jobs for 2 different barries at the same time,
     * a deadlock would happen, because 1 barrier requires that all threads
     * wait for it exclusively.
     */
    mtx_lock(&queue->finish_lock);
+   fences = malloc(queue->num_threads * sizeof(*fences));
+   util_barrier_init(&barrier, queue->num_threads);
 
    for (unsigned i = 0; i < queue->num_threads; ++i) {
       util_queue_fence_init(&fences[i]);
