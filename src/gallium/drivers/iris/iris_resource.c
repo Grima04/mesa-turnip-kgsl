@@ -448,15 +448,172 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    return false;
 }
 
+static void
+get_image_offset_el(struct isl_surf *surf, unsigned level, unsigned z,
+                    unsigned *out_x0_el, unsigned *out_y0_el)
+{
+   if (surf->dim == ISL_SURF_DIM_3D) {
+      isl_surf_get_image_offset_el(surf, level, 0, z, out_x0_el, out_y0_el);
+   } else {
+      isl_surf_get_image_offset_el(surf, level, z, 0, out_x0_el, out_y0_el);
+   }
+}
+
+/**
+ * Get pointer offset into stencil buffer.
+ *
+ * The stencil buffer is W tiled. Since the GTT is incapable of W fencing, we
+ * must decode the tile's layout in software.
+ *
+ * See
+ *   - PRM, 2011 Sandy Bridge, Volume 1, Part 2, Section 4.5.2.1 W-Major Tile
+ *     Format.
+ *   - PRM, 2011 Sandy Bridge, Volume 1, Part 2, Section 4.5.3 Tiling Algorithm
+ *
+ * Even though the returned offset is always positive, the return type is
+ * signed due to
+ *    commit e8b1c6d6f55f5be3bef25084fdd8b6127517e137
+ *    mesa: Fix return type of  _mesa_get_format_bytes() (#37351)
+ */
+static intptr_t
+s8_offset(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
+{
+   uint32_t tile_size = 4096;
+   uint32_t tile_width = 64;
+   uint32_t tile_height = 64;
+   uint32_t row_size = 64 * stride / 2; /* Two rows are interleaved. */
+
+   uint32_t tile_x = x / tile_width;
+   uint32_t tile_y = y / tile_height;
+
+   /* The byte's address relative to the tile's base addres. */
+   uint32_t byte_x = x % tile_width;
+   uint32_t byte_y = y % tile_height;
+
+   uintptr_t u = tile_y * row_size
+               + tile_x * tile_size
+               + 512 * (byte_x / 8)
+               +  64 * (byte_y / 8)
+               +  32 * ((byte_y / 4) % 2)
+               +  16 * ((byte_x / 4) % 2)
+               +   8 * ((byte_y / 2) % 2)
+               +   4 * ((byte_x / 2) % 2)
+               +   2 * (byte_y % 2)
+               +   1 * (byte_x % 2);
+
+   if (swizzled) {
+      /* adjust for bit6 swizzling */
+      if (((byte_x / 8) % 2) == 1) {
+	 if (((byte_y / 8) % 2) == 0) {
+	    u += 64;
+	 } else {
+	    u -= 64;
+	 }
+      }
+   }
+
+   return u;
+}
+
+static void
+iris_unmap_s8(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
+   const bool has_swizzling = false; // XXX: swizzling?
+
+   if (xfer->usage & PIPE_TRANSFER_WRITE) {
+      uint8_t *untiled_s8_map = map->ptr;
+      uint8_t *tiled_s8_map =
+         iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+
+      struct pipe_box box = xfer->box;
+
+      for (int s = 0; s < box.depth; s++) {
+         unsigned x0_el, y0_el;
+         get_image_offset_el(surf, xfer->level, box.z, &x0_el, &y0_el);
+
+         for (uint32_t y = 0; y < box.height; y++) {
+            for (uint32_t x = 0; x < box.width; x++) {
+               ptrdiff_t offset = s8_offset(surf->row_pitch_B,
+                                            x0_el + box.x + x,
+                                            y0_el + box.y + y,
+                                            has_swizzling);
+               tiled_s8_map[offset] =
+                  untiled_s8_map[s * xfer->layer_stride + y * xfer->stride + x];
+            }
+         }
+
+         box.z++;
+      }
+   }
+
+   free(map->buffer);
+}
+
+static void
+iris_map_s8(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct isl_surf *surf = &res->surf;
+
+   xfer->stride = surf->row_pitch_B;
+   xfer->layer_stride = xfer->stride * xfer->box.height;
+
+   /* The tiling and detiling functions require that the linear buffer has
+    * a 16-byte alignment (that is, its `x0` is 16-byte aligned).  Here we
+    * over-allocate the linear buffer to get the proper alignment.
+    */
+   map->buffer = map->ptr = malloc(xfer->layer_stride * xfer->box.depth);
+   assert(map->buffer);
+
+   const bool has_swizzling = false; // XXX: swizzling?
+
+   /* One of either READ_BIT or WRITE_BIT or both is set.  READ_BIT implies no
+    * INVALIDATE_RANGE_BIT.  WRITE_BIT needs the original values read in unless
+    * invalidate is set, since we'll be writing the whole rectangle from our
+    * temporary buffer back out.
+    */
+   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+      uint8_t *untiled_s8_map = map->ptr;
+      uint8_t *tiled_s8_map =
+         iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+
+      struct pipe_box box = xfer->box;
+
+      for (int s = 0; s < box.depth; s++) {
+         unsigned x0_el, y0_el;
+         get_image_offset_el(surf, xfer->level, box.z, &x0_el, &y0_el);
+
+         for (uint32_t y = 0; y < box.height; y++) {
+            for (uint32_t x = 0; x < box.width; x++) {
+               ptrdiff_t offset = s8_offset(surf->row_pitch_B,
+                                            x0_el + box.x + x,
+                                            y0_el + box.y + y,
+                                            has_swizzling);
+               untiled_s8_map[s * xfer->layer_stride + y * xfer->stride + x] =
+                  tiled_s8_map[offset];
+            }
+         }
+
+         box.z++;
+      }
+   }
+
+   map->unmap = iris_unmap_s8;
+}
+
 /* Compute extent parameters for use with tiled_memcpy functions.
  * xs are in units of bytes and ys are in units of strides.
  */
 static inline void
 tile_extents(struct isl_surf *surf,
              const struct pipe_box *box,
-             unsigned int level,
-             unsigned int *x1_B, unsigned int *x2_B,
-             unsigned int *y1_el, unsigned int *y2_el)
+             unsigned level,
+             unsigned *x1_B, unsigned *x2_B,
+             unsigned *y1_el, unsigned *y2_el)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    const unsigned cpp = fmtl->bpb / 8;
@@ -465,11 +622,7 @@ tile_extents(struct isl_surf *surf,
    assert(box->y % fmtl->bh == 0);
 
    unsigned x0_el, y0_el;
-   if (surf->dim == ISL_SURF_DIM_3D) {
-      isl_surf_get_image_offset_el(surf, level, 0, box->z, &x0_el, &y0_el);
-   } else {
-      isl_surf_get_image_offset_el(surf, level, box->z, 0, &x0_el, &y0_el);
-   }
+   get_image_offset_el(surf, level, box->z, &x0_el, &y0_el);
 
    *x1_B = (box->x / fmtl->bw + x0_el) * cpp;
    *y1_el = box->y / fmtl->bh + y0_el;
@@ -491,7 +644,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
       char *dst = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
 
       for (int s = 0; s < box.depth; s++) {
-         unsigned int x1, x2, y1, y2;
+         unsigned x1, x2, y1, y2;
          tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
 
          void *ptr = map->ptr + box.z * xfer->layer_stride;
@@ -537,7 +690,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
       struct pipe_box box = xfer->box;
 
       for (int s = 0; s < box.depth; s++) {
-         unsigned int x1, x2, y1, y2;
+         unsigned x1, x2, y1, y2;
          tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
 
          isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src,
@@ -621,7 +774,10 @@ iris_transfer_map(struct pipe_context *ctx,
                    PIPE_TRANSFER_COHERENT |
                    PIPE_TRANSFER_DISCARD_RANGE);
 
-   if (surf->tiling != ISL_TILING_LINEAR) {
+   if (surf->tiling == ISL_TILING_W) {
+      // XXX: just teach iris_map_tiled_memcpy about W tiling...
+      iris_map_s8(map);
+   } else if (surf->tiling != ISL_TILING_LINEAR) {
       iris_map_tiled_memcpy(map);
    } else {
       iris_map_direct(map);
