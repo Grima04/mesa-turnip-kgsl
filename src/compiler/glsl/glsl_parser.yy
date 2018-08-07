@@ -2072,7 +2072,7 @@ type_qualifier:
                           "duplicate auxiliary storage qualifier (centroid or sample)");
       }
 
-      if (!state->has_420pack_or_es31() &&
+      if ((!state->has_420pack_or_es31() && !state->EXT_gpu_shader4_enable) &&
           ($2.flags.q.precise || $2.flags.q.invariant ||
            $2.has_interpolation() || $2.has_layout())) {
          _mesa_glsl_error(&@1, state, "auxiliary storage qualifiers must come "
