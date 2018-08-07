@@ -208,6 +208,7 @@ struct util_queue {
    thrd_t *threads;
    unsigned flags;
    int num_queued;
+   unsigned max_threads;
    unsigned num_threads; /* decreasing this number will terminate threads */
    int max_jobs;
    int write_idx, read_idx; /* ring buffer pointers */
@@ -234,6 +235,13 @@ void util_queue_drop_job(struct util_queue *queue,
                          struct util_queue_fence *fence);
 
 void util_queue_finish(struct util_queue *queue);
+
+/* Adjust the number of active threads. The new number of threads can't be
+ * greater than the initial number of threads at the creation of the queue,
+ * and it can't be less than 1.
+ */
+void
+util_queue_adjust_num_threads(struct util_queue *queue, unsigned num_threads);
 
 int64_t util_queue_get_thread_time_nano(struct util_queue *queue,
                                         unsigned thread_index);
