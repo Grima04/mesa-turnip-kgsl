@@ -2308,7 +2308,16 @@ type_specifier_nonarray:
 
 basic_type_specifier_nonarray:
    VOID_TOK                 { $$ = glsl_type::void_type; }
-   | BASIC_TYPE_TOK         { $$ = $1; };
+   | BASIC_TYPE_TOK         { $$ = $1; }
+   | UNSIGNED BASIC_TYPE_TOK
+   {
+      if ($2 == glsl_type::int_type) {
+         $$ = glsl_type::uint_type;
+      } else {
+         _mesa_glsl_error(&@1, state,
+                          "\"unsigned\" is only allowed before \"int\"");
+      }
+   }
    ;
 
 precision_qualifier:
