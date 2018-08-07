@@ -1107,6 +1107,13 @@ void st_init_extensions(struct pipe_screen *screen,
    }
 
    if (GLSLVersion >= 140) {
+      /* Since GLSL 1.40 has support for all of the features of gpu_shader4,
+       * we can always expose it if the driver can do 140. Supporting
+       * gpu_shader4 on drivers without GLSL 1.40 is left for a future
+       * pipe cap.
+       */
+      extensions->EXT_gpu_shader4 = GL_TRUE;
+
       if (screen->get_param(screen, PIPE_CAP_TGSI_ARRAY_COMPONENTS))
          extensions->ARB_enhanced_layouts = GL_TRUE;
    }
