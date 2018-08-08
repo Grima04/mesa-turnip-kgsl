@@ -40,6 +40,7 @@
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_transfer.h"
+#include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
 #include "iris_batch.h"
@@ -170,6 +171,14 @@ iris_resource_get_separate_stencil(struct pipe_resource *p_res)
    return p_res->next;
 }
 
+static void
+iris_resource_set_separate_stencil(struct pipe_resource *p_res,
+                                   struct pipe_resource *stencil)
+{
+   assert(util_format_has_depth(util_format_description(p_res->format)));
+   p_res->next = stencil;
+}
+
 void
 iris_get_depth_stencil_resources(struct pipe_resource *res,
                                  struct iris_resource **out_z,
@@ -282,6 +291,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    enum pipe_format pfmt = templ->format;
+   res->internal_format = pfmt;
 
    if (util_format_is_depth_and_stencil(pfmt)) {
       struct pipe_resource t = *templ;
@@ -787,13 +797,6 @@ iris_transfer_map(struct pipe_context *ctx,
 }
 
 static void
-iris_transfer_flush_region(struct pipe_context *pipe,
-                           struct pipe_transfer *transfer,
-                           const struct pipe_box *box)
-{
-}
-
-static void
 iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
@@ -822,24 +825,44 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
 }
 
+static enum pipe_format
+iris_resource_get_internal_format(struct pipe_resource *p_res)
+{
+   struct iris_resource *res = (void *) p_res;
+   return res->internal_format;
+}
+
+static const struct u_transfer_vtbl transfer_vtbl = {
+   .resource_create       = iris_resource_create,
+   .resource_destroy      = iris_resource_destroy,
+   .transfer_map          = iris_transfer_map,
+   .transfer_unmap        = iris_transfer_unmap,
+   .transfer_flush_region = u_default_transfer_flush_region,
+   .get_internal_format   = iris_resource_get_internal_format,
+   .set_stencil           = iris_resource_set_separate_stencil,
+   .get_stencil           = iris_resource_get_separate_stencil,
+};
+
 void
 iris_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
    pscreen->resource_create_with_modifiers =
       iris_resource_create_with_modifiers;
-   pscreen->resource_create = iris_resource_create;
+   pscreen->resource_create = u_transfer_helper_resource_create;
    pscreen->resource_from_handle = iris_resource_from_handle;
    pscreen->resource_get_handle = iris_resource_get_handle;
-   pscreen->resource_destroy = iris_resource_destroy;
+   pscreen->resource_destroy = u_transfer_helper_resource_destroy;
+   pscreen->transfer_helper =
+      u_transfer_helper_create(&transfer_vtbl, true, true, false, false);
 }
 
 void
 iris_init_resource_functions(struct pipe_context *ctx)
 {
    ctx->flush_resource = iris_flush_resource;
-   ctx->transfer_map = iris_transfer_map;
-   ctx->transfer_flush_region = iris_transfer_flush_region;
-   ctx->transfer_unmap = iris_transfer_unmap;
+   ctx->transfer_map = u_transfer_helper_transfer_map;
+   ctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
+   ctx->transfer_unmap = u_transfer_helper_transfer_unmap;
    ctx->buffer_subdata = u_default_buffer_subdata;
    ctx->texture_subdata = u_default_texture_subdata;
 }

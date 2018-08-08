@@ -38,6 +38,7 @@
  */
 struct iris_resource {
    struct pipe_resource	base;
+   enum pipe_format internal_format;
    struct isl_surf surf;
    struct iris_bo *bo;
 };
