@@ -152,7 +152,7 @@ option(
   'vulkan-drivers',
   type : 'array',
   value : ['auto'],
-  choices : ['', 'auto', 'amd', 'intel'],
+  choices : ['', 'auto', 'amd', 'freedreno', 'intel'],
   description : 'List of vulkan drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
 option(
