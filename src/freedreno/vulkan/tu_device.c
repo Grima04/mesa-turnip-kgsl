@@ -75,6 +75,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    drmVersionPtr version;
    int fd;
    int master_fd = -1;
+   struct fd_pipe *tmp_pipe = NULL;
+   uint64_t val;
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
@@ -130,7 +132,49 @@ tu_physical_device_init(struct tu_physical_device *device,
    device->master_fd = master_fd;
    device->local_fd = fd;
 
-   if (tu_device_get_cache_uuid(0 /* TODO */, device->cache_uuid)) {
+   device->drm_device = fd_device_new_dup(fd);
+   if (!device->drm_device) {
+      result = vk_errorf(
+        instance, VK_ERROR_INITIALIZATION_FAILED, "could not create the libdrm device");
+       goto fail;
+   }
+
+   tmp_pipe = fd_pipe_new(device->drm_device, FD_PIPE_3D);
+   if (!tmp_pipe) {
+      result = vk_errorf(
+        instance, VK_ERROR_INITIALIZATION_FAILED, "could not open the 3D pipe");
+      goto fail;
+   }
+
+   if (fd_pipe_get_param(tmp_pipe, FD_GPU_ID, &val)) {
+      result = vk_errorf(
+        instance, VK_ERROR_INITIALIZATION_FAILED, "could not get GPU ID");
+      goto fail;
+   }
+   device->gpu_id = val;
+
+   if (fd_pipe_get_param(tmp_pipe, FD_GMEM_SIZE, &val)) {
+      result = vk_errorf(
+        instance, VK_ERROR_INITIALIZATION_FAILED, "could not get GMEM size");
+      goto fail;
+   }
+   device->gmem_size = val;
+
+   fd_pipe_del(tmp_pipe);
+   tmp_pipe = NULL;
+
+   memset(device->name, 0, sizeof(device->name));
+   sprintf(device->name, "FD%d", device->gpu_id);
+
+   switch(device->gpu_id) {
+   case 530:
+      break;
+   default:
+      if (instance->debug_flags & TU_DEBUG_STARTUP)
+         tu_logi("Device '%s' is not supported.", device->name);
+      goto fail;
+   }
+   if (tu_device_get_cache_uuid(device->gpu_id, device->cache_uuid)) {
       result = vk_errorf(
         instance, VK_ERROR_INITIALIZATION_FAILED, "cannot generate UUID");
       goto fail;
@@ -160,6 +204,10 @@ tu_physical_device_init(struct tu_physical_device *device,
    return VK_SUCCESS;
 
 fail:
+   if (tmp_pipe)
+      fd_pipe_del(tmp_pipe);
+   if (device->drm_device)
+      fd_device_del(device->drm_device);
    close(fd);
    if (master_fd != -1)
       close(master_fd);

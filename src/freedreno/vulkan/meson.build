@@ -77,9 +77,13 @@ libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
   [libtu_files, tu_entrypoints, tu_extensions_c, vk_format_table_c],
   include_directories : [
-    inc_common, inc_compiler, inc_vulkan_util,
+    inc_common,
+    inc_compiler,
+    inc_vulkan_util,
+    inc_freedreno,
   ],
   link_with : [
+    libfreedreno_drm,
     libvulkan_util,
     libmesa_util,
   ],
