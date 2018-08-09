@@ -98,14 +98,14 @@ tu_physical_device_init(struct tu_physical_device *device,
                        path);
    }
 
-   if (strcmp(version->name, "amdgpu")) {
+   if (strcmp(version->name, "msm")) {
       drmFreeVersion(version);
       if (master_fd != -1)
          close(master_fd);
       close(fd);
 
       if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Device '%s' is not using the amdgpu kernel driver.", path);
+         tu_logi("Device '%s' is not using the msm kernel driver.", path);
 
       return VK_ERROR_INCOMPATIBLE_DRIVER;
    }
@@ -339,8 +339,7 @@ tu_enumerate_devices(struct tu_instance *instance)
 
    for (unsigned i = 0; i < (unsigned)max_devices; i++) {
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PCI &&
-          devices[i]->deviceinfo.pci->vendor_id == 0) {
+          devices[i]->bustype == DRM_BUS_PLATFORM) {
 
          result = tu_physical_device_init(instance->physical_devices +
                                              instance->physical_device_count,
