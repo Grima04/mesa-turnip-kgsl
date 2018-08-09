@@ -164,6 +164,25 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
               dst_x0, dst_y0, dst_x1, dst_y1,
               filter, mirror_x, mirror_y);
 
+   if (util_format_is_depth_and_stencil(info->dst.format) &&
+       util_format_has_stencil(util_format_description(info->src.format))) {
+      struct iris_resource *src_res, *dst_res, *junk;
+      iris_get_depth_stencil_resources(info->src.resource, &junk, &src_res);
+      iris_get_depth_stencil_resources(info->dst.resource, &junk, &dst_res);
+      iris_blorp_surf_for_resource(&src_surf, &src_res->base,
+                                   ISL_AUX_USAGE_NONE, false);
+      iris_blorp_surf_for_resource(&dst_surf, &dst_res->base,
+                                   ISL_AUX_USAGE_NONE, true);
+
+      blorp_blit(&blorp_batch, &src_surf, info->src.level, src_layer,
+                 ISL_FORMAT_R8_UINT, src_isl_swizzle,
+                 &dst_surf, info->dst.level, dst_layer,
+                 ISL_FORMAT_R8_UINT, ISL_SWIZZLE_IDENTITY,
+                 src_x0, src_y0, src_x1, src_y1,
+                 dst_x0, dst_y0, dst_x1, dst_y1,
+                 filter, mirror_x, mirror_y);
+   }
+
    blorp_batch_finish(&blorp_batch);
 }
 
