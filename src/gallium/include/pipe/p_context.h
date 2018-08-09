@@ -908,6 +908,22 @@ struct pipe_context {
    /*@}*/
 
    /**
+    * SVM (Share Virtual Memory) helpers
+    */
+   /*@{*/
+   /**
+    * Migrate range of virtual address to device or host memory.
+    *
+    * \param to_device - true if the virtual memory is migrated to the device
+    *                    false if the virtual memory is migrated to the host
+    * \param migrate_content - whether the content should be migrated as well
+    */
+   void (*svm_migrate)(struct pipe_context *context, unsigned num_ptrs,
+                       const void* const* ptrs, const size_t *sizes,
+                       bool to_device, bool migrate_content);
+   /*@}*/
+
+   /**
     * Get the default sample position for an individual sample point.
     *
     * \param sample_count - total number of samples
