@@ -171,6 +171,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    default:
       if (instance->debug_flags & TU_DEBUG_STARTUP)
          tu_logi("Device '%s' is not supported.", device->name);
+      result = vk_errorf(
+        instance, VK_ERROR_INITIALIZATION_FAILED, "unsupported device");
       goto fail;
    }
    if (tu_device_get_cache_uuid(device->gpu_id, device->cache_uuid)) {
