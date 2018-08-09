@@ -176,7 +176,7 @@ iris_resource_set_separate_stencil(struct pipe_resource *p_res,
                                    struct pipe_resource *stencil)
 {
    assert(util_format_has_depth(util_format_description(p_res->format)));
-   p_res->next = stencil;
+   pipe_resource_reference(&p_res->next, stencil);
 }
 
 void
