@@ -293,13 +293,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    enum pipe_format pfmt = templ->format;
    res->internal_format = pfmt;
 
-   if (util_format_is_depth_and_stencil(pfmt)) {
-      struct pipe_resource t = *templ;
-      t.format = PIPE_FORMAT_S8_UINT;
-      res->base.next =
-         iris_resource_create_with_modifiers(pscreen, &t, NULL, 0);
-      pfmt = util_format_get_depth_only(pfmt);
-   }
+   /* Should be handled by u_transfer_helper */
+   assert(!util_format_is_depth_and_stencil(pfmt));
 
    enum isl_format isl_format = iris_isl_format_for_pipe_format(pfmt);
    assert(isl_format != ISL_FORMAT_UNSUPPORTED);
