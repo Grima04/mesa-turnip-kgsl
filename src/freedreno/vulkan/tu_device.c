@@ -125,7 +125,6 @@ tu_physical_device_init(struct tu_physical_device *device,
       master_fd = open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
       if (master_fd >= 0) {
          /* TODO: free master_fd is accel is not working? */
-         abort();
       }
    }
 
