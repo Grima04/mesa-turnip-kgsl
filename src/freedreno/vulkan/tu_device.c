@@ -1245,6 +1245,19 @@ tu_alloc_memory(struct tu_device *device,
    if (mem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   mem->bo = fd_bo_new(device->physical_device->drm_device, pAllocateInfo->allocationSize,
+                       DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
+                       DRM_FREEDRENO_GEM_TYPE_KMEM);
+   if (!mem->bo) {
+      vk_free2(&device->alloc, pAllocator, mem);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+   mem->size = pAllocateInfo->allocationSize;
+   mem->type_index = pAllocateInfo->memoryTypeIndex;
+
+   mem->map = NULL;
+   mem->user_ptr = NULL;
+
    *pMem = tu_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
@@ -1271,6 +1284,9 @@ tu_FreeMemory(VkDevice _device,
    if (mem == NULL)
       return;
 
+   if (mem->bo)
+      fd_bo_del(mem->bo);
+
    vk_free2(&device->alloc, pAllocator, mem);
 }
 
@@ -1290,8 +1306,12 @@ tu_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   if (mem->user_ptr)
+   if (mem->user_ptr) {
       *ppData = mem->user_ptr;
+   } else  if (!mem->map){
+      *ppData = mem->map = fd_bo_map(mem->bo);
+   } else
+      *ppData = mem->map;
 
    if (*ppData) {
       *ppData += offset;
@@ -1304,10 +1324,7 @@ tu_MapMemory(VkDevice _device,
 void
 tu_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
 {
-   TU_FROM_HANDLE(tu_device_memory, mem, _memory);
-
-   if (mem == NULL)
-      return;
+   /* I do not see any unmapping done by the freedreno Gallium driver. */
 }
 
 VkResult

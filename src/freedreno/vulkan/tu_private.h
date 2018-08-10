@@ -442,12 +442,14 @@ struct tu_device
 
 struct tu_device_memory
 {
+   struct fd_bo *bo;
+   VkDeviceSize size;
 
    /* for dedicated allocations */
    struct tu_image *image;
    struct tu_buffer *buffer;
+
    uint32_t type_index;
-   VkDeviceSize map_size;
    void *map;
    void *user_ptr;
 };
