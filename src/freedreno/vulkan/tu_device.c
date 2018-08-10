@@ -874,12 +874,28 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
    assert(*pCount <= 1);
 }
 
+static uint64_t
+tu_get_system_memory_size()
+{
+   uint64_t pages = sysconf(_SC_PHYS_PAGES);
+   uint64_t page_size = sysconf(_SC_PAGE_SIZE);
+   return pages * page_size;
+}
+
 void
 tu_GetPhysicalDeviceMemoryProperties(
   VkPhysicalDevice physicalDevice,
   VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
-   stub();
+   pMemoryProperties->memoryHeapCount = 1;
+   pMemoryProperties->memoryHeaps[0].size = tu_get_system_memory_size();
+   pMemoryProperties->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   pMemoryProperties->memoryTypeCount = 1;
+   pMemoryProperties->memoryTypes[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+   pMemoryProperties->memoryTypes[0].heapIndex = 0;
 }
 
 void
