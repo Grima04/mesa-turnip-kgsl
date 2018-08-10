@@ -433,6 +433,7 @@ struct v3d_context {
         struct v3d_vertexbuf_stateobj vertexbuf;
         struct v3d_streamout_stateobj streamout;
         struct v3d_bo *current_oq;
+        struct pipe_debug_callback debug;
         /** @} */
 };
 

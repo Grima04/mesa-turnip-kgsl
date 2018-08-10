@@ -66,6 +66,18 @@ v3d_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
 }
 
 static void
+v3d_set_debug_callback(struct pipe_context *pctx,
+                       const struct pipe_debug_callback *cb)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+
+        if (cb)
+                v3d->debug = *cb;
+        else
+                memset(&v3d->debug, 0, sizeof(v3d->debug));
+}
+
+static void
 v3d_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
         struct v3d_context *v3d = v3d_context(pctx);
@@ -139,6 +151,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->priv = priv;
         pctx->destroy = v3d_context_destroy;
         pctx->flush = v3d_pipe_flush;
+        pctx->set_debug_callback = v3d_set_debug_callback;
         pctx->invalidate_resource = v3d_invalidate_resource;
 
         if (screen->devinfo.ver >= 41) {
