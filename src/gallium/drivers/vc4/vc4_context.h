@@ -405,6 +405,7 @@ struct vc4_context {
         struct pipe_viewport_state viewport;
         struct vc4_constbuf_stateobj constbuf[PIPE_SHADER_TYPES];
         struct vc4_vertexbuf_stateobj vertexbuf;
+        struct pipe_debug_callback debug;
 
         struct vc4_hwperfmon *perfmon;
         /** @} */
