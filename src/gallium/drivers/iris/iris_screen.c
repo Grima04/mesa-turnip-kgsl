@@ -161,6 +161,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
    case PIPE_CAP_TGSI_CLOCK:
    case PIPE_CAP_TGSI_BALLOT:
+   case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
       return true;
 
    case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
@@ -281,7 +282,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
    case PIPE_CAP_FRAMEBUFFER_MSAA_CONSTRAINTS:
       return 0;
-   case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
    case PIPE_CAP_TGSI_TXQS:
