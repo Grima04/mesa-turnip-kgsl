@@ -427,6 +427,8 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    if (format == ISL_FORMAT_UNSUPPORTED)
       return false;
 
+   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+   const bool is_integer = isl_format_has_int_channel(format);
    bool supported = true;
 
    if (sample_count > 1)
@@ -440,8 +442,11 @@ iris_is_format_supported(struct pipe_screen *pscreen,
                    format == ISL_FORMAT_R8_UINT;
    }
 
-   if (usage & PIPE_BIND_RENDER_TARGET)
+   if (usage & PIPE_BIND_RENDER_TARGET) {
       supported &= isl_format_supports_rendering(devinfo, format);
+      if (!is_integer)
+         supported &= isl_format_supports_alpha_blending(devinfo, format);
+   }
 
    if (usage & PIPE_BIND_SHADER_IMAGE) {
       // XXX: allow untyped reads
@@ -449,8 +454,18 @@ iris_is_format_supported(struct pipe_screen *pscreen,
                    isl_format_supports_typed_writes(devinfo, format);
    }
 
-   if (usage & PIPE_BIND_SAMPLER_VIEW)
+   if (usage & PIPE_BIND_SAMPLER_VIEW) {
       supported &= isl_format_supports_sampling(devinfo, format);
+      if (!is_integer)
+         supported &= isl_format_supports_filtering(devinfo, format);
+
+      /* Don't advertise 8 and 16-bit RGB formats.  This ensures that they
+       * are renderable from an API perspective since the state tracker will
+       * fall back to RGBA or RGBX, which are renderable.  We want to render
+       * internally for copies and blits, even if the application doesn't.
+       */
+      supported &= fmtl->bpb != 8 * 3 && fmtl->bpb != 8 * 6;
+   }
 
    if (usage & PIPE_BIND_VERTEX_BUFFER)
       supported &= isl_format_supports_vertex_fetch(devinfo, format);
