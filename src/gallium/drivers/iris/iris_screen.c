@@ -279,6 +279,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 32;
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return 0;
+   case PIPE_CAP_FRAMEBUFFER_MSAA_CONSTRAINTS:
+      return 0;
    case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
