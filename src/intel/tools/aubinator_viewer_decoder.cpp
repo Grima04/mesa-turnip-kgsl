@@ -233,8 +233,12 @@ dump_binding_table(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count
          continue;
       }
 
-      ImGui::Text("pointer %u: %08x", i, pointers[i]);
-      aub_viewer_print_group(ctx, strct, addr, (const uint8_t *) bo.map + (addr - bo.addr));
+      const uint8_t *state = (const uint8_t *) bo.map + (addr - bo.addr);
+      if (ImGui::TreeNodeEx(&pointers[i], ImGuiTreeNodeFlags_Framed,
+                            "pointer %u: %08x", i, pointers[i])) {
+         aub_viewer_print_group(ctx, strct, addr, state);
+         ImGui::TreePop();
+      }
    }
 }
 
@@ -262,8 +266,11 @@ dump_samplers(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count)
    }
 
    for (int i = 0; i < count; i++) {
-      ImGui::Text("sampler state %d", i);
-      aub_viewer_print_group(ctx, strct, state_addr, state_map);
+      if (ImGui::TreeNodeEx(state_map, ImGuiTreeNodeFlags_Framed,
+                            "sampler state %d", i)) {
+         aub_viewer_print_group(ctx, strct, state_addr, state_map);
+         ImGui::TreePop();
+      }
       state_addr += 16;
       state_map += 16;
    }
