@@ -398,6 +398,26 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
    return table[pf];
 }
 
+enum isl_format
+iris_isl_format_for_usage(const struct gen_device_info *devinfo,
+                          enum pipe_format pformat,
+                          isl_surf_usage_flags_t usage)
+{
+   enum isl_format format = iris_isl_format_for_pipe_format(pformat);
+
+   /* Convert RGBX into RGBA for rendering or typed image access. */
+   if (isl_format_is_rgbx(format) &&
+       (((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
+         !isl_format_supports_rendering(devinfo, format)) ||
+        ((usage & ISL_SURF_USAGE_STORAGE_BIT) &&
+         !(isl_format_supports_typed_writes(devinfo, format) &&
+           isl_format_supports_typed_reads(devinfo, format))))) {
+      format = isl_format_rgbx_to_rgba(format);
+   }
+
+   return format;
+}
+
 /**
  * The pscreen->is_format_supported() driver hook.
  *

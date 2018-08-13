@@ -87,6 +87,9 @@ iris_resource_bo(struct pipe_resource *p_res)
 }
 
 enum isl_format iris_isl_format_for_pipe_format(enum pipe_format pf);
+enum isl_format iris_isl_format_for_usage(const struct gen_device_info *,
+                                          enum pipe_format,
+                                          isl_surf_usage_flags_t usage);
 
 struct pipe_resource *iris_resource_get_separate_stencil(struct pipe_resource *);
 

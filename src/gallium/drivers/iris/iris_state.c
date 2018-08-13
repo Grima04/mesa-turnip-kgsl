@@ -1328,24 +1328,25 @@ iris_create_surface(struct pipe_context *ctx,
    psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
    psurf->u.tex.level = tmpl->u.tex.level;
 
-   enum isl_format isl_format = iris_isl_format_for_pipe_format(psurf->format);
-
-   unsigned usage = 0;
+   isl_surf_usage_flags_t usage = 0;
    if (tmpl->writable)
       usage = ISL_SURF_USAGE_STORAGE_BIT;
    else if (util_format_is_depth_or_stencil(tmpl->format))
       usage = ISL_SURF_USAGE_DEPTH_BIT;
-   else {
+   else
       usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
 
-      if (!isl_format_supports_rendering(devinfo, isl_format)) {
-         /* Framebuffer validation will reject this invalid case, but it
-          * hasn't had the opportunity yet.  In the meantime, we need to
-          * avoid hitting ISL asserts about unsupported formats below.
-          */
-         free(surf);
-         return NULL;
-      }
+   enum isl_format isl_format =
+      iris_isl_format_for_usage(devinfo, psurf->format, usage);
+
+   if ((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
+       !isl_format_supports_rendering(devinfo, isl_format)) {
+      /* Framebuffer validation will reject this invalid case, but it
+       * hasn't had the opportunity yet.  In the meantime, we need to
+       * avoid hitting ISL asserts about unsupported formats below.
+       */
+      free(surf);
+      return NULL;
    }
 
    surf->view = (struct isl_view) {
