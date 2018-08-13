@@ -771,19 +771,48 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
    case GL_TRANSFORM_FEEDBACK_VARYINGS:
       if (!has_xfb)
          break;
-      *params = shProg->TransformFeedback.NumVarying;
+
+      /* Check first if there are transform feedback varyings specified in the
+       * shader (ARB_enhanced_layouts). If there isn't any, return the number of
+       * varyings specified using the API.
+       */
+      if (shProg->last_vert_prog &&
+          shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying > 0)
+         *params =
+            shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying;
+      else
+         *params = shProg->TransformFeedback.NumVarying;
       return;
    case GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH: {
       unsigned i;
       GLint max_len = 0;
+      bool in_shader_varyings;
+      int num_varying;
+
       if (!has_xfb)
          break;
 
-      for (i = 0; i < shProg->TransformFeedback.NumVarying; i++) {
-         /* Add one for the terminating NUL character.
+      /* Check first if there are transform feedback varyings specified in the
+       * shader (ARB_enhanced_layouts). If there isn't any, use the ones
+       * specified using the API.
+       */
+      in_shader_varyings = shProg->last_vert_prog &&
+         shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying > 0;
+
+      num_varying = in_shader_varyings ?
+         shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying :
+         shProg->TransformFeedback.NumVarying;
+
+      for (i = 0; i < num_varying; i++) {
+         const char *name = in_shader_varyings ?
+            shProg->last_vert_prog->sh.LinkedTransformFeedback->Varyings[i].Name
+            : shProg->TransformFeedback.VaryingNames[i];
+
+         /* Add one for the terminating NUL character. We have to use
+          * strlen_or_zero, as for shaders constructed from SPIR-V binaries,
+          * it is possible that no name reflection information is available.
           */
-         const GLint len =
-            strlen(shProg->TransformFeedback.VaryingNames[i]) + 1;
+         const GLint len = strlen_or_zero(name) + 1;
 
          if (len > max_len)
             max_len = len;
