@@ -778,7 +778,15 @@ add_index_to_name(struct gl_program_resource *res)
 extern unsigned
 _mesa_program_resource_name_len(struct gl_program_resource *res)
 {
-   unsigned length = strlen(_mesa_program_resource_name(res));
+   const char* name = _mesa_program_resource_name(res);
+
+   /* For shaders constructed from SPIR-V binaries, variables may not
+    * have names associated with them.
+    */
+   if (!name)
+      return 0;
+
+   unsigned length = strlen(name);
    if (_mesa_program_resource_array_size(res) && add_index_to_name(res))
       length += 3;
    return length;
@@ -819,7 +827,11 @@ _mesa_get_program_resource_name(struct gl_shader_program *shProg,
 
    _mesa_copy_string(name, bufSize, length, _mesa_program_resource_name(res));
 
-   if (_mesa_program_resource_array_size(res) && add_index_to_name(res)) {
+   /* The resource name can be NULL for shaders constructed from SPIR-V
+    * binaries. In that case, we do not add the '[0]'.
+    */
+   if (name && name[0] != '\0' &&
+       _mesa_program_resource_array_size(res) && add_index_to_name(res)) {
       int i;
 
       /* The comparison is strange because *length does *NOT* include the
