@@ -61,14 +61,14 @@ void ProcessComputeBE(DRAW_CONTEXT* pDC,
     size_t spillFillSize = pDC->pState->state.totalSpillFillSize;
     if (spillFillSize && pSpillFillBuffer == nullptr)
     {
-        pSpillFillBuffer = pDC->pArena->AllocAlignedSync(spillFillSize, KNOB_SIMD_BYTES);
+        pSpillFillBuffer = pDC->pArena->AllocAlignedSync(spillFillSize, KNOB_SIMD16_BYTES);
     }
 
     size_t scratchSpaceSize =
         pDC->pState->state.scratchSpaceSize * pDC->pState->state.scratchSpaceNumInstances;
     if (scratchSpaceSize && pScratchSpace == nullptr)
     {
-        pScratchSpace = pDC->pArena->AllocAlignedSync(scratchSpaceSize, KNOB_SIMD_BYTES);
+        pScratchSpace = pDC->pArena->AllocAlignedSync(scratchSpaceSize, KNOB_SIMD16_BYTES);
     }
 
     const API_STATE& state = GetApiState(pDC);
