@@ -652,7 +652,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
          unsigned x1, x2, y1, y2;
          tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
 
-         void *ptr = map->ptr + box.z * xfer->layer_stride;
+         void *ptr = map->ptr + s * xfer->layer_stride;
 
          isl_memcpy_linear_to_tiled(x1, x2, y1, y2, dst, ptr,
                                     surf->row_pitch_B, xfer->stride,
@@ -698,9 +698,16 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
          unsigned x1, x2, y1, y2;
          tile_extents(surf, &box, xfer->level, &x1, &x2, &y1, &y2);
 
-         isl_memcpy_tiled_to_linear(x1, x2, y1, y2, map->ptr, src,
-                                    xfer->stride, surf->row_pitch_B,
-                                    has_swizzling, surf->tiling, ISL_MEMCPY);
+         /* When transferring cubes, box.depth is counted in cubes, but
+          * box.z is counted in faces.  We want to transfer only the
+          * specified face, but for all array elements.  So, use 's'
+          * (the zero-based slice count) rather than box.z.
+          */
+         void *ptr = map->ptr + s * xfer->layer_stride;
+
+         isl_memcpy_tiled_to_linear(x1, x2, y1, y2, ptr, src, xfer->stride,
+                                    surf->row_pitch_B, has_swizzling,
+                                    surf->tiling, ISL_MEMCPY);
          box.z++;
       }
    }
