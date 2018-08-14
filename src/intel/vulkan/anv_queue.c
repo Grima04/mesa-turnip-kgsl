@@ -350,8 +350,20 @@ anv_queue_submit_deferred_locked(struct anv_queue *queue, uint32_t *advance)
 static VkResult
 anv_device_submit_deferred_locked(struct anv_device *device)
 {
-   uint32_t advance = 0;
-   return anv_queue_submit_deferred_locked(&device->queue, &advance);
+   VkResult result = VK_SUCCESS;
+
+   uint32_t advance;
+   do {
+      advance = 0;
+      for (uint32_t i = 0; i < device->queue_count; i++) {
+         struct anv_queue *queue = &device->queues[i];
+         VkResult qres = anv_queue_submit_deferred_locked(queue, &advance);
+         if (qres != VK_SUCCESS)
+            result = qres;
+      }
+   } while (advance);
+
+   return result;
 }
 
 static void

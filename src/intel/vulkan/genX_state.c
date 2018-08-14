@@ -109,9 +109,10 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 #endif
 }
 
-VkResult
-genX(init_device_state)(struct anv_device *device)
+static VkResult
+init_render_queue_state(struct anv_queue *queue)
 {
+   struct anv_device *device = queue->device;
    struct anv_batch batch;
 
    uint32_t cmds[64];
@@ -306,7 +307,29 @@ genX(init_device_state)(struct anv_device *device)
 
    assert(batch.next <= batch.end);
 
-   return anv_queue_submit_simple_batch(&device->queue, &batch);
+   return anv_queue_submit_simple_batch(queue, &batch);
+}
+
+VkResult
+genX(init_device_state)(struct anv_device *device)
+{
+   VkResult res;
+
+   for (uint32_t i = 0; i < device->queue_count; i++) {
+      struct anv_queue *queue = &device->queues[i];
+      switch (queue->family->engine_class) {
+      case I915_ENGINE_CLASS_RENDER:
+         res = init_render_queue_state(queue);
+         break;
+      default:
+         res = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+         break;
+      }
+      if (res != VK_SUCCESS)
+         return res;
+   }
+
+   return res;
 }
 
 void

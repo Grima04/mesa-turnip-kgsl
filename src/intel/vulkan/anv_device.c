@@ -2869,15 +2869,37 @@ VkResult anv_CreateDevice(
 
    device->has_thread_submit = physical_device->has_thread_submit;
 
-   result = anv_queue_init(device, &device->queue, I915_EXEC_RENDER,
-                           &pCreateInfo->pQueueCreateInfos[0]);
-   if (result != VK_SUCCESS)
+   uint32_t num_queues = 0;
+   for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
+      num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
+
+   device->queues =
+      vk_zalloc(&device->vk.alloc, num_queues * sizeof(*device->queues), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (device->queues == NULL) {
+      result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_context_id;
+   }
+
+   device->queue_count = 0;
+   for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
+      const VkDeviceQueueCreateInfo *queueCreateInfo =
+         &pCreateInfo->pQueueCreateInfos[i];
+
+      for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++) {
+         result = anv_queue_init(device, &device->queues[device->queue_count],
+                                 I915_EXEC_RENDER, queueCreateInfo);
+         if (result != VK_SUCCESS)
+            goto fail_queues;
+
+         device->queue_count++;
+      }
+   }
 
    if (physical_device->use_softpin) {
       if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
          result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-         goto fail_queue;
+         goto fail_queues;
       }
 
       /* keep the page with address zero out of the allocator */
@@ -2943,7 +2965,7 @@ VkResult anv_CreateDevice(
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_queue;
+      goto fail_queues;
    }
 
    pthread_condattr_t condattr;
@@ -3150,8 +3172,10 @@ VkResult anv_CreateDevice(
       util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
    }
- fail_queue:
-   anv_queue_finish(&device->queue);
+ fail_queues:
+   for (uint32_t i = 0; i < device->queue_count; i++)
+      anv_queue_finish(&device->queues[i]);
+   vk_free(&device->vk.alloc, device->queues);
  fail_context_id:
    anv_gem_destroy_context(device, device->context_id);
  fail_fd:
@@ -3170,8 +3194,6 @@ void anv_DestroyDevice(
 
    if (!device)
       return;
-
-   anv_queue_finish(&device->queue);
 
    anv_device_finish_blorp(device);
 
@@ -3218,6 +3240,10 @@ void anv_DestroyDevice(
 
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
+
+   for (uint32_t i = 0; i < device->queue_count; i++)
+      anv_queue_finish(&device->queues[i]);
+   vk_free(&device->vk.alloc, device->queues);
 
    anv_gem_destroy_context(device, device->context_id);
 
@@ -3280,11 +3306,29 @@ void anv_GetDeviceQueue2(
     VkQueue*                                    pQueue)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   struct anv_physical_device *pdevice = device->physical;
 
-   assert(pQueueInfo->queueIndex == 0);
+   assert(pQueueInfo->queueFamilyIndex < pdevice->queue.family_count);
+   struct anv_queue_family *queue_family =
+      &pdevice->queue.families[pQueueInfo->queueFamilyIndex];
 
-   if (pQueueInfo->flags == device->queue.flags)
-      *pQueue = anv_queue_to_handle(&device->queue);
+   int idx_in_family = 0;
+   struct anv_queue *queue = NULL;
+   for (uint32_t i = 0; i < device->queue_count; i++) {
+      if (device->queues[i].family != queue_family)
+         continue;
+
+      if (idx_in_family == pQueueInfo->queueIndex) {
+         queue = &device->queues[i];
+         break;
+      }
+
+      idx_in_family++;
+   }
+   assert(queue != NULL);
+
+   if (queue && queue->flags == pQueueInfo->flags)
+      *pQueue = anv_queue_to_handle(queue);
    else
       *pQueue = NULL;
 }
@@ -3296,13 +3340,16 @@ _anv_device_report_lost(struct anv_device *device)
 
    device->lost_reported = true;
 
-   struct anv_queue *queue = &device->queue;
-
-   __vk_errorf(device->physical->instance, device,
-               VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
-               VK_ERROR_DEVICE_LOST,
-               queue->error_file, queue->error_line,
-               "%s", queue->error_msg);
+   for (uint32_t i = 0; i < device->queue_count; i++) {
+      struct anv_queue *queue = &device->queues[i];
+      if (queue->lost) {
+         __vk_errorf(device->physical->instance, device,
+                     VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
+                     VK_ERROR_DEVICE_LOST,
+                     queue->error_file, queue->error_line,
+                     "%s", queue->error_msg);
+      }
+   }
 }
 
 VkResult
@@ -3437,7 +3484,13 @@ VkResult anv_DeviceWaitIdle(
    if (anv_device_is_lost(device))
       return VK_ERROR_DEVICE_LOST;
 
-   return anv_queue_submit_simple_batch(&device->queue, NULL);
+   for (uint32_t i = 0; i < device->queue_count; i++) {
+      VkResult res = anv_queue_submit_simple_batch(&device->queues[i], NULL);
+      if (res != VK_SUCCESS)
+         return res;
+   }
+
+   return VK_SUCCESS;
 }
 
 uint64_t
