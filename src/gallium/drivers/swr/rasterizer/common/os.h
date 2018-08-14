@@ -202,13 +202,13 @@ inline unsigned char _BitScanForward(unsigned int* Index, unsigned int Mask)
 
 inline unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask)
 {
-    *Index = __builtin_clz(Mask);
+    *Index = 63 - __builtin_clz(Mask);
     return (Mask != 0);
 }
 
 inline unsigned char _BitScanReverse(unsigned int* Index, unsigned int Mask)
 {
-    *Index = __builtin_clz(Mask);
+    *Index = 31 - __builtin_clz(Mask);
     return (Mask != 0);
 }
 
