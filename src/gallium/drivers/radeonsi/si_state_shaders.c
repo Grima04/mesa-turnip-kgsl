@@ -1383,6 +1383,8 @@ void si_shader_selector_key_vs(struct si_context *sctx,
 
 	prolog_key->instance_divisor_is_one = elts->instance_divisor_is_one;
 	prolog_key->instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
+	prolog_key->unpack_instance_id_from_vertex_id =
+		sctx->prim_discard_cs_instancing;
 
 	/* Prefer a monolithic shader to allow scheduling divisions around
 	 * VBO loads. */
@@ -1910,8 +1912,11 @@ current_not_ready:
 
 	/* Compile the main shader part if it doesn't exist. This can happen
 	 * if the initial guess was wrong.
+	 *
+	 * The prim discard CS doesn't need the main shader part.
 	 */
-	if (!is_pure_monolithic) {
+	if (!is_pure_monolithic &&
+	    !key->opt.vs_as_prim_discard_cs) {
 		bool ok;
 
 		/* Make sure the main shader part is present. This is needed
@@ -1962,9 +1967,10 @@ current_not_ready:
 		is_pure_monolithic ||
 		memcmp(&key->opt, &zeroed.opt, sizeof(key->opt)) != 0;
 
+	/* The prim discard CS is always optimized. */
 	shader->is_optimized =
-		!is_pure_monolithic &&
-		memcmp(&key->opt, &zeroed.opt, sizeof(key->opt)) != 0;
+		(!is_pure_monolithic || key->opt.vs_as_prim_discard_cs) &&
+		 memcmp(&key->opt, &zeroed.opt, sizeof(key->opt)) != 0;
 
 	/* If it's an optimized shader, compile it asynchronously. */
 	if (shader->is_optimized && thread_index < 0) {
@@ -2311,6 +2317,15 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		sel->info.uses_derivatives &&
 		sel->info.uses_kill &&
 		sctx->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL);
+
+	sel->prim_discard_cs_allowed =
+		sel->type == PIPE_SHADER_VERTEX &&
+		!sel->info.uses_bindless_images &&
+		!sel->info.uses_bindless_samplers &&
+		!sel->info.writes_memory &&
+		!sel->info.writes_viewport_index &&
+		!sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] &&
+		!sel->so.num_outputs;
 
 	/* Set which opcode uses which (i,j) pair. */
 	if (sel->info.uses_persp_opcode_interp_centroid)

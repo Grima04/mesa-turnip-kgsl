@@ -87,6 +87,10 @@ struct si_state_rasterizer {
 	unsigned		rasterizer_discard:1;
 	unsigned		scissor_enable:1;
 	unsigned		clip_halfz:1;
+	unsigned		cull_front:1;
+	unsigned		cull_back:1;
+	unsigned		depth_clamp_any:1;
+	unsigned		provoking_vertex_first:1;
 };
 
 struct si_dsa_stencil_ref_part {
@@ -600,6 +604,7 @@ void si_shader_selector_key_vs(struct si_context *sctx,
 			       struct si_vs_prolog_bits *prolog_key);
 
 /* si_state_draw.c */
+void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
 void si_emit_cache_flush(struct si_context *sctx);
 void si_trace_emit(struct si_context *sctx);
 void si_init_draw_functions(struct si_context *sctx);

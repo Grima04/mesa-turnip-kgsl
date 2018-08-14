@@ -39,7 +39,7 @@
 #endif
 
 #define ATI_VENDOR_ID			0x1002
-
+#define SI_PRIM_DISCARD_DEBUG		0
 #define SI_NOT_QUERY			0xffffffff
 
 /* The base vertex and primitive restart can be any number, but we must pick
@@ -165,6 +165,9 @@ enum {
 	DBG_ZERO_VRAM,
 
 	/* 3D engine options: */
+	DBG_ALWAYS_PD,
+	DBG_PD,
+	DBG_NO_PD,
 	DBG_SWITCH_ON_EOP,
 	DBG_NO_OUT_OF_ORDER,
 	DBG_NO_DPBB,
@@ -209,6 +212,7 @@ enum si_coherency {
 };
 
 struct si_compute;
+struct si_shader_context;
 struct hash_table;
 struct u_suballocator;
 
@@ -675,6 +679,7 @@ struct si_signed_scissor {
 struct si_viewports {
 	struct pipe_viewport_state	states[SI_MAX_VIEWPORTS];
 	struct si_signed_scissor	as_scissor[SI_MAX_VIEWPORTS];
+	bool				y_inverted;
 };
 
 struct si_clip_state {
@@ -780,10 +785,12 @@ struct si_saved_cs {
 	struct pipe_reference	reference;
 	struct si_context	*ctx;
 	struct radeon_saved_cs	gfx;
+	struct radeon_saved_cs	compute;
 	struct si_resource	*trace_buf;
 	unsigned		trace_id;
 
 	unsigned		gfx_last_dw;
+	unsigned		compute_last_dw;
 	bool			flushed;
 	int64_t			time_flush;
 };
@@ -839,6 +846,7 @@ struct si_context {
 	struct pipe_debug_callback	debug;
 	struct ac_llvm_compiler		compiler; /* only non-threaded compilation */
 	struct si_shader_ctx_state	fixed_func_tcs_shader;
+	/* Offset 0: EOP flush number; Offset 4: GDS prim restart counter */
 	struct si_resource		*wait_mem_scratch;
 	unsigned			wait_mem_number;
 	uint16_t			prefetch_L2_mask;
@@ -858,6 +866,31 @@ struct si_context {
 	/* Current unaccounted memory usage. */
 	uint64_t			vram;
 	uint64_t			gtt;
+
+	/* Compute-based primitive discard. */
+	unsigned			prim_discard_vertex_count_threshold;
+	struct pb_buffer		*gds;
+	struct pb_buffer		*gds_oa;
+	struct radeon_cmdbuf		*prim_discard_compute_cs;
+	unsigned			compute_gds_offset;
+	struct si_shader		*compute_ib_last_shader;
+	uint32_t			compute_rewind_va;
+	unsigned			compute_num_prims_in_batch;
+	bool				preserve_prim_restart_gds_at_flush;
+	/* index_ring is divided into 2 halves for doublebuffering. */
+	struct si_resource		*index_ring;
+	unsigned			index_ring_base; /* offset of a per-IB portion */
+	unsigned			index_ring_offset; /* offset within a per-IB portion */
+	unsigned			index_ring_size_per_ib; /* max available size per IB */
+	bool				prim_discard_compute_ib_initialized;
+	/* For tracking the last execution barrier - it can be either
+	 * a WRITE_DATA packet or a fence. */
+	uint32_t			*last_pkt3_write_data;
+	struct si_resource		*barrier_buf;
+	unsigned			barrier_buf_offset;
+	struct pipe_fence_handle	*last_ib_barrier_fence;
+	struct si_resource		*last_ib_barrier_buf;
+	unsigned			last_ib_barrier_buf_offset;
 
 	/* Atoms (direct states). */
 	union si_state_atoms		atoms;
@@ -895,6 +928,7 @@ struct si_context {
 	struct si_shader_ctx_state	vs_shader;
 	struct si_shader_ctx_state	tcs_shader;
 	struct si_shader_ctx_state	tes_shader;
+	struct si_shader_ctx_state	cs_prim_discard_state;
 	struct si_cs_shader_state	cs_shader_state;
 
 	/* shader information */
@@ -963,6 +997,7 @@ struct si_context {
 	/* Emitted draw state. */
 	bool			gs_tri_strip_adj_fix:1;
 	bool			ls_vgpr_fix:1;
+	bool			prim_discard_cs_instancing:1;
 	int			last_index_size;
 	int			last_base_vertex;
 	int			last_start_instance;
@@ -1076,6 +1111,7 @@ struct si_context {
 	/* Maintain the list of active queries for pausing between IBs. */
 	int				num_occlusion_queries;
 	int				num_perfect_occlusion_queries;
+	int				num_pipeline_stat_queries;
 	struct list_head		active_queries;
 	unsigned			num_cs_dw_queries_suspend;
 
@@ -1310,6 +1346,26 @@ unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
 					unsigned max_waves_per_sh,
 					unsigned threadgroups_per_cu);
 void si_init_compute_functions(struct si_context *sctx);
+
+/* si_compute_prim_discard.c */
+enum si_prim_discard_outcome {
+	SI_PRIM_DISCARD_ENABLED,
+	SI_PRIM_DISCARD_DISABLED,
+	SI_PRIM_DISCARD_DRAW_SPLIT,
+};
+
+void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
+enum si_prim_discard_outcome
+si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
+				      const struct pipe_draw_info *info);
+void si_compute_signal_gfx(struct si_context *sctx);
+void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
+					  const struct pipe_draw_info *info,
+					  unsigned index_size,
+					  unsigned base_vertex,
+					  uint64_t input_indexbuf_va,
+					  unsigned input_indexbuf_max_elements);
+void si_initialize_prim_discard_tunables(struct si_context *sctx);
 
 /* si_perfcounters.c */
 void si_init_perfcounters(struct si_screen *screen);
@@ -1746,6 +1802,11 @@ radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
 		si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
 	radeon_add_to_buffer_list(sctx, sctx->gfx_cs, bo, usage, priority);
+}
+
+static inline bool si_compute_prim_discard_enabled(struct si_context *sctx)
+{
+	return sctx->prim_discard_vertex_count_threshold != UINT_MAX;
 }
 
 #define PRINT_ERR(fmt, args...) \

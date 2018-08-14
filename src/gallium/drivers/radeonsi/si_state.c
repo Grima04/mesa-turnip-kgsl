@@ -857,6 +857,15 @@ static void *si_create_rs_state(struct pipe_context *ctx,
 		return NULL;
 	}
 
+	if (!state->front_ccw) {
+		rs->cull_front = !!(state->cull_face & PIPE_FACE_FRONT);
+		rs->cull_back = !!(state->cull_face & PIPE_FACE_BACK);
+	} else {
+		rs->cull_back = !!(state->cull_face & PIPE_FACE_FRONT);
+		rs->cull_front = !!(state->cull_face & PIPE_FACE_BACK);
+	}
+	rs->depth_clamp_any = !state->depth_clip_near || !state->depth_clip_far;
+	rs->provoking_vertex_first = state->flatshade_first;
 	rs->scissor_enable = state->scissor;
 	rs->clip_halfz = state->clip_halfz;
 	rs->two_side = state->light_twoside;

@@ -381,6 +381,12 @@ static void si_set_viewport_states(struct pipe_context *pctx,
 			scissor->quant_mode = SI_QUANT_MODE_16_8_FIXED_POINT_1_256TH;
 	}
 
+	if (start_slot == 0) {
+		ctx->viewports.y_inverted =
+			-state->scale[1] + state->translate[1] >
+			state->scale[1] + state->translate[1];
+	}
+
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.viewports);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.guardband);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.scissors);

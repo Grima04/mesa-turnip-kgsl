@@ -249,8 +249,10 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 		sdst->TC_L2_dirty = true;
 
 	/* If it's not a framebuffer fast clear... */
-	if (coher == SI_COHERENCY_SHADER)
+	if (coher == SI_COHERENCY_SHADER) {
 		sctx->num_cp_dma_calls++;
+		si_prim_discard_signal_next_compute_ib_start(sctx);
+	}
 }
 
 /**
@@ -405,8 +407,10 @@ void si_cp_dma_copy_buffer(struct si_context *sctx,
 		si_resource(dst)->TC_L2_dirty = true;
 
 	/* If it's not a prefetch or GDS copy... */
-	if (dst && src && (dst != src || dst_offset != src_offset))
+	if (dst && src && (dst != src || dst_offset != src_offset)) {
 		sctx->num_cp_dma_calls++;
+		si_prim_discard_signal_next_compute_ib_start(sctx);
+	}
 }
 
 void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf,

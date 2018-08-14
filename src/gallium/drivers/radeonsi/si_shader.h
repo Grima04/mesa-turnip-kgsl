@@ -340,6 +340,7 @@ struct si_shader_selector {
 	unsigned	type;
 	bool		vs_needs_prolog;
 	bool		force_correct_derivs_after_kill;
+	bool		prim_discard_cs_allowed;
 	unsigned	pa_cl_vs_out_cntl;
 	ubyte		clipdist_mask;
 	ubyte		culldist_mask;
@@ -554,6 +555,19 @@ struct si_shader_key {
 		 * possible, because it's in the "opt" group.
 		 */
 		unsigned	prefer_mono:1;
+
+		/* Primitive discard compute shader. */
+		unsigned	vs_as_prim_discard_cs:1;
+		unsigned	cs_prim_type:4;
+		unsigned	cs_indexed:1;
+		unsigned	cs_instancing:1;
+		unsigned	cs_primitive_restart:1;
+		unsigned	cs_provoking_vertex_first:1;
+		unsigned	cs_need_correct_orientation:1;
+		unsigned	cs_cull_front:1;
+		unsigned	cs_cull_back:1;
+		unsigned	cs_cull_z:1;
+		unsigned	cs_halfz_clip_space:1;
 	} opt;
 };
 

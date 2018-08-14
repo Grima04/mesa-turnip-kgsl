@@ -80,7 +80,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		       EOP_INT_SEL(int_sel) |
 		       EOP_DATA_SEL(data_sel);
 
-	if (ctx->chip_class >= GFX9) {
+	if (ctx->chip_class >= GFX9 || cs == ctx->prim_discard_compute_cs) {
 		/* A ZPASS_DONE or PIXEL_STAT_DUMP_EVENT (of the DB occlusion
 		 * counters) must immediately precede every timestamp event to
 		 * prevent a GPU hang on GFX9.
@@ -89,6 +89,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		 * always do ZPASS_DONE before the timestamp.
 		 */
 		if (ctx->chip_class == GFX9 &&
+		    cs != ctx->prim_discard_compute_cs &&
 		    query_type != PIPE_QUERY_OCCLUSION_COUNTER &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
@@ -105,14 +106,15 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 						  RADEON_USAGE_WRITE, RADEON_PRIO_QUERY);
 		}
 
-		radeon_emit(cs, PKT3(PKT3_RELEASE_MEM, 6, 0));
+		radeon_emit(cs, PKT3(PKT3_RELEASE_MEM, ctx->chip_class >= GFX9 ? 6 : 5, 0));
 		radeon_emit(cs, op);
 		radeon_emit(cs, sel);
 		radeon_emit(cs, va);		/* address lo */
 		radeon_emit(cs, va >> 32);	/* address hi */
 		radeon_emit(cs, new_fence);	/* immediate data lo */
 		radeon_emit(cs, 0); /* immediate data hi */
-		radeon_emit(cs, 0); /* unused */
+		if (ctx->chip_class >= GFX9)
+			radeon_emit(cs, 0); /* unused */
 	} else {
 		if (ctx->chip_class == GFX7 ||
 		    ctx->chip_class == GFX8) {

@@ -25,6 +25,7 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "tgsi/tgsi_build.h"
+#include "tgsi/tgsi_strings.h"
 #include "tgsi/tgsi_util.h"
 #include "tgsi/tgsi_dump.h"
 
@@ -3548,6 +3549,33 @@ static void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi,
 	FREE(outputs);
 }
 
+static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi,
+						  unsigned max_outputs,
+						  LLVMValueRef *addrs)
+{
+	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	LLVMValueRef pos[4] = {};
+
+	assert(info->num_outputs <= max_outputs);
+
+	for (unsigned i = 0; i < info->num_outputs; i++) {
+		if (info->output_semantic_name[i] != TGSI_SEMANTIC_POSITION)
+			continue;
+
+		for (unsigned chan = 0; chan < 4; chan++)
+			pos[chan] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
+		break;
+	}
+	assert(pos[0] != NULL);
+
+	/* Return the position output. */
+	LLVMValueRef ret = ctx->return_value;
+	for (unsigned chan = 0; chan < 4; chan++)
+		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, pos[chan], chan, "");
+	ctx->return_value = ret;
+}
+
 static void si_tgsi_emit_epilogue(struct lp_build_tgsi_context *bld_base)
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
@@ -4518,6 +4546,12 @@ static void create_function(struct si_shader_context *ctx)
 
 		/* VGPRs */
 		declare_vs_input_vgprs(ctx, &fninfo, &num_prolog_vgprs);
+
+		/* Return values */
+		if (shader->key.opt.vs_as_prim_discard_cs) {
+			for (i = 0; i < 4; i++)
+				returns[num_returns++] = ctx->f32; /* VGPRs */
+		}
 		break;
 
 	case PIPE_SHADER_TESS_CTRL: /* GFX6-GFX8 */
@@ -5317,6 +5351,8 @@ const char *si_get_shader_name(const struct si_shader *shader, unsigned processo
 			return "Vertex Shader as ES";
 		else if (shader->key.as_ls)
 			return "Vertex Shader as LS";
+		else if (shader->key.opt.vs_as_prim_discard_cs)
+			return "Vertex Shader as Primitive Discard CS";
 		else
 			return "Vertex Shader as VS";
 	case PIPE_SHADER_TESS_CTRL:
@@ -5699,6 +5735,28 @@ static void si_dump_shader_key(unsigned processor, const struct si_shader *shade
 		fprintf(f, "  as_ls = %u\n", key->as_ls);
 		fprintf(f, "  mono.u.vs_export_prim_id = %u\n",
 			key->mono.u.vs_export_prim_id);
+		fprintf(f, "  opt.vs_as_prim_discard_cs = %u\n",
+			key->opt.vs_as_prim_discard_cs);
+		fprintf(f, "  opt.cs_prim_type = %s\n",
+			tgsi_primitive_names[key->opt.cs_prim_type]);
+		fprintf(f, "  opt.cs_indexed = %u\n",
+			key->opt.cs_indexed);
+		fprintf(f, "  opt.cs_instancing = %u\n",
+			key->opt.cs_instancing);
+		fprintf(f, "  opt.cs_primitive_restart = %u\n",
+			key->opt.cs_primitive_restart);
+		fprintf(f, "  opt.cs_provoking_vertex_first = %u\n",
+			key->opt.cs_provoking_vertex_first);
+		fprintf(f, "  opt.cs_need_correct_orientation = %u\n",
+			key->opt.cs_need_correct_orientation);
+		fprintf(f, "  opt.cs_cull_front = %u\n",
+			key->opt.cs_cull_front);
+		fprintf(f, "  opt.cs_cull_back = %u\n",
+			key->opt.cs_cull_back);
+		fprintf(f, "  opt.cs_cull_z = %u\n",
+			key->opt.cs_cull_z);
+		fprintf(f, "  opt.cs_halfz_clip_space = %u\n",
+			key->opt.cs_halfz_clip_space);
 		break;
 
 	case PIPE_SHADER_TESS_CTRL:
@@ -5854,6 +5912,8 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			ctx->abi.emit_outputs = si_llvm_emit_ls_epilogue;
 		else if (shader->key.as_es)
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
+		else if (shader->key.opt.vs_as_prim_discard_cs)
+			ctx->abi.emit_outputs = si_llvm_emit_prim_discard_cs_epilogue;
 		else
 			ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 		bld_base->emit_epilogue = si_tgsi_emit_epilogue;
@@ -6644,6 +6704,9 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 
 		si_build_wrapper_function(&ctx, parts + !need_prolog,
 					  1 + need_prolog, need_prolog, 0);
+
+		if (ctx.shader->key.opt.vs_as_prim_discard_cs)
+			si_build_prim_discard_compute_shader(&ctx);
 	} else if (shader->is_monolithic && ctx.type == PIPE_SHADER_TESS_CTRL) {
 		if (sscreen->info.chip_class >= GFX9) {
 			struct si_shader_selector *ls = shader->key.part.tcs.ls;

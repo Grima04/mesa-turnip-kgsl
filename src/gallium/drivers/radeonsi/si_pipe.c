@@ -80,6 +80,9 @@ static const struct debug_named_value debug_options[] = {
 	{ "zerovram", DBG(ZERO_VRAM), "Clear VRAM allocations." },
 
 	/* 3D engine options: */
+	{ "alwayspd", DBG(ALWAYS_PD), "Always enable the primitive discard compute shader." },
+	{ "pd", DBG(PD), "Enable the primitive discard compute shader for large draw calls." },
+	{ "nopd", DBG(NO_PD), "Disable the primitive discard compute shader." },
 	{ "switch_on_eop", DBG(SWITCH_ON_EOP), "Program WD/IA to switch on end-of-packet." },
 	{ "nooutoforder", DBG(NO_OUT_OF_ORDER), "Disable out-of-order rasterization" },
 	{ "nodpbb", DBG(NO_DPBB), "Disable DPBB." },
@@ -255,7 +258,13 @@ static void si_destroy_context(struct pipe_context *context)
 
 	sctx->ws->fence_reference(&sctx->last_gfx_fence, NULL);
 	sctx->ws->fence_reference(&sctx->last_sdma_fence, NULL);
+	sctx->ws->fence_reference(&sctx->last_ib_barrier_fence, NULL);
 	si_resource_reference(&sctx->eop_bug_scratch, NULL);
+	si_resource_reference(&sctx->index_ring, NULL);
+	si_resource_reference(&sctx->barrier_buf, NULL);
+	si_resource_reference(&sctx->last_ib_barrier_buf, NULL);
+	pb_reference(&sctx->gds, NULL);
+	pb_reference(&sctx->gds_oa, NULL);
 
 	si_destroy_compiler(&sctx->compiler);
 
@@ -533,6 +542,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		sctx->blitter->skip_viewport_restore = true;
 
 		si_init_draw_functions(sctx);
+		si_initialize_prim_discard_tunables(sctx);
 	}
 
 	/* Initialize SDMA functions. */
@@ -554,7 +564,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 
 	if (sctx->chip_class >= GFX9) {
 		sctx->wait_mem_scratch = si_resource(
-			pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, 4));
+			pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, 8));
 		if (!sctx->wait_mem_scratch)
 			goto fail;
 

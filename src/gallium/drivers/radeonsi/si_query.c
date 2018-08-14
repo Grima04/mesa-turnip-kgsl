@@ -850,6 +850,9 @@ static void si_query_hw_emit_start(struct si_context *sctx,
 	si_update_occlusion_query_state(sctx, query->b.type, 1);
 	si_update_prims_generated_query_state(sctx, query->b.type, 1);
 
+	if (query->b.type == PIPE_QUERY_PIPELINE_STATISTICS)
+		sctx->num_pipeline_stat_queries++;
+
 	if (query->b.type != SI_QUERY_TIME_ELAPSED_SDMA)
 		si_need_gfx_cs_space(sctx);
 
@@ -954,6 +957,9 @@ static void si_query_hw_emit_stop(struct si_context *sctx,
 
 	si_update_occlusion_query_state(sctx, query->b.type, -1);
 	si_update_prims_generated_query_state(sctx, query->b.type, -1);
+
+	if (query->b.type == PIPE_QUERY_PIPELINE_STATISTICS)
+		sctx->num_pipeline_stat_queries--;
 }
 
 static void emit_set_predicate(struct si_context *ctx,
