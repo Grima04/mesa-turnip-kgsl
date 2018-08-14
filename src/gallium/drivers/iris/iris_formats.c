@@ -479,12 +479,12 @@ iris_is_format_supported(struct pipe_screen *pscreen,
       if (!is_integer)
          supported &= isl_format_supports_filtering(devinfo, format);
 
-      /* Don't advertise 8 and 16-bit RGB formats.  This ensures that they
+      /* Don't advertise 3-component RGB formats.  This ensures that they
        * are renderable from an API perspective since the state tracker will
        * fall back to RGBA or RGBX, which are renderable.  We want to render
        * internally for copies and blits, even if the application doesn't.
        */
-      supported &= fmtl->bpb != 8 * 3 && fmtl->bpb != 8 * 6;
+      supported &= fmtl->bpb != 24 && fmtl->bpb != 48 && fmtl->bpb != 96;
    }
 
    if (usage & PIPE_BIND_VERTEX_BUFFER)
