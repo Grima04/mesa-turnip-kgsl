@@ -31,6 +31,7 @@
 
 #include "jit_pch.hpp"
 #include "common/isa.hpp"
+#include <llvm/IR/AssemblyAnnotationWriter.h>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -151,7 +152,7 @@ struct JitManager
 
     void               DumpAsm(llvm::Function* pFunction, const char* fileName);
     static void        DumpToFile(llvm::Function* f, const char* fileName);
-    static void        DumpToFile(llvm::Module* M, const char* fileName);
+    static void        DumpToFile(llvm::Module* M, const char* fileName, llvm::AssemblyAnnotationWriter* annotater = nullptr);
     static std::string GetOutputDir();
 
     // Debugging support methods
@@ -177,4 +178,13 @@ struct JitManager
                           llvm::DIFile*                                        pFile,
                           uint32_t                                             lineNum,
                           const std::vector<std::pair<std::string, uint32_t>>& members);
+};
+
+class InterleaveAssemblyAnnotater : public llvm::AssemblyAnnotationWriter
+{
+public:
+    void emitInstructionAnnot(const llvm::Instruction *pInst, llvm::formatted_raw_ostream &OS) override;
+    std::vector<std::string> mAssembly;
+private:
+    uint32_t mCurrentLineNo = 0;
 };

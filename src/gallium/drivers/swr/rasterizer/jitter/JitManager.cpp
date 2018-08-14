@@ -443,7 +443,7 @@ std::string JitManager::GetOutputDir()
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief Dump function to file.
-void JitManager::DumpToFile(Module* M, const char* fileName)
+void JitManager::DumpToFile(Module* M, const char* fileName, llvm::AssemblyAnnotationWriter* annotater)
 {
     if (KNOB_DUMP_SHADER_IR)
     {
@@ -458,7 +458,7 @@ void JitManager::DumpToFile(Module* M, const char* fileName)
         sprintf(fName, "%s.%s.ll", funcName, fileName);
 #endif
         raw_fd_ostream fd(fName, EC, llvm::sys::fs::F_None);
-        M->print(fd, nullptr);
+        M->print(fd, annotater);
         fd.flush();
     }
 }
@@ -758,3 +758,26 @@ std::unique_ptr<llvm::MemoryBuffer> JitCache::getObject(const llvm::Module* M)
 
     return pBuf;
 }
+
+void InterleaveAssemblyAnnotater::emitInstructionAnnot(const llvm::Instruction *pInst, llvm::formatted_raw_ostream &OS)
+{
+    auto dbgLoc = pInst->getDebugLoc();
+    if(dbgLoc)
+    {
+        unsigned int line = dbgLoc.getLine();
+        if(line != mCurrentLineNo)
+        {
+            if(line > 0 && line <= mAssembly.size())
+            {
+                // HACK: here we assume that OS is a formatted_raw_ostream(ods())
+                // and modify the color accordingly. We can't do the color
+                // modification on OS because formatted_raw_ostream strips
+                // the color information. The only way to fix this behavior
+                // is to patch LLVM.
+                OS << "\n; " << line << ": " << mAssembly[line-1] << "\n";
+            }
+            mCurrentLineNo = line;
+        }
+    }
+}
+
