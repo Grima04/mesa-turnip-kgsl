@@ -816,16 +816,16 @@ binop("extract_u16", tuint, "", "(uint16_t)(src0 >> (src1 * 16))")
 binop("extract_i16", tint, "", "(int16_t)(src0 >> (src1 * 16))")
 
 
-def triop(name, ty, const_expr):
-   opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, "", const_expr)
+def triop(name, ty, alg_props, const_expr):
+   opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, alg_props, const_expr)
 def triop_horiz(name, output_size, src1_size, src2_size, src3_size, const_expr):
    opcode(name, output_size, tuint,
    [src1_size, src2_size, src3_size],
    [tuint, tuint, tuint], False, "", const_expr)
 
-triop("ffma", tfloat, "src0 * src1 + src2")
+triop("ffma", tfloat, _2src_commutative, "src0 * src1 + src2")
 
-triop("flrp", tfloat, "src0 * (1 - src2) + src1 * src2")
+triop("flrp", tfloat, "", "src0 * (1 - src2) + src1 * src2")
 
 # Conditional Select
 #
@@ -834,20 +834,20 @@ triop("flrp", tfloat, "src0 * (1 - src2) + src1 * src2")
 # bools (0.0 vs 1.0) and one for integer bools (0 vs ~0).
 
 
-triop("fcsel", tfloat32, "(src0 != 0.0f) ? src1 : src2")
+triop("fcsel", tfloat32, "", "(src0 != 0.0f) ? src1 : src2")
 
 # 3 way min/max/med
-triop("fmin3", tfloat, "fminf(src0, fminf(src1, src2))")
-triop("imin3", tint, "MIN2(src0, MIN2(src1, src2))")
-triop("umin3", tuint, "MIN2(src0, MIN2(src1, src2))")
+triop("fmin3", tfloat, "", "fminf(src0, fminf(src1, src2))")
+triop("imin3", tint, "", "MIN2(src0, MIN2(src1, src2))")
+triop("umin3", tuint, "", "MIN2(src0, MIN2(src1, src2))")
 
-triop("fmax3", tfloat, "fmaxf(src0, fmaxf(src1, src2))")
-triop("imax3", tint, "MAX2(src0, MAX2(src1, src2))")
-triop("umax3", tuint, "MAX2(src0, MAX2(src1, src2))")
+triop("fmax3", tfloat, "", "fmaxf(src0, fmaxf(src1, src2))")
+triop("imax3", tint, "", "MAX2(src0, MAX2(src1, src2))")
+triop("umax3", tuint, "", "MAX2(src0, MAX2(src1, src2))")
 
-triop("fmed3", tfloat, "fmaxf(fminf(fmaxf(src0, src1), src2), fminf(src0, src1))")
-triop("imed3", tint, "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
-triop("umed3", tuint, "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
+triop("fmed3", tfloat, "", "fmaxf(fminf(fmaxf(src0, src1), src2), fminf(src0, src1))")
+triop("imed3", tint, "", "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
+triop("umed3", tuint, "", "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
 
 opcode("bcsel", 0, tuint, [0, 0, 0],
       [tbool1, tuint, tuint], False, "", "src0 ? src1 : src2")
@@ -855,7 +855,7 @@ opcode("b32csel", 0, tuint, [0, 0, 0],
        [tbool32, tuint, tuint], False, "", "src0 ? src1 : src2")
 
 # SM5 bfi assembly
-triop("bfi", tuint32, """
+triop("bfi", tuint32, "", """
 unsigned mask = src0, insert = src1, base = src2;
 if (mask == 0) {
    dst = base;
