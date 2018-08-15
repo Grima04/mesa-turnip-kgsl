@@ -214,6 +214,8 @@ iris_resource_copy_region(struct pipe_context *ctx,
    unsigned dst_layer = dstz;
    unsigned src_layer = src_box->z;
 
+   assert(src_box->depth == 1);
+
    struct iris_batch *batch = &ice->render_batch;
 
    iris_batch_maybe_flush(batch, 1500);
