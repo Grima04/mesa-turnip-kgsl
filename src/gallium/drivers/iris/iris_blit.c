@@ -87,9 +87,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    enum isl_format src_isl_format = iris_get_blorp_format(info->src.format);
    enum isl_format dst_isl_format = iris_get_blorp_format(info->dst.format);
 
-   unsigned dst_layer = info->dst.box.z;
-   unsigned src_layer = info->src.box.z;
-
    struct isl_swizzle src_isl_swizzle = ISL_SWIZZLE_IDENTITY;
 
    int src_x0 = info->src.box.x;
@@ -156,13 +153,17 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_blit(&blorp_batch, &src_surf, info->src.level, src_layer,
-              src_isl_format, src_isl_swizzle,
-              &dst_surf, info->dst.level, dst_layer,
-              dst_isl_format, ISL_SWIZZLE_IDENTITY,
-              src_x0, src_y0, src_x1, src_y1,
-              dst_x0, dst_y0, dst_x1, dst_y1,
-              filter, mirror_x, mirror_y);
+
+   for (int slice = 0; slice < info->dst.box.depth; slice++) {
+      blorp_blit(&blorp_batch,
+                 &src_surf, info->src.level, info->src.box.z + slice,
+                 src_isl_format, src_isl_swizzle,
+                 &dst_surf, info->dst.level, info->dst.box.z + slice,
+                 dst_isl_format, ISL_SWIZZLE_IDENTITY,
+                 src_x0, src_y0, src_x1, src_y1,
+                 dst_x0, dst_y0, dst_x1, dst_y1,
+                 filter, mirror_x, mirror_y);
+   }
 
    if (util_format_is_depth_and_stencil(info->dst.format) &&
        util_format_has_stencil(util_format_description(info->src.format))) {
@@ -174,13 +175,16 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_blorp_surf_for_resource(&dst_surf, &dst_res->base,
                                    ISL_AUX_USAGE_NONE, true);
 
-      blorp_blit(&blorp_batch, &src_surf, info->src.level, src_layer,
-                 ISL_FORMAT_R8_UINT, src_isl_swizzle,
-                 &dst_surf, info->dst.level, dst_layer,
-                 ISL_FORMAT_R8_UINT, ISL_SWIZZLE_IDENTITY,
-                 src_x0, src_y0, src_x1, src_y1,
-                 dst_x0, dst_y0, dst_x1, dst_y1,
-                 filter, mirror_x, mirror_y);
+      for (int slice = 0; slice < info->dst.box.depth; slice++) {
+         blorp_blit(&blorp_batch,
+                    &src_surf, info->src.level, info->src.box.z + slice,
+                    ISL_FORMAT_R8_UINT, src_isl_swizzle,
+                    &dst_surf, info->dst.level, info->dst.box.z + slice,
+                    ISL_FORMAT_R8_UINT, ISL_SWIZZLE_IDENTITY,
+                    src_x0, src_y0, src_x1, src_y1,
+                    dst_x0, dst_y0, dst_x1, dst_y1,
+                    filter, mirror_x, mirror_y);
+      }
    }
 
    blorp_batch_finish(&blorp_batch);
