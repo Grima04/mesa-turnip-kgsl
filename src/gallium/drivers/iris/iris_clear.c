@@ -115,6 +115,99 @@ iris_clear(struct pipe_context *ctx,
 }
 
 static void
+iris_clear_texture(struct pipe_context *ctx,
+                   struct pipe_resource *p_res,
+                   unsigned level,
+                   const struct pipe_box *box,
+                   const void *data)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_resource *res = (void *) p_res;
+
+   struct iris_batch *batch = &ice->render_batch;
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   iris_batch_maybe_flush(batch, 1500);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
+
+   if (util_format_is_depth_or_stencil(p_res->format)) {
+      const struct util_format_description *fmt_desc =
+         util_format_description(p_res->format);
+
+      struct iris_resource *z_res;
+      struct iris_resource *stencil_res;
+      struct blorp_surf z_surf;
+      struct blorp_surf stencil_surf;
+
+      float depth = 0.0;
+      uint8_t stencil = 0;
+
+      iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
+
+      if (z_res) {
+         iris_blorp_surf_for_resource(&z_surf, &z_res->base,
+                                      ISL_AUX_USAGE_NONE, true);
+         fmt_desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
+      }
+
+      if (stencil_res) {
+         iris_blorp_surf_for_resource(&stencil_surf, &stencil_res->base,
+                                      ISL_AUX_USAGE_NONE, true);
+         fmt_desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
+      }
+
+      blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
+                                level, box->z, box->depth,
+                                box->x, box->y,
+                                box->x + box->width,
+                                box->y + box->height,
+                                z_res != NULL, depth,
+                                stencil_res ? 0xff : 0, stencil);
+   } else {
+      union isl_color_value color;
+      bool color_write_disable[4] = { false, false, false, false };
+      struct blorp_surf surf;
+      iris_blorp_surf_for_resource(&surf, p_res, ISL_AUX_USAGE_NONE, true);
+
+      enum isl_format format = res->surf.format;
+
+      if (!isl_format_supports_rendering(devinfo, format) &&
+          isl_format_is_rgbx(format))
+         format = isl_format_rgbx_to_rgba(format);
+
+      if (!isl_format_supports_rendering(devinfo, format)) {
+         const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+         // XXX: actually just get_copy_format_for_bpb from BLORP
+         // XXX: don't cut and paste this
+         switch (fmtl->bpb) {
+         case 8:   format = ISL_FORMAT_R8_UINT;           break;
+         case 16:  format = ISL_FORMAT_R8G8_UINT;         break;
+         case 24:  format = ISL_FORMAT_R8G8B8_UINT;       break;
+         case 32:  format = ISL_FORMAT_R8G8B8A8_UINT;     break;
+         case 48:  format = ISL_FORMAT_R16G16B16_UINT;    break;
+         case 64:  format = ISL_FORMAT_R16G16B16A16_UINT; break;
+         case 96:  format = ISL_FORMAT_R32G32B32_UINT;    break;
+         case 128: format = ISL_FORMAT_R32G32B32A32_UINT; break;
+         default:
+            unreachable("Unknown format bpb");
+         }
+      }
+
+      isl_color_value_unpack(&color, format, data);
+
+      blorp_clear(&blorp_batch, &surf, format, ISL_SWIZZLE_IDENTITY,
+                  level, box->z, box->depth, box->x, box->y,
+                  box->x + box->width, box->y + box->height,
+                  color, color_write_disable);
+   }
+
+   blorp_batch_finish(&blorp_batch);
+}
+
+
+static void
 iris_clear_render_target(struct pipe_context *ctx,
                          struct pipe_surface *dst,
                          const union pipe_color_union *color,
@@ -142,6 +235,7 @@ void
 iris_init_clear_functions(struct pipe_context *ctx)
 {
    ctx->clear = iris_clear;
+   ctx->clear_texture = iris_clear_texture;
    ctx->clear_render_target = iris_clear_render_target;
    ctx->clear_depth_stencil = iris_clear_depth_stencil;
 }
