@@ -120,6 +120,12 @@ iris_create_shader_state(struct pipe_context *ctx,
                   IRIS_NOS_DEPTH_STENCIL_ALPHA |
                   IRIS_NOS_RASTERIZER |
                   IRIS_NOS_BLEND;
+
+      /* The program key needs the VUE map if there are > 16 inputs */
+      if (util_bitcount64(ish->nir->info.inputs_read &
+                          BRW_FS_VARYING_INPUT_MASK) > 16) {
+         ish->nos |= IRIS_NOS_LAST_VUE_MAP;
+      }
       break;
    case MESA_SHADER_COMPUTE:
       // XXX: NOS
@@ -742,6 +748,9 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct brw_wm_prog_key key = { .program_string_id = ish->program_id };
    ice->vtbl.populate_fs_key(ice, &key);
 
+   if (ish->nos & IRIS_NOS_LAST_VUE_MAP)
+      key.input_slots_valid = ice->shaders.last_vue_map->slots_valid;
+
    if (iris_bind_cached_shader(ice, IRIS_CACHE_FS, &key))
       return;
 
@@ -789,7 +798,8 @@ update_last_vue_map(struct iris_context *ice,
       ice->state.dirty |= IRIS_DIRTY_CLIP |
                           IRIS_DIRTY_SF_CL_VIEWPORT |
                           IRIS_DIRTY_SCISSOR_RECT |
-                          IRIS_DIRTY_UNCOMPILED_FS;
+                          IRIS_DIRTY_UNCOMPILED_FS |
+                          ice->state.dirty_for_nos[IRIS_NOS_LAST_VUE_MAP];
       // XXX: CC_VIEWPORT?
    }
 
