@@ -149,12 +149,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    struct iris_batch *batch = &ice->render_batch;
 
-   iris_batch_maybe_flush(batch, 1500);
-
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
    for (int slice = 0; slice < info->dst.box.depth; slice++) {
+      iris_batch_maybe_flush(batch, 1500);
+
       blorp_blit(&blorp_batch,
                  &src_surf, info->src.level, info->src.box.z + slice,
                  src_isl_format, src_isl_swizzle,
@@ -176,6 +176,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                    ISL_AUX_USAGE_NONE, true);
 
       for (int slice = 0; slice < info->dst.box.depth; slice++) {
+         iris_batch_maybe_flush(batch, 1500);
+
          blorp_blit(&blorp_batch,
                     &src_surf, info->src.level, info->src.box.z + slice,
                     ISL_FORMAT_R8_UINT, src_isl_swizzle,
