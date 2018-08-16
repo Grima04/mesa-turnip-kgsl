@@ -66,6 +66,7 @@ public:
 private:
    typedef std::vector<LValue*> LValues;
    typedef unordered_map<unsigned, LValues> NirDefMap;
+   typedef unordered_map<unsigned, nir_load_const_instr*> ImmediateMap;
    typedef unordered_map<unsigned, uint32_t> NirArrayLMemOffsets;
    typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
@@ -74,6 +75,7 @@ private:
    BasicBlock* convert(nir_block *);
    LValues& convert(nir_dest *);
    SVSemantic convert(nir_intrinsic_op);
+   Value* convert(nir_load_const_instr*, uint8_t);
    LValues& convert(nir_register *);
    LValues& convert(nir_ssa_def *);
 
@@ -160,12 +162,14 @@ private:
 
    NirDefMap ssaDefs;
    NirDefMap regDefs;
+   ImmediateMap immediates;
    NirArrayLMemOffsets regToLmemOffset;
    NirBlockMap blocks;
    unsigned int curLoopDepth;
 
    BasicBlock *exit;
    Value *zero;
+   Instruction *immInsertPos;
 
    int clipVertexOutput;
 
@@ -715,6 +719,10 @@ Converter::getSrc(nir_src *src, uint8_t idx, bool indirect)
 Value*
 Converter::getSrc(nir_ssa_def *src, uint8_t idx)
 {
+   ImmediateMap::iterator iit = immediates.find(src->index);
+   if (iit != immediates.end())
+      return convert((*iit).second, idx);
+
    NirDefMap::iterator it = ssaDefs.find(src->index);
    if (it == ssaDefs.end()) {
       ERROR("SSA value %u not found\n", src->index);
@@ -1704,6 +1712,8 @@ Converter::visit(nir_loop *loop)
 bool
 Converter::visit(nir_instr *insn)
 {
+   // we need an insertion point for on the fly generated immediate loads
+   immInsertPos = bb->getExit();
    switch (insn->type) {
    case nir_instr_type_alu:
       return visit(nir_instr_as_alu(insn));
@@ -2493,28 +2503,41 @@ Converter::visit(nir_jump_instr *insn)
    return true;
 }
 
+Value*
+Converter::convert(nir_load_const_instr *insn, uint8_t idx)
+{
+   Value *val;
+
+   if (immInsertPos)
+      setPosition(immInsertPos, true);
+   else
+      setPosition(bb, false);
+
+   switch (insn->def.bit_size) {
+   case 64:
+      val = loadImm(getSSA(8), insn->value.u64[idx]);
+      break;
+   case 32:
+      val = loadImm(getSSA(4), insn->value.u32[idx]);
+      break;
+   case 16:
+      val = loadImm(getSSA(2), insn->value.u16[idx]);
+      break;
+   case 8:
+      val = loadImm(getSSA(1), insn->value.u8[idx]);
+      break;
+   default:
+      unreachable("unhandled bit size!\n");
+   }
+   setPosition(bb, true);
+   return val;
+}
+
 bool
 Converter::visit(nir_load_const_instr *insn)
 {
    assert(insn->def.bit_size <= 64);
-
-   LValues &newDefs = convert(&insn->def);
-   for (int i = 0; i < insn->def.num_components; i++) {
-      switch (insn->def.bit_size) {
-      case 64:
-         loadImm(newDefs[i], insn->value.u64[i]);
-         break;
-      case 32:
-         loadImm(newDefs[i], insn->value.u32[i]);
-         break;
-      case 16:
-         loadImm(newDefs[i], insn->value.u16[i]);
-         break;
-      case 8:
-         loadImm(newDefs[i], insn->value.u8[i]);
-         break;
-      }
-   }
+   immediates[insn->def.index] = insn;
    return true;
 }
 
