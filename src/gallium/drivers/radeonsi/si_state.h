@@ -394,6 +394,20 @@ enum {
 			  PIPE_SHADER_##name * SI_NUM_SHADER_DESCS, \
 			  SI_NUM_SHADER_DESCS)
 
+static inline unsigned
+si_const_and_shader_buffer_descriptors_idx(unsigned shader)
+{
+	return SI_DESCS_FIRST_SHADER + shader * SI_NUM_SHADER_DESCS +
+	       SI_SHADER_DESCS_CONST_AND_SHADER_BUFFERS;
+}
+
+static inline unsigned
+si_sampler_and_image_descriptors_idx(unsigned shader)
+{
+	return SI_DESCS_FIRST_SHADER + shader * SI_NUM_SHADER_DESCS +
+	       SI_SHADER_DESCS_SAMPLERS_AND_IMAGES;
+}
+
 /* This represents descriptors in memory, such as buffer resources,
  * image resources, and sampler states.
  */

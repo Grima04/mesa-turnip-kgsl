@@ -220,13 +220,6 @@ si_get_sampler_view_priority(struct si_resource *res)
 	return RADEON_PRIO_SAMPLER_TEXTURE;
 }
 
-static unsigned
-si_sampler_and_image_descriptors_idx(unsigned shader)
-{
-	return SI_DESCS_FIRST_SHADER + shader * SI_NUM_SHADER_DESCS +
-	       SI_SHADER_DESCS_SAMPLERS_AND_IMAGES;
-}
-
 static struct si_descriptors *
 si_sampler_and_image_descriptors(struct si_context *sctx, unsigned shader)
 {
@@ -1174,13 +1167,6 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 
 
 /* CONSTANT BUFFERS */
-
-static unsigned
-si_const_and_shader_buffer_descriptors_idx(unsigned shader)
-{
-	return SI_DESCS_FIRST_SHADER + shader * SI_NUM_SHADER_DESCS +
-	       SI_SHADER_DESCS_CONST_AND_SHADER_BUFFERS;
-}
 
 static struct si_descriptors *
 si_const_and_shader_buffer_descriptors(struct si_context *sctx, unsigned shader)
