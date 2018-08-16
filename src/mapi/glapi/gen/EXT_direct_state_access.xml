@@ -100,6 +100,14 @@
       <param name="matrixMode" type="GLenum" />
    </function>
 
+   <!-- OpenGL 1.2.1 -->
+
+  <function name="BindMultiTextureEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="texture" type="GLuint" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
@@ -122,5 +130,5 @@
       <param name="m" type="const GLdouble *" />
    </function>
 </category>
-
+</category>
 </OpenGLAPI>

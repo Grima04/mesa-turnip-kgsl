@@ -1709,17 +1709,18 @@ _mesa_bind_texture(struct gl_context *ctx, GLenum target,
  *
  * \param target texture target.
  * \param texName texture name.
+ * \param texunit texture unit.
  */
 static ALWAYS_INLINE void
 bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
-             bool no_error)
+             GLenum texunit, bool no_error, const char *caller)
 {
    struct gl_texture_object *newTexObj = NULL;
    int targetIndex;
 
    targetIndex = _mesa_tex_target_to_index(ctx, target);
    if (!no_error && targetIndex < 0) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "glBindTexture(target = %s)",
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target = %s)", caller,
                   _mesa_enum_to_string(target));
       return;
    }
@@ -1741,8 +1742,8 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
             /* The named texture object's target doesn't match the
              * given target
              */
-            _mesa_error( ctx, GL_INVALID_OPERATION,
-                         "glBindTexture(target mismatch)" );
+            _mesa_error(ctx, GL_INVALID_OPERATION,
+                        "%s(target mismatch)", caller);
             return;
          }
          if (newTexObj->Target == 0) {
@@ -1752,14 +1753,14 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
       else {
          if (!no_error && ctx->API == API_OPENGL_CORE) {
             _mesa_error(ctx, GL_INVALID_OPERATION,
-                        "glBindTexture(non-gen name)");
+                        "%s(non-gen name)", caller);
             return;
          }
 
          /* if this is a new texture id, allocate a texture object now */
          newTexObj = ctx->Driver.NewTextureObject(ctx, texName, target);
          if (!newTexObj) {
-            _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBindTexture");
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
             return;
          }
 
@@ -1771,14 +1772,15 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
    assert(newTexObj->Target == target);
    assert(newTexObj->TargetIndex == targetIndex);
 
-   bind_texture_object(ctx, ctx->Texture.CurrentUnit, newTexObj);
+   bind_texture_object(ctx, texunit, newTexObj);
 }
 
 void GLAPIENTRY
 _mesa_BindTexture_no_error(GLenum target, GLuint texName)
 {
    GET_CURRENT_CONTEXT(ctx);
-   bind_texture(ctx, target, texName, true);
+   bind_texture(ctx, target, texName, ctx->Texture.CurrentUnit, true,
+                "glBindTexture");
 }
 
 
@@ -1791,7 +1793,29 @@ _mesa_BindTexture(GLenum target, GLuint texName)
       _mesa_debug(ctx, "glBindTexture %s %d\n",
                   _mesa_enum_to_string(target), (GLint) texName);
 
-   bind_texture(ctx, target, texName, false);
+   bind_texture(ctx, target, texName, ctx->Texture.CurrentUnit, false,
+                "glBindTexture");
+}
+
+
+void GLAPIENTRY
+_mesa_BindMultiTextureEXT(GLenum texunit, GLenum target, GLuint texture)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   unsigned unit = texunit - GL_TEXTURE0;
+
+   if (texunit < GL_TEXTURE0 || unit >= _mesa_max_tex_unit(ctx)) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "glBindMultiTextureEXT(texunit=%s)",
+                  _mesa_enum_to_string(texunit));
+      return;
+   }
+
+   if (MESA_VERBOSE & (VERBOSE_API|VERBOSE_TEXTURE))
+      _mesa_debug(ctx, "glBindMultiTextureEXT %s %d\n",
+                  _mesa_enum_to_string(texunit), (GLint) texture);
+
+   bind_texture(ctx, target, texture, unit, false, "glBindMultiTextureEXT");
 }
 
 

@@ -1473,6 +1473,7 @@ offsets = {
     "MatrixLoadTransposedEXT": 1437,
     "MatrixMultTransposefEXT": 1438,
     "MatrixMultTransposedEXT": 1439,
+    "BindMultiTextureEXT": 1440,
 }
 
 functions = [
