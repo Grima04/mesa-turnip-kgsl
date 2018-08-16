@@ -12,6 +12,10 @@
       with specific GL versions and other extensions.
    -->
 
+   <enum name="PROGRAM_MATRIX_EXT" value="0x8E2D"/>
+   <enum name="TRANSPOSE_PROGRAM_MATRIX_EXT" value="0x8E2E"/>
+   <enum name="PROGRAM_MATRIX_STACK_DEPTH_EXT" value="0x8E2F"/>
+
 </category>
 
 </OpenGLAPI>
