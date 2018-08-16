@@ -45,6 +45,22 @@ struct ac_shader_binary;
 #define RADEON_LLVM_MAX_SYSTEM_VALUES 11
 #define RADEON_LLVM_MAX_ADDRS 16
 
+enum si_arg_regfile {
+	ARG_SGPR,
+	ARG_VGPR
+};
+
+/**
+ * Used to collect types and other info about arguments of the LLVM function
+ * before the function is created.
+ */
+struct si_function_info {
+	LLVMTypeRef types[100];
+	LLVMValueRef *assign[100];
+	unsigned num_sgpr_params;
+	unsigned num_params;
+};
+
 struct si_shader_context {
 	struct lp_build_tgsi_context bld_base;
 	struct gallivm_state gallivm;
@@ -218,6 +234,15 @@ si_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
+void si_init_function_info(struct si_function_info *fninfo);
+unsigned add_arg_assign(struct si_function_info *fninfo,
+			enum si_arg_regfile regfile, LLVMTypeRef type,
+			LLVMValueRef *assign);
+void si_create_function(struct si_shader_context *ctx,
+			const char *name,
+			LLVMTypeRef *returns, unsigned num_returns,
+			struct si_function_info *fninfo,
+			unsigned max_workgroup_size);
 unsigned si_llvm_compile(LLVMModuleRef M, struct ac_shader_binary *binary,
 			 struct ac_llvm_compiler *compiler,
 			 struct pipe_debug_callback *debug,

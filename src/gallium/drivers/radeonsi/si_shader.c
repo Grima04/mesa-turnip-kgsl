@@ -51,22 +51,6 @@ struct si_shader_output_values
 	ubyte vertex_stream[4];
 };
 
-/**
- * Used to collect types and other info about arguments of the LLVM function
- * before the function is created.
- */
-struct si_function_info {
-	LLVMTypeRef types[100];
-	LLVMValueRef *assign[100];
-	unsigned num_sgpr_params;
-	unsigned num_params;
-};
-
-enum si_arg_regfile {
-	ARG_SGPR,
-	ARG_VGPR
-};
-
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
 			       struct ac_llvm_compiler *compiler);
@@ -114,13 +98,13 @@ static bool is_merged_shader(struct si_shader_context *ctx)
 	       ctx->type == PIPE_SHADER_GEOMETRY;
 }
 
-static void si_init_function_info(struct si_function_info *fninfo)
+void si_init_function_info(struct si_function_info *fninfo)
 {
 	fninfo->num_params = 0;
 	fninfo->num_sgpr_params = 0;
 }
 
-static unsigned add_arg_assign(struct si_function_info *fninfo,
+unsigned add_arg_assign(struct si_function_info *fninfo,
 			enum si_arg_regfile regfile, LLVMTypeRef type,
 			LLVMValueRef *assign)
 {
@@ -4228,11 +4212,11 @@ static void si_llvm_emit_barrier(const struct lp_build_tgsi_action *action,
 	ac_build_s_barrier(&ctx->ac);
 }
 
-static void si_create_function(struct si_shader_context *ctx,
-			       const char *name,
-			       LLVMTypeRef *returns, unsigned num_returns,
-			       struct si_function_info *fninfo,
-			       unsigned max_workgroup_size)
+void si_create_function(struct si_shader_context *ctx,
+			const char *name,
+			LLVMTypeRef *returns, unsigned num_returns,
+			struct si_function_info *fninfo,
+			unsigned max_workgroup_size)
 {
 	int i;
 
