@@ -695,7 +695,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
                                (ring_type == RING_GFX ||
                                 ring_type == RING_COMPUTE ||
                                 ring_type == RING_DMA ?
-                                   RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC : 0));
+                                   RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC : 0));
    if (!pb)
       return false;
 
@@ -789,6 +789,7 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
    ib_size = ib->big_ib_buffer->size - ib->used_ib_space;
    ib->base.current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs->ring_type);
    assert(ib->base.current.max_dw >= ib->max_check_space_size / 4);
+   ib->base.gpu_address = info->va_start;
    return true;
 }
 
@@ -1060,6 +1061,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    ib->base.current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
    ib->base.current.max_dw = ib->big_ib_buffer->size / 4 - cs_epilog_dw;
    assert(ib->base.current.max_dw >= ib->max_check_space_size / 4);
+   ib->base.gpu_address = va;
 
    amdgpu_cs_add_buffer(&cs->main.base, ib->big_ib_buffer,
                         RADEON_USAGE_READ, 0, RADEON_PRIO_IB1);

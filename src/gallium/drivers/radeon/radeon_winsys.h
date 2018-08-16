@@ -193,6 +193,7 @@ struct radeon_cmdbuf {
     /* Memory usage of the buffer list. These are always 0 for preamble IBs. */
     uint64_t                      used_vram;
     uint64_t                      used_gart;
+    uint64_t                      gpu_address;
 };
 
 /* Tiling info for display code, DRI sharing, and other data. */
