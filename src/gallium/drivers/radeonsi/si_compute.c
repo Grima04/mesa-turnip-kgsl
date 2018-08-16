@@ -317,9 +317,8 @@ static void si_set_global_binding(
 	}
 }
 
-static void si_initialize_compute(struct si_context *sctx)
+void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	uint64_t bc_va;
 
 	radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
@@ -363,9 +362,6 @@ static void si_initialize_compute(struct si_context *sctx)
 					      bc_va >> 8);
 		}
 	}
-
-	sctx->cs_shader_state.emitted_program = NULL;
-	sctx->cs_shader_state.initialized = true;
 }
 
 static bool si_setup_compute_scratch_buffer(struct si_context *sctx,
@@ -914,8 +910,12 @@ static void si_launch_grid(
 	if (sctx->bo_list_add_all_compute_resources)
 		si_compute_resources_add_all_to_bo_list(sctx);
 
-	if (!sctx->cs_shader_state.initialized)
-		si_initialize_compute(sctx);
+	if (!sctx->cs_shader_state.initialized) {
+		si_emit_initial_compute_regs(sctx, sctx->gfx_cs);
+
+		sctx->cs_shader_state.emitted_program = NULL;
+		sctx->cs_shader_state.initialized = true;
+	}
 
 	if (sctx->flags)
 		si_emit_cache_flush(sctx);

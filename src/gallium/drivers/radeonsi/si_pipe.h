@@ -1304,6 +1304,7 @@ unsigned si_end_counter(struct si_screen *sscreen, unsigned type,
 			uint64_t begin);
 
 /* si_compute.c */
+void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf *cs);
 unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
 					unsigned waves_per_threadgroup,
 					unsigned max_waves_per_sh);
