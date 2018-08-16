@@ -753,18 +753,14 @@ static void si_setup_tgsi_user_data(struct si_context *sctx,
 	}
 }
 
-static void si_emit_dispatch_packets(struct si_context *sctx,
-                                     const struct pipe_grid_info *info)
+unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
+					unsigned waves_per_threadgroup,
+					unsigned max_waves_per_sh)
 {
-	struct si_screen *sscreen = sctx->screen;
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
-	unsigned waves_per_threadgroup =
-		DIV_ROUND_UP(info->block[0] * info->block[1] * info->block[2], 64);
 	unsigned compute_resource_limits =
 		S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
 
-	if (sctx->chip_class >= GFX7) {
+	if (sscreen->info.chip_class >= GFX7) {
 		unsigned num_cu_per_se = sscreen->info.num_good_compute_units /
 					 sscreen->info.max_se;
 
@@ -775,17 +771,29 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 		if (num_cu_per_se % 4 && waves_per_threadgroup == 1)
 			compute_resource_limits |= S_00B854_FORCE_SIMD_DIST(1);
 
-		compute_resource_limits |= S_00B854_WAVES_PER_SH(sctx->cs_max_waves_per_sh);
+		compute_resource_limits |= S_00B854_WAVES_PER_SH(max_waves_per_sh);
 	} else {
 		/* GFX6 */
-		if (sctx->cs_max_waves_per_sh) {
-			unsigned limit_div16 = DIV_ROUND_UP(sctx->cs_max_waves_per_sh, 16);
+		if (max_waves_per_sh) {
+			unsigned limit_div16 = DIV_ROUND_UP(max_waves_per_sh, 16);
 			compute_resource_limits |= S_00B854_WAVES_PER_SH_SI(limit_div16);
 		}
 	}
+	return compute_resource_limits;
+}
+
+static void si_emit_dispatch_packets(struct si_context *sctx,
+                                     const struct pipe_grid_info *info)
+{
+	struct si_screen *sscreen = sctx->screen;
+	struct radeon_cmdbuf *cs = sctx->gfx_cs;
+	bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
+	unsigned waves_per_threadgroup =
+		DIV_ROUND_UP(info->block[0] * info->block[1] * info->block[2], 64);
 
 	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
-			  compute_resource_limits);
+			  si_get_compute_resource_limits(sscreen, waves_per_threadgroup,
+							 sctx->cs_max_waves_per_sh));
 
 	unsigned dispatch_initiator =
 		S_00B800_COMPUTE_SHADER_EN(1) |
