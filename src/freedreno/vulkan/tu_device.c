@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 #include <unistd.h>
 #include <xf86drm.h>
 
@@ -875,11 +876,23 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
 }
 
 static uint64_t
-tu_get_system_memory_size()
+tu_get_system_heap_size()
 {
-   uint64_t pages = sysconf(_SC_PHYS_PAGES);
-   uint64_t page_size = sysconf(_SC_PAGE_SIZE);
-   return pages * page_size;
+   struct sysinfo info;
+   sysinfo(&info);
+
+   uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
+
+   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
+    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
+    */
+   uint64_t available_ram;
+   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
+      available_ram = total_ram / 2;
+   else
+      available_ram = total_ram * 3 / 4;
+
+   return available_ram;
 }
 
 void
@@ -888,7 +901,7 @@ tu_GetPhysicalDeviceMemoryProperties(
   VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
    pMemoryProperties->memoryHeapCount = 1;
-   pMemoryProperties->memoryHeaps[0].size = tu_get_system_memory_size();
+   pMemoryProperties->memoryHeaps[0].size = tu_get_system_heap_size();
    pMemoryProperties->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 
    pMemoryProperties->memoryTypeCount = 1;
