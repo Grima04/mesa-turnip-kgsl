@@ -509,9 +509,7 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
     * allocation up.
     */
    if (bucket == NULL) {
-      bo_size = size;
-      if (bo_size < page_size)
-         bo_size = page_size;
+      bo_size = MAX2(ALIGN(size, page_size), page_size);
    } else {
       bo_size = bucket->size;
    }
