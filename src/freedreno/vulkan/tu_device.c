@@ -1379,6 +1379,7 @@ tu_GetBufferMemoryRequirements(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
 
+   pMemoryRequirements->memoryTypeBits = 1;
    pMemoryRequirements->alignment = 16;
    pMemoryRequirements->size =
      align64(buffer->size, pMemoryRequirements->alignment);
@@ -1401,8 +1402,7 @@ tu_GetImageMemoryRequirements(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_image, image, _image);
 
-   /* TODO: memory type */
-
+   pMemoryRequirements->memoryTypeBits = 1;
    pMemoryRequirements->size = image->size;
    pMemoryRequirements->alignment = image->alignment;
 }
