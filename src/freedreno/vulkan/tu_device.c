@@ -531,22 +531,22 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR: {
             VkPhysicalDeviceVariablePointerFeaturesKHR *features = (void *)ext;
-            features->variablePointersStorageBuffer = true;
+            features->variablePointersStorageBuffer = false;
             features->variablePointers = false;
             break;
          }
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR: {
             VkPhysicalDeviceMultiviewFeaturesKHR *features =
               (VkPhysicalDeviceMultiviewFeaturesKHR *)ext;
-            features->multiview = true;
-            features->multiviewGeometryShader = true;
-            features->multiviewTessellationShader = true;
+            features->multiview = false;
+            features->multiviewGeometryShader = false;
+            features->multiviewTessellationShader = false;
             break;
          }
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES: {
             VkPhysicalDeviceShaderDrawParameterFeatures *features =
               (VkPhysicalDeviceShaderDrawParameterFeatures *)ext;
-            features->shaderDrawParameters = true;
+            features->shaderDrawParameters = false;
             break;
          }
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
@@ -573,9 +573,9 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
             VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
               (VkPhysicalDeviceDescriptorIndexingFeaturesEXT *)ext;
-            features->shaderInputAttachmentArrayDynamicIndexing = true;
-            features->shaderUniformTexelBufferArrayDynamicIndexing = true;
-            features->shaderStorageTexelBufferArrayDynamicIndexing = true;
+            features->shaderInputAttachmentArrayDynamicIndexing = false;
+            features->shaderUniformTexelBufferArrayDynamicIndexing = false;
+            features->shaderStorageTexelBufferArrayDynamicIndexing = false;
             features->shaderUniformBufferArrayNonUniformIndexing = false;
             features->shaderSampledImageArrayNonUniformIndexing = false;
             features->shaderStorageBufferArrayNonUniformIndexing = false;
@@ -583,22 +583,22 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             features->shaderInputAttachmentArrayNonUniformIndexing = false;
             features->shaderUniformTexelBufferArrayNonUniformIndexing = false;
             features->shaderStorageTexelBufferArrayNonUniformIndexing = false;
-            features->descriptorBindingUniformBufferUpdateAfterBind = true;
-            features->descriptorBindingSampledImageUpdateAfterBind = true;
-            features->descriptorBindingStorageImageUpdateAfterBind = true;
-            features->descriptorBindingStorageBufferUpdateAfterBind = true;
-            features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
-            features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
-            features->descriptorBindingUpdateUnusedWhilePending = true;
-            features->descriptorBindingPartiallyBound = true;
-            features->descriptorBindingVariableDescriptorCount = true;
-            features->runtimeDescriptorArray = true;
+            features->descriptorBindingUniformBufferUpdateAfterBind = false;
+            features->descriptorBindingSampledImageUpdateAfterBind = false;
+            features->descriptorBindingStorageImageUpdateAfterBind = false;
+            features->descriptorBindingStorageBufferUpdateAfterBind = false;
+            features->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
+            features->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
+            features->descriptorBindingUpdateUnusedWhilePending = false;
+            features->descriptorBindingPartiallyBound = false;
+            features->descriptorBindingVariableDescriptorCount = false;
+            features->runtimeDescriptorArray = false;
             break;
          }
          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
             VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
               (VkPhysicalDeviceConditionalRenderingFeaturesEXT *)ext;
-            features->conditionalRendering = true;
+            features->conditionalRendering = false;
             features->inheritedConditionalRendering = false;
             break;
          }
