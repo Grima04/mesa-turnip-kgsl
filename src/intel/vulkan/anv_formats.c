@@ -973,6 +973,26 @@ static const VkExternalMemoryProperties prime_fd_props = {
       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
 };
 
+static const VkExternalMemoryProperties android_buffer_props = {
+   .externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+                             VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+};
+
+
+static const VkExternalMemoryProperties android_image_props = {
+   .externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+                             VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT |
+                             VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+};
+
 VkResult anv_GetPhysicalDeviceImageFormatProperties2(
     VkPhysicalDevice                            physicalDevice,
     const VkPhysicalDeviceImageFormatInfo2*     base_info,
@@ -982,6 +1002,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
    VkExternalImageFormatPropertiesKHR *external_props = NULL;
    VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
+   struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
    VkResult result;
 
    /* Extract input structs */
@@ -1005,6 +1026,9 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
          ycbcr_props = (void *) s;
          break;
+      case VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID:
+         android_usage = (void *) s;
+         break;
       default:
          anv_debug_ignored_stype(s->sType);
          break;
@@ -1015,6 +1039,15 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
                &base_props->imageFormatProperties, ycbcr_props);
    if (result != VK_SUCCESS)
       goto fail;
+
+   if (android_usage) {
+      android_usage->androidHardwareBufferUsage =
+         anv_ahw_usage_from_vk_usage(base_info->flags,
+                                     base_info->usage);
+
+      /* Limit maxArrayLayers to 1 for AHardwareBuffer based images for now. */
+      base_props->imageFormatProperties.maxArrayLayers = 1;
+   }
 
    /* From the Vulkan 1.0.42 spec:
     *
@@ -1028,6 +1061,10 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
          if (external_props)
             external_props->externalMemoryProperties = prime_fd_props;
+         break;
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+         if (external_props)
+            external_props->externalMemoryProperties = android_image_props;
          break;
       default:
          /* From the Vulkan 1.0.42 spec:
@@ -1110,6 +1147,10 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       pExternalBufferProperties->externalMemoryProperties = prime_fd_props;
+      return;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+      pExternalBufferProperties->externalMemoryProperties =
+         android_buffer_props;
       return;
    default:
       goto unsupported;
