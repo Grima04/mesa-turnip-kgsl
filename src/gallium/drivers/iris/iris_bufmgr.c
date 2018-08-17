@@ -1185,30 +1185,6 @@ iris_bo_map(struct pipe_debug_callback *dbg,
    return map;
 }
 
-int
-iris_bo_subdata(struct iris_bo *bo, uint64_t offset,
-               uint64_t size, const void *data)
-{
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-
-   struct drm_i915_gem_pwrite pwrite = {
-      .handle = bo->gem_handle,
-      .offset = offset,
-      .size = size,
-      .data_ptr = (uint64_t) (uintptr_t) data,
-   };
-
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_PWRITE, &pwrite);
-   if (ret != 0) {
-      ret = -errno;
-      DBG("%s:%d: Error writing data to buffer %d: "
-          "(%"PRIu64" %"PRIu64") %s .\n",
-          __FILE__, __LINE__, bo->gem_handle, offset, size, strerror(errno));
-   }
-
-   return ret;
-}
-
 /** Waits for all GPU rendering with the object to have completed. */
 void
 iris_bo_wait_rendering(struct iris_bo *bo)

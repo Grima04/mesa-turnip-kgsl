@@ -264,9 +264,6 @@ MUST_CHECK void *iris_bo_map(struct pipe_debug_callback *dbg,
  */
 static inline int iris_bo_unmap(struct iris_bo *bo) { return 0; }
 
-/** Write data into an object. */
-int iris_bo_subdata(struct iris_bo *bo, uint64_t offset,
-                   uint64_t size, const void *data);
 /**
  * Waits for rendering to an object by the GPU to have completed.
  *
