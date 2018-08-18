@@ -816,9 +816,9 @@ si_nir_opts(struct nir_shader *nir)
 {
 	bool progress;
         unsigned lower_flrp =
-                (sel->nir->options->lower_flrp16 ? 16 : 0) |
-                (sel->nir->options->lower_flrp32 ? 32 : 0) |
-                (sel->nir->options->lower_flrp64 ? 64 : 0);
+                (nir->options->lower_flrp16 ? 16 : 0) |
+                (nir->options->lower_flrp32 ? 32 : 0) |
+                (nir->options->lower_flrp64 ? 64 : 0);
 
 	do {
 		progress = false;
@@ -852,12 +852,12 @@ si_nir_opts(struct nir_shader *nir)
 		if (lower_flrp != 0) {
 			bool lower_flrp_progress;
 
-			NIR_PASS(lower_flrp_progress, sel->nir, nir_lower_flrp,
+			NIR_PASS(lower_flrp_progress, nir, nir_lower_flrp,
 				 lower_flrp,
 				 false /* always_precise */,
-				 sel->nir->options->lower_ffma);
+				 nir->options->lower_ffma);
 			if (lower_flrp_progress) {
-				NIR_PASS(progress, sel->nir,
+				NIR_PASS(progress, nir,
 					 nir_opt_constant_folding);
 				progress = true;
 			}
