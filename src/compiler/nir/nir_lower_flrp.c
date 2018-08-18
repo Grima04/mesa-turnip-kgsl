@@ -556,6 +556,23 @@ convert_flrp_instruction(nir_builder *bld,
    }
 
    /*
+    * - If t is constant:
+    *
+    *        x(1 - t) + yt
+    *
+    *   The cost is three instructions without FMA or two instructions with
+    *   FMA.  This is the same cost as the imprecise lowering, but it gives
+    *   the instruction scheduler a little more freedom.
+    *
+    *   There is no need to handle t = 0.5 specially.  nir_opt_algebraic
+    *   already has optimizations to convert 0.5x + 0.5y to 0.5(x + y).
+    */
+   if (alu->src[2].src.ssa->parent_instr->type == nir_instr_type_load_const) {
+      replace_with_strict(bld, dead_flrp, alu);
+      return;
+   }
+
+   /*
     * - Otherwise
     *
     *        x + t(x - y)
