@@ -112,7 +112,7 @@ dirty_flag_for_cache(enum iris_program_cache_id cache_id)
    // XXX: new and old programs to decide what bits to twiddle
    // XXX: CLIP: toggle if barycentric modes has any NONPERSPECTIVE or not
    if (cache_id == IRIS_CACHE_FS)
-      return IRIS_DIRTY_WM | IRIS_DIRTY_FS | IRIS_DIRTY_CLIP;
+      return IRIS_DIRTY_WM | IRIS_DIRTY_FS | IRIS_DIRTY_CLIP | IRIS_DIRTY_SBE;
    if (cache_id == IRIS_CACHE_VS)
       return IRIS_DIRTY_VS | IRIS_DIRTY_VF_SGVS;
 
