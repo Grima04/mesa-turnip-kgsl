@@ -1,0 +1,287 @@
+/*
+ * Copyright © 2018 Intel Corporation
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+#include "nir.h"
+#include "nir_builder.h"
+#include "util/u_vector.h"
+
+/**
+ * Lower flrp instructions.
+ *
+ * Unlike the lowerings that are possible in nir_opt_algrbraic, this pass can
+ * examine more global information to determine a possibly more efficient
+ * lowering for each flrp.
+ */
+
+static void
+append_flrp_to_dead_list(struct u_vector *dead_flrp, struct nir_alu_instr *alu)
+{
+   struct nir_alu_instr **tail = u_vector_add(dead_flrp);
+   *tail = alu;
+}
+
+/**
+ * Replace flrp(a, b, c) with ffma(b, c, ffma(-a, c, a)).
+ */
+static void
+replace_with_strict_ffma(struct nir_builder *bld, struct u_vector *dead_flrp,
+                         struct nir_alu_instr *alu)
+{
+   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
+   nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
+
+   nir_ssa_def *const neg_a = nir_fneg(bld, a);
+   nir_instr_as_alu(neg_a->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const inner_ffma = nir_ffma(bld, neg_a, c, a);
+   nir_instr_as_alu(inner_ffma->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const outer_ffma = nir_ffma(bld, b, c, inner_ffma);
+   nir_instr_as_alu(outer_ffma->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(outer_ffma));
+
+   /* DO NOT REMOVE the original flrp yet.  Many of the lowering choices are
+    * based on other uses of the sources.  Removing the flrp may cause the
+    * last flrp in a sequence to make a different, incorrect choice.
+    */
+   append_flrp_to_dead_list(dead_flrp, alu);
+}
+
+/**
+ * Replace flrp(a, b, c) with a(1-c) + bc.
+ */
+static void
+replace_with_strict(struct nir_builder *bld, struct u_vector *dead_flrp,
+                    struct nir_alu_instr *alu)
+{
+   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
+   nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
+
+   nir_ssa_def *const neg_c = nir_fneg(bld, c);
+   nir_instr_as_alu(neg_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const one_minus_c =
+      nir_fadd(bld, nir_imm_float(bld, 1.0f), neg_c);
+   nir_instr_as_alu(one_minus_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const first_product = nir_fmul(bld, a, one_minus_c);
+   nir_instr_as_alu(first_product->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const second_product = nir_fmul(bld, b, c);
+   nir_instr_as_alu(second_product->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const sum = nir_fadd(bld, first_product, second_product);
+   nir_instr_as_alu(sum->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
+
+   /* DO NOT REMOVE the original flrp yet.  Many of the lowering choices are
+    * based on other uses of the sources.  Removing the flrp may cause the
+    * last flrp in a sequence to make a different, incorrect choice.
+    */
+   append_flrp_to_dead_list(dead_flrp, alu);
+}
+
+/**
+ * Replace flrp(a, b, c) with a + c(b-a).
+ */
+static void
+replace_with_fast(struct nir_builder *bld, struct u_vector *dead_flrp,
+                  struct nir_alu_instr *alu)
+{
+   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
+   nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
+
+   nir_ssa_def *const neg_a = nir_fneg(bld, a);
+   nir_instr_as_alu(neg_a->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const b_minus_a = nir_fadd(bld, b, neg_a);
+   nir_instr_as_alu(b_minus_a->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const product = nir_fmul(bld, c, b_minus_a);
+   nir_instr_as_alu(product->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const sum = nir_fadd(bld, a, product);
+   nir_instr_as_alu(sum->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
+
+   /* DO NOT REMOVE the original flrp yet.  Many of the lowering choices are
+    * based on other uses of the sources.  Removing the flrp may cause the
+    * last flrp in a sequence to make a different, incorrect choice.
+    */
+   append_flrp_to_dead_list(dead_flrp, alu);
+}
+
+static void
+convert_flrp_instruction(nir_builder *bld,
+                         struct u_vector *dead_flrp,
+                         nir_alu_instr *alu,
+                         bool always_precise,
+                         bool have_ffma)
+{
+   bld->cursor = nir_before_instr(&alu->instr);
+
+   /* There are two methods to implement flrp(x, y, t).  The strictly correct
+    * implementation according to the GLSL spec is:
+    *
+    *    x(1 - t) + yt
+    *
+    * This can also be implemented using two chained FMAs
+    *
+    *    fma(y, t, fma(-x, t, x))
+    *
+    * This method, using either formulation, has better precision when the
+    * difference between x and y is very large.  It guarantess that flrp(x, y,
+    * 1) = y.  For example, flrp(1e38, 1.0, 1.0) is 1.0.  This is correct.
+    *
+    * The other possible implementation is:
+    *
+    *    x + t(y - x)
+    *
+    * This can also be formuated as an FMA:
+    *
+    *    fma(y - x, t, x)
+    *
+    * For this implementation, flrp(1e38, 1.0, 1.0) is 0.0.  Since 1.0 was
+    * expected, that's a pretty significant error.
+    *
+    * The choice made for lowering depends on a number of factors.
+    *
+    * - If the flrp is marked precise and FMA is supported:
+    *
+    *        fma(y, t, fma(-x, t, x))
+    *
+    *   This is strictly correct (maybe?), and the cost is two FMA
+    *   instructions.  It at least maintains the flrp(x, y, 1.0) == y
+    *   condition.
+    *
+    * - If the flrp is marked precise and FMA is not supported:
+    *
+    *        x(1 - t) + yt
+    *
+    *   This is strictly correct, and the cost is 4 instructions.  If FMA is
+    *   supported, this may or may not be reduced to 3 instructions (a
+    *   subtract, a multiply, and an FMA)... but in that case the other
+    *   formulation should have been used.
+    */
+   if (alu->exact) {
+      if (have_ffma)
+         replace_with_strict_ffma(bld, dead_flrp, alu);
+      else
+         replace_with_strict(bld, dead_flrp, alu);
+
+      return;
+   }
+
+   if (have_ffma) {
+      if (always_precise) {
+         replace_with_strict_ffma(bld, dead_flrp, alu);
+         return;
+      }
+   } else {
+      if (always_precise) {
+         replace_with_strict(bld, dead_flrp, alu);
+         return;
+      }
+   }
+
+   /*
+    * - Otherwise
+    *
+    *        x + t(x - y)
+    */
+   replace_with_fast(bld, dead_flrp, alu);
+}
+
+static void
+lower_flrp_impl(nir_function_impl *impl,
+                struct u_vector *dead_flrp,
+                unsigned lowering_mask,
+                bool always_precise,
+                bool have_ffma)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type == nir_instr_type_alu) {
+            nir_alu_instr *const alu = nir_instr_as_alu(instr);
+
+            if (alu->op == nir_op_flrp &&
+                (alu->dest.dest.ssa.bit_size & lowering_mask)) {
+               convert_flrp_instruction(&b, dead_flrp, alu, always_precise,
+                                        have_ffma);
+            }
+         }
+      }
+   }
+
+   nir_metadata_preserve(impl, nir_metadata_block_index |
+                               nir_metadata_dominance);
+}
+
+/**
+ * \param lowering_mask - Bitwise-or of the bit sizes that need to be lowered
+ *                        (e.g., 16 | 64 if only 16-bit and 64-bit flrp need
+ *                        lowering).
+ * \param always_precise - Always require precise lowering for flrp.  This
+ *                        will always lower flrp to (a * (1 - c)) + (b * c).
+ * \param have_ffma - Set to true if the GPU has an FFMA instruction that
+ *                    should be used.
+ */
+bool
+nir_lower_flrp(nir_shader *shader,
+               unsigned lowering_mask,
+               bool always_precise,
+               bool have_ffma)
+{
+   struct u_vector dead_flrp;
+
+   if (!u_vector_init(&dead_flrp, sizeof(struct nir_alu_instr *), 64))
+      return false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         lower_flrp_impl(function->impl, &dead_flrp, lowering_mask,
+                         always_precise, have_ffma);
+      }
+   }
+
+   /* Progress was made if the dead list is not empty.  Remove all the
+    * instructions from the dead list.
+    */
+   const bool progress = u_vector_length(&dead_flrp) != 0;
+
+   struct nir_alu_instr **instr;
+   u_vector_foreach(instr, &dead_flrp)
+      nir_instr_remove(&(*instr)->instr);
+
+   u_vector_finish(&dead_flrp);
+
+   return progress;
+}
