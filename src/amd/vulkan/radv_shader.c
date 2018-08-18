@@ -124,6 +124,10 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively,
                   bool allow_copies)
 {
         bool progress;
+        unsigned lower_flrp =
+                (shader->options->lower_flrp16 ? 16 : 0) |
+                (shader->options->lower_flrp32 ? 32 : 0) |
+                (shader->options->lower_flrp64 ? 64 : 0);
 
         do {
                 progress = false;
@@ -164,6 +168,27 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively,
                 NIR_PASS(progress, shader, nir_opt_peephole_select, 8, true, true);
                 NIR_PASS(progress, shader, nir_opt_algebraic);
                 NIR_PASS(progress, shader, nir_opt_constant_folding);
+
+                if (lower_flrp != 0) {
+                        bool lower_flrp_progress;
+                        NIR_PASS(lower_flrp_progress,
+                                 shader,
+                                 nir_lower_flrp,
+                                 lower_flrp,
+                                 false /* always_precise */,
+                                 shader->options->lower_ffma);
+                        if (lower_flrp_progress) {
+                                NIR_PASS(progress, shader,
+                                         nir_opt_constant_folding);
+                                progress = true;
+                        }
+
+                        /* Nothing should rematerialize any flrps, so we only
+                         * need to do this lowering once.
+                         */
+                        lower_flrp = 0;
+                }
+
                 NIR_PASS(progress, shader, nir_opt_undef);
                 NIR_PASS(progress, shader, nir_opt_conditional_discard);
                 if (shader->options->max_unroll_iterations) {

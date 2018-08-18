@@ -815,6 +815,11 @@ void
 si_nir_opts(struct nir_shader *nir)
 {
 	bool progress;
+        unsigned lower_flrp =
+                (sel->nir->options->lower_flrp16 ? 16 : 0) |
+                (sel->nir->options->lower_flrp32 ? 32 : 0) |
+                (sel->nir->options->lower_flrp64 ? 64 : 0);
+
 	do {
 		progress = false;
 
@@ -843,6 +848,25 @@ si_nir_opts(struct nir_shader *nir)
 		/* Needed for algebraic lowering */
 		NIR_PASS(progress, nir, nir_opt_algebraic);
 		NIR_PASS(progress, nir, nir_opt_constant_folding);
+
+		if (lower_flrp != 0) {
+			bool lower_flrp_progress;
+
+			NIR_PASS(lower_flrp_progress, sel->nir, nir_lower_flrp,
+				 lower_flrp,
+				 false /* always_precise */,
+				 sel->nir->options->lower_ffma);
+			if (lower_flrp_progress) {
+				NIR_PASS(progress, sel->nir,
+					 nir_opt_constant_folding);
+				progress = true;
+			}
+
+			/* Nothing should rematerialize any flrps, so we only
+			 * need to do this lowering once.
+			 */
+			lower_flrp = 0;
+		}
 
 		NIR_PASS(progress, nir, nir_opt_undef);
 		NIR_PASS(progress, nir, nir_opt_conditional_discard);

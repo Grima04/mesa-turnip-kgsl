@@ -112,6 +112,11 @@ static void
 ir3_optimize_loop(nir_shader *s)
 {
 	bool progress;
+	unsigned lower_flrp =
+		(s->options->lower_flrp16 ? 16 : 0) |
+		(s->options->lower_flrp32 ? 32 : 0) |
+		(s->options->lower_flrp64 ? 64 : 0);
+
 	do {
 		progress = false;
 
@@ -135,6 +140,22 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_opt_intrinsics);
 		progress |= OPT(s, nir_opt_algebraic);
 		progress |= OPT(s, nir_opt_constant_folding);
+
+		if (lower_flrp != 0) {
+			if (OPT(s, nir_lower_flrp,
+					lower_flrp,
+					false /* always_precise */,
+					s->options->lower_ffma)) {
+				OPT(s, nir_opt_constant_folding);
+				progress = true;
+			}
+
+			/* Nothing should rematerialize any flrps, so we only
+			 * need to do this lowering once.
+			 */
+			lower_flrp = 0;
+		}
+
 		progress |= OPT(s, nir_opt_dead_cf);
 		if (OPT(s, nir_opt_trivial_continues)) {
 			progress |= true;
