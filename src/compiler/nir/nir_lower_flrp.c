@@ -20,6 +20,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+#include <math.h>
 #include "nir.h"
 #include "nir_builder.h"
 #include "util/u_vector.h"
@@ -136,6 +137,58 @@ replace_with_fast(struct nir_builder *bld, struct u_vector *dead_flrp,
    append_flrp_to_dead_list(dead_flrp, alu);
 }
 
+static bool
+sources_are_constants_with_similar_magnitudes(const nir_alu_instr *instr)
+{
+   nir_const_value *val0 = nir_src_as_const_value(instr->src[0].src);
+   nir_const_value *val1 = nir_src_as_const_value(instr->src[1].src);
+
+   if (val0 == NULL || val1 == NULL)
+      return false;
+
+   const uint8_t *const swizzle0 = instr->src[0].swizzle;
+   const uint8_t *const swizzle1 = instr->src[1].swizzle;
+   const unsigned num_components = nir_dest_num_components(instr->dest.dest);
+
+   if (instr->dest.dest.ssa.bit_size == 32) {
+      for (unsigned i = 0; i < num_components; i++) {
+         int exp0;
+         int exp1;
+
+         frexpf(val0[swizzle0[i]].f32, &exp0);
+         frexpf(val1[swizzle1[i]].f32, &exp1);
+
+         /* If the difference between exponents is >= 24, then A+B will always
+          * have the value whichever between A and B has the largest absolute
+          * value.  So, [0, 23] is the valid range.  The smaller the limit
+          * value, the more precision will be maintained at a potential
+          * performance cost.  Somewhat arbitrarilly split the range in half.
+          */
+         if (abs(exp0 - exp1) > (23 / 2))
+            return false;
+      }
+   } else {
+      for (unsigned i = 0; i < num_components; i++) {
+         int exp0;
+         int exp1;
+
+         frexp(val0[swizzle0[i]].f64, &exp0);
+         frexp(val1[swizzle1[i]].f64, &exp1);
+
+         /* If the difference between exponents is >= 53, then A+B will always
+          * have the value whichever between A and B has the largest absolute
+          * value.  So, [0, 52] is the valid range.  The smaller the limit
+          * value, the more precision will be maintained at a potential
+          * performance cost.  Somewhat arbitrarilly split the range in half.
+          */
+         if (abs(exp0 - exp1) > (52 / 2))
+            return false;
+      }
+   }
+
+   return true;
+}
+
 static void
 convert_flrp_instruction(nir_builder *bld,
                          struct u_vector *dead_flrp,
@@ -194,6 +247,21 @@ convert_flrp_instruction(nir_builder *bld,
       else
          replace_with_strict(bld, dead_flrp, alu);
 
+      return;
+   }
+
+   /*
+    * - If x and y are both immediates and the relative magnitude of the
+    *   values is similar (such that x-y does not lose too much precision):
+    *
+    *        x + t(x - y)
+    *
+    *   We rely on constant folding to eliminate x-y, and we rely on
+    *   nir_opt_algebraic to possibly generate an FMA.  The cost is either one
+    *   FMA or two instructions.
+    */
+   if (sources_are_constants_with_similar_magnitudes(alu)) {
+      replace_with_fast(bld, dead_flrp, alu);
       return;
    }
 
