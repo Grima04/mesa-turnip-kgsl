@@ -1185,7 +1185,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
  */
 struct iris_sampler_view {
    // XXX: just store the resource, not the rest of this
-   struct pipe_sampler_view pipe;
+   struct pipe_sampler_view base;
    struct isl_view view;
 
    /** The resource (BO) holding our SURFACE_STATE. */
@@ -1226,11 +1226,11 @@ iris_create_sampler_view(struct pipe_context *ctx,
       return NULL;
 
    /* initialize base object */
-   isv->pipe = *tmpl;
-   isv->pipe.context = ctx;
-   isv->pipe.texture = NULL;
-   pipe_reference_init(&isv->pipe.reference, 1);
-   pipe_resource_reference(&isv->pipe.texture, tex);
+   isv->base = *tmpl;
+   isv->base.context = ctx;
+   isv->base.texture = NULL;
+   pipe_reference_init(&isv->base.reference, 1);
+   pipe_resource_reference(&isv->base.texture, tex);
 
    void *map = upload_state(ice->state.surface_uploader, &isv->surface_state,
                             4 * GENX(RENDER_SURFACE_STATE_length), 64);
@@ -1283,7 +1283,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
                             .mocs = MOCS_WB);
    }
 
-   return &isv->pipe;
+   return &isv->base;
 }
 
 static void
@@ -1311,7 +1311,7 @@ iris_create_surface(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
-   struct pipe_surface *psurf = &surf->pipe;
+   struct pipe_surface *psurf = &surf->base;
    struct iris_resource *res = (struct iris_resource *) tex;
 
    if (!surf)
@@ -2967,7 +2967,7 @@ use_surface(struct iris_batch *batch,
 static uint32_t
 use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
 {
-   iris_use_pinned_bo(batch, iris_resource_bo(isv->pipe.texture), false);
+   iris_use_pinned_bo(batch, iris_resource_bo(isv->base.texture), false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
 
    return isv->surface_state.offset;

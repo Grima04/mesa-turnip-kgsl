@@ -57,7 +57,7 @@ struct iris_state_ref {
  * depth/stencil attachment.
  */
 struct iris_surface {
-   struct pipe_surface pipe;
+   struct pipe_surface base;
    struct isl_view view;
 
    /** The resource (BO) holding our SURFACE_STATE. */
