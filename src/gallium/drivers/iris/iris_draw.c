@@ -51,21 +51,10 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_batch_maybe_flush(batch, 1500);
 
-   // XXX: actually do brw_cache_flush_for_*
-   // XXX: CS stall is really expensive
-   iris_emit_pipe_control_flush(batch,
-                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
-                                PIPE_CONTROL_RENDER_TARGET_FLUSH |
-                                PIPE_CONTROL_CS_STALL);
-
-   iris_emit_pipe_control_flush(batch,
-                                PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
-                                PIPE_CONTROL_CONST_CACHE_INVALIDATE);
-
-   iris_cache_sets_clear(batch);
-   // XXX: ^^^
-
    iris_update_compiled_shaders(ice);
+
+   iris_predraw_resolve_inputs(ice, batch);
+   iris_predraw_resolve_framebuffer(ice, batch);
 
    if (iris_binder_is_empty(&batch->binder)) {
       ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS |
@@ -81,6 +70,5 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    ice->state.dirty = 0ull;
 
-   // XXX: don't flush always
-   //iris_batch_flush(batch);
+   iris_postdraw_update_resolve_tracking(ice, batch);
 }

@@ -31,9 +31,121 @@
  * render-to-texture, format reinterpretation issues, and other situations.
  */
 
-#include "iris_context.h"
 #include "util/hash_table.h"
 #include "util/set.h"
+#include "iris_context.h"
+
+static void
+resolve_sampler_views(struct iris_batch *batch,
+                      struct iris_shader_state *shs)
+{
+   for (int i = 0; i < shs->num_textures; i++) {
+      struct iris_sampler_view *isv = shs->textures[i];
+      if (!isv)
+         continue;
+
+      struct iris_resource *res = (void *) isv->base.texture;
+
+      // XXX: aux tracking
+      iris_cache_flush_for_read(batch, res->bo);
+   }
+}
+
+/**
+ * \brief Resolve buffers before drawing.
+ *
+ * Resolve the depth buffer's HiZ buffer, resolve the depth buffer of each
+ * enabled depth texture, and flush the render cache for any dirty textures.
+ */
+void
+iris_predraw_resolve_inputs(struct iris_context *ice,
+                            struct iris_batch *batch)
+{
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
+      resolve_sampler_views(batch, shs);
+   }
+
+   // XXX: storage images
+}
+
+void
+iris_predraw_resolve_framebuffer(struct iris_context *ice,
+                                 struct iris_batch *batch)
+{
+   struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+   struct pipe_surface *zs_surf = cso_fb->zsbuf;
+
+   if (zs_surf) {
+      // XXX: HiZ resolves
+   }
+
+   for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+      struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+      if (!surf)
+         continue;
+
+      struct iris_resource *res = (void *) surf->base.texture;
+
+      // XXX: aux tracking
+
+      iris_cache_flush_for_render(batch, res->bo, surf->view.format,
+                                  ISL_AUX_USAGE_NONE);
+   }
+}
+
+/**
+ * \brief Call this after drawing to mark which buffers need resolving
+ *
+ * If the depth buffer was written to and if it has an accompanying HiZ
+ * buffer, then mark that it needs a depth resolve.
+ *
+ * If the color buffer is a multisample window system buffer, then
+ * mark that it needs a downsample.
+ *
+ * Also mark any render targets which will be textured as needing a render
+ * cache flush.
+ */
+void
+iris_postdraw_update_resolve_tracking(struct iris_context *ice,
+                                      struct iris_batch *batch)
+{
+   struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+   struct pipe_surface *zs_surf = cso_fb->zsbuf;
+
+   // XXX: front buffer drawing?
+
+   if (zs_surf) {
+      struct iris_resource *z_res, *s_res;
+      iris_get_depth_stencil_resources(zs_surf->texture, &z_res, &s_res);
+
+      if (z_res) {
+         // XXX: aux tracking
+
+         if (ice->state.depth_writes_enabled)
+            iris_depth_cache_add_bo(batch, z_res->bo);
+      }
+
+      if (s_res) {
+         // XXX: aux tracking
+
+         if (ice->state.stencil_writes_enabled)
+            iris_depth_cache_add_bo(batch, z_res->bo);
+      }
+   }
+
+   for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+      struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+      if (!surf)
+         continue;
+
+      struct iris_resource *res = (void *) surf->base.texture;
+
+      // XXX: aux tracking
+      iris_render_cache_add_bo(batch, res->bo, surf->view.format,
+                               ISL_AUX_USAGE_NONE);
+   }
+}
 
 /**
  * Clear the cache-tracking sets.
