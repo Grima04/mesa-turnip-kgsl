@@ -57,6 +57,8 @@
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 
+#define BTP_ALIGNMENT 32
+
 /**
  * Reserve a block of space in the binder, given the raw size in bytes.
  */
@@ -66,7 +68,7 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
    struct iris_binder *binder = &batch->binder;
 
    assert(size > 0);
-   assert((binder->insert_point % 64) == 0);
+   assert((binder->insert_point % BTP_ALIGNMENT) == 0);
 
    /* If we can't fit all stages in the binder, flush the batch which
     * will cause us to gain a new empty binder.
@@ -79,7 +81,7 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
    /* It had better fit now. */
    assert(offset + size <= IRIS_BINDER_SIZE);
 
-   binder->insert_point = align(binder->insert_point + size, 64);
+   binder->insert_point = align(binder->insert_point + size, BTP_ALIGNMENT);
 
    iris_use_pinned_bo(batch, binder->bo, false);
 
@@ -111,7 +113,7 @@ iris_binder_reserve_3d(struct iris_batch *batch,
       const struct brw_stage_prog_data *prog_data =
          (const void *) shaders[stage]->prog_data;
 
-      sizes[stage] = align(prog_data->binding_table.size_bytes, 64);
+      sizes[stage] = align(prog_data->binding_table.size_bytes, BTP_ALIGNMENT);
       total_size += sizes[stage];
    }
 
@@ -131,7 +133,7 @@ iris_binder_reserve_3d(struct iris_batch *batch,
 }
 
 /* Avoid using offset 0, tools consider it NULL */
-#define INIT_INSERT_POINT 64
+#define INIT_INSERT_POINT BTP_ALIGNMENT
 
 void
 iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
