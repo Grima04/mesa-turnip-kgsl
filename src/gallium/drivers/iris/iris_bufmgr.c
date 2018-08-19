@@ -614,7 +614,7 @@ retry:
 
    bo->name = name;
    p_atomic_set(&bo->refcount, 1);
-   bo->reusable = true;
+   bo->reusable = bucket && bufmgr->bo_reuse;
    bo->cache_coherent = bufmgr->has_llc;
    bo->index = -1;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
@@ -870,10 +870,11 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
 
    DBG("bo_unreference final: %d (%s)\n", bo->gem_handle, bo->name);
 
-   bucket = bucket_for_size(bufmgr, bo->size);
+   bucket = NULL;
+   if (bo->reusable)
+      bucket = bucket_for_size(bufmgr, bo->size);
    /* Put the buffer into our internal cache for reuse if we can. */
-   if (bufmgr->bo_reuse && bo->reusable && bucket != NULL &&
-       iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
+   if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->free_time = time;
       bo->name = NULL;
 
