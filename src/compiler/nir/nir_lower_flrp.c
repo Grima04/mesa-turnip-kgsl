@@ -272,6 +272,59 @@ sources_are_constants_with_similar_magnitudes(const nir_alu_instr *instr)
    return true;
 }
 
+/**
+ * Counts of similar types of nir_op_flrp instructions
+ *
+ * If a similar instruction fits into more than one category, it will only be
+ * counted once.  The assumption is that no other instruction will have all
+ * sources the same, or CSE would have removed one of the instructions.
+ */
+struct similar_flrp_stats {
+   unsigned src2;
+   unsigned src0_and_src2;
+   unsigned src1_and_src2;
+};
+
+/**
+ * Collection counts of similar FLRP instructions.
+ *
+ * This function only cares about similar instructions that have src2 in
+ * common.
+ */
+static void
+get_similar_flrp_stats(nir_alu_instr *alu, struct similar_flrp_stats *st)
+{
+   memset(st, 0, sizeof(*st));
+
+   nir_foreach_use(other_use, alu->src[2].src.ssa) {
+      /* Is the use also a flrp? */
+      nir_instr *const other_instr = other_use->parent_instr;
+      if (other_instr->type != nir_instr_type_alu)
+         continue;
+
+      /* Eh-hem... don't match the instruction with itself. */
+      if (other_instr == &alu->instr)
+         continue;
+
+      nir_alu_instr *const other_alu = nir_instr_as_alu(other_instr);
+      if (other_alu->op != nir_op_flrp)
+         continue;
+
+      /* Does the other flrp use source 2 from the first flrp as its source 2
+       * as well?
+       */
+      if (!nir_alu_srcs_equal(alu, other_alu, 2, 2))
+         continue;
+
+      if (nir_alu_srcs_equal(alu, other_alu, 0, 0))
+         st->src0_and_src2++;
+      else if (nir_alu_srcs_equal(alu, other_alu, 1, 1))
+         st->src1_and_src2++;
+      else
+         st->src2++;
+   }
+}
+
 static void
 convert_flrp_instruction(nir_builder *bld,
                          struct u_vector *dead_flrp,
@@ -404,8 +457,44 @@ convert_flrp_instruction(nir_builder *bld,
          replace_with_strict_ffma(bld, dead_flrp, alu);
          return;
       }
+
+      /*
+       * - If FMA is supported and other flrp(x, _, t) exists:
+       *
+       *        fma(y, t, fma(-x, t, x))
+       *
+       *   The hope is that the inner FMA calculation will be shared with the
+       *   other lowered flrp.  This results in two FMA instructions for the
+       *   first flrp and one FMA instruction for each additional flrp.  It
+       *   also means that the live range for x might be complete after the
+       *   inner ffma instead of after the last flrp.
+       */
+      struct similar_flrp_stats st;
+
+      get_similar_flrp_stats(alu, &st);
+      if (st.src0_and_src2 > 0) {
+         replace_with_strict_ffma(bld, dead_flrp, alu);
+         return;
+      }
    } else {
       if (always_precise) {
+         replace_with_strict(bld, dead_flrp, alu);
+         return;
+      }
+
+      /*
+       * - If FMA is not supported and another flrp(x, _, t) exists:
+       *
+       *        x(1 - t) + yt
+       *
+       *   The hope is that the x(1 - t) will be shared with the other lowered
+       *   flrp.  This results in 4 insructions for the first flrp and 2 for
+       *   each additional flrp.
+       */
+      struct similar_flrp_stats st;
+
+      get_similar_flrp_stats(alu, &st);
+      if (st.src0_and_src2 > 0) {
          replace_with_strict(bld, dead_flrp, alu);
          return;
       }
