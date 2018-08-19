@@ -240,6 +240,12 @@ struct iris_shader_state {
    struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
    struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];
+
+   struct iris_state_ref sampler_table;
+   struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];
+   struct iris_sampler_view *textures[IRIS_MAX_TEXTURE_SAMPLERS];
+   unsigned num_samplers;
+   unsigned num_textures;
 };
 
 /**
@@ -344,12 +350,8 @@ struct iris_context {
 
       struct iris_shader_state shaders[MESA_SHADER_STAGES];
 
-      struct iris_state_ref sampler_table[MESA_SHADER_STAGES];
+      /** Do any samplers (for any stage) need border color? */
       bool need_border_colors;
-      struct iris_sampler_state *samplers[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
-      struct iris_sampler_view *textures[MESA_SHADER_STAGES][IRIS_MAX_TEXTURE_SAMPLERS];
-      unsigned num_samplers[MESA_SHADER_STAGES];
-      unsigned num_textures[MESA_SHADER_STAGES];
 
       struct pipe_stream_output_target *so_target[PIPE_MAX_SO_BUFFERS];
       bool streamout_active;

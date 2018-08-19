@@ -1115,34 +1115,33 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    gl_shader_stage stage = stage_from_pipe(p_stage);
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
-   ice->state.num_samplers[stage] =
-      MAX2(ice->state.num_samplers[stage], start + count);
+   shs->num_samplers = MAX2(shs->num_samplers, start + count);
 
    for (int i = 0; i < count; i++) {
-      ice->state.samplers[stage][start + i] = states[i];
+      shs->samplers[start + i] = states[i];
    }
 
    /* Assemble the SAMPLER_STATEs into a contiguous table that lives
     * in the dynamic state memory zone, so we can point to it via the
     * 3DSTATE_SAMPLER_STATE_POINTERS_* commands.
     */
-   void *map = upload_state(ice->state.dynamic_uploader,
-                            &ice->state.sampler_table[stage],
+   void *map = upload_state(ice->state.dynamic_uploader, &shs->sampler_table,
                             count * 4 * GENX(SAMPLER_STATE_length), 32);
    if (unlikely(!map))
       return;
 
-   struct pipe_resource *res = ice->state.sampler_table[stage].res;
-   ice->state.sampler_table[stage].offset +=
+   struct pipe_resource *res = shs->sampler_table.res;
+   shs->sampler_table.offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(res));
 
    /* Make sure all land in the same BO */
    iris_border_color_pool_reserve(ice, IRIS_MAX_TEXTURE_SAMPLERS);
 
    for (int i = 0; i < count; i++) {
-      struct iris_sampler_state *state = ice->state.samplers[stage][i];
+      struct iris_sampler_state *state = shs->samplers[i];
 
       if (!state) {
          memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
@@ -1389,18 +1388,19 @@ iris_set_sampler_views(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    gl_shader_stage stage = stage_from_pipe(p_stage);
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    unsigned i;
    for (i = 0; i < count; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &ice->state.textures[stage][i], views[i]);
+                                  &shs->textures[i], views[i]);
    }
-   for (; i < ice->state.num_textures[stage]; i++) {
+   for (; i < shs->num_textures; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &ice->state.textures[stage][i], NULL);
+                                  &shs->textures[i], NULL);
    }
 
-   ice->state.num_textures[stage] = count;
+   shs->num_textures = count;
 
    ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
 }
@@ -3054,8 +3054,8 @@ iris_populate_binding_table(struct iris_context *ice,
    //assert(prog_data->binding_table.texture_start ==
           //(ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
 
-   for (int i = 0; i < ice->state.num_textures[stage]; i++) {
-      struct iris_sampler_view *view = ice->state.textures[stage][i];
+   for (int i = 0; i < shs->num_textures; i++) {
+      struct iris_sampler_view *view = shs->textures[i];
       bt_map[s++] = view ? use_sampler_view(batch, view)
                          : use_null_surface(batch, ice);
    }
@@ -3171,7 +3171,8 @@ iris_restore_context_saved_bos(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      struct pipe_resource *res = ice->state.sampler_table[stage].res;
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
+      struct pipe_resource *res = shs->sampler_table.res;
       if (res)
          iris_use_pinned_bo(batch, iris_resource_bo(res), false);
    }
@@ -3397,13 +3398,14 @@ iris_upload_render_state(struct iris_context *ice,
           !ice->shaders.prog[stage])
          continue;
 
-      struct pipe_resource *res = ice->state.sampler_table[stage].res;
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
+      struct pipe_resource *res = shs->sampler_table.res;
       if (res)
          iris_use_pinned_bo(batch, iris_resource_bo(res), false);
 
       iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
          ptr._3DCommandSubOpcode = 43 + stage;
-         ptr.PointertoVSSamplerState = ice->state.sampler_table[stage].offset;
+         ptr.PointertoVSSamplerState = shs->sampler_table.offset;
       }
    }
 
@@ -3770,7 +3772,8 @@ iris_destroy_state(struct iris_context *ice)
    pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
 
    for (int stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      pipe_resource_reference(&ice->state.sampler_table[stage].res, NULL);
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
+      pipe_resource_reference(&shs->sampler_table.res, NULL);
    }
    free(ice->state.genx);
 
