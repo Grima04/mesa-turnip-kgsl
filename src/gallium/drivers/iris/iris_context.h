@@ -431,19 +431,6 @@ void iris_emit_pipe_control_write(struct iris_batch *batch, uint32_t flags,
 void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
                                 uint32_t flags);
 
-void iris_cache_sets_clear(struct iris_batch *batch);
-void iris_cache_flush_for_read(struct iris_batch *batch, struct iris_bo *bo);
-void iris_cache_flush_for_render(struct iris_batch *batch,
-                                 struct iris_bo *bo,
-                                 enum isl_format format,
-                                 enum isl_aux_usage aux_usage);
-void iris_render_cache_add_bo(struct iris_batch *batch,
-                              struct iris_bo *bo,
-                              enum isl_format format,
-                              enum isl_aux_usage aux_usage);
-void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
-void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
-
 void iris_init_flush_functions(struct pipe_context *ctx);
 
 /* iris_blorp.c */
@@ -498,5 +485,21 @@ bool iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
                               uint32_t prog_data_size,
                               uint32_t *kernel_out,
                               void *prog_data_out);
+
+/* iris_resolve.c */
+
+void iris_cache_sets_clear(struct iris_batch *batch);
+void iris_flush_depth_and_render_caches(struct iris_batch *batch);
+void iris_cache_flush_for_read(struct iris_batch *batch, struct iris_bo *bo);
+void iris_cache_flush_for_render(struct iris_batch *batch,
+                                 struct iris_bo *bo,
+                                 enum isl_format format,
+                                 enum isl_aux_usage aux_usage);
+void iris_render_cache_add_bo(struct iris_batch *batch,
+                              struct iris_bo *bo,
+                              enum isl_format format,
+                              enum isl_aux_usage aux_usage);
+void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
+void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 
 #endif
