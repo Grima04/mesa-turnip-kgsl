@@ -53,6 +53,24 @@ struct iris_state_ref {
 };
 
 /**
+ * Gallium CSO for sampler views (texture views).
+ *
+ * In addition to the normal pipe_resource, this adds an ISL view
+ * which may reinterpret the format or restrict levels/layers.
+ *
+ * These can also be linear texture buffers.
+ */
+struct iris_sampler_view {
+   struct pipe_sampler_view base;
+   struct isl_view view;
+
+   /** The resource (BO) holding our SURFACE_STATE. */
+   struct iris_state_ref surface_state;
+};
+
+/**
+ * Gallium CSO for surfaces (framebuffer attachments).
+ *
  * A view of a surface that can be bound to a color render target or
  * depth/stencil attachment.
  */

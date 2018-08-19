@@ -1170,23 +1170,6 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 }
 
 /**
- * Gallium CSO for sampler views (texture views).
- *
- * In addition to the normal pipe_resource, this adds an ISL view
- * which may reinterpret the format or restrict levels/layers.
- *
- * These can also be linear texture buffers.
- */
-struct iris_sampler_view {
-   // XXX: just store the resource, not the rest of this
-   struct pipe_sampler_view base;
-   struct isl_view view;
-
-   /** The resource (BO) holding our SURFACE_STATE. */
-   struct iris_state_ref surface_state;
-};
-
-/**
  * Convert an swizzle enumeration (i.e. PIPE_SWIZZLE_X) to one of the HW's
  * "Shader Channel Select" enumerations (i.e. SCS_RED).  The mappings are
  *
