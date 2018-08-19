@@ -1144,11 +1144,6 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    for (int i = 0; i < count; i++) {
       struct iris_sampler_state *state = ice->state.samplers[stage][i];
 
-      /* Save a pointer to the iris_sampler_state, a few fields need
-       * to inform draw-time decisions.
-       */
-      ice->state.samplers[stage][start + i] = state;
-
       if (!state) {
          memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
       } else if (!state->needs_border_color) {
