@@ -26,12 +26,16 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "i915_drm.h"
 #include "common/gen_decoder.h"
 #include "iris_binder.h"
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
+
+/* Our target batch size - flush approximately at this point. */
+#define BATCH_SZ (20 * 1024)
 
 struct iris_address {
    struct iris_bo *bo;
@@ -101,11 +105,9 @@ void iris_init_batch(struct iris_batch *batch,
                      struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
                      uint8_t ring);
+void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);
-void iris_require_command_space(struct iris_batch *batch, unsigned size);
-void *iris_get_command_space(struct iris_batch *batch, unsigned bytes);
-void iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size);
 
 int _iris_batch_flush_fence(struct iris_batch *batch,
                             int in_fence_fd, int *out_fence_fd,
@@ -124,5 +126,53 @@ bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
 void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo,
                         bool writable);
+
+static inline unsigned
+iris_batch_bytes_used(struct iris_batch *batch)
+{
+   return batch->map_next - batch->map;
+}
+
+/**
+ * Ensure the current command buffer has \param size bytes of space
+ * remaining.  If not, this creates a secondary batch buffer and emits
+ * a jump from the primary batch to the start of the secondary.
+ *
+ * Most callers want iris_get_command_space() instead.
+ */
+static inline void
+iris_require_command_space(struct iris_batch *batch, unsigned size)
+{
+   const unsigned required_bytes = iris_batch_bytes_used(batch) + size;
+
+   if (required_bytes >= BATCH_SZ) {
+      iris_chain_to_new_batch(batch);
+   }
+}
+
+/**
+ * Allocate space in the current command buffer, and return a pointer
+ * to the mapped area so the caller can write commands there.
+ *
+ * This should be called whenever emitting commands.
+ */
+static inline void *
+iris_get_command_space(struct iris_batch *batch, unsigned bytes)
+{
+   iris_require_command_space(batch, bytes);
+   void *map = batch->map_next;
+   batch->map_next += bytes;
+   return map;
+}
+
+/**
+ * Helper to emit GPU commands - allocates space, copies them there.
+ */
+static inline void
+iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
+{
+   void *map = iris_get_command_space(batch, size);
+   memcpy(map, data, size);
+}
 
 #endif

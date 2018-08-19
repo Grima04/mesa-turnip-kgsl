@@ -53,8 +53,6 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
-#define BATCH_SZ (20 * 1024)
-
 /* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
  * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus, we may
  * need an extra 4 bytes to pad out to the nearest QWord.  So reserve 16.
@@ -291,12 +289,6 @@ iris_batch_free(struct iris_batch *batch)
    }
 }
 
-static unsigned
-batch_bytes_used(struct iris_batch *batch)
-{
-   return batch->map_next - batch->map;
-}
-
 /**
  * If we've chained to a secondary batch, or are getting near to the end,
  * then flush.  This should only be called between draws.
@@ -305,65 +297,29 @@ void
 iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate)
 {
    if (batch->bo != batch->exec_bos[0] ||
-       batch_bytes_used(batch) + estimate >= BATCH_SZ) {
+       iris_batch_bytes_used(batch) + estimate >= BATCH_SZ) {
       iris_batch_flush(batch);
    }
 }
 
-/**
- * Ensure the current command buffer has \param size bytes of space
- * remaining.  If not, this creates a secondary batch buffer and emits
- * a jump from the primary batch to the start of the secondary.
- *
- * Most callers want iris_get_command_space() instead.
- */
 void
-iris_require_command_space(struct iris_batch *batch, unsigned size)
+iris_chain_to_new_batch(struct iris_batch *batch)
 {
-   const unsigned required_bytes = batch_bytes_used(batch) + size;
+   /* We only support chaining a single time. */
+   assert(batch->bo == batch->exec_bos[0]);
 
-   if (required_bytes >= BATCH_SZ) {
-      /* We only support chaining a single time. */
-      assert(batch->bo == batch->exec_bos[0]);
+   uint32_t *cmd = batch->map_next;
+   uint64_t *addr = batch->map_next + 4;
+   batch->map_next += 8;
 
-      uint32_t *cmd = batch->map_next;
-      uint64_t *addr = batch->map_next + 4;
-      batch->map_next += 8;
+   /* No longer held by batch->bo, still held by validation list */
+   iris_bo_unreference(batch->bo);
+   batch->primary_batch_size = iris_batch_bytes_used(batch);
+   create_batch(batch);
 
-      /* No longer held by batch->bo, still held by validation list */
-      iris_bo_unreference(batch->bo);
-      batch->primary_batch_size = batch_bytes_used(batch);
-      create_batch(batch);
-
-      /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
-      *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
-      *addr = batch->bo->gtt_offset;
-   }
-}
-
-/**
- * Allocate space in the current command buffer, and return a pointer
- * to the mapped area so the caller can write commands there.
- *
- * This should be called whenever emitting commands.
- */
-void *
-iris_get_command_space(struct iris_batch *batch, unsigned bytes)
-{
-   iris_require_command_space(batch, bytes);
-   void *map = batch->map_next;
-   batch->map_next += bytes;
-   return map;
-}
-
-/**
- * Helper to emit GPU commands - allocates space, copies them there.
- */
-void
-iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
-{
-   void *map = iris_get_command_space(batch, size);
-   memcpy(map, data, size);
+   /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
+   *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
+   *addr = batch->bo->gtt_offset;
 }
 
 /**
@@ -382,7 +338,7 @@ iris_finish_batch(struct iris_batch *batch)
    batch->map_next += 4;
 
    if (batch->bo == batch->exec_bos[0])
-      batch->primary_batch_size = batch_bytes_used(batch);
+      batch->primary_batch_size = iris_batch_bytes_used(batch);
 }
 
 /**
@@ -469,13 +425,13 @@ _iris_batch_flush_fence(struct iris_batch *batch,
                         int in_fence_fd, int *out_fence_fd,
                         const char *file, int line)
 {
-   if (batch_bytes_used(batch) == 0)
+   if (iris_batch_bytes_used(batch) == 0)
       return 0;
 
    iris_finish_batch(batch);
 
    if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
-      int bytes_for_commands = batch_bytes_used(batch);
+      int bytes_for_commands = iris_batch_bytes_used(batch);
       int bytes_for_binder = batch->binder.insert_point;
       int second_bytes = 0;
       if (batch->bo != batch->exec_bos[0]) {
