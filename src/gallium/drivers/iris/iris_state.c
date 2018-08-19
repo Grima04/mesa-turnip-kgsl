@@ -707,6 +707,10 @@ struct iris_depth_stencil_alpha_state {
 
    /** Outbound to BLEND_STATE, 3DSTATE_PS_BLEND, COLOR_CALC_STATE. */
    struct pipe_alpha_state alpha;
+
+   /** Outbound to resolve and cache set tracking. */
+   bool depth_writes_enabled;
+   bool stencil_writes_enabled;
 };
 
 /**
@@ -722,9 +726,13 @@ iris_create_zsa_state(struct pipe_context *ctx,
    struct iris_depth_stencil_alpha_state *cso =
       malloc(sizeof(struct iris_depth_stencil_alpha_state));
 
-   cso->alpha = state->alpha;
-
    bool two_sided_stencil = state->stencil[1].enabled;
+
+   cso->alpha = state->alpha;
+   cso->depth_writes_enabled = state->depth.writemask;
+   cso->stencil_writes_enabled =
+      state->stencil[0].writemask != 0 ||
+      (two_sided_stencil && state->stencil[1].writemask != 1);
 
    /* The state tracker needs to optimize away EQUAL writes for us. */
    assert(!(state->depth.func == PIPE_FUNC_EQUAL && state->depth.writemask));
@@ -779,6 +787,9 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(alpha.func))
          ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+
+      ice->state.depth_writes_enabled = new_cso->depth_writes_enabled;
+      ice->state.stencil_writes_enabled = new_cso->stencil_writes_enabled;
    }
 
    ice->state.cso_zsa = new_cso;

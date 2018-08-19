@@ -345,6 +345,12 @@ struct iris_context {
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
 
+      /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
+      bool depth_writes_enabled;
+
+      /** Are stencil writes enabled?  (Stencil buffer may or may not exist.) */
+      bool stencil_writes_enabled;
+
       /** GenX-specific current state */
       struct iris_genx_state *genx;
 
