@@ -482,6 +482,16 @@ iris_bo_cache_purge_bucket(struct iris_bufmgr *bufmgr,
 }
 
 static struct iris_bo *
+bo_calloc(void)
+{
+   struct iris_bo *bo = calloc(1, sizeof(*bo));
+   if (bo) {
+      bo->hash = _mesa_hash_pointer(bo);
+   }
+   return bo;
+}
+
+static struct iris_bo *
 bo_alloc_internal(struct iris_bufmgr *bufmgr,
                   const char *name,
                   uint64_t size,
@@ -559,7 +569,7 @@ retry:
          bo->gtt_offset = 0ull;
       }
    } else {
-      bo = calloc(1, sizeof(*bo));
+      bo = bo_calloc();
       if (!bo)
          goto err;
 
@@ -656,7 +666,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 {
    struct iris_bo *bo;
 
-   bo = calloc(1, sizeof(*bo));
+   bo = bo_calloc();
    if (!bo)
       return NULL;
 
@@ -744,7 +754,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
       goto out;
    }
 
-   bo = calloc(1, sizeof(*bo));
+   bo = bo_calloc();
    if (!bo)
       goto out;
 
@@ -1338,7 +1348,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
       goto out;
    }
 
-   bo = calloc(1, sizeof(*bo));
+   bo = bo_calloc();
    if (!bo)
       goto out;
 

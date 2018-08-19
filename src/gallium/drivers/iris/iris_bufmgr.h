@@ -187,6 +187,9 @@ struct iris_bo {
     * Boolean of whether this buffer points into user memory
     */
    bool userptr;
+
+   /** Pre-computed hash using _mesa_hash_pointer for cache tracking sets */
+   uint32_t hash;
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)
