@@ -1730,7 +1730,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    gl_shader_stage stage = stage_from_pipe(p_stage);
-   struct iris_shader_state *shs = &ice->shaders.state[stage];
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct iris_const_buffer *cbuf = &shs->constbuf[index];
 
    if (input && (input->buffer || input->user_buffer)) {
@@ -1788,7 +1788,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    gl_shader_stage stage = stage_from_pipe(p_stage);
-   struct iris_shader_state *shs = &ice->shaders.state[stage];
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    for (unsigned i = 0; i < count; i++) {
       if (buffers && buffers[i].buffer) {
@@ -3030,7 +3030,7 @@ iris_populate_binding_table(struct iris_context *ice,
       return;
 
    const struct shader_info *info = iris_get_shader_info(ice, stage);
-   struct iris_shader_state *shs = &ice->shaders.state[stage];
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
@@ -3146,7 +3146,7 @@ iris_restore_context_saved_bos(struct iris_context *ice,
       if (clean & (IRIS_DIRTY_CONSTANTS_VS << stage))
          continue;
 
-      struct iris_shader_state *shs = &ice->shaders.state[stage];
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
       if (!shader)
@@ -3326,7 +3326,7 @@ iris_upload_render_state(struct iris_context *ice,
       if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
-      struct iris_shader_state *shs = &ice->shaders.state[stage];
+      struct iris_shader_state *shs = &ice->state.shaders[stage];
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
       if (!shader)

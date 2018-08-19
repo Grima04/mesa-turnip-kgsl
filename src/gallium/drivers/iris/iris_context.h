@@ -316,8 +316,6 @@ struct iris_context {
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
 
-      struct iris_shader_state state[MESA_SHADER_STAGES];
-
       struct u_upload_mgr *uploader;
       struct hash_table *cache;
 
@@ -343,6 +341,8 @@ struct iris_context {
 
       /** GenX-specific current state */
       struct iris_genx_state *genx;
+
+      struct iris_shader_state shaders[MESA_SHADER_STAGES];
 
       struct iris_state_ref sampler_table[MESA_SHADER_STAGES];
       bool need_border_colors;
