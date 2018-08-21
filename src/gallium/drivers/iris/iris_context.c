@@ -32,6 +32,7 @@
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "common/gen_sample_positions.h"
 
 static void
 iris_flush(struct pipe_context *ctx,
@@ -73,6 +74,41 @@ iris_set_debug_callback(struct pipe_context *ctx,
       ice->dbg = *cb;
    else
       memset(&ice->dbg, 0, sizeof(ice->dbg));
+}
+
+static void
+iris_get_sample_position(struct pipe_context *ctx,
+                         unsigned sample_count,
+                         unsigned sample_index,
+                         float *out_value)
+{
+   union {
+      struct {
+         float x[16];
+         float y[16];
+      } a;
+      struct {
+         float  _0XOffset,  _1XOffset,  _2XOffset,  _3XOffset,
+                _4XOffset,  _5XOffset,  _6XOffset,  _7XOffset,
+                _8XOffset,  _9XOffset, _10XOffset, _11XOffset,
+               _12XOffset, _13XOffset, _14XOffset, _15XOffset;
+         float  _0YOffset,  _1YOffset,  _2YOffset,  _3YOffset,
+                _4YOffset,  _5YOffset,  _6YOffset,  _7YOffset,
+                _8YOffset,  _9YOffset, _10YOffset, _11YOffset,
+               _12YOffset, _13YOffset, _14YOffset, _15YOffset;
+      } v;
+   } u;
+   switch (sample_count) {
+   case 1:  GEN_SAMPLE_POS_1X(u.v._);  break;
+   case 2:  GEN_SAMPLE_POS_2X(u.v._);  break;
+   case 4:  GEN_SAMPLE_POS_4X(u.v._);  break;
+   case 8:  GEN_SAMPLE_POS_8X(u.v._);  break;
+   case 16: GEN_SAMPLE_POS_16X(u.v._); break;
+   default: unreachable("invalid sample count");
+   }
+
+   out_value[0] = u.a.x[sample_index];
+   out_value[1] = u.a.y[sample_index];
 }
 
 /**
@@ -140,6 +176,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->destroy = iris_destroy_context;
    ctx->flush = iris_flush;
    ctx->set_debug_callback = iris_set_debug_callback;
+   ctx->get_sample_position = iris_get_sample_position;
 
    ice->shaders.urb_size = devinfo->urb.size;
 
