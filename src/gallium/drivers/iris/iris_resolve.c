@@ -130,7 +130,7 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
          // XXX: aux tracking
 
          if (ice->state.stencil_writes_enabled)
-            iris_depth_cache_add_bo(batch, z_res->bo);
+            iris_depth_cache_add_bo(batch, s_res->bo);
       }
    }
 
