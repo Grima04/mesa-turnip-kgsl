@@ -482,8 +482,11 @@ iris_is_format_supported(struct pipe_screen *pscreen,
        * are renderable from an API perspective since the state tracker will
        * fall back to RGBA or RGBX, which are renderable.  We want to render
        * internally for copies and blits, even if the application doesn't.
+       *
+       * We do need to advertise 32-bit RGB for texture buffers though.
        */
-      supported &= fmtl->bpb != 24 && fmtl->bpb != 48 && fmtl->bpb != 96;
+      supported &= fmtl->bpb != 24 && fmtl->bpb != 48 &&
+                   (fmtl->bpb != 96 || target == PIPE_BUFFER);
    }
 
    if (usage & PIPE_BIND_VERTEX_BUFFER)
