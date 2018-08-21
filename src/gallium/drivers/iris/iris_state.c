@@ -824,6 +824,36 @@ struct iris_rasterizer_state {
    uint16_t sprite_coord_enable;
 };
 
+static float
+get_line_width(const struct pipe_rasterizer_state *state)
+{
+   float line_width = state->line_width;
+
+   /* From the OpenGL 4.4 spec:
+    *
+    * "The actual width of non-antialiased lines is determined by rounding
+    *  the supplied width to the nearest integer, then clamping it to the
+    *  implementation-dependent maximum non-antialiased line width."
+    */
+   if (!state->multisample && !state->line_smooth)
+      line_width = roundf(state->line_width);
+
+   if (!state->multisample && state->line_smooth && line_width < 1.5f) {
+      /* For 1 pixel line thickness or less, the general anti-aliasing
+       * algorithm gives up, and a garbage line is generated.  Setting a
+       * Line Width of 0.0 specifies the rasterization of the "thinnest"
+       * (one-pixel-wide), non-antialiased lines.
+       *
+       * Lines rendered with zero Line Width are rasterized using the
+       * "Grid Intersection Quantization" rules as specified by the
+       * "Zero-Width (Cosmetic) Line Rasterization" section of the docs.
+       */
+      line_width = 0.0f;
+   }
+
+   return line_width;
+}
+
 /**
  * The pipe->create_rasterizer_state() driver hook.
  */
@@ -866,6 +896,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->line_stipple_enable = state->line_stipple_enable;
    cso->poly_stipple_enable = state->poly_stipple_enable;
 
+   float line_width = get_line_width(state);
+
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
       sf.StatisticsEnable = true;
       sf.ViewportTransformEnable = true;
@@ -873,7 +905,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       sf.LineEndCapAntialiasingRegionWidth =
          state->line_smooth ? _10pixels : _05pixels;
       sf.LastPixelEnable = state->line_last_pixel;
-      sf.LineWidth = state->line_width;
+      sf.LineWidth = line_width;
       sf.SmoothPointEnable = state->point_smooth;
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
