@@ -590,6 +590,7 @@ anv_image_create(VkDevice _device,
    image->array_size = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
    image->usage = pCreateInfo->usage;
+   image->create_flags = pCreateInfo->flags;
    image->tiling = pCreateInfo->tiling;
    image->disjoint = pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT;
    image->needs_set_tiling = wsi_info && wsi_info->scanout;

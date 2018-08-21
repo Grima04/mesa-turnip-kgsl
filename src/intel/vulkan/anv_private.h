@@ -2663,6 +2663,7 @@ struct anv_image {
    uint32_t samples; /**< VkImageCreateInfo::samples */
    uint32_t n_planes;
    VkImageUsageFlags usage; /**< Superset of VkImageCreateInfo::usage. */
+   VkImageCreateFlags create_flags; /* Flags used when creating image. */
    VkImageTiling tiling; /** VkImageCreateInfo::tiling */
 
    /** True if this is needs to be bound to an appropriately tiled BO.
