@@ -53,7 +53,7 @@ void iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr);
 bool iris_binder_is_empty(struct iris_binder *binder);
 void iris_destroy_binder(struct iris_binder *binder);
 uint32_t iris_binder_reserve(struct iris_batch *batch, unsigned size);
-void iris_binder_reserve_3d(struct iris_batch *batch,
+bool iris_binder_reserve_3d(struct iris_batch *batch,
                             struct iris_context *ice);
 
 #endif

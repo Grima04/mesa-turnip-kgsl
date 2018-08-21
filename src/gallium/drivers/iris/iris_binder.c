@@ -59,6 +59,9 @@
 
 #define BTP_ALIGNMENT 32
 
+/* Avoid using offset 0, tools consider it NULL */
+#define INIT_INSERT_POINT BTP_ALIGNMENT
+
 /**
  * Reserve a block of space in the binder, given the raw size in bytes.
  */
@@ -94,7 +97,7 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
  * Note that you must actually populate the new binding tables after
  * calling this command - the new area is uninitialized.
  */
-void
+bool
 iris_binder_reserve_3d(struct iris_batch *batch,
                        struct iris_context *ice)
 {
@@ -118,9 +121,10 @@ iris_binder_reserve_3d(struct iris_batch *batch,
    }
 
    if (total_size == 0)
-      return;
+      return false;
 
    uint32_t offset = iris_binder_reserve(batch, total_size);
+   bool flushed = offset == INIT_INSERT_POINT;
 
    /* Assign space and record the current binding table. */
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -130,10 +134,9 @@ iris_binder_reserve_3d(struct iris_batch *batch,
       binder->bt_offset[stage] = sizes[stage] > 0 ? offset : 0;
       offset += sizes[stage];
    }
-}
 
-/* Avoid using offset 0, tools consider it NULL */
-#define INIT_INSERT_POINT BTP_ALIGNMENT
+   return flushed;
+}
 
 void
 iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
