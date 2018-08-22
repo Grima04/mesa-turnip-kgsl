@@ -137,6 +137,89 @@ replace_with_fast(struct nir_builder *bld, struct u_vector *dead_flrp,
    append_flrp_to_dead_list(dead_flrp, alu);
 }
 
+/**
+ * Replace flrp(a, b, c) with (b*c ± c) + a
+ */
+static void
+replace_with_expanded_ffma_and_add(struct nir_builder *bld,
+                                   struct u_vector *dead_flrp,
+                                   struct nir_alu_instr *alu, bool subtract_c)
+{
+   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
+   nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
+
+   nir_ssa_def *const b_times_c = nir_fadd(bld, b, c);
+   nir_instr_as_alu(b_times_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *inner_sum;
+
+   if (subtract_c) {
+      nir_ssa_def *const neg_c = nir_fneg(bld, c);
+      nir_instr_as_alu(neg_c->parent_instr)->exact = alu->exact;
+
+      inner_sum = nir_fadd(bld, b_times_c, neg_c);
+   } else {
+      inner_sum = nir_fadd(bld, b_times_c, c);
+   }
+
+   nir_instr_as_alu(inner_sum->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const outer_sum = nir_fadd(bld, inner_sum, a);
+   nir_instr_as_alu(outer_sum->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(outer_sum));
+
+   /* DO NOT REMOVE the original flrp yet.  Many of the lowering choices are
+    * based on other uses of the sources.  Removing the flrp may cause the
+    * last flrp in a sequence to make a different, incorrect choice.
+    */
+   append_flrp_to_dead_list(dead_flrp, alu);
+}
+
+/**
+ * Determines whether a swizzled source is constant w/ all components the same.
+ *
+ * The value of the constant is stored in \c result.
+ *
+ * \return
+ * True if all components of the swizzled source are the same constant.
+ * Otherwise false is returned.
+ */
+static bool
+all_same_constant(const nir_alu_instr *instr, unsigned src, double *result)
+{
+   nir_const_value *val = nir_src_as_const_value(instr->src[src].src);
+
+   if (!val)
+      return false;
+
+   const uint8_t *const swizzle = instr->src[src].swizzle;
+   const unsigned num_components = nir_dest_num_components(instr->dest.dest);
+
+   if (instr->dest.dest.ssa.bit_size == 32) {
+      const float first = val[swizzle[0]].f32;
+
+      for (unsigned i = 1; i < num_components; i++) {
+         if (val[swizzle[i]].f32 != first)
+            return false;
+      }
+
+      *result = first;
+   } else {
+      const double first = val[swizzle[0]].f64;
+
+      for (unsigned i = 1; i < num_components; i++) {
+         if (val[swizzle[i]].f64 != first)
+            return false;
+      }
+
+      *result = first;
+   }
+
+   return true;
+}
+
 static bool
 sources_are_constants_with_similar_magnitudes(const nir_alu_instr *instr)
 {
@@ -262,6 +345,57 @@ convert_flrp_instruction(nir_builder *bld,
     */
    if (sources_are_constants_with_similar_magnitudes(alu)) {
       replace_with_fast(bld, dead_flrp, alu);
+      return;
+   }
+
+   /*
+    * - If x = 1:
+    *
+    *        (yt + -t) + 1
+    *
+    * - If x = -1:
+    *
+    *        (yt + t) - 1
+    *
+    *   In both cases, x is used in place of ±1 for simplicity.  Both forms
+    *   lend to ffma generation on platforms that support ffma.
+    */
+   double src0_as_constant;
+   if (all_same_constant(alu, 0, &src0_as_constant)) {
+      if (src0_as_constant == 1.0) {
+         replace_with_expanded_ffma_and_add(bld, dead_flrp, alu,
+                                            true /* subtract t */);
+         return;
+      } else if (src0_as_constant == -1.0) {
+         replace_with_expanded_ffma_and_add(bld, dead_flrp, alu,
+                                            false /* add t */);
+         return;
+      }
+   }
+
+   /*
+    * - If y = ±1:
+    *
+    *        x(1 - t) + yt
+    *
+    *   In this case either the multiply in yt will be eliminated by
+    *   nir_opt_algebraic.  If FMA is supported, this results in fma(x, (1 -
+    *   t), ±t) for two instructions.  If FMA is not supported, then the cost
+    *   is 3 instructions.  We rely on nir_opt_algebraic to generate the FMA
+    *   instructions as well.
+    *
+    *   Another possible replacement is
+    *
+    *        -xt + x ± t
+    *
+    *   Some groupings of this may be better on some platforms in some
+    *   circumstances, bit it is probably dependent on scheduling.  Futher
+    *   investigation may be required.
+    */
+   double src1_as_constant;
+   if ((all_same_constant(alu, 1, &src1_as_constant) &&
+        (src1_as_constant == -1.0 || src1_as_constant == 1.0))) {
+      replace_with_strict(bld, dead_flrp, alu);
       return;
    }
 
