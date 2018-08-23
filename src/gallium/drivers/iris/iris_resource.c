@@ -248,6 +248,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (modifiers_count == 0 || !modifiers) {
       if (has_depth) {
          modifier = I915_FORMAT_MOD_Y_TILED;
+      } else if (templ->target == PIPE_TEXTURE_1D ||
+                 templ->target == PIPE_TEXTURE_1D_ARRAY) {
+         modifier = DRM_FORMAT_MOD_LINEAR;
       } else if (templ->bind & PIPE_BIND_DISPLAY_TARGET) {
          /* Display is X-tiled for historical reasons. */
          modifier = I915_FORMAT_MOD_X_TILED;
