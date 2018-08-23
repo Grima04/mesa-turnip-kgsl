@@ -51,6 +51,10 @@
          _a > _b ? _a : _b;                     \
       })
 
+static void
+mem_trace_memory_write_header_out(struct aub_file *aub, uint64_t addr,
+                                  uint32_t len, uint32_t addr_space,
+                                  const char *desc);
 
 static const uint32_t *
 get_context_init(const struct gen_device_info *devinfo,
@@ -108,7 +112,6 @@ aub_ppgtt_table_finish(struct aub_ppgtt_table *table, int level)
       }
    }
 }
-
 
 static void
 data_out(struct aub_file *aub, const void *data, size_t size)
@@ -195,9 +198,17 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
            "failed to identify chipset=0x%x\n", pci_id);
    aub->addr_bits = aub->devinfo.gen >= 8 ? 48 : 32;
 
-   aub->pml4.phys_addr = PML4_PHYS_ADDR;
-
    aub_write_header(aub, app_name);
+
+   aub->phys_addrs_allocator = 0;
+   aub->pml4.phys_addr = aub->phys_addrs_allocator++ << 12;
+
+   mem_trace_memory_write_header_out(aub, 0,
+                                     GEN8_PTE_SIZE,
+                                     AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
+                                     "GGTT PT");
+   dword_out(aub, 1);
+   dword_out(aub, 0);
 }
 
 void
@@ -256,7 +267,6 @@ static void
 populate_ppgtt_table(struct aub_file *aub, struct aub_ppgtt_table *table,
                      int start, int end, int level)
 {
-   static uint64_t phys_addrs_allocator = (PML4_PHYS_ADDR >> 12) + 1;
    uint64_t entries[512] = {0};
    int dirty_start = 512, dirty_end = 0;
 
@@ -272,7 +282,7 @@ populate_ppgtt_table(struct aub_file *aub, struct aub_ppgtt_table *table,
          dirty_end = max(dirty_end, i);
          if (level == 1) {
             table->subtables[i] =
-               (void *)(phys_addrs_allocator++ << 12);
+               (void *)(aub->phys_addrs_allocator++ << 12);
             if (aub->verbose_log_file) {
                fprintf(aub->verbose_log_file,
                        "   Adding entry: %x, phys_addr: 0x%016" PRIx64 "\n",
@@ -282,7 +292,7 @@ populate_ppgtt_table(struct aub_file *aub, struct aub_ppgtt_table *table,
             table->subtables[i] =
                calloc(1, sizeof(struct aub_ppgtt_table));
             table->subtables[i]->phys_addr =
-               phys_addrs_allocator++ << 12;
+               aub->phys_addrs_allocator++ << 12;
             if (aub->verbose_log_file) {
                fprintf(aub->verbose_log_file,
                        "   Adding entry: %x, phys_addr: 0x%016" PRIx64 "\n",
@@ -370,27 +380,34 @@ ppgtt_lookup(struct aub_file *aub, uint64_t ppgtt_addr)
 static void
 write_execlists_default_setup(struct aub_file *aub)
 {
-   /* GGTT PT */
+   /* Allocate a continuous physical chunk of memory (GGTT address match
+    * physical addresses).
+    */
    uint32_t ggtt_ptes = STATIC_GGTT_MAP_SIZE >> 12;
+   uint64_t phys_addr = aub->phys_addrs_allocator << 12;
 
-   mem_trace_memory_write_header_out(aub, STATIC_GGTT_MAP_START >> 12,
+   aub->phys_addrs_allocator += ggtt_ptes;
+
+   /* GGTT PT */
+   mem_trace_memory_write_header_out(aub,
+                                     sizeof(uint64_t) * (phys_addr >> 12),
                                      ggtt_ptes * GEN8_PTE_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
                                      "GGTT PT");
    for (uint32_t i = 0; i < ggtt_ptes; i++) {
-      dword_out(aub, 1 + 0x1000 * i + STATIC_GGTT_MAP_START);
+      dword_out(aub, 1 + 0x1000 * i + phys_addr);
       dword_out(aub, 0);
    }
 
    /* RENDER_RING */
-   mem_trace_memory_write_header_out(aub, RENDER_RING_ADDR, RING_SIZE,
+   mem_trace_memory_write_header_out(aub, phys_addr + RENDER_RING_ADDR, RING_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "RENDER RING");
    for (uint32_t i = 0; i < RING_SIZE; i += sizeof(uint32_t))
       dword_out(aub, 0);
 
    /* RENDER_PPHWSP */
-   mem_trace_memory_write_header_out(aub, RENDER_CONTEXT_ADDR,
+   mem_trace_memory_write_header_out(aub, phys_addr + RENDER_CONTEXT_ADDR,
                                      PPHWSP_SIZE +
                                      CONTEXT_RENDER_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
@@ -402,14 +419,14 @@ write_execlists_default_setup(struct aub_file *aub)
    data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_RENDER), CONTEXT_RENDER_SIZE);
 
    /* BLITTER_RING */
-   mem_trace_memory_write_header_out(aub, BLITTER_RING_ADDR, RING_SIZE,
+   mem_trace_memory_write_header_out(aub, phys_addr + BLITTER_RING_ADDR, RING_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "BLITTER RING");
    for (uint32_t i = 0; i < RING_SIZE; i += sizeof(uint32_t))
       dword_out(aub, 0);
 
    /* BLITTER_PPHWSP */
-   mem_trace_memory_write_header_out(aub, BLITTER_CONTEXT_ADDR,
+   mem_trace_memory_write_header_out(aub, phys_addr + BLITTER_CONTEXT_ADDR,
                                      PPHWSP_SIZE +
                                      CONTEXT_OTHER_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
@@ -421,14 +438,14 @@ write_execlists_default_setup(struct aub_file *aub)
    data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_COPY), CONTEXT_OTHER_SIZE);
 
    /* VIDEO_RING */
-   mem_trace_memory_write_header_out(aub, VIDEO_RING_ADDR, RING_SIZE,
+   mem_trace_memory_write_header_out(aub, phys_addr + VIDEO_RING_ADDR, RING_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "VIDEO RING");
    for (uint32_t i = 0; i < RING_SIZE; i += sizeof(uint32_t))
       dword_out(aub, 0);
 
    /* VIDEO_PPHWSP */
-   mem_trace_memory_write_header_out(aub, VIDEO_CONTEXT_ADDR,
+   mem_trace_memory_write_header_out(aub, phys_addr + VIDEO_CONTEXT_ADDR,
                                      PPHWSP_SIZE +
                                      CONTEXT_OTHER_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,

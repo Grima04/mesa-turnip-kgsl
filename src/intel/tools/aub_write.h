@@ -54,6 +54,7 @@ struct aub_file {
    int addr_bits;
 
    struct aub_ppgtt_table pml4;
+   uint64_t phys_addrs_allocator;
 };
 
 void aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, const char *app_name);
