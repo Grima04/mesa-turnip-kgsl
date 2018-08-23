@@ -1170,8 +1170,9 @@ iris_bind_sampler_states(struct pipe_context *ctx,
     * in the dynamic state memory zone, so we can point to it via the
     * 3DSTATE_SAMPLER_STATE_POINTERS_* commands.
     */
-   void *map = upload_state(ice->state.dynamic_uploader, &shs->sampler_table,
-                            count * 4 * GENX(SAMPLER_STATE_length), 32);
+   uint32_t *map =
+      upload_state(ice->state.dynamic_uploader, &shs->sampler_table,
+                   count * 4 * GENX(SAMPLER_STATE_length), 32);
    if (unlikely(!map))
       return;
 
@@ -1202,7 +1203,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
          }
 
          for (uint32_t j = 0; j < GENX(SAMPLER_STATE_length); j++)
-            ((uint32_t *) map)[j] = state->sampler_state[j] | dynamic[j];
+            map[j] = state->sampler_state[j] | dynamic[j];
       }
 
       map += GENX(SAMPLER_STATE_length);
