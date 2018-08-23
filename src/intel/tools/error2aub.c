@@ -231,22 +231,26 @@ int
 main(int argc, char *argv[])
 {
    int i, c;
-   bool help = false;
+   bool help = false, verbose;
    char *out_filename = NULL, *in_filename = NULL;
    const struct option aubinator_opts[] = {
       { "help",       no_argument,       NULL,     'h' },
       { "output",     required_argument, NULL,     'o' },
+      { "verbose",    no_argument,       NULL,     'v' },
       { NULL,         0,                 NULL,     0 }
    };
 
    i = 0;
-   while ((c = getopt_long(argc, argv, "ho:", aubinator_opts, &i)) != -1) {
+   while ((c = getopt_long(argc, argv, "ho:v", aubinator_opts, &i)) != -1) {
       switch (c) {
       case 'h':
          help = true;
          break;
       case 'o':
          out_filename = strdup(optarg);
+         break;
+      case 'v':
+         verbose = true;
          break;
       default:
          break;
@@ -306,6 +310,8 @@ main(int argc, char *argv[])
 
          aub_file_init(&aub, aub_file,
                        NULL, pci_id, "error_state");
+         if (verbose)
+            aub.verbose_log_file = stdout;
          fail_if(!aub_use_execlists(&aub),
                  "%s currently only works on gen8+\n", argv[0]);
          continue;
@@ -420,6 +426,14 @@ main(int argc, char *argv[])
          }
 
          continue;
+      }
+   }
+
+   if (verbose) {
+      fprintf(stdout, "BOs found:\n");
+      list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
+         fprintf(stdout, "\t type=%i addr=0x%016" PRIx64 " size=%" PRIu64 "\n",
+                 bo_entry->type, bo_entry->addr, bo_entry->size);
       }
    }
 
