@@ -528,47 +528,67 @@ aub_write_trace_block(struct aub_file *aub,
    }
 }
 
-static void
-aub_dump_execlist(struct aub_file *aub, uint64_t batch_offset, int ring_flag)
-{
-   uint32_t ring_addr;
-   uint64_t descriptor;
+static const struct engine {
    uint32_t elsp_reg;
    uint32_t elsq_reg;
    uint32_t status_reg;
    uint32_t control_reg;
 
+   /* Those are only to be used if using the default context setup. */
+   uint32_t default_ring_addr;
+   uint64_t default_descriptor;
+} engines[] = {
+   [I915_EXEC_RENDER] = {
+      .elsp_reg = EXECLIST_SUBMITPORT_RCSUNIT,
+      .elsq_reg = EXECLIST_SQ_CONTENTS0_RCSUNIT,
+      .status_reg = EXECLIST_STATUS_RCSUNIT,
+      .control_reg = EXECLIST_CONTROL_RCSUNIT,
+
+      .default_ring_addr = RENDER_RING_ADDR,
+      .default_descriptor = RENDER_CONTEXT_DESCRIPTOR,
+   },
+   [I915_EXEC_BSD] = {
+      .elsp_reg = EXECLIST_SUBMITPORT_VCSUNIT0,
+      .elsq_reg = EXECLIST_SQ_CONTENTS0_VCSUNIT0,
+      .status_reg = EXECLIST_STATUS_VCSUNIT0,
+      .control_reg = EXECLIST_CONTROL_VCSUNIT0,
+
+      .default_ring_addr = VIDEO_RING_ADDR,
+      .default_descriptor = VIDEO_CONTEXT_DESCRIPTOR,
+   },
+   [I915_EXEC_BLT] = {
+      .elsp_reg = EXECLIST_SUBMITPORT_BCSUNIT,
+      .elsq_reg = EXECLIST_SQ_CONTENTS0_BCSUNIT,
+      .status_reg = EXECLIST_STATUS_BCSUNIT,
+      .control_reg = EXECLIST_CONTROL_BCSUNIT,
+
+      .default_ring_addr = BLITTER_RING_ADDR,
+      .default_descriptor = BLITTER_CONTEXT_DESCRIPTOR,
+   },
+};
+
+static const struct engine *
+engine_from_ring_flag(uint32_t ring_flag)
+{
    switch (ring_flag) {
    case I915_EXEC_DEFAULT:
+      return &engines[I915_EXEC_RENDER];
+      break;
    case I915_EXEC_RENDER:
-      ring_addr = RENDER_RING_ADDR;
-      descriptor = RENDER_CONTEXT_DESCRIPTOR;
-      elsp_reg = EXECLIST_SUBMITPORT_RCSUNIT;
-      elsq_reg = EXECLIST_SQ_CONTENTS0_RCSUNIT;
-      status_reg = EXECLIST_STATUS_RCSUNIT;
-      control_reg = EXECLIST_CONTROL_RCSUNIT;
-      break;
    case I915_EXEC_BSD:
-      ring_addr = VIDEO_RING_ADDR;
-      descriptor = VIDEO_CONTEXT_DESCRIPTOR;
-      elsp_reg = EXECLIST_SUBMITPORT_VCSUNIT0;
-      elsq_reg = EXECLIST_SQ_CONTENTS0_VCSUNIT0;
-      status_reg = EXECLIST_STATUS_VCSUNIT0;
-      control_reg = EXECLIST_CONTROL_VCSUNIT0;
-      break;
    case I915_EXEC_BLT:
-      ring_addr = BLITTER_RING_ADDR;
-      descriptor = BLITTER_CONTEXT_DESCRIPTOR;
-      elsp_reg = EXECLIST_SUBMITPORT_BCSUNIT;
-      elsq_reg = EXECLIST_SQ_CONTENTS0_BCSUNIT;
-      status_reg = EXECLIST_STATUS_BCSUNIT;
-      control_reg = EXECLIST_CONTROL_BCSUNIT;
-      break;
+      return &engines[ring_flag];
    default:
       unreachable("unknown ring");
    }
+}
 
-   mem_trace_memory_write_header_out(aub, ring_addr, 16,
+static void
+aub_dump_ring_buffer_execlist(struct aub_file *aub,
+                              const struct engine *cs,
+                              uint64_t batch_offset)
+{
+   mem_trace_memory_write_header_out(aub, cs->default_ring_addr, 16,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "RING MI_BATCH_BUFFER_START user");
    dword_out(aub, AUB_MI_BATCH_BUFFER_START | MI_BATCH_NON_SECURE_I965 | (3 - 2));
@@ -576,28 +596,32 @@ aub_dump_execlist(struct aub_file *aub, uint64_t batch_offset, int ring_flag)
    dword_out(aub, batch_offset >> 32);
    dword_out(aub, 0 /* MI_NOOP */);
 
-   mem_trace_memory_write_header_out(aub, ring_addr + 8192 + 20, 4,
+   mem_trace_memory_write_header_out(aub, cs->default_ring_addr + 8192 + 20, 4,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "RING BUFFER HEAD");
    dword_out(aub, 0); /* RING_BUFFER_HEAD */
-   mem_trace_memory_write_header_out(aub, ring_addr + 8192 + 28, 4,
+   mem_trace_memory_write_header_out(aub, cs->default_ring_addr + 8192 + 28, 4,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      "RING BUFFER TAIL");
    dword_out(aub, 16); /* RING_BUFFER_TAIL */
+}
 
+static void
+aub_dump_execlist(struct aub_file *aub, const struct engine *cs, uint64_t descriptor)
+{
    if (aub->devinfo.gen >= 11) {
-      register_write_out(aub, elsq_reg, descriptor & 0xFFFFFFFF);
-      register_write_out(aub, elsq_reg + sizeof(uint32_t), descriptor >> 32);
-      register_write_out(aub, control_reg, 1);
+      register_write_out(aub, cs->elsq_reg, descriptor & 0xFFFFFFFF);
+      register_write_out(aub, cs->elsq_reg + sizeof(uint32_t), descriptor >> 32);
+      register_write_out(aub, cs->control_reg, 1);
    } else {
-      register_write_out(aub, elsp_reg, 0);
-      register_write_out(aub, elsp_reg, 0);
-      register_write_out(aub, elsp_reg, descriptor >> 32);
-      register_write_out(aub, elsp_reg, descriptor & 0xFFFFFFFF);
+      register_write_out(aub, cs->elsp_reg, 0);
+      register_write_out(aub, cs->elsp_reg, 0);
+      register_write_out(aub, cs->elsp_reg, descriptor >> 32);
+      register_write_out(aub, cs->elsp_reg, descriptor & 0xFFFFFFFF);
    }
 
    dword_out(aub, CMD_MEM_TRACE_REGISTER_POLL | (5 + 1 - 1));
-   dword_out(aub, status_reg);
+   dword_out(aub, cs->status_reg);
    dword_out(aub, AUB_MEM_TRACE_REGISTER_SIZE_DWORD |
                   AUB_MEM_TRACE_REGISTER_SPACE_MMIO);
    if (aub->devinfo.gen >= 11) {
@@ -612,8 +636,8 @@ aub_dump_execlist(struct aub_file *aub, uint64_t batch_offset, int ring_flag)
 }
 
 static void
-aub_dump_ringbuffer(struct aub_file *aub, uint64_t batch_offset,
-                    uint64_t offset, int ring_flag)
+aub_dump_ring_buffer_legacy(struct aub_file *aub, uint64_t batch_offset,
+                            uint64_t offset, int ring_flag)
 {
    uint32_t ringbuffer[4096];
    unsigned aub_mi_bbs_len;
@@ -653,10 +677,12 @@ aub_write_exec(struct aub_file *aub, uint64_t batch_addr,
                uint64_t offset, int ring_flag)
 {
    if (aub_use_execlists(aub)) {
-      aub_dump_execlist(aub, batch_addr, ring_flag);
+      const struct engine *cs = engine_from_ring_flag(ring_flag);
+      aub_dump_ring_buffer_execlist(aub, cs, batch_addr);
+      aub_dump_execlist(aub, cs, cs->default_descriptor);
    } else {
       /* Dump ring buffer */
-      aub_dump_ringbuffer(aub, batch_addr, offset, ring_flag);
+      aub_dump_ring_buffer_legacy(aub, batch_addr, offset, ring_flag);
    }
    fflush(aub->file);
 }
