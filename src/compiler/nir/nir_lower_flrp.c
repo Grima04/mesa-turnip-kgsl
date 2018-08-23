@@ -70,6 +70,39 @@ replace_with_strict_ffma(struct nir_builder *bld, struct u_vector *dead_flrp,
 }
 
 /**
+ * Replace flrp(a, b, c) with ffma(a, (1 - c), bc)
+ */
+static void
+replace_with_single_ffma(struct nir_builder *bld, struct u_vector *dead_flrp,
+                         struct nir_alu_instr *alu)
+{
+   nir_ssa_def *const a = nir_ssa_for_alu_src(bld, alu, 0);
+   nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
+   nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
+
+   nir_ssa_def *const neg_c = nir_fneg(bld, c);
+   nir_instr_as_alu(neg_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const one_minus_c =
+      nir_fadd(bld, nir_imm_float(bld, 1.0f), neg_c);
+   nir_instr_as_alu(one_minus_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const b_times_c = nir_fmul(bld, b, c);
+   nir_instr_as_alu(b_times_c->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def *const final_ffma = nir_ffma(bld, a, one_minus_c, b_times_c);
+   nir_instr_as_alu(final_ffma->parent_instr)->exact = alu->exact;
+
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(final_ffma));
+
+   /* DO NOT REMOVE the original flrp yet.  Many of the lowering choices are
+    * based on other uses of the sources.  Removing the flrp may cause the
+    * last flrp in a sequence to make a different, incorrect choice.
+    */
+   append_flrp_to_dead_list(dead_flrp, alu);
+}
+
+/**
  * Replace flrp(a, b, c) with a(1-c) + bc.
  */
 static void
@@ -476,6 +509,20 @@ convert_flrp_instruction(nir_builder *bld,
          replace_with_strict_ffma(bld, dead_flrp, alu);
          return;
       }
+
+      /*
+       * - If FMA is supported and another flrp(_, y, t) exists:
+       *
+       *        fma(x, (1 - t), yt)
+       *
+       *   The hope is that the (1 - t) and the yt will be shared with the
+       *   other lowered flrp.  This results in 3 insructions for the first
+       *   flrp and 1 for each additional flrp.
+       */
+      if (st.src1_and_src2 > 0) {
+         replace_with_single_ffma(bld, dead_flrp, alu);
+         return;
+      }
    } else {
       if (always_precise) {
          replace_with_strict(bld, dead_flrp, alu);
@@ -490,11 +537,19 @@ convert_flrp_instruction(nir_builder *bld,
        *   The hope is that the x(1 - t) will be shared with the other lowered
        *   flrp.  This results in 4 insructions for the first flrp and 2 for
        *   each additional flrp.
+       *
+       * - If FMA is not supported and another flrp(_, y, t) exists:
+       *
+       *        x(1 - t) + yt
+       *
+       *   The hope is that the (1 - t) and the yt will be shared with the
+       *   other lowered flrp.  This results in 4 insructions for the first
+       *   flrp and 2 for each additional flrp.
        */
       struct similar_flrp_stats st;
 
       get_similar_flrp_stats(alu, &st);
-      if (st.src0_and_src2 > 0) {
+      if (st.src0_and_src2 > 0 || st.src1_and_src2 > 0) {
          replace_with_strict(bld, dead_flrp, alu);
          return;
       }
