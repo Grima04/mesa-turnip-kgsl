@@ -1081,6 +1081,16 @@ iris_create_sampler_state(struct pipe_context *ctx,
                              wrap_mode_needs_border_color(wrap_t) ||
                              wrap_mode_needs_border_color(wrap_r);
 
+   float min_lod = state->min_lod;
+   unsigned mag_img_filter = state->mag_img_filter;
+
+   // XXX: explain this code ported from ilo...I don't get it at all...
+   if (state->min_mip_filter == PIPE_TEX_MIPFILTER_NONE &&
+       state->min_lod > 0.0f) {
+      min_lod = 0.0f;
+      mag_img_filter = state->min_img_filter;
+   }
+
    iris_pack_state(GENX(SAMPLER_STATE), cso->sampler_state, samp) {
       samp.TCXAddressControlMode = wrap_s;
       samp.TCYAddressControlMode = wrap_t;
@@ -1088,7 +1098,7 @@ iris_create_sampler_state(struct pipe_context *ctx,
       samp.CubeSurfaceControlMode = state->seamless_cube_map;
       samp.NonnormalizedCoordinateEnable = !state->normalized_coords;
       samp.MinModeFilter = state->min_img_filter;
-      samp.MagModeFilter = state->mag_img_filter;
+      samp.MagModeFilter = mag_img_filter;
       samp.MipModeFilter = translate_mip_filter(state->min_mip_filter);
       samp.MaximumAnisotropy = RATIO21;
 
@@ -1124,7 +1134,7 @@ iris_create_sampler_state(struct pipe_context *ctx,
       const float hw_max_lod = GEN_GEN >= 7 ? 14 : 13;
 
       samp.LODPreClampMode = CLAMP_MODE_OGL;
-      samp.MinLOD = CLAMP(state->min_lod, 0, hw_max_lod);
+      samp.MinLOD = CLAMP(min_lod, 0, hw_max_lod);
       samp.MaxLOD = CLAMP(state->max_lod, 0, hw_max_lod);
       samp.TextureLODBias = CLAMP(state->lod_bias, -16, 15);
 
