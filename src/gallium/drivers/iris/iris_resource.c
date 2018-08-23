@@ -769,17 +769,16 @@ iris_map_direct(struct iris_transfer *map)
    struct isl_surf *surf = &res->surf;
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    const unsigned cpp = fmtl->bpb / 8;
+   unsigned x0_el, y0_el;
+
+   get_image_offset_el(surf, xfer->level, box->z, &x0_el, &y0_el);
 
    xfer->stride = isl_surf_get_row_pitch_B(surf);
    xfer->layer_stride = isl_surf_get_array_pitch(surf);
 
    void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
 
-   // XXX: level, layer, etc
-   assert(xfer->level == 0);
-   assert(box->z == 0);
-
-   map->ptr = ptr + box->y * xfer->stride + box->x * cpp;
+   map->ptr = ptr + (y0_el + box->y) * xfer->stride + (x0_el + box->x) * cpp;
 }
 
 static void *
