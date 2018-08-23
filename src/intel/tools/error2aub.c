@@ -32,6 +32,8 @@
 #include <stdarg.h>
 #include <zlib.h>
 
+#include "util/list.h"
+
 #include "aub_write.h"
 #include "drm-uapi/i915_drm.h"
 #include "intel_aub.h"
@@ -149,6 +151,34 @@ print_help(const char *progname, FILE *file)
            progname);
 }
 
+struct bo {
+   enum bo_type {
+      BO_TYPE_UNKNOWN = 0,
+      BO_TYPE_BATCH,
+      BO_TYPE_USER,
+   } type;
+   uint64_t addr;
+   uint8_t *data;
+   uint64_t size;
+
+   struct list_head link;
+};
+
+static struct bo *
+find_or_create(struct list_head *bo_list, uint64_t addr)
+{
+   list_for_each_entry(struct bo, bo_entry, bo_list, link) {
+      if (bo_entry->addr == addr)
+         return bo_entry;
+   }
+
+   struct bo *new_bo = calloc(1, sizeof(*new_bo));
+   new_bo->addr = addr;
+   list_addtail(&new_bo->link, bo_list);
+
+   return new_bo;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -200,14 +230,10 @@ main(int argc, char *argv[])
    uint32_t active_ring = 0;
    int num_ring_bos = 0;
 
-   uint64_t batch_addr = 0;
+   struct list_head bo_list;
+   list_inithead(&bo_list);
 
-   enum bo_type {
-      BO_TYPE_UNKNOWN = 0,
-      BO_TYPE_BATCH,
-      BO_TYPE_USER,
-   } bo_type = BO_TYPE_UNKNOWN;
-   uint64_t bo_addr = 0;
+   struct bo *last_bo = NULL;
 
    char *line = NULL;
    size_t line_size;
@@ -260,7 +286,8 @@ main(int argc, char *argv[])
          unsigned hi, lo, size;
          if (sscanf(line, " %x_%x %d", &hi, &lo, &size) == 3) {
             assert(aub_use_execlists(&aub));
-            aub_map_ppgtt(&aub, ((uint64_t)hi) << 32 | lo, size);
+            struct bo *bo_entry = find_or_create(&bo_list, ((uint64_t)hi) << 32 | lo);
+            bo_entry->size = size;
             num_ring_bos--;
          } else {
             fail("Not enough BO entries in the active table\n");
@@ -269,30 +296,26 @@ main(int argc, char *argv[])
       }
 
       if (line[0] == ':' || line[0] == '~') {
-         if (bo_type == BO_TYPE_UNKNOWN)
+         if (!last_bo || last_bo->type == BO_TYPE_UNKNOWN)
             continue;
 
-         uint32_t *data = NULL;
-         int count = ascii85_decode(line+1, &data, line[0] == ':');
+         int count = ascii85_decode(line+1, (uint32_t **) &last_bo->data, line[0] == ':');
          fail_if(count == 0, "ASCII85 decode failed.\n");
-         uint64_t bo_size = count * 4;
-
-         if (bo_type == BO_TYPE_BATCH) {
-            aub_write_trace_block(&aub, AUB_TRACE_TYPE_BATCH,
-                                  data, bo_size, bo_addr);
-            batch_addr = bo_addr;
-         } else {
-            assert(bo_type == BO_TYPE_USER);
-            aub_write_trace_block(&aub, AUB_TRACE_TYPE_NOTYPE,
-                                  data, bo_size, bo_addr);
-         }
-
+         last_bo->size = count * 4;
          continue;
       }
 
       char *dashes = strstr(line, "---");
       if (dashes) {
          dashes += 4;
+
+
+         uint32_t hi, lo;
+         char *bo_address_str = strchr(dashes, '=');
+         if (!bo_address_str || sscanf(bo_address_str, "= 0x%08x %08x\n", &hi, &lo) != 2)
+            continue;
+
+         last_bo = find_or_create(&bo_list, ((uint64_t) hi) << 32 | lo);
 
          const struct {
             const char *match;
@@ -303,30 +326,57 @@ main(int argc, char *argv[])
             { NULL, BO_TYPE_UNKNOWN },
          }, *b;
 
-         bo_type = BO_TYPE_UNKNOWN;
          for (b = bo_types; b->match; b++) {
             if (strncasecmp(dashes, b->match, strlen(b->match)) == 0) {
-               bo_type = b->type;
-               break;
-            }
-         }
 
-         if (bo_type != BO_TYPE_UNKNOWN) {
-            uint32_t hi, lo;
-            dashes = strchr(dashes, '=');
-            if (dashes && sscanf(dashes, "= 0x%08x %08x\n", &hi, &lo) == 2) {
-               bo_addr = ((uint64_t) hi) << 32 | lo;
-            } else {
-               fail("User BO does not have an address\n");
+               /* The batch buffer will appear twice as gtt_offset and user.
+                * Only keep the batch type.
+                */
+               if (last_bo->type == BO_TYPE_BATCH && b->type == BO_TYPE_USER)
+                  break;
+
+               last_bo->type = b->type;
+               break;
             }
          }
          continue;
       }
    }
 
-   fail_if(!batch_addr, "Failed to find batch buffer.\n");
+   /* Add all the BOs to the aub file */
+   list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
+      switch (bo_entry->type) {
+      case BO_TYPE_BATCH:
+         aub_map_ppgtt(&aub, bo_entry->addr, bo_entry->size);
+         aub_write_trace_block(&aub, AUB_TRACE_TYPE_BATCH,
+                               bo_entry->data, bo_entry->size, bo_entry->addr);
+         break;
+      case BO_TYPE_USER:
+         aub_map_ppgtt(&aub, bo_entry->addr, bo_entry->size);
+         aub_write_trace_block(&aub, AUB_TRACE_TYPE_NOTYPE,
+                               bo_entry->data, bo_entry->size, bo_entry->addr);
+      default:
+         break;
+      }
+   }
 
-   aub_write_exec(&aub, batch_addr, aub_gtt_size(&aub), I915_ENGINE_CLASS_RENDER);
+   /* Finally exec the batch BO */
+   bool batch_found = false;
+   list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
+      if (bo_entry->type == BO_TYPE_BATCH) {
+         aub_write_exec(&aub, bo_entry->addr, aub_gtt_size(&aub), I915_ENGINE_CLASS_RENDER);
+         batch_found = true;
+         break;
+      }
+   }
+   fail_if(!batch_found, "Failed to find batch buffer.\n");
+
+   /* Cleanup */
+   list_for_each_entry_safe(struct bo, bo_entry, &bo_list, link) {
+      list_del(&bo_entry->link);
+      free(bo_entry->data);
+      free(bo_entry);
+   }
 
    free(out_filename);
    free(line);
