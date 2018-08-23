@@ -75,6 +75,7 @@ aub_write_reloc(const struct gen_device_info *devinfo, void *p, uint64_t v)
 }
 
 void aub_write_header(struct aub_file *aub, const char *app_name);
+void aub_write_default_setup(struct aub_file *aub);
 void aub_map_ppgtt(struct aub_file *aub, uint64_t start, uint64_t size);
 void aub_write_trace_block(struct aub_file *aub,
                            uint32_t type, void *virtual,

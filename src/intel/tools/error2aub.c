@@ -223,6 +223,7 @@ main(int argc, char *argv[])
                  "%s currently only works on gen8+\n", argv[0]);
 
          aub_write_header(&aub, "error state");
+         aub_write_default_setup(&aub);
          continue;
       }
 

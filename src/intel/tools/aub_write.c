@@ -324,7 +324,48 @@ write_execlists_header(struct aub_file *aub, const char *name)
    dword_out(aub, 0);      /* version */
    dword_out(aub, 0);      /* version */
    data_out(aub, app_name, app_name_len);
+}
 
+static void
+write_legacy_header(struct aub_file *aub, const char *name)
+{
+   char app_name[8 * 4];
+   char comment[16];
+   int comment_len, comment_dwords, dwords;
+
+   comment_len = snprintf(comment, sizeof(comment), "PCI-ID=0x%x", aub->pci_id);
+   comment_dwords = ((comment_len + 3) / 4);
+
+   /* Start with a (required) version packet. */
+   dwords = 13 + comment_dwords;
+   dword_out(aub, CMD_AUB_HEADER | (dwords - 2));
+   dword_out(aub, (4 << AUB_HEADER_MAJOR_SHIFT) |
+                  (0 << AUB_HEADER_MINOR_SHIFT));
+
+   /* Next comes a 32-byte application name. */
+   strncpy(app_name, name, sizeof(app_name));
+   app_name[sizeof(app_name) - 1] = 0;
+   data_out(aub, app_name, sizeof(app_name));
+
+   dword_out(aub, 0); /* timestamp */
+   dword_out(aub, 0); /* timestamp */
+   dword_out(aub, comment_len);
+   data_out(aub, comment, comment_dwords * 4);
+}
+
+
+void
+aub_write_header(struct aub_file *aub, const char *app_name)
+{
+   if (aub_use_execlists(aub))
+      write_execlists_header(aub, app_name);
+   else
+      write_legacy_header(aub, app_name);
+}
+
+static void
+write_execlists_default_setup(struct aub_file *aub)
+{
    /* GGTT PT */
    uint32_t ggtt_ptes = STATIC_GGTT_MAP_SIZE >> 12;
 
@@ -403,31 +444,9 @@ write_execlists_header(struct aub_file *aub, const char *name)
    register_write_out(aub, GFX_MODE_BCSUNIT, 0x80008000 /* execlist enable */);
 }
 
-static void write_legacy_header(struct aub_file *aub, const char *name)
+static void write_legacy_default_setup(struct aub_file *aub)
 {
-   char app_name[8 * 4];
-   char comment[16];
-   int comment_len, comment_dwords, dwords;
    uint32_t entry = 0x200003;
-
-   comment_len = snprintf(comment, sizeof(comment), "PCI-ID=0x%x", aub->pci_id);
-   comment_dwords = ((comment_len + 3) / 4);
-
-   /* Start with a (required) version packet. */
-   dwords = 13 + comment_dwords;
-   dword_out(aub, CMD_AUB_HEADER | (dwords - 2));
-   dword_out(aub, (4 << AUB_HEADER_MAJOR_SHIFT) |
-                  (0 << AUB_HEADER_MINOR_SHIFT));
-
-   /* Next comes a 32-byte application name. */
-   strncpy(app_name, name, sizeof(app_name));
-   app_name[sizeof(app_name) - 1] = 0;
-   data_out(aub, app_name, sizeof(app_name));
-
-   dword_out(aub, 0); /* timestamp */
-   dword_out(aub, 0); /* timestamp */
-   dword_out(aub, comment_len);
-   data_out(aub, comment, comment_dwords * 4);
 
    /* Set up the GTT. The max we can handle is 64M */
    dword_out(aub, CMD_AUB_TRACE_HEADER_BLOCK |
@@ -446,13 +465,17 @@ static void write_legacy_header(struct aub_file *aub, const char *name)
    }
 }
 
+/**
+ * Sets up a default GGTT/PPGTT address space and execlists context (when
+ * supported).
+ */
 void
-aub_write_header(struct aub_file *aub, const char *app_name)
+aub_write_default_setup(struct aub_file *aub)
 {
    if (aub_use_execlists(aub))
-      write_execlists_header(aub, app_name);
+      write_execlists_default_setup(aub);
    else
-      write_legacy_header(aub, app_name);
+      write_legacy_default_setup(aub);
 }
 
 /**

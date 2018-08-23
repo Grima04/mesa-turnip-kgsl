@@ -212,6 +212,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       if (verbose == 2)
          aub_file.verbose_log_file = stdout;
       aub_write_header(&aub_file, program_invocation_short_name);
+      aub_write_default_setup(&aub_file);
 
       if (verbose)
          printf("[running, output file %s, chipset id 0x%04x, gen %d]\n",
