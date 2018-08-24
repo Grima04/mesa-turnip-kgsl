@@ -172,7 +172,9 @@ iris_bind_cached_shader(struct iris_context *ice,
    if (!shader)
       return false;
 
-   if (memcmp(shader, ice->shaders.prog[cache_id], sizeof(*shader)) != 0) {
+   // XXX: why memcmp?
+   if (!ice->shaders.prog[cache_id] ||
+       memcmp(shader, ice->shaders.prog[cache_id], sizeof(*shader)) != 0) {
       ice->shaders.prog[cache_id] = shader;
       ice->state.dirty |= dirty_flag_for_cache(cache_id);
    }
