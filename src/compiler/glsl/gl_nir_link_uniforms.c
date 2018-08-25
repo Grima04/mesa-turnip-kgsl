@@ -478,11 +478,32 @@ nir_link_uniform(struct gl_context *ctx,
       else
          uniform->offset = 0;
 
+      int buffer_block_index = -1;
+      /* If the uniform is inside a uniform block determine its block index by
+       * comparing the bindings, we can not use names.
+       */
+      if (nir_variable_is_in_block(state->current_var)) {
+         struct gl_uniform_block *blocks = nir_variable_is_in_ssbo(state->current_var) ?
+            prog->data->ShaderStorageBlocks : prog->data->UniformBlocks;
+
+         int num_blocks = nir_variable_is_in_ssbo(state->current_var) ?
+            prog->data->NumShaderStorageBlocks : prog->data->NumUniformBlocks;
+
+         for (unsigned i = 0; i < num_blocks; i++) {
+            if (state->current_var->data.binding == blocks[i].Binding) {
+               buffer_block_index = i;
+               break;
+            }
+         }
+         assert(buffer_block_index >= 0);
+      }
+
+      uniform->block_index = buffer_block_index;
+
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
        * etc.
        */
-      uniform->block_index = -1;
       uniform->builtin = false;
       uniform->atomic_buffer_index = -1;
       uniform->top_level_array_size = 0;
