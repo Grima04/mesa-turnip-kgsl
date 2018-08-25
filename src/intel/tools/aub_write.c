@@ -238,6 +238,11 @@ register_write_out(struct aub_file *aub, uint32_t addr, uint32_t value)
 {
    uint32_t dwords = 1;
 
+   if (aub->verbose_log_file) {
+      fprintf(aub->verbose_log_file,
+              "  MMIO WRITE (0x%08x = 0x%08x)\n", addr, value);
+   }
+
    dword_out(aub, CMD_MEM_TRACE_REGISTER_WRITE | (5 + dwords - 1));
    dword_out(aub, addr);
    dword_out(aub, AUB_MEM_TRACE_REGISTER_SIZE_DWORD |
