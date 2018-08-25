@@ -2400,6 +2400,7 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
 
       struct GENX(SF_OUTPUT_ATTRIBUTE_DETAIL) *attr =
          &attr_overrides[input_index];
+      int slot = vue_map->varying_to_slot[fs_attr];
 
       /* Viewport and Layer are stored in the VUE header.  We need to override
        * them to zero if earlier stages didn't write them, as GL requires that
@@ -2419,12 +2420,15 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
          continue;
 
       case VARYING_SLOT_PRIMITIVE_ID:
-         attr->ComponentOverrideX = true;
-         attr->ComponentOverrideY = true;
-         attr->ComponentOverrideZ = true;
-         attr->ComponentOverrideW = true;
-         attr->ConstantSource = PRIM_ID;
-         continue;
+         /* Override if the previous shader stage didn't write gl_PrimitiveID. */
+         if (slot == -1) {
+            attr->ComponentOverrideX = true;
+            attr->ComponentOverrideY = true;
+            attr->ComponentOverrideZ = true;
+            attr->ComponentOverrideW = true;
+            attr->ConstantSource = PRIM_ID;
+            continue;
+         }
 
       default:
          break;
@@ -2432,8 +2436,6 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
 
       if (sprite_coord_enables & (1 << input_index))
          continue;
-
-      int slot = vue_map->varying_to_slot[fs_attr];
 
       /* If there was only a back color written but not front, use back
        * as the color instead of undefined.
