@@ -218,11 +218,11 @@ main(int argc, char *argv[])
          int matched = sscanf(line, "PCI ID: 0x%04x\n", &pci_id);
          fail_if(!matched, "Invalid error state file!\n");
 
-         aub_file_init(&aub, aub_file, pci_id);
+         aub_file_init(&aub, aub_file,
+                       NULL, pci_id, "error_state");
          fail_if(!aub_use_execlists(&aub),
                  "%s currently only works on gen8+\n", argv[0]);
 
-         aub_write_header(&aub, "error state");
          aub_write_default_setup(&aub);
          continue;
       }

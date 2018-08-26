@@ -54,7 +54,7 @@ struct aub_file {
    struct aub_ppgtt_table pml4;
 };
 
-void aub_file_init(struct aub_file *aub, FILE *file, uint16_t pci_id);
+void aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, const char *app_name);
 void aub_file_finish(struct aub_file *aub);
 
 static inline bool aub_use_execlists(const struct aub_file *aub)
@@ -74,7 +74,6 @@ aub_write_reloc(const struct gen_device_info *devinfo, void *p, uint64_t v)
    }
 }
 
-void aub_write_header(struct aub_file *aub, const char *app_name);
 void aub_write_default_setup(struct aub_file *aub);
 void aub_map_ppgtt(struct aub_file *aub, uint64_t start, uint64_t size);
 void aub_write_trace_block(struct aub_file *aub,

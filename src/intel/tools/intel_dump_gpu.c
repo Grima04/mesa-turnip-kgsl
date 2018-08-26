@@ -208,10 +208,9 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       fail_if(!gen_get_device_info(device, &devinfo),
               "failed to identify chipset=0x%x\n", device);
 
-      aub_file_init(&aub_file, output_file, device);
-      if (verbose == 2)
-         aub_file.verbose_log_file = stdout;
-      aub_write_header(&aub_file, program_invocation_short_name);
+      aub_file_init(&aub_file, output_file,
+                    verbose == 2 ? stdout : NULL,
+                    device, program_invocation_short_name);
       aub_write_default_setup(&aub_file);
 
       if (verbose)

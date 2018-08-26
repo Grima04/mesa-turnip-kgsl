@@ -114,32 +114,6 @@ aub_ppgtt_table_finish(struct aub_ppgtt_table *table, int level)
    }
 }
 
-void
-aub_file_init(struct aub_file *aub, FILE *file, uint16_t pci_id)
-{
-   memset(aub, 0, sizeof(*aub));
-
-   aub->file = file;
-   aub->pci_id = pci_id;
-   fail_if(!gen_get_device_info(pci_id, &aub->devinfo),
-           "failed to identify chipset=0x%x\n", pci_id);
-   aub->addr_bits = aub->devinfo.gen >= 8 ? 48 : 32;
-
-   aub->pml4.phys_addr = PML4_PHYS_ADDR;
-}
-
-void
-aub_file_finish(struct aub_file *aub)
-{
-   aub_ppgtt_table_finish(&aub->pml4, 4);
-   fclose(aub->file);
-}
-
-uint32_t
-aub_gtt_size(struct aub_file *aub)
-{
-   return NUM_PT_ENTRIES * (aub->addr_bits > 32 ? GEN8_PTE_SIZE : PTE_SIZE);
-}
 
 static void
 data_out(struct aub_file *aub, const void *data, size_t size)
@@ -155,6 +129,93 @@ static void
 dword_out(struct aub_file *aub, uint32_t data)
 {
    data_out(aub, &data, sizeof(data));
+}
+
+static void
+write_execlists_header(struct aub_file *aub, const char *name)
+{
+   char app_name[8 * 4];
+   int app_name_len, dwords;
+
+   app_name_len =
+      snprintf(app_name, sizeof(app_name), "PCI-ID=0x%X %s",
+               aub->pci_id, name);
+   app_name_len = ALIGN(app_name_len, sizeof(uint32_t));
+
+   dwords = 5 + app_name_len / sizeof(uint32_t);
+   dword_out(aub, CMD_MEM_TRACE_VERSION | (dwords - 1));
+   dword_out(aub, AUB_MEM_TRACE_VERSION_FILE_VERSION);
+   dword_out(aub, aub->devinfo.simulator_id << AUB_MEM_TRACE_VERSION_DEVICE_SHIFT);
+   dword_out(aub, 0);      /* version */
+   dword_out(aub, 0);      /* version */
+   data_out(aub, app_name, app_name_len);
+}
+
+static void
+write_legacy_header(struct aub_file *aub, const char *name)
+{
+   char app_name[8 * 4];
+   char comment[16];
+   int comment_len, comment_dwords, dwords;
+
+   comment_len = snprintf(comment, sizeof(comment), "PCI-ID=0x%x", aub->pci_id);
+   comment_dwords = ((comment_len + 3) / 4);
+
+   /* Start with a (required) version packet. */
+   dwords = 13 + comment_dwords;
+   dword_out(aub, CMD_AUB_HEADER | (dwords - 2));
+   dword_out(aub, (4 << AUB_HEADER_MAJOR_SHIFT) |
+                  (0 << AUB_HEADER_MINOR_SHIFT));
+
+   /* Next comes a 32-byte application name. */
+   strncpy(app_name, name, sizeof(app_name));
+   app_name[sizeof(app_name) - 1] = 0;
+   data_out(aub, app_name, sizeof(app_name));
+
+   dword_out(aub, 0); /* timestamp */
+   dword_out(aub, 0); /* timestamp */
+   dword_out(aub, comment_len);
+   data_out(aub, comment, comment_dwords * 4);
+}
+
+
+static void
+aub_write_header(struct aub_file *aub, const char *app_name)
+{
+   if (aub_use_execlists(aub))
+      write_execlists_header(aub, app_name);
+   else
+      write_legacy_header(aub, app_name);
+}
+
+void
+aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, const char *app_name)
+{
+   memset(aub, 0, sizeof(*aub));
+
+   aub->verbose_log_file = debug;
+   aub->file = file;
+   aub->pci_id = pci_id;
+   fail_if(!gen_get_device_info(pci_id, &aub->devinfo),
+           "failed to identify chipset=0x%x\n", pci_id);
+   aub->addr_bits = aub->devinfo.gen >= 8 ? 48 : 32;
+
+   aub->pml4.phys_addr = PML4_PHYS_ADDR;
+
+   aub_write_header(aub, app_name);
+}
+
+void
+aub_file_finish(struct aub_file *aub)
+{
+   aub_ppgtt_table_finish(&aub->pml4, 4);
+   fclose(aub->file);
+}
+
+uint32_t
+aub_gtt_size(struct aub_file *aub)
+{
+   return NUM_PT_ENTRIES * (aub->addr_bits > 32 ? GEN8_PTE_SIZE : PTE_SIZE);
 }
 
 static void
@@ -304,63 +365,6 @@ static uint64_t
 ppgtt_lookup(struct aub_file *aub, uint64_t ppgtt_addr)
 {
    return (uint64_t)L1_table(ppgtt_addr)->subtables[L1_index(ppgtt_addr)];
-}
-
-static void
-write_execlists_header(struct aub_file *aub, const char *name)
-{
-   char app_name[8 * 4];
-   int app_name_len, dwords;
-
-   app_name_len =
-      snprintf(app_name, sizeof(app_name), "PCI-ID=0x%X %s",
-               aub->pci_id, name);
-   app_name_len = ALIGN(app_name_len, sizeof(uint32_t));
-
-   dwords = 5 + app_name_len / sizeof(uint32_t);
-   dword_out(aub, CMD_MEM_TRACE_VERSION | (dwords - 1));
-   dword_out(aub, AUB_MEM_TRACE_VERSION_FILE_VERSION);
-   dword_out(aub, aub->devinfo.simulator_id << AUB_MEM_TRACE_VERSION_DEVICE_SHIFT);
-   dword_out(aub, 0);      /* version */
-   dword_out(aub, 0);      /* version */
-   data_out(aub, app_name, app_name_len);
-}
-
-static void
-write_legacy_header(struct aub_file *aub, const char *name)
-{
-   char app_name[8 * 4];
-   char comment[16];
-   int comment_len, comment_dwords, dwords;
-
-   comment_len = snprintf(comment, sizeof(comment), "PCI-ID=0x%x", aub->pci_id);
-   comment_dwords = ((comment_len + 3) / 4);
-
-   /* Start with a (required) version packet. */
-   dwords = 13 + comment_dwords;
-   dword_out(aub, CMD_AUB_HEADER | (dwords - 2));
-   dword_out(aub, (4 << AUB_HEADER_MAJOR_SHIFT) |
-                  (0 << AUB_HEADER_MINOR_SHIFT));
-
-   /* Next comes a 32-byte application name. */
-   strncpy(app_name, name, sizeof(app_name));
-   app_name[sizeof(app_name) - 1] = 0;
-   data_out(aub, app_name, sizeof(app_name));
-
-   dword_out(aub, 0); /* timestamp */
-   dword_out(aub, 0); /* timestamp */
-   dword_out(aub, comment_len);
-   data_out(aub, comment, comment_dwords * 4);
-}
-
-
-void
-aub_write_header(struct aub_file *aub, const char *app_name)
-{
-   if (aub_use_execlists(aub))
-      write_execlists_header(aub, app_name);
-   else
-      write_legacy_header(aub, app_name);
 }
 
 static void
