@@ -219,7 +219,7 @@ struct gen_batch_decode_ctx {
     * If the given address is inside a buffer, the map pointer should be
     * offset accordingly so it points at the data corresponding to address.
     */
-   struct gen_batch_decode_bo (*get_bo)(void *user_data, uint64_t address);
+   struct gen_batch_decode_bo (*get_bo)(void *user_data, bool ppgtt, uint64_t address);
    unsigned (*get_state_size)(void *user_data,
                               uint32_t offset_from_dynamic_state_base_addr);
    void *user_data;
@@ -244,6 +244,7 @@ void gen_batch_decode_ctx_init(struct gen_batch_decode_ctx *ctx,
                                FILE *fp, enum gen_batch_decode_flags flags,
                                const char *xml_path,
                                struct gen_batch_decode_bo (*get_bo)(void *,
+                                                                    bool,
                                                                     uint64_t),
 
                                unsigned (*get_state_size)(void *, uint32_t),

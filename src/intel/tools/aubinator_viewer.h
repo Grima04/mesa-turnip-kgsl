@@ -58,7 +58,7 @@ struct aub_decode_urb_stage_state {
 };
 
 struct aub_viewer_decode_ctx {
-   struct gen_batch_decode_bo (*get_bo)(void *user_data, uint64_t address);
+   struct gen_batch_decode_bo (*get_bo)(void *user_data, bool ppgtt, uint64_t address);
    unsigned (*get_state_size)(void *user_data,
                               uint32_t offset_from_dynamic_state_base_addr);
 
@@ -89,7 +89,7 @@ void aub_viewer_decode_ctx_init(struct aub_viewer_decode_ctx *ctx,
                                 struct aub_viewer_decode_cfg *decode_cfg,
                                 struct gen_spec *spec,
                                 struct gen_disasm *disasm,
-                                struct gen_batch_decode_bo (*get_bo)(void *, uint64_t),
+                                struct gen_batch_decode_bo (*get_bo)(void *, bool, uint64_t),
                                 unsigned (*get_state_size)(void *, uint32_t),
                                 void *user_data);
 

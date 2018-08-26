@@ -673,11 +673,11 @@ batch_edit_address(void *user_data, uint64_t address, uint32_t len)
 }
 
 static struct gen_batch_decode_bo
-batch_get_bo(void *user_data, uint64_t address)
+batch_get_bo(void *user_data, bool ppgtt, uint64_t address)
 {
    struct batch_window *window = (struct batch_window *) user_data;
 
-   if (window->uses_ppgtt)
+   if (window->uses_ppgtt && ppgtt)
       return aub_mem_get_ppgtt_bo(&window->mem, address);
    else
       return aub_mem_get_ggtt_bo(&window->mem, address);

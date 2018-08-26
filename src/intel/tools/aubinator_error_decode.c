@@ -381,7 +381,7 @@ static int ascii85_decode(const char *in, uint32_t **out, bool inflate)
 }
 
 static struct gen_batch_decode_bo
-get_gen_batch_bo(void *user_data, uint64_t address)
+get_gen_batch_bo(void *user_data, bool ppgtt, uint64_t address)
 {
    for (int s = 0; s < num_sections; s++) {
       if (sections[s].gtt_offset <= address &&

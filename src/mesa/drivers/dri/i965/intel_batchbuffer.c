@@ -81,7 +81,7 @@ dump_validation_list(struct intel_batchbuffer *batch)
 }
 
 static struct gen_batch_decode_bo
-decode_get_bo(void *v_brw, uint64_t address)
+decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
 {
    struct brw_context *brw = v_brw;
    struct intel_batchbuffer *batch = &brw->batch;
