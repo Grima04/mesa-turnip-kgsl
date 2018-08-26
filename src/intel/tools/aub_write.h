@@ -28,6 +28,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "drm-uapi/i915_drm.h"
+
 #include "dev/gen_device_info.h"
 #include "common/gen_gem.h"
 
@@ -80,7 +82,7 @@ void aub_write_trace_block(struct aub_file *aub,
                            uint32_t type, void *virtual,
                            uint32_t size, uint64_t gtt_offset);
 void aub_write_exec(struct aub_file *aub, uint64_t batch_addr,
-                    uint64_t offset, int ring_flag);
+                    uint64_t offset, enum drm_i915_gem_engine_class engine_class);
 
 #ifdef __cplusplus
 }

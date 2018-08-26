@@ -326,7 +326,7 @@ main(int argc, char *argv[])
 
    fail_if(!batch_addr, "Failed to find batch buffer.\n");
 
-   aub_write_exec(&aub, batch_addr, aub_gtt_size(&aub), I915_EXEC_RENDER);
+   aub_write_exec(&aub, batch_addr, aub_gtt_size(&aub), I915_ENGINE_CLASS_RENDER);
 
    free(out_filename);
    free(line);

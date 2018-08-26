@@ -187,6 +187,24 @@ gem_get_param(int fd, uint32_t param)
    return value;
 }
 
+static enum drm_i915_gem_engine_class
+engine_class_from_ring_flag(uint32_t ring_flag)
+{
+   switch (ring_flag) {
+   case I915_EXEC_DEFAULT:
+   case I915_EXEC_RENDER:
+      return I915_ENGINE_CLASS_RENDER;
+   case I915_EXEC_BSD:
+      return I915_ENGINE_CLASS_VIDEO;
+   case I915_EXEC_BLT:
+      return I915_ENGINE_CLASS_COPY;
+   case I915_EXEC_VEBOX:
+      return I915_ENGINE_CLASS_VIDEO_ENHANCE;
+   default:
+      return I915_ENGINE_CLASS_INVALID;
+   }
+}
+
 static void
 dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
 {
@@ -288,7 +306,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
 
    aub_write_exec(&aub_file,
                   batch_bo->offset + execbuffer2->batch_start_offset,
-                  offset, ring_flag);
+                  offset, engine_class_from_ring_flag(ring_flag));
 
    if (device_override &&
        (execbuffer2->flags & I915_EXEC_FENCE_ARRAY) != 0) {

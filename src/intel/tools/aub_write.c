@@ -52,31 +52,26 @@
       })
 
 
-enum gen_ring {
-   GEN_RING_RENDER,
-   GEN_RING_BLITTER,
-   GEN_RING_VIDEO,
-};
-
 static const uint32_t *
-get_context_init(const struct gen_device_info *devinfo, enum gen_ring ring)
+get_context_init(const struct gen_device_info *devinfo,
+                 enum drm_i915_gem_engine_class engine_class)
 {
    static const uint32_t *gen8_contexts[] = {
-      [GEN_RING_RENDER] = gen8_render_context_init,
-      [GEN_RING_BLITTER] = gen8_blitter_context_init,
-      [GEN_RING_VIDEO] = gen8_video_context_init,
+      [I915_ENGINE_CLASS_RENDER] = gen8_render_context_init,
+      [I915_ENGINE_CLASS_COPY] = gen8_blitter_context_init,
+      [I915_ENGINE_CLASS_VIDEO] = gen8_video_context_init,
    };
    static const uint32_t *gen10_contexts[] = {
-      [GEN_RING_RENDER] = gen10_render_context_init,
-      [GEN_RING_BLITTER] = gen10_blitter_context_init,
-      [GEN_RING_VIDEO] = gen10_video_context_init,
+      [I915_ENGINE_CLASS_RENDER] = gen10_render_context_init,
+      [I915_ENGINE_CLASS_COPY] = gen10_blitter_context_init,
+      [I915_ENGINE_CLASS_VIDEO] = gen10_video_context_init,
    };
 
    assert(devinfo->gen >= 8);
 
    if (devinfo->gen <= 10)
-      return gen8_contexts[ring];
-   return gen10_contexts[ring];
+      return gen8_contexts[engine_class];
+   return gen10_contexts[engine_class];
 }
 
 static void __attribute__ ((format(__printf__, 2, 3)))
@@ -399,7 +394,7 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* RENDER_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, GEN_RING_RENDER), CONTEXT_RENDER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_RENDER), CONTEXT_RENDER_SIZE);
 
    /* BLITTER_RING */
    mem_trace_memory_write_header_out(aub, BLITTER_RING_ADDR, RING_SIZE,
@@ -418,7 +413,7 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* BLITTER_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, GEN_RING_BLITTER), CONTEXT_OTHER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_COPY), CONTEXT_OTHER_SIZE);
 
    /* VIDEO_RING */
    mem_trace_memory_write_header_out(aub, VIDEO_RING_ADDR, RING_SIZE,
@@ -437,7 +432,7 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* VIDEO_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, GEN_RING_VIDEO), CONTEXT_OTHER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_VIDEO), CONTEXT_OTHER_SIZE);
 
    register_write_out(aub, HWS_PGA_RCSUNIT, RENDER_CONTEXT_ADDR);
    register_write_out(aub, HWS_PGA_VCSUNIT0, VIDEO_CONTEXT_ADDR);
@@ -538,7 +533,7 @@ static const struct engine {
    uint32_t default_ring_addr;
    uint64_t default_descriptor;
 } engines[] = {
-   [I915_EXEC_RENDER] = {
+   [I915_ENGINE_CLASS_RENDER] = {
       .elsp_reg = EXECLIST_SUBMITPORT_RCSUNIT,
       .elsq_reg = EXECLIST_SQ_CONTENTS0_RCSUNIT,
       .status_reg = EXECLIST_STATUS_RCSUNIT,
@@ -547,7 +542,7 @@ static const struct engine {
       .default_ring_addr = RENDER_RING_ADDR,
       .default_descriptor = RENDER_CONTEXT_DESCRIPTOR,
    },
-   [I915_EXEC_BSD] = {
+   [I915_ENGINE_CLASS_VIDEO] = {
       .elsp_reg = EXECLIST_SUBMITPORT_VCSUNIT0,
       .elsq_reg = EXECLIST_SQ_CONTENTS0_VCSUNIT0,
       .status_reg = EXECLIST_STATUS_VCSUNIT0,
@@ -556,7 +551,7 @@ static const struct engine {
       .default_ring_addr = VIDEO_RING_ADDR,
       .default_descriptor = VIDEO_CONTEXT_DESCRIPTOR,
    },
-   [I915_EXEC_BLT] = {
+   [I915_ENGINE_CLASS_COPY] = {
       .elsp_reg = EXECLIST_SUBMITPORT_BCSUNIT,
       .elsq_reg = EXECLIST_SQ_CONTENTS0_BCSUNIT,
       .status_reg = EXECLIST_STATUS_BCSUNIT,
@@ -568,16 +563,13 @@ static const struct engine {
 };
 
 static const struct engine *
-engine_from_ring_flag(uint32_t ring_flag)
+engine_from_engine_class(enum drm_i915_gem_engine_class engine_class)
 {
-   switch (ring_flag) {
-   case I915_EXEC_DEFAULT:
-      return &engines[I915_EXEC_RENDER];
-      break;
-   case I915_EXEC_RENDER:
-   case I915_EXEC_BSD:
-   case I915_EXEC_BLT:
-      return &engines[ring_flag];
+   switch (engine_class) {
+   case I915_ENGINE_CLASS_RENDER:
+   case I915_ENGINE_CLASS_COPY:
+   case I915_ENGINE_CLASS_VIDEO:
+      return &engines[engine_class];
    default:
       unreachable("unknown ring");
    }
@@ -636,18 +628,20 @@ aub_dump_execlist(struct aub_file *aub, const struct engine *cs, uint64_t descri
 }
 
 static void
-aub_dump_ring_buffer_legacy(struct aub_file *aub, uint64_t batch_offset,
-                            uint64_t offset, int ring_flag)
+aub_dump_ring_buffer_legacy(struct aub_file *aub,
+                            uint64_t batch_offset,
+                            uint64_t offset,
+                            enum drm_i915_gem_engine_class engine_class)
 {
    uint32_t ringbuffer[4096];
    unsigned aub_mi_bbs_len;
-   int ring = AUB_TRACE_TYPE_RING_PRB0; /* The default ring */
    int ring_count = 0;
-
-   if (ring_flag == I915_EXEC_BSD)
-      ring = AUB_TRACE_TYPE_RING_PRB1;
-   else if (ring_flag == I915_EXEC_BLT)
-      ring = AUB_TRACE_TYPE_RING_PRB2;
+   static const int engine_class_to_ring[] = {
+      [I915_ENGINE_CLASS_RENDER] = AUB_TRACE_TYPE_RING_PRB0,
+      [I915_ENGINE_CLASS_VIDEO]  = AUB_TRACE_TYPE_RING_PRB1,
+      [I915_ENGINE_CLASS_COPY]   = AUB_TRACE_TYPE_RING_PRB2,
+   };
+   int ring = engine_class_to_ring[engine_class];
 
    /* Make a ring buffer to execute our batchbuffer. */
    memset(ringbuffer, 0, sizeof(ringbuffer));
@@ -674,15 +668,16 @@ aub_dump_ring_buffer_legacy(struct aub_file *aub, uint64_t batch_offset,
 
 void
 aub_write_exec(struct aub_file *aub, uint64_t batch_addr,
-               uint64_t offset, int ring_flag)
+               uint64_t offset, enum drm_i915_gem_engine_class engine_class)
 {
+   const struct engine *cs = engine_from_engine_class(engine_class);
+
    if (aub_use_execlists(aub)) {
-      const struct engine *cs = engine_from_ring_flag(ring_flag);
       aub_dump_ring_buffer_execlist(aub, cs, batch_addr);
       aub_dump_execlist(aub, cs, cs->default_descriptor);
    } else {
       /* Dump ring buffer */
-      aub_dump_ring_buffer_legacy(aub, batch_addr, offset, ring_flag);
+      aub_dump_ring_buffer_legacy(aub, batch_addr, offset, engine_class);
    }
    fflush(aub->file);
 }
