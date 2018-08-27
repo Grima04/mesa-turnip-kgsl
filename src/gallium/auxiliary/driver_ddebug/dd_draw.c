@@ -1111,6 +1111,8 @@ dd_before_draw(struct dd_context *dctx, struct dd_draw_record *record)
          pipe->flush(pipe, &record->top_of_pipe,
                      PIPE_FLUSH_DEFERRED | PIPE_FLUSH_TOP_OF_PIPE);
       }
+   } else if (dscreen->flush_always && dctx->num_draw_calls >= dscreen->skip_count) {
+      pipe->flush(pipe, NULL, 0);
    }
 
    mtx_lock(&dctx->mutex);
