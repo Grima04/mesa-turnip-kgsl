@@ -828,7 +828,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
    if (unlikely(INTEL_DEBUG & DEBUG_BATCH)) {
       gen_print_batch(&batch->decoder, batch->batch.map,
                       4 * USED_BATCH(*batch),
-                      batch->batch.bo->gtt_offset);
+                      batch->batch.bo->gtt_offset, false);
    }
 
    if (brw->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)

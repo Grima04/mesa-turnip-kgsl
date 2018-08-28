@@ -166,7 +166,7 @@ handle_execlist_write(void *user_data, enum drm_i915_gem_engine_class engine, ui
    batch_ctx.engine = engine;
    gen_print_batch(&batch_ctx, commands,
                    MIN2(ring_buffer_tail - ring_buffer_head, ring_buffer_length),
-                   ring_bo.addr + ring_buffer_head);
+                   ring_bo.addr + ring_buffer_head, true);
    aub_mem_clear_bo_maps(&mem);
 }
 
@@ -184,7 +184,7 @@ handle_ring_write(void *user_data, enum drm_i915_gem_engine_class engine,
    batch_ctx.get_bo = get_legacy_bo;
 
    batch_ctx.engine = engine;
-   gen_print_batch(&batch_ctx, data, data_len, 0);
+   gen_print_batch(&batch_ctx, data, data_len, 0, false);
 
    aub_mem_clear_bo_maps(&mem);
 }

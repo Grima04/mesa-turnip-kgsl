@@ -702,7 +702,7 @@ display_batch_ring_write(void *user_data, enum drm_i915_gem_engine_class engine,
 
    window->uses_ppgtt = false;
 
-   aub_viewer_render_batch(&window->decode_ctx, data, data_len, 0);
+   aub_viewer_render_batch(&window->decode_ctx, data, data_len, 0, false);
 }
 
 static void
@@ -737,7 +737,7 @@ display_batch_execlist_write(void *user_data,
    window->decode_ctx.engine = engine;
    aub_viewer_render_batch(&window->decode_ctx, commands,
                            MIN2(ring_buffer_tail - ring_buffer_head, ring_buffer_length),
-                           ring_buffer_start + ring_buffer_head);
+                           ring_buffer_start + ring_buffer_head, true);
 }
 
 static void

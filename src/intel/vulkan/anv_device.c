@@ -1795,10 +1795,12 @@ get_bo_from_pool(struct gen_batch_decode_bo *ret,
 
 /* Finding a buffer for batch decoding */
 static struct gen_batch_decode_bo
-decode_get_bo(void *v_batch, uint64_t address)
+decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 {
    struct anv_device *device = v_batch;
    struct gen_batch_decode_bo ret_bo = {};
+
+   assert(ppgtt);
 
    if (get_bo_from_pool(&ret_bo, &device->dynamic_state_pool.block_pool, address))
       return ret_bo;

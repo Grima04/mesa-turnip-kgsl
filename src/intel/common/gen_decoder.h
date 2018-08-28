@@ -254,7 +254,7 @@ void gen_batch_decode_ctx_finish(struct gen_batch_decode_ctx *ctx);
 
 void gen_print_batch(struct gen_batch_decode_ctx *ctx,
                      const uint32_t *batch, uint32_t batch_size,
-                     uint64_t batch_addr);
+                     uint64_t batch_addr, bool from_ring);
 
 #ifdef __cplusplus
 }

@@ -95,6 +95,6 @@ void aub_viewer_decode_ctx_init(struct aub_viewer_decode_ctx *ctx,
 
 void aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
                              const void *batch, uint32_t batch_size,
-                             uint64_t batch_addr);
+                             uint64_t batch_addr, bool from_ring);
 
 #endif /* AUBINATOR_VIEWER_H */

@@ -892,7 +892,7 @@ struct custom_decoder info_decoders[] = {
 void
 aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
                         const void *_batch, uint32_t batch_size,
-                        uint64_t batch_addr)
+                        uint64_t batch_addr, bool from_ring)
 {
    struct gen_group *inst;
    const uint32_t *p, *batch = (const uint32_t *) _batch, *end = batch + batch_size / sizeof(uint32_t);
@@ -970,7 +970,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
                                next_batch_addr);
          } else {
             aub_viewer_render_batch(ctx, next_batch.map, next_batch.size,
-                                    next_batch.addr);
+                                    next_batch.addr, false);
          }
          if (second_level) {
             /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" set acts
@@ -979,7 +979,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
              * MI_BATCH_BUFFER_END.
              */
             continue;
-         } else {
+         } else if (!from_ring) {
             /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" unset acts
              * like a goto.  Nothing after it will ever get processed.  In
              * order to prevent the recursion from growing, we just reset the

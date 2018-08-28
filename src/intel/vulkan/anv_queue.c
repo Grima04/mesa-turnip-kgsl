@@ -101,7 +101,7 @@ anv_device_submit_simple_batch(struct anv_device *device,
    execbuf.rsvd2 = 0;
 
    if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
-      gen_print_batch(&device->decoder_ctx, bo.map, bo.size, bo.offset);
+      gen_print_batch(&device->decoder_ctx, bo.map, bo.size, bo.offset, false);
 
    result = anv_device_execbuf(device, &execbuf, exec_bos);
    if (result != VK_SUCCESS)

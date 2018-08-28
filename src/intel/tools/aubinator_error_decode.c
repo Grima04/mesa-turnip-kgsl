@@ -612,7 +612,7 @@ read_data_file(FILE *file)
          batch_ctx.engine = class;
          gen_print_batch(&batch_ctx, sections[s].data,
                          sections[s].dword_count * 4,
-                         sections[s].gtt_offset);
+                         sections[s].gtt_offset, false);
       }
    }
 
