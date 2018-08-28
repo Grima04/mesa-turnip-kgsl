@@ -1074,18 +1074,25 @@ static LLVMValueRef get_tess_ring_descriptor(struct si_shader_context *ctx,
 				    LLVMConstInt(ctx->i32, tf_offset, 0), "");
 	}
 
+	uint32_t rsrc3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			 S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			 S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+	if (ctx->screen->info.chip_class >= GFX10)
+		rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+			 S_008F0C_OOB_SELECT(3) |
+			 S_008F0C_RESOURCE_LEVEL(1);
+	else
+		rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			 S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+
 	LLVMValueRef desc[4];
 	desc[0] = addr;
 	desc[1] = LLVMConstInt(ctx->i32,
 			       S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
 	desc[2] = LLVMConstInt(ctx->i32, 0xffffffff, 0);
-	desc[3] = LLVMConstInt(ctx->i32,
-			       S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-			       S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-			       S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			       S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			       S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			       S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32), 0);
+	desc[3] = LLVMConstInt(ctx->i32, rsrc3, false);
 
 	return ac_build_gather_values(&ctx->ac, desc, 4);
 }
