@@ -250,9 +250,7 @@ void QueueWork(SWR_CONTEXT* pContext)
 
     if (pContext->threadInfo.SINGLE_THREADED)
     {
-        // flush denormals to 0
-        uint32_t mxcsr = _mm_getcsr();
-        _mm_setcsr(mxcsr | _MM_FLUSH_ZERO_ON | _MM_DENORMALS_ZERO_ON);
+        uint32_t mxcsr = SetOptimalVectorCSR();
 
         if (IsDraw)
         {
@@ -274,7 +272,7 @@ void QueueWork(SWR_CONTEXT* pContext)
         }
 
         // restore csr
-        _mm_setcsr(mxcsr);
+        RestoreVectorCSR(mxcsr);
     }
     else
     {

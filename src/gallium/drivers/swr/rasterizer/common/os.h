@@ -294,4 +294,25 @@ int SWR_API
             std::string* pOptStdErr     = nullptr,   ///< (Optional Out) Standard Error text
             const std::string* pOptStdIn = nullptr); ///< (Optional In) Standard Input text
 
+
+/// Helper for setting up FP state
+/// @returns old csr state
+static INLINE uint32_t SetOptimalVectorCSR()
+{
+    uint32_t oldCSR = _mm_getcsr();
+
+    uint32_t newCSR = (oldCSR & ~(_MM_ROUND_MASK | _MM_DENORMALS_ZERO_MASK | _MM_FLUSH_ZERO_MASK));
+    newCSR |= (_MM_ROUND_NEAREST | _MM_FLUSH_ZERO_ON | _MM_DENORMALS_ZERO_ON);
+    _mm_setcsr(newCSR);
+
+    return oldCSR;
+}
+
+/// Set Vector CSR state.
+/// @param csrState - should be value returned from SetOptimalVectorCSR()
+static INLINE void RestoreVectorCSR(uint32_t csrState)
+{
+    _mm_setcsr(csrState);
+}
+
 #endif //__SWR_OS_H__

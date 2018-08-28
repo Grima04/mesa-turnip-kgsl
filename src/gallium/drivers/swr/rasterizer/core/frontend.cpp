@@ -1840,10 +1840,10 @@ void ProcessDraw(SWR_CONTEXT* pContext, DRAW_CONTEXT* pDC, uint32_t workerId, vo
         {
             vIndex = _simd16_add_epi32(_simd16_set1_epi32(work.startVertexID), vScale);
 
-            fetchInfo_lo.xpIndices = 
-                pDC->pContext->pfnMakeGfxPtr(GetPrivateState(pDC), &vIndex);
-            fetchInfo_hi.xpIndices = 
-                pDC->pContext->pfnMakeGfxPtr(GetPrivateState(pDC), &vIndex + KNOB_SIMD_WIDTH * sizeof(int32_t)); // 1/2 of KNOB_SIMD16_WIDTH
+            fetchInfo_lo.xpIndices = pDC->pContext->pfnMakeGfxPtr(GetPrivateState(pDC), &vIndex);
+            fetchInfo_hi.xpIndices = pDC->pContext->pfnMakeGfxPtr(
+                GetPrivateState(pDC),
+                &vIndex + KNOB_SIMD_WIDTH * sizeof(int32_t)); // 1/2 of KNOB_SIMD16_WIDTH
         }
 
         fetchInfo_lo.CurInstance = instanceNum;
