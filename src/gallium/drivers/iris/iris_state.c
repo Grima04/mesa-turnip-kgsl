@@ -3314,13 +3314,13 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_blend_state *cso_blend = ice->state.cso_blend;
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
       struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
-      const int num_dwords = 4 * (GENX(BLEND_STATE_length) +
-         cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length));
+      const int header_dwords = GENX(BLEND_STATE_length);
+      const int rt_dwords = cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length);
       uint32_t blend_offset;
       uint32_t *blend_map =
          stream_state(batch, ice->state.dynamic_uploader,
                       &ice->state.last_res.blend,
-                      4 * num_dwords, 64, &blend_offset);
+                      4 * (header_dwords + rt_dwords), 64, &blend_offset);
 
       uint32_t blend_state_header;
       iris_pack_state(GENX(BLEND_STATE), &blend_state_header, bs) {
@@ -3329,8 +3329,7 @@ iris_upload_render_state(struct iris_context *ice,
       }
 
       blend_map[0] = blend_state_header | cso_blend->blend_state[0];
-      memcpy(&blend_map[1], &cso_blend->blend_state[1],
-             sizeof(cso_blend->blend_state) - sizeof(uint32_t));
+      memcpy(&blend_map[1], &cso_blend->blend_state[1], 4 * rt_dwords);
 
       iris_emit_cmd(batch, GENX(3DSTATE_BLEND_STATE_POINTERS), ptr) {
          ptr.BlendStatePointer = blend_offset;
