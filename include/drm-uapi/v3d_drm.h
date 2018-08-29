@@ -63,7 +63,7 @@ extern "C" {
  * flushed by the time the render done IRQ happens, which is the
  * trigger for out_sync.  Any dirtying of cachelines by the job (only
  * possible using TMU writes) must be flushed by the caller using the
- * CL's cache flush commands.
+ * DRM_V3D_SUBMIT_CL_FLUSH_CACHE_FLAG flag.
  */
 struct drm_v3d_submit_cl {
 	/* Pointer to the binner command list.
