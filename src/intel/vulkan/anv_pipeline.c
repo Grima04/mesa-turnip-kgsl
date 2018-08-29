@@ -97,15 +97,13 @@ static const uint64_t stage_to_debug[] = {
  * we can't do that yet because we don't have the ability to copy nir.
  */
 static nir_shader *
-anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
+anv_shader_compile_to_nir(struct anv_device *device,
                           void *mem_ctx,
                           const struct anv_shader_module *module,
                           const char *entrypoint_name,
                           gl_shader_stage stage,
                           const VkSpecializationInfo *spec_info)
 {
-   const struct anv_device *device = pipeline->device;
-
    const struct brw_compiler *compiler =
       device->instance->physicalDevice.compiler;
    const nir_shader_compiler_options *nir_options =
@@ -216,9 +214,6 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_ubo | nir_var_ssbo,
               nir_address_format_vk_index_offset);
 
-   if (stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, nir_lower_wpos_center, pipeline->sample_shading_enable);
-
    NIR_PASS_V(nir, nir_propagate_invariant);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               entry_point->impl, true, false);
@@ -227,9 +222,6 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
    nir->info.separate_shader = true;
 
    nir = brw_preprocess_nir(compiler, nir);
-
-   if (stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, anv_nir_lower_input_attachments);
 
    return nir;
 }
@@ -496,6 +488,11 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    struct brw_stage_prog_data *prog_data = &stage->prog_data.base;
    nir_shader *nir = stage->nir;
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_wpos_center, pipeline->sample_shading_enable);
+      NIR_PASS_V(nir, anv_nir_lower_input_attachments);
+   }
 
    NIR_PASS_V(nir, anv_nir_lower_ycbcr_textures, layout);
 
@@ -985,7 +982,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          .sampler_to_descriptor = stages[s].sampler_to_descriptor
       };
 
-      stages[s].nir = anv_shader_compile_to_nir(pipeline, pipeline_ctx,
+      stages[s].nir = anv_shader_compile_to_nir(pipeline->device, pipeline_ctx,
                                                 stages[s].module,
                                                 stages[s].entrypoint,
                                                 stages[s].stage,
@@ -1153,7 +1150,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       void *mem_ctx = ralloc_context(NULL);
 
-      stage.nir = anv_shader_compile_to_nir(pipeline, mem_ctx,
+      stage.nir = anv_shader_compile_to_nir(pipeline->device, mem_ctx,
                                             stage.module,
                                             stage.entrypoint,
                                             stage.stage,
