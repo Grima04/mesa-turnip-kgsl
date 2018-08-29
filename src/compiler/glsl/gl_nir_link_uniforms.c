@@ -498,11 +498,51 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
          state.current_var = var;
 
+         /*
+          * From ARB_program_interface spec, issue (16):
+          *
+          * "RESOLVED: We will follow the default rule for enumerating block
+          *  members in the OpenGL API, which is:
+          *
+          *  * If a variable is a member of an interface block without an
+          *    instance name, it is enumerated using just the variable name.
+          *
+          *  * If a variable is a member of an interface block with an
+          *    instance name, it is enumerated as "BlockName.Member", where
+          *    "BlockName" is the name of the interface block (not the
+          *    instance name) and "Member" is the name of the variable.
+          *
+          * For example, in the following code:
+          *
+          * uniform Block1 {
+          *   int member1;
+          * };
+          * uniform Block2 {
+          *   int member2;
+          * } instance2;
+          * uniform Block3 {
+          *  int member3;
+          * } instance3[2];  // uses two separate buffer bindings
+          *
+          * the three uniforms (if active) are enumerated as "member1",
+          * "Block2.member2", and "Block3.member3"."
+          *
+          * Note that in the last example, with an array of ubo, only one
+          * uniform is generated. For that reason, while unrolling the
+          * uniforms of a ubo, or the variables of a ssbo, we need to treat
+          * arrays of instance as a single block.
+          */
+         const struct glsl_type *type = var->type;
+         if (nir_variable_is_in_block(var) &&
+             glsl_type_is_array(type)) {
+            type = glsl_without_array(type);
+         }
+
          struct type_tree_entry *type_tree =
-            build_type_tree_for_type(var->type);
+            build_type_tree_for_type(type);
          state.current_type = type_tree;
 
-         int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, var->type,
+         int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     location, &state);
 
          free_type_tree(type_tree);
