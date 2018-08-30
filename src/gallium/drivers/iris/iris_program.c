@@ -363,10 +363,9 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    }
 
    if (info->num_ssbos || info->num_abos) {
-      //assert(info->num_abos <= BRW_MAX_ABO);
-      //assert(info->num_ssbos <= BRW_MAX_SSBO);
       prog_data->binding_table.ssbo_start = next_binding_table_offset;
-      next_binding_table_offset += info->num_abos + info->num_ssbos;
+      // XXX: see iris_state "wasting 16 binding table slots for ABOs" comment
+      next_binding_table_offset += IRIS_MAX_ABOS + info->num_ssbos;
    } else {
       prog_data->binding_table.ssbo_start = 0xd0d0d0d0;
    }

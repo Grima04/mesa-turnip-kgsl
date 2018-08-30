@@ -3248,6 +3248,21 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
    return surf_state->offset;
 }
 
+static uint32_t
+use_image(struct iris_batch *batch, struct iris_context *ice,
+          struct iris_shader_state *shs, int i)
+{
+   if (!shs->image[i])
+      return use_null_surface(batch, ice);
+
+   struct iris_state_ref *surf_state = &shs->image_surface_state[i];
+
+   iris_use_pinned_bo(batch, iris_resource_bo(shs->image[i]), true);
+   iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
+
+   return surf_state->offset;
+}
+
 #define push_bt_entry(addr) \
    assert(addr >= binder_addr); \
    if (!pin_only) bt_map[s++] = (addr) - binder_addr;
@@ -3331,9 +3346,15 @@ iris_populate_binding_table(struct iris_context *ice,
       }
    }
 
+   if (info->num_images > 0) {
+      for (int i = 0; i < info->num_images; i++) {
+         uint32_t addr = use_image(batch, ice, shs, i);
+         push_bt_entry(addr);
+      }
+   }
+
 #if 0
       // XXX: not implemented yet
-      assert(prog_data->binding_table.image_start == 0xd0d0d0d0);
       assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
       assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
 #endif
