@@ -1031,9 +1031,11 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	 */
 	unsigned max_offchip_buffers_per_se;
 
+	if (sscreen->info.chip_class >= GFX10)
+		max_offchip_buffers_per_se = 256;
 	/* Only certain chips can use the maximum value. */
-	if (sscreen->info.family == CHIP_VEGA12 ||
-	    sscreen->info.family == CHIP_VEGA20)
+	else if (sscreen->info.family == CHIP_VEGA12 ||
+	         sscreen->info.family == CHIP_VEGA20)
 		max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
 	else
 		max_offchip_buffers_per_se = double_offchip_buffers ? 127 : 63;
