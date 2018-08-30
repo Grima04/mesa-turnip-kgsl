@@ -368,7 +368,7 @@ void FetchJit::UnpackComponents(SWR_FORMAT format, Value* vInput, Value* result[
 // gather SIMD full pixels per lane then shift/mask to move each component to their
 // own vector
 void FetchJit::CreateGatherOddFormats(
-    SWR_FORMAT format, Value* pMask, Value* pBase, Value* pOffsets, Value* pResult[4])
+    SWR_FORMAT format, Value* pMask, Value* xpBase, Value* pOffsets, Value* pResult[4])
 {
     const SWR_FORMAT_INFO& info = GetFormatInfo(format);
 
@@ -378,7 +378,7 @@ void FetchJit::CreateGatherOddFormats(
     Value* pGather;
     if (info.bpp == 32)
     {
-        pGather = GATHERDD(VIMMED1(0), pBase, pOffsets, pMask);
+        pGather = GATHERDD(VIMMED1(0), xpBase, pOffsets, pMask);
     }
     else
     {
@@ -386,29 +386,40 @@ void FetchJit::CreateGatherOddFormats(
         Value* pMem = ALLOCA(mSimdInt32Ty);
         STORE(VIMMED1(0u), pMem);
 
-        pBase          = BITCAST(pBase, PointerType::get(mInt8Ty, 0));
-        Value* pDstMem = BITCAST(pMem, mInt32PtrTy);
+        Value* pDstMem = POINTER_CAST(pMem, mInt32PtrTy);
 
         for (uint32_t lane = 0; lane < mVWidth; ++lane)
         {
             // Get index
             Value* index = VEXTRACT(pOffsets, C(lane));
             Value* mask  = VEXTRACT(pMask, C(lane));
+
+            // use branch around load based on mask
+            // Needed to avoid page-faults on unmasked lanes
+            BasicBlock* pCurrentBB = IRB()->GetInsertBlock();
+            BasicBlock* pMaskedLoadBlock =
+                BasicBlock::Create(JM()->mContext, "MaskedLaneLoad", pCurrentBB->getParent());
+            BasicBlock* pEndLoadBB = BasicBlock::Create(JM()->mContext, "AfterMaskedLoad", pCurrentBB->getParent());
+
+            COND_BR(mask, pMaskedLoadBlock, pEndLoadBB);
+
+            JM()->mBuilder.SetInsertPoint(pMaskedLoadBlock);
+
             switch (info.bpp)
             {
             case 8:
             {
                 Value* pDst = BITCAST(GEP(pDstMem, C(lane)), PointerType::get(mInt8Ty, 0));
-                Value* pSrc = BITCAST(GEP(pBase, index), PointerType::get(mInt8Ty, 0));
-                STORE(LOAD(SELECT(mask, pSrc, pDst)), pDst);
+                Value* xpSrc = ADD(xpBase, Z_EXT(index, xpBase->getType()));
+                STORE(LOAD(xpSrc, "", mInt8PtrTy, GFX_MEM_CLIENT_FETCH), pDst);
                 break;
             }
 
             case 16:
             {
                 Value* pDst = BITCAST(GEP(pDstMem, C(lane)), PointerType::get(mInt16Ty, 0));
-                Value* pSrc = BITCAST(GEP(pBase, index), PointerType::get(mInt16Ty, 0));
-                STORE(LOAD(SELECT(mask, pSrc, pDst)), pDst);
+                Value* xpSrc = ADD(xpBase, Z_EXT(index, xpBase->getType()));
+                STORE(LOAD(xpSrc, "", mInt16PtrTy, GFX_MEM_CLIENT_FETCH), pDst);
                 break;
             }
             break;
@@ -417,13 +428,13 @@ void FetchJit::CreateGatherOddFormats(
             {
                 // First 16-bits of data
                 Value* pDst = BITCAST(GEP(pDstMem, C(lane)), PointerType::get(mInt16Ty, 0));
-                Value* pSrc = BITCAST(GEP(pBase, index), PointerType::get(mInt16Ty, 0));
-                STORE(LOAD(SELECT(mask, pSrc, pDst)), pDst);
+                Value* xpSrc = ADD(xpBase, Z_EXT(index, xpBase->getType()));
+                STORE(LOAD(xpSrc, "", mInt16PtrTy, GFX_MEM_CLIENT_FETCH), pDst);
 
                 // Last 8-bits of data
                 pDst = BITCAST(GEP(pDst, C(1)), PointerType::get(mInt8Ty, 0));
-                pSrc = BITCAST(GEP(pSrc, C(1)), PointerType::get(mInt8Ty, 0));
-                STORE(LOAD(SELECT(mask, pSrc, pDst)), pDst);
+                xpSrc = ADD(xpSrc, C(2));
+                STORE(LOAD(xpSrc, "", mInt8PtrTy, GFX_MEM_CLIENT_FETCH), pDst);
                 break;
             }
 
@@ -431,6 +442,9 @@ void FetchJit::CreateGatherOddFormats(
                 SWR_INVALID("Shouldn't have BPP = %d now", info.bpp);
                 break;
             }
+
+            BR(pEndLoadBB);
+            JM()->mBuilder.SetInsertPoint(pEndLoadBB);
         }
 
         pGather = LOAD(pMem);
@@ -616,7 +630,7 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
         // do 64bit address offset calculations.
 
         // calculate byte offset to the start of the VB
-        Value* baseOffset     = MUL(Z_EXT(startOffset, mInt64Ty), Z_EXT(stride, mInt64Ty));
+        Value* baseOffset = MUL(Z_EXT(startOffset, mInt64Ty), Z_EXT(stride, mInt64Ty));
 
         // VGATHER* takes an *i8 src pointer so that's what stream is
         Value* pStreamBaseGFX = ADD(stream, baseOffset);
@@ -781,17 +795,17 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                         {
                             // Gather a SIMD of vertices
                             // APIs allow a 4GB range for offsets
-                            // However, GATHERPS uses signed 32-bit offsets, so only a 2GB range :(
-                            // But, we know that elements must be aligned for FETCH. :)
-                            // Right shift the offset by a bit and then scale by 2 to remove the
-                            // sign extension.
-                            Value* vShiftedOffsets = LSHR(vOffsets, 1);
+                            // However, GATHERPS uses signed 32-bit offsets, so +/- 2GB range :(
+                            // Add 2GB to the base pointer and 2GB to the offsets.  This makes
+                            // "negative" (large) offsets into positive offsets and small offsets
+                            // into negative offsets.
+                            Value* vNewOffsets = ADD(vOffsets, VIMMED1(0x80000000));
                             vVertexElements[currentVertexElement++] =
                                 GATHERPS(gatherSrc,
-                                         pStreamBaseGFX,
-                                         vShiftedOffsets,
+                                         ADD(pStreamBaseGFX, C((uintptr_t)0x80000000U)),
+                                         vNewOffsets,
                                          vGatherMask,
-                                         2,
+                                         1,
                                          GFX_MEM_CLIENT_FETCH);
                         }
                         else
