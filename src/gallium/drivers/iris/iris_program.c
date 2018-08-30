@@ -68,6 +68,85 @@ struct iris_uncompiled_shader {
    unsigned nos;
 };
 
+static nir_ssa_def *
+get_aoa_deref_offset(nir_builder *b,
+                     nir_deref_instr *deref,
+                     unsigned elem_size)
+{
+   unsigned array_size = elem_size;
+   nir_ssa_def *offset = nir_imm_int(b, 0);
+
+   while (deref->deref_type != nir_deref_type_var) {
+      assert(deref->deref_type == nir_deref_type_array);
+
+      /* This level's element size is the previous level's array size */
+      nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
+      assert(deref->arr.index.ssa);
+      offset = nir_iadd(b, offset,
+                           nir_imul(b, index, nir_imm_int(b, array_size)));
+
+      deref = nir_deref_instr_parent(deref);
+      assert(glsl_type_is_array(deref->type));
+      array_size *= glsl_get_length(deref->type);
+   }
+
+   /* Accessing an invalid surface index with the dataport can result in a
+    * hang.  According to the spec "if the index used to select an individual
+    * element is negative or greater than or equal to the size of the array,
+    * the results of the operation are undefined but may not lead to
+    * termination" -- which is one of the possible outcomes of the hang.
+    * Clamp the index to prevent access outside of the array bounds.
+    */
+   return nir_umin(b, offset, nir_imm_int(b, array_size - elem_size));
+}
+
+static void
+iris_lower_storage_image_derefs(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_image_deref_load:
+         case nir_intrinsic_image_deref_store:
+         case nir_intrinsic_image_deref_atomic_add:
+         case nir_intrinsic_image_deref_atomic_min:
+         case nir_intrinsic_image_deref_atomic_max:
+         case nir_intrinsic_image_deref_atomic_and:
+         case nir_intrinsic_image_deref_atomic_or:
+         case nir_intrinsic_image_deref_atomic_xor:
+         case nir_intrinsic_image_deref_atomic_exchange:
+         case nir_intrinsic_image_deref_atomic_comp_swap:
+         case nir_intrinsic_image_deref_size:
+         case nir_intrinsic_image_deref_samples: {
+            nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+            nir_variable *var = nir_deref_instr_get_variable(deref);
+
+            b.cursor = nir_before_instr(&intrin->instr);
+            nir_ssa_def *index =
+               nir_iadd(&b, nir_imm_int(&b, var->data.driver_location),
+                            get_aoa_deref_offset(&b, deref, 1));
+            brw_nir_rewrite_image_intrinsic(intrin, index);
+            break;
+         }
+
+         default:
+            break;
+         }
+      }
+   }
+}
+
+
+
 // XXX: need unify_interfaces() at link time...
 
 /**
@@ -85,6 +164,7 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
 {
    //struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    struct iris_uncompiled_shader *ish =
       calloc(1, sizeof(struct iris_uncompiled_shader));
@@ -92,6 +172,9 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       return NULL;
 
    nir = brw_preprocess_nir(screen->compiler, nir);
+
+   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
+   NIR_PASS_V(nir, iris_lower_storage_image_derefs);
 
    ish->program_id = get_new_program_id(screen);
    ish->nir = nir;
