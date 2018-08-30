@@ -247,9 +247,16 @@ struct iris_const_buffer {
  * API context state that is replicated per shader stage.
  */
 struct iris_shader_state {
+   /** Uniform Buffers */
    struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
+
+   /** Shader Storage Buffers */
    struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
    struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];
+
+   /** Shader Storage Images (image load store) */
+   struct pipe_resource *image[PIPE_MAX_SHADER_IMAGES];
+   struct iris_state_ref image_surface_state[PIPE_MAX_SHADER_IMAGES];
 
    struct iris_state_ref sampler_table;
    struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];

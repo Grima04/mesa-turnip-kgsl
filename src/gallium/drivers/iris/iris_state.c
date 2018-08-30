@@ -1495,6 +1495,89 @@ iris_create_surface(struct pipe_context *ctx,
 }
 
 /**
+ * The pipe->set_shader_images() driver hook.
+ */
+static void
+iris_set_shader_images(struct pipe_context *ctx,
+                       enum pipe_shader_type p_stage,
+                       unsigned start_slot, unsigned count,
+                       const struct pipe_image_view *p_images)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   gl_shader_stage stage = stage_from_pipe(p_stage);
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+
+   for (unsigned i = 0; i < count; i++) {
+      if (p_images && p_images[i].resource) {
+         const struct pipe_image_view *img = &p_images[i];
+         struct iris_resource *res = (void *) img->resource;
+         pipe_resource_reference(&shs->image[start_slot + i], &res->base);
+
+         // XXX: these are not retained forever, use a separate uploader?
+         void *map =
+            upload_state(ice->state.surface_uploader,
+                         &shs->image_surface_state[start_slot + i],
+                         4 * GENX(RENDER_SURFACE_STATE_length), 64);
+         if (!unlikely(map)) {
+            pipe_resource_reference(&shs->image[start_slot + i], NULL);
+            return;
+         }
+
+         struct iris_bo *surf_state_bo =
+            iris_resource_bo(shs->image_surface_state[start_slot + i].res);
+         shs->image_surface_state[start_slot + i].offset +=
+            iris_bo_offset_from_base_address(surf_state_bo);
+
+         isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
+         enum isl_format isl_format =
+            iris_format_for_usage(devinfo, img->format, usage).fmt;
+         isl_format = isl_lower_storage_image_format(devinfo, isl_format);
+
+         if (res->base.target != PIPE_BUFFER) {
+            struct isl_view view = {
+               .format = isl_format,
+               .base_level = img->u.tex.level,
+               .levels = 1,
+               .base_array_layer = img->u.tex.first_layer,
+               .array_len = img->u.tex.last_layer - img->u.tex.first_layer + 1,
+               .swizzle = ISL_SWIZZLE_IDENTITY,
+               .usage = usage,
+            };
+
+            isl_surf_fill_state(&screen->isl_dev, map,
+                                .surf = &res->surf, .view = &view,
+                                .mocs = MOCS_WB,
+                                .address = res->bo->gtt_offset);
+                                // .aux_surf =
+                                // .clear_color = clear_color,
+         } else {
+            // XXX: what to do about view?  other drivers don't use it for bufs
+            const struct isl_format_layout *fmtl =
+               isl_format_get_layout(isl_format);
+            const unsigned cpp = fmtl->bpb / 8;
+
+            isl_buffer_fill_state(&screen->isl_dev, map,
+                                  .address = res->bo->gtt_offset,
+                                  // XXX: buffer_texture_range_size from i965?
+                                  .size_B = res->base.width0,
+                                  .format = isl_format,
+                                  .stride_B = cpp,
+                                  .mocs = MOCS_WB);
+         }
+      } else {
+         pipe_resource_reference(&shs->image[start_slot + i], NULL);
+         pipe_resource_reference(&shs->image_surface_state[start_slot + i].res,
+                                 NULL);
+      }
+   }
+
+   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+}
+
+
+/**
  * The pipe->set_sampler_views() driver hook.
  */
 static void
@@ -4600,6 +4683,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_clip_state = iris_set_clip_state;
    ctx->set_constant_buffer = iris_set_constant_buffer;
    ctx->set_shader_buffers = iris_set_shader_buffers;
+   ctx->set_shader_images = iris_set_shader_images;
    ctx->set_sampler_views = iris_set_sampler_views;
    ctx->set_tess_state = iris_set_tess_state;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
