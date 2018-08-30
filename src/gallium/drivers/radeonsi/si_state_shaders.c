@@ -337,10 +337,10 @@ void si_destroy_shader_cache(struct si_screen *sscreen)
 /* SHADER STATES */
 
 static void si_set_tesseval_regs(struct si_screen *sscreen,
-				 struct si_shader_selector *tes,
+				 const struct si_shader_selector *tes,
 				 struct si_pm4_state *pm4)
 {
-	struct tgsi_shader_info *info = &tes->info;
+	const struct tgsi_shader_info *info = &tes->info;
 	unsigned tes_prim_mode = info->properties[TGSI_PROPERTY_TES_PRIM_MODE];
 	unsigned tes_spacing = info->properties[TGSI_PROPERTY_TES_SPACING];
 	bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
