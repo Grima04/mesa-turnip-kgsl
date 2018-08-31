@@ -282,6 +282,8 @@ nir_link_uniform(struct gl_context *ctx,
                  struct gl_program *stage_program,
                  gl_shader_stage stage,
                  const struct glsl_type *type,
+                 const struct glsl_type *parent_type,
+                 unsigned index_in_parent,
                  int location,
                  struct nir_link_uniforms_state *state)
 {
@@ -309,7 +311,7 @@ nir_link_uniform(struct gl_context *ctx,
             field_type = glsl_get_array_element(type);
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
-                                        field_type, location,
+                                        field_type, type, i, location,
                                         state);
          if (entries == -1)
             return -1;
@@ -371,15 +373,54 @@ nir_link_uniform(struct gl_context *ctx,
 
       uniform->is_shader_storage = nir_variable_is_in_ssbo(state->current_var);
 
+      /* Set fields whose default value depend on the variable being inside a
+       * block.
+       *
+       * From the OpenGL 4.6 spec, 7.3 Program objects:
+       *
+       * "For the property ARRAY_STRIDE, ... For active variables not declared
+       * as an array of basic types, zero is written to params. For active
+       * variables not backed by a buffer object, -1 is written to params,
+       * regardless of the variable type."
+       *
+       * "For the property MATRIX_STRIDE, ... For active variables not declared
+       * as a matrix or array of matrices, zero is written to params. For active
+       * variables not backed by a buffer object, -1 is written to params,
+       * regardless of the variable type."
+       *
+       * For the property IS_ROW_MAJOR, ... For active variables backed by a
+       * buffer object, declared as a single matrix or array of matrices, and
+       * stored in row-major order, one is written to params. For all other
+       * active variables, zero is written to params.
+       */
+      uniform->array_stride = -1;
+      uniform->matrix_stride = -1;
+      uniform->row_major = false;
+
+      if (nir_variable_is_in_block(state->current_var)) {
+         uniform->array_stride = glsl_type_is_array(type) ?
+            glsl_get_explicit_stride(type) : 0;
+
+         if (glsl_type_is_matrix(type)) {
+            assert(parent_type);
+            uniform->matrix_stride = glsl_get_explicit_stride(type);
+
+            uniform->row_major = glsl_matrix_type_is_row_major(type);
+         } else {
+            uniform->matrix_stride = 0;
+         }
+      }
+
+      if (parent_type)
+         uniform->offset = glsl_get_struct_field_offset(parent_type, index_in_parent);
+      else
+         uniform->offset = 0;
+
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
        * etc.
        */
       uniform->block_index = -1;
-      uniform->offset = -1;
-      uniform->matrix_stride = -1;
-      uniform->array_stride = -1;
-      uniform->row_major = false;
       uniform->builtin = false;
       uniform->atomic_buffer_index = -1;
       uniform->top_level_array_size = 0;
@@ -543,6 +584,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          state.current_type = type_tree;
 
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
+                                    NULL, 0,
                                     location, &state);
 
          free_type_tree(type_tree);
