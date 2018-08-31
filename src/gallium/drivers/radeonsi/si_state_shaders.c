@@ -508,22 +508,39 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 	si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
 	if (sscreen->info.chip_class >= GFX9) {
-		si_pm4_set_reg(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
-		si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS, S_00B414_MEM_BASE(va >> 40));
+		if (sscreen->info.chip_class >= GFX10) {
+			si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
+			si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS, S_00B524_MEM_BASE(va >> 40));
+		} else {
+			si_pm4_set_reg(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
+			si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS, S_00B414_MEM_BASE(va >> 40));
+		}
 
 		/* We need at least 2 components for LS.
-		 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
-		 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
+		 * GFX9  VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
+		 * GFX10 VGPR0-3: (VertexID, RelAutoindex, UserVGPR1, InstanceID).
+		 * On gfx9, StepRate0 is set to 1 so that VGPR3 doesn't have to
+		 * be loaded.
 		 */
-		ls_vgpr_comp_cnt = shader->info.uses_instanceid ? 2 : 1;
+		ls_vgpr_comp_cnt = 1;
+		if (shader->info.uses_instanceid) {
+			if (sscreen->info.chip_class >= GFX10)
+				ls_vgpr_comp_cnt = 3;
+			else
+				ls_vgpr_comp_cnt = 2;
+		}
 
 		unsigned num_user_sgprs =
 			si_get_num_vs_user_sgprs(GFX9_TCS_NUM_USER_SGPR);
 
 		shader->config.rsrc2 =
 			S_00B42C_USER_SGPR(num_user_sgprs) |
-			S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5) |
 			S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+
+		if (sscreen->info.chip_class >= GFX10)
+			shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
+		else
+			shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
 	} else {
 		si_pm4_set_reg(pm4, R_00B420_SPI_SHADER_PGM_LO_HS, va >> 8);
 		si_pm4_set_reg(pm4, R_00B424_SPI_SHADER_PGM_HI_HS, S_00B424_MEM_BASE(va >> 40));
@@ -536,8 +553,10 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 
 	si_pm4_set_reg(pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
 		       S_00B428_VGPRS((shader->config.num_vgprs - 1) / 4) |
-		       S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8) |
+		       (sscreen->info.chip_class <= GFX9 ?
+				S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8) : 0) |
 		       S_00B428_DX10_CLAMP(1) |
+		       S_00B428_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
 		       S_00B428_FLOAT_MODE(shader->config.float_mode) |
 		       S_00B428_LS_VGPR_COMP_CNT(ls_vgpr_comp_cnt));
 
