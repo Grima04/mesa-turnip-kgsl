@@ -3892,10 +3892,67 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
    struct anv_cmd_state *cmd_state = &cmd_buffer->state;
    struct anv_subpass *subpass = cmd_state->subpass;
    uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
-
-   anv_cmd_buffer_resolve_subpass(cmd_buffer);
-
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+
+   if (subpass->has_color_resolve) {
+      /* We are about to do some MSAA resolves.  We need to flush so that the
+       * result of writes to the MSAA color attachments show up in the sampler
+       * when we blit to the single-sampled resolve target.
+       */
+      cmd_buffer->state.pending_pipe_bits |=
+         ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+         ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
+
+      for (uint32_t i = 0; i < subpass->color_count; ++i) {
+         uint32_t src_att = subpass->color_attachments[i].attachment;
+         uint32_t dst_att = subpass->resolve_attachments[i].attachment;
+
+         if (dst_att == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         assert(src_att < cmd_buffer->state.pass->attachment_count);
+         assert(dst_att < cmd_buffer->state.pass->attachment_count);
+
+         if (cmd_buffer->state.attachments[dst_att].pending_clear_aspects) {
+            /* From the Vulkan 1.0 spec:
+             *
+             *    If the first use of an attachment in a render pass is as a
+             *    resolve attachment, then the loadOp is effectively ignored
+             *    as the resolve is guaranteed to overwrite all pixels in the
+             *    render area.
+             */
+            cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
+         }
+
+         struct anv_image_view *src_iview = fb->attachments[src_att];
+         struct anv_image_view *dst_iview = fb->attachments[dst_att];
+
+         const VkRect2D render_area = cmd_buffer->state.render_area;
+
+         enum isl_aux_usage src_aux_usage =
+            cmd_buffer->state.attachments[src_att].aux_usage;
+         enum isl_aux_usage dst_aux_usage =
+            cmd_buffer->state.attachments[dst_att].aux_usage;
+
+         assert(src_iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT &&
+                dst_iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT);
+
+         anv_image_msaa_resolve(cmd_buffer,
+                                src_iview->image, src_aux_usage,
+                                src_iview->planes[0].isl.base_level,
+                                src_iview->planes[0].isl.base_array_layer,
+                                dst_iview->image, dst_aux_usage,
+                                dst_iview->planes[0].isl.base_level,
+                                dst_iview->planes[0].isl.base_array_layer,
+                                VK_IMAGE_ASPECT_COLOR_BIT,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.offset.x, render_area.offset.y,
+                                render_area.extent.width,
+                                render_area.extent.height,
+                                fb->layers, BLORP_FILTER_NONE);
+      }
+   }
+
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t a = subpass->attachments[i].attachment;
       if (a == VK_ATTACHMENT_UNUSED)
