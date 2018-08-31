@@ -1052,13 +1052,19 @@ static void si_dump_debug_state(struct pipe_context *ctx, FILE *f,
 
 void si_log_draw_state(struct si_context *sctx, struct u_log_context *log)
 {
+	struct si_shader_ctx_state *tcs_shader;
+
 	if (!log)
 		return;
+
+	tcs_shader = &sctx->tcs_shader;
+	if (sctx->tes_shader.cso && !sctx->tcs_shader.cso)
+		tcs_shader = &sctx->fixed_func_tcs_shader;
 
 	si_dump_framebuffer(sctx, log);
 
 	si_dump_gfx_shader(sctx, &sctx->vs_shader, log);
-	si_dump_gfx_shader(sctx, &sctx->tcs_shader, log);
+	si_dump_gfx_shader(sctx, tcs_shader, log);
 	si_dump_gfx_shader(sctx, &sctx->tes_shader, log);
 	si_dump_gfx_shader(sctx, &sctx->gs_shader, log);
 	si_dump_gfx_shader(sctx, &sctx->ps_shader, log);
@@ -1068,7 +1074,7 @@ void si_log_draw_state(struct si_context *sctx, struct u_log_context *log)
 				"", "RW buffers", 4, SI_NUM_RW_BUFFERS,
 				si_identity, log);
 	si_dump_gfx_descriptors(sctx, &sctx->vs_shader, log);
-	si_dump_gfx_descriptors(sctx, &sctx->tcs_shader, log);
+	si_dump_gfx_descriptors(sctx, tcs_shader, log);
 	si_dump_gfx_descriptors(sctx, &sctx->tes_shader, log);
 	si_dump_gfx_descriptors(sctx, &sctx->gs_shader, log);
 	si_dump_gfx_descriptors(sctx, &sctx->ps_shader, log);
