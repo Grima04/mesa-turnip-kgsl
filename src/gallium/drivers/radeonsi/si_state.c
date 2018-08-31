@@ -4720,7 +4720,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
 			  S_008F30_ANISO_THRESHOLD(max_aniso_ratio >> 1) |
 			  S_008F30_ANISO_BIAS(max_aniso_ratio) |
 			  S_008F30_DISABLE_CUBE_WRAP(!state->seamless_cube_map) |
-			  S_008F30_COMPAT_MODE(sctx->chip_class >= GFX8));
+			  S_008F30_COMPAT_MODE(sctx->chip_class == GFX8 || sctx->chip_class == GFX9));
 	rstate->val[1] = (S_008F34_MIN_LOD(S_FIXED(CLAMP(state->min_lod, 0, 15), 8)) |
 			  S_008F34_MAX_LOD(S_FIXED(CLAMP(state->max_lod, 0, 15), 8)) |
 			  S_008F34_PERF_MIP(max_aniso_ratio ? max_aniso_ratio + 6 : 0));
@@ -4728,11 +4728,16 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
 			  S_008F38_XY_MAG_FILTER(si_tex_filter(state->mag_img_filter, max_aniso)) |
 			  S_008F38_XY_MIN_FILTER(si_tex_filter(state->min_img_filter, max_aniso)) |
 			  S_008F38_MIP_FILTER(si_tex_mipfilter(state->min_mip_filter)) |
-			  S_008F38_MIP_POINT_PRECLAMP(0) |
-			  S_008F38_DISABLE_LSB_CEIL(sctx->chip_class <= GFX8) |
-			  S_008F38_FILTER_PREC_FIX(1) |
-			  S_008F38_ANISO_OVERRIDE_GFX6(sctx->chip_class >= GFX8));
+			  S_008F38_MIP_POINT_PRECLAMP(0));
 	rstate->val[3] = si_translate_border_color(sctx, state, &state->border_color, false);
+
+	if (sscreen->info.chip_class >= GFX10) {
+		rstate->val[2] |= S_008F38_ANISO_OVERRIDE_GFX10(1);
+	} else {
+		rstate->val[2] |= S_008F38_DISABLE_LSB_CEIL(sctx->chip_class <= GFX8) |
+				  S_008F38_FILTER_PREC_FIX(1) |
+				  S_008F38_ANISO_OVERRIDE_GFX6(sctx->chip_class >= GFX8);
+	}
 
 	/* Create sampler resource for integer textures. */
 	memcpy(rstate->integer_val, rstate->val, sizeof(rstate->val));
