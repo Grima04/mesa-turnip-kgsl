@@ -198,6 +198,7 @@ with_gallium_svga = gallium_drivers.contains('svga')
 with_gallium_virgl = gallium_drivers.contains('virgl')
 with_gallium_swr = gallium_drivers.contains('swr')
 with_gallium_lima = gallium_drivers.contains('lima')
+with_gallium_zink = gallium_drivers.contains('zink')
 
 if cc.get_id().startswith('intel') and meson.version().version_compare('< 0.49.1')
   error('Meson does not have sufficient support of ICC before 0.49.1 to compile mesa')
@@ -489,6 +490,10 @@ endif
 vdpau_drivers_path = get_option('vdpau-libs-path')
 if vdpau_drivers_path == ''
   vdpau_drivers_path = join_paths(get_option('libdir'), 'vdpau')
+endif
+
+if with_gallium_zink
+  dep_vulkan = dependency('vulkan')
 endif
 
 _xvmc = get_option('gallium-xvmc')
