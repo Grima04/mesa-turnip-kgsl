@@ -116,37 +116,17 @@ def main():
 
     # Parse args...
     parser = ArgumentParser()
-    parser.add_argument('--proto', '-p', help='Path to proto file', required=True)
-    parser.add_argument('--proto_private', '-pp', help='Path to private proto file', required=True)
-    parser.add_argument('--output', '-o', help='Output filename (i.e. event.hpp)', required=True)
-    parser.add_argument('--gen_event_hpp', help='Generate event header', action='store_true', default=False)
-    parser.add_argument('--gen_event_cpp', help='Generate event cpp', action='store_true', default=False)
-    parser.add_argument('--gen_eventhandler_hpp', help='Generate eventhandler header', action='store_true', default=False)
-    parser.add_argument('--gen_eventhandlerfile_hpp', help='Generate eventhandler header for writing to files', action='store_true', default=False)
+    parser.add_argument('--proto', '-p', dest="protos", nargs='+', help='Path to all proto file(s) to process. Accepts one or more paths (i.e. events.proto and events_private.proto)', required=True)
+    parser.add_argument('--output-dir', help='Output dir (defaults to ./codegen). Will create folder if it does not exist.', required=False, default='codegen')
     args = parser.parse_args()
 
-    proto_filename = args.proto
-    proto_private_filename = args.proto_private
+    if not os.path.exists(args.output_dir):
+        MakeDir(args.output_dir)
 
-    (output_dir, output_filename) = os.path.split(args.output)
-
-    if not output_dir:
-        output_dir = '.'
-
-    #print('output_dir = %s' % output_dir, file=sys.stderr)
-    #print('output_filename = %s' % output_filename, file=sys.stderr)
-
-    if not os.path.exists(proto_filename):
-        print('Error: Could not find proto file %s' % proto_filename, file=sys.stderr)
-        return 1
-
-    if not os.path.exists(proto_private_filename):
-        print('Error: Could not find private proto file %s' % proto_private_filename, file=sys.stderr)
-        return 1
-
-    final_output_dir = output_dir
-    MakeDir(final_output_dir)
-    output_dir = MakeTmpDir('_codegen')
+    for f in args.protos:
+        if not os.path.exists(f):
+            print('Error: Could not find proto file %s' % f, file=sys.stderr)
+            return 1
 
     protos = {}
     protos['events'] = {}       # event dictionary containing events with their fields
@@ -154,65 +134,47 @@ def main():
     protos['enums'] = {}
     protos['enum_names'] = []
 
-    parse_protos(protos, proto_filename)
-    parse_protos(protos, proto_private_filename)
+    # Parse each proto file and add to protos container
+    for f in args.protos:
+        print("Parsing proto file: %s" % os.path.normpath(f))
+        parse_protos(protos, f)
+
+    files = [
+        ["gen_ar_event.hpp", ""],
+        ["gen_ar_event.cpp", ""],
+        ["gen_ar_eventhandler.hpp", "gen_ar_event.hpp"],
+        ["gen_ar_eventhandlerfile.hpp", "gen_ar_eventhandler.hpp"]
+    ]
 
     rval = 0
 
     try:
-        # Generate event header
-        if args.gen_event_hpp:
-            curdir = os.path.dirname(os.path.abspath(__file__))
-            template_file = os.sep.join([curdir, 'templates', 'gen_ar_event.hpp'])
-            output_fullpath = os.sep.join([output_dir, output_filename])
+        # Delete existing files
+        for f in files:
+            filename = f[0]
+            output_fullpath = os.path.join(args.output_dir, filename)
+            if os.path.exists(output_fullpath):
+                print("Deleting existing file: %s" % output_fullpath)
+                os.remove(output_fullpath)
 
+        # Generate files from templates
+        for f in files:
+            filename = f[0]
+            event_header = f[1]
+            curdir = os.path.dirname(os.path.abspath(__file__))
+            template_file = os.path.join(curdir, 'templates', filename)
+            output_fullpath = os.path.join(args.output_dir, filename)
+
+            print("Generating: %s" % output_fullpath)
             MakoTemplateWriter.to_file(template_file, output_fullpath,
                     cmdline=sys.argv,
-                    filename=output_filename,
-                    protos=protos)
+                    filename=filename,
+                    protos=protos,
+                    event_header=event_header)
 
-        # Generate event implementation
-        if args.gen_event_cpp:
-            curdir = os.path.dirname(os.path.abspath(__file__))
-            template_file = os.sep.join([curdir, 'templates', 'gen_ar_event.cpp'])
-            output_fullpath = os.sep.join([output_dir, output_filename])
-
-            MakoTemplateWriter.to_file(template_file, output_fullpath,
-                    cmdline=sys.argv,
-                    filename=output_filename,
-                    protos=protos)
-
-        # Generate event handler header
-        if args.gen_eventhandler_hpp:
-            curdir = os.path.dirname(os.path.abspath(__file__))
-            template_file = os.sep.join([curdir, 'templates', 'gen_ar_eventhandler.hpp'])
-            output_fullpath = os.sep.join([output_dir, output_filename])
-
-            MakoTemplateWriter.to_file(template_file, output_fullpath,
-                    cmdline=sys.argv,
-                    filename=output_filename,
-                    event_header='gen_ar_event.hpp',
-                    protos=protos)
-
-        # Generate event handler header
-        if args.gen_eventhandlerfile_hpp:
-            curdir = os.path.dirname(os.path.abspath(__file__))
-            template_file = os.sep.join([curdir, 'templates', 'gen_ar_eventhandlerfile.hpp'])
-            output_fullpath = os.sep.join([output_dir, output_filename])
-
-            MakoTemplateWriter.to_file(template_file, output_fullpath,
-                    cmdline=sys.argv,
-                    filename=output_filename,
-                    event_header='gen_ar_eventhandler.hpp',
-                    protos=protos)
-
-        rval = CopyDirFilesIfDifferent(output_dir, final_output_dir)
-
-    except:
+    except Exception as e:
+        print(e)
         rval = 1
-
-    finally:
-        DeleteDirTree(output_dir)
 
     return rval
 
