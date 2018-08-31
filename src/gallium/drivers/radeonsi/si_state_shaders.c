@@ -3630,7 +3630,10 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
 			       S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
 		si_pm4_set_reg(sctx->init_config, R_030940_VGT_TF_MEMORY_BASE,
 			       factor_va >> 8);
-		if (sctx->chip_class >= GFX9)
+		if (sctx->chip_class >= GFX10)
+			si_pm4_set_reg(sctx->init_config, R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
+				       S_030984_BASE_HI(factor_va >> 40));
+		else if (sctx->chip_class == GFX9)
 			si_pm4_set_reg(sctx->init_config, R_030944_VGT_TF_MEMORY_BASE_HI,
 				       S_030944_BASE_HI(factor_va >> 40));
 		si_pm4_set_reg(sctx->init_config, R_03093C_VGT_HS_OFFCHIP_PARAM,
