@@ -6096,7 +6096,9 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			LLVMValueRef num_threads;
 			bool nested_barrier;
 
-			if (!shader->is_monolithic)
+			if (!shader->is_monolithic ||
+			    (ctx->type == PIPE_SHADER_TESS_EVAL &&
+			     shader->key.as_ngg))
 				ac_init_exec_full_mask(&ctx->ac);
 
 			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
