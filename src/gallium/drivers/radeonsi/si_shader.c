@@ -4547,8 +4547,13 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx,
 	add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.vertex_id);
 	if (shader->key.as_ls) {
 		ctx->param_rel_auto_id = add_arg(fninfo, ARG_VGPR, ctx->i32);
-		add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
-		add_arg(fninfo, ARG_VGPR, ctx->i32); /* unused */
+		if (ctx->screen->info.chip_class >= GFX10) {
+			add_arg(fninfo, ARG_VGPR, ctx->i32); /* user VGPR */
+			add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
+		} else {
+			add_arg_assign(fninfo, ARG_VGPR, ctx->i32, &ctx->abi.instance_id);
+			add_arg(fninfo, ARG_VGPR, ctx->i32); /* unused */
+		}
 	} else if (ctx->screen->info.chip_class == GFX10 &&
 		   !shader->is_gs_copy_shader) {
 		add_arg(fninfo, ARG_VGPR, ctx->i32); /* user vgpr */
