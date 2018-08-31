@@ -309,9 +309,10 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	}
 }
 
-static unsigned si_num_prims_for_vertices(const struct pipe_draw_info *info)
+static unsigned si_num_prims_for_vertices(const struct pipe_draw_info *info,
+					  enum pipe_prim_type prim)
 {
-	switch (info->mode) {
+	switch (prim) {
 	case PIPE_PRIM_PATCHES:
 		return info->count / info->vertices_per_patch;
 	case PIPE_PRIM_POLYGON:
@@ -319,7 +320,7 @@ static unsigned si_num_prims_for_vertices(const struct pipe_draw_info *info)
 	case SI_PRIM_RECTANGLE_LIST:
 		return info->count / 3;
 	default:
-		return u_decomposed_prims_for_vertices(info->mode, info->count);
+		return u_decomposed_prims_for_vertices(prim, info->count);
 	}
 }
 
@@ -490,7 +491,9 @@ static void si_init_ia_multi_vgt_param_table(struct si_context *sctx)
 
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 					  const struct pipe_draw_info *info,
-					  unsigned num_patches)
+					  enum pipe_prim_type prim,
+					  unsigned num_patches,
+					  bool primitive_restart)
 {
 	union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
 	unsigned primgroup_size;
@@ -504,14 +507,14 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 		primgroup_size = 128; /* recommended without a GS and tess */
 	}
 
-	key.u.prim = info->mode;
+	key.u.prim = prim;
 	key.u.uses_instancing = info->indirect || info->instance_count > 1;
 	key.u.multi_instances_smaller_than_primgroup =
 		info->indirect ||
 		(info->instance_count > 1 &&
 		 (info->count_from_stream_output ||
-		  si_num_prims_for_vertices(info) < primgroup_size));
-	key.u.primitive_restart = info->primitive_restart;
+		  si_num_prims_for_vertices(info, prim) < primgroup_size));
+	key.u.primitive_restart = primitive_restart;
 	key.u.count_from_stream_output = info->count_from_stream_output != NULL;
 
 	ia_multi_vgt_param = sctx->ia_multi_vgt_param[key.index] |
@@ -532,7 +535,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 		    (info->indirect ||
 		     (info->instance_count > 1 &&
 		      (info->count_from_stream_output ||
-		       si_num_prims_for_vertices(info) <= 1))))
+		       si_num_prims_for_vertices(info, prim) <= 1))))
 			sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 	}
 
@@ -602,22 +605,26 @@ static void si_emit_vs_state(struct si_context *sctx,
 }
 
 static inline bool si_prim_restart_index_changed(struct si_context *sctx,
-						 const struct pipe_draw_info *info)
+						 bool primitive_restart,
+						 unsigned restart_index)
 {
-	return info->primitive_restart &&
-	       (info->restart_index != sctx->last_restart_index ||
+	return primitive_restart &&
+	       (restart_index != sctx->last_restart_index ||
 		sctx->last_restart_index == SI_RESTART_INDEX_UNKNOWN);
 }
 
 static void si_emit_draw_registers(struct si_context *sctx,
 				   const struct pipe_draw_info *info,
-				   unsigned num_patches)
+				   enum pipe_prim_type prim,
+				   unsigned num_patches,
+				   bool primitive_restart)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	unsigned prim = si_conv_pipe_prim(info->mode);
+	unsigned vgt_prim = si_conv_pipe_prim(prim);
 	unsigned ia_multi_vgt_param;
 
-	ia_multi_vgt_param = si_get_ia_multi_vgt_param(sctx, info, num_patches);
+	ia_multi_vgt_param = si_get_ia_multi_vgt_param(sctx, info, prim, num_patches,
+						       primitive_restart);
 
 	/* Draw state. */
 	if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
@@ -632,29 +639,29 @@ static void si_emit_draw_registers(struct si_context *sctx,
 
 		sctx->last_multi_vgt_param = ia_multi_vgt_param;
 	}
-	if (prim != sctx->last_prim) {
+	if (vgt_prim != sctx->last_prim) {
 		if (sctx->chip_class >= GFX7)
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
-						   R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
+						   R_030908_VGT_PRIMITIVE_TYPE, 1, vgt_prim);
 		else
-			radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, prim);
+			radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, vgt_prim);
 
-		sctx->last_prim = prim;
+		sctx->last_prim = vgt_prim;
 	}
 
 	/* Primitive restart. */
-	if (info->primitive_restart != sctx->last_primitive_restart_en) {
+	if (primitive_restart != sctx->last_primitive_restart_en) {
 		if (sctx->chip_class >= GFX9)
 			radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN,
-					       info->primitive_restart);
+					       primitive_restart);
 		else
 			radeon_set_context_reg(cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN,
-					       info->primitive_restart);
+					       primitive_restart);
 
-		sctx->last_primitive_restart_en = info->primitive_restart;
+		sctx->last_primitive_restart_en = primitive_restart;
 
 	}
-	if (si_prim_restart_index_changed(sctx, info)) {
+	if (si_prim_restart_index_changed(sctx, primitive_restart, info->restart_index)) {
 		radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX,
 				       info->restart_index);
 		sctx->last_restart_index = info->restart_index;
@@ -1215,6 +1222,7 @@ static void si_get_draw_start_count(struct si_context *sctx,
 }
 
 static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_info *info,
+			       enum pipe_prim_type prim, bool primitive_restart,
 			       unsigned skip_atom_mask)
 {
 	unsigned num_patches = 0;
@@ -1246,7 +1254,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
 	/* Emit draw states. */
 	si_emit_vs_state(sctx, info);
-	si_emit_draw_registers(sctx, info, num_patches);
+	si_emit_draw_registers(sctx, info, prim, num_patches, primitive_restart);
 }
 
 static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
@@ -1255,9 +1263,10 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 	struct pipe_resource *indexbuf = info->index.resource;
 	unsigned dirty_tex_counter;
-	enum pipe_prim_type rast_prim;
+	enum pipe_prim_type rast_prim, prim = info->mode;
 	unsigned index_size = info->index_size;
 	unsigned index_offset = info->indirect ? info->start * index_size : 0;
+	bool primitive_restart = info->primitive_restart;
 
 	if (likely(!info->indirect)) {
 		/* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
@@ -1276,7 +1285,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	if (unlikely(!sctx->vs_shader.cso ||
 		     !rs ||
 		     (!sctx->ps_shader.cso && !rs->rasterizer_discard) ||
-		     (!!sctx->tes_shader.cso != (info->mode == PIPE_PRIM_PATCHES)))) {
+		     (!!sctx->tes_shader.cso != (prim == PIPE_PRIM_PATCHES)))) {
 		assert(0);
 		return;
 	}
@@ -1307,7 +1316,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		else
 			rast_prim = sctx->tes_shader.cso->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
 	} else
-		rast_prim = info->mode;
+		rast_prim = prim;
 
 	if (rast_prim != sctx->current_rast_prim) {
 		if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
@@ -1348,7 +1357,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		 */
 		bool gs_tri_strip_adj_fix =
 			!sctx->tes_shader.cso &&
-			info->mode == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY &&
+			prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY &&
 			!info->primitive_restart;
 
 		if (gs_tri_strip_adj_fix != sctx->gs_tri_strip_adj_fix) {
@@ -1478,7 +1487,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			goto return_cleanup;
 
 		/* Emit all states except possibly render condition. */
-		si_emit_all_states(sctx, info, masked_atoms);
+		si_emit_all_states(sctx, info, prim, primitive_restart, masked_atoms);
 		si_emit_cache_flush(sctx);
 		/* <-- CUs are idle here. */
 
@@ -1514,7 +1523,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		if (!si_upload_graphics_shader_descriptors(sctx))
 			return;
 
-		si_emit_all_states(sctx, info, masked_atoms);
+		si_emit_all_states(sctx, info, prim, primitive_restart, masked_atoms);
 
 		if (has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
@@ -1554,7 +1563,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		sctx->num_draw_calls++;
 		if (sctx->framebuffer.state.nr_cbufs > 1)
 			sctx->num_mrt_draw_calls++;
-		if (info->primitive_restart)
+		if (primitive_restart)
 			sctx->num_prim_restart_calls++;
 		if (G_0286E8_WAVESIZE(sctx->spi_tmpring_size))
 			sctx->num_spill_draw_calls++;
