@@ -106,6 +106,8 @@ struct blorp_params;
 #define IRIS_DIRTY_SO_DECL_LIST             (1ull << 49)
 #define IRIS_DIRTY_STREAMOUT                (1ull << 50)
 #define IRIS_DIRTY_VF_SGVS                  (1ull << 51)
+#define IRIS_DIRTY_VF                       (1ull << 52)
+#define IRIS_DIRTY_VF_TOPOLOGY              (1ull << 53)
 
 /**
  * Non-orthogonal state (NOS) dependency flags.
@@ -344,6 +346,11 @@ struct iris_context {
       struct pipe_scissor_state scissors[IRIS_MAX_VIEWPORTS];
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
+
+      bool primitive_restart;
+      unsigned cut_index;
+      enum pipe_prim_type prim_mode:8;
+      uint8_t vertices_per_patch;
 
       /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
       bool depth_writes_enabled;

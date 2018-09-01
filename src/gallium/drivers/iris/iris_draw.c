@@ -38,6 +38,29 @@
 #include "iris_context.h"
 
 /**
+ * Record the current primitive mode and restart information, flagging
+ * related packets as dirty if necessary.
+ */
+static void
+iris_update_draw_info(struct iris_context *ice,
+                      const struct pipe_draw_info *info)
+{
+   if (ice->state.prim_mode != info->mode ||
+       ice->state.vertices_per_patch != info->vertices_per_patch) {
+      ice->state.prim_mode = info->mode;
+      ice->state.vertices_per_patch = info->vertices_per_patch;
+      ice->state.dirty |= IRIS_DIRTY_VF_TOPOLOGY;
+   }
+
+   if (ice->state.primitive_restart != info->primitive_restart ||
+       ice->state.cut_index != info->restart_index) {
+      ice->state.dirty |= IRIS_DIRTY_VF;
+      ice->state.primitive_restart = info->primitive_restart;
+      ice->state.cut_index = info->restart_index;
+   }
+}
+
+/**
  * The pipe->draw_vbo() driver hook.  Performs a draw on the GPU.
  */
 void
@@ -51,6 +74,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_batch_maybe_flush(batch, 1500);
 
+   iris_update_draw_info(ice, info);
    iris_update_compiled_shaders(ice);
 
    iris_predraw_resolve_inputs(ice, batch);

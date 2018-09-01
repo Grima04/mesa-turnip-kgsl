@@ -3641,7 +3641,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_batch_emit(batch, cso->line_stipple, sizeof(cso->line_stipple));
    }
 
-   if (1) {
+   if (dirty & IRIS_DIRTY_VF_TOPOLOGY) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
          topo.PrimitiveTopologyType =
             translate_prim_type(draw->mode, draw->vertices_per_patch);
@@ -3692,7 +3692,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   if (1) {
+   if (dirty & IRIS_DIRTY_VF) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF), vf) {
          if (draw->primitive_restart) {
             vf.IndexedDrawCutIndexEnable = true;
