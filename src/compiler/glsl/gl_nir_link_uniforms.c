@@ -130,20 +130,82 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    }
 }
 
-static struct gl_uniform_storage *
-find_previous_uniform_storage(struct gl_shader_program *prog,
-                              int location)
+static void
+mark_stage_as_active(struct gl_uniform_storage *uniform,
+                     unsigned stage)
 {
-   /* This would only work for uniform with explicit location, as all the
-    * uniforms without location (ie: atomic counters) would have a initial
-    * location equal to -1. We early return in that case.
+   uniform->active_shader_mask |= 1 << stage;
+}
+
+/**
+ * Finds, returns, and updates the stage info for any uniform in UniformStorage
+ * defined by @var. In general this is done using the explicit location,
+ * except:
+ *
+ * * UBOs/SSBOs: as they lack explicit location, binding is used to locate
+ *   them. That means that more that one entry at the uniform storage can be
+ *   found. In that case all of them are updated, and the first entry is
+ *   returned, in order to update the location of the nir variable.
+ *
+ * * Special uniforms: like atomic counters. They lack a explicit location,
+ *   so they are skipped. They will be handled and assigned a location later.
+ *
+ */
+static struct gl_uniform_storage *
+find_and_update_previous_uniform_storage(struct gl_shader_program *prog,
+                                         nir_variable *var,
+                                         unsigned stage)
+{
+   if (nir_variable_is_in_block(var)) {
+      struct gl_uniform_storage *uniform = NULL;
+
+      unsigned num_blks = nir_variable_is_in_ubo(var) ?
+         prog->data->NumUniformBlocks :
+         prog->data->NumShaderStorageBlocks;
+
+      struct gl_uniform_block *blks = nir_variable_is_in_ubo(var) ?
+         prog->data->UniformBlocks : prog->data->ShaderStorageBlocks;
+
+      for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+         /* UniformStorage contains both variables from ubos and ssbos */
+         if ( prog->data->UniformStorage[i].is_shader_storage !=
+              nir_variable_is_in_ssbo(var))
+            continue;
+
+         int block_index = prog->data->UniformStorage[i].block_index;
+         if (block_index != -1) {
+            assert(block_index < num_blks);
+
+            if (var->data.binding == blks[block_index].Binding) {
+               if (!uniform)
+                  uniform = &prog->data->UniformStorage[i];
+               mark_stage_as_active(&prog->data->UniformStorage[i],
+                                      stage);
+            }
+         }
+      }
+
+      return uniform;
+   }
+
+   /* Beyond blocks, there are still some corner cases of uniforms without
+    * location (ie: atomic counters) that would have a initial location equal
+    * to -1. We just return on that case. Those uniforms will be handled
+    * later.
     */
-   if (location == -1)
+   if (var->data.location == -1)
       return NULL;
 
-   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++)
-      if (prog->data->UniformStorage[i].remap_location == location)
+   /* TODO: following search can be problematic with shaders with a lot of
+    * uniforms. Would it be better to use some type of hash
+    */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      if (prog->data->UniformStorage[i].remap_location == var->data.location) {
+         mark_stage_as_active(&prog->data->UniformStorage[i], stage);
+
          return &prog->data->UniformStorage[i];
+      }
+   }
 
    return NULL;
 }
@@ -525,9 +587,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
           * other stage. If so, validate they are compatible and update
           * the active stage mask.
           */
-         uniform = find_previous_uniform_storage(prog, var->data.location);
+         uniform = find_and_update_previous_uniform_storage(prog, var, shader_type);
          if (uniform) {
-            uniform->active_shader_mask |= 1 << shader_type;
             var->data.location = uniform - prog->data->UniformStorage;
 
             continue;
