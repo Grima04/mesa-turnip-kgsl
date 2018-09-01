@@ -3251,11 +3251,14 @@ iris_restore_context_saved_bos(struct iris_context *ice,
 }
 
 static void
-iris_upload_render_state(struct iris_context *ice,
-                         struct iris_batch *batch,
-                         const struct pipe_draw_info *draw)
+iris_upload_dirty_render_state(struct iris_context *ice,
+                               struct iris_batch *batch,
+                               const struct pipe_draw_info *draw)
 {
    const uint64_t dirty = ice->state.dirty;
+
+   if (!dirty)
+      return;
 
    struct iris_genx_state *genx = ice->state.genx;
    struct brw_wm_prog_data *wm_prog_data = (void *)
@@ -3645,27 +3648,6 @@ iris_upload_render_state(struct iris_context *ice,
       }
    }
 
-   if (draw->index_size > 0) {
-      struct iris_resource *res = NULL;
-      unsigned offset;
-
-      if (draw->has_user_indices) {
-         u_upload_data(ice->ctx.stream_uploader, 0,
-                       draw->count * draw->index_size, 4, draw->index.user,
-                       &offset, (struct pipe_resource **) &res);
-      } else {
-         res = (struct iris_resource *) draw->index.resource;
-         offset = 0;
-      }
-
-      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-         ib.IndexFormat = draw->index_size >> 1;
-         ib.MOCS = MOCS_WB;
-         ib.BufferSize = res->bo->size;
-         ib.BufferStartingAddress = ro_bo(res->bo, offset);
-      }
-   }
-
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
       const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
@@ -3720,6 +3702,35 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    // XXX: Gen8 - PMA fix
+}
+
+static void
+iris_upload_render_state(struct iris_context *ice,
+                         struct iris_batch *batch,
+                         const struct pipe_draw_info *draw)
+{
+   iris_upload_dirty_render_state(ice, batch, draw);
+
+   if (draw->index_size > 0) {
+      struct iris_resource *res = NULL;
+      unsigned offset;
+
+      if (draw->has_user_indices) {
+         u_upload_data(ice->ctx.stream_uploader, 0,
+                       draw->count * draw->index_size, 4, draw->index.user,
+                       &offset, (struct pipe_resource **) &res);
+      } else {
+         res = (struct iris_resource *) draw->index.resource;
+         offset = 0;
+      }
+
+      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
+         ib.IndexFormat = draw->index_size >> 1;
+         ib.MOCS = MOCS_WB;
+         ib.BufferSize = res->bo->size;
+         ib.BufferStartingAddress = ro_bo(res->bo, offset);
+      }
+   }
 
 #define _3DPRIM_END_OFFSET          0x2420
 #define _3DPRIM_START_VERTEX        0x2430
