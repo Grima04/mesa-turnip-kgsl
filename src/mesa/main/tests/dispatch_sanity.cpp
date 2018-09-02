@@ -1041,7 +1041,7 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glTextureImage1DEXT", 11, -1 },
    //{ "glTextureImage2DEXT", 11, -1 },
    //{ "glTextureSubImage1DEXT", 11, -1 },
-   //{ "glTextureSubImage2DEXT", 11, -1 },
+   { "glTextureSubImage2DEXT", 11, -1 },
    //{ "glCopyTextureImage1DEXT", 11, -1 },
    //{ "glCopyTextureImage2DEXT", 11, -1 },
    //{ "glCopyTextureSubImage1DEXT", 11, -1 },

@@ -100,6 +100,21 @@
       <param name="matrixMode" type="GLenum" />
    </function>
 
+   <!-- OpenGL 1.1 -->
+
+   <function name="TextureSubImage2DEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="xoffset" type="GLint" />
+      <param name="yoffset" type="GLint" />
+      <param name="width" type="GLsizei" />
+      <param name="height" type="GLsizei" />
+      <param name="format" type="GLenum" />
+      <param name="type" type="GLenum" />
+      <param name="pixels" type="const GLvoid *" />
+   </function>
+
    <!-- OpenGL 1.2.1 -->
 
   <function name="BindMultiTextureEXT">
