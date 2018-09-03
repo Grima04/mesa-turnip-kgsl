@@ -24,7 +24,8 @@
 #ifndef GEN8_CONTEXT_H
 #define GEN8_CONTEXT_H
 
-static inline void gen8_render_context_init(uint32_t *data, uint32_t *size)
+static inline void gen8_render_context_init(const struct gen_context_parameters *params,
+                                            uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_RENDER_SIZE;
    if (!data)
@@ -36,8 +37,8 @@ static inline void gen8_render_context_init(uint32_t *data, uint32_t *size)
                              0x90009 /* Inhibit Synchronous Context Switch | Engine Context Restore Inhibit */,
                              0x2034 /* RING_HEAD */, 0,
                              0x2030 /* RING_TAIL */, 0,
-                             0x2038 /* RING_BUFFER_START */,       RENDER_RING_ADDR,
-                             0x203C /* RING_BUFFER_CONTROL */,     (RING_SIZE - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
+                             0x2038 /* RING_BUFFER_START */,       params->ring_addr,
+                             0x203C /* RING_BUFFER_CONTROL */,     (params->ring_addr - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
                              0x2168 /* BB_HEAD_U */,               0,
                              0x2140 /* BB_HEAD_L */,               0,
                              0x2110 /* BB_STATE */,                0,
@@ -60,8 +61,8 @@ static inline void gen8_render_context_init(uint32_t *data, uint32_t *size)
                              0x2280 /* PDP2_LDW */,      0,
                              0x227C /* PDP1_UDW */,      0,
                              0x2278 /* PDP1_LDW */,      0,
-                             0x2274 /* PDP0_UDW */,      PML4_PHYS_ADDR >> 32,
-                             0x2270 /* PDP0_LDW */,      PML4_PHYS_ADDR);
+                             0x2274 /* PDP0_UDW */,      params->pml4_addr >> 32,
+                             0x2270 /* PDP0_LDW */,      params->pml4_addr & 0xffffffff);
    /* MI_NOOP */
    for (int i = 0; i < 12; i++)
       *data++ = 0 /* MI_NOOP */;
@@ -72,7 +73,8 @@ static inline void gen8_render_context_init(uint32_t *data, uint32_t *size)
    *data++ = MI_BATCH_BUFFER_END;
 }
 
-static inline void gen8_blitter_context_init(uint32_t *data, uint32_t *size)
+static inline void gen8_blitter_context_init(const struct gen_context_parameters *params,
+                                             uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_OTHER_SIZE;
    if (!data)
@@ -83,8 +85,8 @@ static inline void gen8_blitter_context_init(uint32_t *data, uint32_t *size)
                              0x22244 /* CONTEXT_CONTROL */,     0x90009 /* Inhibit Synchronous Context Switch | Engine Context Restore Inhibit */,
                              0x22034 /* RING_HEAD */,           0,
                              0x22030 /* RING_TAIL */,           0,
-                             0x22038 /* RING_BUFFER_START */,   BLITTER_RING_ADDR,
-                             0x2203C /* RING_BUFFER_CONTROL */, (RING_SIZE - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
+                             0x22038 /* RING_BUFFER_START */,   params->ring_addr,
+                             0x2203C /* RING_BUFFER_CONTROL */, (params->ring_size - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
                              0x22168 /* BB_HEAD_U */,           0,
                              0x22140 /* BB_HEAD_L */,           0,
                              0x22110 /* BB_STATE */,            0,
@@ -104,8 +106,8 @@ static inline void gen8_blitter_context_init(uint32_t *data, uint32_t *size)
                              0x22280 /* PDP2_LDW */,      0,
                              0x2227C /* PDP1_UDW */,      0,
                              0x22278 /* PDP1_LDW */,      0,
-                             0x22274 /* PDP0_UDW */,      PML4_PHYS_ADDR >> 32,
-                             0x22270 /* PDP0_LDW */,      PML4_PHYS_ADDR);
+                             0x22274 /* PDP0_UDW */,      params->pml4_addr >> 32,
+                             0x22270 /* PDP0_LDW */,      params->pml4_addr & 0xffffffff);
 
    for (int i = 0; i < 12; i++)
       *data++ = 0 /* MI_NOOP */;
@@ -113,7 +115,8 @@ static inline void gen8_blitter_context_init(uint32_t *data, uint32_t *size)
    *data++ = MI_BATCH_BUFFER_END;
 }
 
-static inline void gen8_video_context_init(uint32_t *data, uint32_t *size)
+static inline void gen8_video_context_init(const struct gen_context_parameters *params,
+                                           uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_OTHER_SIZE;
    if (!data)
@@ -124,8 +127,8 @@ static inline void gen8_video_context_init(uint32_t *data, uint32_t *size)
                              0x1C244 /* CONTEXT_CONTROL */,     0x90009 /* Inhibit Synchronous Context Switch | Engine Context Restore Inhibit */,
                              0x1C034 /* RING_HEAD */,           0,
                              0x1C030 /* RING_TAIL */,           0,
-                             0x1C038 /* RING_BUFFER_START */,   VIDEO_RING_ADDR,
-                             0x1C03C /* RING_BUFFER_CONTROL */, (RING_SIZE - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
+                             0x1C038 /* RING_BUFFER_START */,   params->ring_addr,
+                             0x1C03C /* RING_BUFFER_CONTROL */, (params->ring_size - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
                              0x1C168 /* BB_HEAD_U */,           0,
                              0x1C140 /* BB_HEAD_L */,           0,
                              0x1C110 /* BB_STATE */,            0,
@@ -144,8 +147,8 @@ static inline void gen8_video_context_init(uint32_t *data, uint32_t *size)
                              0x1C280 /* PDP2_LDW */,      0,
                              0x1C27C /* PDP1_UDW */,      0,
                              0x1C278 /* PDP1_LDW */,      0,
-                             0x1C274 /* PDP0_UDW */,      PML4_PHYS_ADDR >> 32,
-                             0x1C270 /* PDP0_LDW */,      PML4_PHYS_ADDR);
+                             0x1C274 /* PDP0_UDW */,      params->pml4_addr >> 32,
+                             0x1C270 /* PDP0_LDW */,      params->pml4_addr & 0xffffffff);
    for (int i = 0; i < 12; i++)
       *data++ = 0 /* MI_NOOP */;
 

@@ -55,6 +55,12 @@ struct aub_file {
 
    struct aub_ppgtt_table pml4;
    uint64_t phys_addrs_allocator;
+
+   struct {
+      uint64_t ring_addr;
+      uint64_t pphwsp_addr;
+      uint64_t descriptor;
+   } engine_setup[I915_ENGINE_CLASS_VIDEO_ENHANCE + 1];
 };
 
 void aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, const char *app_name);
