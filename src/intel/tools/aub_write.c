@@ -56,28 +56,6 @@ mem_trace_memory_write_header_out(struct aub_file *aub, uint64_t addr,
                                   uint32_t len, uint32_t addr_space,
                                   const char *desc);
 
-static const uint32_t *
-get_context_init(const struct gen_device_info *devinfo,
-                 enum drm_i915_gem_engine_class engine_class)
-{
-   static const uint32_t *gen8_contexts[] = {
-      [I915_ENGINE_CLASS_RENDER] = gen8_render_context_init,
-      [I915_ENGINE_CLASS_COPY] = gen8_blitter_context_init,
-      [I915_ENGINE_CLASS_VIDEO] = gen8_video_context_init,
-   };
-   static const uint32_t *gen10_contexts[] = {
-      [I915_ENGINE_CLASS_RENDER] = gen10_render_context_init,
-      [I915_ENGINE_CLASS_COPY] = gen10_blitter_context_init,
-      [I915_ENGINE_CLASS_VIDEO] = gen10_video_context_init,
-   };
-
-   assert(devinfo->gen >= 8);
-
-   if (devinfo->gen <= 10)
-      return gen8_contexts[engine_class];
-   return gen10_contexts[engine_class];
-}
-
 static void __attribute__ ((format(__printf__, 2, 3)))
 fail_if(int cond, const char *format, ...)
 {
@@ -377,6 +355,36 @@ ppgtt_lookup(struct aub_file *aub, uint64_t ppgtt_addr)
    return (uint64_t)L1_table(ppgtt_addr)->subtables[L1_index(ppgtt_addr)];
 }
 
+static uint32_t *
+get_context_init(const struct gen_device_info *devinfo,
+                 enum drm_i915_gem_engine_class engine_class,
+                 uint32_t *size)
+{
+   static void (* const gen8_contexts[])(uint32_t *, uint32_t *) = {
+      [I915_ENGINE_CLASS_RENDER] = gen8_render_context_init,
+      [I915_ENGINE_CLASS_COPY] = gen8_blitter_context_init,
+      [I915_ENGINE_CLASS_VIDEO] = gen8_video_context_init,
+   };
+   static void (* const gen10_contexts[])(uint32_t *, uint32_t *) = {
+      [I915_ENGINE_CLASS_RENDER] = gen10_render_context_init,
+      [I915_ENGINE_CLASS_COPY] = gen10_blitter_context_init,
+      [I915_ENGINE_CLASS_VIDEO] = gen10_video_context_init,
+   };
+
+   assert(devinfo->gen >= 8);
+
+   void (*func)(uint32_t *, uint32_t *);
+   if (devinfo->gen <= 10)
+      func = gen8_contexts[engine_class];
+   else
+      func = gen10_contexts[engine_class];
+
+   func(NULL, size);
+   uint32_t *data = calloc(*size / sizeof(uint32_t), sizeof(uint32_t));
+   func(data, size);
+   return data;
+}
+
 static void
 write_execlists_default_setup(struct aub_file *aub)
 {
@@ -385,6 +393,7 @@ write_execlists_default_setup(struct aub_file *aub)
     */
    uint32_t ggtt_ptes = STATIC_GGTT_MAP_SIZE >> 12;
    uint64_t phys_addr = aub->phys_addrs_allocator << 12;
+   uint32_t context_size;
 
    aub->phys_addrs_allocator += ggtt_ptes;
 
@@ -416,7 +425,8 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* RENDER_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_RENDER), CONTEXT_RENDER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_RENDER, &context_size), CONTEXT_RENDER_SIZE);
+   assert(context_size == CONTEXT_RENDER_SIZE);
 
    /* BLITTER_RING */
    mem_trace_memory_write_header_out(aub, phys_addr + BLITTER_RING_ADDR, RING_SIZE,
@@ -435,7 +445,8 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* BLITTER_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_COPY), CONTEXT_OTHER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_COPY, &context_size), CONTEXT_OTHER_SIZE);
+   assert(context_size == CONTEXT_OTHER_SIZE);
 
    /* VIDEO_RING */
    mem_trace_memory_write_header_out(aub, phys_addr + VIDEO_RING_ADDR, RING_SIZE,
@@ -454,7 +465,8 @@ write_execlists_default_setup(struct aub_file *aub)
       dword_out(aub, 0);
 
    /* VIDEO_CONTEXT */
-   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_VIDEO), CONTEXT_OTHER_SIZE);
+   data_out(aub, get_context_init(&aub->devinfo, I915_ENGINE_CLASS_VIDEO, &context_size), CONTEXT_OTHER_SIZE);
+   assert(context_size == CONTEXT_OTHER_SIZE);
 
    register_write_out(aub, HWS_PGA_RCSUNIT, RENDER_CONTEXT_ADDR);
    register_write_out(aub, HWS_PGA_VCSUNIT0, VIDEO_CONTEXT_ADDR);

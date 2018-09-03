@@ -97,6 +97,14 @@
                                  * Valid
                                  */
 
+#define MI_LOAD_REGISTER_IMM_vals(data, flags, ...) do {                \
+      uint32_t __regs[] = { __VA_ARGS__ };                              \
+      assert((ARRAY_SIZE(__regs) % 2) == 0);                            \
+      *(data)++ = MI_LOAD_REGISTER_IMM_n(ARRAY_SIZE(__regs) / 2) | (flags); \
+      for (unsigned __e = 0; __e < ARRAY_SIZE(__regs); __e++)           \
+         *(data)++ = __regs[__e];                                       \
+   } while (0)
+
 #define RENDER_CONTEXT_DESCRIPTOR  ((uint64_t)1 << 62 | RENDER_CONTEXT_ADDR  | CONTEXT_FLAGS)
 #define BLITTER_CONTEXT_DESCRIPTOR ((uint64_t)2 << 62 | BLITTER_CONTEXT_ADDR | CONTEXT_FLAGS)
 #define VIDEO_CONTEXT_DESCRIPTOR   ((uint64_t)3 << 62 | VIDEO_CONTEXT_ADDR   | CONTEXT_FLAGS)
