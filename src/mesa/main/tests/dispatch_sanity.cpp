@@ -1111,7 +1111,7 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glCompressedTextureImage2DEXT", 13, -1 },
    //{ "glCompressedTextureImage3DEXT", 13, -1 },
    //{ "glCompressedTextureSubImage1DEXT", 13, -1 },
-   //{ "glCompressedTextureSubImage2DEXT", 13, -1 },
+   { "glCompressedTextureSubImage2DEXT", 13, -1 },
    //{ "glCompressedTextureSubImage3DEXT", 13, -1 },
    //{ "glGetCompressedTextureImageEXT", 13, -1 },
    //{ "glCompressedMultiTexImage1DEXT", 13, -1 },

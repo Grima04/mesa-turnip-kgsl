@@ -143,6 +143,19 @@
    <function name="MatrixMultTransposedEXT" offset="assign">
       <param name="matrixMode" type="GLenum" />
       <param name="m" type="const GLdouble *" />
+    </function>
+
+   <function name="CompressedTextureSubImage2DEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="xoffset" type="GLint" />
+      <param name="yoffset" type="GLint" />
+      <param name="width" type="GLsizei" />
+      <param name="height" type="GLsizei" />
+      <param name="format" type="GLenum" />
+      <param name="imageSize" type="GLsizei" />
+      <param name="data" type="const GLvoid *" />
    </function>
 
    <!-- OpenGL 1.5 -->

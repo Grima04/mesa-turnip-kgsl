@@ -1479,6 +1479,7 @@ offsets = {
     "NamedBufferStorageEXT": 1443,
     "MapNamedBufferRangeEXT": 1444,
     "TextureSubImage2DEXT": 1445,
+    "CompressedTextureSubImage2DEXT": 1446,
 }
 
 functions = [

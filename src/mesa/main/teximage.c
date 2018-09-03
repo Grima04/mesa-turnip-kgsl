@@ -5043,8 +5043,8 @@ compressed_tex_sub_image(unsigned dim, GLenum target, GLuint texture,
                          GLint level, GLint xoffset, GLint yoffset,
                          GLint zoffset, GLsizei width, GLsizei height,
                          GLsizei depth, GLenum format, GLsizei imageSize,
-                         const GLvoid *data, bool dsa, bool no_error,
-                         const char *caller)
+                         const GLvoid *data, bool dsa, bool ext_dsa,
+                         bool no_error, const char *caller)
 {
    struct gl_texture_object *texObj = NULL;
    struct gl_texture_image *texImage;
@@ -5054,13 +5054,20 @@ compressed_tex_sub_image(unsigned dim, GLenum target, GLuint texture,
    if (dsa) {
       if (no_error) {
          texObj = _mesa_lookup_texture(ctx, texture);
+         target = texObj->Target;
       } else {
-         texObj = _mesa_lookup_texture_err(ctx, texture, caller);
-         if (!texObj)
-            return;
-      }
+         if (!ext_dsa) {
+            texObj = _mesa_lookup_texture_err(ctx, texture, caller);
+            if (!texObj)
+               return;
 
-      target = texObj->Target;
+            target = texObj->Target;
+         } else {
+            texObj = lookup_texture_ext_dsa(ctx, target, texture, caller);
+            if (!texObj)
+               return;
+         }
+      }
    }
 
    if (!no_error &&
@@ -5131,12 +5138,12 @@ compressed_tex_sub_image_error(unsigned dim, GLenum target, GLuint texture,
                                GLint level, GLint xoffset, GLint yoffset,
                                GLint zoffset, GLsizei width, GLsizei height,
                                GLsizei depth, GLenum format, GLsizei imageSize,
-                               const GLvoid *data, bool dsa,
+                               const GLvoid *data, bool dsa, bool ext_dsa,
                                const char *caller)
 {
    compressed_tex_sub_image(dim, target, texture, level, xoffset, yoffset,
                             zoffset, width, height, depth, format, imageSize,
-                            data, dsa, false, caller);
+                            data, dsa, ext_dsa, false, caller);
 }
 
 static void
@@ -5144,12 +5151,12 @@ compressed_tex_sub_image_no_error(unsigned dim, GLenum target, GLuint texture,
                                   GLint level, GLint xoffset, GLint yoffset,
                                   GLint zoffset, GLsizei width, GLsizei height,
                                   GLsizei depth, GLenum format, GLsizei imageSize,
-                                  const GLvoid *data, bool dsa,
+                                  const GLvoid *data, bool dsa, bool ext_dsa,
                                   const char *caller)
 {
    compressed_tex_sub_image(dim, target, texture, level, xoffset, yoffset,
                             zoffset, width, height, depth, format, imageSize,
-                            data, dsa, true, caller);
+                            data, dsa, ext_dsa, true, caller);
 }
 
 void GLAPIENTRY
@@ -5160,7 +5167,7 @@ _mesa_CompressedTexSubImage1D_no_error(GLenum target, GLint level,
 {
    compressed_tex_sub_image_no_error(1, target, 0, level, xoffset, 0, 0, width,
                                      1, 1, format, imageSize, data, false,
-                                     "glCompressedTexSubImage1D");
+                                     false, "glCompressedTexSubImage1D");
 }
 
 
@@ -5170,7 +5177,7 @@ _mesa_CompressedTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                               GLsizei imageSize, const GLvoid *data)
 {
    compressed_tex_sub_image_error(1, target, 0, level, xoffset, 0, 0, width, 1,
-                                  1, format, imageSize, data, false,
+                                  1, format, imageSize, data, false, false,
                                   "glCompressedTexSubImage1D");
 }
 
@@ -5181,8 +5188,9 @@ _mesa_CompressedTextureSubImage1D_no_error(GLuint texture, GLint level,
                                            GLenum format, GLsizei imageSize,
                                            const GLvoid *data)
 {
-   compressed_tex_sub_image_no_error(1, 0, texture, level, xoffset, 0, 0, width,
-                                     1, 1, format, imageSize, data, true,
+   compressed_tex_sub_image_no_error(1, 0, texture, level, xoffset, 0, 0,
+                                     width, 1, 1, format, imageSize, data,
+                                     true, false,
                                      "glCompressedTextureSubImage1D");
 }
 
@@ -5193,9 +5201,10 @@ _mesa_CompressedTextureSubImage1D(GLuint texture, GLint level, GLint xoffset,
                                   GLsizei imageSize, const GLvoid *data)
 {
    compressed_tex_sub_image_error(1, 0, texture, level, xoffset, 0, 0, width,
-                                  1, 1, format, imageSize, data, true,
+                                  1, 1, format, imageSize, data, true, false,
                                   "glCompressedTextureSubImage1D");
 }
+
 
 void GLAPIENTRY
 _mesa_CompressedTexSubImage2D_no_error(GLenum target, GLint level,
@@ -5206,7 +5215,8 @@ _mesa_CompressedTexSubImage2D_no_error(GLenum target, GLint level,
 {
    compressed_tex_sub_image_no_error(2, target, 0, level, xoffset, yoffset, 0,
                                      width, height, 1, format, imageSize, data,
-                                     false, "glCompressedTexSubImage2D");
+                                     false, false,
+                                     "glCompressedTexSubImage2D");
 }
 
 
@@ -5218,7 +5228,22 @@ _mesa_CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
 {
    compressed_tex_sub_image_error(2, target, 0, level, xoffset, yoffset, 0,
                                   width, height, 1, format, imageSize, data,
-                                  false, "glCompressedTexSubImage2D");
+                                  false, false,
+                                  "glCompressedTexSubImage2D");
+}
+
+
+void GLAPIENTRY
+_mesa_CompressedTextureSubImage2DEXT(GLuint texture, GLenum target,
+                                     GLint level, GLint xoffset,
+                                     GLint yoffset, GLsizei width,
+                                     GLsizei height, GLenum format,
+                                     GLsizei imageSize, const GLvoid *data)
+{
+   compressed_tex_sub_image_error(2, target, texture, level, xoffset, yoffset,
+                                  0, width, height, 1, format, imageSize,
+                                  data, true, true,
+                                  "glCompressedTextureSubImage2DEXT");
 }
 
 
@@ -5231,7 +5256,8 @@ _mesa_CompressedTextureSubImage2D_no_error(GLuint texture, GLint level,
 {
    compressed_tex_sub_image_no_error(2, 0, texture, level, xoffset, yoffset, 0,
                                      width, height, 1, format, imageSize, data,
-                                     true, "glCompressedTextureSubImage2D");
+                                     true, false,
+                                     "glCompressedTextureSubImage2D");
 }
 
 
@@ -5244,7 +5270,8 @@ _mesa_CompressedTextureSubImage2D(GLuint texture, GLint level, GLint xoffset,
 {
    compressed_tex_sub_image_error(2, 0, texture, level, xoffset, yoffset, 0,
                                   width, height, 1, format, imageSize, data,
-                                  true, "glCompressedTextureSubImage2D");
+                                  true, false,
+                                  "glCompressedTextureSubImage2D");
 }
 
 void GLAPIENTRY
@@ -5257,7 +5284,7 @@ _mesa_CompressedTexSubImage3D_no_error(GLenum target, GLint level,
 {
    compressed_tex_sub_image_no_error(3, target, 0, level, xoffset, yoffset,
                                      zoffset, width, height, depth, format,
-                                     imageSize, data, false,
+                                     imageSize, data, false, false,
                                      "glCompressedTexSubImage3D");
 }
 
@@ -5269,7 +5296,7 @@ _mesa_CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset,
 {
    compressed_tex_sub_image_error(3, target, 0, level, xoffset, yoffset,
                                   zoffset, width, height, depth, format,
-                                  imageSize, data, false,
+                                  imageSize, data, false, false,
                                   "glCompressedTexSubImage3D");
 }
 
@@ -5283,7 +5310,7 @@ _mesa_CompressedTextureSubImage3D_no_error(GLuint texture, GLint level,
 {
    compressed_tex_sub_image_no_error(3, 0, texture, level, xoffset, yoffset,
                                      zoffset, width, height, depth, format,
-                                     imageSize, data, true,
+                                     imageSize, data, true,  false,
                                      "glCompressedTextureSubImage3D");
 }
 
@@ -5296,7 +5323,7 @@ _mesa_CompressedTextureSubImage3D(GLuint texture, GLint level, GLint xoffset,
 {
    compressed_tex_sub_image_error(3, 0, texture, level, xoffset, yoffset,
                                   zoffset, width, height, depth, format,
-                                  imageSize, data, true,
+                                  imageSize, data, true, false,
                                   "glCompressedTextureSubImage3D");
 }
 
