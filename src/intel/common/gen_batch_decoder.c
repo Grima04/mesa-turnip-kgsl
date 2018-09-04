@@ -810,14 +810,23 @@ gen_print_batch(struct gen_batch_decode_ctx *ctx,
    const uint32_t *p, *end = batch + batch_size / sizeof(uint32_t);
    int length;
    struct gen_group *inst;
+   const char *reset_color = ctx->flags & GEN_BATCH_DECODE_IN_COLOR ? NORMAL : "";
+
+   if (ctx->n_batch_buffer_start >= 100) {
+      fprintf(ctx->fp, "%s0x%08"PRIx64": Max batch buffer jumps exceeded%s\n",
+              (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
+              (ctx->flags & GEN_BATCH_DECODE_OFFSETS) ? batch_addr : 0,
+              reset_color);
+      return;
+   }
+
+   ctx->n_batch_buffer_start++;
 
    for (p = batch; p < end; p += length) {
       inst = gen_ctx_find_instruction(ctx, p);
       length = gen_group_get_length(inst, p);
       assert(inst == NULL || length > 0);
       length = MAX2(1, length);
-
-      const char *reset_color = ctx->flags & GEN_BATCH_DECODE_IN_COLOR ? NORMAL : "";
 
       uint64_t offset;
       if (ctx->flags & GEN_BATCH_DECODE_OFFSETS)
@@ -908,4 +917,6 @@ gen_print_batch(struct gen_batch_decode_ctx *ctx,
          break;
       }
    }
+
+   ctx->n_batch_buffer_start--;
 }

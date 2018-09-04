@@ -898,6 +898,14 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
    const uint32_t *p, *batch = (const uint32_t *) _batch, *end = batch + batch_size / sizeof(uint32_t);
    int length;
 
+   if (ctx->n_batch_buffer_start >= 100) {
+      ImGui::TextColored(ctx->cfg->error_color,
+                         "0x%08" PRIx64 ": Max batch buffer jumps exceeded", batch_addr);
+      return;
+   }
+
+   ctx->n_batch_buffer_start++;
+
    for (p = batch; p < end; p += length) {
       inst = gen_spec_find_instruction(ctx->spec, ctx->engine, p);
       length = gen_group_get_length(inst, p);
@@ -991,4 +999,6 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
          break;
       }
    }
+
+   ctx->n_batch_buffer_start--;
 }

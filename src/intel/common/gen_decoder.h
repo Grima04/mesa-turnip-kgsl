@@ -237,6 +237,8 @@ struct gen_batch_decode_ctx {
    int max_vbo_decoded_lines;
 
    enum drm_i915_gem_engine_class engine;
+
+   int n_batch_buffer_start;
 };
 
 void gen_batch_decode_ctx_init(struct gen_batch_decode_ctx *ctx,

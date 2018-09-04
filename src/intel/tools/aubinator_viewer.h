@@ -82,6 +82,8 @@ struct aub_viewer_decode_ctx {
    enum aub_decode_stage stage;
    uint32_t end_urb_offset;
    struct aub_decode_urb_stage_state urb_stages[AUB_DECODE_N_STAGE];
+
+   int n_batch_buffer_start;
 };
 
 void aub_viewer_decode_ctx_init(struct aub_viewer_decode_ctx *ctx,
