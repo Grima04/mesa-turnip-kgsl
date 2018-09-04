@@ -423,3 +423,27 @@ event CSInfo
     uint32_t numGather4CPOCExecuted;
     uint32_t numLodExecuted;
 };
+
+event SWTagFrameEvent
+{
+};
+
+event SWTagRenderpassEvent
+{
+};
+
+event SWTagDrawEvent
+{
+    uint32_t drawId;
+};
+
+event SWTagDispatchEvent
+{
+    uint32_t drawId;
+};
+
+event SWTagFlushEvent
+{
+    uint32_t drawId;
+	uint32_t flushType;
+};
