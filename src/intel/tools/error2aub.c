@@ -156,7 +156,12 @@ struct bo {
       BO_TYPE_UNKNOWN = 0,
       BO_TYPE_BATCH,
       BO_TYPE_USER,
+      BO_TYPE_CONTEXT,
+      BO_TYPE_RINGBUFFER,
+      BO_TYPE_STATUS,
+      BO_TYPE_CONTEXT_WA,
    } type;
+   const char *name;
    uint64_t addr;
    uint8_t *data;
    uint64_t size;
@@ -358,23 +363,27 @@ main(int argc, char *argv[])
             enum bo_type type;
          } bo_types[] = {
             { "gtt_offset", BO_TYPE_BATCH },
-            { "user", BO_TYPE_USER },
-            { NULL, BO_TYPE_UNKNOWN },
+            { "user",       BO_TYPE_USER },
+            { "HW context", BO_TYPE_CONTEXT },
+            { "ringbuffer", BO_TYPE_RINGBUFFER },
+            { "HW Status",  BO_TYPE_STATUS },
+            { "WA context", BO_TYPE_CONTEXT_WA },
+            { "unknown",    BO_TYPE_UNKNOWN },
          }, *b;
 
-         for (b = bo_types; b->match; b++) {
-            if (strncasecmp(dashes, b->match, strlen(b->match)) == 0) {
-
-               /* The batch buffer will appear twice as gtt_offset and user.
-                * Only keep the batch type.
-                */
-               if (last_bo->type == BO_TYPE_BATCH && b->type == BO_TYPE_USER)
-                  break;
-
-               last_bo->type = b->type;
+         for (b = bo_types; b->type != BO_TYPE_UNKNOWN; b++) {
+            if (strncasecmp(dashes, b->match, strlen(b->match)) == 0)
                break;
-            }
          }
+
+         /* The batch buffer will appear twice as gtt_offset and user. Only
+          * keep the batch type.
+          */
+         if (last_bo->type == BO_TYPE_UNKNOWN) {
+            last_bo->type = b->type;
+            last_bo->name = b->match;
+         }
+
          continue;
       }
    }
