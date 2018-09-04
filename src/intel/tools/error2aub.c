@@ -152,6 +152,10 @@ print_help(const char *progname, FILE *file)
 }
 
 struct bo {
+   enum address_space {
+      PPGTT,
+      GGTT,
+   } gtt;
    enum bo_type {
       BO_TYPE_UNKNOWN = 0,
       BO_TYPE_BATCH,
@@ -174,11 +178,13 @@ struct bo {
 
 static struct bo *
 find_or_create(struct list_head *bo_list, uint64_t addr,
+               enum address_space gtt,
                enum drm_i915_gem_engine_class engine_class,
                int engine_instance)
 {
    list_for_each_entry(struct bo, bo_entry, bo_list, link) {
       if (bo_entry->addr == addr &&
+          bo_entry->gtt == gtt &&
           bo_entry->engine_class == engine_class &&
           bo_entry->engine_instance == engine_instance)
          return bo_entry;
@@ -186,6 +192,7 @@ find_or_create(struct list_head *bo_list, uint64_t addr,
 
    struct bo *new_bo = calloc(1, sizeof(*new_bo));
    new_bo->addr = addr;
+   new_bo->gtt = gtt;
    new_bo->engine_class = engine_class;
    new_bo->engine_instance = engine_instance;
    list_addtail(&new_bo->link, bo_list);
@@ -271,6 +278,8 @@ main(int argc, char *argv[])
    enum drm_i915_gem_engine_class active_engine_class = I915_ENGINE_CLASS_INVALID;
    int active_engine_instance = -1;
 
+   enum address_space active_gtt = PPGTT;
+
    int num_ring_bos = 0;
 
    struct list_head bo_list;
@@ -306,6 +315,7 @@ main(int argc, char *argv[])
          char *ring = line + strlen(active_start);
 
          engine_from_name(ring, &active_engine_class, &active_engine_instance);
+         active_gtt = PPGTT;
 
          char *count = strchr(ring, '[');
          fail_if(!count || sscanf(count, "[%d]:", &num_ring_bos) < 1,
@@ -317,6 +327,7 @@ main(int argc, char *argv[])
       if (strncmp(line, global_start, strlen(global_start)) == 0) {
          active_engine_class = I915_ENGINE_CLASS_INVALID;
          active_engine_instance = -1;
+         active_gtt = GGTT;
          continue;
       }
 
@@ -325,7 +336,9 @@ main(int argc, char *argv[])
          if (sscanf(line, " %x_%x %d", &hi, &lo, &size) == 3) {
             assert(aub_use_execlists(&aub));
             struct bo *bo_entry = find_or_create(&bo_list, ((uint64_t)hi) << 32 | lo,
-                                                 active_engine_class, active_engine_instance);
+                                                 active_gtt,
+                                                 active_engine_class,
+                                                 active_engine_instance);
             bo_entry->size = size;
             num_ring_bos--;
          } else {
@@ -355,26 +368,28 @@ main(int argc, char *argv[])
          if (!bo_address_str || sscanf(bo_address_str, "= 0x%08x %08x\n", &hi, &lo) != 2)
             continue;
 
-         last_bo = find_or_create(&bo_list, ((uint64_t) hi) << 32 | lo,
-                                  active_engine_class, active_engine_instance);
-
          const struct {
             const char *match;
             enum bo_type type;
+            enum address_space gtt;
          } bo_types[] = {
-            { "gtt_offset", BO_TYPE_BATCH },
-            { "user",       BO_TYPE_USER },
-            { "HW context", BO_TYPE_CONTEXT },
-            { "ringbuffer", BO_TYPE_RINGBUFFER },
-            { "HW Status",  BO_TYPE_STATUS },
-            { "WA context", BO_TYPE_CONTEXT_WA },
-            { "unknown",    BO_TYPE_UNKNOWN },
+            { "gtt_offset", BO_TYPE_BATCH,      PPGTT },
+            { "user",       BO_TYPE_USER,       PPGTT },
+            { "HW context", BO_TYPE_CONTEXT,    GGTT },
+            { "ringbuffer", BO_TYPE_RINGBUFFER, GGTT },
+            { "HW Status",  BO_TYPE_STATUS,     GGTT },
+            { "WA context", BO_TYPE_CONTEXT_WA, GGTT },
+            { "unknown",    BO_TYPE_UNKNOWN,    GGTT },
          }, *b;
 
          for (b = bo_types; b->type != BO_TYPE_UNKNOWN; b++) {
             if (strncasecmp(dashes, b->match, strlen(b->match)) == 0)
                break;
          }
+
+         last_bo = find_or_create(&bo_list, ((uint64_t) hi) << 32 | lo,
+                                  b->gtt,
+                                  active_engine_class, active_engine_instance);
 
          /* The batch buffer will appear twice as gtt_offset and user. Only
           * keep the batch type.
