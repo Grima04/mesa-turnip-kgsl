@@ -339,9 +339,9 @@ main(int argc, char *argv[])
          continue;
       }
 
-      char *dashes = strstr(line, "---");
+      char *dashes = strstr(line, " --- ");
       if (dashes) {
-         dashes += 4;
+         dashes += 5;
 
          engine_from_name(line, &active_engine_class, &active_engine_instance);
 
