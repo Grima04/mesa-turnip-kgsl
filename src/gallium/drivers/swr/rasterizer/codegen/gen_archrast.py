@@ -77,47 +77,61 @@ def parse_enums(lines, idx, event_dict):
     event_dict['names'] = enum_names
     return idx
 
-def parse_protos(protos, filename):
+def parse_protos(files, verbose=False):
 
-    with open(filename, 'r') as f:
-        lines=f.readlines()
+    protos = {}
+    protos['events'] = {}       # event dictionary containing events with their fields
+    protos['event_names'] = []  # needed to keep events in order parsed. dict is not ordered.
+    protos['enums'] = {}
+    protos['enum_names'] = []
 
-        idx = 0
+    eventId = 0
 
-        eventId = 0
-        raw_text = []
-        while idx < len(lines):
-            line = lines[idx].rstrip()
-            idx += 1
+    for filename in files:
+        if verbose:
+            print("Parsing proto file: %s" % os.path.normpath(filename))
 
-            # search for event definitions.
-            match = re.match(r'(\s*)event(\s*)(\w+)', line)
+        with open(filename, 'r') as f:
+            lines=f.readlines()
 
-            if match:
-                eventId += 1
-                event_name = match.group(3)
-                protos['event_names'].append(event_name)
+            idx = 0
 
-                protos['events'][event_name] = {}
-                protos['events'][event_name]['event_id'] = eventId
-                idx = parse_event_fields(lines, idx, protos['events'][event_name])
+            raw_text = []
+            while idx < len(lines):
+                line = lines[idx].rstrip()
+                idx += 1
 
-            # search for enums.
-            match = re.match(r'(\s*)enum(\s*)(\w+)', line)
+                # search for event definitions.
+                match = re.match(r'(\s*)event(\s*)(\w+)', line)
 
-            if match:
-                enum_name = match.group(3)
-                protos['enum_names'].append(enum_name)
+                if match:
+                    eventId += 1
+                    event_name = match.group(3)
+                    protos['event_names'].append(event_name)
 
-                protos['enums'][enum_name] = {}
-                idx = parse_enums(lines, idx, protos['enums'][enum_name])
+                    protos['events'][event_name] = {}
+                    protos['events'][event_name]['event_id'] = eventId
+                    idx = parse_event_fields(lines, idx, protos['events'][event_name])
+
+                # search for enums.
+                match = re.match(r'(\s*)enum(\s*)(\w+)', line)
+
+                if match:
+                    enum_name = match.group(3)
+                    protos['enum_names'].append(enum_name)
+
+                    protos['enums'][enum_name] = {}
+                    idx = parse_enums(lines, idx, protos['enums'][enum_name])
+    return protos
+
 
 def main():
 
     # Parse args...
     parser = ArgumentParser()
-    parser.add_argument('--proto', '-p', dest="protos", nargs='+', help='Path to all proto file(s) to process. Accepts one or more paths (i.e. events.proto and events_private.proto)', required=True)
-    parser.add_argument('--output-dir', help='Output dir (defaults to ./codegen). Will create folder if it does not exist.', required=False, default='codegen')
+    parser.add_argument("--proto", "-p", dest="protos", nargs='+', help="Path to all proto file(s) to process. Accepts one or more paths (i.e. events.proto and events_private.proto)", required=True)
+    parser.add_argument("--output-dir", help="Output dir (defaults to ./codegen). Will create folder if it does not exist.", required=False, default="codegen")
+    parser.add_argument("--verbose", "-v", help="Verbose", action="store_true")
     args = parser.parse_args()
 
     if not os.path.exists(args.output_dir):
@@ -128,16 +142,8 @@ def main():
             print('Error: Could not find proto file %s' % f, file=sys.stderr)
             return 1
 
-    protos = {}
-    protos['events'] = {}       # event dictionary containing events with their fields
-    protos['event_names'] = []  # needed to keep events in order parsed. dict is not ordered.
-    protos['enums'] = {}
-    protos['enum_names'] = []
-
     # Parse each proto file and add to protos container
-    for f in args.protos:
-        print("Parsing proto file: %s" % os.path.normpath(f))
-        parse_protos(protos, f)
+    protos = parse_protos(args.protos, args.verbose)
 
     files = [
         ["gen_ar_event.hpp", ""],
@@ -154,10 +160,12 @@ def main():
             filename = f[0]
             output_fullpath = os.path.join(args.output_dir, filename)
             if os.path.exists(output_fullpath):
-                print("Deleting existing file: %s" % output_fullpath)
+                if args.verbose:
+                    print("Deleting existing file: %s" % output_fullpath)
                 os.remove(output_fullpath)
 
         # Generate files from templates
+        print("Generating c++ from proto files...")
         for f in files:
             filename = f[0]
             event_header = f[1]
@@ -165,7 +173,8 @@ def main():
             template_file = os.path.join(curdir, 'templates', filename)
             output_fullpath = os.path.join(args.output_dir, filename)
 
-            print("Generating: %s" % output_fullpath)
+            if args.verbose:
+                print("Generating: %s" % output_fullpath)
             MakoTemplateWriter.to_file(template_file, output_fullpath,
                     cmdline=sys.argv,
                     filename=filename,
@@ -180,4 +189,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
