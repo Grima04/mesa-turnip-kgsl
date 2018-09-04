@@ -280,6 +280,14 @@ main(int argc, char *argv[])
 
    enum address_space active_gtt = PPGTT;
 
+   struct {
+      struct {
+         uint32_t ring_buffer_head;
+         uint32_t ring_buffer_tail;
+      } instances[3];
+   } engines[I915_ENGINE_CLASS_VIDEO_ENHANCE + 1];
+   memset(engines, 0, sizeof(engines));
+
    int num_ring_bos = 0;
 
    struct list_head bo_list;
@@ -307,6 +315,20 @@ main(int argc, char *argv[])
 
       if (strstr(line, " command stream:")) {
          engine_from_name(line, &active_engine_class, &active_engine_instance);
+         continue;
+      }
+
+      if (sscanf(line, "  ring->head: 0x%x\n",
+                 &engines[
+                    active_engine_class].instances[
+                       active_engine_instance].ring_buffer_head) == 1) {
+         continue;
+      }
+
+      if (sscanf(line, "  ring->tail: 0x%x\n",
+                 &engines[
+                    active_engine_class].instances[
+                       active_engine_instance].ring_buffer_tail) == 1) {
          continue;
       }
 
