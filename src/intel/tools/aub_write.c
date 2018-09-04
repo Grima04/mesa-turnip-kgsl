@@ -543,6 +543,71 @@ aub_write_default_setup(struct aub_file *aub)
       write_execlists_default_setup(aub);
    else
       write_legacy_default_setup(aub);
+
+   aub->has_default_setup = true;
+}
+
+void
+aub_write_ggtt(struct aub_file *aub, uint64_t virt_addr, uint64_t size, const void *data)
+{
+   if (aub->verbose_log_file) {
+      fprintf(aub->verbose_log_file,
+              " Writting GGTT address: 0x%" PRIx64 ", size: %" PRIu64"\n",
+              virt_addr, size);
+   }
+
+   /* Default setup assumes a 1 to 1 mapping between physical and virtual GGTT
+    * addresses. This is somewhat incompatible with the aub_write_ggtt()
+    * function. In practice it doesn't matter as the GGTT writes are used to
+    * replace the default setup and we've taken care to setup the PML4 as the
+    * top of the GGTT.
+    */
+   assert(!aub->has_default_setup);
+
+   /* Makes the code below a bit simpler. In practice all of the write we
+    * receive from error2aub are page aligned.
+    */
+   assert(virt_addr % 4096 == 0);
+   assert((aub->phys_addrs_allocator + size) < (1UL << 32));
+
+   /* GGTT PT */
+   uint32_t ggtt_ptes = DIV_ROUND_UP(size, 4096);
+   uint64_t phys_addr = aub->phys_addrs_allocator << 12;
+   aub->phys_addrs_allocator += ggtt_ptes;
+
+   if (aub->verbose_log_file) {
+      fprintf(aub->verbose_log_file,
+              " Writting GGTT address: 0x%" PRIx64 ", size: %" PRIu64" phys_addr=0x%lx entries=%u\n",
+              virt_addr, size, phys_addr, ggtt_ptes);
+   }
+
+   mem_trace_memory_write_header_out(aub,
+                                     (virt_addr >> 12) * GEN8_PTE_SIZE,
+                                     ggtt_ptes * GEN8_PTE_SIZE,
+                                     AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
+                                     "GGTT PT");
+   for (uint32_t i = 0; i < ggtt_ptes; i++) {
+      dword_out(aub, 1 + phys_addr + i * 4096);
+      dword_out(aub, 0);
+   }
+
+   /* We write the GGTT buffer through the GGTT aub command rather than the
+    * PHYSICAL aub command. This is because the Gen9 simulator seems to have 2
+    * different set of memory pools for GGTT and physical (probably someone
+    * didn't really understand the concept?).
+    */
+   static const char null_block[8 * 4096];
+   for (uint64_t offset = 0; offset < size; offset += 4096) {
+      uint32_t block_size = min(4096, size - offset);
+
+      mem_trace_memory_write_header_out(aub, virt_addr + offset, block_size,
+                                        AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
+                                        "GGTT buffer");
+      data_out(aub, (char *) data + offset, block_size);
+
+      /* Pad to a multiple of 4 bytes. */
+      data_out(aub, null_block, -block_size & 3);
+   }
 }
 
 /**
@@ -696,4 +761,13 @@ aub_write_exec(struct aub_file *aub, uint64_t batch_addr,
       aub_dump_ring_buffer_legacy(aub, batch_addr, offset, engine_class);
    }
    fflush(aub->file);
+}
+
+void
+aub_write_context_execlists(struct aub_file *aub, uint64_t context_addr,
+                            enum drm_i915_gem_engine_class engine_class)
+{
+   const struct engine *cs = engine_from_engine_class(engine_class);
+   uint64_t descriptor = ((uint64_t)1 << 62 | context_addr  | CONTEXT_FLAGS);
+   aub_dump_execlist(aub, cs, descriptor);
 }

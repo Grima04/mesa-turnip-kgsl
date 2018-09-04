@@ -308,8 +308,6 @@ main(int argc, char *argv[])
                        NULL, pci_id, "error_state");
          fail_if(!aub_use_execlists(&aub),
                  "%s currently only works on gen8+\n", argv[0]);
-
-         aub_write_default_setup(&aub);
          continue;
       }
 
@@ -425,7 +423,18 @@ main(int argc, char *argv[])
       }
    }
 
+   /* Find the batch that trigger the hang */
+   struct bo *batch_bo = NULL;
+   list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
+      if (bo_entry->type == BO_TYPE_BATCH) {
+         batch_bo = bo_entry;
+         break;
+      }
+   }
+   fail_if(!batch_bo, "Failed to find batch buffer.\n");
+
    /* Add all the BOs to the aub file */
+   struct bo *hwsp_bo = NULL;
    list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
       switch (bo_entry->type) {
       case BO_TYPE_BATCH:
@@ -437,21 +446,70 @@ main(int argc, char *argv[])
          aub_map_ppgtt(&aub, bo_entry->addr, bo_entry->size);
          aub_write_trace_block(&aub, AUB_TRACE_TYPE_NOTYPE,
                                bo_entry->data, bo_entry->size, bo_entry->addr);
+         break;
+      case BO_TYPE_CONTEXT:
+         if (bo_entry->engine_class == batch_bo->engine_class &&
+             bo_entry->engine_instance == batch_bo->engine_instance) {
+            hwsp_bo = bo_entry;
+
+            uint32_t *context = (uint32_t *) (bo_entry->data + 4096 /* GuC */ + 4096 /* HWSP */);
+
+            if (context[1] == 0) {
+               fprintf(stderr,
+                       "Invalid context image data.\n"
+                       "This is likely a kernel issue : https://bugs.freedesktop.org/show_bug.cgi?id=107691\n");
+            }
+
+            /* Update the ring buffer at the last known location. */
+            context[5] = engines[bo_entry->engine_class].instances[bo_entry->engine_instance].ring_buffer_head;
+            context[7] = engines[bo_entry->engine_class].instances[bo_entry->engine_instance].ring_buffer_tail;
+            fprintf(stdout, "engine start=0x%x head/tail=0x%x/0x%x\n",
+                    context[9], context[5], context[7]);
+
+            /* The error state doesn't provide a dump of the page tables, so
+             * we have to provide our own, that's easy enough.
+             */
+            context[49] = aub.pml4.phys_addr >> 32;
+            context[51] = aub.pml4.phys_addr & 0xffffffff;
+
+            fprintf(stdout, "context dump:\n");
+            for (int i = 0; i < 60; i++) {
+               if (i % 4 == 0)
+                  fprintf(stdout, "\n 0x%08lx: ", bo_entry->addr + 8192 + i * 4);
+               fprintf(stdout, "0x%08x ", context[i]);
+            }
+            fprintf(stdout, "\n");
+
+         }
+         aub_write_ggtt(&aub, bo_entry->addr, bo_entry->size, bo_entry->data);
+         break;
+      case BO_TYPE_RINGBUFFER:
+      case BO_TYPE_STATUS:
+      case BO_TYPE_CONTEXT_WA:
+         aub_write_ggtt(&aub, bo_entry->addr, bo_entry->size, bo_entry->data);
+         break;
+      case BO_TYPE_UNKNOWN:
+         if (bo_entry->gtt == PPGTT) {
+            aub_map_ppgtt(&aub, bo_entry->addr, bo_entry->size);
+            if (bo_entry->data) {
+               aub_write_trace_block(&aub, AUB_TRACE_TYPE_NOTYPE,
+                                     bo_entry->data, bo_entry->size, bo_entry->addr);
+            }
+         } else {
+            if (bo_entry->size > 0) {
+               void *zero_data = calloc(1, bo_entry->size);
+               aub_write_ggtt(&aub, bo_entry->addr, bo_entry->size, zero_data);
+               free(zero_data);
+            }
+         }
+         break;
       default:
          break;
       }
    }
 
-   /* Finally exec the batch BO */
-   bool batch_found = false;
-   list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
-      if (bo_entry->type == BO_TYPE_BATCH) {
-         aub_write_exec(&aub, bo_entry->addr, aub_gtt_size(&aub), bo_entry->engine_class);
-         batch_found = true;
-         break;
-      }
-   }
-   fail_if(!batch_found, "Failed to find batch buffer.\n");
+   fail_if(!hwsp_bo, "Failed to find Context buffer.\n");
+   aub_write_context_execlists(&aub, hwsp_bo->addr + 4096 /* skip GuC page */, hwsp_bo->engine_class);
 
    /* Cleanup */
    list_for_each_entry_safe(struct bo, bo_entry, &bo_list, link) {
