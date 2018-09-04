@@ -161,22 +161,58 @@ struct bo {
    uint8_t *data;
    uint64_t size;
 
+   enum drm_i915_gem_engine_class engine_class;
+   int engine_instance;
+
    struct list_head link;
 };
 
 static struct bo *
-find_or_create(struct list_head *bo_list, uint64_t addr)
+find_or_create(struct list_head *bo_list, uint64_t addr,
+               enum drm_i915_gem_engine_class engine_class,
+               int engine_instance)
 {
    list_for_each_entry(struct bo, bo_entry, bo_list, link) {
-      if (bo_entry->addr == addr)
+      if (bo_entry->addr == addr &&
+          bo_entry->engine_class == engine_class &&
+          bo_entry->engine_instance == engine_instance)
          return bo_entry;
    }
 
    struct bo *new_bo = calloc(1, sizeof(*new_bo));
    new_bo->addr = addr;
+   new_bo->engine_class = engine_class;
+   new_bo->engine_instance = engine_instance;
    list_addtail(&new_bo->link, bo_list);
 
    return new_bo;
+}
+
+static void
+engine_from_name(const char *engine_name,
+                 enum drm_i915_gem_engine_class *engine_class,
+                 int *engine_instance)
+{
+   const struct {
+      const char *match;
+      enum drm_i915_gem_engine_class engine_class;
+   } rings[] = {
+      { "rcs", I915_ENGINE_CLASS_RENDER },
+      { "vcs", I915_ENGINE_CLASS_VIDEO },
+      { "vecs", I915_ENGINE_CLASS_VIDEO_ENHANCE },
+      { "bcs", I915_ENGINE_CLASS_COPY },
+      { NULL, I915_ENGINE_CLASS_INVALID },
+   }, *r;
+
+   for (r = rings; r->match; r++) {
+      if (strncasecmp(engine_name, r->match, strlen(r->match)) == 0) {
+         *engine_class = r->engine_class;
+         *engine_instance = strtol(engine_name + strlen(r->match), NULL, 10);
+         return;
+      }
+   }
+
+   fail("Unknown engine %s\n", engine_name);
 }
 
 int
@@ -227,7 +263,9 @@ main(int argc, char *argv[])
 
    struct aub_file aub = {};
 
-   uint32_t active_ring = 0;
+   enum drm_i915_gem_engine_class active_engine_class = I915_ENGINE_CLASS_INVALID;
+   int active_engine_instance = -1;
+
    int num_ring_bos = 0;
 
    struct list_head bo_list;
@@ -253,28 +291,16 @@ main(int argc, char *argv[])
          continue;
       }
 
+      if (strstr(line, " command stream:")) {
+         engine_from_name(line, &active_engine_class, &active_engine_instance);
+         continue;
+      }
+
       const char *active_start = "Active (";
       if (strncmp(line, active_start, strlen(active_start)) == 0) {
-         fail_if(active_ring != 0, "TODO: Handle multiple active rings\n");
-
          char *ring = line + strlen(active_start);
 
-         const struct {
-            const char *match;
-            uint32_t ring;
-         } rings[] = {
-            { "rcs", I915_EXEC_RENDER },
-            { "vcs", I915_EXEC_VEBOX },
-            { "bcs", I915_EXEC_BLT },
-            { NULL, BO_TYPE_UNKNOWN },
-         }, *r;
-
-         for (r = rings; r->match; r++) {
-            if (strncasecmp(ring, r->match, strlen(r->match)) == 0) {
-               active_ring = r->ring;
-               break;
-            }
-         }
+         engine_from_name(ring, &active_engine_class, &active_engine_instance);
 
          char *count = strchr(ring, '[');
          fail_if(!count || sscanf(count, "[%d]:", &num_ring_bos) < 1,
@@ -282,11 +308,19 @@ main(int argc, char *argv[])
          continue;
       }
 
+      const char *global_start = "Pinned (global) [";
+      if (strncmp(line, global_start, strlen(global_start)) == 0) {
+         active_engine_class = I915_ENGINE_CLASS_INVALID;
+         active_engine_instance = -1;
+         continue;
+      }
+
       if (num_ring_bos > 0) {
          unsigned hi, lo, size;
          if (sscanf(line, " %x_%x %d", &hi, &lo, &size) == 3) {
             assert(aub_use_execlists(&aub));
-            struct bo *bo_entry = find_or_create(&bo_list, ((uint64_t)hi) << 32 | lo);
+            struct bo *bo_entry = find_or_create(&bo_list, ((uint64_t)hi) << 32 | lo,
+                                                 active_engine_class, active_engine_instance);
             bo_entry->size = size;
             num_ring_bos--;
          } else {
@@ -309,13 +343,15 @@ main(int argc, char *argv[])
       if (dashes) {
          dashes += 4;
 
+         engine_from_name(line, &active_engine_class, &active_engine_instance);
 
          uint32_t hi, lo;
          char *bo_address_str = strchr(dashes, '=');
          if (!bo_address_str || sscanf(bo_address_str, "= 0x%08x %08x\n", &hi, &lo) != 2)
             continue;
 
-         last_bo = find_or_create(&bo_list, ((uint64_t) hi) << 32 | lo);
+         last_bo = find_or_create(&bo_list, ((uint64_t) hi) << 32 | lo,
+                                  active_engine_class, active_engine_instance);
 
          const struct {
             const char *match;
@@ -364,7 +400,7 @@ main(int argc, char *argv[])
    bool batch_found = false;
    list_for_each_entry(struct bo, bo_entry, &bo_list, link) {
       if (bo_entry->type == BO_TYPE_BATCH) {
-         aub_write_exec(&aub, bo_entry->addr, aub_gtt_size(&aub), I915_ENGINE_CLASS_RENDER);
+         aub_write_exec(&aub, bo_entry->addr, aub_gtt_size(&aub), bo_entry->engine_class);
          batch_found = true;
          break;
       }
