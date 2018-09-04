@@ -213,6 +213,7 @@ engine_from_name(const char *engine_name,
       { "vcs", I915_ENGINE_CLASS_VIDEO },
       { "vecs", I915_ENGINE_CLASS_VIDEO_ENHANCE },
       { "bcs", I915_ENGINE_CLASS_COPY },
+      { "global", I915_ENGINE_CLASS_INVALID },
       { NULL, I915_ENGINE_CLASS_INVALID },
    }, *r;
 
