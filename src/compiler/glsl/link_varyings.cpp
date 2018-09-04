@@ -309,16 +309,16 @@ cross_validate_types_and_qualifiers(struct gl_context *ctx,
     *    "The invariance of varyings that are declared in both the vertex
     *     and fragment shaders must match."
     */
-   if (input->data.invariant != output->data.invariant &&
+   if (input->data.explicit_invariant != output->data.explicit_invariant &&
        prog->data->Version < (prog->IsES ? 300 : 430)) {
       linker_error(prog,
                    "%s shader output `%s' %s invariant qualifier, "
                    "but %s shader input %s invariant qualifier\n",
                    _mesa_shader_stage_to_string(producer_stage),
                    output->name,
-                   (output->data.invariant) ? "has" : "lacks",
+                   (output->data.explicit_invariant) ? "has" : "lacks",
                    _mesa_shader_stage_to_string(consumer_stage),
-                   (input->data.invariant) ? "has" : "lacks");
+                   (input->data.explicit_invariant) ? "has" : "lacks");
       return;
    }
 
