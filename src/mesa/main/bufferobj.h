@@ -370,6 +370,8 @@ void * GLAPIENTRY
 _mesa_MapNamedBuffer_no_error(GLuint buffer, GLenum access);
 void * GLAPIENTRY
 _mesa_MapNamedBuffer(GLuint buffer, GLenum access);
+void * GLAPIENTRY
+_mesa_MapNamedBufferEXT(GLuint buffer, GLenum access);
 
 void GLAPIENTRY
 _mesa_FlushMappedBufferRange_no_error(GLenum target, GLintptr offset,

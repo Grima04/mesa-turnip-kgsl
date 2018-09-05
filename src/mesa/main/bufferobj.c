@@ -3425,6 +3425,29 @@ _mesa_MapNamedBuffer(GLuint buffer, GLenum access)
                            "glMapNamedBuffer");
 }
 
+void * GLAPIENTRY
+_mesa_MapNamedBufferEXT(GLuint buffer, GLenum access)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   GLbitfield accessFlags;
+   if (!get_map_buffer_access_flags(ctx, access, &accessFlags)) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "glMapNamedBufferEXT(invalid access)");
+      return NULL;
+   }
+
+   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
+                                     &bufObj, "glMapNamedBufferEXT"))
+      return NULL;
+
+   if (!validate_map_buffer_range(ctx, bufObj, 0, bufObj->Size, accessFlags,
+                                  "glMapNamedBufferEXT"))
+      return NULL;
+
+   return map_buffer_range(ctx, bufObj, 0, bufObj->Size, accessFlags,
+                           "glMapNamedBufferEXT");
+}
 
 static void
 flush_mapped_buffer_range(struct gl_context *ctx,
