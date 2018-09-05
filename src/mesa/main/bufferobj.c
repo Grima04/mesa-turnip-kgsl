@@ -2688,7 +2688,7 @@ _mesa_UnmapBuffer(GLenum target)
 }
 
 GLboolean GLAPIENTRY
-_mesa_UnmapNamedBuffer_no_error(GLuint buffer)
+_mesa_UnmapNamedBufferEXT_no_error(GLuint buffer)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
@@ -2697,7 +2697,7 @@ _mesa_UnmapNamedBuffer_no_error(GLuint buffer)
 }
 
 GLboolean GLAPIENTRY
-_mesa_UnmapNamedBuffer(GLuint buffer)
+_mesa_UnmapNamedBufferEXT(GLuint buffer)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_buffer_object *bufObj;

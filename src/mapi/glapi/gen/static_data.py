@@ -1053,7 +1053,7 @@ offsets = {
     "TextureSubImage3D": 1017,
     "TransformFeedbackBufferBase": 1018,
     "TransformFeedbackBufferRange": 1019,
-    "UnmapNamedBuffer": 1020,
+    "UnmapNamedBufferEXT": 1020,
     "VertexArrayAttribBinding": 1021,
     "VertexArrayAttribFormat": 1022,
     "VertexArrayAttribIFormat": 1023,

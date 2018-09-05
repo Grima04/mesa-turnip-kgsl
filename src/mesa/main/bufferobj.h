@@ -303,9 +303,9 @@ GLboolean GLAPIENTRY
 _mesa_UnmapBuffer(GLenum target);
 
 GLboolean GLAPIENTRY
-_mesa_UnmapNamedBuffer_no_error(GLuint buffer);
+_mesa_UnmapNamedBufferEXT_no_error(GLuint buffer);
 GLboolean GLAPIENTRY
-_mesa_UnmapNamedBuffer(GLuint buffer);
+_mesa_UnmapNamedBufferEXT(GLuint buffer);
 
 void GLAPIENTRY
 _mesa_GetBufferParameteriv(GLenum target, GLenum pname, GLint *params);
