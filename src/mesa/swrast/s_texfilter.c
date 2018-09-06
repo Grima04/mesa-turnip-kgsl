@@ -43,7 +43,7 @@
  * Also note, FRAC(x) doesn't truly return the fractional part of x for x < 0.
  * Instead, if x < 0 then FRAC(x) = 1 - true_frac(x).
  */
-#define FRAC(f)  ((f) - IFLOOR(f))
+#define FRAC(f)  ((f) - util_ifloor(f))
 
 
 
@@ -169,11 +169,11 @@ linear_texel_locations(GLenum wrapMode,
    case GL_REPEAT:
       u = s * size - 0.5F;
       if (swImg->_IsPowerOfTwo) {
-         *i0 = IFLOOR(u) & (size - 1);
+         *i0 = util_ifloor(u) & (size - 1);
          *i1 = (*i0 + 1) & (size - 1);
       }
       else {
-         *i0 = REMAINDER(IFLOOR(u), size);
+         *i0 = REMAINDER(util_ifloor(u), size);
          *i1 = REMAINDER(*i0 + 1, size);
       }
       break;
@@ -185,7 +185,7 @@ linear_texel_locations(GLenum wrapMode,
       else
          u = s * size;
       u -= 0.5F;
-      *i0 = IFLOOR(u);
+      *i0 = util_ifloor(u);
       *i1 = *i0 + 1;
       if (*i0 < 0)
          *i0 = 0;
@@ -203,19 +203,19 @@ linear_texel_locations(GLenum wrapMode,
          else
             u = s * size;
          u -= 0.5F;
-         *i0 = IFLOOR(u);
+         *i0 = util_ifloor(u);
          *i1 = *i0 + 1;
       }
       break;
    case GL_MIRRORED_REPEAT:
       {
-         const GLint flr = IFLOOR(s);
+         const GLint flr = util_ifloor(s);
          if (flr & 1)
             u = 1.0F - (s - (GLfloat) flr);
          else
             u = s - (GLfloat) flr;
          u = (u * size) - 0.5F;
-         *i0 = IFLOOR(u);
+         *i0 = util_ifloor(u);
          *i1 = *i0 + 1;
          if (*i0 < 0)
             *i0 = 0;
@@ -230,7 +230,7 @@ linear_texel_locations(GLenum wrapMode,
       else
          u *= size;
       u -= 0.5F;
-      *i0 = IFLOOR(u);
+      *i0 = util_ifloor(u);
       *i1 = *i0 + 1;
       break;
    case GL_MIRROR_CLAMP_TO_EDGE_EXT:
@@ -240,7 +240,7 @@ linear_texel_locations(GLenum wrapMode,
       else
          u *= size;
       u -= 0.5F;
-      *i0 = IFLOOR(u);
+      *i0 = util_ifloor(u);
       *i1 = *i0 + 1;
       if (*i0 < 0)
          *i0 = 0;
@@ -259,7 +259,7 @@ linear_texel_locations(GLenum wrapMode,
          else
             u *= size;
          u -= 0.5F;
-         *i0 = IFLOOR(u);
+         *i0 = util_ifloor(u);
          *i1 = *i0 + 1;
       }
       break;
@@ -271,7 +271,7 @@ linear_texel_locations(GLenum wrapMode,
       else
          u = s * size;
       u -= 0.5F;
-      *i0 = IFLOOR(u);
+      *i0 = util_ifloor(u);
       *i1 = *i0 + 1;
       break;
    default:
@@ -299,7 +299,7 @@ nearest_texel_location(GLenum wrapMode,
    case GL_REPEAT:
       /* s limited to [0,1) */
       /* i limited to [0,size-1] */
-      i = IFLOOR(s * size);
+      i = util_ifloor(s * size);
       if (swImg->_IsPowerOfTwo)
          i &= (size - 1);
       else
@@ -316,7 +316,7 @@ nearest_texel_location(GLenum wrapMode,
          else if (s > max)
             i = size - 1;
          else
-            i = IFLOOR(s * size);
+            i = util_ifloor(s * size);
       }
       return i;
    case GL_CLAMP_TO_BORDER:
@@ -330,14 +330,14 @@ nearest_texel_location(GLenum wrapMode,
          else if (s >= max)
             i = size;
          else
-            i = IFLOOR(s * size);
+            i = util_ifloor(s * size);
       }
       return i;
    case GL_MIRRORED_REPEAT:
       {
          const GLfloat min = 1.0F / (2.0F * size);
          const GLfloat max = 1.0F - min;
-         const GLint flr = IFLOOR(s);
+         const GLint flr = util_ifloor(s);
          GLfloat u;
          if (flr & 1)
             u = 1.0F - (s - (GLfloat) flr);
@@ -348,7 +348,7 @@ nearest_texel_location(GLenum wrapMode,
          else if (u > max)
             i = size - 1;
          else
-            i = IFLOOR(u * size);
+            i = util_ifloor(u * size);
       }
       return i;
    case GL_MIRROR_CLAMP_EXT:
@@ -361,7 +361,7 @@ nearest_texel_location(GLenum wrapMode,
          else if (u >= 1.0F)
             i = size - 1;
          else
-            i = IFLOOR(u * size);
+            i = util_ifloor(u * size);
       }
       return i;
    case GL_MIRROR_CLAMP_TO_EDGE_EXT:
@@ -376,7 +376,7 @@ nearest_texel_location(GLenum wrapMode,
          else if (u > max)
             i = size - 1;
          else
-            i = IFLOOR(u * size);
+            i = util_ifloor(u * size);
       }
       return i;
    case GL_MIRROR_CLAMP_TO_BORDER_EXT:
@@ -391,7 +391,7 @@ nearest_texel_location(GLenum wrapMode,
          else if (u > max)
             i = size;
          else
-            i = IFLOOR(u * size);
+            i = util_ifloor(u * size);
       }
       return i;
    case GL_CLAMP:
@@ -402,7 +402,7 @@ nearest_texel_location(GLenum wrapMode,
       else if (s >= 1.0F)
          i = size - 1;
       else
-         i = IFLOOR(s * size);
+         i = util_ifloor(s * size);
       return i;
    default:
       _mesa_problem(NULL, "Bad wrap mode");
@@ -417,7 +417,7 @@ linear_repeat_texel_location(GLuint size, GLfloat s,
                              GLint *i0, GLint *i1, GLfloat *weight)
 {
    GLfloat u = s * size - 0.5F;
-   *i0 = IFLOOR(u) & (size - 1);
+   *i0 = util_ifloor(u) & (size - 1);
    *i1 = (*i0 + 1) & (size - 1);
    *weight = FRAC(u);
 }
@@ -431,11 +431,11 @@ clamp_rect_coord_nearest(GLenum wrapMode, GLfloat coord, GLint max)
 {
    switch (wrapMode) {
    case GL_CLAMP:
-      return IFLOOR( CLAMP(coord, 0.0F, max - 1) );
+      return util_ifloor( CLAMP(coord, 0.0F, max - 1) );
    case GL_CLAMP_TO_EDGE:
-      return IFLOOR( CLAMP(coord, 0.5F, max - 0.5F) );
+      return util_ifloor( CLAMP(coord, 0.5F, max - 0.5F) );
    case GL_CLAMP_TO_BORDER:
-      return IFLOOR( CLAMP(coord, -0.5F, max + 0.5F) );
+      return util_ifloor( CLAMP(coord, -0.5F, max + 0.5F) );
    default:
       _mesa_problem(NULL, "bad wrapMode in clamp_rect_coord_nearest");
       return 0;
@@ -456,13 +456,13 @@ clamp_rect_coord_linear(GLenum wrapMode, GLfloat coord, GLint max,
    case GL_CLAMP:
       /* Not exactly what the spec says, but it matches NVIDIA output */
       fcol = CLAMP(coord - 0.5F, 0.0F, max - 1);
-      i0 = IFLOOR(fcol);
+      i0 = util_ifloor(fcol);
       i1 = i0 + 1;
       break;
    case GL_CLAMP_TO_EDGE:
       fcol = CLAMP(coord, 0.5F, max - 0.5F);
       fcol -= 0.5F;
-      i0 = IFLOOR(fcol);
+      i0 = util_ifloor(fcol);
       i1 = i0 + 1;
       if (i1 > max - 1)
          i1 = max - 1;
@@ -470,7 +470,7 @@ clamp_rect_coord_linear(GLenum wrapMode, GLfloat coord, GLint max,
    case GL_CLAMP_TO_BORDER:
       fcol = CLAMP(coord, -0.5F, max + 0.5F);
       fcol -= 0.5F;
-      i0 = IFLOOR(fcol);
+      i0 = util_ifloor(fcol);
       i1 = i0 + 1;
       break;
    default:
@@ -491,7 +491,7 @@ clamp_rect_coord_linear(GLenum wrapMode, GLfloat coord, GLint max,
 static GLint
 tex_array_slice(GLfloat coord, GLsizei size)
 {
-   GLint slice = IFLOOR(coord + 0.5f);
+   GLint slice = util_ifloor(coord + 0.5f);
    slice = CLAMP(slice, 0, size - 1);
    return slice;
 }
@@ -1435,8 +1435,8 @@ opt_sample_rgb_2d(struct gl_context *ctx,
    (void) swImg;
 
    for (k=0; k<n; k++) {
-      GLint i = IFLOOR(texcoords[k][0] * width) & colMask;
-      GLint j = IFLOOR(texcoords[k][1] * height) & rowMask;
+      GLint i = util_ifloor(texcoords[k][0] * width) & colMask;
+      GLint j = util_ifloor(texcoords[k][1] * height) & rowMask;
       GLint pos = (j << shift) | i;
       GLubyte *texel = (GLubyte *) swImg->ImageSlices[0] + 3 * pos;
       rgba[k][RCOMP] = UBYTE_TO_FLOAT(texel[2]);
@@ -1480,8 +1480,8 @@ opt_sample_rgba_2d(struct gl_context *ctx,
    (void) swImg;
 
    for (i = 0; i < n; i++) {
-      const GLint col = IFLOOR(texcoords[i][0] * width) & colMask;
-      const GLint row = IFLOOR(texcoords[i][1] * height) & rowMask;
+      const GLint col = util_ifloor(texcoords[i][0] * width) & colMask;
+      const GLint row = util_ifloor(texcoords[i][1] * height) & rowMask;
       const GLint pos = (row << shift) | col;
       const GLuint texel = *((GLuint *) swImg->ImageSlices[0] + pos);
       rgba[i][RCOMP] = UBYTE_TO_FLOAT( (texel >> 24)        );

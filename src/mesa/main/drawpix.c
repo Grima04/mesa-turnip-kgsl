@@ -36,6 +36,7 @@
 #include "state.h"
 #include "glformats.h"
 #include "fbobject.h"
+#include "util/u_math.h"
 
 
 /*
@@ -323,8 +324,8 @@ _mesa_Bitmap( GLsizei width, GLsizei height,
       /* Truncate, to satisfy conformance tests (matches SGI's OpenGL). */
       if (width > 0 && height > 0) {
          const GLfloat epsilon = 0.0001F;
-         GLint x = IFLOOR(ctx->Current.RasterPos[0] + epsilon - xorig);
-         GLint y = IFLOOR(ctx->Current.RasterPos[1] + epsilon - yorig);
+         GLint x = util_ifloor(ctx->Current.RasterPos[0] + epsilon - xorig);
+         GLint y = util_ifloor(ctx->Current.RasterPos[1] + epsilon - yorig);
 
          if (ctx->Unpack.BufferObj) {
             /* unpack from PBO */

@@ -698,8 +698,8 @@ st_DrawAtlasBitmaps(struct gl_context *ctx,
       const float xorig = g->xorig, yorig = g->yorig;
       const float s0 = g->x, t0 = g->y;
       const float s1 = s0 + g->w, t1 = t0 + g->h;
-      const float x0 = IFLOOR(ctx->Current.RasterPos[0] - xorig + epsilon);
-      const float y0 = IFLOOR(ctx->Current.RasterPos[1] - yorig + epsilon);
+      const float x0 = util_ifloor(ctx->Current.RasterPos[0] - xorig + epsilon);
+      const float y0 = util_ifloor(ctx->Current.RasterPos[1] - yorig + epsilon);
       const float x1 = x0 + g->w, y1 = y0 + g->h;
       const float clip_x0 = x0 * clip_x_scale - 1.0f;
       const float clip_y0 = y0 * clip_y_scale - 1.0f;
