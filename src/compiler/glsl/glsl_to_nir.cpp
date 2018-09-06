@@ -478,6 +478,8 @@ nir_visitor::create_function(ir_function_signature *ir)
       return;
 
    nir_function *func = nir_function_create(shader, ir->function_name());
+   if (strcmp(ir->function_name(), "main") == 0)
+      func->is_entrypoint = true;
 
    func->num_params = ir->parameters.length() +
                       (ir->return_type != glsl_type::void_type);

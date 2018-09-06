@@ -2098,6 +2098,8 @@ typedef struct nir_function {
     * If the function is only declared and not implemented, this is NULL.
     */
    nir_function_impl *impl;
+
+   bool is_entrypoint;
 } nir_function;
 
 typedef struct nir_shader_compiler_options {
@@ -2278,19 +2280,31 @@ typedef struct nir_shader {
    unsigned constant_data_size;
 } nir_shader;
 
+#define nir_foreach_function(func, shader) \
+   foreach_list_typed(nir_function, func, node, &(shader)->functions)
+
 static inline nir_function_impl *
 nir_shader_get_entrypoint(nir_shader *shader)
 {
-   assert(exec_list_length(&shader->functions) == 1);
-   struct exec_node *func_node = exec_list_get_head(&shader->functions);
-   nir_function *func = exec_node_data(nir_function, func_node, node);
+   nir_function *func = NULL;
+
+   nir_foreach_function(function, shader) {
+      assert(func == NULL);
+      if (function->is_entrypoint) {
+         func = function;
+#ifndef NDEBUG
+         break;
+#endif
+      }
+   }
+
+   if (!func)
+      return NULL;
+
    assert(func->num_params == 0);
    assert(func->impl);
    return func->impl;
 }
-
-#define nir_foreach_function(func, shader) \
-   foreach_list_typed(nir_function, func, node, &(shader)->functions)
 
 nir_shader *nir_shader_create(void *mem_ctx,
                               gl_shader_stage stage,

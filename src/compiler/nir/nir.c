@@ -208,6 +208,7 @@ nir_function_create(nir_shader *shader, const char *name)
    func->num_params = 0;
    func->params = NULL;
    func->impl = NULL;
+   func->is_entrypoint = false;
 
    return func;
 }
