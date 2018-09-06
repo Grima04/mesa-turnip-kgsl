@@ -184,7 +184,7 @@ _mesa_PixelMapfv( GLenum map, GLsizei mapsize, const GLfloat *values )
 
    if (map >= GL_PIXEL_MAP_S_TO_S && map <= GL_PIXEL_MAP_I_TO_A) {
       /* test that mapsize is a power of two */
-      if (!_mesa_is_pow_two(mapsize)) {
+      if (!util_is_power_of_two_or_zero(mapsize)) {
 	 _mesa_error( ctx, GL_INVALID_VALUE, "glPixelMapfv(mapsize)" );
          return;
       }
@@ -225,7 +225,7 @@ _mesa_PixelMapuiv(GLenum map, GLsizei mapsize, const GLuint *values )
 
    if (map >= GL_PIXEL_MAP_S_TO_S && map <= GL_PIXEL_MAP_I_TO_A) {
       /* test that mapsize is a power of two */
-      if (!_mesa_is_pow_two(mapsize)) {
+      if (!util_is_power_of_two_or_zero(mapsize)) {
 	 _mesa_error( ctx, GL_INVALID_VALUE, "glPixelMapuiv(mapsize)" );
          return;
       }
@@ -280,7 +280,7 @@ _mesa_PixelMapusv(GLenum map, GLsizei mapsize, const GLushort *values )
 
    if (map >= GL_PIXEL_MAP_S_TO_S && map <= GL_PIXEL_MAP_I_TO_A) {
       /* test that mapsize is a power of two */
-      if (!_mesa_is_pow_two(mapsize)) {
+      if (!util_is_power_of_two_or_zero(mapsize)) {
 	 _mesa_error( ctx, GL_INVALID_VALUE, "glPixelMapusv(mapsize)" );
          return;
       }

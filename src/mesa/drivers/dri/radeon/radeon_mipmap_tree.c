@@ -102,7 +102,7 @@ unsigned get_texture_image_row_stride(radeonContextPtr rmesa, mesa_format format
 	} else {
 		unsigned row_align;
 
-		if (!_mesa_is_pow_two(width) || target == GL_TEXTURE_RECTANGLE) {
+		if (!util_is_power_of_two_or_zero(width) || target == GL_TEXTURE_RECTANGLE) {
 			row_align = rmesa->texture_rect_row_align - 1;
 		} else if (tiling) {
 			unsigned tileWidth, tileHeight;

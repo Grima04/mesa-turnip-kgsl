@@ -127,9 +127,9 @@ _swrast_init_texture_image(struct gl_texture_image *texImage)
 {
    struct swrast_texture_image *swImg = swrast_texture_image(texImage);
 
-   if ((texImage->Width == 1 || _mesa_is_pow_two(texImage->Width2)) &&
-       (texImage->Height == 1 || _mesa_is_pow_two(texImage->Height2)) &&
-       (texImage->Depth == 1 || _mesa_is_pow_two(texImage->Depth2)))
+   if ((texImage->Width == 1 || util_is_power_of_two_or_zero(texImage->Width2)) &&
+       (texImage->Height == 1 || util_is_power_of_two_or_zero(texImage->Height2)) &&
+       (texImage->Depth == 1 || util_is_power_of_two_or_zero(texImage->Depth2)))
       swImg->_IsPowerOfTwo = GL_TRUE;
    else
       swImg->_IsPowerOfTwo = GL_FALSE;

@@ -190,16 +190,6 @@ static inline int IFLOOR(float f)
 #endif
 }
 
-
-/**
- * Is x a power of two?
- */
-static inline int
-_mesa_is_pow_two(int x)
-{
-   return !(x & (x - 1));
-}
-
 /**
  * Round given integer to next higer power of two
  * If X is zero result is undefined.

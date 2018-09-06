@@ -399,7 +399,7 @@ static void validate_lighting( struct gl_context *ctx,
    }
    else {
       /* Power of two means only a single active light. */
-      if (_mesa_is_pow_two(ctx->Light._EnabledLights))
+      if (util_is_power_of_two_or_zero(ctx->Light._EnabledLights))
 	 tab = _tnl_light_fast_single_tab;
       else
 	 tab = _tnl_light_fast_tab;

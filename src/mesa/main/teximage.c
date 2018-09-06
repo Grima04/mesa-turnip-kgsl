@@ -977,7 +977,7 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (width < 2 * border || width > 2 * border + maxSize)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -992,9 +992,9 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (height < 2 * border || height > 2 * border + maxSize)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
-         if (height > 0 && !_mesa_is_pow_two(height - 2 * border))
+         if (height > 0 && !util_is_power_of_two_nonzero(height - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -1010,11 +1010,11 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (depth < 2 * border || depth > 2 * border + maxSize)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
-         if (height > 0 && !_mesa_is_pow_two(height - 2 * border))
+         if (height > 0 && !util_is_power_of_two_nonzero(height - 2 * border))
             return GL_FALSE;
-         if (depth > 0 && !_mesa_is_pow_two(depth - 2 * border))
+         if (depth > 0 && !util_is_power_of_two_nonzero(depth - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -1047,9 +1047,9 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (height < 2 * border || height > 2 * border + maxSize)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
-         if (height > 0 && !_mesa_is_pow_two(height - 2 * border))
+         if (height > 0 && !util_is_power_of_two_nonzero(height - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -1062,7 +1062,7 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (height < 0 || height > ctx->Const.MaxArrayTextureLayers)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -1079,9 +1079,9 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (depth < 0 || depth > ctx->Const.MaxArrayTextureLayers)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
-         if (height > 0 && !_mesa_is_pow_two(height - 2 * border))
+         if (height > 0 && !util_is_power_of_two_nonzero(height - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;
@@ -1100,9 +1100,9 @@ _mesa_legal_texture_dimensions(struct gl_context *ctx, GLenum target,
       if (level >= ctx->Const.MaxCubeTextureLevels)
          return GL_FALSE;
       if (!ctx->Extensions.ARB_texture_non_power_of_two) {
-         if (width > 0 && !_mesa_is_pow_two(width - 2 * border))
+         if (width > 0 && !util_is_power_of_two_nonzero(width - 2 * border))
             return GL_FALSE;
-         if (height > 0 && !_mesa_is_pow_two(height - 2 * border))
+         if (height > 0 && !util_is_power_of_two_nonzero(height - 2 * border))
             return GL_FALSE;
       }
       return GL_TRUE;

@@ -2064,8 +2064,7 @@ generate_code(struct brw_codegen *p,
           *
           * where they pack the four bytes from the low and high four DW.
           */
-         assert(_mesa_is_pow_two(dst.writemask) &&
-                dst.writemask != 0);
+         assert(util_is_power_of_two_nonzero(dst.writemask));
          unsigned offset = __builtin_ctz(dst.writemask);
 
          dst.type = BRW_REGISTER_TYPE_UB;
