@@ -190,58 +190,6 @@ static inline int IFLOOR(float f)
 #endif
 }
 
-/**
- * Round given integer to next higer power of two
- * If X is zero result is undefined.
- *
- * Source for the fallback implementation is
- * Sean Eron Anderson's webpage "Bit Twiddling Hacks"
- * http://graphics.stanford.edu/~seander/bithacks.html
- *
- * When using builtin function have to do some work
- * for case when passed values 1 to prevent hiting
- * undefined result from __builtin_clz. Undefined
- * results would be different depending on optimization
- * level used for build.
- */
-static inline int32_t
-_mesa_next_pow_two_32(uint32_t x)
-{
-#ifdef HAVE___BUILTIN_CLZ
-	uint32_t y = (x != 1);
-	return (1 + y) << ((__builtin_clz(x - y) ^ 31) );
-#else
-	x--;
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-	x++;
-	return x;
-#endif
-}
-
-static inline int64_t
-_mesa_next_pow_two_64(uint64_t x)
-{
-#ifdef HAVE___BUILTIN_CLZLL
-	uint64_t y = (x != 1);
-	STATIC_ASSERT(sizeof(x) == sizeof(long long));
-	return (1 + y) << ((__builtin_clzll(x - y) ^ 63));
-#else
-	x--;
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-	x |= x >> 32;
-	x++;
-	return x;
-#endif
-}
-
 
 /*
  * Returns the floor form of binary logarithm for a 32-bit integer.
