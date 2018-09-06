@@ -32,7 +32,7 @@
 #include "util/u_idalloc.h"
 #include "util/u_threaded_context.h"
 
-#ifdef PIPE_ARCH_BIG_ENDIAN
+#if PIPE_ARCH_BIG_ENDIAN
 #define SI_BIG_ENDIAN 1
 #else
 #define SI_BIG_ENDIAN 0
@@ -760,7 +760,7 @@ struct si_shader_ctx_state {
  */
 union si_vgt_param_key {
 	struct {
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
 		unsigned prim:4;
 		unsigned uses_instancing:1;
 		unsigned multi_instances_smaller_than_primgroup:1;
@@ -795,7 +795,7 @@ union si_vgt_param_key {
  */
 union si_vgt_stages_key {
 	struct {
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
 		unsigned tess:1;
 		unsigned gs:1;
 		unsigned ngg:1; /* gfx10+ */

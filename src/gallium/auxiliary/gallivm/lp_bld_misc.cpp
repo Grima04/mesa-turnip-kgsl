@@ -456,7 +456,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
     * when not using MCJIT so no instructions are generated which the old JIT
     * can't handle. Not entirely sure if we really need to do anything yet.
     */
-#if defined(PIPE_ARCH_LITTLE_ENDIAN)  && defined(PIPE_ARCH_PPC_64)
+#if PIPE_ARCH_LITTLE_ENDIAN  && defined(PIPE_ARCH_PPC_64)
    /*
     * Versions of LLVM prior to 4.0 lacked a table entry for "POWER8NVL",
     * resulting in (big-endian) "generic" being returned on

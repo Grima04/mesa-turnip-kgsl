@@ -40,9 +40,9 @@
 //
 #include "util/u_endian.h"
 
-#if defined(PIPE_ARCH_LITTLE_ENDIAN)
+#if PIPE_ARCH_LITTLE_ENDIAN
 #define LITTLEENDIAN_CPU
-#elif defined(PIPE_ARCH_BIG_ENDIAN)
+#elif PIPE_ARCH_BIG_ENDIAN
 #define BIGENDIAN_CPU
 #endif
 

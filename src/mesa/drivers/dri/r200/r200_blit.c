@@ -43,7 +43,7 @@ unsigned r200_check_blit(mesa_format mesa_format, uint32_t dst_pitch)
 {
     /* XXX others? */
     switch (mesa_format) {
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
     case MESA_FORMAT_B8G8R8A8_UNORM:
     case MESA_FORMAT_B8G8R8X8_UNORM:
     case MESA_FORMAT_B5G6R5_UNORM:
@@ -121,7 +121,7 @@ static void inline emit_tx_setup(struct r200_context *r200,
     assert(height <= 2048);
     assert(offset % 32 == 0);
 
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
     txformat |= tx_table_le[src_mesa_format].format;
 #else
     txformat |= tx_table_be[src_mesa_format].format;
@@ -170,7 +170,7 @@ static void inline emit_tx_setup(struct r200_context *r200,
 	    break;
     case MESA_FORMAT_A8B8G8R8_UNORM:
     case MESA_FORMAT_R8G8B8A8_UNORM:
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
        if (dst_mesa_format == MESA_FORMAT_A8B8G8R8_UNORM) {
 #else
        if (dst_mesa_format == MESA_FORMAT_R8G8B8A8_UNORM) {

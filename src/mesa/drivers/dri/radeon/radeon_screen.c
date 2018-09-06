@@ -697,21 +697,21 @@ radeonCreateBuffer( __DRIscreen *driScrnPriv,
 
     if (mesaVis->redBits == 5)
         rgbFormat =
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
            MESA_FORMAT_B5G6R5_UNORM;
 #else
            MESA_FORMAT_R5G6B5_UNORM;
 #endif
     else if (mesaVis->alphaBits == 0)
         rgbFormat =
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
            MESA_FORMAT_B8G8R8X8_UNORM;
 #else
            MESA_FORMAT_X8R8G8B8_UNORM;
 #endif
     else
         rgbFormat = 
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
            MESA_FORMAT_B8G8R8A8_UNORM;
 #else
            MESA_FORMAT_A8R8G8B8_UNORM;

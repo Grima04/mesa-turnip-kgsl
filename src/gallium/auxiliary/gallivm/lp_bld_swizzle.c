@@ -222,7 +222,7 @@ lp_build_swizzle_scalar_aos(struct lp_build_context *bld,
        *                        XX XX XX XX if shift right (shift == -1)
        *
        */
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
       shift = channel == 0 ? 1 : -1;
 #else
       shift = channel == 0 ? -1 : 1;
@@ -293,7 +293,7 @@ lp_build_swizzle_scalar_aos(struct lp_build_context *bld,
          int shift = shifts[channel][i];
 
          /* See endianness diagram above */
-#ifdef PIPE_ARCH_BIG_ENDIAN
+#if PIPE_ARCH_BIG_ENDIAN
          shift = -shift;
 #endif
 
@@ -519,7 +519,7 @@ lp_build_swizzle_aos(struct lp_build_context *bld,
          for (chan = 0; chan < 4; ++chan) {
             if (swizzles[chan] < 4) {
                /* We need to move channel swizzles[chan] into channel chan */
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
                if (swizzles[chan] - chan == -shift) {
                   mask |= ((1ULL << type.width) - 1) << (swizzles[chan] * type.width);
                }

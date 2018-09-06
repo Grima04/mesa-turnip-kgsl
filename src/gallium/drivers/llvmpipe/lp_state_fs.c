@@ -1399,7 +1399,7 @@ convert_to_blend_type(struct gallivm_state *gallivm,
       for (j = 0; j < src_fmt->nr_channels; ++j) {
          unsigned mask = 0;
          unsigned sa = src_fmt->channel[j].shift;
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
          unsigned from_lsb = j;
 #else
          unsigned from_lsb = src_fmt->nr_channels - j - 1;
@@ -1581,7 +1581,7 @@ convert_from_blend_type(struct gallivm_state *gallivm,
       for (j = 0; j < src_fmt->nr_channels; ++j) {
          unsigned mask = 0;
          unsigned sa = src_fmt->channel[j].shift;
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
+#if PIPE_ARCH_LITTLE_ENDIAN
          unsigned from_lsb = j;
 #else
          unsigned from_lsb = src_fmt->nr_channels - j - 1;

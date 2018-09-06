@@ -400,7 +400,7 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 	int i;
 
 	/* This function is broken in BE, so just disable this path for now */
-#ifdef PIPE_ARCH_BIG_ENDIAN
+#if PIPE_ARCH_BIG_ENDIAN
 	return;
 #endif
 
