@@ -73,36 +73,6 @@ typedef union { float f; int i; unsigned u; } fi_type;
 /*@}*/
 
 
-/***
- *** LOG2: Log base 2 of float
- ***/
-static inline float LOG2(float x)
-{
-#if 0
-   /* This is pretty fast, but not accurate enough (only 2 fractional bits).
-    * Based on code from http://www.stereopsis.com/log2.html
-    */
-   const float y = x * x * x * x;
-   const unsigned ix = *((unsigned *) &y);
-   const unsigned exp = (ix >> 23) & 0xFF;
-   const int log2 = ((int) exp) - 127;
-   return (float) log2 * (1.0 / 4.0);  /* 4, because of x^4 above */
-#endif
-   /* Pretty fast, and accurate.
-    * Based on code from http://www.flipcode.com/totd/
-    */
-   fi_type num;
-   int log_2;
-   num.f = x;
-   log_2 = ((num.i >> 23) & 255) - 128;
-   num.i &= ~(255 << 23);
-   num.i += 127 << 23;
-   num.f = ((-1.0f/3) * num.f + 2) * num.f - 2.0f/3;
-   return num.f + log_2;
-}
-
-
-
 /**
  * finite macro.
  */
