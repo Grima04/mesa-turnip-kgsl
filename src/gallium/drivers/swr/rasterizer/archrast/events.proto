@@ -129,7 +129,7 @@ event EarlyZSingleSample
     uint32_t drawId;
     uint64_t passCount;
     uint64_t failCount;
-};	
+};
 
 event LateZSingleSample
 {
@@ -157,7 +157,7 @@ event EarlyZSampleRate
     uint32_t drawId;
     uint64_t passCount;
     uint64_t failCount;
-};	
+};
 
 event LateZSampleRate
 {
@@ -186,7 +186,7 @@ event EarlyZ
     uint32_t drawId;
     uint64_t passCount;
     uint64_t failCount;
-};	
+};
 
 // Total LateZ counts, SingleSample and SampleRate
 event LateZ
@@ -445,5 +445,6 @@ event SWTagDispatchEvent
 event SWTagFlushEvent
 {
     uint32_t drawId;
-	uint32_t flushType;
+    char flushReason[256];
+    uint32_t flushType;
 };
