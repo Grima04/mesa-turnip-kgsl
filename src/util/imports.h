@@ -120,16 +120,6 @@ static inline int64_t IROUND64(float f)
 }
 
 
-/**
- * Convert positive float to int by rounding to nearest integer.
- */
-static inline int IROUND_POS(float f)
-{
-   assert(f >= 0.0F);
-   return (int) (f + 0.5F);
-}
-
-
 /**********************************************************************
  * Functions
  */
