@@ -149,13 +149,10 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_CULL_DISTANCE:
    case PIPE_CAP_PACKED_UNIFORMS:
-   case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
    case PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET:
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
-   case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-   case PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES:
    case PIPE_CAP_POST_DEPTH_COVERAGE:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
@@ -163,47 +160,9 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_BALLOT:
    case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
    case PIPE_CAP_CLEAR_TEXTURE:
+   case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
+   case PIPE_CAP_TEXTURE_GATHER_SM5:
       return true;
-
-   case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
-   case PIPE_CAP_TGSI_CAN_COMPACT_CONSTANTS:
-   case PIPE_CAP_VERTEX_COLOR_CLAMPED:
-   case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
-   case PIPE_CAP_USER_VERTEX_BUFFERS:
-   case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
-   case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
-   case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
-   case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
-   case PIPE_CAP_FAKE_SW_MSAA:
-   case PIPE_CAP_VERTEXID_NOBASE:
-   case PIPE_CAP_FENCE_SIGNAL:
-   case PIPE_CAP_CONSTBUF0_FLAGS:
-   case PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_TRIANGLES:
-   case PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_POINTS_LINES:
-   case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES:
-   case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_POINTS_LINES:
-   case PIPE_CAP_MAX_CONSERVATIVE_RASTER_SUBPIXEL_PRECISION_BIAS:
-   case PIPE_CAP_CONSERVATIVE_RASTER_POST_DEPTH_COVERAGE:
-   case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
-   case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
-   case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
-   case PIPE_CAP_GENERATE_MIPMAP:
-   case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
-   case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
-   case PIPE_CAP_DEPTH_BOUNDS_TEST:
-   case PIPE_CAP_TILE_RASTER_ORDER:
-   case PIPE_CAP_MULTI_DRAW_INDIRECT:
-   case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
-   case PIPE_CAP_POLYGON_MODE_FILL_RECTANGLE:
-   case PIPE_CAP_BINDLESS_TEXTURE:
-   case PIPE_CAP_NIR_SAMPLERS_AS_DEREF:
-      return false;
-
-   case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
-      /* Intel GPUs don't support PIPE_TEX_WRAP_MIRROR_CLAMP or
-       * PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER.
-       */
-      return false;
 
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 1;
@@ -218,10 +177,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 4;
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return 2048;
-   case PIPE_CAP_MIN_TEXEL_OFFSET:
-      return -8;
-   case PIPE_CAP_MAX_TEXEL_OFFSET:
-      return 7;
    case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
       return BRW_MAX_SOL_BINDINGS / IRIS_MAX_SOL_BUFFERS;
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
@@ -244,18 +199,14 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 64;
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
       return 1 << 27;
-   case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
-      return 64; // XXX: ?
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-      return 16;
+      return 16; // XXX: u_screen says 256 is the minimum value...
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
       return true; // XXX: ?????
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
       return 1 << 27; /* 128MB */
    case PIPE_CAP_MAX_VIEWPORTS:
       return 16;
-   case PIPE_CAP_ENDIANNESS:
-      return PIPE_ENDIAN_LITTLE;
    case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
       return 256;
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
@@ -264,13 +215,10 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 32;
    case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
       return 4;
-   case PIPE_CAP_TEXTURE_GATHER_SM5:
-      return 1;
    case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
       return -32;
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
       return 31;
-   case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
    case PIPE_CAP_MAX_VERTEX_STREAMS:
       return 4;
    case PIPE_CAP_VENDOR_ID:
@@ -279,14 +227,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->pci_id;
    case PIPE_CAP_VIDEO_MEMORY:
       return 0xffffffff; // XXX: bogus
-   case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
-      return 2048;
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
       return 32;
-   case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
-      return 0;
-   case PIPE_CAP_FRAMEBUFFER_MSAA_CONSTRAINTS:
-      return 0;
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
       /* AMD_pinned_memory assumes the flexibility of using client memory
        * for any buffer (incl. vertex buffers) which rules out the prospect
@@ -296,40 +238,19 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * illegal snoop <-> snoop transfers.
        */
       return devinfo->has_llc;
-   case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
-   case PIPE_CAP_TGSI_TXQS:
-   case PIPE_CAP_SHAREABLE_SHADERS:
-   case PIPE_CAP_DRAW_PARAMETERS:
-   case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
-   case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
-   case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
-   case PIPE_CAP_INVALIDATE_BUFFER:
-   case PIPE_CAP_STRING_MARKER:
-   case PIPE_CAP_SURFACE_REINTERPRET_BLOCKS:
-   case PIPE_CAP_QUERY_BUFFER_OBJECT:
-   case PIPE_CAP_QUERY_MEMORY_INFO:
+
+   // XXX: don't hardcode 00:00:02.0 PCI here
    case PIPE_CAP_PCI_GROUP:
+      return 0;
    case PIPE_CAP_PCI_BUS:
+      return 0;
    case PIPE_CAP_PCI_DEVICE:
+      return 2;
    case PIPE_CAP_PCI_FUNCTION:
-   case PIPE_CAP_TGSI_VOTE:
-   case PIPE_CAP_MAX_WINDOW_RECTANGLES:
-   case PIPE_CAP_POLYGON_OFFSET_UNITS_UNSCALED:
-   case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
-   case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
-   case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
-   case PIPE_CAP_NATIVE_FENCE_FD:
-   case PIPE_CAP_TGSI_FS_FBFETCH:
-   case PIPE_CAP_TGSI_MUL_ZERO_WINS:
-   case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
-   case PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX:
-   case PIPE_CAP_MEMOBJ:
-   case PIPE_CAP_LOAD_CONSTBUF:
-   case PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS:
-   case PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
-   case PIPE_CAP_CONTEXT_PRIORITY_MASK:
-      // XXX: TODO: fill these out
-      break;
+      return 0;
+
+   default:
+      return u_pipe_screen_get_param_defaults(pscreen, param);
    }
    return 0;
 }
