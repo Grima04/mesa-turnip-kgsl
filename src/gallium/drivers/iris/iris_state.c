@@ -498,6 +498,17 @@ iris_init_render_context(struct iris_screen *screen,
       sba.DynamicStateBufferSize   = 0xfffff;
    }
 
+   // XXX: INSTPM on Gen8
+   uint32_t reg_val;
+   iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
+      reg.CONSTANT_BUFFERAddressOffsetDisable = true;
+      reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
+   }
+   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = GENX(CS_DEBUG_MODE2_num);
+      lri.DataDWord      = reg_val;
+   }
+
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
     * instead include the render target dimensions in the viewport, so
