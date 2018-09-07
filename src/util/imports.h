@@ -104,14 +104,6 @@ static inline int IROUND(float f)
 }
 
 /**
- * Convert double to int by rounding to nearest integer, away from zero.
- */
-static inline int IROUNDD(double d)
-{
-   return (int) ((d >= 0.0) ? (d + 0.5) : (d - 0.5));
-}
-
-/**
  * Convert float to int64 by rounding to nearest integer.
  */
 static inline int64_t IROUND64(float f)
