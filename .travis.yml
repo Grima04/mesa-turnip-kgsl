@@ -52,6 +52,7 @@ matrix:
             # Common
             - xz-utils
             - libexpat1-dev
+            - libx11-xcb-dev
             - libelf-dev
             - python3.5
             - python3-pip
