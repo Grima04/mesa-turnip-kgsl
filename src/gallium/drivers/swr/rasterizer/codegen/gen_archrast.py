@@ -27,11 +27,8 @@ import re
 from gen_common import *
 
 def parse_event_fields(lines, idx, event_dict):
-    field_names = []
-    field_types = []
+    fields = []
     end_of_event = False
-
-    num_fields = 0
 
     # record all fields in event definition.
     # note: we don't check if there's a leading brace.
@@ -39,18 +36,20 @@ def parse_event_fields(lines, idx, event_dict):
         line = lines[idx].rstrip()
         idx += 1
 
-        field = re.match(r'(\s*)(\w+)(\s*)(\w+)', line)
+        match = re.match(r'(\s*)([\w\*]+)(\s*)([\w]+)(\[\d+\])*', line)
 
-        if field:
-            field_types.append(field.group(2))
-            field_names.append(field.group(4))
-            num_fields += 1
+        if match:
+            field = {
+                "type": match.group(2),
+                "name": match.group(4),
+                "size": int(match.group(5)[1:-1]) if match.group(5) else 1
+            }
+            fields.append(field)
 
         end_of_event = re.match(r'(\s*)};', line)
 
-    event_dict['field_types'] = field_types
-    event_dict['field_names'] = field_names
-    event_dict['num_fields'] = num_fields
+    event_dict['fields'] = fields
+    event_dict['num_fields'] = len(fields)
 
     return idx
 
