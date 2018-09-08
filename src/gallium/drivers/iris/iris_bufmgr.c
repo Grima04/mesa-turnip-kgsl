@@ -619,6 +619,12 @@ retry:
    bo->index = -1;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
+   /* By default, capture all driver-internal buffers like shader kernels,
+    * surface states, dynamic states, border colors, and so on.
+    */
+   if (memzone < IRIS_MEMZONE_OTHER)
+      bo->kflags |= EXEC_OBJECT_CAPTURE;
+
    if (bo->gtt_offset == 0ull) {
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
 
