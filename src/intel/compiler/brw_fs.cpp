@@ -6956,6 +6956,14 @@ fs_visitor::optimize()
    int iteration = 0;
    int pass_num = 0;
 
+   /* Before anything else, eliminate dead code.  The results of some NIR
+    * instructions may effectively be calculated twice.  Once when the
+    * instruction is encountered, and again when the user of that result is
+    * encountered.  Wipe those away before algebraic optimizations and
+    * especially copy propagation can mix things up.
+    */
+   OPT(dead_code_eliminate);
+
    OPT(remove_extra_rounding_modes);
 
    do {
