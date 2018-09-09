@@ -120,7 +120,7 @@ blorp_get_surface_address(struct blorp_batch *blorp_batch,
 UNUSED static struct blorp_address
 blorp_get_surface_base_address(UNUSED struct blorp_batch *blorp_batch)
 {
-   return (struct blorp_address) { .offset = IRIS_MEMZONE_SURFACE_START };
+   return (struct blorp_address) { .offset = IRIS_MEMZONE_BINDER_START };
 }
 
 static void *
@@ -146,17 +146,22 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
                           void **surface_maps)
 {
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
+   struct iris_binder *binder = &ice->state.binder;
    struct iris_batch *batch = blorp_batch->driver_batch;
 
-   *bt_offset = iris_binder_reserve(batch, num_entries * sizeof(uint32_t));
-   uint32_t *bt_map = batch->binder.map + *bt_offset;
+   *bt_offset = iris_binder_reserve(ice, num_entries * sizeof(uint32_t));
+   uint32_t *bt_map = binder->map + *bt_offset;
 
    for (unsigned i = 0; i < num_entries; i++) {
       surface_maps[i] = stream_state(batch, ice->state.surface_uploader,
                                      state_size, state_alignment,
                                      &surface_offsets[i], NULL);
-      bt_map[i] = surface_offsets[i];
+      bt_map[i] = surface_offsets[i] - (uint32_t) binder->bo->gtt_offset;
    }
+
+   iris_use_pinned_bo(batch, binder->bo, false);
+
+   ice->vtbl.update_surface_base_address(batch, binder);
 }
 
 static void *

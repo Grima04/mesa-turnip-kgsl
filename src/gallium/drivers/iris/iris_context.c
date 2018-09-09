@@ -130,6 +130,7 @@ iris_destroy_context(struct pipe_context *ctx)
    slab_destroy_child(&ice->transfer_pool);
 
    iris_batch_free(&ice->render_batch);
+   iris_destroy_binder(&ice->state.binder);
 
    ralloc_free(ice);
 }
@@ -189,14 +190,15 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    iris_init_program_cache(ice);
    iris_init_border_color_pool(ice);
+   iris_init_binder(ice);
 
    slab_create_child(&ice->transfer_pool, &screen->transfer_pool);
 
    ice->state.surface_uploader =
-      u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+      u_upload_create(ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
                       IRIS_RESOURCE_FLAG_SURFACE_MEMZONE);
    ice->state.dynamic_uploader =
-      u_upload_create(&ice->ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+      u_upload_create(ctx, 16384, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
                       IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE);
 
    genX_call(devinfo, init_state, ice);

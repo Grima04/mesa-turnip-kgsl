@@ -29,7 +29,6 @@
 #include <string.h>
 #include "i915_drm.h"
 #include "common/gen_decoder.h"
-#include "iris_binder.h"
 
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
@@ -58,6 +57,9 @@ struct iris_batch {
    /** Last BO submitted to the hardware.  Used for glFinish(). */
    struct iris_bo *last_bo;
 
+   /** Last Surface State Base Address set in this hardware context. */
+   uint64_t last_surface_base_address;
+
    uint32_t hw_ctx_id;
 
    /** Which engine this batch targets - a I915_EXEC_RING_MASK value */
@@ -71,9 +73,6 @@ struct iris_batch {
 
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
-
-   /** Binder (containing binding tables) */
-   struct iris_binder binder;
 
    struct {
       /**

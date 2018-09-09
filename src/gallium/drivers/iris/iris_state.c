@@ -445,6 +445,36 @@ emit_state(struct iris_batch *batch,
 #define cso_changed_memcmp(x) \
    (!old_cso || memcmp(old_cso->x, new_cso->x, sizeof(old_cso->x)) != 0)
 
+static void
+flush_for_state_base_change(struct iris_batch *batch)
+{
+   /* Flush before emitting STATE_BASE_ADDRESS.
+    *
+    * This isn't documented anywhere in the PRM.  However, it seems to be
+    * necessary prior to changing the surface state base adress.  We've
+    * seen issues in Vulkan where we get GPU hangs when using multi-level
+    * command buffers which clear depth, reset state base address, and then
+    * go render stuff.
+    *
+    * Normally, in GL, we would trust the kernel to do sufficient stalls
+    * and flushes prior to executing our batch.  However, it doesn't seem
+    * as if the kernel's flushing is always sufficient and we don't want to
+    * rely on it.
+    *
+    * We make this an end-of-pipe sync instead of a normal flush because we
+    * do not know the current status of the GPU.  On Haswell at least,
+    * having a fast-clear operation in flight at the same time as a normal
+    * rendering operation can cause hangs.  Since the kernel's flushing is
+    * insufficient, we need to ensure that any rendering operations from
+    * other processes are definitely complete before we try to do our own
+    * rendering.  It's a bit of a big hammer but it appears to work.
+    */
+   iris_emit_end_of_pipe_sync(batch,
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                              PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                              PIPE_CONTROL_DATA_CACHE_FLUSH);
+}
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -459,18 +489,19 @@ iris_init_render_context(struct iris_screen *screen,
 {
    iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
 
-   /* XXX: PIPE_CONTROLs */
+   flush_for_state_base_change(batch);
 
    /* We program STATE_BASE_ADDRESS once at context initialization time.
     * Each base address points at a 4GB memory zone, and never needs to
     * change.  See iris_bufmgr.h for a description of the memory zones.
+    *
+    * Except for Surface State Base Address.  That one changes.
     */
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
    #if 0
    // XXX: MOCS is stupid for this.
       sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
       sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
-      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
       sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
       sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
       sba.InstructionMemoryObjectControlState             = MOCS_WB;
@@ -478,7 +509,6 @@ iris_init_render_context(struct iris_screen *screen,
    #endif
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
-      sba.SurfaceStateBaseAddressModifyEnable   = true;
       sba.DynamicStateBaseAddressModifyEnable   = true;
       sba.IndirectObjectBaseAddressModifyEnable = true;
       sba.InstructionBaseAddressModifyEnable    = true;
@@ -489,7 +519,6 @@ iris_init_render_context(struct iris_screen *screen,
       sba.InstructionBuffersizeModifyEnable     = true;
 
       sba.InstructionBaseAddress  = ro_bo(NULL, IRIS_MEMZONE_SHADER_START);
-      sba.SurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_SURFACE_START);
       sba.DynamicStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_DYNAMIC_START);
 
       sba.GeneralStateBufferSize   = 0xfffff;
@@ -3063,6 +3092,9 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
    return surf_state->offset;
 }
 
+#define push_bt_entry(addr) \
+   assert(addr >= binder_addr); bt_map[s++] = (addr) - binder_addr;
+
 /**
  * Populate the binding table for a given shader stage.
  *
@@ -3075,13 +3107,14 @@ iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
                             gl_shader_stage stage)
 {
-   const struct iris_binder *binder = &batch->binder;
+   const struct iris_binder *binder = &ice->state.binder;
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    if (!shader)
       return;
 
    const struct shader_info *info = iris_get_shader_info(ice, stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
+   uint32_t binder_addr = binder->bo->gtt_offset;
 
    //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
@@ -3092,13 +3125,14 @@ iris_populate_binding_table(struct iris_context *ice,
       /* Note that cso_fb->nr_cbufs == fs_key->nr_color_regions. */
       if (cso_fb->nr_cbufs) {
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-            if (cso_fb->cbufs[i])
-               bt_map[s++] = use_surface(batch, cso_fb->cbufs[i], true);
-            else
-               bt_map[s++] = use_null_fb_surface(batch, ice);
+            uint32_t addr =
+               cso_fb->cbufs[i] ? use_surface(batch, cso_fb->cbufs[i], true)
+                                : use_null_fb_surface(batch, ice);
+            push_bt_entry(addr);
          }
       } else {
-         bt_map[s++] = use_null_fb_surface(batch, ice);
+         uint32_t addr = use_null_fb_surface(batch, ice);
+         push_bt_entry(addr);
       }
    }
 
@@ -3107,8 +3141,9 @@ iris_populate_binding_table(struct iris_context *ice,
 
    for (int i = 0; i < shs->num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
-      bt_map[s++] = view ? use_sampler_view(batch, view)
-                         : use_null_surface(batch, ice);
+      uint32_t addr = view ? use_sampler_view(batch, view)
+                           : use_null_surface(batch, ice);
+      push_bt_entry(addr);
    }
 
    for (int i = 0; i < 1 + info->num_ubos; i++) {
@@ -3116,7 +3151,8 @@ iris_populate_binding_table(struct iris_context *ice,
       if (!cbuf->surface_state.res)
          break;
 
-      bt_map[s++] = use_const_buffer(batch, cbuf);
+      uint32_t addr = use_const_buffer(batch, cbuf);
+      push_bt_entry(addr);
    }
 
    /* XXX: st is wasting 16 binding table slots for ABOs.  Should add a cap
@@ -3126,7 +3162,8 @@ iris_populate_binding_table(struct iris_context *ice,
     */
    if (info->num_abos + info->num_ssbos > 0) {
       for (int i = 0; i < IRIS_MAX_ABOS + info->num_ssbos; i++) {
-         bt_map[s++] = use_ssbo(batch, ice, shs, i);
+         uint32_t addr = use_ssbo(batch, ice, shs, i);
+         push_bt_entry(addr);
       }
    }
 
@@ -3263,6 +3300,27 @@ iris_restore_context_saved_bos(struct iris_context *ice,
    }
 }
 
+/**
+ * Possibly emit STATE_BASE_ADDRESS to update Surface State Base Address.
+ */
+static void
+iris_update_surface_base_address(struct iris_batch *batch,
+                                 struct iris_binder *binder)
+{
+   if (batch->last_surface_base_address == binder->bo->gtt_offset)
+      return;
+
+   flush_for_state_base_change(batch);
+
+   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+      // XXX: sba.SurfaceStateMemoryObjectControlState = MOCS_WB;
+      sba.SurfaceStateBaseAddressModifyEnable = true;
+      sba.SurfaceStateBaseAddress = ro_bo(binder->bo, 0);
+   }
+
+   batch->last_surface_base_address = binder->bo->gtt_offset;
+}
+
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
@@ -3274,6 +3332,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       return;
 
    struct iris_genx_state *genx = ice->state.genx;
+   struct iris_binder *binder = &ice->state.binder;
    struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
 
@@ -3426,7 +3485,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   struct iris_binder *binder = &batch->binder;
+   /* Always pin the binder.  If we're emitting new binding table pointers,
+    * we need it.  If not, we're probably inheriting old tables via the
+    * context, and need it anyway.  Since true zero-bindings cases are
+    * practically non-existent, just pin it and avoid last_res tracking.
+    */
+   iris_use_pinned_bo(batch, binder->bo, false);
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
@@ -4309,6 +4373,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.destroy_state = iris_destroy_state;
    ice->vtbl.init_render_context = iris_init_render_context;
    ice->vtbl.upload_render_state = iris_upload_render_state;
+   ice->vtbl.update_surface_base_address = iris_update_surface_base_address;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
    ice->vtbl.derived_program_state_size = iris_derived_program_state_size;
    ice->vtbl.store_derived_program_state = iris_store_derived_program_state;

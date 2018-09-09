@@ -48,14 +48,11 @@ struct pipe_debug_callback;
  *
  * We lay out the virtual address space as follows:
  *
- * - [0,   4K): Nothing  (empty page for null address)
- * - [4K,  4G): Shaders  (Instruction Base Address)
- * - [4G,  8G): Surfaces (Surface State Base Address, Bindless ...)
- * - [8G, 12G): Dynamic  (Dynamic State Base Address)
- * - [12G, *):  Other    (everything else in the full 48-bit VMA)
- *
- * A special 64kB "binder" buffer lives at the start of the surface memory
- * zone, holding binding tables referring to objects in the rest of the zone.
+ * - [0,   4K): Nothing            (empty page for null address)
+ * - [4K,  4G): Shaders            (Instruction Base Address)
+ * - [4G,  8G): Surfaces & Binders (Surface State Base Address, Bindless ...)
+ * - [8G, 12G): Dynamic            (Dynamic State Base Address)
+ * - [12G, *):  Other              (everything else in the full 48-bit VMA)
  *
  * A special buffer for border color lives at the start of the dynamic state
  * memory zone.  This unfortunately has to be handled specially because the
@@ -65,31 +62,28 @@ struct pipe_debug_callback;
  * each a separate VMA.  However, we assign address globally, so buffers will
  * have the same address in all GEM contexts.  This lets us have a single BO
  * field for the address, which is easy and cheap.
- *
- * One exception is the special "binder" BO.  Binders are context-local,
- * so while there are many of them, all binders are stored at the same
- * fixed address (in different VMAs).
  */
 enum iris_memory_zone {
    IRIS_MEMZONE_SHADER,
+   IRIS_MEMZONE_BINDER,
    IRIS_MEMZONE_SURFACE,
    IRIS_MEMZONE_DYNAMIC,
    IRIS_MEMZONE_OTHER,
 
-   IRIS_MEMZONE_BINDER,
    IRIS_MEMZONE_BORDER_COLOR_POOL,
 };
 
 /* Intentionally exclude single buffer "zones" */
 #define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 2)
 
+#define IRIS_BINDER_SIZE (64 * 1024)
+#define IRIS_MAX_BINDERS 100
+
 #define IRIS_MEMZONE_SHADER_START     (0ull * (1ull << 32))
-#define IRIS_MEMZONE_SURFACE_START    (1ull * (1ull << 32))
+#define IRIS_MEMZONE_BINDER_START     (1ull * (1ull << 32))
+#define IRIS_MEMZONE_SURFACE_START    (IRIS_MEMZONE_BINDER_START + IRIS_MAX_BINDERS * IRIS_BINDER_SIZE)
 #define IRIS_MEMZONE_DYNAMIC_START    (2ull * (1ull << 32))
 #define IRIS_MEMZONE_OTHER_START      (3ull * (1ull << 32))
-
-#define IRIS_BINDER_ADDRESS IRIS_MEMZONE_SURFACE_START
-#define IRIS_BINDER_SIZE (64 * 1024)
 
 #define IRIS_BORDER_COLOR_POOL_ADDRESS IRIS_MEMZONE_DYNAMIC_START
 #define IRIS_BORDER_COLOR_POOL_SIZE (64 * 1024)

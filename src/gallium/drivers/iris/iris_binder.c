@@ -49,6 +49,8 @@
  * and cycling back around where possible to avoid replacing it at all costs.
  *
  * XXX: if we do have to flush, we should emit a performance warning.
+ *
+ * XXX: these comments are out of date
  */
 
 #include <stdlib.h>
@@ -62,33 +64,60 @@
 /* Avoid using offset 0, tools consider it NULL */
 #define INIT_INSERT_POINT BTP_ALIGNMENT
 
+static bool
+binder_has_space(struct iris_binder *binder, unsigned size)
+{
+   return binder->insert_point + size <= IRIS_BINDER_SIZE;
+}
+
+static void
+binder_realloc(struct iris_context *ice)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+   struct iris_binder *binder = &ice->state.binder;
+
+   iris_bo_unreference(binder->bo);
+
+   binder->bo =
+      iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE, IRIS_MEMZONE_BINDER);
+   binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
+   binder->insert_point = INIT_INSERT_POINT;
+
+   /* Allocating a new binder requires changing Surface State Base Address,
+    * which also invalidates all our previous binding tables - each entry
+    * in those tables is an offset from the old base.
+    *
+    * We do this here so that iris_binder_reserve_3d correctly gets a new
+    * larger total_size when making the updated reservation.
+    */
+   ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+}
+
+static uint32_t
+binder_insert(struct iris_binder *binder, unsigned size)
+{
+   uint32_t offset = binder->insert_point;
+
+   binder->insert_point = align(binder->insert_point + size, BTP_ALIGNMENT);
+
+   return offset;
+}
+
 /**
  * Reserve a block of space in the binder, given the raw size in bytes.
  */
 uint32_t
-iris_binder_reserve(struct iris_batch *batch, unsigned size)
+iris_binder_reserve(struct iris_context *ice,
+                    unsigned size)
 {
-   struct iris_binder *binder = &batch->binder;
+   struct iris_binder *binder = &ice->state.binder;
+
+   if (!binder_has_space(binder, size))
+      binder_realloc(ice);
 
    assert(size > 0);
-   assert((binder->insert_point % BTP_ALIGNMENT) == 0);
-
-   /* If we can't fit all stages in the binder, flush the batch which
-    * will cause us to gain a new empty binder.
-    */
-   if (binder->insert_point + size > IRIS_BINDER_SIZE)
-      iris_batch_flush(batch);
-
-   uint32_t offset = binder->insert_point;
-
-   /* It had better fit now. */
-   assert(offset + size <= IRIS_BINDER_SIZE);
-
-   binder->insert_point = align(binder->insert_point + size, BTP_ALIGNMENT);
-
-   iris_use_pinned_bo(batch, binder->bo, false);
-
-   return offset;
+   return binder_insert(binder, size);
 }
 
 /**
@@ -97,63 +126,69 @@ iris_binder_reserve(struct iris_batch *batch, unsigned size)
  * Note that you must actually populate the new binding tables after
  * calling this command - the new area is uninitialized.
  */
-bool
-iris_binder_reserve_3d(struct iris_batch *batch,
-                       struct iris_context *ice)
+void
+iris_binder_reserve_3d(struct iris_context *ice)
 {
    struct iris_compiled_shader **shaders = ice->shaders.prog;
-   struct iris_binder *binder = &batch->binder;
-   unsigned total_size = 0;
+   struct iris_binder *binder = &ice->state.binder;
    unsigned sizes[MESA_SHADER_STAGES] = {};
+   unsigned total_size;
 
+   /* If nothing is dirty, skip all this. */
+   if (!(ice->state.dirty & IRIS_ALL_DIRTY_BINDINGS))
+      return;
+
+   /* Get the binding table sizes for each stage */
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage)))
-         continue;
-
       if (!shaders[stage])
          continue;
 
       const struct brw_stage_prog_data *prog_data =
          (const void *) shaders[stage]->prog_data;
 
+      /* Round up the size so our next table has an aligned starting offset */
       sizes[stage] = align(prog_data->binding_table.size_bytes, BTP_ALIGNMENT);
-      total_size += sizes[stage];
    }
 
-   if (total_size == 0)
-      return false;
+   /* Make space for the new binding tables...this may take two tries. */
+   while (true) {
+      total_size = 0;
+      for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+         if (ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage))
+            total_size += sizes[stage];
+      }
 
-   uint32_t offset = iris_binder_reserve(batch, total_size);
-   bool flushed = offset == INIT_INSERT_POINT;
+      assert(total_size < IRIS_BINDER_SIZE);
 
-   /* Assign space and record the current binding table. */
+      if (total_size == 0)
+         return;
+
+      if (binder_has_space(binder, total_size))
+         break;
+
+      /* It didn't fit.  Allocate a new buffer and try again.  Note that
+       * this will flag all bindings dirty, which may increase total_size
+       * on the next iteration.
+       */
+      binder_realloc(ice);
+   }
+
+   /* Assign space and record the new binding table offsets. */
+   uint32_t offset = binder_insert(binder, total_size);
+
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage)))
-         continue;
-
-      binder->bt_offset[stage] = sizes[stage] > 0 ? offset : 0;
-      offset += sizes[stage];
+      if (ice->state.dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
+         binder->bt_offset[stage] = sizes[stage] > 0 ? offset : 0;
+         offset += sizes[stage];
+      }
    }
-
-   return flushed;
 }
 
 void
-iris_init_binder(struct iris_binder *binder, struct iris_bufmgr *bufmgr)
+iris_init_binder(struct iris_context *ice)
 {
-   binder->bo =
-      iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE, IRIS_MEMZONE_BINDER);
-   binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
-   binder->insert_point = INIT_INSERT_POINT;
-}
-
-/**
- * Is the binder empty?  (If so, old binding table pointers are stale.)
- */
-bool
-iris_binder_is_empty(struct iris_binder *binder)
-{
-   return binder->insert_point <= INIT_INSERT_POINT;
+   memset(&ice->state.binder, 0, sizeof(struct iris_binder));
+   binder_realloc(ice);
 }
 
 void

@@ -38,7 +38,6 @@
  */
 
 #include "iris_batch.h"
-#include "iris_binder.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 
@@ -158,8 +157,6 @@ iris_init_batch(struct iris_batch *batch,
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
 
-   batch->binder.bo = NULL;
-
    batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
    batch->cache.depth = _mesa_set_create(NULL, _mesa_hash_pointer,
@@ -254,9 +251,6 @@ iris_batch_reset(struct iris_batch *batch)
    create_batch(batch);
    assert(batch->bo->index == 0);
 
-   iris_destroy_binder(&batch->binder);
-   iris_init_binder(&batch->binder, batch->bo->bufmgr);
-
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
 
@@ -280,8 +274,6 @@ iris_batch_free(struct iris_batch *batch)
 
    _mesa_hash_table_destroy(batch->cache.render, NULL);
    _mesa_set_destroy(batch->cache.depth, NULL);
-
-   iris_destroy_binder(&batch->binder);
 
    if (batch->state_sizes) {
       _mesa_hash_table_destroy(batch->state_sizes, NULL);
@@ -432,18 +424,16 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 
    if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
       int bytes_for_commands = iris_batch_bytes_used(batch);
-      int bytes_for_binder = batch->binder.insert_point;
       int second_bytes = 0;
       if (batch->bo != batch->exec_bos[0]) {
          second_bytes = bytes_for_commands;
          bytes_for_commands += batch->primary_batch_size;
       }
       fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5d+%5db (%0.1f%%) "
-              "(cmds), %5db (%0.1f%%) (binder), %4d BOs (%0.1fMb aperture)\n",
+              "(cmds), %4d BOs (%0.1fMb aperture)\n",
               file, line,
               batch->primary_batch_size, second_bytes,
               100.0f * bytes_for_commands / BATCH_SZ,
-              bytes_for_binder, 100.0f * bytes_for_binder / IRIS_BINDER_SIZE,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
       dump_validation_list(batch);

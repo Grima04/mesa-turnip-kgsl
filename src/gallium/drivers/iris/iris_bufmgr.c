@@ -244,10 +244,10 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
 static enum iris_memory_zone
 memzone_for_address(uint64_t address)
 {
-   STATIC_ASSERT(IRIS_MEMZONE_OTHER_START > IRIS_MEMZONE_DYNAMIC_START);
+   STATIC_ASSERT(IRIS_MEMZONE_OTHER_START   > IRIS_MEMZONE_DYNAMIC_START);
    STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START > IRIS_MEMZONE_SURFACE_START);
-   STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START > IRIS_MEMZONE_SHADER_START);
-   STATIC_ASSERT(IRIS_BINDER_ADDRESS == IRIS_MEMZONE_SURFACE_START);
+   STATIC_ASSERT(IRIS_MEMZONE_SURFACE_START > IRIS_MEMZONE_BINDER_START);
+   STATIC_ASSERT(IRIS_MEMZONE_BINDER_START  > IRIS_MEMZONE_SHADER_START);
    STATIC_ASSERT(IRIS_BORDER_COLOR_POOL_ADDRESS == IRIS_MEMZONE_DYNAMIC_START);
 
    if (address >= IRIS_MEMZONE_OTHER_START)
@@ -259,7 +259,7 @@ memzone_for_address(uint64_t address)
    if (address > IRIS_MEMZONE_DYNAMIC_START)
       return IRIS_MEMZONE_DYNAMIC;
 
-   if (address == IRIS_BINDER_ADDRESS)
+   if (address > IRIS_MEMZONE_BINDER_START)
       return IRIS_MEMZONE_BINDER;
 
    if (address > IRIS_MEMZONE_SURFACE_START)
@@ -365,8 +365,14 @@ bucket_vma_free(struct bo_cache_bucket *bucket, uint64_t address)
 }
 
 static struct bo_cache_bucket *
-get_bucket_allocator(struct iris_bufmgr *bufmgr, uint64_t size)
+get_bucket_allocator(struct iris_bufmgr *bufmgr,
+                     enum iris_memory_zone memzone,
+                     uint64_t size)
 {
+   /* Bucketing is not worth using for binders...we'll never have 64... */
+   if (memzone == IRIS_MEMZONE_BINDER)
+      return NULL;
+
    /* Skip using the bucket allocator for very large sizes, as it allocates
     * 64 of them and this can balloon rather quickly.
     */
@@ -393,12 +399,11 @@ vma_alloc(struct iris_bufmgr *bufmgr,
           uint64_t size,
           uint64_t alignment)
 {
-   if (memzone == IRIS_MEMZONE_BINDER)
-      return IRIS_BINDER_ADDRESS;
-   else if (memzone == IRIS_MEMZONE_BORDER_COLOR_POOL)
+   if (memzone == IRIS_MEMZONE_BORDER_COLOR_POOL)
       return IRIS_BORDER_COLOR_POOL_ADDRESS;
 
-   struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
+   struct bo_cache_bucket *bucket =
+      get_bucket_allocator(bufmgr, memzone, size);
    uint64_t addr;
 
    if (bucket) {
@@ -419,8 +424,7 @@ vma_free(struct iris_bufmgr *bufmgr,
          uint64_t address,
          uint64_t size)
 {
-   if (address == IRIS_BINDER_ADDRESS ||
-       address == IRIS_BORDER_COLOR_POOL_ADDRESS)
+   if (address == IRIS_BORDER_COLOR_POOL_ADDRESS)
       return;
 
    /* Un-canonicalize the address. */
@@ -429,12 +433,13 @@ vma_free(struct iris_bufmgr *bufmgr,
    if (address == 0ull)
       return;
 
-   struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
+   enum iris_memory_zone memzone = memzone_for_address(address);
+   struct bo_cache_bucket *bucket =
+      get_bucket_allocator(bufmgr, memzone, size);
 
    if (bucket) {
       bucket_vma_free(bucket, address);
    } else {
-      enum iris_memory_zone memzone = memzone_for_address(address);
       util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
    }
 }
@@ -1599,9 +1604,12 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
 
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
                       PAGE_SIZE, _4GB);
+   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_BINDER],
+                      IRIS_MEMZONE_BINDER_START,
+                      IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
-                      IRIS_MEMZONE_SURFACE_START + IRIS_BINDER_SIZE,
-                      _4GB - IRIS_BINDER_SIZE);
+                      IRIS_MEMZONE_SURFACE_START,
+                      _4GB - IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
                       IRIS_MEMZONE_DYNAMIC_START + IRIS_BORDER_COLOR_POOL_SIZE,
                       _4GB - IRIS_BORDER_COLOR_POOL_SIZE);

@@ -30,6 +30,7 @@
 #include "intel/common/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
+#include "iris_binder.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
 
@@ -108,6 +109,13 @@ struct blorp_params;
 #define IRIS_DIRTY_VF_SGVS                  (1ull << 51)
 #define IRIS_DIRTY_VF                       (1ull << 52)
 #define IRIS_DIRTY_VF_TOPOLOGY              (1ull << 53)
+
+#define IRIS_ALL_DIRTY_BINDINGS (IRIS_DIRTY_BINDINGS_VS  | \
+                                 IRIS_DIRTY_BINDINGS_TCS | \
+                                 IRIS_DIRTY_BINDINGS_TES | \
+                                 IRIS_DIRTY_BINDINGS_GS  | \
+                                 IRIS_DIRTY_BINDINGS_FS  | \
+                                 IRIS_DIRTY_BINDINGS_CS)
 
 /**
  * Non-orthogonal state (NOS) dependency flags.
@@ -262,6 +270,8 @@ struct iris_vtable {
    void (*upload_render_state)(struct iris_context *ice,
                                struct iris_batch *batch,
                                const struct pipe_draw_info *draw);
+   void (*update_surface_base_address)(struct iris_batch *batch,
+                                       struct iris_binder *binder);
    void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
@@ -381,6 +391,8 @@ struct iris_context {
       // XXX: may want a separate uploader for "hey I made a CSO!" vs
       // "I'm streaming this out at draw time and never want it again!"
       struct u_upload_mgr *dynamic_uploader;
+
+      struct iris_binder binder;
 
       struct iris_border_color_pool border_color_pool;
 
