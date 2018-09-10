@@ -698,8 +698,12 @@ nir_lower_vars_to_ssa_impl(nir_function_impl *impl)
       foreach_deref_node_match(path, lower_copies_to_load_store, &state);
    }
 
-   if (!progress)
+   if (!progress) {
+#ifndef NDEBUG
+      impl->valid_metadata &= ~nir_metadata_not_properly_reset;
+#endif
       return false;
+   }
 
    nir_metadata_require(impl, nir_metadata_dominance);
 

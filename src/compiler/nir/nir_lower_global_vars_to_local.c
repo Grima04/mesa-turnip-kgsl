@@ -107,5 +107,13 @@ nir_lower_global_vars_to_local(nir_shader *shader)
    if (progress)
       nir_fixup_deref_modes(shader);
 
+#ifndef NDEBUG
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         function->impl->valid_metadata &= ~nir_metadata_not_properly_reset;
+      }
+   }
+#endif
+
    return progress;
 }
