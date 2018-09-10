@@ -28,6 +28,7 @@
 
 #include "common/gen_l3_config.h"
 #include "common/gen_sample_positions.h"
+#include "nir/nir_xfb_info.h"
 #include "vk_util.h"
 #include "vk_format_info.h"
 
@@ -1127,9 +1128,130 @@ static void
 emit_3dstate_streamout(struct anv_pipeline *pipeline,
                        const VkPipelineRasterizationStateCreateInfo *rs_info)
 {
+#if GEN_GEN >= 8
+   const struct brw_vue_prog_data *prog_data =
+      anv_pipeline_get_last_vue_prog_data(pipeline);
+   const struct brw_vue_map *vue_map = &prog_data->vue_map;
+#endif
+
+   nir_xfb_info *xfb_info;
+   if (anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
+      xfb_info = pipeline->shaders[MESA_SHADER_GEOMETRY]->xfb_info;
+   else if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
+      xfb_info = pipeline->shaders[MESA_SHADER_TESS_EVAL]->xfb_info;
+   else
+      xfb_info = pipeline->shaders[MESA_SHADER_VERTEX]->xfb_info;
+
+   pipeline->xfb_used = xfb_info ? xfb_info->buffers_written : 0;
+
    anv_batch_emit(&pipeline->batch, GENX(3DSTATE_STREAMOUT), so) {
       so.RenderingDisable = rs_info->rasterizerDiscardEnable;
+
+#if GEN_GEN >= 8
+      if (xfb_info) {
+         so.SOFunctionEnable = true;
+
+         const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
+            vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
+         so.RenderStreamSelect = stream_info ?
+                                 stream_info->rasterizationStream : 0;
+
+         so.Buffer0SurfacePitch = xfb_info->strides[0];
+         so.Buffer1SurfacePitch = xfb_info->strides[1];
+         so.Buffer2SurfacePitch = xfb_info->strides[2];
+         so.Buffer3SurfacePitch = xfb_info->strides[3];
+
+         int urb_entry_read_offset = 0;
+         int urb_entry_read_length =
+            (prog_data->vue_map.num_slots + 1) / 2 - urb_entry_read_offset;
+
+         /* We always read the whole vertex.  This could be reduced at some
+          * point by reading less and offsetting the register index in the
+          * SO_DECLs.
+          */
+         so.Stream0VertexReadOffset = urb_entry_read_offset;
+         so.Stream0VertexReadLength = urb_entry_read_length - 1;
+         so.Stream1VertexReadOffset = urb_entry_read_offset;
+         so.Stream1VertexReadLength = urb_entry_read_length - 1;
+         so.Stream2VertexReadOffset = urb_entry_read_offset;
+         so.Stream2VertexReadLength = urb_entry_read_length - 1;
+         so.Stream3VertexReadOffset = urb_entry_read_offset;
+         so.Stream3VertexReadLength = urb_entry_read_length - 1;
+      }
+#endif /* GEN_GEN >= 8 */
    }
+
+#if GEN_GEN >= 8
+   if (xfb_info) {
+      struct GENX(SO_DECL) so_decl[MAX_XFB_STREAMS][128];
+      int next_offset[MAX_XFB_BUFFERS] = {0, 0, 0, 0};
+      int decls[MAX_XFB_STREAMS] = {0, 0, 0, 0};
+
+      memset(so_decl, 0, sizeof(so_decl));
+
+      for (unsigned i = 0; i < xfb_info->output_count; i++) {
+         const nir_xfb_output_info *output = &xfb_info->outputs[i];
+         unsigned buffer = output->buffer;
+         unsigned stream = xfb_info->buffer_to_stream[buffer];
+
+         /* Our hardware is unusual in that it requires us to program SO_DECLs
+          * for fake "hole" components, rather than simply taking the offset
+          * for each real varying.  Each hole can have size 1, 2, 3, or 4; we
+          * program as many size = 4 holes as we can, then a final hole to
+          * accommodate the final 1, 2, or 3 remaining.
+          */
+         int hole_dwords = (output->offset - next_offset[buffer]) / 4;
+         while (hole_dwords > 0) {
+            so_decl[stream][decls[stream]++] = (struct GENX(SO_DECL)) {
+               .HoleFlag = 1,
+               .OutputBufferSlot = buffer,
+               .ComponentMask = (1 << MIN2(hole_dwords, 4)) - 1,
+            };
+            hole_dwords -= 4;
+         }
+
+         next_offset[buffer] = output->offset +
+                               __builtin_popcount(output->component_mask) * 4;
+
+         so_decl[stream][decls[stream]++] = (struct GENX(SO_DECL)) {
+            .OutputBufferSlot = buffer,
+            .RegisterIndex = vue_map->varying_to_slot[output->location],
+            .ComponentMask = output->component_mask,
+         };
+      }
+
+      int max_decls = 0;
+      for (unsigned s = 0; s < MAX_XFB_STREAMS; s++)
+         max_decls = MAX2(max_decls, decls[s]);
+
+      uint8_t sbs[MAX_XFB_STREAMS] = { };
+      for (unsigned b = 0; b < MAX_XFB_BUFFERS; b++) {
+         if (xfb_info->buffers_written & (1 << b))
+            sbs[xfb_info->buffer_to_stream[b]] |= 1 << b;
+      }
+
+      uint32_t *dw = anv_batch_emitn(&pipeline->batch, 3 + 2 * max_decls,
+                                     GENX(3DSTATE_SO_DECL_LIST),
+                                     .StreamtoBufferSelects0 = sbs[0],
+                                     .StreamtoBufferSelects1 = sbs[1],
+                                     .StreamtoBufferSelects2 = sbs[2],
+                                     .StreamtoBufferSelects3 = sbs[3],
+                                     .NumEntries0 = decls[0],
+                                     .NumEntries1 = decls[1],
+                                     .NumEntries2 = decls[2],
+                                     .NumEntries3 = decls[3]);
+
+      for (int i = 0; i < max_decls; i++) {
+         GENX(SO_DECL_ENTRY_pack)(NULL, dw + 3 + i * 2,
+            &(struct GENX(SO_DECL_ENTRY)) {
+               .Stream0Decl = so_decl[0][i],
+               .Stream1Decl = so_decl[1][i],
+               .Stream2Decl = so_decl[2][i],
+               .Stream3Decl = so_decl[3][i],
+            });
+      }
+   }
+#endif /* GEN_GEN >= 8 */
 }
 
 static uint32_t

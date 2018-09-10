@@ -653,6 +653,35 @@ void anv_CmdBindVertexBuffers(
    }
 }
 
+void anv_CmdBindTransformFeedbackBuffersEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstBinding,
+    uint32_t                                    bindingCount,
+    const VkBuffer*                             pBuffers,
+    const VkDeviceSize*                         pOffsets,
+    const VkDeviceSize*                         pSizes)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct anv_xfb_binding *xfb = cmd_buffer->state.xfb_bindings;
+
+   /* We have to defer setting up vertex buffer since we need the buffer
+    * stride from the pipeline. */
+
+   assert(firstBinding + bindingCount <= MAX_XFB_BUFFERS);
+   for (uint32_t i = 0; i < bindingCount; i++) {
+      if (pBuffers[i] == VK_NULL_HANDLE) {
+         xfb[firstBinding + i].buffer = NULL;
+      } else {
+         ANV_FROM_HANDLE(anv_buffer, buffer, pBuffers[i]);
+         xfb[firstBinding + i].buffer = buffer;
+         xfb[firstBinding + i].offset = pOffsets[i];
+         xfb[firstBinding + i].size =
+            anv_buffer_get_range(buffer, pOffsets[i],
+                                 pSizes ? pSizes[i] : VK_WHOLE_SIZE);
+      }
+   }
+}
+
 enum isl_format
 anv_isl_format_for_descriptor_type(VkDescriptorType type)
 {

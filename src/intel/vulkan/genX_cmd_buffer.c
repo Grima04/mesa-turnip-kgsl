@@ -2642,6 +2642,34 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    cmd_buffer->state.gfx.vb_dirty &= ~vb_emit;
 
+#if GEN_GEN >= 8
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_XFB_ENABLE) {
+      /* We don't need any per-buffer dirty tracking because you're not
+       * allowed to bind different XFB buffers while XFB is enabled.
+       */
+      for (unsigned idx = 0; idx < MAX_XFB_BUFFERS; idx++) {
+         struct anv_xfb_binding *xfb = &cmd_buffer->state.xfb_bindings[idx];
+         anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_SO_BUFFER), sob) {
+            sob.SOBufferIndex = idx;
+
+            if (cmd_buffer->state.xfb_enabled && xfb->buffer) {
+               sob.SOBufferEnable = true;
+               sob.MOCS = cmd_buffer->device->default_mocs,
+               sob.StreamOffsetWriteEnable = false;
+               sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
+                                                        xfb->offset);
+               /* Size is in DWords - 1 */
+               sob.SurfaceSize = xfb->size / 4 - 1;
+            }
+         }
+      }
+
+      /* CNL and later require a CS stall after 3DSTATE_SO_BUFFER */
+      if (GEN_GEN >= 10)
+         cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   }
+#endif
+
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
       anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->batch);
 
@@ -3270,6 +3298,107 @@ void genX(CmdDrawIndexedIndirectCountKHR)(
 
       offset += stride;
    }
+}
+
+void genX(CmdBeginTransformFeedbackEXT)(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstCounterBuffer,
+    uint32_t                                    counterBufferCount,
+    const VkBuffer*                             pCounterBuffers,
+    const VkDeviceSize*                         pCounterBufferOffsets)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(firstCounterBuffer < MAX_XFB_BUFFERS);
+   assert(counterBufferCount <= MAX_XFB_BUFFERS);
+   assert(firstCounterBuffer + counterBufferCount <= MAX_XFB_BUFFERS);
+
+   /* From the SKL PRM Vol. 2c, SO_WRITE_OFFSET:
+    *
+    *    "Ssoftware must ensure that no HW stream output operations can be in
+    *    process or otherwise pending at the point that the MI_LOAD/STORE
+    *    commands are processed. This will likely require a pipeline flush."
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   for (uint32_t idx = 0; idx < MAX_XFB_BUFFERS; idx++) {
+      /* If we have a counter buffer, this is a resume so we need to load the
+       * value into the streamout offset register.  Otherwise, this is a begin
+       * and we need to reset it to zero.
+       */
+      if (pCounterBuffers &&
+          idx >= firstCounterBuffer &&
+          idx - firstCounterBuffer < counterBufferCount &&
+          pCounterBuffers[idx - firstCounterBuffer] != VK_NULL_HANDLE) {
+         uint32_t cb_idx = idx - firstCounterBuffer;
+         ANV_FROM_HANDLE(anv_buffer, counter_buffer, pCounterBuffers[cb_idx]);
+         uint64_t offset = pCounterBufferOffsets ?
+                           pCounterBufferOffsets[cb_idx] : 0;
+
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+            lrm.RegisterAddress  = GENX(SO_WRITE_OFFSET0_num) + idx * 4;
+            lrm.MemoryAddress    = anv_address_add(counter_buffer->address,
+                                                   offset);
+         }
+      } else {
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+            lri.RegisterOffset   = GENX(SO_WRITE_OFFSET0_num) + idx * 4;
+            lri.DataDWord        = 0;
+         }
+      }
+   }
+
+   cmd_buffer->state.xfb_enabled = true;
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_XFB_ENABLE;
+}
+
+void genX(CmdEndTransformFeedbackEXT)(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstCounterBuffer,
+    uint32_t                                    counterBufferCount,
+    const VkBuffer*                             pCounterBuffers,
+    const VkDeviceSize*                         pCounterBufferOffsets)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(firstCounterBuffer < MAX_XFB_BUFFERS);
+   assert(counterBufferCount <= MAX_XFB_BUFFERS);
+   assert(firstCounterBuffer + counterBufferCount <= MAX_XFB_BUFFERS);
+
+   /* From the SKL PRM Vol. 2c, SO_WRITE_OFFSET:
+    *
+    *    "Ssoftware must ensure that no HW stream output operations can be in
+    *    process or otherwise pending at the point that the MI_LOAD/STORE
+    *    commands are processed. This will likely require a pipeline flush."
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   for (uint32_t cb_idx = 0; cb_idx < counterBufferCount; cb_idx++) {
+      unsigned idx = firstCounterBuffer + cb_idx;
+
+      /* If we have a counter buffer, this is a resume so we need to load the
+       * value into the streamout offset register.  Otherwise, this is a begin
+       * and we need to reset it to zero.
+       */
+      if (pCounterBuffers &&
+          cb_idx < counterBufferCount &&
+          pCounterBuffers[cb_idx] != VK_NULL_HANDLE) {
+         ANV_FROM_HANDLE(anv_buffer, counter_buffer, pCounterBuffers[cb_idx]);
+         uint64_t offset = pCounterBufferOffsets ?
+                           pCounterBufferOffsets[cb_idx] : 0;
+
+         anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_REGISTER_MEM), srm) {
+            srm.MemoryAddress    = anv_address_add(counter_buffer->address,
+                                                   offset);
+            srm.RegisterAddress  = GENX(SO_WRITE_OFFSET0_num) + idx * 4;
+         }
+      }
+   }
+
+   cmd_buffer->state.xfb_enabled = false;
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_XFB_ENABLE;
 }
 
 static VkResult

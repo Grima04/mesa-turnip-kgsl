@@ -970,6 +970,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+         VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
+            (VkPhysicalDeviceTransformFeedbackFeaturesEXT *)ext;
+         features->transformFeedback = VK_TRUE;
+         features->geometryStreams = VK_TRUE;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
          VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
             (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
@@ -1284,6 +1292,23 @@ void anv_GetPhysicalDeviceProperties2(
                                            VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
                                            VK_SUBGROUP_FEATURE_QUAD_BIT;
          properties->quadOperationsInAllStages = VK_TRUE;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+         VkPhysicalDeviceTransformFeedbackPropertiesEXT *props =
+            (VkPhysicalDeviceTransformFeedbackPropertiesEXT *)ext;
+
+         props->maxTransformFeedbackStreams = MAX_XFB_STREAMS;
+         props->maxTransformFeedbackBuffers = MAX_XFB_BUFFERS;
+         props->maxTransformFeedbackBufferSize = (1ull << 32);
+         props->maxTransformFeedbackStreamDataSize = 128 * 4;
+         props->maxTransformFeedbackBufferDataSize = 128 * 4;
+         props->maxTransformFeedbackBufferDataStride = 2048;
+         props->transformFeedbackQueries = VK_FALSE;
+         props->transformFeedbackStreamsLinesTriangles = VK_FALSE;
+         props->transformFeedbackRasterizationStreamSelect = VK_FALSE;
+         props->transformFeedbackDraw = VK_FALSE;
          break;
       }
 

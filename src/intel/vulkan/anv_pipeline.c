@@ -32,6 +32,7 @@
 #include "anv_private.h"
 #include "compiler/brw_nir.h"
 #include "anv_nir.h"
+#include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
 #include "vk_util.h"
 
@@ -138,6 +139,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .device_group = true,
          .draw_parameters = true,
          .float64 = pdevice->info.gen >= 8,
+         .geometry_streams = true,
          .image_write_without_format = true,
          .int16 = pdevice->info.gen >= 8,
          .int64 = pdevice->info.gen >= 8,
@@ -155,6 +157,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .subgroup_shuffle = true,
          .subgroup_vote = true,
          .tessellation = true,
+         .transform_feedback = pdevice->info.gen >= 8,
          .variable_pointers = true,
       },
       .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
@@ -1082,6 +1085,12 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
 
       void *stage_ctx = ralloc_context(NULL);
 
+      nir_xfb_info *xfb_info = NULL;
+      if (s == MESA_SHADER_VERTEX ||
+          s == MESA_SHADER_TESS_EVAL ||
+          s == MESA_SHADER_GEOMETRY)
+         xfb_info = nir_gather_xfb_info(stages[s].nir, stage_ctx);
+
       anv_pipeline_lower_nir(pipeline, stage_ctx, &stages[s], layout);
 
       const unsigned *code;
@@ -1123,7 +1132,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                                   stages[s].nir->constant_data_size,
                                   &stages[s].prog_data.base,
                                   brw_prog_data_size(s),
-                                  NULL, &stages[s].bind_map);
+                                  xfb_info, &stages[s].bind_map);
       if (!bin) {
          ralloc_free(stage_ctx);
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
