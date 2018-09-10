@@ -649,6 +649,11 @@ struct v3d_vs_prog_data {
         /* Total number of components written, for the shader state record. */
         uint32_t vpm_output_size;
 
+        /* Set if there should be separate VPM segments for input and output.
+         * If unset, vpm_input_size will be 0.
+         */
+        bool separate_segments;
+
         /* Value to be programmed in VCM_CACHE_SIZE. */
         uint8_t vcm_cache_size;
 };

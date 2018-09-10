@@ -201,12 +201,15 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 /* XXX: Use combined input/output size flag in the common
                  * case.
                  */
-                shader.coordinate_shader_has_separate_input_and_output_vpm_blocks = true;
-                shader.vertex_shader_has_separate_input_and_output_vpm_blocks = true;
+                shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
+                        v3d->prog.cs->prog_data.vs->separate_segments;
+                shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
+                        v3d->prog.vs->prog_data.vs->separate_segments;
+
                 shader.coordinate_shader_input_vpm_segment_size =
-                        MAX2(v3d->prog.cs->prog_data.vs->vpm_input_size, 1);
+                        v3d->prog.cs->prog_data.vs->vpm_input_size;
                 shader.vertex_shader_input_vpm_segment_size =
-                        MAX2(v3d->prog.vs->prog_data.vs->vpm_input_size, 1);
+                        v3d->prog.vs->prog_data.vs->vpm_input_size;
 
                 shader.coordinate_shader_output_vpm_segment_size =
                         v3d->prog.cs->prog_data.vs->vpm_output_size;
