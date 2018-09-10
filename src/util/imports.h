@@ -119,10 +119,6 @@ extern int
 _mesa_vsnprintf(char *str, size_t size, const char *fmt, va_list arg);
 
 
-#if defined(_WIN32) && !defined(HAVE_STRTOK_R)
-#define strtok_r strtok_s
-#endif
-
 #ifdef __cplusplus
 }
 #endif
