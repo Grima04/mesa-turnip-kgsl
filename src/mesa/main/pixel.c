@@ -28,6 +28,7 @@
  * Pixel transfer functions (glPixelZoom, glPixelMap, glPixelTransfer)
  */
 
+#include "c99_math.h"
 #include "glheader.h"
 #include "bufferobj.h"
 #include "context.h"
@@ -113,7 +114,7 @@ store_pixelmap(struct gl_context *ctx, GLenum map, GLsizei mapsize,
       /* special case */
       ctx->PixelMaps.StoS.Size = mapsize;
       for (i = 0; i < mapsize; i++) {
-         ctx->PixelMaps.StoS.Map[i] = (GLfloat)IROUND(values[i]);
+         ctx->PixelMaps.StoS.Map[i] = roundf(values[i]);
       }
       break;
    case GL_PIXEL_MAP_I_TO_I:

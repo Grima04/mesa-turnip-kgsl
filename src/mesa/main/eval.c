@@ -38,7 +38,6 @@
 
 
 #include "glheader.h"
-#include "util/imports.h"
 #include "context.h"
 #include "eval.h"
 #include "macros.h"
@@ -480,7 +479,7 @@ _mesa_Map2d( GLenum target,
              GLdouble v1, GLdouble v2, GLint vstride, GLint vorder,
              const GLdouble *points )
 {
-   map2(target, (GLfloat) u1, (GLfloat) u2, ustride, uorder, 
+   map2(target, (GLfloat) u1, (GLfloat) u2, ustride, uorder,
 	(GLfloat) v1, (GLfloat) v2, vstride, vorder, points, GL_DOUBLE);
 }
 
@@ -704,7 +703,7 @@ _mesa_GetnMapivARB( GLenum target, GLenum query, GLsizei bufSize, GLint *v )
             if (bufSize < numBytes)
                goto overflow;
 	    for (i=0;i<n;i++) {
-	       v[i] = IROUND(data[i]);
+	       v[i] = lroundf(data[i]);
 	    }
 	 }
          break;
@@ -728,17 +727,17 @@ _mesa_GetnMapivARB( GLenum target, GLenum query, GLsizei bufSize, GLint *v )
             numBytes = 2 * sizeof *v;
             if (bufSize < numBytes)
                goto overflow;
-            v[0] = IROUND(map1d->u1);
-            v[1] = IROUND(map1d->u2);
+            v[0] = lroundf(map1d->u1);
+            v[1] = lroundf(map1d->u2);
          }
          else {
             numBytes = 4 * sizeof *v;
             if (bufSize < numBytes)
                goto overflow;
-            v[0] = IROUND(map2d->u1);
-            v[1] = IROUND(map2d->u2);
-            v[2] = IROUND(map2d->v1);
-            v[3] = IROUND(map2d->v2);
+            v[0] = lroundf(map2d->u1);
+            v[1] = lroundf(map2d->u2);
+            v[2] = lroundf(map2d->v1);
+            v[3] = lroundf(map2d->v2);
          }
          break;
       default:
@@ -815,7 +814,7 @@ void GLAPIENTRY
 _mesa_MapGrid2d( GLint un, GLdouble u1, GLdouble u2,
                  GLint vn, GLdouble v1, GLdouble v2 )
 {
-   _mesa_MapGrid2f( un, (GLfloat) u1, (GLfloat) u2, 
+   _mesa_MapGrid2f( un, (GLfloat) u1, (GLfloat) u2,
 		    vn, (GLfloat) v1, (GLfloat) v2 );
 }
 
@@ -856,7 +855,7 @@ init_1d_map( struct gl_1d_map *map, int n, const float *initial )
 
 
 /**
- * Initialize a 2-D evaluator map 
+ * Initialize a 2-D evaluator map
  */
 static void
 init_2d_map( struct gl_2d_map *map, int n, const float *initial )

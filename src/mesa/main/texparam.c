@@ -1649,7 +1649,7 @@ get_tex_level_parameter_image(struct gl_context *ctx,
             }
             if (*params == 0 && pname == GL_TEXTURE_INTENSITY_SIZE) {
                /* Gallium may store intensity as LA */
-               *params = _mesa_get_format_bits(texFormat, 
+               *params = _mesa_get_format_bits(texFormat,
                                                GL_TEXTURE_ALPHA_SIZE);
             }
          }
@@ -2424,7 +2424,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
           */
-         *params = IROUND(obj->Sampler.MinLod);
+         *params = lroundf(obj->Sampler.MinLod);
          break;
       case GL_TEXTURE_MAX_LOD:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2432,7 +2432,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
           */
-         *params = IROUND(obj->Sampler.MaxLod);
+         *params = lroundf(obj->Sampler.MaxLod);
          break;
       case GL_TEXTURE_BASE_LEVEL:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2449,7 +2449,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
           */
-         *params = IROUND(obj->Sampler.MaxAnisotropy);
+         *params = lroundf(obj->Sampler.MaxAnisotropy);
          break;
       case GL_GENERATE_MIPMAP_SGIS:
          if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
@@ -2487,7 +2487,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
           */
-         *params = IROUND(obj->Sampler.LodBias);
+         *params = lroundf(obj->Sampler.LodBias);
          break;
       case GL_TEXTURE_CROP_RECT_OES:
          if (ctx->API != API_OPENGLES || !ctx->Extensions.OES_draw_texture)

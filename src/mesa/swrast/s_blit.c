@@ -298,7 +298,7 @@ blit_nearest(struct gl_context *ctx,
 
       for (dstRow = 0; dstRow < dstHeight; dstRow++) {
          GLfloat srcRowF = (dstRow + 0.5F) / dstHeight * srcHeight - 0.5F;
-         GLint srcRow = IROUND(srcRowF);
+         GLint srcRow = lroundf(srcRowF);
          GLubyte *dstRowStart = dstMap + dstRowStride * dstRow;
 
          assert(srcRow >= 0);
@@ -440,7 +440,7 @@ resample_linear_row_ub(GLint srcWidth, GLint dstWidth,
       alpha = lerp_2d(colWeight, rowWeight,
                     srcColor0[srcCol0][ACOMP], srcColor0[srcCol1][ACOMP],
                     srcColor1[srcCol0][ACOMP], srcColor1[srcCol1][ACOMP]);
-      
+
       dstColor[dstCol][RCOMP] = util_ifloor(red);
       dstColor[dstCol][GCOMP] = util_ifloor(green);
       dstColor[dstCol][BCOMP] = util_ifloor(blue);
@@ -495,7 +495,7 @@ resample_linear_row_float(GLint srcWidth, GLint dstWidth,
       alpha = lerp_2d(colWeight, rowWeight,
                     srcColor0[srcCol0][ACOMP], srcColor0[srcCol1][ACOMP],
                     srcColor1[srcCol0][ACOMP], srcColor1[srcCol1][ACOMP]);
-      
+
       dstColor[dstCol][RCOMP] = red;
       dstColor[dstCol][GCOMP] = green;
       dstColor[dstCol][BCOMP] = blue;

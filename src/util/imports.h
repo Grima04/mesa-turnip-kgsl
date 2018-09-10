@@ -95,23 +95,6 @@ typedef union { float f; int i; unsigned u; } fi_type;
 #endif
 
 
-/**
- * Convert float to int by rounding to nearest integer, away from zero.
- */
-static inline int IROUND(float f)
-{
-   return (int) ((f >= 0.0F) ? (f + 0.5F) : (f - 0.5F));
-}
-
-/**
- * Convert float to int64 by rounding to nearest integer.
- */
-static inline int64_t IROUND64(float f)
-{
-   return (int64_t) ((f >= 0.0F) ? (f + 0.5F) : (f - 0.5F));
-}
-
-
 /**********************************************************************
  * Functions
  */
