@@ -267,7 +267,7 @@ elt(struct copy_context *copy, GLuint elt_idx)
             GLuint k;
             GLfloat *f = (GLfloat *) srcptr;
             for (k = 0; k < srcarray->Size; k++) {
-               assert(!IS_INF_OR_NAN(f[k]));
+               assert(!util_is_inf_or_nan(f[k]));
                assert(f[k] <= 1.0e20 && f[k] >= -1.0e20);
             }
          }

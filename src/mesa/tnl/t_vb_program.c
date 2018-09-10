@@ -53,7 +53,7 @@
 static inline void
 check_float(float x)
 {
-   assert(!IS_INF_OR_NAN(x));
+   assert(!util_is_inf_or_nan(x));
    assert(1.0e-15 <= x && x <= 1.0e15);
 }
 #endif

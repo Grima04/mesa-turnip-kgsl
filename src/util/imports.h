@@ -73,28 +73,6 @@ typedef union { float f; int i; unsigned u; } fi_type;
 /*@}*/
 
 
-/**
- * finite macro.
- */
-#if defined(_MSC_VER)
-#  define finite _finite
-#endif
-
-
-/***
- *** IS_INF_OR_NAN: test if float is infinite or NaN
- ***/
-#if defined(isfinite)
-#define IS_INF_OR_NAN(x)        (!isfinite(x))
-#elif defined(finite)
-#define IS_INF_OR_NAN(x)        (!finite(x))
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#define IS_INF_OR_NAN(x)        (!isfinite(x))
-#else
-#define IS_INF_OR_NAN(x)        (!finite(x))
-#endif
-
-
 /**********************************************************************
  * Functions
  */
