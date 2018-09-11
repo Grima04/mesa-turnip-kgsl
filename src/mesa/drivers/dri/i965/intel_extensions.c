@@ -320,6 +320,11 @@ intelInitExtensions(struct gl_context *ctx)
       /* requires ARB_gpu_shader_int64 */
       ctx->Extensions.ARB_shader_ballot = true;
       ctx->Extensions.ARB_ES3_2_compatibility = true;
+
+      /* Currently only implemented in the scalar backend, so only enable for
+       * Gen8+.  Eventually Gen6+ could be supported.
+       */
+      ctx->Extensions.INTEL_shader_integer_functions2 = true;
    }
 
    if (devinfo->gen >= 9) {

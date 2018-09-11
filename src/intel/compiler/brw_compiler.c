@@ -61,6 +61,8 @@
    .lower_unpack_snorm_4x8 = true,                                            \
    .lower_unpack_unorm_2x16 = true,                                           \
    .lower_unpack_unorm_4x8 = true,                                            \
+   .lower_usub_sat64 = true,                                                  \
+   .lower_hadd64 = true,                                                      \
    .max_unroll_iterations = 32
 
 static const struct nir_shader_compiler_options scalar_nir_options = {

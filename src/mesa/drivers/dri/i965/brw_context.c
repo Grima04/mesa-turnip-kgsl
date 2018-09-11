@@ -411,6 +411,7 @@ brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
    ctx->Const.SpirVCapabilities.tessellation = true;
    ctx->Const.SpirVCapabilities.transform_feedback = devinfo->gen >= 7;
    ctx->Const.SpirVCapabilities.variable_pointers = true;
+   ctx->Const.SpirVCapabilities.integer_functions2 = devinfo->gen >= 8;
 }
 
 static void
