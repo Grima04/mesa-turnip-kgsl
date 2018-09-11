@@ -1263,10 +1263,44 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_iadd_sat:
    case nir_op_uadd_sat:
       inst = bld.ADD(result, op[0], op[1]);
       inst->saturate = true;
       break;
+
+   case nir_op_isub_sat:
+      bld.emit(SHADER_OPCODE_ISUB_SAT, result, op[0], op[1]);
+      break;
+
+   case nir_op_usub_sat:
+      bld.emit(SHADER_OPCODE_USUB_SAT, result, op[0], op[1]);
+      break;
+
+   case nir_op_irhadd:
+   case nir_op_urhadd:
+      assert(nir_dest_bit_size(instr->dest.dest) < 64);
+      inst = bld.AVG(result, op[0], op[1]);
+      break;
+
+   case nir_op_ihadd:
+   case nir_op_uhadd: {
+      assert(nir_dest_bit_size(instr->dest.dest) < 64);
+      fs_reg tmp = bld.vgrf(result.type);
+
+      if (devinfo->gen >= 8) {
+         op[0] = resolve_source_modifiers(op[0]);
+         op[1] = resolve_source_modifiers(op[1]);
+      }
+
+      /* AVG(x, y) - ((x ^ y) & 1) */
+      bld.XOR(tmp, op[0], op[1]);
+      bld.AND(tmp, tmp, retype(brw_imm_ud(1), result.type));
+      bld.AVG(result, op[0], op[1]);
+      inst = bld.ADD(result, result, tmp);
+      inst->src[1].negate = true;
+      break;
+   }
 
    case nir_op_fmul:
       for (unsigned i = 0; i < 2; i++) {
@@ -1295,6 +1329,34 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_umul_2x32_64:
       bld.MUL(result, op[0], op[1]);
       break;
+
+   case nir_op_imul_32x16:
+   case nir_op_umul_32x16: {
+      const bool ud = instr->op == nir_op_umul_32x16;
+
+      assert(nir_dest_bit_size(instr->dest.dest) == 32);
+
+      /* Before Gen7, the order of the 32-bit source and the 16-bit source was
+       * swapped.  The extension isn't enabled on those platforms, so don't
+       * pretend to support the differences.
+       */
+      assert(devinfo->gen >= 7);
+
+      if (op[1].file == IMM)
+         op[1] = ud ? brw_imm_uw(op[1].ud) : brw_imm_w(op[1].d);
+      else {
+         const enum brw_reg_type word_type =
+            ud ? BRW_REGISTER_TYPE_UW : BRW_REGISTER_TYPE_W;
+
+         op[1] = subscript(op[1], word_type, 0);
+      }
+
+      const enum brw_reg_type dword_type =
+         ud ? BRW_REGISTER_TYPE_UD : BRW_REGISTER_TYPE_D;
+
+      bld.MUL(result, retype(op[0], dword_type), op[1]);
+      break;
+   }
 
    case nir_op_imul:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
@@ -1745,6 +1807,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       emit_find_msb_using_lzd(bld, result, op[0], false);
       break;
    }
+
+   case nir_op_uclz:
+      assert(nir_dest_bit_size(instr->dest.dest) == 32);
+      bld.LZD(retype(result, BRW_REGISTER_TYPE_UD), op[0]);
+      break;
 
    case nir_op_ifind_msb: {
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
