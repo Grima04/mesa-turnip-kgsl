@@ -4367,6 +4367,7 @@ struct gl_extensions
    GLboolean INTEL_conservative_rasterization;
    GLboolean INTEL_performance_query;
    GLboolean INTEL_shader_atomic_float_minmax;
+   GLboolean INTEL_shader_integer_functions2;
    GLboolean KHR_blend_equation_advanced;
    GLboolean KHR_blend_equation_advanced_coherent;
    GLboolean KHR_robustness;
