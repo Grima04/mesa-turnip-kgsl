@@ -1296,6 +1296,12 @@ ir_to_mesa_visitor::visit(ir_expression *ir)
    case ir_binop_ldexp:
    case ir_binop_carry:
    case ir_binop_borrow:
+   case ir_binop_abs_sub:
+   case ir_binop_add_sat:
+   case ir_binop_sub_sat:
+   case ir_binop_avg:
+   case ir_binop_avg_round:
+   case ir_binop_mul_32x16:
    case ir_binop_imul_high:
    case ir_unop_interpolate_at_centroid:
    case ir_binop_interpolate_at_offset:
@@ -1340,6 +1346,7 @@ ir_to_mesa_visitor::visit(ir_expression *ir)
    case ir_unop_unpack_image_2x32:
    case ir_unop_atan:
    case ir_binop_atan2:
+   case ir_unop_clz:
       assert(!"not supported");
       break;
 
