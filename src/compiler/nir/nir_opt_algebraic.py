@@ -951,6 +951,9 @@ optimizations.extend([
    # Lower all Subtractions first - they can get recombined later
    (('fsub', a, b), ('fadd', a, ('fneg', b))),
    (('isub', a, b), ('iadd', a, ('ineg', b))),
+   (('uabs_usub', a, b), ('bcsel', ('ult', a, b), ('ineg', ('isub', a, b)), ('isub', a, b))),
+   # This is correct.  We don't need isub_sat because the result type is unsigned, so it cannot overflow.
+   (('uabs_isub', a, b), ('bcsel', ('ilt', a, b), ('ineg', ('isub', a, b)), ('isub', a, b))),
 
    # Propagate negation up multiplication chains
    (('fmul(is_used_by_non_fsat)', ('fneg', a), b), ('fneg', ('fmul', a, b))),
