@@ -421,7 +421,7 @@ struct SWR_CS_CONTEXT
     uint8_t* pSpillFillBuffer;    // Spill/fill buffer for barrier support
     uint8_t* pScratchSpace;       // Pointer to scratch space buffer used by the shader, shader is
                                   // responsible for subdividing scratch space per instance/simd
-    uint32_t scratchSpacePerSimd; // Scratch space per work item x SIMD_WIDTH
+    uint32_t scratchSpacePerWarp; // Scratch space per work item x SIMD_WIDTH
 
     SWR_SHADER_STATS stats; // OUT: shader statistics used for archrast.
 };

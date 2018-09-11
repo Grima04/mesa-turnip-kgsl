@@ -264,8 +264,8 @@ OSALIGNLINE(struct) API_STATE
     PFN_CS_FUNC pfnCsFunc;
     uint32_t    totalThreadsInGroup;
     uint32_t    totalSpillFillSize;
-    uint32_t    scratchSpaceSize;
-    uint32_t    scratchSpaceNumInstances;
+    uint32_t    scratchSpaceSizePerWarp;
+    uint32_t    scratchSpaceNumWarps;
 
     // FE - Frontend State
     SWR_FRONTEND_STATE frontendState;

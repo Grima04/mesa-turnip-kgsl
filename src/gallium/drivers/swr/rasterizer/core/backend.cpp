@@ -65,7 +65,7 @@ void ProcessComputeBE(DRAW_CONTEXT* pDC,
     }
 
     size_t scratchSpaceSize =
-        pDC->pState->state.scratchSpaceSize * pDC->pState->state.scratchSpaceNumInstances;
+        pDC->pState->state.scratchSpaceSizePerWarp * pDC->pState->state.scratchSpaceNumWarps;
     if (scratchSpaceSize && pScratchSpace == nullptr)
     {
         pScratchSpace = pDC->pArena->AllocAlignedSync(scratchSpaceSize, KNOB_SIMD16_BYTES);
@@ -81,7 +81,7 @@ void ProcessComputeBE(DRAW_CONTEXT* pDC,
     csContext.pTGSM               = pContext->ppScratch[workerId];
     csContext.pSpillFillBuffer    = (uint8_t*)pSpillFillBuffer;
     csContext.pScratchSpace       = (uint8_t*)pScratchSpace;
-    csContext.scratchSpacePerSimd = pDC->pState->state.scratchSpaceSize;
+    csContext.scratchSpacePerWarp = pDC->pState->state.scratchSpaceSizePerWarp;
 
     state.pfnCsFunc(GetPrivateState(pDC),
                     pContext->threadPool.pThreadData[workerId].pWorkerPrivateData,

@@ -633,15 +633,15 @@ void SwrSetCsFunc(HANDLE      hContext,
                   PFN_CS_FUNC pfnCsFunc,
                   uint32_t    totalThreadsInGroup,
                   uint32_t    totalSpillFillSize,
-                  uint32_t    scratchSpaceSizePerInstance,
-                  uint32_t    numInstances)
+                  uint32_t    scratchSpaceSizePerWarp,
+                  uint32_t    numWarps)
 {
-    API_STATE* pState                = GetDrawState(GetContext(hContext));
-    pState->pfnCsFunc                = pfnCsFunc;
-    pState->totalThreadsInGroup      = totalThreadsInGroup;
-    pState->totalSpillFillSize       = totalSpillFillSize;
-    pState->scratchSpaceSize         = scratchSpaceSizePerInstance;
-    pState->scratchSpaceNumInstances = numInstances;
+    API_STATE* pState               = GetDrawState(GetContext(hContext));
+    pState->pfnCsFunc               = pfnCsFunc;
+    pState->totalThreadsInGroup     = totalThreadsInGroup;
+    pState->totalSpillFillSize      = totalSpillFillSize;
+    pState->scratchSpaceSizePerWarp = scratchSpaceSizePerWarp;
+    pState->scratchSpaceNumWarps    = numWarps;
 }
 
 void SwrSetTsState(HANDLE hContext, SWR_TS_STATE* pState)
