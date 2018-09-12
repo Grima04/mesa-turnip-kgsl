@@ -306,6 +306,19 @@ static SIMDINLINE simdscalar InterpolateComponentFlat(const float* pInterpBuffer
 }
 
 //////////////////////////////////////////////////////////////////////////
+/// @brief Interpolates a single component (flat shade).
+/// @param pInterpBuffer - pointer to attribute barycentric coeffs
+template <UINT Attrib, UINT Comp, UINT numComponents = 4>
+static SIMDINLINE simdscalari InterpolateComponentFlatInt(const uint32_t* pInterpBuffer)
+{
+    const uint32_t interpA = pInterpBuffer[Attrib * 3 * numComponents + 0 + Comp];
+
+    simdscalari vA = _simd_set1_epi32(interpA);
+
+    return vA;
+}
+
+//////////////////////////////////////////////////////////////////////////
 /// @brief Interpolates a single component.
 /// @param vI - barycentric I
 /// @param vJ - barycentric J
