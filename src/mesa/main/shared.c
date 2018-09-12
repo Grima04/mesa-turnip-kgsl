@@ -43,6 +43,7 @@
 
 #include "util/hash_table.h"
 #include "util/set.h"
+#include "util/u_memory.h"
 
 static void
 free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared);

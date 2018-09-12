@@ -60,6 +60,7 @@
 #include "drivers/common/driverfuncs.h"
 #include "drivers/common/meta.h"
 #include "vbo/vbo.h"
+#include "util/u_memory.h"
 
 
 #define OSMESA_RENDERBUFFER_CLASS 0x053

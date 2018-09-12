@@ -32,6 +32,7 @@
 #include "main/api_arrayelt.h"
 #include "main/arrayobj.h"
 #include "main/varray.h"
+#include "util/u_memory.h"
 #include "vbo.h"
 #include "vbo_private.h"
 

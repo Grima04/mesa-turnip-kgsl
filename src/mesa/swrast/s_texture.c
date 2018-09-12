@@ -31,6 +31,7 @@
 #include "main/fbobject.h"
 #include "main/teximage.h"
 #include "main/texobj.h"
+#include "util/u_memory.h"
 #include "swrast/swrast.h"
 #include "swrast/s_context.h"
 

@@ -73,6 +73,7 @@
 #include "vbo/vbo_util.h"
 #include "util/format_r11g11b10f.h"
 
+#include "util/u_memory.h"
 
 #define USE_BITMAP_ATLAS 1
 

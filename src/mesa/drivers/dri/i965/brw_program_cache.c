@@ -54,6 +54,7 @@
 #include "brw_cs.h"
 #include "brw_program.h"
 #include "compiler/brw_eu.h"
+#include "util/u_memory.h"
 
 #define FILE_DEBUG_FLAG DEBUG_STATE
 

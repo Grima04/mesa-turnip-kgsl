@@ -53,6 +53,7 @@
 #include "drivers/common/driverfuncs.h"
 #include "drivers/common/meta.h"
 #include "utils.h"
+#include "util/u_memory.h"
 
 #include "main/teximage.h"
 #include "main/texformat.h"

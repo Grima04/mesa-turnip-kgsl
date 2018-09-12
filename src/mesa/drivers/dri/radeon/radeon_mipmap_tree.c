@@ -34,6 +34,7 @@
 #include "main/teximage.h"
 #include "main/texobj.h"
 #include "main/enums.h"
+#include "util/u_memory.h"
 #include "radeon_texture.h"
 #include "radeon_tile.h"
 

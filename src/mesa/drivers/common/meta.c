@@ -90,6 +90,7 @@
 #include "util/ralloc.h"
 #include "compiler/nir/nir.h"
 #include "util/u_math.h"
+#include "util/u_memory.h"
 
 /** Return offset in bytes of the field within a vertex struct */
 #define OFFSET(FIELD) ((void *) offsetof(struct vertex, FIELD))

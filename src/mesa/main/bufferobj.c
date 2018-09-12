@@ -47,6 +47,7 @@
 #include "transformfeedback.h"
 #include "varray.h"
 #include "util/u_atomic.h"
+#include "util/u_memory.h"
 
 
 /* Debug flags */

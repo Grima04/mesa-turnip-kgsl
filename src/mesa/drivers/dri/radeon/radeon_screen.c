@@ -42,6 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "main/framebuffer.h"
 #include "main/renderbuffer.h"
 #include "main/fbobject.h"
+#include "util/u_memory.h"
 #include "swrast/s_renderbuffer.h"
 
 #include "radeon_chipset.h"

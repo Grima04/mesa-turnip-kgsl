@@ -31,6 +31,7 @@
 #include "util/imports.h"
 #include "queryobj.h"
 #include "mtypes.h"
+#include "util/u_memory.h"
 
 
 /**

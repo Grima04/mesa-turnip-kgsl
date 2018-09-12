@@ -38,6 +38,7 @@
 #include "main/mtypes.h"
 #include "main/samplerobj.h"
 #include "main/texturebindless.h"
+#include "util/u_memory.h"
 
 
 struct gl_sampler_object *

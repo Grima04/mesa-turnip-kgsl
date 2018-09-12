@@ -44,6 +44,7 @@
 #include "mtypes.h"
 #include "program/prog_instruction.h"
 #include "texturebindless.h"
+#include "util/u_memory.h"
 
 
 

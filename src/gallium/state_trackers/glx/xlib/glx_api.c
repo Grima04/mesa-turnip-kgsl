@@ -42,6 +42,7 @@
 #include "util/imports.h"
 #include "main/errors.h"
 #include "util/u_math.h"
+#include "util/u_memory.h"
 
 /* An "Atrribs/Attribs" typo was fixed in glxproto.h in Nov 2014.
  * This is in case we don't have the updated header.

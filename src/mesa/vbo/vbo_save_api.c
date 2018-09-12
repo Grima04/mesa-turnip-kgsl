@@ -82,6 +82,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "main/state.h"
 #include "main/varray.h"
 #include "util/bitscan.h"
+#include "util/u_memory.h"
 
 #include "vbo_noop.h"
 #include "vbo_private.h"

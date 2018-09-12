@@ -152,6 +152,7 @@
 #include "compiler/glsl/builtin_functions.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 #include <stdbool.h>
+#include "util/u_memory.h"
 
 
 #ifndef MESA_VERBOSE

@@ -37,6 +37,7 @@
 #include "main/formats.h"
 #include "main/mtypes.h"
 #include "main/renderbuffer.h"
+#include "util/u_memory.h"
 #include "swrast/s_context.h"
 #include "swrast/s_renderbuffer.h"
 

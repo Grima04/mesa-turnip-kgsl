@@ -32,6 +32,7 @@
 #include "main/glheader.h"
 #include "util/imports.h"
 #include "main/macros.h"
+#include "util/u_memory.h"
 #include "prog_instruction.h"
 #include "prog_parameter.h"
 #include "prog_statevars.h"

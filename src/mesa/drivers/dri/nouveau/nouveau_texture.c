@@ -38,6 +38,7 @@
 #include "main/texgetimage.h"
 #include "main/mipmap.h"
 #include "main/teximage.h"
+#include "util/u_memory.h"
 #include "drivers/common/meta.h"
 #include "swrast/s_texfetch.h"
 

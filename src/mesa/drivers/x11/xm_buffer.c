@@ -37,6 +37,7 @@
 #include "main/framebuffer.h"
 #include "main/renderbuffer.h"
 #include "swrast/s_renderbuffer.h"
+#include "util/u_memory.h"
 
 
 #define XMESA_RENDERBUFFER 0x1234

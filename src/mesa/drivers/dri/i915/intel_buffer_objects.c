@@ -30,6 +30,7 @@
 #include "main/mtypes.h"
 #include "main/macros.h"
 #include "main/bufferobj.h"
+#include "util/u_memory.h"
 
 #include "intel_blit.h"
 #include "intel_buffer_objects.h"

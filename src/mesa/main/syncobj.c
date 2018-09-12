@@ -64,6 +64,7 @@
 #include "mtypes.h"
 #include "util/hash_table.h"
 #include "util/set.h"
+#include "util/u_memory.h"
 
 #include "syncobj.h"
 

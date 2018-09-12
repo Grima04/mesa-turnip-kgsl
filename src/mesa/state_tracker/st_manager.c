@@ -62,6 +62,7 @@
 #include "util/u_atomic.h"
 #include "util/u_surface.h"
 #include "util/list.h"
+#include "util/u_memory.h"
 
 struct hash_table;
 struct st_manager_private

@@ -60,6 +60,7 @@
 #include "state.h"
 #include "hash.h"
 #include <stdbool.h>
+#include "util/u_memory.h"
 
 
 /**

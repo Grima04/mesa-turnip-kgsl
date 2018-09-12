@@ -32,6 +32,7 @@
 #include "main/shaderobj.h"
 #include "program/prog_cache.h"
 #include "program/program.h"
+#include "util/u_memory.h"
 
 
 struct cache_item

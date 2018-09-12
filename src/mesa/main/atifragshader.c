@@ -30,6 +30,7 @@
 #include "main/mtypes.h"
 #include "main/atifragshader.h"
 #include "program/program.h"
+#include "util/u_memory.h"
 
 #define MESA_DEBUG_ATI_FS 0
 

@@ -37,6 +37,7 @@
 #include "main/teximage.h"
 #include "main/image.h"
 
+#include "util/u_memory.h"
 #include "swrast/swrast.h"
 #include "drivers/common/meta.h"
 

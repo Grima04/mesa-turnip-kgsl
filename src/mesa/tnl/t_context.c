@@ -37,6 +37,7 @@
 #include "main/state.h"
 #include "main/viewport.h"
 #include "util/simple_list.h"
+#include "util/u_memory.h"
 
 #include "tnl.h"
 #include "t_context.h"

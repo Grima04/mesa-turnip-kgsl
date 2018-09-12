@@ -30,6 +30,7 @@
 #include "formats.h"
 #include "mtypes.h"
 #include "renderbuffer.h"
+#include "util/u_memory.h"
 
 
 /**

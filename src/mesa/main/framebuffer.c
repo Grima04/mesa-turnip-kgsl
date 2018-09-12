@@ -45,6 +45,7 @@
 #include "texobj.h"
 #include "glformats.h"
 #include "state.h"
+#include "util/u_memory.h"
 
 
 

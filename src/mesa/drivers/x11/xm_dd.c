@@ -48,6 +48,7 @@
 #include "tnl/t_context.h"
 #include "drivers/common/meta.h"
 #include "xmesaP.h"
+#include "util/u_memory.h"
 
 
 static void

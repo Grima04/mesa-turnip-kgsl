@@ -47,7 +47,6 @@
 extern "C" {
 #endif
 
-
 /*
  * For GL_ARB_vertex_buffer_object we need to treat vertex array pointers
  * as offsets into buffer stores.  Since the vertex array pointer and

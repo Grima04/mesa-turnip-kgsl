@@ -36,6 +36,7 @@
 #include "main/context.h"
 #include "swrast/swrast.h"
 #include "drivers/common/meta.h"
+#include "util/u_memory.h"
 
 #include "radeon_common.h"
 #include "radeon_mipmap_tree.h"
