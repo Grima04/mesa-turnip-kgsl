@@ -28,6 +28,7 @@
 #include "util/mesa-sha1.h"
 #include "nir/nir_serialize.h"
 #include "anv_private.h"
+#include "nir/nir_xfb_info.h"
 
 struct anv_shader_bin *
 anv_shader_bin_create(struct anv_device *device,
@@ -36,12 +37,14 @@ anv_shader_bin_create(struct anv_device *device,
                       const void *constant_data, uint32_t constant_data_size,
                       const struct brw_stage_prog_data *prog_data_in,
                       uint32_t prog_data_size, const void *prog_data_param_in,
+                      const nir_xfb_info *xfb_info_in,
                       const struct anv_pipeline_bind_map *bind_map)
 {
    struct anv_shader_bin *shader;
    struct anv_shader_bin_key *key;
    struct brw_stage_prog_data *prog_data;
    uint32_t *prog_data_param;
+   nir_xfb_info *xfb_info;
    struct anv_pipeline_binding *surface_to_descriptor, *sampler_to_descriptor;
 
    ANV_MULTIALLOC(ma);
@@ -49,6 +52,10 @@ anv_shader_bin_create(struct anv_device *device,
    anv_multialloc_add_size(&ma, &key, sizeof(*key) + key_size);
    anv_multialloc_add_size(&ma, &prog_data, prog_data_size);
    anv_multialloc_add(&ma, &prog_data_param, prog_data_in->nr_params);
+   if (xfb_info_in) {
+      uint32_t xfb_info_size = nir_xfb_info_size(xfb_info_in->output_count);
+      anv_multialloc_add_size(&ma, &xfb_info, xfb_info_size);
+   }
    anv_multialloc_add(&ma, &surface_to_descriptor,
                            bind_map->surface_count);
    anv_multialloc_add(&ma, &sampler_to_descriptor,
@@ -85,6 +92,15 @@ anv_shader_bin_create(struct anv_device *device,
    prog_data->param = prog_data_param;
    shader->prog_data = prog_data;
    shader->prog_data_size = prog_data_size;
+
+   if (xfb_info_in) {
+      *xfb_info = *xfb_info_in;
+      typed_memcpy(xfb_info->outputs, xfb_info_in->outputs,
+                   xfb_info_in->output_count);
+      shader->xfb_info = xfb_info;
+   } else {
+      shader->xfb_info = NULL;
+   }
 
    shader->bind_map = *bind_map;
    typed_memcpy(surface_to_descriptor, bind_map->surface_to_descriptor,
@@ -129,6 +145,15 @@ anv_shader_bin_write_to_blob(const struct anv_shader_bin *shader,
                                shader->prog_data->nr_params *
                                sizeof(*shader->prog_data->param));
 
+   if (shader->xfb_info) {
+      uint32_t xfb_info_size =
+         nir_xfb_info_size(shader->xfb_info->output_count);
+      ok = blob_write_uint32(blob, xfb_info_size);
+      ok = blob_write_bytes(blob, shader->xfb_info, xfb_info_size);
+   } else {
+      ok = blob_write_uint32(blob, 0);
+   }
+
    ok = blob_write_uint32(blob, shader->bind_map.surface_count);
    ok = blob_write_uint32(blob, shader->bind_map.sampler_count);
    ok = blob_write_uint32(blob, shader->bind_map.image_count);
@@ -163,6 +188,11 @@ anv_shader_bin_create_from_blob(struct anv_device *device,
    const void *prog_data_param =
       blob_read_bytes(blob, prog_data->nr_params * sizeof(*prog_data->param));
 
+   const nir_xfb_info *xfb_info = NULL;
+   uint32_t xfb_size = blob_read_uint32(blob);
+   if (xfb_size)
+      xfb_info = blob_read_bytes(blob, xfb_size);
+
    struct anv_pipeline_bind_map bind_map;
    bind_map.surface_count = blob_read_uint32(blob);
    bind_map.sampler_count = blob_read_uint32(blob);
@@ -182,7 +212,7 @@ anv_shader_bin_create_from_blob(struct anv_device *device,
                                 kernel_data, kernel_size,
                                 constant_data, constant_data_size,
                                 prog_data, prog_data_size, prog_data_param,
-                                &bind_map);
+                                xfb_info, &bind_map);
 }
 
 /* Remaining work:
@@ -333,6 +363,7 @@ anv_pipeline_cache_add_shader_locked(struct anv_pipeline_cache *cache,
                                      const struct brw_stage_prog_data *prog_data,
                                      uint32_t prog_data_size,
                                      const void *prog_data_param,
+                                     const nir_xfb_info *xfb_info,
                                      const struct anv_pipeline_bind_map *bind_map)
 {
    struct anv_shader_bin *shader =
@@ -345,7 +376,7 @@ anv_pipeline_cache_add_shader_locked(struct anv_pipeline_cache *cache,
                             kernel_data, kernel_size,
                             constant_data, constant_data_size,
                             prog_data, prog_data_size, prog_data_param,
-                            bind_map);
+                            xfb_info, bind_map);
    if (!bin)
       return NULL;
 
@@ -362,6 +393,7 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
                                  uint32_t constant_data_size,
                                  const struct brw_stage_prog_data *prog_data,
                                  uint32_t prog_data_size,
+                                 const nir_xfb_info *xfb_info,
                                  const struct anv_pipeline_bind_map *bind_map)
 {
    if (cache->cache) {
@@ -372,7 +404,8 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
                                               kernel_data, kernel_size,
                                               constant_data, constant_data_size,
                                               prog_data, prog_data_size,
-                                              prog_data->param, bind_map);
+                                              prog_data->param,
+                                              xfb_info, bind_map);
 
       pthread_mutex_unlock(&cache->mutex);
 
@@ -387,7 +420,8 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
                                    kernel_data, kernel_size,
                                    constant_data, constant_data_size,
                                    prog_data, prog_data_size,
-                                   prog_data->param, bind_map);
+                                   prog_data->param,
+                                   xfb_info, bind_map);
    }
 }
 
@@ -624,6 +658,7 @@ anv_device_upload_kernel(struct anv_device *device,
                          uint32_t constant_data_size,
                          const struct brw_stage_prog_data *prog_data,
                          uint32_t prog_data_size,
+                         const nir_xfb_info *xfb_info,
                          const struct anv_pipeline_bind_map *bind_map)
 {
    struct anv_shader_bin *bin;
@@ -632,13 +667,14 @@ anv_device_upload_kernel(struct anv_device *device,
                                              kernel_data, kernel_size,
                                              constant_data, constant_data_size,
                                              prog_data, prog_data_size,
-                                             bind_map);
+                                             xfb_info, bind_map);
    } else {
       bin = anv_shader_bin_create(device, key_data, key_size,
                                   kernel_data, kernel_size,
                                   constant_data, constant_data_size,
                                   prog_data, prog_data_size,
-                                  prog_data->param, bind_map);
+                                  prog_data->param,
+                                  xfb_info, bind_map);
    }
 
    if (bin == NULL)

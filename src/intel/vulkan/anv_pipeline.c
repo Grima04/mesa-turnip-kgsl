@@ -1123,7 +1123,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                                   stages[s].nir->constant_data_size,
                                   &stages[s].prog_data.base,
                                   brw_prog_data_size(s),
-                                  &stages[s].bind_map);
+                                  NULL, &stages[s].bind_map);
       if (!bin) {
          ralloc_free(stage_ctx);
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1237,7 +1237,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
                                      stage.nir->constant_data_size,
                                      &stage.prog_data.base,
                                      sizeof(stage.prog_data.cs),
-                                     &stage.bind_map);
+                                     NULL, &stage.bind_map);
       if (!bin) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
