@@ -1027,6 +1027,12 @@ void SIMDCALL BinTrianglesImpl(DRAW_CONTEXT*          pDC,
 endBinTriangles:
 
 
+    if (!triMask)
+    {
+        RDTSC_END(FEBinTriangles, 1);
+        return;
+    }
+
     // Send surviving triangles to the line or point binner based on fill mode
     if (rastState.fillMode == SWR_FILLMODE_WIREFRAME)
     {
