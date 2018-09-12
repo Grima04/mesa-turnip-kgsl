@@ -370,7 +370,7 @@ static INLINE std::string GetEnv(const std::string& variableName)
 {
     std::string output;
 #if defined(_WIN32)
-    DWORD valueSize = GetEnvironmentVariableA(variableName.c_str(), nullptr, 0);
+    uint32_t valueSize = GetEnvironmentVariableA(variableName.c_str(), nullptr, 0);
     if (!valueSize)
         return output;
     output.resize(valueSize - 1); // valueSize includes null, output.resize() does not
