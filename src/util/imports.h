@@ -76,19 +76,6 @@ typedef union { float f; int i; unsigned u; } fi_type;
  * Functions
  */
 
-extern void *
-_mesa_align_malloc( size_t bytes, unsigned long alignment );
-
-extern void *
-_mesa_align_calloc( size_t bytes, unsigned long alignment );
-
-extern void
-_mesa_align_free( void *ptr );
-
-extern void *
-_mesa_align_realloc(void *oldBuffer, size_t oldSize, size_t newSize,
-                    unsigned long alignment);
-
 extern int
 _mesa_snprintf( char *str, size_t size, const char *fmt, ... ) PRINTFLIKE(3, 4);
 

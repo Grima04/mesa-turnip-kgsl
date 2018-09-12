@@ -85,6 +85,7 @@
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_vbuf.h"
+#include "util/u_memory.h"
 #include "cso_cache/cso_context.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 

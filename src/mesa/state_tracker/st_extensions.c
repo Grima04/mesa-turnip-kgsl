@@ -39,6 +39,7 @@
 #include "pipe/p_screen.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "util/u_math.h"
+#include "util/u_memory.h"
 
 #include "st_context.h"
 #include "st_debug.h"

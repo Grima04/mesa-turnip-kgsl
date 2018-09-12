@@ -95,6 +95,7 @@
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_viewport.h"
+#include "util/u_memory.h"
 #include "drm-uapi/i915_drm.h"
 #include "nir.h"
 #include "intel/compiler/brw_compiler.h"

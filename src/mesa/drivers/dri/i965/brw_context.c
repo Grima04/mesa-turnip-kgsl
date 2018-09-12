@@ -76,6 +76,7 @@
 #include "util/ralloc.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
+#include "util/u_memory.h"
 #include "isl/isl.h"
 
 #include "common/gen_defines.h"

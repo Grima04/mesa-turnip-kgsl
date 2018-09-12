@@ -100,7 +100,7 @@ _swrast_alloc_texture_image_buffer(struct gl_context *ctx,
                                            _swrast_teximage_slice_height(texImage), 1);
 
    assert(!swImg->Buffer);
-   swImg->Buffer = _mesa_align_malloc(bytesPerSlice * slices, 512);
+   swImg->Buffer = align_malloc(bytesPerSlice * slices, 512);
    if (!swImg->Buffer)
       return GL_FALSE;
 
@@ -166,7 +166,7 @@ _swrast_free_texture_image_buffer(struct gl_context *ctx,
 {
    struct swrast_texture_image *swImage = swrast_texture_image(texImage);
 
-   _mesa_align_free(swImage->Buffer);
+   align_free(swImage->Buffer);
    swImage->Buffer = NULL;
 
    free(swImage->ImageSlices);
