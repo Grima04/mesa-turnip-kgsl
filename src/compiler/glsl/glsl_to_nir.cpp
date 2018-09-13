@@ -1995,6 +1995,9 @@ nir_visitor::visit(ir_expression *ir)
       result = type_is_float(types[0]) ? nir_fabs(&b, srcs[0])
                                        : nir_iabs(&b, srcs[0]);
       break;
+   case ir_unop_clz:
+      result = nir_uclz(&b, srcs[0]);
+      break;
    case ir_unop_saturate:
       assert(type_is_float(types[0]));
       result = nir_fsat(&b, srcs[0]);
@@ -2213,9 +2216,36 @@ nir_visitor::visit(ir_expression *ir)
       result = type_is_float(out_type) ? nir_fadd(&b, srcs[0], srcs[1])
                                        : nir_iadd(&b, srcs[0], srcs[1]);
       break;
+   case ir_binop_add_sat:
+      result = type_is_signed(out_type) ? nir_iadd_sat(&b, srcs[0], srcs[1])
+                                        : nir_uadd_sat(&b, srcs[0], srcs[1]);
+      break;
    case ir_binop_sub:
       result = type_is_float(out_type) ? nir_fsub(&b, srcs[0], srcs[1])
                                        : nir_isub(&b, srcs[0], srcs[1]);
+      break;
+   case ir_binop_sub_sat:
+      result = type_is_signed(out_type) ? nir_isub_sat(&b, srcs[0], srcs[1])
+                                        : nir_usub_sat(&b, srcs[0], srcs[1]);
+      break;
+   case ir_binop_abs_sub:
+      /* out_type is always unsigned for ir_binop_abs_sub, so we have to key
+       * on the type of the sources.
+       */
+      result = type_is_signed(types[0]) ? nir_uabs_isub(&b, srcs[0], srcs[1])
+                                        : nir_uabs_usub(&b, srcs[0], srcs[1]);
+      break;
+   case ir_binop_avg:
+      result = type_is_signed(out_type) ? nir_ihadd(&b, srcs[0], srcs[1])
+                                        : nir_uhadd(&b, srcs[0], srcs[1]);
+      break;
+   case ir_binop_avg_round:
+      result = type_is_signed(out_type) ? nir_irhadd(&b, srcs[0], srcs[1])
+                                        : nir_urhadd(&b, srcs[0], srcs[1]);
+      break;
+   case ir_binop_mul_32x16:
+      result = type_is_signed(out_type) ? nir_imul_32x16(&b, srcs[0], srcs[1])
+                                        : nir_umul_32x16(&b, srcs[0], srcs[1]);
       break;
    case ir_binop_mul:
       if (type_is_float(out_type))
