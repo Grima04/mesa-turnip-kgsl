@@ -2130,7 +2130,7 @@ iris_create_stream_output_target(struct pipe_context *ctx,
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
 
-   upload_state(ctx->stream_uploader, &cso->offset, 4, 4);
+   upload_state(ctx->stream_uploader, &cso->offset, 4 * sizeof(uint32_t), 4);
 
    iris_pack_command(GENX(3DSTATE_SO_BUFFER), cso->so_buffer, sob) {
       sob.SurfaceBaseAddress =
@@ -2141,10 +2141,10 @@ iris_create_stream_output_target(struct pipe_context *ctx,
       sob.MOCS = MOCS_WB; // XXX: MOCS
 
       sob.SurfaceSize = MAX2(buffer_size / 4, 1) - 1;
-      sob.StreamOutputBufferOffsetAddress =
-         rw_bo(NULL, iris_resource_bo(cso->offset.res)->gtt_offset + cso->offset.offset);
 
-      /* .SOBufferIndex and .StreamOffset are filled in later */
+      /* .SOBufferIndex, .StreamOffset, and .StreamOutputBufferOffsetAddress
+       * are filled in later when we have stream IDs.
+       */
    }
 
    return &cso->base;
@@ -2203,6 +2203,8 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          continue;
       }
 
+      struct iris_stream_output_target *tgt = (void *) targets[i];
+
       /* Note that offsets[i] will either be 0, causing us to zero
        * the value in the buffer, or 0xFFFFFFFF, which happens to mean
        * "continue appending at the existing offset."
@@ -2213,9 +2215,10 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       iris_pack_state(GENX(3DSTATE_SO_BUFFER), dynamic, dyns) {
          dyns.SOBufferIndex = i;
          dyns.StreamOffset = offsets[i];
+         dyns.StreamOutputBufferOffsetAddress =
+            rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset + tgt->offset.offset + i * sizeof(uint32_t));
       }
 
-      struct iris_stream_output_target *tgt = (void *) targets[i];
       for (uint32_t j = 0; j < GENX(3DSTATE_SO_BUFFER_length); j++) {
          so_buffers[j] = tgt->so_buffer[j] | dynamic[j];
       }
