@@ -24,6 +24,7 @@
  */
 
 
+#include <stdio.h>
 #include "main/glheader.h"
 #include "util/imports.h"
 #include "prog_instruction.h"
