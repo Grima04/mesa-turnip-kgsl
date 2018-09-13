@@ -782,19 +782,19 @@ void TransposeSOAtoAOS(uint8_t* pDst, uint8_t* pSrc, uint32_t numVerts, uint32_t
 
         for (uint32_t a = 0; a < numAttribs; ++a)
         {
-            auto attribGatherX = SIMD_T::template mask_i32gather_ps<ScaleFactor<SIMD_T>(1)>(
+            auto attribGatherX = SIMD_T::mask_i32gather_ps(
                 SIMD_T::setzero_ps(), (const float*)pSrcBase, vGatherOffsets, vMask);
-            auto attribGatherY = SIMD_T::template mask_i32gather_ps<ScaleFactor<SIMD_T>(1)>(
+            auto attribGatherY = SIMD_T::mask_i32gather_ps(
                 SIMD_T::setzero_ps(),
                 (const float*)(pSrcBase + sizeof(float)),
                 vGatherOffsets,
                 vMask);
-            auto attribGatherZ = SIMD_T::template mask_i32gather_ps<ScaleFactor<SIMD_T>(1)>(
+            auto attribGatherZ = SIMD_T::mask_i32gather_ps(
                 SIMD_T::setzero_ps(),
                 (const float*)(pSrcBase + sizeof(float) * 2),
                 vGatherOffsets,
                 vMask);
-            auto attribGatherW = SIMD_T::template mask_i32gather_ps<ScaleFactor<SIMD_T>(1)>(
+            auto attribGatherW = SIMD_T::mask_i32gather_ps(
                 SIMD_T::setzero_ps(),
                 (const float*)(pSrcBase + sizeof(float) * 3),
                 vGatherOffsets,
