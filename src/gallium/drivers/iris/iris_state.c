@@ -491,11 +491,12 @@ iris_init_render_context(struct iris_screen *screen,
 
    flush_for_state_base_change(batch);
 
-   /* We program STATE_BASE_ADDRESS once at context initialization time.
+   /* We program most base addresses once at context initialization time.
     * Each base address points at a 4GB memory zone, and never needs to
     * change.  See iris_bufmgr.h for a description of the memory zones.
     *
-    * Except for Surface State Base Address.  That one changes.
+    * The one exception is Surface State Base Address, which needs to be
+    * updated occasionally.  See iris_binder.c for the details there.
     */
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
    #if 0

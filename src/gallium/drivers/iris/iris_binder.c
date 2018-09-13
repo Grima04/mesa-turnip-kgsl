@@ -26,9 +26,8 @@
  * Shader programs refer to most resources via integer handles.  These are
  * indexes (BTIs) into a "Binding Table", which is simply a list of pointers
  * to SURFACE_STATE entries.  Each shader stage has its own binding table,
- * set by the 3DSTATE_BINDING_TABLE_POINTERS_* commands.  Both the binding
- * table itself and the SURFACE_STATEs are relative to Surface State Base
- * Address, so they all live in IRIS_MEMZONE_SURFACE.
+ * set by the 3DSTATE_BINDING_TABLE_POINTERS_* commands.  We stream out
+ * binding tables dynamically, storing them in special BOs we call "binders."
  *
  * Unfortunately, the hardware designers made 3DSTATE_BINDING_TABLE_POINTERS
  * only accept a 16-bit pointer.  This means that all binding tables have to
@@ -36,21 +35,16 @@
  * actual SURFACE_STATE entries can live anywhere in the 4GB zone, as the
  * binding table entries are full 32-bit pointers.)
  *
- * We stream out binding tables dynamically, storing them in a single 64kB
- * "binder" buffer, located at IRIS_BINDER_ADDRESS.  Before emitting a draw
- * call, we reserve space for any new binding tables needed by bound shaders.
- * If there is no space, we flush the batch and swap out the binder for a
- * new empty BO.
+ * To handle this, we split a 4GB region of VMA into two memory zones.
+ * IRIS_MEMZONE_BINDER is a small region at the bottom able to hold a few
+ * binder BOs.  IRIS_MEMZONE_SURFACE contains the rest of the 4GB, and is
+ * always at a higher address than the binders.  This allows us to program
+ * Surface State Base Address to the binder BO's address, and offset the
+ * values in the binding table to account for the base not starting at the
+ * beginning of the 4GB region.
  *
- * XXX: This should be fancier.  We currently replace the binder with a
- * fresh BO on every batch, which causes the kernel to stall, trying to
- * pin the new buffer at the same memory address as the old one.  We ought
- * to avoid this by using a ringbuffer, tracking the busy section of the BO,
- * and cycling back around where possible to avoid replacing it at all costs.
- *
- * XXX: if we do have to flush, we should emit a performance warning.
- *
- * XXX: these comments are out of date
+ * This does mean that we have to emit STATE_BASE_ADDRESS and stall when
+ * we run out of space in the binder, which hopefully won't happen too often.
  */
 
 #include <stdlib.h>
