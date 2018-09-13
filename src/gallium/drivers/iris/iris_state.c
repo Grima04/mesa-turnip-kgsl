@@ -621,6 +621,9 @@ iris_init_compute_context(struct iris_screen *screen,
    /* XXX: PIPE_CONTROLs */
 
    iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
+#if GEN_GEN >= 9
+      sel.MaskBits = 3;
+#endif
       sel.PipelineSelection = GPGPU;
    }
 
