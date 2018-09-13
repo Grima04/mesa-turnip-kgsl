@@ -42,6 +42,7 @@ iris_flush(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *)ctx;
 
    iris_batch_flush(&ice->render_batch);
+   iris_batch_flush(&ice->compute_batch);
 
    // XXX: bogus!!!
    if (fence)
