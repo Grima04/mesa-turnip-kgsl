@@ -938,17 +938,9 @@ _mesa_program_resource_location(struct gl_shader_program *shProg,
    return program_resource_location(res, array_index);
 }
 
-/**
- * Function implements following index queries:
- *    glGetFragDataIndex
- */
-GLint
-_mesa_program_resource_location_index(struct gl_shader_program *shProg,
-                                      GLenum programInterface, const char *name)
+static GLint
+_get_resource_location_index(struct gl_program_resource *res)
 {
-   struct gl_program_resource *res =
-      _mesa_program_resource_find_name(shProg, programInterface, name, NULL);
-
    /* Non-existent variable or resource is not referenced by fragment stage. */
    if (!res || !(res->StageReferences & (1 << MESA_SHADER_FRAGMENT)))
       return -1;
@@ -961,6 +953,20 @@ _mesa_program_resource_location_index(struct gl_shader_program *shProg,
    if (RESOURCE_VAR(res)->location == -1)
       return -1;
    return RESOURCE_VAR(res)->index;
+}
+
+/**
+ * Function implements following index queries:
+ *    glGetFragDataIndex
+ */
+GLint
+_mesa_program_resource_location_index(struct gl_shader_program *shProg,
+                                      GLenum programInterface, const char *name)
+{
+   struct gl_program_resource *res =
+      _mesa_program_resource_find_name(shProg, programInterface, name, NULL);
+
+   return _get_resource_location_index(res);
 }
 
 static uint8_t
@@ -1320,8 +1326,7 @@ _mesa_program_resource_prop(struct gl_shader_program *shProg,
       if (tmp == -1)
          *val = -1;
       else
-         *val = _mesa_program_resource_location_index(shProg, res->Type,
-                                                      RESOURCE_VAR(res)->name);
+         *val = _get_resource_location_index(res);
       return 1;
    }
    case GL_NUM_COMPATIBLE_SUBROUTINES:
