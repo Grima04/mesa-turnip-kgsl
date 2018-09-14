@@ -3490,6 +3490,38 @@
     <field name="Replay Mode Mask" start="16" end="16" type="bool"/>
   </register>
 
+  <register name="SO_NUM_PRIMS_WRITTEN0" length="2" num="0x5200">
+    <field name="Num Prims Written Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_NUM_PRIMS_WRITTEN1" length="2" num="0x5208">
+    <field name="Num Prims Written Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_NUM_PRIMS_WRITTEN2" length="2" num="0x5210">
+    <field name="Num Prims Written Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_NUM_PRIMS_WRITTEN3" length="2" num="0x5218">
+    <field name="Num Prims Written Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_PRIM_STORAGE_NEEDED0" length="2" num="0x5240">
+    <field name="Prim Storage Needed Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_PRIM_STORAGE_NEEDED1" length="2" num="0x5248">
+    <field name="Prim Storage Needed Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_PRIM_STORAGE_NEEDED2" length="2" num="0x5250">
+    <field name="Prim Storage Needed Count" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="SO_PRIM_STORAGE_NEEDED3" length="2" num="0x5258">
+    <field name="Prim Storage Needed Count" start="0" end="63" type="uint"/>
+  </register>
+
   <register name="SO_WRITE_OFFSET0" length="1" num="0x5280">
     <field name="Write Offset" start="2" end="31" type="offset"/>
   </register>
