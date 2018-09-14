@@ -33,7 +33,6 @@
 
 #include "main/glheader.h"
 #include "main/mtypes.h"
-#include "util/imports.h"
 #include "main/arbprogram.h"
 #include "main/arrayobj.h"
 #include "main/blend.h"
@@ -2311,7 +2310,7 @@ _mesa_meta_DrawPixels(struct gl_context *ctx,
       _mesa_StencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
       _mesa_StencilFunc(GL_ALWAYS, 0, 255);
       _mesa_DrawArrays(GL_TRIANGLE_FAN, 0, 4);
-  
+
       /* set stencil bits to 1 where needed */
       _mesa_StencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
@@ -3233,7 +3232,7 @@ decompress_texture_image(struct gl_context *ctx,
 
       /* render quad w/ texture into renderbuffer */
       _mesa_DrawArrays(GL_TRIANGLE_FAN, 0, 4);
-      
+
       /* Restore texture object state, the texture binding will
        * be restored by _mesa_meta_end().
        */

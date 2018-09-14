@@ -22,26 +22,16 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
 /**
- * \file imports.h
- * Standard C library function wrappers.
+ * \file mesa_private.h
+ * Contains mesa internal values
  *
- * This file provides wrappers for all the standard C library functions
- * like malloc(), free(), printf(), getenv(), etc.
  */
 
+#ifndef MESA_PRIVATE_H
+#define MESA_PRIVATE_H
 
-#ifndef IMPORTS_H
-#define IMPORTS_H
-
-
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include "util/compiler.h"
-#include "util/bitscan.h"
-#include "util/u_memory.h"
+#include "glheader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,5 +53,4 @@ typedef union { float f; int i; unsigned u; } fi_type;
 }
 #endif
 
-
-#endif /* IMPORTS_H */
+#endif /* MESA_PRIVATE_H */

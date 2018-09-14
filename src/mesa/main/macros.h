@@ -34,8 +34,9 @@
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "util/rounding.h"
-#include "util/imports.h"
+#include "util/compiler.h"
 #include "main/glheader.h"
+#include "mesa_private.h"
 
 
 /**

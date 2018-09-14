@@ -27,7 +27,6 @@
  * The driver implementation of the GL_APPLE_object_purgeable extension.
  */
 
-#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/macros.h"
 #include "main/bufferobj.h"

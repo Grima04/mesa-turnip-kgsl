@@ -55,8 +55,6 @@ files_mesa_util = files(
   'half_float.h',
   'hash_table.c',
   'hash_table.h',
-  'imports.c',
-  'imports.h',
   'list.h',
   'macros.h',
   'mesa-sha1.c',

@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include "glxheader.h"
 #include "main/context.h"
-#include "util/imports.h"
 #include "xfonts.h"
 
 

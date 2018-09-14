@@ -25,8 +25,9 @@
 
 
 #include <stdio.h>
+#include <assert.h>
+
 #include "main/glheader.h"
-#include "util/imports.h"
 #include "prog_instruction.h"
 #include "prog_parameter.h"
 

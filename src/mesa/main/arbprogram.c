@@ -32,7 +32,7 @@
 #include "main/glheader.h"
 #include "main/context.h"
 #include "main/hash.h"
-#include "util/imports.h"
+
 #include "main/macros.h"
 #include "main/mtypes.h"
 #include "main/arbprogram.h"
@@ -158,7 +158,7 @@ _mesa_BindProgramARB(GLenum target, GLuint id)
  * \note Not compiled into display lists.
  * \note Called by both glDeleteProgramsNV and glDeleteProgramsARB.
  */
-void GLAPIENTRY 
+void GLAPIENTRY
 _mesa_DeleteProgramsARB(GLsizei n, const GLuint *ids)
 {
    GLint i;
@@ -256,7 +256,7 @@ _mesa_GenProgramsARB(GLsizei n, GLuint *ids)
 GLboolean GLAPIENTRY
 _mesa_IsProgramARB(GLuint id)
 {
-   struct gl_program *prog = NULL; 
+   struct gl_program *prog = NULL;
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END_WITH_RETVAL(ctx, GL_FALSE);
 
@@ -487,7 +487,7 @@ void GLAPIENTRY
 _mesa_ProgramEnvParameter4dARB(GLenum target, GLuint index,
                                GLdouble x, GLdouble y, GLdouble z, GLdouble w)
 {
-   _mesa_ProgramEnvParameter4fARB(target, index, (GLfloat) x, (GLfloat) y, 
+   _mesa_ProgramEnvParameter4fARB(target, index, (GLfloat) x, (GLfloat) y,
 		                  (GLfloat) z, (GLfloat) w);
 }
 
@@ -500,8 +500,8 @@ void GLAPIENTRY
 _mesa_ProgramEnvParameter4dvARB(GLenum target, GLuint index,
                                 const GLdouble *params)
 {
-   _mesa_ProgramEnvParameter4fARB(target, index, (GLfloat) params[0], 
-	                          (GLfloat) params[1], (GLfloat) params[2], 
+   _mesa_ProgramEnvParameter4fARB(target, index, (GLfloat) params[0],
+	                          (GLfloat) params[1], (GLfloat) params[2],
 				  (GLfloat) params[3]);
 }
 
@@ -602,7 +602,7 @@ _mesa_GetProgramEnvParameterdvARB(GLenum target, GLuint index,
 
 
 void GLAPIENTRY
-_mesa_GetProgramEnvParameterfvARB(GLenum target, GLuint index, 
+_mesa_GetProgramEnvParameterfvARB(GLenum target, GLuint index,
                                   GLfloat *params)
 {
    GLfloat *param;
@@ -746,7 +746,7 @@ _mesa_ProgramLocalParameter4dARB(GLenum target, GLuint index,
                                  GLdouble x, GLdouble y,
                                  GLdouble z, GLdouble w)
 {
-   _mesa_ProgramLocalParameter4fARB(target, index, (GLfloat) x, (GLfloat) y, 
+   _mesa_ProgramLocalParameter4fARB(target, index, (GLfloat) x, (GLfloat) y,
                                     (GLfloat) z, (GLfloat) w);
 }
 

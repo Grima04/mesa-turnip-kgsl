@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include "errors.h"
 #include "enums.h"
-#include "util/imports.h"
+
 #include "context.h"
 #include "debug_output.h"
 
@@ -82,8 +82,8 @@ output_if_debug(const char *prefixString, const char *outputString,
       fflush(LogFile);
 
 #if defined(_WIN32)
-      /* stderr from windows applications without console is not usually 
-       * visible, so communicate with the debugger instead */ 
+      /* stderr from windows applications without console is not usually
+       * visible, so communicate with the debugger instead */
       {
          char buf[4096];
          snprintf(buf, sizeof(buf), "%s: %s%s", prefixString, outputString, newline ? "\n" : "");

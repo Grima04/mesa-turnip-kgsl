@@ -179,6 +179,7 @@ files_libmesa_common = files(
   'main/histogram.h',
   'main/image.c',
   'main/image.h',
+  'main/mesa_private.h',
   'main/light.c',
   'main/light.h',
   'main/lines.c',

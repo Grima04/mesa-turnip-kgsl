@@ -31,7 +31,7 @@
 
 
 #include "main/glheader.h"
-#include "util/imports.h"
+
 #include "main/context.h"
 #include "main/fbobject.h"
 #include "main/formats.h"
@@ -585,7 +585,7 @@ map_attachment(struct gl_context *ctx,
 
    assert(srb->Map);
 }
- 
+
 
 static void
 unmap_attachment(struct gl_context *ctx,
@@ -667,8 +667,8 @@ _swrast_map_renderbuffers(struct gl_context *ctx)
       }
    }
 }
- 
- 
+
+
 /**
  * Unmap renderbuffers after rendering.
  */

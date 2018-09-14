@@ -27,7 +27,6 @@
 #include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
-#include "util/imports.h"
 #include "compiler/nir/nir_builder.h"
 
 #include "disassemble.h"
@@ -206,7 +205,7 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                         { 0 },
                         { 0 }, { 1 }, { 2}
                 },
-                .store_channels = nr, 
+                .store_channels = nr,
         };
 
         for (unsigned i = 0; i < nr; ++i)

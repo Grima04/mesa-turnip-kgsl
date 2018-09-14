@@ -31,7 +31,7 @@
 
 #include "main/glheader.h"
 #include "main/context.h"
-#include "util/imports.h"
+
 #include "main/macros.h"
 #include "main/mtypes.h"
 #include "main/state.h"
@@ -782,7 +782,7 @@ fast_persp_span(struct gl_context *ctx, SWspan *span,
       }
       break;
    }
-   
+
    assert(span->arrayMask & SPAN_RGBA);
    _swrast_write_rgba_span(ctx, span);
 

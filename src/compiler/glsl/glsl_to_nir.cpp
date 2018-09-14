@@ -37,7 +37,6 @@
 #include "compiler/nir/nir_builtin_builder.h"
 #include "compiler/nir/nir_deref.h"
 #include "main/errors.h"
-#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/shaderobj.h"
 #include "util/u_math.h"
@@ -903,7 +902,7 @@ deref_get_qualifier(nir_deref_instr *deref)
          if (field->memory_restrict)
             qualifiers |= ACCESS_RESTRICT;
       }
-      
+
       parent_type = cur->type;
    }
 

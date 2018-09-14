@@ -29,7 +29,6 @@
  * This provides core GL buffer object functionality.
  */
 
-#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/macros.h"
 #include "main/streaming-load-memcpy.h"

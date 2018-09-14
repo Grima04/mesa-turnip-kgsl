@@ -33,6 +33,7 @@
 #define BRW_EU_DEFINES_H
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "util/macros.h"
 
 /* The following hunk, up-to "Execution Unit" is used by both the

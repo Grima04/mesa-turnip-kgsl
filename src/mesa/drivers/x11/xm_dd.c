@@ -37,7 +37,6 @@
 #include "main/macros.h"
 #include "main/mipmap.h"
 #include "main/image.h"
-#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/pbo.h"
 #include "main/texformat.h"
@@ -316,7 +315,7 @@ can_do_DrawPixels_8R8G8B(struct gl_context *ctx, GLenum format, GLenum type)
 
       if (swrast->NewState)
          _swrast_validate_derived( ctx );
-      
+
       if ((swrast->_RasterMask & ~CLIP_BIT) == 0) /* no blend, z-test, etc */ {
          struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0];
          if (rb) {
@@ -447,7 +446,7 @@ can_do_DrawPixels_5R6G5B(struct gl_context *ctx, GLenum format, GLenum type)
 
       if (swrast->NewState)
          _swrast_validate_derived( ctx );
-      
+
       if ((swrast->_RasterMask & ~CLIP_BIT) == 0) /* no blend, z-test, etc */ {
          struct gl_renderbuffer *rb = ctx->DrawBuffer->_ColorDrawBuffers[0];
          if (rb) {
@@ -487,7 +486,7 @@ xmesa_DrawPixels_5R6G5B( struct gl_context *ctx,
 
       if (swrast->NewState)
          _swrast_validate_derived( ctx );
-      
+
       if (unpack->BufferObj) {
          /* unpack from PBO */
          GLubyte *buf;

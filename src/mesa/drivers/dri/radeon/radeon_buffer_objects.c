@@ -25,7 +25,6 @@
  *
  */
 
-#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/bufferobj.h"
 #include "util/u_memory.h"

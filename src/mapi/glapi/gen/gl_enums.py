@@ -2,7 +2,7 @@
 # (C) Copyright Zack Rusin 2005. All Rights Reserved.
 # Copyright (C) 2015 Intel Corporation
 # Copyright (C) 2015 Broadcom Corporation
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
@@ -53,7 +53,6 @@ class PrintGlEnums(gl_XML.gl_print_base):
         print('#include <stdio.h>')
         print('#include "main/glheader.h"')
         print('#include "main/enums.h"')
-        print('#include "util/imports.h"')
         print('#include "main/mtypes.h"')
         print('')
         print('typedef struct PACKED {')

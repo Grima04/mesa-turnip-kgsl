@@ -38,6 +38,7 @@
  * test_eu_validate.cpp) will be rejected.
  */
 
+#include <stdlib.h>
 #include "brw_eu.h"
 
 /* We're going to do lots of string concatenation, so this should help. */

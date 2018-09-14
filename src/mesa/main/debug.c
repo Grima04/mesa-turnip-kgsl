@@ -30,7 +30,7 @@
 #include "enums.h"
 #include "formats.h"
 #include "hash.h"
-#include "util/imports.h"
+
 #include "macros.h"
 #include "debug.h"
 #include "get.h"
@@ -210,7 +210,7 @@ set_debug_flags(const char *str)
 /**
  * Initialize debugging variables from env vars.
  */
-void 
+void
 _mesa_init_debug( struct gl_context *ctx )
 {
    set_debug_flags(getenv("MESA_DEBUG"));
@@ -307,7 +307,7 @@ _mesa_write_renderbuffer_image(const struct gl_renderbuffer *rb)
    char s[100];
    GLenum format, type;
 
-   if (rb->_BaseFormat == GL_RGB || 
+   if (rb->_BaseFormat == GL_RGB ||
        rb->_BaseFormat == GL_RGBA) {
       format = GL_RGBA;
       type = GL_UNSIGNED_BYTE;

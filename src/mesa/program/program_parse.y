@@ -29,7 +29,7 @@
 
 #include "main/errors.h"
 #include "main/mtypes.h"
-#include "util/imports.h"
+
 #include "program/program.h"
 #include "program/prog_parameter.h"
 #include "program/prog_parameter_layout.h"
@@ -188,7 +188,7 @@ static struct asm_instruction *asm_instruction_copy_ctor(
 %token TEXCOORD TEXENV TEXGEN TEXGEN_Q TEXGEN_R TEXGEN_S TEXGEN_T TEXTURE TRANSPOSE
 %token TEXTURE_UNIT TEX_1D TEX_2D TEX_3D TEX_CUBE TEX_RECT
 %token TEX_SHADOW1D TEX_SHADOW2D TEX_SHADOWRECT
-%token TEX_ARRAY1D TEX_ARRAY2D TEX_ARRAYSHADOW1D TEX_ARRAYSHADOW2D 
+%token TEX_ARRAY1D TEX_ARRAY2D TEX_ARRAYSHADOW1D TEX_ARRAYSHADOW2D
 %token VERTEX VTXATTRIB
 
 %token <string> IDENTIFIER USED_IDENTIFIER
@@ -250,7 +250,7 @@ static struct asm_instruction *asm_instruction_copy_ctor(
 %type <integer> statePointProperty
 
 %type <integer> stateOptMatModifier stateMatModifier stateMatrixRowNum
-%type <integer> stateOptModMatNum stateModMatNum statePaletteMatNum 
+%type <integer> stateOptModMatNum stateModMatNum statePaletteMatNum
 %type <integer> stateProgramMatNum
 
 %type <integer> ambDiffSpecProperty
@@ -800,7 +800,7 @@ srcReg: USED_IDENTIFIER /* temporaryReg | progParamSingle */
 	}
 	| paramSingleItemUse
 	{
-           gl_register_file file = ($1.name != NULL) 
+           gl_register_file file = ($1.name != NULL)
 	      ? $1.param_binding_type
 	      : PROGRAM_CONSTANT;
            set_src_reg_swz(& $$, file, $1.param_binding_begin,
@@ -965,7 +965,7 @@ swizzleSuffix: MASK1
 	|              { $$.swizzle = SWIZZLE_NOOP; $$.mask = WRITEMASK_XYZW; }
 	;
 
-optionalMask: MASK4 | MASK3 | MASK2 | MASK1 
+optionalMask: MASK4 | MASK3 | MASK2 | MASK1
 	|              { $$.swizzle = SWIZZLE_NOOP; $$.mask = WRITEMASK_XYZW; }
 	;
 
@@ -1092,7 +1092,7 @@ PARAM_multipleStmt: PARAM IDENTIFIER '[' optArraySize ']' paramMultipleInit
 	{
 	   if (($4 != 0) && ((unsigned) $4 != $6.param_binding_length)) {
 	      free($2);
-	      yyerror(& @4, state, 
+	      yyerror(& @4, state,
 		      "parameter array size and number of bindings must match");
 	      YYERROR;
 	   } else {
@@ -1505,7 +1505,7 @@ stateMatrixItem: MATRIX stateMatrixName stateOptMatModifier
 	}
 	;
 
-stateOptMatModifier: 
+stateOptMatModifier:
 	{
 	   $$ = 0;
 	}
@@ -1515,11 +1515,11 @@ stateOptMatModifier:
 	}
 	;
 
-stateMatModifier: INVERSE 
+stateMatModifier: INVERSE
 	{
 	   $$ = STATE_MATRIX_INVERSE;
 	}
-	| TRANSPOSE 
+	| TRANSPOSE
 	{
 	   $$ = STATE_MATRIX_TRANSPOSE;
 	}
@@ -1946,7 +1946,7 @@ optResultFaceType:
 
 optResultColorType:
 	{
-	   $$ = 0; 
+	   $$ = 0;
 	}
 	| PRIMARY
 	{
@@ -2323,7 +2323,7 @@ int add_state_reference(struct gl_program_parameter_list *param_list,
 
 int
 initialize_symbol_from_state(struct gl_program *prog,
-			     struct asm_symbol *param_var, 
+			     struct asm_symbol *param_var,
 			     const gl_state_index16 tokens[STATE_LENGTH])
 {
    int idx = -1;
@@ -2375,7 +2375,7 @@ initialize_symbol_from_state(struct gl_program *prog,
 
 int
 initialize_symbol_from_param(struct gl_program *prog,
-			     struct asm_symbol *param_var, 
+			     struct asm_symbol *param_var,
 			     const gl_state_index16 tokens[STATE_LENGTH])
 {
    int idx = -1;
@@ -2440,7 +2440,7 @@ initialize_symbol_from_param(struct gl_program *prog,
  */
 int
 initialize_symbol_from_const(struct gl_program *prog,
-			     struct asm_symbol *param_var, 
+			     struct asm_symbol *param_var,
 			     const struct asm_vector *vec,
                              GLboolean allowSwizzle)
 {
@@ -2585,7 +2585,7 @@ _mesa_parse_arb_program(struct gl_context *ctx, GLenum target, const GLubyte *st
    }
 
 
-   
+
    /* Add one instruction to store the "END" instruction.
     */
    state->prog->arb.Instructions =

@@ -28,7 +28,6 @@
  * \author Brian Paul
  */
 
-
 #include "main/glheader.h"
 #include "main/macros.h"
 #include "util/u_memory.h"

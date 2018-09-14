@@ -33,7 +33,6 @@
 #include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
-#include "util/imports.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/half_float.h"
 #include "util/u_math.h"
@@ -1136,7 +1135,7 @@ emit_global(
 {
         /* TODO: types */
 
-        midgard_instruction ins; 
+        midgard_instruction ins;
 
         if (is_read)
                 ins = m_ld_int4(srcdest, 0);
@@ -1640,7 +1639,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_get_buffer_size:
                 emit_sysval_read(ctx, &instr->instr, 1, 8);
                 break;
- 
+
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:

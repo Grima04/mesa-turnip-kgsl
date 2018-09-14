@@ -26,7 +26,7 @@
 #include "c99_math.h"
 #include "main/glheader.h"
 #include "main/context.h"
-#include "util/imports.h"
+
 #include "main/macros.h"
 #include "main/samplerobj.h"
 #include "main/teximage.h"
@@ -1406,7 +1406,7 @@ sample_linear_2d(struct gl_context *ctx,
  * Optimized 2-D texture sampling:
  *    S and T wrap mode == GL_REPEAT
  *    GL_NEAREST min/mag filter
- *    No border, 
+ *    No border,
  *    RowStride == Width,
  *    Format = GL_RGB
  */
@@ -1666,7 +1666,7 @@ sample_2d_ewa(struct gl_context *ctx,
    GLfloat uy = dudy * scaling;
    GLfloat vy = dvdy * scaling;
 
-   /* compute ellipse coefficients to bound the region: 
+   /* compute ellipse coefficients to bound the region:
     * A*x*x + B*x*y + C*y*y = F.
     */
    GLfloat A = vx*vx+vy*vy+1;
@@ -1847,7 +1847,7 @@ texture_unit_index(const struct gl_context *ctx,
    }
    if (u >= maxUnit)
       u = 0; /* not found, use 1st one; should never happen */
-   
+
    return u;
 }
 
@@ -1871,7 +1871,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
    const struct swrast_texture_image *swImg = swrast_texture_image_const(tImg);
    const GLfloat maxEccentricity =
       samp->MaxAnisotropy * samp->MaxAnisotropy;
-   
+
    /* re-calculate the lambda values so that they are usable with anisotropic
     * filtering
     */
@@ -1880,7 +1880,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
    /* based on interpolate_texcoords(struct gl_context *ctx, SWspan *span)
     * in swrast/s_span.c
     */
-   
+
    /* find the texture unit index by looking up the current texture object
     * from the context list of available texture objects.
     */
@@ -1905,7 +1905,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
       || (samp->MinLod != -1000.0F || samp->MaxLod != 1000.0F);
 
    GLuint i;
-   
+
    /* on first access create the lookup table containing the filter weights. */
    if (!weightLut) {
       create_filter_table();
@@ -1916,13 +1916,13 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
 
    for (i = 0; i < n; i++) {
       const GLfloat invQ = (q == 0.0F) ? 1.0F : (1.0F / q);
-      
+
       GLfloat dudx = texW * ((s + dsdx) / (q + dqdx) - s * invQ);
       GLfloat dvdx = texH * ((t + dtdx) / (q + dqdx) - t * invQ);
       GLfloat dudy = texW * ((s + dsdy) / (q + dqdy) - s * invQ);
       GLfloat dvdy = texH * ((t + dtdy) / (q + dqdy) - t * invQ);
-      
-      /* note: instead of working with Px and Py, we will use the 
+
+      /* note: instead of working with Px and Py, we will use the
        * squared length instead, to avoid sqrt.
        */
       GLfloat Px2 = dudx * dudx + dvdx * dvdx;
@@ -1936,7 +1936,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
       s += dsdx;
       t += dtdx;
       q += dqdx;
-      
+
       if (Px2 < Py2) {
          Pmax2 = Py2;
          Pmin2 = Px2;
@@ -1945,7 +1945,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
          Pmax2 = Px2;
          Pmin2 = Py2;
       }
-      
+
       /* if the eccentricity of the ellipse is too big, scale up the shorter
        * of the two vectors to limit the maximum amount of work per pixel
        */
@@ -1957,12 +1957,12 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
             Pmin2 *= s; */
          Pmin2 = Pmax2 / maxEccentricity;
       }
-      
+
       /* note: we need to have Pmin=sqrt(Pmin2) here, but we can avoid
        * this since 0.5*log(x) = log(sqrt(x))
        */
       lod = 0.5f * util_fast_log2(Pmin2);
-      
+
       if (adjustLOD) {
          /* from swrast/s_texcombine.c _swrast_texture_span */
          if (texUnit->LodBias + samp->LodBias != 0.0F) {
@@ -1980,7 +1980,7 @@ sample_lambda_2d_aniso(struct gl_context *ctx,
             }
          }
       }
-      
+
       /* If the ellipse covers the whole image, we can
        * simply return the average of the whole image.
        */
@@ -2406,7 +2406,7 @@ choose_cube_face(const struct gl_texture_object *texObj,
       }
    }
 
-   { 
+   {
       const float ima = 1.0F / ma;
       newCoord[0] = ( sc * ima + 1.0F ) * 0.5F;
       newCoord[1] = ( tc * ima + 1.0F ) * 0.5F;
@@ -2917,7 +2917,7 @@ sample_2d_array_linear(struct gl_context *ctx,
       else {
 	 swImg->FetchTexel(swImg, i1, j1, array, t11);
       }
-      
+
       /* trilinear interpolation of samples */
       lerp_rgba_2d(rgba, a, b, t00, t10, t01, t11);
    }
@@ -3099,7 +3099,7 @@ sample_lambda_2d_array(struct gl_context *ctx,
       case GL_LINEAR_MIPMAP_LINEAR:
          sample_2d_array_linear_mipmap_linear(ctx, samp, tObj, m,
                                               texcoords + minStart,
-                                              lambda + minStart, 
+                                              lambda + minStart,
                                               rgba + minStart);
          break;
       default:
@@ -3373,7 +3373,7 @@ sample_lambda_1d_array(struct gl_context *ctx,
                                                 lambda + minStart, rgba + minStart);
          break;
       case GL_LINEAR_MIPMAP_NEAREST:
-         sample_1d_array_linear_mipmap_nearest(ctx, samp, tObj, m, 
+         sample_1d_array_linear_mipmap_nearest(ctx, samp, tObj, m,
                                                texcoords + minStart,
                                                lambda + minStart,
                                                rgba + minStart);
@@ -3383,9 +3383,9 @@ sample_lambda_1d_array(struct gl_context *ctx,
                                                lambda + minStart, rgba + minStart);
          break;
       case GL_LINEAR_MIPMAP_LINEAR:
-         sample_1d_array_linear_mipmap_linear(ctx, samp, tObj, m, 
+         sample_1d_array_linear_mipmap_linear(ctx, samp, tObj, m,
                                               texcoords + minStart,
-                                              lambda + minStart, 
+                                              lambda + minStart,
                                               rgba + minStart);
          break;
       default:
@@ -3579,7 +3579,7 @@ sample_depth_texture( struct gl_context *ctx,
 
          nearest_texcoord(samp, tObj, level, texcoords[i], &col, &row, &slice);
 
-         if (col >= 0 && row >= 0 && col < width && row < height && 
+         if (col >= 0 && row >= 0 && col < width && row < height &&
              slice >= 0 && slice < depth) {
             swImg->FetchTexel(swImg, col, row, slice, &depthSample);
          }

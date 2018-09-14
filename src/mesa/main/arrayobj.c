@@ -43,7 +43,7 @@
 #include "glheader.h"
 #include "hash.h"
 #include "image.h"
-#include "util/imports.h"
+
 #include "context.h"
 #include "bufferobj.h"
 #include "arrayobj.h"
@@ -1053,7 +1053,7 @@ delete_vertex_arrays(struct gl_context *ctx, GLsizei n, const GLuint *ids)
          if (ctx->Array._DrawVAO == obj)
             _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO, 0);
 
-         /* Unreference the array object. 
+         /* Unreference the array object.
           * If refcount hits zero, the object will be deleted.
           */
          _mesa_reference_vao(ctx, &obj, NULL);

@@ -71,10 +71,10 @@
  */
 
 #include <stdbool.h>
-#include <limits.h>
+#include <stdlib.h>
 
 #include "ralloc.h"
-#include "util/imports.h"
+#include "main/macros.h"
 #include "util/bitset.h"
 #include "u_math.h"
 #include "register_allocate.h"
