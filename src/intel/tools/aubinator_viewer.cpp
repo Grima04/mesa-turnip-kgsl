@@ -387,12 +387,8 @@ new_shader_window(struct aub_mem *mem, uint64_t address, const char *desc)
    window->base.display = display_shader_window;
    window->base.destroy = destroy_shader_window;
 
-   struct gen_batch_decode_bo shader_bo;
-   if (mem->pml4)
-      shader_bo = aub_mem_get_ppgtt_bo(mem, address);
-   else
-      shader_bo = aub_mem_get_ggtt_bo(mem, address);
-
+   struct gen_batch_decode_bo shader_bo =
+      aub_mem_get_ppgtt_bo(mem, address);
    if (shader_bo.map) {
       FILE *f = open_memstream(&window->shader, &window->shader_size);
       if (f) {
