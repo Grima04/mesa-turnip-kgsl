@@ -162,6 +162,8 @@ def parse_ir_builder(input_file):
                         func_name == 'CreateGEP' or
                         func_name == 'CreateLoad' or
                         func_name == 'CreateMaskedLoad' or
+						func_name == 'CreateStore' or
+                        func_name == 'CreateMaskedStore' or
                         func_name == 'CreateElementUnorderedAtomicMemCpy'):
                         ignore = True
 

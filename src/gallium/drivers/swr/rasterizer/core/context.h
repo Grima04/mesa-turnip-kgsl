@@ -525,13 +525,15 @@ struct SWR_CONTEXT
     HotTileMgr* pHotTileMgr;
 
     // Callback functions, passed in at create context time
-    PFN_LOAD_TILE              pfnLoadTile;
-    PFN_STORE_TILE             pfnStoreTile;
-    PFN_CLEAR_TILE             pfnClearTile;
-    PFN_MAKE_GFXPTR            pfnMakeGfxPtr;
-    PFN_UPDATE_SO_WRITE_OFFSET pfnUpdateSoWriteOffset;
-    PFN_UPDATE_STATS           pfnUpdateStats;
-    PFN_UPDATE_STATS_FE        pfnUpdateStatsFE;
+    PFN_LOAD_TILE                   pfnLoadTile;
+    PFN_STORE_TILE                  pfnStoreTile;
+    PFN_CLEAR_TILE                  pfnClearTile;
+    PFN_TRANSLATE_GFXPTR_FOR_READ   pfnTranslateGfxptrForRead;
+    PFN_TRANSLATE_GFXPTR_FOR_WRITE  pfnTranslateGfxptrForWrite;
+    PFN_MAKE_GFXPTR                 pfnMakeGfxPtr;
+    PFN_UPDATE_SO_WRITE_OFFSET      pfnUpdateSoWriteOffset;
+    PFN_UPDATE_STATS                pfnUpdateStats;
+    PFN_UPDATE_STATS_FE             pfnUpdateStatsFE;
 
 
     // Global Stats

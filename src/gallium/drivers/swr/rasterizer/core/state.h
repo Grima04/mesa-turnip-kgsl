@@ -678,10 +678,10 @@ OSALIGNLINE(struct) SWR_STATS_FE
 struct SWR_STREAMOUT_BUFFER
 {
     // Pointers to streamout buffers.
-    uint32_t* pBuffer;
+    gfxptr_t pBuffer;
 
     // Offset to the SO write offset. If not null then we update offset here.
-    uint32_t* pWriteOffset;
+    gfxptr_t pWriteOffset;
 
     bool enable;
     bool soWriteEnable;
@@ -936,7 +936,7 @@ typedef void(__cdecl *PFN_HS_FUNC)(HANDLE hPrivateData, HANDLE hWorkerPrivateDat
 typedef void(__cdecl *PFN_DS_FUNC)(HANDLE hPrivateData, HANDLE hWorkerPrivateData, SWR_DS_CONTEXT* pDsContext);
 typedef void(__cdecl *PFN_GS_FUNC)(HANDLE hPrivateData, HANDLE hWorkerPrivateData, SWR_GS_CONTEXT* pGsContext);
 typedef void(__cdecl *PFN_CS_FUNC)(HANDLE hPrivateData, HANDLE hWorkerPrivateData, SWR_CS_CONTEXT* pCsContext);
-typedef void(__cdecl *PFN_SO_FUNC)(SWR_STREAMOUT_CONTEXT& soContext);
+typedef void(__cdecl *PFN_SO_FUNC)(HANDLE hPrivateData, SWR_STREAMOUT_CONTEXT& soContext);
 typedef void(__cdecl *PFN_PIXEL_KERNEL)(HANDLE hPrivateData, HANDLE hWorkerPrivateData, SWR_PS_CONTEXT* pContext);
 typedef void(__cdecl *PFN_CPIXEL_KERNEL)(HANDLE hPrivateData, HANDLE hWorkerPrivateData, SWR_PS_CONTEXT* pContext);
 typedef void(__cdecl *PFN_BLEND_JIT_FUNC)(SWR_BLEND_CONTEXT*);

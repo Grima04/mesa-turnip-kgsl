@@ -193,13 +193,15 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
     pContext->pHotTileMgr = new HotTileMgr();
 
     // initialize callback functions
-    pContext->pfnLoadTile            = pCreateInfo->pfnLoadTile;
-    pContext->pfnStoreTile           = pCreateInfo->pfnStoreTile;
-    pContext->pfnClearTile           = pCreateInfo->pfnClearTile;
-    pContext->pfnMakeGfxPtr          = pCreateInfo->pfnMakeGfxPtr;
-    pContext->pfnUpdateSoWriteOffset = pCreateInfo->pfnUpdateSoWriteOffset;
-    pContext->pfnUpdateStats         = pCreateInfo->pfnUpdateStats;
-    pContext->pfnUpdateStatsFE       = pCreateInfo->pfnUpdateStatsFE;
+    pContext->pfnLoadTile                 = pCreateInfo->pfnLoadTile;
+    pContext->pfnStoreTile                = pCreateInfo->pfnStoreTile;
+    pContext->pfnClearTile                = pCreateInfo->pfnClearTile;
+    pContext->pfnTranslateGfxptrForRead   = pCreateInfo->pfnTranslateGfxptrForRead;
+    pContext->pfnTranslateGfxptrForWrite  = pCreateInfo->pfnTranslateGfxptrForWrite;
+    pContext->pfnMakeGfxPtr               = pCreateInfo->pfnMakeGfxPtr;
+    pContext->pfnUpdateSoWriteOffset      = pCreateInfo->pfnUpdateSoWriteOffset;
+    pContext->pfnUpdateStats              = pCreateInfo->pfnUpdateStats;
+    pContext->pfnUpdateStatsFE            = pCreateInfo->pfnUpdateStatsFE;
 
 
     // pass pointer to bucket manager back to caller

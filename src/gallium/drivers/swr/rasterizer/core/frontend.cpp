@@ -575,7 +575,7 @@ static void StreamOut(
         // Call SOS
         SWR_ASSERT(state.pfnSoFunc[streamIndex] != nullptr,
                    "Trying to execute uninitialized streamout jit function.");
-        state.pfnSoFunc[streamIndex](soContext);
+        state.pfnSoFunc[streamIndex](GetPrivateState(pDC), soContext);
     }
 
     // Update SO write offset. The driver provides memory for the update.
@@ -583,7 +583,9 @@ static void StreamOut(
     {
         if (state.soBuffer[i].pWriteOffset)
         {
-            *state.soBuffer[i].pWriteOffset = soContext.pBuffer[i]->streamOffset * sizeof(uint32_t);
+            bool nullTileAccessed = false;
+            void* pWriteOffset = pDC->pContext->pfnTranslateGfxptrForWrite(GetPrivateState(pDC), soContext.pBuffer[i]->pWriteOffset, &nullTileAccessed);
+            *((uint32_t*)pWriteOffset) = soContext.pBuffer[i]->streamOffset * sizeof(uint32_t);
         }
 
         if (state.soBuffer[i].soWriteEnable)
