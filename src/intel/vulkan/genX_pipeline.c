@@ -1150,6 +1150,7 @@ emit_3dstate_streamout(struct anv_pipeline *pipeline,
 #if GEN_GEN >= 8
       if (xfb_info) {
          so.SOFunctionEnable = true;
+         so.SOStatisticsEnable = true;
 
          const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
             vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);

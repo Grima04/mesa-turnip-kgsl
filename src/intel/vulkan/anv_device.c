@@ -1305,7 +1305,7 @@ void anv_GetPhysicalDeviceProperties2(
          props->maxTransformFeedbackStreamDataSize = 128 * 4;
          props->maxTransformFeedbackBufferDataSize = 128 * 4;
          props->maxTransformFeedbackBufferDataStride = 2048;
-         props->transformFeedbackQueries = VK_FALSE;
+         props->transformFeedbackQueries = VK_TRUE;
          props->transformFeedbackStreamsLinesTriangles = VK_FALSE;
          props->transformFeedbackRasterizationStreamSelect = VK_FALSE;
          props->transformFeedbackDraw = VK_TRUE;
