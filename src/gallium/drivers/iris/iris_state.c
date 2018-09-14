@@ -1513,21 +1513,21 @@ iris_set_shader_images(struct pipe_context *ctx,
       if (p_images && p_images[i].resource) {
          const struct pipe_image_view *img = &p_images[i];
          struct iris_resource *res = (void *) img->resource;
-         pipe_resource_reference(&shs->image[start_slot + i], &res->base);
+         pipe_resource_reference(&shs->image[start_slot + i].res, &res->base);
 
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
             upload_state(ice->state.surface_uploader,
-                         &shs->image_surface_state[start_slot + i],
+                         &shs->image[start_slot + i].surface_state,
                          4 * GENX(RENDER_SURFACE_STATE_length), 64);
          if (!unlikely(map)) {
-            pipe_resource_reference(&shs->image[start_slot + i], NULL);
+            pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
             return;
          }
 
          struct iris_bo *surf_state_bo =
-            iris_resource_bo(shs->image_surface_state[start_slot + i].res);
-         shs->image_surface_state[start_slot + i].offset +=
+            iris_resource_bo(shs->image[start_slot + i].surface_state.res);
+         shs->image[start_slot + i].surface_state.offset +=
             iris_bo_offset_from_base_address(surf_state_bo);
 
          isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
@@ -1567,8 +1567,8 @@ iris_set_shader_images(struct pipe_context *ctx,
                                   .mocs = MOCS_WB);
          }
       } else {
-         pipe_resource_reference(&shs->image[start_slot + i], NULL);
-         pipe_resource_reference(&shs->image_surface_state[start_slot + i].res,
+         pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
+         pipe_resource_reference(&shs->image[start_slot + i].surface_state.res,
                                  NULL);
       }
    }
@@ -3252,12 +3252,13 @@ static uint32_t
 use_image(struct iris_batch *batch, struct iris_context *ice,
           struct iris_shader_state *shs, int i)
 {
-   if (!shs->image[i])
+   if (!shs->image[i].res)
       return use_null_surface(batch, ice);
 
-   struct iris_state_ref *surf_state = &shs->image_surface_state[i];
+   struct iris_state_ref *surf_state = &shs->image[i].surface_state;
 
-   iris_use_pinned_bo(batch, iris_resource_bo(shs->image[i]), true);
+   iris_use_pinned_bo(batch, iris_resource_bo(shs->image[i].res),
+                      shs->image[i].access & PIPE_IMAGE_ACCESS_WRITE);
    iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
 
    return surf_state->offset;
