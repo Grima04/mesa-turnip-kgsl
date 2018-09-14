@@ -417,6 +417,16 @@ void genX(CmdBeginQuery)(
     uint32_t                                    query,
     VkQueryControlFlags                         flags)
 {
+   genX(CmdBeginQueryIndexedEXT)(commandBuffer, queryPool, query, flags, 0);
+}
+
+void genX(CmdBeginQueryIndexedEXT)(
+    VkCommandBuffer                             commandBuffer,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    query,
+    VkQueryControlFlags                         flags,
+    uint32_t                                    index)
+{
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
    struct anv_address query_addr = anv_query_address(pool, query);
@@ -452,7 +462,16 @@ void genX(CmdBeginQuery)(
 void genX(CmdEndQuery)(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
-    uint32_t                                    query)
+    VkQueryControlFlags                         flags)
+{
+   genX(CmdEndQueryIndexedEXT)(commandBuffer, queryPool, flags, 0);
+}
+
+void genX(CmdEndQueryIndexedEXT)(
+    VkCommandBuffer                             commandBuffer,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    query,
+    uint32_t                                    index)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
