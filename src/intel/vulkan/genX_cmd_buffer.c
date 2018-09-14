@@ -27,6 +27,7 @@
 #include "anv_private.h"
 #include "vk_format_info.h"
 #include "vk_util.h"
+#include "util/fast_idiv_by_const.h"
 
 #include "common/gen_l3_config.h"
 #include "genxml/gen_macros.h"
@@ -2959,7 +2960,153 @@ emit_mul_gpr0(struct anv_batch *batch, uint32_t N)
    build_alu_multiply_gpr0(dw + 1, &num_dwords, N);
 }
 
+static void
+emit_alu_add(struct anv_batch *batch, unsigned dst_reg,
+             unsigned reg_a, unsigned reg_b)
+{
+   uint32_t *dw = anv_batch_emitn(batch, 1 + 4, GENX(MI_MATH));
+   dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, reg_a);
+   dw[2] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, reg_b);
+   dw[3] = mi_alu(MI_ALU_ADD, 0, 0);
+   dw[4] = mi_alu(MI_ALU_STORE, dst_reg, MI_ALU_ACCU);
+}
+
+static void
+emit_add32_gpr0(struct anv_batch *batch, uint32_t N)
+{
+   emit_lri(batch, CS_GPR(1), N);
+   emit_alu_add(batch, MI_ALU_REG0, MI_ALU_REG0, MI_ALU_REG1);
+}
+
+static void
+emit_alu_shl(struct anv_batch *batch, unsigned dst_reg,
+             unsigned src_reg, unsigned shift)
+{
+   assert(shift > 0);
+
+   uint32_t *dw = anv_batch_emitn(batch, 1 + 4 * shift, GENX(MI_MATH));
+   for (unsigned i = 0; i < shift; i++) {
+      unsigned add_src = (i == 0) ? src_reg : dst_reg;
+      dw[1 + (i * 4) + 0] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, add_src);
+      dw[1 + (i * 4) + 1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, add_src);
+      dw[1 + (i * 4) + 2] = mi_alu(MI_ALU_ADD, 0, 0);
+      dw[1 + (i * 4) + 3] = mi_alu(MI_ALU_STORE, dst_reg, MI_ALU_ACCU);
+   }
+}
+
+static void
+emit_div32_gpr0(struct anv_batch *batch, uint32_t D)
+{
+   /* Zero out the top of GPR0 */
+   emit_lri(batch, CS_GPR(0) + 4, 0);
+
+   if (D == 0) {
+      /* This invalid, but we should do something so we set GPR0 to 0. */
+      emit_lri(batch, CS_GPR(0), 0);
+   } else if (util_is_power_of_two_or_zero(D)) {
+      unsigned log2_D = util_logbase2(D);
+      assert(log2_D < 32);
+      /* We right-shift by log2(D) by left-shifting by 32 - log2(D) and taking
+       * the top 32 bits of the result.
+       */
+      emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - log2_D);
+      emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+      emit_lri(batch, CS_GPR(0) + 4, 0);
+   } else {
+      struct util_fast_udiv_info m = util_compute_fast_udiv_info(D, 32, 32);
+      assert(m.multiplier <= UINT32_MAX);
+
+      if (m.pre_shift) {
+         /* We right-shift by L by left-shifting by 32 - l and taking the top
+          * 32 bits of the result.
+          */
+         if (m.pre_shift < 32)
+            emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - m.pre_shift);
+         emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+         emit_lri(batch, CS_GPR(0) + 4, 0);
+      }
+
+      /* Do the 32x32 multiply  into gpr0 */
+      emit_mul_gpr0(batch, m.multiplier);
+
+      if (m.increment) {
+         /* If we need to increment, save off a copy of GPR0 */
+         emit_lri(batch, CS_GPR(1) + 0, m.multiplier);
+         emit_lri(batch, CS_GPR(1) + 4, 0);
+         emit_alu_add(batch, MI_ALU_REG0, MI_ALU_REG0, MI_ALU_REG1);
+      }
+
+      /* Shift by 32 */
+      emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+      emit_lri(batch, CS_GPR(0) + 4, 0);
+
+      if (m.post_shift) {
+         /* We right-shift by L by left-shifting by 32 - l and taking the top
+          * 32 bits of the result.
+          */
+         if (m.post_shift < 32)
+            emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - m.post_shift);
+         emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+         emit_lri(batch, CS_GPR(0) + 4, 0);
+      }
+   }
+}
+
 #endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
+
+void genX(CmdDrawIndirectByteCountEXT)(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    instanceCount,
+    uint32_t                                    firstInstance,
+    VkBuffer                                    counterBuffer,
+    VkDeviceSize                                counterBufferOffset,
+    uint32_t                                    counterOffset,
+    uint32_t                                    vertexStride)
+{
+#if GEN_IS_HASWELL || GEN_GEN >= 8
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   ANV_FROM_HANDLE(anv_buffer, counter_buffer, counterBuffer);
+   struct anv_pipeline *pipeline = cmd_buffer->state.gfx.base.pipeline;
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+
+   /* firstVertex is always zero for this draw function */
+   const uint32_t firstVertex = 0;
+
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return;
+
+   genX(cmd_buffer_flush_state)(cmd_buffer);
+
+   if (vs_prog_data->uses_firstvertex ||
+       vs_prog_data->uses_baseinstance)
+      emit_base_vertex_instance(cmd_buffer, firstVertex, firstInstance);
+   if (vs_prog_data->uses_drawid)
+      emit_draw_index(cmd_buffer, 0);
+
+   /* Our implementation of VK_KHR_multiview uses instancing to draw the
+    * different views.  We need to multiply instanceCount by the view count.
+    */
+   instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
+
+   emit_lrm(&cmd_buffer->batch, CS_GPR(0),
+            anv_address_add(counter_buffer->address, counterBufferOffset));
+   if (counterOffset)
+      emit_add32_gpr0(&cmd_buffer->batch, -counterOffset);
+   emit_div32_gpr0(&cmd_buffer->batch, vertexStride);
+   emit_lrr(&cmd_buffer->batch, GEN7_3DPRIM_VERTEX_COUNT, CS_GPR(0));
+
+   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_START_VERTEX, firstVertex);
+   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_INSTANCE_COUNT, instanceCount);
+   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_START_INSTANCE, firstInstance);
+   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_BASE_VERTEX, 0);
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
+      prim.IndirectParameterEnable  = true;
+      prim.VertexAccessType         = SEQUENTIAL;
+      prim.PrimitiveTopologyType    = pipeline->topology;
+   }
+#endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
+}
 
 static void
 load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,

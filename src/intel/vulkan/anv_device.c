@@ -1308,7 +1308,7 @@ void anv_GetPhysicalDeviceProperties2(
          props->transformFeedbackQueries = VK_FALSE;
          props->transformFeedbackStreamsLinesTriangles = VK_FALSE;
          props->transformFeedbackRasterizationStreamSelect = VK_FALSE;
-         props->transformFeedbackDraw = VK_FALSE;
+         props->transformFeedbackDraw = VK_TRUE;
          break;
       }
 
