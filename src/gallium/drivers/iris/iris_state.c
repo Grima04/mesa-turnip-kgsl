@@ -3097,7 +3097,8 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
 }
 
 #define push_bt_entry(addr) \
-   assert(addr >= binder_addr); bt_map[s++] = (addr) - binder_addr;
+   assert(addr >= binder_addr); \
+   if (!pin_only) bt_map[s++] = (addr) - binder_addr;
 
 /**
  * Populate the binding table for a given shader stage.
@@ -3109,7 +3110,8 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
 static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
-                            gl_shader_stage stage)
+                            gl_shader_stage stage,
+                            bool pin_only)
 {
    const struct iris_binder *binder = &ice->state.binder;
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
@@ -3259,6 +3261,13 @@ iris_restore_context_saved_bos(struct iris_context *ice,
             iris_use_pinned_bo(batch, res->bo, false);
          else
             iris_use_pinned_bo(batch, batch->screen->workaround_bo, false);
+      }
+   }
+
+   for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      if (clean & (IRIS_DIRTY_BINDINGS_VS << stage)) {
+         /* Re-pin any buffers referred to by the binding table. */
+         iris_populate_binding_table(ice, batch, stage, true);
       }
    }
 
@@ -3500,7 +3509,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
-         iris_populate_binding_table(ice, batch, stage);
+         iris_populate_binding_table(ice, batch, stage, false);
       }
    }
 
