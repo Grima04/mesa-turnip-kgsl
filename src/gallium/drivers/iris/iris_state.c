@@ -3489,13 +3489,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   /* Always pin the binder.  If we're emitting new binding table pointers,
-    * we need it.  If not, we're probably inheriting old tables via the
-    * context, and need it anyway.  Since true zero-bindings cases are
-    * practically non-existent, just pin it and avoid last_res tracking.
-    */
-   iris_use_pinned_bo(batch, binder->bo, false);
-
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
          iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
@@ -3790,6 +3783,13 @@ iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
 {
+   /* Always pin the binder.  If we're emitting new binding table pointers,
+    * we need it.  If not, we're probably inheriting old tables via the
+    * context, and need it anyway.  Since true zero-bindings cases are
+    * practically non-existent, just pin it and avoid last_res tracking.
+    */
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false);
+
    iris_upload_dirty_render_state(ice, batch, draw);
 
    if (draw->index_size > 0) {
