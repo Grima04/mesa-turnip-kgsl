@@ -715,7 +715,7 @@ present( struct NineSwapChain9 *This,
     struct pipe_fence_handle *fence;
     HRESULT hr;
     struct pipe_blit_info blit;
-    int target_width, target_height, target_depth;
+    int target_width, target_height, target_depth, i;
 
     DBG("present: This=%p pSourceRect=%p pDestRect=%p "
         "pDirtyRegion=%p hDestWindowOverride=%p"
@@ -752,6 +752,41 @@ present( struct NineSwapChain9 *This,
 
     ID3DPresent_GetWindowInfo(This->present, hDestWindowOverride, &target_width, &target_height, &target_depth);
     (void)target_depth;
+
+    /* Switch to using presentation buffers on window resize.
+     * Note: Most apps should resize the d3d back buffers when
+     * a window resize is detected, which will result in a call to
+     * NineSwapChain9_Resize. Thus everything will get released,
+     * and it will switch back to not using separate presentation
+     * buffers. */
+    if (!This->present_buffers[0] &&
+        (target_width != resource->width0 || target_height != resource->height0)) {
+        BOOL failure = false;
+        struct pipe_resource *new_resource[This->num_back_buffers];
+        D3DWindowBuffer *new_handles[This->num_back_buffers];
+        for (i = 0; i < This->num_back_buffers; i++) {
+            /* Note: if (!new_handles[i]), new_resource[i]
+             * gets released and contains NULL */
+            create_present_buffer(This, target_width, target_height, &new_resource[i], &new_handles[i]);
+            if (!new_handles[i])
+                failure = true;
+        }
+        if (failure) {
+            for (i = 0; i < This->num_back_buffers; i++) {
+                if (new_resource[i])
+                    pipe_resource_reference(&new_resource[i], NULL);
+                if (new_handles[i])
+                    D3DWindowBuffer_release(This, new_handles[i]);
+            }
+        } else {
+            for (i = 0; i < This->num_back_buffers; i++) {
+                D3DWindowBuffer_release(This, This->present_handles[i]);
+                This->present_handles[i] = new_handles[i];
+                pipe_resource_reference(&This->present_buffers[i], new_resource[i]);
+                pipe_resource_reference(&new_resource[i], NULL);
+            }
+        }
+    }
 
     pipe = NineDevice9_GetPipe(This->base.device);
 
