@@ -35,6 +35,13 @@
 
 #ifdef HAVE_PTHREAD
 #include <signal.h>
+#ifdef PTHREAD_SETAFFINITY_IN_NP_HEADER
+#include <pthread_np.h>
+#endif
+#endif
+
+#ifdef __FreeBSD__
+#define cpu_set_t cpuset_t
 #endif
 
 static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
