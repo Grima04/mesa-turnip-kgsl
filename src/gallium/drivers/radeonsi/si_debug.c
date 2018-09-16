@@ -1071,7 +1071,8 @@ void si_log_draw_state(struct si_context *sctx, struct u_log_context *log)
 
 	si_dump_descriptor_list(sctx->screen,
 				&sctx->descriptors[SI_DESCS_RW_BUFFERS],
-				"", "RW buffers", 4, SI_NUM_RW_BUFFERS,
+				"", "RW buffers", 4,
+				sctx->descriptors[SI_DESCS_RW_BUFFERS].num_active_slots,
 				si_identity, log);
 	si_dump_gfx_descriptors(sctx, &sctx->vs_shader, log);
 	si_dump_gfx_descriptors(sctx, tcs_shader, log);
