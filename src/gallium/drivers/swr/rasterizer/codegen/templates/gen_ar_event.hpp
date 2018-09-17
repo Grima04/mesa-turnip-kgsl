@@ -113,7 +113,7 @@ namespace ArchRast
         % for i in range(len(fields)):
             % if fields[i]['size'] > 1:
                 % if fields[i]['type'] == 'char':
-            // Copy size of string (null-terminated) followed by string buffer info entire buffer
+            // Copy size of string (null-terminated) followed by string into entire buffer
             SWR_ASSERT(${fields[i]['name']}_size + 1 < ${fields[i]['size']} - sizeof(uint32_t), "String length must be less than size of char buffer - size(uint32_t)!");
             memcpy(data.${fields[i]['name']}, &${fields[i]['name']}_size, sizeof(uint32_t));
             strcpy_s(data.${fields[i]['name']} + sizeof(uint32_t), ${fields[i]['name']}_size + 1, ${fields[i]['name']});
