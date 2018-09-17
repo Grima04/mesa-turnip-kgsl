@@ -272,6 +272,26 @@ struct iris_vtable {
                                const struct pipe_draw_info *draw);
    void (*update_surface_base_address)(struct iris_batch *batch,
                                        struct iris_binder *binder);
+   void (*load_register_imm32)(struct iris_batch *batch, uint32_t reg,
+                               uint32_t val);
+   void (*load_register_imm64)(struct iris_batch *batch, uint32_t reg,
+                               uint64_t val);
+   void (*load_register_mem32)(struct iris_batch *batch, uint32_t reg,
+                               struct iris_bo *bo, uint32_t offset);
+   void (*load_register_mem64)(struct iris_batch *batch, uint32_t reg,
+                               struct iris_bo *bo, uint32_t offset);
+   void (*store_register_mem32)(struct iris_batch *batch, uint32_t reg,
+                                struct iris_bo *bo, uint32_t offset,
+                                bool predicated);
+   void (*store_register_mem64)(struct iris_batch *batch, uint32_t reg,
+                                struct iris_bo *bo, uint32_t offset,
+                                bool predicated);
+   void (*store_data_imm32)(struct iris_batch *batch,
+                            struct iris_bo *bo, uint32_t offset,
+                            uint32_t value);
+   void (*store_data_imm64)(struct iris_batch *batch,
+                            struct iris_bo *bo, uint32_t offset,
+                            uint64_t value);
    void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
