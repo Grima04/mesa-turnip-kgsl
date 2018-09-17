@@ -196,6 +196,27 @@ glsl_base_type_get_bit_size(const enum glsl_base_type base_type)
    return 0;
 }
 
+static inline enum glsl_base_type
+glsl_unsigned_base_type_of(enum glsl_base_type type)
+{
+   switch (type) {
+   case GLSL_TYPE_INT:
+      return GLSL_TYPE_UINT;
+   case GLSL_TYPE_INT8:
+      return GLSL_TYPE_UINT8;
+   case GLSL_TYPE_INT16:
+      return GLSL_TYPE_UINT16;
+   case GLSL_TYPE_INT64:
+      return GLSL_TYPE_UINT64;
+   default:
+      assert(type == GLSL_TYPE_UINT ||
+             type == GLSL_TYPE_UINT8 ||
+             type == GLSL_TYPE_UINT16 ||
+             type == GLSL_TYPE_UINT64);
+      return type;
+   }
+}
+
 enum glsl_sampler_dim {
    GLSL_SAMPLER_DIM_1D = 0,
    GLSL_SAMPLER_DIM_2D,
