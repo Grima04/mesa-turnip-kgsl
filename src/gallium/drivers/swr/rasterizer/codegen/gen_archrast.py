@@ -27,6 +27,9 @@ import re
 from gen_common import *
 
 def parse_event_fields(lines, idx, event_dict):
+    """
+        Parses lines from a proto file that contain an event definition and stores it in event_dict
+    """
     fields = []
     end_of_event = False
 
@@ -36,13 +39,14 @@ def parse_event_fields(lines, idx, event_dict):
         line = lines[idx].rstrip()
         idx += 1
 
-        match = re.match(r'(\s*)([\w\*]+)(\s*)([\w]+)(\[\d+\])*', line)
+        match = re.match(r'(\s*)([\w\*]+)(\s+)(counter\s+)*([\w]+)(\[\d+\])*', line)
 
         if match:
             field = {
                 "type": match.group(2),
-                "name": match.group(4),
-                "size": int(match.group(5)[1:-1]) if match.group(5) else 1
+                "name": match.group(5),
+                "size": int(match.group(6)[1:-1]) if match.group(6) else 1,
+                "counter": True if match.group(4) else False
             }
             fields.append(field)
 
@@ -54,6 +58,9 @@ def parse_event_fields(lines, idx, event_dict):
     return idx
 
 def parse_enums(lines, idx, event_dict):
+    """
+        Parses lines from a proto file that contain an enum definition and stores it in event_dict
+    """
     enum_names = []
     end_of_enum = False
 
@@ -77,14 +84,20 @@ def parse_enums(lines, idx, event_dict):
     return idx
 
 def parse_protos(files, verbose=False):
-
+    """
+        Parses a proto file and returns a dictionary of event definitions
+    """
     protos = {}
     protos['events'] = {}       # event dictionary containing events with their fields
     protos['event_names'] = []  # needed to keep events in order parsed. dict is not ordered.
+    protos['event_map'] = {}    # dictionary to map event ids to event names
     protos['enums'] = {}
     protos['enum_names'] = []
 
     eventId = 0
+
+    if type(files) is not list:
+        files = [files]
 
     for filename in files:
         if verbose:
@@ -106,21 +119,22 @@ def parse_protos(files, verbose=False):
                 if match:
                     eventId += 1
                     event_name = match.group(3)
-                    protos['event_names'].append(event_name)
+                    protos["event_names"].append(event_name)
 
-                    protos['events'][event_name] = {}
-                    protos['events'][event_name]['event_id'] = eventId
-                    idx = parse_event_fields(lines, idx, protos['events'][event_name])
+                    protos["events"][event_name] = {}
+                    protos["events"][event_name]["event_id"] = eventId
+                    protos["event_map"][eventId] = event_name
+                    idx = parse_event_fields(lines, idx, protos["events"][event_name])
 
                 # search for enums.
                 match = re.match(r'(\s*)enum(\s*)(\w+)', line)
 
                 if match:
                     enum_name = match.group(3)
-                    protos['enum_names'].append(enum_name)
+                    protos["enum_names"].append(enum_name)
 
-                    protos['enums'][enum_name] = {}
-                    idx = parse_enums(lines, idx, protos['enums'][enum_name])
+                    protos["enums"][enum_name] = {}
+                    idx = parse_enums(lines, idx, protos["enums"][enum_name])
     return protos
 
 
