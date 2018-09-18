@@ -4436,7 +4436,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
          flags & PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE;
       pc.TextureCacheInvalidationEnable =
          flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
-      pc.Address = ro_bo(bo, offset);
+      pc.Address = rw_bo(bo, offset);
       pc.ImmediateData = imm;
    }
 }
