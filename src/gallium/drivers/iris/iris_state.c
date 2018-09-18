@@ -557,6 +557,16 @@ iris_init_render_context(struct iris_screen *screen,
    iris_emit_lri(batch, CACHE_MODE_1, reg_val);
 #endif
 
+#if GEN_GEN == 11
+      iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
+         reg.HeaderlessMessageforPreemptableContexts = 1;
+         reg.HeaderlessMessageforPreemptableContextsMask = 1;
+      }
+      iris_emit_lri(batch, SAMPLER_MODE, reg_val);
+
+      // XXX: 3D_MODE?
+#endif
+
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
     * instead include the render target dimensions in the viewport, so
@@ -1811,6 +1821,24 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
 
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
+
+#if GEN_GEN == 11
+   // XXX: we may want to flag IRIS_DIRTY_MULTISAMPLE (or SAMPLE_MASK?)
+   // XXX: see commit 979fc1bc9bcc64027ff2cfafd285676f31b930a6
+
+   /* The PIPE_CONTROL command description says:
+    *
+    *   "Whenever a Binding Table Index (BTI) used by a Render Target Message
+    *    points to a different RENDER_SURFACE_STATE, SW must issue a Render
+    *    Target Cache Flush by enabling this bit. When render target flush
+    *    is set due to new association of BTI, PS Scoreboard Stall bit must
+    *    be set in this packet."
+    */
+   // XXX: does this need to happen at 3DSTATE_BTP_PS time?
+   iris_emit_pipe_control_flush(&ice->render_batch,
+                                PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                PIPE_CONTROL_STALL_AT_SCOREBOARD);
+#endif
 }
 
 /**
@@ -2711,9 +2739,14 @@ KSP(const struct iris_compiled_shader *shader)
    return iris_bo_offset_from_base_address(res->bo) + shader->assembly.offset;
 }
 
+// Gen11 workaround table #2056 WABTPPrefetchDisable suggests to disable
+// prefetching of binding tables in A0 and B0 steppings.  XXX: Revisit
+// this WA on C0 stepping.
+
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
    pkt.KernelStartPointer = KSP(shader);                                  \
-   pkt.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;  \
+   pkt.BindingTableEntryCount = GEN_GEN == 11 ? 0 :                       \
+      prog_data->binding_table.size_bytes / 4;                            \
    pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
                                                                           \
    pkt.DispatchGRFStartRegisterForURBData =                               \
@@ -2863,7 +2896,9 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
       ps.VectorMaskEnable = true;
       //ps.SamplerCount = ...
-      ps.BindingTableEntryCount = prog_data->binding_table.size_bytes / 4;
+      // XXX: WABTPPrefetchDisable, see above, drop at C0
+      ps.BindingTableEntryCount = GEN_GEN == 11 ? 0 :
+         prog_data->binding_table.size_bytes / 4;
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
 

@@ -489,6 +489,9 @@ iris_screen_create(int fd)
    if (!gen_get_device_info(screen->pci_id, &screen->devinfo))
       return NULL;
 
+   screen->devinfo.timestamp_frequency =
+      iris_getparam_integer(screen, I915_PARAM_CS_TIMESTAMP_FREQUENCY);
+
    screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd);
    if (!screen->bufmgr)
       return NULL;

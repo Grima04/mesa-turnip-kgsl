@@ -456,6 +456,7 @@ void iris_init_flush_functions(struct pipe_context *ctx);
 
 void gen9_init_blorp(struct iris_context *ice);
 void gen10_init_blorp(struct iris_context *ice);
+void gen11_init_blorp(struct iris_context *ice);
 
 /* iris_border_color.c */
 
@@ -468,6 +469,7 @@ uint32_t iris_upload_border_color(struct iris_context *ice,
 
 void gen9_init_state(struct iris_context *ice);
 void gen10_init_state(struct iris_context *ice);
+void gen11_init_state(struct iris_context *ice);
 
 /* iris_program.c */
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
