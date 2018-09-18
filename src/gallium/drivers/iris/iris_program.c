@@ -410,6 +410,12 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                     struct brw_stage_prog_data *prog_data)
 {
    prog_data->nr_params = nir->num_uniforms;
+   /* The intel compiler assumes that num_uniforms is in bytes. For
+    * scalar that means 4 bytes per uniform slot.
+    *
+    * Ref: brw_nir_lower_uniforms, type_size_scalar_bytes.
+    */
+   nir->num_uniforms *= 4;
    prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
 
    nir_foreach_variable(var, &nir->uniforms) {
