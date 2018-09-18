@@ -810,6 +810,11 @@ iris_transfer_map(struct pipe_context *ctx,
       iris_batch_flush(&ice->render_batch);
    }
 
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+       iris_batch_references(&ice->compute_batch, res->bo)) {
+      iris_batch_flush(&ice->compute_batch);
+   }
+
    if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
       return NULL;
 
