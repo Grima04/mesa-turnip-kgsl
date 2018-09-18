@@ -185,6 +185,7 @@ iris_memory_barrier(struct pipe_context *ctx, unsigned flags)
    // XXX: compute batch?
 
    iris_emit_pipe_control_flush(&ice->render_batch, bits);
+   iris_emit_pipe_control_flush(&ice->compute_batch, bits);
 }
 
 void
