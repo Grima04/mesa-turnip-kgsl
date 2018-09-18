@@ -705,7 +705,7 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	mtx_destroy(&sscreen->shader_parts_mutex);
 	si_destroy_shader_cache(sscreen);
 
-	si_perfcounters_destroy(sscreen);
+	si_destroy_perfcounters(sscreen);
 	si_gpu_load_kill_thread(sscreen);
 
 	mtx_destroy(&sscreen->gpu_load_mutex);

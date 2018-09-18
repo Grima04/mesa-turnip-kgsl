@@ -213,78 +213,13 @@ bool si_query_hw_get_result(struct si_context *sctx,
 			    union pipe_query_result *result);
 
 /* Performance counters */
-enum {
-	/* This block is part of the shader engine */
-	SI_PC_BLOCK_SE = (1 << 0),
-
-	/* Expose per-instance groups instead of summing all instances (within
-	 * an SE). */
-	SI_PC_BLOCK_INSTANCE_GROUPS = (1 << 1),
-
-	/* Expose per-SE groups instead of summing instances across SEs. */
-	SI_PC_BLOCK_SE_GROUPS = (1 << 2),
-
-	/* Shader block */
-	SI_PC_BLOCK_SHADER = (1 << 3),
-
-	/* Non-shader block with perfcounters windowed by shaders. */
-	SI_PC_BLOCK_SHADER_WINDOWED = (1 << 4),
-};
-
-/* Describes a hardware block with performance counters. Multiple instances of
- * each block, possibly per-SE, may exist on the chip. Depending on the block
- * and on the user's configuration, we either
- *  (a) expose every instance as a performance counter group,
- *  (b) expose a single performance counter group that reports the sum over all
- *      instances, or
- *  (c) expose one performance counter group per instance, but summed over all
- *      shader engines.
- */
-struct si_perfcounter_block {
-	const char *basename;
-	unsigned flags;
-	unsigned num_counters;
-	unsigned num_selectors;
-	unsigned num_instances;
-
-	unsigned num_groups;
-	char *group_names;
-	unsigned group_name_stride;
-
-	char *selector_names;
-	unsigned selector_name_stride;
-
-	void *data;
-};
-
 struct si_perfcounters {
 	unsigned num_groups;
 	unsigned num_blocks;
-	struct si_perfcounter_block *blocks;
+	struct si_pc_block *blocks;
 
 	unsigned num_stop_cs_dwords;
 	unsigned num_instance_cs_dwords;
-
-	unsigned num_shader_types;
-	const char * const *shader_type_suffixes;
-	const unsigned *shader_type_bits;
-
-	void (*emit_instance)(struct si_context *,
-			      int se, int instance);
-	void (*emit_shaders)(struct si_context *, unsigned shaders);
-	void (*emit_select)(struct si_context *,
-			    struct si_perfcounter_block *,
-			    unsigned count, unsigned *selectors);
-	void (*emit_start)(struct si_context *,
-			  struct r600_resource *buffer, uint64_t va);
-	void (*emit_stop)(struct si_context *,
-			  struct r600_resource *buffer, uint64_t va);
-	void (*emit_read)(struct si_context *,
-			  struct si_perfcounter_block *,
-			  unsigned count, unsigned *selectors,
-			  struct r600_resource *buffer, uint64_t va);
-
-	void (*cleanup)(struct si_screen *);
 
 	bool separate_se;
 	bool separate_instance;
@@ -301,13 +236,6 @@ int si_get_perfcounter_group_info(struct si_screen *,
 				  unsigned index,
 				  struct pipe_driver_query_group_info *info);
 
-bool si_perfcounters_init(struct si_perfcounters *, unsigned num_blocks);
-void si_perfcounters_add_block(struct si_screen *,
-			       struct si_perfcounters *,
-			       const char *name, unsigned flags,
-			       unsigned counters, unsigned selectors,
-			       unsigned instances, void *data);
-void si_perfcounters_do_destroy(struct si_perfcounters *);
 void si_query_hw_reset_buffers(struct si_context *sctx,
 			       struct si_query_hw *query);
 
