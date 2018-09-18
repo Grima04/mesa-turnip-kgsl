@@ -475,6 +475,16 @@ flush_for_state_base_change(struct iris_batch *batch)
                               PIPE_CONTROL_DATA_CACHE_FLUSH);
 }
 
+static void
+_iris_emit_lri(struct iris_batch *batch, uint32_t reg, uint32_t val)
+{
+   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = reg;
+      lri.DataDWord      = val;
+   }
+}
+#define iris_emit_lri(b, r, v) _iris_emit_lri(b, GENX(r##_num), v)
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -487,6 +497,8 @@ iris_init_render_context(struct iris_screen *screen,
                          struct iris_vtable *vtbl,
                          struct pipe_debug_callback *dbg)
 {
+   uint32_t reg_val;
+
    iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
 
    flush_for_state_base_change(batch);
@@ -529,15 +541,11 @@ iris_init_render_context(struct iris_screen *screen,
    }
 
    // XXX: INSTPM on Gen8
-   uint32_t reg_val;
    iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
    }
-   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(CS_DEBUG_MODE2_num);
-      lri.DataDWord      = reg_val;
-   }
+   iris_emit_lri(batch, CS_DEBUG_MODE2, reg_val);
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
