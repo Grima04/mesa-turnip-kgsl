@@ -4355,9 +4355,9 @@ iris_upload_compute_state(struct iris_context *ice,
       ggw.ThreadDepthCounterMaximum  = 0;
       ggw.ThreadHeightCounterMaximum = 0;
       ggw.ThreadWidthCounterMaximum  = cs_prog_data->threads - 1;
-      ggw.ThreadGroupIDXDimension    = grid->block[0];
-      ggw.ThreadGroupIDYDimension    = grid->block[1];
-      ggw.ThreadGroupIDZDimension    = grid->block[2];
+      ggw.ThreadGroupIDXDimension    = grid->grid[0];
+      ggw.ThreadGroupIDYDimension    = grid->grid[1];
+      ggw.ThreadGroupIDZDimension    = grid->grid[2];
       ggw.RightExecutionMask         = right_mask;
       ggw.BottomExecutionMask        = 0xffffffff;
    }
