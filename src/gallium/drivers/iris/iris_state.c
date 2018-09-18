@@ -4357,12 +4357,23 @@ iris_upload_compute_state(struct iris_context *ice,
    // XXX: hack iris_set_constant_buffers to upload compute shader constants
    // XXX: differently...?
 
-   if (cs_prog_data->push.total.size > 0) {
-      iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
-         curbe.CURBETotalDataLength =
-            ALIGN(cs_prog_data->push.total.size, 64);
-         // XXX: curbe.CURBEDataStartAddress = stage_state->push_const_offset;
-      }
+   uint32_t curbe_data_offset = 0;
+   // TODO: Move subgroup-id into uniforms ubo so we can push uniforms
+   assert(cs_prog_data->push.cross_thread.dwords == 0 &&
+          cs_prog_data->push.per_thread.dwords == 1 &&
+          cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
+   struct pipe_resource *curbe_data_res = NULL;
+   uint32_t *curbe_data_map =
+      stream_state(batch, ice->state.dynamic_uploader, &curbe_data_res,
+                   ALIGN(cs_prog_data->push.total.size, 64), 64,
+                   &curbe_data_offset);
+   assert(curbe_data_map);
+   memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
+   iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
+   iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
+     curbe.CURBETotalDataLength =
+        ALIGN(cs_prog_data->push.total.size, 64);
+     curbe.CURBEDataStartAddress = curbe_data_offset;
    }
 
    struct pipe_resource *desc_res = NULL;
@@ -4371,6 +4382,11 @@ iris_upload_compute_state(struct iris_context *ice,
    iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
       idd.SamplerStatePointer = shs->sampler_table.offset;
       idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
+      idd.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+      idd.CrossThreadConstantDataReadLength =
+         cs_prog_data->push.cross_thread.regs;
+#endif
    }
 
    for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)

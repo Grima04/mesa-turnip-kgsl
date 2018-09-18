@@ -485,6 +485,8 @@ void iris_init_resource_functions(struct pipe_context *ctx);
 void iris_init_query_functions(struct pipe_context *ctx);
 void iris_update_compiled_shaders(struct iris_context *ice);
 void iris_update_compiled_compute_shader(struct iris_context *ice);
+void iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
+                                    uint32_t *dst);
 
 
 /* iris_blit.c */
