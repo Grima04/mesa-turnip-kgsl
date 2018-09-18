@@ -133,14 +133,23 @@ struct si_query_ops {
 				    int index,
 				    struct pipe_resource *resource,
 				    unsigned offset);
+
+	void (*suspend)(struct si_context *, struct si_query *);
+	void (*resume)(struct si_context *, struct si_query *);
 };
 
 struct si_query {
 	struct threaded_query b;
 	struct si_query_ops *ops;
 
-	/* The type of query */
+	/* The PIPE_QUERY_xxx type of query */
 	unsigned type;
+
+	/* The number of dwords for suspend. */
+	unsigned num_cs_dw_suspend;
+
+	/* Linked list of queries that must be suspended at end of CS. */
+	struct list_head active_list;
 };
 
 enum {
@@ -187,10 +196,6 @@ struct si_query_hw {
 	/* Size of the result in memory for both begin_query and end_query,
 	 * this can be one or two numbers, or it could even be a size of a structure. */
 	unsigned result_size;
-	/* The number of dwords for end_query. */
-	unsigned num_cs_dw_end;
-	/* Linked list of queries */
-	struct list_head list;
 	/* For transform feedback: which stream the query is for */
 	unsigned stream;
 
@@ -211,6 +216,9 @@ bool si_query_hw_get_result(struct si_context *sctx,
 			    struct si_query *rquery,
 			    bool wait,
 			    union pipe_query_result *result);
+void si_query_hw_suspend(struct si_context *sctx, struct si_query *query);
+void si_query_hw_resume(struct si_context *sctx, struct si_query *query);
+
 
 /* Performance counters */
 struct si_perfcounters {

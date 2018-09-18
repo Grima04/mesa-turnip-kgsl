@@ -868,7 +868,10 @@ static struct si_query_ops batch_query_ops = {
 	.destroy = si_pc_query_destroy,
 	.begin = si_query_hw_begin,
 	.end = si_query_hw_end,
-	.get_result = si_query_hw_get_result
+	.get_result = si_query_hw_get_result,
+
+	.suspend = si_query_hw_suspend,
+	.resume = si_query_hw_resume,
 };
 
 static struct si_query_hw_ops batch_query_hw_ops = {
@@ -1001,8 +1004,8 @@ struct pipe_query *si_create_batch_query(struct pipe_context *ctx,
 	}
 
 	/* Compute result bases and CS size per group */
-	query->b.num_cs_dw_end = pc->num_stop_cs_dwords;
-	query->b.num_cs_dw_end += pc->num_instance_cs_dwords;
+	query->b.b.num_cs_dw_suspend = pc->num_stop_cs_dwords;
+	query->b.b.num_cs_dw_suspend += pc->num_instance_cs_dwords;
 
 	i = 0;
 	for (group = query->groups; group; group = group->next) {
@@ -1020,8 +1023,8 @@ struct pipe_query *si_create_batch_query(struct pipe_context *ctx,
 		i += instances * group->num_counters;
 
 		read_dw = 6 * group->num_counters;
-		query->b.num_cs_dw_end += instances * read_dw;
-		query->b.num_cs_dw_end += instances * pc->num_instance_cs_dwords;
+		query->b.b.num_cs_dw_suspend += instances * read_dw;
+		query->b.b.num_cs_dw_suspend += instances * pc->num_instance_cs_dwords;
 	}
 
 	if (query->shaders) {

@@ -34,6 +34,8 @@
 
 #define SI_MAX_STREAMS 4
 
+static struct si_query_ops query_hw_ops;
+
 struct si_hw_query_params {
 	unsigned start_offset;
 	unsigned end_offset;
@@ -607,14 +609,6 @@ static void si_query_hw_get_result_resource(struct si_context *sctx,
 					    struct pipe_resource *resource,
 					    unsigned offset);
 
-static struct si_query_ops query_hw_ops = {
-	.destroy = si_query_hw_destroy,
-	.begin = si_query_hw_begin,
-	.end = si_query_hw_end,
-	.get_result = si_query_hw_get_result,
-	.get_result_resource = si_query_hw_get_result_resource,
-};
-
 static void si_query_hw_do_emit_start(struct si_context *sctx,
 				      struct si_query_hw *query,
 				      struct r600_resource *buffer,
@@ -665,20 +659,19 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen,
 	case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
 		query->result_size = 16 * sscreen->info.num_render_backends;
 		query->result_size += 16; /* for the fence + alignment */
-		query->num_cs_dw_end = 6 + si_cp_write_fence_dwords(sscreen);
+		query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
 		break;
 	case SI_QUERY_TIME_ELAPSED_SDMA:
 		/* GET_GLOBAL_TIMESTAMP only works if the offset is a multiple of 32. */
 		query->result_size = 64;
-		query->num_cs_dw_end = 0;
 		break;
 	case PIPE_QUERY_TIME_ELAPSED:
 		query->result_size = 24;
-		query->num_cs_dw_end = 8 + si_cp_write_fence_dwords(sscreen);
+		query->b.num_cs_dw_suspend = 8 + si_cp_write_fence_dwords(sscreen);
 		break;
 	case PIPE_QUERY_TIMESTAMP:
 		query->result_size = 16;
-		query->num_cs_dw_end = 8 + si_cp_write_fence_dwords(sscreen);
+		query->b.num_cs_dw_suspend = 8 + si_cp_write_fence_dwords(sscreen);
 		query->flags = SI_QUERY_HW_FLAG_NO_START;
 		break;
 	case PIPE_QUERY_PRIMITIVES_EMITTED:
@@ -687,19 +680,19 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen,
 	case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
 		/* NumPrimitivesWritten, PrimitiveStorageNeeded. */
 		query->result_size = 32;
-		query->num_cs_dw_end = 6;
+		query->b.num_cs_dw_suspend = 6;
 		query->stream = index;
 		break;
 	case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
 		/* NumPrimitivesWritten, PrimitiveStorageNeeded. */
 		query->result_size = 32 * SI_MAX_STREAMS;
-		query->num_cs_dw_end = 6 * SI_MAX_STREAMS;
+		query->b.num_cs_dw_suspend = 6 * SI_MAX_STREAMS;
 		break;
 	case PIPE_QUERY_PIPELINE_STATISTICS:
 		/* 11 values on GCN. */
 		query->result_size = 11 * 16;
 		query->result_size += 8; /* for the fence + alignment */
-		query->num_cs_dw_end = 6 + si_cp_write_fence_dwords(sscreen);
+		query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
 		break;
 	default:
 		assert(0);
@@ -840,8 +833,6 @@ static void si_query_hw_emit_start(struct si_context *sctx,
 	va = query->buffer.buf->gpu_address + query->buffer.results_end;
 
 	query->ops->emit_start(sctx, query, query->buffer.buf, va);
-
-	sctx->num_cs_dw_queries_suspend += query->num_cs_dw_end;
 }
 
 static void si_query_hw_do_emit_stop(struct si_context *sctx,
@@ -934,9 +925,6 @@ static void si_query_hw_emit_stop(struct si_context *sctx,
 	query->ops->emit_stop(sctx, query, query->buffer.buf, va);
 
 	query->buffer.results_end += query->result_size;
-
-	if (!(query->flags & SI_QUERY_HW_FLAG_NO_START))
-		sctx->num_cs_dw_queries_suspend -= query->num_cs_dw_end;
 
 	si_update_occlusion_query_state(sctx, query->b.type, -1);
 	si_update_prims_generated_query_state(sctx, query->b.type, -1);
@@ -1119,7 +1107,8 @@ bool si_query_hw_begin(struct si_context *sctx,
 	if (!query->buffer.buf)
 		return false;
 
-	LIST_ADDTAIL(&query->list, &sctx->active_queries);
+	LIST_ADDTAIL(&query->b.active_list, &sctx->active_queries);
+	sctx->num_cs_dw_queries_suspend += query->b.num_cs_dw_suspend;
 	return true;
 }
 
@@ -1141,8 +1130,10 @@ bool si_query_hw_end(struct si_context *sctx,
 
 	si_query_hw_emit_stop(sctx, query);
 
-	if (!(query->flags & SI_QUERY_HW_FLAG_NO_START))
-		LIST_DELINIT(&query->list);
+	if (!(query->flags & SI_QUERY_HW_FLAG_NO_START)) {
+		LIST_DELINIT(&query->b.active_list);
+		sctx->num_cs_dw_queries_suspend -= query->b.num_cs_dw_suspend;
+	}
 
 	if (!query->buffer.buf)
 		return false;
@@ -1348,6 +1339,27 @@ static void si_query_hw_add_result(struct si_screen *sscreen,
 		assert(0);
 	}
 }
+
+void si_query_hw_suspend(struct si_context *sctx, struct si_query *query)
+{
+	si_query_hw_emit_stop(sctx, (struct si_query_hw *)query);
+}
+
+void si_query_hw_resume(struct si_context *sctx, struct si_query *query)
+{
+	si_query_hw_emit_start(sctx, (struct si_query_hw *)query);
+}
+
+static struct si_query_ops query_hw_ops = {
+	.destroy = si_query_hw_destroy,
+	.begin = si_query_hw_begin,
+	.end = si_query_hw_end,
+	.get_result = si_query_hw_get_result,
+	.get_result_resource = si_query_hw_get_result_resource,
+
+	.suspend = si_query_hw_suspend,
+	.resume = si_query_hw_resume,
+};
 
 static boolean si_get_query_result(struct pipe_context *ctx,
 				   struct pipe_query *query, boolean wait,
@@ -1644,26 +1656,21 @@ static void si_render_condition(struct pipe_context *ctx,
 
 void si_suspend_queries(struct si_context *sctx)
 {
-	struct si_query_hw *query;
+	struct si_query *query;
 
-	LIST_FOR_EACH_ENTRY(query, &sctx->active_queries, list) {
-		si_query_hw_emit_stop(sctx, query);
-	}
-	assert(sctx->num_cs_dw_queries_suspend == 0);
+	LIST_FOR_EACH_ENTRY(query, &sctx->active_queries, active_list)
+		query->ops->suspend(sctx, query);
 }
 
 void si_resume_queries(struct si_context *sctx)
 {
-	struct si_query_hw *query;
-
-	assert(sctx->num_cs_dw_queries_suspend == 0);
+	struct si_query *query;
 
 	/* Check CS space here. Resuming must not be interrupted by flushes. */
 	si_need_gfx_cs_space(sctx);
 
-	LIST_FOR_EACH_ENTRY(query, &sctx->active_queries, list) {
-		si_query_hw_emit_start(sctx, query);
-	}
+	LIST_FOR_EACH_ENTRY(query, &sctx->active_queries, active_list)
+		query->ops->resume(sctx, query);
 }
 
 #define XFULL(name_, query_type_, type_, result_type_, group_id_) \
