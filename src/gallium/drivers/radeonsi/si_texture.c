@@ -2283,11 +2283,10 @@ void vi_separate_dcc_process_and_reset_stats(struct pipe_context *ctx,
 		union pipe_query_result result;
 
 		/* Read the results. */
-		ctx->get_query_result(ctx, sctx->dcc_stats[i].ps_stats[2],
+		struct pipe_query *query = sctx->dcc_stats[i].ps_stats[2];
+		ctx->get_query_result(ctx, query,
 				      true, &result);
-		si_query_hw_reset_buffers(sctx,
-					  (struct si_query_hw*)
-					  sctx->dcc_stats[i].ps_stats[2]);
+		si_query_buffer_reset(sctx, &((struct si_query_hw*)query)->buffer);
 
 		/* Compute the approximate number of fullscreen draws. */
 		tex->ps_draw_ratio =

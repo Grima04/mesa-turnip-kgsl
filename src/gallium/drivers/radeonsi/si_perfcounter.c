@@ -768,9 +768,8 @@ static void si_pc_query_destroy(struct si_screen *sscreen,
 	si_query_hw_destroy(sscreen, rquery);
 }
 
-static bool si_pc_query_prepare_buffer(struct si_screen *screen,
-				       struct si_query_hw *hwquery,
-				       struct r600_resource *buffer)
+static bool si_pc_query_prepare_buffer(struct si_context *ctx,
+				       struct si_query_buffer *qbuf)
 {
 	/* no-op */
 	return true;
@@ -1061,9 +1060,6 @@ struct pipe_query *si_create_batch_query(struct pipe_context *ctx,
 		if (group->instance < 0)
 			counter->qwords *= block->num_instances;
 	}
-
-	if (!si_query_hw_init(screen, &query->b))
-		goto error;
 
 	return (struct pipe_query *)query;
 

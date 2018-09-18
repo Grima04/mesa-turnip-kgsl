@@ -34,6 +34,7 @@ struct pipe_resource;
 struct si_screen;
 struct si_context;
 struct si_query;
+struct si_query_buffer;
 struct si_query_hw;
 struct r600_resource;
 
@@ -160,9 +161,7 @@ enum {
 };
 
 struct si_query_hw_ops {
-	bool (*prepare_buffer)(struct si_screen *,
-			       struct si_query_hw *,
-			       struct r600_resource *);
+	bool (*prepare_buffer)(struct si_context *, struct si_query_buffer *);
 	void (*emit_start)(struct si_context *,
 			   struct si_query_hw *,
 			   struct r600_resource *buffer, uint64_t va);
@@ -186,6 +185,13 @@ struct si_query_buffer {
 	struct si_query_buffer	*previous;
 };
 
+void si_query_buffer_destroy(struct si_screen *sctx, struct si_query_buffer *buffer);
+void si_query_buffer_reset(struct si_context *sctx, struct si_query_buffer *buffer);
+bool si_query_buffer_alloc(struct si_context *sctx, struct si_query_buffer *buffer,
+			   bool (*prepare_buffer)(struct si_context *, struct si_query_buffer*),
+			   unsigned size);
+
+
 struct si_query_hw {
 	struct si_query b;
 	struct si_query_hw_ops *ops;
@@ -204,8 +210,6 @@ struct si_query_hw {
 	unsigned workaround_offset;
 };
 
-bool si_query_hw_init(struct si_screen *sscreen,
-		      struct si_query_hw *query);
 void si_query_hw_destroy(struct si_screen *sscreen,
 			 struct si_query *rquery);
 bool si_query_hw_begin(struct si_context *sctx,
@@ -243,9 +247,6 @@ int si_get_perfcounter_info(struct si_screen *,
 int si_get_perfcounter_group_info(struct si_screen *,
 				  unsigned index,
 				  struct pipe_driver_query_group_info *info);
-
-void si_query_hw_reset_buffers(struct si_context *sctx,
-			       struct si_query_hw *query);
 
 struct si_qbo_state {
 	void *saved_compute;
