@@ -547,6 +547,16 @@ iris_init_render_context(struct iris_screen *screen,
    }
    iris_emit_lri(batch, CS_DEBUG_MODE2, reg_val);
 
+#if GEN_GEN == 9
+   iris_pack_state(GENX(CACHE_MODE_1), &reg_val, reg) {
+      reg.FloatBlendOptimizationEnable = true;
+      reg.FloatBlendOptimizationEnableMask = true;
+      reg.PartialResolveDisableInVC = true;
+      reg.PartialResolveDisableInVCMask = true;
+   }
+   iris_emit_lri(batch, CACHE_MODE_1, reg_val);
+#endif
+
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
     * instead include the render target dimensions in the viewport, so
