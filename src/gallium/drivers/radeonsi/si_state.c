@@ -119,9 +119,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 		 * Alternatively, we can set CB_COLORi_DCC_CONTROL.OVERWRITE_-
 		 * COMBINER_DISABLE, but that would be more complicated.
 		 */
-		bool oc_disable = (sctx->chip_class == GFX8 ||
-				   sctx->chip_class == GFX9) &&
-				  blend &&
+		bool oc_disable = blend &&
 				  blend->blend_enable_4bit & cb_target_mask &&
 				  sctx->framebuffer.nr_samples >= 2;
 		unsigned watermark = sctx->framebuffer.dcc_overwrite_combiner_watermark;
