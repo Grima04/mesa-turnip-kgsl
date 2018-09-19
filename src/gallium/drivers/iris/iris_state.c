@@ -3466,9 +3466,9 @@ iris_use_optional_res(struct iris_batch *batch,
  * refer to the old BOs.
  */
 static void
-iris_restore_context_saved_bos(struct iris_context *ice,
-                               struct iris_batch *batch,
-                               const struct pipe_draw_info *draw)
+iris_restore_render_saved_bos(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              const struct pipe_draw_info *draw)
 {
    // XXX: whack IRIS_SHADER_DIRTY_BINDING_TABLE on new batch
 
@@ -3577,6 +3577,55 @@ iris_restore_context_saved_bos(struct iris_context *ice,
          struct iris_resource *res = (void *) cso->resources[i];
          iris_use_pinned_bo(batch, res->bo, false);
       }
+   }
+}
+
+static void
+iris_restore_compute_saved_bos(struct iris_context *ice,
+                               struct iris_batch *batch,
+                               const struct pipe_grid_info *grid)
+{
+   const uint64_t clean = ~ice->state.dirty;
+
+   const int stage = MESA_SHADER_COMPUTE;
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+
+   if (clean & IRIS_DIRTY_CONSTANTS_CS) {
+      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+
+      if (shader) {
+         struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+         const struct brw_ubo_range *range = &prog_data->ubo_ranges[0];
+
+         if (range->length > 0) {
+            struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
+            struct iris_resource *res = (void *) cbuf->data.res;
+
+            if (res)
+               iris_use_pinned_bo(batch, res->bo, false);
+            else
+               iris_use_pinned_bo(batch, batch->screen->workaround_bo, false);
+           }
+      }
+   }
+
+   if (clean & IRIS_DIRTY_BINDINGS_CS) {
+      /* Re-pin any buffers referred to by the binding table. */
+      iris_populate_binding_table(ice, batch, stage, true);
+   }
+
+   struct pipe_resource *sampler_res = shs->sampler_table.res;
+   if (sampler_res)
+      iris_use_pinned_bo(batch, iris_resource_bo(sampler_res), false);
+
+   if (clean & IRIS_DIRTY_CS) {
+      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+      if (shader) {
+         struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
+         iris_use_pinned_bo(batch, bo, false);
+      }
+
+      // XXX: scratch buffer
    }
 }
 
@@ -4194,7 +4243,7 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    if (!batch->contains_draw) {
-      iris_restore_context_saved_bos(ice, batch, draw);
+      iris_restore_render_saved_bos(ice, batch, draw);
       batch->contains_draw = true;
    }
 }
@@ -4314,7 +4363,7 @@ iris_upload_compute_state(struct iris_context *ice,
    }
 
    if (!batch->contains_draw) {
-      //iris_restore_context_saved_bos(ice, batch, draw);
+      iris_restore_compute_saved_bos(ice, batch, grid);
       batch->contains_draw = true;
    }
 }
