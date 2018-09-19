@@ -6082,6 +6082,8 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			for (unsigned i = 0; i < 4; ++i) {
 				ctx->gs_curprim_verts[i] =
 					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
+				ctx->gs_generated_prims[i] =
+					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
 			}
 
 			LLVMTypeRef a8i32 = LLVMArrayType(ctx->i32, 8);
@@ -6135,9 +6137,15 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 
 			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
 			    ctx->type == PIPE_SHADER_GEOMETRY) {
+				if (ctx->type == PIPE_SHADER_GEOMETRY && shader->key.as_ngg) {
+					gfx10_ngg_gs_emit_prologue(ctx);
+					nested_barrier = false;
+				} else {
+					nested_barrier = true;
+				}
+
 				/* Number of patches / primitives */
 				num_threads = si_unpack_param(ctx, ctx->param_merged_wave_info, 8, 8);
-				nested_barrier = true;
 			} else {
 				/* Number of vertices */
 				num_threads = si_unpack_param(ctx, ctx->param_merged_wave_info, 0, 8);

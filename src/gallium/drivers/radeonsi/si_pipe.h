@@ -868,6 +868,7 @@ struct si_context {
 	struct pipe_device_reset_callback device_reset_callback;
 	struct u_log_context		*log;
 	void				*query_result_shader;
+	void				*sh_query_result_shader;
 
 	void (*emit_cache_flush)(struct si_context *ctx);
 
@@ -1178,6 +1179,10 @@ struct si_context {
 	unsigned			num_sdma_uploads;
 	unsigned			max_sdma_uploads;
 
+	/* Shader-based queries. */
+	struct list_head		shader_query_buffers;
+	unsigned			num_active_shader_queries;
+
 	/* Statistics gathering for the DCC enablement heuristic. It can't be
 	 * in si_texture because si_texture can be shared by multiple
 	 * contexts. This is for back buffers only. We shouldn't get too many
@@ -1439,6 +1444,11 @@ void *si_clear_render_target_shader(struct pipe_context *ctx);
 void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
 void *si_create_dcc_retile_cs(struct pipe_context *ctx);
 void *si_create_query_result_cs(struct si_context *sctx);
+void *gfx10_create_sh_query_result_cs(struct si_context *sctx);
+
+/* gfx10_query.c */
+void gfx10_init_query(struct si_context *sctx);
+void gfx10_destroy_query(struct si_context *sctx);
 
 /* si_test_dma.c */
 void si_test_dma(struct si_screen *sscreen);

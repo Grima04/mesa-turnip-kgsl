@@ -228,6 +228,7 @@ union si_state_atoms {
 		struct si_atom spi_map;
 		struct si_atom scratch_state;
 		struct si_atom window_rectangles;
+		struct si_atom shader_query;
 	} s;
 	struct si_atom array[0];
 };
@@ -369,6 +370,8 @@ enum {
 	SI_PS_IMAGE_COLORBUF0_HI,
 	SI_PS_IMAGE_COLORBUF0_FMASK,
 	SI_PS_IMAGE_COLORBUF0_FMASK_HI,
+
+	GFX10_GS_QUERY_BUF,
 
 	SI_NUM_RW_BUFFERS,
 };

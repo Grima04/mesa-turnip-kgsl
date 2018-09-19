@@ -38,6 +38,8 @@ struct si_query_buffer;
 struct si_query_hw;
 struct si_resource;
 
+#define SI_MAX_STREAMS 4
+
 enum {
 	SI_QUERY_DRAW_CALLS = PIPE_QUERY_DRIVER_SPECIFIC,
 	SI_QUERY_DECOMPRESS_CALLS,
@@ -226,6 +228,12 @@ bool si_query_hw_get_result(struct si_context *sctx,
 			    union pipe_query_result *result);
 void si_query_hw_suspend(struct si_context *sctx, struct si_query *query);
 void si_query_hw_resume(struct si_context *sctx, struct si_query *query);
+
+
+/* Shader-based queries */
+struct pipe_query *gfx10_sh_query_create(struct si_screen *screen,
+					 enum pipe_query_type query_type,
+					 unsigned index);
 
 
 /* Performance counters */

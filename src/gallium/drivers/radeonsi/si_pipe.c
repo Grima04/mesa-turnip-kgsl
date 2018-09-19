@@ -168,6 +168,9 @@ static void si_destroy_context(struct pipe_context *context)
 
 	si_release_all_descriptors(sctx);
 
+	if (sctx->chip_class >= GFX10)
+		gfx10_destroy_query(sctx);
+
 	pipe_resource_reference(&sctx->esgs_ring, NULL);
 	pipe_resource_reference(&sctx->gsvs_ring, NULL);
 	pipe_resource_reference(&sctx->tess_rings, NULL);
@@ -239,6 +242,8 @@ static void si_destroy_context(struct pipe_context *context)
 
 	if (sctx->query_result_shader)
 		sctx->b.delete_compute_state(&sctx->b, sctx->query_result_shader);
+	if (sctx->sh_query_result_shader)
+		sctx->b.delete_compute_state(&sctx->b, sctx->sh_query_result_shader);
 
 	if (sctx->gfx_cs)
 		sctx->ws->cs_destroy(sctx->gfx_cs);
@@ -516,6 +521,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	/* Initialize graphics-only context functions. */
 	if (sctx->has_graphics) {
 		si_init_context_texture_functions(sctx);
+		if (sctx->chip_class >= GFX10)
+			gfx10_init_query(sctx);
 		si_init_msaa_functions(sctx);
 		si_init_shader_functions(sctx);
 		si_init_state_functions(sctx);

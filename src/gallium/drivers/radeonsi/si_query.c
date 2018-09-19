@@ -32,8 +32,6 @@
 #include "util/u_suballoc.h"
 #include "amd/common/sid.h"
 
-#define SI_MAX_STREAMS 4
-
 static const struct si_query_ops query_hw_ops;
 
 struct si_hw_query_params {
@@ -1015,6 +1013,12 @@ static void si_emit_query_predication(struct si_context *ctx)
 	if (!query)
 		return;
 
+	if (ctx->chip_class == GFX10 &&
+	    (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+	     query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
+		assert(!"not implemented");
+	}
+
 	invert = ctx->render_cond_invert;
 	flag_wait = ctx->render_cond_mode == PIPE_RENDER_COND_WAIT ||
 		    ctx->render_cond_mode == PIPE_RENDER_COND_BY_REGION_WAIT;
@@ -1095,6 +1099,14 @@ static struct pipe_query *si_create_query(struct pipe_context *ctx, unsigned que
 	    (query_type >= PIPE_QUERY_DRIVER_SPECIFIC &&
 	     query_type != SI_QUERY_TIME_ELAPSED_SDMA))
 		return si_query_sw_create(query_type);
+
+	if (sscreen->info.chip_class >= GFX10 &&
+	    (query_type == PIPE_QUERY_PRIMITIVES_EMITTED ||
+	     query_type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+	     query_type == PIPE_QUERY_SO_STATISTICS ||
+	     query_type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+	     query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE))
+		return gfx10_sh_query_create(sscreen, query_type, index);
 
 	return si_query_hw_create(sscreen, query_type, index);
 }

@@ -64,6 +64,15 @@ static LLVMValueRef ngg_get_prim_cnt(struct si_shader_context *ctx)
 			    false);
 }
 
+static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
+{
+	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn,
+					    ctx->param_rw_buffers);
+
+	return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
+				     LLVMConstInt(ctx->i32, GFX10_GS_QUERY_BUF, false));
+}
+
 /* Send GS Alloc Req message from the first wave of the group to SPI.
  * Message payload is:
  * - bits 0..10: vertices in group
@@ -208,6 +217,27 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	/* TODO: primitive culling */
 
 	build_sendmsg_gs_alloc_req(ctx, ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
+
+	/* Update query buffer */
+	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
+	ac_build_ifcc(&ctx->ac, tmp, 5030);
+	tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac), ctx->ac.i32_0, "");
+	ac_build_ifcc(&ctx->ac, tmp, 5031);
+	{
+		LLVMValueRef args[] = {
+			ngg_get_prim_cnt(ctx),
+			ngg_get_query_buf(ctx),
+			LLVMConstInt(ctx->i32, 16, false), /* offset of stream[0].generated_primitives */
+			ctx->i32_0, /* soffset */
+			ctx->i32_0, /* cachepolicy */
+		};
+
+		/* TODO: should this be 64-bit atomics? */
+		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
+				   ctx->i32, args, 5, 0);
+	}
+	ac_build_endif(&ctx->ac, 5031);
+	ac_build_endif(&ctx->ac, 5030);
 
 	/* Export primitive data to the index buffer. Format is:
 	 *  - bits 0..8: index 0
@@ -431,7 +461,32 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	tmp = LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i8, "");
 	LLVMBuildStore(builder, tmp, primflagptr);
 
+	tmp = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
+	tmp = LLVMBuildAdd(builder, tmp, LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i32, ""), "");
+	LLVMBuildStore(builder, tmp, ctx->gs_generated_prims[stream]);
+
 	lp_build_endif(&if_state);
+}
+
+void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
+{
+	/* Zero out the part of LDS scratch that is used to accumulate the
+	 * per-stream generated primitive count.
+	 */
+	LLVMBuilderRef builder = ctx->ac.builder;
+	LLVMValueRef scratchptr = ctx->gs_ngg_scratch;
+	LLVMValueRef tid = get_thread_id_in_tg(ctx);
+	LLVMValueRef tmp;
+
+	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->i32, 4, false), "");
+	ac_build_ifcc(&ctx->ac, tmp, 5090);
+	{
+		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, scratchptr, tid);
+		LLVMBuildStore(builder, ctx->i32_0, ptr);
+	}
+	ac_build_endif(&ctx->ac, 5090);
+
+	ac_build_s_barrier(&ctx->ac);
 }
 
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
@@ -481,6 +536,26 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 		ac_build_endloop(&ctx->ac, 5100);
 	}
 
+	/* Accumulate generated primitives counts across the entire threadgroup. */
+	for (unsigned stream = 0; stream < 4; ++stream) {
+		if (!info->num_stream_output_components[stream])
+			continue;
+
+		LLVMValueRef numprims =
+			LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
+		numprims = ac_build_reduce(&ctx->ac, numprims, nir_op_iadd, 64);
+
+		tmp = LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(&ctx->ac), ctx->i32_0, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5105);
+		{
+			LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
+					   ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch,
+							 LLVMConstInt(ctx->i32, stream, false)),
+					   numprims, LLVMAtomicOrderingMonotonic, false);
+		}
+		ac_build_endif(&ctx->ac, 5105);
+	}
+
 	lp_build_endif(&ctx->merged_wrap_if_state);
 
 	ac_build_s_barrier(&ctx->ac);
@@ -489,6 +564,33 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	LLVMValueRef num_emit_threads = ngg_get_prim_cnt(ctx);
 
 	/* TODO: streamout */
+
+	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->i32, 4, false), "");
+	ac_build_ifcc(&ctx->ac, tmp, 5110);
+	{
+		LLVMValueRef offset;
+		tmp = tid;
+		if (sel->so.num_outputs)
+			tmp = LLVMBuildAnd(builder, tmp, LLVMConstInt(ctx->i32, 3, false), "");
+		offset = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->i32, 32, false), "");
+		if (sel->so.num_outputs) {
+			tmp = LLVMBuildLShr(builder, tid, LLVMConstInt(ctx->i32, 2, false), "");
+			tmp = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->i32, 8, false), "");
+			offset = LLVMBuildAdd(builder, offset, tmp, "");
+		}
+
+		tmp = LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid), "");
+		LLVMValueRef args[] = {
+			tmp,
+			ngg_get_query_buf(ctx),
+			offset,
+			LLVMConstInt(ctx->i32, 16, false), /* soffset */
+			ctx->i32_0, /* cachepolicy */
+		};
+		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
+				   ctx->i32, args, 5, 0);
+	}
+	ac_build_endif(&ctx->ac, 5110);
 
 	/* TODO: culling */
 
