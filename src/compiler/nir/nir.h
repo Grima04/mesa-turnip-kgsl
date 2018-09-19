@@ -2829,7 +2829,28 @@ typedef struct nir_shader_compiler_options {
    /* Set if nir_lower_wpos_ytransform() should also invert gl_PointCoord. */
    bool lower_wpos_pntc;
 
+   /**
+    * Set if nir_op_[iu]hadd and nir_op_[iu]rhadd instructions should be
+    * lowered to simple arithmetic.
+    *
+    * If this flag is set, the lowering will be applied to all bit-sizes of
+    * these instructions.
+    *
+    * \sa ::lower_hadd64
+    */
    bool lower_hadd;
+
+   /**
+    * Set if only 64-bit nir_op_[iu]hadd and nir_op_[iu]rhadd instructions
+    * should be lowered to simple arithmetic.
+    *
+    * If this flag is set, the lowering will be applied to only 64-bit
+    * versions of these instructions.
+    *
+    * \sa ::lower_hadd
+    */
+   bool lower_hadd64;
+
    bool lower_add_sat;
 
    /**
