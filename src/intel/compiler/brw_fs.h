@@ -169,6 +169,7 @@ public:
    bool lower_simd_width();
    bool lower_barycentrics();
    bool lower_scoreboard();
+   bool lower_sub_sat();
    bool opt_combine_constants();
 
    void emit_dummy_fs();

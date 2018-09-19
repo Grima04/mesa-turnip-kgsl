@@ -742,6 +742,12 @@ enum opcode {
     */
    SHADER_OPCODE_MULH,
 
+   /** Signed subtraction with saturation. */
+   SHADER_OPCODE_ISUB_SAT,
+
+   /** Unsigned subtraction with saturation. */
+   SHADER_OPCODE_USUB_SAT,
+
    /**
     * A MOV that uses VxH indirect addressing.
     *

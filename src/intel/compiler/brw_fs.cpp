@@ -4179,6 +4179,95 @@ fs_visitor::lower_minmax()
    return progress;
 }
 
+bool
+fs_visitor::lower_sub_sat()
+{
+   bool progress = false;
+
+   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+      const fs_builder ibld(this, block, inst);
+
+      if (inst->opcode == SHADER_OPCODE_USUB_SAT ||
+          inst->opcode == SHADER_OPCODE_ISUB_SAT) {
+         /* The fundamental problem is the hardware performs source negation
+          * at the bit width of the source.  If the source is 0x80000000D, the
+          * negation is 0x80000000D.  As a result, subtractSaturate(0,
+          * 0x80000000) will produce 0x80000000 instead of 0x7fffffff.  There
+          * are at least three ways to resolve this:
+          *
+          * 1. Use the accumulator for the negated source.  The accumulator is
+          *    33 bits, so our source 0x80000000 is sign-extended to
+          *    0x1800000000.  The negation of which is 0x080000000.  This
+          *    doesn't help for 64-bit integers (which are already bigger than
+          *    33 bits).  There are also only 8 accumulators, so SIMD16 or
+          *    SIMD32 instructions would have to be split into multiple SIMD8
+          *    instructions.
+          *
+          * 2. Use slightly different math.  For any n-bit value x, we know (x
+          *    >> 1) != -(x >> 1).  We can use this fact to only do
+          *    subtractions involving (x >> 1).  subtractSaturate(a, b) ==
+          *    subtractSaturate(subtractSaturate(a, (b >> 1)), b - (b >> 1)).
+          *
+          * 3. For unsigned sources, it is sufficient to replace the
+          *    subtractSaturate with (a > b) ? a - b : 0.
+          *
+          * It may also be possible to use the SUBB instruction.  This
+          * implicitly writes the accumulator, so it could only be used in the
+          * same situations as #1 above.  It is further limited by only
+          * allowing UD sources.
+          */
+         if (inst->exec_size == 8 && inst->src[0].type != BRW_REGISTER_TYPE_Q &&
+             inst->src[0].type != BRW_REGISTER_TYPE_UQ) {
+            fs_reg acc(ARF, BRW_ARF_ACCUMULATOR, inst->src[1].type);
+
+            ibld.MOV(acc, inst->src[1]);
+            fs_inst *add = ibld.ADD(inst->dst, acc, inst->src[0]);
+            add->saturate = true;
+            add->src[0].negate = true;
+         } else if (inst->opcode == SHADER_OPCODE_ISUB_SAT) {
+            /* tmp = src1 >> 1;
+             * dst = add.sat(add.sat(src0, -tmp), -(src1 - tmp));
+             */
+            fs_reg tmp1 = ibld.vgrf(inst->src[0].type);
+            fs_reg tmp2 = ibld.vgrf(inst->src[0].type);
+            fs_reg tmp3 = ibld.vgrf(inst->src[0].type);
+            fs_inst *add;
+
+            ibld.SHR(tmp1, inst->src[1], brw_imm_d(1));
+
+            add = ibld.ADD(tmp2, inst->src[1], tmp1);
+            add->src[1].negate = true;
+
+            add = ibld.ADD(tmp3, inst->src[0], tmp1);
+            add->src[1].negate = true;
+            add->saturate = true;
+
+            add = ibld.ADD(inst->dst, tmp3, tmp2);
+            add->src[1].negate = true;
+            add->saturate = true;
+         } else {
+            /* a > b ? a - b : 0 */
+            ibld.CMP(ibld.null_reg_d(), inst->src[0], inst->src[1],
+                     BRW_CONDITIONAL_G);
+
+            fs_inst *add = ibld.ADD(inst->dst, inst->src[0], inst->src[1]);
+            add->src[1].negate = !add->src[1].negate;
+
+            ibld.SEL(inst->dst, inst->dst, brw_imm_ud(0))
+               ->predicate = BRW_PREDICATE_NORMAL;
+         }
+
+         inst->remove(block);
+         progress = true;
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
+}
+
 static void
 setup_color_payload(const fs_builder &bld, const brw_wm_prog_key *key,
                     fs_reg *dst, fs_reg color, unsigned components)
@@ -6279,6 +6368,10 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       return MIN2(16, inst->exec_size);
    }
 
+   case SHADER_OPCODE_USUB_SAT:
+   case SHADER_OPCODE_ISUB_SAT:
+      return get_fpu_lowered_simd_width(devinfo, inst);
+
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
       /* Integer division is limited to SIMD8 on all generations. */
@@ -7390,6 +7483,7 @@ fs_visitor::optimize()
 
    OPT(opt_combine_constants);
    OPT(lower_integer_multiplication);
+   OPT(lower_sub_sat);
 
    if (devinfo->gen <= 5 && OPT(lower_minmax)) {
       OPT(opt_cmod_propagation);
