@@ -334,6 +334,8 @@ void st_init_limits(struct pipe_screen *screen,
 
    c->GLSLOptimizeConservatively =
       screen->get_param(screen, PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY);
+   c->GLSLTessLevelsAsInputs =
+      screen->get_param(screen, PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS);
    c->LowerTessLevel = true;
    c->LowerCsDerivedVariables = true;
    c->PrimitiveRestartForPatches =
