@@ -749,7 +749,7 @@ static void si_pc_emit_read(struct si_context *sctx,
 	}
 }
 
-static void si_pc_query_destroy(struct si_screen *sscreen,
+static void si_pc_query_destroy(struct si_context *sctx,
 				struct si_query *squery)
 {
 	struct si_query_pc *query = (struct si_query_pc *)squery;
@@ -762,7 +762,7 @@ static void si_pc_query_destroy(struct si_screen *sscreen,
 
 	FREE(query->counters);
 
-	si_query_buffer_destroy(sscreen, &query->buffer);
+	si_query_buffer_destroy(sctx->screen, &query->buffer);
 	FREE(query);
 }
 
@@ -1100,7 +1100,7 @@ struct pipe_query *si_create_batch_query(struct pipe_context *ctx,
 	return (struct pipe_query *)query;
 
 error:
-	si_pc_query_destroy(screen, &query->b);
+	si_pc_query_destroy((struct si_context *)ctx, &query->b);
 	return NULL;
 }
 

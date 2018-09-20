@@ -58,12 +58,12 @@ struct si_query_sw {
 	struct pipe_fence_handle *fence;
 };
 
-static void si_query_sw_destroy(struct si_screen *sscreen,
+static void si_query_sw_destroy(struct si_context *sctx,
 				struct si_query *squery)
 {
 	struct si_query_sw *query = (struct si_query_sw *)squery;
 
-	sscreen->b.fence_reference(&sscreen->b, &query->fence, NULL);
+	sctx->b.screen->fence_reference(sctx->b.screen, &query->fence, NULL);
 	FREE(query);
 }
 
@@ -624,12 +624,11 @@ bool si_query_buffer_alloc(struct si_context *sctx, struct si_query_buffer *buff
 }
 
 
-void si_query_hw_destroy(struct si_screen *sscreen,
-			 struct si_query *squery)
+void si_query_hw_destroy(struct si_context *sctx, struct si_query *squery)
 {
 	struct si_query_hw *query = (struct si_query_hw *)squery;
 
-	si_query_buffer_destroy(sscreen, &query->buffer);
+	si_query_buffer_destroy(sctx->screen, &query->buffer);
 	si_resource_reference(&query->workaround_buf, NULL);
 	FREE(squery);
 }
@@ -1105,7 +1104,7 @@ static void si_destroy_query(struct pipe_context *ctx, struct pipe_query *query)
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_query *squery = (struct si_query *)query;
 
-	squery->ops->destroy(sctx->screen, squery);
+	squery->ops->destroy(sctx, squery);
 }
 
 static boolean si_begin_query(struct pipe_context *ctx,

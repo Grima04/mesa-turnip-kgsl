@@ -125,7 +125,7 @@ enum {
 };
 
 struct si_query_ops {
-	void (*destroy)(struct si_screen *, struct si_query *);
+	void (*destroy)(struct si_context *, struct si_query *);
 	bool (*begin)(struct si_context *, struct si_query *);
 	bool (*end)(struct si_context *, struct si_query *);
 	bool (*get_result)(struct si_context *,
@@ -214,7 +214,7 @@ struct si_query_hw {
 	unsigned workaround_offset;
 };
 
-void si_query_hw_destroy(struct si_screen *sscreen,
+void si_query_hw_destroy(struct si_context *sctx,
 			 struct si_query *squery);
 bool si_query_hw_begin(struct si_context *sctx,
 		       struct si_query *squery);
