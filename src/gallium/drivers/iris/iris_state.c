@@ -3333,9 +3333,14 @@ iris_restore_context_saved_bos(struct iris_context *ice,
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
       if (cso_fb->zsbuf) {
-         struct iris_resource *zres = (void *) cso_fb->zsbuf->texture;
-         // XXX: depth might not be writable...
-         iris_use_pinned_bo(batch, zres->bo, true);
+         struct iris_resource *zres, *sres;
+         iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
+                                          &zres, &sres);
+         // XXX: might not be writable...
+         if (zres)
+            iris_use_pinned_bo(batch, zres->bo, true);
+         if (sres)
+            iris_use_pinned_bo(batch, sres->bo, true);
       }
    }
 
