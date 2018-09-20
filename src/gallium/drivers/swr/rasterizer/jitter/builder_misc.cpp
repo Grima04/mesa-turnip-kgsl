@@ -774,13 +774,6 @@ namespace SwrJit
     {
         SWR_ASSERT((numIntBits + numFracBits) <= 32, "Can only handle 32-bit fixed-point values");
         Value* fixed = nullptr;
-        if constexpr (false) // This doesn't work for negative numbers!!
-        {
-            fixed = FP_TO_SI(VROUND(FMUL(vFloat, VIMMED1(float(1 << numFracBits))),
-                                    C(_MM_FROUND_TO_NEAREST_INT)),
-                             mSimdInt32Ty);
-        }
-        else
         {
             // Do round to nearest int on fractional bits first
             // Not entirely perfect for negative numbers, but close enough
@@ -844,35 +837,13 @@ namespace SwrJit
     {
         SWR_ASSERT((numIntBits + numFracBits) <= 32, "Can only handle 32-bit fixed-point values");
         Value* fixed = nullptr;
-        if constexpr (true) // KNOB_SIM_FAST_MATH?  Below works correctly from a precision
-                            // standpoint...
+        // KNOB_SIM_FAST_MATH?  Below works correctly from a precision
+        // standpoint...
         {
             fixed = FP_TO_UI(VROUND(FMUL(vFloat, VIMMED1(float(1 << numFracBits))),
                                     C(_MM_FROUND_TO_NEAREST_INT)),
                              mSimdInt32Ty);
         }
-        else
-        {
-            // Do round to nearest int on fractional bits first
-            vFloat = VROUND(FMUL(vFloat, VIMMED1(float(1 << numFracBits))),
-                            C(_MM_FROUND_TO_NEAREST_INT));
-            vFloat = FMUL(vFloat, VIMMED1(1.0f / float(1 << numFracBits)));
-
-            // TODO: Handle INF, NAN, overflow / underflow, etc.
-
-            Value* vSgn      = FCMP_OLT(vFloat, VIMMED1(0.0f));
-            Value* vFloatInt = BITCAST(vFloat, mSimdInt32Ty);
-            Value* vFixed    = AND(vFloatInt, VIMMED1((1 << 23) - 1));
-            vFixed           = OR(vFixed, VIMMED1(1 << 23));
-
-            Value* vExp = LSHR(SHL(vFloatInt, VIMMED1(1)), VIMMED1(24));
-            vExp        = SUB(vExp, VIMMED1(127));
-
-            Value* vExtraBits = SUB(VIMMED1(23 - numFracBits), vExp);
-
-            fixed = LSHR(vFixed, vExtraBits, name);
-        }
-
         return fixed;
     }
 

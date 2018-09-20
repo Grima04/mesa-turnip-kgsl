@@ -582,7 +582,7 @@ struct JitCacheFileHeader
     uint64_t GetObjectCRC() const { return m_objCRC; }
 
 private:
-    static const uint64_t JC_MAGIC_NUMBER = 0xfedcba9876543211ULL + 4;
+    static const uint64_t JC_MAGIC_NUMBER = 0xfedcba9876543210ULL + 6;
     static const size_t   JC_STR_MAX_LEN  = 32;
     static const uint32_t JC_PLATFORM_KEY = (LLVM_VERSION_MAJOR << 24) |
                                             (LLVM_VERSION_MINOR << 16) | (LLVM_VERSION_PATCH << 8) |
@@ -634,12 +634,41 @@ JitCache::JitCache()
     {
         mCacheDir = KNOB_JIT_CACHE_DIR;
     }
+
+    // Create cache dir at startup to allow jitter to write debug.ll files
+    // to that directory.
+    if (!llvm::sys::fs::exists(mCacheDir.str()) &&
+        llvm::sys::fs::create_directories(mCacheDir.str()))
+    {
+        SWR_INVALID("Unable to create directory: %s", mCacheDir.c_str());
+    }
+
 }
 
 int ExecUnhookedProcess(const std::string& CmdLine, std::string* pStdOut, std::string* pStdErr)
 {
     return ExecCmd(CmdLine, "", pStdOut, pStdErr);
 }
+
+/// Calculate actual directory where module will be cached.
+/// This is always a subdirectory of mCacheDir.  Full absolute
+/// path name will be stored in mCurrentModuleCacheDir
+void JitCache::CalcModuleCacheDir()
+{
+    mModuleCacheDir.clear();
+
+    llvm::SmallString<MAX_PATH> moduleDir = mCacheDir;
+
+    // Create 4 levels of directory hierarchy based on CRC, 256 entries each
+    uint8_t* pCRC = (uint8_t*)&mCurrentModuleCRC;
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        llvm::sys::path::append(moduleDir, std::to_string((int)pCRC[i]));
+    }
+
+    mModuleCacheDir = moduleDir;
+}
+
 
 /// notifyObjectCompiled - Provides a pointer to compiled code for Module M.
 void JitCache::notifyObjectCompiled(const llvm::Module* M, llvm::MemoryBufferRef Obj)
@@ -650,16 +679,22 @@ void JitCache::notifyObjectCompiled(const llvm::Module* M, llvm::MemoryBufferRef
         return;
     }
 
-    if (!llvm::sys::fs::exists(mCacheDir.str()) &&
-        llvm::sys::fs::create_directories(mCacheDir.str()))
+    if (!mModuleCacheDir.size())
     {
-        SWR_INVALID("Unable to create directory: %s", mCacheDir.c_str());
+        SWR_INVALID("Unset module cache directory");
+        return;
+    }
+
+    if (!llvm::sys::fs::exists(mModuleCacheDir.str()) &&
+        llvm::sys::fs::create_directories(mModuleCacheDir.str()))
+    {
+        SWR_INVALID("Unable to create directory: %s", mModuleCacheDir.c_str());
         return;
     }
 
     JitCacheFileHeader header;
 
-    llvm::SmallString<MAX_PATH> filePath = mCacheDir;
+    llvm::SmallString<MAX_PATH> filePath = mModuleCacheDir;
     llvm::sys::path::append(filePath, moduleID);
 
     llvm::SmallString<MAX_PATH> objPath = filePath;
@@ -699,12 +734,14 @@ std::unique_ptr<llvm::MemoryBuffer> JitCache::getObject(const llvm::Module* M)
         return nullptr;
     }
 
-    if (!llvm::sys::fs::exists(mCacheDir))
+    CalcModuleCacheDir();
+
+    if (!llvm::sys::fs::exists(mModuleCacheDir))
     {
         return nullptr;
     }
 
-    llvm::SmallString<MAX_PATH> filePath = mCacheDir;
+    llvm::SmallString<MAX_PATH> filePath = mModuleCacheDir;
     llvm::sys::path::append(filePath, moduleID);
 
     llvm::SmallString<MAX_PATH> objFilePath = filePath;

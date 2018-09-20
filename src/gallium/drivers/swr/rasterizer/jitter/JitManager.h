@@ -113,9 +113,15 @@ public:
 private:
     std::string                 mCpu;
     llvm::SmallString<MAX_PATH> mCacheDir;
+    llvm::SmallString<MAX_PATH> mModuleCacheDir;
     uint32_t                    mCurrentModuleCRC = 0;
     JitManager*                 mpJitMgr          = nullptr;
     llvm::CodeGenOpt::Level     mOptLevel         = llvm::CodeGenOpt::None;
+
+    /// Calculate actual directory where module will be cached.
+    /// This is always a subdirectory of mCacheDir.  Full absolute
+    /// path name will be stored in mCurrentModuleCacheDir
+    void CalcModuleCacheDir();
 };
 
 //////////////////////////////////////////////////////////////////////////
