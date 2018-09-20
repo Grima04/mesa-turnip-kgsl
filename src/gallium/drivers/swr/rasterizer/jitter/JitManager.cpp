@@ -63,23 +63,13 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
     mContext(), mBuilder(mContext), mIsModuleFinalized(true), mJitNumber(0), mVWidth(simdWidth),
     mArch(arch)
 {
+    mpCurrentModule = nullptr;
+    mpExec = nullptr;
+
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetDisassembler();
 
-
-    TargetOptions tOpts;
-    tOpts.AllowFPOpFusion = FPOpFusion::Fast;
-    tOpts.NoInfsFPMath    = false;
-    tOpts.NoNaNsFPMath    = false;
-    tOpts.UnsafeFPMath = false;
-
-    // tOpts.PrintMachineCode    = true;
-
-    std::unique_ptr<Module> newModule(new Module("", mContext));
-    mpCurrentModule = newModule.get();
-
-    StringRef hostCPUName;
 
     // force JIT to use the same CPU arch as the rest of swr
     if (mArch.AVX512F())
@@ -87,15 +77,15 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
 #if USE_SIMD16_SHADERS
         if (mArch.AVX512ER())
         {
-            hostCPUName = StringRef("knl");
+            mHostCpuName = StringRef("knl");
         }
         else
         {
-            hostCPUName = StringRef("skylake-avx512");
+            mHostCpuName = StringRef("skylake-avx512");
         }
         mUsingAVX512 = true;
 #else
-        hostCPUName = StringRef("core-avx2");
+        mHostCpuName = StringRef("core-avx2");
 #endif
         if (mVWidth == 0)
         {
@@ -104,7 +94,7 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
     }
     else if (mArch.AVX2())
     {
-        hostCPUName = StringRef("core-avx2");
+        mHostCpuName = StringRef("core-avx2");
         if (mVWidth == 0)
         {
             mVWidth = 8;
@@ -114,11 +104,11 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
     {
         if (mArch.F16C())
         {
-            hostCPUName = StringRef("core-avx-i");
+            mHostCpuName = StringRef("core-avx-i");
         }
         else
         {
-            hostCPUName = StringRef("corei7-avx");
+            mHostCpuName = StringRef("corei7-avx");
         }
         if (mVWidth == 0)
         {
@@ -131,31 +121,21 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
     }
 
 
-    auto optLevel = CodeGenOpt::Aggressive;
+    mOptLevel = CodeGenOpt::Aggressive;
 
     if (KNOB_JIT_OPTIMIZATION_LEVEL >= CodeGenOpt::None &&
         KNOB_JIT_OPTIMIZATION_LEVEL <= CodeGenOpt::Aggressive)
     {
-        optLevel = CodeGenOpt::Level(KNOB_JIT_OPTIMIZATION_LEVEL);
+        mOptLevel = CodeGenOpt::Level(KNOB_JIT_OPTIMIZATION_LEVEL);
     }
-
-    mpCurrentModule->setTargetTriple(sys::getProcessTriple());
-    mpExec = EngineBuilder(std::move(newModule))
-                 .setTargetOptions(tOpts)
-                 .setOptLevel(optLevel)
-                 .setMCPU(hostCPUName)
-                 .create();
 
     if (KNOB_JIT_ENABLE_CACHE)
     {
-        mCache.Init(this, hostCPUName, optLevel);
-        mpExec->setObjectCache(&mCache);
+        mCache.Init(this, mHostCpuName, mOptLevel);
     }
 
-#if LLVM_USE_INTEL_JITEVENTS
-    JITEventListener* vTune = JITEventListener::createIntelJITEventListener();
-    mpExec->RegisterJITEventListener(vTune);
-#endif
+    SetupNewModule();
+    mIsModuleFinalized = true;
 
     // fetch function signature
 #if USE_SIMD16_SHADERS
@@ -198,6 +178,35 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
 #endif
 }
 
+void JitManager::CreateExecEngine(std::unique_ptr<Module> pModule)
+{
+    TargetOptions tOpts;
+    tOpts.AllowFPOpFusion = FPOpFusion::Fast;
+    tOpts.NoInfsFPMath    = false;
+    tOpts.NoNaNsFPMath    = false;
+    tOpts.UnsafeFPMath = false;
+
+    // tOpts.PrintMachineCode    = true;
+
+    mpExec = EngineBuilder(std::move(pModule))
+                 .setTargetOptions(tOpts)
+                 .setOptLevel(mOptLevel)
+                 .setMCPU(mHostCpuName)
+                 .create();
+
+    if (KNOB_JIT_ENABLE_CACHE)
+    {
+        mpExec->setObjectCache(&mCache);
+    }
+
+#if LLVM_USE_INTEL_JITEVENTS
+    JITEventListener* vTune = JITEventListener::createIntelJITEventListener();
+    mpExec->RegisterJITEventListener(vTune);
+#endif
+
+    mvExecEngines.push_back(mpExec);
+}
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief Create new LLVM module.
 void JitManager::SetupNewModule()
@@ -207,7 +216,7 @@ void JitManager::SetupNewModule()
     std::unique_ptr<Module> newModule(new Module("", mContext));
     mpCurrentModule = newModule.get();
     mpCurrentModule->setTargetTriple(sys::getProcessTriple());
-    mpExec->addModule(std::move(newModule));
+    CreateExecEngine(std::move(newModule));
     mIsModuleFinalized = false;
 }
 
