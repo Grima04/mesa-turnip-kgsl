@@ -6065,6 +6065,38 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 	create_function(ctx);
 	preload_ring_buffers(ctx);
 
+	if (ctx->type == PIPE_SHADER_TESS_CTRL &&
+	    sel->tcs_info.tessfactors_are_def_in_all_invocs) {
+		for (unsigned i = 0; i < 6; i++) {
+			ctx->invoc0_tess_factors[i] =
+				ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+		}
+	}
+
+	if (ctx->type == PIPE_SHADER_GEOMETRY) {
+		for (unsigned i = 0; i < 4; i++) {
+			ctx->gs_next_vertex[i] =
+				ac_build_alloca(&ctx->ac, ctx->i32, "");
+		}
+		if (shader->key.as_ngg) {
+			for (unsigned i = 0; i < 4; ++i) {
+				ctx->gs_curprim_verts[i] =
+					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
+			}
+
+			LLVMTypeRef a8i32 = LLVMArrayType(ctx->i32, 8);
+			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
+				a8i32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+			LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(a8i32));
+			LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+
+			ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(ctx->ac.module,
+				LLVMArrayType(ctx->i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
+			LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
+			LLVMSetAlignment(ctx->gs_ngg_emit, 4);
+		}
+	}
+
 	/* For GFX9 merged shaders:
 	 * - Set EXEC for the first shader. If the prolog is present, set
 	 *   EXEC there instead.
@@ -6137,38 +6169,6 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 				 */
 				si_llvm_emit_barrier(NULL, bld_base, NULL);
 			}
-		}
-	}
-
-	if (ctx->type == PIPE_SHADER_TESS_CTRL &&
-	    sel->tcs_info.tessfactors_are_def_in_all_invocs) {
-		for (unsigned i = 0; i < 6; i++) {
-			ctx->invoc0_tess_factors[i] =
-				ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
-		}
-	}
-
-	if (ctx->type == PIPE_SHADER_GEOMETRY) {
-		for (unsigned i = 0; i < 4; i++) {
-			ctx->gs_next_vertex[i] =
-				ac_build_alloca(&ctx->ac, ctx->i32, "");
-		}
-		if (shader->key.as_ngg) {
-			for (unsigned i = 0; i < 4; ++i) {
-				ctx->gs_curprim_verts[i] =
-					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
-			}
-
-			LLVMTypeRef a8i32 = LLVMArrayType(ctx->i32, 8);
-			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
-				a8i32, "ngg_scratch", AC_ADDR_SPACE_LDS);
-			LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(a8i32));
-			LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
-
-			ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(ctx->ac.module,
-				LLVMArrayType(ctx->i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
-			LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
-			LLVMSetAlignment(ctx->gs_ngg_emit, 4);
 		}
 	}
 
