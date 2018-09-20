@@ -3276,7 +3276,7 @@ iris_restore_context_saved_bos(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (clean & (IRIS_DIRTY_CONSTANTS_VS << stage))
+      if (!(clean & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
       struct iris_shader_state *shs = &ice->state.shaders[stage];
