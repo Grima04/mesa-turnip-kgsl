@@ -93,10 +93,8 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 				     const unsigned *offsets)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
-	struct si_buffer_resources *buffers = &sctx->rw_buffers;
-	struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_RW_BUFFERS];
 	unsigned old_num_targets = sctx->streamout.num_targets;
-	unsigned i, bufidx;
+	unsigned i;
 
 	/* We are going to unbind the buffers. Mark which caches need to be flushed. */
 	if (sctx->streamout.num_targets && sctx->streamout.begin_emitted) {
@@ -175,57 +173,20 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 
 	/* Set the shader resources.*/
 	for (i = 0; i < num_targets; i++) {
-		bufidx = SI_VS_STREAMOUT_BUF0 + i;
-
 		if (targets[i]) {
-			struct pipe_resource *buffer = targets[i]->buffer;
-			uint64_t va = r600_resource(buffer)->gpu_address;
-
-			/* Set the descriptor.
-			 *
-			 * On VI, the format must be non-INVALID, otherwise
-			 * the buffer will be considered not bound and store
-			 * instructions will be no-ops.
-			 */
-			uint32_t *desc = descs->list + bufidx*4;
-			desc[0] = va;
-			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
-			desc[2] = 0xffffffff;
-			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-				  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-				  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-
-			/* Set the resource. */
-			pipe_resource_reference(&buffers->buffers[bufidx],
-						buffer);
-			radeon_add_to_gfx_buffer_list_check_mem(sctx,
-							    r600_resource(buffer),
-							    buffers->shader_usage,
-							    RADEON_PRIO_SHADER_RW_BUFFER,
-							    true);
-			r600_resource(buffer)->bind_history |= PIPE_BIND_STREAM_OUTPUT;
-
-			buffers->enabled_mask |= 1u << bufidx;
+			struct pipe_shader_buffer sbuf;
+			sbuf.buffer = targets[i]->buffer;
+			sbuf.buffer_offset = 0;
+			sbuf.buffer_size = targets[i]->buffer_offset +
+					   targets[i]->buffer_size;
+			si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, &sbuf);
+			r600_resource(targets[i]->buffer)->bind_history |= PIPE_BIND_STREAM_OUTPUT;
 		} else {
-			/* Clear the descriptor and unset the resource. */
-			memset(descs->list + bufidx*4, 0,
-			       sizeof(uint32_t) * 4);
-			pipe_resource_reference(&buffers->buffers[bufidx],
-						NULL);
-			buffers->enabled_mask &= ~(1u << bufidx);
+			si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
 		}
 	}
-	for (; i < old_num_targets; i++) {
-		bufidx = SI_VS_STREAMOUT_BUF0 + i;
-		/* Clear the descriptor and unset the resource. */
-		memset(descs->list + bufidx*4, 0, sizeof(uint32_t) * 4);
-		pipe_resource_reference(&buffers->buffers[bufidx], NULL);
-		buffers->enabled_mask &= ~(1u << bufidx);
-	}
-
-	sctx->descriptors_dirty |= 1u << SI_DESCS_RW_BUFFERS;
+	for (; i < old_num_targets; i++)
+		si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
 }
 
 static void si_flush_vgt_streamout(struct si_context *sctx)
