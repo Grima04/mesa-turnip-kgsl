@@ -3492,7 +3492,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      // XXX: wrong dirty tracking...
       if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
