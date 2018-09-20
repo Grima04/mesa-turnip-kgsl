@@ -141,7 +141,7 @@ struct si_query_ops {
 
 struct si_query {
 	struct threaded_query b;
-	struct si_query_ops *ops;
+	const struct si_query_ops *ops;
 
 	/* The PIPE_QUERY_xxx type of query */
 	unsigned type;

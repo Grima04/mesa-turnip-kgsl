@@ -915,7 +915,7 @@ static bool si_pc_query_get_result(struct si_context *sctx, struct si_query *rqu
 	return true;
 }
 
-static struct si_query_ops batch_query_ops = {
+static const struct si_query_ops batch_query_ops = {
 	.destroy = si_pc_query_destroy,
 	.begin = si_pc_query_begin,
 	.end = si_pc_query_end,

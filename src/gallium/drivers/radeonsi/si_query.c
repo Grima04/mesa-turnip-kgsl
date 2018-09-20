@@ -34,7 +34,7 @@
 
 #define SI_MAX_STREAMS 4
 
-static struct si_query_ops query_hw_ops;
+static const struct si_query_ops query_hw_ops;
 
 struct si_hw_query_params {
 	unsigned start_offset;
@@ -499,7 +499,7 @@ static bool si_query_sw_get_result(struct si_context *sctx,
 }
 
 
-static struct si_query_ops sw_query_ops = {
+static const struct si_query_ops sw_query_ops = {
 	.destroy = si_query_sw_destroy,
 	.begin = si_query_sw_begin,
 	.end = si_query_sw_end,
@@ -1343,7 +1343,7 @@ void si_query_hw_resume(struct si_context *sctx, struct si_query *query)
 	si_query_hw_emit_start(sctx, (struct si_query_hw *)query);
 }
 
-static struct si_query_ops query_hw_ops = {
+static const struct si_query_ops query_hw_ops = {
 	.destroy = si_query_hw_destroy,
 	.begin = si_query_hw_begin,
 	.end = si_query_hw_end,
