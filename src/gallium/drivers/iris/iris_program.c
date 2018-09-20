@@ -156,7 +156,7 @@ iris_create_compute_state(struct pipe_context *ctx,
 {
    assert(state->ir_type == PIPE_SHADER_IR_NIR);
 
-   return iris_create_uncompiled_shader(ctx, state->prog, NULL);
+   return iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
 }
 
 static void
