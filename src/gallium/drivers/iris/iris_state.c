@@ -4413,7 +4413,28 @@ iris_upload_compute_state(struct iris_context *ice,
    else
       right_mask = ~0u >> (32 - cs_prog_data->simd_size);
 
+#define GPGPU_DISPATCHDIMX 0x2500
+#define GPGPU_DISPATCHDIMY 0x2504
+#define GPGPU_DISPATCHDIMZ 0x2508
+
+   if (grid->indirect) {
+      struct iris_bo *bo = iris_resource_bo(grid_size_res);
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = GPGPU_DISPATCHDIMX;
+         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 0);
+      }
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = GPGPU_DISPATCHDIMY;
+         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 4);
+      }
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = GPGPU_DISPATCHDIMZ;
+         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 8);
+      }
+   }
+
    iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
+      ggw.IndirectParameterEnable    = grid->indirect != NULL;
       ggw.SIMDSize                   = cs_prog_data->simd_size / 16;
       ggw.ThreadDepthCounterMaximum  = 0;
       ggw.ThreadHeightCounterMaximum = 0;
