@@ -549,7 +549,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
    struct brw_tcs_prog_key key = {
-      .program_string_id = tcs ? tcs->program_id : get_new_program_id((void *)ice->ctx.screen),
+      .program_string_id = tcs ? tcs->program_id : 0,
       .tes_primitive_mode = tes_info->tess.primitive_mode,
       .input_vertices = ice->state.vertices_per_patch,
    };
