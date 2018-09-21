@@ -3344,8 +3344,12 @@ iris_restore_context_saved_bos(struct iris_context *ice,
       }
    }
 
-   if (draw->index_size > 0) {
-      // XXX: index buffer
+   if (draw->index_size == 0 && ice->state.last_res.index_buffer) {
+      /* This draw didn't emit a new index buffer, so we are inheriting the
+       * older index buffer.  This draw didn't need it, but future ones may.
+       */
+      struct iris_bo *bo = iris_resource_bo(ice->state.last_res.index_buffer);
+      iris_use_pinned_bo(batch, bo, false);
    }
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
@@ -3845,23 +3849,25 @@ iris_upload_render_state(struct iris_context *ice,
    iris_upload_dirty_render_state(ice, batch, draw);
 
    if (draw->index_size > 0) {
-      struct iris_resource *res = NULL;
       unsigned offset;
 
       if (draw->has_user_indices) {
          u_upload_data(ice->ctx.stream_uploader, 0,
                        draw->count * draw->index_size, 4, draw->index.user,
-                       &offset, (struct pipe_resource **) &res);
+                       &offset, &ice->state.last_res.index_buffer);
       } else {
-         res = (struct iris_resource *) draw->index.resource;
+         pipe_resource_reference(&ice->state.last_res.index_buffer,
+                                 draw->index.resource);
          offset = 0;
       }
+
+      struct iris_bo *bo = iris_resource_bo(ice->state.last_res.index_buffer);
 
       iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
          ib.IndexFormat = draw->index_size >> 1;
          ib.MOCS = MOCS_WB;
-         ib.BufferSize = res->bo->size;
-         ib.BufferStartingAddress = ro_bo(res->bo, offset);
+         ib.BufferSize = bo->size;
+         ib.BufferStartingAddress = ro_bo(bo, offset);
       }
    }
 
@@ -3963,6 +3969,7 @@ iris_destroy_state(struct iris_context *ice)
    pipe_resource_reference(&ice->state.last_res.color_calc, NULL);
    pipe_resource_reference(&ice->state.last_res.scissor, NULL);
    pipe_resource_reference(&ice->state.last_res.blend, NULL);
+   pipe_resource_reference(&ice->state.last_res.index_buffer, NULL);
 }
 
 /* ------------------------------------------------------------------- */

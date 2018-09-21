@@ -407,6 +407,7 @@ struct iris_context {
          struct pipe_resource *color_calc;
          struct pipe_resource *scissor;
          struct pipe_resource *blend;
+         struct pipe_resource *index_buffer;
       } last_res;
    } state;
 };
