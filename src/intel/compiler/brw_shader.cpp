@@ -1277,7 +1277,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 
    brw_compute_vue_map(devinfo, &prog_data->base.vue_map,
                        nir->info.outputs_written,
-                       nir->info.separate_shader);
+                       nir->info.separate_shader, 1);
 
    unsigned output_size_bytes = prog_data->base.vue_map.num_slots * 4 * 4;
 

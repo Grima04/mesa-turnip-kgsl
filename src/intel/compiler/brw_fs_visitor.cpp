@@ -698,8 +698,18 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
                sources[length++] = reg;
             }
          } else {
-            for (unsigned i = 0; i < 4; i++)
-               sources[length++] = offset(this->outputs[varying], bld, i);
+            int slot_offset = 0;
+
+            /* When using Primitive Replication, there may be multiple slots
+             * assigned to POS.
+             */
+            if (varying == VARYING_SLOT_POS)
+               slot_offset = slot - vue_map->varying_to_slot[VARYING_SLOT_POS];
+
+            for (unsigned i = 0; i < 4; i++) {
+               sources[length++] = offset(this->outputs[varying], bld,
+                                          i + (slot_offset * 4));
+            }
          }
          break;
       }

@@ -741,7 +741,7 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
    brw_compute_vue_map(compiler->devinfo,
                        &vs_stage->prog_data.vs.base.vue_map,
                        vs_stage->nir->info.outputs_written,
-                       vs_stage->nir->info.separate_shader);
+                       vs_stage->nir->info.separate_shader, 1);
 
    vs_stage->num_stats = 1;
    vs_stage->code = brw_compile_vs(compiler, device, mem_ctx,
@@ -887,7 +887,7 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
    brw_compute_vue_map(compiler->devinfo,
                        &gs_stage->prog_data.gs.base.vue_map,
                        gs_stage->nir->info.outputs_written,
-                       gs_stage->nir->info.separate_shader);
+                       gs_stage->nir->info.separate_shader, 1);
 
    gs_stage->num_stats = 1;
    gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,

@@ -1097,7 +1097,7 @@ iris_compile_vs(struct iris_context *ice,
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
-                       nir->info.separate_shader);
+                       nir->info.separate_shader, /* pos_slots */ 1);
 
    struct brw_vs_prog_key brw_key = iris_to_brw_vs_key(devinfo, key);
 
@@ -1551,7 +1551,7 @@ iris_compile_gs(struct iris_context *ice,
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
-                       nir->info.separate_shader);
+                       nir->info.separate_shader, /* pos_slots */ 1);
 
    struct brw_gs_prog_key brw_key = iris_to_brw_gs_key(devinfo, key);
 

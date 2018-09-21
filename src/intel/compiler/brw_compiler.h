@@ -1045,7 +1045,8 @@ GLuint brw_varying_to_offset(const struct brw_vue_map *vue_map, GLuint varying)
 void brw_compute_vue_map(const struct gen_device_info *devinfo,
                          struct brw_vue_map *vue_map,
                          uint64_t slots_valid,
-                         bool separate_shader);
+                         bool separate_shader,
+                         uint32_t pos_slots);
 
 void brw_compute_tess_vue_map(struct brw_vue_map *const vue_map,
                               uint64_t slots_valid,
