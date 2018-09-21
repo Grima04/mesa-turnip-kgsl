@@ -351,6 +351,11 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
 void si_llvm_export_vs(struct si_shader_context *ctx,
 		       struct si_shader_output_values *outputs,
 		       unsigned noutput);
+void si_emit_streamout_output(struct si_shader_context *ctx,
+			      LLVMValueRef const *so_buffers,
+			      LLVMValueRef const *so_write_offsets,
+			      struct pipe_stream_output *stream_out,
+			      struct si_shader_output_values *shader_out);
 
 void si_llvm_load_input_vs(
 	struct si_shader_context *ctx,

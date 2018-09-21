@@ -2606,11 +2606,11 @@ static void si_dump_streamout(struct pipe_stream_output_info *so)
 	}
 }
 
-static void emit_streamout_output(struct si_shader_context *ctx,
-				  LLVMValueRef const *so_buffers,
-				  LLVMValueRef const *so_write_offsets,
-				  struct pipe_stream_output *stream_out,
-				  struct si_shader_output_values *shader_out)
+void si_emit_streamout_output(struct si_shader_context *ctx,
+			      LLVMValueRef const *so_buffers,
+			      LLVMValueRef const *so_write_offsets,
+			      struct pipe_stream_output *stream_out,
+			      struct si_shader_output_values *shader_out)
 {
 	unsigned buf_idx = stream_out->output_buffer;
 	unsigned start = stream_out->start_component;
@@ -2733,8 +2733,8 @@ static void si_llvm_emit_streamout(struct si_shader_context *ctx,
 			if (stream != so->output[i].stream)
 				continue;
 
-			emit_streamout_output(ctx, so_buffers, so_write_offset,
-					      &so->output[i], &outputs[reg]);
+			si_emit_streamout_output(ctx, so_buffers, so_write_offset,
+						 &so->output[i], &outputs[reg]);
 		}
 	}
 	lp_build_endif(&if_ctx);
