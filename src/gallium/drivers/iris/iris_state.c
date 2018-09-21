@@ -1510,6 +1510,22 @@ iris_set_sampler_views(struct pipe_context *ctx,
    ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
 }
 
+/**
+ * The pipe->set_tess_state() driver hook.
+ */
+static void
+iris_set_tess_state(struct pipe_context *ctx,
+                    const float default_outer_level[4],
+                    const float default_inner_level[2])
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   memcpy(&ice->state.default_outer_level[0], &default_outer_level[0], 4 * sizeof(float));
+   memcpy(&ice->state.default_inner_level[0], &default_inner_level[0], 2 * sizeof(float));
+
+   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
+}
+
 static void
 iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
 {
@@ -3157,13 +3173,19 @@ iris_populate_binding_table(struct iris_context *ice,
    if (!shader)
       return;
 
-   const struct shader_info *info = iris_get_shader_info(ice, stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    uint32_t binder_addr = binder->bo->gtt_offset;
 
    //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
    int s = 0;
+
+   const struct shader_info *info = iris_get_shader_info(ice, stage);
+   if (!info) {
+      /* TCS passthrough doesn't need a binding table. */
+      assert(stage == MESA_SHADER_TESS_CTRL);
+      return;
+   }
 
    if (stage == MESA_SHADER_FRAGMENT) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
@@ -3493,6 +3515,43 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          ptr.ColorCalcStatePointer = cc_offset;
          ptr.ColorCalcStatePointerValid = true;
       }
+   }
+
+   /* Upload constants for TCS passthrough. */
+   if ((dirty & IRIS_DIRTY_CONSTANTS_TCS) &&
+       ice->shaders.prog[MESA_SHADER_TESS_CTRL] &&
+       !ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL]) {
+      struct iris_compiled_shader *tes_shader = ice->shaders.prog[MESA_SHADER_TESS_EVAL];
+      assert(tes_shader);
+
+      /* Passthrough always copies 2 vec4s, so when uploading data we ensure
+       * it is in the right layout for TES.
+       */
+      float hdr[8] = {};
+      struct brw_tes_prog_data *tes_prog_data = (void *) tes_shader->prog_data;
+      switch (tes_prog_data->domain) {
+      case BRW_TESS_DOMAIN_QUAD:
+         for (int i = 0; i < 4; i++)
+            hdr[7 - i] = ice->state.default_outer_level[i];
+         hdr[3] = ice->state.default_inner_level[0];
+         hdr[2] = ice->state.default_inner_level[1];
+         break;
+      case BRW_TESS_DOMAIN_TRI:
+         for (int i = 0; i < 3; i++)
+            hdr[7 - i] = ice->state.default_outer_level[i];
+         hdr[4] = ice->state.default_inner_level[0];
+         break;
+      case BRW_TESS_DOMAIN_ISOLINE:
+         hdr[7] = ice->state.default_outer_level[1];
+         hdr[6] = ice->state.default_outer_level[0];
+         break;
+      }
+
+      struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_CTRL];
+      struct iris_const_buffer *cbuf = &shs->constbuf[0];
+      u_upload_data(ice->ctx.const_uploader, 0, sizeof(hdr), 32,
+                    &hdr[0], &cbuf->data.offset,
+                    &cbuf->data.res);
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -4415,6 +4474,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_constant_buffer = iris_set_constant_buffer;
    ctx->set_shader_buffers = iris_set_shader_buffers;
    ctx->set_sampler_views = iris_set_sampler_views;
+   ctx->set_tess_state = iris_set_tess_state;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
    ctx->set_polygon_stipple = iris_set_polygon_stipple;
    ctx->set_sample_mask = iris_set_sample_mask;

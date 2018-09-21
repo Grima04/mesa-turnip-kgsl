@@ -357,6 +357,9 @@ struct iris_context {
       struct pipe_stencil_ref stencil_ref;
       struct pipe_framebuffer_state framebuffer;
 
+      float default_outer_level[4];
+      float default_inner_level[2];
+
       bool primitive_restart;
       unsigned cut_index;
       enum pipe_prim_type prim_mode:8;

@@ -491,6 +491,8 @@ iris_compile_tcs(struct iris_context *ice,
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    const struct brw_compiler *compiler = screen->compiler;
+   const struct nir_shader_compiler_options *options =
+      compiler->glsl_compiler_options[MESA_SHADER_TESS_CTRL].NirOptions;
    const struct gen_device_info *devinfo = &screen->devinfo;
    void *mem_ctx = ralloc_context(NULL);
    struct brw_tcs_prog_data *tcs_prog_data =
@@ -498,11 +500,21 @@ iris_compile_tcs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir;
 
-   assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
+   if (ish) {
+      nir = ish->nir;
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+      assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
+      iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   } else {
+      nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, key);
+
+      /* Reserve space for passing the default tess levels as constants. */
+      prog_data->param = rzalloc_array(mem_ctx, uint32_t, 8);
+      prog_data->nr_params = 8;
+      prog_data->ubo_ranges[0].length = 1;
+   }
 
    char *error_str = NULL;
    const unsigned *program =
@@ -533,21 +545,13 @@ iris_update_compiled_tcs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
-   struct iris_uncompiled_shader *tes =
-      ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
-
-   assert(!(tes && !tcs));
-
-   if (!tcs) {
-      iris_unbind_shader(ice, IRIS_CACHE_TCS);
-      return;
-   }
 
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
    struct brw_tcs_prog_key key = {
-      .program_string_id = tcs->program_id,
+      .program_string_id = tcs ? tcs->program_id : get_new_program_id((void *)ice->ctx.screen),
       .tes_primitive_mode = tes_info->tess.primitive_mode,
+      .input_vertices = ice->state.vertices_per_patch,
    };
    get_unified_tess_slots(ice, &key.outputs_written,
                           &key.patch_outputs_written);
@@ -619,11 +623,6 @@ iris_update_compiled_tes(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
-
-   if (!ish) {
-      iris_unbind_shader(ice, IRIS_CACHE_TES);
-      return;
-   }
 
    struct brw_tes_prog_key key = { .program_string_id = ish->program_id };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
@@ -861,12 +860,20 @@ iris_update_compiled_shaders(struct iris_context *ice)
          old_prog_datas[i] = get_vue_prog_data(ice, i);
    }
 
+   if (dirty & (IRIS_DIRTY_UNCOMPILED_TCS | IRIS_DIRTY_UNCOMPILED_TES)) {
+       struct iris_uncompiled_shader *tes =
+          ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
+       if (tes) {
+          iris_update_compiled_tcs(ice);
+          iris_update_compiled_tes(ice);
+       } else {
+          iris_unbind_shader(ice, IRIS_CACHE_TCS);
+          iris_unbind_shader(ice, IRIS_CACHE_TES);
+       }
+   }
+
    if (dirty & IRIS_DIRTY_UNCOMPILED_VS)
       iris_update_compiled_vs(ice);
-   if (dirty & IRIS_DIRTY_UNCOMPILED_TCS)
-      iris_update_compiled_tcs(ice);
-   if (dirty & IRIS_DIRTY_UNCOMPILED_TES)
-      iris_update_compiled_tes(ice);
    if (dirty & IRIS_DIRTY_UNCOMPILED_GS)
       iris_update_compiled_gs(ice);
 
