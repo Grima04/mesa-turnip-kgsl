@@ -3318,39 +3318,43 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
 	si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }
 
-static void si_update_vgt_shader_config(struct si_context *sctx)
+static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
+						       union si_vgt_stages_key key)
 {
-	/* Calculate the index of the config.
-	 * 0 = VS, 1 = VS+GS, 2 = VS+Tess, 3 = VS+Tess+GS */
-	unsigned index = 2*!!sctx->tes_shader.cso + !!sctx->gs_shader.cso;
-	struct si_pm4_state **pm4 = &sctx->vgt_shader_config[index];
+	struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
+	uint32_t stages = 0;
 
-	if (!*pm4) {
-		uint32_t stages = 0;
+	if (key.u.tess) {
+		stages |= S_028B54_LS_EN(V_028B54_LS_STAGE_ON) |
+		          S_028B54_HS_EN(1) | S_028B54_DYNAMIC_HS(1);
 
-		*pm4 = CALLOC_STRUCT(si_pm4_state);
-
-		if (sctx->tes_shader.cso) {
-			stages |= S_028B54_LS_EN(V_028B54_LS_STAGE_ON) |
-				  S_028B54_HS_EN(1) | S_028B54_DYNAMIC_HS(1);
-
-			if (sctx->gs_shader.cso)
-				stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS) |
-					  S_028B54_GS_EN(1) |
-				          S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
-			else
-				stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
-		} else if (sctx->gs_shader.cso) {
-			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) |
-				  S_028B54_GS_EN(1) |
-			          S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
-		}
-
-		if (sctx->chip_class >= GFX9)
-			stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
-
-		si_pm4_set_reg(*pm4, R_028B54_VGT_SHADER_STAGES_EN, stages);
+		if (key.u.gs)
+			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS) |
+				  S_028B54_GS_EN(1);
+		else
+			stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
+	} else if (key.u.gs) {
+		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) |
+			  S_028B54_GS_EN(1);
 	}
+
+	if (key.u.gs)
+		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
+
+	if (screen->info.chip_class >= GFX9)
+		stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
+
+	si_pm4_set_reg(pm4, R_028B54_VGT_SHADER_STAGES_EN, stages);
+	return pm4;
+}
+
+static void si_update_vgt_shader_config(struct si_context *sctx,
+					union si_vgt_stages_key key)
+{
+	struct si_pm4_state **pm4 = &sctx->vgt_shader_config[key.index];
+
+	if (unlikely(!*pm4))
+		*pm4 = si_build_vgt_shader_config(sctx->screen, key);
 	si_pm4_bind_state(sctx, vgt_shader_config, *pm4);
 }
 
@@ -3362,6 +3366,7 @@ bool si_update_shaders(struct si_context *sctx)
 	struct si_shader *old_vs = si_get_vs_state(sctx);
 	bool old_clip_disable = old_vs ? old_vs->key.opt.clip_disable : false;
 	struct si_shader *old_ps = sctx->ps_shader.current;
+	union si_vgt_stages_key key;
 	unsigned old_spi_shader_col_format =
 		old_ps ? old_ps->key.part.ps.epilog.spi_shader_col_format : 0;
 	int r;
@@ -3370,8 +3375,12 @@ bool si_update_shaders(struct si_context *sctx)
 	compiler_state.debug = sctx->debug;
 	compiler_state.is_debug_context = sctx->is_debug;
 
+	key.index = 0;
+
 	/* Update stages before GS. */
 	if (sctx->tes_shader.cso) {
+		key.u.tess = 1;
+
 		if (!sctx->tess_rings) {
 			si_init_tess_factor_ring(sctx);
 			if (!sctx->tess_rings)
@@ -3450,6 +3459,8 @@ bool si_update_shaders(struct si_context *sctx)
 
 	/* Update GS. */
 	if (sctx->gs_shader.cso) {
+		key.u.gs = 1;
+
 		r = si_shader_select(ctx, &sctx->gs_shader, &compiler_state);
 		if (r)
 			return false;
@@ -3464,7 +3475,7 @@ bool si_update_shaders(struct si_context *sctx)
 			si_pm4_bind_state(sctx, es, NULL);
 	}
 
-	si_update_vgt_shader_config(sctx);
+	si_update_vgt_shader_config(sctx, key);
 
 	if (old_clip_disable != si_get_vs_state(sctx)->key.opt.clip_disable)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
