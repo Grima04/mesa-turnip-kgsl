@@ -4925,6 +4925,20 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpVectorTimesMatrix:
    case SpvOpMatrixTimesVector:
    case SpvOpMatrixTimesMatrix:
+   case SpvOpUCountLeadingZerosINTEL:
+   case SpvOpUCountTrailingZerosINTEL:
+   case SpvOpAbsISubINTEL:
+   case SpvOpAbsUSubINTEL:
+   case SpvOpIAddSatINTEL:
+   case SpvOpUAddSatINTEL:
+   case SpvOpIAverageINTEL:
+   case SpvOpUAverageINTEL:
+   case SpvOpIAverageRoundedINTEL:
+   case SpvOpUAverageRoundedINTEL:
+   case SpvOpISubSatINTEL:
+   case SpvOpUSubSatINTEL:
+   case SpvOpIMul32x16INTEL:
+   case SpvOpUMul32x16INTEL:
       vtn_handle_alu(b, opcode, w, count);
       break;
 
