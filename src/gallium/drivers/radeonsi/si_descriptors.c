@@ -1237,8 +1237,6 @@ static void si_set_constant_buffer(struct si_context *sctx,
 		} else {
 			pipe_resource_reference(&buffer, input->buffer);
 			va = r600_resource(buffer)->gpu_address + input->buffer_offset;
-			/* Only track usage for non-user buffers. */
-			r600_resource(buffer)->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
 		}
 
 		/* Set the descriptor. */
@@ -1283,6 +1281,9 @@ static void si_pipe_set_constant_buffer(struct pipe_context *ctx,
 		assert(!"constant buffer 0 must have a 32-bit VM address, use const_uploader");
 		return;
 	}
+
+	if (input && input->buffer)
+		r600_resource(input->buffer)->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
 
 	slot = si_get_constbuf_slot(slot);
 	si_set_constant_buffer(sctx, &sctx->const_and_shader_buffers[shader],
