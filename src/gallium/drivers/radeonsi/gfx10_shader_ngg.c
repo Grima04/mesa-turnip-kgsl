@@ -64,6 +64,14 @@ static LLVMValueRef ngg_get_prim_cnt(struct si_shader_context *ctx)
 			    false);
 }
 
+static LLVMValueRef ngg_get_ordered_id(struct si_shader_context *ctx)
+{
+	return ac_build_bfe(&ctx->ac, ctx->gs_tg_info,
+			    ctx->i32_0,
+			    LLVMConstInt(ctx->ac.i32, 11, false),
+			    false);
+}
+
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 {
 	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn,
@@ -136,6 +144,371 @@ static void build_export_prim(struct si_shader_context *ctx,
 	ac_build_export(&ctx->ac, &args);
 }
 
+static void build_streamout_vertex(struct si_shader_context *ctx,
+				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
+				   unsigned stream, LLVMValueRef offset_vtx,
+				   LLVMValueRef vertexptr)
+{
+	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct pipe_stream_output_info *so = &ctx->shader->selector->so;
+	LLVMBuilderRef builder = ctx->ac.builder;
+	LLVMValueRef offset[4] = {};
+	LLVMValueRef tmp;
+
+	for (unsigned buffer = 0; buffer < 4; ++buffer) {
+		if (!wg_offset_dw[buffer])
+			continue;
+
+		tmp = LLVMBuildMul(builder, offset_vtx,
+				   LLVMConstInt(ctx->i32, so->stride[buffer], false), "");
+		tmp = LLVMBuildAdd(builder, wg_offset_dw[buffer], tmp, "");
+		offset[buffer] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->i32, 2, false), "");
+	}
+
+	for (unsigned i = 0; i < so->num_outputs; ++i) {
+		if (so->output[i].stream != stream)
+			continue;
+
+		unsigned reg = so->output[i].register_index;
+		struct si_shader_output_values out;
+		out.semantic_name = info->output_semantic_name[reg];
+		out.semantic_index = info->output_semantic_index[reg];
+
+		for (unsigned comp = 0; comp < 4; comp++) {
+			tmp = ac_build_gep0(&ctx->ac, vertexptr,
+					    LLVMConstInt(ctx->i32, 4 * reg + comp, false));
+			out.values[comp] = LLVMBuildLoad(builder, tmp, "");
+			out.vertex_stream[comp] =
+				(info->output_streams[reg] >> (2 * comp)) & 3;
+		}
+
+		si_emit_streamout_output(ctx, so_buffer, offset, &so->output[i], &out);
+	}
+}
+
+struct ngg_streamout {
+	LLVMValueRef num_vertices;
+
+	/* per-thread data */
+	LLVMValueRef prim_enable[4]; /* i1 per stream */
+	LLVMValueRef vertices[3]; /* [N x i32] addrspace(LDS)* */
+
+	/* Output */
+	LLVMValueRef emit[4]; /* per-stream emitted primitives (only valid for used streams) */
+};
+
+/**
+ * Build streamout logic.
+ *
+ * Implies a barrier.
+ *
+ * Writes number of emitted primitives to gs_ngg_scratch[4:8].
+ *
+ * Clobbers gs_ngg_scratch[8:].
+ */
+static void build_streamout(struct si_shader_context *ctx,
+			    struct ngg_streamout *nggso)
+{
+	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct pipe_stream_output_info *so = &ctx->shader->selector->so;
+	LLVMBuilderRef builder = ctx->ac.builder;
+	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
+	LLVMValueRef tid = get_thread_id_in_tg(ctx);
+	LLVMValueRef tmp, tmp2;
+	LLVMValueRef i32_2 = LLVMConstInt(ctx->i32, 2, false);
+	LLVMValueRef i32_4 = LLVMConstInt(ctx->i32, 4, false);
+	LLVMValueRef i32_8 = LLVMConstInt(ctx->i32, 8, false);
+	LLVMValueRef so_buffer[4] = {};
+	unsigned max_num_vertices = 1 + (nggso->vertices[1] ? 1 : 0) +
+					(nggso->vertices[2] ? 1 : 0);
+	LLVMValueRef prim_stride_dw[4] = {};
+	LLVMValueRef prim_stride_dw_vgpr = LLVMGetUndef(ctx->i32);
+	int stream_for_buffer[4] = { -1, -1, -1, -1 };
+	unsigned bufmask_for_stream[4] = {};
+	bool isgs = ctx->type == PIPE_SHADER_GEOMETRY;
+	unsigned scratch_emit_base = isgs ? 4 : 0;
+	LLVMValueRef scratch_emit_basev = isgs ? i32_4 : ctx->i32_0;
+	unsigned scratch_offset_base = isgs ? 8 : 4;
+	LLVMValueRef scratch_offset_basev = isgs ? i32_8 : i32_4;
+
+	/* Determine the mapping of streamout buffers to vertex streams. */
+	for (unsigned i = 0; i < so->num_outputs; ++i) {
+		unsigned buf = so->output[i].output_buffer;
+		unsigned stream = so->output[i].stream;
+		assert(stream_for_buffer[buf] < 0 || stream_for_buffer[buf] == stream);
+		stream_for_buffer[buf] = stream;
+		bufmask_for_stream[stream] |= 1 << buf;
+	}
+
+	for (unsigned buffer = 0; buffer < 4; ++buffer) {
+		if (stream_for_buffer[buffer] == -1)
+			continue;
+
+		assert(so->stride[buffer]);
+
+		tmp = LLVMConstInt(ctx->i32, so->stride[buffer], false);
+		prim_stride_dw[buffer] = LLVMBuildMul(builder, tmp, nggso->num_vertices, "");
+		prim_stride_dw_vgpr = ac_build_writelane(
+			&ctx->ac, prim_stride_dw_vgpr, prim_stride_dw[buffer],
+			LLVMConstInt(ctx->i32, buffer, false));
+
+		so_buffer[buffer] = ac_build_load_to_sgpr(
+			&ctx->ac, buf_ptr,
+			LLVMConstInt(ctx->i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
+	}
+
+	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->i32_0, "");
+	ac_build_ifcc(&ctx->ac, tmp, 5200);
+	{
+		LLVMTypeRef gdsptr = LLVMPointerType(ctx->i32, AC_ADDR_SPACE_GDS);
+		LLVMValueRef gdsbase = LLVMBuildIntToPtr(builder, ctx->i32_0, gdsptr, "");
+
+		/* Advance the streamout offsets in GDS. */
+		LLVMValueRef offsets_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+		LLVMValueRef generated_by_stream_vgpr = ac_build_alloca_undef(&ctx->ac, ctx->i32, "");
+
+		tmp = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), i32_4, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5210);
+		{
+			if (isgs) {
+				tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid);
+				tmp = LLVMBuildLoad(builder, tmp, "");
+			} else {
+				tmp = ac_build_writelane(&ctx->ac, ctx->i32_0,
+						ngg_get_prim_cnt(ctx), ctx->i32_0);
+			}
+			LLVMBuildStore(builder, tmp, generated_by_stream_vgpr);
+
+			unsigned swizzle[4];
+			int unused_stream = -1;
+			for (unsigned stream = 0; stream < 4; ++stream) {
+				if (!info->num_stream_output_components[stream]) {
+					unused_stream = stream;
+					break;
+				}
+			}
+			for (unsigned buffer = 0; buffer < 4; ++buffer) {
+				if (stream_for_buffer[buffer] >= 0) {
+					swizzle[buffer] = stream_for_buffer[buffer];
+				} else {
+					assert(unused_stream >= 0);
+					swizzle[buffer] = unused_stream;
+				}
+			}
+
+			tmp = ac_build_quad_swizzle(&ctx->ac, tmp,
+				swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+			tmp = LLVMBuildMul(builder, tmp, prim_stride_dw_vgpr, "");
+
+			LLVMValueRef args[] = {
+				LLVMBuildIntToPtr(builder, ngg_get_ordered_id(ctx), gdsptr, ""),
+				tmp,
+				ctx->i32_0, // ordering
+				ctx->i32_0, // scope
+				ctx->ac.i1false, // isVolatile
+				LLVMConstInt(ctx->i32, 4 << 24, false), // OA index
+				ctx->ac.i1true, // wave release
+				ctx->ac.i1true, // wave done
+			};
+			tmp = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add",
+						 ctx->i32, args, ARRAY_SIZE(args), 0);
+
+			/* Keep offsets in a VGPR for quick retrieval via readlane by
+			 * the first wave for bounds checking, and also store in LDS
+			 * for retrieval by all waves later. */
+			LLVMBuildStore(builder, tmp, offsets_vgpr);
+
+			tmp2 = LLVMBuildAdd(builder, ac_get_thread_id(&ctx->ac),
+					    scratch_offset_basev, "");
+			tmp2 = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tmp2);
+			LLVMBuildStore(builder, tmp, tmp2);
+		}
+		ac_build_endif(&ctx->ac, 5210);
+
+		/* Determine the max emit per buffer. This is done via the SALU, in part
+		 * because LLVM can't generate divide-by-multiply if we try to do this
+		 * via VALU with one lane per buffer.
+		 */
+		LLVMValueRef max_emit[4] = {};
+		for (unsigned buffer = 0; buffer < 4; ++buffer) {
+			if (stream_for_buffer[buffer] == -1)
+				continue;
+
+			LLVMValueRef bufsize_dw =
+				LLVMBuildLShr(builder,
+					LLVMBuildExtractElement(builder, so_buffer[buffer], i32_2, ""),
+					i32_2, "");
+
+			tmp = LLVMBuildLoad(builder, offsets_vgpr, "");
+			LLVMValueRef offset_dw =
+				ac_build_readlane(&ctx->ac, tmp,
+						LLVMConstInt(ctx->i32, buffer, false));
+
+			tmp = LLVMBuildSub(builder, bufsize_dw, offset_dw, "");
+			tmp = LLVMBuildUDiv(builder, tmp, prim_stride_dw[buffer], "");
+
+			tmp2 = LLVMBuildICmp(builder, LLVMIntULT, bufsize_dw, offset_dw, "");
+			max_emit[buffer] = LLVMBuildSelect(builder, tmp2, ctx->i32_0, tmp, "");
+		}
+
+		/* Determine the number of emitted primitives per stream and fixup the
+		 * GDS counter if necessary.
+		 *
+		 * This is complicated by the fact that a single stream can emit to
+		 * multiple buffers (but luckily not vice versa).
+		 */
+		LLVMValueRef emit_vgpr = ctx->i32_0;
+
+		for (unsigned stream = 0; stream < 4; ++stream) {
+			if (!info->num_stream_output_components[stream])
+				continue;
+
+			tmp = LLVMBuildLoad(builder, generated_by_stream_vgpr, "");
+			LLVMValueRef generated =
+				ac_build_readlane(&ctx->ac, tmp,
+						  LLVMConstInt(ctx->i32, stream, false));
+
+			LLVMValueRef emit = generated;
+			for (unsigned buffer = 0; buffer < 4; ++buffer) {
+				if (stream_for_buffer[buffer] == stream)
+					emit = ac_build_umin(&ctx->ac, emit, max_emit[buffer]);
+			}
+
+			emit_vgpr = ac_build_writelane(&ctx->ac, emit_vgpr, emit,
+						       LLVMConstInt(ctx->i32, stream, false));
+
+			/* Fixup the offset using a plain GDS atomic if we overflowed. */
+			tmp = LLVMBuildICmp(builder, LLVMIntULT, emit, generated, "");
+			ac_build_ifcc(&ctx->ac, tmp, 5221); /* scalar branch */
+			tmp = LLVMBuildLShr(builder,
+					    LLVMConstInt(ctx->i32, bufmask_for_stream[stream], false),
+					    ac_get_thread_id(&ctx->ac), "");
+			tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+			ac_build_ifcc(&ctx->ac, tmp, 5222);
+			{
+				tmp = LLVMBuildSub(builder, generated, emit, "");
+				tmp = LLVMBuildMul(builder, tmp, prim_stride_dw_vgpr, "");
+				tmp2 = LLVMBuildGEP(builder, gdsbase, &tid, 1, "");
+				LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpSub, tmp2, tmp,
+						   LLVMAtomicOrderingMonotonic, false);
+			}
+			ac_build_endif(&ctx->ac, 5222);
+			ac_build_endif(&ctx->ac, 5221);
+		}
+
+		tmp = LLVMBuildICmp(builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), i32_4, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5225);
+		{
+			tmp = LLVMBuildAdd(builder, ac_get_thread_id(&ctx->ac),
+					   scratch_emit_basev, "");
+			tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tmp);
+			LLVMBuildStore(builder, emit_vgpr, tmp);
+		}
+		ac_build_endif(&ctx->ac, 5225);
+	}
+	ac_build_endif(&ctx->ac, 5200);
+
+	/* Determine the workgroup-relative per-thread / primitive offset into
+	 * the streamout buffers */
+	struct ac_wg_scan primemit_scan[4] = {};
+
+	if (isgs) {
+		for (unsigned stream = 0; stream < 4; ++stream) {
+			if (!info->num_stream_output_components[stream])
+				continue;
+
+			primemit_scan[stream].enable_exclusive = true;
+			primemit_scan[stream].op = nir_op_iadd;
+			primemit_scan[stream].src = nggso->prim_enable[stream];
+			primemit_scan[stream].scratch =
+				ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch,
+					LLVMConstInt(ctx->i32, 12 + 8 * stream, false));
+			primemit_scan[stream].waveidx = get_wave_id_in_tg(ctx);
+			primemit_scan[stream].numwaves = get_tgsize(ctx);
+			primemit_scan[stream].maxwaves = 8;
+			ac_build_wg_scan_top(&ctx->ac, &primemit_scan[stream]);
+		}
+	}
+
+	ac_build_s_barrier(&ctx->ac);
+
+	/* Fetch the per-buffer offsets and per-stream emit counts in all waves. */
+	LLVMValueRef wgoffset_dw[4] = {};
+
+	{
+		LLVMValueRef scratch_vgpr;
+
+		tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, ac_get_thread_id(&ctx->ac));
+		scratch_vgpr = LLVMBuildLoad(builder, tmp, "");
+
+		for (unsigned buffer = 0; buffer < 4; ++buffer) {
+			if (stream_for_buffer[buffer] >= 0) {
+				wgoffset_dw[buffer] = ac_build_readlane(
+					&ctx->ac, scratch_vgpr,
+					LLVMConstInt(ctx->i32, scratch_offset_base + buffer, false));
+			}
+		}
+
+		for (unsigned stream = 0; stream < 4; ++stream) {
+			if (info->num_stream_output_components[stream]) {
+				nggso->emit[stream] = ac_build_readlane(
+					&ctx->ac, scratch_vgpr,
+					LLVMConstInt(ctx->i32, scratch_emit_base + stream, false));
+			}
+		}
+	}
+
+	/* Write out primitive data */
+	for (unsigned stream = 0; stream < 4; ++stream) {
+		if (!info->num_stream_output_components[stream])
+			continue;
+
+		if (isgs) {
+			ac_build_wg_scan_bottom(&ctx->ac, &primemit_scan[stream]);
+		} else {
+			primemit_scan[stream].result_exclusive = tid;
+		}
+
+		tmp = LLVMBuildICmp(builder, LLVMIntULT,
+				    primemit_scan[stream].result_exclusive,
+				    nggso->emit[stream], "");
+		tmp = LLVMBuildAnd(builder, tmp, nggso->prim_enable[stream], "");
+		ac_build_ifcc(&ctx->ac, tmp, 5240);
+		{
+			LLVMValueRef offset_vtx =
+				LLVMBuildMul(builder, primemit_scan[stream].result_exclusive,
+					     nggso->num_vertices, "");
+
+			for (unsigned i = 0; i < max_num_vertices; ++i) {
+				tmp = LLVMBuildICmp(builder, LLVMIntULT,
+						    LLVMConstInt(ctx->i32, i, false),
+						    nggso->num_vertices, "");
+				ac_build_ifcc(&ctx->ac, tmp, 5241);
+				build_streamout_vertex(ctx, so_buffer, wgoffset_dw,
+						       stream, offset_vtx, nggso->vertices[i]);
+				ac_build_endif(&ctx->ac, 5241);
+				offset_vtx = LLVMBuildAdd(builder, offset_vtx, ctx->i32_1, "");
+			}
+		}
+		ac_build_endif(&ctx->ac, 5240);
+	}
+}
+
+/**
+ * Returns an `[N x i32] addrspace(LDS)*` pointing at contiguous LDS storage
+ * for the vertex outputs.
+ */
+static LLVMValueRef ngg_nogs_vertex_ptr(struct si_shader_context *ctx,
+					LLVMValueRef vtxid)
+{
+	/* The extra dword is used to avoid LDS bank conflicts. */
+	unsigned vertex_size = 4 * ctx->shader->selector->info.num_outputs + 1;
+	LLVMTypeRef ai32 = LLVMArrayType(ctx->i32, vertex_size);
+	LLVMTypeRef pai32 = LLVMPointerType(ai32, AC_ADDR_SPACE_LDS);
+	LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, ctx->esgs_ring, pai32, "");
+	return LLVMBuildGEP(ctx->ac.builder, tmp, &vtxid, 1, "");
+}
+
 /**
  * Emit the epilogue of an API VS or TES shader compiled as ESGS shader.
  */
@@ -144,16 +517,22 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			     LLVMValueRef *addrs)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	struct tgsi_shader_info *info = &ctx->shader->selector->info;
+	struct si_shader_selector *sel = ctx->shader->selector;
+	struct tgsi_shader_info *info = &sel->info;
 	struct si_shader_output_values *outputs = NULL;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	struct lp_build_if_state if_state;
-	LLVMValueRef tmp;
+	LLVMValueRef tmp, tmp2;
 
 	assert(!ctx->shader->is_gs_copy_shader);
 	assert(info->num_outputs <= max_outputs);
 
 	outputs = MALLOC((info->num_outputs + 1) * sizeof(outputs[0]));
+
+	LLVMValueRef vertex_ptr = NULL;
+
+	if (sel->so.num_outputs)
+		vertex_ptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
 	for (unsigned i = 0; i < info->num_outputs; i++) {
 		outputs[i].semantic_name = info->output_semantic_name[i];
@@ -167,6 +546,13 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 					      "");
 			outputs[i].vertex_stream[j] =
 				(info->output_streams[i] >> (2 * j)) & 3;
+
+			if (vertex_ptr) {
+				tmp = ac_build_gep0(&ctx->ac, vertex_ptr,
+					LLVMConstInt(ctx->i32, 4 * i + j, false));
+				tmp2 = ac_to_integer(&ctx->ac, outputs[i].values[j]);
+				LLVMBuildStore(builder, tmp2, tmp);
+			}
 		}
 	}
 
@@ -212,7 +598,21 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		num_vertices_val = LLVMConstInt(ctx->i32, num_vertices, false);
 	}
 
-	/* TODO: streamout */
+	/* Streamout */
+	LLVMValueRef emitted_prims = NULL;
+
+	if (sel->so.num_outputs) {
+		struct ngg_streamout nggso = {};
+
+		nggso.num_vertices = num_vertices_val;
+		nggso.prim_enable[0] = is_gs_thread;
+
+		for (unsigned i = 0; i < num_vertices; ++i)
+			nggso.vertices[i] = ngg_nogs_vertex_ptr(ctx, vtxindex[i]);
+
+		build_streamout(ctx, &nggso);
+		emitted_prims = nggso.emit[0];
+	}
 
 	/* TODO: primitive culling */
 
@@ -221,7 +621,8 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	/* Update query buffer */
 	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5030);
-	tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac), ctx->ac.i32_0, "");
+	tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac),
+			    sel->so.num_outputs ? ctx->ac.i32_1 : ctx->ac.i32_0, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5031);
 	{
 		LLVMValueRef args[] = {
@@ -231,6 +632,12 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			ctx->i32_0, /* soffset */
 			ctx->i32_0, /* cachepolicy */
 		};
+
+		if (sel->so.num_outputs) {
+			args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->i32_1);
+			args[2] = ac_build_writelane(&ctx->ac, args[2],
+					LLVMConstInt(ctx->i32, 24, false), ctx->i32_1);
+		}
 
 		/* TODO: should this be 64-bit atomics? */
 		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
@@ -563,9 +970,43 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	const LLVMValueRef tid = get_thread_id_in_tg(ctx);
 	LLVMValueRef num_emit_threads = ngg_get_prim_cnt(ctx);
 
-	/* TODO: streamout */
+	/* Streamout */
+	if (sel->so.num_outputs) {
+		struct ngg_streamout nggso = {};
 
-	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->i32, 4, false), "");
+		nggso.num_vertices = LLVMConstInt(ctx->i32, verts_per_prim, false);
+
+		LLVMValueRef vertexptr = ngg_gs_vertex_ptr(ctx, tid);
+		for (unsigned stream = 0; stream < 4; ++stream) {
+			if (!info->num_stream_output_components[stream])
+				continue;
+
+			LLVMValueRef gep_idx[3] = {
+				ctx->i32_0, /* implicit C-style array */
+				ctx->i32_1, /* second value of struct */
+				LLVMConstInt(ctx->i32, stream, false),
+			};
+			tmp = LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
+			tmp = LLVMBuildLoad(builder, tmp, "");
+			tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+			tmp2 = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
+			nggso.prim_enable[stream] = LLVMBuildAnd(builder, tmp, tmp2, "");
+		}
+
+		for (unsigned i = 0; i < verts_per_prim; ++i) {
+			tmp = LLVMBuildSub(builder, tid,
+					   LLVMConstInt(ctx->i32, verts_per_prim - i - 1, false), "");
+			tmp = ngg_gs_vertex_ptr(ctx, tmp);
+			nggso.vertices[i] = ac_build_gep0(&ctx->ac, tmp, ctx->i32_0);
+		}
+
+		build_streamout(ctx, &nggso);
+	}
+
+	/* Write shader query data. */
+	unsigned num_query_comps = sel->so.num_outputs ? 8 : 4;
+	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid,
+			    LLVMConstInt(ctx->i32, num_query_comps, false), "");
 	ac_build_ifcc(&ctx->ac, tmp, 5110);
 	{
 		LLVMValueRef offset;
@@ -843,6 +1284,8 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 	} else {
 		/* TODO: This needs to be adjusted once LDS use for compaction
 		 * after culling is implemented. */
+		if (es_sel->so.num_outputs)
+			esvert_lds_size = 4 * es_sel->info.num_outputs + 1;
 	}
 
 	unsigned max_gsprims = max_gsprims_base;

@@ -376,7 +376,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		si_mark_atom_dirty(ctx, &ctx->atoms.s.dpbb_state);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.stencil_ref);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.spi_map);
-	si_mark_atom_dirty(ctx, &ctx->atoms.s.streamout_enable);
+	if (ctx->chip_class < GFX10)
+		si_mark_atom_dirty(ctx, &ctx->atoms.s.streamout_enable);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.render_cond);
 	/* CLEAR_STATE disables all window rectangles. */
 	if (!has_clear_state || ctx->num_window_rectangles > 0)

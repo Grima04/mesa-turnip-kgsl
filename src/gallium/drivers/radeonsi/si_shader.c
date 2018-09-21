@@ -5005,6 +5005,26 @@ static void create_function(struct si_shader_context *ctx)
 	}
 }
 
+/* Ensure that the esgs ring is declared.
+ *
+ * We declare it with 64KB alignment as a hint that the
+ * pointer value will always be 0.
+ */
+static void declare_esgs_ring(struct si_shader_context *ctx)
+{
+	if (ctx->esgs_ring)
+		return;
+
+	assert(!LLVMGetNamedGlobal(ctx->ac.module, "esgs_ring"));
+
+	ctx->esgs_ring = LLVMAddGlobalInAddressSpace(
+		ctx->ac.module, LLVMArrayType(ctx->i32, 0),
+		"esgs_ring",
+		AC_ADDR_SPACE_LDS);
+	LLVMSetLinkage(ctx->esgs_ring, LLVMExternalLinkage);
+	LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
+}
+
 /**
  * Load ESGS and GSVS ring buffer resource descriptors and save the variables
  * for later use.
@@ -5027,17 +5047,8 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 				ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
 		} else {
 			if (USE_LDS_SYMBOLS && HAVE_LLVM >= 0x0900) {
-				/* Declare the ESGS ring as an explicit LDS symbol.
-				 * For monolithic shaders, we declare the ring only once.
-				 *
-				 * We declare it with 64KB alignment as a hint that the
-				 * pointer value will always be 0.
-				 */
-				ctx->esgs_ring = LLVMAddGlobalInAddressSpace(
-					ctx->ac.module, LLVMArrayType(ctx->i32, 0),
-					"esgs_ring",
-					AC_ADDR_SPACE_LDS);
-				LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
+				/* Declare the ESGS ring as an explicit LDS symbol. */
+				declare_esgs_ring(ctx);
 			} else {
 				ac_declare_lds_as_pointer(&ctx->ac);
 				ctx->esgs_ring = ctx->ac.lds;
@@ -5192,15 +5203,26 @@ static bool si_shader_binary_open(struct si_screen *screen,
 
 	struct ac_rtld_symbol lds_symbols[2];
 	unsigned num_lds_symbols = 0;
+	unsigned esgs_ring_size = 0;
 
 	if (sel && screen->info.chip_class >= GFX9 &&
 	    sel->type == PIPE_SHADER_GEOMETRY && !shader->is_gs_copy_shader) {
+		esgs_ring_size = shader->gs_info.esgs_ring_size;;
+	}
+
+	if (sel && shader->key.as_ngg && sel->so.num_outputs) {
+		unsigned esgs_vertex_bytes = 4 * (4 * sel->info.num_outputs + 1);
+		esgs_ring_size = MAX2(esgs_ring_size,
+				      shader->ngg.max_out_verts * esgs_vertex_bytes);
+	}
+
+	if (esgs_ring_size) {
 		/* We add this symbol even on LLVM <= 8 to ensure that
 		 * shader->config.lds_size is set correctly below.
 		 */
 		struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
 		sym->name = "esgs_ring";
-		sym->size = shader->gs_info.esgs_ring_size;
+		sym->size = esgs_ring_size;
 		sym->align = 64 * 1024;
 	}
 
@@ -6086,10 +6108,14 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
 			}
 
-			LLVMTypeRef a8i32 = LLVMArrayType(ctx->i32, 8);
+			unsigned scratch_size = 8;
+			if (sel->so.num_outputs)
+				scratch_size = 44;
+
+			LLVMTypeRef ai32 = LLVMArrayType(ctx->i32, scratch_size);
 			ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
-				a8i32, "ngg_scratch", AC_ADDR_SPACE_LDS);
-			LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(a8i32));
+				ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+			LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(ai32));
 			LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
 
 			ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(ctx->ac.module,
@@ -6097,6 +6123,26 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
 			LLVMSetAlignment(ctx->gs_ngg_emit, 4);
 		}
+	}
+
+	if (shader->key.as_ngg && ctx->type != PIPE_SHADER_GEOMETRY) {
+		/* Unconditionally declare scratch space base for streamout and
+		 * vertex compaction. Whether space is actually allocated is
+		 * determined during linking / PM4 creation.
+		 *
+		 * Add an extra dword per vertex to ensure an odd stride, which
+		 * avoids bank conflicts for SoA accesses.
+		 */
+		declare_esgs_ring(ctx);
+
+		/* This is really only needed when streamout and / or vertex
+		 * compaction is enabled.
+		 */
+		LLVMTypeRef asi32 = LLVMArrayType(ctx->i32, 8);
+		ctx->gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx->ac.module,
+			asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+		LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(asi32));
+		LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
 	}
 
 	/* For GFX9 merged shaders:
