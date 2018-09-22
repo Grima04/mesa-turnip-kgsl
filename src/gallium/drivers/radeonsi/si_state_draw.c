@@ -493,6 +493,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 					  const struct pipe_draw_info *info,
 					  enum pipe_prim_type prim,
 					  unsigned num_patches,
+					  unsigned instance_count,
 					  bool primitive_restart)
 {
 	union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
@@ -508,10 +509,10 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 	}
 
 	key.u.prim = prim;
-	key.u.uses_instancing = info->indirect || info->instance_count > 1;
+	key.u.uses_instancing = info->indirect || instance_count > 1;
 	key.u.multi_instances_smaller_than_primgroup =
 		info->indirect ||
-		(info->instance_count > 1 &&
+		(instance_count > 1 &&
 		 (info->count_from_stream_output ||
 		  si_num_prims_for_vertices(info, prim) < primgroup_size));
 	key.u.primitive_restart = primitive_restart;
@@ -533,7 +534,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 		if (sctx->family == CHIP_HAWAII &&
 		    G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
 		    (info->indirect ||
-		     (info->instance_count > 1 &&
+		     (instance_count > 1 &&
 		      (info->count_from_stream_output ||
 		       si_num_prims_for_vertices(info, prim) <= 1))))
 			sctx->flags |= SI_CONTEXT_VGT_FLUSH;
@@ -617,6 +618,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 				   const struct pipe_draw_info *info,
 				   enum pipe_prim_type prim,
 				   unsigned num_patches,
+				   unsigned instance_count,
 				   bool primitive_restart)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
@@ -624,7 +626,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 	unsigned ia_multi_vgt_param;
 
 	ia_multi_vgt_param = si_get_ia_multi_vgt_param(sctx, info, prim, num_patches,
-						       primitive_restart);
+						       instance_count, primitive_restart);
 
 	/* Draw state. */
 	if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
@@ -673,7 +675,8 @@ static void si_emit_draw_packets(struct si_context *sctx,
 				 const struct pipe_draw_info *info,
 				 struct pipe_resource *indexbuf,
 				 unsigned index_size,
-				 unsigned index_offset)
+				 unsigned index_offset,
+				 unsigned instance_count)
 {
 	struct pipe_draw_indirect_info *indirect = info->indirect;
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
@@ -815,7 +818,6 @@ static void si_emit_draw_packets(struct si_context *sctx,
 			radeon_emit(cs, di_src_sel);
 		}
 	} else {
-		unsigned instance_count = info->instance_count;
 		int base_vertex;
 
 		if (sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
@@ -1222,8 +1224,8 @@ static void si_get_draw_start_count(struct si_context *sctx,
 }
 
 static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_info *info,
-			       enum pipe_prim_type prim, bool primitive_restart,
-			       unsigned skip_atom_mask)
+			       enum pipe_prim_type prim, unsigned instance_count,
+			       bool primitive_restart, unsigned skip_atom_mask)
 {
 	unsigned num_patches = 0;
 
@@ -1254,7 +1256,8 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
 	/* Emit draw states. */
 	si_emit_vs_state(sctx, info);
-	si_emit_draw_registers(sctx, info, prim, num_patches, primitive_restart);
+	si_emit_draw_registers(sctx, info, prim, num_patches, instance_count,
+			       primitive_restart);
 }
 
 static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
@@ -1266,6 +1269,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	enum pipe_prim_type rast_prim, prim = info->mode;
 	unsigned index_size = info->index_size;
 	unsigned index_offset = info->indirect ? info->start * index_size : 0;
+	unsigned instance_count = info->instance_count;
 	bool primitive_restart = info->primitive_restart;
 
 	if (likely(!info->indirect)) {
@@ -1273,7 +1277,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		 * no workaround for indirect draws, but we can at least skip
 		 * direct draws.
 		 */
-		if (unlikely(!info->instance_count))
+		if (unlikely(!instance_count))
 			return;
 
 		/* Handle count == 0. */
@@ -1487,7 +1491,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			goto return_cleanup;
 
 		/* Emit all states except possibly render condition. */
-		si_emit_all_states(sctx, info, prim, primitive_restart, masked_atoms);
+		si_emit_all_states(sctx, info, prim, instance_count,
+				   primitive_restart, masked_atoms);
 		si_emit_cache_flush(sctx);
 		/* <-- CUs are idle here. */
 
@@ -1501,7 +1506,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		sctx->dirty_atoms = 0;
 
-		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset);
+		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset,
+				     instance_count);
 		/* <-- CUs are busy here. */
 
 		/* Start prefetches after the draw has been started. Both will run
@@ -1523,7 +1529,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		if (!si_upload_graphics_shader_descriptors(sctx))
 			return;
 
-		si_emit_all_states(sctx, info, prim, primitive_restart, masked_atoms);
+		si_emit_all_states(sctx, info, prim, instance_count,
+				   primitive_restart, masked_atoms);
 
 		if (has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
@@ -1532,7 +1539,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		sctx->dirty_atoms = 0;
 
-		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset);
+		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset,
+				     instance_count);
 
 		/* Prefetch the remaining shaders after the draw has been
 		 * started. */
