@@ -219,8 +219,8 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 						    clear_value_size, coher);
 		} else {
 			assert(clear_value_size == 4);
-			si_cp_dma_clear_buffer(sctx, dst, offset,
-					       aligned_size, *clear_value, coher,
+			si_cp_dma_clear_buffer(sctx, sctx->gfx_cs, dst, offset,
+					       aligned_size, *clear_value, 0, coher,
 					       get_cache_policy(sctx, coher, size));
 		}
 

@@ -1159,10 +1159,10 @@ void si_init_compute_blit_functions(struct si_context *sctx);
 			   SI_CPDMA_SKIP_BO_LIST_UPDATE)
 
 void si_cp_dma_wait_for_idle(struct si_context *sctx);
-void si_cp_dma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
-			    uint64_t offset, uint64_t size, unsigned value,
-			    enum si_coherency coher,
-			    enum si_cache_policy cache_policy);
+void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
+			    struct pipe_resource *dst, uint64_t offset,
+			    uint64_t size, unsigned value, unsigned user_flags,
+			    enum si_coherency coher, enum si_cache_policy cache_policy);
 void si_cp_dma_copy_buffer(struct si_context *sctx,
 			   struct pipe_resource *dst, struct pipe_resource *src,
 			   uint64_t dst_offset, uint64_t src_offset, unsigned size,
