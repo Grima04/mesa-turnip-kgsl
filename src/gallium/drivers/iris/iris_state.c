@@ -4362,6 +4362,8 @@ iris_upload_compute_state(struct iris_context *ice,
       ggw.BottomExecutionMask        = 0xffffffff;
    }
 
+   iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
+
    if (!batch->contains_draw) {
       iris_restore_compute_saved_bos(ice, batch, grid);
       batch->contains_draw = true;
