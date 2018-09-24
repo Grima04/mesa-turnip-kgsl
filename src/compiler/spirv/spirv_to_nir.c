@@ -4119,6 +4119,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(amd_image_read_write_lod, cap);
          break;
 
+      case SpvCapabilityIntegerFunctions2INTEL:
+         spv_check_supported(integer_functions2, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
