@@ -1,4 +1,4 @@
-# Copyright © 2017 Broadcom
+# Copyright © 2019 Broadcom
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,45 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_broadcom = include_directories('.', 'cle')
-
-subdir('cle')
-
-v3d_versions = ['33', '41', '42']
-v3d_libs = []
-
-if with_gallium_v3d
-  subdir('compiler')
-  subdir('qpu')
-endif
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-per_version_libs = []
-foreach ver : v3d_versions
-  per_version_libs += static_library(
-    'libbroadcom-v' + ver,
-    [
-      files('clif/v3dx_dump.c'),
-      v3d_xml_pack
-    ],
-    include_directories : [inc_common, inc_broadcom, inc_src],
-    c_args : [c_vis_args, no_override_init_args, '-DV3D_VERSION=' + ver],
-    dependencies: [dep_valgrind, dep_thread],
-  )
-endforeach
-
-libbroadcom_v3d = static_library(
-  'libbroadcom_v3d',
+drm_shim = static_library(
+  ['drm_shim'],
   [
-    files('common/v3d_debug.c', 'common/v3d_device_info.c', 'clif/clif_dump.c'),
-    v3d_xml_pack,
+    'device.c',
+    'drm_shim.c',
   ],
-  include_directories : [inc_common, inc_broadcom, inc_src],
-  c_args : [c_vis_args, no_override_init_args],
-  link_whole : v3d_libs + per_version_libs,
-  build_by_default : false,
-  dependencies: [dep_valgrind, dep_thread],
+  link_with: libmesa_util,
+  include_directories: [inc_common],
+  dependencies: [dep_dl],
+  c_args : [c_vis_args, '-std=gnu99'],
+)
+dep_drm_shim = declare_dependency(
+  link_with: drm_shim
 )
