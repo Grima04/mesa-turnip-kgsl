@@ -150,16 +150,27 @@ iris_pipelined_write(struct iris_batch *batch,
 static void
 write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 {
-   iris_use_pinned_bo(&ice->render_batch, q->bo, true);
+   struct iris_batch *batch = &ice->render_batch;
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   iris_use_pinned_bo(batch, q->bo, true);
 
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+      if (devinfo->gen >= 10) {
+         /* "Driver must program PIPE_CONTROL with only Depth Stall Enable
+          *  bit set prior to programming a PIPE_CONTROL with Write PS Depth
+          *  Count sync operation."
+          */
+         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_DEPTH_STALL);
+      }
       iris_pipelined_write(&ice->render_batch, q,
                            PIPE_CONTROL_WRITE_DEPTH_COUNT |
                            PIPE_CONTROL_DEPTH_STALL,
                            offset);
+      break;
    case PIPE_QUERY_TIME_ELAPSED:
       iris_pipelined_write(&ice->render_batch, q,
                            PIPE_CONTROL_WRITE_TIMESTAMP,
