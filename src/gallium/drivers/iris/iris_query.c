@@ -38,6 +38,25 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 
+#define IA_VERTICES_COUNT               0x2310
+#define IA_PRIMITIVES_COUNT             0x2318
+#define VS_INVOCATION_COUNT             0x2320
+#define HS_INVOCATION_COUNT             0x2300
+#define DS_INVOCATION_COUNT             0x2308
+#define GS_INVOCATION_COUNT             0x2328
+#define GS_PRIMITIVES_COUNT             0x2330
+#define CL_INVOCATION_COUNT             0x2338
+#define CL_PRIMITIVES_COUNT             0x2340
+#define PS_INVOCATION_COUNT             0x2348
+#define CS_INVOCATION_COUNT             0x2290
+#define PS_DEPTH_COUNT                  0x2350
+
+#define GEN6_SO_PRIM_STORAGE_NEEDED     0x2280
+#define GEN7_SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
+
+#define GEN6_SO_NUM_PRIMS_WRITTEN       0x2288
+#define GEN7_SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
+
 #define CS_GPR(n) (0x2600 + (n) * 8)
 
 #define MI_MATH (0x1a << 23)
@@ -70,8 +89,10 @@
 #define MI_ALU2(op, x, y) \
    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10) | (MI_ALU_##y))
 
+
 struct iris_query {
    enum pipe_query_type type;
+   int index;
 
    bool ready;
 
@@ -177,6 +198,29 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
                            PIPE_CONTROL_WRITE_TIMESTAMP,
                            offset);
       break;
+   case PIPE_QUERY_PIPELINE_STATISTICS: {
+      static const uint32_t index_to_reg[] = {
+         IA_VERTICES_COUNT,
+         IA_PRIMITIVES_COUNT,
+         VS_INVOCATION_COUNT,
+         GS_INVOCATION_COUNT,
+         GS_PRIMITIVES_COUNT,
+         CL_INVOCATION_COUNT,
+         CL_PRIMITIVES_COUNT,
+         PS_INVOCATION_COUNT,
+         HS_INVOCATION_COUNT,
+         DS_INVOCATION_COUNT,
+         CS_INVOCATION_COUNT,
+      };
+      const uint32_t reg = index_to_reg[q->index];
+
+      iris_emit_pipe_control_flush(batch,
+                                   PIPE_CONTROL_CS_STALL |
+                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
+
+      ice->vtbl.store_register_mem64(batch, reg, q->bo, offset, false);
+      break;
+   }
    default:
       assert(false);
    }
@@ -194,6 +238,7 @@ calculate_result_on_cpu(struct iris_query *q)
    case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
+   case PIPE_QUERY_PIPELINE_STATISTICS:
    default:
       q->result = q->map->end - q->map->start;
       break;
@@ -261,6 +306,7 @@ iris_create_query(struct pipe_context *ctx,
    struct iris_query *q = calloc(1, sizeof(struct iris_query));
 
    q->type = query_type;
+   q->index = index;
 
    return (struct pipe_query *) q;
 }
@@ -337,7 +383,46 @@ iris_get_query_result(struct pipe_context *ctx,
    }
 
    assert(q->ready);
-   result->u64 = q->result;
+
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS) {
+      switch (q->index) {
+      case 0:
+         result->pipeline_statistics.ia_vertices = q->result;
+         break;
+      case 1:
+         result->pipeline_statistics.ia_primitives = q->result;
+         break;
+      case 2:
+         result->pipeline_statistics.vs_invocations = q->result;
+         break;
+      case 3:
+         result->pipeline_statistics.gs_invocations = q->result;
+         break;
+      case 4:
+         result->pipeline_statistics.gs_primitives = q->result;
+         break;
+      case 5:
+         result->pipeline_statistics.c_invocations = q->result;
+         break;
+      case 6:
+         result->pipeline_statistics.c_primitives = q->result;
+         break;
+      case 7:
+         result->pipeline_statistics.ps_invocations = q->result;
+         break;
+      case 8:
+         result->pipeline_statistics.hs_invocations = q->result;
+         break;
+      case 9:
+         result->pipeline_statistics.ds_invocations = q->result;
+         break;
+      case 10:
+         result->pipeline_statistics.cs_invocations = q->result;
+         break;
+      }
+   } else {
+      result->u64 = q->result;
+   }
 
    return true;
 }
