@@ -172,6 +172,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
                            offset);
       break;
    case PIPE_QUERY_TIME_ELAPSED:
+      assert(false);
       iris_pipelined_write(&ice->render_batch, q,
                            PIPE_CONTROL_WRITE_TIMESTAMP,
                            offset);
