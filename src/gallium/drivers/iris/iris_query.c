@@ -66,7 +66,7 @@
 #define MI_ALU_CF        0x33
 
 #define MI_ALU0(op)       ((MI_ALU_##op << 20))
-#define MI_ALU1(op, x)    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10)
+#define MI_ALU1(op, x)    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10))
 #define MI_ALU2(op, x, y) \
    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10) | (MI_ALU_##y))
 
@@ -201,6 +201,30 @@ calculate_result_on_cpu(struct iris_query *q)
    q->ready = true;
 }
 
+/*
+ * GPR0 = (GPR0 == 0) ? 0 : 1;
+ */
+static void
+gpr0_to_bool(struct iris_context *ice)
+{
+   struct iris_batch *batch = &ice->render_batch;
+
+   ice->vtbl.load_register_imm64(batch, CS_GPR(1), 1ull);
+
+   static const uint32_t math[] = {
+      MI_MATH | (9 - 2),
+      MI_ALU2(LOAD, SRCA, R0),
+      MI_ALU1(LOAD0, SRCB),
+      MI_ALU0(ADD),
+      MI_ALU2(STOREINV, R0, ZF),
+      MI_ALU2(LOAD, SRCA, R0),
+      MI_ALU2(LOAD, SRCB, R1),
+      MI_ALU0(AND),
+      MI_ALU2(STORE, R0, ACCU),
+   };
+   iris_batch_emit(batch, math, sizeof(math));
+}
+
 /**
  * Calculate the result and store it to CS_GPR0.
  */
@@ -222,6 +246,10 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
       MI_ALU2(STORE, R0, ACCU),
    };
    iris_batch_emit(batch, math, sizeof(math));
+
+   if (q->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
+       q->type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE)
+      gpr0_to_bool(ice);
 }
 
 static struct pipe_query *
