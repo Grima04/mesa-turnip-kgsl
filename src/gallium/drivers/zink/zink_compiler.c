@@ -116,6 +116,57 @@ lower_uniforms_to_ubo(nir_shader *shader)
    return progress;
 }
 
+static void
+lower_store_output(nir_builder *b,
+                   struct nir_instr *instr)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return;
+
+   if (nir_intrinsic_base(intr) != VARYING_SLOT_POS)
+      return;
+
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_ssa_def *src = nir_ssa_for_src(b, intr->src[0], 4);
+   nir_ssa_def *def = nir_vec4(b,
+                               nir_channel(b, src, 0),
+                               nir_channel(b, src, 1),
+                               nir_fmul(b,
+                                        nir_fadd(b,
+                                                 nir_channel(b, src, 2),
+                                                 nir_channel(b, src, 3)),
+                                        nir_imm_float(b, 0.5)),
+                               nir_channel(b, src, 3));
+   nir_instr_rewrite_src(&intr->instr, &intr->src[0], nir_src_for_ssa(def));
+}
+
+static void
+position_to_vulkan(nir_shader *s)
+{
+   if (s->info.stage != MESA_SHADER_VERTEX)
+      return;
+
+   nir_foreach_function(function, s) {
+      if (function->impl) {
+         nir_builder b;
+         nir_builder_init(&b, function->impl);
+
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr_safe(instr, block)
+               lower_store_output(&b, instr);
+         }
+
+         nir_metadata_preserve(function->impl, nir_metadata_block_index |
+                                               nir_metadata_dominance);
+      }
+   }
+}
+
 static const struct nir_shader_compiler_options nir_options = {
    .lower_all_io_to_temps = true,
    .lower_ffma = true,
@@ -201,6 +252,7 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, (nir_lower_io_options)0);
    NIR_PASS_V(nir, lower_uniforms_to_ubo);
+   NIR_PASS_V(nir, position_to_vulkan);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, nir_lower_bool_to_float);
    optimize_nir(nir);
