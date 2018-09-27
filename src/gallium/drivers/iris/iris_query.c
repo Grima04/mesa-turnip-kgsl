@@ -325,6 +325,16 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
    struct iris_batch *batch = &ice->render_batch;
+   unsigned snapshots_landed_offset =
+      offsetof(struct iris_query_snapshots, snapshots_landed);
+
+   if (index == -1) {
+      /* They're asking for the availability of the result. */
+      ice->vtbl.copy_mem_mem(batch, iris_resource_bo(p_res), offset,
+                             q->bo, snapshots_landed_offset,
+                             result_type <= PIPE_QUERY_TYPE_U32 ? 4 : 8);
+      return;
+   }
 
    if (!q->ready && q->map->snapshots_landed) {
       /* The final snapshots happen to have landed, so let's just compute
@@ -353,8 +363,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    if (predicated) {
       ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
       ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, q->bo,
-                                    offsetof(struct iris_query_snapshots,
-                                             snapshots_landed));
+                                    snapshots_landed_offset);
       uint32_t predicate = MI_PREDICATE |
                            MI_PREDICATE_LOADOP_LOADINV |
                            MI_PREDICATE_COMBINEOP_SET |

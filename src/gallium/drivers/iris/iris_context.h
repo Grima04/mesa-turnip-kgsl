@@ -292,6 +292,10 @@ struct iris_vtable {
    void (*store_data_imm64)(struct iris_batch *batch,
                             struct iris_bo *bo, uint32_t offset,
                             uint64_t value);
+   void (*copy_mem_mem)(struct iris_batch *batch,
+                        struct iris_bo *dst_bo, uint32_t dst_offset,
+                        struct iris_bo *src_bo, uint32_t src_offset,
+                        unsigned bytes);
    void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);

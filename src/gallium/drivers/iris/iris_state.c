@@ -4121,6 +4121,25 @@ iris_store_data_imm64(struct iris_batch *batch,
    }
 }
 
+static void
+iris_copy_mem_mem(struct iris_batch *batch,
+                  struct iris_bo *dst_bo, uint32_t dst_offset,
+                  struct iris_bo *src_bo, uint32_t src_offset,
+                  unsigned bytes)
+{
+   /* MI_COPY_MEM_MEM operates on DWords. */
+   assert(bytes % 4 == 0);
+   assert(dst_offset % 4 == 0);
+   assert(src_offset % 4 == 0);
+
+   for (unsigned i = 0; i < bytes; i += 4) {
+      iris_emit_cmd(batch, GENX(MI_COPY_MEM_MEM), cp) {
+         cp.DestinationMemoryAddress = rw_bo(dst_bo, dst_offset + i);
+         cp.SourceMemoryAddress = ro_bo(src_bo, src_offset + i);
+      }
+   }
+}
+
 /* ------------------------------------------------------------------- */
 
 static unsigned
@@ -4593,6 +4612,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.store_register_mem64 = iris_store_register_mem64;
    ice->vtbl.store_data_imm32 = iris_store_data_imm32;
    ice->vtbl.store_data_imm64 = iris_store_data_imm64;
+   ice->vtbl.copy_mem_mem = iris_copy_mem_mem;
    ice->vtbl.derived_program_state_size = iris_derived_program_state_size;
    ice->vtbl.store_derived_program_state = iris_store_derived_program_state;
    ice->vtbl.create_so_decl_list = iris_create_so_decl_list;
