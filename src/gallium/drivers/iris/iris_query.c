@@ -359,6 +359,12 @@ iris_get_query_result_resource(struct pipe_context *ctx,
          ice->vtbl.store_data_imm64(batch, iris_resource_bo(p_res), offset,
                                     q->result);
       }
+
+      /* Make sure the result lands before they use bind the QBO elsewhere
+       * and use the result.
+       */
+      // XXX: Why?  i965 doesn't do this.
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
       return;
    }
 
