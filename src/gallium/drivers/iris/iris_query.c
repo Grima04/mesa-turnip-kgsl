@@ -329,7 +329,14 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       offsetof(struct iris_query_snapshots, snapshots_landed);
 
    if (index == -1) {
-      /* They're asking for the availability of the result. */
+      /* They're asking for the availability of the result.  If we still
+       * have commands queued up which produce the result, submit them
+       * now so that progress happens.  Either way, copy the snapshots
+       * landed field to the destination resource.
+       */
+      if (iris_batch_references(batch, q->bo))
+         iris_batch_flush(batch);
+
       ice->vtbl.copy_mem_mem(batch, iris_resource_bo(p_res), offset,
                              q->bo, snapshots_landed_offset,
                              result_type <= PIPE_QUERY_TYPE_U32 ? 4 : 8);
