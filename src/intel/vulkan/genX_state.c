@@ -332,7 +332,12 @@ VkResult genX(CreateSampler)(
          ANV_FROM_HANDLE(anv_ycbcr_conversion, conversion,
                          pSamplerConversion->conversion);
 
-         if (conversion == NULL)
+         /* Ignore conversion for non-YUV formats. This fulfills a requirement
+          * for clients that want to utilize same code path for images with
+          * external formats (VK_FORMAT_UNDEFINED) and "regular" RGBA images
+          * where format is known.
+          */
+         if (conversion == NULL || !conversion->format->can_ycbcr)
             break;
 
          sampler->n_planes = conversion->format->n_planes;
