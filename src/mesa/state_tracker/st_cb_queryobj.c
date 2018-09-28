@@ -88,6 +88,44 @@ st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
    free(stq);
 }
 
+static int
+target_to_index(const struct st_context *st, const struct gl_query_object *q)
+{
+   if (q->Target == GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN ||
+       q->Target == GL_TRANSFORM_FEEDBACK_STREAM_OVERFLOW_ARB)
+      return q->Stream;
+
+   if (st->has_single_pipe_stat) {
+      switch (q->Target) {
+      case GL_VERTICES_SUBMITTED_ARB:
+         return PIPE_STAT_QUERY_IA_VERTICES;
+      case GL_PRIMITIVES_SUBMITTED_ARB:
+         return PIPE_STAT_QUERY_IA_PRIMITIVES;
+      case GL_VERTEX_SHADER_INVOCATIONS_ARB:
+         return PIPE_STAT_QUERY_VS_INVOCATIONS;
+      case GL_GEOMETRY_SHADER_INVOCATIONS:
+         return PIPE_STAT_QUERY_GS_INVOCATIONS;
+      case GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB:
+         return PIPE_STAT_QUERY_GS_PRIMITIVES;
+      case GL_CLIPPING_INPUT_PRIMITIVES_ARB:
+         return PIPE_STAT_QUERY_C_INVOCATIONS;
+      case GL_CLIPPING_OUTPUT_PRIMITIVES_ARB:
+         return PIPE_STAT_QUERY_C_PRIMITIVES;
+      case GL_FRAGMENT_SHADER_INVOCATIONS_ARB:
+         return PIPE_STAT_QUERY_PS_INVOCATIONS;
+      case GL_TESS_CONTROL_SHADER_PATCHES_ARB:
+         return PIPE_STAT_QUERY_HS_INVOCATIONS;
+      case GL_TESS_EVALUATION_SHADER_INVOCATIONS_ARB:
+         return PIPE_STAT_QUERY_DS_INVOCATIONS;
+      case GL_COMPUTE_SHADER_INVOCATIONS_ARB:
+         return PIPE_STAT_QUERY_CS_INVOCATIONS;
+      default:
+         break;
+      }
+   }
+
+   return 0;
+}
 
 static void
 st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
@@ -140,7 +178,8 @@ st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
    case GL_COMPUTE_SHADER_INVOCATIONS_ARB:
    case GL_CLIPPING_INPUT_PRIMITIVES_ARB:
    case GL_CLIPPING_OUTPUT_PRIMITIVES_ARB:
-      type = PIPE_QUERY_PIPELINE_STATISTICS;
+      type = st->has_single_pipe_stat ? PIPE_QUERY_PIPELINE_STATISTICS_SINGLE
+                                      : PIPE_QUERY_PIPELINE_STATISTICS;
       break;
    default:
       assert(0 && "unexpected query target in st_BeginQuery()");
@@ -164,7 +203,7 @@ st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
          ret = pipe->end_query(pipe, stq->pq_begin);
    } else {
       if (!stq->pq) {
-         stq->pq = pipe->create_query(pipe, type, q->Stream);
+         stq->pq = pipe->create_query(pipe, type, target_to_index(st, q));
          stq->type = type;
       }
       if (stq->pq)
