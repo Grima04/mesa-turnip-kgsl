@@ -236,8 +236,27 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    }
 }
 
+uint64_t
+iris_timebase_scale(const struct gen_device_info *devinfo,
+                    uint64_t gpu_timestamp)
+{
+   return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
+}
+
+static uint64_t
+iris_raw_timestamp_delta(uint64_t time0, uint64_t time1)
+{
+   if (time0 > time1) {
+      return (1ULL << 36) + time1 - time0;
+   } else {
+      return time1 - time0;
+   }
+}
+
+
 static void
-calculate_result_on_cpu(struct iris_query *q)
+calculate_result_on_cpu(const struct gen_device_info *devinfo,
+                        struct iris_query *q)
 {
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -246,12 +265,16 @@ calculate_result_on_cpu(struct iris_query *q)
       break;
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
-      /* The timestamp is the single ending snapshot. */
-      // XXX: timebase scale
-      q->result = q->map->end;
+      /* The timestamp is the single starting snapshot. */
+      q->result = iris_timebase_scale(devinfo, q->map->start);
+      // XXX: 36-bit overflow?
+      break;
+   case PIPE_QUERY_TIME_ELAPSED:
+      q->result = iris_raw_timestamp_delta(q->map->start, q->map->end);
+      q->result = iris_timebase_scale(devinfo, q->result);
+      q->result &= (1ull << 36) - 1;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
-   case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_PIPELINE_STATISTICS:
@@ -397,6 +420,8 @@ iris_get_query_result(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
+   struct iris_screen *screen = (void *) ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (!q->ready) {
       if (iris_batch_references(&ice->render_batch, q->bo))
@@ -410,7 +435,7 @@ iris_get_query_result(struct pipe_context *ctx,
       }
 
       assert(q->map->snapshots_landed);
-      calculate_result_on_cpu(q);
+      calculate_result_on_cpu(devinfo, q);
    }
 
    assert(q->ready);
@@ -470,6 +495,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
    struct iris_batch *batch = &ice->render_batch;
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
    unsigned snapshots_landed_offset =
       offsetof(struct iris_query_snapshots, snapshots_landed);
 
@@ -492,7 +518,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       /* The final snapshots happen to have landed, so let's just compute
        * the result on the CPU now...
        */
-      calculate_result_on_cpu(q);
+      calculate_result_on_cpu(devinfo, q);
    }
 
    if (q->ready) {

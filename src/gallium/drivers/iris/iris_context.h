@@ -539,6 +539,11 @@ bool iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
                               uint32_t *kernel_out,
                               void *prog_data_out);
 
+/* iris_query.c */
+
+uint64_t iris_timebase_scale(const struct gen_device_info *devinfo,
+                             uint64_t gpu_timestamp);
+
 /* iris_resolve.c */
 
 void iris_predraw_resolve_inputs(struct iris_context *ice,

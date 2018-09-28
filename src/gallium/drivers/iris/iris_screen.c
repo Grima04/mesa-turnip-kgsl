@@ -374,7 +374,16 @@ iris_get_compute_param(struct pipe_screen *pscreen,
 static uint64_t
 iris_get_timestamp(struct pipe_screen *pscreen)
 {
-   return 0;
+   struct iris_screen *screen = (struct iris_screen *) pscreen;
+   const unsigned TIMESTAMP = 0x2358;
+   uint64_t result;
+
+   iris_reg_read(screen->bufmgr, TIMESTAMP, &result);
+
+   result = iris_timebase_scale(&screen->devinfo, result);
+   result &= (1ull << 36) - 1;
+
+   return result;
 }
 
 static void
