@@ -172,6 +172,12 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    struct iris_batch *batch = &ice->render_batch;
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
+   if (!iris_is_query_pipelined(q)) {
+      iris_emit_pipe_control_flush(batch,
+                                   PIPE_CONTROL_CS_STALL |
+                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
+   }
+
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -196,12 +202,14 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
                            offset);
       break;
    case PIPE_QUERY_PRIMITIVES_GENERATED:
-      iris_emit_pipe_control_flush(batch,
-                                   PIPE_CONTROL_CS_STALL |
-                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
       ice->vtbl.store_register_mem64(batch,
                                      q->index == 0 ? CL_INVOCATION_COUNT :
                                      SO_PRIM_STORAGE_NEEDED(q->index),
+                                     q->bo, offset, false);
+      break;
+   case PIPE_QUERY_PRIMITIVES_EMITTED:
+      ice->vtbl.store_register_mem64(batch,
+                                     SO_NUM_PRIMS_WRITTEN(q->index),
                                      q->bo, offset, false);
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS: {
@@ -219,10 +227,6 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
          CS_INVOCATION_COUNT,
       };
       const uint32_t reg = index_to_reg[q->index];
-
-      iris_emit_pipe_control_flush(batch,
-                                   PIPE_CONTROL_CS_STALL |
-                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
 
       ice->vtbl.store_register_mem64(batch, reg, q->bo, offset, false);
       break;
