@@ -38,24 +38,22 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 
-#define IA_VERTICES_COUNT               0x2310
-#define IA_PRIMITIVES_COUNT             0x2318
-#define VS_INVOCATION_COUNT             0x2320
-#define HS_INVOCATION_COUNT             0x2300
-#define DS_INVOCATION_COUNT             0x2308
-#define GS_INVOCATION_COUNT             0x2328
-#define GS_PRIMITIVES_COUNT             0x2330
-#define CL_INVOCATION_COUNT             0x2338
-#define CL_PRIMITIVES_COUNT             0x2340
-#define PS_INVOCATION_COUNT             0x2348
-#define CS_INVOCATION_COUNT             0x2290
-#define PS_DEPTH_COUNT                  0x2350
+#define IA_VERTICES_COUNT          0x2310
+#define IA_PRIMITIVES_COUNT        0x2318
+#define VS_INVOCATION_COUNT        0x2320
+#define HS_INVOCATION_COUNT        0x2300
+#define DS_INVOCATION_COUNT        0x2308
+#define GS_INVOCATION_COUNT        0x2328
+#define GS_PRIMITIVES_COUNT        0x2330
+#define CL_INVOCATION_COUNT        0x2338
+#define CL_PRIMITIVES_COUNT        0x2340
+#define PS_INVOCATION_COUNT        0x2348
+#define CS_INVOCATION_COUNT        0x2290
+#define PS_DEPTH_COUNT             0x2350
 
-#define GEN6_SO_PRIM_STORAGE_NEEDED     0x2280
-#define GEN7_SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
+#define SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
 
-#define GEN6_SO_NUM_PRIMS_WRITTEN       0x2288
-#define GEN7_SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
+#define SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
 
 #define CS_GPR(n) (0x2600 + (n) * 8)
 
@@ -197,6 +195,15 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       iris_pipelined_write(&ice->render_batch, q,
                            PIPE_CONTROL_WRITE_TIMESTAMP,
                            offset);
+      break;
+   case PIPE_QUERY_PRIMITIVES_GENERATED:
+      iris_emit_pipe_control_flush(batch,
+                                   PIPE_CONTROL_CS_STALL |
+                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
+      ice->vtbl.store_register_mem64(batch,
+                                     q->index == 0 ? CL_INVOCATION_COUNT :
+                                     SO_PRIM_STORAGE_NEEDED(q->index),
+                                     q->bo, offset, false);
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS: {
       static const uint32_t index_to_reg[] = {
@@ -340,6 +347,11 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
    q->result = 0ull;
    q->ready = false;
 
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
+      ice->state.prims_generated_query_active = true;
+      ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+   }
+
    write_availability(ice, q, false);
    write_value(ice, q, offsetof(struct iris_query_snapshots, start));
 
@@ -351,6 +363,11 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
+
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
+      ice->state.prims_generated_query_active = true;
+      ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+   }
 
    write_value(ice, q, offsetof(struct iris_query_snapshots, end));
    write_availability(ice, q, true);

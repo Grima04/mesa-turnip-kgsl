@@ -3705,8 +3705,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             sol.SOFunctionEnable = true;
             sol.SOStatisticsEnable = true;
 
-            // XXX: GL_PRIMITIVES_GENERATED query
-            sol.RenderingDisable = cso_rast->rasterizer_discard;
+            sol.RenderingDisable = cso_rast->rasterizer_discard &&
+                                   !ice->state.prims_generated_query_active;
             sol.ReorderMode = cso_rast->flatshade_first ? LEADING : TRAILING;
          }
 
