@@ -172,8 +172,6 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    struct iris_batch *batch = &ice->render_batch;
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
-   iris_use_pinned_bo(batch, q->bo, true);
-
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
