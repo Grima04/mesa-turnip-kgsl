@@ -378,7 +378,7 @@ iris_get_timestamp(struct pipe_screen *pscreen)
    const unsigned TIMESTAMP = 0x2358;
    uint64_t result;
 
-   iris_reg_read(screen->bufmgr, TIMESTAMP, &result);
+   iris_reg_read(screen->bufmgr, TIMESTAMP | 1, &result);
 
    result = iris_timebase_scale(&screen->devinfo, result);
    result &= (1ull << 36) - 1;
