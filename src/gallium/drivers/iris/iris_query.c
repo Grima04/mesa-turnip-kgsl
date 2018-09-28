@@ -189,7 +189,8 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
                            offset);
       break;
    case PIPE_QUERY_TIME_ELAPSED:
-      assert(false);
+   case PIPE_QUERY_TIMESTAMP:
+   case PIPE_QUERY_TIMESTAMP_DISJOINT:
       iris_pipelined_write(&ice->render_batch, q,
                            PIPE_CONTROL_WRITE_TIMESTAMP,
                            offset);
@@ -238,6 +239,12 @@ calculate_result_on_cpu(struct iris_query *q)
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
       q->result = q->map->end != q->map->start;
+      break;
+   case PIPE_QUERY_TIMESTAMP:
+   case PIPE_QUERY_TIMESTAMP_DISJOINT:
+      /* The timestamp is the single ending snapshot. */
+      // XXX: timebase scale
+      q->result = q->map->end;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_TIME_ELAPSED:
@@ -361,6 +368,11 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
+
+   if (q->type == PIPE_QUERY_TIMESTAMP) {
+      iris_begin_query(ctx, query);
+      write_availability(ice, q, true);
+   }
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
       ice->state.prims_generated_query_active = true;
