@@ -267,7 +267,7 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
       /* The timestamp is the single starting snapshot. */
       q->result = iris_timebase_scale(devinfo, q->map->start);
-      // XXX: 36-bit overflow?
+      q->result &= (1ull << 36) - 1;
       break;
    case PIPE_QUERY_TIME_ELAPSED:
       q->result = iris_raw_timestamp_delta(q->map->start, q->map->end);
