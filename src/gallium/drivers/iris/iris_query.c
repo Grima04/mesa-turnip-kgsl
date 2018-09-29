@@ -88,7 +88,6 @@
 #define MI_ALU2(op, x, y) \
    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10) | (MI_ALU_##y))
 
-
 struct iris_query {
    enum pipe_query_type type;
    int index;
@@ -248,12 +247,11 @@ static uint64_t
 iris_raw_timestamp_delta(uint64_t time0, uint64_t time1)
 {
    if (time0 > time1) {
-      return (1ULL << 36) + time1 - time0;
+      return (1ULL << TIMESTAMP_BITS) + time1 - time0;
    } else {
       return time1 - time0;
    }
 }
-
 
 static void
 calculate_result_on_cpu(const struct gen_device_info *devinfo,
@@ -268,12 +266,12 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
       /* The timestamp is the single starting snapshot. */
       q->result = iris_timebase_scale(devinfo, q->map->start);
-      q->result &= (1ull << 36) - 1;
+      q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
    case PIPE_QUERY_TIME_ELAPSED:
       q->result = iris_raw_timestamp_delta(q->map->start, q->map->end);
       q->result = iris_timebase_scale(devinfo, q->result);
-      q->result &= (1ull << 36) - 1;
+      q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:

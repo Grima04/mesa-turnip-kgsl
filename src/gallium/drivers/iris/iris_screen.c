@@ -43,6 +43,7 @@
 #include "util/ralloc.h"
 #include "drm-uapi/i915_drm.h"
 #include "iris_context.h"
+#include "iris_defines.h"
 #include "iris_pipe.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
@@ -381,7 +382,7 @@ iris_get_timestamp(struct pipe_screen *pscreen)
    iris_reg_read(screen->bufmgr, TIMESTAMP | 1, &result);
 
    result = iris_timebase_scale(&screen->devinfo, result);
-   result &= (1ull << 36) - 1;
+   result &= (1ull << TIMESTAMP_BITS) - 1;
 
    return result;
 }
