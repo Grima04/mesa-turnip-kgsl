@@ -23,7 +23,8 @@
 /**
  * @file iris_query.c
  *
- * XXX: this file is EMPTY.  it will eventually implement query objects!
+ * Query object support.  This allows measuring various simple statistics
+ * via counters on the GPU.
  */
 
 #include <stdio.h>
