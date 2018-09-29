@@ -399,6 +399,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       iris_begin_query(ctx, query);
       write_availability(ice, q, true);
+      return true;
    }
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
