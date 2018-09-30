@@ -127,25 +127,18 @@ iris_is_query_pipelined(struct iris_query *q)
 }
 
 static void
-write_availability(struct iris_context *ice,
-                   struct iris_query *q,
-                   bool available)
+mark_available(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->render_batch;
    unsigned flags = PIPE_CONTROL_WRITE_IMMEDIATE;
    unsigned offset = offsetof(struct iris_query_snapshots, snapshots_landed);
 
    if (!iris_is_query_pipelined(q)) {
-      ice->vtbl.store_data_imm64(batch, q->bo, offset, available);
+      ice->vtbl.store_data_imm64(batch, q->bo, offset, true);
    } else {
-      if (available) {
-         /* Order available *after* the query results. */
-         flags |= PIPE_CONTROL_FLUSH_ENABLE;
-      } else {
-         /* Make it unavailable *before* any pipelined reads. */
-         flags |= PIPE_CONTROL_CS_STALL;
-      }
-      iris_emit_pipe_control_write(batch, flags, q->bo, offset, available);
+      /* Order available *after* the query results. */
+      flags |= PIPE_CONTROL_FLUSH_ENABLE;
+      iris_emit_pipe_control_write(batch, flags, q->bo, offset, true);
    }
 }
 
@@ -371,19 +364,19 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
    if (!q->bo)
       return false;
 
-   q->map = iris_bo_map(&ice->dbg, q->bo, MAP_READ | MAP_ASYNC);
+   q->map = iris_bo_map(&ice->dbg, q->bo, MAP_READ | MAP_WRITE | MAP_ASYNC);
    if (!q->map)
       return false;
 
    q->result = 0ull;
    q->ready = false;
+   q->map->snapshots_landed = false;
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
       ice->state.prims_generated_query_active = true;
       ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
-   write_availability(ice, q, false);
    write_value(ice, q, offsetof(struct iris_query_snapshots, start));
 
    return true;
@@ -397,7 +390,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       iris_begin_query(ctx, query);
-      write_availability(ice, q, true);
+      mark_available(ice, q);
       return true;
    }
 
@@ -407,7 +400,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
    }
 
    write_value(ice, q, offsetof(struct iris_query_snapshots, end));
-   write_availability(ice, q, true);
+   mark_available(ice, q);
 
    return true;
 }
