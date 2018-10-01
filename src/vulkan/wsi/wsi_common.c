@@ -96,6 +96,7 @@ wsi_device_init(struct wsi_device *wsi,
    WSI_GET_CB(GetMemoryFdKHR);
    WSI_GET_CB(GetPhysicalDeviceFormatProperties);
    WSI_GET_CB(GetPhysicalDeviceFormatProperties2KHR);
+   WSI_GET_CB(GetPhysicalDeviceImageFormatProperties2);
    WSI_GET_CB(ResetFences);
    WSI_GET_CB(QueueSubmit);
    WSI_GET_CB(WaitForFences);
@@ -413,7 +414,38 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       wsi->GetPhysicalDeviceFormatProperties2KHR(wsi->pdevice,
                                                  pCreateInfo->imageFormat,
                                                  &format_props);
-      modifier_prop_count = modifier_props_list.drmFormatModifierCount;
+
+      /* Call GetImageFormatProperties with every modifier and filter the list
+       * down to those that we know work.
+       */
+      modifier_prop_count = 0;
+      for (uint32_t i = 0; i < modifier_props_list.drmFormatModifierCount; i++) {
+         VkPhysicalDeviceImageDrmFormatModifierInfoEXT mod_info = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT,
+            .drmFormatModifier = modifier_props[i].drmFormatModifier,
+            .sharingMode = pCreateInfo->imageSharingMode,
+            .queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount,
+            .pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices,
+         };
+         VkPhysicalDeviceImageFormatInfo2 format_info = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+            .format = pCreateInfo->imageFormat,
+            .type = VK_IMAGE_TYPE_2D,
+            .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+            .usage = pCreateInfo->imageUsage,
+            .flags = 0,
+         };
+         VkImageFormatProperties2 format_props = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
+            .pNext = NULL,
+         };
+         __vk_append_struct(&format_info, &mod_info);
+         result = wsi->GetPhysicalDeviceImageFormatProperties2(wsi->pdevice,
+                                                               &format_info,
+                                                               &format_props);
+         if (result == VK_SUCCESS)
+            modifier_props[modifier_prop_count++] = modifier_props[i];
+      }
 
       uint32_t max_modifier_count = 0;
       for (uint32_t l = 0; l < num_modifier_lists; l++)
