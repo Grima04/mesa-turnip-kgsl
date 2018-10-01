@@ -717,11 +717,12 @@ get_buffer_format_features(const struct gen_device_info *devinfo,
 static void
 get_wsi_format_modifier_properties_list(const struct anv_physical_device *physical_device,
                                         VkFormat vk_format,
-                                        struct wsi_format_modifier_properties_list *list)
+                                        VkDrmFormatModifierPropertiesListEXT *list)
 {
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
-   VK_OUTARRAY_MAKE(out, list->modifier_properties, &list->modifier_count);
+   VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
+                    &list->drmFormatModifierCount);
 
    /* This is a simplified list where all the modifiers are available */
    assert(vk_format == VK_FORMAT_B8G8R8_SRGB ||
@@ -751,11 +752,11 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
          continue;
 
       vk_outarray_append(&out, mod_props) {
-         mod_props->modifier = modifiers[i];
+         mod_props->drmFormatModifier = modifiers[i];
          if (isl_drm_modifier_has_aux(modifiers[i]))
-            mod_props->modifier_plane_count = 2;
+            mod_props->drmFormatModifierPlaneCount = 2;
          else
-            mod_props->modifier_plane_count = anv_format->n_planes;
+            mod_props->drmFormatModifierPlaneCount = anv_format->n_planes;
       }
    }
 }
@@ -793,7 +794,7 @@ void anv_GetPhysicalDeviceFormatProperties2(
    vk_foreach_struct(ext, pFormatProperties->pNext) {
       /* Use unsigned since some cases are not in the VkStructureType enum. */
       switch ((unsigned)ext->sType) {
-      case VK_STRUCTURE_TYPE_WSI_FORMAT_MODIFIER_PROPERTIES_LIST_MESA:
+      case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT:
          get_wsi_format_modifier_properties_list(physical_device, format,
                                                  (void *)ext);
          break;

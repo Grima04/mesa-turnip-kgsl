@@ -786,20 +786,21 @@ tu_GetPhysicalDeviceFormatProperties2(
    tu_physical_device_get_format_properties(
       physical_device, format, &pFormatProperties->formatProperties);
 
-   struct wsi_format_modifier_properties_list *list =
-      vk_find_struct(pFormatProperties->pNext, WSI_FORMAT_MODIFIER_PROPERTIES_LIST_MESA);
+   VkDrmFormatModifierPropertiesListEXT *list =
+      vk_find_struct(pFormatProperties->pNext, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT);
    if (list) {
-      VK_OUTARRAY_MAKE(out, list->modifier_properties, &list->modifier_count);
+      VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
+                       &list->drmFormatModifierCount);
 
       vk_outarray_append(&out, mod_props) {
-         mod_props->modifier = DRM_FORMAT_MOD_LINEAR;
-         mod_props->modifier_plane_count = 1;
+         mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
+         mod_props->drmFormatModifierPlaneCount = 1;
       }
 
       /* TODO: any cases where this should be disabled? */
       vk_outarray_append(&out, mod_props) {
-         mod_props->modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
-         mod_props->modifier_plane_count = 1;
+         mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+         mod_props->drmFormatModifierPlaneCount = 1;
       }
    }
 }

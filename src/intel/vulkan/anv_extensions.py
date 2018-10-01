@@ -144,6 +144,7 @@ EXTENSIONS = [
     Extension('VK_EXT_global_priority',                   1,
               'device->has_context_priority'),
     Extension('VK_EXT_host_query_reset',                  1, True),
+    Extension('VK_EXT_image_drm_format_modifier',         1, False),
     Extension('VK_EXT_index_type_uint8',                  1, True),
     Extension('VK_EXT_inline_uniform_block',              1, True),
     Extension('VK_EXT_line_rasterization',                1, True),

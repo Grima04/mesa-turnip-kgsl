@@ -346,14 +346,15 @@ tu_CreateImage(VkDevice device,
                                    pAllocator, pImage);
 #endif
 
-   const struct wsi_image_create_info *wsi_info =
-      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
 
-   if (wsi_info) {
       modifier = DRM_FORMAT_MOD_LINEAR;
-      for (unsigned i = 0; i < wsi_info->modifier_count; i++) {
-         if (wsi_info->modifiers[i] == DRM_FORMAT_MOD_QCOM_COMPRESSED)
+      for (unsigned i = 0; i < mod_info->drmFormatModifierCount; i++) {
+         if (mod_info->pDrmFormatModifiers[i] == DRM_FORMAT_MOD_QCOM_COMPRESSED)
             modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
       }
    }
