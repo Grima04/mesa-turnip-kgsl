@@ -355,6 +355,29 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       .pNext = NULL,
    };
 
+   VkImageCreateInfo image_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .flags = 0,
+      .imageType = VK_IMAGE_TYPE_2D,
+      .format = pCreateInfo->imageFormat,
+      .extent = {
+         .width = pCreateInfo->imageExtent.width,
+         .height = pCreateInfo->imageExtent.height,
+         .depth = 1,
+      },
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .tiling = VK_IMAGE_TILING_OPTIMAL,
+      .usage = pCreateInfo->imageUsage,
+      .sharingMode = pCreateInfo->imageSharingMode,
+      .queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount,
+      .pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+   };
+
+   __vk_append_struct(&image_info, &image_wsi_info);
+
    uint32_t image_modifier_count = 0, modifier_prop_count = 0;
    struct wsi_format_modifier_properties *modifier_props = NULL;
    uint64_t *image_modifiers = NULL;
@@ -435,27 +458,6 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       }
    }
 
-   const VkImageCreateInfo image_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .pNext = &image_wsi_info,
-      .flags = 0,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .format = pCreateInfo->imageFormat,
-      .extent = {
-         .width = pCreateInfo->imageExtent.width,
-         .height = pCreateInfo->imageExtent.height,
-         .depth = 1,
-      },
-      .mipLevels = 1,
-      .arrayLayers = 1,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .tiling = VK_IMAGE_TILING_OPTIMAL,
-      .usage = pCreateInfo->imageUsage,
-      .sharingMode = pCreateInfo->imageSharingMode,
-      .queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount,
-      .pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-   };
    result = wsi->CreateImage(chain->device, &image_info,
                              &chain->alloc, &image->image);
    if (result != VK_SUCCESS)
