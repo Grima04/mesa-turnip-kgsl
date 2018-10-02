@@ -321,4 +321,9 @@ gen_perf_new(void *ctx)
    return perf;
 }
 
+uint32_t gen_perf_get_n_passes(struct gen_perf_config *perf,
+                               const uint32_t *counter_indices,
+                               uint32_t counter_indices_count,
+                               struct gen_perf_query_info **pass_queries);
+
 #endif /* GEN_PERF_H */

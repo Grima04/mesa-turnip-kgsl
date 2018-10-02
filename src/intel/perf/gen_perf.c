@@ -47,6 +47,7 @@
 #include "perf/gen_perf_private.h"
 
 #include "util/bitscan.h"
+#include "util/macros.h"
 #include "util/mesa-sha1.h"
 #include "util/u_math.h"
 
@@ -766,6 +767,58 @@ gen_perf_store_configuration(struct gen_perf_config *perf_cfg, int fd,
       return id;
 
    return i915_add_config(perf_cfg, fd, config, generated_guid);
+}
+
+static uint64_t
+get_passes_mask(struct gen_perf_config *perf,
+                const uint32_t *counter_indices,
+                uint32_t counter_indices_count)
+{
+   uint64_t queries_mask = 0;
+
+   assert(perf->n_queries < 64);
+
+   /* Compute the number of passes by going through all counters N times (with
+    * N the number of queries) to make sure we select the most constraining
+    * counters first and look at the more flexible ones (that could be
+    * obtained from multiple queries) later. That way we minimize the number
+    * of passes required.
+    */
+   for (uint32_t q = 0; q < perf->n_queries; q++) {
+      for (uint32_t i = 0; i < counter_indices_count; i++) {
+         assert(counter_indices[i] < perf->n_counters);
+
+         uint32_t idx = counter_indices[i];
+         if (__builtin_popcount(perf->counters[idx]->query_mask) != (q + 1))
+            continue;
+
+         if (queries_mask & perf->counters[idx]->query_mask)
+            continue;
+
+         queries_mask |= BITFIELD64_BIT(ffsll(perf->counters[idx]->query_mask) - 1);
+      }
+   }
+
+   return queries_mask;
+}
+
+uint32_t
+gen_perf_get_n_passes(struct gen_perf_config *perf,
+                      const uint32_t *counter_indices,
+                      uint32_t counter_indices_count,
+                      struct gen_perf_query_info **pass_queries)
+{
+   uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
+
+   if (pass_queries) {
+      uint32_t pass = 0;
+      for (uint32_t q = 0; q < perf->n_queries; q++) {
+         if ((1ULL << q) & queries_mask)
+            pass_queries[pass++] = &perf->queries[q];
+      }
+   }
+
+   return __builtin_popcount(queries_mask);
 }
 
 /* Accumulate 32bits OA counters */
