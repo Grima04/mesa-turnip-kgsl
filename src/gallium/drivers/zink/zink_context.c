@@ -1032,6 +1032,12 @@ zink_blit(struct pipe_context *pctx,
 }
 
 static void
+zink_flush_resource(struct pipe_context *pipe,
+                    struct pipe_resource *resource)
+{
+}
+
+static void
 zink_resource_copy_region(struct pipe_context *pctx,
                           struct pipe_resource *pdst,
                           unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
@@ -1134,6 +1140,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.resource_copy_region = zink_resource_copy_region;
    ctx->base.blit = zink_blit;
 
+   ctx->base.flush_resource = zink_flush_resource;
    zink_context_surface_init(&ctx->base);
    zink_context_resource_init(&ctx->base);
 

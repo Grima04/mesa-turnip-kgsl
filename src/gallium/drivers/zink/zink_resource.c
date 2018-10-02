@@ -229,7 +229,7 @@ zink_resource_create(struct pipe_screen *pscreen,
       res->aspect = zink_aspect_from_format(templ->format);
 
       vkGetImageMemoryRequirements(screen->dev, res->image, &reqs);
-      if (templ->usage == PIPE_USAGE_STAGING || (templ->bind & (PIPE_BIND_SCANOUT|PIPE_BIND_DISPLAY_TARGET|PIPE_BIND_SHARED)))
+      if (templ->usage == PIPE_USAGE_STAGING || (screen->winsys && (templ->bind & (PIPE_BIND_SCANOUT|PIPE_BIND_DISPLAY_TARGET|PIPE_BIND_SHARED))))
         flags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else
         flags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -239,6 +239,13 @@ zink_resource_create(struct pipe_screen *pscreen,
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.allocationSize = reqs.size;
    mai.memoryTypeIndex = get_memory_type_index(screen, &reqs, flags);
+
+   VkExportMemoryAllocateInfo emai = {};
+   if (templ->bind & PIPE_BIND_SHARED) {
+      emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+      emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      mai.pNext = &emai;
+   }
 
    if (vkAllocateMemory(screen->dev, &mai, NULL, &res->mem) != VK_SUCCESS)
       goto fail;
@@ -251,9 +258,9 @@ zink_resource_create(struct pipe_screen *pscreen,
    else
       vkBindImageMemory(screen->dev, res->image, res->mem, res->offset);
 
-   if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                      PIPE_BIND_SCANOUT |
-                      PIPE_BIND_SHARED)) {
+   if (screen->winsys && (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
+                                         PIPE_BIND_SCANOUT |
+                                         PIPE_BIND_SHARED))) {
       struct sw_winsys *winsys = screen->winsys;
       res->dt = winsys->displaytarget_create(screen->winsys,
                                              res->base.bind,
@@ -277,11 +284,52 @@ fail:
    return NULL;
 }
 
+static bool
+zink_resource_get_handle(struct pipe_screen *pscreen,
+                         struct pipe_context *context,
+                         struct pipe_resource *tex,
+                         struct winsys_handle *whandle,
+                         unsigned usage)
+{
+   struct zink_resource *res = zink_resource(tex);
+   struct zink_screen *screen = zink_screen(pscreen);
+   VkMemoryGetFdInfoKHR fd_info = {};
+   int fd;
+
+   if (res->base.target != PIPE_BUFFER) {
+      VkImageSubresource sub_res = {};
+      VkSubresourceLayout sub_res_layout = {};
+
+      sub_res.aspectMask = res->aspect;
+
+      vkGetImageSubresourceLayout(screen->dev, res->image, &sub_res, &sub_res_layout);
+
+      whandle->stride = sub_res_layout.rowPitch;
+   }
+
+   if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+
+      if (!screen->vk_GetMemoryFdKHR)
+         screen->vk_GetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)vkGetDeviceProcAddr(screen->dev, "vkGetMemoryFdKHR");
+      if (!screen->vk_GetMemoryFdKHR)
+         return false;
+      fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+      fd_info.memory = res->mem;
+      fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      VkResult result = (*screen->vk_GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+      if (result != VK_SUCCESS)
+         return false;
+      whandle->handle = fd;
+   }
+   return true;
+}
+
 void
 zink_screen_resource_init(struct pipe_screen *pscreen)
 {
    pscreen->resource_create = zink_resource_create;
    pscreen->resource_destroy = zink_resource_destroy;
+   pscreen->resource_get_handle = zink_resource_get_handle;
 }
 
 static bool

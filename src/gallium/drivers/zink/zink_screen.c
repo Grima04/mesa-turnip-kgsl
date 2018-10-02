@@ -595,9 +595,16 @@ create_instance()
    ai.pEngineName = "mesa zink";
    ai.apiVersion = VK_API_VERSION_1_0;
 
+   const char *extensions[] = {
+      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+   };
+
    VkInstanceCreateInfo ici = {};
    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
    ici.pApplicationInfo = &ai;
+   ici.ppEnabledExtensionNames = extensions;
+   ici.enabledExtensionCount = ARRAY_SIZE(extensions);
 
    VkInstance instance = VK_NULL_HANDLE;
    VkResult err = vkCreateInstance(&ici, NULL, &instance);
@@ -663,6 +670,8 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    struct sw_winsys *winsys = screen->winsys;
    struct zink_resource *res = zink_resource(pres);
 
+   if (!winsys)
+     return;
    void *map = winsys->displaytarget_map(winsys, res->dt, 0);
 
    if (map) {
@@ -694,8 +703,8 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
 }
 
-struct pipe_screen *
-zink_create_screen(struct sw_winsys *winsys)
+static struct pipe_screen *
+zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
    if (!screen)
@@ -742,7 +751,9 @@ zink_create_screen(struct sw_winsys *winsys)
    dci.pQueueCreateInfos = &qci;
    dci.pEnabledFeatures = &screen->feats;
    const char *extensions[] = {
-      VK_KHR_MAINTENANCE1_EXTENSION_NAME
+      VK_KHR_MAINTENANCE1_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
    };
    dci.ppEnabledExtensionNames = extensions;
    dci.enabledExtensionCount = ARRAY_SIZE(extensions);
@@ -773,4 +784,16 @@ zink_create_screen(struct sw_winsys *winsys)
 fail:
    FREE(screen);
    return NULL;
+}
+
+struct pipe_screen *
+zink_create_screen(struct sw_winsys *winsys)
+{
+   return zink_internal_create_screen(winsys, -1);
+}
+
+struct pipe_screen *
+zink_drm_create_screen(int fd)
+{
+   return zink_internal_create_screen(NULL, fd);
 }

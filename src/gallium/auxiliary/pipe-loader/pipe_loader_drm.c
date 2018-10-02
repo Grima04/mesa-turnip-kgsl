@@ -135,6 +135,10 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
         .driver_name = "lima",
         .create_screen = pipe_lima_create_screen,
     },
+    {
+        .driver_name = "zink",
+        .create_screen = pipe_zink_create_screen,
+    },
 };
 
 static const struct drm_driver_descriptor default_driver_descriptor = {

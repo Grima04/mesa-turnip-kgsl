@@ -52,6 +52,8 @@ struct zink_screen {
 
    uint32_t gfx_queue;
    VkDevice dev;
+
+   PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
 };
 
 static inline struct zink_screen *
