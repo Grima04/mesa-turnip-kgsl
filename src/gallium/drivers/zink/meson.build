@@ -28,6 +28,7 @@ files_libzink = files(
   'zink_framebuffer.c',
   'zink_pipeline.c',
   'zink_program.c',
+  'zink_query.c',
   'zink_render_pass.c',
   'zink_resource.c',
   'zink_screen.c',

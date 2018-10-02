@@ -104,4 +104,7 @@ zink_shader_stage(enum pipe_shader_type type);
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 
+void
+zink_context_query_init(struct pipe_context *ctx);
+
 #endif

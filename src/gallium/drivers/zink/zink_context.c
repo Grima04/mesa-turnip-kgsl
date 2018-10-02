@@ -1143,6 +1143,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.flush_resource = zink_flush_resource;
    zink_context_surface_init(&ctx->base);
    zink_context_resource_init(&ctx->base);
+   zink_context_query_init(&ctx->base);
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
 
