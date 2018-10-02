@@ -1537,6 +1537,8 @@ iris_set_shader_images(struct pipe_context *ctx,
          if (img->shader_access & PIPE_IMAGE_ACCESS_READ)
             isl_format = isl_lower_storage_image_format(devinfo, isl_format);
 
+         shs->image[start_slot + i].access = img->shader_access;
+
          if (res->base.target != PIPE_BUFFER) {
             struct isl_view view = {
                .format = isl_format,
