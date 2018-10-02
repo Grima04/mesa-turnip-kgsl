@@ -1112,9 +1112,7 @@ wrap_mode_needs_border_color(unsigned wrap_mode)
  * Gallium CSO for sampler state.
  */
 struct iris_sampler_state {
-   // XXX: do we need this
-   struct pipe_sampler_state base;
-
+   union pipe_color_union border_color;
    bool needs_border_color;
 
    uint32_t sampler_state[GENX(SAMPLER_STATE_length)];
@@ -1137,14 +1135,14 @@ iris_create_sampler_state(struct pipe_context *ctx,
    if (!cso)
       return NULL;
 
-   memcpy(&cso->base, state, sizeof(*state));
-
    STATIC_ASSERT(PIPE_TEX_FILTER_NEAREST == MAPFILTER_NEAREST);
    STATIC_ASSERT(PIPE_TEX_FILTER_LINEAR == MAPFILTER_LINEAR);
 
    unsigned wrap_s = translate_wrap(state->wrap_s);
    unsigned wrap_t = translate_wrap(state->wrap_t);
    unsigned wrap_r = translate_wrap(state->wrap_r);
+
+   memcpy(&cso->border_color, &state->border_color, sizeof(cso->border_color));
 
    cso->needs_border_color = wrap_mode_needs_border_color(wrap_s) ||
                              wrap_mode_needs_border_color(wrap_t) ||
@@ -1274,7 +1272,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 
          /* Stream out the border color and merge the pointer. */
          uint32_t offset =
-            iris_upload_border_color(ice, &state->base.border_color);
+            iris_upload_border_color(ice, &state->border_color);
 
          uint32_t dynamic[GENX(SAMPLER_STATE_length)];
          iris_pack_state(GENX(SAMPLER_STATE), dynamic, dyns) {
