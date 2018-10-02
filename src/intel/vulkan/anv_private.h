@@ -1595,6 +1595,9 @@ struct anv_descriptor_set_binding_layout {
    VkDescriptorType type;
 #endif
 
+   /* Flags provided when this binding was created */
+   VkDescriptorBindingFlagsEXT flags;
+
    /* Bitfield representing the type of data this descriptor contains */
    enum anv_descriptor_data data;
 

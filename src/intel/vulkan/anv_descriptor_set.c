@@ -330,6 +330,7 @@ VkResult anv_CreateDescriptorSetLayout(
       /* Initialize all binding_layout entries to -1 */
       memset(&set_layout->binding[b], -1, sizeof(set_layout->binding[b]));
 
+      set_layout->binding[b].flags = 0;
       set_layout->binding[b].data = 0;
       set_layout->binding[b].max_plane_count = 0;
       set_layout->binding[b].array_size = 0;
@@ -353,6 +354,12 @@ VkResult anv_CreateDescriptorSetLayout(
       set_layout->binding[b].immutable_samplers = (void *)binding;
    }
 
+   const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT *binding_flags_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
+   if (binding_flags_info)
+      assert(binding_flags_info->bindingCount == pCreateInfo->bindingCount);
+
    for (uint32_t b = 0; b <= max_binding; b++) {
       const VkDescriptorSetLayoutBinding *binding =
          (void *)set_layout->binding[b].immutable_samplers;
@@ -372,6 +379,14 @@ VkResult anv_CreateDescriptorSetLayout(
 #ifndef NDEBUG
       set_layout->binding[b].type = binding->descriptorType;
 #endif
+
+      if (binding_flags_info) {
+         uint32_t binding_strct_idx = binding - pCreateInfo->pBindings;
+         assert(binding_strct_idx < binding_flags_info->bindingCount);
+         set_layout->binding[b].flags =
+            binding_flags_info->pBindingFlags[binding_strct_idx];
+      }
+
       set_layout->binding[b].data =
          anv_descriptor_data_for_type(&device->instance->physicalDevice,
                                       binding->descriptorType);
@@ -480,6 +495,7 @@ static void
 sha1_update_descriptor_set_binding_layout(struct mesa_sha1 *ctx,
    const struct anv_descriptor_set_binding_layout *layout)
 {
+   SHA1_UPDATE_VALUE(ctx, layout->flags);
    SHA1_UPDATE_VALUE(ctx, layout->data);
    SHA1_UPDATE_VALUE(ctx, layout->max_plane_count);
    SHA1_UPDATE_VALUE(ctx, layout->array_size);
