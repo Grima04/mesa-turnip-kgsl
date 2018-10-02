@@ -3180,6 +3180,26 @@ static const uint32_t push_constant_opcodes[] = {
    [MESA_SHADER_COMPUTE]   = 0,
 };
 
+static uint32_t
+use_null_surface(struct iris_batch *batch, struct iris_context *ice)
+{
+   struct iris_bo *state_bo = iris_resource_bo(ice->state.unbound_tex.res);
+
+   iris_use_pinned_bo(batch, state_bo, false);
+
+   return ice->state.unbound_tex.offset;
+}
+
+static uint32_t
+use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
+{
+   struct iris_bo *state_bo = iris_resource_bo(ice->state.null_fb.res);
+
+   iris_use_pinned_bo(batch, state_bo, false);
+
+   return ice->state.null_fb.offset;
+}
+
 /**
  * Add a surface to the validation list, as well as the buffer containing
  * the corresponding SURFACE_STATE.
@@ -3209,32 +3229,17 @@ use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
 }
 
 static uint32_t
-use_const_buffer(struct iris_batch *batch, struct iris_const_buffer *cbuf)
+use_const_buffer(struct iris_batch *batch,
+                 struct iris_context *ice,
+                 struct iris_const_buffer *cbuf)
 {
+   if (!cbuf->surface_state.res)
+      return use_null_surface(batch, ice);
+
    iris_use_pinned_bo(batch, iris_resource_bo(cbuf->data.res), false);
    iris_use_pinned_bo(batch, iris_resource_bo(cbuf->surface_state.res), false);
 
    return cbuf->surface_state.offset;
-}
-
-static uint32_t
-use_null_surface(struct iris_batch *batch, struct iris_context *ice)
-{
-   struct iris_bo *state_bo = iris_resource_bo(ice->state.unbound_tex.res);
-
-   iris_use_pinned_bo(batch, state_bo, false);
-
-   return ice->state.unbound_tex.offset;
-}
-
-static uint32_t
-use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
-{
-   struct iris_bo *state_bo = iris_resource_bo(ice->state.null_fb.res);
-
-   iris_use_pinned_bo(batch, state_bo, false);
-
-   return ice->state.null_fb.offset;
 }
 
 static uint32_t
@@ -3330,12 +3335,10 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
-   for (int i = 0; i < 1 + info->num_ubos; i++) {
-      struct iris_const_buffer *cbuf = &shs->constbuf[i];
-      if (!cbuf->surface_state.res)
-         break;
+   const int num_ubos = iris_get_shader_num_ubos(ice, stage);
 
-      uint32_t addr = use_const_buffer(batch, cbuf);
+   for (int i = 0; i < num_ubos; i++) {
+      uint32_t addr = use_const_buffer(batch, ice, &shs->constbuf[i]);
       push_bt_entry(addr);
    }
 

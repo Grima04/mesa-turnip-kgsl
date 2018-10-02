@@ -516,6 +516,9 @@ void gen11_init_state(struct iris_context *ice);
 /* iris_program.c */
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
+unsigned iris_get_shader_num_ubos(const struct iris_context *ice,
+                                  gl_shader_stage stage);
+
 
 /* iris_program_cache.c */
 

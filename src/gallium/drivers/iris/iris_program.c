@@ -532,6 +532,20 @@ iris_get_shader_info(const struct iris_context *ice, gl_shader_stage stage)
    return &nir->info;
 }
 
+// XXX: this function is gross
+unsigned
+iris_get_shader_num_ubos(const struct iris_context *ice, gl_shader_stage stage)
+{
+   const struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[stage];
+
+   if (ish) {
+      const nir_shader *nir = ish->nir;
+      /* see assign_common_binding_table_offsets */
+      return nir->info.num_ubos + (nir->num_uniforms > 0 ? 1 : 0);
+   }
+   return 0;
+}
+
 /**
  * Get the union of TCS output and TES input slots.
  *
