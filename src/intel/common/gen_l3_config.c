@@ -134,15 +134,15 @@ static const struct gen_l3_config cnl_l3_configs[] = {
 
 /**
  * ICL validated L3 configurations.  \sa icl_l3_configs.
+ * Zeroth entry in below table has been commented out intentionally
+ * due to known issues with this configuration. Many other entries
+ * suggested by h/w specification aren't added here because they
+ * do under allocation of L3 cache with below partitioning.
  */
 static const struct gen_l3_config icl_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
-   {{  0, 64, 64,  0,  0,  0,  0,  0 }},
-   {{  0, 64,  0, 16, 48,  0,  0,  0 }},
-   {{  0, 48,  0, 16, 64,  0,  0,  0 }},
-   {{  0, 32,  0,  0, 96,  0,  0,  0 }},
-   {{  0, 32, 96,  0,  0,  0,  0,  0 }},
-   {{  0, 32,  0, 16, 80,  0,  0,  0 }},
+   /*{{  0, 16, 80,  0,  0,  0,  0,  0 }},*/
+   {{  0, 32, 64,  0,  0,  0,  0,  0 }},
    {{  0 }}
 };
 
