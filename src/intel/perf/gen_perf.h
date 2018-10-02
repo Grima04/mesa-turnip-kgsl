@@ -130,10 +130,12 @@ struct gen_perf_query_result {
 struct gen_perf_query_counter {
    const char *name;
    const char *desc;
+   const char *symbol_name;
    enum gen_perf_counter_type type;
    enum gen_perf_counter_data_type data_type;
    uint64_t raw_max;
    size_t offset;
+   uint64_t query_mask;
 
    union {
       uint64_t (*oa_counter_read_uint64)(struct gen_perf_config *perf,
@@ -202,6 +204,9 @@ struct gen_perf_config {
 
    struct gen_perf_query_info *queries;
    int n_queries;
+
+   struct gen_perf_query_counter **counters;
+   int n_counters;
 
    /* Variables referenced in the XML meta data for OA performance
     * counters, e.g in the normalization equations.

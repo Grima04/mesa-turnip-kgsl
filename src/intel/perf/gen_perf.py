@@ -378,6 +378,7 @@ def output_counter_report(set, counter, current_offset):
     c("counter->oa_counter_read_" + data_type + " = " + set.read_funcs[counter.get('symbol_name')] + ";\n")
     c("counter->name = \"" + counter.get('name') + "\";\n")
     c("counter->desc = \"" + counter.get('description') + "\";\n")
+    c("counter->symbol_name = \"" + counter.get('symbol_name') + "\";\n")
     c("counter->type = GEN_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
     c("counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ";\n")
     c("counter->raw_max = " + set.max_values[counter.get('symbol_name')] + ";\n")

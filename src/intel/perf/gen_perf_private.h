@@ -41,7 +41,7 @@ gen_perf_query_add_stat_reg(struct gen_perf_query_info *query, uint32_t reg,
    assert(query->n_counters < query->max_counters);
 
    counter = &query->counters[query->n_counters];
-   counter->name = name;
+   counter->name = counter->symbol_name = name;
    counter->desc = description;
    counter->type = GEN_PERF_COUNTER_TYPE_RAW;
    counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_UINT64;
