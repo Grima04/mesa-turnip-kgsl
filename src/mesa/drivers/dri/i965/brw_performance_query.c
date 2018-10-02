@@ -447,7 +447,7 @@ brw_get_perf_counter_info(struct gl_context *ctx,
    *name = counter->name;
    *desc = counter->desc;
    *offset = counter->offset;
-   *data_size = counter->size;
+   *data_size = gen_perf_query_counter_get_size(counter);
    *type_enum = gen_counter_type_enum_to_gl_type(counter->type);
    *data_type_enum = gen_counter_data_type_to_gl_type(counter->data_type);
    *raw_max = counter->raw_max;
@@ -1392,8 +1392,9 @@ get_oa_counter_data(struct brw_context *brw,
       const struct gen_perf_query_counter *counter = &query->counters[i];
       uint64_t *out_uint64;
       float *out_float;
+      size_t counter_size = gen_perf_query_counter_get_size(counter);
 
-      if (counter->size) {
+      if (counter_size) {
          switch (counter->data_type) {
          case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
             out_uint64 = (uint64_t *)(data + counter->offset);
@@ -1411,7 +1412,7 @@ get_oa_counter_data(struct brw_context *brw,
             /* So far we aren't using uint32, double or bool32... */
             unreachable("unexpected counter data type");
          }
-         written = counter->offset + counter->size;
+         written = counter->offset + counter_size;
       }
    }
 

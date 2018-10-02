@@ -106,7 +106,6 @@ struct gen_perf_query_counter {
    enum gen_perf_counter_data_type data_type;
    uint64_t raw_max;
    size_t offset;
-   size_t size;
 
    union {
       uint64_t (*oa_counter_read_uint64)(struct gen_perf *perf,
@@ -193,6 +192,25 @@ struct gen_perf {
    int (*ioctl)(int, unsigned long, void *);
 };
 
+static inline size_t
+gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)
+{
+   switch (counter->data_type) {
+   case GEN_PERF_COUNTER_DATA_TYPE_BOOL32:
+      return sizeof(uint32_t);
+   case GEN_PERF_COUNTER_DATA_TYPE_UINT32:
+      return sizeof(uint32_t);
+   case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+      return sizeof(uint64_t);
+   case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
+      return sizeof(float);
+   case GEN_PERF_COUNTER_DATA_TYPE_DOUBLE:
+      return sizeof(double);
+   default:
+      unreachable("invalid counter data type");
+   }
+}
+
 static inline struct gen_perf_query_info *
 gen_perf_query_append_query_info(struct gen_perf *perf, int max_counters)
 {
@@ -230,7 +248,6 @@ gen_perf_query_info_add_stat_reg(struct gen_perf_query_info *query,
    counter->desc = description;
    counter->type = GEN_PERF_COUNTER_TYPE_RAW;
    counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_UINT64;
-   counter->size = sizeof(uint64_t);
    counter->offset = sizeof(uint64_t) * query->n_counters;
    counter->pipeline_stat.reg = reg;
    counter->pipeline_stat.numerator = numerator;

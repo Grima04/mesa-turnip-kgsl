@@ -43,10 +43,10 @@ fill_mdapi_perf_query_counter(struct gen_perf_query_info *query,
    counter->type = GEN_PERF_COUNTER_TYPE_RAW;
    counter->data_type = data_type;
    counter->offset = data_offset;
-   counter->size = data_size;
-   assert(counter->offset + counter->size <= query->data_size);
 
    query->n_counters++;
+
+   assert(counter->offset + gen_perf_query_counter_get_size(counter) <= query->data_size);
 }
 
 #define MDAPI_QUERY_ADD_COUNTER(query, struct_name, field_name, type_name) \

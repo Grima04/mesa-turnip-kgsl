@@ -381,7 +381,6 @@ def output_counter_report(set, counter, current_offset):
 
     current_offset = pot_align(current_offset, sizeof(c_type))
     c("counter->offset = " + str(current_offset) + ";\n")
-    c("counter->size = sizeof(" + c_type + ");\n")
 
     if availability:
         c_outdent(3);
@@ -722,7 +721,7 @@ def main():
                 offset = output_counter_report(set, counter, offset)
 
 
-            c("\nquery->data_size = counter->offset + counter->size;\n")
+            c("\nquery->data_size = counter->offset + gen_perf_query_counter_get_size(counter);\n")
 
             c_outdent(3)
             c("}");
