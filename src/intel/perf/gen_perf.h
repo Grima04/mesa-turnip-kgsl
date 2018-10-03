@@ -62,6 +62,39 @@ enum gen_perf_counter_data_type {
    GEN_PERF_COUNTER_DATA_TYPE_DOUBLE,
 };
 
+enum gen_perf_counter_units {
+   /* size */
+   GEN_PERF_COUNTER_UNITS_BYTES,
+
+   /* frequency */
+   GEN_PERF_COUNTER_UNITS_HZ,
+
+   /* time */
+   GEN_PERF_COUNTER_UNITS_NS,
+   GEN_PERF_COUNTER_UNITS_US,
+
+   /**/
+   GEN_PERF_COUNTER_UNITS_PIXELS,
+   GEN_PERF_COUNTER_UNITS_TEXELS,
+   GEN_PERF_COUNTER_UNITS_THREADS,
+   GEN_PERF_COUNTER_UNITS_PERCENT,
+
+   /* events */
+   GEN_PERF_COUNTER_UNITS_MESSAGES,
+   GEN_PERF_COUNTER_UNITS_NUMBER,
+   GEN_PERF_COUNTER_UNITS_CYCLES,
+   GEN_PERF_COUNTER_UNITS_EVENTS,
+   GEN_PERF_COUNTER_UNITS_UTILIZATION,
+
+   /**/
+   GEN_PERF_COUNTER_UNITS_EU_SENDS_TO_L3_CACHE_LINES,
+   GEN_PERF_COUNTER_UNITS_EU_ATOMIC_REQUESTS_TO_L3_CACHE_LINES,
+   GEN_PERF_COUNTER_UNITS_EU_REQUESTS_TO_L3_CACHE_LINES,
+   GEN_PERF_COUNTER_UNITS_EU_BYTES_PER_L3_CACHE_LINE,
+
+   GEN_PERF_COUNTER_UNITS_MAX
+};
+
 struct gen_pipeline_stat {
    uint32_t reg;
    uint32_t numerator;
@@ -133,6 +166,7 @@ struct gen_perf_query_counter {
    const char *symbol_name;
    enum gen_perf_counter_type type;
    enum gen_perf_counter_data_type data_type;
+   enum gen_perf_counter_units units;
    uint64_t raw_max;
    size_t offset;
    uint64_t query_mask;

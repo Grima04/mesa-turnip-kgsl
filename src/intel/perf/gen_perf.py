@@ -353,6 +353,10 @@ def output_availability(set, availability, counter_name):
         c_outdent(4)
 
 
+def output_units(unit):
+    return unit.replace(' ', '_').upper()
+
+
 def output_counter_report(set, counter, current_offset):
     data_type = counter.get('data_type')
     data_type_uc = data_type.upper()
@@ -381,6 +385,7 @@ def output_counter_report(set, counter, current_offset):
     c("counter->symbol_name = \"" + counter.get('symbol_name') + "\";\n")
     c("counter->type = GEN_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
     c("counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ";\n")
+    c("counter->units = GEN_PERF_COUNTER_UNITS_" + output_units(counter.get('units')) + ";\n")
     c("counter->raw_max = " + set.max_values[counter.get('symbol_name')] + ";\n")
 
     current_offset = pot_align(current_offset, sizeof(c_type))
