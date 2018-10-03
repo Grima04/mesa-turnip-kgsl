@@ -31,6 +31,7 @@
 
 #include "os/os_process.h"
 #include "util/u_debug.h"
+#include "util/u_format.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"
@@ -527,6 +528,20 @@ static const VkFormat formats[PIPE_FORMAT_COUNT] = {
    [PIPE_FORMAT_Z16_UNORM] = VK_FORMAT_D16_UNORM,
    [PIPE_FORMAT_X8Z24_UNORM] = VK_FORMAT_X8_D24_UNORM_PACK32,
    [PIPE_FORMAT_Z24_UNORM_S8_UINT] = VK_FORMAT_D24_UNORM_S8_UINT,
+
+   // compressed formats
+   [PIPE_FORMAT_DXT1_RGB] = VK_FORMAT_BC1_RGB_UNORM_BLOCK,
+   [PIPE_FORMAT_DXT1_RGBA] = VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
+   [PIPE_FORMAT_DXT3_RGBA] = VK_FORMAT_BC2_UNORM_BLOCK,
+   [PIPE_FORMAT_DXT5_RGBA] = VK_FORMAT_BC3_UNORM_BLOCK,
+   [PIPE_FORMAT_RGTC1_UNORM] = VK_FORMAT_BC4_UNORM_BLOCK,
+   [PIPE_FORMAT_RGTC1_SNORM] = VK_FORMAT_BC4_SNORM_BLOCK,
+   [PIPE_FORMAT_RGTC2_UNORM] = VK_FORMAT_BC5_UNORM_BLOCK,
+   [PIPE_FORMAT_RGTC2_SNORM] = VK_FORMAT_BC5_SNORM_BLOCK,
+   [PIPE_FORMAT_BPTC_RGBA_UNORM] = VK_FORMAT_BC7_UNORM_BLOCK,
+   [PIPE_FORMAT_BPTC_SRGBA] = VK_FORMAT_BC7_SRGB_BLOCK,
+   [PIPE_FORMAT_BPTC_RGB_FLOAT] = VK_FORMAT_BC6H_SFLOAT_BLOCK,
+   [PIPE_FORMAT_BPTC_RGB_UFLOAT] = VK_FORMAT_BC6H_UFLOAT_BLOCK,
 };
 
 VkFormat
@@ -577,6 +592,11 @@ zink_is_format_supported(struct pipe_screen *pscreen,
           !(props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
          return FALSE;
    }
+
+   const struct util_format_description *desc = util_format_description(format);
+   if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC &&
+       !screen->feats.textureCompressionBC)
+      return FALSE;
 
    return TRUE;
 }
