@@ -1398,6 +1398,7 @@ typedef enum {
    nir_tex_src_offset,
    nir_tex_src_bias,
    nir_tex_src_lod,
+   nir_tex_src_min_lod,
    nir_tex_src_ms_index, /* MSAA sample index */
    nir_tex_src_ms_mcs, /* MSAA compression value */
    nir_tex_src_ddx,

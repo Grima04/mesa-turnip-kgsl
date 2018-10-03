@@ -41,6 +41,7 @@ struct spirv_supported_capabilities {
    bool image_read_without_format;
    bool image_write_without_format;
    bool int64;
+   bool min_lod;
    bool multiview;
    bool variable_pointers;
    bool storage_16bit;
