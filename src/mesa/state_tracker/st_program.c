@@ -1183,7 +1183,7 @@ st_create_fp_variant(struct st_context *st,
 
          variant->bitmap_sampler = ffs(~stfp->Base.SamplersUsed) - 1;
          options.sampler = variant->bitmap_sampler;
-         options.swizzle_xxxx = (st->bitmap.tex_format == PIPE_FORMAT_L8_UNORM);
+         options.swizzle_xxxx = st->bitmap.tex_format == PIPE_FORMAT_R8_UNORM;
 
          NIR_PASS_V(tgsi.ir.nir, nir_lower_bitmap, &options);
       }
