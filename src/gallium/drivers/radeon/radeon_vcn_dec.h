@@ -758,6 +758,12 @@ struct radeon_decoder {
 	void				*render_pic_list[16];
 	bool				show_frame;
 	unsigned			ref_idx;
+	struct {
+		unsigned 		data0;
+		unsigned		data1;
+		unsigned		cmd;
+		unsigned		cntl;
+	} reg;
 	struct jpeg_params		jpg;
 	void (*send_cmd)(struct radeon_decoder *dec,
 			 struct pipe_video_buffer *target,
