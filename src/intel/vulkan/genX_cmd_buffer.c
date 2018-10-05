@@ -3018,6 +3018,153 @@ void genX(CmdDrawIndexedIndirect)(
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
+static void
+prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
+                                 struct anv_address count_address)
+{
+   /* Upload the current draw count from the draw parameters buffer to
+    * MI_PREDICATE_SRC0.
+    */
+   emit_lrm(&cmd_buffer->batch, MI_PREDICATE_SRC0, count_address);
+   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
+
+   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+}
+
+static void
+emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
+                          uint32_t draw_index)
+{
+   /* Upload the index of the current primitive to MI_PREDICATE_SRC1. */
+   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1, draw_index);
+
+   if (draw_index == 0) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
+         mip.LoadOperation    = LOAD_LOADINV;
+         mip.CombineOperation = COMBINE_SET;
+         mip.CompareOperation = COMPARE_SRCS_EQUAL;
+      }
+   } else {
+      /* While draw_index < draw_count the predicate's result will be
+       *  (draw_index == draw_count) ^ TRUE = TRUE
+       * When draw_index == draw_count the result is
+       *  (TRUE) ^ TRUE = FALSE
+       * After this all results will be:
+       *  (FALSE) ^ FALSE = FALSE
+       */
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
+         mip.LoadOperation    = LOAD_LOAD;
+         mip.CombineOperation = COMBINE_XOR;
+         mip.CompareOperation = COMPARE_SRCS_EQUAL;
+      }
+   }
+}
+
+void genX(CmdDrawIndirectCountKHR)(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    _buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    _countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
+   ANV_FROM_HANDLE(anv_buffer, count_buffer, _countBuffer);
+   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
+   struct anv_pipeline *pipeline = cmd_state->gfx.base.pipeline;
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return;
+
+   genX(cmd_buffer_flush_state)(cmd_buffer);
+
+   struct anv_address count_address =
+      anv_address_add(count_buffer->address, countBufferOffset);
+
+   prepare_for_draw_count_predicate(cmd_buffer, count_address);
+
+   for (uint32_t i = 0; i < maxDrawCount; i++) {
+      struct anv_address draw = anv_address_add(buffer->address, offset);
+
+      emit_draw_count_predicate(cmd_buffer, i);
+
+      if (vs_prog_data->uses_firstvertex ||
+          vs_prog_data->uses_baseinstance)
+         emit_base_vertex_instance_bo(cmd_buffer, anv_address_add(draw, 8));
+      if (vs_prog_data->uses_drawid)
+         emit_draw_index(cmd_buffer, i);
+
+      load_indirect_parameters(cmd_buffer, draw, false);
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
+         prim.IndirectParameterEnable  = true;
+         prim.PredicateEnable          = true;
+         prim.VertexAccessType         = SEQUENTIAL;
+         prim.PrimitiveTopologyType    = pipeline->topology;
+      }
+
+      offset += stride;
+   }
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
+}
+
+void genX(CmdDrawIndexedIndirectCountKHR)(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    _buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    _countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
+   ANV_FROM_HANDLE(anv_buffer, count_buffer, _countBuffer);
+   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
+   struct anv_pipeline *pipeline = cmd_state->gfx.base.pipeline;
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return;
+
+   genX(cmd_buffer_flush_state)(cmd_buffer);
+
+   struct anv_address count_address =
+      anv_address_add(count_buffer->address, countBufferOffset);
+
+   prepare_for_draw_count_predicate(cmd_buffer, count_address);
+
+   for (uint32_t i = 0; i < maxDrawCount; i++) {
+      struct anv_address draw = anv_address_add(buffer->address, offset);
+
+      emit_draw_count_predicate(cmd_buffer, i);
+
+      /* TODO: We need to stomp base vertex to 0 somehow */
+      if (vs_prog_data->uses_firstvertex ||
+          vs_prog_data->uses_baseinstance)
+         emit_base_vertex_instance_bo(cmd_buffer, anv_address_add(draw, 12));
+      if (vs_prog_data->uses_drawid)
+         emit_draw_index(cmd_buffer, i);
+
+      load_indirect_parameters(cmd_buffer, draw, true);
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
+         prim.IndirectParameterEnable  = true;
+         prim.PredicateEnable          = true;
+         prim.VertexAccessType         = RANDOM;
+         prim.PrimitiveTopologyType    = pipeline->topology;
+      }
+
+      offset += stride;
+   }
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
+}
+
 static VkResult
 flush_compute_descriptor_set(struct anv_cmd_buffer *cmd_buffer)
 {

@@ -81,6 +81,7 @@ EXTENSIONS = [
     Extension('VK_KHR_device_group',                      1, True),
     Extension('VK_KHR_device_group_creation',             1, True),
     Extension('VK_KHR_display',                          23, 'VK_USE_PLATFORM_DISPLAY_KHR'),
+    Extension('VK_KHR_draw_indirect_count',               1, True),
     Extension('VK_KHR_driver_properties',                 1, True),
     Extension('VK_KHR_external_fence',                    1,
               'device->has_syncobj_wait'),
