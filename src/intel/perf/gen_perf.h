@@ -110,10 +110,10 @@ struct gen_perf_query_counter {
    union {
       uint64_t (*oa_counter_read_uint64)(struct gen_perf *perf,
                                          const struct gen_perf_query_info *query,
-                                         uint64_t *accumulator);
+                                         const uint64_t *accumulator);
       float (*oa_counter_read_float)(struct gen_perf *perf,
                                      const struct gen_perf_query_info *query,
-                                     uint64_t *accumulator);
+                                     const uint64_t *accumulator);
       struct gen_pipeline_stat pipeline_stat;
    };
 };

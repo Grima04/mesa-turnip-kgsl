@@ -281,7 +281,7 @@ def output_counter_read(gen, set, counter):
         c(counter.read_sym + "(MAYBE_UNUSED struct gen_perf *perf,\n")
         c_indent(len(counter.read_sym) + 1)
         c("const struct gen_perf_query_info *query,\n")
-        c("uint64_t *accumulator)\n")
+        c("const uint64_t *accumulator)\n")
         c_outdent(len(counter.read_sym) + 1)
 
         c("{")
