@@ -1316,7 +1316,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-   struct iris_resource *itex = (struct iris_resource *) tex;
    struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
 
    if (!isv)
@@ -1337,6 +1336,18 @@ iris_create_sampler_view(struct pipe_context *ctx,
    struct iris_bo *state_bo = iris_resource_bo(isv->surface_state.res);
    isv->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
 
+   if (util_format_is_depth_or_stencil(tmpl->format)) {
+      struct iris_resource *zres, *sres;
+      const struct util_format_description *desc =
+         util_format_description(tmpl->format);
+
+      iris_get_depth_stencil_resources(tex, &zres, &sres);
+
+      tex = util_format_has_depth(desc) ? &zres->base : &sres->base;
+   }
+
+   isv->res = (struct iris_resource *) tex;
+
    /* XXX: do we need brw_get_texture_swizzle hacks here? */
    isv->view = (struct isl_view) {
       .format = iris_isl_format_for_pipe_format(tmpl->format),
@@ -1347,7 +1358,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
          .a = pipe_swizzle_to_isl_channel(tmpl->swizzle_a),
       },
       .usage = ISL_SURF_USAGE_TEXTURE_BIT |
-               (itex->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
+               (isv->res->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
    };
 
    /* Fill out SURFACE_STATE for this view. */
@@ -1359,9 +1370,9 @@ iris_create_sampler_view(struct pipe_context *ctx,
          tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
       isl_surf_fill_state(&screen->isl_dev, map,
-                          .surf = &itex->surf, .view = &isv->view,
+                          .surf = &isv->res->surf, .view = &isv->view,
                           .mocs = MOCS_WB,
-                          .address = itex->bo->gtt_offset);
+                          .address = isv->res->bo->gtt_offset);
                           // .aux_surf =
                           // .clear_color = clear_color,
    } else {
@@ -1371,7 +1382,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
       const unsigned cpp = fmtl->bpb / 8;
 
       isl_buffer_fill_state(&screen->isl_dev, map,
-                            .address = itex->bo->gtt_offset +
+                            .address = isv->res->bo->gtt_offset +
                                        tmpl->u.buf.offset,
                             // XXX: buffer_texture_range_size from i965?
                             .size_B = tmpl->u.buf.size,
@@ -3099,7 +3110,7 @@ use_surface(struct iris_batch *batch,
 static uint32_t
 use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
 {
-   iris_use_pinned_bo(batch, iris_resource_bo(isv->base.texture), false);
+   iris_use_pinned_bo(batch, isv->res->bo, false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
 
    return isv->surface_state.offset;

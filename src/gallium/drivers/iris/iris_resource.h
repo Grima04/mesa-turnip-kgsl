@@ -64,6 +64,12 @@ struct iris_sampler_view {
    struct pipe_sampler_view base;
    struct isl_view view;
 
+   /* A short-cut (not a reference) to the actual resource being viewed.
+    * Multi-planar (or depth+stencil) images may have multiple resources
+    * chained together; this skips having to traverse base->texture->*.
+    */
+   struct iris_resource *res;
+
    /** The resource (BO) holding our SURFACE_STATE. */
    struct iris_state_ref surface_state;
 };

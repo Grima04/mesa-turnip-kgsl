@@ -66,6 +66,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_Z32_FLOAT_S8X24_UINT]    = ISL_FORMAT_R32_FLOAT,
 
       [PIPE_FORMAT_S8_UINT]                 = ISL_FORMAT_R8_UINT,
+      [PIPE_FORMAT_X24S8_UINT]              = ISL_FORMAT_R8_UINT,
 
       [PIPE_FORMAT_R64_FLOAT]               = ISL_FORMAT_R64_FLOAT,
       [PIPE_FORMAT_R64G64_FLOAT]            = ISL_FORMAT_R64G64_FLOAT,
