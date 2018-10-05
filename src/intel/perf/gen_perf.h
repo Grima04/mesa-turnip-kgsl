@@ -289,6 +289,12 @@ struct gen_perf_config {
    } vtbl;
 };
 
+struct gen_perf_counter_pass {
+   struct gen_perf_query_info *query;
+   struct gen_perf_query_counter *counter;
+   uint32_t pass;
+};
+
 void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                            const struct gen_device_info *devinfo,
                            int drm_fd,
@@ -359,5 +365,9 @@ uint32_t gen_perf_get_n_passes(struct gen_perf_config *perf,
                                const uint32_t *counter_indices,
                                uint32_t counter_indices_count,
                                struct gen_perf_query_info **pass_queries);
+void gen_perf_get_counters_passes(struct gen_perf_config *perf,
+                                  const uint32_t *counter_indices,
+                                  uint32_t counter_indices_count,
+                                  struct gen_perf_counter_pass *counter_pass);
 
 #endif /* GEN_PERF_H */

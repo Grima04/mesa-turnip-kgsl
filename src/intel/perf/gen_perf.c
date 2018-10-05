@@ -821,6 +821,30 @@ gen_perf_get_n_passes(struct gen_perf_config *perf,
    return __builtin_popcount(queries_mask);
 }
 
+void
+gen_perf_get_counters_passes(struct gen_perf_config *perf,
+                             const uint32_t *counter_indices,
+                             uint32_t counter_indices_count,
+                             struct gen_perf_counter_pass *counter_pass)
+{
+   uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
+   uint32_t n_passes = __builtin_popcount(queries_mask);
+
+   for (uint32_t i = 0; i < counter_indices_count; i++) {
+      assert(counter_indices[i] < perf->n_counters);
+
+      uint32_t idx = counter_indices[i];
+      counter_pass[i].counter = perf->counters[idx];
+
+      uint32_t query_idx = ffsll(perf->counters[idx]->query_mask & queries_mask) - 1;
+      counter_pass[i].query = &perf->queries[query_idx];
+
+      uint32_t clear_bits = 63 - query_idx;
+      counter_pass[i].pass = __builtin_popcount((queries_mask << clear_bits) >> clear_bits) - 1;
+      assert(counter_pass[i].pass < n_passes);
+   }
+}
+
 /* Accumulate 32bits OA counters */
 static inline void
 accumulate_uint32(const uint32_t *report0,
