@@ -183,6 +183,11 @@ struct gen_l3_config;
 #define ANV_SVGS_VB_INDEX    MAX_VBS
 #define ANV_DRAWID_VB_INDEX (MAX_VBS + 1)
 
+/* We reserve this MI ALU register for the purpose of handling predication.
+ * Other code which uses the MI ALU should leave it alone.
+ */
+#define ANV_PREDICATE_RESULT_REG MI_ALU_REG15
+
 #define anv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 static inline uint32_t
@@ -1870,6 +1875,9 @@ anv_pipe_invalidate_bits_for_access_flags(VkAccessFlags flags)
       case VK_ACCESS_MEMORY_WRITE_BIT:
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
+      case VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT:
+         pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+         break;
       default:
          break; /* Nothing to do */
       }
@@ -2104,6 +2112,8 @@ struct anv_cmd_state {
     */
    bool                                         hiz_enabled;
 
+   bool                                         conditional_render_enabled;
+
    /**
     * Array length is anv_cmd_state::pass::attachment_count. Array content is
     * valid only when recording a render pass instance.
@@ -2260,6 +2270,8 @@ anv_cmd_buffer_alloc_blorp_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                          struct anv_state *bt_state);
 
 void anv_cmd_buffer_dump(struct anv_cmd_buffer *cmd_buffer);
+
+void anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer);
 
 enum anv_fence_type {
    ANV_FENCE_TYPE_NONE = 0,

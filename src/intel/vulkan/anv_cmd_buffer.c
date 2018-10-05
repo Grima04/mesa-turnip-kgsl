@@ -377,6 +377,14 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                  level, base_layer, layer_count);
 }
 
+void
+anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
+{
+   anv_genX_call(&cmd_buffer->device->info,
+                 cmd_emit_conditional_render_predicate,
+                 cmd_buffer);
+}
+
 void anv_CmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,

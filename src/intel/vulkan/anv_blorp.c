@@ -1144,8 +1144,12 @@ void anv_CmdClearAttachments(
     * trash our depth and stencil buffers.
     */
    struct blorp_batch batch;
-   blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer,
-                    BLORP_BATCH_NO_EMIT_DEPTH_STENCIL);
+   enum blorp_batch_flags flags = BLORP_BATCH_NO_EMIT_DEPTH_STENCIL;
+   if (cmd_buffer->state.conditional_render_enabled) {
+      anv_cmd_emit_conditional_render_predicate(cmd_buffer);
+      flags |= BLORP_BATCH_PREDICATE_ENABLE;
+   }
+   blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, flags);
 
    for (uint32_t a = 0; a < attachmentCount; ++a) {
       if (pAttachments[a].aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
