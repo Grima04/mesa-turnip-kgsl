@@ -462,6 +462,8 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
 
 binop("fadd", tfloat, commutative + associative, "src0 + src1")
 binop("iadd", tint, commutative + associative, "src0 + src1")
+binop("uadd_sat", tuint, commutative,
+      "(src0 + src1) < src0 ? UINT64_MAX : (src0 + src1)")
 binop("fsub", tfloat, "", "src0 - src1")
 binop("isub", tint, "", "src0 - src1")
 
