@@ -1238,6 +1238,15 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+         VkPhysicalDevicePerformanceQueryFeaturesKHR *feature =
+            (VkPhysicalDevicePerformanceQueryFeaturesKHR *)ext;
+         feature->performanceCounterQueryPools = true;
+         /* HW only supports a single configuration at a time. */
+         feature->performanceCounterMultipleQueryPools = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
          VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *features =
             (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *)ext;
@@ -1900,6 +1909,16 @@ void anv_GetPhysicalDeviceProperties2(
          properties->pciBus = pdevice->pci_info.bus;
          properties->pciDevice = pdevice->pci_info.device;
          properties->pciFunction = pdevice->pci_info.function;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: {
+         VkPhysicalDevicePerformanceQueryPropertiesKHR *properties =
+            (VkPhysicalDevicePerformanceQueryPropertiesKHR *)ext;
+         /* We could support this by spawning a shader to do the equation
+          * normalization.
+          */
+         properties->allowCommandBufferQueryCopies = false;
          break;
       }
 

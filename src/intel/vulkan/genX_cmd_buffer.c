@@ -34,8 +34,11 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-/* We reserve GPR 15 for conditional rendering */
-#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
+/* We reserve :
+ *    - GPR 14 for secondary command buffer returns
+ *    - GPR 15 for conditional rendering
+ */
+#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 14
 #define __gen_get_batch_dwords anv_batch_emit_dwords
 #define __gen_address_offset anv_address_add
 #include "common/gen_mi_builder.h"
@@ -1755,6 +1758,11 @@ genX(CmdExecuteCommands)(
       }
 
       anv_cmd_buffer_add_secondary(primary, secondary);
+
+      assert(secondary->perf_query_pool == NULL || primary->perf_query_pool == NULL ||
+             secondary->perf_query_pool == primary->perf_query_pool);
+      if (secondary->perf_query_pool)
+         primary->perf_query_pool = secondary->perf_query_pool;
    }
 
    /* The secondary isn't counted in our VF cache tracking so we need to

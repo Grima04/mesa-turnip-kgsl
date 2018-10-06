@@ -306,6 +306,7 @@ VkResult
 anv_cmd_buffer_reset(struct anv_cmd_buffer *cmd_buffer)
 {
    cmd_buffer->usage_flags = 0;
+   cmd_buffer->perf_query_pool = NULL;
    anv_cmd_buffer_reset_batch_bo_chain(cmd_buffer);
    anv_cmd_state_reset(cmd_buffer);
 
