@@ -26,7 +26,7 @@
 #include "pipe/p_defines.h"
 #include "compiler/shader_enums.h"
 
-static gl_shader_stage
+static inline gl_shader_stage
 stage_from_pipe(enum pipe_shader_type pstage)
 {
    static const gl_shader_stage stages[PIPE_SHADER_TYPES] = {
