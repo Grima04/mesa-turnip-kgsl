@@ -1085,6 +1085,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_uadd_sat:
+      assert(nir_dest_bit_size(instr->dest.dest) < 64);
+      inst = emit(ADD(dst, op[0], op[1]));
+      inst->saturate = true;
+      break;
+
    case nir_op_fmul:
       inst = emit(MUL(dst, op[0], op[1]));
       inst->saturate = instr->dest.saturate;
