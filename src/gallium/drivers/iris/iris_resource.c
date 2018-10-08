@@ -298,13 +298,13 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    /* Should be handled by u_transfer_helper */
    assert(!util_format_is_depth_and_stencil(pfmt));
 
-   enum isl_format isl_format = iris_isl_format_for_pipe_format(pfmt);
-   assert(isl_format != ISL_FORMAT_UNSUPPORTED);
+   struct iris_format_info fmt = iris_format_for_usage(devinfo, pfmt, usage);
+   assert(fmt.fmt != ISL_FORMAT_UNSUPPORTED);
 
    UNUSED const bool isl_surf_created_successfully =
       isl_surf_init(&screen->isl_dev, &res->surf,
                     .dim = target_to_isl_surf_dim(templ->target),
-                    .format = isl_format,
+                    .format = fmt.fmt,
                     .width = templ->width0,
                     .height = templ->height0,
                     .depth = templ->depth0,
@@ -371,6 +371,7 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
                                void *user_memory)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    if (!res)
@@ -389,9 +390,12 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    // XXX: usage...
    isl_surf_usage_flags_t isl_usage = 0;
 
+   const struct iris_format_info fmt =
+      iris_format_for_usage(devinfo, templ->format, isl_usage);
+
    isl_surf_init(&screen->isl_dev, &res->surf,
                  .dim = target_to_isl_surf_dim(templ->target),
-                 .format = iris_isl_format_for_pipe_format(templ->format),
+                 .format = fmt.fmt,
                  .width = templ->width0,
                  .height = templ->height0,
                  .depth = templ->depth0,
@@ -415,6 +419,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                           unsigned usage)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    if (!res)
@@ -451,9 +456,12 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    // XXX: usage...
    isl_surf_usage_flags_t isl_usage = ISL_SURF_USAGE_DISPLAY_BIT;
 
+   const struct iris_format_info fmt =
+      iris_format_for_usage(devinfo, templ->format, isl_usage);
+
    isl_surf_init(&screen->isl_dev, &res->surf,
                  .dim = target_to_isl_surf_dim(templ->target),
-                 .format = iris_isl_format_for_pipe_format(templ->format),
+                 .format = fmt.fmt,
                  .width = templ->width0,
                  .height = templ->height0,
                  .depth = templ->depth0,

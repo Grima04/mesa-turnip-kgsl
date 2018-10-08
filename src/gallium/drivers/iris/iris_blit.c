@@ -55,19 +55,6 @@ iris_blorp_surf_for_resource(struct blorp_surf *surf,
    assert(surf->aux_usage == ISL_AUX_USAGE_NONE);
 }
 
-static enum isl_format
-iris_get_blorp_format(enum pipe_format pf)
-{
-   switch (pf) {
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      return ISL_FORMAT_R24_UNORM_X8_TYPELESS;
-   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      return ISL_FORMAT_R32_FLOAT;
-   default:
-      return iris_isl_format_for_pipe_format(pf);
-   }
-}
-
 /**
  * The pipe->blit() driver hook.
  *
@@ -78,16 +65,21 @@ static void
 iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
    struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&src_surf, info->src.resource,
                                 ISL_AUX_USAGE_NONE, false);
    iris_blorp_surf_for_resource(&dst_surf, info->dst.resource,
                                 ISL_AUX_USAGE_NONE, true);
 
-   enum isl_format src_isl_format = iris_get_blorp_format(info->src.format);
-   enum isl_format dst_isl_format = iris_get_blorp_format(info->dst.format);
-
-   struct isl_swizzle src_isl_swizzle = ISL_SWIZZLE_IDENTITY;
+   struct iris_format_info src_fmt =
+      iris_format_for_usage(devinfo, info->src.format,
+                            ISL_SURF_USAGE_TEXTURE_BIT);
+   struct iris_format_info dst_fmt =
+      iris_format_for_usage(devinfo, info->dst.format,
+                            ISL_SURF_USAGE_RENDER_TARGET_BIT);
 
    int src_x0 = info->src.box.x;
    int src_x1 = info->src.box.x + info->src.box.width;
@@ -157,9 +149,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
       blorp_blit(&blorp_batch,
                  &src_surf, info->src.level, info->src.box.z + slice,
-                 src_isl_format, src_isl_swizzle,
+                 src_fmt.fmt, src_fmt.swizzle,
                  &dst_surf, info->dst.level, info->dst.box.z + slice,
-                 dst_isl_format, ISL_SWIZZLE_IDENTITY,
+                 dst_fmt.fmt, ISL_SWIZZLE_IDENTITY,
                  src_x0, src_y0, src_x1, src_y1,
                  dst_x0, dst_y0, dst_x1, dst_y1,
                  filter, mirror_x, mirror_y);
@@ -180,7 +172,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
          blorp_blit(&blorp_batch,
                     &src_surf, info->src.level, info->src.box.z + slice,
-                    ISL_FORMAT_R8_UINT, src_isl_swizzle,
+                    ISL_FORMAT_R8_UINT, ISL_SWIZZLE_IDENTITY,
                     &dst_surf, info->dst.level, info->dst.box.z + slice,
                     ISL_FORMAT_R8_UINT, ISL_SWIZZLE_IDENTITY,
                     src_x0, src_y0, src_x1, src_y1,

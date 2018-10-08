@@ -1289,6 +1289,20 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
+static enum isl_channel_select
+fmt_swizzle(const struct iris_format_info *fmt, enum pipe_swizzle swz)
+{
+   switch (swz) {
+   case PIPE_SWIZZLE_X: return fmt->swizzle.r;
+   case PIPE_SWIZZLE_Y: return fmt->swizzle.g;
+   case PIPE_SWIZZLE_Z: return fmt->swizzle.b;
+   case PIPE_SWIZZLE_W: return fmt->swizzle.a;
+   case PIPE_SWIZZLE_1: return SCS_ONE;
+   case PIPE_SWIZZLE_0: return SCS_ZERO;
+   default: unreachable("invalid swizzle");
+   }
+}
+
 /**
  * The pipe->create_sampler_view() driver hook.
  */
@@ -1299,6 +1313,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
 
    if (!isv)
@@ -1331,17 +1346,22 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    isv->res = (struct iris_resource *) tex;
 
-   /* XXX: do we need brw_get_texture_swizzle hacks here? */
+   isl_surf_usage_flags_t usage =
+      ISL_SURF_USAGE_TEXTURE_BIT |
+      (isv->res->surf.usage & ISL_SURF_USAGE_CUBE_BIT);
+
+   const struct iris_format_info fmt =
+      iris_format_for_usage(devinfo, tmpl->format, usage);
+
    isv->view = (struct isl_view) {
-      .format = iris_isl_format_for_pipe_format(tmpl->format),
+      .format = fmt.fmt,
       .swizzle = (struct isl_swizzle) {
-         .r = pipe_swizzle_to_isl_channel(tmpl->swizzle_r),
-         .g = pipe_swizzle_to_isl_channel(tmpl->swizzle_g),
-         .b = pipe_swizzle_to_isl_channel(tmpl->swizzle_b),
-         .a = pipe_swizzle_to_isl_channel(tmpl->swizzle_a),
+         .r = fmt_swizzle(&fmt, tmpl->swizzle_r),
+         .g = fmt_swizzle(&fmt, tmpl->swizzle_g),
+         .b = fmt_swizzle(&fmt, tmpl->swizzle_b),
+         .a = fmt_swizzle(&fmt, tmpl->swizzle_a),
       },
-      .usage = ISL_SURF_USAGE_TEXTURE_BIT |
-               (isv->res->surf.usage & ISL_SURF_USAGE_CUBE_BIT),
+      .usage = usage,
    };
 
    /* Fill out SURFACE_STATE for this view. */
@@ -1427,11 +1447,11 @@ iris_create_surface(struct pipe_context *ctx,
    else
       usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
 
-   enum isl_format isl_format =
-      iris_isl_format_for_usage(devinfo, psurf->format, usage);
+   const struct iris_format_info fmt =
+      iris_format_for_usage(devinfo, psurf->format, usage);
 
    if ((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
-       !isl_format_supports_rendering(devinfo, isl_format)) {
+       !isl_format_supports_rendering(devinfo, fmt.fmt)) {
       /* Framebuffer validation will reject this invalid case, but it
        * hasn't had the opportunity yet.  In the meantime, we need to
        * avoid hitting ISL asserts about unsupported formats below.
@@ -1441,7 +1461,7 @@ iris_create_surface(struct pipe_context *ctx,
    }
 
    surf->view = (struct isl_view) {
-      .format = isl_format,
+      .format = fmt.fmt,
       .base_level = tmpl->u.tex.level,
       .levels = 1,
       .base_array_layer = tmpl->u.tex.first_layer,
@@ -2050,6 +2070,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
                             unsigned count,
                             const struct pipe_vertex_element *state)
 {
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_vertex_element_state *cso =
       malloc(sizeof(struct iris_vertex_element_state));
 
@@ -2083,25 +2105,25 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    }
 
    for (int i = 0; i < count; i++) {
-      enum isl_format isl_format =
-         iris_isl_format_for_pipe_format(state[i].src_format);
+      const struct iris_format_info fmt =
+         iris_format_for_usage(devinfo, state[i].src_format, 0);
       unsigned comp[4] = { VFCOMP_STORE_SRC, VFCOMP_STORE_SRC,
                            VFCOMP_STORE_SRC, VFCOMP_STORE_SRC };
 
-      switch (isl_format_get_num_channels(isl_format)) {
+      switch (isl_format_get_num_channels(fmt.fmt)) {
       case 0: comp[0] = VFCOMP_STORE_0;
       case 1: comp[1] = VFCOMP_STORE_0;
       case 2: comp[2] = VFCOMP_STORE_0;
       case 3:
-         comp[3] = isl_format_has_int_channel(isl_format) ? VFCOMP_STORE_1_INT
-                                                          : VFCOMP_STORE_1_FP;
+         comp[3] = isl_format_has_int_channel(fmt.fmt) ? VFCOMP_STORE_1_INT
+                                                       : VFCOMP_STORE_1_FP;
          break;
       }
       iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
          ve.VertexBufferIndex = state[i].vertex_buffer_index;
          ve.Valid = true;
          ve.SourceElementOffset = state[i].src_offset;
-         ve.SourceElementFormat = isl_format;
+         ve.SourceElementFormat = fmt.fmt;
          ve.Component0Control = comp[0];
          ve.Component1Control = comp[1];
          ve.Component2Control = comp[2];

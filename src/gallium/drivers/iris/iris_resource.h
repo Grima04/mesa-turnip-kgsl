@@ -27,6 +27,11 @@
 #include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
+struct iris_format_info {
+   enum isl_format fmt;
+   struct isl_swizzle swizzle;
+};
+
 #define IRIS_RESOURCE_FLAG_SHADER_MEMZONE  (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
 #define IRIS_RESOURCE_FLAG_SURFACE_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 1)
 #define IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE (PIPE_RESOURCE_FLAG_DRV_PRIV << 2)
@@ -110,10 +115,9 @@ iris_resource_bo(struct pipe_resource *p_res)
    return res->bo;
 }
 
-enum isl_format iris_isl_format_for_pipe_format(enum pipe_format pf);
-enum isl_format iris_isl_format_for_usage(const struct gen_device_info *,
-                                          enum pipe_format,
-                                          isl_surf_usage_flags_t usage);
+struct iris_format_info iris_format_for_usage(const struct gen_device_info *,
+                                              enum pipe_format pf,
+                                              isl_surf_usage_flags_t usage);
 
 struct pipe_resource *iris_resource_get_separate_stencil(struct pipe_resource *);
 

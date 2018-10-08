@@ -34,7 +34,7 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 
-enum isl_format
+static enum isl_format
 iris_isl_format_for_pipe_format(enum pipe_format pf)
 {
    static const enum isl_format table[PIPE_FORMAT_COUNT] = {
@@ -400,11 +400,13 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
    return table[pf];
 }
 
-enum isl_format
-iris_isl_format_for_usage(const struct gen_device_info *devinfo,
-                          enum pipe_format pformat,
-                          isl_surf_usage_flags_t usage)
+struct iris_format_info
+iris_format_for_usage(const struct gen_device_info *devinfo,
+                      enum pipe_format pformat,
+                      isl_surf_usage_flags_t usage)
 {
+   struct isl_swizzle swizzle = ISL_SWIZZLE_IDENTITY;
+
    enum isl_format format = iris_isl_format_for_pipe_format(pformat);
 
    /* Convert RGBX into RGBA for rendering or typed image access. */
@@ -417,7 +419,7 @@ iris_isl_format_for_usage(const struct gen_device_info *devinfo,
       format = isl_format_rgbx_to_rgba(format);
    }
 
-   return format;
+   return (struct iris_format_info) { .fmt = format, .swizzle = swizzle };
 }
 
 /**
