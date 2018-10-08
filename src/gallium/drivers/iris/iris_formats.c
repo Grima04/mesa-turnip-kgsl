@@ -400,12 +400,43 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
    return table[pf];
 }
 
+static enum pipe_format
+alpha_to_red(enum pipe_format pf)
+{
+   switch (pf) {
+   case PIPE_FORMAT_A8_UNORM:  return PIPE_FORMAT_R8_UNORM;
+   case PIPE_FORMAT_A16_UNORM: return PIPE_FORMAT_R16_UNORM;
+   case PIPE_FORMAT_A8_SNORM:  return PIPE_FORMAT_R8_SNORM;
+   case PIPE_FORMAT_A16_SNORM: return PIPE_FORMAT_R16_SNORM;
+   case PIPE_FORMAT_A16_FLOAT: return PIPE_FORMAT_R16_FLOAT;
+   case PIPE_FORMAT_A32_FLOAT: return PIPE_FORMAT_R32_FLOAT;
+   case PIPE_FORMAT_A8_UINT:   return PIPE_FORMAT_A8_UINT;
+   case PIPE_FORMAT_A8_SINT:   return PIPE_FORMAT_A8_SINT;
+   case PIPE_FORMAT_A16_UINT:  return PIPE_FORMAT_R16_UINT;
+   case PIPE_FORMAT_A16_SINT:  return PIPE_FORMAT_R16_SINT;
+   case PIPE_FORMAT_A32_UINT:  return PIPE_FORMAT_R32_UINT;
+   case PIPE_FORMAT_A32_SINT:  return PIPE_FORMAT_R32_SINT;
+   default:                    return pf;
+   }
+}
+
 struct iris_format_info
 iris_format_for_usage(const struct gen_device_info *devinfo,
                       enum pipe_format pformat,
                       isl_surf_usage_flags_t usage)
 {
    struct isl_swizzle swizzle = ISL_SWIZZLE_IDENTITY;
+
+   if ((usage & ISL_SURF_USAGE_TEXTURE_BIT) && !util_format_is_srgb(pformat)) {
+      if (util_format_is_intensity(pformat)) {
+         swizzle = ISL_SWIZZLE(RED, RED, RED, RED);
+      } else if (util_format_is_luminance(pformat)) {
+         swizzle = ISL_SWIZZLE(RED, RED, RED, ONE);
+      } else if (util_format_is_alpha(pformat)) {
+         pformat = alpha_to_red(pformat);
+         swizzle = ISL_SWIZZLE(ZERO, ZERO, ZERO, RED);
+      }
+   }
 
    enum isl_format format = iris_isl_format_for_pipe_format(pformat);
 
