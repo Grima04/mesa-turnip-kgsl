@@ -4302,7 +4302,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
                                   PIPE_CONTROL_WRITE_TIMESTAMP)));
    }
 
-   if (flags & PIPE_CONTROL_STALL_AT_SCOREBOARD) {
+   if (GEN_GEN < 11 && (flags & PIPE_CONTROL_STALL_AT_SCOREBOARD)) {
       /* From the PIPE_CONTROL instruction table, bit 1:
        *
        *    "This bit is ignored if Depth Stall Enable is set.
@@ -4311,6 +4311,10 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
        *
        * We assert that the caller doesn't do this combination, to try and
        * prevent mistakes.  It shouldn't hurt the GPU, though.
+       *
+       * We skip this check on Gen11+ as the "Stall at Pixel Scoreboard"
+       * and "Render Target Flush" combo is explicitly required for BTI
+       * update workarounds.
        */
       assert(!(flags & (PIPE_CONTROL_DEPTH_STALL |
                         PIPE_CONTROL_RENDER_TARGET_FLUSH)));
