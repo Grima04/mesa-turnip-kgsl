@@ -48,11 +48,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_B4G4R4A4_UNORM]          = ISL_FORMAT_B4G4R4A4_UNORM,
       [PIPE_FORMAT_B5G6R5_UNORM]            = ISL_FORMAT_B5G6R5_UNORM,
       [PIPE_FORMAT_R10G10B10A2_UNORM]       = ISL_FORMAT_R10G10B10A2_UNORM,
-      //[PIPE_FORMAT_L8_UNORM]                = ISL_FORMAT_L8_UNORM,
-      //[PIPE_FORMAT_A8_UNORM]                = ISL_FORMAT_A8_UNORM,
-      //[PIPE_FORMAT_I8_UNORM]                = ISL_FORMAT_I8_UNORM,
-      //[PIPE_FORMAT_L8A8_UNORM]              = ISL_FORMAT_L8A8_UNORM,
-      //[PIPE_FORMAT_L16_UNORM]               = ISL_FORMAT_L16_UNORM,
       //[PIPE_FORMAT_UYVY]                    = ISL_FORMAT_UYVY,
       //[PIPE_FORMAT_YUYV]                    = ISL_FORMAT_YUYV,
 
@@ -134,8 +129,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_R16G16B16_FLOAT]         = ISL_FORMAT_R16G16B16_FLOAT,
       [PIPE_FORMAT_R16G16B16A16_FLOAT]      = ISL_FORMAT_R16G16B16A16_FLOAT,
 
-      //[PIPE_FORMAT_L8_SRGB]                 = ISL_FORMAT_L8_UNORM_SRGB,
-      //[PIPE_FORMAT_L8A8_SRGB]               = ISL_FORMAT_L8A8_UNORM_SRGB,
       [PIPE_FORMAT_R8G8B8_SRGB]             = ISL_FORMAT_R8G8B8_UNORM_SRGB,
       //[PIPE_FORMAT_A8B8G8R8_SRGB]           = ISL_FORMAT_A8B8G8R8_UNORM_SRGB,
       //[PIPE_FORMAT_X8B8G8R8_SRGB]           = ISL_FORMAT_X8B8G8R8_UNORM_SRGB,
@@ -174,7 +167,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_R1_UNORM]                = ISL_FORMAT_R1_UNORM,
       [PIPE_FORMAT_R10G10B10X2_USCALED]     = ISL_FORMAT_R10G10B10X2_USCALED,
       //[PIPE_FORMAT_R10G10B10X2_SNORM]       = ISL_FORMAT_R10G10B10X2_SNORM,
-      //[PIPE_FORMAT_L4A4_UNORM]              = ISL_FORMAT_R4G4_UNORM,
       [PIPE_FORMAT_B10G10R10A2_UNORM]       = ISL_FORMAT_B10G10R10A2_UNORM,
       //[PIPE_FORMAT_R10SG10SB10SA2U_NORM]    = ISL_FORMAT_R10SG10SB10SA2U_NORM,
       //[PIPE_FORMAT_R8G8Bx_SNORM]            = ISL_FORMAT_R8G8Bx_SNORM,
@@ -187,43 +179,85 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       //[PIPE_FORMAT_X32_S8X24_UINT]          = ISL_FORMAT_X32_S8X24_UINT,
 
       //[PIPE_FORMAT_B2G3R3_UNORM]            = ISL_FORMAT_B2G3R3_UNORM,
-      //[PIPE_FORMAT_L16A16_UNORM]            = ISL_FORMAT_R16G16_UNORM,
-      //[PIPE_FORMAT_A16_UNORM]               = ISL_FORMAT_R16_UNORM,
-      //[PIPE_FORMAT_I16_UNORM]               = ISL_FORMAT_R16_UNORM,
 
       //[PIPE_FORMAT_LATC1_UNORM]             = ISL_FORMAT_LATC1_UNORM,
       //[PIPE_FORMAT_LATC1_SNORM]             = ISL_FORMAT_LATC1_SNORM,
       //[PIPE_FORMAT_LATC2_UNORM]             = ISL_FORMAT_LATC2_UNORM,
       //[PIPE_FORMAT_LATC2_SNORM]             = ISL_FORMAT_LATC2_SNORM,
 
-      //[PIPE_FORMAT_A8_SNORM]                = ISL_FORMAT_R8_SNORM,
-      //[PIPE_FORMAT_L8_SNORM]                = ISL_FORMAT_R8_SNORM,
-      //[PIPE_FORMAT_L8A8_SNORM]              = ISL_FORMAT_R8G8_SNORM,
-      //[PIPE_FORMAT_I8_SNORM]                = ISL_FORMAT_R8_SNORM,
-      //[PIPE_FORMAT_A16_SNORM]               = ISL_FORMAT_R16_SNORM,
-      //[PIPE_FORMAT_L16_SNORM]               = ISL_FORMAT_R16_SNORM,
-      //[PIPE_FORMAT_L16A16_SNORM]            = ISL_FORMAT_R16G16_SNORM,
-      //[PIPE_FORMAT_I16_SNORM]               = ISL_FORMAT_R16_SNORM,
+#if 0
+      /* Leave these disabled for now, we'd need border color hacks and
+       * we don't currently have the surface format in that code...
+       */
+      //[PIPE_FORMAT_A8_UINT]                 = ISL_FORMAT_A8_UINT,
+      [PIPE_FORMAT_A8_UNORM]                = ISL_FORMAT_A8_UNORM,
+      //[PIPE_FORMAT_A8_SINT]                 = ISL_FORMAT_A8_SINT,
+      //[PIPE_FORMAT_A8_SNORM]                = ISL_FORMAT_A8_SNORM,
+      //[PIPE_FORMAT_A16_UINT]                = ISL_FORMAT_A16_UINT,
+      [PIPE_FORMAT_A16_UNORM]               = ISL_FORMAT_A16_UNORM,
+      //[PIPE_FORMAT_A16_SINT]                = ISL_FORMAT_A16_SINT,
+      //[PIPE_FORMAT_A16_SNORM]               = ISL_FORMAT_A16_SNORM,
+      [PIPE_FORMAT_A16_FLOAT]               = ISL_FORMAT_A16_FLOAT,
+      //[PIPE_FORMAT_A32_UINT]                = ISL_FORMAT_A32_UINT,
+      //[PIPE_FORMAT_A32_SINT]                = ISL_FORMAT_A32_SINT,
+      [PIPE_FORMAT_A32_FLOAT]               = ISL_FORMAT_A32_FLOAT,
+#endif
 
-      //[PIPE_FORMAT_A16_FLOAT]               = ISL_FORMAT_R16_FLOAT,
-      //[PIPE_FORMAT_L16_FLOAT]               = ISL_FORMAT_R16_FLOAT,
-      //[PIPE_FORMAT_L16A16_FLOAT]            = ISL_FORMAT_R16G16_FLOAT,
-      //[PIPE_FORMAT_I16_FLOAT]               = ISL_FORMAT_R16_FLOAT,
-      //[PIPE_FORMAT_A32_FLOAT]               = ISL_FORMAT_R32_FLOAT,
-      //[PIPE_FORMAT_L32_FLOAT]               = ISL_FORMAT_R32_FLOAT,
-      //[PIPE_FORMAT_L32A32_FLOAT]            = ISL_FORMAT_R32G32_FLOAT,
-      //[PIPE_FORMAT_I32_FLOAT]               = ISL_FORMAT_R32_FLOAT,
+      /* Just use red formats for these - they're actually renderable,
+       * and faster to sample than the legacy L/I formats.
+       */
+      [PIPE_FORMAT_I8_UNORM]                = ISL_FORMAT_R8_UNORM,
+      [PIPE_FORMAT_I8_UINT]                 = ISL_FORMAT_R8_UINT,
+      [PIPE_FORMAT_I8_SINT]                 = ISL_FORMAT_R8_SINT,
+      [PIPE_FORMAT_I8_SNORM]                = ISL_FORMAT_R8_SNORM,
+      [PIPE_FORMAT_I16_UINT]                = ISL_FORMAT_R16_UINT,
+      [PIPE_FORMAT_I16_UNORM]               = ISL_FORMAT_R16_UNORM,
+      [PIPE_FORMAT_I16_SINT]                = ISL_FORMAT_R16_SINT,
+      [PIPE_FORMAT_I16_SNORM]               = ISL_FORMAT_R16_SNORM,
+      [PIPE_FORMAT_I16_FLOAT]               = ISL_FORMAT_R16_FLOAT,
+      [PIPE_FORMAT_I32_UINT]                = ISL_FORMAT_R32_UINT,
+      [PIPE_FORMAT_I32_SINT]                = ISL_FORMAT_R32_SINT,
+      [PIPE_FORMAT_I32_FLOAT]               = ISL_FORMAT_R32_FLOAT,
+
+      [PIPE_FORMAT_L8_UINT]                 = ISL_FORMAT_R8_UINT,
+      [PIPE_FORMAT_L8_UNORM]                = ISL_FORMAT_R8_UNORM,
+      [PIPE_FORMAT_L8_SINT]                 = ISL_FORMAT_R8_SINT,
+      [PIPE_FORMAT_L8_SNORM]                = ISL_FORMAT_R8_SNORM,
+      [PIPE_FORMAT_L16_UINT]                = ISL_FORMAT_R16_UINT,
+      [PIPE_FORMAT_L16_UNORM]               = ISL_FORMAT_R16_UNORM,
+      [PIPE_FORMAT_L16_SINT]                = ISL_FORMAT_R16_SINT,
+      [PIPE_FORMAT_L16_SNORM]               = ISL_FORMAT_R16_SNORM,
+      [PIPE_FORMAT_L16_FLOAT]               = ISL_FORMAT_R16_FLOAT,
+      [PIPE_FORMAT_L32_UINT]                = ISL_FORMAT_R32_UINT,
+      [PIPE_FORMAT_L32_SINT]                = ISL_FORMAT_R32_SINT,
+      [PIPE_FORMAT_L32_FLOAT]               = ISL_FORMAT_R32_FLOAT,
+
+      /* Sadly, there is no R8_SRGB format so we have to use luminance. */
+      [PIPE_FORMAT_L8_SRGB]                 = ISL_FORMAT_L8_UNORM_SRGB,
+
+#if 0
+      /* Just fake these with RGBA at a higher level for now */
+      [PIPE_FORMAT_L8A8_UINT]               = ISL_FORMAT_L8A8_UINT,
+      [PIPE_FORMAT_L8A8_UNORM]              = ISL_FORMAT_L8A8_UNORM,
+      [PIPE_FORMAT_L8A8_SINT]               = ISL_FORMAT_L8A8_SINT,
+      //[PIPE_FORMAT_L8A8_SNORM]              = ISL_FORMAT_L8A8_SNORM,
+      //[PIPE_FORMAT_L16A16_UINT]             = ISL_FORMAT_L16A16_UINT,
+      [PIPE_FORMAT_L16A16_UNORM]            = ISL_FORMAT_L16A16_UNORM,
+      //[PIPE_FORMAT_L16A16_SINT]             = ISL_FORMAT_L16A16_SINT,
+      //[PIPE_FORMAT_L16A16_SNORM]            = ISL_FORMAT_L16A16_SNORM,
+      [PIPE_FORMAT_L16A16_FLOAT]            = ISL_FORMAT_L16A16_FLOAT,
+      //[PIPE_FORMAT_L32A32_UINT]             = ISL_FORMAT_L32A32_UINT,
+      //[PIPE_FORMAT_L32A32_SINT]             = ISL_FORMAT_L32A32_SINT,
+      [PIPE_FORMAT_L32A32_FLOAT]            = ISL_FORMAT_L32A32_FLOAT,
+
+      [PIPE_FORMAT_L8A8_SRGB]               = ISL_FORMAT_L8A8_UNORM_SRGB,
+#endif
 
       //[PIPE_FORMAT_YV12]                    = ISL_FORMAT_YV12,
       //[PIPE_FORMAT_YV16]                    = ISL_FORMAT_YV16,
       //[PIPE_FORMAT_IYUV]                    = ISL_FORMAT_IYUV,
       //[PIPE_FORMAT_NV12]                    = ISL_FORMAT_NV12,
       //[PIPE_FORMAT_NV21]                    = ISL_FORMAT_NV21,
-
-      //[PIPE_FORMAT_A4R4_UNORM]              = ISL_FORMAT_A4R4_UNORM,
-      //[PIPE_FORMAT_R4A4_UNORM]              = ISL_FORMAT_R4A4_UNORM,
-      //[PIPE_FORMAT_R8A8_UNORM]              = ISL_FORMAT_R8A8_UNORM,
-      //[PIPE_FORMAT_A8R8_UNORM]              = ISL_FORMAT_A8R8_UNORM,
 
       [PIPE_FORMAT_R10G10B10A2_SSCALED]     = ISL_FORMAT_R10G10B10A2_SSCALED,
       [PIPE_FORMAT_R10G10B10A2_SNORM]       = ISL_FORMAT_R10G10B10A2_SNORM,
@@ -262,38 +296,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_R32G32B32_SINT]          = ISL_FORMAT_R32G32B32_SINT,
       [PIPE_FORMAT_R32G32B32A32_SINT]       = ISL_FORMAT_R32G32B32A32_SINT,
 
-      /*
-      [PIPE_FORMAT_A8_UINT]                 = ISL_FORMAT_R8_UINT,
-      [PIPE_FORMAT_I8_UINT]                 = ISL_FORMAT_R8_UINT,
-      [PIPE_FORMAT_L8_UINT]                 = ISL_FORMAT_R8_UINT,
-      [PIPE_FORMAT_L8A8_UINT]               = ISL_FORMAT_R8G8_UINT,
-
-      [PIPE_FORMAT_A8_SINT]                 = ISL_FORMAT_R8_SINT,
-      [PIPE_FORMAT_I8_SINT]                 = ISL_FORMAT_R8_SINT,
-      [PIPE_FORMAT_L8_SINT]                 = ISL_FORMAT_R8_SINT,
-      [PIPE_FORMAT_L8A8_SINT]               = ISL_FORMAT_R8G8_SINT,
-
-      [PIPE_FORMAT_A16_UINT]                = ISL_FORMAT_R16_UINT,
-      [PIPE_FORMAT_I16_UINT]                = ISL_FORMAT_R16_UINT,
-      [PIPE_FORMAT_L16_UINT]                = ISL_FORMAT_R16_UINT,
-      [PIPE_FORMAT_L16A16_UINT]             = ISL_FORMAT_R16G16_UINT,
-
-      [PIPE_FORMAT_A16_SINT]                = ISL_FORMAT_R16_SINT,
-      [PIPE_FORMAT_I16_SINT]                = ISL_FORMAT_R16_SINT,
-      [PIPE_FORMAT_L16_SINT]                = ISL_FORMAT_R16_SINT,
-      [PIPE_FORMAT_L16A16_SINT]             = ISL_FORMAT_R16G16_SINT,
-
-      [PIPE_FORMAT_A32_UINT]                = ISL_FORMAT_R32_UINT,
-      [PIPE_FORMAT_I32_UINT]                = ISL_FORMAT_R32_UINT,
-      [PIPE_FORMAT_L32_UINT]                = ISL_FORMAT_R32_UINT,
-      [PIPE_FORMAT_L32A32_UINT]             = ISL_FORMAT_R32G32_UINT,
-
-      [PIPE_FORMAT_A32_SINT]                = ISL_FORMAT_R32_SINT,
-      [PIPE_FORMAT_I32_SINT]                = ISL_FORMAT_R32_SINT,
-      [PIPE_FORMAT_L32_SINT]                = ISL_FORMAT_R32_SINT,
-      [PIPE_FORMAT_L32A32_SINT]             = ISL_FORMAT_R32G32_SINT,
-      */
-
       [PIPE_FORMAT_B10G10R10A2_UINT]        = ISL_FORMAT_B10G10R10A2_UINT,
 
       [PIPE_FORMAT_ETC1_RGB8]               = ISL_FORMAT_ETC1_RGB8,
@@ -315,17 +317,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       //[PIPE_FORMAT_R32G32B32X32_UINT]       = ISL_FORMAT_R32G32B32X32_UINT,
       //[PIPE_FORMAT_R32G32B32X32_SINT]       = ISL_FORMAT_R32G32B32X32_SINT,
 
-      //[PIPE_FORMAT_R8A8_SNORM]              = ISL_FORMAT_R8A8_SNORM,
-      //[PIPE_FORMAT_R16A16_UNORM]            = ISL_FORMAT_R16A16_UNORM,
-      //[PIPE_FORMAT_R16A16_SNORM]            = ISL_FORMAT_R16A16_SNORM,
-      //[PIPE_FORMAT_R16A16_FLOAT]            = ISL_FORMAT_R16A16_FLOAT,
-      //[PIPE_FORMAT_R32A32_FLOAT]            = ISL_FORMAT_R32A32_FLOAT,
-      //[PIPE_FORMAT_R8A8_UINT]               = ISL_FORMAT_R8A8_UINT,
-      //[PIPE_FORMAT_R8A8_SINT]               = ISL_FORMAT_R8A8_SINT,
-      //[PIPE_FORMAT_R16A16_UINT]             = ISL_FORMAT_R16A16_UINT,
-      //[PIPE_FORMAT_R16A16_SINT]             = ISL_FORMAT_R16A16_SINT,
-      //[PIPE_FORMAT_R32A32_UINT]             = ISL_FORMAT_R32A32_UINT,
-      //[PIPE_FORMAT_R32A32_SINT]             = ISL_FORMAT_R32A32_SINT,
       [PIPE_FORMAT_R10G10B10A2_UINT]        = ISL_FORMAT_R10G10B10A2_UINT,
 
       [PIPE_FORMAT_B5G6R5_SRGB]             = ISL_FORMAT_B5G6R5_UNORM_SRGB,
@@ -334,11 +325,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_BPTC_SRGBA]              = ISL_FORMAT_BC7_UNORM_SRGB,
       [PIPE_FORMAT_BPTC_RGB_FLOAT]          = ISL_FORMAT_BC6H_SF16,
       [PIPE_FORMAT_BPTC_RGB_UFLOAT]         = ISL_FORMAT_BC6H_UF16,
-
-      //[PIPE_FORMAT_A8L8_UNORM]              = ISL_FORMAT_A8L8_UNORM,
-      //[PIPE_FORMAT_A8L8_SNORM]              = ISL_FORMAT_A8L8_SNORM,
-      //[PIPE_FORMAT_A8L8_SRGB]               = ISL_FORMAT_A8L8_SRGB,
-      //[PIPE_FORMAT_A16L16_UNORM]            = ISL_FORMAT_A16L16_UNORM,
 
       //[PIPE_FORMAT_G8R8_UNORM]              = ISL_FORMAT_G8R8_UNORM,
       //[PIPE_FORMAT_G8R8_SNORM]              = ISL_FORMAT_G8R8_SNORM,
