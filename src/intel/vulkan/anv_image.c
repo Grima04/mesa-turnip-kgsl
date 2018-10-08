@@ -1394,6 +1394,22 @@ anv_CreateImageView(VkDevice _device,
    assert(range->layerCount > 0);
    assert(range->baseMipLevel < image->levels);
 
+   /* Check if a conversion info was passed. */
+   const struct anv_format *conv_format = NULL;
+   const struct VkSamplerYcbcrConversionInfo *conv_info =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
+
+   /* If image has an external format, the pNext chain must contain an instance of
+    * VKSamplerYcbcrConversionInfo with a conversion object created with the same
+    * external format as image."
+    */
+   assert(!image->external_format || conv_info);
+
+   if (conv_info) {
+      ANV_FROM_HANDLE(anv_ycbcr_conversion, conversion, conv_info->conversion);
+      conv_format = conversion->format;
+   }
+
    const VkImageViewUsageCreateInfo *usage_info =
       vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
    VkImageUsageFlags view_usage = usage_info ? usage_info->usage : image->usage;
@@ -1438,6 +1454,15 @@ anv_CreateImageView(VkDevice _device,
    iview->n_planes = anv_image_aspect_get_planes(iview->aspect_mask);
    iview->vk_format = pCreateInfo->format;
 
+   /* "If image has an external format, format must be VK_FORMAT_UNDEFINED." */
+   assert(!image->external_format || pCreateInfo->format == VK_FORMAT_UNDEFINED);
+
+   /* Format is undefined, this can happen when using external formats. Set
+    * view format from the passed conversion info.
+    */
+   if (iview->vk_format == VK_FORMAT_UNDEFINED && conv_format)
+      iview->vk_format = conv_format->vk_format;
+
    iview->extent = (VkExtent3D) {
       .width  = anv_minify(image->extent.width , range->baseMipLevel),
       .height = anv_minify(image->extent.height, range->baseMipLevel),
@@ -1454,7 +1479,7 @@ anv_CreateImageView(VkDevice _device,
       VkImageAspectFlags vplane_aspect =
          anv_plane_to_aspect(iview->aspect_mask, vplane);
       struct anv_format_plane format =
-         anv_get_format_plane(&device->info, pCreateInfo->format,
+         anv_get_format_plane(&device->info, iview->vk_format,
                               vplane_aspect, image->tiling);
 
       iview->planes[vplane].image_plane = iplane;
