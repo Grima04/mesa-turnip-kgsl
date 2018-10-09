@@ -62,6 +62,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
 
       [PIPE_FORMAT_S8_UINT]                 = ISL_FORMAT_R8_UINT,
       [PIPE_FORMAT_X24S8_UINT]              = ISL_FORMAT_R8_UINT,
+      [PIPE_FORMAT_X32_S8X24_UINT]          = ISL_FORMAT_R8_UINT,
 
       [PIPE_FORMAT_R64_FLOAT]               = ISL_FORMAT_R64_FLOAT,
       [PIPE_FORMAT_R64G64_FLOAT]            = ISL_FORMAT_R64G64_FLOAT,
@@ -172,11 +173,6 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       //[PIPE_FORMAT_R8G8Bx_SNORM]            = ISL_FORMAT_R8G8Bx_SNORM,
       [PIPE_FORMAT_R8G8B8X8_UNORM]          = ISL_FORMAT_R8G8B8X8_UNORM,
       //[PIPE_FORMAT_B4G4R4X4_UNORM]          = ISL_FORMAT_B4G4R4X4_UNORM,
-
-      /* some stencil samplers formats */
-      //[PIPE_FORMAT_X24S8_UINT]              = ISL_FORMAT_X24S8_UINT,
-      //[PIPE_FORMAT_S8X24_UINT]              = ISL_FORMAT_S8X24_UINT,
-      //[PIPE_FORMAT_X32_S8X24_UINT]          = ISL_FORMAT_X32_S8X24_UINT,
 
       //[PIPE_FORMAT_B2G3R3_UNORM]            = ISL_FORMAT_B2G3R3_UNORM,
 
