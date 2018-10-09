@@ -922,6 +922,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+         VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
+            (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
+         features->scalarBlockLayout = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES: {
          VkPhysicalDeviceShaderDrawParameterFeatures *features = (void *)ext;
          features->shaderDrawParameters = true;
