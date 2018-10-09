@@ -2340,42 +2340,46 @@ VkResult anv_AllocateMemory(
        * If the import fails, we leave the file descriptor open.
        */
       close(fd_info->fd);
-   } else {
-      const VkExportMemoryAllocateInfoKHR *fd_info =
-         vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO_KHR);
-      if (fd_info && fd_info->handleTypes)
-         bo_flags |= ANV_BO_EXTERNAL;
+      goto success;
+   }
 
-      result = anv_bo_cache_alloc(device, &device->bo_cache,
-                                  pAllocateInfo->allocationSize, bo_flags,
-                                  &mem->bo);
-      if (result != VK_SUCCESS)
-         goto fail;
+   /* Regular allocate (not importing memory). */
 
-      const VkMemoryDedicatedAllocateInfoKHR *dedicated_info =
-         vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO_KHR);
-      if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
-         ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
+   const VkExportMemoryAllocateInfoKHR *export_info =
+      vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO_KHR);
+   if (export_info && export_info->handleTypes)
+      bo_flags |= ANV_BO_EXTERNAL;
 
-         /* Some legacy (non-modifiers) consumers need the tiling to be set on
-          * the BO.  In this case, we have a dedicated allocation.
-          */
-         if (image->needs_set_tiling) {
-            const uint32_t i915_tiling =
-               isl_tiling_to_i915_tiling(image->planes[0].surface.isl.tiling);
-            int ret = anv_gem_set_tiling(device, mem->bo->gem_handle,
-                                         image->planes[0].surface.isl.row_pitch_B,
-                                         i915_tiling);
-            if (ret) {
-               anv_bo_cache_release(device, &device->bo_cache, mem->bo);
-               return vk_errorf(device->instance, NULL,
-                                VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                                "failed to set BO tiling: %m");
-            }
+   result = anv_bo_cache_alloc(device, &device->bo_cache,
+                               pAllocateInfo->allocationSize, bo_flags,
+                               &mem->bo);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   const VkMemoryDedicatedAllocateInfoKHR *dedicated_info =
+      vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO_KHR);
+   if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
+      ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
+
+      /* Some legacy (non-modifiers) consumers need the tiling to be set on
+       * the BO.  In this case, we have a dedicated allocation.
+       */
+      if (image->needs_set_tiling) {
+         const uint32_t i915_tiling =
+            isl_tiling_to_i915_tiling(image->planes[0].surface.isl.tiling);
+         int ret = anv_gem_set_tiling(device, mem->bo->gem_handle,
+                                      image->planes[0].surface.isl.row_pitch_B,
+                                      i915_tiling);
+         if (ret) {
+            anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+            return vk_errorf(device->instance, NULL,
+                             VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                             "failed to set BO tiling: %m");
          }
       }
    }
 
+ success:
    *pMem = anv_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
