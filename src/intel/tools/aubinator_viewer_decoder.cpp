@@ -895,7 +895,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
 
       if (inst == NULL) {
          ImGui::TextColored(ctx->cfg->error_color,
-                            "x%08" PRIx64 ": unknown instruction %08x",
+                            "0x%08" PRIx64 ": unknown instruction %08x",
                             offset, p[0]);
          continue;
       }
