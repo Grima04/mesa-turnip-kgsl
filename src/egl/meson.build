@@ -194,7 +194,7 @@ pkg.generate(
 
 if with_tests and prog_nm.found()
   if with_glvnd
-    # TODO: add glvnd symbol check
+    egl_symbols = files('egl-glvnd-symbols.txt')
   else
     egl_symbols = files('egl-symbols.txt')
   endif
