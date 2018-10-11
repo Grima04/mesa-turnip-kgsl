@@ -3013,6 +3013,24 @@ typedef struct nir_lower_tex_options {
     * Implies lower_txd_cube_map and lower_txd_shadow.
     */
    bool lower_txd;
+
+   /**
+    * If true, lower nir_texop_txb that try to use shadow compare and min_lod
+    * at the same time to a nir_texop_lod, some math, and nir_texop_tex.
+    */
+   bool lower_txb_shadow_clamp;
+
+   /**
+    * If true, lower nir_texop_txd on shadow samplers when it uses min_lod
+    * with nir_texop_txl.  This includes cube maps.
+    */
+   bool lower_txd_shadow_clamp;
+
+   /**
+    * If true, lower nir_texop_txd on when it uses both offset and min_lod
+    * with nir_texop_txl.  This includes cube maps.
+    */
+   bool lower_txd_offset_clamp;
 } nir_lower_tex_options;
 
 bool nir_lower_tex(nir_shader *shader,

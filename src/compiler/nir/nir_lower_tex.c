@@ -150,6 +150,54 @@ get_texture_size(nir_builder *b, nir_tex_instr *tex)
    return nir_i2f32(b, &txs->dest.ssa);
 }
 
+static nir_ssa_def *
+get_texture_lod(nir_builder *b, nir_tex_instr *tex)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_tex_instr *tql;
+
+   unsigned num_srcs = 0;
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      if (tex->src[i].src_type == nir_tex_src_coord ||
+          tex->src[i].src_type == nir_tex_src_texture_deref ||
+          tex->src[i].src_type == nir_tex_src_sampler_deref ||
+          tex->src[i].src_type == nir_tex_src_texture_offset ||
+          tex->src[i].src_type == nir_tex_src_sampler_offset)
+         num_srcs++;
+   }
+
+   tql = nir_tex_instr_create(b->shader, num_srcs);
+   tql->op = nir_texop_lod;
+   tql->coord_components = tex->coord_components;
+   tql->sampler_dim = tex->sampler_dim;
+   tql->is_array = tex->is_array;
+   tql->is_shadow = tex->is_shadow;
+   tql->is_new_style_shadow = tex->is_new_style_shadow;
+   tql->texture_index = tex->texture_index;
+   tql->sampler_index = tex->sampler_index;
+   tql->dest_type = nir_type_float;
+
+   unsigned idx = 0;
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      if (tex->src[i].src_type == nir_tex_src_coord ||
+          tex->src[i].src_type == nir_tex_src_texture_deref ||
+          tex->src[i].src_type == nir_tex_src_sampler_deref ||
+          tex->src[i].src_type == nir_tex_src_texture_offset ||
+          tex->src[i].src_type == nir_tex_src_sampler_offset) {
+         nir_src_copy(&tql->src[idx].src, &tex->src[i].src, tql);
+         tql->src[idx].src_type = tex->src[i].src_type;
+         idx++;
+      }
+   }
+
+   nir_ssa_dest_init(&tql->instr, &tql->dest, 2, 32, NULL);
+   nir_builder_instr_insert(b, &tql->instr);
+
+   /* The LOD is the y component of the result */
+   return nir_channel(b, &tql->dest.ssa, 1);
+}
+
 static bool
 lower_offset(nir_builder *b, nir_tex_instr *tex)
 {
@@ -225,6 +273,36 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
    }
 
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+}
+
+static void
+lower_implicit_lod(nir_builder *b, nir_tex_instr *tex)
+{
+   assert(tex->op == nir_texop_tex || tex->op == nir_texop_txb);
+   assert(nir_tex_instr_src_index(tex, nir_tex_src_lod) < 0);
+   assert(nir_tex_instr_src_index(tex, nir_tex_src_ddx) < 0);
+   assert(nir_tex_instr_src_index(tex, nir_tex_src_ddy) < 0);
+
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_ssa_def *lod = get_texture_lod(b, tex);
+
+   int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
+   if (bias_idx >= 0) {
+      /* If we have a bias, add it in */
+      lod = nir_fadd(b, lod, nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
+      nir_tex_instr_remove_src(tex, bias_idx);
+   }
+
+   int min_lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_min_lod);
+   if (min_lod_idx >= 0) {
+      /* If we have a minimum LOD, clamp LOD accordingly */
+      lod = nir_fmax(b, lod, nir_ssa_for_src(b, tex->src[min_lod_idx].src, 1));
+      nir_tex_instr_remove_src(tex, min_lod_idx);
+   }
+
+   nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
+   tex->op = nir_texop_txl;
 }
 
 static nir_ssa_def *
@@ -373,6 +451,13 @@ replace_gradient_with_lod(nir_builder *b, nir_ssa_def *lod, nir_tex_instr *tex)
 
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddx));
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddy));
+
+   int min_lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_min_lod);
+   if (min_lod_idx >= 0) {
+      /* If we have a minimum LOD, clamp LOD accordingly */
+      lod = nir_fmax(b, lod, nir_ssa_for_src(b, tex->src[min_lod_idx].src, 1));
+      nir_tex_instr_remove_src(tex, min_lod_idx);
+   }
 
    nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
    tex->op = nir_texop_txl;
@@ -803,9 +888,22 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          progress = true;
       }
 
+      const bool has_min_lod =
+         nir_tex_instr_src_index(tex, nir_tex_src_min_lod) >= 0;
+      const bool has_offset =
+         nir_tex_instr_src_index(tex, nir_tex_src_offset) >= 0;
+
+      if (tex->op == nir_texop_txb && tex->is_shadow && has_min_lod &&
+          options->lower_txb_shadow_clamp) {
+         lower_implicit_lod(b, tex);
+         progress = true;
+      }
+
       if (tex->op == nir_texop_txd &&
           (options->lower_txd ||
            (options->lower_txd_shadow && tex->is_shadow) ||
+           (options->lower_txd_shadow_clamp && tex->is_shadow && has_min_lod) ||
+           (options->lower_txd_offset_clamp && has_offset && has_min_lod) ||
            (options->lower_txd_cube_map &&
             tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE))) {
          lower_gradient(b, tex);
