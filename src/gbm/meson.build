@@ -69,9 +69,12 @@ pkg.generate(
 if with_tests and prog_nm.found()
   test(
     'gbm-symbols-check',
-    find_program('gbm-symbols-check'),
-    env : env_test,
-    args : libgbm,
+    symbols_check,
+    args : [
+      '--lib', libgbm,
+      '--symbols-file', files('gbm-symbols.txt'),
+      '--nm', prog_nm.path(),
+    ],
     suite : ['gbm'],
   )
 endif
