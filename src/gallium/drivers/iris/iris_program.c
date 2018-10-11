@@ -352,6 +352,13 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
       prog_data->binding_table.gather_texture_start = 0xd0d0d0d0;
    }
 
+   if (info->num_images) {
+      prog_data->binding_table.image_start = next_binding_table_offset;
+      next_binding_table_offset += info->num_images;
+   } else {
+      prog_data->binding_table.image_start = 0xd0d0d0d0;
+   }
+
    int num_ubos = info->num_ubos + (nir->num_uniforms > 0 ? 1 : 0);
 
    if (num_ubos) {
@@ -371,13 +378,6 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    }
 
    prog_data->binding_table.shader_time_start = 0xd0d0d0d0;
-
-   if (info->num_images) {
-      prog_data->binding_table.image_start = next_binding_table_offset;
-      next_binding_table_offset += info->num_images;
-   } else {
-      prog_data->binding_table.image_start = 0xd0d0d0d0;
-   }
 
    /* This may or may not be used depending on how the compile goes. */
    prog_data->binding_table.pull_constants_start = next_binding_table_offset;

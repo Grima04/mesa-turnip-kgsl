@@ -3335,6 +3335,11 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
+   for (int i = 0; i < info->num_images; i++) {
+      uint32_t addr = use_image(batch, ice, shs, i);
+      push_bt_entry(addr);
+   }
+
    const int num_ubos = iris_get_shader_num_ubos(ice, stage);
 
    for (int i = 0; i < num_ubos; i++) {
@@ -3350,13 +3355,6 @@ iris_populate_binding_table(struct iris_context *ice,
    if (info->num_abos + info->num_ssbos > 0) {
       for (int i = 0; i < IRIS_MAX_ABOS + info->num_ssbos; i++) {
          uint32_t addr = use_ssbo(batch, ice, shs, i);
-         push_bt_entry(addr);
-      }
-   }
-
-   if (info->num_images > 0) {
-      for (int i = 0; i < info->num_images; i++) {
-         uint32_t addr = use_image(batch, ice, shs, i);
          push_bt_entry(addr);
       }
    }
