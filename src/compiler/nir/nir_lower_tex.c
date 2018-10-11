@@ -363,53 +363,19 @@ lower_ayuv_external(nir_builder *b, nir_tex_instr *tex)
 }
 
 /*
- * Emits a textureLod operation used to replace an existing
- * textureGrad instruction.
+ * Converts a nir_texop_txd instruction to nir_texop_txl with the given lod
+ * computed from the gradients.
  */
 static void
 replace_gradient_with_lod(nir_builder *b, nir_ssa_def *lod, nir_tex_instr *tex)
 {
-   /* We are going to emit a textureLod() with the same parameters except that
-    * we replace ddx/ddy with lod.
-    */
-   int num_srcs = tex->num_srcs - 1;
-   nir_tex_instr *txl = nir_tex_instr_create(b->shader, num_srcs);
+   assert(tex->op == nir_texop_txd);
 
-   txl->op = nir_texop_txl;
-   txl->sampler_dim = tex->sampler_dim;
-   txl->texture_index = tex->texture_index;
-   txl->dest_type = tex->dest_type;
-   txl->is_array = tex->is_array;
-   txl->is_shadow = tex->is_shadow;
-   txl->is_new_style_shadow = tex->is_new_style_shadow;
-   txl->sampler_index = tex->sampler_index;
-   txl->coord_components = tex->coord_components;
+   nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddx));
+   nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddy));
 
-   nir_ssa_dest_init(&txl->instr, &txl->dest, 4, 32, NULL);
-
-   int src_num = 0;
-   for (int i = 0; i < tex->num_srcs; i++) {
-      if (tex->src[i].src_type == nir_tex_src_ddx ||
-          tex->src[i].src_type == nir_tex_src_ddy)
-         continue;
-      nir_src_copy(&txl->src[src_num].src, &tex->src[i].src, txl);
-      txl->src[src_num].src_type = tex->src[i].src_type;
-      src_num++;
-   }
-
-   txl->src[src_num].src = nir_src_for_ssa(lod);
-   txl->src[src_num].src_type = nir_tex_src_lod;
-   src_num++;
-
-   assert(src_num == num_srcs);
-
-   nir_ssa_dest_init(&txl->instr, &txl->dest,
-                     tex->dest.ssa.num_components, 32, NULL);
-   nir_builder_instr_insert(b, &txl->instr);
-
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(&txl->dest.ssa));
-
-   nir_instr_remove(&tex->instr);
+   nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
+   tex->op = nir_texop_txl;
 }
 
 static void
