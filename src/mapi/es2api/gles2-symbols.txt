@@ -1,27 +1,5 @@
-#!/bin/sh
-set -eu
+# gl.* functions in GL ES 2 and 3.{0..2}
 
-# Print defined gl.* functions not in GL ES 3.{0..2}
-
-case "$(uname)" in
-Darwin)
-  LIB=${1-es2api/.libs/libGLESv2.dylib}
-  ;;
-CYGWIN*)
-  LIB=${1-es2api/.libs/cygGLESv2-2.dll}
-  ;;
-*)
-  LIB=${1-es2api/.libs/libGLESv2.so.2}
-  ;;
-esac
-
-if ! [ -f "$LIB" ]
-then
-  exit 1
-fi
-
-FUNCS=$($NM -D --defined-only $LIB | grep -o 'T gl.*' | cut -c 3- | while read func; do
-( grep -q "^$func$" || echo $func )  <<EOF
 glActiveShaderProgram
 glActiveTexture
 glAttachShader
@@ -380,8 +358,3 @@ glVertexAttribPointer
 glVertexBindingDivisor
 glViewport
 glWaitSync
-EOF
-done)
-
-test ! -n "$FUNCS" || echo $FUNCS
-test ! -n "$FUNCS"
