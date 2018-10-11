@@ -1482,10 +1482,6 @@ endif
 pkg = import('pkgconfig')
 
 prog_nm = find_program('nm', required : false)
-env_test = environment()
-if prog_nm.found()
-  env_test.set('NM', prog_nm.path())
-endif
 
 # This quirk needs to be applied to sources with functions defined in assembly
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
