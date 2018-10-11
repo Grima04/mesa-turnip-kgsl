@@ -811,6 +811,8 @@ enum tex_logical_srcs {
    TEX_LOGICAL_SRC_LOD,
    /** dPdy if the operation takes explicit derivatives */
    TEX_LOGICAL_SRC_LOD2,
+   /** Min LOD */
+   TEX_LOGICAL_SRC_MIN_LOD,
    /** Sample index */
    TEX_LOGICAL_SRC_SAMPLE_INDEX,
    /** MCS data */

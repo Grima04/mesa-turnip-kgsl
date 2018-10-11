@@ -2968,7 +2968,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
 
    /* Emit the instruction. */
    const fs_reg srcs[] = { coords, fs_reg(), brw_imm_ud(0), fs_reg(),
-                           sample, mcs,
+                           fs_reg(), sample, mcs,
                            brw_imm_ud(surface), brw_imm_ud(0),
                            fs_reg(), brw_imm_ud(3), brw_imm_ud(0) };
    STATIC_ASSERT(ARRAY_SIZE(srcs) == TEX_LOGICAL_NUM_SRCS);
@@ -4791,6 +4791,10 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
                retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
             break;
          }
+         break;
+      case nir_tex_src_min_lod:
+         srcs[TEX_LOGICAL_SRC_MIN_LOD] =
+            retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_ms_index:
          srcs[TEX_LOGICAL_SRC_SAMPLE_INDEX] = retype(src, BRW_REGISTER_TYPE_UD);
