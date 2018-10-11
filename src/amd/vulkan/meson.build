@@ -166,6 +166,19 @@ libvulkan_radeon = shared_library(
   install : true,
 )
 
+if with_tests and prog_nm.found()
+  test(
+    'radv symbols check',
+    symbols_check,
+    args : [
+      '--lib', libvulkan_radeon,
+      '--symbols-file', vulkan_icd_symbols,
+      '--nm', prog_nm.path(),
+    ],
+    suite : ['amd'],
+  )
+endif
+
 radeon_icd = custom_target(
   'radeon_icd',
   input : 'radv_icd.py',
