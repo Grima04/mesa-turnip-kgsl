@@ -204,6 +204,19 @@ libvulkan_intel = shared_library(
   install : true,
 )
 
+if with_tests and prog_nm.found()
+  test(
+    'anv symbols check',
+    symbols_check,
+    args : [
+      '--lib', libvulkan_intel,
+      '--symbols-file', vulkan_icd_symbols,
+      '--nm', prog_nm.path(),
+    ],
+    suite : ['intel'],
+  )
+endif
+
 if with_tests
   libvulkan_intel_test = static_library(
     'vulkan_intel_test',
