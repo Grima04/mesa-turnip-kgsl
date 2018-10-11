@@ -2421,9 +2421,35 @@ fs_visitor::opt_algebraic()
 {
    bool progress = false;
 
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
       switch (inst->opcode) {
       case BRW_OPCODE_MOV:
+         if (!devinfo->has_64bit_types &&
+             (inst->dst.type == BRW_REGISTER_TYPE_DF ||
+              inst->dst.type == BRW_REGISTER_TYPE_UQ ||
+              inst->dst.type == BRW_REGISTER_TYPE_Q)) {
+            assert(inst->dst.type == inst->src[0].type);
+            assert(!inst->saturate);
+            assert(!inst->src[0].abs);
+            assert(!inst->src[0].negate);
+            const brw::fs_builder ibld(this, block, inst);
+
+            if (inst->src[0].file == IMM) {
+               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
+                        brw_imm_ud(inst->src[0].u64 >> 32));
+               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
+                        brw_imm_ud(inst->src[0].u64));
+            } else {
+               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
+                        subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 1));
+               ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
+                        subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 0));
+            }
+
+            inst->remove(block);
+            progress = true;
+         }
+
          if ((inst->conditional_mod == BRW_CONDITIONAL_Z ||
               inst->conditional_mod == BRW_CONDITIONAL_NZ) &&
              inst->dst.is_null() &&
@@ -2549,6 +2575,28 @@ fs_visitor::opt_algebraic()
          }
          break;
       case BRW_OPCODE_SEL:
+         if (!devinfo->has_64bit_types &&
+             (inst->dst.type == BRW_REGISTER_TYPE_DF ||
+              inst->dst.type == BRW_REGISTER_TYPE_UQ ||
+              inst->dst.type == BRW_REGISTER_TYPE_Q)) {
+            assert(inst->dst.type == inst->src[0].type);
+            assert(!inst->saturate);
+            assert(!inst->src[0].abs && !inst->src[0].negate);
+            assert(!inst->src[1].abs && !inst->src[1].negate);
+            const brw::fs_builder ibld(this, block, inst);
+
+            set_predicate(inst->predicate,
+                          ibld.SEL(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
+                                   subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 0),
+                                   subscript(inst->src[1], BRW_REGISTER_TYPE_UD, 0)));
+            set_predicate(inst->predicate,
+                          ibld.SEL(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
+                                   subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 1),
+                                   subscript(inst->src[1], BRW_REGISTER_TYPE_UD, 1)));
+
+            inst->remove(block);
+            progress = true;
+         }
          if (inst->src[0].equals(inst->src[1])) {
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[1] = reg_undef;
