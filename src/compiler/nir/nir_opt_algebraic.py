@@ -798,6 +798,34 @@ optimizations = [
    (('fmax', ('fadd', ('fmul', ('fsat', a), ('fneg', ('fsat', a))), 1.0), 0.0), ('fadd', ('fmul', ('fsat', a), ('fneg', ('fsat', a))), 1.0)),
    (('fmax', ('fadd', ('fneg', ('fmul', ('fsat', a), ('fsat', a))), 1.0), 0.0), ('fadd', ('fneg', ('fmul', ('fsat', a), ('fsat', a))), 1.0)),
 
+   (('fne(is_not_used_by_if)', 'a(is_not_zero)', 0.0), True),
+   (('feq(is_not_used_by_if)', 'a(is_not_zero)', 0.0), False),
+
+   (('fge(is_not_used_by_if)', 'a(is_not_negative)', 'b(is_not_positive)'), True),
+   (('fge(is_not_used_by_if)', 'b(is_not_positive)', 'a(is_gt_zero)'),      False),
+   (('fge(is_not_used_by_if)', 'a(is_lt_zero)',      'b(is_not_negative)'), False),
+   (('fge(is_not_used_by_if)', 'b(is_not_negative)', 'a(is_not_positive)'), True),
+
+   (('flt(is_not_used_by_if)', 'a(is_not_negative)', 'b(is_not_positive)'), False),
+   (('flt(is_not_used_by_if)', 'b(is_not_positive)', 'a(is_gt_zero)'),      True),
+   (('flt(is_not_used_by_if)', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
+   (('flt(is_not_used_by_if)', 'b(is_not_negative)', 'a(is_not_positive)'), False),
+
+   (('ine(is_not_used_by_if)', 'a(is_not_zero)', 0), True),
+   (('ieq(is_not_used_by_if)', 'a(is_not_zero)', 0), False),
+
+   (('ige(is_not_used_by_if)', 'a(is_not_negative)', 'b(is_not_positive)'), True),
+   (('ige(is_not_used_by_if)', 'b(is_not_positive)', 'a(is_gt_zero)'),      False),
+   (('ige(is_not_used_by_if)', 'a(is_lt_zero)',      'b(is_not_negative)'), False),
+   (('ige(is_not_used_by_if)', 'b(is_not_negative)', 'a(is_not_positive)'), True),
+
+   (('ilt(is_not_used_by_if)', 'a(is_not_negative)', 'b(is_not_positive)'), False),
+   (('ilt(is_not_used_by_if)', 'b(is_not_positive)', 'a(is_gt_zero)'),      True),
+   (('ilt(is_not_used_by_if)', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
+   (('ilt(is_not_used_by_if)', 'b(is_not_negative)', 'a(is_not_positive)'), False),
+
+   (('ult(is_not_used_by_if)', 0, 'a(is_gt_zero)'), True),
+
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
    (('unpack_64_2x32_split_y', ('pack_64_2x32_split', a, b)), b),
