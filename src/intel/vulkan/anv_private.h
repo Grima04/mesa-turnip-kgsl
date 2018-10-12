@@ -947,6 +947,8 @@ struct anv_pipeline_cache {
    struct anv_device *                          device;
    pthread_mutex_t                              mutex;
 
+   struct hash_table *                          nir_cache;
+
    struct hash_table *                          cache;
 };
 
@@ -985,6 +987,22 @@ anv_device_upload_kernel(struct anv_device *device,
                          const struct brw_stage_prog_data *prog_data,
                          uint32_t prog_data_size,
                          const struct anv_pipeline_bind_map *bind_map);
+
+struct nir_shader;
+struct nir_shader_compiler_options;
+
+struct nir_shader *
+anv_device_search_for_nir(struct anv_device *device,
+                          struct anv_pipeline_cache *cache,
+                          const struct nir_shader_compiler_options *nir_options,
+                          unsigned char sha1_key[20],
+                          void *mem_ctx);
+
+void
+anv_device_upload_nir(struct anv_device *device,
+                      struct anv_pipeline_cache *cache,
+                      const struct nir_shader *nir,
+                      unsigned char sha1_key[20]);
 
 struct anv_device {
     VK_LOADER_DATA                              _loader_data;

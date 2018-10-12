@@ -26,6 +26,7 @@
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
+#include "nir/nir_serialize.h"
 #include "anv_private.h"
 
 struct anv_shader_bin *
@@ -211,6 +212,18 @@ shader_bin_key_compare_func(const void *void_a, const void *void_b)
    return memcmp(a->data, b->data, a->size) == 0;
 }
 
+static uint32_t
+sha1_hash_func(const void *sha1)
+{
+   return _mesa_hash_data(sha1, 20);
+}
+
+static bool
+sha1_compare_func(const void *sha1_a, const void *sha1_b)
+{
+   return memcmp(sha1_a, sha1_b, 20) == 0;
+}
+
 void
 anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
                         struct anv_device *device,
@@ -222,6 +235,8 @@ anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
    if (cache_enabled) {
       cache->cache = _mesa_hash_table_create(NULL, shader_bin_key_hash_func,
                                              shader_bin_key_compare_func);
+      cache->nir_cache = _mesa_hash_table_create(NULL, sha1_hash_func,
+                                                 sha1_compare_func);
    } else {
       cache->cache = NULL;
    }
@@ -640,4 +655,89 @@ anv_device_upload_kernel(struct anv_device *device,
 #endif
 
    return bin;
+}
+
+struct serialized_nir {
+   unsigned char sha1_key[20];
+   size_t size;
+   char data[0];
+};
+
+struct nir_shader *
+anv_device_search_for_nir(struct anv_device *device,
+                          struct anv_pipeline_cache *cache,
+                          const nir_shader_compiler_options *nir_options,
+                          unsigned char sha1_key[20],
+                          void *mem_ctx)
+{
+   if (cache) {
+      const struct serialized_nir *snir = NULL;
+
+      pthread_mutex_lock(&cache->mutex);
+      struct hash_entry *entry =
+         _mesa_hash_table_search(cache->nir_cache, sha1_key);
+      if (entry)
+         snir = entry->data;
+      pthread_mutex_unlock(&cache->mutex);
+
+      if (snir) {
+         struct blob_reader blob;
+         blob_reader_init(&blob, snir->data, snir->size);
+
+         nir_shader *nir = nir_deserialize(mem_ctx, nir_options, &blob);
+         if (blob.overrun) {
+            ralloc_free(nir);
+         } else {
+            return nir;
+         }
+      }
+   }
+
+   return NULL;
+}
+
+void
+anv_device_upload_nir(struct anv_device *device,
+                      struct anv_pipeline_cache *cache,
+                      const struct nir_shader *nir,
+                      unsigned char sha1_key[20])
+{
+   if (cache) {
+      pthread_mutex_lock(&cache->mutex);
+      struct hash_entry *entry =
+         _mesa_hash_table_search(cache->nir_cache, sha1_key);
+      pthread_mutex_unlock(&cache->mutex);
+      if (entry)
+         return;
+
+      struct blob blob;
+      blob_init(&blob);
+
+      nir_serialize(&blob, nir);
+      if (blob.out_of_memory) {
+         blob_finish(&blob);
+         return;
+      }
+
+      pthread_mutex_lock(&cache->mutex);
+      /* Because ralloc isn't thread-safe, we have to do all this inside the
+       * lock.  We could unlock for the big memcpy but it's probably not worth
+       * the hassle.
+       */
+      entry = _mesa_hash_table_search(cache->nir_cache, sha1_key);
+      if (entry) {
+         pthread_mutex_unlock(&cache->mutex);
+         return;
+      }
+
+      struct serialized_nir *snir =
+         ralloc_size(cache->nir_cache, sizeof(*snir) + blob.size);
+      memcpy(snir->sha1_key, sha1_key, 20);
+      snir->size = blob.size;
+      memcpy(snir->data, blob.data, blob.size);
+
+      _mesa_hash_table_insert(cache->nir_cache, snir->sha1_key, snir);
+
+      pthread_mutex_unlock(&cache->mutex);
+   }
 }
