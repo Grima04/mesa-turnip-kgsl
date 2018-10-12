@@ -491,6 +491,41 @@ anv_pipeline_hash_compute(struct anv_pipeline *pipeline,
    _mesa_sha1_final(&ctx, sha1_out);
 }
 
+static nir_shader *
+anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
+                           struct anv_pipeline_cache *cache,
+                           void *mem_ctx,
+                           struct anv_pipeline_stage *stage)
+{
+   const struct brw_compiler *compiler =
+      pipeline->device->instance->physicalDevice.compiler;
+   const nir_shader_compiler_options *nir_options =
+      compiler->glsl_compiler_options[stage->stage].NirOptions;
+   nir_shader *nir;
+
+   nir = anv_device_search_for_nir(pipeline->device, cache,
+                                   nir_options,
+                                   stage->shader_sha1,
+                                   mem_ctx);
+   if (nir) {
+      assert(nir->info.stage == stage->stage);
+      return nir;
+   }
+
+   nir = anv_shader_compile_to_nir(pipeline->device,
+                                   mem_ctx,
+                                   stage->module,
+                                   stage->entrypoint,
+                                   stage->stage,
+                                   stage->spec_info);
+   if (nir) {
+      anv_device_upload_nir(pipeline->device, cache, nir, stage->shader_sha1);
+      return nir;
+   }
+
+   return NULL;
+}
+
 static void
 anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                        void *mem_ctx,
@@ -1001,11 +1036,9 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          .sampler_to_descriptor = stages[s].sampler_to_descriptor
       };
 
-      stages[s].nir = anv_shader_compile_to_nir(pipeline->device, pipeline_ctx,
-                                                stages[s].module,
-                                                stages[s].entrypoint,
-                                                stages[s].stage,
-                                                stages[s].spec_info);
+      stages[s].nir = anv_pipeline_stage_get_nir(pipeline, cache,
+                                                 pipeline_ctx,
+                                                 &stages[s]);
       if (stages[s].nir == NULL) {
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
@@ -1174,11 +1207,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       void *mem_ctx = ralloc_context(NULL);
 
-      stage.nir = anv_shader_compile_to_nir(pipeline->device, mem_ctx,
-                                            stage.module,
-                                            stage.entrypoint,
-                                            stage.stage,
-                                            stage.spec_info);
+      stage.nir = anv_pipeline_stage_get_nir(pipeline, cache, mem_ctx, &stage);
       if (stage.nir == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
