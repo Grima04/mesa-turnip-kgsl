@@ -398,6 +398,8 @@ struct anv_pipeline_stage {
    const char *entrypoint;
    const VkSpecializationInfo *spec_info;
 
+   unsigned char shader_sha1[20];
+
    union brw_any_prog_key key;
 
    struct {
@@ -415,20 +417,27 @@ struct anv_pipeline_stage {
 };
 
 static void
-anv_pipeline_hash_shader(struct mesa_sha1 *ctx,
-                         struct anv_pipeline_stage *stage)
+anv_pipeline_hash_shader(const struct anv_shader_module *module,
+                         const char *entrypoint,
+                         gl_shader_stage stage,
+                         const VkSpecializationInfo *spec_info,
+                         unsigned char *sha1_out)
 {
-   _mesa_sha1_update(ctx, stage->module->sha1, sizeof(stage->module->sha1));
-   _mesa_sha1_update(ctx, stage->entrypoint, strlen(stage->entrypoint));
-   _mesa_sha1_update(ctx, &stage->stage, sizeof(stage->stage));
-   if (stage->spec_info) {
-      _mesa_sha1_update(ctx, stage->spec_info->pMapEntries,
-                        stage->spec_info->mapEntryCount *
-                        sizeof(*stage->spec_info->pMapEntries));
-      _mesa_sha1_update(ctx, stage->spec_info->pData,
-                        stage->spec_info->dataSize);
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
+   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
+   _mesa_sha1_update(&ctx, &stage, sizeof(stage));
+   if (spec_info) {
+      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
+                        spec_info->mapEntryCount *
+                        sizeof(*spec_info->pMapEntries));
+      _mesa_sha1_update(&ctx, spec_info->pData,
+                        spec_info->dataSize);
    }
-   _mesa_sha1_update(ctx, &stage->key, brw_prog_key_size(stage->stage));
+
+   _mesa_sha1_final(&ctx, sha1_out);
 }
 
 static void
@@ -450,8 +459,11 @@ anv_pipeline_hash_graphics(struct anv_pipeline *pipeline,
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
-      if (stages[s].entrypoint)
-         anv_pipeline_hash_shader(&ctx, &stages[s]);
+      if (stages[s].entrypoint) {
+         _mesa_sha1_update(&ctx, stages[s].shader_sha1,
+                           sizeof(stages[s].shader_sha1));
+         _mesa_sha1_update(&ctx, &stages[s].key, brw_prog_key_size(s));
+      }
    }
 
    _mesa_sha1_final(&ctx, sha1_out);
@@ -472,7 +484,9 @@ anv_pipeline_hash_compute(struct anv_pipeline *pipeline,
    const bool rba = pipeline->device->robust_buffer_access;
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
-   anv_pipeline_hash_shader(&ctx, stage);
+   _mesa_sha1_update(&ctx, stage->shader_sha1,
+                     sizeof(stage->shader_sha1));
+   _mesa_sha1_update(&ctx, &stage->key.cs, sizeof(stage->key.cs));
 
    _mesa_sha1_final(&ctx, sha1_out);
 }
@@ -881,6 +895,11 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
       stages[stage].module = anv_shader_module_from_handle(sinfo->module);
       stages[stage].entrypoint = sinfo->pName;
       stages[stage].spec_info = sinfo->pSpecializationInfo;
+      anv_pipeline_hash_shader(stages[stage].module,
+                               stages[stage].entrypoint,
+                               stage,
+                               stages[stage].spec_info,
+                               stages[stage].shader_sha1);
 
       const struct gen_device_info *devinfo = &pipeline->device->info;
       switch (stage) {
@@ -1131,6 +1150,11 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
          .stage = MESA_SHADER_COMPUTE,
       }
    };
+   anv_pipeline_hash_shader(stage.module,
+                            stage.entrypoint,
+                            MESA_SHADER_COMPUTE,
+                            stage.spec_info,
+                            stage.shader_sha1);
 
    struct anv_shader_bin *bin = NULL;
 
