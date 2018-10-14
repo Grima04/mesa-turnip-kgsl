@@ -1,6 +1,7 @@
 #include "zink_query.h"
 
 #include "zink_context.h"
+#include "zink_resource.h"
 #include "zink_screen.h"
 
 #include "util/u_dump.h"
@@ -247,6 +248,61 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
       zink_resume_queries(ctx, batch);
 }
 
+static void
+zink_render_condition(struct pipe_context *pctx,
+                      struct pipe_query *pquery,
+                      bool condition,
+                      enum pipe_render_cond_flag mode)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_query *query = (struct zink_query *)pquery;
+   struct zink_batch *batch = zink_curr_batch(ctx);
+   VkQueryResultFlagBits flags = 0;
+
+   if (query == NULL) {
+      screen->vk_CmdEndConditionalRenderingEXT(batch->cmdbuf);
+      return;
+   }
+
+   struct pipe_resource *pres;
+   struct zink_resource *res;
+   struct pipe_resource templ = {};
+   templ.width0 = 8;
+   templ.height0 = 1;
+   templ.depth0 = 1;
+   templ.format = PIPE_FORMAT_R8_UINT;
+   templ.target = PIPE_BUFFER;
+
+   /* need to create a vulkan buffer to copy the data into */
+   pres = pctx->screen->resource_create(pctx->screen, &templ);
+   if (!pres)
+      return;
+
+   res = (struct zink_resource *)pres;
+
+   if (mode == PIPE_RENDER_COND_WAIT || mode == PIPE_RENDER_COND_BY_REGION_WAIT)
+      flags |= VK_QUERY_RESULT_WAIT_BIT;
+
+   if (query->use_64bit)
+      flags |= VK_QUERY_RESULT_64_BIT;
+   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, 0, 1,
+                             res->buffer, 0, 0, flags);
+
+   VkConditionalRenderingFlagsEXT begin_flags = 0;
+   if (condition)
+      begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+   VkConditionalRenderingBeginInfoEXT begin_info = {};
+   begin_info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+   begin_info.buffer = res->buffer;
+   begin_info.flags = begin_flags;
+   screen->vk_CmdBeginConditionalRenderingEXT(batch->cmdbuf, &begin_info);
+
+   zink_batch_reference_resoure(batch, res);
+
+   pipe_resource_reference(&pres, NULL);
+}
+
 void
 zink_context_query_init(struct pipe_context *pctx)
 {
@@ -259,4 +315,5 @@ zink_context_query_init(struct pipe_context *pctx)
    pctx->end_query = zink_end_query;
    pctx->get_query_result = zink_get_query_result;
    pctx->set_active_query_state = zink_set_active_query_state;
+   pctx->render_condition = zink_render_condition;
 }

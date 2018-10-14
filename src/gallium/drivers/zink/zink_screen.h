@@ -51,6 +51,7 @@ struct zink_screen {
 
    bool have_KHR_maintenance1;
    bool have_KHR_external_memory_fd;
+   bool have_EXT_conditional_rendering;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
@@ -59,6 +60,8 @@ struct zink_screen {
    VkDevice dev;
 
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
+   PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
+   PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;
 };
 
 static inline struct zink_screen *
