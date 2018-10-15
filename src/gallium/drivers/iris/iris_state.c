@@ -4402,8 +4402,6 @@ iris_upload_compute_state(struct iris_context *ice,
 
    pipe_resource_reference(&desc_res, NULL);
 
-   // XXX: grid->indirect
-
    uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
    uint32_t remainder = group_size & (cs_prog_data->simd_size - 1);
    uint32_t right_mask;
