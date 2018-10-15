@@ -1380,7 +1380,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          vtn_fail("Invalid SPIR-V image dimensionality");
       }
 
-      bool is_shadow = w[4];
+      /* w[4]: as per Vulkan spec "Validation Rules within a Module",
+       *       The “Depth” operand of OpTypeImage is ignored.
+       */
       bool is_array = w[5];
       bool multisampled = w[6];
       unsigned sampled = w[7];
@@ -1406,10 +1408,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          glsl_get_base_type(sampled_type->type);
       if (sampled == 1) {
          val->type->sampled = true;
-         val->type->type = glsl_sampler_type(dim, is_shadow, is_array,
+         val->type->type = glsl_sampler_type(dim, false, is_array,
                                              sampled_base_type);
       } else if (sampled == 2) {
-         vtn_assert(!is_shadow);
          val->type->sampled = false;
          val->type->type = glsl_image_type(dim, is_array, sampled_base_type);
       } else {
