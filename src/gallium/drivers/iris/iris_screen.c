@@ -159,6 +159,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_QUERY_BUFFER_OBJECT:
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
    case PIPE_CAP_TGSI_TXQS:
+   case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_TGSI_CLOCK:
    case PIPE_CAP_TGSI_BALLOT:
    case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
