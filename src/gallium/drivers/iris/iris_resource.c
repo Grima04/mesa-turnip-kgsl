@@ -579,7 +579,7 @@ iris_unmap_s8(struct iris_transfer *map)
    struct pipe_transfer *xfer = &map->base;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
-   const bool has_swizzling = false; // XXX: swizzling?
+   const bool has_swizzling = false;
 
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
       uint8_t *untiled_s8_map = map->ptr;
@@ -627,7 +627,7 @@ iris_map_s8(struct iris_transfer *map)
    map->buffer = map->ptr = malloc(xfer->layer_stride * xfer->box.depth);
    assert(map->buffer);
 
-   const bool has_swizzling = false; // XXX: swizzling?
+   const bool has_swizzling = false;
 
    /* One of either READ_BIT or WRITE_BIT or both is set.  READ_BIT implies no
     * INVALIDATE_RANGE_BIT.  WRITE_BIT needs the original values read in unless
@@ -696,7 +696,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
 
-   const bool has_swizzling = false; // XXX: swizzling?
+   const bool has_swizzling = false;
 
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
       char *dst = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
@@ -739,7 +739,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
    assert(map->buffer);
    map->ptr = (char *)map->buffer + (x1 & 0xf);
 
-   const bool has_swizzling = false; // XXX: swizzling?
+   const bool has_swizzling = false;
 
    // XXX: PIPE_TRANSFER_READ?
    if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
