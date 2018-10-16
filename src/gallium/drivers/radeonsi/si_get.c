@@ -577,12 +577,10 @@ static int si_get_video_param(struct pipe_screen *screen,
 		case PIPE_VIDEO_CAP_SUPPORTED:
 			return (codec == PIPE_VIDEO_FORMAT_MPEG4_AVC &&
 				(si_vce_is_fw_version_supported(sscreen) ||
-				 sscreen->info.family == CHIP_RAVEN ||
-				 sscreen->info.family == CHIP_RAVEN2)) ||
+				sscreen->info.family >= CHIP_RAVEN)) ||
 				(profile == PIPE_VIDEO_PROFILE_HEVC_MAIN &&
-				(sscreen->info.family == CHIP_RAVEN ||
-				 sscreen->info.family == CHIP_RAVEN2 ||
-				 si_radeon_uvd_enc_supported(sscreen)));
+				(sscreen->info.family >= CHIP_RAVEN ||
+				si_radeon_uvd_enc_supported(sscreen)));
 		case PIPE_VIDEO_CAP_NPOT_TEXTURES:
 			return 1;
 		case PIPE_VIDEO_CAP_MAX_WIDTH:
