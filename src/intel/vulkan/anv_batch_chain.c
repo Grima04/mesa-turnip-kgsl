@@ -1579,9 +1579,33 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
    return VK_SUCCESS;
 }
 
+/* We lock around execbuf for three main reasons:
+ *
+ *  1) When a block pool is resized, we create a new gem handle with a
+ *     different size and, in the case of surface states, possibly a different
+ *     center offset but we re-use the same anv_bo struct when we do so. If
+ *     this happens in the middle of setting up an execbuf, we could end up
+ *     with our list of BOs out of sync with our list of gem handles.
+ *
+ *  2) The algorithm we use for building the list of unique buffers isn't
+ *     thread-safe. While the client is supposed to syncronize around
+ *     QueueSubmit, this would be extremely difficult to debug if it ever came
+ *     up in the wild due to a broken app. It's better to play it safe and
+ *     just lock around QueueSubmit.
+ *
+ *  3) The anv_cmd_buffer_execbuf function may perform relocations in
+ *      userspace. Due to the fact that the surface state buffer is shared
+ *      between batches, we can't afford to have that happen from multiple
+ *      threads at the same time. Even though the user is supposed to ensure
+ *      this doesn't happen, we play it safe as in (2) above.
+ *
+ * Since the only other things that ever take the device lock such as block
+ * pool resize only rarely happen, this will almost never be contended so
+ * taking a lock isn't really an expensive operation in this case.
+ */
 VkResult
-anv_queue_execbuf(struct anv_queue *queue,
-                  struct anv_queue_submit *submit)
+anv_queue_execbuf_locked(struct anv_queue *queue,
+                         struct anv_queue_submit *submit)
 {
    struct anv_device *device = queue->device;
    struct anv_execbuf execbuf;
@@ -1590,33 +1614,6 @@ anv_queue_execbuf(struct anv_queue *queue,
    execbuf.alloc_scope = submit->alloc_scope;
 
    VkResult result;
-
-   /* We lock around execbuf for three main reasons:
-    *
-    *  1) When a block pool is resized, we create a new gem handle with a
-    *     different size and, in the case of surface states, possibly a
-    *     different center offset but we re-use the same anv_bo struct when
-    *     we do so.  If this happens in the middle of setting up an execbuf,
-    *     we could end up with our list of BOs out of sync with our list of
-    *     gem handles.
-    *
-    *  2) The algorithm we use for building the list of unique buffers isn't
-    *     thread-safe.  While the client is supposed to syncronize around
-    *     QueueSubmit, this would be extremely difficult to debug if it ever
-    *     came up in the wild due to a broken app.  It's better to play it
-    *     safe and just lock around QueueSubmit.
-    *
-    *  3)  The anv_cmd_buffer_execbuf function may perform relocations in
-    *      userspace.  Due to the fact that the surface state buffer is shared
-    *      between batches, we can't afford to have that happen from multiple
-    *      threads at the same time.  Even though the user is supposed to
-    *      ensure this doesn't happen, we play it safe as in (2) above.
-    *
-    * Since the only other things that ever take the device lock such as block
-    * pool resize only rarely happen, this will almost never be contended so
-    * taking a lock isn't really an expensive operation in this case.
-    */
-   pthread_mutex_lock(&device->mutex);
 
    for (uint32_t i = 0; i < submit->fence_bo_count; i++) {
       int signaled;
@@ -1705,7 +1702,6 @@ anv_queue_execbuf(struct anv_queue *queue,
 
  error:
    pthread_cond_broadcast(&device->queue_submit);
-   pthread_mutex_unlock(&queue->device->mutex);
 
    anv_execbuf_finish(&execbuf);
 

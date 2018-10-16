@@ -1245,6 +1245,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR: {
+         VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
+            (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
+         features->timelineSemaphore = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
          features->variablePointersStorageBuffer = true;
@@ -1794,6 +1801,13 @@ void anv_GetPhysicalDeviceProperties2(
           */
          props->uniformTexelBufferOffsetAlignmentBytes = 1;
          props->uniformTexelBufferOffsetSingleTexelAlignment = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR: {
+         VkPhysicalDeviceTimelineSemaphorePropertiesKHR *props =
+            (VkPhysicalDeviceTimelineSemaphorePropertiesKHR *) ext;
+         props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
          break;
       }
 

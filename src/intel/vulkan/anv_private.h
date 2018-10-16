@@ -1080,6 +1080,17 @@ struct anv_queue_submit {
    uint32_t                                  sync_fd_semaphore_count;
    uint32_t                                  sync_fd_semaphore_array_length;
 
+   /* Allocated only with non shareable timelines. */
+   struct anv_timeline **                    wait_timelines;
+   uint32_t                                  wait_timeline_count;
+   uint32_t                                  wait_timeline_array_length;
+   uint64_t *                                wait_timeline_values;
+
+   struct anv_timeline **                    signal_timelines;
+   uint32_t                                  signal_timeline_count;
+   uint32_t                                  signal_timeline_array_length;
+   uint64_t *                                signal_timeline_values;
+
    int                                       in_fence;
    bool                                      need_out_fence;
    int                                       out_fence;
@@ -1104,6 +1115,11 @@ struct anv_queue {
     VK_LOADER_DATA                              _loader_data;
 
     struct anv_device *                         device;
+
+    /*
+     * A list of struct anv_queue_submit to be submitted to i915.
+     */
+    struct list_head                            queued_submits;
 
     VkDeviceQueueCreateFlags                    flags;
 };
@@ -1368,7 +1384,7 @@ VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
 VkResult anv_queue_init(struct anv_device *device, struct anv_queue *queue);
 void anv_queue_finish(struct anv_queue *queue);
 
-VkResult anv_queue_execbuf(struct anv_queue *queue, struct anv_queue_submit *submit);
+VkResult anv_queue_execbuf_locked(struct anv_queue *queue, struct anv_queue_submit *submit);
 VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch);
 
@@ -2828,6 +2844,32 @@ enum anv_semaphore_type {
    ANV_SEMAPHORE_TYPE_BO,
    ANV_SEMAPHORE_TYPE_SYNC_FILE,
    ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
+   ANV_SEMAPHORE_TYPE_TIMELINE,
+};
+
+struct anv_timeline_point {
+   struct list_head link;
+
+   uint64_t serial;
+
+   /* Number of waiter on this point, when > 0 the point should not be garbage
+    * collected.
+    */
+   int waiting;
+
+   /* BO used for synchronization. */
+   struct anv_bo *bo;
+};
+
+struct anv_timeline {
+   pthread_mutex_t mutex;
+   pthread_cond_t  cond;
+
+   uint64_t highest_past;
+   uint64_t highest_pending;
+
+   struct list_head points;
+   struct list_head free_points;
 };
 
 struct anv_semaphore_impl {
@@ -2852,6 +2894,12 @@ struct anv_semaphore_impl {
        * import so we don't need to bother with a userspace cache.
        */
       uint32_t syncobj;
+
+      /* Non shareable timeline semaphore
+       *
+       * Used when kernel don't have support for timeline semaphores.
+       */
+      struct anv_timeline timeline;
    };
 };
 
