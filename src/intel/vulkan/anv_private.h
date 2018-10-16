@@ -2695,8 +2695,10 @@ void anv_cmd_buffer_prepare_execbuf(struct anv_cmd_buffer *cmd_buffer);
 VkResult anv_cmd_buffer_execbuf(struct anv_queue *queue,
                                 struct anv_cmd_buffer *cmd_buffer,
                                 const VkSemaphore *in_semaphores,
+                                const uint64_t *in_wait_values,
                                 uint32_t num_in_semaphores,
                                 const VkSemaphore *out_semaphores,
+                                const uint64_t *out_signal_values,
                                 uint32_t num_out_semaphores,
                                 VkFence fence);
 

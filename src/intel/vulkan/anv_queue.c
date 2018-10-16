@@ -382,8 +382,10 @@ static VkResult
 anv_queue_submit(struct anv_queue *queue,
                  struct anv_cmd_buffer *cmd_buffer,
                  const VkSemaphore *in_semaphores,
+                 const uint64_t *in_values,
                  uint32_t num_in_semaphores,
                  const VkSemaphore *out_semaphores,
+                 const uint64_t *out_values,
                  uint32_t num_out_semaphores,
                  VkFence _fence)
 {
@@ -590,13 +592,23 @@ VkResult anv_QueueSubmit(
        * come up with something more efficient but this shouldn't be a
        * common case.
        */
-      result = anv_queue_submit(queue, NULL, NULL, 0, NULL, 0, fence);
+      result = anv_queue_submit(queue, NULL, NULL, NULL, 0, NULL, NULL, 0, fence);
       goto out;
    }
 
    for (uint32_t i = 0; i < submitCount; i++) {
       /* Fence for this submit.  NULL for all but the last one */
       VkFence submit_fence = (i == submitCount - 1) ? fence : VK_NULL_HANDLE;
+
+      const VkTimelineSemaphoreSubmitInfoKHR *timeline_info =
+         vk_find_struct_const(pSubmits[i].pNext,
+                              TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR);
+      const uint64_t *wait_values =
+         timeline_info && timeline_info->waitSemaphoreValueCount ?
+         timeline_info->pWaitSemaphoreValues : NULL;
+      const uint64_t *signal_values =
+         timeline_info && timeline_info->signalSemaphoreValueCount ?
+         timeline_info->pSignalSemaphoreValues : NULL;
 
       if (pSubmits[i].commandBufferCount == 0) {
          /* If we don't have any command buffers, we need to submit a dummy
@@ -606,8 +618,10 @@ VkResult anv_QueueSubmit(
           */
          result = anv_queue_submit(queue, NULL,
                                    pSubmits[i].pWaitSemaphores,
+                                   wait_values,
                                    pSubmits[i].waitSemaphoreCount,
                                    pSubmits[i].pSignalSemaphores,
+                                   signal_values,
                                    pSubmits[i].signalSemaphoreCount,
                                    submit_fence);
          if (result != VK_SUCCESS)
@@ -628,22 +642,25 @@ VkResult anv_QueueSubmit(
             submit_fence : VK_NULL_HANDLE;
 
          const VkSemaphore *in_semaphores = NULL, *out_semaphores = NULL;
+         const uint64_t *in_values = NULL, *out_values = NULL;
          uint32_t num_in_semaphores = 0, num_out_semaphores = 0;
          if (j == 0) {
             /* Only the first batch gets the in semaphores */
             in_semaphores = pSubmits[i].pWaitSemaphores;
+            in_values = wait_values;
             num_in_semaphores = pSubmits[i].waitSemaphoreCount;
          }
 
          if (j == pSubmits[i].commandBufferCount - 1) {
             /* Only the last batch gets the out semaphores */
             out_semaphores = pSubmits[i].pSignalSemaphores;
+            out_values = signal_values;
             num_out_semaphores = pSubmits[i].signalSemaphoreCount;
          }
 
          result = anv_queue_submit(queue, cmd_buffer,
-                                   in_semaphores, num_in_semaphores,
-                                   out_semaphores, num_out_semaphores,
+                                   in_semaphores, in_values, num_in_semaphores,
+                                   out_semaphores, out_values, num_out_semaphores,
                                    execbuf_fence);
          if (result != VK_SUCCESS)
             goto out;
