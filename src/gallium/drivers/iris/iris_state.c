@@ -3712,7 +3712,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                if (range->length == 0)
                   continue;
 
-               // XXX: is range->block a constbuf index?  it would be nice
                struct iris_const_buffer *cbuf = &shs->constbuf[range->block];
                struct iris_resource *res = (void *) cbuf->data.res;
 
