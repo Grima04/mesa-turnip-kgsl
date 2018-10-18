@@ -268,7 +268,7 @@ bool gen_get_device_info(int devid, struct gen_device_info *devinfo);
 const char *gen_get_device_name(int devid);
 
 /* Used with SLICE_MASK/SUBSLICE_MASK values from DRM_I915_GETPARAM. */
-void gen_device_info_update_from_masks(struct gen_device_info *devinfo,
+bool gen_device_info_update_from_masks(struct gen_device_info *devinfo,
                                        uint32_t slice_mask,
                                        uint32_t subslice_mask,
                                        uint32_t n_eus);

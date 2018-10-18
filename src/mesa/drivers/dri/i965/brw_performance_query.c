@@ -1734,10 +1734,11 @@ getparam_topology(struct brw_context *brw)
    if (ret)
       return false;
 
-   gen_device_info_update_from_masks(&brw->screen->devinfo,
-                                     slice_mask,
-                                     subslice_mask,
-                                     brw->screen->eu_total);
+   if (!gen_device_info_update_from_masks(&brw->screen->devinfo,
+                                          slice_mask,
+                                          subslice_mask,
+                                          brw->screen->eu_total))
+      return false;
 
    return true;
 }

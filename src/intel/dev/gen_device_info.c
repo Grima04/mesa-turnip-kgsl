@@ -22,6 +22,7 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1057,62 +1058,66 @@ fill_masks(struct gen_device_info *devinfo)
    }
 }
 
-void
+bool
 gen_device_info_update_from_masks(struct gen_device_info *devinfo,
                                   uint32_t slice_mask,
                                   uint32_t subslice_mask,
                                   uint32_t n_eus)
 {
-   struct {
-      struct drm_i915_query_topology_info base;
-      uint8_t data[100];
-   } topology;
+   struct drm_i915_query_topology_info *topology;
 
    assert((slice_mask & 0xff) == slice_mask);
 
-   memset(&topology, 0, sizeof(topology));
+   size_t data_length = 100;
 
-   topology.base.max_slices = util_last_bit(slice_mask);
-   topology.base.max_subslices = util_last_bit(subslice_mask);
+   topology = calloc(1, sizeof(*topology) + data_length);
+   if (!topology)
+      return false;
 
-   topology.base.subslice_offset = DIV_ROUND_UP(topology.base.max_slices, 8);
-   topology.base.subslice_stride = DIV_ROUND_UP(topology.base.max_subslices, 8);
+   topology->max_slices = util_last_bit(slice_mask);
+   topology->max_subslices = util_last_bit(subslice_mask);
+
+   topology->subslice_offset = DIV_ROUND_UP(topology->max_slices, 8);
+   topology->subslice_stride = DIV_ROUND_UP(topology->max_subslices, 8);
 
    uint32_t n_subslices = __builtin_popcount(slice_mask) *
       __builtin_popcount(subslice_mask);
    uint32_t num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
    uint32_t eu_mask = (1U << num_eu_per_subslice) - 1;
 
-   topology.base.eu_offset = topology.base.subslice_offset +
-      DIV_ROUND_UP(topology.base.max_subslices, 8);
-   topology.base.eu_stride = DIV_ROUND_UP(num_eu_per_subslice, 8);
+   topology->eu_offset = topology->subslice_offset +
+      DIV_ROUND_UP(topology->max_subslices, 8);
+   topology->eu_stride = DIV_ROUND_UP(num_eu_per_subslice, 8);
 
    /* Set slice mask in topology */
-   for (int b = 0; b < topology.base.subslice_offset; b++)
-      topology.base.data[b] = (slice_mask >> (b * 8)) & 0xff;
+   for (int b = 0; b < topology->subslice_offset; b++)
+      topology->data[b] = (slice_mask >> (b * 8)) & 0xff;
 
-   for (int s = 0; s < topology.base.max_slices; s++) {
+   for (int s = 0; s < topology->max_slices; s++) {
 
       /* Set subslice mask in topology */
-      for (int b = 0; b < topology.base.subslice_stride; b++) {
-         int subslice_offset = topology.base.subslice_offset +
-            s * topology.base.subslice_stride + b;
+      for (int b = 0; b < topology->subslice_stride; b++) {
+         int subslice_offset = topology->subslice_offset +
+            s * topology->subslice_stride + b;
 
-         topology.base.data[subslice_offset] = (subslice_mask >> (b * 8)) & 0xff;
+         topology->data[subslice_offset] = (subslice_mask >> (b * 8)) & 0xff;
       }
 
       /* Set eu mask in topology */
-      for (int ss = 0; ss < topology.base.max_subslices; ss++) {
-         for (int b = 0; b < topology.base.eu_stride; b++) {
-            int eu_offset = topology.base.eu_offset +
-               (s * topology.base.max_subslices + ss) * topology.base.eu_stride + b;
+      for (int ss = 0; ss < topology->max_subslices; ss++) {
+         for (int b = 0; b < topology->eu_stride; b++) {
+            int eu_offset = topology->eu_offset +
+               (s * topology->max_subslices + ss) * topology->eu_stride + b;
 
-            topology.base.data[eu_offset] = (eu_mask >> (b * 8)) & 0xff;
+            topology->data[eu_offset] = (eu_mask >> (b * 8)) & 0xff;
          }
       }
    }
 
-   gen_device_info_update_from_topology(devinfo, &topology.base);
+   gen_device_info_update_from_topology(devinfo, topology);
+   free(topology);
+
+   return true;
 }
 
 static void
