@@ -506,45 +506,45 @@ ntq_emit_comparison(struct v3d_compile *c, struct qreg *dest,
         bool cond_invert = false;
 
         switch (compare_instr->op) {
-        case nir_op_feq:
+        case nir_op_feq32:
         case nir_op_seq:
                 vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHZ);
                 break;
-        case nir_op_ieq:
+        case nir_op_ieq32:
                 vir_PF(c, vir_XOR(c, src0, src1), V3D_QPU_PF_PUSHZ);
                 break;
 
-        case nir_op_fne:
+        case nir_op_fne32:
         case nir_op_sne:
                 vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHZ);
                 cond_invert = true;
                 break;
-        case nir_op_ine:
+        case nir_op_ine32:
                 vir_PF(c, vir_XOR(c, src0, src1), V3D_QPU_PF_PUSHZ);
                 cond_invert = true;
                 break;
 
-        case nir_op_fge:
+        case nir_op_fge32:
         case nir_op_sge:
                 vir_PF(c, vir_FCMP(c, src1, src0), V3D_QPU_PF_PUSHC);
                 break;
-        case nir_op_ige:
+        case nir_op_ige32:
                 vir_PF(c, vir_MIN(c, src1, src0), V3D_QPU_PF_PUSHC);
                 cond_invert = true;
                 break;
-        case nir_op_uge:
+        case nir_op_uge32:
                 vir_PF(c, vir_SUB(c, src0, src1), V3D_QPU_PF_PUSHC);
                 cond_invert = true;
                 break;
 
         case nir_op_slt:
-        case nir_op_flt:
+        case nir_op_flt32:
                 vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHN);
                 break;
-        case nir_op_ilt:
+        case nir_op_ilt32:
                 vir_PF(c, vir_MIN(c, src1, src0), V3D_QPU_PF_PUSHC);
                 break;
-        case nir_op_ult:
+        case nir_op_ult32:
                 vir_PF(c, vir_SUB(c, src0, src1), V3D_QPU_PF_PUSHC);
                 break;
 
@@ -565,7 +565,7 @@ ntq_emit_comparison(struct v3d_compile *c, struct qreg *dest,
                                 vir_uniform_f(c, 1.0), vir_uniform_f(c, 0.0));
                 break;
 
-        case nir_op_bcsel:
+        case nir_op_b32csel:
                 *dest = vir_SEL(c, cond,
                                 ntq_get_alu_src(c, sel_instr, 1),
                                 ntq_get_alu_src(c, sel_instr, 2));
@@ -748,22 +748,22 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_sne:
         case nir_op_sge:
         case nir_op_slt:
-        case nir_op_feq:
-        case nir_op_fne:
-        case nir_op_fge:
-        case nir_op_flt:
-        case nir_op_ieq:
-        case nir_op_ine:
-        case nir_op_ige:
-        case nir_op_uge:
-        case nir_op_ilt:
-        case nir_op_ult:
+        case nir_op_feq32:
+        case nir_op_fne32:
+        case nir_op_fge32:
+        case nir_op_flt32:
+        case nir_op_ieq32:
+        case nir_op_ine32:
+        case nir_op_ige32:
+        case nir_op_uge32:
+        case nir_op_ilt32:
+        case nir_op_ult32:
                 if (!ntq_emit_comparison(c, &result, instr, instr)) {
                         fprintf(stderr, "Bad comparison instruction\n");
                 }
                 break;
 
-        case nir_op_bcsel:
+        case nir_op_b32csel:
                 result = ntq_emit_bcsel(c, instr, src);
                 break;
         case nir_op_fcsel:

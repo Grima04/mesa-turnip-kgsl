@@ -1469,10 +1469,10 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_ENDSUB] = 0, /* XXX: no function calls */
 
    [TGSI_OPCODE_NOP] = 0,
-   [TGSI_OPCODE_FSEQ] = nir_op_feq,
-   [TGSI_OPCODE_FSGE] = nir_op_fge,
-   [TGSI_OPCODE_FSLT] = nir_op_flt,
-   [TGSI_OPCODE_FSNE] = nir_op_fne,
+   [TGSI_OPCODE_FSEQ] = nir_op_feq32,
+   [TGSI_OPCODE_FSGE] = nir_op_fge32,
+   [TGSI_OPCODE_FSLT] = nir_op_flt32,
+   [TGSI_OPCODE_FSNE] = nir_op_fne32,
 
    [TGSI_OPCODE_KILL_IF] = 0,
 
@@ -1483,9 +1483,9 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_IMAX] = nir_op_imax,
    [TGSI_OPCODE_IMIN] = nir_op_imin,
    [TGSI_OPCODE_INEG] = nir_op_ineg,
-   [TGSI_OPCODE_ISGE] = nir_op_ige,
+   [TGSI_OPCODE_ISGE] = nir_op_ige32,
    [TGSI_OPCODE_ISHR] = nir_op_ishr,
-   [TGSI_OPCODE_ISLT] = nir_op_ilt,
+   [TGSI_OPCODE_ISLT] = nir_op_ilt32,
    [TGSI_OPCODE_F2U] = nir_op_f2u32,
    [TGSI_OPCODE_U2F] = nir_op_u2f32,
    [TGSI_OPCODE_UADD] = nir_op_iadd,
@@ -1495,11 +1495,11 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_UMIN] = nir_op_umin,
    [TGSI_OPCODE_UMOD] = nir_op_umod,
    [TGSI_OPCODE_UMUL] = nir_op_imul,
-   [TGSI_OPCODE_USEQ] = nir_op_ieq,
-   [TGSI_OPCODE_USGE] = nir_op_uge,
+   [TGSI_OPCODE_USEQ] = nir_op_ieq32,
+   [TGSI_OPCODE_USGE] = nir_op_uge32,
    [TGSI_OPCODE_USHR] = nir_op_ushr,
-   [TGSI_OPCODE_USLT] = nir_op_ult,
-   [TGSI_OPCODE_USNE] = nir_op_ine,
+   [TGSI_OPCODE_USLT] = nir_op_ult32,
+   [TGSI_OPCODE_USNE] = nir_op_ine32,
 
    [TGSI_OPCODE_SWITCH] = 0, /* not emitted by glsl_to_tgsi.cpp */
    [TGSI_OPCODE_CASE] = 0, /* not emitted by glsl_to_tgsi.cpp */

@@ -1056,10 +1056,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_flt:
-   case nir_op_fge:
-   case nir_op_feq:
-   case nir_op_fne: {
+   case nir_op_flt32:
+   case nir_op_fge32:
+   case nir_op_feq32:
+   case nir_op_fne32: {
       fs_reg dest = result;
 
       const uint32_t bit_size =  nir_src_bit_size(instr->src[0].src);
@@ -1068,16 +1068,16 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
       brw_conditional_mod cond;
       switch (instr->op) {
-      case nir_op_flt:
+      case nir_op_flt32:
          cond = BRW_CONDITIONAL_L;
          break;
-      case nir_op_fge:
+      case nir_op_fge32:
          cond = BRW_CONDITIONAL_GE;
          break;
-      case nir_op_feq:
+      case nir_op_feq32:
          cond = BRW_CONDITIONAL_Z;
          break;
-      case nir_op_fne:
+      case nir_op_fne32:
          cond = BRW_CONDITIONAL_NZ;
          break;
       default:
@@ -1100,12 +1100,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_ilt:
-   case nir_op_ult:
-   case nir_op_ige:
-   case nir_op_uge:
-   case nir_op_ieq:
-   case nir_op_ine: {
+   case nir_op_ilt32:
+   case nir_op_ult32:
+   case nir_op_ige32:
+   case nir_op_uge32:
+   case nir_op_ieq32:
+   case nir_op_ine32: {
       fs_reg dest = result;
 
       const uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
@@ -1114,18 +1114,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
       brw_conditional_mod cond;
       switch (instr->op) {
-      case nir_op_ilt:
-      case nir_op_ult:
+      case nir_op_ilt32:
+      case nir_op_ult32:
          cond = BRW_CONDITIONAL_L;
          break;
-      case nir_op_ige:
-      case nir_op_uge:
+      case nir_op_ige32:
+      case nir_op_uge32:
          cond = BRW_CONDITIONAL_GE;
          break;
-      case nir_op_ieq:
+      case nir_op_ieq32:
          cond = BRW_CONDITIONAL_Z;
          break;
-      case nir_op_ine:
+      case nir_op_ine32:
          cond = BRW_CONDITIONAL_NZ;
          break;
       default:
@@ -1178,18 +1178,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_fdot2:
    case nir_op_fdot3:
    case nir_op_fdot4:
-   case nir_op_ball_fequal2:
-   case nir_op_ball_iequal2:
-   case nir_op_ball_fequal3:
-   case nir_op_ball_iequal3:
-   case nir_op_ball_fequal4:
-   case nir_op_ball_iequal4:
-   case nir_op_bany_fnequal2:
-   case nir_op_bany_inequal2:
-   case nir_op_bany_fnequal3:
-   case nir_op_bany_inequal3:
-   case nir_op_bany_fnequal4:
-   case nir_op_bany_inequal4:
+   case nir_op_b32all_fequal2:
+   case nir_op_b32all_iequal2:
+   case nir_op_b32all_fequal3:
+   case nir_op_b32all_iequal3:
+   case nir_op_b32all_fequal4:
+   case nir_op_b32all_iequal4:
+   case nir_op_b32any_fnequal2:
+   case nir_op_b32any_inequal2:
+   case nir_op_b32any_fnequal3:
+   case nir_op_b32any_inequal3:
+   case nir_op_b32any_fnequal4:
+   case nir_op_b32any_inequal4:
       unreachable("Lowered by nir_lower_alu_reductions");
 
    case nir_op_fnoise1_1:
@@ -1508,7 +1508,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_bcsel:
+   case nir_op_b32csel:
       if (optimize_frontfacing_ternary(instr, result))
          return;
 

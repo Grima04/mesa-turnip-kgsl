@@ -433,26 +433,26 @@ get_iteration(nir_op cond_op, nir_const_value *initial, nir_const_value *step,
    int32_t iter;
 
    switch (cond_op) {
-   case nir_op_ige:
-   case nir_op_ilt:
-   case nir_op_ieq:
-   case nir_op_ine: {
+   case nir_op_ige32:
+   case nir_op_ilt32:
+   case nir_op_ieq32:
+   case nir_op_ine32: {
       int32_t initial_val = initial->i32[0];
       int32_t span = limit->i32[0] - initial_val;
       iter = span / step->i32[0];
       break;
    }
-   case nir_op_uge:
-   case nir_op_ult: {
+   case nir_op_uge32:
+   case nir_op_ult32: {
       uint32_t initial_val = initial->u32[0];
       uint32_t span = limit->u32[0] - initial_val;
       iter = span / step->u32[0];
       break;
    }
-   case nir_op_fge:
-   case nir_op_flt:
-   case nir_op_feq:
-   case nir_op_fne: {
+   case nir_op_fge32:
+   case nir_op_flt32:
+   case nir_op_feq32:
+   case nir_op_fne32: {
       float initial_val = initial->f32[0];
       float span = limit->f32[0] - initial_val;
       iter = span / step->f32[0];
@@ -623,10 +623,10 @@ find_trip_count(loop_info_state *state)
       bool limit_rhs = true;
 
       switch (alu->op) {
-      case nir_op_fge:      case nir_op_ige:      case nir_op_uge:
-      case nir_op_flt:      case nir_op_ilt:      case nir_op_ult:
-      case nir_op_feq:      case nir_op_ieq:
-      case nir_op_fne:      case nir_op_ine:
+      case nir_op_fge32:      case nir_op_ige32:      case nir_op_uge32:
+      case nir_op_flt32:      case nir_op_ilt32:      case nir_op_ult32:
+      case nir_op_feq32:      case nir_op_ieq32:
+      case nir_op_fne32:      case nir_op_ine32:
 
          /* We assume that the limit is the "right" operand */
          basic_ind = get_loop_var(alu->src[0].src.ssa, state);

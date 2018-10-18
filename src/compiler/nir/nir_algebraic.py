@@ -277,6 +277,34 @@ class Variable(Value):
 _opcode_re = re.compile(r"(?P<inexact>~)?(?P<opcode>\w+)(?:@(?P<bits>\d+))?"
                         r"(?P<cond>\([^\)]+\))?")
 
+opcode_remap = {
+   'flt' : 'flt32',
+   'fge' : 'fge32',
+   'feq' : 'feq32',
+   'fne' : 'fne32',
+   'ilt' : 'ilt32',
+   'ige' : 'ige32',
+   'ieq' : 'ieq32',
+   'ine' : 'ine32',
+   'ult' : 'ult32',
+   'uge' : 'uge32',
+
+   'ball_iequal2' : 'b32all_iequal2',
+   'ball_iequal3' : 'b32all_iequal3',
+   'ball_iequal4' : 'b32all_iequal4',
+   'bany_inequal2' : 'b32any_inequal2',
+   'bany_inequal3' : 'b32any_inequal3',
+   'bany_inequal4' : 'b32any_inequal4',
+   'ball_fequal2' : 'b32all_fequal2',
+   'ball_fequal3' : 'b32all_fequal3',
+   'ball_fequal4' : 'b32all_fequal4',
+   'bany_fnequal2' : 'b32any_fnequal2',
+   'bany_fnequal3' : 'b32any_fnequal3',
+   'bany_fnequal4' : 'b32any_fnequal4',
+
+   'bcsel' : 'b32csel',
+}
+
 class Expression(Value):
    def __init__(self, expr, name_base, varset):
       Value.__init__(self, expr, name_base, "expression")
@@ -286,6 +314,8 @@ class Expression(Value):
       assert m and m.group('opcode') is not None
 
       self.opcode = m.group('opcode')
+      if self.opcode in opcode_remap:
+         self.opcode = opcode_remap[self.opcode]
       self._bit_size = int(m.group('bits')) if m.group('bits') else None
       self.inexact = m.group('inexact') is not None
       self.cond = m.group('cond')

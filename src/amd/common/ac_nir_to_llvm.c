@@ -681,34 +681,34 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 						     LLVMTypeOf(src[0]), ""),
 				       "");
 		break;
-	case nir_op_ilt:
+	case nir_op_ilt32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntSLT, src[0], src[1]);
 		break;
-	case nir_op_ine:
+	case nir_op_ine32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntNE, src[0], src[1]);
 		break;
-	case nir_op_ieq:
+	case nir_op_ieq32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntEQ, src[0], src[1]);
 		break;
-	case nir_op_ige:
+	case nir_op_ige32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntSGE, src[0], src[1]);
 		break;
-	case nir_op_ult:
+	case nir_op_ult32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntULT, src[0], src[1]);
 		break;
-	case nir_op_uge:
+	case nir_op_uge32:
 		result = emit_int_cmp(&ctx->ac, LLVMIntUGE, src[0], src[1]);
 		break;
-	case nir_op_feq:
+	case nir_op_feq32:
 		result = emit_float_cmp(&ctx->ac, LLVMRealOEQ, src[0], src[1]);
 		break;
-	case nir_op_fne:
+	case nir_op_fne32:
 		result = emit_float_cmp(&ctx->ac, LLVMRealUNE, src[0], src[1]);
 		break;
-	case nir_op_flt:
+	case nir_op_flt32:
 		result = emit_float_cmp(&ctx->ac, LLVMRealOLT, src[0], src[1]);
 		break;
-	case nir_op_fge:
+	case nir_op_fge32:
 		result = emit_float_cmp(&ctx->ac, LLVMRealOGE, src[0], src[1]);
 		break;
 	case nir_op_fabs:
@@ -910,7 +910,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		else
 			result = LLVMBuildTrunc(ctx->ac.builder, src[0], def_type, "");
 		break;
-	case nir_op_bcsel:
+	case nir_op_b32csel:
 		result = emit_bcsel(&ctx->ac, src[0], src[1], src[2]);
 		break;
 	case nir_op_find_lsb:

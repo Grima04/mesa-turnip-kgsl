@@ -205,7 +205,7 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
          break;
 
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      nir_alu_instr *sel = nir_alu_instr_create(shader, nir_op_bcsel);
+      nir_alu_instr *sel = nir_alu_instr_create(shader, nir_op_b32csel);
       nir_src_copy(&sel->src[0].src, &if_stmt->condition, sel);
       /* Splat the condition to all channels */
       memset(sel->src[0].swizzle, 0, sizeof sel->src[0].swizzle);

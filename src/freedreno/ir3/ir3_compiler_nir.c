@@ -458,22 +458,22 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0]->cat5.type = TYPE_F32;
 		break;
 		break;
-	case nir_op_flt:
+	case nir_op_flt32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_fge:
+	case nir_op_fge32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_feq:
+	case nir_op_feq32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_fne:
+	case nir_op_fne32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		dst[0] = ir3_n2b(b, dst[0]);
@@ -586,38 +586,38 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_ushr:
 		dst[0] = ir3_SHR_B(b, src[0], 0, src[1], 0);
 		break;
-	case nir_op_ilt:
+	case nir_op_ilt32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_ige:
+	case nir_op_ige32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_ieq:
+	case nir_op_ieq32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_ine:
+	case nir_op_ine32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_ult:
+	case nir_op_ult32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_uge:
+	case nir_op_uge32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
 
-	case nir_op_bcsel: {
+	case nir_op_b32csel: {
 		struct ir3_instruction *cond = ir3_b2n(b, src[0]);
 		compile_assert(ctx, bs[1] == bs[2]);
 		/* the boolean condition is 32b even if src[1] and src[2] are
