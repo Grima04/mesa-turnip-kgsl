@@ -24,7 +24,9 @@ def op_bit_sizes(op):
     return sorted(list(sizes)) if sizes is not None else None
 
 def get_const_field(type_):
-    if type_base_type(type_) == 'bool':
+    if type_size(type_) == 1:
+        return 'b'
+    elif type_base_type(type_) == 'bool':
         return 'i' + str(type_size(type_))
     elif type_ == "float16":
         return "u16"
@@ -237,9 +239,12 @@ unpack_half_1x16(uint16_t u)
 }
 
 /* Some typed vector structures to make things like src0.y work */
+typedef int8_t int1_t;
+typedef uint8_t uint1_t;
 typedef float float16_t;
 typedef float float32_t;
 typedef double float64_t;
+typedef bool bool1_t;
 typedef bool bool8_t;
 typedef bool bool16_t;
 typedef bool bool32_t;
@@ -274,7 +279,10 @@ struct ${type}${width}_vec {
 
       const struct ${input_types[j]}_vec src${j} = {
       % for k in range(op.input_sizes[j]):
-         % if input_types[j] == "float16":
+         % if input_types[j] == "int1":
+             /* 1-bit integers use a 0/-1 convention */
+             -(int1_t)_src[${j}].b[${k}],
+         % elif input_types[j] == "float16":
             _mesa_half_to_float(_src[${j}].u16[${k}]),
          % else:
             _src[${j}].${get_const_field(input_types[j])}[${k}],
@@ -299,6 +307,9 @@ struct ${type}${width}_vec {
             % elif "src" + str(j) not in op.const_expr:
                ## Avoid unused variable warnings
                <% continue %>
+            % elif input_types[j] == "int1":
+               /* 1-bit integers use a 0/-1 convention */
+               const int1_t src${j} = -(int1_t)_src[${j}].b[_i];
             % elif input_types[j] == "float16":
                const float src${j} =
                   _mesa_half_to_float(_src[${j}].u16[_i]);
@@ -321,7 +332,10 @@ struct ${type}${width}_vec {
 
          ## Store the current component of the actual destination to the
          ## value of dst.
-         % if output_type.startswith("bool"):
+         % if output_type == "int1" or output_type == "uint1":
+            /* 1-bit integers get truncated */
+            _dst_val.b[_i] = dst & 1;
+         % elif output_type.startswith("bool"):
             ## Sanitize the C value to a proper NIR 0/-1 bool
             _dst_val.${get_const_field(output_type)}[_i] = -(int)dst;
          % elif output_type == "float16":
@@ -350,7 +364,10 @@ struct ${type}${width}_vec {
       ## For each component in the destination, copy the value of dst to
       ## the actual destination.
       % for k in range(op.output_size):
-         % if output_type == "bool32":
+         % if output_type == "int1" or output_type == "uint1":
+            /* 1-bit integers get truncated */
+            _dst_val.b[${k}] = dst.${"xyzw"[k]} & 1;
+         % elif output_type.startswith("bool"):
             ## Sanitize the C value to a proper NIR 0/-1 bool
             _dst_val.${get_const_field(output_type)}[${k}] = -(int)dst.${"xyzw"[k]};
          % elif output_type == "float16":

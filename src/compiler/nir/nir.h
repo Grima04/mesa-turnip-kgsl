@@ -118,6 +118,7 @@ typedef enum {
 } nir_rounding_mode;
 
 typedef union {
+   bool b[NIR_MAX_VEC_COMPONENTS];
    float f32[NIR_MAX_VEC_COMPONENTS];
    double f64[NIR_MAX_VEC_COMPONENTS];
    int8_t i8[NIR_MAX_VEC_COMPONENTS];
@@ -779,17 +780,25 @@ typedef struct {
    unsigned write_mask : NIR_MAX_VEC_COMPONENTS; /* ignored if dest.is_ssa is true */
 } nir_alu_dest;
 
+/** NIR sized and unsized types
+ *
+ * The values in this enum are carefully chosen so that the sized type is
+ * just the unsized type OR the number of bits.
+ */
 typedef enum {
    nir_type_invalid = 0, /* Not a valid type */
-   nir_type_float,
-   nir_type_int,
-   nir_type_uint,
-   nir_type_bool,
+   nir_type_int =       2,
+   nir_type_uint =      4,
+   nir_type_bool =      6,
+   nir_type_float =     128,
+   nir_type_bool1 =     1  | nir_type_bool,
    nir_type_bool32 =    32 | nir_type_bool,
+   nir_type_int1 =      1  | nir_type_int,
    nir_type_int8 =      8  | nir_type_int,
    nir_type_int16 =     16 | nir_type_int,
    nir_type_int32 =     32 | nir_type_int,
    nir_type_int64 =     64 | nir_type_int,
+   nir_type_uint1 =     1  | nir_type_uint,
    nir_type_uint8 =     8  | nir_type_uint,
    nir_type_uint16 =    16 | nir_type_uint,
    nir_type_uint32 =    32 | nir_type_uint,
@@ -799,8 +808,8 @@ typedef enum {
    nir_type_float64 =   64 | nir_type_float,
 } nir_alu_type;
 
-#define NIR_ALU_TYPE_SIZE_MASK 0xfffffff8
-#define NIR_ALU_TYPE_BASE_TYPE_MASK 0x00000007
+#define NIR_ALU_TYPE_SIZE_MASK 0x79
+#define NIR_ALU_TYPE_BASE_TYPE_MASK 0x86
 
 static inline unsigned
 nir_alu_type_get_type_size(nir_alu_type type)

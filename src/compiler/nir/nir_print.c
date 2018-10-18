@@ -996,6 +996,9 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
       case 8:
          fprintf(fp, "0x%02x", instr->value.u8[i]);
          break;
+      case 1:
+         fprintf(fp, "%s", instr->value.b[i] ? "true" : "false");
+         break;
       }
    }
 

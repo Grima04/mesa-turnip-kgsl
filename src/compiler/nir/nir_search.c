@@ -476,8 +476,9 @@ construct_value(nir_builder *build,
          break;
 
       case nir_type_bool:
-         cval = nir_imm_bool(build, c->data.u);
+         cval = nir_imm_boolN_t(build, c->data.u, bit_size);
          break;
+
       default:
          unreachable("Invalid alu source type");
       }

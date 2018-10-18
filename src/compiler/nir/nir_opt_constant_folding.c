@@ -88,6 +88,9 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
          case 8:
             src[i].u8[j] = load_const->value.u8[instr->src[i].swizzle[j]];
             break;
+         case 1:
+            src[i].b[j] = load_const->value.b[instr->src[i].swizzle[j]];
+            break;
          default:
             unreachable("Invalid bit size");
          }
