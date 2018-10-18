@@ -2385,6 +2385,8 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         vc4_optimize_nir(c->s);
 
+        NIR_PASS_V(c->s, nir_lower_bool_to_int32);
+
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
         if (vc4_debug & VC4_DEBUG_SHADERDB) {

@@ -756,6 +756,7 @@ uint64_t *v3d_compile_vs(const struct v3d_compiler *compiler,
 
         v3d_lower_nir_late(c);
         v3d_optimize_nir(c->s);
+        NIR_PASS_V(c->s, nir_lower_bool_to_int32);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
         v3d_nir_to_vir(c);
@@ -907,6 +908,7 @@ uint64_t *v3d_compile_fs(const struct v3d_compiler *compiler,
 
         v3d_lower_nir_late(c);
         v3d_optimize_nir(c->s);
+        NIR_PASS_V(c->s, nir_lower_bool_to_int32);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
         v3d_nir_to_vir(c);

@@ -77,6 +77,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 	/* this needs to be the last pass run, so do this here instead of
 	 * in ir3_optimize_nir():
 	 */
+	NIR_PASS_V(ctx->s, nir_lower_bool_to_int32);
 	NIR_PASS_V(ctx->s, nir_lower_locals_to_regs);
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 

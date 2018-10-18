@@ -822,6 +822,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       nir_print_shader(nir, stderr);
    }
 
+   OPT(nir_lower_bool_to_int32);
+
    OPT(nir_convert_from_ssa, true);
 
    if (!is_scalar) {
