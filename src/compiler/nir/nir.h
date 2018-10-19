@@ -828,7 +828,7 @@ nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
 {
    switch (base_type) {
    case GLSL_TYPE_BOOL:
-      return nir_type_bool32;
+      return nir_type_bool1;
       break;
    case GLSL_TYPE_UINT:
       return nir_type_uint32;
@@ -1568,18 +1568,18 @@ static inline bool
 nir_alu_instr_is_comparison(const nir_alu_instr *instr)
 {
    switch (instr->op) {
-   case nir_op_flt32:
-   case nir_op_fge32:
-   case nir_op_feq32:
-   case nir_op_fne32:
-   case nir_op_ilt32:
-   case nir_op_ult32:
-   case nir_op_ige32:
-   case nir_op_uge32:
-   case nir_op_ieq32:
-   case nir_op_ine32:
-   case nir_op_i2b32:
-   case nir_op_f2b32:
+   case nir_op_flt:
+   case nir_op_fge:
+   case nir_op_feq:
+   case nir_op_fne:
+   case nir_op_ilt:
+   case nir_op_ult:
+   case nir_op_ige:
+   case nir_op_uge:
+   case nir_op_ieq:
+   case nir_op_ine:
+   case nir_op_i2b1:
+   case nir_op_f2b1:
    case nir_op_inot:
    case nir_op_fnot:
       return true;

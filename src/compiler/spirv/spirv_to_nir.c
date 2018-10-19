@@ -1468,7 +1468,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
           opcode == SpvOpSpecConstantFalse)
          int_val = get_specialization(b, val, int_val);
 
-      val->constant->values[0].u32[0] = int_val ? NIR_TRUE : NIR_FALSE;
+      val->constant->values[0].b[0] = int_val != 0;
       break;
    }
 

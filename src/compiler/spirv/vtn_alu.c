@@ -244,15 +244,15 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    case SpvOpShiftRightArithmetic:  return nir_op_ishr;
    case SpvOpShiftLeftLogical:      return nir_op_ishl;
    case SpvOpLogicalOr:             return nir_op_ior;
-   case SpvOpLogicalEqual:          return nir_op_ieq32;
-   case SpvOpLogicalNotEqual:       return nir_op_ine32;
+   case SpvOpLogicalEqual:          return nir_op_ieq;
+   case SpvOpLogicalNotEqual:       return nir_op_ine;
    case SpvOpLogicalAnd:            return nir_op_iand;
    case SpvOpLogicalNot:            return nir_op_inot;
    case SpvOpBitwiseOr:             return nir_op_ior;
    case SpvOpBitwiseXor:            return nir_op_ixor;
    case SpvOpBitwiseAnd:            return nir_op_iand;
-   case SpvOpSelect:                return nir_op_b32csel;
-   case SpvOpIEqual:                return nir_op_ieq32;
+   case SpvOpSelect:                return nir_op_bcsel;
+   case SpvOpIEqual:                return nir_op_ieq;
 
    case SpvOpBitFieldInsert:        return nir_op_bitfield_insert;
    case SpvOpBitFieldSExtract:      return nir_op_ibitfield_extract;
@@ -264,27 +264,27 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
     * the logical operator to use since they also need to check if operands are
     * ordered.
     */
-   case SpvOpFOrdEqual:                            return nir_op_feq32;
-   case SpvOpFUnordEqual:                          return nir_op_feq32;
-   case SpvOpINotEqual:                            return nir_op_ine32;
-   case SpvOpFOrdNotEqual:                         return nir_op_fne32;
-   case SpvOpFUnordNotEqual:                       return nir_op_fne32;
-   case SpvOpULessThan:                            return nir_op_ult32;
-   case SpvOpSLessThan:                            return nir_op_ilt32;
-   case SpvOpFOrdLessThan:                         return nir_op_flt32;
-   case SpvOpFUnordLessThan:                       return nir_op_flt32;
-   case SpvOpUGreaterThan:          *swap = true;  return nir_op_ult32;
-   case SpvOpSGreaterThan:          *swap = true;  return nir_op_ilt32;
-   case SpvOpFOrdGreaterThan:       *swap = true;  return nir_op_flt32;
-   case SpvOpFUnordGreaterThan:     *swap = true;  return nir_op_flt32;
-   case SpvOpULessThanEqual:        *swap = true;  return nir_op_uge32;
-   case SpvOpSLessThanEqual:        *swap = true;  return nir_op_ige32;
-   case SpvOpFOrdLessThanEqual:     *swap = true;  return nir_op_fge32;
-   case SpvOpFUnordLessThanEqual:   *swap = true;  return nir_op_fge32;
-   case SpvOpUGreaterThanEqual:                    return nir_op_uge32;
-   case SpvOpSGreaterThanEqual:                    return nir_op_ige32;
-   case SpvOpFOrdGreaterThanEqual:                 return nir_op_fge32;
-   case SpvOpFUnordGreaterThanEqual:               return nir_op_fge32;
+   case SpvOpFOrdEqual:                            return nir_op_feq;
+   case SpvOpFUnordEqual:                          return nir_op_feq;
+   case SpvOpINotEqual:                            return nir_op_ine;
+   case SpvOpFOrdNotEqual:                         return nir_op_fne;
+   case SpvOpFUnordNotEqual:                       return nir_op_fne;
+   case SpvOpULessThan:                            return nir_op_ult;
+   case SpvOpSLessThan:                            return nir_op_ilt;
+   case SpvOpFOrdLessThan:                         return nir_op_flt;
+   case SpvOpFUnordLessThan:                       return nir_op_flt;
+   case SpvOpUGreaterThan:          *swap = true;  return nir_op_ult;
+   case SpvOpSGreaterThan:          *swap = true;  return nir_op_ilt;
+   case SpvOpFOrdGreaterThan:       *swap = true;  return nir_op_flt;
+   case SpvOpFUnordGreaterThan:     *swap = true;  return nir_op_flt;
+   case SpvOpULessThanEqual:        *swap = true;  return nir_op_uge;
+   case SpvOpSLessThanEqual:        *swap = true;  return nir_op_ige;
+   case SpvOpFOrdLessThanEqual:     *swap = true;  return nir_op_fge;
+   case SpvOpFUnordLessThanEqual:   *swap = true;  return nir_op_fge;
+   case SpvOpUGreaterThanEqual:                    return nir_op_uge;
+   case SpvOpSGreaterThanEqual:                    return nir_op_ige;
+   case SpvOpFOrdGreaterThanEqual:                 return nir_op_fge;
+   case SpvOpFUnordGreaterThanEqual:               return nir_op_fge;
 
    /* Conversions: */
    case SpvOpQuantizeToF16:         return nir_op_fquantize2f16;
@@ -413,9 +413,9 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
       } else {
          nir_op op;
          switch (src[0]->num_components) {
-         case 2:  op = nir_op_b32any_inequal2; break;
-         case 3:  op = nir_op_b32any_inequal3; break;
-         case 4:  op = nir_op_b32any_inequal4; break;
+         case 2:  op = nir_op_bany_inequal2; break;
+         case 3:  op = nir_op_bany_inequal3; break;
+         case 4:  op = nir_op_bany_inequal4; break;
          default: vtn_fail("invalid number of components");
          }
          val->ssa->def = nir_build_alu(&b->nb, op, src[0],
@@ -430,9 +430,9 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
       } else {
          nir_op op;
          switch (src[0]->num_components) {
-         case 2:  op = nir_op_b32all_iequal2;  break;
-         case 3:  op = nir_op_b32all_iequal3;  break;
-         case 4:  op = nir_op_b32all_iequal4;  break;
+         case 2:  op = nir_op_ball_iequal2;  break;
+         case 3:  op = nir_op_ball_iequal3;  break;
+         case 4:  op = nir_op_ball_iequal4;  break;
          default: vtn_fail("invalid number of components");
          }
          val->ssa->def = nir_build_alu(&b->nb, op, src[0],
