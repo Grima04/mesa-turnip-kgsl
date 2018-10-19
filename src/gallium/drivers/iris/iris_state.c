@@ -4309,6 +4309,8 @@ iris_upload_compute_state(struct iris_context *ice,
                          .stride_B = 1,
                          .mocs = MOCS_WB);
 
+   // XXX: this will update the binding table on every dispatch, should
+   // XXX: check if the grid size actually changed (or indirect buf changed)
    if (dirty & IRIS_DIRTY_BINDINGS_CS || grid_size_res)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false,
                                   &grid_size_surf);
