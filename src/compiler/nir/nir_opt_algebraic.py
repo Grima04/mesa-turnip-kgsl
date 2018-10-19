@@ -534,6 +534,19 @@ optimizations = [
    (('bcsel', a, b, b), b),
    (('fcsel', a, b, b), b),
 
+   # D3D Boolean emulation
+   (('bcsel', a, -1, 0), ('ineg', ('b2i', 'a@1'))),
+   (('bcsel', a, 0, -1), ('ineg', ('b2i', ('inot', a)))),
+   (('iand', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('iand', a, b)))),
+   (('ior', ('ineg', ('b2i','a@1')), ('ineg', ('b2i', 'b@1'))),
+    ('ineg', ('b2i', ('ior', a, b)))),
+   (('ieq', ('ineg', ('b2i', 'a@1')), 0), ('inot', a)),
+   (('ieq', ('ineg', ('b2i', 'a@1')), -1), a),
+   (('ine', ('ineg', ('b2i', 'a@1')), 0), a),
+   (('ine', ('ineg', ('b2i', 'a@1')), -1), ('inot', a)),
+   (('iand', ('ineg', ('b2i', a)), '1.0@32'), ('b2f', a)),
+
    # Conversions
    (('i2b32', ('b2i', 'a@32')), a),
    (('f2i', ('ftrunc', a)), ('f2i', a)),
