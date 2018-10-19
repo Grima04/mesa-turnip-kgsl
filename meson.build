@@ -70,24 +70,42 @@ endif
 
 with_gles1 = get_option('gles1')
 with_gles2 = get_option('gles2')
+if host_machine.system() == 'windows'
+  if with_gles1 == 'auto'
+    with_gles1 = 'false'
+  endif
+  if with_gles2 == 'auto'
+    with_gles2 = 'false'
+  endif
+endif
 with_opengl = get_option('opengl')
-with_any_opengl = with_opengl or with_gles1 or with_gles2
-# Only build shared_glapi if at least one OpenGL API is enabled
-with_shared_glapi = get_option('shared-glapi') and with_any_opengl
-
+with_shared_glapi = get_option('shared-glapi')
 
 # shared-glapi is required if at least two OpenGL APIs are being built
 if not with_shared_glapi
-  if ((with_gles1 and with_gles2) or (with_gles1 and with_opengl)
-      or (with_gles2 and with_opengl))
+  if ((with_gles1 == 'true' and with_gles2 == 'true') or 
+      (with_gles1 == 'true' and with_opengl) or
+      (with_gles2 == 'true' and with_opengl))
     error('shared-glapi required for building two or more of OpenGL, OpenGL ES 1.x, OpenGL ES 2.x')
   endif
+  with_gles1 = 'false'
+  with_gles2 = 'false'
 endif
 
 # We require OpenGL for OpenGL ES
-if (with_gles1 or with_gles2) and not with_opengl
-  error('building OpenGL ES without OpenGL is not supported.')
+if not with_opengl
+  if (with_gles1 == 'true' or with_gles2 == 'true') and not with_opengl
+    error('building OpenGL ES without OpenGL is not supported.')
+  endif
+  with_gles1 = 'false'
+  with_gles2 = 'false'
 endif
+
+with_gles1 = with_gles1 != 'false'
+with_gles2 = with_gles2 != 'false'
+with_any_opengl = with_opengl or with_gles1 or with_gles2
+# Only build shared_glapi if at least one OpenGL API is enabled
+with_shared_glapi = get_option('shared-glapi') and with_any_opengl
 
 system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'dragonfly', 'linux'].contains(host_machine.system())
 
