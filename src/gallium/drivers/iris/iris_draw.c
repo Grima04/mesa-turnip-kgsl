@@ -115,6 +115,7 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
    ice->vtbl.upload_compute_state(ice, batch, info);
 
+   // XXX: this is wrong.  we need separate dirty tracking for compute/render
    ice->state.dirty = 0ull;
 
    // XXX: postdraw resolve tracking
