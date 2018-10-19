@@ -553,25 +553,9 @@ init_glk_barrier_mode(struct iris_batch *batch, uint32_t value)
 #endif
 }
 
-/**
- * Upload the initial GPU state for a render context.
- *
- * This sets some invariant state that needs to be programmed a particular
- * way, but we never actually change.
- */
 static void
-iris_init_render_context(struct iris_screen *screen,
-                         struct iris_batch *batch,
-                         struct iris_vtable *vtbl,
-                         struct pipe_debug_callback *dbg)
+init_state_base_address(struct iris_batch *batch)
 {
-   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
-   uint32_t reg_val;
-
-   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
-
-   emit_pipeline_select(batch, _3D);
-
    flush_for_state_base_change(batch);
 
    /* We program most base addresses once at context initialization time.
@@ -610,6 +594,28 @@ iris_init_render_context(struct iris_screen *screen,
       sba.InstructionBufferSize    = 0xfffff;
       sba.DynamicStateBufferSize   = 0xfffff;
    }
+}
+
+/**
+ * Upload the initial GPU state for a render context.
+ *
+ * This sets some invariant state that needs to be programmed a particular
+ * way, but we never actually change.
+ */
+static void
+iris_init_render_context(struct iris_screen *screen,
+                         struct iris_batch *batch,
+                         struct iris_vtable *vtbl,
+                         struct pipe_debug_callback *dbg)
+{
+   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+   uint32_t reg_val;
+
+   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
+
+   emit_pipeline_select(batch, _3D);
+
+   init_state_base_address(batch);
 
    // XXX: INSTPM on Gen8
    iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
@@ -696,43 +702,12 @@ iris_init_compute_context(struct iris_screen *screen,
 
    emit_pipeline_select(batch, GPGPU);
 
+   init_state_base_address(batch);
+
 #if GEN_GEN == 9
    if (devinfo->is_geminilake)
       init_glk_barrier_mode(batch, GLK_BARRIER_MODE_GPGPU);
 #endif
-
-   iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-   #if 0
-   // XXX: MOCS is stupid for this.
-      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
-      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
-      sba.SurfaceStateMemoryObjectControlState            = MOCS_WB;
-      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
-      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
-      sba.InstructionMemoryObjectControlState             = MOCS_WB;
-      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
-   #endif
-
-      sba.GeneralStateBaseAddressModifyEnable   = true;
-      sba.SurfaceStateBaseAddressModifyEnable   = true;
-      sba.DynamicStateBaseAddressModifyEnable   = true;
-      sba.IndirectObjectBaseAddressModifyEnable = true;
-      sba.InstructionBaseAddressModifyEnable    = true;
-      sba.GeneralStateBufferSizeModifyEnable    = true;
-      sba.DynamicStateBufferSizeModifyEnable    = true;
-      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-      sba.IndirectObjectBufferSizeModifyEnable  = true;
-      sba.InstructionBuffersizeModifyEnable     = true;
-
-      sba.InstructionBaseAddress  = ro_bo(NULL, IRIS_MEMZONE_SHADER_START);
-      sba.SurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_SURFACE_START);
-      sba.DynamicStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_DYNAMIC_START);
-
-      sba.GeneralStateBufferSize   = 0xfffff;
-      sba.IndirectObjectBufferSize = 0xfffff;
-      sba.InstructionBufferSize    = 0xfffff;
-      sba.DynamicStateBufferSize   = 0xfffff;
-   }
 }
 
 struct iris_vertex_buffer_state {
