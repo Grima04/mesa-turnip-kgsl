@@ -4376,9 +4376,9 @@ iris_upload_compute_state(struct iris_context *ice,
    memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
    iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
    iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
-     curbe.CURBETotalDataLength =
-        ALIGN(cs_prog_data->push.total.size, 64);
-     curbe.CURBEDataStartAddress = curbe_data_offset;
+      curbe.CURBETotalDataLength =
+         ALIGN(cs_prog_data->push.total.size, 64);
+      curbe.CURBEDataStartAddress = curbe_data_offset;
    }
 
    struct pipe_resource *desc_res = NULL;
