@@ -111,6 +111,14 @@ struct blorp_params;
 #define IRIS_DIRTY_VF                       (1ull << 53)
 #define IRIS_DIRTY_VF_TOPOLOGY              (1ull << 54)
 
+#define IRIS_ALL_DIRTY_FOR_COMPUTE (IRIS_DIRTY_CS | \
+                                    IRIS_DIRTY_SAMPLER_STATES_CS | \
+                                    IRIS_DIRTY_UNCOMPILED_CS | \
+                                    IRIS_DIRTY_CONSTANTS_CS | \
+                                    IRIS_DIRTY_BINDINGS_CS)
+
+#define IRIS_ALL_DIRTY_FOR_RENDER ~IRIS_ALL_DIRTY_FOR_COMPUTE
+
 #define IRIS_ALL_DIRTY_BINDINGS (IRIS_DIRTY_BINDINGS_VS  | \
                                  IRIS_DIRTY_BINDINGS_TCS | \
                                  IRIS_DIRTY_BINDINGS_TES | \

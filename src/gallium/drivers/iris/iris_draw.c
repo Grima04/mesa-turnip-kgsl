@@ -89,7 +89,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
    ice->vtbl.upload_render_state(ice, batch, info);
 
-   ice->state.dirty = 0ull;
+   ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
 
    iris_postdraw_update_resolve_tracking(ice, batch);
 }
@@ -163,8 +163,7 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
    ice->vtbl.upload_compute_state(ice, batch, grid);
 
-   // XXX: this is wrong.  we need separate dirty tracking for compute/render
-   ice->state.dirty = 0ull;
+   ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_COMPUTE;
 
    // XXX: postdraw resolve tracking
 }
