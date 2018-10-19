@@ -4274,6 +4274,9 @@ iris_upload_compute_state(struct iris_context *ice,
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
 
+   // XXX: L3 configuration not set up for SLM
+   assert(prog_data->total_shared == 0);
+
    struct pipe_resource *grid_size_res = NULL;
    uint32_t grid_size_offset;
    if (grid->indirect) {
