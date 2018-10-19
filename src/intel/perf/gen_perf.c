@@ -616,14 +616,14 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
 
       memcpy(config.uuid, query->guid, sizeof(config.uuid));
 
-      config.n_mux_regs = query->n_mux_regs;
-      config.mux_regs_ptr = (uintptr_t) query->mux_regs;
+      config.n_mux_regs = query->config.n_mux_regs;
+      config.mux_regs_ptr = (uintptr_t) query->config.mux_regs;
 
-      config.n_boolean_regs = query->n_b_counter_regs;
-      config.boolean_regs_ptr = (uintptr_t) query->b_counter_regs;
+      config.n_boolean_regs = query->config.n_b_counter_regs;
+      config.boolean_regs_ptr = (uintptr_t) query->config.b_counter_regs;
 
-      config.n_flex_regs = query->n_flex_regs;
-      config.flex_regs_ptr = (uintptr_t) query->flex_regs;
+      config.n_flex_regs = query->config.n_flex_regs;
+      config.flex_regs_ptr = (uintptr_t) query->config.flex_regs;
 
       ret = gen_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &config);
       if (ret < 0) {

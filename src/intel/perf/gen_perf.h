@@ -164,6 +164,18 @@ struct gen_perf_query_register_prog {
    uint32_t val;
 };
 
+/* Register programming for a given query */
+struct gen_perf_configuration {
+   struct gen_perf_query_register_prog *flex_regs;
+   uint32_t n_flex_regs;
+
+   struct gen_perf_query_register_prog *mux_regs;
+   uint32_t n_mux_regs;
+
+   struct gen_perf_query_register_prog *b_counter_regs;
+   uint32_t n_b_counter_regs;
+};
+
 struct gen_perf_query_info {
    enum gen_perf_query_type {
       GEN_PERF_QUERY_TYPE_OA,
@@ -188,15 +200,7 @@ struct gen_perf_query_info {
    int b_offset;
    int c_offset;
 
-   /* Register programming for a given query */
-   struct gen_perf_query_register_prog *flex_regs;
-   uint32_t n_flex_regs;
-
-   struct gen_perf_query_register_prog *mux_regs;
-   uint32_t n_mux_regs;
-
-   struct gen_perf_query_register_prog *b_counter_regs;
-   uint32_t n_b_counter_regs;
+   struct gen_perf_configuration config;
 };
 
 struct gen_perf_config {
