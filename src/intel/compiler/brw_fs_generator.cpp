@@ -818,7 +818,7 @@ fs_generator::generate_linterp(fs_inst *inst,
     */
    struct brw_reg delta_x = src[0];
    struct brw_reg delta_y = offset(src[0], inst->exec_size / 8);
-   struct brw_reg interp = src[1];
+   struct brw_reg interp = stride(src[1], 0, 1, 0);
    brw_inst *i[4];
 
    if (devinfo->gen >= 11) {

@@ -194,7 +194,7 @@ fs_visitor::emit_interpolation_setup_gen4()
     */
    this->wpos_w = vgrf(glsl_type::float_type);
    abld.emit(FS_OPCODE_LINTERP, wpos_w, delta_xy,
-             component(interp_reg(VARYING_SLOT_POS, 3), 0));
+             interp_reg(VARYING_SLOT_POS, 3));
    /* Compute the pixel 1/W value from wpos.w. */
    this->pixel_w = vgrf(glsl_type::float_type);
    abld.emit(SHADER_OPCODE_RCP, this->pixel_w, wpos_w);

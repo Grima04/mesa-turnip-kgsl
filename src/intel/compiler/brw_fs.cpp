@@ -1211,7 +1211,7 @@ fs_visitor::emit_fragcoord_interpolation(fs_reg wpos)
    } else {
       bld.emit(FS_OPCODE_LINTERP, wpos,
                this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL],
-               component(interp_reg(VARYING_SLOT_POS, 2), 0));
+               interp_reg(VARYING_SLOT_POS, 2));
    }
    wpos = offset(wpos, bld, 1);
 
