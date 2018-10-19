@@ -198,6 +198,10 @@ lower_alu_instr_scalar(nir_alu_instr *instr, nir_builder *b)
       return false;
 
       LOWER_REDUCTION(nir_op_fdot, nir_op_fmul, nir_op_fadd);
+      LOWER_REDUCTION(nir_op_ball_fequal, nir_op_feq, nir_op_iand);
+      LOWER_REDUCTION(nir_op_ball_iequal, nir_op_ieq, nir_op_iand);
+      LOWER_REDUCTION(nir_op_bany_fnequal, nir_op_fne, nir_op_ior);
+      LOWER_REDUCTION(nir_op_bany_inequal, nir_op_ine, nir_op_ior);
       LOWER_REDUCTION(nir_op_b32all_fequal, nir_op_feq32, nir_op_iand);
       LOWER_REDUCTION(nir_op_b32all_iequal, nir_op_ieq32, nir_op_iand);
       LOWER_REDUCTION(nir_op_b32any_fnequal, nir_op_fne32, nir_op_ior);

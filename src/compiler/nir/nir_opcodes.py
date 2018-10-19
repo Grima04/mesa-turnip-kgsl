@@ -91,6 +91,7 @@ class Opcode(object):
 tfloat = "float"
 tint = "int"
 tbool = "bool"
+tbool1 = "bool1"
 tbool32 = "bool32"
 tuint = "uint"
 tuint16 = "uint16"
@@ -119,11 +120,11 @@ def type_sizes(type_):
     if type_has_size(type_):
         return [type_size(type_)]
     elif type_ == 'bool':
-        return [32]
+        return [1, 32]
     elif type_ == 'float':
         return [16, 32, 64]
     else:
-        return [8, 16, 32, 64]
+        return [1, 8, 16, 32, 64]
 
 def type_base_type(type_):
     m = _TYPE_SPLIT_RE.match(type_)
@@ -430,6 +431,9 @@ def binop_convert(name, out_type, in_type, alg_props, const_expr):
 def binop(name, ty, alg_props, const_expr):
    binop_convert(name, ty, ty, alg_props, const_expr)
 
+def binop_compare(name, ty, alg_props, const_expr):
+   binop_convert(name, tbool1, ty, alg_props, const_expr)
+
 def binop_compare32(name, ty, alg_props, const_expr):
    binop_convert(name, tbool32, ty, alg_props, const_expr)
 
@@ -550,6 +554,16 @@ binop("frem", tfloat, "", "src0 - src1 * truncf(src0 / src1)")
 
 # these integer-aware comparisons return a boolean (0 or ~0)
 
+binop_compare("flt", tfloat, "", "src0 < src1")
+binop_compare("fge", tfloat, "", "src0 >= src1")
+binop_compare("feq", tfloat, commutative, "src0 == src1")
+binop_compare("fne", tfloat, commutative, "src0 != src1")
+binop_compare("ilt", tint, "", "src0 < src1")
+binop_compare("ige", tint, "", "src0 >= src1")
+binop_compare("ieq", tint, commutative, "src0 == src1")
+binop_compare("ine", tint, commutative, "src0 != src1")
+binop_compare("ult", tuint, "", "src0 < src1")
+binop_compare("uge", tuint, "", "src0 >= src1")
 binop_compare32("flt32", tfloat, "", "src0 < src1")
 binop_compare32("fge32", tfloat, "", "src0 >= src1")
 binop_compare32("feq32", tfloat, commutative, "src0 == src1")
@@ -562,6 +576,15 @@ binop_compare32("ult32", tuint, "", "src0 < src1")
 binop_compare32("uge32", tuint, "", "src0 >= src1")
 
 # integer-aware GLSL-style comparisons that compare floats and ints
+
+binop_reduce("ball_fequal",  1, tbool1, tfloat, "{src0} == {src1}",
+             "{src0} && {src1}", "{src}")
+binop_reduce("bany_fnequal", 1, tbool1, tfloat, "{src0} != {src1}",
+             "{src0} || {src1}", "{src}")
+binop_reduce("ball_iequal",  1, tbool1, tint, "{src0} == {src1}",
+             "{src0} && {src1}", "{src}")
+binop_reduce("bany_inequal", 1, tbool1, tint, "{src0} != {src1}",
+             "{src0} || {src1}", "{src}")
 
 binop_reduce("b32all_fequal",  1, tbool32, tfloat, "{src0} == {src1}",
              "{src0} && {src1}", "{src}")
@@ -756,6 +779,8 @@ triop("fmed3", tfloat, "fmaxf(fminf(fmaxf(src0, src1), src2), fminf(src0, src1))
 triop("imed3", tint, "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
 triop("umed3", tuint, "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
 
+opcode("bcsel", 0, tuint, [0, 0, 0],
+      [tbool1, tuint, tuint], "", "src0 ? src1 : src2")
 opcode("b32csel", 0, tuint, [0, 0, 0],
        [tbool32, tuint, tuint], "", "src0 ? src1 : src2")
 
