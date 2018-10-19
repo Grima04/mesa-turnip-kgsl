@@ -182,10 +182,14 @@ iris_memory_barrier(struct pipe_context *ctx, unsigned flags)
    }
 
    // XXX: MAPPED_BUFFER, QUERY_BUFFER, STREAMOUT_BUFFER, GLOBAL_BUFFER?
-   // XXX: compute batch?
 
-   iris_emit_pipe_control_flush(&ice->render_batch, bits);
-   iris_emit_pipe_control_flush(&ice->compute_batch, bits);
+   // XXX: don't unconditionally emit flushes in both engines, we don't
+   // even know if we're even using e.g. the compute engine...
+
+   if (ice->render_batch.contains_draw)
+      iris_emit_pipe_control_flush(&ice->render_batch, bits);
+   if (ice->compute_batch.contains_draw)
+      iris_emit_pipe_control_flush(&ice->compute_batch, bits);
 }
 
 void
