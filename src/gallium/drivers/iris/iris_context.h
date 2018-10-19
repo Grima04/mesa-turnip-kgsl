@@ -412,6 +412,13 @@ struct iris_context {
       enum pipe_prim_type prim_mode:8;
       uint8_t vertices_per_patch;
 
+      /** The last compute grid size */
+      uint32_t last_grid[3];
+      /** Reference to the BO containing the compute grid size */
+      struct iris_state_ref grid_size;
+      /** Reference to the SURFACE_STATE for the compute grid resource */
+      struct iris_state_ref grid_surf_state;
+
       /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
       bool depth_writes_enabled;
 

@@ -3361,8 +3361,7 @@ static void
 iris_populate_binding_table(struct iris_context *ice,
                             struct iris_batch *batch,
                             gl_shader_stage stage,
-                            bool pin_only,
-                            struct iris_state_ref *grid_size_surf)
+                            bool pin_only)
 {
    const struct iris_binder *binder = &ice->state.binder;
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
@@ -3385,12 +3384,11 @@ iris_populate_binding_table(struct iris_context *ice,
 
    if (stage == MESA_SHADER_COMPUTE) {
       /* surface for gl_NumWorkGroups */
-      assert(grid_size_surf || pin_only);
-      if (grid_size_surf) {
-         struct iris_bo *bo = iris_resource_bo(grid_size_surf->res);
-         iris_use_pinned_bo(batch, bo, false);
-         push_bt_entry(grid_size_surf->offset);
-      }
+      struct iris_state_ref *grid_data = &ice->state.grid_size;
+      struct iris_state_ref *grid_state = &ice->state.grid_surf_state;
+      iris_use_pinned_bo(batch, iris_resource_bo(grid_data->res),  false);
+      iris_use_pinned_bo(batch, iris_resource_bo(grid_state->res), false);
+      push_bt_entry(grid_state->offset);
    }
 
    if (stage == MESA_SHADER_FRAGMENT) {
@@ -3536,7 +3534,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (clean & (IRIS_DIRTY_BINDINGS_VS << stage)) {
          /* Re-pin any buffers referred to by the binding table. */
-         iris_populate_binding_table(ice, batch, stage, true, NULL);
+         iris_populate_binding_table(ice, batch, stage, true);
       }
    }
 
@@ -3622,7 +3620,7 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
 
    if (clean & IRIS_DIRTY_BINDINGS_CS) {
       /* Re-pin any buffers referred to by the binding table. */
-      iris_populate_binding_table(ice, batch, stage, true, NULL);
+      iris_populate_binding_table(ice, batch, stage, true);
    }
 
    struct pipe_resource *sampler_res = shs->sampler_table.res;
@@ -3871,7 +3869,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
-         iris_populate_binding_table(ice, batch, stage, false, NULL);
+         iris_populate_binding_table(ice, batch, stage, false);
       }
    }
 
@@ -4277,46 +4275,8 @@ iris_upload_compute_state(struct iris_context *ice,
    // XXX: L3 configuration not set up for SLM
    assert(prog_data->total_shared == 0);
 
-   struct pipe_resource *grid_size_res = NULL;
-   uint32_t grid_size_offset;
-   if (grid->indirect) {
-      grid_size_res = grid->indirect;
-      grid_size_offset = grid->indirect_offset;
-   } else {
-      uint32_t *grid_size_map =
-         stream_state(batch, ice->state.surface_uploader, &grid_size_res, 12, 4,
-                      &grid_size_offset);
-      grid_size_map[0] = grid->grid[0];
-      grid_size_map[1] = grid->grid[1];
-      grid_size_map[2] = grid->grid[2];
-      struct iris_bo *grid_size_bo = iris_resource_bo(grid_size_res);
-      grid_size_offset -= iris_bo_offset_from_base_address(grid_size_bo);
-   }
-
-   struct iris_state_ref grid_size_surf;
-   memset(&grid_size_surf, 0, sizeof(grid_size_surf));
-   void *grid_surf_state_map =
-      upload_state(ice->state.surface_uploader,
-                   &grid_size_surf,
-                   4 * GENX(RENDER_SURFACE_STATE_length), 64);
-   assert(grid_surf_state_map);
-   struct iris_bo *grid_size_bo = iris_resource_bo(grid_size_res);
-   iris_use_pinned_bo(batch, grid_size_bo, false);
-   grid_size_surf.offset +=
-      iris_bo_offset_from_base_address(iris_resource_bo(grid_size_surf.res));
-   isl_buffer_fill_state(&screen->isl_dev, grid_surf_state_map,
-                         .address =
-                            grid_size_bo->gtt_offset + grid_size_offset,
-                         .size_B = 12,
-                         .format = ISL_FORMAT_RAW,
-                         .stride_B = 1,
-                         .mocs = MOCS_WB);
-
-   // XXX: this will update the binding table on every dispatch, should
-   // XXX: check if the grid size actually changed (or indirect buf changed)
-   if (dirty & IRIS_DIRTY_BINDINGS_CS || grid_size_res)
-      iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false,
-                                  &grid_size_surf);
+   if (dirty & IRIS_DIRTY_BINDINGS_CS)
+      iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
 
    iris_use_optional_res(batch, shs->sampler_table.res, false);
    iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false);
@@ -4419,18 +4379,19 @@ iris_upload_compute_state(struct iris_context *ice,
 #define GPGPU_DISPATCHDIMZ 0x2508
 
    if (grid->indirect) {
-      struct iris_bo *bo = iris_resource_bo(grid_size_res);
+      struct iris_state_ref *grid_size = &ice->state.grid_size;
+      struct iris_bo *bo = iris_resource_bo(grid_size->res);
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = GPGPU_DISPATCHDIMX;
-         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 0);
+         lrm.MemoryAddress = ro_bo(bo, grid_size->offset + 0);
       }
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = GPGPU_DISPATCHDIMY;
-         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 4);
+         lrm.MemoryAddress = ro_bo(bo, grid_size->offset + 4);
       }
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = GPGPU_DISPATCHDIMZ;
-         lrm.MemoryAddress = ro_bo(bo, grid_size_offset + 8);
+         lrm.MemoryAddress = ro_bo(bo, grid_size->offset + 8);
       }
    }
 

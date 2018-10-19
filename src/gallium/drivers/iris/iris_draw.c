@@ -34,6 +34,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
 #include "util/u_transfer.h"
+#include "util/u_upload_mgr.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_context.h"
 
@@ -93,8 +94,53 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_postdraw_update_resolve_tracking(ice, batch);
 }
 
+static void
+iris_update_grid_size_resource(struct iris_context *ice,
+                               const struct pipe_grid_info *grid)
+{
+   const struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct isl_device *isl_dev = &screen->isl_dev;
+   struct iris_state_ref *grid_ref = &ice->state.grid_size;
+   struct iris_state_ref *state_ref = &ice->state.grid_surf_state;
+
+   // XXX: if the shader doesn't actually care about the grid info,
+   // don't bother uploading the surface?
+
+   if (grid->indirect) {
+      grid_ref->res = grid->indirect;
+      grid_ref->offset = grid->indirect_offset;
+   } else {
+      /* If the size is the same, we don't need to upload anything. */
+      if (memcmp(ice->state.last_grid, grid->grid, sizeof(grid->grid)) == 0)
+         return;
+
+      memcpy(ice->state.last_grid, grid->grid, sizeof(grid->grid));
+
+      u_upload_data(ice->state.dynamic_uploader, 0, sizeof(grid->grid), 4,
+                    grid->grid, &grid_ref->offset, &grid_ref->res);
+      grid_ref->offset +=
+         iris_bo_offset_from_base_address(iris_resource_bo(grid_ref->res));
+   }
+
+   void *surf_map = NULL;
+   u_upload_alloc(ice->state.surface_uploader, 0, isl_dev->ss.size,
+                  isl_dev->ss.align, &state_ref->offset, &state_ref->res,
+                  &surf_map);
+   state_ref->offset +=
+      iris_bo_offset_from_base_address(iris_resource_bo(state_ref->res));
+   isl_buffer_fill_state(&screen->isl_dev, surf_map,
+                         .address = grid_ref->offset +
+                            iris_resource_bo(grid_ref->res)->gtt_offset,
+                         .size_B = sizeof(grid->grid),
+                         .format = ISL_FORMAT_RAW,
+                         .stride_B = 1,
+                         .mocs = 4); // XXX: MOCS
+
+   ice->state.dirty |= IRIS_DIRTY_BINDINGS_CS;
+}
+
 void
-iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
+iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_batch *batch = &ice->compute_batch;
@@ -111,9 +157,11 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *info)
 
    // XXX: predraw resolves / cache flushing
 
+   iris_update_grid_size_resource(ice, grid);
+
    iris_binder_reserve_compute(ice);
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
-   ice->vtbl.upload_compute_state(ice, batch, info);
+   ice->vtbl.upload_compute_state(ice, batch, grid);
 
    // XXX: this is wrong.  we need separate dirty tracking for compute/render
    ice->state.dirty = 0ull;
