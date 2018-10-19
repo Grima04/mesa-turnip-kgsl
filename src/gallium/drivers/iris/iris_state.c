@@ -485,6 +485,74 @@ _iris_emit_lri(struct iris_batch *batch, uint32_t reg, uint32_t val)
 }
 #define iris_emit_lri(b, r, v) _iris_emit_lri(b, GENX(r##_num), v)
 
+static void
+emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
+{
+#if GEN_GEN >= 8 && GEN_GEN < 10
+   /* From the Broadwell PRM, Volume 2a: Instructions, PIPELINE_SELECT:
+    *
+    *   Software must clear the COLOR_CALC_STATE Valid field in
+    *   3DSTATE_CC_STATE_POINTERS command prior to send a PIPELINE_SELECT
+    *   with Pipeline Select set to GPGPU.
+    *
+    * The internal hardware docs recommend the same workaround for Gen9
+    * hardware too.
+    */
+   if (pipeline == GPGPU)
+      iris_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
+#endif
+
+
+   /* From "BXML » GT » MI » vol1a GPU Overview » [Instruction]
+    * PIPELINE_SELECT [DevBWR+]":
+    *
+    *    "Project: DEVSNB+
+    *
+    *     Software must ensure all the write caches are flushed through a
+    *     stalling PIPE_CONTROL command followed by another PIPE_CONTROL
+    *     command to invalidate read only caches prior to programming
+    *     MI_PIPELINE_SELECT command to change the Pipeline Select Mode."
+    */
+    iris_emit_pipe_control_flush(batch,
+                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                 PIPE_CONTROL_DATA_CACHE_FLUSH |
+                                 PIPE_CONTROL_CS_STALL);
+
+    iris_emit_pipe_control_flush(batch,
+                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
+                                 PIPE_CONTROL_CONST_CACHE_INVALIDATE |
+                                 PIPE_CONTROL_STATE_CACHE_INVALIDATE |
+                                 PIPE_CONTROL_INSTRUCTION_INVALIDATE);
+
+   iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
+#if GEN_GEN >= 9
+      sel.MaskBits = 3;
+#endif
+      sel.PipelineSelection = pipeline;
+   }
+}
+
+UNUSED static void
+init_glk_barrier_mode(struct iris_batch *batch, uint32_t value)
+{
+#if GEN_GEN == 9
+   /* Project: DevGLK
+    *
+    *    "This chicken bit works around a hardware issue with barrier
+    *     logic encountered when switching between GPGPU and 3D pipelines.
+    *     To workaround the issue, this mode bit should be set after a
+    *     pipeline is selected."
+    */
+   uint32_t reg_val;
+   iris_pack_state(GENX(SLICE_COMMON_ECO_CHICKEN1), &reg_val, reg) {
+      reg.GLKBarrierMode = value;
+      reg.GLKBarrierModeMask = 1;
+   }
+   iris_emit_lri(batch, SLICE_COMMON_ECO_CHICKEN1, reg_val);
+#endif
+}
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -497,9 +565,12 @@ iris_init_render_context(struct iris_screen *screen,
                          struct iris_vtable *vtbl,
                          struct pipe_debug_callback *dbg)
 {
+   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
    uint32_t reg_val;
 
    iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
+
+   emit_pipeline_select(batch, _3D);
 
    flush_for_state_base_change(batch);
 
@@ -555,6 +626,9 @@ iris_init_render_context(struct iris_screen *screen,
       reg.PartialResolveDisableInVCMask = true;
    }
    iris_emit_lri(batch, CACHE_MODE_1, reg_val);
+
+   if (devinfo->is_geminilake)
+      init_glk_barrier_mode(batch, GLK_BARRIER_MODE_3D_HULL);
 #endif
 
 #if GEN_GEN == 11
@@ -616,16 +690,16 @@ iris_init_compute_context(struct iris_screen *screen,
                           struct iris_vtable *vtbl,
                           struct pipe_debug_callback *dbg)
 {
+   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+
    iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
 
-   /* XXX: PIPE_CONTROLs */
+   emit_pipeline_select(batch, GPGPU);
 
-   iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
-#if GEN_GEN >= 9
-      sel.MaskBits = 3;
+#if GEN_GEN == 9
+   if (devinfo->is_geminilake)
+      init_glk_barrier_mode(batch, GLK_BARRIER_MODE_GPGPU);
 #endif
-      sel.PipelineSelection = GPGPU;
-   }
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
    #if 0
