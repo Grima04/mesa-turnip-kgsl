@@ -254,22 +254,6 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 }
 
 static void
-patch_gmem_bases(struct fd_batch *batch)
-{
-	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
-	unsigned i;
-
-	for (i = 0; i < fd_patch_num_elements(&batch->gmem_patches); i++) {
-		struct fd_cs_patch *patch = fd_patch_element(&batch->gmem_patches, i);
-		if (patch->val < MAX_RENDER_TARGETS)
-			*patch->cs = gmem->cbuf_base[patch->val];
-		else
-			*patch->cs = gmem->zsbuf_base[patch->val - MAX_RENDER_TARGETS];
-	}
-	util_dynarray_resize(&batch->gmem_patches, 0);
-}
-
-static void
 update_render_cntl(struct fd_batch *batch, bool binning)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -484,8 +468,6 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	emit_zs(ring, pfb->zsbuf, &ctx->gmem);
 	emit_mrt(ring, pfb, &ctx->gmem);
 
-	patch_gmem_bases(batch);
-
 	disable_msaa(ring);
 
 	if (use_hw_binning(batch)) {
@@ -678,6 +660,163 @@ emit_restore_blit(struct fd_batch *batch,
 	emit_blit(batch, ring, base, psurf, rsc);
 }
 
+static void
+emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+
+	uint32_t buffers = batch->fast_cleared;
+
+	if (buffers & PIPE_CLEAR_COLOR) {
+
+		for (int i = 0; i < pfb->nr_cbufs; i++) {
+			union pipe_color_union *color = &batch->clear_color[i];
+			union util_color uc = {0};
+
+			if (!pfb->cbufs[i])
+				continue;
+
+			if (!(buffers & (PIPE_CLEAR_COLOR0 << i)))
+				continue;
+
+			enum pipe_format pfmt = pfb->cbufs[i]->format;
+
+			// XXX I think RB_CLEAR_COLOR_DWn wants to take into account SWAP??
+			union pipe_color_union swapped;
+			switch (fd6_pipe2swap(pfmt)) {
+			case WZYX:
+				swapped.ui[0] = color->ui[0];
+				swapped.ui[1] = color->ui[1];
+				swapped.ui[2] = color->ui[2];
+				swapped.ui[3] = color->ui[3];
+				break;
+			case WXYZ:
+				swapped.ui[2] = color->ui[0];
+				swapped.ui[1] = color->ui[1];
+				swapped.ui[0] = color->ui[2];
+				swapped.ui[3] = color->ui[3];
+				break;
+			case ZYXW:
+				swapped.ui[3] = color->ui[0];
+				swapped.ui[0] = color->ui[1];
+				swapped.ui[1] = color->ui[2];
+				swapped.ui[2] = color->ui[3];
+				break;
+			case XYZW:
+				swapped.ui[3] = color->ui[0];
+				swapped.ui[2] = color->ui[1];
+				swapped.ui[1] = color->ui[2];
+				swapped.ui[0] = color->ui[3];
+				break;
+			}
+
+			if (util_format_is_pure_uint(pfmt)) {
+				util_format_write_4ui(pfmt, swapped.ui, 0, &uc, 0, 0, 0, 1, 1);
+			} else if (util_format_is_pure_sint(pfmt)) {
+				util_format_write_4i(pfmt, swapped.i, 0, &uc, 0, 0, 0, 1, 1);
+			} else {
+				util_pack_color(swapped.f, pfmt, &uc);
+			}
+
+			OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
+			OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+				A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
+
+			OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
+			OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
+				A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
+
+			OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
+			OUT_RING(ring, gmem->cbuf_base[i]);
+
+			OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
+			OUT_RING(ring, 0);
+
+			OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
+			OUT_RING(ring, uc.ui[0]);
+			OUT_RING(ring, uc.ui[1]);
+			OUT_RING(ring, uc.ui[2]);
+			OUT_RING(ring, uc.ui[3]);
+
+			fd6_emit_blit(batch, ring);
+		}
+	}
+
+	const bool has_depth = pfb->zsbuf;
+	const bool has_separate_stencil =
+		has_depth && fd_resource(pfb->zsbuf->texture)->stencil;
+
+	/* First clear depth or combined depth/stencil. */
+	if ((has_depth && (buffers & PIPE_CLEAR_DEPTH)) ||
+		(!has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
+		enum pipe_format pfmt = pfb->zsbuf->format;
+		uint32_t clear_value;
+		uint32_t mask = 0;
+
+		if (has_separate_stencil) {
+			pfmt = util_format_get_depth_only(pfb->zsbuf->format);
+			clear_value = util_pack_z(pfmt, batch->clear_depth);
+		} else {
+			pfmt = pfb->zsbuf->format;
+			clear_value = util_pack_z_stencil(pfmt, batch->clear_depth,
+											  batch->clear_stencil);
+		}
+
+		if (buffers & PIPE_CLEAR_DEPTH)
+			mask |= 0x1;
+
+		if (!has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL))
+			mask |= 0x2;
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
+		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+			A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
+		OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
+			// XXX UNK0 for separate stencil ??
+			A6XX_RB_BLIT_INFO_DEPTH |
+			A6XX_RB_BLIT_INFO_CLEAR_MASK(mask));
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
+		OUT_RING(ring, gmem->zsbuf_base[0]);
+
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
+		OUT_RING(ring, 0);
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 1);
+		OUT_RING(ring, clear_value);
+
+		fd6_emit_blit(batch, ring);
+	}
+
+	/* Then clear the separate stencil buffer in case of 32 bit depth
+	 * formats with separate stencil. */
+	if (has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
+		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+				 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(RB6_R8_UINT));
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
+		OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
+				 //A6XX_RB_BLIT_INFO_UNK0 |
+				 A6XX_RB_BLIT_INFO_DEPTH |
+				 A6XX_RB_BLIT_INFO_CLEAR_MASK(0x1));
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
+		OUT_RING(ring, gmem->zsbuf_base[1]);
+
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
+		OUT_RING(ring, 0);
+
+		OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 1);
+		OUT_RING(ring, batch->clear_stencil & 0xff);
+
+		fd6_emit_blit(batch, ring);
+	}
+}
+
 /*
  * transfer from system memory to gmem
  */
@@ -724,6 +863,7 @@ prepare_tile_setup_ib(struct fd_batch *batch)
 	set_blit_scissor(batch, batch->tile_setup);
 
 	emit_restore_blits(batch, batch->tile_setup);
+	emit_clears(batch, batch->tile_setup);
 }
 
 /*

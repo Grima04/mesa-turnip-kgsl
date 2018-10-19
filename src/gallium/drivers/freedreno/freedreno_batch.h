@@ -95,7 +95,7 @@ struct fd_batch {
 		FD_BUFFER_DEPTH   = PIPE_CLEAR_DEPTH,
 		FD_BUFFER_STENCIL = PIPE_CLEAR_STENCIL,
 		FD_BUFFER_ALL     = FD_BUFFER_COLOR | FD_BUFFER_DEPTH | FD_BUFFER_STENCIL,
-	} invalidated, cleared, restore, resolve;
+	} invalidated, cleared, fast_cleared, restore, resolve;
 
 	/* is this a non-draw batch (ie compute/blit which has no pfb state)? */
 	bool nondraw : 1;
@@ -136,11 +136,6 @@ struct fd_batch {
 	 */
 	struct util_dynarray draw_patches;
 
-	/* Keep track of blitter GMEM offsets that need to be patched up once we
-	 * know the gmem layout:
-	 */
-	struct util_dynarray gmem_patches;
-
 	/* Keep track of writes to RB_RENDER_CONTROL which need to be patched
 	 * once we know whether or not to use GMEM, and GMEM tile pitch.
 	 *
@@ -164,6 +159,10 @@ struct fd_batch {
 	struct fd_ringbuffer *lrz_clear;
 	struct fd_ringbuffer *tile_setup;
 	struct fd_ringbuffer *tile_fini;
+
+	union pipe_color_union clear_color[MAX_RENDER_TARGETS];
+	double clear_depth;
+	unsigned clear_stencil;
 
 	/**
 	 * hw query related state:

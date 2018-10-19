@@ -376,159 +376,25 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 		const union pipe_color_union *color, double depth, unsigned stencil)
 {
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
-	struct pipe_scissor_state *scissor = fd_context_get_scissor(ctx);
-	struct fd_ringbuffer *ring = ctx->batch->draw;
-
-	OUT_PKT4(ring, REG_A6XX_RB_BLIT_SCISSOR_TL, 2);
-	OUT_RING(ring, A6XX_RB_BLIT_SCISSOR_TL_X(scissor->minx) |
-			 A6XX_RB_BLIT_SCISSOR_TL_Y(scissor->miny));
-	OUT_RING(ring, A6XX_RB_BLIT_SCISSOR_BR_X(scissor->maxx - 1) |
-			 A6XX_RB_BLIT_SCISSOR_BR_Y(scissor->maxy - 1));
-
-	if (buffers & PIPE_CLEAR_COLOR) {
-		for (int i = 0; i < pfb->nr_cbufs; i++) {
-			union util_color uc = {0};
-
-			if (!pfb->cbufs[i])
-				continue;
-
-			if (!(buffers & (PIPE_CLEAR_COLOR0 << i)))
-				continue;
-
-			enum pipe_format pfmt = pfb->cbufs[i]->format;
-
-			// XXX I think RB_CLEAR_COLOR_DWn wants to take into account SWAP??
-			union pipe_color_union swapped;
-			switch (fd6_pipe2swap(pfmt)) {
-			case WZYX:
-				swapped.ui[0] = color->ui[0];
-				swapped.ui[1] = color->ui[1];
-				swapped.ui[2] = color->ui[2];
-				swapped.ui[3] = color->ui[3];
-				break;
-			case WXYZ:
-				swapped.ui[2] = color->ui[0];
-				swapped.ui[1] = color->ui[1];
-				swapped.ui[0] = color->ui[2];
-				swapped.ui[3] = color->ui[3];
-				break;
-			case ZYXW:
-				swapped.ui[3] = color->ui[0];
-				swapped.ui[0] = color->ui[1];
-				swapped.ui[1] = color->ui[2];
-				swapped.ui[2] = color->ui[3];
-				break;
-			case XYZW:
-				swapped.ui[3] = color->ui[0];
-				swapped.ui[2] = color->ui[1];
-				swapped.ui[1] = color->ui[2];
-				swapped.ui[0] = color->ui[3];
-				break;
-			}
-
-			if (util_format_is_pure_uint(pfmt)) {
-				util_format_write_4ui(pfmt, swapped.ui, 0, &uc, 0, 0, 0, 1, 1);
-			} else if (util_format_is_pure_sint(pfmt)) {
-				util_format_write_4i(pfmt, swapped.i, 0, &uc, 0, 0, 0, 1, 1);
-			} else {
-				util_pack_color(swapped.f, pfmt, &uc);
-			}
-
-			OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
-			OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-				A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
-
-			OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
-			OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
-				A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
-
-			OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-			OUT_RINGP(ring, i, &ctx->batch->gmem_patches);
-
-			OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
-			OUT_RING(ring, 0);
-
-			OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
-			OUT_RING(ring, uc.ui[0]);
-			OUT_RING(ring, uc.ui[1]);
-			OUT_RING(ring, uc.ui[2]);
-			OUT_RING(ring, uc.ui[3]);
-
-			fd6_emit_blit(ctx->batch, ring);
-		}
-	}
-
 	const bool has_depth = pfb->zsbuf;
-	const bool has_separate_stencil =
-		has_depth && fd_resource(pfb->zsbuf->texture)->stencil;
+	unsigned color_buffers = buffers >> 2;
+	unsigned i;
 
-	/* First clear depth or combined depth/stencil. */
-	if ((has_depth && (buffers & PIPE_CLEAR_DEPTH)) ||
-		(!has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
-		enum pipe_format pfmt = pfb->zsbuf->format;
-		uint32_t clear_value;
-		uint32_t mask = 0;
+	/* If we're clearing after draws, fallback to 3D pipe clears.  We could
+	 * use blitter clears in the draw batch but then we'd have to patch up the
+	 * gmem offsets. This doesn't seem like a useful thing to optimize for
+	 * however.*/
+	if (ctx->batch->num_draws > 0)
+		return false;
 
-		if (has_separate_stencil) {
-			pfmt = util_format_get_depth_only(pfb->zsbuf->format);
-			clear_value = util_pack_z(pfmt, depth);
-		} else {
-			pfmt = pfb->zsbuf->format;
-			clear_value = util_pack_z_stencil(pfmt, depth, stencil);
-		}
+	foreach_bit(i, color_buffers)
+		ctx->batch->clear_color[i] = *color;
+	if (buffers & PIPE_CLEAR_DEPTH)
+		ctx->batch->clear_depth = depth;
+	if (buffers & PIPE_CLEAR_STENCIL)
+		ctx->batch->clear_stencil = stencil;
 
-		if (buffers & PIPE_CLEAR_DEPTH)
-			mask |= 0x1;
-
-		if (!has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL))
-			mask |= 0x2;
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
-		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-			A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
-		OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
-			// XXX UNK0 for separate stencil ??
-			A6XX_RB_BLIT_INFO_DEPTH |
-			A6XX_RB_BLIT_INFO_CLEAR_MASK(mask));
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-		OUT_RINGP(ring, MAX_RENDER_TARGETS, &ctx->batch->gmem_patches);
-
-		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
-		OUT_RING(ring, 0);
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 1);
-		OUT_RING(ring, clear_value);
-
-		fd6_emit_blit(ctx->batch, ring);
-	}
-
-	/* Then clear the separate stencil buffer in case of 32 bit depth
-	 * formats with separate stencil. */
-	if (has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
-		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
-				 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(RB6_R8_UINT));
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
-		OUT_RING(ring, A6XX_RB_BLIT_INFO_GMEM |
-				 //A6XX_RB_BLIT_INFO_UNK0 |
-				 A6XX_RB_BLIT_INFO_DEPTH |
-				 A6XX_RB_BLIT_INFO_CLEAR_MASK(0x1));
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
-		OUT_RINGP(ring, MAX_RENDER_TARGETS + 1, &ctx->batch->gmem_patches);
-
-		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_88D0, 1);
-		OUT_RING(ring, 0);
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 1);
-		OUT_RING(ring, stencil & 0xff);
-
-		fd6_emit_blit(ctx->batch, ring);
-	}
+	ctx->batch->fast_cleared |= buffers;
 
 	if (has_depth && (buffers & PIPE_CLEAR_DEPTH)) {
 		struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
