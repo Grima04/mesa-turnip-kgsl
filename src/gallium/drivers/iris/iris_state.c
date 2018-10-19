@@ -4284,43 +4284,46 @@ iris_upload_compute_state(struct iris_context *ice,
    if (ice->state.need_border_colors)
       iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
 
-   /* The MEDIA_VFE_STATE documentation for Gen8+ says:
-    *
-    *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
-    *    the only bits that are changed are scoreboard related: Scoreboard
-    *    Enable, Scoreboard Type, Scoreboard Mask, Scoreboard * Delta. For
-    *    these scoreboard related states, a MEDIA_STATE_FLUSH is sufficient."
-    */
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+   if (dirty & IRIS_DIRTY_CS) {
+      /* The MEDIA_VFE_STATE documentation for Gen8+ says:
+       *
+       *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
+       *    the only bits that are changed are scoreboard related: Scoreboard
+       *    Enable, Scoreboard Type, Scoreboard Mask, Scoreboard Delta.  For
+       *    these scoreboard related states, a MEDIA_STATE_FLUSH is
+       *    sufficient."
+       */
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
 
-   iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
-      if (prog_data->total_scratch) {
-         /* Per Thread Scratch Space is in the range [0, 11] where
-          * 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
-          */
-         // XXX: vfe.ScratchSpaceBasePointer
-         //vfe.PerThreadScratchSpace =
-            //ffs(stage_state->per_thread_scratch) - 11;
-      }
+      iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
+         if (prog_data->total_scratch) {
+            /* Per Thread Scratch Space is in the range [0, 11] where
+             * 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
+             */
+            // XXX: vfe.ScratchSpaceBasePointer
+            //vfe.PerThreadScratchSpace =
+               //ffs(stage_state->per_thread_scratch) - 11;
+         }
 
-      vfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * screen->subslice_total - 1;
+         vfe.MaximumNumberofThreads =
+            devinfo->max_cs_threads * screen->subslice_total - 1;
 #if GEN_GEN < 11
-      vfe.ResetGatewayTimer =
-         Resettingrelativetimerandlatchingtheglobaltimestamp;
+         vfe.ResetGatewayTimer =
+            Resettingrelativetimerandlatchingtheglobaltimestamp;
 #endif
 
-      vfe.NumberofURBEntries = 2;
-      vfe.URBEntryAllocationSize = 2;
+         vfe.NumberofURBEntries = 2;
+         vfe.URBEntryAllocationSize = 2;
 
-      // XXX: Use Indirect Payload Storage?
-      vfe.CURBEAllocationSize =
-         ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
-               cs_prog_data->push.cross_thread.regs, 2);
+         // XXX: Use Indirect Payload Storage?
+         vfe.CURBEAllocationSize =
+            ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
+                  cs_prog_data->push.cross_thread.regs, 2);
+      }
    }
 
-   // XXX: hack iris_set_constant_buffers to upload compute shader constants
-   // XXX: differently...?
+   // XXX: hack iris_set_constant_buffers to upload these thread counts
+   // XXX: along with regular uniforms for compute shaders, somehow.
 
    uint32_t curbe_data_offset = 0;
    // TODO: Move subgroup-id into uniforms ubo so we can push uniforms
@@ -4335,35 +4338,43 @@ iris_upload_compute_state(struct iris_context *ice,
    assert(curbe_data_map);
    memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
    iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
-   iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
-      curbe.CURBETotalDataLength =
-         ALIGN(cs_prog_data->push.total.size, 64);
-      curbe.CURBEDataStartAddress = curbe_data_offset;
+
+   if (dirty & IRIS_DIRTY_CONSTANTS_CS) {
+      iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
+         curbe.CURBETotalDataLength =
+            ALIGN(cs_prog_data->push.total.size, 64);
+         curbe.CURBEDataStartAddress = curbe_data_offset;
+      }
    }
 
-   struct pipe_resource *desc_res = NULL;
-   uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
+   if (dirty & (IRIS_DIRTY_SAMPLER_STATES_CS |
+                IRIS_DIRTY_BINDINGS_CS |
+                IRIS_DIRTY_CONSTANTS_CS |
+                IRIS_DIRTY_CS)) {
+      struct pipe_resource *desc_res = NULL;
+      uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
-   iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
-      idd.SamplerStatePointer = shs->sampler_table.offset;
-      idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
-      idd.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
-      idd.CrossThreadConstantDataReadLength =
-         cs_prog_data->push.cross_thread.regs;
+      iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
+         idd.SamplerStatePointer = shs->sampler_table.offset;
+         idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
+         idd.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
+         idd.CrossThreadConstantDataReadLength =
+            cs_prog_data->push.cross_thread.regs;
+      }
+
+      for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)
+         desc[i] |= ((uint32_t *) shader->derived_data)[i];
+
+      iris_emit_cmd(batch, GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), load) {
+         load.InterfaceDescriptorTotalLength =
+            GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
+         load.InterfaceDescriptorDataStartAddress =
+            emit_state(batch, ice->state.dynamic_uploader,
+                       &desc_res, desc, sizeof(desc), 32);
+      }
+
+      pipe_resource_reference(&desc_res, NULL);
    }
-
-   for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)
-      desc[i] |= ((uint32_t *) shader->derived_data)[i];
-
-   iris_emit_cmd(batch, GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), load) {
-      load.InterfaceDescriptorTotalLength =
-         GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
-      load.InterfaceDescriptorDataStartAddress =
-         emit_state(batch, ice->state.dynamic_uploader,
-                    &desc_res, desc, sizeof(desc), 32);
-   }
-
-   pipe_resource_reference(&desc_res, NULL);
 
    uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
    uint32_t remainder = group_size & (cs_prog_data->simd_size - 1);

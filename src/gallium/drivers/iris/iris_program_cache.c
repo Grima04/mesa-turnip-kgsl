@@ -115,6 +115,10 @@ dirty_flag_for_cache(enum iris_program_cache_id cache_id)
    if (cache_id == IRIS_CACHE_VS)
       return IRIS_DIRTY_VS | IRIS_DIRTY_VF_SGVS;
 
+   /* For compute, prog_data->threads needs to be uploaded as constants. */
+   if (cache_id == IRIS_CACHE_CS)
+      return IRIS_DIRTY_CS | IRIS_DIRTY_CONSTANTS_CS;
+
    return IRIS_DIRTY_VS << cache_id | IRIS_DIRTY_BINDINGS_VS << cache_id;
 }
 
