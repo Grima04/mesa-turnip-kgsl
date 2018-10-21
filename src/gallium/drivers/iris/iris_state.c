@@ -2074,6 +2074,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
                        &cbuf->data.res);
       } else {
          pipe_resource_reference(&cbuf->data.res, input->buffer);
+         cbuf->data.offset = input->buffer_offset;
       }
 
       // XXX: these are not retained forever, use a separate uploader?
