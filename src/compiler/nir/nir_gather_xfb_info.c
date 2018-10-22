@@ -107,11 +107,9 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
     */
    unsigned num_outputs = 0;
    nir_foreach_variable(var, &shader->outputs) {
-      if (var->data.explicit_xfb_buffer ||
-          var->data.explicit_xfb_stride) {
-         assert(var->data.explicit_xfb_buffer &&
-                var->data.explicit_xfb_stride &&
-                var->data.explicit_offset);
+      if (var->data.explicit_xfb_buffer &&
+          var->data.explicit_offset) {
+
          num_outputs += glsl_count_attribute_slots(var->type, false);
       }
    }
@@ -122,8 +120,9 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
 
    /* Walk the list of outputs and add them to the array */
    nir_foreach_variable(var, &shader->outputs) {
-      if (var->data.explicit_xfb_buffer ||
-          var->data.explicit_xfb_stride) {
+      if (var->data.explicit_xfb_buffer &&
+          var->data.explicit_offset) {
+
          unsigned location = var->data.location;
          unsigned offset = var->data.offset;
          add_var_xfb_outputs(xfb, var, &location, &offset, var->type);
