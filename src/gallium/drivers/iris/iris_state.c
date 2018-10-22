@@ -2112,7 +2112,8 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
       isl_buffer_fill_state(&screen->isl_dev, map,
                             .address = res->bo->gtt_offset + cbuf->data.offset,
-                            .size_B = input->buffer_size,
+                            .size_B = MIN2(input->buffer_size,
+                                           res->bo->size - cbuf->data.offset),
                             .format = ISL_FORMAT_R32G32B32A32_FLOAT,
                             .stride_B = 1,
                             .mocs = MOCS_WB)
@@ -2169,7 +2170,9 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          isl_buffer_fill_state(&screen->isl_dev, map,
                                .address =
                                   res->bo->gtt_offset + buffer->buffer_offset,
-                               .size_B = buffer->buffer_size,
+                               .size_B =
+                                  MIN2(buffer->buffer_size,
+                                       res->bo->size - buffer->buffer_offset),
                                .format = ISL_FORMAT_RAW,
                                .stride_B = 1,
                                .mocs = MOCS_WB);
