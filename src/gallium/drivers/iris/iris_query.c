@@ -101,9 +101,9 @@ struct iris_query {
 };
 
 struct iris_query_snapshots {
+   uint64_t snapshots_landed;
    uint64_t start;
    uint64_t end;
-   uint64_t snapshots_landed;
 };
 
 /**
