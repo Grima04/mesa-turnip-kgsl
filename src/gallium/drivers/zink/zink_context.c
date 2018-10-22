@@ -642,6 +642,13 @@ zink_set_blend_color(struct pipe_context *pctx,
    memcpy(ctx->blend_constants, color->color, sizeof(float) * 4);
 }
 
+static void
+zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   ctx->gfx_pipeline_state.sample_mask = sample_mask;
+}
+
 static VkAccessFlags
 access_flags(VkImageLayout layout)
 {
@@ -1343,6 +1350,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_clip_state = zink_set_clip_state;
    ctx->base.set_active_query_state = zink_set_active_query_state;
    ctx->base.set_blend_color = zink_set_blend_color;
+
+   ctx->base.set_sample_mask = zink_set_sample_mask;
 
    ctx->base.clear = zink_clear;
    ctx->base.draw_vbo = zink_draw_vbo;

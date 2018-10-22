@@ -62,6 +62,7 @@ zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
    ms_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
    ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
    ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
+   ms_state.pSampleMask = state->sample_mask ? &state->sample_mask : NULL;
 
    VkPipelineViewportStateCreateInfo viewport_state = {};
    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
