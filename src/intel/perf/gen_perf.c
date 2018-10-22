@@ -40,6 +40,7 @@
 #include "dev/gen_debug.h"
 #include "dev/gen_device_info.h"
 #include "util/bitscan.h"
+#include "util/mesa-sha1.h"
 #include "util/u_math.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
@@ -387,6 +388,11 @@ gen_perf_active_queries(struct gen_perf_context *perf_ctx,
    }
 }
 
+static inline uint64_t to_user_pointer(void *ptr)
+{
+   return (uintptr_t) ptr;
+}
+
 static bool
 get_sysfs_dev_dir(struct gen_perf_config *perf, int fd)
 {
@@ -554,15 +560,7 @@ enumerate_sysfs_metrics(struct gen_perf_config *perf)
                                       metric_entry->d_name);
       if (entry) {
          uint64_t id;
-
-         len = snprintf(buf, sizeof(buf), "%s/metrics/%s/id",
-                        perf->sysfs_dev_dir, metric_entry->d_name);
-         if (len < 0 || len >= sizeof(buf)) {
-            DBG("Failed to concatenate path to sysfs metric id file\n");
-            continue;
-         }
-
-         if (!read_file_uint64(buf, &id)) {
+         if (!gen_perf_load_metric_id(perf, metric_entry->d_name, &id)) {
             DBG("Failed to read metric set id from %s: %m", buf);
             continue;
          }
@@ -584,6 +582,56 @@ kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
                     &invalid_config_id) < 0 && errno == ENOENT;
 }
 
+static int
+i915_query_items(struct gen_perf_config *perf, int fd,
+                 struct drm_i915_query_item *items, uint32_t n_items)
+{
+   struct drm_i915_query q = {
+      .num_items = n_items,
+      .items_ptr = to_user_pointer(items),
+   };
+   return gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &q);
+}
+
+static bool
+i915_query_perf_config_supported(struct gen_perf_config *perf, int fd)
+{
+   struct drm_i915_query_item item = {
+      .query_id = DRM_I915_QUERY_PERF_CONFIG,
+      .flags = DRM_I915_QUERY_PERF_CONFIG_LIST,
+   };
+
+   return i915_query_items(perf, fd, &item, 1) == 0 && item.length > 0;
+}
+
+static bool
+i915_query_perf_config_data(struct gen_perf_config *perf,
+                            int fd, const char *guid,
+                            struct drm_i915_perf_oa_config *config)
+{
+   struct {
+      struct drm_i915_query_perf_config query;
+      struct drm_i915_perf_oa_config config;
+   } item_data;
+   struct drm_i915_query_item item = {
+      .query_id = DRM_I915_QUERY_PERF_CONFIG,
+      .flags = DRM_I915_QUERY_PERF_CONFIG_DATA_FOR_UUID,
+      .data_ptr = to_user_pointer(&item_data),
+      .length = sizeof(item_data),
+   };
+
+   memset(&item_data, 0, sizeof(item_data));
+   memcpy(item_data.query.uuid, guid, sizeof(item_data.query.uuid));
+   memcpy(&item_data.config, config, sizeof(item_data.config));
+
+   if (!(i915_query_items(perf, fd, &item, 1) == 0 && item.length > 0))
+      return false;
+
+   memcpy(config, &item_data.config, sizeof(item_data.config));
+
+   return true;
+}
+
 bool
 gen_perf_load_metric_id(struct gen_perf_config *perf_cfg,
                         const char *guid,
@@ -598,14 +646,34 @@ gen_perf_load_metric_id(struct gen_perf_config *perf_cfg,
    return read_file_uint64(config_path, metric_id);
 }
 
+static uint64_t
+i915_add_config(struct gen_perf_config *perf, int fd,
+                const struct gen_perf_registers *config,
+                const char *guid)
+{
+   struct drm_i915_perf_oa_config i915_config = { 0, };
+
+   memcpy(i915_config.uuid, guid, sizeof(i915_config.uuid));
+
+   i915_config.n_mux_regs = config->n_mux_regs;
+   i915_config.mux_regs_ptr = to_user_pointer(config->mux_regs);
+
+   i915_config.n_boolean_regs = config->n_b_counter_regs;
+   i915_config.boolean_regs_ptr = to_user_pointer(config->b_counter_regs);
+
+   i915_config.n_flex_regs = config->n_flex_regs;
+   i915_config.flex_regs_ptr = to_user_pointer(config->flex_regs);
+
+   int ret = gen_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &i915_config);
+   return ret > 0 ? ret : 0;
+}
+
 static void
 init_oa_configs(struct gen_perf_config *perf, int fd)
 {
    hash_table_foreach(perf->oa_metrics_table, entry) {
       const struct gen_perf_query_info *query = entry->data;
-      struct drm_i915_perf_oa_config config;
       uint64_t config_id;
-      int ret;
 
       if (gen_perf_load_metric_id(perf, query->guid, &config_id)) {
          DBG("metric set: %s (already loaded)\n", query->guid);
@@ -613,20 +681,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
          continue;
       }
 
-      memset(&config, 0, sizeof(config));
-
-      memcpy(config.uuid, query->guid, sizeof(config.uuid));
-
-      config.n_mux_regs = query->config.n_mux_regs;
-      config.mux_regs_ptr = (uintptr_t) query->config.mux_regs;
-
-      config.n_boolean_regs = query->config.n_b_counter_regs;
-      config.boolean_regs_ptr = (uintptr_t) query->config.b_counter_regs;
-
-      config.n_flex_regs = query->config.n_flex_regs;
-      config.flex_regs_ptr = (uintptr_t) query->config.flex_regs;
-
-      ret = gen_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &config);
+      int ret = i915_add_config(perf, fd, &query->config, query->guid);
       if (ret < 0) {
          DBG("Failed to load \"%s\" (%s) metrics set in kernel: %s\n",
              query->name, query->guid, strerror(errno));
@@ -861,6 +916,8 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
    bool i915_perf_oa_available = false;
    struct stat sb;
 
+   perf->i915_query_supported = i915_query_perf_config_supported(perf, fd);
+
    /* The existence of this sysctl parameter implies the kernel supports
     * the i915 perf interface.
     */
@@ -903,6 +960,87 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
       enumerate_sysfs_metrics(perf);
 
    return true;
+}
+
+struct gen_perf_registers *
+gen_perf_load_configuration(struct gen_perf_config *perf_cfg, int fd, const char *guid)
+{
+   if (!perf_cfg->i915_query_supported)
+      return NULL;
+
+   struct drm_i915_perf_oa_config i915_config = { 0, };
+   if (!i915_query_perf_config_data(perf_cfg, fd, guid, &i915_config))
+      return NULL;
+
+   struct gen_perf_registers *config = rzalloc(NULL, struct gen_perf_registers);
+   config->n_flex_regs = i915_config.n_flex_regs;
+   config->flex_regs = rzalloc_array(config, struct gen_perf_query_register_prog, config->n_flex_regs);
+   config->n_mux_regs = i915_config.n_mux_regs;
+   config->mux_regs = rzalloc_array(config, struct gen_perf_query_register_prog, config->n_mux_regs);
+   config->n_b_counter_regs = i915_config.n_boolean_regs;
+   config->b_counter_regs = rzalloc_array(config, struct gen_perf_query_register_prog, config->n_b_counter_regs);
+
+   /*
+    * struct gen_perf_query_register_prog maps exactly to the tuple of
+    * (register offset, register value) returned by the i915.
+    */
+   i915_config.flex_regs_ptr = to_user_pointer(config->flex_regs);
+   i915_config.mux_regs_ptr = to_user_pointer(config->mux_regs);
+   i915_config.boolean_regs_ptr = to_user_pointer(config->b_counter_regs);
+   if (!i915_query_perf_config_data(perf_cfg, fd, guid, &i915_config)) {
+      ralloc_free(config);
+      return NULL;
+   }
+
+   return config;
+}
+
+uint64_t
+gen_perf_store_configuration(struct gen_perf_config *perf_cfg, int fd,
+                             const struct gen_perf_registers *config,
+                             const char *guid)
+{
+   if (guid)
+      return i915_add_config(perf_cfg, fd, config, guid);
+
+   struct mesa_sha1 sha1_ctx;
+   _mesa_sha1_init(&sha1_ctx);
+
+   if (config->flex_regs) {
+      _mesa_sha1_update(&sha1_ctx, config->flex_regs,
+                        sizeof(config->flex_regs[0]) *
+                        config->n_flex_regs);
+   }
+   if (config->mux_regs) {
+      _mesa_sha1_update(&sha1_ctx, config->mux_regs,
+                        sizeof(config->mux_regs[0]) *
+                        config->n_mux_regs);
+   }
+   if (config->b_counter_regs) {
+      _mesa_sha1_update(&sha1_ctx, config->b_counter_regs,
+                        sizeof(config->b_counter_regs[0]) *
+                        config->n_b_counter_regs);
+   }
+
+   uint8_t hash[20];
+   _mesa_sha1_final(&sha1_ctx, hash);
+
+   char formatted_hash[41];
+   _mesa_sha1_format(formatted_hash, hash);
+
+   char generated_guid[37];
+   snprintf(generated_guid, sizeof(generated_guid),
+            "%.8s-%.4s-%.4s-%.4s-%.12s",
+            &formatted_hash[0], &formatted_hash[8],
+            &formatted_hash[8 + 4], &formatted_hash[8 + 4 + 4],
+            &formatted_hash[8 + 4 + 4 + 4]);
+
+   /* Check if already present. */
+   uint64_t id;
+   if (gen_perf_load_metric_id(perf_cfg, generated_guid, &id))
+      return id;
+
+   return i915_add_config(perf_cfg, fd, config, generated_guid);
 }
 
 /* Accumulate 32bits OA counters */

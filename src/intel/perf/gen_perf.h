@@ -140,7 +140,7 @@ struct gen_perf_query_register_prog {
 };
 
 /* Register programming for a given query */
-struct gen_perf_configuration {
+struct gen_perf_registers {
    struct gen_perf_query_register_prog *flex_regs;
    uint32_t n_flex_regs;
 
@@ -175,10 +175,12 @@ struct gen_perf_query_info {
    int b_offset;
    int c_offset;
 
-   struct gen_perf_configuration config;
+   struct gen_perf_registers config;
 };
 
 struct gen_perf_config {
+   bool i915_query_supported;
+
    struct gen_perf_query_info *queries;
    int n_queries;
 
@@ -243,6 +245,20 @@ void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
 bool gen_perf_load_metric_id(struct gen_perf_config *perf_cfg,
                              const char *guid,
                              uint64_t *metric_id);
+
+/** Load a configuation's content from i915 using a guid.
+ */
+struct gen_perf_registers *gen_perf_load_configuration(struct gen_perf_config *perf_cfg,
+                                                      int fd, const char *guid);
+
+/** Store a configuration into i915 using guid and return a new metric id.
+ *
+ * If guid is NULL, then a generated one will be provided by hashing the
+ * content of the configuration.
+ */
+uint64_t gen_perf_store_configuration(struct gen_perf_config *perf_cfg, int fd,
+                                      const struct gen_perf_registers *config,
+                                      const char *guid);
 
 /** Read the slice/unslice frequency from 2 OA reports and store then into
  *  result.
