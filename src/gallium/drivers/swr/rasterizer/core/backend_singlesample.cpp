@@ -84,6 +84,7 @@ void BackendSingleSample(DRAW_CONTEXT*        pDC,
         {
             const bool useAlternateOffset = ((xx & SIMD_TILE_X_DIM) != 0);
 
+            psContext.alternateOffset = useAlternateOffset ? 1 : 0;
 
             simdmask coverageMask = work.coverageMask[0] & MASK;
 

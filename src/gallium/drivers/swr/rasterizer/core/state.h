@@ -380,6 +380,8 @@ struct SWR_PS_CONTEXT
 
     uint8_t* pColorBuffer[SWR_NUM_RENDERTARGETS]; // IN: Pointers to render target hottiles
 
+    uint32_t alternateOffset; // IN: for 8x2 tile backend, which 4x2 do we need to read from
+
     SWR_SHADER_STATS stats; // OUT: shader statistics used for archrast.
 };
 
