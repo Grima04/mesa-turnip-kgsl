@@ -1900,7 +1900,8 @@ iris_set_viewport_states(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_genx_state *genx = ice->state.genx;
-   uint32_t *vp_map = &genx->sf_cl_vp[start_slot];
+   uint32_t *vp_map =
+      &genx->sf_cl_vp[start_slot * GENX(SF_CLIP_VIEWPORT_length)];
 
    for (unsigned i = 0; i < count; i++) {
       const struct pipe_viewport_state *state = &states[i];
