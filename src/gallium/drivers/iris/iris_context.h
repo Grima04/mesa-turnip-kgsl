@@ -39,6 +39,7 @@ struct iris_context;
 struct blorp_batch;
 struct blorp_params;
 
+#define IRIS_MAX_TEXTURE_BUFFER_SIZE (1 << 27)
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 /* IRIS_MAX_ABOS and IRIS_MAX_SSBOS must be the same. */
 #define IRIS_MAX_ABOS 16

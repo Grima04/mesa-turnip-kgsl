@@ -1397,6 +1397,44 @@ fmt_swizzle(const struct iris_format_info *fmt, enum pipe_swizzle swz)
    }
 }
 
+static void
+fill_buffer_surface_state(struct isl_device *isl_dev,
+                          struct iris_bo *bo,
+                          void *map,
+                          enum isl_format format,
+                          unsigned offset,
+                          unsigned size)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+   const unsigned cpp = fmtl->bpb / 8;
+
+   /* The ARB_texture_buffer_specification says:
+    *
+    *    "The number of texels in the buffer texture's texel array is given by
+    *
+    *       floor(<buffer_size> / (<components> * sizeof(<base_type>)),
+    *
+    *     where <buffer_size> is the size of the buffer object, in basic
+    *     machine units and <components> and <base_type> are the element count
+    *     and base data type for elements, as specified in Table X.1.  The
+    *     number of texels in the texel array is then clamped to the
+    *     implementation-dependent limit MAX_TEXTURE_BUFFER_SIZE_ARB."
+    *
+    * We need to clamp the size in bytes to MAX_TEXTURE_BUFFER_SIZE * stride,
+    * so that when ISL divides by stride to obtain the number of texels, that
+    * texel count is clamped to MAX_TEXTURE_BUFFER_SIZE.
+    */
+   unsigned final_size =
+      MIN3(size, bo->size - offset, IRIS_MAX_TEXTURE_BUFFER_SIZE * cpp);
+
+   isl_buffer_fill_state(isl_dev, map,
+                         .address = bo->gtt_offset + offset,
+                         .size_B = final_size,
+                         .format = format,
+                         .stride_B = cpp,
+                         .mocs = MOCS_WB);
+}
+
 /**
  * The pipe->create_sampler_view() driver hook.
  */
@@ -1473,19 +1511,9 @@ iris_create_sampler_view(struct pipe_context *ctx,
                           // .aux_surf =
                           // .clear_color = clear_color,
    } else {
-      // XXX: what to do about isv->view?  other drivers don't use it for bufs
-      const struct isl_format_layout *fmtl =
-         isl_format_get_layout(isv->view.format);
-      const unsigned cpp = fmtl->bpb / 8;
-
-      isl_buffer_fill_state(&screen->isl_dev, map,
-                            .address = isv->res->bo->gtt_offset +
-                                       tmpl->u.buf.offset,
-                            // XXX: buffer_texture_range_size from i965?
-                            .size_B = tmpl->u.buf.size,
-                            .format = isv->view.format,
-                            .stride_B = cpp,
-                            .mocs = MOCS_WB);
+      fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
+                                isv->view.format, tmpl->u.buf.offset,
+                                tmpl->u.buf.size);
    }
 
    return &isv->base;
@@ -1651,18 +1679,9 @@ iris_set_shader_images(struct pipe_context *ctx,
                                 // .aux_surf =
                                 // .clear_color = clear_color,
          } else {
-            // XXX: what to do about view?  other drivers don't use it for bufs
-            const struct isl_format_layout *fmtl =
-               isl_format_get_layout(isl_format);
-            const unsigned cpp = fmtl->bpb / 8;
-
-            isl_buffer_fill_state(&screen->isl_dev, map,
-                                  .address = res->bo->gtt_offset,
-                                  // XXX: buffer_texture_range_size from i965?
-                                  .size_B = res->base.width0,
-                                  .format = isl_format,
-                                  .stride_B = cpp,
-                                  .mocs = MOCS_WB);
+            fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
+                                      isl_format, img->u.buf.offset,
+                                      img->u.buf.size);
          }
       } else {
          pipe_resource_reference(&shs->image[start_slot + i].res, NULL);

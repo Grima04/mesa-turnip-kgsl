@@ -211,7 +211,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
       return true; // XXX: ?????
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
-      return 1 << 27; /* 128MB */
+      return IRIS_MAX_TEXTURE_BUFFER_SIZE;
    case PIPE_CAP_MAX_VIEWPORTS:
       return 16;
    case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
