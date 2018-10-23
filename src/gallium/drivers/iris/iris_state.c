@@ -1791,12 +1791,27 @@ static void
 iris_set_scissor_states(struct pipe_context *ctx,
                         unsigned start_slot,
                         unsigned num_scissors,
-                        const struct pipe_scissor_state *states)
+                        const struct pipe_scissor_state *rects)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
    for (unsigned i = 0; i < num_scissors; i++) {
-      ice->state.scissors[start_slot + i] = states[i];
+      if (rects[i].minx == rects[i].maxx || rects[i].miny == rects[i].maxy) {
+         /* If the scissor was out of bounds and got clamped to 0 width/height
+          * at the bounds, the subtraction of 1 from maximums could produce a
+          * negative number and thus not clip anything.  Instead, just provide
+          * a min > max scissor inside the bounds, which produces the expected
+          * no rendering.
+          */
+         ice->state.scissors[start_slot + i] = (struct pipe_scissor_state) {
+            .minx = 1, .maxx = 0, .miny = 1, .maxy = 0,
+         };
+      } else {
+         ice->state.scissors[start_slot + i] = (struct pipe_scissor_state) {
+            .minx = rects[i].minx,     .miny = rects[i].miny,
+            .maxx = rects[i].maxx - 1, .maxy = rects[i].maxy - 1,
+         };
+      }
    }
 
    ice->state.dirty |= IRIS_DIRTY_SCISSOR_RECT;
@@ -5140,4 +5155,11 @@ genX(init_state)(struct iris_context *ice)
    isl_null_fill_state(&screen->isl_dev, null_surf_map, isl_extent3d(1, 1, 1));
    ice->state.unbound_tex.offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(ice->state.unbound_tex.res));
+
+   /* Default all scissor rectangles to be empty regions. */
+   for (int i = 0; i < IRIS_MAX_VIEWPORTS; i++) {
+      ice->state.scissors[i] = (struct pipe_scissor_state) {
+         .minx = 1, .maxx = 0, .miny = 1, .maxy = 0,
+      };
+   }
 }
