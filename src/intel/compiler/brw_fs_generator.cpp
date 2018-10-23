@@ -819,52 +819,14 @@ fs_generator::generate_linterp(fs_inst *inst,
    struct brw_reg delta_x = src[0];
    struct brw_reg delta_y = offset(src[0], inst->exec_size / 8);
    struct brw_reg interp = stride(src[1], 0, 1, 0);
-   brw_inst *i[4];
+   brw_inst *i[2];
 
-   if (devinfo->gen >= 11) {
-      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_NF);
-      struct brw_reg dwP = suboffset(interp, 0);
-      struct brw_reg dwQ = suboffset(interp, 1);
-      struct brw_reg dwR = suboffset(interp, 3);
+   /* fs_visitor::lower_linterp() will do the lowering to MAD instructions for
+    * us on gen11+
+    */
+   assert(devinfo->gen < 11);
 
-      brw_push_insn_state(p);
-      brw_set_default_exec_size(p, BRW_EXECUTE_8);
-
-      if (inst->exec_size == 8) {
-         i[0] = brw_MAD(p,            acc, dwR, offset(delta_x, 0), dwP);
-         i[1] = brw_MAD(p, offset(dst, 0), acc, offset(delta_y, 0), dwQ);
-
-         brw_inst_set_cond_modifier(p->devinfo, i[1], inst->conditional_mod);
-
-         /* brw_set_default_saturate() is called before emitting instructions,
-          * so the saturate bit is set in each instruction, so we need to unset
-          * it on the first instruction of each pair.
-          */
-         brw_inst_set_saturate(p->devinfo, i[0], false);
-      } else {
-         brw_set_default_group(p, inst->group);
-         i[0] = brw_MAD(p,            acc, dwR, offset(delta_x, 0), dwP);
-         i[1] = brw_MAD(p, offset(dst, 0), acc, offset(delta_x, 1), dwQ);
-
-         brw_set_default_group(p, inst->group + 8);
-         i[2] = brw_MAD(p,            acc, dwR, offset(delta_y, 0), dwP);
-         i[3] = brw_MAD(p, offset(dst, 1), acc, offset(delta_y, 1), dwQ);
-
-         brw_inst_set_cond_modifier(p->devinfo, i[1], inst->conditional_mod);
-         brw_inst_set_cond_modifier(p->devinfo, i[3], inst->conditional_mod);
-
-         /* brw_set_default_saturate() is called before emitting instructions,
-          * so the saturate bit is set in each instruction, so we need to unset
-          * it on the first instruction of each pair.
-          */
-         brw_inst_set_saturate(p->devinfo, i[0], false);
-         brw_inst_set_saturate(p->devinfo, i[2], false);
-      }
-
-      brw_pop_insn_state(p);
-
-      return true;
-   } else if (devinfo->has_pln) {
+   if (devinfo->has_pln) {
       if (devinfo->gen <= 6 && (delta_x.nr & 1) != 0) {
          /* From the Sandy Bridge PRM Vol. 4, Pt. 2, Section 8.3.53, "Plane":
           *
