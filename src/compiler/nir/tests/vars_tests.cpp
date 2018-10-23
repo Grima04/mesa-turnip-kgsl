@@ -34,14 +34,14 @@ protected:
    ~nir_vars_test();
 
    nir_variable *create_int(nir_variable_mode mode, const char *name) {
-      if (mode == nir_var_local)
+      if (mode == nir_var_function)
          return nir_local_variable_create(b->impl, glsl_int_type(), name);
       return nir_variable_create(b->shader, mode, glsl_int_type(), name);
    }
 
    nir_variable *create_ivec2(nir_variable_mode mode, const char *name) {
       const glsl_type *var_type = glsl_vector_type(GLSL_TYPE_INT, 2);
-      if (mode == nir_var_local)
+      if (mode == nir_var_function)
          return nir_local_variable_create(b->impl, var_type, name);
       return nir_variable_create(b->shader, mode, var_type, name);
    }
@@ -191,7 +191,7 @@ TEST_F(nir_redundant_load_vars_test, invalidate_inside_if_block)
     * if statement.  They should be invalidated accordingly.
     */
 
-   nir_variable **g = create_many_int(nir_var_global, "g", 3);
+   nir_variable **g = create_many_int(nir_var_private, "g", 3);
    nir_variable **out = create_many_int(nir_var_shader_out, "out", 3);
 
    nir_load_var(b, g[0]);
@@ -259,7 +259,7 @@ TEST_F(nir_redundant_load_vars_test, invalidate_live_load_in_the_end_of_loop)
 TEST_F(nir_copy_prop_vars_test, simple_copies)
 {
    nir_variable *in   = create_int(nir_var_shader_in,  "in");
-   nir_variable *temp = create_int(nir_var_local,      "temp");
+   nir_variable *temp = create_int(nir_var_function,   "temp");
    nir_variable *out  = create_int(nir_var_shader_out, "out");
 
    nir_copy_var(b, temp, in);
@@ -284,7 +284,7 @@ TEST_F(nir_copy_prop_vars_test, simple_copies)
 
 TEST_F(nir_copy_prop_vars_test, simple_store_load)
 {
-   nir_variable **v = create_many_ivec2(nir_var_local, "v", 2);
+   nir_variable **v = create_many_ivec2(nir_var_function, "v", 2);
    unsigned mask = 1 | 2;
 
    nir_ssa_def *stored_value = nir_imm_ivec2(b, 10, 20);
@@ -312,7 +312,7 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load)
 
 TEST_F(nir_copy_prop_vars_test, store_store_load)
 {
-   nir_variable **v = create_many_ivec2(nir_var_local, "v", 2);
+   nir_variable **v = create_many_ivec2(nir_var_function, "v", 2);
    unsigned mask = 1 | 2;
 
    nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
@@ -345,7 +345,7 @@ TEST_F(nir_copy_prop_vars_test, store_store_load)
 
 TEST_F(nir_copy_prop_vars_test, store_store_load_different_components)
 {
-   nir_variable **v = create_many_ivec2(nir_var_local, "v", 2);
+   nir_variable **v = create_many_ivec2(nir_var_function, "v", 2);
 
    nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, 1 << 1);
@@ -384,7 +384,7 @@ TEST_F(nir_copy_prop_vars_test, store_store_load_different_components)
 
 TEST_F(nir_copy_prop_vars_test, store_store_load_different_components_in_many_blocks)
 {
-   nir_variable **v = create_many_ivec2(nir_var_local, "v", 2);
+   nir_variable **v = create_many_ivec2(nir_var_function, "v", 2);
 
    nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
    nir_store_var(b, v[0], first_value, 1 << 1);
@@ -459,7 +459,7 @@ TEST_F(nir_copy_prop_vars_test, memory_barrier_in_two_blocks)
 
 TEST_F(nir_copy_prop_vars_test, simple_store_load_in_two_blocks)
 {
-   nir_variable **v = create_many_ivec2(nir_var_local, "v", 2);
+   nir_variable **v = create_many_ivec2(nir_var_function, "v", 2);
    unsigned mask = 1 | 2;
 
    nir_ssa_def *stored_value = nir_imm_ivec2(b, 10, 20);

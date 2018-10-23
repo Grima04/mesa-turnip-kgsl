@@ -310,16 +310,16 @@ nir_visitor::visit(ir_variable *ir)
    case ir_var_auto:
    case ir_var_temporary:
       if (is_global)
-         var->data.mode = nir_var_global;
+         var->data.mode = nir_var_private;
       else
-         var->data.mode = nir_var_local;
+         var->data.mode = nir_var_function;
       break;
 
    case ir_var_function_in:
    case ir_var_function_out:
    case ir_var_function_inout:
    case ir_var_const_in:
-      var->data.mode = nir_var_local;
+      var->data.mode = nir_var_function;
       break;
 
    case ir_var_shader_in:
@@ -448,7 +448,7 @@ nir_visitor::visit(ir_variable *ir)
 
    var->interface_type = ir->get_interface_type();
 
-   if (var->data.mode == nir_var_local)
+   if (var->data.mode == nir_var_function)
       nir_function_impl_add_variable(impl, var);
    else
       nir_shader_add_variable(shader, var);
@@ -1454,7 +1454,7 @@ nir_visitor::visit(ir_expression *ir)
           * sense, we'll just turn it into a load which will probably
           * eventually end up as an SSA definition.
           */
-         assert(this->deref->mode == nir_var_global);
+         assert(this->deref->mode == nir_var_private);
          op = nir_intrinsic_load_deref;
       }
 

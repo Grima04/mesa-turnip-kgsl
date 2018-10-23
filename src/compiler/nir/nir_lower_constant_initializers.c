@@ -92,13 +92,13 @@ nir_lower_constant_initializers(nir_shader *shader, nir_variable_mode modes)
    bool progress = false;
 
    nir_builder builder;
-   if (modes & ~nir_var_local)
+   if (modes & ~nir_var_function)
       nir_builder_init(&builder, nir_shader_get_entrypoint(shader));
 
    if (modes & nir_var_shader_out)
       progress |= lower_const_initializer(&builder, &shader->outputs);
 
-   if (modes & nir_var_global)
+   if (modes & nir_var_private)
       progress |= lower_const_initializer(&builder, &shader->globals);
 
    if (modes & nir_var_system_value)
@@ -114,7 +114,7 @@ nir_lower_constant_initializers(nir_shader *shader, nir_variable_mode modes)
       }
    }
 
-   if (modes & nir_var_local) {
+   if (modes & nir_var_function) {
       nir_foreach_function(function, shader) {
          if (!function->impl)
             continue;

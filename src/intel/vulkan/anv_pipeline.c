@@ -185,7 +185,7 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
     * inline functions.  That way they get properly initialized at the top
     * of the function and not at the top of its caller.
     */
-   NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_local);
+   NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_opt_deref);
@@ -788,7 +788,7 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
           !(stage->key.wm.color_outputs_valid & (1 << rt))) {
          /* Unused or out-of-bounds, throw it away */
          deleted_output = true;
-         var->data.mode = nir_var_local;
+         var->data.mode = nir_var_function;
          exec_node_remove(&var->node);
          exec_list_push_tail(&impl->locals, &var->node);
          continue;

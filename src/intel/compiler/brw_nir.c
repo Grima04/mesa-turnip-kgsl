@@ -527,7 +527,7 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
    if (compiler->glsl_compiler_options[stage].EmitNoIndirectOutput)
       indirect_mask |= nir_var_shader_out;
    if (compiler->glsl_compiler_options[stage].EmitNoIndirectTemp)
-      indirect_mask |= nir_var_local;
+      indirect_mask |= nir_var_function;
 
    return indirect_mask;
 }
@@ -542,8 +542,8 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
    bool progress;
    do {
       progress = false;
-      OPT(nir_split_array_vars, nir_var_local);
-      OPT(nir_shrink_vec_array_vars, nir_var_local);
+      OPT(nir_split_array_vars, nir_var_function);
+      OPT(nir_shrink_vec_array_vars, nir_var_function);
       OPT(nir_lower_vars_to_ssa);
       if (allow_copies) {
          /* Only run this pass in the first call to brw_nir_optimize.  Later
@@ -627,7 +627,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
    /* Workaround Gfxbench unused local sampler variable which will trigger an
     * assert in the opt_large_constants pass.
     */
-   OPT(nir_remove_dead_variables, nir_var_local);
+   OPT(nir_remove_dead_variables, nir_var_function);
 
    return nir;
 }
@@ -692,7 +692,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    OPT(nir_lower_global_vars_to_local);
 
    OPT(nir_split_var_copies);
-   OPT(nir_split_struct_vars, nir_var_local);
+   OPT(nir_split_struct_vars, nir_var_function);
 
    /* Run opt_algebraic before int64 lowering so we can hopefully get rid
     * of some int64 instructions.

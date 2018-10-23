@@ -296,7 +296,7 @@ v3d_shader_state_create(struct pipe_context *pctx,
 
         v3d_optimize_nir(s);
 
-        NIR_PASS_V(s, nir_remove_dead_variables, nir_var_local);
+        NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function);
 
         /* Garbage collect dead instructions */
         nir_sweep(s);

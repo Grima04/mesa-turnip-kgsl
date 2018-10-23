@@ -1598,7 +1598,7 @@ vc4_optimize_nir(struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_loop_unroll,
                          nir_var_shader_in |
                          nir_var_shader_out |
-                         nir_var_local);
+                         nir_var_function);
         } while (progress);
 }
 
@@ -2517,7 +2517,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
 
         vc4_optimize_nir(s);
 
-        NIR_PASS_V(s, nir_remove_dead_variables, nir_var_local);
+        NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function);
 
         /* Garbage collect dead instructions */
         nir_sweep(s);
