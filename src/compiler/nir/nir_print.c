@@ -421,6 +421,8 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "ssbo";
    case nir_var_mem_shared:
       return "shared";
+   case nir_var_mem_global:
+      return "global";
    case nir_var_shader_temp:
       return want_local_global_mode ? "shader_temp" : "";
    case nir_var_function_temp:

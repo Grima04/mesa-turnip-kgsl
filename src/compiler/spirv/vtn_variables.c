@@ -1709,6 +1709,9 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       nir_mode = nir_var_uniform;
       break;
    case SpvStorageClassCrossWorkgroup:
+      mode = vtn_variable_mode_cross_workgroup;
+      nir_mode = nir_var_mem_global;
+      break;
    case SpvStorageClassGeneric:
    default:
       vtn_fail("Unhandled variable storage class");
@@ -2059,6 +2062,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_ubo:
    case vtn_variable_mode_ssbo:
    case vtn_variable_mode_push_constant:
+   case vtn_variable_mode_cross_workgroup:
       /* These don't need actual variables. */
       break;
    }

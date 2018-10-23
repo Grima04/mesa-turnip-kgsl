@@ -104,6 +104,7 @@ typedef enum {
    nir_var_system_value    = (1 << 6),
    nir_var_mem_ssbo        = (1 << 7),
    nir_var_mem_shared      = (1 << 8),
+   nir_var_mem_global      = (1 << 9),
    nir_var_all             = ~0,
 } nir_variable_mode;
 

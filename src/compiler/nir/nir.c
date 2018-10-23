@@ -152,6 +152,10 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
       exec_list_push_tail(&shader->shared, &var->node);
       break;
 
+   case nir_var_mem_global:
+      assert(!"nir_shader_add_variable cannot be used for global memory");
+      break;
+
    case nir_var_system_value:
       exec_list_push_tail(&shader->system_values, &var->node);
       break;
