@@ -193,4 +193,23 @@ is_not_used_by_if(nir_alu_instr *instr)
    return list_empty(&instr->dest.dest.ssa.if_uses);
 }
 
+static inline bool
+is_used_by_non_fsat(nir_alu_instr *instr)
+{
+   nir_foreach_use(src, &instr->dest.dest.ssa) {
+      const nir_instr *const user_instr = src->parent_instr;
+
+      if (user_instr->type != nir_instr_type_alu)
+         return true;
+
+      const nir_alu_instr *const user_alu = nir_instr_as_alu(user_instr);
+
+      assert(instr != user_alu);
+      if (user_alu->op != nir_op_fsat)
+         return true;
+   }
+
+   return false;
+}
+
 #endif /* _NIR_SEARCH_ */
