@@ -3,6 +3,6 @@ include $(top_srcdir)/src/gallium/Automake.inc
 AM_CPPFLAGS = \
 	$(GALLIUM_CFLAGS)
 
-noinst_LTLIBRARIES = libpl111.la
+noinst_LTLIBRARIES = libkmsro.la
 
-libpl111_la_SOURCES = $(C_SOURCES)
+libkmsro_la_SOURCES = $(C_SOURCES)

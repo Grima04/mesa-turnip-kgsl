@@ -60,8 +60,8 @@ if HAVE_GALLIUM_IMX
 SUBDIRS += drivers/imx winsys/imx/drm
 endif
 
-if HAVE_GALLIUM_PL111
-SUBDIRS += drivers/pl111 winsys/pl111/drm
+if HAVE_GALLIUM_KMSRO
+SUBDIRS += drivers/kmsro winsys/kmsro/drm
 endif
 
 ## swrast/softpipe

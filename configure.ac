@@ -1408,7 +1408,7 @@ GALLIUM_DRIVERS_DEFAULT="r300,r600,svga,swrast"
 AC_ARG_WITH([gallium-drivers],
     [AS_HELP_STRING([--with-gallium-drivers@<:@=DIRS...@:>@],
         [comma delimited Gallium drivers list, e.g.
-        "i915,nouveau,r300,r600,radeonsi,freedreno,pl111,svga,swrast,swr,tegra,v3d,vc4,virgl,etnaviv,imx"
+        "i915,nouveau,r300,r600,radeonsi,freedreno,kmsro,svga,swrast,swr,tegra,v3d,vc4,virgl,etnaviv,imx"
         @<:@default=r300,r600,svga,swrast@:>@])],
     [with_gallium_drivers="$withval"],
     [with_gallium_drivers="$GALLIUM_DRIVERS_DEFAULT"])
@@ -2830,8 +2830,8 @@ if test -n "$with_gallium_drivers"; then
                                DEFINES="$DEFINES -DUSE_V3D_SIMULATOR"],
                               [USE_V3D_SIMULATOR=no])
             ;;
-        xpl111)
-            HAVE_GALLIUM_PL111=yes
+        xkmsro)
+            HAVE_GALLIUM_KMSRO=yes
             ;;
         xvirgl)
             HAVE_GALLIUM_VIRGL=yes
@@ -2868,8 +2868,8 @@ if test "x$HAVE_GALLIUM_ETNAVIV" != xyes -a "x$HAVE_GALLIUM_IMX" = xyes  ; then
     AC_MSG_ERROR([Building with imx requires etnaviv])
 fi
 
-if test "x$HAVE_GALLIUM_VC4" != xyes -a "x$HAVE_GALLIUM_PL111" = xyes  ; then
-    AC_MSG_ERROR([Building with pl111 requires vc4])
+if test "x$HAVE_GALLIUM_VC4" != xyes -a "x$HAVE_GALLIUM_KMSRO" = xyes  ; then
+    AC_MSG_ERROR([Building with kmsro requires vc4])
 fi
 
 if test "x$HAVE_GALLIUM_NOUVEAU" != xyes -a "x$HAVE_GALLIUM_TEGRA" = xyes; then
@@ -2966,7 +2966,7 @@ fi
 
 AM_CONDITIONAL(HAVE_GALLIUM_SVGA, test "x$HAVE_GALLIUM_SVGA" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_I915, test "x$HAVE_GALLIUM_I915" = xyes)
-AM_CONDITIONAL(HAVE_GALLIUM_PL111, test "x$HAVE_GALLIUM_PL111" = xyes)
+AM_CONDITIONAL(HAVE_GALLIUM_KMSRO, test "x$HAVE_GALLIUM_KMSRO" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_R300, test "x$HAVE_GALLIUM_R300" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_R600, test "x$HAVE_GALLIUM_R600" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_RADEONSI, test "x$HAVE_GALLIUM_RADEONSI" = xyes)
@@ -3116,7 +3116,7 @@ AC_CONFIG_FILES([Makefile
                  src/gallium/drivers/i915/Makefile
                  src/gallium/drivers/llvmpipe/Makefile
                  src/gallium/drivers/nouveau/Makefile
-                 src/gallium/drivers/pl111/Makefile
+                 src/gallium/drivers/kmsro/Makefile
                  src/gallium/drivers/r300/Makefile
                  src/gallium/drivers/r600/Makefile
                  src/gallium/drivers/radeonsi/Makefile
@@ -3164,7 +3164,7 @@ AC_CONFIG_FILES([Makefile
                  src/gallium/winsys/freedreno/drm/Makefile
                  src/gallium/winsys/i915/drm/Makefile
                  src/gallium/winsys/nouveau/drm/Makefile
-                 src/gallium/winsys/pl111/drm/Makefile
+                 src/gallium/winsys/kmsro/drm/Makefile
                  src/gallium/winsys/radeon/drm/Makefile
                  src/gallium/winsys/amdgpu/drm/Makefile
                  src/gallium/winsys/svga/drm/Makefile

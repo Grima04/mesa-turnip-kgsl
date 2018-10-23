@@ -29,8 +29,8 @@ AM_CFLAGS = \
 	$(GALLIUM_WINSYS_CFLAGS) \
 	$(LIBDRM_CFLAGS)
 
-noinst_LTLIBRARIES = libpl111drm.la
+noinst_LTLIBRARIES = libkmsrodrm.la
 
-libpl111drm_la_SOURCES = $(C_SOURCES)
+libkmsrodrm_la_SOURCES = $(C_SOURCES)
 
 EXTRA_DIST = meson.build

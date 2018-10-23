@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libpl111winsys = static_library(
-  'pl111winsys',
-  files('pl111_drm_winsys.c'),
+libkmsrowinsys = static_library(
+  'kmsrowinsys',
+  files('kmsro_drm_winsys.c'),
   include_directories : [
     inc_src, inc_include,
     inc_gallium, inc_gallium_aux, inc_gallium_winsys,
@@ -30,7 +30,7 @@ libpl111winsys = static_library(
   link_with : libvc4winsys,
 )
 
-driver_pl111 = declare_dependency(
-  compile_args : '-DGALLIUM_PL111',
-  link_with : libpl111winsys,
+driver_kmsro = declare_dependency(
+  compile_args : '-DGALLIUM_KMSRO',
+  link_with : libkmsrowinsys,
 )

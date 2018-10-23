@@ -25,17 +25,17 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "pl111_drm_public.h"
+#include "kmsro_drm_public.h"
 #include "vc4/drm/vc4_drm_public.h"
 #include "xf86drm.h"
 
 #include "pipe/p_screen.h"
 #include "renderonly/renderonly.h"
 
-struct pipe_screen *pl111_drm_screen_create(int fd)
+struct pipe_screen *kmsro_drm_screen_create(int fd)
 {
    struct renderonly ro = {
-      /* Passes the vc4-allocated BO through to the pl111 DRM device using
+      /* Passes the vc4-allocated BO through to the KMS-only DRM device using
        * PRIME buffer sharing.  The VC4 BO must be linear, which the SCANOUT
        * flag on allocation will have ensured.
        */

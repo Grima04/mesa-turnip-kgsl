@@ -25,15 +25,9 @@ include $(LOCAL_PATH)/Makefile.sources
 
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := \
-	$(C_SOURCES)
+LOCAL_SRC_FILES := $(C_SOURCES)
 
-LOCAL_MODULE := libmesa_pipe_pl111
+LOCAL_MODULE := libmesa_winsys_kmsro
 
 include $(GALLIUM_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
-
-ifneq ($(HAVE_GALLIUM_PL111),)
-GALLIUM_TARGET_DRIVERS += pl111
-$(eval GALLIUM_LIBS += $(LOCAL_MODULE) libmesa_winsys_pl111)
-endif

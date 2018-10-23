@@ -131,7 +131,7 @@ if _drivers.contains('auto')
       ]
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
       _drivers = [
-        'pl111', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'imx', 'nouveau',
+        'kmsro', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'imx', 'nouveau',
         'tegra', 'virgl', 'swrast',
       ]
     else
@@ -145,7 +145,7 @@ if _drivers.contains('auto')
           host_machine.system()))
   endif
 endif
-with_gallium_pl111 = _drivers.contains('pl111')
+with_gallium_kmsro = _drivers.contains('kmsro')
 with_gallium_radeonsi = _drivers.contains('radeonsi')
 with_gallium_r300 = _drivers.contains('r300')
 with_gallium_r600 = _drivers.contains('r600')
@@ -213,8 +213,8 @@ endif
 if with_gallium_imx and not with_gallium_etnaviv
   error('IMX driver requires etnaviv driver')
 endif
-if with_gallium_pl111 and not with_gallium_vc4
-  error('pl111 driver requires vc4 driver')
+if with_gallium_kmsro and not with_gallium_vc4
+  error('kmsro driver requires vc4 driver')
 endif
 if with_gallium_tegra and not with_gallium_nouveau
   error('tegra driver requires nouveau driver')

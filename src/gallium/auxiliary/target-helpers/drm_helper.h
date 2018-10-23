@@ -83,24 +83,24 @@ pipe_nouveau_create_screen(int fd, const struct pipe_screen_config *config)
 
 #endif
 
-#ifdef GALLIUM_PL111
-#include "pl111/drm/pl111_drm_public.h"
+#ifdef GALLIUM_KMSRO
+#include "kmsro/drm/kmsro_drm_public.h"
 
 struct pipe_screen *
-pipe_pl111_create_screen(int fd, const struct pipe_screen_config *config)
+pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = pl111_drm_screen_create(fd);
+   screen = kmsro_drm_screen_create(fd);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 
 #else
 
 struct pipe_screen *
-pipe_pl111_create_screen(int fd, const struct pipe_screen_config *config)
+pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 {
-   fprintf(stderr, "pl111: driver missing\n");
+   fprintf(stderr, "kmsro: driver missing\n");
    return NULL;
 }
 
