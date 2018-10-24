@@ -3354,6 +3354,10 @@ use_null_surface(struct iris_batch *batch, struct iris_context *ice)
 static uint32_t
 use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
 {
+   /* If set_framebuffer_state() was never called, fall back to 1x1x1 */
+   if (!ice->state.null_fb.res)
+      return use_null_surface(batch, ice);
+
    struct iris_bo *state_bo = iris_resource_bo(ice->state.null_fb.res);
 
    iris_use_pinned_bo(batch, state_bo, false);
