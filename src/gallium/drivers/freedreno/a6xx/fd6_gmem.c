@@ -449,6 +449,8 @@ disable_msaa(struct fd_ringbuffer *ring)
 			 A6XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE);
 }
 
+static void prepare_tile_setup_ib(struct fd_batch *batch);
+
 /* before first tile */
 static void
 fd6_emit_tile_init(struct fd_batch *batch)
@@ -466,6 +468,8 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		fd6_emit_ib(ring, batch->lrz_clear);
 
 	fd6_cache_flush(batch, ring);
+
+	prepare_tile_setup_ib(batch);
 
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
@@ -580,9 +584,8 @@ fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 }
 
 static void
-set_blit_scissor(struct fd_batch *batch)
+set_blit_scissor(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
-	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_scissor_state blit_scissor;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
@@ -601,11 +604,12 @@ set_blit_scissor(struct fd_batch *batch)
 }
 
 static void
-emit_blit(struct fd_batch *batch, uint32_t base,
+emit_blit(struct fd_batch *batch,
+		  struct fd_ringbuffer *ring,
+		  uint32_t base,
 		  struct pipe_surface *psurf,
 		  struct fd_resource *rsc)
 {
-	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource_slice *slice;
 	uint32_t offset;
 
@@ -642,12 +646,13 @@ emit_blit(struct fd_batch *batch, uint32_t base,
 }
 
 static void
-emit_restore_blit(struct fd_batch *batch, uint32_t base,
+emit_restore_blit(struct fd_batch *batch,
+				  struct fd_ringbuffer *ring,
+				  uint32_t base,
 				  struct pipe_surface *psurf,
 				  struct fd_resource *rsc,
 				  unsigned buffer)
 {
-	struct fd_ringbuffer *ring = batch->gmem;
 	uint32_t info = 0;
 
 	switch (buffer) {
@@ -668,7 +673,55 @@ emit_restore_blit(struct fd_batch *batch, uint32_t base,
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
 	OUT_RING(ring, info | A6XX_RB_BLIT_INFO_GMEM);
 
-	emit_blit(batch, base, psurf, rsc);
+	emit_blit(batch, ring, base, psurf, rsc);
+}
+
+/*
+ * transfer from system memory to gmem
+ */
+static void
+emit_restore_blits(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
+	struct fd_context *ctx = batch->ctx;
+	struct fd_gmem_stateobj *gmem = &ctx->gmem;
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+
+	if (batch->restore & FD_BUFFER_COLOR) {
+		unsigned i;
+		for (i = 0; i < pfb->nr_cbufs; i++) {
+			if (!pfb->cbufs[i])
+				continue;
+			if (!(batch->restore & (PIPE_CLEAR_COLOR0 << i)))
+				continue;
+			emit_restore_blit(batch, ring, gmem->cbuf_base[i], pfb->cbufs[i],
+							  fd_resource(pfb->cbufs[i]->texture),
+							  FD_BUFFER_COLOR);
+		}
+	}
+
+	if (batch->restore & (FD_BUFFER_DEPTH | FD_BUFFER_STENCIL)) {
+		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
+
+		if (!rsc->stencil || (batch->restore & FD_BUFFER_DEPTH)) {
+			emit_restore_blit(batch, ring, gmem->zsbuf_base[0], pfb->zsbuf, rsc,
+							  FD_BUFFER_DEPTH);
+		}
+		if (rsc->stencil && (batch->restore & FD_BUFFER_STENCIL)) {
+			emit_restore_blit(batch, ring, gmem->zsbuf_base[1], pfb->zsbuf, rsc->stencil,
+							  FD_BUFFER_STENCIL);
+		}
+	}
+}
+
+static void
+prepare_tile_setup_ib(struct fd_batch *batch)
+{
+	batch->tile_setup = fd_submit_new_ringbuffer(batch->submit, 0x1000,
+			FD_RINGBUFFER_STREAMING);
+
+	set_blit_scissor(batch, batch->tile_setup);
+
+	emit_restore_blits(batch, batch->tile_setup);
 }
 
 /*
@@ -677,43 +730,13 @@ emit_restore_blit(struct fd_batch *batch, uint32_t base,
 static void
 fd6_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 {
-	struct fd_context *ctx = batch->ctx;
-	struct fd_gmem_stateobj *gmem = &ctx->gmem;
-	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-
-	set_blit_scissor(batch);
-
-	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_COLOR)) {
-		unsigned i;
-		for (i = 0; i < pfb->nr_cbufs; i++) {
-			if (!pfb->cbufs[i])
-				continue;
-			if (!(batch->restore & (PIPE_CLEAR_COLOR0 << i)))
-				continue;
-			emit_restore_blit(batch, gmem->cbuf_base[i], pfb->cbufs[i],
-							  fd_resource(pfb->cbufs[i]->texture),
-							  FD_BUFFER_COLOR);
-		}
-	}
-
-	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_DEPTH | FD_BUFFER_STENCIL)) {
-		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
-
-		if (!rsc->stencil || fd_gmem_needs_restore(batch, tile, FD_BUFFER_DEPTH)) {
-			emit_restore_blit(batch, gmem->zsbuf_base[0], pfb->zsbuf, rsc,
-							  FD_BUFFER_DEPTH);
-		}
-		if (rsc->stencil && fd_gmem_needs_restore(batch, tile, FD_BUFFER_STENCIL)) {
-			emit_restore_blit(batch, gmem->zsbuf_base[1], pfb->zsbuf, rsc->stencil,
-							  FD_BUFFER_STENCIL);
-		}
-	}
 }
 
 /* before IB to rendering cmds: */
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 {
+	fd6_emit_ib(batch->gmem, batch->tile_setup);
 }
 
 static void
@@ -745,7 +768,7 @@ emit_resolve_blit(struct fd_batch *batch, uint32_t base,
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
 	OUT_RING(ring, info);
 
-	emit_blit(batch, base, psurf, rsc);
+	emit_blit(batch, batch->gmem, base, psurf, rsc);
 }
 
 /*
@@ -780,7 +803,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, A2XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE) | 0x10);
 	emit_marker6(ring, 7);
 
-	set_blit_scissor(batch);
+	set_blit_scissor(batch, ring);
 
 	if (batch->resolve & (FD_BUFFER_DEPTH | FD_BUFFER_STENCIL)) {
 		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);

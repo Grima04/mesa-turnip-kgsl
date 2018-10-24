@@ -144,9 +144,15 @@ batch_fini(struct fd_batch *batch)
 		debug_assert(!batch->binning);
 		debug_assert(!batch->gmem);
 	}
+
 	if (batch->lrz_clear) {
 		fd_ringbuffer_del(batch->lrz_clear);
 		batch->lrz_clear = NULL;
+	}
+
+	if (batch->tile_setup) {
+		fd_ringbuffer_del(batch->tile_setup);
+		batch->tile_setup = NULL;
 	}
 
 	fd_submit_del(batch->submit);
