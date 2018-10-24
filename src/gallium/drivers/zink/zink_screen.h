@@ -44,9 +44,11 @@ struct zink_screen {
 
    VkInstance instance;
    VkPhysicalDevice pdev;
+
    VkPhysicalDeviceProperties props;
    VkPhysicalDeviceFeatures feats;
    VkPhysicalDeviceMemoryProperties mem_props;
+   bool have_VK_KHR_maintenance1;
 
    uint32_t gfx_queue;
    VkDevice dev;

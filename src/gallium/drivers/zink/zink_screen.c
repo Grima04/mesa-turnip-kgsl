@@ -705,6 +705,24 @@ zink_create_screen(struct sw_winsys *winsys)
    vkGetPhysicalDeviceFeatures(screen->pdev, &screen->feats);
    vkGetPhysicalDeviceMemoryProperties(screen->pdev, &screen->mem_props);
 
+   uint32_t num_extensions = 0;
+   if (vkEnumerateDeviceExtensionProperties(screen->pdev, NULL,
+       &num_extensions, NULL) == VK_SUCCESS && num_extensions > 0) {
+      VkExtensionProperties *extensions = MALLOC(sizeof(VkExtensionProperties) *
+                                                num_extensions);
+      if (extensions) {
+         vkEnumerateDeviceExtensionProperties(screen->pdev, NULL,
+                                              &num_extensions, extensions);
+
+         for (uint32_t  i = 0; i < num_extensions; ++i) {
+            if (!strcmp(extensions[i].extensionName,
+                VK_KHR_MAINTENANCE1_EXTENSION_NAME))
+               screen->have_VK_KHR_maintenance1 = true;
+         }
+         FREE(extensions);
+      }
+   }
+
    VkDeviceQueueCreateInfo qci = {};
    float dummy = 0.0f;
    qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
