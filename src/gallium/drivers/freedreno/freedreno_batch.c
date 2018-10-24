@@ -155,6 +155,11 @@ batch_fini(struct fd_batch *batch)
 		batch->tile_setup = NULL;
 	}
 
+	if (batch->tile_fini) {
+		fd_ringbuffer_del(batch->tile_fini);
+		batch->tile_fini = NULL;
+	}
+
 	fd_submit_del(batch->submit);
 
 	util_dynarray_fini(&batch->draw_patches);

@@ -163,6 +163,7 @@ struct fd_batch {
 	// TODO maybe more generically split out clear and clear_binning rings?
 	struct fd_ringbuffer *lrz_clear;
 	struct fd_ringbuffer *tile_setup;
+	struct fd_ringbuffer *tile_fini;
 
 	/**
 	 * hw query related state:
