@@ -2472,6 +2472,14 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
    if (ice->state.streamout_active != active) {
       ice->state.streamout_active = active;
       ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+
+      /* We only emit 3DSTATE_SO_DECL_LIST when streamout is active, because
+       * it's a non-pipelined command.  If we're switching streamout on, we
+       * may have missed emitting it earlier, so do so now.  (We're already
+       * taking a stall to update 3DSTATE_SO_BUFFERS anyway...)
+       */
+      if (active)
+         ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST;
    }
 
    for (int i = 0; i < 4; i++) {
