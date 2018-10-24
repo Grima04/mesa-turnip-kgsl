@@ -63,6 +63,7 @@ libgallium_dri = shared_library(
 )
 
 foreach d : [[with_gallium_kmsro, 'pl111_dri.so'],
+             [with_gallium_kmsro, 'hx8357d_dri.so'],
              [with_gallium_radeonsi, 'radeonsi_dri.so'],
              [with_gallium_nouveau, 'nouveau_dri.so'],
              [with_gallium_freedreno, ['msm_dri.so', 'kgsl_dri.so']],

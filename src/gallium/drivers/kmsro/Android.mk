@@ -35,5 +35,6 @@ include $(BUILD_STATIC_LIBRARY)
 
 ifneq ($(HAVE_GALLIUM_KMSRO),)
 GALLIUM_TARGET_DRIVERS += pl111
+GALLIUM_TARGET_DRIVERS += hx8357d
 $(eval GALLIUM_LIBS += $(LOCAL_MODULE) libmesa_winsys_kmsro)
 endif
