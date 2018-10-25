@@ -2845,6 +2845,14 @@ iris_set_sampler_views(struct pipe_context *ctx,
                                    : IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 }
 
+static void
+iris_set_compute_resources(struct pipe_context *ctx,
+                           unsigned start, unsigned count,
+                           struct pipe_surface **resources)
+{
+   assert(count == 0);
+}
+
 /**
  * The pipe->set_tess_state() driver hook.
  */
@@ -7710,6 +7718,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_shader_buffers = iris_set_shader_buffers;
    ctx->set_shader_images = iris_set_shader_images;
    ctx->set_sampler_views = iris_set_sampler_views;
+   ctx->set_compute_resources = iris_set_compute_resources;
    ctx->set_tess_state = iris_set_tess_state;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
    ctx->set_polygon_stipple = iris_set_polygon_stipple;
