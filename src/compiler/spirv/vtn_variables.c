@@ -43,21 +43,6 @@ vtn_access_chain_create(struct vtn_builder *b, unsigned length)
    return chain;
 }
 
-static struct vtn_access_chain *
-vtn_access_chain_extend(struct vtn_builder *b, struct vtn_access_chain *old,
-                        unsigned new_ids)
-{
-   struct vtn_access_chain *chain;
-
-   unsigned old_len = old ? old->length : 0;
-   chain = vtn_access_chain_create(b, old_len + new_ids);
-
-   for (unsigned i = 0; i < old_len; i++)
-      chain->link[i] = old->link[i];
-
-   return chain;
-}
-
 static bool
 vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
                             struct vtn_pointer *ptr)
@@ -82,14 +67,20 @@ vtn_pointer_is_external_block(struct vtn_builder *b,
 
 /* Dereference the given base pointer by the access chain */
 static struct vtn_pointer *
-vtn_access_chain_pointer_dereference(struct vtn_builder *b,
-                                     struct vtn_pointer *base,
-                                     struct vtn_access_chain *deref_chain)
+vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
+                                  struct vtn_pointer *base,
+                                  struct vtn_access_chain *deref_chain)
 {
-   struct vtn_access_chain *chain =
-      vtn_access_chain_extend(b, base->chain, deref_chain->length);
    struct vtn_type *type = base->type;
    enum gl_access_qualifier access = base->access;
+
+   nir_deref_instr *tail;
+   if (base->deref) {
+      tail = base->deref;
+   } else {
+      assert(base->var && base->var->var);
+      tail = nir_build_deref_var(&b->nb, base->var->var);
+   }
 
    /* OpPtrAccessChain is only allowed on things which support variable
     * pointers.  For everything else, the client is expected to just pass us
@@ -97,14 +88,21 @@ vtn_access_chain_pointer_dereference(struct vtn_builder *b,
     */
    vtn_assert(!deref_chain->ptr_as_array);
 
-   unsigned start = base->chain ? base->chain->length : 0;
    for (unsigned i = 0; i < deref_chain->length; i++) {
-      chain->link[start + i] = deref_chain->link[i];
-
       if (glsl_type_is_struct(type->type)) {
          vtn_assert(deref_chain->link[i].mode == vtn_access_mode_literal);
-         type = type->members[deref_chain->link[i].id];
+         unsigned idx = deref_chain->link[i].id;
+         tail = nir_build_deref_struct(&b->nb, tail, idx);
+         type = type->members[idx];
       } else {
+         nir_ssa_def *index;
+         if (deref_chain->link[i].mode == vtn_access_mode_literal) {
+            index = nir_imm_int(&b->nb, deref_chain->link[i].id);
+         } else {
+            vtn_assert(deref_chain->link[i].mode == vtn_access_mode_id);
+            index = vtn_ssa_value(b, deref_chain->link[i].id)->def;
+         }
+         tail = nir_build_deref_array(&b->nb, tail, index);
          type = type->array_element;
       }
 
@@ -115,8 +113,7 @@ vtn_access_chain_pointer_dereference(struct vtn_builder *b,
    ptr->mode = base->mode;
    ptr->type = type;
    ptr->var = base->var;
-   ptr->deref = base->deref;
-   ptr->chain = chain;
+   ptr->deref = tail;
    ptr->access = access;
 
    return ptr;
@@ -362,7 +359,7 @@ vtn_pointer_dereference(struct vtn_builder *b,
    if (vtn_pointer_uses_ssa_offset(b, base)) {
       return vtn_ssa_offset_pointer_dereference(b, base, deref_chain);
    } else {
-      return vtn_access_chain_pointer_dereference(b, base, deref_chain);
+      return vtn_nir_deref_pointer_dereference(b, base, deref_chain);
    }
 }
 
@@ -412,39 +409,15 @@ vtn_pointer_to_deref(struct vtn_builder *b, struct vtn_pointer *ptr)
    if (ptr->var && ptr->var->copy_prop_sampler)
       return vtn_pointer_to_deref(b, ptr->var->copy_prop_sampler);
 
-   nir_deref_instr *tail;
-   if (ptr->deref) {
-      tail = ptr->deref;
-   } else {
-      assert(ptr->var && ptr->var->var);
-      tail = nir_build_deref_var(&b->nb, ptr->var->var);
+   vtn_assert(!vtn_pointer_uses_ssa_offset(b, ptr));
+   if (!ptr->deref) {
+      struct vtn_access_chain chain = {
+         .length = 0,
+      };
+      ptr = vtn_nir_deref_pointer_dereference(b, ptr, &chain);
    }
 
-   /* Raw variable access */
-   if (!ptr->chain)
-      return tail;
-
-   struct vtn_access_chain *chain = ptr->chain;
-   vtn_assert(chain);
-
-   for (unsigned i = 0; i < chain->length; i++) {
-      if (glsl_type_is_struct(tail->type)) {
-         vtn_assert(chain->link[i].mode == vtn_access_mode_literal);
-         unsigned idx = chain->link[i].id;
-         tail = nir_build_deref_struct(&b->nb, tail, idx);
-      } else {
-         nir_ssa_def *index;
-         if (chain->link[i].mode == vtn_access_mode_literal) {
-            index = nir_imm_int(&b->nb, chain->link[i].id);
-         } else {
-            vtn_assert(chain->link[i].mode == vtn_access_mode_id);
-            index = vtn_ssa_value(b, chain->link[i].id)->def;
-         }
-         tail = nir_build_deref_array(&b->nb, tail, index);
-      }
-   }
-
-   return tail;
+   return ptr->deref;
 }
 
 static void
@@ -1447,7 +1420,6 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
 
    if (val->value_type == vtn_value_type_pointer) {
       assert(val->pointer->var == void_var);
-      assert(val->pointer->chain == NULL);
       assert(member == -1);
    } else {
       assert(val->value_type == vtn_value_type_type);

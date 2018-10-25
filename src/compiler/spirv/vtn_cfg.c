@@ -1053,6 +1053,8 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    vtn_foreach_instruction(b, func->start_block->label, func->end,
                            vtn_handle_phi_second_pass);
 
+   nir_rematerialize_derefs_in_use_blocks_impl(func->impl);
+
    /* Continue blocks for loops get inserted before the body of the loop
     * but instructions in the continue may use SSA defs in the loop body.
     * Therefore, we need to repair SSA to insert the needed phi nodes.

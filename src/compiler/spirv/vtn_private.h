@@ -443,19 +443,8 @@ struct vtn_pointer {
     */
    struct vtn_variable *var;
 
-   /** The deref at the base of the chain
-    *
-    * This field may be NULL if the pointer uses a (block_index, offset) pair
-    * instead of an access chain or if the access chain starts at a variable.
-    */
+   /** The NIR deref corresponding to this pointer */
    nir_deref_instr *deref;
-
-   /** An access chain describing how to get from var to the referenced data
-    *
-    * This field may be NULL if the pointer references the entire variable or
-    * if a (block_index, offset) pair is used instead of an access chain.
-    */
-   struct vtn_access_chain *chain;
 
    /** A (block_index, offset) pair representing a UBO or SSBO position. */
    struct nir_ssa_def *block_index;
