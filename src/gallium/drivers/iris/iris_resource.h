@@ -47,7 +47,17 @@ struct iris_format_info {
 struct iris_resource {
    struct pipe_resource	base;
    enum pipe_format internal_format;
+
+   /**
+    * The ISL surface layout information for this resource.
+    *
+    * This is not filled out for PIPE_BUFFER resources, but is guaranteed
+    * to be zeroed.  Note that this also guarantees that res->surf.tiling
+    * will be ISL_TILING_LINEAR, so it's safe to check that.
+    */
    struct isl_surf surf;
+
+   /** Backing storage for the resource */
    struct iris_bo *bo;
 
    /**

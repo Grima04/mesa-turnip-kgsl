@@ -226,6 +226,44 @@ iris_alloc_resource(struct pipe_screen *pscreen,
 }
 
 static struct pipe_resource *
+iris_resource_create_for_buffer(struct pipe_screen *pscreen,
+                                const struct pipe_resource *templ)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct iris_resource *res = iris_alloc_resource(pscreen, templ);
+
+   assert(templ->target == PIPE_BUFFER);
+   assert(templ->height0 <= 1);
+   assert(templ->depth0 <= 1);
+   assert(templ->format == PIPE_FORMAT_NONE ||
+          util_format_get_blocksize(templ->format) == 1);
+
+   res->internal_format = templ->format;
+   res->surf.tiling = ISL_TILING_LINEAR;
+
+   enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
+   const char *name = templ->target == PIPE_BUFFER ? "buffer" : "miptree";
+   if (templ->flags & IRIS_RESOURCE_FLAG_SHADER_MEMZONE) {
+      memzone = IRIS_MEMZONE_SHADER;
+      name = "shader kernels";
+   } else if (templ->flags & IRIS_RESOURCE_FLAG_SURFACE_MEMZONE) {
+      memzone = IRIS_MEMZONE_SURFACE;
+      name = "surface state";
+   } else if (templ->flags & IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE) {
+      memzone = IRIS_MEMZONE_DYNAMIC;
+      name = "dynamic state";
+   }
+
+   res->bo = iris_bo_alloc(screen->bufmgr, name, templ->width0, memzone);
+   if (!res->bo) {
+      iris_resource_destroy(pscreen, &res->base);
+      return NULL;
+   }
+
+   return &res->base;
+}
+
+static struct pipe_resource *
 iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                     const struct pipe_resource *templ,
                                     const uint64_t *modifiers,
@@ -316,38 +354,35 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .tiling_flags = tiling_flags);
    assert(isl_surf_created_successfully);
 
+   const char *name = "miptree";
+
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
-   const char *name = templ->target == PIPE_BUFFER ? "buffer" : "miptree";
-   if (templ->flags & IRIS_RESOURCE_FLAG_SHADER_MEMZONE) {
-      memzone = IRIS_MEMZONE_SHADER;
-      name = "shader kernels";
-   } else if (templ->flags & IRIS_RESOURCE_FLAG_SURFACE_MEMZONE) {
-      memzone = IRIS_MEMZONE_SURFACE;
-      name = "surface state";
-   } else if (templ->flags & IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE) {
-      memzone = IRIS_MEMZONE_DYNAMIC;
-      name = "dynamic state";
-   }
+
+   /* These are for u_upload_mgr buffers only */
+   assert(!(templ->flags & (IRIS_RESOURCE_FLAG_SHADER_MEMZONE |
+                            IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
+                            IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
 
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,
                                  memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, 0);
-   if (!res->bo)
-      goto fail;
+   if (!res->bo) {
+      iris_resource_destroy(pscreen, &res->base);
+      return NULL;
+   }
 
    return &res->base;
-
-fail:
-   iris_resource_destroy(pscreen, &res->base);
-   return NULL;
 }
 
 static struct pipe_resource *
 iris_resource_create(struct pipe_screen *pscreen,
                      const struct pipe_resource *templ)
 {
-   return iris_resource_create_with_modifiers(pscreen, templ, NULL, 0);
+   if (templ->target == PIPE_BUFFER)
+      return iris_resource_create_for_buffer(pscreen, templ);
+   else
+      return iris_resource_create_with_modifiers(pscreen, templ, NULL, 0);
 }
 
 static uint64_t
@@ -370,12 +405,14 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
                                void *user_memory)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    if (!res)
       return NULL;
 
+   assert(templ->target == PIPE_BUFFER);
+
+   res->internal_format = templ->format;
    res->bo = iris_bo_create_userptr(bufmgr, "user",
                                     user_memory, templ->width0,
                                     IRIS_MEMZONE_OTHER);
@@ -383,30 +420,6 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
       free(res);
       return NULL;
    }
-
-   res->internal_format = templ->format;
-
-   // XXX: usage...
-   isl_surf_usage_flags_t isl_usage = 0;
-
-   const struct iris_format_info fmt =
-      iris_format_for_usage(devinfo, templ->format, isl_usage);
-
-   isl_surf_init(&screen->isl_dev, &res->surf,
-                 .dim = target_to_isl_surf_dim(templ->target),
-                 .format = fmt.fmt,
-                 .width = templ->width0,
-                 .height = templ->height0,
-                 .depth = templ->depth0,
-                 .levels = templ->last_level + 1,
-                 .array_len = templ->array_size,
-                 .samples = MAX2(templ->nr_samples, 1),
-                 .min_alignment_B = 0,
-                 .row_pitch_B = 0,
-                 .usage = isl_usage,
-                 .tiling_flags = 1 << ISL_TILING_LINEAR);
-
-   assert(res->bo->tiling_mode == isl_tiling_to_i915_tiling(res->surf.tiling));
 
    return &res->base;
 }
@@ -458,21 +471,26 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    const struct iris_format_info fmt =
       iris_format_for_usage(devinfo, templ->format, isl_usage);
 
-   isl_surf_init(&screen->isl_dev, &res->surf,
-                 .dim = target_to_isl_surf_dim(templ->target),
-                 .format = fmt.fmt,
-                 .width = templ->width0,
-                 .height = templ->height0,
-                 .depth = templ->depth0,
-                 .levels = templ->last_level + 1,
-                 .array_len = templ->array_size,
-                 .samples = MAX2(templ->nr_samples, 1),
-                 .min_alignment_B = 0,
-                 .row_pitch_B = 0,
-                 .usage = isl_usage,
-                 .tiling_flags = 1 << mod_info->tiling);
+   if (templ->target == PIPE_BUFFER) {
+      res->surf.tiling = ISL_TILING_LINEAR;
+   } else {
+      isl_surf_init(&screen->isl_dev, &res->surf,
+                    .dim = target_to_isl_surf_dim(templ->target),
+                    .format = fmt.fmt,
+                    .width = templ->width0,
+                    .height = templ->height0,
+                    .depth = templ->depth0,
+                    .levels = templ->last_level + 1,
+                    .array_len = templ->array_size,
+                    .samples = MAX2(templ->nr_samples, 1),
+                    .min_alignment_B = 0,
+                    .row_pitch_B = 0,
+                    .usage = isl_usage,
+                    .tiling_flags = 1 << mod_info->tiling);
 
-   assert(res->bo->tiling_mode == isl_tiling_to_i915_tiling(res->surf.tiling));
+      assert(res->bo->tiling_mode ==
+             isl_tiling_to_i915_tiling(res->surf.tiling));
+   }
 
    return &res->base;
 
@@ -490,6 +508,7 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 {
    struct iris_resource *res = (struct iris_resource *)resource;
 
+   /* If this is a buffer, stride should be 0 - no need to special case */
    whandle->stride = res->surf.row_pitch_B;
    whandle->modifier = tiling_to_modifier(res->bo->tiling_mode);
 
