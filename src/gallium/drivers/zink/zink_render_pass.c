@@ -39,7 +39,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       struct zink_rt_attrib *rt = state->rts + i;
       attachments[i].flags = 0;
       attachments[i].format = rt->format;
-      attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
+      attachments[i].samples = rt->samples;
       attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -55,7 +55,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
       attachments[num_attachments].flags = 0;
       attachments[num_attachments].format = rt->format;
-      attachments[num_attachments].samples = VK_SAMPLE_COUNT_1_BIT;
+      attachments[num_attachments].samples = rt->samples;
       attachments[num_attachments].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;

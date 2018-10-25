@@ -51,6 +51,7 @@ struct zink_gfx_pipeline_state {
    float line_width;
 
    VkSampleMask sample_mask;
+   uint8_t rast_samples;
 };
 
 VkPipeline

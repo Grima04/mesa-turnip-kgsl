@@ -33,6 +33,7 @@ struct zink_screen;
 
 struct zink_rt_attrib {
   VkFormat format;
+  VkSampleCountFlagBits samples;
 };
 
 struct zink_render_pass_state {

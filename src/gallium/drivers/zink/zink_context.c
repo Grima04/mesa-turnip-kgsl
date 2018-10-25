@@ -471,12 +471,14 @@ get_render_pass(struct zink_context *ctx)
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct zink_resource *cbuf = zink_resource(fb->cbufs[i]->texture);
       state.rts[i].format = cbuf->format;
+      state.rts[i].samples = cbuf->base.nr_samples > 0 ? cbuf->base.nr_samples : VK_SAMPLE_COUNT_1_BIT;
    }
    state.num_cbufs = fb->nr_cbufs;
 
    if (fb->zsbuf) {
       struct zink_resource *zsbuf = zink_resource(fb->zsbuf->texture);
       state.rts[fb->nr_cbufs].format = zsbuf->format;
+      state.rts[fb->nr_cbufs].samples = zsbuf->base.nr_samples > 0 ? zsbuf->base.nr_samples : VK_SAMPLE_COUNT_1_BIT;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
 
@@ -602,12 +604,19 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
+   VkSampleCountFlagBits rast_samples = VK_SAMPLE_COUNT_1_BIT;
+   for (int i = 0; i < state->nr_cbufs; i++)
+      rast_samples = MAX2(rast_samples, state->cbufs[i]->texture->nr_samples);
+   if (state->zsbuf && state->zsbuf->texture->nr_samples)
+      rast_samples = MAX2(rast_samples, state->zsbuf->texture->nr_samples);
+
    util_copy_framebuffer_state(&ctx->fb_state, state);
 
    struct zink_framebuffer *fb = get_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
 
+   ctx->gfx_pipeline_state.rast_samples = rast_samples;
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
