@@ -49,6 +49,7 @@ struct blorp_params;
 #define IRIS_MAX_SSBOS 16
 #define IRIS_MAX_VIEWPORTS 16
 #define IRIS_MAX_CLIP_PLANES 8
+#define IRIS_MAX_GLOBAL_BINDINGS 32
 
 enum iris_param_domain {
    BRW_PARAM_DOMAIN_BUILTIN = 0,
@@ -696,6 +697,9 @@ struct iris_context {
 
       /** Do any samplers need border color?  One bit per shader stage. */
       uint8_t need_border_colors;
+
+      /** Global resource bindings */
+      struct pipe_resource *global_bindings[IRIS_MAX_GLOBAL_BINDINGS];
 
       struct pipe_stream_output_target *so_target[PIPE_MAX_SO_BUFFERS];
       bool streamout_active;

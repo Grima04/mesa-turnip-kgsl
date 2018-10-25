@@ -2853,6 +2853,31 @@ iris_set_compute_resources(struct pipe_context *ctx,
    assert(count == 0);
 }
 
+static void
+iris_set_global_binding(struct pipe_context *ctx,
+                        unsigned start_slot, unsigned count,
+                        struct pipe_resource **resources,
+                        uint32_t **handles)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   assert(start_slot + count <= IRIS_MAX_GLOBAL_BINDINGS);
+   for (unsigned i = 0; i < count; i++) {
+      if (resources && resources[i]) {
+         pipe_resource_reference(&ice->state.global_bindings[start_slot + i],
+                                 resources[i]);
+         struct iris_resource *res = (void *) resources[i];
+         uint64_t addr = res->bo->gtt_offset;
+         memcpy(handles[i], &addr, sizeof(addr));
+      } else {
+         pipe_resource_reference(&ice->state.global_bindings[start_slot + i],
+                                 NULL);
+      }
+   }
+
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_CS;
+}
+
 /**
  * The pipe->set_tess_state() driver hook.
  */
@@ -6688,6 +6713,15 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
       }
    }
 
+   for (unsigned i = 0; i < IRIS_MAX_GLOBAL_BINDINGS; i++) {
+      struct pipe_resource *res = ice->state.global_bindings[i];
+      if (!res)
+         continue;
+
+      iris_use_pinned_bo(batch, iris_resource_bo(res),
+                         true, IRIS_DOMAIN_NONE);
+   }
+
    if (stage_dirty & (IRIS_STAGE_DIRTY_SAMPLER_STATES_CS |
                       IRIS_STAGE_DIRTY_BINDINGS_CS |
                       IRIS_STAGE_DIRTY_CONSTANTS_CS |
@@ -7719,6 +7753,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_shader_images = iris_set_shader_images;
    ctx->set_sampler_views = iris_set_sampler_views;
    ctx->set_compute_resources = iris_set_compute_resources;
+   ctx->set_global_binding = iris_set_global_binding;
    ctx->set_tess_state = iris_set_tess_state;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
    ctx->set_polygon_stipple = iris_set_polygon_stipple;
