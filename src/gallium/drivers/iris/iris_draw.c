@@ -109,6 +109,11 @@ iris_update_grid_size_resource(struct iris_context *ice,
    if (grid->indirect) {
       grid_ref->res = grid->indirect;
       grid_ref->offset = grid->indirect_offset;
+
+      /* Zero out the grid size so that the next non-indirect grid launch will
+       * re-upload it properly.
+       */
+      memset(ice->state.last_grid, 0, sizeof(ice->state.last_grid));
    } else {
       /* If the size is the same, we don't need to upload anything. */
       if (memcmp(ice->state.last_grid, grid->grid, sizeof(grid->grid)) == 0)
