@@ -465,7 +465,7 @@ v3d_screen_get_compiler_options(struct pipe_screen *pscreen,
 }
 
 struct pipe_screen *
-v3d_screen_create(int fd)
+v3d_screen_create(int fd, struct renderonly *ro)
 {
         struct v3d_screen *screen = rzalloc(NULL, struct v3d_screen);
         struct pipe_screen *pscreen;
@@ -480,6 +480,14 @@ v3d_screen_create(int fd)
         pscreen->is_format_supported = v3d_screen_is_format_supported;
 
         screen->fd = fd;
+        if (ro) {
+                screen->ro = renderonly_dup(ro);
+                if (!screen->ro) {
+                        fprintf(stderr, "Failed to dup renderonly object\n");
+                        ralloc_free(screen);
+                        return NULL;
+                }
+        }
         list_inithead(&screen->bo_cache.time_list);
         (void)mtx_init(&screen->bo_handles_mutex, mtx_plain);
         screen->bo_handles = util_hash_table_create(handle_hash, handle_compare);

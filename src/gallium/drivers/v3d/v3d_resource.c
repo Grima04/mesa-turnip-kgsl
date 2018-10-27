@@ -299,7 +299,11 @@ static void
 v3d_resource_destroy(struct pipe_screen *pscreen,
                      struct pipe_resource *prsc)
 {
+        struct v3d_screen *screen = v3d_screen(pscreen);
         struct v3d_resource *rsc = v3d_resource(prsc);
+
+        if (rsc->scanout)
+                renderonly_scanout_destroy(rsc->scanout, screen->ro);
 
         v3d_bo_unreference(&rsc->bo);
         free(rsc);
@@ -312,6 +316,7 @@ v3d_resource_get_handle(struct pipe_screen *pscreen,
                         struct winsys_handle *whandle,
                         unsigned usage)
 {
+        struct v3d_screen *screen = v3d_screen(pscreen);
         struct v3d_resource *rsc = v3d_resource(prsc);
         struct v3d_bo *bo = rsc->bo;
 
@@ -339,6 +344,10 @@ v3d_resource_get_handle(struct pipe_screen *pscreen,
         case WINSYS_HANDLE_TYPE_SHARED:
                 return v3d_bo_flink(bo, &whandle->handle);
         case WINSYS_HANDLE_TYPE_KMS:
+                if (screen->ro) {
+                        assert(rsc->scanout);
+                        return renderonly_get_handle(rsc->scanout, whandle);
+                }
                 whandle->handle = bo->handle;
                 return TRUE;
         case WINSYS_HANDLE_TYPE_FD:
@@ -633,6 +642,7 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                    const uint64_t *modifiers,
                                    int count)
 {
+        struct v3d_screen *screen = v3d_screen(pscreen);
         bool linear_ok = find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
         struct v3d_resource *rsc = v3d_resource_setup(pscreen, tmpl);
         struct pipe_resource *prsc = &rsc->base;
@@ -646,6 +656,10 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
         /* Cursors are always linear, and the user can request linear as well.
          */
         if (tmpl->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
+                should_tile = false;
+
+        /* No tiling when we're sharing with another device (pl111). */
+        if (screen->ro && (tmpl->bind & PIPE_BIND_SCANOUT))
                 should_tile = false;
 
         /* 1D and 1D_ARRAY textures are always raster-order. */
@@ -678,8 +692,32 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
         rsc->internal_format = prsc->format;
 
         v3d_setup_slices(rsc, 0);
-        if (!v3d_resource_bo_alloc(rsc))
-                goto fail;
+
+        /* If we're in a renderonly setup, use the other device to perform our
+         * (linear) allocaton and just import it to v3d.  The other device may
+         * be using CMA, and V3D can import from CMA but doesn't do CMA
+         * allocations on its own.
+         *
+         * Note that DRI3 doesn't give us tmpl->bind flags, so we have to use
+         * the modifiers to see if we're allocating a scanout object.
+         */
+        if (screen->ro &&
+            ((tmpl->bind & PIPE_BIND_SCANOUT) ||
+             (count == 1 && modifiers[0] == DRM_FORMAT_MOD_LINEAR))) {
+                struct winsys_handle handle;
+                rsc->scanout =
+                   renderonly_scanout_for_resource(prsc, screen->ro, &handle);
+                if (!rsc->scanout) {
+                        fprintf(stderr, "Failed to create scanout resource\n");
+                        goto fail;
+                }
+                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+                rsc->bo = v3d_bo_open_dmabuf(screen, handle.handle);
+                v3d_debug_resource_layout(rsc, "scanout");
+        } else {
+                if (!v3d_resource_bo_alloc(rsc))
+                        goto fail;
+        }
 
         return prsc;
 fail:
@@ -752,6 +790,21 @@ v3d_resource_from_handle(struct pipe_screen *pscreen,
 
         v3d_setup_slices(rsc, whandle->stride);
         v3d_debug_resource_layout(rsc, "import");
+
+        if (screen->ro) {
+                /* Make sure that renderonly has a handle to our buffer in the
+                 * display's fd, so that a later renderonly_get_handle()
+                 * returns correct handles or GEM names.
+                 */
+                rsc->scanout =
+                        renderonly_create_gpu_import_for_resource(prsc,
+                                                                  screen->ro,
+                                                                  NULL);
+                if (!rsc->scanout) {
+                        fprintf(stderr, "Failed to create scanout resource.\n");
+                        goto fail;
+                }
+        }
 
         if (whandle->stride != slice->stride) {
                 static bool warned = false;

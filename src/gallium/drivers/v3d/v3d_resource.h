@@ -122,6 +122,7 @@ struct v3d_surface {
 struct v3d_resource {
         struct pipe_resource base;
         struct v3d_bo *bo;
+        struct renderonly_scanout *scanout;
         struct v3d_resource_slice slices[VC5_MAX_MIP_LEVELS];
         uint32_t cube_map_stride;
         uint32_t size;

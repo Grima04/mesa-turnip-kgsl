@@ -25,6 +25,7 @@
 #define VC5_SCREEN_H
 
 #include "pipe/p_screen.h"
+#include "renderonly/renderonly.h"
 #include "os/os_thread.h"
 #include "state_tracker/drm_driver.h"
 #include "util/list.h"
@@ -55,6 +56,7 @@ struct v3d_simulator_file;
 
 struct v3d_screen {
         struct pipe_screen base;
+        struct renderonly *ro;
         int fd;
 
         struct v3d_device_info devinfo;
@@ -90,7 +92,7 @@ v3d_screen(struct pipe_screen *screen)
         return (struct v3d_screen *)screen;
 }
 
-struct pipe_screen *v3d_screen_create(int fd);
+struct pipe_screen *v3d_screen_create(int fd, struct renderonly *ro);
 
 void
 v3d_fence_init(struct v3d_screen *screen);
