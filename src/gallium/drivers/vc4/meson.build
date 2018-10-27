@@ -96,7 +96,6 @@ if host_machine.cpu_family() == 'arm'
   vc4_c_args += '-DUSE_ARM_ASM'
 endif
 
-dep_simpenrose = dependency('simpenrose', required : false)
 if dep_simpenrose.found()
   vc4_c_args += '-DUSE_VC4_SIMULATOR'
 endif
