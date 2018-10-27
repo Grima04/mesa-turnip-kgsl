@@ -968,6 +968,7 @@ struct iris_rasterizer_state {
    uint32_t wm[GENX(3DSTATE_WM_length)];
    uint32_t line_stipple[GENX(3DSTATE_LINE_STIPPLE_length)];
 
+   uint8_t num_clip_plane_consts;
    bool clip_halfz; /* for CC_VIEWPORT */
    bool depth_clip_near; /* for CC_VIEWPORT */
    bool depth_clip_far; /* for CC_VIEWPORT */
@@ -1144,6 +1145,9 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       line.LineStippleInverseRepeatCount = 1.0f / line_stipple_factor;
       line.LineStippleRepeatCount = line_stipple_factor;
    }
+
+   if (state->clip_plane_enable != 0)
+      cso->num_clip_plane_consts = util_logbase2(state->clip_plane_enable) + 1;
 
    return cso;
 }
@@ -2949,9 +2953,15 @@ iris_populate_sampler_key(const struct iris_context *ice,
  */
 static void
 iris_populate_vs_key(const struct iris_context *ice,
+                     const struct shader_info *info,
                      struct brw_vs_prog_key *key)
 {
+   const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+
    iris_populate_sampler_key(ice, &key->tex);
+
+   if (info->clip_distance_array_size == 0)
+      key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
 /**

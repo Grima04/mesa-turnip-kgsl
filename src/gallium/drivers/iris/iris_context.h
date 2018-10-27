@@ -346,6 +346,7 @@ struct iris_vtable {
    uint32_t *(*create_so_decl_list)(const struct pipe_stream_output_info *sol,
                                     const struct brw_vue_map *vue_map);
    void (*populate_vs_key)(const struct iris_context *ice,
+                           const struct shader_info *info,
                            struct brw_vs_prog_key *key);
    void (*populate_tcs_key)(const struct iris_context *ice,
                             struct brw_tcs_prog_key *key);

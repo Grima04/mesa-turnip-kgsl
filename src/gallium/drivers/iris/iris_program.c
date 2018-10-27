@@ -183,6 +183,9 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
 
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
+      /* User clip planes */
+      if (nir->info.clip_distance_array_size == 0)
+         ish->nos |= IRIS_NOS_RASTERIZER;
       // XXX: NOS
       break;
    case MESA_SHADER_TESS_CTRL:
@@ -592,7 +595,7 @@ iris_update_compiled_vs(struct iris_context *ice)
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
 
    struct brw_vs_prog_key key = { .program_string_id = ish->program_id };
-   ice->vtbl.populate_vs_key(ice, &key);
+   ice->vtbl.populate_vs_key(ice, &ish->nir->info, &key);
 
    if (iris_bind_cached_shader(ice, IRIS_CACHE_VS, &key))
       return;
