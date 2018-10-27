@@ -118,8 +118,6 @@ iris_update_grid_size_resource(struct iris_context *ice,
 
       u_upload_data(ice->state.dynamic_uploader, 0, sizeof(grid->grid), 4,
                     grid->grid, &grid_ref->offset, &grid_ref->res);
-      grid_ref->offset +=
-         iris_bo_offset_from_base_address(iris_resource_bo(grid_ref->res));
    }
 
    void *surf_map = NULL;
