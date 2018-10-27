@@ -107,7 +107,7 @@ iris_update_grid_size_resource(struct iris_context *ice,
    // don't bother uploading the surface?
 
    if (grid->indirect) {
-      grid_ref->res = grid->indirect;
+      pipe_resource_reference(&grid_ref->res, grid->indirect);
       grid_ref->offset = grid->indirect_offset;
 
       /* Zero out the grid size so that the next non-indirect grid launch will
