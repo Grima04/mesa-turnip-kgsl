@@ -306,12 +306,13 @@ atomic3("atomic_counter_comp_swap")
 
 # Image load, store and atomic intrinsics.
 #
-# All image intrinsics come in two versions.  One which take an image target
-# passed as a deref chain as the first source and one which takes an index or
-# handle as the first source.  In the first version, the image variable
-# contains the memory and layout qualifiers that influence the semantics of
-# the intrinsic.  In the second, the image format and access qualifiers are
-# provided as constant indices.
+# All image intrinsics come in three versions.  One which take an image target
+# passed as a deref chain as the first source, one which takes an index as the
+# first source, and one which takes a bindless handle as the first source.
+# In the first version, the image variable contains the memory and layout
+# qualifiers that influence the semantics of the intrinsic.  In the second and
+# third, the image format and access qualifiers are provided as constant
+# indices.
 #
 # All image intrinsics take a four-coordinate vector and a sample index as
 # 2nd and 3rd sources, determining the location within the image that will be
@@ -323,6 +324,8 @@ atomic3("atomic_counter_comp_swap")
 def image(name, src_comp=[], **kwargs):
     intrinsic("image_deref_" + name, src_comp=[1] + src_comp, **kwargs)
     intrinsic("image_" + name, src_comp=[1] + src_comp,
+              indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS], **kwargs)
+    intrinsic("bindless_image_" + name, src_comp=[1] + src_comp,
               indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS], **kwargs)
 
 image("load", src_comp=[4, 1], dest_comp=0, flags=[CAN_ELIMINATE])
