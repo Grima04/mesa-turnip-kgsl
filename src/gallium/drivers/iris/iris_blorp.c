@@ -325,33 +325,6 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    ice->state.dirty |= ~(IRIS_DIRTY_POLYGON_STIPPLE |
                          IRIS_DIRTY_LINE_STIPPLE);
 
-#if 0
-   ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
-                       IRIS_DIRTY_COLOR_CALC_STATE |
-                       IRIS_DIRTY_CONSTANTS_VS |
-                       IRIS_DIRTY_CONSTANTS_TCS |
-                       IRIS_DIRTY_CONSTANTS_TES |
-                       IRIS_DIRTY_CONSTANTS_GS |
-                       IRIS_DIRTY_CONSTANTS_PS |
-                       IRIS_DIRTY_CONSTANTS_PS |
-                       IRIS_DIRTY_SAMPLER_STATES_VS |
-                       IRIS_DIRTY_SAMPLER_STATES_TCS |
-                       IRIS_DIRTY_SAMPLER_STATES_TES |
-                       IRIS_DIRTY_SAMPLER_STATES_GS |
-                       IRIS_DIRTY_SAMPLER_STATES_PS |
-                       IRIS_DIRTY_SAMPLER_STATES_PS |
-                       IRIS_DIRTY_MULTISAMPLE |
-                       IRIS_DIRTY_SAMPLE_MASK |
-                       IRIS_DIRTY_VS |
-                       IRIS_DIRTY_TCS |
-                       IRIS_DIRTY_TES |
-                       // IRIS_DIRTY_STREAMOUT |
-                       IRIS_DIRTY_GS |
-                       IRIS_DIRTY_CLIP |
-                       IRIS_DIRTY_FS |
-                       IRIS_DIRTY_CC_VIEWPORT |
-#endif
-
    if (params->dst.enabled) {
       iris_render_cache_add_bo(batch, params->dst.addr.buffer,
                                params->dst.view.format,
