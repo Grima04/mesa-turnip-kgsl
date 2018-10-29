@@ -161,6 +161,7 @@ enum a3xx_msaa_samples {
 	MSAA_ONE = 0,
 	MSAA_TWO = 1,
 	MSAA_FOUR = 2,
+	MSAA_EIGHT = 3,
 };
 
 enum a3xx_threadmode {

@@ -457,9 +457,11 @@ fd_msaa_samples(unsigned samples)
 	switch (samples) {
 	default:
 		debug_assert(0);
+	case 0:
 	case 1: return MSAA_ONE;
 	case 2: return MSAA_TWO;
 	case 4: return MSAA_FOUR;
+	case 8: return MSAA_EIGHT;
 	}
 }
 

@@ -89,7 +89,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		offset = fd_resource_offset(rsc, psurf->u.tex.level,
 									psurf->u.tex.first_layer);
 
-		stride = slice->pitch * rsc->cpp;
+		stride = slice->pitch * rsc->cpp * pfb->samples;
 
 		debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
@@ -414,23 +414,27 @@ emit_binning_pass(struct fd_batch *batch)
 }
 
 static void
-disable_msaa(struct fd_ringbuffer *ring)
+emit_msaa(struct fd_ringbuffer *ring, unsigned nr)
 {
-	// TODO MSAA
+	enum a3xx_msaa_samples samples = fd_msaa_samples(nr);
+
 	OUT_PKT4(ring, REG_A6XX_SP_TP_RAS_MSAA_CNTL, 2);
-	OUT_RING(ring, A6XX_SP_TP_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-	OUT_RING(ring, A6XX_SP_TP_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-			 A6XX_SP_TP_DEST_MSAA_CNTL_MSAA_DISABLE);
+	OUT_RING(ring, A6XX_SP_TP_RAS_MSAA_CNTL_SAMPLES(samples));
+	OUT_RING(ring, A6XX_SP_TP_DEST_MSAA_CNTL_SAMPLES(samples) |
+			 COND(samples == MSAA_ONE, A6XX_SP_TP_DEST_MSAA_CNTL_MSAA_DISABLE));
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_RAS_MSAA_CNTL, 2);
-	OUT_RING(ring, A6XX_GRAS_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-	OUT_RING(ring, A6XX_GRAS_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-			 A6XX_GRAS_DEST_MSAA_CNTL_MSAA_DISABLE);
+	OUT_RING(ring, A6XX_GRAS_RAS_MSAA_CNTL_SAMPLES(samples));
+	OUT_RING(ring, A6XX_GRAS_DEST_MSAA_CNTL_SAMPLES(samples) |
+			 COND(samples == MSAA_ONE, A6XX_GRAS_DEST_MSAA_CNTL_MSAA_DISABLE));
 
 	OUT_PKT4(ring, REG_A6XX_RB_RAS_MSAA_CNTL, 2);
-	OUT_RING(ring, A6XX_RB_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-	OUT_RING(ring, A6XX_RB_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-			 A6XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE);
+	OUT_RING(ring, A6XX_RB_RAS_MSAA_CNTL_SAMPLES(samples));
+	OUT_RING(ring, A6XX_RB_DEST_MSAA_CNTL_SAMPLES(samples) |
+			 COND(samples == MSAA_ONE, A6XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE));
+
+	OUT_PKT4(ring, REG_A6XX_RB_MSAA_CNTL, 1);
+	OUT_RING(ring, A6XX_RB_MSAA_CNTL_SAMPLES(samples));
 }
 
 static void prepare_tile_setup_ib(struct fd_batch *batch);
@@ -467,8 +471,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 
 	emit_zs(ring, pfb->zsbuf, &ctx->gmem);
 	emit_mrt(ring, pfb, &ctx->gmem);
-
-	disable_msaa(ring);
+	emit_msaa(ring, pfb->samples);
 
 	if (use_hw_binning(batch)) {
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,
@@ -608,6 +611,8 @@ emit_blit(struct fd_batch *batch,
 	uint32_t stride = slice->pitch * rsc->cpp;
 	uint32_t size = slice->size0;
 	enum a3xx_color_swap swap = fd6_pipe2swap(pfmt);
+	enum a3xx_msaa_samples samples =
+			fd_msaa_samples(rsc->base.nr_samples);
 
 	// TODO: tile mode
 	// bool tiled;
@@ -617,6 +622,7 @@ emit_blit(struct fd_batch *batch,
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 5);
 	OUT_RING(ring,
 			 A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+			 A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
 			 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
 			 A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
 	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* RB_BLIT_DST_LO/HI */
@@ -665,6 +671,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+	enum a3xx_msaa_samples samples = fd_msaa_samples(pfb->samples);
 
 	uint32_t buffers = batch->fast_cleared;
 
@@ -721,6 +728,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 			OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
 			OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+				A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
 				A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
 
 			OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
@@ -771,6 +779,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
 		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+			A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
 			A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(fd6_pipe2color(pfmt)));
 
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
@@ -796,6 +805,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	if (has_separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 1);
 		OUT_RING(ring, A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+				 A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
 				 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(RB6_R8_UINT));
 
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
@@ -1049,8 +1059,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	emit_zs(ring, pfb->zsbuf, NULL);
 	emit_mrt(ring, pfb, NULL);
-
-	disable_msaa(ring);
+	emit_msaa(ring, pfb->samples);
 }
 
 static void

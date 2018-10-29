@@ -104,6 +104,8 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	if (!pctx)
 		return NULL;
 
+	util_blitter_set_texture_multisample(fd6_ctx->base.blitter, true);
+
 	/* fd_context_init overwrites delete_rasterizer_state, so set this
 	 * here. */
 	pctx->delete_rasterizer_state = fd6_rasterizer_state_delete;

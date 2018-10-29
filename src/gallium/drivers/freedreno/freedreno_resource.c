@@ -853,6 +853,15 @@ fd_resource_create(struct pipe_screen *pscreen,
 				DRM_FREEDRENO_GEM_TYPE_KMEM; /* TODO */
 		unsigned lrz_pitch  = align(DIV_ROUND_UP(tmpl->width0, 8), 64);
 		unsigned lrz_height = DIV_ROUND_UP(tmpl->height0, 8);
+
+		/* LRZ buffer is super-sampled: */
+		switch (prsc->nr_samples) {
+		case 4:
+			lrz_pitch *= 2;
+		case 2:
+			lrz_height *= 2;
+		}
+
 		unsigned size = lrz_pitch * lrz_height * 2;
 
 		size += 0x1000; /* for GRAS_LRZ_FAST_CLEAR_BUFFER */

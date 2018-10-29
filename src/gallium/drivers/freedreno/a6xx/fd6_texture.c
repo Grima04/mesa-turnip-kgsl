@@ -245,6 +245,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 
 	so->texconst0 =
 		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
+		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
 		fd6_tex_swiz(format, cso->swizzle_r, cso->swizzle_g,
 				cso->swizzle_b, cso->swizzle_a);
 
