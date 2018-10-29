@@ -414,6 +414,13 @@ schedule_node::set_latency_gen7(bool is_haswell)
       latency = is_haswell ? 300 : 600;
       break;
 
+   case SHADER_OPCODE_SEND:
+      switch (inst->sfid) {
+      default:
+         unreachable("Unknown SFID");
+      }
+      break;
+
    default:
       /* 2 cycles:
        * mul(8) g4<1>F g2<0,1,0>F      0.5F            { align1 WE_normal 1Q };

@@ -406,6 +406,12 @@ private:
                       struct brw_reg payload,
                       struct brw_reg implied_header,
                       GLuint nr);
+   void generate_send(fs_inst *inst,
+                      struct brw_reg dst,
+                      struct brw_reg desc,
+                      struct brw_reg ex_desc,
+                      struct brw_reg payload,
+                      struct brw_reg payload2);
    void generate_fb_write(fs_inst *inst, struct brw_reg payload);
    void generate_fb_read(fs_inst *inst, struct brw_reg dst,
                          struct brw_reg payload);

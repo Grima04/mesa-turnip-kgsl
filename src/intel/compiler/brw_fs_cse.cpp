@@ -184,8 +184,13 @@ instructions_match(fs_inst *a, fs_inst *b, bool *negate)
           a->dst.type == b->dst.type &&
           a->offset == b->offset &&
           a->mlen == b->mlen &&
+          a->ex_mlen == b->ex_mlen &&
+          a->sfid == b->sfid &&
+          a->desc == b->desc &&
           a->size_written == b->size_written &&
           a->base_mrf == b->base_mrf &&
+          a->check_tdr == b->check_tdr &&
+          a->send_has_side_effects == b->send_has_side_effects &&
           a->eot == b->eot &&
           a->header_size == b->header_size &&
           a->shadow_compare == b->shadow_compare &&

@@ -316,6 +316,13 @@ enum opcode {
    SHADER_OPCODE_COS,
 
    /**
+    * A generic "send" opcode.  The first two sources are the message
+    * descriptor and extended message descriptor respectively.  The third
+    * and optional fourth sources are the message payload
+    */
+   SHADER_OPCODE_SEND,
+
+   /**
     * Texture sampling opcodes.
     *
     * LOGICAL opcodes are eventually translated to the matching non-LOGICAL

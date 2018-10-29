@@ -206,6 +206,9 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case SHADER_OPCODE_COS:
       return "cos";
 
+   case SHADER_OPCODE_SEND:
+      return "send";
+
    case SHADER_OPCODE_TEX:
       return "tex";
    case SHADER_OPCODE_TEX_LOGICAL:
@@ -997,6 +1000,9 @@ bool
 backend_instruction::has_side_effects() const
 {
    switch (opcode) {
+   case SHADER_OPCODE_SEND:
+      return send_has_side_effects;
+
    case SHADER_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT:
@@ -1033,6 +1039,9 @@ bool
 backend_instruction::is_volatile() const
 {
    switch (opcode) {
+   case SHADER_OPCODE_SEND:
+      return send_is_volatile;
+
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_TYPED_SURFACE_READ:

@@ -617,7 +617,9 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
           * highest register that works.
           */
          if (inst->eot) {
-            int size = alloc.sizes[inst->src[0].nr];
+            const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
+                             inst->src[2].nr : inst->src[0].nr;
+            int size = alloc.sizes[vgrf];
             int reg = compiler->fs_reg_sets[rsi].class_to_ra_reg_range[size] - 1;
 
             /* If something happened to spill, we want to push the EOT send
@@ -626,7 +628,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
              */
             reg -= BRW_MAX_MRF(devinfo->gen) - first_used_mrf;
 
-            ra_set_node_reg(g, inst->src[0].nr, reg);
+            ra_set_node_reg(g, vgrf, reg);
             break;
          }
       }

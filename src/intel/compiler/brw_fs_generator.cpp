@@ -251,6 +251,33 @@ fs_generator::patch_discard_jumps_to_fb_writes()
 }
 
 void
+fs_generator::generate_send(fs_inst *inst,
+                            struct brw_reg dst,
+                            struct brw_reg desc,
+                            struct brw_reg ex_desc,
+                            struct brw_reg payload,
+                            struct brw_reg payload2)
+{
+   /* SENDS not yet supported */
+   assert(ex_desc.file == BRW_IMMEDIATE_VALUE && ex_desc.d == 0);
+   assert(payload2.file == BRW_ARCHITECTURE_REGISTER_FILE &&
+          payload2.nr == BRW_ARF_NULL);
+
+   const bool dst_is_null = dst.file == BRW_ARCHITECTURE_REGISTER_FILE &&
+                            dst.nr == BRW_ARF_NULL;
+   const unsigned rlen = dst_is_null ? 0 : inst->size_written / REG_SIZE;
+
+   uint32_t desc_imm = inst->desc |
+      brw_message_desc(devinfo, inst->mlen, rlen, inst->header_size);
+
+   brw_send_indirect_message(p, inst->sfid, dst, payload, desc, desc_imm);
+
+   brw_inst_set_eot(p->devinfo, brw_last_inst, inst->eot);
+   if (inst->check_tdr)
+      brw_inst_set_opcode(p->devinfo, brw_last_inst, BRW_OPCODE_SENDC);
+}
+
+void
 fs_generator::fire_fb_write(fs_inst *inst,
                             struct brw_reg payload,
                             struct brw_reg implied_header,
@@ -1807,7 +1834,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
    struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
 
    foreach_block_and_inst (block, fs_inst, inst, cfg) {
-      struct brw_reg src[3], dst;
+      struct brw_reg src[4], dst;
       unsigned int last_insn_offset = p->next_insn_offset;
       bool multiple_instructions_emitted = false;
 
@@ -2130,6 +2157,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
          src[0].subnr = 4 * type_sz(src[0].type);
          brw_MOV(p, dst, stride(src[0], 8, 4, 1));
          break;
+
+      case SHADER_OPCODE_SEND:
+         generate_send(inst, dst, src[0], src[1], src[2],
+                       inst->ex_mlen > 0 ? src[3] : brw_null_reg());
+         break;
+
       case SHADER_OPCODE_GET_BUFFER_SIZE:
          generate_get_buffer_size(inst, dst, src[0], src[1]);
          break;
