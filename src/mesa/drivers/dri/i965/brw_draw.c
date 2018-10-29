@@ -872,6 +872,66 @@ brw_finish_drawing(struct gl_context *ctx)
    }
 }
 
+/**
+ * Implement workarounds for preemption:
+ *    - WaDisableMidObjectPreemptionForGSLineStripAdj
+ *    - WaDisableMidObjectPreemptionForTrifanOrPolygon
+ *    - WaDisableMidObjectPreemptionForLineLoop
+ *    - WA#0798
+ */
+static void
+gen9_emit_preempt_wa(struct brw_context *brw,
+                     const struct _mesa_prim *prim)
+{
+   bool object_preemption = true;
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+
+   /* Only apply these workarounds for gen9 */
+   assert(devinfo->gen == 9);
+
+   /* WaDisableMidObjectPreemptionForGSLineStripAdj
+    *
+    *    WA: Disable mid-draw preemption when draw-call is a linestrip_adj and
+    *    GS is enabled.
+    */
+   if (brw->primitive == _3DPRIM_LINESTRIP_ADJ && brw->gs.enabled)
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForTrifanOrPolygon
+    *
+    *    TriFan miscompare in Execlist Preemption test. Cut index that is on a
+    *    previous context. End the previous, the resume another context with a
+    *    tri-fan or polygon, and the vertex count is corrupted. If we prempt
+    *    again we will cause corruption.
+    *
+    *    WA: Disable mid-draw preemption when draw-call has a tri-fan.
+    */
+   if (brw->primitive == _3DPRIM_TRIFAN)
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForLineLoop
+    *
+    *    VF Stats Counters Missing a vertex when preemption enabled.
+    *
+    *    WA: Disable mid-draw preemption when the draw uses a lineloop
+    *    topology.
+    */
+   if (brw->primitive == _3DPRIM_LINELOOP)
+      object_preemption = false;
+
+   /* WA#0798
+    *
+    *    VF is corrupting GAFS data when preempted on an instance boundary and
+    *    replayed with instancing enabled.
+    *
+    *    WA: Disable preemption when using instanceing.
+    */
+   if (prim->num_instances > 1)
+      object_preemption = false;
+
+   brw_enable_obj_preemption(brw, object_preemption);
+}
+
 /* May fail if out of video memory for texture or vbo upload, or on
  * fallback conditions.
  */
@@ -986,6 +1046,9 @@ retry:
       brw->batch.no_wrap = true;
       brw_upload_render_state(brw);
    }
+
+   if (devinfo->gen == 9)
+      gen9_emit_preempt_wa(brw, prim);
 
    brw_emit_prim(brw, prim, brw->primitive, xfb_obj, stream);
 
