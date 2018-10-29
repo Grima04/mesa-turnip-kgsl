@@ -45,6 +45,28 @@
 #include "brw_cs.h"
 #include "main/framebuffer.h"
 
+void
+brw_enable_obj_preemption(struct brw_context *brw, bool enable)
+{
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   assert(devinfo->gen >= 9);
+
+   if (enable == brw->object_preemption)
+      return;
+
+   /* A fixed function pipe flush is required before modifying this field */
+   brw_emit_end_of_pipe_sync(brw, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   bool replay_mode = enable ?
+      GEN9_REPLAY_MODE_MIDOBJECT : GEN9_REPLAY_MODE_MIDBUFFER;
+
+   /* enable object level preemption */
+   brw_load_register_imm32(brw, CS_CHICKEN1,
+                           replay_mode | GEN9_REPLAY_MODE_MASK);
+
+   brw->object_preemption = enable;
+}
+
 static void
 brw_upload_initial_gpu_state(struct brw_context *brw)
 {
@@ -160,6 +182,11 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
          ADVANCE_BATCH();
       }
    }
+
+   brw->object_preemption = false;
+
+   if (devinfo->gen >= 10)
+      brw_enable_obj_preemption(brw, true);
 }
 
 static inline const struct brw_tracked_state *

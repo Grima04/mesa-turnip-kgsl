@@ -1683,4 +1683,9 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS        (1 << 5)
 # define HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS_MASK   REG_MASK(1 << 5)
 
+#define CS_CHICKEN1                        0x2580 /* Gen9+ */
+# define GEN9_REPLAY_MODE_MIDBUFFER             (0 << 0)
+# define GEN9_REPLAY_MODE_MIDOBJECT             (1 << 0)
+# define GEN9_REPLAY_MODE_MASK                  REG_MASK(1 << 0)
+
 #endif
