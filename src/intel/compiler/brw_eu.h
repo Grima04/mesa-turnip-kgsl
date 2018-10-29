@@ -369,6 +369,219 @@ brw_dp_surface_desc(const struct gen_device_info *devinfo,
    }
 }
 
+static inline uint32_t
+brw_dp_untyped_atomic_desc(const struct gen_device_info *devinfo,
+                           unsigned exec_size, /**< 0 for SIMD4x2 */
+                           unsigned atomic_op,
+                           bool response_expected)
+{
+   assert(exec_size <= 8 || exec_size == 16);
+
+   unsigned msg_type;
+   if (devinfo->gen >= 8 || devinfo->is_haswell) {
+      if (exec_size > 0) {
+         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP;
+      } else {
+         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP_SIMD4X2;
+      }
+   } else {
+      msg_type = GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP;
+   }
+
+   const unsigned msg_control =
+      SET_BITS(atomic_op, 3, 0) |
+      SET_BITS(0 < exec_size && exec_size <= 8, 4, 4) |
+      SET_BITS(response_expected, 5, 5);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
+brw_dp_untyped_atomic_float_desc(const struct gen_device_info *devinfo,
+                                 unsigned exec_size,
+                                 unsigned atomic_op,
+                                 bool response_expected)
+{
+   assert(exec_size <= 8 || exec_size == 16);
+   assert(devinfo->gen >= 9);
+
+   assert(exec_size > 0);
+   const unsigned msg_type = GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP;
+
+   const unsigned msg_control =
+      SET_BITS(atomic_op, 1, 0) |
+      SET_BITS(exec_size <= 8, 4, 4) |
+      SET_BITS(response_expected, 5, 5);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline unsigned
+brw_mdc_cmask(unsigned num_channels)
+{
+   /* See also MDC_CMASK in the SKL PRM Vol 2d. */
+   return 0xf & (0xf << num_channels);
+}
+
+static inline uint32_t
+brw_dp_untyped_surface_rw_desc(const struct gen_device_info *devinfo,
+                               unsigned exec_size, /**< 0 for SIMD4x2 */
+                               unsigned num_channels,
+                               bool write)
+{
+   assert(exec_size <= 8 || exec_size == 16);
+
+   unsigned msg_type;
+   if (write) {
+      if (devinfo->gen >= 8 || devinfo->is_haswell) {
+         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_WRITE;
+      } else {
+         msg_type = GEN7_DATAPORT_DC_UNTYPED_SURFACE_WRITE;
+      }
+   } else {
+      /* Read */
+      if (devinfo->gen >= 8 || devinfo->is_haswell) {
+         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_READ;
+      } else {
+         msg_type = GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ;
+      }
+   }
+
+   /* SIMD4x2 is only valid for read messages on IVB; use SIMD8 instead */
+   if (write && devinfo->gen == 7 && !devinfo->is_haswell && exec_size == 0)
+      exec_size = 8;
+
+   /* See also MDC_SM3 in the SKL PRM Vol 2d. */
+   const unsigned simd_mode = exec_size == 0 ? 0 : /* SIMD4x2 */
+                              exec_size <= 8 ? 2 : 1;
+
+   const unsigned msg_control =
+      SET_BITS(brw_mdc_cmask(num_channels), 3, 0) |
+      SET_BITS(simd_mode, 5, 4);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline unsigned
+brw_mdc_ds(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:
+      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_BYTE;
+   case 16:
+      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_WORD;
+   case 32:
+      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_DWORD;
+   default:
+      unreachable("Unsupported bit_size for byte scattered messages");
+   }
+}
+
+static inline uint32_t
+brw_dp_byte_scattered_rw_desc(const struct gen_device_info *devinfo,
+                              unsigned exec_size,
+                              unsigned bit_size,
+                              bool write)
+{
+   assert(exec_size <= 8 || exec_size == 16);
+
+   assert(devinfo->gen > 7 || devinfo->is_haswell);
+   const unsigned msg_type =
+      write ? HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_WRITE :
+              HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_READ;
+
+   assert(exec_size > 0);
+   const unsigned msg_control =
+      SET_BITS(exec_size == 16, 0, 0) |
+      SET_BITS(brw_mdc_ds(bit_size), 3, 2);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
+brw_dp_typed_atomic_desc(const struct gen_device_info *devinfo,
+                         unsigned exec_size,
+                         unsigned exec_group,
+                         unsigned atomic_op,
+                         bool response_expected)
+{
+   assert(exec_size > 0 || exec_group == 0);
+   assert(exec_group % 8 == 0);
+
+   unsigned msg_type;
+   if (devinfo->gen >= 8 || devinfo->is_haswell) {
+      if (exec_size == 0) {
+         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2;
+      } else {
+         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP;
+      }
+   } else {
+      /* SIMD4x2 typed surface R/W messages only exist on HSW+ */
+      assert(exec_size > 0);
+      msg_type = GEN7_DATAPORT_RC_TYPED_ATOMIC_OP;
+   }
+
+   const bool high_sample_mask = (exec_group / 8) % 2 == 1;
+
+   const unsigned msg_control =
+      SET_BITS(atomic_op, 3, 0) |
+      SET_BITS(high_sample_mask, 4, 4) |
+      SET_BITS(response_expected, 5, 5);
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
+static inline uint32_t
+brw_dp_typed_surface_rw_desc(const struct gen_device_info *devinfo,
+                             unsigned exec_size,
+                             unsigned exec_group,
+                             unsigned num_channels,
+                             bool write)
+{
+   assert(exec_size > 0 || exec_group == 0);
+   assert(exec_group % 8 == 0);
+
+   /* Typed surface reads and writes don't support SIMD16 */
+   assert(exec_size <= 8);
+
+   unsigned msg_type;
+   if (write) {
+      if (devinfo->gen >= 8 || devinfo->is_haswell) {
+         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE;
+      } else {
+         msg_type = GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE;
+      }
+   } else {
+      if (devinfo->gen >= 8 || devinfo->is_haswell) {
+         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_READ;
+      } else {
+         msg_type = GEN7_DATAPORT_RC_TYPED_SURFACE_READ;
+      }
+   }
+
+   /* See also MDC_SG3 in the SKL PRM Vol 2d. */
+   unsigned msg_control;
+   if (devinfo->gen >= 8 || devinfo->is_haswell) {
+      /* See also MDC_SG3 in the SKL PRM Vol 2d. */
+      const unsigned slot_group = exec_size == 0 ? 0 : /* SIMD4x2 */
+                                  1 + ((exec_group / 8) % 2);
+
+      msg_control =
+         SET_BITS(brw_mdc_cmask(num_channels), 3, 0) |
+         SET_BITS(slot_group, 5, 4);
+   } else {
+      /* SIMD4x2 typed surface R/W messages only exist on HSW+ */
+      assert(exec_size > 0);
+      const unsigned slot_group = ((exec_group / 8) % 2);
+
+      msg_control =
+         SET_BITS(brw_mdc_cmask(num_channels), 3, 0) |
+         SET_BITS(slot_group, 5, 5);
+   }
+
+   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
+}
+
 /**
  * Construct a message descriptor immediate with the specified pixel
  * interpolator function controls.

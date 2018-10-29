@@ -2748,36 +2748,6 @@ brw_surface_payload_size(struct brw_codegen *p,
       return 2 * num_channels;
 }
 
-static uint32_t
-brw_dp_untyped_atomic_desc(struct brw_codegen *p,
-                           unsigned atomic_op,
-                           bool response_expected)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   unsigned msg_control =
-      atomic_op | /* Atomic Operation Type: BRW_AOP_* */
-      (response_expected ? 1 << 5 : 0); /* Return data expected */
-   unsigned msg_type;
-
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if (brw_get_default_exec_size(p) != BRW_EXECUTE_16)
-            msg_control |= 1 << 4; /* SIMD8 mode */
-
-         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP;
-      } else {
-         msg_type = HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP_SIMD4X2;
-      }
-   } else {
-      if (brw_get_default_exec_size(p) != BRW_EXECUTE_16)
-         msg_control |= 1 << 4; /* SIMD8 mode */
-
-      msg_type = GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP;
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
-}
-
 void
 brw_untyped_atomic(struct brw_codegen *p,
                    struct brw_reg dst,
@@ -2801,7 +2771,8 @@ brw_untyped_atomic(struct brw_codegen *p,
       brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
-      brw_dp_untyped_atomic_desc(p, atomic_op, response_expected);
+      brw_dp_untyped_atomic_desc(devinfo, exec_size, atomic_op,
+                                 response_expected);
    /* Mask out unused components -- This is especially important in Align16
     * mode on generations that don't have native support for SIMD4x2 atomics,
     * because unused but enabled components will cause the dataport to perform
@@ -2812,26 +2783,6 @@ brw_untyped_atomic(struct brw_codegen *p,
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(dst, mask),
                                      payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_untyped_atomic_float_desc(struct brw_codegen *p,
-                                 unsigned atomic_op,
-                                 bool response_expected)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   const unsigned msg_type = GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP;
-   unsigned msg_control =
-      atomic_op | /* Atomic Operation Type: BRW_AOP_F* */
-      (response_expected ? 1 << 5 : 0); /* Return data expected */
-
-   assert(devinfo->gen >= 9);
-   assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
-
-   if (brw_get_default_exec_size(p) != BRW_EXECUTE_16)
-      msg_control |= 1 << 4; /* SIMD8 mode */
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -2855,32 +2806,12 @@ brw_untyped_atomic_float(struct brw_codegen *p,
       brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
-      brw_dp_untyped_atomic_float_desc(p, atomic_op, response_expected);
+      brw_dp_untyped_atomic_float_desc(devinfo, exec_size, atomic_op,
+                                       response_expected);
 
    brw_send_indirect_surface_message(p, sfid,
                                      brw_writemask(dst, WRITEMASK_XYZW),
                                      payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_untyped_surface_read_desc(struct brw_codegen *p,
-                                 unsigned num_channels)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   const unsigned msg_type = (devinfo->gen >= 8 || devinfo->is_haswell ?
-                              HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_READ :
-                              GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ);
-   /* Set mask of 32-bit channels to drop. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
-
-   if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-      if (brw_get_default_exec_size(p) == BRW_EXECUTE_16)
-         msg_control |= 1 << 4; /* SIMD16 mode */
-      else
-         msg_control |= 2 << 4; /* SIMD8 mode */
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -2901,35 +2832,9 @@ brw_untyped_surface_read(struct brw_codegen *p,
       brw_surface_payload_size(p, num_channels, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, false) |
-      brw_dp_untyped_surface_read_desc(p, num_channels);
+      brw_dp_untyped_surface_rw_desc(devinfo, exec_size, num_channels, false);
 
    brw_send_indirect_surface_message(p, sfid, dst, payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_untyped_surface_write_desc(struct brw_codegen *p,
-                                  unsigned num_channels)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   const unsigned msg_type = (devinfo->gen >= 8 || devinfo->is_haswell ?
-                              HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_WRITE :
-                              GEN7_DATAPORT_DC_UNTYPED_SURFACE_WRITE);
-   /* Set mask of 32-bit channels to drop. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
-
-   if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-      if (brw_get_default_exec_size(p) == BRW_EXECUTE_16)
-         msg_control |= 1 << 4; /* SIMD16 mode */
-      else
-         msg_control |= 2 << 4; /* SIMD8 mode */
-   } else {
-      if (devinfo->gen >= 8 || devinfo->is_haswell)
-         msg_control |= 0 << 4; /* SIMD4x2 mode */
-      else
-         msg_control |= 2 << 4; /* SIMD8 mode */
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -2947,45 +2852,16 @@ brw_untyped_surface_write(struct brw_codegen *p,
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 untyped surface write instructions only exist on HSW+ */
    const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
+                              has_simd4x2 ? 0 : 8;
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, 0, header_present) |
-      brw_dp_untyped_surface_write_desc(p, num_channels);
+      brw_dp_untyped_surface_rw_desc(devinfo, exec_size, num_channels, true);
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
    const unsigned mask = !has_simd4x2 && !align1 ? WRITEMASK_X : WRITEMASK_XYZW;
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(brw_null_reg(), mask),
                                      payload, surface, desc);
-}
-
-static unsigned
-brw_byte_scattered_data_element_from_bit_size(unsigned bit_size)
-{
-   switch (bit_size) {
-   case 8:
-      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_BYTE;
-   case 16:
-      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_WORD;
-   case 32:
-      return GEN7_BYTE_SCATTERED_DATA_ELEMENT_DWORD;
-   default:
-      unreachable("Unsupported bit_size for byte scattered messages");
-   }
-}
-
-static uint32_t
-brw_dp_byte_scattered_desc(struct brw_codegen *p, unsigned bit_size,
-                           unsigned msg_type)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   unsigned msg_control =
-      brw_byte_scattered_data_element_from_bit_size(bit_size) << 2;
-
-   if (brw_get_default_exec_size(p) == BRW_EXECUTE_16)
-      msg_control |= 1; /* SIMD16 mode */
-   else
-      msg_control |= 0; /* SIMD8 mode */
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -3003,8 +2879,7 @@ brw_byte_scattered_read(struct brw_codegen *p,
    const unsigned response_length = brw_surface_payload_size(p, 1, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, false) |
-      brw_dp_byte_scattered_desc(p, bit_size,
-                                 HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_READ);
+      brw_dp_byte_scattered_rw_desc(devinfo, exec_size, bit_size, false);
 
    brw_send_indirect_surface_message(p, GEN7_SFID_DATAPORT_DATA_CACHE,
                                      dst, payload, surface, desc);
@@ -3021,46 +2896,15 @@ brw_byte_scattered_write(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    assert(devinfo->gen > 7 || devinfo->is_haswell);
    assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
+   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, 0, header_present) |
-      brw_dp_byte_scattered_desc(p, bit_size,
-                                 HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_WRITE);
+      brw_dp_byte_scattered_rw_desc(devinfo, exec_size, bit_size, true);
 
    brw_send_indirect_surface_message(p, GEN7_SFID_DATAPORT_DATA_CACHE,
                                      brw_writemask(brw_null_reg(),
                                                    WRITEMASK_XYZW),
                                      payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_typed_atomic_desc(struct brw_codegen *p,
-                         unsigned atomic_op,
-                         bool response_expected)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   unsigned msg_control =
-      atomic_op | /* Atomic Operation Type: BRW_AOP_* */
-      (response_expected ? 1 << 5 : 0); /* Return data expected */
-   unsigned msg_type;
-
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if ((brw_get_default_group(p) / 8) % 2 == 1)
-            msg_control |= 1 << 4; /* Use high 8 slots of the sample mask */
-
-         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP;
-      } else {
-         msg_type = HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2;
-      }
-
-   } else {
-      if ((brw_get_default_group(p) / 8) % 2 == 1)
-         msg_control |= 1 << 4; /* Use high 8 slots of the sample mask */
-
-      msg_type = GEN7_DATAPORT_RC_TYPED_ATOMIC_OP;
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -3087,42 +2931,13 @@ brw_typed_atomic(struct brw_codegen *p,
       brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
-      brw_dp_typed_atomic_desc(p, atomic_op, response_expected);
+      brw_dp_typed_atomic_desc(devinfo, exec_size, brw_get_default_group(p),
+                               atomic_op, response_expected);
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
    const unsigned mask = align1 ? WRITEMASK_XYZW : WRITEMASK_X;
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(dst, mask),
                                      payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_typed_surface_read_desc(struct brw_codegen *p,
-                               unsigned num_channels)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   /* Set mask of unused channels. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
-   unsigned msg_type;
-
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if ((brw_get_default_group(p) / 8) % 2 == 1)
-            msg_control |= 2 << 4; /* Use high 8 slots of the sample mask */
-         else
-            msg_control |= 1 << 4; /* Use low 8 slots of the sample mask */
-      }
-
-      msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_READ;
-   } else {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if ((brw_get_default_group(p) / 8) % 2 == 1)
-            msg_control |= 1 << 5; /* Use high 8 slots of the sample mask */
-      }
-
-      msg_type = GEN7_DATAPORT_RC_TYPED_SURFACE_READ;
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -3143,46 +2958,14 @@ brw_typed_surface_read(struct brw_codegen *p,
    const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
                               has_simd4x2 ? 0 : 8;
-   /* Typed surface reads don't support SIMD16 */
-   assert(exec_size <= 8);
    const unsigned response_length =
       brw_surface_payload_size(p, num_channels, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
-      brw_dp_typed_surface_read_desc(p, num_channels);
+      brw_dp_typed_surface_rw_desc(devinfo, exec_size, brw_get_default_group(p),
+                                   num_channels, false);
 
    brw_send_indirect_surface_message(p, sfid, dst, payload, surface, desc);
-}
-
-static uint32_t
-brw_dp_typed_surface_write_desc(struct brw_codegen *p,
-                                unsigned num_channels)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   /* Set mask of unused channels. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
-   unsigned msg_type;
-
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if ((brw_get_default_group(p) / 8) % 2 == 1)
-            msg_control |= 2 << 4; /* Use high 8 slots of the sample mask */
-         else
-            msg_control |= 1 << 4; /* Use low 8 slots of the sample mask */
-      }
-
-      msg_type = HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE;
-
-   } else {
-      if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
-         if ((brw_get_default_group(p) / 8) % 2 == 1)
-            msg_control |= 1 << 5; /* Use high 8 slots of the sample mask */
-      }
-
-      msg_type = GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE;
-   }
-
-   return brw_dp_surface_desc(devinfo, msg_type, msg_control);
 }
 
 void
@@ -3200,9 +2983,12 @@ brw_typed_surface_write(struct brw_codegen *p,
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 typed read instructions only exist on HSW+ */
    const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
+                              has_simd4x2 ? 0 : 8;
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, 0, header_present) |
-      brw_dp_typed_surface_write_desc(p, num_channels);
+      brw_dp_typed_surface_rw_desc(devinfo, exec_size, brw_get_default_group(p),
+                                   num_channels, true);
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
    const unsigned mask = !has_simd4x2 && !align1 ? WRITEMASK_X : WRITEMASK_XYZW;
 
@@ -3598,7 +3384,8 @@ void brw_shader_time_add(struct brw_codegen *p,
    brw_set_src0(p, send, brw_vec1_reg(payload.file,
                                       payload.nr, 0));
    brw_set_desc(p, send, (brw_message_desc(devinfo, 2, 0, false) |
-                          brw_dp_untyped_atomic_desc(p, BRW_AOP_ADD, false)));
+                          brw_dp_untyped_atomic_desc(devinfo, 1, BRW_AOP_ADD,
+                                                     false)));
 
    brw_inst_set_sfid(devinfo, send, sfid);
    brw_inst_set_binding_table_index(devinfo, send, surf_index);
