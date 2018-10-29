@@ -41,14 +41,14 @@
 /* Using the GNU statement expression extension */
 #define SET_FIELD(value, field)                                         \
    ({                                                                   \
-      uint32_t fieldval = (value) << field ## _SHIFT;                   \
+      uint32_t fieldval = (uint32_t)(value) << field ## _SHIFT;         \
       assert((fieldval & ~ field ## _MASK) == 0);                       \
       fieldval & field ## _MASK;                                        \
    })
 
 #define SET_BITS(value, high, low)                                      \
    ({                                                                   \
-      const uint32_t fieldval = (value) << (low);                       \
+      const uint32_t fieldval = (uint32_t)(value) << (low);             \
       assert((fieldval & ~INTEL_MASK(high, low)) == 0);                 \
       fieldval & INTEL_MASK(high, low);                                 \
    })
