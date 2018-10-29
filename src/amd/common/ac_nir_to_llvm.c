@@ -1463,6 +1463,24 @@ static LLVMValueRef extract_vector_range(struct ac_llvm_context *ctx, LLVMValueR
 	}
 }
 
+static unsigned get_cache_policy(struct ac_nir_context *ctx,
+				 enum gl_access_qualifier access,
+				 bool may_store_unaligned)
+{
+	unsigned cache_policy = 0;
+
+	/* SI has a TC L1 bug causing corruption of 8bit/16bit stores.  All
+	 * store opcodes not aligned to a dword are affected. The only way to
+	 * get unaligned stores is through shader images.
+	 */
+	if (((may_store_unaligned && ctx->ac.chip_class == SI) ||
+	     access & (ACCESS_COHERENT | ACCESS_VOLATILE))) {
+		cache_policy |= ac_glc;
+	}
+
+	return cache_policy;
+}
+
 static void visit_store_ssbo(struct ac_nir_context *ctx,
                              nir_intrinsic_instr *instr)
 {
@@ -1471,10 +1489,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 	int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
 	unsigned writemask = nir_intrinsic_write_mask(instr);
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
-	LLVMValueRef glc = ctx->ac.i1false;
-
-	if (access & (ACCESS_VOLATILE | ACCESS_COHERENT))
-		glc = ctx->ac.i1true;
+	unsigned cache_policy = get_cache_policy(ctx, access, false);
+	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
 				        get_src(ctx, instr->src[1]), true);
@@ -1630,10 +1646,8 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 	int elem_size_bytes = instr->dest.ssa.bit_size / 8;
 	int num_components = instr->num_components;
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
-	LLVMValueRef glc = ctx->ac.i1false;
-
-	if (access & (ACCESS_VOLATILE | ACCESS_COHERENT))
-		glc = ctx->ac.i1true;
+	unsigned cache_policy = get_cache_policy(ctx, access, false);
+	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef offset = get_src(ctx, instr->src[1]);
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
@@ -2371,8 +2385,8 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 					    glsl_sampler_type_is_array(type));
 		args.dmask = 15;
 		args.attributes = AC_FUNC_ATTR_READONLY;
-		if (var->data.image.access & (ACCESS_VOLATILE | ACCESS_COHERENT))
-			args.cache_policy |= ac_glc;
+		args.cache_policy =
+			get_cache_policy(ctx, var->data.image.access, false);
 
 		res = ac_build_image_opcode(&ctx->ac, &args);
 	}
@@ -2428,8 +2442,8 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		args.dim = get_ac_image_dim(&ctx->ac, glsl_get_sampler_dim(type),
 					    glsl_sampler_type_is_array(type));
 		args.dmask = 15;
-		if (force_glc || (var->data.image.access & (ACCESS_VOLATILE | ACCESS_COHERENT)))
-			args.cache_policy |= ac_glc;
+		args.cache_policy =
+			get_cache_policy(ctx, var->data.image.access, true);
 
 		ac_build_image_opcode(&ctx->ac, &args);
 	}
