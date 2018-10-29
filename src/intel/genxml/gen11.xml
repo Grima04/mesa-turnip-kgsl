@@ -3542,6 +3542,14 @@
     <field name="All Allocation" start="25" end="31" type="uint"/>
   </register>
 
+  <register name="CS_CHICKEN1" length="1" num="0x2580">
+    <field name="Replay Mode" start="0" end="0" type="uint">
+      <value name="Mid-cmdbuffer Preemption" value="0"/>
+      <value name="Object Level Preemption" value="1"/>
+    </field>
+    <field name="Replay Mode Mask" start="16" end="16" type="bool"/>
+  </register>
+
   <register name="SO_WRITE_OFFSET0" length="1" num="0x5280">
     <field name="Write Offset" start="2" end="31" type="offset"/>
   </register>
