@@ -147,7 +147,7 @@ nir_phi_builder_add_value(struct nir_phi_builder *pb, unsigned num_components,
              * value to the magic value NEEDS_PHI.  Later, we create phi nodes
              * on demand in nir_phi_builder_value_get_block_def().
              */
-            val->defs[next->index] = NEEDS_PHI;
+            nir_phi_builder_value_set_block_def(val, next, NEEDS_PHI);
 
             if (pb->work[next->index] < pb->iter_count) {
                pb->work[next->index] = pb->iter_count;
@@ -232,7 +232,7 @@ nir_phi_builder_value_get_block_def(struct nir_phi_builder_value *val,
     *  2) To avoid unneeded recreation of phi nodes and undefs.
     */
    for (dom = block; dom && val->defs[dom->index] == NULL; dom = dom->imm_dom)
-      val->defs[dom->index] = def;
+      nir_phi_builder_value_set_block_def(val, dom, def);
 
    return def;
 }
