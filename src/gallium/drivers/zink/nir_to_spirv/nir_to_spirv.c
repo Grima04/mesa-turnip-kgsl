@@ -50,6 +50,10 @@ struct ntv_context {
    size_t num_defs;
 
    struct hash_table *vars;
+
+   const SpvId *block_ids;
+   size_t num_blocks;
+   bool block_started;
 };
 
 static SpvId
@@ -81,6 +85,13 @@ get_bvec_type(struct ntv_context *ctx, int num_components)
 
    assert(num_components == 1);
    return bool_type;
+}
+
+static SpvId
+block_label(struct ntv_context *ctx, nir_block *block)
+{
+   assert(block->index < ctx->num_blocks);
+   return ctx->block_ids[block->index];
 }
 
 static SpvId
@@ -1129,8 +1140,19 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 }
 
 static void
+start_block(struct ntv_context *ctx, SpvId label)
+{
+   assert(!ctx->block_started);
+
+   /* start new block */
+   spirv_builder_label(&ctx->builder, label);
+   ctx->block_started = true;
+}
+
+static void
 emit_block(struct ntv_context *ctx, struct nir_block *block)
 {
+   start_block(ctx, block_label(ctx, block));
    nir_foreach_instr(instr, block) {
       switch (instr->type) {
       case nir_instr_type_alu:
@@ -1253,7 +1275,6 @@ nir_to_spirv(struct nir_shader *s)
    SpvId type_main = spirv_builder_type_function(&ctx.builder, type_void,
                                                  NULL, 0);
    SpvId entry_point = spirv_builder_new_id(&ctx.builder);
-   SpvId label = spirv_builder_new_id(&ctx.builder);
    spirv_builder_emit_name(&ctx.builder, entry_point, "main");
 
    nir_foreach_variable(var, &s->inputs)
@@ -1276,9 +1297,9 @@ nir_to_spirv(struct nir_shader *s)
    spirv_builder_function(&ctx.builder, entry_point, type_void,
                                             SpvFunctionControlMaskNone,
                                             type_main);
-   spirv_builder_label(&ctx.builder, label);
 
    nir_function_impl *entry = nir_shader_get_entrypoint(s);
+   nir_metadata_require(entry, nir_metadata_block_index);
 
    ctx.defs = (SpvId *)malloc(sizeof(SpvId) * entry->ssa_alloc);
    if (!ctx.defs)
@@ -1290,7 +1311,18 @@ nir_to_spirv(struct nir_shader *s)
    if (!ctx.vars)
       goto fail;
 
+   SpvId *block_ids = (SpvId *)malloc(sizeof(SpvId) * entry->num_blocks);
+   if (!block_ids)
+      goto fail;
+
+   for (int i = 0; i < entry->num_blocks; ++i)
+      block_ids[i] = spirv_builder_new_id(&ctx.builder);
+
+   ctx.block_ids = block_ids;
+   ctx.num_blocks = entry->num_blocks;
+
    emit_cf_list(&ctx, &entry->body);
+
    free(ctx.defs);
 
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz

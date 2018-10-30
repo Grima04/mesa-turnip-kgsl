@@ -303,6 +303,7 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
    NIR_PASS_V(nir, lower_discard_if);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
