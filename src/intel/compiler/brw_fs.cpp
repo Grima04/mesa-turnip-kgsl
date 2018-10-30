@@ -4851,8 +4851,7 @@ emit_surface_header(const fs_builder &bld, const fs_reg &sample_mask)
 }
 
 static void
-lower_surface_logical_send(const fs_builder &bld, fs_inst *inst, opcode op,
-                           const fs_reg &sample_mask)
+lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
 
@@ -4862,10 +4861,17 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst, opcode op,
    const fs_reg &surface = inst->src[2];
    const UNUSED fs_reg &dims = inst->src[3];
    const fs_reg &arg = inst->src[4];
+   assert(arg.file == IMM);
 
    /* Calculate the total number of components of the payload. */
    const unsigned addr_sz = inst->components_read(0);
    const unsigned src_sz = inst->components_read(1);
+
+   const bool is_typed_access =
+      inst->opcode == SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL ||
+      inst->opcode == SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL ||
+      inst->opcode == SHADER_OPCODE_TYPED_ATOMIC_LOGICAL;
+
    /* From the BDW PRM Volume 7, page 147:
     *
     *  "For the Data Cache Data Port*, the header must be present for the
@@ -4876,16 +4882,17 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst, opcode op,
     * messages prior to Gen9, since we have to provide a header anyway.  On
     * Gen11+ the header has been removed so we can only use predication.
     */
-   const unsigned header_sz = devinfo->gen < 9 &&
-                              (op == SHADER_OPCODE_TYPED_SURFACE_READ ||
-                               op == SHADER_OPCODE_TYPED_SURFACE_WRITE ||
-                               op == SHADER_OPCODE_TYPED_ATOMIC) ? 1 : 0;
+   const unsigned header_sz = devinfo->gen < 9 && is_typed_access ? 1 : 0;
    const unsigned sz = header_sz + addr_sz + src_sz;
 
    /* Allocate space for the payload. */
    fs_reg *const components = new fs_reg[sz];
    const fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, sz);
    unsigned n = 0;
+
+   const bool has_side_effects = inst->has_side_effects();
+   fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
+                                           fs_reg(brw_imm_d(0xffff));
 
    /* Construct the payload. */
    if (header_sz)
@@ -4925,14 +4932,125 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst, opcode op,
       }
    }
 
+   uint32_t sfid;
+   switch (inst->opcode) {
+   case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
+   case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+      /* Byte scattered opcodes go through the normal data cache */
+      sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+      break;
+
+   case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
+   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
+   case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
+   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
+      /* Untyped Surface messages go through the data cache but the SFID value
+       * changed on Haswell.
+       */
+      sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
+              HSW_SFID_DATAPORT_DATA_CACHE_1 :
+              GEN7_SFID_DATAPORT_DATA_CACHE);
+      break;
+
+   case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
+   case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
+   case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
+      /* Typed surface messages go through the render cache on IVB and the
+       * data cache on HSW+.
+       */
+      sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
+              HSW_SFID_DATAPORT_DATA_CACHE_1 :
+              GEN6_SFID_DATAPORT_RENDER_CACHE);
+      break;
+
+   default:
+      unreachable("Unsupported surface opcode");
+   }
+
+   uint32_t desc;
+   switch (inst->opcode) {
+   case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
+      desc = brw_dp_untyped_surface_rw_desc(devinfo, inst->exec_size,
+                                            arg.ud, /* num_channels */
+                                            false   /* write */);
+      break;
+
+   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
+      desc = brw_dp_untyped_surface_rw_desc(devinfo, inst->exec_size,
+                                            arg.ud, /* num_channels */
+                                            true    /* write */);
+      break;
+
+   case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+      desc = brw_dp_byte_scattered_rw_desc(devinfo, inst->exec_size,
+                                           arg.ud, /* bit_size */
+                                           false   /* write */);
+      break;
+
+   case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
+      desc = brw_dp_byte_scattered_rw_desc(devinfo, inst->exec_size,
+                                           arg.ud, /* bit_size */
+                                           true    /* write */);
+      break;
+
+   case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
+      desc = brw_dp_untyped_atomic_desc(devinfo, inst->exec_size,
+                                        arg.ud, /* atomic_op */
+                                        !inst->dst.is_null());
+      break;
+
+   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
+      desc = brw_dp_untyped_atomic_float_desc(devinfo, inst->exec_size,
+                                              arg.ud, /* atomic_op */
+                                              !inst->dst.is_null());
+      break;
+
+   case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
+      desc = brw_dp_typed_surface_rw_desc(devinfo, inst->exec_size, inst->group,
+                                          arg.ud, /* num_channels */
+                                          false   /* write */);
+      break;
+
+   case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
+      desc = brw_dp_typed_surface_rw_desc(devinfo, inst->exec_size, inst->group,
+                                          arg.ud, /* num_channels */
+                                          true    /* write */);
+      break;
+
+   case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
+      desc = brw_dp_typed_atomic_desc(devinfo, inst->exec_size, inst->group,
+                                      arg.ud, /* atomic_op */
+                                      !inst->dst.is_null());
+      break;
+
+   default:
+      unreachable("Unknown surface logical instruction");
+   }
+
    /* Update the original instruction. */
-   inst->opcode = op;
+   inst->opcode = SHADER_OPCODE_SEND;
    inst->mlen = header_sz + (addr_sz + src_sz) * inst->exec_size / 8;
    inst->header_size = header_sz;
+   inst->send_has_side_effects = has_side_effects;
+   inst->send_is_volatile = !has_side_effects;
 
-   inst->src[0] = payload;
-   inst->src[1] = surface;
-   inst->src[2] = arg;
+   /* Set up SFID and descriptors */
+   inst->sfid = sfid;
+   inst->desc = desc;
+   if (surface.file == IMM) {
+      inst->desc |= surface.ud & 0xff;
+      inst->src[0] = brw_imm_ud(0);
+   } else {
+      const fs_builder ubld = bld.exec_all().group(1, 0);
+      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.AND(tmp, surface, brw_imm_ud(0xff));
+      inst->src[0] = component(tmp, 0);
+   }
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+
+   /* Finally, the payload */
+   inst->src[2] = payload;
+
    inst->resize_sources(3);
 
    delete[] components;
@@ -5076,57 +5194,15 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_UNTYPED_SURFACE_READ,
-                                    fs_reg());
-         break;
-
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
-                                    ibld.sample_mask_reg());
-         break;
-
       case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_BYTE_SCATTERED_READ,
-                                    fs_reg());
-         break;
-
       case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_BYTE_SCATTERED_WRITE,
-                                    ibld.sample_mask_reg());
-         break;
-
       case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_UNTYPED_ATOMIC,
-                                    ibld.sample_mask_reg());
-         break;
-
       case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT,
-                                    ibld.sample_mask_reg());
-         break;
-
       case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_TYPED_SURFACE_READ,
-                                    brw_imm_d(0xffff));
-         break;
-
       case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_TYPED_SURFACE_WRITE,
-                                    ibld.sample_mask_reg());
-         break;
-
       case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
-         lower_surface_logical_send(ibld, inst,
-                                    SHADER_OPCODE_TYPED_ATOMIC,
-                                    ibld.sample_mask_reg());
+         lower_surface_logical_send(ibld, inst);
          break;
 
       case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:

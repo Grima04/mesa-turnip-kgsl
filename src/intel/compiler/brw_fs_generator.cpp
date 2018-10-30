@@ -2264,68 +2264,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
          generate_shader_time_add(inst, src[0], src[1], src[2]);
          break;
 
-      case SHADER_OPCODE_UNTYPED_ATOMIC:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_untyped_atomic(p, dst, src[0], src[1], src[2].ud,
-                            inst->mlen, !inst->dst.is_null(),
-                            inst->header_size);
-         break;
-
-      case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_untyped_atomic_float(p, dst, src[0], src[1], src[2].ud,
-                                  inst->mlen, !inst->dst.is_null(),
-                                  inst->header_size);
-         break;
-
-      case SHADER_OPCODE_UNTYPED_SURFACE_READ:
-         assert(!inst->header_size);
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_untyped_surface_read(p, dst, src[0], src[1],
-                                  inst->mlen, src[2].ud);
-         break;
-
-      case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_untyped_surface_write(p, src[0], src[1],
-                                   inst->mlen, src[2].ud,
-                                   inst->header_size);
-         break;
-
-      case SHADER_OPCODE_BYTE_SCATTERED_READ:
-         assert(!inst->header_size);
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_byte_scattered_read(p, dst, src[0], src[1],
-                                 inst->mlen, src[2].ud);
-         break;
-
-      case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_byte_scattered_write(p, src[0], src[1],
-                                  inst->mlen, src[2].ud,
-                                  inst->header_size);
-         break;
-
-      case SHADER_OPCODE_TYPED_ATOMIC:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_typed_atomic(p, dst, src[0], src[1],
-                          src[2].ud, inst->mlen, !inst->dst.is_null(),
-                          inst->header_size);
-         break;
-
-      case SHADER_OPCODE_TYPED_SURFACE_READ:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_typed_surface_read(p, dst, src[0], src[1],
-                                inst->mlen, src[2].ud,
-                                inst->header_size);
-         break;
-
-      case SHADER_OPCODE_TYPED_SURFACE_WRITE:
-         assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_typed_surface_write(p, src[0], src[1], inst->mlen, src[2].ud,
-                                 inst->header_size);
-         break;
-
       case SHADER_OPCODE_MEMORY_FENCE:
          brw_memory_fence(p, dst, BRW_OPCODE_SEND);
          break;

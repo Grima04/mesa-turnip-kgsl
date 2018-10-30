@@ -2786,35 +2786,6 @@ brw_untyped_atomic(struct brw_codegen *p,
 }
 
 void
-brw_untyped_atomic_float(struct brw_codegen *p,
-                         struct brw_reg dst,
-                         struct brw_reg payload,
-                         struct brw_reg surface,
-                         unsigned atomic_op,
-                         unsigned msg_length,
-                         bool response_expected,
-                         bool header_present)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-
-   assert(devinfo->gen >= 9);
-   assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
-
-   const unsigned sfid = HSW_SFID_DATAPORT_DATA_CACHE_1;
-   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
-   const unsigned response_length =
-      brw_surface_payload_size(p, response_expected, exec_size);
-   const unsigned desc =
-      brw_message_desc(devinfo, msg_length, response_length, header_present) |
-      brw_dp_untyped_atomic_float_desc(devinfo, exec_size, atomic_op,
-                                       response_expected);
-
-   brw_send_indirect_surface_message(p, sfid,
-                                     brw_writemask(dst, WRITEMASK_XYZW),
-                                     payload, surface, desc);
-}
-
-void
 brw_untyped_surface_read(struct brw_codegen *p,
                          struct brw_reg dst,
                          struct brw_reg payload,
@@ -2861,49 +2832,6 @@ brw_untyped_surface_write(struct brw_codegen *p,
    const unsigned mask = !has_simd4x2 && !align1 ? WRITEMASK_X : WRITEMASK_XYZW;
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(brw_null_reg(), mask),
-                                     payload, surface, desc);
-}
-
-void
-brw_byte_scattered_read(struct brw_codegen *p,
-                        struct brw_reg dst,
-                        struct brw_reg payload,
-                        struct brw_reg surface,
-                        unsigned msg_length,
-                        unsigned bit_size)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   assert(devinfo->gen > 7 || devinfo->is_haswell);
-   assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
-   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
-   const unsigned response_length = brw_surface_payload_size(p, 1, exec_size);
-   const unsigned desc =
-      brw_message_desc(devinfo, msg_length, response_length, false) |
-      brw_dp_byte_scattered_rw_desc(devinfo, exec_size, bit_size, false);
-
-   brw_send_indirect_surface_message(p, GEN7_SFID_DATAPORT_DATA_CACHE,
-                                     dst, payload, surface, desc);
-}
-
-void
-brw_byte_scattered_write(struct brw_codegen *p,
-                         struct brw_reg payload,
-                         struct brw_reg surface,
-                         unsigned msg_length,
-                         unsigned bit_size,
-                         bool header_present)
-{
-   const struct gen_device_info *devinfo = p->devinfo;
-   assert(devinfo->gen > 7 || devinfo->is_haswell);
-   assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
-   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
-   const unsigned desc =
-      brw_message_desc(devinfo, msg_length, 0, header_present) |
-      brw_dp_byte_scattered_rw_desc(devinfo, exec_size, bit_size, true);
-
-   brw_send_indirect_surface_message(p, GEN7_SFID_DATAPORT_DATA_CACHE,
-                                     brw_writemask(brw_null_reg(),
-                                                   WRITEMASK_XYZW),
                                      payload, surface, desc);
 }
 
