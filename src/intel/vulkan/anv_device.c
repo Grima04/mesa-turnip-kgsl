@@ -70,6 +70,11 @@ static const driOptionDescription anv_dri_options[] = {
 /* Render engine timestamp register */
 #define TIMESTAMP 0x2358
 
+/* The "RAW" clocks on Linux are called "FAST" on FreeBSD */
+#if !defined(CLOCK_MONOTONIC_RAW) && defined(CLOCK_MONOTONIC_FAST)
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC_FAST
+#endif
+
 static void
 compiler_debug_log(void *data, const char *fmt, ...)
 {

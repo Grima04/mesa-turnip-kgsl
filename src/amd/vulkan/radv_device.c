@@ -56,6 +56,11 @@
 #include "compiler/glsl_types.h"
 #include "util/driconf.h"
 
+/* The "RAW" clocks on Linux are called "FAST" on FreeBSD */
+#if !defined(CLOCK_MONOTONIC_RAW) && defined(CLOCK_MONOTONIC_FAST)
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC_FAST
+#endif
+
 static struct radv_timeline_point *
 radv_timeline_find_point_at_least_locked(struct radv_device *device,
                                          struct radv_timeline *timeline,
