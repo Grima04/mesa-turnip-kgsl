@@ -965,10 +965,11 @@ fs_generator::generate_get_buffer_size(fs_inst *inst,
 }
 
 void
-fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src,
+fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst,
                            struct brw_reg surface_index,
                            struct brw_reg sampler_index)
 {
+   assert(devinfo->gen < 7);
    assert(inst->size_written % REG_SIZE == 0);
    int msg_type = -1;
    uint32_t simd_mode;
@@ -1037,71 +1038,26 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
 	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LOD;
 	 }
 	 break;
-      case SHADER_OPCODE_TXL_LZ:
-         assert(devinfo->gen >= 9);
-	 if (inst->shadow_compare) {
-            msg_type = GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ;
-         } else {
-            msg_type = GEN9_SAMPLER_MESSAGE_SAMPLE_LZ;
-         }
-         break;
       case SHADER_OPCODE_TXS:
-      case SHADER_OPCODE_IMAGE_SIZE:
 	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
 	 break;
       case SHADER_OPCODE_TXD:
-         if (inst->shadow_compare) {
-            /* Gen7.5+.  Otherwise, lowered in NIR */
-            assert(devinfo->gen >= 8 || devinfo->is_haswell);
-            msg_type = HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE;
-         } else {
-            msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
-         }
+         assert(!inst->shadow_compare);
+         msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
 	 break;
       case SHADER_OPCODE_TXF:
 	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
 	 break;
-      case SHADER_OPCODE_TXF_LZ:
-         assert(devinfo->gen >= 9);
-         msg_type = GEN9_SAMPLER_MESSAGE_SAMPLE_LD_LZ;
-         break;
-      case SHADER_OPCODE_TXF_CMS_W:
-         assert(devinfo->gen >= 9);
-         msg_type = GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W;
-         break;
       case SHADER_OPCODE_TXF_CMS:
-         if (devinfo->gen >= 7)
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS;
-         else
-            msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
-         break;
-      case SHADER_OPCODE_TXF_UMS:
-         assert(devinfo->gen >= 7);
-         msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DSS;
-         break;
-      case SHADER_OPCODE_TXF_MCS:
-         assert(devinfo->gen >= 7);
-         msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
+         msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
          break;
       case SHADER_OPCODE_LOD:
          msg_type = GEN5_SAMPLER_MESSAGE_LOD;
          break;
       case SHADER_OPCODE_TG4:
-         if (inst->shadow_compare) {
-            assert(devinfo->gen >= 7);
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C;
-         } else {
-            assert(devinfo->gen >= 6);
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
-         }
-         break;
-      case SHADER_OPCODE_TG4_OFFSET:
-         assert(devinfo->gen >= 7);
-         if (inst->shadow_compare) {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C;
-         } else {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
-         }
+         assert(devinfo->gen == 6);
+         assert(!inst->shadow_compare);
+         msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
          break;
       case SHADER_OPCODE_SAMPLEINFO:
          msg_type = GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
@@ -1180,16 +1136,14 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
       dst = vec16(dst);
    }
 
-   assert(devinfo->gen < 7 || inst->header_size == 0 ||
-          src.file == BRW_GENERAL_REGISTER_FILE);
-
    assert(sampler_index.type == BRW_REGISTER_TYPE_UD);
 
    /* Load the message header if present.  If there's a texture offset,
     * we need to set it up explicitly and load the offset bitfield.
     * Otherwise, we can use an implied move from g0 to the first message reg.
     */
-   if (inst->header_size != 0 && devinfo->gen < 7) {
+   struct brw_reg src = brw_null_reg();
+   if (inst->header_size != 0) {
       if (devinfo->gen < 6 && !inst->offset) {
          /* Set up an implied move from g0 to the MRF. */
          src = retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UW);
@@ -1218,83 +1172,28 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
    uint32_t base_binding_table_index;
    switch (inst->opcode) {
    case SHADER_OPCODE_TG4:
-   case SHADER_OPCODE_TG4_OFFSET:
       base_binding_table_index = prog_data->binding_table.gather_texture_start;
-      break;
-   case SHADER_OPCODE_IMAGE_SIZE:
-      base_binding_table_index = prog_data->binding_table.image_start;
       break;
    default:
       base_binding_table_index = prog_data->binding_table.texture_start;
       break;
    }
 
-   if (surface_index.file == BRW_IMMEDIATE_VALUE &&
-       sampler_index.file == BRW_IMMEDIATE_VALUE) {
-      uint32_t surface = surface_index.ud;
-      uint32_t sampler = sampler_index.ud;
+   assert(surface_index.file == BRW_IMMEDIATE_VALUE);
+   assert(sampler_index.file == BRW_IMMEDIATE_VALUE);
 
-      brw_SAMPLE(p,
-                 retype(dst, BRW_REGISTER_TYPE_UW),
-                 inst->base_mrf,
-                 src,
-                 surface + base_binding_table_index,
-                 sampler % 16,
-                 msg_type,
-                 inst->size_written / REG_SIZE,
-                 inst->mlen,
-                 inst->header_size != 0,
-                 simd_mode,
-                 return_format);
-   } else {
-      /* Non-const sampler index */
-
-      struct brw_reg addr = vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
-      struct brw_reg surface_reg = vec1(retype(surface_index, BRW_REGISTER_TYPE_UD));
-      struct brw_reg sampler_reg = vec1(retype(sampler_index, BRW_REGISTER_TYPE_UD));
-
-      brw_push_insn_state(p);
-      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
-      brw_set_default_access_mode(p, BRW_ALIGN_1);
-      brw_set_default_exec_size(p, BRW_EXECUTE_1);
-
-      if (brw_regs_equal(&surface_reg, &sampler_reg)) {
-         brw_MUL(p, addr, sampler_reg, brw_imm_uw(0x101));
-      } else {
-         if (sampler_reg.file == BRW_IMMEDIATE_VALUE) {
-            brw_OR(p, addr, surface_reg, brw_imm_ud(sampler_reg.ud << 8));
-         } else {
-            brw_SHL(p, addr, sampler_reg, brw_imm_ud(8));
-            brw_OR(p, addr, addr, surface_reg);
-         }
-      }
-      if (base_binding_table_index)
-         brw_ADD(p, addr, addr, brw_imm_ud(base_binding_table_index));
-      brw_AND(p, addr, addr, brw_imm_ud(0xfff));
-
-      brw_pop_insn_state(p);
-
-      /* dst = send(offset, a0.0 | <descriptor>) */
-      brw_send_indirect_message(
-         p, BRW_SFID_SAMPLER, dst, src, addr,
-         brw_message_desc(devinfo, inst->mlen, inst->size_written / REG_SIZE,
-                          inst->header_size) |
-         brw_sampler_desc(devinfo,
-                          0 /* surface */,
-                          0 /* sampler */,
-                          msg_type,
-                          simd_mode,
-                          return_format));
-
-      /* visitor knows more than we do about the surface limit required,
-       * so has already done marking.
-       */
-   }
-
-   if (is_combined_send) {
-      brw_inst_set_eot(p->devinfo, brw_last_inst, true);
-      brw_inst_set_opcode(p->devinfo, brw_last_inst, BRW_OPCODE_SENDC);
-   }
+   brw_SAMPLE(p,
+              retype(dst, BRW_REGISTER_TYPE_UW),
+              inst->base_mrf,
+              src,
+              surface_index.ud + base_binding_table_index,
+              sampler_index.ud % 16,
+              msg_type,
+              inst->size_written / REG_SIZE,
+              inst->mlen,
+              inst->header_size != 0,
+              simd_mode,
+              return_format);
 }
 
 
@@ -2170,23 +2069,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       case FS_OPCODE_TXB:
       case SHADER_OPCODE_TXD:
       case SHADER_OPCODE_TXF:
-      case SHADER_OPCODE_TXF_LZ:
       case SHADER_OPCODE_TXF_CMS:
-      case SHADER_OPCODE_TXF_CMS_W:
-      case SHADER_OPCODE_TXF_UMS:
-      case SHADER_OPCODE_TXF_MCS:
       case SHADER_OPCODE_TXL:
-      case SHADER_OPCODE_TXL_LZ:
       case SHADER_OPCODE_TXS:
       case SHADER_OPCODE_LOD:
       case SHADER_OPCODE_TG4:
-      case SHADER_OPCODE_TG4_OFFSET:
       case SHADER_OPCODE_SAMPLEINFO:
-	 generate_tex(inst, dst, src[0], src[1], src[2]);
-	 break;
-
-      case SHADER_OPCODE_IMAGE_SIZE:
-         generate_tex(inst, dst, src[0], src[1], brw_imm_ud(0));
+         assert(inst->src[0].file == BAD_FILE);
+         generate_tex(inst, dst, src[1], src[2]);
          break;
 
       case FS_OPCODE_DDX_COARSE:

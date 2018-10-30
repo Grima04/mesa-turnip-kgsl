@@ -416,6 +416,23 @@ schedule_node::set_latency_gen7(bool is_haswell)
 
    case SHADER_OPCODE_SEND:
       switch (inst->sfid) {
+      case BRW_SFID_SAMPLER: {
+         unsigned msg_type = (inst->desc >> 12) & 0x1f;
+         switch (msg_type) {
+         case GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO:
+         case GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO:
+            /* See also SHADER_OPCODE_TXS */
+            latency = 100;
+            break;
+
+         default:
+            /* See also SHADER_OPCODE_TEX */
+            latency = 200;
+            break;
+         }
+         break;
+      }
+
       case GEN6_SFID_DATAPORT_RENDER_CACHE:
          switch ((inst->desc >> 14) & 0x1f) {
          case GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE:

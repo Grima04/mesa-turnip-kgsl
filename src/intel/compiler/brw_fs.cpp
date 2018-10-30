@@ -4551,6 +4551,66 @@ is_high_sampler(const struct gen_device_info *devinfo, const fs_reg &sampler)
    return sampler.file != IMM || sampler.ud >= 16;
 }
 
+static unsigned
+sampler_msg_type(const gen_device_info *devinfo,
+                 opcode opcode, bool shadow_compare)
+{
+   assert(devinfo->gen >= 5);
+   switch (opcode) {
+   case SHADER_OPCODE_TEX:
+      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_COMPARE :
+                              GEN5_SAMPLER_MESSAGE_SAMPLE;
+   case FS_OPCODE_TXB:
+      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE :
+                              GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS;
+   case SHADER_OPCODE_TXL:
+      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE :
+                              GEN5_SAMPLER_MESSAGE_SAMPLE_LOD;
+   case SHADER_OPCODE_TXL_LZ:
+      return shadow_compare ? GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ :
+                              GEN9_SAMPLER_MESSAGE_SAMPLE_LZ;
+   case SHADER_OPCODE_TXS:
+   case SHADER_OPCODE_IMAGE_SIZE:
+      return GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
+   case SHADER_OPCODE_TXD:
+      assert(!shadow_compare || devinfo->gen >= 8 || devinfo->is_haswell);
+      return shadow_compare ? HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE :
+                              GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
+   case SHADER_OPCODE_TXF:
+      return GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+   case SHADER_OPCODE_TXF_LZ:
+      assert(devinfo->gen >= 9);
+      return GEN9_SAMPLER_MESSAGE_SAMPLE_LD_LZ;
+   case SHADER_OPCODE_TXF_CMS_W:
+      assert(devinfo->gen >= 9);
+      return GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W;
+   case SHADER_OPCODE_TXF_CMS:
+      return devinfo->gen >= 7 ? GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS :
+                                 GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+   case SHADER_OPCODE_TXF_UMS:
+      assert(devinfo->gen >= 7);
+      return GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DSS;
+   case SHADER_OPCODE_TXF_MCS:
+      assert(devinfo->gen >= 7);
+      return GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
+   case SHADER_OPCODE_LOD:
+      return GEN5_SAMPLER_MESSAGE_LOD;
+   case SHADER_OPCODE_TG4:
+      assert(devinfo->gen >= 7);
+      return shadow_compare ? GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C :
+                              GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
+      break;
+   case SHADER_OPCODE_TG4_OFFSET:
+      assert(devinfo->gen >= 7);
+      return shadow_compare ? GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C :
+                              GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
+   case SHADER_OPCODE_SAMPLEINFO:
+      return GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
+   default:
+      unreachable("not reached");
+   }
+}
+
 static void
 lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &coordinate,
@@ -4566,6 +4626,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 unsigned grad_components)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
+   const brw_stage_prog_data *prog_data = bld.shader->stage_prog_data;
    unsigned reg_width = bld.dispatch_width() / 8;
    unsigned header_size = 0, length = 0;
    fs_reg sources[MAX_SAMPLER_MESSAGE_SIZE];
@@ -4792,13 +4853,80 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
    bld.LOAD_PAYLOAD(src_payload, sources, length, header_size);
 
    /* Generate the SEND. */
-   inst->opcode = op;
-   inst->src[0] = src_payload;
-   inst->src[1] = surface;
-   inst->src[2] = sampler;
-   inst->resize_sources(3);
+   inst->opcode = SHADER_OPCODE_SEND;
    inst->mlen = mlen;
    inst->header_size = header_size;
+
+   const unsigned msg_type =
+      sampler_msg_type(devinfo, op, inst->shadow_compare);
+   const unsigned simd_mode =
+      inst->exec_size <= 8 ? BRW_SAMPLER_SIMD_MODE_SIMD8 :
+                             BRW_SAMPLER_SIMD_MODE_SIMD16;
+
+   uint32_t base_binding_table_index;
+   switch (op) {
+   case SHADER_OPCODE_TG4:
+   case SHADER_OPCODE_TG4_OFFSET:
+      base_binding_table_index = prog_data->binding_table.gather_texture_start;
+      break;
+   case SHADER_OPCODE_IMAGE_SIZE:
+      base_binding_table_index = prog_data->binding_table.image_start;
+      break;
+   default:
+      base_binding_table_index = prog_data->binding_table.texture_start;
+      break;
+   }
+
+   inst->sfid = BRW_SFID_SAMPLER;
+   if (surface.file == IMM && sampler.file == IMM) {
+      inst->desc = brw_sampler_desc(devinfo,
+                                    surface.ud + base_binding_table_index,
+                                    sampler.ud % 16,
+                                    msg_type,
+                                    simd_mode,
+                                    0 /* return_format unused on gen7+ */);
+      inst->src[0] = brw_imm_ud(0);
+   } else {
+      /* Immediate portion of the descriptor */
+      inst->desc = brw_sampler_desc(devinfo,
+                                    0, /* surface */
+                                    0, /* sampler */
+                                    msg_type,
+                                    simd_mode,
+                                    0 /* return_format unused on gen7+ */);
+      const fs_builder ubld = bld.group(1, 0).exec_all();
+      fs_reg desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      if (surface.equals(sampler)) {
+         /* This case is common in GL */
+         ubld.MUL(desc, surface, brw_imm_ud(0x101));
+      } else {
+         if (sampler.file == IMM) {
+            ubld.OR(desc, surface, brw_imm_ud(sampler.ud << 8));
+         } else {
+            ubld.SHL(desc, sampler, brw_imm_ud(8));
+            ubld.OR(desc, desc, surface);
+         }
+      }
+      if (base_binding_table_index)
+         ubld.ADD(desc, desc, brw_imm_ud(base_binding_table_index));
+      ubld.AND(desc, desc, brw_imm_ud(0xfff));
+
+      inst->src[0] = component(desc, 0);
+   }
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+
+   inst->src[2] = src_payload;
+   inst->resize_sources(3);
+
+   if (inst->eot) {
+      /* EOT sampler messages don't make sense to split because it would
+       * involve ending half of the thread early.
+       */
+      assert(inst->group == 0);
+      /* We need to use SENDC for EOT sampler messages */
+      inst->check_tdr = true;
+      inst->send_has_side_effects = true;
+   }
 
    /* Message length > MAX_SAMPLER_MESSAGE_SIZE disallowed by hardware. */
    assert(inst->mlen <= MAX_SAMPLER_MESSAGE_SIZE);
