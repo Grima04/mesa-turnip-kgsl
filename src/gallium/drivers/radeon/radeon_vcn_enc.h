@@ -457,7 +457,7 @@ struct radeon_enc_pic {
 struct radeon_encoder {
 	struct pipe_video_codec		base;
 
-	void (*begin)(struct radeon_encoder *enc, struct pipe_picture_desc *pic);
+	void (*begin)(struct radeon_encoder *enc);
 	void (*encode)(struct radeon_encoder *enc);
 	void (*destroy)(struct radeon_encoder *enc);
 	void (*session_info)(struct radeon_encoder *enc);
@@ -467,10 +467,8 @@ struct radeon_encoder {
 	void (*layer_select)(struct radeon_encoder *enc);
 	void (*slice_control)(struct radeon_encoder *enc);
 	void (*spec_misc)(struct radeon_encoder *enc);
-	void (*rc_session_init)(struct radeon_encoder *enc,
-				struct pipe_picture_desc *picture);
-	void (*rc_layer_init)(struct radeon_encoder *enc,
-			      struct pipe_picture_desc *picture);
+	void (*rc_session_init)(struct radeon_encoder *enc);
+	void (*rc_layer_init)(struct radeon_encoder *enc);
 	void (*deblocking_filter)(struct radeon_encoder *enc);
 	void (*quality_params)(struct radeon_encoder *enc);
 	void (*nalu_sps)(struct radeon_encoder *enc);
@@ -482,8 +480,7 @@ struct radeon_encoder {
 	void (*bitstream)(struct radeon_encoder *enc);
 	void (*feedback)(struct radeon_encoder *enc);
 	void (*intra_refresh)(struct radeon_encoder *enc);
-	void (*rc_per_pic)(struct radeon_encoder *enc,
-			   struct pipe_picture_desc *picture);
+	void (*rc_per_pic)(struct radeon_encoder *enc);
 	void (*encode_params)(struct radeon_encoder *enc);
 	void (*encode_params_codec_spec)(struct radeon_encoder *enc);
 	void (*op_init)(struct radeon_encoder *enc);
@@ -492,6 +489,7 @@ struct radeon_encoder {
 	void (*op_init_rc)(struct radeon_encoder *enc);
 	void (*op_init_rc_vbv)(struct radeon_encoder *enc);
 	void (*op_speed)(struct radeon_encoder *enc);
+	void (*encode_headers)(struct radeon_encoder *enc);
 
 	unsigned			stream_handle;
 
