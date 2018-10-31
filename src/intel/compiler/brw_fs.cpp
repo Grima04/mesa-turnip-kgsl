@@ -737,6 +737,7 @@ fs_inst::components_read(unsigned i) const
    case SHADER_OPCODE_TXF_LOGICAL:
    case SHADER_OPCODE_TXL_LOGICAL:
    case SHADER_OPCODE_TXS_LOGICAL:
+   case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
    case FS_OPCODE_TXB_LOGICAL:
    case SHADER_OPCODE_TXF_CMS_LOGICAL:
    case SHADER_OPCODE_TXF_CMS_W_LOGICAL:
@@ -4675,6 +4676,11 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), lod);
       length++;
       break;
+   case SHADER_OPCODE_IMAGE_SIZE:
+      /* We need an LOD; just use 0 */
+      bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), brw_imm_ud(0));
+      length++;
+      break;
    case SHADER_OPCODE_TXF:
       /* Unfortunately, the parameters for LD are intermixed: u, lod, v, r.
        * On Gen9 they are u, v, lod, r
@@ -5155,6 +5161,10 @@ fs_visitor::lower_logical_sends()
 
       case SHADER_OPCODE_TXS_LOGICAL:
          lower_sampler_logical_send(ibld, inst, SHADER_OPCODE_TXS);
+         break;
+
+      case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
+         lower_sampler_logical_send(ibld, inst, SHADER_OPCODE_IMAGE_SIZE);
          break;
 
       case FS_OPCODE_TXB_LOGICAL:

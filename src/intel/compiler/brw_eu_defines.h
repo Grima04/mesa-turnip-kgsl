@@ -362,6 +362,7 @@ enum opcode {
    SHADER_OPCODE_SAMPLEINFO_LOGICAL,
 
    SHADER_OPCODE_IMAGE_SIZE,
+   SHADER_OPCODE_IMAGE_SIZE_LOGICAL,
 
    /**
     * Combines multiple sources of size 1 into a larger virtual GRF.

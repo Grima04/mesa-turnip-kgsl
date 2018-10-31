@@ -3731,18 +3731,20 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                             BRW_REGISTER_TYPE_UD);
       image = bld.emit_uniformize(image);
 
+      fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
+      srcs[TEX_LOGICAL_SRC_SURFACE] = image;
+      srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_d(0);
+      srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(0);
+      srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
+
       /* Since the image size is always uniform, we can just emit a SIMD8
        * query instruction and splat the result out.
        */
       const fs_builder ubld = bld.exec_all().group(8, 0);
 
-      /* The LOD also serves as the message payload */
-      fs_reg lod = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.MOV(lod, brw_imm_ud(0));
-
       fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 4);
-      fs_inst *inst = ubld.emit(SHADER_OPCODE_IMAGE_SIZE, tmp, lod, image);
-      inst->mlen = 1;
+      fs_inst *inst = ubld.emit(SHADER_OPCODE_IMAGE_SIZE_LOGICAL,
+                                tmp, srcs, ARRAY_SIZE(srcs));
       inst->size_written = 4 * REG_SIZE;
 
       for (unsigned c = 0; c < instr->dest.ssa.num_components; ++c) {
