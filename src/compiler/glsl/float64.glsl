@@ -798,6 +798,12 @@ __fmul64(uint64_t a, uint64_t b)
    return __roundAndPackFloat64(zSign, zExp, zFrac0, zFrac1, zFrac2);
 }
 
+uint64_t
+__ffma64(uint64_t a, uint64_t b, uint64_t c)
+{
+   return __fadd64(__fmul64(a, b), c);
+}
+
 /* Shifts the 64-bit value formed by concatenating `a0' and `a1' right by the
  * number of bits given in `count'.  Any bits shifted off are lost.  The value
  * of `count' can be arbitrarily large; in particular, if `count' is greater
