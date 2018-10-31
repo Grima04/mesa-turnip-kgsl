@@ -487,7 +487,7 @@ typedef struct nir_register {
 #define nir_foreach_register_safe(reg, reg_list) \
    foreach_list_typed_safe(nir_register, reg, node, reg_list)
 
-typedef enum {
+typedef enum PACKED {
    nir_instr_type_alu,
    nir_instr_type_deref,
    nir_instr_type_call,
@@ -502,16 +502,16 @@ typedef enum {
 
 typedef struct nir_instr {
    struct exec_node node;
-   nir_instr_type type;
    struct nir_block *block;
-
-   /** generic instruction index. */
-   unsigned index;
+   nir_instr_type type;
 
    /* A temporary for optimization and analysis passes to use for storing
     * flags.  For instance, DCE uses this to store the "dead/live" info.
     */
    uint8_t pass_flags;
+
+   /** generic instruction index. */
+   unsigned index;
 } nir_instr;
 
 static inline nir_instr *
