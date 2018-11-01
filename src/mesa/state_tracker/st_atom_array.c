@@ -499,7 +499,8 @@ st_update_array(struct st_context *st)
                     &vbuffer[bufidx].buffer_offset,
                     &vbuffer[bufidx].buffer.resource);
 
-      if (!ctx->Const.AllowMappedBuffersDuringExecution) {
+      if (!ctx->Const.AllowMappedBuffersDuringExecution &&
+          !st->can_bind_const_buffer_as_vertex) {
          u_upload_unmap(st->pipe->stream_uploader);
       }
    }
