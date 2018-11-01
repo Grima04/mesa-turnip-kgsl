@@ -99,6 +99,32 @@ v3d_flush_caches(struct v3d_hw *v3d)
 }
 
 int
+v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
+                                 struct drm_v3d_submit_tfu *args)
+{
+        int last_vtct = V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET;
+
+        V3D_WRITE(V3D_TFU_IIA, args->iia);
+        V3D_WRITE(V3D_TFU_IIS, args->iis);
+        V3D_WRITE(V3D_TFU_ICA, args->ica);
+        V3D_WRITE(V3D_TFU_IUA, args->iua);
+        V3D_WRITE(V3D_TFU_IOA, args->ioa);
+        V3D_WRITE(V3D_TFU_IOS, args->ios);
+        V3D_WRITE(V3D_TFU_COEF0, args->coef[0]);
+        V3D_WRITE(V3D_TFU_COEF1, args->coef[1]);
+        V3D_WRITE(V3D_TFU_COEF2, args->coef[2]);
+        V3D_WRITE(V3D_TFU_COEF3, args->coef[3]);
+
+        V3D_WRITE(V3D_TFU_ICFG, args->icfg);
+
+        while ((V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET) != last_vtct) {
+                v3d_hw_tick(v3d);
+        }
+
+        return 0;
+}
+
+int
 v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
                                 struct drm_v3d_get_param *args)
 {
@@ -111,6 +137,12 @@ v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
                 [DRM_V3D_PARAM_V3D_CORE0_IDENT1] = V3D_CTL_0_IDENT1,
                 [DRM_V3D_PARAM_V3D_CORE0_IDENT2] = V3D_CTL_0_IDENT2,
         };
+
+        switch (args->param) {
+        case DRM_V3D_PARAM_SUPPORTS_TFU:
+                args->value = 1;
+                return 0;
+        }
 
         if (args->param < ARRAY_SIZE(reg_map) && reg_map[args->param]) {
                 args->value = V3D_READ(reg_map[args->param]);

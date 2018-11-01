@@ -42,6 +42,8 @@ int v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
 void v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
                                      struct drm_v3d_submit_cl *args,
                                      uint32_t gmp_offset);
+int v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
+                                     struct drm_v3d_submit_tfu *args);
 const struct v3d_format *v3dX(get_format_desc)(enum pipe_format f);
 void v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
                                                    uint32_t *type,

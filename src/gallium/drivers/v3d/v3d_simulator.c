@@ -244,19 +244,42 @@ v3d_get_simulator_bo(struct v3d_simulator_file *file, int gem_handle)
         return entry ? entry->data : NULL;
 }
 
+static void
+v3d_simulator_copy_in_handle(struct v3d_simulator_file *file, int handle)
+{
+        struct v3d_simulator_bo *sim_bo = v3d_get_simulator_bo(file, handle);
+
+        if (!sim_bo)
+                return;
+
+        memcpy(sim_bo->sim_vaddr, sim_bo->gem_vaddr, sim_bo->size);
+}
+
+static void
+v3d_simulator_copy_out_handle(struct v3d_simulator_file *file, int handle)
+{
+        struct v3d_simulator_bo *sim_bo = v3d_get_simulator_bo(file, handle);
+
+        if (!sim_bo)
+                return;
+
+        memcpy(sim_bo->gem_vaddr, sim_bo->sim_vaddr, sim_bo->size);
+
+        if (*(uint32_t *)(sim_bo->sim_vaddr +
+                          sim_bo->size) != BO_SENTINEL) {
+                fprintf(stderr, "Buffer overflow in handle %d\n",
+                        handle);
+        }
+}
+
 static int
 v3d_simulator_pin_bos(struct v3d_simulator_file *file,
                       struct drm_v3d_submit_cl *submit)
 {
         uint32_t *bo_handles = (uint32_t *)(uintptr_t)submit->bo_handles;
 
-        for (int i = 0; i < submit->bo_handle_count; i++) {
-                int handle = bo_handles[i];
-                struct v3d_simulator_bo *sim_bo =
-                        v3d_get_simulator_bo(file, handle);
-
-                memcpy(sim_bo->sim_vaddr, sim_bo->gem_vaddr, sim_bo->size);
-        }
+        for (int i = 0; i < submit->bo_handle_count; i++)
+                v3d_simulator_copy_in_handle(file, bo_handles[i]);
 
         return 0;
 }
@@ -267,19 +290,8 @@ v3d_simulator_unpin_bos(struct v3d_simulator_file *file,
 {
         uint32_t *bo_handles = (uint32_t *)(uintptr_t)submit->bo_handles;
 
-        for (int i = 0; i < submit->bo_handle_count; i++) {
-                int handle = bo_handles[i];
-                struct v3d_simulator_bo *sim_bo =
-                        v3d_get_simulator_bo(file, handle);
-
-                memcpy(sim_bo->gem_vaddr, sim_bo->sim_vaddr, sim_bo->size);
-
-                if (*(uint32_t *)(sim_bo->sim_vaddr +
-                                  sim_bo->size) != BO_SENTINEL) {
-                        fprintf(stderr, "Buffer overflow in handle %d\n",
-                                handle);
-                }
-        }
+        for (int i = 0; i < submit->bo_handle_count; i++)
+                v3d_simulator_copy_out_handle(file, bo_handles[i]);
 
         return 0;
 }
@@ -400,6 +412,27 @@ v3d_simulator_get_param_ioctl(int fd, struct drm_v3d_get_param *args)
                 return v3d33_simulator_get_param_ioctl(sim_state.v3d, args);
 }
 
+static int
+v3d_simulator_submit_tfu_ioctl(int fd, struct drm_v3d_submit_tfu *args)
+{
+        struct v3d_simulator_file *file = v3d_get_simulator_file_for_fd(fd);
+        int ret;
+
+        v3d_simulator_copy_in_handle(file, args->bo_handles[0]);
+        v3d_simulator_copy_in_handle(file, args->bo_handles[1]);
+        v3d_simulator_copy_in_handle(file, args->bo_handles[2]);
+        v3d_simulator_copy_in_handle(file, args->bo_handles[3]);
+
+        if (sim_state.ver >= 41)
+                ret = v3d41_simulator_submit_tfu_ioctl(sim_state.v3d, args);
+        else
+                ret = v3d33_simulator_submit_tfu_ioctl(sim_state.v3d, args);
+
+        v3d_simulator_copy_out_handle(file, args->bo_handles[0]);
+
+        return ret;
+}
+
 int
 v3d_simulator_ioctl(int fd, unsigned long request, void *args)
 {
@@ -426,6 +459,9 @@ v3d_simulator_ioctl(int fd, unsigned long request, void *args)
 
         case DRM_IOCTL_GEM_CLOSE:
                 return v3d_simulator_gem_close_ioctl(fd, args);
+
+        case DRM_IOCTL_V3D_SUBMIT_TFU:
+                return v3d_simulator_submit_tfu_ioctl(fd, args);
 
         case DRM_IOCTL_GEM_OPEN:
         case DRM_IOCTL_GEM_FLINK:
