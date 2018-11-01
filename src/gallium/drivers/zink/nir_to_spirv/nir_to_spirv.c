@@ -1022,6 +1022,16 @@ emit_store_output(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   assert(ctx->block_started);
+   spirv_builder_emit_kill(&ctx->builder);
+   /* discard is weird in NIR, so let's just create an unreachable block after
+      it and hope that the vulkan driver will DCE any instructinos in it. */
+   spirv_builder_label(&ctx->builder, spirv_builder_new_id(&ctx->builder));
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -1035,6 +1045,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_store_output:
       emit_store_output(ctx, intr);
+      break;
+
+   case nir_intrinsic_discard:
+      emit_discard(ctx, intr);
       break;
 
    default:

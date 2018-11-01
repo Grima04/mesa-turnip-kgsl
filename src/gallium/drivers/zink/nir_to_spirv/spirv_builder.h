@@ -194,6 +194,8 @@ void
 spirv_builder_set_phi_operand(struct spirv_builder *b, size_t position,
                               size_t index, SpvId variable, SpvId parent);
 
+void
+spirv_builder_emit_kill(struct spirv_builder *b);
 
 SpvId
 spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,

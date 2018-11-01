@@ -487,6 +487,13 @@ spirv_builder_set_phi_operand(struct spirv_builder *b, size_t position,
    b->instructions.words[position + index * 2 + 1] = parent;
 }
 
+void
+spirv_builder_emit_kill(struct spirv_builder *b)
+{
+   spirv_buffer_prepare(&b->instructions, 1);
+   spirv_buffer_emit_word(&b->instructions, SpvOpKill | (1 << 16));
+}
+
 SpvId
 spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,
                                              SpvId result_type,
