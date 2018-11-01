@@ -4776,7 +4776,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
     * We do these now because they may add post-sync operations or CS stalls.
     */
 
-   if (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE) {
+   if (GEN_GEN < 11 && flags & PIPE_CONTROL_VF_CACHE_INVALIDATE) {
       /* Project: BDW, SKL+ (stopping at CNL) / Argument: VF Invalidate
        *
        * "'Post Sync Operation' must be enabled to 'Write Immediate Data' or
