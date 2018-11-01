@@ -2227,6 +2227,10 @@ const struct function gles2_functions_possible[] = {
    /* GL_EXT_shader_framebuffer_fetch_non_coherent */
    { "glFramebufferFetchBarrierEXT", 20, -1 },
 
+   /* GL_NV_conditional_render */
+   { "glBeginConditionalRenderNV", 20, -1 },
+   { "glEndConditionalRenderNV", 20, -1 },
+
    /* GL_NV_conservative_raster */
    { "glSubpixelPrecisionBiasNV", 20, -1 },
 
