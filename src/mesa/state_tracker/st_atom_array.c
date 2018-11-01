@@ -498,10 +498,10 @@ st_update_array(struct st_context *st)
                     0, cursor - data, max_alignment, data,
                     &vbuffer[bufidx].buffer_offset,
                     &vbuffer[bufidx].buffer.resource);
-   }
 
-   if (!ctx->Const.AllowMappedBuffersDuringExecution) {
-      u_upload_unmap(st->pipe->stream_uploader);
+      if (!ctx->Const.AllowMappedBuffersDuringExecution) {
+         u_upload_unmap(st->pipe->stream_uploader);
+      }
    }
 
    const unsigned num_inputs = st->vp_variant->num_inputs;
