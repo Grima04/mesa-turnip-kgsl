@@ -75,6 +75,13 @@ st_setup_current(struct st_context *st,
                  struct pipe_vertex_element *velements,
                  struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers);
 
+void
+st_setup_current_user(struct st_context *st,
+                      const struct st_vertex_program *vp,
+                      const struct st_vp_variant *vp_variant,
+                      struct pipe_vertex_element *velements,
+                      struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers);
+
 /* Define ST_NEW_xxx_INDEX */
 enum {
 #define ST_STATE(FLAG, st_update) FLAG##_INDEX,

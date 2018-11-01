@@ -511,6 +511,36 @@ st_setup_current(struct st_context *st,
 }
 
 void
+st_setup_current_user(struct st_context *st,
+                      const struct st_vertex_program *vp,
+                      const struct st_vp_variant *vp_variant,
+                      struct pipe_vertex_element *velements,
+                      struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
+{
+   struct gl_context *ctx = st->ctx;
+   const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+   const ubyte *input_to_index = vp->input_to_index;
+
+   /* Process values that should have better been uniforms in the application */
+   GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
+   /* For each attribute, make an own user buffer binding. */
+   while (curmask) {
+      const gl_vert_attrib attr = u_bit_scan(&curmask);
+      const struct gl_array_attributes *const attrib
+         = _mesa_draw_current_attrib(ctx, attr);
+      const unsigned bufidx = (*num_vbuffers)++;
+
+      init_velement_lowered(vp, velements, &attrib->Format, 0, 0,
+                            bufidx, input_to_index[attr]);
+
+      vbuffer[bufidx].is_user_buffer = true;
+      vbuffer[bufidx].buffer.user = attrib->Ptr;
+      vbuffer[bufidx].buffer_offset = 0;
+      vbuffer[bufidx].stride = 0;
+   }
+}
+
+void
 st_update_array(struct st_context *st)
 {
    /* vertex program validation must be done before this */
