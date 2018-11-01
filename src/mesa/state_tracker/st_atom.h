@@ -58,9 +58,6 @@ void st_destroy_atoms( struct st_context *st );
 void st_validate_state( struct st_context *st, enum st_pipeline pipeline );
 GLuint st_compare_func_to_pipe(GLenum func);
 
-enum pipe_format
-st_pipe_vertex_format(const struct gl_vertex_format *glformat);
-
 void
 st_setup_arrays(struct st_context *st,
                 const struct st_vertex_program *vp,

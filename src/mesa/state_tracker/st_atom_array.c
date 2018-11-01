@@ -237,7 +237,7 @@ static const uint16_t vertex_formats[][4][4] = {
 /**
  * Return a PIPE_FORMAT_x for the given GL datatype and size.
  */
-enum pipe_format
+static enum pipe_format
 st_pipe_vertex_format(const struct gl_vertex_format *vformat)
 {
    const GLubyte size = vformat->Size;
