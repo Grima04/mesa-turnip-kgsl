@@ -167,6 +167,51 @@ position_to_vulkan(nir_shader *s)
    }
 }
 
+static bool
+lower_discard_if_instr(nir_intrinsic_instr *instr, nir_builder *b)
+{
+   if (instr->intrinsic == nir_intrinsic_discard_if) {
+      b->cursor = nir_before_instr(&instr->instr);
+
+      nir_if *if_stmt = nir_push_if(b, nir_ssa_for_src(b, instr->src[0], 1));
+      nir_intrinsic_instr *discard =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard);
+      nir_builder_instr_insert(b, &discard->instr);
+      nir_pop_if(b, if_stmt);
+      nir_instr_remove(&instr->instr);
+      return true;
+   }
+   assert(instr->intrinsic != nir_intrinsic_discard ||
+          nir_block_last_instr(instr->instr.block) == &instr->instr);
+
+   return false;
+}
+
+static bool
+lower_discard_if(nir_shader *shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         nir_builder builder;
+         nir_builder_init(&builder, function->impl);
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type == nir_instr_type_intrinsic)
+                  progress |= lower_discard_if_instr(
+                                                  nir_instr_as_intrinsic(instr),
+                                                  &builder);
+            }
+         }
+
+         nir_metadata_preserve(function->impl, nir_metadata_dominance);
+      }
+   }
+
+   return progress;
+}
+
 static const struct nir_shader_compiler_options nir_options = {
    .lower_all_io_to_temps = true,
    .lower_ffma = true,
@@ -257,6 +302,7 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_bool_to_float);
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
+   NIR_PASS_V(nir, lower_discard_if);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
