@@ -217,7 +217,6 @@ fs_inst::is_send_from_grf() const
 {
    switch (opcode) {
    case SHADER_OPCODE_SEND:
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN7:
    case SHADER_OPCODE_SHADER_TIME_ADD:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
@@ -5196,16 +5195,37 @@ lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
    const gen_device_info *devinfo = bld.shader->devinfo;
 
    if (devinfo->gen >= 7) {
+      fs_reg index = inst->src[0];
       /* We are switching the instruction from an ALU-like instruction to a
        * send-from-grf instruction.  Since sends can't handle strides or
        * source modifiers, we have to make a copy of the offset source.
        */
-      fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.MOV(tmp, inst->src[1]);
-      inst->src[1] = tmp;
+      fs_reg offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.MOV(offset, inst->src[1]);
 
-      inst->opcode = FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN7;
+      const unsigned simd_mode =
+         inst->exec_size <= 8 ? BRW_SAMPLER_SIMD_MODE_SIMD8 :
+                                BRW_SAMPLER_SIMD_MODE_SIMD16;
+
+      inst->opcode = SHADER_OPCODE_SEND;
       inst->mlen = inst->exec_size / 8;
+      inst->resize_sources(3);
+
+      inst->sfid = BRW_SFID_SAMPLER;
+      inst->desc = brw_sampler_desc(devinfo, 0, 0,
+                                    GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
+                                    simd_mode, 0);
+      if (index.file == IMM) {
+         inst->desc |= index.ud & 0xff;
+         inst->src[0] = brw_imm_ud(0);
+      } else {
+         const fs_builder ubld = bld.exec_all().group(1, 0);
+         fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.AND(tmp, index, brw_imm_ud(0xff));
+         inst->src[0] = component(tmp, 0);
+      }
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
+      inst->src[2] = offset; /* payload */
    } else {
       const fs_reg payload(MRF, FIRST_PULL_LOAD_MRF(devinfo->gen),
                            BRW_REGISTER_TYPE_UD);
@@ -5727,7 +5747,6 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case FS_OPCODE_DDX_FINE:
    case FS_OPCODE_DDY_COARSE:
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN7:
    case FS_OPCODE_PACK_HALF_2x16_SPLIT:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
