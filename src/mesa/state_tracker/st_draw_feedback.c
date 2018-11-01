@@ -185,7 +185,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
          vbuffers[attr].buffer.resource = NULL;
          vbuffers[attr].is_user_buffer = false;
-         pipe_resource_reference(&vbuffers[attr].buffer.resource, stobj->buffer);
+         vbuffers[attr].buffer.resource = stobj->buffer;
          vbuffers[attr].buffer_offset = _mesa_draw_binding_offset(binding);
          velements[attr].src_offset =
             _mesa_draw_attributes_relative_offset(attrib);
@@ -275,7 +275,6 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       if (vb_transfer[attr])
          pipe_buffer_unmap(pipe, vb_transfer[attr]);
       draw_set_mapped_vertex_buffer(draw, attr, NULL, 0);
-      pipe_vertex_buffer_unreference(&vbuffers[attr]);
    }
    draw_set_vertex_buffers(draw, 0, vp->num_inputs, NULL);
 }
