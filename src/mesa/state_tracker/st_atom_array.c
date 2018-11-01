@@ -384,25 +384,17 @@ set_vertex_attribs(struct st_context *st,
 }
 
 void
-st_update_array(struct st_context *st)
+st_setup_arrays(struct st_context *st,
+                const struct st_vertex_program *vp,
+                const struct st_vp_variant *vp_variant,
+                struct pipe_vertex_element *velements,
+                struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
 {
    struct gl_context *ctx = st->ctx;
-   /* vertex program validation must be done before this */
-   const struct st_vertex_program *vp = st->vp;
-   /* _NEW_PROGRAM, ST_NEW_VS_STATE */
-   const GLbitfield inputs_read = st->vp_variant->vert_attrib_mask;
    const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
+   const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const ubyte *input_to_index = vp->input_to_index;
 
-   struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
-   struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
-   unsigned num_vbuffers = 0;
-
-   st->vertex_array_out_of_memory = FALSE;
-   st->draw_needs_minmax_index = false;
-
-   /* _NEW_PROGRAM */
-   /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
    /* Process attribute array data. */
    GLbitfield mask = inputs_read & _mesa_draw_array_bits(ctx);
    while (mask) {
@@ -410,7 +402,7 @@ st_update_array(struct st_context *st)
       const gl_vert_attrib i = ffs(mask) - 1;
       const struct gl_vertex_buffer_binding *const binding
          = _mesa_draw_buffer_binding(vao, i);
-      const unsigned bufidx = num_vbuffers++;
+      const unsigned bufidx = (*num_vbuffers)++;
 
       if (_mesa_is_bufferobj(binding->BufferObj)) {
          struct st_buffer_object *stobj = st_buffer_object(binding->BufferObj);
@@ -452,16 +444,28 @@ st_update_array(struct st_context *st)
                                input_to_index[attr]);
       }
    }
+}
 
-   const unsigned first_current_vbuffer = num_vbuffers;
-   /* _NEW_PROGRAM | _NEW_CURRENT_ATTRIB */
+void
+st_setup_current(struct st_context *st,
+                 const struct st_vertex_program *vp,
+                 const struct st_vp_variant *vp_variant,
+                 struct pipe_vertex_element *velements,
+                 struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
+{
+   struct gl_context *ctx = st->ctx;
+   const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
    if (curmask) {
+      /* vertex program validation must be done before this */
+      const struct st_vertex_program *vp = st->vp;
+      const ubyte *input_to_index = vp->input_to_index;
       /* For each attribute, upload the maximum possible size. */
       GLubyte data[VERT_ATTRIB_MAX * sizeof(GLdouble) * 4];
       GLubyte *cursor = data;
-      const unsigned bufidx = num_vbuffers++;
+      const unsigned bufidx = (*num_vbuffers)++;
       unsigned max_alignment = 1;
 
       while (curmask) {
@@ -504,12 +508,43 @@ st_update_array(struct st_context *st)
          u_upload_unmap(st->pipe->stream_uploader);
       }
    }
+}
 
-   const unsigned num_inputs = st->vp_variant->num_inputs;
-   set_vertex_attribs(st, vbuffer, num_vbuffers, velements, num_inputs);
+void
+st_update_array(struct st_context *st)
+{
+   /* vertex program validation must be done before this */
+   /* _NEW_PROGRAM, ST_NEW_VS_STATE */
+   const struct st_vertex_program *vp = st->vp;
+   const struct st_vp_variant *vp_variant = st->vp_variant;
 
-   /* Unreference uploaded zero-stride vertex buffers. */
-   for (unsigned i = first_current_vbuffer; i < num_vbuffers; ++i) {
+   struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
+   unsigned num_vbuffers = 0, first_upload_vbuffer;
+   struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
+   unsigned num_velements;
+
+   st->vertex_array_out_of_memory = FALSE;
+   st->draw_needs_minmax_index = false;
+
+   /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
+   /* Setup arrays */
+   st_setup_arrays(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
+   if (st->vertex_array_out_of_memory)
+      return;
+
+   /* _NEW_CURRENT_ATTRIB */
+   /* Setup current uploads */
+   first_upload_vbuffer = num_vbuffers;
+   st_setup_current(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
+   if (st->vertex_array_out_of_memory)
+      return;
+
+   /* Set the array into cso */
+   num_velements = vp_variant->num_inputs;
+   set_vertex_attribs(st, vbuffer, num_vbuffers, velements, num_velements);
+
+   /* Unreference uploaded buffer resources. */
+   for (unsigned i = first_upload_vbuffer; i < num_vbuffers; ++i) {
       pipe_resource_reference(&vbuffer[i].buffer.resource, NULL);
    }
 }
