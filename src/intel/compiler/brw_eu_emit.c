@@ -2738,15 +2738,14 @@ brw_svb_write(struct brw_codegen *p,
 static unsigned
 brw_surface_payload_size(struct brw_codegen *p,
                          unsigned num_channels,
-                         bool has_simd4x2,
-                         bool has_simd16)
+                         unsigned exec_size /**< 0 for SIMD4x2 */)
 {
-   if (has_simd4x2 && brw_get_default_access_mode(p) == BRW_ALIGN_16)
-      return 1;
-   else if (has_simd16 && brw_get_default_exec_size(p) == BRW_EXECUTE_16)
-      return 2 * num_channels;
-   else
+   if (exec_size == 0)
+      return 1; /* SIMD4x2 */
+   else if (exec_size <= 8)
       return num_channels;
+   else
+      return 2 * num_channels;
 }
 
 static uint32_t
@@ -2793,12 +2792,16 @@ brw_untyped_atomic(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN7_SFID_DATAPORT_DATA_CACHE);
-   const unsigned response_length = brw_surface_payload_size(
-      p, response_expected, devinfo->gen >= 8 || devinfo->is_haswell, true);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   /* SIMD4x2 untyped atomic instructions only exist on HSW+ */
+   const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
+                              has_simd4x2 ? 0 : 8;
+   const unsigned response_length =
+      brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
       brw_dp_untyped_atomic_desc(p, atomic_op, response_expected);
-   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* Mask out unused components -- This is especially important in Align16
     * mode on generations that don't have native support for SIMD4x2 atomics,
     * because unused but enabled components will cause the dataport to perform
@@ -2847,8 +2850,9 @@ brw_untyped_atomic_float(struct brw_codegen *p,
    assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
 
    const unsigned sfid = HSW_SFID_DATAPORT_DATA_CACHE_1;
-   const unsigned response_length = brw_surface_payload_size(
-      p, response_expected, true, true);
+   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
+   const unsigned response_length =
+      brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
       brw_dp_untyped_atomic_float_desc(p, atomic_op, response_expected);
@@ -2891,8 +2895,10 @@ brw_untyped_surface_read(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN7_SFID_DATAPORT_DATA_CACHE);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) : 0;
    const unsigned response_length =
-      brw_surface_payload_size(p, num_channels, true, true);
+      brw_surface_payload_size(p, num_channels, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, false) |
       brw_dp_untyped_surface_read_desc(p, num_channels);
@@ -2992,8 +2998,8 @@ brw_byte_scattered_read(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    assert(devinfo->gen > 7 || devinfo->is_haswell);
    assert(brw_get_default_access_mode(p) == BRW_ALIGN_1);
-   const unsigned response_length =
-      brw_surface_payload_size(p, 1, true, true);
+   const unsigned exec_size = 1 << brw_get_default_exec_size(p);
+   const unsigned response_length = brw_surface_payload_size(p, 1, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, false) |
       brw_dp_byte_scattered_desc(p, bit_size,
@@ -3069,12 +3075,18 @@ brw_typed_atomic(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN6_SFID_DATAPORT_RENDER_CACHE);
-   const unsigned response_length = brw_surface_payload_size(
-      p, response_expected, devinfo->gen >= 8 || devinfo->is_haswell, false);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   /* SIMD4x2 typed atomic instructions only exist on HSW+ */
+   const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
+                              has_simd4x2 ? 0 : 8;
+   /* Typed atomics don't support SIMD16 */
+   assert(exec_size <= 8);
+   const unsigned response_length =
+      brw_surface_payload_size(p, response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
       brw_dp_typed_atomic_desc(p, atomic_op, response_expected);
-   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
    const unsigned mask = align1 ? WRITEMASK_XYZW : WRITEMASK_X;
 
@@ -3125,8 +3137,15 @@ brw_typed_surface_read(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN6_SFID_DATAPORT_RENDER_CACHE);
-   const unsigned response_length = brw_surface_payload_size(
-      p, num_channels, devinfo->gen >= 8 || devinfo->is_haswell, false);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   /* SIMD4x2 typed read instructions only exist on HSW+ */
+   const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
+   const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
+                              has_simd4x2 ? 0 : 8;
+   /* Typed surface reads don't support SIMD16 */
+   assert(exec_size <= 8);
+   const unsigned response_length =
+      brw_surface_payload_size(p, num_channels, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
       brw_dp_typed_surface_read_desc(p, num_channels);
