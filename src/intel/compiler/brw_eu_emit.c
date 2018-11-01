@@ -2944,13 +2944,14 @@ brw_untyped_surface_write(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN7_SFID_DATAPORT_DATA_CACHE);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   /* SIMD4x2 untyped surface write instructions only exist on HSW+ */
+   const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, 0, header_present) |
       brw_dp_untyped_surface_write_desc(p, num_channels);
-   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
-   const unsigned mask = devinfo->gen == 7 && !devinfo->is_haswell && !align1 ?
-                          WRITEMASK_X : WRITEMASK_XYZW;
+   const unsigned mask = !has_simd4x2 && !align1 ? WRITEMASK_X : WRITEMASK_XYZW;
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(brw_null_reg(), mask),
                                      payload, surface, desc);
@@ -3196,13 +3197,14 @@ brw_typed_surface_write(struct brw_codegen *p,
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN6_SFID_DATAPORT_RENDER_CACHE);
+   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
+   /* SIMD4x2 typed read instructions only exist on HSW+ */
+   const bool has_simd4x2 = devinfo->gen >= 8 || devinfo->is_haswell;
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, 0, header_present) |
       brw_dp_typed_surface_write_desc(p, num_channels);
-   const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* Mask out unused components -- See comment in brw_untyped_atomic(). */
-   const unsigned mask = (devinfo->gen == 7 && !devinfo->is_haswell && !align1 ?
-                          WRITEMASK_X : WRITEMASK_XYZW);
+   const unsigned mask = !has_simd4x2 && !align1 ? WRITEMASK_X : WRITEMASK_XYZW;
 
    brw_send_indirect_surface_message(p, sfid, brw_writemask(brw_null_reg(), mask),
                                      payload, surface, desc);
