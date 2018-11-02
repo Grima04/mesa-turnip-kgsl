@@ -2259,9 +2259,13 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          vb.MOCS = MOCS_WB;
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffers[i].stride;
-         vb.BufferSize = res->bo->size;
-         vb.BufferStartingAddress =
-            ro_bo(NULL, res->bo->gtt_offset + buffers[i].buffer_offset);
+         if (res) {
+            vb.BufferSize = res->bo->size;
+            vb.BufferStartingAddress =
+               ro_bo(NULL, res->bo->gtt_offset + buffers[i].buffer_offset);
+         } else {
+            vb.NullVertexBuffer = true;
+         }
       }
 
       vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
