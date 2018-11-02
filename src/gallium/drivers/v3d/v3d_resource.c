@@ -985,5 +985,6 @@ v3d_resource_context_init(struct pipe_context *pctx)
         pctx->surface_destroy = v3d_surface_destroy;
         pctx->resource_copy_region = util_resource_copy_region;
         pctx->blit = v3d_blit;
+        pctx->generate_mipmap = v3d_generate_mipmap;
         pctx->flush_resource = v3d_flush_resource;
 }

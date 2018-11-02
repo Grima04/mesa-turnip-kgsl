@@ -365,7 +365,7 @@ struct v3d_context {
         /** Maximum index buffer valid for the current shader_rec. */
         uint32_t max_index;
 
-        /** Sync object that our RCL will update as its out_sync. */
+        /** Sync object that our RCL or TFU job will update as its out_sync. */
         uint32_t out_sync;
 
         struct u_upload_mgr *uploader;
@@ -526,10 +526,19 @@ void v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *d
                                                  uint32_t format,
                                                  uint32_t *type,
                                                  uint32_t *bpp);
+bool v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
+                                 uint32_t tex_format);
 
 void v3d_init_query_functions(struct v3d_context *v3d);
 void v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info);
 void v3d_blitter_save(struct v3d_context *v3d);
+boolean v3d_generate_mipmap(struct pipe_context *pctx,
+                            struct pipe_resource *prsc,
+                            enum pipe_format format,
+                            unsigned int base_level,
+                            unsigned int last_level,
+                            unsigned int first_layer,
+                            unsigned int last_layer);
 
 struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
 

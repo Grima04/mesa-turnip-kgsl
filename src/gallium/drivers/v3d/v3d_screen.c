@@ -79,6 +79,20 @@ v3d_screen_destroy(struct pipe_screen *pscreen)
         ralloc_free(pscreen);
 }
 
+static bool
+v3d_has_feature(struct v3d_screen *screen, enum drm_v3d_param feature)
+{
+        struct drm_v3d_get_param p = {
+                .param = feature,
+        };
+        int ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_GET_PARAM, &p);
+
+        if (ret != 0)
+                return false;
+
+        return p.value;
+}
+
 static int
 v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
@@ -112,6 +126,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
         case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
                 return 1;
+
+        case PIPE_CAP_GENERATE_MIPMAP:
+                return v3d_has_feature(screen,DRM_V3D_PARAM_SUPPORTS_TFU);
 
         case PIPE_CAP_INDEP_BLEND_ENABLE:
                 return screen->devinfo.ver >= 40;

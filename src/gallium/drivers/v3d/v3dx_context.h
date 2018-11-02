@@ -48,3 +48,4 @@ const struct v3d_format *v3dX(get_format_desc)(enum pipe_format f);
 void v3dX(get_internal_type_bpp_for_output_format)(uint32_t format,
                                                    uint32_t *type,
                                                    uint32_t *bpp);
+bool v3dX(tfu_supports_tex_format)(uint32_t tex_format);

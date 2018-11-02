@@ -25,6 +25,7 @@
 #include "util/u_surface.h"
 #include "util/u_blitter.h"
 #include "v3d_context.h"
+#include "v3d_tiling.h"
 
 #if 0
 static struct pipe_surface *
@@ -314,6 +315,109 @@ v3d_stencil_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
         pipe_surface_reference(&dst_surf, NULL);
         pipe_sampler_view_reference(&src_view, NULL);
+}
+
+/* Disable level 0 write, just write following mipmaps */
+#define V3D_TFU_IOA_DIMTW (1 << 0)
+#define V3D_TFU_IOA_FORMAT_SHIFT 3
+#define V3D_TFU_IOA_FORMAT_LINEARTILE 3
+#define V3D_TFU_IOA_FORMAT_UBLINEAR_1_COLUMN 4
+#define V3D_TFU_IOA_FORMAT_UBLINEAR_2_COLUMN 5
+#define V3D_TFU_IOA_FORMAT_UIF_NO_XOR 6
+#define V3D_TFU_IOA_FORMAT_UIF_XOR 7
+
+#define V3D_TFU_ICFG_NUMMM_SHIFT 5
+#define V3D_TFU_ICFG_TTYPE_SHIFT 9
+
+#define V3D_TFU_ICFG_FORMAT_SHIFT 18
+#define V3D_TFU_ICFG_FORMAT_RASTER 0
+#define V3D_TFU_ICFG_FORMAT_SAND_128 1
+#define V3D_TFU_ICFG_FORMAT_SAND_256 2
+#define V3D_TFU_ICFG_FORMAT_LINEARTILE 11
+#define V3D_TFU_ICFG_FORMAT_UBLINEAR_1_COLUMN 12
+#define V3D_TFU_ICFG_FORMAT_UBLINEAR_2_COLUMN 13
+#define V3D_TFU_ICFG_FORMAT_UIF_NO_XOR 14
+#define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
+
+boolean
+v3d_generate_mipmap(struct pipe_context *pctx,
+                    struct pipe_resource *prsc,
+                    enum pipe_format format,
+                    unsigned int base_level,
+                    unsigned int last_level,
+                    unsigned int first_layer,
+                    unsigned int last_layer)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+        struct v3d_screen *screen = v3d->screen;
+        struct v3d_resource *rsc = v3d_resource(prsc);
+        struct v3d_resource_slice *base_slice = &rsc->slices[base_level];
+        int width = u_minify(prsc->width0, base_level);
+        int height = u_minify(prsc->height0, base_level);
+        uint32_t tex_format = v3d_get_tex_format(&screen->devinfo,
+                                                 prsc->format);
+
+        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format))
+                return false;
+
+        if (prsc->target != PIPE_TEXTURE_2D)
+                return false;
+        /* Since we don't support array or 3D textures, there should be only
+         * one layer.
+         */
+        int layer = first_layer;
+        assert(first_layer == last_layer);
+
+        /* Can't write to raster. */
+        if (base_slice->tiling == VC5_TILING_RASTER)
+                return false;
+
+        v3d_flush_jobs_reading_resource(v3d, prsc);
+
+        struct drm_v3d_submit_tfu tfu = {
+                .ios = (height << 16) | width,
+                .bo_handles = { rsc->bo->handle },
+                .in_sync = v3d->out_sync,
+                .out_sync = v3d->out_sync,
+        };
+        uint32_t offset = (rsc->bo->offset +
+                           v3d_layer_offset(prsc, base_level, layer));
+        tfu.iia |= offset;
+        tfu.icfg |= ((V3D_TFU_ICFG_FORMAT_LINEARTILE +
+                      (base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                     V3D_TFU_ICFG_FORMAT_SHIFT);
+
+        tfu.ioa |= offset;
+        tfu.ioa |= V3D_TFU_IOA_DIMTW;
+        tfu.ioa |= ((V3D_TFU_IOA_FORMAT_LINEARTILE +
+                     (base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                    V3D_TFU_IOA_FORMAT_SHIFT);
+
+        tfu.icfg |= tex_format << V3D_TFU_ICFG_TTYPE_SHIFT;
+        tfu.icfg |= (last_level - base_level) << V3D_TFU_ICFG_NUMMM_SHIFT;
+
+        switch (base_slice->tiling) {
+        case VC5_TILING_UIF_NO_XOR:
+        case VC5_TILING_UIF_XOR:
+                tfu.iis |= (base_slice->padded_height /
+                            (2 * v3d_utile_height(rsc->cpp)));
+                break;
+        case VC5_TILING_RASTER:
+                tfu.iis |= base_slice->stride;
+                break;
+        case VC5_TILING_LINEARTILE:
+        case VC5_TILING_UBLINEAR_1_COLUMN:
+        case VC5_TILING_UBLINEAR_2_COLUMN:
+                break;
+       }
+
+        int ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_SUBMIT_TFU, &tfu);
+        if (ret != 0) {
+                fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
+                return false;
+        }
+
+        return true;
 }
 
 /* Optimal hardware path for blitting pixels.
