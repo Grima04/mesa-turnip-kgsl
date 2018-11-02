@@ -464,12 +464,7 @@ static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader)
 static unsigned si_get_num_vs_user_sgprs(unsigned num_always_on_user_sgprs)
 {
 	/* Add the pointer to VBO descriptors. */
-	if (HAVE_32BIT_POINTERS) {
-		return num_always_on_user_sgprs + 1;
-	} else {
-		assert(num_always_on_user_sgprs % 2 == 0);
-		return num_always_on_user_sgprs + 2;
-	}
+	return num_always_on_user_sgprs + 1;
 }
 
 static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)

@@ -2310,18 +2310,9 @@ static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *c
 	ptr = LLVMBuildPtrToInt(ctx->ac.builder, ptr, ctx->ac.intptr, "");
 
 	LLVMValueRef desc0, desc1;
-	if (HAVE_32BIT_POINTERS) {
-		desc0 = ptr;
-		desc1 = LLVMConstInt(ctx->i32,
-				     S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
-	} else {
-		ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ctx->v2i32, "");
-		desc0 = LLVMBuildExtractElement(ctx->ac.builder, ptr, ctx->i32_0, "");
-		desc1 = LLVMBuildExtractElement(ctx->ac.builder, ptr, ctx->i32_1, "");
-		/* Mask out all bits except BASE_ADDRESS_HI. */
-		desc1 = LLVMBuildAnd(ctx->ac.builder, desc1,
-				     LLVMConstInt(ctx->i32, ~C_008F04_BASE_ADDRESS_HI, 0), "");
-	}
+	desc0 = ptr;
+	desc1 = LLVMConstInt(ctx->i32,
+			     S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
 
 	LLVMValueRef desc_elems[] = {
 		desc0,
@@ -3265,19 +3256,9 @@ si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef ptr, lo, hi;
 
-	if (HAVE_32BIT_POINTERS) {
-		ptr = LLVMGetParam(ctx->main_fn, param);
-		ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i32, "");
-		return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
-	}
-
 	ptr = LLVMGetParam(ctx->main_fn, param);
-	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i64, "");
-	ptr = LLVMBuildBitCast(builder, ptr, ctx->v2i32, "");
-	lo = LLVMBuildExtractElement(builder, ptr, ctx->i32_0, "");
-	hi = LLVMBuildExtractElement(builder, ptr, ctx->i32_1, "");
-	ret = LLVMBuildInsertValue(builder, ret, lo, return_index, "");
-	return LLVMBuildInsertValue(builder, ret, hi, return_index + 1, "");
+	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i32, "");
+	return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
 }
 
 /* This only writes the tessellation factor levels. */
@@ -3378,8 +3359,7 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
 	LLVMValueRef ret = ctx->return_value;
 
 	ret = si_insert_input_ptr(ctx, ret, 0, 0);
-	if (HAVE_32BIT_POINTERS)
-		ret = si_insert_input_ptr(ctx, ret, 1, 1);
+	ret = si_insert_input_ptr(ctx, ret, 1, 1);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_tcs_offchip_offset, 2);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_merged_wave_info, 3);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_tcs_factor_offset, 4);
@@ -3393,11 +3373,6 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
 
 	ret = si_insert_input_ret(ctx, ret, ctx->param_vs_state_bits,
 				  8 + SI_SGPR_VS_STATE_BITS);
-
-#if !HAVE_32BIT_POINTERS
-	ret = si_insert_input_ptr(ctx, ret, ctx->param_vs_state_bits + 4,
-				  8 + GFX9_SGPR_2ND_SAMPLERS_AND_IMAGES);
-#endif
 
 	ret = si_insert_input_ret(ctx, ret, ctx->param_tcs_offchip_layout,
 				  8 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT);
@@ -3422,8 +3397,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 	LLVMValueRef ret = ctx->return_value;
 
 	ret = si_insert_input_ptr(ctx, ret, 0, 0);
-	if (HAVE_32BIT_POINTERS)
-		ret = si_insert_input_ptr(ctx, ret, 1, 1);
+	ret = si_insert_input_ptr(ctx, ret, 1, 1);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_gs2vs_offset, 2);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_merged_wave_info, 3);
 	ret = si_insert_input_ret(ctx, ret, ctx->param_merged_scratch_offset, 5);
@@ -3433,11 +3407,6 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 	ret = si_insert_input_ptr(ctx, ret,
 				  ctx->param_bindless_samplers_and_images,
 				  8 + SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES);
-
-#if !HAVE_32BIT_POINTERS
-	ret = si_insert_input_ptr(ctx, ret, ctx->param_vs_state_bits + 4,
-				  8 + GFX9_SGPR_2ND_SAMPLERS_AND_IMAGES);
-#endif
 
 	unsigned vgpr;
 	if (ctx->type == PIPE_SHADER_VERTEX)
@@ -4702,13 +4671,8 @@ static void create_function(struct si_shader_context *ctx)
 	case SI_SHADER_MERGED_VERTEX_TESSCTRL:
 		/* Merged stages have 8 system SGPRs at the beginning. */
 		/* SPI_SHADER_USER_DATA_ADDR_LO/HI_HS */
-		if (HAVE_32BIT_POINTERS) {
-			declare_per_stage_desc_pointers(ctx, &fninfo,
-							ctx->type == PIPE_SHADER_TESS_CTRL);
-		} else {
-			declare_const_and_shader_buffers(ctx, &fninfo,
-							 ctx->type == PIPE_SHADER_TESS_CTRL);
-		}
+		declare_per_stage_desc_pointers(ctx, &fninfo,
+						ctx->type == PIPE_SHADER_TESS_CTRL);
 		ctx->param_tcs_offchip_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_merged_wave_info = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_factor_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
@@ -4721,15 +4685,9 @@ static void create_function(struct si_shader_context *ctx)
 						ctx->type == PIPE_SHADER_VERTEX);
 		declare_vs_specific_input_sgprs(ctx, &fninfo);
 
-		if (!HAVE_32BIT_POINTERS) {
-			declare_samplers_and_images(ctx, &fninfo,
-						    ctx->type == PIPE_SHADER_TESS_CTRL);
-		}
 		ctx->param_tcs_offchip_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_out_lds_offsets = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_out_lds_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
-		if (!HAVE_32BIT_POINTERS) /* Align to 2 dwords. */
-			add_arg(&fninfo, ARG_SGPR, ctx->i32); /* unused */
 		ctx->param_vertex_buffers = add_arg(&fninfo, ARG_SGPR,
 			ac_array_in_const32_addr_space(ctx->v4i32));
 
@@ -4763,13 +4721,8 @@ static void create_function(struct si_shader_context *ctx)
 	case SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY:
 		/* Merged stages have 8 system SGPRs at the beginning. */
 		/* SPI_SHADER_USER_DATA_ADDR_LO/HI_GS */
-		if (HAVE_32BIT_POINTERS) {
-			declare_per_stage_desc_pointers(ctx, &fninfo,
-							ctx->type == PIPE_SHADER_GEOMETRY);
-		} else {
-			declare_const_and_shader_buffers(ctx, &fninfo,
-							 ctx->type == PIPE_SHADER_GEOMETRY);
-		}
+		declare_per_stage_desc_pointers(ctx, &fninfo,
+						ctx->type == PIPE_SHADER_GEOMETRY);
 		ctx->param_gs2vs_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_merged_wave_info = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_offchip_offset = add_arg(&fninfo, ARG_SGPR, ctx->i32);
@@ -4788,14 +4741,8 @@ static void create_function(struct si_shader_context *ctx)
 			ctx->param_tcs_offchip_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 			ctx->param_tes_offchip_addr = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 			/* Declare as many input SGPRs as the VS has. */
-			if (!HAVE_32BIT_POINTERS)
-				add_arg(&fninfo, ARG_SGPR, ctx->i32); /* unused */
 		}
 
-		if (!HAVE_32BIT_POINTERS) {
-			declare_samplers_and_images(ctx, &fninfo,
-						    ctx->type == PIPE_SHADER_GEOMETRY);
-		}
 		if (ctx->type == PIPE_SHADER_VERTEX) {
 			ctx->param_vertex_buffers = add_arg(&fninfo, ARG_SGPR,
 				ac_array_in_const32_addr_space(ctx->v4i32));
@@ -7157,20 +7104,9 @@ static LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx)
 	LLVMValueRef ptr[2], list;
 	bool merged_shader = is_merged_shader(ctx);
 
-	if (HAVE_32BIT_POINTERS) {
-		ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
-		list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
-					 ac_array_in_const32_addr_space(ctx->v4i32), "");
-		return list;
-	}
-
-	/* Get the pointer to rw buffers. */
 	ptr[0] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS);
-	ptr[1] = LLVMGetParam(ctx->main_fn, (merged_shader ? 8 : 0) + SI_SGPR_RW_BUFFERS + 1);
-	list = ac_build_gather_values(&ctx->ac, ptr, 2);
-	list = LLVMBuildBitCast(ctx->ac.builder, list, ctx->i64, "");
-	list = LLVMBuildIntToPtr(ctx->ac.builder, list,
-				 ac_array_in_const_addr_space(ctx->v4i32), "");
+	list = LLVMBuildIntToPtr(ctx->ac.builder, ptr[0],
+				 ac_array_in_const32_addr_space(ctx->v4i32), "");
 	return list;
 }
 
@@ -7398,8 +7334,6 @@ static void si_build_tcs_epilog_function(struct si_shader_context *ctx,
 		add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		add_arg(&fninfo, ARG_SGPR, ctx->i32);
-		if (!HAVE_32BIT_POINTERS)
-			add_arg(&fninfo, ARG_SGPR, ctx->ac.intptr);
 		ctx->param_tcs_offchip_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		add_arg(&fninfo, ARG_SGPR, ctx->i32);
 		ctx->param_tcs_out_lds_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);

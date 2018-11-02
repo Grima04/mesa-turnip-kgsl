@@ -2055,7 +2055,7 @@ static void si_emit_shader_pointer_head(struct radeon_cmdbuf *cs,
 					unsigned sh_offset,
 					unsigned pointer_count)
 {
-	radeon_emit(cs, PKT3(PKT3_SET_SH_REG, pointer_count * (HAVE_32BIT_POINTERS ? 1 : 2), 0));
+	radeon_emit(cs, PKT3(PKT3_SET_SH_REG, pointer_count, 0));
 	radeon_emit(cs, (sh_offset - SI_SH_REG_OFFSET) >> 2);
 }
 
@@ -2065,10 +2065,7 @@ static void si_emit_shader_pointer_body(struct si_screen *sscreen,
 {
 	radeon_emit(cs, va);
 
-	if (HAVE_32BIT_POINTERS)
-		assert(va == 0 || (va >> 32) == sscreen->info.address32_hi);
-	else
-		radeon_emit(cs, va >> 32);
+	assert(va == 0 || (va >> 32) == sscreen->info.address32_hi);
 }
 
 static void si_emit_shader_pointer(struct si_context *sctx,
@@ -2103,25 +2100,6 @@ static void si_emit_consecutive_shader_pointers(struct si_context *sctx,
 		for (int i = 0; i < count; i++)
 			si_emit_shader_pointer_body(sctx->screen, cs,
 						    descs[i].gpu_address);
-	}
-}
-
-static void si_emit_disjoint_shader_pointers(struct si_context *sctx,
-					     unsigned pointer_mask,
-					     unsigned sh_base)
-{
-	if (!sh_base)
-		return;
-
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	unsigned mask = sctx->shader_pointers_dirty & pointer_mask;
-
-	while (mask) {
-		struct si_descriptors *descs = &sctx->descriptors[u_bit_scan(&mask)];
-		unsigned sh_offset = sh_base + descs->shader_userdata_offset;
-
-		si_emit_shader_pointer_head(cs, sh_offset, 1);
-		si_emit_shader_pointer_body(sctx->screen, cs, descs->gpu_address);
 	}
 }
 
@@ -2164,17 +2142,10 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
 					    sh_base[PIPE_SHADER_TESS_EVAL]);
 	si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(FRAGMENT),
 					    sh_base[PIPE_SHADER_FRAGMENT]);
-	if (HAVE_32BIT_POINTERS || sctx->chip_class <= VI) {
-		si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(TESS_CTRL),
-						    sh_base[PIPE_SHADER_TESS_CTRL]);
-		si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
-						    sh_base[PIPE_SHADER_GEOMETRY]);
-	} else {
-		si_emit_disjoint_shader_pointers(sctx, SI_DESCS_SHADER_MASK(TESS_CTRL),
-						 sh_base[PIPE_SHADER_TESS_CTRL]);
-		si_emit_disjoint_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
-						 sh_base[PIPE_SHADER_GEOMETRY]);
-	}
+	si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(TESS_CTRL),
+					    sh_base[PIPE_SHADER_TESS_CTRL]);
+	si_emit_consecutive_shader_pointers(sctx, SI_DESCS_SHADER_MASK(GEOMETRY),
+					    sh_base[PIPE_SHADER_GEOMETRY]);
 
 	sctx->shader_pointers_dirty &=
 		~u_bit_consecutive(SI_DESCS_RW_BUFFERS, SI_DESCS_FIRST_COMPUTE);
@@ -2665,10 +2636,6 @@ void si_init_all_descriptors(struct si_context *sctx)
 {
 	int i;
 
-#if !HAVE_32BIT_POINTERS
-	STATIC_ASSERT(GFX9_SGPR_2ND_SAMPLERS_AND_IMAGES % 2 == 0);
-#endif
-
 	for (i = 0; i < SI_NUM_SHADERS; i++) {
 		bool is_2nd = sctx->chip_class >= GFX9 &&
 				     (i == PIPE_SHADER_TESS_CTRL ||
@@ -2699,7 +2666,6 @@ void si_init_all_descriptors(struct si_context *sctx)
 		desc->slot_index_to_bind_directly = si_get_constbuf_slot(0);
 
 		if (is_2nd) {
-#if HAVE_32BIT_POINTERS
 			if (i == PIPE_SHADER_TESS_CTRL) {
 				rel_dw_offset = (R_00B40C_SPI_SHADER_USER_DATA_ADDR_HI_HS -
 						 R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
@@ -2707,9 +2673,6 @@ void si_init_all_descriptors(struct si_context *sctx)
 				rel_dw_offset = (R_00B20C_SPI_SHADER_USER_DATA_ADDR_HI_GS -
 						 R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
 			}
-#else
-			rel_dw_offset = GFX9_SGPR_2ND_SAMPLERS_AND_IMAGES;
-#endif
 		} else {
 			rel_dw_offset = SI_SGPR_SAMPLERS_AND_IMAGES;
 		}

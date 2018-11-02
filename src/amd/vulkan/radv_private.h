@@ -1243,7 +1243,7 @@ radv_emit_shader_pointer(struct radv_device *device,
 			 struct radeon_cmdbuf *cs,
 			 uint32_t sh_offset, uint64_t va, bool global)
 {
-	bool use_32bit_pointers = HAVE_32BIT_POINTERS && !global;
+	bool use_32bit_pointers = !global;
 
 	radv_emit_shader_pointer_head(cs, sh_offset, 1, use_32bit_pointers);
 	radv_emit_shader_pointer_body(device, cs, va, use_32bit_pointers);

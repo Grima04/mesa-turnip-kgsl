@@ -594,7 +594,7 @@ radv_emit_userdata_address(struct radv_cmd_buffer *cmd_buffer,
 	if (loc->sgpr_idx == -1)
 		return;
 
-	assert(loc->num_sgprs == (HAVE_32BIT_POINTERS ? 1 : 2));
+	assert(loc->num_sgprs == 1);
 	assert(!loc->indirect);
 
 	radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
@@ -624,14 +624,12 @@ radv_emit_descriptor_pointers(struct radv_cmd_buffer *cmd_buffer,
 		struct radv_userdata_info *loc = &locs->descriptor_sets[start];
 		unsigned sh_offset = sh_base + loc->sgpr_idx * 4;
 
-		radv_emit_shader_pointer_head(cs, sh_offset, count,
-					      HAVE_32BIT_POINTERS);
+		radv_emit_shader_pointer_head(cs, sh_offset, count, true);
 		for (int i = 0; i < count; i++) {
 			struct radv_descriptor_set *set =
 				descriptors_state->sets[start + i];
 
-			radv_emit_shader_pointer_body(device, cs, set->va,
-						      HAVE_32BIT_POINTERS);
+			radv_emit_shader_pointer_body(device, cs, set->va, true);
 		}
 	}
 }
@@ -1740,8 +1738,7 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_descriptor_state *descriptors_state =
 		radv_get_descriptors_state(cmd_buffer, bind_point);
-	uint8_t ptr_size = HAVE_32BIT_POINTERS ? 1 : 2;
-	uint32_t size = MAX_SETS * 4 * ptr_size;
+	uint32_t size = MAX_SETS * 4;
 	uint32_t offset;
 	void *ptr;
 	
@@ -1750,14 +1747,12 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 		return;
 
 	for (unsigned i = 0; i < MAX_SETS; i++) {
-		uint32_t *uptr = ((uint32_t *)ptr) + i * ptr_size;
+		uint32_t *uptr = ((uint32_t *)ptr) + i;
 		uint64_t set_va = 0;
 		struct radv_descriptor_set *set = descriptors_state->sets[i];
 		if (descriptors_state->valid & (1u << i))
 			set_va = set->va;
 		uptr[0] = set_va & 0xffffffff;
-		if (ptr_size == 2)
-			uptr[1] = set_va >> 32;
 	}
 
 	uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);

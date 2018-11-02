@@ -127,7 +127,7 @@ static void si_init_compiler(struct si_screen *sscreen,
 		(create_low_opt_compiler ? AC_TM_CREATE_LOW_OPT : 0);
 
 	ac_init_llvm_once();
-	ac_init_llvm_compiler(compiler, true, sscreen->info.family, tm_options);
+	ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options);
 	compiler->passes = ac_create_llvm_passes(compiler->tm);
 
 	if (compiler->low_opt_tm)
