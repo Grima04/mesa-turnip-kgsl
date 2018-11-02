@@ -1380,11 +1380,55 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 
    adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
                                       cmd_buffer->last_ss_pool_center);
-   VkResult result = anv_execbuf_add_bo(execbuf, ss_pool->block_pool.bo,
-                                        &cmd_buffer->surface_relocs, 0,
-                                        &cmd_buffer->device->alloc);
-   if (result != VK_SUCCESS)
-      return result;
+   VkResult result;
+   struct anv_bo *bo;
+   if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
+      anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
+         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+                                     &cmd_buffer->device->alloc);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+      /* Add surface dependencies (BOs) to the execbuf */
+      anv_execbuf_add_bo_set(execbuf, cmd_buffer->surface_relocs.deps, 0,
+                             &cmd_buffer->device->alloc);
+
+      struct anv_block_pool *pool;
+      pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+                                     &cmd_buffer->device->alloc);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      pool = &cmd_buffer->device->instruction_state_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+                                     &cmd_buffer->device->alloc);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      pool = &cmd_buffer->device->binding_table_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(execbuf, bo, NULL, 0,
+                                     &cmd_buffer->device->alloc);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+   } else {
+      /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
+       * will get added automatically by processing relocations on the batch
+       * buffer.  We have to add the surface state BO manually because it has
+       * relocations of its own that we need to be sure are processsed.
+       */
+      result = anv_execbuf_add_bo(execbuf, ss_pool->block_pool.bo,
+                                  &cmd_buffer->surface_relocs, 0,
+                                  &cmd_buffer->device->alloc);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
    /* First, we walk over all of the bos we've seen and add them and their
     * relocations to the validate list.
