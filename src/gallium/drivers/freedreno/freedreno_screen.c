@@ -39,6 +39,7 @@
 
 #include "util/os_time.h"
 
+#include <drm_fourcc.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -654,6 +655,37 @@ fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 	}
 }
 
+static void
+fd_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
+		enum pipe_format format,
+		int max, uint64_t *modifiers,
+		unsigned int *external_only,
+		int *count)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+	int i, num = 0;
+
+	max = MIN2(max, screen->num_supported_modifiers);
+
+	if (!max) {
+		max = screen->num_supported_modifiers;
+		external_only = NULL;
+		modifiers = NULL;
+	}
+
+	for (i = 0; i < max; i++) {
+		if (modifiers)
+			modifiers[num] = screen->supported_modifiers[i];
+
+		if (external_only)
+			external_only[num] = 0;
+
+		num++;
+	}
+
+	*count = num;
+}
+
 struct fd_bo *
 fd_screen_bo_from_handle(struct pipe_screen *pscreen,
 		struct winsys_handle *whandle)
@@ -852,6 +884,17 @@ fd_screen_create(struct fd_device *dev)
 	pscreen->fence_reference = fd_fence_ref;
 	pscreen->fence_finish = fd_fence_finish;
 	pscreen->fence_get_fd = fd_fence_get_fd;
+
+	pscreen->query_dmabuf_modifiers = fd_screen_query_dmabuf_modifiers;
+
+	if (!screen->supported_modifiers) {
+		static const uint64_t supported_modifiers[] = {
+			DRM_FORMAT_MOD_LINEAR,
+		};
+
+		screen->supported_modifiers = supported_modifiers;
+		screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
+	}
 
 	slab_create_parent(&screen->transfer_pool, sizeof(struct fd_transfer), 16);
 

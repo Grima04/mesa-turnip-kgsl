@@ -97,6 +97,9 @@ struct fd_screen {
 	bool reorder;
 
 	uint16_t rsc_seqno;
+
+	unsigned num_supported_modifiers;
+	const uint64_t *supported_modifiers;
 };
 
 static inline struct fd_screen *
