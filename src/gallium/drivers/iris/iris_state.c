@@ -3766,7 +3766,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 {
    const uint64_t dirty = ice->state.dirty;
 
-   if (!dirty)
+   if (!(dirty & IRIS_ALL_DIRTY_FOR_RENDER))
       return;
 
    struct iris_genx_state *genx = ice->state.genx;
