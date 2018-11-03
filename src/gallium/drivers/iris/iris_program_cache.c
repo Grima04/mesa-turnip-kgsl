@@ -106,20 +106,19 @@ dirty_flag_for_cache(enum iris_program_cache_id cache_id)
 {
    assert(cache_id <= MESA_SHADER_STAGES);
 
+   uint64_t flags = (IRIS_DIRTY_VS |
+                     IRIS_DIRTY_BINDINGS_VS |
+                     IRIS_DIRTY_CONSTANTS_VS) << cache_id;
    // XXX: ugly...
    // XXX: move this flagging out to a higher level, allow comparison of
    // XXX: new and old programs to decide what bits to twiddle
    // XXX: CLIP: toggle if barycentric modes has any NONPERSPECTIVE or not
    if (cache_id == IRIS_CACHE_FS)
-      return IRIS_DIRTY_WM | IRIS_DIRTY_FS | IRIS_DIRTY_CLIP | IRIS_DIRTY_SBE;
+      flags |= IRIS_DIRTY_WM | IRIS_DIRTY_CLIP | IRIS_DIRTY_SBE;
    if (cache_id == IRIS_CACHE_VS)
-      return IRIS_DIRTY_VS | IRIS_DIRTY_VF_SGVS;
+      flags |= IRIS_DIRTY_VF_SGVS;
 
-   /* For compute, prog_data->threads needs to be uploaded as constants. */
-   if (cache_id == IRIS_CACHE_CS)
-      return IRIS_DIRTY_CS | IRIS_DIRTY_CONSTANTS_CS;
-
-   return IRIS_DIRTY_VS << cache_id | IRIS_DIRTY_BINDINGS_VS << cache_id;
+   return flags;
 }
 
 static unsigned
