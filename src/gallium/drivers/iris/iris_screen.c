@@ -169,6 +169,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_GATHER_SM5:
    case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
+   case PIPE_CAP_SHADER_STENCIL_EXPORT:
       return true;
 
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
