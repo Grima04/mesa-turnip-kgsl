@@ -65,6 +65,7 @@
 #include "st_sampler_view.h"
 #include "st_scissor.h"
 #include "st_texture.h"
+#include "st_nir.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
@@ -76,6 +77,7 @@
 #include "util/u_tile.h"
 #include "cso_cache/cso_context.h"
 
+#include "compiler/nir/nir_builder.h"
 
 /**
  * We have a simple glDrawPixels cache to try to optimize the case where the
@@ -197,18 +199,37 @@ get_drawpix_z_stencil_program(struct st_context *st,
 void
 st_make_passthrough_vertex_shader(struct st_context *st)
 {
+   struct pipe_context *pipe = st->pipe;
+   struct pipe_screen *screen = pipe->screen;
+
    if (st->passthrough_vs)
       return;
 
-   const uint semantic_names[] = { TGSI_SEMANTIC_POSITION,
-                                   TGSI_SEMANTIC_COLOR,
-     st->needs_texcoord_semantic ? TGSI_SEMANTIC_TEXCOORD :
-                                   TGSI_SEMANTIC_GENERIC };
-   const uint semantic_indexes[] = { 0, 0, 0 };
+   enum pipe_shader_ir preferred_ir =
+      screen->get_shader_param(screen, MESA_SHADER_VERTEX,
+                               PIPE_SHADER_CAP_PREFERRED_IR);
 
-   st->passthrough_vs =
-      util_make_vertex_passthrough_shader(st->pipe, 3, semantic_names,
-                                          semantic_indexes, false);
+   if (preferred_ir == PIPE_SHADER_IR_NIR) {
+      unsigned inputs[] =
+         {  VERT_ATTRIB_POS, VERT_ATTRIB_COLOR0, VERT_ATTRIB_GENERIC0 };
+      unsigned outputs[] =
+         { VARYING_SLOT_POS,  VARYING_SLOT_COL0,    VARYING_SLOT_TEX0 };
+
+      st->passthrough_vs =
+         st_nir_make_passthrough_shader(st, "drawpixels VS",
+                                        MESA_SHADER_VERTEX, 3,
+                                        inputs, outputs, NULL, 0);
+   } else {
+      const uint semantic_names[] = { TGSI_SEMANTIC_POSITION,
+                                      TGSI_SEMANTIC_COLOR,
+        st->needs_texcoord_semantic ? TGSI_SEMANTIC_TEXCOORD :
+                                      TGSI_SEMANTIC_GENERIC };
+      const uint semantic_indexes[] = { 0, 0, 0 };
+
+      st->passthrough_vs =
+         util_make_vertex_passthrough_shader(st->pipe, 3, semantic_names,
+                                             semantic_indexes, false);
+   }
 }
 
 
