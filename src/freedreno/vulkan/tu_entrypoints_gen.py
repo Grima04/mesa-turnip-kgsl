@@ -196,8 +196,8 @@ tu_resolve_entrypoint(uint32_t index)
  */
 static bool
 tu_entrypoint_is_enabled(int index, uint32_t core_version,
-                          const struct tu_instance_extension_table *instance,
-                          const struct tu_device_extension_table *device)
+                         const struct tu_instance_extension_table *instance,
+                         const struct tu_device_extension_table *device)
 {
    switch (index) {
 % for e in entrypoints:
@@ -266,9 +266,9 @@ tu_lookup_entrypoint_unchecked(const char *name)
 
 void *
 tu_lookup_entrypoint_checked(const char *name,
-                               uint32_t core_version,
-                               const struct tu_instance_extension_table *instance,
-                               const struct tu_device_extension_table *device)
+                              uint32_t core_version,
+                              const struct tu_instance_extension_table *instance,
+                              const struct tu_device_extension_table *device)
 {
    int index = tu_lookup_entrypoint(name);
    if (index < 0 || !tu_entrypoint_is_enabled(index, core_version, instance, device))

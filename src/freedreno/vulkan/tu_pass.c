@@ -30,9 +30,9 @@
 
 VkResult
 tu_CreateRenderPass(VkDevice _device,
-                     const VkRenderPassCreateInfo *pCreateInfo,
-                     const VkAllocationCallbacks *pAllocator,
-                     VkRenderPass *pRenderPass)
+                    const VkRenderPassCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkRenderPass *pRenderPass)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_render_pass *pass;
@@ -217,9 +217,9 @@ tu_CreateRenderPass(VkDevice _device,
 
 VkResult
 tu_CreateRenderPass2KHR(VkDevice _device,
-                         const VkRenderPassCreateInfo2KHR *pCreateInfo,
-                         const VkAllocationCallbacks *pAllocator,
-                         VkRenderPass *pRenderPass)
+                        const VkRenderPassCreateInfo2KHR *pCreateInfo,
+                        const VkAllocationCallbacks *pAllocator,
+                        VkRenderPass *pRenderPass)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_render_pass *pass;
@@ -392,8 +392,8 @@ tu_CreateRenderPass2KHR(VkDevice _device,
 
 void
 tu_DestroyRenderPass(VkDevice _device,
-                      VkRenderPass _pass,
-                      const VkAllocationCallbacks *pAllocator)
+                     VkRenderPass _pass,
+                     const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_render_pass, pass, _pass);
@@ -406,8 +406,8 @@ tu_DestroyRenderPass(VkDevice _device,
 
 void
 tu_GetRenderAreaGranularity(VkDevice device,
-                             VkRenderPass renderPass,
-                             VkExtent2D *pGranularity)
+                            VkRenderPass renderPass,
+                            VkExtent2D *pGranularity)
 {
    pGranularity->width = 1;
    pGranularity->height = 1;

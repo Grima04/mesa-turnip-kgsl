@@ -274,10 +274,10 @@ void *
 tu_lookup_entrypoint_unchecked(const char *name);
 void *
 tu_lookup_entrypoint_checked(
-  const char *name,
-  uint32_t core_version,
-  const struct tu_instance_extension_table *instance,
-  const struct tu_device_extension_table *device);
+   const char *name,
+   uint32_t core_version,
+   const struct tu_instance_extension_table *instance,
+   const struct tu_device_extension_table *device);
 
 struct tu_physical_device
 {
@@ -334,7 +334,7 @@ uint32_t
 tu_physical_device_api_version(struct tu_physical_device *dev);
 bool
 tu_physical_device_extension_supported(struct tu_physical_device *dev,
-                                        const char *name);
+                                       const char *name);
 
 struct cache_entry;
 
@@ -358,30 +358,30 @@ struct tu_pipeline_key
 
 void
 tu_pipeline_cache_init(struct tu_pipeline_cache *cache,
-                        struct tu_device *device);
+                       struct tu_device *device);
 void
 tu_pipeline_cache_finish(struct tu_pipeline_cache *cache);
 void
 tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
-                        const void *data,
-                        size_t size);
+                       const void *data,
+                       size_t size);
 
 struct tu_shader_variant;
 
 bool
 tu_create_shader_variants_from_pipeline_cache(
-  struct tu_device *device,
-  struct tu_pipeline_cache *cache,
-  const unsigned char *sha1,
-  struct tu_shader_variant **variants);
+   struct tu_device *device,
+   struct tu_pipeline_cache *cache,
+   const unsigned char *sha1,
+   struct tu_shader_variant **variants);
 
 void
 tu_pipeline_cache_insert_shaders(struct tu_device *device,
-                                  struct tu_pipeline_cache *cache,
-                                  const unsigned char *sha1,
-                                  struct tu_shader_variant **variants,
-                                  const void *const *codes,
-                                  const unsigned *code_sizes);
+                                 struct tu_pipeline_cache *cache,
+                                 const unsigned char *sha1,
+                                 struct tu_shader_variant **variants,
+                                 const void *const *codes,
+                                 const unsigned *code_sizes);
 
 struct tu_meta_state
 {
@@ -751,8 +751,8 @@ struct tu_cmd_buffer
 
 bool
 tu_get_memory_fd(struct tu_device *device,
-                  struct tu_device_memory *memory,
-                  int *pFD);
+                 struct tu_device_memory *memory,
+                 int *pFD);
 
 /*
  * Takes x,y,z as exact numbers of invocations, instead of blocks.
@@ -763,9 +763,9 @@ tu_get_memory_fd(struct tu_device *device,
  */
 void
 tu_unaligned_dispatch(struct tu_cmd_buffer *cmd_buffer,
-                       uint32_t x,
-                       uint32_t y,
-                       uint32_t z);
+                      uint32_t x,
+                      uint32_t y,
+                      uint32_t z);
 
 struct tu_event
 {
@@ -780,10 +780,10 @@ struct tu_shader_module;
 #define TU_HASH_SHADER_UNSAFE_MATH (1 << 2)
 void
 tu_hash_shaders(unsigned char *hash,
-                 const VkPipelineShaderStageCreateInfo **stages,
-                 const struct tu_pipeline_layout *layout,
-                 const struct tu_pipeline_key *key,
-                 uint32_t flags);
+                const VkPipelineShaderStageCreateInfo **stages,
+                const struct tu_pipeline_layout *layout,
+                const struct tu_pipeline_key *key,
+                uint32_t flags);
 
 static inline gl_shader_stage
 vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
@@ -827,8 +827,8 @@ struct tu_pipeline
 
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,
-                     gl_shader_stage stage,
-                     int idx);
+                    gl_shader_stage stage,
+                    int idx);
 
 struct tu_shader_variant *
 tu_get_shader(struct tu_pipeline *pipeline, gl_shader_stage stage);
@@ -848,26 +848,26 @@ struct tu_graphics_pipeline_create_info
 
 VkResult
 tu_graphics_pipeline_create(
-  VkDevice device,
-  VkPipelineCache cache,
-  const VkGraphicsPipelineCreateInfo *pCreateInfo,
-  const struct tu_graphics_pipeline_create_info *extra,
-  const VkAllocationCallbacks *alloc,
-  VkPipeline *pPipeline);
+   VkDevice device,
+   VkPipelineCache cache,
+   const VkGraphicsPipelineCreateInfo *pCreateInfo,
+   const struct tu_graphics_pipeline_create_info *extra,
+   const VkAllocationCallbacks *alloc,
+   VkPipeline *pPipeline);
 
 struct vk_format_description;
 uint32_t
 tu_translate_buffer_dataformat(const struct vk_format_description *desc,
-                                int first_non_void);
+                               int first_non_void);
 uint32_t
 tu_translate_buffer_numformat(const struct vk_format_description *desc,
-                               int first_non_void);
+                              int first_non_void);
 uint32_t
 tu_translate_colorformat(VkFormat format);
 uint32_t
 tu_translate_color_numformat(VkFormat format,
-                              const struct vk_format_description *desc,
-                              int first_non_void);
+                             const struct vk_format_description *desc,
+                             int first_non_void);
 uint32_t
 tu_colorformat_endian_swap(uint32_t colorformat);
 unsigned
@@ -876,16 +876,16 @@ uint32_t
 tu_translate_dbformat(VkFormat format);
 uint32_t
 tu_translate_tex_dataformat(VkFormat format,
-                             const struct vk_format_description *desc,
-                             int first_non_void);
-uint32_t
-tu_translate_tex_numformat(VkFormat format,
                             const struct vk_format_description *desc,
                             int first_non_void);
+uint32_t
+tu_translate_tex_numformat(VkFormat format,
+                           const struct vk_format_description *desc,
+                           int first_non_void);
 bool
 tu_format_pack_clear_color(VkFormat format,
-                            uint32_t clear_vals[2],
-                            VkClearColorValue *value);
+                           uint32_t clear_vals[2],
+                           VkClearColorValue *value);
 bool
 tu_is_colorbuffer_format_supported(VkFormat format, bool *blendable);
 bool
@@ -916,19 +916,19 @@ struct tu_image
 
 unsigned
 tu_image_queue_family_mask(const struct tu_image *image,
-                            uint32_t family,
-                            uint32_t queue_family);
+                           uint32_t family,
+                           uint32_t queue_family);
 
 static inline uint32_t
 tu_get_layerCount(const struct tu_image *image,
-                   const VkImageSubresourceRange *range)
+                  const VkImageSubresourceRange *range)
 {
    abort();
 }
 
 static inline uint32_t
 tu_get_levelCount(const struct tu_image *image,
-                   const VkImageSubresourceRange *range)
+                  const VkImageSubresourceRange *range)
 {
    abort();
 }
@@ -967,21 +967,21 @@ struct tu_image_create_info
 
 VkResult
 tu_image_create(VkDevice _device,
-                 const struct tu_image_create_info *info,
-                 const VkAllocationCallbacks *alloc,
-                 VkImage *pImage);
+                const struct tu_image_create_info *info,
+                const VkAllocationCallbacks *alloc,
+                VkImage *pImage);
 
 VkResult
 tu_image_from_gralloc(VkDevice device_h,
-                       const VkImageCreateInfo *base_info,
-                       const VkNativeBufferANDROID *gralloc_info,
-                       const VkAllocationCallbacks *alloc,
-                       VkImage *out_image_h);
+                      const VkImageCreateInfo *base_info,
+                      const VkNativeBufferANDROID *gralloc_info,
+                      const VkAllocationCallbacks *alloc,
+                      VkImage *out_image_h);
 
 void
 tu_image_view_init(struct tu_image_view *view,
-                    struct tu_device *device,
-                    const VkImageViewCreateInfo *pCreateInfo);
+                   struct tu_device *device,
+                   const VkImageViewCreateInfo *pCreateInfo);
 
 struct tu_buffer_view
 {
@@ -992,12 +992,12 @@ struct tu_buffer_view
 };
 void
 tu_buffer_view_init(struct tu_buffer_view *view,
-                     struct tu_device *device,
-                     const VkBufferViewCreateInfo *pCreateInfo);
+                    struct tu_device *device,
+                    const VkBufferViewCreateInfo *pCreateInfo);
 
 static inline struct VkExtent3D
 tu_sanitize_image_extent(const VkImageType imageType,
-                          const struct VkExtent3D imageExtent)
+                         const struct VkExtent3D imageExtent)
 {
    switch (imageType) {
       case VK_IMAGE_TYPE_1D:
@@ -1013,7 +1013,7 @@ tu_sanitize_image_extent(const VkImageType imageType,
 
 static inline struct VkOffset3D
 tu_sanitize_image_offset(const VkImageType imageType,
-                          const struct VkOffset3D imageOffset)
+                         const struct VkOffset3D imageOffset)
 {
    switch (imageType) {
       case VK_IMAGE_TYPE_1D:
@@ -1051,7 +1051,7 @@ struct tu_subpass_barrier
 
 void
 tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
-                    const struct tu_subpass_barrier *barrier);
+                   const struct tu_subpass_barrier *barrier);
 
 struct tu_subpass_attachment
 {
@@ -1124,34 +1124,34 @@ struct tu_semaphore
 
 void
 tu_set_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
-                       VkPipelineBindPoint bind_point,
-                       struct tu_descriptor_set *set,
-                       unsigned idx);
+                      VkPipelineBindPoint bind_point,
+                      struct tu_descriptor_set *set,
+                      unsigned idx);
 
 void
 tu_update_descriptor_sets(struct tu_device *device,
-                           struct tu_cmd_buffer *cmd_buffer,
-                           VkDescriptorSet overrideSet,
-                           uint32_t descriptorWriteCount,
-                           const VkWriteDescriptorSet *pDescriptorWrites,
-                           uint32_t descriptorCopyCount,
-                           const VkCopyDescriptorSet *pDescriptorCopies);
+                          struct tu_cmd_buffer *cmd_buffer,
+                          VkDescriptorSet overrideSet,
+                          uint32_t descriptorWriteCount,
+                          const VkWriteDescriptorSet *pDescriptorWrites,
+                          uint32_t descriptorCopyCount,
+                          const VkCopyDescriptorSet *pDescriptorCopies);
 
 void
 tu_update_descriptor_set_with_template(
-  struct tu_device *device,
-  struct tu_cmd_buffer *cmd_buffer,
-  struct tu_descriptor_set *set,
-  VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
-  const void *pData);
+   struct tu_device *device,
+   struct tu_cmd_buffer *cmd_buffer,
+   struct tu_descriptor_set *set,
+   VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
+   const void *pData);
 
 void
 tu_meta_push_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
-                             VkPipelineBindPoint pipelineBindPoint,
-                             VkPipelineLayout _layout,
-                             uint32_t set,
-                             uint32_t descriptorWriteCount,
-                             const VkWriteDescriptorSet *pDescriptorWrites);
+                            VkPipelineBindPoint pipelineBindPoint,
+                            VkPipelineLayout _layout,
+                            uint32_t set,
+                            uint32_t descriptorWriteCount,
+                            const VkWriteDescriptorSet *pDescriptorWrites);
 
 struct tu_fence
 {

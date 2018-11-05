@@ -32,8 +32,8 @@
 
 static int
 tu_hal_open(const struct hw_module_t *mod,
-             const char *id,
-             struct hw_device_t **dev);
+            const char *id,
+            struct hw_device_t **dev);
 static int
 tu_hal_close(struct hw_device_t *dev);
 
@@ -70,8 +70,8 @@ unmask32(uint32_t *inout_mask, uint32_t test_mask)
 
 static int
 tu_hal_open(const struct hw_module_t *mod,
-             const char *id,
-             struct hw_device_t **dev)
+            const char *id,
+            struct hw_device_t **dev)
 {
    assert(mod == &HAL_MODULE_INFO_SYM.common);
    assert(strcmp(id, HWVULKAN_DEVICE_0) == 0);
@@ -107,10 +107,10 @@ tu_hal_close(struct hw_device_t *dev)
 
 VkResult
 tu_image_from_gralloc(VkDevice device_h,
-                       const VkImageCreateInfo *base_info,
-                       const VkNativeBufferANDROID *gralloc_info,
-                       const VkAllocationCallbacks *alloc,
-                       VkImage *out_image_h)
+                      const VkImageCreateInfo *base_info,
+                      const VkNativeBufferANDROID *gralloc_info,
+                      const VkAllocationCallbacks *alloc,
+                      VkImage *out_image_h)
 
 {
    TU_FROM_HANDLE(tu_device, device, device_h);
@@ -209,9 +209,9 @@ fail_size:
 
 VkResult
 tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
-                                    VkFormat format,
-                                    VkImageUsageFlags imageUsage,
-                                    int *grallocUsage)
+                                   VkFormat format,
+                                   VkImageUsageFlags imageUsage,
+                                   int *grallocUsage)
 {
    TU_FROM_HANDLE(tu_device, device, device_h);
    struct tu_physical_device *phys_dev = device->physical_device;
@@ -298,10 +298,10 @@ tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
 
 VkResult
 tu_AcquireImageANDROID(VkDevice device,
-                        VkImage image_h,
-                        int nativeFenceFd,
-                        VkSemaphore semaphore,
-                        VkFence fence)
+                       VkImage image_h,
+                       int nativeFenceFd,
+                       VkSemaphore semaphore,
+                       VkFence fence)
 {
    VkResult semaphore_result = VK_SUCCESS, fence_result = VK_SUCCESS;
 
@@ -339,10 +339,10 @@ tu_AcquireImageANDROID(VkDevice device,
 
 VkResult
 tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
-                                   uint32_t waitSemaphoreCount,
-                                   const VkSemaphore *pWaitSemaphores,
-                                   VkImage image,
-                                   int *pNativeFenceFd)
+                                  uint32_t waitSemaphoreCount,
+                                  const VkSemaphore *pWaitSemaphores,
+                                  VkImage image,
+                                  int *pNativeFenceFd)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
    VkResult result = VK_SUCCESS;

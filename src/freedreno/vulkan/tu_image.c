@@ -33,9 +33,9 @@
 
 VkResult
 tu_image_create(VkDevice _device,
-                 const struct tu_image_create_info *create_info,
-                 const VkAllocationCallbacks *alloc,
-                 VkImage *pImage)
+                const struct tu_image_create_info *create_info,
+                const VkAllocationCallbacks *alloc,
+                VkImage *pImage)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
@@ -86,15 +86,15 @@ tu_image_create(VkDevice _device,
 
 void
 tu_image_view_init(struct tu_image_view *iview,
-                    struct tu_device *device,
-                    const VkImageViewCreateInfo *pCreateInfo)
+                   struct tu_device *device,
+                   const VkImageViewCreateInfo *pCreateInfo)
 {
 }
 
 unsigned
 tu_image_queue_family_mask(const struct tu_image *image,
-                            uint32_t family,
-                            uint32_t queue_family)
+                           uint32_t family,
+                           uint32_t queue_family)
 {
    if (!image->exclusive)
       return image->queue_family_mask;
@@ -107,9 +107,9 @@ tu_image_queue_family_mask(const struct tu_image *image,
 
 VkResult
 tu_CreateImage(VkDevice device,
-                const VkImageCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *pAllocator,
-                VkImage *pImage)
+               const VkImageCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *pAllocator,
+               VkImage *pImage)
 {
 #ifdef ANDROID
    const VkNativeBufferANDROID *gralloc_info =
@@ -131,8 +131,8 @@ tu_CreateImage(VkDevice device,
 
 void
 tu_DestroyImage(VkDevice _device,
-                 VkImage _image,
-                 const VkAllocationCallbacks *pAllocator)
+                VkImage _image,
+                const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_image, image, _image);
@@ -148,17 +148,17 @@ tu_DestroyImage(VkDevice _device,
 
 void
 tu_GetImageSubresourceLayout(VkDevice _device,
-                              VkImage _image,
-                              const VkImageSubresource *pSubresource,
-                              VkSubresourceLayout *pLayout)
+                             VkImage _image,
+                             const VkImageSubresource *pSubresource,
+                             VkSubresourceLayout *pLayout)
 {
 }
 
 VkResult
 tu_CreateImageView(VkDevice _device,
-                    const VkImageViewCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkImageView *pView)
+                   const VkImageViewCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkImageView *pView)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_image_view *view;
@@ -180,8 +180,8 @@ tu_CreateImageView(VkDevice _device,
 
 void
 tu_DestroyImageView(VkDevice _device,
-                     VkImageView _iview,
-                     const VkAllocationCallbacks *pAllocator)
+                    VkImageView _iview,
+                    const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_image_view, iview, _iview);
@@ -193,8 +193,8 @@ tu_DestroyImageView(VkDevice _device,
 
 void
 tu_buffer_view_init(struct tu_buffer_view *view,
-                     struct tu_device *device,
-                     const VkBufferViewCreateInfo *pCreateInfo)
+                    struct tu_device *device,
+                    const VkBufferViewCreateInfo *pCreateInfo)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, pCreateInfo->buffer);
 
@@ -206,9 +206,9 @@ tu_buffer_view_init(struct tu_buffer_view *view,
 
 VkResult
 tu_CreateBufferView(VkDevice _device,
-                     const VkBufferViewCreateInfo *pCreateInfo,
-                     const VkAllocationCallbacks *pAllocator,
-                     VkBufferView *pView)
+                    const VkBufferViewCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkBufferView *pView)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer_view *view;
@@ -230,8 +230,8 @@ tu_CreateBufferView(VkDevice _device,
 
 void
 tu_DestroyBufferView(VkDevice _device,
-                      VkBufferView bufferView,
-                      const VkAllocationCallbacks *pAllocator)
+                     VkBufferView bufferView,
+                     const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_buffer_view, view, bufferView);

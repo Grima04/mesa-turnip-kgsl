@@ -35,9 +35,9 @@
 
 static void
 tu_physical_device_get_format_properties(
-  struct tu_physical_device *physical_device,
-  VkFormat format,
-  VkFormatProperties *out_properties)
+   struct tu_physical_device *physical_device,
+   VkFormat format,
+   VkFormatProperties *out_properties)
 {
    VkFormatFeatureFlags linear = 0, tiled = 0, buffer = 0;
    const struct vk_format_description *desc = vk_format_description(format);
@@ -55,8 +55,8 @@ tu_physical_device_get_format_properties(
 
 void
 tu_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
-                                      VkFormat format,
-                                      VkFormatProperties *pFormatProperties)
+                                     VkFormat format,
+                                     VkFormatProperties *pFormatProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
@@ -66,9 +66,9 @@ tu_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceFormatProperties2(
-  VkPhysicalDevice physicalDevice,
-  VkFormat format,
-  VkFormatProperties2KHR *pFormatProperties)
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkFormatProperties2KHR *pFormatProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
@@ -78,8 +78,8 @@ tu_GetPhysicalDeviceFormatProperties2(
 
 static VkResult
 tu_get_image_format_properties(struct tu_physical_device *physical_device,
-                                const VkPhysicalDeviceImageFormatInfo2KHR *info,
-                                VkImageFormatProperties *pImageFormatProperties)
+                               const VkPhysicalDeviceImageFormatInfo2KHR *info,
+                               VkImageFormatProperties *pImageFormatProperties)
 
 {
    VkFormatProperties format_props;
@@ -195,13 +195,13 @@ unsupported:
 
 VkResult
 tu_GetPhysicalDeviceImageFormatProperties(
-  VkPhysicalDevice physicalDevice,
-  VkFormat format,
-  VkImageType type,
-  VkImageTiling tiling,
-  VkImageUsageFlags usage,
-  VkImageCreateFlags createFlags,
-  VkImageFormatProperties *pImageFormatProperties)
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkImageType type,
+   VkImageTiling tiling,
+   VkImageUsageFlags usage,
+   VkImageCreateFlags createFlags,
+   VkImageFormatProperties *pImageFormatProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
@@ -261,9 +261,9 @@ get_external_image_format_properties(
 
 VkResult
 tu_GetPhysicalDeviceImageFormatProperties2(
-  VkPhysicalDevice physicalDevice,
-  const VkPhysicalDeviceImageFormatInfo2KHR *base_info,
-  VkImageFormatProperties2KHR *base_props)
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceImageFormatInfo2KHR *base_info,
+   VkImageFormatProperties2KHR *base_props)
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
    const VkPhysicalDeviceExternalImageFormatInfoKHR *external_info = NULL;
@@ -352,14 +352,14 @@ fail:
 
 void
 tu_GetPhysicalDeviceSparseImageFormatProperties(
-  VkPhysicalDevice physicalDevice,
-  VkFormat format,
-  VkImageType type,
-  uint32_t samples,
-  VkImageUsageFlags usage,
-  VkImageTiling tiling,
-  uint32_t *pNumProperties,
-  VkSparseImageFormatProperties *pProperties)
+   VkPhysicalDevice physicalDevice,
+   VkFormat format,
+   VkImageType type,
+   uint32_t samples,
+   VkImageUsageFlags usage,
+   VkImageTiling tiling,
+   uint32_t *pNumProperties,
+   VkSparseImageFormatProperties *pProperties)
 {
    /* Sparse images are not yet supported. */
    *pNumProperties = 0;
@@ -367,10 +367,10 @@ tu_GetPhysicalDeviceSparseImageFormatProperties(
 
 void
 tu_GetPhysicalDeviceSparseImageFormatProperties2(
-  VkPhysicalDevice physicalDevice,
-  const VkPhysicalDeviceSparseImageFormatInfo2KHR *pFormatInfo,
-  uint32_t *pPropertyCount,
-  VkSparseImageFormatProperties2KHR *pProperties)
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceSparseImageFormatInfo2KHR *pFormatInfo,
+   uint32_t *pPropertyCount,
+   VkSparseImageFormatProperties2KHR *pProperties)
 {
    /* Sparse images are not yet supported. */
    *pPropertyCount = 0;
@@ -378,9 +378,9 @@ tu_GetPhysicalDeviceSparseImageFormatProperties2(
 
 void
 tu_GetPhysicalDeviceExternalBufferProperties(
-  VkPhysicalDevice physicalDevice,
-  const VkPhysicalDeviceExternalBufferInfoKHR *pExternalBufferInfo,
-  VkExternalBufferPropertiesKHR *pExternalBufferProperties)
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceExternalBufferInfoKHR *pExternalBufferInfo,
+   VkExternalBufferPropertiesKHR *pExternalBufferProperties)
 {
    VkExternalMemoryFeatureFlagBitsKHR flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR export_flags = 0;

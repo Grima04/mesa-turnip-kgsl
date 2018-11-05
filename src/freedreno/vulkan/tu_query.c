@@ -34,9 +34,9 @@
 
 VkResult
 tu_CreateQueryPool(VkDevice _device,
-                    const VkQueryPoolCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkQueryPool *pQueryPool)
+                   const VkQueryPoolCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkQueryPool *pQueryPool)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_query_pool *pool = vk_alloc2(&device->alloc,
@@ -54,8 +54,8 @@ tu_CreateQueryPool(VkDevice _device,
 
 void
 tu_DestroyQueryPool(VkDevice _device,
-                     VkQueryPool _pool,
-                     const VkAllocationCallbacks *pAllocator)
+                    VkQueryPool _pool,
+                    const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_query_pool, pool, _pool);
@@ -68,56 +68,56 @@ tu_DestroyQueryPool(VkDevice _device,
 
 VkResult
 tu_GetQueryPoolResults(VkDevice _device,
-                        VkQueryPool queryPool,
-                        uint32_t firstQuery,
-                        uint32_t queryCount,
-                        size_t dataSize,
-                        void *pData,
-                        VkDeviceSize stride,
-                        VkQueryResultFlags flags)
+                       VkQueryPool queryPool,
+                       uint32_t firstQuery,
+                       uint32_t queryCount,
+                       size_t dataSize,
+                       void *pData,
+                       VkDeviceSize stride,
+                       VkQueryResultFlags flags)
 {
    return VK_SUCCESS;
 }
 
 void
 tu_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
-                            VkQueryPool queryPool,
-                            uint32_t firstQuery,
-                            uint32_t queryCount,
-                            VkBuffer dstBuffer,
-                            VkDeviceSize dstOffset,
-                            VkDeviceSize stride,
-                            VkQueryResultFlags flags)
+                           VkQueryPool queryPool,
+                           uint32_t firstQuery,
+                           uint32_t queryCount,
+                           VkBuffer dstBuffer,
+                           VkDeviceSize dstOffset,
+                           VkDeviceSize stride,
+                           VkQueryResultFlags flags)
 {
 }
 
 void
 tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
-                      VkQueryPool queryPool,
-                      uint32_t firstQuery,
-                      uint32_t queryCount)
+                     VkQueryPool queryPool,
+                     uint32_t firstQuery,
+                     uint32_t queryCount)
 {
 }
 
 void
 tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
-                  VkQueryPool queryPool,
-                  uint32_t query,
-                  VkQueryControlFlags flags)
+                 VkQueryPool queryPool,
+                 uint32_t query,
+                 VkQueryControlFlags flags)
 {
 }
 
 void
 tu_CmdEndQuery(VkCommandBuffer commandBuffer,
-                VkQueryPool queryPool,
-                uint32_t query)
+               VkQueryPool queryPool,
+               uint32_t query)
 {
 }
 
 void
 tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
-                      VkPipelineStageFlagBits pipelineStage,
-                      VkQueryPool queryPool,
-                      uint32_t query)
+                     VkPipelineStageFlagBits pipelineStage,
+                     VkQueryPool queryPool,
+                     uint32_t query)
 {
 }

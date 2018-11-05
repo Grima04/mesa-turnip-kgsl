@@ -94,7 +94,7 @@ struct tu_pipeline_layout
 
 static inline const uint32_t *
 tu_immutable_samplers(const struct tu_descriptor_set_layout *set,
-                       const struct tu_descriptor_set_binding_layout *binding)
+                      const struct tu_descriptor_set_binding_layout *binding)
 {
    return (const uint32_t *)((const char *)set +
                              binding->immutable_samplers_offset);

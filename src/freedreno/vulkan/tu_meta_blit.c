@@ -26,13 +26,13 @@
 
 void
 tu_CmdBlitImage(VkCommandBuffer commandBuffer,
-                 VkImage srcImage,
-                 VkImageLayout srcImageLayout,
-                 VkImage destImage,
-                 VkImageLayout destImageLayout,
-                 uint32_t regionCount,
-                 const VkImageBlit *pRegions,
-                 VkFilter filter)
+                VkImage srcImage,
+                VkImageLayout srcImageLayout,
+                VkImage destImage,
+                VkImageLayout destImageLayout,
+                uint32_t regionCount,
+                const VkImageBlit *pRegions,
+                VkFilter filter)
 
 {
 }

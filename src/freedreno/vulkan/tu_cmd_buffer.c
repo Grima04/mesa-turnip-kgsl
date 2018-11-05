@@ -69,7 +69,7 @@ const struct tu_dynamic_state default_dynamic_state = {
 
 static void
 tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
-                       const struct tu_dynamic_state *src)
+                      const struct tu_dynamic_state *src)
 {
    struct tu_dynamic_state *dest = &cmd_buffer->state.dynamic;
    uint32_t copy_mask = src->mask;
@@ -177,9 +177,9 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
 
 static VkResult
 tu_create_cmd_buffer(struct tu_device *device,
-                      struct tu_cmd_pool *pool,
-                      VkCommandBufferLevel level,
-                      VkCommandBuffer *pCommandBuffer)
+                     struct tu_cmd_pool *pool,
+                     VkCommandBufferLevel level,
+                     VkCommandBuffer *pCommandBuffer)
 {
    struct tu_cmd_buffer *cmd_buffer;
    cmd_buffer = vk_zalloc(
@@ -240,8 +240,8 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 
 VkResult
 tu_AllocateCommandBuffers(VkDevice _device,
-                           const VkCommandBufferAllocateInfo *pAllocateInfo,
-                           VkCommandBuffer *pCommandBuffers)
+                          const VkCommandBufferAllocateInfo *pAllocateInfo,
+                          VkCommandBuffer *pCommandBuffers)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_cmd_pool, pool, pAllocateInfo->commandPool);
@@ -294,9 +294,9 @@ tu_AllocateCommandBuffers(VkDevice _device,
 
 void
 tu_FreeCommandBuffers(VkDevice device,
-                       VkCommandPool commandPool,
-                       uint32_t commandBufferCount,
-                       const VkCommandBuffer *pCommandBuffers)
+                      VkCommandPool commandPool,
+                      uint32_t commandBufferCount,
+                      const VkCommandBuffer *pCommandBuffers)
 {
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
@@ -314,7 +314,7 @@ tu_FreeCommandBuffers(VkDevice device,
 
 VkResult
 tu_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                       VkCommandBufferResetFlags flags)
+                      VkCommandBufferResetFlags flags)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    return tu_reset_cmd_buffer(cmd_buffer);
@@ -322,7 +322,7 @@ tu_ResetCommandBuffer(VkCommandBuffer commandBuffer,
 
 VkResult
 tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
-                       const VkCommandBufferBeginInfo *pBeginInfo)
+                      const VkCommandBufferBeginInfo *pBeginInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    VkResult result = VK_SUCCESS;
@@ -357,40 +357,40 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
-                         uint32_t firstBinding,
-                         uint32_t bindingCount,
-                         const VkBuffer *pBuffers,
-                         const VkDeviceSize *pOffsets)
+                        uint32_t firstBinding,
+                        uint32_t bindingCount,
+                        const VkBuffer *pBuffers,
+                        const VkDeviceSize *pOffsets)
 {
 }
 
 void
 tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
-                       VkBuffer buffer,
-                       VkDeviceSize offset,
-                       VkIndexType indexType)
+                      VkBuffer buffer,
+                      VkDeviceSize offset,
+                      VkIndexType indexType)
 {
 }
 
 void
 tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
-                          VkPipelineBindPoint pipelineBindPoint,
-                          VkPipelineLayout _layout,
-                          uint32_t firstSet,
-                          uint32_t descriptorSetCount,
-                          const VkDescriptorSet *pDescriptorSets,
-                          uint32_t dynamicOffsetCount,
-                          const uint32_t *pDynamicOffsets)
+                         VkPipelineBindPoint pipelineBindPoint,
+                         VkPipelineLayout _layout,
+                         uint32_t firstSet,
+                         uint32_t descriptorSetCount,
+                         const VkDescriptorSet *pDescriptorSets,
+                         uint32_t dynamicOffsetCount,
+                         const uint32_t *pDynamicOffsets)
 {
 }
 
 void
 tu_CmdPushConstants(VkCommandBuffer commandBuffer,
-                     VkPipelineLayout layout,
-                     VkShaderStageFlags stageFlags,
-                     uint32_t offset,
-                     uint32_t size,
-                     const void *pValues)
+                    VkPipelineLayout layout,
+                    VkShaderStageFlags stageFlags,
+                    uint32_t offset,
+                    uint32_t size,
+                    const void *pValues)
 {
 }
 
@@ -406,24 +406,24 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
 void
 tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
-                    VkPipelineBindPoint pipelineBindPoint,
-                    VkPipeline _pipeline)
+                   VkPipelineBindPoint pipelineBindPoint,
+                   VkPipeline _pipeline)
 {
 }
 
 void
 tu_CmdSetViewport(VkCommandBuffer commandBuffer,
-                   uint32_t firstViewport,
-                   uint32_t viewportCount,
-                   const VkViewport *pViewports)
+                  uint32_t firstViewport,
+                  uint32_t viewportCount,
+                  const VkViewport *pViewports)
 {
 }
 
 void
 tu_CmdSetScissor(VkCommandBuffer commandBuffer,
-                  uint32_t firstScissor,
-                  uint32_t scissorCount,
-                  const VkRect2D *pScissors)
+                 uint32_t firstScissor,
+                 uint32_t scissorCount,
+                 const VkRect2D *pScissors)
 {
 }
 
@@ -434,58 +434,58 @@ tu_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 
 void
 tu_CmdSetDepthBias(VkCommandBuffer commandBuffer,
-                    float depthBiasConstantFactor,
-                    float depthBiasClamp,
-                    float depthBiasSlopeFactor)
+                   float depthBiasConstantFactor,
+                   float depthBiasClamp,
+                   float depthBiasSlopeFactor)
 {
 }
 
 void
 tu_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
-                         const float blendConstants[4])
+                        const float blendConstants[4])
 {
 }
 
 void
 tu_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
-                      float minDepthBounds,
-                      float maxDepthBounds)
+                     float minDepthBounds,
+                     float maxDepthBounds)
 {
 }
 
 void
 tu_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
-                             VkStencilFaceFlags faceMask,
-                             uint32_t compareMask)
+                            VkStencilFaceFlags faceMask,
+                            uint32_t compareMask)
 {
 }
 
 void
 tu_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
-                           VkStencilFaceFlags faceMask,
-                           uint32_t writeMask)
+                          VkStencilFaceFlags faceMask,
+                          uint32_t writeMask)
 {
 }
 
 void
 tu_CmdSetStencilReference(VkCommandBuffer commandBuffer,
-                           VkStencilFaceFlags faceMask,
-                           uint32_t reference)
+                          VkStencilFaceFlags faceMask,
+                          uint32_t reference)
 {
 }
 
 void
 tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
-                       uint32_t commandBufferCount,
-                       const VkCommandBuffer *pCmdBuffers)
+                      uint32_t commandBufferCount,
+                      const VkCommandBuffer *pCmdBuffers)
 {
 }
 
 VkResult
 tu_CreateCommandPool(VkDevice _device,
-                      const VkCommandPoolCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *pAllocator,
-                      VkCommandPool *pCmdPool)
+                     const VkCommandPoolCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkCommandPool *pCmdPool)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_cmd_pool *pool;
@@ -515,8 +515,8 @@ tu_CreateCommandPool(VkDevice _device,
 
 void
 tu_DestroyCommandPool(VkDevice _device,
-                       VkCommandPool commandPool,
-                       const VkAllocationCallbacks *pAllocator)
+                      VkCommandPool commandPool,
+                      const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
@@ -541,8 +541,8 @@ tu_DestroyCommandPool(VkDevice _device,
 
 VkResult
 tu_ResetCommandPool(VkDevice device,
-                     VkCommandPool commandPool,
-                     VkCommandPoolResetFlags flags)
+                    VkCommandPool commandPool,
+                    VkCommandPoolResetFlags flags)
 {
    TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
    VkResult result;
@@ -560,8 +560,8 @@ tu_ResetCommandPool(VkDevice device,
 
 void
 tu_TrimCommandPool(VkDevice device,
-                    VkCommandPool commandPool,
-                    VkCommandPoolTrimFlagsKHR flags)
+                   VkCommandPool commandPool,
+                   VkCommandPoolTrimFlagsKHR flags)
 {
    TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
 
@@ -577,15 +577,15 @@ tu_TrimCommandPool(VkDevice device,
 
 void
 tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
-                       const VkRenderPassBeginInfo *pRenderPassBegin,
-                       VkSubpassContents contents)
+                      const VkRenderPassBeginInfo *pRenderPassBegin,
+                      VkSubpassContents contents)
 {
 }
 
 void
 tu_CmdBeginRenderPass2KHR(VkCommandBuffer commandBuffer,
-                           const VkRenderPassBeginInfo *pRenderPassBeginInfo,
-                           const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
+                          const VkRenderPassBeginInfo *pRenderPassBeginInfo,
+                          const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
 {
    tu_CmdBeginRenderPass(
      commandBuffer, pRenderPassBeginInfo, pSubpassBeginInfo->contents);
@@ -598,8 +598,8 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 
 void
 tu_CmdNextSubpass2KHR(VkCommandBuffer commandBuffer,
-                       const VkSubpassBeginInfoKHR *pSubpassBeginInfo,
-                       const VkSubpassEndInfoKHR *pSubpassEndInfo)
+                      const VkSubpassBeginInfoKHR *pSubpassBeginInfo,
+                      const VkSubpassEndInfoKHR *pSubpassEndInfo)
 {
    tu_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
 }
@@ -657,10 +657,10 @@ tu_draw(struct tu_cmd_buffer *cmd_buffer, const struct tu_draw_info *info)
 
 void
 tu_CmdDraw(VkCommandBuffer commandBuffer,
-            uint32_t vertexCount,
-            uint32_t instanceCount,
-            uint32_t firstVertex,
-            uint32_t firstInstance)
+           uint32_t vertexCount,
+           uint32_t instanceCount,
+           uint32_t firstVertex,
+           uint32_t firstInstance)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    struct tu_draw_info info = {};
@@ -675,11 +675,11 @@ tu_CmdDraw(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
-                   uint32_t indexCount,
-                   uint32_t instanceCount,
-                   uint32_t firstIndex,
-                   int32_t vertexOffset,
-                   uint32_t firstInstance)
+                  uint32_t indexCount,
+                  uint32_t instanceCount,
+                  uint32_t firstIndex,
+                  int32_t vertexOffset,
+                  uint32_t firstInstance)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    struct tu_draw_info info = {};
@@ -696,10 +696,10 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
-                    VkBuffer _buffer,
-                    VkDeviceSize offset,
-                    uint32_t drawCount,
-                    uint32_t stride)
+                   VkBuffer _buffer,
+                   VkDeviceSize offset,
+                   uint32_t drawCount,
+                   uint32_t stride)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
@@ -715,10 +715,10 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
-                           VkBuffer _buffer,
-                           VkDeviceSize offset,
-                           uint32_t drawCount,
-                           uint32_t stride)
+                          VkBuffer _buffer,
+                          VkDeviceSize offset,
+                          uint32_t drawCount,
+                          uint32_t stride)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
@@ -759,18 +759,18 @@ struct tu_dispatch_info
 
 static void
 tu_dispatch(struct tu_cmd_buffer *cmd_buffer,
-             const struct tu_dispatch_info *info)
+            const struct tu_dispatch_info *info)
 {
 }
 
 void
 tu_CmdDispatchBase(VkCommandBuffer commandBuffer,
-                    uint32_t base_x,
-                    uint32_t base_y,
-                    uint32_t base_z,
-                    uint32_t x,
-                    uint32_t y,
-                    uint32_t z)
+                   uint32_t base_x,
+                   uint32_t base_y,
+                   uint32_t base_z,
+                   uint32_t x,
+                   uint32_t y,
+                   uint32_t z)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    struct tu_dispatch_info info = {};
@@ -787,17 +787,17 @@ tu_CmdDispatchBase(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdDispatch(VkCommandBuffer commandBuffer,
-                uint32_t x,
-                uint32_t y,
-                uint32_t z)
+               uint32_t x,
+               uint32_t y,
+               uint32_t z)
 {
    tu_CmdDispatchBase(commandBuffer, 0, 0, 0, x, y, z);
 }
 
 void
 tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
-                        VkBuffer _buffer,
-                        VkDeviceSize offset)
+                       VkBuffer _buffer,
+                       VkDeviceSize offset)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
@@ -816,7 +816,7 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 
 void
 tu_CmdEndRenderPass2KHR(VkCommandBuffer commandBuffer,
-                         const VkSubpassEndInfoKHR *pSubpassEndInfo)
+                        const VkSubpassEndInfoKHR *pSubpassEndInfo)
 {
    tu_CmdEndRenderPass(commandBuffer);
 }
@@ -830,27 +830,27 @@ struct tu_barrier_info
 
 static void
 tu_barrier(struct tu_cmd_buffer *cmd_buffer,
-            uint32_t memoryBarrierCount,
-            const VkMemoryBarrier *pMemoryBarriers,
-            uint32_t bufferMemoryBarrierCount,
-            const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-            uint32_t imageMemoryBarrierCount,
-            const VkImageMemoryBarrier *pImageMemoryBarriers,
-            const struct tu_barrier_info *info)
+           uint32_t memoryBarrierCount,
+           const VkMemoryBarrier *pMemoryBarriers,
+           uint32_t bufferMemoryBarrierCount,
+           const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+           uint32_t imageMemoryBarrierCount,
+           const VkImageMemoryBarrier *pImageMemoryBarriers,
+           const struct tu_barrier_info *info)
 {
 }
 
 void
 tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
-                       VkPipelineStageFlags srcStageMask,
-                       VkPipelineStageFlags destStageMask,
-                       VkBool32 byRegion,
-                       uint32_t memoryBarrierCount,
-                       const VkMemoryBarrier *pMemoryBarriers,
-                       uint32_t bufferMemoryBarrierCount,
-                       const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                       uint32_t imageMemoryBarrierCount,
-                       const VkImageMemoryBarrier *pImageMemoryBarriers)
+                      VkPipelineStageFlags srcStageMask,
+                      VkPipelineStageFlags destStageMask,
+                      VkBool32 byRegion,
+                      uint32_t memoryBarrierCount,
+                      const VkMemoryBarrier *pMemoryBarriers,
+                      uint32_t bufferMemoryBarrierCount,
+                      const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+                      uint32_t imageMemoryBarrierCount,
+                      const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    struct tu_barrier_info info;
@@ -879,8 +879,8 @@ write_event(struct tu_cmd_buffer *cmd_buffer,
 
 void
 tu_CmdSetEvent(VkCommandBuffer commandBuffer,
-                VkEvent _event,
-                VkPipelineStageFlags stageMask)
+               VkEvent _event,
+               VkPipelineStageFlags stageMask)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
@@ -890,8 +890,8 @@ tu_CmdSetEvent(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdResetEvent(VkCommandBuffer commandBuffer,
-                  VkEvent _event,
-                  VkPipelineStageFlags stageMask)
+                 VkEvent _event,
+                 VkPipelineStageFlags stageMask)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
@@ -901,16 +901,16 @@ tu_CmdResetEvent(VkCommandBuffer commandBuffer,
 
 void
 tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
-                  uint32_t eventCount,
-                  const VkEvent *pEvents,
-                  VkPipelineStageFlags srcStageMask,
-                  VkPipelineStageFlags dstStageMask,
-                  uint32_t memoryBarrierCount,
-                  const VkMemoryBarrier *pMemoryBarriers,
-                  uint32_t bufferMemoryBarrierCount,
-                  const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                  uint32_t imageMemoryBarrierCount,
-                  const VkImageMemoryBarrier *pImageMemoryBarriers)
+                 uint32_t eventCount,
+                 const VkEvent *pEvents,
+                 VkPipelineStageFlags srcStageMask,
+                 VkPipelineStageFlags dstStageMask,
+                 uint32_t memoryBarrierCount,
+                 const VkMemoryBarrier *pMemoryBarriers,
+                 uint32_t bufferMemoryBarrierCount,
+                 const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+                 uint32_t imageMemoryBarrierCount,
+                 const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    struct tu_barrier_info info;

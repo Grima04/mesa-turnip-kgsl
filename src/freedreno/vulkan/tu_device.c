@@ -68,8 +68,8 @@ tu_get_device_uuid(void *uuid)
 
 static VkResult
 tu_physical_device_init(struct tu_physical_device *device,
-                         struct tu_instance *instance,
-                         drmDevicePtr drm_device)
+                        struct tu_instance *instance,
+                        drmDevicePtr drm_device)
 {
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result;
@@ -280,8 +280,8 @@ tu_get_instance_extension_index(const char *name)
 
 VkResult
 tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator,
-                   VkInstance *pInstance)
+                  const VkAllocationCallbacks *pAllocator,
+                  VkInstance *pInstance)
 {
    struct tu_instance *instance;
    VkResult result;
@@ -349,7 +349,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
 void
 tu_DestroyInstance(VkInstance _instance,
-                    const VkAllocationCallbacks *pAllocator)
+                   const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
 
@@ -408,8 +408,8 @@ tu_enumerate_devices(struct tu_instance *instance)
 
 VkResult
 tu_EnumeratePhysicalDevices(VkInstance _instance,
-                             uint32_t *pPhysicalDeviceCount,
-                             VkPhysicalDevice *pPhysicalDevices)
+                            uint32_t *pPhysicalDeviceCount,
+                            VkPhysicalDevice *pPhysicalDevices)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
    VkResult result;
@@ -437,9 +437,9 @@ tu_EnumeratePhysicalDevices(VkInstance _instance,
 
 VkResult
 tu_EnumeratePhysicalDeviceGroups(
-  VkInstance _instance,
-  uint32_t *pPhysicalDeviceGroupCount,
-  VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
+   VkInstance _instance,
+   uint32_t *pPhysicalDeviceGroupCount,
+   VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
    VkResult result;
@@ -469,7 +469,7 @@ tu_EnumeratePhysicalDeviceGroups(
 
 void
 tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
-                              VkPhysicalDeviceFeatures *pFeatures)
+                             VkPhysicalDeviceFeatures *pFeatures)
 {
    memset(pFeatures, 0, sizeof(*pFeatures));
 
@@ -524,7 +524,7 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                               VkPhysicalDeviceFeatures2KHR *pFeatures)
+                              VkPhysicalDeviceFeatures2KHR *pFeatures)
 {
    vk_foreach_struct(ext, pFeatures->pNext)
    {
@@ -611,7 +611,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                                VkPhysicalDeviceProperties *pProperties)
+                               VkPhysicalDeviceProperties *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    VkSampleCountFlags sample_counts = 0xf;
@@ -754,7 +754,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                 VkPhysicalDeviceProperties2KHR *pProperties)
+                                VkPhysicalDeviceProperties2KHR *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    tu_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
@@ -808,9 +808,9 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
 static void
 tu_get_physical_device_queue_family_properties(
-  struct tu_physical_device *pdevice,
-  uint32_t *pCount,
-  VkQueueFamilyProperties **pQueueFamilyProperties)
+   struct tu_physical_device *pdevice,
+   uint32_t *pCount,
+   VkQueueFamilyProperties **pQueueFamilyProperties)
 {
    int num_queue_families = 1;
    int idx;
@@ -839,9 +839,9 @@ tu_get_physical_device_queue_family_properties(
 
 void
 tu_GetPhysicalDeviceQueueFamilyProperties(
-  VkPhysicalDevice physicalDevice,
-  uint32_t *pCount,
-  VkQueueFamilyProperties *pQueueFamilyProperties)
+   VkPhysicalDevice physicalDevice,
+   uint32_t *pCount,
+   VkQueueFamilyProperties *pQueueFamilyProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    if (!pQueueFamilyProperties) {
@@ -858,9 +858,9 @@ tu_GetPhysicalDeviceQueueFamilyProperties(
 
 void
 tu_GetPhysicalDeviceQueueFamilyProperties2(
-  VkPhysicalDevice physicalDevice,
-  uint32_t *pCount,
-  VkQueueFamilyProperties2KHR *pQueueFamilyProperties)
+   VkPhysicalDevice physicalDevice,
+   uint32_t *pCount,
+   VkQueueFamilyProperties2KHR *pQueueFamilyProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    if (!pQueueFamilyProperties) {
@@ -897,8 +897,8 @@ tu_get_system_heap_size()
 
 void
 tu_GetPhysicalDeviceMemoryProperties(
-  VkPhysicalDevice physicalDevice,
-  VkPhysicalDeviceMemoryProperties *pMemoryProperties)
+   VkPhysicalDevice physicalDevice,
+   VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
    pMemoryProperties->memoryHeapCount = 1;
    pMemoryProperties->memoryHeaps[0].size = tu_get_system_heap_size();
@@ -913,8 +913,8 @@ tu_GetPhysicalDeviceMemoryProperties(
 
 void
 tu_GetPhysicalDeviceMemoryProperties2(
-  VkPhysicalDevice physicalDevice,
-  VkPhysicalDeviceMemoryProperties2KHR *pMemoryProperties)
+   VkPhysicalDevice physicalDevice,
+   VkPhysicalDeviceMemoryProperties2KHR *pMemoryProperties)
 {
    return tu_GetPhysicalDeviceMemoryProperties(
      physicalDevice, &pMemoryProperties->memoryProperties);
@@ -922,10 +922,10 @@ tu_GetPhysicalDeviceMemoryProperties2(
 
 static int
 tu_queue_init(struct tu_device *device,
-               struct tu_queue *queue,
-               uint32_t queue_family_index,
-               int idx,
-               VkDeviceQueueCreateFlags flags)
+              struct tu_queue *queue,
+              uint32_t queue_family_index,
+              int idx,
+              VkDeviceQueueCreateFlags flags)
 {
    queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    queue->device = device;
@@ -953,9 +953,9 @@ tu_get_device_extension_index(const char *name)
 
 VkResult
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
-                 const VkDeviceCreateInfo *pCreateInfo,
-                 const VkAllocationCallbacks *pAllocator,
-                 VkDevice *pDevice)
+                const VkDeviceCreateInfo *pCreateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                VkDevice *pDevice)
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
    VkResult result;
@@ -1086,7 +1086,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
 VkResult
 tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
-                                     VkLayerProperties *pProperties)
+                                    VkLayerProperties *pProperties)
 {
    if (pProperties == NULL) {
       *pPropertyCount = 0;
@@ -1099,8 +1099,8 @@ tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
 
 VkResult
 tu_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
-                                   uint32_t *pPropertyCount,
-                                   VkLayerProperties *pProperties)
+                                  uint32_t *pPropertyCount,
+                                  VkLayerProperties *pProperties)
 {
    if (pProperties == NULL) {
       *pPropertyCount = 0;
@@ -1113,8 +1113,8 @@ tu_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetDeviceQueue2(VkDevice _device,
-                    const VkDeviceQueueInfo2 *pQueueInfo,
-                    VkQueue *pQueue)
+                   const VkDeviceQueueInfo2 *pQueueInfo,
+                   VkQueue *pQueue)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_queue *queue;
@@ -1139,9 +1139,9 @@ tu_GetDeviceQueue2(VkDevice _device,
 
 void
 tu_GetDeviceQueue(VkDevice _device,
-                   uint32_t queueFamilyIndex,
-                   uint32_t queueIndex,
-                   VkQueue *pQueue)
+                  uint32_t queueFamilyIndex,
+                  uint32_t queueIndex,
+                  VkQueue *pQueue)
 {
    const VkDeviceQueueInfo2 info =
      (VkDeviceQueueInfo2){.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
@@ -1153,9 +1153,9 @@ tu_GetDeviceQueue(VkDevice _device,
 
 VkResult
 tu_QueueSubmit(VkQueue _queue,
-                uint32_t submitCount,
-                const VkSubmitInfo *pSubmits,
-                VkFence _fence)
+               uint32_t submitCount,
+               const VkSubmitInfo *pSubmits,
+               VkFence _fence)
 {
    return VK_SUCCESS;
 }
@@ -1181,8 +1181,8 @@ tu_DeviceWaitIdle(VkDevice _device)
 
 VkResult
 tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
-                                         uint32_t *pPropertyCount,
-                                         VkExtensionProperties *pProperties)
+                                        uint32_t *pPropertyCount,
+                                        VkExtensionProperties *pProperties)
 {
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
@@ -1197,9 +1197,9 @@ tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
 
 VkResult
 tu_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
-                                       const char *pLayerName,
-                                       uint32_t *pPropertyCount,
-                                       VkExtensionProperties *pProperties)
+                                      const char *pLayerName,
+                                      uint32_t *pPropertyCount,
+                                      VkExtensionProperties *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, device, physicalDevice);
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
@@ -1252,9 +1252,9 @@ tu_GetDeviceProcAddr(VkDevice _device, const char *pName)
 
 static VkResult
 tu_alloc_memory(struct tu_device *device,
-                 const VkMemoryAllocateInfo *pAllocateInfo,
-                 const VkAllocationCallbacks *pAllocator,
-                 VkDeviceMemory *pMem)
+                const VkMemoryAllocateInfo *pAllocateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                VkDeviceMemory *pMem)
 {
    struct tu_device_memory *mem;
 
@@ -1294,9 +1294,9 @@ tu_alloc_memory(struct tu_device *device,
 
 VkResult
 tu_AllocateMemory(VkDevice _device,
-                   const VkMemoryAllocateInfo *pAllocateInfo,
-                   const VkAllocationCallbacks *pAllocator,
-                   VkDeviceMemory *pMem)
+                  const VkMemoryAllocateInfo *pAllocateInfo,
+                  const VkAllocationCallbacks *pAllocator,
+                  VkDeviceMemory *pMem)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    return tu_alloc_memory(device, pAllocateInfo, pAllocator, pMem);
@@ -1304,8 +1304,8 @@ tu_AllocateMemory(VkDevice _device,
 
 void
 tu_FreeMemory(VkDevice _device,
-               VkDeviceMemory _mem,
-               const VkAllocationCallbacks *pAllocator)
+              VkDeviceMemory _mem,
+              const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_device_memory, mem, _mem);
@@ -1321,11 +1321,11 @@ tu_FreeMemory(VkDevice _device,
 
 VkResult
 tu_MapMemory(VkDevice _device,
-              VkDeviceMemory _memory,
-              VkDeviceSize offset,
-              VkDeviceSize size,
-              VkMemoryMapFlags flags,
-              void **ppData)
+             VkDeviceMemory _memory,
+             VkDeviceSize offset,
+             VkDeviceSize size,
+             VkMemoryMapFlags flags,
+             void **ppData)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_device_memory, mem, _memory);
@@ -1358,24 +1358,24 @@ tu_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
 
 VkResult
 tu_FlushMappedMemoryRanges(VkDevice _device,
-                            uint32_t memoryRangeCount,
-                            const VkMappedMemoryRange *pMemoryRanges)
+                           uint32_t memoryRangeCount,
+                           const VkMappedMemoryRange *pMemoryRanges)
 {
    return VK_SUCCESS;
 }
 
 VkResult
 tu_InvalidateMappedMemoryRanges(VkDevice _device,
-                                 uint32_t memoryRangeCount,
-                                 const VkMappedMemoryRange *pMemoryRanges)
+                                uint32_t memoryRangeCount,
+                                const VkMappedMemoryRange *pMemoryRanges)
 {
    return VK_SUCCESS;
 }
 
 void
 tu_GetBufferMemoryRequirements(VkDevice _device,
-                                VkBuffer _buffer,
-                                VkMemoryRequirements *pMemoryRequirements)
+                               VkBuffer _buffer,
+                               VkMemoryRequirements *pMemoryRequirements)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
 
@@ -1387,9 +1387,9 @@ tu_GetBufferMemoryRequirements(VkDevice _device,
 
 void
 tu_GetBufferMemoryRequirements2(
-  VkDevice device,
-  const VkBufferMemoryRequirementsInfo2KHR *pInfo,
-  VkMemoryRequirements2KHR *pMemoryRequirements)
+   VkDevice device,
+   const VkBufferMemoryRequirementsInfo2KHR *pInfo,
+   VkMemoryRequirements2KHR *pMemoryRequirements)
 {
    tu_GetBufferMemoryRequirements(
      device, pInfo->buffer, &pMemoryRequirements->memoryRequirements);
@@ -1397,8 +1397,8 @@ tu_GetBufferMemoryRequirements2(
 
 void
 tu_GetImageMemoryRequirements(VkDevice _device,
-                               VkImage _image,
-                               VkMemoryRequirements *pMemoryRequirements)
+                              VkImage _image,
+                              VkMemoryRequirements *pMemoryRequirements)
 {
    TU_FROM_HANDLE(tu_image, image, _image);
 
@@ -1409,8 +1409,8 @@ tu_GetImageMemoryRequirements(VkDevice _device,
 
 void
 tu_GetImageMemoryRequirements2(VkDevice device,
-                                const VkImageMemoryRequirementsInfo2KHR *pInfo,
-                                VkMemoryRequirements2KHR *pMemoryRequirements)
+                               const VkImageMemoryRequirementsInfo2KHR *pInfo,
+                               VkMemoryRequirements2KHR *pMemoryRequirements)
 {
    tu_GetImageMemoryRequirements(
      device, pInfo->image, &pMemoryRequirements->memoryRequirements);
@@ -1418,45 +1418,45 @@ tu_GetImageMemoryRequirements2(VkDevice device,
 
 void
 tu_GetImageSparseMemoryRequirements(
-  VkDevice device,
-  VkImage image,
-  uint32_t *pSparseMemoryRequirementCount,
-  VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
+   VkDevice device,
+   VkImage image,
+   uint32_t *pSparseMemoryRequirementCount,
+   VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
 {
    stub();
 }
 
 void
 tu_GetImageSparseMemoryRequirements2(
-  VkDevice device,
-  const VkImageSparseMemoryRequirementsInfo2KHR *pInfo,
-  uint32_t *pSparseMemoryRequirementCount,
-  VkSparseImageMemoryRequirements2KHR *pSparseMemoryRequirements)
+   VkDevice device,
+   const VkImageSparseMemoryRequirementsInfo2KHR *pInfo,
+   uint32_t *pSparseMemoryRequirementCount,
+   VkSparseImageMemoryRequirements2KHR *pSparseMemoryRequirements)
 {
    stub();
 }
 
 void
 tu_GetDeviceMemoryCommitment(VkDevice device,
-                              VkDeviceMemory memory,
-                              VkDeviceSize *pCommittedMemoryInBytes)
+                             VkDeviceMemory memory,
+                             VkDeviceSize *pCommittedMemoryInBytes)
 {
    *pCommittedMemoryInBytes = 0;
 }
 
 VkResult
 tu_BindBufferMemory2(VkDevice device,
-                      uint32_t bindInfoCount,
-                      const VkBindBufferMemoryInfoKHR *pBindInfos)
+                     uint32_t bindInfoCount,
+                     const VkBindBufferMemoryInfoKHR *pBindInfos)
 {
    return VK_SUCCESS;
 }
 
 VkResult
 tu_BindBufferMemory(VkDevice device,
-                     VkBuffer buffer,
-                     VkDeviceMemory memory,
-                     VkDeviceSize memoryOffset)
+                    VkBuffer buffer,
+                    VkDeviceMemory memory,
+                    VkDeviceSize memoryOffset)
 {
    const VkBindBufferMemoryInfoKHR info = {
       .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR,
@@ -1470,17 +1470,17 @@ tu_BindBufferMemory(VkDevice device,
 
 VkResult
 tu_BindImageMemory2(VkDevice device,
-                     uint32_t bindInfoCount,
-                     const VkBindImageMemoryInfoKHR *pBindInfos)
+                    uint32_t bindInfoCount,
+                    const VkBindImageMemoryInfoKHR *pBindInfos)
 {
    return VK_SUCCESS;
 }
 
 VkResult
 tu_BindImageMemory(VkDevice device,
-                    VkImage image,
-                    VkDeviceMemory memory,
-                    VkDeviceSize memoryOffset)
+                   VkImage image,
+                   VkDeviceMemory memory,
+                   VkDeviceSize memoryOffset)
 {
    const VkBindImageMemoryInfoKHR info = {
       .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR,
@@ -1494,18 +1494,18 @@ tu_BindImageMemory(VkDevice device,
 
 VkResult
 tu_QueueBindSparse(VkQueue _queue,
-                    uint32_t bindInfoCount,
-                    const VkBindSparseInfo *pBindInfo,
-                    VkFence _fence)
+                   uint32_t bindInfoCount,
+                   const VkBindSparseInfo *pBindInfo,
+                   VkFence _fence)
 {
    return VK_SUCCESS;
 }
 
 VkResult
 tu_CreateFence(VkDevice _device,
-                const VkFenceCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *pAllocator,
-                VkFence *pFence)
+               const VkFenceCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *pAllocator,
+               VkFence *pFence)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
@@ -1525,8 +1525,8 @@ tu_CreateFence(VkDevice _device,
 
 void
 tu_DestroyFence(VkDevice _device,
-                 VkFence _fence,
-                 const VkAllocationCallbacks *pAllocator)
+                VkFence _fence,
+                const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_fence, fence, _fence);
@@ -1539,10 +1539,10 @@ tu_DestroyFence(VkDevice _device,
 
 VkResult
 tu_WaitForFences(VkDevice _device,
-                  uint32_t fenceCount,
-                  const VkFence *pFences,
-                  VkBool32 waitAll,
-                  uint64_t timeout)
+                 uint32_t fenceCount,
+                 const VkFence *pFences,
+                 VkBool32 waitAll,
+                 uint64_t timeout)
 {
    return VK_SUCCESS;
 }
@@ -1563,9 +1563,9 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 
 VkResult
 tu_CreateSemaphore(VkDevice _device,
-                    const VkSemaphoreCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkSemaphore *pSemaphore)
+                   const VkSemaphoreCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkSemaphore *pSemaphore)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
@@ -1583,8 +1583,8 @@ tu_CreateSemaphore(VkDevice _device,
 
 void
 tu_DestroySemaphore(VkDevice _device,
-                     VkSemaphore _semaphore,
-                     const VkAllocationCallbacks *pAllocator)
+                    VkSemaphore _semaphore,
+                    const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_semaphore, sem, _semaphore);
@@ -1596,9 +1596,9 @@ tu_DestroySemaphore(VkDevice _device,
 
 VkResult
 tu_CreateEvent(VkDevice _device,
-                const VkEventCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *pAllocator,
-                VkEvent *pEvent)
+               const VkEventCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *pAllocator,
+               VkEvent *pEvent)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_event *event = vk_alloc2(&device->alloc,
@@ -1617,8 +1617,8 @@ tu_CreateEvent(VkDevice _device,
 
 void
 tu_DestroyEvent(VkDevice _device,
-                 VkEvent _event,
-                 const VkAllocationCallbacks *pAllocator)
+                VkEvent _event,
+                const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_event, event, _event);
@@ -1658,9 +1658,9 @@ tu_ResetEvent(VkDevice _device, VkEvent _event)
 
 VkResult
 tu_CreateBuffer(VkDevice _device,
-                 const VkBufferCreateInfo *pCreateInfo,
-                 const VkAllocationCallbacks *pAllocator,
-                 VkBuffer *pBuffer)
+                const VkBufferCreateInfo *pCreateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                VkBuffer *pBuffer)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer *buffer;
@@ -1686,8 +1686,8 @@ tu_CreateBuffer(VkDevice _device,
 
 void
 tu_DestroyBuffer(VkDevice _device,
-                  VkBuffer _buffer,
-                  const VkAllocationCallbacks *pAllocator)
+                 VkBuffer _buffer,
+                 const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
@@ -1708,9 +1708,9 @@ tu_surface_max_layer_count(struct tu_image_view *iview)
 
 VkResult
 tu_CreateFramebuffer(VkDevice _device,
-                      const VkFramebufferCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *pAllocator,
-                      VkFramebuffer *pFramebuffer)
+                     const VkFramebufferCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkFramebuffer *pFramebuffer)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_framebuffer *framebuffer;
@@ -1746,8 +1746,8 @@ tu_CreateFramebuffer(VkDevice _device,
 
 void
 tu_DestroyFramebuffer(VkDevice _device,
-                       VkFramebuffer _fb,
-                       const VkAllocationCallbacks *pAllocator)
+                      VkFramebuffer _fb,
+                      const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_framebuffer, fb, _fb);
@@ -1759,16 +1759,16 @@ tu_DestroyFramebuffer(VkDevice _device,
 
 static void
 tu_init_sampler(struct tu_device *device,
-                 struct tu_sampler *sampler,
-                 const VkSamplerCreateInfo *pCreateInfo)
+                struct tu_sampler *sampler,
+                const VkSamplerCreateInfo *pCreateInfo)
 {
 }
 
 VkResult
 tu_CreateSampler(VkDevice _device,
-                  const VkSamplerCreateInfo *pCreateInfo,
-                  const VkAllocationCallbacks *pAllocator,
-                  VkSampler *pSampler)
+                 const VkSamplerCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkSampler *pSampler)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_sampler *sampler;
@@ -1791,8 +1791,8 @@ tu_CreateSampler(VkDevice _device,
 
 void
 tu_DestroySampler(VkDevice _device,
-                   VkSampler _sampler,
-                   const VkAllocationCallbacks *pAllocator)
+                  VkSampler _sampler,
+                  const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_sampler, sampler, _sampler);
@@ -1848,9 +1848,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
 
 void
 tu_GetPhysicalDeviceExternalSemaphoreProperties(
-  VkPhysicalDevice physicalDevice,
-  const VkPhysicalDeviceExternalSemaphoreInfoKHR *pExternalSemaphoreInfo,
-  VkExternalSemaphorePropertiesKHR *pExternalSemaphoreProperties)
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceExternalSemaphoreInfoKHR *pExternalSemaphoreInfo,
+   VkExternalSemaphorePropertiesKHR *pExternalSemaphoreProperties)
 {
    pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
    pExternalSemaphoreProperties->compatibleHandleTypes = 0;
@@ -1859,9 +1859,9 @@ tu_GetPhysicalDeviceExternalSemaphoreProperties(
 
 void
 tu_GetPhysicalDeviceExternalFenceProperties(
-  VkPhysicalDevice physicalDevice,
-  const VkPhysicalDeviceExternalFenceInfoKHR *pExternalFenceInfo,
-  VkExternalFencePropertiesKHR *pExternalFenceProperties)
+   VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceExternalFenceInfoKHR *pExternalFenceInfo,
+   VkExternalFencePropertiesKHR *pExternalFenceProperties)
 {
    pExternalFenceProperties->exportFromImportedHandleTypes = 0;
    pExternalFenceProperties->compatibleHandleTypes = 0;
@@ -1870,10 +1870,10 @@ tu_GetPhysicalDeviceExternalFenceProperties(
 
 VkResult
 tu_CreateDebugReportCallbackEXT(
-  VkInstance _instance,
-  const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,
-  const VkAllocationCallbacks *pAllocator,
-  VkDebugReportCallbackEXT *pCallback)
+   VkInstance _instance,
+   const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,
+   const VkAllocationCallbacks *pAllocator,
+   VkDebugReportCallbackEXT *pCallback)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
    return vk_create_debug_report_callback(&instance->debug_report_callbacks,
@@ -1885,8 +1885,8 @@ tu_CreateDebugReportCallbackEXT(
 
 void
 tu_DestroyDebugReportCallbackEXT(VkInstance _instance,
-                                  VkDebugReportCallbackEXT _callback,
-                                  const VkAllocationCallbacks *pAllocator)
+                                 VkDebugReportCallbackEXT _callback,
+                                 const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
    vk_destroy_debug_report_callback(&instance->debug_report_callbacks,
@@ -1897,13 +1897,13 @@ tu_DestroyDebugReportCallbackEXT(VkInstance _instance,
 
 void
 tu_DebugReportMessageEXT(VkInstance _instance,
-                          VkDebugReportFlagsEXT flags,
-                          VkDebugReportObjectTypeEXT objectType,
-                          uint64_t object,
-                          size_t location,
-                          int32_t messageCode,
-                          const char *pLayerPrefix,
-                          const char *pMessage)
+                         VkDebugReportFlagsEXT flags,
+                         VkDebugReportObjectTypeEXT objectType,
+                         uint64_t object,
+                         size_t location,
+                         int32_t messageCode,
+                         const char *pLayerPrefix,
+                         const char *pMessage)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
    vk_debug_report(&instance->debug_report_callbacks,
@@ -1918,11 +1918,11 @@ tu_DebugReportMessageEXT(VkInstance _instance,
 
 void
 tu_GetDeviceGroupPeerMemoryFeatures(
-  VkDevice device,
-  uint32_t heapIndex,
-  uint32_t localDeviceIndex,
-  uint32_t remoteDeviceIndex,
-  VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
+   VkDevice device,
+   uint32_t heapIndex,
+   uint32_t localDeviceIndex,
+   uint32_t remoteDeviceIndex,
+   VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
 {
    assert(localDeviceIndex == remoteDeviceIndex);
 

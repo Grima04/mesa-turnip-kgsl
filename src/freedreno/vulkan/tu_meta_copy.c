@@ -35,11 +35,11 @@ meta_copy_buffer_to_image(struct tu_cmd_buffer *cmd_buffer,
 
 void
 tu_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-                         VkBuffer srcBuffer,
-                         VkImage destImage,
-                         VkImageLayout destImageLayout,
-                         uint32_t regionCount,
-                         const VkBufferImageCopy *pRegions)
+                        VkBuffer srcBuffer,
+                        VkImage destImage,
+                        VkImageLayout destImageLayout,
+                        uint32_t regionCount,
+                        const VkBufferImageCopy *pRegions)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_image, dest_image, destImage);
@@ -65,11 +65,11 @@ meta_copy_image_to_buffer(struct tu_cmd_buffer *cmd_buffer,
 
 void
 tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
-                         VkImage srcImage,
-                         VkImageLayout srcImageLayout,
-                         VkBuffer destBuffer,
-                         uint32_t regionCount,
-                         const VkBufferImageCopy *pRegions)
+                        VkImage srcImage,
+                        VkImageLayout srcImageLayout,
+                        VkBuffer destBuffer,
+                        uint32_t regionCount,
+                        const VkBufferImageCopy *pRegions)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
@@ -92,12 +92,12 @@ meta_copy_image(struct tu_cmd_buffer *cmd_buffer,
 
 void
 tu_CmdCopyImage(VkCommandBuffer commandBuffer,
-                 VkImage srcImage,
-                 VkImageLayout srcImageLayout,
-                 VkImage destImage,
-                 VkImageLayout destImageLayout,
-                 uint32_t regionCount,
-                 const VkImageCopy *pRegions)
+                VkImage srcImage,
+                VkImageLayout srcImageLayout,
+                VkImage destImage,
+                VkImageLayout destImageLayout,
+                uint32_t regionCount,
+                const VkImageCopy *pRegions)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    TU_FROM_HANDLE(tu_image, src_image, srcImage);

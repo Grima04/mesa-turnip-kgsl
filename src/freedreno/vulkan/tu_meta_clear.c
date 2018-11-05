@@ -25,29 +25,29 @@
 
 void
 tu_CmdClearColorImage(VkCommandBuffer commandBuffer,
-                       VkImage image_h,
-                       VkImageLayout imageLayout,
-                       const VkClearColorValue *pColor,
-                       uint32_t rangeCount,
-                       const VkImageSubresourceRange *pRanges)
+                      VkImage image_h,
+                      VkImageLayout imageLayout,
+                      const VkClearColorValue *pColor,
+                      uint32_t rangeCount,
+                      const VkImageSubresourceRange *pRanges)
 {
 }
 
 void
 tu_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
-                              VkImage image_h,
-                              VkImageLayout imageLayout,
-                              const VkClearDepthStencilValue *pDepthStencil,
-                              uint32_t rangeCount,
-                              const VkImageSubresourceRange *pRanges)
+                             VkImage image_h,
+                             VkImageLayout imageLayout,
+                             const VkClearDepthStencilValue *pDepthStencil,
+                             uint32_t rangeCount,
+                             const VkImageSubresourceRange *pRanges)
 {
 }
 
 void
 tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
-                        uint32_t attachmentCount,
-                        const VkClearAttachment *pAttachments,
-                        uint32_t rectCount,
-                        const VkClearRect *pRects)
+                       uint32_t attachmentCount,
+                       const VkClearAttachment *pAttachments,
+                       uint32_t rectCount,
+                       const VkClearRect *pRects)
 {
 }

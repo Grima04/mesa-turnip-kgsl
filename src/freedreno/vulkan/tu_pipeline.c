@@ -39,12 +39,12 @@
 
 VkResult
 tu_graphics_pipeline_create(
-  VkDevice _device,
-  VkPipelineCache _cache,
-  const VkGraphicsPipelineCreateInfo *pCreateInfo,
-  const struct tu_graphics_pipeline_create_info *extra,
-  const VkAllocationCallbacks *pAllocator,
-  VkPipeline *pPipeline)
+   VkDevice _device,
+   VkPipelineCache _cache,
+   const VkGraphicsPipelineCreateInfo *pCreateInfo,
+   const struct tu_graphics_pipeline_create_info *extra,
+   const VkAllocationCallbacks *pAllocator,
+   VkPipeline *pPipeline)
 {
 
    return VK_SUCCESS;
@@ -52,11 +52,11 @@ tu_graphics_pipeline_create(
 
 VkResult
 tu_CreateGraphicsPipelines(VkDevice _device,
-                            VkPipelineCache pipelineCache,
-                            uint32_t count,
-                            const VkGraphicsPipelineCreateInfo *pCreateInfos,
-                            const VkAllocationCallbacks *pAllocator,
-                            VkPipeline *pPipelines)
+                           VkPipelineCache pipelineCache,
+                           uint32_t count,
+                           const VkGraphicsPipelineCreateInfo *pCreateInfos,
+                           const VkAllocationCallbacks *pAllocator,
+                           VkPipeline *pPipelines)
 {
    VkResult result = VK_SUCCESS;
    unsigned i = 0;
@@ -80,21 +80,21 @@ tu_CreateGraphicsPipelines(VkDevice _device,
 
 static VkResult
 tu_compute_pipeline_create(VkDevice _device,
-                            VkPipelineCache _cache,
-                            const VkComputePipelineCreateInfo *pCreateInfo,
-                            const VkAllocationCallbacks *pAllocator,
-                            VkPipeline *pPipeline)
+                           VkPipelineCache _cache,
+                           const VkComputePipelineCreateInfo *pCreateInfo,
+                           const VkAllocationCallbacks *pAllocator,
+                           VkPipeline *pPipeline)
 {
    return VK_SUCCESS;
 }
 
 VkResult
 tu_CreateComputePipelines(VkDevice _device,
-                           VkPipelineCache pipelineCache,
-                           uint32_t count,
-                           const VkComputePipelineCreateInfo *pCreateInfos,
-                           const VkAllocationCallbacks *pAllocator,
-                           VkPipeline *pPipelines)
+                          VkPipelineCache pipelineCache,
+                          uint32_t count,
+                          const VkComputePipelineCreateInfo *pCreateInfos,
+                          const VkAllocationCallbacks *pAllocator,
+                          VkPipeline *pPipelines)
 {
    VkResult result = VK_SUCCESS;
 

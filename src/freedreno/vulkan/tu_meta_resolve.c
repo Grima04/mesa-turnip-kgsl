@@ -30,11 +30,11 @@
 
 void
 tu_CmdResolveImage(VkCommandBuffer cmd_buffer_h,
-                    VkImage src_image_h,
-                    VkImageLayout src_image_layout,
-                    VkImage dest_image_h,
-                    VkImageLayout dest_image_layout,
-                    uint32_t region_count,
-                    const VkImageResolve *regions)
+                   VkImage src_image_h,
+                   VkImageLayout src_image_layout,
+                   VkImage dest_image_h,
+                   VkImageLayout dest_image_layout,
+                   uint32_t region_count,
+                   const VkImageResolve *regions)
 {
 }

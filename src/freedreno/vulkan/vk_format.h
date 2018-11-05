@@ -262,8 +262,8 @@ vk_format_aspects(VkFormat format)
 
 static inline enum vk_swizzle
 tu_swizzle_conv(VkComponentSwizzle component,
-                 const unsigned char chan[4],
-                 VkComponentSwizzle vk_swiz)
+                const unsigned char chan[4],
+                VkComponentSwizzle vk_swiz)
 {
    int x;
 

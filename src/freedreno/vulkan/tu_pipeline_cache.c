@@ -45,7 +45,7 @@ struct cache_entry
 
 void
 tu_pipeline_cache_init(struct tu_pipeline_cache *cache,
-                        struct tu_device *device)
+                       struct tu_device *device)
 {
    cache->device = device;
    pthread_mutex_init(&cache->mutex, NULL);
@@ -89,10 +89,10 @@ entry_size(struct cache_entry *entry)
 
 void
 tu_hash_shaders(unsigned char *hash,
-                 const VkPipelineShaderStageCreateInfo **stages,
-                 const struct tu_pipeline_layout *layout,
-                 const struct tu_pipeline_key *key,
-                 uint32_t flags)
+                const VkPipelineShaderStageCreateInfo **stages,
+                const struct tu_pipeline_layout *layout,
+                const struct tu_pipeline_key *key,
+                uint32_t flags)
 {
    struct mesa_sha1 ctx;
 
@@ -124,7 +124,7 @@ tu_hash_shaders(unsigned char *hash,
 
 static struct cache_entry *
 tu_pipeline_cache_search_unlocked(struct tu_pipeline_cache *cache,
-                                   const unsigned char *sha1)
+                                  const unsigned char *sha1)
 {
    const uint32_t mask = cache->table_size - 1;
    const uint32_t start = (*(uint32_t *)sha1);
@@ -149,7 +149,7 @@ tu_pipeline_cache_search_unlocked(struct tu_pipeline_cache *cache,
 
 static struct cache_entry *
 tu_pipeline_cache_search(struct tu_pipeline_cache *cache,
-                          const unsigned char *sha1)
+                         const unsigned char *sha1)
 {
    struct cache_entry *entry;
 
@@ -164,7 +164,7 @@ tu_pipeline_cache_search(struct tu_pipeline_cache *cache,
 
 static void
 tu_pipeline_cache_set_entry(struct tu_pipeline_cache *cache,
-                             struct cache_entry *entry)
+                            struct cache_entry *entry)
 {
    const uint32_t mask = cache->table_size - 1;
    const uint32_t start = entry->sha1_dw[0];
@@ -218,7 +218,7 @@ tu_pipeline_cache_grow(struct tu_pipeline_cache *cache)
 
 static void
 tu_pipeline_cache_add_entry(struct tu_pipeline_cache *cache,
-                             struct cache_entry *entry)
+                            struct cache_entry *entry)
 {
    if (cache->kernel_count == cache->table_size / 2)
       tu_pipeline_cache_grow(cache);
@@ -241,8 +241,8 @@ struct cache_header
 
 void
 tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
-                        const void *data,
-                        size_t size)
+                       const void *data,
+                       size_t size)
 {
    struct tu_device *device = cache->device;
    struct cache_header header;
@@ -286,9 +286,9 @@ tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
 
 VkResult
 tu_CreatePipelineCache(VkDevice _device,
-                        const VkPipelineCacheCreateInfo *pCreateInfo,
-                        const VkAllocationCallbacks *pAllocator,
-                        VkPipelineCache *pPipelineCache)
+                       const VkPipelineCacheCreateInfo *pCreateInfo,
+                       const VkAllocationCallbacks *pAllocator,
+                       VkPipelineCache *pPipelineCache)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_pipeline_cache *cache;
@@ -323,8 +323,8 @@ tu_CreatePipelineCache(VkDevice _device,
 
 void
 tu_DestroyPipelineCache(VkDevice _device,
-                         VkPipelineCache _cache,
-                         const VkAllocationCallbacks *pAllocator)
+                        VkPipelineCache _cache,
+                        const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_pipeline_cache, cache, _cache);
@@ -338,9 +338,9 @@ tu_DestroyPipelineCache(VkDevice _device,
 
 VkResult
 tu_GetPipelineCacheData(VkDevice _device,
-                         VkPipelineCache _cache,
-                         size_t *pDataSize,
-                         void *pData)
+                        VkPipelineCache _cache,
+                        size_t *pDataSize,
+                        void *pData)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_pipeline_cache, cache, _cache);
@@ -393,7 +393,7 @@ tu_GetPipelineCacheData(VkDevice _device,
 
 static void
 tu_pipeline_cache_merge(struct tu_pipeline_cache *dst,
-                         struct tu_pipeline_cache *src)
+                        struct tu_pipeline_cache *src)
 {
    for (uint32_t i = 0; i < src->table_size; i++) {
       struct cache_entry *entry = src->hash_table[i];
@@ -408,9 +408,9 @@ tu_pipeline_cache_merge(struct tu_pipeline_cache *dst,
 
 VkResult
 tu_MergePipelineCaches(VkDevice _device,
-                        VkPipelineCache destCache,
-                        uint32_t srcCacheCount,
-                        const VkPipelineCache *pSrcCaches)
+                       VkPipelineCache destCache,
+                       uint32_t srcCacheCount,
+                       const VkPipelineCache *pSrcCaches)
 {
    TU_FROM_HANDLE(tu_pipeline_cache, dst, destCache);
 
