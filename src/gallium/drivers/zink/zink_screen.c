@@ -554,6 +554,22 @@ zink_get_format(enum pipe_format format)
    return formats[format];
 }
 
+static VkSampleCountFlagBits
+vk_sample_count_flags(uint32_t sample_count)
+{
+   switch (sample_count) {
+   case 1: return VK_SAMPLE_COUNT_1_BIT;
+   case 2: return VK_SAMPLE_COUNT_2_BIT;
+   case 4: return VK_SAMPLE_COUNT_4_BIT;
+   case 8: return VK_SAMPLE_COUNT_8_BIT;
+   case 16: return VK_SAMPLE_COUNT_16_BIT;
+   case 32: return VK_SAMPLE_COUNT_32_BIT;
+   case 64: return VK_SAMPLE_COUNT_64_BIT;
+   default:
+      return 0;
+   }
+}
+
 static bool
 zink_is_format_supported(struct pipe_screen *pscreen,
                          enum pipe_format format,
@@ -564,12 +580,50 @@ zink_is_format_supported(struct pipe_screen *pscreen,
 {
    struct zink_screen *screen = zink_screen(pscreen);
 
-   if (sample_count > 1)
-      return FALSE;
+   if (format == PIPE_FORMAT_NONE)
+      return screen->props.limits.framebufferNoAttachmentsSampleCounts &
+             vk_sample_count_flags(sample_count);
 
    VkFormat vkformat = formats[format];
    if (vkformat == VK_FORMAT_UNDEFINED)
       return FALSE;
+
+   const struct util_format_description *desc = util_format_description(format);
+   if (sample_count >= 1) {
+      VkSampleCountFlagBits sample_mask = vk_sample_count_flags(sample_count);
+      if (util_format_is_depth_or_stencil(format)) {
+         if (util_format_has_depth(desc)) {
+            if (bind & PIPE_BIND_DEPTH_STENCIL &&
+                (screen->props.limits.framebufferDepthSampleCounts & sample_mask) != sample_mask)
+               return FALSE;
+            if (bind & PIPE_BIND_SAMPLER_VIEW &&
+                (screen->props.limits.sampledImageDepthSampleCounts & sample_mask) != sample_mask)
+               return FALSE;
+         }
+         if (util_format_has_stencil(desc)) {
+            if (bind & PIPE_BIND_DEPTH_STENCIL &&
+                (screen->props.limits.framebufferStencilSampleCounts & sample_mask) != sample_mask)
+               return FALSE;
+            if (bind & PIPE_BIND_SAMPLER_VIEW &&
+                (screen->props.limits.sampledImageStencilSampleCounts & sample_mask) != sample_mask)
+               return FALSE;
+         }
+      } else if (util_format_is_pure_integer(format)) {
+         if (bind & PIPE_BIND_RENDER_TARGET &&
+             !(screen->props.limits.framebufferColorSampleCounts & sample_mask))
+            return FALSE;
+         if (bind & PIPE_BIND_SAMPLER_VIEW &&
+             !(screen->props.limits.sampledImageIntegerSampleCounts & sample_mask))
+            return FALSE;
+      } else {
+         if (bind & PIPE_BIND_RENDER_TARGET &&
+             !(screen->props.limits.framebufferColorSampleCounts & sample_mask))
+            return FALSE;
+         if (bind & PIPE_BIND_SAMPLER_VIEW &&
+             !(screen->props.limits.sampledImageColorSampleCounts & sample_mask))
+            return FALSE;
+      }
+   }
 
    VkFormatProperties props;
    vkGetPhysicalDeviceFormatProperties(screen->pdev, vkformat, &props);
@@ -597,7 +651,6 @@ zink_is_format_supported(struct pipe_screen *pscreen,
          return FALSE;
    }
 
-   const struct util_format_description *desc = util_format_description(format);
    if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC &&
        !screen->feats.textureCompressionBC)
       return FALSE;
