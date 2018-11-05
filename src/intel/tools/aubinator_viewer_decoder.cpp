@@ -141,7 +141,8 @@ ctx_disassemble_program(struct aub_viewer_decode_ctx *ctx,
    uint64_t addr = ctx->instruction_base + ksp;
    struct gen_batch_decode_bo bo = ctx_get_bo(ctx, addr);
    if (!bo.map) {
-      ImGui::TextColored(ctx->cfg->missing_color, "Shader unavailable");
+      ImGui::TextColored(ctx->cfg->missing_color,
+                         "Shader unavailable addr=0x%012" PRIx64, addr);
       return;
    }
 
