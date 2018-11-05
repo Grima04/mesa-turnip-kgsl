@@ -6036,6 +6036,11 @@ fs_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
                     brw_vf_to_float((inst->src[i].ud >> 16) & 0xff),
                     brw_vf_to_float((inst->src[i].ud >> 24) & 0xff));
             break;
+         case BRW_REGISTER_TYPE_V:
+         case BRW_REGISTER_TYPE_UV:
+            fprintf(file, "%08x%s", inst->src[i].ud,
+                    inst->src[i].type == BRW_REGISTER_TYPE_V ? "V" : "UV");
+            break;
          default:
             fprintf(file, "???");
             break;
