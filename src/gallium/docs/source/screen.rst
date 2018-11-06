@@ -477,6 +477,9 @@ subpixel precision bias in bits during conservative rasterization.
   0 means no limit.
 * ``PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET``: The maximum supported value for
   of pipe_vertex_element::src_offset.
+* ``PIPE_CAP_SURFACE_SAMPLE_COUNT_TEXTURE``: Whether the driver
+  supports pipe_surface overrides of resource nr_samples. If set, will
+  enable EXT_multisampled_render_to_texture.
 
 .. _pipe_capf:
 
