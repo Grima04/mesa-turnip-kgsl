@@ -2055,7 +2055,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    void *null_surf_map =
       upload_state(ice->state.surface_uploader, &ice->state.null_fb,
                    4 * GENX(RENDER_SURFACE_STATE_length), 64);
-   isl_null_fill_state(&screen->isl_dev, null_surf_map, isl_extent3d(cso->width, cso->height, cso->layers ? cso->layers : 1));
+   isl_null_fill_state(&screen->isl_dev, null_surf_map,
+                       isl_extent3d(MAX2(cso->width, 1),
+                                    MAX2(cso->height, 1),
+                                    cso->layers ? cso->layers : 1));
    ice->state.null_fb.offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(ice->state.null_fb.res));
 
