@@ -34,6 +34,7 @@ typedef struct {
    uint16_t offset;
    uint8_t location;
    uint8_t component_mask;
+   uint8_t component_offset;
 } nir_xfb_output_info;
 
 typedef struct nir_xfb_info {
