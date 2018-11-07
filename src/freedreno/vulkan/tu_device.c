@@ -393,8 +393,8 @@ tu_enumerate_devices(struct tu_instance *instance)
 
          result = tu_physical_device_init(instance->physical_devices +
                                              instance->physical_device_count,
-                                           instance,
-                                           devices[i]);
+                                          instance,
+                                          devices[i]);
          if (result == VK_SUCCESS)
             ++instance->physical_device_count;
          else if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
