@@ -23,6 +23,7 @@
 # Authors:
 #    Connor Abbott (cwabbott0@gmail.com)
 
+import re
 
 # Class that represents all the information we have about the opcode
 # NOTE: this must be kept in sync with nir_op_info
@@ -98,6 +99,33 @@ tuint32 = "uint32"
 tint64 = "int64"
 tuint64 = "uint64"
 tfloat64 = "float64"
+
+_TYPE_SPLIT_RE = re.compile(r'(?P<type>int|uint|float|bool)(?P<bits>\d+)?')
+
+def type_has_size(type_):
+    m = _TYPE_SPLIT_RE.match(type_)
+    assert m is not None, 'Invalid NIR type string: "{}"'.format(type_)
+    return m.group('bits') is not None
+
+def type_size(type_):
+    m = _TYPE_SPLIT_RE.match(type_)
+    assert m is not None, 'Invalid NIR type string: "{}"'.format(type_)
+    assert m.group('bits') is not None, \
+           'NIR type string has no bit size: "{}"'.format(type_)
+    return int(m.group('bits'))
+
+def type_sizes(type_):
+    if type_has_size(type_):
+        return [type_size(type_)]
+    elif type_ == 'float':
+        return [16, 32, 64]
+    else:
+        return [8, 16, 32, 64]
+
+def type_base_type(type_):
+    m = _TYPE_SPLIT_RE.match(type_)
+    assert m is not None, 'Invalid NIR type string: "{}"'.format(type_)
+    return m.group('type')
 
 commutative = "commutative "
 associative = "associative "
@@ -175,11 +203,7 @@ for src_t in [tint, tuint, tfloat]:
       dst_types = [tint, tuint, tfloat]
 
    for dst_t in dst_types:
-      if dst_t == tfloat:
-         bit_sizes = [16, 32, 64]
-      else:
-         bit_sizes = [8, 16, 32, 64]
-      for bit_size in bit_sizes:
+      for bit_size in type_sizes(dst_t):
           if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
