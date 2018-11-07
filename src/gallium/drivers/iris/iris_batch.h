@@ -36,6 +36,8 @@
 /* Our target batch size - flush approximately at this point. */
 #define BATCH_SZ (20 * 1024)
 
+#define IRIS_BATCH_COUNT 2
+
 struct iris_address {
    struct iris_bo *bo;
    uint64_t offset;
@@ -74,6 +76,9 @@ struct iris_batch {
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
+   /** List of other batches which we might need to flush to use a BO */
+   struct iris_batch *other_batches[IRIS_BATCH_COUNT - 1];
+
    struct {
       /**
        * Set of struct brw_bo * that have been rendered to within this
@@ -103,6 +108,7 @@ void iris_init_batch(struct iris_batch *batch,
                      struct iris_screen *screen,
                      struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
+                     struct iris_batch **other_batches,
                      uint8_t ring);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);

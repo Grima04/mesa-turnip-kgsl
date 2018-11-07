@@ -139,6 +139,7 @@ iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
                 struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
+                struct iris_batch **all_batches,
                 uint8_t engine)
 {
    batch->screen = screen;
@@ -161,6 +162,14 @@ iris_init_batch(struct iris_batch *batch,
                                                  _mesa_key_pointer_equal);
    batch->cache.depth = _mesa_set_create(NULL, _mesa_hash_pointer,
                                          _mesa_key_pointer_equal);
+
+   memset(batch->other_batches, 0, sizeof(batch->other_batches));
+
+   for (int i = 0, j = 0; i < IRIS_BATCH_COUNT; i++) {
+      if (all_batches[i] != batch)
+         batch->other_batches[j++] = all_batches[i];
+   }
+
    if (unlikely(INTEL_DEBUG)) {
       batch->state_sizes =
          _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);

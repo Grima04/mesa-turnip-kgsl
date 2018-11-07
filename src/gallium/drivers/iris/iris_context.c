@@ -209,6 +209,17 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    genX_call(devinfo, init_state, ice);
    genX_call(devinfo, init_blorp, ice);
+
+   struct iris_batch *batches[IRIS_BATCH_COUNT] = {
+      &ice->render_batch,
+      &ice->compute_batch,
+   };
+
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      iris_init_batch(batches[i], screen, &ice->vtbl, &ice->dbg,
+                      batches, I915_EXEC_RENDER);
+   }
+
    ice->vtbl.init_render_context(screen, &ice->render_batch, &ice->vtbl,
                                  &ice->dbg);
    ice->vtbl.init_compute_context(screen, &ice->compute_batch, &ice->vtbl,

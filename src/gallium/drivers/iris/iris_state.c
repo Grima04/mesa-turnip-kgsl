@@ -611,8 +611,6 @@ iris_init_render_context(struct iris_screen *screen,
    UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
    uint32_t reg_val;
 
-   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
-
    emit_pipeline_select(batch, _3D);
 
    init_state_base_address(batch);
@@ -697,8 +695,6 @@ iris_init_compute_context(struct iris_screen *screen,
                           struct pipe_debug_callback *dbg)
 {
    UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
-
-   iris_init_batch(batch, screen, vtbl, dbg, I915_EXEC_RENDER);
 
    emit_pipeline_select(batch, GPGPU);
 
