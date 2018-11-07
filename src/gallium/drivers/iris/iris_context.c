@@ -34,23 +34,6 @@
 #include "iris_screen.h"
 #include "common/gen_sample_positions.h"
 
-static void
-iris_flush(struct pipe_context *ctx,
-           struct pipe_fence_handle **fence,
-           unsigned flags)
-{
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   iris_batch_flush(&ice->render_batch);
-
-   if (ice->compute_batch.contains_draw)
-      iris_batch_flush(&ice->compute_batch);
-
-   // XXX: bogus!!!
-   if (fence)
-      *fence = NULL;
-}
-
 /**
  * For debugging purposes, this returns a time in seconds.
  */
@@ -182,12 +165,12 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->const_uploader = ctx->stream_uploader;
 
    ctx->destroy = iris_destroy_context;
-   ctx->flush = iris_flush;
    ctx->set_debug_callback = iris_set_debug_callback;
    ctx->get_sample_position = iris_get_sample_position;
 
    ice->shaders.urb_size = devinfo->urb.size;
 
+   iris_init_context_fence_functions(ctx);
    iris_init_blit_functions(ctx);
    iris_init_clear_functions(ctx);
    iris_init_program_functions(ctx);

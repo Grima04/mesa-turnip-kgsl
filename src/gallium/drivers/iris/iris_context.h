@@ -31,6 +31,7 @@
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
 #include "iris_binder.h"
+#include "iris_fence.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
 

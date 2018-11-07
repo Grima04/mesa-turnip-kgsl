@@ -460,22 +460,6 @@ iris_destroy_screen(struct pipe_screen *pscreen)
 }
 
 static void
-iris_fence_reference(struct pipe_screen *screen,
-                     struct pipe_fence_handle **ptr,
-                     struct pipe_fence_handle *fence)
-{
-}
-
-static boolean
-iris_fence_finish(struct pipe_screen *screen,
-                  struct pipe_context *ctx,
-                  struct pipe_fence_handle *fence,
-                  uint64_t timeout)
-{
-   return true;
-}
-
-static void
 iris_query_memory_info(struct pipe_screen *pscreen,
                        struct pipe_memory_info *info)
 {
@@ -596,6 +580,7 @@ iris_screen_create(int fd)
 
    struct pipe_screen *pscreen = &screen->base;
 
+   iris_init_screen_fence_functions(pscreen);
    iris_init_screen_resource_functions(pscreen);
 
    pscreen->destroy = iris_destroy_screen;
@@ -611,8 +596,6 @@ iris_screen_create(int fd)
    pscreen->context_create = iris_create_context;
    pscreen->flush_frontbuffer = iris_flush_frontbuffer;
    pscreen->get_timestamp = iris_get_timestamp;
-   pscreen->fence_reference = iris_fence_reference;
-   pscreen->fence_finish = iris_fence_finish;
    pscreen->query_memory_info = iris_query_memory_info;
 
    return pscreen;

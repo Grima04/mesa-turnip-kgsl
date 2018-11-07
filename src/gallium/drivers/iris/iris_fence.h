@@ -33,6 +33,9 @@ struct iris_syncpt {
    uint32_t handle;
 };
 
+void iris_init_context_fence_functions(struct pipe_context *ctx);
+void iris_init_screen_fence_functions(struct pipe_screen *screen);
+
 struct iris_syncpt *iris_create_syncpt(struct iris_screen *screen);
 void iris_syncpt_destroy(struct iris_screen *, struct iris_syncpt *);
 void iris_batch_add_syncpt(struct iris_batch *batch,
