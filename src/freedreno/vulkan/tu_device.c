@@ -1088,13 +1088,8 @@ VkResult
 tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
                                     VkLayerProperties *pProperties)
 {
-   if (pProperties == NULL) {
-      *pPropertyCount = 0;
-      return VK_SUCCESS;
-   }
-
-   /* None supported at this time */
-   return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+   *pPropertyCount = 0;
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -1102,13 +1097,8 @@ tu_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
                                   uint32_t *pPropertyCount,
                                   VkLayerProperties *pProperties)
 {
-   if (pProperties == NULL) {
-      *pPropertyCount = 0;
-      return VK_SUCCESS;
-   }
-
-   /* None supported at this time */
-   return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+   *pPropertyCount = 0;
+   return VK_SUCCESS;
 }
 
 void
