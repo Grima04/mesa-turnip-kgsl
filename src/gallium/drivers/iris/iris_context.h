@@ -604,7 +604,7 @@ void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
 void iris_init_flush_functions(struct pipe_context *ctx);
 
 /* iris_blorp.c */
-
+void gen8_init_blorp(struct iris_context *ice);
 void gen9_init_blorp(struct iris_context *ice);
 void gen10_init_blorp(struct iris_context *ice);
 void gen11_init_blorp(struct iris_context *ice);
@@ -618,7 +618,7 @@ uint32_t iris_upload_border_color(struct iris_context *ice,
                                   union pipe_color_union *color);
 
 /* iris_state.c */
-
+void gen8_init_state(struct iris_context *ice);
 void gen9_init_state(struct iris_context *ice);
 void gen10_init_state(struct iris_context *ice);
 void gen11_init_state(struct iris_context *ice);

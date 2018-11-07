@@ -161,8 +161,13 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #include "genxml/gen_macros.h"
 #include "genxml/genX_bits.h"
 
+#if GEN_GEN == 8
+#define MOCS_PTE 0x18
+#define MOCS_WB 0x78
+#else
 #define MOCS_PTE (1 << 1)
 #define MOCS_WB  (2 << 1)
+#endif
 
 static uint32_t
 mocs(struct iris_bo *bo)
@@ -588,7 +593,6 @@ init_state_base_address(struct iris_batch *batch)
       sba.DynamicStateMOCS            = MOCS_WB;
       sba.IndirectObjectMOCS          = MOCS_WB;
       sba.InstructionMOCS             = MOCS_WB;
-      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
       sba.DynamicStateBaseAddressModifyEnable   = true;
@@ -596,7 +600,10 @@ init_state_base_address(struct iris_batch *batch)
       sba.InstructionBaseAddressModifyEnable    = true;
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
+#if (GEN_GEN >= 9)
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
+#endif
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.InstructionBuffersizeModifyEnable     = true;
 
@@ -629,12 +636,20 @@ iris_init_render_context(struct iris_screen *screen,
 
    init_state_base_address(batch);
 
+#if GEN_GEN >= 9
    // XXX: INSTPM on Gen8
    iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
    }
    iris_emit_lri(batch, CS_DEBUG_MODE2, reg_val);
+#else
+   iris_pack_state(GENX(INSTPM), &reg_val, reg) {
+      reg.CONSTANT_BUFFERAddressOffsetDisable = true;
+      reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
+   }
+   iris_emit_lri(batch, INSTPM, reg_val);
+#endif
 
 #if GEN_GEN == 9
    iris_pack_state(GENX(CACHE_MODE_1), &reg_val, reg) {
@@ -675,7 +690,9 @@ iris_init_render_context(struct iris_screen *screen,
       GEN_SAMPLE_POS_2X(pat._2xSample);
       GEN_SAMPLE_POS_4X(pat._4xSample);
       GEN_SAMPLE_POS_8X(pat._8xSample);
+#if GEN_GEN >= 9
       GEN_SAMPLE_POS_16X(pat._16xSample);
+#endif
    }
 
    /* Use the legacy AA line coverage computation. */
@@ -1181,8 +1198,12 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       rr.SmoothPointEnable = state->point_smooth || state->multisample;
       rr.AntialiasingEnable = state->line_smooth;
       rr.ScissorRectangleEnable = state->scissor;
+#if GEN_GEN >= 9
       rr.ViewportZNearClipTestEnable = state->depth_clip_near;
       rr.ViewportZFarClipTestEnable = state->depth_clip_far;
+#else
+      rr.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
+#endif
       //rr.ConservativeRasterizationEnable = not yet supported by Gallium...
    }
 
@@ -1933,7 +1954,10 @@ iris_set_stencil_ref(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    memcpy(&ice->state.stencil_ref, state, sizeof(*state));
-   ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
+   if (GEN_GEN == 8)
+      ice->state.dirty |= IRIS_DIRTY_COLOR_CALC_STATE;
+   else
+      ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
 }
 
 static float
@@ -2988,10 +3012,11 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
       sbe.ForceVertexURBEntryReadLength = true;
       sbe.ConstantInterpolationEnable = wm_prog_data->flat_inputs;
       sbe.PointSpriteTextureCoordinateEnable = sprite_coord_overrides;
-
+#if GEN_GEN >= 9
       for (int i = 0; i < 32; i++) {
          sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
       }
+#endif
    }
 
    iris_emit_sbe_swiz(batch, ice, urb_read_offset, sprite_coord_overrides);
@@ -3326,7 +3351,9 @@ iris_store_fs_state(struct iris_context *ice,
       psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
       psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
       psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+      psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
 
+#if GEN_GEN >= 9
       if (wm_prog_data->uses_sample_mask) {
          /* TODO: conservative rasterization */
          if (wm_prog_data->post_depth_coverage)
@@ -3335,10 +3362,11 @@ iris_store_fs_state(struct iris_context *ice,
             psx.InputCoverageMaskState = ICMS_NORMAL;
       }
 
-      psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
       psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
       psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
-
+#else
+      psx.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
+#endif
       // XXX: UAV bit
    }
 }
@@ -4059,6 +4087,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_COLOR_CALC_STATE) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
+#if GEN_GEN == 8
+      struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
+#endif
       uint32_t cc_offset;
       void *cc_map =
          stream_state(batch, ice->state.dynamic_uploader,
@@ -4072,6 +4103,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          cc.BlendConstantColorGreen = ice->state.blend_color.color[1];
          cc.BlendConstantColorBlue  = ice->state.blend_color.color[2];
          cc.BlendConstantColorAlpha = ice->state.blend_color.color[3];
+#if GEN_GEN == 8
+	 cc.StencilReferenceValue = p_stencil_refs->ref_value[0];
+	 cc.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
+#endif
       }
       iris_emit_cmd(batch, GENX(3DSTATE_CC_STATE_POINTERS), ptr) {
          ptr.ColorCalcStatePointer = cc_offset;
@@ -4349,14 +4384,17 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_WM_DEPTH_STENCIL) {
       struct iris_depth_stencil_alpha_state *cso = ice->state.cso_zsa;
+#if GEN_GEN >= 9
       struct pipe_stencil_ref *p_stencil_refs = &ice->state.stencil_ref;
-
       uint32_t stencil_refs[GENX(3DSTATE_WM_DEPTH_STENCIL_length)];
       iris_pack_command(GENX(3DSTATE_WM_DEPTH_STENCIL), &stencil_refs, wmds) {
          wmds.StencilReferenceValue = p_stencil_refs->ref_value[0];
          wmds.BackfaceStencilReferenceValue = p_stencil_refs->ref_value[1];
       }
       iris_emit_merge(batch, cso->wmds, stencil_refs, ARRAY_SIZE(cso->wmds));
+#else
+      iris_batch_emit(batch, cso->wmds, sizeof(cso->wmds));
+#endif
    }
 
    if (dirty & IRIS_DIRTY_SCISSOR_RECT) {
@@ -4723,7 +4761,9 @@ iris_upload_compute_state(struct iris_context *ice,
          vfe.ResetGatewayTimer =
             Resettingrelativetimerandlatchingtheglobaltimestamp;
 #endif
-
+#if GEN_GEN == 8
+         vfe.BypassGatewayControl = true;
+#endif
          vfe.NumberofURBEntries = 2;
          vfe.URBEntryAllocationSize = 2;
 

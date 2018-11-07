@@ -46,7 +46,11 @@
 #define BLORP_USE_SOFTPIN
 #include "blorp/blorp_genX_exec.h"
 
-#define MOCS_WB  (2 << 1)
+#if GEN_GEN == 8
+#define MOCS_WB 0x78
+#else
+#define MOCS_WB (2 << 1)
+#endif
 
 static uint32_t *
 stream_state(struct iris_batch *batch,

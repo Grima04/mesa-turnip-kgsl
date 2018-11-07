@@ -134,6 +134,9 @@ iris_destroy_context(struct pipe_context *ctx)
    case 9:                                        \
       gen9_##func(__VA_ARGS__);                   \
       break;                                      \
+   case 8:                                        \
+      gen8_##func(__VA_ARGS__);                   \
+      break;                                      \
    default:                                       \
       unreachable("Unknown hardware generation"); \
    }
