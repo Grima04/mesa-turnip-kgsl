@@ -4208,7 +4208,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
          for (unsigned i = 0; i < cso->num_buffers; i++) {
             struct iris_resource *res = (void *) cso->resources[i];
-            iris_use_pinned_bo(batch, res->bo, false);
+            if (res)
+               iris_use_pinned_bo(batch, res->bo, false);
          }
       }
    }
