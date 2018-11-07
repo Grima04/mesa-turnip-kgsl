@@ -825,7 +825,7 @@ get_query_object(struct gl_context *ctx, const char *func,
    if (buf && buf != ctx->Shared->NullBufferObj) {
       bool is_64bit = ptype == GL_INT64_ARB ||
          ptype == GL_UNSIGNED_INT64_ARB;
-      if (!ctx->Extensions.ARB_query_buffer_object) {
+      if (!_mesa_has_ARB_query_buffer_object(ctx)) {
          _mesa_error(ctx, GL_INVALID_OPERATION, "%s(not supported)", func);
          return;
       }
@@ -858,7 +858,7 @@ get_query_object(struct gl_context *ctx, const char *func,
       value = q->Result;
       break;
    case GL_QUERY_RESULT_NO_WAIT:
-      if (!ctx->Extensions.ARB_query_buffer_object)
+      if (!_mesa_has_ARB_query_buffer_object(ctx))
          goto invalid_enum;
       ctx->Driver.CheckQuery(ctx, q);
       if (!q->Ready)
