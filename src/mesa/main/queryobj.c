@@ -214,12 +214,12 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
       else
          return NULL;
    case GL_TRANSFORM_FEEDBACK_STREAM_OVERFLOW:
-      if (ctx->Extensions.ARB_transform_feedback_overflow_query)
+      if (_mesa_has_ARB_transform_feedback_overflow_query(ctx))
          return &ctx->Query.TransformFeedbackOverflow[index];
       else
          return NULL;
    case GL_TRANSFORM_FEEDBACK_OVERFLOW:
-      if (ctx->Extensions.ARB_transform_feedback_overflow_query)
+      if (_mesa_has_ARB_transform_feedback_overflow_query(ctx))
          return &ctx->Query.TransformFeedbackOverflowAny;
       else
          return NULL;
