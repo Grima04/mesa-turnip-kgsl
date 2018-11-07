@@ -197,7 +197,8 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
       else
          return NULL;
    case GL_TIME_ELAPSED:
-      if (ctx->Extensions.EXT_timer_query)
+      if (_mesa_has_EXT_timer_query(ctx) ||
+          _mesa_has_EXT_disjoint_timer_query(ctx))
          return &ctx->Query.CurrentTimerObject;
       else
          return NULL;
