@@ -34,7 +34,7 @@ additional information defined in the module eglFunctionList.
 
 import argparse
 import collections
-import imp
+import eglFunctionList
 import sys
 import textwrap
 
@@ -44,14 +44,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("target", choices=("header", "source"),
             help="Whether to build the source or header file.")
-    parser.add_argument("func_list_file", help="The function list .py file.")
     parser.add_argument("xml_files", nargs="+", help="The XML files with the EGL function lists.")
 
     args = parser.parse_args()
-
-    # The function list is a Python module, but it's specified on the command
-    # line.
-    eglFunctionList = imp.load_source("eglFunctionList", args.func_list_file)
 
     xmlFunctions = genCommon.getFunctions(args.xml_files)
     xmlByName = dict((f.name, f) for f in xmlFunctions)
