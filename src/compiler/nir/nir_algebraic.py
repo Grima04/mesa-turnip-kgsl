@@ -25,7 +25,7 @@
 
 from __future__ import print_function
 import ast
-from collections import OrderedDict
+from collections import defaultdict
 import itertools
 import struct
 import sys
@@ -622,12 +622,12 @@ struct transform {
 
 #endif
 
-% for (opcode, xform_list) in xform_dict.items():
-% for xform in xform_list:
+% for xform in xforms:
    ${xform.search.render()}
    ${xform.replace.render()}
 % endfor
 
+% for (opcode, xform_list) in sorted(opcode_xforms.items()):
 static const struct transform ${pass_name}_${opcode}_xforms[] = {
 % for xform in xform_list:
    { &${xform.search.name}, ${xform.replace.c_ptr}, ${xform.condition_index} },
@@ -650,7 +650,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
          continue;
 
       switch (alu->op) {
-      % for opcode in xform_dict.keys():
+      % for opcode in sorted(opcode_xforms.keys()):
       case nir_op_${opcode}:
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_${opcode}_xforms); i++) {
             const struct transform *xform = &${pass_name}_${opcode}_xforms[i];
@@ -713,7 +713,8 @@ ${pass_name}(nir_shader *shader)
 
 class AlgebraicPass(object):
    def __init__(self, pass_name, transforms):
-      self.xform_dict = OrderedDict()
+      self.xforms = []
+      self.opcode_xforms = defaultdict(lambda : [])
       self.pass_name = pass_name
 
       error = False
@@ -730,15 +731,15 @@ class AlgebraicPass(object):
                error = True
                continue
 
-         if xform.search.opcode not in self.xform_dict:
-            self.xform_dict[xform.search.opcode] = []
-
-         self.xform_dict[xform.search.opcode].append(xform)
+         self.xforms.append(xform)
+         self.opcode_xforms[xform.search.opcode].append(xform)
 
       if error:
          sys.exit(1)
 
+
    def render(self):
       return _algebraic_pass_template.render(pass_name=self.pass_name,
-                                             xform_dict=self.xform_dict,
+                                             xforms=self.xforms,
+                                             opcode_xforms=self.opcode_xforms,
                                              condition_list=condition_list)
