@@ -179,7 +179,8 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
 
    switch (target) {
    case GL_SAMPLES_PASSED:
-      if (ctx->Extensions.ARB_occlusion_query)
+      if (_mesa_has_ARB_occlusion_query(ctx) ||
+          _mesa_has_ARB_occlusion_query2(ctx))
          return &ctx->Query.CurrentOcclusionObject;
       else
          return NULL;
