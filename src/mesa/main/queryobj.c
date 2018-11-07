@@ -149,8 +149,7 @@ get_pipe_stats_binding_point(struct gl_context *ctx,
    const int which = target - GL_VERTICES_SUBMITTED;
    assert(which < MAX_PIPELINE_STATISTICS);
 
-   if (!_mesa_is_desktop_gl(ctx) ||
-       !ctx->Extensions.ARB_pipeline_statistics_query)
+   if (!_mesa_has_ARB_pipeline_statistics_query(ctx))
       return NULL;
 
    return &ctx->Query.pipeline_stats[which];
