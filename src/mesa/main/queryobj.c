@@ -203,12 +203,13 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
       else
          return NULL;
    case GL_PRIMITIVES_GENERATED:
-      if (ctx->Extensions.EXT_transform_feedback)
+      if (_mesa_has_EXT_transform_feedback(ctx) ||
+          _mesa_has_OES_geometry_shader(ctx))
          return &ctx->Query.PrimitivesGenerated[index];
       else
          return NULL;
    case GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN:
-      if (ctx->Extensions.EXT_transform_feedback)
+      if (_mesa_has_EXT_transform_feedback(ctx) || _mesa_is_gles3(ctx))
          return &ctx->Query.PrimitivesWritten[index];
       else
          return NULL;
