@@ -109,6 +109,16 @@ typedef struct {
    } data;
 } nir_search_constant;
 
+enum nir_search_op {
+   nir_search_op_i2f = nir_last_opcode + 1,
+   nir_search_op_u2f,
+   nir_search_op_f2f,
+   nir_search_op_f2u,
+   nir_search_op_f2i,
+   nir_search_op_u2u,
+   nir_search_op_i2i,
+};
+
 typedef struct {
    nir_search_value value;
 
@@ -118,7 +128,8 @@ typedef struct {
     */
    bool inexact;
 
-   nir_op opcode;
+   /* One of nir_op or nir_search_op */
+   uint16_t opcode;
    const nir_search_value *srcs[4];
 
    /** Optional condition fxn ptr
