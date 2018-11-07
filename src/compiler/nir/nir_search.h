@@ -117,6 +117,10 @@ enum nir_search_op {
    nir_search_op_f2i,
    nir_search_op_u2u,
    nir_search_op_i2i,
+   nir_search_op_b2f,
+   nir_search_op_b2i,
+   nir_search_op_i2b,
+   nir_search_op_f2b,
 };
 
 typedef struct {

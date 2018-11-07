@@ -41,6 +41,8 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
 
    if (src == dst && src_base == nir_type_float) {
       return nir_op_fmov;
+   } else if (src == dst && src_base == nir_type_bool) {
+      return nir_op_imov;
    } else if ((src_base == nir_type_int || src_base == nir_type_uint) &&
               (dst_base == nir_type_int || dst_base == nir_type_uint) &&
               src_bit_size == dst_bit_size) {
@@ -51,10 +53,10 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
    }
 
    switch (src_base) {
-%     for src_t in ['int', 'uint', 'float']:
+%     for src_t in ['int', 'uint', 'float', 'bool']:
       case nir_type_${src_t}:
          switch (dst_base) {
-%           for dst_t in ['int', 'uint', 'float']:
+%           for dst_t in ['int', 'uint', 'float', 'bool']:
             case nir_type_${dst_t}:
 %              if src_t in ['int', 'uint'] and dst_t in ['int', 'uint']:
 %                 if dst_t == 'int':
@@ -62,6 +64,14 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
 %                 else:
 <%                   dst_t = src_t %>
 %                 endif
+%              elif src_t == 'bool' and dst_t in ['int', 'uint', 'bool']:
+%                 if dst_t == 'int':
+<%                   continue %>
+%                 else:
+<%                   dst_t = 'int' %>
+%                 endif
+%              elif src_t == 'uint' and dst_t == 'bool':
+<%                src_t = 'int' %>
 %              endif
                switch (dst_bit_size) {
 %                 for dst_bits in type_sizes(dst_t):
@@ -85,26 +95,10 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
                      unreachable("Invalid nir alu bit size");
                }
 %           endfor
-            case nir_type_bool:
-%              if src_t == 'float':
-                  return nir_op_f2b;
-%              else:
-                  return nir_op_i2b;
-%              endif
             default:
                unreachable("Invalid nir alu base type");
          }
 %     endfor
-      case nir_type_bool:
-         switch (dst_base) {
-            case nir_type_int:
-            case nir_type_uint:
-               return nir_op_b2i;
-            case nir_type_float:
-               return nir_op_b2f;
-            default:
-               unreachable("Invalid nir alu base type");
-         }
       default:
          unreachable("Invalid nir alu base type");
    }

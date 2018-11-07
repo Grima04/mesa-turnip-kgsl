@@ -1108,18 +1108,21 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_u2u8:
 		dst[0] = create_cov(ctx, src[0], bs[0], alu->op);
 		break;
-	case nir_op_f2b:
+	case nir_op_f2b32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, create_immed(b, fui(0.0)), 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		dst[0] = ir3_n2b(b, dst[0]);
 		break;
-	case nir_op_b2f:
+	case nir_op_b2f16:
+	case nir_op_b2f32:
 		dst[0] = ir3_COV(b, ir3_b2n(b, src[0]), TYPE_U32, TYPE_F32);
 		break;
-	case nir_op_b2i:
+	case nir_op_b2i8:
+	case nir_op_b2i16:
+	case nir_op_b2i32:
 		dst[0] = ir3_b2n(b, src[0]);
 		break;
-	case nir_op_i2b:
+	case nir_op_i2b32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, create_immed(b, 0), 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		dst[0] = ir3_n2b(b, dst[0]);

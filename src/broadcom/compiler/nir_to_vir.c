@@ -682,14 +682,14 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_u2f32:
                 result = vir_UTOF(c, src[0]);
                 break;
-        case nir_op_b2f:
+        case nir_op_b2f32:
                 result = vir_AND(c, src[0], vir_uniform_f(c, 1.0));
                 break;
-        case nir_op_b2i:
+        case nir_op_b2i32:
                 result = vir_AND(c, src[0], vir_uniform_ui(c, 1));
                 break;
-        case nir_op_i2b:
-        case nir_op_f2b:
+        case nir_op_i2b32:
+        case nir_op_f2b32:
                 vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
                                             vir_uniform_ui(c, ~0),

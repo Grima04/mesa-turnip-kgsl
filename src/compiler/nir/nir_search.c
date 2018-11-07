@@ -108,6 +108,10 @@ nir_op_matches_search_op(nir_op nop, uint16_t sop)
              nop == nir_op_##op##32 || \
              nop == nir_op_##op##64;
 
+#define MATCH_BCONV_CASE(op) \
+   case nir_search_op_##op: \
+      return nop == nir_op_##op##32;
+
    switch (sop) {
    MATCH_FCONV_CASE(i2f)
    MATCH_FCONV_CASE(u2f)
@@ -116,6 +120,10 @@ nir_op_matches_search_op(nir_op nop, uint16_t sop)
    MATCH_ICONV_CASE(f2i)
    MATCH_ICONV_CASE(u2u)
    MATCH_ICONV_CASE(i2i)
+   MATCH_FCONV_CASE(b2f)
+   MATCH_ICONV_CASE(b2i)
+   MATCH_BCONV_CASE(i2b)
+   MATCH_BCONV_CASE(f2b)
    default:
       unreachable("Invalid nir_search_op");
    }
@@ -149,6 +157,13 @@ nir_op_for_search_op(uint16_t sop, unsigned bit_size)
       default: unreachable("Invalid bit size"); \
       }
 
+#define RET_BCONV_CASE(op) \
+   case nir_search_op_##op: \
+      switch (bit_size) { \
+      case 32: return nir_op_##op##32; \
+      default: unreachable("Invalid bit size"); \
+      }
+
    switch (sop) {
    RET_FCONV_CASE(i2f)
    RET_FCONV_CASE(u2f)
@@ -157,6 +172,10 @@ nir_op_for_search_op(uint16_t sop, unsigned bit_size)
    RET_ICONV_CASE(f2i)
    RET_ICONV_CASE(u2u)
    RET_ICONV_CASE(i2i)
+   RET_FCONV_CASE(b2f)
+   RET_ICONV_CASE(b2i)
+   RET_BCONV_CASE(i2b)
+   RET_BCONV_CASE(f2b)
    default:
       unreachable("Invalid nir_search_op");
    }

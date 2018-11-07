@@ -1208,14 +1208,14 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
         case nir_op_u2f32:
                 result = qir_ITOF(c, src[0]);
                 break;
-        case nir_op_b2f:
+        case nir_op_b2f32:
                 result = qir_AND(c, src[0], qir_uniform_f(c, 1.0));
                 break;
-        case nir_op_b2i:
+        case nir_op_b2i32:
                 result = qir_AND(c, src[0], qir_uniform_ui(c, 1));
                 break;
-        case nir_op_i2b:
-        case nir_op_f2b:
+        case nir_op_i2b32:
+        case nir_op_f2b32:
                 qir_SF(c, src[0]);
                 result = qir_MOV(c, qir_SEL(c, QPU_COND_ZC,
                                             qir_uniform_ui(c, ~0),

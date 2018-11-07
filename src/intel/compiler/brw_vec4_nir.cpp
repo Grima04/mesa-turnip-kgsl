@@ -1440,8 +1440,9 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit(AND(dst, op[0], op[1]));
       break;
 
-   case nir_op_b2i:
-   case nir_op_b2f:
+   case nir_op_b2i32:
+   case nir_op_b2f32:
+   case nir_op_b2f64:
       if (nir_dest_bit_size(instr->dest.dest) > 32) {
          assert(dst.type == BRW_REGISTER_TYPE_DF);
          emit_conversion_to_double(dst, negate(op[0]), false);
@@ -1450,7 +1451,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
 
-   case nir_op_f2b:
+   case nir_op_f2b32:
       if (nir_src_bit_size(instr->src[0].src) == 64) {
          /* We use a MOV with conditional_mod to check if the provided value is
           * 0.0. We want this to flush denormalized numbers to zero, so we set a
@@ -1471,7 +1472,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
 
-   case nir_op_i2b:
+   case nir_op_i2b32:
       emit(CMP(dst, op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ));
       break;
 

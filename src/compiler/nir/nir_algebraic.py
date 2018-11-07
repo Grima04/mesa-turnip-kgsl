@@ -45,6 +45,10 @@ conv_opcode_types = {
     'f2i' : 'int',
     'u2u' : 'uint',
     'i2i' : 'int',
+    'b2f' : 'float',
+    'b2i' : 'int',
+    'i2b' : 'bool',
+    'f2b' : 'bool',
 }
 
 if sys.version_info < (3, 0):

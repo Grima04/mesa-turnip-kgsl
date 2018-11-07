@@ -788,8 +788,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_b2i:
-   case nir_op_b2f:
+   case nir_op_b2i8:
+   case nir_op_b2i16:
+   case nir_op_b2i32:
+   case nir_op_b2i64:
+   case nir_op_b2f16:
+   case nir_op_b2f32:
+   case nir_op_b2f64:
       op[0].type = BRW_REGISTER_TYPE_D;
       op[0].negate = !op[0].negate;
       /* fallthrough */
@@ -1213,15 +1218,15 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_i2b:
-   case nir_op_f2b: {
+   case nir_op_i2b32:
+   case nir_op_f2b32: {
       uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
       if (bit_size == 64) {
          /* two-argument instructions can't take 64-bit immediates */
          fs_reg zero;
          fs_reg tmp;
 
-         if (instr->op == nir_op_f2b) {
+         if (instr->op == nir_op_f2b32) {
             zero = vgrf(glsl_type::double_type);
             tmp = vgrf(glsl_type::double_type);
             bld.MOV(zero, setup_imm_df(bld, 0.0));
@@ -1240,10 +1245,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       } else {
          fs_reg zero;
          if (bit_size == 32) {
-            zero = instr->op == nir_op_f2b ? brw_imm_f(0.0f) : brw_imm_d(0);
+            zero = instr->op == nir_op_f2b32 ? brw_imm_f(0.0f) : brw_imm_d(0);
          } else {
             assert(bit_size == 16);
-            zero = instr->op == nir_op_f2b ?
+            zero = instr->op == nir_op_f2b32 ?
                retype(brw_imm_w(0), BRW_REGISTER_TYPE_HF) : brw_imm_w(0);
          }
          bld.CMP(result, op[0], zero, BRW_CONDITIONAL_NZ);

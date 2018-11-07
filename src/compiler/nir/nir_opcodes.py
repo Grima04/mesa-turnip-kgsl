@@ -90,6 +90,7 @@ class Opcode(object):
 # helper variables for strings
 tfloat = "float"
 tint = "int"
+tbool = "bool"
 tbool32 = "bool32"
 tuint = "uint"
 tuint16 = "uint16"
@@ -117,6 +118,8 @@ def type_size(type_):
 def type_sizes(type_):
     if type_has_size(type_):
         return [type_size(type_)]
+    elif type_ == 'bool':
+        return [32]
     elif type_ == 'float':
         return [16, 32, 64]
     else:
@@ -196,11 +199,15 @@ unop("fexp2", tfloat, "exp2f(src0)")
 unop("flog2", tfloat, "log2f(src0)")
 
 # Generate all of the numeric conversion opcodes
-for src_t in [tint, tuint, tfloat]:
-   if src_t in (tint, tuint):
-      dst_types = [tfloat, src_t]
+for src_t in [tint, tuint, tfloat, tbool]:
+   if src_t == tbool:
+      dst_types = [tfloat, tint]
+   elif src_t == tint:
+      dst_types = [tfloat, tint, tbool]
+   elif src_t == tuint:
+      dst_types = [tfloat, tuint]
    elif src_t == tfloat:
-      dst_types = [tint, tuint, tfloat]
+      dst_types = [tint, tuint, tfloat, tbool]
 
    for dst_t in dst_types:
       for bit_size in type_sizes(dst_t):
@@ -211,15 +218,9 @@ for src_t in [tint, tuint, tfloat]:
                                                        bit_size, rnd_mode),
                                dst_t + str(bit_size), src_t, "src0")
           else:
+              conv_expr = "src0 != 0" if dst_t == tbool else "src0"
               unop_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
-                           dst_t + str(bit_size), src_t, "src0")
-
-# We'll hand-code the to/from bool conversion opcodes.  Because bool doesn't
-# have multiple bit-sizes, we can always infer the size from the other type.
-unop_convert("f2b", tbool32, tfloat, "src0 != 0.0")
-unop_convert("i2b", tbool32, tint, "src0 != 0")
-unop_convert("b2f", tfloat, tbool32, "src0 ? 1.0 : 0.0")
-unop_convert("b2i", tint, tbool32, "src0 ? 1 : 0")
+                           dst_t + str(bit_size), src_t, conv_expr)
 
 
 # Unary floating-point rounding operations.

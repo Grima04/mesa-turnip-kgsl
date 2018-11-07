@@ -941,16 +941,20 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		src[1] = ac_to_integer(&ctx->ac, src[1]);
 		result = emit_uint_carry(&ctx->ac, "llvm.usub.with.overflow.i32", src[0], src[1]);
 		break;
-	case nir_op_b2f:
+	case nir_op_b2f16:
+	case nir_op_b2f32:
+	case nir_op_b2f64:
 		result = emit_b2f(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
 		break;
-	case nir_op_f2b:
+	case nir_op_f2b32:
 		result = emit_f2b(&ctx->ac, src[0]);
 		break;
-	case nir_op_b2i:
+	case nir_op_b2i16:
+	case nir_op_b2i32:
+	case nir_op_b2i64:
 		result = emit_b2i(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
 		break;
-	case nir_op_i2b:
+	case nir_op_i2b32:
 		src[0] = ac_to_integer(&ctx->ac, src[0]);
 		result = emit_i2b(&ctx->ac, src[0]);
 		break;
