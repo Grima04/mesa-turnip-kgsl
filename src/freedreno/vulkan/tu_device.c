@@ -412,6 +412,8 @@ tu_EnumeratePhysicalDevices(VkInstance _instance,
                             VkPhysicalDevice *pPhysicalDevices)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
+   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+
    VkResult result;
 
    if (instance->physical_device_count < 0) {
@@ -420,19 +422,14 @@ tu_EnumeratePhysicalDevices(VkInstance _instance,
          return result;
    }
 
-   if (!pPhysicalDevices) {
-      *pPhysicalDeviceCount = instance->physical_device_count;
-   } else {
-      *pPhysicalDeviceCount =
-        MIN2(*pPhysicalDeviceCount, instance->physical_device_count);
-      for (unsigned i = 0; i < *pPhysicalDeviceCount; ++i)
-         pPhysicalDevices[i] =
-           tu_physical_device_to_handle(instance->physical_devices + i);
+   for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
+      vk_outarray_append(&out, p) {
+         *p = tu_physical_device_to_handle(instance->physical_devices + i);
+      }
+
    }
 
-   return *pPhysicalDeviceCount < instance->physical_device_count
-            ? VK_INCOMPLETE
-            : VK_SUCCESS;
+   return vk_outarray_status(&out);
 }
 
 VkResult
@@ -442,6 +439,7 @@ tu_EnumeratePhysicalDeviceGroups(
    VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
+   VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties, pPhysicalDeviceGroupCount);
    VkResult result;
 
    if (instance->physical_device_count < 0) {
@@ -450,21 +448,16 @@ tu_EnumeratePhysicalDeviceGroups(
          return result;
    }
 
-   if (!pPhysicalDeviceGroupProperties) {
-      *pPhysicalDeviceGroupCount = instance->physical_device_count;
-   } else {
-      *pPhysicalDeviceGroupCount =
-        MIN2(*pPhysicalDeviceGroupCount, instance->physical_device_count);
-      for (unsigned i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
-         pPhysicalDeviceGroupProperties[i].physicalDeviceCount = 1;
-         pPhysicalDeviceGroupProperties[i].physicalDevices[0] =
+   for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
+      vk_outarray_append(&out, p) {
+         p->physicalDeviceCount = 1;
+         p->physicalDevices[0] =
            tu_physical_device_to_handle(instance->physical_devices + i);
-         pPhysicalDeviceGroupProperties[i].subsetAllocation = false;
+         p->subsetAllocation = false;
       }
    }
-   return *pPhysicalDeviceGroupCount < instance->physical_device_count
-            ? VK_INCOMPLETE
-            : VK_SUCCESS;
+
+   return vk_outarray_status(&out);
 }
 
 void
@@ -806,73 +799,40 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    }
 }
 
-static void
-tu_get_physical_device_queue_family_properties(
-   struct tu_physical_device *pdevice,
-   uint32_t *pCount,
-   VkQueueFamilyProperties **pQueueFamilyProperties)
-{
-   int num_queue_families = 1;
-   int idx;
-   if (pQueueFamilyProperties == NULL) {
-      *pCount = num_queue_families;
-      return;
-   }
-
-   if (!*pCount)
-      return;
-
-   idx = 0;
-   if (*pCount >= 1) {
-      *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
-         .queueFlags =
-           VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
-         .queueCount = 1,
-         .timestampValidBits = 64,
-         .minImageTransferGranularity = (VkExtent3D){ 1, 1, 1 },
-      };
-      idx++;
-   }
-
-   *pCount = idx;
-}
+static const VkQueueFamilyProperties
+tu_queue_family_properties = {
+   .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                 VK_QUEUE_COMPUTE_BIT |
+                 VK_QUEUE_TRANSFER_BIT,
+   .queueCount = 1,
+   .timestampValidBits = 64,
+   .minImageTransferGranularity = (VkExtent3D) { 1, 1, 1 },
+};
 
 void
 tu_GetPhysicalDeviceQueueFamilyProperties(
    VkPhysicalDevice physicalDevice,
-   uint32_t *pCount,
+   uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties *pQueueFamilyProperties)
 {
-   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
-   if (!pQueueFamilyProperties) {
-      return tu_get_physical_device_queue_family_properties(
-        pdevice, pCount, NULL);
-      return;
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+
+   vk_outarray_append(&out, p) {
+      *p = tu_queue_family_properties;
    }
-   VkQueueFamilyProperties *properties[] = {
-      pQueueFamilyProperties + 0,
-   };
-   tu_get_physical_device_queue_family_properties(pdevice, pCount, properties);
-   assert(*pCount <= 1);
 }
 
 void
 tu_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice physicalDevice,
-   uint32_t *pCount,
+   uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties2KHR *pQueueFamilyProperties)
 {
-   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
-   if (!pQueueFamilyProperties) {
-      return tu_get_physical_device_queue_family_properties(
-        pdevice, pCount, NULL);
-      return;
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+
+   vk_outarray_append(&out, p) {
+      p->queueFamilyProperties = tu_queue_family_properties;
    }
-   VkQueueFamilyProperties *properties[] = {
-      &pQueueFamilyProperties[0].queueFamilyProperties,
-   };
-   tu_get_physical_device_queue_family_properties(pdevice, pCount, properties);
-   assert(*pCount <= 1);
 }
 
 static uint64_t
