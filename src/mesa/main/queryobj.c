@@ -679,7 +679,8 @@ _mesa_GetQueryIndexediv(GLenum target, GLuint index, GLenum pname,
    }
 
    if (target == GL_TIMESTAMP) {
-      if (!ctx->Extensions.ARB_timer_query) {
+      if (!_mesa_has_ARB_timer_query(ctx) &&
+          !_mesa_has_EXT_disjoint_timer_query(ctx)) {
          _mesa_error(ctx, GL_INVALID_ENUM, "glGetQueryARB(target)");
          return;
       }
