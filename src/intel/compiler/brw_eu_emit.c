@@ -94,6 +94,17 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
    else if (dest.file == BRW_GENERAL_REGISTER_FILE)
       assert(dest.nr < 128);
 
+   /* The hardware has a restriction where if the destination is Byte,
+    * the instruction needs to have a stride of 2 (except for packed byte
+    * MOV). This seems to be required even if the destination is the NULL
+    * register.
+    */
+   if (dest.file == BRW_ARCHITECTURE_REGISTER_FILE &&
+       dest.nr == BRW_ARF_NULL &&
+       type_sz(dest.type) == 1) {
+      dest.hstride = BRW_HORIZONTAL_STRIDE_2;
+   }
+
    gen7_convert_mrf_to_grf(p, &dest);
 
    if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
