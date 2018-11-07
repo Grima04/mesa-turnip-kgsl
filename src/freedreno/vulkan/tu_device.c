@@ -72,7 +72,7 @@ tu_physical_device_init(struct tu_physical_device *device,
                         drmDevicePtr drm_device)
 {
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
-   VkResult result;
+   VkResult result = VK_SUCCESS;
    drmVersionPtr version;
    int fd;
    int master_fd = -1;
