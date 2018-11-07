@@ -205,6 +205,16 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
          return index;
    }
 
+   /* This is the first time our batch has seen this BO.  Before we use it,
+    * we need to see if other batches reference it - if so, we should flush
+    * those first.
+    */
+   for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
+      if (iris_batch_references(batch->other_batches[b], bo))
+         iris_batch_flush(batch->other_batches[b]);
+   }
+
+   /* Now, take a reference and add it to the validation list. */
    iris_bo_reference(bo);
 
    if (batch->exec_count == batch->exec_array_size) {
