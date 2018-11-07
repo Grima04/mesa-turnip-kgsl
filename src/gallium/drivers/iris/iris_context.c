@@ -133,6 +133,7 @@ iris_destroy_context(struct pipe_context *ctx)
    slab_destroy_child(&ice->transfer_pool);
 
    iris_batch_free(&ice->render_batch);
+   iris_batch_free(&ice->compute_batch);
    iris_destroy_binder(&ice->state.binder);
 
    ralloc_free(ice);
