@@ -82,7 +82,7 @@ optimizations = [
    (('ineg', ('ineg', a)), a),
    (('fabs', ('fabs', a)), ('fabs', a)),
    (('fabs', ('fneg', a)), ('fabs', a)),
-   (('fabs', ('u2f32', a)), ('u2f32', a)),
+   (('fabs', ('u2f', a)), ('u2f', a)),
    (('iabs', ('iabs', a)), ('iabs', a)),
    (('iabs', ('ineg', a)), ('iabs', a)),
    (('~fadd', a, 0.0), a),
@@ -242,18 +242,18 @@ optimizations = [
    (('ieq', ('b2i', a), 0),   ('inot', a)),
    (('ine', ('b2i', a), 0),   a),
 
-   (('fne', ('u2f32', a), 0.0), ('ine', a, 0)),
-   (('feq', ('u2f32', a), 0.0), ('ieq', a, 0)),
-   (('fge', ('u2f32', a), 0.0), True),
-   (('fge', 0.0, ('u2f32', a)), ('uge', 0, a)),    # ieq instead?
-   (('flt', ('u2f32', a), 0.0), False),
-   (('flt', 0.0, ('u2f32', a)), ('ult', 0, a)),    # ine instead?
-   (('fne', ('i2f32', a), 0.0), ('ine', a, 0)),
-   (('feq', ('i2f32', a), 0.0), ('ieq', a, 0)),
-   (('fge', ('i2f32', a), 0.0), ('ige', a, 0)),
-   (('fge', 0.0, ('i2f32', a)), ('ige', 0, a)),
-   (('flt', ('i2f32', a), 0.0), ('ilt', a, 0)),
-   (('flt', 0.0, ('i2f32', a)), ('ilt', 0, a)),
+   (('fne', ('u2f', a), 0.0), ('ine', a, 0)),
+   (('feq', ('u2f', a), 0.0), ('ieq', a, 0)),
+   (('fge', ('u2f', a), 0.0), True),
+   (('fge', 0.0, ('u2f', a)), ('uge', 0, a)),    # ieq instead?
+   (('flt', ('u2f', a), 0.0), False),
+   (('flt', 0.0, ('u2f', a)), ('ult', 0, a)),    # ine instead?
+   (('fne', ('i2f', a), 0.0), ('ine', a, 0)),
+   (('feq', ('i2f', a), 0.0), ('ieq', a, 0)),
+   (('fge', ('i2f', a), 0.0), ('ige', a, 0)),
+   (('fge', 0.0, ('i2f', a)), ('ige', 0, a)),
+   (('flt', ('i2f', a), 0.0), ('ilt', a, 0)),
+   (('flt', 0.0, ('i2f', a)), ('ilt', 0, a)),
 
    # 0.0 < fabs(a)
    # fabs(a) > 0.0
@@ -534,8 +534,8 @@ optimizations = [
    # Conversions
    (('i2b', ('b2i', a)), a),
    (('i2b', 'a@bool'), a),
-   (('f2i32', ('ftrunc', a)), ('f2i32', a)),
-   (('f2u32', ('ftrunc', a)), ('f2u32', a)),
+   (('f2i', ('ftrunc', a)), ('f2i', a)),
+   (('f2u', ('ftrunc', a)), ('f2u', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
    (('i2b', ('iabs', a)), ('i2b', a)),
    (('fabs', ('b2f', a)), ('b2f', a)),
@@ -545,10 +545,10 @@ optimizations = [
    # Ironically, mark these as imprecise because removing the conversions may
    # preserve more precision than doing the conversions (e.g.,
    # uint(float(0x81818181u)) == 0x81818200).
-   (('~f2i32', ('i2f32', 'a@32')), a),
-   (('~f2i32', ('u2f32', 'a@32')), a),
-   (('~f2u32', ('i2f32', 'a@32')), a),
-   (('~f2u32', ('u2f32', 'a@32')), a),
+   (('~f2i32', ('i2f', 'a@32')), a),
+   (('~f2i32', ('u2f', 'a@32')), a),
+   (('~f2u32', ('i2f', 'a@32')), a),
+   (('~f2u32', ('u2f', 'a@32')), a),
 
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
@@ -718,29 +718,29 @@ optimizations = [
 
     (('unpack_unorm_2x16', 'v'),
      ('fdiv', ('u2f32', ('vec2', ('extract_u16', 'v', 0),
-                                 ('extract_u16', 'v', 1))),
+                                  ('extract_u16', 'v', 1))),
               65535.0),
      'options->lower_unpack_unorm_2x16'),
 
     (('unpack_unorm_4x8', 'v'),
      ('fdiv', ('u2f32', ('vec4', ('extract_u8', 'v', 0),
-                                 ('extract_u8', 'v', 1),
-                                 ('extract_u8', 'v', 2),
-                                 ('extract_u8', 'v', 3))),
+                                  ('extract_u8', 'v', 1),
+                                  ('extract_u8', 'v', 2),
+                                  ('extract_u8', 'v', 3))),
               255.0),
      'options->lower_unpack_unorm_4x8'),
 
     (('unpack_snorm_2x16', 'v'),
-     ('fmin', 1.0, ('fmax', -1.0, ('fdiv', ('i2f32', ('vec2', ('extract_i16', 'v', 0),
-                                                              ('extract_i16', 'v', 1))),
+     ('fmin', 1.0, ('fmax', -1.0, ('fdiv', ('i2f', ('vec2', ('extract_i16', 'v', 0),
+                                                            ('extract_i16', 'v', 1))),
                                            32767.0))),
      'options->lower_unpack_snorm_2x16'),
 
     (('unpack_snorm_4x8', 'v'),
-     ('fmin', 1.0, ('fmax', -1.0, ('fdiv', ('i2f32', ('vec4', ('extract_i8', 'v', 0),
-                                                              ('extract_i8', 'v', 1),
-                                                              ('extract_i8', 'v', 2),
-                                                              ('extract_i8', 'v', 3))),
+     ('fmin', 1.0, ('fmax', -1.0, ('fdiv', ('i2f', ('vec4', ('extract_i8', 'v', 0),
+                                                            ('extract_i8', 'v', 1),
+                                                            ('extract_i8', 'v', 2),
+                                                            ('extract_i8', 'v', 3))),
                                            127.0))),
      'options->lower_unpack_snorm_4x8'),
 ]
