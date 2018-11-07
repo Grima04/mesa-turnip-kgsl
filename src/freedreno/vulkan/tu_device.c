@@ -34,9 +34,11 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <xf86drm.h>
+#include <msm_drm.h>
 
 static int
 tu_device_get_cache_uuid(uint16_t family, void *uuid)
@@ -64,6 +66,75 @@ static void
 tu_get_device_uuid(void *uuid)
 {
    stub();
+}
+
+VkResult
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
+{
+   /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
+    * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
+    */
+   uint32_t gem_handle = tu_gem_new(dev, size, MSM_BO_WC);
+   if (!gem_handle)
+      goto fail_new;
+
+   /* Calling DRM_MSM_GEM_INFO forces the kernel to allocate backing pages. We
+    * want immediate backing pages because vkAllocateMemory and friends must
+    * not lazily fail.
+    *
+    * TODO(chadv): Must we really call DRM_MSM_GEM_INFO to acquire backing
+    * pages? I infer so from reading comments in msm_bo.c:bo_allocate(), but
+    * maybe I misunderstand.
+    */
+
+   /* TODO: Do we need 'offset' if we have 'iova'? */
+   uint64_t offset = tu_gem_info_offset(dev, bo->gem_handle);
+   if (!offset)
+      goto fail_info;
+
+   uint64_t iova = tu_gem_info_iova(dev, bo->gem_handle);
+   if (!iova)
+      goto fail_info;
+
+   *bo = (struct tu_bo) {
+      .gem_handle = gem_handle,
+      .size = size,
+      .offset = offset,
+      .iova = iova,
+   };
+
+   return VK_SUCCESS;
+
+fail_info:
+      tu_gem_close(dev, bo->gem_handle);
+fail_new:
+      return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+}
+
+VkResult
+tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
+{
+   if (bo->map)
+      return VK_SUCCESS;
+
+   /* TODO: Should we use the wrapper os_mmap() like Freedreno does? */
+   void *map = mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                    dev->physical_device->local_fd, bo->offset);
+   if (map == MAP_FAILED)
+      return vk_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
+
+   return VK_SUCCESS;
+}
+
+void
+tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
+{
+   assert(bo->gem_handle);
+
+   if (bo->map)
+      munmap(bo->map, bo->size);
+
+   tu_gem_close(dev, bo->gem_handle);
 }
 
 static VkResult
@@ -1220,6 +1291,7 @@ tu_alloc_memory(struct tu_device *device,
                 VkDeviceMemory *pMem)
 {
    struct tu_device_memory *mem;
+   VkResult result;
 
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
@@ -1237,13 +1309,12 @@ tu_alloc_memory(struct tu_device *device,
    if (mem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   mem->bo = fd_bo_new(device->physical_device->drm_device, pAllocateInfo->allocationSize,
-                       DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
-                       DRM_FREEDRENO_GEM_TYPE_KMEM);
-   if (!mem->bo) {
+   result = tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize);
+   if (!result) {
       vk_free2(&device->alloc, pAllocator, mem);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return result;
    }
+
    mem->size = pAllocateInfo->allocationSize;
    mem->type_index = pAllocateInfo->memoryTypeIndex;
 
@@ -1276,9 +1347,7 @@ tu_FreeMemory(VkDevice _device,
    if (mem == NULL)
       return;
 
-   if (mem->bo)
-      fd_bo_del(mem->bo);
-
+   tu_bo_finish(device, &mem->bo);
    vk_free2(&device->alloc, pAllocator, mem);
 }
 
@@ -1292,6 +1361,7 @@ tu_MapMemory(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_device_memory, mem, _memory);
+   VkResult result;
 
    if (mem == NULL) {
       *ppData = NULL;
@@ -1301,7 +1371,10 @@ tu_MapMemory(VkDevice _device,
    if (mem->user_ptr) {
       *ppData = mem->user_ptr;
    } else  if (!mem->map){
-      *ppData = mem->map = fd_bo_map(mem->bo);
+      result = tu_bo_map(device, &mem->bo);
+      if (result != VK_SUCCESS)
+         return result;
+      mem->map = mem->bo.map;
    } else
       *ppData = mem->map;
 

@@ -440,9 +440,25 @@ struct tu_device
    struct tu_bo_list bo_list;
 };
 
+struct tu_bo
+{
+   uint32_t gem_handle;
+   uint64_t size;
+   uint64_t offset;
+   uint64_t iova;
+   void *map;
+};
+
+VkResult
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size);
+void
+tu_bo_finish(struct tu_device *dev, struct tu_bo *bo);
+VkResult
+tu_bo_map(struct tu_device *dev, struct tu_bo *bo);
+
 struct tu_device_memory
 {
-   struct fd_bo *bo;
+   struct tu_bo bo;
    VkDeviceSize size;
 
    /* for dedicated allocations */
@@ -1168,6 +1184,15 @@ struct tu_shader_variant_info;
 struct tu_nir_compiler_options;
 
 struct radeon_winsys_sem;
+
+uint32_t
+tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags);
+void
+tu_gem_close(struct tu_device *dev, uint32_t gem_handle);
+uint64_t
+tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle);
+uint64_t
+tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                                \
