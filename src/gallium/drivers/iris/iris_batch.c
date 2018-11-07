@@ -151,6 +151,9 @@ iris_init_batch(struct iris_batch *batch,
    assert(util_bitcount(engine) == 1);
    batch->engine = engine;
 
+   batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
+   assert(batch->hw_ctx_id);
+
    batch->exec_count = 0;
    batch->exec_array_size = 100;
    batch->exec_bos =
@@ -279,6 +282,9 @@ iris_batch_reset(struct iris_batch *batch)
 void
 iris_batch_free(struct iris_batch *batch)
 {
+   struct iris_screen *screen = batch->screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+
    for (int i = 0; i < batch->exec_count; i++) {
       iris_bo_unreference(batch->exec_bos[i]);
    }
@@ -290,6 +296,8 @@ iris_batch_free(struct iris_batch *batch)
    batch->map_next = NULL;
 
    iris_bo_unreference(batch->last_bo);
+
+   iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
 
    _mesa_hash_table_destroy(batch->cache.render, NULL);
    _mesa_set_destroy(batch->cache.depth, NULL);
