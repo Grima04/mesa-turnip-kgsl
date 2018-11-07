@@ -163,20 +163,6 @@ get_pipe_stats_binding_point(struct gl_context *ctx,
 static struct gl_query_object **
 get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
 {
-
-   /* From GL_EXT_occlusion_query_boolean spec:
-    *
-    *    "Accepted by the <target> parameter of BeginQueryEXT, EndQueryEXT,
-    *    and GetQueryivEXT:
-    *
-    *   ANY_SAMPLES_PASSED_EXT                         0x8C2F
-    *   ANY_SAMPLES_PASSED_CONSERVATIVE_EXT            0x8D6A"
-    */
-   if ((_mesa_is_gles(ctx) && ctx->Version == 20) &&
-       (target != GL_ANY_SAMPLES_PASSED &&
-        target != GL_ANY_SAMPLES_PASSED_CONSERVATIVE))
-      return NULL;
-
    switch (target) {
    case GL_SAMPLES_PASSED:
       if (_mesa_has_ARB_occlusion_query(ctx) ||
