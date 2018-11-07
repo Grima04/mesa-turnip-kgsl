@@ -762,13 +762,8 @@ for x, y in itertools.product(['f', 'u', 'i'], ['f', 'u', 'i']):
 
    b2x = 'b2f' if x == 'f' else 'b2i'
    b2y = 'b2f' if y == 'f' else 'b2i'
-
-   for N in [8, 16, 32, 64]:
-      if y == 'f' and N == 8:
-         continue
-
-      x2yN = '{}2{}{}'.format(x, y, N)
-      optimizations.append(((x2yN, (b2x, a)), (b2y, a)))
+   x2yN = '{}2{}'.format(x, y)
+   optimizations.append(((x2yN, (b2x, a)), (b2y, a)))
 
 def fexp2i(exp, bits):
    # We assume that exp is already in the right range.
