@@ -1176,6 +1176,10 @@ tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
 {
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
+   /* We spport no lyaers */
+   if (pLayerName)
+      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+
    for (int i = 0; i < TU_INSTANCE_EXTENSION_COUNT; i++) {
       if (tu_supported_instance_extensions.extensions[i]) {
          vk_outarray_append(&out, prop) { *prop = tu_instance_extensions[i]; }
@@ -1191,8 +1195,13 @@ tu_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
                                       uint32_t *pPropertyCount,
                                       VkExtensionProperties *pProperties)
 {
+   /* We spport no lyaers */
    TU_FROM_HANDLE(tu_physical_device, device, physicalDevice);
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+
+   /* We spport no lyaers */
+   if (pLayerName)
+      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
    for (int i = 0; i < TU_DEVICE_EXTENSION_COUNT; i++) {
       if (device->supported_extensions.extensions[i]) {
