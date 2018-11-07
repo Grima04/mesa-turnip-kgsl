@@ -191,8 +191,8 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
       else
          return NULL;
    case GL_ANY_SAMPLES_PASSED_CONSERVATIVE:
-      if (ctx->Extensions.ARB_ES3_compatibility
-          || (ctx->API == API_OPENGLES2 && ctx->Version >= 30))
+      if (_mesa_has_ARB_ES3_compatibility(ctx) ||
+          _mesa_has_EXT_occlusion_query_boolean(ctx))
          return &ctx->Query.CurrentOcclusionObject;
       else
          return NULL;
