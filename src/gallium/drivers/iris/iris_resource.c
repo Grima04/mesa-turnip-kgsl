@@ -913,7 +913,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
    pscreen->transfer_helper =
-      u_transfer_helper_create(&transfer_vtbl, true, true, false, false);
+      u_transfer_helper_create(&transfer_vtbl, true, true, false, true);
 }
 
 void
