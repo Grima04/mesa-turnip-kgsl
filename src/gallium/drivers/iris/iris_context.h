@@ -328,7 +328,7 @@ struct iris_vtable {
                                  uint64_t imm);
 
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
-   void (*store_derived_program_state)(const struct gen_device_info *devinfo,
+   void (*store_derived_program_state)(struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        struct iris_compiled_shader *shader);
    uint32_t *(*create_so_decl_list)(const struct pipe_stream_output_info *sol,
@@ -394,6 +394,14 @@ struct iris_context {
       struct hash_table *cache;
 
       unsigned urb_size;
+
+      /**
+       * Scratch buffers for various sizes and stages.
+       *
+       * Indexed by the "Per-Thread Scratch Space" field's 4-bit encoding,
+       * and shader stage.
+       */
+      struct iris_bo *scratch_bos[1 << 4][MESA_SHADER_STAGES];
    } shaders;
 
    struct {
@@ -552,7 +560,9 @@ const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
 unsigned iris_get_shader_num_ubos(const struct iris_context *ice,
                                   gl_shader_stage stage);
-
+uint32_t iris_get_scratch_space(struct iris_context *ice,
+                                unsigned per_thread_scratch,
+                                gl_shader_stage stage);
 
 /* iris_program_cache.c */
 

@@ -1072,6 +1072,56 @@ iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
       dst[8 * t] = t;
 }
 
+/**
+ * Allocate scratch BOs as needed for the given per-thread size and stage.
+ *
+ * Returns the 32-bit "Scratch Space Base Pointer" value.
+ */
+uint32_t
+iris_get_scratch_space(struct iris_context *ice,
+                       unsigned per_thread_scratch,
+                       gl_shader_stage stage)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   unsigned encoded_size = ffs(per_thread_scratch) - 11;
+   assert(encoded_size < (1 << 16));
+
+   struct iris_bo **bop = &ice->shaders.scratch_bos[encoded_size][stage];
+
+   /* The documentation for 3DSTATE_PS "Scratch Space Base Pointer" says:
+    *
+    * "Scratch Space per slice is computed based on 4 sub-slices.  SW must
+    *  allocate scratch space enough so that each slice has 4 slices
+    *  allowed."
+    *
+    * According to the other driver team, this applies to compute shaders
+    * as well.  This is not currently documented at all.
+    */
+   unsigned subslice_total = 4 * devinfo->num_slices;
+   assert(subslice_total >= screen->subslice_total);
+
+   if (!*bop) {
+      unsigned scratch_ids_per_subslice = devinfo->max_cs_threads;
+      uint32_t max_threads[] = {
+         [MESA_SHADER_VERTEX]    = devinfo->max_vs_threads,
+         [MESA_SHADER_TESS_CTRL] = devinfo->max_tcs_threads,
+         [MESA_SHADER_TESS_EVAL] = devinfo->max_tes_threads,
+         [MESA_SHADER_GEOMETRY]  = devinfo->max_gs_threads,
+         [MESA_SHADER_FRAGMENT]  = devinfo->max_wm_threads,
+         [MESA_SHADER_COMPUTE]   = scratch_ids_per_subslice * subslice_total,
+      };
+
+      uint32_t size = per_thread_scratch * max_threads[stage];
+
+      *bop = iris_bo_alloc(bufmgr, "scratch", size, IRIS_MEMZONE_SHADER);
+   }
+
+   return (*bop)->gtt_offset;
+}
+
 void
 iris_init_program_functions(struct pipe_context *ctx)
 {

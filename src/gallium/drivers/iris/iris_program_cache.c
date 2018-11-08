@@ -241,8 +241,6 @@ iris_upload_shader(struct iris_context *ice,
                    struct brw_stage_prog_data *prog_data,
                    uint32_t *streamout)
 {
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct gen_device_info *devinfo = &screen->devinfo;
    struct hash_table *cache = ice->shaders.cache;
    struct iris_compiled_shader *shader =
       rzalloc_size(cache, sizeof(struct iris_compiled_shader) +
@@ -277,7 +275,7 @@ iris_upload_shader(struct iris_context *ice,
    ralloc_steal(shader, shader->streamout);
 
    /* Store the 3DSTATE shader packets and other derived state. */
-   ice->vtbl.store_derived_program_state(devinfo, cache_id, shader);
+   ice->vtbl.store_derived_program_state(ice, cache_id, shader);
 
    struct keybox *keybox = make_keybox(cache, cache_id, key, key_size);
    _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);

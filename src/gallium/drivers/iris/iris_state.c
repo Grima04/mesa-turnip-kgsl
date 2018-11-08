@@ -2981,8 +2981,6 @@ iris_populate_cs_key(const struct iris_context *ice,
    // XXX: these need to go in INIT_THREAD_DISPATCH_FIELDS
    pkt.SamplerCount =                                                     \
       DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
-   pkt.PerThreadScratchSpace = prog_data->total_scratch == 0 ? 0 :        \
-      ffs(stage_state->per_thread_scratch) - 11;                          \
 
 #endif
 
@@ -2997,7 +2995,7 @@ KSP(const struct iris_compiled_shader *shader)
 // prefetching of binding tables in A0 and B0 steppings.  XXX: Revisit
 // this WA on C0 stepping.
 
-#define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix)                          \
+#define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix, stage)                   \
    pkt.KernelStartPointer = KSP(shader);                                  \
    pkt.BindingTableEntryCount = GEN_GEN == 11 ? 0 :                       \
       prog_data->binding_table.size_bytes / 4;                            \
@@ -3009,20 +3007,28 @@ KSP(const struct iris_compiled_shader *shader)
    pkt.prefix##URBEntryReadOffset = 0;                                    \
                                                                           \
    pkt.StatisticsEnable = true;                                           \
-   pkt.Enable           = true;
+   pkt.Enable           = true;                                           \
+                                                                          \
+   if (prog_data->total_scratch) {                                        \
+      uint32_t scratch_addr =                                             \
+         iris_get_scratch_space(ice, prog_data->total_scratch, stage);    \
+      pkt.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;     \
+      pkt.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);            \
+   }
 
 /**
  * Encode most of 3DSTATE_VS based on the compiled shader.
  */
 static void
-iris_store_vs_state(const struct gen_device_info *devinfo,
+iris_store_vs_state(struct iris_context *ice,
+                    const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
 
    iris_pack_command(GENX(3DSTATE_VS), shader->derived_data, vs) {
-      INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
+      INIT_THREAD_DISPATCH_FIELDS(vs, Vertex, MESA_SHADER_VERTEX);
       vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
       vs.SIMD8DispatchEnable = true;
       vs.UserClipDistanceCullTestEnableBitmask =
@@ -3034,7 +3040,8 @@ iris_store_vs_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_HS based on the compiled shader.
  */
 static void
-iris_store_tcs_state(const struct gen_device_info *devinfo,
+iris_store_tcs_state(struct iris_context *ice,
+                     const struct gen_device_info *devinfo,
                      struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -3042,7 +3049,7 @@ iris_store_tcs_state(const struct gen_device_info *devinfo,
    struct brw_tcs_prog_data *tcs_prog_data = (void *) prog_data;
 
    iris_pack_command(GENX(3DSTATE_HS), shader->derived_data, hs) {
-      INIT_THREAD_DISPATCH_FIELDS(hs, Vertex);
+      INIT_THREAD_DISPATCH_FIELDS(hs, Vertex, MESA_SHADER_TESS_CTRL);
 
       hs.InstanceCount = tcs_prog_data->instances - 1;
       hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
@@ -3054,7 +3061,8 @@ iris_store_tcs_state(const struct gen_device_info *devinfo,
  * Encode 3DSTATE_TE and most of 3DSTATE_DS based on the compiled shader.
  */
 static void
-iris_store_tes_state(const struct gen_device_info *devinfo,
+iris_store_tes_state(struct iris_context *ice,
+                     const struct gen_device_info *devinfo,
                      struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -3074,7 +3082,7 @@ iris_store_tes_state(const struct gen_device_info *devinfo,
    }
 
    iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
-      INIT_THREAD_DISPATCH_FIELDS(ds, Patch);
+      INIT_THREAD_DISPATCH_FIELDS(ds, Patch, MESA_SHADER_TESS_EVAL);
 
       ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
       ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
@@ -3091,7 +3099,8 @@ iris_store_tes_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_GS based on the compiled shader.
  */
 static void
-iris_store_gs_state(const struct gen_device_info *devinfo,
+iris_store_gs_state(struct iris_context *ice,
+                    const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -3099,7 +3108,7 @@ iris_store_gs_state(const struct gen_device_info *devinfo,
    struct brw_gs_prog_data *gs_prog_data = (void *) prog_data;
 
    iris_pack_command(GENX(3DSTATE_GS), shader->derived_data, gs) {
-      INIT_THREAD_DISPATCH_FIELDS(gs, Vertex);
+      INIT_THREAD_DISPATCH_FIELDS(gs, Vertex, MESA_SHADER_GEOMETRY);
 
       gs.OutputVertexSize = gs_prog_data->output_vertex_size_hwords * 2 - 1;
       gs.OutputTopology = gs_prog_data->output_topology;
@@ -3138,7 +3147,8 @@ iris_store_gs_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_PS and 3DSTATE_PS_EXTRA based on the shader.
  */
 static void
-iris_store_fs_state(const struct gen_device_info *devinfo,
+iris_store_fs_state(struct iris_context *ice,
+                    const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -3193,6 +3203,14 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
          KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
       ps.KernelStartPointer2 =
          KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+
+      if (prog_data->total_scratch) {
+         uint32_t scratch_addr =
+            iris_get_scratch_space(ice, prog_data->total_scratch,
+                                   MESA_SHADER_FRAGMENT);
+         ps.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
+         ps.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
+      }
    }
 
    iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
@@ -3226,7 +3244,8 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
  * This must match the data written by the iris_store_xs_state() functions.
  */
 static void
-iris_store_cs_state(const struct gen_device_info *devinfo,
+iris_store_cs_state(struct iris_context *ice,
+                    const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -3271,28 +3290,31 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
  * get most of the state packet without having to reconstruct it.
  */
 static void
-iris_store_derived_program_state(const struct gen_device_info *devinfo,
+iris_store_derived_program_state(struct iris_context *ice,
                                  enum iris_program_cache_id cache_id,
                                  struct iris_compiled_shader *shader)
 {
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
    switch (cache_id) {
    case IRIS_CACHE_VS:
-      iris_store_vs_state(devinfo, shader);
+      iris_store_vs_state(ice, devinfo, shader);
       break;
    case IRIS_CACHE_TCS:
-      iris_store_tcs_state(devinfo, shader);
+      iris_store_tcs_state(ice, devinfo, shader);
       break;
    case IRIS_CACHE_TES:
-      iris_store_tes_state(devinfo, shader);
+      iris_store_tes_state(ice, devinfo, shader);
       break;
    case IRIS_CACHE_GS:
-      iris_store_gs_state(devinfo, shader);
+      iris_store_gs_state(ice, devinfo, shader);
       break;
    case IRIS_CACHE_FS:
-      iris_store_fs_state(devinfo, shader);
+      iris_store_fs_state(ice, devinfo, shader);
       break;
    case IRIS_CACHE_CS:
-      iris_store_cs_state(devinfo, shader);
+      iris_store_cs_state(ice, devinfo, shader);
    case IRIS_CACHE_BLORP:
       break;
    default:
@@ -4401,12 +4423,11 @@ iris_upload_compute_state(struct iris_context *ice,
 
       iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
          if (prog_data->total_scratch) {
-            /* Per Thread Scratch Space is in the range [0, 11] where
-             * 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
-             */
-            // XXX: vfe.ScratchSpaceBasePointer
-            //vfe.PerThreadScratchSpace =
-               //ffs(stage_state->per_thread_scratch) - 11;
+            uint32_t scratch_addr =
+               iris_get_scratch_space(ice, prog_data->total_scratch,
+                                      MESA_SHADER_COMPUTE);
+            vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
+            vfe.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
          }
 
          vfe.MaximumNumberofThreads =
