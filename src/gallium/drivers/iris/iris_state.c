@@ -1132,7 +1132,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       wm.LineAntialiasingRegionWidth = _10pixels;
       wm.LineEndCapAntialiasingRegionWidth = _05pixels;
       wm.PointRasterizationRule = RASTRULE_UPPER_RIGHT;
-      wm.StatisticsEnable = true;
       wm.LineStippleEnable = state->line_stipple_enable;
       wm.PolygonStippleEnable = state->poly_stipple_enable;
    }
@@ -4132,6 +4131,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t dynamic_wm[GENX(3DSTATE_WM_length)];
 
       iris_pack_command(GENX(3DSTATE_WM), &dynamic_wm, wm) {
+         wm.StatisticsEnable = ice->state.statistics_counters_enabled;
+
          wm.BarycentricInterpolationMode =
             wm_prog_data->barycentric_interp_modes;
 
@@ -5182,6 +5183,8 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.populate_cs_key = iris_populate_cs_key;
 
    ice->state.dirty = ~0ull;
+
+   ice->state.statistics_counters_enabled = true;
 
    ice->state.sample_mask = 0xffff;
    ice->state.num_viewports = 1;

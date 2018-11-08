@@ -453,6 +453,8 @@ struct iris_context {
       struct pipe_stream_output_target *so_target[PIPE_MAX_SO_BUFFERS];
       bool streamout_active;
 
+      bool statistics_counters_enabled;
+
       /** Is a PIPE_QUERY_PRIMITIVES_GENERATED query active? */
       bool prims_generated_query_active;
 

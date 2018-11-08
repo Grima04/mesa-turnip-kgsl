@@ -560,9 +560,24 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 }
 
 static void
-iris_set_active_query_state(struct pipe_context *pipe, boolean enable)
+iris_set_active_query_state(struct pipe_context *ctx, boolean enable)
 {
-   /* Do nothing, intentionally - only u_blitter uses this. */
+   struct iris_context *ice = (void *) ctx;
+
+   if (ice->state.statistics_counters_enabled == enable)
+      return;
+
+   // XXX: most packets aren't paying attention to this yet, because it'd
+   // have to be done dynamically at draw time, which is a pain
+   ice->state.statistics_counters_enabled = enable;
+   ice->state.dirty |= IRIS_DIRTY_CLIP |
+                       IRIS_DIRTY_GS |
+                       IRIS_DIRTY_RASTER |
+                       IRIS_DIRTY_STREAMOUT |
+                       IRIS_DIRTY_TCS |
+                       IRIS_DIRTY_TES |
+                       IRIS_DIRTY_VS |
+                       IRIS_DIRTY_WM;
 }
 
 void
