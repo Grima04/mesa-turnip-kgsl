@@ -599,9 +599,11 @@ choose_copy_function(mem_copy_fn_type copy_type)
       return memcpy;
    case INTEL_COPY_RGBA8:
       return rgba8_copy;
-#if defined(INLINE_SSE41)
    case INTEL_COPY_STREAMING_LOAD:
+#if defined(INLINE_SSE41)
       return _memcpy_streaming_load;
+#else
+      unreachable("INTEL_COPY_STREAMING_LOAD requires sse4.1");
 #endif
    case INTEL_COPY_INVALID:
       unreachable("invalid copy_type");
