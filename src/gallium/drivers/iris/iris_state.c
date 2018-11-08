@@ -1065,7 +1065,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
          state->line_smooth ? _10pixels : _05pixels;
       sf.LastPixelEnable = state->line_last_pixel;
       sf.LineWidth = line_width;
-      sf.SmoothPointEnable = state->point_smooth;
+      sf.SmoothPointEnable = state->point_smooth || state->multisample;
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
 
@@ -1090,7 +1090,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       rr.GlobalDepthOffsetConstant = state->offset_units * 2;
       rr.GlobalDepthOffsetScale = state->offset_scale;
       rr.GlobalDepthOffsetClamp = state->offset_clamp;
-      rr.SmoothPointEnable = state->point_smooth;
+      rr.SmoothPointEnable = state->point_smooth || state->multisample;
       rr.AntialiasingEnable = state->line_smooth;
       rr.ScissorRectangleEnable = state->scissor;
       rr.ViewportZNearClipTestEnable = state->depth_clip_near;
