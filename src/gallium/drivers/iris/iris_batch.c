@@ -299,6 +299,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
       if (other_entry &&
           ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
          iris_batch_flush(batch->other_batches[b]);
+         iris_batch_add_syncpt(batch, batch->other_batches[b]->last_syncpt,
+                               I915_EXEC_FENCE_WAIT);
       }
    }
 
