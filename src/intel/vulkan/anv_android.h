@@ -28,6 +28,8 @@
 #include <vulkan/vulkan_android.h>
 #include <vulkan/vk_android_native_buffer.h>
 
+struct anv_device_memory;
+
 VkResult anv_image_from_gralloc(VkDevice device_h,
                                 const VkImageCreateInfo *base_info,
                                 const VkNativeBufferANDROID *gralloc_info,
@@ -36,4 +38,12 @@ VkResult anv_image_from_gralloc(VkDevice device_h,
 
 uint64_t anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                                      const VkImageUsageFlags vk_usage);
+
+VkResult anv_import_ahw_memory(VkDevice device_h,
+                               struct anv_device_memory *mem,
+                               const VkImportAndroidHardwareBufferInfoANDROID *info);
+
+VkResult anv_create_ahw_memory(VkDevice device_h,
+                               struct anv_device_memory *mem,
+                               const VkMemoryAllocateInfo *pAllocateInfo);
 #endif /* ANV_ANDROID_H */

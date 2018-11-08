@@ -39,3 +39,19 @@ anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
 {
    return 0;
 }
+
+VkResult
+anv_import_ahw_memory(VkDevice device_h,
+                      struct anv_device_memory *mem,
+                      const VkImportAndroidHardwareBufferInfoANDROID *info)
+{
+   return VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+VkResult
+anv_create_ahw_memory(VkDevice device_h,
+                      struct anv_device_memory *mem,
+                      const VkMemoryAllocateInfo *pAllocateInfo)
+{
+   return VK_ERROR_EXTENSION_NOT_PRESENT;
+}

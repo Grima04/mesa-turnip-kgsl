@@ -2268,6 +2268,7 @@ VkResult anv_AllocateMemory(
    mem->type = &pdevice->memory.types[pAllocateInfo->memoryTypeIndex];
    mem->map = NULL;
    mem->map_size = 0;
+   mem->ahw = NULL;
 
    uint64_t bo_flags = 0;
 
@@ -2289,6 +2290,43 @@ VkResult anv_AllocateMemory(
 
    if (pdevice->use_softpin)
       bo_flags |= EXEC_OBJECT_PINNED;
+
+   const VkExportMemoryAllocateInfo *export_info =
+      vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
+
+   /* Check if we need to support Android HW buffer export. If so,
+    * create AHardwareBuffer and import memory from it.
+    */
+   bool android_export = false;
+   if (export_info && export_info->handleTypes &
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+      android_export = true;
+
+   /* Android memory import. */
+   const struct VkImportAndroidHardwareBufferInfoANDROID *ahw_import_info =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID);
+
+   if (ahw_import_info) {
+      result = anv_import_ahw_memory(_device, mem, ahw_import_info);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      goto success;
+   } else if (android_export) {
+      result = anv_create_ahw_memory(_device, mem, pAllocateInfo);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      const struct VkImportAndroidHardwareBufferInfoANDROID import_info = {
+         .buffer = mem->ahw,
+      };
+      result = anv_import_ahw_memory(_device, mem, &import_info);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      goto success;
+   }
 
    const VkImportMemoryFdInfoKHR *fd_info =
       vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
@@ -2345,8 +2383,6 @@ VkResult anv_AllocateMemory(
 
    /* Regular allocate (not importing memory). */
 
-   const VkExportMemoryAllocateInfoKHR *export_info =
-      vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO_KHR);
    if (export_info && export_info->handleTypes)
       bo_flags |= ANV_BO_EXTERNAL;
 
@@ -2449,6 +2485,11 @@ void anv_FreeMemory(
       anv_UnmapMemory(_device, _mem);
 
    anv_bo_cache_release(device, &device->bo_cache, mem->bo);
+
+#ifdef ANDROID
+   if (mem->ahw)
+      AHardwareBuffer_release(mem->ahw);
+#endif
 
    vk_free2(&device->alloc, pAllocator, mem);
 }

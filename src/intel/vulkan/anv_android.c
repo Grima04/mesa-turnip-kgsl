@@ -247,6 +247,133 @@ anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
 }
 
 VkResult
+anv_GetMemoryAndroidHardwareBufferANDROID(
+   VkDevice device_h,
+   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
+   struct AHardwareBuffer **pBuffer)
+{
+   ANV_FROM_HANDLE(anv_device_memory, mem, pInfo->memory);
+
+   /* Some quotes from Vulkan spec:
+    *
+    * "If the device memory was created by importing an Android hardware
+    * buffer, vkGetMemoryAndroidHardwareBufferANDROID must return that same
+    * Android hardware buffer object."
+    *
+    * "VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID must
+    * have been included in VkExportMemoryAllocateInfoKHR::handleTypes when
+    * memory was created."
+    */
+   if (mem->ahw) {
+      *pBuffer = mem->ahw;
+      /* Increase refcount. */
+      AHardwareBuffer_acquire(mem->ahw);
+      return VK_SUCCESS;
+   }
+
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
+/*
+ * Called from anv_AllocateMemory when import AHardwareBuffer.
+ */
+VkResult
+anv_import_ahw_memory(VkDevice device_h,
+                      struct anv_device_memory *mem,
+                      const VkImportAndroidHardwareBufferInfoANDROID *info)
+{
+   ANV_FROM_HANDLE(anv_device, device, device_h);
+
+   /* Import from AHardwareBuffer to anv_device_memory. */
+   const native_handle_t *handle =
+      AHardwareBuffer_getNativeHandle(info->buffer);
+
+   /* NOTE - We support buffers with only one handle but do not error on
+    * multiple handle case. Reason is that we want to support YUV formats
+    * where we have many logical planes but they all point to the same
+    * buffer, like is the case with VK_FORMAT_G8_B8R8_2PLANE_420_UNORM.
+    */
+   int dma_buf = (handle && handle->numFds) ? handle->data[0] : -1;
+   if (dma_buf < 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+
+   uint64_t bo_flags = ANV_BO_EXTERNAL;
+   if (device->instance->physicalDevice.supports_48bit_addresses)
+      bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
+   if (device->instance->physicalDevice.use_softpin)
+      bo_flags |= EXEC_OBJECT_PINNED;
+
+   VkResult result = anv_bo_cache_import(device, &device->bo_cache,
+                                dma_buf, bo_flags, &mem->bo);
+   assert(VK_SUCCESS);
+
+   /* "If the vkAllocateMemory command succeeds, the implementation must
+    * acquire a reference to the imported hardware buffer, which it must
+    * release when the device memory object is freed. If the command fails,
+    * the implementation must not retain a reference."
+    */
+   AHardwareBuffer_acquire(info->buffer);
+   mem->ahw = info->buffer;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+anv_create_ahw_memory(VkDevice device_h,
+                      struct anv_device_memory *mem,
+                      const VkMemoryAllocateInfo *pAllocateInfo)
+{
+   ANV_FROM_HANDLE(anv_device, dev, device_h);
+
+   const VkMemoryDedicatedAllocateInfo *dedicated_info =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           MEMORY_DEDICATED_ALLOCATE_INFO);
+
+   uint32_t w = 0;
+   uint32_t h = 1;
+   uint32_t layers = 1;
+   uint32_t format = 0;
+   uint64_t usage = 0;
+
+   /* If caller passed dedicated information. */
+   if (dedicated_info && dedicated_info->image) {
+      ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
+      w = image->extent.width;
+      h = image->extent.height;
+      layers = image->array_size;
+      format = android_format_from_vk(image->vk_format);
+      usage = anv_ahw_usage_from_vk_usage(image->create_flags, image->usage);
+   } else if (dedicated_info && dedicated_info->buffer) {
+      ANV_FROM_HANDLE(anv_buffer, buffer, dedicated_info->buffer);
+      w = buffer->size;
+      format = AHARDWAREBUFFER_FORMAT_BLOB;
+      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+   } else {
+      w = pAllocateInfo->allocationSize;
+      format = AHARDWAREBUFFER_FORMAT_BLOB;
+      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+   }
+
+   struct AHardwareBuffer *ahw = NULL;
+   struct AHardwareBuffer_Desc desc = {
+      .width = w,
+      .height = h,
+      .layers = layers,
+      .format = format,
+      .usage = usage,
+    };
+
+   if (AHardwareBuffer_allocate(&desc, &ahw) != 0)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   mem->ahw = ahw;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 anv_image_from_gralloc(VkDevice device_h,
                        const VkImageCreateInfo *base_info,
                        const VkNativeBufferANDROID *gralloc_info,
