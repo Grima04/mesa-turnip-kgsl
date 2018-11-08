@@ -400,9 +400,10 @@ iris_is_format_supported(struct pipe_screen *pscreen,
 {
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    const struct gen_device_info *devinfo = &screen->devinfo;
+   uint32_t max_samples = devinfo->gen == 8 ? 8 : 16;
 
    // XXX: msaa max
-   if (sample_count > 16 || !util_is_power_of_two_or_zero(sample_count))
+   if (sample_count > max_samples || !util_is_power_of_two_or_zero(sample_count))
       return false;
 
    if (pformat == PIPE_FORMAT_NONE)
