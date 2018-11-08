@@ -34,4 +34,6 @@ VkResult anv_image_from_gralloc(VkDevice device_h,
                                 const VkAllocationCallbacks *alloc,
                                 VkImage *pImage);
 
+uint64_t anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
+                                     const VkImageUsageFlags vk_usage);
 #endif /* ANV_ANDROID_H */
