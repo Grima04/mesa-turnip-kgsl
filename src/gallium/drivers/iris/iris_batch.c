@@ -140,11 +140,13 @@ iris_init_batch(struct iris_batch *batch,
                 struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
                 struct iris_batch **all_batches,
+                const char *name,
                 uint8_t engine)
 {
    batch->screen = screen;
    batch->vtbl = vtbl;
    batch->dbg = dbg;
+   batch->name = name;
 
    /* engine should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
    assert((engine & ~I915_EXEC_RING_MASK) == 0);
@@ -456,9 +458,9 @@ _iris_batch_flush_fence(struct iris_batch *batch,
          second_bytes = bytes_for_commands;
          bytes_for_commands += batch->primary_batch_size;
       }
-      fprintf(stderr, "%19s:%-3d: Batchbuffer flush with %5d+%5db (%0.1f%%) "
+      fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5d+%5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
-              file, line,
+              file, line, batch->name, batch->hw_ctx_id,
               batch->primary_batch_size, second_bytes,
               100.0f * bytes_for_commands / BATCH_SZ,
               batch->exec_count,

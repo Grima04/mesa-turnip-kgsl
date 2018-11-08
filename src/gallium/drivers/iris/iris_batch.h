@@ -49,6 +49,9 @@ struct iris_batch {
    struct iris_vtable *vtbl;
    struct pipe_debug_callback *dbg;
 
+   /** The name of this batch for debug info (e.g. "render") */
+   const char *name;
+
    /** Current batchbuffer being queued up. */
    struct iris_bo *bo;
    void *map;
@@ -109,6 +112,7 @@ void iris_init_batch(struct iris_batch *batch,
                      struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
                      struct iris_batch **other_batches,
+                     const char *name,
                      uint8_t ring);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);

@@ -215,10 +215,11 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
       &ice->render_batch,
       &ice->compute_batch,
    };
+   const char *batch_names[IRIS_BATCH_COUNT] = { "render", "compute", };
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       iris_init_batch(batches[i], screen, &ice->vtbl, &ice->dbg,
-                      batches, I915_EXEC_RENDER);
+                      batches, batch_names[i], I915_EXEC_RENDER);
    }
 
    ice->vtbl.init_render_context(screen, &ice->render_batch, &ice->vtbl,
