@@ -61,6 +61,32 @@
 static void
 iris_batch_reset(struct iris_batch *batch);
 
+static unsigned
+num_fences(struct iris_batch *batch)
+{
+   return util_dynarray_num_elements(&batch->exec_fences,
+                                     struct drm_i915_gem_exec_fence);
+}
+
+/**
+ * Debugging code to dump the fence list, used by INTEL_DEBUG=submit.
+ */
+static void
+dump_fence_list(struct iris_batch *batch)
+{
+   fprintf(stderr, "Fence list (length %u):      ", num_fences(batch));
+
+   util_dynarray_foreach(&batch->exec_fences,
+                         struct drm_i915_gem_exec_fence, f) {
+      fprintf(stderr, "%s%u%s ",
+              (f->flags & I915_EXEC_FENCE_WAIT) ? "..." : "",
+              f->handle,
+              (f->flags & I915_EXEC_FENCE_SIGNAL) ? "!" : "");
+   }
+
+   fprintf(stderr, "\n");
+}
+
 /**
  * Debugging code to dump the validation list, used by INTEL_DEBUG=submit.
  */
@@ -155,6 +181,8 @@ iris_init_batch(struct iris_batch *batch,
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
    assert(batch->hw_ctx_id);
+
+   util_dynarray_init(&batch->exec_fences, ralloc_context(NULL));
 
    batch->exec_count = 0;
    batch->exec_array_size = 100;
@@ -345,6 +373,9 @@ iris_batch_free(struct iris_batch *batch)
    }
    free(batch->exec_bos);
    free(batch->validation_list);
+
+   ralloc_free(batch->exec_fences.mem_ctx);
+
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
    batch->map = NULL;
@@ -419,7 +450,7 @@ iris_finish_batch(struct iris_batch *batch)
  * Submit the batch to the GPU via execbuffer2.
  */
 static int
-submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
+submit_batch(struct iris_batch *batch)
 {
    iris_bo_unmap(batch->bo);
 
@@ -448,20 +479,16 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       .rsvd1 = batch->hw_ctx_id, /* rsvd1 is actually the context ID */
    };
 
-   unsigned long cmd = DRM_IOCTL_I915_GEM_EXECBUFFER2;
-
-   if (in_fence_fd != -1) {
-      execbuf.rsvd2 = in_fence_fd;
-      execbuf.flags |= I915_EXEC_FENCE_IN;
+   if (num_fences(batch)) {
+      execbuf.flags |= I915_EXEC_FENCE_ARRAY;
+      execbuf.num_cliprects = num_fences(batch);
+      execbuf.cliprects_ptr =
+         (uintptr_t)util_dynarray_begin(&batch->exec_fences);
    }
 
-   if (out_fence_fd != NULL) {
-      cmd = DRM_IOCTL_I915_GEM_EXECBUFFER2_WR;
-      *out_fence_fd = -1;
-      execbuf.flags |= I915_EXEC_FENCE_OUT;
-   }
-
-   int ret = drm_ioctl(batch->screen->fd, cmd, &execbuf);
+   int ret = drm_ioctl(batch->screen->fd,
+                       DRM_IOCTL_I915_GEM_EXECBUFFER2,
+                       &execbuf);
    if (ret != 0) {
       ret = -errno;
       DBG("execbuf FAILED: errno = %d\n", -ret);
@@ -478,9 +505,6 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
       bo->index = -1;
    }
 
-   if (ret == 0 && out_fence_fd != NULL)
-      *out_fence_fd = execbuf.rsvd2 >> 32;
-
    return ret;
 }
 
@@ -494,13 +518,11 @@ submit_batch(struct iris_batch *batch, int in_fence_fd, int *out_fence_fd)
  * \param out_fence_fd is ignored if NULL.  Otherwise, the caller must
  * take ownership of the returned fd.
  */
-int
-_iris_batch_flush_fence(struct iris_batch *batch,
-                        int in_fence_fd, int *out_fence_fd,
-                        const char *file, int line)
+void
+_iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 {
    if (iris_batch_bytes_used(batch) == 0)
-      return 0;
+      return;
 
    iris_finish_batch(batch);
 
@@ -518,6 +540,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
               100.0f * bytes_for_commands / BATCH_SZ,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
+      dump_fence_list(batch);
       dump_validation_list(batch);
    }
 
@@ -525,7 +548,7 @@ _iris_batch_flush_fence(struct iris_batch *batch,
       decode_batch(batch);
    }
 
-   int ret = submit_batch(batch, in_fence_fd, out_fence_fd);
+   int ret = submit_batch(batch);
 
    //throttle(iris);
 
@@ -554,10 +577,10 @@ _iris_batch_flush_fence(struct iris_batch *batch,
    batch->exec_count = 0;
    batch->aperture_space = 0;
 
+   util_dynarray_clear(&batch->exec_fences);
+
    /* Start a new batch buffer. */
    iris_batch_reset(batch);
-
-   return 0;
 }
 
 /**

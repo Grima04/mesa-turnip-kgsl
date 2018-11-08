@@ -27,6 +27,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+
+#include "util/u_dynarray.h"
+
 #include "i915_drm.h"
 #include "common/gen_decoder.h"
 
@@ -76,6 +79,9 @@ struct iris_batch {
    int exec_count;
    int exec_array_size;
 
+   /** A list of drm_i915_exec_fences to have execbuf signal or wait on */
+   struct util_dynarray exec_fences;
+
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
@@ -118,16 +124,8 @@ void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);
 
-int _iris_batch_flush_fence(struct iris_batch *batch,
-                            int in_fence_fd, int *out_fence_fd,
-                            const char *file, int line);
-
-
-#define iris_batch_flush_fence(batch, in_fence_fd, out_fence_fd) \
-   _iris_batch_flush_fence((batch), (in_fence_fd), (out_fence_fd), \
-                           __FILE__, __LINE__)
-
-#define iris_batch_flush(batch) iris_batch_flush_fence((batch), -1, NULL)
+void _iris_batch_flush(struct iris_batch *batch, const char *file, int line);
+#define iris_batch_flush(batch) _iris_batch_flush((batch), __FILE__, __LINE__)
 
 bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
