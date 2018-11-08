@@ -812,6 +812,8 @@ iris_create_blend_state(struct pipe_context *ctx,
    blend_state += GENX(BLEND_STATE_length);
 
    for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
+      const struct pipe_rt_blend_state *rt =
+         &state->rt[state->independent_blend_enable ? i : 0];
       iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_state, be) {
          be.LogicOpEnable = state->logicop_enable;
          be.LogicOpFunction = state->logicop_func;
@@ -821,19 +823,19 @@ iris_create_blend_state(struct pipe_context *ctx,
          be.PreBlendColorClampEnable = true;
          be.PostBlendColorClampEnable = true;
 
-         be.ColorBufferBlendEnable = state->rt[i].blend_enable;
+         be.ColorBufferBlendEnable = rt->blend_enable;
 
-         be.ColorBlendFunction          = state->rt[i].rgb_func;
-         be.AlphaBlendFunction          = state->rt[i].alpha_func;
-         be.SourceBlendFactor           = state->rt[i].rgb_src_factor;
-         be.SourceAlphaBlendFactor      = state->rt[i].alpha_func;
-         be.DestinationBlendFactor      = state->rt[i].rgb_dst_factor;
-         be.DestinationAlphaBlendFactor = state->rt[i].alpha_dst_factor;
+         be.ColorBlendFunction          = rt->rgb_func;
+         be.AlphaBlendFunction          = rt->alpha_func;
+         be.SourceBlendFactor           = rt->rgb_src_factor;
+         be.SourceAlphaBlendFactor      = rt->alpha_func;
+         be.DestinationBlendFactor      = rt->rgb_dst_factor;
+         be.DestinationAlphaBlendFactor = rt->alpha_dst_factor;
 
-         be.WriteDisableRed   = !(state->rt[i].colormask & PIPE_MASK_R);
-         be.WriteDisableGreen = !(state->rt[i].colormask & PIPE_MASK_G);
-         be.WriteDisableBlue  = !(state->rt[i].colormask & PIPE_MASK_B);
-         be.WriteDisableAlpha = !(state->rt[i].colormask & PIPE_MASK_A);
+         be.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
+         be.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
+         be.WriteDisableBlue  = !(rt->colormask & PIPE_MASK_B);
+         be.WriteDisableAlpha = !(rt->colormask & PIPE_MASK_A);
       }
       blend_state += GENX(BLEND_STATE_ENTRY_length);
    }
