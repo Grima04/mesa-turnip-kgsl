@@ -150,9 +150,21 @@ iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
 {
    struct iris_context *ice = (void *) ctx;
 
-   // XXX: compute batch?
+   if (ice->render_batch.contains_draw) {
+      iris_emit_pipe_control_flush(&ice->render_batch,
+                                   PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(&ice->render_batch,
+                                   PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
+   }
 
-   iris_flush_depth_and_render_caches(&ice->render_batch);
+   if (ice->compute_batch.contains_draw) {
+      iris_emit_pipe_control_flush(&ice->compute_batch,
+                                   PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(&ice->compute_batch,
+                                   PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
+   }
 }
 
 static void
