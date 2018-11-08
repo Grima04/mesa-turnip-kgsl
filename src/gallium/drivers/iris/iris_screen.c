@@ -157,12 +157,10 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
-   case PIPE_CAP_POST_DEPTH_COVERAGE:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_QUERY_BUFFER_OBJECT:
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
    case PIPE_CAP_TGSI_TXQS:
-   case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_TGSI_CLOCK:
    case PIPE_CAP_TGSI_BALLOT:
    case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
@@ -172,10 +170,12 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_GATHER_SM5:
    case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
-   case PIPE_CAP_SHADER_STENCIL_EXPORT:
    case PIPE_CAP_LOAD_CONSTBUF:
       return true;
-
+   case PIPE_CAP_TGSI_FS_FBFETCH:
+   case PIPE_CAP_POST_DEPTH_COVERAGE:
+   case PIPE_CAP_SHADER_STENCIL_EXPORT:
+      return devinfo->gen >= 9;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 1;
    case PIPE_CAP_MAX_RENDER_TARGETS:
