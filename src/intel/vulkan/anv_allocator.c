@@ -443,17 +443,21 @@ anv_block_pool_init(struct anv_block_pool *pool,
 
    anv_bo_init(pool->bo, 0, 0);
 
-   pool->fd = memfd_create("block pool", MFD_CLOEXEC);
-   if (pool->fd == -1)
-      return vk_error(VK_ERROR_INITIALIZATION_FAILED);
+   if (!(pool->bo_flags & EXEC_OBJECT_PINNED)) {
+      pool->fd = memfd_create("block pool", MFD_CLOEXEC);
+      if (pool->fd == -1)
+         return vk_error(VK_ERROR_INITIALIZATION_FAILED);
 
-   /* Just make it 2GB up-front.  The Linux kernel won't actually back it
-    * with pages until we either map and fault on one of them or we use
-    * userptr and send a chunk of it off to the GPU.
-    */
-   if (ftruncate(pool->fd, BLOCK_POOL_MEMFD_SIZE) == -1) {
-      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_fd;
+      /* Just make it 2GB up-front.  The Linux kernel won't actually back it
+       * with pages until we either map and fault on one of them or we use
+       * userptr and send a chunk of it off to the GPU.
+       */
+      if (ftruncate(pool->fd, BLOCK_POOL_MEMFD_SIZE) == -1) {
+         result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+         goto fail_fd;
+      }
+   } else {
+      pool->fd = -1;
    }
 
    if (!u_vector_init(&pool->mmap_cleanups,
@@ -477,7 +481,8 @@ anv_block_pool_init(struct anv_block_pool *pool,
  fail_mmap_cleanups:
    u_vector_finish(&pool->mmap_cleanups);
  fail_fd:
-   close(pool->fd);
+   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
+      close(pool->fd);
 
    return result;
 }
@@ -495,8 +500,8 @@ anv_block_pool_finish(struct anv_block_pool *pool)
    }
 
    u_vector_finish(&pool->mmap_cleanups);
-
-   close(pool->fd);
+   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
+      close(pool->fd);
 }
 
 static VkResult
@@ -506,6 +511,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
    void *map;
    uint32_t gem_handle;
    struct anv_mmap_cleanup *cleanup;
+   const bool use_softpin = !!(pool->bo_flags & EXEC_OBJECT_PINNED);
 
    /* Assert that we only ever grow the pool */
    assert(center_bo_offset >= pool->back_state.end);
@@ -513,7 +519,8 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 
    /* Assert that we don't go outside the bounds of the memfd */
    assert(center_bo_offset <= BLOCK_POOL_MEMFD_CENTER);
-   assert(size - center_bo_offset <=
+   assert(use_softpin ||
+          size - center_bo_offset <=
           BLOCK_POOL_MEMFD_SIZE - BLOCK_POOL_MEMFD_CENTER);
 
    cleanup = u_vector_add(&pool->mmap_cleanups);
@@ -522,28 +529,36 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 
    *cleanup = ANV_MMAP_CLEANUP_INIT;
 
-   /* Just leak the old map until we destroy the pool.  We can't munmap it
-    * without races or imposing locking on the block allocate fast path. On
-    * the whole the leaked maps adds up to less than the size of the
-    * current map.  MAP_POPULATE seems like the right thing to do, but we
-    * should try to get some numbers.
-    */
-   map = mmap(NULL, size, PROT_READ | PROT_WRITE,
-              MAP_SHARED | MAP_POPULATE, pool->fd,
-              BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
-   if (map == MAP_FAILED)
-      return vk_errorf(pool->device->instance, pool->device,
-                       VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
-
-   gem_handle = anv_gem_userptr(pool->device, map, size);
-   if (gem_handle == 0) {
-      munmap(map, size);
-      return vk_errorf(pool->device->instance, pool->device,
-                       VK_ERROR_TOO_MANY_OBJECTS, "userptr failed: %m");
+   uint32_t newbo_size = size - pool->size;
+   if (use_softpin) {
+      gem_handle = anv_gem_create(pool->device, newbo_size);
+      map = anv_gem_mmap(pool->device, gem_handle, 0, newbo_size, 0);
+      if (map == MAP_FAILED)
+         return vk_errorf(pool->device->instance, pool->device,
+                          VK_ERROR_MEMORY_MAP_FAILED, "gem mmap failed: %m");
+   } else {
+      /* Just leak the old map until we destroy the pool.  We can't munmap it
+       * without races or imposing locking on the block allocate fast path. On
+       * the whole the leaked maps adds up to less than the size of the
+       * current map.  MAP_POPULATE seems like the right thing to do, but we
+       * should try to get some numbers.
+       */
+      map = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                 MAP_SHARED | MAP_POPULATE, pool->fd,
+                 BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
+      if (map == MAP_FAILED)
+         return vk_errorf(pool->device->instance, pool->device,
+                          VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
+      gem_handle = anv_gem_userptr(pool->device, map, size);
+      if (gem_handle == 0) {
+         munmap(map, size);
+         return vk_errorf(pool->device->instance, pool->device,
+                          VK_ERROR_TOO_MANY_OBJECTS, "userptr failed: %m");
+      }
    }
 
    cleanup->map = map;
-   cleanup->size = size;
+   cleanup->size = use_softpin ? newbo_size : size;
    cleanup->gem_handle = gem_handle;
 
    /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
@@ -588,22 +603,32 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * hard work for us.
     */
    struct anv_bo *bo;
+   uint32_t bo_size;
+   uint64_t bo_offset;
 
    assert(pool->nbos < ANV_MAX_BLOCK_POOL_BOS);
 
-   /* We just need one BO, and we already have a pointer to it. Let's simply
-    * "allocate" it from our array.
-    */
-   if (pool->nbos == 0)
-      pool->nbos++;
-
-   bo = pool->bo;
-
-   anv_bo_init(bo, gem_handle, size);
-   if (pool->bo_flags & EXEC_OBJECT_PINNED) {
-      bo->offset = pool->start_address + BLOCK_POOL_MEMFD_CENTER -
-         center_bo_offset;
+   if (use_softpin) {
+      /* With softpin, we add a new BO to the pool, and set its offset to right
+       * where the previous BO ends (the end of the pool).
+       */
+      bo = &pool->bos[pool->nbos++];
+      bo_size = newbo_size;
+      bo_offset = pool->start_address + pool->size;
+   } else {
+      /* Without softpin, we just need one BO, and we already have a pointer to
+       * it. Simply "allocate" it from our array if we didn't do it before.
+       * The offset doesn't matter since we are not pinning the BO anyway.
+       */
+      if (pool->nbos == 0)
+         pool->nbos++;
+      bo = pool->bo;
+      bo_size = size;
+      bo_offset = 0;
    }
+
+   anv_bo_init(bo, gem_handle, bo_size);
+   bo->offset = bo_offset;
    bo->flags = pool->bo_flags;
    bo->map = map;
    pool->size = size;
