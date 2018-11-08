@@ -153,11 +153,9 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
 void
 iris_cache_sets_clear(struct iris_batch *batch)
 {
-   struct hash_entry *render_entry;
    hash_table_foreach(batch->cache.render, render_entry)
       _mesa_hash_table_remove(batch->cache.render, render_entry);
 
-   struct set_entry *depth_entry;
    set_foreach(batch->cache.depth, depth_entry)
       _mesa_set_remove(batch->cache.depth, depth_entry);
 }
