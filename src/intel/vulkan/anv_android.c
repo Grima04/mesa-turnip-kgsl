@@ -374,6 +374,42 @@ anv_create_ahw_memory(VkDevice device_h,
 }
 
 VkResult
+anv_image_from_external(
+   VkDevice device_h,
+   const VkImageCreateInfo *base_info,
+   const struct VkExternalMemoryImageCreateInfo *create_info,
+   const VkAllocationCallbacks *alloc,
+   VkImage *out_image_h)
+{
+   ANV_FROM_HANDLE(anv_device, device, device_h);
+
+   const struct VkExternalFormatANDROID *ext_info =
+      vk_find_struct_const(base_info->pNext, EXTERNAL_FORMAT_ANDROID);
+
+   if (ext_info && ext_info->externalFormat != 0) {
+      assert(base_info->format == VK_FORMAT_UNDEFINED);
+      assert(base_info->imageType == VK_IMAGE_TYPE_2D);
+      assert(base_info->usage == VK_IMAGE_USAGE_SAMPLED_BIT);
+      assert(base_info->tiling == VK_IMAGE_TILING_OPTIMAL);
+   }
+
+   struct anv_image_create_info anv_info = {
+      .vk_info = base_info,
+      .isl_extra_usage_flags = ISL_SURF_USAGE_DISABLE_AUX_BIT,
+      .external_format = true,
+   };
+
+   VkImage image_h;
+   VkResult result = anv_image_create(device_h, &anv_info, alloc, &image_h);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *out_image_h = image_h;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 anv_image_from_gralloc(VkDevice device_h,
                        const VkImageCreateInfo *base_info,
                        const VkNativeBufferANDROID *gralloc_info,

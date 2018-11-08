@@ -594,6 +594,15 @@ anv_image_create(VkDevice _device,
    image->drm_format_mod = isl_mod_info ? isl_mod_info->modifier :
                                           DRM_FORMAT_MOD_INVALID;
 
+   /* In case of external format, We don't know format yet,
+    * so skip the rest for now.
+    */
+   if (create_info->external_format) {
+      image->external_format = true;
+      *pImage = anv_image_to_handle(image);
+      return VK_SUCCESS;
+   }
+
    const struct anv_format *format = anv_get_format(image->vk_format);
    assert(format != NULL);
 
@@ -635,9 +644,16 @@ anv_CreateImage(VkDevice device,
                 const VkAllocationCallbacks *pAllocator,
                 VkImage *pImage)
 {
+   const struct VkExternalMemoryImageCreateInfo *create_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
+
+   if (create_info && (create_info->handleTypes &
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID))
+      return anv_image_from_external(device, pCreateInfo, create_info,
+                                     pAllocator, pImage);
+
    const VkNativeBufferANDROID *gralloc_info =
       vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
-
    if (gralloc_info)
       return anv_image_from_gralloc(device, pCreateInfo, gralloc_info,
                                     pAllocator, pImage);
@@ -690,6 +706,83 @@ static void anv_image_bind_memory_plane(struct anv_device *device,
    };
 }
 
+/* We are binding AHardwareBuffer. Get a description, resolve the
+ * format and prepare anv_image properly.
+ */
+static void
+resolve_ahw_image(struct anv_device *device,
+                  struct anv_image *image,
+                  struct anv_device_memory *mem)
+{
+#ifdef ANDROID
+   assert(mem->ahw);
+   AHardwareBuffer_Desc desc;
+   AHardwareBuffer_describe(mem->ahw, &desc);
+
+   /* Check tiling. */
+   int i915_tiling = anv_gem_get_tiling(device, mem->bo->gem_handle);
+   VkImageTiling vk_tiling;
+   isl_tiling_flags_t isl_tiling_flags = 0;
+
+   switch (i915_tiling) {
+   case I915_TILING_NONE:
+      vk_tiling = VK_IMAGE_TILING_LINEAR;
+      isl_tiling_flags = ISL_TILING_LINEAR_BIT;
+      break;
+   case I915_TILING_X:
+      vk_tiling = VK_IMAGE_TILING_OPTIMAL;
+      isl_tiling_flags = ISL_TILING_X_BIT;
+      break;
+   case I915_TILING_Y:
+      vk_tiling = VK_IMAGE_TILING_OPTIMAL;
+      isl_tiling_flags = ISL_TILING_Y0_BIT;
+      break;
+   case -1:
+   default:
+      unreachable("Invalid tiling flags.");
+   }
+
+   assert(vk_tiling == VK_IMAGE_TILING_LINEAR ||
+          vk_tiling == VK_IMAGE_TILING_OPTIMAL);
+
+   /* Check format. */
+   VkFormat vk_format = vk_format_from_android(desc.format);
+   enum isl_format isl_fmt = anv_get_isl_format(&device->info,
+                                                vk_format,
+                                                VK_IMAGE_ASPECT_COLOR_BIT,
+                                                vk_tiling);
+   assert(format != ISL_FORMAT_UNSUPPORTED);
+
+   /* Handle RGB(X)->RGBA fallback. */
+   switch (desc.format) {
+   case AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM:
+   case AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM:
+      if (isl_format_is_rgb(isl_fmt))
+         isl_fmt = isl_format_rgb_to_rgba(isl_fmt);
+      break;
+   }
+
+   /* Now we are able to fill anv_image fields properly and create
+    * isl_surface for it.
+    */
+   image->vk_format = vk_format;
+   image->format = anv_get_format(vk_format);
+   image->aspects = vk_format_aspects(image->vk_format);
+   image->n_planes = image->format->n_planes;
+   image->ccs_e_compatible = false;
+
+   uint32_t stride = desc.stride *
+                     (isl_format_get_layout(isl_fmt)->bpb / 8);
+
+   uint32_t b;
+   for_each_bit(b, image->aspects) {
+      VkResult r = make_surface(device, image, stride, isl_tiling_flags,
+                                ISL_SURF_USAGE_DISABLE_AUX_BIT, (1 << b));
+      assert(r == VK_SUCCESS);
+   }
+#endif
+}
+
 VkResult anv_BindImageMemory(
     VkDevice                                    _device,
     VkImage                                     _image,
@@ -699,6 +792,9 @@ VkResult anv_BindImageMemory(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_device_memory, mem, _memory);
    ANV_FROM_HANDLE(anv_image, image, _image);
+
+   if (mem->ahw)
+      resolve_ahw_image(device, image, mem);
 
    uint32_t aspect_bit;
    anv_foreach_image_aspect_bit(aspect_bit, image, image->aspects) {
@@ -721,8 +817,11 @@ VkResult anv_BindImageMemory2(
       const VkBindImageMemoryInfo *bind_info = &pBindInfos[i];
       ANV_FROM_HANDLE(anv_device_memory, mem, bind_info->memory);
       ANV_FROM_HANDLE(anv_image, image, bind_info->image);
-      VkImageAspectFlags aspects = image->aspects;
 
+      if (mem->ahw)
+         resolve_ahw_image(device, image, mem);
+
+      VkImageAspectFlags aspects = image->aspects;
       vk_foreach_struct_const(s, bind_info->pNext) {
          switch (s->sType) {
          case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {

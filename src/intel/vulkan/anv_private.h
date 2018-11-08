@@ -2699,6 +2699,9 @@ struct anv_image {
     */
    bool ccs_e_compatible;
 
+   /* Image was created with external format. */
+   bool external_format;
+
    /**
     * Image subsurfaces
     *
@@ -3073,6 +3076,7 @@ struct anv_image_create_info {
    isl_surf_usage_flags_t isl_extra_usage_flags;
 
    uint32_t stride;
+   bool external_format;
 };
 
 VkResult anv_image_create(VkDevice _device,
