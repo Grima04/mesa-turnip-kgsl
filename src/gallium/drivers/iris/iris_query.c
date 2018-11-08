@@ -812,6 +812,12 @@ iris_get_query_result(struct pipe_context *ctx,
          break;
       case 7:
          result->pipeline_statistics.ps_invocations = q->result;
+         /* Implement the "WaDividePSInvocationCountBy4:HSW,BDW" workaround:
+          * "Invocation counter is 4 times actual.  WA: SW to divide HW reported
+          *  PS Invocations value by 4."
+          */
+         if (screen->devinfo.gen == 8)
+            result->pipeline_statistics.ps_invocations /= 4;
          break;
       case 8:
          result->pipeline_statistics.hs_invocations = q->result;
