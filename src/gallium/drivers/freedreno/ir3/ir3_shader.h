@@ -27,12 +27,13 @@
 #ifndef IR3_SHADER_H_
 #define IR3_SHADER_H_
 
+#include <stdio.h>
+
 #include "pipe/p_state.h"
 #include "compiler/shader_enums.h"
 #include "util/bitscan.h"
 
 #include "ir3.h"
-#include "disasm.h"
 
 struct glsl_type;
 
@@ -411,8 +412,6 @@ ir3_shader_stage(struct ir3_shader *shader)
 /*
  * Helper/util:
  */
-
-#include "pipe/p_shader_tokens.h"
 
 static inline int
 ir3_find_output(const struct ir3_shader_variant *so, gl_varying_slot slot)

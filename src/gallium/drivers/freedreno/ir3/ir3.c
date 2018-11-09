@@ -30,9 +30,10 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#include "util/bitscan.h"
 #include "util/ralloc.h"
+#include "util/u_math.h"
 
-#include "freedreno_util.h"
 #include "instr-a3xx.h"
 
 /* simple allocator to carve allocations out of an up-front allocated heap,

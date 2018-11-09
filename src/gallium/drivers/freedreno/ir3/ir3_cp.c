@@ -24,7 +24,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "freedreno_util.h"
+#include <math.h>
 
 #include "ir3.h"
 #include "ir3_shader.h"

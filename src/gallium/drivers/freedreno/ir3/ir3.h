@@ -27,11 +27,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "compiler/shader_enums.h"
+
 #include "util/u_debug.h"
 #include "util/list.h"
 
 #include "instr-a3xx.h"
-#include "disasm.h"  /* TODO move 'gl_shader_stage' somewhere else.. */
 
 /* low level intermediate representation of an adreno shader program */
 

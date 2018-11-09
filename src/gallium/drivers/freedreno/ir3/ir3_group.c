@@ -24,8 +24,6 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "freedreno_util.h"
-
 #include "ir3.h"
 
 /*

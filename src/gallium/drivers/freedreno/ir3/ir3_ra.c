@@ -29,8 +29,6 @@
 #include "util/ralloc.h"
 #include "util/bitset.h"
 
-#include "freedreno_util.h"
-
 #include "ir3.h"
 #include "ir3_compiler.h"
 

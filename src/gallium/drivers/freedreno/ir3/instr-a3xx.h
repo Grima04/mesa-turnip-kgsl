@@ -27,6 +27,7 @@
 #define PACKED __attribute__((__packed__))
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
 
@@ -865,5 +866,7 @@ static inline bool is_ssbo(opc_t opc)
 		return false;
 	}
 }
+
+int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out);
 
 #endif /* INSTR_A3XX_H_ */

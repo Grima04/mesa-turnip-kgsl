@@ -30,8 +30,13 @@
 
 #include <util/u_debug.h>
 
-#include "disasm.h"
 #include "instr-a3xx.h"
+
+/* bitmask of debug flags */
+enum debug_t {
+	PRINT_RAW      = 0x1,    /* dump raw hexdump */
+	PRINT_VERBOSE  = 0x2,
+};
 
 static enum debug_t debug;
 

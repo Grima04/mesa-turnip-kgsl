@@ -31,8 +31,6 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 
-#include "freedreno_util.h"
-
 #include "ir3_compiler.h"
 #include "ir3_shader.h"
 #include "ir3_nir.h"
@@ -40,6 +38,12 @@
 #include "instr-a3xx.h"
 #include "ir3.h"
 
+/* for conditionally setting boolean flag(s): */
+#define COND(bool, val) ((bool) ? (val) : 0)
+
+#define DBG(fmt, ...) \
+		do { debug_printf("%s:%d: "fmt "\n", \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 struct ir3_context {
 	struct ir3_compiler *compiler;
@@ -182,7 +186,7 @@ compile_init(struct ir3_compiler *compiler,
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		DBG("dump nir%dv%d: type=%d, k={cts=%u,hp=%u}",
+		printf("dump nir%dv%d: type=%d, k={cts=%u,hp=%u}",
 			so->shader->id, so->id, so->type,
 			so->key.color_two_side, so->key.half_precision);
 		nir_print_shader(ctx->s, stdout);
@@ -3270,13 +3274,9 @@ static void
 setup_input(struct ir3_context *ctx, nir_variable *in)
 {
 	struct ir3_shader_variant *so = ctx->so;
-	unsigned array_len = MAX2(glsl_get_length(in->type), 1);
 	unsigned ncomp = glsl_get_components(in->type);
 	unsigned n = in->data.driver_location;
 	unsigned slot = in->data.location;
-
-	DBG("; in: slot=%u, len=%ux%u, drvloc=%u",
-			slot, array_len, ncomp, n);
 
 	/* let's pretend things other than vec4 don't exist: */
 	ncomp = MAX2(ncomp, 4);
@@ -3370,14 +3370,10 @@ static void
 setup_output(struct ir3_context *ctx, nir_variable *out)
 {
 	struct ir3_shader_variant *so = ctx->so;
-	unsigned array_len = MAX2(glsl_get_length(out->type), 1);
 	unsigned ncomp = glsl_get_components(out->type);
 	unsigned n = out->data.driver_location;
 	unsigned slot = out->data.location;
 	unsigned comp = 0;
-
-	DBG("; out: slot=%u, len=%ux%u, drvloc=%u",
-			slot, array_len, ncomp, n);
 
 	/* let's pretend things other than vec4 don't exist: */
 	ncomp = MAX2(ncomp, 4);

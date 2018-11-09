@@ -24,9 +24,8 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include "util/ralloc.h"
 #include "util/u_math.h"
-
-#include "freedreno_util.h"
 
 #include "ir3.h"
 
