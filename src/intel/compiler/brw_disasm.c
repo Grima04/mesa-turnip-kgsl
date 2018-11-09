@@ -814,10 +814,12 @@ dest_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    unsigned subreg_nr;
    enum brw_reg_type type;
 
-   if (is_align1 && brw_inst_3src_a1_dst_reg_file(devinfo, inst))
-      reg_file = BRW_ARCHITECTURE_REGISTER_FILE;
-   else if (devinfo->gen == 6 && brw_inst_3src_a16_dst_reg_file(devinfo, inst))
+   if (devinfo->gen == 6 && brw_inst_3src_a16_dst_reg_file(devinfo, inst))
       reg_file = BRW_MESSAGE_REGISTER_FILE;
+   else if (devinfo->gen >= 12)
+      reg_file = brw_inst_3src_a1_dst_reg_file(devinfo, inst);
+   else if (is_align1 && brw_inst_3src_a1_dst_reg_file(devinfo, inst))
+      reg_file = BRW_ARCHITECTURE_REGISTER_FILE;
    else
       reg_file = BRW_GENERAL_REGISTER_FILE;
 
@@ -987,11 +989,16 @@ src_da16(FILE *file,
 }
 
 static enum brw_vertical_stride
-vstride_from_align1_3src_vstride(enum gen10_align1_3src_vertical_stride vstride)
+vstride_from_align1_3src_vstride(const struct gen_device_info *devinfo,
+                                 enum gen10_align1_3src_vertical_stride vstride)
 {
    switch (vstride) {
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_0: return BRW_VERTICAL_STRIDE_0;
-   case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_2: return BRW_VERTICAL_STRIDE_2;
+   case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_2:
+      if (devinfo->gen >= 12)
+         return BRW_VERTICAL_STRIDE_1;
+      else
+         return BRW_VERTICAL_STRIDE_2;
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_4: return BRW_VERTICAL_STRIDE_4;
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_8: return BRW_VERTICAL_STRIDE_8;
    default:
@@ -1080,8 +1087,13 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
    if (is_align1) {
-      if (brw_inst_3src_a1_src0_reg_file(devinfo, inst) ==
-          BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
+      if (devinfo->gen >= 12) {
+         _file = brw_inst_3src_a1_src0_reg_file(devinfo, inst);
+         reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
+         subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
+         type = brw_inst_3src_a1_src0_type(devinfo, inst);
+      } else if (brw_inst_3src_a1_src0_reg_file(devinfo, inst) ==
+                 BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
          _file = BRW_GENERAL_REGISTER_FILE;
          reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
          subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
@@ -1108,7 +1120,7 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
       }
 
       _vert_stride = vstride_from_align1_3src_vstride(
-                        brw_inst_3src_a1_src0_vstride(devinfo, inst));
+         devinfo, brw_inst_3src_a1_src0_vstride(devinfo, inst));
       _horiz_stride = hstride_from_align1_3src_hstride(
                          brw_inst_3src_a1_src0_hstride(devinfo, inst));
       _width = implied_width(_vert_stride, _horiz_stride);
@@ -1164,8 +1176,10 @@ src1_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
    if (is_align1) {
-      if (brw_inst_3src_a1_src1_reg_file(devinfo, inst) ==
-          BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
+      if (devinfo->gen >= 12) {
+         _file = brw_inst_3src_a1_src1_reg_file(devinfo, inst);
+      } else if (brw_inst_3src_a1_src1_reg_file(devinfo, inst) ==
+                 BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
          _file = BRW_GENERAL_REGISTER_FILE;
       } else {
          _file = BRW_ARCHITECTURE_REGISTER_FILE;
@@ -1176,7 +1190,7 @@ src1_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
       type = brw_inst_3src_a1_src1_type(devinfo, inst);
 
       _vert_stride = vstride_from_align1_3src_vstride(
-                        brw_inst_3src_a1_src1_vstride(devinfo, inst));
+         devinfo, brw_inst_3src_a1_src1_vstride(devinfo, inst));
       _horiz_stride = hstride_from_align1_3src_hstride(
                          brw_inst_3src_a1_src1_hstride(devinfo, inst));
       _width = implied_width(_vert_stride, _horiz_stride);
@@ -1232,8 +1246,13 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
    if (is_align1) {
-      if (brw_inst_3src_a1_src2_reg_file(devinfo, inst) ==
-          BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
+      if (devinfo->gen >= 12) {
+         _file = brw_inst_3src_a1_src2_reg_file(devinfo, inst);
+         reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
+         subreg_nr = brw_inst_3src_a1_src2_subreg_nr(devinfo, inst);
+         type = brw_inst_3src_a1_src2_type(devinfo, inst);
+      } else if (brw_inst_3src_a1_src2_reg_file(devinfo, inst) ==
+                 BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
          _file = BRW_GENERAL_REGISTER_FILE;
          reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
          subreg_nr = brw_inst_3src_a1_src2_subreg_nr(devinfo, inst);
