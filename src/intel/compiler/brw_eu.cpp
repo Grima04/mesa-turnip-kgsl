@@ -146,6 +146,12 @@ brw_get_default_access_mode(struct brw_codegen *p)
    return p->current->access_mode;
 }
 
+tgl_swsb
+brw_get_default_swsb(struct brw_codegen *p)
+{
+   return p->current->swsb;
+}
+
 void
 brw_set_default_exec_size(struct brw_codegen *p, unsigned value)
 {
@@ -286,6 +292,11 @@ void brw_set_default_saturate( struct brw_codegen *p, bool enable )
 void brw_set_default_acc_write_control(struct brw_codegen *p, unsigned value)
 {
    p->current->acc_wr_control = value;
+}
+
+void brw_set_default_swsb(struct brw_codegen *p, tgl_swsb value)
+{
+   p->current->swsb = value;
 }
 
 void brw_push_insn_state( struct brw_codegen *p )

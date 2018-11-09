@@ -59,6 +59,9 @@ struct brw_insn_state {
    /* One of BRW_MASK_* */
    unsigned mask_control:1;
 
+   /* Scheduling info for Gen12+ */
+   struct tgl_swsb swsb;
+
    bool saturate:1;
 
    /* One of BRW_ALIGN_* */
@@ -139,6 +142,7 @@ void brw_push_insn_state( struct brw_codegen *p );
 unsigned brw_get_default_exec_size(struct brw_codegen *p);
 unsigned brw_get_default_group(struct brw_codegen *p);
 unsigned brw_get_default_access_mode(struct brw_codegen *p);
+struct tgl_swsb brw_get_default_swsb(struct brw_codegen *p);
 void brw_set_default_exec_size(struct brw_codegen *p, unsigned value);
 void brw_set_default_mask_control( struct brw_codegen *p, unsigned value );
 void brw_set_default_saturate( struct brw_codegen *p, bool enable );
@@ -154,6 +158,7 @@ void brw_set_default_predicate_control(struct brw_codegen *p, enum brw_predicate
 void brw_set_default_predicate_inverse(struct brw_codegen *p, bool predicate_inverse);
 void brw_set_default_flag_reg(struct brw_codegen *p, int reg, int subreg);
 void brw_set_default_acc_write_control(struct brw_codegen *p, unsigned value);
+void brw_set_default_swsb(struct brw_codegen *p, struct tgl_swsb value);
 
 void brw_init_codegen(const struct gen_device_info *, struct brw_codegen *p,
 		      void *mem_ctx);
