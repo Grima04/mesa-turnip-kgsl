@@ -2807,9 +2807,11 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	 *
 	 * Only flush and wait for CB if there is actually a bound color buffer.
 	 */
-	if (sctx->framebuffer.uncompressed_cb_mask)
+	if (sctx->framebuffer.uncompressed_cb_mask) {
 		si_make_CB_shader_coherent(sctx, sctx->framebuffer.nr_samples,
-					   sctx->framebuffer.CB_has_shader_readable_metadata);
+					   sctx->framebuffer.CB_has_shader_readable_metadata,
+					   sctx->framebuffer.all_DCC_pipe_aligned);
+	}
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
 
@@ -2858,6 +2860,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	sctx->framebuffer.any_dst_linear = false;
 	sctx->framebuffer.CB_has_shader_readable_metadata = false;
 	sctx->framebuffer.DB_has_shader_readable_metadata = false;
+	sctx->framebuffer.all_DCC_pipe_aligned = true;
 	unsigned num_bpp64_colorbufs = 0;
 
 	for (i = 0; i < state->nr_cbufs; i++) {
@@ -2908,8 +2911,13 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 		if (tex->surface.bpe >= 8)
 			num_bpp64_colorbufs++;
 
-		if (vi_dcc_enabled(tex, surf->base.u.tex.level))
+		if (vi_dcc_enabled(tex, surf->base.u.tex.level)) {
 			sctx->framebuffer.CB_has_shader_readable_metadata = true;
+
+			if (sctx->chip_class >= GFX9 &&
+			    !tex->surface.u.gfx9.dcc.pipe_aligned)
+				sctx->framebuffer.all_DCC_pipe_aligned = false;
+		}
 
 		si_context_add_resource_size(sctx, surf->base.texture);
 
@@ -4700,9 +4708,11 @@ static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)
 	si_update_fb_dirtiness_after_rendering(sctx);
 
 	/* Multisample surfaces are flushed in si_decompress_textures. */
-	if (sctx->framebuffer.uncompressed_cb_mask)
+	if (sctx->framebuffer.uncompressed_cb_mask) {
 		si_make_CB_shader_coherent(sctx, sctx->framebuffer.nr_samples,
-					   sctx->framebuffer.CB_has_shader_readable_metadata);
+					   sctx->framebuffer.CB_has_shader_readable_metadata,
+					   sctx->framebuffer.all_DCC_pipe_aligned);
+	}
 }
 
 /* This only ensures coherency for shader image/buffer stores. */

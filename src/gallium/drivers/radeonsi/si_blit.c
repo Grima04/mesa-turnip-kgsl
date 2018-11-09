@@ -421,7 +421,7 @@ si_decompress_depth(struct si_context *sctx,
 	 */
 	if (copy_planes && tex->buffer.b.b.nr_samples > 1)
 		si_make_CB_shader_coherent(sctx, tex->buffer.b.b.nr_samples,
-					   false);
+					   false, true /* no DCC */);
 }
 
 static void
@@ -534,7 +534,8 @@ static void si_blit_decompress_color(struct si_context *sctx,
 
 	sctx->decompression_enabled = false;
 	si_make_CB_shader_coherent(sctx, tex->buffer.b.b.nr_samples,
-				   vi_dcc_enabled(tex, first_level));
+				   vi_dcc_enabled(tex, first_level),
+				   tex->surface.u.gfx9.dcc.pipe_aligned);
 }
 
 static void
@@ -1076,7 +1077,7 @@ static void si_do_CB_resolve(struct si_context *sctx,
 	si_blitter_end(sctx);
 
 	/* Flush caches for possible texturing. */
-	si_make_CB_shader_coherent(sctx, 1, false);
+	si_make_CB_shader_coherent(sctx, 1, false, true /* no DCC */);
 }
 
 static bool do_hardware_msaa_resolve(struct pipe_context *ctx,

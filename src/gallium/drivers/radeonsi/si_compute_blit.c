@@ -324,7 +324,11 @@ void si_compute_copy_image(struct si_context *sctx,
 	si_compute_internal_begin(sctx);
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
-	si_make_CB_shader_coherent(sctx, dst->nr_samples, true);
+
+	/* src and dst have the same number of samples. */
+	si_make_CB_shader_coherent(sctx, src->nr_samples, true,
+				   /* Only src can have DCC.*/
+				   ((struct si_texture*)src)->surface.u.gfx9.dcc.pipe_aligned);
 
 	struct pipe_constant_buffer saved_cb = {};
 	si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
@@ -447,7 +451,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
-	si_make_CB_shader_coherent(sctx, dstsurf->texture->nr_samples, true);
+	si_make_CB_shader_coherent(sctx, dstsurf->texture->nr_samples, true,
+				   true /* DCC is not possible with image stores */);
 
 	struct pipe_constant_buffer saved_cb = {};
 	si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);

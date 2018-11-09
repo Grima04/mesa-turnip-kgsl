@@ -638,6 +638,7 @@ struct si_framebuffer {
 	bool				any_dst_linear;
 	bool				CB_has_shader_readable_metadata;
 	bool				DB_has_shader_readable_metadata;
+	bool				all_DCC_pipe_aligned;
 };
 
 enum si_quant_mode {
@@ -1524,7 +1525,7 @@ si_saved_cs_reference(struct si_saved_cs **dst, struct si_saved_cs *src)
 
 static inline void
 si_make_CB_shader_coherent(struct si_context *sctx, unsigned num_samples,
-			   bool shaders_read_metadata)
+			   bool shaders_read_metadata, bool dcc_pipe_aligned)
 {
 	sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB |
 		       SI_CONTEXT_INV_VMEM_L1;
@@ -1534,7 +1535,8 @@ si_make_CB_shader_coherent(struct si_context *sctx, unsigned num_samples,
 		 * L2 metadata must be flushed if shaders read metadata.
 		 * (DCC, CMASK).
 		 */
-		if (num_samples >= 2)
+		if (num_samples >= 2 ||
+		    (shaders_read_metadata && !dcc_pipe_aligned))
 			sctx->flags |= SI_CONTEXT_INV_GLOBAL_L2;
 		else if (shaders_read_metadata)
 			sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
