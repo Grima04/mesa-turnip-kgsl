@@ -1189,7 +1189,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                 const struct brw_tes_prog_key *key,
                 const struct brw_vue_map *input_vue_map,
                 struct brw_tes_prog_data *prog_data,
-                const nir_shader *src_shader,
+                nir_shader *nir,
                 struct gl_program *prog,
                 int shader_time_index,
                 char **error_str)
@@ -1198,7 +1198,6 @@ brw_compile_tes(const struct brw_compiler *compiler,
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
    const unsigned *assembly;
 
-   nir_shader *nir = nir_shader_clone(mem_ctx, src_shader);
    nir->info.inputs_read = key->inputs_read;
    nir->info.patch_inputs_read = key->patch_inputs_read;
 

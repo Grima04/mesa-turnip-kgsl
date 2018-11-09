@@ -70,7 +70,6 @@ brw_codegen_tes_prog(struct brw_context *brw,
    const struct brw_compiler *compiler = brw->screen->compiler;
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct brw_stage_state *stage_state = &brw->tes.base;
-   nir_shader *nir = tep->program.nir;
    struct brw_tes_prog_data prog_data;
    bool start_busy = false;
    double start_time = 0;
@@ -78,6 +77,8 @@ brw_codegen_tes_prog(struct brw_context *brw,
    memset(&prog_data, 0, sizeof(prog_data));
 
    void *mem_ctx = ralloc_context(NULL);
+
+   nir_shader *nir = nir_shader_clone(mem_ctx, tep->program.nir);
 
    brw_assign_common_binding_table_offsets(devinfo, &tep->program,
                                            &prog_data.base.base, 0);

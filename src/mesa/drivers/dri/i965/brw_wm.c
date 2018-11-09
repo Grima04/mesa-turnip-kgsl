@@ -139,7 +139,7 @@ brw_codegen_wm_prog(struct brw_context *brw,
    bool start_busy = false;
    double start_time = 0;
 
-   nir_shader *nir = fp->program.nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, fp->program.nir);
 
    memset(&prog_data, 0, sizeof(prog_data));
 

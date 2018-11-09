@@ -89,7 +89,7 @@ brw_codegen_gs_prog(struct brw_context *brw,
 
    void *mem_ctx = ralloc_context(NULL);
 
-   nir_shader *nir = gp->program.nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, gp->program.nir);
 
    assign_gs_binding_table_offsets(devinfo, &gp->program, &prog_data);
 

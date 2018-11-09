@@ -84,7 +84,7 @@ brw_codegen_tcs_prog(struct brw_context *brw, struct brw_program *tcp,
 
    void *mem_ctx = ralloc_context(NULL);
    if (tcp) {
-      nir = tcp->program.nir;
+      nir = nir_shader_clone(mem_ctx, tcp->program.nir);
    } else {
       const nir_shader_compiler_options *options =
          ctx->Const.ShaderCompilerOptions[MESA_SHADER_TESS_CTRL].NirOptions;

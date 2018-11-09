@@ -58,7 +58,7 @@ brw_codegen_cs_prog(struct brw_context *brw,
    struct brw_cs_prog_data prog_data;
    bool start_busy = false;
    double start_time = 0;
-   nir_shader *nir = cp->program.nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, cp->program.nir);
 
    memset(&prog_data, 0, sizeof(prog_data));
 

@@ -174,7 +174,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
 
    mem_ctx = ralloc_context(NULL);
 
-   nir_shader *nir = vp->program.nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, vp->program.nir);
 
    brw_assign_common_binding_table_offsets(devinfo, &vp->program,
                                            &prog_data.base.base, 0);
