@@ -415,15 +415,19 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                     enum brw_param_builtin **out_system_values,
                     unsigned *out_num_system_values)
 {
+   /* We don't use params[], but fs_visitor::nir_setup_uniforms() asserts
+    * about it for compute shaders, so go ahead and make some fake ones
+    * which the backend will dead code eliminate.
+    */
+   prog_data->nr_params = nir->num_uniforms;
+   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
+
    /* The intel compiler assumes that num_uniforms is in bytes. For
     * scalar that means 4 bytes per uniform slot.
     *
     * Ref: brw_nir_lower_uniforms, type_size_scalar_bytes.
     */
    nir->num_uniforms *= 4;
-
-   prog_data->nr_params = 0;
-   prog_data->param = rzalloc_array(mem_ctx, uint32_t, 1);
 
    const unsigned IRIS_MAX_SYSTEM_VALUES = 32;
    enum brw_param_builtin *system_values =
