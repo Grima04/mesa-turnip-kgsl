@@ -3239,7 +3239,7 @@ iris_store_fs_state(struct iris_context *ice,
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
 
-      ps.PushConstantEnable = prog_data->nr_params > 0 ||
+      ps.PushConstantEnable = shader->num_system_values > 0 ||
                               prog_data->ubo_ranges[0].length > 0;
 
       /* From the documentation for this packet:
