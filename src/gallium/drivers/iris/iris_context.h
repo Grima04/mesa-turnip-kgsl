@@ -242,6 +242,15 @@ struct iris_compiled_shader {
    uint8_t derived_data[0];
 };
 
+enum iris_param_domain {
+   IRIS_PARAM_DOMAIN_BUILTIN,
+   IRIS_PARAM_DOMAIN_UNIFORM,
+};
+
+#define IRIS_PARAM(domain, val)  (IRIS_PARAM_DOMAIN_##domain << 24 | (val))
+#define IRIS_PARAM_DOMAIN(param) ((uint32_t)(param) >> 24)
+#define IRIS_PARAM_VALUE(param)  ((uint32_t)(param) & 0x00ffffff)
+
 /**
  * Constant buffer (UBO) information.  See iris_set_const_buffer().
  */
