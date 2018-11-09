@@ -606,6 +606,52 @@ keep_gpr0_lower_n_bits(struct iris_context *ice, uint32_t n)
    iris_batch_emit(batch, math, sizeof(math));
 }
 
+/*
+ * GPR0 = GPR0 << 30;
+ */
+static void
+shl_gpr0_by_30_bits(struct iris_context *ice)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   /* First we mask 34 bits of GPR0 to prevent overflow */
+   keep_gpr0_lower_n_bits(ice, 34);
+
+   static const uint32_t shl_math[] = {
+      MI_ALU2(LOAD, SRCA, R0),
+      MI_ALU2(LOAD, SRCB, R0),
+      MI_ALU0(ADD),
+      MI_ALU2(STORE, R0, ACCU),
+   };
+
+   const uint32_t outer_count = 5;
+   const uint32_t inner_count = 6;
+   const uint32_t cmd_len = 1 + inner_count * ARRAY_SIZE(shl_math);
+   const uint32_t batch_len = cmd_len * outer_count;
+   uint32_t *map = iris_get_command_space(batch, batch_len * 4);
+   uint32_t offset = 0;
+   for (int o = 0; o < outer_count; o++) {
+      map[offset++] = MI_MATH | (cmd_len - 2);
+      for (int i = 0; i < inner_count; i++) {
+         memcpy(&map[offset], shl_math, sizeof(shl_math));
+         offset += 4;
+      }
+   }
+}
+
+/*
+ * GPR0 = GPR0 >> 2;
+ *
+ * Note that the upper 30 bits of GPR0 are lost!
+ */
+static void
+shr_gpr0_by_2_bits(struct iris_context *ice)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   shl_gpr0_by_30_bits(ice);
+   ice->vtbl.load_register_reg32(batch, CS_GPR(0) + 4, CS_GPR(0));
+   ice->vtbl.load_register_imm32(batch, CS_GPR(0) + 4, 0);
+}
+
 /**
  * Calculate the result and store it to CS_GPR0.
  */
@@ -614,6 +660,8 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       overflow_result_to_gpr0(ice, q);
@@ -645,6 +693,10 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
       MI_ALU2(STORE, R0, ACCU),
    };
    iris_batch_emit(batch, math, sizeof(math));
+
+   /* WaDividePSInvocationCountBy4:HSW,BDW */
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS && q->index == 7 && devinfo->gen == 8)
+      shr_gpr0_by_2_bits(ice);
 
    if (q->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
        q->type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE)
