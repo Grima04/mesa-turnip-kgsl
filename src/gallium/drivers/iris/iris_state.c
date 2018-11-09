@@ -2168,8 +2168,11 @@ upload_uniforms(struct iris_context *ice,
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
-   unsigned upload_size = prog_data->nr_params * sizeof(uint32_t);
-   assert(upload_size >= shs->cbuf0.buffer_size);
+   unsigned upload_size = prog_data->nr_params * sizeof(uint32_t) +
+                          shs->cbuf0.buffer_size;
+
+   if (upload_size == 0)
+      return;
 
    uint32_t *map =
       upload_state(ice->ctx.const_uploader, &cbuf->data, upload_size, 64);
@@ -2178,29 +2181,16 @@ upload_uniforms(struct iris_context *ice,
       uint32_t param = prog_data->param[i];
       uint32_t value = 0;
 
-      switch (IRIS_PARAM_DOMAIN(param)) {
-      case IRIS_PARAM_DOMAIN_BUILTIN:
-         assert(!"not used yet");
-         break;
-      case IRIS_PARAM_DOMAIN_UNIFORM:
-         if (shs->cbuf0.user_buffer) {
-            const uint32_t *src = shs->cbuf0.user_buffer;
-
-            value = src[IRIS_PARAM_VALUE(param)];
-         }
-         break;
-      }
+      printf("got a param to upload - %u\n", param);
 
       *map++ = value;
    }
 
    if (shs->cbuf0.user_buffer) {
-      u_upload_data(ice->ctx.const_uploader, 0, shs->cbuf0.buffer_size, 32,
-                    shs->cbuf0.user_buffer, &cbuf->data.offset,
-                    &cbuf->data.res);
-
-      upload_ubo_surf_state(ice, cbuf, shs->cbuf0.buffer_size);
+      memcpy(map, shs->cbuf0.user_buffer, shs->cbuf0.buffer_size);
    }
+
+   upload_ubo_surf_state(ice, cbuf, upload_size);
 }
 
 /**

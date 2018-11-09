@@ -470,23 +470,27 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
       }
    }
 
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
+   if (prog_data->nr_params > 0) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
 
-         nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+            nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
 
-         if (load->intrinsic != nir_intrinsic_load_ubo)
-            continue;
+            if (load->intrinsic != nir_intrinsic_load_ubo)
+               continue;
 
-         if (load->src[0].ssa == temp_ubo_name) {
-            load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-         } else if (nir_src_as_uint(load->src[0]) == 0) {
-            nir_ssa_def *offset =
-               nir_iadd(&b, load->src[1].ssa,
-                        nir_imm_int(&b, prog_data->nr_params));
-            load->src[1] = nir_src_for_ssa(offset);
+            b.cursor = nir_before_instr(instr);
+
+            if (load->src[0].ssa == temp_ubo_name) {
+               load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+            } else if (nir_src_as_uint(load->src[0]) == 0) {
+               nir_ssa_def *offset =
+                  nir_iadd(&b, load->src[1].ssa,
+                           nir_imm_int(&b, prog_data->nr_params));
+               load->src[1] = nir_src_for_ssa(offset);
+            }
          }
       }
    }
