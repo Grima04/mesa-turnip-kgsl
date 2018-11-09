@@ -1458,3 +1458,9 @@ __fmax64(uint64_t a, uint64_t b)
    if (__flt64_nonnan(a, b)) return b;
    return a;
 }
+
+uint64_t
+__ffract64(uint64_t a)
+{
+   return __fadd64(a, __fneg64(__ffloor64(a)));
+}
