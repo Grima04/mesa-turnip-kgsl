@@ -410,23 +410,15 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                     nir_shader *nir,
                     struct brw_stage_prog_data *prog_data)
 {
-   prog_data->nr_params = nir->num_uniforms;
    /* The intel compiler assumes that num_uniforms is in bytes. For
     * scalar that means 4 bytes per uniform slot.
     *
     * Ref: brw_nir_lower_uniforms, type_size_scalar_bytes.
     */
    nir->num_uniforms *= 4;
-   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
 
-   nir_foreach_variable(var, &nir->uniforms) {
-      const unsigned components = glsl_get_components(var->type);
-
-      for (unsigned i = 0; i < components; i++) {
-         prog_data->param[var->data.driver_location] =
-            var->data.driver_location;
-      }
-   }
+   prog_data->nr_params = 0;
+   prog_data->param = rzalloc_array(mem_ctx, uint32_t, 1);
 
    // XXX: vs clip planes?
    if (nir->info.stage != MESA_SHADER_COMPUTE)
