@@ -1342,7 +1342,8 @@ brw_IF(struct brw_codegen *p, unsigned execute_size)
       brw_inst_set_uip(devinfo, insn, 0);
    } else {
       brw_set_dest(p, insn, vec1(retype(brw_null_reg(), BRW_REGISTER_TYPE_D)));
-      brw_set_src0(p, insn, brw_imm_d(0));
+      if (devinfo->gen < 12)
+         brw_set_src0(p, insn, brw_imm_d(0));
       brw_inst_set_jip(devinfo, insn, 0);
       brw_inst_set_uip(devinfo, insn, 0);
    }
@@ -1542,7 +1543,8 @@ brw_ELSE(struct brw_codegen *p)
       brw_inst_set_uip(devinfo, insn, 0);
    } else {
       brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
-      brw_set_src0(p, insn, brw_imm_d(0));
+      if (devinfo->gen < 12)
+         brw_set_src0(p, insn, brw_imm_d(0));
       brw_inst_set_jip(devinfo, insn, 0);
       brw_inst_set_uip(devinfo, insn, 0);
    }
@@ -1695,11 +1697,11 @@ gen6_HALT(struct brw_codegen *p)
 
    insn = next_insn(p, BRW_OPCODE_HALT);
    brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
-   if (devinfo->gen >= 8) {
-      brw_set_src0(p, insn, brw_imm_d(0x0));
-   } else {
+   if (devinfo->gen < 8) {
       brw_set_src0(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
       brw_set_src1(p, insn, brw_imm_d(0x0)); /* UIP and JIP, updated later. */
+   } else if (devinfo->gen < 12) {
+      brw_set_src0(p, insn, brw_imm_d(0x0));
    }
 
    brw_inst_set_qtr_control(devinfo, insn, BRW_COMPRESSION_NONE);
@@ -1795,7 +1797,8 @@ brw_WHILE(struct brw_codegen *p)
 
       if (devinfo->gen >= 8) {
          brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
-         brw_set_src0(p, insn, brw_imm_d(0));
+         if (devinfo->gen < 12)
+            brw_set_src0(p, insn, brw_imm_d(0));
          brw_inst_set_jip(devinfo, insn, br * (do_insn - insn));
       } else if (devinfo->gen == 7) {
          brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
