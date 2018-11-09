@@ -483,6 +483,8 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    /* Place the new params at the front of constant buffer 0. */
    if (num_system_values > 0) {
+      nir->num_uniforms += num_system_values * sizeof(uint32_t);
+
       system_values = reralloc(mem_ctx, system_values, enum brw_param_builtin,
                                num_system_values);
 
@@ -506,12 +508,15 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             } else if (nir_src_as_uint(load->src[0]) == 0) {
                nir_ssa_def *offset =
                   nir_iadd(&b, load->src[1].ssa,
-                           nir_imm_int(&b, num_system_values));
+                           nir_imm_int(&b, 4 * num_system_values));
                nir_instr_rewrite_src(instr, &load->src[1],
                                      nir_src_for_ssa(offset));
             }
          }
       }
+
+      /* We need to fold the new iadds for brw_nir_analyze_ubo_ranges */
+      nir_opt_constant_folding(nir);
    } else {
       ralloc_free(system_values);
       system_values = NULL;
