@@ -584,6 +584,7 @@ iris_screen_create(int fd)
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = iris_shader_debug_log;
    screen->compiler->shader_perf_log = iris_shader_perf_log;
+   screen->compiler->supports_pull_constants = false;
 
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct iris_transfer), 64);
