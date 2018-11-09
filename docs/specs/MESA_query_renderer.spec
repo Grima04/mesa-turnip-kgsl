@@ -92,11 +92,6 @@ New Tokens
         GLX_RENDERER_VENDOR_ID_MESA
         GLX_RENDERER_DEVICE_ID_MESA
 
-    Accepted as an attribute name in <*attrib_list> in
-    glXCreateContextAttribsARB:
-
-        GLX_RENDERER_ID_MESA                             0x818E
-
 Additions to the OpenGL / WGL Specifications
 
     None. This specification is written for GLX.
@@ -202,20 +197,6 @@ Additions to the GLX 1.4 Specification
     The string returned for GLX_RENDERER_DEVICE_ID_MESA will have the same
     format as the string that would be returned by glGetString of GL_RENDERER.
     It may, however, have a different value.
-
-
-    [Add to section section 3.3.7 "Rendering Contexts"]
-
-    The attribute name GLX_RENDERER_ID_MESA specified the index of the render
-    against which the context should be created.  The default value of
-    GLX_RENDERER_ID_MESA is 0.
-
-
-    [Add to list of errors for glXCreateContextAttribsARB in section section
-    3.3.7 "Rendering Contexts"]
-
-      * If the value of GLX_RENDERER_ID_MESA specifies a non-existent
-        renderer, BadMatch is generated.
 
 Issues
 
