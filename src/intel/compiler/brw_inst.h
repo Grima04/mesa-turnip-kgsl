@@ -1341,65 +1341,75 @@ brw_compact_inst_set_bits(brw_compact_inst *inst, unsigned high, unsigned low,
    inst->data = (inst->data & ~mask) | (value << low);
 }
 
-#define FC(name, high, low, assertions)                            \
+#define FC(name, high, low, gen12_high, gen12_low, assertions)     \
 static inline void                                                 \
 brw_compact_inst_set_##name(const struct gen_device_info *devinfo, \
                             brw_compact_inst *inst, unsigned v)    \
 {                                                                  \
    assert(assertions);                                             \
-   (void) devinfo;                                                 \
-   brw_compact_inst_set_bits(inst, high, low, v);                  \
+   if (devinfo->gen >= 12)                                         \
+      brw_compact_inst_set_bits(inst, gen12_high, gen12_low, v);   \
+   else                                                            \
+      brw_compact_inst_set_bits(inst, high, low, v);               \
 }                                                                  \
 static inline unsigned                                             \
 brw_compact_inst_##name(const struct gen_device_info *devinfo,     \
                         const brw_compact_inst *inst)              \
 {                                                                  \
    assert(assertions);                                             \
-   (void) devinfo;                                                 \
-   return brw_compact_inst_bits(inst, high, low);                  \
+   if (devinfo->gen >= 12)                                         \
+      return brw_compact_inst_bits(inst, gen12_high, gen12_low);   \
+   else                                                            \
+      return brw_compact_inst_bits(inst, high, low);               \
 }
 
-/* A simple macro for fields which stay in the same place on all generations. */
-#define F(name, high, low) FC(name, high, low, true)
+/* A simple macro for fields which stay in the same place on all generations
+ * except for Gen12.
+ */
+#define F(name, high, low, gen12_high, gen12_low)       \
+   FC(name, high, low, gen12_high, gen12_low, true)
 
-F(src1_reg_nr,      63, 56)
-F(src0_reg_nr,      55, 48)
-F(dst_reg_nr,       47, 40)
-F(src1_index,       39, 35)
-F(src0_index,       34, 30)
-F(cmpt_control,     29, 29) /* Same location as brw_inst */
-FC(flag_subreg_nr,  28, 28, devinfo->gen <= 6)
-F(cond_modifier,    27, 24) /* Same location as brw_inst */
-FC(acc_wr_control,  23, 23, devinfo->gen >= 6)
-FC(mask_control_ex, 23, 23, devinfo->is_g4x || devinfo->gen == 5)
-F(subreg_index,     22, 18)
-F(datatype_index,   17, 13)
-F(control_index,    12,  8)
-F(debug_control,     7,  7)
-F(hw_opcode,         6,  0) /* Same location as brw_inst */
+F(src1_reg_nr,      /* 4+ */ 63, 56, /* 12+ */ 63, 56)
+F(src0_reg_nr,      /* 4+ */ 55, 48, /* 12+ */ 47, 40)
+F(dst_reg_nr,       /* 4+ */ 47, 40, /* 12+ */ 23, 16)
+F(src1_index,       /* 4+ */ 39, 35, /* 12+ */ 55, 52)
+F(src0_index,       /* 4+ */ 34, 30, /* 12+ */ 51, 48)
+F(cmpt_control,     /* 4+ */ 29, 29, /* 12+ */ 29, 29) /* Same location as brw_inst */
+FC(flag_subreg_nr,  /* 4+ */ 28, 28, /* 12+ */ -1, -1, devinfo->gen <= 6)
+F(cond_modifier,    /* 4+ */ 27, 24, /* 12+ */ -1, -1) /* Same location as brw_inst */
+FC(acc_wr_control,  /* 4+ */ 23, 23, /* 12+ */ -1, -1, devinfo->gen >= 6)
+FC(mask_control_ex, /* 4+ */ 23, 23, /* 12+ */ -1, -1, devinfo->is_g4x || devinfo->gen == 5)
+F(subreg_index,     /* 4+ */ 22, 18, /* 12+ */ 39, 35)
+F(datatype_index,   /* 4+ */ 17, 13, /* 12+ */ 34, 30)
+F(control_index,    /* 4+ */ 12,  8, /* 12+ */ 28, 24)
+FC(swsb,            /* 4+ */ -1, -1, /* 12+ */ 15,  8, devinfo->gen >= 12)
+F(debug_control,    /* 4+ */  7,  7, /* 12+ */  7,  7)
+F(hw_opcode,        /* 4+ */  6,  0, /* 12+ */  6,  0) /* Same location as brw_inst */
 
 /**
  * (Gen8+) Compacted three-source instructions:
  *  @{
  */
-FC(3src_src2_reg_nr,    63, 57, devinfo->gen >= 8)
-FC(3src_src1_reg_nr,    56, 50, devinfo->gen >= 8)
-FC(3src_src0_reg_nr,    49, 43, devinfo->gen >= 8)
-FC(3src_src2_subreg_nr, 42, 40, devinfo->gen >= 8)
-FC(3src_src1_subreg_nr, 39, 37, devinfo->gen >= 8)
-FC(3src_src0_subreg_nr, 36, 34, devinfo->gen >= 8)
-FC(3src_src2_rep_ctrl,  33, 33, devinfo->gen >= 8)
-FC(3src_src1_rep_ctrl,  32, 32, devinfo->gen >= 8)
-FC(3src_saturate,       31, 31, devinfo->gen >= 8)
-FC(3src_debug_control,  30, 30, devinfo->gen >= 8)
-FC(3src_cmpt_control,   29, 29, devinfo->gen >= 8)
-FC(3src_src0_rep_ctrl,  28, 28, devinfo->gen >= 8)
+FC(3src_src2_reg_nr,    /* 4+ */ 63, 57, /* 12+ */ 55, 48, devinfo->gen >= 8)
+FC(3src_src1_reg_nr,    /* 4+ */ 56, 50, /* 12+ */ 63, 56, devinfo->gen >= 8)
+FC(3src_src0_reg_nr,    /* 4+ */ 49, 43, /* 12+ */ 47, 40, devinfo->gen >= 8)
+FC(3src_src2_subreg_nr, /* 4+ */ 42, 40, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_src1_subreg_nr, /* 4+ */ 39, 37, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_src0_subreg_nr, /* 4+ */ 36, 34, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_src2_rep_ctrl,  /* 4+ */ 33, 33, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_src1_rep_ctrl,  /* 4+ */ 32, 32, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_saturate,       /* 4+ */ 31, 31, /* 12+ */ -1, -1, devinfo->gen >= 8)
+FC(3src_debug_control,  /* 4+ */ 30, 30, /* 12+ */  7,  7, devinfo->gen >= 8)
+FC(3src_cmpt_control,   /* 4+ */ 29, 29, /* 12+ */ 29, 29, devinfo->gen >= 8)
+FC(3src_src0_rep_ctrl,  /* 4+ */ 28, 28, /* 12+ */ -1, -1, devinfo->gen >= 8)
 /* Reserved */
-FC(3src_dst_reg_nr,     18, 12, devinfo->gen >= 8)
-FC(3src_source_index,   11, 10, devinfo->gen >= 8)
-FC(3src_control_index,   9,  8, devinfo->gen >= 8)
+FC(3src_dst_reg_nr,     /* 4+ */ 18, 12, /* 12+ */ 23, 16, devinfo->gen >= 8)
+FC(3src_source_index,   /* 4+ */ 11, 10, /* 12+ */ 34, 30, devinfo->gen >= 8)
+FC(3src_subreg_index,   /* 4+ */ -1, -1, /* 12+ */ 39, 35, devinfo->gen >= 12)
+FC(3src_control_index,  /* 4+ */  9,  8, /* 12+ */ 28, 24, devinfo->gen >= 8)
+FC(3src_swsb,           /* 4+ */ -1, -1, /* 12+ */ 15,  8, devinfo->gen >= 8)
 /* Bit 7 is Reserved (for future Opcode expansion) */
-FC(3src_hw_opcode,       6,  0, devinfo->gen >= 8)
+FC(3src_hw_opcode,      /* 4+ */  6,  0, /* 12+ */  6,  0, devinfo->gen >= 8)
 /** @} */
 
 #undef F
