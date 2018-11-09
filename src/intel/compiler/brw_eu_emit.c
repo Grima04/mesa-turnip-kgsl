@@ -662,12 +662,17 @@ get_3src_subreg_nr(struct brw_reg reg)
 }
 
 static enum gen10_align1_3src_vertical_stride
-to_3src_align1_vstride(enum brw_vertical_stride vstride)
+to_3src_align1_vstride(const struct gen_device_info *devinfo,
+                       enum brw_vertical_stride vstride)
 {
    switch (vstride) {
    case BRW_VERTICAL_STRIDE_0:
       return BRW_ALIGN1_3SRC_VERTICAL_STRIDE_0;
+   case BRW_VERTICAL_STRIDE_1:
+      assert(devinfo->gen >= 12);
+      return BRW_ALIGN1_3SRC_VERTICAL_STRIDE_1;
    case BRW_VERTICAL_STRIDE_2:
+      assert(devinfo->gen < 12);
       return BRW_ALIGN1_3SRC_VERTICAL_STRIDE_2;
    case BRW_VERTICAL_STRIDE_4:
       return BRW_ALIGN1_3SRC_VERTICAL_STRIDE_4;
@@ -719,14 +724,19 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
              dest.file == BRW_ARCHITECTURE_REGISTER_FILE);
 
-      if (dest.file == BRW_ARCHITECTURE_REGISTER_FILE) {
-         brw_inst_set_3src_a1_dst_reg_file(devinfo, inst,
-                                           BRW_ALIGN1_3SRC_ACCUMULATOR);
-         brw_inst_set_3src_dst_reg_nr(devinfo, inst, BRW_ARF_ACCUMULATOR);
-      } else {
-         brw_inst_set_3src_a1_dst_reg_file(devinfo, inst,
-                                           BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE);
+      if (devinfo->gen >= 12) {
+         brw_inst_set_3src_a1_dst_reg_file(devinfo, inst, dest.file);
          brw_inst_set_3src_dst_reg_nr(devinfo, inst, dest.nr);
+      } else {
+         if (dest.file == BRW_ARCHITECTURE_REGISTER_FILE) {
+            brw_inst_set_3src_a1_dst_reg_file(devinfo, inst,
+                                              BRW_ALIGN1_3SRC_ACCUMULATOR);
+            brw_inst_set_3src_dst_reg_nr(devinfo, inst, BRW_ARF_ACCUMULATOR);
+         } else {
+            brw_inst_set_3src_a1_dst_reg_file(devinfo, inst,
+                                              BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE);
+            brw_inst_set_3src_dst_reg_nr(devinfo, inst, dest.nr);
+         }
       }
       brw_inst_set_3src_a1_dst_subreg_nr(devinfo, inst, dest.subnr / 8);
 
@@ -745,10 +755,10 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       brw_inst_set_3src_a1_src1_type(devinfo, inst, src1.type);
       brw_inst_set_3src_a1_src2_type(devinfo, inst, src2.type);
 
-      brw_inst_set_3src_a1_src0_vstride(devinfo, inst,
-                                        to_3src_align1_vstride(src0.vstride));
-      brw_inst_set_3src_a1_src1_vstride(devinfo, inst,
-                                        to_3src_align1_vstride(src1.vstride));
+      brw_inst_set_3src_a1_src0_vstride(
+         devinfo, inst, to_3src_align1_vstride(devinfo, src0.vstride));
+      brw_inst_set_3src_a1_src1_vstride(
+         devinfo, inst, to_3src_align1_vstride(devinfo, src1.vstride));
       /* no vstride on src2 */
 
       brw_inst_set_3src_a1_src0_hstride(devinfo, inst,
@@ -790,18 +800,25 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       assert(src2.file == BRW_GENERAL_REGISTER_FILE ||
              src2.file == BRW_IMMEDIATE_VALUE);
 
-      brw_inst_set_3src_a1_src0_reg_file(devinfo, inst,
-                                         src0.file == BRW_GENERAL_REGISTER_FILE ?
-                                         BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
-                                         BRW_ALIGN1_3SRC_IMMEDIATE_VALUE);
-      brw_inst_set_3src_a1_src1_reg_file(devinfo, inst,
-                                         src1.file == BRW_GENERAL_REGISTER_FILE ?
-                                         BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
-                                         BRW_ALIGN1_3SRC_ACCUMULATOR);
-      brw_inst_set_3src_a1_src2_reg_file(devinfo, inst,
-                                         src2.file == BRW_GENERAL_REGISTER_FILE ?
-                                         BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
-                                         BRW_ALIGN1_3SRC_IMMEDIATE_VALUE);
+      if (devinfo->gen >= 12) {
+         brw_inst_set_3src_a1_src0_reg_file(devinfo, inst, src0.file);
+         brw_inst_set_3src_a1_src1_reg_file(devinfo, inst, src1.file);
+         brw_inst_set_3src_a1_src2_reg_file(devinfo, inst, src2.file);
+      } else {
+         brw_inst_set_3src_a1_src0_reg_file(devinfo, inst,
+                                            src0.file == BRW_GENERAL_REGISTER_FILE ?
+                                            BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
+                                            BRW_ALIGN1_3SRC_IMMEDIATE_VALUE);
+         brw_inst_set_3src_a1_src1_reg_file(devinfo, inst,
+                                            src1.file == BRW_GENERAL_REGISTER_FILE ?
+                                            BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
+                                            BRW_ALIGN1_3SRC_ACCUMULATOR);
+         brw_inst_set_3src_a1_src2_reg_file(devinfo, inst,
+                                            src2.file == BRW_GENERAL_REGISTER_FILE ?
+                                            BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
+                                            BRW_ALIGN1_3SRC_IMMEDIATE_VALUE);
+      }
+
    } else {
       assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
              dest.file == BRW_MESSAGE_REGISTER_FILE);
