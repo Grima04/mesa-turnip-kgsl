@@ -70,4 +70,25 @@ struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id
 int ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *so);
 
+enum ir3_shader_debug {
+	IR3_DBG_SHADER_VS = 0x01,
+	IR3_DBG_SHADER_FS = 0x02,
+	IR3_DBG_SHADER_CS = 0x04,
+};
+
+extern enum ir3_shader_debug ir3_shader_debug;
+
+static inline bool
+shader_debug_enabled(gl_shader_stage type)
+{
+	switch (type) {
+	case MESA_SHADER_VERTEX:      return !!(ir3_shader_debug & IR3_DBG_SHADER_VS);
+	case MESA_SHADER_FRAGMENT:    return !!(ir3_shader_debug & IR3_DBG_SHADER_FS);
+	case MESA_SHADER_COMPUTE:     return !!(ir3_shader_debug & IR3_DBG_SHADER_CS);
+	default:
+		debug_assert(0);
+		return false;
+	}
+}
+
 #endif /* IR3_COMPILER_H_ */

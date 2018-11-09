@@ -28,9 +28,22 @@
 
 #include "ir3_compiler.h"
 
+static const struct debug_named_value shader_debug_options[] = {
+		{"vs", IR3_DBG_SHADER_VS, "Print shader disasm for vertex shaders"},
+		{"fs", IR3_DBG_SHADER_FS, "Print shader disasm for fragment shaders"},
+		{"cs", IR3_DBG_SHADER_CS, "Print shader disasm for compute shaders"},
+		DEBUG_NAMED_VALUE_END
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(ir3_shader_debug, "IR3_SHADER_DEBUG", shader_debug_options, 0)
+
+enum ir3_shader_debug ir3_shader_debug = 0;
+
 struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 {
 	struct ir3_compiler *compiler = rzalloc(NULL, struct ir3_compiler);
+
+	ir3_shader_debug = debug_get_option_ir3_shader_debug();
 
 	compiler->dev = dev;
 	compiler->gpu_id = gpu_id;

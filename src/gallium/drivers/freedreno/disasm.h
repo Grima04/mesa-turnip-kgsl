@@ -30,27 +30,6 @@
 #include "compiler/shader_enums.h"
 #include "util/u_debug.h"
 
-enum fd_shader_debug {
-	FD_DBG_SHADER_VS = 0x01,
-	FD_DBG_SHADER_FS = 0x02,
-	FD_DBG_SHADER_CS = 0x04,
-};
-
-extern enum fd_shader_debug fd_shader_debug;
-
-static inline bool
-shader_debug_enabled(gl_shader_stage type)
-{
-	switch (type) {
-	case MESA_SHADER_VERTEX:      return !!(fd_shader_debug & FD_DBG_SHADER_VS);
-	case MESA_SHADER_FRAGMENT:    return !!(fd_shader_debug & FD_DBG_SHADER_FS);
-	case MESA_SHADER_COMPUTE:     return !!(fd_shader_debug & FD_DBG_SHADER_CS);
-	default:
-		debug_assert(0);
-		return false;
-	}
-}
-
 /* bitmask of debug flags */
 enum debug_t {
 	PRINT_RAW      = 0x1,    /* dump raw hexdump */
