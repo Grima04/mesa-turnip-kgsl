@@ -2035,9 +2035,12 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          err |= control(file, "mask control", mask_ctrl,
                         brw_inst_mask_control(devinfo, inst), &space);
       }
-      err |= control(file, "dependency control", dep_ctrl,
-                     ((brw_inst_no_dd_check(devinfo, inst) << 1) |
-                      brw_inst_no_dd_clear(devinfo, inst)), &space);
+
+      if (devinfo->gen < 12) {
+         err |= control(file, "dependency control", dep_ctrl,
+                        ((brw_inst_no_dd_check(devinfo, inst) << 1) |
+                         brw_inst_no_dd_clear(devinfo, inst)), &space);
+      }
 
       if (devinfo->gen >= 6)
          err |= qtr_ctrl(file, devinfo, inst);
@@ -2058,7 +2061,9 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
 
       err |= control(file, "compaction", cmpt_ctrl, is_compacted, &space);
       err |= control(file, "thread control", thread_ctrl,
-                     brw_inst_thread_control(devinfo, inst), &space);
+                     (devinfo->gen >= 12 ? brw_inst_atomic_control(devinfo, inst) :
+                                           brw_inst_thread_control(devinfo, inst)),
+                     &space);
       if (has_branch_ctrl(devinfo, opcode)) {
          err |= control(file, "branch ctrl", branch_ctrl,
                         brw_inst_branch_control(devinfo, inst), &space);
