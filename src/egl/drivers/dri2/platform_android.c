@@ -49,10 +49,15 @@
 
 #define ALIGN(val, align)	(((val) + (align) - 1) & ~((align) - 1))
 
+enum chroma_order {
+   YCbCr,
+   YCrCb,
+};
+
 struct droid_yuv_format {
    /* Lookup keys */
    int native; /* HAL_PIXEL_FORMAT_ */
-   int is_ycrcb; /* 0 if chroma order is {Cb, Cr}, 1 if {Cr, Cb} */
+   enum chroma_order chroma_order; /* chroma order is {Cb, Cr} or {Cr, Cb} */
    int chroma_step; /* Distance in bytes between subsequent chroma pixels. */
 
    /* Result */
@@ -63,25 +68,25 @@ struct droid_yuv_format {
  * on native format and information contained in android_ycbcr struct. */
 static const struct droid_yuv_format droid_yuv_formats[] = {
    /* Native format, YCrCb, Chroma step, DRI image FourCC */
-   { HAL_PIXEL_FORMAT_YCbCr_420_888,   0, 2, __DRI_IMAGE_FOURCC_NV12 },
-   { HAL_PIXEL_FORMAT_YCbCr_420_888,   0, 1, __DRI_IMAGE_FOURCC_YUV420 },
-   { HAL_PIXEL_FORMAT_YCbCr_420_888,   1, 1, __DRI_IMAGE_FOURCC_YVU420 },
-   { HAL_PIXEL_FORMAT_YV12,            1, 1, __DRI_IMAGE_FOURCC_YVU420 },
+   { HAL_PIXEL_FORMAT_YCbCr_420_888, YCbCr, 2, __DRI_IMAGE_FOURCC_NV12 },
+   { HAL_PIXEL_FORMAT_YCbCr_420_888, YCbCr, 1, __DRI_IMAGE_FOURCC_YUV420 },
+   { HAL_PIXEL_FORMAT_YCbCr_420_888, YCrCb, 1, __DRI_IMAGE_FOURCC_YVU420 },
+   { HAL_PIXEL_FORMAT_YV12,          YCrCb, 1, __DRI_IMAGE_FOURCC_YVU420 },
    /* HACK: See droid_create_image_from_prime_fd() and
     * https://issuetracker.google.com/32077885. */
-   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,   0, 2, __DRI_IMAGE_FOURCC_NV12 },
-   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,   0, 1, __DRI_IMAGE_FOURCC_YUV420 },
-   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,   1, 1, __DRI_IMAGE_FOURCC_YVU420 },
-   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,   1, 1, __DRI_IMAGE_FOURCC_AYUV },
-   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,   1, 1, __DRI_IMAGE_FOURCC_XYUV8888 },
+   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCbCr, 2, __DRI_IMAGE_FOURCC_NV12 },
+   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCbCr, 1, __DRI_IMAGE_FOURCC_YUV420 },
+   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, __DRI_IMAGE_FOURCC_YVU420 },
+   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, __DRI_IMAGE_FOURCC_AYUV },
+   { HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, YCrCb, 1, __DRI_IMAGE_FOURCC_XYUV8888 },
 };
 
 static int
-get_fourcc_yuv(int native, int is_ycrcb, int chroma_step)
+get_fourcc_yuv(int native, enum chroma_order chroma_order, int chroma_step)
 {
    for (int i = 0; i < ARRAY_SIZE(droid_yuv_formats); ++i)
       if (droid_yuv_formats[i].native == native &&
-          droid_yuv_formats[i].is_ycrcb == is_ycrcb &&
+          droid_yuv_formats[i].chroma_order == chroma_order &&
           droid_yuv_formats[i].chroma_step == chroma_step)
          return droid_yuv_formats[i].fourcc;
 
@@ -777,7 +782,7 @@ droid_create_image_from_prime_fd_yuv(_EGLDisplay *disp, _EGLContext *ctx,
    struct android_ycbcr ycbcr;
    size_t offsets[3];
    size_t pitches[3];
-   int is_ycrcb;
+   enum chroma_order chroma_order;
    int fourcc;
    int ret;
 
@@ -805,11 +810,12 @@ droid_create_image_from_prime_fd_yuv(_EGLDisplay *disp, _EGLContext *ctx,
     * so they can be interpreted as offsets. */
    offsets[0] = (size_t)ycbcr.y;
    /* We assume here that all the planes are located in one DMA-buf. */
-   is_ycrcb = (size_t)ycbcr.cr < (size_t)ycbcr.cb;
-   if (is_ycrcb) {
+   if ((size_t)ycbcr.cr < (size_t)ycbcr.cb) {
+      chroma_order = YCrCb;
       offsets[1] = (size_t)ycbcr.cr;
       offsets[2] = (size_t)ycbcr.cb;
    } else {
+      chroma_order = YCbCr;
       offsets[1] = (size_t)ycbcr.cb;
       offsets[2] = (size_t)ycbcr.cr;
    }
@@ -823,10 +829,10 @@ droid_create_image_from_prime_fd_yuv(_EGLDisplay *disp, _EGLContext *ctx,
 
    /* .chroma_step is the byte distance between the same chroma channel
     * values of subsequent pixels, assumed to be the same for Cb and Cr. */
-   fourcc = get_fourcc_yuv(buf->format, is_ycrcb, ycbcr.chroma_step);
+   fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
    if (fourcc == -1) {
-      _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, is_ycrcb = %d, chroma_step = %d",
-              buf->format, is_ycrcb, ycbcr.chroma_step);
+      _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = %d",
+              buf->format, chroma_order == YCbCr ? "YCbCr" : "YCrCb", ycbcr.chroma_step);
       return NULL;
    }
 
