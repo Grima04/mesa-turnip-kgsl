@@ -658,8 +658,10 @@ fs_generator::generate_quad_swizzle(const fs_inst *inst,
                          4 * inst->dst.stride, 1, 4 * inst->dst.stride),
                stride(suboffset(src, BRW_GET_SWZ(swiz, c)), 4, 1, 0));
 
-            brw_inst_set_no_dd_clear(devinfo, insn, c < 3);
-            brw_inst_set_no_dd_check(devinfo, insn, c > 0);
+            if (devinfo->gen < 12) {
+               brw_inst_set_no_dd_clear(devinfo, insn, c < 3);
+               brw_inst_set_no_dd_check(devinfo, insn, c > 0);
+            }
          }
 
          break;
@@ -2271,8 +2273,10 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
          if (inst->conditional_mod)
             brw_inst_set_cond_modifier(p->devinfo, last, inst->conditional_mod);
-         brw_inst_set_no_dd_clear(p->devinfo, last, inst->no_dd_clear);
-         brw_inst_set_no_dd_check(p->devinfo, last, inst->no_dd_check);
+         if (devinfo->gen < 12) {
+            brw_inst_set_no_dd_clear(p->devinfo, last, inst->no_dd_clear);
+            brw_inst_set_no_dd_check(p->devinfo, last, inst->no_dd_check);
+         }
       }
    }
 
