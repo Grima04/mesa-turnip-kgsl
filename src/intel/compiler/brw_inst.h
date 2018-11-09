@@ -1179,14 +1179,17 @@ REG_TYPE(src1)
 
 
 /* The AddrImm fields are split into two discontiguous sections on Gen8+ */
-#define BRW_IA1_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low) \
+#define BRW_IA1_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low, \
+                         g12_high, g12_low)                              \
 static inline void                                                       \
 brw_inst_set_##reg##_ia1_addr_imm(const struct gen_device_info *devinfo, \
                                   brw_inst *inst,                        \
                                   unsigned value)                        \
 {                                                                        \
    assert((value & ~0x3ff) == 0);                                        \
-   if (devinfo->gen >= 8) {                                              \
+   if (devinfo->gen >= 12) {                                             \
+      brw_inst_set_bits(inst, g12_high, g12_low, value);                 \
+   } else if (devinfo->gen >= 8) {                                       \
       brw_inst_set_bits(inst, g8_high, g8_low, value & 0x1ff);           \
       brw_inst_set_bits(inst, g8_nine, g8_nine, value >> 9);             \
    } else {                                                              \
@@ -1197,7 +1200,9 @@ static inline unsigned                                                   \
 brw_inst_##reg##_ia1_addr_imm(const struct gen_device_info *devinfo,     \
                               const brw_inst *inst)                      \
 {                                                                        \
-   if (devinfo->gen >= 8) {                                              \
+   if (devinfo->gen >= 12) {                                             \
+      return brw_inst_bits(inst, g12_high, g12_low);                     \
+   } else if (devinfo->gen >= 8) {                                       \
       return brw_inst_bits(inst, g8_high, g8_low) |                      \
              (brw_inst_bits(inst, g8_nine, g8_nine) << 9);               \
    } else {                                                              \
@@ -1205,17 +1210,18 @@ brw_inst_##reg##_ia1_addr_imm(const struct gen_device_info *devinfo,     \
    }                                                                     \
 }
 
-/* AddrImm[9:0] for Align1 Indirect Addressing */
-/*                     -Gen 4-  ----Gen8---- */
-BRW_IA1_ADDR_IMM(src1, 105, 96, 121, 104, 96)
-BRW_IA1_ADDR_IMM(src0,  73, 64,  95,  72, 64)
-BRW_IA1_ADDR_IMM(dst,   57, 48,  47,  56, 48)
+/* AddrImm[9:0] for Align1 Indirect Addressing        */
+/*                     -Gen 4-  ----Gen8----  -Gen12- */
+BRW_IA1_ADDR_IMM(src1, 105, 96, 121, 104, 96, 107, 98)
+BRW_IA1_ADDR_IMM(src0,  73, 64,  95,  72, 64,  75, 66)
+BRW_IA1_ADDR_IMM(dst,   57, 48,  47,  56, 48,  59, 50)
 
 #define BRW_IA16_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low) \
 static inline void                                                        \
 brw_inst_set_##reg##_ia16_addr_imm(const struct gen_device_info *devinfo, \
                                    brw_inst *inst, unsigned value)        \
 {                                                                         \
+   assert(devinfo->gen < 12);                                             \
    assert((value & ~0x3ff) == 0);                                         \
    if (devinfo->gen >= 8) {                                               \
       assert(GET_BITS(value, 3, 0) == 0);                                 \
@@ -1229,6 +1235,7 @@ static inline unsigned                                                    \
 brw_inst_##reg##_ia16_addr_imm(const struct gen_device_info *devinfo,     \
                                const brw_inst *inst)                      \
 {                                                                         \
+   assert(devinfo->gen < 12);                                             \
    if (devinfo->gen >= 8) {                                               \
       return (brw_inst_bits(inst, g8_high, g8_low) << 4) |                \
              (brw_inst_bits(inst, g8_nine, g8_nine) << 9);                \
