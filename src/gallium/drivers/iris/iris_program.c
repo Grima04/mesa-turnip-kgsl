@@ -471,7 +471,7 @@ iris_compile_vs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
@@ -607,7 +607,7 @@ iris_compile_tcs(struct iris_context *ice,
    nir_shader *nir;
 
    if (ish) {
-      nir = ish->nir;
+      nir = nir_shader_clone(mem_ctx, ish->nir);
 
       assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
       iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
@@ -684,7 +684,7 @@ iris_compile_tes(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
@@ -755,7 +755,7 @@ iris_compile_gs(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
@@ -830,7 +830,7 @@ iris_compile_fs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_wm_prog_data);
    struct brw_stage_prog_data *prog_data = &fs_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, nir, prog_data,
@@ -1020,7 +1020,7 @@ iris_compile_cs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_cs_prog_data);
    struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
 
-   nir_shader *nir = ish->nir;
+   nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    cs_prog_data->binding_table.work_groups_start = 0;
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 1);
