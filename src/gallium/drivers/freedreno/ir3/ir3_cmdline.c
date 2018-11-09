@@ -103,29 +103,42 @@ static nir_shader *
 load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 {
 	static const struct standalone_options options = {
-			.glsl_version = 140,
+			.glsl_version = 460,
 			.do_link = true,
 	};
 	struct gl_shader_program *prog;
+	const nir_shader_compiler_options *nir_options =
+			ir3_get_compiler_options(compiler);
 
 	prog = standalone_compile_shader(&options, num_files, files);
 	if (!prog)
 		errx(1, "couldn't parse `%s'", files[0]);
 
-	nir_shader *nir = glsl_to_nir(prog, stage, ir3_get_compiler_options(compiler));
+	nir_shader *nir = glsl_to_nir(prog, stage, nir_options);
 
 	/* required NIR passes: */
-	/* TODO cmdline args for some of the conditional lowering passes? */
+	if (nir_options->lower_all_io_to_temps ||
+			nir->info.stage == MESA_SHADER_VERTEX ||
+			nir->info.stage == MESA_SHADER_GEOMETRY) {
+		NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+				nir_shader_get_entrypoint(nir),
+				true, true);
+	} else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+		NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+				nir_shader_get_entrypoint(nir),
+				true, false);
+	}
 
-	NIR_PASS_V(nir, nir_lower_io_to_temporaries,
-			nir_shader_get_entrypoint(nir),
-			true, true);
 	NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 	NIR_PASS_V(nir, nir_split_var_copies);
 	NIR_PASS_V(nir, nir_lower_var_copies);
 
 	NIR_PASS_V(nir, nir_split_var_copies);
 	NIR_PASS_V(nir, nir_lower_var_copies);
+	nir_print_shader(nir, stdout);
+	NIR_PASS_V(nir, gl_nir_lower_atomics, prog, true);
+	NIR_PASS_V(nir, nir_lower_atomics_to_ssbo, 8);
+	nir_print_shader(nir, stdout);
 
 	switch (stage) {
 	case MESA_SHADER_VERTEX:
@@ -151,6 +164,8 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 		nir_assign_var_locations(&nir->outputs,
 				&nir->num_outputs,
 				ir3_glsl_type_size);
+		break;
+	case MESA_SHADER_COMPUTE:
 		break;
 	default:
 		errx(1, "unhandled shader stage: %d", stage);
@@ -396,6 +411,12 @@ int main(int argc, char **argv)
 				errx(1, "in SPIR-V mode, an entry point must be specified");
 			entry = argv[n];
 			n++;
+		} else if (strcmp(ext, ".comp") == 0) {
+			if (s.from_tgsi || from_spirv)
+				errx(1, "cannot mix GLSL/TGSI/SPIRV");
+			if (num_files >= ARRAY_SIZE(filenames))
+				errx(1, "too many GLSL files");
+			stage = MESA_SHADER_COMPUTE;
 		} else if (strcmp(ext, ".frag") == 0) {
 			if (s.from_tgsi || from_spirv)
 				errx(1, "cannot mix GLSL/TGSI/SPIRV");
