@@ -559,6 +559,7 @@ iris_compile_vs(struct iris_context *ice,
       nir_lower_io_to_temporaries(nir, impl, true, false);
       nir_lower_global_vars_to_local(nir);
       nir_lower_vars_to_ssa(nir);
+      nir_shader_gather_info(nir, impl);
    }
 
    // XXX: alt mode
