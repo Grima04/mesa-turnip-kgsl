@@ -951,6 +951,18 @@ __int_to_fp64(int a)
    return __packFloat64(zSign, 0x412 - shiftCount, zFrac0, zFrac1);
 }
 
+bool
+__fp64_to_bool(uint64_t a)
+{
+   return !__feq64_nonnan(__fabs64(a), 0ul);
+}
+
+uint64_t
+__bool_to_fp64(bool a)
+{
+   return __int_to_fp64(int(a));
+}
+
 /* Packs the sign `zSign', exponent `zExp', and significand `zFrac' into a
  * single-precision floating-point value, returning the result.  After being
  * shifted into the proper positions, the three fields are simply added
