@@ -3509,6 +3509,8 @@ fs_visitor::emit_repclear_shader()
       assert(mov->src[0].file == FIXED_GRF);
       mov->src[0] = brw_vec4_grf(mov->src[0].nr, 0);
    }
+
+   lower_scoreboard();
 }
 
 /**
@@ -7557,6 +7559,8 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
        */
       assert(prog_data->total_scratch < max_scratch_size);
    }
+
+   lower_scoreboard();
 }
 
 bool

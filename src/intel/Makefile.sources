@@ -68,6 +68,7 @@ COMPILER_FILES = \
 	compiler/brw_fs_reg_allocate.cpp \
 	compiler/brw_fs_register_coalesce.cpp \
 	compiler/brw_fs_saturate_propagation.cpp \
+	compiler/brw_fs_scoreboard.cpp \
 	compiler/brw_fs_sel_peephole.cpp \
 	compiler/brw_fs_validate.cpp \
 	compiler/brw_fs_visitor.cpp \

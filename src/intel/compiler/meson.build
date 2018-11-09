@@ -62,6 +62,7 @@ libintel_compiler_files = files(
   'brw_fs_reg_allocate.cpp',
   'brw_fs_register_coalesce.cpp',
   'brw_fs_saturate_propagation.cpp',
+  'brw_fs_scoreboard.cpp',
   'brw_fs_sel_peephole.cpp',
   'brw_fs_validate.cpp',
   'brw_fs_visitor.cpp',
