@@ -1385,6 +1385,19 @@ __ftrunc64(uint64_t __a)
 }
 
 uint64_t
+__ffloor64(uint64_t a)
+{
+   bool is_positive = __fge64(a, 0ul);
+   uint64_t tr = __ftrunc64(a);
+
+   if (is_positive || __feq64(tr, a)) {
+      return tr;
+   } else {
+      return __fadd64(tr, 0xbff0000000000000ul /* -1.0 */);
+   }
+}
+
+uint64_t
 __fround64(uint64_t __a)
 {
    uvec2 a = unpackUint2x32(__a);
