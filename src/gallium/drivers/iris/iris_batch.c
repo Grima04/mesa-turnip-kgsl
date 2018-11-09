@@ -40,6 +40,7 @@
 #include "iris_batch.h"
 #include "iris_bufmgr.h"
 #include "iris_context.h"
+#include "iris_fence.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -183,6 +184,7 @@ iris_init_batch(struct iris_batch *batch,
    assert(batch->hw_ctx_id);
 
    util_dynarray_init(&batch->exec_fences, ralloc_context(NULL));
+   util_dynarray_init(&batch->syncpts, ralloc_context(NULL));
 
    batch->exec_count = 0;
    batch->exec_array_size = 100;
@@ -345,12 +347,18 @@ create_batch(struct iris_batch *batch)
 static void
 iris_batch_reset(struct iris_batch *batch)
 {
+   struct iris_screen *screen = batch->screen;
+
    iris_bo_unreference(batch->bo);
    batch->primary_batch_size = 0;
    batch->contains_draw = false;
 
    create_batch(batch);
    assert(batch->bo->index == 0);
+
+   struct iris_syncpt *syncpt = iris_create_syncpt(screen);
+   iris_batch_add_syncpt(batch, syncpt, I915_EXEC_FENCE_SIGNAL);
+   iris_syncpt_reference(screen, &syncpt, NULL);
 
    if (batch->state_sizes)
       _mesa_hash_table_clear(batch->state_sizes, NULL);
@@ -371,6 +379,10 @@ iris_batch_free(struct iris_batch *batch)
    free(batch->validation_list);
 
    ralloc_free(batch->exec_fences.mem_ctx);
+
+   util_dynarray_foreach(&batch->syncpts, struct iris_syncpt *, s)
+      iris_syncpt_reference(screen, s, NULL);
+   ralloc_free(batch->syncpts.mem_ctx);
 
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
@@ -517,6 +529,8 @@ submit_batch(struct iris_batch *batch)
 void
 _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 {
+   struct iris_screen *screen = batch->screen;
+
    if (iris_batch_bytes_used(batch) == 0)
       return;
 
@@ -565,6 +579,10 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    batch->exec_count = 0;
    batch->aperture_space = 0;
+
+   util_dynarray_foreach(&batch->syncpts, struct iris_syncpt *, s)
+      iris_syncpt_reference(screen, s, NULL);
+   util_dynarray_clear(&batch->syncpts);
 
    util_dynarray_clear(&batch->exec_fences);
 

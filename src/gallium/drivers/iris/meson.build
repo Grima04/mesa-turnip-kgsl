@@ -31,6 +31,8 @@ files_libiris = files(
   'iris_context.c',
   'iris_context.h',
   'iris_draw.c',
+  'iris_fence.c',
+  'iris_fence.h',
   'iris_formats.c',
   'iris_pipe.h',
   'iris_pipe_control.c',

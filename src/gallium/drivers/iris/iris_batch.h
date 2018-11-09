@@ -76,6 +76,15 @@ struct iris_batch {
    int exec_count;
    int exec_array_size;
 
+   /**
+    * A list of iris_syncpts associated with this batch.
+    *
+    * The first list entry will always be a signalling sync-point, indicating
+    * that this batch has completed.  The others are likely to be sync-points
+    * to wait on before executing the batch.
+    */
+   struct util_dynarray syncpts;
+
    /** A list of drm_i915_exec_fences to have execbuf signal or wait on */
    struct util_dynarray exec_fences;
 

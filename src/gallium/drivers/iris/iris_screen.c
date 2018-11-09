@@ -44,6 +44,7 @@
 #include "drm-uapi/i915_drm.h"
 #include "iris_context.h"
 #include "iris_defines.h"
+#include "iris_fence.h"
 #include "iris_pipe.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
