@@ -1425,3 +1425,23 @@ __fround64(uint64_t __a)
    a.y = aHi;
    return packUint2x32(a);
 }
+
+uint64_t
+__fmin64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a)) return b;
+   if (__is_nan(b)) return a;
+
+   if (__flt64_nonnan(a, b)) return a;
+   return b;
+}
+
+uint64_t
+__fmax64(uint64_t a, uint64_t b)
+{
+   if (__is_nan(a)) return b;
+   if (__is_nan(b)) return a;
+
+   if (__flt64_nonnan(a, b)) return b;
+   return a;
+}
