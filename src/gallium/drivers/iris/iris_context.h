@@ -260,6 +260,9 @@ struct iris_shader_state {
    /** Uniform Buffers */
    struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
 
+   struct pipe_constant_buffer cbuf0;
+   bool cbuf0_needs_upload;
+
    /** Shader Storage Buffers */
    struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
    struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];

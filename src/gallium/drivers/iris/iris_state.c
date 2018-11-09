@@ -2085,6 +2085,36 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 #endif
 }
 
+static void
+upload_ubo_surf_state(struct iris_context *ice,
+                      struct iris_const_buffer *cbuf,
+                      unsigned buffer_size)
+{
+   struct pipe_context *ctx = &ice->ctx;
+   struct iris_screen *screen = (struct iris_screen *) ctx->screen;
+
+   // XXX: these are not retained forever, use a separate uploader?
+   void *map =
+      upload_state(ice->state.surface_uploader, &cbuf->surface_state,
+                   4 * GENX(RENDER_SURFACE_STATE_length), 64);
+   if (!unlikely(map)) {
+      pipe_resource_reference(&cbuf->data.res, NULL);
+      return;
+   }
+
+   struct iris_resource *res = (void *) cbuf->data.res;
+   struct iris_bo *surf_bo = iris_resource_bo(cbuf->surface_state.res);
+   cbuf->surface_state.offset += iris_bo_offset_from_base_address(surf_bo);
+
+   isl_buffer_fill_state(&screen->isl_dev, map,
+                         .address = res->bo->gtt_offset + cbuf->data.offset,
+                         .size_B = MIN2(buffer_size,
+                                        res->bo->size - cbuf->data.offset),
+                         .format = ISL_FORMAT_R32G32B32A32_FLOAT,
+                         .stride_B = 1,
+                         .mocs = MOCS_WB)
+}
+
 /**
  * The pipe->set_constant_buffer() driver hook.
  *
@@ -2097,44 +2127,29 @@ iris_set_constant_buffer(struct pipe_context *ctx,
                          const struct pipe_constant_buffer *input)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct iris_const_buffer *cbuf = &shs->constbuf[index];
 
-   if (input && (input->buffer || input->user_buffer)) {
-      if (input->user_buffer) {
-         u_upload_data(ctx->const_uploader, 0, input->buffer_size, 32,
-                       input->user_buffer, &cbuf->data.offset,
-                       &cbuf->data.res);
-      } else {
-         pipe_resource_reference(&cbuf->data.res, input->buffer);
-         cbuf->data.offset = input->buffer_offset;
-      }
+   if (input && input->buffer) {
+      assert(index > 0);
 
-      // XXX: these are not retained forever, use a separate uploader?
-      void *map =
-         upload_state(ice->state.surface_uploader, &cbuf->surface_state,
-                      4 * GENX(RENDER_SURFACE_STATE_length), 64);
-      if (!unlikely(map)) {
-         pipe_resource_reference(&cbuf->data.res, NULL);
-         return;
-      }
+      pipe_resource_reference(&cbuf->data.res, input->buffer);
+      cbuf->data.offset = input->buffer_offset;
 
-      struct iris_resource *res = (void *) cbuf->data.res;
-      struct iris_bo *surf_bo = iris_resource_bo(cbuf->surface_state.res);
-      cbuf->surface_state.offset += iris_bo_offset_from_base_address(surf_bo);
-
-      isl_buffer_fill_state(&screen->isl_dev, map,
-                            .address = res->bo->gtt_offset + cbuf->data.offset,
-                            .size_B = MIN2(input->buffer_size,
-                                           res->bo->size - cbuf->data.offset),
-                            .format = ISL_FORMAT_R32G32B32A32_FLOAT,
-                            .stride_B = 1,
-                            .mocs = MOCS_WB)
+      upload_ubo_surf_state(ice, cbuf, input->buffer_size);
    } else {
       pipe_resource_reference(&cbuf->data.res, NULL);
       pipe_resource_reference(&cbuf->surface_state.res, NULL);
+   }
+
+   if (index == 0) {
+      if (input)
+         memcpy(&shs->cbuf0, input, sizeof(shs->cbuf0));
+      else
+         memset(&shs->cbuf0, 0, sizeof(shs->cbuf0));
+
+      shs->cbuf0_needs_upload = true;
    }
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
@@ -2142,6 +2157,22 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    // XXX: we need 3DS_BTP to commit these changes, and if we fell back to
    // XXX: pull model we may need actual new bindings...
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+}
+
+static void
+upload_uniforms(struct iris_context *ice,
+                gl_shader_stage stage)
+{
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+   struct iris_const_buffer *cbuf = &shs->constbuf[0];
+
+   if (shs->cbuf0.user_buffer) {
+      u_upload_data(ice->ctx.const_uploader, 0, shs->cbuf0.buffer_size, 32,
+                    shs->cbuf0.user_buffer, &cbuf->data.offset,
+                    &cbuf->data.res);
+
+      upload_ubo_surf_state(ice, cbuf, shs->cbuf0.buffer_size);
+   }
 }
 
 /**
@@ -3944,6 +3975,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       if (!shader)
          continue;
+
+      if (shs->cbuf0_needs_upload)
+         upload_uniforms(ice, stage);
 
       struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
