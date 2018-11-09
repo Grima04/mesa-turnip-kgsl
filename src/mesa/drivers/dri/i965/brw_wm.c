@@ -139,6 +139,8 @@ brw_codegen_wm_prog(struct brw_context *brw,
    bool start_busy = false;
    double start_time = 0;
 
+   nir_shader *nir = fp->program.nir;
+
    memset(&prog_data, 0, sizeof(prog_data));
 
    /* Use ALT floating point mode for ARB programs so that 0^0 == 1. */
@@ -148,13 +150,12 @@ brw_codegen_wm_prog(struct brw_context *brw,
    assign_fs_binding_table_offsets(devinfo, &fp->program, key, &prog_data);
 
    if (!fp->program.is_arb_asm) {
-      brw_nir_setup_glsl_uniforms(mem_ctx, fp->program.nir, &fp->program,
+      brw_nir_setup_glsl_uniforms(mem_ctx, nir, &fp->program,
                                   &prog_data.base, true);
-      brw_nir_analyze_ubo_ranges(brw->screen->compiler, fp->program.nir,
+      brw_nir_analyze_ubo_ranges(brw->screen->compiler, nir,
                                  NULL, prog_data.base.ubo_ranges);
    } else {
-      brw_nir_setup_arb_uniforms(mem_ctx, fp->program.nir, &fp->program,
-                                 &prog_data.base);
+      brw_nir_setup_arb_uniforms(mem_ctx, nir, &fp->program, &prog_data.base);
 
       if (unlikely(INTEL_DEBUG & DEBUG_WM))
          brw_dump_arb_asm("fragment", &fp->program);
@@ -178,7 +179,7 @@ brw_codegen_wm_prog(struct brw_context *brw,
 
    char *error_str = NULL;
    program = brw_compile_fs(brw->screen->compiler, brw, mem_ctx,
-                            key, &prog_data, fp->program.nir,
+                            key, &prog_data, nir,
                             &fp->program, st_index8, st_index16, st_index32,
                             true, false, vue_map,
                             &error_str);
