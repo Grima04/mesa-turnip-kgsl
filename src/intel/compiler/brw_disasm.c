@@ -1569,6 +1569,19 @@ qtr_ctrl(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst
    return 0;
 }
 
+static int
+swsb(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   const struct tgl_swsb swsb = tgl_swsb_decode(brw_inst_swsb(devinfo, inst));
+   if (swsb.regdist)
+      format(file, " @%d", swsb.regdist);
+   if (swsb.mode)
+      format(file, " $%d%s", swsb.sbid,
+             (swsb.mode & TGL_SBID_SET ? "" :
+              swsb.mode & TGL_SBID_DST ? ".dst" : ".src"));
+   return 0;
+}
+
 #ifdef DEBUG
 static __attribute__((__unused__)) int
 brw_disassemble_imm(const struct gen_device_info *devinfo,
@@ -2039,6 +2052,9 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                            brw_inst_qtr_control(devinfo, inst), &space);
          }
       }
+
+      if (devinfo->gen >= 12)
+         err |= swsb(file, devinfo, inst);
 
       err |= control(file, "compaction", cmpt_ctrl, is_compacted, &space);
       err |= control(file, "thread control", thread_ctrl,
