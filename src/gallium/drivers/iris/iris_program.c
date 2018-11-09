@@ -533,29 +533,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 }
 
 /**
- * If we still have regular uniforms as push constants after the backend
- * compilation, set up a UBO range for them.  This will be used to fill
- * out the 3DSTATE_CONSTANT_* packets which cause the data to be pushed.
- */
-static void
-iris_setup_push_uniform_range(const struct brw_compiler *compiler,
-                              struct brw_stage_prog_data *prog_data)
-{
-   // XXX: I don't think this code does anything at all.
-
-   if (prog_data->nr_params) {
-      for (int i = 3; i > 0; i--)
-         prog_data->ubo_ranges[i] = prog_data->ubo_ranges[i - 1];
-
-      prog_data->ubo_ranges[0] = (struct brw_ubo_range) {
-         .block = 0,
-         .start = 0,
-         .length = DIV_ROUND_UP(prog_data->nr_params, 8),
-      };
-   }
-}
-
-/**
  * Compile a vertex shader, and upload the assembly.
  */
 static bool
@@ -609,8 +586,6 @@ iris_compile_vs(struct iris_context *ice,
       ralloc_free(mem_ctx);
       return false;
    }
-
-   iris_setup_push_uniform_range(compiler, prog_data);
 
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
@@ -751,8 +726,6 @@ iris_compile_tcs(struct iris_context *ice,
       return false;
    }
 
-   iris_setup_push_uniform_range(compiler, prog_data);
-
    iris_upload_and_bind_shader(ice, IRIS_CACHE_TCS, key, program, prog_data,
                                NULL, system_values, num_system_values);
 
@@ -828,8 +801,6 @@ iris_compile_tes(struct iris_context *ice,
       return false;
    }
 
-   iris_setup_push_uniform_range(compiler, prog_data);
-
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
@@ -901,8 +872,6 @@ iris_compile_gs(struct iris_context *ice,
       ralloc_free(mem_ctx);
       return false;
    }
-
-   iris_setup_push_uniform_range(compiler, prog_data);
 
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
@@ -979,8 +948,6 @@ iris_compile_fs(struct iris_context *ice,
    }
 
    //brw_alloc_stage_scratch(brw, &brw->wm.base, prog_data.base.total_scratch);
-
-   iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_FS, key, program, prog_data,
                                NULL, system_values, num_system_values);
