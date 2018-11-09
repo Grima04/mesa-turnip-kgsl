@@ -190,7 +190,7 @@ compile_init(struct ir3_compiler *compiler,
 
 	if (shader_debug_enabled(so->type)) {
 		fprintf(stderr, "NIR (final form) for %s shader:\n",
-			shader_stage_name(so->type));
+			_mesa_shader_stage_to_string(so->type));
 		nir_print_shader(ctx->s, stderr);
 	}
 

@@ -152,7 +152,8 @@ assemble_variant(struct ir3_shader_variant *v)
 
 	if (shader_debug_enabled(v->shader->type)) {
 		fprintf(stderr, "Native code for unnamed %s shader %s:\n",
-			shader_stage_name(v->shader->type), v->shader->nir->info.name);
+			_mesa_shader_stage_to_string(v->shader->type),
+			v->shader->nir->info.name);
 		if (v->shader->type == MESA_SHADER_FRAGMENT)
 			fprintf(stderr, "SIMD0\n");
 		ir3_shader_disasm(v, bin, stderr);

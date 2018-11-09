@@ -51,25 +51,6 @@ shader_debug_enabled(gl_shader_stage type)
 	}
 }
 
-static inline const char *
-shader_stage_name(gl_shader_stage type)
-{
-	/* NOTE these names are chosen to match the INTEL_DEBUG output
-	 * which frameretrace parses.  Hurray accidental ABI!
-	 */
-	switch (type) {
-	case MESA_SHADER_VERTEX:      return "vertex";
-	case MESA_SHADER_TESS_CTRL:   return "tessellation control";
-	case MESA_SHADER_TESS_EVAL:   return "tessellation evaluation";
-	case MESA_SHADER_GEOMETRY:    return "geometry";
-	case MESA_SHADER_FRAGMENT:    return "fragment";
-	case MESA_SHADER_COMPUTE:     return "compute";
-	default:
-		debug_assert(0);
-		return NULL;
-	}
-}
-
 /* bitmask of debug flags */
 enum debug_t {
 	PRINT_RAW      = 0x1,    /* dump raw hexdump */
