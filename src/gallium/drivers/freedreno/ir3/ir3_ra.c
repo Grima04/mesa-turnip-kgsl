@@ -326,7 +326,7 @@ struct ir3_ra_instr_data {
 /* register-assign context, per-shader */
 struct ir3_ra_ctx {
 	struct ir3 *ir;
-	enum shader_t type;
+	gl_shader_stage type;
 	bool frag_face;
 
 	struct ir3_ra_reg_set *set;
@@ -1106,7 +1106,7 @@ retry:
 	return 0;
 }
 
-int ir3_ra(struct ir3 *ir, enum shader_t type,
+int ir3_ra(struct ir3 *ir, gl_shader_stage type,
 		bool frag_coord, bool frag_face)
 {
 	struct ir3_ra_ctx ctx = {

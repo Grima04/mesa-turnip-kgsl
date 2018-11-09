@@ -46,16 +46,16 @@
 #include "fd6_zsa.h"
 
 static uint32_t
-shader_t_to_opcode(enum shader_t type)
+shader_t_to_opcode(gl_shader_stage type)
 {
 	switch (type) {
-	case SHADER_VERTEX:
-	case SHADER_TCS:
-	case SHADER_TES:
-	case SHADER_GEOM:
+	case MESA_SHADER_VERTEX:
+	case MESA_SHADER_TESS_CTRL:
+	case MESA_SHADER_TESS_EVAL:
+	case MESA_SHADER_GEOMETRY:
 		return CP_LOAD_STATE6_GEOM;
-	case SHADER_FRAGMENT:
-	case SHADER_COMPUTE:
+	case MESA_SHADER_FRAGMENT:
+	case MESA_SHADER_COMPUTE:
 		return CP_LOAD_STATE6_FRAG;
 	default:
 		unreachable("bad shader type");
@@ -67,7 +67,7 @@ shader_t_to_opcode(enum shader_t type)
  * sizedwords:     size of const value buffer
  */
 static void
-fd6_emit_const(struct fd_ringbuffer *ring, enum shader_t type,
+fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 		uint32_t regid, uint32_t offset, uint32_t sizedwords,
 		const uint32_t *dwords, struct pipe_resource *prsc)
 {
@@ -105,7 +105,7 @@ fd6_emit_const(struct fd_ringbuffer *ring, enum shader_t type,
 }
 
 static void
-fd6_emit_const_bo(struct fd_ringbuffer *ring, enum shader_t type, boolean write,
+fd6_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
 		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
 	uint32_t anum = align(num, 2);

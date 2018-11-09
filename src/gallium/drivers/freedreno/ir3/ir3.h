@@ -31,7 +31,7 @@
 #include "util/list.h"
 
 #include "instr-a3xx.h"
-#include "disasm.h"  /* TODO move 'enum shader_t' somewhere else.. */
+#include "disasm.h"  /* TODO move 'gl_shader_stage' somewhere else.. */
 
 /* low level intermediate representation of an adreno shader program */
 
@@ -1002,7 +1002,7 @@ int ir3_sched(struct ir3 *ir);
 
 /* register assignment: */
 struct ir3_ra_reg_set * ir3_ra_alloc_reg_set(struct ir3_compiler *compiler);
-int ir3_ra(struct ir3 *ir3, enum shader_t type,
+int ir3_ra(struct ir3 *ir3, gl_shader_stage type,
 		bool frag_coord, bool frag_face);
 
 /* legalize: */

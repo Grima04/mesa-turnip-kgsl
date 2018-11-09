@@ -40,7 +40,7 @@
 #include "fd2_util.h"
 
 static struct fd2_shader_stateobj *
-create_shader(enum shader_t type)
+create_shader(gl_shader_stage type)
 {
 	struct fd2_shader_stateobj *so = CALLOC_STRUCT(fd2_shader_stateobj);
 	if (!so)
@@ -119,7 +119,7 @@ emit(struct fd_ringbuffer *ring, struct fd2_shader_stateobj *so)
 		assemble(so);
 
 	OUT_PKT3(ring, CP_IM_LOAD_IMMEDIATE, 2 + so->info.sizedwords);
-	OUT_RING(ring, (so->type == SHADER_VERTEX) ? 0 : 1);
+	OUT_RING(ring, (so->type == MESA_SHADER_VERTEX) ? 0 : 1);
 	OUT_RING(ring, so->info.sizedwords);
 	for (i = 0; i < so->info.sizedwords; i++)
 		OUT_RING(ring, so->bin[i]);
@@ -129,7 +129,7 @@ static void *
 fd2_fp_state_create(struct pipe_context *pctx,
 		const struct pipe_shader_state *cso)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_FRAGMENT);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_FRAGMENT);
 	if (!so)
 		return NULL;
 	so->tokens = tgsi_dup_tokens(cso->tokens);
@@ -147,7 +147,7 @@ static void *
 fd2_vp_state_create(struct pipe_context *pctx,
 		const struct pipe_shader_state *cso)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_VERTEX);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_VERTEX);
 	if (!so)
 		return NULL;
 	so->tokens = tgsi_dup_tokens(cso->tokens);
@@ -304,7 +304,7 @@ fd2_program_emit(struct fd_ringbuffer *ring,
 static struct fd2_shader_stateobj *
 create_blit_fp(void)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_FRAGMENT);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_FRAGMENT);
 	struct ir2_instruction *instr;
 
 	if (!so)
@@ -340,7 +340,7 @@ create_blit_fp(void)
 static struct fd2_shader_stateobj *
 create_blit_vp(void)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_VERTEX);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_VERTEX);
 	struct ir2_instruction *instr;
 
 	if (!so)
@@ -379,7 +379,7 @@ create_blit_vp(void)
 static struct fd2_shader_stateobj *
 create_solid_fp(void)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_FRAGMENT);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_FRAGMENT);
 	struct ir2_instruction *instr;
 
 	if (!so)
@@ -408,7 +408,7 @@ create_solid_fp(void)
 static struct fd2_shader_stateobj *
 create_solid_vp(void)
 {
-	struct fd2_shader_stateobj *so = create_shader(SHADER_VERTEX);
+	struct fd2_shader_stateobj *so = create_shader(MESA_SHADER_VERTEX);
 	struct ir2_instruction *instr;
 
 	if (!so)

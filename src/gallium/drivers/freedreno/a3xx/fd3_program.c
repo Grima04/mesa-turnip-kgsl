@@ -40,7 +40,7 @@
 
 static struct ir3_shader *
 create_shader_stateobj(struct pipe_context *pctx, const struct pipe_shader_state *cso,
-		enum shader_t type)
+		gl_shader_stage type)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct ir3_compiler *compiler = ctx->screen->compiler;
@@ -51,7 +51,7 @@ static void *
 fd3_fp_state_create(struct pipe_context *pctx,
 		const struct pipe_shader_state *cso)
 {
-	return create_shader_stateobj(pctx, cso, SHADER_FRAGMENT);
+	return create_shader_stateobj(pctx, cso, MESA_SHADER_FRAGMENT);
 }
 
 static void
@@ -65,7 +65,7 @@ static void *
 fd3_vp_state_create(struct pipe_context *pctx,
 		const struct pipe_shader_state *cso)
 {
-	return create_shader_stateobj(pctx, cso, SHADER_VERTEX);
+	return create_shader_stateobj(pctx, cso, MESA_SHADER_VERTEX);
 }
 
 static void
@@ -97,7 +97,7 @@ emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 	enum adreno_state_src src;
 	uint32_t i, sz, *bin;
 
-	if (so->type == SHADER_VERTEX) {
+	if (so->type == MESA_SHADER_VERTEX) {
 		sb = SB_VERT_SHADER;
 	} else {
 		sb = SB_FRAG_SHADER;

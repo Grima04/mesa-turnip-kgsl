@@ -51,7 +51,7 @@
  * sizedwords:     size of const value buffer
  */
 static void
-fd5_emit_const(struct fd_ringbuffer *ring, enum shader_t type,
+fd5_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 		uint32_t regid, uint32_t offset, uint32_t sizedwords,
 		const uint32_t *dwords, struct pipe_resource *prsc)
 {
@@ -90,7 +90,7 @@ fd5_emit_const(struct fd_ringbuffer *ring, enum shader_t type,
 }
 
 static void
-fd5_emit_const_bo(struct fd_ringbuffer *ring, enum shader_t type, boolean write,
+fd5_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
 		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
 	uint32_t anum = align(num, 2);

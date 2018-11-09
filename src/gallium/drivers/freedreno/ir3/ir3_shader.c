@@ -153,7 +153,7 @@ assemble_variant(struct ir3_shader_variant *v)
 	if (shader_debug_enabled(v->shader->type)) {
 		fprintf(stderr, "Native code for unnamed %s shader %s:\n",
 			shader_stage_name(v->shader->type), v->shader->nir->info.name);
-		if (v->shader->type == SHADER_FRAGMENT)
+		if (v->shader->type == MESA_SHADER_FRAGMENT)
 			fprintf(stderr, "SIMD0\n");
 		ir3_shader_disasm(v, bin, stderr);
 	}
@@ -239,7 +239,7 @@ shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 	 * variants:
 	 */
 	switch (shader->type) {
-	case SHADER_FRAGMENT:
+	case MESA_SHADER_FRAGMENT:
 		if (key.has_per_samp) {
 			key.vsaturate_s = 0;
 			key.vsaturate_t = 0;
@@ -248,7 +248,7 @@ shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 			key.vsamples = 0;
 		}
 		break;
-	case SHADER_VERTEX:
+	case MESA_SHADER_VERTEX:
 		key.color_two_side = false;
 		key.half_precision = false;
 		key.rasterflat = false;
@@ -312,7 +312,7 @@ ir3_shader_destroy(struct ir3_shader *shader)
 
 struct ir3_shader *
 ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso, enum shader_t type,
+		const struct pipe_shader_state *cso, gl_shader_stage type,
 		struct pipe_debug_callback *debug)
 {
 	struct ir3_shader *shader = CALLOC_STRUCT(ir3_shader);
@@ -366,7 +366,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 
 	shader->compiler = compiler;
 	shader->id = ++shader->compiler->shader_count;
-	shader->type = SHADER_COMPUTE;
+	shader->type = MESA_SHADER_COMPUTE;
 
 	nir_shader *nir;
 	if (cso->ir_type == PIPE_SHADER_IR_NIR) {
@@ -456,7 +456,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	disasm_a3xx(bin, so->info.sizedwords, 0, out);
 
 	switch (so->type) {
-	case SHADER_VERTEX:
+	case MESA_SHADER_VERTEX:
 		fprintf(out, "; %s: outputs:", type);
 		for (i = 0; i < so->outputs_count; i++) {
 			uint8_t regid = so->outputs[i].regid;
@@ -476,7 +476,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 		}
 		fprintf(out, "\n");
 		break;
-	case SHADER_FRAGMENT:
+	case MESA_SHADER_FRAGMENT:
 		fprintf(out, "; %s: outputs:", type);
 		for (i = 0; i < so->outputs_count; i++) {
 			uint8_t regid = so->outputs[i].regid;
@@ -517,11 +517,11 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 
 	/* print shader type specific info: */
 	switch (so->type) {
-	case SHADER_VERTEX:
+	case MESA_SHADER_VERTEX:
 		dump_output(out, so, VARYING_SLOT_POS, "pos");
 		dump_output(out, so, VARYING_SLOT_PSIZ, "psize");
 		break;
-	case SHADER_FRAGMENT:
+	case MESA_SHADER_FRAGMENT:
 		dump_reg(out, "pos (bary)",
 			ir3_find_sysval_regid(so, SYSTEM_VALUE_VARYING_COORD));
 		dump_output(out, so, FRAG_RESULT_DEPTH, "posz");
@@ -874,7 +874,7 @@ void
 ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, const struct pipe_draw_info *info)
 {
-	debug_assert(v->type == SHADER_VERTEX);
+	debug_assert(v->type == MESA_SHADER_VERTEX);
 
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_VERTEX);
 
@@ -939,12 +939,12 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				ctx->mem_to_mem(ring, vertex_params_rsc, 0,
 						indirect->buffer, src_off, 1);
 
-				ctx->emit_const(ring, SHADER_VERTEX, offset * 4, 0,
+				ctx->emit_const(ring, MESA_SHADER_VERTEX, offset * 4, 0,
 						vertex_params_size, NULL, vertex_params_rsc);
 
 				pipe_resource_reference(&vertex_params_rsc, NULL);
 			} else {
-				ctx->emit_const(ring, SHADER_VERTEX, offset * 4, 0,
+				ctx->emit_const(ring, MESA_SHADER_VERTEX, offset * 4, 0,
 						vertex_params_size, vertex_params, NULL);
 			}
 
@@ -960,7 +960,7 @@ void
 ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx)
 {
-	debug_assert(v->type == SHADER_FRAGMENT);
+	debug_assert(v->type == MESA_SHADER_FRAGMENT);
 
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_FRAGMENT);
 }
@@ -970,7 +970,7 @@ void
 ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, const struct pipe_grid_info *info)
 {
-	debug_assert(v->type == SHADER_COMPUTE);
+	debug_assert(v->type == MESA_SHADER_COMPUTE);
 
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_COMPUTE);
 
@@ -1004,7 +1004,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				indirect_offset = info->indirect_offset;
 			}
 
-			ctx->emit_const(ring, SHADER_COMPUTE, offset * 4,
+			ctx->emit_const(ring, MESA_SHADER_COMPUTE, offset * 4,
 					indirect_offset, 4, NULL, indirect);
 
 			pipe_resource_reference(&indirect, NULL);
@@ -1018,7 +1018,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				[IR3_DP_LOCAL_GROUP_SIZE_Z] = info->block[2],
 			};
 
-			ctx->emit_const(ring, SHADER_COMPUTE, offset * 4, 0,
+			ctx->emit_const(ring, MESA_SHADER_COMPUTE, offset * 4, 0,
 					ARRAY_SIZE(compute_params), compute_params, NULL);
 		}
 	}

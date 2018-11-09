@@ -464,14 +464,14 @@ fd_msaa_samples(unsigned samples)
  */
 
 static inline enum a4xx_state_block
-fd4_stage2shadersb(enum shader_t type)
+fd4_stage2shadersb(gl_shader_stage type)
 {
 	switch (type) {
-	case SHADER_VERTEX:
+	case MESA_SHADER_VERTEX:
 		return SB4_VS_SHADER;
-	case SHADER_FRAGMENT:
+	case MESA_SHADER_FRAGMENT:
 		return SB4_FS_SHADER;
-	case SHADER_COMPUTE:
+	case MESA_SHADER_COMPUTE:
 		return SB4_CS_SHADER;
 	default:
 		unreachable("bad shader type");

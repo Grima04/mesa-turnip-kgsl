@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "compiler/shader_enums.h"
 #include "util/u_debug.h"
 
 enum fd_shader_debug {
@@ -37,23 +38,13 @@ enum fd_shader_debug {
 
 extern enum fd_shader_debug fd_shader_debug;
 
-enum shader_t {
-	SHADER_VERTEX,
-	SHADER_TCS,
-	SHADER_TES,
-	SHADER_GEOM,
-	SHADER_FRAGMENT,
-	SHADER_COMPUTE,
-	SHADER_MAX,
-};
-
 static inline bool
-shader_debug_enabled(enum shader_t type)
+shader_debug_enabled(gl_shader_stage type)
 {
 	switch (type) {
-	case SHADER_VERTEX:      return !!(fd_shader_debug & FD_DBG_SHADER_VS);
-	case SHADER_FRAGMENT:    return !!(fd_shader_debug & FD_DBG_SHADER_FS);
-	case SHADER_COMPUTE:     return !!(fd_shader_debug & FD_DBG_SHADER_CS);
+	case MESA_SHADER_VERTEX:      return !!(fd_shader_debug & FD_DBG_SHADER_VS);
+	case MESA_SHADER_FRAGMENT:    return !!(fd_shader_debug & FD_DBG_SHADER_FS);
+	case MESA_SHADER_COMPUTE:     return !!(fd_shader_debug & FD_DBG_SHADER_CS);
 	default:
 		debug_assert(0);
 		return false;
@@ -61,18 +52,18 @@ shader_debug_enabled(enum shader_t type)
 }
 
 static inline const char *
-shader_stage_name(enum shader_t type)
+shader_stage_name(gl_shader_stage type)
 {
 	/* NOTE these names are chosen to match the INTEL_DEBUG output
 	 * which frameretrace parses.  Hurray accidental ABI!
 	 */
 	switch (type) {
-	case SHADER_VERTEX:      return "vertex";
-	case SHADER_TCS:         return "tessellation control";
-	case SHADER_TES:         return "tessellation evaluation";
-	case SHADER_GEOM:        return "geometry";
-	case SHADER_FRAGMENT:    return "fragment";
-	case SHADER_COMPUTE:     return "compute";
+	case MESA_SHADER_VERTEX:      return "vertex";
+	case MESA_SHADER_TESS_CTRL:   return "tessellation control";
+	case MESA_SHADER_TESS_EVAL:   return "tessellation evaluation";
+	case MESA_SHADER_GEOMETRY:    return "geometry";
+	case MESA_SHADER_FRAGMENT:    return "fragment";
+	case MESA_SHADER_COMPUTE:     return "compute";
 	default:
 		debug_assert(0);
 		return NULL;
@@ -85,7 +76,7 @@ enum debug_t {
 	PRINT_VERBOSE  = 0x2,
 };
 
-int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, enum shader_t type);
+int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage type);
 int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out);
 void disasm_set_debug(enum debug_t debug);
 

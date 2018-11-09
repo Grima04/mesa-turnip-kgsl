@@ -139,16 +139,16 @@ compile_init(struct ir3_compiler *compiler,
 	struct ir3_context *ctx = rzalloc(NULL, struct ir3_context);
 
 	if (compiler->gpu_id >= 400) {
-		if (so->type == SHADER_VERTEX) {
+		if (so->type == MESA_SHADER_VERTEX) {
 			ctx->astc_srgb = so->key.vastc_srgb;
-		} else if (so->type == SHADER_FRAGMENT) {
+		} else if (so->type == MESA_SHADER_FRAGMENT) {
 			ctx->astc_srgb = so->key.fastc_srgb;
 		}
 
 	} else {
-		if (so->type == SHADER_VERTEX) {
+		if (so->type == MESA_SHADER_VERTEX) {
 			ctx->samples = so->key.vsamples;
-		} else if (so->type == SHADER_FRAGMENT) {
+		} else if (so->type == MESA_SHADER_FRAGMENT) {
 			ctx->samples = so->key.fsamples;
 		}
 	}
@@ -238,16 +238,16 @@ compile_init(struct ir3_compiler *compiler,
 	}
 
 	unsigned num_driver_params = 0;
-	if (so->type == SHADER_VERTEX) {
+	if (so->type == MESA_SHADER_VERTEX) {
 		num_driver_params = IR3_DP_VS_COUNT;
-	} else if (so->type == SHADER_COMPUTE) {
+	} else if (so->type == MESA_SHADER_COMPUTE) {
 		num_driver_params = IR3_DP_CS_COUNT;
 	}
 
 	so->constbase.driver_param = constoff;
 	constoff += align(num_driver_params, 4) / 4;
 
-	if ((so->type == SHADER_VERTEX) &&
+	if ((so->type == MESA_SHADER_VERTEX) &&
 			(compiler->gpu_id < 500) &&
 			so->shader->stream_output.num_outputs > 0) {
 		so->constbase.tfbo = constoff;
@@ -3219,7 +3219,7 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	if ((ctx->compiler->gpu_id < 500) &&
 			(ctx->so->shader->stream_output.num_outputs > 0) &&
 			!ctx->so->binning_pass) {
-		debug_assert(ctx->so->type == SHADER_VERTEX);
+		debug_assert(ctx->so->type == MESA_SHADER_VERTEX);
 		emit_stream_out(ctx);
 	}
 
@@ -3295,7 +3295,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
 
-	if (ctx->so->type == SHADER_FRAGMENT) {
+	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		for (int i = 0; i < ncomp; i++) {
 			struct ir3_instruction *instr = NULL;
 			unsigned idx = (n * 4) + i;
@@ -3351,7 +3351,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 
 			ctx->ir->inputs[idx] = instr;
 		}
-	} else if (ctx->so->type == SHADER_VERTEX) {
+	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
 		for (int i = 0; i < ncomp; i++) {
 			unsigned idx = (n * 4) + i;
 			compile_assert(ctx, idx < ctx->ir->ninputs);
@@ -3361,7 +3361,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		compile_error(ctx, "unknown shader type: %d\n", ctx->so->type);
 	}
 
-	if (so->inputs[n].bary || (ctx->so->type == SHADER_VERTEX)) {
+	if (so->inputs[n].bary || (ctx->so->type == MESA_SHADER_VERTEX)) {
 		so->total_in += ncomp;
 	}
 }
@@ -3383,7 +3383,7 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	ncomp = MAX2(ncomp, 4);
 	compile_assert(ctx, ncomp == 4);
 
-	if (ctx->so->type == SHADER_FRAGMENT) {
+	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		switch (slot) {
 		case FRAG_RESULT_DEPTH:
 			comp = 2;  /* tgsi will write to .z component */
@@ -3398,7 +3398,7 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 			compile_error(ctx, "unknown FS output name: %s\n",
 					gl_frag_result_name(slot));
 		}
-	} else if (ctx->so->type == SHADER_VERTEX) {
+	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
 		switch (slot) {
 		case VARYING_SLOT_POS:
 			so->writes_pos = true;
@@ -3450,10 +3450,10 @@ max_drvloc(struct exec_list *vars)
 	return drvloc;
 }
 
-static const unsigned max_sysvals[SHADER_MAX] = {
-	[SHADER_FRAGMENT] = 24,  // TODO
-	[SHADER_VERTEX]  = 16,
-	[SHADER_COMPUTE] = 16, // TODO how many do we actually need?
+static const unsigned max_sysvals[] = {
+	[MESA_SHADER_FRAGMENT] = 24,  // TODO
+	[MESA_SHADER_VERTEX]  = 16,
+	[MESA_SHADER_COMPUTE] = 16, // TODO how many do we actually need?
 };
 
 static void
@@ -3482,7 +3482,7 @@ emit_instructions(struct ir3_context *ctx)
 	 * base for bary.f varying fetch instrs:
 	 */
 	struct ir3_instruction *vcoord = NULL;
-	if (ctx->so->type == SHADER_FRAGMENT) {
+	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		struct ir3_instruction *xy[2];
 
 		vcoord = create_input_compmask(ctx, 0, 0x3);
@@ -3643,7 +3643,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	inputs = ir->inputs;
 
 	/* but fixup actual inputs for frag shader: */
-	if (so->type == SHADER_FRAGMENT)
+	if (so->type == MESA_SHADER_FRAGMENT)
 		fixup_frag_inputs(ctx);
 
 	/* at this point, for binning pass, throw away unneeded outputs: */
@@ -3774,7 +3774,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 				reg = in->regs[0]->num - j;
 				actual_in++;
 				so->inputs[i].ncomp++;
-				if ((so->type == SHADER_FRAGMENT) && so->inputs[i].bary) {
+				if ((so->type == MESA_SHADER_FRAGMENT) && so->inputs[i].bary) {
 					/* assign inloc: */
 					assert(in->regs[1]->flags & IR3_REG_IMMED);
 					in->regs[1]->iim_val = inloc + j;
@@ -3782,7 +3782,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 				}
 			}
 		}
-		if ((so->type == SHADER_FRAGMENT) && compmask && so->inputs[i].bary) {
+		if ((so->type == MESA_SHADER_FRAGMENT) && compmask && so->inputs[i].bary) {
 			so->varying_in++;
 			so->inputs[i].compmask = (1 << maxcomp) - 1;
 			inloc += maxcomp;
@@ -3806,7 +3806,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	/* Note that actual_in counts inputs that are not bary.f'd for FS: */
-	if (so->type == SHADER_VERTEX)
+	if (so->type == MESA_SHADER_VERTEX)
 		so->total_in = actual_in;
 	else
 		so->total_in = max_bary + 1;

@@ -345,12 +345,12 @@ struct ir3_shader_variant {
 	struct ir3_shader_variant *next;
 
 	/* replicated here to avoid passing extra ptrs everywhere: */
-	enum shader_t type;
+	gl_shader_stage type;
 	struct ir3_shader *shader;
 };
 
 struct ir3_shader {
-	enum shader_t type;
+	gl_shader_stage type;
 
 	/* shader id (for debug): */
 	uint32_t id;
@@ -370,7 +370,7 @@ struct ir3_shader {
 void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);
 
 struct ir3_shader * ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso, enum shader_t type,
+		const struct pipe_shader_state *cso, gl_shader_stage type,
 		struct pipe_debug_callback *debug);
 struct ir3_shader *
 ir3_shader_create_compute(struct ir3_compiler *compiler,
@@ -399,9 +399,9 @@ static inline const char *
 ir3_shader_stage(struct ir3_shader *shader)
 {
 	switch (shader->type) {
-	case SHADER_VERTEX:     return "VERT";
-	case SHADER_FRAGMENT:   return "FRAG";
-	case SHADER_COMPUTE:    return "CL";
+	case MESA_SHADER_VERTEX:     return "VERT";
+	case MESA_SHADER_FRAGMENT:   return "FRAG";
+	case MESA_SHADER_COMPUTE:    return "CL";
 	default:
 		unreachable("invalid type");
 		return NULL;
