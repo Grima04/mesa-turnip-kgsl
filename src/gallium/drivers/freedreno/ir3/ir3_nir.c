@@ -161,7 +161,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		tex_options.lower_txp = (1 << GLSL_SAMPLER_DIM_3D);
 	}
 
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		debug_printf("----------------------\n");
 		nir_print_shader(s, stdout);
 		debug_printf("----------------------\n");
@@ -207,7 +207,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 
 	OPT_V(s, nir_move_load_const);
 
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		debug_printf("----------------------\n");
 		nir_print_shader(s, stdout);
 		debug_printf("----------------------\n");

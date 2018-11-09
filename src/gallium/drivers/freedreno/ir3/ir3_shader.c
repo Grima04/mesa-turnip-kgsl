@@ -143,7 +143,7 @@ assemble_variant(struct ir3_shader_variant *v)
 
 	memcpy(fd_bo_map(v->bo), bin, sz);
 
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		struct ir3_shader_key key = v->key;
 		printf("disassemble: type=%d, k={bp=%u,cts=%u,hp=%u}", v->type,
 			v->binning_pass, key.color_two_side, key.half_precision);
@@ -327,7 +327,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		nir = cso->ir.nir;
 	} else {
 		debug_assert(cso->type == PIPE_SHADER_IR_TGSI);
-		if (fd_mesa_debug & FD_DBG_DISASM) {
+		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			DBG("dump tgsi: type=%d", shader->type);
 			tgsi_dump(cso->tokens, 0);
 		}
@@ -337,7 +337,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 			   (nir_lower_io_options)0);
 	/* do first pass optimization, ignoring the key: */
 	shader->nir = ir3_optimize_nir(shader, nir, NULL);
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		DBG("dump nir%d: type=%d", shader->id, shader->type);
 		nir_print_shader(shader->nir, stdout);
 	}
@@ -378,7 +378,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 			   (nir_lower_io_options)0);
 	} else {
 		debug_assert(cso->ir_type == PIPE_SHADER_IR_TGSI);
-		if (fd_mesa_debug & FD_DBG_DISASM) {
+		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			DBG("dump tgsi: type=%d", shader->type);
 			tgsi_dump(cso->prog, 0);
 		}
@@ -387,7 +387,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 
 	/* do first pass optimization, ignoring the key: */
 	shader->nir = ir3_optimize_nir(shader, nir, NULL);
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		printf("dump nir%d: type=%d\n", shader->id, shader->type);
 		nir_print_shader(shader->nir, stdout);
 	}

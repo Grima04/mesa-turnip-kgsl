@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 
 	while (n < argc) {
 		if (!strcmp(argv[n], "--verbose")) {
-			fd_mesa_debug |= FD_DBG_MSGS | FD_DBG_OPTMSGS | FD_DBG_DISASM;
+			ir3_shader_debug |= IR3_DBG_OPTMSGS | IR3_DBG_DISASM;
 			n++;
 			continue;
 		}
@@ -452,13 +452,13 @@ int main(int argc, char **argv)
 			return ret;
 		}
 
-		if (fd_mesa_debug & FD_DBG_OPTMSGS)
+		if (ir3_shader_debug & IR3_DBG_OPTMSGS)
 			debug_printf("%s\n", (char *)ptr);
 
 		if (!tgsi_text_translate(ptr, toks, ARRAY_SIZE(toks)))
 			errx(1, "could not parse `%s'", filenames[0]);
 
-		if (fd_mesa_debug & FD_DBG_OPTMSGS)
+		if (ir3_shader_debug & IR3_DBG_OPTMSGS)
 			tgsi_dump(toks, 0);
 
 		nir = ir3_tgsi_to_nir(toks);

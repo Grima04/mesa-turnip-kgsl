@@ -64,7 +64,7 @@
 
 static const struct debug_named_value debug_options[] = {
 		{"msgs",      FD_DBG_MSGS,   "Print debug messages"},
-		{"disasm",    FD_DBG_DISASM, "Dump TGSI and adreno shader disassembly"},
+		{"disasm",    FD_DBG_DISASM, "Dump TGSI and adreno shader disassembly (a2xx only, see IR3_SHADER_DEBUG)"},
 		{"dclear",    FD_DBG_DCLEAR, "Mark all state dirty after clear"},
 		{"ddraw",     FD_DBG_DDRAW,  "Mark all state dirty after draw"},
 		{"noscis",    FD_DBG_NOSCIS, "Disable scissor optimization"},
@@ -72,7 +72,6 @@ static const struct debug_named_value debug_options[] = {
 		{"nobypass",  FD_DBG_NOBYPASS, "Disable GMEM bypass"},
 		{"fraghalf",  FD_DBG_FRAGHALF, "Use half-precision in fragment shader"},
 		{"nobin",     FD_DBG_NOBIN,  "Disable hw binning"},
-		{"optmsgs",   FD_DBG_OPTMSGS,"Enable optimizer debug messages"},
 		{"glsl120",   FD_DBG_GLSL120,"Temporary flag to force GLSL 1.20 (rather than 1.30) on a3xx+"},
 		{"shaderdb",  FD_DBG_SHADERDB, "Enable shaderdb output"},
 		{"flush",     FD_DBG_FLUSH,  "Force flush after every draw"},

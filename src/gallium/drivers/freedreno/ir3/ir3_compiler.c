@@ -32,6 +32,8 @@ static const struct debug_named_value shader_debug_options[] = {
 		{"vs", IR3_DBG_SHADER_VS, "Print shader disasm for vertex shaders"},
 		{"fs", IR3_DBG_SHADER_FS, "Print shader disasm for fragment shaders"},
 		{"cs", IR3_DBG_SHADER_CS, "Print shader disasm for compute shaders"},
+		{"disasm",  IR3_DBG_DISASM, "Dump NIR and adreno shader disassembly"},
+		{"optmsgs", IR3_DBG_OPTMSGS,"Enable optimizer debug messages"},
 		DEBUG_NAMED_VALUE_END
 };
 

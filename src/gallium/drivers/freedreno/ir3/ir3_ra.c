@@ -867,7 +867,7 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 	/* update per-block livein/liveout: */
 	while (ra_compute_livein_liveout(ctx)) {}
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		debug_printf("AFTER LIVEIN/OUT:\n");
 		ir3_print(ir);
 		list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {

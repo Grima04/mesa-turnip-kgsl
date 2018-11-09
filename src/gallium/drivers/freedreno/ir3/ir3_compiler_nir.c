@@ -181,7 +181,7 @@ compile_init(struct ir3_compiler *compiler,
 	NIR_PASS_V(ctx->s, nir_lower_locals_to_regs);
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 
-	if (fd_mesa_debug & FD_DBG_DISASM) {
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		DBG("dump nir%dv%d: type=%d, k={cts=%u,hp=%u}",
 			so->shader->id, so->id, so->type,
 			so->key.color_two_side, so->key.half_precision);
@@ -3680,7 +3680,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("BEFORE CP:\n");
 		ir3_print(ir);
 	}
@@ -3709,7 +3709,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("BEFORE GROUPING:\n");
 		ir3_print(ir);
 	}
@@ -3721,14 +3721,14 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	ir3_group(ir);
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER GROUPING:\n");
 		ir3_print(ir);
 	}
 
 	ir3_depth(ir);
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER DEPTH:\n");
 		ir3_print(ir);
 	}
@@ -3739,7 +3739,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER SCHED:\n");
 		ir3_print(ir);
 	}
@@ -3750,7 +3750,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER RA:\n");
 		ir3_print(ir);
 	}
@@ -3800,7 +3800,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	ir3_legalize(ir, &so->num_samp, &so->has_ssbo, &max_bary);
 
-	if (fd_mesa_debug & FD_DBG_OPTMSGS) {
+	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER LEGALIZE:\n");
 		ir3_print(ir);
 	}
