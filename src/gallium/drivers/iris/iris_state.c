@@ -1748,11 +1748,17 @@ iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
    free(surf);
 }
 
-// XXX: actually implement user clip planes
 static void
 iris_set_clip_state(struct pipe_context *ctx,
                     const struct pipe_clip_state *state)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
+
+   memcpy(&ice->state.clip_planes, state, sizeof(*state));
+
+   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS;
+   shs->cbuf0_needs_upload = true;
 }
 
 /**
@@ -2184,7 +2190,13 @@ upload_uniforms(struct iris_context *ice,
       uint32_t sysval = shader->system_values[i];
       uint32_t value = 0;
 
-      printf("got a param to upload - %u\n", sysval);
+      if (BRW_PARAM_BUILTIN_IS_CLIP_PLANE(sysval)) {
+         int plane = BRW_PARAM_BUILTIN_CLIP_PLANE_IDX(sysval);
+         int comp  = BRW_PARAM_BUILTIN_CLIP_PLANE_COMP(sysval);
+         value = fui(ice->state.clip_planes.ucp[plane][comp]);
+      } else {
+         assert(!"unhandled system value");
+      }
 
       *map++ = value;
    }
