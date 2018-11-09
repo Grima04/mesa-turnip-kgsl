@@ -25,7 +25,7 @@
  */
 
 
-#include "freedreno_util.h"
+#include "util/debug.h"
 
 #include "ir3_nir.h"
 #include "ir3_compiler.h"
@@ -101,7 +101,7 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_opt_cse);
 		static int gcm = -1;
 		if (gcm == -1)
-			gcm = env2u("GCM");
+			gcm = env_var_as_unsigned("GCM", 0);
 		if (gcm == 1)
 			progress |= OPT(s, nir_opt_gcm, true);
 		else if (gcm == 2)
