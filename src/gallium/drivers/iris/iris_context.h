@@ -229,6 +229,10 @@ struct iris_compiled_shader {
    /** The program data (owned by the program cache hash table) */
    struct brw_stage_prog_data *prog_data;
 
+   /** A list of system values to be uploaded as uniforms. */
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
+
    /**
     * Derived 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets
     * (the VUE-based information for transform feedback outputs).
@@ -594,7 +598,9 @@ void iris_upload_and_bind_shader(struct iris_context *ice,
                                  const void *key,
                                  const void *assembly,
                                  struct brw_stage_prog_data *prog_data,
-                                 uint32_t *streamout);
+                                 uint32_t *streamout,
+                                 enum brw_param_builtin *system_values,
+                                 unsigned num_system_values);
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);

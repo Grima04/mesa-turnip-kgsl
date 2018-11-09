@@ -411,7 +411,9 @@ static void
 iris_setup_uniforms(const struct brw_compiler *compiler,
                     void *mem_ctx,
                     nir_shader *nir,
-                    struct brw_stage_prog_data *prog_data)
+                    struct brw_stage_prog_data *prog_data,
+                    enum brw_param_builtin **out_system_values,
+                    unsigned *out_num_system_values)
 {
    /* The intel compiler assumes that num_uniforms is in bytes. For
     * scalar that means 4 bytes per uniform slot.
@@ -422,6 +424,11 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    prog_data->nr_params = 0;
    prog_data->param = rzalloc_array(mem_ctx, uint32_t, 1);
+
+   const unsigned IRIS_MAX_SYSTEM_VALUES = 32;
+   enum brw_param_builtin *system_values =
+      rzalloc_array(mem_ctx, enum brw_param_builtin, IRIS_MAX_SYSTEM_VALUES);
+   unsigned num_system_values = 0;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
@@ -439,16 +446,14 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-         unsigned param_idx = prog_data->nr_params;
-         uint32_t *param = NULL;
+         unsigned idx = num_system_values;
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_user_clip_plane: {
             unsigned ucp = nir_intrinsic_ucp_id(intrin);
-            param = brw_stage_prog_data_add_params(prog_data, 4);
             for (int i = 0; i < 4; i++) {
-               param[i] =
-                  IRIS_PARAM(BUILTIN, BRW_PARAM_BUILTIN_CLIP_PLANE(ucp, i));
+               system_values[num_system_values++] =
+                  BRW_PARAM_BUILTIN_CLIP_PLANE(ucp, i);
             }
             break;
          }
@@ -459,7 +464,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
          b.cursor = nir_before_instr(instr);
 
          unsigned comps = nir_intrinsic_dest_components(intrin);
-         nir_ssa_def *offset = nir_imm_int(&b, param_idx * sizeof(uint32_t));
+         nir_ssa_def *offset = nir_imm_int(&b, idx * sizeof(uint32_t));
 
          nir_intrinsic_instr *load =
             nir_intrinsic_instr_create(nir, nir_intrinsic_load_ubo);
@@ -477,7 +482,10 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    nir_validate_shader(nir, "before remapping");
 
    /* Place the new params at the front of constant buffer 0. */
-   if (prog_data->nr_params > 0) {
+   if (num_system_values > 0) {
+      system_values = reralloc(mem_ctx, system_values, enum brw_param_builtin,
+                               num_system_values);
+
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
@@ -498,12 +506,15 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             } else if (nir_src_as_uint(load->src[0]) == 0) {
                nir_ssa_def *offset =
                   nir_iadd(&b, load->src[1].ssa,
-                           nir_imm_int(&b, prog_data->nr_params));
+                           nir_imm_int(&b, num_system_values));
                nir_instr_rewrite_src(instr, &load->src[1],
                                      nir_src_for_ssa(offset));
             }
          }
       }
+   } else {
+      ralloc_free(system_values);
+      system_values = NULL;
    }
 
    nir_validate_shader(nir, "after remap");
@@ -511,6 +522,9 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    // XXX: vs clip planes?
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+
+   *out_system_values = system_values;
+   *out_num_system_values = num_system_values;
 }
 
 /**
@@ -522,6 +536,8 @@ static void
 iris_setup_push_uniform_range(const struct brw_compiler *compiler,
                               struct brw_stage_prog_data *prog_data)
 {
+   // XXX: I don't think this code does anything at all.
+
    if (prog_data->nr_params) {
       for (int i = 3; i > 0; i--)
          prog_data->ubo_ranges[i] = prog_data->ubo_ranges[i - 1];
@@ -550,6 +566,8 @@ iris_compile_vs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_vs_prog_data);
    struct brw_vue_prog_data *vue_prog_data = &vs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
@@ -564,7 +582,8 @@ iris_compile_vs(struct iris_context *ice,
    // XXX: alt mode
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                       &num_system_values);
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
@@ -593,7 +612,7 @@ iris_compile_vs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_VS, key, program, prog_data,
-                               so_decls);
+                               so_decls, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;
@@ -697,6 +716,8 @@ iris_compile_tcs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_tcs_prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   enum brw_param_builtin *system_values = NULL;
+   unsigned num_system_values = 0;
 
    nir_shader *nir;
 
@@ -704,7 +725,8 @@ iris_compile_tcs(struct iris_context *ice,
       nir = nir_shader_clone(mem_ctx, ish->nir);
 
       assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
-      iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+      iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                          &num_system_values);
    } else {
       nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, key);
 
@@ -727,7 +749,7 @@ iris_compile_tcs(struct iris_context *ice,
    iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_TCS, key, program, prog_data,
-                               NULL);
+                               NULL, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;
@@ -777,12 +799,15 @@ iris_compile_tes(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_tes_prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                       &num_system_values);
 
    struct brw_vue_map input_vue_map;
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
@@ -805,7 +830,7 @@ iris_compile_tes(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_TES, key, program, prog_data,
-                               so_decls);
+                               so_decls, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;
@@ -848,12 +873,15 @@ iris_compile_gs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_gs_prog_data);
    struct brw_vue_prog_data *vue_prog_data = &gs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0);
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                       &num_system_values);
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
@@ -876,7 +904,7 @@ iris_compile_gs(struct iris_context *ice,
                                     &vue_prog_data->vue_map);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_GS, key, program, prog_data,
-                               so_decls);
+                               so_decls, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;
@@ -923,6 +951,8 @@ iris_compile_fs(struct iris_context *ice,
    struct brw_wm_prog_data *fs_prog_data =
       rzalloc(mem_ctx, struct brw_wm_prog_data);
    struct brw_stage_prog_data *prog_data = &fs_prog_data->base;
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
@@ -930,7 +960,8 @@ iris_compile_fs(struct iris_context *ice,
    assign_common_binding_table_offsets(devinfo, nir, prog_data,
                                        MAX2(key->nr_color_regions, 1));
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                       &num_system_values);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -947,7 +978,7 @@ iris_compile_fs(struct iris_context *ice,
    iris_setup_push_uniform_range(compiler, prog_data);
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_FS, key, program, prog_data,
-                               NULL);
+                               NULL, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;
@@ -1113,13 +1144,16 @@ iris_compile_cs(struct iris_context *ice,
    struct brw_cs_prog_data *cs_prog_data =
       rzalloc(mem_ctx, struct brw_cs_prog_data);
    struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
+   enum brw_param_builtin *system_values;
+   unsigned num_system_values;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
    cs_prog_data->binding_table.work_groups_start = 0;
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 1);
 
-   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data);
+   iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
+                       &num_system_values);
 
    char *error_str = NULL;
    const unsigned *program =
@@ -1132,7 +1166,7 @@ iris_compile_cs(struct iris_context *ice,
    }
 
    iris_upload_and_bind_shader(ice, IRIS_CACHE_CS, key, program, prog_data,
-                               NULL);
+                               NULL, system_values, num_system_values);
 
    ralloc_free(mem_ctx);
    return true;

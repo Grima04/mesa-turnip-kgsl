@@ -2170,9 +2170,8 @@ upload_uniforms(struct iris_context *ice,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct iris_const_buffer *cbuf = &shs->constbuf[0];
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-   struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
-   unsigned upload_size = prog_data->nr_params * sizeof(uint32_t) +
+   unsigned upload_size = shader->num_system_values * sizeof(uint32_t) +
                           shs->cbuf0.buffer_size;
 
    if (upload_size == 0)
@@ -2181,11 +2180,11 @@ upload_uniforms(struct iris_context *ice,
    uint32_t *map =
       upload_state(ice->ctx.const_uploader, &cbuf->data, upload_size, 64);
 
-   for (int i = 0; i < prog_data->nr_params; i++) {
-      uint32_t param = prog_data->param[i];
+   for (int i = 0; i < shader->num_system_values; i++) {
+      uint32_t sysval = shader->system_values[i];
       uint32_t value = 0;
 
-      printf("got a param to upload - %u\n", param);
+      printf("got a param to upload - %u\n", sysval);
 
       *map++ = value;
    }
