@@ -420,6 +420,77 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    prog_data->nr_params = 0;
    prog_data->param = rzalloc_array(mem_ctx, uint32_t, 1);
 
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   b.cursor = nir_before_block(nir_start_block(impl));
+   nir_ssa_def *temp_ubo_name = nir_ssa_undef(&b, 1, 32);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         unsigned param_idx = prog_data->nr_params;
+         uint32_t *param = NULL;
+
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_load_user_clip_plane: {
+            unsigned ucp = nir_intrinsic_ucp_id(intrin);
+            param = brw_stage_prog_data_add_params(prog_data, 4);
+            for (int i = 0; i < 4; i++) {
+               param[i] =
+                  IRIS_PARAM(BUILTIN, BRW_PARAM_BUILTIN_CLIP_PLANE(ucp, i));
+            }
+            break;
+         }
+         default:
+            continue;
+         }
+
+         b.cursor = nir_before_instr(instr);
+
+         unsigned comps = nir_intrinsic_dest_components(intrin);
+         nir_ssa_def *offset = nir_imm_int(&b, param_idx * sizeof(uint32_t));
+
+         nir_intrinsic_instr *load =
+            nir_intrinsic_instr_create(nir, nir_intrinsic_load_ubo);
+         load->num_components = comps;
+         load->src[0] = nir_src_for_ssa(temp_ubo_name);
+         load->src[1] = nir_src_for_ssa(offset);
+         nir_ssa_dest_init(&load->instr, &load->dest, comps, 32, NULL);
+         nir_builder_instr_insert(&b, &load->instr);
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                                  nir_src_for_ssa(&load->dest.ssa));
+         nir_instr_remove(instr);
+      }
+   }
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+
+         if (load->intrinsic != nir_intrinsic_load_ubo)
+            continue;
+
+         if (load->src[0].ssa == temp_ubo_name) {
+            load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+         } else if (nir_src_as_uint(load->src[0]) == 0) {
+            nir_ssa_def *offset =
+               nir_iadd(&b, load->src[1].ssa,
+                        nir_imm_int(&b, prog_data->nr_params));
+            load->src[1] = nir_src_for_ssa(offset);
+         }
+      }
+   }
+
    // XXX: vs clip planes?
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
