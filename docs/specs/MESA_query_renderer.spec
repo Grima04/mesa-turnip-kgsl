@@ -32,9 +32,6 @@ Dependencies
 
     GLX_ARB_create_context and GLX_ARB_create_context_profile are required.
 
-    This extension interacts with GLX_EXT_create_context_es2_profile and
-    GLX_EXT_create_context_es_profile.
-
 Overview
 
     In many situations, applications want to detect characteristics of a
@@ -219,15 +216,6 @@ Additions to the GLX 1.4 Specification
 
       * If the value of GLX_RENDERER_ID_MESA specifies a non-existent
         renderer, BadMatch is generated.
-
-Dependencies on GLX_EXT_create_context_es_profile and
-GLX_EXT_create_context_es2_profile
-
-    If neither extension is supported, remove all mention of
-    GLX_RENDERER_OPENGL_ES2_PROFILE_VERSION_MESA from the spec.
-
-    If GLX_EXT_create_context_es_profile is not supported, remove all mention of
-    GLX_RENDERER_OPENGL_ES_PROFILE_VERSION_MESA from the spec.
 
 Issues
 
