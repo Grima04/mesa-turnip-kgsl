@@ -570,9 +570,15 @@ iris_compile_vs(struct iris_context *ice,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
 
+   /* Don't tell the backend about our clip plane constants, we've already
+    * lowered them in NIR and we don't want it doing it again.
+    */
+   struct brw_vs_prog_key key_no_ucp = *key;
+   key_no_ucp.nr_userclip_plane_consts = 0;
+
    char *error_str = NULL;
    const unsigned *program =
-      brw_compile_vs(compiler, &ice->dbg, mem_ctx, key, vs_prog_data,
+      brw_compile_vs(compiler, &ice->dbg, mem_ctx, &key_no_ucp, vs_prog_data,
                      nir, -1, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile vertex shader: %s\n", error_str);
