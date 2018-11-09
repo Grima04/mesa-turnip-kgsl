@@ -20,11 +20,11 @@ Status
 
 Version
 
-    Version 8, 14-February-2014
+    Version 9, 09 November 2018
 
 Number
 
-    TBD.
+    OpenGL Extension #446
 
 Dependencies
 
@@ -98,7 +98,7 @@ Additions to the OpenGL / WGL Specifications
 
 Additions to the GLX 1.4 Specification
 
-    [Add the following to Section X.Y.Z of the GLX Specification]
+    [Add to Section 3.3.2 "GLX Versioning" of the GLX Specification]
 
     To obtain information about the available renderers for a particular
     display and screen,
@@ -377,3 +377,9 @@ Revision History
                             read GLX_RENDERER_ID_MESA. The VENDOR/DEVICE_ID
                             example given in issue #17 should be 0x5143 and
                             0xFFFFFFFF respectively.
+
+    Version 9, 2018/11/09 - Remove GLX_RENDERER_ID_MESA, which has never been
+                            implemented. Remove the unnecessary interactions
+                            with the GLX GLES profile extensions. Note the
+                            official GL extension number. Specify the section
+                            of the GLX spec to modify.
