@@ -486,6 +486,15 @@ _iris_emit_lri(struct iris_batch *batch, uint32_t reg, uint32_t val)
 #define iris_emit_lri(b, r, v) _iris_emit_lri(b, GENX(r##_num), v)
 
 static void
+_iris_emit_lrr(struct iris_batch *batch, uint32_t src, uint32_t dst)
+{
+   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_REG), lrr) {
+      lrr.SourceRegisterAddress = src;
+      lrr.DestinationRegisterAddress = dst;
+   }
+}
+
+static void
 emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
 {
 #if GEN_GEN >= 8 && GEN_GEN < 10
@@ -4746,6 +4755,21 @@ iris_destroy_state(struct iris_context *ice)
 /* ------------------------------------------------------------------- */
 
 static void
+iris_load_register_reg32(struct iris_batch *batch, uint32_t src,
+                         uint32_t dst)
+{
+   _iris_emit_lrr(batch, src, dst);
+}
+
+static void
+iris_load_register_reg64(struct iris_batch *batch, uint32_t src,
+                         uint32_t dst)
+{
+   _iris_emit_lrr(batch, src, dst);
+   _iris_emit_lrr(batch, src + 4, dst + 4);
+}
+
+static void
 iris_load_register_imm32(struct iris_batch *batch, uint32_t reg,
                          uint32_t val)
 {
@@ -5322,6 +5346,8 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.update_surface_base_address = iris_update_surface_base_address;
    ice->vtbl.upload_compute_state = iris_upload_compute_state;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
+   ice->vtbl.load_register_reg32 = iris_load_register_reg32;
+   ice->vtbl.load_register_reg64 = iris_load_register_reg64;
    ice->vtbl.load_register_imm32 = iris_load_register_imm32;
    ice->vtbl.load_register_imm64 = iris_load_register_imm64;
    ice->vtbl.load_register_mem32 = iris_load_register_mem32;
