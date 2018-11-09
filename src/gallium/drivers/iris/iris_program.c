@@ -431,6 +431,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    b.cursor = nir_before_block(nir_start_block(impl));
    nir_ssa_def *temp_ubo_name = nir_ssa_undef(&b, 1, 32);
 
+   /* Turn system value intrinsics into uniforms */
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -473,6 +474,9 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
       }
    }
 
+   nir_validate_shader(nir, "before remapping");
+
+   /* Place the new params at the front of constant buffer 0. */
    if (prog_data->nr_params > 0) {
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -486,17 +490,23 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
             b.cursor = nir_before_instr(instr);
 
+            assert(load->src[0].is_ssa);
+
             if (load->src[0].ssa == temp_ubo_name) {
-               load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+               nir_instr_rewrite_src(instr, &load->src[0],
+                                     nir_src_for_ssa(nir_imm_int(&b, 0)));
             } else if (nir_src_as_uint(load->src[0]) == 0) {
                nir_ssa_def *offset =
                   nir_iadd(&b, load->src[1].ssa,
                            nir_imm_int(&b, prog_data->nr_params));
-               load->src[1] = nir_src_for_ssa(offset);
+               nir_instr_rewrite_src(instr, &load->src[1],
+                                     nir_src_for_ssa(offset));
             }
          }
       }
    }
+
+   nir_validate_shader(nir, "after remap");
 
    // XXX: vs clip planes?
    if (nir->info.stage != MESA_SHADER_COMPUTE)
