@@ -1058,6 +1058,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->line_stipple_enable = state->line_stipple_enable;
    cso->poly_stipple_enable = state->poly_stipple_enable;
 
+   if (state->clip_plane_enable != 0)
+      cso->num_clip_plane_consts = util_logbase2(state->clip_plane_enable) + 1;
+   else
+      cso->num_clip_plane_consts = 0;
+
    float line_width = get_line_width(state);
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
@@ -1145,9 +1150,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       line.LineStippleInverseRepeatCount = 1.0f / line_stipple_factor;
       line.LineStippleRepeatCount = line_stipple_factor;
    }
-
-   if (state->clip_plane_enable != 0)
-      cso->num_clip_plane_consts = util_logbase2(state->clip_plane_enable) + 1;
 
    return cso;
 }
