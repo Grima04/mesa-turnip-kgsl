@@ -32,6 +32,7 @@
 #ifndef BRW_EU_DEFINES_H
 #define BRW_EU_DEFINES_H
 
+#include <stdint.h>
 #include "util/macros.h"
 
 /* The following hunk, up-to "Execution Unit" is used by both the
@@ -1003,6 +1004,153 @@ enum PACKED brw_width {
    BRW_WIDTH_8  = 3,
    BRW_WIDTH_16 = 4,
 };
+
+/**
+ * Gen12+ SWSB SBID synchronization mode.
+ *
+ * This is represented as a bitmask including any required SBID token
+ * synchronization modes, used to synchronize out-of-order instructions.  Only
+ * the strongest mode of the mask will be provided to the hardware in the SWSB
+ * field of an actual hardware instruction, but virtual instructions may be
+ * able to take into account multiple of them.
+ */
+enum tgl_sbid_mode {
+   TGL_SBID_NULL = 0,
+   TGL_SBID_SRC = 1,
+   TGL_SBID_DST = 2,
+   TGL_SBID_SET = 4
+};
+
+#ifdef __cplusplus
+/**
+ * Allow bitwise arithmetic of tgl_sbid_mode enums.
+ */
+inline tgl_sbid_mode
+operator|(tgl_sbid_mode x, tgl_sbid_mode y)
+{
+   return tgl_sbid_mode(unsigned(x) | unsigned(y));
+}
+
+inline tgl_sbid_mode
+operator&(tgl_sbid_mode x, tgl_sbid_mode y)
+{
+   return tgl_sbid_mode(unsigned(x) & unsigned(y));
+}
+
+inline tgl_sbid_mode &
+operator|=(tgl_sbid_mode &x, tgl_sbid_mode y)
+{
+   return x = x | y;
+}
+
+#endif
+
+/**
+ * Logical representation of the SWSB scheduling information of a hardware
+ * instruction.  The binary representation is slightly more compact.
+ */
+struct tgl_swsb {
+   unsigned regdist : 3;
+   unsigned sbid : 4;
+   enum tgl_sbid_mode mode : 3;
+};
+
+/**
+ * Construct a scheduling annotation with a single RegDist dependency.  This
+ * synchronizes with the completion of the d-th previous in-order instruction.
+ * The index is one-based, zero causes a no-op tgl_swsb to be constructed.
+ */
+static inline struct tgl_swsb
+tgl_swsb_regdist(unsigned d)
+{
+   const struct tgl_swsb swsb = { d };
+   assert(swsb.regdist == d);
+   return swsb;
+}
+
+/**
+ * Construct a scheduling annotation that synchronizes with the specified SBID
+ * token.
+ */
+static inline struct tgl_swsb
+tgl_swsb_sbid(enum tgl_sbid_mode mode, unsigned sbid)
+{
+   const struct tgl_swsb swsb = { 0, sbid, mode };
+   assert(swsb.sbid == sbid);
+   return swsb;
+}
+
+/**
+ * Construct a no-op scheduling annotation.
+ */
+static inline struct tgl_swsb
+tgl_swsb_null(void)
+{
+   return tgl_swsb_regdist(0);
+}
+
+/**
+ * Return a scheduling annotation that allocates the same SBID synchronization
+ * token as \p swsb.  In addition it will synchronize against a previous
+ * in-order instruction if \p regdist is non-zero.
+ */
+static inline struct tgl_swsb
+tgl_swsb_dst_dep(struct tgl_swsb swsb, unsigned regdist)
+{
+   swsb.regdist = regdist;
+   swsb.mode = swsb.mode & TGL_SBID_SET;
+   return swsb;
+}
+
+/**
+ * Return a scheduling annotation that synchronizes against the same SBID and
+ * RegDist dependencies as \p swsb, but doesn't allocate any SBID token.
+ */
+static inline struct tgl_swsb
+tgl_swsb_src_dep(struct tgl_swsb swsb)
+{
+   swsb.mode = swsb.mode & (TGL_SBID_SRC | TGL_SBID_DST);
+   return swsb;
+}
+
+/**
+ * Convert the provided tgl_swsb to the hardware's binary representation of an
+ * SWSB annotation.
+ */
+static inline uint8_t
+tgl_swsb_encode(struct tgl_swsb swsb)
+{
+   if (!swsb.mode) {
+      return swsb.regdist;
+   } else if (swsb.regdist) {
+      return 0x80 | swsb.regdist << 4 | swsb.sbid;
+   } else {
+      return swsb.sbid | (swsb.mode & TGL_SBID_SET ? 0x40 :
+                          swsb.mode & TGL_SBID_DST ? 0x20 : 0x30);
+   }
+}
+
+/**
+ * Convert the provided binary representation of an SWSB annotation to a
+ * tgl_swsb.
+ */
+static inline struct tgl_swsb
+tgl_swsb_decode(uint8_t x)
+{
+   if (x & 0x80) {
+      const struct tgl_swsb swsb = { (x & 0x70u) >> 4, x & 0xfu,
+                                     TGL_SBID_DST | TGL_SBID_SET };
+      return swsb;
+   } else if ((x & 0x70) == 0x20) {
+      return tgl_swsb_sbid(TGL_SBID_DST, x & 0xfu);
+   } else if ((x & 0x70) == 0x30) {
+      return tgl_swsb_sbid(TGL_SBID_SRC, x & 0xfu);
+   } else if ((x & 0x70) == 0x40) {
+      return tgl_swsb_sbid(TGL_SBID_SET, x & 0xfu);
+   } else {
+      return tgl_swsb_regdist(x & 0x7u);
+   }
+}
 
 enum tgl_sync_function {
    TGL_SYNC_NOP = 0x0,
