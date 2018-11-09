@@ -775,7 +775,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd_ringbuffer_del(fsconstobj);
 	}
 
-	struct pipe_stream_output_info *info = &vp->shader->stream_output;
+	struct ir3_stream_output_info *info = &vp->shader->stream_output;
 	if (info->num_outputs) {
 		struct fd_streamout_stateobj *so = &ctx->streamout;
 

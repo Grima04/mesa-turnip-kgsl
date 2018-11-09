@@ -311,6 +311,27 @@ ir3_shader_destroy(struct ir3_shader *shader)
 	free(shader);
 }
 
+static void
+copy_stream_out(struct ir3_stream_output_info *i,
+		const struct pipe_stream_output_info *p)
+{
+	STATIC_ASSERT(ARRAY_SIZE(i->stride) == ARRAY_SIZE(p->stride));
+	STATIC_ASSERT(ARRAY_SIZE(i->output) == ARRAY_SIZE(p->output));
+
+	i->num_outputs = p->num_outputs;
+	for (int n = 0; n < ARRAY_SIZE(i->stride); n++)
+		i->stride[n] = p->stride[n];
+
+	for (int n = 0; n < ARRAY_SIZE(i->output); n++) {
+		i->output[n].register_index  = p->output[n].register_index;
+		i->output[n].start_component = p->output[n].start_component;
+		i->output[n].num_components  = p->output[n].num_components;
+		i->output[n].output_buffer   = p->output[n].output_buffer;
+		i->output[n].dst_offset      = p->output[n].dst_offset;
+		i->output[n].stream          = p->output[n].stream;
+	}
+}
+
 struct ir3_shader *
 ir3_shader_create(struct ir3_compiler *compiler,
 		const struct pipe_shader_state *cso, gl_shader_stage type,
@@ -342,7 +363,8 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		nir_print_shader(shader->nir, stdout);
 	}
 
-	shader->stream_output = cso->stream_output;
+	copy_stream_out(&shader->stream_output, &cso->stream_output);
+
 	if (fd_mesa_debug & FD_DBG_SHADERDB) {
 		/* if shader-db run, create a standard variant immediately
 		 * (as otherwise nothing will trigger the shader to be
@@ -758,7 +780,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	uint32_t offset = v->constbase.tfbo;
 	if (v->constlen > offset) {
 		struct fd_streamout_stateobj *so = &ctx->streamout;
-		struct pipe_stream_output_info *info = &v->shader->stream_output;
+		struct ir3_stream_output_info *info = &v->shader->stream_output;
 		uint32_t params = 4;
 		uint32_t offsets[params];
 		struct pipe_resource *prscs[params];
@@ -785,7 +807,7 @@ static uint32_t
 max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
 {
 	struct fd_streamout_stateobj *so = &ctx->streamout;
-	struct pipe_stream_output_info *info = &v->shader->stream_output;
+	struct ir3_stream_output_info *info = &v->shader->stream_output;
 	uint32_t maxvtxcnt = 0x7fffffff;
 
 	if (ctx->screen->gpu_id >= 500)

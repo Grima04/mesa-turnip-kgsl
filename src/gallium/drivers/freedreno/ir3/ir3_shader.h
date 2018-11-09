@@ -63,6 +63,9 @@ enum ir3_driver_param {
 	IR3_DP_VS_COUNT   = 36   /* must be aligned to vec4 */
 };
 
+#define IR3_MAX_SO_BUFFERS        4
+#define IR3_MAX_SO_OUTPUTS       64
+
 /**
  * For consts needed to pass internal values to shader which may or may not
  * be required, rather than allocating worst-case const space, we scan the
@@ -95,6 +98,33 @@ struct ir3_driver_const_layout {
 		 */
 		uint32_t off[PIPE_MAX_SHADER_IMAGES];
 	} image_dims;
+};
+
+/**
+ * A single output for vertex transform feedback.
+ */
+struct ir3_stream_output {
+	unsigned register_index:6;  /**< 0 to 63 (OUT index) */
+	unsigned start_component:2; /** 0 to 3 */
+	unsigned num_components:3;  /** 1 to 4 */
+	unsigned output_buffer:3;   /**< 0 to PIPE_MAX_SO_BUFFERS */
+	unsigned dst_offset:16;     /**< offset into the buffer in dwords */
+	unsigned stream:2;          /**< 0 to 3 */
+};
+
+/**
+ * Stream output for vertex transform feedback.
+ */
+struct ir3_stream_output_info {
+	unsigned num_outputs;
+	/** stride for an entire vertex for each buffer in dwords */
+	uint16_t stride[IR3_MAX_SO_BUFFERS];
+
+	/**
+	 * Array of stream outputs, in the order they are to be written in.
+	 * Selected components are tightly packed into the output buffer.
+	 */
+	struct ir3_stream_output output[IR3_MAX_SO_OUTPUTS];
 };
 
 /* Configuration key used to identify a shader variant.. different
@@ -363,7 +393,7 @@ struct ir3_shader {
 	struct ir3_compiler *compiler;
 
 	struct nir_shader *nir;
-	struct pipe_stream_output_info stream_output;
+	struct ir3_stream_output_info stream_output;
 
 	struct ir3_shader_variant *variants;
 };

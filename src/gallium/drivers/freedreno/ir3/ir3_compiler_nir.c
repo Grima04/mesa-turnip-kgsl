@@ -26,7 +26,6 @@
 
 #include <stdarg.h>
 
-#include "pipe/p_state.h"
 #include "util/u_string.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -3106,7 +3105,7 @@ emit_stream_out(struct ir3_context *ctx)
 {
 	struct ir3_shader_variant *v = ctx->so;
 	struct ir3 *ir = ctx->ir;
-	struct pipe_stream_output_info *strmout =
+	struct ir3_stream_output_info *strmout =
 			&ctx->so->shader->stream_output;
 	struct ir3_block *orig_end_block, *stream_out_block, *new_end_block;
 	struct ir3_instruction *vtxcnt, *maxvtxcnt, *cond;

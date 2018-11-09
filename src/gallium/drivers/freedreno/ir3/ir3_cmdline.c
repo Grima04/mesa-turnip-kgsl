@@ -350,7 +350,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!strcmp(argv[n], "--stream-out")) {
-			struct pipe_stream_output_info *so = &s.stream_output;
+			struct ir3_stream_output_info *so = &s.stream_output;
 			debug_printf(" %s", argv[n]);
 			/* TODO more dynamic config based on number of outputs, etc
 			 * rather than just hard-code for first output:

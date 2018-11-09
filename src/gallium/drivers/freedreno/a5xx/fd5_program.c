@@ -125,14 +125,14 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 static void
 link_stream_out(struct ir3_shader_linkage *l, const struct ir3_shader_variant *v)
 {
-	const struct pipe_stream_output_info *strmout = &v->shader->stream_output;
+	const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
 
 	/*
 	 * First, any stream-out varyings not already in linkage map (ie. also
 	 * consumed by frag shader) need to be added:
 	 */
 	for (unsigned i = 0; i < strmout->num_outputs; i++) {
-		const struct pipe_stream_output *out = &strmout->output[i];
+		const struct ir3_stream_output *out = &strmout->output[i];
 		unsigned k = out->register_index;
 		unsigned compmask =
 			(1 << (out->num_components + out->start_component)) - 1;
@@ -173,14 +173,14 @@ static void
 emit_stream_out(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
 		struct ir3_shader_linkage *l)
 {
-	const struct pipe_stream_output_info *strmout = &v->shader->stream_output;
+	const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
 	unsigned ncomp[PIPE_MAX_SO_BUFFERS] = {0};
 	unsigned prog[align(l->max_loc, 2) / 2];
 
 	memset(prog, 0, sizeof(prog));
 
 	for (unsigned i = 0; i < strmout->num_outputs; i++) {
-		const struct pipe_stream_output *out = &strmout->output[i];
+		const struct ir3_stream_output *out = &strmout->output[i];
 		unsigned k = out->register_index;
 		unsigned idx;
 

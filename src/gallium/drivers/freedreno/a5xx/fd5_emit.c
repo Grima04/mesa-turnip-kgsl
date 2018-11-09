@@ -704,7 +704,7 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	if (!emit->binning_pass)
 		ir3_emit_fs_consts(fp, ring, ctx);
 
-	struct pipe_stream_output_info *info = &vp->shader->stream_output;
+	struct ir3_stream_output_info *info = &vp->shader->stream_output;
 	if (info->num_outputs) {
 		struct fd_streamout_stateobj *so = &ctx->streamout;
 
