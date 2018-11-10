@@ -28,6 +28,7 @@
 #include "nine_pipe.h"
 #include "nine_dump.h"
 
+#include "util/u_atomic.h"
 #include "util/u_inlines.h"
 #include "util/u_surface.h"
 #include "hud/hud_context.h"
@@ -50,6 +51,7 @@ NineSwapChain9_ctor( struct NineSwapChain9 *This,
                      D3DDISPLAYMODEEX *mode )
 {
     HRESULT hr;
+    int i;
 
     DBG("This=%p pDevice=%p pPresent=%p pCTX=%p hFocusWindow=%p\n",
         This, pParams->device, pPresent, pCTX, hFocusWindow);
@@ -65,8 +67,7 @@ NineSwapChain9_ctor( struct NineSwapChain9 *This,
     This->mode = NULL;
 
     ID3DPresent_AddRef(pPresent);
-    if (!This->actx->thread_submit &&
-        This->base.device->minor_version_num > 2) {
+    if (This->base.device->minor_version_num > 2) {
         D3DPRESENT_PARAMETERS2 params2;
 
         memset(&params2, 0, sizeof(D3DPRESENT_PARAMETERS2));
@@ -80,6 +81,11 @@ NineSwapChain9_ctor( struct NineSwapChain9 *This,
 
     This->rendering_done = FALSE;
     This->pool = NULL;
+    for (i = 0; i < D3DPRESENT_BACK_BUFFERS_MAX_EX + 1; i++) {
+        This->pending_presentation[i] = calloc(1, sizeof(BOOL));
+        if (!This->pending_presentation[i])
+            return E_OUTOFMEMORY;
+    }
     return NineSwapChain9_Resize(This, pPresentationParameters, mode);
 }
 
@@ -508,6 +514,11 @@ NineSwapChain9_dtor( struct NineSwapChain9 *This )
     if (This->pool)
         _mesa_threadpool_destroy(This, This->pool);
 
+    for (i = 0; i < D3DPRESENT_BACK_BUFFERS_MAX_EX + 1; i++) {
+        if (This->pending_presentation[i])
+            FREE(This->pending_presentation[i]);
+    }
+
     for (i = 0; i < This->num_back_buffers; i++) {
         if (This->buffers[i])
             NineUnknown_Detach(NineUnknown(This->buffers[i]));
@@ -619,6 +630,7 @@ struct end_present_struct {
     struct pipe_fence_handle *fence_to_wait;
     ID3DPresent *present;
     D3DWindowBuffer *present_handle;
+    BOOL *pending_presentation;
     HWND hDestWindowOverride;
 };
 
@@ -630,6 +642,7 @@ static void work_present(void *data)
         work->screen->fence_reference(work->screen, &(work->fence_to_wait), NULL);
     }
     ID3DPresent_PresentBuffer(work->present, work->present_handle, work->hDestWindowOverride, NULL, NULL, NULL, 0);
+    p_atomic_set(work->pending_presentation, FALSE);
     free(work);
 }
 
@@ -643,6 +656,8 @@ static void pend_present(struct NineSwapChain9 *This,
     work->present = This->present;
     work->present_handle = This->present_handles[0];
     work->hDestWindowOverride = hDestWindowOverride;
+    work->pending_presentation = This->pending_presentation[0];
+    p_atomic_set(work->pending_presentation, TRUE);
     This->tasks[0] = _mesa_threadpool_queue_task(This->pool, work_present, work);
 
     return;
@@ -817,6 +832,7 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
     struct pipe_resource *res = NULL;
     D3DWindowBuffer *handle_temp;
     struct threadpool_task *task_temp;
+    BOOL *pending_presentation_temp;
     int i;
     HRESULT hr;
 
@@ -850,14 +866,14 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
 
     if (This->base.device->minor_version_num > 2 &&
         This->params.SwapEffect == D3DSWAPEFFECT_DISCARD &&
-        This->params.PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE &&
-        !This->actx->thread_submit) {
+        This->params.PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) {
         int next_buffer = -1;
 
         while (next_buffer == -1) {
             /* Find a free backbuffer */
             for (i = 1; i < This->num_back_buffers; i++) {
-                if (ID3DPresent_IsBufferReleased(This->present, This->present_handles[i])) {
+                if (!p_atomic_read(This->pending_presentation[i]) &&
+                    ID3DPresent_IsBufferReleased(This->present, This->present_handles[i])) {
                     DBG("Found buffer released: %d\n", i);
                     next_buffer = i;
                     break;
@@ -868,6 +884,17 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
                 ID3DPresent_WaitBufferReleaseEvent(This->present);
             }
         }
+
+        /* Free the task (we already checked it is finished) */
+        if (This->tasks[next_buffer])
+            _mesa_threadpool_wait_for_task(This->pool, &(This->tasks[next_buffer]));
+        assert(!*This->pending_presentation[next_buffer] && !This->tasks[next_buffer]);
+        This->tasks[next_buffer] = This->tasks[0];
+        This->tasks[0] = NULL;
+        pending_presentation_temp = This->pending_presentation[next_buffer];
+        This->pending_presentation[next_buffer] = This->pending_presentation[0];
+        This->pending_presentation[0] = pending_presentation_temp;
+
         /* Switch with the released buffer */
         pipe_resource_reference(&res, This->buffers[0]->base.resource);
         NineSurface9_SetResourceResize(
@@ -886,9 +913,6 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
         handle_temp = This->present_handles[0];
         This->present_handles[0] = This->present_handles[next_buffer];
         This->present_handles[next_buffer] = handle_temp;
-
-        /* Path not yet compatible with thread_submit */
-        assert(!This->tasks[0] && !This->tasks[next_buffer]);
     } else {
         switch (This->params.SwapEffect) {
             case D3DSWAPEFFECT_OVERLAY: /* Not implemented, fallback to FLIP */
@@ -923,6 +947,11 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
                     This->tasks[i-1] = This->tasks[i];
                 }
                 This->tasks[This->num_back_buffers - 1] = task_temp;
+                pending_presentation_temp = This->pending_presentation[0];
+                for (i = 1; i < This->num_back_buffers; i++) {
+                    This->pending_presentation[i-1] = This->pending_presentation[i];
+                }
+                This->pending_presentation[This->num_back_buffers - 1] = pending_presentation_temp;
                 break;
 
             case D3DSWAPEFFECT_COPY:
@@ -932,6 +961,7 @@ NineSwapChain9_Present( struct NineSwapChain9 *This,
 
         if (This->tasks[0])
             _mesa_threadpool_wait_for_task(This->pool, &(This->tasks[0]));
+        assert(!*This->pending_presentation[0]);
 
         ID3DPresent_WaitBufferReleased(This->present, This->present_handles[0]);
     }
@@ -1159,15 +1189,17 @@ NineSwapChain9_GetBackBufferCountForParams( struct NineSwapChain9 *This,
          * without releasing them:
          * . Buffer on screen.
          * . Buffer scheduled kernel side to be next on screen.
-         * . Last buffer sent.
-         * For some reasons, 5 buffers are actually needed, because in
-         * case a pageflip is missed because rendering wasn't finished,
-         * the Xserver will hold 4 buffers. */
-        if (!This->actx->thread_submit &&
-            This->base.device->minor_version_num > 2 &&
-            pParams->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE &&
-            count < 5)
-            count = 5;
+         * . Last buffer sent. */
+        if (This->base.device->minor_version_num > 2 &&
+            pParams->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) {
+            if (This->actx->thread_submit && count < 4)
+                count = 4;
+            /* When thread_submit is not used, 5 buffers are actually needed,
+             * because in case a pageflip is missed because rendering wasn't finished,
+             * the Xserver will hold 4 buffers. */
+            else if (!This->actx->thread_submit && count < 5)
+                count = 5;
+        }
     }
 
     return count;

@@ -72,6 +72,7 @@ struct NineSwapChain9
 
     struct threadpool *pool;
     struct threadpool_task *tasks[D3DPRESENT_BACK_BUFFERS_MAX_EX + 1];
+    BOOL *pending_presentation[D3DPRESENT_BACK_BUFFERS_MAX_EX + 1];
     BOOL enable_threadpool;
 };
 
