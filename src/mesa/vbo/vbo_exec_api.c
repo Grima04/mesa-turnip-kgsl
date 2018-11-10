@@ -803,11 +803,14 @@ vbo_exec_Begin(GLenum mode)
    ctx->Driver.CurrentExecPrimitive = mode;
 
    ctx->Exec = ctx->BeginEnd;
+
    /* We may have been called from a display list, in which case we should
     * leave dlist.c's dispatch table in place.
     */
-   if (ctx->CurrentClientDispatch == ctx->OutsideBeginEnd) {
-      ctx->CurrentClientDispatch = ctx->BeginEnd;
+   if (ctx->CurrentClientDispatch == ctx->MarshalExec) {
+      ctx->CurrentServerDispatch = ctx->Exec;
+   } else if (ctx->CurrentClientDispatch == ctx->OutsideBeginEnd) {
+      ctx->CurrentClientDispatch = ctx->Exec;
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
    } else {
       assert(ctx->CurrentClientDispatch == ctx->Save);
@@ -858,8 +861,11 @@ vbo_exec_End(void)
    }
 
    ctx->Exec = ctx->OutsideBeginEnd;
-   if (ctx->CurrentClientDispatch == ctx->BeginEnd) {
-      ctx->CurrentClientDispatch = ctx->OutsideBeginEnd;
+
+   if (ctx->CurrentClientDispatch == ctx->MarshalExec) {
+      ctx->CurrentServerDispatch = ctx->Exec;
+   } else if (ctx->CurrentClientDispatch == ctx->BeginEnd) {
+      ctx->CurrentClientDispatch = ctx->Exec;
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
 
