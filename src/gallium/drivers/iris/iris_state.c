@@ -795,7 +795,7 @@ iris_create_blend_state(struct pipe_context *ctx,
       pb.ColorBufferBlendEnable = state->rt[0].blend_enable;
 
       pb.SourceBlendFactor           = state->rt[0].rgb_src_factor;
-      pb.SourceAlphaBlendFactor      = state->rt[0].alpha_func;
+      pb.SourceAlphaBlendFactor      = state->rt[0].alpha_src_factor;
       pb.DestinationBlendFactor      = state->rt[0].rgb_dst_factor;
       pb.DestinationAlphaBlendFactor = state->rt[0].alpha_dst_factor;
    }
@@ -828,7 +828,7 @@ iris_create_blend_state(struct pipe_context *ctx,
          be.ColorBlendFunction          = rt->rgb_func;
          be.AlphaBlendFunction          = rt->alpha_func;
          be.SourceBlendFactor           = rt->rgb_src_factor;
-         be.SourceAlphaBlendFactor      = rt->alpha_func;
+         be.SourceAlphaBlendFactor      = rt->alpha_src_factor;
          be.DestinationBlendFactor      = rt->rgb_dst_factor;
          be.DestinationAlphaBlendFactor = rt->alpha_dst_factor;
 
