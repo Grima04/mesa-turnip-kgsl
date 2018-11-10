@@ -279,9 +279,6 @@ drm_create_adapter( int fd,
         DBG("You have set a non standard throttling value in combination with thread_submit."
             "We advise to use a throttling value of -2/0");
     }
-    if (ctx->base.thread_submit && !different_device)
-        DBG("You have set thread_submit but do not use a different device than the server."
-            "You should not expect any benefit.");
 
     if (driCheckOption(&userInitOptions, "override_vendorid", DRI_INT)) {
         override_vendorid = driQueryOptioni(&userInitOptions, "override_vendorid");
