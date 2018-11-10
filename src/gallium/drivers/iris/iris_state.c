@@ -2973,7 +2973,8 @@ iris_populate_vs_key(const struct iris_context *ice,
 
    iris_populate_sampler_key(ice, &key->tex);
 
-   if (info->clip_distance_array_size == 0)
+   if (info->clip_distance_array_size == 0 &&
+       (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)))
       key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
