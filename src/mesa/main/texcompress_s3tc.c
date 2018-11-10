@@ -121,7 +121,7 @@ _mesa_texstore_rgba_dxt1(TEXSTORE_PARAMS)
       tempImageSlices[0] = (GLubyte *) tempImage;
       _mesa_texstore(ctx, dims,
                      baseInternalFormat,
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
                      MESA_FORMAT_R8G8B8A8_UNORM,
 #else
                      MESA_FORMAT_A8B8G8R8_UNORM,
@@ -177,7 +177,7 @@ _mesa_texstore_rgba_dxt3(TEXSTORE_PARAMS)
       tempImageSlices[0] = (GLubyte *) tempImage;
       _mesa_texstore(ctx, dims,
                      baseInternalFormat,
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
                      MESA_FORMAT_R8G8B8A8_UNORM,
 #else
                      MESA_FORMAT_A8B8G8R8_UNORM,
@@ -232,7 +232,7 @@ _mesa_texstore_rgba_dxt5(TEXSTORE_PARAMS)
       tempImageSlices[0] = (GLubyte *) tempImage;
       _mesa_texstore(ctx, dims,
                      baseInternalFormat,
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
                      MESA_FORMAT_R8G8B8A8_UNORM,
 #else
                      MESA_FORMAT_A8B8G8R8_UNORM,

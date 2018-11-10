@@ -78,7 +78,7 @@ soft_renderbuffer_storage(struct gl_context *ctx, struct gl_renderbuffer *rb,
    case GL_RGBA8:
    case GL_RGB10_A2:
    case GL_RGBA12:
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
       rb->Format = MESA_FORMAT_R8G8B8A8_UNORM;
 #else
       rb->Format = MESA_FORMAT_A8B8G8R8_UNORM;

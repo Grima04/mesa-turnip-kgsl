@@ -191,7 +191,7 @@ osmesa_choose_format(GLenum format, GLenum type)
    switch (format) {
    case OSMESA_RGBA:
       if (type == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
          return PIPE_FORMAT_R8G8B8A8_UNORM;
 #else
          return PIPE_FORMAT_A8B8G8R8_UNORM;
@@ -209,7 +209,7 @@ osmesa_choose_format(GLenum format, GLenum type)
       break;
    case OSMESA_BGRA:
       if (type == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
          return PIPE_FORMAT_B8G8R8A8_UNORM;
 #else
          return PIPE_FORMAT_A8R8G8B8_UNORM;
@@ -227,7 +227,7 @@ osmesa_choose_format(GLenum format, GLenum type)
       break;
    case OSMESA_ARGB:
       if (type == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
          return PIPE_FORMAT_A8R8G8B8_UNORM;
 #else
          return PIPE_FORMAT_B8G8R8A8_UNORM;

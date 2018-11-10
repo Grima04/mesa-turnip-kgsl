@@ -303,7 +303,7 @@ _mesa_texstore_ycbcr(TEXSTORE_PARAMS)
    if (srcPacking->SwapBytes ^
        (srcType == GL_UNSIGNED_SHORT_8_8_REV_MESA) ^
        (dstFormat == MESA_FORMAT_YCBCR_REV) ^
-       !PIPE_ARCH_LITTLE_ENDIAN) {
+       !UTIL_ARCH_LITTLE_ENDIAN) {
       GLint img, row;
       for (img = 0; img < srcDepth; img++) {
          GLubyte *dstRow = dstSlices[img];

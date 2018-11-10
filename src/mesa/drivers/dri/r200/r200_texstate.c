@@ -1308,7 +1308,7 @@ static void setup_hardware_state(r200ContextPtr rmesa, radeonTexObj *t)
 
    if (!t->image_override) {
       if (VALID_FORMAT(firstImage->TexFormat)) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
 	 const struct tx_table *table = tx_table_le;
 #else
 	 const struct tx_table *table = tx_table_be;

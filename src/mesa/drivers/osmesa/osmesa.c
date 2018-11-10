@@ -455,7 +455,7 @@ osmesa_renderbuffer_storage(struct gl_context *ctx, struct gl_renderbuffer *rb,
     */
    if (osmesa->format == OSMESA_RGBA) {
       if (osmesa->DataType == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
             rb->Format = MESA_FORMAT_R8G8B8A8_UNORM;
 #else
             rb->Format = MESA_FORMAT_A8B8G8R8_UNORM;
@@ -470,7 +470,7 @@ osmesa_renderbuffer_storage(struct gl_context *ctx, struct gl_renderbuffer *rb,
    }
    else if (osmesa->format == OSMESA_BGRA) {
       if (osmesa->DataType == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
             rb->Format = MESA_FORMAT_B8G8R8A8_UNORM;
 #else
             rb->Format = MESA_FORMAT_A8R8G8B8_UNORM;
@@ -487,7 +487,7 @@ osmesa_renderbuffer_storage(struct gl_context *ctx, struct gl_renderbuffer *rb,
    }
    else if (osmesa->format == OSMESA_ARGB) {
       if (osmesa->DataType == GL_UNSIGNED_BYTE) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
             rb->Format = MESA_FORMAT_A8R8G8B8_UNORM;
 #else
             rb->Format = MESA_FORMAT_B8G8R8A8_UNORM;

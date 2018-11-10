@@ -43,7 +43,7 @@ unsigned r100_check_blit(mesa_format mesa_format, uint32_t dst_pitch)
 {
     /* XXX others?  */
     switch (mesa_format) {
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
     case MESA_FORMAT_B8G8R8A8_UNORM:
     case MESA_FORMAT_B8G8R8X8_UNORM:
     case MESA_FORMAT_B5G6R5_UNORM:

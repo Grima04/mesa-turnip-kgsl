@@ -926,7 +926,7 @@ static LLVMValueRef
 adjust_mask(struct gallivm_state *gallivm,
             LLVMValueRef mask)
 {
-#if PIPE_ARCH_BIG_ENDIAN
+#if UTIL_ARCH_BIG_ENDIAN
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef vertex_id;
    LLVMValueRef clipmask;

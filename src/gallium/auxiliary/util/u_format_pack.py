@@ -70,7 +70,7 @@ def print_channels(format, func):
             format.le_swizzles == format.be_swizzles):
             func(format.le_channels, format.le_swizzles)
         else:
-            print('#if PIPE_ARCH_BIG_ENDIAN')
+            print('#if UTIL_ARCH_BIG_ENDIAN')
             func(format.be_channels, format.be_swizzles)
             print('#else')
             func(format.le_channels, format.le_swizzles)

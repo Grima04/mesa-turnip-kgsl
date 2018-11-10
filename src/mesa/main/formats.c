@@ -425,7 +425,7 @@ uint32_t
 _mesa_format_to_array_format(mesa_format format)
 {
    const struct mesa_format_info *info = _mesa_get_format_info(format);
-#if PIPE_ARCH_BIG_ENDIAN
+#if UTIL_ARCH_BIG_ENDIAN
    if (info->ArrayFormat && info->Layout == MESA_FORMAT_LAYOUT_PACKED)
       return _mesa_array_format_flip_channels(info->ArrayFormat);
    else
@@ -468,7 +468,7 @@ format_array_format_table_init(void)
       if (!info->ArrayFormat)
          continue;
 
-#if PIPE_ARCH_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
          array_format = info->ArrayFormat;
 #else
          array_format = _mesa_array_format_flip_channels(info->ArrayFormat);
