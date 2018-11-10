@@ -779,14 +779,21 @@ iris_map_direct(struct iris_transfer *map)
    const unsigned cpp = fmtl->bpb / 8;
    unsigned x0_el, y0_el;
 
-   get_image_offset_el(surf, xfer->level, box->z, &x0_el, &y0_el);
-
-   xfer->stride = isl_surf_get_row_pitch_B(surf);
-   xfer->layer_stride = isl_surf_get_array_pitch(surf);
-
    void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
 
-   map->ptr = ptr + (y0_el + box->y) * xfer->stride + (x0_el + box->x) * cpp;
+   if (res->base.target == PIPE_BUFFER) {
+      xfer->stride = 0;
+      xfer->layer_stride = 0;
+
+      map->ptr = ptr + box->x;
+   } else {
+      get_image_offset_el(surf, xfer->level, box->z, &x0_el, &y0_el);
+
+      xfer->stride = isl_surf_get_row_pitch_B(surf);
+      xfer->layer_stride = isl_surf_get_array_pitch(surf);
+
+      map->ptr = ptr + (y0_el + box->y) * xfer->stride + (x0_el + box->x) * cpp;
+   }
 }
 
 static void *
