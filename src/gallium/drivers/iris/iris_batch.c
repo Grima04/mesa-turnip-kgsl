@@ -218,6 +218,9 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
       // XXX: this is bad, we use the same state / instruction buffers for
       // both batches, and if both of them are reading some dynamic state,
       // we flush all the time.  check for writes vs. reads?
+      //
+      // XXX: need to combine add_exec_bo and iris_use_pinned_bo so that
+      // we know whether we're writing the buffer or not.
       if (iris_batch_references(batch->other_batches[b], bo))
          iris_batch_flush(batch->other_batches[b]);
    }
