@@ -154,4 +154,7 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
 void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata);
 
+unsigned virgl_resource_offset(struct pipe_resource *pres,
+                               struct virgl_resource_metadata *metadata,
+                               unsigned level, unsigned layer);
 #endif

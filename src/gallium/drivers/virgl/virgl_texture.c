@@ -94,31 +94,6 @@ static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
    }
 }
 
-static unsigned
-vrend_get_tex_image_offset(const struct virgl_texture *res,
-                           unsigned level, unsigned layer)
-{
-   const struct pipe_resource *pres = &res->base.u.b;
-   const unsigned hgt = u_minify(pres->height0, level);
-   const unsigned nblocksy = util_format_get_nblocksy(pres->format, hgt);
-   unsigned offset = res->metadata.level_offset[level];
-
-   if (pres->target == PIPE_TEXTURE_CUBE ||
-       pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
-       pres->target == PIPE_TEXTURE_3D ||
-       pres->target == PIPE_TEXTURE_2D_ARRAY) {
-      offset += layer * nblocksy * res->metadata.stride[level];
-   }
-   else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
-      offset += layer * res->metadata.stride[level];
-   }
-   else {
-      assert(layer == 0);
-   }
-
-   return offset;
-}
-
 static void *virgl_texture_transfer_map(struct pipe_context *ctx,
                                         struct pipe_resource *resource,
                                         unsigned level,
@@ -179,7 +154,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       trans->base.stride = ((struct virgl_texture*)trans->resolve_tmp)->metadata.stride[level];
       trans->base.layer_stride = trans->base.stride * nblocksy;
    } else {
-      offset = vrend_get_tex_image_offset(vtex, level, box->z);
+      offset = virgl_resource_offset(&vtex->base.u.b, &vtex->metadata, level, box->z);
 
       offset += box->y / util_format_get_blockheight(format) * trans->base.stride +
       box->x / util_format_get_blockwidth(format) * util_format_get_blocksize(format);

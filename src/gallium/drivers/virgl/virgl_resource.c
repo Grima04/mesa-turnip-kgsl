@@ -147,3 +147,27 @@ void virgl_resource_layout(struct pipe_resource *pt,
    else /* don't create guest backing store for MSAA */
       metadata->total_size = 0;
 }
+
+unsigned virgl_resource_offset(struct pipe_resource *pres,
+                               struct virgl_resource_metadata *metadata,
+                               unsigned level, unsigned layer)
+{
+   const unsigned hgt = u_minify(pres->height0, level);
+   const unsigned nblocksy = util_format_get_nblocksy(pres->format, hgt);
+   unsigned offset = metadata->level_offset[level];
+
+   if (pres->target == PIPE_TEXTURE_CUBE ||
+       pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
+       pres->target == PIPE_TEXTURE_3D ||
+       pres->target == PIPE_TEXTURE_2D_ARRAY) {
+      offset += layer * nblocksy * metadata->stride[level];
+   }
+   else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
+      offset += layer * metadata->stride[level];
+   }
+   else {
+      assert(layer == 0);
+   }
+
+   return offset;
+}
