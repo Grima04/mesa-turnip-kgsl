@@ -240,45 +240,6 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    slab_free(&vctx->transfer_pool, trans);
 }
 
-
-static void
-vrend_resource_layout(struct virgl_texture *res,
-                      uint32_t *total_size)
-{
-   struct pipe_resource *pt = &res->base.u.b;
-   unsigned level;
-   unsigned width = pt->width0;
-   unsigned height = pt->height0;
-   unsigned depth = pt->depth0;
-   unsigned buffer_size = 0;
-
-   for (level = 0; level <= pt->last_level; level++) {
-      unsigned slices;
-
-      if (pt->target == PIPE_TEXTURE_CUBE)
-         slices = 6;
-      else if (pt->target == PIPE_TEXTURE_3D)
-         slices = depth;
-      else
-         slices = pt->array_size;
-
-      res->metadata.stride[level] = util_format_get_stride(pt->format, width);
-      res->metadata.level_offset[level] = buffer_size;
-
-      buffer_size += (util_format_get_nblocksy(pt->format, height) *
-                      slices * res->metadata.stride[level]);
-
-      width = u_minify(width, 1);
-      height = u_minify(height, 1);
-      depth = u_minify(depth, 1);
-   }
-
-   if (pt->nr_samples <= 1)
-      *total_size = buffer_size;
-   else /* don't create guest backing store for MSAA */
-      *total_size = 0;
-}
-
 static boolean virgl_texture_get_handle(struct pipe_screen *screen,
                                          struct pipe_resource *ptex,
                                          struct winsys_handle *whandle)
@@ -327,7 +288,6 @@ struct pipe_resource *virgl_texture_create(struct virgl_screen *vs,
                                            const struct pipe_resource *template)
 {
    struct virgl_texture *tex;
-   uint32_t size;
    unsigned vbind;
 
    tex = CALLOC_STRUCT(virgl_texture);
@@ -336,10 +296,18 @@ struct pipe_resource *virgl_texture_create(struct virgl_screen *vs,
    tex->base.u.b.screen = &vs->base;
    pipe_reference_init(&tex->base.u.b.reference, 1);
    tex->base.u.vtbl = &virgl_texture_vtbl;
-   vrend_resource_layout(tex, &size);
+   virgl_resource_layout(&tex->base.u.b, &tex->metadata);
 
    vbind = pipe_to_virgl_bind(template->bind);
-   tex->base.hw_res = vs->vws->resource_create(vs->vws, template->target, template->format, vbind, template->width0, template->height0, template->depth0, template->array_size, template->last_level, template->nr_samples, size);
+   tex->base.hw_res = vs->vws->resource_create(vs->vws, template->target,
+                                               template->format, vbind,
+                                               template->width0,
+                                               template->height0,
+                                               template->depth0,
+                                               template->array_size,
+                                               template->last_level,
+                                               template->nr_samples,
+                                               tex->metadata.total_size);
    if (!tex->base.hw_res) {
       FREE(tex);
       return NULL;

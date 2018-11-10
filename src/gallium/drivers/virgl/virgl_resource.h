@@ -150,4 +150,8 @@ bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
 bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
                               unsigned usage);
+
+void virgl_resource_layout(struct pipe_resource *pt,
+                           struct virgl_resource_metadata *metadata);
+
 #endif

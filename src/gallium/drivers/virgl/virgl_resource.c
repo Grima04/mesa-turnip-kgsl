@@ -20,6 +20,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "virgl_context.h"
 #include "virgl_resource.h"
@@ -109,4 +110,40 @@ void virgl_init_context_resource_functions(struct pipe_context *ctx)
     ctx->transfer_unmap = u_transfer_unmap_vtbl;
     ctx->buffer_subdata = virgl_buffer_subdata;
     ctx->texture_subdata = u_default_texture_subdata;
+}
+
+void virgl_resource_layout(struct pipe_resource *pt,
+                           struct virgl_resource_metadata *metadata)
+{
+   unsigned level;
+   unsigned width = pt->width0;
+   unsigned height = pt->height0;
+   unsigned depth = pt->depth0;
+   unsigned buffer_size = 0;
+
+   for (level = 0; level <= pt->last_level; level++) {
+      unsigned slices;
+
+      if (pt->target == PIPE_TEXTURE_CUBE)
+         slices = 6;
+      else if (pt->target == PIPE_TEXTURE_3D)
+         slices = depth;
+      else
+         slices = pt->array_size;
+
+      metadata->stride[level] = util_format_get_stride(pt->format, width);
+      metadata->level_offset[level] = buffer_size;
+
+      buffer_size += (util_format_get_nblocksy(pt->format, height) *
+                      slices * metadata->stride[level]);
+
+      width = u_minify(width, 1);
+      height = u_minify(height, 1);
+      depth = u_minify(depth, 1);
+   }
+
+   if (pt->nr_samples <= 1)
+      metadata->total_size = buffer_size;
+   else /* don't create guest backing store for MSAA */
+      metadata->total_size = 0;
 }
