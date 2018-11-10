@@ -315,10 +315,12 @@ static unsigned si_num_prims_for_vertices(const struct pipe_draw_info *info)
 	switch (info->mode) {
 	case PIPE_PRIM_PATCHES:
 		return info->count / info->vertices_per_patch;
+	case PIPE_PRIM_POLYGON:
+		return info->count >= 3;
 	case SI_PRIM_RECTANGLE_LIST:
 		return info->count / 3;
 	default:
-		return u_prims_for_vertices(info->mode, info->count);
+		return u_decomposed_prims_for_vertices(info->mode, info->count);
 	}
 }
 
