@@ -215,6 +215,9 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
     * those first.
     */
    for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
+      // XXX: this is bad, we use the same state / instruction buffers for
+      // both batches, and if both of them are reading some dynamic state,
+      // we flush all the time.  check for writes vs. reads?
       if (iris_batch_references(batch->other_batches[b], bo))
          iris_batch_flush(batch->other_batches[b]);
    }
