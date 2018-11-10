@@ -225,6 +225,8 @@ files_libfreedreno = files(
   'ir3/ir3_compiler.h',
   'ir3/ir3_cp.c',
   'ir3/ir3_depth.c',
+  'ir3/ir3_gallium.c',
+  'ir3/ir3_gallium.h',
   'ir3/ir3_group.c',
   'ir3/ir3.h',
   'ir3/ir3_legalize.c',

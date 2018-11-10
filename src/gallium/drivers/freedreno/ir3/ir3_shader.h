@@ -29,8 +29,8 @@
 
 #include <stdio.h>
 
-#include "pipe/p_state.h"
 #include "compiler/shader_enums.h"
+#include "compiler/nir/nir.h"
 #include "util/bitscan.h"
 
 #include "ir3.h"
@@ -63,6 +63,8 @@ enum ir3_driver_param {
 	IR3_DP_VS_COUNT   = 36   /* must be aligned to vec4 */
 };
 
+#define IR3_MAX_SHADER_BUFFERS   32
+#define IR3_MAX_SHADER_IMAGES    32
 #define IR3_MAX_SO_BUFFERS        4
 #define IR3_MAX_SO_OUTPUTS       64
 
@@ -85,7 +87,7 @@ struct ir3_driver_const_layout {
 		 * ssbo_sizes.off[ssbo_id] is offset from start of ssbo_sizes
 		 * consts:
 		 */
-		uint32_t off[PIPE_MAX_SHADER_BUFFERS];
+		uint32_t off[IR3_MAX_SHADER_BUFFERS];
 	} ssbo_size;
 
 	struct {
@@ -96,7 +98,7 @@ struct ir3_driver_const_layout {
 		 *  + pitch       (y pitch)
 		 *  + array_pitch (z pitch)
 		 */
-		uint32_t off[PIPE_MAX_SHADER_IMAGES];
+		uint32_t off[IR3_MAX_SHADER_IMAGES];
 	} image_dims;
 };
 
@@ -238,6 +240,41 @@ ir3_shader_key_changes_vs(struct ir3_shader_key *key, struct ir3_shader_key *las
 		return true;
 
 	return false;
+}
+
+/* clears shader-key flags which don't apply to the given shader
+ * stage
+ */
+static inline void
+ir3_normalize_key(struct ir3_shader_key *key, gl_shader_stage type)
+{
+	switch (type) {
+	case MESA_SHADER_FRAGMENT:
+		if (key->has_per_samp) {
+			key->vsaturate_s = 0;
+			key->vsaturate_t = 0;
+			key->vsaturate_r = 0;
+			key->vastc_srgb = 0;
+			key->vsamples = 0;
+		}
+		break;
+	case MESA_SHADER_VERTEX:
+		key->color_two_side = false;
+		key->half_precision = false;
+		key->rasterflat = false;
+		if (key->has_per_samp) {
+			key->fsaturate_s = 0;
+			key->fsaturate_t = 0;
+			key->fsaturate_r = 0;
+			key->fastc_srgb = 0;
+			key->fsamples = 0;
+		}
+		break;
+	default:
+		/* TODO */
+		break;
+	}
+
 }
 
 struct ir3_shader_variant {
@@ -399,29 +436,12 @@ struct ir3_shader {
 };
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);
-
-struct ir3_shader * ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso, gl_shader_stage type,
-		struct pipe_debug_callback *debug);
-struct ir3_shader *
-ir3_shader_create_compute(struct ir3_compiler *compiler,
-		const struct pipe_compute_state *cso,
-		struct pipe_debug_callback *debug);
+struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
+		struct ir3_shader_key *key, bool binning_pass, bool *created);
+struct ir3_shader * ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir);
 void ir3_shader_destroy(struct ir3_shader *shader);
-struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
-		struct ir3_shader_key key, bool binning_pass,
-		struct pipe_debug_callback *debug);
 void ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out);
 uint64_t ir3_shader_outputs(const struct ir3_shader *so);
-
-struct fd_ringbuffer;
-struct fd_context;
-void ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx, const struct pipe_draw_info *info);
-void ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx);
-void ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
-		struct fd_context *ctx, const struct pipe_grid_info *info);
 
 int
 ir3_glsl_type_size(const struct glsl_type *type);

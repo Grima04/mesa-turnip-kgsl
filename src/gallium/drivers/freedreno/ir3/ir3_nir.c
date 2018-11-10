@@ -31,9 +31,6 @@
 #include "ir3_compiler.h"
 #include "ir3_shader.h"
 
-#include "nir/tgsi_to_nir.h"
-
-
 static const nir_shader_compiler_options options = {
 		.lower_fpow = true,
 		.lower_scmp = true,
@@ -52,12 +49,6 @@ static const nir_shader_compiler_options options = {
 		.lower_all_io_to_temps = true,
 		.lower_helper_invocation = true,
 };
-
-struct nir_shader *
-ir3_tgsi_to_nir(const struct tgsi_token *tokens)
-{
-	return tgsi_to_nir(tokens, &options);
-}
 
 const nir_shader_compiler_options *
 ir3_get_compiler_options(struct ir3_compiler *compiler)

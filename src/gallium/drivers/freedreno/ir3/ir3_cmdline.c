@@ -38,6 +38,7 @@
 #include "tgsi/tgsi_dump.h"
 
 #include "ir3_compiler.h"
+#include "ir3_gallium.h"
 #include "ir3_nir.h"
 #include "instr-a3xx.h"
 #include "ir3.h"
@@ -459,7 +460,7 @@ int main(int argc, char **argv)
 		if (ir3_shader_debug & IR3_DBG_OPTMSGS)
 			tgsi_dump(toks, 0);
 
-		nir = ir3_tgsi_to_nir(toks);
+		nir = ir3_tgsi_to_nir(compiler, toks);
 		NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 	} else if (from_spirv) {
 		nir = load_spirv(filenames[0], entry, stage);

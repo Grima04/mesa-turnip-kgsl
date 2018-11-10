@@ -34,7 +34,7 @@
 #include "fd6_context.h"
 #include "fd6_format.h"
 #include "fd6_program.h"
-#include "ir3_shader.h"
+#include "ir3_gallium.h"
 
 struct fd_ringbuffer;
 

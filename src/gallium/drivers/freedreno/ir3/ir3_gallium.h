@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Rob Clark <robclark@freedesktop.org>
+ * Copyright (C) 2014 Rob Clark <robclark@freedesktop.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,22 +24,32 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#ifndef IR3_NIR_H_
-#define IR3_NIR_H_
+#ifndef IR3_GALLIUM_H_
+#define IR3_GALLIUM_H_
 
-#include "compiler/nir/nir.h"
-#include "compiler/shader_enums.h"
-
+#include "pipe/p_state.h"
 #include "ir3_shader.h"
 
-void ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_driver_const_layout *layout);
+struct ir3_shader * ir3_shader_create(struct ir3_compiler *compiler,
+		const struct pipe_shader_state *cso, gl_shader_stage type,
+		struct pipe_debug_callback *debug);
+struct ir3_shader *
+ir3_shader_create_compute(struct ir3_compiler *compiler,
+		const struct pipe_compute_state *cso,
+		struct pipe_debug_callback *debug);
+struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
+		struct ir3_shader_key key, bool binning_pass,
+		struct pipe_debug_callback *debug);
+struct nir_shader * ir3_tgsi_to_nir(struct ir3_compiler *compiler,
+		const struct tgsi_token *tokens);
 
-bool ir3_nir_apply_trig_workarounds(nir_shader *shader);
-bool ir3_nir_lower_tg4_to_tex(nir_shader *shader);
+struct fd_ringbuffer;
+struct fd_context;
+void ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
+		struct fd_context *ctx, const struct pipe_draw_info *info);
+void ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
+		struct fd_context *ctx);
+void ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
+		struct fd_context *ctx, const struct pipe_grid_info *info);
 
-const nir_shader_compiler_options * ir3_get_compiler_options(struct ir3_compiler *compiler);
-bool ir3_key_lowers_nir(const struct ir3_shader_key *key);
-struct nir_shader * ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
-		const struct ir3_shader_key *key);
-
-#endif /* IR3_NIR_H_ */
+#endif /* IR3_GALLIUM_H_ */
