@@ -28,7 +28,7 @@
 
 #include "util/u_string.h"
 #include "util/u_memory.h"
-#include "util/u_inlines.h"
+#include "util/u_math.h"
 
 #include "ir3_compiler.h"
 #include "ir3_shader.h"
@@ -254,7 +254,7 @@ compile_init(struct ir3_compiler *compiler,
 			(compiler->gpu_id < 500) &&
 			so->shader->stream_output.num_outputs > 0) {
 		so->constbase.tfbo = constoff;
-		constoff += align(PIPE_MAX_SO_BUFFERS * ptrsz, 4) / 4;
+		constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
 	}
 
 	so->constbase.immediate = constoff;
@@ -1963,7 +1963,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	if (ncoords == 1)
 		coords[ncoords++] = create_immed(b, 0);
 
-	sam = ir3_SAM(b, OPC_ISAM, type, TGSI_WRITEMASK_XYZW, flags,
+	sam = ir3_SAM(b, OPC_ISAM, type, 0b1111, flags,
 			tex_idx, tex_idx, create_collect(ctx, coords, ncoords), NULL);
 
 	sam->barrier_class = IR3_BARRIER_IMAGE_R;
@@ -2021,7 +2021,7 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	unsigned flags, ncoords = get_image_coords(var, &flags);
 
 	lod = create_immed(b, 0);
-	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, TGSI_WRITEMASK_XYZW, flags,
+	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
 			tex_idx, tex_idx, lod, NULL);
 
 	/* Array size actually ends up in .w rather than .z. This doesn't
@@ -2811,7 +2811,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	struct ir3_instruction *col0 = create_collect(ctx, src0, nsrc0);
 	struct ir3_instruction *col1 = create_collect(ctx, src1, nsrc1);
 
-	sam = ir3_SAM(b, opc, type, TGSI_WRITEMASK_XYZW, flags,
+	sam = ir3_SAM(b, opc, type, 0b1111, flags,
 			tex_idx, tex_idx, col0, col1);
 
 	if ((ctx->astc_srgb & (1 << tex_idx)) && !nir_tex_instr_is_query(tex)) {
@@ -2822,7 +2822,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		/* we need to sample the alpha separately with a non-ASTC
 		 * texture state:
 		 */
-		sam = ir3_SAM(b, opc, type, TGSI_WRITEMASK_W, flags,
+		sam = ir3_SAM(b, opc, type, 0b1000, flags,
 				tex_idx, tex_idx, col0, col1);
 
 		array_insert(ctx->ir, ctx->ir->astc_srgb, sam);
@@ -2856,7 +2856,7 @@ emit_tex_query_levels(struct ir3_context *ctx, nir_tex_instr *tex)
 
 	dst = get_dst(ctx, &tex->dest, 1);
 
-	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, TGSI_WRITEMASK_Z, 0,
+	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, 0b0100, 0,
 			tex->texture_index, tex->texture_index, NULL, NULL);
 
 	/* even though there is only one component, since it ends
@@ -2896,7 +2896,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 
 	lod = get_src(ctx, &tex->src[0].src)[0];
 
-	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, TGSI_WRITEMASK_XYZW, flags,
+	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
 			tex->texture_index, tex->texture_index, lod, NULL);
 
 	split_dest(b, dst, sam, 0, 4);
@@ -3109,7 +3109,7 @@ emit_stream_out(struct ir3_context *ctx)
 			&ctx->so->shader->stream_output;
 	struct ir3_block *orig_end_block, *stream_out_block, *new_end_block;
 	struct ir3_instruction *vtxcnt, *maxvtxcnt, *cond;
-	struct ir3_instruction *bases[PIPE_MAX_SO_BUFFERS];
+	struct ir3_instruction *bases[IR3_MAX_SO_BUFFERS];
 
 	/* create vtxcnt input in input block at top of shader,
 	 * so that it is seen as live over the entire duration
@@ -3160,7 +3160,7 @@ emit_stream_out(struct ir3_context *ctx)
 	 * generated for bases not used in following loop will be
 	 * stripped out in the backend.
 	 */
-	for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+	for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
 		unsigned stride = strmout->stride[i];
 		struct ir3_instruction *base, *off;
 
