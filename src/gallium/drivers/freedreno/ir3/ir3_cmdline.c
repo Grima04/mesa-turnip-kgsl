@@ -37,11 +37,11 @@
 #include "tgsi/tgsi_text.h"
 #include "tgsi/tgsi_dump.h"
 
-#include "ir3_compiler.h"
-#include "ir3_gallium.h"
-#include "ir3_nir.h"
-#include "instr-a3xx.h"
-#include "ir3.h"
+#include "ir3/ir3_compiler.h"
+#include "ir3/ir3_gallium.h"
+#include "ir3/ir3_nir.h"
+#include "ir3/instr-a3xx.h"
+#include "ir3/ir3.h"
 
 #include "compiler/glsl/standalone.h"
 #include "compiler/glsl/glsl_to_nir.h"

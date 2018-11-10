@@ -37,10 +37,10 @@
 #include "freedreno_context.h"
 #include "freedreno_util.h"
 
-#include "ir3_shader.h"
-#include "ir3_gallium.h"
-#include "ir3_compiler.h"
-#include "ir3_nir.h"
+#include "ir3/ir3_shader.h"
+#include "ir3/ir3_gallium.h"
+#include "ir3/ir3_compiler.h"
+#include "ir3/ir3_nir.h"
 
 static void
 dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug)

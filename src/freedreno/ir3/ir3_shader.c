@@ -28,7 +28,7 @@
 #include "util/u_memory.h"
 #include "util/u_format.h"
 
-#include "freedreno_util.h"
+#include "drm/freedreno_drmif.h"
 
 #include "ir3_shader.h"
 #include "ir3_compiler.h"

@@ -32,7 +32,7 @@
 
 #include "freedreno_context.h"
 
-#include "ir3_shader.h"
+#include "ir3/ir3_shader.h"
 
 #include "a6xx.xml.h"
 

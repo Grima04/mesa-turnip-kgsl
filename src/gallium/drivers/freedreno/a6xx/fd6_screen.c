@@ -33,7 +33,7 @@
 #include "fd6_format.h"
 #include "fd6_resource.h"
 
-#include "ir3_compiler.h"
+#include "ir3/ir3_compiler.h"
 
 static boolean
 fd6_screen_is_format_supported(struct pipe_screen *pscreen,
