@@ -36,6 +36,13 @@ struct winsys_handle;
 struct virgl_screen;
 struct virgl_context;
 
+struct virgl_resource_metadata
+{
+   unsigned long level_offset[VR_MAX_TEXTURE_2D_LEVELS];
+   unsigned stride[VR_MAX_TEXTURE_2D_LEVELS];
+   uint32_t total_size;
+};
+
 struct virgl_resource {
    struct u_resource u;
    struct virgl_hw_res *hw_res;
@@ -61,9 +68,7 @@ struct virgl_buffer {
 
 struct virgl_texture {
    struct virgl_resource base;
-
-   unsigned long level_offset[VR_MAX_TEXTURE_2D_LEVELS];
-   unsigned stride[VR_MAX_TEXTURE_2D_LEVELS];
+   struct virgl_resource_metadata metadata;
 };
 
 struct virgl_transfer {

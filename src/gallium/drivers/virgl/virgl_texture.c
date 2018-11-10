@@ -101,16 +101,16 @@ vrend_get_tex_image_offset(const struct virgl_texture *res,
    const struct pipe_resource *pres = &res->base.u.b;
    const unsigned hgt = u_minify(pres->height0, level);
    const unsigned nblocksy = util_format_get_nblocksy(pres->format, hgt);
-   unsigned offset = res->level_offset[level];
+   unsigned offset = res->metadata.level_offset[level];
 
    if (pres->target == PIPE_TEXTURE_CUBE ||
        pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
        pres->target == PIPE_TEXTURE_3D ||
        pres->target == PIPE_TEXTURE_2D_ARRAY) {
-      offset += layer * nblocksy * res->stride[level];
+      offset += layer * nblocksy * res->metadata.stride[level];
    }
    else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
-      offset += layer * res->stride[level];
+      offset += layer * res->metadata.stride[level];
    }
    else {
       assert(layer == 0);
@@ -152,7 +152,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    trans->base.level = level;
    trans->base.usage = usage;
    trans->base.box = *box;
-   trans->base.stride = vtex->stride[level];
+   trans->base.stride = vtex->metadata.stride[level];
    trans->base.layer_stride = trans->base.stride * nblocksy;
 
    if (resource->target != PIPE_TEXTURE_3D &&
@@ -176,7 +176,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       /* we want to do a resolve blit into the temporary */
       hw_res = trans->resolve_tmp->hw_res;
       offset = 0;
-      trans->base.stride = ((struct virgl_texture*)trans->resolve_tmp)->stride[level];
+      trans->base.stride = ((struct virgl_texture*)trans->resolve_tmp)->metadata.stride[level];
       trans->base.layer_stride = trans->base.stride * nblocksy;
    } else {
       offset = vrend_get_tex_image_offset(vtex, level, box->z);
@@ -262,11 +262,11 @@ vrend_resource_layout(struct virgl_texture *res,
       else
          slices = pt->array_size;
 
-      res->stride[level] = util_format_get_stride(pt->format, width);
-      res->level_offset[level] = buffer_size;
+      res->metadata.stride[level] = util_format_get_stride(pt->format, width);
+      res->metadata.level_offset[level] = buffer_size;
 
       buffer_size += (util_format_get_nblocksy(pt->format, height) *
-                      slices * res->stride[level]);
+                      slices * res->metadata.stride[level]);
 
       width = u_minify(width, 1);
       height = u_minify(height, 1);
@@ -286,7 +286,8 @@ static boolean virgl_texture_get_handle(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_texture *vtex = virgl_texture(ptex);
 
-   return vs->vws->resource_get_handle(vs->vws, vtex->base.hw_res, vtex->stride[0], whandle);
+   return vs->vws->resource_get_handle(vs->vws, vtex->base.hw_res,
+                                       vtex->metadata.stride[0], whandle);
 }
 
 static void virgl_texture_destroy(struct pipe_screen *screen,
