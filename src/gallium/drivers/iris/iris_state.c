@@ -4479,6 +4479,9 @@ iris_upload_compute_state(struct iris_context *ice,
    // XXX: L3 configuration not set up for SLM
    assert(prog_data->total_shared == 0);
 
+   if ((dirty & IRIS_DIRTY_CONSTANTS_CS) && shs->cbuf0_needs_upload)
+      upload_uniforms(ice, MESA_SHADER_COMPUTE);
+
    if (dirty & IRIS_DIRTY_BINDINGS_CS)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
 
