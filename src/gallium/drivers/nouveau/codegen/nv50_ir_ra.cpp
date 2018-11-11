@@ -66,10 +66,8 @@ public:
 
    inline int getMaxAssigned(DataFile f) const { return fill[f]; }
 
-   inline unsigned int getFileSize(DataFile f, uint8_t regSize) const
+   inline unsigned int getFileSize(DataFile f) const
    {
-      if (restrictedGPR16Range && f == FILE_GPR && regSize == 2)
-         return (last[f] + 1) / 2;
       return last[f] + 1;
    }
 
@@ -846,9 +844,11 @@ GCRA::printNodeInfo() const
 static bool
 isShortRegOp(Instruction *insn)
 {
-   // Immediates are always in src1. Every other situation can be resolved by
+   // Immediates are always in src1 (except zeroes, which end up getting
+   // replaced with a zero reg). Every other situation can be resolved by
    // using a long encoding.
-   return insn->srcExists(1) && insn->src(1).getFile() == FILE_IMMEDIATE;
+   return insn->srcExists(1) && insn->src(1).getFile() == FILE_IMMEDIATE &&
+      insn->getSrc(1)->reg.data.u64;
 }
 
 // Check if this LValue is ever used in an instruction that can't be encoded
@@ -884,10 +884,10 @@ GCRA::RIG_Node::init(const RegisterSet& regs, LValue *lval)
 
    weight = std::numeric_limits<float>::infinity();
    degree = 0;
-   int size = regs.getFileSize(f, lval->reg.size);
+   int size = regs.getFileSize(f);
    // On nv50, we lose a bit of gpr encoding when there's an embedded
    // immediate.
-   if (regs.restrictedGPR16Range && f == FILE_GPR && isShortRegVal(lval))
+   if (regs.restrictedGPR16Range && f == FILE_GPR && (lval->reg.size == 2 || isShortRegVal(lval)))
       size /= 2;
    degreeLimit = size;
    degreeLimit -= relDegree[1][colors] - 1;
