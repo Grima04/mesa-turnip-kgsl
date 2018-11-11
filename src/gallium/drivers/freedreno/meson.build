@@ -71,21 +71,6 @@ files_libfreedreno = files(
   'freedreno_texture.h',
   'freedreno_util.c',
   'freedreno_util.h',
-  'drm/freedreno_bo.c',
-  'drm/freedreno_bo_cache.c',
-  'drm/freedreno_device.c',
-  'drm/freedreno_drmif.h',
-  'drm/freedreno_pipe.c',
-  'drm/freedreno_priv.h',
-  'drm/freedreno_ringbuffer.c',
-  'drm/freedreno_ringbuffer.h',
-  'drm/msm_bo.c',
-  'drm/msm_device.c',
-  'drm/msm_drm.h',
-  'drm/msm_pipe.c',
-  'drm/msm_priv.h',
-  'drm/msm_ringbuffer.c',
-  'drm/msm_ringbuffer_sp.c',
   'a2xx/a2xx.xml.h',
   'a2xx/disasm-a2xx.c',
   'a2xx/fd2_blend.c',
@@ -255,6 +240,7 @@ files_libfreedreno = files(
 
 freedreno_includes = [
   inc_src, inc_include, inc_gallium, inc_gallium_aux,
+  inc_freedreno,
   include_directories('ir3')
 ]
 
@@ -275,15 +261,17 @@ libfreedreno = static_library(
   c_args : [freedreno_c_args, c_vis_args],
   cpp_args : [freedreno_cpp_args, cpp_vis_args],
   dependencies : [
-    dep_libdrm,
-    dep_valgrind,
     idep_nir_headers
   ],
 )
 
 driver_freedreno = declare_dependency(
   compile_args : '-DGALLIUM_FREEDRENO',
-  link_with : [libfreedrenowinsys, libfreedreno],
+  link_with : [
+    libfreedrenowinsys,
+    libfreedreno,
+    libfreedreno_drm,
+  ],
   dependencies : idep_nir,
 )
 
@@ -292,13 +280,12 @@ ir3_compiler = executable(
   'ir3/ir3_cmdline.c',
   include_directories : freedreno_includes,
   dependencies : [
-    dep_libdrm,
-    dep_valgrind,
     dep_thread,
     idep_nir,
   ],
   link_with : [
     libfreedreno,
+    libfreedreno_drm,
     libgallium,
     libglsl_standalone,
     libmesa_util,

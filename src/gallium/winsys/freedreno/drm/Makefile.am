@@ -25,6 +25,7 @@ include $(top_srcdir)/src/gallium/Automake.inc
 
 AM_CFLAGS = \
 	-I$(top_srcdir)/src/gallium/drivers \
+	-I$(top_srcdir)/src/freedreno \
 	$(GALLIUM_WINSYS_CFLAGS) \
 	$(FREEDRENO_CFLAGS)
 

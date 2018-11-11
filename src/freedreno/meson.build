@@ -1,4 +1,4 @@
-# Copyright © 2017 Rob Clark
+# Copyright © 2018 Rob Clark
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libfreedrenowinsys = static_library(
-  'freedrenowinsys',
-  files('freedreno_drm_public.h', 'freedreno_drm_winsys.c'),
-  include_directories : [
-    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
-    inc_freedreno,
-  ],
-  c_args : [c_vis_args],
-  dependencies : [dep_libdrm],
-)
+inc_freedreno = include_directories('.')
+
+subdir('drm')

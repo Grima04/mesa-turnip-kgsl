@@ -27,7 +27,6 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
 	$(C_SOURCES) \
-	$(drm_SOURCES) \
 	$(a2xx_SOURCES) \
 	$(a3xx_SOURCES)	\
 	$(a4xx_SOURCES) \

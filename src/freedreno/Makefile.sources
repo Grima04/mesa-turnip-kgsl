@@ -1,0 +1,17 @@
+drm_SOURCES := \
+	drm/freedreno_bo.c \
+	drm/freedreno_drmif.h \
+	drm/freedreno_ringbuffer.c \
+	drm/msm_bo.c \
+	drm/msm_pipe.c \
+	drm/msm_ringbuffer_sp.c \
+	drm/freedreno_bo_cache.c \
+	drm/freedreno_pipe.c \
+	drm/freedreno_ringbuffer.h \
+	drm/msm_device.c \
+	drm/msm_priv.h \
+	drm/freedreno_device.c \
+	drm/freedreno_priv.h \
+	drm/msm_drm.h \
+	drm/msm_ringbuffer.c
+

@@ -1,4 +1,4 @@
-# Copyright © 2017 Rob Clark
+# Copyright © 2018 Rob Clark
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +18,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libfreedrenowinsys = static_library(
-  'freedrenowinsys',
-  files('freedreno_drm_public.h', 'freedreno_drm_winsys.c'),
-  include_directories : [
-    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
-    inc_freedreno,
-  ],
-  c_args : [c_vis_args],
-  dependencies : [dep_libdrm],
+libfreedreno_drm_files = files(
+  'freedreno_bo.c',
+  'freedreno_bo_cache.c',
+  'freedreno_device.c',
+  'freedreno_drmif.h',
+  'freedreno_pipe.c',
+  'freedreno_priv.h',
+  'freedreno_ringbuffer.c',
+  'freedreno_ringbuffer.h',
+  'msm_bo.c',
+  'msm_device.c',
+  'msm_drm.h',
+  'msm_pipe.c',
+  'msm_priv.h',
+  'msm_ringbuffer.c',
+  'msm_ringbuffer_sp.c',
 )
+
+libfreedreno_drm = static_library(
+  'freedreno_drm',
+  libfreedreno_drm_files,
+  include_directories : [
+    inc_freedreno,
+    inc_common,
+  ],
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  dependencies : [
+    dep_libdrm,
+    dep_valgrind,
+  ],
+  build_by_default : false,
+)
+

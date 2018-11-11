@@ -4,11 +4,10 @@ include $(top_srcdir)/src/gallium/Automake.inc
 AM_CFLAGS = \
 	-Wno-packed-bitfield-compat \
 	-I$(top_srcdir)/src/gallium/drivers/freedreno/ir3 \
+	-I$(top_srcdir)/src/freedreno \
 	-I$(top_builddir)/src/compiler/nir \
 	-I$(top_srcdir)/src/compiler/nir \
-	$(GALLIUM_DRIVER_CFLAGS) \
-	$(LIBDRM_CFLAGS) \
-	$(VALGRIND_CFLAGS)
+	$(GALLIUM_DRIVER_CFLAGS)
 
 MKDIR_GEN = $(AM_V_at)$(MKDIR_P) $(@D)
 ir3/ir3_nir_trig.c: ir3/ir3_nir_trig.py $(top_srcdir)/src/compiler/nir/nir_algebraic.py
@@ -19,7 +18,6 @@ noinst_LTLIBRARIES = libfreedreno.la
 
 libfreedreno_la_SOURCES = \
 	$(C_SOURCES) \
-	$(drm_SOURCES) \
 	$(a2xx_SOURCES) \
 	$(a3xx_SOURCES) \
 	$(a4xx_SOURCES) \
@@ -46,7 +44,7 @@ ir3_compiler_LDADD = \
 	$(top_builddir)/src/compiler/glsl/libstandalone.la \
 	$(top_builddir)/src/util/libmesautil.la \
 	$(top_builddir)/src/mesa/libmesagallium.la \
-	$(GALLIUM_COMMON_LIB_DEPS) \
-	$(LIBDRM_LIBS)
+	$(top_builddir)/src/freedreno/libfreedreno_drm.la \
+	$(GALLIUM_COMMON_LIB_DEPS)
 
 EXTRA_DIST += meson.build
