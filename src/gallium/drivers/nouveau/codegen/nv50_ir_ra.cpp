@@ -55,7 +55,7 @@ public:
    void periodicMask(DataFile f, uint32_t lock, uint32_t unlock);
    void intersect(DataFile f, const RegisterSet *);
 
-   bool assign(int32_t& reg, DataFile f, unsigned int size);
+   bool assign(int32_t& reg, DataFile f, unsigned int size, unsigned int maxReg);
    void release(DataFile f, int32_t reg, unsigned int size);
    void occupy(DataFile f, int32_t reg, unsigned int size);
    void occupy(const Value *);
@@ -160,9 +160,9 @@ RegisterSet::print(DataFile f) const
 }
 
 bool
-RegisterSet::assign(int32_t& reg, DataFile f, unsigned int size)
+RegisterSet::assign(int32_t& reg, DataFile f, unsigned int size, unsigned int maxReg)
 {
-   reg = bits[f].findFreeRange(size);
+   reg = bits[f].findFreeRange(size, maxReg);
    if (reg < 0)
       return false;
    fill[f] = MAX2(fill[f], (int32_t)(reg + size - 1));
@@ -747,6 +747,7 @@ private:
    public:
       uint32_t degree;
       uint16_t degreeLimit; // if deg < degLimit, node is trivially colourable
+      uint16_t maxReg;
       uint16_t colors;
 
       DataFile f;
@@ -884,12 +885,12 @@ GCRA::RIG_Node::init(const RegisterSet& regs, LValue *lval)
 
    weight = std::numeric_limits<float>::infinity();
    degree = 0;
-   int size = regs.getFileSize(f);
+   maxReg = regs.getFileSize(f);
    // On nv50, we lose a bit of gpr encoding when there's an embedded
    // immediate.
    if (regs.restrictedGPR16Range && f == FILE_GPR && (lval->reg.size == 2 || isShortRegVal(lval)))
-      size /= 2;
-   degreeLimit = size;
+      maxReg /= 2;
+   degreeLimit = maxReg;
    degreeLimit -= relDegree[1][colors] - 1;
 
    livei.insert(lval->livei);
@@ -949,6 +950,8 @@ GCRA::coalesceValues(Value *dst, Value *src, bool force)
    // add val's definitions to rep and extend the live interval of its RIG node
    rep->defs.insert(rep->defs.end(), val->defs.begin(), val->defs.end());
    nRep->livei.unify(nVal->livei);
+   nRep->degreeLimit = MIN2(nRep->degreeLimit, nVal->degreeLimit);
+   nRep->maxReg = MIN2(nRep->maxReg, nVal->maxReg);
    return true;
 }
 
@@ -1322,13 +1325,17 @@ GCRA::simplify()
       } else
       if (!DLLIST_EMPTY(&hi)) {
          RIG_Node *best = hi.next;
+         unsigned bestMaxReg = best->maxReg;
          float bestScore = best->weight / (float)best->degree;
-         // spill candidate
+         // Spill candidate. First go through the ones with the highest max
+         // register, then the ones with lower. That way the ones with the
+         // lowest requirement will be allocated first, since it's a stack.
          for (RIG_Node *it = best->next; it != &hi; it = it->next) {
             float score = it->weight / (float)it->degree;
-            if (score < bestScore) {
+            if (score < bestScore || it->maxReg > bestMaxReg) {
                best = it;
                bestScore = score;
+               bestMaxReg = it->maxReg;
             }
          }
          if (isinf(bestScore)) {
@@ -1429,7 +1436,7 @@ GCRA::selectRegisters()
       LValue *lval = node->getValue();
       if (prog->dbgFlags & NV50_IR_DEBUG_REG_ALLOC)
          regs.print(node->f);
-      bool ret = regs.assign(node->reg, node->f, node->colors);
+      bool ret = regs.assign(node->reg, node->f, node->colors, node->maxReg);
       if (ret) {
          INFO_DBG(prog->dbgFlags, REG_ALLOC, "assigned reg %i\n", node->reg);
          lval->compMask = node->getCompMask();
