@@ -26,7 +26,6 @@
 
 #include "util/slab.h"
 
-#include "freedreno_util.h"
 #include "msm_priv.h"
 
 static int query_param(struct fd_pipe *pipe, uint32_t param,
@@ -169,6 +168,16 @@ static uint64_t get_param(struct fd_pipe *pipe, uint32_t param)
 	return value;
 }
 
+static bool use_softpin(void)
+{
+	static int sp = -1;
+	if (sp < 0) {
+		const char *str = getenv("FD_MESA_DEBUG");
+		sp = str && strstr(str, "softpin");
+	}
+	return sp;
+}
+
 struct fd_pipe * msm_pipe_new(struct fd_device *dev,
 		enum fd_pipe_id id, uint32_t prio)
 {
@@ -189,7 +198,7 @@ struct fd_pipe * msm_pipe_new(struct fd_device *dev,
 
 	// TODO once kernel changes are in place, this switch will be
 	// based on kernel version:
-	if (fd_mesa_debug & FD_DBG_SOFTPIN) {
+	if (use_softpin()) {
 		pipe->funcs = &sp_funcs;
 	} else {
 		pipe->funcs = &legacy_funcs;
