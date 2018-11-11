@@ -1898,7 +1898,7 @@ AlgebraicOpt::handleMINMAX(Instruction *minmax)
    if (minmax->src(0).mod == minmax->src(1).mod) {
       if (minmax->def(0).mayReplace(minmax->src(0))) {
          minmax->def(0).replace(minmax->src(0), false);
-         minmax->bb->remove(minmax);
+         delete_Instruction(prog, minmax);
       } else {
          minmax->op = OP_CVT;
          minmax->setSrc(1, NULL);
