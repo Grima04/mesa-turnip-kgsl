@@ -762,6 +762,18 @@ radv_get_htile_fast_clear_value(const struct radv_image *image,
 }
 
 static bool
+radv_is_fast_clear_depth_allowed(VkClearDepthStencilValue value)
+{
+	return value.depth == 1.0f || value.depth == 0.0f;
+}
+
+static bool
+radv_is_fast_clear_stencil_allowed(VkClearDepthStencilValue value)
+{
+	return value.stencil == 0;
+}
+
+static bool
 emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		      const VkClearAttachment *clear_att,
 		      const VkClearRect *clear_rect,
@@ -809,7 +821,8 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (clear_rect->layerCount != iview->image->info.array_size)
 		return false;
 
-	if ((clear_value.depth != 0.0 && clear_value.depth != 1.0) || !(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
+	if (!radv_is_fast_clear_depth_allowed(clear_value) ||
+	    !(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
 		return false;
 
 	/* GFX8 only supports 32-bit depth surfaces but we can enable TC-compat
@@ -821,7 +834,8 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		return false;
 
 	if (vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) {
-		if (clear_value.stencil != 0 || !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
+		if (!radv_is_fast_clear_stencil_allowed(clear_value) ||
+		    !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
 			return false;
 	}
 
