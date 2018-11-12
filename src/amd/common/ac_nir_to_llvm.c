@@ -2387,10 +2387,17 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		params[2] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 						    ctx->ac.i32_0, ""); /* vindex */
 		params[3] = ctx->ac.i32_0; /* voffset */
-		params[4] = glc;  /* glc */
-		params[5] = ctx->ac.i1false;  /* slc */
-		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.buffer.store.format.v4f32", ctx->ac.voidt,
-				   params, 6, 0);
+		if (HAVE_LLVM >= 0x800) {
+			params[4] = ctx->ac.i32_0; /* soffset */
+			params[5] = glc ? ctx->ac.i32_1 : ctx->ac.i32_0;
+			ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.struct.buffer.store.format.v4f32", ctx->ac.voidt,
+			                   params, 6, 0);
+		} else {
+			params[4] = glc;  /* glc */
+			params[5] = ctx->ac.i1false;  /* slc */
+			ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.buffer.store.format.v4f32", ctx->ac.voidt,
+			                   params, 6, 0);
+		}
 	} else {
 		struct ac_image_args args = {};
 		args.opcode = ac_image_store;
@@ -2470,10 +2477,18 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 								ctx->ac.i32_0, ""); /* vindex */
 		params[param_count++] = ctx->ac.i32_0; /* voffset */
-		params[param_count++] = ctx->ac.i1false;  /* slc */
+		if (HAVE_LLVM >= 0x800) {
+			params[param_count++] = ctx->ac.i32_0; /* soffset */
+			params[param_count++] = ctx->ac.i32_0;  /* slc */
 
-		length = snprintf(intrinsic_name, sizeof(intrinsic_name),
-				  "llvm.amdgcn.buffer.atomic.%s", atomic_name);
+			length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+			                  "llvm.amdgcn.struct.buffer.atomic.%s.i32", atomic_name);
+		} else {
+			params[param_count++] = ctx->ac.i1false;  /* slc */
+
+			length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+			                  "llvm.amdgcn.buffer.atomic.%s", atomic_name);
+		}
 
 		assert(length < sizeof(intrinsic_name));
 		return ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32,
