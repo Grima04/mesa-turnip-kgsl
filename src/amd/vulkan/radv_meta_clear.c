@@ -746,6 +746,21 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	}
 }
 
+static uint32_t
+radv_get_htile_fast_clear_value(const struct radv_image *image,
+				VkClearDepthStencilValue value)
+{
+	uint32_t clear_value;
+
+	if (!image->surface.has_stencil) {
+		clear_value = value.depth ? 0xfffffff0 : 0;
+	} else {
+		clear_value = value.depth ? 0xfffc0000 : 0;
+	}
+
+	return clear_value;
+}
+
 static bool
 emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		      const VkClearAttachment *clear_att,
@@ -808,9 +823,9 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) {
 		if (clear_value.stencil != 0 || !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
 			return false;
-		clear_word = clear_value.depth ? 0xfffc0000 : 0;
-	} else
-		clear_word = clear_value.depth ? 0xfffffff0 : 0;
+	}
+
+	clear_word = radv_get_htile_fast_clear_value(iview->image, clear_value);
 
 	if (pre_flush) {
 		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_DB |
