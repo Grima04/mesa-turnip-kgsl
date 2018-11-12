@@ -262,16 +262,9 @@ tu_logi_v(const char *format, va_list va);
 #define tu_use_args(...) __tu_use_args(0, ##__VA_ARGS__)
 static inline void __tu_use_args(int ignore, ...) {}
 
-#define tu_stub_return(v)                                                         \
-   do {                                                                        \
-      tu_finishme("stub %s", __func__);                                       \
-      return (v);                                                              \
-   } while (0)
-
 #define tu_stub()                                                                 \
    do {                                                                        \
       tu_finishme("stub %s", __func__);                                       \
-      return;                                                                  \
    } while (0)
 
 void *
