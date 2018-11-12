@@ -96,6 +96,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return screen->props.limits.maxFragmentDualSrcAttachments;
 
+   case PIPE_CAP_POINT_SPRITE:
+      return 1;
+
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return screen->props.limits.maxColorAttachments;
 

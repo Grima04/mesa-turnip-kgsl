@@ -134,6 +134,10 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragCoord);
          break;
 
+      case VARYING_SLOT_PNTC:
+         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointCoord);
+         break;
+
       default:
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.driver_location);
