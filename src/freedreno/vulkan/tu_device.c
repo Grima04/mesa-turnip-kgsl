@@ -65,7 +65,8 @@ tu_get_driver_uuid(void *uuid)
 static void
 tu_get_device_uuid(void *uuid)
 {
-   stub();
+   tu_use_args(uuid);
+   tu_stub();
 }
 
 VkResult
@@ -1459,7 +1460,7 @@ tu_GetImageSparseMemoryRequirements(
    uint32_t *pSparseMemoryRequirementCount,
    VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
 {
-   stub();
+   tu_stub();
 }
 
 void
@@ -1469,7 +1470,7 @@ tu_GetImageSparseMemoryRequirements2(
    uint32_t *pSparseMemoryRequirementCount,
    VkSparseImageMemoryRequirements2KHR *pSparseMemoryRequirements)
 {
-   stub();
+   tu_stub();
 }
 
 void

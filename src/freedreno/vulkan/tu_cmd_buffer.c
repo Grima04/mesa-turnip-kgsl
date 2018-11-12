@@ -67,13 +67,15 @@ const struct tu_dynamic_state default_dynamic_state = {
      },
 };
 
-static void
+static void UNUSED /* FINISHME */
 tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
                       const struct tu_dynamic_state *src)
 {
    struct tu_dynamic_state *dest = &cmd_buffer->state.dynamic;
    uint32_t copy_mask = src->mask;
    uint32_t dest_mask = 0;
+
+   tu_use_args(cmd_buffer); /* FINISHME */
 
    /* Make sure to copy the number of viewports/scissors because they can
     * only be specified at pipeline creation time.

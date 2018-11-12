@@ -101,6 +101,7 @@ tu_CreateDescriptorSetLayout(
 
    /* We just allocate all the samplers at the end of the struct */
    uint32_t *samplers = (uint32_t *)&set_layout->binding[max_binding + 1];
+   (void) samplers; /* TODO: Use me */
 
    VkDescriptorSetLayoutBinding *bindings =
      create_sorted_bindings(pCreateInfo->pBindings, pCreateInfo->bindingCount);
@@ -402,8 +403,8 @@ tu_CreateDescriptorPool(VkDevice _device,
                         VkDescriptorPool *pDescriptorPool)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_descriptor_pool *pool;
-
+   tu_use_args(device);
+   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -422,6 +423,8 @@ tu_ResetDescriptorPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_pool, pool, descriptorPool);
 
+   tu_use_args(device, pool);
+   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -433,6 +436,8 @@ tu_AllocateDescriptorSets(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_pool, pool, pAllocateInfo->descriptorPool);
 
+   tu_use_args(device, pool);
+   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -445,6 +450,8 @@ tu_FreeDescriptorSets(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_pool, pool, descriptorPool);
 
+   tu_use_args(device, pool);
+   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -492,7 +499,6 @@ tu_CreateDescriptorUpdateTemplate(
      sizeof(struct tu_descriptor_update_template) +
      sizeof(struct tu_descriptor_update_template_entry) * entry_count;
    struct tu_descriptor_update_template *templ;
-   uint32_t i;
 
    templ = vk_alloc2(
      &device->alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -500,6 +506,9 @@ tu_CreateDescriptorUpdateTemplate(
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    *pDescriptorUpdateTemplate = tu_descriptor_update_template_to_handle(templ);
+
+   tu_use_args(set_layout);
+   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -529,6 +538,7 @@ tu_update_descriptor_set_with_template(
 {
    TU_FROM_HANDLE(
      tu_descriptor_update_template, templ, descriptorUpdateTemplate);
+   tu_use_args(templ);
 }
 
 void
