@@ -826,8 +826,10 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	     !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT)))
 		return false;
 
-	if (!radv_is_fast_clear_depth_allowed(clear_value) ||
-	    !(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
+	if (((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+	    !radv_is_fast_clear_depth_allowed(clear_value)) ||
+	    ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+	     !radv_is_fast_clear_stencil_allowed(clear_value)))
 		return false;
 
 	/* GFX8 only supports 32-bit depth surfaces but we can enable TC-compat
@@ -837,12 +839,6 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (cmd_buffer->device->physical_device->rad_info.chip_class == VI &&
 	    iview->image->vk_format == VK_FORMAT_D16_UNORM)
 		return false;
-
-	if (vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) {
-		if (!radv_is_fast_clear_stencil_allowed(clear_value) ||
-		    !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
-			return false;
-	}
 
 	clear_word = radv_get_htile_fast_clear_value(iview->image, clear_value);
 
