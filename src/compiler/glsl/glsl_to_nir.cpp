@@ -94,6 +94,8 @@ private:
 
    nir_deref_instr *evaluate_deref(ir_instruction *ir);
 
+   nir_constant *constant_copy(ir_constant *ir, void *mem_ctx);
+
    /* most recent deref instruction created */
    nir_deref_instr *deref;
 
@@ -196,8 +198,8 @@ nir_visitor::evaluate_deref(ir_instruction *ir)
    return this->deref;
 }
 
-static nir_constant *
-constant_copy(ir_constant *ir, void *mem_ctx)
+nir_constant *
+nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
 {
    if (ir == NULL)
       return NULL;
@@ -215,7 +217,10 @@ constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0].u32[r] = ir->value.u[r];
+         if (supports_ints)
+            ret->values[0].u32[r] = ir->value.u[r];
+         else
+            ret->values[0].f32[r] = ir->value.u[r];
 
       break;
 
@@ -224,7 +229,10 @@ constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0].i32[r] = ir->value.i[r];
+         if (supports_ints)
+            ret->values[0].i32[r] = ir->value.i[r];
+         else
+            ret->values[0].f32[r] = ir->value.i[r];
 
       break;
 
