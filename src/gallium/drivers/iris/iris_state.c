@@ -782,39 +782,22 @@ iris_create_blend_state(struct pipe_context *ctx,
                         const struct pipe_blend_state *state)
 {
    struct iris_blend_state *cso = malloc(sizeof(struct iris_blend_state));
-   uint32_t *blend_state = cso->blend_state;
+   uint32_t *blend_entry = cso->blend_state + GENX(BLEND_STATE_length);
 
    cso->alpha_to_coverage = state->alpha_to_coverage;
 
-   iris_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
-      /* pb.HasWriteableRT is filled in at draw time. */
-      /* pb.AlphaTestEnable is filled in at draw time. */
-      pb.AlphaToCoverageEnable = state->alpha_to_coverage;
-      pb.IndependentAlphaBlendEnable = state->independent_blend_enable;
-
-      pb.ColorBufferBlendEnable = state->rt[0].blend_enable;
-
-      pb.SourceBlendFactor           = state->rt[0].rgb_src_factor;
-      pb.SourceAlphaBlendFactor      = state->rt[0].alpha_src_factor;
-      pb.DestinationBlendFactor      = state->rt[0].rgb_dst_factor;
-      pb.DestinationAlphaBlendFactor = state->rt[0].alpha_dst_factor;
-   }
-
-   iris_pack_state(GENX(BLEND_STATE), blend_state, bs) {
-      bs.AlphaToCoverageEnable = state->alpha_to_coverage;
-      bs.IndependentAlphaBlendEnable = state->independent_blend_enable;
-      bs.AlphaToOneEnable = state->alpha_to_one;
-      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
-      bs.ColorDitherEnable = state->dither;
-      /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
-   }
-
-   blend_state += GENX(BLEND_STATE_length);
+   bool indep_alpha_blend = false;
 
    for (int i = 0; i < BRW_MAX_DRAW_BUFFERS; i++) {
       const struct pipe_rt_blend_state *rt =
          &state->rt[state->independent_blend_enable ? i : 0];
-      iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_state, be) {
+
+      if (rt->rgb_func != rt->alpha_func ||
+          rt->rgb_src_factor != rt->alpha_src_factor ||
+          rt->rgb_dst_factor != rt->alpha_dst_factor)
+         indep_alpha_blend = true;
+
+      iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_entry, be) {
          be.LogicOpEnable = state->logicop_enable;
          be.LogicOpFunction = state->logicop_func;
 
@@ -837,8 +820,32 @@ iris_create_blend_state(struct pipe_context *ctx,
          be.WriteDisableBlue  = !(rt->colormask & PIPE_MASK_B);
          be.WriteDisableAlpha = !(rt->colormask & PIPE_MASK_A);
       }
-      blend_state += GENX(BLEND_STATE_ENTRY_length);
+      blend_entry += GENX(BLEND_STATE_ENTRY_length);
    }
+
+   iris_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
+      /* pb.HasWriteableRT is filled in at draw time. */
+      /* pb.AlphaTestEnable is filled in at draw time. */
+      pb.AlphaToCoverageEnable = state->alpha_to_coverage;
+      pb.IndependentAlphaBlendEnable = indep_alpha_blend;
+
+      pb.ColorBufferBlendEnable = state->rt[0].blend_enable;
+
+      pb.SourceBlendFactor           = state->rt[0].rgb_src_factor;
+      pb.SourceAlphaBlendFactor      = state->rt[0].alpha_src_factor;
+      pb.DestinationBlendFactor      = state->rt[0].rgb_dst_factor;
+      pb.DestinationAlphaBlendFactor = state->rt[0].alpha_dst_factor;
+   }
+
+   iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
+      bs.AlphaToCoverageEnable = state->alpha_to_coverage;
+      bs.IndependentAlphaBlendEnable = indep_alpha_blend;
+      bs.AlphaToOneEnable = state->alpha_to_one;
+      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
+      bs.ColorDitherEnable = state->dither;
+      /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
+   }
+
 
    return cso;
 }
