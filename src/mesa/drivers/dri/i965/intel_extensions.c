@@ -271,6 +271,7 @@ intelInitExtensions(struct gl_context *ctx)
             ctx->Extensions.ARB_ES3_1_compatibility =
                devinfo->gen >= 8 || devinfo->is_haswell;
             ctx->Extensions.NV_compute_shader_derivatives = true;
+            ctx->Extensions.ARB_compute_variable_group_size = true;
          }
 
          if (can_do_predicate_writes(brw->screen)) {
