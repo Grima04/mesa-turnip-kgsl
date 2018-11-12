@@ -457,6 +457,12 @@ struct radv_meta_state {
 
 	VkPipelineLayout                          clear_color_p_layout;
 	VkPipelineLayout                          clear_depth_p_layout;
+
+	/* Optimized compute fast HTILE clear for stencil or depth only. */
+	VkPipeline clear_htile_mask_pipeline;
+	VkPipelineLayout clear_htile_mask_p_layout;
+	VkDescriptorSetLayout clear_htile_mask_ds_layout;
+
 	struct {
 		VkRenderPass render_pass[NUM_META_FS_KEYS][RADV_META_DST_LAYOUT_COUNT];
 
