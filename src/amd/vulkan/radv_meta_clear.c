@@ -821,6 +821,11 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (clear_rect->layerCount != iview->image->info.array_size)
 		return false;
 
+	if (!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT) ||
+	    ((vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+	     !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT)))
+		return false;
+
 	if (!radv_is_fast_clear_depth_allowed(clear_value) ||
 	    !(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
 		return false;
