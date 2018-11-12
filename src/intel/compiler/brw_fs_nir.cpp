@@ -101,11 +101,23 @@ fs_visitor::nir_setup_uniforms()
    uniforms = nir->num_uniforms / 4;
 
    if (stage == MESA_SHADER_COMPUTE) {
-      /* Add a uniform for the thread local id.  It must be the last uniform
-       * on the list.
-       */
+      /* Add uniforms for builtins after regular NIR uniforms. */
       assert(uniforms == prog_data->nr_params);
-      uint32_t *param = brw_stage_prog_data_add_params(prog_data, 1);
+
+      uint32_t *param;
+      if (brw_cs_prog_data(prog_data)->uses_variable_group_size) {
+         param = brw_stage_prog_data_add_params(prog_data, 3);
+         for (unsigned i = 0; i < 3; i++) {
+            param[i] = (BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X + i);
+            group_size[i] = fs_reg(UNIFORM, uniforms++, BRW_REGISTER_TYPE_UD);
+         }
+      }
+
+      /* Subgroup ID must be the last uniform on the list.  This will make
+       * easier later to split between cross thread and per thread
+       * uniforms.
+       */
+      param = brw_stage_prog_data_add_params(prog_data, 1);
       *param = BRW_PARAM_BUILTIN_SUBGROUP_ID;
       subgroup_id = fs_reg(UNIFORM, uniforms++, BRW_REGISTER_TYPE_UD);
    }
@@ -3814,7 +3826,8 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
        * invocations are already executed lock-step.  Instead of an actual
        * barrier just emit a scheduling fence, that will generate no code.
        */
-      if (workgroup_size() <= dispatch_width) {
+      if (!cs_prog_data->uses_variable_group_size &&
+          workgroup_size() <= dispatch_width) {
          bld.exec_all().group(1, 0).emit(FS_OPCODE_SCHEDULING_FENCE);
          break;
       }
@@ -3945,6 +3958,14 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
+      }
+      break;
+   }
+
+   case nir_intrinsic_load_local_group_size: {
+      for (unsigned i = 0; i < 3; i++) {
+         bld.MOV(retype(offset(dest, bld, i), BRW_REGISTER_TYPE_UD),
+            group_size[i]);
       }
       break;
    }
@@ -4337,7 +4358,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        *
        * TODO: Check if applies for many HW threads sharing same Data Port.
        */
-      if (slm_fence && workgroup_size() <= dispatch_width)
+      if (!brw_cs_prog_data(prog_data)->uses_variable_group_size &&
+          slm_fence && workgroup_size() <= dispatch_width)
          slm_fence = false;
 
       /* Prior to Gen11, there's only L3 fence, so emit that instead. */

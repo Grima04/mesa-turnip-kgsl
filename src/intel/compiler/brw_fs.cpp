@@ -1190,6 +1190,8 @@ fs_visitor::import_uniforms(fs_visitor *v)
    this->pull_constant_loc = v->pull_constant_loc;
    this->uniforms = v->uniforms;
    this->subgroup_id = v->subgroup_id;
+   for (unsigned i = 0; i < ARRAY_SIZE(this->group_size); i++)
+      this->group_size[i] = v->group_size[i];
 }
 
 void
@@ -8866,9 +8868,16 @@ static void
 cs_set_simd_size(struct brw_cs_prog_data *cs_prog_data, unsigned size)
 {
    cs_prog_data->simd_size = size;
-   unsigned group_size = cs_prog_data->local_size[0] *
-      cs_prog_data->local_size[1] * cs_prog_data->local_size[2];
-   cs_prog_data->threads = (group_size + size - 1) / size;
+
+   unsigned group_size;
+   if (cs_prog_data->uses_variable_group_size) {
+      group_size = cs_prog_data->max_variable_local_size;
+   } else {
+      group_size = cs_prog_data->local_size[0] *
+                   cs_prog_data->local_size[1] *
+                   cs_prog_data->local_size[2];
+   }
+   cs_prog_data->threads = DIV_ROUND_UP(group_size, size);
 }
 
 static nir_shader *
@@ -8903,13 +8912,20 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    prog_data->base.total_shared = src_shader->info.cs.shared_size;
-   prog_data->local_size[0] = src_shader->info.cs.local_size[0];
-   prog_data->local_size[1] = src_shader->info.cs.local_size[1];
-   prog_data->local_size[2] = src_shader->info.cs.local_size[2];
    prog_data->slm_size = src_shader->num_shared;
-   unsigned local_workgroup_size =
-      src_shader->info.cs.local_size[0] * src_shader->info.cs.local_size[1] *
-      src_shader->info.cs.local_size[2];
+
+   unsigned local_workgroup_size;
+   if (prog_data->uses_variable_group_size) {
+      prog_data->max_variable_local_size =
+         src_shader->info.cs.max_variable_local_size;
+      local_workgroup_size = src_shader->info.cs.max_variable_local_size;
+   } else {
+      prog_data->local_size[0] = src_shader->info.cs.local_size[0];
+      prog_data->local_size[1] = src_shader->info.cs.local_size[1];
+      prog_data->local_size[2] = src_shader->info.cs.local_size[2];
+      local_workgroup_size = src_shader->info.cs.local_size[0] *
+         src_shader->info.cs.local_size[1] * src_shader->info.cs.local_size[2];
+   }
 
    /* Limit max_threads to 64 for the GPGPU_WALKER command */
    const uint32_t max_threads = MIN2(64, compiler->devinfo->max_cs_threads);

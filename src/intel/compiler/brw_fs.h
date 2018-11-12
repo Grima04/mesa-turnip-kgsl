@@ -370,6 +370,7 @@ public:
    int *push_constant_loc;
 
    fs_reg subgroup_id;
+   fs_reg group_size[3];
    fs_reg scratch_base;
    fs_reg frag_depth;
    fs_reg frag_stencil;
