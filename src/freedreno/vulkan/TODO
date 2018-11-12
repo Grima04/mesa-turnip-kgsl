@@ -1,0 +1,3 @@
+- git grep TODO src/freedreno/vulkan
+- a6xx:
+   - Pass 'dEQP-VK.info.*'.
