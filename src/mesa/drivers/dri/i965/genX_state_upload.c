@@ -197,6 +197,37 @@ KSP(UNUSED struct brw_context *brw, uint32_t offset)
         _brw_cmd_pack(cmd)(brw, (void *)_dst, &name),              \
         _dst = NULL)
 
+#if GEN_GEN >= 7
+MAYBE_UNUSED static void
+emit_lrm(struct brw_context *brw, uint32_t reg, struct brw_address addr)
+{
+   brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+      lrm.RegisterAddress  = reg;
+      lrm.MemoryAddress    = addr;
+   }
+}
+#endif
+
+MAYBE_UNUSED static void
+emit_lri(struct brw_context *brw, uint32_t reg, uint32_t imm)
+{
+   brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset   = reg;
+      lri.DataDWord        = imm;
+   }
+}
+
+#if GEN_IS_HASWELL || GEN_GEN >= 8
+MAYBE_UNUSED static void
+emit_lrr(struct brw_context *brw, uint32_t dst, uint32_t src)
+{
+   brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_REG), lrr) {
+      lrr.SourceRegisterAddress        = src;
+      lrr.DestinationRegisterAddress   = dst;
+   }
+}
+#endif
+
 /**
  * Polygon stipple packet
  */
