@@ -87,6 +87,10 @@ tu_physical_device_init(struct tu_physical_device *device,
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
    }
 
+   /* Version 1.3 added MSM_INFO_IOVA. */
+   const int min_version_major = 1;
+   const int min_version_minor = 3;
+
    version = drmGetVersion(fd);
    if (!version) {
       close(fd);
@@ -112,6 +116,19 @@ tu_physical_device_init(struct tu_physical_device *device,
 
       return VK_ERROR_INCOMPATIBLE_DRIVER;
    }
+
+   if (version->version_major != 1 || version->version_minor < 3) {
+      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                         "kernel driver for device %s has version %d.%d, "
+                         "but Vulkan requires version >= %d.%d",
+                         path,
+                         version->version_major, version->version_minor,
+                         min_version_major, min_version_minor);
+      drmFreeVersion(version);
+      close(fd);
+      return result;
+   }
+
    drmFreeVersion(version);
 
    if (instance->debug_flags & TU_DEBUG_STARTUP)
