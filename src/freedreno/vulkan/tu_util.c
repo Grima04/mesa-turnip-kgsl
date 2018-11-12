@@ -33,6 +33,8 @@
 
 #include "util/u_math.h"
 
+/* TODO: Add Android support to tu_log funcs */
+
 /** Log an error message.  */
 void tu_printflike(1, 2) tu_loge(const char *format, ...)
 {
