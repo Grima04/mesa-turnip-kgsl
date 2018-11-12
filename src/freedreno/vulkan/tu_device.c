@@ -81,10 +81,8 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not open device '%s'", path);
-
-      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "failed to open device %s", path);
    }
 
    /* Version 1.3 added MSM_INFO_IOVA. */
@@ -94,14 +92,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    version = drmGetVersion(fd);
    if (!version) {
       close(fd);
-
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not get the kernel driver version for device '%s'",
-                  path);
-
-      return vk_errorf(instance,
-                       VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "failed to get version %s: %m",
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "failed to query kernel driver version for device %s",
                        path);
    }
 
@@ -110,11 +102,8 @@ tu_physical_device_init(struct tu_physical_device *device,
       if (master_fd != -1)
          close(master_fd);
       close(fd);
-
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Device '%s' is not using the msm kernel driver.", path);
-
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "device %s does not use the msm kernel driver", path);
    }
 
    if (version->version_major != 1 || version->version_minor < 3) {
@@ -187,10 +176,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    case 530:
       break;
    default:
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Device '%s' is not supported.", device->name);
-      result = vk_errorf(
-        instance, VK_ERROR_INITIALIZATION_FAILED, "unsupported device");
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "device %s is unsupported", device->name);
       goto fail;
    }
    if (tu_device_get_cache_uuid(device->gpu_id, device->cache_uuid)) {
