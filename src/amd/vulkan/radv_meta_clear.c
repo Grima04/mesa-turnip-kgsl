@@ -769,33 +769,33 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		return false;
 
 	if (!radv_layout_is_htile_compressed(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		goto fail;
+		return false;
 
 	/* don't fast clear 3D */
 	if (iview->image->type == VK_IMAGE_TYPE_3D)
-		goto fail;
+		return false;
 
 	/* all layers are bound */
 	if (iview->base_layer > 0)
-		goto fail;
+		return false;
 	if (iview->image->info.array_size != iview->layer_count)
-		goto fail;
+		return false;
 
 	if (!radv_image_extent_compare(iview->image, &iview->extent))
-		goto fail;
+		return false;
 
 	if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
 	    clear_rect->rect.extent.width != iview->image->info.width ||
 	    clear_rect->rect.extent.height != iview->image->info.height)
-		goto fail;
+		return false;
 
 	if (clear_rect->baseArrayLayer != 0)
-		goto fail;
+		return false;
 	if (clear_rect->layerCount != iview->image->info.array_size)
-		goto fail;
+		return false;
 
 	if ((clear_value.depth != 0.0 && clear_value.depth != 1.0) || !(aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
-		goto fail;
+		return false;
 
 	/* GFX8 only supports 32-bit depth surfaces but we can enable TC-compat
 	 * HTILE for 16-bit surfaces if no Z planes are compressed. Though,
@@ -803,11 +803,11 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	 */
 	if (cmd_buffer->device->physical_device->rad_info.chip_class == VI &&
 	    iview->image->vk_format == VK_FORMAT_D16_UNORM)
-		goto fail;
+		return false;
 
 	if (vk_format_aspects(iview->image->vk_format) & VK_IMAGE_ASPECT_STENCIL_BIT) {
 		if (clear_value.stencil != 0 || !(aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
-			goto fail;
+			return false;
 		clear_word = clear_value.depth ? 0xfffc0000 : 0;
 	} else
 		clear_word = clear_value.depth ? 0xfffffff0 : 0;
@@ -832,8 +832,6 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	return true;
-fail:
-	return false;
 }
 
 VkResult
@@ -1072,47 +1070,47 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 		return false;
 
 	if (!radv_layout_can_fast_clear(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		goto fail;
+		return false;
 
 	/* don't fast clear 3D */
 	if (iview->image->type == VK_IMAGE_TYPE_3D)
-		goto fail;
+		return false;
 
 	/* all layers are bound */
 	if (iview->base_layer > 0)
-		goto fail;
+		return false;
 	if (iview->image->info.array_size != iview->layer_count)
-		goto fail;
+		return false;
 
 	if (iview->image->info.levels > 1)
-		goto fail;
+		return false;
 
 	if (!radv_image_extent_compare(iview->image, &iview->extent))
-		goto fail;
+		return false;
 
 	if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
 	    clear_rect->rect.extent.width != iview->image->info.width ||
 	    clear_rect->rect.extent.height != iview->image->info.height)
-		goto fail;
+		return false;
 
 	if (view_mask && (iview->image->info.array_size >= 32 ||
 	                 (1u << iview->image->info.array_size) - 1u != view_mask))
-		goto fail;
+		return false;
 	if (!view_mask && clear_rect->baseArrayLayer != 0)
-		goto fail;
+		return false;
 	if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
-		goto fail;
+		return false;
 
 	/* RB+ doesn't work with CMASK fast clear on Stoney. */
 	if (!radv_image_has_dcc(iview->image) &&
 	    cmd_buffer->device->physical_device->rad_info.family == CHIP_STONEY)
-		goto fail;
+		return false;
 
 	/* DCC */
 	ret = radv_format_pack_clear_color(iview->vk_format,
 					   clear_color, &clear_value);
 	if (ret == false)
-		goto fail;
+		return false;
 
 	if (pre_flush) {
 		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
@@ -1143,7 +1141,7 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 			 * CB flushes but that shouldn't matter.
 			 */
 			if (!can_avoid_fast_clear_elim)
-				goto fail;
+				return false;
 
 			assert(radv_image_has_cmask(iview->image));
 
@@ -1175,8 +1173,6 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 					 clear_color);
 
 	return true;
-fail:
-	return false;
 }
 
 /**
