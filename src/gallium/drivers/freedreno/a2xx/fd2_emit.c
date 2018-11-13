@@ -339,6 +339,11 @@ fd2_emit_restore(struct fd_context *ctx, struct fd_ringbuffer *ring)
 			A2XX_RB_BC_CONTROL_ENABLE_CRC_UPDATE |
 			A2XX_RB_BC_CONTROL_ACCUM_DATA_FIFO_LIMIT(8) |
 			A2XX_RB_BC_CONTROL_MEM_EXPORT_TIMEOUT_SELECT(3));
+
+		/* not sure why this is required */
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_VIZ_QUERY));
+		OUT_RING(ring, A2XX_PA_SC_VIZ_QUERY_VIZ_QUERY_ID(16));
 	}
 
 	OUT_PKT0(ring, REG_A2XX_TP0_CHICKEN, 1);
