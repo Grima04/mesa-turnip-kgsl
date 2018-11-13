@@ -392,12 +392,18 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
             if (!strb || !strb->surface)
                continue;
 
-            if (!GET_COLORMASK(ctx->Color.ColorMask, colormask_index))
+            unsigned colormask =
+               GET_COLORMASK(ctx->Color.ColorMask, colormask_index);
+
+            if (!colormask)
                continue;
+
+            unsigned surf_colormask =
+               util_format_colormask(util_format_description(strb->surface->format));
 
             if (is_scissor_enabled(ctx, rb) ||
                 is_window_rectangle_enabled(ctx) ||
-                GET_COLORMASK(ctx->Color.ColorMask, colormask_index) != 0xf)
+                ((colormask & surf_colormask) != surf_colormask))
                quad_buffers |= PIPE_CLEAR_COLOR0 << i;
             else
                clear_buffers |= PIPE_CLEAR_COLOR0 << i;
