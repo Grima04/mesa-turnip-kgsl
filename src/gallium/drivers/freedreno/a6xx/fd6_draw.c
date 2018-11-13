@@ -371,6 +371,18 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	fd6_cache_flush(batch, ring);
 }
 
+static bool is_z32(enum pipe_format format)
+{
+	switch (format) {
+	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+	case PIPE_FORMAT_Z32_UNORM:
+	case PIPE_FORMAT_Z32_FLOAT:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static bool
 fd6_clear(struct fd_context *ctx, unsigned buffers,
 		const union pipe_color_union *color, double depth, unsigned stencil)
@@ -398,7 +410,7 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 
 	if (has_depth && (buffers & PIPE_CLEAR_DEPTH)) {
 		struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
-		if (zsbuf->lrz) {
+		if (zsbuf->lrz && !is_z32(pfb->zsbuf->format)) {
 			zsbuf->lrz_valid = true;
 			fd6_clear_lrz(ctx->batch, zsbuf, depth);
 		}
