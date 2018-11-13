@@ -47,6 +47,7 @@
  * the number shouldn't be a commonly-used one. */
 #define SI_BASE_VERTEX_UNKNOWN		INT_MIN
 #define SI_RESTART_INDEX_UNKNOWN	INT_MIN
+#define SI_INSTANCE_COUNT_UNKNOWN	INT_MIN
 #define SI_NUM_SMOOTH_AA_SAMPLES	8
 #define SI_MAX_POINT_SIZE		2048
 #define SI_GS_PER_ES			128
@@ -925,6 +926,7 @@ struct si_context {
 	int			last_index_size;
 	int			last_base_vertex;
 	int			last_start_instance;
+	int			last_instance_count;
 	int			last_drawid;
 	int			last_sh_base_reg;
 	int			last_primitive_restart_en;
@@ -1374,6 +1376,7 @@ static inline void
 si_invalidate_draw_sh_constants(struct si_context *sctx)
 {
 	sctx->last_base_vertex = SI_BASE_VERTEX_UNKNOWN;
+	sctx->last_instance_count = SI_INSTANCE_COUNT_UNKNOWN;
 }
 
 static inline unsigned

@@ -813,10 +813,15 @@ static void si_emit_draw_packets(struct si_context *sctx,
 			radeon_emit(cs, di_src_sel);
 		}
 	} else {
+		unsigned instance_count = info->instance_count;
 		int base_vertex;
 
-		radeon_emit(cs, PKT3(PKT3_NUM_INSTANCES, 0, 0));
-		radeon_emit(cs, info->instance_count);
+		if (sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
+		    sctx->last_instance_count != instance_count) {
+			radeon_emit(cs, PKT3(PKT3_NUM_INSTANCES, 0, 0));
+			radeon_emit(cs, instance_count);
+			sctx->last_instance_count = instance_count;
+		}
 
 		/* Base vertex and start instance. */
 		base_vertex = index_size ? info->index_bias : info->start;
