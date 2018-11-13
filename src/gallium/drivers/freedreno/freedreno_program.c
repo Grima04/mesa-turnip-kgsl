@@ -67,7 +67,7 @@ static const char *blit_vp =
 	"VERT                                        \n"
 	"DCL IN[0]                                   \n"
 	"DCL IN[1]                                   \n"
-	"DCL OUT[0], TEXCOORD[0]                     \n"
+	"DCL OUT[0], GENERIC[0]                      \n"
 	"DCL OUT[1], POSITION                        \n"
 	"  0: MOV OUT[0], IN[0]                      \n"
 	"  0: MOV OUT[1], IN[1]                      \n"
