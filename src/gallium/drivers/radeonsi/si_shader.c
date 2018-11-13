@@ -86,6 +86,8 @@ static void si_build_ps_prolog_function(struct si_shader_context *ctx,
 					union si_shader_part_key *key);
 static void si_build_ps_epilog_function(struct si_shader_context *ctx,
 					union si_shader_part_key *key);
+static void si_fix_resource_usage(struct si_screen *sscreen,
+				  struct si_shader *shader);
 
 /* Ideally pass the sample mask input to the PS epilog as v14, which
  * is its usual location, so that the shader doesn't have to add v_mov.
@@ -5783,6 +5785,8 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	if (r != 0) {
 		FREE(shader);
 		shader = NULL;
+	} else {
+		si_fix_resource_usage(sscreen, shader);
 	}
 	return shader;
 }
