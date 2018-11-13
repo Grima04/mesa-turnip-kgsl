@@ -104,6 +104,7 @@ intelInitExtensions(struct gl_context *ctx)
    ctx->Extensions.EXT_point_parameters = true;
    ctx->Extensions.EXT_provoking_vertex = true;
    ctx->Extensions.EXT_render_snorm = true;
+   ctx->Extensions.EXT_sRGB = true;
    ctx->Extensions.EXT_stencil_two_side = true;
    ctx->Extensions.EXT_texture_array = true;
    ctx->Extensions.EXT_texture_env_dot3 = true;
