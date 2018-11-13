@@ -1405,18 +1405,25 @@ err:
 }
 
 static void
+iris_bo_make_external_locked(struct iris_bo *bo)
+{
+   if (!bo->external) {
+      _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
+      bo->external = true;
+   }
+}
+
+static void
 iris_bo_make_external(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (!bo->external) {
-      mtx_lock(&bufmgr->lock);
-      if (!bo->external) {
-         _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
-         bo->external = true;
-      }
-      mtx_unlock(&bufmgr->lock);
-   }
+   if (bo->external)
+      return;
+
+   mtx_lock(&bufmgr->lock);
+   iris_bo_make_external_locked(bo);
+   mtx_unlock(&bufmgr->lock);
 }
 
 int
@@ -1454,9 +1461,9 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
       if (drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
          return -errno;
 
-      iris_bo_make_external(bo);
       mtx_lock(&bufmgr->lock);
       if (!bo->global_name) {
+         iris_bo_make_external_locked(bo);
          bo->global_name = flink.name;
          _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
       }
