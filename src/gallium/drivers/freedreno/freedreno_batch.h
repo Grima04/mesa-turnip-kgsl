@@ -124,6 +124,7 @@ struct fd_batch {
 		FD_GMEM_LOGICOP_ENABLED      = 0x20,
 	} gmem_reason;
 	unsigned num_draws;   /* number of draws in current batch */
+	unsigned num_vertices;   /* number of vertices in current batch */
 
 	/* Track the maximal bounds of the scissor of all the draws within a
 	 * batch.  Used at the tile rendering step (fd_gmem_render_tiles(),

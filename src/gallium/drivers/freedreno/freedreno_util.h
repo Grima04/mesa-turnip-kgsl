@@ -114,15 +114,19 @@ static inline uint32_t DRAW(enum pc_di_primtype prim_type,
 }
 
 static inline uint32_t DRAW_A20X(enum pc_di_primtype prim_type,
+		enum pc_di_face_cull_sel faceness_cull_select,
 		enum pc_di_src_sel source_select, enum pc_di_index_size index_size,
-		enum pc_di_vis_cull_mode vis_cull_mode,
+		bool pre_fetch_cull_enable,
+		bool grp_cull_enable,
 		uint16_t count)
 {
 	return (prim_type         << 0) |
 			(source_select     << 6) |
+			(faceness_cull_select << 8) |
 			((index_size & 1)  << 11) |
 			((index_size >> 1) << 13) |
-			(vis_cull_mode     << 9) |
+			(pre_fetch_cull_enable << 14) |
+			(grp_cull_enable << 15) |
 			(count         << 16);
 }
 

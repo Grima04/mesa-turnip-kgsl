@@ -77,29 +77,44 @@ emit_vertexbufs(struct fd_context *ctx)
 	fd2_emit_vertex_bufs(ctx->batch->draw, 0x78, bufs, vtx->num_elements);
 }
 
-static bool
-fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
-             unsigned index_offset)
+static void
+draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
+		   struct fd_ringbuffer *ring, unsigned index_offset)
 {
-	struct fd_ringbuffer *ring = ctx->batch->draw;
-
-	if (ctx->dirty & FD_DIRTY_VTXBUF)
-		emit_vertexbufs(ctx);
-
-	fd2_emit_state(ctx, ctx->dirty);
-
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
-	OUT_RING(ring, info->start);
+	OUT_RING(ring, info->index_size ? 0 : info->start);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
-	OUT_RING(ring, 0x0000003b);
+	OUT_RING(ring, is_a20x(ctx->screen) ? 0x00000002 : 0x0000003b);
 
 	OUT_PKT0(ring, REG_A2XX_TC_CNTL_STATUS, 1);
 	OUT_RING(ring, A2XX_TC_CNTL_STATUS_L2_INVALIDATE);
 
-	if (!is_a20x(ctx->screen)) {
+	if (is_a20x(ctx->screen)) {
+		/* wait for DMA to finish and
+		 * dummy draw one triangle with indexes 0,0,0.
+		 * with PRE_FETCH_CULL_ENABLE | GRP_CULL_ENABLE.
+		 *
+		 * this workaround is for a HW bug related to DMA alignment:
+		 * it is necessary for indexed draws and possibly also
+		 * draws that read binning data
+		 */
+		OUT_PKT3(ring, CP_WAIT_REG_EQ, 4);
+		OUT_RING(ring, 0x000005d0); /* RBBM_STATUS */
+		OUT_RING(ring, 0x00000000);
+		OUT_RING(ring, 0x00001000); /* bit: 12: VGT_BUSY_NO_DMA */
+		OUT_RING(ring, 0x00000001);
+
+		OUT_PKT3(ring, CP_DRAW_INDX_BIN, 6);
+		OUT_RING(ring, 0x00000000);
+		OUT_RING(ring, 0x0003c004);
+		OUT_RING(ring, 0x00000000);
+		OUT_RING(ring, 0x00000003);
+		OUT_RELOC(ring, fd_resource(fd2_context(ctx)->solid_vertexbuf)->bo, 0x80, 0, 0);
+		OUT_RING(ring, 0x00000006);
+	} else {
 		OUT_WFI (ring);
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 3);
@@ -111,11 +126,62 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	fd_draw_emit(ctx->batch, ring, ctx->primtypes[info->mode],
 				 IGNORE_VISIBILITY, info, index_offset);
 
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_UNKNOWN_2010));
-	OUT_RING(ring, 0x00000000);
+	if (is_a20x(ctx->screen)) {
+		/* not sure why this is required, but it fixes some hangs */
+		OUT_WFI(ring);
+	} else {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_UNKNOWN_2010));
+		OUT_RING(ring, 0x00000000);
+	}
 
 	emit_cacheflush(ring);
+}
+
+
+static bool
+fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
+			 unsigned index_offset)
+{
+	if (!ctx->prog.fp || !ctx->prog.vp)
+		return false;
+
+	if (ctx->dirty & FD_DIRTY_VTXBUF)
+		emit_vertexbufs(ctx);
+
+	fd2_emit_state(ctx, ctx->dirty);
+
+	/* a2xx can draw only 65535 vertices at once
+	 * on a22x the field in the draw command is 32bits but seems limited too
+	 * using a limit of 32k because it fixes an unexplained hang
+	 * 32766 works for all primitives (multiple of 2 and 3)
+	 */
+	if (pinfo->count > 32766) {
+		static const uint16_t step_tbl[PIPE_PRIM_MAX] = {
+			[0 ... PIPE_PRIM_MAX - 1]  = 32766,
+			[PIPE_PRIM_LINE_STRIP]     = 32765,
+			[PIPE_PRIM_TRIANGLE_STRIP] = 32764,
+
+			/* needs more work */
+			[PIPE_PRIM_TRIANGLE_FAN]   = 0,
+			[PIPE_PRIM_LINE_LOOP]      = 0,
+		};
+
+		struct pipe_draw_info info = *pinfo;
+		unsigned count = info.count;
+		unsigned step = step_tbl[info.mode];
+
+		if (!step)
+			return false;
+
+		for (; count + step > 32766; count -= step) {
+			info.count = MIN2(count, 32766);
+			draw_impl(ctx, &info, ctx->batch->draw, index_offset);
+			info.start += step;
+		}
+	} else {
+		draw_impl(ctx, pinfo, ctx->batch->draw, index_offset);
+	}
 
 	fd_context_all_clean(ctx);
 

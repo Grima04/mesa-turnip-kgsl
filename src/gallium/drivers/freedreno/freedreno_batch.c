@@ -83,6 +83,7 @@ batch_init(struct fd_batch *batch)
 	batch->flushed = false;
 	batch->gmem_reason = 0;
 	batch->num_draws = 0;
+	batch->num_vertices = 0;
 	batch->stage = FD_STAGE_NULL;
 
 	fd_reset_wfi(batch);
