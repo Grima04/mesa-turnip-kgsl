@@ -277,8 +277,7 @@ static void si_fine_fence_set(struct si_context *ctx,
 	} else if (flags & PIPE_FLUSH_BOTTOM_OF_PIPE) {
 		si_cp_release_mem(ctx,
 				  V_028A90_BOTTOM_OF_PIPE_TS, 0,
-				  EOP_DST_SEL_MEM,
-				  EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM,
+				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 				  EOP_DATA_SEL_VALUE_32BIT,
 				  NULL, fence_va, 0x80000000,
 				  PIPE_QUERY_GPU_FINISHED);
