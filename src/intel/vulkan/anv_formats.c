@@ -54,6 +54,7 @@
            .aspect = VK_IMAGE_ASPECT_COLOR_BIT, \
          }, \
       }, \
+      .vk_format = __vk_fmt, \
       .n_planes = 1, \
    }
 
@@ -94,6 +95,7 @@
            .aspect = VK_IMAGE_ASPECT_STENCIL_BIT, \
          }, \
       }, \
+      .vk_format = __vk_fmt, \
       .n_planes = 2, \
    }
 
@@ -102,6 +104,7 @@
       .planes = { \
          { .isl_format = ISL_FORMAT_UNSUPPORTED, }, \
       }, \
+      .vk_format = VK_FORMAT_UNDEFINED, \
    }
 
 #define y_plane(__plane, __hw_fmt, __swizzle, __ycbcr_swizzle, dhs, dvs) \
@@ -127,6 +130,7 @@
       .planes = { \
          __VA_ARGS__, \
       }, \
+      .vk_format = __vk_fmt, \
       .n_planes = __n_planes, \
       .can_ycbcr = true, \
    }

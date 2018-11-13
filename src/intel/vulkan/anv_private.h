@@ -2555,6 +2555,7 @@ struct anv_format_plane {
 
 struct anv_format {
    struct anv_format_plane planes[3];
+   VkFormat vk_format;
    uint8_t n_planes;
    bool can_ycbcr;
 };
