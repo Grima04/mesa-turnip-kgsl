@@ -442,9 +442,6 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
     * use pipe->clear. We want to always use pipe->clear for the other
     * renderbuffers, because it's likely to be faster.
     */
-   if (quad_buffers) {
-      clear_with_quad(ctx, quad_buffers);
-   }
    if (clear_buffers) {
       /* We can't translate the clear color to the colorbuffer format,
        * because different colorbuffers may have different formats.
@@ -452,6 +449,9 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
       st->pipe->clear(st->pipe, clear_buffers,
                       (union pipe_color_union*)&ctx->Color.ClearColor,
                       ctx->Depth.Clear, ctx->Stencil.Clear);
+   }
+   if (quad_buffers) {
+      clear_with_quad(ctx, quad_buffers);
    }
    if (mask & BUFFER_BIT_ACCUM)
       _mesa_clear_accum_buffer(ctx);
