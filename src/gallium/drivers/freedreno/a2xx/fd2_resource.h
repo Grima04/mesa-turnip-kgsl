@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013 Rob Clark <robclark@freedesktop.org>
+ * Copyright (C) 2018 Jonathan Marek <jonathan@marek.ca>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,47 +21,14 @@
  * SOFTWARE.
  *
  * Authors:
- *    Rob Clark <robclark@freedesktop.org>
+ *    Jonathan Marek <jonathan@marek.ca>
  */
 
-#ifndef FD2_TEXTURE_H_
-#define FD2_TEXTURE_H_
+#ifndef FD2_RESOURCE_H_
+#define FD2_RESOURCE_H_
 
-#include "pipe/p_context.h"
-
-#include "freedreno_texture.h"
 #include "freedreno_resource.h"
 
-#include "fd2_context.h"
-#include "fd2_util.h"
+uint32_t fd2_setup_slices(struct fd_resource *rsc);
 
-struct fd2_sampler_stateobj {
-	struct pipe_sampler_state base;
-	uint32_t tex0, tex3, tex4;
-};
-
-static inline struct fd2_sampler_stateobj *
-fd2_sampler_stateobj(struct pipe_sampler_state *samp)
-{
-	return (struct fd2_sampler_stateobj *)samp;
-}
-
-struct fd2_pipe_sampler_view {
-	struct pipe_sampler_view base;
-	uint32_t tex0, tex1, tex2, tex3, tex4, tex5;
-};
-
-static inline struct fd2_pipe_sampler_view *
-fd2_pipe_sampler_view(struct pipe_sampler_view *pview)
-{
-	return (struct fd2_pipe_sampler_view *)pview;
-}
-
-unsigned fd2_get_const_idx(struct fd_context *ctx,
-		struct fd_texture_stateobj *tex, unsigned samp_id);
-
-bool fd2_texture_swap_xy(struct fd_texture_stateobj *tex, unsigned samp_id);
-
-void fd2_texture_init(struct pipe_context *pctx);
-
-#endif /* FD2_TEXTURE_H_ */
+#endif /* FD2_RESOURCE_H_ */

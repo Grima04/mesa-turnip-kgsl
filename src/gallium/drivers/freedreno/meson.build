@@ -77,6 +77,8 @@ files_libfreedreno = files(
   'a2xx/fd2_program.h',
   'a2xx/fd2_rasterizer.c',
   'a2xx/fd2_rasterizer.h',
+  'a2xx/fd2_resource.c',
+  'a2xx/fd2_resource.h',
   'a2xx/fd2_screen.c',
   'a2xx/fd2_screen.h',
   'a2xx/fd2_texture.c',
