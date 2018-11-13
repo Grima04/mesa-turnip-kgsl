@@ -108,6 +108,7 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
+	struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
@@ -170,10 +171,10 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 			A2XX_RB_COPY_DEST_OFFSET_Y(tile->yoff));
 
 	if (batch->resolve & (FD_BUFFER_DEPTH | FD_BUFFER_STENCIL))
-		emit_gmem2mem_surf(batch, tile->bin_w * tile->bin_h, pfb->zsbuf);
+		emit_gmem2mem_surf(batch, gmem->zsbuf_base[0], pfb->zsbuf);
 
 	if (batch->resolve & FD_BUFFER_COLOR)
-		emit_gmem2mem_surf(batch, 0, pfb->cbufs[0]);
+		emit_gmem2mem_surf(batch, gmem->cbuf_base[0], pfb->cbufs[0]);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_MODECONTROL));
@@ -233,6 +234,7 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
+	struct fd_gmem_stateobj *gmem = &ctx->gmem;
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	unsigned bin_w = tile->bin_w;
@@ -331,10 +333,10 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, 0x00000000);
 
 	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_DEPTH | FD_BUFFER_STENCIL))
-		emit_mem2gmem_surf(batch, bin_w * bin_h, pfb->zsbuf);
+		emit_mem2gmem_surf(batch, gmem->zsbuf_base[0], pfb->zsbuf);
 
 	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_COLOR))
-		emit_mem2gmem_surf(batch, 0, pfb->cbufs[0]);
+		emit_mem2gmem_surf(batch, gmem->cbuf_base[0], pfb->cbufs[0]);
 
 	/* TODO blob driver seems to toss in a CACHE_FLUSH after each DRAW_INDX.. */
 }
@@ -357,7 +359,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 	OUT_RING(ring, gmem->bin_w);                 /* RB_SURFACE_INFO */
 	OUT_RING(ring, A2XX_RB_COLOR_INFO_SWAP(fmt2swap(format)) |
 			A2XX_RB_COLOR_INFO_FORMAT(fd2_pipe2color(format)));
-	reg = A2XX_RB_DEPTH_INFO_DEPTH_BASE(align(gmem->bin_w * gmem->bin_h, 4));
+	reg = A2XX_RB_DEPTH_INFO_DEPTH_BASE(gmem->zsbuf_base[0]);
 	if (pfb->zsbuf)
 		reg |= A2XX_RB_DEPTH_INFO_DEPTH_FORMAT(fd_pipe2depth(pfb->zsbuf->format));
 	OUT_RING(ring, reg);                         /* RB_DEPTH_INFO */
