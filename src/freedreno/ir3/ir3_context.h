@@ -27,6 +27,7 @@
 #ifndef IR3_CONTEXT_H_
 #define IR3_CONTEXT_H_
 
+#include "ir3_compiler.h"
 #include "ir3_nir.h"
 #include "ir3.h"
 

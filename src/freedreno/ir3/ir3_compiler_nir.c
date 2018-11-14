@@ -31,6 +31,7 @@
 #include "util/u_math.h"
 
 #include "ir3_compiler.h"
+#include "ir3_image.h"
 #include "ir3_shader.h"
 #include "ir3_nir.h"
 
@@ -1058,111 +1059,13 @@ emit_intrinsic_atomic_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	return atomic;
 }
 
-/* Images get mapped into SSBO/image state (for store/atomic) and texture
- * state block (for load).  To simplify things, invert the image id and
- * map it from end of state block, ie. image 0 becomes num-1, image 1
- * becomes num-2, etc.  This potentially avoids needing to re-emit texture
- * state when switching shaders.
- *
- * TODO is max # of samplers and SSBOs the same.  This shouldn't be hard-
- * coded.  Also, since all the gl shader stages (ie. everything but CS)
- * share the same SSBO/image state block, this might require some more
- * logic if we supported images in anything other than FS..
- */
-static unsigned
-get_image_slot(struct ir3_context *ctx, nir_deref_instr *deref)
-{
-	unsigned int loc = 0;
-	unsigned inner_size = 1;
-
-	while (deref->deref_type != nir_deref_type_var) {
-		assert(deref->deref_type == nir_deref_type_array);
-		nir_const_value *const_index = nir_src_as_const_value(deref->arr.index);
-		assert(const_index);
-
-		/* Go to the next instruction */
-		deref = nir_deref_instr_parent(deref);
-
-		assert(glsl_type_is_array(deref->type));
-		const unsigned array_len = glsl_get_length(deref->type);
-		loc += MIN2(const_index->u32[0], array_len - 1) * inner_size;
-
-		/* Update the inner size */
-		inner_size *= array_len;
-	}
-
-	loc += deref->var->data.driver_location;
-
-	/* TODO figure out real limit per generation, and don't hardcode: */
-	const unsigned max_samplers = 16;
-	return max_samplers - loc - 1;
-}
-
-/* see tex_info() for equiv logic for texture instructions.. it would be
- * nice if this could be better unified..
- */
-static unsigned
-get_image_coords(const nir_variable *var, unsigned *flagsp)
-{
-	const struct glsl_type *type = glsl_without_array(var->type);
-	unsigned coords, flags = 0;
-
-	switch (glsl_get_sampler_dim(type)) {
-	case GLSL_SAMPLER_DIM_1D:
-	case GLSL_SAMPLER_DIM_BUF:
-		coords = 1;
-		break;
-	case GLSL_SAMPLER_DIM_2D:
-	case GLSL_SAMPLER_DIM_RECT:
-	case GLSL_SAMPLER_DIM_EXTERNAL:
-	case GLSL_SAMPLER_DIM_MS:
-		coords = 2;
-		break;
-	case GLSL_SAMPLER_DIM_3D:
-	case GLSL_SAMPLER_DIM_CUBE:
-		flags |= IR3_INSTR_3D;
-		coords = 3;
-		break;
-	default:
-		unreachable("bad sampler dim");
-		return 0;
-	}
-
-	if (glsl_sampler_type_is_array(type)) {
-		/* note: unlike tex_info(), adjust # of coords to include array idx: */
-		coords++;
-		flags |= IR3_INSTR_A;
-	}
-
-	if (flagsp)
-		*flagsp = flags;
-
-	return coords;
-}
-
-static type_t
-get_image_type(const nir_variable *var)
-{
-	switch (glsl_get_sampler_result_type(glsl_without_array(var->type))) {
-	case GLSL_TYPE_UINT:
-		return TYPE_U32;
-	case GLSL_TYPE_INT:
-		return TYPE_S32;
-	case GLSL_TYPE_FLOAT:
-		return TYPE_F32;
-	default:
-		unreachable("bad sampler type.");
-		return 0;
-	}
-}
-
 static struct ir3_instruction *
 get_image_offset(struct ir3_context *ctx, const nir_variable *var,
 		struct ir3_instruction * const *coords, bool byteoff)
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *offset;
-	unsigned ncoords = get_image_coords(var, NULL);
+	unsigned ncoords = ir3_get_image_coords(var, NULL);
 
 	/* to calculate the byte offset (yes, uggg) we need (up to) three
 	 * const values to know the bytes per pixel, and y and z stride:
@@ -1210,9 +1113,9 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction *sam;
 	struct ir3_instruction * const *src0 = ir3_get_src(ctx, &intr->src[1]);
 	struct ir3_instruction *coords[4];
-	unsigned flags, ncoords = get_image_coords(var, &flags);
-	unsigned tex_idx = get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
-	type_t type = get_image_type(var);
+	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
+	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	type_t type = ir3_get_image_type(var);
 
 	/* hmm, this seems a bit odd, but it is what blob does and (at least
 	 * a5xx) just faults on bogus addresses otherwise:
@@ -1237,78 +1140,6 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ir3_split_dest(b, dst, sam, 0, 4);
 }
 
-/* Returns the number of components for the different image formats
- * supported by the GLES 3.1 spec, plus those added by the
- * GL_NV_image_formats extension.
- */
-static unsigned
-get_num_components_for_glformat(GLuint format)
-{
-	switch (format) {
-	case GL_R32F:
-	case GL_R32I:
-	case GL_R32UI:
-	case GL_R16F:
-	case GL_R16I:
-	case GL_R16UI:
-	case GL_R16:
-	case GL_R16_SNORM:
-	case GL_R8I:
-	case GL_R8UI:
-	case GL_R8:
-	case GL_R8_SNORM:
-		return 1;
-
-	case GL_RG32F:
-	case GL_RG32I:
-	case GL_RG32UI:
-	case GL_RG16F:
-	case GL_RG16I:
-	case GL_RG16UI:
-	case GL_RG16:
-	case GL_RG16_SNORM:
-	case GL_RG8I:
-	case GL_RG8UI:
-	case GL_RG8:
-	case GL_RG8_SNORM:
-		return 2;
-
-	case GL_R11F_G11F_B10F:
-		return 3;
-
-	case GL_RGBA32F:
-	case GL_RGBA32I:
-	case GL_RGBA32UI:
-	case GL_RGBA16F:
-	case GL_RGBA16I:
-	case GL_RGBA16UI:
-	case GL_RGBA16:
-	case GL_RGBA16_SNORM:
-	case GL_RGBA8I:
-	case GL_RGBA8UI:
-	case GL_RGBA8:
-	case GL_RGBA8_SNORM:
-	case GL_RGB10_A2UI:
-	case GL_RGB10_A2:
-		return 4;
-
-	case GL_NONE:
-		/* Omitting the image format qualifier is allowed on desktop GL
-		 * profiles. Assuming 4 components is always safe.
-		 */
-		return 4;
-
-	default:
-		/* Return 4 components also for all other formats we don't know
-		 * about. The format should have been validated already by
-		 * the higher level API, but drop a debug message just in case.
-		 */
-		debug_printf("Unhandled GL format %u while emitting imageStore()\n",
-					 format);
-		return 4;
-	}
-}
-
 /* src[] = { deref, coord, sample_index, value }. const_index[] = {} */
 static void
 emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
@@ -1318,9 +1149,9 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *stib, *offset;
 	struct ir3_instruction * const *value = ir3_get_src(ctx, &intr->src[3]);
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
-	unsigned ncoords = get_image_coords(var, NULL);
-	unsigned tex_idx = get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
-	unsigned ncomp = get_num_components_for_glformat(var->data.image.format);
+	unsigned ncoords = ir3_get_image_coords(var, NULL);
+	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned ncomp = ir3_get_num_components_for_glformat(var->data.image.format);
 
 	/* src0 is value
 	 * src1 is coords
@@ -1340,7 +1171,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			offset, 0);
 	stib->cat6.iim_val = ncomp;
 	stib->cat6.d = ncoords;
-	stib->cat6.type = get_image_type(var);
+	stib->cat6.type = ir3_get_image_type(var);
 	stib->cat6.typed = true;
 	stib->barrier_class = IR3_BARRIER_IMAGE_W;
 	stib->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;
@@ -1354,9 +1185,9 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
-	unsigned tex_idx = get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
 	struct ir3_instruction *sam, *lod;
-	unsigned flags, ncoords = get_image_coords(var, &flags);
+	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
 
 	lod = create_immed(b, 0);
 	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
@@ -1419,9 +1250,9 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
 	struct ir3_instruction *atomic, *image, *src0, *src1, *src2;
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
-	unsigned ncoords = get_image_coords(var, NULL);
+	unsigned ncoords = ir3_get_image_coords(var, NULL);
 
-	image = create_immed(b, get_image_slot(ctx, nir_src_as_deref(intr->src[0])));
+	image = create_immed(b, ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0])));
 
 	/* src0 is value (or uvec2(value, compare))
 	 * src1 is coords
@@ -1467,7 +1298,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	atomic->cat6.iim_val = 1;
 	atomic->cat6.d = ncoords;
-	atomic->cat6.type = get_image_type(var);
+	atomic->cat6.type = ir3_get_image_type(var);
 	atomic->cat6.typed = true;
 	atomic->barrier_class = IR3_BARRIER_IMAGE_W;
 	atomic->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;
