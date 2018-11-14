@@ -4601,9 +4601,6 @@ iris_upload_compute_state(struct iris_context *ice,
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
          idd.SamplerStatePointer = shs->sampler_table.offset;
          idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
-         idd.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
-         idd.CrossThreadConstantDataReadLength =
-            cs_prog_data->push.cross_thread.regs;
       }
 
       for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)
