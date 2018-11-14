@@ -646,7 +646,7 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer,
 
 	if (decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.dcc_decompress_pipeline;
-	} else if (radv_image_has_fmask(image)) {
+	} else if (radv_image_has_fmask(image) && !image->tc_compatible_cmask) {
 		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.fmask_decompress_pipeline;
 	} else {
 		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline;
