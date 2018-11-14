@@ -476,7 +476,7 @@ st_framebuffer_create(struct st_context *st,
     * brings GLES on par with desktop GLs EXT_framebuffer_sRGB, in mesa this
     * is also expressed by using the same extension flag
     */
-   if (st->ctx->Extensions.EXT_framebuffer_sRGB) {
+   if (_mesa_has_EXT_framebuffer_sRGB(st->ctx)) {
       struct pipe_screen *screen = st->pipe->screen;
       const enum pipe_format srgb_format =
          util_format_srgb(stfbi->visual->color_format);
