@@ -114,6 +114,7 @@ etna_update_blend(struct etna_context *ctx)
    struct pipe_blend_state *pblend = ctx->blend;
    struct etna_blend_state *blend = etna_blend_state(pblend);
    const struct pipe_rt_blend_state *rt0 = &pblend->rt[0];
+   const struct util_format_description *desc;
    uint32_t colormask;
 
    if (pfb->cbufs[0] &&
@@ -128,11 +129,13 @@ etna_update_blend(struct etna_context *ctx)
    }
 
    /* If the complete render target is written, set full_overwrite:
-    * - The color mask is 1111
-    * - No blending is used
+    * - The color mask covers all channels of the render target
+    * - No blending or logicop is used
     */
-   bool full_overwrite = ((rt0->colormask == 0xf) && blend->fo_allowed) ||
-                         !pfb->cbufs[0];
+   if (pfb->cbufs[0])
+      desc = util_format_description(pfb->cbufs[0]->format);
+   bool full_overwrite = !pfb->cbufs[0] || ((blend->fo_allowed &&
+                         util_format_colormask_full(desc, colormask)));
    blend->PE_COLOR_FORMAT =
             VIVS_PE_COLOR_FORMAT_COMPONENTS(colormask) |
             COND(full_overwrite, VIVS_PE_COLOR_FORMAT_OVERWRITE);
