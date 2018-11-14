@@ -1001,6 +1001,8 @@ void ir3_group(struct ir3 *ir);
 void ir3_sched_add_deps(struct ir3 *ir);
 int ir3_sched(struct ir3 *ir);
 
+void ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so);
+
 /* register assignment: */
 struct ir3_ra_reg_set * ir3_ra_alloc_reg_set(struct ir3_compiler *compiler);
 int ir3_ra(struct ir3 *ir3, gl_shader_stage type,
@@ -1166,6 +1168,23 @@ ir3_##name(struct ir3_block *block,                                      \
 	__ssa_src(instr, a, aflags);                                         \
 	__ssa_src(instr, b, bflags);                                         \
 	__ssa_src(instr, c, cflags);                                         \
+	return instr;                                                        \
+}
+
+#define INSTR3F(f, name)                                                 \
+static inline struct ir3_instruction *                                   \
+ir3_##name##_##f(struct ir3_block *block,                                \
+		struct ir3_instruction *a, unsigned aflags,                      \
+		struct ir3_instruction *b, unsigned bflags,                      \
+		struct ir3_instruction *c, unsigned cflags)                      \
+{                                                                        \
+	struct ir3_instruction *instr =                                      \
+		ir3_instr_create2(block, OPC_##name, 5);                         \
+	ir3_reg_create(instr, 0, 0);   /* dst */                             \
+	__ssa_src(instr, a, aflags);                                         \
+	__ssa_src(instr, b, bflags);                                         \
+	__ssa_src(instr, c, cflags);                                         \
+	instr->flags |= IR3_INSTR_##f;                                       \
 	return instr;                                                        \
 }
 
@@ -1338,7 +1357,20 @@ INSTR2(ATOMIC_MAX)
 INSTR2(ATOMIC_AND)
 INSTR2(ATOMIC_OR)
 INSTR2(ATOMIC_XOR)
-#if GPU >= 400
+#if GPU >= 600
+INSTR3(STIB);
+INSTR3F(G, ATOMIC_ADD)
+INSTR3F(G, ATOMIC_SUB)
+INSTR3F(G, ATOMIC_XCHG)
+INSTR3F(G, ATOMIC_INC)
+INSTR3F(G, ATOMIC_DEC)
+INSTR3F(G, ATOMIC_CMPXCHG)
+INSTR3F(G, ATOMIC_MIN)
+INSTR3F(G, ATOMIC_MAX)
+INSTR3F(G, ATOMIC_AND)
+INSTR3F(G, ATOMIC_OR)
+INSTR3F(G, ATOMIC_XOR)
+#elif GPU >= 400
 INSTR3(LDGB)
 INSTR4(STGB)
 INSTR4(STIB)

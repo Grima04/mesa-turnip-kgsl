@@ -35,6 +35,7 @@ libfreedreno_ir3_files = files(
   'instr-a3xx.h',
   'ir3.c',
   'ir3_a4xx.c',
+  'ir3_a6xx.c',
   'ir3_compiler_nir.c',
   'ir3_compiler.c',
   'ir3_compiler.h',

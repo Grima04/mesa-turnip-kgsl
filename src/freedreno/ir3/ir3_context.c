@@ -53,7 +53,9 @@ ir3_context_init(struct ir3_compiler *compiler,
 		}
 	}
 
-	if (compiler->gpu_id >= 400) {
+	if (compiler->gpu_id >= 600) {
+		ctx->funcs = &ir3_a6xx_funcs;
+	} else if (compiler->gpu_id >= 400) {
 		ctx->funcs = &ir3_a4xx_funcs;
 	}
 

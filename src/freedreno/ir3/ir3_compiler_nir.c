@@ -2612,6 +2612,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
+	if (compiler->gpu_id >= 600) {
+		ir3_a6xx_fixup_atomic_dests(ir, so);
+	}
+
 	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER SCHED:\n");
 		ir3_print(ir);

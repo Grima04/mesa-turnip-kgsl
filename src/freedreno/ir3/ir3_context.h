@@ -138,6 +138,7 @@ struct ir3_context_funcs {
 };
 
 extern const struct ir3_context_funcs ir3_a4xx_funcs;
+extern const struct ir3_context_funcs ir3_a6xx_funcs;
 
 struct ir3_context * ir3_context_init(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *so);
