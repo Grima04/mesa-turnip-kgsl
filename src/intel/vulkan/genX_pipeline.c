@@ -2340,9 +2340,36 @@ genX(graphics_pipeline_create)(
    return pipeline->base.batch.status;
 }
 
+#if GEN_GEN > 12 || GEN_IS_GEN12HP
+
 static void
-emit_media_cs_state(struct anv_compute_pipeline *pipeline,
-                    const struct anv_device *device)
+emit_compute_state(struct anv_compute_pipeline *pipeline,
+                   const struct anv_device *device)
+{
+   const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
+   anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
+
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+   pipeline->cs_right_mask = brw_cs_right_mask(cs_params.group_size, cs_params.simd_size);
+
+   const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
+
+   const struct anv_shader_bin *cs_bin = pipeline->cs;
+   const struct gen_device_info *devinfo = &device->info;
+
+   anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
+      cfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * subslices - 1;
+      /* TODO: Enable gen12-hp scratch support*/
+      assert(get_scratch_space(cs_bin) == 0);
+   }
+}
+
+#else /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
+static void
+emit_compute_state(struct anv_compute_pipeline *pipeline,
+                   const struct anv_device *device)
 {
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
 
@@ -2447,6 +2474,8 @@ emit_media_cs_state(struct anv_compute_pipeline *pipeline,
                                         &desc);
 }
 
+#endif /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
 static VkResult
 compute_pipeline_create(
     VkDevice                                    _device,
@@ -2496,7 +2525,7 @@ compute_pipeline_create(
       return result;
    }
 
-   emit_media_cs_state(pipeline, device);
+   emit_compute_state(pipeline, device);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 
