@@ -60,6 +60,9 @@ etna_context_destroy(struct pipe_context *pctx)
 {
    struct etna_context *ctx = etna_context(pctx);
 
+   if (ctx->dummy_rt)
+      etna_bo_del(ctx->dummy_rt);
+
    if (ctx->primconvert)
       util_primconvert_destroy(ctx->primconvert);
 
@@ -485,6 +488,16 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
    list_inithead(&ctx->active_hw_queries);
+
+   /* create dummy RT buffer, used when rendering with no color buffer */
+   ctx->dummy_rt = etna_bo_new(ctx->screen->dev, 64 * 64 * 4,
+                               DRM_ETNA_GEM_CACHE_WC);
+   if (!ctx->dummy_rt)
+      goto fail;
+
+   ctx->dummy_rt_reloc.bo = ctx->dummy_rt;
+   ctx->dummy_rt_reloc.offset = 0;
+   ctx->dummy_rt_reloc.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
 
    return pctx;
 
