@@ -294,6 +294,14 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "untyped_surface_write";
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       return "untyped_surface_write_logical";
+   case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
+      return "a64_untyped_read_logical";
+   case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
+      return "a64_untyped_write_logical";
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
+      return "a64_byte_scattered_read_logical";
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
+      return "a64_byte_scattered_write_logical";
    case SHADER_OPCODE_TYPED_ATOMIC:
       return "typed_atomic";
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
@@ -1010,6 +1018,8 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
    case SHADER_OPCODE_TYPED_ATOMIC:
@@ -1048,6 +1058,8 @@ backend_instruction::is_volatile() const
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_READ:
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
+   case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_URB_READ_SIMD8:
    case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
    case VEC4_OPCODE_URB_READ:
