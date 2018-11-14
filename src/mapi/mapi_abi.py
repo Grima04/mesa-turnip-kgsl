@@ -184,75 +184,6 @@ def abi_parse_xml(xml):
 
     return entries
 
-def abi_parse_line(line):
-    cols = [col.strip() for col in line.split(',')]
-
-    attrs = {
-            'slot': -1,
-            'hidden': False,
-            'alias': None,
-            'handcode': None,
-    }
-
-    # extract attributes from the first column
-    vals = cols[0].split(':')
-    while len(vals) > 1:
-        val = vals.pop(0)
-        if val.startswith('slot='):
-            attrs['slot'] = int(val[5:])
-        elif val == 'hidden':
-            attrs['hidden'] = True
-        elif val.startswith('alias='):
-            attrs['alias'] = val[6:]
-        elif val.startswith('handcode='):
-            attrs['handcode'] = val[9:]
-        elif not val:
-            pass
-        else:
-            raise Exception('unknown attribute %s' % val)
-    cols[0] = vals[0]
-
-    return (attrs, cols)
-
-def abi_parse(filename):
-    """Parse a CSV file for ABI entries."""
-    fp = open(filename) if filename != '-' else sys.stdin
-    lines = [line.strip() for line in fp.readlines()
-            if not line.startswith('#') and line.strip()]
-
-    entry_dict = {}
-    next_slot = 0
-    for line in lines:
-        attrs, cols = abi_parse_line(line)
-
-        # post-process attributes
-        if attrs['alias']:
-            try:
-                alias = entry_dict[attrs['alias']]
-            except KeyError:
-                raise Exception('failed to alias %s' % attrs['alias'])
-            if alias.alias:
-                raise Exception('recursive alias %s' % ent.name)
-            slot = alias.slot
-            attrs['alias'] = alias
-        else:
-            slot = next_slot
-            next_slot += 1
-
-        if attrs['slot'] < 0:
-            attrs['slot'] = slot
-        elif attrs['slot'] != slot:
-            raise Exception('invalid slot in %s' % (line))
-
-        ent = ABIEntry(cols, attrs)
-        if ent.name in entry_dict:
-            raise Exception('%s is duplicated' % (ent.name))
-        entry_dict[ent.name] = ent
-
-    entries = sorted(entry_dict.values())
-
-    return entries
-
 def abi_sanity_check(entries):
     if not entries:
         return
@@ -715,12 +646,16 @@ typedef int GLclampx;
 def parse_args():
     printers = ['glapi', 'es1api', 'es2api', 'shared-glapi']
 
-    parser = OptionParser(usage='usage: %prog [options] <filename>')
+    parser = OptionParser(usage='usage: %prog [options] <xml_file>')
     parser.add_option('-p', '--printer', dest='printer',
             help='printer to use: %s' % (", ".join(printers)))
 
     options, args = parser.parse_args()
     if not args or options.printer not in printers:
+        parser.print_help()
+        sys.exit(1)
+
+    if not args[0].endswith('.xml'):
         parser.print_help()
         sys.exit(1)
 
@@ -734,10 +669,7 @@ def main():
 
     filename, options = parse_args()
 
-    if filename.endswith('.xml'):
-        entries = abi_parse_xml(filename)
-    else:
-        entries = abi_parse(filename)
+    entries = abi_parse_xml(filename)
     abi_sanity_check(entries)
 
     printer = printers[options.printer](entries)
