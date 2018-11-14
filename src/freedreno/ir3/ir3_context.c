@@ -52,6 +52,10 @@ ir3_context_init(struct ir3_compiler *compiler,
 		}
 	}
 
+	if (compiler->gpu_id >= 400) {
+		ctx->funcs = &ir3_a4xx_funcs;
+	}
+
 	ctx->compiler = compiler;
 	ctx->so = so;
 	ctx->def_ht = _mesa_hash_table_create(ctx,
