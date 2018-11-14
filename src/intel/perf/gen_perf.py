@@ -383,6 +383,7 @@ def output_counter_report(set, counter, current_offset):
     c("counter->name = \"" + counter.get('name') + "\";\n")
     c("counter->desc = \"" + counter.get('description') + "\";\n")
     c("counter->symbol_name = \"" + counter.get('symbol_name') + "\";\n")
+    c("counter->category = \"" + counter.get('mdapi_group') + "\";\n")
     c("counter->type = GEN_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
     c("counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ";\n")
     c("counter->units = GEN_PERF_COUNTER_UNITS_" + output_units(counter.get('units')) + ";\n")

@@ -164,6 +164,7 @@ struct gen_perf_query_counter {
    const char *name;
    const char *desc;
    const char *symbol_name;
+   const char *category;
    enum gen_perf_counter_type type;
    enum gen_perf_counter_data_type data_type;
    enum gen_perf_counter_units units;
