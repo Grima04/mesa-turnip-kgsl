@@ -4321,6 +4321,34 @@ void genX(CmdDispatch)(
    genX(CmdDispatchBase)(commandBuffer, 0, 0, 0, x, y, z);
 }
 
+static inline void
+emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
+                  const struct anv_compute_pipeline *pipeline, bool indirect,
+                  const struct brw_cs_prog_data *prog_data,
+                  uint32_t groupCountX, uint32_t groupCountY,
+                  uint32_t groupCountZ)
+{
+   bool predicate = (GEN_GEN <= 7 && indirect) ||
+      cmd_buffer->state.conditional_render_enabled;
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(GPGPU_WALKER), ggw) {
+      ggw.IndirectParameterEnable      = indirect;
+      ggw.PredicateEnable              = predicate;
+      ggw.SIMDSize                     = cs_params.simd_size / 16;
+      ggw.ThreadDepthCounterMaximum    = 0;
+      ggw.ThreadHeightCounterMaximum   = 0;
+      ggw.ThreadWidthCounterMaximum    = cs_params.threads - 1;
+      ggw.ThreadGroupIDXDimension      = groupCountX;
+      ggw.ThreadGroupIDYDimension      = groupCountY;
+      ggw.ThreadGroupIDZDimension      = groupCountZ;
+      ggw.RightExecutionMask           = pipeline->cs_right_mask;
+      ggw.BottomExecutionMask          = 0xffffffff;
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_STATE_FLUSH), msf);
+}
+
 void genX(CmdDispatchBase)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    baseGroupX,
@@ -4361,22 +4389,8 @@ void genX(CmdDispatchBase)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
-
-   anv_batch_emit(&cmd_buffer->batch, GENX(GPGPU_WALKER), ggw) {
-      ggw.PredicateEnable              = cmd_buffer->state.conditional_render_enabled;
-      ggw.SIMDSize                     = cs_params.simd_size / 16;
-      ggw.ThreadDepthCounterMaximum    = 0;
-      ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = cs_params.threads - 1;
-      ggw.ThreadGroupIDXDimension      = groupCountX;
-      ggw.ThreadGroupIDYDimension      = groupCountY;
-      ggw.ThreadGroupIDZDimension      = groupCountZ;
-      ggw.RightExecutionMask           = pipeline->cs_right_mask;
-      ggw.BottomExecutionMask          = 0xffffffff;
-   }
-
-   anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_STATE_FLUSH), msf);
+   emit_gpgpu_walker(cmd_buffer, pipeline, false, prog_data, groupCountX,
+                     groupCountY, groupCountZ);
 }
 
 #define GPGPU_DISPATCHDIMX 0x2500
@@ -4393,7 +4407,7 @@ void genX(CmdDispatchIndirect)(
    struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
    const struct brw_cs_prog_data *prog_data = get_cs_prog_data(pipeline);
    struct anv_address addr = anv_address_add(buffer->address, offset);
-   struct anv_batch *batch = &cmd_buffer->batch;
+   UNUSED struct anv_batch *batch = &cmd_buffer->batch;
 
    anv_cmd_buffer_push_base_group_id(cmd_buffer, 0, 0, 0);
 
@@ -4477,21 +4491,7 @@ void genX(CmdDispatchIndirect)(
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 #endif
 
-   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
-
-   anv_batch_emit(batch, GENX(GPGPU_WALKER), ggw) {
-      ggw.IndirectParameterEnable      = true;
-      ggw.PredicateEnable              = GEN_GEN <= 7 ||
-                                         cmd_buffer->state.conditional_render_enabled;
-      ggw.SIMDSize                     = cs_params.simd_size / 16;
-      ggw.ThreadDepthCounterMaximum    = 0;
-      ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = cs_params.threads - 1;
-      ggw.RightExecutionMask           = pipeline->cs_right_mask;
-      ggw.BottomExecutionMask          = 0xffffffff;
-   }
-
-   anv_batch_emit(batch, GENX(MEDIA_STATE_FLUSH), msf);
+   emit_gpgpu_walker(cmd_buffer, pipeline, true, prog_data, 0, 0, 0);
 }
 
 static void
