@@ -2142,7 +2142,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
             case GL_UNSIGNED_SHORT:
             case GL_INT:
             case GL_UNSIGNED_INT:
-               return ctx->Extensions.EXT_texture_integer
+               return _mesa_has_integer_textures(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             default:
                return GL_INVALID_ENUM;
@@ -2508,7 +2508,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.EXT_texture_integer) {
+   if (_mesa_has_integer_textures(ctx)) {
       switch (internalFormat) {
       case GL_ALPHA8UI_EXT:
       case GL_ALPHA16UI_EXT:
