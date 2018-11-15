@@ -63,11 +63,13 @@ typedef void (APIENTRY  *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLe
 """.lstrip("\n"))
 
     print(generate_defines(functions))
-    print(generate_table(functions, allFunctions))
-    print(generate_noop_array(functions))
-    print(generate_public_stubs(functions))
+    if target == "gldispatch":
+        print(generate_table(functions, allFunctions))
+        print(generate_noop_array(functions))
+        print(generate_public_stubs(functions))
     print(generate_public_entries(functions))
-    print(generate_public_entries_table(functions))
+    if target == "gldispatch":
+        print(generate_public_entries_table(functions))
     print(generate_undef_public_entries())
     print(generate_stub_asm_gcc(functions))
 
