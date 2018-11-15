@@ -1966,7 +1966,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
                return (ctx->API == API_OPENGLES2)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_INT_5_9_9_9_REV:
-               return ctx->Extensions.EXT_texture_shared_exponent
+               return _mesa_has_texture_shared_exponent(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_INT_10F_11F_11F_REV:
                return _mesa_has_packed_float(ctx)
@@ -2589,7 +2589,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.EXT_texture_shared_exponent) {
+   if (_mesa_has_texture_shared_exponent(ctx)) {
       switch (internalFormat) {
       case GL_RGB9_E5_EXT:
          return GL_RGB;
