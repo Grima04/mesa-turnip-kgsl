@@ -373,6 +373,13 @@ _mesa_has_texture_shared_exponent(const struct gl_context *ctx)
    return _mesa_has_EXT_texture_shared_exponent(ctx) || _mesa_is_gles3(ctx);
 }
 
+static inline bool
+_mesa_has_texture_type_2_10_10_10_REV(const struct gl_context *ctx)
+{
+   return _mesa_is_desktop_gl(ctx) ||
+          _mesa_has_EXT_texture_type_2_10_10_10_REV(ctx);
+}
+
 /**
  * Checks if the context supports geometry shaders.
  */

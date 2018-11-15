@@ -2194,7 +2194,7 @@ _mesa_es_error_check_format_and_type(const struct gl_context *ctx,
                     || type == GL_UNSIGNED_SHORT_5_5_5_1
                     || type == GL_FLOAT
                     || type == GL_HALF_FLOAT_OES
-                    || (ctx->Extensions.EXT_texture_type_2_10_10_10_REV &&
+                    || (_mesa_has_texture_type_2_10_10_10_REV(ctx) &&
                         type == GL_UNSIGNED_INT_2_10_10_10_REV));
       break;
 
@@ -2874,7 +2874,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          case GL_RGBA:
          case GL_RGB10_A2:
          case GL_RGB5_A1:
-            if (!ctx->Extensions.EXT_texture_type_2_10_10_10_REV)
+            if (!_mesa_has_texture_type_2_10_10_10_REV(ctx))
                return GL_INVALID_OPERATION;
             break;
          default:
@@ -3052,7 +3052,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
              * GLES3 doesn't, and GL_OES_required_internalformat extends that
              * to allow the sized RGB internalformats as well.
              */
-            if (!ctx->Extensions.EXT_texture_type_2_10_10_10_REV)
+            if (!_mesa_has_texture_type_2_10_10_10_REV(ctx))
                return GL_INVALID_OPERATION;
             break;
          default:
