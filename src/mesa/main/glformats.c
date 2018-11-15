@@ -2037,7 +2037,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
          }
 
       case GL_YCBCR_MESA:
-         if (!ctx->Extensions.MESA_ycbcr_texture)
+         if (!_mesa_has_MESA_ycbcr_texture(ctx))
             return GL_INVALID_ENUM;
          if (type == GL_UNSIGNED_SHORT_8_8_MESA ||
              type == GL_UNSIGNED_SHORT_8_8_REV_MESA)
@@ -2381,7 +2381,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
         is_astc_3d_format(internalFormat)))
         return GL_RGBA;
 
-   if (ctx->Extensions.MESA_ycbcr_texture) {
+   if (!_mesa_has_MESA_ycbcr_texture(ctx)) {
       if (internalFormat == GL_YCBCR_MESA)
          return GL_YCBCR_MESA;
    }
