@@ -216,6 +216,7 @@ create_copy_instr(const fs_builder &bld, fs_inst *inst, fs_reg src, bool negate)
          src.offset += REG_SIZE;
       }
       for (int i = inst->header_size; i < inst->sources; i++) {
+         src.type = inst->src[i].type;
          payload[i] = src;
          src = offset(src, bld, 1);
       }
