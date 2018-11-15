@@ -295,15 +295,6 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 			/* The maximum size in dwords has been reached,
 			 * try to allocate a new one.
 			 */
-			if (cs->num_old_cs_buffers + 1 >= AMDGPU_CS_MAX_IBS_PER_SUBMIT) {
-				/* TODO: Allow to submit more than 4 IBs. */
-				fprintf(stderr, "amdgpu: Maximum number of IBs "
-						"per submit reached.\n");
-				cs->failed = true;
-				cs->base.cdw = 0;
-				return;
-			}
-
 			cs->old_cs_buffers =
 				realloc(cs->old_cs_buffers,
 				        (cs->num_old_cs_buffers + 1) * sizeof(*cs->old_cs_buffers));
@@ -966,30 +957,46 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 	assert(cs_count);
 
 	for (unsigned i = 0; i < cs_count;) {
-		struct amdgpu_cs_ib_info ibs[AMDGPU_CS_MAX_IBS_PER_SUBMIT] = {0};
-		unsigned number_of_ibs = 1;
-		struct radeon_winsys_bo *bos[AMDGPU_CS_MAX_IBS_PER_SUBMIT] = {0};
+		struct amdgpu_cs_ib_info *ibs;
+		struct radeon_winsys_bo **bos;
 		struct radeon_cmdbuf *preamble_cs = i ? continue_preamble_cs : initial_preamble_cs;
 		struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
+		unsigned number_of_ibs;
 		uint32_t *ptr;
 		unsigned cnt = 0;
 		unsigned size = 0;
 		unsigned pad_words = 0;
 
-		if (cs->num_old_cs_buffers > 0) {
+		/* Compute the number of IBs for this submit. */
+		number_of_ibs = cs->num_old_cs_buffers + 1;
+
+		ibs = malloc(number_of_ibs * sizeof(*ibs));
+		if (!ibs)
+			return -ENOMEM;
+
+		bos = malloc(number_of_ibs * sizeof(*bos));
+		if (!bos) {
+			free(ibs);
+			return -ENOMEM;
+		}
+
+		if (number_of_ibs > 1) {
 			/* Special path when the maximum size in dwords has
 			 * been reached because we need to handle more than one
 			 * IB per submit.
 			 */
-			unsigned new_cs_count = cs->num_old_cs_buffers + 1;
-			struct radeon_cmdbuf *new_cs_array[AMDGPU_CS_MAX_IBS_PER_SUBMIT];
+			struct radeon_cmdbuf **new_cs_array;
 			unsigned idx = 0;
+
+			new_cs_array = malloc(cs->num_old_cs_buffers *
+					      sizeof(*new_cs_array));
+			assert(new_cs_array);
 
 			for (unsigned j = 0; j < cs->num_old_cs_buffers; j++)
 				new_cs_array[idx++] = &cs->old_cs_buffers[j];
 			new_cs_array[idx++] = cs_array[i];
 
-			for (unsigned j = 0; j < new_cs_count; j++) {
+			for (unsigned j = 0; j < number_of_ibs; j++) {
 				struct radeon_cmdbuf *rcs = new_cs_array[j];
 				bool needs_preamble = preamble_cs && j == 0;
 				unsigned size = 0;
@@ -1027,8 +1034,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 				ibs[j].ib_mc_address = radv_buffer_get_va(bos[j]);
 			}
 
-			number_of_ibs = new_cs_count;
 			cnt++;
+			free(new_cs_array);
 		} else {
 			if (preamble_cs)
 				size += preamble_cs->cdw;
@@ -1077,6 +1084,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 		if (r) {
 			fprintf(stderr, "amdgpu: buffer list creation failed "
 					"for the sysmem submission (%d)\n", r);
+			free(ibs);
+			free(bos);
 			return r;
 		}
 
@@ -1105,6 +1114,9 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 		for (unsigned j = 0; j < number_of_ibs; j++) {
 			ws->buffer_destroy(bos[j]);
 		}
+
+		free(ibs);
+		free(bos);
 
 		if (r)
 			return r;
