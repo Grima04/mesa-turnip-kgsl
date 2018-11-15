@@ -1354,8 +1354,7 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
    case GL_RGBA4_S3TC:
       return _mesa_has_S3_s3tc(ctx);
    case GL_COMPRESSED_LUMINANCE_ALPHA_3DC_ATI:
-      return ctx->API == API_OPENGL_COMPAT
-         && ctx->Extensions.ATI_texture_compression_3dc;
+      return _mesa_has_ATI_texture_compression_3dc(ctx);
    case GL_PALETTE4_RGB8_OES:
    case GL_PALETTE4_RGBA8_OES:
    case GL_PALETTE4_R5_G6_B5_OES:
@@ -1381,22 +1380,17 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
             _mesa_has_EXT_texture_compression_s3tc(ctx);
       }
    case MESA_FORMAT_LAYOUT_FXT1:
-      return _mesa_is_desktop_gl(ctx)
-         && ctx->Extensions.TDFX_texture_compression_FXT1;
+      return _mesa_has_3DFX_texture_compression_FXT1(ctx);
    case MESA_FORMAT_LAYOUT_RGTC:
-      return _mesa_is_desktop_gl(ctx)
-         && ctx->Extensions.ARB_texture_compression_rgtc;
+      return _mesa_has_ARB_texture_compression_rgtc(ctx);
    case MESA_FORMAT_LAYOUT_LATC:
-      return ctx->API == API_OPENGL_COMPAT
-         && ctx->Extensions.EXT_texture_compression_latc;
+      return _mesa_has_EXT_texture_compression_latc(ctx);
    case MESA_FORMAT_LAYOUT_ETC1:
-      return _mesa_is_gles(ctx)
-         && ctx->Extensions.OES_compressed_ETC1_RGB8_texture;
+      return _mesa_has_OES_compressed_ETC1_RGB8_texture(ctx);
    case MESA_FORMAT_LAYOUT_ETC2:
       return _mesa_is_gles3(ctx) || ctx->Extensions.ARB_ES3_compatibility;
    case MESA_FORMAT_LAYOUT_BPTC:
-      return _mesa_is_desktop_gl(ctx) &&
-         ctx->Extensions.ARB_texture_compression_bptc;
+      return _mesa_has_ARB_texture_compression_bptc(ctx);
    case MESA_FORMAT_LAYOUT_ASTC:
       return ctx->Extensions.KHR_texture_compression_astc_ldr;
    default:
