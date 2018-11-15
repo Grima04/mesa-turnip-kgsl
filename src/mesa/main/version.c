@@ -522,7 +522,8 @@ compute_version_es2(const struct gl_extensions *extensions,
                          extensions->ARB_uniform_buffer_object &&
                          extensions->EXT_texture_snorm &&
                          extensions->NV_primitive_restart &&
-                         extensions->OES_depth_texture_cube_map);
+                         extensions->OES_depth_texture_cube_map &&
+                         extensions->EXT_texture_type_2_10_10_10_REV);
    const bool es31_compute_shader =
       consts->MaxComputeWorkGroupInvocations >= 128;
    const bool ver_3_1 = (ver_3_0 &&
