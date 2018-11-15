@@ -513,11 +513,11 @@ brw_inst_set_send_ex_desc(const struct gen_device_info *devinfo,
                           brw_inst *inst, uint32_t value)
 {
    assert(devinfo->gen >= 9);
-   brw_inst_set_bits(inst, 94, 91, (value >> 28) & ((1u << 4) - 1));
-   brw_inst_set_bits(inst, 88, 85, (value >> 24) & ((1u << 4) - 1));
-   brw_inst_set_bits(inst, 83, 80, (value >> 20) & ((1u << 4) - 1));
-   brw_inst_set_bits(inst, 67, 64, (value >> 16) & ((1u << 4) - 1));
-   assert((value & ((1u << 16) - 1)) == 0);
+   brw_inst_set_bits(inst, 94, 91, GET_BITS(value, 31, 28));
+   brw_inst_set_bits(inst, 88, 85, GET_BITS(value, 27, 24));
+   brw_inst_set_bits(inst, 83, 80, GET_BITS(value, 23, 20));
+   brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 19, 16));
+   assert(GET_BITS(value, 15, 0) == 0);
 }
 
 /**
