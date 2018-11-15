@@ -1876,7 +1876,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
          return GL_NO_ERROR;
       case GL_RG:
       case GL_RED:
-	 if (_mesa_is_gles3(ctx) || ctx->Extensions.ARB_texture_rg)
+         if (_mesa_has_rg_textures(ctx))
             return GL_NO_ERROR;
       default:
          return GL_INVALID_OPERATION;
@@ -1930,8 +1930,8 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
          }
 
       case GL_RG:
-	 if (!ctx->Extensions.ARB_texture_rg)
-	    return GL_INVALID_ENUM;
+         if (!_mesa_has_rg_textures(ctx))
+            return GL_INVALID_ENUM;
          switch (type) {
             case GL_BYTE:
             case GL_UNSIGNED_BYTE:
@@ -2170,7 +2170,7 @@ _mesa_es_error_check_format_and_type(const struct gl_context *ctx,
    switch (format) {
    case GL_RED:
    case GL_RG:
-      if (ctx->API == API_OPENGLES || !ctx->Extensions.ARB_texture_rg)
+      if (!_mesa_has_rg_textures(ctx))
          return GL_INVALID_VALUE;
       /* fallthrough */
    case GL_ALPHA:
@@ -2543,7 +2543,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.ARB_texture_rg) {
+   if (_mesa_has_rg_textures(ctx)) {
       switch (internalFormat) {
       case GL_R16F:
       case GL_R32F:
@@ -3105,7 +3105,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
       break;
 
    case GL_RG:
-      if (!ctx->Extensions.ARB_texture_rg)
+      if (!_mesa_has_rg_textures(ctx))
          return GL_INVALID_OPERATION;
       switch (type) {
       case GL_UNSIGNED_BYTE:
@@ -3137,7 +3137,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
                   return GL_INVALID_OPERATION;
                break;
             case GL_RG:
-               if (ctx->Extensions.ARB_texture_rg &&
+               if (_mesa_has_rg_textures(ctx) &&
                    ctx->Extensions.OES_texture_half_float)
                   break;
             /* fallthrough */
@@ -3152,7 +3152,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          case GL_RG32F:
             break;
          case GL_RG:
-            if (ctx->Extensions.ARB_texture_rg &&
+            if (_mesa_has_rg_textures(ctx) &&
                 ctx->Extensions.OES_texture_float)
                break;
             /* fallthrough */
@@ -3206,7 +3206,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
       break;
 
    case GL_RED:
-      if (!ctx->Extensions.ARB_texture_rg)
+      if (!_mesa_has_rg_textures(ctx))
          return GL_INVALID_OPERATION;
       switch (type) {
       case GL_UNSIGNED_BYTE:
@@ -3241,7 +3241,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
             break;
          case GL_RG:
          case GL_RED:
-            if (ctx->Extensions.ARB_texture_rg &&
+            if (_mesa_has_rg_textures(ctx) &&
                 ctx->Extensions.OES_texture_half_float)
                break;
             /* fallthrough */
@@ -3256,7 +3256,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          case GL_R32F:
             break;
          case GL_RED:
-            if (ctx->Extensions.ARB_texture_rg &&
+            if (_mesa_has_rg_textures(ctx) &&
                 ctx->Extensions.OES_texture_float)
                break;
             /* fallthrough */
