@@ -420,7 +420,11 @@ brw_get_texture_swizzle(const struct gl_context *ctx,
       }
       break;
    case GL_RED:
+      swizzles[1] = SWIZZLE_ZERO;
+      /* fallthrough */
    case GL_RG:
+      swizzles[2] = SWIZZLE_ZERO;
+      /* fallthrough */
    case GL_RGB:
       if (_mesa_get_format_bits(img->TexFormat, GL_ALPHA_BITS) > 0 ||
           img->TexFormat == MESA_FORMAT_RGB_DXT1 ||
