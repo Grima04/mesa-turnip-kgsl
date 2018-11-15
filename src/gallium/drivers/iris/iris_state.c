@@ -698,6 +698,30 @@ iris_init_compute_context(struct iris_screen *screen,
 
    emit_pipeline_select(batch, GPGPU);
 
+   const bool has_slm = true;
+   const bool wants_dc_cache = true;
+
+   const struct gen_l3_weights w =
+      gen_get_default_l3_weights(devinfo, wants_dc_cache, has_slm);
+   const struct gen_l3_config *cfg = gen_get_l3_config(devinfo, w);
+
+   uint32_t reg_val;
+   iris_pack_state(GENX(L3CNTLREG), &reg_val, reg) {
+      reg.SLMEnable = has_slm;
+#if GEN_GEN == 11
+      /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
+       * in L3CNTLREG register. The default setting of the bit is not the
+       * desirable behavior.
+       */
+      reg.ErrorDetectionBehaviorControl = true;
+#endif
+      reg.URBAllocation = cfg->n[GEN_L3P_URB];
+      reg.ROAllocation = cfg->n[GEN_L3P_RO];
+      reg.DCAllocation = cfg->n[GEN_L3P_DC];
+      reg.AllAllocation = cfg->n[GEN_L3P_ALL];
+   }
+   iris_emit_lri(batch, L3CNTLREG, reg_val);
+
    init_state_base_address(batch);
 
 #if GEN_GEN == 9
