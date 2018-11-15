@@ -1352,8 +1352,7 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
    case GL_RGB4_S3TC:
    case GL_RGBA_S3TC:
    case GL_RGBA4_S3TC:
-      return _mesa_is_desktop_gl(ctx) &&
-         ctx->Extensions.ANGLE_texture_compression_dxt;
+      return _mesa_has_S3_s3tc(ctx);
    case GL_COMPRESSED_LUMINANCE_ALPHA_3DC_ATI:
       return ctx->API == API_OPENGL_COMPAT
          && ctx->Extensions.ATI_texture_compression_3dc;
@@ -1378,9 +1377,8 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
           */
          return ctx->Extensions.ANGLE_texture_compression_dxt;
       } else {
-         return _mesa_is_desktop_gl(ctx)
-            && ctx->Extensions.EXT_texture_sRGB
-            && ctx->Extensions.EXT_texture_compression_s3tc;
+         return _mesa_has_EXT_texture_sRGB(ctx) &&
+            _mesa_has_EXT_texture_compression_s3tc(ctx);
       }
    case MESA_FORMAT_LAYOUT_FXT1:
       return _mesa_is_desktop_gl(ctx)
