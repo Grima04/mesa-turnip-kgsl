@@ -1849,7 +1849,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
       return GL_NO_ERROR;
 
    case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
-      if (!ctx->Extensions.ARB_depth_buffer_float) {
+      if (!_mesa_has_float_depth_buffer(ctx)) {
          return GL_INVALID_ENUM;
       }
       if (format != GL_DEPTH_STENCIL) {
@@ -2048,7 +2048,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
       case GL_DEPTH_STENCIL:
          if (type == GL_UNSIGNED_INT_24_8)
             return GL_NO_ERROR;
-         else if (ctx->Extensions.ARB_depth_buffer_float &&
+         else if (_mesa_has_float_depth_buffer(ctx) &&
              type == GL_FLOAT_32_UNSIGNED_INT_24_8_REV)
             return GL_NO_ERROR;
          else
@@ -2607,7 +2607,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.ARB_depth_buffer_float) {
+   if (_mesa_has_float_depth_buffer(ctx)) {
       switch (internalFormat) {
       case GL_DEPTH_COMPONENT32F:
          return GL_DEPTH_COMPONENT;
