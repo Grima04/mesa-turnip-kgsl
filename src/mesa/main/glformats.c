@@ -2325,7 +2325,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.ARB_ES2_compatibility) {
+   if (_mesa_has_ARB_ES2_compatibility(ctx) || _mesa_is_gles(ctx)) {
       switch (internalFormat) {
       case GL_RGB565:
          return GL_RGB;
