@@ -350,6 +350,38 @@ find_loop_terminators(loop_info_state *state)
    return success;
 }
 
+/* This function looks for an array access within a loop that uses an
+ * induction variable for the array index. If found it returns the size of the
+ * array, otherwise 0 is returned. If we find an induction var we pass it back
+ * to the caller via array_index_out.
+ */
+static unsigned
+find_array_access_via_induction(loop_info_state *state,
+                                nir_deref_instr *deref,
+                                nir_loop_variable **array_index_out)
+{
+   for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
+      if (d->deref_type != nir_deref_type_array)
+         continue;
+
+      assert(d->arr.index.is_ssa);
+      nir_loop_variable *array_index = get_loop_var(d->arr.index.ssa, state);
+
+      if (array_index->type != basic_induction)
+         continue;
+
+      if (array_index_out)
+         *array_index_out = array_index;
+
+      nir_deref_instr *parent = nir_deref_instr_parent(d);
+      assert(glsl_type_is_array_or_matrix(parent->type));
+
+      return glsl_get_length(parent->type);
+   }
+
+   return 0;
+}
+
 static int32_t
 get_iteration(nir_op cond_op, nir_const_value *initial, nir_const_value *step,
               nir_const_value *limit)
@@ -626,20 +658,9 @@ find_trip_count(loop_info_state *state)
 static bool
 force_unroll_array_access(loop_info_state *state, nir_deref_instr *deref)
 {
-   for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
-      if (d->deref_type != nir_deref_type_array)
-         continue;
-
-      assert(d->arr.index.is_ssa);
-      nir_loop_variable *array_index = get_loop_var(d->arr.index.ssa, state);
-
-      if (array_index->type != basic_induction)
-         continue;
-
-      nir_deref_instr *parent = nir_deref_instr_parent(d);
-      assert(glsl_type_is_array(parent->type) ||
-             glsl_type_is_matrix(parent->type));
-      if (glsl_get_length(parent->type) == state->loop->info->max_trip_count)
+   unsigned array_size = find_array_access_via_induction(state, deref, NULL);
+   if (array_size) {
+      if (array_size == state->loop->info->max_trip_count)
          return true;
 
       if (deref->mode & state->indirect_mask)
