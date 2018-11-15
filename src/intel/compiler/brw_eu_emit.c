@@ -96,46 +96,48 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
 
    gen7_convert_mrf_to_grf(p, &dest);
 
-   brw_inst_set_dst_file_type(devinfo, inst, dest.file, dest.type);
-   brw_inst_set_dst_address_mode(devinfo, inst, dest.address_mode);
+   {
+      brw_inst_set_dst_file_type(devinfo, inst, dest.file, dest.type);
+      brw_inst_set_dst_address_mode(devinfo, inst, dest.address_mode);
 
-   if (dest.address_mode == BRW_ADDRESS_DIRECT) {
-      brw_inst_set_dst_da_reg_nr(devinfo, inst, dest.nr);
+      if (dest.address_mode == BRW_ADDRESS_DIRECT) {
+         brw_inst_set_dst_da_reg_nr(devinfo, inst, dest.nr);
 
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-         brw_inst_set_dst_da1_subreg_nr(devinfo, inst, dest.subnr);
-	 if (dest.hstride == BRW_HORIZONTAL_STRIDE_0)
-	    dest.hstride = BRW_HORIZONTAL_STRIDE_1;
-         brw_inst_set_dst_hstride(devinfo, inst, dest.hstride);
-      } else {
-         brw_inst_set_dst_da16_subreg_nr(devinfo, inst, dest.subnr / 16);
-         brw_inst_set_da16_writemask(devinfo, inst, dest.writemask);
-         if (dest.file == BRW_GENERAL_REGISTER_FILE ||
-             dest.file == BRW_MESSAGE_REGISTER_FILE) {
-            assert(dest.writemask != 0);
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            brw_inst_set_dst_da1_subreg_nr(devinfo, inst, dest.subnr);
+            if (dest.hstride == BRW_HORIZONTAL_STRIDE_0)
+               dest.hstride = BRW_HORIZONTAL_STRIDE_1;
+            brw_inst_set_dst_hstride(devinfo, inst, dest.hstride);
+         } else {
+            brw_inst_set_dst_da16_subreg_nr(devinfo, inst, dest.subnr / 16);
+            brw_inst_set_da16_writemask(devinfo, inst, dest.writemask);
+            if (dest.file == BRW_GENERAL_REGISTER_FILE ||
+                dest.file == BRW_MESSAGE_REGISTER_FILE) {
+               assert(dest.writemask != 0);
+            }
+            /* From the Ivybridge PRM, Vol 4, Part 3, Section 5.2.4.1:
+             *    Although Dst.HorzStride is a don't care for Align16, HW needs
+             *    this to be programmed as "01".
+             */
+            brw_inst_set_dst_hstride(devinfo, inst, 1);
          }
-	 /* From the Ivybridge PRM, Vol 4, Part 3, Section 5.2.4.1:
-	  *    Although Dst.HorzStride is a don't care for Align16, HW needs
-	  *    this to be programmed as "01".
-	  */
-         brw_inst_set_dst_hstride(devinfo, inst, 1);
-      }
-   } else {
-      brw_inst_set_dst_ia_subreg_nr(devinfo, inst, dest.subnr);
-
-      /* These are different sizes in align1 vs align16:
-       */
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-         brw_inst_set_dst_ia1_addr_imm(devinfo, inst,
-                                       dest.indirect_offset);
-	 if (dest.hstride == BRW_HORIZONTAL_STRIDE_0)
-	    dest.hstride = BRW_HORIZONTAL_STRIDE_1;
-         brw_inst_set_dst_hstride(devinfo, inst, dest.hstride);
       } else {
-         brw_inst_set_dst_ia16_addr_imm(devinfo, inst,
-                                        dest.indirect_offset);
-	 /* even ignored in da16, still need to set as '01' */
-         brw_inst_set_dst_hstride(devinfo, inst, 1);
+         brw_inst_set_dst_ia_subreg_nr(devinfo, inst, dest.subnr);
+
+         /* These are different sizes in align1 vs align16:
+          */
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            brw_inst_set_dst_ia1_addr_imm(devinfo, inst,
+                                          dest.indirect_offset);
+            if (dest.hstride == BRW_HORIZONTAL_STRIDE_0)
+               dest.hstride = BRW_HORIZONTAL_STRIDE_1;
+            brw_inst_set_dst_hstride(devinfo, inst, dest.hstride);
+         } else {
+            brw_inst_set_dst_ia16_addr_imm(devinfo, inst,
+                                           dest.indirect_offset);
+            /* even ignored in da16, still need to set as '01' */
+            brw_inst_set_dst_hstride(devinfo, inst, 1);
+         }
       }
    }
 
@@ -186,84 +188,86 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
       assert(reg.address_mode == BRW_ADDRESS_DIRECT);
    }
 
-   brw_inst_set_src0_file_type(devinfo, inst, reg.file, reg.type);
-   brw_inst_set_src0_abs(devinfo, inst, reg.abs);
-   brw_inst_set_src0_negate(devinfo, inst, reg.negate);
-   brw_inst_set_src0_address_mode(devinfo, inst, reg.address_mode);
+   {
+      brw_inst_set_src0_file_type(devinfo, inst, reg.file, reg.type);
+      brw_inst_set_src0_abs(devinfo, inst, reg.abs);
+      brw_inst_set_src0_negate(devinfo, inst, reg.negate);
+      brw_inst_set_src0_address_mode(devinfo, inst, reg.address_mode);
 
-   if (reg.file == BRW_IMMEDIATE_VALUE) {
-      if (reg.type == BRW_REGISTER_TYPE_DF ||
-          brw_inst_opcode(devinfo, inst) == BRW_OPCODE_DIM)
-         brw_inst_set_imm_df(devinfo, inst, reg.df);
-      else if (reg.type == BRW_REGISTER_TYPE_UQ ||
-               reg.type == BRW_REGISTER_TYPE_Q)
-         brw_inst_set_imm_uq(devinfo, inst, reg.u64);
-      else
-         brw_inst_set_imm_ud(devinfo, inst, reg.ud);
+      if (reg.file == BRW_IMMEDIATE_VALUE) {
+         if (reg.type == BRW_REGISTER_TYPE_DF ||
+             brw_inst_opcode(devinfo, inst) == BRW_OPCODE_DIM)
+            brw_inst_set_imm_df(devinfo, inst, reg.df);
+         else if (reg.type == BRW_REGISTER_TYPE_UQ ||
+                  reg.type == BRW_REGISTER_TYPE_Q)
+            brw_inst_set_imm_uq(devinfo, inst, reg.u64);
+         else
+            brw_inst_set_imm_ud(devinfo, inst, reg.ud);
 
-      if (type_sz(reg.type) < 8) {
-         brw_inst_set_src1_reg_file(devinfo, inst,
-                                    BRW_ARCHITECTURE_REGISTER_FILE);
-         brw_inst_set_src1_reg_hw_type(devinfo, inst,
-                                       brw_inst_src0_reg_hw_type(devinfo, inst));
-      }
-   } else {
-      if (reg.address_mode == BRW_ADDRESS_DIRECT) {
-         brw_inst_set_src0_da_reg_nr(devinfo, inst, reg.nr);
-         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-             brw_inst_set_src0_da1_subreg_nr(devinfo, inst, reg.subnr);
-	 } else {
-            brw_inst_set_src0_da16_subreg_nr(devinfo, inst, reg.subnr / 16);
-	 }
+         if (type_sz(reg.type) < 8) {
+            brw_inst_set_src1_reg_file(devinfo, inst,
+                                       BRW_ARCHITECTURE_REGISTER_FILE);
+            brw_inst_set_src1_reg_hw_type(devinfo, inst,
+                                          brw_inst_src0_reg_hw_type(devinfo, inst));
+         }
       } else {
-         brw_inst_set_src0_ia_subreg_nr(devinfo, inst, reg.subnr);
-
-         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-            brw_inst_set_src0_ia1_addr_imm(devinfo, inst, reg.indirect_offset);
-	 } else {
-            brw_inst_set_src0_ia16_addr_imm(devinfo, inst, reg.indirect_offset);
-	 }
-      }
-
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-	 if (reg.width == BRW_WIDTH_1 &&
-             brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1) {
-            brw_inst_set_src0_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_0);
-            brw_inst_set_src0_width(devinfo, inst, BRW_WIDTH_1);
-            brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
-	 } else {
-            brw_inst_set_src0_hstride(devinfo, inst, reg.hstride);
-            brw_inst_set_src0_width(devinfo, inst, reg.width);
-            brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
-	 }
-      } else {
-         brw_inst_set_src0_da16_swiz_x(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
-         brw_inst_set_src0_da16_swiz_y(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
-         brw_inst_set_src0_da16_swiz_z(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
-         brw_inst_set_src0_da16_swiz_w(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
-
-         if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
-            /* This is an oddity of the fact we're using the same
-             * descriptions for registers in align_16 as align_1:
-             */
-            brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
-         } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
-                    reg.type == BRW_REGISTER_TYPE_DF &&
-                    reg.vstride == BRW_VERTICAL_STRIDE_2) {
-            /* From SNB PRM:
-             *
-             * "For Align16 access mode, only encodings of 0000 and 0011
-             *  are allowed. Other codes are reserved."
-             *
-             * Presumably the DevSNB behavior applies to IVB as well.
-             */
-            brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+         if (reg.address_mode == BRW_ADDRESS_DIRECT) {
+            brw_inst_set_src0_da_reg_nr(devinfo, inst, reg.nr);
+            if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+                brw_inst_set_src0_da1_subreg_nr(devinfo, inst, reg.subnr);
+            } else {
+               brw_inst_set_src0_da16_subreg_nr(devinfo, inst, reg.subnr / 16);
+            }
          } else {
-            brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
+            brw_inst_set_src0_ia_subreg_nr(devinfo, inst, reg.subnr);
+
+            if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+               brw_inst_set_src0_ia1_addr_imm(devinfo, inst, reg.indirect_offset);
+            } else {
+               brw_inst_set_src0_ia16_addr_imm(devinfo, inst, reg.indirect_offset);
+            }
+         }
+
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            if (reg.width == BRW_WIDTH_1 &&
+                brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1) {
+               brw_inst_set_src0_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_0);
+               brw_inst_set_src0_width(devinfo, inst, BRW_WIDTH_1);
+               brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
+            } else {
+               brw_inst_set_src0_hstride(devinfo, inst, reg.hstride);
+               brw_inst_set_src0_width(devinfo, inst, reg.width);
+               brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
+            }
+         } else {
+            brw_inst_set_src0_da16_swiz_x(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
+            brw_inst_set_src0_da16_swiz_y(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
+            brw_inst_set_src0_da16_swiz_z(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
+            brw_inst_set_src0_da16_swiz_w(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
+
+            if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
+               /* This is an oddity of the fact we're using the same
+                * descriptions for registers in align_16 as align_1:
+                */
+               brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+            } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
+                       reg.type == BRW_REGISTER_TYPE_DF &&
+                       reg.vstride == BRW_VERTICAL_STRIDE_2) {
+               /* From SNB PRM:
+                *
+                * "For Align16 access mode, only encodings of 0000 and 0011
+                *  are allowed. Other codes are reserved."
+                *
+                * Presumably the DevSNB behavior applies to IVB as well.
+                */
+               brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+            } else {
+               brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
+            }
          }
       }
    }
@@ -278,82 +282,84 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
    if (reg.file == BRW_GENERAL_REGISTER_FILE)
       assert(reg.nr < 128);
 
-   /* From the IVB PRM Vol. 4, Pt. 3, Section 3.3.3.5:
-    *
-    *    "Accumulator registers may be accessed explicitly as src0
-    *    operands only."
-    */
-   assert(reg.file != BRW_ARCHITECTURE_REGISTER_FILE ||
-          reg.nr != BRW_ARF_ACCUMULATOR);
-
-   gen7_convert_mrf_to_grf(p, &reg);
-   assert(reg.file != BRW_MESSAGE_REGISTER_FILE);
-
-   brw_inst_set_src1_file_type(devinfo, inst, reg.file, reg.type);
-   brw_inst_set_src1_abs(devinfo, inst, reg.abs);
-   brw_inst_set_src1_negate(devinfo, inst, reg.negate);
-
-   /* Only src1 can be immediate in two-argument instructions.
-    */
-   assert(brw_inst_src0_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE);
-
-   if (reg.file == BRW_IMMEDIATE_VALUE) {
-      /* two-argument instructions can only use 32-bit immediates */
-      assert(type_sz(reg.type) < 8);
-      brw_inst_set_imm_ud(devinfo, inst, reg.ud);
-   } else {
-      /* This is a hardware restriction, which may or may not be lifted
-       * in the future:
+   {
+      /* From the IVB PRM Vol. 4, Pt. 3, Section 3.3.3.5:
+       *
+       *    "Accumulator registers may be accessed explicitly as src0
+       *    operands only."
        */
-      assert (reg.address_mode == BRW_ADDRESS_DIRECT);
-      /* assert (reg.file == BRW_GENERAL_REGISTER_FILE); */
+      assert(reg.file != BRW_ARCHITECTURE_REGISTER_FILE ||
+             reg.nr != BRW_ARF_ACCUMULATOR);
 
-      brw_inst_set_src1_da_reg_nr(devinfo, inst, reg.nr);
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-         brw_inst_set_src1_da1_subreg_nr(devinfo, inst, reg.subnr);
+      gen7_convert_mrf_to_grf(p, &reg);
+      assert(reg.file != BRW_MESSAGE_REGISTER_FILE);
+
+      brw_inst_set_src1_file_type(devinfo, inst, reg.file, reg.type);
+      brw_inst_set_src1_abs(devinfo, inst, reg.abs);
+      brw_inst_set_src1_negate(devinfo, inst, reg.negate);
+
+      /* Only src1 can be immediate in two-argument instructions.
+       */
+      assert(brw_inst_src0_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE);
+
+      if (reg.file == BRW_IMMEDIATE_VALUE) {
+         /* two-argument instructions can only use 32-bit immediates */
+         assert(type_sz(reg.type) < 8);
+         brw_inst_set_imm_ud(devinfo, inst, reg.ud);
       } else {
-         brw_inst_set_src1_da16_subreg_nr(devinfo, inst, reg.subnr / 16);
-      }
+         /* This is a hardware restriction, which may or may not be lifted
+          * in the future:
+          */
+         assert (reg.address_mode == BRW_ADDRESS_DIRECT);
+         /* assert (reg.file == BRW_GENERAL_REGISTER_FILE); */
 
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
-	 if (reg.width == BRW_WIDTH_1 &&
-             brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1) {
-            brw_inst_set_src1_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_0);
-            brw_inst_set_src1_width(devinfo, inst, BRW_WIDTH_1);
-            brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
-	 } else {
-            brw_inst_set_src1_hstride(devinfo, inst, reg.hstride);
-            brw_inst_set_src1_width(devinfo, inst, reg.width);
-            brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
-	 }
-      } else {
-         brw_inst_set_src1_da16_swiz_x(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
-         brw_inst_set_src1_da16_swiz_y(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
-         brw_inst_set_src1_da16_swiz_z(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
-         brw_inst_set_src1_da16_swiz_w(devinfo, inst,
-            BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
-
-         if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
-            /* This is an oddity of the fact we're using the same
-             * descriptions for registers in align_16 as align_1:
-             */
-            brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
-         } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
-                    reg.type == BRW_REGISTER_TYPE_DF &&
-                    reg.vstride == BRW_VERTICAL_STRIDE_2) {
-            /* From SNB PRM:
-             *
-             * "For Align16 access mode, only encodings of 0000 and 0011
-             *  are allowed. Other codes are reserved."
-             *
-             * Presumably the DevSNB behavior applies to IVB as well.
-             */
-            brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+         brw_inst_set_src1_da_reg_nr(devinfo, inst, reg.nr);
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            brw_inst_set_src1_da1_subreg_nr(devinfo, inst, reg.subnr);
          } else {
-            brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
+            brw_inst_set_src1_da16_subreg_nr(devinfo, inst, reg.subnr / 16);
+         }
+
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            if (reg.width == BRW_WIDTH_1 &&
+                brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1) {
+               brw_inst_set_src1_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_0);
+               brw_inst_set_src1_width(devinfo, inst, BRW_WIDTH_1);
+               brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
+            } else {
+               brw_inst_set_src1_hstride(devinfo, inst, reg.hstride);
+               brw_inst_set_src1_width(devinfo, inst, reg.width);
+               brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
+            }
+         } else {
+            brw_inst_set_src1_da16_swiz_x(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_X));
+            brw_inst_set_src1_da16_swiz_y(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Y));
+            brw_inst_set_src1_da16_swiz_z(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_Z));
+            brw_inst_set_src1_da16_swiz_w(devinfo, inst,
+               BRW_GET_SWZ(reg.swizzle, BRW_CHANNEL_W));
+
+            if (reg.vstride == BRW_VERTICAL_STRIDE_8) {
+               /* This is an oddity of the fact we're using the same
+                * descriptions for registers in align_16 as align_1:
+                */
+               brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+            } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
+                       reg.type == BRW_REGISTER_TYPE_DF &&
+                       reg.vstride == BRW_VERTICAL_STRIDE_2) {
+               /* From SNB PRM:
+                *
+                * "For Align16 access mode, only encodings of 0000 and 0011
+                *  are allowed. Other codes are reserved."
+                *
+                * Presumably the DevSNB behavior applies to IVB as well.
+                */
+               brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_4);
+            } else {
+               brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
+            }
          }
       }
    }
