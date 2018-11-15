@@ -361,7 +361,7 @@ _mesa_has_compute_shaders(const struct gl_context *ctx)
 /**
  * Checks if the context supports tessellation.
  */
-static inline GLboolean
+static inline bool
 _mesa_has_tessellation(const struct gl_context *ctx)
 {
    /* _mesa_has_EXT_tessellation_shader(ctx) is redundant with the OES
