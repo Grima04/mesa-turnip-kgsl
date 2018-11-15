@@ -337,6 +337,12 @@ _mesa_is_no_error_enabled(const struct gl_context *ctx)
 }
 
 
+static inline bool
+_mesa_has_integer_textures(const struct gl_context *ctx)
+{
+   return _mesa_has_EXT_texture_integer(ctx) || _mesa_is_gles3(ctx);
+}
+
 /**
  * Checks if the context supports geometry shaders.
  */

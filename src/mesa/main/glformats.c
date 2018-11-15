@@ -2076,8 +2076,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
             case GL_UNSIGNED_SHORT:
             case GL_INT:
             case GL_UNSIGNED_INT:
-               return (ctx->Version >= 30 ||
-                       ctx->Extensions.EXT_texture_integer)
+               return _mesa_has_integer_textures(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             default:
                return GL_INVALID_ENUM;
@@ -2091,8 +2090,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
             case GL_UNSIGNED_SHORT:
             case GL_INT:
             case GL_UNSIGNED_INT:
-               return (ctx->Version >= 30 ||
-                       ctx->Extensions.EXT_texture_integer)
+               return _mesa_has_integer_textures(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_BYTE_3_3_2:
             case GL_UNSIGNED_BYTE_2_3_3_REV:
@@ -2113,8 +2111,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
             case GL_INT:
             case GL_UNSIGNED_INT:
             /* NOTE: no packed formats w/ BGR format */
-               return (ctx->Version >= 30 ||
-                       ctx->Extensions.EXT_texture_integer)
+               return _mesa_has_integer_textures(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             default:
                return GL_INVALID_ENUM;
@@ -2129,8 +2126,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
             case GL_UNSIGNED_SHORT:
             case GL_INT:
             case GL_UNSIGNED_INT:
-               return (ctx->Version >= 30 ||
-                       ctx->Extensions.EXT_texture_integer)
+               return _mesa_has_integer_textures(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_SHORT_4_4_4_4:
             case GL_UNSIGNED_SHORT_4_4_4_4_REV:
@@ -2493,8 +2489,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Version >= 30 ||
-       ctx->Extensions.EXT_texture_integer) {
+   if (_mesa_has_integer_textures(ctx)) {
       switch (internalFormat) {
       case GL_RGBA8UI_EXT:
       case GL_RGBA16UI_EXT:
@@ -2568,9 +2563,9 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       case GL_R16UI:
       case GL_R32I:
       case GL_R32UI:
-	 if (ctx->Version < 30 && !ctx->Extensions.EXT_texture_integer)
-	    break;
-	 /* FALLTHROUGH */
+         if (!_mesa_has_integer_textures(ctx))
+            break;
+         /* FALLTHROUGH */
       case GL_R8:
       case GL_R16:
       case GL_RED:
@@ -2588,9 +2583,9 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       case GL_RG16UI:
       case GL_RG32I:
       case GL_RG32UI:
-	 if (ctx->Version < 30 && !ctx->Extensions.EXT_texture_integer)
-	    break;
-	 /* FALLTHROUGH */
+         if (!_mesa_has_integer_textures(ctx))
+            break;
+         /* FALLTHROUGH */
       case GL_RG:
       case GL_RG8:
       case GL_RG16:
