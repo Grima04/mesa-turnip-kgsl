@@ -488,6 +488,57 @@ find_array_access_via_induction(loop_info_state *state,
    return 0;
 }
 
+static bool
+guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
+                 nir_loop_variable *basic_ind)
+{
+   unsigned min_array_size = 0;
+
+   nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         /* Check for arrays variably-indexed by a loop induction variable. */
+         if (intrin->intrinsic == nir_intrinsic_load_deref ||
+             intrin->intrinsic == nir_intrinsic_store_deref ||
+             intrin->intrinsic == nir_intrinsic_copy_deref) {
+
+            nir_loop_variable *array_idx = NULL;
+            unsigned array_size =
+               find_array_access_via_induction(state,
+                                               nir_src_as_deref(intrin->src[0]),
+                                               &array_idx);
+            if (basic_ind == array_idx &&
+                (min_array_size == 0 || min_array_size > array_size)) {
+               min_array_size = array_size;
+            }
+
+            if (intrin->intrinsic != nir_intrinsic_copy_deref)
+               continue;
+
+            array_size =
+               find_array_access_via_induction(state,
+                                               nir_src_as_deref(intrin->src[1]),
+                                               &array_idx);
+            if (basic_ind == array_idx &&
+                (min_array_size == 0 || min_array_size > array_size)) {
+               min_array_size = array_size;
+            }
+         }
+      }
+   }
+
+   if (min_array_size) {
+      limit_val->i32[0] = min_array_size;
+      return true;
+   }
+
+   return false;
+}
+
 static int32_t
 get_iteration(nir_op cond_op, nir_const_value *initial, nir_const_value *step,
               nir_const_value *limit)
@@ -664,6 +715,7 @@ static void
 find_trip_count(loop_info_state *state)
 {
    bool trip_count_known = true;
+   bool guessed_trip_count = false;
    nir_loop_terminator *limiting_terminator = NULL;
    int max_trip_count = -1;
 
@@ -699,14 +751,31 @@ find_trip_count(loop_info_state *state)
             basic_ind = get_loop_var(alu->src[1].src.ssa, state);
             limit = get_loop_var(alu->src[0].src.ssa, state);
             limit_rhs = false;
+            terminator->induction_rhs = true;
          }
 
-         /* The comparison has to have a basic induction variable
-          * and a constant for us to be able to find trip counts
+         /* The comparison has to have a basic induction variable for us to be
+          * able to find trip counts.
           */
-         if (basic_ind->type != basic_induction || !is_var_constant(limit)) {
+         if (basic_ind->type != basic_induction) {
             trip_count_known = false;
             continue;
+         }
+
+         /* Attempt to find a constant limit for the loop */
+         nir_const_value limit_val;
+         if (is_var_constant(limit)) {
+            limit_val =
+               nir_instr_as_load_const(limit->def->parent_instr)->value;
+         } else {
+            trip_count_known = false;
+
+            /* Guess loop limit based on array access */
+            if (!guess_loop_limit(state, &limit_val, basic_ind)) {
+               continue;
+            }
+
+            guessed_trip_count = true;
          }
 
          /* We have determined that we have the following constants:
@@ -725,9 +794,6 @@ find_trip_count(loop_info_state *state)
             nir_instr_as_load_const(basic_ind->ind->invariant->def->
                                        parent_instr)->value;
 
-         nir_const_value limit_val =
-            nir_instr_as_load_const(limit->def->parent_instr)->value;
-
          int iterations = calculate_iterations(&initial_val, &step_val,
                                                &limit_val,
                                                basic_ind->ind->alu_def, alu,
@@ -737,6 +803,16 @@ find_trip_count(loop_info_state *state)
          /* Where we not able to calculate the iteration count */
          if (iterations == -1) {
             trip_count_known = false;
+            guessed_trip_count = false;
+            continue;
+         }
+
+         if (guessed_trip_count) {
+            guessed_trip_count = false;
+            if (state->loop->info->guessed_trip_count == 0 ||
+                state->loop->info->guessed_trip_count > iterations)
+              state->loop->info->guessed_trip_count = iterations;
+
             continue;
          }
 

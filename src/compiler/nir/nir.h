@@ -1910,6 +1910,7 @@ typedef struct {
 
    /** True when ::break_block is in the else-path of ::nif. */
    bool continue_from_then;
+   bool induction_rhs;
 
    struct list_head loop_terminator_link;
 } nir_loop_terminator;
@@ -1917,6 +1918,9 @@ typedef struct {
 typedef struct {
    /* Estimated cost (in number of instructions) of the loop */
    unsigned instr_cost;
+
+   /* Guessed trip count based on array indexing */
+   unsigned guessed_trip_count;
 
    /* Maximum number of times the loop is run (if known) */
    unsigned max_trip_count;
