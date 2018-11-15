@@ -4517,6 +4517,48 @@ void genX(CmdDispatch)(
    genX(CmdDispatchBase)(commandBuffer, 0, 0, 0, x, y, z);
 }
 
+#if GEN_GEN > 12 || GEN_IS_GEN12HP
+
+static inline void
+emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
+                    const struct anv_compute_pipeline *pipeline, bool indirect,
+                    const struct brw_cs_prog_data *prog_data,
+                    uint32_t groupCountX, uint32_t groupCountY,
+                    uint32_t groupCountZ)
+{
+   const struct anv_shader_bin *cs_bin = pipeline->cs;
+   bool predicate = cmd_buffer->state.conditional_render_enabled;
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(COMPUTE_WALKER), cw) {
+      cw.IndirectParameterEnable        = indirect;
+      cw.PredicateEnable                = predicate;
+      cw.SIMDSize                       = cs_params.simd_size / 16;
+      cw.LocalXMaximum                  = prog_data->local_size[0] - 1;
+      cw.LocalYMaximum                  = prog_data->local_size[1] - 1;
+      cw.LocalZMaximum                  = prog_data->local_size[2] - 1;
+      cw.ThreadGroupIDXDimension        = groupCountX;
+      cw.ThreadGroupIDYDimension        = groupCountY;
+      cw.ThreadGroupIDZDimension        = groupCountZ;
+      cw.ExecutionMask                  = pipeline->cs_right_mask;
+
+      assert(brw_cs_push_const_total_size(prog_data, cs_params.threads) == 0);
+      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA_HP)) {
+         .KernelStartPointer = cs_bin->kernel.offset,
+         .SamplerStatePointer =
+            cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
+         .BindingTablePointer =
+            cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
+         .NumberofThreadsinGPGPUThreadGroup = cs_params.threads,
+         .SharedLocalMemorySize = encode_slm_size(GEN_GEN,
+                                                  prog_data->base.total_shared),
+         .BarrierEnable = prog_data->uses_barrier,
+      };
+   }
+}
+
+#else /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
 static inline void
 emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
                   const struct anv_compute_pipeline *pipeline, bool indirect,
@@ -4543,6 +4585,24 @@ emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
    }
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_STATE_FLUSH), msf);
+}
+
+#endif /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
+static inline void
+emit_cs_walker(struct anv_cmd_buffer *cmd_buffer,
+               const struct anv_compute_pipeline *pipeline, bool indirect,
+               const struct brw_cs_prog_data *prog_data,
+               uint32_t groupCountX, uint32_t groupCountY,
+               uint32_t groupCountZ)
+{
+#if GEN_GEN > 12 || GEN_IS_GEN12HP
+   emit_compute_walker(cmd_buffer, pipeline, indirect, prog_data, groupCountX,
+                       groupCountY, groupCountZ);
+#else
+   emit_gpgpu_walker(cmd_buffer, pipeline, indirect, prog_data, groupCountX,
+                     groupCountY, groupCountZ);
+#endif
 }
 
 void genX(CmdDispatchBase)(
@@ -4585,8 +4645,8 @@ void genX(CmdDispatchBase)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   emit_gpgpu_walker(cmd_buffer, pipeline, false, prog_data, groupCountX,
-                     groupCountY, groupCountZ);
+   emit_cs_walker(cmd_buffer, pipeline, false, prog_data, groupCountX,
+                  groupCountY, groupCountZ);
 }
 
 #define GPGPU_DISPATCHDIMX 0x2500
@@ -4687,7 +4747,7 @@ void genX(CmdDispatchIndirect)(
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 #endif
 
-   emit_gpgpu_walker(cmd_buffer, pipeline, true, prog_data, 0, 0, 0);
+   emit_cs_walker(cmd_buffer, pipeline, true, prog_data, 0, 0, 0);
 }
 
 static void
