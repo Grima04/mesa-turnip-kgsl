@@ -312,6 +312,7 @@ LOCAL_CFLAGS := \
 
 LOCAL_C_INCLUDES := \
 	$(MESA_DRI_C_INCLUDES) \
+	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_glsl,,) \
 	$(MESA_TOP)/include/drm-uapi
 
 LOCAL_SRC_FILES := \
