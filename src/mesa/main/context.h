@@ -355,6 +355,12 @@ _mesa_has_float_depth_buffer(const struct gl_context *ctx)
    return _mesa_has_ARB_depth_buffer_float(ctx) || _mesa_is_gles3(ctx);
 }
 
+static inline bool
+_mesa_has_packed_float(const struct gl_context *ctx)
+{
+   return _mesa_has_EXT_packed_float(ctx) || _mesa_is_gles3(ctx);
+}
+
 /**
  * Checks if the context supports geometry shaders.
  */

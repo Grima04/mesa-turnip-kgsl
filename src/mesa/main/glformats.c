@@ -1858,7 +1858,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
       return GL_NO_ERROR;
 
    case GL_UNSIGNED_INT_10F_11F_11F_REV:
-      if (!ctx->Extensions.EXT_packed_float) {
+      if (!_mesa_has_packed_float(ctx)) {
          return GL_INVALID_ENUM;
       }
       if (format != GL_RGB) {
@@ -1969,7 +1969,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
                return ctx->Extensions.EXT_texture_shared_exponent
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_INT_10F_11F_11F_REV:
-               return ctx->Extensions.EXT_packed_float
+               return _mesa_has_packed_float(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             default:
                return GL_INVALID_ENUM;
@@ -2598,7 +2598,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.EXT_packed_float) {
+   if (_mesa_has_packed_float(ctx)) {
       switch (internalFormat) {
       case GL_R11F_G11F_B10F_EXT:
          return GL_RGB;
