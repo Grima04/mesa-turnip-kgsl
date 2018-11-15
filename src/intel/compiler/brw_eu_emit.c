@@ -96,7 +96,19 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
 
    gen7_convert_mrf_to_grf(p, &dest);
 
-   {
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+      assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
+             dest.file == BRW_ARCHITECTURE_REGISTER_FILE);
+      assert(dest.address_mode == BRW_ADDRESS_DIRECT);
+      assert(dest.subnr % 16 == 0);
+      assert(dest.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+             dest.vstride == dest.width + 1);
+      assert(!dest.negate && !dest.abs);
+      brw_inst_set_dst_da_reg_nr(devinfo, inst, dest.nr);
+      brw_inst_set_dst_da16_subreg_nr(devinfo, inst, dest.subnr / 16);
+      brw_inst_set_send_dst_reg_file(devinfo, inst, dest.file);
+   } else {
       brw_inst_set_dst_file_type(devinfo, inst, dest.file, dest.type);
       brw_inst_set_dst_address_mode(devinfo, inst, dest.address_mode);
 
@@ -177,8 +189,11 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
 
    gen7_convert_mrf_to_grf(p, &reg);
 
-   if (devinfo->gen >= 6 && (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
-                             brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC)) {
+   if (devinfo->gen >= 6 &&
+       (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
+        brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC ||
+        brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+        brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC)) {
       /* Any source modifiers or regions will be ignored, since this just
        * identifies the MRF/GRF to start reading the message contents from.
        * Check for some likely failures.
@@ -188,7 +203,17 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
       assert(reg.address_mode == BRW_ADDRESS_DIRECT);
    }
 
-   {
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+      assert(reg.file == BRW_GENERAL_REGISTER_FILE);
+      assert(reg.address_mode == BRW_ADDRESS_DIRECT);
+      assert(reg.subnr % 16 == 0);
+      assert(reg.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+             reg.vstride == reg.width + 1);
+      assert(!reg.negate && !reg.abs);
+      brw_inst_set_src0_da_reg_nr(devinfo, inst, reg.nr);
+      brw_inst_set_src0_da16_subreg_nr(devinfo, inst, reg.subnr / 16);
+   } else {
       brw_inst_set_src0_file_type(devinfo, inst, reg.file, reg.type);
       brw_inst_set_src0_abs(devinfo, inst, reg.abs);
       brw_inst_set_src0_negate(devinfo, inst, reg.negate);
@@ -282,7 +307,18 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
    if (reg.file == BRW_GENERAL_REGISTER_FILE)
       assert(reg.nr < 128);
 
-   {
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+      assert(reg.file == BRW_GENERAL_REGISTER_FILE ||
+             reg.file == BRW_ARCHITECTURE_REGISTER_FILE);
+      assert(reg.address_mode == BRW_ADDRESS_DIRECT);
+      assert(reg.subnr == 0);
+      assert(reg.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+             reg.vstride == reg.width + 1);
+      assert(!reg.negate && !reg.abs);
+      brw_inst_set_send_src1_reg_nr(devinfo, inst, reg.nr);
+      brw_inst_set_send_src1_reg_file(devinfo, inst, reg.file);
+   } else {
       /* From the IVB PRM Vol. 4, Pt. 3, Section 3.3.3.5:
        *
        *    "Accumulator registers may be accessed explicitly as src0
@@ -2481,6 +2517,101 @@ brw_send_indirect_message(struct brw_codegen *p,
 
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
+   brw_inst_set_sfid(devinfo, send, sfid);
+}
+
+void
+brw_send_indirect_split_message(struct brw_codegen *p,
+                                unsigned sfid,
+                                struct brw_reg dst,
+                                struct brw_reg payload0,
+                                struct brw_reg payload1,
+                                struct brw_reg desc,
+                                unsigned desc_imm,
+                                struct brw_reg ex_desc,
+                                unsigned ex_desc_imm)
+{
+   const struct gen_device_info *devinfo = p->devinfo;
+   struct brw_inst *send;
+
+   dst = retype(dst, BRW_REGISTER_TYPE_UW);
+
+   assert(desc.type == BRW_REGISTER_TYPE_UD);
+
+   if (desc.file == BRW_IMMEDIATE_VALUE) {
+      desc.ud |= desc_imm;
+   } else {
+      struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
+
+      brw_push_insn_state(p);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_exec_size(p, BRW_EXECUTE_1);
+      brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+
+      /* Load the indirect descriptor to an address register using OR so the
+       * caller can specify additional descriptor bits with the desc_imm
+       * immediate.
+       */
+      brw_OR(p, addr, desc, brw_imm_ud(desc_imm));
+
+      brw_pop_insn_state(p);
+      desc = addr;
+   }
+
+   if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
+      ex_desc.ud |= ex_desc_imm;
+   } else {
+      struct brw_reg addr = retype(brw_address_reg(2), BRW_REGISTER_TYPE_UD);
+
+      brw_push_insn_state(p);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_exec_size(p, BRW_EXECUTE_1);
+      brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+
+      /* Load the indirect extended descriptor to an address register using OR
+       * so the caller can specify additional descriptor bits with the
+       * desc_imm immediate.
+       *
+       * Even though the instruction dispatcher always pulls the SFID from the
+       * instruction itself, the extended descriptor sent to the actual unit
+       * gets the SFID from the extended descriptor which comes from the
+       * address register.  If we don't OR it in, the external unit gets
+       * confused and hangs the GPU.
+       */
+      brw_OR(p, addr, ex_desc, brw_imm_ud(ex_desc_imm | sfid));
+
+      brw_pop_insn_state(p);
+      ex_desc = addr;
+   }
+
+   send = next_insn(p, BRW_OPCODE_SENDS);
+   brw_set_dest(p, send, dst);
+   brw_set_src0(p, send, retype(payload0, BRW_REGISTER_TYPE_UD));
+   brw_set_src1(p, send, retype(payload1, BRW_REGISTER_TYPE_UD));
+
+   if (desc.file == BRW_IMMEDIATE_VALUE) {
+      brw_inst_set_send_sel_reg32_desc(devinfo, send, 0);
+      brw_inst_set_send_desc(devinfo, send, desc.ud);
+   } else {
+      assert(desc.file == BRW_ARCHITECTURE_REGISTER_FILE);
+      assert(desc.nr == BRW_ARF_ADDRESS);
+      assert(desc.subnr == 0);
+      brw_inst_set_send_sel_reg32_desc(devinfo, send, 1);
+   }
+
+   if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
+      brw_inst_set_send_sel_reg32_ex_desc(devinfo, send, 0);
+      brw_inst_set_send_ex_desc(devinfo, send, ex_desc.ud);
+   } else {
+      assert(ex_desc.file == BRW_ARCHITECTURE_REGISTER_FILE);
+      assert(ex_desc.nr == BRW_ARF_ADDRESS);
+      assert((ex_desc.subnr & 0x3) == 0);
+      brw_inst_set_send_sel_reg32_ex_desc(devinfo, send, 1);
+      brw_inst_set_send_ex_desc_ia_subreg_nr(devinfo, send, ex_desc.subnr >> 2);
+   }
+
    brw_inst_set_sfid(devinfo, send, sfid);
 }
 

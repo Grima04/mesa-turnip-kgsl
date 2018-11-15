@@ -102,6 +102,18 @@ inst_is_send(const struct gen_device_info *devinfo, const brw_inst *inst)
    }
 }
 
+static bool
+inst_is_split_send(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   switch (brw_inst_opcode(devinfo, inst)) {
+   case BRW_OPCODE_SENDS:
+   case BRW_OPCODE_SENDSC:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static unsigned
 signed_type(unsigned type)
 {
@@ -248,6 +260,12 @@ sources_not_null(const struct gen_device_info *devinfo,
    if (num_sources == 3)
       return (struct string){};
 
+   /* Nothing to test.  Split sends can only encode a file in sources that are
+    * allowed to be NULL.
+    */
+   if (inst_is_split_send(devinfo, inst))
+      return (struct string){};
+
    if (num_sources >= 1)
       ERROR_IF(src0_is_null(devinfo, inst), "src0 is null");
 
@@ -263,8 +281,41 @@ send_restrictions(const struct gen_device_info *devinfo,
 {
    struct string error_msg = { .str = NULL, .len = 0 };
 
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC) {
+   if (inst_is_split_send(devinfo, inst)) {
+      ERROR_IF(brw_inst_send_src1_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
+               brw_inst_send_src1_reg_nr(devinfo, inst) != BRW_ARF_NULL,
+               "src1 of split send must be a GRF or NULL");
+
+      ERROR_IF(brw_inst_eot(devinfo, inst) &&
+               brw_inst_src0_da_reg_nr(devinfo, inst) < 112,
+               "send with EOT must use g112-g127");
+      ERROR_IF(brw_inst_eot(devinfo, inst) &&
+               brw_inst_send_src1_reg_file(devinfo, inst) == BRW_GENERAL_REGISTER_FILE &&
+               brw_inst_send_src1_reg_nr(devinfo, inst) < 112,
+               "send with EOT must use g112-g127");
+
+      if (brw_inst_send_src1_reg_file(devinfo, inst) == BRW_GENERAL_REGISTER_FILE) {
+         /* Assume minimums if we don't know */
+         unsigned mlen = 1;
+         if (!brw_inst_send_sel_reg32_desc(devinfo, inst)) {
+            const uint32_t desc = brw_inst_send_desc(devinfo, inst);
+            mlen = brw_message_desc_mlen(devinfo, desc);
+         }
+
+         unsigned ex_mlen = 1;
+         if (!brw_inst_send_sel_reg32_ex_desc(devinfo, inst)) {
+            const uint32_t ex_desc = brw_inst_send_ex_desc(devinfo, inst);
+            ex_mlen = brw_message_ex_desc_ex_mlen(devinfo, ex_desc);
+         }
+         const unsigned src0_reg_nr = brw_inst_src0_da_reg_nr(devinfo, inst);
+         const unsigned src1_reg_nr = brw_inst_send_src1_reg_nr(devinfo, inst);
+         ERROR_IF((src0_reg_nr <= src1_reg_nr &&
+                   src1_reg_nr < src0_reg_nr + mlen) ||
+                  (src1_reg_nr <= src0_reg_nr &&
+                   src0_reg_nr < src1_reg_nr + ex_mlen),
+                   "split send payloads must not overlap");
+      }
+   } else if (inst_is_send(devinfo, inst)) {
       ERROR_IF(brw_inst_src0_address_mode(devinfo, inst) != BRW_ADDRESS_DIRECT,
                "send must use direct addressing");
 
@@ -532,6 +583,12 @@ general_restrictions_on_region_parameters(const struct gen_device_info *devinfo,
    struct string error_msg = { .str = NULL, .len = 0 };
 
    if (num_sources == 3)
+      return (struct string){};
+
+   /* Split sends don't have the bits in the instruction to encode regions so
+    * there's nothing to check.
+    */
+   if (inst_is_split_send(devinfo, inst))
       return (struct string){};
 
    if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_16) {
@@ -1122,6 +1179,10 @@ special_requirements_for_handling_double_precision_data_types(
    struct string error_msg = { .str = NULL, .len = 0 };
 
    if (num_sources == 3 || num_sources == 0)
+      return (struct string){};
+
+   /* Split sends don't have types so there's no doubles there. */
+   if (inst_is_split_send(devinfo, inst))
       return (struct string){};
 
    enum brw_reg_type exec_type = execution_type(devinfo, inst);
