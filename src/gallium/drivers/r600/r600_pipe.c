@@ -105,6 +105,12 @@ static void r600_destroy_context(struct pipe_context *context)
 	}
 	util_unreference_framebuffer_state(&rctx->framebuffer.state);
 
+	if (rctx->gs_rings.gsvs_ring.buffer)
+		pipe_resource_reference(&rctx->gs_rings.gsvs_ring.buffer, NULL);
+
+	if (rctx->gs_rings.esgs_ring.buffer)
+		pipe_resource_reference(&rctx->gs_rings.esgs_ring.buffer, NULL);
+
 	for (sh = 0; sh < PIPE_SHADER_TYPES; ++sh)
 		for (i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; ++i)
 			rctx->b.b.set_constant_buffer(context, sh, i, NULL);
