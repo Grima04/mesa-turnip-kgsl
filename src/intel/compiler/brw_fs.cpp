@@ -5241,19 +5241,30 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                sample_mask);
    }
 
-   /* Add two because the address is 64-bit */
-   const unsigned dwords = 2 + src_comps;
-   const unsigned mlen = dwords * (inst->exec_size / 8);
+   fs_reg payload, payload2;
+   unsigned mlen, ex_mlen = 0;
+   if (devinfo->gen >= 9) {
+      /* On Skylake and above, we have SENDS */
+      mlen = 2 * (inst->exec_size / 8);
+      ex_mlen = src_comps * (inst->exec_size / 8);
+      payload = retype(bld.move_to_vgrf(addr, 1), BRW_REGISTER_TYPE_UD);
+      payload2 = retype(bld.move_to_vgrf(src, src_comps),
+                        BRW_REGISTER_TYPE_UD);
+   } else {
+      /* Add two because the address is 64-bit */
+      const unsigned dwords = 2 + src_comps;
+      mlen = dwords * (inst->exec_size / 8);
 
-   fs_reg sources[5];
+      fs_reg sources[5];
 
-   sources[0] = addr;
+      sources[0] = addr;
 
-   for (unsigned i = 0; i < src_comps; i++)
-      sources[1 + i] = offset(src, bld, i);
+      for (unsigned i = 0; i < src_comps; i++)
+         sources[1 + i] = offset(src, bld, i);
 
-   const fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, dwords);
-   bld.LOAD_PAYLOAD(payload, sources, 1 + src_comps, 0);
+      payload = bld.vgrf(BRW_REGISTER_TYPE_UD, dwords);
+      bld.LOAD_PAYLOAD(payload, sources, 1 + src_comps, 0);
+   }
 
    uint32_t desc;
    switch (inst->opcode) {
@@ -5288,6 +5299,7 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;
    inst->mlen = mlen;
+   inst->ex_mlen = ex_mlen;
    inst->header_size = 0;
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
@@ -5295,10 +5307,11 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Set up SFID and descriptors */
    inst->sfid = HSW_SFID_DATAPORT_DATA_CACHE_1;
    inst->desc = desc;
-   inst->resize_sources(3);
+   inst->resize_sources(4);
    inst->src[0] = brw_imm_ud(0); /* desc */
    inst->src[1] = brw_imm_ud(0); /* ex_desc */
    inst->src[2] = payload;
+   inst->src[3] = payload2;
 }
 
 static void
