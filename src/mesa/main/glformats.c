@@ -2895,7 +2895,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
                return GL_INVALID_OPERATION;
             break;
          case GL_RGBA:
-            if (ctx->Extensions.OES_texture_float && internalFormat == format)
+            if (_mesa_has_OES_texture_float(ctx) && internalFormat == format)
                break;
          default:
             return GL_INVALID_OPERATION;
@@ -2903,7 +2903,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          break;
 
       case GL_HALF_FLOAT_OES:
-         if (ctx->Extensions.OES_texture_half_float && internalFormat == format)
+         if (_mesa_has_OES_texture_half_float(ctx) && internalFormat == format)
             break;
       default:
          return GL_INVALID_OPERATION;
@@ -3030,7 +3030,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
                return GL_INVALID_OPERATION;
             break;
          case GL_RGB:
-            if (ctx->Extensions.OES_texture_float && internalFormat == format)
+            if (_mesa_has_OES_texture_float(ctx) && internalFormat == format)
                break;
          default:
             return GL_INVALID_OPERATION;
@@ -3038,7 +3038,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          break;
 
       case GL_HALF_FLOAT_OES:
-         if (!ctx->Extensions.OES_texture_half_float || internalFormat != format)
+         if (!_mesa_has_OES_texture_half_float(ctx) || internalFormat != format)
             return GL_INVALID_OPERATION;
          break;
 
@@ -3138,7 +3138,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
                break;
             case GL_RG:
                if (_mesa_has_rg_textures(ctx) &&
-                   ctx->Extensions.OES_texture_half_float)
+                   _mesa_has_OES_texture_half_float(ctx))
                   break;
             /* fallthrough */
             default:
@@ -3153,7 +3153,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
             break;
          case GL_RG:
             if (_mesa_has_rg_textures(ctx) &&
-                ctx->Extensions.OES_texture_float)
+                _mesa_has_OES_texture_float(ctx))
                break;
             /* fallthrough */
          default:
@@ -3242,7 +3242,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          case GL_RG:
          case GL_RED:
             if (_mesa_has_rg_textures(ctx) &&
-                ctx->Extensions.OES_texture_half_float)
+                _mesa_has_OES_texture_half_float(ctx))
                break;
             /* fallthrough */
          default:
@@ -3257,7 +3257,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
             break;
          case GL_RED:
             if (_mesa_has_rg_textures(ctx) &&
-                ctx->Extensions.OES_texture_float)
+                _mesa_has_OES_texture_float(ctx))
                break;
             /* fallthrough */
          default:
@@ -3369,11 +3369,11 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
    case GL_LUMINANCE_ALPHA:
       switch (type) {
       case GL_FLOAT:
-         if (!ctx->Extensions.OES_texture_float || internalFormat != format)
+         if (!_mesa_has_OES_texture_float(ctx) || internalFormat != format)
             return GL_INVALID_OPERATION;
          break;
       case GL_HALF_FLOAT_OES:
-         if (!ctx->Extensions.OES_texture_half_float || internalFormat != format)
+         if (!_mesa_has_OES_texture_half_float(ctx) || internalFormat != format)
             return GL_INVALID_OPERATION;
          break;
       case GL_UNSIGNED_BYTE:
