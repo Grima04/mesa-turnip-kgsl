@@ -509,7 +509,9 @@ compute_version_es2(const struct gl_extensions *extensions,
                          extensions->ARB_internalformat_query &&
                          extensions->ARB_map_buffer_range &&
                          extensions->ARB_shader_texture_lod &&
-                         extensions->ARB_texture_float &&
+                         extensions->OES_texture_float &&
+                         extensions->OES_texture_half_float &&
+                         extensions->OES_texture_half_float_linear &&
                          extensions->ARB_texture_rg &&
                          extensions->ARB_depth_buffer_float &&
                          /* extensions->ARB_framebuffer_object && */
