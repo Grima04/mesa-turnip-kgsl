@@ -1158,8 +1158,8 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 
 		flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, reset_value);
 
-		radv_set_dcc_need_cmask_elim_pred(cmd_buffer, iview->image,
-						  need_decompress_pass);
+		radv_update_fce_metadata(cmd_buffer, iview->image,
+					 need_decompress_pass);
 	} else {
 		flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
 					      cmask_clear_value);

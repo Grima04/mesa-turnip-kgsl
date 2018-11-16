@@ -586,7 +586,7 @@ radv_emit_set_predication_state_from_image(struct radv_cmd_buffer *cmd_buffer,
 
 	if (value) {
 		va = radv_buffer_get_va(image->bo) + image->offset;
-		va += image->dcc_pred_offset;
+		va += image->fce_pred_offset;
 	}
 
 	si_emit_set_predication_state(cmd_buffer, true, va);
@@ -705,7 +705,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		/* Clear the image's fast-clear eliminate predicate because
 		 * FMASK and DCC also imply a fast-clear eliminate.
 		 */
-		radv_set_dcc_need_cmask_elim_pred(cmd_buffer, image, false);
+		radv_update_fce_metadata(cmd_buffer, image, false);
 
 		if (cmd_buffer->state.predication_type != -1) {
 			/* Restore previous conditional rendering user state. */
