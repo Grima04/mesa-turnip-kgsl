@@ -46,9 +46,7 @@
 #include "util/debug.h"
 #else
 #include <sys/time.h>
-#ifdef XF86VIDMODE
 #include <X11/extensions/xf86vmode.h>
-#endif
 #endif
 #endif
 
@@ -2088,7 +2086,6 @@ _X_HIDDEN GLboolean
 __glxGetMscRate(struct glx_screen *psc,
 		int32_t * numerator, int32_t * denominator)
 {
-#ifdef XF86VIDMODE
    XF86VidModeModeLine mode_line;
    int dot_clock;
    int i;
@@ -2135,8 +2132,6 @@ __glxGetMscRate(struct glx_screen *psc,
 
       return True;
    }
-   else
-#endif
 
    return False;
 }
@@ -2162,7 +2157,7 @@ _X_HIDDEN GLboolean
 __glXGetMscRateOML(Display * dpy, GLXDrawable drawable,
                    int32_t * numerator, int32_t * denominator)
 {
-#if defined( GLX_DIRECT_RENDERING ) && defined( XF86VIDMODE )
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
    __GLXDRIdrawable *draw = GetGLXDRIDrawable(dpy, drawable);
 
    if (draw == NULL)
