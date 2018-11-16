@@ -503,7 +503,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       /* brw_nir_lower_mem_access_bit_sizes takes care of this */
       assert(nir_src_bit_size(instr->src[0]) == 32);
       assert(nir_intrinsic_write_mask(instr) ==
-             (1 << instr->num_components) - 1);
+             (1u << instr->num_components) - 1);
 
       src_reg surf_index = get_nir_ssbo_intrinsic_index(instr);
       src_reg offset_reg = retype(get_nir_src_imm(instr->src[2]),

@@ -3514,7 +3514,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       val_reg.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
       assert(nir_intrinsic_write_mask(instr) ==
-             (1 << instr->num_components) - 1);
+             (1u << instr->num_components) - 1);
       if (nir_intrinsic_align(instr) >= 4) {
          assert(nir_src_bit_size(instr->src[0]) == 32);
          assert(nir_src_num_components(instr->src[0]) <= 4);
@@ -4070,7 +4070,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       val_reg.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
       assert(nir_intrinsic_write_mask(instr) ==
-             (1 << instr->num_components) - 1);
+             (1u << instr->num_components) - 1);
       if (nir_intrinsic_align(instr) >= 4) {
          assert(nir_src_bit_size(instr->src[0]) == 32);
          assert(nir_src_num_components(instr->src[0]) <= 4);
