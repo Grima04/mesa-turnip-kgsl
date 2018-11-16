@@ -933,10 +933,11 @@ brw_inst_set_##reg##_ia16_addr_imm(const struct gen_device_info *devinfo, \
 {                                                                         \
    assert((value & ~0x3ff) == 0);                                         \
    if (devinfo->gen >= 8) {                                               \
-      brw_inst_set_bits(inst, g8_high, g8_low, value & 0x1ff);            \
-      brw_inst_set_bits(inst, g8_nine, g8_nine, value >> 9);              \
+      assert(GET_BITS(value, 3, 0) == 0);                                 \
+      brw_inst_set_bits(inst, g8_high, g8_low, GET_BITS(value, 8, 4));    \
+      brw_inst_set_bits(inst, g8_nine, g8_nine, GET_BITS(value, 9, 9));   \
    } else {                                                               \
-      brw_inst_set_bits(inst, g4_high, g4_low, value >> 9);               \
+      brw_inst_set_bits(inst, g4_high, g4_low, value);                    \
    }                                                                      \
 }                                                                         \
 static inline unsigned                                                    \
@@ -944,7 +945,7 @@ brw_inst_##reg##_ia16_addr_imm(const struct gen_device_info *devinfo,     \
                                const brw_inst *inst)                      \
 {                                                                         \
    if (devinfo->gen >= 8) {                                               \
-      return brw_inst_bits(inst, g8_high, g8_low) |                       \
+      return (brw_inst_bits(inst, g8_high, g8_low) << 4) |                \
              (brw_inst_bits(inst, g8_nine, g8_nine) << 9);                \
    } else {                                                               \
       return brw_inst_bits(inst, g4_high, g4_low);                        \
