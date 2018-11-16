@@ -2653,8 +2653,8 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
  * \param type the texture type
  */
 static GLenum
-_mesa_es3_effective_internal_format_for_format_and_type(GLenum format,
-                                                        GLenum type)
+gles_effective_internal_format_for_format_and_type(GLenum format,
+                                                   GLenum type)
 {
    switch (type) {
    case GL_UNSIGNED_BYTE:
@@ -2767,9 +2767,9 @@ _mesa_es3_effective_internal_format_for_format_and_type(GLenum format,
  * \return error code, or GL_NO_ERROR.
  */
 GLenum
-_mesa_es3_error_check_format_and_type(const struct gl_context *ctx,
-                                      GLenum format, GLenum type,
-                                      GLenum internalFormat)
+_mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
+                                       GLenum format, GLenum type,
+                                       GLenum internalFormat)
 {
    /* If internalFormat is an unsized format, then the effective internal
     * format derived from format and type should be used instead. Page 127,
@@ -2787,7 +2787,7 @@ _mesa_es3_error_check_format_and_type(const struct gl_context *ctx,
     */
    if (_mesa_is_enum_format_unsized(internalFormat)) {
       GLenum effectiveInternalFormat =
-         _mesa_es3_effective_internal_format_for_format_and_type(format, type);
+         gles_effective_internal_format_for_format_and_type(format, type);
 
       if (effectiveInternalFormat == GL_NONE)
          return GL_INVALID_OPERATION;
