@@ -208,19 +208,27 @@ engine_from_name(const char *engine_name,
    const struct {
       const char *match;
       enum drm_i915_gem_engine_class engine_class;
+      bool parse_instance;
    } rings[] = {
-      { "rcs", I915_ENGINE_CLASS_RENDER },
-      { "vcs", I915_ENGINE_CLASS_VIDEO },
-      { "vecs", I915_ENGINE_CLASS_VIDEO_ENHANCE },
-      { "bcs", I915_ENGINE_CLASS_COPY },
-      { "global", I915_ENGINE_CLASS_INVALID },
+      { "rcs", I915_ENGINE_CLASS_RENDER, true },
+      { "vcs", I915_ENGINE_CLASS_VIDEO, true },
+      { "vecs", I915_ENGINE_CLASS_VIDEO_ENHANCE, true },
+      { "bcs", I915_ENGINE_CLASS_COPY, true },
+      { "global", I915_ENGINE_CLASS_INVALID, false },
+      { "render command stream", I915_ENGINE_CLASS_RENDER, false },
+      { "blt command stream", I915_ENGINE_CLASS_COPY, false },
+      { "bsd command stream", I915_ENGINE_CLASS_VIDEO, false },
+      { "vebox command stream", I915_ENGINE_CLASS_VIDEO_ENHANCE, false },
       { NULL, I915_ENGINE_CLASS_INVALID },
    }, *r;
 
    for (r = rings; r->match; r++) {
       if (strncasecmp(engine_name, r->match, strlen(r->match)) == 0) {
          *engine_class = r->engine_class;
-         *engine_instance = strtol(engine_name + strlen(r->match), NULL, 10);
+         if (r->parse_instance)
+            *engine_instance = strtol(engine_name + strlen(r->match), NULL, 10);
+         else
+            *engine_instance = 0;
          return;
       }
    }
