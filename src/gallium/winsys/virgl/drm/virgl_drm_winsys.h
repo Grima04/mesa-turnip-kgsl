@@ -57,7 +57,6 @@ struct virgl_drm_winsys
 {
    struct virgl_winsys base;
    int fd;
-   int drm_version;
    struct list_head delayed;
    int num_delayed;
    unsigned usecs;

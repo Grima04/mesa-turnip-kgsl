@@ -702,6 +702,5 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
 
    vtws->base.flush_frontbuffer = virgl_vtest_flush_frontbuffer;
 
-
    return &vtws->base;
 }

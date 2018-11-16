@@ -933,7 +933,6 @@ virgl_drm_winsys_create(int drmFD)
 
    qdws->base.get_caps = virgl_drm_get_caps;
 
-
    uint32_t value = 0;
    getparam.param = VIRTGPU_PARAM_CAPSET_QUERY_FIX;
    getparam.value = (uint64_t)(uintptr_t)&value;

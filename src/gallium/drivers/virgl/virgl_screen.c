@@ -340,7 +340,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_VIDEO_MEMORY:
       return 0;
    case PIPE_CAP_NATIVE_FENCE_FD:
-      return !!vscreen->vws->supports_fences;
+      return vscreen->vws->supports_fences;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
