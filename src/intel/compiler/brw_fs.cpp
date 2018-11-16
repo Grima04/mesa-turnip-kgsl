@@ -6759,9 +6759,59 @@ fs_visitor::optimize()
       OPT(lower_simd_width);
    }
 
+   OPT(fixup_sends_duplicate_payload);
+
    lower_uniform_pull_constant_loads();
 
    validate();
+}
+
+/**
+ * From the Skylake PRM Vol. 2a docs for sends:
+ *
+ *    "It is required that the second block of GRFs does not overlap with the
+ *    first block."
+ *
+ * There are plenty of cases where we may accidentally violate this due to
+ * having, for instance, both sources be the constant 0.  This little pass
+ * just adds a new vgrf for the second payload and copies it over.
+ */
+bool
+fs_visitor::fixup_sends_duplicate_payload()
+{
+   bool progress = false;
+
+   foreach_block_and_inst_safe (block, fs_inst, inst, cfg) {
+      if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
+          regions_overlap(inst->src[2], inst->mlen * REG_SIZE,
+                          inst->src[3], inst->ex_mlen * REG_SIZE)) {
+         fs_reg tmp = fs_reg(VGRF, alloc.allocate(inst->ex_mlen),
+                             BRW_REGISTER_TYPE_UD);
+         /* Sadly, we've lost all notion of channels and bit sizes at this
+          * point.  Just WE_all it.
+          */
+         const fs_builder ibld = bld.at(block, inst).exec_all().group(16, 0);
+         fs_reg copy_src = retype(inst->src[3], BRW_REGISTER_TYPE_UD);
+         fs_reg copy_dst = tmp;
+         for (unsigned i = 0; i < inst->ex_mlen; i += 2) {
+            if (inst->ex_mlen == i + 1) {
+               /* Only one register left; do SIMD8 */
+               ibld.group(8, 0).MOV(copy_dst, copy_src);
+            } else {
+               ibld.MOV(copy_dst, copy_src);
+            }
+            copy_src = offset(copy_src, ibld, 1);
+            copy_dst = offset(copy_dst, ibld, 1);
+         }
+         inst->src[3] = tmp;
+         progress = true;
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
 }
 
 /**
