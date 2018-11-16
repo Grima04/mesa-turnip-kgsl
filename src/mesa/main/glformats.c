@@ -2386,28 +2386,37 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
          return GL_YCBCR_MESA;
    }
 
-   if (ctx->Extensions.ARB_texture_float) {
+   if (_mesa_has_half_float_textures(ctx)) {
       switch (internalFormat) {
       case GL_ALPHA16F_ARB:
-      case GL_ALPHA32F_ARB:
          return GL_ALPHA;
       case GL_RGBA16F_ARB:
-      case GL_RGBA32F_ARB:
          return GL_RGBA;
       case GL_RGB16F_ARB:
-      case GL_RGB32F_ARB:
          return GL_RGB;
       case GL_INTENSITY16F_ARB:
-      case GL_INTENSITY32F_ARB:
          return GL_INTENSITY;
       case GL_LUMINANCE16F_ARB:
-      case GL_LUMINANCE32F_ARB:
          return GL_LUMINANCE;
       case GL_LUMINANCE_ALPHA16F_ARB:
+         return GL_LUMINANCE_ALPHA;
+      }
+   }
+
+   if (_mesa_has_float_textures(ctx)) {
+      switch (internalFormat) {
+      case GL_ALPHA32F_ARB:
+         return GL_ALPHA;
+      case GL_RGBA32F_ARB:
+         return GL_RGBA;
+      case GL_RGB32F_ARB:
+         return GL_RGB;
+      case GL_INTENSITY32F_ARB:
+         return GL_INTENSITY;
+      case GL_LUMINANCE32F_ARB:
+         return GL_LUMINANCE;
       case GL_LUMINANCE_ALPHA32F_ARB:
          return GL_LUMINANCE_ALPHA;
-      default:
-         ; /* fallthrough */
       }
    }
 
@@ -2546,9 +2555,12 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
    if (_mesa_has_rg_textures(ctx)) {
       switch (internalFormat) {
       case GL_R16F:
+         if (!_mesa_has_half_float_textures(ctx))
+            break;
+         return GL_RED;
       case GL_R32F:
-	 if (!ctx->Extensions.ARB_texture_float)
-	    break;
+         if (!_mesa_has_float_textures(ctx))
+            break;
          return GL_RED;
       case GL_R8I:
       case GL_R8UI:
@@ -2566,9 +2578,12 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
          return GL_RED;
 
       case GL_RG16F:
+         if (!_mesa_has_half_float_textures(ctx))
+            break;
+         return GL_RG;
       case GL_RG32F:
-	 if (!ctx->Extensions.ARB_texture_float)
-	    break;
+         if (!_mesa_has_float_textures(ctx))
+            break;
          return GL_RG;
       case GL_RG8I:
       case GL_RG8UI:
