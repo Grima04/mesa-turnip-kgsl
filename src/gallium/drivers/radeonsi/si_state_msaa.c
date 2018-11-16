@@ -101,6 +101,10 @@ static const uint64_t centroid_priority_4x = 0x3210321032103210ull;
 static const uint32_t sample_locs_8x[] = {
 	FILL_SREG(-3,-5,   5, 1,  -1, 3,   7,-7),
 	FILL_SREG(-7,-1,   3, 7,  -5, 5,   1,-3),
+	/* The following are unused by hardware, but we emit them to IBs
+	 * instead of multiple SET_CONTEXT_REG packets. */
+	0,
+	0,
 };
 static const uint64_t centroid_priority_8x = 0x3546012735460127ull;
 
