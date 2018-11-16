@@ -2473,7 +2473,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.EXT_texture_sRGB_R8) {
+   if (_mesa_has_EXT_texture_sRGB_R8(ctx)) {
       switch (internalFormat) {
       case GL_SR8_EXT:
          return GL_RED;
@@ -3212,7 +3212,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
       case GL_UNSIGNED_BYTE:
          if (internalFormat == GL_R8 ||
              ((internalFormat == GL_SR8_EXT) &&
-              ctx->Extensions.EXT_texture_sRGB_R8))
+              _mesa_has_EXT_texture_sRGB_R8(ctx)))
             break;
          return GL_INVALID_OPERATION;
 
