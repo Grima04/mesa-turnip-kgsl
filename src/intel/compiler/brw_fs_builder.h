@@ -426,6 +426,21 @@ namespace brw {
          return src_reg(component(dst, 0));
       }
 
+      src_reg
+      move_to_vgrf(const src_reg &src, unsigned num_components) const
+      {
+         src_reg *const src_comps = new src_reg[num_components];
+         for (unsigned i = 0; i < num_components; i++)
+            src_comps[i] = offset(src, dispatch_width(), i);
+
+         const dst_reg dst = vgrf(src.type, num_components);
+         LOAD_PAYLOAD(dst, src_comps, num_components, 0);
+
+         delete[] src_comps;
+
+         return src_reg(dst);
+      }
+
       void
       emit_scan(enum opcode opcode, const dst_reg &tmp,
                 unsigned cluster_size, brw_conditional_mod mod) const

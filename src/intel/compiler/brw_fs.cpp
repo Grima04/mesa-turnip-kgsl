@@ -5016,28 +5016,42 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
     * Gen11+ the header has been removed so we can only use predication.
     */
    const unsigned header_sz = devinfo->gen < 9 && is_typed_access ? 1 : 0;
-   const unsigned sz = header_sz + addr_sz + src_sz;
-
-   /* Allocate space for the payload. */
-   fs_reg *const components = new fs_reg[sz];
-   const fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, sz);
-   unsigned n = 0;
 
    const bool has_side_effects = inst->has_side_effects();
    fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
                                            fs_reg(brw_imm_d(0xffff));
 
-   /* Construct the payload. */
-   if (header_sz)
-      components[n++] = emit_surface_header(bld, sample_mask);
+   fs_reg payload, payload2;
+   unsigned mlen, ex_mlen = 0;
+   if (devinfo->gen >= 9) {
+      /* We have split sends on gen9 and above */
+      assert(header_sz == 0);
+      payload = bld.move_to_vgrf(addr, addr_sz);
+      payload2 = bld.move_to_vgrf(src, src_sz);
+      mlen = addr_sz * (inst->exec_size / 8);
+      ex_mlen = src_sz * (inst->exec_size / 8);
+   } else {
+      /* Allocate space for the payload. */
+      const unsigned sz = header_sz + addr_sz + src_sz;
+      payload = bld.vgrf(BRW_REGISTER_TYPE_UD, sz);
+      fs_reg *const components = new fs_reg[sz];
+      unsigned n = 0;
 
-   for (unsigned i = 0; i < addr_sz; i++)
-      components[n++] = offset(addr, bld, i);
+      /* Construct the payload. */
+      if (header_sz)
+         components[n++] = emit_surface_header(bld, sample_mask);
 
-   for (unsigned i = 0; i < src_sz; i++)
-      components[n++] = offset(src, bld, i);
+      for (unsigned i = 0; i < addr_sz; i++)
+         components[n++] = offset(addr, bld, i);
 
-   bld.LOAD_PAYLOAD(payload, components, sz, header_sz);
+      for (unsigned i = 0; i < src_sz; i++)
+         components[n++] = offset(src, bld, i);
+
+      bld.LOAD_PAYLOAD(payload, components, sz, header_sz);
+      mlen = header_sz + (addr_sz + src_sz) * inst->exec_size / 8;
+
+      delete[] components;
+   }
 
    /* Predicate the instruction on the sample mask if no header is
     * provided.
@@ -5162,7 +5176,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;
-   inst->mlen = header_sz + (addr_sz + src_sz) * inst->exec_size / 8;
+   inst->mlen = mlen;
+   inst->ex_mlen = ex_mlen;
    inst->header_size = header_sz;
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
@@ -5183,10 +5198,9 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    /* Finally, the payload */
    inst->src[2] = payload;
+   inst->src[3] = payload2;
 
-   inst->resize_sources(3);
-
-   delete[] components;
+   inst->resize_sources(4);
 }
 
 static void
