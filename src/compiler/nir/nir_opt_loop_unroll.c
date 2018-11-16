@@ -169,32 +169,21 @@ simple_unroll(nir_loop *loop)
       _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                               _mesa_key_pointer_equal);
 
-   /* Clone the loop header */
-   nir_cf_list cloned_header;
-   nir_cf_list_clone(&cloned_header, &lp_header, loop->cf_node.parent,
-                     remap_table);
+   /* Clone the loop header and insert before the loop */
+   nir_cf_list_clone_and_reinsert(&lp_header, loop->cf_node.parent,
+                                  nir_before_cf_node(&loop->cf_node),
+                                  remap_table);
 
-   /* Insert cloned loop header before the loop */
-   nir_cf_reinsert(&cloned_header, nir_before_cf_node(&loop->cf_node));
-
-   /* Temp list to store the cloned loop body as we unroll */
-   nir_cf_list unrolled_lp_body;
-
-   /* Clone loop header and append to the loop body */
    for (unsigned i = 0; i < loop->info->max_trip_count; i++) {
-      /* Clone loop body */
-      nir_cf_list_clone(&unrolled_lp_body, &loop_body, loop->cf_node.parent,
-                        remap_table);
+      /* Clone loop body and insert before the loop */
+      nir_cf_list_clone_and_reinsert(&loop_body, loop->cf_node.parent,
+                                     nir_before_cf_node(&loop->cf_node),
+                                     remap_table);
 
-      /* Insert unrolled loop body before the loop */
-      nir_cf_reinsert(&unrolled_lp_body, nir_before_cf_node(&loop->cf_node));
-
-      /* Clone loop header */
-      nir_cf_list_clone(&cloned_header, &lp_header, loop->cf_node.parent,
-                        remap_table);
-
-      /* Insert loop header after loop body */
-      nir_cf_reinsert(&cloned_header, nir_before_cf_node(&loop->cf_node));
+      /* Clone loop header and insert after loop body */
+      nir_cf_list_clone_and_reinsert(&lp_header, loop->cf_node.parent,
+                                     nir_before_cf_node(&loop->cf_node),
+                                     remap_table);
    }
 
    /* Remove the break from the loop terminator and add instructions from
@@ -207,11 +196,9 @@ simple_unroll(nir_loop *loop)
                   nir_after_block(limiting_term->break_block));
 
    /* Clone so things get properly remapped */
-   nir_cf_list cloned_break_list;
-   nir_cf_list_clone(&cloned_break_list, &break_list, loop->cf_node.parent,
-                     remap_table);
-
-   nir_cf_reinsert(&cloned_break_list, nir_before_cf_node(&loop->cf_node));
+   nir_cf_list_clone_and_reinsert(&break_list, loop->cf_node.parent,
+                                  nir_before_cf_node(&loop->cf_node),
+                                  remap_table);
 
    /* Remove the loop */
    nir_cf_node_remove(&loop->cf_node);
@@ -394,19 +381,16 @@ complex_unroll(nir_loop *loop, nir_loop_terminator *unlimit_term,
 
    /* Temp lists to store the cloned loop as we unroll */
    nir_cf_list unrolled_lp_body;
-   nir_cf_list cloned_header;
 
    for (unsigned i = 0; i < num_times_to_clone; i++) {
-      /* Clone loop header */
-      nir_cf_list_clone(&cloned_header, &lp_header, loop->cf_node.parent,
-                        remap_table);
 
       nir_cursor cursor =
          get_complex_unroll_insert_location(unroll_loc,
                                             unlimit_term->continue_from_then);
 
-      /* Insert cloned loop header */
-      nir_cf_reinsert(&cloned_header, cursor);
+      /* Clone loop header and insert in if branch */
+      nir_cf_list_clone_and_reinsert(&lp_header, loop->cf_node.parent,
+                                     cursor, remap_table);
 
       cursor =
          get_complex_unroll_insert_location(unroll_loc,
@@ -432,28 +416,24 @@ complex_unroll(nir_loop *loop, nir_loop_terminator *unlimit_term,
    if (!limiting_term_second) {
       assert(unroll_loc->type == nir_cf_node_if);
 
-      nir_cf_list_clone(&cloned_header, &lp_header, loop->cf_node.parent,
-                        remap_table);
-
       nir_cursor cursor =
          get_complex_unroll_insert_location(unroll_loc,
                                             unlimit_term->continue_from_then);
 
-      /* Insert cloned loop header */
-      nir_cf_reinsert(&cloned_header, cursor);
-
-      /* Clone so things get properly remapped, and insert break block from
-       * the limiting terminator.
-       */
-      nir_cf_list cloned_break_blk;
-      nir_cf_list_clone(&cloned_break_blk, &limit_break_list,
-                        loop->cf_node.parent, remap_table);
+      /* Clone loop header and insert in if branch */
+      nir_cf_list_clone_and_reinsert(&lp_header, loop->cf_node.parent,
+                                     cursor, remap_table);
 
       cursor =
          get_complex_unroll_insert_location(unroll_loc,
                                             unlimit_term->continue_from_then);
 
-      nir_cf_reinsert(&cloned_break_blk, cursor);
+      /* Clone so things get properly remapped, and insert break block from
+       * the limiting terminator.
+       */
+      nir_cf_list_clone_and_reinsert(&limit_break_list, loop->cf_node.parent,
+                                     cursor, remap_table);
+
       nir_cf_delete(&limit_break_list);
    }
 
