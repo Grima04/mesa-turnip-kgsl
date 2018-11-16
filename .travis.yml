@@ -120,7 +120,6 @@ matrix:
             - llvm-6.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -150,7 +149,6 @@ matrix:
             - llvm-6.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -183,7 +181,6 @@ matrix:
             - llvm-3.9-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -222,7 +219,6 @@ matrix:
             - libclang-3.9-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -258,7 +254,6 @@ matrix:
             - libclang-4.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -294,7 +289,6 @@ matrix:
             - libclang-5.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -327,7 +321,6 @@ matrix:
             - libclang-6.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -361,7 +354,6 @@ matrix:
             - libclang-7-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -397,7 +389,6 @@ matrix:
             - libedit-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
@@ -427,7 +418,6 @@ matrix:
             - llvm-6.0-dev
             # Common
             - xz-utils
-            - x11proto-xf86vidmode-dev
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
