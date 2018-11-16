@@ -3853,7 +3853,7 @@ _mesa_is_es3_texture_filterable(const struct gl_context *ctx,
        *     internal formats to base internal formats ... and use cases ...'')
        *     for the R32F, RG32F, RGB32F, and RGBA32F formats."
        */
-      return ctx->Extensions.OES_texture_float_linear;
+      return _mesa_has_OES_texture_float_linear(ctx);
    default:
       return false;
    }
