@@ -263,7 +263,8 @@ send_restrictions(const struct gen_device_info *devinfo,
 {
    struct string error_msg = { .str = NULL, .len = 0 };
 
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND) {
+   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC) {
       ERROR_IF(brw_inst_src0_address_mode(devinfo, inst) != BRW_ADDRESS_DIRECT,
                "send must use direct addressing");
 
