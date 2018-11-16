@@ -2337,7 +2337,8 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       }
    }
 
-   if (ctx->Extensions.ARB_texture_stencil8) {
+   if (_mesa_has_ARB_texture_stencil8(ctx) ||
+       _mesa_has_OES_texture_stencil8(ctx)) {
       switch (internalFormat) {
       case GL_STENCIL_INDEX:
       case GL_STENCIL_INDEX1:
