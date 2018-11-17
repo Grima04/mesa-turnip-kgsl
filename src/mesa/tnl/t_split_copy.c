@@ -105,13 +105,6 @@ struct copy_context {
 };
 
 
-static GLuint
-attr_size(const struct gl_array_attributes *attrib)
-{
-   return attrib->Size * _mesa_sizeof_type(attrib->Type);
-}
-
-
 /**
  * Shallow copy one vertex array to another.
  */
@@ -458,8 +451,8 @@ replay_init(struct copy_context *copy)
 
          copy->varying[j].attr = i;
          copy->varying[j].array = &copy->array[i];
-         copy->varying[j].size = attr_size(attrib);
-         copy->vertex_size += attr_size(attrib);
+         copy->varying[j].size = attrib->_ElementSize;
+         copy->vertex_size += attrib->_ElementSize;
 
          if (_mesa_is_bufferobj(vbo) &&
              !_mesa_bufferobj_mapped(vbo, MAP_INTERNAL))
