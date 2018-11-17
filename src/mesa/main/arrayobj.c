@@ -441,7 +441,7 @@ _mesa_initialize_vao(struct gl_context *ctx,
          init_array(ctx, vao, VERT_ATTRIB_COLOR_INDEX, 1, GL_FLOAT);
          break;
       case VERT_ATTRIB_EDGEFLAG:
-         init_array(ctx, vao, VERT_ATTRIB_EDGEFLAG, 1, GL_BOOL);
+         init_array(ctx, vao, VERT_ATTRIB_EDGEFLAG, 1, GL_UNSIGNED_BYTE);
          break;
       case VERT_ATTRIB_POINT_SIZE:
          init_array(ctx, vao, VERT_ATTRIB_POINT_SIZE, 1, GL_FLOAT);
