@@ -155,23 +155,23 @@ _vbo_loopback_vertex_list(struct gl_context *ctx,
     * the NV attributes entrypoints:
     */
    const struct gl_vertex_array_object *vao = node->VAO[VP_MODE_FF];
-   GLbitfield mask = vao->_Enabled & VERT_BIT_MAT_ALL;
+   GLbitfield mask = vao->Enabled & VERT_BIT_MAT_ALL;
    while (mask) {
       const int i = u_bit_scan(&mask);
       append_attr(&nr, la, i, VBO_MATERIAL_SHIFT, vao);
    }
 
    vao = node->VAO[VP_MODE_SHADER];
-   mask = vao->_Enabled & ~(VERT_BIT_POS | VERT_BIT_GENERIC0);
+   mask = vao->Enabled & ~(VERT_BIT_POS | VERT_BIT_GENERIC0);
    while (mask) {
       const int i = u_bit_scan(&mask);
       append_attr(&nr, la, i, 0, vao);
    }
 
    /* The last in the list should be the vertex provoking attribute */
-   if (vao->_Enabled & VERT_BIT_GENERIC0) {
+   if (vao->Enabled & VERT_BIT_GENERIC0) {
       append_attr(&nr, la, VERT_ATTRIB_GENERIC0, 0, vao);
-   } else if (vao->_Enabled & VERT_BIT_POS) {
+   } else if (vao->Enabled & VERT_BIT_POS) {
       append_attr(&nr, la, VERT_ATTRIB_POS, 0, vao);
    }
 

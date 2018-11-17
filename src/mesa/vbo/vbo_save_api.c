@@ -426,7 +426,7 @@ compare_vao(gl_vertex_processing_mode mode,
       return false;
 
    /* If the enabled arrays are not the same we are not equal. */
-   if (vao_enabled != vao->_Enabled)
+   if (vao_enabled != vao->Enabled)
       return false;
 
    /* Check the buffer binding at 0 */
@@ -517,7 +517,7 @@ update_vao(struct gl_context *ctx,
       _mesa_vertex_attrib_binding(ctx, *vao, vao_attr, 0);
       _mesa_enable_vertex_array_attrib(ctx, *vao, vao_attr);
    }
-   assert(vao_enabled == (*vao)->_Enabled);
+   assert(vao_enabled == (*vao)->Enabled);
    assert((vao_enabled & ~(*vao)->VertexAttribBufferMask) == 0);
 
    /* Finalize and freeze the VAO */

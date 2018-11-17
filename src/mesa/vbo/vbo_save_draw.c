@@ -47,7 +47,7 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
 {
    struct vbo_context *vbo = vbo_context(ctx);
 
-   mask &= vao->_Enabled;
+   mask &= vao->Enabled;
    while (mask) {
       const int i = u_bit_scan(&mask);
       const struct gl_array_attributes *attrib = &vao->VertexAttrib[i];

@@ -224,7 +224,7 @@ _vbo_set_attrib_format(struct gl_context *ctx,
     * to the VAO. But but that is done already unconditionally in
     * _mesa_update_array_format called above.
     */
-   assert((vao->NewArrays | ~vao->_Enabled) & VERT_BIT(attr));
+   assert((vao->NewArrays | ~vao->Enabled) & VERT_BIT(attr));
    vao->VertexAttrib[attr].Ptr = ADD_POINTERS(buffer_offset, offset);
 }
 

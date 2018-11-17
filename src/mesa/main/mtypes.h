@@ -1538,7 +1538,7 @@ struct gl_vertex_array_object
    GLbitfield VertexAttribBufferMask;
 
    /** Mask of VERT_BIT_* values indicating which arrays are enabled */
-   GLbitfield _Enabled;
+   GLbitfield Enabled;
 
    /**
     * Mask of VERT_BIT_* enabled arrays past position/generic0 mapping
