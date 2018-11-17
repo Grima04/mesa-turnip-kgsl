@@ -1267,7 +1267,7 @@ get_vertex_array_attrib(struct gl_context *ctx,
 
    switch (pname) {
    case GL_VERTEX_ATTRIB_ARRAY_ENABLED_ARB:
-      return array->Enabled;
+      return !!(vao->Enabled & VERT_BIT_GENERIC(index));
    case GL_VERTEX_ATTRIB_ARRAY_SIZE_ARB:
       return (array->Format == GL_BGRA) ? GL_BGRA : array->Size;
    case GL_VERTEX_ATTRIB_ARRAY_STRIDE_ARB:
@@ -2812,11 +2812,10 @@ _mesa_print_arrays(struct gl_context *ctx)
 
    fprintf(stderr, "Array Object %u\n", vao->Name);
 
-   gl_vert_attrib i;
-   for (i = 0; i < VERT_ATTRIB_MAX; ++i) {
+   GLbitfield mask = vao->Enabled;
+   while (mask) {
+      const gl_vert_attrib i = u_bit_scan(&mask);
       const struct gl_array_attributes *array = &vao->VertexAttrib[i];
-      if (!array->Enabled)
-         continue;
 
       const struct gl_vertex_buffer_binding *binding =
          &vao->BufferBinding[array->BufferBindingIndex];

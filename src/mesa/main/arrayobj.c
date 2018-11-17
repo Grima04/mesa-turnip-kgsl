@@ -832,8 +832,8 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
    for (gl_vert_attrib attr = 0; attr < VERT_ATTRIB_MAX; ++attr) {
       /* Query the original api defined attrib/binding information ... */
       const unsigned char *const map =_mesa_vao_attribute_map[mode];
-      const struct gl_array_attributes *attrib = &vao->VertexAttrib[map[attr]];
-      if (attrib->Enabled) {
+      if (vao->Enabled & VERT_BIT(map[attr])) {
+         const struct gl_array_attributes *attrib = &vao->VertexAttrib[map[attr]];
          const struct gl_vertex_buffer_binding *binding =
             &vao->BufferBinding[attrib->BufferBindingIndex];
          /* ... and compare that with the computed attrib/binding */
