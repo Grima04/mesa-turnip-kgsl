@@ -107,6 +107,7 @@ EXTENSIONS = [
     Extension('VK_EXT_external_memory_dma_buf',           1, True),
     Extension('VK_EXT_external_memory_host',              1, 'device->rad_info.has_userptr'),
     Extension('VK_EXT_global_priority',                   1, 'device->rad_info.has_ctx_priority'),
+    Extension('VK_EXT_host_query_reset',                  1, True),
     Extension('VK_EXT_memory_budget',                     1, True),
     Extension('VK_EXT_memory_priority',                   1, True),
     Extension('VK_EXT_pci_bus_info',                      2, True),
