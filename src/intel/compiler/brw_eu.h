@@ -266,6 +266,46 @@ brw_message_desc(const struct gen_device_info *devinfo,
    }
 }
 
+static inline unsigned
+brw_message_desc_mlen(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   if (devinfo->gen >= 5)
+      return GET_BITS(desc, 28, 25);
+   else
+      return GET_BITS(desc, 23, 20);
+}
+
+static inline unsigned
+brw_message_desc_rlen(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   if (devinfo->gen >= 5)
+      return GET_BITS(desc, 24, 20);
+   else
+      return GET_BITS(desc, 19, 16);
+}
+
+static inline bool
+brw_message_desc_header_present(const struct gen_device_info *devinfo,
+                                uint32_t desc)
+{
+   assert(devinfo->gen >= 5);
+   return GET_BITS(desc, 19, 19);
+}
+
+static inline unsigned
+brw_message_ex_desc(const struct gen_device_info *devinfo,
+                    unsigned ex_msg_length)
+{
+   return SET_BITS(ex_msg_length, 9, 6);
+}
+
+static inline unsigned
+brw_message_ex_desc_ex_mlen(const struct gen_device_info *devinfo,
+                            uint32_t ex_desc)
+{
+   return GET_BITS(ex_desc, 9, 6);
+}
+
 /**
  * Construct a message descriptor immediate with the specified sampler
  * function controls.
@@ -293,6 +333,103 @@ brw_sampler_desc(const struct gen_device_info *devinfo,
               SET_BITS(msg_type, 15, 14));
 }
 
+static inline unsigned
+brw_sampler_desc_binding_table_index(const struct gen_device_info *devinfo,
+                                     uint32_t desc)
+{
+   return GET_BITS(desc, 7, 0);
+}
+
+static inline unsigned
+brw_sampler_desc_sampler(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   return GET_BITS(desc, 11, 8);
+}
+
+static inline unsigned
+brw_sampler_desc_msg_type(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   if (devinfo->gen >= 7)
+      return GET_BITS(desc, 16, 12);
+   else if (devinfo->gen >= 5 || devinfo->is_g4x)
+      return GET_BITS(desc, 15, 12);
+   else
+      return GET_BITS(desc, 15, 14);
+}
+
+static inline unsigned
+brw_sampler_desc_simd_mode(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   assert(devinfo->gen >= 5);
+   if (devinfo->gen >= 7)
+      return GET_BITS(desc, 18, 17);
+   else
+      return GET_BITS(desc, 17, 16);
+}
+
+static  inline unsigned
+brw_sampler_desc_return_format(const struct gen_device_info *devinfo,
+                               uint32_t desc)
+{
+   assert(devinfo->gen == 4 && !devinfo->is_g4x);
+   return GET_BITS(desc, 13, 12);
+}
+
+/**
+ * Construct a message descriptor for the dataport
+ */
+static inline uint32_t
+brw_dp_desc(const struct gen_device_info *devinfo,
+            unsigned binding_table_index,
+            unsigned msg_type,
+            unsigned msg_control)
+{
+   /* Prior to gen6, things are too inconsistent; use the dp_read/write_desc
+    * helpers instead.
+    */
+   assert(devinfo->gen >= 6);
+   const unsigned desc = SET_BITS(binding_table_index, 7, 0);
+   if (devinfo->gen >= 8) {
+      return (desc | SET_BITS(msg_control, 13, 8) |
+              SET_BITS(msg_type, 18, 14));
+   } else if (devinfo->gen >= 7) {
+      return (desc | SET_BITS(msg_control, 13, 8) |
+              SET_BITS(msg_type, 17, 14));
+   } else {
+      return (desc | SET_BITS(msg_control, 12, 8) |
+              SET_BITS(msg_type, 16, 13));
+   }
+}
+
+static inline unsigned
+brw_dp_desc_binding_table_index(const struct gen_device_info *devinfo,
+                                uint32_t desc)
+{
+   return GET_BITS(desc, 7, 0);
+}
+
+static inline unsigned
+brw_dp_desc_msg_type(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   assert(devinfo->gen >= 6);
+   if (devinfo->gen >= 8)
+      return GET_BITS(desc, 18, 14);
+   else if (devinfo->gen >= 7)
+      return GET_BITS(desc, 17, 14);
+   else
+      return GET_BITS(desc, 16, 13);
+}
+
+static inline unsigned
+brw_dp_desc_msg_control(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   assert(devinfo->gen >= 6);
+   if (devinfo->gen >= 7)
+      return GET_BITS(desc, 13, 8);
+   else
+      return GET_BITS(desc, 12, 8);
+}
+
 /**
  * Construct a message descriptor immediate with the specified dataport read
  * function controls.
@@ -304,21 +441,41 @@ brw_dp_read_desc(const struct gen_device_info *devinfo,
                  unsigned msg_type,
                  unsigned target_cache)
 {
-   const unsigned desc = SET_BITS(binding_table_index, 7, 0);
-   if (devinfo->gen >= 7)
-      return (desc | SET_BITS(msg_control, 13, 8) |
-              SET_BITS(msg_type, 17, 14));
-   else if (devinfo->gen >= 6)
-      return (desc | SET_BITS(msg_control, 12, 8) |
-              SET_BITS(msg_type, 16, 13));
+   if (devinfo->gen >= 6)
+      return brw_dp_desc(devinfo, binding_table_index, msg_type, msg_control);
    else if (devinfo->gen >= 5 || devinfo->is_g4x)
-      return (desc | SET_BITS(msg_control, 10, 8) |
+      return (SET_BITS(binding_table_index, 7, 0) |
+              SET_BITS(msg_control, 10, 8) |
               SET_BITS(msg_type, 13, 11) |
               SET_BITS(target_cache, 15, 14));
    else
-      return (desc | SET_BITS(msg_control, 11, 8) |
+      return (SET_BITS(binding_table_index, 7, 0) |
+              SET_BITS(msg_control, 11, 8) |
               SET_BITS(msg_type, 13, 12) |
               SET_BITS(target_cache, 15, 14));
+}
+
+static inline unsigned
+brw_dp_read_desc_msg_type(const struct gen_device_info *devinfo, uint32_t desc)
+{
+   if (devinfo->gen >= 6)
+      return brw_dp_desc_msg_type(devinfo, desc);
+   else if (devinfo->gen >= 5 || devinfo->is_g4x)
+      return GET_BITS(desc, 13, 11);
+   else
+      return GET_BITS(desc, 13, 12);
+}
+
+static inline unsigned
+brw_dp_read_desc_msg_control(const struct gen_device_info *devinfo,
+                             uint32_t desc)
+{
+   if (devinfo->gen >= 6)
+      return brw_dp_desc_msg_control(devinfo, desc);
+   else if (devinfo->gen >= 5 || devinfo->is_g4x)
+      return GET_BITS(desc, 10, 8);
+   else
+      return GET_BITS(desc, 11, 8);
 }
 
 /**
@@ -333,21 +490,58 @@ brw_dp_write_desc(const struct gen_device_info *devinfo,
                   unsigned last_render_target,
                   unsigned send_commit_msg)
 {
-   const unsigned desc = SET_BITS(binding_table_index, 7, 0);
-   if (devinfo->gen >= 7)
-      return (desc | SET_BITS(msg_control, 13, 8) |
-              SET_BITS(last_render_target, 12, 12) |
-              SET_BITS(msg_type, 17, 14));
-   else if (devinfo->gen >= 6)
-      return (desc | SET_BITS(msg_control, 12, 8) |
-              SET_BITS(last_render_target, 12, 12) |
-              SET_BITS(msg_type, 16, 13) |
-              SET_BITS(send_commit_msg, 17, 17));
+   assert(devinfo->gen <= 6 || !send_commit_msg);
+   if (devinfo->gen >= 6)
+      return brw_dp_desc(devinfo, binding_table_index, msg_type, msg_control) |
+             SET_BITS(last_render_target, 12, 12) |
+             SET_BITS(send_commit_msg, 17, 17);
    else
-      return (desc | SET_BITS(msg_control, 11, 8) |
+      return (SET_BITS(binding_table_index, 7, 0) |
+              SET_BITS(msg_control, 11, 8) |
               SET_BITS(last_render_target, 11, 11) |
               SET_BITS(msg_type, 14, 12) |
               SET_BITS(send_commit_msg, 15, 15));
+}
+
+static inline unsigned
+brw_dp_write_desc_msg_type(const struct gen_device_info *devinfo,
+                           uint32_t desc)
+{
+   if (devinfo->gen >= 6)
+      return brw_dp_desc_msg_type(devinfo, desc);
+   else
+      return GET_BITS(desc, 14, 12);
+}
+
+static inline unsigned
+brw_dp_write_desc_msg_control(const struct gen_device_info *devinfo,
+                              uint32_t desc)
+{
+   if (devinfo->gen >= 6)
+      return brw_dp_desc_msg_control(devinfo, desc);
+   else
+      return GET_BITS(desc, 11, 8);
+}
+
+static inline bool
+brw_dp_write_desc_last_render_target(const struct gen_device_info *devinfo,
+                                     uint32_t desc)
+{
+   if (devinfo->gen >= 6)
+      return GET_BITS(desc, 12, 12);
+   else
+      return GET_BITS(desc, 11, 11);
+}
+
+static inline bool
+brw_dp_write_desc_write_commit(const struct gen_device_info *devinfo,
+                               uint32_t desc)
+{
+   assert(devinfo->gen <= 6);
+   if (devinfo->gen >= 6)
+      return GET_BITS(desc, 17, 17);
+   else
+      return GET_BITS(desc, 15, 15);
 }
 
 /**
@@ -360,13 +554,8 @@ brw_dp_surface_desc(const struct gen_device_info *devinfo,
                     unsigned msg_control)
 {
    assert(devinfo->gen >= 7);
-   if (devinfo->gen >= 8) {
-      return (SET_BITS(msg_control, 13, 8) |
-              SET_BITS(msg_type, 18, 14));
-   } else {
-      return (SET_BITS(msg_control, 13, 8) |
-              SET_BITS(msg_type, 17, 14));
-   }
+   /* We'll OR in the binding table index later */
+   return brw_dp_desc(devinfo, 0, msg_type, msg_control);
 }
 
 static inline uint32_t
