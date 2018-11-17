@@ -1078,10 +1078,9 @@ _mesa_enable_vertex_array_attrib(struct gl_context *ctx,
    assert(attrib < ARRAY_SIZE(vao->VertexAttrib));
    assert(!vao->SharedAndImmutable);
 
-   if (!vao->VertexAttrib[attrib].Enabled) {
+   const GLbitfield array_bit = VERT_BIT(attrib);
+   if ((vao->Enabled & array_bit) == 0) {
       /* was disabled, now being enabled */
-      vao->VertexAttrib[attrib].Enabled = GL_TRUE;
-      const GLbitfield array_bit = VERT_BIT(attrib);
       vao->Enabled |= array_bit;
       vao->NewArrays |= array_bit;
 
@@ -1165,10 +1164,9 @@ _mesa_disable_vertex_array_attrib(struct gl_context *ctx,
    assert(attrib < ARRAY_SIZE(vao->VertexAttrib));
    assert(!vao->SharedAndImmutable);
 
-   if (vao->VertexAttrib[attrib].Enabled) {
+   const GLbitfield array_bit = VERT_BIT(attrib);
+   if (vao->Enabled & array_bit) {
       /* was enabled, now being disabled */
-      vao->VertexAttrib[attrib].Enabled = GL_FALSE;
-      const GLbitfield array_bit = VERT_BIT(attrib);
       vao->Enabled &= ~array_bit;
       vao->NewArrays |= array_bit;
 
@@ -2781,7 +2779,6 @@ _mesa_copy_vertex_attrib_array(struct gl_context *ctx,
    dst->Doubles        = src->Doubles;
    dst->Normalized     = src->Normalized;
    dst->Ptr            = src->Ptr;
-   dst->Enabled        = src->Enabled;
    dst->_ElementSize   = src->_ElementSize;
    dst->_EffBufferBindingIndex = src->_EffBufferBindingIndex;
    dst->_EffRelativeOffset = src->_EffRelativeOffset;

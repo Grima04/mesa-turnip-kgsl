@@ -391,7 +391,6 @@ init_array(struct gl_context *ctx,
    array->Stride = 0;
    array->Ptr = NULL;
    array->RelativeOffset = 0;
-   array->Enabled = GL_FALSE;
    array->Normalized = GL_FALSE;
    array->Integer = GL_FALSE;
    array->Doubles = GL_FALSE;
@@ -642,9 +641,6 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
                attrib2->_EffBufferBindingIndex = bindex;
                attrib2->_EffRelativeOffset = attrib2->RelativeOffset;
                assert(attrib2->_EffRelativeOffset <= MaxRelativeOffset);
-
-               /* Only enabled arrays shall appear in the unique bindings */
-               assert(attrib2->Enabled);
             }
             /* Finally this is the set of effectively bound arrays with the
              * original binding offset.
@@ -720,9 +716,6 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
                attrib2->_EffRelativeOffset =
                   binding2->Offset + attrib2->RelativeOffset - min_offset;
                assert(attrib2->_EffRelativeOffset <= MaxRelativeOffset);
-
-               /* Only enabled arrays shall appear in the unique bindings */
-               assert(attrib2->Enabled);
             }
             /* Finally this is the set of effectively bound arrays */
             binding->_EffOffset = min_offset;
@@ -812,9 +805,6 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
             attrib2->_EffBufferBindingIndex = bindex;
             attrib2->_EffRelativeOffset = attrib2->Ptr - ptr;
             assert(attrib2->_EffRelativeOffset <= binding->Stride);
-
-            /* Only enabled arrays shall appear in the unique bindings */
-            assert(attrib2->Enabled);
          }
          /* Finally this is the set of effectively bound arrays */
          binding->_EffOffset = (GLintptr)ptr;
@@ -883,8 +873,6 @@ _mesa_all_varyings_in_vbos(const struct gl_vertex_array_object *vao)
       const struct gl_vertex_buffer_binding *buffer_binding =
          &vao->BufferBinding[attrib_array->BufferBindingIndex];
 
-      /* Only enabled arrays shall appear in the Enabled bitmask */
-      assert(attrib_array->Enabled);
       /* We have already masked out vao->VertexAttribBufferMask  */
       assert(!_mesa_is_bufferobj(buffer_binding->BufferObj));
 
@@ -914,8 +902,6 @@ _mesa_all_buffers_are_unmapped(const struct gl_vertex_array_object *vao)
       const struct gl_vertex_buffer_binding *buffer_binding =
          &vao->BufferBinding[attrib_array->BufferBindingIndex];
 
-      /* Only enabled arrays shall appear in the Enabled bitmask */
-      assert(attrib_array->Enabled);
       /* We have already masked with vao->VertexAttribBufferMask  */
       assert(_mesa_is_bufferobj(buffer_binding->BufferObj));
 

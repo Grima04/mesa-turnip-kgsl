@@ -455,7 +455,6 @@ compare_vao(gl_vertex_processing_mode mode,
       if (attrib->Size != size[vbo_attr])
          return false;
       assert(attrib->Format == GL_RGBA);
-      assert(attrib->Enabled == GL_TRUE);
       assert(attrib->Normalized == GL_FALSE);
       assert(attrib->Integer == vbo_attrtype_to_integer_flag(tp));
       assert(attrib->Doubles == vbo_attrtype_to_double_flag(tp));
@@ -517,7 +516,6 @@ update_vao(struct gl_context *ctx,
       _mesa_vertex_attrib_binding(ctx, *vao, vao_attr, 0);
       _mesa_enable_vertex_array_attrib(ctx, *vao, vao_attr);
    }
-   assert(vao_enabled == (*vao)->Enabled);
    assert((vao_enabled & ~(*vao)->VertexAttribBufferMask) == 0);
 
    /* Finalize and freeze the VAO */

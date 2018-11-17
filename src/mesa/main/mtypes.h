@@ -1422,7 +1422,6 @@ struct gl_array_attributes
    GLshort Stride;          /**< Stride as specified with gl*Pointer() */
    GLenum16 Type;           /**< Datatype: GL_FLOAT, GL_INT, etc */
    GLenum16 Format;         /**< Default: GL_RGBA, but may be GL_BGRA */
-   GLboolean Enabled;       /**< Whether the array is enabled */
    GLubyte Size;            /**< Components per element (1,2,3,4) */
    unsigned Normalized:1;   /**< Fixed-point values are normalized when converted to floats */
    unsigned Integer:1;      /**< Fixed-point values are not converted to floats */
