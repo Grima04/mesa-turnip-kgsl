@@ -195,7 +195,7 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
                                      exec->vtx.attrtype[i]);
       }
 
-      if (exec->vtx.attrtype[i] != vbo->current[i].Type ||
+      if (exec->vtx.attrtype[i] != vbo->current[i].Format.Type ||
           memcmp(current, tmp, 4 * sizeof(GLfloat) * dmul) != 0) {
          memcpy(current, tmp, 4 * sizeof(GLfloat) * dmul);
 
@@ -205,14 +205,9 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
           * directly.
           */
          /* Size here is in components - not bytes */
-         vbo->current[i].Size = exec->vtx.attrsz[i] / dmul;
-         vbo->current[i]._ElementSize =
-            vbo->current[i].Size * sizeof(GLfloat) * dmul;
-         vbo->current[i].Type = exec->vtx.attrtype[i];
-         vbo->current[i].Integer =
-            vbo_attrtype_to_integer_flag(exec->vtx.attrtype[i]);
-         vbo->current[i].Doubles =
-            vbo_attrtype_to_double_flag(exec->vtx.attrtype[i]);
+         vbo_set_vertex_format(&vbo->current[i].Format,
+                               exec->vtx.attrsz[i] / dmul,
+                               exec->vtx.attrtype[i]);
 
          /* This triggers rather too much recalculation of Mesa state
           * that doesn't get used (eg light positions).

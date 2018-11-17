@@ -303,16 +303,16 @@ brw_merge_inputs(struct brw_context *brw)
        * 2_10_10_10_REV vertex formats.  Set appropriate workaround flags.
        */
       while (mask) {
-         const struct gl_array_attributes *glattrib;
+         const struct gl_vertex_format *glformat;
          uint8_t wa_flags = 0;
 
          i = u_bit_scan64(&mask);
-         glattrib = brw->vb.inputs[i].glattrib;
+         glformat = &brw->vb.inputs[i].glattrib->Format;
 
-         switch (glattrib->Type) {
+         switch (glformat->Type) {
 
          case GL_FIXED:
-            wa_flags = glattrib->Size;
+            wa_flags = glformat->Size;
             break;
 
          case GL_INT_2_10_10_10_REV:
@@ -320,12 +320,12 @@ brw_merge_inputs(struct brw_context *brw)
             /* fallthough */
 
          case GL_UNSIGNED_INT_2_10_10_10_REV:
-            if (glattrib->Format == GL_BGRA)
+            if (glformat->Format == GL_BGRA)
                wa_flags |= BRW_ATTRIB_WA_BGRA;
 
-            if (glattrib->Normalized)
+            if (glformat->Normalized)
                wa_flags |= BRW_ATTRIB_WA_NORMALIZE;
-            else if (!glattrib->Integer)
+            else if (!glformat->Integer)
                wa_flags |= BRW_ATTRIB_WA_SCALE;
 
             break;

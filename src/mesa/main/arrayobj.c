@@ -385,22 +385,17 @@ init_array(struct gl_context *ctx,
    assert(index < ARRAY_SIZE(vao->BufferBinding));
    struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
 
-   array->Size = size;
-   array->Type = type;
-   array->Format = GL_RGBA; /* only significant for GL_EXT_vertex_array_bgra */
+   _mesa_set_vertex_format(&array->Format, size, type, GL_RGBA,
+                           GL_FALSE, GL_FALSE, GL_FALSE);
    array->Stride = 0;
    array->Ptr = NULL;
    array->RelativeOffset = 0;
-   array->Normalized = GL_FALSE;
-   array->Integer = GL_FALSE;
-   array->Doubles = GL_FALSE;
-   array->_ElementSize = size * _mesa_sizeof_type(type);
    ASSERT_BITFIELD_SIZE(struct gl_array_attributes, BufferBindingIndex,
                         VERT_ATTRIB_MAX - 1);
    array->BufferBindingIndex = index;
 
    binding->Offset = 0;
-   binding->Stride = array->_ElementSize;
+   binding->Stride = array->Format._ElementSize;
    binding->BufferObj = NULL;
    binding->_BoundArrays = BITFIELD_BIT(index);
 
@@ -756,7 +751,7 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
          GLbitfield eff_bound_arrays = bound;
 
          const GLubyte *ptr = attrib->Ptr;
-         unsigned vertex_end = attrib->_ElementSize;
+         unsigned vertex_end = attrib->Format._ElementSize;
 
          /* Walk other user space arrays and see which are interleaved
           * using the same binding parameters.
@@ -778,9 +773,10 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
             if (binding->InstanceDivisor != binding2->InstanceDivisor)
                continue;
             if (ptr <= attrib2->Ptr) {
-               if (ptr + binding->Stride < attrib2->Ptr + attrib2->_ElementSize)
+               if (ptr + binding->Stride < attrib2->Ptr +
+                   attrib2->Format._ElementSize)
                   continue;
-               unsigned end = attrib2->Ptr + attrib2->_ElementSize - ptr;
+               unsigned end = attrib2->Ptr + attrib2->Format._ElementSize - ptr;
                vertex_end = MAX2(vertex_end, end);
             } else {
                if (attrib2->Ptr + binding->Stride < ptr + vertex_end)
@@ -823,7 +819,8 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
       /* Query the original api defined attrib/binding information ... */
       const unsigned char *const map =_mesa_vao_attribute_map[mode];
       if (vao->Enabled & VERT_BIT(map[attr])) {
-         const struct gl_array_attributes *attrib = &vao->VertexAttrib[map[attr]];
+         const struct gl_array_attributes *attrib =
+            &vao->VertexAttrib[map[attr]];
          const struct gl_vertex_buffer_binding *binding =
             &vao->BufferBinding[attrib->BufferBindingIndex];
          /* ... and compare that with the computed attrib/binding */

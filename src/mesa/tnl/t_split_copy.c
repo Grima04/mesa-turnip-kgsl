@@ -169,7 +169,7 @@ dump_draw_info(struct gl_context *ctx,
          const GLubyte *ptr = _mesa_vertex_attrib_address(attrib, binding);
          printf("    array %d at %p:\n", j, (void*) &arrays[j]);
          printf("      ptr %p, size %d, type 0x%x, stride %d\n",
-                ptr, attrib->Size, attrib->Type, binding->Stride);
+                ptr, attrib->Format.Size, attrib->Format.Type, binding->Stride);
          if (0) {
             GLint k = prims[i].start + prims[i].count - 1;
             GLfloat *last = (GLfloat *) (ptr + binding->Stride * k);
@@ -269,7 +269,7 @@ elt(struct copy_context *copy, GLuint elt_idx)
          csr += copy->varying[i].size;
 
 #ifdef NAN_CHECK
-         if (srcarray->Type == GL_FLOAT) {
+         if (srcarray->Format.Type == GL_FLOAT) {
             GLuint k;
             GLfloat *f = (GLfloat *) srcptr;
             for (k = 0; k < srcarray->Size; k++) {
@@ -451,8 +451,8 @@ replay_init(struct copy_context *copy)
 
          copy->varying[j].attr = i;
          copy->varying[j].array = &copy->array[i];
-         copy->varying[j].size = attrib->_ElementSize;
-         copy->vertex_size += attrib->_ElementSize;
+         copy->varying[j].size = attrib->Format._ElementSize;
+         copy->vertex_size += attrib->Format._ElementSize;
 
          if (_mesa_is_bufferobj(vbo) &&
              !_mesa_bufferobj_mapped(vbo, MAP_INTERNAL))
@@ -528,16 +528,10 @@ replay_init(struct copy_context *copy)
       struct gl_vertex_buffer_binding *dstbind = &copy->varying[i].dstbinding;
       struct gl_array_attributes *dstattr = &copy->varying[i].dstattribs;
 
-      dstattr->Size = srcattr->Size;
-      dstattr->Type = srcattr->Type;
-      dstattr->Format = GL_RGBA;
-      dstbind->Stride = copy->vertex_size;
+      dstattr->Format = srcattr->Format;
       dstattr->Ptr = copy->dstbuf + offset;
-      dstattr->Normalized = srcattr->Normalized;
-      dstattr->Integer = srcattr->Integer;
-      dstattr->Doubles = srcattr->Doubles;
+      dstbind->Stride = copy->vertex_size;
       dstbind->BufferObj = ctx->Shared->NullBufferObj;
-      dstattr->_ElementSize = srcattr->_ElementSize;
       dst->BufferBinding = dstbind;
       dst->VertexAttrib = dstattr;
 

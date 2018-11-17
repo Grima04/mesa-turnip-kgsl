@@ -33,6 +33,7 @@
 #include "context.h"
 #include "enable.h"
 #include "enums.h"
+#include "glformats.h"
 #include "hash.h"
 #include "image.h"
 #include "macros.h"
@@ -243,6 +244,24 @@ vertex_binding_divisor(struct gl_context *ctx,
 }
 
 
+void
+_mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
+                        GLubyte size, GLenum16 type, GLenum16 format,
+                        GLboolean normalized, GLboolean integer,
+                        GLboolean doubles)
+{
+   assert(size <= 4);
+   vertex_format->Type = type;
+   vertex_format->Format = format;
+   vertex_format->Size = size;
+   vertex_format->Normalized = normalized;
+   vertex_format->Integer = integer;
+   vertex_format->Doubles = doubles;
+   vertex_format->_ElementSize = _mesa_bytes_per_vertex_attrib(size, type);
+   assert(vertex_format->_ElementSize <= 4*sizeof(double));
+}
+
+
 /**
  * Examine the API profile and extensions to determine which types are legal
  * for vertex arrays.  This is called once from update_array_format().
@@ -330,22 +349,13 @@ _mesa_update_array_format(struct gl_context *ctx,
                           GLuint relativeOffset)
 {
    struct gl_array_attributes *const array = &vao->VertexAttrib[attrib];
-   GLint elementSize;
 
    assert(!vao->SharedAndImmutable);
    assert(size <= 4);
 
-   elementSize = _mesa_bytes_per_vertex_attrib(size, type);
-   assert(elementSize != -1);
-
-   array->Size = size;
-   array->Type = type;
-   array->Format = format;
-   array->Normalized = normalized;
-   array->Integer = integer;
-   array->Doubles = doubles;
    array->RelativeOffset = relativeOffset;
-   array->_ElementSize = elementSize;
+   _mesa_set_vertex_format(&array->Format, size, type, format,
+                           normalized, integer, doubles);
 
    vao->NewArrays |= vao->Enabled & VERT_BIT(attrib);
    if (vao == ctx->Array.VAO)
@@ -609,7 +619,8 @@ update_array(struct gl_context *ctx,
    array->Ptr = ptr;
 
    /* Update the vertex buffer binding */
-   GLsizei effectiveStride = stride != 0 ? stride : array->_ElementSize;
+   GLsizei effectiveStride = stride != 0 ?
+      stride : array->Format._ElementSize;
    _mesa_bind_vertex_buffer(ctx, vao, attrib,
                             ctx->Array.ArrayBufferObj, (GLintptr) ptr,
                             effectiveStride);
@@ -1269,25 +1280,25 @@ get_vertex_array_attrib(struct gl_context *ctx,
    case GL_VERTEX_ATTRIB_ARRAY_ENABLED_ARB:
       return !!(vao->Enabled & VERT_BIT_GENERIC(index));
    case GL_VERTEX_ATTRIB_ARRAY_SIZE_ARB:
-      return (array->Format == GL_BGRA) ? GL_BGRA : array->Size;
+      return (array->Format.Format == GL_BGRA) ? GL_BGRA : array->Format.Size;
    case GL_VERTEX_ATTRIB_ARRAY_STRIDE_ARB:
       return array->Stride;
    case GL_VERTEX_ATTRIB_ARRAY_TYPE_ARB:
-      return array->Type;
+      return array->Format.Type;
    case GL_VERTEX_ATTRIB_ARRAY_NORMALIZED_ARB:
-      return array->Normalized;
+      return array->Format.Normalized;
    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING_ARB:
       return vao->BufferBinding[array->BufferBindingIndex].BufferObj->Name;
    case GL_VERTEX_ATTRIB_ARRAY_INTEGER:
       if ((_mesa_is_desktop_gl(ctx)
            && (ctx->Version >= 30 || ctx->Extensions.EXT_gpu_shader4))
           || _mesa_is_gles3(ctx)) {
-         return array->Integer;
+         return array->Format.Integer;
       }
       goto error;
    case GL_VERTEX_ATTRIB_ARRAY_LONG:
       if (_mesa_is_desktop_gl(ctx)) {
-         return array->Doubles;
+         return array->Format.Doubles;
       }
       goto error;
    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR_ARB:
@@ -2771,17 +2782,11 @@ _mesa_copy_vertex_attrib_array(struct gl_context *ctx,
                                struct gl_array_attributes *dst,
                                const struct gl_array_attributes *src)
 {
-   dst->Size           = src->Size;
-   dst->Type           = src->Type;
-   dst->Format         = src->Format;
-   dst->BufferBindingIndex = src->BufferBindingIndex;
+   dst->Ptr            = src->Ptr;
    dst->RelativeOffset = src->RelativeOffset;
    dst->Format         = src->Format;
-   dst->Integer        = src->Integer;
-   dst->Doubles        = src->Doubles;
-   dst->Normalized     = src->Normalized;
-   dst->Ptr            = src->Ptr;
-   dst->_ElementSize   = src->_ElementSize;
+   dst->Stride         = src->Stride;
+   dst->BufferBindingIndex = src->BufferBindingIndex;
    dst->_EffBufferBindingIndex = src->_EffBufferBindingIndex;
    dst->_EffRelativeOffset = src->_EffRelativeOffset;
 }
@@ -2823,8 +2828,9 @@ _mesa_print_arrays(struct gl_context *ctx)
       fprintf(stderr, "  %s: Ptr=%p, Type=%s, Size=%d, ElemSize=%u, "
               "Stride=%d, Buffer=%u(Size %lu)\n",
               gl_vert_attrib_name((gl_vert_attrib)i),
-              array->Ptr, _mesa_enum_to_string(array->Type), array->Size,
-              array->_ElementSize, binding->Stride, bo->Name,
+              array->Ptr, _mesa_enum_to_string(array->Format.Type),
+              array->Format.Size,
+              array->Format._ElementSize, binding->Stride, bo->Name,
               (unsigned long) bo->Size);
    }
 }

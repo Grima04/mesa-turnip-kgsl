@@ -755,11 +755,20 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       v->value_bool = !!(ctx->Array.VAO->Enabled & VERT_BIT_POINT_SIZE);
       break;
 
-   case GL_TEXTURE_COORD_ARRAY_SIZE:
    case GL_TEXTURE_COORD_ARRAY_TYPE:
    case GL_TEXTURE_COORD_ARRAY_STRIDE:
       array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)];
       v->value_int = *(GLuint *) ((char *) array + d->offset);
+      break;
+
+   case GL_TEXTURE_COORD_ARRAY_SIZE:
+      array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)];
+      v->value_int = array->Format.Size;
+      break;
+
+   case GL_VERTEX_ARRAY_SIZE:
+      array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_POS];
+      v->value_int = array->Format.Size;
       break;
 
    case GL_ACTIVE_TEXTURE_ARB:
@@ -969,11 +978,11 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
    /* ARB_vertex_array_bgra */
    case GL_COLOR_ARRAY_SIZE:
       array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_COLOR0];
-      v->value_int = array->Format == GL_BGRA ? GL_BGRA : array->Size;
+      v->value_int = array->Format.Format == GL_BGRA ? GL_BGRA : array->Format.Size;
       break;
    case GL_SECONDARY_COLOR_ARRAY_SIZE:
       array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_COLOR1];
-      v->value_int = array->Format == GL_BGRA ? GL_BGRA : array->Size;
+      v->value_int = array->Format.Format == GL_BGRA ? GL_BGRA : array->Format.Size;
       break;
 
    /* ARB_copy_buffer */

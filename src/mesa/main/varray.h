@@ -29,6 +29,12 @@
 
 #include "bufferobj.h"
 
+void
+_mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
+                        GLubyte size, GLenum16 type, GLenum16 format,
+                        GLboolean normalized, GLboolean integer,
+                        GLboolean doubles);
+
 
 /**
  * Returns a pointer to the vertex attribute data in a client array,

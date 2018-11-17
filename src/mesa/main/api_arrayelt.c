@@ -1575,7 +1575,7 @@ _ae_update_state(struct gl_context *ctx)
    if (vao->Enabled & VERT_BIT_COLOR_INDEX) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = IndexFuncs[TYPE_IDX(aa->array->Type)];
+      aa->offset = IndexFuncs[TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
@@ -1591,7 +1591,7 @@ _ae_update_state(struct gl_context *ctx)
    if (vao->Enabled & VERT_BIT_NORMAL) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_NORMAL];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = NormalFuncs[TYPE_IDX(aa->array->Type)];
+      aa->offset = NormalFuncs[TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
@@ -1599,7 +1599,7 @@ _ae_update_state(struct gl_context *ctx)
    if (vao->Enabled & VERT_BIT_COLOR0) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR0];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = ColorFuncs[aa->array->Size-3][TYPE_IDX(aa->array->Type)];
+      aa->offset = ColorFuncs[aa->array->Format.Size-3][TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
@@ -1607,7 +1607,7 @@ _ae_update_state(struct gl_context *ctx)
    if (vao->Enabled & VERT_BIT_COLOR1) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR1];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = SecondaryColorFuncs[TYPE_IDX(aa->array->Type)];
+      aa->offset = SecondaryColorFuncs[TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
@@ -1615,7 +1615,7 @@ _ae_update_state(struct gl_context *ctx)
    if (vao->Enabled & VERT_BIT_FOG) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_FOG];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = FogCoordFuncs[TYPE_IDX(aa->array->Type)];
+      aa->offset = FogCoordFuncs[TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
@@ -1629,10 +1629,10 @@ _ae_update_state(struct gl_context *ctx)
           */
          at->array = attribArray;
          at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
-         assert(!at->array->Normalized);
-         at->func = AttribFuncsNV[at->array->Normalized]
-                                 [at->array->Size-1]
-                                 [TYPE_IDX(at->array->Type)];
+         assert(!at->array->Format.Normalized);
+         at->func = AttribFuncsNV[at->array->Format.Normalized]
+                                 [at->array->Format.Size-1]
+                                 [TYPE_IDX(at->array->Format.Type)];
          at->index = VERT_ATTRIB_TEX0 + i;
 	 check_vbo(actx, at->binding->BufferObj);
          at++;
@@ -1652,18 +1652,18 @@ _ae_update_state(struct gl_context *ctx)
           * change from one execution of _ae_ArrayElement() to
           * the next.  Doing so caused UT to break.
           */
-         if (at->array->Doubles)
+         if (at->array->Format.Doubles)
             intOrNorm = 3;
-         else if (at->array->Integer)
+         else if (at->array->Format.Integer)
             intOrNorm = 2;
-         else if (at->array->Normalized)
+         else if (at->array->Format.Normalized)
             intOrNorm = 1;
          else
             intOrNorm = 0;
 
          at->func = AttribFuncsARB[intOrNorm]
-            [at->array->Size-1]
-            [TYPE_IDX(at->array->Type)];
+            [at->array->Format.Size-1]
+            [TYPE_IDX(at->array->Format.Type)];
 
          at->index = i;
 	 check_vbo(actx, at->binding->BufferObj);
@@ -1678,15 +1678,15 @@ _ae_update_state(struct gl_context *ctx)
        */
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_GENERIC0];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      assert(aa->array->Size >= 2); /* XXX fix someday? */
-      aa->offset = VertexFuncs[aa->array->Size-2][TYPE_IDX(aa->array->Type)];
+      assert(aa->array->Format.Size >= 2); /* XXX fix someday? */
+      aa->offset = VertexFuncs[aa->array->Format.Size-2][TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }
    else if (vao->Enabled & VERT_BIT_POS) {
       aa->array = &vao->VertexAttrib[VERT_ATTRIB_POS];
       aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = VertexFuncs[aa->array->Size-2][TYPE_IDX(aa->array->Type)];
+      aa->offset = VertexFuncs[aa->array->Format.Size-2][TYPE_IDX(aa->array->Format.Type)];
       check_vbo(actx, aa->binding->BufferObj);
       aa++;
    }

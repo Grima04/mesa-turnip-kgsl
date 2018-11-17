@@ -115,6 +115,16 @@ vbo_attrtype_to_double_flag(GLenum format)
 }
 
 
+static inline void
+vbo_set_vertex_format(struct gl_vertex_format* vertex_format,
+                      GLubyte size, GLenum16 type)
+{
+   _mesa_set_vertex_format(vertex_format, size, type, GL_RGBA, GL_FALSE,
+                           vbo_attrtype_to_integer_flag(type),
+                           vbo_attrtype_to_double_flag(type));
+}
+
+
 /**
  * Return default component values for the given format.
  * The return type is an array of fi_types, because that's how we declare
