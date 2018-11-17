@@ -684,8 +684,8 @@ get_unified_tess_slots(const struct iris_context *ice,
    *per_patch_slots = tes->patch_inputs_read;
 
    if (tcs) {
-      *per_vertex_slots |= tcs->inputs_read;
-      *per_patch_slots |= tcs->patch_inputs_read;
+      *per_vertex_slots |= tcs->outputs_written;
+      *per_patch_slots |= tcs->patch_outputs_written;
    }
 }
 
