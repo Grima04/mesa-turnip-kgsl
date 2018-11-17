@@ -49,7 +49,7 @@ get_array_stride(struct gl_context *ctx, const struct tnl_vertex_array *a)
 	if (render->mode == VBO && !_mesa_is_bufferobj(binding->BufferObj)) {
 		const struct gl_array_attributes *attrib = a->VertexAttrib;
 		/* Pack client buffers. */
-		return align(_mesa_sizeof_type(attrib->Type) * attrib->Size, 4);
+		return align(attrib->_ElementSize, 4);
 	} else {
 		return binding->Stride;
 	}
