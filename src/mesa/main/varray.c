@@ -1071,24 +1071,25 @@ _mesa_VertexAttribLPointer(GLuint index, GLint size, GLenum type,
 
 
 void
-_mesa_enable_vertex_array_attrib(struct gl_context *ctx,
-                                 struct gl_vertex_array_object *vao,
-                                 gl_vert_attrib attrib)
+_mesa_enable_vertex_array_attribs(struct gl_context *ctx,
+                                  struct gl_vertex_array_object *vao,
+                                  GLbitfield attrib_bits)
 {
-   assert(attrib < ARRAY_SIZE(vao->VertexAttrib));
+   assert((attrib_bits & ~VERT_BIT_ALL) == 0);
    assert(!vao->SharedAndImmutable);
 
-   const GLbitfield array_bit = VERT_BIT(attrib);
-   if ((vao->Enabled & array_bit) == 0) {
+   /* Only work on bits that are disabled */
+   attrib_bits &= ~vao->Enabled;
+   if (attrib_bits) {
       /* was disabled, now being enabled */
-      vao->Enabled |= array_bit;
-      vao->NewArrays |= array_bit;
+      vao->Enabled |= attrib_bits;
+      vao->NewArrays |= attrib_bits;
 
       if (vao == ctx->Array.VAO)
          ctx->NewState |= _NEW_ARRAY;
 
       /* Update the map mode if needed */
-      if (array_bit & (VERT_BIT_POS|VERT_BIT_GENERIC0))
+      if (attrib_bits & (VERT_BIT_POS|VERT_BIT_GENERIC0))
          update_attribute_map_mode(ctx, vao);
    }
 }
@@ -1157,24 +1158,25 @@ _mesa_EnableVertexArrayAttrib_no_error(GLuint vaobj, GLuint index)
 
 
 void
-_mesa_disable_vertex_array_attrib(struct gl_context *ctx,
-                                  struct gl_vertex_array_object *vao,
-                                  gl_vert_attrib attrib)
+_mesa_disable_vertex_array_attribs(struct gl_context *ctx,
+                                   struct gl_vertex_array_object *vao,
+                                   GLbitfield attrib_bits)
 {
-   assert(attrib < ARRAY_SIZE(vao->VertexAttrib));
+   assert((attrib_bits & ~VERT_BIT_ALL) == 0);
    assert(!vao->SharedAndImmutable);
 
-   const GLbitfield array_bit = VERT_BIT(attrib);
-   if (vao->Enabled & array_bit) {
+   /* Only work on bits that are enabled */
+   attrib_bits &= vao->Enabled;
+   if (attrib_bits) {
       /* was enabled, now being disabled */
-      vao->Enabled &= ~array_bit;
-      vao->NewArrays |= array_bit;
+      vao->Enabled &= ~attrib_bits;
+      vao->NewArrays |= attrib_bits;
 
       if (vao == ctx->Array.VAO)
          ctx->NewState |= _NEW_ARRAY;
 
       /* Update the map mode if needed */
-      if (array_bit & (VERT_BIT_POS|VERT_BIT_GENERIC0))
+      if (attrib_bits & (VERT_BIT_POS|VERT_BIT_GENERIC0))
          update_attribute_map_mode(ctx, vao);
    }
 }

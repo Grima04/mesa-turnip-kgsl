@@ -62,15 +62,33 @@ _mesa_update_array_format(struct gl_context *ctx,
                           GLuint relativeOffset);
 
 extern void
+_mesa_enable_vertex_array_attribs(struct gl_context *ctx,
+                                 struct gl_vertex_array_object *vao,
+                                 GLbitfield attrib_bits);
+
+static inline void
 _mesa_enable_vertex_array_attrib(struct gl_context *ctx,
                                  struct gl_vertex_array_object *vao,
-                                 gl_vert_attrib attrib);
+                                 gl_vert_attrib attrib)
+{
+   assert(attrib < VERT_ATTRIB_MAX);
+   _mesa_enable_vertex_array_attribs(ctx, vao, VERT_BIT(attrib));
+}
 
 
 extern void
+_mesa_disable_vertex_array_attribs(struct gl_context *ctx,
+                                   struct gl_vertex_array_object *vao,
+                                   GLbitfield attrib_bits);
+
+static inline void
 _mesa_disable_vertex_array_attrib(struct gl_context *ctx,
                                   struct gl_vertex_array_object *vao,
-                                  gl_vert_attrib attrib);
+                                  gl_vert_attrib attrib)
+{
+   assert(attrib < VERT_ATTRIB_MAX);
+   _mesa_disable_vertex_array_attribs(ctx, vao, VERT_BIT(attrib));
+}
 
 
 extern void

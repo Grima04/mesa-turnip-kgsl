@@ -514,8 +514,9 @@ update_vao(struct gl_context *ctx,
       _vbo_set_attrib_format(ctx, *vao, vao_attr, buffer_offset,
                              size[vbo_attr], type[vbo_attr], offset[vbo_attr]);
       _mesa_vertex_attrib_binding(ctx, *vao, vao_attr, 0);
-      _mesa_enable_vertex_array_attrib(ctx, *vao, vao_attr);
    }
+   _mesa_enable_vertex_array_attribs(ctx, *vao, vao_enabled);
+   assert(vao_enabled == (*vao)->Enabled);
    assert((vao_enabled & ~(*vao)->VertexAttribBufferMask) == 0);
 
    /* Finalize and freeze the VAO */
