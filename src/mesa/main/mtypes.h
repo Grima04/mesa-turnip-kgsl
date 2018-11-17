@@ -1439,7 +1439,7 @@ struct gl_array_attributes
    /** Stride as specified with gl*Pointer() */
    GLshort Stride;
    /** Index into gl_vertex_array_object::BufferBinding[] array */
-   unsigned BufferBindingIndex:6;
+   GLubyte BufferBindingIndex;
 
    /**
     * Derived effective buffer binding index
@@ -1454,7 +1454,7 @@ struct gl_array_attributes
     * Note that _mesa_update_vao_derived_arrays is called when binding
     * the VAO to Array._DrawVAO.
     */
-   unsigned _EffBufferBindingIndex:6;
+   GLubyte _EffBufferBindingIndex;
    /**
     * Derived effective relative offset.
     *
