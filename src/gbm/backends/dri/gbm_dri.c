@@ -316,7 +316,7 @@ dri_open_driver(struct gbm_dri_device *dri)
       /* Read GBM_DRIVERS_PATH first for compatibility, but LIBGL_DRIVERS_PATH
        * is recommended over GBM_DRIVERS_PATH.
        */
-      "GBM_DRIVERS_PATH"
+      "GBM_DRIVERS_PATH",
       /* Read LIBGL_DRIVERS_PATH if GBM_DRIVERS_PATH was not set.
        * LIBGL_DRIVERS_PATH is recommended over GBM_DRIVERS_PATH.
        */
