@@ -12,13 +12,15 @@ struct aub_viewer_cfg {
    ImColor highlight_color;
    ImColor error_color;
    ImColor missing_color;
+   ImColor boolean_color;
 
   aub_viewer_cfg() :
     clear_color(114, 144, 154),
     dwords_color(29, 177, 194, 255),
     highlight_color(0, 230, 0, 255),
     error_color(236, 255, 0, 255),
-    missing_color(230, 0, 230, 255) {}
+    missing_color(230, 0, 230, 255),
+    boolean_color(228, 75, 255) {}
 };
 
 struct aub_viewer_decode_cfg {

@@ -74,7 +74,12 @@ aub_viewer_print_group(struct aub_viewer_decode_ctx *ctx,
       }
       if (!gen_field_is_header(iter.field)) {
          if (ctx->decode_cfg->field_filter.PassFilter(iter.name)) {
-            ImGui::Text("%s: %s", iter.name, iter.value);
+            if (iter.field->type.kind == gen_type::GEN_TYPE_BOOL && iter.raw_value) {
+               ImGui::Text("%s: ", iter.name); ImGui::SameLine();
+               ImGui::TextColored(ctx->cfg->boolean_color, "true");
+            } else {
+               ImGui::Text("%s: %s", iter.name, iter.value);
+            }
             if (iter.struct_desc) {
                int struct_dword = iter.start_bit / 32;
                uint64_t struct_address = address + 4 * struct_dword;
