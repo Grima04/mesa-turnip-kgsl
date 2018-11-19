@@ -693,7 +693,7 @@ intel_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
              d_depth != s_depth ||
              depthRb->mt_level != stencilRb->mt_level ||
 	     depthRb->mt_layer != stencilRb->mt_layer) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS,
+	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                            "FBO incomplete: depth and stencil must match in"
                            "width, height, depth, LOD and layer\n");
 	 }
