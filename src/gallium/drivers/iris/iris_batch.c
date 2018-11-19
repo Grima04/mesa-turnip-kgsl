@@ -345,11 +345,7 @@ create_batch(struct iris_batch *batch)
 static void
 iris_batch_reset(struct iris_batch *batch)
 {
-   if (batch->last_bo != NULL) {
-      iris_bo_unreference(batch->last_bo);
-      batch->last_bo = NULL;
-   }
-   batch->last_bo = batch->bo;
+   iris_bo_unreference(batch->bo);
    batch->primary_batch_size = 0;
    batch->contains_draw = false;
 
@@ -380,8 +376,6 @@ iris_batch_free(struct iris_batch *batch)
    batch->bo = NULL;
    batch->map = NULL;
    batch->map_next = NULL;
-
-   iris_bo_unreference(batch->last_bo);
 
    iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
 
@@ -551,8 +545,6 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
    }
 
    int ret = submit_batch(batch);
-
-   //throttle(iris);
 
    if (ret >= 0) {
       //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)

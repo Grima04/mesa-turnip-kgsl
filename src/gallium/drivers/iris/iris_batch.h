@@ -62,9 +62,6 @@ struct iris_batch {
    /** Size of the primary batch if we've moved on to a secondary. */
    unsigned primary_batch_size;
 
-   /** Last BO submitted to the hardware.  Used for glFinish(). */
-   struct iris_bo *last_bo;
-
    /** Last Surface State Base Address set in this hardware context. */
    uint64_t last_surface_base_address;
 
