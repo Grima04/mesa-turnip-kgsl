@@ -289,6 +289,7 @@ struct fd_context {
 	struct pipe_framebuffer_state framebuffer;
 	struct pipe_poly_stipple stipple;
 	struct pipe_viewport_state viewport;
+	struct pipe_scissor_state viewport_scissor;
 	struct fd_constbuf_stateobj constbuf[PIPE_SHADER_TYPES];
 	struct fd_shaderbuf_stateobj shaderbuf[PIPE_SHADER_TYPES];
 	struct fd_shaderimg_stateobj shaderimg[PIPE_SHADER_TYPES];
