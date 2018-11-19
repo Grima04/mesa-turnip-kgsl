@@ -238,7 +238,8 @@ if with_tests
         include_directories : [
           inc_common, inc_intel, inc_compiler, inc_vulkan_util, inc_vulkan_wsi,
         ],
-      )
+      ),
+      suite : ['intel'],
     )
   endforeach
 endif

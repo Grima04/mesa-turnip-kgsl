@@ -44,6 +44,7 @@ if with_shared_glapi
         include_directories('..'),
       ],
       dependencies : [dep_libdrm, dep_thread, idep_gtest]
-    )
+    ),
+    suite : ['glx'],
   )
 endif

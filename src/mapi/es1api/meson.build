@@ -56,6 +56,7 @@ if with_tests
     'es1-ABI-check',
     find_program('ABI-check'),
     env : env_test,
-    args : libglesv1_cm
+    args : libglesv1_cm,
+    suite : ['mapi'],
   )
 endif

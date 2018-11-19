@@ -157,7 +157,8 @@ if with_tests
           libintel_compiler, libintel_common, libintel_dev, libmesa_util, libisl,
         ],
         dependencies : [dep_thread, dep_dl, idep_gtest, idep_nir],
-      )
+      ),
+      suite : ['intel'],
     )
   endforeach
 endif

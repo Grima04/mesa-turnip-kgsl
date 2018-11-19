@@ -71,6 +71,7 @@ if with_tests
     'gbm-symbols-check',
     find_program('gbm-symbols-check'),
     env : env_test,
-    args : libgbm
+    args : libgbm,
+    suite : ['gbm'],
   )
 endif

@@ -96,6 +96,7 @@ if with_tests
       dependencies : dep_m,
       include_directories : [inc_common, inc_intel],
       link_with : [libisl, libintel_dev, libmesa_util],
-    )
+    ),
+    suite : ['intel'],
   )
 endif
