@@ -139,7 +139,7 @@ def generate_public_stubs(functions):
     return text
 
 def generate_public_entries(functions):
-    text = "#ifdef MAPI_TMP_PUBLIC_ENTRIES\n"
+    text = "#ifdef MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN\n"
 
     for func in functions:
         retStr = ("return " if func.hasReturn() else "")
@@ -158,12 +158,12 @@ GLAPI {f.rt} APIENTRY {f.name}({f.decArgs})
     for func in functions:
         text += "   (mapi_func) %s,\n" % (func.name,)
     text += "};\n"
-    text += "#undef MAPI_TMP_PUBLIC_ENTRIES\n"
-    text += "#endif /* MAPI_TMP_PUBLIC_ENTRIES */\n"
+    text += "#undef MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN\n"
+    text += "#endif /* MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN */\n"
     return text
 
 def generate_stub_asm_gcc(functions):
-    text = "#ifdef MAPI_TMP_STUB_ASM_GCC\n"
+    text = "#ifdef MAPI_TMP_STUB_ASM_GCC_NO_HIDDEN\n"
     text += "__asm__(\n"
 
     for func in functions:
@@ -171,8 +171,8 @@ def generate_stub_asm_gcc(functions):
         text += '"\\t"STUB_ASM_CODE("%d")"\\n"\n\n' % (func.slot,)
 
     text += ");\n"
-    text += "#undef MAPI_TMP_STUB_ASM_GCC\n"
-    text += "#endif /* MAPI_TMP_STUB_ASM_GCC */\n"
+    text += "#undef MAPI_TMP_STUB_ASM_GCC_NO_HIDDEN\n"
+    text += "#endif /* MAPI_TMP_STUB_ASM_GCC_NO_HIDDEN */\n"
     return text
 
 if (__name__ == "__main__"):
