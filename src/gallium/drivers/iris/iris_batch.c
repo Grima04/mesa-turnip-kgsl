@@ -503,6 +503,8 @@ submit_batch(struct iris_batch *batch)
 
       bo->idle = false;
       bo->index = -1;
+
+      iris_bo_unreference(bo);
    }
 
    return ret;
@@ -569,11 +571,6 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 #endif
    }
 
-   /* Clean up after the batch we submitted and prepare for a new one. */
-   for (int i = 0; i < batch->exec_count; i++) {
-      iris_bo_unreference(batch->exec_bos[i]);
-      batch->exec_bos[i] = NULL;
-   }
    batch->exec_count = 0;
    batch->aperture_space = 0;
 
