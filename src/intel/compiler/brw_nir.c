@@ -1100,6 +1100,14 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_algebraic_before_ffma);
    } while (progress);
 
+   if (devinfo->verx10 >= 125) {
+      const nir_lower_idiv_options options = {
+         .imprecise_32bit_lowering = false,
+         .allow_fp16 = false
+      };
+      OPT(nir_lower_idiv, &options);
+   }
+
    brw_nir_optimize(nir, compiler, is_scalar, false);
 
    if (is_scalar && nir_shader_has_local_variables(nir)) {

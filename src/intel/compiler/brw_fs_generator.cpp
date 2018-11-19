@@ -2260,6 +2260,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_INT_QUOTIENT:
       case SHADER_OPCODE_INT_REMAINDER:
       case SHADER_OPCODE_POW:
+         assert(devinfo->verx10 < 125);
          assert(inst->conditional_mod == BRW_CONDITIONAL_NONE);
          if (devinfo->ver >= 6) {
             assert(inst->mlen == 0);
