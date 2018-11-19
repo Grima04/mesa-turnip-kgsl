@@ -27,7 +27,7 @@
 
 #include "ac_surface.h"
 #include "amd_family.h"
-#include "addrlib/amdgpu_asic_addr.h"
+#include "addrlib/src/amdgpu_asic_addr.h"
 #include "ac_gpu_info.h"
 #include "util/macros.h"
 #include "util/u_atomic.h"
@@ -39,7 +39,7 @@
 #include <amdgpu.h>
 #include <amdgpu_drm.h>
 
-#include "addrlib/addrinterface.h"
+#include "addrlib/inc/addrinterface.h"
 
 #ifndef CIASICIDGFXENGINE_SOUTHERNISLAND
 #define CIASICIDGFXENGINE_SOUTHERNISLAND 0x0000000A
