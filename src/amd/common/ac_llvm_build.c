@@ -229,6 +229,15 @@ ac_to_integer(struct ac_llvm_context *ctx, LLVMValueRef v)
 	return LLVMBuildBitCast(ctx->builder, v, ac_to_integer_type(ctx, type), "");
 }
 
+LLVMValueRef
+ac_to_integer_or_pointer(struct ac_llvm_context *ctx, LLVMValueRef v)
+{
+	LLVMTypeRef type = LLVMTypeOf(v);
+	if (LLVMGetTypeKind(type) == LLVMPointerTypeKind)
+		return v;
+	return ac_to_integer(ctx, v);
+}
+
 static LLVMTypeRef to_float_type_scalar(struct ac_llvm_context *ctx, LLVMTypeRef t)
 {
 	if (t == ctx->i16 || t == ctx->f16)

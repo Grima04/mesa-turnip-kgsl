@@ -270,8 +270,9 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 {
 	LLVMValueRef v = LLVMBuildICmp(ctx->builder, LLVMIntNE, src0,
 				       ctx->i32_0, "");
-	return LLVMBuildSelect(ctx->builder, v, ac_to_integer(ctx, src1),
-			       ac_to_integer(ctx, src2), "");
+	return LLVMBuildSelect(ctx->builder, v,
+			       ac_to_integer_or_pointer(ctx, src1),
+			       ac_to_integer_or_pointer(ctx, src2), "");
 }
 
 static LLVMValueRef emit_minmax_int(struct ac_llvm_context *ctx,
@@ -1095,7 +1096,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 
 	if (result) {
 		assert(instr->dest.dest.is_ssa);
-		result = ac_to_integer(&ctx->ac, result);
+		result = ac_to_integer_or_pointer(&ctx->ac, result);
 		ctx->ssa_defs[instr->dest.dest.ssa.index] = result;
 	}
 }
