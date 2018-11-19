@@ -4277,9 +4277,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
 
       if (cso_fb->zsbuf) {
-         struct iris_resource *zres = (void *) cso_fb->zsbuf->texture;
-         // XXX: depth might not be writable...
-         iris_use_pinned_bo(batch, zres->bo, true);
+         struct iris_resource *zres, *sres;
+         iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
+                                          &zres, &sres);
+         // XXX: might not be writable...
+         if (zres)
+            iris_use_pinned_bo(batch, zres->bo, true);
+         if (sres)
+            iris_use_pinned_bo(batch, sres->bo, true);
       }
    }
 
