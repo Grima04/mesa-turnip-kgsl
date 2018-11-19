@@ -37,8 +37,6 @@
 
 #include "ac_debug.h"
 
-#include "addrlib/gfx9/chip/gfx9_enum.h"
-
 enum {
 	RADV_PREFETCH_VBO_DESCRIPTORS	= (1 << 0),
 	RADV_PREFETCH_VS		= (1 << 1),
@@ -1320,7 +1318,7 @@ radv_load_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 		radeon_emit(cs, PKT3(PKT3_LOAD_CONTEXT_REG, 3, 0));
 		radeon_emit(cs, va);
 		radeon_emit(cs, va >> 32);
-		radeon_emit(cs, (reg >> 2) - CONTEXT_SPACE_START);
+		radeon_emit(cs, (reg - SI_CONTEXT_REG_OFFSET) >> 2);
 		radeon_emit(cs, reg_count);
 	} else {
 		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
@@ -1457,7 +1455,7 @@ radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 		radeon_emit(cs, PKT3(PKT3_LOAD_CONTEXT_REG, 3, cmd_buffer->state.predicating));
 		radeon_emit(cs, va);
 		radeon_emit(cs, va >> 32);
-		radeon_emit(cs, (reg >> 2) - CONTEXT_SPACE_START);
+		radeon_emit(cs, (reg - SI_CONTEXT_REG_OFFSET) >> 2);
 		radeon_emit(cs, 2);
 	} else {
 		/* TODO: Figure out how to use LOAD_CONTEXT_REG on SI/CIK. */
