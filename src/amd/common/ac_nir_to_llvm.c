@@ -3730,6 +3730,9 @@ static void visit_deref(struct ac_nir_context *ctx,
 		result = ac_build_gep0(&ctx->ac, get_src(ctx, instr->parent),
 		                       get_src(ctx, instr->arr.index));
 		break;
+	case nir_deref_type_cast:
+		result = get_src(ctx, instr->parent);
+		break;
 	default:
 		unreachable("Unhandled deref_instr deref type");
 	}
