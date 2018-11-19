@@ -4514,9 +4514,6 @@ iris_upload_compute_state(struct iris_context *ice,
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
 
-   // XXX: L3 configuration not set up for SLM
-   assert(prog_data->total_shared == 0);
-
    if ((dirty & IRIS_DIRTY_CONSTANTS_CS) && shs->cbuf0_needs_upload)
       upload_uniforms(ice, MESA_SHADER_COMPUTE);
 

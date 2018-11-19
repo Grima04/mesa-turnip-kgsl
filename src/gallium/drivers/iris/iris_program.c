@@ -1138,6 +1138,8 @@ iris_compile_cs(struct iris_context *ice,
 
    cs_prog_data->binding_table.work_groups_start = 0;
 
+   prog_data->total_shared = nir->info.cs.shared_size;
+
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values);
 
