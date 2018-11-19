@@ -504,6 +504,84 @@ struct pool_free_list_entry {
    uint32_t size;
 };
 
+static VkResult
+anv_descriptor_pool_alloc_set(struct anv_descriptor_pool *pool,
+                              uint32_t size,
+                              struct anv_descriptor_set **set)
+{
+   if (size <= pool->size - pool->next) {
+      *set = (struct anv_descriptor_set *) (pool->data + pool->next);
+      pool->next += size;
+      return VK_SUCCESS;
+   } else {
+      struct pool_free_list_entry *entry;
+      uint32_t *link = &pool->free_list;
+      for (uint32_t f = pool->free_list; f != EMPTY; f = entry->next) {
+         entry = (struct pool_free_list_entry *) (pool->data + f);
+         if (size <= entry->size) {
+            *link = entry->next;
+            *set = (struct anv_descriptor_set *) entry;
+            return VK_SUCCESS;
+         }
+         link = &entry->next;
+      }
+
+      if (pool->free_list != EMPTY) {
+         return vk_error(VK_ERROR_FRAGMENTED_POOL);
+      } else {
+         return vk_error(VK_ERROR_OUT_OF_POOL_MEMORY);
+      }
+   }
+}
+
+static void
+anv_descriptor_pool_free_set(struct anv_descriptor_pool *pool,
+                             struct anv_descriptor_set *set)
+{
+   /* Put the descriptor set allocation back on the free list. */
+   const uint32_t index = (char *) set - pool->data;
+   if (index + set->size == pool->next) {
+      pool->next = index;
+   } else {
+      struct pool_free_list_entry *entry = (struct pool_free_list_entry *) set;
+      entry->next = pool->free_list;
+      entry->size = set->size;
+      pool->free_list = (char *) entry - pool->data;
+   }
+}
+
+struct surface_state_free_list_entry {
+   void *next;
+   struct anv_state state;
+};
+
+static struct anv_state
+anv_descriptor_pool_alloc_state(struct anv_descriptor_pool *pool)
+{
+   struct surface_state_free_list_entry *entry =
+      pool->surface_state_free_list;
+
+   if (entry) {
+      struct anv_state state = entry->state;
+      pool->surface_state_free_list = entry->next;
+      assert(state.alloc_size == 64);
+      return state;
+   } else {
+      return anv_state_stream_alloc(&pool->surface_state_stream, 64, 64);
+   }
+}
+
+static void
+anv_descriptor_pool_free_state(struct anv_descriptor_pool *pool,
+                               struct anv_state state)
+{
+   /* Put the buffer view surface state back on the free list. */
+   struct surface_state_free_list_entry *entry = state.map;
+   entry->next = pool->surface_state_free_list;
+   entry->state = state;
+   pool->surface_state_free_list = entry;
+}
+
 size_t
 anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout)
 {
@@ -512,11 +590,6 @@ anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout)
       layout->size * sizeof(struct anv_descriptor) +
       layout->buffer_count * sizeof(struct anv_buffer_view);
 }
-
-struct surface_state_free_list_entry {
-   void *next;
-   struct anv_state state;
-};
 
 VkResult
 anv_descriptor_set_create(struct anv_device *device,
@@ -527,31 +600,9 @@ anv_descriptor_set_create(struct anv_device *device,
    struct anv_descriptor_set *set;
    const size_t size = anv_descriptor_set_layout_size(layout);
 
-   set = NULL;
-   if (size <= pool->size - pool->next) {
-      set = (struct anv_descriptor_set *) (pool->data + pool->next);
-      pool->next += size;
-   } else {
-      struct pool_free_list_entry *entry;
-      uint32_t *link = &pool->free_list;
-      for (uint32_t f = pool->free_list; f != EMPTY; f = entry->next) {
-         entry = (struct pool_free_list_entry *) (pool->data + f);
-         if (size <= entry->size) {
-            *link = entry->next;
-            set = (struct anv_descriptor_set *) entry;
-            break;
-         }
-         link = &entry->next;
-      }
-   }
-
-   if (set == NULL) {
-      if (pool->free_list != EMPTY) {
-         return vk_error(VK_ERROR_FRAGMENTED_POOL);
-      } else {
-         return vk_error(VK_ERROR_OUT_OF_POOL_MEMORY);
-      }
-   }
+   VkResult result = anv_descriptor_pool_alloc_set(pool, size, &set);
+   if (result != VK_SUCCESS)
+      return result;
 
    set->layout = layout;
    anv_descriptor_set_layout_ref(layout);
@@ -587,19 +638,8 @@ anv_descriptor_set_create(struct anv_device *device,
 
    /* Allocate surface state for the buffer views. */
    for (uint32_t b = 0; b < layout->buffer_count; b++) {
-      struct surface_state_free_list_entry *entry =
-         pool->surface_state_free_list;
-      struct anv_state state;
-
-      if (entry) {
-         state = entry->state;
-         pool->surface_state_free_list = entry->next;
-         assert(state.alloc_size == 64);
-      } else {
-         state = anv_state_stream_alloc(&pool->surface_state_stream, 64, 64);
-      }
-
-      set->buffer_views[b].surface_state = state;
+      set->buffer_views[b].surface_state =
+         anv_descriptor_pool_alloc_state(pool);
    }
 
    *out_set = set;
@@ -614,25 +654,10 @@ anv_descriptor_set_destroy(struct anv_device *device,
 {
    anv_descriptor_set_layout_unref(device, set->layout);
 
-   /* Put the buffer view surface state back on the free list. */
-   for (uint32_t b = 0; b < set->buffer_count; b++) {
-      struct surface_state_free_list_entry *entry =
-         set->buffer_views[b].surface_state.map;
-      entry->next = pool->surface_state_free_list;
-      entry->state = set->buffer_views[b].surface_state;
-      pool->surface_state_free_list = entry;
-   }
+   for (uint32_t b = 0; b < set->buffer_count; b++)
+      anv_descriptor_pool_free_state(pool, set->buffer_views[b].surface_state);
 
-   /* Put the descriptor set allocation back on the free list. */
-   const uint32_t index = (char *) set - pool->data;
-   if (index + set->size == pool->next) {
-      pool->next = index;
-   } else {
-      struct pool_free_list_entry *entry = (struct pool_free_list_entry *) set;
-      entry->next = pool->free_list;
-      entry->size = set->size;
-      pool->free_list = (char *) entry - pool->data;
-   }
+   anv_descriptor_pool_free_set(pool, set);
 }
 
 VkResult anv_AllocateDescriptorSets(
