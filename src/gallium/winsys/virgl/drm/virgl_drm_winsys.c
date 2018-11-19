@@ -892,7 +892,7 @@ virgl_drm_winsys_create(int drmFD)
    if (ret < 0 || !gl)
       return NULL;
 
-   drm_version = virgl_drm_get_version(qdws->fd);
+   drm_version = virgl_drm_get_version(drmFD);
    if (drm_version < 0)
       return NULL;
 
