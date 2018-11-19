@@ -2029,6 +2029,31 @@ dynamic_offset_for_binding(const struct anv_cmd_pipeline_state *pipe_state,
    return pipe_state->dynamic_offsets[dynamic_offset_idx];
 }
 
+static struct anv_address
+anv_descriptor_set_address(struct anv_cmd_buffer *cmd_buffer,
+                           struct anv_descriptor_set *set)
+{
+   if (set->pool) {
+      /* This is a normal descriptor set */
+      return (struct anv_address) {
+         .bo = &set->pool->bo,
+         .offset = set->desc_mem.offset,
+      };
+   } else {
+      /* This is a push descriptor set.  We have to flag it as used on the GPU
+       * so that the next time we push descriptors, we grab a new memory.
+       */
+      struct anv_push_descriptor_set *push_set =
+         (struct anv_push_descriptor_set *)set;
+      push_set->set_used_on_gpu = true;
+
+      return (struct anv_address) {
+         .bo = cmd_buffer->dynamic_state_stream.state_pool->block_pool.bo,
+         .offset = set->desc_mem.offset,
+      };
+   }
+}
+
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    gl_shader_stage stage,
@@ -2148,6 +2173,18 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          bt_map[s] = surface_state.offset + state_offset;
          add_surface_reloc(cmd_buffer, surface_state,
                            cmd_buffer->state.compute.num_workgroups);
+         continue;
+      } else if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
+         /* This is a descriptor set buffer so the set index is actually
+          * given by binding->binding.  (Yes, that's confusing.)
+          */
+         struct anv_descriptor_set *set =
+            pipe_state->descriptors[binding->binding];
+         assert(set->desc_mem.alloc_size);
+         assert(set->desc_surface_state.alloc_size);
+         bt_map[s] = set->desc_surface_state.offset + state_offset;
+         add_surface_reloc(cmd_buffer, set->desc_surface_state,
+                           anv_descriptor_set_address(cmd_buffer, set));
          continue;
       }
 
@@ -2517,6 +2554,21 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                   read_len = MIN2(range->length,
                      DIV_ROUND_UP(constant_data_size, 32) - range->start);
                   read_addr = anv_address_add(constant_data,
+                                              range->start * 32);
+               } else if (binding->set == ANV_DESCRIPTOR_SET_DESCRIPTORS) {
+                  /* This is a descriptor set buffer so the set index is
+                   * actually given by binding->binding.  (Yes, that's
+                   * confusing.)
+                   */
+                  struct anv_descriptor_set *set =
+                     gfx_state->base.descriptors[binding->binding];
+                  struct anv_address desc_buffer_addr =
+                     anv_descriptor_set_address(cmd_buffer, set);
+                  const unsigned desc_buffer_size = set->desc_mem.alloc_size;
+
+                  read_len = MIN2(range->length,
+                     DIV_ROUND_UP(desc_buffer_size, 32) - range->start);
+                  read_addr = anv_address_add(desc_buffer_addr,
                                               range->start * 32);
                } else {
                   const struct anv_descriptor *desc =

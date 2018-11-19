@@ -1001,6 +1001,37 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    set->buffer_view_count = layout->buffer_view_count;
    set->buffer_views = (*push_set)->buffer_views;
 
+   if (layout->descriptor_buffer_size &&
+       ((*push_set)->set_used_on_gpu ||
+        set->desc_mem.alloc_size < layout->descriptor_buffer_size)) {
+      /* The previous buffer is either actively used by some GPU command (so
+       * we can't modify it) or is too small.  Allocate a new one.
+       */
+      struct anv_state desc_mem =
+         anv_state_stream_alloc(&cmd_buffer->dynamic_state_stream,
+                                layout->descriptor_buffer_size, 32);
+      if (set->desc_mem.alloc_size) {
+         /* TODO: Do we really need to copy all the time? */
+         memcpy(desc_mem.map, set->desc_mem.map,
+                MIN2(desc_mem.alloc_size, set->desc_mem.alloc_size));
+      }
+      set->desc_mem = desc_mem;
+
+      struct anv_address addr = {
+         .bo = cmd_buffer->dynamic_state_stream.state_pool->block_pool.bo,
+         .offset = set->desc_mem.offset,
+      };
+
+      const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+      set->desc_surface_state =
+         anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
+                                isl_dev->ss.size, isl_dev->ss.align);
+      anv_fill_buffer_surface_state(cmd_buffer->device,
+                                    set->desc_surface_state,
+                                    ISL_FORMAT_R32G32B32A32_FLOAT,
+                                    addr, layout->descriptor_buffer_size, 1);
+   }
+
    return set;
 }
 

@@ -1530,9 +1530,17 @@ struct anv_descriptor_set_binding_layout {
    /* Index into the descriptor set buffer views */
    int16_t buffer_view_index;
 
+   /* Offset into the descriptor buffer where this descriptor lives */
+   uint32_t descriptor_offset;
+
    /* Immutable samplers (or NULL if no immutable samplers) */
    struct anv_sampler **immutable_samplers;
 };
+
+unsigned anv_descriptor_size(const struct anv_descriptor_set_binding_layout *layout);
+
+unsigned anv_descriptor_type_size(const struct anv_physical_device *pdevice,
+                                  VkDescriptorType type);
 
 struct anv_descriptor_set_layout {
    /* Descriptor set layouts can be destroyed at almost any time */
@@ -1552,6 +1560,9 @@ struct anv_descriptor_set_layout {
 
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
+
+   /* Size of the descriptor buffer for this descriptor set */
+   uint32_t descriptor_buffer_size;
 
    /* Bindings in this descriptor set */
    struct anv_descriptor_set_binding_layout binding[0];
@@ -1594,8 +1605,15 @@ struct anv_descriptor {
 };
 
 struct anv_descriptor_set {
+   struct anv_descriptor_pool *pool;
    struct anv_descriptor_set_layout *layout;
    uint32_t size;
+
+   /* State relative to anv_descriptor_pool::bo */
+   struct anv_state desc_mem;
+   /* Surface state for the descriptor buffer */
+   struct anv_state desc_surface_state;
+
    uint32_t buffer_view_count;
    struct anv_buffer_view *buffer_views;
    struct anv_descriptor descriptors[0];
@@ -1620,6 +1638,12 @@ struct anv_push_descriptor_set {
    /* Put this field right behind anv_descriptor_set so it fills up the
     * descriptors[0] field. */
    struct anv_descriptor descriptors[MAX_PUSH_DESCRIPTORS];
+
+   /** True if the descriptor set buffer has been referenced by a draw or
+    * dispatch command.
+    */
+   bool set_used_on_gpu;
+
    struct anv_buffer_view buffer_views[MAX_PUSH_DESCRIPTORS];
 };
 
@@ -1627,6 +1651,9 @@ struct anv_descriptor_pool {
    uint32_t size;
    uint32_t next;
    uint32_t free_list;
+
+   struct anv_bo bo;
+   struct util_vma_heap bo_heap;
 
    struct anv_state_stream surface_state_stream;
    void *surface_state_free_list;
@@ -1724,6 +1751,7 @@ anv_descriptor_set_destroy(struct anv_device *device,
                            struct anv_descriptor_pool *pool,
                            struct anv_descriptor_set *set);
 
+#define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 3)
 #define ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS  (UINT8_MAX - 2)
 #define ANV_DESCRIPTOR_SET_SHADER_CONSTANTS (UINT8_MAX - 1)
 #define ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS UINT8_MAX

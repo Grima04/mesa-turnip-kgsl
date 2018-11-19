@@ -27,6 +27,8 @@
 #include "compiler/brw_nir.h"
 
 struct apply_pipeline_layout_state {
+   const struct anv_physical_device *pdevice;
+
    nir_shader *shader;
    nir_builder builder;
 
@@ -38,6 +40,9 @@ struct apply_pipeline_layout_state {
    bool uses_constants;
    uint8_t constants_offset;
    struct {
+      bool desc_buffer_used;
+      uint8_t desc_offset;
+
       BITSET_WORD *used;
       uint8_t *surface_offsets;
       uint8_t *sampler_offsets;
@@ -49,7 +54,17 @@ static void
 add_binding(struct apply_pipeline_layout_state *state,
             uint32_t set, uint32_t binding)
 {
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &state->layout->set[set].layout->binding[binding];
+
    BITSET_SET(state->set[set].used, binding);
+
+   /* Only flag the descriptor buffer as used if there's actually data for
+    * this binding.  This lets us be lazy and call this function constantly
+    * without worrying about unnecessarily enabling the buffer.
+    */
+   if (anv_descriptor_size(bind_layout))
+      state->set[set].desc_buffer_used = true;
 }
 
 static void
@@ -440,6 +455,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                               struct anv_pipeline_bind_map *map)
 {
    struct apply_pipeline_layout_state state = {
+      .pdevice = pdevice,
       .shader = shader,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
@@ -462,6 +478,18 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
       nir_foreach_block(block, function->impl)
          get_used_bindings_block(block, &state);
+   }
+
+   for (unsigned s = 0; s < layout->num_sets; s++) {
+      if (state.set[s].desc_buffer_used) {
+         map->surface_to_descriptor[map->surface_count] =
+            (struct anv_pipeline_binding) {
+               .set = ANV_DESCRIPTOR_SET_DESCRIPTORS,
+               .binding = s,
+            };
+         state.set[s].desc_offset = map->surface_count;
+         map->surface_count++;
+      }
    }
 
    if (state.uses_constants) {
