@@ -227,6 +227,7 @@ def _fixupTypeName(typeName):
     rv = re.sub(r"\b(GLhalf|GLintptr|GLsizeiptr|GLint64|GLuint64)(?:ARB|EXT|NV|ATI)\b", r"\1", rv)
 
     rv = re.sub(r"\bGLvoid\b", "void", rv)
+    rv = re.sub(r"\bGLDEBUGPROCKHR\b", "GLDEBUGPROC", rv)
 
     # Clear out any leading and trailing whitespace.
     rv = rv.strip()

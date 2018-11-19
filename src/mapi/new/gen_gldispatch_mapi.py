@@ -58,7 +58,6 @@ def _main():
 #ifndef _GLAPI_TMP_H_
 #define _GLAPI_TMP_H_
 typedef int GLclampx;
-typedef void (APIENTRY  *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLenum severity,GLsizei length,const GLchar *message,const void *userParam);
 #endif /* _GLAPI_TMP_H_ */
 """.lstrip("\n"))
 
