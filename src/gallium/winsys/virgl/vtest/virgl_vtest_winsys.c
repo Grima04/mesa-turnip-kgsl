@@ -427,6 +427,7 @@ static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws
    }
    cbuf->ws = vws;
    cbuf->base.buf = cbuf->buf;
+   cbuf->base.in_fence_fd = -1;
    return &cbuf->base;
 }
 
