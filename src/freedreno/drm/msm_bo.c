@@ -142,6 +142,9 @@ int msm_bo_new_handle(struct fd_device *dev,
 	};
 	int ret;
 
+	if (flags & DRM_FREEDRENO_GEM_SCANOUT)
+		req.flags |= MSM_BO_SCANOUT;
+
 	ret = drmCommandWriteRead(dev->fd, DRM_MSM_GEM_NEW,
 			&req, sizeof(req));
 	if (ret)

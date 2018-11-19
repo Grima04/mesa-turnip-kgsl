@@ -63,6 +63,7 @@ enum fd_param_id {
 #define DRM_FREEDRENO_GEM_CACHE_WBACKWA   0x00800000
 #define DRM_FREEDRENO_GEM_CACHE_MASK      0x00f00000
 #define DRM_FREEDRENO_GEM_GPUREADONLY     0x01000000
+#define DRM_FREEDRENO_GEM_SCANOUT         0x02000000
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define DRM_FREEDRENO_PREP_READ           0x01
