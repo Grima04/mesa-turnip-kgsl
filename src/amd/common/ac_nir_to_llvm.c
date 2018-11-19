@@ -1861,23 +1861,32 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 	nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
 
 	LLVMValueRef values[8];
-	int idx = var->data.driver_location;
+	int idx = 0;
 	int ve = instr->dest.ssa.num_components;
-	unsigned comp = var->data.location_frac;
+	unsigned comp = 0;
 	LLVMValueRef indir_index;
 	LLVMValueRef ret;
 	unsigned const_index;
-	unsigned stride = var->data.compact ? 1 : 4;
-	bool vs_in = ctx->stage == MESA_SHADER_VERTEX &&
-	             var->data.mode == nir_var_shader_in;
+	unsigned stride = 4;
+	int mode = nir_var_shared;
+	
+	if (var) {
+		bool vs_in = ctx->stage == MESA_SHADER_VERTEX &&
+			var->data.mode == nir_var_shader_in;
+		if (var->data.compact)
+			stride = 1;
+		idx = var->data.driver_location;
+		comp = var->data.location_frac;
+		mode = var->data.mode;
 
-	get_deref_offset(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), vs_in, NULL, NULL,
-	                 &const_index, &indir_index);
+		get_deref_offset(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), vs_in, NULL, NULL,
+				 &const_index, &indir_index);
+	}
 
 	if (instr->dest.ssa.bit_size == 64)
 		ve *= 2;
 
-	switch (var->data.mode) {
+	switch (mode) {
 	case nir_var_shader_in:
 		if (ctx->stage == MESA_SHADER_TESS_CTRL ||
 		    ctx->stage == MESA_SHADER_TESS_EVAL) {
