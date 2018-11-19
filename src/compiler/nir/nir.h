@@ -1949,6 +1949,7 @@ typedef struct {
    struct exec_list body; /** < list of nir_cf_node */
 
    nir_loop_info *info;
+   bool partially_unrolled;
 } nir_loop;
 
 /**
