@@ -143,16 +143,38 @@ static void scan_instruction(struct tgsi_shader_info *info,
 		case nir_intrinsic_load_tess_level_outer:
 			info->reads_tess_factors = true;
 			break;
-		case nir_intrinsic_image_deref_load:
+		case nir_intrinsic_image_deref_load: {
+			nir_variable *var = intrinsic_get_var(intr);
+			if (var->data.bindless) {
+				info->uses_bindless_images = true;
+
+				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
+					info->uses_bindless_buffer_load = true;
+				else
+					info->uses_bindless_image_load = true;
+			}
+			break;
+		}
 		case nir_intrinsic_image_deref_size:
 		case nir_intrinsic_image_deref_samples: {
 			nir_variable *var = intrinsic_get_var(intr);
 			if (var->data.bindless)
 				info->uses_bindless_images = true;
-
 			break;
 		}
-		case nir_intrinsic_image_deref_store:
+		case nir_intrinsic_image_deref_store: {
+			nir_variable *var = intrinsic_get_var(intr);
+			if (var->data.bindless) {
+				info->uses_bindless_images = true;
+
+				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
+					info->uses_bindless_buffer_store = true;
+				else
+					info->uses_bindless_image_store = true;
+			}
+			info->writes_memory = true;
+			break;
+		}
 		case nir_intrinsic_image_deref_atomic_add:
 		case nir_intrinsic_image_deref_atomic_min:
 		case nir_intrinsic_image_deref_atomic_max:
@@ -162,10 +184,16 @@ static void scan_instruction(struct tgsi_shader_info *info,
 		case nir_intrinsic_image_deref_atomic_exchange:
 		case nir_intrinsic_image_deref_atomic_comp_swap: {
 			nir_variable *var = intrinsic_get_var(intr);
-			if (var->data.bindless)
+			if (var->data.bindless) {
 				info->uses_bindless_images = true;
 
-			/* fall-through */
+				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
+					info->uses_bindless_buffer_atomic = true;
+				else
+					info->uses_bindless_image_atomic = true;
+			}
+			info->writes_memory = true;
+			break;
 		}
 		case nir_intrinsic_store_ssbo:
 		case nir_intrinsic_ssbo_atomic_add:
