@@ -125,6 +125,7 @@ util_vasprintf(char **ret, const char *format, va_list ap)
    return util_vsnprintf(*ret, r + 1, format, ap);
 }
 
+#define strncat util_strncat
 static inline char*
 util_strncat(char *dst, const char *src, size_t n)
 {
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_sprintf sprintf
 #define util_strcmp strcmp
 #define util_strncmp strncmp
-#define util_strncat strncat
 #define util_strcasecmp strcasecmp
 
 #endif

@@ -371,10 +371,10 @@ debug_dump_flags(const struct debug_named_value *names, unsigned long value)
    while (names->name) {
       if ((names->value & value) == names->value) {
 	 if (!first)
-	    util_strncat(output, "|", sizeof(output) - strlen(output) - 1);
+	    strncat(output, "|", sizeof(output) - strlen(output) - 1);
 	 else
 	    first = 0;
-	 util_strncat(output, names->name, sizeof(output) - strlen(output) - 1);
+	 strncat(output, names->name, sizeof(output) - strlen(output) - 1);
 	 output[sizeof(output) - 1] = '\0';
 	 value &= ~names->value;
       }
@@ -383,12 +383,12 @@ debug_dump_flags(const struct debug_named_value *names, unsigned long value)
 
    if (value) {
       if (!first)
-	 util_strncat(output, "|", sizeof(output) - strlen(output) - 1);
+	 strncat(output, "|", sizeof(output) - strlen(output) - 1);
       else
 	 first = 0;
 
       util_snprintf(rest, sizeof(rest), "0x%08lx", value);
-      util_strncat(output, rest, sizeof(output) - strlen(output) - 1);
+      strncat(output, rest, sizeof(output) - strlen(output) - 1);
       output[sizeof(output) - 1] = '\0';
    }
 
