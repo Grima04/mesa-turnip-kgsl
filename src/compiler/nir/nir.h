@@ -1912,6 +1912,17 @@ typedef struct {
    bool continue_from_then;
    bool induction_rhs;
 
+   /* This is true if the terminators exact trip count is unknown. For
+    * example:
+    *
+    *    for (int i = 0; i < imin(x, 4); i++)
+    *       ...
+    *
+    * Here loop analysis would have set a max_trip_count of 4 however we dont
+    * know for sure that this is the exact trip count.
+    */
+   bool exact_trip_count_unknown;
+
    struct list_head loop_terminator_link;
 } nir_loop_terminator;
 

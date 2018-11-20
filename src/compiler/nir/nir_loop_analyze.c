@@ -539,6 +539,35 @@ guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
    return false;
 }
 
+static bool
+try_find_limit_of_alu(nir_loop_variable *limit, nir_const_value *limit_val,
+                      nir_loop_terminator *terminator, loop_info_state *state)
+{
+   if(!is_var_alu(limit))
+      return false;
+
+   nir_alu_instr *limit_alu = nir_instr_as_alu(limit->def->parent_instr);
+
+   if (limit_alu->op == nir_op_imin ||
+       limit_alu->op == nir_op_fmin) {
+      limit = get_loop_var(limit_alu->src[0].src.ssa, state);
+
+      if (!is_var_constant(limit))
+         limit = get_loop_var(limit_alu->src[1].src.ssa, state);
+
+      if (!is_var_constant(limit))
+         return false;
+
+      *limit_val = nir_instr_as_load_const(limit->def->parent_instr)->value;
+
+      terminator->exact_trip_count_unknown = true;
+
+      return true;
+   }
+
+   return false;
+}
+
 static int32_t
 get_iteration(nir_op cond_op, nir_const_value *initial, nir_const_value *step,
               nir_const_value *limit)
@@ -770,12 +799,14 @@ find_trip_count(loop_info_state *state)
          } else {
             trip_count_known = false;
 
-            /* Guess loop limit based on array access */
-            if (!guess_loop_limit(state, &limit_val, basic_ind)) {
-               continue;
-            }
+            if (!try_find_limit_of_alu(limit, &limit_val, terminator, state)) {
+               /* Guess loop limit based on array access */
+               if (!guess_loop_limit(state, &limit_val, basic_ind)) {
+                  continue;
+               }
 
-            guessed_trip_count = true;
+               guessed_trip_count = true;
+            }
          }
 
          /* We have determined that we have the following constants:

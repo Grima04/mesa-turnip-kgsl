@@ -827,7 +827,8 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
       } else {
          /* Attempt to unroll loops with two terminators. */
          unsigned num_lt = list_length(&loop->info->loop_terminator_list);
-         if (num_lt == 2) {
+         if (num_lt == 2 &&
+             !loop->info->limiting_terminator->exact_trip_count_unknown) {
             bool limiting_term_second = true;
             nir_loop_terminator *terminator =
                list_first_entry(&loop->info->loop_terminator_list,
