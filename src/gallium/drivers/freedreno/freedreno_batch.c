@@ -277,7 +277,7 @@ __fd_batch_destroy(struct fd_batch *batch)
 void
 __fd_batch_describe(char* buf, const struct fd_batch *batch)
 {
-	util_sprintf(buf, "fd_batch<%u>", batch->seqno);
+	sprintf(buf, "fd_batch<%u>", batch->seqno);
 }
 
 void

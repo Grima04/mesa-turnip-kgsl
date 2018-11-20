@@ -94,6 +94,7 @@ util_snprintf(char *str, size_t size, const char *format, ...)
    return ret;
 }
 
+#define sprintf util_sprintf
 static inline void
    PRINTFLIKE(2, 3)
 util_sprintf(char *str, const char *format, ...)
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_vsnprintf vsnprintf
 #define util_snprintf snprintf
 #define util_vasprintf vasprintf
-#define util_sprintf sprintf
 
 #endif
 
