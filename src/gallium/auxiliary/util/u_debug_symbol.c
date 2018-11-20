@@ -309,7 +309,7 @@ debug_symbol_name_cached(const void *addr)
    {
       char buf[1024];
       debug_symbol_name(addr, buf, sizeof(buf));
-      name = util_strdup(buf);
+      name = strdup(buf);
 
       util_hash_table_set(symbols_hash, (void*)addr, (void*)name);
    }

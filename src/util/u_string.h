@@ -174,7 +174,7 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 
 
 #define util_strcasecmp stricmp
-#define util_strdup _strdup
+#define strdup _strdup
 
 #else
 
@@ -186,7 +186,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_strncmp strncmp
 #define util_strncat strncat
 #define util_strcasecmp strcasecmp
-#define util_strdup strdup
 
 #endif
 
