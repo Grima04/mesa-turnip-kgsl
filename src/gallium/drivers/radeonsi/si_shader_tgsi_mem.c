@@ -402,6 +402,32 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 				  unsigned shader_buffers_reverse_access_mask,
 				  unsigned images_reverse_access_mask)
 {
+	enum tgsi_file_type resource_file;
+	unsigned resource_index;
+	bool resource_indirect;
+
+	if (inst->Instruction.Opcode == TGSI_OPCODE_STORE) {
+		resource_file = inst->Dst[0].Register.File;
+		resource_index = inst->Dst[0].Register.Index;
+		resource_indirect = inst->Dst[0].Register.Indirect;
+	} else {
+		resource_file = inst->Src[0].Register.File;
+		resource_index = inst->Src[0].Register.Index;
+		resource_indirect = inst->Src[0].Register.Indirect;
+	}
+
+	assert(resource_file == TGSI_FILE_BUFFER ||
+	       resource_file == TGSI_FILE_IMAGE ||
+	       /* bindless image */
+	       resource_file == TGSI_FILE_INPUT ||
+	       resource_file == TGSI_FILE_OUTPUT ||
+	       resource_file == TGSI_FILE_CONSTANT ||
+	       resource_file == TGSI_FILE_TEMPORARY ||
+	       resource_file == TGSI_FILE_IMMEDIATE);
+
+	assert(resource_file != TGSI_FILE_BUFFER ||
+	       inst->Memory.Texture == TGSI_TEXTURE_BUFFER);
+
 	/* RESTRICT means NOALIAS.
 	 * If there are no writes, we can assume the accessed memory is read-only.
 	 * If there are no reads, we can assume the accessed memory is write-only.
@@ -409,7 +435,7 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 	if (inst->Memory.Qualifier & TGSI_MEMORY_RESTRICT) {
 		unsigned reverse_access_mask;
 
-		if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
+		if (resource_file == TGSI_FILE_BUFFER) {
 			reverse_access_mask = shader_buffers_reverse_access_mask;
 		} else if (inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
 			reverse_access_mask = info->images_buffers &
@@ -419,12 +445,12 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 					      images_reverse_access_mask;
 		}
 
-		if (inst->Src[0].Register.Indirect) {
+		if (resource_indirect) {
 			if (!reverse_access_mask)
 				return true;
 		} else {
 			if (!(reverse_access_mask &
-			      (1u << inst->Src[0].Register.Index)))
+			      (1u << resource_index)))
 				return true;
 		}
 	}
@@ -437,10 +463,8 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 	 * Same for the case when there are no writes/reads for non-buffer
 	 * images.
 	 */
-	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER ||
-	    (inst->Memory.Texture == TGSI_TEXTURE_BUFFER &&
-	     (inst->Src[0].Register.File == TGSI_FILE_IMAGE ||
-	      tgsi_is_bindless_image_file(inst->Src[0].Register.File)))) {
+	if (resource_file == TGSI_FILE_BUFFER ||
+	    inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
 		if (!shader_buffers_reverse_access_mask &&
 		    !(info->images_buffers & images_reverse_access_mask))
 			return true;
@@ -650,6 +674,12 @@ static void store_emit(
 	struct tgsi_full_src_register resource_reg =
 		tgsi_full_src_register_from_dst(&inst->Dst[0]);
 	unsigned target = inst->Memory.Texture;
+
+	if (inst->Dst[0].Register.File == TGSI_FILE_MEMORY) {
+		store_emit_memory(ctx, emit_data);
+		return;
+	}
+
 	bool writeonly_memory = is_oneway_access_only(inst, info,
 						      info->shader_buffers_load |
 						      info->shader_buffers_atomic,
@@ -661,11 +691,6 @@ static void store_emit(
 	LLVMValueRef vindex = ctx->i32_0;
 	LLVMValueRef voffset = ctx->i32_0;
 	struct ac_image_args args = {};
-
-	if (inst->Dst[0].Register.File == TGSI_FILE_MEMORY) {
-		store_emit_memory(ctx, emit_data);
-		return;
-	}
 
 	for (unsigned chan = 0; chan < 4; ++chan)
 		chans[chan] = lp_build_emit_fetch(bld_base, inst, 1, chan);
