@@ -698,17 +698,25 @@ static void store_emit(
 	}
 
 	if (target == TGSI_TEXTURE_BUFFER) {
-		LLVMValueRef buf_args[] = {
+		LLVMValueRef buf_args[6] = {
 			value,
 			args.resource,
 			vindex,
 			ctx->i32_0, /* voffset */
-			LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_glc), 0),
-			LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_slc), 0),
 		};
 
+		if (HAVE_LLVM >= 0x0800) {
+			buf_args[4] = ctx->i32_0; /* soffset */
+			buf_args[5] = LLVMConstInt(ctx->i1, args.cache_policy, 0);
+		} else {
+			buf_args[4] = LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_glc), 0);
+			buf_args[5] = LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_slc), 0);
+		}
+
 		emit_data->output[emit_data->chan] = ac_build_intrinsic(
-			&ctx->ac, "llvm.amdgcn.buffer.store.format.v4f32",
+			&ctx->ac,
+			HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.struct.buffer.store.format.v4f32" :
+					      "llvm.amdgcn.buffer.store.format.v4f32",
 			ctx->voidt, buf_args, 6,
 			ac_get_store_intr_attribs(writeonly_memory));
 	} else {
@@ -830,8 +838,35 @@ static void atomic_emit(
 		vindex = args.coords[0]; /* for buffers only */
 	}
 
-	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER ||
+	if (HAVE_LLVM >= 0x0800 &&
+	    inst->Src[0].Register.File != TGSI_FILE_BUFFER &&
 	    inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
+		LLVMValueRef buf_args[7];
+		unsigned num_args = 0;
+
+		buf_args[num_args++] = args.data[0];
+		if (inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS)
+			buf_args[num_args++] = args.data[1];
+
+		buf_args[num_args++] = args.resource;
+		buf_args[num_args++] = vindex;
+		buf_args[num_args++] = voffset;
+		buf_args[num_args++] = ctx->i32_0; /* soffset */
+		buf_args[num_args++] = LLVMConstInt(ctx->i32, args.cache_policy & ac_slc, 0);
+
+		char intrinsic_name[64];
+		snprintf(intrinsic_name, sizeof(intrinsic_name),
+			 "llvm.amdgcn.struct.buffer.atomic.%s", action->intr_name);
+		emit_data->output[emit_data->chan] =
+			ac_to_float(&ctx->ac,
+				    ac_build_intrinsic(&ctx->ac, intrinsic_name,
+						       ctx->i32, buf_args, num_args, 0));
+		return;
+	}
+
+	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER ||
+	    (HAVE_LLVM < 0x0800 &&
+	     inst->Memory.Texture == TGSI_TEXTURE_BUFFER)) {
 		LLVMValueRef buf_args[7];
 		unsigned num_args = 0;
 

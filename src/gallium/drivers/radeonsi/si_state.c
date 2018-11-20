@@ -3613,14 +3613,11 @@ si_make_buffer_descriptor(struct si_screen *screen, struct r600_resource *buf,
 	 * - For VMEM and inst.IDXEN == 0 or STRIDE == 0, it's in byte units.
 	 * - For VMEM and inst.IDXEN == 1 and STRIDE != 0, it's in units of STRIDE.
 	 */
-	if (screen->info.chip_class >= GFX9)
-		/* When vindex == 0, LLVM sets IDXEN = 0, thus changing units
+	if (screen->info.chip_class >= GFX9 && HAVE_LLVM < 0x0800)
+		/* When vindex == 0, LLVM < 8.0 sets IDXEN = 0, thus changing units
 		 * from STRIDE to bytes. This works around it by setting
 		 * NUM_RECORDS to at least the size of one element, so that
 		 * the first element is readable when IDXEN == 0.
-		 *
-		 * TODO: Fix this in LLVM, but do we need a new intrinsic where
-		 *       IDXEN is enforced?
 		 */
 		num_records = num_records ? MAX2(num_records, stride) : 0;
 	else if (screen->info.chip_class == VI)
