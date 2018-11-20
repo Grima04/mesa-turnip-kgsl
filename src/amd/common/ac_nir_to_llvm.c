@@ -2424,7 +2424,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 
 	bool cmpswap = instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap;
 	const char *atomic_name;
-	char intrinsic_name[41];
+	char intrinsic_name[64];
 	enum ac_atomic_op atomic_subop;
 	const struct glsl_type *type = glsl_without_array(var->type);
 	MAYBE_UNUSED int length;
