@@ -168,5 +168,7 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 
    ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_COMPUTE;
 
-   // XXX: postdraw resolve tracking
+   /* Note: since compute shaders can't access the framebuffer, there's
+    * no need to call iris_postdraw_update_resolve_tracking.
+    */
 }
