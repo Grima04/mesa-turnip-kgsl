@@ -108,6 +108,8 @@ iris_border_color_pool_reserve(struct iris_context *ice, unsigned count)
       /* It's safe to flush because we're called outside of state upload. */
       if (iris_batch_references(&ice->render_batch, pool->bo))
          iris_batch_flush(&ice->render_batch);
+      if (iris_batch_references(&ice->compute_batch, pool->bo))
+         iris_batch_flush(&ice->compute_batch);
 
       iris_reset_border_color_pool(pool, pool->bo->bufmgr);
    }
