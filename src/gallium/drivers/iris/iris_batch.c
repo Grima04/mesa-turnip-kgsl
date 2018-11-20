@@ -238,15 +238,30 @@ iris_use_pinned_bo(struct iris_batch *batch,
    }
 
    /* This is the first time our batch has seen this BO.  Before we use it,
-    * we need to see if other batches reference it - if so, we should flush
-    * those first.
+    * we may need to flush and synchronize with other batches.
     */
    for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
-      // XXX: this is bad, we use the same state / instruction buffers for
-      // both batches, and if both of them are reading some dynamic state,
-      // we flush all the time.  check for writes vs. reads?
-      if (iris_batch_references(batch->other_batches[b], bo))
+      struct drm_i915_gem_exec_object2 *other_entry =
+         find_validation_entry(batch->other_batches[b], bo);
+
+      /* If the buffer is referenced by another batch, and either batch
+       * intends to write it, then flush the other batch and synchronize.
+       *
+       * Consider these cases:
+       *
+       * 1. They read, we read   =>  No synchronization required.
+       * 2. They read, we write  =>  Synchronize (they need the old value)
+       * 3. They write, we read  =>  Synchronize (we need their new value)
+       * 4. They write, we write =>  Synchronize (order writes)
+       *
+       * The read/read case is very common, as multiple batches usually
+       * share a streaming state buffer or shader assembly buffer, and
+       * we want to avoid synchronizing in this case.
+       */
+      if (other_entry &&
+          ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
          iris_batch_flush(batch->other_batches[b]);
+      }
    }
 
    /* Now, take a reference and add it to the validation list. */
