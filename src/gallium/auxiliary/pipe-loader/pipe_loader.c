@@ -138,7 +138,7 @@ pipe_loader_find_module(const char *driver_name,
    int len, ret;
 
    for (next = library_paths; *next; library_paths = next + 1) {
-      next = util_strchrnul(library_paths, ':');
+      next = strchrnul(library_paths, ':');
       len = next - library_paths;
 
       if (len)

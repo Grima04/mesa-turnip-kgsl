@@ -50,12 +50,9 @@
 extern "C" {
 #endif
 
-#ifdef _GNU_SOURCE
+#ifndef _GNU_SOURCE
 
-#define util_strchrnul strchrnul
-
-#else
-
+#define strchrnul util_strchrnul
 static inline char *
 util_strchrnul(const char *s, char c)
 {

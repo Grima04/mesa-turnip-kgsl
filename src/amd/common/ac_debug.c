@@ -542,7 +542,7 @@ static void format_ib_output(FILE *f, char *out)
 		if (indent)
 			print_spaces(f, indent);
 
-		char *end = util_strchrnul(out, '\n');
+		char *end = strchrnul(out, '\n');
 		fwrite(out, end - out, 1, f);
 		fputc('\n', f); /* always end with a new line */
 		if (!*end)
