@@ -98,12 +98,6 @@ util_snprintf(char *str, size_t size, const char *format, ...)
 }
 
 static inline void
-util_vsprintf(char *str, const char *format, va_list ap)
-{
-   util_vsnprintf(str, (size_t)-1, format, ap);
-}
-
-static inline void
    PRINTFLIKE(2, 3)
 util_sprintf(char *str, const char *format, ...)
 {
@@ -189,7 +183,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 
 #define util_vsnprintf vsnprintf
 #define util_snprintf snprintf
-#define util_vsprintf vsprintf
 #define util_vasprintf vasprintf
 #define util_sprintf sprintf
 #define util_strcmp strcmp
