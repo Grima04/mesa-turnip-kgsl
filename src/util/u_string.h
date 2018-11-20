@@ -188,19 +188,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
    return 0;
 }
 
-static inline char *
-util_strstr(const char *haystack, const char *needle)
-{
-   const char *p = haystack;
-   size_t len = strlen(needle);
-
-   for (; (p = util_strchr(p, *needle)) != 0; p++) {
-      if (util_strncmp(p, needle, len) == 0) {
-	 return (char *)p;
-      }
-   }
-   return NULL;
-}
 
 
 #define util_strcasecmp stricmp
@@ -217,7 +204,6 @@ util_strstr(const char *haystack, const char *needle)
 #define util_strcmp strcmp
 #define util_strncmp strncmp
 #define util_strncat strncat
-#define util_strstr strstr
 #define util_strcasecmp strcasecmp
 #define util_strdup strdup
 
