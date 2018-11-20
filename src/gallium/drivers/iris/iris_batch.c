@@ -384,6 +384,8 @@ iris_batch_free(struct iris_batch *batch)
       iris_syncpt_reference(screen, s, NULL);
    ralloc_free(batch->syncpts.mem_ctx);
 
+   iris_syncpt_reference(screen, &batch->last_syncpt, NULL);
+
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
    batch->map = NULL;
@@ -579,6 +581,10 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    batch->exec_count = 0;
    batch->aperture_space = 0;
+
+   struct iris_syncpt *syncpt =
+      ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
+   iris_syncpt_reference(screen, &batch->last_syncpt, syncpt);
 
    util_dynarray_foreach(&batch->syncpts, struct iris_syncpt *, s)
       iris_syncpt_reference(screen, s, NULL);

@@ -91,6 +91,9 @@ struct iris_batch {
    /** The amount of aperture space (in bytes) used by all exec_bos */
    int aperture_space;
 
+   /** A sync-point for the last batch that was submitted. */
+   struct iris_syncpt *last_syncpt;
+
    /** List of other batches which we might need to flush to use a BO */
    struct iris_batch *other_batches[IRIS_BATCH_COUNT - 1];
 
