@@ -156,6 +156,7 @@ util_strcmp(const char *s1, const char *s2)
    return 0;
 }
 
+#define strncmp util_strncmp
 static inline int
 util_strncmp(const char *s1, const char *s2, size_t n)
 {
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_vasprintf vasprintf
 #define util_sprintf sprintf
 #define util_strcmp strcmp
-#define util_strncmp strncmp
 #define util_strcasecmp strcasecmp
 
 #endif

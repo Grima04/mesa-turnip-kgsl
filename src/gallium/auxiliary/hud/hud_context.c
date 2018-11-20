@@ -1195,7 +1195,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
    boolean sort_items = false;
    const char *period_env;
 
-   if (util_strncmp(env, "simple,", 7) == 0) {
+   if (strncmp(env, "simple,", 7) == 0) {
       hud->simple = true;
       env += 7;
    }
