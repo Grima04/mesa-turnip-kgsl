@@ -134,14 +134,6 @@ util_vasprintf(char **ret, const char *format, va_list ap)
    return util_vsnprintf(*ret, r + 1, format, ap);
 }
 
-static inline char *
-util_strchr(const char *s, char c)
-{
-   char *p = util_strchrnul(s, c);
-
-   return *p ? p : NULL;
-}
-
 static inline char*
 util_strncat(char *dst, const char *src, size_t n)
 {
@@ -200,7 +192,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_vsprintf vsprintf
 #define util_vasprintf vasprintf
 #define util_sprintf sprintf
-#define util_strchr strchr
 #define util_strcmp strcmp
 #define util_strncmp strncmp
 #define util_strncat strncat

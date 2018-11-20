@@ -55,7 +55,7 @@ _debug_vprintf(const char *format, va_list ap)
    /* We buffer until we find a newline. */
    size_t len = strlen(buf);
    int ret = util_vsnprintf(buf + len, sizeof(buf) - len, format, ap);
-   if (ret > (int)(sizeof(buf) - len - 1) || util_strchr(buf + len, '\n')) {
+   if (ret > (int)(sizeof(buf) - len - 1) || strchr(buf + len, '\n')) {
       os_log_message(buf);
       buf[0] = '\0';
    }
