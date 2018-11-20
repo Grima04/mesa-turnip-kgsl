@@ -119,6 +119,10 @@ struct iris_bo {
     * It should not be considered authoritative, but can be used to avoid a
     * linear walk of the validation list in the common case by guessing that
     * exec_bos[bo->index] == bo and confirming whether that's the case.
+    *
+    * XXX: this is not ideal now that we have more than one batch per context,
+    * XXX: as the index will flop back and forth between the render index and
+    * XXX: compute index...
     */
    unsigned index;
 
