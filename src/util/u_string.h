@@ -105,6 +105,7 @@ util_sprintf(char *str, const char *format, ...)
    va_end(ap);
 }
 
+#define vasprintf util_vasprintf
 static inline int
 util_vasprintf(char **ret, const char *format, va_list ap)
 {
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 
 #define util_vsnprintf vsnprintf
 #define util_snprintf snprintf
-#define util_vasprintf vasprintf
 
 #endif
 
