@@ -140,6 +140,7 @@ util_strncat(char *dst, const char *src, size_t n)
    return dst;
 }
 
+#define strcmp util_strcmp
 static inline int
 util_strcmp(const char *s1, const char *s2)
 {
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #define util_snprintf snprintf
 #define util_vasprintf vasprintf
 #define util_sprintf sprintf
-#define util_strcmp strcmp
 
 #endif
 

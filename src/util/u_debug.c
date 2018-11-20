@@ -167,19 +167,19 @@ debug_get_bool_option(const char *name, boolean dfault)
 
    if (str == NULL)
       result = dfault;
-   else if (!util_strcmp(str, "n"))
+   else if (!strcmp(str, "n"))
       result = FALSE;
-   else if (!util_strcmp(str, "no"))
+   else if (!strcmp(str, "no"))
       result = FALSE;
-   else if (!util_strcmp(str, "0"))
+   else if (!strcmp(str, "0"))
       result = FALSE;
-   else if (!util_strcmp(str, "f"))
+   else if (!strcmp(str, "f"))
       result = FALSE;
-   else if (!util_strcmp(str, "F"))
+   else if (!strcmp(str, "F"))
       result = FALSE;
-   else if (!util_strcmp(str, "false"))
+   else if (!strcmp(str, "false"))
       result = FALSE;
-   else if (!util_strcmp(str, "FALSE"))
+   else if (!strcmp(str, "FALSE"))
       result = FALSE;
    else
       result = TRUE;
@@ -227,7 +227,7 @@ str_has_option(const char *str, const char *name)
    }
 
    /* OPTION=all */
-   if (!util_strcmp(str, "all")) {
+   if (!strcmp(str, "all")) {
       return TRUE;
    }
 
@@ -276,7 +276,7 @@ debug_get_flags_option(const char *name,
    str = os_get_option(name);
    if (!str)
       result = dfault;
-   else if (!util_strcmp(str, "help")) {
+   else if (!strcmp(str, "help")) {
       result = dfault;
       _debug_printf("%s: help for %s:\n", __FUNCTION__, name);
       for (; flags->name; ++flags)
