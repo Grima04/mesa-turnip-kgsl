@@ -335,6 +335,35 @@ opt_if_loop_last_continue(nir_loop *loop)
    return true;
 }
 
+/* Walk all the phis in the block immediately following the if statement and
+ * swap the blocks.
+ */
+static void
+rewrite_phi_predecessor_blocks(nir_if *nif,
+                               nir_block *old_then_block,
+                               nir_block *old_else_block,
+                               nir_block *new_then_block,
+                               nir_block *new_else_block)
+{
+   nir_block *after_if_block =
+      nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node));
+
+   nir_foreach_instr(instr, after_if_block) {
+      if (instr->type != nir_instr_type_phi)
+         continue;
+
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+
+      foreach_list_typed(nir_phi_src, src, node, &phi->srcs) {
+         if (src->pred == old_then_block) {
+            src->pred = new_then_block;
+         } else if (src->pred == old_else_block) {
+            src->pred = new_else_block;
+         }
+      }
+   }
+}
+
 /**
  * This optimization turns:
  *
@@ -379,26 +408,8 @@ opt_if_simplification(nir_builder *b, nir_if *nif)
    nir_block *then_block = nir_if_last_then_block(nif);
    nir_block *else_block = nir_if_last_else_block(nif);
 
-   /* Walk all the phis in the block immediately following the if statement and
-    * swap the blocks.
-    */
-   nir_block *after_if_block =
-      nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node));
-
-   nir_foreach_instr(instr, after_if_block) {
-      if (instr->type != nir_instr_type_phi)
-         continue;
-
-      nir_phi_instr *phi = nir_instr_as_phi(instr);
-
-      foreach_list_typed(nir_phi_src, src, node, &phi->srcs) {
-         if (src->pred == else_block) {
-            src->pred = then_block;
-         } else if (src->pred == then_block) {
-            src->pred = else_block;
-         }
-      }
-   }
+   rewrite_phi_predecessor_blocks(nif, then_block, else_block, else_block,
+                                  then_block);
 
    /* Finally, move the else block to the then block. */
    nir_cf_list tmp;
