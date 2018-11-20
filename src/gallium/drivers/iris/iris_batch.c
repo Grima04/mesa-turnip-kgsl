@@ -196,18 +196,45 @@ iris_init_batch(struct iris_batch *batch,
 
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
-static unsigned
-add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
+static struct drm_i915_gem_exec_object2 *
+find_validation_entry(struct iris_batch *batch, struct iris_bo *bo)
 {
    unsigned index = READ_ONCE(bo->index);
 
    if (index < batch->exec_count && batch->exec_bos[index] == bo)
-      return index;
+      return &batch->validation_list[index];
 
    /* May have been shared between multiple active batches */
    for (index = 0; index < batch->exec_count; index++) {
       if (batch->exec_bos[index] == bo)
-         return index;
+         return &batch->validation_list[index];
+   }
+
+   return NULL;
+}
+
+/**
+ * Add a buffer to the current batch's validation list.
+ *
+ * You must call this on any BO you wish to use in this batch, to ensure
+ * that it's resident when the GPU commands execute.
+ */
+void
+iris_use_pinned_bo(struct iris_batch *batch,
+                   struct iris_bo *bo,
+                   bool writable)
+{
+   assert(bo->kflags & EXEC_OBJECT_PINNED);
+
+   struct drm_i915_gem_exec_object2 *existing_entry =
+      find_validation_entry(batch, bo);
+
+   if (existing_entry) {
+      /* The BO is already in the validation list; mark it writable */
+      if (writable)
+         existing_entry->flags |= EXEC_OBJECT_WRITE;
+
+      return;
    }
 
    /* This is the first time our batch has seen this BO.  Before we use it,
@@ -218,9 +245,6 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
       // XXX: this is bad, we use the same state / instruction buffers for
       // both batches, and if both of them are reading some dynamic state,
       // we flush all the time.  check for writes vs. reads?
-      //
-      // XXX: need to combine add_exec_bo and iris_use_pinned_bo so that
-      // we know whether we're writing the buffer or not.
       if (iris_batch_references(batch->other_batches[b], bo))
          iris_batch_flush(batch->other_batches[b]);
    }
@@ -242,14 +266,14 @@ add_exec_bo(struct iris_batch *batch, struct iris_bo *bo)
       (struct drm_i915_gem_exec_object2) {
          .handle = bo->gem_handle,
          .offset = bo->gtt_offset,
-         .flags = bo->kflags,
+         .flags = bo->kflags | (writable ? EXEC_OBJECT_WRITE : 0),
       };
 
    bo->index = batch->exec_count;
    batch->exec_bos[batch->exec_count] = bo;
    batch->aperture_space += bo->size;
 
-   return batch->exec_count++;
+   batch->exec_count++;
 }
 
 static void
@@ -521,30 +545,5 @@ _iris_batch_flush_fence(struct iris_batch *batch,
 bool
 iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
 {
-   unsigned index = READ_ONCE(bo->index);
-   if (index < batch->exec_count && batch->exec_bos[index] == bo)
-      return true;
-
-   for (int i = 0; i < batch->exec_count; i++) {
-      if (batch->exec_bos[i] == bo)
-         return true;
-   }
-   return false;
-}
-
-/**
- * Add a buffer to the current batch's validation list.
- *
- * You must call this on any BO you wish to use in this batch, to ensure
- * that it's resident when the GPU commands execute.
- */
-void
-iris_use_pinned_bo(struct iris_batch *batch,
-                   struct iris_bo *bo,
-                   bool writable)
-{
-   assert(bo->kflags & EXEC_OBJECT_PINNED);
-   unsigned index = add_exec_bo(batch, bo);
-   if (writable)
-      batch->validation_list[index].flags |= EXEC_OBJECT_WRITE;
+   return find_validation_entry(batch, bo) != NULL;
 }
