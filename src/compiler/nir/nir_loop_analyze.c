@@ -527,7 +527,7 @@ find_trip_count(loop_info_state *state)
 {
    bool trip_count_known = true;
    nir_loop_terminator *limiting_terminator = NULL;
-   int min_trip_count = -1;
+   int max_trip_count = -1;
 
    list_for_each_entry(nir_loop_terminator, terminator,
                        &state->loop->info->loop_terminator_list,
@@ -606,8 +606,8 @@ find_trip_count(loop_info_state *state)
           * iterations than previously (we have identified a more limiting
           * terminator) set the trip count and limiting terminator.
           */
-         if (min_trip_count == -1 || iterations < min_trip_count) {
-            min_trip_count = iterations;
+         if (max_trip_count == -1 || iterations < max_trip_count) {
+            max_trip_count = iterations;
             limiting_terminator = terminator;
          }
          break;
@@ -617,9 +617,9 @@ find_trip_count(loop_info_state *state)
       }
    }
 
-   state->loop->info->is_trip_count_known = trip_count_known;
-   if (min_trip_count > -1)
-      state->loop->info->trip_count = min_trip_count;
+   state->loop->info->exact_trip_count_known = trip_count_known;
+   if (max_trip_count > -1)
+      state->loop->info->max_trip_count = max_trip_count;
    state->loop->info->limiting_terminator = limiting_terminator;
 }
 
@@ -639,7 +639,7 @@ force_unroll_array_access(loop_info_state *state, nir_deref_instr *deref)
       nir_deref_instr *parent = nir_deref_instr_parent(d);
       assert(glsl_type_is_array(parent->type) ||
              glsl_type_is_matrix(parent->type));
-      if (glsl_get_length(parent->type) == state->loop->info->trip_count)
+      if (glsl_get_length(parent->type) == state->loop->info->max_trip_count)
          return true;
 
       if (deref->mode & state->indirect_mask)

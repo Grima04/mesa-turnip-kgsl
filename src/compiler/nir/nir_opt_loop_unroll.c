@@ -181,7 +181,7 @@ simple_unroll(nir_loop *loop)
    nir_cf_list unrolled_lp_body;
 
    /* Clone loop header and append to the loop body */
-   for (unsigned i = 0; i < loop->info->trip_count; i++) {
+   for (unsigned i = 0; i < loop->info->max_trip_count; i++) {
       /* Clone loop body */
       nir_cf_list_clone(&unrolled_lp_body, &loop_body, loop->cf_node.parent,
                         remap_table);
@@ -340,7 +340,7 @@ complex_unroll(nir_loop *loop, nir_loop_terminator *unlimit_term,
        * trip count == 1 we execute the code above the break twice and the
        * code below it once so we need clone things twice and so on.
        */
-      num_times_to_clone = loop->info->trip_count + 1;
+      num_times_to_clone = loop->info->max_trip_count + 1;
    } else {
       /* Pluck out the loop header */
       nir_cf_extract(&lp_header, nir_before_block(header_blk),
@@ -368,7 +368,7 @@ complex_unroll(nir_loop *loop, nir_loop_terminator *unlimit_term,
 
       nir_cf_node_remove(&limiting_term->nif->cf_node);
 
-      num_times_to_clone = loop->info->trip_count;
+      num_times_to_clone = loop->info->max_trip_count;
    }
 
    /* In the terminator that we have no trip count for move everything after
@@ -568,14 +568,14 @@ is_loop_small_enough_to_unroll(nir_shader *shader, nir_loop_info *li)
 {
    unsigned max_iter = shader->options->max_unroll_iterations;
 
-   if (li->trip_count > max_iter)
+   if (li->max_trip_count > max_iter)
       return false;
 
    if (li->force_unroll)
       return true;
 
    bool loop_not_too_large =
-      li->num_instructions * li->trip_count <= max_iter * LOOP_UNROLL_LIMIT;
+      li->num_instructions * li->max_trip_count <= max_iter * LOOP_UNROLL_LIMIT;
 
    return loop_not_too_large;
 }
@@ -641,7 +641,7 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
       if (!is_loop_small_enough_to_unroll(sh, loop->info))
          goto exit;
 
-      if (loop->info->is_trip_count_known) {
+      if (loop->info->exact_trip_count_known) {
          simple_unroll(loop);
          progress = true;
       } else {
@@ -665,7 +665,7 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
              * limiting terminator just do a simple unroll as the second
              * terminator can never be reached.
              */
-            if (loop->info->trip_count == 0 && !limiting_term_second) {
+            if (loop->info->max_trip_count == 0 && !limiting_term_second) {
                simple_unroll(loop);
             } else {
                complex_unroll(loop, terminator, limiting_term_second);
