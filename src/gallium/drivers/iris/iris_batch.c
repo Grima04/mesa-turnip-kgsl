@@ -226,6 +226,14 @@ iris_use_pinned_bo(struct iris_batch *batch,
 {
    assert(bo->kflags & EXEC_OBJECT_PINNED);
 
+   /* Never mark the workaround BO with EXEC_OBJECT_WRITE.  We don't care
+    * about the order of any writes to that buffer, and marking it writable
+    * would introduce data dependencies between multiple batches which share
+    * the buffer.
+    */
+   if (bo == batch->screen->workaround_bo)
+      writable = false;
+
    struct drm_i915_gem_exec_object2 *existing_entry =
       find_validation_entry(batch, bo);
 
