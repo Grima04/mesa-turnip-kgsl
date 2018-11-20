@@ -498,8 +498,7 @@ static void load_emit(
 		bool ubo = inst->Src[0].Register.File == TGSI_FILE_CONSTBUF;
 		args.resource = shader_buffer_fetch_rsrc(ctx, &inst->Src[0], ubo);
 		voffset = ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 1, 0));
-	} else if (inst->Src[0].Register.File == TGSI_FILE_IMAGE ||
-		   tgsi_is_bindless_image_file(inst->Src[0].Register.File)) {
+	} else {
 		unsigned target = inst->Memory.Texture;
 
 		image_fetch_rsrc(bld_base, &inst->Src[0], false, target, &args.resource);
@@ -685,8 +684,6 @@ static void store_emit(
 						      info->shader_buffers_atomic,
 						      info->images_load |
 						      info->images_atomic);
-	bool is_image = inst->Dst[0].Register.File == TGSI_FILE_IMAGE ||
-			tgsi_is_bindless_image_file(inst->Dst[0].Register.File);
 	LLVMValueRef chans[4], value;
 	LLVMValueRef vindex = ctx->i32_0;
 	LLVMValueRef voffset = ctx->i32_0;
@@ -700,17 +697,16 @@ static void store_emit(
 	if (inst->Dst[0].Register.File == TGSI_FILE_BUFFER) {
 		args.resource = shader_buffer_fetch_rsrc(ctx, &resource_reg, false);
 		voffset = ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 0, 0));
-	} else if (is_image) {
+	} else {
 		image_fetch_rsrc(bld_base, &resource_reg, true, target, &args.resource);
 		image_fetch_coords(bld_base, inst, 0, args.resource, args.coords);
 		vindex = args.coords[0]; /* for buffers only */
-	} else {
-		unreachable("unexpected register file");
 	}
 
 	if (inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE)
 		ac_build_waitcnt(&ctx->ac, VM_CNT);
 
+	bool is_image = inst->Dst[0].Register.File != TGSI_FILE_BUFFER;
 	args.cache_policy = get_cache_policy(ctx, inst,
 					     false, /* atomic */
 					     is_image, /* may_store_unaligned */
@@ -855,8 +851,7 @@ static void atomic_emit(
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
 		args.resource = shader_buffer_fetch_rsrc(ctx, &inst->Src[0], false);
 		voffset = ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 1, 0));
-	} else if (inst->Src[0].Register.File == TGSI_FILE_IMAGE ||
-		   tgsi_is_bindless_image_file(inst->Src[0].Register.File)) {
+	} else {
 		image_fetch_rsrc(bld_base, &inst->Src[0], true,
 				inst->Memory.Texture, &args.resource);
 		image_fetch_coords(bld_base, inst, 1, args.resource, args.coords);
