@@ -68,7 +68,7 @@ void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
       ice->state.dirty |= ~0ull;
@@ -146,7 +146,7 @@ void
 iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_batch *batch = &ice->compute_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
       ice->state.dirty |= ~0ull;

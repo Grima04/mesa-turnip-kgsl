@@ -335,7 +335,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       filter = BLORP_FILTER_NEAREST;
    }
 
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
@@ -406,7 +406,7 @@ iris_resource_copy_region(struct pipe_context *ctx,
 
    assert(src_box->depth == 1);
 
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    iris_batch_maybe_flush(batch, 1500);
 

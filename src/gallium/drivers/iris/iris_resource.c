@@ -813,14 +813,11 @@ iris_transfer_map(struct pipe_context *ctx,
        (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
 
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
-       iris_batch_references(&ice->render_batch, res->bo)) {
-      iris_batch_flush(&ice->render_batch);
-   }
-
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
-       iris_batch_references(&ice->compute_batch, res->bo)) {
-      iris_batch_flush(&ice->compute_batch);
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+         if (iris_batch_references(&ice->batches[i], res->bo))
+            iris_batch_flush(&ice->batches[i]);
+      }
    }
 
    if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))

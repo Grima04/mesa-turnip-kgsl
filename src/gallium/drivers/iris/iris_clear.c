@@ -51,7 +51,7 @@ iris_clear(struct pipe_context *ctx,
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
    assert(buffers != 0);
 
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    iris_batch_maybe_flush(batch, 1500);
 
@@ -124,7 +124,7 @@ iris_clear_texture(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_resource *res = (void *) p_res;
 
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
    iris_batch_maybe_flush(batch, 1500);

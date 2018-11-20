@@ -115,8 +115,8 @@ iris_destroy_context(struct pipe_context *ctx)
 
    slab_destroy_child(&ice->transfer_pool);
 
-   iris_batch_free(&ice->render_batch);
-   iris_batch_free(&ice->compute_batch);
+   iris_batch_free(&ice->batches[IRIS_BATCH_RENDER]);
+   iris_batch_free(&ice->batches[IRIS_BATCH_COMPUTE]);
    iris_destroy_binder(&ice->state.binder);
 
    ralloc_free(ice);
@@ -194,21 +194,16 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    genX_call(devinfo, init_state, ice);
    genX_call(devinfo, init_blorp, ice);
 
-   struct iris_batch *batches[IRIS_BATCH_COUNT] = {
-      &ice->render_batch,
-      &ice->compute_batch,
-   };
-   const char *batch_names[IRIS_BATCH_COUNT] = { "render", "compute", };
-
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      iris_init_batch(batches[i], screen, &ice->vtbl, &ice->dbg,
-                      batches, batch_names[i], I915_EXEC_RENDER);
+      iris_init_batch(&ice->batches[i], screen, &ice->vtbl, &ice->dbg,
+                      ice->batches, (enum iris_batch_name) i,
+                      I915_EXEC_RENDER);
    }
 
-   ice->vtbl.init_render_context(screen, &ice->render_batch, &ice->vtbl,
-                                 &ice->dbg);
-   ice->vtbl.init_compute_context(screen, &ice->compute_batch, &ice->vtbl,
-                                  &ice->dbg);
+   ice->vtbl.init_render_context(screen, &ice->batches[IRIS_BATCH_RENDER],
+                                 &ice->vtbl, &ice->dbg);
+   ice->vtbl.init_compute_context(screen, &ice->batches[IRIS_BATCH_COMPUTE],
+                                  &ice->vtbl, &ice->dbg);
 
    return ctx;
 }

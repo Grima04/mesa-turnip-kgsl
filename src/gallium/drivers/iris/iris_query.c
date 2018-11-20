@@ -129,7 +129,7 @@ iris_is_query_pipelined(struct iris_query *q)
 static void
 mark_available(struct iris_context *ice, struct iris_query *q)
 {
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    unsigned flags = PIPE_CONTROL_WRITE_IMMEDIATE;
    unsigned offset = offsetof(struct iris_query_snapshots, snapshots_landed);
 
@@ -162,7 +162,7 @@ iris_pipelined_write(struct iris_batch *batch,
 static void
 write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 {
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
    if (!iris_is_query_pipelined(q)) {
@@ -182,7 +182,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
           */
          iris_emit_pipe_control_flush(batch, PIPE_CONTROL_DEPTH_STALL);
       }
-      iris_pipelined_write(&ice->render_batch, q,
+      iris_pipelined_write(&ice->batches[IRIS_BATCH_RENDER], q,
                            PIPE_CONTROL_WRITE_DEPTH_COUNT |
                            PIPE_CONTROL_DEPTH_STALL,
                            offset);
@@ -190,7 +190,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
-      iris_pipelined_write(&ice->render_batch, q,
+      iris_pipelined_write(&ice->batches[IRIS_BATCH_RENDER], q,
                            PIPE_CONTROL_WRITE_TIMESTAMP,
                            offset);
       break;
@@ -284,7 +284,7 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
 static void
 gpr0_to_bool(struct iris_context *ice)
 {
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    ice->vtbl.load_register_imm64(batch, CS_GPR(1), 1ull);
 
@@ -308,7 +308,7 @@ gpr0_to_bool(struct iris_context *ice)
 static void
 calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
                                  offsetof(struct iris_query_snapshots, start));
@@ -417,8 +417,8 @@ iris_get_query_result(struct pipe_context *ctx,
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (!q->ready) {
-      if (iris_batch_references(&ice->render_batch, q->bo))
-         iris_batch_flush(&ice->render_batch);
+      if (iris_batch_references(&ice->batches[IRIS_BATCH_RENDER], q->bo))
+         iris_batch_flush(&ice->batches[IRIS_BATCH_RENDER]);
 
       if (!q->map->snapshots_landed) {
          if (wait)
@@ -487,7 +487,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
-   struct iris_batch *batch = &ice->render_batch;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    unsigned snapshots_landed_offset =
       offsetof(struct iris_query_snapshots, snapshots_landed);

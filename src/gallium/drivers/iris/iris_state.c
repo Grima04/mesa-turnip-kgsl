@@ -2123,7 +2123,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
     *    be set in this packet."
     */
    // XXX: does this need to happen at 3DSTATE_BTP_PS time?
-   iris_emit_pipe_control_flush(&ice->render_batch,
+   iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
 #endif

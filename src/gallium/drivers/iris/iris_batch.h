@@ -39,6 +39,11 @@
 /* Our target batch size - flush approximately at this point. */
 #define BATCH_SZ (20 * 1024)
 
+enum iris_batch_name {
+   IRIS_BATCH_RENDER,
+   IRIS_BATCH_COMPUTE,
+};
+
 #define IRIS_BATCH_COUNT 2
 
 struct iris_address {
@@ -52,8 +57,8 @@ struct iris_batch {
    struct iris_vtable *vtbl;
    struct pipe_debug_callback *dbg;
 
-   /** The name of this batch for debug info (e.g. "render") */
-   const char *name;
+   /** What batch is this? (e.g. IRIS_BATCH_RENDER/COMPUTE) */
+   enum iris_batch_name name;
 
    /** Current batchbuffer being queued up. */
    struct iris_bo *bo;
@@ -126,8 +131,8 @@ void iris_init_batch(struct iris_batch *batch,
                      struct iris_screen *screen,
                      struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
-                     struct iris_batch **other_batches,
-                     const char *name,
+                     struct iris_batch *all_batches,
+                     enum iris_batch_name name,
                      uint8_t ring);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);

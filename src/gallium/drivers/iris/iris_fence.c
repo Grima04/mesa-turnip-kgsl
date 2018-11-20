@@ -160,14 +160,10 @@ iris_fence_flush(struct pipe_context *ctx,
 {
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (struct iris_context *)ctx;
-   struct iris_batch *batch[IRIS_BATCH_COUNT] = {
-      &ice->render_batch,
-      &ice->compute_batch,
-   };
 
    /* XXX PIPE_FLUSH_DEFERRED */
-   for (unsigned i = 0; i < ARRAY_SIZE(batch); i++)
-      iris_batch_flush(batch[i]);
+   for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++)
+      iris_batch_flush(&ice->batches[i]);
 
    if (!out_fence)
       return;
@@ -178,12 +174,12 @@ iris_fence_flush(struct pipe_context *ctx,
 
    pipe_reference_init(&fence->ref, 1);
 
-   for (unsigned b = 0; b < ARRAY_SIZE(batch); b++) {
-      if (!check_syncpt(ctx->screen, batch[b]->last_syncpt))
+   for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
+      if (!check_syncpt(ctx->screen, ice->batches[b].last_syncpt))
          continue;
 
       iris_syncpt_reference(screen, &fence->syncpt[fence->count++],
-                            batch[b]->last_syncpt);
+                            ice->batches[b].last_syncpt);
    }
    *out_fence = fence;
 }
@@ -193,13 +189,10 @@ iris_fence_await(struct pipe_context *ctx,
                  struct pipe_fence_handle *fence)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
-   struct iris_batch *batch[IRIS_BATCH_COUNT] = {
-      &ice->render_batch,
-      &ice->compute_batch,
-   };
-   for (unsigned b = 0; b < ARRAY_SIZE(batch); b++) {
+
+   for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       for (unsigned i = 0; i < fence->count; i++) {
-         iris_batch_add_syncpt(batch[b], fence->syncpt[i],
+         iris_batch_add_syncpt(&ice->batches[b], fence->syncpt[i],
                                I915_EXEC_FENCE_WAIT);
       }
    }

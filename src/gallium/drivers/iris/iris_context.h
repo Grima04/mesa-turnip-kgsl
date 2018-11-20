@@ -388,11 +388,7 @@ struct iris_context {
 
    struct blorp_context blorp;
 
-   /** The main batch for rendering. */
-   struct iris_batch render_batch;
-
-   /** The batch for compute shader dispatch */
-   struct iris_batch compute_batch;
+   struct iris_batch batches[IRIS_BATCH_COUNT];
 
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
