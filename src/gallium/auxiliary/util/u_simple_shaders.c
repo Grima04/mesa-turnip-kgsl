@@ -556,8 +556,8 @@ util_make_fs_blit_msaa_gen(struct pipe_context *pipe,
    assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
           tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
 
-   util_snprintf(text, sizeof(text), shader_templ, type, samp_type,
-                 output_semantic, conversion_decl, type, conversion, output_mask);
+   snprintf(text, sizeof(text), shader_templ, type, samp_type,
+            output_semantic, conversion_decl, type, conversion, output_mask);
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       puts(text);

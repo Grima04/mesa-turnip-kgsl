@@ -69,9 +69,9 @@ static const char *
 swr_get_name(struct pipe_screen *screen)
 {
    static char buf[100];
-   util_snprintf(buf, sizeof(buf), "SWR (LLVM %u.%u, %u bits)",
-                 HAVE_LLVM >> 8, HAVE_LLVM & 0xff,
-                 lp_native_vector_width );
+   snprintf(buf, sizeof(buf), "SWR (LLVM %u.%u, %u bits)",
+            HAVE_LLVM >> 8, HAVE_LLVM & 0xff,
+            lp_native_vector_width);
    return buf;
 }
 

@@ -403,7 +403,7 @@ create_jit_vertex_header(struct gallivm_state *gallivm, int data_elems)
    LLVMTypeRef vertex_header;
    char struct_name[24];
 
-   util_snprintf(struct_name, 23, "vertex_header%d", data_elems);
+   snprintf(struct_name, 23, "vertex_header%d", data_elems);
 
    elem_types[DRAW_JIT_VERTEX_VERTEX_ID]  = LLVMIntTypeInContext(gallivm->context, 32);
    elem_types[DRAW_JIT_VERTEX_CLIP_POS]  = LLVMArrayType(LLVMFloatTypeInContext(gallivm->context), 4);
@@ -578,8 +578,8 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
    variant->llvm = llvm;
    variant->shader = shader;
 
-   util_snprintf(module_name, sizeof(module_name), "draw_llvm_vs_variant%u",
-                 variant->shader->variants_cached);
+   snprintf(module_name, sizeof(module_name), "draw_llvm_vs_variant%u",
+            variant->shader->variants_cached);
 
    variant->gallivm = gallivm_create(module_name, llvm->context);
 
@@ -1595,8 +1595,8 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
 
    memset(&system_values, 0, sizeof(system_values));
 
-   util_snprintf(func_name, sizeof(func_name), "draw_llvm_vs_variant%u",
-                 variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_vs_variant%u",
+            variant->shader->variants_cached);
 
    i = 0;
    arg_types[i++] = get_context_ptr_type(variant);       /* context */
@@ -2282,8 +2282,8 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
 
    memset(&system_values, 0, sizeof(system_values));
 
-   util_snprintf(func_name, sizeof(func_name), "draw_llvm_gs_variant%u",
-                 variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_gs_variant%u",
+            variant->shader->variants_cached);
 
    assert(variant->vertex_header_ptr_type);
 
@@ -2420,8 +2420,8 @@ draw_gs_llvm_create_variant(struct draw_llvm *llvm,
    variant->llvm = llvm;
    variant->shader = shader;
 
-   util_snprintf(module_name, sizeof(module_name), "draw_llvm_gs_variant%u",
-                 variant->shader->variants_cached);
+   snprintf(module_name, sizeof(module_name), "draw_llvm_gs_variant%u",
+            variant->shader->variants_cached);
 
    variant->gallivm = gallivm_create(module_name, llvm->context);
 

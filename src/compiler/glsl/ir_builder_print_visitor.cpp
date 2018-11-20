@@ -718,9 +718,8 @@ ir_builder_print_visitor::visit_leave(ir_call *ir)
       const struct hash_entry *const he =
          _mesa_hash_table_search(index_map, ir->return_deref);
 
-      util_snprintf(return_deref_string, sizeof(return_deref_string),
-                    "operand(r%04X).val",
-                    (unsigned)(uintptr_t) he->data);
+      snprintf(return_deref_string, sizeof(return_deref_string),
+               "operand(r%04X).val", (unsigned)(uintptr_t) he->data);
    } else {
       strcpy(return_deref_string, "NULL");
    }

@@ -103,7 +103,7 @@ i915_get_name(struct pipe_screen *screen)
       break;
    }
 
-   util_snprintf(buffer, sizeof(buffer), "i915 (chipset: %s)", chipset);
+   snprintf(buffer, sizeof(buffer), "i915 (chipset: %s)", chipset);
    return buffer;
 }
 

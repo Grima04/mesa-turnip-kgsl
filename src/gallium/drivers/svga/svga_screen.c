@@ -98,7 +98,7 @@ svga_get_name( struct pipe_screen *pscreen )
    llvm = "LLVM;";
 #endif
 
-   util_snprintf(name, sizeof(name), "SVGA3D; %s %s %s", build, mutex, llvm);
+   snprintf(name, sizeof(name), "SVGA3D; %s %s %s", build, mutex, llvm);
    return name;
 }
 
@@ -900,12 +900,12 @@ init_logging(struct pipe_screen *screen)
    char host_log[1000];
 
    /* Log Version to Host */
-   util_snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
-                 "%s%s\n", log_prefix, svga_get_name(screen));
+   snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
+            "%s%s\n", log_prefix, svga_get_name(screen));
    svgascreen->sws->host_log(svgascreen->sws, host_log);
 
-   util_snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
-                 "%s" PACKAGE_VERSION MESA_GIT_SHA1, log_prefix);
+   snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
+            "%s" PACKAGE_VERSION MESA_GIT_SHA1, log_prefix);
    svgascreen->sws->host_log(svgascreen->sws, host_log);
 
    /* If the SVGA_EXTRA_LOGGING env var is set, log the process's command
@@ -914,8 +914,8 @@ init_logging(struct pipe_screen *screen)
    if (debug_get_bool_option("SVGA_EXTRA_LOGGING", FALSE)) {
       char cmdline[1000];
       if (os_get_command_line(cmdline, sizeof(cmdline))) {
-         util_snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
-                       "%s%s\n", log_prefix, cmdline);
+         snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
+                  "%s%s\n", log_prefix, cmdline);
          svgascreen->sws->host_log(svgascreen->sws, host_log);
       }
    }

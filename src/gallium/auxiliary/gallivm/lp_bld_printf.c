@@ -108,7 +108,7 @@ lp_build_print_value(struct gallivm_state *gallivm,
       type_fmt[5] = '\0';
    } else if (type_kind == LLVMIntegerTypeKind) {
       if (LLVMGetIntTypeWidth(type_ref) == 64) {
-         util_snprintf(type_fmt + 2, 3, "%s", PRId64);
+         snprintf(type_fmt + 2, 3, "%s", PRId64);
       } else if (LLVMGetIntTypeWidth(type_ref) == 8) {
          type_fmt[2] = 'u';
       } else {

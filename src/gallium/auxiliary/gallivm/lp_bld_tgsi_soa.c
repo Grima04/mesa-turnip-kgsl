@@ -97,9 +97,9 @@ emit_dump_reg(struct gallivm_state *gallivm,
 {
    char buf[32];
 
-   util_snprintf(buf, sizeof buf, "    %s[%u].%c = ",
-                 tgsi_file_name(file),
-                 index, "xyzw"[chan]);
+   snprintf(buf, sizeof buf, "    %s[%u].%c = ",
+            tgsi_file_name(file),
+            index, "xyzw"[chan]);
 
    lp_build_print_value(gallivm, buf, value);
 }

@@ -34,7 +34,7 @@ nouveau_screen_get_name(struct pipe_screen *pscreen)
    struct nouveau_device *dev = nouveau_screen(pscreen)->device;
    static char buffer[128];
 
-   util_snprintf(buffer, sizeof(buffer), "NV%02X", dev->chipset);
+   snprintf(buffer, sizeof(buffer), "NV%02X", dev->chipset);
    return buffer;
 }
 

@@ -2490,8 +2490,8 @@ generate_fragment(struct llvmpipe_context *lp,
 
    blend_vec_type = lp_build_vec_type(gallivm, blend_type);
 
-   util_snprintf(func_name, sizeof(func_name), "fs%u_variant%u_%s",
-                 shader->no, variant->no, partial_mask ? "partial" : "whole");
+   snprintf(func_name, sizeof(func_name), "fs%u_variant%u_%s",
+            shader->no, variant->no, partial_mask ? "partial" : "whole");
 
    arg_types[0] = variant->jit_context_ptr_type;       /* context */
    arg_types[1] = int32_type;                          /* x */
@@ -2829,8 +2829,8 @@ generate_variant(struct llvmpipe_context *lp,
    if (!variant)
       return NULL;
 
-   util_snprintf(module_name, sizeof(module_name), "fs%u_variant%u",
-                 shader->no, shader->variants_created);
+   snprintf(module_name, sizeof(module_name), "fs%u_variant%u",
+            shader->no, shader->variants_created);
 
    variant->gallivm = gallivm_create(module_name, lp->context);
    if (!variant->gallivm) {

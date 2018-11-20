@@ -1452,11 +1452,11 @@ void anv_GetPhysicalDeviceProperties2(
             (VkPhysicalDeviceDriverPropertiesKHR *) ext;
 
          driver_props->driverID = VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR;
-         util_snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
-                "Intel open-source Mesa driver");
+         snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
+                  "Intel open-source Mesa driver");
 
-         util_snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
-                "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
+         snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+                  "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
          driver_props->conformanceVersion = (VkConformanceVersionKHR) {
             .major = 1,

@@ -110,8 +110,8 @@ etna_screen_get_name(struct pipe_screen *pscreen)
    struct etna_screen *priv = etna_screen(pscreen);
    static char buffer[128];
 
-   util_snprintf(buffer, sizeof(buffer), "Vivante GC%x rev %04x", priv->model,
-                 priv->revision);
+   snprintf(buffer, sizeof(buffer), "Vivante GC%x rev %04x", priv->model,
+            priv->revision);
 
    return buffer;
 }

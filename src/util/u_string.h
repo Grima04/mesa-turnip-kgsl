@@ -82,6 +82,7 @@ util_vsnprintf(char *str, size_t size, const char *format, va_list ap)
    return ret;
 }
 
+#define snprintf util_snprintf
 static inline int
    PRINTFLIKE(3, 4)
 util_snprintf(char *str, size_t size, const char *format, ...)
@@ -184,7 +185,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 #else
 
 #define util_vsnprintf vsnprintf
-#define util_snprintf snprintf
 
 #endif
 

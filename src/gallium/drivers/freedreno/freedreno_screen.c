@@ -101,7 +101,7 @@ static const char *
 fd_screen_get_name(struct pipe_screen *pscreen)
 {
 	static char buffer[128];
-	util_snprintf(buffer, sizeof(buffer), "FD%03d",
+	snprintf(buffer, sizeof(buffer), "FD%03d",
 			fd_screen(pscreen)->device_id);
 	return buffer;
 }

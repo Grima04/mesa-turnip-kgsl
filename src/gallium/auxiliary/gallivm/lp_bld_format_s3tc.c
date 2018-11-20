@@ -1948,8 +1948,8 @@ update_cached_block(struct gallivm_state *gallivm,
    LLVMBasicBlockRef bb;
    LLVMValueRef args[3];
 
-   util_snprintf(name, sizeof name, "%s_update_cache_one_block",
-                 format_desc->short_name);
+   snprintf(name, sizeof name, "%s_update_cache_one_block",
+            format_desc->short_name);
    function = LLVMGetNamedFunction(module, name);
 
    if (!function) {

@@ -330,7 +330,7 @@ debug_dump_enum(const struct debug_named_value *names,
       ++names;
    }
 
-   util_snprintf(rest, sizeof(rest), "0x%08lx", value);
+   snprintf(rest, sizeof(rest), "0x%08lx", value);
    return rest;
 }
 
@@ -354,7 +354,7 @@ debug_dump_enum_noprefix(const struct debug_named_value *names,
       ++names;
    }
 
-   util_snprintf(rest, sizeof(rest), "0x%08lx", value);
+   snprintf(rest, sizeof(rest), "0x%08lx", value);
    return rest;
 }
 
@@ -387,7 +387,7 @@ debug_dump_flags(const struct debug_named_value *names, unsigned long value)
       else
 	 first = 0;
 
-      util_snprintf(rest, sizeof(rest), "0x%08lx", value);
+      snprintf(rest, sizeof(rest), "0x%08lx", value);
       strncat(output, rest, sizeof(output) - strlen(output) - 1);
       output[sizeof(output) - 1] = '\0';
    }
