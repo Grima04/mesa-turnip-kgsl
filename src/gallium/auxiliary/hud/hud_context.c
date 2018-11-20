@@ -149,7 +149,7 @@ hud_draw_string(struct hud_context *hud, unsigned x, unsigned y,
 
    va_list ap;
    va_start(ap, str);
-   util_vsnprintf(buf, sizeof(buf), str, ap);
+   vsnprintf(buf, sizeof(buf), str, ap);
    va_end(ap);
 
    if (!*s)

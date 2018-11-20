@@ -65,6 +65,7 @@ util_strchrnul(const char *s, char c)
 
 #ifdef _WIN32
 
+#define vsnprintf util_vsnprintf
 static inline int
 util_vsnprintf(char *str, size_t size, const char *format, va_list ap)
 {
@@ -90,7 +91,7 @@ util_snprintf(char *str, size_t size, const char *format, ...)
    va_list ap;
    int ret;
    va_start(ap, format);
-   ret = util_vsnprintf(str, size, format, ap);
+   ret = vsnprintf(str, size, format, ap);
    va_end(ap);
    return ret;
 }
@@ -102,7 +103,7 @@ util_sprintf(char *str, const char *format, ...)
 {
    va_list ap;
    va_start(ap, format);
-   util_vsnprintf(str, (size_t)-1, format, ap);
+   vsnprintf(str, (size_t)-1, format, ap);
    va_end(ap);
 }
 
@@ -114,7 +115,7 @@ util_vasprintf(char **ret, const char *format, va_list ap)
 
    /* Compute length of output string first */
    va_copy(ap_copy, ap);
-   int r = util_vsnprintf(NULL, 0, format, ap_copy);
+   int r = vsnprintf(NULL, 0, format, ap_copy);
    va_end(ap_copy);
 
    if (r < 0)
@@ -125,7 +126,7 @@ util_vasprintf(char **ret, const char *format, va_list ap)
       return -1;
 
    /* Print to buffer */
-   return util_vsnprintf(*ret, r + 1, format, ap);
+   return vsnprintf(*ret, r + 1, format, ap);
 }
 
 #define strncat util_strncat
@@ -181,10 +182,6 @@ util_strncmp(const char *s1, const char *s2, size_t n)
 
 #define strcasecmp stricmp
 #define strdup _strdup
-
-#else
-
-#define util_vsnprintf vsnprintf
 
 #endif
 

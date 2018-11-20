@@ -54,13 +54,13 @@ _debug_vprintf(const char *format, va_list ap)
 #if defined(PIPE_OS_WINDOWS) || defined(PIPE_SUBSYSTEM_EMBEDDED)
    /* We buffer until we find a newline. */
    size_t len = strlen(buf);
-   int ret = util_vsnprintf(buf + len, sizeof(buf) - len, format, ap);
+   int ret = vsnprintf(buf + len, sizeof(buf) - len, format, ap);
    if (ret > (int)(sizeof(buf) - len - 1) || strchr(buf + len, '\n')) {
       os_log_message(buf);
       buf[0] = '\0';
    }
 #else
-   util_vsnprintf(buf, sizeof(buf), format, ap);
+   vsnprintf(buf, sizeof(buf), format, ap);
    os_log_message(buf);
 #endif
 }

@@ -284,7 +284,7 @@ util_report_result_helper(int status, const char *name, ...)
    va_list ap;
 
    va_start(ap, name);
-   util_vsnprintf(buf, sizeof(buf), name, ap);
+   vsnprintf(buf, sizeof(buf), name, ap);
    va_end(ap);
 
    printf("Test(%s) = %s\n", buf,

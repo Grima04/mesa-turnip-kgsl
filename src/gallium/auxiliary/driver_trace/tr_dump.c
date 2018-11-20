@@ -87,7 +87,7 @@ trace_dump_writef(const char *format, ...)
    unsigned len;
    va_list ap;
    va_start(ap, format);
-   len = util_vsnprintf(buf, sizeof(buf), format, ap);
+   len = vsnprintf(buf, sizeof(buf), format, ap);
    va_end(ap);
    trace_dump_write(buf, len);
 }
