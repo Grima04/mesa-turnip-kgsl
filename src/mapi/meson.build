@@ -26,6 +26,7 @@ files_mapi_util = files(
 )
 
 genCommon_py = files('new/genCommon.py')
+glapi_gen_mapi_py = files('new/gen_gldispatch_mapi.py')
 mapi_abi_py = files('mapi_abi.py')
 
 subdir('glapi')
