@@ -161,8 +161,8 @@ iris_fence_flush(struct pipe_context *ctx,
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_batch *batch[IRIS_BATCH_COUNT] = {
+      &ice->render_batch,
       &ice->compute_batch,
-      &ice->render_batch
    };
 
    /* XXX PIPE_FLUSH_DEFERRED */
@@ -194,8 +194,8 @@ iris_fence_await(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_batch *batch[IRIS_BATCH_COUNT] = {
+      &ice->render_batch,
       &ice->compute_batch,
-      &ice->render_batch
    };
    for (unsigned b = 0; b < ARRAY_SIZE(batch); b++) {
       for (unsigned i = 0; i < fence->count; i++) {
