@@ -456,6 +456,55 @@ complex_unroll(nir_loop *loop, nir_loop_terminator *unlimit_term,
    _mesa_hash_table_destroy(remap_table, NULL);
 }
 
+/**
+ * Unroll loops where we only have a single terminator but the exact trip
+ * count is unknown. For example:
+ *
+ *    for (int i = 0; i < imin(x, 4); i++)
+ *       ...
+ */
+static void
+complex_unroll_single_terminator(nir_loop *loop)
+{
+   assert(list_length(&loop->info->loop_terminator_list) == 1);
+   assert(loop->info->limiting_terminator);
+   assert(nir_is_trivial_loop_if(loop->info->limiting_terminator->nif,
+                                 loop->info->limiting_terminator->break_block));
+
+   nir_loop_terminator *terminator = loop->info->limiting_terminator;
+
+   loop_prepare_for_unroll(loop);
+
+   /* Pluck out the loop header */
+   nir_cf_list lp_header;
+   nir_cf_extract(&lp_header, nir_before_block(nir_loop_first_block(loop)),
+                  nir_before_cf_node(&terminator->nif->cf_node));
+
+   struct hash_table *remap_table =
+      _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                              _mesa_key_pointer_equal);
+
+   /* We need to clone the loop one extra time in order to clone the lcssa
+    * vars for the last iteration (they are inside the following ifs break
+    * branch). We leave other passes to clean up this redundant if.
+    */
+   unsigned num_times_to_clone = loop->info->max_trip_count + 1;
+
+   nir_cf_list lp_body;
+   nir_cf_node *unroll_loc =
+      complex_unroll_loop_body(loop, terminator, &lp_header, &lp_body,
+                               remap_table, num_times_to_clone);
+
+   /* Delete the original loop header and body */
+   nir_cf_delete(&lp_header);
+   nir_cf_delete(&lp_body);
+
+   /* The original loop has been replaced so remove it. */
+   nir_cf_node_remove(&loop->cf_node);
+
+   _mesa_hash_table_destroy(remap_table, NULL);
+}
+
 /* Unrolls the classic wrapper loops e.g
  *
  *    do {
@@ -851,6 +900,12 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
             } else {
                complex_unroll(loop, terminator, limiting_term_second);
             }
+            progress = true;
+         }
+
+         if (num_lt == 1) {
+            assert(loop->info->limiting_terminator->exact_trip_count_unknown);
+            complex_unroll_single_terminator(loop);
             progress = true;
          }
       }
