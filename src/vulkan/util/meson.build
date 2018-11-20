@@ -39,7 +39,7 @@ vk_enum_to_str = custom_target(
 libvulkan_util = static_library(
   'vulkan_util',
   [files_vulkan_util, vk_enum_to_str],
-  include_directories : [inc_common, inc_vulkan],
+  include_directories : inc_common,
   c_args : [c_vis_args],
   build_by_default : false,
 )
