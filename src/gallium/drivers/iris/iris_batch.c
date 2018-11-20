@@ -264,7 +264,7 @@ create_batch(struct iris_batch *batch)
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;
 
-   add_exec_bo(batch, batch->bo);
+   iris_use_pinned_bo(batch, batch->bo, false);
 }
 
 static void
