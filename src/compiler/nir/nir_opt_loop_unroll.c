@@ -553,18 +553,200 @@ wrapper_unroll(nir_loop *loop)
 }
 
 static bool
+is_access_out_of_bounds(nir_loop_terminator *term, nir_deref_instr *deref,
+                        unsigned trip_count)
+{
+   for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
+      if (d->deref_type != nir_deref_type_array)
+         continue;
+
+      nir_alu_instr *alu = nir_instr_as_alu(term->conditional_instr);
+      nir_src src = term->induction_rhs ? alu->src[1].src : alu->src[0].src;
+      if (!nir_srcs_equal(d->arr.index, src))
+         continue;
+
+      nir_deref_instr *parent = nir_deref_instr_parent(d);
+      assert(glsl_type_is_array(parent->type) ||
+             glsl_type_is_matrix(parent->type));
+
+      /* We have already unrolled the loop and the new one will be imbedded in
+       * the innermost continue branch. So unless the array is greater than
+       * the trip count any iteration over the loop will be an out of bounds
+       * access of the array.
+       */
+      return glsl_get_length(parent->type) <= trip_count;
+   }
+
+   return false;
+}
+
+/* If we know an array access is going to be out of bounds remove or replace
+ * the access with an undef. This can later result in the entire loop being
+ * removed by nir_opt_dead_cf().
+ */
+static void
+remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
+                                   nir_loop_terminator *term,
+                                   nir_cf_list *lp_header,
+                                   nir_cf_list *lp_body,
+                                   unsigned trip_count)
+{
+   if (!loop->info->guessed_trip_count)
+      return;
+
+   /* Temporarily recreate the original loop so we can alter it */
+   nir_cf_reinsert(lp_header, nir_after_block(nir_loop_last_block(loop)));
+   nir_cf_reinsert(lp_body, nir_after_block(nir_loop_last_block(loop)));
+
+   nir_builder b;
+   nir_builder_init(&b, nir_cf_node_get_function(&loop->cf_node));
+
+   nir_foreach_block_in_cf_node(block, &loop->cf_node) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         /* Check for arrays variably-indexed by a loop induction variable.
+          * If this access is out of bounds remove the instruction or replace
+          * its use with an undefined instruction.
+          * If the loop is no longer useful we leave it for the appropriate
+          * pass to clean it up for us.
+          */
+         if (intrin->intrinsic == nir_intrinsic_load_deref ||
+             intrin->intrinsic == nir_intrinsic_store_deref ||
+             intrin->intrinsic == nir_intrinsic_copy_deref) {
+
+            if (is_access_out_of_bounds(term, nir_src_as_deref(intrin->src[0]),
+                                        trip_count)) {
+               if (intrin->intrinsic == nir_intrinsic_load_deref) {
+                  assert(intrin->src[0].is_ssa);
+                  nir_ssa_def *a_ssa = intrin->src[0].ssa;
+                  nir_ssa_def *undef =
+                     nir_ssa_undef(&b, intrin->num_components,
+                                   a_ssa->bit_size);
+                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                                           nir_src_for_ssa(undef));
+               } else {
+                  nir_instr_remove(instr);
+                  continue;
+               }
+            }
+
+            if (intrin->intrinsic == nir_intrinsic_copy_deref &&
+                is_access_out_of_bounds(term, nir_src_as_deref(intrin->src[1]),
+                                        trip_count)) {
+               assert(intrin->src[1].is_ssa);
+               nir_ssa_def *a_ssa = intrin->src[1].ssa;
+               nir_ssa_def *undef =
+                  nir_ssa_undef(&b, intrin->num_components, a_ssa->bit_size);
+
+               /* Replace the copy with a store of the undefined value */
+               b.cursor = nir_before_instr(instr);
+               nir_store_deref(&b, nir_src_as_deref(intrin->src[0]), undef, ~0);
+               nir_instr_remove(instr);
+            }
+         }
+      }
+   }
+
+   /* Now that we are done extract the loop header and body again */
+   nir_cf_extract(lp_header, nir_before_block(nir_loop_first_block(loop)),
+                  nir_before_cf_node(&term->nif->cf_node));
+   nir_cf_extract(lp_body, nir_before_block(nir_loop_first_block(loop)),
+                  nir_after_block(nir_loop_last_block(loop)));
+}
+
+/* Partially unrolls loops that don't have a known trip count.
+ */
+static void
+partial_unroll(nir_shader *shader, nir_loop *loop, unsigned trip_count)
+{
+   assert(list_length(&loop->info->loop_terminator_list) == 1);
+
+   nir_loop_terminator *terminator =
+      list_first_entry(&loop->info->loop_terminator_list,
+                        nir_loop_terminator, loop_terminator_link);
+
+   assert(nir_is_trivial_loop_if(terminator->nif, terminator->break_block));
+
+   loop_prepare_for_unroll(loop);
+
+   /* Pluck out the loop header */
+   nir_cf_list lp_header;
+   nir_cf_extract(&lp_header, nir_before_block(nir_loop_first_block(loop)),
+                  nir_before_cf_node(&terminator->nif->cf_node));
+
+   struct hash_table *remap_table =
+      _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                              _mesa_key_pointer_equal);
+
+   nir_cf_list lp_body;
+   nir_cf_node *unroll_loc =
+      complex_unroll_loop_body(loop, terminator, &lp_header, &lp_body,
+                               remap_table, trip_count);
+
+   /* Attempt to remove out of bounds array access */
+   remove_out_of_bounds_induction_use(shader, loop, terminator, &lp_header,
+                                      &lp_body, trip_count);
+
+   nir_cursor cursor =
+      get_complex_unroll_insert_location(unroll_loc,
+                                         terminator->continue_from_then);
+
+   /* Reinsert the loop in the innermost nested continue branch of the unrolled
+    * loop.
+    */
+   nir_loop *new_loop = nir_loop_create(shader);
+   nir_cf_node_insert(cursor, &new_loop->cf_node);
+   new_loop->partially_unrolled = true;
+
+   /* Clone loop header and insert into new loop */
+   nir_cf_list_clone_and_reinsert(&lp_header, loop->cf_node.parent,
+                                  nir_after_cf_list(&new_loop->body),
+                                  remap_table);
+
+   /* Clone loop body and insert into new loop */
+   nir_cf_list_clone_and_reinsert(&lp_body, loop->cf_node.parent,
+                                  nir_after_cf_list(&new_loop->body),
+                                  remap_table);
+
+   /* Insert break back into terminator */
+   nir_jump_instr *brk = nir_jump_instr_create(shader, nir_jump_break);
+   nir_if *nif = nir_block_get_following_if(nir_loop_first_block(new_loop));
+   if (terminator->continue_from_then) {
+      nir_instr_insert_after_block(nir_if_last_else_block(nif), &brk->instr);
+   } else {
+      nir_instr_insert_after_block(nir_if_last_then_block(nif), &brk->instr);
+   }
+
+   /* Delete the original loop header and body */
+   nir_cf_delete(&lp_header);
+   nir_cf_delete(&lp_body);
+
+   /* The original loop has been replaced so remove it. */
+   nir_cf_node_remove(&loop->cf_node);
+
+   _mesa_hash_table_destroy(remap_table, NULL);
+}
+
+static bool
 is_loop_small_enough_to_unroll(nir_shader *shader, nir_loop_info *li)
 {
    unsigned max_iter = shader->options->max_unroll_iterations;
 
-   if (li->max_trip_count > max_iter)
+   unsigned trip_count =
+      li->max_trip_count ? li->max_trip_count : li->guessed_trip_count;
+
+   if (trip_count > max_iter)
       return false;
 
-   if (li->force_unroll)
+   if (li->force_unroll && !li->guessed_trip_count)
       return true;
 
    bool loop_not_too_large =
-      li->instr_cost * li->max_trip_count <= max_iter * LOOP_UNROLL_LIMIT;
+      li->instr_cost * trip_count <= max_iter * LOOP_UNROLL_LIMIT;
 
    return loop_not_too_large;
 }
@@ -616,15 +798,24 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
           !loop->info->complex_loop) {
 
          nir_block *last_loop_blk = nir_loop_last_block(loop);
-         if (!nir_block_ends_in_break(last_loop_blk))
+         if (nir_block_ends_in_break(last_loop_blk)) {
+            progress = wrapper_unroll(loop);
             goto exit;
+         }
 
-         progress = wrapper_unroll(loop);
-
-         goto exit;
+         /* If we were able to guess the loop iteration based on array access
+          * then do a partial unroll.
+          */
+         unsigned num_lt = list_length(&loop->info->loop_terminator_list);
+         if (!has_nested_loop && num_lt == 1 && !loop->partially_unrolled &&
+             loop->info->guessed_trip_count &&
+             is_loop_small_enough_to_unroll(sh, loop->info)) {
+            partial_unroll(sh, loop, loop->info->guessed_trip_count);
+            progress = true;
+         }
       }
 
-      if (has_nested_loop || loop->info->limiting_terminator == NULL)
+      if (has_nested_loop || !loop->info->limiting_terminator)
          goto exit;
 
       if (!is_loop_small_enough_to_unroll(sh, loop->info))
