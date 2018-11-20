@@ -1030,8 +1030,11 @@ static void virgl_set_shader_buffers(struct pipe_context *ctx,
 }
 
 static void virgl_create_fence_fd(struct pipe_context *ctx,
-			        struct pipe_fence_handle **fence, int fd)
+                                  struct pipe_fence_handle **fence,
+                                  int fd,
+                                  enum pipe_fd_type type)
 {
+   assert(type == PIPE_FD_TYPE_NATIVE_SYNC);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
 
    *fence = rs->vws->cs_create_fence(rs->vws, fd);
