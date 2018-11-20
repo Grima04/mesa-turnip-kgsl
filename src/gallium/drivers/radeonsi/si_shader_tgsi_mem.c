@@ -396,11 +396,15 @@ static void load_emit_memory(
  *	For LOAD, set this to (store | atomic) slot usage in the shader.
  *	For STORE, set this to (load | atomic) slot usage in the shader.
  * \param images_reverse_access_mask  Same as above, but for images.
+ * \param bindless_buffer_reverse_access_mask  Same as above, but for bindless image buffers.
+ * \param bindless_image_reverse_access_mask   Same as above, but for bindless images.
  */
 static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 				  const struct tgsi_shader_info *info,
 				  unsigned shader_buffers_reverse_access_mask,
-				  unsigned images_reverse_access_mask)
+				  unsigned images_reverse_access_mask,
+				  bool bindless_buffer_reverse_access_mask,
+				  bool bindless_image_reverse_access_mask)
 {
 	enum tgsi_file_type resource_file;
 	unsigned resource_index;
@@ -428,11 +432,14 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 	assert(resource_file != TGSI_FILE_BUFFER ||
 	       inst->Memory.Texture == TGSI_TEXTURE_BUFFER);
 
+	bool bindless = resource_file != TGSI_FILE_BUFFER &&
+			resource_file != TGSI_FILE_IMAGE;
+
 	/* RESTRICT means NOALIAS.
 	 * If there are no writes, we can assume the accessed memory is read-only.
 	 * If there are no reads, we can assume the accessed memory is write-only.
 	 */
-	if (inst->Memory.Qualifier & TGSI_MEMORY_RESTRICT) {
+	if (inst->Memory.Qualifier & TGSI_MEMORY_RESTRICT && !bindless) {
 		unsigned reverse_access_mask;
 
 		if (resource_file == TGSI_FILE_BUFFER) {
@@ -466,10 +473,12 @@ static bool is_oneway_access_only(const struct tgsi_full_instruction *inst,
 	if (resource_file == TGSI_FILE_BUFFER ||
 	    inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
 		if (!shader_buffers_reverse_access_mask &&
-		    !(info->images_buffers & images_reverse_access_mask))
+		    !(info->images_buffers & images_reverse_access_mask) &&
+		    !bindless_buffer_reverse_access_mask)
 			return true;
 	} else {
-		if (!(~info->images_buffers & images_reverse_access_mask))
+		if (!(~info->images_buffers & images_reverse_access_mask) &&
+		    !bindless_image_reverse_access_mask)
 			return true;
 	}
 	return false;
@@ -522,7 +531,11 @@ static void load_emit(
 						info->shader_buffers_store |
 						info->shader_buffers_atomic,
 						info->images_store |
-						info->images_atomic);
+						info->images_atomic,
+						info->uses_bindless_buffer_store |
+						info->uses_bindless_buffer_atomic,
+						info->uses_bindless_image_store |
+						info->uses_bindless_image_atomic);
 	args.cache_policy = get_cache_policy(ctx, inst, false, false, false);
 
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
@@ -683,7 +696,11 @@ static void store_emit(
 						      info->shader_buffers_load |
 						      info->shader_buffers_atomic,
 						      info->images_load |
-						      info->images_atomic);
+						      info->images_atomic,
+						      info->uses_bindless_buffer_load |
+						      info->uses_bindless_buffer_atomic,
+						      info->uses_bindless_image_load |
+						      info->uses_bindless_image_atomic);
 	LLVMValueRef chans[4], value;
 	LLVMValueRef vindex = ctx->i32_0;
 	LLVMValueRef voffset = ctx->i32_0;
