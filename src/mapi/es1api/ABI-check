@@ -4,7 +4,6 @@ set -eu
 # Print defined gl.* functions not in GL ES 1.1 or in
 # (FIXME, none of these should be part of the ABI)
 # GL_EXT_multi_draw_arrays
-# GL_OES_EGL_image
 
 # or in extensions that are part of the ES 1.1 extension pack.
 # (see http://www.khronos.org/registry/gles/specs/1.1/opengles_spec_1_1_extension_pack.pdf)
@@ -65,8 +64,6 @@ glDisable
 glDisableClientState
 glDrawArrays
 glDrawElements
-glEGLImageTargetRenderbufferStorageOES
-glEGLImageTargetTexture2DOES
 glEnable
 glEnableClientState
 glFinish
