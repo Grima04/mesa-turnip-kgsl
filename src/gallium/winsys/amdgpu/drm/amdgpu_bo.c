@@ -492,7 +492,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    unsigned vm_alignment = alignment;
 
    /* Increase the VM alignment for faster address translation. */
-   if (size > ws->info.pte_fragment_size)
+   if (size >= ws->info.pte_fragment_size)
       vm_alignment = MAX2(vm_alignment, ws->info.pte_fragment_size);
 
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
