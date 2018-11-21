@@ -771,6 +771,7 @@ int32_t anv_block_pool_alloc(struct anv_block_pool *pool,
                              uint32_t block_size);
 int32_t anv_block_pool_alloc_back(struct anv_block_pool *pool,
                                   uint32_t block_size);
+void* anv_block_pool_map(struct anv_block_pool *pool, int32_t offset);
 
 VkResult anv_state_pool_init(struct anv_state_pool *pool,
                              struct anv_device *device,

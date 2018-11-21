@@ -678,8 +678,8 @@ anv_cmd_buffer_alloc_binding_table(struct anv_cmd_buffer *cmd_buffer,
       return (struct anv_state) { 0 };
 
    state.offset = cmd_buffer->bt_next;
-   state.map = anv_binding_table_pool(device)->block_pool.map +
-      bt_block->offset + state.offset;
+   state.map = anv_block_pool_map(&anv_binding_table_pool(device)->block_pool,
+                                  bt_block->offset + state.offset);
 
    cmd_buffer->bt_next += state.alloc_size;
 

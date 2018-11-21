@@ -652,6 +652,18 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
    return VK_SUCCESS;
 }
 
+/** Returns current memory map of the block pool.
+ *
+ * The returned pointer points to the map for the memory at the specified
+ * offset. The offset parameter is relative to the "center" of the block pool
+ * rather than the start of the block pool BO map.
+ */
+void*
+anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
+{
+   return pool->map + offset;
+}
+
 /** Grows and re-centers the block pool.
  *
  * We grow the block pool in one or both directions in such a way that the
@@ -1021,7 +1033,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
                                                       pool->block_size);
 
 done:
-   state.map = pool->block_pool.map + state.offset;
+   state.map = anv_block_pool_map(&pool->block_pool, state.offset);
    return state;
 }
 

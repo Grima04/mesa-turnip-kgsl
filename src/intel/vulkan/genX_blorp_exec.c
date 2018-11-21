@@ -63,8 +63,8 @@ blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
    if (result != VK_SUCCESS)
       anv_batch_set_error(&cmd_buffer->batch, result);
 
-   void *dest = cmd_buffer->device->surface_state_pool.block_pool.map +
-      ss_offset;
+   void *dest = anv_block_pool_map(
+      &cmd_buffer->device->surface_state_pool.block_pool, ss_offset);
    uint64_t val = ((struct anv_bo*)address.buffer)->offset + address.offset +
       delta;
    write_reloc(cmd_buffer->device, dest, val, false);
