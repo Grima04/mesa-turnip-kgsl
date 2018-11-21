@@ -244,7 +244,9 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder,
 	struct rvid_buffer *fb = feedback;
 
 	if (size) {
-		uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, enc->cs, PIPE_TRANSFER_READ_WRITE);
+		uint32_t *ptr = enc->ws->buffer_map(
+			fb->res->buf, enc->cs,
+			PIPE_TRANSFER_READ_WRITE | RADEON_TRANSFER_TEMPORARY);
 		if (ptr[1])
 			*size = ptr[6];
 		else

@@ -56,6 +56,7 @@ amdgpu_bo_create(struct radeon_winsys *rws,
                  unsigned alignment,
                  enum radeon_bo_domain domain,
                  enum radeon_bo_flag flags);
+static void amdgpu_bo_unmap(struct pb_buffer *buf);
 
 static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
                            enum radeon_bo_usage usage)
@@ -173,6 +174,12 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
 
    assert(bo->bo && "must not be called for slab entries");
 
+   if (!bo->is_user_ptr && bo->cpu_ptr) {
+      bo->cpu_ptr = NULL;
+      amdgpu_bo_unmap(&bo->base);
+   }
+   assert(bo->is_user_ptr || bo->u.real.map_count == 0);
+
    if (ws->debug_all_bos) {
       simple_mtx_lock(&ws->global_bo_list_lock);
       LIST_DEL(&bo->u.real.global_list_item);
@@ -195,14 +202,6 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    else if (bo->initial_domain & RADEON_DOMAIN_GTT)
       ws->allocated_gtt -= align64(bo->base.size, ws->info.gart_page_size);
 
-   if (bo->u.real.map_count >= 1) {
-      if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-         ws->mapped_vram -= bo->base.size;
-      else if (bo->initial_domain & RADEON_DOMAIN_GTT)
-         ws->mapped_gtt -= bo->base.size;
-      ws->num_mapped_buffers--;
-   }
-
    simple_mtx_destroy(&bo->lock);
    FREE(bo);
 }
@@ -219,6 +218,29 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
       amdgpu_bo_destroy(_buf);
 }
 
+static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
+{
+   assert(!bo->sparse && bo->bo && !bo->is_user_ptr);
+   int r = amdgpu_bo_cpu_map(bo->bo, cpu);
+   if (r) {
+      /* Clear the cache and try again. */
+      pb_cache_release_all_buffers(&bo->ws->bo_cache);
+      r = amdgpu_bo_cpu_map(bo->bo, cpu);
+      if (r)
+         return false;
+   }
+
+   if (p_atomic_inc_return(&bo->u.real.map_count) == 1) {
+      if (bo->initial_domain & RADEON_DOMAIN_VRAM)
+         bo->ws->mapped_vram += bo->base.size;
+      else if (bo->initial_domain & RADEON_DOMAIN_GTT)
+         bo->ws->mapped_gtt += bo->base.size;
+      bo->ws->num_mapped_buffers++;
+   }
+
+   return true;
+}
+
 static void *amdgpu_bo_map(struct pb_buffer *buf,
                            struct radeon_cmdbuf *rcs,
                            enum pipe_transfer_usage usage)
@@ -226,9 +248,6 @@ static void *amdgpu_bo_map(struct pb_buffer *buf,
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;
    struct amdgpu_cs *cs = (struct amdgpu_cs*)rcs;
-   int r;
-   void *cpu = NULL;
-   uint64_t offset = 0;
 
    assert(!bo->sparse);
 
@@ -313,9 +332,9 @@ static void *amdgpu_bo_map(struct pb_buffer *buf,
       }
    }
 
-   /* If the buffer is created from user memory, return the user pointer. */
-   if (bo->user_ptr)
-      return bo->user_ptr;
+   /* Buffer synchronization has been checked, now actually map the buffer. */
+   void *cpu = NULL;
+   uint64_t offset = 0;
 
    if (bo->bo) {
       real = bo;
@@ -324,22 +343,31 @@ static void *amdgpu_bo_map(struct pb_buffer *buf,
       offset = bo->va - real->va;
    }
 
-   r = amdgpu_bo_cpu_map(real->bo, &cpu);
-   if (r) {
-      /* Clear the cache and try again. */
-      pb_cache_release_all_buffers(&real->ws->bo_cache);
-      r = amdgpu_bo_cpu_map(real->bo, &cpu);
-      if (r)
-         return NULL;
+   if (usage & RADEON_TRANSFER_TEMPORARY) {
+      if (real->is_user_ptr) {
+         cpu = real->cpu_ptr;
+      } else {
+         if (!amdgpu_bo_do_map(real, &cpu))
+            return NULL;
+      }
+   } else {
+      cpu = p_atomic_read(&real->cpu_ptr);
+      if (!cpu) {
+         simple_mtx_lock(&real->lock);
+         /* Must re-check due to the possibility of a race. Re-check need not
+          * be atomic thanks to the lock. */
+         cpu = real->cpu_ptr;
+         if (!cpu) {
+            if (!amdgpu_bo_do_map(real, &cpu)) {
+               simple_mtx_unlock(&real->lock);
+               return NULL;
+            }
+            p_atomic_set(&real->cpu_ptr, cpu);
+         }
+         simple_mtx_unlock(&real->lock);
+      }
    }
 
-   if (p_atomic_inc_return(&real->u.real.map_count) == 1) {
-      if (real->initial_domain & RADEON_DOMAIN_VRAM)
-         real->ws->mapped_vram += real->base.size;
-      else if (real->initial_domain & RADEON_DOMAIN_GTT)
-         real->ws->mapped_gtt += real->base.size;
-      real->ws->num_mapped_buffers++;
-   }
    return (uint8_t*)cpu + offset;
 }
 
@@ -350,12 +378,15 @@ static void amdgpu_bo_unmap(struct pb_buffer *buf)
 
    assert(!bo->sparse);
 
-   if (bo->user_ptr)
+   if (bo->is_user_ptr)
       return;
 
    real = bo->bo ? bo : bo->u.slab.real;
-
+   assert(real->u.real.map_count != 0 && "too many unmaps");
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
+      assert(!real->cpu_ptr &&
+             "too many unmaps or forgot RADEON_TRANSFER_TEMPORARY flag");
+
       if (real->initial_domain & RADEON_DOMAIN_VRAM)
          real->ws->mapped_vram -= real->base.size;
       else if (real->initial_domain & RADEON_DOMAIN_GTT)
@@ -1459,6 +1490,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
         goto error_va_map;
 
     /* Initialize it. */
+    bo->is_user_ptr = true;
     pipe_reference_init(&bo->base.reference, 1);
     simple_mtx_init(&bo->lock, mtx_plain);
     bo->bo = buf_handle;
@@ -1466,7 +1498,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     bo->base.size = size;
     bo->base.vtbl = &amdgpu_winsys_bo_vtbl;
     bo->ws = ws;
-    bo->user_ptr = pointer;
+    bo->cpu_ptr = pointer;
     bo->va = va;
     bo->u.real.va_handle = va_handle;
     bo->initial_domain = RADEON_DOMAIN_GTT;
@@ -1493,7 +1525,7 @@ error:
 
 static bool amdgpu_bo_is_user_ptr(struct pb_buffer *buf)
 {
-   return ((struct amdgpu_winsys_bo*)buf)->user_ptr != NULL;
+   return ((struct amdgpu_winsys_bo*)buf)->is_user_ptr;
 }
 
 static bool amdgpu_bo_is_suballocated(struct pb_buffer *buf)

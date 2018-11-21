@@ -148,7 +148,8 @@ static void map_msg_fb_it_buf(struct ruvd_decoder *dec)
 	buf = &dec->msg_fb_it_buffers[dec->cur_buffer];
 
 	/* and map it for CPU access */
-	ptr = dec->ws->buffer_map(buf->res->buf, dec->cs, PIPE_TRANSFER_WRITE);
+	ptr = dec->ws->buffer_map(buf->res->buf, dec->cs,
+				  PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
 
 	/* calc buffer offsets */
 	dec->msg = (struct ruvd_msg *)ptr;
@@ -1015,7 +1016,7 @@ static void ruvd_begin_frame(struct pipe_video_codec *decoder,
 	dec->bs_size = 0;
 	dec->bs_ptr = dec->ws->buffer_map(
 		dec->bs_buffers[dec->cur_buffer].res->buf,
-		dec->cs, PIPE_TRANSFER_WRITE);
+		dec->cs, PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
 }
 
 /**
@@ -1060,8 +1061,9 @@ static void ruvd_decode_bitstream(struct pipe_video_codec *decoder,
 				return;
 			}
 
-			dec->bs_ptr = dec->ws->buffer_map(buf->res->buf, dec->cs,
-							  PIPE_TRANSFER_WRITE);
+			dec->bs_ptr = dec->ws->buffer_map(
+				buf->res->buf, dec->cs,
+				PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
 			if (!dec->bs_ptr)
 				return;
 

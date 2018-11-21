@@ -88,10 +88,11 @@ struct amdgpu_winsys_bo {
    } u;
 
    struct amdgpu_winsys *ws;
-   void *user_ptr; /* from buffer_from_ptr */
+   void *cpu_ptr; /* for user_ptr and permanent maps */
 
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
    bool sparse;
+   bool is_user_ptr;
    bool is_local;
    uint32_t unique_id;
    uint64_t va;

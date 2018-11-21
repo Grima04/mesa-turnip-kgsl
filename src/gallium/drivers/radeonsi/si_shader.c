@@ -5293,7 +5293,8 @@ int si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
 	/* Upload. */
 	ptr = sscreen->ws->buffer_map(shader->bo->buf, NULL,
 					PIPE_TRANSFER_READ_WRITE |
-					PIPE_TRANSFER_UNSYNCHRONIZED);
+					PIPE_TRANSFER_UNSYNCHRONIZED |
+					RADEON_TRANSFER_TEMPORARY);
 
 	/* Don't use util_memcpy_cpu_to_le32. LLVM binaries are
 	 * endian-independent. */
