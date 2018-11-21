@@ -2504,7 +2504,27 @@ assign_varying_locations(struct gl_context *ctx,
 
          if (num_tfeedback_decls > 0) {
             tfeedback_candidate_generator g(mem_ctx, tfeedback_candidates);
-            g.process(output_var);
+            /* From OpenGL 4.6 (Core Profile) spec, section 11.1.2.1
+             * ("Vertex Shader Variables / Output Variables")
+             *
+             * "Each program object can specify a set of output variables from
+             * one shader to be recorded in transform feedback mode (see
+             * section 13.3). The variables that can be recorded are those
+             * emitted by the first active shader, in order, from the
+             * following list:
+             *
+             *  * geometry shader
+             *  * tessellation evaluation shader
+             *  * tessellation control shader
+             *  * vertex shader"
+             *
+             * But on OpenGL ES 3.2, section 11.1.2.1 ("Vertex Shader
+             * Variables / Output Variables") tessellation control shader is
+             * not included in the stages list.
+             */
+            if (!prog->IsES || producer->Stage != MESA_SHADER_TESS_CTRL) {
+               g.process(output_var);
+            }
          }
 
          ir_variable *const input_var =
