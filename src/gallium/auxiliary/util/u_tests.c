@@ -823,7 +823,7 @@ test_compute_clear_image(struct pipe_context *ctx)
       return;
    }
 
-   struct pipe_compute_state state = {};
+   struct pipe_compute_state state = {0};
    state.ir_type = PIPE_SHADER_IR_TGSI;
    state.prog = tokens;
 
@@ -831,7 +831,7 @@ test_compute_clear_image(struct pipe_context *ctx)
    cso_set_compute_shader_handle(cso, compute_shader);
 
    /* Bind the image. */
-   struct pipe_image_view image = {};
+   struct pipe_image_view image = {0};
    image.resource = cb;
    image.shader_access = image.access = PIPE_IMAGE_ACCESS_READ_WRITE;
    image.format = cb->format;
@@ -839,7 +839,7 @@ test_compute_clear_image(struct pipe_context *ctx)
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &image);
 
    /* Dispatch compute. */
-   struct pipe_grid_info info = {};
+   struct pipe_grid_info info = {0};
    info.block[0] = 8;
    info.block[1] = 8;
    info.block[2] = 1;
