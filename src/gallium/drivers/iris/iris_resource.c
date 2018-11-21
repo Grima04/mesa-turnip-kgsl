@@ -859,23 +859,40 @@ iris_transfer_map(struct pipe_context *ctx,
 }
 
 static void
+iris_transfer_flush_region(struct pipe_context *ctx,
+                           struct pipe_transfer *xfer,
+                           const struct pipe_box *box)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+
+
+   // XXX: don't emit flushes in both engines...? we may also need to flush
+   // even if there isn't a draw yet - may still be stale data in caches...
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      if (ice->batches[i].contains_draw) {
+         iris_batch_maybe_flush(&ice->batches[i], 24);
+         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
+      }
+   }
+}
+
+static void
 iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
-   struct isl_surf *surf = &res->surf;
 
    if (map->unmap)
       map->unmap(map);
 
-   /* XXX: big ol' hack!  need to re-emit UBOs.  want bind_history? */
-   if (surf->tiling == ISL_TILING_LINEAR) {
-      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS  | IRIS_DIRTY_BINDINGS_VS
-                       |  IRIS_DIRTY_CONSTANTS_TCS | IRIS_DIRTY_BINDINGS_TCS
-                       |  IRIS_DIRTY_CONSTANTS_TES | IRIS_DIRTY_BINDINGS_TES
-                       |  IRIS_DIRTY_CONSTANTS_GS  | IRIS_DIRTY_BINDINGS_GS
-                       |  IRIS_DIRTY_CONSTANTS_FS  | IRIS_DIRTY_BINDINGS_FS;
+   // XXX: don't emit flushes in both engines...?
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      if (ice->batches[i].contains_draw) {
+         iris_batch_maybe_flush(&ice->batches[i], 24);
+         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
+      }
    }
 
    pipe_resource_reference(&xfer->resource, NULL);
@@ -889,6 +906,7 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 
 void
 iris_flush_and_dirty_for_history(struct iris_context *ice,
+                                 struct iris_batch *batch,
                                  struct iris_resource *res)
 {
    if (res->base.target != PIPE_BUFFER)
@@ -918,11 +936,7 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    if (res->bind_history & (PIPE_BIND_SHADER_BUFFER | PIPE_BIND_SHADER_IMAGE))
       flush |= PIPE_CONTROL_DATA_CACHE_FLUSH;
 
-   // XXX: don't emit flushes in both engines...?
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw)
-         iris_emit_pipe_control_flush(&ice->batches[i], flush);
-   }
+   iris_emit_pipe_control_flush(batch, flush);
 
    ice->state.dirty |= dirty;
 }
@@ -939,7 +953,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .resource_destroy      = iris_resource_destroy,
    .transfer_map          = iris_transfer_map,
    .transfer_unmap        = iris_transfer_unmap,
-   .transfer_flush_region = u_default_transfer_flush_region,
+   .transfer_flush_region = iris_transfer_flush_region,
    .get_internal_format   = iris_resource_get_internal_format,
    .set_stencil           = iris_resource_set_separate_stencil,
    .get_stencil           = iris_resource_get_separate_stencil,

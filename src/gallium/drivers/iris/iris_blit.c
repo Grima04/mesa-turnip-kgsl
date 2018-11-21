@@ -378,6 +378,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    }
 
    blorp_batch_finish(&blorp_batch);
+
+   iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *)
+                                    info->dst.resource);
 }
 
 /**
@@ -432,6 +435,8 @@ iris_resource_copy_region(struct pipe_context *ctx,
    }
 
    blorp_batch_finish(&blorp_batch);
+
+   iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *) dst);
 }
 
 void

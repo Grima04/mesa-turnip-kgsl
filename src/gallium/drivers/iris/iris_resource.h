@@ -136,6 +136,7 @@ void iris_get_depth_stencil_resources(struct pipe_resource *res,
 void iris_init_screen_resource_functions(struct pipe_screen *pscreen);
 
 void iris_flush_and_dirty_for_history(struct iris_context *ice,
+                                      struct iris_batch *batch,
                                       struct iris_resource *res);
 
 #endif
