@@ -31,7 +31,6 @@ glBindAttribLocation
 glBindBuffer
 glBindBufferBase
 glBindBufferRange
-glBindFragDataLocationEXT
 glBindFramebuffer
 glBindImageTexture
 glBindProgramPipeline
@@ -195,9 +194,7 @@ glGetSynciv
 glGetTexLevelParameterfv
 glGetTexLevelParameteriv
 glGetTexParameterIiv
-glGetTexParameterIivEXT
 glGetTexParameterIuiv
-glGetTexParameterIuivEXT
 glGetTexParameterfv
 glGetTexParameteriv
 glGetTransformFeedbackVarying
@@ -311,9 +308,7 @@ glTexBufferRange
 glTexImage2D
 glTexImage3D
 glTexParameterIiv
-glTexParameterIivEXT
 glTexParameterIuiv
-glTexParameterIuivEXT
 glTexParameterf
 glTexParameterfv
 glTexParameteri
