@@ -2477,7 +2477,7 @@ lp_build_iround(struct lp_build_context *bld,
    else {
       LLVMValueRef half;
 
-      half = lp_build_const_vec(bld->gallivm, type, 0.5);
+      half = lp_build_const_vec(bld->gallivm, type, nextafterf(0.5, 0.0));
 
       if (type.sign) {
          LLVMTypeRef vec_type = bld->vec_type;
