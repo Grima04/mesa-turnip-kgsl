@@ -1032,21 +1032,26 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 					sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_dcc_constant_encode = sscreen->info.family == CHIP_RAVEN2;
 
+	/* Only enable primitive binning on APUs by default. */
+	sscreen->dpbb_allowed = sscreen->info.family == CHIP_RAVEN ||
+				sscreen->info.family == CHIP_RAVEN2;
+
+	sscreen->dfsm_allowed = sscreen->info.family == CHIP_RAVEN ||
+				sscreen->info.family == CHIP_RAVEN2;
+
+	/* Process DPBB enable flags. */
 	if (sscreen->debug_flags & DBG(DPBB)) {
 		sscreen->dpbb_allowed = true;
-	} else {
-		/* Only enable primitive binning on APUs by default. */
-		/* TODO: Investigate if binning is profitable on Vega12. */
-		sscreen->dpbb_allowed = !(sscreen->debug_flags & DBG(NO_DPBB)) &&
-					(sscreen->info.family == CHIP_RAVEN ||
-					 sscreen->info.family == CHIP_RAVEN2);
+		if (sscreen->debug_flags & DBG(DFSM))
+			sscreen->dfsm_allowed = true;
 	}
 
-	if (sscreen->debug_flags & DBG(DFSM)) {
-		sscreen->dfsm_allowed = sscreen->dpbb_allowed;
-	} else {
-		sscreen->dfsm_allowed = sscreen->dpbb_allowed &&
-					!(sscreen->debug_flags & DBG(NO_DFSM));
+	/* Process DPBB disable flags. */
+	if (sscreen->debug_flags & DBG(NO_DPBB)) {
+		sscreen->dpbb_allowed = false;
+		sscreen->dfsm_allowed = false;
+	} else if (sscreen->debug_flags & DBG(NO_DFSM)) {
+		sscreen->dfsm_allowed = false;
 	}
 
 	/* While it would be nice not to have this flag, we are constrained
