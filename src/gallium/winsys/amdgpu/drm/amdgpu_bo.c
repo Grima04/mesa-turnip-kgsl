@@ -218,13 +218,19 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
       amdgpu_bo_destroy(_buf);
 }
 
+static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
+{
+   pb_slabs_reclaim(&ws->bo_slabs);
+   pb_cache_release_all_buffers(&ws->bo_cache);
+}
+
 static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
 {
    assert(!bo->sparse && bo->bo && !bo->is_user_ptr);
    int r = amdgpu_bo_cpu_map(bo->bo, cpu);
    if (r) {
-      /* Clear the cache and try again. */
-      pb_cache_release_all_buffers(&bo->ws->bo_cache);
+      /* Clean up buffer managers and try again. */
+      amdgpu_clean_up_buffer_managers(bo->ws);
       r = amdgpu_bo_cpu_map(bo->bo, cpu);
       if (r)
          return false;
@@ -1241,8 +1247,8 @@ amdgpu_bo_create(struct radeon_winsys *rws,
 
       entry = pb_slab_alloc(&ws->bo_slabs, size, heap);
       if (!entry) {
-         /* Clear the cache and try again. */
-         pb_cache_release_all_buffers(&ws->bo_cache);
+         /* Clean up buffer managers and try again. */
+         amdgpu_clean_up_buffer_managers(ws);
 
          entry = pb_slab_alloc(&ws->bo_slabs, size, heap);
       }
@@ -1290,9 +1296,9 @@ no_slab:
    /* Create a new one. */
    bo = amdgpu_create_bo(ws, size, alignment, domain, flags, heap);
    if (!bo) {
-      /* Clear the cache and try again. */
-      pb_slabs_reclaim(&ws->bo_slabs);
-      pb_cache_release_all_buffers(&ws->bo_cache);
+      /* Clean up buffer managers and try again. */
+      amdgpu_clean_up_buffer_managers(ws);
+
       bo = amdgpu_create_bo(ws, size, alignment, domain, flags, heap);
       if (!bo)
          return NULL;
