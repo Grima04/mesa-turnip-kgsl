@@ -51,6 +51,14 @@
 #include <errno.h>
 #include <xf86drm.h>
 
+#if HAVE_VALGRIND
+#include <valgrind.h>
+#include <memcheck.h>
+#define VG(x) x
+#else
+#define VG(x)
+#endif
+
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
 /* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
@@ -408,6 +416,7 @@ iris_chain_to_new_batch(struct iris_batch *batch)
    /* We only support chaining a single time. */
    assert(batch->bo == batch->exec_bos[0]);
 
+   VG(void *map = batch->map);
    uint32_t *cmd = batch->map_next;
    uint64_t *addr = batch->map_next + 4;
    batch->map_next += 12;
@@ -420,6 +429,8 @@ iris_chain_to_new_batch(struct iris_batch *batch)
    /* Emit MI_BATCH_BUFFER_START to chain to another batch. */
    *cmd = (0x31 << 23) | (1 << 8) | (3 - 2);
    *addr = batch->bo->gtt_offset;
+
+   VG(VALGRIND_CHECK_MEM_IS_DEFINED(map, batch->primary_batch_size));
 }
 
 /**
@@ -434,6 +445,7 @@ iris_finish_batch(struct iris_batch *batch)
    map[0] = (0xA << 23);
 
    batch->map_next += 4;
+   VG(VALGRIND_CHECK_MEM_IS_DEFINED(batch->map, iris_batch_bytes_used(batch)));
 
    if (batch->bo == batch->exec_bos[0])
       batch->primary_batch_size = iris_batch_bytes_used(batch);
