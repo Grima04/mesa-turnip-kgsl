@@ -887,6 +887,46 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
 }
 
+void
+iris_flush_and_dirty_for_history(struct iris_context *ice,
+                                 struct iris_resource *res)
+{
+   if (res->base.target != PIPE_BUFFER)
+      return;
+
+   unsigned flush = PIPE_CONTROL_CS_STALL;
+   uint64_t dirty = 0ull;
+
+   if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
+      flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE |
+               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
+      dirty |= IRIS_DIRTY_CONSTANTS_VS |
+               IRIS_DIRTY_CONSTANTS_TCS |
+               IRIS_DIRTY_CONSTANTS_TES |
+               IRIS_DIRTY_CONSTANTS_GS |
+               IRIS_DIRTY_CONSTANTS_FS |
+               IRIS_DIRTY_CONSTANTS_CS |
+               IRIS_ALL_DIRTY_BINDINGS;
+   }
+
+   if (res->bind_history & PIPE_BIND_SAMPLER_VIEW)
+      flush |= PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
+
+   if (res->bind_history & (PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_INDEX_BUFFER))
+      flush |= PIPE_CONTROL_VF_CACHE_INVALIDATE;
+
+   if (res->bind_history & (PIPE_BIND_SHADER_BUFFER | PIPE_BIND_SHADER_IMAGE))
+      flush |= PIPE_CONTROL_DATA_CACHE_FLUSH;
+
+   // XXX: don't emit flushes in both engines...?
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      if (ice->batches[i].contains_draw)
+         iris_emit_pipe_control_flush(&ice->batches[i], flush);
+   }
+
+   ice->state.dirty |= dirty;
+}
+
 static enum pipe_format
 iris_resource_get_internal_format(struct pipe_resource *p_res)
 {

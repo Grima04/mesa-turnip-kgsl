@@ -27,6 +27,8 @@
 #include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
+struct iris_context;
+
 struct iris_format_info {
    enum isl_format fmt;
    struct isl_swizzle swizzle;
@@ -132,5 +134,8 @@ void iris_get_depth_stencil_resources(struct pipe_resource *res,
                                       struct iris_resource **out_s);
 
 void iris_init_screen_resource_functions(struct pipe_screen *pscreen);
+
+void iris_flush_and_dirty_for_history(struct iris_context *ice,
+                                      struct iris_resource *res);
 
 #endif
