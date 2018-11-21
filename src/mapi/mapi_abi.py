@@ -685,62 +685,6 @@ typedef int GLclampx;
 
         return header
 
-class ES1APIPrinter(GLAPIPrinter):
-    """OpenGL ES 1.x API Printer"""
-
-    def __init__(self, entries):
-        super(ES1APIPrinter, self).__init__(entries)
-        self.prefix_lib = 'gl'
-        self.prefix_warn = 'gl'
-
-    def _override_for_api(self, ent):
-        if ent.xml_data is None:
-            raise Exception('ES2 API printer requires XML input')
-        ent.hidden = (ent.name not in \
-            ent.xml_data.entry_points_for_api_version('es1')) \
-            or ent.hidden
-        ent.handcode = False
-
-    def _get_c_header(self):
-        header = """#ifndef _GLAPI_TMP_H_
-#define _GLAPI_TMP_H_
-typedef int GLclampx;
-#endif /* _GLAPI_TMP_H_ */"""
-
-        return header
-
-class ES2APIPrinter(GLAPIPrinter):
-    """OpenGL ES 2.x API Printer"""
-
-    def __init__(self, entries):
-        super(ES2APIPrinter, self).__init__(entries)
-        self.prefix_lib = 'gl'
-        self.prefix_warn = 'gl'
-
-    def _override_for_api(self, ent):
-        if ent.xml_data is None:
-            raise Exception('ES2 API printer requires XML input')
-        ent.hidden = (ent.name not in \
-            ent.xml_data.entry_points_for_api_version('es2')) \
-            or ent.hidden
-
-        # This is hella ugly.  The same-named function in desktop OpenGL is
-        # hidden, but it needs to be exposed by libGLESv2 for OpenGL ES 3.0.
-        # There's no way to express in the XML that a function should be be
-        # hidden in one API but exposed in another.
-        if ent.name == 'GetInternalformativ':
-            ent.hidden = False
-
-        ent.handcode = False
-
-    def _get_c_header(self):
-        header = """#ifndef _GLAPI_TMP_H_
-#define _GLAPI_TMP_H_
-typedef int GLclampx;
-#endif /* _GLAPI_TMP_H_ */"""
-
-        return header
-
 class SharedGLAPIPrinter(GLAPIPrinter):
     """Shared GLAPI API Printer"""
 
@@ -785,8 +729,6 @@ def parse_args():
 def main():
     printers = {
         'glapi': GLAPIPrinter,
-        'es1api': ES1APIPrinter,
-        'es2api': ES2APIPrinter,
         'shared-glapi': SharedGLAPIPrinter,
     }
 
