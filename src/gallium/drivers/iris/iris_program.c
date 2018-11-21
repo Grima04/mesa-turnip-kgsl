@@ -145,9 +145,39 @@ iris_lower_storage_image_derefs(nir_shader *nir)
    }
 }
 
-
-
 // XXX: need unify_interfaces() at link time...
+
+static void
+update_so_info(struct pipe_stream_output_info *so_info)
+{
+   for (unsigned i = 0; i < so_info->num_outputs; i++) {
+      struct pipe_stream_output *output = &so_info->output[i];
+
+      /* The VUE header contains three scalar fields packed together:
+       * - gl_PointSize is stored in VARYING_SLOT_PSIZ.w
+       * - gl_Layer is stored in VARYING_SLOT_PSIZ.y
+       * - gl_ViewportIndex is stored in VARYING_SLOT_PSIZ.z
+       */
+      switch (output->register_index) {
+      case VARYING_SLOT_LAYER:
+         assert(output->num_components == 1);
+         output->register_index = VARYING_SLOT_PSIZ;
+         output->start_component = 1;
+         break;
+      case VARYING_SLOT_VIEWPORT:
+         assert(output->num_components == 1);
+         output->register_index = VARYING_SLOT_PSIZ;
+         output->start_component = 2;
+         break;
+      case VARYING_SLOT_PSIZ:
+         assert(output->num_components == 1);
+         output->start_component = 3;
+         break;
+      }
+
+      //info->outputs_written |= 1ull << output->register_index;
+   }
+}
 
 /**
  * The pipe->create_[stage]_state() driver hooks.
@@ -178,8 +208,10 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
 
    ish->program_id = get_new_program_id(screen);
    ish->nir = nir;
-   if (so_info)
+   if (so_info) {
       memcpy(&ish->stream_output, so_info, sizeof(*so_info));
+      update_so_info(&ish->stream_output);
+   }
 
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
