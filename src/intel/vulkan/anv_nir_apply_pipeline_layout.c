@@ -423,7 +423,8 @@ setup_vec4_uniform_value(uint32_t *params, uint32_t offset, unsigned n)
 }
 
 void
-anv_nir_apply_pipeline_layout(struct anv_pipeline *pipeline,
+anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
+                              bool robust_buffer_access,
                               struct anv_pipeline_layout *layout,
                               nir_shader *shader,
                               struct brw_stage_prog_data *prog_data,
@@ -434,7 +435,7 @@ anv_nir_apply_pipeline_layout(struct anv_pipeline *pipeline,
    struct apply_pipeline_layout_state state = {
       .shader = shader,
       .layout = layout,
-      .add_bounds_checks = pipeline->device->robust_buffer_access,
+      .add_bounds_checks = robust_buffer_access,
    };
 
    void *mem_ctx = ralloc_context(NULL);
