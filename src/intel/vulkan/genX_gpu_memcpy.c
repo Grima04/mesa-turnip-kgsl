@@ -133,9 +133,6 @@ genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
    if (size == 0)
       return;
 
-   assert(dst.offset + size <= dst.bo->size);
-   assert(src.offset + size <= src.bo->size);
-
    /* The maximum copy block size is 4 32-bit components at a time. */
    assert(size % 4 == 0);
    unsigned bs = gcd_pow2_u64(16, size);
