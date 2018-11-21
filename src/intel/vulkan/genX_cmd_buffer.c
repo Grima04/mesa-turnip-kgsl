@@ -95,7 +95,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.SurfaceStateBaseAddressModifyEnable = true;
 
       sba.DynamicStateBaseAddress =
-         (struct anv_address) { &device->dynamic_state_pool.block_pool.bo, 0 };
+         (struct anv_address) { device->dynamic_state_pool.block_pool.bo, 0 };
       sba.DynamicStateMOCS = GENX(MOCS);
       sba.DynamicStateBaseAddressModifyEnable = true;
 
@@ -104,7 +104,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.IndirectObjectBaseAddressModifyEnable = true;
 
       sba.InstructionBaseAddress =
-         (struct anv_address) { &device->instruction_state_pool.block_pool.bo, 0 };
+         (struct anv_address) { device->instruction_state_pool.block_pool.bo, 0 };
       sba.InstructionMOCS = GENX(MOCS);
       sba.InstructionBaseAddressModifyEnable = true;
 
@@ -886,7 +886,7 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
    assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
    struct anv_address ss_clear_addr = {
-      .bo = &cmd_buffer->device->surface_state_pool.block_pool.bo,
+      .bo = cmd_buffer->device->surface_state_pool.block_pool.bo,
       .offset = surface_state.offset +
                 cmd_buffer->device->isl_dev.ss.clear_value_offset,
    };
@@ -1522,7 +1522,7 @@ genX(CmdExecuteCommands)(
           * we allocated for them in BeginCommandBuffer.
           */
          struct anv_bo *ss_bo =
-            &primary->device->surface_state_pool.block_pool.bo;
+            primary->device->surface_state_pool.block_pool.bo;
          struct anv_state src_state = primary->state.render_pass_states;
          struct anv_state dst_state = secondary->state.render_pass_states;
          assert(src_state.alloc_size == dst_state.alloc_size);
@@ -2110,7 +2110,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
 
          struct anv_address constant_data = {
-            .bo = &pipeline->device->dynamic_state_pool.block_pool.bo,
+            .bo = pipeline->device->dynamic_state_pool.block_pool.bo,
             .offset = pipeline->shaders[stage]->constant_data.offset,
          };
          unsigned constant_data_size =
@@ -2487,7 +2487,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                uint32_t read_len;
                if (binding->set == ANV_DESCRIPTOR_SET_SHADER_CONSTANTS) {
                   struct anv_address constant_data = {
-                     .bo = &pipeline->device->dynamic_state_pool.block_pool.bo,
+                     .bo = pipeline->device->dynamic_state_pool.block_pool.bo,
                      .offset = pipeline->shaders[stage]->constant_data.offset,
                   };
                   unsigned constant_data_size =
@@ -2535,7 +2535,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
 
             if (state.alloc_size > 0) {
                c.ConstantBody.Buffer[n] = (struct anv_address) {
-                  .bo = &cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+                  .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
                   .offset = state.offset,
                };
                c.ConstantBody.ReadLength[n] =
@@ -2744,7 +2744,7 @@ emit_base_vertex_instance(struct anv_cmd_buffer *cmd_buffer,
    anv_state_flush(cmd_buffer->device, id_state);
 
    struct anv_address addr = {
-      .bo = &cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+      .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
       .offset = id_state.offset,
    };
 
@@ -2762,7 +2762,7 @@ emit_draw_index(struct anv_cmd_buffer *cmd_buffer, uint32_t draw_index)
    anv_state_flush(cmd_buffer->device, state);
 
    struct anv_address addr = {
-      .bo = &cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+      .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
       .offset = state.offset,
    };
 
@@ -3224,7 +3224,7 @@ void genX(CmdDispatchBase)(
       sizes[2] = groupCountZ;
       anv_state_flush(cmd_buffer->device, state);
       cmd_buffer->state.compute.num_workgroups = (struct anv_address) {
-         .bo = &cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+         .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = state.offset,
       };
    }

@@ -84,7 +84,7 @@ blorp_get_surface_base_address(struct blorp_batch *batch)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
    return (struct blorp_address) {
-      .buffer = &cmd_buffer->device->surface_state_pool.block_pool.bo,
+      .buffer = cmd_buffer->device->surface_state_pool.block_pool.bo,
       .offset = 0,
    };
 }
@@ -158,7 +158,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, size, 64);
 
    *addr = (struct blorp_address) {
-      .buffer = &cmd_buffer->device->dynamic_state_pool.block_pool.bo,
+      .buffer = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
       .offset = vb_state.offset,
       .mocs = cmd_buffer->device->default_mocs,
    };

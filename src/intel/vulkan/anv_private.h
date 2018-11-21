@@ -633,7 +633,10 @@ struct anv_block_pool {
 
    uint64_t bo_flags;
 
-   struct anv_bo bo;
+   struct anv_bo *bo;
+
+   /* A single BO for now */
+   struct anv_bo bos;
 
    /* The address where the start of the pool is pinned. The various bos that
     * are created as the pool grows will have addresses in the range

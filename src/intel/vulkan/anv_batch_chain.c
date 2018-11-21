@@ -500,7 +500,7 @@ anv_cmd_buffer_surface_base_address(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_state *bt_block = u_vector_head(&cmd_buffer->bt_block_states);
    return (struct anv_address) {
-      .bo = &anv_binding_table_pool(cmd_buffer->device)->block_pool.bo,
+      .bo = anv_binding_table_pool(cmd_buffer->device)->block_pool.bo,
       .offset = bt_block->offset,
    };
 }
@@ -1227,7 +1227,7 @@ adjust_relocations_to_state_pool(struct anv_state_pool *pool,
     * relocations that point to the pool bo with the correct offset.
     */
    for (size_t i = 0; i < relocs->num_relocs; i++) {
-      if (relocs->reloc_bos[i] == &pool->block_pool.bo) {
+      if (relocs->reloc_bos[i] == pool->block_pool.bo) {
          /* Adjust the delta value in the relocation to correctly
           * correspond to the new delta.  Initially, this value may have
           * been negative (if treated as unsigned), but we trust in
@@ -1335,7 +1335,7 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
     * given time.  The only option is to always relocate them.
     */
    anv_reloc_list_apply(cmd_buffer->device, &cmd_buffer->surface_relocs,
-                        &cmd_buffer->device->surface_state_pool.block_pool.bo,
+                        cmd_buffer->device->surface_state_pool.block_pool.bo,
                         true /* always relocate surface states */);
 
    /* Since we own all of the batch buffers, we know what values are stored
@@ -1364,7 +1364,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 
    adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
                                       cmd_buffer->last_ss_pool_center);
-   VkResult result = anv_execbuf_add_bo(execbuf, &ss_pool->block_pool.bo,
+   VkResult result = anv_execbuf_add_bo(execbuf, ss_pool->block_pool.bo,
                                         &cmd_buffer->surface_relocs, 0,
                                         &cmd_buffer->device->alloc);
    if (result != VK_SUCCESS)

@@ -436,7 +436,9 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->bo_flags = bo_flags;
    pool->start_address = gen_canonical_address(start_address);
 
-   anv_bo_init(&pool->bo, 0, 0);
+   pool->bo = &pool->bos;
+
+   anv_bo_init(pool->bo, 0, 0);
 
    pool->fd = memfd_create("block pool", MFD_CLOEXEC);
    if (pool->fd == -1)
@@ -584,13 +586,13 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * the EXEC_OBJECT_SUPPORTS_48B_ADDRESS flag and the kernel does all of the
     * hard work for us.
     */
-   anv_bo_init(&pool->bo, gem_handle, size);
+   anv_bo_init(pool->bo, gem_handle, size);
    if (pool->bo_flags & EXEC_OBJECT_PINNED) {
-      pool->bo.offset = pool->start_address + BLOCK_POOL_MEMFD_CENTER -
+      pool->bo->offset = pool->start_address + BLOCK_POOL_MEMFD_CENTER -
          center_bo_offset;
    }
-   pool->bo.flags = pool->bo_flags;
-   pool->bo.map = map;
+   pool->bo->flags = pool->bo_flags;
+   pool->bo->map = map;
 
    return VK_SUCCESS;
 }
@@ -604,7 +606,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
-   return pool->bo.map + pool->center_bo_offset + offset;
+   return pool->bo->map + pool->center_bo_offset + offset;
 }
 
 /** Grows and re-centers the block pool.
@@ -656,7 +658,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
 
    assert(state == &pool->state || back_used > 0);
 
-   uint32_t old_size = pool->bo.size;
+   uint32_t old_size = pool->bo->size;
 
    /* The block pool is always initialized to a nonzero size and this function
     * is always called after initialization.
@@ -682,7 +684,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
    while (size < back_required + front_required)
       size *= 2;
 
-   assert(size > pool->bo.size);
+   assert(size > pool->bo->size);
 
    /* We compute a new center_bo_offset such that, when we double the size
     * of the pool, we maintain the ratio of how much is used by each side.
@@ -719,7 +721,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
 
    result = anv_block_pool_expand_range(pool, center_bo_offset, size);
 
-   pool->bo.flags = pool->bo_flags;
+   pool->bo->flags = pool->bo_flags;
 
 done:
    pthread_mutex_unlock(&pool->device->mutex);
@@ -730,7 +732,7 @@ done:
        * needs to do so in order to maintain its concurrency model.
        */
       if (state == &pool->state) {
-         return pool->bo.size - pool->center_bo_offset;
+         return pool->bo->size - pool->center_bo_offset;
       } else {
          assert(pool->center_bo_offset > 0);
          return pool->center_bo_offset;
