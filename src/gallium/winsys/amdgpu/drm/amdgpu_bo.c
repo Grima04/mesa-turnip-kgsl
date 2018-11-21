@@ -442,6 +442,30 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    /* VRAM or GTT must be specified, but not both at the same time. */
    assert(util_bitcount(initial_domain & RADEON_DOMAIN_VRAM_GTT) == 1);
 
+   /* Gfx9: Overallocate the size to the next power of two for faster address
+    * translation if we don't waste too much memory.
+    */
+   if (ws->info.chip_class >= GFX9) {
+      uint64_t next_pot_size = util_next_power_of_two64(size);
+
+      /* For slightly lower than 4 GB allocations, at most 32 MB are wasted.
+       * For slightly lower than 256 MB allocations, at most 2 MB are wasted.
+       * For slightly lower than 64 MB allocations, at most 512 KB are wasted.
+       *
+       * Waste at most 0.79% (1/127) of the size if we decide to overallocate.
+       */
+      uint64_t max_overalloc = next_pot_size >> 7;
+
+      /* If the next power-of-two size is <= the page size, waste up to
+       * 6.25% (1/16) of the size if we decide to overallocate.
+       */
+      if (next_pot_size <= ws->info.pte_fragment_size)
+         max_overalloc = next_pot_size >> 4;
+
+      if (size + max_overalloc >= next_pot_size)
+         size = next_pot_size;
+   }
+
    bo = CALLOC_STRUCT(amdgpu_winsys_bo);
    if (!bo) {
       return NULL;
