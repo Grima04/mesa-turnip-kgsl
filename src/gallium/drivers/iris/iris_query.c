@@ -489,8 +489,11 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct iris_query *q = (void *) query;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   struct iris_resource *res = (void *) p_res;
    unsigned snapshots_landed_offset =
       offsetof(struct iris_query_snapshots, snapshots_landed);
+
+   res->bind_history |= PIPE_BIND_QUERY_BUFFER;
 
    if (index == -1) {
       /* They're asking for the availability of the result.  If we still

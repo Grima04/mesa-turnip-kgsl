@@ -1672,6 +1672,8 @@ iris_set_shader_images(struct pipe_context *ctx,
          struct iris_resource *res = (void *) img->resource;
          pipe_resource_reference(&shs->image[start_slot + i].res, &res->base);
 
+         res->bind_history |= PIPE_BIND_SHADER_IMAGE;
+
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
             upload_state(ice->state.surface_uploader,
@@ -1746,6 +1748,9 @@ iris_set_sampler_views(struct pipe_context *ctx,
    for (i = 0; i < count; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
                                   &shs->textures[i], views[i]);
+      struct iris_sampler_view *view = (void *) views[i];
+      if (view)
+         view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
    }
    for (; i < shs->num_textures; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
@@ -2181,6 +2186,9 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       pipe_resource_reference(&cbuf->data.res, input->buffer);
       cbuf->data.offset = input->buffer_offset;
 
+      struct iris_resource *res = (void *) cbuf->data.res;
+      res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
+
       upload_ubo_surf_state(ice, cbuf, input->buffer_size);
    } else {
       pipe_resource_reference(&cbuf->data.res, NULL);
@@ -2264,6 +2272,8 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          const struct pipe_shader_buffer *buffer = &buffers[i];
          struct iris_resource *res = (void *) buffer->buffer;
          pipe_resource_reference(&shs->ssbo[start_slot + i], &res->base);
+
+         res->bind_history |= PIPE_BIND_SHADER_BUFFER;
 
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
@@ -2351,6 +2361,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
       pipe_resource_reference(&cso->resources[i], buffers[i].buffer.resource);
       struct iris_resource *res = (void *) cso->resources[i];
+
+      if (res)
+         res->bind_history |= PIPE_BIND_VERTEX_BUFFER;
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
          vb.VertexBufferIndex = start_slot + i;
@@ -2507,16 +2520,19 @@ struct iris_stream_output_target {
  */
 static struct pipe_stream_output_target *
 iris_create_stream_output_target(struct pipe_context *ctx,
-                                 struct pipe_resource *res,
+                                 struct pipe_resource *p_res,
                                  unsigned buffer_offset,
                                  unsigned buffer_size)
 {
+   struct iris_resource *res = (void *) p_res;
    struct iris_stream_output_target *cso = calloc(1, sizeof(*cso));
    if (!cso)
       return NULL;
 
+   res->bind_history |= PIPE_BIND_STREAM_OUTPUT;
+
    pipe_reference_init(&cso->base.reference, 1);
-   pipe_resource_reference(&cso->base.buffer, res);
+   pipe_resource_reference(&cso->base.buffer, p_res);
    cso->base.buffer_offset = buffer_offset;
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
@@ -2525,7 +2541,7 @@ iris_create_stream_output_target(struct pipe_context *ctx,
 
    iris_pack_command(GENX(3DSTATE_SO_BUFFER), cso->so_buffer, sob) {
       sob.SurfaceBaseAddress =
-         rw_bo(NULL, iris_resource_bo(res)->gtt_offset + buffer_offset);
+         rw_bo(NULL, res->bo->gtt_offset + buffer_offset);
       sob.SOBufferEnable = true;
       sob.StreamOffsetWriteEnable = true;
       sob.StreamOutputBufferOffsetAddressEnable = true;
@@ -4436,6 +4452,9 @@ iris_upload_render_state(struct iris_context *ice,
                        draw->count * draw->index_size, 4, draw->index.user,
                        &offset, &ice->state.last_res.index_buffer);
       } else {
+         struct iris_resource *res = (void *) draw->index.resource;
+         res->bind_history |= PIPE_BIND_INDEX_BUFFER;
+
          pipe_resource_reference(&ice->state.last_res.index_buffer,
                                  draw->index.resource);
          offset = 0;

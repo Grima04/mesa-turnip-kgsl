@@ -46,6 +46,12 @@ struct iris_resource {
    enum pipe_format internal_format;
    struct isl_surf surf;
    struct iris_bo *bo;
+
+   /**
+    * A bitfield of PIPE_BIND_* indicating how this resource was bound
+    * in the past.  Only meaningful for PIPE_BUFFER; used for flushing.
+    */
+   unsigned bind_history;
 };
 
 /**
