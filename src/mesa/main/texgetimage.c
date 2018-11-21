@@ -1380,11 +1380,11 @@ get_texture_image(struct gl_context *ctx,
 
 
 void GLAPIENTRY
-_mesa_GetnTexImageARB(GLenum target, GLint level, GLenum format, GLenum type,
-                      GLsizei bufSize, GLvoid *pixels)
+_mesa_GetnTexImage(GLenum target, GLint level, GLenum format, GLenum type,
+                   GLsizei bufSize, GLvoid *pixels)
 {
    GET_CURRENT_CONTEXT(ctx);
-   static const char *caller = "glGetnTexImageARB";
+   static const char *caller = "glGetnTexImage";
    GLsizei width, height, depth;
    struct gl_texture_object *texObj;
 
