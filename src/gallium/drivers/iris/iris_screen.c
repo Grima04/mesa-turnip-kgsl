@@ -324,13 +324,14 @@ iris_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
       return 0;
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
-      return !compiler->glsl_compiler_options[stage].EmitNoIndirectInput;
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
-      return !compiler->glsl_compiler_options[stage].EmitNoIndirectOutput;
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
-      return !compiler->glsl_compiler_options[stage].EmitNoIndirectTemp;
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
-      return 1;
+      /* Lie about these to avoid st/mesa's GLSL IR lowering of indirects,
+       * which we don't want.  Our compiler backend will check brw_compiler's
+       * options and call nir_lower_indirect_derefs appropriately anyway.
+       */
+      return true;
    case PIPE_SHADER_CAP_SUBROUTINES:
       return 0;
    case PIPE_SHADER_CAP_INTEGERS:
