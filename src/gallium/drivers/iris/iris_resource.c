@@ -51,8 +51,6 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/i915_drm.h"
 
-// XXX: u_transfer_helper...for separate stencil...
-
 enum modifier_priority {
    MODIFIER_PRIORITY_INVALID = 0,
    MODIFIER_PRIORITY_LINEAR,
