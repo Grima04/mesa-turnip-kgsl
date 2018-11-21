@@ -203,6 +203,7 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
       ws->num_mapped_buffers--;
    }
 
+   simple_mtx_destroy(&bo->lock);
    FREE(bo);
 }
 
@@ -468,6 +469,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    if (r)
       goto error_va_map;
 
+   simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
    bo->base.alignment = alignment;
    bo->base.usage = 0;
@@ -571,6 +573,7 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct amdgpu_winsys_bo *bo = &slab->entries[i];
 
+      simple_mtx_init(&bo->lock, mtx_plain);
       bo->base.alignment = entry_size;
       bo->base.usage = slab->buffer->base.usage;
       bo->base.size = entry_size;
@@ -599,8 +602,10 @@ void amdgpu_bo_slab_free(void *priv, struct pb_slab *pslab)
 {
    struct amdgpu_slab *slab = amdgpu_slab(pslab);
 
-   for (unsigned i = 0; i < slab->base.num_entries; ++i)
+   for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       amdgpu_bo_remove_fences(&slab->entries[i]);
+      simple_mtx_destroy(&slab->entries[i].lock);
+   }
 
    FREE(slab->entries);
    amdgpu_winsys_bo_reference(&slab->buffer, NULL);
@@ -858,8 +863,8 @@ static void amdgpu_bo_sparse_destroy(struct pb_buffer *_buf)
    }
 
    amdgpu_va_range_free(bo->u.sparse.va_handle);
-   simple_mtx_destroy(&bo->u.sparse.commit_lock);
    FREE(bo->u.sparse.commitments);
+   simple_mtx_destroy(&bo->lock);
    FREE(bo);
 }
 
@@ -889,6 +894,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    if (!bo)
       return NULL;
 
+   simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
    bo->base.alignment = RADEON_SPARSE_PAGE_SIZE;
    bo->base.size = size;
@@ -905,7 +911,6 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
    if (!bo->u.sparse.commitments)
       goto error_alloc_commitments;
 
-   simple_mtx_init(&bo->u.sparse.commit_lock, mtx_plain);
    LIST_INITHEAD(&bo->u.sparse.backing);
 
    /* For simplicity, we always map a multiple of the page size. */
@@ -928,9 +933,9 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
 error_va_map:
    amdgpu_va_range_free(bo->u.sparse.va_handle);
 error_va_alloc:
-   simple_mtx_destroy(&bo->u.sparse.commit_lock);
    FREE(bo->u.sparse.commitments);
 error_alloc_commitments:
+   simple_mtx_destroy(&bo->lock);
    FREE(bo);
    return NULL;
 }
@@ -955,7 +960,7 @@ amdgpu_bo_sparse_commit(struct pb_buffer *buf, uint64_t offset, uint64_t size,
    va_page = offset / RADEON_SPARSE_PAGE_SIZE;
    end_va_page = va_page + DIV_ROUND_UP(size, RADEON_SPARSE_PAGE_SIZE);
 
-   simple_mtx_lock(&bo->u.sparse.commit_lock);
+   simple_mtx_lock(&bo->lock);
 
 #if DEBUG_SPARSE_COMMITS
    sparse_dump(bo, __func__);
@@ -1059,7 +1064,7 @@ amdgpu_bo_sparse_commit(struct pb_buffer *buf, uint64_t offset, uint64_t size,
    }
 out:
 
-   simple_mtx_unlock(&bo->u.sparse.commit_lock);
+   simple_mtx_unlock(&bo->lock);
 
    return ok;
 }
@@ -1344,6 +1349,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
       initial |= RADEON_DOMAIN_GTT;
 
    /* Initialize the structure. */
+   simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
    bo->base.alignment = info.phys_alignment;
    bo->bo = result.buf_handle;
@@ -1454,6 +1460,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
 
     /* Initialize it. */
     pipe_reference_init(&bo->base.reference, 1);
+    simple_mtx_init(&bo->lock, mtx_plain);
     bo->bo = buf_handle;
     bo->base.alignment = 0;
     bo->base.size = size;

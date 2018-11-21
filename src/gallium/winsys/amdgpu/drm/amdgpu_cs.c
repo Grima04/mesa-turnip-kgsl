@@ -598,7 +598,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs *acs,
    /* We delay adding the backing buffers until we really have to. However,
     * we cannot delay accounting for memory use.
     */
-   simple_mtx_lock(&bo->u.sparse.commit_lock);
+   simple_mtx_lock(&bo->lock);
 
    list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
       if (bo->initial_domain & RADEON_DOMAIN_VRAM)
@@ -607,7 +607,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_cs *acs,
          acs->main.base.used_gart += backing->bo->base.size;
    }
 
-   simple_mtx_unlock(&bo->u.sparse.commit_lock);
+   simple_mtx_unlock(&bo->lock);
 
    return idx;
 }
@@ -1267,7 +1267,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
       struct amdgpu_cs_buffer *buffer = &cs->sparse_buffers[i];
       struct amdgpu_winsys_bo *bo = buffer->bo;
 
-      simple_mtx_lock(&bo->u.sparse.commit_lock);
+      simple_mtx_lock(&bo->lock);
 
       list_for_each_entry(struct amdgpu_sparse_backing, backing, &bo->u.sparse.backing, list) {
          /* We can directly add the buffer here, because we know that each
@@ -1276,7 +1276,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
          int idx = amdgpu_do_add_real_buffer(cs, backing->bo);
          if (idx < 0) {
             fprintf(stderr, "%s: failed to add buffer\n", __FUNCTION__);
-            simple_mtx_unlock(&bo->u.sparse.commit_lock);
+            simple_mtx_unlock(&bo->lock);
             return false;
          }
 
@@ -1285,7 +1285,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
          p_atomic_inc(&backing->bo->num_active_ioctls);
       }
 
-      simple_mtx_unlock(&bo->u.sparse.commit_lock);
+      simple_mtx_unlock(&bo->lock);
    }
 
    return true;
