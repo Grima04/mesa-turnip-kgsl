@@ -395,27 +395,42 @@ iris_resource_copy_region(struct pipe_context *ctx,
                           unsigned src_level,
                           const struct pipe_box *src_box)
 {
+   struct blorp_batch blorp_batch;
    struct iris_context *ice = (void *) ctx;
-   struct blorp_surf src_surf, dst_surf;
-   iris_blorp_surf_for_resource(&src_surf, src, ISL_AUX_USAGE_NONE, false);
-   iris_blorp_surf_for_resource(&dst_surf, dst, ISL_AUX_USAGE_NONE, true);
-
-   // XXX: ???
-   unsigned dst_layer = dstz;
-   unsigned src_layer = src_box->z;
-
-   assert(src_box->depth == 1);
-
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    iris_batch_maybe_flush(batch, 1500);
 
-   struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_copy(&blorp_batch, &src_surf, src_level, src_layer,
-              &dst_surf, dst_level, dst_layer,
-              src_box->x, src_box->y, dstx, dsty,
-              src_box->width, src_box->height);
+
+   if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
+      struct blorp_address src_addr = {
+         .buffer = iris_resource_bo(src), .offset = src_box->x,
+      };
+      struct blorp_address dst_addr = {
+         .buffer = iris_resource_bo(dst), .offset = dstx,
+      };
+
+      blorp_buffer_copy(&blorp_batch, src_addr, dst_addr, src_box->width);
+   } else {
+      // XXX: what about one surface being a buffer and not the other?
+
+      struct blorp_surf src_surf, dst_surf;
+      iris_blorp_surf_for_resource(&src_surf, src, ISL_AUX_USAGE_NONE, false);
+      iris_blorp_surf_for_resource(&dst_surf, dst, ISL_AUX_USAGE_NONE, true);
+
+      // XXX: ???
+      unsigned dst_layer = dstz;
+      unsigned src_layer = src_box->z;
+
+      assert(src_box->depth == 1);
+
+      blorp_copy(&blorp_batch, &src_surf, src_level, src_layer,
+                 &dst_surf, dst_level, dst_layer,
+                 src_box->x, src_box->y, dstx, dsty,
+                 src_box->width, src_box->height);
+   }
+
    blorp_batch_finish(&blorp_batch);
 }
 
