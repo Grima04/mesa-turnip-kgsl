@@ -38,7 +38,7 @@
 
 struct amdgpu_cs;
 
-#define NUM_SLAB_ALLOCATORS 1
+#define NUM_SLAB_ALLOCATORS 3
 
 struct amdgpu_winsys {
    struct radeon_winsys base;

@@ -613,6 +613,14 @@ struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
       if (entry_size <= max_entry_size) {
          /* The slab size is twice the size of the largest possible entry. */
          slab_size = max_entry_size * 2;
+
+         /* The largest slab should have the same size as the PTE fragment
+          * size to get faster address translation.
+          */
+         if (i == NUM_SLAB_ALLOCATORS - 1 &&
+             slab_size < ws->info.pte_fragment_size)
+            slab_size = ws->info.pte_fragment_size;
+         break;
       }
    }
    assert(slab_size != 0);

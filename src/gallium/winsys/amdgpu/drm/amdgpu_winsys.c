@@ -311,7 +311,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                  amdgpu_bo_destroy, amdgpu_bo_can_reclaim);
 
    unsigned min_slab_order = 9;  /* 512 bytes */
-   unsigned max_slab_order = 16; /* 64 KB - higher numbers increase memory usage */
+   unsigned max_slab_order = 18; /* 256 KB - higher numbers increase memory usage */
    unsigned num_slab_orders_per_allocator = (max_slab_order - min_slab_order) /
                                             NUM_SLAB_ALLOCATORS;
 
