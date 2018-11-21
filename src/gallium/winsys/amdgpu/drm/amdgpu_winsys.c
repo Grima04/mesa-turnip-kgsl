@@ -95,7 +95,10 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
       util_queue_destroy(&ws->cs_queue);
 
    simple_mtx_destroy(&ws->bo_fence_lock);
-   pb_slabs_deinit(&ws->bo_slabs);
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      if (ws->bo_slabs[i].groups)
+         pb_slabs_deinit(&ws->bo_slabs[i]);
+   }
    pb_cache_deinit(&ws->bo_cache);
    util_hash_table_destroy(ws->bo_export_table);
    simple_mtx_destroy(&ws->global_bo_list_lock);
@@ -307,16 +310,33 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                  (ws->info.vram_size + ws->info.gart_size) / 8,
                  amdgpu_bo_destroy, amdgpu_bo_can_reclaim);
 
-   if (!pb_slabs_init(&ws->bo_slabs,
-                      AMDGPU_SLAB_MIN_SIZE_LOG2, AMDGPU_SLAB_MAX_SIZE_LOG2,
-                      RADEON_MAX_SLAB_HEAPS,
-                      ws,
-                      amdgpu_bo_can_reclaim_slab,
-                      amdgpu_bo_slab_alloc,
-                      amdgpu_bo_slab_free))
-      goto fail_cache;
+   unsigned min_slab_order = 9;  /* 512 bytes */
+   unsigned max_slab_order = 16; /* 64 KB - higher numbers increase memory usage */
+   unsigned num_slab_orders_per_allocator = (max_slab_order - min_slab_order) /
+                                            NUM_SLAB_ALLOCATORS;
 
-   ws->info.min_alloc_size = 1 << AMDGPU_SLAB_MIN_SIZE_LOG2;
+   /* Divide the size order range among slab managers. */
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      unsigned min_order = min_slab_order;
+      unsigned max_order = MIN2(min_order + num_slab_orders_per_allocator,
+                                max_slab_order);
+
+      if (!pb_slabs_init(&ws->bo_slabs[i],
+                         min_order, max_order,
+                         RADEON_MAX_SLAB_HEAPS,
+                         ws,
+                         amdgpu_bo_can_reclaim_slab,
+                         amdgpu_bo_slab_alloc,
+                         amdgpu_bo_slab_free)) {
+         amdgpu_winsys_destroy(&ws->base);
+         simple_mtx_unlock(&dev_tab_mutex);
+         return NULL;
+      }
+
+      min_slab_order = max_order + 1;
+   }
+
+   ws->info.min_alloc_size = 1 << ws->bo_slabs[0].min_order;
 
    /* init reference */
    pipe_reference_init(&ws->reference, 1);
