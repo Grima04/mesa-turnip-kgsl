@@ -4442,6 +4442,11 @@ iris_upload_render_state(struct iris_context *ice,
     */
    iris_use_pinned_bo(batch, ice->state.binder.bo, false);
 
+   if (!batch->contains_draw) {
+      iris_restore_render_saved_bos(ice, batch, draw);
+      batch->contains_draw = true;
+   }
+
    iris_upload_dirty_render_state(ice, batch, draw);
 
    if (draw->index_size > 0) {
@@ -4542,11 +4547,6 @@ iris_upload_render_state(struct iris_context *ice,
       }
 
       //prim.BaseVertexLocation = ...;
-   }
-
-   if (!batch->contains_draw) {
-      iris_restore_render_saved_bos(ice, batch, draw);
-      batch->contains_draw = true;
    }
 }
 
