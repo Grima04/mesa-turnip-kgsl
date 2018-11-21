@@ -188,15 +188,14 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
 }
 
 /**
- * See vf_invalidate_for_vb_48b_transitions in iris_state.c.
- * XXX: actually add this
+ * See iris_upload_render_state's IRIS_DIRTY_VERTEX_BUFFERS handling for
+ * a comment about why these VF invalidations are needed.
  */
 static void
-blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
+blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *blorp_batch,
                                            const struct blorp_address *addrs,
                                            unsigned num_vbs)
 {
-#if 0
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
    bool need_invalidate = false;
@@ -214,7 +213,6 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *batch,
    if (need_invalidate) {
       iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE);
    }
-#endif
 }
 
 static struct blorp_address

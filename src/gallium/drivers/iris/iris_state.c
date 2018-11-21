@@ -4337,14 +4337,39 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
 
       if (cso->num_buffers > 0) {
-         iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
-                         (1 + vb_dwords * cso->num_buffers));
+         /* The VF cache designers cut corners, and made the cache key's
+          * <VertexBufferIndex, Memory Address> tuple only consider the bottom
+          * 32 bits of the address.  If you have two vertex buffers which get
+          * placed exactly 4 GiB apart and use them in back-to-back draw calls,
+          * you can get collisions (even within a single batch).
+          *
+          * So, we need to do a VF cache invalidate if the buffer for a VB
+          * slot slot changes [48:32] address bits from the previous time.
+          */
+         bool need_invalidate = false;
 
          for (unsigned i = 0; i < cso->num_buffers; i++) {
+            uint16_t high_bits = 0;
+
             struct iris_resource *res = (void *) cso->resources[i];
-            if (res)
+            if (res) {
                iris_use_pinned_bo(batch, res->bo, false);
+
+               high_bits = res->bo->gtt_offset >> 32ull;
+               if (high_bits != ice->state.last_vbo_high_bits[i]) {
+                  need_invalidate = true;
+                  ice->state.last_vbo_high_bits[i] = high_bits;
+               }
+            }
          }
+
+         if (need_invalidate) {
+            iris_emit_pipe_control_flush(batch,
+                                         PIPE_CONTROL_VF_CACHE_INVALIDATE);
+         }
+
+         iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
+                         (1 + vb_dwords * cso->num_buffers));
       }
    }
 
@@ -4423,6 +4448,13 @@ iris_upload_render_state(struct iris_context *ice,
          ib.MOCS = MOCS_WB;
          ib.BufferSize = bo->size;
          ib.BufferStartingAddress = ro_bo(bo, offset);
+      }
+
+      /* The VF cache key only uses 32-bits, see vertex buffer comment above */
+      uint16_t high_bits = bo->gtt_offset >> 32ull;
+      if (high_bits != ice->state.last_index_bo_high_bits) {
+         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE);
+         ice->state.last_index_bo_high_bits = high_bits;
       }
    }
 
