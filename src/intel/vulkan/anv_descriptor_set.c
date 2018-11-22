@@ -712,8 +712,8 @@ VkResult anv_FreeDescriptorSets(
 }
 
 void
-anv_descriptor_set_write_image_view(struct anv_descriptor_set *set,
-                                    const struct gen_device_info * const devinfo,
+anv_descriptor_set_write_image_view(struct anv_device *device,
+                                    struct anv_descriptor_set *set,
                                     const VkDescriptorImageInfo * const info,
                                     VkDescriptorType type,
                                     uint32_t binding,
@@ -764,7 +764,8 @@ anv_descriptor_set_write_image_view(struct anv_descriptor_set *set,
 }
 
 void
-anv_descriptor_set_write_buffer_view(struct anv_descriptor_set *set,
+anv_descriptor_set_write_buffer_view(struct anv_device *device,
+                                     struct anv_descriptor_set *set,
                                      VkDescriptorType type,
                                      struct anv_buffer_view *buffer_view,
                                      uint32_t binding,
@@ -784,8 +785,8 @@ anv_descriptor_set_write_buffer_view(struct anv_descriptor_set *set,
 }
 
 void
-anv_descriptor_set_write_buffer(struct anv_descriptor_set *set,
-                                struct anv_device *device,
+anv_descriptor_set_write_buffer(struct anv_device *device,
+                                struct anv_descriptor_set *set,
                                 struct anv_state_stream *alloc_stream,
                                 VkDescriptorType type,
                                 struct anv_buffer *buffer,
@@ -855,7 +856,7 @@ void anv_UpdateDescriptorSets(
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            anv_descriptor_set_write_image_view(set, &device->info,
+            anv_descriptor_set_write_image_view(device, set,
                                                 write->pImageInfo + j,
                                                 write->descriptorType,
                                                 write->dstBinding,
@@ -869,7 +870,7 @@ void anv_UpdateDescriptorSets(
             ANV_FROM_HANDLE(anv_buffer_view, bview,
                             write->pTexelBufferView[j]);
 
-            anv_descriptor_set_write_buffer_view(set,
+            anv_descriptor_set_write_buffer_view(device, set,
                                                  write->descriptorType,
                                                  bview,
                                                  write->dstBinding,
@@ -886,8 +887,7 @@ void anv_UpdateDescriptorSets(
             ANV_FROM_HANDLE(anv_buffer, buffer, write->pBufferInfo[j].buffer);
             assert(buffer);
 
-            anv_descriptor_set_write_buffer(set,
-                                            device,
+            anv_descriptor_set_write_buffer(device, set,
                                             NULL,
                                             write->descriptorType,
                                             buffer,
@@ -930,8 +930,8 @@ void anv_UpdateDescriptorSets(
  */
 
 void
-anv_descriptor_set_write_template(struct anv_descriptor_set *set,
-                                  struct anv_device *device,
+anv_descriptor_set_write_template(struct anv_device *device,
+                                  struct anv_descriptor_set *set,
                                   struct anv_state_stream *alloc_stream,
                                   const struct anv_descriptor_update_template *template,
                                   const void *data)
@@ -949,7 +949,7 @@ anv_descriptor_set_write_template(struct anv_descriptor_set *set,
          for (uint32_t j = 0; j < entry->array_count; j++) {
             const VkDescriptorImageInfo *info =
                data + entry->offset + j * entry->stride;
-            anv_descriptor_set_write_image_view(set, &device->info,
+            anv_descriptor_set_write_image_view(device, set,
                                                 info, entry->type,
                                                 entry->binding,
                                                 entry->array_element + j);
@@ -963,7 +963,7 @@ anv_descriptor_set_write_template(struct anv_descriptor_set *set,
                data + entry->offset + j * entry->stride;
             ANV_FROM_HANDLE(anv_buffer_view, bview, *_bview);
 
-            anv_descriptor_set_write_buffer_view(set,
+            anv_descriptor_set_write_buffer_view(device, set,
                                                  entry->type,
                                                  bview,
                                                  entry->binding,
@@ -980,8 +980,7 @@ anv_descriptor_set_write_template(struct anv_descriptor_set *set,
                data + entry->offset + j * entry->stride;
             ANV_FROM_HANDLE(anv_buffer, buffer, info->buffer);
 
-            anv_descriptor_set_write_buffer(set,
-                                            device,
+            anv_descriptor_set_write_buffer(device, set,
                                             alloc_stream,
                                             entry->type,
                                             buffer,
@@ -1062,5 +1061,5 @@ void anv_UpdateDescriptorSetWithTemplate(
    ANV_FROM_HANDLE(anv_descriptor_update_template, template,
                    descriptorUpdateTemplate);
 
-   anv_descriptor_set_write_template(set, device, NULL, template, pData);
+   anv_descriptor_set_write_template(device, set, NULL, template, pData);
 }

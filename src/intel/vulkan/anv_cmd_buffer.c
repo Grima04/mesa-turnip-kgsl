@@ -1025,7 +1025,7 @@ void anv_CmdPushDescriptorSetKHR(
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            anv_descriptor_set_write_image_view(set, &cmd_buffer->device->info,
+            anv_descriptor_set_write_image_view(cmd_buffer->device, set,
                                                 write->pImageInfo + j,
                                                 write->descriptorType,
                                                 write->dstBinding,
@@ -1039,7 +1039,7 @@ void anv_CmdPushDescriptorSetKHR(
             ANV_FROM_HANDLE(anv_buffer_view, bview,
                             write->pTexelBufferView[j]);
 
-            anv_descriptor_set_write_buffer_view(set,
+            anv_descriptor_set_write_buffer_view(cmd_buffer->device, set,
                                                  write->descriptorType,
                                                  bview,
                                                  write->dstBinding,
@@ -1056,8 +1056,7 @@ void anv_CmdPushDescriptorSetKHR(
             ANV_FROM_HANDLE(anv_buffer, buffer, write->pBufferInfo[j].buffer);
             assert(buffer);
 
-            anv_descriptor_set_write_buffer(set,
-                                            cmd_buffer->device,
+            anv_descriptor_set_write_buffer(cmd_buffer->device, set,
                                             &cmd_buffer->surface_state_stream,
                                             write->descriptorType,
                                             buffer,
@@ -1106,8 +1105,7 @@ void anv_CmdPushDescriptorSetWithTemplateKHR(
    set->buffer_count = set_layout->buffer_count;
    set->buffer_views = push_set->buffer_views;
 
-   anv_descriptor_set_write_template(set,
-                                     cmd_buffer->device,
+   anv_descriptor_set_write_template(cmd_buffer->device, set,
                                      &cmd_buffer->surface_state_stream,
                                      template,
                                      pData);

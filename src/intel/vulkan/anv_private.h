@@ -1677,23 +1677,24 @@ size_t
 anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout);
 
 void
-anv_descriptor_set_write_image_view(struct anv_descriptor_set *set,
-                                    const struct gen_device_info * const devinfo,
+anv_descriptor_set_write_image_view(struct anv_device *device,
+                                    struct anv_descriptor_set *set,
                                     const VkDescriptorImageInfo * const info,
                                     VkDescriptorType type,
                                     uint32_t binding,
                                     uint32_t element);
 
 void
-anv_descriptor_set_write_buffer_view(struct anv_descriptor_set *set,
+anv_descriptor_set_write_buffer_view(struct anv_device *device,
+                                     struct anv_descriptor_set *set,
                                      VkDescriptorType type,
                                      struct anv_buffer_view *buffer_view,
                                      uint32_t binding,
                                      uint32_t element);
 
 void
-anv_descriptor_set_write_buffer(struct anv_descriptor_set *set,
-                                struct anv_device *device,
+anv_descriptor_set_write_buffer(struct anv_device *device,
+                                struct anv_descriptor_set *set,
                                 struct anv_state_stream *alloc_stream,
                                 VkDescriptorType type,
                                 struct anv_buffer *buffer,
@@ -1703,8 +1704,8 @@ anv_descriptor_set_write_buffer(struct anv_descriptor_set *set,
                                 VkDeviceSize range);
 
 void
-anv_descriptor_set_write_template(struct anv_descriptor_set *set,
-                                  struct anv_device *device,
+anv_descriptor_set_write_template(struct anv_device *device,
+                                  struct anv_descriptor_set *set,
                                   struct anv_state_stream *alloc_stream,
                                   const struct anv_descriptor_update_template *template,
                                   const void *data);
