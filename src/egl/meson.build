@@ -208,8 +208,8 @@ if with_tests and prog_nm.found()
     suite : ['egl'],
   )
   test('egl-entrypoint-check',
-    find_program('egl-entrypoint-check'),
-    env : ['srcdir=' + meson.current_source_dir()],
+    prog_python,
+    args : files('egl-entrypoint-check.py', 'main/eglentrypoint.h'),
     suite : ['egl'],
   )
 endif
