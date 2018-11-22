@@ -719,7 +719,7 @@ intel_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
                       "FBO incomplete: separate stencil unsupported\n");
 	 }
 	 if (stencil_mt->format != MESA_FORMAT_S_UINT8) {
-	    fbo_incomplete(fb, GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT,
+	    fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                       "FBO incomplete: separate stencil is %s "
                       "instead of S8\n",
                       _mesa_get_format_name(stencil_mt->format));
@@ -750,7 +750,7 @@ intel_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
        */
       rb = fb->Attachment[i].Renderbuffer;
       if (rb == NULL) {
-	 fbo_incomplete(fb, GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT,
+	 fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                        "FBO incomplete: attachment without "
                        "renderbuffer\n");
 	 continue;
@@ -771,8 +771,15 @@ intel_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 	 continue;
       }
 
+     if (rb->Format == MESA_FORMAT_R_SRGB8) {
+        fbo_incomplete(fb, GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT,
+                       "FBO incomplete: Format not color renderable: %s\n",
+                       _mesa_get_format_name(rb->Format));
+        continue;
+     }
+
       if (!brw_render_target_supported(brw, rb)) {
-	 fbo_incomplete(fb, GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT,
+	 fbo_incomplete(fb, GL_FRAMEBUFFER_UNSUPPORTED,
                    "FBO incomplete: Unsupported HW "
                    "texture/renderbuffer format attached: %s\n",
                    _mesa_get_format_name(intel_rb_format(irb)));
