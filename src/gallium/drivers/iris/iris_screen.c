@@ -37,6 +37,7 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
+#include "util/debug.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
@@ -564,6 +565,8 @@ iris_screen_create(int fd)
       return NULL;
 
    brw_process_intel_debug_variable();
+
+   screen->precompile = env_var_as_boolean("shader_precompile", true);
 
    bool hw_has_swizzling = false; // XXX: detect?
    isl_device_init(&screen->isl_dev, &screen->devinfo, hw_has_swizzling);

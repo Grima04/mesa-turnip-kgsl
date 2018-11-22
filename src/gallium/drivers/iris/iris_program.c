@@ -42,6 +42,29 @@
 #include "intel/compiler/brw_nir.h"
 #include "iris_context.h"
 
+#define ALL_SAMPLERS_XYZW .tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688
+#define KEY_INIT .program_string_id = ish->program_id, ALL_SAMPLERS_XYZW
+
+static struct iris_compiled_shader *
+iris_compile_vs(struct iris_context *, struct iris_uncompiled_shader *,
+                const struct brw_vs_prog_key *);
+static struct iris_compiled_shader *
+iris_compile_tcs(struct iris_context *, struct iris_uncompiled_shader *,
+                 const struct brw_tcs_prog_key *);
+static struct iris_compiled_shader *
+iris_compile_tes(struct iris_context *, struct iris_uncompiled_shader *,
+                 const struct brw_tes_prog_key *);
+static struct iris_compiled_shader *
+iris_compile_gs(struct iris_context *, struct iris_uncompiled_shader *,
+                const struct brw_gs_prog_key *);
+static struct iris_compiled_shader *
+iris_compile_fs(struct iris_context *, struct iris_uncompiled_shader *,
+                const struct brw_wm_prog_key *, struct brw_vue_map *);
+static struct iris_compiled_shader *
+iris_compile_cs(struct iris_context *, struct iris_uncompiled_shader *,
+                const struct brw_cs_prog_key *);
+
+
 static unsigned
 get_new_program_id(struct iris_screen *screen)
 {
@@ -66,6 +89,9 @@ struct iris_uncompiled_shader {
 
    /** Bitfield of (1 << IRIS_NOS_*) flags. */
    unsigned nos;
+
+   /** Have any shader variants been compiled yet? */
+   bool compiled_once;
 };
 
 static nir_ssa_def *
@@ -229,11 +255,19 @@ static void *
 iris_create_vs_state(struct pipe_context *ctx,
                      const struct pipe_shader_state *state)
 {
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    /* User clip planes */
    if (ish->nir->info.clip_distance_array_size == 0)
       ish->nos |= IRIS_NOS_RASTERIZER;
+
+   if (screen->precompile) {
+      struct brw_vs_prog_key key = { KEY_INIT };
+
+      iris_compile_vs(ice, ish, &key);
+   }
 
    return ish;
 }
@@ -242,9 +276,27 @@ static void *
 iris_create_tcs_state(struct pipe_context *ctx,
                       const struct pipe_shader_state *state)
 {
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
 
    // XXX: NOS?
+
+   if (screen->precompile) {
+      const unsigned _GL_TRIANGLES = 0x0004;
+      struct brw_tcs_prog_key key = {
+         KEY_INIT,
+         // XXX: make sure the linker fills this out from the TES...
+         .tes_primitive_mode =
+            info->tess.primitive_mode ? info->tess.primitive_mode
+                                      : _GL_TRIANGLES,
+         .outputs_written = info->outputs_written,
+         .patch_outputs_written = info->patch_outputs_written,
+      };
+
+      iris_compile_tcs(ice, ish, &key);
+   }
 
    return ish;
 }
@@ -253,9 +305,23 @@ static void *
 iris_create_tes_state(struct pipe_context *ctx,
                      const struct pipe_shader_state *state)
 {
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
 
    // XXX: NOS?
+
+   if (screen->precompile) {
+      struct brw_tes_prog_key key = {
+         KEY_INIT,
+         // XXX: not ideal, need TCS output/TES input unification
+         .inputs_read = info->inputs_read,
+         .patch_inputs_read = info->patch_inputs_read,
+      };
+
+      iris_compile_tes(ice, ish, &key);
+   }
 
    return ish;
 }
@@ -264,9 +330,17 @@ static void *
 iris_create_gs_state(struct pipe_context *ctx,
                      const struct pipe_shader_state *state)
 {
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
 
    // XXX: NOS?
+
+   if (screen->precompile) {
+      struct brw_gs_prog_key key = { KEY_INIT };
+
+      iris_compile_gs(ice, ish, &key);
+   }
 
    return ish;
 }
@@ -275,7 +349,10 @@ static void *
 iris_create_fs_state(struct pipe_context *ctx,
                      const struct pipe_shader_state *state)
 {
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
 
    ish->nos |= IRIS_NOS_FRAMEBUFFER |
                IRIS_NOS_DEPTH_STENCIL_ALPHA |
@@ -288,6 +365,26 @@ iris_create_fs_state(struct pipe_context *ctx,
       ish->nos |= IRIS_NOS_LAST_VUE_MAP;
    }
 
+   if (screen->precompile) {
+      const uint64_t color_outputs = info->outputs_written &
+         ~(BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
+           BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
+           BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
+
+      bool can_rearrange_varyings =
+         util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
+
+      struct brw_wm_prog_key key = {
+         KEY_INIT,
+         .nr_color_regions = util_bitcount(color_outputs),
+         .coherent_fb_fetch = true,
+         .input_slots_valid =
+            can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
+      };
+
+      iris_compile_fs(ice, ish, &key, NULL);
+   }
+
    return ish;
 }
 
@@ -297,10 +394,18 @@ iris_create_compute_state(struct pipe_context *ctx,
 {
    assert(state->ir_type == PIPE_SHADER_IR_NIR);
 
-   // XXX: disallow more than 64KB of shared variables
-
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish =
       iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
+
+   // XXX: disallow more than 64KB of shared variables
+
+   if (screen->precompile) {
+      struct brw_cs_prog_key key = { KEY_INIT };
+
+      iris_compile_cs(ice, ish, &key);
+   }
 
    return ish;
 }
@@ -668,6 +773,12 @@ iris_compile_vs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_VS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values);
 
+   if (ish->compiled_once) {
+      perf_debug(&ice->dbg, "Recompiling vertex shader\n");
+   } else {
+      ish->compiled_once = true;
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -683,7 +794,7 @@ iris_update_compiled_vs(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
 
-   struct brw_vs_prog_key key = { .program_string_id = ish->program_id };
+   struct brw_vs_prog_key key = { KEY_INIT };
    ice->vtbl.populate_vs_key(ice, &ish->nir->info, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
@@ -817,6 +928,14 @@ iris_compile_tcs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_TCS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values);
 
+   if (ish) {
+      if (ish->compiled_once) {
+         perf_debug(&ice->dbg, "Recompiling tessellation control shader\n");
+      } else {
+         ish->compiled_once = true;
+      }
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -835,6 +954,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
    struct brw_tcs_prog_key key = {
+      ALL_SAMPLERS_XYZW,
       .program_string_id = tcs ? tcs->program_id : 0,
       .tes_primitive_mode = tes_info->tess.primitive_mode,
       .input_vertices = ice->state.vertices_per_patch,
@@ -908,6 +1028,12 @@ iris_compile_tes(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_TES, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values);
 
+   if (ish->compiled_once) {
+      perf_debug(&ice->dbg, "Recompiling tessellation evaluation shader\n");
+   } else {
+      ish->compiled_once = true;
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -923,7 +1049,7 @@ iris_update_compiled_tes(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
 
-   struct brw_tes_prog_key key = { .program_string_id = ish->program_id };
+   struct brw_tes_prog_key key = { KEY_INIT };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
    ice->vtbl.populate_tes_key(ice, &key);
 
@@ -991,6 +1117,12 @@ iris_compile_gs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_GS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values);
 
+   if (ish->compiled_once) {
+      perf_debug(&ice->dbg, "Recompiling geometry shader\n");
+   } else {
+      ish->compiled_once = true;
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -1009,7 +1141,7 @@ iris_update_compiled_gs(struct iris_context *ice)
    struct iris_compiled_shader *shader = NULL;
 
    if (ish) {
-      struct brw_gs_prog_key key = { .program_string_id = ish->program_id };
+      struct brw_gs_prog_key key = { KEY_INIT };
       ice->vtbl.populate_gs_key(ice, &key);
 
       shader =
@@ -1070,6 +1202,12 @@ iris_compile_fs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_FS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values);
 
+   if (ish->compiled_once) {
+      perf_debug(&ice->dbg, "Recompiling fragment shader\n");
+   } else {
+      ish->compiled_once = true;
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -1084,7 +1222,7 @@ iris_update_compiled_fs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-   struct brw_wm_prog_key key = { .program_string_id = ish->program_id };
+   struct brw_wm_prog_key key = { KEY_INIT };
    ice->vtbl.populate_fs_key(ice, &key);
 
    if (ish->nos & IRIS_NOS_LAST_VUE_MAP)
@@ -1283,6 +1421,12 @@ iris_compile_cs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_CS, sizeof(*key), key, program,
                          prog_data, NULL, system_values, num_system_values);
 
+   if (ish->compiled_once) {
+      perf_debug(&ice->dbg, "Recompiling compute shader\n");
+   } else {
+      ish->compiled_once = true;
+   }
+
    ralloc_free(mem_ctx);
    return shader;
 }
@@ -1293,7 +1437,7 @@ iris_update_compiled_compute_shader(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
-   struct brw_cs_prog_key key = { .program_string_id = ish->program_id };
+   struct brw_cs_prog_key key = { KEY_INIT };
    ice->vtbl.populate_cs_key(ice, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_CS];

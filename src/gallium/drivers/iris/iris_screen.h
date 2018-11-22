@@ -51,6 +51,9 @@ struct iris_screen {
    /** Global program_string_id counter (see get_program_string_id()) */
    unsigned program_id;
 
+   /** Precompile shaders at link time?  (Can be disabled for debugging.) */
+   bool precompile;
+
    unsigned subslice_total;
 
    struct gen_device_info devinfo;
