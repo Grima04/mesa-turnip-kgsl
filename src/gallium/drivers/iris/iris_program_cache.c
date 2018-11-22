@@ -232,7 +232,7 @@ find_existing_assembly(struct hash_table *cache,
    return NULL;
 }
 
-static struct iris_compiled_shader *
+struct iris_compiled_shader *
 iris_upload_shader(struct iris_context *ice,
                    enum iris_program_cache_id cache_id,
                    uint32_t key_size,

@@ -586,6 +586,15 @@ bool iris_bind_cached_shader(struct iris_context *ice,
                              const void *key);
 void iris_unbind_shader(struct iris_context *ice,
                         enum iris_program_cache_id cache_id);
+struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
+                                                enum iris_program_cache_id,
+                                                uint32_t key_size,
+                                                const void *key,
+                                                const void *assembly,
+                                                struct brw_stage_prog_data *,
+                                                uint32_t *streamout,
+                                                enum brw_param_builtin *sysv,
+                                                unsigned num_system_values);
 void iris_upload_and_bind_shader(struct iris_context *ice,
                                  enum iris_program_cache_id cache_id,
                                  const void *key,
