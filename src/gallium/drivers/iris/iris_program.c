@@ -254,11 +254,6 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    return ish;
 }
 
-/**
- * The pipe->delete_[stage]_state() driver hooks.
- *
- * Frees the iris_uncompiled_shader.
- */
 static void *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
@@ -278,6 +273,11 @@ iris_create_compute_state(struct pipe_context *ctx,
    return iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
 }
 
+/**
+ * The pipe->delete_[stage]_state() driver hooks.
+ *
+ * Frees the iris_uncompiled_shader.
+ */
 static void
 iris_delete_shader_state(struct pipe_context *ctx, void *state)
 {
