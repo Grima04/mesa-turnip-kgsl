@@ -854,7 +854,7 @@ glXSwapBuffers(Display * dpy, GLXDrawable drawable)
       if (pdraw != NULL) {
          Bool flush = gc != &dummyContext && drawable == gc->currentDrawable;
 
-         (*pdraw->psc->driScreen->swapBuffers)(pdraw, 0, 0, 0, flush);
+         pdraw->psc->driScreen->swapBuffers(pdraw, 0, 0, 0, flush);
          return;
       }
    }
