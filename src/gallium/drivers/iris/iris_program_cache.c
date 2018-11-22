@@ -101,26 +101,6 @@ keybox_equals(const void *void_a, const void *void_b)
    return memcmp(a->data, b->data, a->size) == 0;
 }
 
-static uint64_t
-dirty_flag_for_cache(enum iris_program_cache_id cache_id)
-{
-   assert(cache_id <= MESA_SHADER_STAGES);
-
-   uint64_t flags = (IRIS_DIRTY_VS |
-                     IRIS_DIRTY_BINDINGS_VS |
-                     IRIS_DIRTY_CONSTANTS_VS) << cache_id;
-   // XXX: ugly...
-   // XXX: move this flagging out to a higher level, allow comparison of
-   // XXX: new and old programs to decide what bits to twiddle
-   // XXX: CLIP: toggle if barycentric modes has any NONPERSPECTIVE or not
-   if (cache_id == IRIS_CACHE_FS)
-      flags |= IRIS_DIRTY_WM | IRIS_DIRTY_CLIP | IRIS_DIRTY_SBE;
-   if (cache_id == IRIS_CACHE_VS)
-      flags |= IRIS_DIRTY_VF_SGVS;
-
-   return flags;
-}
-
 static unsigned
 get_program_string_id(enum iris_program_cache_id cache_id, const void *key)
 {
@@ -142,11 +122,11 @@ get_program_string_id(enum iris_program_cache_id cache_id, const void *key)
    }
 }
 
-static struct iris_compiled_shader *
+struct iris_compiled_shader *
 iris_find_cached_shader(struct iris_context *ice,
                         enum iris_program_cache_id cache_id,
-                        const void *key,
-                        uint32_t key_size)
+                        uint32_t key_size,
+                        const void *key)
 {
    struct keybox *keybox =
       make_keybox(ice->shaders.cache, cache_id, key, key_size);
@@ -156,43 +136,6 @@ iris_find_cached_shader(struct iris_context *ice,
    ralloc_free(keybox);
 
    return entry ? entry->data : NULL;
-}
-
-/**
- * Looks for a program in the cache and binds it.
- *
- * If no program was found, returns false and leaves the binding alone.
- */
-bool
-iris_bind_cached_shader(struct iris_context *ice,
-                        enum iris_program_cache_id cache_id,
-                        const void *key)
-{
-   unsigned key_size = key_size_for_cache(cache_id);
-   struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, cache_id, key, key_size);
-
-   if (!shader)
-      return false;
-
-   // XXX: why memcmp?
-   if (!ice->shaders.prog[cache_id] ||
-       memcmp(shader, ice->shaders.prog[cache_id], sizeof(*shader)) != 0) {
-      ice->shaders.prog[cache_id] = shader;
-      ice->state.dirty |= dirty_flag_for_cache(cache_id);
-   }
-
-   return true;
-}
-
-void
-iris_unbind_shader(struct iris_context *ice,
-                   enum iris_program_cache_id cache_id)
-{
-   if (ice->shaders.prog[cache_id]) {
-      ice->shaders.prog[cache_id] = NULL;
-      ice->state.dirty |= dirty_flag_for_cache(cache_id);
-   }
 }
 
 const void *
@@ -288,32 +231,6 @@ iris_upload_shader(struct iris_context *ice,
    return shader;
 }
 
-/**
- * Upload a new shader to the program cache, and bind it for use.
- *
- * \param prog_data must be ralloc'd and will be stolen.
- */
-void
-iris_upload_and_bind_shader(struct iris_context *ice,
-                            enum iris_program_cache_id cache_id,
-                            const void *key,
-                            const void *assembly,
-                            struct brw_stage_prog_data *prog_data,
-                            uint32_t *streamout,
-                            enum brw_param_builtin *system_values,
-                            unsigned num_system_values)
-{
-   assert(cache_id != IRIS_CACHE_BLORP);
-
-   struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, cache_id, key_size_for_cache(cache_id), key,
-                         assembly, prog_data, streamout, system_values,
-                         num_system_values);
-
-   ice->shaders.prog[cache_id] = shader;
-   ice->state.dirty |= dirty_flag_for_cache(cache_id);
-}
-
 bool
 iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
                          const void *key, uint32_t key_size,
@@ -323,7 +240,7 @@ iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
    struct iris_context *ice = blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
    struct iris_compiled_shader *shader =
-      iris_find_cached_shader(ice, IRIS_CACHE_BLORP, key, key_size);
+      iris_find_cached_shader(ice, IRIS_CACHE_BLORP, key_size, key);
 
    if (!shader)
       return false;
