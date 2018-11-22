@@ -27,6 +27,7 @@
 #include "util/u_inlines.h"
 #include "intel/isl/isl.h"
 
+struct iris_batch;
 struct iris_context;
 
 struct iris_format_info {
