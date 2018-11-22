@@ -1139,6 +1139,78 @@ pbo_error_check(struct gl_context *ctx, GLenum target,
 
 
 /**
+ * Do teximage-related error checking for getting uncompressed images.
+ * \return true if there was an error
+ */
+static bool
+teximage_error_check(struct gl_context *ctx,
+                     struct gl_texture_image *texImage,
+                     GLenum format, const char *caller)
+{
+   GLenum baseFormat;
+   assert(texImage);
+
+   /*
+    * Format and type checking has been moved up to GetnTexImage and
+    * GetTextureImage so that it happens before getting the texImage object.
+    */
+
+   baseFormat = _mesa_get_format_base_format(texImage->TexFormat);
+
+   /* Make sure the requested image format is compatible with the
+    * texture's format.
+    */
+   if (_mesa_is_color_format(format)
+       && !_mesa_is_color_format(baseFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+   else if (_mesa_is_depth_format(format)
+            && !_mesa_is_depth_format(baseFormat)
+            && !_mesa_is_depthstencil_format(baseFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+   else if (_mesa_is_stencil_format(format)
+            && !ctx->Extensions.ARB_texture_stencil8) {
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "%s(format=GL_STENCIL_INDEX)", caller);
+      return true;
+   }
+   else if (_mesa_is_stencil_format(format)
+            && !_mesa_is_depthstencil_format(baseFormat)
+            && !_mesa_is_stencil_format(baseFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+   else if (_mesa_is_ycbcr_format(format)
+            && !_mesa_is_ycbcr_format(baseFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+   else if (_mesa_is_depthstencil_format(format)
+            && !_mesa_is_depthstencil_format(baseFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+   else if (!_mesa_is_stencil_format(format) &&
+            _mesa_is_enum_format_integer(format) !=
+            _mesa_is_format_integer(texImage->TexFormat)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(format mismatch)", caller);
+      return true;
+   }
+
+   return false;
+}
+
+
+/**
  * Do error checking for all (non-compressed) get-texture-image functions.
  * \return true if any error, false if no errors.
  */
@@ -1152,7 +1224,7 @@ getteximage_error_check(struct gl_context *ctx,
                         GLvoid *pixels, const char *caller)
 {
    struct gl_texture_image *texImage;
-   GLenum baseFormat, err;
+   GLenum err;
    GLint maxLevels;
 
    assert(texObj);
@@ -1186,61 +1258,7 @@ getteximage_error_check(struct gl_context *ctx,
    }
 
    texImage = select_tex_image(texObj, target, level, zoffset);
-   assert(texImage);
-
-   /*
-    * Format and type checking has been moved up to GetnTexImage and
-    * GetTextureImage so that it happens before getting the texImage object.
-    */
-
-   baseFormat = _mesa_get_format_base_format(texImage->TexFormat);
-
-   /* Make sure the requested image format is compatible with the
-    * texture's format.
-    */
-   if (_mesa_is_color_format(format)
-       && !_mesa_is_color_format(baseFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
-      return true;
-   }
-   else if (_mesa_is_depth_format(format)
-            && !_mesa_is_depth_format(baseFormat)
-            && !_mesa_is_depthstencil_format(baseFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
-      return true;
-   }
-   else if (_mesa_is_stencil_format(format)
-            && !ctx->Extensions.ARB_texture_stencil8) {
-      _mesa_error(ctx, GL_INVALID_ENUM,
-                  "%s(format=GL_STENCIL_INDEX)", caller);
-      return true;
-   }
-   else if (_mesa_is_stencil_format(format)
-	    && !_mesa_is_depthstencil_format(baseFormat)
-	    && !_mesa_is_stencil_format(baseFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
-      return true;
-   }
-   else if (_mesa_is_ycbcr_format(format)
-            && !_mesa_is_ycbcr_format(baseFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
-      return true;
-   }
-   else if (_mesa_is_depthstencil_format(format)
-            && !_mesa_is_depthstencil_format(baseFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
-      return true;
-   }
-   else if (!_mesa_is_stencil_format(format) &&
-            _mesa_is_enum_format_integer(format) !=
-            _mesa_is_format_integer(texImage->TexFormat)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(format mismatch)", caller);
+   if (teximage_error_check(ctx, texImage, format, caller)) {
       return true;
    }
 
