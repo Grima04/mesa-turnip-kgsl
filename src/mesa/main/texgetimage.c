@@ -1211,23 +1211,19 @@ teximage_error_check(struct gl_context *ctx,
 
 
 /**
- * Do error checking for all (non-compressed) get-texture-image functions.
- * \return true if any error, false if no errors.
+ * Do common teximage-related error checking for getting uncompressed images.
+ * \return true if there was an error
  */
 static bool
-getteximage_error_check(struct gl_context *ctx,
-                        struct gl_texture_object *texObj,
-                        GLenum target, GLint level,
-                        GLint xoffset, GLint yoffset, GLint zoffset,
-                        GLsizei width, GLsizei height, GLsizei depth,
-                        GLenum format, GLenum type, GLsizei bufSize,
-                        GLvoid *pixels, const char *caller)
+common_error_check(struct gl_context *ctx,
+                   struct gl_texture_object *texObj,
+                   GLenum target, GLint level,
+                   GLsizei width, GLsizei height, GLsizei depth,
+                   GLenum format, GLenum type, GLsizei bufSize,
+                   GLvoid *pixels, const char *caller)
 {
-   struct gl_texture_image *texImage;
    GLenum err;
    GLint maxLevels;
-
-   assert(texObj);
 
    if (texObj->Target == 0) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid texture)", caller);
@@ -1243,6 +1239,32 @@ getteximage_error_check(struct gl_context *ctx,
    err = _mesa_error_check_format_and_type(ctx, format, type);
    if (err != GL_NO_ERROR) {
       _mesa_error(ctx, err, "%s(format/type)", caller);
+      return true;
+   }
+
+   return false;
+}
+
+
+/**
+ * Do error checking for all (non-compressed) get-texture-image functions.
+ * \return true if any error, false if no errors.
+ */
+static bool
+getteximage_error_check(struct gl_context *ctx,
+                        struct gl_texture_object *texObj,
+                        GLenum target, GLint level,
+                        GLint xoffset, GLint yoffset, GLint zoffset,
+                        GLsizei width, GLsizei height, GLsizei depth,
+                        GLenum format, GLenum type, GLsizei bufSize,
+                        GLvoid *pixels, const char *caller)
+{
+   struct gl_texture_image *texImage;
+
+   assert(texObj);
+
+   if (common_error_check(ctx, texObj, target, level, width, height, depth,
+                          format, type, bufSize, pixels, caller)) {
       return true;
    }
 
