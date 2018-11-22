@@ -1255,10 +1255,52 @@ static bool
 getteximage_error_check(struct gl_context *ctx,
                         struct gl_texture_object *texObj,
                         GLenum target, GLint level,
-                        GLint xoffset, GLint yoffset, GLint zoffset,
                         GLsizei width, GLsizei height, GLsizei depth,
                         GLenum format, GLenum type, GLsizei bufSize,
                         GLvoid *pixels, const char *caller)
+{
+   struct gl_texture_image *texImage;
+
+   assert(texObj);
+
+   if (common_error_check(ctx, texObj, target, level, width, height, depth,
+                          format, type, bufSize, pixels, caller)) {
+      return true;
+   }
+
+   if (width == 0 || height == 0 || depth == 0) {
+      /* Not an error, but nothing to do.  Return 'true' so that the
+       * caller simply returns.
+       */
+      return true;
+   }
+
+   if (pbo_error_check(ctx, target, width, height, depth,
+                       format, type, bufSize, pixels, caller)) {
+      return true;
+   }
+
+   texImage = select_tex_image(texObj, target, level, 0);
+   if (teximage_error_check(ctx, texImage, format, caller)) {
+      return true;
+   }
+
+   return false;
+}
+
+
+/**
+ * Do error checking for all (non-compressed) get-texture-image functions.
+ * \return true if any error, false if no errors.
+ */
+static bool
+gettexsubimage_error_check(struct gl_context *ctx,
+                           struct gl_texture_object *texObj,
+                           GLenum target, GLint level,
+                           GLint xoffset, GLint yoffset, GLint zoffset,
+                           GLsizei width, GLsizei height, GLsizei depth,
+                           GLenum format, GLenum type, GLsizei bufSize,
+                           GLvoid *pixels, const char *caller)
 {
    struct gl_texture_image *texImage;
 
@@ -1417,7 +1459,7 @@ _mesa_GetnTexImage(GLenum target, GLint level, GLenum format, GLenum type,
    get_texture_image_dims(texObj, target, level, &width, &height, &depth);
 
    if (getteximage_error_check(ctx, texObj, target, level,
-                               0, 0, 0, width, height, depth,
+                               width, height, depth,
                                format, type, bufSize, pixels, caller)) {
       return;
    }
@@ -1448,7 +1490,7 @@ _mesa_GetTexImage(GLenum target, GLint level, GLenum format, GLenum type,
    get_texture_image_dims(texObj, target, level, &width, &height, &depth);
 
    if (getteximage_error_check(ctx, texObj, target, level,
-                               0, 0, 0, width, height, depth,
+                               width, height, depth,
                                format, type, INT_MAX, pixels, caller)) {
       return;
    }
@@ -1482,7 +1524,7 @@ _mesa_GetTextureImage(GLuint texture, GLint level, GLenum format, GLenum type,
                           &width, &height, &depth);
 
    if (getteximage_error_check(ctx, texObj, texObj->Target, level,
-                               0, 0, 0, width, height, depth,
+                               width, height, depth,
                                format, type, bufSize, pixels, caller)) {
       return;
    }
@@ -1515,9 +1557,10 @@ _mesa_GetTextureSubImage(GLuint texture, GLint level,
       return;
    }
 
-   if (getteximage_error_check(ctx, texObj, texObj->Target, level,
-                               xoffset, yoffset, zoffset, width, height, depth,
-                               format, type, bufSize, pixels, caller)) {
+   if (gettexsubimage_error_check(ctx, texObj, texObj->Target, level,
+                                  xoffset, yoffset, zoffset,
+                                  width, height, depth,
+                                  format, type, bufSize, pixels, caller)) {
       return;
    }
 
