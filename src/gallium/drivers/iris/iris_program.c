@@ -192,7 +192,6 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
                               nir_shader *nir,
                               const struct pipe_stream_output_info *so_info)
 {
-   //struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -213,48 +212,10 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       update_so_info(&ish->stream_output);
    }
 
-   switch (nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-      /* User clip planes */
-      if (nir->info.clip_distance_array_size == 0)
-         ish->nos |= IRIS_NOS_RASTERIZER;
-      // XXX: NOS
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      // XXX: NOS
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      // XXX: NOS
-      break;
-   case MESA_SHADER_GEOMETRY:
-      // XXX: NOS
-      break;
-   case MESA_SHADER_FRAGMENT:
-      ish->nos |= IRIS_NOS_FRAMEBUFFER |
-                  IRIS_NOS_DEPTH_STENCIL_ALPHA |
-                  IRIS_NOS_RASTERIZER |
-                  IRIS_NOS_BLEND;
-
-      /* The program key needs the VUE map if there are > 16 inputs */
-      if (util_bitcount64(ish->nir->info.inputs_read &
-                          BRW_FS_VARYING_INPUT_MASK) > 16) {
-         ish->nos |= IRIS_NOS_LAST_VUE_MAP;
-      }
-      break;
-   case MESA_SHADER_COMPUTE:
-      // XXX: NOS
-      break;
-   default:
-      break;
-   }
-
-   // XXX: precompile!
-   // XXX: disallow more than 64KB of shared variables
-
    return ish;
 }
 
-static void *
+static struct iris_uncompiled_shader *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
 {
@@ -265,12 +226,83 @@ iris_create_shader_state(struct pipe_context *ctx,
 }
 
 static void *
+iris_create_vs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   /* User clip planes */
+   if (ish->nir->info.clip_distance_array_size == 0)
+      ish->nos |= IRIS_NOS_RASTERIZER;
+
+   return ish;
+}
+
+static void *
+iris_create_tcs_state(struct pipe_context *ctx,
+                      const struct pipe_shader_state *state)
+{
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   // XXX: NOS?
+
+   return ish;
+}
+
+static void *
+iris_create_tes_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   // XXX: NOS?
+
+   return ish;
+}
+
+static void *
+iris_create_gs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   // XXX: NOS?
+
+   return ish;
+}
+
+static void *
+iris_create_fs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   ish->nos |= IRIS_NOS_FRAMEBUFFER |
+               IRIS_NOS_DEPTH_STENCIL_ALPHA |
+               IRIS_NOS_RASTERIZER |
+               IRIS_NOS_BLEND;
+
+   /* The program key needs the VUE map if there are > 16 inputs */
+   if (util_bitcount64(ish->nir->info.inputs_read &
+                       BRW_FS_VARYING_INPUT_MASK) > 16) {
+      ish->nos |= IRIS_NOS_LAST_VUE_MAP;
+   }
+
+   return ish;
+}
+
+static void *
 iris_create_compute_state(struct pipe_context *ctx,
                           const struct pipe_compute_state *state)
 {
    assert(state->ir_type == PIPE_SHADER_IR_NIR);
 
-   return iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
+   // XXX: disallow more than 64KB of shared variables
+
+   struct iris_uncompiled_shader *ish =
+      iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
+
+   return ish;
 }
 
 /**
@@ -1276,11 +1308,11 @@ iris_get_scratch_space(struct iris_context *ice,
 void
 iris_init_program_functions(struct pipe_context *ctx)
 {
-   ctx->create_vs_state  = iris_create_shader_state;
-   ctx->create_tcs_state = iris_create_shader_state;
-   ctx->create_tes_state = iris_create_shader_state;
-   ctx->create_gs_state  = iris_create_shader_state;
-   ctx->create_fs_state  = iris_create_shader_state;
+   ctx->create_vs_state  = iris_create_vs_state;
+   ctx->create_tcs_state = iris_create_tcs_state;
+   ctx->create_tes_state = iris_create_tes_state;
+   ctx->create_gs_state  = iris_create_gs_state;
+   ctx->create_fs_state  = iris_create_fs_state;
    ctx->create_compute_state = iris_create_compute_state;
 
    ctx->delete_vs_state  = iris_delete_shader_state;
