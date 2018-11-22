@@ -1056,7 +1056,8 @@ void anv_GetPhysicalDeviceExternalSemaphoreProperties(
 
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
       if (device->has_exec_fence) {
-         pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
+         pExternalSemaphoreProperties->exportFromImportedHandleTypes =
+            VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
          pExternalSemaphoreProperties->compatibleHandleTypes =
             VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
          pExternalSemaphoreProperties->externalSemaphoreFeatures =
