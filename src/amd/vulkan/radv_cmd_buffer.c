@@ -59,8 +59,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 VkImageLayout dst_layout,
 					 uint32_t src_family,
 					 uint32_t dst_family,
-					 const VkImageSubresourceRange *range,
-					 VkImageAspectFlags pending_clears);
+					 const VkImageSubresourceRange *range);
 
 const struct radv_dynamic_state default_dynamic_state = {
 	.viewport = {
@@ -2270,8 +2269,7 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	radv_handle_image_transition(cmd_buffer,
 				     view->image,
 				     cmd_buffer->state.attachments[idx].current_layout,
-				     att.layout, 0, 0, &range,
-				     cmd_buffer->state.attachments[idx].pending_clear_aspects);
+				     att.layout, 0, 0, &range);
 
 	cmd_buffer->state.attachments[idx].current_layout = att.layout;
 
@@ -4241,8 +4239,7 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       VkImageLayout dst_layout,
 					       unsigned src_queue_mask,
 					       unsigned dst_queue_mask,
-					       const VkImageSubresourceRange *range,
-					       VkImageAspectFlags pending_clears)
+					       const VkImageSubresourceRange *range)
 {
 	if (!radv_image_has_htile(image))
 		return;
@@ -4384,8 +4381,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 VkImageLayout dst_layout,
 					 uint32_t src_family,
 					 uint32_t dst_family,
-					 const VkImageSubresourceRange *range,
-					 VkImageAspectFlags pending_clears)
+					 const VkImageSubresourceRange *range)
 {
 	if (image->exclusive && src_family != dst_family) {
 		/* This is an acquire or a release operation and there will be
@@ -4415,7 +4411,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 		radv_handle_depth_image_transition(cmd_buffer, image,
 						   src_layout, dst_layout,
 						   src_queue_mask, dst_queue_mask,
-						   range, pending_clears);
+						   range);
 	} else {
 		radv_handle_color_image_transition(cmd_buffer, image,
 						   src_layout, dst_layout,
@@ -4489,8 +4485,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 					     pImageMemoryBarriers[i].newLayout,
 					     pImageMemoryBarriers[i].srcQueueFamilyIndex,
 					     pImageMemoryBarriers[i].dstQueueFamilyIndex,
-					     &pImageMemoryBarriers[i].subresourceRange,
-					     0);
+					     &pImageMemoryBarriers[i].subresourceRange);
 	}
 
 	/* Make sure CP DMA is idle because the driver might have performed a
