@@ -2010,7 +2010,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    gl_shader_stage stage,
                    struct anv_state *bt_state)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
    struct anv_cmd_pipeline_state *pipe_state;
    struct anv_pipeline *pipeline;
@@ -2051,17 +2050,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    const bool need_client_mem_relocs =
       !cmd_buffer->device->instance->physicalDevice.use_softpin;
 
-   /* We only use push constant space for images before gen9 */
-   if (map->image_param_count > 0) {
-      VkResult result =
-         anv_cmd_buffer_ensure_push_constant_field(cmd_buffer, stage, images);
-      if (result != VK_SUCCESS)
-         return result;
-
-      cmd_buffer->state.push_constants_dirty |= 1 << stage;
-   }
-
-   uint32_t image = 0;
    for (uint32_t s = 0; s < map->surface_count; s++) {
       struct anv_pipeline_binding *binding = &map->surface_to_descriptor[s];
 
@@ -2201,18 +2189,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(surface_state.alloc_size);
          if (need_client_mem_relocs)
             add_surface_state_relocs(cmd_buffer, sstate);
-         if (devinfo->gen < 9) {
-            /* We only need the image params on gen8 and earlier.  No image
-             * workarounds that require tiling information are required on
-             * SKL and above.
-             */
-            assert(image < MAX_GEN8_IMAGES);
-            struct brw_image_param *image_param =
-               &cmd_buffer->state.push_constants[stage]->images[image++];
-
-            *image_param =
-               desc->image_view->planes[binding->plane].storage_image_param;
-         }
          break;
       }
 
@@ -2262,13 +2238,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             add_surface_reloc(cmd_buffer, surface_state,
                               desc->buffer_view->address);
          }
-         if (devinfo->gen < 9) {
-            assert(image < MAX_GEN8_IMAGES);
-            struct brw_image_param *image_param =
-               &cmd_buffer->state.push_constants[stage]->images[image++];
-
-            *image_param = desc->buffer_view->storage_image_param;
-         }
          break;
 
       default:
@@ -2278,7 +2247,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       bt_map[s] = surface_state.offset + state_offset;
    }
-   assert(image == map->image_param_count);
 
 #if GEN_GEN >= 11
    /* The PIPE_CONTROL command description says:

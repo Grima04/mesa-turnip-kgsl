@@ -158,7 +158,6 @@ struct gen_l3_config;
 #define MAX_PUSH_CONSTANTS_SIZE 128
 #define MAX_DYNAMIC_BUFFERS 16
 #define MAX_IMAGES 64
-#define MAX_GEN8_IMAGES 8
 #define MAX_PUSH_DESCRIPTORS 32 /* Minimum requirement */
 #define MAX_INLINE_UNIFORM_BLOCK_SIZE 4096
 #define MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS 32
@@ -2077,9 +2076,6 @@ struct anv_push_constants {
 
    /* Used for vkCmdDispatchBase */
    uint32_t base_work_group_id[3];
-
-   /* Image data for image_load_store on pre-SKL */
-   struct brw_image_param images[MAX_GEN8_IMAGES];
 };
 
 struct anv_dynamic_state {
@@ -2587,7 +2583,6 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 struct anv_pipeline_bind_map {
    uint32_t surface_count;
    uint32_t sampler_count;
-   uint32_t image_param_count;
 
    struct anv_pipeline_binding *                surface_to_descriptor;
    struct anv_pipeline_binding *                sampler_to_descriptor;

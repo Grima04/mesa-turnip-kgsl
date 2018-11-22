@@ -1096,8 +1096,6 @@ void anv_GetPhysicalDeviceProperties(
    const uint32_t max_samplers = (devinfo->gen >= 8 || devinfo->is_haswell) ?
                                  128 : 16;
 
-   const uint32_t max_images = devinfo->gen < 9 ? MAX_GEN8_IMAGES : MAX_IMAGES;
-
    VkSampleCountFlags sample_counts =
       isl_device_get_sample_counts(&pdevice->isl_dev);
 
@@ -1121,7 +1119,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxPerStageDescriptorUniformBuffers      = 64,
       .maxPerStageDescriptorStorageBuffers      = 64,
       .maxPerStageDescriptorSampledImages       = max_samplers,
-      .maxPerStageDescriptorStorageImages       = max_images,
+      .maxPerStageDescriptorStorageImages       = MAX_IMAGES,
       .maxPerStageDescriptorInputAttachments    = 64,
       .maxPerStageResources                     = 250,
       .maxDescriptorSetSamplers                 = 6 * max_samplers, /* number of stages * maxPerStageDescriptorSamplers */
@@ -1130,7 +1128,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxDescriptorSetStorageBuffers           = 6 * 64,           /* number of stages * maxPerStageDescriptorStorageBuffers */
       .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_BUFFERS / 2,
       .maxDescriptorSetSampledImages            = 6 * max_samplers, /* number of stages * maxPerStageDescriptorSampledImages */
-      .maxDescriptorSetStorageImages            = 6 * max_images,   /* number of stages * maxPerStageDescriptorStorageImages */
+      .maxDescriptorSetStorageImages            = 6 * MAX_IMAGES,   /* number of stages * maxPerStageDescriptorStorageImages */
       .maxDescriptorSetInputAttachments         = 256,
       .maxVertexInputAttributes                 = MAX_VBS,
       .maxVertexInputBindings                   = MAX_VBS,

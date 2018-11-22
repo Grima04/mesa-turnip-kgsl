@@ -90,7 +90,12 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
 static unsigned
 anv_descriptor_data_size(enum anv_descriptor_data data)
 {
-   return 0;
+   unsigned size = 0;
+
+   if (data & ANV_DESCRIPTOR_IMAGE_PARAM)
+      size += BRW_IMAGE_PARAM_SIZE * 4;
+
+   return size;
 }
 
 /** Returns the size in bytes of each descriptor with the given layout */
@@ -902,6 +907,24 @@ VkResult anv_FreeDescriptorSets(
    return VK_SUCCESS;
 }
 
+static void
+anv_descriptor_set_write_image_param(uint32_t *param_desc_map,
+                                     const struct brw_image_param *param)
+{
+#define WRITE_PARAM_FIELD(field, FIELD) \
+   for (unsigned i = 0; i < ARRAY_SIZE(param->field); i++) \
+      param_desc_map[BRW_IMAGE_PARAM_##FIELD##_OFFSET + i] = param->field[i]
+
+   WRITE_PARAM_FIELD(offset, OFFSET);
+   WRITE_PARAM_FIELD(size, SIZE);
+   WRITE_PARAM_FIELD(stride, STRIDE);
+   WRITE_PARAM_FIELD(tiling, TILING);
+   WRITE_PARAM_FIELD(swizzling, SWIZZLING);
+   WRITE_PARAM_FIELD(size, SIZE);
+
+#undef WRITE_PARAM_FIELD
+}
+
 void
 anv_descriptor_set_write_image_view(struct anv_device *device,
                                     struct anv_descriptor_set *set,
@@ -952,6 +975,18 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       .image_view = image_view,
       .sampler = sampler,
    };
+
+   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
+                    element * anv_descriptor_size(bind_layout);
+
+   if (bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM) {
+      /* Storage images can only ever have one plane */
+      assert(image_view->n_planes == 1);
+      const struct brw_image_param *image_param =
+         &image_view->planes[0].storage_image_param;
+
+      anv_descriptor_set_write_image_param(desc_map, image_param);
+   }
 }
 
 void
@@ -973,6 +1008,14 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
       .type = type,
       .buffer_view = buffer_view,
    };
+
+   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
+                    element * anv_descriptor_size(bind_layout);
+
+   if (bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM) {
+      anv_descriptor_set_write_image_param(desc_map,
+                                           &buffer_view->storage_image_param);
+   }
 }
 
 void
