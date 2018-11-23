@@ -3637,7 +3637,7 @@ iris_populate_binding_table(struct iris_context *ice,
    //assert(prog_data->binding_table.texture_start ==
           //(ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
 
-   for (int i = 0; i < shs->num_textures; i++) {
+   for (int i = 0; i < info->num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
       uint32_t addr = view ? use_sampler_view(batch, view)
                            : use_null_surface(batch, ice);
