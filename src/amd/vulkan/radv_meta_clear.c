@@ -909,6 +909,31 @@ radv_image_can_fast_clear(struct radv_device *device,  struct radv_image *image)
 	return true;
 }
 
+/**
+ * Determine if the given image view can be fast cleared.
+ */
+static bool
+radv_image_view_can_fast_clear(struct radv_device *device,
+			       const struct radv_image_view *iview)
+{
+	struct radv_image *image = iview->image;
+
+	/* Only fast clear if the image itself can be fast cleared. */
+	if (!radv_image_can_fast_clear(device, image))
+		return false;
+
+	/* Only fast clear if all layers are bound. */
+	if (iview->base_layer > 0 ||
+	    iview->layer_count != image->info.array_size)
+		return false;
+
+	/* Only fast clear if the view covers the whole image. */
+	if (!radv_image_extent_compare(image, &iview->extent))
+		return false;
+
+	return true;
+}
+
 static bool
 emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		      const VkClearAttachment *clear_att,
@@ -926,19 +951,10 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t clear_word, flush_bits;
 	uint32_t htile_mask;
 
-	if (!radv_image_can_fast_clear(cmd_buffer->device, iview->image))
+	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
 		return false;
 
 	if (!radv_layout_is_htile_compressed(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		return false;
-
-	/* all layers are bound */
-	if (iview->base_layer > 0)
-		return false;
-	if (iview->image->info.array_size != iview->layer_count)
-		return false;
-
-	if (!radv_image_extent_compare(iview->image, &iview->extent))
 		return false;
 
 	if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
@@ -1369,19 +1385,10 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t cmask_clear_value;
 	bool ret;
 
-	if (!radv_image_can_fast_clear(cmd_buffer->device, iview->image))
+	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
 		return false;
 
 	if (!radv_layout_can_fast_clear(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		return false;
-
-	/* all layers are bound */
-	if (iview->base_layer > 0)
-		return false;
-	if (iview->image->info.array_size != iview->layer_count)
-		return false;
-
-	if (!radv_image_extent_compare(iview->image, &iview->extent))
 		return false;
 
 	if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
