@@ -1776,6 +1776,75 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer,
 	radv_DestroyFramebuffer(device_h, fb,
 				&cmd_buffer->pool->alloc);
 }
+
+/**
+ * Return TRUE if a fast color or depth clear has been performed.
+ */
+static bool
+radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer,
+		      struct radv_image *image,
+		      VkFormat format,
+		      VkImageLayout image_layout,
+		      const VkImageSubresourceRange *range,
+		      const VkClearValue *clear_val)
+{
+	struct radv_image_view iview;
+
+	radv_image_view_init(&iview, cmd_buffer->device,
+			     &(VkImageViewCreateInfo) {
+					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+					.image = radv_image_to_handle(image),
+					.viewType = radv_meta_get_view_type(image),
+					.format = image->vk_format,
+					.subresourceRange = {
+					.aspectMask = range->aspectMask,
+					.baseMipLevel = range->baseMipLevel,
+					.levelCount = range->levelCount,
+					.baseArrayLayer = range->baseArrayLayer,
+					.layerCount = range->layerCount,
+				   },
+			     });
+
+	VkClearRect clear_rect = {
+		.rect = {
+			.offset = { 0, 0 },
+			.extent = {
+				radv_minify(image->info.width, range->baseMipLevel),
+				radv_minify(image->info.height, range->baseMipLevel),
+			},
+		},
+		.baseArrayLayer = range->baseArrayLayer,
+		.layerCount = range->layerCount,
+	};
+
+	VkClearAttachment clear_att = {
+		.aspectMask = range->aspectMask,
+		.colorAttachment = 0,
+		.clearValue = *clear_val,
+	};
+
+	if (vk_format_is_color(format)) {
+		if (radv_can_fast_clear_color(cmd_buffer, &iview,
+					      image_layout, &clear_rect,
+					      clear_att.clearValue.color, 0)) {
+			radv_fast_clear_color(cmd_buffer, &iview, &clear_att,
+					      clear_att.colorAttachment,
+					      NULL, NULL);
+			return true;
+		}
+	} else {
+		if (radv_can_fast_clear_depth(cmd_buffer, &iview, image_layout,
+					      range->aspectMask, &clear_rect,
+					      clear_att.clearValue.depthStencil)) {
+			radv_fast_clear_depth(cmd_buffer, &iview, &clear_att,
+			                      NULL, NULL);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static void
 radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer,
 		     struct radv_image *image,
@@ -1803,18 +1872,31 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer,
 		internal_clear_value.color.uint32[0] = (r << 4) | (g & 0xf);
 	}
 
+	if (format == VK_FORMAT_R32G32B32_UINT ||
+	    format == VK_FORMAT_R32G32B32_SINT ||
+	    format == VK_FORMAT_R32G32B32_SFLOAT)
+		cs = true;
+
 	for (uint32_t r = 0; r < range_count; r++) {
 		const VkImageSubresourceRange *range = &ranges[r];
+
+		/* Try to perform a fast clear first, otherwise fallback to
+		 * the legacy path.
+		 */
+		if (!cs &&
+		    radv_fast_clear_range(cmd_buffer, image, format,
+					  image_layout, range,
+					  &internal_clear_value)) {
+			continue;
+		}
+
 		for (uint32_t l = 0; l < radv_get_levelCount(image, range); ++l) {
 			const uint32_t layer_count = image->type == VK_IMAGE_TYPE_3D ?
 				radv_minify(image->info.depth, range->baseMipLevel + l) :
 				radv_get_layerCount(image, range);
 			for (uint32_t s = 0; s < layer_count; ++s) {
 
-				if (cs ||
-				    (format == VK_FORMAT_R32G32B32_UINT ||
-				     format == VK_FORMAT_R32G32B32_SINT ||
-				     format == VK_FORMAT_R32G32B32_SFLOAT)) {
+				if (cs) {
 					struct radv_meta_blit2d_surf surf;
 					surf.format = format;
 					surf.image = image;
