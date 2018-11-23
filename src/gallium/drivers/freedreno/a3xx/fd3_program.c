@@ -226,6 +226,7 @@ fd3_program_emit(struct fd_ringbuffer *ring, struct fd3_emit *emit,
 
 	OUT_PKT0(ring, REG_A3XX_HLSQ_CONTROL_0_REG, 6);
 	OUT_RING(ring, A3XX_HLSQ_CONTROL_0_REG_FSTHREADSIZE(FOUR_QUADS) |
+			A3XX_HLSQ_CONTROL_0_REG_FSSUPERTHREADENABLE |
 			A3XX_HLSQ_CONTROL_0_REG_CONSTMODE(constmode) |
 			/* NOTE:  I guess SHADERRESTART and CONSTFULLUPDATE maybe
 			 * flush some caches? I think we only need to set those
