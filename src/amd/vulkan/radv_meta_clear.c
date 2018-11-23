@@ -1483,9 +1483,7 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 					     &clear_value, &reset_value,
 					     &can_avoid_fast_clear_elim);
 
-		if (iview->image->info.samples > 1) {
-			assert(radv_image_has_cmask(iview->image));
-
+		if (radv_image_has_cmask(iview->image)) {
 			flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
 						      cmask_clear_value);
 
