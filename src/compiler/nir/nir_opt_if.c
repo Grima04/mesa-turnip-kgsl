@@ -1326,6 +1326,65 @@ opt_if_merge(nir_if *nif)
    return progress;
 }
 
+/* Perform optimisations based on the values we can derive from the evaluation
+ * of if-statement conditions.
+ */
+static bool
+opt_for_known_values(nir_builder *b, nir_if *nif)
+{
+   bool progress = false;
+
+   assert(nif->condition.is_ssa);
+   nir_ssa_def *if_cond = nif->condition.ssa;
+
+   if (if_cond->parent_instr->type != nir_instr_type_alu)
+      return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu(if_cond->parent_instr);
+   switch (alu->op) {
+   case nir_op_feq:
+   case nir_op_ieq: {
+      nir_load_const_instr *load_const = NULL;
+      nir_ssa_def *unknown_val = NULL;
+
+      nir_ssa_def *src0 = alu->src[0].src.ssa;
+      nir_ssa_def *src1 = alu->src[1].src.ssa;
+      if (src0->parent_instr->type == nir_instr_type_load_const) {
+         load_const = nir_instr_as_load_const(src0->parent_instr);
+         unknown_val = src1;
+      } else if (src1->parent_instr->type == nir_instr_type_load_const) {
+         load_const = nir_instr_as_load_const(src1->parent_instr);
+         unknown_val = src0;
+      }
+
+      if (!load_const)
+        return false;
+
+      /* TODO: remove this and support swizzles? */
+      if (unknown_val->num_components != 1)
+        return false;
+
+      /* Replace unknown ssa uses with the known constant */
+      nir_foreach_use_safe(use_src, unknown_val) {
+         nir_cursor cursor = nir_before_src(use_src, false);
+         nir_block *use_block = nir_cursor_current_block(cursor);
+         if (nir_block_dominates(nir_if_first_then_block(nif), use_block)) {
+            nir_instr_rewrite_src(use_src->parent_instr, use_src,
+                                  nir_src_for_ssa(&load_const->def));
+            progress = true;
+         }
+      }
+
+      break;
+   }
+
+   default:
+      return false;
+   }
+
+   return progress;
+}
+
 static bool
 opt_if_cf_list(nir_builder *b, struct exec_list *cf_list)
 {
@@ -1380,6 +1439,7 @@ opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
          progress |= opt_if_safe_cf_list(b, &nif->then_list);
          progress |= opt_if_safe_cf_list(b, &nif->else_list);
          progress |= opt_if_evaluate_condition_use(b, nif);
+         progress |= opt_for_known_values(b, nif);
          break;
       }
 
