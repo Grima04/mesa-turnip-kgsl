@@ -872,6 +872,43 @@ radv_is_fast_clear_stencil_allowed(VkClearDepthStencilValue value)
 	return value.stencil == 0;
 }
 
+/**
+ * Determine if the given image can be fast cleared.
+ */
+static bool
+radv_image_can_fast_clear(struct radv_device *device,  struct radv_image *image)
+{
+	if (device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
+		return false;
+
+	if (vk_format_is_color(image->vk_format)) {
+		if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
+			return false;
+
+		/* RB+ doesn't work with CMASK fast clear on Stoney. */
+		if (!radv_image_has_dcc(image) &&
+		    device->physical_device->rad_info.family == CHIP_STONEY)
+			return false;
+	} else {
+		if (!radv_image_has_htile(image))
+			return false;
+
+		/* GFX8 only supports 32-bit depth surfaces but we can enable
+		 * TC-compat HTILE for 16-bit surfaces if no Z planes are
+		 * compressed. Though, fast HTILE clears don't seem to work.
+		 */
+		if (device->physical_device->rad_info.chip_class == VI &&
+		    image->vk_format == VK_FORMAT_D16_UNORM)
+			return false;
+	}
+
+	/* Do not fast clears 3D images. */
+	if (image->type == VK_IMAGE_TYPE_3D)
+		return false;
+
+	return true;
+}
+
 static bool
 emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 		      const VkClearAttachment *clear_att,
@@ -889,17 +926,10 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t clear_word, flush_bits;
 	uint32_t htile_mask;
 
-	if (!radv_image_has_htile(iview->image))
-		return false;
-
-	if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
+	if (!radv_image_can_fast_clear(cmd_buffer->device, iview->image))
 		return false;
 
 	if (!radv_layout_is_htile_compressed(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		return false;
-
-	/* don't fast clear 3D */
-	if (iview->image->type == VK_IMAGE_TYPE_3D)
 		return false;
 
 	/* all layers are bound */
@@ -931,14 +961,6 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	    !radv_is_fast_clear_depth_allowed(clear_value)) ||
 	    ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
 	     !radv_is_fast_clear_stencil_allowed(clear_value)))
-		return false;
-
-	/* GFX8 only supports 32-bit depth surfaces but we can enable TC-compat
-	 * HTILE for 16-bit surfaces if no Z planes are compressed. Though,
-	 * fast HTILE clears don't seem to work.
-	 */
-	if (cmd_buffer->device->physical_device->rad_info.chip_class == VI &&
-	    iview->image->vk_format == VK_FORMAT_D16_UNORM)
 		return false;
 
 	clear_word = radv_get_htile_fast_clear_value(iview->image, clear_value);
@@ -1347,17 +1369,10 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t cmask_clear_value;
 	bool ret;
 
-	if (!radv_image_has_cmask(iview->image) && !radv_image_has_dcc(iview->image))
-		return false;
-
-	if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
+	if (!radv_image_can_fast_clear(cmd_buffer->device, iview->image))
 		return false;
 
 	if (!radv_layout_can_fast_clear(iview->image, image_layout, radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index, cmd_buffer->queue_family_index)))
-		return false;
-
-	/* don't fast clear 3D */
-	if (iview->image->type == VK_IMAGE_TYPE_3D)
 		return false;
 
 	/* all layers are bound */
@@ -1380,11 +1395,6 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (!view_mask && clear_rect->baseArrayLayer != 0)
 		return false;
 	if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
-		return false;
-
-	/* RB+ doesn't work with CMASK fast clear on Stoney. */
-	if (!radv_image_has_dcc(iview->image) &&
-	    cmd_buffer->device->physical_device->rad_info.family == CHIP_STONEY)
 		return false;
 
 	/* DCC */
