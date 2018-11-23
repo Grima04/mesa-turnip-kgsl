@@ -489,11 +489,21 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
 
    va_gap_size = ws->check_vm ? MAX2(4 * alignment, 64 * 1024) : 0;
 
-   unsigned vm_alignment = alignment;
+   uint64_t vm_alignment = alignment;
 
    /* Increase the VM alignment for faster address translation. */
    if (size >= ws->info.pte_fragment_size)
       vm_alignment = MAX2(vm_alignment, ws->info.pte_fragment_size);
+
+   /* Gfx9: Increase the VM alignment to the most significant bit set
+    * in the size for faster address translation.
+    */
+   if (ws->info.chip_class >= GFX9) {
+      unsigned msb = util_last_bit64(size); /* 0 = no bit is set */
+      uint64_t msb_alignment = msb ? 1ull << (msb - 1) : 0;
+
+      vm_alignment = MAX2(vm_alignment, msb_alignment);
+   }
 
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
                              size + va_gap_size, vm_alignment, 0, &va, &va_handle,
