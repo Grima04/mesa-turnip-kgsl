@@ -1366,9 +1366,6 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (iview->image->info.array_size != iview->layer_count)
 		return false;
 
-	if (iview->image->info.levels > 1)
-		return false;
-
 	if (!radv_image_extent_compare(iview->image, &iview->extent))
 		return false;
 
