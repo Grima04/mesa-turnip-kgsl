@@ -43,7 +43,22 @@ typedef enum {
 typedef struct {
    nir_search_value_type type;
 
-   unsigned bit_size;
+   /**
+    * Bit size of the value. It is interpreted as follows:
+    *
+    * For a search expression:
+    * - If bit_size > 0, then the value only matches an SSA value with the
+    *   given bit size.
+    * - If bit_size <= 0, then the value matches any size SSA value.
+    *
+    * For a replace expression:
+    * - If bit_size > 0, then the value is constructed with the given bit size.
+    * - If bit_size == 0, then the value is constructed with the same bit size
+    *   as the search value.
+    * - If bit_size < 0, then the value is constructed with the same bit size
+    *   as variable (-bit_size - 1).
+    */
+   int bit_size;
 } nir_search_value;
 
 typedef struct {
