@@ -633,6 +633,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 		}
 		instr->alu.export = -1;
 		instr->src_count = 1;
+		ctx->so->has_kill = true;
 		break;
 	case nir_intrinsic_load_front_face:
 		/* gl_FrontFacing is in the sign of param.x

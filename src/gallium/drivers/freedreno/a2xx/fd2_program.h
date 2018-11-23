@@ -51,6 +51,7 @@ struct fd2_shader_stateobj {
 
 	bool writes_psize;
 	bool need_param;
+	bool has_kill;
 
 	/* note:
 	 * fragment shader only has one variant

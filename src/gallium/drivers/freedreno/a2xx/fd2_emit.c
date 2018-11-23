@@ -190,6 +190,7 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 {
 	struct fd2_blend_stateobj *blend = fd2_blend_stateobj(ctx->blend);
 	struct fd2_zsa_stateobj *zsa = fd2_zsa_stateobj(ctx->zsa);
+	struct fd2_shader_stateobj *fp = ctx->prog.fp;
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 
 	/* NOTE: we probably want to eventually refactor this so each state
@@ -205,12 +206,16 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 		OUT_RING(ring, ctx->sample_mask);
 	}
 
-	if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_STENCIL_REF)) {
+	if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_STENCIL_REF | FD_DIRTY_PROG)) {
 		struct pipe_stencil_ref *sr = &ctx->stencil_ref;
+		uint32_t val = zsa->rb_depthcontrol;
+
+		if (fp->has_kill)
+			val &= ~A2XX_RB_DEPTHCONTROL_EARLY_Z_ENABLE;
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTHCONTROL));
-		OUT_RING(ring, zsa->rb_depthcontrol);
+		OUT_RING(ring, val);
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 4);
 		OUT_RING(ring, CP_REG(REG_A2XX_RB_STENCILREFMASK_BF));
