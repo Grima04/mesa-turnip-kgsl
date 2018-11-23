@@ -973,26 +973,17 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 	return true;
 }
 
-static bool
-emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
+static void
+radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
+		      const struct radv_image_view *iview,
 		      const VkClearAttachment *clear_att,
-		      const VkClearRect *clear_rect,
 		      enum radv_cmd_flush_bits *pre_flush,
 		      enum radv_cmd_flush_bits *post_flush)
 {
-	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-	const uint32_t pass_att = subpass->depth_stencil_attachment.attachment;
-	VkImageLayout image_layout = subpass->depth_stencil_attachment.layout;
-	const struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
-	const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
 	VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
 	VkImageAspectFlags aspects = clear_att->aspectMask;
 	uint32_t clear_word, flush_bits;
 	uint32_t htile_mask;
-
-	if (!radv_can_fast_clear_depth(cmd_buffer, iview, image_layout, aspects,
-				       clear_rect, clear_value))
-		return false;
 
 	clear_word = radv_get_htile_fast_clear_value(iview->image, clear_value);
 	htile_mask = radv_get_htile_mask(iview->image, aspects);
@@ -1021,8 +1012,6 @@ emit_fast_htile_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (post_flush) {
 		*post_flush |= flush_bits;
 	}
-
-	return true;
 }
 
 static nir_shader *
@@ -1440,27 +1429,17 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 }
 
 
-static bool
-emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
+static void
+radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
+		      const struct radv_image_view *iview,
 		      const VkClearAttachment *clear_att,
-		      const VkClearRect *clear_rect,
+		      uint32_t subpass_att,
 		      enum radv_cmd_flush_bits *pre_flush,
-		      enum radv_cmd_flush_bits *post_flush,
-                      uint32_t view_mask)
+		      enum radv_cmd_flush_bits *post_flush)
 {
-	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-	const uint32_t subpass_att = clear_att->colorAttachment;
-	const uint32_t pass_att = subpass->color_attachments[subpass_att].attachment;
-	VkImageLayout image_layout = subpass->color_attachments[subpass_att].layout;
-	const struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
-	const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
 	VkClearColorValue clear_value = clear_att->clearValue.color;
 	uint32_t clear_color[2], flush_bits = 0;
 	uint32_t cmask_clear_value;
-
-	if (!radv_can_fast_clear_color(cmd_buffer, iview, image_layout,
-				       clear_rect, clear_value, view_mask))
-		return false;
 
 	if (pre_flush) {
 		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
@@ -1508,8 +1487,6 @@ emit_fast_color_clear(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_update_color_clear_metadata(cmd_buffer, iview->image, subpass_att,
 					 clear_color);
-
-	return true;
 }
 
 /**
@@ -1523,16 +1500,41 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
            enum radv_cmd_flush_bits *post_flush,
            uint32_t view_mask)
 {
-	if (clear_att->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-		if (!emit_fast_color_clear(cmd_buffer, clear_att, clear_rect,
-		                           pre_flush, post_flush, view_mask))
+	const struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+	VkImageAspectFlags aspects = clear_att->aspectMask;
+
+	if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+		const uint32_t subpass_att = clear_att->colorAttachment;
+		const uint32_t pass_att = subpass->color_attachments[subpass_att].attachment;
+		VkImageLayout image_layout = subpass->color_attachments[subpass_att].layout;
+		const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
+		VkClearColorValue clear_value = clear_att->clearValue.color;
+
+		if (radv_can_fast_clear_color(cmd_buffer, iview, image_layout,
+					      clear_rect, clear_value, view_mask)) {
+			radv_fast_clear_color(cmd_buffer, iview, clear_att,
+					      subpass_att, pre_flush,
+					      post_flush);
+		} else {
 			emit_color_clear(cmd_buffer, clear_att, clear_rect, view_mask);
+		}
 	} else {
-		assert(clear_att->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT |
-						VK_IMAGE_ASPECT_STENCIL_BIT));
-		if (!emit_fast_htile_clear(cmd_buffer, clear_att, clear_rect,
-		                           pre_flush, post_flush))
+		const uint32_t pass_att = subpass->depth_stencil_attachment.attachment;
+		VkImageLayout image_layout = subpass->depth_stencil_attachment.layout;
+		const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
+		VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
+
+		assert(aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+				  VK_IMAGE_ASPECT_STENCIL_BIT));
+
+		if (radv_can_fast_clear_depth(cmd_buffer, iview, image_layout,
+					      aspects, clear_rect, clear_value)) {
+			radv_fast_clear_depth(cmd_buffer, iview, clear_att,
+			                      pre_flush, post_flush);
+		} else {
 			emit_depthstencil_clear(cmd_buffer, clear_att, clear_rect);
+		}
 	}
 }
 
