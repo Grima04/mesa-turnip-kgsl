@@ -554,10 +554,6 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
 
    prog_data->binding_table.shader_time_start = 0xd0d0d0d0;
 
-   /* This may or may not be used depending on how the compile goes. */
-   prog_data->binding_table.pull_constants_start = next_binding_table_offset;
-   next_binding_table_offset++;
-
    /* Plane 0 is just the regular texture section */
    prog_data->binding_table.plane_start[0] = prog_data->binding_table.texture_start;
 
