@@ -1498,11 +1498,25 @@ struct anv_vue_header {
    float PointWidth;
 };
 
+enum anv_descriptor_data {
+   /** The descriptor contains a BTI reference to a surface state */
+   ANV_DESCRIPTOR_SURFACE_STATE  = (1 << 0),
+   /** The descriptor contains a BTI reference to a sampler state */
+   ANV_DESCRIPTOR_SAMPLER_STATE  = (1 << 1),
+   /** The descriptor contains an actual buffer view */
+   ANV_DESCRIPTOR_BUFFER_VIEW    = (1 << 2),
+   /** The descriptor contains auxiliary image layout data */
+   ANV_DESCRIPTOR_IMAGE_PARAM    = (1 << 3),
+};
+
 struct anv_descriptor_set_binding_layout {
 #ifndef NDEBUG
    /* The type of the descriptors in this binding */
    VkDescriptorType type;
 #endif
+
+   /* Bitfield representing the type of data this descriptor contains */
+   enum anv_descriptor_data data;
 
    /* Number of array elements in this binding */
    uint16_t array_size;
@@ -1515,17 +1529,6 @@ struct anv_descriptor_set_binding_layout {
 
    /* Index into the descriptor set buffer views */
    int16_t buffer_view_index;
-
-   struct {
-      /* Index into the binding table for the associated surface */
-      int16_t surface_index;
-
-      /* Index into the sampler table for the associated sampler */
-      int16_t sampler_index;
-
-      /* Index into the image param table for the associated image */
-      int16_t image_param_index;
-   } stage[MESA_SHADER_STAGES];
 
    /* Immutable samplers (or NULL if no immutable samplers) */
    struct anv_sampler **immutable_samplers;
@@ -1755,10 +1758,6 @@ struct anv_pipeline_layout {
    } set[MAX_SETS];
 
    uint32_t num_sets;
-
-   struct {
-      bool has_dynamic_offsets;
-   } stage[MESA_SHADER_STAGES];
 
    unsigned char sha1[20];
 };
