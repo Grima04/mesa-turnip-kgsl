@@ -3576,6 +3576,9 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
 #define push_bt_entry(addr) \
    assert(addr >= binder_addr); \
    if (!pin_only) bt_map[s++] = (addr) - binder_addr;
+#define bt_assert(section, exists)                           \
+   if (!pin_only) assert(prog_data->binding_table.section == \
+                         (exists) ? s : 0xd0d0d0d0)
 
 /**
  * Populate the binding table for a given shader stage.
@@ -3595,6 +3598,7 @@ iris_populate_binding_table(struct iris_context *ice,
    if (!shader)
       return;
 
+   UNUSED struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    uint32_t binder_addr = binder->bo->gtt_offset;
 
@@ -3634,8 +3638,7 @@ iris_populate_binding_table(struct iris_context *ice,
       }
    }
 
-   //assert(prog_data->binding_table.texture_start ==
-          //(ice->state.num_textures[stage] ? s : 0xd0d0d0d0));
+   bt_assert(texture_start, info->num_textures > 0);
 
    for (int i = 0; i < info->num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
@@ -3644,6 +3647,8 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
+   bt_assert(image_start, info->num_images > 0);
+
    for (int i = 0; i < info->num_images; i++) {
       uint32_t addr = use_image(batch, ice, shs, i);
       push_bt_entry(addr);
@@ -3651,10 +3656,14 @@ iris_populate_binding_table(struct iris_context *ice,
 
    const int num_ubos = iris_get_shader_num_ubos(ice, stage);
 
+   bt_assert(ubo_start, num_ubos > 0);
+
    for (int i = 0; i < num_ubos; i++) {
       uint32_t addr = use_const_buffer(batch, ice, &shs->constbuf[i]);
       push_bt_entry(addr);
    }
+
+   bt_assert(ssbo_start, info->num_abos + info->num_ssbos > 0);
 
    /* XXX: st is wasting 16 binding table slots for ABOs.  Should add a cap
     * for changing nir_lower_atomics_to_ssbos setting and buffer_base offset
@@ -3670,8 +3679,8 @@ iris_populate_binding_table(struct iris_context *ice,
 
 #if 0
       // XXX: not implemented yet
-      assert(prog_data->binding_table.plane_start[1] == 0xd0d0d0d0);
-      assert(prog_data->binding_table.plane_start[2] == 0xd0d0d0d0);
+      bt_assert(plane_start[1], ...);
+      bt_assert(plane_start[2], ...);
 #endif
 }
 
