@@ -3575,7 +3575,9 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
 
 #define push_bt_entry(addr) \
    assert(addr >= binder_addr); \
+   assert(s < prog_data->binding_table.size_bytes / sizeof(uint32_t)); \
    if (!pin_only) bt_map[s++] = (addr) - binder_addr;
+
 #define bt_assert(section, exists)                           \
    if (!pin_only) assert(prog_data->binding_table.section == \
                          (exists) ? s : 0xd0d0d0d0)
