@@ -2610,6 +2610,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
+	/* do Sethi–Ullman numbering before scheduling: */
+	ir3_sun(ir);
+
 	ret = ir3_sched(ir);
 	if (ret) {
 		DBG("SCHED failed!");
@@ -2707,6 +2710,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		so->total_in = actual_in;
 	else
 		so->total_in = max_bary + 1;
+
+	so->max_sun = ir->max_sun;
 
 out:
 	if (ret) {

@@ -52,7 +52,8 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 			"SHADER-DB: %s prog %d/%d: %u instructions, %u dwords\n"
 			"SHADER-DB: %s prog %d/%d: %u half, %u full\n"
 			"SHADER-DB: %s prog %d/%d: %u const, %u constlen\n"
-			"SHADER-DB: %s prog %d/%d: %u (ss), %u (sy)\n",
+			"SHADER-DB: %s prog %d/%d: %u (ss), %u (sy)\n"
+			"SHADER-DB: %s prog %d/%d: max_sun=%u\n",
 			ir3_shader_stage(v->shader),
 			v->shader->id, v->id,
 			v->info.instrs_count,
@@ -67,7 +68,10 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 			v->constlen,
 			ir3_shader_stage(v->shader),
 			v->shader->id, v->id,
-			v->info.ss, v->info.sy);
+			v->info.ss, v->info.sy,
+			ir3_shader_stage(v->shader),
+			v->shader->id, v->id,
+			v->max_sun);
 }
 
 struct ir3_shader_variant *
