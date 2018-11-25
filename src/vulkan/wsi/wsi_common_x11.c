@@ -720,6 +720,7 @@ struct x11_swapchain {
 
    struct x11_image                             images[0];
 };
+WSI_DEFINE_NONDISP_HANDLE_CASTS(x11_swapchain, VkSwapchainKHR)
 
 /**
  * Update the swapchain status with the result of an operation, and return
@@ -1360,7 +1361,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * mode which provokes reallocation when anything changes, to make
     * sure we have the most optimal allocation.
     */
-   struct x11_swapchain *old_chain = (void *)(intptr_t) pCreateInfo->oldSwapchain;
+   WSI_FROM_HANDLE(x11_swapchain, old_chain, pCreateInfo->oldSwapchain);
    if (old_chain)
       chain->last_present_mode = old_chain->last_present_mode;
    else
