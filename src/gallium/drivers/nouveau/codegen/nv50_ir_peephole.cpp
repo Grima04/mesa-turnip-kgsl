@@ -740,6 +740,7 @@ ConstantFolding::expr(Instruction *i,
       // restrictions, so move it into a separate LValue.
       bld.setPosition(i, false);
       i->op = OP_ADD;
+      i->dnz = 0;
       i->setSrc(1, bld.mkMov(bld.getSSA(type), i->getSrc(0), type)->getDef(0));
       i->setSrc(0, i->getSrc(2));
       i->src(0).mod = i->src(2).mod;
@@ -1093,6 +1094,7 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
          if (imm0.isNegative())
             i->src(t).mod = i->src(t).mod ^ Modifier(NV50_IR_MOD_NEG);
          i->op = OP_ADD;
+         i->dnz = 0;
          i->setSrc(s, i->getSrc(t));
          i->src(s).mod = i->src(t).mod;
       } else
@@ -1131,6 +1133,7 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
          i->setSrc(1, i->getSrc(2));
          i->src(1).mod = i->src(2).mod;
          i->setSrc(2, NULL);
+         i->dnz = 0;
          i->op = OP_ADD;
       } else
       if (!isFloatType(i->dType) && !i->subOp && !i->src(t).mod && !i->src(2).mod) {
