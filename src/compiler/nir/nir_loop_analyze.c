@@ -49,8 +49,11 @@ typedef struct {
    /* If this is of type basic_induction */
    struct nir_basic_induction_var *ind;
 
-   /* True if variable is in an if branch or a nested loop */
-   bool in_control_flow;
+   /* True if variable is in an if branch */
+   bool in_if_branch;
+
+   /* True if variable is in a nested loop */
+   bool in_nested_loop;
 
 } nir_loop_variable;
 
@@ -83,7 +86,8 @@ get_loop_var(nir_ssa_def *value, loop_info_state *state)
 
 typedef struct {
    loop_info_state *state;
-   bool in_control_flow;
+   bool in_if_branch;
+   bool in_nested_loop;
 } init_loop_state;
 
 static bool
@@ -92,8 +96,10 @@ init_loop_def(nir_ssa_def *def, void *void_init_loop_state)
    init_loop_state *loop_init_state = void_init_loop_state;
    nir_loop_variable *var = get_loop_var(def, loop_init_state->state);
 
-   if (loop_init_state->in_control_flow) {
-      var->in_control_flow = true;
+   if (loop_init_state->in_nested_loop) {
+      var->in_nested_loop = true;
+   } else if (loop_init_state->in_if_branch) {
+      var->in_if_branch = true;
    } else {
       /* Add to the tail of the list. That way we start at the beginning of
        * the defs in the loop instead of the end when walking the list. This
@@ -110,9 +116,10 @@ init_loop_def(nir_ssa_def *def, void *void_init_loop_state)
 
 static bool
 init_loop_block(nir_block *block, loop_info_state *state,
-                bool in_control_flow)
+                bool in_if_branch, bool in_nested_loop)
 {
-   init_loop_state init_state = {.in_control_flow = in_control_flow,
+   init_loop_state init_state = {.in_if_branch = in_if_branch,
+                                 .in_nested_loop = in_nested_loop,
                                  .state = state };
 
    nir_foreach_instr(instr, block) {
@@ -198,7 +205,7 @@ compute_invariance_information(loop_info_state *state)
     */
    list_for_each_entry_safe(nir_loop_variable, var, &state->process_list,
                             process_link) {
-      assert(!var->in_control_flow);
+      assert(!var->in_if_branch && !var->in_nested_loop);
 
       if (mark_invariant(var->def, state))
          list_del(&var->process_link);
@@ -216,7 +223,8 @@ compute_induction_information(loop_info_state *state)
        * things in nested loops or conditionals should have been removed from
        * the list by compute_invariance_information().
        */
-      assert(!var->in_control_flow && var->type != invariant);
+      assert(!var->in_if_branch && !var->in_nested_loop &&
+             var->type != invariant);
 
       /* We are only interested in checking phis for the basic induction
        * variable case as its simple to detect. All basic induction variables
@@ -234,7 +242,7 @@ compute_induction_information(loop_info_state *state)
          /* If one of the sources is in a conditional or nested block then
           * panic.
           */
-         if (src_var->in_control_flow)
+         if (src_var->in_if_branch || src_var->in_nested_loop)
             break;
 
          if (!src_var->in_loop) {
@@ -717,17 +725,17 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
       switch (node->type) {
 
       case nir_cf_node_block:
-         init_loop_block(nir_cf_node_as_block(node), state, false);
+         init_loop_block(nir_cf_node_as_block(node), state, false, false);
          break;
 
       case nir_cf_node_if:
          nir_foreach_block_in_cf_node(block, node)
-            init_loop_block(block, state, true);
+            init_loop_block(block, state, true, false);
          break;
 
       case nir_cf_node_loop:
          nir_foreach_block_in_cf_node(block, node) {
-            init_loop_block(block, state, true);
+            init_loop_block(block, state, false, true);
          }
          break;
 
