@@ -245,6 +245,42 @@ compute_induction_information(loop_info_state *state)
          if (src_var->in_if_branch || src_var->in_nested_loop)
             break;
 
+         /* Detect inductions variables that are incremented in both branches
+          * of an unnested if rather than in a loop block.
+          */
+         if (is_var_phi(src_var)) {
+            nir_phi_instr *src_phi =
+               nir_instr_as_phi(src_var->def->parent_instr);
+
+            nir_op alu_op;
+            nir_ssa_def *alu_srcs[2] = {0};
+            nir_foreach_phi_src(src2, src_phi) {
+               nir_loop_variable *src_var2 =
+                  get_loop_var(src2->src.ssa, state);
+
+               if (!src_var2->in_if_branch || !is_var_alu(src_var2))
+                  break;
+
+               nir_alu_instr *alu =
+                  nir_instr_as_alu(src_var2->def->parent_instr);
+               if (nir_op_infos[alu->op].num_inputs != 2)
+                  break;
+
+               if (alu->src[0].src.ssa == alu_srcs[0] &&
+                   alu->src[1].src.ssa == alu_srcs[1] &&
+                   alu->op == alu_op) {
+                  /* Both branches perform the same calculation so we can use
+                   * one of them to find the induction variable.
+                   */
+                  src_var = src_var2;
+               } else {
+                  alu_srcs[0] = alu->src[0].src.ssa;
+                  alu_srcs[1] = alu->src[1].src.ssa;
+                  alu_op = alu->op;
+               }
+            }
+         }
+
          if (!src_var->in_loop) {
             biv->def_outside_loop = src_var;
          } else if (is_var_alu(src_var)) {
