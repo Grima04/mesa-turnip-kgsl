@@ -1371,6 +1371,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
       shs->samplers[start + i] = states[i];
    }
 
+   // XXX: count may include NULLs
+
    /* Assemble the SAMPLER_STATEs into a contiguous table that lives
     * in the dynamic state memory zone, so we can point to it via the
     * 3DSTATE_SAMPLER_STATE_POINTERS_* commands.
@@ -1665,6 +1667,8 @@ iris_set_shader_images(struct pipe_context *ctx,
    const struct gen_device_info *devinfo = &screen->devinfo;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
+
+   shs->num_images = MAX2(shs->num_images, start_slot + count);
 
    for (unsigned i = 0; i < count; i++) {
       if (p_images && p_images[i].resource) {

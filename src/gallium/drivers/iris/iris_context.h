@@ -282,6 +282,7 @@ struct iris_shader_state {
    struct iris_state_ref sampler_table;
    struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];
    struct iris_sampler_view *textures[IRIS_MAX_TEXTURE_SAMPLERS];
+   unsigned num_images;
    unsigned num_samplers;
    unsigned num_textures;
 };

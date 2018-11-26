@@ -51,6 +51,21 @@ resolve_sampler_views(struct iris_batch *batch,
    }
 }
 
+static void
+resolve_image_views(struct iris_batch *batch,
+                    struct iris_shader_state *shs)
+{
+   for (int i = 0; i < shs->num_images; i++) {
+      struct pipe_resource *res = shs->image[i].res;
+      if (!res)
+         continue;
+
+      // XXX: aux tracking
+      iris_cache_flush_for_read(batch, iris_resource_bo(res));
+   }
+}
+
+
 /**
  * \brief Resolve buffers before drawing.
  *
@@ -64,6 +79,7 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       struct iris_shader_state *shs = &ice->state.shaders[stage];
       resolve_sampler_views(batch, shs);
+      resolve_image_views(batch, shs);
    }
 
    // XXX: storage images
