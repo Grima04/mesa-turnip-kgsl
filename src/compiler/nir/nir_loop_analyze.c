@@ -239,8 +239,8 @@ compute_induction_information(loop_info_state *state)
       nir_foreach_phi_src(src, phi) {
          nir_loop_variable *src_var = get_loop_var(src->src.ssa, state);
 
-         /* If one of the sources is in a conditional or nested block then
-          * panic.
+         /* If one of the sources is in an if branch or nested loop then don't
+          * attempt to go any further.
           */
          if (src_var->in_if_branch || src_var->in_nested_loop)
             break;
