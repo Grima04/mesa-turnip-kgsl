@@ -56,7 +56,7 @@ iris_clear(struct pipe_context *ctx,
    iris_batch_maybe_flush(batch, 1500);
 
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, BLORP_BATCH_PREDICATE_ENABLE);
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       struct pipe_surface *psurf = cso_fb->zsbuf;

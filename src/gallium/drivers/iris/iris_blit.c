@@ -338,7 +338,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch,
+                    info->render_condition_enable ? BLORP_BATCH_PREDICATE_ENABLE : 0);
 
    for (int slice = 0; slice < info->dst.box.depth; slice++) {
       iris_batch_maybe_flush(batch, 1500);

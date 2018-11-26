@@ -211,6 +211,22 @@ enum pipe_control_flags
     PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE | \
     PIPE_CONTROL_INSTRUCTION_INVALIDATE)
 
+enum iris_predicate_state {
+   /* The first two states are used if we can determine whether to draw
+    * without having to look at the values in the query object buffer. This
+    * will happen if there is no conditional render in progress, if the query
+    * object is already completed or if something else has already added
+    * samples to the preliminary result.
+    */
+   IRIS_PREDICATE_STATE_RENDER,
+   IRIS_PREDICATE_STATE_DONT_RENDER,
+
+   /* In this case whether to draw or not depends on the result of an
+    * MI_PREDICATE command so the predicate enable bit needs to be checked.
+    */
+   IRIS_PREDICATE_STATE_USE_BIT,
+};
+
 /** @} */
 
 /**
@@ -414,6 +430,7 @@ struct iris_context {
       struct iris_bo *scratch_bos[1 << 4][MESA_SHADER_STAGES];
    } shaders;
 
+   enum iris_predicate_state predicate;
    struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
