@@ -1312,6 +1312,7 @@ void
 nir_print_shader(nir_shader *shader, FILE *fp)
 {
    nir_print_shader_annotated(shader, fp, NULL);
+   fflush(fp);
 }
 
 void
