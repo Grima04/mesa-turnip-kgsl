@@ -110,9 +110,19 @@ radv_image_from_gralloc(VkDevice device_h,
 	struct radv_bo *bo = NULL;
 	VkResult result;
 
+	VkImageCreateInfo updated_base_info = *base_info;
+
+	VkExternalMemoryImageCreateInfo external_memory_info = {
+		.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+		.pNext = updated_base_info.pNext,
+		.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+	};
+
+	updated_base_info.pNext = &external_memory_info;
+
 	result = radv_image_create(device_h,
 	                           &(struct radv_image_create_info) {
-	                               .vk_info = base_info,
+	                               .vk_info = &updated_base_info,
 	                               .scanout = true,
 	                               .no_metadata_planes = true},
 	                           alloc,
