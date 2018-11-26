@@ -1585,8 +1585,10 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
         goto error;
 
     if (amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
-                              aligned_size, 1 << 12, 0, &va, &va_handle,
-			      AMDGPU_VA_RANGE_HIGH))
+                              aligned_size,
+                              amdgpu_get_optimal_vm_alignment(ws, aligned_size,
+                                                              ws->info.gart_page_size),
+                              0, &va, &va_handle, AMDGPU_VA_RANGE_HIGH))
         goto error_va_alloc;
 
     if (amdgpu_bo_va_op(buf_handle, 0, aligned_size, va, 0, AMDGPU_VA_OP_MAP))
