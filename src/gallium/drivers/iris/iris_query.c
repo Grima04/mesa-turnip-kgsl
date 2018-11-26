@@ -109,8 +109,8 @@ struct iris_query_snapshots {
 struct iris_query_so_overflow {
    uint64_t snapshots_landed;
    struct {
-      uint64_t num_prims[2];
       uint64_t prim_storage_needed[2];
+      uint64_t num_prims[2];
    } stream[4];
 };
 
@@ -247,15 +247,14 @@ write_overflow_values(struct iris_context *ice, struct iris_query *q, bool end)
                                 PIPE_CONTROL_CS_STALL |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
    for (uint32_t i = 0; i < count; i++) {
+      int s = q->index + i;
       int g_idx = offsetof(struct iris_query_so_overflow,
-                           stream[i].num_prims[end]);
+                           stream[s].num_prims[end]);
       int w_idx = offsetof(struct iris_query_so_overflow,
-                           stream[i].prim_storage_needed[end]);
-      ice->vtbl.store_register_mem64(batch,
-                                     SO_NUM_PRIMS_WRITTEN(q->index + i),
+                           stream[s].prim_storage_needed[end]);
+      ice->vtbl.store_register_mem64(batch, SO_NUM_PRIMS_WRITTEN(s),
                                      q->bo, g_idx, false);
-      ice->vtbl.store_register_mem64(batch,
-                                     SO_PRIM_STORAGE_NEEDED(q->index + i),
+      ice->vtbl.store_register_mem64(batch, SO_PRIM_STORAGE_NEEDED(s),
                                      q->bo, w_idx, false);
    }
 }
@@ -275,6 +274,14 @@ iris_raw_timestamp_delta(uint64_t time0, uint64_t time1)
    } else {
       return time1 - time0;
    }
+}
+
+static bool
+stream_overflowed(struct iris_query_so_overflow *so, int s)
+{
+   return (so->stream[s].prim_storage_needed[1] -
+           so->stream[s].prim_storage_needed[0]) !=
+          (so->stream[s].num_prims[1] - so->stream[s].num_prims[0]);
 }
 
 static void
@@ -298,18 +305,13 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
-   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE: {
-      struct iris_query_so_overflow *xfb =
-         (struct iris_query_so_overflow *)q->map;
-      uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
-
-      for (int i = 0; i < count; i++) {
-         if ((xfb->stream[i].prim_storage_needed[1] - xfb->stream[i].prim_storage_needed[0]) !=
-             (xfb->stream[i].num_prims[1] - xfb->stream[i].num_prims[0]))
-            q->result = true;
-      }
+      q->result = stream_overflowed((void *) q->map, q->index);
       break;
-   }
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      q->result = false;
+      for (int i = 0; i < MAX_VERTEX_STREAMS; i++)
+         q->result |= stream_overflowed((void *) q->map, i);
+      break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
@@ -402,15 +404,23 @@ calc_overflow_for_stream(struct iris_context *ice)
 }
 
 static void
-calc_overflow_to_gpr0(struct iris_context *ice, struct iris_query *q,
-                      int count)
+overflow_result_to_gpr0(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
    ice->vtbl.load_register_imm64(batch, CS_GPR(0), 0ull);
-   for (int i = 0; i < count; i++) {
-      load_overflow_data_to_cs_gprs(ice, q, i);
+
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
+      load_overflow_data_to_cs_gprs(ice, q, q->index);
       calc_overflow_for_stream(ice);
+   } else {
+      for (int i = 0; i < MAX_VERTEX_STREAMS; i++) {
+         load_overflow_data_to_cs_gprs(ice, q, i);
+         calc_overflow_for_stream(ice);
+      }
    }
+
+   gpr0_to_bool(ice);
 }
 
 /**
@@ -423,9 +433,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-      uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
-      calc_overflow_to_gpr0(ice, q, count);
-      gpr0_to_bool(ice);
+      overflow_result_to_gpr0(ice, q);
       return;
    }
 
