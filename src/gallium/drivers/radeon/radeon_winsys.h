@@ -364,6 +364,7 @@ struct radeon_winsys {
      */
     struct pb_buffer *(*buffer_from_handle)(struct radeon_winsys *ws,
                                             struct winsys_handle *whandle,
+                                            unsigned vm_alignment,
                                             unsigned *stride, unsigned *offset);
 
     /**

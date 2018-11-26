@@ -1397,6 +1397,7 @@ no_slab:
 
 static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
                                                struct winsys_handle *whandle,
+                                               unsigned vm_alignment,
                                                unsigned *stride,
                                                unsigned *offset)
 {
@@ -1454,7 +1455,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
       goto error;
 
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
-                             result.alloc_size, 1 << 20, 0, &va, &va_handle,
+                             result.alloc_size, vm_alignment, 0, &va, &va_handle,
 			     AMDGPU_VA_RANGE_HIGH);
    if (r)
       goto error;
