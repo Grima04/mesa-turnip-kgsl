@@ -233,6 +233,10 @@ public:
                                int op, nir_intrinsic_instr *instr);
    void nir_emit_shared_atomic_float(const brw::fs_builder &bld,
                                      int op, nir_intrinsic_instr *instr);
+   void nir_emit_global_atomic(const brw::fs_builder &bld,
+                               int op, nir_intrinsic_instr *instr);
+   void nir_emit_global_atomic_float(const brw::fs_builder &bld,
+                                     int op, nir_intrinsic_instr *instr);
    void nir_emit_texture(const brw::fs_builder &bld,
                          nir_tex_instr *instr);
    void nir_emit_jump(const brw::fs_builder &bld,

@@ -750,6 +750,46 @@ brw_dp_a64_byte_scattered_rw_desc(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
+brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
+                               unsigned exec_size, /**< 0 for SIMD4x2 */
+                               unsigned bit_size,
+                               unsigned atomic_op,
+                               bool response_expected)
+{
+   assert(exec_size == 8);
+   assert(devinfo->gen >= 8);
+   assert(bit_size == 32 || bit_size == 64);
+
+   const unsigned msg_type = GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP;
+
+   const unsigned msg_control =
+      SET_BITS(atomic_op, 3, 0) |
+      SET_BITS(bit_size == 64, 4, 4) |
+      SET_BITS(response_expected, 5, 5);
+
+   return brw_dp_desc(devinfo, BRW_BTI_STATELESS, msg_type, msg_control);
+}
+
+static inline uint32_t
+brw_dp_a64_untyped_atomic_float_desc(const struct gen_device_info *devinfo,
+                                     unsigned exec_size,
+                                     unsigned atomic_op,
+                                     bool response_expected)
+{
+   assert(exec_size == 8);
+   assert(devinfo->gen >= 9);
+
+   assert(exec_size > 0);
+   const unsigned msg_type = GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP;
+
+   const unsigned msg_control =
+      SET_BITS(atomic_op, 1, 0) |
+      SET_BITS(response_expected, 5, 5);
+
+   return brw_dp_desc(devinfo, BRW_BTI_STATELESS, msg_type, msg_control);
+}
+
+static inline uint32_t
 brw_dp_typed_atomic_desc(const struct gen_device_info *devinfo,
                          unsigned exec_size,
                          unsigned exec_group,

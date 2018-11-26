@@ -499,6 +499,8 @@ schedule_node::set_latency_gen7(bool is_haswell)
          case HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2:
          case HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP:
          case GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
+         case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
+         case GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
             /* See also SHADER_OPCODE_UNTYPED_ATOMIC */
             latency = 14000;
             break;
