@@ -106,6 +106,14 @@ struct iris_query_snapshots {
    uint64_t end;
 };
 
+struct iris_query_so_overflow {
+   uint64_t snapshots_landed;
+   struct {
+      uint64_t num_prims[2];
+      uint64_t prim_storage_needed[2];
+   } stream[4];
+};
+
 /**
  * Is this type of query written by PIPE_CONTROL?
  */
@@ -229,6 +237,29 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    }
 }
 
+static void
+write_overflow_values(struct iris_context *ice, struct iris_query *q, bool end)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
+
+   iris_emit_pipe_control_flush(batch,
+                                PIPE_CONTROL_CS_STALL |
+                                PIPE_CONTROL_STALL_AT_SCOREBOARD);
+   for (uint32_t i = 0; i < count; i++) {
+      int g_idx = offsetof(struct iris_query_so_overflow,
+                           stream[i].num_prims[end]);
+      int w_idx = offsetof(struct iris_query_so_overflow,
+                           stream[i].prim_storage_needed[end]);
+      ice->vtbl.store_register_mem64(batch,
+                                     SO_NUM_PRIMS_WRITTEN(q->index + i),
+                                     q->bo, g_idx, false);
+      ice->vtbl.store_register_mem64(batch,
+                                     SO_PRIM_STORAGE_NEEDED(q->index + i),
+                                     q->bo, w_idx, false);
+   }
+}
+
 uint64_t
 iris_timebase_scale(const struct gen_device_info *devinfo,
                     uint64_t gpu_timestamp)
@@ -266,6 +297,19 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       q->result = iris_timebase_scale(devinfo, q->result);
       q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE: {
+      struct iris_query_so_overflow *xfb =
+         (struct iris_query_so_overflow *)q->map;
+      uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
+
+      for (int i = 0; i < count; i++) {
+         if ((xfb->stream[i].prim_storage_needed[1] - xfb->stream[i].prim_storage_needed[0]) !=
+             (xfb->stream[i].num_prims[1] - xfb->stream[i].num_prims[0]))
+            q->result = true;
+      }
+      break;
+   }
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
@@ -302,6 +346,73 @@ gpr0_to_bool(struct iris_context *ice)
    iris_batch_emit(batch, math, sizeof(math));
 }
 
+static void
+load_overflow_data_to_cs_gprs(struct iris_context *ice,
+                              struct iris_query *q,
+                              int idx)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
+                                 offsetof(struct iris_query_so_overflow,
+                                          stream[idx].prim_storage_needed[0]));
+   ice->vtbl.load_register_mem64(batch, CS_GPR(2), q->bo,
+                                 offsetof(struct iris_query_so_overflow,
+                                          stream[idx].prim_storage_needed[1]));
+
+   ice->vtbl.load_register_mem64(batch, CS_GPR(3), q->bo,
+                                 offsetof(struct iris_query_so_overflow,
+                                          stream[idx].num_prims[0]));
+   ice->vtbl.load_register_mem64(batch, CS_GPR(4), q->bo,
+                                 offsetof(struct iris_query_so_overflow,
+                                          stream[idx].num_prims[1]));
+}
+
+/*
+ * R3 = R4 - R3;
+ * R1 = R2 - R1;
+ * R1 = R3 - R1;
+ * R0 = R0 | R1;
+ */
+static void
+calc_overflow_for_stream(struct iris_context *ice)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   static const uint32_t maths[] = {
+      MI_MATH | (17 - 2),
+      MI_ALU2(LOAD, SRCA, R4),
+      MI_ALU2(LOAD, SRCB, R3),
+      MI_ALU0(SUB),
+      MI_ALU2(STORE, R3, ACCU),
+      MI_ALU2(LOAD, SRCA, R2),
+      MI_ALU2(LOAD, SRCB, R1),
+      MI_ALU0(SUB),
+      MI_ALU2(STORE, R1, ACCU),
+      MI_ALU2(LOAD, SRCA, R3),
+      MI_ALU2(LOAD, SRCB, R1),
+      MI_ALU0(SUB),
+      MI_ALU2(STORE, R1, ACCU),
+      MI_ALU2(LOAD, SRCA, R1),
+      MI_ALU2(LOAD, SRCB, R0),
+      MI_ALU0(OR),
+      MI_ALU2(STORE, R0, ACCU),
+   };
+
+   iris_batch_emit(batch, maths, sizeof(maths));
+}
+
+static void
+calc_overflow_to_gpr0(struct iris_context *ice, struct iris_query *q,
+                      int count)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   ice->vtbl.load_register_imm64(batch, CS_GPR(0), 0ull);
+   for (int i = 0; i < count; i++) {
+      load_overflow_data_to_cs_gprs(ice, q, i);
+      calc_overflow_for_stream(ice);
+   }
+}
+
 /**
  * Calculate the result and store it to CS_GPR0.
  */
@@ -309,6 +420,14 @@ static void
 calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+       q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+      uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
+      calc_overflow_to_gpr0(ice, q, count);
+      gpr0_to_bool(ice);
+      return;
+   }
 
    ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
                                  offsetof(struct iris_query_snapshots, start));
@@ -377,7 +496,11 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
       ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
-   write_value(ice, q, offsetof(struct iris_query_snapshots, start));
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+       q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      write_overflow_values(ice, q, false);
+   else
+      write_value(ice, q, offsetof(struct iris_query_snapshots, start));
 
    return true;
 }
@@ -399,7 +522,11 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
       ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
    }
 
-   write_value(ice, q, offsetof(struct iris_query_snapshots, end));
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+       q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      write_overflow_values(ice, q, true);
+   else
+      write_value(ice, q, offsetof(struct iris_query_snapshots, end));
    mark_available(ice, q);
 
    return true;
