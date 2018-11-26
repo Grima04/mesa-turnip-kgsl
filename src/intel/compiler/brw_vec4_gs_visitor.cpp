@@ -667,7 +667,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          prog_data->control_data_format = GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID;
 
          /* We only have to emit control bits if we are using streams */
-         if (prog && prog->info.gs.uses_streams)
+         if (shader->info.gs.uses_streams)
             c.control_data_bits_per_vertex = 2;
          else
             c.control_data_bits_per_vertex = 0;
