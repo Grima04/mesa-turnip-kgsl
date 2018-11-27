@@ -98,6 +98,8 @@ struct iris_query {
 
    struct iris_bo *bo;
    struct iris_query_snapshots *map;
+
+   int batch_idx;
 };
 
 struct iris_query_snapshots {
@@ -137,7 +139,7 @@ iris_is_query_pipelined(struct iris_query *q)
 static void
 mark_available(struct iris_context *ice, struct iris_query *q)
 {
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_batch *batch = &ice->batches[q->batch_idx];
    unsigned flags = PIPE_CONTROL_WRITE_IMMEDIATE;
    unsigned offset = offsetof(struct iris_query_snapshots, snapshots_landed);
 
@@ -170,7 +172,7 @@ iris_pipelined_write(struct iris_batch *batch,
 static void
 write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 {
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_batch *batch = &ice->batches[q->batch_idx];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
    if (!iris_is_query_pipelined(q)) {
@@ -429,7 +431,7 @@ overflow_result_to_gpr0(struct iris_context *ice, struct iris_query *q)
 static void
 calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_batch *batch = &ice->batches[q->batch_idx];
 
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
@@ -466,6 +468,10 @@ iris_create_query(struct pipe_context *ctx,
    q->type = query_type;
    q->index = index;
 
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS && q->index == 10)
+      q->batch_idx = IRIS_BATCH_COMPUTE;
+   else
+      q->batch_idx = IRIS_BATCH_RENDER;
    return (struct pipe_query *) q;
 }
 
@@ -552,8 +558,8 @@ iris_get_query_result(struct pipe_context *ctx,
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (!q->ready) {
-      if (iris_batch_references(&ice->batches[IRIS_BATCH_RENDER], q->bo))
-         iris_batch_flush(&ice->batches[IRIS_BATCH_RENDER]);
+      if (iris_batch_references(&ice->batches[q->batch_idx], q->bo))
+         iris_batch_flush(&ice->batches[q->batch_idx]);
 
       if (!q->map->snapshots_landed) {
          if (wait)
@@ -622,7 +628,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_batch *batch = &ice->batches[q->batch_idx];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    struct iris_resource *res = (void *) p_res;
    unsigned snapshots_landed_offset =
