@@ -546,6 +546,21 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
    return true;
 }
 
+/**
+ * See if the snapshots have landed for a query, and if so, compute the
+ * result and mark it ready.  Does not flush (unlike iris_get_query_result).
+ */
+static void
+iris_check_query_no_flush(struct iris_context *ice, struct iris_query *q)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   if (!q->ready && q->map->snapshots_landed) {
+      calculate_result_on_cpu(devinfo, q);
+   }
+}
+
 static boolean
 iris_get_query_result(struct pipe_context *ctx,
                       struct pipe_query *query,
@@ -814,6 +829,8 @@ iris_render_condition(struct pipe_context *ctx,
       ice->predicate = IRIS_PREDICATE_STATE_RENDER;
       return;
    }
+
+   iris_check_query_no_flush(ice, q);
 
    if (q->result || q->ready)
       set_predicate_enable(ice, (q->result != 0) ^ condition);
