@@ -191,8 +191,10 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    util_hash_table_remove(ws->bo_export_table, bo->bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
-   amdgpu_bo_va_op(bo->bo, 0, bo->base.size, bo->va, 0, AMDGPU_VA_OP_UNMAP);
-   amdgpu_va_range_free(bo->u.real.va_handle);
+   if (bo->initial_domain & RADEON_DOMAIN_VRAM_GTT) {
+      amdgpu_bo_va_op(bo->bo, 0, bo->base.size, bo->va, 0, AMDGPU_VA_OP_UNMAP);
+      amdgpu_va_range_free(bo->u.real.va_handle);
+   }
    amdgpu_bo_free(bo->bo);
 
    amdgpu_bo_remove_fences(bo);
@@ -457,11 +459,12 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    uint64_t va = 0;
    struct amdgpu_winsys_bo *bo;
    amdgpu_va_handle va_handle;
-   unsigned va_gap_size;
    int r;
 
    /* VRAM or GTT must be specified, but not both at the same time. */
-   assert(util_bitcount(initial_domain & RADEON_DOMAIN_VRAM_GTT) == 1);
+   assert(util_bitcount(initial_domain & (RADEON_DOMAIN_VRAM_GTT |
+                                          RADEON_DOMAIN_GDS |
+                                          RADEON_DOMAIN_OA)) == 1);
 
    /* Gfx9: Overallocate the size to the next power of two for faster address
     * translation if we don't waste too much memory.
@@ -503,6 +506,10 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
       request.preferred_heap |= AMDGPU_GEM_DOMAIN_VRAM;
    if (initial_domain & RADEON_DOMAIN_GTT)
       request.preferred_heap |= AMDGPU_GEM_DOMAIN_GTT;
+   if (initial_domain & RADEON_DOMAIN_GDS)
+      request.preferred_heap |= AMDGPU_GEM_DOMAIN_GDS;
+   if (initial_domain & RADEON_DOMAIN_OA)
+      request.preferred_heap |= AMDGPU_GEM_DOMAIN_OA;
 
    /* Since VRAM and GTT have almost the same performance on APUs, we could
     * just set GTT. However, in order to decrease GTT(RAM) usage, which is
@@ -532,27 +539,29 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
       goto error_bo_alloc;
    }
 
-   va_gap_size = ws->check_vm ? MAX2(4 * alignment, 64 * 1024) : 0;
+   if (initial_domain & RADEON_DOMAIN_VRAM_GTT) {
+      unsigned va_gap_size = ws->check_vm ? MAX2(4 * alignment, 64 * 1024) : 0;
 
-   r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
-                             size + va_gap_size,
-                             amdgpu_get_optimal_vm_alignment(ws, size, alignment),
-                             0, &va, &va_handle,
-                             (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) |
-                             AMDGPU_VA_RANGE_HIGH);
-   if (r)
-      goto error_va_alloc;
+      r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
+                                size + va_gap_size,
+                                amdgpu_get_optimal_vm_alignment(ws, size, alignment),
+                                0, &va, &va_handle,
+                                (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) |
+                                AMDGPU_VA_RANGE_HIGH);
+      if (r)
+         goto error_va_alloc;
 
-   unsigned vm_flags = AMDGPU_VM_PAGE_READABLE |
-                       AMDGPU_VM_PAGE_EXECUTABLE;
+      unsigned vm_flags = AMDGPU_VM_PAGE_READABLE |
+                          AMDGPU_VM_PAGE_EXECUTABLE;
 
-   if (!(flags & RADEON_FLAG_READ_ONLY))
-       vm_flags |= AMDGPU_VM_PAGE_WRITEABLE;
+      if (!(flags & RADEON_FLAG_READ_ONLY))
+         vm_flags |= AMDGPU_VM_PAGE_WRITEABLE;
 
-   r = amdgpu_bo_va_op_raw(ws->dev, buf_handle, 0, size, va, vm_flags,
+      r = amdgpu_bo_va_op_raw(ws->dev, buf_handle, 0, size, va, vm_flags,
 			   AMDGPU_VA_OP_MAP);
-   if (r)
-      goto error_va_map;
+      if (r)
+         goto error_va_map;
+   }
 
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
@@ -1371,8 +1380,10 @@ no_slab:
     * BOs. Aligning this here helps the cached bufmgr. Especially small BOs,
     * like constant/uniform buffers, can benefit from better and more reuse.
     */
-   size = align64(size, ws->info.gart_page_size);
-   alignment = align(alignment, ws->info.gart_page_size);
+   if (domain & RADEON_DOMAIN_VRAM_GTT) {
+      size = align64(size, ws->info.gart_page_size);
+      alignment = align(alignment, ws->info.gart_page_size);
+   }
 
    bool use_reusable_pool = flags & RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
