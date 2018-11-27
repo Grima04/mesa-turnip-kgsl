@@ -1518,6 +1518,10 @@ iris_create_sampler_view(struct pipe_context *ctx,
       ISL_SURF_USAGE_TEXTURE_BIT |
       (isv->res->surf.usage & ISL_SURF_USAGE_CUBE_BIT);
 
+   if (isv->base.target == PIPE_TEXTURE_CUBE ||
+       isv->base.target == PIPE_TEXTURE_CUBE_ARRAY)
+      usage |= ISL_SURF_USAGE_CUBE_BIT;
+
    const struct iris_format_info fmt =
       iris_format_for_usage(devinfo, tmpl->format, usage);
 
