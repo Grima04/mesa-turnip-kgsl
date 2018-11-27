@@ -2431,16 +2431,16 @@ fs_visitor::opt_algebraic()
          break;
 
       case BRW_OPCODE_MUL:
-	 if (inst->src[1].file != IMM)
-	    continue;
+         if (inst->src[1].file != IMM)
+            continue;
 
-	 /* a * 1.0 = a */
-	 if (inst->src[1].is_one()) {
-	    inst->opcode = BRW_OPCODE_MOV;
-	    inst->src[1] = reg_undef;
-	    progress = true;
-	    break;
-	 }
+         /* a * 1.0 = a */
+         if (inst->src[1].is_one()) {
+            inst->opcode = BRW_OPCODE_MOV;
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
 
          /* a * -1.0 = -a */
          if (inst->src[1].is_negative_one()) {
@@ -2468,7 +2468,7 @@ fs_visitor::opt_algebraic()
             progress = true;
             break;
          }
-	 break;
+         break;
       case BRW_OPCODE_ADD:
          if (inst->src[1].file != IMM)
             continue;
