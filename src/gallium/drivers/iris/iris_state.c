@@ -4542,7 +4542,9 @@ iris_upload_render_state(struct iris_context *ice,
       prim.InstanceCount = draw->instance_count;
       prim.VertexCountPerInstance = draw->count;
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
-      prim.PredicateEnable = ice->predicate == IRIS_PREDICATE_STATE_USE_BIT ? 1 : 0;
+      prim.PredicateEnable =
+         ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+
       // XXX: this is probably bonkers.
       prim.StartVertexLocation = draw->start;
 

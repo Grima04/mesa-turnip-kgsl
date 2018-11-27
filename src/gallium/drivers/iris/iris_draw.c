@@ -37,6 +37,7 @@
 #include "util/u_upload_mgr.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_context.h"
+#include "iris_defines.h"
 
 /**
  * Record the current primitive mode and restart information, flagging
@@ -69,6 +70,9 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+      return;
 
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
       ice->state.dirty |= ~0ull;
@@ -148,6 +152,9 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
+   if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+      return;
+
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
       ice->state.dirty |= ~0ull;
 
@@ -164,6 +171,13 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 
    iris_binder_reserve_compute(ice);
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
+
+   if (ice->state.compute_predicate) {
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_DATA,
+                                    ice->state.compute_predicate, 0);
+      ice->state.compute_predicate = NULL;
+   }
+
    ice->vtbl.upload_compute_state(ice, batch, grid);
 
    ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_COMPUTE;

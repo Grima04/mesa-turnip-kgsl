@@ -53,11 +53,11 @@ iris_clear(struct pipe_context *ctx,
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
-   if (ice->predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+   if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
       return;
 
    enum blorp_batch_flags blorp_flags = 0;
-   if (ice->predicate == IRIS_PREDICATE_STATE_USE_BIT)
+   if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT)
       blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
 
    iris_batch_maybe_flush(batch, 1500);

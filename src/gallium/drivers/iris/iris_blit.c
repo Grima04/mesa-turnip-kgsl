@@ -257,10 +257,10 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    enum blorp_batch_flags blorp_flags = 0;
 
    if (info->render_condition_enable) {
-      if (ice->predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
          return;
 
-      if (ice->predicate == IRIS_PREDICATE_STATE_USE_BIT)
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT)
          blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
    }
 

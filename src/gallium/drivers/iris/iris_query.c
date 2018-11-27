@@ -94,6 +94,8 @@ struct iris_query {
 
    bool ready;
 
+   bool stalled;
+
    uint64_t result;
 
    struct iris_bo *bo;
@@ -103,13 +105,21 @@ struct iris_query {
 };
 
 struct iris_query_snapshots {
+   /** iris_render_condition's saved MI_PREDICATE_DATA value. */
+   uint64_t predicate_data;
+
+   /** Have the start/end snapshots landed? */
    uint64_t snapshots_landed;
+
+   /** Starting and ending counter snapshots */
    uint64_t start;
    uint64_t end;
 };
 
 struct iris_query_so_overflow {
+   uint64_t predicate_data;
    uint64_t snapshots_landed;
+
    struct {
       uint64_t prim_storage_needed[2];
       uint64_t num_prims[2];
@@ -179,6 +189,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       iris_emit_pipe_control_flush(batch,
                                    PIPE_CONTROL_CS_STALL |
                                    PIPE_CONTROL_STALL_AT_SCOREBOARD);
+      q->stalled = true;
    }
 
    switch (q->type) {
@@ -694,7 +705,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    /* Calculate the result to CS_GPR0 */
    calculate_result_on_gpu(ice, q);
 
-   bool predicated = !wait && iris_is_query_pipelined(q);
+   bool predicated = !wait && !q->stalled;
 
    if (predicated) {
       ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
@@ -740,102 +751,90 @@ iris_set_active_query_state(struct pipe_context *ctx, boolean enable)
 }
 
 static void
-set_predicate_enable(struct iris_context *ice,
-                     bool value)
+set_predicate_enable(struct iris_context *ice, bool value)
 {
    if (value)
-      ice->predicate = IRIS_PREDICATE_STATE_RENDER;
+      ice->state.predicate = IRIS_PREDICATE_STATE_RENDER;
    else
-      ice->predicate = IRIS_PREDICATE_STATE_DONT_RENDER;
-}
-
-static void
-set_predicate_for_overflow(struct iris_context *ice,
-                           struct iris_query *q)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   ice->predicate = IRIS_PREDICATE_STATE_USE_BIT;
-
-   /* Needed to ensure the memory is coherent for the MI_LOAD_REGISTER_MEM
-    * command when loading the values into the predicate source registers for
-    * conditional rendering.
-    */
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
-
-   overflow_result_to_gpr0(ice, q);
-   ice->vtbl.load_register_reg64(batch, CS_GPR(0), MI_PREDICATE_SRC0);
-   ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
-}
-
-static void
-set_predicate_for_occlusion(struct iris_context *ice,
-                     struct iris_query *q)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   ice->predicate = IRIS_PREDICATE_STATE_USE_BIT;
-
-   /* Needed to ensure the memory is coherent for the MI_LOAD_REGISTER_MEM
-    * command when loading the values into the predicate source registers for
-    * conditional rendering.
-    */
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
-
-   ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, q->bo, offsetof(struct iris_query_snapshots, start));
-   ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC1, q->bo, offsetof(struct iris_query_snapshots, end));
+      ice->state.predicate = IRIS_PREDICATE_STATE_DONT_RENDER;
 }
 
 static void
 set_predicate_for_result(struct iris_context *ice,
                          struct iris_query *q,
-                         bool condition)
+                         bool inverted)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   int load_op;
+
+   /* The CPU doesn't have the query result yet; use hardware predication */
+   ice->state.predicate = IRIS_PREDICATE_STATE_USE_BIT;
+
+   /* Ensure the memory is coherent for MI_LOAD_REGISTER_* commands. */
+   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
+   q->stalled = true;
 
    switch (q->type) {
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
-      set_predicate_for_overflow(ice, q);
+      overflow_result_to_gpr0(ice, q);
+
+      ice->vtbl.load_register_reg64(batch, CS_GPR(0), MI_PREDICATE_SRC0);
+      ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
       break;
    default:
-      set_predicate_for_occlusion(ice, q);
+      /* PIPE_QUERY_OCCLUSION_* */
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, q->bo,
+         offsetof(struct iris_query_snapshots, start));
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC1, q->bo,
+         offsetof(struct iris_query_snapshots, end));
       break;
    }
 
-   if (ice->predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-      if (condition)
-         load_op = MI_PREDICATE_LOADOP_LOAD;
-      else
-         load_op = MI_PREDICATE_LOADOP_LOADINV;
-
-      // batch emit
-      uint32_t predicate = MI_PREDICATE | load_op |
+   uint32_t mi_predicate = MI_PREDICATE |
                            MI_PREDICATE_COMBINEOP_SET |
-                           MI_PREDICATE_COMPAREOP_SRCS_EQUAL;
-      iris_batch_emit(batch, &predicate, sizeof(uint32_t));
-   }
+                           MI_PREDICATE_COMPAREOP_SRCS_EQUAL |
+                           (inverted ? MI_PREDICATE_LOADOP_LOAD
+                                     : MI_PREDICATE_LOADOP_LOADINV);
+   iris_batch_emit(batch, &mi_predicate, sizeof(uint32_t));
+
+   /* We immediately set the predicate on the render batch, as all the
+    * counters come from 3D operations.  However, we may need to predicate
+    * a compute dispatch, which executes in a different GEM context and has
+    * a different MI_PREDICATE_DATA register.  So, we save the result to
+    * memory and reload it in iris_launch_grid.
+    */
+   unsigned offset = offsetof(struct iris_query_snapshots, predicate_data);
+   ice->vtbl.store_register_mem64(batch, MI_PREDICATE_DATA,
+                                  q->bo, offset, false);
+   ice->state.compute_predicate = q->bo;
 }
 
 static void
 iris_render_condition(struct pipe_context *ctx,
-		      struct pipe_query *query,
-		      boolean condition,
-		      enum pipe_render_cond_flag mode)
+                      struct pipe_query *query,
+                      boolean condition,
+                      enum pipe_render_cond_flag mode)
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
 
    if (!q) {
-      ice->predicate = IRIS_PREDICATE_STATE_RENDER;
+      ice->state.predicate = IRIS_PREDICATE_STATE_RENDER;
       return;
    }
 
    iris_check_query_no_flush(ice, q);
 
-   if (q->result || q->ready)
+   if (q->result || q->ready) {
       set_predicate_enable(ice, (q->result != 0) ^ condition);
-   else
+   } else {
+      if (mode == PIPE_RENDER_COND_NO_WAIT ||
+          mode == PIPE_RENDER_COND_BY_REGION_NO_WAIT) {
+         perf_debug(&ice->dbg, "Conditional rendering demoted from "
+                    "\"no wait\" to \"wait\".");
+      }
       set_predicate_for_result(ice, q, condition);
+   }
 }
 
 void

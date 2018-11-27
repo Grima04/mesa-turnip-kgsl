@@ -430,7 +430,6 @@ struct iris_context {
       struct iris_bo *scratch_bos[1 << 4][MESA_SHADER_STAGES];
    } shaders;
 
-   enum iris_predicate_state predicate;
    struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
@@ -482,6 +481,15 @@ struct iris_context {
       bool streamout_active;
 
       bool statistics_counters_enabled;
+
+      /** Current conditional rendering mode */
+      enum iris_predicate_state predicate;
+
+      /**
+       * Query BO with a MI_PREDICATE_DATA snapshot calculated on the
+       * render context that needs to be uploaded to the compute context.
+       */
+      struct iris_bo *compute_predicate;
 
       /** Is a PIPE_QUERY_PRIMITIVES_GENERATED query active? */
       bool prims_generated_query_active;
