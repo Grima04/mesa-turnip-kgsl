@@ -53,10 +53,17 @@ iris_clear(struct pipe_context *ctx,
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
+   if (ice->predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+      return;
+
+   enum blorp_batch_flags blorp_flags = 0;
+   if (ice->predicate == IRIS_PREDICATE_STATE_USE_BIT)
+      blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
+
    iris_batch_maybe_flush(batch, 1500);
 
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, BLORP_BATCH_PREDICATE_ENABLE);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       struct pipe_surface *psurf = cso_fb->zsbuf;

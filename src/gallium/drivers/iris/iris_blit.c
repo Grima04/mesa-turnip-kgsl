@@ -254,6 +254,15 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
+   enum blorp_batch_flags blorp_flags = 0;
+
+   if (info->render_condition_enable) {
+      if (ice->predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+         return;
+
+      if (ice->predicate == IRIS_PREDICATE_STATE_USE_BIT)
+         blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
+   }
 
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&src_surf, info->src.resource,
@@ -338,8 +347,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch,
-                    info->render_condition_enable ? BLORP_BATCH_PREDICATE_ENABLE : 0);
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    for (int slice = 0; slice < info->dst.box.depth; slice++) {
       iris_batch_maybe_flush(batch, 1500);
