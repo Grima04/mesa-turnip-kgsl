@@ -1448,8 +1448,8 @@ dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
    else
       return _eglError(EGL_BAD_ALLOC, "no createNewDrawable");
 
-   dri2_surf->dri_drawable = (*createNewDrawable)(dri2_dpy->dri_screen,
-                                                  config, loaderPrivate);
+   dri2_surf->dri_drawable = createNewDrawable(dri2_dpy->dri_screen,
+                                               config, loaderPrivate);
    if (dri2_surf->dri_drawable == NULL)
       return _eglError(EGL_BAD_ALLOC, "createNewDrawable");
 
