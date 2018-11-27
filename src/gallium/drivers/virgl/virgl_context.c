@@ -1037,7 +1037,8 @@ static void virgl_create_fence_fd(struct pipe_context *ctx,
    assert(type == PIPE_FD_TYPE_NATIVE_SYNC);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
 
-   *fence = rs->vws->cs_create_fence(rs->vws, fd);
+   if (rs->vws->cs_create_fence)
+      *fence = rs->vws->cs_create_fence(rs->vws, fd);
 }
 
 static void virgl_fence_server_sync(struct pipe_context *ctx,
@@ -1046,7 +1047,8 @@ static void virgl_fence_server_sync(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
 
-   rs->vws->fence_server_sync(rs->vws, vctx->cbuf, fence);
+   if (rs->vws->fence_server_sync)
+      rs->vws->fence_server_sync(rs->vws, vctx->cbuf, fence);
 }
 
 static void virgl_set_shader_images(struct pipe_context *ctx,
