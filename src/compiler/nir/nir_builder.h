@@ -560,6 +560,36 @@ nir_channels(nir_builder *b, nir_ssa_def *def, nir_component_mask_t mask)
 }
 
 static inline nir_ssa_def *
+nir_i2i(nir_builder *build, nir_ssa_def *x, unsigned dest_bit_size)
+{
+   if (x->bit_size == dest_bit_size)
+      return x;
+
+   switch (dest_bit_size) {
+   case 64: return nir_i2i64(build, x);
+   case 32: return nir_i2i32(build, x);
+   case 16: return nir_i2i16(build, x);
+   case 8:  return nir_i2i8(build, x);
+   default: unreachable("Invalid bit size");
+   }
+}
+
+static inline nir_ssa_def *
+nir_u2u(nir_builder *build, nir_ssa_def *x, unsigned dest_bit_size)
+{
+   if (x->bit_size == dest_bit_size)
+      return x;
+
+   switch (dest_bit_size) {
+   case 64: return nir_u2u64(build, x);
+   case 32: return nir_u2u32(build, x);
+   case 16: return nir_u2u16(build, x);
+   case 8:  return nir_u2u8(build, x);
+   default: unreachable("Invalid bit size");
+   }
+}
+
+static inline nir_ssa_def *
 nir_iadd_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
    return nir_iadd(build, x, nir_imm_intN_t(build, y, x->bit_size));
@@ -609,13 +639,7 @@ nir_pack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
    /* If we got here, we have no dedicated unpack opcode. */
    nir_ssa_def *dest = nir_imm_intN_t(b, 0, dest_bit_size);
    for (unsigned i = 0; i < src->num_components; i++) {
-      nir_ssa_def *val;
-      switch (dest_bit_size) {
-      case 64: val = nir_u2u64(b, nir_channel(b, src, i));  break;
-      case 32: val = nir_u2u32(b, nir_channel(b, src, i));  break;
-      case 16: val = nir_u2u16(b, nir_channel(b, src, i));  break;
-      default: unreachable("Invalid bit size");
-      }
+      nir_ssa_def *val = nir_u2u(b, nir_channel(b, src, i), dest_bit_size);
       val = nir_ishl(b, val, nir_imm_int(b, i * src->bit_size));
       dest = nir_ior(b, dest, val);
    }
@@ -652,12 +676,7 @@ nir_unpack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
    nir_ssa_def *dest_comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < dest_num_components; i++) {
       nir_ssa_def *val = nir_ushr(b, src, nir_imm_int(b, i * dest_bit_size));
-      switch (dest_bit_size) {
-      case 32: dest_comps[i] = nir_u2u32(b, val);  break;
-      case 16: dest_comps[i] = nir_u2u16(b, val);  break;
-      case 8:  dest_comps[i] = nir_u2u8(b, val);   break;
-      default: unreachable("Invalid bit size");
-      }
+      dest_comps[i] = nir_u2u(b, val, dest_bit_size);
    }
    return nir_vec(b, dest_comps, dest_num_components);
 }
