@@ -50,24 +50,6 @@ struct keybox {
    uint8_t data[0];
 };
 
-static uint32_t
-key_size_for_cache(enum iris_program_cache_id cache_id)
-{
-   static const unsigned key_sizes[] = {
-      [IRIS_CACHE_VS]         = sizeof(struct brw_vs_prog_key),
-      [IRIS_CACHE_TCS]        = sizeof(struct brw_tcs_prog_key),
-      [IRIS_CACHE_TES]        = sizeof(struct brw_tes_prog_key),
-      [IRIS_CACHE_GS]         = sizeof(struct brw_gs_prog_key),
-      [IRIS_CACHE_FS]         = sizeof(struct brw_wm_prog_key),
-      [IRIS_CACHE_CS]         = sizeof(struct brw_cs_prog_key),
-   };
-
-   /* BLORP keys aren't all the same size. */
-   assert(cache_id != IRIS_CACHE_BLORP);
-
-   return key_sizes[cache_id];
-}
-
 static struct keybox *
 make_keybox(void *mem_ctx,
             enum iris_program_cache_id cache_id,
