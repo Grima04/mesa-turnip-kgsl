@@ -1262,7 +1262,7 @@ typedef enum {
    NIR_INTRINSIC_FORMAT = 15,
 
    /**
-    * Access qualifiers for image intrinsics
+    * Access qualifiers for image and memory access intrinsics
     */
    NIR_INTRINSIC_ACCESS = 16,
 

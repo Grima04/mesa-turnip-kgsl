@@ -105,7 +105,7 @@ PARAM_IDX = "NIR_INTRINSIC_PARAM_IDX"
 IMAGE_DIM = "NIR_INTRINSIC_IMAGE_DIM"
 # Non-zero if we are accessing an array image
 IMAGE_ARRAY = "NIR_INTRINSIC_IMAGE_ARRAY"
-# Access qualifiers for image intrinsics
+# Access qualifiers for image and memory access intrinsics
 ACCESS = "NIR_INTRINSIC_ACCESS"
 # Image format for image intrinsics
 FORMAT = "NIR_INTRINSIC_FORMAT"
@@ -132,8 +132,9 @@ intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("load_param", dest_comp=0, indices=[PARAM_IDX], flags=[CAN_ELIMINATE])
 
-intrinsic("load_deref", dest_comp=0, src_comp=[-1], flags=[CAN_ELIMINATE])
-intrinsic("store_deref", src_comp=[-1, 0], indices=[WRMASK])
+intrinsic("load_deref", dest_comp=0, src_comp=[-1],
+          indices=[ACCESS], flags=[CAN_ELIMINATE])
+intrinsic("store_deref", src_comp=[-1, 0], indices=[WRMASK, ACCESS])
 intrinsic("copy_deref", src_comp=[-1, -1])
 
 # Interpolation of input.  The interp_deref_at* intrinsics are similar to the
