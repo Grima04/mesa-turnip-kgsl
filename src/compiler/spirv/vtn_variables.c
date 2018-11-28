@@ -1627,7 +1627,7 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
       assert(!vtn_pointer_is_external_block(b, ptr));
       const struct glsl_type *deref_type = ptr_type->deref->type;
       ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                        glsl_get_bare_type(deref_type));
+                                        glsl_get_bare_type(deref_type), 0);
    }
 
    return ptr;

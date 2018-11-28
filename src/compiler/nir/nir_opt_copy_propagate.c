@@ -224,7 +224,8 @@ copy_prop_instr(nir_instr *instr)
             progress = true;
       }
 
-      if (deref->deref_type == nir_deref_type_array) {
+      if (deref->deref_type == nir_deref_type_array ||
+          deref->deref_type == nir_deref_type_ptr_as_array) {
          while (copy_prop_src(&deref->arr.index, instr, NULL, 1))
             progress = true;
       }

@@ -812,6 +812,31 @@ nir_build_deref_array(nir_builder *build, nir_deref_instr *parent,
 }
 
 static inline nir_deref_instr *
+nir_build_deref_ptr_as_array(nir_builder *build, nir_deref_instr *parent,
+                             nir_ssa_def *index)
+{
+   assert(parent->deref_type == nir_deref_type_array ||
+          parent->deref_type == nir_deref_type_ptr_as_array ||
+          parent->deref_type == nir_deref_type_cast);
+
+   nir_deref_instr *deref =
+      nir_deref_instr_create(build->shader, nir_deref_type_ptr_as_array);
+
+   deref->mode = parent->mode;
+   deref->type = parent->type;
+   deref->parent = nir_src_for_ssa(&parent->dest.ssa);
+   deref->arr.index = nir_src_for_ssa(index);
+
+   nir_ssa_dest_init(&deref->instr, &deref->dest,
+                     parent->dest.ssa.num_components,
+                     parent->dest.ssa.bit_size, NULL);
+
+   nir_builder_instr_insert(build, &deref->instr);
+
+   return deref;
+}
+
+static inline nir_deref_instr *
 nir_build_deref_array_wildcard(nir_builder *build, nir_deref_instr *parent)
 {
    assert(glsl_type_is_array(parent->type) ||
@@ -858,7 +883,8 @@ nir_build_deref_struct(nir_builder *build, nir_deref_instr *parent,
 
 static inline nir_deref_instr *
 nir_build_deref_cast(nir_builder *build, nir_ssa_def *parent,
-                     nir_variable_mode mode, const struct glsl_type *type)
+                     nir_variable_mode mode, const struct glsl_type *type,
+                     unsigned ptr_stride)
 {
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_cast);
@@ -866,6 +892,7 @@ nir_build_deref_cast(nir_builder *build, nir_ssa_def *parent,
    deref->mode = mode;
    deref->type = type;
    deref->parent = nir_src_for_ssa(parent);
+   deref->cast.ptr_stride = ptr_stride;
 
    nir_ssa_dest_init(&deref->instr, &deref->dest,
                      parent->num_components, parent->bit_size, NULL);

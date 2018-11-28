@@ -111,7 +111,8 @@ nir_deref_instr_has_indirect(nir_deref_instr *instr)
       if (instr->deref_type == nir_deref_type_cast)
          return true;
 
-      if (instr->deref_type == nir_deref_type_array &&
+      if ((instr->deref_type == nir_deref_type_array ||
+           instr->deref_type == nir_deref_type_ptr_as_array) &&
           !nir_src_is_const(instr->arr.index))
          return true;
 
@@ -119,6 +120,23 @@ nir_deref_instr_has_indirect(nir_deref_instr *instr)
    }
 
    return false;
+}
+
+unsigned
+nir_deref_instr_ptr_as_array_stride(nir_deref_instr *deref)
+{
+   assert(deref->deref_type == nir_deref_type_ptr_as_array);
+   nir_deref_instr *parent = nir_deref_instr_parent(deref);
+   switch (parent->deref_type) {
+   case nir_deref_type_array:
+      return glsl_get_explicit_stride(nir_deref_instr_parent(parent)->type);
+   case nir_deref_type_ptr_as_array:
+      return nir_deref_instr_ptr_as_array_stride(parent);
+   case nir_deref_type_cast:
+      return parent->cast.ptr_stride;
+   default:
+      unreachable("Invalid parent for ptr_as_array deref");
+   }
 }
 
 static unsigned

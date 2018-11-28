@@ -470,6 +470,19 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
          }
          break;
 
+      case nir_deref_type_ptr_as_array:
+         /* ptr_as_array derefs must have a parent that is either an array,
+          * ptr_as_array, or cast.  If the parent is a cast, we get the stride
+          * information (if any) from the cast deref.
+          */
+         validate_assert(state,
+                         parent->deref_type == nir_deref_type_array ||
+                         parent->deref_type == nir_deref_type_ptr_as_array ||
+                         parent->deref_type == nir_deref_type_cast);
+         validate_src(&instr->arr.index, state,
+                      nir_dest_bit_size(instr->dest), 1);
+         break;
+
       default:
          unreachable("Invalid deref instruction type");
       }

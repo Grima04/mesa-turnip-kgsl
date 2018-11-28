@@ -998,6 +998,7 @@ typedef enum {
    nir_deref_type_var,
    nir_deref_type_array,
    nir_deref_type_array_wildcard,
+   nir_deref_type_ptr_as_array,
    nir_deref_type_struct,
    nir_deref_type_cast,
 } nir_deref_type;
@@ -1031,6 +1032,10 @@ typedef struct {
       struct {
          unsigned index;
       } strct;
+
+      struct {
+         unsigned ptr_stride;
+      } cast;
    };
 
    /** Destination to store the resulting "pointer" */
@@ -1077,6 +1082,8 @@ nir_deref_instr_get_variable(const nir_deref_instr *instr)
 bool nir_deref_instr_has_indirect(nir_deref_instr *instr);
 
 bool nir_deref_instr_remove_if_unused(nir_deref_instr *instr);
+
+unsigned nir_deref_instr_ptr_as_array_stride(nir_deref_instr *instr);
 
 typedef struct {
    nir_instr instr;
