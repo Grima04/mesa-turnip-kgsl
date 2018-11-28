@@ -915,7 +915,7 @@ iris_compile_tcs(struct iris_context *ice,
       brw_compile_tcs(compiler, &ice->dbg, mem_ctx, key, tcs_prog_data, nir,
                       -1, &error_str);
    if (program == NULL) {
-      dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
+      dbg_printf("Failed to compile control shader: %s\n", error_str);
       ralloc_free(mem_ctx);
       return false;
    }
