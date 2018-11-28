@@ -132,9 +132,9 @@ intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("load_param", dest_comp=0, indices=[PARAM_IDX], flags=[CAN_ELIMINATE])
 
-intrinsic("load_deref", dest_comp=0, src_comp=[1], flags=[CAN_ELIMINATE])
-intrinsic("store_deref", src_comp=[1, 0], indices=[WRMASK])
-intrinsic("copy_deref", src_comp=[1, 1])
+intrinsic("load_deref", dest_comp=0, src_comp=[-1], flags=[CAN_ELIMINATE])
+intrinsic("store_deref", src_comp=[-1, 0], indices=[WRMASK])
+intrinsic("copy_deref", src_comp=[-1, -1])
 
 # Interpolation of input.  The interp_deref_at* intrinsics are similar to the
 # load_var intrinsic acting on a shader input except that they interpolate the
@@ -269,15 +269,15 @@ intrinsic("set_vertex_count", src_comp=[1])
 # lowered, variants take a constant buffer index and register offset.
 
 def atomic(name, flags=[]):
-    intrinsic(name + "_deref", src_comp=[1], dest_comp=1, flags=flags)
+    intrinsic(name + "_deref", src_comp=[-1], dest_comp=1, flags=flags)
     intrinsic(name, src_comp=[1], dest_comp=1, indices=[BASE], flags=flags)
 
 def atomic2(name):
-    intrinsic(name + "_deref", src_comp=[1, 1], dest_comp=1)
+    intrinsic(name + "_deref", src_comp=[-1, 1], dest_comp=1)
     intrinsic(name, src_comp=[1, 1], dest_comp=1, indices=[BASE])
 
 def atomic3(name):
-    intrinsic(name + "_deref", src_comp=[1, 1, 1], dest_comp=1)
+    intrinsic(name + "_deref", src_comp=[-1, 1, 1], dest_comp=1)
     intrinsic(name, src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
 
 atomic("atomic_counter_inc")
@@ -374,20 +374,20 @@ intrinsic("vulkan_resource_reindex", src_comp=[1, 1], dest_comp=1,
 # 1: The data parameter to the atomic function (i.e. the value to add
 #    in shared_atomic_add, etc).
 # 2: For CompSwap only: the second data parameter.
-intrinsic("deref_atomic_add",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_imin", src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_umin", src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_imax", src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_umax", src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_and",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_or",   src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_xor",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_exchange", src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_comp_swap", src_comp=[1, 1, 1], dest_comp=1)
-intrinsic("deref_atomic_fadd",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_fmin",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_fmax",  src_comp=[1, 1], dest_comp=1)
-intrinsic("deref_atomic_fcomp_swap", src_comp=[1, 1, 1], dest_comp=1)
+intrinsic("deref_atomic_add",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_imin", src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_umin", src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_imax", src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_umax", src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_and",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_or",   src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_xor",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_exchange", src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_comp_swap", src_comp=[-1, 1, 1], dest_comp=1)
+intrinsic("deref_atomic_fadd",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_fmin",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_fmax",  src_comp=[-1, 1], dest_comp=1)
+intrinsic("deref_atomic_fcomp_swap", src_comp=[-1, 1, 1], dest_comp=1)
 
 # SSBO atomic intrinsics
 #

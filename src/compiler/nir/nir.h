@@ -1292,9 +1292,11 @@ typedef struct {
    /** number of components of each input register
     *
     * If this value is 0, the number of components is given by the
-    * num_components field of nir_intrinsic_instr.
+    * num_components field of nir_intrinsic_instr.  If this value is -1, the
+    * intrinsic consumes however many components are provided and it is not
+    * validated at all.
     */
-   unsigned src_components[NIR_INTRINSIC_MAX_INPUTS];
+   int src_components[NIR_INTRINSIC_MAX_INPUTS];
 
    bool has_dest;
 
@@ -1322,10 +1324,12 @@ nir_intrinsic_src_components(nir_intrinsic_instr *intr, unsigned srcn)
 {
    const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
    assert(srcn < info->num_srcs);
-   if (info->src_components[srcn])
+   if (info->src_components[srcn] > 0)
       return info->src_components[srcn];
-   else
+   else if (info->src_components[srcn] == 0)
       return intr->num_components;
+   else
+      return nir_src_num_components(intr->src[srcn]);
 }
 
 static inline unsigned
