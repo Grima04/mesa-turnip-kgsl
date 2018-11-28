@@ -1279,26 +1279,21 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
 
-      if (storage_class == SpvStorageClassUniform ||
-          storage_class == SpvStorageClassStorageBuffer) {
-         /* These can actually be stored to nir_variables and used as SSA
-          * values so they need a real glsl_type.
-          */
-         val->type->type = glsl_vector_type(GLSL_TYPE_UINT, 2);
-      }
-
-      if (storage_class == SpvStorageClassPushConstant) {
-         /* These can actually be stored to nir_variables and used as SSA
-          * values so they need a real glsl_type.
-          */
-         val->type->type = glsl_uint_type();
-      }
-
-      if (storage_class == SpvStorageClassWorkgroup) {
-         /* These can actually be stored to nir_variables and used as SSA
-          * values so they need a real glsl_type.
-          */
-         val->type->type = glsl_uint_type();
+      /* These can actually be stored to nir_variables and used as SSA
+       * values so they need a real glsl_type.
+       */
+      switch (storage_class) {
+      case SpvStorageClassUniform:
+         val->type->type = b->options->ubo_ptr_type;
+         break;
+      case SpvStorageClassStorageBuffer:
+         val->type->type = b->options->ssbo_ptr_type;
+         break;
+      case SpvStorageClassPushConstant:
+         val->type->type = b->options->push_const_ptr_type;
+         break;
+      case SpvStorageClassWorkgroup:
+         val->type->type = b->options->shared_ptr_type;
          if (b->options->lower_workgroup_access_to_offsets) {
             uint32_t size, align;
             val->type->deref = vtn_type_layout_std430(b, val->type->deref,
@@ -1306,6 +1301,13 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             val->type->length = size;
             val->type->align = align;
          }
+         break;
+      default:
+         /* In this case, no variable pointers are allowed so all deref chains
+          * are complete back to the variable and it doesn't matter what type
+          * gets used so we leave it NULL.
+          */
+         break;
       }
       break;
    }

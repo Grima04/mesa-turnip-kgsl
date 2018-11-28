@@ -158,6 +158,10 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
          .storage_8bit = device->instance->physicalDevice.info.gen >= 8,
          .post_depth_coverage = device->instance->physicalDevice.info.gen >= 9,
       },
+      .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .push_const_ptr_type = glsl_uint_type(),
+      .shared_ptr_type = glsl_uint_type(),
    };
 
    nir_function *entry_point =

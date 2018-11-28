@@ -61,6 +61,12 @@ struct spirv_to_nir_options {
 
    struct spirv_supported_capabilities caps;
 
+   /* Storage types for various kinds of pointers. */
+   const struct glsl_type *ubo_ptr_type;
+   const struct glsl_type *ssbo_ptr_type;
+   const struct glsl_type *push_const_ptr_type;
+   const struct glsl_type *shared_ptr_type;
+
    struct {
       void (*func)(void *private_data,
                    enum nir_spirv_debug_level level,
