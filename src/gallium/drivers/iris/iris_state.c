@@ -4746,6 +4746,8 @@ iris_destroy_state(struct iris_context *ice)
    }
    free(ice->state.genx);
 
+   pipe_resource_reference(&ice->state.unbound_tex.res, NULL);
+
    pipe_resource_reference(&ice->state.last_res.cc_vp, NULL);
    pipe_resource_reference(&ice->state.last_res.sf_cl_vp, NULL);
    pipe_resource_reference(&ice->state.last_res.color_calc, NULL);
