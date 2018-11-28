@@ -32,6 +32,8 @@ struct tgsi_token;
 
 struct virgl_context;
 struct virgl_resource;
+struct virgl_screen;
+struct virgl_transfer;
 struct virgl_sampler_view;
 
 struct virgl_surface {
@@ -287,4 +289,8 @@ int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
                                       uint32_t offset,
                                       uint32_t index);
 
+void virgl_encode_transfer(struct virgl_screen *vs, struct virgl_cmd_buf *buf,
+                           struct virgl_transfer *trans, uint32_t direction);
+
+void virgl_encode_end_transfers(struct virgl_cmd_buf *buf);
 #endif

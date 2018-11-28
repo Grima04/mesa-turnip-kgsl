@@ -1103,3 +1103,25 @@ int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, index);
    return 0;
 }
+
+void virgl_encode_transfer(struct virgl_screen *vs, struct virgl_cmd_buf *buf,
+                           struct virgl_transfer *trans, uint32_t direction)
+{
+   uint32_t command;
+   struct virgl_resource *res = virgl_resource(trans->base.resource);
+   command = VIRGL_CMD0(VIRGL_CCMD_TRANSFER3D, 0, VIRGL_TRANSFER3D_SIZE);
+   virgl_encoder_write_dword(buf, command);
+   virgl_encoder_transfer3d_common(vs, buf, trans);
+   virgl_encoder_write_dword(buf, trans->offset);
+   virgl_encoder_write_dword(buf, direction);
+}
+
+void virgl_encode_end_transfers(struct virgl_cmd_buf *buf)
+{
+   uint32_t command, diff;
+   diff = VIRGL_MAX_TBUF_DWORDS - buf->cdw;
+   if (diff) {
+      command = VIRGL_CMD0(VIRGL_CCMD_END_TRANSFERS, 0, diff - 1);
+      virgl_encoder_write_dword(buf, command);
+   }
+}
