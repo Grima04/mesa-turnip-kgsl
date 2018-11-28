@@ -272,6 +272,8 @@ nir_fixup_deref_modes(nir_shader *shader)
                continue;
 
             nir_deref_instr *deref = nir_instr_as_deref(instr);
+            if (deref->deref_type == nir_deref_type_cast)
+               continue;
 
             nir_variable_mode parent_mode;
             if (deref->deref_type == nir_deref_type_var) {
