@@ -40,6 +40,7 @@
 #include "util/debug.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
+#include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
 #include "drm-uapi/i915_drm.h"
@@ -459,6 +460,7 @@ iris_destroy_screen(struct pipe_screen *pscreen)
 {
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    iris_bo_unreference(screen->workaround_bo);
+   u_transfer_helper_destroy(pscreen->transfer_helper);
    ralloc_free(screen);
 }
 
