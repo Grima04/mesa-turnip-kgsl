@@ -74,7 +74,7 @@ enum iris_memory_zone {
 };
 
 /* Intentionally exclude single buffer "zones" */
-#define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 2)
+#define IRIS_MEMZONE_COUNT (IRIS_MEMZONE_OTHER + 1)
 
 #define IRIS_BINDER_SIZE (64 * 1024)
 #define IRIS_MAX_BINDERS 100
