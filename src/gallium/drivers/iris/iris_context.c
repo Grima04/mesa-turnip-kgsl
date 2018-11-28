@@ -110,6 +110,7 @@ iris_destroy_context(struct pipe_context *ctx)
 
    ice->vtbl.destroy_state(ice);
    iris_destroy_program_cache(ice);
+   iris_destroy_border_color_pool(ice);
    u_upload_destroy(ice->state.surface_uploader);
    u_upload_destroy(ice->state.dynamic_uploader);
 

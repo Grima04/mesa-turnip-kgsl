@@ -93,6 +93,14 @@ iris_init_border_color_pool(struct iris_context *ice)
    iris_reset_border_color_pool(pool, bufmgr);
 }
 
+void
+iris_destroy_border_color_pool(struct iris_context *ice)
+{
+   struct iris_border_color_pool *pool = &ice->state.border_color_pool;
+   iris_bo_unreference(pool->bo);
+   ralloc_free(pool->ht);
+}
+
 /**
  * Reserve space for a number of border colors.  If no space, flushes any
  * batches that are referring to the old BO and makes a new one.

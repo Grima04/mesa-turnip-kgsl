@@ -587,6 +587,7 @@ void gen11_init_blorp(struct iris_context *ice);
 /* iris_border_color.c */
 
 void iris_init_border_color_pool(struct iris_context *ice);
+void iris_destroy_border_color_pool(struct iris_context *ice);
 void iris_border_color_pool_reserve(struct iris_context *ice, unsigned count);
 uint32_t iris_upload_border_color(struct iris_context *ice,
                                   union pipe_color_union *color);
