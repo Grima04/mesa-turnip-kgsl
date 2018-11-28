@@ -85,6 +85,7 @@ enum fd_version {
 	FD_VERSION_FENCE_FD = 2,           /* submit command supports in/out fences */
 	FD_VERSION_SUBMIT_QUEUES = 3,      /* submit queues and multiple priority levels */
 	FD_VERSION_BO_IOVA = 3,            /* supports fd_bo_get/put_iova() */
+	FD_VERSION_SOFTPIN = 4,            /* adds softpin, bo name, and dump flag */
 };
 enum fd_version fd_device_version(struct fd_device *dev);
 
