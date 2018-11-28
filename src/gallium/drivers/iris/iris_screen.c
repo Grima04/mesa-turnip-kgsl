@@ -461,6 +461,7 @@ iris_destroy_screen(struct pipe_screen *pscreen)
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    iris_bo_unreference(screen->workaround_bo);
    u_transfer_helper_destroy(pscreen->transfer_helper);
+   iris_bufmgr_destroy(screen->bufmgr);
    ralloc_free(screen);
 }
 
