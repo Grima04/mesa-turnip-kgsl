@@ -49,16 +49,23 @@ static int virgl_encoder_write_cmd_dword(struct virgl_context *ctx,
    return 0;
 }
 
+static void virgl_encoder_emit_resource(struct virgl_screen *vs,
+                                        struct virgl_cmd_buf *buf,
+                                        struct virgl_resource *res)
+{
+   struct virgl_winsys *vws = vs->vws;
+   if (res && res->hw_res)
+      vws->emit_res(vws, buf, res->hw_res, TRUE);
+   else {
+      virgl_encoder_write_dword(buf, 0);
+   }
+}
+
 static void virgl_encoder_write_res(struct virgl_context *ctx,
                                     struct virgl_resource *res)
 {
-   struct virgl_winsys *vws = virgl_screen(ctx->base.screen)->vws;
-
-   if (res && res->hw_res)
-      vws->emit_res(vws, ctx->cbuf, res->hw_res, TRUE);
-   else {
-      virgl_encoder_write_dword(ctx->cbuf, 0);
-   }
+   struct virgl_screen *vs = virgl_screen(ctx->base.screen);
+   virgl_encoder_emit_resource(vs, ctx->cbuf, res);
 }
 
 int virgl_encode_bind_object(struct virgl_context *ctx,
@@ -502,23 +509,24 @@ int virgl_encoder_create_so_target(struct virgl_context *ctx,
    return 0;
 }
 
-static void virgl_encoder_iw_emit_header_1d(struct virgl_context *ctx,
-                                           struct virgl_resource *res,
-                                           unsigned level, unsigned usage,
-                                           const struct pipe_box *box,
-                                           unsigned stride, unsigned layer_stride)
+static void virgl_encoder_transfer3d_common(struct virgl_screen *vs,
+                                            struct virgl_cmd_buf *buf,
+                                            struct virgl_transfer *xfer)
 {
-   virgl_encoder_write_res(ctx, res);
-   virgl_encoder_write_dword(ctx->cbuf, level);
-   virgl_encoder_write_dword(ctx->cbuf, usage);
-   virgl_encoder_write_dword(ctx->cbuf, stride);
-   virgl_encoder_write_dword(ctx->cbuf, layer_stride);
-   virgl_encoder_write_dword(ctx->cbuf, box->x);
-   virgl_encoder_write_dword(ctx->cbuf, box->y);
-   virgl_encoder_write_dword(ctx->cbuf, box->z);
-   virgl_encoder_write_dword(ctx->cbuf, box->width);
-   virgl_encoder_write_dword(ctx->cbuf, box->height);
-   virgl_encoder_write_dword(ctx->cbuf, box->depth);
+   struct pipe_transfer *transfer = &xfer->base;
+   struct virgl_resource *res = virgl_resource(transfer->resource);
+
+   virgl_encoder_emit_resource(vs, buf, res);
+   virgl_encoder_write_dword(buf, transfer->level);
+   virgl_encoder_write_dword(buf, transfer->usage);
+   virgl_encoder_write_dword(buf, 0);
+   virgl_encoder_write_dword(buf, 0);
+   virgl_encoder_write_dword(buf, transfer->box.x);
+   virgl_encoder_write_dword(buf, transfer->box.y);
+   virgl_encoder_write_dword(buf, transfer->box.z);
+   virgl_encoder_write_dword(buf, transfer->box.width);
+   virgl_encoder_write_dword(buf, transfer->box.height);
+   virgl_encoder_write_dword(buf, transfer->box.depth);
 }
 
 int virgl_encoder_inline_write(struct virgl_context *ctx,
@@ -530,7 +538,13 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
 {
    uint32_t size = (stride ? stride : box->width) * box->height;
    uint32_t length, thispass, left_bytes;
-   struct pipe_box mybox = *box;
+   struct virgl_transfer transfer;
+   struct virgl_screen *vs = virgl_screen(ctx->base.screen);
+
+   transfer.base.resource = &res->u.b;
+   transfer.base.level = level;
+   transfer.base.usage = usage;
+   transfer.base.box = *box;
 
    length = 11 + (size + 3) / 4;
    if ((ctx->cbuf->cdw + length + 1) > VIRGL_MAX_CMDBUF_DWORDS) {
@@ -549,12 +563,12 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
 
       length = MIN2(thispass, left_bytes);
 
-      mybox.width = length;
+      transfer.base.box.width = length;
       virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_RESOURCE_INLINE_WRITE, 0, ((length + 3) / 4) + 11));
-      virgl_encoder_iw_emit_header_1d(ctx, res, level, usage, &mybox, stride, layer_stride);
+      virgl_encoder_transfer3d_common(vs, ctx->cbuf, &transfer);
       virgl_encoder_write_block(ctx->cbuf, data, length);
       left_bytes -= length;
-      mybox.x += length;
+      transfer.base.box.x += length;
       data += length;
    }
    return 0;
