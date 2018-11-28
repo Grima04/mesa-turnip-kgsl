@@ -2896,6 +2896,18 @@ bool nir_lower_io(nir_shader *shader,
                   nir_variable_mode modes,
                   int (*type_size)(const struct glsl_type *),
                   nir_lower_io_options);
+
+typedef enum {
+   /**
+    * An address format which is comprised of a vec2 where the first
+    * component is a vulkan descriptor index and the second is an offset.
+    */
+   nir_address_format_vk_index_offset,
+} nir_address_format;
+bool nir_lower_explicit_io(nir_shader *shader,
+                           nir_variable_mode modes,
+                           nir_address_format);
+
 nir_src *nir_get_io_offset_src(nir_intrinsic_instr *instr);
 nir_src *nir_get_io_vertex_index_src(nir_intrinsic_instr *instr);
 
