@@ -7881,7 +7881,7 @@ static void si_fix_resource_usage(struct si_screen *sscreen,
 	}
 }
 
-int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
+bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
 		     struct si_shader *shader,
 		     struct pipe_debug_callback *debug)
 {
@@ -7901,7 +7901,7 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 		 */
 		r = si_compile_tgsi_shader(sscreen, compiler, shader, debug);
 		if (r)
-			return r;
+			return false;
 	} else {
 		/* The shader consists of several parts:
 		 *
@@ -7919,7 +7919,7 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 		 */
 
 		if (!mainp)
-			return -1;
+			return false;
 
 		/* Copy the compiled TGSI shader data over. */
 		shader->is_binary_shared = true;
@@ -7940,21 +7940,21 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 		switch (sel->type) {
 		case PIPE_SHADER_VERTEX:
 			if (!si_shader_select_vs_parts(sscreen, compiler, shader, debug))
-				return -1;
+				return false;
 			break;
 		case PIPE_SHADER_TESS_CTRL:
 			if (!si_shader_select_tcs_parts(sscreen, compiler, shader, debug))
-				return -1;
+				return false;
 			break;
 		case PIPE_SHADER_TESS_EVAL:
 			break;
 		case PIPE_SHADER_GEOMETRY:
 			if (!si_shader_select_gs_parts(sscreen, compiler, shader, debug))
-				return -1;
+				return false;
 			break;
 		case PIPE_SHADER_FRAGMENT:
 			if (!si_shader_select_ps_parts(sscreen, compiler, shader, debug))
-				return -1;
+				return false;
 
 			/* Make sure we have at least as many VGPRs as there
 			 * are allocated inputs.
@@ -8014,10 +8014,10 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 	r = si_shader_binary_upload(sscreen, shader);
 	if (r) {
 		fprintf(stderr, "LLVM failed to upload shader\n");
-		return r;
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
 void si_shader_destroy(struct si_shader *shader)

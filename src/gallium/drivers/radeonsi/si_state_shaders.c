@@ -1715,7 +1715,6 @@ static void si_build_shader_variant(struct si_shader *shader,
 	struct si_screen *sscreen = sel->screen;
 	struct ac_llvm_compiler *compiler;
 	struct pipe_debug_callback *debug = &shader->compiler_ctx_state.debug;
-	int r;
 
 	if (thread_index >= 0) {
 		if (low_priority) {
@@ -1732,10 +1731,9 @@ static void si_build_shader_variant(struct si_shader *shader,
 		compiler = shader->compiler_ctx_state.compiler;
 	}
 
-	r = si_shader_create(sscreen, compiler, shader, debug);
-	if (unlikely(r)) {
-		PRINT_ERR("Failed to build shader variant (type=%u) %d\n",
-			 sel->type, r);
+	if (unlikely(!si_shader_create(sscreen, compiler, shader, debug))) {
+		PRINT_ERR("Failed to build shader variant (type=%u)\n",
+			  sel->type);
 		shader->compilation_failed = true;
 		return;
 	}
