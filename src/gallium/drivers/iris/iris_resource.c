@@ -241,41 +241,42 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       return NULL;
 
    const bool has_depth = util_format_has_depth(format_desc);
-   uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   uint64_t modifier =
+      select_best_modifier(devinfo, modifiers, modifiers_count);
 
-   if (modifiers_count == 0 || !modifiers) {
-      if (has_depth) {
-         modifier = I915_FORMAT_MOD_Y_TILED;
-      } else if (templ->target == PIPE_TEXTURE_1D ||
-                 templ->target == PIPE_TEXTURE_1D_ARRAY) {
-         modifier = DRM_FORMAT_MOD_LINEAR;
-      } else if (templ->bind & PIPE_BIND_DISPLAY_TARGET) {
-         /* Display is X-tiled for historical reasons. */
-         modifier = I915_FORMAT_MOD_X_TILED;
-      } else {
-         modifier = I915_FORMAT_MOD_Y_TILED;
-      }
-      /* XXX: make sure this doesn't do stupid things for internal textures */
-   }
+   isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
 
-   if (templ->target == PIPE_BUFFER || templ->usage == PIPE_USAGE_STAGING)
-      modifier = DRM_FORMAT_MOD_LINEAR;
+   if (modifier != DRM_FORMAT_MOD_INVALID) {
+      const struct isl_drm_modifier_info *mod_info =
+         isl_drm_modifier_get_info(modifier);
 
-   if (templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
-      modifier = DRM_FORMAT_MOD_LINEAR;
-
-   if (modifier == DRM_FORMAT_MOD_INVALID) {
-      /* User requested specific modifiers */
-      modifier = select_best_modifier(devinfo, modifiers, modifiers_count);
-      if (modifier == DRM_FORMAT_MOD_INVALID)
+      tiling_flags = 1 << mod_info->tiling;
+   } else {
+      if (modifiers_count > 0) {
+         fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
          return NULL;
+      }
+
+      /* No modifiers - we can select our own tiling. */
+
+      if (has_depth) {
+         /* Depth must be Y-tiled */
+         tiling_flags = ISL_TILING_Y0_BIT;
+      } else if (templ->format == PIPE_FORMAT_S8_UINT) {
+         /* Stencil must be W-tiled */
+         tiling_flags = ISL_TILING_W_BIT;
+      } else if (templ->target == PIPE_BUFFER ||
+                 templ->target == PIPE_TEXTURE_1D ||
+                 templ->target == PIPE_TEXTURE_1D_ARRAY) {
+         /* Use linear for buffers and 1D textures */
+         tiling_flags = ISL_TILING_LINEAR_BIT;
+      }
+
+      /* Use linear for staging buffers */
+      if (templ->usage == PIPE_USAGE_STAGING ||
+          templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR) )
+         tiling_flags = ISL_TILING_LINEAR_BIT;
    }
-
-   const struct isl_drm_modifier_info *mod_info =
-      isl_drm_modifier_get_info(modifier);
-
-   enum isl_tiling tiling = templ->format == PIPE_FORMAT_S8_UINT ?
-      ISL_TILING_W : mod_info->tiling;
 
    isl_surf_usage_flags_t usage = pipe_bind_to_isl_usage(templ->bind);
 
@@ -312,7 +313,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .min_alignment_B = 0,
                     .row_pitch_B = 0,
                     .usage = usage,
-                    .tiling_flags = 1 << tiling);
+                    .tiling_flags = tiling_flags);
    assert(isl_surf_created_successfully);
 
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
