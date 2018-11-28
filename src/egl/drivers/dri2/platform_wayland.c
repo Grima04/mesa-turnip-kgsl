@@ -1128,7 +1128,7 @@ drm_handle_device(void *data, struct wl_drm *drm, const char *device)
       _eglLog(_EGL_WARNING, "wayland-egl: could not open %s (%s)",
               dri2_dpy->device_name, strerror(errno));
       free(dri2_dpy->device_name);
-      dri2_dpy->device_name = NULL:
+      dri2_dpy->device_name = NULL;
       return;
    }
 
@@ -1139,7 +1139,7 @@ drm_handle_device(void *data, struct wl_drm *drm, const char *device)
          close(dri2_dpy->fd);
          dri2_dpy->fd = -1;
          free(dri2_dpy->device_name);
-         dri2_dpy->device_name = NULL:
+         dri2_dpy->device_name = NULL;
          _eglLog(_EGL_WARNING, "wayland-egl: drmGetMagic failed");
          return;
       }
