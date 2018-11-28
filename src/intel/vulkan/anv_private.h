@@ -616,7 +616,18 @@ union anv_free_list {
    uint64_t u64;
 };
 
+union anv_free_list2 {
+   struct {
+      uint32_t offset;
+
+      /* A simple count that is incremented every time the head changes. */
+      uint32_t count;
+   };
+   uint64_t u64;
+};
+
 #define ANV_FREE_LIST_EMPTY ((union anv_free_list) { { 1, 0 } })
+#define ANV_FREE_LIST2_EMPTY ((union anv_free_list2) { { UINT32_MAX, 0 } })
 
 struct anv_block_state {
    union {
@@ -688,6 +699,7 @@ struct anv_state {
    int32_t offset;
    uint32_t alloc_size;
    void *map;
+   uint32_t idx;
 };
 
 #define ANV_STATE_NULL ((struct anv_state) { .alloc_size = 0 })
@@ -701,6 +713,20 @@ struct anv_fixed_size_state_pool {
 #define ANV_MAX_STATE_SIZE_LOG2 20
 
 #define ANV_STATE_BUCKETS (ANV_MAX_STATE_SIZE_LOG2 - ANV_MIN_STATE_SIZE_LOG2 + 1)
+
+struct anv_free_entry {
+   uint32_t next;
+   struct anv_state state;
+};
+
+struct anv_state_table {
+   struct anv_device *device;
+   int fd;
+   struct anv_free_entry *map;
+   uint32_t size;
+   struct anv_block_state state;
+   struct u_vector mmap_cleanups;
+};
 
 struct anv_state_pool {
    struct anv_block_pool block_pool;
@@ -763,6 +789,24 @@ void anv_state_stream_finish(struct anv_state_stream *stream);
 struct anv_state anv_state_stream_alloc(struct anv_state_stream *stream,
                                         uint32_t size, uint32_t alignment);
 
+VkResult anv_state_table_init(struct anv_state_table *table,
+                             struct anv_device *device,
+                             uint32_t initial_entries);
+void anv_state_table_finish(struct anv_state_table *table);
+VkResult anv_state_table_add(struct anv_state_table *table, uint32_t *idx,
+                             uint32_t count);
+void anv_free_list_push2(union anv_free_list2 *list,
+                         struct anv_state_table *table,
+                         uint32_t idx, uint32_t count);
+struct anv_state* anv_free_list_pop2(union anv_free_list2 *list,
+                                     struct anv_state_table *table);
+
+
+static inline struct anv_state *
+anv_state_table_get(struct anv_state_table *table, uint32_t idx)
+{
+   return &table->map[idx].state;
+}
 /**
  * Implements a pool of re-usable BOs.  The interface is identical to that
  * of block_pool except that each block is its own BO.

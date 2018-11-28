@@ -100,6 +100,9 @@
 /* Allocations are always at least 64 byte aligned, so 1 is an invalid value.
  * We use it to indicate the free list is empty. */
 #define EMPTY 1
+#define EMPTY2 UINT32_MAX
+
+#define PAGE_SIZE 4096
 
 struct anv_mmap_cleanup {
    void *map;
@@ -128,6 +131,242 @@ static inline uint32_t
 round_to_power_of_two(uint32_t value)
 {
    return 1 << ilog2_round_up(value);
+}
+
+struct anv_state_table_cleanup {
+   void *map;
+   size_t size;
+};
+
+#define ANV_STATE_TABLE_CLEANUP_INIT ((struct anv_state_table_cleanup){0})
+#define ANV_STATE_ENTRY_SIZE (sizeof(struct anv_free_entry))
+
+static VkResult
+anv_state_table_expand_range(struct anv_state_table *table, uint32_t size);
+
+VkResult
+anv_state_table_init(struct anv_state_table *table,
+                    struct anv_device *device,
+                    uint32_t initial_entries)
+{
+   VkResult result;
+
+   table->device = device;
+
+   table->fd = memfd_create("state table", MFD_CLOEXEC);
+   if (table->fd == -1)
+      return vk_error(VK_ERROR_INITIALIZATION_FAILED);
+
+   /* Just make it 2GB up-front.  The Linux kernel won't actually back it
+    * with pages until we either map and fault on one of them or we use
+    * userptr and send a chunk of it off to the GPU.
+    */
+   if (ftruncate(table->fd, BLOCK_POOL_MEMFD_SIZE) == -1) {
+      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_fd;
+   }
+
+   if (!u_vector_init(&table->mmap_cleanups,
+                      round_to_power_of_two(sizeof(struct anv_state_table_cleanup)),
+                      128)) {
+      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_fd;
+   }
+
+   table->state.next = 0;
+   table->state.end = 0;
+   table->size = 0;
+
+   uint32_t initial_size = initial_entries * ANV_STATE_ENTRY_SIZE;
+   result = anv_state_table_expand_range(table, initial_size);
+   if (result != VK_SUCCESS)
+      goto fail_mmap_cleanups;
+
+   return VK_SUCCESS;
+
+ fail_mmap_cleanups:
+   u_vector_finish(&table->mmap_cleanups);
+ fail_fd:
+   close(table->fd);
+
+   return result;
+}
+
+static VkResult
+anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
+{
+   void *map;
+   struct anv_mmap_cleanup *cleanup;
+
+   /* Assert that we only ever grow the pool */
+   assert(size >= table->state.end);
+
+   /* Make sure that we don't go outside the bounds of the memfd */
+   if (size > BLOCK_POOL_MEMFD_SIZE)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   cleanup = u_vector_add(&table->mmap_cleanups);
+   if (!cleanup)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   *cleanup = ANV_MMAP_CLEANUP_INIT;
+
+   /* Just leak the old map until we destroy the pool.  We can't munmap it
+    * without races or imposing locking on the block allocate fast path. On
+    * the whole the leaked maps adds up to less than the size of the
+    * current map.  MAP_POPULATE seems like the right thing to do, but we
+    * should try to get some numbers.
+    */
+   map = mmap(NULL, size, PROT_READ | PROT_WRITE,
+              MAP_SHARED | MAP_POPULATE, table->fd, 0);
+   if (map == MAP_FAILED) {
+      return vk_errorf(table->device->instance, table->device,
+                       VK_ERROR_OUT_OF_HOST_MEMORY, "mmap failed: %m");
+   }
+
+   cleanup->map = map;
+   cleanup->size = size;
+
+   table->map = map;
+   table->size = size;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+anv_state_table_grow(struct anv_state_table *table)
+{
+   VkResult result = VK_SUCCESS;
+
+   uint32_t used = align_u32(table->state.next * ANV_STATE_ENTRY_SIZE,
+                             PAGE_SIZE);
+   uint32_t old_size = table->size;
+
+   /* The block pool is always initialized to a nonzero size and this function
+    * is always called after initialization.
+    */
+   assert(old_size > 0);
+
+   uint32_t required = MAX2(used, old_size);
+   if (used * 2 <= required) {
+      /* If we're in this case then this isn't the firsta allocation and we
+       * already have enough space on both sides to hold double what we
+       * have allocated.  There's nothing for us to do.
+       */
+      goto done;
+   }
+
+   uint32_t size = old_size * 2;
+   while (size < required)
+      size *= 2;
+
+   assert(size > table->size);
+
+   result = anv_state_table_expand_range(table, size);
+
+ done:
+   return result;
+}
+
+void
+anv_state_table_finish(struct anv_state_table *table)
+{
+   struct anv_state_table_cleanup *cleanup;
+
+   u_vector_foreach(cleanup, &table->mmap_cleanups) {
+      if (cleanup->map)
+         munmap(cleanup->map, cleanup->size);
+   }
+
+   u_vector_finish(&table->mmap_cleanups);
+
+   close(table->fd);
+}
+
+VkResult
+anv_state_table_add(struct anv_state_table *table, uint32_t *idx,
+                    uint32_t count)
+{
+   struct anv_block_state state, old, new;
+   VkResult result;
+
+   assert(idx);
+
+   while(1) {
+      state.u64 = __sync_fetch_and_add(&table->state.u64, count);
+      if (state.next + count <= state.end) {
+         assert(table->map);
+         struct anv_free_entry *entry = &table->map[state.next];
+         for (int i = 0; i < count; i++) {
+            entry[i].state.idx = state.next + i;
+         }
+         *idx = state.next;
+         return VK_SUCCESS;
+      } else if (state.next <= state.end) {
+         /* We allocated the first block outside the pool so we have to grow
+          * the pool.  pool_state->next acts a mutex: threads who try to
+          * allocate now will get block indexes above the current limit and
+          * hit futex_wait below.
+          */
+         new.next = state.next + count;
+         do {
+            result = anv_state_table_grow(table);
+            if (result != VK_SUCCESS)
+               return result;
+            new.end = table->size / ANV_STATE_ENTRY_SIZE;
+         } while (new.end < new.next);
+
+         old.u64 = __sync_lock_test_and_set(&table->state.u64, new.u64);
+         if (old.next != state.next)
+            futex_wake(&table->state.end, INT_MAX);
+      } else {
+         futex_wait(&table->state.end, state.end, NULL);
+         continue;
+      }
+   }
+}
+
+void
+anv_free_list_push2(union anv_free_list2 *list,
+                    struct anv_state_table *table,
+                    uint32_t first, uint32_t count)
+{
+   union anv_free_list2 current, old, new;
+   uint32_t last = first;
+
+   for (uint32_t i = 1; i < count; i++, last++)
+      table->map[last].next = last + 1;
+
+   old = *list;
+   do {
+      current = old;
+      table->map[last].next = current.offset;
+      new.offset = first;
+      new.count = current.count + 1;
+      old.u64 = __sync_val_compare_and_swap(&list->u64, current.u64, new.u64);
+   } while (old.u64 != current.u64);
+}
+
+struct anv_state *
+anv_free_list_pop2(union anv_free_list2 *list,
+                   struct anv_state_table *table)
+{
+   union anv_free_list2 current, new, old;
+
+   current.u64 = list->u64;
+   while (current.offset != EMPTY2) {
+      __sync_synchronize();
+      new.offset = table->map[current.offset].next;
+      new.count = current.count + 1;
+      old.u64 = __sync_val_compare_and_swap(&list->u64, current.u64, new.u64);
+      if (old.u64 == current.u64) {
+         struct anv_free_entry *entry = &table->map[current.offset];
+         return &entry->state;
+      }
+      current = old;
+   }
+
+   return NULL;
 }
 
 static bool
@@ -310,8 +549,6 @@ anv_block_pool_finish(struct anv_block_pool *pool)
 
    close(pool->fd);
 }
-
-#define PAGE_SIZE 4096
 
 static VkResult
 anv_block_pool_expand_range(struct anv_block_pool *pool,
