@@ -223,7 +223,7 @@ enum virgl_context_cmd {
 #define VIRGL_OBJ_SHADER_OFFSET_VAL(x) (((x) & 0x7fffffff) << 0)
 /* start contains full length in VAL - also implies continuations */
 /* continuation contains offset in VAL */
-#define VIRGL_OBJ_SHADER_OFFSET_CONT (0x1 << 31)
+#define VIRGL_OBJ_SHADER_OFFSET_CONT (0x1u << 31)
 #define VIRGL_OBJ_SHADER_NUM_TOKENS 4
 #define VIRGL_OBJ_SHADER_SO_NUM_OUTPUTS 5
 #define VIRGL_OBJ_SHADER_SO_STRIDE(x) (6 + (x))
