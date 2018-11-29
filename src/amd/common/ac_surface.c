@@ -1516,10 +1516,12 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 
 	/* Query whether the surface is displayable. */
 	bool displayable = false;
-	r = Addr2IsValidDisplaySwizzleMode(addrlib, surf->u.gfx9.surf.swizzle_mode,
+	if (!config->is_3d && !config->is_cube) {
+		r = Addr2IsValidDisplaySwizzleMode(addrlib, surf->u.gfx9.surf.swizzle_mode,
 					   surf->bpe * 8, &displayable);
-	if (r)
-		return r;
+		if (r)
+			return r;
+	}
 	surf->is_displayable = displayable;
 
 	switch (surf->u.gfx9.surf.swizzle_mode) {
