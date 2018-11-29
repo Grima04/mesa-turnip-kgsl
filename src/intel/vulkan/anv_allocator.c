@@ -877,11 +877,17 @@ anv_state_pool_init(struct anv_state_pool *pool,
    if (result != VK_SUCCESS)
       return result;
 
+   result = anv_state_table_init(&pool->table, device, 64);
+   if (result != VK_SUCCESS) {
+      anv_block_pool_finish(&pool->block_pool);
+      return result;
+   }
+
    assert(util_is_power_of_two_or_zero(block_size));
    pool->block_size = block_size;
    pool->back_alloc_free_list = ANV_FREE_LIST_EMPTY;
    for (unsigned i = 0; i < ANV_STATE_BUCKETS; i++) {
-      pool->buckets[i].free_list = ANV_FREE_LIST_EMPTY;
+      pool->buckets[i].free_list = ANV_FREE_LIST2_EMPTY;
       pool->buckets[i].block.next = 0;
       pool->buckets[i].block.end = 0;
    }
@@ -894,6 +900,7 @@ void
 anv_state_pool_finish(struct anv_state_pool *pool)
 {
    VG(VALGRIND_DESTROY_MEMPOOL(pool));
+   anv_state_table_finish(&pool->table);
    anv_block_pool_finish(&pool->block_pool);
 }
 
@@ -987,22 +994,29 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
 {
    uint32_t bucket = anv_state_pool_get_bucket(MAX2(size, align));
 
-   struct anv_state state;
-   state.alloc_size = anv_state_pool_get_bucket_size(bucket);
+   struct anv_state *state;
+   uint32_t alloc_size = anv_state_pool_get_bucket_size(bucket);
+   int32_t offset;
 
    /* Try free list first. */
-   if (anv_free_list_pop(&pool->buckets[bucket].free_list,
-                         &pool->block_pool.map, &state.offset)) {
-      assert(state.offset >= 0);
+   state = anv_free_list_pop2(&pool->buckets[bucket].free_list,
+                              &pool->table);
+   if (state) {
+      assert(state->offset >= 0);
       goto done;
    }
 
    /* Try to grab a chunk from some larger bucket and split it up */
    for (unsigned b = bucket + 1; b < ANV_STATE_BUCKETS; b++) {
-      int32_t chunk_offset;
-      if (anv_free_list_pop(&pool->buckets[b].free_list,
-                            &pool->block_pool.map, &chunk_offset)) {
+      state = anv_free_list_pop2(&pool->buckets[b].free_list, &pool->table);
+      if (state) {
          unsigned chunk_size = anv_state_pool_get_bucket_size(b);
+         int32_t chunk_offset = state->offset;
+
+         /* First lets update the state we got to its new size. offset and map
+          * remain the same.
+          */
+         state->alloc_size = alloc_size;
 
          /* We've found a chunk that's larger than the requested state size.
           * There are a couple of options as to what we do with it:
@@ -1031,43 +1045,43 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
           * We choose option (3).
           */
          if (chunk_size > pool->block_size &&
-             state.alloc_size < pool->block_size) {
+             alloc_size < pool->block_size) {
             assert(chunk_size % pool->block_size == 0);
             /* We don't want to split giant chunks into tiny chunks.  Instead,
              * break anything bigger than a block into block-sized chunks and
              * then break it down into bucket-sized chunks from there.  Return
              * all but the first block of the chunk to the block bucket.
              */
-            const uint32_t block_bucket =
-               anv_state_pool_get_bucket(pool->block_size);
-            anv_free_list_push(&pool->buckets[block_bucket].free_list,
-                               pool->block_pool.map,
-                               chunk_offset + pool->block_size,
-                               pool->block_size,
-                               (chunk_size / pool->block_size) - 1);
+            uint32_t push_back = (chunk_size / pool->block_size) - 1;
+            anv_state_pool_return_blocks(pool, chunk_offset + pool->block_size,
+                                         push_back, pool->block_size);
             chunk_size = pool->block_size;
          }
 
-         assert(chunk_size % state.alloc_size == 0);
-         anv_free_list_push(&pool->buckets[bucket].free_list,
-                            pool->block_pool.map,
-                            chunk_offset + state.alloc_size,
-                            state.alloc_size,
-                            (chunk_size / state.alloc_size) - 1);
-
-         state.offset = chunk_offset;
+         assert(chunk_size % alloc_size == 0);
+         uint32_t push_back = (chunk_size / alloc_size) - 1;
+         anv_state_pool_return_blocks(pool, chunk_offset + alloc_size,
+                                      push_back, alloc_size);
          goto done;
       }
    }
 
-   state.offset = anv_fixed_size_state_pool_alloc_new(&pool->buckets[bucket],
-                                                      &pool->block_pool,
-                                                      state.alloc_size,
-                                                      pool->block_size);
+   offset = anv_fixed_size_state_pool_alloc_new(&pool->buckets[bucket],
+                                                &pool->block_pool,
+                                                alloc_size,
+                                                pool->block_size);
+   /* Everytime we allocate a new state, add it to the state pool */
+   uint32_t idx;
+   VkResult result = anv_state_table_add(&pool->table, &idx, 1);
+   assert(result == VK_SUCCESS);
+
+   state = anv_state_table_get(&pool->table, idx);
+   state->offset = offset;
+   state->alloc_size = alloc_size;
+   state->map = anv_block_pool_map(&pool->block_pool, offset);
 
 done:
-   state.map = anv_block_pool_map(&pool->block_pool, state.offset);
-   return state;
+   return *state;
 }
 
 struct anv_state
@@ -1114,9 +1128,8 @@ anv_state_pool_free_no_vg(struct anv_state_pool *pool, struct anv_state state)
                          pool->block_pool.map, state.offset,
                          state.alloc_size, 1);
    } else {
-      anv_free_list_push(&pool->buckets[bucket].free_list,
-                         pool->block_pool.map, state.offset,
-                         state.alloc_size, 1);
+      anv_free_list_push2(&pool->buckets[bucket].free_list,
+                          &pool->table, state.idx, 1);
    }
 }
 

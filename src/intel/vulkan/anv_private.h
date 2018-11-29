@@ -705,7 +705,7 @@ struct anv_state {
 #define ANV_STATE_NULL ((struct anv_state) { .alloc_size = 0 })
 
 struct anv_fixed_size_state_pool {
-   union anv_free_list free_list;
+   union anv_free_list2 free_list;
    struct anv_block_state block;
 };
 
