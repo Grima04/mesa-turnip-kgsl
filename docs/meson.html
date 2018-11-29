@@ -16,6 +16,11 @@
 
 <h1>Compilation and Installation using Meson</h1>
 
+<ul>
+  <li><a href="#basic">Basic Usage</a></li>
+  <li><a href="#cross-compilation">Cross-compilation and 32-bit builds</a></li>
+</ul>
+
 <h2 id="basic">1. Basic Usage</h2>
 
 <p><strong>The Meson build system is generally considered stable and ready
@@ -189,6 +194,84 @@ is unrelated to the <code>buildtype</code>; setting the latter to
 </p>
 </dd>
 </dl>
+
+<h2 id="cross-compilation">2. Cross-compilation and 32-bit builds</h2>
+
+<p><a href="https://mesonbuild.com/Cross-compilation.html">Meson supports
+cross-compilation</a> by specifying a number of binary paths and
+settings in a file and passing this file to <code>meson</code> or
+<code>meson configure</code> with the <code>--cross-file</code>
+parameter.</p>
+
+<p>This file can live at any location, but you can use the bare filename
+(without the folder path) if you put it in $XDG_DATA_HOME/meson/cross or
+~/.local/share/meson/cross</p>
+
+<p>Below are a few example of cross files, but keep in mind that you
+will likely have to alter them for your system.</p>
+
+<p>
+32-bit build on x86 linux:
+<pre>
+[binaries]
+c = '/usr/bin/gcc'
+cpp = '/usr/bin/g++'
+ar = '/usr/bin/gcc-ar'
+strip = '/usr/bin/strip'
+pkgconfig = '/usr/bin/pkg-config-32'
+llvm-config = '/usr/bin/llvm-config32'
+
+[properties]
+c_args = ['-m32']
+c_link_args = ['-m32']
+cpp_args = ['-m32']
+cpp_link_args = ['-m32']
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86'
+cpu = 'i686'
+endian = 'little'
+</pre>
+</p>
+
+<p>
+64-bit build on ARM linux:
+<pre>
+[binaries]
+c = '/usr/bin/aarch64-linux-gnu-gcc'
+cpp = '/usr/bin/aarch64-linux-gnu-g++'
+ar = '/usr/bin/aarch64-linux-gnu-ar'
+strip = '/usr/bin/aarch64-linux-gnu-strip'
+pkgconfig = '/usr/bin/aarch64-linux-gnu-pkg-config'
+exe_wrapper = '/usr/bin/qemu-aarch64-static'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'arm'
+cpu = 'aarch64'
+endian = 'little'
+</pre>
+</p>
+
+<p>
+64-bit build on x86 windows:
+<pre>
+[binaries]
+c = '/usr/bin/x86_64-w64-mingw32-gcc'
+cpp = '/usr/bin/x86_64-w64-mingw32-g++'
+ar = '/usr/bin/x86_64-w64-mingw32-ar'
+strip = '/usr/bin/x86_64-w64-mingw32-strip'
+pkgconfig = '/usr/bin/x86_64-w64-mingw32-pkg-config'
+exe_wrapper = 'wine'
+
+[host_machine]
+system = 'windows'
+cpu_family = 'x86_64'
+cpu = 'i686'
+endian = 'little'
+</pre>
+</p>
 
 </div>
 </body>
