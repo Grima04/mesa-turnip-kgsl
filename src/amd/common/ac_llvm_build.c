@@ -3141,11 +3141,10 @@ ac_build_inclusive_scan(struct ac_llvm_context *ctx, LLVMValueRef src, nir_op op
 {
 	ac_build_optimization_barrier(ctx, &src);
 	LLVMValueRef result;
-	LLVMValueRef identity = get_reduction_identity(ctx, op,
-								ac_get_type_size(LLVMTypeOf(src)));
-	result = LLVMBuildBitCast(ctx->builder,
-								ac_build_set_inactive(ctx, src, identity),
-								LLVMTypeOf(identity), "");
+	LLVMValueRef identity =
+		get_reduction_identity(ctx, op, ac_get_type_size(LLVMTypeOf(src)));
+	result = LLVMBuildBitCast(ctx->builder, ac_build_set_inactive(ctx, src, identity),
+				  LLVMTypeOf(identity), "");
 	result = ac_build_scan(ctx, op, result, identity);
 
 	return ac_build_wwm(ctx, result);
@@ -3156,11 +3155,10 @@ ac_build_exclusive_scan(struct ac_llvm_context *ctx, LLVMValueRef src, nir_op op
 {
 	ac_build_optimization_barrier(ctx, &src);
 	LLVMValueRef result;
-	LLVMValueRef identity = get_reduction_identity(ctx, op,
-								ac_get_type_size(LLVMTypeOf(src)));
-	result = LLVMBuildBitCast(ctx->builder,
-								ac_build_set_inactive(ctx, src, identity),
-								LLVMTypeOf(identity), "");
+	LLVMValueRef identity =
+		get_reduction_identity(ctx, op, ac_get_type_size(LLVMTypeOf(src)));
+	result = LLVMBuildBitCast(ctx->builder, ac_build_set_inactive(ctx, src, identity),
+				  LLVMTypeOf(identity), "");
 	result = ac_build_dpp(ctx, identity, result, dpp_wf_sr1, 0xf, 0xf, false);
 	result = ac_build_scan(ctx, op, result, identity);
 
