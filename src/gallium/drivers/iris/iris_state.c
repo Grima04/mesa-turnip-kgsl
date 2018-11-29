@@ -5313,14 +5313,9 @@ genX(init_state)(struct iris_context *ice)
    ctx->bind_vertex_elements_state = iris_bind_vertex_elements_state;
    ctx->delete_blend_state = iris_delete_state;
    ctx->delete_depth_stencil_alpha_state = iris_delete_state;
-   ctx->delete_fs_state = iris_delete_state;
    ctx->delete_rasterizer_state = iris_delete_state;
    ctx->delete_sampler_state = iris_delete_state;
    ctx->delete_vertex_elements_state = iris_delete_state;
-   ctx->delete_tcs_state = iris_delete_state;
-   ctx->delete_tes_state = iris_delete_state;
-   ctx->delete_gs_state = iris_delete_state;
-   ctx->delete_vs_state = iris_delete_state;
    ctx->set_blend_color = iris_set_blend_color;
    ctx->set_clip_state = iris_set_clip_state;
    ctx->set_constant_buffer = iris_set_constant_buffer;
