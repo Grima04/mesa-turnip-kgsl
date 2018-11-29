@@ -799,6 +799,14 @@ void st_init_extensions(struct pipe_screen *screen,
       { { o(ARB_texture_rg) },
         { PIPE_FORMAT_R8_UNORM,
           PIPE_FORMAT_R8G8_UNORM } },
+
+      { { o(EXT_render_snorm) },
+        { PIPE_FORMAT_R8_SNORM,
+          PIPE_FORMAT_R8G8_SNORM,
+          PIPE_FORMAT_R8G8B8A8_SNORM,
+          PIPE_FORMAT_R16_SNORM,
+          PIPE_FORMAT_R16G16_SNORM,
+          PIPE_FORMAT_R16G16B16A16_SNORM } },
    };
 
    /* Required: depth stencil and sampler support */
