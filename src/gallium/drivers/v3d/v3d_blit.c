@@ -330,6 +330,8 @@ v3d_stencil_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 #define V3D_TFU_ICFG_NUMMM_SHIFT 5
 #define V3D_TFU_ICFG_TTYPE_SHIFT 9
 
+#define V3D_TFU_ICFG_OPAD_SHIFT 22
+
 #define V3D_TFU_ICFG_FORMAT_SHIFT 18
 #define V3D_TFU_ICFG_FORMAT_RASTER 0
 #define V3D_TFU_ICFG_FORMAT_SAND_128 1
@@ -340,6 +342,121 @@ v3d_stencil_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 #define V3D_TFU_ICFG_FORMAT_UIF_NO_XOR 14
 #define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
 
+static bool
+v3d_tfu(struct pipe_context *pctx,
+        struct pipe_resource *pdst,
+        struct pipe_resource *psrc,
+        unsigned int src_level,
+        unsigned int base_level,
+        unsigned int last_level,
+        unsigned int src_layer,
+        unsigned int dst_layer)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+        struct v3d_screen *screen = v3d->screen;
+        struct v3d_resource *src = v3d_resource(psrc);
+        struct v3d_resource *dst = v3d_resource(pdst);
+        struct v3d_resource_slice *src_base_slice = &src->slices[src_level];
+        struct v3d_resource_slice *dst_base_slice = &dst->slices[base_level];
+        int msaa_scale = pdst->nr_samples > 1 ? 2 : 1;
+        int width = u_minify(pdst->width0, base_level) * msaa_scale;
+        int height = u_minify(pdst->height0, base_level) * msaa_scale;
+
+        if (psrc->format != pdst->format)
+                return false;
+        if (psrc->nr_samples != pdst->nr_samples)
+                return false;
+
+        uint32_t tex_format = v3d_get_tex_format(&screen->devinfo,
+                                                 pdst->format);
+
+        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format))
+                return false;
+
+        if (pdst->target != PIPE_TEXTURE_2D || psrc->target != PIPE_TEXTURE_2D)
+                return false;
+
+        /* Can't write to raster. */
+        if (dst_base_slice->tiling == VC5_TILING_RASTER)
+                return false;
+
+        v3d_flush_jobs_writing_resource(v3d, psrc);
+        v3d_flush_jobs_reading_resource(v3d, pdst);
+
+        struct drm_v3d_submit_tfu tfu = {
+                .ios = (height << 16) | width,
+                .bo_handles = {
+                        src->bo->handle,
+                        src != dst ? dst->bo->handle : 0
+                },
+                .in_sync = v3d->out_sync,
+                .out_sync = v3d->out_sync,
+        };
+        uint32_t src_offset = (src->bo->offset +
+                               v3d_layer_offset(psrc, src_level, src_layer));
+        tfu.iia |= src_offset;
+        if (src_base_slice->tiling == VC5_TILING_RASTER) {
+                tfu.icfg |= (V3D_TFU_ICFG_FORMAT_RASTER <<
+                             V3D_TFU_ICFG_FORMAT_SHIFT);
+        } else {
+                tfu.icfg |= ((V3D_TFU_ICFG_FORMAT_LINEARTILE +
+                              (src_base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                             V3D_TFU_ICFG_FORMAT_SHIFT);
+        }
+
+        uint32_t dst_offset = (dst->bo->offset +
+                               v3d_layer_offset(pdst, src_level, dst_layer));
+        tfu.ioa |= dst_offset;
+        if (last_level != base_level)
+                tfu.ioa |= V3D_TFU_IOA_DIMTW;
+        tfu.ioa |= ((V3D_TFU_IOA_FORMAT_LINEARTILE +
+                     (dst_base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                    V3D_TFU_IOA_FORMAT_SHIFT);
+
+        tfu.icfg |= tex_format << V3D_TFU_ICFG_TTYPE_SHIFT;
+        tfu.icfg |= (last_level - base_level) << V3D_TFU_ICFG_NUMMM_SHIFT;
+
+        switch (src_base_slice->tiling) {
+        case VC5_TILING_UIF_NO_XOR:
+        case VC5_TILING_UIF_XOR:
+                tfu.iis |= (src_base_slice->padded_height /
+                            (2 * v3d_utile_height(src->cpp)));
+                break;
+        case VC5_TILING_RASTER:
+                tfu.iis |= src_base_slice->stride / src->cpp;
+                break;
+        case VC5_TILING_LINEARTILE:
+        case VC5_TILING_UBLINEAR_1_COLUMN:
+        case VC5_TILING_UBLINEAR_2_COLUMN:
+                break;
+       }
+
+        /* If we're writing level 0 (!IOA_DIMTW), then we need to supply the
+         * OPAD field for the destination (how many extra UIF blocks beyond
+         * those necessary to cover the height).  When filling mipmaps, the
+         * miplevel 1+ tiling state is inferred.
+         */
+        if (dst_base_slice->tiling == VC5_TILING_UIF_NO_XOR ||
+            dst_base_slice->tiling == VC5_TILING_UIF_XOR) {
+                int uif_block_h = 2 * v3d_utile_height(dst->cpp);
+                int implicit_padded_height = align(height, uif_block_h);
+
+                tfu.icfg |= (((dst_base_slice->padded_height -
+                               implicit_padded_height) / uif_block_h) <<
+                             V3D_TFU_ICFG_OPAD_SHIFT);
+        }
+
+        int ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_SUBMIT_TFU, &tfu);
+        if (ret != 0) {
+                fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
+                return false;
+        }
+
+        dst->writes++;
+
+        return true;
+}
+
 boolean
 v3d_generate_mipmap(struct pipe_context *pctx,
                     struct pipe_resource *prsc,
@@ -349,78 +466,49 @@ v3d_generate_mipmap(struct pipe_context *pctx,
                     unsigned int first_layer,
                     unsigned int last_layer)
 {
-        struct v3d_context *v3d = v3d_context(pctx);
-        struct v3d_screen *screen = v3d->screen;
-        struct v3d_resource *rsc = v3d_resource(prsc);
-        struct v3d_resource_slice *base_slice = &rsc->slices[base_level];
-        int width = u_minify(prsc->width0, base_level);
-        int height = u_minify(prsc->height0, base_level);
-        uint32_t tex_format = v3d_get_tex_format(&screen->devinfo,
-                                                 prsc->format);
-
-        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format))
+        if (format != prsc->format)
                 return false;
 
-        if (prsc->target != PIPE_TEXTURE_2D)
-                return false;
-        /* Since we don't support array or 3D textures, there should be only
-         * one layer.
+        /* We could maybe support looping over layers for array textures, but
+         * we definitely don't support 3D.
          */
-        int layer = first_layer;
-        assert(first_layer == last_layer);
-
-        /* Can't write to raster. */
-        if (base_slice->tiling == VC5_TILING_RASTER)
+        if (first_layer != last_layer)
                 return false;
 
-        v3d_flush_jobs_reading_resource(v3d, prsc);
+        return v3d_tfu(pctx,
+                       prsc, prsc,
+                       base_level,
+                       base_level, last_level,
+                       first_layer, first_layer);
+}
 
-        struct drm_v3d_submit_tfu tfu = {
-                .ios = (height << 16) | width,
-                .bo_handles = { rsc->bo->handle },
-                .in_sync = v3d->out_sync,
-                .out_sync = v3d->out_sync,
-        };
-        uint32_t offset = (rsc->bo->offset +
-                           v3d_layer_offset(prsc, base_level, layer));
-        tfu.iia |= offset;
-        tfu.icfg |= ((V3D_TFU_ICFG_FORMAT_LINEARTILE +
-                      (base_slice->tiling - VC5_TILING_LINEARTILE)) <<
-                     V3D_TFU_ICFG_FORMAT_SHIFT);
+static bool
+v3d_tfu_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+{
+        int dst_width = u_minify(info->dst.resource->width0, info->dst.level);
+        int dst_height = u_minify(info->dst.resource->height0, info->dst.level);
 
-        tfu.ioa |= offset;
-        tfu.ioa |= V3D_TFU_IOA_DIMTW;
-        tfu.ioa |= ((V3D_TFU_IOA_FORMAT_LINEARTILE +
-                     (base_slice->tiling - VC5_TILING_LINEARTILE)) <<
-                    V3D_TFU_IOA_FORMAT_SHIFT);
+        if ((info->mask & PIPE_MASK_RGBA) == 0)
+                return false;
 
-        tfu.icfg |= tex_format << V3D_TFU_ICFG_TTYPE_SHIFT;
-        tfu.icfg |= (last_level - base_level) << V3D_TFU_ICFG_NUMMM_SHIFT;
-
-        switch (base_slice->tiling) {
-        case VC5_TILING_UIF_NO_XOR:
-        case VC5_TILING_UIF_XOR:
-                tfu.iis |= (base_slice->padded_height /
-                            (2 * v3d_utile_height(rsc->cpp)));
-                break;
-        case VC5_TILING_RASTER:
-                tfu.iis |= base_slice->stride / rsc->cpp;
-                break;
-        case VC5_TILING_LINEARTILE:
-        case VC5_TILING_UBLINEAR_1_COLUMN:
-        case VC5_TILING_UBLINEAR_2_COLUMN:
-                break;
-       }
-
-        int ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_SUBMIT_TFU, &tfu);
-        if (ret != 0) {
-                fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
+        if (info->dst.box.x != 0 ||
+            info->dst.box.y != 0 ||
+            info->dst.box.width != dst_width ||
+            info->dst.box.height != dst_height ||
+            info->src.box.x != 0 ||
+            info->src.box.y != 0 ||
+            info->src.box.width != info->dst.box.width ||
+            info->src.box.height != info->dst.box.height) {
                 return false;
         }
 
-        rsc->writes++;
+        if (info->dst.format != info->src.format)
+                return false;
 
-        return true;
+        return v3d_tfu(pctx, info->dst.resource, info->src.resource,
+                       info->src.level,
+                       info->dst.level, info->dst.level,
+                       info->src.box.z, info->dst.box.z);
 }
 
 /* Optimal hardware path for blitting pixels.
@@ -436,10 +524,9 @@ v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
                 info.mask &= ~PIPE_MASK_S;
         }
 
-#if 0
-        if (v3d_tile_blit(pctx, blit_info))
-                return;
-#endif
+        if (v3d_tfu_blit(pctx, blit_info))
+                info.mask &= ~PIPE_MASK_RGBA;
 
-        v3d_render_blit(pctx, &info);
+        if (info.mask)
+                v3d_render_blit(pctx, &info);
 }
