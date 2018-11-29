@@ -151,7 +151,7 @@ write_tmu_p0(struct v3d_job *job,
         int unit  = v3d_tmu_config_data_get_unit(data);
         struct pipe_sampler_view *psview = texstate->textures[unit];
         struct v3d_sampler_view *sview = v3d_sampler_view(psview);
-        struct v3d_resource *rsc = v3d_resource(psview->texture);
+        struct v3d_resource *rsc = v3d_resource(sview->texture);
 
         cl_aligned_reloc(&job->indirect, uniforms, sview->bo,
                          v3d_tmu_config_data_get_value(data));

@@ -746,6 +746,7 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
         struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_screen *screen = v3d->screen;
         struct v3d_sampler_view *so = CALLOC_STRUCT(v3d_sampler_view);
+        struct v3d_resource *rsc = v3d_resource(prsc);
 
         if (!so)
                 return NULL;
@@ -771,6 +772,44 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
         so->base.texture = prsc;
         so->base.reference.count = 1;
         so->base.context = pctx;
+
+        /* V3D still doesn't support sampling from raster textures, so we will
+         * have to copy to a temporary tiled texture.
+         */
+        if (!rsc->tiled) {
+                struct v3d_resource *shadow_parent = rsc;
+                struct pipe_resource tmpl = {
+                        .target = prsc->target,
+                        .format = prsc->format,
+                        .width0 = u_minify(prsc->width0,
+                                           cso->u.tex.first_level),
+                        .height0 = u_minify(prsc->height0,
+                                            cso->u.tex.first_level),
+                        .depth0 = 1,
+                        .array_size = 1,
+                        .bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_RENDER_TARGET,
+                        .last_level = cso->u.tex.last_level - cso->u.tex.first_level,
+                        .nr_samples = prsc->nr_samples,
+                };
+
+                /* Create the shadow texture.  The rest of the sampler view
+                 * setup will use the shadow.
+                 */
+                prsc = v3d_resource_create(pctx->screen, &tmpl);
+                if (!prsc) {
+                        free(so);
+                        return NULL;
+                }
+                rsc = v3d_resource(prsc);
+
+                /* Flag it as needing update of the contents from the parent. */
+                rsc->writes = shadow_parent->writes - 1;
+                assert(rsc->tiled);
+
+                so->texture = prsc;
+        } else {
+                pipe_resource_reference(&so->texture, prsc);
+        }
 
         void *map;
 #if V3D_VERSION >= 40
@@ -859,6 +898,7 @@ v3d_sampler_view_destroy(struct pipe_context *pctx,
 
         v3d_bo_unreference(&sview->bo);
         pipe_resource_reference(&psview->texture, NULL);
+        pipe_resource_reference(&sview->texture, NULL);
         free(psview);
 }
 

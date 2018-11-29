@@ -126,9 +126,13 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
 
         /* Flush writes to textures we're sampling. */
         for (int i = 0; i < v3d->tex[s].num_textures; i++) {
-                struct pipe_sampler_view *view = v3d->tex[s].textures[i];
-                if (!view)
+                struct pipe_sampler_view *pview = v3d->tex[s].textures[i];
+                if (!pview)
                         continue;
+                struct v3d_sampler_view *view = v3d_sampler_view(pview);
+
+                if (view->texture != view->base.texture)
+                        v3d_update_shadow_texture(pctx, &view->base);
 
                 v3d_flush_jobs_writing_resource(v3d, view->texture);
         }

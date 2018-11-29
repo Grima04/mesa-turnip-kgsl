@@ -828,6 +828,61 @@ fail:
         return NULL;
 }
 
+void
+v3d_update_shadow_texture(struct pipe_context *pctx,
+                          struct pipe_sampler_view *pview)
+{
+        struct v3d_sampler_view *view = v3d_sampler_view(pview);
+        struct v3d_resource *shadow = v3d_resource(view->texture);
+        struct v3d_resource *orig = v3d_resource(pview->texture);
+
+        assert(view->texture != pview->texture);
+
+        if (shadow->writes == orig->writes && orig->bo->private)
+                return;
+
+        perf_debug("Updating %dx%d@%d shadow for linear texture\n",
+                   orig->base.width0, orig->base.height0,
+                   pview->u.tex.first_level);
+
+        for (int i = 0; i <= shadow->base.last_level; i++) {
+                unsigned width = u_minify(shadow->base.width0, i);
+                unsigned height = u_minify(shadow->base.height0, i);
+                struct pipe_blit_info info = {
+                        .dst = {
+                                .resource = &shadow->base,
+                                .level = i,
+                                .box = {
+                                        .x = 0,
+                                        .y = 0,
+                                        .z = 0,
+                                        .width = width,
+                                        .height = height,
+                                        .depth = 1,
+                                },
+                                .format = shadow->base.format,
+                        },
+                        .src = {
+                                .resource = &orig->base,
+                                .level = pview->u.tex.first_level + i,
+                                .box = {
+                                        .x = 0,
+                                        .y = 0,
+                                        .z = 0,
+                                        .width = width,
+                                        .height = height,
+                                        .depth = 1,
+                                },
+                                .format = orig->base.format,
+                        },
+                        .mask = util_format_get_mask(orig->base.format),
+                };
+                pctx->blit(pctx, &info);
+        }
+
+        shadow->writes = orig->writes;
+}
+
 static struct pipe_surface *
 v3d_create_surface(struct pipe_context *pctx,
                    struct pipe_resource *ptex,

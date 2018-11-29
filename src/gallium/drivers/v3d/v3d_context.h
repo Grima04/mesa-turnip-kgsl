@@ -95,6 +95,12 @@ struct v3d_sampler_view {
         uint8_t texture_shader_state[32];
         /* V3D 4.x: Texture state struct. */
         struct v3d_bo *bo;
+
+        /* Actual texture to be read by this sampler view.  May be different
+         * from base.texture in the case of having a shadow tiled copy of a
+         * raster texture.
+         */
+        struct pipe_resource *texture;
 };
 
 struct v3d_sampler_state {
