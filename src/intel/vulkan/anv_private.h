@@ -737,7 +737,7 @@ struct anv_state_pool {
    uint32_t block_size;
 
    /** Free list for "back" allocations */
-   union anv_free_list back_alloc_free_list;
+   union anv_free_list2 back_alloc_free_list;
 
    struct anv_fixed_size_state_pool buckets[ANV_STATE_BUCKETS];
 };

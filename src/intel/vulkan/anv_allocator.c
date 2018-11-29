@@ -885,7 +885,7 @@ anv_state_pool_init(struct anv_state_pool *pool,
 
    assert(util_is_power_of_two_or_zero(block_size));
    pool->block_size = block_size;
-   pool->back_alloc_free_list = ANV_FREE_LIST_EMPTY;
+   pool->back_alloc_free_list = ANV_FREE_LIST2_EMPTY;
    for (unsigned i = 0; i < ANV_STATE_BUCKETS; i++) {
       pool->buckets[i].free_list = ANV_FREE_LIST2_EMPTY;
       pool->buckets[i].block.next = 0;
@@ -1098,22 +1098,30 @@ anv_state_pool_alloc(struct anv_state_pool *pool, uint32_t size, uint32_t align)
 struct anv_state
 anv_state_pool_alloc_back(struct anv_state_pool *pool)
 {
-   struct anv_state state;
-   state.alloc_size = pool->block_size;
+   struct anv_state *state;
+   uint32_t alloc_size = pool->block_size;
 
-   if (anv_free_list_pop(&pool->back_alloc_free_list,
-                         &pool->block_pool.map, &state.offset)) {
-      assert(state.offset < 0);
+   state = anv_free_list_pop2(&pool->back_alloc_free_list, &pool->table);
+   if (state) {
+      assert(state->offset < 0);
       goto done;
    }
 
-   state.offset = anv_block_pool_alloc_back(&pool->block_pool,
-                                            pool->block_size);
+   int32_t offset;
+   offset = anv_block_pool_alloc_back(&pool->block_pool,
+                                      pool->block_size);
+   uint32_t idx;
+   VkResult result = anv_state_table_add(&pool->table, &idx, 1);
+   assert(result == VK_SUCCESS);
+
+   state = anv_state_table_get(&pool->table, idx);
+   state->offset = offset;
+   state->alloc_size = alloc_size;
+   state->map = pool->block_pool.map + state->offset;
 
 done:
-   state.map = pool->block_pool.map + state.offset;
-   VG(VALGRIND_MEMPOOL_ALLOC(pool, state.map, state.alloc_size));
-   return state;
+   VG(VALGRIND_MEMPOOL_ALLOC(pool, state->map, state->alloc_size));
+   return *state;
 }
 
 static void
@@ -1124,9 +1132,8 @@ anv_state_pool_free_no_vg(struct anv_state_pool *pool, struct anv_state state)
 
    if (state.offset < 0) {
       assert(state.alloc_size == pool->block_size);
-      anv_free_list_push(&pool->back_alloc_free_list,
-                         pool->block_pool.map, state.offset,
-                         state.alloc_size, 1);
+      anv_free_list_push2(&pool->back_alloc_free_list,
+                          &pool->table, state.idx, 1);
    } else {
       anv_free_list_push2(&pool->buckets[bucket].free_list,
                           &pool->table, state.idx, 1);
