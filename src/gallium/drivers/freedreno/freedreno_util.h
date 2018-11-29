@@ -480,6 +480,7 @@ fd4_stage2shadersb(gl_shader_stage type)
 	case MESA_SHADER_FRAGMENT:
 		return SB4_FS_SHADER;
 	case MESA_SHADER_COMPUTE:
+	case MESA_SHADER_KERNEL:
 		return SB4_CS_SHADER;
 	default:
 		unreachable("bad shader type");

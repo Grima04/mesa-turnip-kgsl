@@ -534,6 +534,7 @@ print_var_decl(nir_variable *var, print_state *state)
       case MESA_SHADER_TESS_CTRL:
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_COMPUTE:
+      case MESA_SHADER_KERNEL:
       default:
          /* TODO */
          break;
@@ -1350,17 +1351,13 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    if (shader->info.label)
       fprintf(fp, "label: %s\n", shader->info.label);
 
-   switch (shader->info.stage) {
-   case MESA_SHADER_COMPUTE:
+   if (gl_shader_stage_is_compute(shader->info.stage)) {
       fprintf(fp, "local-size: %u, %u, %u%s\n",
               shader->info.cs.local_size[0],
               shader->info.cs.local_size[1],
               shader->info.cs.local_size[2],
               shader->info.cs.local_size_variable ? " (variable)" : "");
       fprintf(fp, "shared-size: %u\n", shader->info.cs.shared_size);
-      break;
-   default:
-      break;
    }
 
    fprintf(fp, "inputs: %u\n", shader->num_inputs);

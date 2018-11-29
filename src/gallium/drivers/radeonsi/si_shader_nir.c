@@ -362,7 +362,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		}
 	}
 
-	if (nir->info.stage == MESA_SHADER_COMPUTE) {
+	if (gl_shader_stage_is_compute(nir->info.stage)) {
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] = nir->info.cs.local_size[0];
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT] = nir->info.cs.local_size[1];
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH] = nir->info.cs.local_size[2];
@@ -1051,7 +1051,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 	ctx->num_images = util_last_bit(info->images_declared);
 
 	if (ctx->shader->selector->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE]) {
-		assert(nir->info.stage == MESA_SHADER_COMPUTE);
+		assert(gl_shader_stage_is_compute(nir->info.stage));
 		si_declare_compute_memory(ctx);
 	}
 	ac_nir_translate(&ctx->ac, &ctx->abi, nir);

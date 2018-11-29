@@ -165,6 +165,7 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 				ir3_glsl_type_size);
 		break;
 	case MESA_SHADER_COMPUTE:
+	case MESA_SHADER_KERNEL:
 		break;
 	default:
 		errx(1, "unhandled shader stage: %d", stage);

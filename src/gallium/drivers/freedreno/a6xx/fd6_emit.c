@@ -56,6 +56,7 @@ shader_t_to_opcode(gl_shader_stage type)
 		return CP_LOAD_STATE6_GEOM;
 	case MESA_SHADER_FRAGMENT:
 	case MESA_SHADER_COMPUTE:
+	case MESA_SHADER_KERNEL:
 		return CP_LOAD_STATE6_FRAG;
 	default:
 		unreachable("bad shader type");

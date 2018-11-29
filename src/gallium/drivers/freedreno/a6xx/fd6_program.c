@@ -105,6 +105,7 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		break;
 	case MESA_SHADER_FRAGMENT:
 	case MESA_SHADER_COMPUTE:
+	case MESA_SHADER_KERNEL:
 		opcode = CP_LOAD_STATE6_FRAG;
 		break;
 	default:

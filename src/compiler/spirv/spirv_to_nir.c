@@ -3767,7 +3767,7 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    case SpvExecutionModeLocalSize:
-      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      vtn_assert(gl_shader_stage_is_compute(b->shader->info.stage));
       b->shader->info.cs.local_size[0] = mode->literals[0];
       b->shader->info.cs.local_size[1] = mode->literals[1];
       b->shader->info.cs.local_size[2] = mode->literals[2];

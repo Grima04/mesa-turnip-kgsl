@@ -148,7 +148,7 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
       break;
 
    case nir_var_mem_shared:
-      assert(shader->info.stage == MESA_SHADER_COMPUTE);
+      assert(gl_shader_stage_is_compute(shader->info.stage));
       exec_list_push_tail(&shader->shared, &var->node);
       break;
 

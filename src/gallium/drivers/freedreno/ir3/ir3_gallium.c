@@ -588,7 +588,7 @@ void
 ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, const struct pipe_grid_info *info)
 {
-	debug_assert(v->type == MESA_SHADER_COMPUTE);
+	debug_assert(gl_shader_stage_is_compute(v->type));
 
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_COMPUTE);
 
