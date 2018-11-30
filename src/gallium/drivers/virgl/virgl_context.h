@@ -58,7 +58,7 @@ struct virgl_context {
 
    struct pipe_framebuffer_state framebuffer;
 
-   struct slab_child_pool texture_transfer_pool;
+   struct slab_child_pool transfer_pool;
 
    struct u_upload_mgr *uploader;
 

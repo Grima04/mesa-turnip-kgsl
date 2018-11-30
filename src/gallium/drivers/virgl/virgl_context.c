@@ -1188,7 +1188,7 @@ virgl_context_destroy( struct pipe_context *ctx )
       u_upload_destroy(vctx->uploader);
    util_primconvert_destroy(vctx->primconvert);
 
-   slab_destroy_child(&vctx->texture_transfer_pool);
+   slab_destroy_child(&vctx->transfer_pool);
    FREE(vctx);
 }
 
@@ -1330,7 +1330,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    virgl_init_so_functions(vctx);
 
    list_inithead(&vctx->to_flush_bufs);
-   slab_create_child(&vctx->texture_transfer_pool, &rs->texture_transfer_pool);
+   slab_create_child(&vctx->transfer_pool, &rs->transfer_pool);
 
    vctx->primconvert = util_primconvert_create(&vctx->base, rs->caps.caps.v1.prim_mask);
    vctx->uploader = u_upload_create(&vctx->base, 1024 * 1024,

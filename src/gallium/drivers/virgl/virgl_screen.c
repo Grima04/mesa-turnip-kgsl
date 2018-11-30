@@ -743,7 +743,7 @@ virgl_destroy_screen(struct pipe_screen *screen)
    struct virgl_screen *vscreen = virgl_screen(screen);
    struct virgl_winsys *vws = vscreen->vws;
 
-   slab_destroy_parent(&vscreen->texture_transfer_pool);
+   slab_destroy_parent(&vscreen->transfer_pool);
 
    if (vws)
       vws->destroy(vws);
@@ -783,7 +783,7 @@ virgl_create_screen(struct virgl_winsys *vws)
 
    screen->refcnt = 1;
 
-   slab_create_parent(&screen->texture_transfer_pool, sizeof(struct virgl_transfer), 16);
+   slab_create_parent(&screen->transfer_pool, sizeof(struct virgl_transfer), 16);
 
    return &screen->base;
 }
