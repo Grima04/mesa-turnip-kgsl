@@ -357,24 +357,23 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
                    nir_ssa_def *a)
 {
    nir_const_value m[3][4] = {
-      { { .f32 = 1.0f }, { .f32 =  0.0f        }, { .f32 =  1.59602678f }, { .f32 = 0.0f } },
-      { { .f32 = 1.0f }, { .f32 = -0.39176229f }, { .f32 = -0.81296764f }, { .f32 = 0.0f } },
-      { { .f32 = 1.0f }, { .f32 =  2.01723214f }, { .f32 =  0.0f        }, { .f32 = 0.0f } },
+      { { .f32 = 1.16438356f }, { .f32 =  1.16438356f }, { .f32 = 1.16438356f }, { .f32 = 0.0f } },
+      { { .f32 = 0.0f        }, { .f32 = -0.39176229f }, { .f32 = 2.01723214f }, { .f32 = 0.0f } },
+      { { .f32 = 1.59602678f }, { .f32 = -0.81296764f }, { .f32 = 0.0f        }, { .f32 = 0.0f } },
    };
 
-   nir_ssa_def *yuv =
+   nir_ssa_def *offset =
       nir_vec4(b,
-               nir_fmul(b, nir_imm_float(b, 1.16438356f),
-                        nir_fadd(b, y, nir_imm_float(b, -16.0f / 255.0f))),
-               nir_channel(b, nir_fadd(b, u, nir_imm_float(b, -128.0f / 255.0f)), 0),
-               nir_channel(b, nir_fadd(b, v, nir_imm_float(b, -128.0f / 255.0f)), 0),
-               nir_imm_float(b, 0.0));
+               nir_imm_float(b, -0.874202214f),
+               nir_imm_float(b,  0.531667820f),
+               nir_imm_float(b, -1.085630787f),
+               a);
 
-   nir_ssa_def *red = nir_fdot4(b, yuv, nir_build_imm(b, 4, 32, m[0]));
-   nir_ssa_def *green = nir_fdot4(b, yuv, nir_build_imm(b, 4, 32, m[1]));
-   nir_ssa_def *blue = nir_fdot4(b, yuv, nir_build_imm(b, 4, 32, m[2]));
-
-   nir_ssa_def *result = nir_vec4(b, red, green, blue, a);
+   nir_ssa_def *result =
+      nir_ffma(b, y, nir_build_imm(b, 4, 32, m[0]),
+               nir_ffma(b, u, nir_build_imm(b, 4, 32, m[1]),
+                        nir_ffma(b, v, nir_build_imm(b, 4, 32, m[2]),
+                                 offset)));
 
    nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(result));
 }
