@@ -1741,6 +1741,36 @@ iris_create_surface(struct pipe_context *ctx,
    return psurf;
 }
 
+#if GEN_GEN < 9
+static void
+fill_default_image_param(struct brw_image_param *param)
+{
+   memset(param, 0, sizeof(*param));
+   /* Set the swizzling shifts to all-ones to effectively disable swizzling --
+    * See emit_address_calculation() in brw_fs_surface_builder.cpp for a more
+    * detailed explanation of these parameters.
+    */
+   param->swizzling[0] = 0xff;
+   param->swizzling[1] = 0xff;
+}
+
+static void
+fill_buffer_image_param(struct brw_image_param *param,
+                        enum pipe_format pfmt,
+                        unsigned size)
+{
+   const unsigned cpp = util_format_get_blocksize(pfmt);
+
+   fill_default_image_param(param);
+   param->size[0] = size / cpp;
+   param->stride[0] = cpp;
+}
+#else
+#define isl_surf_fill_image_param(x, ...)
+#define fill_default_image_param(x, ...)
+#define fill_buffer_image_param(x, ...)
+#endif
+
 /**
  * The pipe->set_shader_images() driver hook.
  */
@@ -1798,19 +1828,31 @@ iris_set_shader_images(struct pipe_context *ctx,
             };
 
             fill_surface_state(&screen->isl_dev, map, res, &view);
+            isl_surf_fill_image_param(&screen->isl_dev,
+                                      &shs->image[start_slot + i].param,
+                                      &res->surf, &view);
          } else {
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
                                       isl_format, img->u.buf.offset,
                                       img->u.buf.size);
+            fill_buffer_image_param(&shs->image[start_slot + i].param,
+                                    img->format, img->u.buf.size);
          }
       } else {
          pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
          pipe_resource_reference(&shs->image[start_slot + i].surface_state.res,
                                  NULL);
+         fill_default_image_param(&shs->image[start_slot + i].param);
       }
    }
 
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+
+   /* Broadwell also needs brw_image_params re-uploaded */
+   if (GEN_GEN < 9) {
+      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
+      shs->cbuf0_needs_upload = true;
+   }
 }
 
 
@@ -2289,7 +2331,16 @@ upload_uniforms(struct iris_context *ice,
       uint32_t sysval = shader->system_values[i];
       uint32_t value = 0;
 
-      if (BRW_PARAM_BUILTIN_IS_CLIP_PLANE(sysval)) {
+      if (BRW_PARAM_DOMAIN(sysval) == BRW_PARAM_DOMAIN_IMAGE) {
+         unsigned img = BRW_PARAM_IMAGE_IDX(sysval);
+         unsigned offset = BRW_PARAM_IMAGE_OFFSET(sysval);
+         struct brw_image_param *param = &shs->image[img].param;
+
+         assert(offset < sizeof(struct brw_image_param));
+         value = ((uint32_t *) param)[offset];
+      } else if (sysval == BRW_PARAM_BUILTIN_ZERO) {
+         value = 0;
+      } else if (BRW_PARAM_BUILTIN_IS_CLIP_PLANE(sysval)) {
          int plane = BRW_PARAM_BUILTIN_CLIP_PLANE_IDX(sysval);
          int comp  = BRW_PARAM_BUILTIN_CLIP_PLANE_COMP(sysval);
          value = fui(ice->state.clip_planes.ucp[plane][comp]);

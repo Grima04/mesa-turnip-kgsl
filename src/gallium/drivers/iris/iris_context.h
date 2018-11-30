@@ -48,6 +48,18 @@ struct blorp_params;
 #define IRIS_MAX_VIEWPORTS 16
 #define IRIS_MAX_CLIP_PLANES 8
 
+enum iris_param_domain {
+   BRW_PARAM_DOMAIN_BUILTIN = 0,
+   BRW_PARAM_DOMAIN_IMAGE,
+};
+
+#define BRW_PARAM(domain, val)   (BRW_PARAM_DOMAIN_##domain << 24 | (val))
+#define BRW_PARAM_DOMAIN(param)  ((uint32_t)(param) >> 24)
+#define BRW_PARAM_VALUE(param)   ((uint32_t)(param) & 0x00ffffff)
+#define BRW_PARAM_IMAGE(idx, offset) BRW_PARAM(IMAGE, ((idx) << 8) | (offset))
+#define BRW_PARAM_IMAGE_IDX(value)   (BRW_PARAM_VALUE(value) >> 8)
+#define BRW_PARAM_IMAGE_OFFSET(value)(BRW_PARAM_VALUE(value) & 0xf)
+
 /**
  * Dirty flags.  When state changes, we flag some combination of these
  * to indicate that particular GPU commands need to be re-emitted.
@@ -294,6 +306,9 @@ struct iris_shader_state {
       struct pipe_resource *res;
       struct iris_state_ref surface_state;
       unsigned access;
+
+      /** Gen8-only uniform data for image lowering */
+      struct brw_image_param param;
    } image[PIPE_MAX_SHADER_IMAGES];
 
    struct iris_state_ref sampler_table;

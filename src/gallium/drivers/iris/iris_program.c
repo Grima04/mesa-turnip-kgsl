@@ -152,7 +152,9 @@ iris_lower_storage_image_derefs(nir_shader *nir)
          case nir_intrinsic_image_deref_atomic_exchange:
          case nir_intrinsic_image_deref_atomic_comp_swap:
          case nir_intrinsic_image_deref_size:
-         case nir_intrinsic_image_deref_samples: {
+         case nir_intrinsic_image_deref_samples:
+         case nir_intrinsic_image_deref_load_raw_intel:
+         case nir_intrinsic_image_deref_store_raw_intel: {
             nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
             nir_variable *var = nir_deref_instr_get_variable(deref);
 
@@ -569,6 +571,19 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    return next_binding_table_offset;
 }
 
+static void
+setup_vec4_image_sysval(uint32_t *sysvals, uint32_t idx,
+                        unsigned offset, unsigned n)
+{
+   assert(offset % sizeof(uint32_t) == 0);
+
+   for (unsigned i = 0; i < n; ++i)
+      sysvals[i] = BRW_PARAM_IMAGE(idx, offset / sizeof(uint32_t) + i);
+
+   for (unsigned i = n; i < 4; ++i)
+      sysvals[i] = BRW_PARAM_BUILTIN_ZERO;
+}
+
 /**
  * Associate NIR uniform variables with the prog_data->param[] mechanism
  * used by the backend.  Also, decide which UBOs we'd like to push in an
@@ -582,12 +597,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                     enum brw_param_builtin **out_system_values,
                     unsigned *out_num_system_values)
 {
-   /* We don't use params[], but fs_visitor::nir_setup_uniforms() asserts
-    * about it for compute shaders, so go ahead and make some fake ones
-    * which the backend will dead code eliminate.
-    */
-   prog_data->nr_params = nir->num_uniforms;
-   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
+   const struct gen_device_info *devinfo = compiler->devinfo;
 
    /* The intel compiler assumes that num_uniforms is in bytes. For
     * scalar that means 4 bytes per uniform slot.
@@ -596,14 +606,17 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
     */
    nir->num_uniforms *= 4;
 
-   const unsigned IRIS_MAX_SYSTEM_VALUES = 32;
+   const unsigned IRIS_MAX_SYSTEM_VALUES =
+      PIPE_MAX_SHADER_IMAGES * BRW_IMAGE_PARAM_SIZE;
    enum brw_param_builtin *system_values =
       rzalloc_array(mem_ctx, enum brw_param_builtin, IRIS_MAX_SYSTEM_VALUES);
    unsigned num_system_values = 0;
 
    unsigned patch_vert_idx = -1;
    unsigned ucp_idx[IRIS_MAX_CLIP_PLANES];
+   unsigned img_idx[PIPE_MAX_SHADER_IMAGES];
    memset(ucp_idx, -1, sizeof(ucp_idx));
+   memset(img_idx, -1, sizeof(img_idx));
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
@@ -650,6 +663,49 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             b.cursor = nir_before_instr(instr);
             offset = nir_imm_int(&b, patch_vert_idx * sizeof(uint32_t));
             break;
+         case nir_intrinsic_image_deref_load_param_intel: {
+            assert(devinfo->gen < 9);
+            nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+            nir_variable *var = nir_deref_instr_get_variable(deref);
+
+            if (img_idx[var->data.binding] == -1) {
+               /* GL only allows arrays of arrays of images. */
+               assert(glsl_type_is_image(glsl_without_array(var->type)));
+               unsigned num_images = MAX2(1, glsl_get_aoa_size(var->type));
+
+               for (int i = 0; i < num_images; i++) {
+                  const unsigned img = var->data.binding + i;
+
+                  img_idx[img] = num_system_values;
+                  num_system_values += BRW_IMAGE_PARAM_SIZE;
+
+                  uint32_t *img_sv = &system_values[img_idx[img]];
+
+                  setup_vec4_image_sysval(
+                     img_sv + BRW_IMAGE_PARAM_OFFSET_OFFSET, img,
+                     offsetof(struct brw_image_param, offset), 2);
+                  setup_vec4_image_sysval(
+                     img_sv + BRW_IMAGE_PARAM_SIZE_OFFSET, img,
+                     offsetof(struct brw_image_param, size), 3);
+                  setup_vec4_image_sysval(
+                     img_sv + BRW_IMAGE_PARAM_STRIDE_OFFSET, img,
+                     offsetof(struct brw_image_param, stride), 4);
+                  setup_vec4_image_sysval(
+                     img_sv + BRW_IMAGE_PARAM_TILING_OFFSET, img,
+                     offsetof(struct brw_image_param, tiling), 3);
+                  setup_vec4_image_sysval(
+                     img_sv + BRW_IMAGE_PARAM_SWIZZLING_OFFSET, img,
+                     offsetof(struct brw_image_param, swizzling), 2);
+               }
+            }
+
+            b.cursor = nir_before_instr(instr);
+            offset = nir_iadd(&b,
+               get_aoa_deref_offset(&b, deref, BRW_IMAGE_PARAM_SIZE * 4),
+               nir_imm_int(&b, img_idx[var->data.binding] * 4 +
+                               nir_intrinsic_base(intrin) * 16));
+            break;
+         }
          default:
             continue;
          }
@@ -716,6 +772,13 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+
+   /* We don't use params[], but fs_visitor::nir_setup_uniforms() asserts
+    * about it for compute shaders, so go ahead and make some fake ones
+    * which the backend will dead code eliminate.
+    */
+   prog_data->nr_params = nir->num_uniforms / 4;
+   prog_data->param = rzalloc_array(mem_ctx, uint32_t, prog_data->nr_params);
 
    *out_system_values = system_values;
    *out_num_system_values = num_system_values;
