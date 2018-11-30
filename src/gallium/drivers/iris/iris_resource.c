@@ -774,10 +774,6 @@ iris_map_direct(struct iris_transfer *map)
    struct pipe_transfer *xfer = &map->base;
    struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
-   struct isl_surf *surf = &res->surf;
-   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
-   const unsigned cpp = fmtl->bpb / 8;
-   unsigned x0_el, y0_el;
 
    void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
 
@@ -787,6 +783,12 @@ iris_map_direct(struct iris_transfer *map)
 
       map->ptr = ptr + box->x;
    } else {
+      struct isl_surf *surf = &res->surf;
+      const struct isl_format_layout *fmtl =
+         isl_format_get_layout(surf->format);
+      const unsigned cpp = fmtl->bpb / 8;
+      unsigned x0_el, y0_el;
+
       get_image_offset_el(surf, xfer->level, box->z, &x0_el, &y0_el);
 
       xfer->stride = isl_surf_get_row_pitch_B(surf);
