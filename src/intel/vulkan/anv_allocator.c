@@ -369,61 +369,6 @@ anv_free_list_pop2(union anv_free_list2 *list,
    return NULL;
 }
 
-static bool
-anv_free_list_pop(union anv_free_list *list, void **map, int32_t *offset)
-{
-   union anv_free_list current, new, old;
-
-   current.u64 = list->u64;
-   while (current.offset != EMPTY) {
-      /* We have to add a memory barrier here so that the list head (and
-       * offset) gets read before we read the map pointer.  This way we
-       * know that the map pointer is valid for the given offset at the
-       * point where we read it.
-       */
-      __sync_synchronize();
-
-      int32_t *next_ptr = *map + current.offset;
-      new.offset = VG_NOACCESS_READ(next_ptr);
-      new.count = current.count + 1;
-      old.u64 = __sync_val_compare_and_swap(&list->u64, current.u64, new.u64);
-      if (old.u64 == current.u64) {
-         *offset = current.offset;
-         return true;
-      }
-      current = old;
-   }
-
-   return false;
-}
-
-static void
-anv_free_list_push(union anv_free_list *list, void *map, int32_t offset,
-                   uint32_t size, uint32_t count)
-{
-   union anv_free_list current, old, new;
-   int32_t *next_ptr = map + offset;
-
-   /* If we're returning more than one chunk, we need to build a chain to add
-    * to the list.  Fortunately, we can do this without any atomics since we
-    * own everything in the chain right now.  `offset` is left pointing to the
-    * head of our chain list while `next_ptr` points to the tail.
-    */
-   for (uint32_t i = 1; i < count; i++) {
-      VG_NOACCESS_WRITE(next_ptr, offset + i * size);
-      next_ptr = map + offset + i * size;
-   }
-
-   old = *list;
-   do {
-      current = old;
-      VG_NOACCESS_WRITE(next_ptr, current.offset);
-      new.offset = offset;
-      new.count = current.count + 1;
-      old.u64 = __sync_val_compare_and_swap(&list->u64, current.u64, new.u64);
-   } while (old.u64 != current.u64);
-}
-
 /* All pointers in the ptr_free_list are assumed to be page-aligned.  This
  * means that the bottom 12 bits should all be zero.
  */

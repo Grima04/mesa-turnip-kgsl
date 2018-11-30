@@ -606,16 +606,6 @@ anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
  */
-union anv_free_list {
-   struct {
-      int32_t offset;
-
-      /* A simple count that is incremented every time the head changes. */
-      uint32_t count;
-   };
-   uint64_t u64;
-};
-
 union anv_free_list2 {
    struct {
       uint32_t offset;
@@ -626,7 +616,6 @@ union anv_free_list2 {
    uint64_t u64;
 };
 
-#define ANV_FREE_LIST_EMPTY ((union anv_free_list) { { 1, 0 } })
 #define ANV_FREE_LIST2_EMPTY ((union anv_free_list2) { { UINT32_MAX, 0 } })
 
 struct anv_block_state {
