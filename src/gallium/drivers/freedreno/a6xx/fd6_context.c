@@ -48,8 +48,6 @@ fd6_context_destroy(struct pipe_context *pctx)
 
 	fd_context_destroy(pctx);
 
-	fd_bo_del(fd6_ctx->vs_pvt_mem);
-	fd_bo_del(fd6_ctx->fs_pvt_mem);
 	fd_bo_del(fd6_ctx->vsc_data);
 	fd_bo_del(fd6_ctx->vsc_data2);
 	fd_bo_del(fd6_ctx->blit_mem);
@@ -110,12 +108,6 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	 * here. */
 	pctx->delete_rasterizer_state = fd6_rasterizer_state_delete;
 	pctx->delete_depth_stencil_alpha_state = fd6_depth_stencil_alpha_state_delete;
-
-	fd6_ctx->vs_pvt_mem = fd_bo_new(screen->dev, 0x2000,
-			DRM_FREEDRENO_GEM_TYPE_KMEM);
-
-	fd6_ctx->fs_pvt_mem = fd_bo_new(screen->dev, 0x2000,
-			DRM_FREEDRENO_GEM_TYPE_KMEM);
 
 	fd6_ctx->vsc_data = fd_bo_new(screen->dev,
 			(A6XX_VSC_DATA_PITCH * 32) + 0x100,

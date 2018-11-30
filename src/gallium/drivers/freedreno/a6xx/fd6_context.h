@@ -39,8 +39,6 @@
 struct fd6_context {
 	struct fd_context base;
 
-	struct fd_bo *vs_pvt_mem, *fs_pvt_mem;
-
 	/* Two buffers related to hw binning / visibility stream (VSC).
 	 * Compared to previous generations
 	 *   (1) we cannot specify individual buffers per VSC, instead
