@@ -113,7 +113,7 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
       }
    }
 
-   slab_free(&vctx->transfer_pool, trans);
+   virgl_resource_destroy_transfer(vctx, trans);
 }
 
 static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,

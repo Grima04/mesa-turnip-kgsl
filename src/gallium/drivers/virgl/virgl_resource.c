@@ -149,24 +149,64 @@ void virgl_resource_layout(struct pipe_resource *pt,
       metadata->total_size = 0;
 }
 
-unsigned virgl_resource_offset(struct pipe_resource *pres,
-                               struct virgl_resource_metadata *metadata,
-                               unsigned level, unsigned layer)
+struct virgl_transfer *
+virgl_resource_create_transfer(struct pipe_context *ctx,
+                               struct pipe_resource *pres,
+                               const struct virgl_resource_metadata *metadata,
+                               unsigned level, unsigned usage,
+                               const struct pipe_box *box)
 {
-   unsigned offset = metadata->level_offset[level];
+   struct virgl_transfer *trans;
+   enum pipe_format format = pres->format;
+   struct virgl_context *vctx = virgl_context(ctx);
+   const unsigned blocksy = box->y / util_format_get_blockheight(format);
+   const unsigned blocksx = box->x / util_format_get_blockwidth(format);
 
+   unsigned offset = metadata->level_offset[level];
    if (pres->target == PIPE_TEXTURE_CUBE ||
        pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
        pres->target == PIPE_TEXTURE_3D ||
        pres->target == PIPE_TEXTURE_2D_ARRAY) {
-      offset += layer * metadata->layer_stride[level];
+      offset += box->z * metadata->layer_stride[level];
    }
    else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
-      offset += layer * metadata->stride[level];
+      offset += box->z * metadata->stride[level];
    }
    else {
-      assert(layer == 0);
+      assert(box->z == 0);
    }
 
-   return offset;
+   offset += blocksy * metadata->stride[level];
+   offset += blocksx * util_format_get_blocksize(format);
+
+   trans = slab_alloc(&vctx->transfer_pool);
+   if (!trans)
+      return NULL;
+
+   trans->base.resource = pres;
+   trans->base.level = level;
+   trans->base.usage = usage;
+   trans->base.box = *box;
+   trans->base.stride = metadata->stride[level];
+   trans->base.layer_stride = metadata->layer_stride[level];
+   trans->offset = offset;
+   util_range_init(&trans->range);
+
+   if (trans->base.resource->target != PIPE_TEXTURE_3D &&
+       trans->base.resource->target != PIPE_TEXTURE_CUBE &&
+       trans->base.resource->target != PIPE_TEXTURE_1D_ARRAY &&
+       trans->base.resource->target != PIPE_TEXTURE_2D_ARRAY &&
+       trans->base.resource->target != PIPE_TEXTURE_CUBE_ARRAY)
+      trans->l_stride = 0;
+   else
+      trans->l_stride = trans->base.layer_stride;
+
+   return trans;
+}
+
+void virgl_resource_destroy_transfer(struct virgl_context *vctx,
+                                     struct virgl_transfer *trans)
+{
+   util_range_destroy(&trans->range);
+   slab_free(&vctx->transfer_pool, trans);
 }

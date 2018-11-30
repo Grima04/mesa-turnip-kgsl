@@ -74,7 +74,8 @@ struct virgl_texture {
 
 struct virgl_transfer {
    struct pipe_transfer base;
-   uint32_t offset;
+   uint32_t offset, l_stride;
+   struct util_range range;
    struct virgl_resource *resolve_tmp;
 };
 
@@ -155,7 +156,14 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
 void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata);
 
-unsigned virgl_resource_offset(struct pipe_resource *pres,
-                               struct virgl_resource_metadata *metadata,
-                               unsigned level, unsigned layer);
+struct virgl_transfer *
+virgl_resource_create_transfer(struct pipe_context *ctx,
+                               struct pipe_resource *pres,
+                               const struct virgl_resource_metadata *metadata,
+                               unsigned level, unsigned usage,
+                               const struct pipe_box *box);
+
+void virgl_resource_destroy_transfer(struct virgl_context *vctx,
+                                     struct virgl_transfer *trans);
+
 #endif

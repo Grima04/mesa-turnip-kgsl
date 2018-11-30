@@ -104,40 +104,18 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_texture *vtex = virgl_texture(resource);
-   enum pipe_format format = resource->format;
    struct virgl_transfer *trans;
    void *ptr;
    boolean readback = TRUE;
-   uint32_t offset;
    struct virgl_hw_res *hw_res;
-   const unsigned h = u_minify(vtex->base.u.b.height0, level);
-   const unsigned nblocksy = util_format_get_nblocksy(format, h);
-   uint32_t l_stride;
    bool doflushwait;
 
    doflushwait = virgl_res_needs_flush_wait(vctx, &vtex->base, usage);
    if (doflushwait)
       ctx->flush(ctx, NULL, 0);
 
-   trans = slab_alloc(&vctx->transfer_pool);
-   if (!trans)
-      return NULL;
-
-   trans->base.resource = resource;
-   trans->base.level = level;
-   trans->base.usage = usage;
-   trans->base.box = *box;
-   trans->base.stride = vtex->metadata.stride[level];
-   trans->base.layer_stride = trans->base.stride * nblocksy;
-
-   if (resource->target != PIPE_TEXTURE_3D &&
-       resource->target != PIPE_TEXTURE_CUBE &&
-       resource->target != PIPE_TEXTURE_1D_ARRAY &&
-       resource->target != PIPE_TEXTURE_2D_ARRAY &&
-       resource->target != PIPE_TEXTURE_CUBE_ARRAY)
-      l_stride = 0;
-   else
-      l_stride = trans->base.layer_stride;
+   trans = virgl_resource_create_transfer(ctx, resource, &vtex->metadata, level,
+                                          usage, box);
 
    if (resource->nr_samples > 1) {
       struct pipe_resource tmp_resource;
@@ -150,21 +128,19 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       ctx->flush(ctx, NULL, 0);
       /* we want to do a resolve blit into the temporary */
       hw_res = trans->resolve_tmp->hw_res;
-      offset = 0;
-      trans->base.stride = ((struct virgl_texture*)trans->resolve_tmp)->metadata.stride[level];
-      trans->base.layer_stride = trans->base.stride * nblocksy;
+      struct virgl_resource_metadata *data = &((struct virgl_texture*)trans->resolve_tmp)->metadata;
+      trans->base.stride = data->stride[level];
+      trans->base.layer_stride = data->layer_stride[level];
+      trans->offset = 0;
    } else {
-      offset = virgl_resource_offset(&vtex->base.u.b, &vtex->metadata, level, box->z);
-
-      offset += box->y / util_format_get_blockheight(format) * trans->base.stride +
-      box->x / util_format_get_blockwidth(format) * util_format_get_blocksize(format);
       hw_res = vtex->base.hw_res;
       trans->resolve_tmp = NULL;
    }
 
    readback = virgl_res_needs_readback(vctx, &vtex->base, usage);
    if (readback)
-      vs->vws->transfer_get(vs->vws, hw_res, box, trans->base.stride, l_stride, offset, level);
+      vs->vws->transfer_get(vs->vws, hw_res, box, trans->base.stride,
+                            trans->l_stride, trans->offset, level);
 
    if (doflushwait || readback)
       vs->vws->resource_wait(vs->vws, vtex->base.hw_res);
@@ -175,9 +151,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       return NULL;
    }
 
-   trans->offset = offset;
    *transfer = &trans->base;
-
    return ptr + trans->offset;
 }
 
@@ -187,16 +161,6 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
    struct virgl_texture *vtex = virgl_texture(transfer->resource);
-   uint32_t l_stride;
-
-   if (transfer->resource->target != PIPE_TEXTURE_3D &&
-       transfer->resource->target != PIPE_TEXTURE_CUBE &&
-       transfer->resource->target != PIPE_TEXTURE_1D_ARRAY &&
-       transfer->resource->target != PIPE_TEXTURE_2D_ARRAY &&
-       transfer->resource->target != PIPE_TEXTURE_CUBE_ARRAY)
-      l_stride = 0;
-   else
-      l_stride = trans->base.layer_stride;
 
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
       if (!(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
@@ -204,7 +168,9 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
          vtex->base.clean = FALSE;
          vctx->num_transfers++;
          vs->vws->transfer_put(vs->vws, vtex->base.hw_res,
-                               &transfer->box, trans->base.stride, l_stride, trans->offset, transfer->level);
+                               &transfer->box, trans->base.stride,
+                               trans->l_stride, trans->offset,
+                               transfer->level);
 
       }
    }
@@ -212,7 +178,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (trans->resolve_tmp)
       pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
 
-   slab_free(&vctx->transfer_pool, trans);
+   virgl_resource_destroy_transfer(vctx, trans);
 }
 
 static boolean virgl_texture_get_handle(struct pipe_screen *screen,
