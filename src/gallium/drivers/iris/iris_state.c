@@ -1523,9 +1523,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    isv->res = (struct iris_resource *) tex;
 
-   isl_surf_usage_flags_t usage =
-      ISL_SURF_USAGE_TEXTURE_BIT |
-      (isv->res->surf.usage & ISL_SURF_USAGE_CUBE_BIT);
+   isl_surf_usage_flags_t usage = ISL_SURF_USAGE_TEXTURE_BIT;
 
    if (isv->base.target == PIPE_TEXTURE_CUBE ||
        isv->base.target == PIPE_TEXTURE_CUBE_ARRAY)
