@@ -432,6 +432,12 @@ v3d_setup_slices(struct v3d_resource *rsc, uint32_t winsys_stride)
          */
         bool uif_top = msaa;
 
+        /* Check some easy mistakes to make in a resource_create() call that
+         * will break our setup.
+         */
+        assert(prsc->array_size != 0);
+        assert(prsc->depth0 != 0);
+
         for (int i = prsc->last_level; i >= 0; i--) {
                 struct v3d_resource_slice *slice = &rsc->slices[i];
 
