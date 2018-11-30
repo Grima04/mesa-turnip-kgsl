@@ -97,10 +97,11 @@ rebind_resource(struct fd_context *ctx, struct pipe_resource *prsc)
 static void
 realloc_bo(struct fd_resource *rsc, uint32_t size)
 {
+	struct pipe_resource *prsc = &rsc->base;
 	struct fd_screen *screen = fd_screen(rsc->base.screen);
 	uint32_t flags = DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
 			DRM_FREEDRENO_GEM_TYPE_KMEM |
-			COND(rsc->base.bind & PIPE_BIND_SCANOUT, DRM_FREEDRENO_GEM_SCANOUT);
+			COND(prsc->bind & PIPE_BIND_SCANOUT, DRM_FREEDRENO_GEM_SCANOUT);
 			/* TODO other flags? */
 
 	/* if we start using things other than write-combine,
@@ -110,7 +111,8 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 	if (rsc->bo)
 		fd_bo_del(rsc->bo);
 
-	rsc->bo = fd_bo_new(screen->dev, size, flags);
+	rsc->bo = fd_bo_new(screen->dev, size, flags, "%ux%ux%u@%u:%x",
+			prsc->width0, prsc->height0, prsc->depth0, rsc->cpp, prsc->bind);
 	rsc->seqno = p_atomic_inc_return(&screen->rsc_seqno);
 	util_range_set_empty(&rsc->valid_buffer_range);
 	fd_bc_invalidate_resource(rsc, true);
@@ -869,7 +871,7 @@ fd_resource_create(struct pipe_screen *pscreen,
 		rsc->lrz_height = lrz_height;
 		rsc->lrz_width = lrz_pitch;
 		rsc->lrz_pitch = lrz_pitch;
-		rsc->lrz = fd_bo_new(screen->dev, size, flags);
+		rsc->lrz = fd_bo_new(screen->dev, size, flags, "lrz");
 	}
 
 	size = screen->setup_slices(rsc);

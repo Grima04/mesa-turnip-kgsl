@@ -111,14 +111,14 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
 	fd6_ctx->vsc_data = fd_bo_new(screen->dev,
 			(A6XX_VSC_DATA_PITCH * 32) + 0x100,
-			DRM_FREEDRENO_GEM_TYPE_KMEM);
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_data");
 
 	fd6_ctx->vsc_data2 = fd_bo_new(screen->dev,
 			A6XX_VSC_DATA2_PITCH * 32,
-			DRM_FREEDRENO_GEM_TYPE_KMEM);
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_data2");
 
 	fd6_ctx->blit_mem = fd_bo_new(screen->dev, 0x1000,
-			DRM_FREEDRENO_GEM_TYPE_KMEM);
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "blit");
 
 	fd_context_setup_common_vbos(&fd6_ctx->base);
 

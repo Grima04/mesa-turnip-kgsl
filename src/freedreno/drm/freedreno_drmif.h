@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include "util/u_debug.h"
+
 struct fd_bo;
 struct fd_pipe;
 struct fd_device;
@@ -107,8 +109,44 @@ int fd_pipe_wait_timeout(struct fd_pipe *pipe, uint32_t timestamp,
 /* buffer-object functions:
  */
 
-struct fd_bo * fd_bo_new(struct fd_device *dev,
+struct fd_bo * _fd_bo_new(struct fd_device *dev,
 		uint32_t size, uint32_t flags);
+void _fd_bo_set_name(struct fd_bo *bo, const char *fmt, va_list ap);
+
+static inline void
+fd_bo_set_name(struct fd_bo *bo, const char *fmt, ...) _util_printf_format(2, 3);
+
+static inline void
+fd_bo_set_name(struct fd_bo *bo, const char *fmt, ...)
+{
+#ifndef NDEBUG
+	va_list ap;
+	va_start(ap, fmt);
+	_fd_bo_set_name(bo, fmt, ap);
+	va_end(ap);
+#endif
+}
+
+static inline struct fd_bo *
+fd_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
+		const char *fmt, ...) _util_printf_format(4, 5);
+
+static inline struct fd_bo *
+fd_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
+		const char *fmt, ...)
+{
+	struct fd_bo *bo = _fd_bo_new(dev, size, flags);
+#ifndef NDEBUG
+	if (fmt) {
+		va_list ap;
+		va_start(ap, fmt);
+		_fd_bo_set_name(bo, fmt, ap);
+		va_end(ap);
+	}
+#endif
+	return bo;
+}
+
 struct fd_bo *fd_bo_from_handle(struct fd_device *dev,
 		uint32_t handle, uint32_t size);
 struct fd_bo * fd_bo_from_name(struct fd_device *dev, uint32_t name);
