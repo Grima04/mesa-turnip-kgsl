@@ -887,6 +887,24 @@ __uint_to_fp64(uint a)
    return __packFloat64(0u, 0x432 - shiftDist, aHigh, aLow);
 }
 
+uint64_t
+__uint64_to_fp64(uint64_t a)
+{
+   if (a == 0u)
+      return 0ul;
+
+   uvec2 aFrac = unpackUint2x32(a);
+   uint aFracLo = __extractFloat64FracLo(a);
+   uint aFracHi = __extractFloat64FracHi(a);
+
+   if ((aFracHi & 0x80000000u) != 0u) {
+      __shift64RightJamming(aFracHi, aFracLo, 1, aFracHi, aFracLo);
+      return __roundAndPackFloat64(0, 0x433, aFracHi, aFracLo, 0u);
+   } else {
+      return __normalizeRoundAndPackFloat64(0, 0x432, aFrac.y, aFrac.x);
+   }
+}
+
 /* Returns the result of converting the double-precision floating-point value
  * `a' to the 32-bit two's complement integer format.  The conversion is
  * performed according to the IEEE Standard for Floating-Point Arithmetic---
