@@ -115,7 +115,7 @@ void virgl_init_context_resource_functions(struct pipe_context *ctx)
 void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata)
 {
-   unsigned level;
+   unsigned level, nblocksy;
    unsigned width = pt->width0;
    unsigned height = pt->height0;
    unsigned depth = pt->depth0;
@@ -131,11 +131,12 @@ void virgl_resource_layout(struct pipe_resource *pt,
       else
          slices = pt->array_size;
 
+      nblocksy = util_format_get_nblocksy(pt->format, height);
       metadata->stride[level] = util_format_get_stride(pt->format, width);
+      metadata->layer_stride[level] = nblocksy * metadata->stride[level];
       metadata->level_offset[level] = buffer_size;
 
-      buffer_size += (util_format_get_nblocksy(pt->format, height) *
-                      slices * metadata->stride[level]);
+      buffer_size += slices * metadata->layer_stride[level];
 
       width = u_minify(width, 1);
       height = u_minify(height, 1);
@@ -152,15 +153,13 @@ unsigned virgl_resource_offset(struct pipe_resource *pres,
                                struct virgl_resource_metadata *metadata,
                                unsigned level, unsigned layer)
 {
-   const unsigned hgt = u_minify(pres->height0, level);
-   const unsigned nblocksy = util_format_get_nblocksy(pres->format, hgt);
    unsigned offset = metadata->level_offset[level];
 
    if (pres->target == PIPE_TEXTURE_CUBE ||
        pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
        pres->target == PIPE_TEXTURE_3D ||
        pres->target == PIPE_TEXTURE_2D_ARRAY) {
-      offset += layer * nblocksy * metadata->stride[level];
+      offset += layer * metadata->layer_stride[level];
    }
    else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
       offset += layer * metadata->stride[level];

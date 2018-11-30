@@ -40,6 +40,7 @@ struct virgl_resource_metadata
 {
    unsigned long level_offset[VR_MAX_TEXTURE_2D_LEVELS];
    unsigned stride[VR_MAX_TEXTURE_2D_LEVELS];
+   unsigned layer_stride[VR_MAX_TEXTURE_2D_LEVELS];
    uint32_t total_size;
 };
 
