@@ -46,17 +46,8 @@ struct virgl_resource_metadata
 
 struct virgl_resource {
    struct u_resource u;
-   struct virgl_hw_res *hw_res;
    boolean clean;
-};
-
-struct virgl_buffer {
-   struct virgl_resource base;
-   struct virgl_resource_metadata metadata;
-};
-
-struct virgl_texture {
-   struct virgl_resource base;
+   struct virgl_hw_res *hw_res;
    struct virgl_resource_metadata metadata;
 };
 
@@ -84,16 +75,6 @@ struct pipe_resource *virgl_texture_from_handle(struct virgl_screen *vs,
 static inline struct virgl_resource *virgl_resource(struct pipe_resource *r)
 {
    return (struct virgl_resource *)r;
-}
-
-static inline struct virgl_buffer *virgl_buffer(struct pipe_resource *r)
-{
-   return (struct virgl_buffer *)r;
-}
-
-static inline struct virgl_texture *virgl_texture(struct pipe_resource *r)
-{
-   return (struct virgl_texture *)r;
 }
 
 static inline struct virgl_transfer *virgl_transfer(struct pipe_transfer *trans)

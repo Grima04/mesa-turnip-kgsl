@@ -506,14 +506,13 @@ void virgl_transfer_inline_write(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_resource *grres = virgl_resource(res);
-   struct virgl_buffer *vbuf = virgl_buffer(res);
 
    grres->clean = FALSE;
 
-   if (virgl_res_needs_flush_wait(vctx, &vbuf->base, usage)) {
+   if (virgl_res_needs_flush_wait(vctx, grres, usage)) {
       ctx->flush(ctx, NULL, 0);
 
-      vs->vws->resource_wait(vs->vws, vbuf->base.hw_res);
+      vs->vws->resource_wait(vs->vws, grres->hw_res);
    }
 
    virgl_encoder_inline_write(vctx, grres, level, usage,
