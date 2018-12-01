@@ -65,6 +65,7 @@ struct virgl_buffer {
     * the unsynchronized map flag and expect the driver to figure it out.
     */
    struct util_range valid_buffer_range;
+   struct virgl_resource_metadata metadata;
 };
 
 struct virgl_texture {

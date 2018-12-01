@@ -51,7 +51,6 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    struct virgl_transfer *trans;
    void *ptr;
    bool readback;
-   uint32_t offset;
    bool doflushwait = false;
 
    if ((usage & PIPE_TRANSFER_READ) && (vbuf->on_list == TRUE))
@@ -62,22 +61,13 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    if (doflushwait)
       ctx->flush(ctx, NULL, 0);
 
-   trans = slab_alloc(&vctx->transfer_pool);
-   if (!trans)
-      return NULL;
-
-   trans->base.resource = resource;
-   trans->base.level = level;
-   trans->base.usage = usage;
-   trans->base.box = *box;
-   trans->base.stride = 0;
-   trans->base.layer_stride = 0;
-
-   offset = box->x;
+   trans = virgl_resource_create_transfer(ctx, resource, &vbuf->metadata, level,
+                                          usage, box);
 
    readback = virgl_res_needs_readback(vctx, &vbuf->base, usage);
    if (readback)
-      vs->vws->transfer_get(vs->vws, vbuf->base.hw_res, box, trans->base.stride, trans->base.layer_stride, offset, level);
+      vs->vws->transfer_get(vs->vws, vbuf->base.hw_res, box, trans->base.stride,
+                            trans->l_stride, trans->offset, level);
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED))
       doflushwait = true;
@@ -90,9 +80,7 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
       return NULL;
    }
 
-   trans->offset = offset;
    *transfer = &trans->base;
-
    return ptr + trans->offset;
 }
 
@@ -108,7 +96,7 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
          struct virgl_screen *vs = virgl_screen(ctx->screen);
          vctx->num_transfers++;
          vs->vws->transfer_put(vs->vws, vbuf->base.hw_res,
-                               &transfer->box, trans->base.stride, trans->base.layer_stride, trans->offset, transfer->level);
+                               &transfer->box, trans->base.stride, trans->l_stride, trans->offset, transfer->level);
 
       }
    }
@@ -150,7 +138,6 @@ struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
                                           const struct pipe_resource *template)
 {
    struct virgl_buffer *buf;
-   uint32_t size;
    uint32_t vbind;
    buf = CALLOC_STRUCT(virgl_buffer);
    buf->base.clean = TRUE;
@@ -159,11 +146,14 @@ struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
    buf->base.u.vtbl = &virgl_buffer_vtbl;
    pipe_reference_init(&buf->base.u.b.reference, 1);
    util_range_init(&buf->valid_buffer_range);
+   virgl_resource_layout(&buf->base.u.b, &buf->metadata);
 
    vbind = pipe_to_virgl_bind(template->bind);
-   size = template->width0;
 
-   buf->base.hw_res = vs->vws->resource_create(vs->vws, template->target, template->format, vbind, template->width0, 1, 1, 1, 0, 0, size);
+   buf->base.hw_res = vs->vws->resource_create(vs->vws, template->target,
+                                               template->format, vbind,
+                                               template->width0, 1, 1, 1, 0, 0,
+                                               buf->metadata.total_size);
 
    util_range_set_empty(&buf->valid_buffer_range);
    return &buf->base.u.b;
