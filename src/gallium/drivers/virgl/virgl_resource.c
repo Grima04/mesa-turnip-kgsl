@@ -171,8 +171,10 @@ virgl_resource_create_transfer(struct pipe_context *ctx,
    }
    else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
       offset += box->z * metadata->stride[level];
-   }
-   else {
+      assert(box->y == 0);
+   } else if (pres->target == PIPE_BUFFER) {
+      assert(box->y == 0 && box->z == 0);
+   } else {
       assert(box->z == 0);
    }
 
