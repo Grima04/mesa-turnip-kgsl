@@ -1586,10 +1586,19 @@ emit_load_const(struct ir3_context *ctx, nir_load_const_instr *instr)
 {
 	struct ir3_instruction **dst = ir3_get_dst_ssa(ctx, &instr->def,
 			instr->def.num_components);
-	type_t type = (instr->def.bit_size < 32) ? TYPE_U16 : TYPE_U32;
 
-	for (int i = 0; i < instr->def.num_components; i++)
-		dst[i] = create_immed_typed(ctx->block, instr->value[i].u32, type);
+	if (instr->def.bit_size < 32) {
+		for (int i = 0; i < instr->def.num_components; i++)
+			dst[i] = create_immed_typed(ctx->block,
+										instr->value[i].u16,
+										TYPE_U16);
+	} else {
+		for (int i = 0; i < instr->def.num_components; i++)
+			dst[i] = create_immed_typed(ctx->block,
+										instr->value[i].u32,
+										TYPE_U32);
+	}
+
 }
 
 static void
