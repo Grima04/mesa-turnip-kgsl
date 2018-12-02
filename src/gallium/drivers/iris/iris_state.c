@@ -4368,7 +4368,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
           * So, we need to do a VF cache invalidate if the buffer for a VB
           * slot slot changes [48:32] address bits from the previous time.
           */
-         bool need_invalidate = false;
+         unsigned flush_flags = 0;
 
          for (unsigned i = 0; i < cso->num_buffers; i++) {
             uint16_t high_bits = 0;
@@ -4379,16 +4379,23 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
                high_bits = res->bo->gtt_offset >> 32ull;
                if (high_bits != ice->state.last_vbo_high_bits[i]) {
-                  need_invalidate = true;
+                  flush_flags |= PIPE_CONTROL_VF_CACHE_INVALIDATE;
                   ice->state.last_vbo_high_bits[i] = high_bits;
                }
+
+               /* If the buffer was written to by streamout, we may need
+                * to stall so those writes land and become visible to the
+                * vertex fetcher.
+                *
+                * TODO: This may stall more than necessary.
+                */
+               if (res->bind_history & PIPE_BIND_STREAM_OUTPUT)
+                  flush_flags |= PIPE_CONTROL_CS_STALL;
             }
          }
 
-         if (need_invalidate) {
-            iris_emit_pipe_control_flush(batch,
-                                         PIPE_CONTROL_VF_CACHE_INVALIDATE);
-         }
+         if (flush_flags)
+            iris_emit_pipe_control_flush(batch, flush_flags);
 
          iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
                          (1 + vb_dwords * cso->num_buffers));
