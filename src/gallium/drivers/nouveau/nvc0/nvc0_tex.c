@@ -657,6 +657,19 @@ nvc0_validate_tsc(struct nvc0_context *nvc0, int s)
 
    nvc0->state.num_samplers[s] = nvc0->num_samplers[s];
 
+   // TXF, in unlinked tsc mode, will always use sampler 0. So we have to
+   // ensure that it remains bound. Its contents don't matter, all samplers we
+   // ever create have the SRGB_CONVERSION bit set, so as long as the first
+   // entry is initialized, we're good to go. This is the only bit that has
+   // any effect on what TXF does.
+   if ((nvc0->samplers_dirty[s] & 1) && !nvc0->samplers[s][0]) {
+      if (n == 0)
+         n = 1;
+      // We're guaranteed that the first command refers to the first slot, so
+      // we're not overwriting a valid entry.
+      commands[0] = (0 << 12) | (0 << 4) | 1;
+   }
+
    if (n) {
       if (unlikely(s == 5))
          BEGIN_NIC0(push, NVC0_CP(BIND_TSC), n);

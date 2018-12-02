@@ -488,6 +488,14 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (!screen->tsc.entries[0])
       nvc0_upload_tsc0(nvc0);
 
+   // On Fermi, mark samplers dirty so that the proper binding can happen
+   if (screen->base.class_3d < NVE4_3D_CLASS) {
+      for (int s = 0; s < 6; s++)
+         nvc0->samplers_dirty[s] = 1;
+      nvc0->dirty_3d |= NVC0_NEW_3D_SAMPLERS;
+      nvc0->dirty_cp |= NVC0_NEW_CP_SAMPLERS;
+   }
+
    return pipe;
 
 out_err:
