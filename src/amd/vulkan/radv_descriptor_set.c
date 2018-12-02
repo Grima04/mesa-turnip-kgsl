@@ -835,12 +835,12 @@ write_image_descriptor(struct radv_device *device,
 		       const VkDescriptorImageInfo *image_info)
 {
 	RADV_FROM_HANDLE(radv_image_view, iview, image_info->imageView);
-	uint32_t *descriptor;
+	union radv_descriptor *descriptor;
 
 	if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-		descriptor = iview->storage_descriptor;
+		descriptor = &iview->storage_descriptor;
 	} else {
-		descriptor = iview->descriptor;
+		descriptor = &iview->descriptor;
 	}
 
 	memcpy(dst, descriptor, 16 * 4);

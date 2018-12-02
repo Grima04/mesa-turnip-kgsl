@@ -1670,6 +1670,16 @@ radv_init_metadata(struct radv_device *device,
 		   struct radv_image *image,
 		   struct radeon_bo_metadata *metadata);
 
+union radv_descriptor {
+	struct {
+		uint32_t plane0_descriptor[8];
+		uint32_t fmask_descriptor[8];
+	};
+	struct {
+		uint32_t plane_descriptors[3][8];
+	};
+};
+
 struct radv_image_view {
 	struct radv_image *image; /**< VkImageViewCreateInfo::image */
 	struct radeon_winsys_bo *bo;
@@ -1678,18 +1688,19 @@ struct radv_image_view {
 	VkImageAspectFlags aspect_mask;
 	VkFormat vk_format;
 	unsigned plane_id;
+	bool multiple_planes;
 	uint32_t base_layer;
 	uint32_t layer_count;
 	uint32_t base_mip;
 	uint32_t level_count;
 	VkExtent3D extent; /**< Extent of VkImageViewCreateInfo::baseMipLevel. */
 
-	uint32_t descriptor[16];
+	union radv_descriptor descriptor;
 
 	/* Descriptor for use as a storage image as opposed to a sampled image.
 	 * This has a few differences for cube maps (e.g. type).
 	 */
-	uint32_t storage_descriptor[16];
+	union radv_descriptor storage_descriptor;
 };
 
 struct radv_image_create_info {
