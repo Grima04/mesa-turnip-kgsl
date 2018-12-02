@@ -292,23 +292,42 @@ struct varying_loc
 };
 
 static void
+mark_all_used_slots(nir_variable *var, uint64_t *slots_used,
+                    uint64_t slots_used_mask, unsigned num_slots)
+{
+   unsigned loc_offset = var->data.patch ? VARYING_SLOT_PATCH0 : 0;
+
+   slots_used[var->data.patch ? 1 : 0] |= slots_used_mask &
+      BITFIELD64_RANGE(var->data.location - loc_offset, num_slots);
+}
+
+static void
+mark_used_slot(nir_variable *var, uint64_t *slots_used, unsigned offset)
+{
+   unsigned loc_offset = var->data.patch ? VARYING_SLOT_PATCH0 : 0;
+
+   slots_used[var->data.patch ? 1 : 0] |=
+      BITFIELD64_BIT(var->data.location - loc_offset + offset);
+}
+
+static void
 remap_slots_and_components(struct exec_list *var_list, gl_shader_stage stage,
                            struct varying_loc (*remap)[4],
-                           uint64_t *slots_used, uint64_t *out_slots_read)
+                           uint64_t *slots_used, uint64_t *out_slots_read,
+                           uint32_t *p_slots_used, uint32_t *p_out_slots_read)
  {
-   uint64_t out_slots_read_tmp = 0;
+   uint64_t out_slots_read_tmp[2] = {0};
+   uint64_t slots_used_tmp[2] = {0};
 
    /* We don't touch builtins so just copy the bitmask */
-   uint64_t slots_used_tmp =
-      *slots_used & (((uint64_t)1 << (VARYING_SLOT_VAR0 - 1)) - 1);
+   slots_used_tmp[0] = *slots_used & BITFIELD64_RANGE(0, VARYING_SLOT_VAR0);
 
    nir_foreach_variable(var, var_list) {
       assert(var->data.location >= 0);
 
       /* Only remap things that aren't built-ins */
       if (var->data.location >= VARYING_SLOT_VAR0 &&
-          var->data.location - VARYING_SLOT_VAR0 < 32) {
-         assert(var->data.location - VARYING_SLOT_VAR0 < 32);
+          var->data.location - VARYING_SLOT_VAR0 < MAX_VARYINGS_INCL_PATCH) {
 
          const struct glsl_type *type = var->type;
          if (nir_is_per_vertex_io(var, stage)) {
@@ -323,11 +342,17 @@ remap_slots_and_components(struct exec_list *var_list, gl_shader_stage stage,
          unsigned location = var->data.location - VARYING_SLOT_VAR0;
          struct varying_loc *new_loc = &remap[location][var->data.location_frac];
 
-         uint64_t slots = (((uint64_t)1 << num_slots) - 1) << var->data.location;
-         if (slots & *slots_used)
+         unsigned loc_offset = var->data.patch ? VARYING_SLOT_PATCH0 : 0;
+         uint64_t used = var->data.patch ? *p_slots_used : *slots_used;
+         uint64_t outs_used =
+            var->data.patch ? *p_out_slots_read : *out_slots_read;
+         uint64_t slots =
+            BITFIELD64_RANGE(var->data.location - loc_offset, num_slots);
+
+         if (slots & used)
             used_across_stages = true;
 
-         if (slots & *out_slots_read)
+         if (slots & outs_used)
             outputs_read = true;
 
          if (new_loc->location) {
@@ -341,30 +366,29 @@ remap_slots_and_components(struct exec_list *var_list, gl_shader_stage stage,
              * otherwise we will mess up the mask for things like partially
              * marked arrays.
              */
-            if (used_across_stages) {
-               slots_used_tmp |=
-                  *slots_used & (((uint64_t)1 << num_slots) - 1) << var->data.location;
-            }
+            if (used_across_stages)
+               mark_all_used_slots(var, slots_used_tmp, used, num_slots);
 
             if (outputs_read) {
-               out_slots_read_tmp |=
-                  *out_slots_read & (((uint64_t)1 << num_slots) - 1) << var->data.location;
+               mark_all_used_slots(var, out_slots_read_tmp, outs_used,
+                                   num_slots);
             }
-
          } else {
             for (unsigned i = 0; i < num_slots; i++) {
                if (used_across_stages)
-                  slots_used_tmp |= (uint64_t)1 << (var->data.location + i);
+                  mark_used_slot(var, slots_used_tmp, i);
 
                if (outputs_read)
-                  out_slots_read_tmp |= (uint64_t)1 << (var->data.location + i);
+                  mark_used_slot(var, out_slots_read_tmp, i);
             }
          }
       }
    }
 
-   *slots_used = slots_used_tmp;
-   *out_slots_read = out_slots_read_tmp;
+   *slots_used = slots_used_tmp[0];
+   *out_slots_read = out_slots_read_tmp[0];
+   *p_slots_used = slots_used_tmp[1];
+   *p_out_slots_read = out_slots_read_tmp[1];
 }
 
 /* If there are empty components in the slot compact the remaining components
@@ -378,7 +402,7 @@ compact_components(nir_shader *producer, nir_shader *consumer, uint8_t *comps,
 {
    struct exec_list *input_list = &consumer->inputs;
    struct exec_list *output_list = &producer->outputs;
-   struct varying_loc remap[32][4] = {{{0}, {0}}};
+   struct varying_loc remap[MAX_VARYINGS_INCL_PATCH][4] = {{{0}, {0}}};
 
    /* Create a cursor for each interpolation type */
    unsigned cursor[4] = {0};
@@ -489,11 +513,15 @@ compact_components(nir_shader *producer, nir_shader *consumer, uint8_t *comps,
    }
 
    uint64_t zero = 0;
+   uint32_t zero32 = 0;
    remap_slots_and_components(input_list, consumer->info.stage, remap,
-                              &consumer->info.inputs_read, &zero);
+                              &consumer->info.inputs_read, &zero,
+                              &consumer->info.patch_inputs_read, &zero32);
    remap_slots_and_components(output_list, producer->info.stage, remap,
                               &producer->info.outputs_written,
-                              &producer->info.outputs_read);
+                              &producer->info.outputs_read,
+                              &producer->info.patch_outputs_written,
+                              &producer->info.patch_outputs_read);
 }
 
 /* We assume that this has been called more-or-less directly after
