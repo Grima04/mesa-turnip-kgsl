@@ -1150,7 +1150,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       /* cl.NonPerspectiveBarycentricEnable is filled in at draw time from
        * the FS program; cl.ForceZeroRTAIndexEnable is filled in from the FB.
        */
-      cl.StatisticsEnable = true;
       cl.EarlyCullEnable = true;
       cl.UserClipDistanceClipTestEnableBitmask = state->clip_plane_enable;
       cl.ForceUserClipDistanceClipTestEnableBitmask = true;
@@ -4237,6 +4236,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
+         cl.StatisticsEnable = ice->state.statistics_counters_enabled;
+
          if (wm_prog_data->barycentric_interp_modes &
              BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
             cl.NonPerspectiveBarycentricEnable = true;
