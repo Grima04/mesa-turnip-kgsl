@@ -1155,7 +1155,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       cl.ForceUserClipDistanceClipTestEnableBitmask = true;
       cl.APIMode = state->clip_halfz ? APIMODE_D3D : APIMODE_OGL;
       cl.GuardbandClipTestEnable = true;
-      cl.ClipMode = CLIPMODE_NORMAL;
       cl.ClipEnable = true;
       cl.ViewportXYClipTestEnable = state->point_tri_clip;
       cl.MinimumPointWidth = 0.125;
@@ -4234,10 +4233,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
+      bool reject = cso_rast->rasterizer_discard &&
+                    ice->state.prims_generated_query_active;
+
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
          cl.StatisticsEnable = ice->state.statistics_counters_enabled;
-
+         cl.ClipMode = reject ? CLIPMODE_REJECT_ALL : CLIPMODE_NORMAL;
          if (wm_prog_data->barycentric_interp_modes &
              BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
             cl.NonPerspectiveBarycentricEnable = true;

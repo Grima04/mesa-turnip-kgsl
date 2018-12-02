@@ -518,7 +518,7 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
       ice->state.prims_generated_query_active = true;
-      ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+      ice->state.dirty |= IRIS_DIRTY_STREAMOUT | IRIS_DIRTY_CLIP;
    }
 
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
@@ -544,7 +544,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
       ice->state.prims_generated_query_active = true;
-      ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
+      ice->state.dirty |= IRIS_DIRTY_STREAMOUT | IRIS_DIRTY_CLIP;
    }
 
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
