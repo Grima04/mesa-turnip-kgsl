@@ -484,7 +484,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                     .array_len = templ->array_size,
                     .samples = MAX2(templ->nr_samples, 1),
                     .min_alignment_B = 0,
-                    .row_pitch_B = 0,
+                    .row_pitch_B = whandle->stride,
                     .usage = isl_usage,
                     .tiling_flags = 1 << mod_info->tiling);
 
