@@ -4837,6 +4837,10 @@ VkResult radv_CreateSampler(
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_sampler *sampler;
 
+	const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
+		vk_find_struct_const(pCreateInfo->pNext,
+				     SAMPLER_YCBCR_CONVERSION_INFO);
+
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
 	sampler = vk_alloc2(&device->alloc, pAllocator, sizeof(*sampler), 8,
@@ -4845,6 +4849,8 @@ VkResult radv_CreateSampler(
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	radv_init_sampler(device, sampler, pCreateInfo);
+
+	sampler->ycbcr_sampler = ycbcr_conversion ? radv_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion): NULL;
 	*pSampler = radv_sampler_to_handle(sampler);
 
 	return VK_SUCCESS;

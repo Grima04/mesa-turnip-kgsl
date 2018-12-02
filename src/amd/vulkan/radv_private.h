@@ -1716,6 +1716,15 @@ void radv_image_view_init(struct radv_image_view *view,
 
 VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 
+struct radv_sampler_ycbcr_conversion {
+	VkFormat format;
+	VkSamplerYcbcrModelConversion ycbcr_model;
+	VkSamplerYcbcrRange ycbcr_range;
+	VkComponentMapping components;
+	VkChromaLocation chroma_offsets[2];
+	VkFilter chroma_filter;
+};
+
 struct radv_buffer_view {
 	struct radeon_winsys_bo *bo;
 	VkFormat vk_format;
@@ -1771,6 +1780,7 @@ radv_image_extent_compare(const struct radv_image *image,
 
 struct radv_sampler {
 	uint32_t state[4];
+	struct radv_sampler_ycbcr_conversion *ycbcr_sampler;
 };
 
 struct radv_color_buffer_info {
@@ -2041,6 +2051,7 @@ RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_layout, VkPipelineLayout)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, VkQueryPool)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_render_pass, VkRenderPass)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, VkSampler)
+RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_shader_module, VkShaderModule)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_semaphore, VkSemaphore)
 

@@ -1216,19 +1216,40 @@ void radv_UpdateDescriptorSetWithTemplate(VkDevice _device,
 }
 
 
-VkResult radv_CreateSamplerYcbcrConversion(VkDevice device,
+VkResult radv_CreateSamplerYcbcrConversion(VkDevice _device,
 					   const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator,
 					   VkSamplerYcbcrConversion* pYcbcrConversion)
 {
-	*pYcbcrConversion = VK_NULL_HANDLE;
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	struct radv_sampler_ycbcr_conversion *conversion = NULL;
+
+	conversion = vk_zalloc2(&device->alloc, pAllocator, sizeof(*conversion), 8,
+	                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+	if (conversion == NULL)
+		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	conversion->format = pCreateInfo->format;
+	conversion->ycbcr_model = pCreateInfo->ycbcrModel;
+	conversion->ycbcr_range = pCreateInfo->ycbcrRange;
+	conversion->components = pCreateInfo->components;
+	conversion->chroma_offsets[0] = pCreateInfo->xChromaOffset;
+	conversion->chroma_offsets[1] = pCreateInfo->yChromaOffset;
+	conversion->chroma_filter = pCreateInfo->chromaFilter;
+
+	*pYcbcrConversion = radv_sampler_ycbcr_conversion_to_handle(conversion);
 	return VK_SUCCESS;
 }
 
 
-void radv_DestroySamplerYcbcrConversion(VkDevice device,
+void radv_DestroySamplerYcbcrConversion(VkDevice _device,
 					VkSamplerYcbcrConversion ycbcrConversion,
 					const VkAllocationCallbacks* pAllocator)
 {
-	/* Do nothing. */
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	RADV_FROM_HANDLE(radv_sampler_ycbcr_conversion, ycbcr_conversion, ycbcrConversion);
+
+	if (ycbcr_conversion)
+		vk_free2(&device->alloc, pAllocator, ycbcr_conversion);
 }
