@@ -3331,7 +3331,9 @@ iris_store_fs_state(struct iris_context *ice,
    iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
       psx.PixelShaderValid = true;
       psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
-      psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
+      // XXX: alpha test / alpha to coverage :/
+      psx.PixelShaderKillsPixel = wm_prog_data->uses_kill ||
+                                  wm_prog_data->uses_omask;
       psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
       psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
       psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
