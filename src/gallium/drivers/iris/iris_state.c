@@ -1222,7 +1222,9 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
           cso_changed(clip_halfz))
          ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
 
-      if (cso_changed(sprite_coord_enable) || cso_changed(light_twoside))
+      if (cso_changed(sprite_coord_enable) ||
+          cso_changed(sprite_coord_mode) ||
+          cso_changed(light_twoside))
          ice->state.dirty |= IRIS_DIRTY_SBE;
    }
 
