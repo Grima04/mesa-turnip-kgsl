@@ -728,6 +728,18 @@ void nvc0_validate_samplers(struct nvc0_context *nvc0)
    nvc0->dirty_cp |= NVC0_NEW_CP_SAMPLERS;
 }
 
+void
+nvc0_upload_tsc0(struct nvc0_context *nvc0)
+{
+   struct nouveau_pushbuf *push = nvc0->base.pushbuf;
+   u32 data[8] = { G80_TSC_0_SRGB_CONVERSION };
+   nvc0->base.push_data(&nvc0->base, nvc0->screen->txc,
+                        65536 /*+ tsc->id * 32*/,
+                        NV_VRAM_DOMAIN(&nvc0->screen->base), 32, data);
+   BEGIN_NVC0(push, NVC0_3D(TSC_FLUSH), 1);
+   PUSH_DATA (push, 0);
+}
+
 /* Upload the "diagonal" entries for the possible texture sources ($t == $s).
  * At some point we might want to get a list of the combinations used by a
  * shader and fill in those entries instead of having it extract the handles.

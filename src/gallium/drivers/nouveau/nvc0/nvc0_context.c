@@ -478,6 +478,16 @@ nvc0_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
 
    util_dynarray_init(&nvc0->global_residents, NULL);
 
+   // Make sure that the first TSC entry has SRGB conversion bit set, since we
+   // use it as a fallback on Fermi for TXF, and on Kepler+ generations for
+   // FBFETCH handling (which also uses TXF).
+   //
+   // NOTE: Preliminary testing suggests that this isn't necessary at all at
+   // least on GM20x (untested on Kepler). However this is ~free, so no reason
+   // not to do it.
+   if (!screen->tsc.entries[0])
+      nvc0_upload_tsc0(nvc0);
+
    return pipe;
 
 out_err:
