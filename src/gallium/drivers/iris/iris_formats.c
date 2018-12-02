@@ -353,15 +353,20 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
 {
    struct isl_swizzle swizzle = ISL_SWIZZLE_IDENTITY;
 
-   if ((usage & ISL_SURF_USAGE_TEXTURE_BIT) && !util_format_is_srgb(pformat)) {
-      if (util_format_is_intensity(pformat)) {
-         swizzle = ISL_SWIZZLE(RED, RED, RED, RED);
-      } else if (util_format_is_luminance(pformat)) {
-         swizzle = ISL_SWIZZLE(RED, RED, RED, ONE);
-      //} else if (util_format_is_alpha(pformat)) {
-         //pformat = alpha_to_red(pformat);
-         //swizzle = ISL_SWIZZLE(ZERO, ZERO, ZERO, RED);
+   if (usage & ISL_SURF_USAGE_TEXTURE_BIT) {
+      if (!util_format_is_srgb(pformat)) {
+         if (util_format_is_intensity(pformat)) {
+            swizzle = ISL_SWIZZLE(RED, RED, RED, RED);
+         } else if (util_format_is_luminance(pformat)) {
+            swizzle = ISL_SWIZZLE(RED, RED, RED, ONE);
+         //} else if (util_format_is_alpha(pformat)) {
+            //pformat = alpha_to_red(pformat);
+            //swizzle = ISL_SWIZZLE(ZERO, ZERO, ZERO, RED);
+         }
       }
+      if (pformat == PIPE_FORMAT_DXT1_RGB ||
+          pformat == PIPE_FORMAT_DXT1_SRGB)
+         swizzle = ISL_SWIZZLE(RED, GREEN, BLUE, ONE);
    }
 
    enum isl_format format = iris_isl_format_for_pipe_format(pformat);
