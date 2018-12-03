@@ -308,6 +308,11 @@ struct v3d_job {
          */
         bool needs_flush;
 
+        /* Set if any shader has dirtied cachelines in the TMU that need to be
+         * flushed before job end.
+         */
+        bool tmu_dirty_rcl;
+
         /**
          * Set if a packet enabling TF has been emitted in the job (V3D 4.x).
          */
