@@ -381,13 +381,30 @@ fs_visitor::nir_emit_cf_list(exec_list *list)
 void
 fs_visitor::nir_emit_if(nir_if *if_stmt)
 {
+   bool invert;
+   fs_reg cond_reg;
+
+   /* If the condition has the form !other_condition, use other_condition as
+    * the source, but invert the predicate on the if instruction.
+    */
+   nir_alu_instr *const cond = nir_src_as_alu_instr(&if_stmt->condition);
+   if (cond != NULL && cond->op == nir_op_inot) {
+      assert(!cond->src[0].negate);
+      assert(!cond->src[0].abs);
+
+      invert = true;
+      cond_reg = get_nir_src(cond->src[0].src);
+   } else {
+      invert = false;
+      cond_reg = get_nir_src(if_stmt->condition);
+   }
+
    /* first, put the condition into f0 */
    fs_inst *inst = bld.MOV(bld.null_reg_d(),
-                            retype(get_nir_src(if_stmt->condition),
-                                   BRW_REGISTER_TYPE_D));
+                           retype(cond_reg, BRW_REGISTER_TYPE_D));
    inst->conditional_mod = BRW_CONDITIONAL_NZ;
 
-   bld.IF(BRW_PREDICATE_NORMAL);
+   bld.IF(BRW_PREDICATE_NORMAL)->predicate_inverse = invert;
 
    nir_emit_cf_list(&if_stmt->then_list);
 
