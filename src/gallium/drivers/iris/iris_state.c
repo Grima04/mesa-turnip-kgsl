@@ -765,9 +765,6 @@ struct iris_depth_buffer_state {
  * packets which vary by generation.
  */
 struct iris_genx_state {
-   /** SF_CLIP_VIEWPORT */
-   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
-
    struct iris_vertex_buffer_state vertex_buffers;
    struct iris_depth_buffer_state depth_buffer;
 
@@ -1989,37 +1986,8 @@ iris_set_viewport_states(struct pipe_context *ctx,
                          const struct pipe_viewport_state *states)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_genx_state *genx = ice->state.genx;
-   uint32_t *vp_map =
-      &genx->sf_cl_vp[start_slot * GENX(SF_CLIP_VIEWPORT_length)];
 
-   for (unsigned i = 0; i < count; i++) {
-      const struct pipe_viewport_state *state = &states[i];
-
-      memcpy(&ice->state.viewports[start_slot + i], state, sizeof(*state));
-
-      iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
-         vp.ViewportMatrixElementm00 = state->scale[0];
-         vp.ViewportMatrixElementm11 = state->scale[1];
-         vp.ViewportMatrixElementm22 = state->scale[2];
-         vp.ViewportMatrixElementm30 = state->translate[0];
-         vp.ViewportMatrixElementm31 = state->translate[1];
-         vp.ViewportMatrixElementm32 = state->translate[2];
-         /* XXX: in i965 this is computed based on the drawbuffer size,
-          * but we don't have that here...
-          */
-         vp.XMinClipGuardband = -1.0;
-         vp.XMaxClipGuardband = 1.0;
-         vp.YMinClipGuardband = -1.0;
-         vp.YMaxClipGuardband = 1.0;
-         vp.XMinViewPort = viewport_extent(state, 0, -1.0f);
-         vp.XMaxViewPort = viewport_extent(state, 0,  1.0f) - 1;
-         vp.YMinViewPort = viewport_extent(state, 1, -1.0f);
-         vp.YMaxViewPort = viewport_extent(state, 1,  1.0f) - 1;
-      }
-
-      vp_map += GENX(SF_CLIP_VIEWPORT_length);
-   }
+   memcpy(&ice->state.viewports[start_slot], states, sizeof(*states) * count);
 
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 
@@ -2057,6 +2025,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    if ((cso->layers == 0) != (state->layers == 0)) {
       ice->state.dirty |= IRIS_DIRTY_CLIP;
+   }
+
+   if (cso->width != state->width || cso->height != state->height) {
+      ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
    }
 
    util_copy_framebuffer_state(cso, state);
@@ -3970,12 +3942,47 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SF_CL_VIEWPORT) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      uint32_t sf_cl_vp_address;
+      uint32_t *vp_map =
+         stream_state(batch, ice->state.dynamic_uploader,
+                      &ice->state.last_res.sf_cl_vp,
+                      4 * ice->state.num_viewports *
+                      GENX(SF_CLIP_VIEWPORT_length), 64, &sf_cl_vp_address);
+
+      for (unsigned i = 0; i < ice->state.num_viewports; i++) {
+         const struct pipe_viewport_state *state = &ice->state.viewports[i];
+
+         float vp_xmin = viewport_extent(state, 0, -1.0f);
+         float vp_xmax = viewport_extent(state, 0,  1.0f);
+         float vp_ymin = viewport_extent(state, 1, -1.0f);
+         float vp_ymax = viewport_extent(state, 1,  1.0f);
+
+         iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
+            vp.ViewportMatrixElementm00 = state->scale[0];
+            vp.ViewportMatrixElementm11 = state->scale[1];
+            vp.ViewportMatrixElementm22 = state->scale[2];
+            vp.ViewportMatrixElementm30 = state->translate[0];
+            vp.ViewportMatrixElementm31 = state->translate[1];
+            vp.ViewportMatrixElementm32 = state->translate[2];
+            /* XXX: in i965 this is computed based on the drawbuffer size,
+             * but we don't have that here...
+             */
+            vp.XMinClipGuardband = -1.0;
+            vp.XMaxClipGuardband = 1.0;
+            vp.YMinClipGuardband = -1.0;
+            vp.YMaxClipGuardband = 1.0;
+            vp.XMinViewPort = MAX2(vp_xmin, 0);
+            vp.XMaxViewPort = MIN2(vp_xmax, cso_fb->width) - 1;
+            vp.YMinViewPort = MAX2(vp_ymin, 0);
+            vp.YMaxViewPort = MIN2(vp_ymax, cso_fb->height) - 1;
+         }
+
+         vp_map += GENX(SF_CLIP_VIEWPORT_length);
+      }
+
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
-         ptr.SFClipViewportPointer =
-            emit_state(batch, ice->state.dynamic_uploader,
-                       &ice->state.last_res.sf_cl_vp,
-                       genx->sf_cl_vp, 4 * GENX(SF_CLIP_VIEWPORT_length) *
-                       ice->state.num_viewports, 64);
+         ptr.SFClipViewportPointer = sf_cl_vp_address;
       }
    }
 
