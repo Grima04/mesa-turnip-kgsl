@@ -205,6 +205,8 @@ public:
    void nir_emit_block(nir_block *block);
    void nir_emit_instr(nir_instr *instr);
    void nir_emit_alu(const brw::fs_builder &bld, nir_alu_instr *instr);
+   bool try_emit_b2fi_of_inot(const brw::fs_builder &bld, fs_reg result,
+                              nir_alu_instr *instr);
    void nir_emit_load_const(const brw::fs_builder &bld,
                             nir_load_const_instr *instr);
    void nir_emit_vs_intrinsic(const brw::fs_builder &bld,

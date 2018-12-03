@@ -753,6 +753,42 @@ fs_visitor::resolve_inot_sources(const fs_builder &bld, nir_alu_instr *instr,
    }
 }
 
+bool
+fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
+                                  fs_reg result,
+                                  nir_alu_instr *instr)
+{
+   if (devinfo->gen < 6 || devinfo->gen >= 12)
+      return false;
+
+   nir_alu_instr *const inot_instr = nir_src_as_alu_instr(&instr->src[0].src);
+
+   if (inot_instr == NULL || inot_instr->op != nir_op_inot)
+      return false;
+
+   /* HF is also possible as a destination on BDW+.  For nir_op_b2i, the set
+    * of valid size-changing combinations is a bit more complex.
+    *
+    * The source restriction is just because I was lazy about generating the
+    * constant below.
+    */
+   if (nir_dest_bit_size(instr->dest.dest) != 32 ||
+       nir_src_bit_size(inot_instr->src[0].src) != 32)
+      return false;
+
+   /* b2[fi](inot(a)) maps a=0 => 1, a=-1 => 0.  Since a can only be 0 or -1,
+    * this is float(1 + a).
+    */
+   fs_reg op;
+
+   prepare_alu_destination_and_sources(bld, inot_instr, &op, false);
+
+   bld.ADD(result, op, brw_imm_d(1));
+   assert(!instr->dest.saturate);
+
+   return true;
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
@@ -844,6 +880,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_b2f16:
    case nir_op_b2f32:
    case nir_op_b2f64:
+      if (try_emit_b2fi_of_inot(bld, result, instr))
+         break;
       op[0].type = BRW_REGISTER_TYPE_D;
       op[0].negate = !op[0].negate;
       /* fallthrough */
