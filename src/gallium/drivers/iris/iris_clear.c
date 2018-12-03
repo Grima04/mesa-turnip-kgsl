@@ -88,7 +88,8 @@ iris_clear(struct pipe_context *ctx,
 
       blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
                                 psurf->u.tex.level, psurf->u.tex.first_layer,
-                                num_layers, 0, 0, psurf->width, psurf->height,
+                                num_layers, 0, 0,
+                                cso_fb->width, cso_fb->height,
                                 (buffers & PIPE_CLEAR_DEPTH) != 0, depth,
                                 (buffers & PIPE_CLEAR_STENCIL) ? 0xff : 0,
                                 stencil);
@@ -112,7 +113,7 @@ iris_clear(struct pipe_context *ctx,
                         ISL_SWIZZLE_IDENTITY,
                         psurf->u.tex.level, psurf->u.tex.first_layer,
                         psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
-                        0, 0, psurf->width, psurf->height,
+                        0, 0, cso_fb->width, cso_fb->height,
                         *clear_color, color_write_disable);
          }
       }
