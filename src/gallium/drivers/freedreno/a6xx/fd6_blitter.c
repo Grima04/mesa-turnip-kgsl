@@ -47,7 +47,6 @@ ok_dims(const struct pipe_resource *r, const struct pipe_box *b, int lvl)
 		r->target == PIPE_TEXTURE_3D ? u_minify(r->depth0, lvl)
 		: r->array_size;
 
-
 	return (b->x >= 0) && (b->x + b->width <= u_minify(r->width0, lvl)) &&
 		(b->y >= 0) && (b->y + b->height <= u_minify(r->height0, lvl)) &&
 		(b->z >= 0) && (b->z + b->depth <= last_layer);
@@ -139,6 +138,15 @@ emit_setup(struct fd_ringbuffer *ring)
 	OUT_RING(ring, 0x10000000);
 }
 
+static uint32_t
+blit_control(enum a6xx_color_fmt fmt)
+{
+	unsigned blit_cntl = 0xf00000;
+	blit_cntl |= A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt);
+	blit_cntl |= A6XX_RB_2D_BLIT_CNTL_IFMT(fd6_ifmt(fmt));
+	return blit_cntl;
+}
+
 /* buffers need to be handled specially since x/width can exceed the bounds
  * supported by hw.. if necessary decompose into (potentially) two 2D blits
  */
@@ -198,7 +206,7 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A2XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(RB6_R8_UNORM) | 0x20f00000;
+	uint32_t blit_cntl = blit_control(RB6_R8_UNORM) | 0x20000000;
 	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
 
@@ -374,7 +382,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A2XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(dfmt) | 0xf00000;
+	uint32_t blit_cntl = blit_control(dfmt);
 
 	if (dtile != stile)
 		blit_cntl |= 0x20000000;
