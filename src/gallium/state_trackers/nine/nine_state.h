@@ -560,6 +560,7 @@ nine_context_gen_mipmap(struct NineDevice9 *device,
 void
 nine_context_range_upload(struct NineDevice9 *device,
                           unsigned *counter,
+                          struct NineUnknown *src_ref,
                           struct pipe_resource *res,
                           unsigned offset,
                           unsigned size,
