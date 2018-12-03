@@ -278,5 +278,5 @@ int virgl_encode_texture_barrier(struct virgl_context *ctx,
                                  unsigned flags);
 
 int virgl_encode_host_debug_flagstring(struct virgl_context *ctx,
-                                  char *envname);
+                                  const char *envname);
 #endif

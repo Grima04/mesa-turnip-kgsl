@@ -1056,7 +1056,7 @@ int virgl_encode_texture_barrier(struct virgl_context *ctx,
 }
 
 int virgl_encode_host_debug_flagstring(struct virgl_context *ctx,
-                                       char *flagstring)
+                                       const char *flagstring)
 {
    unsigned long slen = strlen(flagstring) + 1;
    uint32_t sslen;
@@ -1074,7 +1074,7 @@ int virgl_encode_host_debug_flagstring(struct virgl_context *ctx,
    string_length = (uint32_t)MIN2(sslen * 4, slen);
 
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_SET_DEBUG_FLAGS, 0, sslen));
-   virgl_encoder_write_block(ctx->cbuf, (uint8_t *)flagstring, string_length);
+   virgl_encoder_write_block(ctx->cbuf, (const uint8_t *)flagstring, string_length);
 
    return 0;
 }
