@@ -1373,7 +1373,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
-   shs->num_samplers = MAX2(shs->num_samplers, start + count);
+   if (states)
+      shs->num_samplers = MAX2(shs->num_samplers, start + count);
 
    for (int i = 0; i < count; i++) {
       shs->samplers[start + i] = states[i];
@@ -1759,20 +1760,16 @@ iris_set_sampler_views(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   unsigned i;
-   for (i = 0; i < count; i++) {
+   if (views)
+      shs->num_textures = MAX2(shs->num_textures, start + count);
+
+   for (unsigned i = 0; i < count; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
                                   &shs->textures[i], views[i]);
       struct iris_sampler_view *view = (void *) views[i];
       if (view)
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
    }
-   for (; i < shs->num_textures; i++) {
-      pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &shs->textures[i], NULL);
-   }
-
-   shs->num_textures = count;
 
    ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
 }
