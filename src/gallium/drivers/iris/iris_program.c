@@ -261,7 +261,7 @@ iris_create_vs_state(struct pipe_context *ctx,
 
    /* User clip planes */
    if (ish->nir->info.clip_distance_array_size == 0)
-      ish->nos |= IRIS_NOS_RASTERIZER;
+      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
       struct brw_vs_prog_key key = { KEY_INIT };
@@ -354,15 +354,15 @@ iris_create_fs_state(struct pipe_context *ctx,
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
-   ish->nos |= IRIS_NOS_FRAMEBUFFER |
-               IRIS_NOS_DEPTH_STENCIL_ALPHA |
-               IRIS_NOS_RASTERIZER |
-               IRIS_NOS_BLEND;
+   ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
+               (1ull << IRIS_NOS_DEPTH_STENCIL_ALPHA) |
+               (1ull << IRIS_NOS_RASTERIZER) |
+               (1ull << IRIS_NOS_BLEND);
 
    /* The program key needs the VUE map if there are > 16 inputs */
    if (util_bitcount64(ish->nir->info.inputs_read &
                        BRW_FS_VARYING_INPUT_MASK) > 16) {
-      ish->nos |= IRIS_NOS_LAST_VUE_MAP;
+      ish->nos |= (1ull << IRIS_NOS_LAST_VUE_MAP);
    }
 
    if (screen->precompile) {
@@ -1221,7 +1221,7 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct brw_wm_prog_key key = { KEY_INIT };
    ice->vtbl.populate_fs_key(ice, &key);
 
-   if (ish->nos & IRIS_NOS_LAST_VUE_MAP)
+   if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
       key.input_slots_valid = ice->shaders.last_vue_map->slots_valid;
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_FS];

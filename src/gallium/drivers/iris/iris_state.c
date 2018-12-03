@@ -1072,7 +1072,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    not necessary?
    {
       poly_smooth
-      force_persample_interp - ?
       bottom_edge_rule
 
       offset_units_unscaled - cap not exposed
