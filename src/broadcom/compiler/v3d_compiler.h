@@ -246,7 +246,6 @@ enum quniform_contents {
         QUNIFORM_TEXTURE_BORDER_COLOR,
 
         QUNIFORM_ALPHA_REF,
-        QUNIFORM_SAMPLE_MASK,
 
         /**
          * Returns the the offset of the scratch buffer for register spilling.
