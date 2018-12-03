@@ -1056,7 +1056,8 @@ void si_emit_cache_flush(struct si_context *sctx)
 				  EOP_DATA_SEL_VALUE_32BIT,
 				  sctx->wait_mem_scratch, va,
 				  sctx->wait_mem_number, SI_NOT_QUERY);
-		si_cp_wait_mem(sctx, va, sctx->wait_mem_number, 0xffffffff, 0);
+		si_cp_wait_mem(sctx, cs, va, sctx->wait_mem_number, 0xffffffff,
+			       WAIT_REG_MEM_EQUAL);
 	}
 
 	/* Make sure ME is idle (it executes most packets) before continuing.

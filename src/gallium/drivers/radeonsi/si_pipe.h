@@ -1213,7 +1213,7 @@ void si_cp_release_mem(struct si_context *ctx,
 		       struct r600_resource *buf, uint64_t va,
 		       uint32_t new_fence, unsigned query_type);
 unsigned si_cp_write_fence_dwords(struct si_screen *screen);
-void si_cp_wait_mem(struct si_context *ctx,
+void si_cp_wait_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		      uint64_t va, uint32_t ref, uint32_t mask, unsigned flags);
 void si_init_fence_functions(struct si_context *ctx);
 void si_init_screen_fence_functions(struct si_screen *screen);

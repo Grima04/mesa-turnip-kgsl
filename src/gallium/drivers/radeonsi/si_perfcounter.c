@@ -701,7 +701,7 @@ static void si_pc_emit_stop(struct si_context *sctx,
 			  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 			  EOP_DATA_SEL_VALUE_32BIT,
 			  buffer, va, 0, SI_NOT_QUERY);
-	si_cp_wait_mem(sctx, va, 0, 0xffffffff, 0);
+	si_cp_wait_mem(sctx, cs, va, 0, 0xffffffff, WAIT_REG_MEM_EQUAL);
 
 	radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 	radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_SAMPLE) | EVENT_INDEX(0));

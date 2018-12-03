@@ -160,13 +160,11 @@ unsigned si_cp_write_fence_dwords(struct si_screen *screen)
 	return dwords;
 }
 
-void si_cp_wait_mem(struct si_context *ctx,
+void si_cp_wait_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		    uint64_t va, uint32_t ref, uint32_t mask, unsigned flags)
 {
-	struct radeon_cmdbuf *cs = ctx->gfx_cs;
-
 	radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-	radeon_emit(cs, WAIT_REG_MEM_EQUAL | WAIT_REG_MEM_MEM_SPACE(1) | flags);
+	radeon_emit(cs, WAIT_REG_MEM_MEM_SPACE(1) | flags);
 	radeon_emit(cs, va);
 	radeon_emit(cs, va >> 32);
 	radeon_emit(cs, ref); /* reference value */
