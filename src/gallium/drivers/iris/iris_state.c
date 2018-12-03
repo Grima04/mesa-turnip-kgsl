@@ -1765,7 +1765,7 @@ iris_set_sampler_views(struct pipe_context *ctx,
 
    for (unsigned i = 0; i < count; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &shs->textures[i], views[i]);
+                                  &shs->textures[start + i], views[i]);
       struct iris_sampler_view *view = (void *) views[i];
       if (view)
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
