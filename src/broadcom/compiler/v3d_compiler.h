@@ -223,7 +223,7 @@ enum quniform_contents {
          */
         QUNIFORM_TEXTURE_CONFIG_P1,
 
-        /* A a V3D 4.x texture config parameter.  The high 8 bits will be
+        /* A V3D 4.x texture config parameter.  The high 8 bits will be
          * which texture or sampler is being sampled, and the driver must
          * replace the address field with the appropriate address.
          */
