@@ -604,6 +604,9 @@ struct vtn_builder {
    unsigned func_param_idx;
 
    bool has_loop_continue;
+
+   /* false by default, set to true by the ContractionOff execution mode */
+   bool exact;
 };
 
 nir_ssa_def *

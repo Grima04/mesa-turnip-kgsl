@@ -287,6 +287,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
       b->func->impl = nir_function_impl_create(func);
       nir_builder_init(&b->nb, func->impl);
       b->nb.cursor = nir_before_cf_list(&b->func->impl->body);
+      b->nb.exact = b->exact;
 
       b->func_param_idx = 0;
 
@@ -1038,6 +1039,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    nir_builder_init(&b->nb, func->impl);
    b->func = func;
    b->nb.cursor = nir_after_cf_list(&func->impl->body);
+   b->nb.exact = b->exact;
    b->has_loop_continue = false;
    b->phi_table = _mesa_pointer_hash_table_create(b);
 

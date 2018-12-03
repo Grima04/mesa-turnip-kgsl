@@ -3865,8 +3865,15 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    case SpvExecutionModeVecTypeHint:
-   case SpvExecutionModeContractionOff:
       break; /* OpenCL */
+
+   case SpvExecutionModeContractionOff:
+      if (b->shader->info.stage != MESA_SHADER_KERNEL)
+         vtn_warn("ExectionMode only allowed for CL-style kernels: %s",
+                  spirv_executionmode_to_string(mode->exec_mode));
+      else
+         b->exact = true;
+      break;
 
    case SpvExecutionModeStencilRefReplacingEXT:
       vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
