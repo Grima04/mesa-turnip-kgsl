@@ -39,7 +39,10 @@ static void
 resolve_sampler_views(struct iris_batch *batch,
                       struct iris_shader_state *shs)
 {
-   for (int i = 0; i < shs->num_textures; i++) {
+   uint32_t views = shs->bound_sampler_views;
+
+   while (views) {
+      const int i = u_bit_scan(&views);
       struct iris_sampler_view *isv = shs->textures[i];
       if (!isv)
          continue;
@@ -55,7 +58,10 @@ static void
 resolve_image_views(struct iris_batch *batch,
                     struct iris_shader_state *shs)
 {
-   for (int i = 0; i < shs->num_images; i++) {
+   uint32_t views = shs->bound_image_views;
+
+   while (views) {
+      const int i = u_bit_scan(&views);
       struct pipe_resource *res = shs->image[i].res;
       if (!res)
          continue;

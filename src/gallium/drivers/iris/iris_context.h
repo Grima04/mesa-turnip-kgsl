@@ -298,9 +298,12 @@ struct iris_shader_state {
    struct iris_state_ref sampler_table;
    struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];
    struct iris_sampler_view *textures[IRIS_MAX_TEXTURE_SAMPLERS];
-   unsigned num_images;
-   unsigned num_samplers;
-   unsigned num_textures;
+
+   /** Bitfield of which image views are bound (non-null). */
+   uint32_t bound_image_views;
+
+   /** Bitfield of which sampler views are bound (non-null). */
+   uint32_t bound_sampler_views;
 };
 
 /**

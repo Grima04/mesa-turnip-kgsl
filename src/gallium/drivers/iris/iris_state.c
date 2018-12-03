@@ -1373,14 +1373,10 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
-   if (states)
-      shs->num_samplers = MAX2(shs->num_samplers, start + count);
 
    for (int i = 0; i < count; i++) {
       shs->samplers[start + i] = states[i];
    }
-
-   // XXX: count may include NULLs
 
    /* Assemble the SAMPLER_STATEs into a contiguous table that lives
     * in the dynamic state memory zone, so we can point to it via the
@@ -1679,14 +1675,15 @@ iris_set_shader_images(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   if (p_images)
-      shs->num_images = MAX2(shs->num_images, start_slot + count);
+   shs->bound_image_views &= ~u_bit_consecutive(start_slot, count);
 
    for (unsigned i = 0; i < count; i++) {
       if (p_images && p_images[i].resource) {
          const struct pipe_image_view *img = &p_images[i];
          struct iris_resource *res = (void *) img->resource;
          pipe_resource_reference(&shs->image[start_slot + i].res, &res->base);
+
+         shs->bound_image_views |= 1 << (start_slot + i);
 
          res->bind_history |= PIPE_BIND_SHADER_IMAGE;
 
@@ -1760,15 +1757,16 @@ iris_set_sampler_views(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   if (views)
-      shs->num_textures = MAX2(shs->num_textures, start + count);
+   shs->bound_sampler_views &= ~u_bit_consecutive(start, count);
 
    for (unsigned i = 0; i < count; i++) {
       pipe_sampler_view_reference((struct pipe_sampler_view **)
                                   &shs->textures[start + i], views[i]);
       struct iris_sampler_view *view = (void *) views[i];
-      if (view)
+      if (view) {
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
+         shs->bound_sampler_views |= 1 << (start + i);
+      }
    }
 
    ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
