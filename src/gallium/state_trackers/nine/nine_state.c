@@ -2434,7 +2434,7 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_range_upload,
 }
 
 CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_box_upload,
-                               ARG_BIND_REF(struct NineUnknown, dst),
+                               ARG_BIND_REF(struct NineUnknown, src_ref),
                                ARG_BIND_RES(struct pipe_resource, res),
                                ARG_VAL(unsigned, level),
                                ARG_COPY_REF(struct pipe_box, dst_box),
@@ -2449,8 +2449,8 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_box_upload,
     struct pipe_transfer *transfer = NULL;
     uint8_t *map;
 
-    /* We just bind dst for the bind count */
-    (void)dst;
+    /* Binding src_ref avoids release before upload */
+    (void)src_ref;
 
     map = pipe->transfer_map(pipe,
                              res,

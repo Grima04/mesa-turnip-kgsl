@@ -568,7 +568,7 @@ nine_context_range_upload(struct NineDevice9 *device,
 void
 nine_context_box_upload(struct NineDevice9 *device,
                         unsigned *counter,
-                        struct NineUnknown *dst,
+                        struct NineUnknown *src_ref,
                         struct pipe_resource *res,
                         unsigned level,
                         const struct pipe_box *dst_box,
