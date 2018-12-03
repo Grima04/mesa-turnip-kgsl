@@ -243,8 +243,6 @@ enum quniform_contents {
         QUNIFORM_TEXRECT_SCALE_X,
         QUNIFORM_TEXRECT_SCALE_Y,
 
-        QUNIFORM_TEXTURE_BORDER_COLOR,
-
         QUNIFORM_ALPHA_REF,
 
         /**
