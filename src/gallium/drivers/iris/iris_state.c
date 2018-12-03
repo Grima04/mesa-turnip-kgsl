@@ -1678,7 +1678,8 @@ iris_set_shader_images(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   shs->num_images = MAX2(shs->num_images, start_slot + count);
+   if (p_images)
+      shs->num_images = MAX2(shs->num_images, start_slot + count);
 
    for (unsigned i = 0; i < count; i++) {
       if (p_images && p_images[i].resource) {
