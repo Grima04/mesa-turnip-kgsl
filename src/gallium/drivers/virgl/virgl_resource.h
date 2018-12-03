@@ -65,12 +65,7 @@ void virgl_init_screen_resource_functions(struct pipe_screen *screen);
 
 void virgl_init_context_resource_functions(struct pipe_context *ctx);
 
-struct pipe_resource *virgl_texture_create(struct virgl_screen *vs,
-                                           const struct pipe_resource *templ);
-
-struct pipe_resource *virgl_texture_from_handle(struct virgl_screen *vs,
-                                                const struct pipe_resource *templ,
-                                                struct winsys_handle *whandle);
+void virgl_texture_init(struct virgl_resource *res);
 
 static inline struct virgl_resource *virgl_resource(struct pipe_resource *r)
 {
@@ -82,8 +77,7 @@ static inline struct virgl_transfer *virgl_transfer(struct pipe_transfer *trans)
    return (struct virgl_transfer *)trans;
 }
 
-struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
-                                          const struct pipe_resource *templ);
+void virgl_buffer_init(struct virgl_resource *res);
 
 static inline unsigned pipe_to_virgl_bind(unsigned pbind)
 {
@@ -135,4 +129,10 @@ virgl_resource_create_transfer(struct pipe_context *ctx,
 void virgl_resource_destroy_transfer(struct virgl_context *vctx,
                                      struct virgl_transfer *trans);
 
+void virgl_resource_destroy(struct pipe_screen *screen,
+                            struct pipe_resource *resource);
+
+boolean virgl_resource_get_handle(struct pipe_screen *screen,
+                                  struct pipe_resource *resource,
+                                  struct winsys_handle *whandle);
 #endif

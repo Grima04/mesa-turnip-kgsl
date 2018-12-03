@@ -22,6 +22,7 @@
  */
 #include "util/u_format.h"
 #include "util/u_inlines.h"
+#include "util/u_memory.h"
 #include "virgl_context.h"
 #include "virgl_resource.h"
 #include "virgl_screen.h"
@@ -56,11 +57,37 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ)
 {
-    struct virgl_screen *vs = virgl_screen(screen);
-    if (templ->target == PIPE_BUFFER)
-        return virgl_buffer_create(vs, templ);
-    else
-        return virgl_texture_create(vs, templ);
+   unsigned vbind;
+   struct virgl_screen *vs = virgl_screen(screen);
+   struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
+
+   res->clean = TRUE;
+   res->u.b = *templ;
+   res->u.b.screen = &vs->base;
+   pipe_reference_init(&res->u.b.reference, 1);
+   vbind = pipe_to_virgl_bind(templ->bind);
+   virgl_resource_layout(&res->u.b, &res->metadata);
+   res->hw_res = vs->vws->resource_create(vs->vws, templ->target,
+                                          templ->format, vbind,
+                                          templ->width0,
+                                          templ->height0,
+                                          templ->depth0,
+                                          templ->array_size,
+                                          templ->last_level,
+                                          templ->nr_samples,
+                                          res->metadata.total_size);
+   if (!res->hw_res) {
+      FREE(res);
+      return NULL;
+   }
+
+   if (templ->target == PIPE_BUFFER)
+      virgl_buffer_init(res);
+   else
+      virgl_texture_init(res);
+
+   return &res->u.b;
+
 }
 
 static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *screen,
@@ -68,11 +95,24 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
                                                         struct winsys_handle *whandle,
                                                         unsigned usage)
 {
-    struct virgl_screen *vs = virgl_screen(screen);
-    if (templ->target == PIPE_BUFFER)
-        return NULL;
-    else
-        return virgl_texture_from_handle(vs, templ, whandle);
+   struct virgl_screen *vs = virgl_screen(screen);
+   if (templ->target == PIPE_BUFFER)
+      return NULL;
+
+   struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
+   res->u.b = *templ;
+   res->u.b.screen = &vs->base;
+   pipe_reference_init(&res->u.b.reference, 1);
+
+   res->hw_res = vs->vws->resource_create_from_handle(vs->vws, whandle);
+   if (!res->hw_res) {
+      FREE(res);
+      return NULL;
+   }
+
+   virgl_texture_init(res);
+
+   return &res->u.b;
 }
 
 void virgl_init_screen_resource_functions(struct pipe_screen *screen)
@@ -211,4 +251,28 @@ void virgl_resource_destroy_transfer(struct virgl_context *vctx,
 {
    util_range_destroy(&trans->range);
    slab_free(&vctx->transfer_pool, trans);
+}
+
+void virgl_resource_destroy(struct pipe_screen *screen,
+                            struct pipe_resource *resource)
+{
+   struct virgl_screen *vs = virgl_screen(screen);
+   struct virgl_resource *res = virgl_resource(resource);
+   vs->vws->resource_unref(vs->vws, res->hw_res);
+   FREE(res);
+}
+
+boolean virgl_resource_get_handle(struct pipe_screen *screen,
+                                  struct pipe_resource *resource,
+                                  struct winsys_handle *whandle)
+{
+   struct virgl_screen *vs = virgl_screen(screen);
+   struct virgl_resource *res = virgl_resource(resource);
+
+   if (res->u.b.target == PIPE_BUFFER)
+      return FALSE;
+
+   return vs->vws->resource_get_handle(vs->vws, res->hw_res,
+                                       res->metadata.stride[0],
+                                       whandle);
 }

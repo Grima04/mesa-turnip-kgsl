@@ -27,16 +27,6 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
-static void virgl_buffer_destroy(struct pipe_screen *screen,
-                                 struct pipe_resource *buf)
-{
-   struct virgl_screen *vs = virgl_screen(screen);
-   struct virgl_resource *vbuf = virgl_resource(buf);
-
-   vs->vws->resource_unref(vs->vws, vbuf->hw_res);
-   FREE(vbuf);
-}
-
 static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
                                        struct pipe_resource *resource,
                                        unsigned level,
@@ -132,30 +122,13 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
 static const struct u_resource_vtbl virgl_buffer_vtbl =
 {
    u_default_resource_get_handle,            /* get_handle */
-   virgl_buffer_destroy,                     /* resource_destroy */
+   virgl_resource_destroy,                   /* resource_destroy */
    virgl_buffer_transfer_map,                /* transfer_map */
    virgl_buffer_transfer_flush_region,       /* transfer_flush_region */
    virgl_buffer_transfer_unmap,              /* transfer_unmap */
 };
 
-struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
-                                          const struct pipe_resource *template)
+void virgl_buffer_init(struct virgl_resource *res)
 {
-   struct virgl_resource *buf;
-   uint32_t vbind;
-   buf = CALLOC_STRUCT(virgl_resource);
-   buf->clean = TRUE;
-   buf->u.b = *template;
-   buf->u.b.screen = &vs->base;
-   buf->u.vtbl = &virgl_buffer_vtbl;
-   pipe_reference_init(&buf->u.b.reference, 1);
-   virgl_resource_layout(&buf->u.b, &buf->metadata);
-
-   vbind = pipe_to_virgl_bind(template->bind);
-
-   buf->hw_res = vs->vws->resource_create(vs->vws, template->target,
-                                          template->format, vbind,
-                                          template->width0, 1, 1, 1, 0, 0,
-                                          buf->metadata.total_size);
-   return &buf->u.b;
+   res->u.vtbl = &virgl_buffer_vtbl;
 }

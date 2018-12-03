@@ -181,78 +181,16 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    virgl_resource_destroy_transfer(vctx, trans);
 }
 
-static boolean virgl_texture_get_handle(struct pipe_screen *screen,
-                                         struct pipe_resource *ptex,
-                                         struct winsys_handle *whandle)
-{
-   struct virgl_screen *vs = virgl_screen(screen);
-   struct virgl_resource *vtex = virgl_resource(ptex);
-
-   return vs->vws->resource_get_handle(vs->vws, vtex->hw_res,
-                                       vtex->metadata.stride[0],
-                                       whandle);
-}
-
-static void virgl_texture_destroy(struct pipe_screen *screen,
-                                  struct pipe_resource *res)
-{
-   struct virgl_screen *vs = virgl_screen(screen);
-   struct virgl_resource *vtex = virgl_resource(res);
-   vs->vws->resource_unref(vs->vws, vtex->hw_res);
-   FREE(vtex);
-}
-
 static const struct u_resource_vtbl virgl_texture_vtbl =
 {
-   virgl_texture_get_handle,            /* get_handle */
-   virgl_texture_destroy,               /* resource_destroy */
+   virgl_resource_get_handle,           /* get_handle */
+   virgl_resource_destroy,              /* resource_destroy */
    virgl_texture_transfer_map,          /* transfer_map */
    NULL,                                /* transfer_flush_region */
    virgl_texture_transfer_unmap,        /* transfer_unmap */
 };
 
-struct pipe_resource *
-virgl_texture_from_handle(struct virgl_screen *vs,
-                          const struct pipe_resource *template,
-                          struct winsys_handle *whandle)
+void virgl_texture_init(struct virgl_resource *res)
 {
-   struct virgl_resource *tex = CALLOC_STRUCT(virgl_resource);
-   tex->u.b = *template;
-   tex->u.b.screen = &vs->base;
-   pipe_reference_init(&tex->u.b.reference, 1);
-   tex->u.vtbl = &virgl_texture_vtbl;
-
-   tex->hw_res = vs->vws->resource_create_from_handle(vs->vws, whandle);
-   return &tex->u.b;
-}
-
-struct pipe_resource *virgl_texture_create(struct virgl_screen *vs,
-                                           const struct pipe_resource *template)
-{
-   struct virgl_resource *tex;
-   unsigned vbind;
-
-   tex = CALLOC_STRUCT(virgl_resource);
-   tex->clean = TRUE;
-   tex->u.b = *template;
-   tex->u.b.screen = &vs->base;
-   pipe_reference_init(&tex->u.b.reference, 1);
-   tex->u.vtbl = &virgl_texture_vtbl;
-   virgl_resource_layout(&tex->u.b, &tex->metadata);
-
-   vbind = pipe_to_virgl_bind(template->bind);
-   tex->hw_res = vs->vws->resource_create(vs->vws, template->target,
-                                          template->format, vbind,
-                                          template->width0,
-                                          template->height0,
-                                          template->depth0,
-                                          template->array_size,
-                                          template->last_level,
-                                          template->nr_samples,
-                                          tex->metadata.total_size);
-   if (!tex->hw_res) {
-      FREE(tex);
-      return NULL;
-   }
-   return &tex->u.b;
+   res->u.vtbl = &virgl_texture_vtbl;
 }
