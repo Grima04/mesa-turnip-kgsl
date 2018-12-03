@@ -3758,6 +3758,19 @@ iris_restore_render_saved_bos(struct iris_context *ice,
       iris_use_optional_res(batch, ice->state.last_res.scissor, false);
    }
 
+   if (ice->state.streamout_active && (clean & IRIS_DIRTY_SO_BUFFERS)) {
+      for (int i = 0; i < 4; i++) {
+         struct iris_stream_output_target *tgt =
+            (void *) ice->state.so_target[i];
+         if (tgt) {
+            iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
+                               true);
+            iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
+                               true);
+         }
+      }
+   }
+
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(clean & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
