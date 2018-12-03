@@ -1137,6 +1137,14 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                                            level, array_layer, resolve_op,
                                            final_fast_clear);
          } else {
+            /* We only support fast-clear on the first layer so partial
+             * resolves should not be used on other layers as they will use
+             * the clear color stored in memory that is only valid for layer0.
+             */
+            if (resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE &&
+                array_layer != 0)
+               continue;
+
             anv_cmd_predicated_mcs_resolve(cmd_buffer, image, aspect,
                                            array_layer, resolve_op,
                                            final_fast_clear);
