@@ -24,6 +24,7 @@
  */
 
 #include "si_pipe.h"
+#include "util/u_format.h"
 
 /* Note: Compute shaders always use SI_COMPUTE_DST_CACHE_POLICY for dst
  * and L2_STREAM for src.
@@ -290,6 +291,116 @@ void si_copy_buffer(struct si_context *sctx,
 		si_cp_dma_copy_buffer(sctx, dst, src, dst_offset, src_offset, size,
 				      0, coher, cache_policy);
 	}
+}
+
+void si_compute_copy_image(struct si_context *sctx,
+			   struct pipe_resource *dst,
+			   unsigned dst_level,
+			   struct pipe_resource *src,
+			   unsigned src_level,
+			   unsigned dstx, unsigned dsty, unsigned dstz,
+			   const struct pipe_box *src_box)
+{
+	struct pipe_context *ctx = &sctx->b;
+	unsigned width = src_box->width;
+	unsigned height = src_box->height;
+	unsigned depth = src_box->depth;
+
+	unsigned data[] = {src_box->x, src_box->y, src_box->z, 0, dstx, dsty, dstz, 0};
+
+	if (width == 0 || height == 0)
+		return;
+
+	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
+		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
+	si_make_CB_shader_coherent(sctx, dst->nr_samples, true);
+
+	struct pipe_constant_buffer saved_cb = {};
+	si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
+
+	struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
+	struct pipe_image_view saved_image[2] = {0};
+	util_copy_image_view(&saved_image[0], &images->views[0]);
+	util_copy_image_view(&saved_image[1], &images->views[1]);
+
+	void *saved_cs = sctx->cs_shader_state.program;
+
+	struct pipe_constant_buffer cb = {};
+	cb.buffer_size = sizeof(data);
+	cb.user_buffer = data;
+	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &cb);
+
+	struct pipe_image_view image[2] = {0};
+	image[0].resource = src;
+	image[0].shader_access = image[0].access = PIPE_IMAGE_ACCESS_READ;
+	image[0].format = util_format_linear(src->format);
+	image[0].u.tex.level = src_level;
+	image[0].u.tex.first_layer = 0;
+	image[0].u.tex.last_layer =
+		src->target == PIPE_TEXTURE_3D ? u_minify(src->depth0, src_level) - 1
+						: (unsigned)(src->array_size - 1);
+	image[1].resource = dst;
+	image[1].shader_access = image[1].access = PIPE_IMAGE_ACCESS_WRITE;
+	image[1].format = util_format_linear(dst->format);
+	image[1].u.tex.level = dst_level;
+	image[1].u.tex.first_layer = 0;
+	image[1].u.tex.last_layer =
+		dst->target == PIPE_TEXTURE_3D ? u_minify(dst->depth0, dst_level) - 1
+						: (unsigned)(dst->array_size - 1);
+
+	if (src->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
+		image[0].format = image[1].format = PIPE_FORMAT_R32_UINT;
+
+	/* SNORM8 blitting has precision issues on some chips. Use the SINT
+	 * equivalent instead, which doesn't force DCC decompression.
+	 * Note that some chips avoid this issue by using SDMA.
+	 */
+	if (util_format_is_snorm8(dst->format)) {
+		image[0].format = image[1].format =
+			util_format_snorm8_to_sint8(dst->format);
+	}
+
+	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, image);
+
+	struct pipe_grid_info info = {0};
+
+	if (dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY) {
+		if (!sctx->cs_copy_image_1d_array)
+			sctx->cs_copy_image_1d_array =
+				si_create_copy_image_compute_shader_1d_array(ctx);
+		ctx->bind_compute_state(ctx, sctx->cs_copy_image_1d_array);
+		info.block[0] = 64;
+		sctx->compute_last_block[0] = width % 64;
+		info.block[1] = 1;
+		info.block[2] = 1;
+		info.grid[0] = DIV_ROUND_UP(width, 64);
+		info.grid[1] = depth;
+		info.grid[2] = 1;
+	} else {
+		if (!sctx->cs_copy_image)
+			sctx->cs_copy_image = si_create_copy_image_compute_shader(ctx);
+		ctx->bind_compute_state(ctx, sctx->cs_copy_image);
+		info.block[0] = 8;
+		sctx->compute_last_block[0] = width % 8;
+		info.block[1] = 8;
+		sctx->compute_last_block[1] = height % 8;
+		info.block[2] = 1;
+		info.grid[0] = DIV_ROUND_UP(width, 8);
+		info.grid[1] = DIV_ROUND_UP(height, 8);
+		info.grid[2] = depth;
+	}
+
+	ctx->launch_grid(ctx, &info);
+
+	sctx->compute_last_block[0] = 0;
+	sctx->compute_last_block[1] = 0;
+
+	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
+		       (sctx->chip_class <= VI ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0) |
+		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
+	ctx->bind_compute_state(ctx, saved_cs);
+	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, saved_image);
+	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
 }
 
 void si_init_compute_blit_functions(struct si_context *sctx)
