@@ -44,9 +44,6 @@ resolve_sampler_views(struct iris_batch *batch,
    while (views) {
       const int i = u_bit_scan(&views);
       struct iris_sampler_view *isv = shs->textures[i];
-      if (!isv)
-         continue;
-
       struct iris_resource *res = (void *) isv->base.texture;
 
       // XXX: aux tracking
@@ -63,8 +60,6 @@ resolve_image_views(struct iris_batch *batch,
    while (views) {
       const int i = u_bit_scan(&views);
       struct pipe_resource *res = shs->image[i].res;
-      if (!res)
-         continue;
 
       // XXX: aux tracking
       iris_cache_flush_for_read(batch, iris_resource_bo(res));
