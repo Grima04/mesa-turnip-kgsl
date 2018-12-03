@@ -1013,7 +1013,7 @@ struct iris_rasterizer_state {
    bool flatshade_first; /* for stream output */
    bool clamp_fragment_color; /* for shader state */
    bool light_twoside; /* for shader state */
-   bool rasterizer_discard; /* for 3DSTATE_STREAMOUT */
+   bool rasterizer_discard; /* for 3DSTATE_STREAMOUT and 3DSTATE_CLIP */
    bool half_pixel_center; /* for 3DSTATE_MULTISAMPLE */
    bool line_stipple_enable;
    bool poly_stipple_enable;
@@ -1211,7 +1211,10 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
       if (cso_changed(line_stipple_enable) || cso_changed(poly_stipple_enable))
          ice->state.dirty |= IRIS_DIRTY_WM;
 
-      if (cso_changed(rasterizer_discard) || cso_changed(flatshade_first))
+      if (cso_changed(rasterizer_discard))
+         ice->state.dirty |= IRIS_DIRTY_STREAMOUT | IRIS_DIRTY_CLIP;
+
+      if (cso_changed(flatshade_first))
          ice->state.dirty |= IRIS_DIRTY_STREAMOUT;
 
       if (cso_changed(depth_clip_near) || cso_changed(depth_clip_far) ||
@@ -4253,13 +4256,11 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
-      bool reject = cso_rast->rasterizer_discard &&
-                    ice->state.prims_generated_query_active;
-
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
          cl.StatisticsEnable = ice->state.statistics_counters_enabled;
-         cl.ClipMode = reject ? CLIPMODE_REJECT_ALL : CLIPMODE_NORMAL;
+         cl.ClipMode = cso_rast->rasterizer_discard ? CLIPMODE_REJECT_ALL
+                                                    : CLIPMODE_NORMAL;
          if (wm_prog_data->barycentric_interp_modes &
              BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
             cl.NonPerspectiveBarycentricEnable = true;
