@@ -33,7 +33,6 @@ static void virgl_buffer_destroy(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_buffer *vbuf = virgl_buffer(buf);
 
-   util_range_destroy(&vbuf->valid_buffer_range);
    vs->vws->resource_unref(vs->vws, vbuf->base.hw_res);
    FREE(vbuf);
 }
@@ -53,7 +52,7 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    bool readback;
    bool doflushwait = false;
 
-   if ((usage & PIPE_TRANSFER_READ) && (vbuf->on_list == TRUE))
+   if (usage & PIPE_TRANSFER_READ)
       doflushwait = true;
    else
       doflushwait = virgl_res_needs_flush_wait(vctx, &vbuf->base, usage);
@@ -92,13 +91,19 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
    struct virgl_buffer *vbuf = virgl_buffer(transfer->resource);
 
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
-      if (!(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
-         struct virgl_screen *vs = virgl_screen(ctx->screen);
-         vctx->num_transfers++;
-         vs->vws->transfer_put(vs->vws, vbuf->base.hw_res,
-                               &transfer->box, trans->base.stride, trans->l_stride, trans->offset, transfer->level);
-
+      struct virgl_screen *vs = virgl_screen(ctx->screen);
+      if (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) {
+         transfer->box.x += trans->range.start;
+         transfer->box.width = trans->range.end - trans->range.start;
+         trans->offset = transfer->box.x;
       }
+
+      vctx->num_transfers++;
+      vs->vws->transfer_put(vs->vws, vbuf->base.hw_res,
+                            &transfer->box, trans->base.stride,
+                            trans->l_stride, trans->offset,
+                            transfer->level);
+
    }
 
    virgl_resource_destroy_transfer(vctx, trans);
@@ -108,20 +113,19 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
                                                struct pipe_transfer *transfer,
                                                const struct pipe_box *box)
 {
-   struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_buffer *vbuf = virgl_buffer(transfer->resource);
+   struct virgl_transfer *trans = virgl_transfer(transfer);
 
-   if (!vbuf->on_list) {
-       struct pipe_resource *res = NULL;
-
-       list_addtail(&vbuf->flush_list, &vctx->to_flush_bufs);
-       vbuf->on_list = TRUE;
-       pipe_resource_reference(&res, &vbuf->base.u.b);
-   }
-
-   util_range_add(&vbuf->valid_buffer_range, transfer->box.x + box->x,
-                  transfer->box.x + box->x + box->width);
-
+   /*
+    * FIXME: This is not optimal.  For example,
+    *
+    * glMapBufferRange(.., 0, 100, GL_MAP_FLUSH_EXPLICIT_BIT)
+    * glFlushMappedBufferRange(.., 25, 30)
+    * glFlushMappedBufferRange(.., 65, 70)
+    *
+    * We'll end up flushing 25 --> 70.
+    */
+   util_range_add(&trans->range, box->x, box->x + box->width);
    vbuf->base.clean = FALSE;
 }
 
@@ -145,7 +149,6 @@ struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
    buf->base.u.b.screen = &vs->base;
    buf->base.u.vtbl = &virgl_buffer_vtbl;
    pipe_reference_init(&buf->base.u.b.reference, 1);
-   util_range_init(&buf->valid_buffer_range);
    virgl_resource_layout(&buf->base.u.b, &buf->metadata);
 
    vbind = pipe_to_virgl_bind(template->bind);
@@ -155,6 +158,5 @@ struct pipe_resource *virgl_buffer_create(struct virgl_screen *vs,
                                                template->width0, 1, 1, 1, 0, 0,
                                                buf->metadata.total_size);
 
-   util_range_set_empty(&buf->valid_buffer_range);
    return &buf->base.u.b;
 }

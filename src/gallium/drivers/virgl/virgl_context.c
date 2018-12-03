@@ -60,29 +60,6 @@ uint32_t virgl_object_assign_handle(void)
    return ++next_handle;
 }
 
-static void virgl_buffer_flush(struct virgl_context *vctx,
-                              struct virgl_buffer *vbuf)
-{
-   struct virgl_screen *rs = virgl_screen(vctx->base.screen);
-   struct pipe_box box;
-
-   assert(vbuf->on_list);
-
-   box.height = 1;
-   box.depth = 1;
-   box.y = 0;
-   box.z = 0;
-
-   box.x = vbuf->valid_buffer_range.start;
-   box.width = MIN2(vbuf->valid_buffer_range.end - vbuf->valid_buffer_range.start, vbuf->base.u.b.width0);
-
-   vctx->num_transfers++;
-   rs->vws->transfer_put(rs->vws, vbuf->base.hw_res,
-                         &box, 0, 0, box.x, 0);
-
-   util_range_set_empty(&vbuf->valid_buffer_range);
-}
-
 static void virgl_attach_res_framebuffer(struct virgl_context *vctx)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
@@ -774,19 +751,11 @@ static void virgl_flush_from_st(struct pipe_context *ctx,
                                enum pipe_flush_flags flags)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   struct virgl_buffer *buf, *tmp;
+   struct virgl_screen *rs = virgl_screen(ctx->screen);
 
    if (flags & PIPE_FLUSH_FENCE_FD)
        vctx->cbuf->needs_out_fence_fd = true;
 
-   LIST_FOR_EACH_ENTRY_SAFE(buf, tmp, &vctx->to_flush_bufs, flush_list) {
-      struct pipe_resource *res = &buf->base.u.b;
-      virgl_buffer_flush(vctx, buf);
-      list_del(&buf->flush_list);
-      buf->on_list = FALSE;
-      pipe_resource_reference(&res, NULL);
-
-   }
    virgl_flush_eq(vctx, vctx, fence);
 
    if (vctx->cbuf->in_fence_fd != -1) {
@@ -1329,7 +1298,6 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    virgl_init_query_functions(vctx);
    virgl_init_so_functions(vctx);
 
-   list_inithead(&vctx->to_flush_bufs);
    slab_create_child(&vctx->transfer_pool, &rs->transfer_pool);
 
    vctx->primconvert = util_primconvert_create(&vctx->base, rs->caps.caps.v1.prim_mask);

@@ -52,19 +52,6 @@ struct virgl_resource {
 
 struct virgl_buffer {
    struct virgl_resource base;
-
-   struct list_head flush_list;
-   boolean on_list;
-
-   /* The buffer range which is initialized (with a write transfer,
-    * streamout, DMA, or as a random access target). The rest of
-    * the buffer is considered invalid and can be mapped unsynchronized.
-    *
-    * This allows unsychronized mapping of a buffer range which hasn't
-    * been used yet. It's for applications which forget to use
-    * the unsynchronized map flag and expect the driver to figure it out.
-    */
-   struct util_range valid_buffer_range;
    struct virgl_resource_metadata metadata;
 };
 
