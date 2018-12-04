@@ -802,6 +802,20 @@ struct iris_blend_state {
    bool alpha_to_coverage; /* for shader key */
 };
 
+static enum pipe_blendfactor
+fix_blendfactor(enum pipe_blendfactor f, bool alpha_to_one)
+{
+   if (alpha_to_one) {
+      if (f == PIPE_BLENDFACTOR_SRC1_ALPHA)
+         return PIPE_BLENDFACTOR_ONE;
+
+      if (f == PIPE_BLENDFACTOR_INV_SRC1_ALPHA)
+         return PIPE_BLENDFACTOR_ZERO;
+   }
+
+   return f;
+}
+
 /**
  * The pipe->create_blend_state() driver hook.
  *
@@ -822,9 +836,17 @@ iris_create_blend_state(struct pipe_context *ctx,
       const struct pipe_rt_blend_state *rt =
          &state->rt[state->independent_blend_enable ? i : 0];
 
+      enum pipe_blendfactor src_rgb =
+         fix_blendfactor(rt->rgb_src_factor, state->alpha_to_one);
+      enum pipe_blendfactor src_alpha =
+         fix_blendfactor(rt->alpha_src_factor, state->alpha_to_one);
+      enum pipe_blendfactor dst_rgb =
+         fix_blendfactor(rt->rgb_dst_factor, state->alpha_to_one);
+      enum pipe_blendfactor dst_alpha =
+         fix_blendfactor(rt->alpha_dst_factor, state->alpha_to_one);
+
       if (rt->rgb_func != rt->alpha_func ||
-          rt->rgb_src_factor != rt->alpha_src_factor ||
-          rt->rgb_dst_factor != rt->alpha_dst_factor)
+          src_rgb != src_alpha || dst_rgb != dst_alpha)
          indep_alpha_blend = true;
 
       iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_entry, be) {
@@ -840,10 +862,10 @@ iris_create_blend_state(struct pipe_context *ctx,
 
          be.ColorBlendFunction          = rt->rgb_func;
          be.AlphaBlendFunction          = rt->alpha_func;
-         be.SourceBlendFactor           = rt->rgb_src_factor;
-         be.SourceAlphaBlendFactor      = rt->alpha_src_factor;
-         be.DestinationBlendFactor      = rt->rgb_dst_factor;
-         be.DestinationAlphaBlendFactor = rt->alpha_dst_factor;
+         be.SourceBlendFactor           = src_rgb;
+         be.SourceAlphaBlendFactor      = src_alpha;
+         be.DestinationBlendFactor      = dst_rgb;
+         be.DestinationAlphaBlendFactor = dst_alpha;
 
          be.WriteDisableRed   = !(rt->colormask & PIPE_MASK_R);
          be.WriteDisableGreen = !(rt->colormask & PIPE_MASK_G);
@@ -861,10 +883,14 @@ iris_create_blend_state(struct pipe_context *ctx,
 
       pb.ColorBufferBlendEnable = state->rt[0].blend_enable;
 
-      pb.SourceBlendFactor           = state->rt[0].rgb_src_factor;
-      pb.SourceAlphaBlendFactor      = state->rt[0].alpha_src_factor;
-      pb.DestinationBlendFactor      = state->rt[0].rgb_dst_factor;
-      pb.DestinationAlphaBlendFactor = state->rt[0].alpha_dst_factor;
+      pb.SourceBlendFactor =
+         fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
+      pb.SourceAlphaBlendFactor =
+         fix_blendfactor(state->rt[0].alpha_src_factor, state->alpha_to_one);
+      pb.DestinationBlendFactor =
+         fix_blendfactor(state->rt[0].rgb_dst_factor, state->alpha_to_one);
+      pb.DestinationAlphaBlendFactor =
+         fix_blendfactor(state->rt[0].alpha_dst_factor, state->alpha_to_one);
    }
 
    iris_pack_state(GENX(BLEND_STATE), cso->blend_state, bs) {
