@@ -72,6 +72,7 @@
 #include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
+#include "util/u_simple_shaders.h"
 #include "util/u_tile.h"
 #include "cso_cache/cso_context.h"
 
@@ -196,35 +197,18 @@ get_drawpix_z_stencil_program(struct st_context *st,
 static void
 make_passthrough_vertex_shader(struct st_context *st)
 {
-   const enum tgsi_semantic texcoord_semantic = st->needs_texcoord_semantic ?
-      TGSI_SEMANTIC_TEXCOORD : TGSI_SEMANTIC_GENERIC;
+   if (st->drawpix.vert_shader)
+      return;
 
-   if (!st->drawpix.vert_shader) {
-      struct ureg_program *ureg = ureg_create( PIPE_SHADER_VERTEX );
+   const uint semantic_names[] = { TGSI_SEMANTIC_POSITION,
+                                   TGSI_SEMANTIC_COLOR,
+     st->needs_texcoord_semantic ? TGSI_SEMANTIC_TEXCOORD :
+                                   TGSI_SEMANTIC_GENERIC };
+   const uint semantic_indexes[] = { 0, 0, 0 };
 
-      if (ureg == NULL)
-         return;
-
-      /* MOV result.pos, vertex.pos; */
-      ureg_MOV(ureg,
-               ureg_DECL_output( ureg, TGSI_SEMANTIC_POSITION, 0 ),
-               ureg_DECL_vs_input( ureg, 0 ));
-
-      /* MOV result.color0, vertex.attr[1]; */
-      ureg_MOV(ureg,
-               ureg_DECL_output( ureg, TGSI_SEMANTIC_COLOR, 0 ),
-               ureg_DECL_vs_input( ureg, 1 ));
-
-      /* MOV result.texcoord0, vertex.attr[2]; */
-      ureg_MOV(ureg,
-               ureg_DECL_output( ureg, texcoord_semantic, 0 ),
-               ureg_DECL_vs_input( ureg, 2 ));
-
-      ureg_END( ureg );
-      
-      st->drawpix.vert_shader =
-         ureg_create_shader_and_destroy( ureg, st->pipe );
-   }
+   st->drawpix.vert_shader =
+      util_make_vertex_passthrough_shader(st->pipe, 3, semantic_names,
+                                          semantic_indexes, false);
 }
 
 
