@@ -129,11 +129,11 @@ log_error(validate_state *state, const char *cond, const char *file, int line)
    } while (0)
 
 static void validate_src(nir_src *src, validate_state *state,
-                         unsigned bit_size, unsigned num_components);
+                         unsigned bit_sizes, unsigned num_components);
 
 static void
 validate_reg_src(nir_src *src, validate_state *state,
-                 unsigned bit_size, unsigned num_components)
+                 unsigned bit_sizes, unsigned num_components)
 {
    validate_assert(state, src->reg.reg != NULL);
 
@@ -156,8 +156,8 @@ validate_reg_src(nir_src *src, validate_state *state,
    }
 
    if (!src->reg.reg->is_packed) {
-      if (bit_size)
-         validate_assert(state, src->reg.reg->bit_size == bit_size);
+      if (bit_sizes)
+         validate_assert(state, src->reg.reg->bit_size & bit_sizes);
       if (num_components)
          validate_assert(state, src->reg.reg->num_components == num_components);
    }
@@ -177,7 +177,7 @@ validate_reg_src(nir_src *src, validate_state *state,
 
 static void
 validate_ssa_src(nir_src *src, validate_state *state,
-                 unsigned bit_size, unsigned num_components)
+                 unsigned bit_sizes, unsigned num_components)
 {
    validate_assert(state, src->ssa != NULL);
 
@@ -200,8 +200,8 @@ validate_ssa_src(nir_src *src, validate_state *state,
       _mesa_set_add(def_state->if_uses, src);
    }
 
-   if (bit_size)
-      validate_assert(state, src->ssa->bit_size == bit_size);
+   if (bit_sizes)
+      validate_assert(state, src->ssa->bit_size & bit_sizes);
    if (num_components)
       validate_assert(state, src->ssa->num_components == num_components);
 
@@ -210,7 +210,7 @@ validate_ssa_src(nir_src *src, validate_state *state,
 
 static void
 validate_src(nir_src *src, validate_state *state,
-             unsigned bit_size, unsigned num_components)
+             unsigned bit_sizes, unsigned num_components)
 {
    if (state->instr)
       validate_assert(state, src->parent_instr == state->instr);
@@ -218,9 +218,9 @@ validate_src(nir_src *src, validate_state *state,
       validate_assert(state, src->parent_if == state->if_stmt);
 
    if (src->is_ssa)
-      validate_ssa_src(src, state, bit_size, num_components);
+      validate_ssa_src(src, state, bit_sizes, num_components);
    else
-      validate_reg_src(src, state, bit_size, num_components);
+      validate_reg_src(src, state, bit_sizes, num_components);
 }
 
 static void
@@ -243,7 +243,7 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 
 static void
 validate_reg_dest(nir_reg_dest *dest, validate_state *state,
-                  unsigned bit_size, unsigned num_components)
+                  unsigned bit_sizes, unsigned num_components)
 {
    validate_assert(state, dest->reg != NULL);
 
@@ -263,8 +263,8 @@ validate_reg_dest(nir_reg_dest *dest, validate_state *state,
    }
 
    if (!dest->reg->is_packed) {
-      if (bit_size)
-         validate_assert(state, dest->reg->bit_size == bit_size);
+      if (bit_sizes)
+         validate_assert(state, dest->reg->bit_size & bit_sizes);
       if (num_components)
          validate_assert(state, dest->reg->num_components == num_components);
    }
@@ -307,16 +307,16 @@ validate_ssa_def(nir_ssa_def *def, validate_state *state)
 
 static void
 validate_dest(nir_dest *dest, validate_state *state,
-              unsigned bit_size, unsigned num_components)
+              unsigned bit_sizes, unsigned num_components)
 {
    if (dest->is_ssa) {
-      if (bit_size)
-         validate_assert(state, dest->ssa.bit_size == bit_size);
+      if (bit_sizes)
+         validate_assert(state, dest->ssa.bit_size & bit_sizes);
       if (num_components)
          validate_assert(state, dest->ssa.num_components == num_components);
       validate_ssa_def(&dest->ssa, state);
    } else {
-      validate_reg_dest(&dest->reg, state, bit_size, num_components);
+      validate_reg_dest(&dest->reg, state, bit_sizes, num_components);
    }
 }
 
