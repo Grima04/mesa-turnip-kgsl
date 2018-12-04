@@ -103,6 +103,18 @@ vir_print_reg(struct v3d_compile *c, const struct qinst *inst,
                         fprintf(stderr, " (tex[%d].p1)", data);
                         break;
 
+                case QUNIFORM_TMU_CONFIG_P0:
+                        fprintf(stderr, " (tex[%d].p0 | 0x%x)",
+                                v3d_tmu_config_data_get_unit(data),
+                                v3d_tmu_config_data_get_value(data));
+                        break;
+
+                case QUNIFORM_TMU_CONFIG_P1:
+                        fprintf(stderr, " (tex[%d].p1 | 0x%x)",
+                                v3d_tmu_config_data_get_unit(data),
+                                v3d_tmu_config_data_get_value(data));
+                        break;
+
                 case QUNIFORM_TEXTURE_WIDTH:
                         fprintf(stderr, " (tex[%d].width)", data);
                         break;

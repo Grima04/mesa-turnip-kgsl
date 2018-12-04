@@ -252,6 +252,21 @@ enum quniform_contents {
         QUNIFORM_SPILL_SIZE_PER_THREAD,
 };
 
+static inline uint32_t v3d_tmu_config_data_create(uint32_t unit, uint32_t value)
+{
+        return unit << 24 | value;
+}
+
+static inline uint32_t v3d_tmu_config_data_get_unit(uint32_t data)
+{
+        return data >> 24;
+}
+
+static inline uint32_t v3d_tmu_config_data_get_value(uint32_t data)
+{
+        return data & 0xffffff;
+}
+
 struct v3d_varying_slot {
         uint8_t slot_and_component;
 };
