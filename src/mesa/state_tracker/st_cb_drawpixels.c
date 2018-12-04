@@ -194,10 +194,10 @@ get_drawpix_z_stencil_program(struct st_context *st,
  * Create a simple vertex shader that just passes through the
  * vertex position, texcoord, and color.
  */
-static void
-make_passthrough_vertex_shader(struct st_context *st)
+void
+st_make_passthrough_vertex_shader(struct st_context *st)
 {
-   if (st->drawpix.vert_shader)
+   if (st->passthrough_vs)
       return;
 
    const uint semantic_names[] = { TGSI_SEMANTIC_POSITION,
@@ -206,7 +206,7 @@ make_passthrough_vertex_shader(struct st_context *st)
                                    TGSI_SEMANTIC_GENERIC };
    const uint semantic_indexes[] = { 0, 0, 0 };
 
-   st->drawpix.vert_shader =
+   st->passthrough_vs =
       util_make_vertex_passthrough_shader(st->pipe, 3, semantic_names,
                                           semantic_indexes, false);
 }
@@ -1164,7 +1164,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
       return;
    }
 
-   make_passthrough_vertex_shader(st);
+   st_make_passthrough_vertex_shader(st);
 
    /*
     * Get vertex/fragment shaders
@@ -1225,7 +1225,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
                       ctx->Pixel.ZoomX, ctx->Pixel.ZoomY,
                       sv,
                       num_sampler_view,
-                      st->drawpix.vert_shader,
+                      st->passthrough_vs,
                       driver_fp, fpv,
                       ctx->Current.RasterColor,
                       GL_FALSE, write_depth, write_stencil);
@@ -1526,7 +1526,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
     * are handled.
     */
 
-   make_passthrough_vertex_shader(st);
+   st_make_passthrough_vertex_shader(st);
 
    /*
     * Get vertex/fragment shaders
@@ -1681,7 +1681,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
                       width, height, ctx->Pixel.ZoomX, ctx->Pixel.ZoomY,
                       sv,
                       num_sampler_view,
-                      st->drawpix.vert_shader,
+                      st->passthrough_vs,
                       driver_fp, fpv,
                       ctx->Current.Attrib[VERT_ATTRIB_COLOR0],
                       invertTex, GL_FALSE, GL_FALSE);
@@ -1710,8 +1710,8 @@ st_destroy_drawpix(struct st_context *st)
                                     st->drawpix.zs_shaders[i]);
    }
 
-   if (st->drawpix.vert_shader)
-      cso_delete_vertex_shader(st->cso_context, st->drawpix.vert_shader);
+   if (st->passthrough_vs)
+      cso_delete_vertex_shader(st->cso_context, st->passthrough_vs);
 
    /* Free cache data */
    for (i = 0; i < ARRAY_SIZE(st->drawpix_cache.entries); i++) {
