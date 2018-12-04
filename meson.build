@@ -627,7 +627,12 @@ if with_gallium_st_nine
 endif
 
 if get_option('power8') != 'false'
-  if host_machine.cpu_family() == 'ppc64le'
+  # on old versions of meson the cpu family would return as ppc64le on little
+  # endian power8, this was changed in 0.48 such that the family would always
+  # be ppc64 regardless of endianness, and the the machine.endian() value
+  # should be checked. Since we support versions < 0.48 we need to use
+  # startswith.
+  if host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 'little'
     if cc.get_id() == 'gcc' and cc.version().version_compare('< 4.8')
       error('Altivec is not supported with gcc version < 4.8.')
     endif
@@ -968,7 +973,7 @@ if with_asm
       with_asm_arch = 'sparc'
       pre_args += ['-DUSE_SPARC_ASM']
     endif
-  elif host_machine.cpu_family() == 'ppc64le'
+  elif host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 'little'
     if system_has_kms_drm
       with_asm_arch = 'ppc64le'
       pre_args += ['-DUSE_PPC64LE_ASM']
