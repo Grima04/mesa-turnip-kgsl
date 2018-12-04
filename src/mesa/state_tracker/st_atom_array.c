@@ -564,8 +564,6 @@ st_update_array(struct st_context *st)
    /* Setup current uploads */
    first_upload_vbuffer = num_vbuffers;
    st_setup_current(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
-   if (st->vertex_array_out_of_memory)
-      return;
 
    /* Set the array into cso */
    num_velements = vp_variant->num_inputs;
