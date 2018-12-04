@@ -298,6 +298,7 @@ optimizations = [
    (('~bcsel', ('flt', a, b), b, a), ('fmax', a, b)),
    (('~bcsel', ('fge', a, b), b, a), ('fmin', a, b)),
    (('~bcsel', ('fge', b, a), b, a), ('fmax', a, b)),
+   (('bcsel', ('i2b', a), b, c), ('bcsel', ('ine', a, 0), b, c)),
    (('bcsel', ('inot', a), b, c), ('bcsel', a, c, b)),
    (('bcsel', a, ('bcsel', a, b, c), d), ('bcsel', a, b, d)),
    (('bcsel', a, b, ('bcsel', a, c, d)), ('bcsel', a, b, d)),
@@ -519,6 +520,8 @@ optimizations = [
    (('fsqrt', a), ('frcp', ('frsq', a)), 'options->lower_fsqrt'),
    (('~frcp', ('frsq', a)), ('fsqrt', a), '!options->lower_fsqrt'),
    # Boolean simplifications
+   (('i2b32(is_used_by_if)', a), ('ine32', a, 0)),
+   (('i2b1(is_used_by_if)', a), ('ine', a, 0)),
    (('ieq', 'a@bool', True), a),
    (('ine(is_not_used_by_if)', 'a@bool', True), ('inot', a)),
    (('ine', 'a@bool', False), a),
