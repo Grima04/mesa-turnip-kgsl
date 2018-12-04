@@ -196,6 +196,9 @@ instdone_register_for_ring(const struct gen_device_info *devinfo,
 
    case I915_ENGINE_CLASS_VIDEO_ENHANCE:
       return "VECS_INSTDONE";
+
+   default:
+      return NULL;
    }
 
    return NULL;
