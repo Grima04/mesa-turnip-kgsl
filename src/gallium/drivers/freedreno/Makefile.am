@@ -7,6 +7,7 @@ AM_CFLAGS = \
 	-I$(top_srcdir)/src/freedreno \
 	-I$(top_builddir)/src/compiler/nir \
 	-I$(top_srcdir)/src/compiler/nir \
+	$(LIBDRM_CFLAGS) \
 	$(GALLIUM_DRIVER_CFLAGS)
 
 noinst_LTLIBRARIES = libfreedreno.la
