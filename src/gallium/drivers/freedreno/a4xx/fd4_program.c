@@ -101,7 +101,7 @@ emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		OUT_RING(ring, CP_LOAD_STATE4_1_EXT_SRC_ADDR(0) |
 				CP_LOAD_STATE4_1_STATE_TYPE(ST4_SHADER));
 	} else {
-		OUT_RELOC(ring, so->bo, 0,
+		OUT_RELOCD(ring, so->bo, 0,
 				CP_LOAD_STATE4_1_STATE_TYPE(ST4_SHADER), 0);
 	}
 

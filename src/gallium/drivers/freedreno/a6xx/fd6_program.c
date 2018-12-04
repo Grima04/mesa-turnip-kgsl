@@ -121,7 +121,7 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
 		OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 	} else {
-		OUT_RELOC(ring, so->bo, 0, 0, 0);
+		OUT_RELOCD(ring, so->bo, 0, 0, 0);
 	}
 
 	/* for how clever coverity is, it is sometimes rather dull, and
