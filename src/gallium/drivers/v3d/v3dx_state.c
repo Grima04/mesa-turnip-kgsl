@@ -712,18 +712,18 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
 
         int msaa_scale = prsc->nr_samples > 1 ? 2 : 1;
 
+        void *map;
 #if V3D_VERSION >= 40
         so->bo = v3d_bo_alloc(v3d->screen,
                               cl_packet_length(TEXTURE_SHADER_STATE), "sampler");
-        void *map = v3d_bo_map(so->bo);
-
-        v3dx_pack(map, TEXTURE_SHADER_STATE, tex) {
+        map = v3d_bo_map(so->bo);
 #else /* V3D_VERSION < 40 */
         STATIC_ASSERT(sizeof(so->texture_shader_state) >=
                       cl_packet_length(TEXTURE_SHADER_STATE));
-        v3dx_pack(&so->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
+        map = &so->texture_shader_state;
 #endif
 
+        v3dx_pack(map, TEXTURE_SHADER_STATE, tex) {
                 tex.image_width = prsc->width0 * msaa_scale;
                 tex.image_height = prsc->height0 * msaa_scale;
 
