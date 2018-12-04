@@ -220,8 +220,6 @@ elif system_has_kms_drm
 else
   # FIXME: haiku doesn't use dri, and xlib doesn't use dri, probably should
   # assert here that one of those cases has been met.
-  # FIXME: GNU (hurd) ends up here as well, but meson doesn't officially
-  # support Hurd at time of writing (2017/11)
   # FIXME: illumos ends up here as well
   with_dri_platform = 'none'
 endif
@@ -783,7 +781,7 @@ if cc.compiles('int foo(void) __attribute__((__noreturn__));',
 endif
 
 # TODO: this is very incomplete
-if ['linux', 'cygwin'].contains(host_machine.system())
+if ['linux', 'cygwin', 'gnu'].contains(host_machine.system())
   pre_args += '-D_GNU_SOURCE'
 endif
 
@@ -942,7 +940,7 @@ endif
 with_asm_arch = ''
 if with_asm
   if host_machine.cpu_family() == 'x86'
-    if system_has_kms_drm
+    if system_has_kms_drm or host_machine.system() == 'gnu'
       with_asm_arch = 'x86'
       pre_args += ['-DUSE_X86_ASM', '-DUSE_MMX_ASM', '-DUSE_3DNOW_ASM',
                    '-DUSE_SSE_ASM']
