@@ -787,15 +787,35 @@ done:
 static uint32_t
 anv_block_pool_alloc_new(struct anv_block_pool *pool,
                          struct anv_block_state *pool_state,
-                         uint32_t block_size)
+                         uint32_t block_size, uint32_t *padding)
 {
    struct anv_block_state state, old, new;
+
+   /* Most allocations won't generate any padding */
+   if (padding)
+      *padding = 0;
 
    while (1) {
       state.u64 = __sync_fetch_and_add(&pool_state->u64, block_size);
       if (state.next + block_size <= state.end) {
          return state.next;
       } else if (state.next <= state.end) {
+         if (pool->bo_flags & EXEC_OBJECT_PINNED && state.next < state.end) {
+            /* We need to grow the block pool, but still have some leftover
+             * space that can't be used by that particular allocation. So we
+             * add that as a "padding", and return it.
+             */
+            uint32_t leftover = state.end - state.next;
+
+            /* If there is some leftover space in the pool, the caller must
+             * deal with it.
+             */
+            assert(leftover == 0 || padding);
+            if (padding)
+               *padding = leftover;
+            state.next += leftover;
+         }
+
          /* We allocated the first block outside the pool so we have to grow
           * the pool.  pool_state->next acts a mutex: threads who try to
           * allocate now will get block indexes above the current limit and
@@ -819,9 +839,13 @@ anv_block_pool_alloc_new(struct anv_block_pool *pool,
 
 int32_t
 anv_block_pool_alloc(struct anv_block_pool *pool,
-                     uint32_t block_size)
+                     uint32_t block_size, uint32_t *padding)
 {
-   return anv_block_pool_alloc_new(pool, &pool->state, block_size);
+   uint32_t offset;
+
+   offset = anv_block_pool_alloc_new(pool, &pool->state, block_size, padding);
+
+   return offset;
 }
 
 /* Allocates a block out of the back of the block pool.
@@ -838,7 +862,7 @@ anv_block_pool_alloc_back(struct anv_block_pool *pool,
                           uint32_t block_size)
 {
    int32_t offset = anv_block_pool_alloc_new(pool, &pool->back_state,
-                                             block_size);
+                                             block_size, NULL);
 
    /* The offset we get out of anv_block_pool_alloc_new() is actually the
     * number of bytes downwards from the middle to the end of the block.
@@ -894,16 +918,24 @@ static uint32_t
 anv_fixed_size_state_pool_alloc_new(struct anv_fixed_size_state_pool *pool,
                                     struct anv_block_pool *block_pool,
                                     uint32_t state_size,
-                                    uint32_t block_size)
+                                    uint32_t block_size,
+                                    uint32_t *padding)
 {
    struct anv_block_state block, old, new;
    uint32_t offset;
+
+   /* We don't always use anv_block_pool_alloc(), which would set *padding to
+    * zero for us. So if we have a pointer to padding, we must zero it out
+    * ourselves here, to make sure we always return some sensible value.
+    */
+   if (padding)
+      *padding = 0;
 
    /* If our state is large, we don't need any sub-allocation from a block.
     * Instead, we just grab whole (potentially large) blocks.
     */
    if (state_size >= block_size)
-      return anv_block_pool_alloc(block_pool, state_size);
+      return anv_block_pool_alloc(block_pool, state_size, padding);
 
  restart:
    block.u64 = __sync_fetch_and_add(&pool->block.u64, state_size);
@@ -911,7 +943,7 @@ anv_fixed_size_state_pool_alloc_new(struct anv_fixed_size_state_pool *pool,
    if (block.next < block.end) {
       return block.next;
    } else if (block.next == block.end) {
-      offset = anv_block_pool_alloc(block_pool, block_size);
+      offset = anv_block_pool_alloc(block_pool, block_size, padding);
       new.next = offset + state_size;
       new.end = offset + block_size;
       old.u64 = __sync_lock_test_and_set(&pool->block.u64, new.u64);
@@ -1093,10 +1125,12 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
       }
    }
 
+   uint32_t padding;
    offset = anv_fixed_size_state_pool_alloc_new(&pool->buckets[bucket],
                                                 &pool->block_pool,
                                                 alloc_size,
-                                                pool->block_size);
+                                                pool->block_size,
+                                                &padding);
    /* Everytime we allocate a new state, add it to the state pool */
    uint32_t idx;
    VkResult result = anv_state_table_add(&pool->table, &idx, 1);
@@ -1106,6 +1140,11 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
    state->offset = offset;
    state->alloc_size = alloc_size;
    state->map = anv_block_pool_map(&pool->block_pool, offset);
+
+   if (padding > 0) {
+      uint32_t return_offset = offset - padding;
+      anv_state_pool_return_chunk(pool, return_offset, padding, 0);
+   }
 
 done:
    return *state;

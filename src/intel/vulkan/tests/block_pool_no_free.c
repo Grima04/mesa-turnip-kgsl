@@ -46,7 +46,7 @@ static void *alloc_blocks(void *_job)
    int32_t block, *data;
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
-      block = anv_block_pool_alloc(job->pool, block_size);
+      block = anv_block_pool_alloc(job->pool, block_size, NULL);
       data = anv_block_pool_map(job->pool, block);
       *data = block;
       assert(block >= 0);
