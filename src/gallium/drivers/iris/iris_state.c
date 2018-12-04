@@ -1437,19 +1437,7 @@ iris_create_sampler_state(struct pipe_context *ctx,
 
 /**
  * The pipe->bind_sampler_states() driver hook.
- *
- * Now that we know all the sampler states, we upload them all into a
- * contiguous area of GPU memory, for 3DSTATE_SAMPLER_STATE_POINTERS_*.
- * We also fill out the border color state pointers at this point.
- *
- * We could defer this work to draw time, but we assume that binding
- * will be less frequent than drawing.
  */
-// XXX: this may be a bad idea, need to make sure that st/mesa calls us
-// XXX: with the complete set of shaders.  If it makes multiple calls to
-// XXX: things one at a time, we could waste a lot of time assembling things.
-// XXX: it doesn't even BUY us anything to do it here, because we only flag
-// XXX: IRIS_DIRTY_SAMPLER_STATE when this is called...
 static void
 iris_bind_sampler_states(struct pipe_context *ctx,
                          enum pipe_shader_type p_stage,
@@ -1465,6 +1453,29 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    for (int i = 0; i < count; i++) {
       shs->samplers[start + i] = states[i];
    }
+
+   ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
+}
+
+/**
+ * Upload the sampler states into a contiguous area of GPU memory, for
+ * for 3DSTATE_SAMPLER_STATE_POINTERS_*.
+ *
+ * Also fill out the border color state pointers.
+ */
+static void
+iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
+{
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+   const struct shader_info *info = iris_get_shader_info(ice, stage);
+
+   /* We assume the state tracker will call pipe->bind_sampler_states()
+    * if the program's number of textures changes.
+    */
+   unsigned count = info ? util_last_bit(info->textures_used) : 0;
+
+   if (!count)
+      return;
 
    /* Assemble the SAMPLER_STATEs into a contiguous table that lives
     * in the dynamic state memory zone, so we can point to it via the
@@ -1483,6 +1494,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    /* Make sure all land in the same BO */
    iris_border_color_pool_reserve(ice, IRIS_MAX_TEXTURE_SAMPLERS);
 
+   ice->state.need_border_colors &= ~(1 << stage);
+
    for (int i = 0; i < count; i++) {
       struct iris_sampler_state *state = shs->samplers[i];
 
@@ -1491,7 +1504,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
       } else if (!state->needs_border_color) {
          memcpy(map, state->sampler_state, 4 * GENX(SAMPLER_STATE_length));
       } else {
-         ice->state.need_border_colors = true;
+         ice->state.need_border_colors |= 1 << stage;
 
          /* Stream out the border color and merge the pointer. */
          uint32_t offset =
@@ -1508,8 +1521,6 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 
       map += GENX(SAMPLER_STATE_length);
    }
-
-   ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
 static enum isl_channel_select
@@ -4439,13 +4450,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   if (ice->state.need_border_colors)
-      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
-
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)) ||
           !ice->shaders.prog[stage])
          continue;
+
+      iris_upload_sampler_states(ice, stage);
 
       struct iris_shader_state *shs = &ice->state.shaders[stage];
       struct pipe_resource *res = shs->sampler_table.res;
@@ -4457,6 +4467,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          ptr.PointertoVSSamplerState = shs->sampler_table.offset;
       }
    }
+
+   if (ice->state.need_border_colors)
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
 
    if (dirty & IRIS_DIRTY_MULTISAMPLE) {
       iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
@@ -5100,6 +5113,9 @@ iris_upload_compute_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_BINDINGS_CS)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
+
+   if (dirty & IRIS_DIRTY_SAMPLER_STATES_CS)
+      iris_upload_sampler_states(ice, MESA_SHADER_COMPUTE);
 
    iris_use_optional_res(batch, shs->sampler_table.res, false);
    iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false);

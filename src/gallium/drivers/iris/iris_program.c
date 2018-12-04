@@ -1614,6 +1614,14 @@ bind_state(struct iris_context *ice,
    uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
    const uint64_t nos = ish ? ish->nos : 0;
 
+   const struct shader_info *old_info = iris_get_shader_info(ice, stage);
+   const struct shader_info *new_info = ish ? &ish->nir->info : NULL;
+
+   if ((old_info ? util_last_bit(old_info->textures_used) : 0) !=
+       (new_info ? util_last_bit(new_info->textures_used) : 0)) {
+      ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
+   }
+
    ice->shaders.uncompiled[stage] = ish;
    ice->state.dirty |= dirty_bit;
 

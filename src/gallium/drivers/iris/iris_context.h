@@ -575,8 +575,8 @@ struct iris_context {
       /** Do vertex shader uses edge flag ? */
       bool vs_needs_edge_flag;
 
-      /** Do any samplers (for any stage) need border color? */
-      bool need_border_colors;
+      /** Do any samplers need border color?  One bit per shader stage. */
+      uint8_t need_border_colors;
 
       struct pipe_stream_output_target *so_target[PIPE_MAX_SO_BUFFERS];
       bool streamout_active;
