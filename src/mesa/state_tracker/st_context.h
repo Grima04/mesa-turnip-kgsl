@@ -278,8 +278,6 @@ struct st_context
    /** for drawing with st_util_vertex */
    struct pipe_vertex_element util_velems[3];
 
-   void *passthrough_fs;  /**< simple pass-through frag shader */
-
    enum pipe_texture_target internal_target;
 
    struct cso_context *cso_context;
