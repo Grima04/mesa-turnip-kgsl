@@ -2245,6 +2245,17 @@ upload_uniforms(struct iris_context *ice,
          int plane = BRW_PARAM_BUILTIN_CLIP_PLANE_IDX(sysval);
          int comp  = BRW_PARAM_BUILTIN_CLIP_PLANE_COMP(sysval);
          value = fui(ice->state.clip_planes.ucp[plane][comp]);
+      } else if (sysval == BRW_PARAM_BUILTIN_PATCH_VERTICES_IN) {
+         if (stage == MESA_SHADER_TESS_CTRL) {
+            value = ice->state.vertices_per_patch;
+         } else {
+            assert(stage == MESA_SHADER_TESS_EVAL);
+            const struct shader_info *tcs_info =
+               iris_get_shader_info(ice, MESA_SHADER_TESS_CTRL);
+            assert(tcs_info);
+
+            value = tcs_info->tess.tcs_vertices_out;
+         }
       } else {
          assert(!"unhandled system value");
       }

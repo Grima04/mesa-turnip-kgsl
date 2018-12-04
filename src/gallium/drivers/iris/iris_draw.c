@@ -47,11 +47,24 @@ static void
 iris_update_draw_info(struct iris_context *ice,
                       const struct pipe_draw_info *info)
 {
-   if (ice->state.prim_mode != info->mode ||
-       ice->state.vertices_per_patch != info->vertices_per_patch) {
+   if (ice->state.prim_mode != info->mode) {
       ice->state.prim_mode = info->mode;
+      ice->state.dirty |= IRIS_DIRTY_VF_TOPOLOGY;
+   }
+
+   if (info->mode == PIPE_PRIM_PATCHES &&
+       ice->state.vertices_per_patch != info->vertices_per_patch) {
       ice->state.vertices_per_patch = info->vertices_per_patch;
       ice->state.dirty |= IRIS_DIRTY_VF_TOPOLOGY;
+
+      /* Flag constants dirty for gl_PatchVerticesIn if needed. */
+      const struct shader_info *tcs_info =
+         iris_get_shader_info(ice, MESA_SHADER_TESS_CTRL);
+      if (tcs_info &&
+          tcs_info->system_values_read & (1ull << SYSTEM_VALUE_VERTICES_IN)) {
+         ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
+         ice->state.shaders[MESA_SHADER_TESS_CTRL].cbuf0_needs_upload = true;
+      }
    }
 
    if (ice->state.primitive_restart != info->primitive_restart ||

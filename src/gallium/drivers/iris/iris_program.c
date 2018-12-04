@@ -628,6 +628,10 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             }
             break;
          }
+         case nir_intrinsic_load_patch_vertices_in:
+            system_values[num_system_values++] =
+               BRW_PARAM_BUILTIN_PATCH_VERTICES_IN;
+            break;
          default:
             continue;
          }
