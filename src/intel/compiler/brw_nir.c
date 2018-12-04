@@ -1059,8 +1059,7 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
    nir_intrinsic_instr *load;
    nir_intrinsic_instr *store;
    nir_ssa_def *zero = nir_imm_int(&b, 0);
-   nir_ssa_def *invoc_id =
-      nir_load_system_value(&b, nir_intrinsic_load_invocation_id, 0);
+   nir_ssa_def *invoc_id = nir_load_invocation_id(&b);
 
    nir->info.inputs_read = key->outputs_written &
       ~(VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER);
