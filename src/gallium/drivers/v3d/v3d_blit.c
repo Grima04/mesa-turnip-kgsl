@@ -184,10 +184,11 @@ v3d_blitter_save(struct v3d_context *v3d)
         util_blitter_save_sample_mask(v3d->blitter, v3d->sample_mask);
         util_blitter_save_framebuffer(v3d->blitter, &v3d->framebuffer);
         util_blitter_save_fragment_sampler_states(v3d->blitter,
-                        v3d->fragtex.num_samplers,
-                        (void **)v3d->fragtex.samplers);
+                        v3d->tex[PIPE_SHADER_FRAGMENT].num_samplers,
+                        (void **)v3d->tex[PIPE_SHADER_FRAGMENT].samplers);
         util_blitter_save_fragment_sampler_views(v3d->blitter,
-                        v3d->fragtex.num_textures, v3d->fragtex.textures);
+                        v3d->tex[PIPE_SHADER_FRAGMENT].num_textures,
+                        v3d->tex[PIPE_SHADER_FRAGMENT].textures);
         util_blitter_save_so_targets(v3d->blitter, v3d->streamout.num_targets,
                                      v3d->streamout.targets);
 }

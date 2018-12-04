@@ -386,8 +386,6 @@ struct v3d_context {
         struct v3d_rasterizer_state *rasterizer;
         struct v3d_depth_stencil_alpha_state *zsa;
 
-        struct v3d_texture_stateobj verttex, fragtex;
-
         struct v3d_program_stateobj prog;
 
         struct v3d_vertex_stateobj *vtx;
@@ -424,6 +422,7 @@ struct v3d_context {
         struct pipe_clip_state clip;
         struct pipe_viewport_state viewport;
         struct v3d_constbuf_stateobj constbuf[PIPE_SHADER_TYPES];
+        struct v3d_texture_stateobj tex[PIPE_SHADER_TYPES];
         struct v3d_vertexbuf_stateobj vertexbuf;
         struct v3d_streamout_stateobj streamout;
         struct v3d_bo *current_oq;
@@ -501,8 +500,7 @@ v3d_ioctl(int fd, unsigned long request, void *arg)
 void v3d_set_shader_uniform_dirty_flags(struct v3d_compiled_shader *shader);
 struct v3d_cl_reloc v3d_write_uniforms(struct v3d_context *v3d,
                                        struct v3d_compiled_shader *shader,
-                                       struct v3d_constbuf_stateobj *cb,
-                                       struct v3d_texture_stateobj *texstate);
+                                       enum pipe_shader_type stage);
 
 void v3d_flush(struct pipe_context *pctx);
 void v3d_job_init(struct v3d_context *v3d);

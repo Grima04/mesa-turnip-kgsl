@@ -259,9 +259,10 @@ write_tmu_p1(struct v3d_job *job,
 
 struct v3d_cl_reloc
 v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
-                   struct v3d_constbuf_stateobj *cb,
-                   struct v3d_texture_stateobj *texstate)
+                   enum pipe_shader_type stage)
 {
+        struct v3d_constbuf_stateobj *cb = &v3d->constbuf[stage];
+        struct v3d_texture_stateobj *texstate = &v3d->tex[stage];
         struct v3d_uniform_list *uinfo = &shader->prog_data.base->uniforms;
         struct v3d_job *job = v3d->job;
         const uint32_t *gallium_uniforms = cb->cb[0].user_buffer;

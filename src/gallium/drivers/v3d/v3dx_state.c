@@ -502,24 +502,6 @@ v3d_set_framebuffer_state(struct pipe_context *pctx,
         v3d->dirty |= VC5_DIRTY_FRAMEBUFFER;
 }
 
-static struct v3d_texture_stateobj *
-v3d_get_stage_tex(struct v3d_context *v3d, enum pipe_shader_type shader)
-{
-        switch (shader) {
-        case PIPE_SHADER_FRAGMENT:
-                v3d->dirty |= VC5_DIRTY_FRAGTEX;
-                return &v3d->fragtex;
-                break;
-        case PIPE_SHADER_VERTEX:
-                v3d->dirty |= VC5_DIRTY_VERTTEX;
-                return &v3d->verttex;
-                break;
-        default:
-                fprintf(stderr, "Unknown shader target %d\n", shader);
-                abort();
-        }
-}
-
 static uint32_t translate_wrap(uint32_t pipe_wrap, bool using_nearest)
 {
         switch (pipe_wrap) {
@@ -644,7 +626,7 @@ v3d_sampler_states_bind(struct pipe_context *pctx,
                         unsigned nr, void **hwcso)
 {
         struct v3d_context *v3d = v3d_context(pctx);
-        struct v3d_texture_stateobj *stage_tex = v3d_get_stage_tex(v3d, shader);
+        struct v3d_texture_stateobj *stage_tex = &v3d->tex[shader];
 
         assert(start == 0);
         unsigned i;
@@ -876,7 +858,7 @@ v3d_set_sampler_views(struct pipe_context *pctx,
                       struct pipe_sampler_view **views)
 {
         struct v3d_context *v3d = v3d_context(pctx);
-        struct v3d_texture_stateobj *stage_tex = v3d_get_stage_tex(v3d, shader);
+        struct v3d_texture_stateobj *stage_tex = &v3d->tex[shader];
         unsigned i;
         unsigned new_nr = 0;
 
