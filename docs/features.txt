@@ -338,7 +338,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_OES_texture_float_linear                           DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe)
   GL_OES_texture_half_float                             DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe)
   GL_OES_texture_half_float_linear                      DONE (freedreno, i965, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe)
-  GL_OES_texture_view                                   DONE (i965/gen8+, freedreno, nv50, r600, radeonsi, nv50, nvc0, llvmpipe, softpipe, swr)
+  GL_OES_texture_view                                   DONE (freedreno, i965/gen8+, r600, radeonsi, nv50, nvc0, softpipe, llvmpipe, swr)
   GL_OES_viewport_array                                 DONE (i965, nvc0, radeonsi)
   GLX_ARB_context_flush_control                         not started
   GLX_ARB_robustness_application_isolation              not started
