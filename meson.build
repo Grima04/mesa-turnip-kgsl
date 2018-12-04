@@ -34,8 +34,6 @@ cpp = meson.get_compiler('cpp')
 
 null_dep = dependency('', required : false)
 
-system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'dragonfly', 'linux'].contains(host_machine.system())
-
 # Arguments for the preprocessor, put these in a separate array from the C and
 # C++ (cpp in meson terminology) arguments since they need to be added to the
 # default arguments for both C and C++.
