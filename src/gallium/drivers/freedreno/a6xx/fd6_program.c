@@ -626,11 +626,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
-		// TODO we could have a mix of half and full precision outputs,
-		// we really need to figure out half-precision from IR3_REG_HALF
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_REG_REGID(color_regid[i]) |
-				COND(false,
-					A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
+				COND(s[FS].v->outputs[i].half, A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_PACK, 1);
