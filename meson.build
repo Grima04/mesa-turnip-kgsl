@@ -51,6 +51,7 @@ with_valgrind = get_option('valgrind')
 with_libunwind = get_option('libunwind')
 with_asm = get_option('asm')
 with_glx_read_only_text = get_option('glx-read-only-text')
+with_glx_direct = get_option('glx-direct')
 with_osmesa = get_option('osmesa')
 with_swr_arches = get_option('swr-arches')
 with_tools = get_option('tools')
@@ -364,9 +365,6 @@ if with_glvnd
     error('glvnd requires DRI based GLX and/or EGL')
   endif
 endif
-
-# TODO: toggle for this
-with_glx_direct = true
 
 if with_vulkan_icd_dir == ''
   with_vulkan_icd_dir = join_paths(get_option('datadir'), 'vulkan/icd.d')
