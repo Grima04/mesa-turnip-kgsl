@@ -753,11 +753,11 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
                  * at state create time, so any time this sampler view is used
                  * we need to add the texture to the job.
                  */
-                tex.texture_base_pointer = cl_address(NULL,
-                                                      rsc->bo->offset +
-                                                      rsc->slices[0].offset +
-                                                      cso->u.tex.first_layer *
-                                                      rsc->cube_map_stride),
+                tex.texture_base_pointer =
+                        cl_address(NULL,
+                                   rsc->bo->offset +
+                                   v3d_layer_offset(prsc, 0,
+                                                    cso->u.tex.first_layer));
 
                 tex.swizzle_r = translate_swizzle(so->swizzle[0]);
                 tex.swizzle_g = translate_swizzle(so->swizzle[1]);
