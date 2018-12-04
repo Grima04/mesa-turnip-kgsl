@@ -648,6 +648,7 @@ if get_option('power8') != 'false'
 endif
 
 _opencl = get_option('gallium-opencl')
+clover_cpp_std = []
 if _opencl != 'disabled'
   if not with_gallium
     error('OpenCL Clover implementation requires at least one gallium driver.')
@@ -656,6 +657,14 @@ if _opencl != 'disabled'
   dep_clc = dependency('libclc')
   with_gallium_opencl = true
   with_opencl_icd = _opencl == 'icd'
+
+  if host_machine.cpu_family().startswith('ppc') and cpp.compiles('''
+      #if !defined(__VEC__) || !defined(__ALTIVEC__)
+      #error "AltiVec not enabled"
+      #endif''',
+      name : 'Altivec')
+    clover_cpp_std += ['cpp_std=gnu++11']
+  endif
 else
   dep_clc = null_dep
   with_gallium_opencl = false
