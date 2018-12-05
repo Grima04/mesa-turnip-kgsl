@@ -307,6 +307,16 @@ struct iris_shader_state {
 };
 
 /**
+ * Gallium CSO for stream output (transform feedback) targets.
+ */
+struct iris_stream_output_target {
+   struct pipe_stream_output_target base;
+
+   /** Storage holding the offset where we're writing in the buffer */
+   struct iris_state_ref offset;
+};
+
+/**
  * Virtual table for generation-specific (genxml) function calls.
  */
 struct iris_vtable {

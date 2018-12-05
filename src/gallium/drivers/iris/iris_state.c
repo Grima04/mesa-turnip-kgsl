@@ -2503,16 +2503,6 @@ iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 }
 
 /**
- * Gallium CSO for stream output (transform feedback) targets.
- */
-struct iris_stream_output_target {
-   struct pipe_stream_output_target base;
-
-   /** Storage holding the offset where we're writing in the buffer */
-   struct iris_state_ref offset;
-};
-
-/**
  * The pipe->create_stream_output_target() driver hook.
  *
  * "Target" here refers to a destination buffer.  We translate this into
