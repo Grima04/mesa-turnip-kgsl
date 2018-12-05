@@ -86,6 +86,11 @@ struct ir3_context {
 
 	unsigned num_arrays;
 
+	/* Tracking for max level of flowcontrol (branchstack) needed
+	 * by a5xx+:
+	 */
+	unsigned stack, max_stack;
+
 	/* a common pattern for indirect addressing is to request the
 	 * same address register multiple times.  To avoid generating
 	 * duplicate instruction sequences (which our backend does not

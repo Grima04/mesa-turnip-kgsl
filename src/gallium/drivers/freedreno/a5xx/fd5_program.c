@@ -443,7 +443,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, A5XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(s[VS].i->max_half_reg + 1) |
 			A5XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(s[VS].i->max_reg + 1) |
 			0x6 | /* XXX seems to be always set? */
-			A5XX_SP_VS_CTRL_REG0_BRANCHSTACK(0x3) |  // XXX need to figure this out somehow..
+			A5XX_SP_VS_CTRL_REG0_BRANCHSTACK(s[VS].v->branchstack) |
 			COND(s[VS].v->num_samp > 0, A5XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
 	struct ir3_shader_linkage l = {0};
@@ -567,7 +567,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			A5XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
 			A5XX_SP_FS_CTRL_REG0_HALFREGFOOTPRINT(s[FS].i->max_half_reg + 1) |
 			A5XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(s[FS].i->max_reg + 1) |
-			A5XX_SP_FS_CTRL_REG0_BRANCHSTACK(0x3) |  // XXX need to figure this out somehow..
+			A5XX_SP_FS_CTRL_REG0_BRANCHSTACK(s[FS].v->branchstack) |
 			COND(s[FS].v->num_samp > 0, A5XX_SP_FS_CTRL_REG0_PIXLODENABLE));
 
 	OUT_PKT4(ring, REG_A5XX_HLSQ_UPDATE_CNTL, 1);

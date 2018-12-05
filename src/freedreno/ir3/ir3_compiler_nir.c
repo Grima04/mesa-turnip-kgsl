@@ -2341,6 +2341,20 @@ emit_loop(struct ir3_context *ctx, nir_loop *nloop)
 }
 
 static void
+stack_push(struct ir3_context *ctx)
+{
+	ctx->stack++;
+	ctx->max_stack = MAX2(ctx->max_stack, ctx->stack);
+}
+
+static void
+stack_pop(struct ir3_context *ctx)
+{
+	compile_assert(ctx, ctx->stack > 0);
+	ctx->stack--;
+}
+
+static void
 emit_cf_list(struct ir3_context *ctx, struct exec_list *list)
 {
 	foreach_list_typed(nir_cf_node, node, node, list) {
@@ -2349,10 +2363,14 @@ emit_cf_list(struct ir3_context *ctx, struct exec_list *list)
 			emit_block(ctx, nir_cf_node_as_block(node));
 			break;
 		case nir_cf_node_if:
+			stack_push(ctx);
 			emit_if(ctx, nir_cf_node_as_if(node));
+			stack_pop(ctx);
 			break;
 		case nir_cf_node_loop:
+			stack_push(ctx);
 			emit_loop(ctx, nir_cf_node_as_loop(node));
+			stack_pop(ctx);
 			break;
 		case nir_cf_node_function:
 			ir3_context_error(ctx, "TODO\n");
@@ -2479,8 +2497,12 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 {
 	nir_metadata_require(impl, nir_metadata_block_index);
 
+	compile_assert(ctx, ctx->stack == 0);
+
 	emit_cf_list(ctx, &impl->body);
 	emit_block(ctx, impl->end_block);
+
+	compile_assert(ctx, ctx->stack == 0);
 
 	/* at this point, we should have a single empty block,
 	 * into which we emit the 'end' instruction.
@@ -3078,6 +3100,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		printf("AFTER LEGALIZE:\n");
 		ir3_print(ir);
 	}
+
+	so->branchstack = ctx->max_stack;
 
 	/* Note that actual_in counts inputs that are not bary.f'd for FS: */
 	if (so->type == MESA_SHADER_VERTEX)
