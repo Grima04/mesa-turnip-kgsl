@@ -83,10 +83,15 @@
 #define MI_ALU_ZF        0x32
 #define MI_ALU_CF        0x33
 
-#define MI_ALU0(op)       ((MI_ALU_##op << 20))
-#define MI_ALU1(op, x)    ((MI_ALU_##op << 20) | (MI_ALU_##x << 10))
-#define MI_ALU2(op, x, y) \
-   ((MI_ALU_##op << 20) | (MI_ALU_##x << 10) | (MI_ALU_##y))
+#define _MI_ALU(op, x, y)  (((op) << 20) | ((x) << 10) | (y))
+
+#define _MI_ALU0(op)       _MI_ALU(MI_ALU_##op, 0, 0)
+#define _MI_ALU1(op, x)    _MI_ALU(MI_ALU_##op, x, 0)
+#define _MI_ALU2(op, x, y) _MI_ALU(MI_ALU_##op, x, y)
+
+#define MI_ALU0(op)        _MI_ALU0(op)
+#define MI_ALU1(op, x)     _MI_ALU1(op, MI_ALU_##x)
+#define MI_ALU2(op, x, y)  _MI_ALU2(op, MI_ALU_##x, MI_ALU_##y)
 
 struct iris_query {
    enum pipe_query_type type;
