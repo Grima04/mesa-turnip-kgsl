@@ -1436,6 +1436,22 @@ static unsigned event_type_for_stream(unsigned stream)
 	}
 }
 
+static void emit_query_flush(struct radv_cmd_buffer *cmd_buffer,
+			     struct radv_query_pool *pool)
+{
+	if (cmd_buffer->pending_reset_query) {
+		if (pool->size >= RADV_BUFFER_OPS_CS_THRESHOLD) {
+			/* Only need to flush caches if the query pool size is
+			 * large enough to be resetted using the compute shader
+			 * path. Small pools don't need any cache flushes
+			 * because we use a CP dma clear.
+			 */
+			si_emit_cache_flush(cmd_buffer);
+			cmd_buffer->pending_reset_query = false;
+		}
+	}
+}
+
 static void emit_begin_query(struct radv_cmd_buffer *cmd_buffer,
 			     uint64_t va,
 			     VkQueryType query_type,
@@ -1582,17 +1598,7 @@ void radv_CmdBeginQueryIndexedEXT(
 
 	radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
 
-	if (cmd_buffer->pending_reset_query) {
-		if (pool->size >= RADV_BUFFER_OPS_CS_THRESHOLD) {
-			/* Only need to flush caches if the query pool size is
-			 * large enough to be resetted using the compute shader
-			 * path. Small pools don't need any cache flushes
-			 * because we use a CP dma clear.
-			 */
-			si_emit_cache_flush(cmd_buffer);
-			cmd_buffer->pending_reset_query = false;
-		}
-	}
+	emit_query_flush(cmd_buffer, pool);
 
 	va += pool->stride * query;
 
@@ -1668,6 +1674,8 @@ void radv_CmdWriteTimestamp(
 	uint64_t query_va = va + pool->stride * query;
 
 	radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
+
+	emit_query_flush(cmd_buffer, pool);
 
 	int num_queries = 1;
 	if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask)
