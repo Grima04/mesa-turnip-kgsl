@@ -625,11 +625,14 @@ v3d_transform_feedback_enabled(struct v3d_context *v3d)
 
 void v3d_set_shader_uniform_dirty_flags(struct v3d_compiled_shader *shader);
 struct v3d_cl_reloc v3d_write_uniforms(struct v3d_context *v3d,
+                                       struct v3d_job *job,
                                        struct v3d_compiled_shader *shader,
                                        enum pipe_shader_type stage);
 
 void v3d_flush(struct pipe_context *pctx);
 void v3d_job_init(struct v3d_context *v3d);
+struct v3d_job *v3d_job_create(struct v3d_context *v3d);
+void v3d_job_free(struct v3d_context *v3d, struct v3d_job *job);
 struct v3d_job *v3d_get_job(struct v3d_context *v3d,
                             struct pipe_surface **cbufs,
                             struct pipe_surface *zsbuf);

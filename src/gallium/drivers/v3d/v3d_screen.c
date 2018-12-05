@@ -669,7 +669,7 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
 
         slab_create_parent(&screen->transfer_pool, sizeof(struct v3d_transfer), 16);
 
-        screen->has_csd = false; /* until the UABI is enabled. */
+        screen->has_csd = v3d_has_feature(screen, DRM_V3D_PARAM_SUPPORTS_CSD);
 
         v3d_fence_init(screen);
 

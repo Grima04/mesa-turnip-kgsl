@@ -37,7 +37,7 @@
 #include "util/set.h"
 #include "broadcom/clif/clif_dump.h"
 
-static void
+void
 v3d_job_free(struct v3d_context *v3d, struct v3d_job *job)
 {
         set_foreach(job->bos, entry) {
@@ -85,7 +85,7 @@ v3d_job_free(struct v3d_context *v3d, struct v3d_job *job)
         ralloc_free(job);
 }
 
-static struct v3d_job *
+struct v3d_job *
 v3d_job_create(struct v3d_context *v3d)
 {
         struct v3d_job *job = rzalloc(v3d, struct v3d_job);
