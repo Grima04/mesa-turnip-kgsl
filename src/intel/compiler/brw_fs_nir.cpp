@@ -671,18 +671,19 @@ brw_rnd_mode_from_nir_op (const nir_op op) {
    }
 }
 
-void
-fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
+fs_reg
+fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
+                                                nir_alu_instr *instr,
+                                                fs_reg *op,
+                                                bool need_dest)
 {
-   struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
-   fs_inst *inst;
+   fs_reg result =
+      need_dest ? get_nir_dest(instr->dest.dest) : bld.null_reg_ud();
 
-   fs_reg result = get_nir_dest(instr->dest.dest);
    result.type = brw_type_for_nir_type(devinfo,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
                      nir_dest_bit_size(instr->dest.dest)));
 
-   fs_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       op[i] = get_nir_src(instr->src[i].src);
       op[i].type = brw_type_for_nir_type(devinfo,
@@ -692,10 +693,54 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       op[i].negate = instr->src[i].negate;
    }
 
-   /* We get a bunch of mov's out of the from_ssa pass and they may still
-    * be vectorized.  We'll handle them as a special-case.  We'll also
-    * handle vecN here because it's basically the same thing.
+   /* Move and vecN instrutions may still be vectored.  Return the raw,
+    * vectored source and destination so that fs_visitor::nir_emit_alu can
+    * handle it.  Other callers should not have to handle these kinds of
+    * instructions.
     */
+   switch (instr->op) {
+   case nir_op_imov:
+   case nir_op_fmov:
+   case nir_op_vec2:
+   case nir_op_vec3:
+   case nir_op_vec4:
+      return result;
+   default:
+      break;
+   }
+
+   /* At this point, we have dealt with any instruction that operates on
+    * more than a single channel.  Therefore, we can just adjust the source
+    * and destination registers for that channel and emit the instruction.
+    */
+   unsigned channel = 0;
+   if (nir_op_infos[instr->op].output_size == 0) {
+      /* Since NIR is doing the scalarizing for us, we should only ever see
+       * vectorized operations with a single channel.
+       */
+      assert(util_bitcount(instr->dest.write_mask) == 1);
+      channel = ffs(instr->dest.write_mask) - 1;
+
+      result = offset(result, bld, channel);
+   }
+
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+      assert(nir_op_infos[instr->op].input_sizes[i] < 2);
+      op[i] = offset(op[i], bld, instr->src[i].swizzle[channel]);
+   }
+
+   return result;
+}
+
+void
+fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
+{
+   struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
+   fs_inst *inst;
+
+   fs_reg op[4];
+   fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, true);
+
    switch (instr->op) {
    case nir_op_imov:
    case nir_op_fmov:
@@ -741,31 +786,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       }
       return;
    }
-   default:
-      break;
-   }
 
-   /* At this point, we have dealt with any instruction that operates on
-    * more than a single channel.  Therefore, we can just adjust the source
-    * and destination registers for that channel and emit the instruction.
-    */
-   unsigned channel = 0;
-   if (nir_op_infos[instr->op].output_size == 0) {
-      /* Since NIR is doing the scalarizing for us, we should only ever see
-       * vectorized operations with a single channel.
-       */
-      assert(util_bitcount(instr->dest.write_mask) == 1);
-      channel = ffs(instr->dest.write_mask) - 1;
-
-      result = offset(result, bld, channel);
-   }
-
-   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      assert(nir_op_infos[instr->op].input_sizes[i] < 2);
-      op[i] = offset(op[i], bld, instr->src[i].swizzle[channel]);
-   }
-
-   switch (instr->op) {
    case nir_op_i2f32:
    case nir_op_u2f32:
       if (optimize_extract_to_float(instr, result))

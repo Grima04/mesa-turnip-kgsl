@@ -384,6 +384,12 @@ public:
 
    unsigned promoted_constants;
    brw::fs_builder bld;
+
+private:
+   fs_reg prepare_alu_destination_and_sources(const brw::fs_builder &bld,
+                                              nir_alu_instr *instr,
+                                              fs_reg *op,
+                                              bool need_dest);
 };
 
 /**
