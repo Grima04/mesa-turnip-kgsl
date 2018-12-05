@@ -1447,7 +1447,6 @@ static void emit_query_flush(struct radv_cmd_buffer *cmd_buffer,
 			 * because we use a CP dma clear.
 			 */
 			si_emit_cache_flush(cmd_buffer);
-			cmd_buffer->pending_reset_query = false;
 		}
 	}
 }
