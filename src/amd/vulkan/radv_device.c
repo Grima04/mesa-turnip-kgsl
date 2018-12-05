@@ -848,6 +848,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->geometryStreams = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+			VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
+				(VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
+			features->scalarBlockLayout = pdevice->rad_info.chip_class >= CIK;
+			break;
+		}
 		default:
 			break;
 		}
