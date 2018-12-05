@@ -2649,10 +2649,8 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	struct ir3_shader_variant *so = ctx->so;
 	unsigned ncomp = glsl_get_components(in->type);
 	unsigned n = in->data.driver_location;
+	unsigned frac = in->data.location_frac;
 	unsigned slot = in->data.location;
-
-	/* let's pretend things other than vec4 don't exist: */
-	ncomp = MAX2(ncomp, 4);
 
 	/* skip unread inputs, we could end up with (for example), unsplit
 	 * matrix/etc inputs in the case they are not read, so just silently
@@ -2661,17 +2659,15 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	if (ncomp > 4)
 		return;
 
-	compile_assert(ctx, ncomp == 4);
-
 	so->inputs[n].slot = slot;
-	so->inputs[n].compmask = (1 << ncomp) - 1;
+	so->inputs[n].compmask = (1 << (ncomp + frac)) - 1;
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		for (int i = 0; i < ncomp; i++) {
 			struct ir3_instruction *instr = NULL;
-			unsigned idx = (n * 4) + i;
+			unsigned idx = (n * 4) + i + frac;
 
 			if (slot == VARYING_SLOT_POS) {
 				so->inputs[n].bary = false;
@@ -2726,7 +2722,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		}
 	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
 		for (int i = 0; i < ncomp; i++) {
-			unsigned idx = (n * 4) + i;
+			unsigned idx = (n * 4) + i + frac;
 			compile_assert(ctx, idx < ctx->ir->ninputs);
 			ctx->ir->inputs[idx] = create_input(ctx, idx);
 		}
@@ -2745,12 +2741,9 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	struct ir3_shader_variant *so = ctx->so;
 	unsigned ncomp = glsl_get_components(out->type);
 	unsigned n = out->data.driver_location;
+	unsigned frac = out->data.location_frac;
 	unsigned slot = out->data.location;
 	unsigned comp = 0;
-
-	/* let's pretend things other than vec4 don't exist: */
-	ncomp = MAX2(ncomp, 4);
-	compile_assert(ctx, ncomp == 4);
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		switch (slot) {
@@ -2803,9 +2796,24 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	so->outputs_count = MAX2(so->outputs_count, n + 1);
 
 	for (int i = 0; i < ncomp; i++) {
-		unsigned idx = (n * 4) + i;
+		unsigned idx = (n * 4) + i + frac;
 		compile_assert(ctx, idx < ctx->ir->noutputs);
 		ctx->ir->outputs[idx] = create_immed(ctx->block, fui(0.0));
+	}
+
+	/* if varying packing doesn't happen, we could end up in a situation
+	 * with "holes" in the output, and since the per-generation code that
+	 * sets up varying linkage registers doesn't expect to have more than
+	 * one varying per vec4 slot, pad the holes.
+	 *
+	 * Note that this should probably generate a performance warning of
+	 * some sort.
+	 */
+	for (int i = 0; i < frac; i++) {
+		unsigned idx = (n * 4) + i;
+		if (!ctx->ir->outputs[idx]) {
+			ctx->ir->outputs[idx] = create_immed(ctx->block, fui(0.0));
+		}
 	}
 }
 
@@ -3126,7 +3134,21 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	/* fixup input/outputs: */
 	for (i = 0; i < so->outputs_count; i++) {
-		so->outputs[i].regid = ir->outputs[i*4]->regs[0]->num;
+		/* sometimes we get outputs that don't write the .x coord, like:
+		 *
+		 *   decl_var shader_out INTERP_MODE_NONE float Color (VARYING_SLOT_VAR9.z, 1, 0)
+		 *
+		 * Presumably the result of varying packing and then eliminating
+		 * some unneeded varyings?  Just skip head to the first valid
+		 * component of the output.
+		 */
+		for (unsigned j = 0; j < 4; j++) {
+			struct ir3_instruction *instr = ir->outputs[(i*4) + j];
+			if (instr) {
+				so->outputs[i].regid = instr->regs[0]->num;
+				break;
+			}
+		}
 	}
 
 	/* Note that some or all channels of an input may be unused: */
