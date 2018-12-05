@@ -740,14 +740,11 @@ iris_init_compute_context(struct iris_screen *screen,
 }
 
 struct iris_vertex_buffer_state {
-   /** The 3DSTATE_VERTEX_BUFFERS hardware packet. */
-   uint32_t vertex_buffers[1 + 33 * GENX(VERTEX_BUFFER_STATE_length)];
+   /** The VERTEX_BUFFER_STATE hardware structure. */
+   uint32_t state[GENX(VERTEX_BUFFER_STATE_length)];
 
    /** The resource to source vertex data from. */
-   struct pipe_resource *resources[33];
-
-   /** The number of bound vertex buffers. */
-   unsigned num_buffers;
+   struct pipe_resource *resource;
 };
 
 struct iris_depth_buffer_state {
@@ -765,7 +762,11 @@ struct iris_depth_buffer_state {
  * packets which vary by generation.
  */
 struct iris_genx_state {
-   struct iris_vertex_buffer_state vertex_buffers;
+   struct iris_vertex_buffer_state vertex_buffers[33];
+
+   /** The number of bound vertex buffers. */
+   uint64_t bound_vertex_buffers;
+
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
@@ -2335,13 +2336,6 @@ iris_delete_state(struct pipe_context *ctx, void *state)
    free(state);
 }
 
-static void
-iris_free_vertex_buffers(struct iris_vertex_buffer_state *cso)
-{
-   for (unsigned i = 0; i < cso->num_buffers; i++)
-      pipe_resource_reference(&cso->resources[i], NULL);
-}
-
 /**
  * The pipe->set_vertex_buffers() driver hook.
  *
@@ -2353,53 +2347,43 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
+   struct iris_genx_state *genx = ice->state.genx;
 
-   iris_free_vertex_buffers(&ice->state.genx->vertex_buffers);
-
-   if (!buffers)
-      count = 0;
-
-   cso->num_buffers = count;
-
-   iris_pack_command(GENX(3DSTATE_VERTEX_BUFFERS), cso->vertex_buffers, vb) {
-      vb.DWordLength = 4 * MAX2(cso->num_buffers, 1) - 1;
-   }
-
-   uint32_t *vb_pack_dest = &cso->vertex_buffers[1];
-
-   if (count == 0) {
-      iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
-         vb.VertexBufferIndex = start_slot;
-         vb.NullVertexBuffer = true;
-         vb.AddressModifyEnable = true;
-      }
-   }
+   ice->state.bound_vertex_buffers &= ~u_bit_consecutive64(start_slot, count);
 
    for (unsigned i = 0; i < count; i++) {
-      assert(!buffers[i].is_user_buffer);
+      const struct pipe_vertex_buffer *buffer = buffers ? &buffers[i] : NULL;
+      struct iris_vertex_buffer_state *state =
+         &genx->vertex_buffers[start_slot + i];
 
-      pipe_resource_reference(&cso->resources[i], buffers[i].buffer.resource);
-      struct iris_resource *res = (void *) cso->resources[i];
+      if (!buffer) {
+         pipe_resource_reference(&state->resource, NULL);
+         continue;
+      }
+
+      assert(!buffer->is_user_buffer);
+
+      ice->state.bound_vertex_buffers |= 1ull << (start_slot + i);
+
+      pipe_resource_reference(&state->resource, buffer->buffer.resource);
+      struct iris_resource *res = (void *) state->resource;
 
       if (res)
          res->bind_history |= PIPE_BIND_VERTEX_BUFFER;
 
-      iris_pack_state(GENX(VERTEX_BUFFER_STATE), vb_pack_dest, vb) {
+      iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
          vb.VertexBufferIndex = start_slot + i;
          vb.MOCS = MOCS_WB;
          vb.AddressModifyEnable = true;
-         vb.BufferPitch = buffers[i].stride;
+         vb.BufferPitch = buffer->stride;
          if (res) {
             vb.BufferSize = res->bo->size;
             vb.BufferStartingAddress =
-               ro_bo(NULL, res->bo->gtt_offset + buffers[i].buffer_offset);
+               ro_bo(NULL, res->bo->gtt_offset + buffer->buffer_offset);
          } else {
             vb.NullVertexBuffer = true;
          }
       }
-
-      vb_pack_dest += GENX(VERTEX_BUFFER_STATE_length);
    }
 
    ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
@@ -3739,6 +3723,8 @@ iris_restore_render_saved_bos(struct iris_context *ice,
                               struct iris_batch *batch,
                               const struct pipe_draw_info *draw)
 {
+   struct iris_genx_state *genx = ice->state.genx;
+
    // XXX: whack IRIS_SHADER_DIRTY_BINDING_TABLE on new batch
 
    const uint64_t clean = ~ice->state.dirty;
@@ -3854,10 +3840,11 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    }
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
-      struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
-      for (unsigned i = 0; i < cso->num_buffers; i++) {
-         struct iris_resource *res = (void *) cso->resources[i];
-         iris_use_pinned_bo(batch, res->bo, false);
+      uint64_t bound = ice->state.bound_vertex_buffers;
+      while (bound) {
+         const int i = u_bit_scan64(&bound);
+         struct pipe_resource *res = genx->vertex_buffers[i].resource;
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
       }
    }
 }
@@ -4416,10 +4403,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
-      struct iris_vertex_buffer_state *cso = &ice->state.genx->vertex_buffers;
-      const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
+      int count = util_bitcount64(ice->state.bound_vertex_buffers);
 
-      if (cso->num_buffers > 0) {
+      if (count) {
          /* The VF cache designers cut corners, and made the cache key's
           * <VertexBufferIndex, Memory Address> tuple only consider the bottom
           * 32 bits of the address.  If you have two vertex buffers which get
@@ -4431,10 +4417,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
           */
          unsigned flush_flags = 0;
 
-         for (unsigned i = 0; i < cso->num_buffers; i++) {
+         uint64_t bound = ice->state.bound_vertex_buffers;
+         while (bound) {
+            const int i = u_bit_scan64(&bound);
             uint16_t high_bits = 0;
 
-            struct iris_resource *res = (void *) cso->resources[i];
+            struct iris_resource *res =
+               (void *) genx->vertex_buffers[i].resource;
             if (res) {
                iris_use_pinned_bo(batch, res->bo, false);
 
@@ -4458,8 +4447,22 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          if (flush_flags)
             iris_emit_pipe_control_flush(batch, flush_flags);
 
-         iris_batch_emit(batch, cso->vertex_buffers, sizeof(uint32_t) *
-                         (1 + vb_dwords * cso->num_buffers));
+         const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
+
+         uint32_t *map =
+            iris_get_command_space(batch, 4 * (1 + vb_dwords * count));
+         _iris_pack_command(batch, GENX(3DSTATE_VERTEX_BUFFERS), map, vb) {
+            vb.DWordLength = (vb_dwords * count + 1) - 2;
+         }
+         map += 1;
+
+         bound = ice->state.bound_vertex_buffers;
+         while (bound) {
+            const int i = u_bit_scan64(&bound);
+            memcpy(map, genx->vertex_buffers[i].state,
+                   sizeof(uint32_t) * vb_dwords);
+            map += vb_dwords;
+         }
       }
    }
 
@@ -4798,7 +4801,13 @@ iris_upload_compute_state(struct iris_context *ice,
 static void
 iris_destroy_state(struct iris_context *ice)
 {
-   iris_free_vertex_buffers(&ice->state.genx->vertex_buffers);
+   struct iris_genx_state *genx = ice->state.genx;
+
+   uint64_t bound_vbs = ice->state.bound_vertex_buffers;
+   while (bound_vbs) {
+      const int i = u_bit_scan64(&bound_vbs);
+      pipe_resource_reference(&genx->vertex_buffers[i].resource, NULL);
+   }
 
    // XXX: unreference resources/surfaces.
    for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {

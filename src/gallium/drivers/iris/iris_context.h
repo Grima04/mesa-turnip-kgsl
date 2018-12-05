@@ -454,6 +454,9 @@ struct iris_context {
       float default_outer_level[4];
       float default_inner_level[2];
 
+      /** Bitfield of which vertex buffers are bound (non-null). */
+      uint64_t bound_vertex_buffers;
+
       bool primitive_restart;
       unsigned cut_index;
       enum pipe_prim_type prim_mode:8;
