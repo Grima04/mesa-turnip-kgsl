@@ -486,7 +486,7 @@ _iris_emit_lri(struct iris_batch *batch, uint32_t reg, uint32_t val)
 #define iris_emit_lri(b, r, v) _iris_emit_lri(b, GENX(r##_num), v)
 
 static void
-_iris_emit_lrr(struct iris_batch *batch, uint32_t src, uint32_t dst)
+_iris_emit_lrr(struct iris_batch *batch, uint32_t dst, uint32_t src)
 {
    iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_REG), lrr) {
       lrr.SourceRegisterAddress = src;
@@ -4834,18 +4834,18 @@ iris_destroy_state(struct iris_context *ice)
 /* ------------------------------------------------------------------- */
 
 static void
-iris_load_register_reg32(struct iris_batch *batch, uint32_t src,
-                         uint32_t dst)
+iris_load_register_reg32(struct iris_batch *batch, uint32_t dst,
+                         uint32_t src)
 {
-   _iris_emit_lrr(batch, src, dst);
+   _iris_emit_lrr(batch, dst, src);
 }
 
 static void
-iris_load_register_reg64(struct iris_batch *batch, uint32_t src,
-                         uint32_t dst)
+iris_load_register_reg64(struct iris_batch *batch, uint32_t dst,
+                         uint32_t src)
 {
-   _iris_emit_lrr(batch, src, dst);
-   _iris_emit_lrr(batch, src + 4, dst + 4);
+   _iris_emit_lrr(batch, dst, src);
+   _iris_emit_lrr(batch, dst + 4, src + 4);
 }
 
 static void

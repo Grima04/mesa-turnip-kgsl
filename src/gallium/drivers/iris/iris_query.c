@@ -778,7 +778,7 @@ set_predicate_for_result(struct iris_context *ice,
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
       overflow_result_to_gpr0(ice, q);
 
-      ice->vtbl.load_register_reg64(batch, CS_GPR(0), MI_PREDICATE_SRC0);
+      ice->vtbl.load_register_reg64(batch, MI_PREDICATE_SRC0, CS_GPR(0));
       ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
       break;
    default:
