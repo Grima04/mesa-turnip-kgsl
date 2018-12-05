@@ -58,8 +58,6 @@
 
 #define SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
 
-#define CS_GPR(n) (0x2600 + (n) * 8)
-
 #define MI_MATH (0x1a << 23)
 
 #define MI_ALU_LOAD      0x080

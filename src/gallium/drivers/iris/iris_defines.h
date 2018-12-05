@@ -50,6 +50,8 @@
 #define MI_PREDICATE_RESULT_1                0x241C
 #define MI_PREDICATE_RESULT_2                0x2214
 
+#define CS_GPR(n) (0x2600 + (n) * 8)
+
 /* The number of bits in our TIMESTAMP queries. */
 #define TIMESTAMP_BITS 36
 

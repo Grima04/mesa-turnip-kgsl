@@ -1253,16 +1253,16 @@ iris_update_compiled_fs(struct iris_context *ice)
  *
  * This stage is the one which will feed stream output and the rasterizer.
  */
-static struct iris_compiled_shader *
-last_vue_shader(struct iris_context *ice)
+static gl_shader_stage
+last_vue_stage(struct iris_context *ice)
 {
    if (ice->shaders.prog[MESA_SHADER_GEOMETRY])
-      return ice->shaders.prog[MESA_SHADER_GEOMETRY];
+      return MESA_SHADER_GEOMETRY;
 
    if (ice->shaders.prog[MESA_SHADER_TESS_EVAL])
-      return ice->shaders.prog[MESA_SHADER_TESS_EVAL];
+      return MESA_SHADER_TESS_EVAL;
 
-   return ice->shaders.prog[MESA_SHADER_VERTEX];
+   return MESA_SHADER_VERTEX;
 }
 
 /**
@@ -1355,11 +1355,22 @@ iris_update_compiled_shaders(struct iris_context *ice)
    if (dirty & IRIS_DIRTY_UNCOMPILED_GS)
       iris_update_compiled_gs(ice);
 
-   struct iris_compiled_shader *shader = last_vue_shader(ice);
+   gl_shader_stage last_stage = last_vue_stage(ice);
+   struct iris_compiled_shader *shader = ice->shaders.prog[last_stage];
+   struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[last_stage];
    update_last_vue_map(ice, shader->prog_data);
    if (ice->state.streamout != shader->streamout) {
       ice->state.streamout = shader->streamout;
       ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST | IRIS_DIRTY_STREAMOUT;
+   }
+
+   if (ice->state.streamout_active) {
+      for (int i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+         struct iris_stream_output_target *so =
+            (void *) ice->state.so_target[i];
+         if (so)
+            so->stride = ish->stream_output.stride[i];
+      }
    }
 
    if (dirty & IRIS_DIRTY_UNCOMPILED_FS)

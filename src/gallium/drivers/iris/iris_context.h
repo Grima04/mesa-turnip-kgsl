@@ -314,6 +314,9 @@ struct iris_stream_output_target {
 
    /** Storage holding the offset where we're writing in the buffer */
    struct iris_state_ref offset;
+
+   /** Stride (dwords-per-vertex) during this transform feedback operation */
+   uint16_t stride;
 };
 
 /**
@@ -512,6 +515,9 @@ struct iris_context {
 
       /** 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets */
       uint32_t *streamout;
+
+      /** Current strides for each streamout buffer */
+      uint16_t *streamout_strides;
 
       /** The SURFACE_STATE for a 1x1x1 null surface. */
       struct iris_state_ref unbound_tex;

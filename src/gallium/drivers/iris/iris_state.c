@@ -101,6 +101,7 @@
 #include "intel/common/gen_sample_positions.h"
 #include "iris_batch.h"
 #include "iris_context.h"
+#include "iris_defines.h"
 #include "iris_pipe.h"
 #include "iris_resource.h"
 
@@ -4583,28 +4584,50 @@ iris_upload_render_state(struct iris_context *ice,
             lri.DataDWord = 0;
          }
       }
+   } else if (draw->count_from_stream_output) {
+      struct iris_stream_output_target *so =
+         (void *) draw->count_from_stream_output;
+
+      // XXX: avoid if possible
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+
+      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         lrm.RegisterAddress = CS_GPR(0);
+         lrm.MemoryAddress =
+            ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
+      }
+      iris_math_div32_gpr0(ice, batch, so->stride);
+      _iris_emit_lrr(batch, _3DPRIM_VERTEX_COUNT, CS_GPR(0));
+
+      _iris_emit_lri(batch, _3DPRIM_START_VERTEX, 0);
+      _iris_emit_lri(batch, _3DPRIM_BASE_VERTEX, 0);
+      _iris_emit_lri(batch, _3DPRIM_START_INSTANCE, 0);
+      _iris_emit_lri(batch, _3DPRIM_INSTANCE_COUNT, draw->instance_count);
    }
 
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
-      prim.StartInstanceLocation = draw->start_instance;
-      prim.InstanceCount = draw->instance_count;
-      prim.VertexCountPerInstance = draw->count;
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
       prim.PredicateEnable =
          ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
-      // XXX: this is probably bonkers.
-      prim.StartVertexLocation = draw->start;
-
-      prim.IndirectParameterEnable = draw->indirect != NULL;
-
-      if (draw->index_size) {
-         prim.BaseVertexLocation += draw->index_bias;
+      if (draw->indirect || draw->count_from_stream_output) {
+         prim.IndirectParameterEnable = true;
       } else {
-         prim.StartVertexLocation += draw->index_bias;
-      }
+         prim.StartInstanceLocation = draw->start_instance;
+         prim.InstanceCount = draw->instance_count;
+         prim.VertexCountPerInstance = draw->count;
 
-      //prim.BaseVertexLocation = ...;
+         // XXX: this is probably bonkers.
+         prim.StartVertexLocation = draw->start;
+
+         if (draw->index_size) {
+            prim.BaseVertexLocation += draw->index_bias;
+         } else {
+            prim.StartVertexLocation += draw->index_bias;
+         }
+
+         //prim.BaseVertexLocation = ...;
+      }
    }
 }
 
