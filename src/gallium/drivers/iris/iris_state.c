@@ -771,7 +771,6 @@ struct iris_genx_state {
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
-   uint32_t streamout[4 * GENX(3DSTATE_STREAMOUT_length)];
 };
 
 /**
