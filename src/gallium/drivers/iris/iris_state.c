@@ -2508,8 +2508,6 @@ iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 struct iris_stream_output_target {
    struct pipe_stream_output_target base;
 
-   uint32_t so_buffer[GENX(3DSTATE_SO_BUFFER_length)];
-
    /** Storage holding the offset where we're writing in the buffer */
    struct iris_state_ref offset;
 };
@@ -2542,21 +2540,6 @@ iris_create_stream_output_target(struct pipe_context *ctx,
    cso->base.context = ctx;
 
    upload_state(ctx->stream_uploader, &cso->offset, 4 * sizeof(uint32_t), 4);
-
-   iris_pack_command(GENX(3DSTATE_SO_BUFFER), cso->so_buffer, sob) {
-      sob.SurfaceBaseAddress =
-         rw_bo(NULL, res->bo->gtt_offset + buffer_offset);
-      sob.SOBufferEnable = true;
-      sob.StreamOffsetWriteEnable = true;
-      sob.StreamOutputBufferOffsetAddressEnable = true;
-      sob.MOCS = MOCS_WB; // XXX: MOCS
-
-      sob.SurfaceSize = MAX2(buffer_size / 4, 1) - 1;
-
-      /* .SOBufferIndex, .StreamOffset, and .StreamOutputBufferOffsetAddress
-       * are filled in later when we have stream IDs.
-       */
-   }
 
    return &cso->base;
 }
@@ -2623,6 +2606,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
       }
 
       struct iris_stream_output_target *tgt = (void *) targets[i];
+      struct iris_resource *res = (void *) tgt->base.buffer;
 
       /* Note that offsets[i] will either be 0, causing us to zero
        * the value in the buffer, or 0xFFFFFFFF, which happens to mean
@@ -2630,16 +2614,21 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
        */
       assert(offsets[i] == 0 || offsets[i] == 0xFFFFFFFF);
 
-      uint32_t dynamic[GENX(3DSTATE_SO_BUFFER_length)];
-      iris_pack_state(GENX(3DSTATE_SO_BUFFER), dynamic, dyns) {
-         dyns.SOBufferIndex = i;
-         dyns.StreamOffset = offsets[i];
-         dyns.StreamOutputBufferOffsetAddress =
-            rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset + tgt->offset.offset + i * sizeof(uint32_t));
-      }
+      iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob) {
+         sob.SurfaceBaseAddress =
+            rw_bo(NULL, res->bo->gtt_offset + tgt->base.buffer_offset);
+         sob.SOBufferEnable = true;
+         sob.StreamOffsetWriteEnable = true;
+         sob.StreamOutputBufferOffsetAddressEnable = true;
+         sob.MOCS = MOCS_WB; // XXX: MOCS
 
-      for (uint32_t j = 0; j < GENX(3DSTATE_SO_BUFFER_length); j++) {
-         so_buffers[j] = tgt->so_buffer[j] | dynamic[j];
+         sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
+
+         sob.SOBufferIndex = i;
+         sob.StreamOffset = offsets[i];
+         sob.StreamOutputBufferOffsetAddress =
+            rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
+                        tgt->offset.offset + i * sizeof(uint32_t));
       }
    }
 
