@@ -33,11 +33,13 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
+#include "util/fast_idiv_by_const.h"
 #include "util/u_inlines.h"
 #include "iris_context.h"
 #include "iris_defines.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "vulkan/util/vk_util.h"
 
 #define IA_VERTICES_COUNT          0x2310
 #define IA_PRIMITIVES_COUNT        0x2318
@@ -92,6 +94,10 @@
 #define MI_ALU0(op)        _MI_ALU0(op)
 #define MI_ALU1(op, x)     _MI_ALU1(op, MI_ALU_##x)
 #define MI_ALU2(op, x, y)  _MI_ALU2(op, MI_ALU_##x, MI_ALU_##y)
+
+#define emit_lri32 ice->vtbl.load_register_imm32
+#define emit_lri64 ice->vtbl.load_register_imm64
+#define emit_lrr32 ice->vtbl.load_register_reg32
 
 struct iris_query {
    enum pipe_query_type type;
@@ -340,6 +346,148 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
    }
 
    q->ready = true;
+}
+
+static void
+emit_alu_add(struct iris_batch *batch, unsigned dst_reg,
+             unsigned reg_a, unsigned reg_b)
+{
+   uint32_t *math = iris_get_command_space(batch, 5 * sizeof(uint32_t));
+
+   math[0] = MI_MATH | (5 - 2);
+   math[1] = _MI_ALU2(LOAD, MI_ALU_SRCA, reg_a);
+   math[2] = _MI_ALU2(LOAD, MI_ALU_SRCB, reg_b);
+   math[3] = _MI_ALU0(ADD);
+   math[4] = _MI_ALU2(STORE, dst_reg, MI_ALU_ACCU);
+}
+
+static void
+emit_alu_shl(struct iris_batch *batch, unsigned dst_reg,
+             unsigned src_reg, unsigned shift)
+{
+   assert(shift > 0);
+
+   int dwords = 1 + 4 * shift;
+
+   uint32_t *math = iris_get_command_space(batch, sizeof(uint32_t) * dwords);
+
+   math[0] = MI_MATH | ((1 + 4 * shift) - 2);
+
+   for (unsigned i = 0; i < shift; i++) {
+      unsigned add_src = (i == 0) ? src_reg : dst_reg;
+      math[1 + (i * 4) + 0] = _MI_ALU2(LOAD, MI_ALU_SRCA, add_src);
+      math[1 + (i * 4) + 1] = _MI_ALU2(LOAD, MI_ALU_SRCB, add_src);
+      math[1 + (i * 4) + 2] = _MI_ALU0(ADD);
+      math[1 + (i * 4) + 3] = _MI_ALU2(STORE, dst_reg, MI_ALU_ACCU);
+   }
+}
+
+/* Emit dwords to multiply GPR0 by N */
+static void
+build_alu_multiply_gpr0(uint32_t *dw, unsigned *dw_count, uint32_t N)
+{
+   VK_OUTARRAY_MAKE(out, dw, dw_count);
+
+#define APPEND_ALU(op, x, y) \
+   vk_outarray_append(&out, alu_dw) *alu_dw = _MI_ALU(MI_ALU_##op, x, y)
+
+   assert(N > 0);
+   unsigned top_bit = 31 - __builtin_clz(N);
+   for (int i = top_bit - 1; i >= 0; i--) {
+      /* We get our initial data in GPR0 and we write the final data out to
+       * GPR0 but we use GPR1 as our scratch register.
+       */
+      unsigned src_reg = i == top_bit - 1 ? MI_ALU_R0 : MI_ALU_R1;
+      unsigned dst_reg = i == 0 ? MI_ALU_R0 : MI_ALU_R1;
+
+      /* Shift the current value left by 1 */
+      APPEND_ALU(LOAD, MI_ALU_SRCA, src_reg);
+      APPEND_ALU(LOAD, MI_ALU_SRCB, src_reg);
+      APPEND_ALU(ADD, 0, 0);
+
+      if (N & (1 << i)) {
+         /* Store ACCU to R1 and add R0 to R1 */
+         APPEND_ALU(STORE, MI_ALU_R1, MI_ALU_ACCU);
+         APPEND_ALU(LOAD, MI_ALU_SRCA, MI_ALU_R0);
+         APPEND_ALU(LOAD, MI_ALU_SRCB, MI_ALU_R1);
+         APPEND_ALU(ADD, 0, 0);
+      }
+
+      APPEND_ALU(STORE, dst_reg, MI_ALU_ACCU);
+   }
+
+#undef APPEND_ALU
+}
+
+static void
+emit_mul_gpr0(struct iris_batch *batch, uint32_t N)
+{
+   uint32_t num_dwords;
+   build_alu_multiply_gpr0(NULL, &num_dwords, N);
+
+   uint32_t *math = iris_get_command_space(batch, 4 * num_dwords);
+   math[0] = MI_MATH | (num_dwords - 2);
+   build_alu_multiply_gpr0(&math[1], &num_dwords, N);
+}
+
+void
+iris_math_div32_gpr0(struct iris_context *ice,
+                     struct iris_batch *batch,
+                     uint32_t D)
+{
+   /* Zero out the top of GPR0 */
+   emit_lri32(batch, CS_GPR(0) + 4, 0);
+
+   if (D == 0) {
+      /* This invalid, but we should do something so we set GPR0 to 0. */
+      emit_lri32(batch, CS_GPR(0), 0);
+   } else if (util_is_power_of_two_or_zero(D)) {
+      unsigned log2_D = util_logbase2(D);
+      assert(log2_D < 32);
+      /* We right-shift by log2(D) by left-shifting by 32 - log2(D) and taking
+       * the top 32 bits of the result.
+       */
+      emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - log2_D);
+      emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+      emit_lri32(batch, CS_GPR(0) + 4, 0);
+   } else {
+      struct util_fast_udiv_info m = util_compute_fast_udiv_info(D, 32, 32);
+      assert(m.multiplier <= UINT32_MAX);
+
+      if (m.pre_shift) {
+         /* We right-shift by L by left-shifting by 32 - l and taking the top
+          * 32 bits of the result.
+          */
+         if (m.pre_shift < 32)
+            emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - m.pre_shift);
+         emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+         emit_lri32(batch, CS_GPR(0) + 4, 0);
+      }
+
+      /* Do the 32x32 multiply into gpr0 */
+      emit_mul_gpr0(batch, m.multiplier);
+
+      if (m.increment) {
+         /* If we need to increment, save off a copy of GPR0 */
+         emit_lri32(batch, CS_GPR(1) + 0, m.multiplier);
+         emit_lri32(batch, CS_GPR(1) + 4, 0);
+         emit_alu_add(batch, MI_ALU_R0, MI_ALU_R0, MI_ALU_R1);
+      }
+
+      /* Shift by 32 */
+      emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+      emit_lri32(batch, CS_GPR(0) + 4, 0);
+
+      if (m.post_shift) {
+         /* We right-shift by L by left-shifting by 32 - l and taking the top
+          * 32 bits of the result.
+          */
+         if (m.post_shift < 32)
+            emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - m.post_shift);
+         emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
+         emit_lri32(batch, CS_GPR(0) + 4, 0);
+      }
+   }
 }
 
 /*
