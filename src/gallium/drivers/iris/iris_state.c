@@ -2529,7 +2529,7 @@ iris_create_stream_output_target(struct pipe_context *ctx,
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
 
-   upload_state(ctx->stream_uploader, &cso->offset, 4 * sizeof(uint32_t), 4);
+   upload_state(ctx->stream_uploader, &cso->offset, sizeof(uint32_t), 4);
 
    return &cso->base;
 }
@@ -2618,7 +2618,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.StreamOffset = offsets[i];
          sob.StreamOutputBufferOffsetAddress =
             rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
-                        tgt->offset.offset + i * sizeof(uint32_t));
+                        tgt->offset.offset);
       }
    }
 
