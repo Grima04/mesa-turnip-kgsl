@@ -480,6 +480,8 @@ subpixel precision bias in bits during conservative rasterization.
 * ``PIPE_CAP_SURFACE_SAMPLE_COUNT_TEXTURE``: Whether the driver
   supports pipe_surface overrides of resource nr_samples. If set, will
   enable EXT_multisampled_render_to_texture.
+* ``PIPE_CAP_TGSI_ATOMFADD``: Atomic floating point adds are supported on
+  images, buffers, and shared memory.
 
 .. _pipe_capf:
 
