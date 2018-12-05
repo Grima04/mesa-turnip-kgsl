@@ -761,6 +761,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(NV_conditional_render),            PIPE_CAP_CONDITIONAL_RENDER               },
       { o(NV_fill_rectangle),                PIPE_CAP_POLYGON_MODE_FILL_RECTANGLE      },
       { o(NV_primitive_restart),             PIPE_CAP_PRIMITIVE_RESTART                },
+      { o(NV_shader_atomic_float),           PIPE_CAP_TGSI_ATOMFADD                    },
       { o(NV_texture_barrier),               PIPE_CAP_TEXTURE_BARRIER                  },
       { o(NVX_gpu_memory_info),              PIPE_CAP_QUERY_MEMORY_INFO                },
       /* GL_NV_point_sprite is not supported by gallium because we don't
