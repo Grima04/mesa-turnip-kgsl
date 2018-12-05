@@ -1336,8 +1336,11 @@ void radv_CmdCopyQueryPoolResults(
 
 
 			if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+				/* Wait on the high 32 bits of the timestamp in
+				 * case the low part is 0xffffffff.
+				 */
 				radv_cp_wait_mem(cs, WAIT_REG_MEM_NOT_EQUAL,
-						 local_src_va,
+						 local_src_va + 4,
 						 TIMESTAMP_NOT_READY >> 32,
 						 0xffffffff);
 			}
