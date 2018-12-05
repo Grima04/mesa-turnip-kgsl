@@ -489,7 +489,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         /* Before setting up the draw, flush anything writing to the textures
          * that we read from.
          */
-        for (int s = 0; s < PIPE_SHADER_TYPES; s++)
+        for (int s = 0; s < PIPE_SHADER_COMPUTE; s++)
                 v3d_predraw_check_stage_inputs(pctx, s);
 
         if (info->indirect)
@@ -514,7 +514,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         /* Mark SSBOs as being written.  We don't actually know which ones are
          * read vs written, so just assume the worst
          */
-        for (int s = 0; s < PIPE_SHADER_TYPES; s++) {
+        for (int s = 0; s < PIPE_SHADER_COMPUTE; s++) {
                 foreach_bit(i, v3d->ssbo[s].enabled_mask) {
                         v3d_job_add_write_resource(job,
                                                    v3d->ssbo[s].sb[i].buffer);

@@ -186,6 +186,7 @@ struct v3d_compiled_shader {
                 struct v3d_prog_data *base;
                 struct v3d_vs_prog_data *vs;
                 struct v3d_fs_prog_data *fs;
+                struct v3d_compute_prog_data *compute;
         } prog_data;
 
         /**
@@ -197,8 +198,10 @@ struct v3d_compiled_shader {
 };
 
 struct v3d_program_stateobj {
-        struct v3d_uncompiled_shader *bind_vs, *bind_fs;
-        struct v3d_compiled_shader *cs, *vs, *fs;
+        struct v3d_uncompiled_shader *bind_vs, *bind_fs, *bind_compute;
+        struct v3d_compiled_shader *cs, *vs, *fs, *compute;
+
+        struct hash_table *cache[MESA_SHADER_STAGES];
 
         struct v3d_bo *spill_bo;
         int spill_size_per_thread;
@@ -414,7 +417,6 @@ struct v3d_context {
 
         struct primconvert_context *primconvert;
 
-        struct hash_table *fs_cache, *vs_cache;
         uint32_t next_uncompiled_program_id;
         uint64_t next_compiled_program_id;
 
@@ -446,6 +448,8 @@ struct v3d_context {
         struct v3d_depth_stencil_alpha_state *zsa;
 
         struct v3d_program_stateobj prog;
+        uint32_t compute_num_workgroups[3];
+        struct v3d_bo *compute_shared_memory;
 
         struct v3d_vertex_stateobj *vtx;
 
@@ -584,6 +588,7 @@ void v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
 void v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
                                      struct pipe_resource *prsc);
 void v3d_update_compiled_shaders(struct v3d_context *v3d, uint8_t prim_mode);
+void v3d_update_compiled_cs(struct v3d_context *v3d);
 
 bool v3d_rt_format_supported(const struct v3d_device_info *devinfo,
                              enum pipe_format f);

@@ -691,6 +691,12 @@ struct v3d_fs_prog_data {
         bool uses_center_w;
 };
 
+struct v3d_compute_prog_data {
+        struct v3d_prog_data base;
+        /* Size in bytes of the workgroup's shared space. */
+        uint32_t shared_size;
+};
+
 static inline bool
 vir_has_uniform(struct qinst *inst)
 {

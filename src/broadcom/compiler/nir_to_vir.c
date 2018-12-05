@@ -1806,7 +1806,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_memory_barrier_atomic_counter:
         case nir_intrinsic_memory_barrier_buffer:
         case nir_intrinsic_memory_barrier_image:
-        case nir_intrinsic_memory_barrier_shared:
+        case nir_intrinsic_group_memory_barrier:
                 /* We don't do any instruction scheduling of these NIR
                  * instructions between each other, so we just need to make
                  * sure that the TMU operations before the barrier are flushed
@@ -1867,6 +1867,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_dest(c, &instr->dest, 2,
                                vir_AND(c, c->cs_payload[1],
                                        vir_uniform_ui(c, 0xffff)));
+                break;
+
+        case nir_intrinsic_load_subgroup_id:
+                ntq_store_dest(c, &instr->dest, 0, vir_EIDX(c));
                 break;
 
         default:
@@ -2443,6 +2447,8 @@ v3d_nir_to_vir(struct v3d_compile *c)
                 break;
         case MESA_SHADER_VERTEX:
                 emit_vert_end(c);
+                break;
+        case MESA_SHADER_COMPUTE:
                 break;
         default:
                 unreachable("bad stage");

@@ -562,6 +562,21 @@ v3d_lower_nir(struct v3d_compile *c)
                 }
         }
 
+        /* CS textures may not have return_size reflecting the shadow state. */
+        nir_foreach_variable(var, &c->s->uniforms) {
+                const struct glsl_type *type = glsl_without_array(var->type);
+                unsigned array_len = MAX2(glsl_get_length(var->type), 1);
+
+                if (!glsl_type_is_sampler(type) ||
+                    !glsl_sampler_type_is_shadow(type))
+                        continue;
+
+                for (int i = 0; i < array_len; i++) {
+                        tex_options.lower_tex_packing[var->data.binding + i] =
+                                nir_lower_tex_packing_16;
+                }
+        }
+
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
         NIR_PASS_V(c->s, nir_lower_system_values);
 }
@@ -670,6 +685,13 @@ v3d_fs_set_prog_data(struct v3d_compile *c,
 }
 
 static void
+v3d_cs_set_prog_data(struct v3d_compile *c,
+                     struct v3d_compute_prog_data *prog_data)
+{
+        prog_data->shared_size = c->s->info.cs.shared_size;
+}
+
+static void
 v3d_set_prog_data(struct v3d_compile *c,
                   struct v3d_prog_data *prog_data)
 {
@@ -679,7 +701,9 @@ v3d_set_prog_data(struct v3d_compile *c,
 
         v3d_set_prog_data_uniforms(c, prog_data);
 
-        if (c->s->info.stage == MESA_SHADER_VERTEX) {
+        if (c->s->info.stage == MESA_SHADER_COMPUTE) {
+                v3d_cs_set_prog_data(c, (struct v3d_compute_prog_data *)prog_data);
+        } else if (c->s->info.stage == MESA_SHADER_VERTEX) {
                 v3d_vs_set_prog_data(c, (struct v3d_vs_prog_data *)prog_data);
         } else {
                 assert(c->s->info.stage == MESA_SHADER_FRAGMENT);
@@ -865,13 +889,17 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 c->fs_key = (struct v3d_fs_key *)key;
                 prog_data = rzalloc_size(NULL, sizeof(struct v3d_fs_prog_data));
                 break;
+        case MESA_SHADER_COMPUTE:
+                prog_data = rzalloc_size(NULL,
+                                         sizeof(struct v3d_compute_prog_data));
+                break;
         default:
                 unreachable("unsupported shader stage");
         }
 
         if (c->s->info.stage == MESA_SHADER_VERTEX) {
                 v3d_nir_lower_vs_early(c);
-        } else {
+        } else if (c->s->info.stage != MESA_SHADER_COMPUTE) {
                 assert(c->s->info.stage == MESA_SHADER_FRAGMENT);
                 v3d_nir_lower_fs_early(c);
         }
@@ -880,7 +908,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
 
         if (c->s->info.stage == MESA_SHADER_VERTEX) {
                 v3d_nir_lower_vs_late(c);
-        } else {
+        } else if (c->s->info.stage != MESA_SHADER_COMPUTE)  {
                 assert(c->s->info.stage == MESA_SHADER_FRAGMENT);
                 v3d_nir_lower_fs_late(c);
         }
