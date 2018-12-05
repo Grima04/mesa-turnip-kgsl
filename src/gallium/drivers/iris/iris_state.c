@@ -2379,7 +2379,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          if (res) {
             vb.BufferSize = res->bo->size;
             vb.BufferStartingAddress =
-               ro_bo(NULL, res->bo->gtt_offset + buffer->buffer_offset);
+               ro_bo(NULL, res->bo->gtt_offset + (int) buffer->buffer_offset);
          } else {
             vb.NullVertexBuffer = true;
          }
