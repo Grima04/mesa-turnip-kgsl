@@ -1555,7 +1555,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
 				        get_src(ctx, instr->src[1]), true);
-	LLVMValueRef base_data = ac_to_float(&ctx->ac, src_data);
+	LLVMValueRef base_data = src_data;
 	base_data = ac_trim_vector(&ctx->ac, base_data, instr->num_components);
 	LLVMValueRef base_offset = get_src(ctx, instr->src[2]);
 
@@ -1593,7 +1593,12 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 		offset = LLVMBuildAdd(ctx->ac.builder, base_offset,
 				      LLVMConstInt(ctx->ac.i32, start * elem_size_bytes, false), "");
 
-		if (num_bytes == 2) {
+		if (num_bytes == 1) {
+			ac_build_tbuffer_store_byte(&ctx->ac, rsrc, data,
+						    offset, ctx->ac.i32_0,
+						    cache_policy & ac_glc,
+						    writeonly_memory);
+		} else if (num_bytes == 2) {
 			ac_build_tbuffer_store_short(&ctx->ac, rsrc, data,
 						     offset, ctx->ac.i32_0,
 						     cache_policy & ac_glc,
