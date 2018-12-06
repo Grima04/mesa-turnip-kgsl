@@ -459,6 +459,9 @@ struct v3d_blend_state {
                 fprintf(stderr, __VA_ARGS__);           \
 } while (0)
 
+#define foreach_bit(b, mask)                                            \
+        for (uint32_t _m = (mask), b; _m && ({(b) = u_bit_scan(&_m); 1;});)
+
 static inline struct v3d_context *
 v3d_context(struct pipe_context *pcontext)
 {
