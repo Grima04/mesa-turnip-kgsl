@@ -1576,6 +1576,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 		if (num_bytes == 2) {
 			store_name = "llvm.amdgcn.tbuffer.store.i32";
 			data_type = ctx->ac.i32;
+			data = LLVMBuildBitCast(ctx->ac.builder, data, ctx->ac.i16, "");
+			data = LLVMBuildZExt(ctx->ac.builder, data, data_type, "");
 			LLVMValueRef tbuffer_params[] = {
 				data,
 				rsrc,
