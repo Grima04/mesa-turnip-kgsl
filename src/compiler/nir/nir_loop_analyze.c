@@ -659,7 +659,8 @@ test_iterations(int32_t iter_int, nir_const_value *step,
 static int
 calculate_iterations(nir_const_value *initial, nir_const_value *step,
                      nir_const_value *limit, nir_loop_variable *alu_def,
-                     nir_alu_instr *cond_alu, bool limit_rhs, bool invert_cond)
+                     nir_alu_instr *cond_alu, nir_op alu_op, bool limit_rhs,
+                     bool invert_cond)
 {
    assert(initial != NULL && step != NULL && limit != NULL);
 
@@ -674,10 +675,10 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
    nir_alu_type induction_base_type =
       nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type);
    if (induction_base_type == nir_type_int || induction_base_type == nir_type_uint) {
-      assert(nir_alu_type_get_base_type(nir_op_infos[cond_alu->op].input_types[1]) == nir_type_int ||
-             nir_alu_type_get_base_type(nir_op_infos[cond_alu->op].input_types[1]) == nir_type_uint);
+      assert(nir_alu_type_get_base_type(nir_op_infos[alu_op].input_types[1]) == nir_type_int ||
+             nir_alu_type_get_base_type(nir_op_infos[alu_op].input_types[1]) == nir_type_uint);
    } else {
-      assert(nir_alu_type_get_base_type(nir_op_infos[cond_alu->op].input_types[0]) ==
+      assert(nir_alu_type_get_base_type(nir_op_infos[alu_op].input_types[0]) ==
              induction_base_type);
    }
 
@@ -701,7 +702,7 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
       trip_offset = 1;
    }
 
-   int iter_int = get_iteration(cond_alu->op, initial, step, limit);
+   int iter_int = get_iteration(alu_op, initial, step, limit);
 
    /* If iter_int is negative the loop is ill-formed or is the conditional is
     * unsigned with a huge iteration count so don't bother going any further.
@@ -724,7 +725,7 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
    for (int bias = -1; bias <= 1; bias++) {
       const int iter_bias = iter_int + bias;
 
-      if (test_iterations(iter_bias, step, limit, cond_alu->op, bit_size,
+      if (test_iterations(iter_bias, step, limit, alu_op, bit_size,
                           induction_base_type, initial,
                           limit_rhs, invert_cond)) {
          return iter_bias > 0 ? iter_bias - trip_offset : iter_bias;
@@ -818,6 +819,8 @@ find_trip_count(loop_info_state *state)
       }
 
       nir_alu_instr *alu = nir_instr_as_alu(terminator->conditional_instr);
+      nir_op alu_op = alu->op;
+
       if (!is_supported_terminator_condition(alu)) {
          trip_count_known = false;
          continue;
@@ -874,7 +877,7 @@ find_trip_count(loop_info_state *state)
       int iterations = calculate_iterations(&initial_val, &step_val,
                                             &limit_val,
                                             basic_ind->ind->alu_def, alu,
-                                            limit_rhs,
+                                            alu_op, limit_rhs,
                                             terminator->continue_from_then);
 
       /* Where we not able to calculate the iteration count */
