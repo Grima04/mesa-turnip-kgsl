@@ -734,6 +734,13 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
    return -1;
 }
 
+static bool
+is_supported_terminator_condition(nir_alu_instr *alu)
+{
+   return nir_alu_instr_is_comparison(alu) &&
+          nir_op_infos[alu->op].num_inputs == 2;
+}
+
 /* Run through each of the terminators of the loop and try to infer a possible
  * trip-count. We need to check them all, and set the lowest trip-count as the
  * trip-count of our loop. If one of the terminators has an undecidable
@@ -765,100 +772,94 @@ find_trip_count(loop_info_state *state)
       nir_loop_variable *limit = NULL;
       bool limit_rhs = true;
 
-      switch (alu->op) {
-      case nir_op_fge:      case nir_op_ige:      case nir_op_uge:
-      case nir_op_flt:      case nir_op_ilt:      case nir_op_ult:
-      case nir_op_feq:      case nir_op_ieq:
-      case nir_op_fne:      case nir_op_ine:
-
-         /* We assume that the limit is the "right" operand */
-         basic_ind = get_loop_var(alu->src[0].src.ssa, state);
-         limit = get_loop_var(alu->src[1].src.ssa, state);
-
-         if (basic_ind->type != basic_induction) {
-            /* We had it the wrong way, flip things around */
-            basic_ind = get_loop_var(alu->src[1].src.ssa, state);
-            limit = get_loop_var(alu->src[0].src.ssa, state);
-            limit_rhs = false;
-            terminator->induction_rhs = true;
-         }
-
-         /* The comparison has to have a basic induction variable for us to be
-          * able to find trip counts.
-          */
-         if (basic_ind->type != basic_induction) {
-            trip_count_known = false;
-            continue;
-         }
-
-         /* Attempt to find a constant limit for the loop */
-         nir_const_value limit_val;
-         if (is_var_constant(limit)) {
-            limit_val =
-               nir_instr_as_load_const(limit->def->parent_instr)->value;
-         } else {
-            trip_count_known = false;
-
-            if (!try_find_limit_of_alu(limit, &limit_val, terminator, state)) {
-               /* Guess loop limit based on array access */
-               if (!guess_loop_limit(state, &limit_val, basic_ind)) {
-                  continue;
-               }
-
-               guessed_trip_count = true;
-            }
-         }
-
-         /* We have determined that we have the following constants:
-          * (With the typical int i = 0; i < x; i++; as an example)
-          *    - Upper limit.
-          *    - Starting value
-          *    - Step / iteration size
-          * Thats all thats needed to calculate the trip-count
-          */
-
-         nir_const_value initial_val =
-            nir_instr_as_load_const(basic_ind->ind->def_outside_loop->
-                                       def->parent_instr)->value;
-
-         nir_const_value step_val =
-            nir_instr_as_load_const(basic_ind->ind->invariant->def->
-                                       parent_instr)->value;
-
-         int iterations = calculate_iterations(&initial_val, &step_val,
-                                               &limit_val,
-                                               basic_ind->ind->alu_def, alu,
-                                               limit_rhs,
-                                               terminator->continue_from_then);
-
-         /* Where we not able to calculate the iteration count */
-         if (iterations == -1) {
-            trip_count_known = false;
-            guessed_trip_count = false;
-            continue;
-         }
-
-         if (guessed_trip_count) {
-            guessed_trip_count = false;
-            if (state->loop->info->guessed_trip_count == 0 ||
-                state->loop->info->guessed_trip_count > iterations)
-              state->loop->info->guessed_trip_count = iterations;
-
-            continue;
-         }
-
-         /* If this is the first run or we have found a smaller amount of
-          * iterations than previously (we have identified a more limiting
-          * terminator) set the trip count and limiting terminator.
-          */
-         if (max_trip_count == -1 || iterations < max_trip_count) {
-            max_trip_count = iterations;
-            limiting_terminator = terminator;
-         }
-         break;
-
-      default:
+      if (!is_supported_terminator_condition(alu)) {
          trip_count_known = false;
+         continue;
+      }
+
+      /* We assume that the limit is the "right" operand */
+      basic_ind = get_loop_var(alu->src[0].src.ssa, state);
+      limit = get_loop_var(alu->src[1].src.ssa, state);
+
+      if (basic_ind->type != basic_induction) {
+         /* We had it the wrong way, flip things around */
+         basic_ind = get_loop_var(alu->src[1].src.ssa, state);
+         limit = get_loop_var(alu->src[0].src.ssa, state);
+         limit_rhs = false;
+         terminator->induction_rhs = true;
+      }
+
+      /* The comparison has to have a basic induction variable for us to be
+       * able to find trip counts.
+       */
+      if (basic_ind->type != basic_induction) {
+         trip_count_known = false;
+         continue;
+      }
+
+      /* Attempt to find a constant limit for the loop */
+      nir_const_value limit_val;
+      if (is_var_constant(limit)) {
+         limit_val =
+            nir_instr_as_load_const(limit->def->parent_instr)->value;
+      } else {
+         trip_count_known = false;
+
+         if (!try_find_limit_of_alu(limit, &limit_val, terminator, state)) {
+            /* Guess loop limit based on array access */
+            if (!guess_loop_limit(state, &limit_val, basic_ind)) {
+               continue;
+            }
+
+            guessed_trip_count = true;
+         }
+      }
+
+      /* We have determined that we have the following constants:
+       * (With the typical int i = 0; i < x; i++; as an example)
+       *    - Upper limit.
+       *    - Starting value
+       *    - Step / iteration size
+       * Thats all thats needed to calculate the trip-count
+       */
+
+      nir_const_value initial_val =
+         nir_instr_as_load_const(basic_ind->ind->def_outside_loop->
+                                    def->parent_instr)->value;
+
+      nir_const_value step_val =
+         nir_instr_as_load_const(basic_ind->ind->invariant->def->
+                                    parent_instr)->value;
+
+      int iterations = calculate_iterations(&initial_val, &step_val,
+                                            &limit_val,
+                                            basic_ind->ind->alu_def, alu,
+                                            limit_rhs,
+                                            terminator->continue_from_then);
+
+      /* Where we not able to calculate the iteration count */
+      if (iterations == -1) {
+         trip_count_known = false;
+         guessed_trip_count = false;
+         continue;
+      }
+
+      if (guessed_trip_count) {
+         guessed_trip_count = false;
+         if (state->loop->info->guessed_trip_count == 0 ||
+             state->loop->info->guessed_trip_count > iterations)
+            state->loop->info->guessed_trip_count = iterations;
+
+         continue;
+      }
+
+      /* If this is the first run or we have found a smaller amount of
+       * iterations than previously (we have identified a more limiting
+       * terminator) set the trip count and limiting terminator.
+       */
+      if (max_trip_count == -1 || iterations < max_trip_count) {
+         max_trip_count = iterations;
+         limiting_terminator = terminator;
       }
    }
 
