@@ -1114,6 +1114,10 @@ static void visit_load_const(struct ac_nir_context *ctx,
 
 	for (unsigned i = 0; i < instr->def.num_components; ++i) {
 		switch (instr->def.bit_size) {
+		case 8:
+			values[i] = LLVMConstInt(element_type,
+			                         instr->value.u8[i], false);
+			break;
 		case 16:
 			values[i] = LLVMConstInt(element_type,
 			                         instr->value.u16[i], false);
