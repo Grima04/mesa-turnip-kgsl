@@ -2078,30 +2078,11 @@ LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0,
 			    unsigned bitsize)
 {
-	LLVMValueRef cmp, val, zero, one;
-	LLVMTypeRef type;
+	LLVMTypeRef type = LLVMIntTypeInContext(ctx->context, bitsize);
+	LLVMValueRef zero = LLVMConstInt(type, 0, false);
+	LLVMValueRef one = LLVMConstInt(type, 1, false);
 
-	switch (bitsize) {
-	case 64:
-		type = ctx->i64;
-		zero = ctx->i64_0;
-		one = ctx->i64_1;
-		break;
-	case 32:
-		type = ctx->i32;
-		zero = ctx->i32_0;
-		one = ctx->i32_1;
-		break;
-	case 16:
-		type = ctx->i16;
-		zero = ctx->i16_0;
-		one = ctx->i16_1;
-		break;
-	default:
-		unreachable(!"invalid bitsize");
-		break;
-	}
-
+	LLVMValueRef cmp, val;
 	cmp = LLVMBuildICmp(ctx->builder, LLVMIntSGT, src0, zero, "");
 	val = LLVMBuildSelect(ctx->builder, cmp, one, src0, "");
 	cmp = LLVMBuildICmp(ctx->builder, LLVMIntSGE, val, zero, "");
