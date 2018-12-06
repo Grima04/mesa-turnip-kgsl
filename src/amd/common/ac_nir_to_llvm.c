@@ -829,8 +829,10 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	case nir_op_ldexp:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
-		if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])) == 32)
+		if (ac_get_elem_bits(&ctx->ac, def_type) == 32)
 			result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ldexp.f32", ctx->ac.f32, src, 2, AC_FUNC_ATTR_READNONE);
+		else if (ac_get_elem_bits(&ctx->ac, def_type) == 16)
+			result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ldexp.f16", ctx->ac.f16, src, 2, AC_FUNC_ATTR_READNONE);
 		else
 			result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ldexp.f64", ctx->ac.f64, src, 2, AC_FUNC_ATTR_READNONE);
 		break;
