@@ -122,17 +122,17 @@ optimizations = [
    (('~flrp', a, b, 1.0), b),
    (('~flrp', a, a, b), a),
    (('~flrp', 0.0, a, b), ('fmul', a, b)),
-   (('~flrp', a, b, ('b2f', 'c@32')), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~flrp', a, b, ('b2f', 'c@1')), ('bcsel', c, b, a), 'options->lower_flrp32'),
    (('~flrp', a, 0.0, c), ('fadd', ('fmul', ('fneg', a), c), a)),
    (('flrp@32', a, b, c), ('fadd', ('fmul', c, ('fsub', b, a)), a), 'options->lower_flrp32'),
    (('flrp@64', a, b, c), ('fadd', ('fmul', c, ('fsub', b, a)), a), 'options->lower_flrp64'),
    (('ffloor', a), ('fsub', a, ('ffract', a)), 'options->lower_ffloor'),
    (('ffract', a), ('fsub', a, ('ffloor', a)), 'options->lower_ffract'),
    (('fceil', a), ('fneg', ('ffloor', ('fneg', a))), 'options->lower_fceil'),
-   (('~fadd', ('fmul', a, ('fadd', 1.0, ('fneg', ('b2f', 'c@32')))), ('fmul', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd', ('fmul', a, ('fadd', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
    (('~fadd@32', ('fmul', a, ('fadd', 1.0, ('fneg',         c ))), ('fmul', b,         c )), ('flrp', a, b, c), '!options->lower_flrp32'),
    (('~fadd@64', ('fmul', a, ('fadd', 1.0, ('fneg',         c ))), ('fmul', b,         c )), ('flrp', a, b, c), '!options->lower_flrp64'),
-   (('~fadd', a, ('fmul', ('b2f', 'c@32'), ('fadd', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd', a, ('fmul', ('b2f', 'c@1'), ('fadd', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp32'),
    (('~fadd@32', a, ('fmul',         c , ('fadd', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp32'),
    (('~fadd@64', a, ('fmul',         c , ('fadd', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp64'),
    (('ffma', a, b, c), ('fadd', ('fmul', a, b), c), 'options->lower_ffma'),
@@ -172,50 +172,50 @@ optimizations = [
    # b2f(a) <= 0.0
    # b2f(a) == 0.0 because b2f(a) can only be 0 or 1
    # inot(a)
-   (('fge', 0.0, ('b2f', 'a@32')), ('inot', a)),
+   (('fge', 0.0, ('b2f', 'a@1')), ('inot', a)),
 
-   (('fge', ('fneg', ('b2f', 'a@32')), 0.0), ('inot', a)),
+   (('fge', ('fneg', ('b2f', 'a@1')), 0.0), ('inot', a)),
 
-   (('fne', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('ior', a, b)),
-   (('fne', ('fmax', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('ior', a, b)),
-   (('fne', ('bcsel', a, 1.0, ('b2f', 'b@32'))   , 0.0), ('ior', a, b)),
-   (('fne', ('b2f', 'a@32'), ('fneg', ('b2f', 'b@32'))),      ('ior', a, b)),
-   (('fne', ('fmul', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('iand', a, b)),
-   (('fne', ('fmin', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('iand', a, b)),
-   (('fne', ('bcsel', a, ('b2f', 'b@32'), 0.0)   , 0.0), ('iand', a, b)),
-   (('fne', ('fadd', ('b2f', 'a@32'), ('fneg', ('b2f', 'b@32'))), 0.0), ('ixor', a, b)),
-   (('fne',          ('b2f', 'a@32') ,          ('b2f', 'b@32') ),      ('ixor', a, b)),
-   (('fne', ('fneg', ('b2f', 'a@32')), ('fneg', ('b2f', 'b@32'))),      ('ixor', a, b)),
-   (('feq', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('inot', ('ior', a, b))),
-   (('feq', ('fmax', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('inot', ('ior', a, b))),
-   (('feq', ('bcsel', a, 1.0, ('b2f', 'b@32'))   , 0.0), ('inot', ('ior', a, b))),
-   (('feq', ('b2f', 'a@32'), ('fneg', ('b2f', 'b@32'))),      ('inot', ('ior', a, b))),
-   (('feq', ('fmul', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('inot', ('iand', a, b))),
-   (('feq', ('fmin', ('b2f', 'a@32'), ('b2f', 'b@32')), 0.0), ('inot', ('iand', a, b))),
-   (('feq', ('bcsel', a, ('b2f', 'b@32'), 0.0)   , 0.0), ('inot', ('iand', a, b))),
-   (('feq', ('fadd', ('b2f', 'a@32'), ('fneg', ('b2f', 'b@32'))), 0.0), ('ieq', a, b)),
-   (('feq',          ('b2f', 'a@32') ,          ('b2f', 'b@32') ),      ('ieq', a, b)),
-   (('feq', ('fneg', ('b2f', 'a@32')), ('fneg', ('b2f', 'b@32'))),      ('ieq', a, b)),
+   (('fne', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
+   (('fne', ('fmax', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
+   (('fne', ('bcsel', a, 1.0, ('b2f', 'b@1'))   , 0.0), ('ior', a, b)),
+   (('fne', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))),      ('ior', a, b)),
+   (('fne', ('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
+   (('fne', ('fmin', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
+   (('fne', ('bcsel', a, ('b2f', 'b@1'), 0.0)   , 0.0), ('iand', a, b)),
+   (('fne', ('fadd', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))), 0.0), ('ixor', a, b)),
+   (('fne',          ('b2f', 'a@1') ,          ('b2f', 'b@1') ),      ('ixor', a, b)),
+   (('fne', ('fneg', ('b2f', 'a@1')), ('fneg', ('b2f', 'b@1'))),      ('ixor', a, b)),
+   (('feq', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('ior', a, b))),
+   (('feq', ('fmax', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('ior', a, b))),
+   (('feq', ('bcsel', a, 1.0, ('b2f', 'b@1'))   , 0.0), ('inot', ('ior', a, b))),
+   (('feq', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))),      ('inot', ('ior', a, b))),
+   (('feq', ('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('iand', a, b))),
+   (('feq', ('fmin', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('iand', a, b))),
+   (('feq', ('bcsel', a, ('b2f', 'b@1'), 0.0)   , 0.0), ('inot', ('iand', a, b))),
+   (('feq', ('fadd', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))), 0.0), ('ieq', a, b)),
+   (('feq',          ('b2f', 'a@1') ,          ('b2f', 'b@1') ),      ('ieq', a, b)),
+   (('feq', ('fneg', ('b2f', 'a@1')), ('fneg', ('b2f', 'b@1'))),      ('ieq', a, b)),
 
    # -(b2f(a) + b2f(b)) < 0
    # 0 < b2f(a) + b2f(b)
    # 0 != b2f(a) + b2f(b)       b2f must be 0 or 1, so the sum is non-negative
    # a || b
-   (('flt', ('fneg', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32'))), 0.0), ('ior', a, b)),
-   (('flt', 0.0, ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32'))), ('ior', a, b)),
+   (('flt', ('fneg', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), 0.0), ('ior', a, b)),
+   (('flt', 0.0, ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('ior', a, b)),
 
    # -(b2f(a) + b2f(b)) >= 0
    # 0 >= b2f(a) + b2f(b)
    # 0 == b2f(a) + b2f(b)       b2f must be 0 or 1, so the sum is non-negative
    # !(a || b)
-   (('fge', ('fneg', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32'))), 0.0), ('inot', ('ior', a, b))),
-   (('fge', 0.0, ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32'))), ('inot', ('ior', a, b))),
+   (('fge', ('fneg', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), 0.0), ('inot', ('ior', a, b))),
+   (('fge', 0.0, ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('inot', ('ior', a, b))),
 
    # Some optimizations (below) convert things like (a < b || c < b) into
    # (min(a, c) < b).  However, this interfers with the previous optimizations
    # that try to remove comparisons with negated sums of b2f.  This just
    # breaks that apart.
-   (('flt', ('fmin', c, ('fneg', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32')))), 0.0),
+   (('flt', ('fmin', c, ('fneg', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')))), 0.0),
     ('ior', ('flt', c, 0.0), ('ior', a, b))),
 
    (('~flt', ('fadd', a, b), a), ('flt', b, 0.0)),
@@ -237,13 +237,13 @@ optimizations = [
    # The fge in the second replacement is not a typo.  I leave the proof that
    # "fmin(-b2f(a), b) >= 0 <=> fmin(-b2f(a), b) == 0" as an exercise for the
    # reader.
-   (('fge', ('fmin', ('fneg', ('b2f', 'a@32')), 'b@32'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
-   (('feq', ('fmin', ('fneg', ('b2f', 'a@32')), 'b@32'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
+   (('fge', ('fmin', ('fneg', ('b2f', 'a@1')), 'b@1'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
+   (('feq', ('fmin', ('fneg', ('b2f', 'a@1')), 'b@1'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
 
-   (('feq', ('b2f', 'a@32'), 0.0), ('inot', a)),
-   (('fne', ('b2f', 'a@32'), 0.0), a),
-   (('ieq', ('b2i', 'a@32'), 0),   ('inot', a)),
-   (('ine', ('b2i', 'a@32'), 0),   a),
+   (('feq', ('b2f', 'a@1'), 0.0), ('inot', a)),
+   (('fne', ('b2f', 'a@1'), 0.0), a),
+   (('ieq', ('b2i', 'a@1'), 0),   ('inot', a)),
+   (('ine', ('b2i', 'a@1'), 0),   a),
 
    (('fne', ('u2f', a), 0.0), ('ine', a, 0)),
    (('feq', ('u2f', a), 0.0), ('ieq', a, 0)),
@@ -277,10 +277,10 @@ optimizations = [
    # 0.0 >= fabs(a)
    (('fge', ('fneg', ('fabs', a)), 0.0), ('feq', a, 0.0)),
 
-   (('fmax',                        ('b2f(is_used_once)', 'a@32'),           ('b2f', 'b@32')),           ('b2f', ('ior', a, b))),
-   (('fmax', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@32')), ('fneg', ('b2f', 'b@32'))), ('fneg', ('b2f', ('ior', a, b)))),
-   (('fmin',                        ('b2f(is_used_once)', 'a@32'),           ('b2f', 'b@32')),           ('b2f', ('iand', a, b))),
-   (('fmin', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@32')), ('fneg', ('b2f', 'b@32'))), ('fneg', ('b2f', ('iand', a, b)))),
+   (('fmax',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('ior', a, b))),
+   (('fmax', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@1')), ('fneg', ('b2f', 'b@1'))), ('fneg', ('b2f', ('ior', a, b)))),
+   (('fmin',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('iand', a, b))),
+   (('fmin', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@1')), ('fneg', ('b2f', 'b@1'))), ('fneg', ('b2f', ('iand', a, b)))),
 
    # fmin(b2f(a), b)
    # bcsel(a, fmin(b2f(a), b), fmin(b2f(a), b))
@@ -289,7 +289,7 @@ optimizations = [
    #
    # Since b is a constant, constant folding will eliminate the fmin and the
    # fmax.  If b is > 1.0, the bcsel will be replaced with a b2f.
-   (('fmin', ('b2f', 'a@32'), '#b'), ('bcsel', a, ('fmin', b, 1.0), ('fmin', b, 0.0))),
+   (('fmin', ('b2f', 'a@1'), '#b'), ('bcsel', a, ('fmin', b, 1.0), ('fmin', b, 0.0))),
 
    (('flt', ('fadd(is_used_once)', a, ('fneg', b)), 0.0), ('flt', a, b)),
 
@@ -438,14 +438,14 @@ optimizations = [
    (('fne', ('fneg', a), a), ('fne', a, 0.0)),
    (('feq', ('fneg', a), a), ('feq', a, 0.0)),
    # Emulating booleans
-   (('imul', ('b2i', 'a@32'), ('b2i', 'b@32')), ('b2i', ('iand', a, b))),
-   (('fmul', ('b2f', 'a@32'), ('b2f', 'b@32')), ('b2f', ('iand', a, b))),
-   (('fsat', ('fadd', ('b2f', 'a@32'), ('b2f', 'b@32'))), ('b2f', ('ior', a, b))),
+   (('imul', ('b2i', 'a@1'), ('b2i', 'b@1')), ('b2i', ('iand', a, b))),
+   (('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), ('b2f', ('iand', a, b))),
+   (('fsat', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('b2f', ('ior', a, b))),
    (('iand', 'a@bool32', 1.0), ('b2f', a)),
    # True/False are ~0 and 0 in NIR.  b2i of True is 1, and -1 is ~0 (True).
    (('ineg', ('b2i32', 'a@32')), a),
-   (('flt', ('fneg', ('b2f', 'a@32')), 0), a), # Generated by TGSI KILL_IF.
-   (('flt', ('fsub', 0.0, ('b2f', 'a@32')), 0), a), # Generated by TGSI KILL_IF.
+   (('flt', ('fneg', ('b2f', 'a@1')), 0), a), # Generated by TGSI KILL_IF.
+   (('flt', ('fsub', 0.0, ('b2f', 'a@1')), 0), a), # Generated by TGSI KILL_IF.
    # Comparison with the same args.  Note that these are not done for
    # the float versions because NaN always returns false on float
    # inequalities.
@@ -536,14 +536,13 @@ optimizations = [
 
    # Conversions
    (('i2b32', ('b2i', 'a@32')), a),
-   (('i2b32', 'a@bool'), a),
    (('f2i', ('ftrunc', a)), ('f2i', a)),
    (('f2u', ('ftrunc', a)), ('f2u', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
    (('i2b', ('iabs', a)), ('i2b', a)),
    (('fabs', ('b2f', a)), ('b2f', a)),
    (('iabs', ('b2i', a)), ('b2i', a)),
-   (('inot', ('f2b32', a)), ('feq', a, 0.0)),
+   (('inot', ('f2b1', a)), ('feq', a, 0.0)),
 
    # Ironically, mark these as imprecise because removing the conversions may
    # preserve more precision than doing the conversions (e.g.,
@@ -917,8 +916,8 @@ late_optimizations = [
    (('fdot4', a, b), ('fdot_replicated4', a, b), 'options->fdot_replicates'),
    (('fdph', a, b), ('fdph_replicated', a, b), 'options->fdot_replicates'),
 
-   (('b2f(is_used_more_than_once)', ('inot', 'a@32')), ('bcsel', a, 0.0, 1.0)),
-   (('fneg(is_used_more_than_once)', ('b2f', ('inot', 'a@32'))), ('bcsel', a, -0.0, -1.0)),
+   (('b2f(is_used_more_than_once)', ('inot', 'a@1')), ('bcsel', a, 0.0, 1.0)),
+   (('fneg(is_used_more_than_once)', ('b2f', ('inot', 'a@1'))), ('bcsel', a, -0.0, -1.0)),
 
    # we do these late so that we don't get in the way of creating ffmas
    (('fmin', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmin', a, b))),
