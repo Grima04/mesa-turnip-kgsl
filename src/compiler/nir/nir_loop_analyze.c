@@ -734,6 +734,35 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
    return -1;
 }
 
+static nir_op
+inverse_comparison(nir_alu_instr *alu)
+{
+   switch (alu->op) {
+   case nir_op_fge:
+      return nir_op_flt;
+   case nir_op_ige:
+      return nir_op_ilt;
+   case nir_op_uge:
+      return nir_op_ult;
+   case nir_op_flt:
+      return nir_op_fge;
+   case nir_op_ilt:
+      return nir_op_ige;
+   case nir_op_ult:
+      return nir_op_uge;
+   case nir_op_feq:
+      return nir_op_fne;
+   case nir_op_ieq:
+      return nir_op_ine;
+   case nir_op_fne:
+      return nir_op_feq;
+   case nir_op_ine:
+      return nir_op_ieq;
+   default:
+      unreachable("Unsuported comparison!");
+   }
+}
+
 static bool
 is_supported_terminator_condition(nir_alu_instr *alu)
 {
