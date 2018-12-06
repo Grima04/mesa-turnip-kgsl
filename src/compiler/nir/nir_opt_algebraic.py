@@ -85,6 +85,8 @@ optimizations = [
    (('fabs', ('u2f', a)), ('u2f', a)),
    (('iabs', ('iabs', a)), ('iabs', a)),
    (('iabs', ('ineg', a)), ('iabs', a)),
+   (('f2b', ('fneg', a)), ('f2b', a)),
+   (('i2b', ('ineg', a)), ('i2b', a)),
    (('~fadd', a, 0.0), a),
    (('iadd', a, 0), a),
    (('usadd_4x8', a, 0), a),
