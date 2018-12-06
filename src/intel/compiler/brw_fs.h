@@ -480,6 +480,10 @@ private:
                          struct brw_reg src,
                          struct brw_reg idx);
 
+   void generate_quad_swizzle(const fs_inst *inst,
+                              struct brw_reg dst, struct brw_reg src,
+                              unsigned swiz);
+
    bool patch_discard_jumps_to_fb_writes();
 
    const struct brw_compiler *compiler;
