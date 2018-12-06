@@ -38,7 +38,8 @@ LOCAL_SRC_FILES := \
 #	-Wno-packed-bitfield-compat
 
 LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/ir3
+	$(LOCAL_PATH)/ir3 \
+	$(MESA_TOP)/include/drm-uapi
 
 LOCAL_GENERATED_SOURCES := $(MESA_GEN_NIR_H)
 
