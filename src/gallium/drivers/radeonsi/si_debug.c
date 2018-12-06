@@ -104,6 +104,24 @@ static void si_dump_shader(struct si_screen *sscreen,
 		fwrite(shader->shader_log, shader->shader_log_size, 1, f);
 	else
 		si_shader_dump(sscreen, shader, NULL, processor, f, false);
+
+	if (shader->bo && sscreen->options.dump_shader_binary) {
+		unsigned size = shader->bo->b.b.width0;
+		fprintf(f, "BO: VA=%"PRIx64" Size=%u\n", shader->bo->gpu_address, size);
+
+		const char *mapped = sscreen->ws->buffer_map(shader->bo->buf, NULL,
+						       PIPE_TRANSFER_UNSYNCHRONIZED |
+						       PIPE_TRANSFER_READ |
+						       RADEON_TRANSFER_TEMPORARY);
+
+		for (unsigned i = 0; i < size; i += 4) {
+			fprintf(f, " %4x: %08x\n", i, *(uint32_t*)(mapped + i));
+		}
+
+		sscreen->ws->buffer_unmap(shader->bo->buf);
+
+		fprintf(f, "\n");
+	}
 }
 
 struct si_log_chunk_shader {
