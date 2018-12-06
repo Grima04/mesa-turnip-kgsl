@@ -38,10 +38,10 @@
 
 #include "compiler/nir/nir.h"
 
-static const char *scratch_rsrc_dword0_symbol =
+static const char scratch_rsrc_dword0_symbol[] =
 	"SCRATCH_RSRC_DWORD0";
 
-static const char *scratch_rsrc_dword1_symbol =
+static const char scratch_rsrc_dword1_symbol[] =
 	"SCRATCH_RSRC_DWORD1";
 
 struct si_shader_output_values
