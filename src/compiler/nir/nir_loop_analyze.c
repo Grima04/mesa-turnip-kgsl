@@ -770,6 +770,27 @@ is_supported_terminator_condition(nir_alu_instr *alu)
           nir_op_infos[alu->op].num_inputs == 2;
 }
 
+static bool
+get_induction_and_limit_vars(nir_alu_instr *alu, nir_loop_variable **ind,
+                             nir_loop_variable **limit,
+                             loop_info_state *state)
+{
+   bool limit_rhs = true;
+
+   /* We assume that the limit is the "right" operand */
+   *ind = get_loop_var(alu->src[0].src.ssa, state);
+   *limit = get_loop_var(alu->src[1].src.ssa, state);
+
+   if ((*ind)->type != basic_induction) {
+      /* We had it the wrong way, flip things around */
+      *ind = get_loop_var(alu->src[1].src.ssa, state);
+      *limit = get_loop_var(alu->src[0].src.ssa, state);
+      limit_rhs = false;
+   }
+
+   return limit_rhs;
+}
+
 /* Run through each of the terminators of the loop and try to infer a possible
  * trip-count. We need to check them all, and set the lowest trip-count as the
  * trip-count of our loop. If one of the terminators has an undecidable
@@ -797,26 +818,16 @@ find_trip_count(loop_info_state *state)
       }
 
       nir_alu_instr *alu = nir_instr_as_alu(terminator->conditional_instr);
-      nir_loop_variable *basic_ind = NULL;
-      nir_loop_variable *limit = NULL;
-      bool limit_rhs = true;
-
       if (!is_supported_terminator_condition(alu)) {
          trip_count_known = false;
          continue;
       }
 
-      /* We assume that the limit is the "right" operand */
-      basic_ind = get_loop_var(alu->src[0].src.ssa, state);
-      limit = get_loop_var(alu->src[1].src.ssa, state);
-
-      if (basic_ind->type != basic_induction) {
-         /* We had it the wrong way, flip things around */
-         basic_ind = get_loop_var(alu->src[1].src.ssa, state);
-         limit = get_loop_var(alu->src[0].src.ssa, state);
-         limit_rhs = false;
-         terminator->induction_rhs = true;
-      }
+      nir_loop_variable *basic_ind;
+      nir_loop_variable *limit;
+      bool limit_rhs = get_induction_and_limit_vars(alu, &basic_ind, &limit,
+                                                    state);
+      terminator->induction_rhs = !limit_rhs;
 
       /* The comparison has to have a basic induction variable for us to be
        * able to find trip counts.
