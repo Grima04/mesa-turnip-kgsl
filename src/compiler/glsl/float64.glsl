@@ -1100,6 +1100,26 @@ __fp64_to_fp32(uint64_t __a)
    return __roundAndPackFloat32(aSign, aExp - 0x381, zFrac);
 }
 
+float
+__uint64_to_fp32(uint64_t __a)
+{
+   uint zFrac = 0u;
+   uvec2 aFrac = unpackUint2x32(__a);
+   int shiftCount = __countLeadingZeros32(mix(aFrac.y, aFrac.x, aFrac.y == 0u));
+   shiftCount -= mix(40, 8, aFrac.y == 0u);
+
+   if (0 <= shiftCount) {
+      __shortShift64Left(aFrac.y, aFrac.x, shiftCount, aFrac.y, aFrac.x);
+      bool is_zero = (aFrac.y | aFrac.x) == 0u;
+      return mix(__packFloat32(0u, 0x95 - shiftCount, aFrac.x), 0, is_zero);
+   }
+
+   shiftCount += 7;
+   __shift64RightJamming(aFrac.y, aFrac.x, -shiftCount, aFrac.y, aFrac.x);
+   zFrac = mix(aFrac.x<<shiftCount, aFrac.x, shiftCount < 0);
+   return __roundAndPackFloat32(0u, 0x9C - shiftCount, zFrac);
+}
+
 /* Returns the result of converting the single-precision floating-point value
  * `a' to the double-precision floating-point format.
  */
