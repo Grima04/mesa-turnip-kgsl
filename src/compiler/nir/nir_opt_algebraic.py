@@ -27,6 +27,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 import nir_algebraic
+from nir_opcodes import type_sizes
 import itertools
 
 # Convenience variables
@@ -755,9 +756,15 @@ for left, right in itertools.combinations_with_replacement(invert.keys(), 2):
    optimizations.append((('inot', ('iand(is_used_once)', (left, a, b), (right, c, d))),
                          ('ior', (invert[left], a, b), (invert[right], c, d))))
 
+# Optimize x2bN(b2x(x)) -> x
+for size in type_sizes('bool'):
+    aN = 'a@' + str(size)
+    f2bN = 'f2b' + str(size)
+    i2bN = 'i2b' + str(size)
+    optimizations.append(((f2bN, ('b2f', aN)), a))
+    optimizations.append(((i2bN, ('b2i', aN)), a))
+
 # Optimize x2yN(b2x(x)) -> b2y
-optimizations.append((('f2b32', ('b2f', 'a@32')), a))
-optimizations.append((('i2b32', ('b2i', 'a@32')), a))
 for x, y in itertools.product(['f', 'u', 'i'], ['f', 'u', 'i']):
    if x != 'f' and y != 'f' and x != y:
       continue
