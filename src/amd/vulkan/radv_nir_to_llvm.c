@@ -2571,12 +2571,8 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 	} else
 		memcpy(&args->out[0], values, sizeof(values[0]) * 4);
 
-	for (unsigned i = 0; i < 4; ++i) {
-		if (!(args->enabled_channels & (1 << i)))
-			continue;
-
+	for (unsigned i = 0; i < 4; ++i)
 		args->out[i] = ac_to_float(&ctx->ac, args->out[i]);
-	}
 }
 
 static void
