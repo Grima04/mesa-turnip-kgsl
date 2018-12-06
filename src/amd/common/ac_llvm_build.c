@@ -620,7 +620,7 @@ ac_build_fdiv(struct ac_llvm_context *ctx,
 	 * If we do (num * (1 / den)), LLVM does:
 	 *    return num * v_rcp_f32(den);
 	 */
-	LLVMValueRef one = LLVMTypeOf(num) == ctx->f64 ? ctx->f64_1 : ctx->f32_1;
+	LLVMValueRef one = LLVMConstReal(LLVMTypeOf(num), 1.0);
 	LLVMValueRef rcp = LLVMBuildFDiv(ctx->builder, one, den, "");
 	LLVMValueRef ret = LLVMBuildFMul(ctx->builder, num, rcp, "");
 
