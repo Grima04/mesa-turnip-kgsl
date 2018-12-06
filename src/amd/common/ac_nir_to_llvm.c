@@ -1034,6 +1034,30 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	}
 
+	case nir_op_pack_32_2x16_split: {
+		LLVMValueRef tmp = ac_build_gather_values(&ctx->ac, src, 2);
+		result = LLVMBuildBitCast(ctx->ac.builder, tmp, ctx->ac.i32, "");
+		break;
+	}
+
+	case nir_op_unpack_32_2x16_split_x: {
+		LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, src[0],
+						    ctx->ac.v2i16,
+						    "");
+		result = LLVMBuildExtractElement(ctx->ac.builder, tmp,
+						 ctx->ac.i32_0, "");
+		break;
+	}
+
+	case nir_op_unpack_32_2x16_split_y: {
+		LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, src[0],
+						    ctx->ac.v2i16,
+						    "");
+		result = LLVMBuildExtractElement(ctx->ac.builder, tmp,
+						 ctx->ac.i32_1, "");
+		break;
+	}
+
 	case nir_op_cube_face_coord: {
 		src[0] = ac_to_float(&ctx->ac, src[0]);
 		LLVMValueRef results[2];
