@@ -217,13 +217,13 @@ should_output(struct gl_context *ctx, GLenum error, const char *fmtString)
 
 
 void
-_mesa_gl_vdebug(struct gl_context *ctx,
-                GLuint *id,
-                enum mesa_debug_source source,
-                enum mesa_debug_type type,
-                enum mesa_debug_severity severity,
-                const char *fmtString,
-                va_list args)
+_mesa_gl_vdebugf(struct gl_context *ctx,
+                 GLuint *id,
+                 enum mesa_debug_source source,
+                 enum mesa_debug_type type,
+                 enum mesa_debug_severity severity,
+                 const char *fmtString,
+                 va_list args)
 {
    char s[MAX_DEBUG_MESSAGE_LENGTH];
    int len;
@@ -240,16 +240,16 @@ _mesa_gl_vdebug(struct gl_context *ctx,
 
 
 void
-_mesa_gl_debug(struct gl_context *ctx,
-               GLuint *id,
-               enum mesa_debug_source source,
-               enum mesa_debug_type type,
-               enum mesa_debug_severity severity,
-               const char *fmtString, ...)
+_mesa_gl_debugf(struct gl_context *ctx,
+                GLuint *id,
+                enum mesa_debug_source source,
+                enum mesa_debug_type type,
+                enum mesa_debug_severity severity,
+                const char *fmtString, ...)
 {
    va_list args;
    va_start(args, fmtString);
-   _mesa_gl_vdebug(ctx, id, source, type, severity, fmtString, args);
+   _mesa_gl_vdebugf(ctx, id, source, type, severity, fmtString, args);
    va_end(args);
 }
 

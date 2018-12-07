@@ -2442,10 +2442,10 @@ shader_debug_log_mesa(void *data, const char *fmt, ...)
 
    va_start(args, fmt);
    GLuint msg_id = 0;
-   _mesa_gl_vdebug(&brw->ctx, &msg_id,
-                   MESA_DEBUG_SOURCE_SHADER_COMPILER,
-                   MESA_DEBUG_TYPE_OTHER,
-                   MESA_DEBUG_SEVERITY_NOTIFICATION, fmt, args);
+   _mesa_gl_vdebugf(&brw->ctx, &msg_id,
+                    MESA_DEBUG_SOURCE_SHADER_COMPILER,
+                    MESA_DEBUG_TYPE_OTHER,
+                    MESA_DEBUG_SEVERITY_NOTIFICATION, fmt, args);
    va_end(args);
 }
 
@@ -2466,10 +2466,10 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
 
    if (brw->perf_debug) {
       GLuint msg_id = 0;
-      _mesa_gl_vdebug(&brw->ctx, &msg_id,
-                      MESA_DEBUG_SOURCE_SHADER_COMPILER,
-                      MESA_DEBUG_TYPE_PERFORMANCE,
-                      MESA_DEBUG_SEVERITY_MEDIUM, fmt, args);
+      _mesa_gl_vdebugf(&brw->ctx, &msg_id,
+                       MESA_DEBUG_SOURCE_SHADER_COMPILER,
+                       MESA_DEBUG_TYPE_PERFORMANCE,
+                       MESA_DEBUG_SEVERITY_MEDIUM, fmt, args);
    }
    va_end(args);
 }

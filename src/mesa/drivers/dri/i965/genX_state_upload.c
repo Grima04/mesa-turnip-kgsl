@@ -3219,13 +3219,13 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
 
                if (binding->BufferObject == ctx->Shared->NullBufferObj) {
                   static unsigned msg_id = 0;
-                  _mesa_gl_debug(ctx, &msg_id, MESA_DEBUG_SOURCE_API,
-                                 MESA_DEBUG_TYPE_UNDEFINED,
-                                 MESA_DEBUG_SEVERITY_HIGH,
-                                 "UBO %d unbound, %s shader uniform data "
-                                 "will be undefined.",
-                                 range->block,
-                                 _mesa_shader_stage_to_string(stage));
+                  _mesa_gl_debugf(ctx, &msg_id, MESA_DEBUG_SOURCE_API,
+                                  MESA_DEBUG_TYPE_UNDEFINED,
+                                  MESA_DEBUG_SEVERITY_HIGH,
+                                  "UBO %d unbound, %s shader uniform data "
+                                  "will be undefined.",
+                                  range->block,
+                                  _mesa_shader_stage_to_string(stage));
                   continue;
                }
 

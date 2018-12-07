@@ -388,11 +388,11 @@ struct brw_cache {
    if (unlikely(INTEL_DEBUG & DEBUG_PERF))                      \
       dbg_printf(__VA_ARGS__);                                  \
    if (brw->perf_debug)                                         \
-      _mesa_gl_debug(&brw->ctx, &msg_id,                        \
-                     MESA_DEBUG_SOURCE_API,                     \
-                     MESA_DEBUG_TYPE_PERFORMANCE,               \
-                     MESA_DEBUG_SEVERITY_MEDIUM,                \
-                     __VA_ARGS__);                              \
+      _mesa_gl_debugf(&brw->ctx, &msg_id,                       \
+                      MESA_DEBUG_SOURCE_API,                    \
+                      MESA_DEBUG_TYPE_PERFORMANCE,              \
+                      MESA_DEBUG_SEVERITY_MEDIUM,               \
+                      __VA_ARGS__);                             \
 } while(0)
 
 #define WARN_ONCE(cond, fmt...) do {                            \
@@ -404,10 +404,10 @@ struct brw_cache {
          fprintf(stderr, fmt);                                  \
          _warned = true;                                        \
                                                                 \
-         _mesa_gl_debug(ctx, &msg_id,                           \
-                        MESA_DEBUG_SOURCE_API,                  \
-                        MESA_DEBUG_TYPE_OTHER,                  \
-                        MESA_DEBUG_SEVERITY_HIGH, fmt);         \
+         _mesa_gl_debugf(ctx, &msg_id,                          \
+                         MESA_DEBUG_SOURCE_API,                 \
+                         MESA_DEBUG_TYPE_OTHER,                 \
+                         MESA_DEBUG_SEVERITY_HIGH, fmt);        \
       }                                                         \
    }                                                            \
 } while (0)
