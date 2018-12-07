@@ -27,6 +27,7 @@
 #include "util/u_memory.h"
 #include "util/ralloc.h"
 #include "util/hash_table.h"
+#include "util/u_upload_mgr.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
 #include "compiler/nir/nir.h"
@@ -301,9 +302,8 @@ v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
 
         v3d_set_shader_uniform_dirty_flags(shader);
 
-        shader->bo = v3d_bo_alloc(v3d->screen, shader_size, "shader");
-        v3d_bo_map(shader->bo);
-        memcpy(shader->bo->map, qpu_insts, shader_size);
+        u_upload_data(v3d->state_uploader, 0, shader_size, 8,
+                      qpu_insts, &shader->offset, &shader->resource);
 
         free(qpu_insts);
 
@@ -328,6 +328,13 @@ v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
         }
 
         return shader;
+}
+
+static void
+v3d_free_compiled_shader(struct v3d_compiled_shader *shader)
+{
+        pipe_resource_reference(&shader->resource, NULL);
+        ralloc_free(shader);
 }
 
 static void
@@ -606,12 +613,11 @@ delete_from_cache_if_matches(struct hash_table *ht,
         if (key->shader_state == so) {
                 struct v3d_compiled_shader *shader = entry->data;
                 _mesa_hash_table_remove(ht, entry);
-                v3d_bo_unreference(&shader->bo);
 
                 if (shader == *last_compile)
                         *last_compile = NULL;
 
-                ralloc_free(shader);
+                v3d_free_compiled_shader(shader);
         }
 }
 
@@ -677,15 +683,13 @@ v3d_program_fini(struct pipe_context *pctx)
 
         hash_table_foreach(v3d->fs_cache, entry) {
                 struct v3d_compiled_shader *shader = entry->data;
-                v3d_bo_unreference(&shader->bo);
-                ralloc_free(shader);
+                v3d_free_compiled_shader(shader);
                 _mesa_hash_table_remove(v3d->fs_cache, entry);
         }
 
         hash_table_foreach(v3d->vs_cache, entry) {
                 struct v3d_compiled_shader *shader = entry->data;
-                v3d_bo_unreference(&shader->bo);
-                ralloc_free(shader);
+                v3d_free_compiled_shader(shader);
                 _mesa_hash_table_remove(v3d->vs_cache, entry);
         }
 

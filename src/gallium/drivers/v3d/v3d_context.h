@@ -143,7 +143,8 @@ struct v3d_uncompiled_shader {
 };
 
 struct v3d_compiled_shader {
-        struct v3d_bo *bo;
+        struct pipe_resource *resource;
+        uint32_t offset;
 
         union {
                 struct v3d_prog_data *base;
@@ -368,7 +369,15 @@ struct v3d_context {
         /** Sync object that our RCL or TFU job will update as its out_sync. */
         uint32_t out_sync;
 
+        /* Stream uploader used by gallium internals.  This could also be used
+         * by driver internals, but we tend to use the v3d_cl.h interfaces
+         * instead.
+         */
         struct u_upload_mgr *uploader;
+        /* State uploader used inside the driver.  This is for packing bits of
+         * long-term state inside buffers.
+         */
+        struct u_upload_mgr *state_uploader;
 
         /** @{ Current pipeline state objects */
         struct pipe_scissor_state scissor;

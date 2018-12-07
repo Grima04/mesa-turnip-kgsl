@@ -192,11 +192,14 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 shader.fragment_shader_propagate_nans = true;
 
                 shader.coordinate_shader_code_address =
-                        cl_address(v3d->prog.cs->bo, 0);
+                        cl_address(v3d_resource(v3d->prog.cs->resource)->bo,
+                                   v3d->prog.cs->offset);
                 shader.vertex_shader_code_address =
-                        cl_address(v3d->prog.vs->bo, 0);
+                        cl_address(v3d_resource(v3d->prog.vs->resource)->bo,
+                                   v3d->prog.vs->offset);
                 shader.fragment_shader_code_address =
-                        cl_address(v3d->prog.fs->bo, 0);
+                        cl_address(v3d_resource(v3d->prog.fs->resource)->bo,
+                                   v3d->prog.fs->offset);
 
                 /* XXX: Use combined input/output size flag in the common
                  * case.
