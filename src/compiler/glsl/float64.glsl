@@ -451,6 +451,38 @@ __roundAndPackFloat64(uint zSign,
    return __packFloat64(zSign, zExp, zFrac0, zFrac1);
 }
 
+uint64_t
+__roundAndPackUInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
+{
+   bool roundNearestEven;
+   bool increment;
+   uint64_t default_nan = 0xFFFFFFFFFFFFFFFFUL;
+
+   roundNearestEven = FLOAT_ROUNDING_MODE == FLOAT_ROUND_NEAREST_EVEN;
+
+   if (zFrac2 >= 0x80000000u)
+      increment = false;
+
+   if (!roundNearestEven) {
+      if (zSign != 0u) {
+         if ((FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) && (zFrac2 != 0u)) {
+            increment = false;
+         }
+      } else {
+         increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_UP) &&
+            (zFrac2 != 0u);
+      }
+   }
+
+   if (increment) {
+      __add64(zFrac0, zFrac1, 0u, 1u, zFrac0, zFrac1);
+      if ((zFrac0 | zFrac1) != 0u)
+         zFrac1 &= ~(1u) + uint(zFrac2 == 0u) & uint(roundNearestEven);
+   }
+   return mix(packUint2x32(uvec2(zFrac1, zFrac0)), default_nan,
+              (zSign !=0u && (zFrac0 | zFrac1) != 0u));
+}
+
 /* Returns the number of leading 0 bits before the most-significant 1 bit of
  * `a'.  If `a' is zero, 32 is returned.
  */
