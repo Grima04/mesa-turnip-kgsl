@@ -232,7 +232,51 @@ iris_alloc_resource(struct pipe_screen *pscreen,
    res->base.screen = pscreen;
    pipe_reference_init(&res->base.reference, 1);
 
+   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
+
    return res;
+}
+
+static bool
+supports_mcs(const struct isl_surf *surf)
+{
+   /* MCS compression only applies to multisampled resources. */
+   if (surf->samples <= 1)
+      return false;
+
+   /* See isl_surf_get_mcs_surf for details. */
+   if (surf->samples == 16 && surf->logical_level0_px.width > 8192)
+      return false;
+
+   /* Depth and stencil buffers use the IMS (interleaved) layout. */
+   if (isl_surf_usage_is_depth_or_stencil(surf->usage))
+      return false;
+
+   return true;
+}
+
+static bool
+supports_ccs(const struct gen_device_info *devinfo,
+             const struct isl_surf *surf)
+{
+   /* Gen9+ only supports CCS for Y-tiled buffers. */
+   if (surf->tiling != ISL_TILING_Y0)
+      return false;
+
+   /* CCS only supports singlesampled resources. */
+   if (surf->samples > 1)
+      return false;
+
+   /* The PRM doesn't say this explicitly, but fast-clears don't appear to
+    * work for 3D textures until Gen9 where the layout of 3D textures changes
+    * to match 2D array textures.
+    */
+   if (devinfo->gen < 9 && surf->dim != ISL_SURF_DIM_2D)
+      return false;
+
+   /* Note: still need to check the format! */
+
+   return true;
 }
 
 static struct pipe_resource *
@@ -282,21 +326,21 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
-   const struct util_format_description *format_desc =
-      util_format_description(templ->format);
 
    if (!res)
       return NULL;
 
+   const struct util_format_description *format_desc =
+      util_format_description(templ->format);
    const bool has_depth = util_format_has_depth(format_desc);
+   const struct isl_drm_modifier_info *mod_info = NULL;
    uint64_t modifier =
       select_best_modifier(devinfo, modifiers, modifiers_count);
 
    isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
 
    if (modifier != DRM_FORMAT_MOD_INVALID) {
-      const struct isl_drm_modifier_info *mod_info =
-         isl_drm_modifier_get_info(modifier);
+      mod_info = isl_drm_modifier_get_info(modifier);
 
       tiling_flags = 1 << mod_info->tiling;
    } else {
@@ -364,8 +408,25 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .tiling_flags = tiling_flags);
    assert(isl_surf_created_successfully);
 
-   const char *name = "miptree";
+   if (mod_info) {
+      res->aux.possible_usages |= 1 << mod_info->aux_usage;
+   } else if (has_depth) {
+      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+   } else if (supports_mcs(&res->surf)) {
+      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
+   } else if (supports_ccs(devinfo, &res->surf)) {
+      if (isl_format_supports_ccs_e(devinfo, res->surf.format))
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
+      else if (isl_format_supports_ccs_d(devinfo, res->surf.format))
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
+   }
 
+   // XXX: we don't actually do aux yet
+   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
+
+   res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
+
+   const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
 
    /* These are for u_upload_mgr buffers only */
