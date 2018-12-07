@@ -1503,6 +1503,22 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .mocs = MOCS_WB);
 }
 
+static void
+fill_surface_state(struct isl_device *isl_dev,
+                   void *map,
+                   struct iris_resource *res,
+                   struct isl_view *view)
+{
+   struct isl_surf_fill_state_info f = {
+      .surf = &res->surf,
+      .view = view,
+      .mocs = MOCS_WB,
+      .address = res->bo->gtt_offset,
+   };
+
+   isl_surf_fill_state_s(isl_dev, map, &f);
+}
+
 /**
  * The pipe->create_sampler_view() driver hook.
  */
@@ -1575,12 +1591,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
       isv->view.array_len =
          tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
-      isl_surf_fill_state(&screen->isl_dev, map,
-                          .surf = &isv->res->surf, .view = &isv->view,
-                          .mocs = MOCS_WB,
-                          .address = isv->res->bo->gtt_offset);
-                          // .aux_surf =
-                          // .clear_color = clear_color,
+      fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view);
    } else {
       fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
                                 isv->view.format, tmpl->u.buf.offset,
@@ -1677,12 +1688,7 @@ iris_create_surface(struct pipe_context *ctx,
    struct iris_bo *state_bo = iris_resource_bo(surf->surface_state.res);
    surf->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
 
-   isl_surf_fill_state(&screen->isl_dev, map,
-                       .surf = &res->surf, .view = &surf->view,
-                       .mocs = MOCS_WB,
-                       .address = res->bo->gtt_offset);
-                       // .aux_surf =
-                       // .clear_color = clear_color,
+   fill_surface_state(&screen->isl_dev, map, res, &surf->view);
 
    return psurf;
 }
@@ -1749,12 +1755,7 @@ iris_set_shader_images(struct pipe_context *ctx,
                .usage = usage,
             };
 
-            isl_surf_fill_state(&screen->isl_dev, map,
-                                .surf = &res->surf, .view = &view,
-                                .mocs = MOCS_WB,
-                                .address = res->bo->gtt_offset);
-                                // .aux_surf =
-                                // .clear_color = clear_color,
+            fill_surface_state(&screen->isl_dev, map, res, &view);
          } else {
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
                                       isl_format, img->u.buf.offset,
