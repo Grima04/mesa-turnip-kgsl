@@ -237,6 +237,146 @@ iris_alloc_resource(struct pipe_screen *pscreen,
    return res;
 }
 
+unsigned
+iris_get_num_logical_layers(const struct iris_resource *res, unsigned level)
+{
+   if (res->surf.dim == ISL_SURF_DIM_3D)
+      return minify(res->surf.logical_level0_px.depth, level);
+   else
+      return res->surf.logical_level0_px.array_len;
+}
+
+static enum isl_aux_state **
+create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
+{
+   uint32_t total_slices = 0;
+   for (uint32_t level = 0; level < res->surf.levels; level++)
+      total_slices += iris_get_num_logical_layers(res, level);
+
+   const size_t per_level_array_size =
+      res->surf.levels * sizeof(enum isl_aux_state *);
+
+   /* We're going to allocate a single chunk of data for both the per-level
+    * reference array and the arrays of aux_state.  This makes cleanup
+    * significantly easier.
+    */
+   const size_t total_size =
+      per_level_array_size + total_slices * sizeof(enum isl_aux_state);
+
+   void *data = malloc(total_size);
+   if (!data)
+      return NULL;
+
+   enum isl_aux_state **per_level_arr = data;
+   enum isl_aux_state *s = data + per_level_array_size;
+   for (uint32_t level = 0; level < res->surf.levels; level++) {
+      per_level_arr[level] = s;
+      const unsigned level_layers = iris_get_num_logical_layers(res, level);
+      for (uint32_t a = 0; a < level_layers; a++)
+         *(s++) = initial;
+   }
+   assert((void *)s == data + total_size);
+
+   return per_level_arr;
+}
+
+/**
+ * Allocate the initial aux surface for a resource based on aux.usage
+ */
+static bool
+iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
+{
+   struct isl_device *isl_dev = &screen->isl_dev;
+   enum isl_aux_state initial_state;
+   UNUSED bool ok = false;
+   uint8_t memset_value = 0;
+   uint32_t alloc_flags = 0;
+
+   assert(!res->aux.bo);
+
+   switch (res->aux.usage) {
+   case ISL_AUX_USAGE_NONE:
+      res->aux.surf.size_B = 0;
+      break;
+   case ISL_AUX_USAGE_HIZ:
+      initial_state = ISL_AUX_STATE_AUX_INVALID;
+      memset_value = 0;
+      ok = isl_surf_get_hiz_surf(isl_dev, &res->surf, &res->aux.surf);
+      break;
+   case ISL_AUX_USAGE_MCS:
+      /* The Ivybridge PRM, Vol 2 Part 1 p326 says:
+       *
+       *    "When MCS buffer is enabled and bound to MSRT, it is required
+       *     that it is cleared prior to any rendering."
+       *
+       * Since we only use the MCS buffer for rendering, we just clear it
+       * immediately on allocation.  The clear value for MCS buffers is all
+       * 1's, so we simply memset it to 0xff.
+       */
+      initial_state = ISL_AUX_STATE_CLEAR;
+      memset_value = 0xFF;
+      ok = isl_surf_get_mcs_surf(isl_dev, &res->surf, &res->aux.surf);
+      break;
+   case ISL_AUX_USAGE_CCS_D:
+   case ISL_AUX_USAGE_CCS_E:
+      /* When CCS_E is used, we need to ensure that the CCS starts off in
+       * a valid state.  From the Sky Lake PRM, "MCS Buffer for Render
+       * Target(s)":
+       *
+       *    "If Software wants to enable Color Compression without Fast
+       *     clear, Software needs to initialize MCS with zeros."
+       *
+       * A CCS value of 0 indicates that the corresponding block is in the
+       * pass-through state which is what we want.
+       *
+       * For CCS_D, do the same thing.  On Gen9+, this avoids having any
+       * undefined bits in the aux buffer.
+       */
+      initial_state = ISL_AUX_STATE_PASS_THROUGH;
+      alloc_flags |= BO_ALLOC_ZEROED;
+      ok = isl_surf_get_ccs_surf(isl_dev, &res->surf, &res->aux.surf, 0);
+      break;
+   }
+
+   /* No work is needed for a zero-sized auxiliary buffer. */
+   if (res->aux.surf.size_B == 0)
+      return true;
+
+   /* Assert that ISL gave us a valid aux surf */
+   assert(ok);
+
+   /* Create the aux_state for the auxiliary buffer. */
+   res->aux.state = create_aux_state_map(res, initial_state);
+   if (!res->aux.state)
+      return false;
+
+   /* Allocate the auxiliary buffer.  ISL has stricter set of alignment rules
+    * the drm allocator.  Therefore, one can pass the ISL dimensions in terms
+    * of bytes instead of trying to recalculate based on different format
+    * block sizes.
+    */
+   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer",
+                                     res->aux.surf.size_B,
+                                     IRIS_MEMZONE_OTHER, I915_TILING_Y,
+                                     res->aux.surf.row_pitch_B, alloc_flags);
+   if (!res->aux.bo)
+      return false;
+
+   /* Optionally, initialize the auxiliary data to the desired value. */
+   if (memset_value != 0) {
+      void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
+      if (!map)
+         return false;
+
+      memset(map, memset_value, res->aux.surf.size_B);
+      iris_bo_unmap(res->aux.bo);
+   }
+
+   // XXX: HIZ enabling
+
+   return true;
+}
+
 static bool
 supports_mcs(const struct isl_surf *surf)
 {
@@ -438,12 +578,20 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                  memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, 0);
-   if (!res->bo) {
-      iris_resource_destroy(pscreen, &res->base);
-      return NULL;
-   }
+
+   if (!res->bo)
+      goto fail;
+
+   if (!iris_resource_alloc_aux(screen, res))
+      goto fail;
 
    return &res->base;
+
+fail:
+   fprintf(stderr, "XXX: resource creation failed\n");
+   iris_resource_destroy(pscreen, &res->base);
+   return NULL;
+
 }
 
 static struct pipe_resource *
@@ -561,6 +709,10 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
       assert(res->bo->tiling_mode ==
              isl_tiling_to_i915_tiling(res->surf.tiling));
+
+      // XXX: create_ccs_buf_for_image?
+      if (!iris_resource_alloc_aux(screen, res))
+         goto fail;
    }
 
    return &res->base;

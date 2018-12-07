@@ -192,4 +192,7 @@ void iris_flush_and_dirty_for_history(struct iris_context *ice,
                                       struct iris_batch *batch,
                                       struct iris_resource *res);
 
+unsigned iris_get_num_logical_layers(const struct iris_resource *res,
+                                     unsigned level);
+
 #endif
