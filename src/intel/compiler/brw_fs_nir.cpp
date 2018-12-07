@@ -805,30 +805,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
-      /* CHV PRM, vol07, 3D Media GPGPU Engine, Register Region Restrictions:
-       *
-       *    "When source or destination is 64b (...), regioning in Align1
-       *     must follow these rules:
-       *
-       *     1. Source and destination horizontal stride must be aligned to
-       *        the same qword.
-       *     (...)"
-       *
-       * This means that conversions from bit-sizes smaller than 64-bit to
-       * 64-bit need to have the source data elements aligned to 64-bit.
-       * This restriction does not apply to BDW and later.
-       */
-      if (nir_dest_bit_size(instr->dest.dest) == 64 &&
-          nir_src_bit_size(instr->src[0].src) < 64 &&
-          (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
-         fs_reg tmp = bld.vgrf(result.type, 1);
-         tmp = subscript(tmp, op[0].type, 0);
-         inst = bld.MOV(tmp, op[0]);
-         inst = bld.MOV(result, tmp);
-         inst->saturate = instr->dest.saturate;
-         break;
-      }
-      /* fallthrough */
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
@@ -1463,36 +1439,14 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       unreachable("not reached: should have been lowered");
 
    case nir_op_ishl:
-   case nir_op_ishr:
-   case nir_op_ushr: {
-      fs_reg shift_count = op[1];
-
-      if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) {
-         if (op[1].file == VGRF &&
-             (result.type == BRW_REGISTER_TYPE_Q ||
-              result.type == BRW_REGISTER_TYPE_UQ)) {
-            shift_count = fs_reg(VGRF, alloc.allocate(dispatch_width / 4),
-                                 BRW_REGISTER_TYPE_UD);
-            shift_count.stride = 2;
-            bld.MOV(shift_count, op[1]);
-         }
-      }
-
-      switch (instr->op) {
-      case nir_op_ishl:
-         bld.SHL(result, op[0], shift_count);
-         break;
-      case nir_op_ishr:
-         bld.ASR(result, op[0], shift_count);
-         break;
-      case nir_op_ushr:
-         bld.SHR(result, op[0], shift_count);
-         break;
-      default:
-         unreachable("not reached");
-      }
+      bld.SHL(result, op[0], op[1]);
       break;
-   }
+   case nir_op_ishr:
+      bld.ASR(result, op[0], op[1]);
+      break;
+   case nir_op_ushr:
+      bld.SHR(result, op[0], op[1]);
+      break;
 
    case nir_op_pack_half_2x16_split:
       bld.emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, result, op[0], op[1]);
@@ -4414,34 +4368,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const fs_reg tmp_left = horiz_stride(tmp, 2);
       const fs_reg tmp_right = horiz_stride(horiz_offset(tmp, 1), 2);
 
-      /* From the Cherryview PRM Vol. 7, "Register Region Restrictiosn":
-       *
-       *    "When source or destination datatype is 64b or operation is
-       *    integer DWord multiply, regioning in Align1 must follow
-       *    these rules:
-       *
-       *    [...]
-       *
-       *    3. Source and Destination offset must be the same, except
-       *       the case of scalar source."
-       *
-       * In order to work around this, we have to emit two 32-bit MOVs instead
-       * of a single 64-bit MOV to do the shuffle.
-       */
-      if (type_sz(value.type) > 4 &&
-          (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
-         ubld.MOV(subscript(tmp_left, BRW_REGISTER_TYPE_D, 0),
-                  subscript(src_right, BRW_REGISTER_TYPE_D, 0));
-         ubld.MOV(subscript(tmp_left, BRW_REGISTER_TYPE_D, 1),
-                  subscript(src_right, BRW_REGISTER_TYPE_D, 1));
-         ubld.MOV(subscript(tmp_right, BRW_REGISTER_TYPE_D, 0),
-                  subscript(src_left, BRW_REGISTER_TYPE_D, 0));
-         ubld.MOV(subscript(tmp_right, BRW_REGISTER_TYPE_D, 1),
-                  subscript(src_left, BRW_REGISTER_TYPE_D, 1));
-      } else {
-         ubld.MOV(tmp_left, src_right);
-         ubld.MOV(tmp_right, src_left);
-      }
+      ubld.MOV(tmp_left, src_right);
+      ubld.MOV(tmp_right, src_left);
+
       bld.MOV(retype(dest, value.type), tmp);
       break;
    }
