@@ -218,10 +218,10 @@ struct iris_bo *iris_bo_alloc(struct iris_bufmgr *bufmgr,
 struct iris_bo *iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr,
                                     const char *name,
                                     uint64_t size,
+                                    enum iris_memory_zone memzone,
                                     uint32_t tiling_mode,
                                     uint32_t pitch,
-                                    unsigned flags,
-                                    enum iris_memory_zone memzone);
+                                    unsigned flags);
 
 struct iris_bo *
 iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
