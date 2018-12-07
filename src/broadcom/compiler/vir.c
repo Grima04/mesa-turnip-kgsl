@@ -639,6 +639,7 @@ v3d_lower_nir(struct v3d_compile *c)
         }
 
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
+        NIR_PASS_V(c->s, nir_lower_system_values);
 }
 
 static void

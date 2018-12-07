@@ -259,6 +259,11 @@ enum quniform_contents {
 
         QUNIFORM_ALPHA_REF,
 
+        /* Number of workgroups passed to glDispatchCompute in the dimension
+         * selected by the data value.
+         */
+        QUNIFORM_NUM_WORK_GROUPS,
+
         /**
          * Returns the the offset of the scratch buffer for register spilling.
          */
@@ -539,6 +544,9 @@ struct v3d_compile {
 
         /* Fragment shader payload regs. */
         struct qreg payload_w, payload_w_centroid, payload_z;
+
+        struct qreg cs_payload[2];
+        int local_invocation_index_bits;
 
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS];
         uint32_t num_vpm_writes;
