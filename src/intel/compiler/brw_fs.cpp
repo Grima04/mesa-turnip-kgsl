@@ -5669,8 +5669,10 @@ needs_src_copy(const fs_builder &lbld, const fs_inst *inst, unsigned i)
 static fs_reg
 emit_unzip(const fs_builder &lbld, fs_inst *inst, unsigned i)
 {
+   assert(lbld.group() >= inst->group);
+
    /* Specified channel group from the source region. */
-   const fs_reg src = horiz_offset(inst->src[i], lbld.group());
+   const fs_reg src = horiz_offset(inst->src[i], lbld.group() - inst->group);
 
    if (needs_src_copy(lbld, inst, i)) {
       /* Builder of the right width to perform the copy avoiding uninitialized
@@ -5759,9 +5761,10 @@ emit_zip(const fs_builder &lbld_before, const fs_builder &lbld_after,
 {
    assert(lbld_before.dispatch_width() == lbld_after.dispatch_width());
    assert(lbld_before.group() == lbld_after.group());
+   assert(lbld_after.group() >= inst->group);
 
    /* Specified channel group from the destination region. */
-   const fs_reg dst = horiz_offset(inst->dst, lbld_after.group());
+   const fs_reg dst = horiz_offset(inst->dst, lbld_after.group() - inst->group);
    const unsigned dst_size = inst->size_written /
       inst->dst.component_size(inst->exec_size);
 
