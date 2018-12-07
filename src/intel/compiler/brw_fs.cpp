@@ -464,6 +464,24 @@ fs_inst::can_do_source_mods(const struct gen_device_info *devinfo) const
    if (is_send_from_grf())
       return false;
 
+   /* From GEN:BUG:1604601757:
+    *
+    * "When multiplying a DW and any lower precision integer, source modifier
+    *  is not supported."
+    */
+   if (devinfo->gen >= 12 && (opcode == BRW_OPCODE_MUL ||
+                              opcode == BRW_OPCODE_MAD)) {
+      const brw_reg_type exec_type = get_exec_type(this);
+      const unsigned min_type_sz = opcode == BRW_OPCODE_MAD ?
+         MIN2(type_sz(src[1].type), type_sz(src[2].type)) :
+         MIN2(type_sz(src[0].type), type_sz(src[1].type));
+
+      if (brw_reg_type_is_integer(exec_type) &&
+          type_sz(exec_type) >= 4 &&
+          type_sz(exec_type) != min_type_sz)
+         return false;
+   }
+
    if (!backend_instruction::can_do_source_mods())
       return false;
 
