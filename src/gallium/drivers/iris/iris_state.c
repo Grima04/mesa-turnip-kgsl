@@ -1564,16 +1564,27 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .mocs = mocs(bo));
 }
 
+#define SURFACE_STATE_ALIGNMENT 64
+
 /**
- * Allocate a SURFACE_STATE structure.
+ * Allocate several contiguous SURFACE_STATE structures, one for each
+ * supported auxiliary surface mode.
  */
 static void *
 alloc_surface_states(struct u_upload_mgr *mgr,
-                     struct iris_state_ref *ref)
+                     struct iris_state_ref *ref,
+                     unsigned aux_usages)
 {
    const unsigned surf_size = 4 * GENX(RENDER_SURFACE_STATE_length);
 
-   void *map = upload_state(mgr, ref, surf_size, 64);
+   /* If this changes, update this to explicitly align pointers */
+   STATIC_ASSERT(surf_size == SURFACE_STATE_ALIGNMENT);
+
+   assert(aux_usages != 0);
+
+   void *map =
+      upload_state(mgr, ref, util_bitcount(aux_usages) * surf_size,
+                   SURFACE_STATE_ALIGNMENT);
 
    ref->offset += iris_bo_offset_from_base_address(iris_resource_bo(ref->res));
 
@@ -1584,7 +1595,8 @@ static void
 fill_surface_state(struct isl_device *isl_dev,
                    void *map,
                    struct iris_resource *res,
-                   struct isl_view *view)
+                   struct isl_view *view,
+                   unsigned aux_usage)
 {
    struct isl_surf_fill_state_info f = {
       .surf = &res->surf,
@@ -1592,6 +1604,13 @@ fill_surface_state(struct isl_device *isl_dev,
       .mocs = mocs(res->bo),
       .address = res->bo->gtt_offset,
    };
+
+   if (aux_usage != ISL_AUX_USAGE_NONE) {
+      f.aux_surf = &res->aux.surf;
+      f.aux_usage = aux_usage;
+      f.aux_address = res->aux.bo->gtt_offset + res->aux.offset;
+      // XXX: clear color
+   }
 
    isl_surf_fill_state_s(isl_dev, map, &f);
 }
@@ -1619,11 +1638,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
    pipe_reference_init(&isv->base.reference, 1);
    pipe_resource_reference(&isv->base.texture, tex);
 
-   void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &isv->surface_state);
-   if (!unlikely(map))
-      return NULL;
-
    if (util_format_is_depth_or_stencil(tmpl->format)) {
       struct iris_resource *zres, *sres;
       const struct util_format_description *desc =
@@ -1635,6 +1649,12 @@ iris_create_sampler_view(struct pipe_context *ctx,
    }
 
    isv->res = (struct iris_resource *) tex;
+
+   void *map = alloc_surface_states(ice->state.surface_uploader,
+                                    &isv->surface_state,
+                                    isv->res->aux.possible_usages);
+   if (!unlikely(map))
+      return NULL;
 
    isl_surf_usage_flags_t usage = ISL_SURF_USAGE_TEXTURE_BIT;
 
@@ -1665,7 +1685,15 @@ iris_create_sampler_view(struct pipe_context *ctx,
       isv->view.array_len =
          tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
-      fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view);
+      unsigned aux_modes = isv->res->aux.possible_usages;
+      while (aux_modes) {
+         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+
+         fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view,
+                            aux_usage);
+
+         map += SURFACE_STATE_ALIGNMENT;
+      }
    } else {
       fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
                                 isv->view.format, tmpl->u.buf.offset,
@@ -1755,11 +1783,19 @@ iris_create_surface(struct pipe_context *ctx,
 
 
    void *map = alloc_surface_states(ice->state.surface_uploader,
-                                    &surf->surface_state);
+                                    &surf->surface_state,
+                                    res->aux.possible_usages);
    if (!unlikely(map))
       return NULL;
 
-   fill_surface_state(&screen->isl_dev, map, res, &surf->view);
+   unsigned aux_modes = res->aux.possible_usages;
+   while (aux_modes) {
+      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+
+      fill_surface_state(&screen->isl_dev, map, res, &surf->view, aux_usage);
+
+      map += SURFACE_STATE_ALIGNMENT;
+   }
 
    return psurf;
 }
@@ -1824,7 +1860,8 @@ iris_set_shader_images(struct pipe_context *ctx,
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
             alloc_surface_states(ice->state.surface_uploader,
-                                 &shs->image[start_slot + i].surface_state);
+                                 &shs->image[start_slot + i].surface_state,
+                                 1 << ISL_AUX_USAGE_NONE);
          if (!unlikely(map)) {
             pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
             return;
@@ -1867,7 +1904,15 @@ iris_set_shader_images(struct pipe_context *ctx,
                fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
                                          isl_fmt, 0, res->bo->size);
             } else {
-               fill_surface_state(&screen->isl_dev, map, res, &view);
+               /* Images don't support compression */
+               unsigned aux_modes = 1 << ISL_AUX_USAGE_NONE;
+               while (aux_modes) {
+                  enum isl_aux_usage usage = u_bit_scan(&aux_modes);
+
+                  fill_surface_state(&screen->isl_dev, map, res, &view, usage);
+
+                  map += SURFACE_STATE_ALIGNMENT;
+               }
             }
 
             isl_surf_fill_image_param(&screen->isl_dev,
