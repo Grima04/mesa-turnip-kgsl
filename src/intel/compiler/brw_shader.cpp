@@ -415,10 +415,6 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
 
    case FS_OPCODE_PACK_HALF_2x16_SPLIT:
       return "pack_half_2x16_split";
-   case FS_OPCODE_UNPACK_HALF_2x16_SPLIT_X:
-      return "unpack_half_2x16_split_x";
-   case FS_OPCODE_UNPACK_HALF_2x16_SPLIT_Y:
-      return "unpack_half_2x16_split_y";
 
    case FS_OPCODE_PLACEHOLDER_HALT:
       return "placeholder_halt";

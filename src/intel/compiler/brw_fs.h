@@ -461,9 +461,6 @@ private:
                                       struct brw_reg dst,
                                       struct brw_reg x,
                                       struct brw_reg y);
-   void generate_unpack_half_2x16_split(fs_inst *inst,
-                                        struct brw_reg dst,
-                                        struct brw_reg src);
 
    void generate_shader_time_add(fs_inst *inst,
                                  struct brw_reg payload,

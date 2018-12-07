@@ -1756,35 +1756,6 @@ fs_generator::generate_pack_half_2x16_split(fs_inst *,
 }
 
 void
-fs_generator::generate_unpack_half_2x16_split(fs_inst *inst,
-                                              struct brw_reg dst,
-                                              struct brw_reg src)
-{
-   assert(devinfo->gen >= 7);
-   assert(dst.type == BRW_REGISTER_TYPE_F);
-   assert(src.type == BRW_REGISTER_TYPE_UD);
-
-   /* From the Ivybridge PRM, Vol4, Part3, Section 6.26 f16to32:
-    *
-    *   Because this instruction does not have a 16-bit floating-point type,
-    *   the source data type must be Word (W). The destination type must be
-    *   F (Float).
-    */
-   struct brw_reg src_w = spread(retype(src, BRW_REGISTER_TYPE_W), 2);
-
-   /* Each channel of src has the form of unpackHalf2x16's input: 0xhhhhllll.
-    * For the Y case, we wish to access only the upper word; therefore
-    * a 16-bit subregister offset is needed.
-    */
-   assert(inst->opcode == FS_OPCODE_UNPACK_HALF_2x16_SPLIT_X ||
-          inst->opcode == FS_OPCODE_UNPACK_HALF_2x16_SPLIT_Y);
-   if (inst->opcode == FS_OPCODE_UNPACK_HALF_2x16_SPLIT_Y)
-      src_w.subnr += 2;
-
-   brw_F16TO32(p, dst, src_w);
-}
-
-void
 fs_generator::generate_shader_time_add(fs_inst *,
                                        struct brw_reg payload,
                                        struct brw_reg offset,
@@ -2420,11 +2391,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       case FS_OPCODE_PACK_HALF_2x16_SPLIT:
           generate_pack_half_2x16_split(inst, dst, src[0], src[1]);
           break;
-
-      case FS_OPCODE_UNPACK_HALF_2x16_SPLIT_X:
-      case FS_OPCODE_UNPACK_HALF_2x16_SPLIT_Y:
-         generate_unpack_half_2x16_split(inst, dst, src[0]);
-         break;
 
       case FS_OPCODE_PLACEHOLDER_HALT:
          /* This is the place where the final HALT needs to be inserted if
