@@ -5133,6 +5133,9 @@ static bool si_shader_binary_open(struct si_screen *screen,
 
 	bool ok = ac_rtld_open(rtld, (struct ac_rtld_open_info){
 			.info = &screen->info,
+			.options = {
+				.halt_at_entry = screen->options.halt_shaders,
+			},
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
 			.elf_sizes = part_sizes,

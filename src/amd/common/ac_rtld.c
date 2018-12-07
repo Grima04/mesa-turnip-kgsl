@@ -243,6 +243,7 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 	elf_version(EV_CURRENT);
 
 	memset(binary, 0, sizeof(*binary));
+	memcpy(&binary->options, &i.options, sizeof(binary->options));
 	binary->num_parts = i.num_parts;
 	binary->parts = calloc(sizeof(*binary->parts), i.num_parts);
 	if (!binary->parts)
@@ -289,6 +290,9 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 	/* First pass over all parts: open ELFs, pre-determine the placement of
 	 * sections in the memory image, and collect and layout private LDS symbols. */
 	uint32_t lds_end_align = 0;
+
+	if (binary->options.halt_at_entry)
+		pasted_text_size += 4;
 
 	for (unsigned part_idx = 0; part_idx < i.num_parts; ++part_idx) {
 		struct ac_rtld_part *part = &binary->parts[part_idx];
@@ -691,6 +695,11 @@ bool ac_rtld_upload(struct ac_rtld_upload_info *u)
 			return false; \
 		} \
 	} while (false)
+
+	if (u->binary->options.halt_at_entry) {
+		/* s_sethalt 1 */
+		*(uint32_t *)u->rx_ptr = util_cpu_to_le32(0xbf8d0001);
+	}
 
 	/* First pass: upload raw section data and lay out private LDS symbols. */
 	for (unsigned i = 0; i < u->binary->num_parts; ++i) {
