@@ -803,7 +803,21 @@ private:
    Function *func;
    Program *prog;
 
-   static uint8_t relDegree[17][17];
+   struct RelDegree {
+      uint8_t data[17][17];
+
+      RelDegree() {
+         for (int i = 1; i <= 16; ++i)
+            for (int j = 1; j <= 16; ++j)
+               data[i][j] = j * ((i + j - 1) / j);
+      }
+
+      const uint8_t* operator[](std::size_t i) const {
+         return data[i];
+      }
+   };
+
+   static const RelDegree relDegree;
 
    RegisterSet regs;
 
@@ -815,7 +829,7 @@ private:
    std::list<ValuePair> mustSpill;
 };
 
-uint8_t GCRA::relDegree[17][17];
+const GCRA::RelDegree GCRA::relDegree;
 
 GCRA::RIG_Node::RIG_Node() : Node(NULL), next(this), prev(this)
 {
@@ -1155,11 +1169,6 @@ GCRA::GCRA(Function *fn, SpillCodeInserter& spill) :
    spill(spill)
 {
    prog = func->getProgram();
-
-   // initialize relative degrees array - i takes away from j
-   for (int i = 1; i <= 16; ++i)
-      for (int j = 1; j <= 16; ++j)
-         relDegree[i][j] = j * ((i + j - 1) / j);
 }
 
 GCRA::~GCRA()
