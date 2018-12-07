@@ -1503,6 +1503,22 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .mocs = MOCS_WB);
 }
 
+/**
+ * Allocate a SURFACE_STATE structure.
+ */
+static void *
+alloc_surface_states(struct u_upload_mgr *mgr,
+                     struct iris_state_ref *ref)
+{
+   const unsigned surf_size = 4 * GENX(RENDER_SURFACE_STATE_length);
+
+   void *map = upload_state(mgr, ref, surf_size, 64);
+
+   ref->offset += iris_bo_offset_from_base_address(iris_resource_bo(ref->res));
+
+   return map;
+}
+
 static void
 fill_surface_state(struct isl_device *isl_dev,
                    void *map,
@@ -1542,13 +1558,10 @@ iris_create_sampler_view(struct pipe_context *ctx,
    pipe_reference_init(&isv->base.reference, 1);
    pipe_resource_reference(&isv->base.texture, tex);
 
-   void *map = upload_state(ice->state.surface_uploader, &isv->surface_state,
-                            4 * GENX(RENDER_SURFACE_STATE_length), 64);
+   void *map = alloc_surface_states(ice->state.surface_uploader,
+                                    &isv->surface_state);
    if (!unlikely(map))
       return NULL;
-
-   struct iris_bo *state_bo = iris_resource_bo(isv->surface_state.res);
-   isv->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
 
    if (util_format_is_depth_or_stencil(tmpl->format)) {
       struct iris_resource *zres, *sres;
@@ -1680,13 +1693,10 @@ iris_create_surface(struct pipe_context *ctx,
       return psurf;
 
 
-   void *map = upload_state(ice->state.surface_uploader, &surf->surface_state,
-                            4 * GENX(RENDER_SURFACE_STATE_length), 64);
+   void *map = alloc_surface_states(ice->state.surface_uploader,
+                                    &surf->surface_state);
    if (!unlikely(map))
       return NULL;
-
-   struct iris_bo *state_bo = iris_resource_bo(surf->surface_state.res);
-   surf->surface_state.offset += iris_bo_offset_from_base_address(state_bo);
 
    fill_surface_state(&screen->isl_dev, map, res, &surf->view);
 
@@ -1722,18 +1732,12 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
-            upload_state(ice->state.surface_uploader,
-                         &shs->image[start_slot + i].surface_state,
-                         4 * GENX(RENDER_SURFACE_STATE_length), 64);
+            alloc_surface_states(ice->state.surface_uploader,
+                                 &shs->image[start_slot + i].surface_state);
          if (!unlikely(map)) {
             pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
             return;
          }
-
-         struct iris_bo *surf_state_bo =
-            iris_resource_bo(shs->image[start_slot + i].surface_state.res);
-         shs->image[start_slot + i].surface_state.offset +=
-            iris_bo_offset_from_base_address(surf_state_bo);
 
          isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
          enum isl_format isl_format =
