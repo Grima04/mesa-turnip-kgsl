@@ -3944,6 +3944,9 @@ glsl_base_to_llvm_type(struct ac_llvm_context *ac,
 	case GLSL_TYPE_BOOL:
 	case GLSL_TYPE_SUBROUTINE:
 		return ac->i32;
+	case GLSL_TYPE_INT8:
+	case GLSL_TYPE_UINT8:
+		return ac->i8;
 	case GLSL_TYPE_INT16:
 	case GLSL_TYPE_UINT16:
 		return ac->i16;
