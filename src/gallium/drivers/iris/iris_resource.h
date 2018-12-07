@@ -67,6 +67,46 @@ struct iris_resource {
     * in the past.  Only meaningful for PIPE_BUFFER; used for flushing.
     */
    unsigned bind_history;
+
+   /**
+    * Auxiliary buffer information (CCS, MCS, or HiZ).
+    */
+   struct {
+      /** The surface layout for the auxiliary buffer. */
+      struct isl_surf surf;
+
+      /** The buffer object containing the auxiliary data. */
+      struct iris_bo *bo;
+
+      /** Offset into 'bo' where the auxiliary surface starts. */
+      uint32_t offset;
+
+      /**
+       * \brief The type of auxiliary compression used by this resource.
+       *
+       * This describes the type of auxiliary compression that is intended to
+       * be used by this resource.  An aux usage of ISL_AUX_USAGE_NONE means
+       * that auxiliary compression is permanently disabled.  An aux usage
+       * other than ISL_AUX_USAGE_NONE does not imply that auxiliary
+       * compression will always be enabled for this surface.
+       */
+      enum isl_aux_usage usage;
+
+      /**
+       * A bitfield of ISL_AUX_* modes that might this resource might use.
+       *
+       * For example, a surface might use both CCS_E and CCS_D at times.
+       */
+      unsigned possible_usages;
+
+      /**
+       * \brief Maps miptree slices to their current aux state.
+       *
+       * This two-dimensional array is indexed as [level][layer] and stores an
+       * aux state for each slice.
+       */
+      enum isl_aux_state **state;
+   } aux;
 };
 
 /**

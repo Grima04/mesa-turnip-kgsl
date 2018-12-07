@@ -197,10 +197,24 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
 }
 
 static void
+iris_resource_disable_aux(struct iris_resource *res)
+{
+   iris_bo_unreference(res->aux.bo);
+   free(res->aux.state);
+
+   res->aux.usage = ISL_AUX_USAGE_NONE;
+   res->aux.surf.size_B = 0;
+   res->aux.bo = NULL;
+   res->aux.state = NULL;
+}
+
+static void
 iris_resource_destroy(struct pipe_screen *screen,
                       struct pipe_resource *resource)
 {
    struct iris_resource *res = (struct iris_resource *)resource;
+
+   iris_resource_disable_aux(res);
 
    iris_bo_unreference(res->bo);
    free(res);
