@@ -951,8 +951,8 @@ anv_state_pool_return_blocks(struct anv_state_pool *pool,
                              uint32_t chunk_offset, uint32_t count,
                              uint32_t block_size)
 {
-   if (count == 0)
-      return;
+   /* Disallow returning 0 chunks */
+   assert(count != 0);
 
    /* Make sure we always return chunks aligned to the block_size */
    assert(chunk_offset % block_size == 0);
@@ -972,6 +972,58 @@ anv_state_pool_return_blocks(struct anv_state_pool *pool,
    uint32_t block_bucket = anv_state_pool_get_bucket(block_size);
    anv_free_list_push(&pool->buckets[block_bucket].free_list,
                       &pool->table, st_idx, count);
+}
+
+/** Returns a chunk of memory back to the state pool.
+ *
+ * Do a two-level split. If chunk_size is bigger than divisor
+ * (pool->block_size), we return as many divisor sized blocks as we can, from
+ * the end of the chunk.
+ *
+ * The remaining is then split into smaller blocks (starting at small_size if
+ * it is non-zero), with larger blocks always being taken from the end of the
+ * chunk.
+ */
+static void
+anv_state_pool_return_chunk(struct anv_state_pool *pool,
+                            uint32_t chunk_offset, uint32_t chunk_size,
+                            uint32_t small_size)
+{
+   uint32_t divisor = pool->block_size;
+   uint32_t nblocks = chunk_size / divisor;
+   uint32_t rest = chunk_size - nblocks * divisor;
+
+   if (nblocks > 0) {
+      /* First return divisor aligned and sized chunks. We start returning
+       * larger blocks from the end fo the chunk, since they should already be
+       * aligned to divisor. Also anv_state_pool_return_blocks() only accepts
+       * aligned chunks.
+       */
+      uint32_t offset = chunk_offset + rest;
+      anv_state_pool_return_blocks(pool, offset, nblocks, divisor);
+   }
+
+   chunk_size = rest;
+   divisor /= 2;
+
+   if (small_size > 0 && small_size < divisor)
+      divisor = small_size;
+
+   uint32_t min_size = 1 << ANV_MIN_STATE_SIZE_LOG2;
+
+   /* Just as before, return larger divisor aligned blocks from the end of the
+    * chunk first.
+    */
+   while (chunk_size > 0 && divisor >= min_size) {
+      nblocks = chunk_size / divisor;
+      rest = chunk_size - nblocks * divisor;
+      if (nblocks > 0) {
+         anv_state_pool_return_blocks(pool, chunk_offset + rest,
+                                      nblocks, divisor);
+         chunk_size = rest;
+      }
+      divisor /= 2;
+   }
 }
 
 static struct anv_state
@@ -1004,7 +1056,9 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
           */
          state->alloc_size = alloc_size;
 
-         /* We've found a chunk that's larger than the requested state size.
+         /* Now return the unused part of the chunk back to the pool as free
+          * blocks
+          *
           * There are a couple of options as to what we do with it:
           *
           *    1) We could fully split the chunk into state.alloc_size sized
@@ -1026,28 +1080,15 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
           *       two-level split.  If it's bigger than some fixed block_size,
           *       we split it into block_size sized chunks and return all but
           *       one of them.  Then we split what remains into
-          *       state.alloc_size sized chunks and return all but one.
+          *       state.alloc_size sized chunks and return them.
           *
-          * We choose option (3).
+          * We choose something close to option (3), which is implemented with
+          * anv_state_pool_return_chunk(). That is done by returning the
+          * remaining of the chunk, with alloc_size as a hint of the size that
+          * we want the smaller chunk split into.
           */
-         if (chunk_size > pool->block_size &&
-             alloc_size < pool->block_size) {
-            assert(chunk_size % pool->block_size == 0);
-            /* We don't want to split giant chunks into tiny chunks.  Instead,
-             * break anything bigger than a block into block-sized chunks and
-             * then break it down into bucket-sized chunks from there.  Return
-             * all but the first block of the chunk to the block bucket.
-             */
-            uint32_t push_back = (chunk_size / pool->block_size) - 1;
-            anv_state_pool_return_blocks(pool, chunk_offset + pool->block_size,
-                                         push_back, pool->block_size);
-            chunk_size = pool->block_size;
-         }
-
-         assert(chunk_size % alloc_size == 0);
-         uint32_t push_back = (chunk_size / alloc_size) - 1;
-         anv_state_pool_return_blocks(pool, chunk_offset + alloc_size,
-                                      push_back, alloc_size);
+         anv_state_pool_return_chunk(pool, chunk_offset + alloc_size,
+                                     chunk_size - alloc_size, alloc_size);
          goto done;
       }
    }
