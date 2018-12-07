@@ -3412,12 +3412,12 @@ fs_visitor::emit_repclear_shader()
                     fs_reg(UNIFORM, 0, BRW_REGISTER_TYPE_F));
    } else {
       struct brw_reg reg =
-         brw_reg(BRW_GENERAL_REGISTER_FILE, 2, 3, 0, 0, BRW_REGISTER_TYPE_F,
+         brw_reg(BRW_GENERAL_REGISTER_FILE, 2, 3, 0, 0, BRW_REGISTER_TYPE_UD,
                  BRW_VERTICAL_STRIDE_8, BRW_WIDTH_2, BRW_HORIZONTAL_STRIDE_4,
                  BRW_SWIZZLE_XYZW, WRITEMASK_XYZW);
 
       mov = bld.exec_all().group(4, 0)
-               .MOV(vec4(brw_message_reg(color_mrf)), fs_reg(reg));
+               .MOV(brw_uvec_mrf(4, color_mrf, 0), fs_reg(reg));
    }
 
    fs_inst *write = NULL;
