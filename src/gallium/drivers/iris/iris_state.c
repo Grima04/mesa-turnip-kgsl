@@ -3778,6 +3778,8 @@ iris_populate_binding_table(struct iris_context *ice,
       return;
    }
 
+   // XXX: use different surface states per aux mode
+
    if (stage == MESA_SHADER_COMPUTE) {
       /* surface for gl_NumWorkGroups */
       struct iris_state_ref *grid_data = &ice->state.grid_size;

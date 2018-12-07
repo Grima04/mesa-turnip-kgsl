@@ -196,11 +196,14 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
    }
 }
 
-static void
+void
 iris_resource_disable_aux(struct iris_resource *res)
 {
    iris_bo_unreference(res->aux.bo);
    free(res->aux.state);
+
+   // XXX: clear color BO
+   // XXX: HiZ
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
    res->aux.surf.size_B = 0;
