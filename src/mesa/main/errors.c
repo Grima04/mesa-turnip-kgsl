@@ -253,6 +253,33 @@ _mesa_gl_debugf(struct gl_context *ctx,
    va_end(args);
 }
 
+size_t
+_mesa_gl_debug(struct gl_context *ctx,
+               GLuint *id,
+               enum mesa_debug_source source,
+               enum mesa_debug_type type,
+               enum mesa_debug_severity severity,
+               const char *msg)
+{
+   _mesa_debug_get_id(id);
+
+   size_t len = strnlen(msg, MAX_DEBUG_MESSAGE_LENGTH);
+   if (len < MAX_DEBUG_MESSAGE_LENGTH) {
+      _mesa_log_msg(ctx, source, type, *id, severity, len, msg);
+      return len;
+   }
+
+   /* limit the message to fit within KHR_debug buffers */
+   char s[MAX_DEBUG_MESSAGE_LENGTH];
+   strncpy(s, msg, MAX_DEBUG_MESSAGE_LENGTH);
+   s[MAX_DEBUG_MESSAGE_LENGTH - 1] = '\0';
+   len = MAX_DEBUG_MESSAGE_LENGTH - 1;
+   _mesa_log_msg(ctx, source, type, *id, severity, len, s);
+
+   /* report the number of characters that were logged */
+   return len;
+}
+
 
 /**
  * Record an OpenGL state error.  These usually occur when the user

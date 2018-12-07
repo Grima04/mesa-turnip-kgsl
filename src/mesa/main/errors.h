@@ -90,6 +90,14 @@ _mesa_gl_debugf(struct gl_context *ctx,
                 enum mesa_debug_severity severity,
                 const char *fmtString, ...) PRINTFLIKE(6, 7);
 
+extern size_t
+_mesa_gl_debug(struct gl_context *ctx,
+               GLuint *id,
+               enum mesa_debug_source source,
+               enum mesa_debug_type type,
+               enum mesa_debug_severity severity,
+               const char *msg);
+
 #define _mesa_perf_debug(ctx, sev, ...) do {                              \
    static GLuint msg_id = 0;                                              \
    if (unlikely(ctx->Const.ContextFlags & GL_CONTEXT_FLAG_DEBUG_BIT)) {   \
