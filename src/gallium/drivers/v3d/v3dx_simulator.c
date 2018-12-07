@@ -49,7 +49,7 @@
 #define V3D_READ(reg) v3d_hw_read_reg(v3d, reg)
 
 static void
-v3d_flush_l3(struct v3d_hw *v3d)
+v3d_invalidate_l3(struct v3d_hw *v3d)
 {
         if (!v3d_hw_has_gca(v3d))
                 return;
@@ -62,10 +62,13 @@ v3d_flush_l3(struct v3d_hw *v3d)
 #endif
 }
 
-/* Invalidates the L2 cache.  This is a read-only cache. */
+/* Invalidates the L2C cache.  This is a read-only cache for uniforms and instructions. */
 static void
-v3d_flush_l2(struct v3d_hw *v3d)
+v3d_invalidate_l2c(struct v3d_hw *v3d)
 {
+        if (V3D_VERSION >= 33)
+                return;
+
         V3D_WRITE(V3D_CTL_0_L2CACTL,
                   V3D_CTL_0_L2CACTL_L2CCLR_SET |
                   V3D_CTL_0_L2CACTL_L2CENA_SET);
@@ -73,7 +76,7 @@ v3d_flush_l2(struct v3d_hw *v3d)
 
 /* Invalidates texture L2 cachelines */
 static void
-v3d_flush_l2t(struct v3d_hw *v3d)
+v3d_invalidate_l2t(struct v3d_hw *v3d)
 {
         V3D_WRITE(V3D_CTL_0_L2TFLSTA, 0);
         V3D_WRITE(V3D_CTL_0_L2TFLEND, ~0);
@@ -84,18 +87,18 @@ v3d_flush_l2t(struct v3d_hw *v3d)
 
 /* Invalidates the slice caches.  These are read-only caches. */
 static void
-v3d_flush_slices(struct v3d_hw *v3d)
+v3d_invalidate_slices(struct v3d_hw *v3d)
 {
         V3D_WRITE(V3D_CTL_0_SLCACTL, ~0);
 }
 
 static void
-v3d_flush_caches(struct v3d_hw *v3d)
+v3d_invalidate_caches(struct v3d_hw *v3d)
 {
-        v3d_flush_l3(v3d);
-        v3d_flush_l2(v3d);
-        v3d_flush_l2t(v3d);
-        v3d_flush_slices(v3d);
+        v3d_invalidate_l3(v3d);
+        v3d_invalidate_l2c(v3d);
+        v3d_invalidate_l2t(v3d);
+        v3d_invalidate_slices(v3d);
 }
 
 int
@@ -185,7 +188,7 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
                 ;
         }
 
-        v3d_flush_caches(v3d);
+        v3d_invalidate_caches(v3d);
 
         if (submit->qma) {
                 V3D_WRITE(V3D_CLE_0_CT0QMA, submit->qma);
@@ -201,13 +204,16 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
         V3D_WRITE(V3D_CLE_0_CT0QBA, submit->bcl_start);
         V3D_WRITE(V3D_CLE_0_CT0QEA, submit->bcl_end);
 
-        /* Wait for bin to complete before firing render, as it seems the
-         * simulator doesn't implement the semaphores.
+        /* Wait for bin to complete before firing render.  The kernel's
+         * scheduler implements this using the GPU scheduler blocking on the
+         * bin fence completing.  (We don't use HW semaphores).
          */
         while (V3D_READ(V3D_CLE_0_CT0CA) !=
                V3D_READ(V3D_CLE_0_CT0EA)) {
                 v3d_hw_tick(v3d);
         }
+
+        v3d_invalidate_caches(v3d);
 
         V3D_WRITE(V3D_CLE_0_CT1QBA, submit->rcl_start);
         V3D_WRITE(V3D_CLE_0_CT1QEA, submit->rcl_end);
