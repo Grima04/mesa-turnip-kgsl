@@ -628,15 +628,21 @@ struct anv_block_state {
    };
 };
 
+#define anv_block_pool_foreach_bo(bo, pool)  \
+   for (bo = (pool)->bos; bo != &(pool)->bos[(pool)->nbos]; bo++)
+
+#define ANV_MAX_BLOCK_POOL_BOS 20
+
 struct anv_block_pool {
    struct anv_device *device;
 
    uint64_t bo_flags;
 
+   struct anv_bo bos[ANV_MAX_BLOCK_POOL_BOS];
    struct anv_bo *bo;
+   uint32_t nbos;
 
-   /* A single BO for now */
-   struct anv_bo bos;
+   uint64_t size;
 
    /* The address where the start of the pool is pinned. The various bos that
     * are created as the pool grows will have addresses in the range

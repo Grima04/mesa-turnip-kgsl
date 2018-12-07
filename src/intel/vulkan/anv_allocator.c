@@ -434,9 +434,12 @@ anv_block_pool_init(struct anv_block_pool *pool,
 
    pool->device = device;
    pool->bo_flags = bo_flags;
+   pool->nbos = 0;
+   pool->size = 0;
    pool->start_address = gen_canonical_address(start_address);
 
-   pool->bo = &pool->bos;
+   /* This pointer will always point to the first BO in the list */
+   pool->bo = &pool->bos[0];
 
    anv_bo_init(pool->bo, 0, 0);
 
@@ -586,15 +589,53 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * the EXEC_OBJECT_SUPPORTS_48B_ADDRESS flag and the kernel does all of the
     * hard work for us.
     */
-   anv_bo_init(pool->bo, gem_handle, size);
+   struct anv_bo *bo;
+
+   assert(pool->nbos < ANV_MAX_BLOCK_POOL_BOS);
+
+   /* We just need one BO, and we already have a pointer to it. Let's simply
+    * "allocate" it from our array.
+    */
+   if (pool->nbos == 0)
+      pool->nbos++;
+
+   bo = pool->bo;
+
+   anv_bo_init(bo, gem_handle, size);
    if (pool->bo_flags & EXEC_OBJECT_PINNED) {
-      pool->bo->offset = pool->start_address + BLOCK_POOL_MEMFD_CENTER -
+      bo->offset = pool->start_address + BLOCK_POOL_MEMFD_CENTER -
          center_bo_offset;
    }
-   pool->bo->flags = pool->bo_flags;
-   pool->bo->map = map;
+   bo->flags = pool->bo_flags;
+   bo->map = map;
+   pool->size = size;
 
    return VK_SUCCESS;
+}
+
+static struct anv_bo *
+anv_block_pool_get_bo(struct anv_block_pool *pool, int32_t *offset)
+{
+   struct anv_bo *bo, *bo_found = NULL;
+   int32_t cur_offset = 0;
+
+   assert(offset);
+
+   if (!(pool->bo_flags & EXEC_OBJECT_PINNED))
+      return pool->bo;
+
+   anv_block_pool_foreach_bo(bo, pool) {
+      if (*offset < cur_offset + bo->size) {
+         bo_found = bo;
+         break;
+      }
+      cur_offset += bo->size;
+   }
+
+   assert(bo_found != NULL);
+   *offset -= cur_offset;
+
+   return bo_found;
 }
 
 /** Returns current memory map of the block pool.
@@ -606,7 +647,8 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
-   return pool->bo->map + pool->center_bo_offset + offset;
+   struct anv_bo *bo = anv_block_pool_get_bo(pool, &offset);
+   return bo->map + pool->center_bo_offset + offset;
 }
 
 /** Grows and re-centers the block pool.
@@ -658,7 +700,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
 
    assert(state == &pool->state || back_used > 0);
 
-   uint32_t old_size = pool->bo->size;
+   uint32_t old_size = pool->size;
 
    /* The block pool is always initialized to a nonzero size and this function
     * is always called after initialization.
@@ -684,7 +726,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state)
    while (size < back_required + front_required)
       size *= 2;
 
-   assert(size > pool->bo->size);
+   assert(size > pool->size);
 
    /* We compute a new center_bo_offset such that, when we double the size
     * of the pool, we maintain the ratio of how much is used by each side.
@@ -732,7 +774,7 @@ done:
        * needs to do so in order to maintain its concurrency model.
        */
       if (state == &pool->state) {
-         return pool->bo->size - pool->center_bo_offset;
+         return pool->size - pool->center_bo_offset;
       } else {
          assert(pool->center_bo_offset > 0);
          return pool->center_bo_offset;
