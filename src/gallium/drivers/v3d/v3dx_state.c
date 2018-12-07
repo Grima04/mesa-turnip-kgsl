@@ -30,6 +30,7 @@
 #include "util/u_memory.h"
 #include "util/u_half.h"
 #include "util/u_helpers.h"
+#include "util/u_upload_mgr.h"
 
 #include "v3d_context.h"
 #include "v3d_tiling.h"
@@ -404,11 +405,11 @@ v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
         /* Set up the default attribute values in case any of the vertex
          * elements use them.
          */
-        so->default_attribute_values = v3d_bo_alloc(v3d->screen,
-                                                    VC5_MAX_ATTRIBUTES *
-                                                    4 * sizeof(float),
-                                                    "default_attributes");
-        uint32_t *attrs = v3d_bo_map(so->default_attribute_values);
+        uint32_t *attrs;
+        u_upload_alloc(v3d->state_uploader, 0,
+                       VC5_MAX_ATTRIBUTES * 4 * sizeof(float), 16,
+                       &so->defaults_offset, &so->defaults, (void **)&attrs);
+
         for (int i = 0; i < VC5_MAX_ATTRIBUTES; i++) {
                 attrs[i * 4 + 0] = 0;
                 attrs[i * 4 + 1] = 0;
@@ -421,6 +422,7 @@ v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
                 }
         }
 
+        u_upload_unmap(v3d->state_uploader);
         return so;
 }
 
@@ -429,7 +431,7 @@ v3d_vertex_state_delete(struct pipe_context *pctx, void *hwcso)
 {
         struct v3d_vertex_stateobj *so = hwcso;
 
-        v3d_bo_unreference(&so->default_attribute_values);
+        pipe_resource_reference(&so->defaults, NULL);
         free(so);
 }
 

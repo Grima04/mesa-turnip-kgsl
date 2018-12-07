@@ -186,7 +186,8 @@ struct v3d_vertex_stateobj {
         unsigned num_elements;
 
         uint8_t attrs[16 * VC5_MAX_ATTRIBUTES];
-        struct v3d_bo *default_attribute_values;
+        struct pipe_resource *defaults;
+        uint32_t defaults_offset;
 };
 
 struct v3d_streamout_stateobj {

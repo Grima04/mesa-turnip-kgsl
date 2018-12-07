@@ -265,7 +265,8 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         v3d->prog.vs->prog_data.vs->uses_iid;
 
                 shader.address_of_default_attribute_values =
-                        cl_address(vtx->default_attribute_values, 0);
+                        cl_address(v3d_resource(vtx->defaults)->bo,
+                                   vtx->defaults_offset);
         }
 
         for (int i = 0; i < vtx->num_elements; i++) {
