@@ -67,7 +67,7 @@ class ValidatorTests(unittest.TestCase):
 
     def test_replace_src_bitsize(self):
         self.common((('iadd', a, ('b2i', b)), ('iadd', a, b)),
-            "Sources a (bit size of a) and b (bit size of 32) " \
+            "Sources a (bit size of a) and b (bit size of b) " \
             "of ('iadd', 'a', 'b') may not have the same bit size " \
             "when building the replacement expression.")
 
