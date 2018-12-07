@@ -65,6 +65,8 @@ static const struct v3d_format format_table[] = {
         FORMAT(B8G8R8X8_SRGB,     SRGB8_ALPHA8, RGBA8,       SWIZ_ZYX1, 16, 0),
         FORMAT(R8G8B8A8_UNORM,    RGBA8,        RGBA8,       SWIZ_XYZW, 16, 0),
         FORMAT(R8G8B8X8_UNORM,    RGBA8,        RGBA8,       SWIZ_XYZ1, 16, 0),
+        FORMAT(R8G8B8A8_SRGB,     SRGB8_ALPHA8, RGBA8,       SWIZ_XYZW, 16, 0),
+        FORMAT(R8G8B8X8_SRGB,     SRGB8_ALPHA8, RGBA8,       SWIZ_XYZ1, 16, 0),
         FORMAT(R8G8B8A8_SNORM,    NO,           RGBA8_SNORM, SWIZ_XYZW, 16, 0),
         FORMAT(R8G8B8X8_SNORM,    NO,           RGBA8_SNORM, SWIZ_XYZ1, 16, 0),
         FORMAT(R10G10B10A2_UNORM, RGB10_A2,     RGB10_A2,    SWIZ_XYZW, 16, 0),
