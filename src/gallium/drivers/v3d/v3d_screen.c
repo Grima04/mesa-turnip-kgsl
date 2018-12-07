@@ -110,6 +110,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET:
         case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
         case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
+        case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
                 return 1;
 
         case PIPE_CAP_INDEP_BLEND_ENABLE:
