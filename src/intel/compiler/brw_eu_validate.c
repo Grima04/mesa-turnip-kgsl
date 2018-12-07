@@ -1824,6 +1824,38 @@ special_requirements_for_handling_double_precision_data_types(
    return error_msg;
 }
 
+static struct string
+instruction_restrictions(const struct gen_device_info *devinfo,
+                         const brw_inst *inst)
+{
+   struct string error_msg = { .str = NULL, .len = 0 };
+
+   /* From GEN:BUG:1604601757:
+    *
+    * "When multiplying a DW and any lower precision integer, source modifier
+    *  is not supported."
+    */
+   if (devinfo->gen >= 12 &&
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MUL) {
+      enum brw_reg_type exec_type = execution_type(devinfo, inst);
+      const bool src0_valid = type_sz(brw_inst_src0_type(devinfo, inst)) == 4 ||
+         brw_inst_src0_reg_file(devinfo, inst) == BRW_IMMEDIATE_VALUE ||
+         !(brw_inst_src0_negate(devinfo, inst) ||
+           brw_inst_src0_abs(devinfo, inst));
+      const bool src1_valid = type_sz(brw_inst_src1_type(devinfo, inst)) == 4 ||
+         brw_inst_src1_reg_file(devinfo, inst) == BRW_IMMEDIATE_VALUE ||
+         !(brw_inst_src1_negate(devinfo, inst) ||
+           brw_inst_src1_abs(devinfo, inst));
+
+      ERROR_IF(!brw_reg_type_is_floating_point(exec_type) &&
+               type_sz(exec_type) == 4 && !(src0_valid && src1_valid),
+               "When multiplying a DW and any lower precision integer, source "
+               "modifier is not supported.");
+   }
+
+   return error_msg;
+}
+
 bool
 brw_validate_instructions(const struct gen_device_info *devinfo,
                           const void *assembly, int start_offset, int end_offset,
@@ -1855,6 +1887,7 @@ brw_validate_instructions(const struct gen_device_info *devinfo,
          CHECK(region_alignment_rules);
          CHECK(vector_immediate_restrictions);
          CHECK(special_requirements_for_handling_double_precision_data_types);
+         CHECK(instruction_restrictions);
       }
 
       if (error_msg.str && disasm) {
