@@ -309,7 +309,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    iris_blorp_surf_for_resource(&dst_surf, info->dst.resource,
                                 ISL_AUX_USAGE_NONE, true);
 
-   iris_resource_prepare_access(ice, dst_res, info->dst.level, 1, 
+   iris_resource_prepare_access(ice, dst_res, info->dst.level, 1,
                                 info->dst.box.z, info->dst.box.depth,
                                 dst_aux_usage, dst_clear_supported);
 
@@ -442,6 +442,30 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                     info->dst.resource);
 }
 
+static void
+get_copy_region_aux_settings(const struct gen_device_info *devinfo,
+                             struct iris_resource *res,
+                             enum isl_aux_usage *out_aux_usage,
+                             bool *out_clear_supported)
+{
+   switch (res->aux.usage) {
+   case ISL_AUX_USAGE_MCS:
+   case ISL_AUX_USAGE_CCS_E:
+      *out_aux_usage = res->aux.usage;
+      /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
+       * we're going to re-interpret the format as an integer format possibly
+       * with a different number of components, we can't handle clear colors
+       * until Gen9.
+       */
+      *out_clear_supported = devinfo->gen >= 9;
+      break;
+   default:
+      *out_aux_usage = ISL_AUX_USAGE_NONE;
+      *out_clear_supported = false;
+      break;
+   }
+}
+
 /**
  * The pipe->resource_copy_region() driver hook.
  *
@@ -457,9 +481,27 @@ iris_resource_copy_region(struct pipe_context *ctx,
                           unsigned src_level,
                           const struct pipe_box *src_box)
 {
+   struct iris_screen *screen = (void *) ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct blorp_batch blorp_batch;
    struct iris_context *ice = (void *) ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_resource *src_res = (void *) src;
+   struct iris_resource *dst_res = (void *) dst;
+
+   enum isl_aux_usage src_aux_usage, dst_aux_usage;
+   bool src_clear_supported, dst_clear_supported;
+   get_copy_region_aux_settings(devinfo, src_res, &src_aux_usage,
+                                &src_clear_supported);
+   get_copy_region_aux_settings(devinfo, dst_res, &dst_aux_usage,
+                                &dst_clear_supported);
+
+   iris_resource_prepare_access(ice, src_res, src_level, 1,
+                                src_box->z, src_box->depth,
+                                src_aux_usage, src_clear_supported);
+   iris_resource_prepare_access(ice, dst_res, dst_level, 1,
+                                dstz, src_box->depth,
+                                dst_aux_usage, dst_clear_supported);
 
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
@@ -478,8 +520,8 @@ iris_resource_copy_region(struct pipe_context *ctx,
       // XXX: what about one surface being a buffer and not the other?
 
       struct blorp_surf src_surf, dst_surf;
-      iris_blorp_surf_for_resource(&src_surf, src, ISL_AUX_USAGE_NONE, false);
-      iris_blorp_surf_for_resource(&dst_surf, dst, ISL_AUX_USAGE_NONE, true);
+      iris_blorp_surf_for_resource(&src_surf, src, src_aux_usage, false);
+      iris_blorp_surf_for_resource(&dst_surf, dst, dst_aux_usage, true);
 
       for (int slice = 0; slice < src_box->depth; slice++) {
          iris_batch_maybe_flush(batch, 1500);
@@ -492,6 +534,9 @@ iris_resource_copy_region(struct pipe_context *ctx,
    }
 
    blorp_batch_finish(&blorp_batch);
+
+   iris_resource_finish_write(ice, dst_res, dst_level, dstz, src_box->depth,
+                              dst_aux_usage);
 
    iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *) dst);
 }

@@ -64,8 +64,15 @@ clear_color(struct iris_context *ice,
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    bool color_write_disable[4] = { false, false, false, false };
+   enum isl_aux_usage aux_usage =
+      iris_resource_render_aux_usage(ice, res, format,
+                                     false, false);
+
+   iris_resource_prepare_render(ice, res, level,
+                                box->z, box->depth, aux_usage);
+
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&surf, p_res, ISL_AUX_USAGE_NONE, true);
+   iris_blorp_surf_for_resource(&surf, p_res, aux_usage, true);
 
    if (!isl_format_supports_rendering(devinfo, format) &&
        isl_format_is_rgbx(format))
@@ -78,6 +85,9 @@ clear_color(struct iris_context *ice,
 
    blorp_batch_finish(&blorp_batch);
    iris_flush_and_dirty_for_history(ice, batch, res);
+
+   iris_resource_finish_render(ice, res, level,
+                               box->z, box->depth, aux_usage);
 }
 
 
@@ -118,13 +128,14 @@ clear_depth_stencil(struct iris_context *ice,
    iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
 
    if (z_res) {
+      iris_resource_prepare_depth(ice, z_res, level, box->z, box->depth);
       iris_blorp_surf_for_resource(&z_surf, &z_res->base,
-                                   ISL_AUX_USAGE_NONE, true);
+                                   z_res->aux.usage, true);
    }
 
    if (stencil_res) {
       iris_blorp_surf_for_resource(&stencil_surf, &stencil_res->base,
-                                   ISL_AUX_USAGE_NONE, true);
+                                   stencil_res->aux.usage, true);
    }
 
    blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
@@ -137,6 +148,11 @@ clear_depth_stencil(struct iris_context *ice,
 
    blorp_batch_finish(&blorp_batch);
    iris_flush_and_dirty_for_history(ice, batch, res);
+
+   if (z_res) {
+      iris_resource_finish_depth(ice, z_res, level,
+                                 box->z, box->depth, true);
+   }
 }
 
 /**
@@ -245,6 +261,9 @@ iris_clear_texture(struct pipe_context *ctx,
          default:
             unreachable("Unknown format bpb");
          }
+
+         /* No aux surfaces for non-renderable surfaces */
+         assert(res->aux.usage == ISL_AUX_USAGE_NONE);
       }
 
       isl_color_value_unpack(&color, format, data);
