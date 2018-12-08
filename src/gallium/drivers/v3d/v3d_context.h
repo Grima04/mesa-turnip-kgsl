@@ -376,7 +376,8 @@ struct v3d_context {
          */
         struct u_upload_mgr *uploader;
         /* State uploader used inside the driver.  This is for packing bits of
-         * long-term state inside buffers.
+         * long-term state inside buffers, since the kernel interfaces
+         * allocate a page at a time.
          */
         struct u_upload_mgr *state_uploader;
 
