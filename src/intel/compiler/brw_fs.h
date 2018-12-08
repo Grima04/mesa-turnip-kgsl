@@ -165,7 +165,6 @@ public:
    bool lower_load_payload();
    bool lower_pack();
    bool lower_regioning();
-   bool lower_conversions();
    bool lower_logical_sends();
    bool lower_integer_multiplication();
    bool lower_minmax();
