@@ -100,15 +100,14 @@ dump_validation_list(struct iris_batch *batch)
       uint64_t flags = batch->validation_list[i].flags;
       assert(batch->validation_list[i].handle ==
              batch->exec_bos[i]->gem_handle);
-      fprintf(stderr, "[%2d]: %2d %-14s %p %-7s @ 0x%016llx (%"PRIu64"B) - %d refs\n",
+      fprintf(stderr, "[%2d]: %2d %-14s @ 0x%016llx (%"PRIu64"B)\t %2d refs %s\n",
               i,
               batch->validation_list[i].handle,
               batch->exec_bos[i]->name,
-              batch->exec_bos[i],
-              (flags & EXEC_OBJECT_WRITE) ? "(write)" : "",
               batch->validation_list[i].offset,
               batch->exec_bos[i]->size,
-              batch->exec_bos[i]->refcount);
+              batch->exec_bos[i]->refcount,
+              (flags & EXEC_OBJECT_WRITE) ? " (write)" : "");
    }
 }
 
