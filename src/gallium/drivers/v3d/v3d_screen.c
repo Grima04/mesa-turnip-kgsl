@@ -130,7 +130,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_GENERATE_MIPMAP:
-                return v3d_has_feature(screen,DRM_V3D_PARAM_SUPPORTS_TFU);
+                return v3d_has_feature(screen, DRM_V3D_PARAM_SUPPORTS_TFU);
 
         case PIPE_CAP_INDEP_BLEND_ENABLE:
                 return screen->devinfo.ver >= 40;
