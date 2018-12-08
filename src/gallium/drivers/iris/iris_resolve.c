@@ -94,6 +94,9 @@ resolve_sampler_views(struct iris_context *ice,
       struct iris_sampler_view *isv = shs->textures[i];
       struct iris_resource *res = (void *) isv->base.texture;
 
+      if (res->base.target == PIPE_BUFFER)
+         continue;
+
       if (batch->name != IRIS_BATCH_COMPUTE) {
          disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
                                res, isv->view.base_level, isv->view.levels,
@@ -121,6 +124,9 @@ resolve_image_views(struct iris_context *ice,
    while (views) {
       const int i = u_bit_scan(&views);
       struct iris_resource *res = (void *) shs->image[i].res;
+
+      if (res->base.target == PIPE_BUFFER)
+         continue;
 
       if (batch->name != IRIS_BATCH_COMPUTE) {
          disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
