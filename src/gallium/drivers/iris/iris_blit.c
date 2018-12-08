@@ -495,15 +495,6 @@ iris_resource_copy_region(struct pipe_context *ctx,
    get_copy_region_aux_settings(devinfo, dst_res, &dst_aux_usage,
                                 &dst_clear_supported);
 
-   iris_resource_prepare_access(ice, batch, src_res, src_level, 1,
-                                src_box->z, src_box->depth,
-                                src_aux_usage, src_clear_supported);
-   iris_resource_prepare_access(ice, batch, dst_res, dst_level, 1,
-                                dstz, src_box->depth,
-                                dst_aux_usage, dst_clear_supported);
-
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       struct blorp_address src_addr = {
          .buffer = iris_resource_bo(src), .offset = src_box->x,
@@ -514,13 +505,27 @@ iris_resource_copy_region(struct pipe_context *ctx,
 
       iris_batch_maybe_flush(batch, 1500);
 
+      blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
       blorp_buffer_copy(&blorp_batch, src_addr, dst_addr, src_box->width);
+      blorp_batch_finish(&blorp_batch);
+
+      iris_flush_and_dirty_for_history(ice, batch,
+                                       (struct iris_resource *) dst);
    } else {
       // XXX: what about one surface being a buffer and not the other?
 
       struct blorp_surf src_surf, dst_surf;
       iris_blorp_surf_for_resource(&src_surf, src, src_aux_usage, false);
       iris_blorp_surf_for_resource(&dst_surf, dst, dst_aux_usage, true);
+
+      iris_resource_prepare_access(ice, batch, src_res, src_level, 1,
+                                   src_box->z, src_box->depth,
+                                   src_aux_usage, src_clear_supported);
+      iris_resource_prepare_access(ice, batch, dst_res, dst_level, 1,
+                                   dstz, src_box->depth,
+                                   dst_aux_usage, dst_clear_supported);
+
+      blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
       for (int slice = 0; slice < src_box->depth; slice++) {
          iris_batch_maybe_flush(batch, 1500);
@@ -530,14 +535,12 @@ iris_resource_copy_region(struct pipe_context *ctx,
                     src_box->x, src_box->y, dstx, dsty,
                     src_box->width, src_box->height);
       }
+      blorp_batch_finish(&blorp_batch);
+
+      iris_resource_finish_write(ice, dst_res, dst_level, dstz,
+                                 src_box->depth, dst_aux_usage);
+
    }
-
-   blorp_batch_finish(&blorp_batch);
-
-   iris_resource_finish_write(ice, dst_res, dst_level, dstz, src_box->depth,
-                              dst_aux_usage);
-
-   iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *) dst);
 }
 
 void
