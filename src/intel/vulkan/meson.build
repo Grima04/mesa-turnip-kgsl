@@ -227,7 +227,8 @@ if with_tests
   )
 
   foreach t : ['block_pool_no_free', 'state_pool_no_free',
-               'state_pool_free_list_only', 'state_pool']
+               'state_pool_free_list_only', 'state_pool',
+               'state_pool_padding']
     test(
       'anv_@0@'.format(t),
       executable(
