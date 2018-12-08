@@ -233,6 +233,7 @@ void iris_resource_disable_aux(struct iris_resource *res);
  */
 void
 iris_resource_prepare_access(struct iris_context *ice,
+                             struct iris_batch *batch,
                              struct iris_resource *res,
                              uint32_t start_level, uint32_t num_levels,
                              uint32_t start_layer, uint32_t num_layers,
@@ -294,11 +295,12 @@ iris_resource_set_aux_state(struct iris_resource *res, uint32_t level,
  */
 static inline void
 iris_resource_access_raw(struct iris_context *ice,
+                         struct iris_batch *batch,
                          struct iris_resource *res,
                          uint32_t level, uint32_t layer,
                          bool write)
 {
-   iris_resource_prepare_access(ice, res, level, 1, layer, 1,
+   iris_resource_prepare_access(ice, batch, res, level, 1, layer, 1,
                                 ISL_AUX_USAGE_NONE, false);
    if (write)
       iris_resource_finish_write(ice, res, level, layer, 1, ISL_AUX_USAGE_NONE);
@@ -309,12 +311,14 @@ enum isl_aux_usage iris_resource_texture_aux_usage(struct iris_context *ice,
                                                    enum isl_format view_fmt,
                                                    enum gen9_astc5x5_wa_tex_type);
 void iris_resource_prepare_texture(struct iris_context *ice,
+                                   struct iris_batch *batch,
                                    struct iris_resource *res,
                                    enum isl_format view_format,
                                    uint32_t start_level, uint32_t num_levels,
                                    uint32_t start_layer, uint32_t num_layers,
                                    enum gen9_astc5x5_wa_tex_type);
 void iris_resource_prepare_image(struct iris_context *ice,
+                                 struct iris_batch *batch,
                                  struct iris_resource *res);
 
 void iris_resource_check_level_layer(const struct iris_resource *res,
@@ -329,6 +333,7 @@ enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   bool blend_enabled,
                                                   bool draw_aux_disabled);
 void iris_resource_prepare_render(struct iris_context *ice,
+                                  struct iris_batch *batch,
                                   struct iris_resource *res, uint32_t level,
                                   uint32_t start_layer, uint32_t layer_count,
                                   enum isl_aux_usage aux_usage);
@@ -337,6 +342,7 @@ void iris_resource_finish_render(struct iris_context *ice,
                                  uint32_t start_layer, uint32_t layer_count,
                                  enum isl_aux_usage aux_usage);
 void iris_resource_prepare_depth(struct iris_context *ice,
+                                 struct iris_batch *batch,
                                  struct iris_resource *res, uint32_t level,
                                  uint32_t start_layer, uint32_t layer_count);
 void iris_resource_finish_depth(struct iris_context *ice,

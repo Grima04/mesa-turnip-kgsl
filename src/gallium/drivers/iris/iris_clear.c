@@ -68,7 +68,7 @@ clear_color(struct iris_context *ice,
       iris_resource_render_aux_usage(ice, res, format,
                                      false, false);
 
-   iris_resource_prepare_render(ice, res, level,
+   iris_resource_prepare_render(ice, batch, res, level,
                                 box->z, box->depth, aux_usage);
 
    struct blorp_surf surf;
@@ -128,7 +128,7 @@ clear_depth_stencil(struct iris_context *ice,
    iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
 
    if (z_res) {
-      iris_resource_prepare_depth(ice, z_res, level, box->z, box->depth);
+      iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
       iris_blorp_surf_for_resource(&z_surf, &z_res->base,
                                    z_res->aux.usage, true);
    }

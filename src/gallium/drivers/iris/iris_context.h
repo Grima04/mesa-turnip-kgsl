@@ -503,6 +503,12 @@ struct iris_context {
       /** Reference to the SURFACE_STATE for the compute grid resource */
       struct iris_state_ref grid_surf_state;
 
+      /**
+       * Array of aux usages for drawing, altered to account for any
+       * self-dependencies from resources bound for sampling and rendering.
+       */
+      enum isl_aux_usage draw_aux_usage[BRW_MAX_DRAW_BUFFERS];
+
       /** Bitfield of whether color blending is enabled for RT[i] */
       uint8_t blend_enables;
 
@@ -697,10 +703,13 @@ uint64_t iris_timebase_scale(const struct gen_device_info *devinfo,
 
 /* iris_resolve.c */
 
-void iris_predraw_resolve_inputs(struct iris_batch *batch,
-                                 struct iris_shader_state *shs);
+void iris_predraw_resolve_inputs(struct iris_context *ice,
+                                 struct iris_batch *batch,
+                                 struct iris_shader_state *shs,
+                                 bool *draw_aux_buffer_disabled);
 void iris_predraw_resolve_framebuffer(struct iris_context *ice,
-                                      struct iris_batch *batch);
+                                      struct iris_batch *batch,
+                                      bool *draw_aux_buffer_disabled);
 void iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                            struct iris_batch *batch);
 void iris_cache_sets_clear(struct iris_batch *batch);
