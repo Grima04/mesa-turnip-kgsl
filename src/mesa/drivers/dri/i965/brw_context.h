@@ -1377,13 +1377,6 @@ GLboolean brwCreateContext(gl_api api,
 /*======================================================================
  * brw_misc_state.c
  */
-void
-brw_meta_resolve_color(struct brw_context *brw,
-                       struct intel_mipmap_tree *mt);
-
-/*======================================================================
- * brw_misc_state.c
- */
 void brw_workaround_depthstencil_alignment(struct brw_context *brw,
                                            GLbitfield clear_mask);
 
