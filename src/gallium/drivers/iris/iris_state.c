@@ -3663,6 +3663,14 @@ use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
    return ice->state.null_fb.offset;
 }
 
+static uint32_t
+surf_state_offset_for_aux(struct iris_resource *res,
+                          enum isl_aux_usage aux_usage)
+{
+   return SURFACE_STATE_ALIGNMENT *
+          util_bitcount(res->aux.possible_usages & ((1 << aux_usage) - 1));
+}
+
 /**
  * Add a surface to the validation list, as well as the buffer containing
  * the corresponding SURFACE_STATE.
@@ -3672,23 +3680,33 @@ use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
 static uint32_t
 use_surface(struct iris_batch *batch,
             struct pipe_surface *p_surf,
-            bool writeable)
+            bool writeable,
+            enum isl_aux_usage aux_usage)
 {
    struct iris_surface *surf = (void *) p_surf;
+   struct iris_resource *res = (void *) p_surf->texture;
 
    iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
    iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
 
-   return surf->surface_state.offset;
+   return surf->surface_state.offset +
+          surf_state_offset_for_aux(res, aux_usage);
 }
 
 static uint32_t
-use_sampler_view(struct iris_batch *batch, struct iris_sampler_view *isv)
+use_sampler_view(struct iris_context *ice,
+                 struct iris_batch *batch,
+                 struct iris_sampler_view *isv)
 {
+   // XXX: ASTC hacks
+   enum isl_aux_usage aux_usage =
+      iris_resource_texture_aux_usage(ice, isv->res, isv->view.format, 0);
+
    iris_use_pinned_bo(batch, isv->res->bo, false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
 
-   return isv->surface_state.offset;
+   return isv->surface_state.offset +
+          surf_state_offset_for_aux(isv->res, aux_usage);
 }
 
 static uint32_t
@@ -3778,8 +3796,6 @@ iris_populate_binding_table(struct iris_context *ice,
       return;
    }
 
-   // XXX: use different surface states per aux mode
-
    if (stage == MESA_SHADER_COMPUTE) {
       /* surface for gl_NumWorkGroups */
       struct iris_state_ref *grid_data = &ice->state.grid_size;
@@ -3794,9 +3810,13 @@ iris_populate_binding_table(struct iris_context *ice,
       /* Note that cso_fb->nr_cbufs == fs_key->nr_color_regions. */
       if (cso_fb->nr_cbufs) {
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-            uint32_t addr =
-               cso_fb->cbufs[i] ? use_surface(batch, cso_fb->cbufs[i], true)
-                                : use_null_fb_surface(batch, ice);
+            uint32_t addr;
+            if (cso_fb->cbufs[i]) {
+               addr = use_surface(batch, cso_fb->cbufs[i], true,
+                                  ice->state.draw_aux_usage[i]);
+            } else {
+               addr = use_null_fb_surface(batch, ice);
+            }
             push_bt_entry(addr);
          }
       } else {
@@ -3811,7 +3831,7 @@ iris_populate_binding_table(struct iris_context *ice,
 
    for (int i = 0; i < num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
-      uint32_t addr = view ? use_sampler_view(batch, view)
+      uint32_t addr = view ? use_sampler_view(ice, batch, view)
                            : use_null_surface(batch, ice);
       push_bt_entry(addr);
    }
