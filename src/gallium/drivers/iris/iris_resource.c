@@ -1061,6 +1061,12 @@ iris_transfer_map(struct pipe_context *ctx,
        (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
 
+   if (resource->target != PIPE_BUFFER) {
+      iris_resource_access_raw(ice, &ice->batches[IRIS_BATCH_RENDER], res,
+                               level, box->z, box->depth,
+                               usage & PIPE_TRANSFER_WRITE);
+   }
+
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
       for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
          if (iris_batch_references(&ice->batches[i], res->bo))

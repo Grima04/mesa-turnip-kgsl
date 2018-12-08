@@ -298,12 +298,15 @@ iris_resource_access_raw(struct iris_context *ice,
                          struct iris_batch *batch,
                          struct iris_resource *res,
                          uint32_t level, uint32_t layer,
+                         uint32_t num_layers,
                          bool write)
 {
-   iris_resource_prepare_access(ice, batch, res, level, 1, layer, 1,
+   iris_resource_prepare_access(ice, batch, res, level, 1, layer, num_layers,
                                 ISL_AUX_USAGE_NONE, false);
-   if (write)
-      iris_resource_finish_write(ice, res, level, layer, 1, ISL_AUX_USAGE_NONE);
+   if (write) {
+      iris_resource_finish_write(ice, res, level, layer, num_layers,
+                                 ISL_AUX_USAGE_NONE);
+   }
 }
 
 enum isl_aux_usage iris_resource_texture_aux_usage(struct iris_context *ice,
