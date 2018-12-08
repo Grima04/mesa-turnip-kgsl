@@ -414,7 +414,7 @@ compact_components(nir_shader *producer, nir_shader *consumer, uint8_t *comps,
 
          /* We ignore complex types above and all other vector types should
           * have been split into scalar variables by the lower_io_to_scalar
-          * pass. The only exeption should by OpenGL xfb varyings.
+          * pass. The only exception should by OpenGL xfb varyings.
           */
          if (glsl_get_vector_elements(type) != 1)
             continue;
