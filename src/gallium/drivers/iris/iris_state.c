@@ -3689,6 +3689,9 @@ use_surface(struct iris_batch *batch,
    iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
    iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
 
+   if (res->aux.bo)
+      iris_use_pinned_bo(batch, res->aux.bo, writeable);
+
    return surf->surface_state.offset +
           surf_state_offset_for_aux(res, aux_usage);
 }
@@ -3704,6 +3707,9 @@ use_sampler_view(struct iris_context *ice,
 
    iris_use_pinned_bo(batch, isv->res->bo, false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
+
+   if (isv->res->aux.bo)
+      iris_use_pinned_bo(batch, isv->res->aux.bo, false);
 
    return isv->surface_state.offset +
           surf_state_offset_for_aux(isv->res, aux_usage);
@@ -3745,11 +3751,15 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
    if (!shs->image[i].res)
       return use_null_surface(batch, ice);
 
+   struct iris_resource *res = (void *) shs->image[i].res;
    struct iris_state_ref *surf_state = &shs->image[i].surface_state;
+   bool write = shs->image[i].access & PIPE_IMAGE_ACCESS_WRITE;
 
-   iris_use_pinned_bo(batch, iris_resource_bo(shs->image[i].res),
-                      shs->image[i].access & PIPE_IMAGE_ACCESS_WRITE);
+   iris_use_pinned_bo(batch, res->bo, write);
    iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
+
+   if (res->aux.bo)
+      iris_use_pinned_bo(batch, res->aux.bo, write);
 
    return surf_state->offset;
 }
