@@ -1485,9 +1485,9 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       string(file, "(");
       err |= control(file, "predicate inverse", pred_inv,
                      brw_inst_pred_inv(devinfo, inst), NULL);
-      format(file, "f%"PRIu64, devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0);
-      if (brw_inst_flag_subreg_nr(devinfo, inst))
-         format(file, ".%"PRIu64, brw_inst_flag_subreg_nr(devinfo, inst));
+      format(file, "f%"PRIu64".%"PRIu64,
+             devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
+             brw_inst_flag_subreg_nr(devinfo, inst));
       if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
          err |= control(file, "predicate control align1", pred_ctrl_align1,
                         brw_inst_pred_control(devinfo, inst), NULL);
@@ -1522,10 +1522,9 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                                 opcode != BRW_OPCODE_CSEL &&
                                 opcode != BRW_OPCODE_IF &&
                                 opcode != BRW_OPCODE_WHILE))) {
-         format(file, ".f%"PRIu64,
-                devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0);
-         if (brw_inst_flag_subreg_nr(devinfo, inst))
-            format(file, ".%"PRIu64, brw_inst_flag_subreg_nr(devinfo, inst));
+         format(file, ".f%"PRIu64".%"PRIu64,
+                devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
+                brw_inst_flag_subreg_nr(devinfo, inst));
       }
    }
 
