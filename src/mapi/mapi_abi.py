@@ -334,7 +334,8 @@ class ABIPrinter(object):
             if not self.need_entry_point(ent):
                 continue
             export = self.api_call if not ent.hidden else ''
-            decls.append(self._c_decl(ent, prefix, True, export) + ';')
+            if not ent.hidden:
+                decls.append(self._c_decl(ent, prefix, True, export) + ';')
 
         return "\n".join(decls)
 
