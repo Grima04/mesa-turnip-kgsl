@@ -67,6 +67,8 @@ typedef void (APIENTRY  *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLe
     print(generate_noop_array(functions))
     print(generate_public_stubs(functions))
     print(generate_public_entries(functions))
+    print(generate_public_entries_table(functions))
+    print(generate_undef_public_entries())
     print(generate_stub_asm_gcc(functions))
 
 def generate_defines(functions):
@@ -154,10 +156,20 @@ GLAPI {f.rt} APIENTRY {f.name}({f.decArgs})
 """.lstrip("\n").format(f=func, retStr=retStr)
 
     text += "\n"
+    text += "#endif /* MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN */\n"
+    return text
+
+def generate_public_entries_table(functions):
+    text = "#ifdef MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN\n"
     text += "static const mapi_func public_entries[] = {\n"
     for func in functions:
         text += "   (mapi_func) %s,\n" % (func.name,)
     text += "};\n"
+    text += "#endif /* MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN */\n"
+    return text
+
+def generate_undef_public_entries():
+    text = "#ifdef MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN\n"
     text += "#undef MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN\n"
     text += "#endif /* MAPI_TMP_PUBLIC_ENTRIES_NO_HIDDEN */\n"
     return text
