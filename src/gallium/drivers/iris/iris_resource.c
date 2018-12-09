@@ -476,16 +476,15 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    const struct util_format_description *format_desc =
       util_format_description(templ->format);
    const bool has_depth = util_format_has_depth(format_desc);
-   const struct isl_drm_modifier_info *mod_info = NULL;
    uint64_t modifier =
       select_best_modifier(devinfo, modifiers, modifiers_count);
 
    isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
 
    if (modifier != DRM_FORMAT_MOD_INVALID) {
-      mod_info = isl_drm_modifier_get_info(modifier);
+      res->mod_info = isl_drm_modifier_get_info(modifier);
 
-      tiling_flags = 1 << mod_info->tiling;
+      tiling_flags = 1 << res->mod_info->tiling;
    } else {
       if (modifiers_count > 0) {
          fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
@@ -551,8 +550,8 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .tiling_flags = tiling_flags);
    assert(isl_surf_created_successfully);
 
-   if (mod_info) {
-      res->aux.possible_usages |= 1 << mod_info->aux_usage;
+   if (res->mod_info) {
+      res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
    } else if (has_depth) {
       res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
    } else if (supports_mcs(&res->surf)) {
@@ -683,9 +682,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (modifier == DRM_FORMAT_MOD_INVALID) {
       modifier = tiling_to_modifier(res->bo->tiling_mode);
    }
-   const struct isl_drm_modifier_info *mod_info =
-      isl_drm_modifier_get_info(modifier);
-   assert(mod_info);
+   res->mod_info = isl_drm_modifier_get_info(modifier);
+   assert(res->mod_info);
 
    isl_surf_usage_flags_t isl_usage = pipe_bind_to_isl_usage(templ->bind);
 
@@ -708,7 +706,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                     .min_alignment_B = 0,
                     .row_pitch_B = whandle->stride,
                     .usage = isl_usage,
-                    .tiling_flags = 1 << mod_info->tiling);
+                    .tiling_flags = 1 << res->mod_info->tiling);
 
       assert(res->bo->tiling_mode ==
              isl_tiling_to_i915_tiling(res->surf.tiling));

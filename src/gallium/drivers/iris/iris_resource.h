@@ -112,6 +112,13 @@ struct iris_resource {
        */
       enum isl_aux_state **state;
    } aux;
+
+   /**
+    * For external surfaces, this is DRM format modifier that was used to
+    * create or import the surface.  For internal surfaces, this will always
+    * be DRM_FORMAT_MOD_INVALID.
+    */
+   const struct isl_drm_modifier_info *mod_info;
 };
 
 /**
