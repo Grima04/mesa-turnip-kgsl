@@ -29,8 +29,8 @@ from __future__ import print_function
 import sys
 # make it possible to import glapi
 import os
-GLAPI = os.path.join(".", os.path.dirname(sys.argv[0]), "glapi/gen")
-sys.path.append(GLAPI)
+GLAPI = os.path.join(".", os.path.dirname(__file__), "glapi", "gen")
+sys.path.insert(0, GLAPI)
 
 from operator import attrgetter
 import re
