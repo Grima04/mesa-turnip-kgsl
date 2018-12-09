@@ -833,7 +833,15 @@ brw_inst *brw_##OP(struct brw_codegen *p,		\
 	      struct brw_reg src0,			\
 	      struct brw_reg src1,			\
 	      struct brw_reg src2)   			\
-{							\
+{                                                       \
+   if (p->current->access_mode == BRW_ALIGN_16) {       \
+      if (src0.vstride == BRW_VERTICAL_STRIDE_0)        \
+         src0.swizzle = BRW_SWIZZLE_XXXX;               \
+      if (src1.vstride == BRW_VERTICAL_STRIDE_0)        \
+         src1.swizzle = BRW_SWIZZLE_XXXX;               \
+      if (src2.vstride == BRW_VERTICAL_STRIDE_0)        \
+         src2.swizzle = BRW_SWIZZLE_XXXX;               \
+   }                                                    \
    return brw_alu3(p, BRW_OPCODE_##OP, dest, src0, src1, src2);	\
 }
 
@@ -854,6 +862,15 @@ brw_inst *brw_##OP(struct brw_codegen *p,         \
       assert(src0.type == BRW_REGISTER_TYPE_DF);                \
       assert(src1.type == BRW_REGISTER_TYPE_DF);                \
       assert(src2.type == BRW_REGISTER_TYPE_DF);                \
+   }                                                            \
+                                                                \
+   if (p->current->access_mode == BRW_ALIGN_16) {               \
+      if (src0.vstride == BRW_VERTICAL_STRIDE_0)                \
+         src0.swizzle = BRW_SWIZZLE_XXXX;                       \
+      if (src1.vstride == BRW_VERTICAL_STRIDE_0)                \
+         src1.swizzle = BRW_SWIZZLE_XXXX;                       \
+      if (src2.vstride == BRW_VERTICAL_STRIDE_0)                \
+         src2.swizzle = BRW_SWIZZLE_XXXX;                       \
    }                                                            \
    return brw_alu3(p, BRW_OPCODE_##OP, dest, src0, src1, src2); \
 }
