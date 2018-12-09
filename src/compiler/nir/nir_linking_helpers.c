@@ -226,6 +226,18 @@ get_interp_loc(nir_variable *var)
       return INTERPOLATE_LOC_CENTER;
 }
 
+static bool
+is_packing_supported_for_type(const struct glsl_type *type)
+{
+   /* We ignore complex types such as arrays, matrices, structs and bitsizes
+    * other then 32bit. All other vector types should have been split into
+    * scalar variables by the lower_io_to_scalar pass. The only exception
+    * should be OpenGL xfb varyings.
+    * TODO: add support for more complex types?
+    */
+   return glsl_type_is_scalar(type) && glsl_type_is_32bit(type);
+}
+
 static void
 get_slot_component_masks_and_interp_types(struct exec_list *var_list,
                                           uint8_t *comps,
@@ -428,21 +440,7 @@ compact_components(nir_shader *producer, nir_shader *consumer, uint8_t *comps,
             type = glsl_get_array_element(type);
          }
 
-         /* Skip types that require more complex packing handling.
-          * TODO: add support for these types.
-          */
-         if (glsl_type_is_array(type) ||
-             glsl_type_is_dual_slot(type) ||
-             glsl_type_is_matrix(type) ||
-             glsl_type_is_struct(type) ||
-             glsl_type_is_64bit(type))
-            continue;
-
-         /* We ignore complex types above and all other vector types should
-          * have been split into scalar variables by the lower_io_to_scalar
-          * pass. The only exception should by OpenGL xfb varyings.
-          */
-         if (glsl_get_vector_elements(type) != 1)
+         if (!is_packing_supported_for_type(type))
             continue;
 
          unsigned location = var->data.location - VARYING_SLOT_VAR0;
