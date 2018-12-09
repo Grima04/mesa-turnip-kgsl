@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright Â© 2017 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ g_egldispatchstubs_c = custom_target(
   command : [
     prog_python, '@INPUT0@', 'source', '@INPUT1@', '@INPUT2@',
   ],
-  depend_files : files('generate/eglFunctionList.py', 'generate/genCommon.py'),
+  depend_files : [ files('generate/eglFunctionList.py'), genCommon_py, ],
   capture : true,
 )
 
@@ -83,7 +83,7 @@ g_egldispatchstubs_h = custom_target(
   command : [
     prog_python, '@INPUT0@', 'header', '@INPUT1@', '@INPUT2@',
   ],
-  depend_files : files('generate/eglFunctionList.py', 'generate/genCommon.py'),
+  depend_files : [ files('generate/eglFunctionList.py'), genCommon_py, ],
   capture : true,
 )
 

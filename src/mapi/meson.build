@@ -25,6 +25,7 @@ files_mapi_util = files(
   'u_execmem.h',
 )
 
+genCommon_py = files('new/genCommon.py')
 mapi_abi_py = files('mapi_abi.py')
 
 subdir('glapi')

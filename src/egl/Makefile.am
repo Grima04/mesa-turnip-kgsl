@@ -136,9 +136,17 @@ libEGL_common_la_LIBADD += \
 	$(LIBDRM_LIBS) \
 	$(CLOCK_LIB)
 
-GLVND_GEN_DEPS = generate/gen_egl_dispatch.py \
-	generate/egl.xml generate/eglFunctionList.py generate/genCommon.py \
+# dummy rule to keep dist happy
+$(top_scrdir)/src/mapi/new/genCommon.py:
+
+GLVND_GEN_EGL_DEPS = \
+	generate/gen_egl_dispatch.py \
+	generate/eglFunctionList.py \
+	generate/egl.xml \
 	generate/egl_other.xml
+
+GLVND_GEN_DEPS = $(top_scrdir)/src/mapi/new/genCommon.py \
+	$(GLVND_GEN_EGL_DEPS)
 
 PYTHON_GEN = $(AM_V_GEN)$(PYTHON) $(PYTHON_FLAGS)
 g_egldispatchstubs.c: $(GLVND_GEN_DEPS)
@@ -226,6 +234,6 @@ EXTRA_DIST = \
 	drivers/haiku \
 	main/egl.def \
 	main/README.txt \
-	$(GLVND_GEN_DEPS) \
+	$(GLVND_GEN_EGL_DEPS) \
 	main/50_mesa.json \
 	meson.build
