@@ -306,9 +306,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&src_surf, info->src.resource,
-                                ISL_AUX_USAGE_NONE, false);
+                                src_aux_usage, false);
    iris_blorp_surf_for_resource(&dst_surf, info->dst.resource,
-                                ISL_AUX_USAGE_NONE, true);
+                                dst_aux_usage, true);
 
    iris_resource_prepare_access(ice, batch, dst_res, info->dst.level, 1,
                                 info->dst.box.z, info->dst.box.depth,
