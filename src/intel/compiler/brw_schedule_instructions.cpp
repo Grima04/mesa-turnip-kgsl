@@ -430,7 +430,7 @@ schedule_node::set_latency_gen7(bool is_haswell)
 class instruction_scheduler {
 public:
    instruction_scheduler(backend_shader *s, int grf_count,
-                         int hw_reg_count, int block_count,
+                         unsigned hw_reg_count, int block_count,
                          instruction_scheduler_mode mode)
    {
       this->bs = s;
@@ -511,7 +511,7 @@ public:
    bool post_reg_alloc;
    int instructions_to_schedule;
    int grf_count;
-   int hw_reg_count;
+   unsigned hw_reg_count;
    int reg_pressure;
    int block_idx;
    exec_list instructions;
@@ -665,7 +665,7 @@ fs_instruction_scheduler::setup_liveness(cfg_t *cfg)
    int payload_last_use_ip[hw_reg_count];
    v->calculate_payload_ranges(hw_reg_count, payload_last_use_ip);
 
-   for (int i = 0; i < hw_reg_count; i++) {
+   for (unsigned i = 0; i < hw_reg_count; i++) {
       if (payload_last_use_ip[i] == -1)
          continue;
 

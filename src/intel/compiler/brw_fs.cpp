@@ -2874,8 +2874,8 @@ fs_visitor::opt_register_renaming()
    bool progress = false;
    int depth = 0;
 
-   int remap[alloc.count];
-   memset(remap, -1, sizeof(int) * alloc.count);
+   unsigned remap[alloc.count];
+   memset(remap, ~0u, sizeof(unsigned) * alloc.count);
 
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       if (inst->opcode == BRW_OPCODE_IF || inst->opcode == BRW_OPCODE_DO) {
@@ -2888,20 +2888,20 @@ fs_visitor::opt_register_renaming()
       /* Rewrite instruction sources. */
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == VGRF &&
-             remap[inst->src[i].nr] != -1 &&
+             remap[inst->src[i].nr] != ~0u &&
              remap[inst->src[i].nr] != inst->src[i].nr) {
             inst->src[i].nr = remap[inst->src[i].nr];
             progress = true;
          }
       }
 
-      const int dst = inst->dst.nr;
+      const unsigned dst = inst->dst.nr;
 
       if (depth == 0 &&
           inst->dst.file == VGRF &&
           alloc.sizes[inst->dst.nr] * REG_SIZE == inst->size_written &&
           !inst->is_partial_write()) {
-         if (remap[dst] == -1) {
+         if (remap[dst] == ~0u) {
             remap[dst] = dst;
          } else {
             remap[dst] = alloc.allocate(regs_written(inst));
@@ -2909,7 +2909,7 @@ fs_visitor::opt_register_renaming()
             progress = true;
          }
       } else if (inst->dst.file == VGRF &&
-                 remap[dst] != -1 &&
+                 remap[dst] != ~0u &&
                  remap[dst] != dst) {
          inst->dst.nr = remap[dst];
          progress = true;
@@ -2920,7 +2920,7 @@ fs_visitor::opt_register_renaming()
       invalidate_live_intervals();
 
       for (unsigned i = 0; i < ARRAY_SIZE(delta_xy); i++) {
-         if (delta_xy[i].file == VGRF && remap[delta_xy[i].nr] != -1) {
+         if (delta_xy[i].file == VGRF && remap[delta_xy[i].nr] != ~0u) {
             delta_xy[i].nr = remap[delta_xy[i].nr];
          }
       }
@@ -3608,7 +3608,7 @@ void
 fs_visitor::insert_gen4_post_send_dependency_workarounds(bblock_t *block, fs_inst *inst)
 {
    int write_len = regs_written(inst);
-   int first_write_grf = inst->dst.nr;
+   unsigned first_write_grf = inst->dst.nr;
    bool needs_dep[BRW_MAX_MRF(devinfo->gen)];
    assert(write_len < (int)sizeof(needs_dep) - 1);
 
@@ -4783,7 +4783,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       bld.MOV(sources[length++], min_lod);
    }
 
-   int mlen;
+   unsigned mlen;
    if (reg_width == 2)
       mlen = length * reg_width - header_size;
    else

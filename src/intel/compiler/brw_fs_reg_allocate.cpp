@@ -912,7 +912,7 @@ fs_visitor::choose_spill_reg(struct ra_graph *g)
 }
 
 void
-fs_visitor::spill_reg(int spill_reg)
+fs_visitor::spill_reg(unsigned spill_reg)
 {
    int size = alloc.sizes[spill_reg];
    unsigned int spill_offset = last_scratch;

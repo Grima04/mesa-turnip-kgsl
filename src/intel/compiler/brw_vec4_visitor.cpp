@@ -1337,8 +1337,8 @@ vec4_visitor::emit_urb_slot(dst_reg reg, int varying)
    }
 }
 
-static int
-align_interleaved_urb_mlen(const struct gen_device_info *devinfo, int mlen)
+static unsigned
+align_interleaved_urb_mlen(const struct gen_device_info *devinfo, unsigned mlen)
 {
    if (devinfo->gen >= 6) {
       /* URB data written (does not include the message header reg) must

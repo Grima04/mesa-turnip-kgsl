@@ -1840,7 +1840,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
    }
 
    /* Store the control data bits in the message payload and send it. */
-   int mlen = 2;
+   unsigned mlen = 2;
    if (channel_mask.file != BAD_FILE)
       mlen += 4; /* channel masks, plus 3 extra copies of the data */
    if (per_slot_offset.file != BAD_FILE)
@@ -1848,7 +1848,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
 
    fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, mlen);
    fs_reg *sources = ralloc_array(mem_ctx, fs_reg, mlen);
-   int i = 0;
+   unsigned i = 0;
    sources[i++] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
    if (per_slot_offset.file != BAD_FILE)
       sources[i++] = per_slot_offset;
