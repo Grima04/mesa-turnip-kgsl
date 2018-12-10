@@ -160,6 +160,13 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_CLIP_CNTL));
 	OUT_RING(ring, 0x00000000);
 
+	OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
+	OUT_RING(ring, fui((float) tile->bin_w / 2.0)); /* XSCALE */
+	OUT_RING(ring, fui((float) tile->bin_w / 2.0)); /* XOFFSET */
+	OUT_RING(ring, fui((float) tile->bin_h / 2.0)); /* YSCALE */
+	OUT_RING(ring, fui((float) tile->bin_h / 2.0)); /* YOFFSET */
+
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_MODECONTROL));
 	OUT_RING(ring, A2XX_RB_MODECONTROL_EDRAM_MODE(EDRAM_COPY));
