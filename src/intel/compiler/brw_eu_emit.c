@@ -91,7 +91,7 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
 
    if (dest.file == BRW_MESSAGE_REGISTER_FILE)
       assert((dest.nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(devinfo->gen));
-   else if (dest.file != BRW_ARCHITECTURE_REGISTER_FILE)
+   else if (dest.file == BRW_GENERAL_REGISTER_FILE)
       assert(dest.nr < 128);
 
    gen7_convert_mrf_to_grf(p, &dest);
@@ -170,7 +170,7 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
 
    if (reg.file == BRW_MESSAGE_REGISTER_FILE)
       assert((reg.nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(devinfo->gen));
-   else if (reg.file != BRW_ARCHITECTURE_REGISTER_FILE)
+   else if (reg.file == BRW_GENERAL_REGISTER_FILE)
       assert(reg.nr < 128);
 
    gen7_convert_mrf_to_grf(p, &reg);
@@ -275,7 +275,7 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
 {
    const struct gen_device_info *devinfo = p->devinfo;
 
-   if (reg.file != BRW_ARCHITECTURE_REGISTER_FILE)
+   if (reg.file == BRW_GENERAL_REGISTER_FILE)
       assert(reg.nr < 128);
 
    /* From the IVB PRM Vol. 4, Pt. 3, Section 3.3.3.5:
@@ -654,9 +654,9 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
    gen7_convert_mrf_to_grf(p, &dest);
 
    assert(dest.nr < 128);
-   assert(src0.nr < 128);
-   assert(src1.nr < 128);
-   assert(src2.nr < 128);
+   assert(src0.file != BRW_IMMEDIATE_VALUE || src0.nr < 128);
+   assert(src1.file != BRW_IMMEDIATE_VALUE || src1.nr < 128);
+   assert(src2.file != BRW_IMMEDIATE_VALUE || src2.nr < 128);
    assert(dest.address_mode == BRW_ADDRESS_DIRECT);
    assert(src0.address_mode == BRW_ADDRESS_DIRECT);
    assert(src1.address_mode == BRW_ADDRESS_DIRECT);
