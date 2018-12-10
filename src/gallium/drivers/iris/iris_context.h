@@ -706,7 +706,8 @@ uint64_t iris_timebase_scale(const struct gen_device_info *devinfo,
 void iris_predraw_resolve_inputs(struct iris_context *ice,
                                  struct iris_batch *batch,
                                  struct iris_shader_state *shs,
-                                 bool *draw_aux_buffer_disabled);
+                                 bool *draw_aux_buffer_disabled,
+                                 bool consider_framebuffer);
 void iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                       struct iris_batch *batch,
                                       bool *draw_aux_buffer_disabled);

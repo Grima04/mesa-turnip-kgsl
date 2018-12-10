@@ -83,7 +83,8 @@ static void
 resolve_sampler_views(struct iris_context *ice,
                       struct iris_batch *batch,
                       struct iris_shader_state *shs,
-                      bool *draw_aux_buffer_disabled)
+                      bool *draw_aux_buffer_disabled,
+                      bool consider_framebuffer)
 {
    uint32_t views = shs->bound_sampler_views;
 
@@ -97,7 +98,7 @@ resolve_sampler_views(struct iris_context *ice,
       if (res->base.target == PIPE_BUFFER)
          continue;
 
-      if (batch->name != IRIS_BATCH_COMPUTE) {
+      if (consider_framebuffer) {
          disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
                                res, isv->view.base_level, isv->view.levels,
                                "for sampling");
@@ -117,7 +118,8 @@ static void
 resolve_image_views(struct iris_context *ice,
                     struct iris_batch *batch,
                     struct iris_shader_state *shs,
-                    bool *draw_aux_buffer_disabled)
+                    bool *draw_aux_buffer_disabled,
+                    bool consider_framebuffer)
 {
    uint32_t views = shs->bound_image_views;
 
@@ -128,7 +130,7 @@ resolve_image_views(struct iris_context *ice,
       if (res->base.target == PIPE_BUFFER)
          continue;
 
-      if (batch->name != IRIS_BATCH_COMPUTE) {
+      if (consider_framebuffer) {
          disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
                                res, 0, ~0, "as a shader image");
       }
@@ -150,10 +152,11 @@ void
 iris_predraw_resolve_inputs(struct iris_context *ice,
                             struct iris_batch *batch,
                             struct iris_shader_state *shs,
-                            bool *draw_aux_buffer_disabled)
+                            bool *draw_aux_buffer_disabled,
+                            bool consider_framebuffer)
 {
-   resolve_sampler_views(ice, batch, shs, draw_aux_buffer_disabled);
-   resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled);
+   resolve_sampler_views(ice, batch, shs, draw_aux_buffer_disabled, consider_framebuffer);
+   resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled, consider_framebuffer);
 
    // XXX: ASTC hacks
 }

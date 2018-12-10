@@ -103,7 +103,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_COMPUTE; stage++) {
       if (ice->shaders.prog[stage])
          iris_predraw_resolve_inputs(ice,batch, &ice->state.shaders[stage],
-                                     draw_aux_buffer_disabled);
+                                     draw_aux_buffer_disabled, true);
    }
    iris_predraw_resolve_framebuffer(ice, batch, draw_aux_buffer_disabled);
 
