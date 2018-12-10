@@ -269,6 +269,14 @@ enum quniform_contents {
          */
         QUNIFORM_SPILL_OFFSET,
         QUNIFORM_SPILL_SIZE_PER_THREAD,
+
+        /**
+         * Returns the offset of the shared memory for compute shaders.
+         *
+         * This will be accessed using TMU general memory operations, so the
+         * L2T cache will effectively be the shared memory area.
+         */
+        QUNIFORM_SHARED_OFFSET,
 };
 
 static inline uint32_t v3d_tmu_config_data_create(uint32_t unit, uint32_t value)
@@ -546,6 +554,7 @@ struct v3d_compile {
         struct qreg payload_w, payload_w_centroid, payload_z;
 
         struct qreg cs_payload[2];
+        struct qreg cs_shared_offset;
         int local_invocation_index_bits;
 
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS];

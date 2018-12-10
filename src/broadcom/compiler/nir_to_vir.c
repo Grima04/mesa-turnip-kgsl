@@ -114,28 +114,40 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ssbo:
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_uniform:
+        case nir_intrinsic_load_shared:
                 return GENERAL_TMU_READ_OP_READ;
         case nir_intrinsic_store_ssbo:
+        case nir_intrinsic_store_shared:
                 return GENERAL_TMU_WRITE_OP_WRITE;
         case nir_intrinsic_ssbo_atomic_add:
+        case nir_intrinsic_shared_atomic_add:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_ADD_WRAP;
         case nir_intrinsic_ssbo_atomic_imin:
+        case nir_intrinsic_shared_atomic_imin:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_SMIN;
         case nir_intrinsic_ssbo_atomic_umin:
+        case nir_intrinsic_shared_atomic_umin:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_UMIN;
         case nir_intrinsic_ssbo_atomic_imax:
+        case nir_intrinsic_shared_atomic_imax:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_SMAX;
         case nir_intrinsic_ssbo_atomic_umax:
+        case nir_intrinsic_shared_atomic_umax:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_UMAX;
         case nir_intrinsic_ssbo_atomic_and:
+        case nir_intrinsic_shared_atomic_and:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_AND;
         case nir_intrinsic_ssbo_atomic_or:
+        case nir_intrinsic_shared_atomic_or:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_OR;
         case nir_intrinsic_ssbo_atomic_xor:
+        case nir_intrinsic_shared_atomic_xor:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_XOR;
         case nir_intrinsic_ssbo_atomic_exchange:
+        case nir_intrinsic_shared_atomic_exchange:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_XCHG;
         case nir_intrinsic_ssbo_atomic_comp_swap:
+        case nir_intrinsic_shared_atomic_comp_swap:
                 return GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG;
         default:
                 unreachable("unknown intrinsic op");
@@ -147,24 +159,28 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
  * memory access interface.
  */
 static void
-ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
+ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
+                     bool is_shared)
 {
         /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
          * wants to have support for inc/dec?
          */
 
         uint32_t tmu_op = v3d_general_tmu_op(instr);
-        bool is_store = instr->intrinsic == nir_intrinsic_store_ssbo;
+        bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
+                         instr->intrinsic == nir_intrinsic_store_shared);
+        bool has_index = !is_shared;
 
         int offset_src;
         int tmu_writes = 1; /* address */
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
                 offset_src = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
-                   instr->intrinsic == nir_intrinsic_load_ubo) {
-                offset_src = 1;
+                   instr->intrinsic == nir_intrinsic_load_ubo ||
+                   instr->intrinsic == nir_intrinsic_load_shared) {
+                offset_src = 0 + has_index;
         } else if (is_store) {
-                offset_src = 2;
+                offset_src = 1 + has_index;
                 for (int i = 0; i < instr->num_components; i++) {
                         vir_MOV_dest(c,
                                      vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
@@ -172,15 +188,16 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         tmu_writes++;
                 }
         } else {
-                offset_src = 1;
+                offset_src = 0 + has_index;
                 vir_MOV_dest(c,
                              vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                             ntq_get_src(c, instr->src[2], 0));
+                             ntq_get_src(c, instr->src[1 + has_index], 0));
                 tmu_writes++;
                 if (tmu_op == GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG) {
                         vir_MOV_dest(c,
                                      vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[3], 0));
+                                     ntq_get_src(c, instr->src[2 + has_index],
+                                                 0));
                         tmu_writes++;
                 }
         }
@@ -228,6 +245,11 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  */
                 offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
                                      nir_src_as_uint(instr->src[0]) + 1);
+        } else if (is_shared) {
+                /* Shared variables have no buffer index, and all start from a
+                 * common base that we set up at the start of dispatch
+                 */
+                offset = c->cs_shared_offset;
         } else {
                 offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
                                      nir_src_as_uint(instr->src[is_store ?
@@ -1737,12 +1759,12 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                                            offset + i));
                         }
                 } else {
-                        ntq_emit_tmu_general(c, instr);
+                        ntq_emit_tmu_general(c, instr, false);
                 }
                 break;
 
         case nir_intrinsic_load_ubo:
-                ntq_emit_tmu_general(c, instr);
+                ntq_emit_tmu_general(c, instr, false);
                 break;
 
         case nir_intrinsic_ssbo_atomic_add:
@@ -1757,7 +1779,22 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_ssbo_atomic_comp_swap:
         case nir_intrinsic_load_ssbo:
         case nir_intrinsic_store_ssbo:
-                ntq_emit_tmu_general(c, instr);
+                ntq_emit_tmu_general(c, instr, false);
+                break;
+
+        case nir_intrinsic_shared_atomic_add:
+        case nir_intrinsic_shared_atomic_imin:
+        case nir_intrinsic_shared_atomic_umin:
+        case nir_intrinsic_shared_atomic_imax:
+        case nir_intrinsic_shared_atomic_umax:
+        case nir_intrinsic_shared_atomic_and:
+        case nir_intrinsic_shared_atomic_or:
+        case nir_intrinsic_shared_atomic_xor:
+        case nir_intrinsic_shared_atomic_exchange:
+        case nir_intrinsic_shared_atomic_comp_swap:
+        case nir_intrinsic_load_shared:
+        case nir_intrinsic_store_shared:
+                ntq_emit_tmu_general(c, instr, true);
                 break;
 
         case nir_intrinsic_image_deref_load:
@@ -1890,6 +1927,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_memory_barrier_atomic_counter:
         case nir_intrinsic_memory_barrier_buffer:
         case nir_intrinsic_memory_barrier_image:
+        case nir_intrinsic_memory_barrier_shared:
                 /* We don't do any instruction scheduling of these NIR
                  * instructions between each other, so we just need to make
                  * sure that the TMU operations before the barrier are flushed
@@ -2304,8 +2342,9 @@ nir_to_vir(struct v3d_compile *c)
                      (1ull << SYSTEM_VALUE_WORK_GROUP_ID))) {
                         c->cs_payload[0] = vir_MOV(c, vir_reg(QFILE_REG, 0));
                 }
-                if (c->s->info.system_values_read &
-                    ((1ull << SYSTEM_VALUE_WORK_GROUP_ID))) {
+                if ((c->s->info.system_values_read &
+                     ((1ull << SYSTEM_VALUE_WORK_GROUP_ID))) ||
+                    c->s->info.cs.shared_size) {
                         c->cs_payload[1] = vir_MOV(c, vir_reg(QFILE_REG, 2));
                 }
 
@@ -2318,6 +2357,27 @@ nir_to_vir(struct v3d_compile *c)
                 c->local_invocation_index_bits =
                         ffs(util_next_power_of_two(MAX2(wg_size, 64))) - 1;
                 assert(c->local_invocation_index_bits <= 8);
+
+                if (c->s->info.cs.shared_size) {
+                        struct qreg wg_in_mem = vir_SHR(c, c->cs_payload[1],
+                                                        vir_uniform_ui(c, 16));
+                        if (c->s->info.cs.local_size[0] != 1 ||
+                            c->s->info.cs.local_size[1] != 1 ||
+                            c->s->info.cs.local_size[2] != 1) {
+                                int wg_bits = (16 -
+                                               c->local_invocation_index_bits);
+                                int wg_mask = (1 << wg_bits) - 1;
+                                wg_in_mem = vir_AND(c, wg_in_mem,
+                                                    vir_uniform_ui(c, wg_mask));
+                        }
+                        struct qreg shared_per_wg =
+                                vir_uniform_ui(c, c->s->info.cs.shared_size);
+
+                        c->cs_shared_offset =
+                                vir_ADD(c,
+                                        vir_uniform(c, QUNIFORM_SHARED_OFFSET,0),
+                                        vir_UMUL(c, wg_in_mem, shared_per_wg));
+                }
                 break;
         default:
                 break;
