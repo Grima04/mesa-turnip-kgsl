@@ -561,6 +561,27 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
 }
 
 static bool
+does_varying_match(nir_variable *out_var, nir_variable *in_var)
+{
+   if (in_var->data.location == out_var->data.location &&
+       in_var->data.location_frac == out_var->data.location_frac)
+      return true;
+
+   return false;
+}
+
+static nir_variable *
+get_matching_input_var(nir_shader *consumer, nir_variable *out_var)
+{
+   nir_foreach_variable(var, &consumer->inputs) {
+      if (does_varying_match(out_var, var))
+         return var;
+   }
+
+   return NULL;
+}
+
+static bool
 can_replace_varying(nir_variable *out_var)
 {
    /* Skip types that require more complex handling.
@@ -635,6 +656,53 @@ replace_constant_input(nir_shader *shader, nir_intrinsic_instr *store_intr)
    return progress;
 }
 
+static bool
+replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
+                         nir_intrinsic_instr *dup_store_intr)
+{
+   assert(input_var);
+
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_variable *dup_out_var =
+      nir_deref_instr_get_variable(nir_src_as_deref(dup_store_intr->src[0]));
+
+   bool progress = false;
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_load_deref)
+            continue;
+
+         nir_deref_instr *in_deref = nir_src_as_deref(intr->src[0]);
+         if (in_deref->mode != nir_var_shader_in)
+            continue;
+
+         nir_variable *in_var = nir_deref_instr_get_variable(in_deref);
+
+         if (!does_varying_match(dup_out_var, in_var) ||
+             in_var->data.interpolation != input_var->data.interpolation ||
+             get_interp_loc(in_var) != get_interp_loc(input_var))
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+
+         nir_ssa_def *load = nir_load_var(&b, input_var);
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(load));
+
+         progress = true;
+      }
+   }
+
+   return progress;
+}
+
 bool
 nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 {
@@ -647,6 +715,10 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
    bool progress = false;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(producer);
+
+   struct hash_table *varying_values =
+      _mesa_hash_table_create(NULL,  _mesa_hash_pointer,
+                              _mesa_key_pointer_equal);
 
    /* If we find a store in the last block of the producer we can be sure this
     * is the only possible value for this output.
@@ -671,8 +743,24 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 
       if (intr->src[1].ssa->parent_instr->type == nir_instr_type_load_const) {
          progress |= replace_constant_input(consumer, intr);
+      } else {
+         struct hash_entry *entry =
+               _mesa_hash_table_search(varying_values, intr->src[1].ssa);
+         if (entry) {
+            progress |= replace_duplicate_input(consumer,
+                                                (nir_variable *) entry->data,
+                                                intr);
+         } else {
+            nir_variable *in_var = get_matching_input_var(consumer, out_var);
+            if (in_var) {
+               _mesa_hash_table_insert(varying_values, intr->src[1].ssa,
+                                       in_var);
+            }
+         }
       }
    }
+
+   _mesa_hash_table_destroy(varying_values, NULL);
 
    return progress;
 }
