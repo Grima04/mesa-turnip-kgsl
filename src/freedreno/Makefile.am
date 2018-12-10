@@ -65,7 +65,7 @@ libfreedreno_ir3_la_CFLAGS = \
 	-I$(top_srcdir)/src/freedreno/ir3 \
 	-I$(top_builddir)/src/compiler/nir \
 	-I$(top_srcdir)/src/compiler/nir
-libfreedreno_ir3_LIBADD = \
+libfreedreno_ir3_la_LIBADD = \
 	$(top_builddir)/src/compiler/nir/libnir.la \
 	$(top_builddir)/src/util/libmesautil.la
 
