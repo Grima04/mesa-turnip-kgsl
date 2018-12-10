@@ -137,7 +137,7 @@ emit_texture(struct fd_ringbuffer *ring, struct fd_context *ctx,
 
 	OUT_RING(ring, sampler->tex0 | view->tex0);
 	if (rsc)
-		OUT_RELOC(ring, rsc->bo, 0, view->tex1, 0);
+		OUT_RELOC(ring, rsc->bo, fd_resource_offset(rsc, 0, 0), view->tex1, 0);
 	else
 		OUT_RING(ring, 0);
 
