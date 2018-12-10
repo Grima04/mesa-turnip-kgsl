@@ -224,9 +224,14 @@ void
 iris_blorp_surf_for_resource(struct blorp_surf *surf,
                              struct pipe_resource *p_res,
                              enum isl_aux_usage aux_usage,
+                             unsigned level,
                              bool is_render_target)
 {
    struct iris_resource *res = (void *) p_res;
+
+   if (aux_usage == ISL_AUX_USAGE_HIZ &&
+       !iris_resource_level_has_hiz(res, level))
+      aux_usage = ISL_AUX_USAGE_NONE;
 
    *surf = (struct blorp_surf) {
       .surf = &res->surf,
@@ -306,9 +311,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    struct blorp_surf src_surf, dst_surf;
    iris_blorp_surf_for_resource(&src_surf, info->src.resource,
-                                src_aux_usage, false);
+                                src_aux_usage, info->src.level, false);
    iris_blorp_surf_for_resource(&dst_surf, info->dst.resource,
-                                dst_aux_usage, true);
+                                dst_aux_usage, info->dst.level, true);
 
    iris_resource_prepare_access(ice, batch, dst_res, info->dst.level, 1,
                                 info->dst.box.z, info->dst.box.depth,
@@ -414,9 +419,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_get_depth_stencil_resources(info->src.resource, &junk, &src_res);
       iris_get_depth_stencil_resources(info->dst.resource, &junk, &dst_res);
       iris_blorp_surf_for_resource(&src_surf, &src_res->base,
-                                   ISL_AUX_USAGE_NONE, false);
+                                   ISL_AUX_USAGE_NONE, info->src.level, false);
       iris_blorp_surf_for_resource(&dst_surf, &dst_res->base,
-                                   ISL_AUX_USAGE_NONE, true);
+                                   ISL_AUX_USAGE_NONE, info->dst.level, true);
 
       for (int slice = 0; slice < info->dst.box.depth; slice++) {
          iris_batch_maybe_flush(batch, 1500);
@@ -515,8 +520,10 @@ iris_resource_copy_region(struct pipe_context *ctx,
       // XXX: what about one surface being a buffer and not the other?
 
       struct blorp_surf src_surf, dst_surf;
-      iris_blorp_surf_for_resource(&src_surf, src, src_aux_usage, false);
-      iris_blorp_surf_for_resource(&dst_surf, dst, dst_aux_usage, true);
+      iris_blorp_surf_for_resource(&src_surf, src, src_aux_usage,
+                                   src_level, false);
+      iris_blorp_surf_for_resource(&dst_surf, dst, dst_aux_usage,
+                                   dst_level, true);
 
       iris_resource_prepare_access(ice, batch, src_res, src_level, 1,
                                    src_box->z, src_box->depth,

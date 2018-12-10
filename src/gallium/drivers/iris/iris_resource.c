@@ -203,7 +203,6 @@ iris_resource_disable_aux(struct iris_resource *res)
    free(res->aux.state);
 
    // XXX: clear color BO
-   // XXX: HiZ
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
@@ -376,7 +375,18 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
       iris_bo_unmap(res->aux.bo);
    }
 
-   // XXX: HIZ enabling
+   if (res->aux.usage == ISL_AUX_USAGE_HIZ) {
+      for (unsigned level = 0; level < res->surf.levels; ++level) {
+         uint32_t width = u_minify(res->surf.phys_level0_sa.width, level);
+         uint32_t height = u_minify(res->surf.phys_level0_sa.height, level);
+
+         /* Disable HiZ for LOD > 0 unless the width/height are 8x4 aligned.
+          * For LOD == 0, we can grow the dimensions to make it work.
+          */
+         if (level == 0 || ((width & 7) == 0 && (height & 3) == 0))
+            res->aux.has_hiz |= 1 << level;
+      }
+   }
 
    return true;
 }

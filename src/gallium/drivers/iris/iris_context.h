@@ -611,6 +611,7 @@ void iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
 void iris_blorp_surf_for_resource(struct blorp_surf *surf,
                                   struct pipe_resource *p_res,
                                   enum isl_aux_usage aux_usage,
+                                  unsigned level,
                                   bool is_render_target);
 
 /* iris_draw.c */

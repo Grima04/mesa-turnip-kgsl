@@ -408,7 +408,8 @@ iris_resolve_color(struct iris_context *ice,
    //DBG("%s to mt %p level %u layer %u\n", __FUNCTION__, mt, level, layer);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&surf, &res->base, res->aux.usage, true);
+   iris_blorp_surf_for_resource(&surf, &res->base, res->aux.usage, level,
+                                true);
 
    iris_batch_maybe_flush(batch, 1500);
 
@@ -450,7 +451,7 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    assert(res->aux.usage == ISL_AUX_USAGE_MCS);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&surf, &res->base, res->aux.usage, true);
+   iris_blorp_surf_for_resource(&surf, &res->base, res->aux.usage, 0, true);
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
@@ -516,14 +517,114 @@ sample_with_hiz(const struct gen_device_info *devinfo,
 }
 
 /**
+ * Perform a HiZ or depth resolve operation.
+ *
+ * For an overview of HiZ ops, see the following sections of the Sandy Bridge
+ * PRM, Volume 1, Part 2:
+ *   - 7.5.3.1 Depth Buffer Clear
+ *   - 7.5.3.2 Depth Buffer Resolve
+ *   - 7.5.3.3 Hierarchical Depth Buffer Resolve
+ */
+static void
+iris_hiz_exec(struct iris_context *ice,
+              struct iris_batch *batch,
+              struct iris_resource *res,
+              unsigned int level, unsigned int start_layer,
+              unsigned int num_layers, enum isl_aux_op op)
+{
+   assert(iris_resource_level_has_hiz(res, level));
+   assert(op != ISL_AUX_OP_NONE);
+   const char *name = NULL;
+
+   switch (op) {
+   case ISL_AUX_OP_FULL_RESOLVE:
+      name = "depth resolve";
+      break;
+   case ISL_AUX_OP_AMBIGUATE:
+      name = "hiz ambiguate";
+      break;
+   case ISL_AUX_OP_FAST_CLEAR:
+      name = "depth clear";
+      break;
+   case ISL_AUX_OP_PARTIAL_RESOLVE:
+   case ISL_AUX_OP_NONE:
+      unreachable("Invalid HiZ op");
+   }
+
+   //DBG("%s %s to mt %p level %d layers %d-%d\n",
+       //__func__, name, mt, level, start_layer, start_layer + num_layers - 1);
+
+   /* The following stalls and flushes are only documented to be required
+    * for HiZ clear operations.  However, they also seem to be required for
+    * resolve operations.
+    *
+    * From the Ivybridge PRM, volume 2, "Depth Buffer Clear":
+    *
+    *   "If other rendering operations have preceded this clear, a
+    *    PIPE_CONTROL with depth cache flush enabled, Depth Stall bit
+    *    enabled must be issued before the rectangle primitive used for
+    *    the depth buffer clear operation."
+    *
+    * Same applies for Gen8 and Gen9.
+    *
+    * In addition, from the Ivybridge PRM, volume 2, 1.10.4.1
+    * PIPE_CONTROL, Depth Cache Flush Enable:
+    *
+    *   "This bit must not be set when Depth Stall Enable bit is set in
+    *    this packet."
+    *
+    * This is confirmed to hold for real, Haswell gets immediate gpu hangs.
+    *
+    * Therefore issue two pipe control flushes, one for cache flush and
+    * another for depth stall.
+    */
+   iris_emit_pipe_control_flush(batch,
+                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                PIPE_CONTROL_CS_STALL);
+
+   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_DEPTH_STALL);
+
+   assert(res->aux.usage == ISL_AUX_USAGE_HIZ && res->aux.bo);
+
+   struct blorp_surf surf;
+   iris_blorp_surf_for_resource(&surf, &res->base, ISL_AUX_USAGE_HIZ,
+                                level, true);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch,
+                    BLORP_BATCH_NO_UPDATE_CLEAR_COLOR);
+   blorp_hiz_op(&blorp_batch, &surf, level, start_layer, num_layers, op);
+   blorp_batch_finish(&blorp_batch);
+
+   /* The following stalls and flushes are only documented to be required
+    * for HiZ clear operations.  However, they also seem to be required for
+    * resolve operations.
+    *
+    * From the Broadwell PRM, volume 7, "Depth Buffer Clear":
+    *
+    *    "Depth buffer clear pass using any of the methods (WM_STATE,
+    *     3DSTATE_WM or 3DSTATE_WM_HZ_OP) must be followed by a
+    *     PIPE_CONTROL command with DEPTH_STALL bit and Depth FLUSH bits
+    *     "set" before starting to render.  DepthStall and DepthFlush are
+    *     not needed between consecutive depth clear passes nor is it
+    *     required if the depth clear pass was done with
+    *     'full_surf_clear' bit set in the 3DSTATE_WM_HZ_OP."
+    *
+    * TODO: Such as the spec says, this could be conditional.
+    */
+   iris_emit_pipe_control_flush(batch,
+                                PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                PIPE_CONTROL_DEPTH_STALL);
+}
+
+/**
  * Does the resource's slice have hiz enabled?
  */
 bool
 iris_resource_level_has_hiz(const struct iris_resource *res, uint32_t level)
 {
    iris_resource_check_level_layer(res, level, 0);
-   // return res->level[level].has_hiz;
-   return false;
+   return res->aux.has_hiz & 1 << level;
 }
 
 /** \brief Assert that the level and layer are valid for the resource. */
@@ -887,8 +988,7 @@ iris_resource_prepare_hiz_access(struct iris_context *ice,
    }
 
    if (hiz_op != ISL_AUX_OP_NONE) {
-      // XXX: HiZ
-      //intel_hiz_exec(ice, res, level, layer, 1, hiz_op);
+      iris_hiz_exec(ice, batch, res, level, layer, 1, hiz_op);
 
       switch (hiz_op) {
       case ISL_AUX_OP_FULL_RESOLVE:
