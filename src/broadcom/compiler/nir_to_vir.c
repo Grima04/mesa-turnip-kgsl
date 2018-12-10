@@ -66,6 +66,23 @@
 #define GENERAL_TMU_WRITE_OP_ATOMIC_XOR              (10 << 3)
 #define GENERAL_TMU_WRITE_OP_WRITE                   (15 << 3)
 
+#define V3D_TSY_SET_QUORUM          0
+#define V3D_TSY_INC_WAITERS         1
+#define V3D_TSY_DEC_WAITERS         2
+#define V3D_TSY_INC_QUORUM          3
+#define V3D_TSY_DEC_QUORUM          4
+#define V3D_TSY_FREE_ALL            5
+#define V3D_TSY_RELEASE             6
+#define V3D_TSY_ACQUIRE             7
+#define V3D_TSY_WAIT                8
+#define V3D_TSY_WAIT_INC            9
+#define V3D_TSY_WAIT_CHECK          10
+#define V3D_TSY_WAIT_INC_CHECK      11
+#define V3D_TSY_WAIT_CV             12
+#define V3D_TSY_INC_SEMAPHORE       13
+#define V3D_TSY_DEC_SEMAPHORE       14
+#define V3D_TSY_SET_QUORUM_FREE_ALL 15
+
 static void
 ntq_emit_cf_list(struct v3d_compile *c, struct exec_list *list);
 
@@ -1937,6 +1954,33 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  */
                 break;
 
+        case nir_intrinsic_barrier:
+                /* Emit a TSY op to get all invocations in the workgroup
+                 * (actually supergroup) to block until the last invocation
+                 * reaches the TSY op.
+                 */
+                if (c->devinfo->ver >= 42) {
+                        vir_BARRIERID_dest(c, vir_reg(QFILE_MAGIC,
+                                                      V3D_QPU_WADDR_SYNCB));
+                } else {
+                        struct qinst *sync =
+                                vir_BARRIERID_dest(c,
+                                                   vir_reg(QFILE_MAGIC,
+                                                           V3D_QPU_WADDR_SYNCU));
+                        sync->src[vir_get_implicit_uniform_src(sync)] =
+                                vir_uniform_ui(c,
+                                               0xffffff00 |
+                                               V3D_TSY_WAIT_INC_CHECK);
+
+                }
+
+                /* The blocking of a TSY op only happens at the next thread
+                 * switch.  No texturing may be outstanding at the time of a
+                 * TSY blocking operation.
+                 */
+                vir_emit_thrsw(c);
+                break;
+
         case nir_intrinsic_load_num_work_groups:
                 for (int i = 0; i < 3; i++) {
                         ntq_store_dest(c, &instr->dest, i,
@@ -2337,6 +2381,12 @@ nir_to_vir(struct v3d_compile *c)
                 }
                 break;
         case MESA_SHADER_COMPUTE:
+                /* Set up the TSO for barriers, assuming we do some. */
+                if (c->devinfo->ver < 42) {
+                        vir_BARRIERID_dest(c, vir_reg(QFILE_MAGIC,
+                                                      V3D_QPU_WADDR_SYNC));
+                }
+
                 if (c->s->info.system_values_read &
                     ((1ull << SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) |
                      (1ull << SYSTEM_VALUE_WORK_GROUP_ID))) {
