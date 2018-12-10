@@ -457,12 +457,187 @@ lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
 }
 
 static bool
+lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
+                            nir_lower_doubles_options options)
+{
+   if (!(options & nir_lower_fp64_full_software))
+      return false;
+
+   assert(instr->dest.dest.is_ssa);
+
+   const char *name;
+   const struct glsl_type *return_type = glsl_uint64_t_type();
+
+   switch (instr->op) {
+   case nir_op_f2i64:
+      if (instr->src[0].src.ssa->bit_size == 64)
+         name = "__fp64_to_int64";
+      else
+         name = "__fp32_to_int64";
+      return_type = glsl_int64_t_type();
+      break;
+   case nir_op_f2u64:
+      if (instr->src[0].src.ssa->bit_size == 64)
+         name = "__fp64_to_uint64";
+      else
+         name = "__fp32_to_uint64";
+      break;
+   case nir_op_f2f64:
+      name = "__fp32_to_fp64";
+      break;
+   case nir_op_f2f32:
+      name = "__fp64_to_fp32";
+      return_type = glsl_float_type();
+      break;
+   case nir_op_f2i32:
+      name = "__fp64_to_int";
+      return_type = glsl_int_type();
+      break;
+   case nir_op_f2u32:
+      name = "__fp64_to_uint";
+      return_type = glsl_uint_type();
+      break;
+   case nir_op_f2b1:
+   case nir_op_f2b32:
+      name = "__fp64_to_bool";
+      return_type = glsl_bool_type();
+      break;
+   case nir_op_b2f64:
+      name = "__bool_to_fp64";
+      break;
+   case nir_op_i2f32:
+      if (instr->src[0].src.ssa->bit_size != 64)
+         return false;
+      name = "__int64_to_fp32";
+      return_type = glsl_float_type();
+      break;
+   case nir_op_u2f32:
+      if (instr->src[0].src.ssa->bit_size != 64)
+         return false;
+      name = "__uint64_to_fp32";
+      return_type = glsl_float_type();
+      break;
+   case nir_op_i2f64:
+      if (instr->src[0].src.ssa->bit_size == 64)
+         name = "__int64_to_fp64";
+      else
+         name = "__int_to_fp64";
+      break;
+   case nir_op_u2f64:
+      if (instr->src[0].src.ssa->bit_size == 64)
+         name = "__uint64_to_fp64";
+      else
+         name = "__uint_to_fp64";
+      break;
+   case nir_op_fabs:
+      name = "__fabs64";
+      break;
+   case nir_op_fneg:
+      name = "__fneg64";
+      break;
+   case nir_op_fround_even:
+      name = "__fround64";
+      break;
+   case nir_op_ftrunc:
+      name = "__ftrunc64";
+      break;
+   case nir_op_ffloor:
+      name = "__ffloor64";
+      break;
+   case nir_op_ffract:
+      name = "__ffract64";
+      break;
+   case nir_op_fsign:
+      name = "__fsign64";
+      break;
+   case nir_op_feq:
+      name = "__feq64";
+      return_type = glsl_bool_type();
+      break;
+   case nir_op_fne:
+      name = "__fne64";
+      return_type = glsl_bool_type();
+      break;
+   case nir_op_flt:
+      name = "__flt64";
+      return_type = glsl_bool_type();
+      break;
+   case nir_op_fge:
+      name = "__fge64";
+      return_type = glsl_bool_type();
+      break;
+   case nir_op_fmin:
+      name = "__fmin64";
+      break;
+   case nir_op_fmax:
+      name = "__fmax64";
+      break;
+   case nir_op_fadd:
+      name = "__fadd64";
+      break;
+   case nir_op_fmul:
+      name = "__fmul64";
+      break;
+   case nir_op_ffma:
+      name = "__ffma64";
+      break;
+   default:
+      return false;
+   }
+
+   nir_shader *shader = b->shader;
+   nir_function *func = NULL;
+
+   nir_foreach_function(function, shader) {
+      if (strcmp(function->name, name) == 0) {
+         func = function;
+         break;
+      }
+   }
+   if (!func) {
+      fprintf(stderr, "Cannot find function \"%s\"\n", name);
+      assert(func);
+   }
+
+   b->cursor = nir_before_instr(&instr->instr);
+
+   nir_call_instr *call = nir_call_instr_create(shader, func);
+
+   nir_variable *ret_tmp =
+      nir_local_variable_create(b->impl, return_type, "return_tmp");
+   nir_deref_instr *ret_deref = nir_build_deref_var(b, ret_tmp);
+   call->params[0] = nir_src_for_ssa(&ret_deref->dest.ssa);
+
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+      nir_src arg = nir_src_for_ssa(nir_imov_alu(b, instr->src[i], 1));
+      nir_src_copy(&call->params[i + 1], &arg, call);
+   }
+
+   nir_builder_instr_insert(b, &call->instr);
+
+   nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa,
+                            nir_src_for_ssa(nir_load_deref(b, ret_deref)));
+   nir_instr_remove(&instr->instr);
+   return true;
+}
+
+static bool
 lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
                     nir_lower_doubles_options options)
 {
    assert(instr->dest.dest.is_ssa);
-   if (instr->dest.dest.ssa.bit_size != 64)
+   bool is_64 = instr->dest.dest.ssa.bit_size == 64;
+
+   unsigned num_srcs = nir_op_infos[instr->op].num_inputs;
+   for (unsigned i = 0; i < num_srcs; i++) {
+      is_64 |= (nir_src_bit_size(instr->src[i].src) == 64);
+   }
+
+   if (!is_64)
       return false;
+
+   if (lower_doubles_instr_to_soft(b, instr, options))
+      return true;
 
    switch (instr->op) {
    case nir_op_frcp:
