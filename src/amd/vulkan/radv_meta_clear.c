@@ -1288,6 +1288,9 @@ uint32_t
 radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	       struct radv_image *image, uint32_t value)
 {
+	/* Mark the image as being compressed. */
+	radv_update_dcc_metadata(cmd_buffer, image, true);
+
 	return radv_fill_buffer(cmd_buffer, image->bo,
 				image->offset + image->dcc_offset,
 				image->surface.dcc_size, value);

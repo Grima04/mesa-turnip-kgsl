@@ -1206,6 +1206,9 @@ void radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 void radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
 			      struct radv_image *image, bool value);
 
+void radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer,
+			      struct radv_image *image, bool value);
+
 uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer,
 			  struct radeon_winsys_bo *bo,
 			  uint64_t offset, uint64_t size, uint32_t value);
@@ -1502,6 +1505,7 @@ struct radv_image {
 	struct radv_cmask_info cmask;
 	uint64_t clear_value_offset;
 	uint64_t fce_pred_offset;
+	uint64_t dcc_pred_offset;
 
 	/*
 	 * Metadata for the TC-compat zrange workaround. If the 32-bit value

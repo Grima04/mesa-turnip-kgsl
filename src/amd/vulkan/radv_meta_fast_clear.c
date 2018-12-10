@@ -706,6 +706,10 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		 * FMASK and DCC also imply a fast-clear eliminate.
 		 */
 		radv_update_fce_metadata(cmd_buffer, image, false);
+
+		/* Mark the image as being decompressed. */
+		if (decompress_dcc)
+			radv_update_dcc_metadata(cmd_buffer, image, false);
 	}
 
 	radv_meta_restore(&saved_state, cmd_buffer);
@@ -801,6 +805,9 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 				      });
 
 	radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, 1);
+
+	/* Mark this image as actually being decompressed. */
+	radv_update_dcc_metadata(cmd_buffer, image, false);
 
 	/* The fill buffer below does its own saving */
 	radv_meta_restore(&saved_state, cmd_buffer);
