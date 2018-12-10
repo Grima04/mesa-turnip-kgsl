@@ -45,7 +45,7 @@ struct iris_format_info {
  * They contain the storage (BO) and layout information (ISL surface).
  */
 struct iris_resource {
-   struct pipe_resource	base;
+   struct pipe_resource base;
    enum pipe_format internal_format;
 
    /**

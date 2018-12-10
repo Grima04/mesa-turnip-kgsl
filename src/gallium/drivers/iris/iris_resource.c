@@ -459,7 +459,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    uint64_t modifier = whandle->modifier;
    if (modifier == DRM_FORMAT_MOD_INVALID) {
-	  modifier = tiling_to_modifier(res->bo->tiling_mode);
+      modifier = tiling_to_modifier(res->bo->tiling_mode);
    }
    const struct isl_drm_modifier_info *mod_info =
       isl_drm_modifier_get_info(modifier);
@@ -581,11 +581,11 @@ s8_offset(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
    if (swizzled) {
       /* adjust for bit6 swizzling */
       if (((byte_x / 8) % 2) == 1) {
-	 if (((byte_y / 8) % 2) == 0) {
-	    u += 64;
-	 } else {
-	    u -= 64;
-	 }
+         if (((byte_y / 8) % 2) == 0) {
+            u += 64;
+         } else {
+            u -= 64;
+         }
       }
    }
 
