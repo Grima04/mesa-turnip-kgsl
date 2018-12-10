@@ -206,6 +206,7 @@ iris_resource_disable_aux(struct iris_resource *res)
    // XXX: HiZ
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
+   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
    res->aux.state = NULL;
@@ -730,11 +731,23 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
                          struct winsys_handle *whandle,
                          unsigned usage)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *)resource;
 
    /* If this is a buffer, stride should be 0 - no need to special case */
    whandle->stride = res->surf.row_pitch_B;
-   whandle->modifier = tiling_to_modifier(res->bo->tiling_mode);
+   whandle->modifier =
+      res->mod_info ? res->mod_info->modifier
+                    : tiling_to_modifier(res->bo->tiling_mode);
+
+   if (!res->mod_info || res->mod_info->aux_usage != res->aux.usage) {
+      struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
+      iris_resource_prepare_access(ice, render_batch, res,
+                                   0, INTEL_REMAINING_LEVELS,
+                                   0, INTEL_REMAINING_LAYERS,
+                                   ISL_AUX_USAGE_NONE, false);
+      iris_resource_disable_aux(res);
+   }
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:
