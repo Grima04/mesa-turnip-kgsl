@@ -612,15 +612,6 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       }
       OPT(nir_opt_remove_phis);
       OPT(nir_opt_undef);
-      OPT(nir_lower_doubles, nir_lower_drcp |
-                             nir_lower_dsqrt |
-                             nir_lower_drsq |
-                             nir_lower_dtrunc |
-                             nir_lower_dfloor |
-                             nir_lower_dceil |
-                             nir_lower_dfract |
-                             nir_lower_dround_even |
-                             nir_lower_dmod);
       OPT(nir_lower_pack);
    } while (progress);
 
@@ -668,6 +659,76 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
 
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
 
+   if (is_scalar) {
+      OPT(nir_lower_alu_to_scalar);
+   }
+
+   /* Run opt_algebraic before int64 lowering so we can hopefully get rid
+    * of some int64 instructions.
+    */
+   OPT(nir_opt_algebraic);
+
+   /* Lower 64-bit operations before nir_optimize so that loop unrolling sees
+    * their actual cost.
+    */
+   nir_lower_int64_options int64_options =
+      nir_lower_imul64 |
+      nir_lower_isign64 |
+      nir_lower_divmod64 |
+      nir_lower_imul_high64;
+   nir_lower_doubles_options fp64_options =
+      nir_lower_drcp |
+      nir_lower_dsqrt |
+      nir_lower_drsq |
+      nir_lower_dtrunc |
+      nir_lower_dfloor |
+      nir_lower_dceil |
+      nir_lower_dfract |
+      nir_lower_dround_even |
+      nir_lower_dmod;
+
+   if (!devinfo->has_64bit_types) {
+      int64_options |= nir_lower_mov64 |
+                       nir_lower_icmp64 |
+                       nir_lower_iadd64 |
+                       nir_lower_iabs64 |
+                       nir_lower_ineg64 |
+                       nir_lower_logic64 |
+                       nir_lower_minmax64 |
+                       nir_lower_shift64;
+      fp64_options |= nir_lower_fp64_full_software;
+   }
+
+   bool lowered_64bit_ops = false;
+   do {
+      progress = false;
+
+      OPT(nir_lower_int64, int64_options);
+      OPT(nir_lower_doubles, fp64_options);
+
+      /* Necessary to lower add -> sub and div -> mul/rcp */
+      OPT(nir_opt_algebraic);
+
+      lowered_64bit_ops |= progress;
+   } while (progress);
+
+   if (lowered_64bit_ops) {
+      OPT(nir_lower_constant_initializers, nir_var_function);
+      OPT(nir_lower_returns);
+      OPT(nir_inline_functions);
+      OPT(nir_opt_deref);
+   }
+
+   const nir_function *entry_point = nir_shader_get_entrypoint(nir)->function;
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (func != entry_point) {
+         exec_node_remove(&func->node);
+      }
+   }
+   assert(exec_list_length(&nir->functions) == 1);
+
+   OPT(nir_lower_constant_initializers, ~nir_var_function);
+
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       OPT(nir_lower_gs_intrinsics);
 
@@ -693,19 +754,6 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
 
    OPT(nir_split_var_copies);
    OPT(nir_split_struct_vars, nir_var_function);
-
-   /* Run opt_algebraic before int64 lowering so we can hopefully get rid
-    * of some int64 instructions.
-    */
-   OPT(nir_opt_algebraic);
-
-   /* Lower int64 instructions before nir_optimize so that loop unrolling
-    * sees their actual cost.
-    */
-   OPT(nir_lower_int64, nir_lower_imul64 |
-                        nir_lower_isign64 |
-                        nir_lower_divmod64 |
-                        nir_lower_imul_high64);
 
    nir = brw_nir_optimize(nir, compiler, is_scalar, true);
 

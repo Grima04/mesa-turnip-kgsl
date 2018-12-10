@@ -41,6 +41,7 @@
 #include "util/ralloc.h"
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/glsl_to_nir.h"
+#include "compiler/glsl/float64_glsl.h"
 
 #include "brw_program.h"
 #include "brw_context.h"
@@ -52,6 +53,9 @@
 #include "brw_gs.h"
 #include "brw_vs.h"
 #include "brw_wm.h"
+
+#include "main/shaderapi.h"
+#include "main/shaderobj.h"
 
 static bool
 brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
@@ -65,6 +69,54 @@ brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
                                type_size_vec4_bytes);
       return nir_lower_io(nir, nir_var_uniform, type_size_vec4_bytes, 0);
    }
+}
+
+static struct gl_program *brwNewProgram(struct gl_context *ctx, GLenum target,
+                                        GLuint id, bool is_arb_asm);
+
+static nir_shader *
+compile_fp64_funcs(struct gl_context *ctx,
+                   const nir_shader_compiler_options *options,
+                   void *mem_ctx,
+                   gl_shader_stage stage)
+{
+   const GLuint name = ~0;
+   struct gl_shader *sh;
+
+   sh = _mesa_new_shader(name, stage);
+
+   sh->Source = float64_source;
+   sh->CompileStatus = COMPILE_FAILURE;
+   _mesa_compile_shader(ctx, sh);
+
+   if (!sh->CompileStatus) {
+      if (sh->InfoLog) {
+         _mesa_problem(ctx,
+                       "fp64 software impl compile failed:\n%s\nsource:\n%s\n",
+                       sh->InfoLog, float64_source);
+      }
+   }
+
+   struct gl_shader_program *sh_prog;
+   sh_prog = _mesa_new_shader_program(name);
+   sh_prog->Label = NULL;
+   sh_prog->NumShaders = 1;
+   sh_prog->Shaders = malloc(sizeof(struct gl_shader *));
+   sh_prog->Shaders[0] = sh;
+
+   struct gl_linked_shader *linked = rzalloc(NULL, struct gl_linked_shader);
+   linked->Stage = stage;
+   linked->Program =
+      brwNewProgram(ctx,
+                    _mesa_shader_stage_to_program(stage),
+                    name, false);
+
+   linked->ir = sh->ir;
+   sh_prog->_LinkedShaders[stage] = linked;
+
+   nir_shader *nir = glsl_to_nir(sh_prog, stage, options);
+
+   return nir_shader_clone(mem_ctx, nir);
 }
 
 nir_shader *
@@ -100,6 +152,15 @@ brw_create_nir(struct brw_context *brw,
       NIR_PASS_V(nir, nir_lower_regs_to_ssa); /* turn registers into SSA */
    }
    nir_validate_shader(nir, "before brw_preprocess_nir");
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
+   if (nir->info.uses_64bit) {
+      nir_shader *fp64 = compile_fp64_funcs(ctx, options, ralloc_parent(nir), stage);
+
+      nir_validate_shader(fp64, "fp64");
+      exec_list_append(&nir->functions, &fp64->functions);
+   }
 
    nir = brw_preprocess_nir(brw->screen->compiler, nir);
 
