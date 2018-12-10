@@ -52,6 +52,19 @@ ok_dims(const struct pipe_resource *r, const struct pipe_box *b, int lvl)
 		(b->z >= 0) && (b->z + b->depth <= last_layer);
 }
 
+static bool
+ok_format(enum pipe_format pfmt)
+{
+	enum a6xx_color_fmt fmt = fd6_pipe2color(pfmt);
+	if (fmt == ~0)
+		return false;
+
+	if (fd6_ifmt(fmt) == 0)
+		return false;
+
+	return true;
+}
+
 #define DEBUG_BLIT_FALLBACK 0
 #define fail_if(cond)													\
 	do {																\
@@ -80,6 +93,10 @@ can_do_blit(const struct pipe_blit_info *info)
 	/* We can blit if both or neither formats are compressed formats... */
 	fail_if(util_format_is_compressed(info->src.format) !=
 			util_format_is_compressed(info->src.format));
+
+	/* Fail if unsupported format: */
+	fail_if(!ok_format(info->src.format));
+	fail_if(!ok_format(info->dst.format));
 
 	/* ... but only if they're the same compression format. */
 	fail_if(util_format_is_compressed(info->src.format) &&
