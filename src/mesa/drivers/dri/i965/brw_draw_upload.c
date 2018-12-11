@@ -518,7 +518,7 @@ brw_prepare_vertices(struct brw_context *brw)
          vertex_range_end = MAX2(vertex_range_end, rel_end);
 
          struct brw_vertex_element *input = &brw->vb.inputs[attr];
-         input->glattrib = glattrib;
+         input->glformat = &glattrib->Format;
          input->buffer = j;
          input->is_dual_slot = (vp->DualSlotInputs & BITFIELD64_BIT(attr)) != 0;
          input->offset = rel_offset;
@@ -607,7 +607,7 @@ brw_prepare_vertices(struct brw_context *brw)
          vertex_range_end = MAX2(vertex_range_end, rel_end);
 
          struct brw_vertex_element *input = &brw->vb.inputs[attr];
-         input->glattrib = glattrib;
+         input->glformat = &glattrib->Format;
          input->buffer = j;
          input->is_dual_slot = (vp->DualSlotInputs & BITFIELD64_BIT(attr)) != 0;
          input->offset = rel_offset;
@@ -663,7 +663,7 @@ brw_prepare_vertices(struct brw_context *brw)
             memset(cursor + size, 0, alignment - size);
 
          struct brw_vertex_element *input = &brw->vb.inputs[attr];
-         input->glattrib = glattrib;
+         input->glformat = &glattrib->Format;
          input->buffer = j;
          input->is_dual_slot = (vp->DualSlotInputs & BITFIELD64_BIT(attr)) != 0;
          input->offset = cursor - data;

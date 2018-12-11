@@ -532,8 +532,7 @@ genX(emit_vertices)(struct brw_context *brw)
     */
    for (unsigned i = 0; i < brw->vb.nr_enabled; i++) {
       struct brw_vertex_element *input = brw->vb.enabled[i];
-      const struct gl_array_attributes *glattrib = input->glattrib;
-      uint32_t format = brw_get_vertex_surface_type(brw, &glattrib->Format);
+      uint32_t format = brw_get_vertex_surface_type(brw, input->glformat);
 
       if (uploads_needed(format, input->is_dual_slot) > 1)
          nr_elements++;
@@ -625,8 +624,8 @@ genX(emit_vertices)(struct brw_context *brw)
    unsigned i;
    for (i = 0; i < brw->vb.nr_enabled; i++) {
       const struct brw_vertex_element *input = brw->vb.enabled[i];
-      const struct gl_array_attributes *glattrib = input->glattrib;
-      uint32_t format = brw_get_vertex_surface_type(brw, &glattrib->Format);
+      const struct gl_vertex_format *glformat = input->glformat;
+      uint32_t format = brw_get_vertex_surface_type(brw, glformat);
       uint32_t comp0 = VFCOMP_STORE_SRC;
       uint32_t comp1 = VFCOMP_STORE_SRC;
       uint32_t comp2 = VFCOMP_STORE_SRC;
@@ -667,18 +666,17 @@ genX(emit_vertices)(struct brw_context *brw)
           * entry. */
          const unsigned offset = input->offset + c * 16;
 
-         const struct gl_array_attributes *glattrib = input->glattrib;
          const int size = (GEN_GEN < 8 && is_passthru_format(format)) ?
-            upload_format_size(upload_format) : glattrib->Format.Size;
+            upload_format_size(upload_format) : glformat->Size;
 
          switch (size) {
             case 0: comp0 = VFCOMP_STORE_0;
             case 1: comp1 = VFCOMP_STORE_0;
             case 2: comp2 = VFCOMP_STORE_0;
             case 3:
-               if (GEN_GEN >= 8 && glattrib->Format.Doubles) {
+               if (GEN_GEN >= 8 && glformat->Doubles) {
                   comp3 = VFCOMP_STORE_0;
-               } else if (glattrib->Format.Integer) {
+               } else if (glformat->Integer) {
                   comp3 = VFCOMP_STORE_1_INT;
                } else {
                   comp3 = VFCOMP_STORE_1_FP;
@@ -703,7 +701,7 @@ genX(emit_vertices)(struct brw_context *brw)
           *     to be specified as VFCOMP_STORE_0 in order to output a 256-bit
           *     vertex element."
           */
-         if (glattrib->Format.Doubles && !input->is_dual_slot) {
+         if (glformat->Doubles && !input->is_dual_slot) {
             /* Store vertex elements which correspond to double and dvec2 vertex
              * shader inputs as 128-bit vertex elements, instead of 256-bits.
              */
@@ -789,8 +787,8 @@ genX(emit_vertices)(struct brw_context *brw)
 
 #if GEN_GEN >= 6
    if (gen6_edgeflag_input) {
-      const struct gl_array_attributes *glattrib = gen6_edgeflag_input->glattrib;
-      const uint32_t format = brw_get_vertex_surface_type(brw, &glattrib->Format);
+      const struct gl_vertex_format *glformat = gen6_edgeflag_input->glformat;
+      const uint32_t format = brw_get_vertex_surface_type(brw, glformat);
 
       struct GENX(VERTEX_ELEMENT_STATE) elem_state = {
          .Valid = true,

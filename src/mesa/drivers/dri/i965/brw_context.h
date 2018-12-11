@@ -446,7 +446,7 @@ struct brw_vertex_buffer {
    GLuint step_rate;
 };
 struct brw_vertex_element {
-   const struct gl_array_attributes *glattrib;
+   const struct gl_vertex_format *glformat;
 
    int buffer;
    bool is_dual_slot;
