@@ -51,8 +51,7 @@ nir_mask_shift_or(struct nir_builder *b, nir_ssa_def *dst, nir_ssa_def *src,
 }
 
 static inline nir_ssa_def *
-nir_format_mask_uvec(nir_builder *b, nir_ssa_def *src,
-                     const unsigned *bits)
+nir_format_mask_uvec(nir_builder *b, nir_ssa_def *src, const unsigned *bits)
 {
    nir_const_value mask;
    for (unsigned i = 0; i < src->num_components; i++) {
@@ -202,7 +201,7 @@ nir_format_bitcast_uvec_unmasked(nir_builder *b, nir_ssa_def *src,
 }
 
 static inline nir_ssa_def *
-_nir_format_norm_factor(nir_builder *b, unsigned *bits,
+_nir_format_norm_factor(nir_builder *b, const unsigned *bits,
                         unsigned num_components,
                         bool is_signed)
 {
@@ -215,7 +214,7 @@ _nir_format_norm_factor(nir_builder *b, unsigned *bits,
 }
 
 static inline nir_ssa_def *
-nir_format_unorm_to_float(nir_builder *b, nir_ssa_def *u, unsigned *bits)
+nir_format_unorm_to_float(nir_builder *b, nir_ssa_def *u, const unsigned *bits)
 {
    nir_ssa_def *factor =
       _nir_format_norm_factor(b, bits, u->num_components, false);
@@ -224,7 +223,7 @@ nir_format_unorm_to_float(nir_builder *b, nir_ssa_def *u, unsigned *bits)
 }
 
 static inline nir_ssa_def *
-nir_format_snorm_to_float(nir_builder *b, nir_ssa_def *s, unsigned *bits)
+nir_format_snorm_to_float(nir_builder *b, nir_ssa_def *s, const unsigned *bits)
 {
    nir_ssa_def *factor =
       _nir_format_norm_factor(b, bits, s->num_components, true);
@@ -234,7 +233,7 @@ nir_format_snorm_to_float(nir_builder *b, nir_ssa_def *s, unsigned *bits)
 }
 
 static inline nir_ssa_def *
-nir_format_float_to_unorm(nir_builder *b, nir_ssa_def *f, unsigned *bits)
+nir_format_float_to_unorm(nir_builder *b, nir_ssa_def *f, const unsigned *bits)
 {
    nir_ssa_def *factor =
       _nir_format_norm_factor(b, bits, f->num_components, false);
@@ -246,7 +245,7 @@ nir_format_float_to_unorm(nir_builder *b, nir_ssa_def *f, unsigned *bits)
 }
 
 static inline nir_ssa_def *
-nir_format_float_to_snorm(nir_builder *b, nir_ssa_def *f, unsigned *bits)
+nir_format_float_to_snorm(nir_builder *b, nir_ssa_def *f, const unsigned *bits)
 {
    nir_ssa_def *factor =
       _nir_format_norm_factor(b, bits, f->num_components, true);
