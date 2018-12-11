@@ -122,6 +122,7 @@ fs_visitor::emit_dummy_fs()
    wm_prog_data->num_varying_inputs = devinfo->gen < 6 ? 1 : 0;
    memset(wm_prog_data->urb_setup, -1,
           sizeof(wm_prog_data->urb_setup[0]) * VARYING_SLOT_MAX);
+   brw_compute_urb_setup_index(wm_prog_data);
 
    /* We don't have any uniforms. */
    stage_prog_data->nr_params = 0;

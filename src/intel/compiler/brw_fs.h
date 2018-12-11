@@ -654,5 +654,6 @@ enum brw_barycentric_mode brw_barycentric_mode(enum glsl_interp_mode mode,
 uint32_t brw_fb_write_msg_control(const fs_inst *inst,
                                   const struct brw_wm_prog_data *prog_data);
 
+void brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data);
 
 #endif /* BRW_FS_H */

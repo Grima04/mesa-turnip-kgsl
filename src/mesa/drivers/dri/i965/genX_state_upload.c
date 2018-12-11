@@ -1099,11 +1099,11 @@ genX(calculate_attr_overrides)(const struct brw_context *brw,
     */
    bool drawing_points = brw_is_drawing_points(brw);
 
-   for (int attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+   for (uint8_t idx = 0; idx < wm_prog_data->urb_setup_attribs_count; idx++) {
+      uint8_t attr = wm_prog_data->urb_setup_attribs[idx];
       int input_index = wm_prog_data->urb_setup[attr];
 
-      if (input_index < 0)
-         continue;
+      assert(0 <= input_index);
 
       /* _NEW_POINT */
       bool point_sprite = false;

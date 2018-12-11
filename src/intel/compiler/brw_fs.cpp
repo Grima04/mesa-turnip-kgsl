@@ -1641,6 +1641,26 @@ fs_visitor::assign_curb_setup()
    this->first_non_payload_grf = payload.num_regs + prog_data->curb_read_length;
 }
 
+/*
+ * Build up an array of indices into the urb_setup array that
+ * references the active entries of the urb_setup array.
+ * Used to accelerate walking the active entries of the urb_setup array
+ * on each upload.
+ */
+void
+brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data)
+{
+   /* Make sure uint8_t is sufficient */
+   STATIC_ASSERT(VARYING_SLOT_MAX <= 0xff);
+   uint8_t index = 0;
+   for (uint8_t attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      if (wm_prog_data->urb_setup[attr] >= 0) {
+         wm_prog_data->urb_setup_attribs[index++] = attr;
+      }
+   }
+   wm_prog_data->urb_setup_attribs_count = index;
+}
+
 static void
 calculate_urb_setup(const struct gen_device_info *devinfo,
                     const struct brw_wm_prog_key *key,
@@ -1728,6 +1748,8 @@ calculate_urb_setup(const struct gen_device_info *devinfo,
    }
 
    prog_data->num_varying_inputs = urb_next;
+
+   brw_compute_urb_setup_index(prog_data);
 }
 
 void
@@ -8164,6 +8186,8 @@ gen9_ps_header_only_workaround(struct brw_wm_prog_data *wm_prog_data)
 
    wm_prog_data->urb_setup[VARYING_SLOT_LAYER] = 0;
    wm_prog_data->num_varying_inputs = 1;
+
+   brw_compute_urb_setup_index(wm_prog_data);
 }
 
 bool
