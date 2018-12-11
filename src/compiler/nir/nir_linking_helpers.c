@@ -561,8 +561,7 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
 }
 
 static bool
-try_replace_constant_input(nir_shader *shader,
-                           nir_intrinsic_instr *store_intr)
+can_replace_varying(nir_intrinsic_instr *store_intr)
 {
    nir_deref_instr *out_deref = nir_src_as_deref(store_intr->src[0]);
    if (out_deref->mode != nir_var_shader_out)
@@ -589,10 +588,23 @@ try_replace_constant_input(nir_shader *shader,
        out_var->data.location - VARYING_SLOT_VAR0 >= MAX_VARYING)
       return false;
 
+   return true;
+}
+
+static bool
+try_replace_constant_input(nir_shader *shader,
+                           nir_intrinsic_instr *store_intr)
+{
+   if (!can_replace_varying(store_intr))
+      return false;
+
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
    nir_builder b;
    nir_builder_init(&b, impl);
+
+   nir_variable *out_var =
+      nir_deref_instr_get_variable(nir_src_as_deref(store_intr->src[0]));
 
    bool progress = false;
    nir_foreach_block(block, impl) {
