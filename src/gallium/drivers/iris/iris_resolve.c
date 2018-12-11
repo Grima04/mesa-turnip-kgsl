@@ -95,20 +95,19 @@ resolve_sampler_views(struct iris_context *ice,
       struct iris_sampler_view *isv = shs->textures[i];
       struct iris_resource *res = (void *) isv->base.texture;
 
-      if (res->base.target == PIPE_BUFFER)
-         continue;
+      if (res->base.target != PIPE_BUFFER) {
+         if (consider_framebuffer) {
+            disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
+                                  res, isv->view.base_level, isv->view.levels,
+                                  "for sampling");
+         }
 
-      if (consider_framebuffer) {
-         disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
-                               res, isv->view.base_level, isv->view.levels,
-                               "for sampling");
+         iris_resource_prepare_texture(ice, batch, res, isv->view.format,
+                                       isv->view.base_level, isv->view.levels,
+                                       isv->view.base_array_layer,
+                                       isv->view.array_len,
+                                       astc5x5_wa_bits);
       }
-
-      iris_resource_prepare_texture(ice, batch, res, isv->view.format,
-                                    isv->view.base_level, isv->view.levels,
-                                    isv->view.base_array_layer,
-                                    isv->view.array_len,
-                                    astc5x5_wa_bits);
 
       iris_cache_flush_for_read(batch, res->bo);
    }
@@ -127,15 +126,14 @@ resolve_image_views(struct iris_context *ice,
       const int i = u_bit_scan(&views);
       struct iris_resource *res = (void *) shs->image[i].res;
 
-      if (res->base.target == PIPE_BUFFER)
-         continue;
+      if (res->base.target != PIPE_BUFFER) {
+         if (consider_framebuffer) {
+            disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
+                                  res, 0, ~0, "as a shader image");
+         }
 
-      if (consider_framebuffer) {
-         disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
-                               res, 0, ~0, "as a shader image");
+         iris_resource_prepare_image(ice, batch, res);
       }
-
-      iris_resource_prepare_image(ice, batch, res);
 
       iris_cache_flush_for_read(batch, res->bo);
    }
