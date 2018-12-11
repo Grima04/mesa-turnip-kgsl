@@ -91,11 +91,9 @@ gen10_emit_wa_lri_to_cache_mode_zero(struct anv_batch *batch)
 VkResult
 genX(init_device_state)(struct anv_device *device)
 {
-   GENX(MEMORY_OBJECT_CONTROL_STATE_pack)(NULL, &device->default_mocs,
-                                          &GENX(MOCS));
+   device->default_mocs = GENX(MOCS);
 #if GEN_GEN >= 8
-   GENX(MEMORY_OBJECT_CONTROL_STATE_pack)(NULL, &device->external_mocs,
-                                          &GENX(EXTERNAL_MOCS));
+   device->external_mocs = GENX(EXTERNAL_MOCS);
 #else
    device->external_mocs = device->default_mocs;
 #endif

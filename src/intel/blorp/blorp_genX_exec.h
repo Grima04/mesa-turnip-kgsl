@@ -311,7 +311,7 @@ blorp_fill_vertex_buffer_state(struct blorp_batch *batch,
    vb[idx].BufferPitch = stride;
 
 #if GEN_GEN >= 6
-   vb[idx].VertexBufferMOCS = addr.mocs;
+   vb[idx].MOCS = addr.mocs;
 #endif
 
 #if GEN_GEN >= 7

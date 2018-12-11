@@ -86,26 +86,26 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 
    anv_batch_emit(&cmd_buffer->batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.GeneralStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.GeneralStateMemoryObjectControlState = GENX(MOCS);
+      sba.GeneralStateMOCS = GENX(MOCS);
       sba.GeneralStateBaseAddressModifyEnable = true;
 
       sba.SurfaceStateBaseAddress =
          anv_cmd_buffer_surface_base_address(cmd_buffer);
-      sba.SurfaceStateMemoryObjectControlState = GENX(MOCS);
+      sba.SurfaceStateMOCS = GENX(MOCS);
       sba.SurfaceStateBaseAddressModifyEnable = true;
 
       sba.DynamicStateBaseAddress =
          (struct anv_address) { &device->dynamic_state_pool.block_pool.bo, 0 };
-      sba.DynamicStateMemoryObjectControlState = GENX(MOCS);
+      sba.DynamicStateMOCS = GENX(MOCS);
       sba.DynamicStateBaseAddressModifyEnable = true;
 
       sba.IndirectObjectBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.IndirectObjectMemoryObjectControlState = GENX(MOCS);
+      sba.IndirectObjectMOCS = GENX(MOCS);
       sba.IndirectObjectBaseAddressModifyEnable = true;
 
       sba.InstructionBaseAddress =
          (struct anv_address) { &device->instruction_state_pool.block_pool.bo, 0 };
-      sba.InstructionMemoryObjectControlState = GENX(MOCS);
+      sba.InstructionMOCS = GENX(MOCS);
       sba.InstructionBaseAddressModifyEnable = true;
 
 #  if (GEN_GEN >= 8)
@@ -124,13 +124,13 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #  endif
 #  if (GEN_GEN >= 9)
       sba.BindlessSurfaceStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.BindlessSurfaceStateMemoryObjectControlState = GENX(MOCS);
+      sba.BindlessSurfaceStateMOCS = GENX(MOCS);
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
       sba.BindlessSurfaceStateSize = 0;
 #  endif
 #  if (GEN_GEN >= 10)
       sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.BindlessSamplerStateMemoryObjectControlState = GENX(MOCS);
+      sba.BindlessSamplerStateMOCS = GENX(MOCS);
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
 #  endif
@@ -2572,8 +2572,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          struct GENX(VERTEX_BUFFER_STATE) state = {
             .VertexBufferIndex = vb,
 
-            .VertexBufferMOCS = anv_mocs_for_bo(cmd_buffer->device,
-                                                buffer->address.bo),
+            .MOCS = anv_mocs_for_bo(cmd_buffer->device, buffer->address.bo),
 #if GEN_GEN <= 7
             .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
             .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
@@ -2691,7 +2690,7 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .VertexBufferIndex = index,
          .AddressModifyEnable = true,
          .BufferPitch = 0,
-         .VertexBufferMOCS = anv_mocs_for_bo(cmd_buffer->device, addr.bo),
+         .MOCS = anv_mocs_for_bo(cmd_buffer->device, addr.bo),
 #if (GEN_GEN >= 8)
          .BufferStartingAddress = addr,
          .BufferSize = size

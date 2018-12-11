@@ -216,8 +216,7 @@
 
   <struct name="VERTEX_BUFFER_STATE" length="4">
     <field name="Vertex Buffer Index" start="26" end="31" type="uint"/>
-    <field name="Memory Object Control State" start="16" end="22" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="Vertex Buffer MOCS" start="16" end="22" type="uint"/>
+    <field name="MOCS" start="16" end="22" type="uint"/>
     <field name="Address Modify Enable" start="14" end="14" type="bool"/>
     <field name="Null Vertex Buffer" start="13" end="13" type="bool"/>
     <field name="Buffer Pitch" start="0" end="11" type="uint"/>
@@ -462,7 +461,6 @@
     <field name="Cube Face Enable - Negative Y" start="3" end="3" type="bool"/>
     <field name="Cube Face Enable - Positive X" start="4" end="4" type="bool"/>
     <field name="Cube Face Enable - Negative X" start="5" end="5" type="bool"/>
-    <field name="Memory Object Control State" start="56" end="62" type="MEMORY_OBJECT_CONTROL_STATE"/>
     <field name="MOCS" start="56" end="62" type="uint"/>
     <field name="Base Mip Level" start="51" end="55" type="u4.1"/>
     <field name="Surface QPitch" start="32" end="46" type="uint"/>
@@ -894,7 +892,7 @@
     <field name="DWord Length" start="0" end="7" type="uint" default="2"/>
     <field name="Binding Table Pool Base Address" start="44" end="95" type="address"/>
     <field name="Binding Table Pool Enable" start="43" end="43" type="uint"/>
-    <field name="Surface Object Control State" start="32" end="38" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="32" end="38" type="uint"/>
     <field name="Binding Table Pool Buffer Size" start="108" end="127" type="uint">
       <value name="No Valid Data" value="0"/>
     </field>
@@ -986,7 +984,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="26"/>
-    <field name="Constant Buffer Object Control State" start="8" end="14" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="8" end="14" type="uint"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
@@ -996,7 +994,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="22"/>
-    <field name="Constant Buffer Object Control State" start="8" end="14" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="8" end="14" type="uint"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
@@ -1006,7 +1004,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="25"/>
-    <field name="Constant Buffer Object Control State" start="8" end="14" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="8" end="14" type="uint"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
@@ -1016,7 +1014,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="23"/>
-    <field name="Constant Buffer Object Control State" start="8" end="14" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="8" end="14" type="uint"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
@@ -1026,7 +1024,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="21"/>
-    <field name="Constant Buffer Object Control State" start="8" end="14" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="8" end="14" type="uint"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
     <field name="Constant Body" start="32" end="351" type="3DSTATE_CONSTANT_BODY"/>
   </instruction>
@@ -1059,8 +1057,7 @@
     <field name="LOD" start="128" end="131" type="uint"/>
     <field name="Depth" start="181" end="191" type="uint"/>
     <field name="Minimum Array Element" start="170" end="180" type="uint"/>
-    <field name="Depth Buffer Object Control State" start="160" end="166" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="Depth Buffer MOCS" start="160" end="166" type="uint"/>
+    <field name="MOCS" start="160" end="166" type="uint"/>
     <field name="Render Target View Extent" start="245" end="255" type="uint"/>
     <field name="Surface QPitch" start="224" end="238" type="uint"/>
   </instruction>
@@ -1221,7 +1218,7 @@
     <field name="DWord Length" start="0" end="7" type="uint" default="2"/>
     <field name="Gather Pool Base Address" start="44" end="95" type="address"/>
     <field name="Gather Pool Enable" start="43" end="43" type="bool"/>
-    <field name="Memory Object Control State" start="32" end="38" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="MOCS" start="32" end="38" type="uint"/>
     <field name="Gather Pool Buffer Size" start="108" end="127" type="uint"/>
   </instruction>
 
@@ -1299,8 +1296,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="7"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="3"/>
-    <field name="Hierarchical Depth Buffer Object Control State" start="57" end="63" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="Hierarchical Depth Buffer MOCS" start="57" end="63" type="uint"/>
+    <field name="MOCS" start="57" end="63" type="uint"/>
     <field name="Surface Pitch" start="32" end="48" type="uint"/>
     <field name="Surface Base Address" start="64" end="127" type="address"/>
     <field name="Surface QPitch" start="128" end="142" type="uint"/>
@@ -1356,8 +1352,7 @@
       <value name="WORD" value="1"/>
       <value name="DWORD" value="2"/>
     </field>
-    <field name="Memory Object Control State" start="32" end="38" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="IndexBufferMOCS" start="32" end="38" type="uint"/>
+    <field name="MOCS" start="32" end="38" type="uint"/>
     <field name="Buffer Starting Address" start="64" end="127" type="address"/>
     <field name="Buffer Size" start="128" end="159" type="uint"/>
   </instruction>
@@ -1837,8 +1832,7 @@
     <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
     <field name="SO Buffer Enable" start="63" end="63" type="bool"/>
     <field name="SO Buffer Index" start="61" end="62" type="uint"/>
-    <field name="SO Buffer Object Control State" start="54" end="60" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="SO Buffer MOCS" start="54" end="60" type="uint"/>
+    <field name="MOCS" start="54" end="60" type="uint"/>
     <field name="Stream Offset Write Enable" start="53" end="53" type="bool"/>
     <field name="Stream Output Buffer Offset Address Enable" start="52" end="52" type="bool"/>
     <field name="Surface Base Address" start="66" end="111" type="address"/>
@@ -1873,8 +1867,7 @@
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="6"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="3"/>
     <field name="Stencil Buffer Enable" start="63" end="63" type="bool"/>
-    <field name="Stencil Buffer Object Control State" start="54" end="60" type="MEMORY_OBJECT_CONTROL_STATE"/>
-    <field name="Stencil Buffer MOCS" start="54" end="60" type="uint"/>
+    <field name="MOCS" start="54" end="60" type="uint"/>
     <field name="Surface Pitch" start="32" end="48" type="uint"/>
     <field name="Surface Base Address" start="64" end="127" type="address"/>
     <field name="Surface QPitch" start="128" end="142" type="uint"/>
@@ -2962,20 +2955,20 @@
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="14"/>
     <field name="General State Base Address" start="44" end="95" type="address"/>
-    <field name="General State Memory Object Control State" start="36" end="42" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="General State MOCS" start="36" end="42" type="uint"/>
     <field name="General State Base Address Modify Enable" start="32" end="32" type="bool"/>
-    <field name="Stateless Data Port Access Memory Object Control State" start="112" end="118" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="Stateless Data Port Access MOCS" start="112" end="118" type="uint"/>
     <field name="Surface State Base Address" start="140" end="191" type="address"/>
-    <field name="Surface State Memory Object Control State" start="132" end="138" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="Surface State MOCS" start="132" end="138" type="uint"/>
     <field name="Surface State Base Address Modify Enable" start="128" end="128" type="bool"/>
     <field name="Dynamic State Base Address" start="204" end="255" type="address"/>
-    <field name="Dynamic State Memory Object Control State" start="196" end="202" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="Dynamic State MOCS" start="196" end="202" type="uint"/>
     <field name="Dynamic State Base Address Modify Enable" start="192" end="192" type="bool"/>
     <field name="Indirect Object Base Address" start="268" end="319" type="address"/>
-    <field name="Indirect Object Memory Object Control State" start="260" end="266" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="Indirect Object MOCS" start="260" end="266" type="uint"/>
     <field name="Indirect Object Base Address Modify Enable" start="256" end="256" type="bool"/>
     <field name="Instruction Base Address" start="332" end="383" type="address"/>
-    <field name="Instruction Memory Object Control State" start="324" end="330" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="Instruction MOCS" start="324" end="330" type="uint"/>
     <field name="Instruction Base Address Modify Enable" start="320" end="320" type="bool"/>
     <field name="General State Buffer Size" start="396" end="415" type="uint"/>
     <field name="General State Buffer Size Modify Enable" start="384" end="384" type="bool"/>
@@ -3013,7 +3006,7 @@
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="3"/>
     <field name="DWord Length" start="0" end="7" type="uint" default="0"/>
     <field name="SW Tessellation Base Address" start="44" end="79" type="address"/>
-    <field name="SW Tessellation Memory Object Control State" start="40" end="43" type="MEMORY_OBJECT_CONTROL_STATE"/>
+    <field name="SW Tessellation MOCS" start="40" end="43" type="uint"/>
   </instruction>
 
   <register name="IA_VERTICES_COUNT" length="2" num="0x2310">

@@ -1349,64 +1349,50 @@ _anv_combine_address(struct anv_batch *batch, void *location,
            _dst = NULL;                                                 \
          }))
 
-#define GEN7_MOCS (struct GEN7_MEMORY_OBJECT_CONTROL_STATE) {  \
-   .GraphicsDataTypeGFDT                        = 0,           \
-   .LLCCacheabilityControlLLCCC                 = 0,           \
-   .L3CacheabilityControlL3CC                   = 1,           \
-}
+/* MEMORY_OBJECT_CONTROL_STATE:
+ * .GraphicsDataTypeGFDT                        = 0,
+ * .LLCCacheabilityControlLLCCC                 = 0,
+ * .L3CacheabilityControlL3CC                   = 1,
+ */
+#define GEN7_MOCS 1
 
-#define GEN75_MOCS (struct GEN75_MEMORY_OBJECT_CONTROL_STATE) {  \
-   .LLCeLLCCacheabilityControlLLCCC             = 0,           \
-   .L3CacheabilityControlL3CC                   = 1,           \
-}
+/* MEMORY_OBJECT_CONTROL_STATE:
+ * .LLCeLLCCacheabilityControlLLCCC             = 0,
+ * .L3CacheabilityControlL3CC                   = 1,
+ */
+#define GEN75_MOCS 1
 
-#define GEN8_MOCS (struct GEN8_MEMORY_OBJECT_CONTROL_STATE) {  \
-      .MemoryTypeLLCeLLCCacheabilityControl = WB,              \
-      .TargetCache = L3DefertoPATforLLCeLLCselection,          \
-      .AgeforQUADLRU = 0                                       \
-   }
+/* MEMORY_OBJECT_CONTROL_STATE:
+ * .MemoryTypeLLCeLLCCacheabilityControl = WB,
+ * .TargetCache = L3DefertoPATforLLCeLLCselection,
+ * .AgeforQUADLRU = 0
+ */
+#define GEN8_MOCS 0x78
 
-#define GEN8_EXTERNAL_MOCS (struct GEN8_MEMORY_OBJECT_CONTROL_STATE) {     \
-      .MemoryTypeLLCeLLCCacheabilityControl = UCwithFenceifcoherentcycle,  \
-      .TargetCache = L3DefertoPATforLLCeLLCselection,                      \
-      .AgeforQUADLRU = 0                                                   \
-   }
+/* MEMORY_OBJECT_CONTROL_STATE:
+ * .MemoryTypeLLCeLLCCacheabilityControl = UCwithFenceifcoherentcycle,
+ * .TargetCache = L3DefertoPATforLLCeLLCselection,
+ * .AgeforQUADLRU = 0
+ */
+#define GEN8_EXTERNAL_MOCS 0x18
 
 /* Skylake: MOCS is now an index into an array of 62 different caching
  * configurations programmed by the kernel.
  */
 
-#define GEN9_MOCS (struct GEN9_MEMORY_OBJECT_CONTROL_STATE) {  \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */              \
-      .IndextoMOCSTables                           = 2         \
-   }
+/* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
+#define GEN9_MOCS 2
 
-#define GEN9_EXTERNAL_MOCS (struct GEN9_MEMORY_OBJECT_CONTROL_STATE) {  \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */                       \
-      .IndextoMOCSTables                           = 1                  \
-   }
+/* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
+#define GEN9_EXTERNAL_MOCS 1
 
 /* Cannonlake MOCS defines are duplicates of Skylake MOCS defines. */
-#define GEN10_MOCS (struct GEN10_MEMORY_OBJECT_CONTROL_STATE) {  \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */              \
-      .IndextoMOCSTables                           = 2         \
-   }
-
-#define GEN10_EXTERNAL_MOCS (struct GEN10_MEMORY_OBJECT_CONTROL_STATE) {   \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */                          \
-      .IndextoMOCSTables                           = 1                     \
-   }
+#define GEN10_MOCS GEN9_MOCS
+#define GEN10_EXTERNAL_MOCS GEN9_EXTERNAL_MOCS
 
 /* Ice Lake MOCS defines are duplicates of Skylake MOCS defines. */
-#define GEN11_MOCS (struct GEN11_MEMORY_OBJECT_CONTROL_STATE) {  \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */              \
-      .IndextoMOCSTables                           = 2         \
-   }
-
-#define GEN11_EXTERNAL_MOCS (struct GEN11_MEMORY_OBJECT_CONTROL_STATE) {   \
-      /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */                          \
-      .IndextoMOCSTables                           = 1                     \
-   }
+#define GEN11_MOCS GEN9_MOCS
+#define GEN11_EXTERNAL_MOCS GEN9_EXTERNAL_MOCS
 
 struct anv_device_memory {
    struct anv_bo *                              bo;

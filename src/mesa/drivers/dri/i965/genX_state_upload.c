@@ -394,15 +394,15 @@ genX(emit_vertex_buffer_state)(struct brw_context *brw,
 #endif
 
 #if GEN_GEN == 11
-      .VertexBufferMOCS = ICL_MOCS_WB,
+      .MOCS = ICL_MOCS_WB,
 #elif GEN_GEN == 10
-      .VertexBufferMOCS = CNL_MOCS_WB,
+      .MOCS = CNL_MOCS_WB,
 #elif GEN_GEN == 9
-      .VertexBufferMOCS = SKL_MOCS_WB,
+      .MOCS = SKL_MOCS_WB,
 #elif GEN_GEN == 8
-      .VertexBufferMOCS = BDW_MOCS_WB,
+      .MOCS = BDW_MOCS_WB,
 #elif GEN_GEN == 7
-      .VertexBufferMOCS = GEN7_MOCS_L3,
+      .MOCS = GEN7_MOCS_L3,
 #endif
    };
 
@@ -996,7 +996,7 @@ genX(emit_index_buffer)(struct brw_context *brw)
        */
       ib.BufferStartingAddress = ro_32_bo(brw->ib.bo, 0);
 #if GEN_GEN >= 8
-      ib.IndexBufferMOCS = GEN_GEN >= 9 ? SKL_MOCS_WB : BDW_MOCS_WB;
+      ib.MOCS = GEN_GEN >= 9 ? SKL_MOCS_WB : BDW_MOCS_WB;
       ib.BufferSize = brw->ib.size;
 #else
       ib.BufferEndingAddress = ro_bo(brw->ib.bo, brw->ib.size - 1);
@@ -3878,7 +3878,7 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
-         sob.SOBufferMOCS = mocs_wb;
+         sob.MOCS = mocs_wb;
 
          sob.SurfaceSize = MAX2(xfb_obj->Size[i] / 4, 1) - 1;
          sob.StreamOutputBufferOffsetAddress =

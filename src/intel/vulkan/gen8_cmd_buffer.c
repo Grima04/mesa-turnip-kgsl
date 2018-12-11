@@ -565,7 +565,7 @@ void genX(CmdBindIndexBuffer)(
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
       ib.IndexFormat                = vk_to_gen_index_type[indexType];
-      ib.IndexBufferMOCS            = anv_mocs_for_bo(cmd_buffer->device,
+      ib.MOCS                       = anv_mocs_for_bo(cmd_buffer->device,
                                                       buffer->address.bo);
       ib.BufferStartingAddress      = anv_address_add(buffer->address, offset);
       ib.BufferSize                 = buffer->size - offset;
