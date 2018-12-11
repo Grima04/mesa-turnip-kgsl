@@ -1058,6 +1058,37 @@ __fp32_to_uint64(float f)
    return __roundAndPackUInt64(aSign, zFrac0, zFrac1, zFrac2);
 }
 
+int64_t
+__fp32_to_int64(float f)
+{
+   uint a = floatBitsToUint(f);
+   uint aFrac = a & 0x007FFFFFu;
+   int aExp = int((a>>23) & 0xFFu);
+   uint aSign = a>>31;
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+   uint zFrac2 = 0u;
+   int64_t default_NegNaN = -0x7FFFFFFFFFFFFFFEL;
+   int64_t default_PosNaN = 0xFFFFFFFFFFFFFFFFL;
+   int shiftCount = 0xBE - aExp;
+
+   if (shiftCount <0) {
+      if (aExp == 0xFF && aFrac != 0u)
+         return default_NegNaN;
+      return mix(default_NegNaN, default_PosNaN, aSign == 0u);
+   }
+
+   aFrac = mix(aFrac, aFrac | 0x00800000u, aExp != 0);
+   __shortShift64Left(aFrac, 0, 40, zFrac0, zFrac1);
+
+   if (shiftCount != 0) {
+      __shift64ExtraRightJamming(zFrac0, zFrac1, zFrac2, shiftCount,
+                                 zFrac0, zFrac1, zFrac2);
+   }
+
+   return __roundAndPackInt64(aSign, zFrac0, zFrac1, zFrac2);
+}
+
 uint64_t
 __int64_to_fp64(int64_t a)
 {
