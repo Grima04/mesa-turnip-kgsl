@@ -731,6 +731,8 @@ struct anv_state_table {
 struct anv_state_pool {
    struct anv_block_pool block_pool;
 
+   struct anv_state_table table;
+
    /* The size of blocks which will be allocated from the block pool */
    uint32_t block_size;
 

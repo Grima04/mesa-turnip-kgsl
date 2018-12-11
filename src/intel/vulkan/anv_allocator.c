@@ -948,6 +948,39 @@ anv_state_pool_get_bucket_size(uint32_t bucket)
    return 1 << size_log2;
 }
 
+/** Helper to push a chunk into the state table.
+ *
+ * It creates 'count' entries into the state table and update their sizes,
+ * offsets and maps, also pushing them as "free" states.
+ */
+static void
+anv_state_pool_return_blocks(struct anv_state_pool *pool,
+                             uint32_t chunk_offset, uint32_t count,
+                             uint32_t block_size)
+{
+   if (count == 0)
+      return;
+
+   /* Make sure we always return chunks aligned to the block_size */
+   assert(chunk_offset % block_size == 0);
+
+   uint32_t st_idx;
+   VkResult result = anv_state_table_add(&pool->table, &st_idx, count);
+   assert(result == VK_SUCCESS);
+   for (int i = 0; i < count; i++) {
+      /* update states that were added back to the state table */
+      struct anv_state *state_i = anv_state_table_get(&pool->table,
+                                                      st_idx + i);
+      state_i->alloc_size = block_size;
+      state_i->offset = chunk_offset + block_size * i;
+      state_i->map = anv_block_pool_map(&pool->block_pool, state_i->offset);
+   }
+
+   uint32_t block_bucket = anv_state_pool_get_bucket(block_size);
+   anv_free_list_push2(&pool->buckets[block_bucket].free_list,
+                       &pool->table, st_idx, count);
+}
+
 static struct anv_state
 anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
                            uint32_t size, uint32_t align)
