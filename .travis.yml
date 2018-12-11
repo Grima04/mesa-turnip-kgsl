@@ -15,7 +15,7 @@ env:
     - GLPROTO_VERSION=glproto-1.4.17
     - DRI2PROTO_VERSION=dri2proto-2.8
     - LIBPCIACCESS_VERSION=libpciaccess-0.13.4
-    - LIBDRM_VERSION=libdrm-2.4.74
+    - LIBDRM_VERSION=libdrm-2.4.95
     - XCBPROTO_VERSION=xcb-proto-1.13
     - RANDRPROTO_VERSION=randrproto-1.3.0
     - LIBXRANDR_VERSION=libXrandr-1.3.0
@@ -504,16 +504,6 @@ install:
       pip2 install --user "scons>=2.4";
       pip2 install --user mako;
     fi
-
-  # Since libdrm gets updated in configure.ac regularly, try to pick up the
-  # latest version from there.
-  - for line in `grep "^LIBDRM.*_REQUIRED=" configure.ac`; do
-      old_ver=`echo $LIBDRM_VERSION | sed 's/libdrm-//'`;
-      new_ver=`echo $line | sed 's/.*REQUIRED=//'`;
-      if `echo "$old_ver,$new_ver" | tr ',' '\n' | sort -Vc 2> /dev/null`; then
-        export LIBDRM_VERSION="libdrm-$new_ver";
-      fi;
-    done
 
   # Install dependencies where we require specific versions (or where
   # disallowed by Travis CI's package whitelisting).
