@@ -346,25 +346,6 @@ _mesa_draw_attrib(const struct gl_context *ctx, gl_vert_attrib attr)
 }
 
 
-/**
- * Return the attrib, binding pair for the given attribute.
- */
-static inline void
-_mesa_draw_attrib_and_binding(const struct gl_context *ctx, gl_vert_attrib attr,
-                              const struct gl_array_attributes **attrib,
-                              const struct gl_vertex_buffer_binding **binding)
-{
-   if (ctx->Array._DrawVAOEnabledAttribs & VERT_BIT(attr)) {
-      const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
-      *attrib = _mesa_draw_array_attrib(vao, attr);
-      *binding = _mesa_draw_buffer_binding_from_attrib(vao, *attrib);
-   } else {
-      *attrib = _vbo_current_attrib(ctx, attr);
-      *binding = _vbo_current_binding(ctx);
-   }
-}
-
-
 /*
  * API functions
  */
