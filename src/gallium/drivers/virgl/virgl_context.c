@@ -425,10 +425,8 @@ static void virgl_set_vertex_buffers(struct pipe_context *ctx,
    vctx->vertex_array_dirty = TRUE;
 }
 
-static void virgl_hw_set_vertex_buffers(struct pipe_context *ctx)
+static void virgl_hw_set_vertex_buffers(struct virgl_context *vctx)
 {
-   struct virgl_context *vctx = virgl_context(ctx);
-
    if (vctx->vertex_array_dirty) {
       virgl_encoder_set_vertex_buffers(vctx, vctx->num_vertex_buffers, vctx->vertex_buffer);
       virgl_attach_res_vertex_buffers(vctx);
@@ -700,7 +698,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    u_upload_unmap(vctx->uploader);
 
    vctx->num_draws++;
-   virgl_hw_set_vertex_buffers(ctx);
+   virgl_hw_set_vertex_buffers(vctx);
    if (info.index_size)
       virgl_hw_set_index_buffer(ctx, &ib);
 
