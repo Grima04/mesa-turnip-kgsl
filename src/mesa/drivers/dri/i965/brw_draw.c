@@ -282,21 +282,33 @@ brw_emit_prim(struct brw_context *brw,
 
 
 static void
-brw_merge_inputs(struct brw_context *brw)
+brw_clear_buffers(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   const struct gl_context *ctx = &brw->ctx;
-   GLuint i;
-
-   for (i = 0; i < brw->vb.nr_buffers; i++) {
+   for (unsigned i = 0; i < brw->vb.nr_buffers; ++i) {
       brw_bo_unreference(brw->vb.buffers[i].bo);
       brw->vb.buffers[i].bo = NULL;
    }
    brw->vb.nr_buffers = 0;
 
-   for (i = 0; i < VERT_ATTRIB_MAX; i++) {
+   for (unsigned i = 0; i < brw->vb.nr_enabled; ++i) {
+      brw->vb.enabled[i]->buffer = -1;
+   }
+#ifndef NDEBUG
+   for (unsigned i = 0; i < VERT_ATTRIB_MAX; i++) {
+      assert(brw->vb.inputs[i].buffer == -1);
+   }
+#endif
+}
+
+
+static void
+brw_merge_inputs(struct brw_context *brw)
+{
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct gl_context *ctx = &brw->ctx;
+
+   for (unsigned i = 0; i < VERT_ATTRIB_MAX; i++) {
       struct brw_vertex_element *input = &brw->vb.inputs[i];
-      input->buffer = -1;
       _mesa_draw_attrib_and_binding(ctx, i,
                                     &input->glattrib, &input->glbinding);
    }
@@ -309,8 +321,8 @@ brw_merge_inputs(struct brw_context *brw)
       while (mask) {
          const struct gl_vertex_format *glformat;
          uint8_t wa_flags = 0;
+         const gl_vert_attrib i = u_bit_scan64(&mask);
 
-         i = u_bit_scan64(&mask);
          glformat = &brw->vb.inputs[i].glattrib->Format;
 
          switch (glformat->Type) {
@@ -852,6 +864,7 @@ brw_prepare_drawing(struct gl_context *ctx,
 
    /* Bind all inputs, derive varying and size information:
     */
+   brw_clear_buffers(brw);
    brw_merge_inputs(brw);
 
    brw->ib.ib = ib;
@@ -990,7 +1003,7 @@ brw_draw_single_prim(struct gl_context *ctx,
       brw->baseinstance = base_instance;
       if (prim_id > 0) { /* For i == 0 we just did this before the loop */
          brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
-         brw_merge_inputs(brw);
+         brw_clear_buffers(brw);
       }
    }
 
