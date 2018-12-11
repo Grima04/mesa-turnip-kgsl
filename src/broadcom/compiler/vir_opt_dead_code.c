@@ -101,6 +101,12 @@ vir_opt_dead_code(struct v3d_compile *c)
         bool progress = false;
         bool *used = calloc(c->num_temps, sizeof(bool));
 
+        /* Defuse the "are you removing the cursor?" assertion in the core.
+         * You'll need to set up a new cursor for any new instructions after
+         * doing DCE (which we would expect, anyway).
+         */
+        c->cursor.link = NULL;
+
         vir_for_each_inst_inorder(inst, c) {
                 for (int i = 0; i < vir_get_nsrc(inst); i++) {
                         if (inst->src[i].file == QFILE_TEMP)
