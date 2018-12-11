@@ -282,6 +282,44 @@ nir_format_srgb_to_linear(nir_builder *b, nir_ssa_def *c)
                                    linear, curved));
 }
 
+/* Clamps a vector of uints so they don't extend beyond the given number of
+ * bits per channel.
+ */
+static inline nir_ssa_def *
+nir_format_clamp_uint(nir_builder *b, nir_ssa_def *f, const unsigned *bits)
+{
+   if (bits[0] == 32)
+      return f;
+
+   nir_const_value max;
+   for (unsigned i = 0; i < f->num_components; i++) {
+      assert(bits[i] < 32);
+      max.i32[i] = (1 << (bits[i] - 1)) - 1;
+   }
+   return nir_umin(b, f, nir_build_imm(b, f->num_components, 32, max));
+}
+
+/* Clamps a vector of sints so they don't extend beyond the given number of
+ * bits per channel.
+ */
+static inline nir_ssa_def *
+nir_format_clamp_sint(nir_builder *b, nir_ssa_def *f, const unsigned *bits)
+{
+   if (bits[0] == 32)
+      return f;
+
+   nir_const_value min, max;
+   for (unsigned i = 0; i < f->num_components; i++) {
+      assert(bits[i] < 32);
+      max.i32[i] = (1 << (bits[i] - 1)) - 1;
+      min.i32[i] = -(1 << (bits[i] - 1));
+   }
+   f = nir_imin(b, f, nir_build_imm(b, f->num_components, 32, max));
+   f = nir_imax(b, f, nir_build_imm(b, f->num_components, 32, min));
+
+   return f;
+}
+
 static inline nir_ssa_def *
 nir_format_unpack_11f11f10f(nir_builder *b, nir_ssa_def *packed)
 {
