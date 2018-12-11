@@ -50,6 +50,8 @@
 
 struct virgl_vertex_elements_state {
    uint32_t handle;
+   uint8_t binding_map[PIPE_MAX_ATTRIBS];
+   uint8_t num_bindings;
 };
 
 static uint32_t next_handle;
@@ -390,9 +392,27 @@ static void *virgl_create_vertex_elements_state(struct pipe_context *ctx,
                                                         unsigned num_elements,
                                                         const struct pipe_vertex_element *elements)
 {
+   struct pipe_vertex_element new_elements[PIPE_MAX_ATTRIBS];
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_vertex_elements_state *state =
       CALLOC_STRUCT(virgl_vertex_elements_state);
+
+   for (int i = 0; i < num_elements; ++i) {
+      if (elements[i].instance_divisor) {
+	 /* Virglrenderer doesn't deal with instance_divisor correctly if
+	  * there isn't a 1:1 relationship between elements and bindings.
+	  * So let's make sure there is, by duplicating bindings.
+	  */
+	 for (int j = 0; j < num_elements; ++j) {
+            new_elements[j] = elements[j];
+            new_elements[j].vertex_buffer_index = j;
+            state->binding_map[j] = elements[j].vertex_buffer_index;
+	 }
+	 elements = new_elements;
+	 state->num_bindings = num_elements;
+	 break;
+      }
+   }
 
    state->handle = virgl_object_assign_handle();
    virgl_encoder_create_vertex_elements(vctx, state->handle,
@@ -419,6 +439,7 @@ static void virgl_bind_vertex_elements_state(struct pipe_context *ctx,
    vctx->vertex_elements = state;
    virgl_encode_bind_object(vctx, state ? state->handle : 0,
                             VIRGL_OBJECT_VERTEX_ELEMENTS);
+   vctx->vertex_array_dirty = TRUE;
 }
 
 static void virgl_set_vertex_buffers(struct pipe_context *ctx,
@@ -438,7 +459,17 @@ static void virgl_set_vertex_buffers(struct pipe_context *ctx,
 static void virgl_hw_set_vertex_buffers(struct virgl_context *vctx)
 {
    if (vctx->vertex_array_dirty) {
-      virgl_encoder_set_vertex_buffers(vctx, vctx->num_vertex_buffers, vctx->vertex_buffer);
+      struct virgl_vertex_elements_state *ve = vctx->vertex_elements;
+
+      if (ve->num_bindings) {
+         struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
+         for (int i = 0; i < ve->num_bindings; ++i)
+            vertex_buffers[i] = vctx->vertex_buffer[ve->binding_map[i]];
+
+         virgl_encoder_set_vertex_buffers(vctx, ve->num_bindings, vertex_buffers);
+      } else
+         virgl_encoder_set_vertex_buffers(vctx, vctx->num_vertex_buffers, vctx->vertex_buffer);
+
       virgl_attach_res_vertex_buffers(vctx);
    }
 }
