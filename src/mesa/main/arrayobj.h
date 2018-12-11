@@ -331,21 +331,6 @@ _mesa_draw_edge_flag_array_enabled(const struct gl_context *ctx)
 }
 
 
-/**
- * Return the attrib for the given attribute.
- */
-static inline const struct gl_array_attributes*
-_mesa_draw_attrib(const struct gl_context *ctx, gl_vert_attrib attr)
-{
-   if (ctx->Array._DrawVAOEnabledAttribs & VERT_BIT(attr)) {
-      const struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
-      return _mesa_draw_array_attrib(vao, attr);
-   } else {
-      return _vbo_current_attrib(ctx, attr);
-   }
-}
-
-
 /*
  * API functions
  */
