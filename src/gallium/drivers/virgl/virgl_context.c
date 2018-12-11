@@ -48,6 +48,10 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
+struct virgl_vertex_elements_state {
+   uint32_t handle;
+};
+
 static uint32_t next_handle;
 uint32_t virgl_object_assign_handle(void)
 {
@@ -387,28 +391,34 @@ static void *virgl_create_vertex_elements_state(struct pipe_context *ctx,
                                                         const struct pipe_vertex_element *elements)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   uint32_t handle = virgl_object_assign_handle();
-   virgl_encoder_create_vertex_elements(vctx, handle,
-                                       num_elements, elements);
-   return (void*)(unsigned long)handle;
+   struct virgl_vertex_elements_state *state =
+      CALLOC_STRUCT(virgl_vertex_elements_state);
 
+   state->handle = virgl_object_assign_handle();
+   virgl_encoder_create_vertex_elements(vctx, state->handle,
+                                       num_elements, elements);
+   return state;
 }
 
 static void virgl_delete_vertex_elements_state(struct pipe_context *ctx,
                                               void *ve)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   uint32_t handle = (unsigned long)ve;
-
-   virgl_encode_delete_object(vctx, handle, VIRGL_OBJECT_VERTEX_ELEMENTS);
+   struct virgl_vertex_elements_state *state =
+      (struct virgl_vertex_elements_state *)ve;
+   virgl_encode_delete_object(vctx, state->handle, VIRGL_OBJECT_VERTEX_ELEMENTS);
+   FREE(state);
 }
 
 static void virgl_bind_vertex_elements_state(struct pipe_context *ctx,
                                                      void *ve)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   uint32_t handle = (unsigned long)ve;
-   virgl_encode_bind_object(vctx, handle, VIRGL_OBJECT_VERTEX_ELEMENTS);
+   struct virgl_vertex_elements_state *state =
+      (struct virgl_vertex_elements_state *)ve;
+   vctx->vertex_elements = state;
+   virgl_encode_bind_object(vctx, state ? state->handle : 0,
+                            VIRGL_OBJECT_VERTEX_ELEMENTS);
 }
 
 static void virgl_set_vertex_buffers(struct pipe_context *ctx,
