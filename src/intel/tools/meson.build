@@ -127,3 +127,29 @@ if with_tools.contains('intel-ui')
     install : true
   )
 endif
+
+i965_gram_tab = custom_target(
+   'i965_gram.tab.[ch]',
+   input : 'i965_gram.y',
+   output : ['i965_gram.tab.c', 'i965_gram.tab.h'],
+   command : [
+      prog_bison, '@INPUT@', '--defines=@OUTPUT1@',
+      '--output=@OUTPUT0@'
+   ]
+)
+
+i965_lex_yy_c = custom_target(
+   'i965_lex.yy.c',
+   input : 'i965_lex.l',
+   output : 'i965_lex.yy.c',
+   command : [prog_flex, '-o', '@OUTPUT@', '@INPUT@']
+)
+
+i965_asm = executable(
+   'i965_asm',
+   ['i965_asm.c', i965_gram_tab[0], i965_gram_tab[1], i965_lex_yy_c],
+   include_directories : [inc_common, inc_intel],
+   link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util],
+   c_args : [c_vis_args, no_override_init_args],
+   install : true
+)
