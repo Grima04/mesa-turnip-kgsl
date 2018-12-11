@@ -483,6 +483,42 @@ __roundAndPackUInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
               (zSign !=0u && (zFrac0 | zFrac1) != 0u));
 }
 
+int64_t
+__roundAndPackInt64(uint zSign, uint zFrac0, uint zFrac1, uint zFrac2)
+{
+   bool roundNearestEven;
+   bool increment;
+   int64_t default_NegNaN = -0x7FFFFFFFFFFFFFFEL;
+   int64_t default_PosNaN = 0xFFFFFFFFFFFFFFFFL;
+
+   roundNearestEven = FLOAT_ROUNDING_MODE == FLOAT_ROUND_NEAREST_EVEN;
+
+   if (zFrac2 >= 0x80000000u)
+      increment = false;
+
+   if (!roundNearestEven) {
+      if (zSign != 0u) {
+         increment = ((FLOAT_ROUNDING_MODE == FLOAT_ROUND_DOWN) &&
+            (zFrac2 != 0u));
+      } else {
+         increment = (FLOAT_ROUNDING_MODE == FLOAT_ROUND_UP) &&
+            (zFrac2 != 0u);
+      }
+   }
+
+   if (increment) {
+      __add64(zFrac0, zFrac1, 0u, 1u, zFrac0, zFrac1);
+      if ((zFrac0 | zFrac1) != 0u)
+         zFrac1 &= ~(1u) + uint(zFrac2 == 0u) & uint(roundNearestEven);
+   }
+
+   int64_t absZ = mix(int64_t(packUint2x32(uvec2(zFrac1, zFrac0))),
+                      -int64_t(packUint2x32(uvec2(zFrac1, zFrac0))),
+                      (zSign != 0u));
+   int64_t nan = mix(default_PosNaN, default_NegNaN, bool(zSign));
+   return mix(absZ, nan, bool(zSign ^ uint(absZ < 0)) && bool(absZ));
+}
+
 /* Returns the number of leading 0 bits before the most-significant 1 bit of
  * `a'.  If `a' is zero, 32 is returned.
  */
