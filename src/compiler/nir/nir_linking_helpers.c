@@ -634,7 +634,7 @@ try_replace_constant_input(nir_shader *shader,
 }
 
 bool
-nir_link_constant_varyings(nir_shader *producer, nir_shader *consumer)
+nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 {
    /* TODO: Add support for more shader stage combinations */
    if (consumer->info.stage != MESA_SHADER_FRAGMENT ||
