@@ -649,7 +649,9 @@ script:
 
       export CFLAGS="$CFLAGS -isystem`pwd`"
       meson _build $MESON_OPTIONS \
-                   --native-file=native.file
+                   --native-file=native.file \
+                   -Dbuild-tests=true
       meson configure _build
       ninja -C _build
+      ninja -C _build test
     fi
