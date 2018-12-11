@@ -568,8 +568,10 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
    } else {
       if (has_depth) {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
-      } else if (supports_ccs(devinfo, &res->surf)) {
+         if (likely(!(INTEL_DEBUG & DEBUG_NO_HIZ)))
+            res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+      } else if (likely(!(INTEL_DEBUG & DEBUG_NO_RBC)) &&
+                 supports_ccs(devinfo, &res->surf)) {
          if (isl_format_supports_ccs_e(devinfo, res->surf.format))
             res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
 
