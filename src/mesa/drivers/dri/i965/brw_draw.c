@@ -347,9 +347,8 @@ brw_merge_inputs(struct brw_context *brw)
       unsigned vaomask = vs_inputs & _mesa_draw_array_bits(ctx);
       while (vaomask) {
          const gl_vert_attrib i = u_bit_scan(&vaomask);
-         const struct gl_array_attributes *glattrib =
-            _mesa_draw_array_attrib(vao, i);
-         const uint8_t wa_flags = get_wa_flags(&glattrib->Format);
+         const uint8_t wa_flags =
+            get_wa_flags(_mesa_draw_array_format(vao, i));
 
          if (brw->vb.attrib_wa_flags[i] != wa_flags) {
             brw->vb.attrib_wa_flags[i] = wa_flags;
@@ -360,9 +359,8 @@ brw_merge_inputs(struct brw_context *brw)
       unsigned currmask = vs_inputs & _mesa_draw_current_bits(ctx);
       while (currmask) {
          const gl_vert_attrib i = u_bit_scan(&currmask);
-         const struct gl_array_attributes *glattrib =
-            _mesa_draw_current_attrib(ctx, i);
-         const uint8_t wa_flags = get_wa_flags(&glattrib->Format);
+         const uint8_t wa_flags =
+            get_wa_flags(_mesa_draw_current_format(ctx, i));
 
          if (brw->vb.attrib_wa_flags[i] != wa_flags) {
             brw->vb.attrib_wa_flags[i] = wa_flags;
