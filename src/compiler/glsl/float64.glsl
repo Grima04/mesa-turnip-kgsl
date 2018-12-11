@@ -1030,6 +1030,35 @@ __fp64_to_int64(uint64_t a)
 }
 
 uint64_t
+__fp32_to_uint64(float f)
+{
+   uint a = floatBitsToUint(f);
+   uint aFrac = a & 0x007FFFFFu;
+   int aExp = int((a>>23) & 0xFFu);
+   uint aSign = a>>31;
+   uint zFrac0 = 0u;
+   uint zFrac1 = 0u;
+   uint zFrac2 = 0u;
+   uint64_t default_nan = 0xFFFFFFFFFFFFFFFFUL;
+   int shiftCount = 0xBE - aExp;
+
+   if (shiftCount <0) {
+      if (aExp == 0xFF)
+         return default_nan;
+   }
+
+   aFrac = mix(aFrac, aFrac | 0x00800000u, aExp != 0);
+   __shortShift64Left(aFrac, 0, 40, zFrac0, zFrac1);
+
+   if (shiftCount != 0) {
+      __shift64ExtraRightJamming(zFrac0, zFrac1, zFrac2, shiftCount,
+                                 zFrac0, zFrac1, zFrac2);
+   }
+
+   return __roundAndPackUInt64(aSign, zFrac0, zFrac1, zFrac2);
+}
+
+uint64_t
 __int64_to_fp64(int64_t a)
 {
    if (a==0)
