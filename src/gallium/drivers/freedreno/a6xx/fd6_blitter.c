@@ -296,13 +296,13 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x3f);
 		OUT_WFI5(ring);
 
-		OUT_PKT4(ring, 0x8c01, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, 0xacc0, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
 		OUT_RING(ring, 0xf180);
 
-		OUT_PKT4(ring, 0x8e04, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, 0x01000000);
 
 		OUT_PKT7(ring, CP_BLIT, 1);
@@ -310,7 +310,7 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 
 		OUT_WFI5(ring);
 
-		OUT_PKT4(ring, 0x8e04, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, 0);
 	}
 }
@@ -480,13 +480,25 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x3f);
 		OUT_WFI5(ring);
 
-		OUT_PKT4(ring, 0x8c01, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, 0xacc0, 1);
-		OUT_RING(ring, 0xf180);
+		OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
+		OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(sfmt) |
+				COND(util_format_is_pure_sint(info->src.format),
+						A6XX_SP_2D_SRC_FORMAT_SINT) |
+				COND(util_format_is_pure_uint(info->src.format),
+						A6XX_SP_2D_SRC_FORMAT_UINT) |
+				COND(util_format_is_snorm(info->src.format),
+						A6XX_SP_2D_SRC_FORMAT_SINT |
+						A6XX_SP_2D_SRC_FORMAT_NORM) |
+				COND(util_format_is_unorm(info->src.format),
+// TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
+//						A6XX_SP_2D_SRC_FORMAT_UINT |
+						A6XX_SP_2D_SRC_FORMAT_NORM) |
+				0xf000);
 
-		OUT_PKT4(ring, 0x8e04, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, 0x01000000);
 
 		OUT_PKT7(ring, CP_BLIT, 1);
@@ -494,7 +506,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 
 		OUT_WFI5(ring);
 
-		OUT_PKT4(ring, 0x8e04, 1);
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, 0);
 	}
 }
