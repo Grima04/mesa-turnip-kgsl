@@ -447,10 +447,9 @@ static void virgl_set_blend_color(struct pipe_context *ctx,
    virgl_encoder_set_blend_color(vctx, color);
 }
 
-static void virgl_hw_set_index_buffer(struct pipe_context *ctx,
+static void virgl_hw_set_index_buffer(struct virgl_context *vctx,
                                      struct virgl_indexbuf *ib)
 {
-   struct virgl_context *vctx = virgl_context(ctx);
    virgl_encoder_set_index_buffer(vctx, ib);
    virgl_attach_res_index_buffer(vctx, ib);
 }
@@ -700,7 +699,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    vctx->num_draws++;
    virgl_hw_set_vertex_buffers(vctx);
    if (info.index_size)
-      virgl_hw_set_index_buffer(ctx, &ib);
+      virgl_hw_set_index_buffer(vctx, &ib);
 
    virgl_encoder_draw_vbo(vctx, &info);
 
