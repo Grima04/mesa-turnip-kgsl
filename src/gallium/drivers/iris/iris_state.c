@@ -801,6 +801,9 @@ struct iris_blend_state {
                         BRW_MAX_DRAW_BUFFERS * GENX(BLEND_STATE_ENTRY_length)];
 
    bool alpha_to_coverage; /* for shader key */
+
+   /** Bitfield of whether blending is enabled for RT[i] - for aux resolves */
+   uint8_t blend_enables;
 };
 
 static enum pipe_blendfactor
@@ -829,6 +832,9 @@ iris_create_blend_state(struct pipe_context *ctx,
    struct iris_blend_state *cso = malloc(sizeof(struct iris_blend_state));
    uint32_t *blend_entry = cso->blend_state + GENX(BLEND_STATE_length);
 
+   cso->blend_enables = 0;
+   STATIC_ASSERT(BRW_MAX_DRAW_BUFFERS <= 8);
+
    cso->alpha_to_coverage = state->alpha_to_coverage;
 
    bool indep_alpha_blend = false;
@@ -849,6 +855,9 @@ iris_create_blend_state(struct pipe_context *ctx,
       if (rt->rgb_func != rt->alpha_func ||
           src_rgb != src_alpha || dst_rgb != dst_alpha)
          indep_alpha_blend = true;
+
+      if (rt->blend_enable)
+         cso->blend_enables |= 1u << i;
 
       iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_entry, be) {
          be.LogicOpEnable = state->logicop_enable;
@@ -916,7 +925,11 @@ static void
 iris_bind_blend_state(struct pipe_context *ctx, void *state)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
-   ice->state.cso_blend = state;
+   struct iris_blend_state *cso = state;
+
+   ice->state.cso_blend = cso;
+   ice->state.blend_enables = cso ? cso->blend_enables : 0;
+
    ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];

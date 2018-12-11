@@ -482,6 +482,9 @@ struct iris_context {
       /** Reference to the SURFACE_STATE for the compute grid resource */
       struct iris_state_ref grid_surf_state;
 
+      /** Bitfield of whether color blending is enabled for RT[i] */
+      uint8_t blend_enables;
+
       /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
       bool depth_writes_enabled;
 
