@@ -45,8 +45,10 @@
 #include "apple/apple_glx.h"
 #include "util/debug.h"
 #else
+#ifndef GLX_USE_WINDOWSGL
 #include <sys/time.h>
 #include <X11/extensions/xf86vmode.h>
+#endif /* GLX_USE_WINDOWSGL */
 #endif
 #endif
 
@@ -2081,7 +2083,7 @@ __glXGetSyncValuesOML(Display * dpy, GLXDrawable drawable,
    return False;
 }
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL) && !defined(GLX_USE_WINDOWSGL)
 _X_HIDDEN GLboolean
 __glxGetMscRate(struct glx_screen *psc,
 		int32_t * numerator, int32_t * denominator)
@@ -2157,7 +2159,7 @@ _X_HIDDEN GLboolean
 __glXGetMscRateOML(Display * dpy, GLXDrawable drawable,
                    int32_t * numerator, int32_t * denominator)
 {
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL) && !defined(GLX_USE_WINDOWSGL)
    __GLXDRIdrawable *draw = GetGLXDRIDrawable(dpy, drawable);
 
    if (draw == NULL)
