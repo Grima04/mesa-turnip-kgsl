@@ -773,6 +773,7 @@ void vir_emit_thrsw(struct v3d_compile *c);
 
 void vir_dump(struct v3d_compile *c);
 void vir_dump_inst(struct v3d_compile *c, struct qinst *inst);
+void vir_dump_uniform(enum quniform_contents contents, uint32_t data);
 
 void vir_validate(struct v3d_compile *c);
 
