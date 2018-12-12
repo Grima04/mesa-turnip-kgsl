@@ -526,8 +526,25 @@ wsi_wl_surface_get_capabilities2(VkIcdSurfaceBase *surface,
 {
    assert(caps->sType == VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR);
 
-   return wsi_wl_surface_get_capabilities(surface, wsi_device,
-                                          &caps->surfaceCapabilities);
+   VkResult result =
+      wsi_wl_surface_get_capabilities(surface, wsi_device,
+                                      &caps->surfaceCapabilities);
+
+   vk_foreach_struct(ext, caps->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
+         VkSurfaceProtectedCapabilitiesKHR *protected = (void *)ext;
+         protected->supportsProtected = VK_FALSE;
+         break;
+      }
+
+      default:
+         /* Ignored */
+         break;
+      }
+   }
+
+   return result;
 }
 
 static VkResult

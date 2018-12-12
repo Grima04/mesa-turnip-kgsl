@@ -758,10 +758,27 @@ wsi_get_display_plane_capabilities2(
    assert(capabilities->sType ==
           VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR);
 
-   return wsi_get_display_plane_capabilities(physical_device, wsi_device,
-                                             pDisplayPlaneInfo->mode,
-                                             pDisplayPlaneInfo->planeIndex,
-                                             &capabilities->capabilities);
+   VkResult result =
+      wsi_get_display_plane_capabilities(physical_device, wsi_device,
+                                         pDisplayPlaneInfo->mode,
+                                         pDisplayPlaneInfo->planeIndex,
+                                         &capabilities->capabilities);
+
+   vk_foreach_struct(ext, capabilities->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
+         VkSurfaceProtectedCapabilitiesKHR *protected = (void *)ext;
+         protected->supportsProtected = VK_FALSE;
+         break;
+      }
+
+      default:
+         /* Ignored */
+         break;
+      }
+   }
+
+   return result;
 }
 
 VkResult
