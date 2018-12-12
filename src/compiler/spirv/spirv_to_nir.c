@@ -1145,7 +1145,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       }
 
       val->type->base_type = vtn_base_type_array;
-      val->type->type = glsl_array_type(array_element->type, val->type->length);
+      val->type->type = glsl_array_type(array_element->type, val->type->length, 0);
       val->type->array_element = array_element;
       val->type->stride = 0;
       break;

@@ -60,6 +60,12 @@ glsl_without_array_or_matrix(const glsl_type *type)
 }
 
 const glsl_type *
+glsl_get_bare_type(const glsl_type *type)
+{
+   return type->get_bare_type();
+}
+
+const glsl_type *
 glsl_get_struct_field(const glsl_type *type, unsigned index)
 {
    return type->fields.structure[index].type;
@@ -70,6 +76,12 @@ glsl_get_struct_field_offset(const struct glsl_type *type,
                              unsigned index)
 {
    return type->fields.structure[index].offset;
+}
+
+const unsigned
+glsl_get_explicit_stride(const struct glsl_type *type)
+{
+   return type->explicit_stride;
 }
 
 const glsl_type *
@@ -232,6 +244,13 @@ bool
 glsl_type_is_matrix(const struct glsl_type *type)
 {
    return type->is_matrix();
+}
+
+bool
+glsl_matrix_type_is_row_major(const struct glsl_type *type)
+{
+   assert(type->is_matrix() && type->explicit_stride);
+   return type->interface_row_major;
 }
 
 bool
@@ -432,9 +451,23 @@ glsl_matrix_type(enum glsl_base_type base_type, unsigned rows, unsigned columns)
 }
 
 const glsl_type *
-glsl_array_type(const glsl_type *base, unsigned elements)
+glsl_explicit_matrix_type(const glsl_type *mat,
+                          unsigned stride, bool row_major)
 {
-   return glsl_type::get_array_instance(base, elements);
+   assert(stride > 0);
+   const glsl_type *t = glsl_type::get_instance(mat->base_type,
+                                                mat->vector_elements,
+                                                mat->matrix_columns,
+                                                stride, row_major);
+   assert(t != glsl_type::error_type);
+   return t;
+}
+
+const glsl_type *
+glsl_array_type(const glsl_type *base, unsigned elements,
+                unsigned explicit_stride)
+{
+   return glsl_type::get_array_instance(base, elements, explicit_stride);
 }
 
 const glsl_type *
@@ -495,7 +528,8 @@ glsl_channel_type(const glsl_type *t)
 {
    switch (t->base_type) {
    case GLSL_TYPE_ARRAY:
-      return glsl_array_type(glsl_channel_type(t->fields.array), t->length);
+      return glsl_array_type(glsl_channel_type(t->fields.array), t->length,
+                             t->explicit_stride);
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
