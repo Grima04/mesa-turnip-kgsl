@@ -161,7 +161,14 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #include "genxml/gen_macros.h"
 #include "genxml/genX_bits.h"
 
-#define MOCS_WB (2 << 1)
+#define MOCS_PTE (1 << 1)
+#define MOCS_WB  (2 << 1)
+
+static uint32_t
+mocs(struct iris_bo *bo)
+{
+   return bo && bo->external ? MOCS_PTE : MOCS_WB;
+}
 
 /**
  * Statically assert that PIPE_* enums match the hardware packets.
@@ -576,15 +583,12 @@ init_state_base_address(struct iris_batch *batch)
     * updated occasionally.  See iris_binder.c for the details there.
     */
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-   #if 0
-   // XXX: MOCS is stupid for this.
-      sba.GeneralStateMemoryObjectControlState            = MOCS_WB;
-      sba.StatelessDataPortAccessMemoryObjectControlState = MOCS_WB;
-      sba.DynamicStateMemoryObjectControlState            = MOCS_WB;
-      sba.IndirectObjectMemoryObjectControlState          = MOCS_WB;
-      sba.InstructionMemoryObjectControlState             = MOCS_WB;
-      sba.BindlessSurfaceStateMemoryObjectControlState    = MOCS_WB;
-   #endif
+      sba.GeneralStateMOCS            = MOCS_WB;
+      sba.StatelessDataPortAccessMOCS = MOCS_WB;
+      sba.DynamicStateMOCS            = MOCS_WB;
+      sba.IndirectObjectMOCS          = MOCS_WB;
+      sba.InstructionMOCS             = MOCS_WB;
+      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
       sba.DynamicStateBaseAddressModifyEnable   = true;
@@ -1513,7 +1517,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .size_B = final_size,
                          .format = format,
                          .stride_B = cpp,
-                         .mocs = MOCS_WB);
+                         .mocs = mocs(bo));
 }
 
 /**
@@ -1541,7 +1545,7 @@ fill_surface_state(struct isl_device *isl_dev,
    struct isl_surf_fill_state_info f = {
       .surf = &res->surf,
       .view = view,
-      .mocs = MOCS_WB,
+      .mocs = mocs(res->bo),
       .address = res->bo->gtt_offset,
    };
 
@@ -2090,10 +2094,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       .swizzle = ISL_SWIZZLE_IDENTITY,
    };
 
-   struct isl_depth_stencil_hiz_emit_info info = {
-      .view = &view,
-      .mocs = MOCS_WB,
-   };
+   struct isl_depth_stencil_hiz_emit_info info = { .view = &view };
 
    if (cso->zsbuf) {
       iris_get_depth_stencil_resources(cso->zsbuf->texture, &zres,
@@ -2109,7 +2110,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
          info.depth_surf = &zres->surf;
          info.depth_address = zres->bo->gtt_offset;
-         info.hiz_usage = ISL_AUX_USAGE_NONE;
+         info.mocs = mocs(zres->bo);
 
          view.format = zres->surf.format;
       }
@@ -2118,8 +2119,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
          view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
          info.stencil_surf = &stencil_res->surf;
          info.stencil_address = stencil_res->bo->gtt_offset;
-         if (!zres)
+         if (!zres) {
             view.format = stencil_res->surf.format;
+            info.mocs = mocs(stencil_res->bo);
+         }
       }
    }
 
@@ -2189,7 +2192,7 @@ upload_ubo_surf_state(struct iris_context *ice,
                                         res->bo->size - cbuf->data.offset),
                          .format = ISL_FORMAT_R32G32B32A32_FLOAT,
                          .stride_B = 1,
-                         .mocs = MOCS_WB)
+                         .mocs = mocs(res->bo))
 }
 
 /**
@@ -2337,7 +2340,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
                                        res->bo->size - buffer->buffer_offset),
                                .format = ISL_FORMAT_RAW,
                                .stride_B = 1,
-                               .mocs = MOCS_WB);
+                               .mocs = mocs(res->bo));
       } else {
          pipe_resource_reference(&shs->ssbo[start_slot + i], NULL);
          pipe_resource_reference(&shs->ssbo_surface_state[start_slot + i].res,
@@ -2391,13 +2394,13 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
          vb.VertexBufferIndex = start_slot + i;
-         vb.MOCS = MOCS_WB;
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffer->stride;
          if (res) {
             vb.BufferSize = res->bo->size;
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset + (int) buffer->buffer_offset);
+            vb.MOCS = mocs(res->bo);
          } else {
             vb.NullVertexBuffer = true;
          }
@@ -2628,7 +2631,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
-         sob.MOCS = MOCS_WB; // XXX: MOCS
+         sob.MOCS = mocs(res->bo);
 
          sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
 
@@ -3920,7 +3923,7 @@ iris_update_surface_base_address(struct iris_batch *batch,
    flush_for_state_base_change(batch);
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-      // XXX: sba.SurfaceStateMemoryObjectControlState = MOCS_WB;
+      sba.SurfaceStateMOCS = MOCS_WB;
       sba.SurfaceStateBaseAddressModifyEnable = true;
       sba.SurfaceStateBaseAddress = ro_bo(binder->bo, 0);
    }
@@ -4555,7 +4558,7 @@ iris_upload_render_state(struct iris_context *ice,
 
       iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
          ib.IndexFormat = draw->index_size >> 1;
-         ib.MOCS = MOCS_WB;
+         ib.MOCS = mocs(bo);
          ib.BufferSize = bo->size;
          ib.BufferStartingAddress = ro_bo(bo, offset);
       }

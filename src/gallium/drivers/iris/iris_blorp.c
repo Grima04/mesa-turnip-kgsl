@@ -46,6 +46,8 @@
 #define BLORP_USE_SOFTPIN
 #include "blorp/blorp_genX_exec.h"
 
+#define MOCS_WB  (2 << 1)
+
 static uint32_t *
 stream_state(struct iris_batch *batch,
              struct u_upload_mgr *uploader,
@@ -180,8 +182,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
    *addr = (struct blorp_address) {
       .buffer = bo,
       .offset = offset,
-      // XXX: Broadwell MOCS
-      .mocs = I915_MOCS_CACHED,
+      .mocs = MOCS_WB,
    };
 
    return map;
