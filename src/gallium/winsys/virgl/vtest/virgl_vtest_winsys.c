@@ -89,11 +89,12 @@ virgl_vtest_transfer_put(struct virgl_winsys *vws,
 }
 
 static int
-virgl_vtest_transfer_get(struct virgl_winsys *vws,
-                         struct virgl_hw_res *res,
-                         const struct pipe_box *box,
-                         uint32_t stride, uint32_t layer_stride,
-                         uint32_t buf_offset, uint32_t level)
+virgl_vtest_transfer_get_internal(struct virgl_winsys *vws,
+                                  struct virgl_hw_res *res,
+                                  const struct pipe_box *box,
+                                  uint32_t stride, uint32_t layer_stride,
+                                  uint32_t buf_offset, uint32_t level,
+                                  bool flush_front_buffer)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
    uint32_t size;
@@ -113,6 +114,18 @@ virgl_vtest_transfer_get(struct virgl_winsys *vws,
 
    virgl_vtest_resource_unmap(vws, res);
    return 0;
+}
+
+static int
+virgl_vtest_transfer_get(struct virgl_winsys *vws,
+                         struct virgl_hw_res *res,
+                         const struct pipe_box *box,
+                         uint32_t stride, uint32_t layer_stride,
+                         uint32_t buf_offset, uint32_t level)
+{
+   return virgl_vtest_transfer_get_internal(vws, res, box, stride,
+                                            layer_stride, buf_offset,
+                                            level, false);
 }
 
 static void virgl_hw_res_destroy(struct virgl_vtest_winsys *vtws,
@@ -601,9 +614,7 @@ static void virgl_vtest_flush_frontbuffer(struct virgl_winsys *vws,
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
    struct pipe_box box;
-   void *map;
-   uint32_t size;
-   uint32_t offset = 0, valid_stride;
+   uint32_t offset = 0;
    if (!res->dt)
       return;
 
@@ -620,22 +631,10 @@ static void virgl_vtest_flush_frontbuffer(struct virgl_winsys *vws,
       box.depth = 1;
    }
 
-   size = vtest_get_transfer_size(res, &box, res->stride, 0, level, &valid_stride);
-
    virgl_vtest_busy_wait(vtws, res->res_handle, VCMD_BUSY_WAIT_FLAG_WAIT);
-   map = vtws->sws->displaytarget_map(vtws->sws, res->dt, 0);
 
-   /* execute a transfer */
-   virgl_vtest_send_transfer_get(vtws, res->res_handle,
-                                 level, res->stride, 0, &box, size, offset);
-
-   /* This functions gets the resource from the hardware backend that may have
-    * a hardware imposed stride that is different from the IOV stride used to
-    * get the data. */
-   virgl_vtest_recv_transfer_get_data(vtws, map + offset, size, valid_stride,
-                                      &box, res->format);
-
-   vtws->sws->displaytarget_unmap(vtws->sws, res->dt);
+   virgl_vtest_transfer_get_internal(vws, res, &box, res->stride, 0, offset,
+                                     level, true);
 
    vtws->sws->displaytarget_display(vtws->sws, res->dt, winsys_drawable_handle,
                                     sub_box);
