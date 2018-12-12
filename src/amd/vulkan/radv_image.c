@@ -932,7 +932,8 @@ radv_image_can_enable_fmask(struct radv_image *image)
 static inline bool
 radv_image_can_enable_htile(struct radv_image *image)
 {
-	return image->info.levels == 1 &&
+	return radv_image_has_htile(image) &&
+	       image->info.levels == 1 &&
 	       vk_format_is_depth(image->vk_format) &&
 	       image->info.width * image->info.height >= 8 * 8;
 }
