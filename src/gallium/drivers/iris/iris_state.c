@@ -3822,11 +3822,14 @@ iris_restore_render_saved_bos(struct iris_context *ice,
          struct iris_resource *zres, *sres;
          iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
                                           &zres, &sres);
-         // XXX: might not be writable...
-         if (zres)
-            iris_use_pinned_bo(batch, zres->bo, true);
-         if (sres)
-            iris_use_pinned_bo(batch, sres->bo, true);
+         if (zres) {
+            iris_use_pinned_bo(batch, zres->bo,
+                               ice->state.depth_writes_enabled);
+         }
+         if (sres) {
+            iris_use_pinned_bo(batch, sres->bo,
+                               ice->state.stencil_writes_enabled);
+         }
       }
    }
 
@@ -4376,11 +4379,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          struct iris_resource *zres, *sres;
          iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
                                           &zres, &sres);
-         // XXX: might not be writable...
-         if (zres)
-            iris_use_pinned_bo(batch, zres->bo, true);
-         if (sres)
-            iris_use_pinned_bo(batch, sres->bo, true);
+         if (zres) {
+            iris_use_pinned_bo(batch, zres->bo,
+                               ice->state.depth_writes_enabled);
+         }
+
+         if (sres) {
+            iris_use_pinned_bo(batch, sres->bo,
+                               ice->state.stencil_writes_enabled);
+         }
       }
    }
 
