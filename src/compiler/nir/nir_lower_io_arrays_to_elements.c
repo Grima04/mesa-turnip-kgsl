@@ -133,8 +133,7 @@ lower_array(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var,
          }
 
          if (nir_is_per_vertex_io(var, b->shader->info.stage)) {
-            type = glsl_get_array_instance(type,
-                                           glsl_get_length(element->type));
+            type = glsl_array_type(type, glsl_get_length(element->type));
          }
 
          element->type = type;
