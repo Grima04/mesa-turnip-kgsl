@@ -699,7 +699,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    nir_validate_shader(nir, "after remap");
 
-   // XXX: vs clip planes?
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 

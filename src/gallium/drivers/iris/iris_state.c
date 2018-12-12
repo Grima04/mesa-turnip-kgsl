@@ -2852,8 +2852,6 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
 
    /* XXX: this should be generated when putting programs in place */
 
-   // XXX: raster->sprite_coord_enable
-
    for (int fs_attr = 0; fs_attr < VARYING_SLOT_MAX; fs_attr++) {
       const int input_index = wm_prog_data->urb_setup[fs_attr];
       if (input_index < 0 || input_index >= 16)
@@ -3047,7 +3045,6 @@ static void
 iris_populate_fs_key(const struct iris_context *ice,
                      struct brw_wm_prog_key *key)
 {
-   /* XXX: dirty flags? */
    const struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
    const struct iris_depth_stencil_alpha_state *zsa = ice->state.cso_zsa;
    const struct iris_rasterizer_state *rast = ice->state.cso_rast;
@@ -3067,8 +3064,6 @@ iris_populate_fs_key(const struct iris_context *ice,
    key->multisample_fbo = rast->multisample && fb->samples > 1;
 
    key->coherent_fb_fetch = true;
-
-   // XXX: uint64_t input_slots_valid; - for >16 inputs
 
    // XXX: key->force_dual_color_blend for unigine
    // XXX: respect hint for high_quality_derivatives:1;
@@ -3724,8 +3719,6 @@ iris_restore_render_saved_bos(struct iris_context *ice,
 {
    struct iris_genx_state *genx = ice->state.genx;
 
-   // XXX: whack IRIS_SHADER_DIRTY_BINDING_TABLE on new batch
-
    const uint64_t clean = ~ice->state.dirty;
 
    if (clean & IRIS_DIRTY_CC_VIEWPORT) {
@@ -4027,9 +4020,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   /* XXX: L3 State */
-
-   // XXX: this is only flagged at setup, we assume a static configuration
    if (dirty & IRIS_DIRTY_URB) {
       iris_upload_urb_config(ice, batch);
    }
@@ -4316,7 +4306,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    }
 
-   /* XXX: FS program updates needs to flag IRIS_DIRTY_WM */
    if (dirty & IRIS_DIRTY_WM) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       uint32_t dynamic_wm[GENX(3DSTATE_WM_length)];
