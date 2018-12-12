@@ -196,14 +196,14 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                 cl_start(&job->indirect);
 
         for (int i = 0; i < uinfo->count; i++) {
+                uint32_t data = uinfo->data[i];
 
                 switch (uinfo->contents[i]) {
                 case QUNIFORM_CONSTANT:
-                        cl_aligned_u32(&uniforms, uinfo->data[i]);
+                        cl_aligned_u32(&uniforms, data);
                         break;
                 case QUNIFORM_UNIFORM:
-                        cl_aligned_u32(&uniforms,
-                                       gallium_uniforms[uinfo->data[i]]);
+                        cl_aligned_u32(&uniforms, gallium_uniforms[data]);
                         break;
                 case QUNIFORM_VIEWPORT_X_SCALE:
                         cl_aligned_f(&uniforms, v3d->viewport.scale[0] * 256.0f);
@@ -221,22 +221,20 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
 
                 case QUNIFORM_USER_CLIP_PLANE:
                         cl_aligned_f(&uniforms,
-                                     v3d->clip.ucp[uinfo->data[i] / 4][uinfo->data[i] % 4]);
+                                     v3d->clip.ucp[data / 4][data % 4]);
                         break;
 
                 case QUNIFORM_TMU_CONFIG_P0:
-                        write_tmu_p0(job, &uniforms, texstate,
-                                         uinfo->data[i]);
+                        write_tmu_p0(job, &uniforms, texstate, data);
                         break;
 
                 case QUNIFORM_TMU_CONFIG_P1:
-                        write_tmu_p1(job, &uniforms, texstate,
-                                         uinfo->data[i]);
+                        write_tmu_p1(job, &uniforms, texstate, data);
                         break;
 
                 case QUNIFORM_TEXTURE_CONFIG_P1:
                         write_texture_p1(job, &uniforms, texstate,
-                                         uinfo->data[i]);
+                                         data);
                         break;
 
                 case QUNIFORM_TEXRECT_SCALE_X:
@@ -244,7 +242,7 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                         cl_aligned_u32(&uniforms,
                                        get_texrect_scale(texstate,
                                                          uinfo->contents[i],
-                                                         uinfo->data[i]));
+                                                         data));
                         break;
 
                 case QUNIFORM_TEXTURE_WIDTH:
@@ -255,7 +253,7 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                         cl_aligned_u32(&uniforms,
                                        get_texture_size(texstate,
                                                         uinfo->contents[i],
-                                                        uinfo->data[i]));
+                                                        data));
                         break;
 
                 case QUNIFORM_ALPHA_REF:
@@ -264,11 +262,11 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                         break;
 
                 case QUNIFORM_UBO_ADDR:
-                        if (uinfo->data[i] == 0) {
+                        if (data == 0) {
                                 cl_aligned_reloc(&job->indirect, &uniforms,
                                                  ubo, 0);
                         } else {
-                                int ubo_index = uinfo->data[i];
+                                int ubo_index = data;
                                 struct v3d_resource *rsc =
                                         v3d_resource(cb->cb[ubo_index].buffer);
 
@@ -280,7 +278,7 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
 
                 case QUNIFORM_TEXTURE_FIRST_LEVEL:
                         cl_aligned_f(&uniforms,
-                                     texstate->textures[uinfo->data[i]]->u.tex.first_level);
+                                     texstate->textures[data]->u.tex.first_level);
                         break;
 
                 case QUNIFORM_SPILL_OFFSET:
@@ -299,7 +297,7 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                         write_texture_p0(job, &uniforms, texstate,
                                          uinfo->contents[i] -
                                          QUNIFORM_TEXTURE_CONFIG_P0_0,
-                                         uinfo->data[i]);
+                                         data);
                         break;
 
                 }
