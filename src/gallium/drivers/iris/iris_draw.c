@@ -173,8 +173,6 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 
    iris_batch_maybe_flush(batch, 1500);
 
-   // XXX: check if BOs are in use by the other batches (render), if so flush
-   //
    //if (dirty & IRIS_DIRTY_UNCOMPILED_CS)
       iris_update_compiled_compute_shader(ice);
 
