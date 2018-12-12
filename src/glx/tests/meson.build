@@ -34,6 +34,11 @@ if with_shared_glapi
   endif
 
   test(
+    'dispatch-index-check',
+    files('dispatch-index-check'),
+    suite : ['glx'],
+  )
+  test(
     'glx-test',
     executable(
       'glx-test',
