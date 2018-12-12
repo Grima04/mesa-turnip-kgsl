@@ -670,5 +670,6 @@ script:
 
       export CFLAGS="$CFLAGS -isystem`pwd`"
       meson _build $MESON_OPTIONS
+      meson configure _build
       ninja -C _build
     fi
