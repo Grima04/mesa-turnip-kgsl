@@ -36,6 +36,7 @@ matrix:
         - BUILD=meson
         - UNWIND="false"
         - DRI_LOADERS="-Dglx=disabled -Dgbm=false -Degl=false -Dplatforms=x11,wayland,drm -Dosmesa=none"
+        - GALLIUM_ST="-Ddri3=true -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
         - VULKAN_DRIVERS="intel,amd"
         - LLVM_VERSION=7
         - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
@@ -60,6 +61,7 @@ matrix:
         - UNWIND="false"
         - DRI_LOADERS="-Dglx=dri -Dgbm=true -Degl=true -Dplatforms=x11,wayland,drm,surfaceless -Dosmesa=classic"
         - DRI_DRIVERS="i915,i965,r100,r200,swrast,nouveau"
+        - GALLIUM_ST="-Ddri3=true -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
       addons:
         apt:
           packages:
@@ -463,6 +465,7 @@ matrix:
         - BUILD=meson
         - UNWIND="false"
         - DRI_LOADERS="-Dglx=dri -Dgbm=false -Degl=false -Dplatforms=x11 -Dosmesa=none"
+        - GALLIUM_ST="-Ddri3=true -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
       os: osx
 
 before_install:
@@ -647,6 +650,7 @@ script:
                    -Dlibunwind=${UNWIND} \
                    ${DRI_LOADERS} \
                    -Ddri-drivers=${DRI_DRIVERS:-[]} \
+                   ${GALLIUM_ST} \
                    -Dgallium-drivers=${GALLIUM_DRIVERS:-[]} \
                    -Dvulkan-drivers=${VULKAN_DRIVERS:-[]}
       meson configure _build
