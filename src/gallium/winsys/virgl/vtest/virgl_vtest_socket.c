@@ -300,7 +300,16 @@ static int virgl_vtest_send_resource_create2(struct virgl_vtest_winsys *vws,
 
    virgl_block_write(vws->sock_fd, &vtest_hdr, sizeof(vtest_hdr));
    virgl_block_write(vws->sock_fd, &res_create_buf, sizeof(res_create_buf));
-   *out_fd = -1;
+
+   /* Multi-sampled textures have no backing store attached. */
+   if (size == 0)
+      return 0;
+
+   *out_fd = virgl_vtest_receive_fd(vws->sock_fd);
+   if (*out_fd < 0) {
+      fprintf(stderr, "failed to get fd\n");
+      return -1;
+   }
 
    return 0;
 }

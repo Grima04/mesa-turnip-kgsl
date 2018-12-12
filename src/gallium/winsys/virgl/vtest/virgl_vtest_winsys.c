@@ -26,6 +26,7 @@
 #include "util/u_inlines.h"
 #include "util/os_time.h"
 #include "state_tracker/sw_winsys.h"
+#include "os/os_mman.h"
 
 #include "virgl_vtest_winsys.h"
 #include "virgl_vtest_public.h"
@@ -134,7 +135,13 @@ static void virgl_hw_res_destroy(struct virgl_vtest_winsys *vtws,
    virgl_vtest_send_resource_unref(vtws, res->res_handle);
    if (res->dt)
       vtws->sws->displaytarget_destroy(vtws->sws, res->dt);
-   free(res->ptr);
+   if (vtws->protocol_version >= 2) {
+      if (res->ptr)
+         os_munmap(res->ptr, res->size);
+   } else {
+      free(res->ptr);
+   }
+
    FREE(res);
 }
 
@@ -242,7 +249,7 @@ virgl_vtest_winsys_resource_create(struct virgl_winsys *vws,
                                                 width, height, 64, NULL,
                                                 &res->stride);
 
-   } else {
+   } else if (vtws->protocol_version < 2) {
       res->ptr = align_malloc(size, 64);
       if (!res->ptr) {
          FREE(res);
@@ -259,6 +266,32 @@ virgl_vtest_winsys_resource_create(struct virgl_winsys *vws,
                                     width, height, depth, array_size,
                                     last_level, nr_samples, size, &fd);
 
+   if (vtws->protocol_version >= 2) {
+      if (res->size == 0) {
+         res->ptr = NULL;
+         goto out;
+      }
+
+      if (fd < 0) {
+         FREE(res);
+         fprintf(stderr, "Unable to get a valid fd\n");
+         return NULL;
+      }
+
+      res->ptr = os_mmap(NULL, res->size, PROT_WRITE | PROT_READ, MAP_SHARED,
+                         fd, 0);
+
+      if (res->ptr == MAP_FAILED) {
+         fprintf(stderr, "Client failed to map shared memory region\n");
+         close(fd);
+         FREE(res);
+         return NULL;
+      }
+
+      close(fd);
+   }
+
+out:
    res->res_handle = handle++;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->num_cs_references, 0);
@@ -277,11 +310,17 @@ static void *virgl_vtest_resource_map(struct virgl_winsys *vws,
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
 
-   if (res->dt) {
-      return vtws->sws->displaytarget_map(vtws->sws, res->dt, 0);
-   } else {
+   /*
+    * With protocol v0 we can either have a display target or a resource backing
+    * store. With protocol v2 we can have both, so only return the memory mapped
+    * backing store in this function. We can copy to the display target when
+    * appropriate.
+    */
+   if (vtws->protocol_version >= 2 || !res->dt) {
       res->mapped = res->ptr;
       return res->mapped;
+   } else {
+      return vtws->sws->displaytarget_map(vtws->sws, res->dt, 0);
    }
 }
 
@@ -292,7 +331,7 @@ static void virgl_vtest_resource_unmap(struct virgl_winsys *vws,
    if (res->mapped)
       res->mapped = NULL;
 
-   if (res->dt)
+   if (res->dt && vtws->protocol_version < 2)
       vtws->sws->displaytarget_unmap(vtws->sws, res->dt);
 }
 
