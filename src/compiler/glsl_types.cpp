@@ -2082,10 +2082,15 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_BOOL:
+   case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_UINT8:
+   case GLSL_TYPE_INT8:
+   case GLSL_TYPE_UINT16:
+   case GLSL_TYPE_INT16:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
+   case GLSL_TYPE_BOOL:
       encoding = (type->base_type << 24) |
          (type->vector_elements << 4) |
          (type->matrix_columns);
@@ -2168,10 +2173,15 @@ decode_type_from_blob(struct blob_reader *blob)
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_BOOL:
+   case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_UINT8:
+   case GLSL_TYPE_INT8:
+   case GLSL_TYPE_UINT16:
+   case GLSL_TYPE_INT16:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_INT64:
+   case GLSL_TYPE_BOOL:
       return glsl_type::get_instance(base_type, (u >> 4) & 0x0f, u & 0x0f);
    case GLSL_TYPE_SAMPLER:
       return glsl_type::get_sampler_instance((enum glsl_sampler_dim) ((u >> 4) & 0x07),
