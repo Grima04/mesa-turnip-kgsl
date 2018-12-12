@@ -683,6 +683,19 @@ vtn_handle_access_qualifier(struct vtn_builder *b, struct vtn_type *type,
 }
 
 static void
+array_stride_decoration_cb(struct vtn_builder *b,
+                           struct vtn_value *val, int member,
+                           const struct vtn_decoration *dec, void *void_ctx)
+{
+   struct vtn_type *type = val->type;
+
+   if (dec->decoration == SpvDecorationArrayStride) {
+      vtn_fail_if(dec->literals[0] == 0, "ArrayStride must be non-zero");
+      type->stride = dec->literals[0];
+   }
+}
+
+static void
 struct_member_decoration_cb(struct vtn_builder *b,
                             struct vtn_value *val, int member,
                             const struct vtn_decoration *dec, void *void_ctx)
@@ -739,6 +752,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
       break;
    case SpvDecorationOffset:
       ctx->type->offsets[member] = dec->literals[0];
+      ctx->fields[member].offset = dec->literals[0];
       break;
    case SpvDecorationMatrixStride:
       /* Handled as a second pass */
@@ -796,6 +810,21 @@ struct_member_decoration_cb(struct vtn_builder *b,
    }
 }
 
+/** Chases the array type all the way down to the tail and rewrites the
+ * glsl_types to be based off the tail's glsl_type.
+ */
+static void
+vtn_array_type_rewrite_glsl_type(struct vtn_type *type)
+{
+   if (type->base_type != vtn_base_type_array)
+      return;
+
+   vtn_array_type_rewrite_glsl_type(type->array_element);
+
+   type->type = glsl_array_type(type->array_element->type,
+                                type->length, type->stride);
+}
+
 /* Matrix strides are handled as a separate pass because we need to know
  * whether the matrix is row-major or not first.
  */
@@ -811,6 +840,7 @@ struct_member_matrix_stride_cb(struct vtn_builder *b,
    vtn_fail_if(member < 0,
                "The MatrixStride decoration is only allowed on members "
                "of OpTypeStruct");
+   vtn_fail_if(dec->literals[0] == 0, "MatrixStride must be non-zero");
 
    struct member_decoration_ctx *ctx = void_ctx;
 
@@ -819,10 +849,24 @@ struct_member_matrix_stride_cb(struct vtn_builder *b,
       mat_type->array_element = vtn_type_copy(b, mat_type->array_element);
       mat_type->stride = mat_type->array_element->stride;
       mat_type->array_element->stride = dec->literals[0];
+
+      mat_type->type = glsl_explicit_matrix_type(mat_type->type,
+                                                 dec->literals[0], true);
+      mat_type->array_element->type = glsl_get_column_type(mat_type->type);
    } else {
       vtn_assert(mat_type->array_element->stride > 0);
       mat_type->stride = dec->literals[0];
+
+      mat_type->type = glsl_explicit_matrix_type(mat_type->type,
+                                                 dec->literals[0], false);
    }
+
+   /* Now that we've replaced the glsl_type with a properly strided matrix
+    * type, rewrite the member type so that it's an array of the proper kind
+    * of glsl_type.
+    */
+   vtn_array_type_rewrite_glsl_type(ctx->type->members[member]);
+   ctx->fields[member].type = ctx->type->members[member]->type;
 }
 
 static void
@@ -841,10 +885,8 @@ type_decoration_cb(struct vtn_builder *b,
 
    switch (dec->decoration) {
    case SpvDecorationArrayStride:
-      vtn_assert(type->base_type == vtn_base_type_matrix ||
-                 type->base_type == vtn_base_type_array ||
+      vtn_assert(type->base_type == vtn_base_type_array ||
                  type->base_type == vtn_base_type_pointer);
-      type->stride = dec->literals[0];
       break;
    case SpvDecorationBlock:
       vtn_assert(type->base_type == vtn_base_type_struct);
@@ -1145,9 +1187,12 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       }
 
       val->type->base_type = vtn_base_type_array;
-      val->type->type = glsl_array_type(array_element->type, val->type->length, 0);
       val->type->array_element = array_element;
       val->type->stride = 0;
+
+      vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
+      val->type->type = glsl_array_type(array_element->type, val->type->length,
+                                        val->type->stride);
       break;
    }
 
@@ -1208,6 +1253,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       val->type->base_type = vtn_base_type_pointer;
       val->type->storage_class = storage_class;
       val->type->deref = deref_type;
+
+      vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
 
       if (storage_class == SpvStorageClassUniform ||
           storage_class == SpvStorageClassStorageBuffer) {

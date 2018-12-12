@@ -194,7 +194,9 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
    struct vtn_type *ret_type = vtn_callee->type->return_type;
    if (ret_type->base_type != vtn_base_type_void) {
       nir_variable *ret_tmp =
-         nir_local_variable_create(b->nb.impl, ret_type->type, "return_tmp");
+         nir_local_variable_create(b->nb.impl,
+                                   glsl_get_bare_type(ret_type->type),
+                                   "return_tmp");
       ret_deref = nir_build_deref_var(&b->nb, ret_tmp);
       call->params[param_idx++] = nir_src_for_ssa(&ret_deref->dest.ssa);
    }
@@ -878,9 +880,11 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
                         vtn_base_type_void,
                         "Return with a value from a function returning void");
             struct vtn_ssa_value *src = vtn_ssa_value(b, block->branch[1]);
+            const struct glsl_type *ret_type =
+               glsl_get_bare_type(b->func->type->return_type->type);
             nir_deref_instr *ret_deref =
                nir_build_deref_cast(&b->nb, nir_load_param(&b->nb, 0),
-                                    nir_var_local, src->type);
+                                    nir_var_local, ret_type);
             vtn_local_store(b, src, ret_deref);
          }
 

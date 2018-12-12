@@ -1624,8 +1624,10 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
       ptr->block_index = NULL;
       ptr->offset = ssa;
    } else {
+      assert(!vtn_pointer_is_external_block(b, ptr));
+      const struct glsl_type *deref_type = ptr_type->deref->type;
       ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                        ptr_type->deref->type);
+                                        glsl_get_bare_type(deref_type));
    }
 
    return ptr;
@@ -1701,14 +1703,17 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
 
-      /* Need to tweak the nir type here as at vtn_handle_type we don't have
-       * the access to storage_class, that is the one that points us that is
-       * an atomic uint.
-       */
       if (storage_class == SpvStorageClassAtomicCounter) {
+         /* Need to tweak the nir type here as at vtn_handle_type we don't
+          * have the access to storage_class, that is the one that points us
+          * that is an atomic uint.
+          */
          var->var->type = repair_atomic_type(var->type->type);
       } else {
-         var->var->type = var->type->type;
+         /* Private variables don't have any explicit layout but some layouts
+          * may have leaked through due to type deduplication in the SPIR-V.
+          */
+         var->var->type = glsl_get_bare_type(var->type->type);
       }
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
@@ -1722,7 +1727,11 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          /* Create the variable normally */
          var->var = rzalloc(b->shader, nir_variable);
          var->var->name = ralloc_strdup(var->var, val->name);
-         var->var->type = var->type->type;
+         /* Workgroup variables don't have any explicit layout but some
+          * layouts may have leaked through due to type deduplication in the
+          * SPIR-V.
+          */
+         var->var->type = glsl_get_bare_type(var->type->type);
          var->var->data.mode = nir_var_shared;
       }
       break;
@@ -1775,7 +1784,11 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
-      var->var->type = var->type->type;
+      /* In Vulkan, shader I/O variables don't have any explicit layout but
+       * some layouts may have leaked through due to type deduplication in
+       * the SPIR-V.
+       */
+      var->var->type = glsl_get_bare_type(var->type->type);
       var->var->interface_type = interface_type->type;
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
