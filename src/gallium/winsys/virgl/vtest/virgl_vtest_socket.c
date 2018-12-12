@@ -72,6 +72,49 @@ static int virgl_block_read(int fd, void *buf, int size)
    return size;
 }
 
+static int virgl_vtest_receive_fd(int socket_fd)
+{
+    struct cmsghdr *cmsgh;
+    struct msghdr msgh = { 0 };
+    char buf[CMSG_SPACE(sizeof(int))], c;
+    struct iovec iovec;
+
+    iovec.iov_base = &c;
+    iovec.iov_len = sizeof(char);
+
+    msgh.msg_name = NULL;
+    msgh.msg_namelen = 0;
+    msgh.msg_iov = &iovec;
+    msgh.msg_iovlen = 1;
+    msgh.msg_control = buf;
+    msgh.msg_controllen = sizeof(buf);
+    msgh.msg_flags = 0;
+
+    int size = recvmsg(socket_fd, &msgh, 0);
+    if (size < 0) {
+      fprintf(stderr, "Failed with %s\n", strerror(errno));
+      return -1;
+    }
+
+    cmsgh = CMSG_FIRSTHDR(&msgh);
+    if (!cmsgh) {
+      fprintf(stderr, "No headers available\n");
+      return -1;
+    }
+
+    if (cmsgh->cmsg_level != SOL_SOCKET) {
+      fprintf(stderr, "invalid cmsg_level %d\n", cmsgh->cmsg_level);
+      return -1;
+    }
+
+    if (cmsgh->cmsg_type != SCM_RIGHTS) {
+      fprintf(stderr, "invalid cmsg_type %d\n", cmsgh->cmsg_type);
+      return -1;
+    }
+
+    return *((int *) CMSG_DATA(cmsgh));
+}
+
 static int virgl_vtest_send_init(struct virgl_vtest_winsys *vws)
 {
    uint32_t buf[VTEST_HDR_SIZE];
