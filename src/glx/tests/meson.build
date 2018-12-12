@@ -46,9 +46,9 @@ if with_shared_glapi
       link_with : [libglx, libglapi],
       include_directories : [
         inc_src, inc_include, inc_mesa, inc_mapi, inc_gl_internal,
-        include_directories('..'),
+        inc_glx,
       ],
-      dependencies : [dep_libdrm, dep_thread, idep_gtest]
+      dependencies : [dep_libdrm, dep_glproto, dep_thread, idep_gtest]
     ),
     suite : ['glx'],
   )
