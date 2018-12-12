@@ -555,6 +555,20 @@ v3d_qpu_magic_waddr_is_tsy(enum v3d_qpu_waddr waddr)
                 waddr == V3D_QPU_WADDR_SYNCU);
 }
 
+bool
+v3d_qpu_magic_waddr_loads_unif(enum v3d_qpu_waddr waddr)
+{
+        switch (waddr) {
+        case V3D_QPU_WADDR_VPMU:
+        case V3D_QPU_WADDR_TLBU:
+        case V3D_QPU_WADDR_TMUAU:
+        case V3D_QPU_WADDR_SYNCU:
+                return true;
+        default:
+                return false;
+        }
+}
+
 static bool
 v3d_qpu_add_op_reads_vpm(enum  v3d_qpu_add_op op)
 {
