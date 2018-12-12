@@ -3113,8 +3113,9 @@ KSP(const struct iris_compiled_shader *shader)
    pkt.Enable           = true;                                           \
                                                                           \
    if (prog_data->total_scratch) {                                        \
-      uint32_t scratch_addr =                                             \
+      struct iris_bo *bo =                                                \
          iris_get_scratch_space(ice, prog_data->total_scratch, stage);    \
+      uint32_t scratch_addr = bo->gtt_offset;                             \
       pkt.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;     \
       pkt.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);            \
    }
@@ -3308,9 +3309,10 @@ iris_store_fs_state(struct iris_context *ice,
          KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
 
       if (prog_data->total_scratch) {
-         uint32_t scratch_addr =
+         struct iris_bo *bo =
             iris_get_scratch_space(ice, prog_data->total_scratch,
                                    MESA_SHADER_FRAGMENT);
+         uint32_t scratch_addr = bo->gtt_offset;
          ps.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
          ps.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
       }
@@ -3804,12 +3806,19 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (clean & (IRIS_DIRTY_VS << stage)) {
          struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+
          if (shader) {
             struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
             iris_use_pinned_bo(batch, bo, false);
-         }
 
-         // XXX: scratch buffer
+            struct brw_stage_prog_data *prog_data = shader->prog_data;
+
+            if (prog_data->total_scratch > 0) {
+               struct iris_bo *bo =
+                  iris_get_scratch_space(ice, prog_data->total_scratch, stage);
+               iris_use_pinned_bo(batch, bo, true);
+            }
+         }
       }
    }
 
@@ -3886,12 +3895,19 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
 
    if (clean & IRIS_DIRTY_CS) {
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+
       if (shader) {
          struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
          iris_use_pinned_bo(batch, bo, false);
-      }
 
-      // XXX: scratch buffer
+         struct brw_stage_prog_data *prog_data = shader->prog_data;
+
+         if (prog_data->total_scratch > 0) {
+            struct iris_bo *bo =
+               iris_get_scratch_space(ice, prog_data->total_scratch, stage);
+            iris_use_pinned_bo(batch, bo, true);
+         }
+      }
    }
 }
 
@@ -4695,9 +4711,10 @@ iris_upload_compute_state(struct iris_context *ice,
 
       iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
          if (prog_data->total_scratch) {
-            uint32_t scratch_addr =
+            struct iris_bo *bo =
                iris_get_scratch_space(ice, prog_data->total_scratch,
                                       MESA_SHADER_COMPUTE);
+            uint32_t scratch_addr = bo->gtt_offset;
             vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
             vfe.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
          }

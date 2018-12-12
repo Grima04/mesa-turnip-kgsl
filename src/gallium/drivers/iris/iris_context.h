@@ -628,9 +628,9 @@ const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
 unsigned iris_get_shader_num_ubos(const struct iris_context *ice,
                                   gl_shader_stage stage);
-uint32_t iris_get_scratch_space(struct iris_context *ice,
-                                unsigned per_thread_scratch,
-                                gl_shader_stage stage);
+struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
+                                       unsigned per_thread_scratch,
+                                       gl_shader_stage stage);
 
 /* iris_program_cache.c */
 

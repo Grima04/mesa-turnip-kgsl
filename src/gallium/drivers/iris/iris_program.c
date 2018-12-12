@@ -1481,10 +1481,8 @@ iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
 
 /**
  * Allocate scratch BOs as needed for the given per-thread size and stage.
- *
- * Returns the 32-bit "Scratch Space Base Pointer" value.
  */
-uint32_t
+struct iris_bo *
 iris_get_scratch_space(struct iris_context *ice,
                        unsigned per_thread_scratch,
                        gl_shader_stage stage)
@@ -1526,7 +1524,7 @@ iris_get_scratch_space(struct iris_context *ice,
       *bop = iris_bo_alloc(bufmgr, "scratch", size, IRIS_MEMZONE_SHADER);
    }
 
-   return (*bop)->gtt_offset;
+   return *bop;
 }
 
 void
