@@ -34,6 +34,7 @@ matrix:
     - env:
         - LABEL="meson Vulkan"
         - BUILD=meson
+        - UNWIND="false"
         - VULKAN_DRIVERS="intel,amd"
         - LLVM_VERSION=7
         - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
@@ -55,6 +56,7 @@ matrix:
     - env:
         - LABEL="meson loaders/classic DRI"
         - BUILD=meson
+        - UNWIND="false"
         - DRI_DRIVERS="i915,i965,r100,r200,swrast,nouveau"
       addons:
         apt:
@@ -457,6 +459,7 @@ matrix:
     - env:
         - LABEL="macOS meson"
         - BUILD=meson
+        - UNWIND="false"
       os: osx
 
 before_install:
@@ -643,6 +646,7 @@ script:
       meson _build $MESON_OPTIONS \
                    --native-file=native.file \
                    -Dbuild-tests=true \
+                   -Dlibunwind=${UNWIND} \
                    -Ddri-drivers=${DRI_DRIVERS:-[]} \
                    -Dgallium-drivers=${GALLIUM_DRIVERS:-[]} \
                    -Dvulkan-drivers=${VULKAN_DRIVERS:-[]}
