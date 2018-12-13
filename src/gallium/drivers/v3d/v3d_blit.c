@@ -418,6 +418,8 @@ v3d_generate_mipmap(struct pipe_context *pctx,
                 return false;
         }
 
+        rsc->writes++;
+
         return true;
 }
 
