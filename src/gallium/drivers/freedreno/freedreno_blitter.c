@@ -25,9 +25,11 @@
  */
 
 #include "util/u_blitter.h"
+#include "util/u_surface.h"
 
 #include "freedreno_blitter.h"
 #include "freedreno_context.h"
+#include "freedreno_resource.h"
 
 /* generic blit using u_blitter.. slightly modified version of util_blitter_blit
  * which also handles PIPE_BUFFER:
@@ -109,4 +111,66 @@ fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	pipe_surface_reference(&dst_view, NULL);
 	pipe_sampler_view_reference(&src_view, NULL);
+}
+
+/**
+ * _copy_region using pipe (3d engine)
+ */
+static bool
+fd_blitter_pipe_copy_region(struct fd_context *ctx,
+		struct pipe_resource *dst,
+		unsigned dst_level,
+		unsigned dstx, unsigned dsty, unsigned dstz,
+		struct pipe_resource *src,
+		unsigned src_level,
+		const struct pipe_box *src_box)
+{
+	/* not until we allow rendertargets to be buffers */
+	if (dst->target == PIPE_BUFFER || src->target == PIPE_BUFFER)
+		return false;
+
+	if (!util_blitter_is_copy_supported(ctx->blitter, dst, src))
+		return false;
+
+	/* TODO we could discard if dst box covers dst level fully.. */
+	fd_blitter_pipe_begin(ctx, false, false, FD_STAGE_BLIT);
+	util_blitter_copy_texture(ctx->blitter,
+			dst, dst_level, dstx, dsty, dstz,
+			src, src_level, src_box);
+	fd_blitter_pipe_end(ctx);
+
+	return true;
+}
+
+/**
+ * Copy a block of pixels from one resource to another.
+ * The resource must be of the same format.
+ * Resources with nr_samples > 1 are not allowed.
+ */
+void
+fd_resource_copy_region(struct pipe_context *pctx,
+		struct pipe_resource *dst,
+		unsigned dst_level,
+		unsigned dstx, unsigned dsty, unsigned dstz,
+		struct pipe_resource *src,
+		unsigned src_level,
+		const struct pipe_box *src_box)
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	/* TODO if we have 2d core, or other DMA engine that could be used
+	 * for simple copies and reasonably easily synchronized with the 3d
+	 * core, this is where we'd plug it in..
+	 */
+
+	/* try blit on 3d pipe: */
+	if (fd_blitter_pipe_copy_region(ctx,
+			dst, dst_level, dstx, dsty, dstz,
+			src, src_level, src_box))
+		return;
+
+	/* else fallback to pure sw: */
+	util_resource_copy_region(pctx,
+			dst, dst_level, dstx, dsty, dstz,
+			src, src_level, src_box);
 }
