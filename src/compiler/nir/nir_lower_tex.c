@@ -905,7 +905,9 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
            (options->lower_txd_shadow_clamp && tex->is_shadow && has_min_lod) ||
            (options->lower_txd_offset_clamp && has_offset && has_min_lod) ||
            (options->lower_txd_cube_map &&
-            tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE))) {
+            tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE) ||
+           (options->lower_txd_3d &&
+            tex->sampler_dim == GLSL_SAMPLER_DIM_3D))) {
          lower_gradient(b, tex);
          progress = true;
          continue;

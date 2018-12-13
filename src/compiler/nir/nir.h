@@ -3009,6 +3009,11 @@ typedef struct nir_lower_tex_options {
    bool lower_txd_cube_map;
 
    /**
+    * If true, lower nir_texop_txd on 3D surfaces with nir_texop_txl.
+    */
+   bool lower_txd_3d;
+
+   /**
     * If true, lower nir_texop_txd on shadow samplers (except cube maps)
     * with nir_texop_txl. Notice that cube map shadow samplers are lowered
     * with lower_txd_cube_map.
