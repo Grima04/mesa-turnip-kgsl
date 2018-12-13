@@ -803,7 +803,6 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
    /* Run through each of the terminators and try to compute a trip-count */
    find_trip_count(state);
 
-   nir_shader *ns = impl->function->shader;
    nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
       if (force_unroll_heuristics(state, block)) {
          state->loop->info->force_unroll = true;
