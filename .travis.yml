@@ -102,6 +102,193 @@ matrix:
         # NOTE: Building SWR is 2x (yes two) times slower than all the other
         # gallium drivers combined.
         # Start this early so that it doesn't hunder the run time.
+        - LABEL="meson Gallium Drivers SWR"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
+        - GALLIUM_DRIVERS="swr"
+        - LLVM_VERSION=6.0
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          packages:
+            - llvm-6.0-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium Drivers RadeonSI"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
+        - GALLIUM_DRIVERS="radeonsi"
+        - LLVM_VERSION=7
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main'
+              key_url: https://apt.llvm.org/llvm-snapshot.gpg.key
+          packages:
+            # From sources above
+            - llvm-7-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium Drivers Other"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
+        - GALLIUM_DRIVERS="i915,nouveau,pl111,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv,imx"
+        - LLVM_VERSION=5.0
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          packages:
+            # LLVM packaging is broken and misses these dependencies
+            - libedit-dev
+            - llvm-5.0-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium ST Clover LLVM-5.0"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=icd"
+        - GALLIUM_DRIVERS="r600"
+        - LLVM_VERSION=5.0
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          packages:
+            - libclc-dev
+            # LLVM packaging is broken and misses these dependencies
+            - libedit-dev
+            - llvm-5.0-dev
+            - clang-5.0
+            - libclang-5.0-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium ST Clover LLVM-6.0"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=icd"
+        - GALLIUM_DRIVERS="r600"
+        - LLVM_VERSION=6.0
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          packages:
+            - libclc-dev
+            - llvm-6.0-dev
+            - clang-6.0
+            - libclang-6.0-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium ST Clover LLVM-7"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=false -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=icd"
+        - GALLIUM_DRIVERS="r600,radeonsi"
+        - LLVM_VERSION=7
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main'
+              key_url: https://apt.llvm.org/llvm-snapshot.gpg.key
+          packages:
+            - libclc-dev
+            # From sources above
+            - llvm-7-dev
+            - clang-7
+            - libclang-7-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        - LABEL="meson Gallium ST Other"
+        - BUILD=meson
+        - UNWIND="true"
+        - DRI_LOADERS="-Dglx=disabled -Degl=false -Dgbm=false"
+        - GALLIUM_ST="-Ddri3=true -Dgallium-vdpau=true -Dgallium-xvmc=true -Dgallium-omx=bellagio -Dgallium-va=true -Dgallium-xa=true -Dgallium-nine=true -Dgallium-opencl=disabled -Dosmesa=gallium"
+        # We need swrast for osmesa and nine.
+        # Nouveau supports, or builds at least against all ST.
+        - GALLIUM_DRIVERS="nouveau,swrast"
+        - LLVM_VERSION=5.0
+        - LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
+      addons:
+        apt:
+          packages:
+            - llvm-5.0-dev
+            # LLVM packaging is broken and misses these dependencies
+            - libedit-dev
+            # Nine requires gcc 4.6... which is the one we have right ?
+            - libxvmc-dev
+            # Build locally, for now.
+            #- libvdpau-dev
+            #- libva-dev
+            - libomxil-bellagio-dev
+            # Common
+            - xz-utils
+            - libexpat1-dev
+            - libx11-xcb-dev
+            - libelf-dev
+            - libunwind8-dev
+            - python3.5
+            - python3-pip
+            - python3-setuptools
+    - env:
+        # NOTE: Building SWR is 2x (yes two) times slower than all the other
+        # gallium drivers combined.
+        # Start this early so that it doesn't hunder the run time.
         - LABEL="make Gallium Drivers SWR"
         - BUILD=make
         - MAKEFLAGS="-j4"
