@@ -512,17 +512,10 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 }
 
 static void
-fd6_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+emit_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_batch *batch;
-
-	if (!can_do_blit(info)) {
-		fd_blitter_pipe_begin(ctx, info->render_condition_enable, false, FD_STAGE_BLIT);
-		fd_blitter_blit(ctx, info);
-		fd_blitter_pipe_end(ctx);
-		return;
-	}
 
 	fd_fence_ref(pctx->screen, &ctx->last_fence, NULL);
 
@@ -564,6 +557,21 @@ fd6_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
 }
 
 static void
+fd6_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	if (!can_do_blit(info)) {
+		fd_blitter_pipe_begin(ctx, info->render_condition_enable, false, FD_STAGE_BLIT);
+		fd_blitter_blit(ctx, info);
+		fd_blitter_pipe_end(ctx);
+		return;
+	}
+
+	emit_blit(pctx, info);
+}
+
+static void
 fd6_resource_copy_region(struct pipe_context *pctx,
 		struct pipe_resource *dst,
 		unsigned dst_level,
@@ -596,7 +604,14 @@ fd6_resource_copy_region(struct pipe_context *pctx,
 	info.filter = PIPE_TEX_FILTER_NEAREST;
 	info.scissor_enable = 0;
 
-	fd6_blit(pctx, &info);
+	if (!can_do_blit(&info)) {
+		fd_resource_copy_region(pctx,
+				dst, dst_level, dstx, dsty, dstz,
+				src, src_level, src_box);
+		return;
+	}
+
+	emit_blit(pctx, &info);
 }
 
 void
