@@ -176,7 +176,13 @@ remove_unused_by_block(struct ir3_block *block)
 		if (instr->flags & IR3_INSTR_UNUSED) {
 			if (instr->opc == OPC_META_FO) {
 				struct ir3_instruction *src = ssa(instr->regs[1]);
-				if (src->regs[0]->wrmask > 1) {
+				/* leave inputs alone.. we can't optimize out components of
+				 * an input, since the hw is still going to be writing all
+				 * of the components, and we could end up in a situation
+				 * where multiple inputs overlap.
+				 */
+				if ((src->opc != OPC_META_INPUT) &&
+						(src->regs[0]->wrmask > 1)) {
 					src->regs[0]->wrmask &= ~(1 << instr->fo.off);
 
 					/* prune no-longer needed right-neighbors.  We could
