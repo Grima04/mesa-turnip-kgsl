@@ -668,6 +668,8 @@ script:
       # https://lists.freedesktop.org/archives/mesa-dev/2017-December/180217.html
       test -f /usr/bin/$LLVM_CONFIG && ln -s /usr/bin/$LLVM_CONFIG $HOME/prefix/bin/llvm-config
 
+      $LLVM_CONFIG --version
+
       export CFLAGS="$CFLAGS -isystem`pwd`"
       meson _build $MESON_OPTIONS
       meson configure _build
