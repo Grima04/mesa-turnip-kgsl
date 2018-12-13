@@ -381,9 +381,9 @@ endif
 if with_any_vk and (with_platform_x11 and not with_dri3)
   error('Vulkan drivers require dri3 for X11 support')
 endif
-if with_dri or with_gallium
-  if with_glx == 'disabled' and not with_egl and not with_platform_haiku
-    error('building dri or gallium drivers require at least one window system')
+if with_dri
+  if with_glx == 'disabled' and not with_egl and not with_gbm
+    error('building dri drivers require at least one windowing system')
   endif
 endif
 
