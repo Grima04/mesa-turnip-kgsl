@@ -112,6 +112,8 @@ FORMAT = "NIR_INTRINSIC_FORMAT"
 # Offset or address alignment
 ALIGN_MUL = "NIR_INTRINSIC_ALIGN_MUL"
 ALIGN_OFFSET = "NIR_INTRINSIC_ALIGN_OFFSET"
+# The vulkan descriptor type for vulkan_resource_index
+DESC_TYPE = "NIR_INTRINSIC_DESC_TYPE"
 
 #
 # Possible flags:
@@ -358,9 +360,10 @@ image("store_raw_intel", src_comp=[1, 0])
 # corresponds to the tuple (set, binding, index) and computes an index
 # corresponding to tuple (set, binding, idx + src1).
 intrinsic("vulkan_resource_index", src_comp=[1], dest_comp=1,
-          indices=[DESC_SET, BINDING], flags=[CAN_ELIMINATE, CAN_REORDER])
-intrinsic("vulkan_resource_reindex", src_comp=[1, 1], dest_comp=1,
+          indices=[DESC_SET, BINDING, DESC_TYPE],
           flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("vulkan_resource_reindex", src_comp=[1, 1], dest_comp=1,
+          indices=[DESC_TYPE], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # variable atomic intrinsics
 #

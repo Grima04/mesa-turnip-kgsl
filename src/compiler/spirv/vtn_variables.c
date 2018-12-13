@@ -28,6 +28,7 @@
 #include "vtn_private.h"
 #include "spirv_info.h"
 #include "nir_deref.h"
+#include <vulkan/vulkan_core.h>
 
 static struct vtn_access_chain *
 vtn_access_chain_create(struct vtn_builder *b, unsigned length)
@@ -131,6 +132,19 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
    return ptr;
 }
 
+static VkDescriptorType
+vk_desc_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
+{
+   switch (mode) {
+   case vtn_variable_mode_ubo:
+      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   case vtn_variable_mode_ssbo:
+      return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+   default:
+      vtn_fail("Invalid mode for vulkan_resource_index");
+   }
+}
+
 static nir_ssa_def *
 vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
                             nir_ssa_def *desc_array_index)
@@ -146,6 +160,7 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
    instr->src[0] = nir_src_for_ssa(desc_array_index);
    nir_intrinsic_set_desc_set(instr, var->descriptor_set);
    nir_intrinsic_set_binding(instr, var->binding);
+   nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, var->mode));
 
    nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 32, NULL);
    nir_builder_instr_insert(&b->nb, &instr->instr);
@@ -154,14 +169,15 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
 }
 
 static nir_ssa_def *
-vtn_resource_reindex(struct vtn_builder *b, nir_ssa_def *base_index,
-                     nir_ssa_def *offset_index)
+vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
+                     nir_ssa_def *base_index, nir_ssa_def *offset_index)
 {
    nir_intrinsic_instr *instr =
       nir_intrinsic_instr_create(b->nb.shader,
                                  nir_intrinsic_vulkan_resource_reindex);
    instr->src[0] = nir_src_for_ssa(base_index);
    instr->src[1] = nir_src_for_ssa(offset_index);
+   nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, mode));
 
    nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 32, NULL);
    nir_builder_instr_insert(&b->nb, &instr->instr);
@@ -239,7 +255,8 @@ vtn_ssa_offset_pointer_dereference(struct vtn_builder *b,
             vtn_access_link_as_ssa(b, deref_chain->link[0], 1, 32);
          idx++;
 
-         block_index = vtn_resource_reindex(b, block_index, offset_index);
+         block_index = vtn_resource_reindex(b, base->mode,
+                                            block_index, offset_index);
       }
    }
 

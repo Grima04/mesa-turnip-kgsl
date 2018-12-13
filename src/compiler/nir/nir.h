@@ -1278,6 +1278,11 @@ typedef enum {
    NIR_INTRINSIC_ALIGN_MUL = 17,
    NIR_INTRINSIC_ALIGN_OFFSET = 18,
 
+   /**
+    * The Vulkan descriptor type for a vulkan_resource_[re]index intrinsic.
+    */
+   NIR_INTRINSIC_DESC_TYPE = 19,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1378,6 +1383,7 @@ INTRINSIC_IDX_ACCESSORS(access, ACCESS, enum gl_access_qualifier)
 INTRINSIC_IDX_ACCESSORS(format, FORMAT, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
+INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,

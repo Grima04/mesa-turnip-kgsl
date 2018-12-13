@@ -28,6 +28,7 @@
 #include "nir.h"
 #include "compiler/shader_enums.h"
 #include "util/half_float.h"
+#include "vulkan/vulkan_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h> /* for PRIx64 macro */
@@ -705,6 +706,26 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
    }
 }
 
+static const char *
+vulkan_descriptor_type_name(VkDescriptorType type)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER: return "sampler";
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return "texture+sampler";
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return "texture";
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return "image";
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return "texture-buffer";
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return "image-buffer";
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return "UBO";
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: return "SSBO";
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return "UBO";
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return "SSBO";
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return "input-att";
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: return "inline-UBO";
+   default: return "unknown";
+   }
+}
+
 static void
 print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 {
@@ -756,6 +777,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_FORMAT] = "format",
       [NIR_INTRINSIC_ALIGN_MUL] = "align_mul",
       [NIR_INTRINSIC_ALIGN_OFFSET] = "align_offset",
+      [NIR_INTRINSIC_DESC_TYPE] = "desc_type",
    };
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])
@@ -789,6 +811,9 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       } else if (idx == NIR_INTRINSIC_IMAGE_ARRAY) {
          bool array = nir_intrinsic_image_dim(instr);
          fprintf(fp, " image_dim=%s", array ? "true" : "false");
+      } else if (idx == NIR_INTRINSIC_DESC_TYPE) {
+         VkDescriptorType desc_type = nir_intrinsic_desc_type(instr);
+         fprintf(fp, " desc_type=%s", vulkan_descriptor_type_name(desc_type));
       } else {
          unsigned off = info->index_map[idx] - 1;
          assert(index_name[idx]);  /* forgot to update index_name table? */
