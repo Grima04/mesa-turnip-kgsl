@@ -2903,6 +2903,7 @@ if test "x$enable_llvm" = xyes; then
     LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
     LLVM_CFLAGS=$LLVM_CPPFLAGS   # CPPFLAGS seem to be sufficient
     LLVM_CXXFLAGS=`strip_unwanted_llvm_flags "$LLVM_CONFIG --cxxflags"`
+    LLVM_CXXFLAGS="$CXX11_CXXFLAGS $LLVM_CXXFLAGS"
 
     dnl Set LLVM_LIBS - This is done after the driver configuration so
     dnl that drivers can add additional components to LLVM_COMPONENTS.
