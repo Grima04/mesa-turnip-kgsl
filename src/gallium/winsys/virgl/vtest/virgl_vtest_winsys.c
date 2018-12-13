@@ -21,6 +21,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include <stdio.h>
+#include "util/u_surface.h"
 #include "util/u_memory.h"
 #include "util/u_format.h"
 #include "util/u_inlines.h"
@@ -83,6 +84,10 @@ virgl_vtest_transfer_put(struct virgl_winsys *vws,
    virgl_vtest_send_transfer_put(vtws, res->res_handle,
                                  level, stride, layer_stride,
                                  box, size, buf_offset);
+
+   if (vtws->protocol_version >= 2)
+      return 0;
+
    ptr = virgl_vtest_resource_map(vws, res);
    virgl_vtest_send_transfer_put_data(vtws, ptr + buf_offset, size);
    virgl_vtest_resource_unmap(vws, res);
@@ -108,12 +113,38 @@ virgl_vtest_transfer_get_internal(struct virgl_winsys *vws,
                                  level, stride, layer_stride,
                                  box, size, buf_offset);
 
-   ptr = virgl_vtest_resource_map(vws, res);
+   if (vtws->protocol_version >= 2) {
+      if (flush_front_buffer) {
+         if (box->depth > 1 || box->z > 1) {
+            fprintf(stderr, "Expected a 2D resource, received a 3D resource\n");
+            return -1;
+         }
 
-   virgl_vtest_recv_transfer_get_data(vtws, ptr + buf_offset, size,
-                                      valid_stride, box, res->format);
+         void *dt_map;
+         uint32_t shm_stride;
 
-   virgl_vtest_resource_unmap(vws, res);
+         /*
+          * The display target is aligned to 64 bytes, while the shared resource
+          * between the client/server is not.
+          */
+         shm_stride = util_format_get_stride(res->format, res->width);
+         ptr = virgl_vtest_resource_map(vws, res);
+         dt_map = vtws->sws->displaytarget_map(vtws->sws, res->dt, 0);
+
+         util_copy_rect(dt_map, res->format, res->stride, box->x, box->y,
+                        box->width, box->height, ptr, shm_stride, box->x,
+                        box->y);
+
+         virgl_vtest_resource_unmap(vws, res);
+         vtws->sws->displaytarget_unmap(vtws->sws, res->dt);
+      }
+   } else {
+      ptr = virgl_vtest_resource_map(vws, res);
+      virgl_vtest_recv_transfer_get_data(vtws, ptr + buf_offset, size,
+                                         valid_stride, box, res->format);
+      virgl_vtest_resource_unmap(vws, res);
+   }
+
    return 0;
 }
 
