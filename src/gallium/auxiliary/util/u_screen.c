@@ -426,6 +426,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE:
       return 512 * 1024;
 
+   case PIPE_CAP_SYSTEM_SVM:
+      return 0;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }
