@@ -1640,6 +1640,8 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 	LLVMValueRef results[4];
 	for (int i = 0; i < num_components;) {
 		int num_elems = num_components - i;
+		if (elem_size_bytes < 4 && nir_intrinsic_align(instr) % 4 != 0)
+			num_elems = 1;
 		if (num_elems * elem_size_bytes > 16)
 			num_elems = 16 / elem_size_bytes;
 		int load_bytes = num_elems * elem_size_bytes;
