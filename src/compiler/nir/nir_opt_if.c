@@ -318,9 +318,13 @@ opt_if_loop_last_continue(nir_loop *loop)
    nir_cf_extract(&tmp, nir_after_cf_node(if_node),
                         nir_after_block(last_block));
    if (then_ends_in_continue) {
-      nir_cf_reinsert(&tmp, nir_after_cf_list(&nif->else_list));
+      nir_cursor last_blk_cursor = nir_after_cf_list(&nif->else_list);
+      nir_cf_reinsert(&tmp,
+                      nir_after_block_before_jump(last_blk_cursor.block));
    } else {
-      nir_cf_reinsert(&tmp, nir_after_cf_list(&nif->then_list));
+      nir_cursor last_blk_cursor = nir_after_cf_list(&nif->then_list);
+      nir_cf_reinsert(&tmp,
+                      nir_after_block_before_jump(last_blk_cursor.block));
    }
 
    /* In order to avoid running nir_lower_regs_to_ssa_impl() every time an if
