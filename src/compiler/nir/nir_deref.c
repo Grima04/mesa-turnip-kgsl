@@ -70,7 +70,6 @@ nir_deref_path_init(nir_deref_path *path,
 done:
    assert(head == path->path);
    assert(tail == head + count);
-   assert((*head)->deref_type == nir_deref_type_var);
    assert(*tail == NULL);
 }
 
@@ -290,12 +289,50 @@ nir_fixup_deref_modes(nir_shader *shader)
    }
 }
 
+static bool
+modes_may_alias(nir_variable_mode a, nir_variable_mode b)
+{
+   /* Two pointers can only alias if they have the same mode.
+    *
+    * NOTE: In future, with things like OpenCL generic pointers, this may not
+    * be true and will have to be re-evaluated.  However, with graphics only,
+    * it should be safe.
+    */
+   return a == b;
+}
+
 nir_deref_compare_result
 nir_compare_deref_paths(nir_deref_path *a_path,
                         nir_deref_path *b_path)
 {
-   if (a_path->path[0]->var != b_path->path[0]->var)
+   if (!modes_may_alias(b_path->path[0]->mode, a_path->path[0]->mode))
       return nir_derefs_do_not_alias;
+
+   if (a_path->path[0]->deref_type != b_path->path[0]->deref_type)
+      return nir_derefs_may_alias_bit;
+
+   if (a_path->path[0]->deref_type == nir_deref_type_var) {
+      /* If we can chase the deref all the way back to the variable and
+       * they're not the same variable, we know they can't possibly alias.
+       */
+      if (a_path->path[0]->var != b_path->path[0]->var)
+         return nir_derefs_do_not_alias;
+   } else {
+      assert(a_path->path[0]->deref_type == nir_deref_type_cast);
+      /* If they're not exactly the same cast, it's hard to compare them so we
+       * just assume they alias.  Comparing casts is tricky as there are lots
+       * of things such as mode, type, etc. to make sure work out; for now, we
+       * just assume nit_opt_deref will combine them and compare the deref
+       * instructions.
+       *
+       * TODO: At some point in the future, we could be clever and understand
+       * that a float[] and int[] have the same layout and aliasing structure
+       * but double[] and vec3[] do not and we could potentially be a bit
+       * smarter here.
+       */
+      if (a_path->path[0] != b_path->path[0])
+         return nir_derefs_may_alias_bit;
+   }
 
    /* Start off assuming they fully compare.  We ignore equality for now.  In
     * the end, we'll determine that by containment.
@@ -306,12 +343,34 @@ nir_compare_deref_paths(nir_deref_path *a_path,
 
    nir_deref_instr **a_p = &a_path->path[1];
    nir_deref_instr **b_p = &b_path->path[1];
+   while (*a_p != NULL && *a_p == *b_p) {
+      a_p++;
+      b_p++;
+   }
+
+   /* We're at either the tail or the divergence point between the two deref
+    * paths.  Look to see if either contains a ptr_as_array deref.  It it
+    * does we don't know how to safely make any inferences.  Hopefully,
+    * nir_opt_deref will clean most of these up and we can start inferring
+    * things again.
+    *
+    * In theory, we could do a bit better.  For instance, we could detect the
+    * case where we have exactly one ptr_as_array deref in the chain after the
+    * divergence point and it's matched in both chains and the two chains have
+    * different constant indices.
+    */
+   for (nir_deref_instr **t_p = a_p; *t_p; t_p++) {
+      if ((*t_p)->deref_type == nir_deref_type_ptr_as_array)
+         return nir_derefs_may_alias_bit;
+   }
+   for (nir_deref_instr **t_p = b_p; *t_p; t_p++) {
+      if ((*t_p)->deref_type == nir_deref_type_ptr_as_array)
+         return nir_derefs_may_alias_bit;
+   }
+
    while (*a_p != NULL && *b_p != NULL) {
       nir_deref_instr *a_tail = *(a_p++);
       nir_deref_instr *b_tail = *(b_p++);
-
-      if (a_tail == b_tail)
-         continue;
 
       switch (a_tail->deref_type) {
       case nir_deref_type_array:
@@ -386,8 +445,10 @@ nir_compare_derefs(nir_deref_instr *a, nir_deref_instr *b)
    nir_deref_path a_path, b_path;
    nir_deref_path_init(&a_path, a, NULL);
    nir_deref_path_init(&b_path, b, NULL);
-   assert(a_path.path[0]->deref_type == nir_deref_type_var);
-   assert(b_path.path[0]->deref_type == nir_deref_type_var);
+   assert(a_path.path[0]->deref_type == nir_deref_type_var ||
+          a_path.path[0]->deref_type == nir_deref_type_cast);
+   assert(b_path.path[0]->deref_type == nir_deref_type_var ||
+          b_path.path[0]->deref_type == nir_deref_type_cast);
 
    nir_deref_compare_result result = nir_compare_deref_paths(&a_path, &b_path);
 
