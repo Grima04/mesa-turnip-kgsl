@@ -1106,6 +1106,9 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
 
 	OPT_V(ctx->nir, nir_lower_bool_to_float);
 
+	/* lower to scalar instructions that can only be scalar on a2xx */
+	OPT_V(ctx->nir, ir2_nir_lower_scalar);
+
 	OPT_V(ctx->nir, nir_lower_locals_to_regs);
 
 	OPT_V(ctx->nir, nir_convert_from_ssa, true);

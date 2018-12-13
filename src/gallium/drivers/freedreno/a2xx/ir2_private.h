@@ -188,6 +188,7 @@ struct ir2_context {
 void assemble(struct ir2_context *ctx, bool binning);
 
 void ir2_nir_compile(struct ir2_context *ctx, bool binning);
+bool ir2_nir_lower_scalar(nir_shader * shader);
 
 void ra_count_refs(struct ir2_context *ctx);
 void ra_reg(struct ir2_context *ctx, struct ir2_reg *reg, int force_idx,

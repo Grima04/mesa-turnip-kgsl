@@ -88,6 +88,7 @@ files_libfreedreno = files(
   'a2xx/ir2_assemble.c',
   'a2xx/ir2_cp.c',
   'a2xx/ir2_nir.c',
+  'a2xx/ir2_nir_lower_scalar.c',
   'a2xx/ir2_private.h',
   'a2xx/ir2_ra.c',
   'a3xx/fd3_blend.c',
