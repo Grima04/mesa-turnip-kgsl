@@ -81,6 +81,7 @@ private:
    virtual bool visit(Function *);
    virtual bool visit(BasicBlock *);
 
+   void replaceCvt(Instruction *);
    void replaceZero(Instruction *);
    bool tryReplaceContWithBra(BasicBlock *);
    void propagateJoin(BasicBlock *);
