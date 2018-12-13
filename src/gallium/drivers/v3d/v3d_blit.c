@@ -404,7 +404,7 @@ v3d_generate_mipmap(struct pipe_context *pctx,
                             (2 * v3d_utile_height(rsc->cpp)));
                 break;
         case VC5_TILING_RASTER:
-                tfu.iis |= base_slice->stride;
+                tfu.iis |= base_slice->stride / rsc->cpp;
                 break;
         case VC5_TILING_LINEARTILE:
         case VC5_TILING_UBLINEAR_1_COLUMN:
