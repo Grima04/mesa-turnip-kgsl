@@ -1036,6 +1036,12 @@ _compare_bo_handles(const void *_bo1, const void *_bo2)
 }
 
 static VkResult
+anv_execbuf_add_bo_set(struct anv_execbuf *exec,
+                       struct set *deps,
+                       uint32_t extra_flags,
+                       const VkAllocationCallbacks *alloc);
+
+static VkResult
 anv_execbuf_add_bo(struct anv_execbuf *exec,
                    struct anv_bo *bo,
                    struct anv_reloc_list *relocs,
@@ -1124,36 +1130,46 @@ anv_execbuf_add_bo(struct anv_execbuf *exec,
          }
       }
 
-      if (relocs->deps && relocs->deps->entries > 0) {
-         const uint32_t entries = relocs->deps->entries;
-         struct anv_bo **bos =
-            vk_alloc(alloc, entries * sizeof(*bos),
-                     8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-         if (bos == NULL)
-            return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-         struct anv_bo **bo = bos;
-         set_foreach(relocs->deps, entry) {
-            *bo++ = (void *)entry->key;
-         }
-
-         qsort(bos, entries, sizeof(struct anv_bo*), _compare_bo_handles);
-
-         VkResult result = VK_SUCCESS;
-         for (bo = bos; bo < bos + entries; bo++) {
-            result = anv_execbuf_add_bo(exec, *bo, NULL, extra_flags, alloc);
-            if (result != VK_SUCCESS)
-               break;
-         }
-
-         vk_free(alloc, bos);
-
-         if (result != VK_SUCCESS)
-            return result;
-      }
+      return anv_execbuf_add_bo_set(exec, relocs->deps, extra_flags, alloc);
    }
 
    return VK_SUCCESS;
+}
+
+/* Add BO dependencies to execbuf */
+static VkResult
+anv_execbuf_add_bo_set(struct anv_execbuf *exec,
+                       struct set *deps,
+                       uint32_t extra_flags,
+                       const VkAllocationCallbacks *alloc)
+{
+   if (!deps || deps->entries <= 0)
+      return VK_SUCCESS;
+
+   const uint32_t entries = deps->entries;
+   struct anv_bo **bos =
+      vk_alloc(alloc, entries * sizeof(*bos),
+               8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (bos == NULL)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   struct anv_bo **bo = bos;
+   set_foreach(deps, entry) {
+      *bo++ = (void *)entry->key;
+   }
+
+   qsort(bos, entries, sizeof(struct anv_bo*), _compare_bo_handles);
+
+   VkResult result = VK_SUCCESS;
+   for (bo = bos; bo < bos + entries; bo++) {
+      result = anv_execbuf_add_bo(exec, *bo, NULL, extra_flags, alloc);
+      if (result != VK_SUCCESS)
+         break;
+   }
+
+   vk_free(alloc, bos);
+
+   return result;
 }
 
 static VkResult
