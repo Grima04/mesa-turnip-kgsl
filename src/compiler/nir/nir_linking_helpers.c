@@ -75,12 +75,11 @@ tcs_add_output_reads(nir_shader *shader, uint64_t *read, uint64_t *patches_read)
             if (intrin->intrinsic != nir_intrinsic_load_deref)
                continue;
 
-            nir_variable *var =
-               nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[0]));
-
-            if (var->data.mode != nir_var_shader_out)
+            nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+            if (deref->mode != nir_var_shader_out)
                continue;
 
+            nir_variable *var = nir_deref_instr_get_variable(deref);
             if (var->data.patch) {
                patches_read[var->data.location_frac] |=
                   get_variable_io_mask(var, shader->info.stage);
@@ -565,11 +564,11 @@ static bool
 try_replace_constant_input(nir_shader *shader,
                            nir_intrinsic_instr *store_intr)
 {
-   nir_variable *out_var =
-      nir_deref_instr_get_variable(nir_src_as_deref(store_intr->src[0]));
-
-   if (out_var->data.mode != nir_var_shader_out)
+   nir_deref_instr *out_deref = nir_src_as_deref(store_intr->src[0]);
+   if (out_deref->mode != nir_var_shader_out)
       return false;
+
+   nir_variable *out_var = nir_deref_instr_get_variable(out_deref);
 
    /* Skip types that require more complex handling.
     * TODO: add support for these types.
@@ -605,11 +604,11 @@ try_replace_constant_input(nir_shader *shader,
          if (intr->intrinsic != nir_intrinsic_load_deref)
             continue;
 
-         nir_variable *in_var =
-            nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
-
-         if (in_var->data.mode != nir_var_shader_in)
+         nir_deref_instr *in_deref = nir_src_as_deref(intr->src[0]);
+         if (in_deref->mode != nir_var_shader_in)
             continue;
+
+         nir_variable *in_var = nir_deref_instr_get_variable(in_deref);
 
          if (in_var->data.location != out_var->data.location ||
              in_var->data.location_frac != out_var->data.location_frac)
