@@ -510,3 +510,66 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
 
    return state.progress;
 }
+
+static bool
+is_trivial_deref_cast(nir_deref_instr *cast)
+{
+   nir_deref_instr *parent = nir_src_as_deref(cast->parent);
+   if (!parent)
+      return false;
+
+   return cast->mode == parent->mode &&
+          cast->type == parent->type &&
+          cast->dest.ssa.num_components == parent->dest.ssa.num_components &&
+          cast->dest.ssa.bit_size == parent->dest.ssa.bit_size;
+}
+
+static bool
+nir_opt_deref_impl(nir_function_impl *impl)
+{
+   bool progress = false;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_deref)
+            continue;
+
+         nir_deref_instr *deref = nir_instr_as_deref(instr);
+         switch (deref->deref_type) {
+         case nir_deref_type_cast:
+            if (is_trivial_deref_cast(deref)) {
+               assert(deref->parent.is_ssa);
+               nir_ssa_def_rewrite_uses(&deref->dest.ssa,
+                                        nir_src_for_ssa(deref->parent.ssa));
+               nir_instr_remove(&deref->instr);
+               progress = true;
+            }
+            break;
+
+         default:
+            /* Do nothing */
+            break;
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
+   }
+
+   return progress;
+}
+
+bool
+nir_opt_deref(nir_shader *shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(func, shader) {
+      if (func->impl && nir_opt_deref_impl(func->impl))
+         progress = true;
+   }
+
+   return progress;
+}
