@@ -337,12 +337,8 @@ apply_barrier_for_modes(struct util_dynarray *copies,
                         nir_variable_mode modes)
 {
    util_dynarray_foreach_reverse(copies, struct copy_entry, iter) {
-      nir_variable *dst_var = nir_deref_instr_get_variable(iter->dst);
-      nir_variable *src_var = iter->src.is_ssa ? NULL :
-         nir_deref_instr_get_variable(iter->src.deref);
-
-      if ((dst_var->data.mode & modes) ||
-          (src_var && (src_var->data.mode & modes)))
+      if ((iter->dst->mode & modes) ||
+          (!iter->src.is_ssa && (iter->src.deref->mode & modes)))
          copy_entry_remove(copies, iter);
    }
 }
