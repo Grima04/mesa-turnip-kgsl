@@ -543,25 +543,110 @@ is_trivial_deref_cast(nir_deref_instr *cast)
 }
 
 static bool
+is_trivial_array_deref_cast(nir_deref_instr *cast)
+{
+   assert(is_trivial_deref_cast(cast));
+
+   nir_deref_instr *parent = nir_src_as_deref(cast->parent);
+
+   if (parent->deref_type == nir_deref_type_array) {
+      return cast->cast.ptr_stride ==
+             glsl_get_explicit_stride(nir_deref_instr_parent(parent)->type);
+   } else if (parent->deref_type == nir_deref_type_ptr_as_array) {
+      return cast->cast.ptr_stride ==
+             nir_deref_instr_ptr_as_array_stride(parent);
+   } else {
+      return false;
+   }
+}
+
+static bool
+is_deref_ptr_as_array(nir_instr *instr)
+{
+   return instr->type == nir_instr_type_deref &&
+          nir_instr_as_deref(instr)->deref_type == nir_deref_type_ptr_as_array;
+}
+
+static bool
+opt_deref_cast(nir_deref_instr *cast)
+{
+   if (!is_trivial_deref_cast(cast))
+      return false;
+
+   bool trivial_array_cast = is_trivial_array_deref_cast(cast);
+
+   assert(cast->dest.is_ssa);
+   assert(cast->parent.is_ssa);
+
+   bool progress = false;
+   nir_foreach_use_safe(use_src, &cast->dest.ssa) {
+      /* If this isn't a trivial array cast, we can't propagate into
+       * ptr_as_array derefs.
+       */
+      if (is_deref_ptr_as_array(use_src->parent_instr) &&
+          !trivial_array_cast)
+         continue;
+
+      nir_instr_rewrite_src(use_src->parent_instr, use_src, cast->parent);
+      progress = true;
+   }
+
+   /* If uses would be a bit crazy */
+   assert(list_empty(&cast->dest.ssa.if_uses));
+
+   nir_deref_instr_remove_if_unused(cast);
+   return progress;
+}
+
+static bool
+opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
+{
+   assert(deref->deref_type == nir_deref_type_ptr_as_array);
+
+   nir_deref_instr *parent = nir_deref_instr_parent(deref);
+   if (parent->deref_type != nir_deref_type_array &&
+       parent->deref_type != nir_deref_type_ptr_as_array)
+      return false;
+
+   assert(parent->parent.is_ssa);
+   assert(parent->arr.index.is_ssa);
+   assert(deref->arr.index.is_ssa);
+
+   nir_ssa_def *new_idx = nir_iadd(b, parent->arr.index.ssa,
+                                      deref->arr.index.ssa);
+
+   deref->deref_type = parent->deref_type;
+   nir_instr_rewrite_src(&deref->instr, &deref->parent, parent->parent);
+   nir_instr_rewrite_src(&deref->instr, &deref->arr.index,
+                         nir_src_for_ssa(new_idx));
+   return true;
+}
+
+static bool
 nir_opt_deref_impl(nir_function_impl *impl)
 {
    bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_deref)
             continue;
 
+         b.cursor = nir_before_instr(instr);
+
          nir_deref_instr *deref = nir_instr_as_deref(instr);
          switch (deref->deref_type) {
-         case nir_deref_type_cast:
-            if (is_trivial_deref_cast(deref)) {
-               assert(deref->parent.is_ssa);
-               nir_ssa_def_rewrite_uses(&deref->dest.ssa,
-                                        nir_src_for_ssa(deref->parent.ssa));
-               nir_instr_remove(&deref->instr);
+         case nir_deref_type_ptr_as_array:
+            if (opt_deref_ptr_as_array(&b, deref))
                progress = true;
-            }
+            break;
+
+         case nir_deref_type_cast:
+            if (opt_deref_cast(deref))
+               progress = true;
             break;
 
          default:
