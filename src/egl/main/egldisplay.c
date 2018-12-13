@@ -262,12 +262,10 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
    mtx_lock(_eglGlobal.Mutex);
 
    /* search the display list first */
-   disp = _eglGlobal.DisplayList;
-   while (disp) {
+   for (disp = _eglGlobal.DisplayList; disp; disp = disp->Next) {
       if (disp->Platform == plat && disp->PlatformDisplay == plat_dpy &&
           _eglSameAttribs(disp->Options.Attribs, attrib_list))
          break;
-      disp = disp->Next;
    }
 
    /* create a new display */
