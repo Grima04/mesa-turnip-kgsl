@@ -157,14 +157,6 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, xy2d(pfb->width, pfb->height));    /* PA_SC_WINDOW_SCISSOR_BR */
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VTE_CNTL));
-	OUT_RING(ring, A2XX_PA_CL_VTE_CNTL_VTX_W0_FMT |
-			A2XX_PA_CL_VTE_CNTL_VPORT_X_SCALE_ENA |
-			A2XX_PA_CL_VTE_CNTL_VPORT_X_OFFSET_ENA |
-			A2XX_PA_CL_VTE_CNTL_VPORT_Y_SCALE_ENA |
-			A2XX_PA_CL_VTE_CNTL_VPORT_Y_OFFSET_ENA);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_CLIP_CNTL));
 	OUT_RING(ring, 0x00000000);
 
@@ -349,6 +341,16 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 
 	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_COLOR))
 		emit_mem2gmem_surf(batch, gmem->cbuf_base[0], pfb->cbufs[0]);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VTE_CNTL));
+	OUT_RING(ring, A2XX_PA_CL_VTE_CNTL_VTX_W0_FMT |
+			A2XX_PA_CL_VTE_CNTL_VPORT_X_SCALE_ENA |
+			A2XX_PA_CL_VTE_CNTL_VPORT_X_OFFSET_ENA |
+			A2XX_PA_CL_VTE_CNTL_VPORT_Y_SCALE_ENA |
+			A2XX_PA_CL_VTE_CNTL_VPORT_Y_OFFSET_ENA |
+			A2XX_PA_CL_VTE_CNTL_VPORT_Z_SCALE_ENA |
+			A2XX_PA_CL_VTE_CNTL_VPORT_Z_OFFSET_ENA);
 
 	/* TODO blob driver seems to toss in a CACHE_FLUSH after each DRAW_INDX.. */
 }
