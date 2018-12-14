@@ -1497,14 +1497,18 @@ iris_get_scratch_space(struct iris_context *ice,
 
    /* The documentation for 3DSTATE_PS "Scratch Space Base Pointer" says:
     *
-    * "Scratch Space per slice is computed based on 4 sub-slices.  SW must
-    *  allocate scratch space enough so that each slice has 4 slices
-    *  allowed."
+    *    "Scratch Space per slice is computed based on 4 sub-slices.  SW
+    *     must allocate scratch space enough so that each slice has 4
+    *     slices allowed."
     *
     * According to the other driver team, this applies to compute shaders
     * as well.  This is not currently documented at all.
+    *
+    * This hack is no longer necessary on Gen11+.
     */
-   unsigned subslice_total = 4 * devinfo->num_slices;
+   unsigned subslice_total = screen->subslice_total;
+   if (devinfo->gen < 11)
+      subslice_total = 4 * devinfo->num_slices;
    assert(subslice_total >= screen->subslice_total);
 
    if (!*bop) {
