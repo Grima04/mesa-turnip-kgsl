@@ -741,7 +741,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(ring, REG_A6XX_VFD_UNKNOWN_A008, 1);
 		OUT_RING(ring, 0);
 
-
 		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_0, 1);
 		OUT_RING(ring, rasterizer->pc_primitive_cntl |
 				 COND(emit->info->primitive_restart && emit->info->index_size,
@@ -769,6 +768,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *vsconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
+		OUT_WFI5(vsconstobj);
 		ir3_emit_vs_consts(vp, vsconstobj, ctx, emit->info);
 		fd6_emit_add_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
 		fd_ringbuffer_del(vsconstobj);
@@ -778,6 +778,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *fsconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
+		OUT_WFI5(fsconstobj);
 		ir3_emit_fs_consts(fp, fsconstobj, ctx);
 		fd6_emit_add_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
 		fd_ringbuffer_del(fsconstobj);
