@@ -45,8 +45,8 @@
 #include "apple/apple_glx.h"
 #include "util/debug.h"
 #else
-#ifndef GLX_USE_WINDOWSGL
 #include <sys/time.h>
+#ifndef GLX_USE_WINDOWSGL
 #include <X11/extensions/xf86vmode.h>
 #endif /* GLX_USE_WINDOWSGL */
 #endif
@@ -2083,11 +2083,12 @@ __glXGetSyncValuesOML(Display * dpy, GLXDrawable drawable,
    return False;
 }
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL) && !defined(GLX_USE_WINDOWSGL)
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
 _X_HIDDEN GLboolean
 __glxGetMscRate(struct glx_screen *psc,
 		int32_t * numerator, int32_t * denominator)
 {
+#if !defined(GLX_USE_WINDOWSGL)
    XF86VidModeModeLine mode_line;
    int dot_clock;
    int i;
@@ -2134,6 +2135,7 @@ __glxGetMscRate(struct glx_screen *psc,
 
       return True;
    }
+#endif
 
    return False;
 }
