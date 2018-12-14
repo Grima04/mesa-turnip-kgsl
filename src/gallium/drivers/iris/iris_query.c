@@ -587,6 +587,25 @@ overflow_result_to_gpr0(struct iris_context *ice, struct iris_query *q)
    gpr0_to_bool(ice);
 }
 
+/*
+ * GPR0 = GPR0 & ((1ull << n) -1);
+ */
+static void
+keep_gpr0_lower_n_bits(struct iris_context *ice, uint32_t n)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   ice->vtbl.load_register_imm64(batch, CS_GPR(1), (1ull << n) - 1);
+   static const uint32_t math[] = {
+      MI_MATH | (5 - 2),
+      MI_ALU2(LOAD, SRCA, R0),
+      MI_ALU2(LOAD, SRCB, R1),
+      MI_ALU0(AND),
+      MI_ALU2(STORE, R0, ACCU),
+   };
+   iris_batch_emit(batch, math, sizeof(math));
+}
+
 /**
  * Calculate the result and store it to CS_GPR0.
  */
@@ -594,13 +613,20 @@ static void
 calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->batches[q->batch_idx];
-
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       overflow_result_to_gpr0(ice, q);
       return;
    }
 
+   if (q->type == PIPE_QUERY_TIMESTAMP) {
+      ice->vtbl.load_register_mem64(batch, CS_GPR(0), q->bo,
+                                    offsetof(struct iris_query_snapshots, start));
+      emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
+      keep_gpr0_lower_n_bits(ice, 36);
+      return;
+   }
    ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
                                  offsetof(struct iris_query_snapshots, start));
    ice->vtbl.load_register_mem64(batch, CS_GPR(2), q->bo,
@@ -618,6 +644,10 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    if (q->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
        q->type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE)
       gpr0_to_bool(ice);
+
+   if (q->type == PIPE_QUERY_TIME_ELAPSED) {
+      emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
+   }
 }
 
 static struct pipe_query *
