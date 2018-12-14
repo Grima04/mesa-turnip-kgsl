@@ -407,7 +407,7 @@ brw_alloc_stage_scratch(struct brw_context *brw,
        * and we wish to view that there are 4 subslices per slice
        * instead of the actual number of subslices per slice.
        */
-      if (devinfo->gen >= 9)
+      if (devinfo->gen >= 9 && devinfo->gen < 11)
          subslices = 4 * brw->screen->devinfo.num_slices;
 
       unsigned scratch_ids_per_subslice;
