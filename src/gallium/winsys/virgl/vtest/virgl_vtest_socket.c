@@ -173,6 +173,11 @@ int virgl_vtest_connect(struct virgl_vtest_winsys *vws)
    vws->sock_fd = sock;
    virgl_vtest_send_init(vws);
    vws->protocol_version = virgl_vtest_negotiate_version(vws);
+
+   /* Version 1 is deprecated. */
+   if (vws->protocol_version == 1)
+      vws->protocol_version = 0;
+
    return 0;
 }
 
@@ -270,7 +275,7 @@ int virgl_vtest_send_resource_create(struct virgl_vtest_winsys *vws,
 {
    uint32_t res_create_buf[VCMD_RES_CREATE_SIZE], vtest_hdr[VTEST_HDR_SIZE];
 
-   if (vws->protocol_version >= 1)
+   if (vws->protocol_version >= 2)
       return virgl_vtest_send_resource_create2(vws, handle, target, format,
                                                bind, width, height, depth,
                                                array_size, last_level,
@@ -400,7 +405,7 @@ int virgl_vtest_send_transfer_get(struct virgl_vtest_winsys *vws,
                                   uint32_t data_size,
                                   uint32_t offset)
 {
-   if (vws->protocol_version < 1)
+   if (vws->protocol_version < 2)
       return virgl_vtest_send_transfer_cmd(vws, VCMD_TRANSFER_GET, handle,
                                            level, stride, layer_stride, box,
                                            data_size);
@@ -417,7 +422,7 @@ int virgl_vtest_send_transfer_put(struct virgl_vtest_winsys *vws,
                                   uint32_t data_size,
                                   uint32_t offset)
 {
-   if (vws->protocol_version < 1)
+   if (vws->protocol_version < 2)
       return virgl_vtest_send_transfer_cmd(vws, VCMD_TRANSFER_PUT, handle,
                                            level, stride, layer_stride, box,
                                            data_size);
@@ -438,27 +443,20 @@ int virgl_vtest_recv_transfer_get_data(struct virgl_vtest_winsys *vws,
                                        uint32_t data_size,
                                        uint32_t stride,
                                        const struct pipe_box *box,
-                                       uint32_t format, uint32_t res_stride)
+                                       uint32_t format)
 {
-   char *ptr = data;
-   uint32_t bytes_to_read = data_size;
-   char dump[1024];
+   void *line;
+   void *ptr = data;
+   int hblocks = util_format_get_nblocksy(format, box->height);
 
-   /* Copy the date from the IOV to the target resource respecting
-    * the different strides */
-   for (int y = 0 ; y < box->height && bytes_to_read > 0; ++y) {
-      uint32_t btr = MIN2(res_stride, bytes_to_read);
-      virgl_block_read(vws->sock_fd, ptr, btr);
+   line = malloc(stride);
+   while (hblocks) {
+      virgl_block_read(vws->sock_fd, line, stride);
+      memcpy(ptr, line, util_format_get_stride(format, box->width));
       ptr += stride;
-      bytes_to_read -= btr;
+      hblocks--;
    }
-
-   /* It seems that there may be extra bytes that need to be read */
-   while (bytes_to_read > 0 && bytes_to_read < data_size) {
-      uint32_t btr = MIN2(sizeof(dump), bytes_to_read);
-      virgl_block_read(vws->sock_fd, dump, btr);
-      bytes_to_read -= btr;
-   }
+   free(line);
    return 0;
 }
 

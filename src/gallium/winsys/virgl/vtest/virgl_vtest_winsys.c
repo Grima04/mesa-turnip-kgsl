@@ -79,16 +79,6 @@ virgl_vtest_transfer_put(struct virgl_winsys *vws,
    size = vtest_get_transfer_size(res, box, stride, layer_stride, level,
                                   &valid_stride);
 
-   /* The size calculated above is the full box size, but if this box origin
-    * is not zero we may have to correct the transfer size to not read past the
-    * end of the resource. The correct adjustment depends on various factors
-    * that are not documented, so instead of going though all the hops to get
-    * the size right up-front, we just make sure we don't read past the end.
-    * FIXME: figure out what it takes to actually get this right.
-    */
-   if (size + buf_offset > res->size)
-      size = res->size - buf_offset;
-
    virgl_vtest_send_transfer_put(vtws, res->res_handle,
                                  level, stride, layer_stride,
                                  box, size, buf_offset);
@@ -112,21 +102,14 @@ virgl_vtest_transfer_get(struct virgl_winsys *vws,
 
    size = vtest_get_transfer_size(res, box, stride, layer_stride, level,
                                   &valid_stride);
-   /* Don't ask for more pixels than available (see above) */
-   if (size + buf_offset > res->size)
-      size = res->size - buf_offset;
-
    virgl_vtest_send_transfer_get(vtws, res->res_handle,
                                  level, stride, layer_stride,
                                  box, size, buf_offset);
 
    ptr = virgl_vtest_resource_map(vws, res);
 
-   /* This functions seems to be using a specific transfer resource that
-    * has exactly the box size and hence its src stride is equal to the target
-    * stride */
    virgl_vtest_recv_transfer_get_data(vtws, ptr + buf_offset, size,
-                                      valid_stride, box, res->format, valid_stride);
+                                      valid_stride, box, res->format);
 
    virgl_vtest_resource_unmap(vws, res);
    return 0;
@@ -644,8 +627,7 @@ static void virgl_vtest_flush_frontbuffer(struct virgl_winsys *vws,
     * a hardware imposed stride that is different from the IOV stride used to
     * get the data. */
    virgl_vtest_recv_transfer_get_data(vtws, map + offset, size, valid_stride,
-                                      &box, res->format,
-                                      vtws->protocol_version == 0 ? valid_stride : util_format_get_stride(res->format, res->width));
+                                      &box, res->format);
 
    vtws->sws->displaytarget_unmap(vtws->sws, res->dt);
 

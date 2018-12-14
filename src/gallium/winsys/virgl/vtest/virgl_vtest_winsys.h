@@ -153,7 +153,7 @@ int virgl_vtest_recv_transfer_get_data(struct virgl_vtest_winsys *vws,
                                        uint32_t data_size,
                                        uint32_t stride,
                                        const struct pipe_box *box,
-                                       uint32_t format, uint32_t res_width);
+                                       uint32_t format);
 
 int virgl_vtest_busy_wait(struct virgl_vtest_winsys *vws, int handle,
                           int flags);
