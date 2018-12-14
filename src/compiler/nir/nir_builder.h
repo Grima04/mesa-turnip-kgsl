@@ -572,6 +572,18 @@ nir_imul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 }
 
 static inline nir_ssa_def *
+nir_fadd_imm(nir_builder *build, nir_ssa_def *x, double y)
+{
+   return nir_fadd(build, x, nir_imm_floatN_t(build, y, x->bit_size));
+}
+
+static inline nir_ssa_def *
+nir_fmul_imm(nir_builder *build, nir_ssa_def *x, double y)
+{
+   return nir_fmul(build, x, nir_imm_floatN_t(build, y, x->bit_size));
+}
+
+static inline nir_ssa_def *
 nir_pack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
 {
    assert(src->num_components * src->bit_size == dest_bit_size);
