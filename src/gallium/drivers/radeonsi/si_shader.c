@@ -3256,9 +3256,7 @@ si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
 		    unsigned param, unsigned return_index)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef ptr, lo, hi;
-
-	ptr = LLVMGetParam(ctx->main_fn, param);
+	LLVMValueRef ptr = LLVMGetParam(ctx->main_fn, param);
 	ptr = LLVMBuildPtrToInt(builder, ptr, ctx->i32, "");
 	return LLVMBuildInsertValue(builder, ret, ptr, return_index, "");
 }
