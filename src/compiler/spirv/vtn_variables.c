@@ -511,9 +511,9 @@ vtn_local_load(struct vtn_builder *b, nir_deref_instr *src)
 
    if (src_tail != src) {
       val->type = src->type;
-      nir_const_value *const_index = nir_src_as_const_value(src->arr.index);
-      if (const_index)
-         val->def = vtn_vector_extract(b, val->def, const_index->u32[0]);
+      if (nir_src_is_const(src->arr.index))
+         val->def = vtn_vector_extract(b, val->def,
+                                       nir_src_as_uint(src->arr.index));
       else
          val->def = vtn_vector_extract_dynamic(b, val->def, src->arr.index.ssa);
    }
@@ -531,10 +531,9 @@ vtn_local_store(struct vtn_builder *b, struct vtn_ssa_value *src,
       struct vtn_ssa_value *val = vtn_create_ssa_value(b, dest_tail->type);
       _vtn_local_load_store(b, true, dest_tail, val);
 
-      nir_const_value *const_index = nir_src_as_const_value(dest->arr.index);
-      if (const_index)
+      if (nir_src_is_const(dest->arr.index))
          val->def = vtn_vector_insert(b, val->def, src->def,
-                                      const_index->u32[0]);
+                                      nir_src_as_uint(dest->arr.index));
       else
          val->def = vtn_vector_insert_dynamic(b, val->def, src->def,
                                               dest->arr.index.ssa);
