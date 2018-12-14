@@ -385,7 +385,15 @@ v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
                         v3d33_bcl_epilogue(v3d, job);
         }
 
+        /* While the RCL will implicitly depend on the last RCL to have
+         * finished, we also need to block on any previous TFU job we may have
+         * dispatched.
+         */
+        job->submit.in_sync_rcl = v3d->out_sync;
+
+        /* Update the sync object for the last rendering by our context. */
         job->submit.out_sync = v3d->out_sync;
+
         job->submit.bcl_end = job->bcl.bo->offset + cl_offset(&job->bcl);
         job->submit.rcl_end = job->rcl.bo->offset + cl_offset(&job->rcl);
 
