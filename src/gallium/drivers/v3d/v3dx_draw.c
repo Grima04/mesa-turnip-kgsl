@@ -124,6 +124,11 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
 {
         struct v3d_context *v3d = v3d_context(pctx);
 
+        /* XXX perf: If we're reading from the output of TF in this job, we
+         * should instead be using the wait for transform feedback
+         * functionality.
+         */
+
         /* Flush writes to textures we're sampling. */
         for (int i = 0; i < v3d->tex[s].num_textures; i++) {
                 struct pipe_sampler_view *pview = v3d->tex[s].textures[i];
@@ -175,6 +180,10 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                                     cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
                                     32);
 
+        /* XXX perf: We should move most of the SHADER_STATE_RECORD setup to
+         * compile time, so that we mostly just have to OR the VS and FS
+         * records together at draw time.
+         */
         cl_emit(&job->indirect, GL_SHADER_STATE_RECORD, shader) {
                 shader.enable_clipping = true;
                 /* VC5_DIRTY_PRIM_MODE | VC5_DIRTY_RASTERIZER */

@@ -195,6 +195,9 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
         if (!magic) {
                 add_write_dep(state, &state->last_rf[waddr], n);
         } else if (v3d_qpu_magic_waddr_is_tmu(waddr)) {
+                /* XXX perf: For V3D 4.x, we could reorder TMU writes other
+                 * than the TMUS/TMUD/TMUA to improve scheduling flexibility.
+                 */
                 add_write_dep(state, &state->last_tmu_write, n);
                 switch (waddr) {
                 case V3D_QPU_WADDR_TMUS:
@@ -590,6 +593,10 @@ get_instruction_priority(const struct v3d_qpu_instr *inst)
                 return next_score;
         next_score++;
 
+        /* XXX perf: We should schedule SFU ALU ops so that the reader is 2
+         * instructions after the producer if possible, not just 1.
+         */
+
         /* Default score for things that aren't otherwise special. */
         baseline_score = next_score;
         next_score++;
@@ -784,6 +791,12 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                  * sooner.  If the ldvary's r5 wasn't used, then ldunif might
                  * otherwise get scheduled so ldunif and ldvary try to update
                  * r5 in the same tick.
+                 *
+                 * XXX perf: To get good pipelining of a sequence of varying
+                 * loads, we need to figure out how to pair the ldvary signal
+                 * up to the instruction before the last r5 user in the
+                 * previous ldvary sequence.  Currently, it usually pairs with
+                 * the last r5 user.
                  */
                 if ((inst->sig.ldunif || inst->sig.ldunifa) &&
                     scoreboard->tick == scoreboard->last_ldvary_tick + 1) {

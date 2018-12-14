@@ -34,6 +34,9 @@ static void
 vir_TMU_WRITE(struct v3d_compile *c, enum v3d_qpu_waddr waddr, struct qreg val,
               int *tmu_writes)
 {
+        /* XXX perf: We should figure out how to merge ALU operations
+         * producing the val with this MOV, when possible.
+         */
         vir_MOV_dest(c, vir_reg(QFILE_MAGIC, waddr), val);
 
         (*tmu_writes)++;
@@ -147,6 +150,10 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 
         /* Limit the number of channels returned to both how many the NIR
          * instruction writes and how many the instruction could produce.
+         *
+         * XXX perf: Can we also limit to the number of channels that are
+         * actually read by the users of this NIR dest, so that we don't need
+         * to emit unused LDTMUs?
          */
         uint32_t instr_return_channels = nir_tex_instr_dest_size(instr);
         if (!p1_unpacked.output_type_32_bit)
@@ -187,6 +194,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         p1_packed |= unit << 24;
 
         vir_WRTMUC(c, QUNIFORM_TMU_CONFIG_P0, p0_packed);
+        /* XXX perf: Can we skip p1 setup for txf ops? */
         vir_WRTMUC(c, QUNIFORM_TMU_CONFIG_P1, p1_packed);
         if (memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0)
                 vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
@@ -226,6 +234,12 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                         STATIC_ASSERT(PIPE_SWIZZLE_X == 0);
                         chan = return_values[i / 2];
 
+                        /* XXX perf: We should move this unpacking into NIR.
+                         * That would give us exposure of these types to NIR
+                         * optimization, so that (for example) a repacking of
+                         * half-float samples to the half-float render target
+                         * could be eliminated.
+                         */
                         if (nir_alu_type_get_base_type(instr->dest_type) ==
                             nir_type_float) {
                                 enum v3d_qpu_input_unpack unpack;

@@ -761,7 +761,10 @@ v3dX(emit_rcl)(struct v3d_job *job)
 
         v3d_rcl_emit_generic_per_tile_list(job, nr_cbufs - 1);
 
-        /* XXX: Use Morton order */
+        /* XXX perf: We should expose GL_MESA_tile_raster_order to improve X11
+         * performance, but we should use Morton order otherwise to improve
+         * cache locality.
+         */
         uint32_t supertile_w_in_pixels = job->tile_width * supertile_w;
         uint32_t supertile_h_in_pixels = job->tile_height * supertile_h;
         uint32_t min_x_supertile = job->draw_min_x / supertile_w_in_pixels;
