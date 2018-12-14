@@ -623,10 +623,15 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       ice->vtbl.load_register_mem64(batch, CS_GPR(0), q->bo,
                                     offsetof(struct iris_query_snapshots, start));
+      /* TODO: This discards any fractional bits of the timebase scale.
+       * We would need to do a bit of fixed point math on the CS ALU, or
+       * launch an actual shader to calculate this with full precision.
+       */
       emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
       keep_gpr0_lower_n_bits(ice, 36);
       return;
    }
+
    ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
                                  offsetof(struct iris_query_snapshots, start));
    ice->vtbl.load_register_mem64(batch, CS_GPR(2), q->bo,
@@ -646,6 +651,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
       gpr0_to_bool(ice);
 
    if (q->type == PIPE_QUERY_TIME_ELAPSED) {
+      /* TODO: This discards fractional bits (see above). */
       emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
    }
 }
