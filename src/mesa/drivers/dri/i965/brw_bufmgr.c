@@ -958,10 +958,36 @@ print_flags(unsigned flags)
 }
 
 static void *
-brw_bo_map_cpu(struct brw_context *brw, struct brw_bo *bo, unsigned flags)
+brw_bo_gem_mmap_legacy(struct brw_context *brw, struct brw_bo *bo, bool wc)
 {
    struct brw_bufmgr *bufmgr = bo->bufmgr;
 
+   struct drm_i915_gem_mmap mmap_arg = {
+      .handle = bo->gem_handle,
+      .size = bo->size,
+      .flags = wc ? I915_MMAP_WC : 0,
+   };
+
+   int ret = drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
+   if (ret != 0) {
+      DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
+          __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
+      return NULL;
+   }
+   void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+
+   return map;
+}
+
+static void *
+brw_bo_gem_mmap(struct brw_context *brw, struct brw_bo *bo, bool wc)
+{
+   return brw_bo_gem_mmap_legacy(brw, bo, wc);
+}
+
+static void *
+brw_bo_map_cpu(struct brw_context *brw, struct brw_bo *bo, unsigned flags)
+{
    /* We disallow CPU maps for writing to non-coherent buffers, as the
     * CPU map can become invalidated when a batch is flushed out, which
     * can happen at unpredictable times.  You should use WC maps instead.
@@ -971,17 +997,7 @@ brw_bo_map_cpu(struct brw_context *brw, struct brw_bo *bo, unsigned flags)
    if (!bo->map_cpu) {
       DBG("brw_bo_map_cpu: %d (%s)\n", bo->gem_handle, bo->name);
 
-      struct drm_i915_gem_mmap mmap_arg = {
-         .handle = bo->gem_handle,
-         .size = bo->size,
-      };
-      int ret = drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
-      if (ret != 0) {
-         DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-      void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+      void *map = brw_bo_gem_mmap(brw, bo, false);
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_cpu, NULL, map)) {
@@ -1032,20 +1048,7 @@ brw_bo_map_wc(struct brw_context *brw, struct brw_bo *bo, unsigned flags)
 
    if (!bo->map_wc) {
       DBG("brw_bo_map_wc: %d (%s)\n", bo->gem_handle, bo->name);
-
-      struct drm_i915_gem_mmap mmap_arg = {
-         .handle = bo->gem_handle,
-         .size = bo->size,
-         .flags = I915_MMAP_WC,
-      };
-      int ret = drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
-      if (ret != 0) {
-         DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-
-      void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+      void *map = brw_bo_gem_mmap(brw, bo, true);
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_wc, NULL, map)) {
