@@ -54,8 +54,7 @@ nir_assign_var_locations(struct exec_list *var_list, unsigned *size,
        * UBOs have their own address spaces, so don't count them towards the
        * number of global uniforms
        */
-      if ((var->data.mode == nir_var_uniform || var->data.mode == nir_var_shader_storage) &&
-          var->interface_type != NULL)
+      if (var->data.mode == nir_var_ubo || var->data.mode == nir_var_ssbo)
          continue;
 
       var->data.driver_location = location;

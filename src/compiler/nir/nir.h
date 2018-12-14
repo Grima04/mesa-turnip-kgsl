@@ -100,8 +100,9 @@ typedef enum {
    nir_var_global          = (1 << 2),
    nir_var_local           = (1 << 3),
    nir_var_uniform         = (1 << 4),
-   nir_var_shader_storage  = (1 << 5),
+   nir_var_ubo             = (1 << 5),
    nir_var_system_value    = (1 << 6),
+   nir_var_ssbo            = (1 << 7),
    nir_var_shared          = (1 << 8),
    nir_var_all             = ~0,
 } nir_variable_mode;

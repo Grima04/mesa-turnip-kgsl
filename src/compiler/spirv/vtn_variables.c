@@ -1497,10 +1497,10 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
    case SpvStorageClassUniform:
       if (interface_type->block) {
          mode = vtn_variable_mode_ubo;
-         nir_mode = 0;
+         nir_mode = nir_var_ubo;
       } else if (interface_type->buffer_block) {
          mode = vtn_variable_mode_ssbo;
-         nir_mode = 0;
+         nir_mode = nir_var_ssbo;
       } else {
          /* Default-block uniforms, coming from gl_spirv */
          mode = vtn_variable_mode_uniform;
@@ -1509,7 +1509,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassStorageBuffer:
       mode = vtn_variable_mode_ssbo;
-      nir_mode = 0;
+      nir_mode = nir_var_ssbo;
       break;
    case SpvStorageClassUniformConstant:
       mode = vtn_variable_mode_uniform;

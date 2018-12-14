@@ -675,7 +675,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 * so we don't need to worry about the ordering.
 		 */
 		if (variable->interface_type != NULL) {
-			if (variable->data.mode == nir_var_uniform) {
+			if (variable->data.mode == nir_var_uniform ||
+			    variable->data.mode == nir_var_ubo) {
 
 				unsigned block_count;
 				if (base_type != GLSL_TYPE_INTERFACE) {
@@ -699,7 +700,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				_mesa_set_add(ubo_set, variable->interface_type);
 			}
 
-			if (variable->data.mode == nir_var_shader_storage) {
+			if (variable->data.mode == nir_var_ssbo) {
 				/* TODO: make this more accurate */
 				info->shader_buffers_declared =
 					u_bit_consecutive(0, SI_NUM_SHADER_BUFFERS);

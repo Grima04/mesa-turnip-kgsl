@@ -142,7 +142,8 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
       break;
 
    case nir_var_uniform:
-   case nir_var_shader_storage:
+   case nir_var_ubo:
+   case nir_var_ssbo:
       exec_list_push_tail(&shader->uniforms, &var->node);
       break;
 
