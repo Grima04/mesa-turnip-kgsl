@@ -515,8 +515,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
                              glsl_get_vector_elements(dst->type));
       src_bit_sizes[1] = glsl_get_bit_size(dst->type);
       validate_assert(state, (dst->mode & (nir_var_shader_in |
-                                           nir_var_uniform |
-                                           nir_var_shader_storage)) == 0);
+                                           nir_var_uniform)) == 0);
       validate_assert(state, (nir_intrinsic_write_mask(instr) & ~((1 << instr->num_components) - 1)) == 0);
       break;
    }
@@ -526,8 +525,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       nir_deref_instr *src = nir_src_as_deref(instr->src[1]);
       validate_assert(state, dst->type == src->type);
       validate_assert(state, (dst->mode & (nir_var_shader_in |
-                                           nir_var_uniform |
-                                           nir_var_shader_storage)) == 0);
+                                           nir_var_uniform)) == 0);
       break;
    }
 
