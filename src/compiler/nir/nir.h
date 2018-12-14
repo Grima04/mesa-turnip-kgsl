@@ -1376,7 +1376,7 @@ nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
  * to satisfy X % align == 0.
  */
 static inline unsigned
-nir_intrinsic_align(nir_intrinsic_instr *intrin)
+nir_intrinsic_align(const nir_intrinsic_instr *intrin)
 {
    const unsigned align_mul = nir_intrinsic_align_mul(intrin);
    const unsigned align_offset = nir_intrinsic_align_offset(intrin);
