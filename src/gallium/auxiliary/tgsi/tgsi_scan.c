@@ -1172,7 +1172,7 @@ tgsi_scan_tess_ctrl(const struct tgsi_token *tokens,
 
       case TGSI_OPCODE_BGNLOOP:
          cond_block_tf_writemask |=
-            get_block_tessfactor_writemask(info, &parse, TGSI_OPCODE_ENDIF);
+            get_block_tessfactor_writemask(info, &parse, TGSI_OPCODE_ENDLOOP);
          continue;
 
       case TGSI_OPCODE_BARRIER:
