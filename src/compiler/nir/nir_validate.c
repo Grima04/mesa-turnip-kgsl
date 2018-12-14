@@ -464,8 +464,10 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
          validate_assert(state,
             instr->type == glsl_get_array_element(parent->type));
 
-         if (instr->deref_type == nir_deref_type_array)
-            validate_src(&instr->arr.index, state, 32, 1);
+         if (instr->deref_type == nir_deref_type_array) {
+            validate_src(&instr->arr.index, state,
+                         nir_dest_bit_size(instr->dest), 1);
+         }
          break;
 
       default:
