@@ -92,9 +92,6 @@ def getFunctionsFromRoots(roots):
             functions[i] = functions[i]._replace(slot=next_slot)
             next_slot += 1
 
-    # Sort the function list by slot.... to simplify the diff
-    functions = sorted(functions, key=lambda f: f.slot)
-
     return functions
 
 def getExportNamesFromRoots(target, roots):
