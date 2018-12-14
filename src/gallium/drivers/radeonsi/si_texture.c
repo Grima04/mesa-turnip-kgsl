@@ -1798,6 +1798,12 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 		buf = &tex->buffer;
 	}
 
+	/* Always unmap texture CPU mappings on 32-bit architectures, so that
+	 * we don't run out of the CPU address space.
+	 */
+	if (sizeof(void*) == 4)
+		usage |= RADEON_TRANSFER_TEMPORARY;
+
 	if (!(map = si_buffer_map_sync_with_rings(sctx, buf, usage)))
 		goto fail_trans;
 
@@ -1818,6 +1824,16 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx,
 	struct si_transfer *stransfer = (struct si_transfer*)transfer;
 	struct pipe_resource *texture = transfer->resource;
 	struct si_texture *tex = (struct si_texture*)texture;
+
+	/* Always unmap texture CPU mappings on 32-bit architectures, so that
+	 * we don't run out of the CPU address space.
+	 */
+	if (sizeof(void*) == 4) {
+		struct r600_resource *buf =
+			stransfer->staging ? stransfer->staging : &tex->buffer;
+
+		sctx->ws->buffer_unmap(buf->buf);
+	}
 
 	if ((transfer->usage & PIPE_TRANSFER_WRITE) && stransfer->staging) {
 		if (tex->is_depth && tex->buffer.b.b.nr_samples <= 1) {
