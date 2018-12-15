@@ -386,37 +386,37 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
    } else if (stq->type == PIPE_QUERY_PIPELINE_STATISTICS) {
       switch (q->Target) {
       case GL_VERTICES_SUBMITTED_ARB:
-         index = 0;
+         index = PIPE_STAT_QUERY_IA_VERTICES;
          break;
       case GL_PRIMITIVES_SUBMITTED_ARB:
-         index = 1;
+         index = PIPE_STAT_QUERY_IA_PRIMITIVES;
          break;
       case GL_VERTEX_SHADER_INVOCATIONS_ARB:
-         index = 2;
+         index = PIPE_STAT_QUERY_VS_INVOCATIONS;
          break;
       case GL_GEOMETRY_SHADER_INVOCATIONS:
-         index = 3;
+         index = PIPE_STAT_QUERY_GS_INVOCATIONS;
          break;
       case GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB:
-         index = 4;
+         index = PIPE_STAT_QUERY_GS_PRIMITIVES;
          break;
       case GL_CLIPPING_INPUT_PRIMITIVES_ARB:
-         index = 5;
+         index = PIPE_STAT_QUERY_C_INVOCATIONS;
          break;
       case GL_CLIPPING_OUTPUT_PRIMITIVES_ARB:
-         index = 6;
+         index = PIPE_STAT_QUERY_C_PRIMITIVES;
          break;
       case GL_FRAGMENT_SHADER_INVOCATIONS_ARB:
-         index = 7;
+         index = PIPE_STAT_QUERY_PS_INVOCATIONS;
          break;
       case GL_TESS_CONTROL_SHADER_PATCHES_ARB:
-         index = 8;
+         index = PIPE_STAT_QUERY_HS_INVOCATIONS;
          break;
       case GL_TESS_EVALUATION_SHADER_INVOCATIONS_ARB:
-         index = 9;
+         index = PIPE_STAT_QUERY_DS_INVOCATIONS;
          break;
       case GL_COMPUTE_SHADER_INVOCATIONS_ARB:
-         index = 10;
+         index = PIPE_STAT_QUERY_CS_INVOCATIONS;
          break;
       default:
          unreachable("Unexpected target");
