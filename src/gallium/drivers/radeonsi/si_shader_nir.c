@@ -285,14 +285,8 @@ void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
 	if (nir->info.stage != MESA_SHADER_TESS_CTRL)
 		return;
 
-	/* Initial value = true. Here the pass will accumulate results from
-	 * multiple segments surrounded by barriers. If tess factors aren't
-	 * written at all, it's a shader bug and we don't care if this will be
-	 * true.
-	 */
-	out->tessfactors_are_def_in_all_invocs = true;
-
-	/* TODO: Implement scanning of tess factors, see tgsi backend. */
+	out->tessfactors_are_def_in_all_invocs =
+		ac_are_tessfactors_def_in_all_invocs(nir);
 }
 
 void si_nir_scan_shader(const struct nir_shader *nir,
