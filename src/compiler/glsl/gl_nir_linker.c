@@ -159,6 +159,10 @@ nir_build_program_resource_list(struct gl_context *ctx,
     * Here, it is expected that nir_link_uniforms() has already been
     * called, so that UniformStorage table is already available.
     */
+   int top_level_array_base_offset = -1;
+   int top_level_array_size_in_bytes = -1;
+   int second_element_offset = -1;
+   int block_index = -1;
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
@@ -166,7 +170,33 @@ nir_build_program_resource_list(struct gl_context *ctx,
       if (uniform->hidden)
          continue;
 
-      if (!link_util_add_program_resource(prog, resource_set, GL_UNIFORM, uniform,
+      if (!link_util_should_add_buffer_variable(prog, uniform,
+                                                top_level_array_base_offset,
+                                                top_level_array_size_in_bytes,
+                                                second_element_offset, block_index))
+         continue;
+
+
+      if (prog->data->UniformStorage[i].offset >= second_element_offset) {
+         top_level_array_base_offset =
+            prog->data->UniformStorage[i].offset;
+
+         top_level_array_size_in_bytes =
+            prog->data->UniformStorage[i].top_level_array_size *
+            prog->data->UniformStorage[i].top_level_array_stride;
+
+         /* Set or reset the second element offset. For non arrays this
+          * will be set to -1.
+          */
+         second_element_offset = top_level_array_size_in_bytes ?
+            top_level_array_base_offset +
+            prog->data->UniformStorage[i].top_level_array_stride : -1;
+      }
+      block_index = uniform->block_index;
+
+
+      GLenum interface = uniform->is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
+      if (!link_util_add_program_resource(prog, resource_set, interface, uniform,
                                           uniform->active_shader_mask)) {
          return;
       }
