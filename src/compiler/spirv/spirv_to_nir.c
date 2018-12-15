@@ -2801,47 +2801,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          unreachable("Invalid SPIR-V atomic");
 
       }
-   } else if (ptr->mode == vtn_variable_mode_workgroup &&
-              !b->options->lower_workgroup_access_to_offsets) {
-      nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
-      const struct glsl_type *deref_type = deref->type;
-      nir_intrinsic_op op = get_deref_nir_atomic_op(b, opcode);
-      atomic = nir_intrinsic_instr_create(b->nb.shader, op);
-      atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
-
-      switch (opcode) {
-      case SpvOpAtomicLoad:
-         atomic->num_components = glsl_get_vector_elements(deref_type);
-         break;
-
-      case SpvOpAtomicStore:
-         atomic->num_components = glsl_get_vector_elements(deref_type);
-         nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
-         atomic->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
-         break;
-
-      case SpvOpAtomicExchange:
-      case SpvOpAtomicCompareExchange:
-      case SpvOpAtomicCompareExchangeWeak:
-      case SpvOpAtomicIIncrement:
-      case SpvOpAtomicIDecrement:
-      case SpvOpAtomicIAdd:
-      case SpvOpAtomicISub:
-      case SpvOpAtomicSMin:
-      case SpvOpAtomicUMin:
-      case SpvOpAtomicSMax:
-      case SpvOpAtomicUMax:
-      case SpvOpAtomicAnd:
-      case SpvOpAtomicOr:
-      case SpvOpAtomicXor:
-         fill_common_atomic_sources(b, opcode, w, &atomic->src[1]);
-         break;
-
-      default:
-         vtn_fail("Invalid SPIR-V atomic");
-
-      }
-   } else {
+   } else if (vtn_pointer_uses_ssa_offset(b, ptr)) {
       nir_ssa_def *offset, *index;
       offset = vtn_pointer_to_offset(b, ptr, &index);
 
@@ -2894,6 +2854,44 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
             atomic->src[src++] = nir_src_for_ssa(index);
          atomic->src[src++] = nir_src_for_ssa(offset);
          fill_common_atomic_sources(b, opcode, w, &atomic->src[src]);
+         break;
+
+      default:
+         vtn_fail("Invalid SPIR-V atomic");
+      }
+   } else {
+      nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
+      const struct glsl_type *deref_type = deref->type;
+      nir_intrinsic_op op = get_deref_nir_atomic_op(b, opcode);
+      atomic = nir_intrinsic_instr_create(b->nb.shader, op);
+      atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+
+      switch (opcode) {
+      case SpvOpAtomicLoad:
+         atomic->num_components = glsl_get_vector_elements(deref_type);
+         break;
+
+      case SpvOpAtomicStore:
+         atomic->num_components = glsl_get_vector_elements(deref_type);
+         nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
+         atomic->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
+         break;
+
+      case SpvOpAtomicExchange:
+      case SpvOpAtomicCompareExchange:
+      case SpvOpAtomicCompareExchangeWeak:
+      case SpvOpAtomicIIncrement:
+      case SpvOpAtomicIDecrement:
+      case SpvOpAtomicIAdd:
+      case SpvOpAtomicISub:
+      case SpvOpAtomicSMin:
+      case SpvOpAtomicUMin:
+      case SpvOpAtomicSMax:
+      case SpvOpAtomicUMax:
+      case SpvOpAtomicAnd:
+      case SpvOpAtomicOr:
+      case SpvOpAtomicXor:
+         fill_common_atomic_sources(b, opcode, w, &atomic->src[1]);
          break;
 
       default:

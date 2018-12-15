@@ -44,7 +44,7 @@ vtn_access_chain_create(struct vtn_builder *b, unsigned length)
    return chain;
 }
 
-static bool
+bool
 vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
                             struct vtn_pointer *ptr)
 {
