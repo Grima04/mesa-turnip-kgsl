@@ -563,6 +563,29 @@ struct member_decoration_ctx {
    struct vtn_type *type;
 };
 
+/**
+ * Returns true if the given type contains a struct decorated Block or
+ * BufferBlock
+ */
+static bool
+vtn_type_contains_block(struct vtn_builder *b, struct vtn_type *type)
+{
+   switch (type->base_type) {
+   case vtn_base_type_array:
+      return vtn_type_contains_block(b, type->array_element);
+   case vtn_base_type_struct:
+      if (type->block || type->buffer_block)
+         return true;
+      for (unsigned i = 0; i < type->length; i++) {
+         if (vtn_type_contains_block(b, type->members[i]))
+            return true;
+      }
+      return false;
+   default:
+      return false;
+   }
+}
+
 /** Returns true if two types are "compatible", i.e. you can do an OpLoad,
  * OpStore, or OpCopyMemory between them without breaking anything.
  * Technically, the SPIR-V rules require the exact same type ID but this lets
@@ -1375,6 +1398,17 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    }
 
    vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
+
+   if (val->type->base_type == vtn_base_type_struct &&
+       (val->type->block || val->type->buffer_block)) {
+      for (unsigned i = 0; i < val->type->length; i++) {
+         vtn_fail_if(vtn_type_contains_block(b, val->type->members[i]),
+                     "Block and BufferBlock decorations cannot decorate a "
+                     "structure type that is nested at any level inside "
+                     "another structure type decorated with Block or "
+                     "BufferBlock.");
+      }
+   }
 }
 
 static nir_constant *
@@ -3598,6 +3632,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityVariablePointersStorageBuffer:
       case SpvCapabilityVariablePointers:
          spv_check_supported(variable_pointers, cap);
+         b->variable_pointers = true;
          break;
 
       case SpvCapabilityStorageUniformBufferBlock16:

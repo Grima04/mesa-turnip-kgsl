@@ -1686,9 +1686,26 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
    switch (mode) {
    case vtn_variable_mode_ubo:
+      /* There's no other way to get vtn_variable_mode_ubo */
+      vtn_assert(without_array->block);
       b->shader->info.num_ubos++;
       break;
    case vtn_variable_mode_ssbo:
+      if (storage_class == SpvStorageClassStorageBuffer &&
+          !without_array->block) {
+         if (b->variable_pointers) {
+            vtn_fail("Variables in the StorageBuffer storage class must "
+                     "have a struct type with the Block decoration");
+         } else {
+            /* If variable pointers are not present, it's still malformed
+             * SPIR-V but we can parse it and do the right thing anyway.
+             * Since some of the 8-bit storage tests have bugs in this are,
+             * just make it a warning for now.
+             */
+            vtn_warn("Variables in the StorageBuffer storage class must "
+                     "have a struct type with the Block decoration");
+         }
+      }
       b->shader->info.num_ssbos++;
       break;
    case vtn_variable_mode_uniform:

@@ -586,6 +586,7 @@ struct vtn_builder {
    struct vtn_value *entry_point;
    bool origin_upper_left;
    bool pixel_center_integer;
+   bool variable_pointers;
 
    struct vtn_function *func;
    struct exec_list functions;
