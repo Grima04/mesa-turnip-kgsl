@@ -917,7 +917,7 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
 struct vtn_ssa_value *
 vtn_variable_load(struct vtn_builder *b, struct vtn_pointer *src)
 {
-   if (vtn_pointer_is_external_block(b, src)) {
+   if (vtn_pointer_uses_ssa_offset(b, src)) {
       return vtn_block_load(b, src);
    } else {
       struct vtn_ssa_value *val = NULL;
@@ -930,7 +930,7 @@ void
 vtn_variable_store(struct vtn_builder *b, struct vtn_ssa_value *src,
                    struct vtn_pointer *dest)
 {
-   if (vtn_pointer_is_external_block(b, dest)) {
+   if (vtn_pointer_uses_ssa_offset(b, dest)) {
       vtn_assert(dest->mode == vtn_variable_mode_ssbo ||
                  dest->mode == vtn_variable_mode_workgroup);
       vtn_block_store(b, src, dest);
@@ -1625,21 +1625,19 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    ptr->type = ptr_type->deref;
    ptr->ptr_type = ptr_type;
 
-   if (ptr->mode == vtn_variable_mode_ubo ||
-       ptr->mode == vtn_variable_mode_ssbo) {
+   if (vtn_pointer_uses_ssa_offset(b, ptr)) {
       /* This pointer type needs to have actual storage */
       vtn_assert(ptr_type->type);
-      vtn_assert(ssa->num_components == 2);
-      ptr->block_index = nir_channel(&b->nb, ssa, 0);
-      ptr->offset = nir_channel(&b->nb, ssa, 1);
-   } else if ((ptr->mode == vtn_variable_mode_workgroup &&
-               b->options->lower_workgroup_access_to_offsets) ||
-              ptr->mode == vtn_variable_mode_push_constant) {
-      /* This pointer type needs to have actual storage */
-      vtn_assert(ptr_type->type);
-      vtn_assert(ssa->num_components == 1);
-      ptr->block_index = NULL;
-      ptr->offset = ssa;
+      if (ptr->mode == vtn_variable_mode_ubo ||
+          ptr->mode == vtn_variable_mode_ubo) {
+         vtn_assert(ssa->num_components == 2);
+         ptr->block_index = nir_channel(&b->nb, ssa, 0);
+         ptr->offset = nir_channel(&b->nb, ssa, 1);
+      } else {
+         vtn_assert(ssa->num_components == 1);
+         ptr->block_index = NULL;
+         ptr->offset = ssa;
+      }
    } else {
       assert(!vtn_pointer_is_external_block(b, ptr));
       const struct glsl_type *deref_type = ptr_type->deref->type;
