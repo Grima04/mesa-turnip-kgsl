@@ -113,6 +113,9 @@ virgl_vtest_transfer_get_internal(struct virgl_winsys *vws,
                                  level, stride, layer_stride,
                                  box, size, buf_offset);
 
+   if (flush_front_buffer || vtws->protocol_version >= 2)
+      virgl_vtest_busy_wait(vtws, res->res_handle, VCMD_BUSY_WAIT_FLAG_WAIT);
+
    if (vtws->protocol_version >= 2) {
       if (flush_front_buffer) {
          if (box->depth > 1 || box->z > 1) {
@@ -701,8 +704,6 @@ static void virgl_vtest_flush_frontbuffer(struct virgl_winsys *vws,
       box.height = res->height;
       box.depth = 1;
    }
-
-   virgl_vtest_busy_wait(vtws, res->res_handle, VCMD_BUSY_WAIT_FLAG_WAIT);
 
    virgl_vtest_transfer_get_internal(vws, res, &box, res->stride, 0, offset,
                                      level, true);
