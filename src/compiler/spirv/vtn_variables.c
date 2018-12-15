@@ -132,12 +132,12 @@ vtn_access_link_as_ssa(struct vtn_builder *b, struct vtn_access_link link,
    } else if (stride == 1) {
        nir_ssa_def *ssa = vtn_ssa_value(b, link.id)->def;
        if (ssa->bit_size != 32)
-          ssa = nir_u2u32(&b->nb, ssa);
+          ssa = nir_i2i32(&b->nb, ssa);
       return ssa;
    } else {
       nir_ssa_def *src0 = vtn_ssa_value(b, link.id)->def;
       if (src0->bit_size != 32)
-         src0 = nir_u2u32(&b->nb, src0);
+         src0 = nir_i2i32(&b->nb, src0);
       return nir_imul_imm(&b->nb, src0, stride);
    }
 }
