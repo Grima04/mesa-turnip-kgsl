@@ -307,7 +307,7 @@ nir_format_clamp_uint(nir_builder *b, nir_ssa_def *f, const unsigned *bits)
    nir_const_value max;
    for (unsigned i = 0; i < f->num_components; i++) {
       assert(bits[i] < 32);
-      max.i32[i] = (1 << (bits[i] - 1)) - 1;
+      max.u32[i] = (1 << bits[i]) - 1;
    }
    return nir_umin(b, f, nir_build_imm(b, f->num_components, 32, max));
 }
