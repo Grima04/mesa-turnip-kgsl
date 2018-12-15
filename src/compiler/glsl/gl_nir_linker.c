@@ -154,6 +154,33 @@ nir_build_program_resource_list(struct gl_context *ctx,
       return;
    }
 
+   /* Add transform feedback varyings and buffers. */
+   if (prog->last_vert_prog) {
+      struct gl_transform_feedback_info *linked_xfb =
+         prog->last_vert_prog->sh.LinkedTransformFeedback;
+
+      /* Add varyings. */
+      if (linked_xfb->NumVarying > 0) {
+         for (int i = 0; i < linked_xfb->NumVarying; i++) {
+            if (!link_util_add_program_resource(prog, resource_set,
+                                                GL_TRANSFORM_FEEDBACK_VARYING,
+                                                &linked_xfb->Varyings[i], 0))
+            return;
+         }
+      }
+
+      /* Add buffers. */
+      for (unsigned i = 0; i < ctx->Const.MaxTransformFeedbackBuffers; i++) {
+         if ((linked_xfb->ActiveBuffers >> i) & 1) {
+            linked_xfb->Buffers[i].Binding = i;
+            if (!link_util_add_program_resource(prog, resource_set,
+                                                GL_TRANSFORM_FEEDBACK_BUFFER,
+                                                &linked_xfb->Buffers[i], 0))
+            return;
+         }
+      }
+   }
+
    /* Add uniforms
     *
     * Here, it is expected that nir_link_uniforms() has already been
