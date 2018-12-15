@@ -280,7 +280,7 @@ lookup_entry_and_kill_aliases(struct util_dynarray *copies,
 {
    /* TODO: Take into account the write_mask. */
 
-   struct copy_entry *entry = NULL;
+   nir_deref_instr *dst_match = NULL;
    util_dynarray_foreach_reverse(copies, struct copy_entry, iter) {
       if (!iter->src.is_ssa) {
          /* If this write aliases the source of some entry, get rid of it */
@@ -293,13 +293,26 @@ lookup_entry_and_kill_aliases(struct util_dynarray *copies,
       nir_deref_compare_result comp = nir_compare_derefs(iter->dst, deref);
 
       if (comp & nir_derefs_equal_bit) {
-         assert(entry == NULL);
-         entry = iter;
+         /* Removing entries invalidate previous iter pointers, so we'll
+          * collect the matching entry later.  Just make sure it is unique.
+          */
+         assert(!dst_match);
+         dst_match = iter->dst;
       } else if (comp & nir_derefs_may_alias_bit) {
          copy_entry_remove(copies, iter);
       }
    }
 
+   struct copy_entry *entry = NULL;
+   if (dst_match) {
+      util_dynarray_foreach(copies, struct copy_entry, iter) {
+         if (iter->dst == dst_match) {
+            entry = iter;
+            break;
+         }
+      }
+      assert(entry);
+   }
    return entry;
 }
 
