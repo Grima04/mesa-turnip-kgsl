@@ -135,7 +135,6 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
 
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
-      .lower_ubo_ssbo_access_to_offsets = true,
       .caps = {
          .float64 = device->instance->physicalDevice.info.gen >= 8,
          .int64 = device->instance->physicalDevice.info.gen >= 8,
@@ -213,6 +212,9 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_ubo | nir_var_ssbo,
+              nir_address_format_vk_index_offset);
 
    if (stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_wpos_center, pipeline->sample_shading_enable);

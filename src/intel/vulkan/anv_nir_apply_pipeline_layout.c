@@ -185,6 +185,23 @@ lower_res_reindex_intrinsic(nir_intrinsic_instr *intrin,
 }
 
 static void
+lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
+                             struct apply_pipeline_layout_state *state)
+{
+   nir_builder *b = &state->builder;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   /* We follow the nir_address_format_vk_index_offset model */
+   assert(intrin->src[0].is_ssa);
+   nir_ssa_def *vec2 = nir_vec2(b, intrin->src[0].ssa, nir_imm_int(b, 0));
+
+   assert(intrin->dest.is_ssa);
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(vec2));
+   nir_instr_remove(&intrin->instr);
+}
+
+static void
 lower_image_intrinsic(nir_intrinsic_instr *intrin,
                       struct apply_pipeline_layout_state *state)
 {
@@ -379,6 +396,9 @@ apply_pipeline_layout_block(nir_block *block,
             break;
          case nir_intrinsic_vulkan_resource_reindex:
             lower_res_reindex_intrinsic(intrin, state);
+            break;
+         case nir_intrinsic_load_vulkan_descriptor:
+            lower_load_vulkan_descriptor(intrin, state);
             break;
          case nir_intrinsic_image_deref_load:
          case nir_intrinsic_image_deref_store:
