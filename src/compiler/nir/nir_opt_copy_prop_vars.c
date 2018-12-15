@@ -348,6 +348,9 @@ store_to_entry(struct copy_prop_var_state *state, struct copy_entry *entry,
                const struct value *value, unsigned write_mask)
 {
    if (value->is_ssa) {
+      /* Clear src if it was being used as non-SSA. */
+      if (!entry->src.is_ssa)
+         memset(entry->src.ssa, 0, sizeof(entry->src.ssa));
       entry->src.is_ssa = true;
       /* Only overwrite the written components */
       for (unsigned i = 0; i < 4; i++) {
