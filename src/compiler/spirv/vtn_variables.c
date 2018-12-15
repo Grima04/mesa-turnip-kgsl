@@ -48,8 +48,9 @@ bool
 vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
                             struct vtn_pointer *ptr)
 {
-   return ptr->mode == vtn_variable_mode_ubo ||
-          ptr->mode == vtn_variable_mode_ssbo ||
+   return ((ptr->mode == vtn_variable_mode_ubo ||
+            ptr->mode == vtn_variable_mode_ssbo) &&
+           b->options->lower_ubo_ssbo_access_to_offsets) ||
           ptr->mode == vtn_variable_mode_push_constant ||
           (ptr->mode == vtn_variable_mode_workgroup &&
            b->options->lower_workgroup_access_to_offsets);
@@ -81,55 +82,6 @@ vtn_access_link_as_ssa(struct vtn_builder *b, struct vtn_access_link link,
          ssa = nir_imul_imm(&b->nb, ssa, stride);
       return ssa;
    }
-}
-
-/* Dereference the given base pointer by the access chain */
-static struct vtn_pointer *
-vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
-                                  struct vtn_pointer *base,
-                                  struct vtn_access_chain *deref_chain)
-{
-   struct vtn_type *type = base->type;
-   enum gl_access_qualifier access = base->access;
-
-   nir_deref_instr *tail;
-   if (base->deref) {
-      tail = base->deref;
-   } else {
-      assert(base->var && base->var->var);
-      tail = nir_build_deref_var(&b->nb, base->var->var);
-   }
-
-   /* OpPtrAccessChain is only allowed on things which support variable
-    * pointers.  For everything else, the client is expected to just pass us
-    * the right access chain.
-    */
-   vtn_assert(!deref_chain->ptr_as_array);
-
-   for (unsigned i = 0; i < deref_chain->length; i++) {
-      if (glsl_type_is_struct(type->type)) {
-         vtn_assert(deref_chain->link[i].mode == vtn_access_mode_literal);
-         unsigned idx = deref_chain->link[i].id;
-         tail = nir_build_deref_struct(&b->nb, tail, idx);
-         type = type->members[idx];
-      } else {
-         nir_ssa_def *index = vtn_access_link_as_ssa(b, deref_chain->link[i], 1,
-                                                     tail->dest.ssa.bit_size);
-         tail = nir_build_deref_array(&b->nb, tail, index);
-         type = type->array_element;
-      }
-
-      access |= type->access;
-   }
-
-   struct vtn_pointer *ptr = rzalloc(b, struct vtn_pointer);
-   ptr->mode = base->mode;
-   ptr->type = type;
-   ptr->var = base->var;
-   ptr->deref = tail;
-   ptr->access = access;
-
-   return ptr;
 }
 
 static VkDescriptorType
@@ -183,6 +135,182 @@ vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
    nir_builder_instr_insert(&b->nb, &instr->instr);
 
    return &instr->dest.ssa;
+}
+
+static nir_ssa_def *
+vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
+                    const struct glsl_type *desc_type, nir_ssa_def *desc_index)
+{
+   nir_intrinsic_instr *desc_load =
+      nir_intrinsic_instr_create(b->nb.shader,
+                                 nir_intrinsic_load_vulkan_descriptor);
+   desc_load->src[0] = nir_src_for_ssa(desc_index);
+   desc_load->num_components = glsl_get_vector_elements(desc_type);
+   nir_intrinsic_set_desc_type(desc_load, vk_desc_type_for_mode(b, mode));
+   nir_ssa_dest_init(&desc_load->instr, &desc_load->dest,
+                     desc_load->num_components,
+                     glsl_get_bit_size(desc_type), NULL);
+   nir_builder_instr_insert(&b->nb, &desc_load->instr);
+
+   return &desc_load->dest.ssa;
+}
+
+/* Dereference the given base pointer by the access chain */
+static struct vtn_pointer *
+vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
+                                  struct vtn_pointer *base,
+                                  struct vtn_access_chain *deref_chain)
+{
+   struct vtn_type *type = base->type;
+   enum gl_access_qualifier access = base->access;
+   unsigned idx = 0;
+
+   nir_deref_instr *tail;
+   if (base->deref) {
+      tail = base->deref;
+   } else if (vtn_pointer_is_external_block(b, base)) {
+      nir_ssa_def *block_index = base->block_index;
+
+      /* We dereferencing an external block pointer.  Correctness of this
+       * operation relies on one particular line in the SPIR-V spec, section
+       * entitled "Validation Rules for Shader Capabilities":
+       *
+       *    "Block and BufferBlock decorations cannot decorate a structure
+       *    type that is nested at any level inside another structure type
+       *    decorated with Block or BufferBlock."
+       *
+       * This means that we can detect the point where we cross over from
+       * descriptor indexing to buffer indexing by looking for the block
+       * decorated struct type.  Anything before the block decorated struct
+       * type is a descriptor indexing operation and anything after the block
+       * decorated struct is a buffer offset operation.
+       */
+
+      /* Figure out the descriptor array index if any
+       *
+       * Some of the Vulkan CTS tests with hand-rolled SPIR-V have been known
+       * to forget the Block or BufferBlock decoration from time to time.
+       * It's more robust if we check for both !block_index and for the type
+       * to contain a block.  This way there's a decent chance that arrays of
+       * UBOs/SSBOs will work correctly even if variable pointers are
+       * completley toast.
+       */
+      nir_ssa_def *desc_arr_idx = NULL;
+      if (!block_index || vtn_type_contains_block(b, type)) {
+         /* If our type contains a block, then we're still outside the block
+          * and we need to process enough levels of dereferences to get inside
+          * of it.
+          */
+         if (deref_chain->ptr_as_array) {
+            unsigned aoa_size = glsl_get_aoa_size(type->type);
+            desc_arr_idx = vtn_access_link_as_ssa(b, deref_chain->link[idx],
+                                                  MAX2(aoa_size, 1), 32);
+            idx++;
+         }
+
+         for (; idx < deref_chain->length; idx++) {
+            if (type->base_type != vtn_base_type_array) {
+               vtn_assert(type->base_type == vtn_base_type_struct);
+               break;
+            }
+
+            unsigned aoa_size = glsl_get_aoa_size(type->array_element->type);
+            nir_ssa_def *arr_offset =
+               vtn_access_link_as_ssa(b, deref_chain->link[idx],
+                                      MAX2(aoa_size, 1), 32);
+            if (desc_arr_idx)
+               desc_arr_idx = nir_iadd(&b->nb, desc_arr_idx, arr_offset);
+            else
+               desc_arr_idx = arr_offset;
+
+            type = type->array_element;
+            access |= type->access;
+         }
+      }
+
+      if (!block_index) {
+         vtn_assert(base->var && base->type);
+         block_index = vtn_variable_resource_index(b, base->var, desc_arr_idx);
+      } else if (desc_arr_idx) {
+         block_index = vtn_resource_reindex(b, base->mode,
+                                            block_index, desc_arr_idx);
+      }
+
+      if (idx == deref_chain->length) {
+         /* The entire deref was consumed in finding the block index.  Return
+          * a pointer which just has a block index and a later access chain
+          * will dereference deeper.
+          */
+         struct vtn_pointer *ptr = rzalloc(b, struct vtn_pointer);
+         ptr->mode = base->mode;
+         ptr->type = type;
+         ptr->block_index = block_index;
+         ptr->access = access;
+         return ptr;
+      }
+
+      /* If we got here, there's more access chain to handle and we have the
+       * final block index.  Insert a descriptor load and cast to a deref to
+       * start the deref chain.
+       */
+      nir_ssa_def *desc =
+         vtn_descriptor_load(b, base->mode, base->ptr_type->type, block_index);
+
+      assert(base->mode == vtn_variable_mode_ssbo ||
+             base->mode == vtn_variable_mode_ubo);
+      nir_variable_mode nir_mode =
+         base->mode == vtn_variable_mode_ssbo ? nir_var_ssbo : nir_var_ubo;
+
+      tail = nir_build_deref_cast(&b->nb, desc, nir_mode, type->type,
+                                  base->ptr_type->stride);
+   } else {
+      assert(base->var && base->var->var);
+      tail = nir_build_deref_var(&b->nb, base->var->var);
+      if (base->ptr_type && base->ptr_type->type) {
+         tail->dest.ssa.num_components =
+            glsl_get_vector_elements(base->ptr_type->type);
+         tail->dest.ssa.bit_size = glsl_get_bit_size(base->ptr_type->type);
+      }
+   }
+
+   if (idx == 0 && deref_chain->ptr_as_array) {
+      /* We start with a deref cast to get the stride.  Hopefully, we'll be
+       * able to delete that cast eventually.
+       */
+      tail = nir_build_deref_cast(&b->nb, &tail->dest.ssa, tail->mode,
+                                  tail->type, base->ptr_type->stride);
+
+      nir_ssa_def *index = vtn_access_link_as_ssa(b, deref_chain->link[0], 1,
+                                                  tail->dest.ssa.bit_size);
+      tail = nir_build_deref_ptr_as_array(&b->nb, tail, index);
+      idx++;
+   }
+
+   for (; idx < deref_chain->length; idx++) {
+      if (glsl_type_is_struct(type->type)) {
+         vtn_assert(deref_chain->link[idx].mode == vtn_access_mode_literal);
+         unsigned field = deref_chain->link[idx].id;
+         tail = nir_build_deref_struct(&b->nb, tail, field);
+         type = type->members[field];
+      } else {
+         nir_ssa_def *arr_index =
+            vtn_access_link_as_ssa(b, deref_chain->link[idx], 1,
+                                   tail->dest.ssa.bit_size);
+         tail = nir_build_deref_array(&b->nb, tail, arr_index);
+         type = type->array_element;
+      }
+
+      access |= type->access;
+   }
+
+   struct vtn_pointer *ptr = rzalloc(b, struct vtn_pointer);
+   ptr->mode = base->mode;
+   ptr->type = type;
+   ptr->var = base->var;
+   ptr->deref = tail;
+   ptr->access = access;
+
+   return ptr;
 }
 
 static struct vtn_pointer *
@@ -872,18 +1000,35 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
    case GLSL_TYPE_DOUBLE:
-      /* At this point, we have a scalar, vector, or matrix so we know that
-       * there cannot be any structure splitting still in the way.  By
-       * stopping at the matrix level rather than the vector level, we
-       * ensure that matrices get loaded in the optimal way even if they
-       * are storred row-major in a UBO.
-       */
-      if (load) {
-         *inout = vtn_local_load(b, vtn_pointer_to_deref(b, ptr));
-      } else {
-         vtn_local_store(b, *inout, vtn_pointer_to_deref(b, ptr));
+      if (glsl_type_is_vector_or_scalar(ptr->type->type)) {
+         /* We hit a vector or scalar; go ahead and emit the load[s] */
+         nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
+         if (vtn_pointer_is_external_block(b, ptr)) {
+            /* If it's external, we call nir_load/store_deref directly.  The
+             * vtn_local_load/store helpers are too clever and do magic to
+             * avoid array derefs of vectors.  That magic is both less
+             * efficient than the direct load/store and, in the case of
+             * stores, is broken because it creates a race condition if two
+             * threads are writing to different components of the same vector
+             * due to the load+insert+store it uses to emulate the array
+             * deref.
+             */
+            if (load) {
+               *inout = vtn_create_ssa_value(b, ptr->type->type);
+               (*inout)->def = nir_load_deref(&b->nb, deref);
+            } else {
+               nir_store_deref(&b->nb, deref, (*inout)->def, ~0);
+            }
+         } else {
+            if (load) {
+               *inout = vtn_local_load(b, deref);
+            } else {
+               vtn_local_store(b, *inout, deref);
+            }
+         }
+         return;
       }
-      return;
+      /* Fall through */
 
    case GLSL_TYPE_ARRAY:
    case GLSL_TYPE_STRUCT: {
@@ -1603,7 +1748,37 @@ vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr)
          return ptr->offset;
       }
    } else {
-      return &vtn_pointer_to_deref(b, ptr)->dest.ssa;
+      if (vtn_pointer_is_external_block(b, ptr) &&
+          vtn_type_contains_block(b, ptr->type)) {
+         const unsigned bit_size = glsl_get_bit_size(ptr->ptr_type->type);
+         const unsigned num_components =
+            glsl_get_vector_elements(ptr->ptr_type->type);
+
+         /* In this case, we're looking for a block index and not an actual
+          * deref.
+          */
+         if (!ptr->block_index) {
+            /* If we don't have a block_index then we must be a pointer to the
+             * variable itself.
+             */
+            vtn_assert(!ptr->deref);
+
+            struct vtn_access_chain chain = {
+               .length = 0,
+            };
+            ptr = vtn_nir_deref_pointer_dereference(b, ptr, &chain);
+         }
+
+         /* A block index is just a 32-bit value but the pointer has some
+          * other dimensionality.  Cram it in there and we'll unpack it later
+          * in vtn_pointer_from_ssa.
+          */
+         const unsigned swiz[4] = { 0, };
+         return nir_swizzle(&b->nb, nir_u2u(&b->nb, ptr->block_index, bit_size),
+                            swiz, num_components, false);
+      } else {
+         return &vtn_pointer_to_deref(b, ptr)->dest.ssa;
+      }
    }
 }
 
@@ -1629,7 +1804,7 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
       /* This pointer type needs to have actual storage */
       vtn_assert(ptr_type->type);
       if (ptr->mode == vtn_variable_mode_ubo ||
-          ptr->mode == vtn_variable_mode_ubo) {
+          ptr->mode == vtn_variable_mode_ssbo) {
          vtn_assert(ssa->num_components == 2);
          ptr->block_index = nir_channel(&b->nb, ssa, 0);
          ptr->offset = nir_channel(&b->nb, ssa, 1);
@@ -1639,10 +1814,29 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
          ptr->offset = ssa;
       }
    } else {
-      assert(!vtn_pointer_is_external_block(b, ptr));
       const struct glsl_type *deref_type = ptr_type->deref->type;
-      ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                        glsl_get_bare_type(deref_type), 0);
+      if (!vtn_pointer_is_external_block(b, ptr)) {
+         assert(ssa->bit_size == 32 && ssa->num_components == 1);
+         ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
+                                           glsl_get_bare_type(deref_type), 0);
+      } else if (vtn_type_contains_block(b, ptr->type)) {
+         /* This is a pointer to somewhere in an array of blocks, not a
+          * pointer to somewhere inside the block.  We squashed it into a
+          * random vector type before so just pick off the first channel and
+          * cast it back to 32 bits.
+          */
+         ptr->block_index = nir_u2u32(&b->nb, nir_channel(&b->nb, ssa, 0));
+      } else {
+         /* This is a pointer to something internal or a pointer inside a
+          * block.  It's just a regular cast.
+          */
+         ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
+                                           ptr_type->deref->type,
+                                           ptr_type->stride);
+         ptr->deref->dest.ssa.num_components =
+            glsl_get_vector_elements(ptr_type->type);
+         ptr->deref->dest.ssa.bit_size = glsl_get_bit_size(ptr_type->type);
+      }
    }
 
    return ptr;

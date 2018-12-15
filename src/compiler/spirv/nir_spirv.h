@@ -59,6 +59,9 @@ struct spirv_to_nir_options {
     */
    bool lower_workgroup_access_to_offsets;
 
+   /* Whether or not to lower all UBO/SSBO access to offsets up-front. */
+   bool lower_ubo_ssbo_access_to_offsets;
+
    struct spirv_supported_capabilities caps;
 
    /* Storage types for various kinds of pointers. */

@@ -567,7 +567,7 @@ struct member_decoration_ctx {
  * Returns true if the given type contains a struct decorated Block or
  * BufferBlock
  */
-static bool
+bool
 vtn_type_contains_block(struct vtn_builder *b, struct vtn_type *type)
 {
    switch (type->base_type) {

@@ -364,6 +364,8 @@ intrinsic("vulkan_resource_index", src_comp=[1], dest_comp=1,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 intrinsic("vulkan_resource_reindex", src_comp=[1, 1], dest_comp=1,
           indices=[DESC_TYPE], flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("load_vulkan_descriptor", src_comp=[1], dest_comp=0,
+          indices=[DESC_TYPE], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # variable atomic intrinsics
 #

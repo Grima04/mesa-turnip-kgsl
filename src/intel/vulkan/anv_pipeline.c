@@ -135,6 +135,7 @@ anv_shader_compile_to_nir(struct anv_pipeline *pipeline,
 
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
+      .lower_ubo_ssbo_access_to_offsets = true,
       .caps = {
          .float64 = device->instance->physicalDevice.info.gen >= 8,
          .int64 = device->instance->physicalDevice.info.gen >= 8,

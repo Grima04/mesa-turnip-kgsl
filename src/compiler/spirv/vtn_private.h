@@ -378,6 +378,8 @@ struct vtn_type {
    };
 };
 
+bool vtn_type_contains_block(struct vtn_builder *b, struct vtn_type *type);
+
 bool vtn_types_compatible(struct vtn_builder *b,
                           struct vtn_type *t1, struct vtn_type *t2);
 
