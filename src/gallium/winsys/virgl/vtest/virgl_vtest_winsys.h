@@ -77,7 +77,7 @@ struct virgl_hw_res {
 
 struct virgl_vtest_cmd_buf {
    struct virgl_cmd_buf base;
-   uint32_t buf[VIRGL_MAX_CMDBUF_DWORDS];
+   uint32_t *buf;
    unsigned nres;
    unsigned cres;
    struct virgl_winsys *ws;

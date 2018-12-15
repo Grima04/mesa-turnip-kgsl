@@ -559,6 +559,14 @@ static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws
       FREE(cbuf);
       return NULL;
    }
+
+   cbuf->buf = CALLOC(size, sizeof(uint32_t));
+   if (!cbuf->buf) {
+      FREE(cbuf->res_bo);
+      FREE(cbuf);
+      return NULL;
+   }
+
    cbuf->ws = vws;
    cbuf->base.buf = cbuf->buf;
    return &cbuf->base;
@@ -570,6 +578,7 @@ static void virgl_vtest_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
 
    virgl_vtest_release_all_res(virgl_vtest_winsys(cbuf->ws), cbuf);
    FREE(cbuf->res_bo);
+   FREE(cbuf->buf);
    FREE(cbuf);
 }
 
@@ -760,7 +769,7 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
    vtws->base.fence_wait = virgl_fence_wait;
    vtws->base.fence_reference = virgl_fence_reference;
    vtws->base.supports_fences =  0;
-   vtws->base.supports_encoded_transfers = 0;
+   vtws->base.supports_encoded_transfers = (vtws->protocol_version >= 2);
 
    vtws->base.flush_frontbuffer = virgl_vtest_flush_frontbuffer;
 
