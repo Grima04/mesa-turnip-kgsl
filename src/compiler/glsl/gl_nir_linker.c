@@ -244,5 +244,12 @@ nir_build_program_resource_list(struct gl_context *ctx,
          return;
    }
 
+   /* Add atomic counter buffers. */
+   for (unsigned i = 0; i < prog->data->NumAtomicBuffers; i++) {
+      if (!link_util_add_program_resource(prog, resource_set, GL_ATOMIC_COUNTER_BUFFER,
+                                          &prog->data->AtomicBuffers[i], 0))
+         return;
+   }
+
    _mesa_set_destroy(resource_set, NULL);
 }
