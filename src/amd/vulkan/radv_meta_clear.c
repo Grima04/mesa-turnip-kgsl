@@ -695,7 +695,8 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer,
 static void
 emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
                         const VkClearAttachment *clear_att,
-                        const VkClearRect *clear_rect)
+                        const VkClearRect *clear_rect,
+                        uint32_t view_mask)
 {
 	struct radv_device *device = cmd_buffer->device;
 	struct radv_meta_state *meta_state = &device->meta_state;
@@ -756,7 +757,13 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &clear_rect->rect);
 
-	radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);
+	if (view_mask) {
+		unsigned i;
+		for_each_bit(i, view_mask)
+			radv_CmdDraw(cmd_buffer_h, 3, 1, 0, i);
+	} else {
+		radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);
+	}
 
 	if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
 		radv_CmdSetStencilReference(cmd_buffer_h, VK_STENCIL_FACE_FRONT_BIT,
@@ -940,7 +947,8 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 			  VkImageLayout image_layout,
 			  VkImageAspectFlags aspects,
 			  const VkClearRect *clear_rect,
-			  const VkClearDepthStencilValue clear_value)
+			  const VkClearDepthStencilValue clear_value,
+			  uint32_t view_mask)
 {
 	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
 		return false;
@@ -953,9 +961,12 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 	    clear_rect->rect.extent.height != iview->image->info.height)
 		return false;
 
-	if (clear_rect->baseArrayLayer != 0)
+	if (view_mask && (iview->image->info.array_size >= 32 ||
+	                 (1u << iview->image->info.array_size) - 1u != view_mask))
 		return false;
-	if (clear_rect->layerCount != iview->image->info.array_size)
+	if (!view_mask && clear_rect->baseArrayLayer != 0)
+		return false;
+	if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
 		return false;
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class < GFX9 &&
@@ -1532,11 +1543,13 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 				  VK_IMAGE_ASPECT_STENCIL_BIT));
 
 		if (radv_can_fast_clear_depth(cmd_buffer, iview, image_layout,
-					      aspects, clear_rect, clear_value)) {
+		                              aspects, clear_rect, clear_value,
+		                              view_mask)) {
 			radv_fast_clear_depth(cmd_buffer, iview, clear_att,
 			                      pre_flush, post_flush);
 		} else {
-			emit_depthstencil_clear(cmd_buffer, clear_att, clear_rect);
+			emit_depthstencil_clear(cmd_buffer, clear_att, clear_rect,
+			                        view_mask);
 		}
 	}
 }
@@ -1838,7 +1851,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer,
 	} else {
 		if (radv_can_fast_clear_depth(cmd_buffer, &iview, image_layout,
 					      range->aspectMask, &clear_rect,
-					      clear_att.clearValue.depthStencil)) {
+					      clear_att.clearValue.depthStencil, 0)) {
 			radv_fast_clear_depth(cmd_buffer, &iview, &clear_att,
 			                      NULL, NULL);
 			return true;
