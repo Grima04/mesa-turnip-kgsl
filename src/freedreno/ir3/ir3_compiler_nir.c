@@ -1251,6 +1251,73 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ir3_split_dest(b, dst, sam, 0, 4);
 }
 
+/* Returns the number of components for the different image formats
+ * supported by the GLES 3.1 spec, plus those added by the
+ * GL_NV_image_formats extension.
+ */
+static unsigned
+get_num_components_for_glformat(GLuint format)
+{
+	switch (format) {
+	case GL_R32F:
+	case GL_R32I:
+	case GL_R32UI:
+	case GL_R16F:
+	case GL_R16I:
+	case GL_R16UI:
+	case GL_R16:
+	case GL_R16_SNORM:
+	case GL_R8I:
+	case GL_R8UI:
+	case GL_R8:
+	case GL_R8_SNORM:
+		return 1;
+
+	case GL_RG32F:
+	case GL_RG32I:
+	case GL_RG32UI:
+	case GL_RG16F:
+	case GL_RG16I:
+	case GL_RG16UI:
+	case GL_RG16:
+	case GL_RG16_SNORM:
+	case GL_RG8I:
+	case GL_RG8UI:
+	case GL_RG8:
+	case GL_RG8_SNORM:
+		return 2;
+
+	case GL_R11F_G11F_B10F:
+		return 3;
+
+	case GL_RGBA32F:
+	case GL_RGBA32I:
+	case GL_RGBA32UI:
+	case GL_RGBA16F:
+	case GL_RGBA16I:
+	case GL_RGBA16UI:
+	case GL_RGBA16:
+	case GL_RGBA16_SNORM:
+	case GL_RGBA8I:
+	case GL_RGBA8UI:
+	case GL_RGBA8:
+	case GL_RGBA8_SNORM:
+	case GL_RGB10_A2UI:
+	case GL_RGB10_A2:
+		return 4;
+
+	default:
+		/* Return 4 components also for all other formats we don't know
+		 * about. This is always safe. Also, the format should have been
+		 * validated already by the higher level API. Drop a debug message
+		 * just in case.
+		 */
+		debug_printf("Unhandled GL format %u while emitting imageStore()\n",
+					 format);
+		return 4;
+	}
+}
+
 /* src[] = { deref, coord, sample_index, value }. const_index[] = {} */
 static void
 emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
@@ -1262,6 +1329,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	unsigned ncoords = get_image_coords(var, NULL);
 	unsigned tex_idx = get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned ncomp = get_num_components_for_glformat(var->data.image.format);
 
 	/* src0 is value
 	 * src1 is coords
@@ -1276,10 +1344,10 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 */
 
 	stib = ir3_STIB(b, create_immed(b, tex_idx), 0,
-			ir3_create_collect(ctx, value, 4), 0,
+			ir3_create_collect(ctx, value, ncomp), 0,
 			ir3_create_collect(ctx, coords, ncoords), 0,
 			offset, 0);
-	stib->cat6.iim_val = 4;
+	stib->cat6.iim_val = ncomp;
 	stib->cat6.d = ncoords;
 	stib->cat6.type = get_image_type(var);
 	stib->cat6.typed = true;
