@@ -38,6 +38,17 @@ is_sha_nomination()
 	if test $fixes_count -eq 0; then
 		return 1
 	fi
+
+	# Throw a warning for each invalid sha
+	while test $fixes_count -gt 0; do
+		# Treat only the current line
+		id=`echo "$fixes" | tail -n $fixes_count | head -n 1 | cut -d : -f 2`
+		fixes_count=$(($fixes_count-1))
+		if ! git show $id &>/dev/null; then
+			echo WARNING: Commit $1 lists invalid sha $id
+		fi
+	done
+
 	return 0
 }
 
