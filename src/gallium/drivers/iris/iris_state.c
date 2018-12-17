@@ -1012,7 +1012,7 @@ iris_set_stencil_ref(struct pipe_context *ctx,
 
 
 struct iris_viewport_state {
-   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length)];
+   uint32_t sf_cl_vp[GENX(SF_CLIP_VIEWPORT_length) * IRIS_MAX_VIEWPORTS];
 };
 
 static float
@@ -1112,13 +1112,14 @@ iris_set_viewport_states(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_viewport_state *cso =
       malloc(sizeof(struct iris_viewport_state));
+   uint32_t *vp_map = &cso->sf_cl_vp[start_slot];
 
    // XXX: sf_cl_vp is only big enough for one slot, we don't iterate right
-   for (unsigned i = start_slot; i < start_slot + num_viewports; i++) {
+   for (unsigned i = 0; i < num_viewports; i++) {
       float x_extent = extent_from_matrix(&state[i], 0);
       float y_extent = extent_from_matrix(&state[i], 1);
 
-      iris_pack_state(GENX(SF_CLIP_VIEWPORT), cso->sf_cl_vp, vp) {
+      iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
          vp.ViewportMatrixElementm00 = state[i].scale[0];
          vp.ViewportMatrixElementm11 = state[i].scale[1];
          vp.ViewportMatrixElementm22 = state[i].scale[2];
@@ -1137,10 +1138,11 @@ iris_set_viewport_states(struct pipe_context *ctx,
          vp.YMinViewPort = -y_extent;
          vp.YMaxViewPort =  y_extent;
       }
+
+      vp_map += GENX(SF_CLIP_VIEWPORT_length);
    }
 
    ice->state.cso_vp = cso;
-   // XXX: start_slot
    ice->state.num_viewports = num_viewports;
    ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
 }
@@ -1851,7 +1853,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_viewport_state *cso = ice->state.cso_vp;
       iris_emit_cmd(batch, GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), ptr) {
          ptr.SFClipViewportPointer =
-            iris_emit_state(batch, cso->sf_cl_vp, sizeof(cso->sf_cl_vp), 64);
+            iris_emit_state(batch, cso->sf_cl_vp,
+                            4 * GENX(SF_CLIP_VIEWPORT_length) *
+                            ice->state.num_viewports, 64);
       }
    }
 
