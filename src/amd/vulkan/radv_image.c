@@ -249,6 +249,12 @@ radv_init_surface(struct radv_device *device,
 	if (is_stencil)
 		surface->flags |= RADEON_SURF_SBUFFER;
 
+	if (device->physical_device->rad_info.chip_class >= GFX9 &&
+	    pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
+	    vk_format_get_blocksizebits(pCreateInfo->format) == 128 &&
+	    vk_format_is_compressed(pCreateInfo->format))
+		surface->flags |= RADEON_SURF_NO_RENDER_TARGET;
+
 	surface->flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
 
 	if (!radv_use_dcc_for_image(device, image, create_info, pCreateInfo))

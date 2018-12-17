@@ -1112,6 +1112,18 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 		maxMipLevels = 1;
 	}
 
+
+	/* We can't create 3d compressed 128bpp images that can be rendered to on GFX9 */
+	if (physical_device->rad_info.chip_class >= GFX9 &&
+	    info->type == VK_IMAGE_TYPE_3D &&
+	    vk_format_get_blocksizebits(info->format) == 128 &&
+	    vk_format_is_compressed(info->format) &&
+	    (info->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
+	    ((info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) ||
+	     (info->usage & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) {
+		goto unsupported;
+	}
+
 	if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
 		if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
 			goto unsupported;
