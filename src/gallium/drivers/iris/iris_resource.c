@@ -465,8 +465,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       isl_drm_modifier_get_info(modifier);
    assert(mod_info);
 
-   // XXX: usage...
-   isl_surf_usage_flags_t isl_usage = ISL_SURF_USAGE_DISPLAY_BIT;
+   isl_surf_usage_flags_t isl_usage = pipe_bind_to_isl_usage(templ->bind);
 
    const struct iris_format_info fmt =
       iris_format_for_usage(devinfo, templ->format, isl_usage);
