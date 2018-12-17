@@ -216,7 +216,7 @@ build_occlusion_query_shader(struct radv_device *device) {
 
 	nir_ssa_def *result_is_64bit = nir_iand(&b, flags,
 	                                        nir_imm_int(&b, VK_QUERY_RESULT_64_BIT));
-	nir_ssa_def *result_size = nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
+	nir_ssa_def *result_size = nir_b32csel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
 
 	nir_if *store_if = nir_if_create(b.shader);
 	store_if->condition = nir_src_for_ssa(nir_ior(&b, nir_iand(&b, flags, nir_imm_int(&b, VK_QUERY_RESULT_PARTIAL_BIT)), nir_load_var(&b, available)));
@@ -371,7 +371,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device) {
 
 	nir_ssa_def *result_is_64bit = nir_iand(&b, flags,
 	                                        nir_imm_int(&b, VK_QUERY_RESULT_64_BIT));
-	nir_ssa_def *elem_size = nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
+	nir_ssa_def *elem_size = nir_b32csel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
 	nir_ssa_def *elem_count = nir_ushr(&b, stats_mask, nir_imm_int(&b, 16));
 
 	/* Store the availability bit if requested. */
@@ -669,8 +669,8 @@ build_tfb_query_shader(struct radv_device *device)
 	nir_ssa_def *result_is_64bit =
 		nir_iand(&b, flags, nir_imm_int(&b, VK_QUERY_RESULT_64_BIT));
 	nir_ssa_def *result_size =
-		nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 16),
-			  nir_imm_int(&b, 8));
+		nir_b32csel(&b, result_is_64bit, nir_imm_int(&b, 16),
+			    nir_imm_int(&b, 8));
 
 	/* Store the result if complete or partial results have been requested. */
 	nir_if *store_if = nir_if_create(b.shader);
