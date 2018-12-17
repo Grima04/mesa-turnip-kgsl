@@ -80,6 +80,7 @@ COMPILER_FILES = \
 	compiler/brw_nir_analyze_boolean_resolves.c \
 	compiler/brw_nir_analyze_ubo_ranges.c \
 	compiler/brw_nir_attribute_workarounds.c \
+	compiler/brw_nir_lower_conversions.c \
 	compiler/brw_nir_lower_cs_intrinsics.c \
 	compiler/brw_nir_lower_image_load_store.c \
 	compiler/brw_nir_lower_mem_access_bit_sizes.c \

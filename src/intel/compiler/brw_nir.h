@@ -115,6 +115,8 @@ void brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue,
                                GLenum tes_primitive_mode);
 void brw_nir_lower_fs_outputs(nir_shader *nir);
 
+bool brw_nir_lower_conversions(nir_shader *nir);
+
 bool brw_nir_lower_image_load_store(nir_shader *nir,
                                     const struct gen_device_info *devinfo);
 void brw_nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin,
