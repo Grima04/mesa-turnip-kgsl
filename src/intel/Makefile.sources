@@ -219,6 +219,15 @@ ISL_GEN11_FILES = \
 ISL_GENERATED_FILES = \
 	isl/isl_format_layout.c
 
+ISL_TILED_MEMCPY_FILES = \
+        isl/isl_tiled_memcpy_normal.c
+
+ISL_TILED_MEMCPY_SSE41_FILES = \
+        isl/isl_tiled_memcpy_sse41.c
+
+ISL_TILED_MEMCPY_DEP_FILES = \
+        isl/isl_tiled_memcpy.c
+
 VULKAN_FILES := \
 	vulkan/anv_allocator.c \
 	vulkan/anv_android.h \

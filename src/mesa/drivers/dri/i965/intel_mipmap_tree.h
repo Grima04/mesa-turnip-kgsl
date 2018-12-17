@@ -726,6 +726,10 @@ intel_miptree_blt_pitch(struct intel_mipmap_tree *mt)
    return pitch;
 }
 
+isl_memcpy_type
+intel_miptree_get_memcpy_type(mesa_format tiledFormat, GLenum format, GLenum type,
+                              uint32_t *cpp);
+
 #ifdef __cplusplus
 }
 #endif

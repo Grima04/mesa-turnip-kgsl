@@ -29,32 +29,30 @@
  *    Frank Henigman <fjhenigman@google.com>
  */
 
-#define INLINE_SSE41
 
-#include "intel_tiled_memcpy_sse41.h"
-#include "intel_tiled_memcpy.c"
+#include "isl_tiled_memcpy.c"
 
 void
-linear_to_tiled_sse41(uint32_t xt1, uint32_t xt2,
-                      uint32_t yt1, uint32_t yt2,
-                      char *dst, const char *src,
-                      uint32_t dst_pitch, int32_t src_pitch,
-                      bool has_swizzling,
-                      enum isl_tiling tiling,
-                      mem_copy_fn_type copy_type)
+_isl_memcpy_linear_to_tiled(uint32_t xt1, uint32_t xt2,
+                            uint32_t yt1, uint32_t yt2,
+                            char *dst, const char *src,
+                            uint32_t dst_pitch, int32_t src_pitch,
+                            bool has_swizzling,
+                            enum isl_tiling tiling,
+                            isl_memcpy_type copy_type)
 {
    intel_linear_to_tiled(xt1, xt2, yt1, yt2, dst, src, dst_pitch, src_pitch,
                          has_swizzling, tiling, copy_type);
 }
 
 void
-tiled_to_linear_sse41(uint32_t xt1, uint32_t xt2,
-                     uint32_t yt1, uint32_t yt2,
-                     char *dst, const char *src,
-                     int32_t dst_pitch, uint32_t src_pitch,
-                     bool has_swizzling,
-                     enum isl_tiling tiling,
-                     mem_copy_fn_type copy_type)
+_isl_memcpy_tiled_to_linear(uint32_t xt1, uint32_t xt2,
+                            uint32_t yt1, uint32_t yt2,
+                            char *dst, const char *src,
+                            int32_t dst_pitch, uint32_t src_pitch,
+                            bool has_swizzling,
+                            enum isl_tiling tiling,
+                            isl_memcpy_type copy_type)
 {
    intel_tiled_to_linear(xt1, xt2, yt1, yt2, dst, src, dst_pitch, src_pitch,
                          has_swizzling, tiling, copy_type);

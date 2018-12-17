@@ -51,42 +51,6 @@ I965_PERGEN_LIBS := \
 	libmesa_i965_gen10 \
 	libmesa_i965_gen11
 
-
-# ---------------------------------------
-# Build libmesa_intel_tiled_memcpy
-# ---------------------------------------
-
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := libmesa_intel_tiled_memcpy
-
-LOCAL_C_INCLUDES := $(I965_PERGEN_COMMON_INCLUDES)
-
-LOCAL_SRC_FILES := $(intel_tiled_memcpy_FILES)
-
-include $(MESA_COMMON_MK)
-include $(BUILD_STATIC_LIBRARY)
-
-# ---------------------------------------
-# Build libmesa_intel_tiled_memcpy_sse41
-# ---------------------------------------
-
-ifeq ($(ARCH_X86_HAVE_SSE4_1),true)
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := libmesa_intel_tiled_memcpy_sse41
-
-LOCAL_C_INCLUDES := $(I965_PERGEN_COMMON_INCLUDES)
-
-LOCAL_SRC_FILES := $(intel_tiled_memcpy_sse41_FILES)
-
-LOCAL_CFLAGS += \
-	-DUSE_SSE41 -msse4.1 -mstackrealign
-
-include $(MESA_COMMON_MK)
-include $(BUILD_STATIC_LIBRARY)
-endif
-
 # ---------------------------------------
 # Build libmesa_i965_gen4
 # ---------------------------------------
@@ -321,7 +285,6 @@ LOCAL_SRC_FILES := \
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	$(MESA_DRI_WHOLE_STATIC_LIBRARIES) \
 	$(I965_PERGEN_LIBS) \
-	libmesa_intel_tiled_memcpy \
 	libmesa_intel_dev \
 	libmesa_intel_common \
 	libmesa_isl \
@@ -331,8 +294,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 ifeq ($(ARCH_X86_HAVE_SSE4_1),true)
 LOCAL_CFLAGS += \
 	-DUSE_SSE41
-LOCAL_WHOLE_STATIC_LIBRARIES += \
-	libmesa_intel_tiled_memcpy_sse41
 endif
 
 LOCAL_SHARED_LIBRARIES := \

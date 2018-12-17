@@ -32,9 +32,9 @@
 #include <string.h>
 
 #include "util/macros.h"
+#include "main/macros.h"
 
-#include "brw_context.h"
-#include "intel_tiled_memcpy.h"
+#include "isl_priv.h"
 
 #if defined(__SSSE3__)
 #include <tmmintrin.h>
@@ -230,7 +230,7 @@ typedef void (*tile_copy_fn)(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                              char *dst, const char *src,
                              int32_t linear_pitch,
                              uint32_t swizzle_bit,
-                             mem_copy_fn_type copy_type);
+                             isl_memcpy_type copy_type);
 
 /**
  * Copy texture data from linear to X tile layout.
@@ -249,8 +249,8 @@ linear_to_xtiled(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                  char *dst, const char *src,
                  int32_t src_pitch,
                  uint32_t swizzle_bit,
-                 mem_copy_fn mem_copy,
-                 mem_copy_fn mem_copy_align16)
+                 isl_mem_copy_fn mem_copy,
+                 isl_mem_copy_fn mem_copy_align16)
 {
    /* The copy destination offset for each range copied is the sum of
     * an X offset 'x0' or 'xo' and a Y offset 'yo.'
@@ -291,8 +291,8 @@ linear_to_ytiled(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                  char *dst, const char *src,
                  int32_t src_pitch,
                  uint32_t swizzle_bit,
-                 mem_copy_fn mem_copy,
-                 mem_copy_fn mem_copy_align16)
+                 isl_mem_copy_fn mem_copy,
+                 isl_mem_copy_fn mem_copy_align16)
 {
    /* Y tiles consist of columns that are 'ytile_span' wide (and the same height
     * as the tile).  Thus the destination offset for (x,y) is the sum of:
@@ -413,8 +413,8 @@ xtiled_to_linear(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                  char *dst, const char *src,
                  int32_t dst_pitch,
                  uint32_t swizzle_bit,
-                 mem_copy_fn mem_copy,
-                 mem_copy_fn mem_copy_align16)
+                 isl_mem_copy_fn mem_copy,
+                 isl_mem_copy_fn mem_copy_align16)
 {
    /* The copy destination offset for each range copied is the sum of
     * an X offset 'x0' or 'xo' and a Y offset 'yo.'
@@ -455,8 +455,8 @@ ytiled_to_linear(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                  char *dst, const char *src,
                  int32_t dst_pitch,
                  uint32_t swizzle_bit,
-                 mem_copy_fn mem_copy,
-                 mem_copy_fn mem_copy_align16)
+                 isl_mem_copy_fn mem_copy,
+                 isl_mem_copy_fn mem_copy_align16)
 {
    /* Y tiles consist of columns that are 'ytile_span' wide (and the same height
     * as the tile).  Thus the destination offset for (x,y) is the sum of:
@@ -591,21 +591,21 @@ _memcpy_streaming_load(void *dest, const void *src, size_t count)
 }
 #endif
 
-static mem_copy_fn
-choose_copy_function(mem_copy_fn_type copy_type)
+static isl_mem_copy_fn
+choose_copy_function(isl_memcpy_type copy_type)
 {
    switch(copy_type) {
-   case INTEL_COPY_MEMCPY:
+   case ISL_MEMCPY:
       return memcpy;
-   case INTEL_COPY_RGBA8:
+   case ISL_MEMCPY_BGRA8:
       return rgba8_copy;
-   case INTEL_COPY_STREAMING_LOAD:
+   case ISL_MEMCPY_STREAMING_LOAD:
 #if defined(INLINE_SSE41)
       return _memcpy_streaming_load;
 #else
-      unreachable("INTEL_COPY_STREAMING_LOAD requires sse4.1");
+      unreachable("ISL_MEMCOPY_STREAMING_LOAD requires sse4.1");
 #endif
-   case INTEL_COPY_INVALID:
+   case ISL_MEMCPY_INVALID:
       unreachable("invalid copy_type");
    }
    unreachable("unhandled copy_type");
@@ -627,9 +627,9 @@ linear_to_xtiled_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                         char *dst, const char *src,
                         int32_t src_pitch,
                         uint32_t swizzle_bit,
-                        mem_copy_fn_type copy_type)
+                        isl_memcpy_type copy_type)
 {
-   mem_copy_fn mem_copy = choose_copy_function(copy_type);
+   isl_mem_copy_fn mem_copy = choose_copy_function(copy_type);
 
    if (x0 == 0 && x3 == xtile_width && y0 == 0 && y1 == xtile_height) {
       if (mem_copy == memcpy)
@@ -672,9 +672,9 @@ linear_to_ytiled_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                         char *dst, const char *src,
                         int32_t src_pitch,
                         uint32_t swizzle_bit,
-                        mem_copy_fn_type copy_type)
+                        isl_memcpy_type copy_type)
 {
-   mem_copy_fn mem_copy = choose_copy_function(copy_type);
+   isl_mem_copy_fn mem_copy = choose_copy_function(copy_type);
 
    if (x0 == 0 && x3 == ytile_width && y0 == 0 && y1 == ytile_height) {
       if (mem_copy == memcpy)
@@ -716,9 +716,9 @@ xtiled_to_linear_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                         char *dst, const char *src,
                         int32_t dst_pitch,
                         uint32_t swizzle_bit,
-                        mem_copy_fn_type copy_type)
+                        isl_memcpy_type copy_type)
 {
-   mem_copy_fn mem_copy = choose_copy_function(copy_type);
+   isl_mem_copy_fn mem_copy = choose_copy_function(copy_type);
 
    if (x0 == 0 && x3 == xtile_width && y0 == 0 && y1 == xtile_height) {
       if (mem_copy == memcpy)
@@ -772,9 +772,9 @@ ytiled_to_linear_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                         char *dst, const char *src,
                         int32_t dst_pitch,
                         uint32_t swizzle_bit,
-                        mem_copy_fn_type copy_type)
+                        isl_memcpy_type copy_type)
 {
-   mem_copy_fn mem_copy = choose_copy_function(copy_type);
+   isl_mem_copy_fn mem_copy = choose_copy_function(copy_type);
 
    if (x0 == 0 && x3 == ytile_width && y0 == 0 && y1 == ytile_height) {
       if (mem_copy == memcpy)
@@ -785,7 +785,7 @@ ytiled_to_linear_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                                  dst, src, dst_pitch, swizzle_bit,
                                  rgba8_copy, rgba8_copy_aligned_src);
 #if defined(INLINE_SSE41)
-      else if (copy_type == INTEL_COPY_STREAMING_LOAD)
+      else if (copy_type == ISL_MEMCPY_STREAMING_LOAD)
          return ytiled_to_linear(0, 0, ytile_width, ytile_width, 0, ytile_height,
                                  dst, src, dst_pitch, swizzle_bit,
                                  memcpy, _memcpy_streaming_load);
@@ -801,7 +801,7 @@ ytiled_to_linear_faster(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
                                  dst, src, dst_pitch, swizzle_bit,
                                  rgba8_copy, rgba8_copy_aligned_src);
 #if defined(INLINE_SSE41)
-      else if (copy_type == INTEL_COPY_STREAMING_LOAD)
+      else if (copy_type == ISL_MEMCPY_STREAMING_LOAD)
          return ytiled_to_linear(x0, x1, x2, x3, y0, y1,
                                  dst, src, dst_pitch, swizzle_bit,
                                  memcpy, _memcpy_streaming_load);
@@ -831,7 +831,7 @@ intel_linear_to_tiled(uint32_t xt1, uint32_t xt2,
                       uint32_t dst_pitch, int32_t src_pitch,
                       bool has_swizzling,
                       enum isl_tiling tiling,
-                      mem_copy_fn_type copy_type)
+                      isl_memcpy_type copy_type)
 {
    tile_copy_fn tile_copy;
    uint32_t xt0, xt3;
@@ -922,7 +922,7 @@ intel_tiled_to_linear(uint32_t xt1, uint32_t xt2,
                       int32_t dst_pitch, uint32_t src_pitch,
                       bool has_swizzling,
                       enum isl_tiling tiling,
-                      mem_copy_fn_type copy_type)
+                      isl_memcpy_type copy_type)
 {
    tile_copy_fn tile_copy;
    uint32_t xt0, xt3;
@@ -946,7 +946,7 @@ intel_tiled_to_linear(uint32_t xt1, uint32_t xt2,
    }
 
 #if defined(INLINE_SSE41)
-   if (copy_type == INTEL_COPY_STREAMING_LOAD) {
+   if (copy_type == ISL_MEMCPY_STREAMING_LOAD) {
       /* The hidden cacheline sized register used by movntdqa can apparently
        * give you stale data, so do an mfence to invalidate it.
        */

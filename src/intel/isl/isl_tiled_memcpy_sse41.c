@@ -29,31 +29,32 @@
  *    Frank Henigman <fjhenigman@google.com>
  */
 
-#ifndef INTEL_TILED_MEMCPY_SSE41_H
-#define INTEL_TILED_MEMCPY_SSE41_H
+#define INLINE_SSE41
 
-#include <stdint.h>
-#include "main/mtypes.h"
-#include "isl/isl.h"
-
-#include "intel_tiled_memcpy.h"
+#include "isl_tiled_memcpy.c"
 
 void
-linear_to_tiled_sse41(uint32_t xt1, uint32_t xt2,
-                      uint32_t yt1, uint32_t yt2,
-                      char *dst, const char *src,
-                      uint32_t dst_pitch, int32_t src_pitch,
-                      bool has_swizzling,
-                      enum isl_tiling tiling,
-                      mem_copy_fn_type copy_type);
+_isl_memcpy_linear_to_tiled_sse41(uint32_t xt1, uint32_t xt2,
+                                  uint32_t yt1, uint32_t yt2,
+                                  char *dst, const char *src,
+                                  uint32_t dst_pitch, int32_t src_pitch,
+                                  bool has_swizzling,
+                                  enum isl_tiling tiling,
+                                  isl_memcpy_type copy_type)
+{
+   intel_linear_to_tiled(xt1, xt2, yt1, yt2, dst, src, dst_pitch, src_pitch,
+                         has_swizzling, tiling, copy_type);
+}
 
 void
-tiled_to_linear_sse41(uint32_t xt1, uint32_t xt2,
-                      uint32_t yt1, uint32_t yt2,
-                      char *dst, const char *src,
-                      int32_t dst_pitch, uint32_t src_pitch,
-                      bool has_swizzling,
-                      enum isl_tiling tiling,
-                      mem_copy_fn_type copy_type);
-
-#endif /* INTEL_TILED_MEMCPY_SSE41_H */
+_isl_memcpy_tiled_to_linear_sse41(uint32_t xt1, uint32_t xt2,
+                                  uint32_t yt1, uint32_t yt2,
+                                  char *dst, const char *src,
+                                  int32_t dst_pitch, uint32_t src_pitch,
+                                  bool has_swizzling,
+                                  enum isl_tiling tiling,
+                                  isl_memcpy_type copy_type)
+{
+   intel_tiled_to_linear(xt1, xt2, yt1, yt2, dst, src, dst_pitch, src_pitch,
+                         has_swizzling, tiling, copy_type);
+}
