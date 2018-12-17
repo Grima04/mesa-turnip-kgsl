@@ -776,7 +776,8 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
         /* V3D still doesn't support sampling from raster textures, so we will
          * have to copy to a temporary tiled texture.
          */
-        if (!rsc->tiled) {
+        if (!rsc->tiled && !(prsc->target == PIPE_TEXTURE_1D ||
+                             prsc->target == PIPE_TEXTURE_1D_ARRAY)) {
                 struct v3d_resource *shadow_parent = rsc;
                 struct pipe_resource tmpl = {
                         .target = prsc->target,
