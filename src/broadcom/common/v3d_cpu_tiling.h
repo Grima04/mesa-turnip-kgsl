@@ -52,8 +52,8 @@ v3d_load_utile(void *cpu, uint32_t cpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu_stride)
                         : "q0", "q1", "q2", "q3");
-        } else {
-                assert(gpu_stride == 16);
+                return;
+        } else if (gpu_stride == 16) {
                 __asm__ volatile (
                         /* Load from the GPU in one shot, no interleave, to
                          * d0-d7.
@@ -74,6 +74,7 @@ v3d_load_utile(void *cpu, uint32_t cpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu + 8), "r"(cpu_stride)
                         : "q0", "q1", "q2", "q3");
+                return;
         }
 #elif defined (PIPE_ARCH_AARCH64)
         if (gpu_stride == 8) {
@@ -96,8 +97,8 @@ v3d_load_utile(void *cpu, uint32_t cpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu_stride)
                         : "v0", "v1", "v2", "v3");
-        } else {
-                assert(gpu_stride == 16);
+                return;
+        } else if (gpu_stride == 16) {
                 __asm__ volatile (
                         /* Load from the GPU in one shot, no interleave, to
                          * d0-d7.
@@ -118,13 +119,14 @@ v3d_load_utile(void *cpu, uint32_t cpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu + 8), "r"(cpu_stride)
                         : "v0", "v1", "v2", "v3");
+                return;
         }
-#else
+#endif
+
         for (uint32_t gpu_offset = 0; gpu_offset < 64; gpu_offset += gpu_stride) {
                 memcpy(cpu, gpu + gpu_offset, gpu_stride);
                 cpu += cpu_stride;
         }
-#endif
 }
 
 static inline void
@@ -152,8 +154,8 @@ v3d_store_utile(void *gpu, uint32_t gpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu_stride)
                         : "q0", "q1", "q2", "q3");
-        } else {
-                assert(gpu_stride == 16);
+                return;
+        } else if (gpu_stride == 16) {
                 __asm__ volatile (
                         /* Load each 16-byte line in 2 parts from the cpu-side
                          * destination.  (vld1 can only store one d-register
@@ -172,6 +174,7 @@ v3d_store_utile(void *gpu, uint32_t gpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu + 8), "r"(cpu_stride)
                         : "q0", "q1", "q2", "q3");
+                return;
         }
 #elif defined (PIPE_ARCH_AARCH64)
         if (gpu_stride == 8) {
@@ -192,8 +195,8 @@ v3d_store_utile(void *gpu, uint32_t gpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu_stride)
                         : "v0", "v1", "v2", "v3");
-        } else {
-                assert(gpu_stride == 16);
+                return;
+        } else if (gpu_stride == 16) {
                 __asm__ volatile (
                         /* Load each 16-byte line in 2 parts from the cpu-side
                          * destination.  (vld1 can only store one d-register
@@ -212,11 +215,12 @@ v3d_store_utile(void *gpu, uint32_t gpu_stride,
                         :
                         : "r"(gpu), "r"(cpu), "r"(cpu + 8), "r"(cpu_stride)
                         : "v0", "v1", "v2", "v3");
+                return;
         }
-#else
+#endif
+
         for (uint32_t gpu_offset = 0; gpu_offset < 64; gpu_offset += gpu_stride) {
                 memcpy(gpu + gpu_offset, cpu, gpu_stride);
                 cpu += cpu_stride;
         }
-#endif
 }
