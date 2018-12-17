@@ -4351,6 +4351,27 @@ static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 }
 
+void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
+			   struct radv_image *image)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	static const uint32_t fmask_clear_values[4] = {
+		0x00000000,
+		0x02020202,
+		0xE4E4E4E4,
+		0x76543210
+	};
+	uint32_t log2_samples = util_logbase2(image->info.samples);
+	uint32_t value = fmask_clear_values[log2_samples];
+
+	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
+			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+
+	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, value);
+
+	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+}
+
 void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 struct radv_image *image, uint32_t value)
 {
@@ -4384,6 +4405,10 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		radv_initialise_cmask(cmd_buffer, image, value);
+	}
+
+	if (radv_image_has_fmask(image)) {
+		radv_initialize_fmask(cmd_buffer, image);
 	}
 
 	if (radv_image_has_dcc(image)) {

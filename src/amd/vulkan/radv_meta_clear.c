@@ -1296,6 +1296,15 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
 }
 
 uint32_t
+radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
+		 struct radv_image *image, uint32_t value)
+{
+	return radv_fill_buffer(cmd_buffer, image->bo,
+				image->offset + image->fmask.offset,
+				image->fmask.size, value);
+}
+
+uint32_t
 radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	       struct radv_image *image, uint32_t value)
 {
