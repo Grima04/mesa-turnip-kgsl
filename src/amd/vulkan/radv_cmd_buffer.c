@@ -4466,6 +4466,13 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		    !radv_layout_can_fast_clear(image, dst_layout, dst_queue_mask)) {
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
+
+		if (radv_image_has_fmask(image)) {
+			if (src_layout != VK_IMAGE_LAYOUT_GENERAL &&
+			    dst_layout == VK_IMAGE_LAYOUT_GENERAL) {
+				radv_expand_fmask_image_inplace(cmd_buffer, image, range);
+			}
+		}
 	}
 }
 
