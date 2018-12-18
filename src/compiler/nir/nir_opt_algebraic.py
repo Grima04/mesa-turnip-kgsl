@@ -222,6 +222,9 @@ optimizations = [
    (('fge', ('fneg', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), 0.0), ('inot', ('ior', a, b))),
    (('fge', 0.0, ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('inot', ('ior', a, b))),
 
+   (('flt', a, ('fneg', a)), ('flt', a, 0.0)),
+   (('fge', a, ('fneg', a)), ('fge', a, 0.0)),
+
    # Some optimizations (below) convert things like (a < b || c < b) into
    # (min(a, c) < b).  However, this interfers with the previous optimizations
    # that try to remove comparisons with negated sums of b2f.  This just
