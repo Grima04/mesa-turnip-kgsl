@@ -42,7 +42,7 @@ static const struct {
 };
 
 /* NOTE: good way to test this is:  (for example)
- *  piglit/bin/texelFetch fs sampler2D 100x100x1-100x300x1
+ *  piglit/bin/texelFetch fs sampler3D 100x100x8
  */
 static uint32_t
 setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format format)
@@ -96,19 +96,20 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		blocks = util_format_get_nblocks(format, slice->pitch, aligned_height);
 
 		/* 1d array and 2d array textures must all have the same layer size
-		 * for each miplevel on a3xx. 3d textures can have different layer
+		 * for each miplevel on a6xx. 3d textures can have different layer
 		 * sizes for high levels, but the hw auto-sizer is buggy (or at least
 		 * different than what this code does), so as soon as the layer size
 		 * range gets into range, we stop reducing it.
 		 */
-		if (prsc->target == PIPE_TEXTURE_3D && (
-					level == 1 ||
-					(level > 1 && rsc->slices[level - 1].size0 > 0xf000)))
+		if (prsc->target == PIPE_TEXTURE_3D) {
+			if (level <= 1 || (rsc->slices[level - 1].size0 > 0xf000)) {
+				slice->size0 = align(blocks * rsc->cpp, alignment);
+			} else {
+				slice->size0 = rsc->slices[level - 1].size0;
+			}
+		} else {
 			slice->size0 = align(blocks * rsc->cpp, alignment);
-		else if (level == 0 || rsc->layer_first || alignment == 1)
-			slice->size0 = align(blocks * rsc->cpp, alignment);
-		else
-			slice->size0 = rsc->slices[level - 1].size0;
+		}
 
 #if 0
 		debug_printf("%s: %ux%ux%u@%u: %2u: stride=%4u, size=%7u, aligned_height=%3u\n",
