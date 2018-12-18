@@ -4067,3 +4067,164 @@ ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 
 	nir_lower_indirect_derefs(nir, indirect_mask);
 }
+
+static unsigned
+get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
+{
+	if (intrin->intrinsic != nir_intrinsic_store_deref)
+		return 0;
+
+	nir_variable *var =
+		nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[0]));
+
+	if (var->data.mode != nir_var_shader_out)
+		return 0;
+
+	unsigned writemask = 0;
+	const int location = var->data.location;
+	unsigned first_component = var->data.location_frac;
+	unsigned num_comps = intrin->dest.ssa.num_components;
+
+	if (location == VARYING_SLOT_TESS_LEVEL_INNER)
+		writemask = ((1 << num_comps + 1) - 1) << first_component;
+	else if (location == VARYING_SLOT_TESS_LEVEL_OUTER)
+		writemask = (((1 << num_comps + 1) - 1) << first_component) << 4;
+
+	return writemask;
+}
+
+static void
+scan_tess_ctrl(nir_cf_node *cf_node, unsigned *upper_block_tf_writemask,
+	       unsigned *cond_block_tf_writemask,
+	       bool *tessfactors_are_def_in_all_invocs, bool is_nested_cf)
+{
+	switch (cf_node->type) {
+	case nir_cf_node_block: {
+		nir_block *block = nir_cf_node_as_block(cf_node);
+		nir_foreach_instr(instr, block) {
+			if (instr->type != nir_instr_type_intrinsic)
+				continue;
+
+			nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+			if (intrin->intrinsic == nir_intrinsic_barrier) {
+
+				/* If we find a barrier in nested control flow put this in the
+				 * too hard basket. In GLSL this is not possible but it is in
+				 * SPIR-V.
+				 */
+				if (is_nested_cf) {
+					*tessfactors_are_def_in_all_invocs = false;
+					return;
+				}
+
+				/* The following case must be prevented:
+				 *    gl_TessLevelInner = ...;
+				 *    barrier();
+				 *    if (gl_InvocationID == 1)
+				 *       gl_TessLevelInner = ...;
+				 *
+				 * If you consider disjoint code segments separated by barriers, each
+				 * such segment that writes tess factor channels should write the same
+				 * channels in all codepaths within that segment.
+				 */
+				if (upper_block_tf_writemask || cond_block_tf_writemask) {
+					/* Accumulate the result: */
+					*tessfactors_are_def_in_all_invocs &=
+						!(*cond_block_tf_writemask & ~(*upper_block_tf_writemask));
+
+					/* Analyze the next code segment from scratch. */
+					*upper_block_tf_writemask = 0;
+					*cond_block_tf_writemask = 0;
+				}
+			} else
+				*upper_block_tf_writemask |= get_inst_tessfactor_writemask(intrin);
+		}
+
+		break;
+	}
+	case nir_cf_node_if: {
+		unsigned then_tessfactor_writemask = 0;
+		unsigned else_tessfactor_writemask = 0;
+
+		nir_if *if_stmt = nir_cf_node_as_if(cf_node);
+		foreach_list_typed(nir_cf_node, nested_node, node, &if_stmt->then_list) {
+			scan_tess_ctrl(nested_node, &then_tessfactor_writemask,
+				       cond_block_tf_writemask,
+				       tessfactors_are_def_in_all_invocs, true);
+		}
+
+		foreach_list_typed(nir_cf_node, nested_node, node, &if_stmt->else_list) {
+			scan_tess_ctrl(nested_node, &else_tessfactor_writemask,
+				       cond_block_tf_writemask,
+				       tessfactors_are_def_in_all_invocs, true);
+		}
+
+		if (then_tessfactor_writemask || else_tessfactor_writemask) {
+			/* If both statements write the same tess factor channels,
+			 * we can say that the upper block writes them too.
+			 */
+			*upper_block_tf_writemask |= then_tessfactor_writemask &
+				else_tessfactor_writemask;
+			*cond_block_tf_writemask |= then_tessfactor_writemask |
+				else_tessfactor_writemask;
+		}
+
+		break;
+	}
+	case nir_cf_node_loop: {
+		nir_loop *loop = nir_cf_node_as_loop(cf_node);
+		foreach_list_typed(nir_cf_node, nested_node, node, &loop->body) {
+			scan_tess_ctrl(nested_node, cond_block_tf_writemask,
+				       cond_block_tf_writemask,
+				       tessfactors_are_def_in_all_invocs, true);
+		}
+
+		break;
+	}
+	default:
+		unreachable("unknown cf node type");
+	}
+}
+
+bool
+ac_are_tessfactors_def_in_all_invocs(const struct nir_shader *nir)
+{
+	assert(nir->info.stage == MESA_SHADER_TESS_CTRL);
+
+	/* The pass works as follows:
+	 * If all codepaths write tess factors, we can say that all
+	 * invocations define tess factors.
+	 *
+	 * Each tess factor channel is tracked separately.
+	 */
+	unsigned main_block_tf_writemask = 0; /* if main block writes tess factors */
+	unsigned cond_block_tf_writemask = 0; /* if cond block writes tess factors */
+
+	/* Initial value = true. Here the pass will accumulate results from
+	 * multiple segments surrounded by barriers. If tess factors aren't
+	 * written at all, it's a shader bug and we don't care if this will be
+	 * true.
+	 */
+	bool tessfactors_are_def_in_all_invocs = true;
+
+	nir_foreach_function(function, nir) {
+		if (function->impl) {
+			foreach_list_typed(nir_cf_node, node, node, &function->impl->body) {
+				scan_tess_ctrl(node, &main_block_tf_writemask,
+					       &cond_block_tf_writemask,
+					       &tessfactors_are_def_in_all_invocs,
+					       false);
+			}
+		}
+	}
+
+	/* Accumulate the result for the last code segment separated by a
+	 * barrier.
+	 */
+	if (main_block_tf_writemask || cond_block_tf_writemask) {
+		tessfactors_are_def_in_all_invocs &=
+			!(cond_block_tf_writemask & ~main_block_tf_writemask);
+	}
+
+	return tessfactors_are_def_in_all_invocs;
+}
