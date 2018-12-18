@@ -73,7 +73,19 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 			pitchalign = tile_alignment[rsc->cpp].pitchalign;
 			aligned_height = align(aligned_height, heightalign);
 		} else {
-			pitchalign = 64;
+			if (prsc->target == PIPE_TEXTURE_3D) {
+				unsigned a;
+				if (width >= 64) {
+					a = util_next_power_of_two(MAX2(width, height));
+				} else {
+					a = 16;
+				}
+
+				pitchalign = align(a, 64);
+				aligned_height = align(aligned_height, a);
+			} else {
+				pitchalign = 64;
+			}
 
 			/* The blits used for mem<->gmem work at a granularity of
 			 * 32x32, which can cause faults due to over-fetch on the

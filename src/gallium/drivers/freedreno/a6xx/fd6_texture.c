@@ -325,12 +325,12 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		break;
 	case PIPE_TEXTURE_3D:
 		so->texconst3 =
+			A6XX_TEX_CONST_3_MIN_LAYERSZ(rsc->slices[prsc->last_level].size0) |
 			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->slices[lvl].size0);
 		so->texconst5 =
 			A6XX_TEX_CONST_5_DEPTH(u_minify(prsc->depth0, lvl));
 		break;
 	default:
-		so->texconst3 = 0x00000000;
 		break;
 	}
 

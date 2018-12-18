@@ -41,7 +41,7 @@
  * programmed with the start address of each mipmap level, and hw
  * derives the layer offset within the level.
  *
- * Texture Layout on a4xx:
+ * Texture Layout on a4xx+:
  *
  * For cubemap and 2d array, each layer contains all of it's mipmap
  * levels (layer_first layout).
