@@ -2249,7 +2249,7 @@ static void get_image_coords(struct ac_nir_context *ctx,
 	bool gfx9_1d = ctx->ac.chip_class >= GFX9 && dim == GLSL_SAMPLER_DIM_1D;
 	count = image_type_to_components_count(dim, is_array);
 
-	if (is_ms) {
+	if (is_ms && instr->intrinsic == nir_intrinsic_image_deref_load) {
 		LLVMValueRef fmask_load_address[3];
 		int chan;
 
