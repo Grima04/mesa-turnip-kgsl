@@ -252,6 +252,14 @@ class Variable(Value):
       assert m and m.group('name') is not None
 
       self.var_name = m.group('name')
+
+      # Prevent common cases where someone puts quotes around a literal
+      # constant.  If we want to support names that have numeric or
+      # punctuation characters, we can me the first assertion more flexible.
+      assert self.var_name.isalpha()
+      assert self.var_name is not 'True'
+      assert self.var_name is not 'False'
+
       self.is_constant = m.group('const') is not None
       self.cond = m.group('cond')
       self.required_type = m.group('type')
