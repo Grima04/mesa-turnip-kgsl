@@ -85,10 +85,6 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
 	OUT_RING(ring, info->index_size ? 0 : info->start);
 
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
-	OUT_RING(ring, is_a20x(ctx->screen) ? 0x00000002 : 0x0000003b);
-
 	OUT_PKT0(ring, REG_A2XX_TC_CNTL_STATUS, 1);
 	OUT_RING(ring, A2XX_TC_CNTL_STATUS_L2_INVALIDATE);
 
@@ -214,9 +210,11 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
 	OUT_RING(ring, 0);
 
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
-	OUT_RING(ring, 0x0000028f);
+	if (!is_a20x(ctx->screen)) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
+		OUT_RING(ring, 0x0000028f);
+	}
 
 	fd2_program_emit(ring, &ctx->solid_prog);
 
@@ -356,6 +354,12 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
 	OUT_RING(ring, 0x00000000);
+
+	if (!is_a20x(ctx->screen)) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
+		OUT_RING(ring, 0x0000003b);
+	}
 
 	ctx->dirty |= FD_DIRTY_ZSA |
 			FD_DIRTY_VIEWPORT |
