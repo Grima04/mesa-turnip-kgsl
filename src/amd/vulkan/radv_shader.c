@@ -245,6 +245,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				.storage_16bit = true,
 				.geometry_streams = true,
 				.transform_feedback = true,
+				.storage_image_ms = true,
 			},
 		};
 		entry_point = spirv_to_nir(spirv, module->size / 4,

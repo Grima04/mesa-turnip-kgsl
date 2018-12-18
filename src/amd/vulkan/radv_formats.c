@@ -1093,8 +1093,7 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	    info->type == VK_IMAGE_TYPE_2D &&
 	    (format_feature_flags & (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
 				     VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-	    !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
-	    !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+	    !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)) {
 		sampleCounts |= VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
 	}
 
