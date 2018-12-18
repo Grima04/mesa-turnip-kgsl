@@ -1395,7 +1395,7 @@ endif
 
 _sensors = get_option('lmsensors')
 if _sensors != 'false'
-  dep_lmsensors = cc.find_library('libsensors', required : _sensors == 'true')
+  dep_lmsensors = cc.find_library('sensors', required : _sensors == 'true')
   if dep_lmsensors.found()
     pre_args += '-DHAVE_LIBSENSORS=1'
   endif
