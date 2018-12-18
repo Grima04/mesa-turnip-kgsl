@@ -347,17 +347,6 @@ fd_blit_to_staging(struct fd_context *ctx, struct fd_transfer *trans)
 	do_blit(ctx, &blit, false);
 }
 
-static unsigned
-fd_resource_layer_offset(struct fd_resource *rsc,
-						 struct fd_resource_slice *slice,
-						 unsigned layer)
-{
-	if (rsc->layer_first)
-		return layer * rsc->layer_size;
-	else
-		return layer * slice->size0;
-}
-
 static void fd_resource_transfer_flush_region(struct pipe_context *pctx,
 		struct pipe_transfer *ptrans,
 		const struct pipe_box *box)
@@ -626,10 +615,10 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	}
 
 	buf = fd_bo_map(rsc->bo);
-	offset = slice->offset +
+	offset =
 		box->y / util_format_get_blockheight(format) * ptrans->stride +
 		box->x / util_format_get_blockwidth(format) * rsc->cpp +
-		fd_resource_layer_offset(rsc, slice, box->z);
+		fd_resource_offset(rsc, level, box->z);
 
 	if (usage & PIPE_TRANSFER_WRITE)
 		rsc->valid = true;
