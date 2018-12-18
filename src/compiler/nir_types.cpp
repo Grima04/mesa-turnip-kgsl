@@ -65,6 +65,13 @@ glsl_get_struct_field(const glsl_type *type, unsigned index)
    return type->fields.structure[index].type;
 }
 
+const int
+glsl_get_struct_field_offset(const struct glsl_type *type,
+                             unsigned index)
+{
+   return type->fields.structure[index].offset;
+}
+
 const glsl_type *
 glsl_get_function_return_type(const glsl_type *type)
 {
