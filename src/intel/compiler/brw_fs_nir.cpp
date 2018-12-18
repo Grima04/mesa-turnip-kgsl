@@ -888,6 +888,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        */
 
    case nir_op_f2f16:
+   case nir_op_i2f16:
+   case nir_op_u2f16:
+      assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
@@ -927,8 +930,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_u2u32:
    case nir_op_i2i16:
    case nir_op_u2u16:
-   case nir_op_i2f16:
-   case nir_op_u2f16:
    case nir_op_i2i8:
    case nir_op_u2u8:
       inst = bld.MOV(result, op[0]);
