@@ -407,6 +407,9 @@ optimizations = [
    (('ior', a, ('ieq', a, False)), True),
    (('ior', a, ('inot', a)), -1),
 
+   (('ine', ('ineg', ('b2i32', 'a@1')), ('ineg', ('b2i32', 'b@1'))), ('ine', a, b)),
+   (('b2i32', ('ine', 'a@1', 'b@1')), ('b2i32', ('ixor', a, b))),
+
    (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('ior', 'a@32', 'b@32'), 0)),
 
    # These patterns can result when (a < b || a < c) => (a < min(b, c))
