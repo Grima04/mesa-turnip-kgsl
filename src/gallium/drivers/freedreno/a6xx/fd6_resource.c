@@ -111,16 +111,15 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 			slice->size0 = align(blocks * rsc->cpp, alignment);
 		}
 
-#if 0
-		debug_printf("%s: %ux%ux%u@%u: %2u: stride=%4u, size=%7u, aligned_height=%3u\n",
-				util_format_name(prsc->format),
-				prsc->width0, prsc->height0, prsc->depth0, rsc->cpp,
-				level, slice->pitch * rsc->cpp,
-				slice->size0 * depth * layers_in_level,
-				aligned_height);
-#endif
-
 		size += slice->size0 * depth * layers_in_level;
+
+#if 0
+		debug_printf("%s: %ux%ux%u@%u:\t%2u: stride=%4u, size=%6u,%7u, aligned_height=%3u, blocks=%u\n",
+				util_format_name(prsc->format),
+				width, height, depth, rsc->cpp,
+				level, slice->pitch * rsc->cpp,
+				slice->size0, size, aligned_height, blocks);
+#endif
 
 		width = u_minify(width, 1);
 		height = u_minify(height, 1);
