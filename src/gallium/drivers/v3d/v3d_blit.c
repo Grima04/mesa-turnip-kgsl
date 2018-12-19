@@ -386,8 +386,8 @@ v3d_tfu(struct pipe_context *pctx,
         struct drm_v3d_submit_tfu tfu = {
                 .ios = (height << 16) | width,
                 .bo_handles = {
-                        src->bo->handle,
-                        src != dst ? dst->bo->handle : 0
+                        dst->bo->handle,
+                        src != dst ? src->bo->handle : 0
                 },
                 .in_sync = v3d->out_sync,
                 .out_sync = v3d->out_sync,
