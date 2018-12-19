@@ -195,6 +195,9 @@ void ra_reg(struct ir2_context *ctx, struct ir2_reg *reg, int force_idx,
 void ra_src_free(struct ir2_context *ctx, struct ir2_instr *instr);
 void ra_block_free(struct ir2_context *ctx, unsigned block);
 
+void cp_src(struct ir2_context *ctx);
+void cp_export(struct ir2_context *ctx);
+
 /* utils */
 enum {
 	IR2_SWIZZLE_Y = 1 << 0,

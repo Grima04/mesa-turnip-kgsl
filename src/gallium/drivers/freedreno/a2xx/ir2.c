@@ -425,8 +425,14 @@ ir2_compile(struct fd2_shader_stateobj *so, unsigned variant,
 	/* convert nir to internal representation */
 	ir2_nir_compile(&ctx, binning);
 
+	/* copy propagate srcs */
+	cp_src(&ctx);
+
 	/* get ref_counts and kill non-needed instructions */
 	ra_count_refs(&ctx);
+
+	/* remove movs used to write outputs */
+	cp_export(&ctx);
 
 	/* instruction order.. and vector->scalar conversions */
 	schedule_instrs(&ctx);
