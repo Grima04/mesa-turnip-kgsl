@@ -366,6 +366,50 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	/* TODO blob driver seems to toss in a CACHE_FLUSH after each DRAW_INDX.. */
 }
 
+static void
+fd2_emit_sysmem_prep(struct fd_batch *batch)
+{
+	struct fd_context *ctx = batch->ctx;
+	struct fd_ringbuffer *ring = batch->gmem;
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+	struct pipe_surface *psurf = pfb->cbufs[0];
+
+	if (!psurf)
+		return;
+
+	struct fd_resource *rsc = fd_resource(psurf->texture);
+	struct fd_resource_slice *slice =
+		fd_resource_slice(rsc, psurf->u.tex.level);
+	uint32_t offset =
+		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
+
+	assert((slice->pitch & 31) == 0);
+	assert((offset & 0xfff) == 0);
+
+	fd2_emit_restore(ctx, ring);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_SURFACE_INFO));
+	OUT_RING(ring, A2XX_RB_SURFACE_INFO_SURFACE_PITCH(slice->pitch));
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_INFO));
+	OUT_RELOCW(ring, rsc->bo, offset, A2XX_RB_COLOR_INFO_LINEAR |
+		A2XX_RB_COLOR_INFO_SWAP(fmt2swap(psurf->format)) |
+		A2XX_RB_COLOR_INFO_FORMAT(fd2_pipe2color(psurf->format)), 0);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_TL));
+	OUT_RING(ring, A2XX_PA_SC_SCREEN_SCISSOR_TL_WINDOW_OFFSET_DISABLE);
+	OUT_RING(ring, A2XX_PA_SC_SCREEN_SCISSOR_BR_X(pfb->width) |
+		A2XX_PA_SC_SCREEN_SCISSOR_BR_Y(pfb->height));
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_OFFSET));
+	OUT_RING(ring, A2XX_PA_SC_WINDOW_OFFSET_X(0) |
+			A2XX_PA_SC_WINDOW_OFFSET_Y(0));
+}
+
 /* before first tile */
 static void
 fd2_emit_tile_init(struct fd_batch *batch)
@@ -439,6 +483,7 @@ fd2_gmem_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
 
+	ctx->emit_sysmem_prep = fd2_emit_sysmem_prep;
 	ctx->emit_tile_init = fd2_emit_tile_init;
 	ctx->emit_tile_prep = fd2_emit_tile_prep;
 	ctx->emit_tile_mem2gmem = fd2_emit_tile_mem2gmem;
