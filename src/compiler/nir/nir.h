@@ -2933,6 +2933,16 @@ bool nir_lower_subgroups(nir_shader *shader,
 
 bool nir_lower_system_values(nir_shader *shader);
 
+enum PACKED nir_lower_tex_packing {
+   nir_lower_tex_packing_none = 0,
+   /* The sampler returns up to 2 32-bit words of half floats or 16-bit signed
+    * or unsigned ints based on the sampler type
+    */
+   nir_lower_tex_packing_16,
+   /* The sampler returns 1 32-bit word of 4x8 unorm */
+   nir_lower_tex_packing_8,
+};
+
 typedef struct nir_lower_tex_options {
    /**
     * bitmask of (1 << GLSL_SAMPLER_DIM_x) to control for which
@@ -3044,6 +3054,8 @@ typedef struct nir_lower_tex_options {
     * with nir_texop_txl.  This includes cube maps.
     */
    bool lower_txd_offset_clamp;
+
+   enum nir_lower_tex_packing lower_tex_packing[32];
 } nir_lower_tex_options;
 
 bool nir_lower_tex(nir_shader *shader,
