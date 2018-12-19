@@ -129,6 +129,12 @@ is_a20x(struct fd_screen *screen)
 	return (screen->gpu_id >= 200) && (screen->gpu_id < 210);
 }
 
+static inline boolean
+is_a2xx(struct fd_screen *screen)
+{
+	return (screen->gpu_id >= 200) && (screen->gpu_id < 300);
+}
+
 /* is a3xx patch revision 0? */
 /* TODO a306.0 probably doesn't need this.. be more clever?? */
 static inline boolean

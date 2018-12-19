@@ -75,11 +75,12 @@ emit_vertexbufs(struct fd_context *ctx)
 	// CONST(20,0) (or CONST(26,0) in soliv_vp)
 
 	fd2_emit_vertex_bufs(ctx->batch->draw, 0x78, bufs, vtx->num_elements);
+	fd2_emit_vertex_bufs(ctx->batch->binning, 0x78, bufs, vtx->num_elements);
 }
 
 static void
 draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
-		   struct fd_ringbuffer *ring, unsigned index_offset)
+		   struct fd_ringbuffer *ring, unsigned index_offset, bool binning)
 {
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
@@ -119,8 +120,22 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 		OUT_RING(ring, info->min_index);        /* VGT_MIN_VTX_INDX */
 	}
 
+	/* binning shader will take offset from C64 */
+	if (binning && is_a20x(ctx->screen)) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+		OUT_RING(ring, 0x00000180);
+		OUT_RING(ring, fui(ctx->batch->num_vertices));
+		OUT_RING(ring, fui(0.0f));
+		OUT_RING(ring, fui(0.0f));
+		OUT_RING(ring, fui(0.0f));
+	}
+
+	enum pc_di_vis_cull_mode vismode = USE_VISIBILITY;
+	if (binning || info->mode == PIPE_PRIM_POINTS)
+		vismode = IGNORE_VISIBILITY;
+
 	fd_draw_emit(ctx->batch, ring, ctx->primtypes[info->mode],
-				 IGNORE_VISIBILITY, info, index_offset);
+				 vismode, info, index_offset);
 
 	if (is_a20x(ctx->screen)) {
 		/* not sure why this is required, but it fixes some hangs */
@@ -145,6 +160,9 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 	if (ctx->dirty & FD_DIRTY_VTXBUF)
 		emit_vertexbufs(ctx);
 
+	if (fd_binning_enabled)
+		fd2_emit_state_binning(ctx, ctx->dirty);
+
 	fd2_emit_state(ctx, ctx->dirty);
 
 	/* a2xx can draw only 65535 vertices at once
@@ -166,17 +184,23 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 		struct pipe_draw_info info = *pinfo;
 		unsigned count = info.count;
 		unsigned step = step_tbl[info.mode];
+		unsigned num_vertices = ctx->batch->num_vertices;
 
 		if (!step)
 			return false;
 
 		for (; count + step > 32766; count -= step) {
 			info.count = MIN2(count, 32766);
-			draw_impl(ctx, &info, ctx->batch->draw, index_offset);
+			draw_impl(ctx, &info, ctx->batch->draw, index_offset, false);
+			draw_impl(ctx, &info, ctx->batch->binning, index_offset, true);
 			info.start += step;
+			ctx->batch->num_vertices += step;
 		}
+		/* changing this value is a hack, restore it */
+		ctx->batch->num_vertices = num_vertices;
 	} else {
-		draw_impl(ctx, pinfo, ctx->batch->draw, index_offset);
+		draw_impl(ctx, pinfo, ctx->batch->draw, index_offset, false);
+		draw_impl(ctx, pinfo, ctx->batch->binning, index_offset, true);
 	}
 
 	fd_context_all_clean(ctx);

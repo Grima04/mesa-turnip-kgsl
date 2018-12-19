@@ -145,6 +145,13 @@ struct fd_batch {
 	 */
 	struct util_dynarray rbrc_patches;
 
+	/* Keep track of pointer to start of MEM exports for a20x binning shaders
+	 *
+	 * this is so the end of the shader can be cut off at the right point
+	 * depending on the GMEM configuration
+	 */
+	struct util_dynarray shader_patches;
+
 	struct pipe_framebuffer_state framebuffer;
 
 	struct fd_submit *submit;

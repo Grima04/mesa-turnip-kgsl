@@ -186,6 +186,58 @@ fd2_emit_vertex_bufs(struct fd_ringbuffer *ring, uint32_t val,
 }
 
 void
+fd2_emit_state_binning(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
+{
+	struct fd2_blend_stateobj *blend = fd2_blend_stateobj(ctx->blend);
+	struct fd_ringbuffer *ring = ctx->batch->binning;
+
+	/* subset of fd2_emit_state needed for hw binning on a20x */
+
+	if (dirty & (FD_DIRTY_PROG | FD_DIRTY_VTXSTATE))
+		fd2_program_emit(ctx, ring, &ctx->prog);
+
+	if (dirty & (FD_DIRTY_PROG | FD_DIRTY_CONST)) {
+		emit_constants(ring,  VS_CONST_BASE * 4,
+				&ctx->constbuf[PIPE_SHADER_VERTEX],
+				(dirty & FD_DIRTY_PROG) ? ctx->prog.vp : NULL);
+	}
+
+	if (dirty & FD_DIRTY_VIEWPORT) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 9);
+		OUT_RING(ring, 0x00000184);
+		OUT_RING(ring, fui(ctx->viewport.translate[0]));
+		OUT_RING(ring, fui(ctx->viewport.translate[1]));
+		OUT_RING(ring, fui(ctx->viewport.translate[2]));
+		OUT_RING(ring, fui(0.0f));
+		OUT_RING(ring, fui(ctx->viewport.scale[0]));
+		OUT_RING(ring, fui(ctx->viewport.scale[1]));
+		OUT_RING(ring, fui(ctx->viewport.scale[2]));
+		OUT_RING(ring, fui(0.0f));
+	}
+
+	/* not sure why this is needed */
+	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_FRAMEBUFFER)) {
+		enum pipe_format format =
+			pipe_surface_format(ctx->batch->framebuffer.cbufs[0]);
+		bool has_alpha = util_format_has_alpha(format);
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_BLEND_CONTROL));
+		OUT_RING(ring, blend->rb_blendcontrol_alpha |
+			COND(has_alpha, blend->rb_blendcontrol_rgb) |
+			COND(!has_alpha, blend->rb_blendcontrol_no_alpha_rgb));
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_MASK));
+		OUT_RING(ring, blend->rb_colormask);
+	}
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SU_SC_MODE_CNTL));
+	OUT_RING(ring, A2XX_PA_SU_SC_MODE_CNTL_FACE_KILL_ENABLE);
+}
+
+void
 fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 {
 	struct fd2_blend_stateobj *blend = fd2_blend_stateobj(ctx->blend);

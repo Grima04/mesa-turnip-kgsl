@@ -65,7 +65,7 @@ delete_shader(struct fd2_shader_stateobj *so)
 
 static void
 emit(struct fd_ringbuffer *ring, gl_shader_stage type,
-	struct ir2_shader_info *info)
+	struct ir2_shader_info *info, struct util_dynarray *patches)
 {
 	unsigned i;
 
@@ -74,6 +74,10 @@ emit(struct fd_ringbuffer *ring, gl_shader_stage type,
 	OUT_PKT3(ring, CP_IM_LOAD_IMMEDIATE, 2 + info->sizedwords);
 	OUT_RING(ring, type == MESA_SHADER_FRAGMENT);
 	OUT_RING(ring, info->sizedwords);
+
+	if (patches)
+		util_dynarray_append(patches, uint32_t*, &ring->cur[info->mem_export_ptr]);
+
 	for (i = 0; i < info->sizedwords; i++)
 		OUT_RING(ring, info->dwords[i]);
 }
@@ -261,10 +265,11 @@ fd2_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			patch_fetches(ctx, fpi, NULL, &ctx->tex[PIPE_SHADER_FRAGMENT]);
 	}
 
-	emit(ring, MESA_SHADER_VERTEX, vpi);
+	emit(ring, MESA_SHADER_VERTEX, vpi,
+		binning ? &ctx->batch->shader_patches : NULL);
 
 	if (fp) {
-		emit(ring, MESA_SHADER_FRAGMENT, fpi);
+		emit(ring, MESA_SHADER_FRAGMENT, fpi, NULL);
 		fs_gprs = (fpi->max_reg < 0) ? 0x80 : fpi->max_reg;
 		vs_export = MAX2(1, f->inputs_count) - 1;
 	}
