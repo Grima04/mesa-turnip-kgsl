@@ -137,7 +137,7 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 		OUT_RING(ring, 0x0000028f);
 	}
 
-	fd2_program_emit(ring, &ctx->solid_prog);
+	fd2_program_emit(ctx, ring, &ctx->solid_prog);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_AA_MASK));
@@ -285,7 +285,7 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
 	OUT_RING(ring, 0);
 
-	fd2_program_emit(ring, &ctx->blit_prog[0]);
+	fd2_program_emit(ctx, ring, &ctx->blit_prog[0]);
 
 	OUT_PKT0(ring, REG_A2XX_TC_CNTL_STATUS, 1);
 	OUT_RING(ring, A2XX_TC_CNTL_STATUS_L2_INVALIDATE);
@@ -476,6 +476,16 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_OFFSET));
 	OUT_RING(ring, A2XX_PA_SC_WINDOW_OFFSET_X(-tile->xoff) |
 			A2XX_PA_SC_WINDOW_OFFSET_Y(-tile->yoff));
+
+	/* tile offset for gl_FragCoord on a20x (C64 in fragment shader) */
+	if (is_a20x(batch->ctx->screen)) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+		OUT_RING(ring, 0x00000580);
+		OUT_RING(ring, fui(tile->xoff));
+		OUT_RING(ring, fui(tile->yoff));
+		OUT_RING(ring, fui(0.0f));
+		OUT_RING(ring, fui(0.0f));
+	}
 }
 
 void

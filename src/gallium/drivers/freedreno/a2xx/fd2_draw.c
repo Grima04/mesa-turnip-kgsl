@@ -216,7 +216,7 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 		OUT_RING(ring, 0x0000028f);
 	}
 
-	fd2_program_emit(ring, &ctx->solid_prog);
+	fd2_program_emit(ctx, ring, &ctx->solid_prog);
 
 	OUT_PKT0(ring, REG_A2XX_TC_CNTL_STATUS, 1);
 	OUT_RING(ring, A2XX_TC_CNTL_STATUS_L2_INVALIDATE);

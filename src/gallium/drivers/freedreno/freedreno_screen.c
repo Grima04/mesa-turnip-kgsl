@@ -58,6 +58,7 @@
 
 
 #include "ir3/ir3_nir.h"
+#include "a2xx/ir2.h"
 
 /* XXX this should go away */
 #include "state_tracker/drm_driver.h"
@@ -496,16 +497,9 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
 		return 16;
 	case PIPE_SHADER_CAP_PREFERRED_IR:
-		if (is_ir3(screen))
-			return PIPE_SHADER_IR_NIR;
-		return PIPE_SHADER_IR_TGSI;
+		return PIPE_SHADER_IR_NIR;
 	case PIPE_SHADER_CAP_SUPPORTED_IRS:
-		if (is_ir3(screen)) {
-			return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
-		} else {
-			return (1 << PIPE_SHADER_IR_TGSI);
-		}
-		return 0;
+		return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 	case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
 		return 32;
 	case PIPE_SHADER_CAP_SCALAR_ISA:
@@ -636,7 +630,7 @@ fd_get_compiler_options(struct pipe_screen *pscreen,
 	if (is_ir3(screen))
 		return ir3_get_compiler_options(screen->compiler);
 
-	return NULL;
+	return ir2_get_compiler_options();
 }
 
 boolean

@@ -42,8 +42,6 @@ a2xx_SOURCES := \
 	a2xx/disasm-a2xx.c \
 	a2xx/fd2_blend.c \
 	a2xx/fd2_blend.h \
-	a2xx/fd2_compiler.c \
-	a2xx/fd2_compiler.h \
 	a2xx/fd2_context.c \
 	a2xx/fd2_context.h \
 	a2xx/fd2_draw.c \
@@ -67,8 +65,12 @@ a2xx_SOURCES := \
 	a2xx/fd2_zsa.c \
 	a2xx/fd2_zsa.h \
 	a2xx/instr-a2xx.h \
-	a2xx/ir-a2xx.c \
-	a2xx/ir-a2xx.h
+	a2xx/ir2.c \
+	a2xx/ir2.h \
+	a2xx/ir2_assemble.c \
+	a2xx/ir2_nir.c \
+	a2xx/ir2_private.h \
+	a2xx/ir2_ra.c
 
 a3xx_SOURCES := \
 	a3xx/fd3_blend.c \
