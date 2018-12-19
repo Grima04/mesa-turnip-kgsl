@@ -46,6 +46,8 @@ lower_alu_instr(nir_alu_instr *alu)
 {
    const nir_op_info *op_info = &nir_op_infos[alu->op];
 
+   assert(alu->dest.dest.is_ssa);
+
    switch (alu->op) {
    case nir_op_imov:
    case nir_op_vec2:

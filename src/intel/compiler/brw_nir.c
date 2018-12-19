@@ -832,6 +832,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_opt_dce);
    OPT(nir_opt_move_comparisons);
 
+   OPT(nir_lower_bool_to_int32);
+
    OPT(nir_lower_locals_to_regs);
 
    if (unlikely(debug_enabled)) {
@@ -845,8 +847,6 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
               _mesa_shader_stage_to_string(nir->info.stage));
       nir_print_shader(nir, stderr);
    }
-
-   OPT(nir_lower_bool_to_int32);
 
    OPT(nir_convert_from_ssa, true);
 
