@@ -556,8 +556,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 #endif
 
    /* Now that we successfull allocated everything, we can write the new
-    * values back into pool. */
-   pool->map = map + center_bo_offset;
+    * center_bo_offset back into pool. */
    pool->center_bo_offset = center_bo_offset;
 
    /* For block pool BOs we have to be a bit careful about where we place them
@@ -605,7 +604,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
-   return pool->map + offset;
+   return pool->bo.map + pool->center_bo_offset + offset;
 }
 
 /** Grows and re-centers the block pool.
@@ -751,7 +750,6 @@ anv_block_pool_alloc_new(struct anv_block_pool *pool,
    while (1) {
       state.u64 = __sync_fetch_and_add(&pool_state->u64, block_size);
       if (state.next + block_size <= state.end) {
-         assert(pool->map);
          return state.next;
       } else if (state.next <= state.end) {
          /* We allocated the first block outside the pool so we have to grow
@@ -1061,7 +1059,7 @@ anv_state_pool_alloc_back(struct anv_state_pool *pool)
    state = anv_state_table_get(&pool->table, idx);
    state->offset = offset;
    state->alloc_size = alloc_size;
-   state->map = pool->block_pool.map + state->offset;
+   state->map = anv_block_pool_map(&pool->block_pool, state->offset);
 
 done:
    VG(VALGRIND_MEMPOOL_ALLOC(pool, state->map, state->alloc_size));

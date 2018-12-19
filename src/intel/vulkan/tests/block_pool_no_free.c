@@ -47,13 +47,13 @@ static void *alloc_blocks(void *_job)
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
       block = anv_block_pool_alloc(job->pool, block_size);
-      data = job->pool->map + block;
+      data = anv_block_pool_map(job->pool, block);
       *data = block;
       assert(block >= 0);
       job->blocks[i] = block;
 
       block = anv_block_pool_alloc_back(job->pool, block_size);
-      data = job->pool->map + block;
+      data = anv_block_pool_map(job->pool, block);
       *data = block;
       assert(block < 0);
       job->back_blocks[i] = -block;
@@ -61,11 +61,11 @@ static void *alloc_blocks(void *_job)
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
       block = job->blocks[i];
-      data = job->pool->map + block;
+      data = anv_block_pool_map(job->pool, block);
       assert(*data == block);
 
       block = -job->back_blocks[i];
-      data = job->pool->map + block;
+      data = anv_block_pool_map(job->pool, block);
       assert(*data == block);
    }
 
