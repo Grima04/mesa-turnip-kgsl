@@ -120,7 +120,7 @@ v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
 
         V3D_WRITE(V3D_TFU_ICFG, args->icfg);
 
-        while ((V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET) != last_vtct) {
+        while ((V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET) == last_vtct) {
                 v3d_hw_tick(v3d);
         }
 
