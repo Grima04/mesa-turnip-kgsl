@@ -561,14 +561,8 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
 }
 
 static bool
-can_replace_varying(nir_intrinsic_instr *store_intr)
+can_replace_varying(nir_variable *out_var)
 {
-   nir_deref_instr *out_deref = nir_src_as_deref(store_intr->src[0]);
-   if (out_deref->mode != nir_var_shader_out)
-      return false;
-
-   nir_variable *out_var = nir_deref_instr_get_variable(out_deref);
-
    /* Skip types that require more complex handling.
     * TODO: add support for these types.
     */
@@ -581,7 +575,7 @@ can_replace_varying(nir_intrinsic_instr *store_intr)
    /* Limit this pass to scalars for now to keep things simple. Most varyings
     * should have been lowered to scalars at this point anyway.
     */
-   if (store_intr->num_components != 1)
+   if (!glsl_type_is_scalar(out_var->type))
       return false;
 
    if (out_var->data.location < VARYING_SLOT_VAR0 ||
@@ -592,12 +586,8 @@ can_replace_varying(nir_intrinsic_instr *store_intr)
 }
 
 static bool
-try_replace_constant_input(nir_shader *shader,
-                           nir_intrinsic_instr *store_intr)
+replace_constant_input(nir_shader *shader, nir_intrinsic_instr *store_intr)
 {
-   if (!can_replace_varying(store_intr))
-      return false;
-
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
    nir_builder b;
@@ -671,11 +661,17 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
       if (intr->intrinsic != nir_intrinsic_store_deref)
          continue;
 
-      if (intr->src[1].ssa->parent_instr->type != nir_instr_type_load_const) {
+      nir_deref_instr *out_deref = nir_src_as_deref(intr->src[0]);
+      if (out_deref->mode != nir_var_shader_out)
          continue;
-      }
 
-      progress |= try_replace_constant_input(consumer, intr);
+      nir_variable *out_var = nir_deref_instr_get_variable(out_deref);
+      if (!can_replace_varying(out_var))
+         continue;
+
+      if (intr->src[1].ssa->parent_instr->type == nir_instr_type_load_const) {
+         progress |= replace_constant_input(consumer, intr);
+      }
    }
 
    return progress;
