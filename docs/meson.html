@@ -110,14 +110,14 @@ to invoke non-default targets for ninja to update them:
 <dl>
 <dt><code>Environment Variables</code></dt>
 <dd><p>Meson supports the standard CC and CXX environment variables for
-changing the default compiler, and CFLAGS, CXXFLAGS, and LDFLAGS for setting
-options to the compiler and linker during the initial configuration.
+changing the default compiler. Meson does support CFLAGS, CXXFLAGS, etc. But
+their use is discouraged because of the many caveats in using them. Instead it
+is recomended to use <code>-D${lang}_args</code> and
+<code>-D${lang}_link_args</code> instead. Among the benefits of these options
+is that they are guaranteed to persist across rebuilds and reconfigurations.
 
-These arguments are consumed and stored by meson when it is initialized. To
-change these flags after the build is initialized (or when doing a first
-initialization), consider using <code>-D${lang}_args</code> and
-<code>-D${lang}_link_args</code> instead. Meson will never change compiler in a
-configured build directory.
+Meson does not allow changing compiler in a configured builddir, you will need
+to create a new build dir for a different compiler.
 </p>
 
 <pre>
