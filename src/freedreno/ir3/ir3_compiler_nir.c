@@ -1306,11 +1306,16 @@ get_num_components_for_glformat(GLuint format)
 	case GL_RGB10_A2:
 		return 4;
 
+	case GL_NONE:
+		/* Omitting the image format qualifier is allowed on desktop GL
+		 * profiles. Assuming 4 components is always safe.
+		 */
+		return 4;
+
 	default:
 		/* Return 4 components also for all other formats we don't know
-		 * about. This is always safe. Also, the format should have been
-		 * validated already by the higher level API. Drop a debug message
-		 * just in case.
+		 * about. The format should have been validated already by
+		 * the higher level API, but drop a debug message just in case.
 		 */
 		debug_printf("Unhandled GL format %u while emitting imageStore()\n",
 					 format);
