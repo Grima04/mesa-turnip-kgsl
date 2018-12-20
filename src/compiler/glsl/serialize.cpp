@@ -790,7 +790,11 @@ write_program_resource_data(struct blob *metadata,
       encode_type_to_blob(metadata, var->interface_type);
       encode_type_to_blob(metadata, var->outermost_struct_type);
 
-      blob_write_string(metadata, var->name);
+      if (var->name) {
+         blob_write_string(metadata, var->name);
+      } else {
+         blob_write_string(metadata, "");
+      }
 
       size_t s_var_size, s_var_ptrs;
       get_shader_var_and_pointer_sizes(&s_var_size, &s_var_ptrs, var);
