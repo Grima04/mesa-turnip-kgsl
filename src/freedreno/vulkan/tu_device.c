@@ -246,6 +246,7 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    switch(device->gpu_id) {
    case 530:
+   case 630:
       break;
    default:
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
