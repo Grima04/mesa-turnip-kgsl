@@ -38,6 +38,12 @@
 #include "broadcom/cle/v3d_packet_v33_pack.h"
 #include "mesa/state_tracker/st_glsl_types.h"
 
+static struct v3d_compiled_shader *
+v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key);
+static void
+v3d_setup_shared_precompile_key(struct v3d_uncompiled_shader *uncompiled,
+                                struct v3d_key *key);
+
 static gl_varying_slot
 v3d_get_slot_for_driver_location(nir_shader *s, uint32_t driver_location)
 {
@@ -175,6 +181,56 @@ uniforms_type_size(const struct glsl_type *type)
         return st_glsl_storage_type_size(type, false);
 }
 
+/**
+ * Precompiles a shader variant at shader state creation time if
+ * V3D_DEBUG=precompile is set.  Used for shader-db
+ * (https://gitlab.freedesktop.org/mesa/shader-db)
+ */
+static void
+v3d_shader_precompile(struct v3d_context *v3d,
+                      struct v3d_uncompiled_shader *so)
+{
+        nir_shader *s = so->base.ir.nir;
+
+        if (s->info.stage == MESA_SHADER_FRAGMENT) {
+                struct v3d_fs_key key = {
+                        .base.shader_state = so,
+                };
+
+                v3d_setup_shared_precompile_key(so, &key.base);
+                v3d_get_compiled_shader(v3d, &key.base);
+        } else {
+                struct v3d_vs_key key = {
+                        .base.shader_state = so,
+                };
+
+                v3d_setup_shared_precompile_key(so, &key.base);
+
+                /* Compile VS: All outputs */
+                for (int vary = 0; vary < 64; vary++) {
+                        if (!(s->info.outputs_written & (1ull << vary)))
+                                continue;
+                        for (int i = 0; i < 4; i++) {
+                                key.fs_inputs[key.num_fs_inputs++] =
+                                        v3d_slot_from_slot_and_component(vary,
+                                                                         i);
+                        }
+                }
+
+                v3d_get_compiled_shader(v3d, &key.base);
+
+                /* Compile VS bin shader: only position (XXX: include TF) */
+                key.is_coord = true;
+                key.num_fs_inputs = 0;
+                for (int i = 0; i < 4; i++) {
+                        key.fs_inputs[key.num_fs_inputs++] =
+                                v3d_slot_from_slot_and_component(VARYING_SLOT_POS,
+                                                                 i);
+                }
+                v3d_get_compiled_shader(v3d, &key.base);
+        }
+}
+
 static void *
 v3d_shader_state_create(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
@@ -244,6 +300,9 @@ v3d_shader_state_create(struct pipe_context *pctx,
                 nir_print_shader(s, stderr);
                 fprintf(stderr, "\n");
         }
+
+        if (V3D_DEBUG & V3D_DEBUG_PRECOMPILE)
+                v3d_shader_precompile(v3d, so);
 
         return so;
 }
@@ -396,6 +455,23 @@ v3d_setup_shared_key(struct v3d_context *v3d, struct v3d_key *key,
         }
 
         key->ucp_enables = v3d->rasterizer->base.clip_plane_enable;
+}
+
+static void
+v3d_setup_shared_precompile_key(struct v3d_uncompiled_shader *uncompiled,
+                                struct v3d_key *key)
+{
+        nir_shader *s = uncompiled->base.ir.nir;
+
+        for (int i = 0; i < s->info.num_textures; i++) {
+                key->tex[i].return_size = 16;
+                key->tex[i].return_channels = 2;
+
+                key->tex[i].swizzle[0] = PIPE_SWIZZLE_X;
+                key->tex[i].swizzle[1] = PIPE_SWIZZLE_Y;
+                key->tex[i].swizzle[2] = PIPE_SWIZZLE_Z;
+                key->tex[i].swizzle[3] = PIPE_SWIZZLE_W;
+        }
 }
 
 static void
