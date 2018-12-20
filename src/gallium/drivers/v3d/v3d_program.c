@@ -386,8 +386,6 @@ v3d_setup_shared_key(struct v3d_context *v3d, struct v3d_key *key,
                 }
 
                 if (sampler) {
-                        key->tex[i].compare_mode = sampler_state->compare_mode;
-                        key->tex[i].compare_func = sampler_state->compare_func;
                         key->tex[i].clamp_s =
                                 sampler_state->wrap_s == PIPE_TEX_WRAP_CLAMP;
                         key->tex[i].clamp_t =

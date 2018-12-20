@@ -313,8 +313,6 @@ struct v3d_key {
                 uint8_t swizzle[4];
                 uint8_t return_size;
                 uint8_t return_channels;
-                unsigned compare_mode:1;
-                unsigned compare_func:3;
                 bool clamp_s:1;
                 bool clamp_t:1;
                 bool clamp_r:1;
