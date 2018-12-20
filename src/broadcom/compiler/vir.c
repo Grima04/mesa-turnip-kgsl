@@ -630,6 +630,10 @@ v3d_lower_nir(struct v3d_compile *c)
                         tex_options.saturate_t |= 1 << i;
                 if (c->key->tex[i].clamp_r)
                         tex_options.saturate_r |= 1 << i;
+                if (c->key->tex[i].return_size == 16) {
+                        tex_options.lower_tex_packing[i] =
+                                nir_lower_tex_packing_16;
+                }
         }
 
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
