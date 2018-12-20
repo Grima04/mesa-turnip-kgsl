@@ -89,11 +89,11 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
     */
 
    /* TODO: Do we need 'offset' if we have 'iova'? */
-   uint64_t offset = tu_gem_info_offset(dev, bo->gem_handle);
+   uint64_t offset = tu_gem_info_offset(dev, gem_handle);
    if (!offset)
       goto fail_info;
 
-   uint64_t iova = tu_gem_info_iova(dev, bo->gem_handle);
+   uint64_t iova = tu_gem_info_iova(dev, gem_handle);
    if (!iova)
       goto fail_info;
 
@@ -1312,7 +1312,7 @@ tu_alloc_memory(struct tu_device *device,
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize);
-   if (!result) {
+   if (result != VK_SUCCESS) {
       vk_free2(&device->alloc, pAllocator, mem);
       return result;
    }

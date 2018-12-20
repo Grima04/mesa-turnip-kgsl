@@ -30,17 +30,7 @@
 
 #include "tu_private.h"
 
-static int
-tu_ioctl(int fd, unsigned long request, void *arg)
-{
-   int ret;
-
-   do {
-      ret = ioctl(fd, request, arg);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-
-   return ret;
-}
+#include "xf86drm.h"
 
 /**
  * Return gem handle on success. Return 0 on failure.
@@ -54,7 +44,8 @@ tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags)
    };
 
 
-   int ret = tu_ioctl(dev->physical_device->local_fd, DRM_MSM_GEM_NEW, &req);
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd, DRM_MSM_GEM_NEW,
+                                 &req, sizeof(req));
    if (ret)
       return 0;
 
@@ -68,7 +59,7 @@ tu_gem_close(struct tu_device *dev, uint32_t gem_handle)
       .handle = gem_handle,
    };
 
-   tu_ioctl(dev->physical_device->local_fd, DRM_IOCTL_GEM_CLOSE, &req);
+   drmIoctl(dev->physical_device->local_fd, DRM_IOCTL_GEM_CLOSE, &req);
 }
 
 /** Return UINT64_MAX on error. */
@@ -80,7 +71,8 @@ tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t flags)
       .flags = flags,
    };
 
-   int ret = tu_ioctl(dev->physical_device->local_fd, DRM_MSM_GEM_INFO, &req);
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd, DRM_MSM_GEM_INFO,
+                                 &req, sizeof(req));
    if (ret == -1)
       return UINT64_MAX;
 
