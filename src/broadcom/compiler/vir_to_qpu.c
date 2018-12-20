@@ -366,6 +366,9 @@ reads_uniform(const struct v3d_device_info *devinfo, uint64_t instruction)
                 return true;
         }
 
+        if (qpu.type == V3D_QPU_INSTR_TYPE_BRANCH)
+                return true;
+
         if (qpu.type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (qpu.alu.add.magic_write &&
                     v3d_qpu_magic_waddr_loads_unif(qpu.alu.add.waddr)) {
