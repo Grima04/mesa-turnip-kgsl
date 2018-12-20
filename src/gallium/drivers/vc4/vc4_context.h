@@ -452,6 +452,8 @@ struct vc4_depth_stencil_alpha_state {
 #define perf_debug(...) do {                            \
         if (unlikely(vc4_debug & VC4_DEBUG_PERF))       \
                 fprintf(stderr, __VA_ARGS__);           \
+        if (unlikely(vc4->debug.debug_message))         \
+                pipe_debug_message(&vc4->debug, PERF_INFO, __VA_ARGS__);    \
 } while (0)
 
 static inline struct vc4_context *
