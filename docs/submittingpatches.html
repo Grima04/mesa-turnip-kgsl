@@ -303,6 +303,17 @@ into commits in a MR before it is merged.
 </p>
 
 <p>
+When providing a Reviewed-by, Acked-by, or Tested-by tag in a gitlab MR,
+enclose the tag in backticks:
+</p>
+<pre>
+  `Reviewed-by: Joe Hacker &lt;jhacker@example.com&gt;`</pre>
+<p>
+This is the markdown format for literal, and will prevent gitlab from hiding
+the &lt; and &gt; symbols.
+</p>
+
+<p>
 Review by non-experts is encouraged.  Understanding how someone else
 goes about solving a problem is a great way to learn your way around
 the project.  The submitter is expected to evaluate whether they have
