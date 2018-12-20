@@ -781,6 +781,19 @@ struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
                                        unsigned per_thread_scratch,
                                        gl_shader_stage stage);
 
+/* iris_disk_cache.c */
+
+void iris_disk_cache_store(struct disk_cache *cache,
+                           const struct iris_uncompiled_shader *ish,
+                           const struct iris_compiled_shader *shader,
+                           const void *prog_key,
+                           uint32_t prog_key_size);
+struct iris_compiled_shader *
+iris_disk_cache_retrieve(struct iris_context *ice,
+                         const struct iris_uncompiled_shader *ish,
+                         const void *prog_key,
+                         uint32_t prog_key_size);
+
 /* iris_program_cache.c */
 
 void iris_init_program_cache(struct iris_context *ice);

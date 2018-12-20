@@ -39,6 +39,186 @@
 
 #include "iris_context.h"
 
+static bool debug = false;
+
+/**
+ * Compute a disk cache key for the given uncompiled shader and NOS key.
+ */
+static void
+iris_disk_cache_compute_key(struct disk_cache *cache,
+                            const struct iris_uncompiled_shader *ish,
+                            const void *orig_prog_key,
+                            uint32_t prog_key_size,
+                            cache_key cache_key)
+{
+   gl_shader_stage stage = ish->nir->info.stage;
+
+   /* Create a copy of the program key with program_string_id zeroed out.
+    * It's essentially random data which we don't want to include in our
+    * hashing and comparisons.  We'll set a proper value on a cache hit.
+    */
+   union brw_any_prog_key prog_key;
+   memcpy(&prog_key, orig_prog_key, prog_key_size);
+   brw_prog_key_set_id(&prog_key, stage, 0);
+
+   uint32_t data_size = prog_key_size + ish->ir_cache_binary_size;
+
+   void *data = malloc(data_size);
+   memcpy(data, &prog_key, prog_key_size);
+   memcpy(data + prog_key_size, ish->ir_cache_binary,
+          ish->ir_cache_binary_size);
+
+   disk_cache_compute_key(cache, data, data_size, cache_key);
+
+   free(data);
+}
+
+/**
+ * Store the given compiled shader in the disk cache.
+ *
+ * This should only be called on newly compiled shaders.  No checking is
+ * done to prevent repeated stores of the same shader.
+ */
+void
+iris_disk_cache_store(struct disk_cache *cache,
+                      const struct iris_uncompiled_shader *ish,
+                      const struct iris_compiled_shader *shader,
+                      const void *prog_key,
+                      uint32_t prog_key_size)
+{
+#ifdef ENABLE_SHADER_CACHE
+   if (!cache)
+      return;
+
+   gl_shader_stage stage = ish->nir->info.stage;
+   const struct brw_stage_prog_data *prog_data = shader->prog_data;
+
+   cache_key cache_key;
+   iris_disk_cache_compute_key(cache, ish, prog_key, prog_key_size, cache_key);
+
+   if (debug) {
+      char sha1[41];
+      _mesa_sha1_format(sha1, cache_key);
+      fprintf(stderr, "[mesa disk cache] storing %s\n", sha1);
+   }
+
+   struct blob blob;
+   blob_init(&blob);
+
+   /* We write the following data to the cache blob:
+    *
+    * 1. Prog data (must come first because it has the assembly size)
+    * 2. Assembly code
+    * 3. Number of entries in the system value array
+    * 4. System value array
+    * 5. Legacy param array (only used for compute workgroup ID)
+    */
+   blob_write_bytes(&blob, shader->prog_data, brw_prog_data_size(stage));
+   blob_write_bytes(&blob, shader->map, shader->prog_data->program_size);
+   blob_write_bytes(&blob, &shader->num_system_values, sizeof(unsigned));
+   blob_write_bytes(&blob, shader->system_values,
+                    shader->num_system_values * sizeof(enum brw_param_builtin));
+   blob_write_bytes(&blob, prog_data->param,
+                    prog_data->nr_params * sizeof(uint32_t));
+
+   disk_cache_put(cache, cache_key, blob.data, blob.size, NULL);
+   blob_finish(&blob);
+#endif
+}
+
+/**
+ * Search for a compiled shader in the disk cache.  If found, upload it
+ * to the in-memory program cache so we can use it.
+ */
+struct iris_compiled_shader *
+iris_disk_cache_retrieve(struct iris_context *ice,
+                         const struct iris_uncompiled_shader *ish,
+                         const void *prog_key,
+                         uint32_t key_size)
+{
+#ifdef ENABLE_SHADER_CACHE
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct disk_cache *cache = screen->disk_cache;
+   gl_shader_stage stage = ish->nir->info.stage;
+
+   if (!cache)
+      return NULL;
+
+   cache_key cache_key;
+   iris_disk_cache_compute_key(cache, ish, prog_key, key_size, cache_key);
+
+   if (debug) {
+      char sha1[41];
+      _mesa_sha1_format(sha1, cache_key);
+      fprintf(stderr, "[mesa disk cache] retrieving %s: ", sha1);
+   }
+
+   size_t size;
+   void *buffer = disk_cache_get(screen->disk_cache, cache_key, &size);
+
+   if (debug)
+      fprintf(stderr, "%s\n", buffer ? "found" : "missing");
+
+   if (!buffer)
+      return NULL;
+
+   const uint32_t prog_data_size = brw_prog_data_size(stage);
+
+   struct brw_stage_prog_data *prog_data = ralloc_size(NULL, prog_data_size);
+   const void *assembly;
+   uint32_t num_system_values;
+   uint32_t *system_values = NULL;
+   uint32_t *so_decls = NULL;
+
+   struct blob_reader blob;
+   blob_reader_init(&blob, buffer, size);
+   blob_copy_bytes(&blob, prog_data, prog_data_size);
+   assembly = blob_read_bytes(&blob, prog_data->program_size);
+   num_system_values = blob_read_uint32(&blob);
+   if (num_system_values) {
+      system_values =
+         ralloc_array(NULL, enum brw_param_builtin, num_system_values);
+      blob_copy_bytes(&blob, system_values,
+                      num_system_values * sizeof(enum brw_param_builtin));
+   }
+
+   prog_data->param = NULL;
+   prog_data->pull_param = NULL;
+   assert(prog_data->nr_pull_params == 0);
+
+   if (prog_data->nr_params) {
+      prog_data->param = ralloc_array(NULL, uint32_t, prog_data->nr_params);
+      blob_copy_bytes(&blob, prog_data->param,
+                      prog_data->nr_params * sizeof(uint32_t));
+   }
+
+   if (stage == MESA_SHADER_VERTEX ||
+       stage == MESA_SHADER_TESS_EVAL ||
+       stage == MESA_SHADER_GEOMETRY) {
+      struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
+      so_decls = ice->vtbl.create_so_decl_list(&ish->stream_output,
+                                               &vue_prog_data->vue_map);
+   }
+
+   /* System values and uniforms are stored in constant buffer 0, the
+    * user-facing UBOs are indexed by one.  So if any constant buffer is
+    * needed, the constant buffer 0 will be needed, so account for it.
+    */
+   unsigned num_cbufs = ish->nir->info.num_ubos;
+   if (num_cbufs || num_system_values || ish->nir->num_uniforms)
+      num_cbufs++;
+
+   /* Upload our newly read shader to the in-memory program cache and
+    * return it to the caller.
+    */
+   return iris_upload_shader(ice, stage, key_size, prog_key, assembly,
+                             prog_data, so_decls, system_values,
+                             num_system_values, num_cbufs);
+#else
+   return NULL;
+#endif
+}
+
 /**
  * Initialize the on-disk shader cache.
  */
