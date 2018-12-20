@@ -2315,6 +2315,17 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	range.baseArrayLayer = view->base_layer;
 	range.layerCount = cmd_buffer->state.framebuffer->layers;
 
+	if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask) {
+		/* If the current subpass uses multiview, the driver might have
+		 * performed a fast color/depth clear to the whole image
+		 * (including all layers). To make sure the driver will
+		 * decompress the image correctly (if needed), we have to
+		 * account for the "real" number of layers. If the view mask is
+		 * sparse, this will decompress more layers than needed.
+		 */
+		range.layerCount = util_last_bit(cmd_buffer->state.subpass->view_mask);
+	}
+
 	radv_handle_image_transition(cmd_buffer,
 				     view->image,
 				     cmd_buffer->state.attachments[idx].current_layout,
