@@ -457,6 +457,50 @@ color_expand_565_to_8888(struct gallivm_state *gallivm,
 }
 
 
+/*
+ * Average two byte vectors. (Will always round up.)
+ */
+static LLVMValueRef
+lp_build_pavgb(struct lp_build_context *bld8,
+               LLVMValueRef v0,
+               LLVMValueRef v1)
+{
+   struct gallivm_state *gallivm = bld8->gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   assert(bld8->type.width == 8);
+   assert(bld8->type.length == 16 || bld8->type.length == 32);
+   if (HAVE_LLVM < 0x0600) {
+      LLVMValueRef intrargs[2];
+      char *intr_name = bld8->type.length == 32 ? "llvm.x86.avx2.pavg.b" :
+                                                  "llvm.x86.sse2.pavg.b";
+      intrargs[0] = v0;
+      intrargs[1] = v1;
+      return lp_build_intrinsic(builder, intr_name,
+                                bld8->vec_type, intrargs, 2, 0);
+   } else {
+      /*
+       * Must match llvm's autoupgrade of pavg.b intrinsic to be useful.
+       * You better hope the backend code manages to detect the pattern, and
+       * the pattern doesn't change there...
+       */
+      struct lp_type type_ext = bld8->type;
+      LLVMTypeRef vec_type_ext;
+      LLVMValueRef res;
+      LLVMValueRef ext_one;
+      type_ext.width = 16;
+      vec_type_ext = lp_build_vec_type(gallivm, type_ext);
+      ext_one = lp_build_const_vec(gallivm, type_ext, 1);
+
+      v0 = LLVMBuildZExt(builder, v0, vec_type_ext, "");
+      v1 = LLVMBuildZExt(builder, v1, vec_type_ext, "");
+      res = LLVMBuildAdd(builder, v0, v1, "");
+      res = LLVMBuildAdd(builder, res, ext_one, "");
+      res = LLVMBuildLShr(builder, res, ext_one, "");
+      res = LLVMBuildTrunc(builder, res, bld8->vec_type, "");
+      return res;
+   }
+}
+
 /**
  * Calculate 1/3(v1-v0) + v0
  * and 2*1/3(v1-v0) + v0
@@ -602,13 +646,7 @@ s3tc_dxt1_full_to_rgba_aos(struct gallivm_state *gallivm,
        */
       if ((util_cpu_caps.has_sse2 && n == 4) ||
           (util_cpu_caps.has_avx2 && n == 8)) {
-         LLVMValueRef intrargs[2];
-         char *intr_name = n == 8 ? "llvm.x86.avx2.pavg.b" :
-                                    "llvm.x86.sse2.pavg.b";
-         intrargs[0] = colors0;
-         intrargs[1] = colors1;
-         color2_2 = lp_build_intrinsic(builder, intr_name,
-                                       bld8.vec_type, intrargs, 2, 0);
+         color2_2 = lp_build_pavgb(&bld8, colors0, colors1);
          color2_2 = LLVMBuildBitCast(builder, color2_2, bld32.vec_type, "");
       }
       else {
@@ -1278,8 +1316,7 @@ s3tc_decode_block_dxt1(struct gallivm_state *gallivm,
          /* same interleave as for lerp23 - correct result in 2nd element */
          intrargs[1] = lp_build_interleave2(gallivm, type32, color01, color01, 0);
          intrargs[1] = LLVMBuildBitCast(builder, intrargs[1], bld8.vec_type, "");
-         color2_2 = lp_build_intrinsic(builder, "llvm.x86.sse2.pavg.b",
-                                       bld8.vec_type, intrargs, 2, 0);
+         color2_2 = lp_build_pavgb(&bld8, intrargs[0], intrargs[1]);
       }
       else {
          LLVMValueRef v01, v0, v1, vhalf;
