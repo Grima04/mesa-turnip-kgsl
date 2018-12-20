@@ -3696,6 +3696,10 @@ apply_layout_qualifier_to_variable(const struct ast_type_qualifier *qual,
                                 "cannot be applied to a matrix, a structure, "
                                 "a block, or an array containing any of "
                                 "these.");
+            } else if (components > 4 && type->is_64bit()) {
+               _mesa_glsl_error(loc, state, "component layout qualifier "
+                                "cannot be applied to dvec%u.",
+                                components / 2);
             } else if (qual_component != 0 &&
                 (qual_component + components - 1) > 3) {
                _mesa_glsl_error(loc, state, "component overflow (%u > 3)",
