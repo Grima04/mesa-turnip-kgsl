@@ -54,6 +54,7 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 #include "util/u_mm.h"
+#include "drm-uapi/i915_drm.h"
 #include "v3d_simulator_wrapper.h"
 
 #include "v3d_screen.h"
@@ -93,6 +94,9 @@ struct v3d_simulator_file {
 
         struct mem_block *gmp;
         void *gmp_vaddr;
+
+        /** Actual GEM fd is i915, so we should use their create ioctl. */
+        bool is_i915;
 };
 
 /** Wrapper for drm_v3d_bo tracking the simulator-specific state. */
@@ -102,6 +106,7 @@ struct v3d_simulator_bo {
         /** Area for this BO within sim_state->mem */
         struct mem_block *block;
         uint32_t size;
+        uint64_t mmap_offset;
         void *sim_vaddr;
         void *gem_vaddr;
 
@@ -182,21 +187,41 @@ v3d_create_simulator_bo(int fd, int handle, unsigned size)
 
         *(uint32_t *)(sim_bo->sim_vaddr + sim_bo->size) = BO_SENTINEL;
 
-        /* Map the GEM buffer for copy in/out to the simulator. */
-        struct drm_mode_map_dumb map = {
-                .handle = handle,
-        };
-        int ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &map);
+        /* Map the GEM buffer for copy in/out to the simulator.  i915 blocks
+         * dumb mmap on render nodes, so use their ioctl directly if we're on
+         * one.
+         */
+        int ret;
+        if (file->is_i915) {
+                struct drm_i915_gem_mmap_gtt map = {
+                        .handle = handle,
+                };
+
+                /* We could potentially use non-gtt (cached) for LLC systems,
+                 * but the copy-in/out won't be the limiting factor on
+                 * simulation anyway.
+                 */
+                ret = drmIoctl(fd, DRM_IOCTL_I915_GEM_MMAP_GTT, &map);
+                sim_bo->mmap_offset = map.offset;
+        } else {
+                struct drm_mode_map_dumb map = {
+                        .handle = handle,
+                };
+
+                ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &map);
+                sim_bo->mmap_offset = map.offset;
+        }
         if (ret) {
                 fprintf(stderr, "Failed to get MMAP offset: %d\n", ret);
                 abort();
         }
+
         sim_bo->gem_vaddr = mmap(NULL, sim_bo->size,
                                  PROT_READ | PROT_WRITE, MAP_SHARED,
-                                 fd, map.offset);
+                                 fd, sim_bo->mmap_offset);
         if (sim_bo->gem_vaddr == MAP_FAILED) {
                 fprintf(stderr, "mmap of bo %d (offset 0x%016llx, size %d) failed\n",
-                        handle, (long long)map.offset, sim_bo->size);
+                        handle, (long long)sim_bo->mmap_offset, sim_bo->size);
                 abort();
         }
 
@@ -338,22 +363,38 @@ void v3d_simulator_open_from_handle(int fd, int handle, uint32_t size)
 static int
 v3d_simulator_create_bo_ioctl(int fd, struct drm_v3d_create_bo *args)
 {
+        struct v3d_simulator_file *file = v3d_get_simulator_file_for_fd(fd);
+
+        /* i915 bans dumb create on render nodes, so we have to use their
+         * native ioctl in case we're on a render node.
+         */
         int ret;
-        struct drm_mode_create_dumb create = {
-                .width = 128,
-                .bpp = 8,
-                .height = (args->size + 127) / 128,
-        };
+        if (file->is_i915) {
+                struct drm_i915_gem_create create = {
+                        .size = args->size,
+                };
+                ret = drmIoctl(fd, DRM_IOCTL_I915_GEM_CREATE, &create);
 
-        ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
-        assert(create.size >= args->size);
+                args->handle = create.handle;
+        } else {
+                struct drm_mode_create_dumb create = {
+                        .width = 128,
+                        .bpp = 8,
+                        .height = (args->size + 127) / 128,
+                };
 
-        args->handle = create.handle;
+                ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
+                assert(ret != 0 || create.size >= args->size);
 
-        struct v3d_simulator_bo *sim_bo =
-                v3d_create_simulator_bo(fd, create.handle, args->size);
+                args->handle = create.handle;
+        }
 
-        args->offset = sim_bo->block->ofs;
+        if (ret == 0) {
+                struct v3d_simulator_bo *sim_bo =
+                        v3d_create_simulator_bo(fd, args->handle, args->size);
+
+                args->offset = sim_bo->block->ofs;
+        }
 
         return ret;
 }
@@ -361,20 +402,19 @@ v3d_simulator_create_bo_ioctl(int fd, struct drm_v3d_create_bo *args)
 /**
  * Simulated ioctl(fd, DRM_VC5_MMAP_BO) implementation.
  *
- * We just pass this straight through to dumb mmap.
+ * We've already grabbed the mmap offset when we created the sim bo, so just
+ * return it.
  */
 static int
 v3d_simulator_mmap_bo_ioctl(int fd, struct drm_v3d_mmap_bo *args)
 {
-        int ret;
-        struct drm_mode_map_dumb map = {
-                .handle = args->handle,
-        };
+        struct v3d_simulator_file *file = v3d_get_simulator_file_for_fd(fd);
+        struct v3d_simulator_bo *sim_bo = v3d_get_simulator_bo(file,
+                                                               args->handle);
 
-        ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &map);
-        args->offset = map.offset;
+        args->offset = sim_bo->mmap_offset;
 
-        return ret;
+        return 0;
 }
 
 static int
@@ -521,6 +561,11 @@ v3d_simulator_init(struct v3d_screen *screen)
 
         screen->sim_file = rzalloc(screen, struct v3d_simulator_file);
         struct v3d_simulator_file *sim_file = screen->sim_file;
+
+        drmVersionPtr version = drmGetVersion(screen->fd);
+        if (version && strncmp(version->name, "i915", version->name_len) == 0)
+                sim_file->is_i915 = true;
+        drmFreeVersion(version);
 
         screen->sim_file->bo_map =
                 _mesa_hash_table_create(screen->sim_file,
