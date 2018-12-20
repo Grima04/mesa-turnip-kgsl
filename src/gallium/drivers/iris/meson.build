@@ -45,6 +45,7 @@ files_libiris = files(
   'iris_resource.h',
   'iris_screen.c',
   'iris_screen.h',
+  'iris_disk_cache.c',
 )
 
 iris_driinfo_h = custom_target(

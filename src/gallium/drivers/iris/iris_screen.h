@@ -25,6 +25,7 @@
 
 #include "pipe/p_screen.h"
 #include "state_tracker/drm_driver.h"
+#include "util/disk_cache.h"
 #include "util/slab.h"
 #include "util/u_screen.h"
 #include "intel/dev/gen_device_info.h"
@@ -80,6 +81,8 @@ struct iris_screen {
     * require scratch writes or reads from some unimportant memory.
     */
    struct iris_bo *workaround_bo;
+
+   struct disk_cache *disk_cache;
 };
 
 struct pipe_screen *
@@ -92,5 +95,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
                          unsigned sample_count,
                          unsigned storage_sample_count,
                          unsigned usage);
+
+void iris_disk_cache_init(struct iris_screen *screen);
 
 #endif

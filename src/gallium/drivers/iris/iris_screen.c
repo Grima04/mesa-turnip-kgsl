@@ -510,6 +510,7 @@ iris_destroy_screen(struct pipe_screen *pscreen)
    iris_bo_unreference(screen->workaround_bo);
    u_transfer_helper_destroy(pscreen->transfer_helper);
    iris_bufmgr_destroy(screen->bufmgr);
+   disk_cache_destroy(screen->disk_cache);
    ralloc_free(screen);
 }
 
@@ -636,6 +637,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler->shader_debug_log = iris_shader_debug_log;
    screen->compiler->shader_perf_log = iris_shader_perf_log;
    screen->compiler->supports_pull_constants = false;
+
+   iris_disk_cache_init(screen);
 
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct iris_transfer), 64);
