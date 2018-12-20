@@ -74,16 +74,11 @@ resolve_image_views(struct iris_batch *batch,
  * enabled depth texture, and flush the render cache for any dirty textures.
  */
 void
-iris_predraw_resolve_inputs(struct iris_context *ice,
-                            struct iris_batch *batch)
+iris_predraw_resolve_inputs(struct iris_batch *batch,
+                            struct iris_shader_state *shs)
 {
-   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      struct iris_shader_state *shs = &ice->state.shaders[stage];
-      resolve_sampler_views(batch, shs);
-      resolve_image_views(batch, shs);
-   }
-
-   // XXX: storage images
+   resolve_sampler_views(batch, shs);
+   resolve_image_views(batch, shs);
 }
 
 void

@@ -98,7 +98,11 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_update_compiled_shaders(ice);
 
-   iris_predraw_resolve_inputs(ice, batch);
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_COMPUTE; stage++) {
+      if (ice->shaders.prog[stage])
+         iris_predraw_resolve_inputs(batch, &ice->state.shaders[stage]);
+   }
+
    iris_predraw_resolve_framebuffer(ice, batch);
 
    iris_binder_reserve_3d(ice);
