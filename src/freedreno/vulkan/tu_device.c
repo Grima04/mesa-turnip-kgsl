@@ -124,6 +124,7 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
    if (map == MAP_FAILED)
       return vk_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
 
+   bo->map = map;
    return VK_SUCCESS;
 }
 
@@ -1376,7 +1377,7 @@ tu_MapMemory(VkDevice _device,
       result = tu_bo_map(device, &mem->bo);
       if (result != VK_SUCCESS)
          return result;
-      mem->map = mem->bo.map;
+      *ppData = mem->map = mem->bo.map;
    } else
       *ppData = mem->map;
 
