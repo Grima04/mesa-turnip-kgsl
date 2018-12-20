@@ -558,6 +558,9 @@ static struct v3d_compile *
 vir_compile_init(const struct v3d_compiler *compiler,
                  struct v3d_key *key,
                  nir_shader *s,
+                 void (*debug_output)(const char *msg,
+                                      void *debug_output_data),
+                 void *debug_output_data,
                  int program_id, int variant_id)
 {
         struct v3d_compile *c = rzalloc(NULL, struct v3d_compile);
@@ -568,6 +571,8 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->program_id = program_id;
         c->variant_id = variant_id;
         c->threads = 4;
+        c->debug_output = debug_output;
+        c->debug_output_data = debug_output_data;
 
         s = nir_shader_clone(c, s);
         c->s = s;
@@ -702,6 +707,22 @@ v3d_return_qpu_insts(struct v3d_compile *c, uint32_t *final_assembly_size)
 
         memcpy(qpu_insts, c->qpu_insts, *final_assembly_size);
 
+        char *shaderdb;
+        int ret = asprintf(&shaderdb,
+                           "%s shader: %d inst, %d threads, %d loops, "
+                           "%d uniforms, %d:%d spills:fills",
+                           vir_get_stage_name(c),
+                           c->qpu_inst_count,
+                           c->threads,
+                           c->loops,
+                           c->num_uniforms,
+                           c->spills,
+                           c->fills);
+        if (ret >= 0) {
+                c->debug_output(shaderdb, c->debug_output_data);
+                free(shaderdb);
+        }
+
         vir_compile_destroy(c);
 
         return qpu_insts;
@@ -711,10 +732,14 @@ uint64_t *v3d_compile_vs(const struct v3d_compiler *compiler,
                          struct v3d_vs_key *key,
                          struct v3d_vs_prog_data *prog_data,
                          nir_shader *s,
+                         void (*debug_output)(const char *msg,
+                                              void *debug_output_data),
+                         void *debug_output_data,
                          int program_id, int variant_id,
                          uint32_t *final_assembly_size)
 {
         struct v3d_compile *c = vir_compile_init(compiler, &key->base, s,
+                                                 debug_output, debug_output_data,
                                                  program_id, variant_id);
 
         c->vs_key = key;
@@ -874,10 +899,14 @@ uint64_t *v3d_compile_fs(const struct v3d_compiler *compiler,
                          struct v3d_fs_key *key,
                          struct v3d_fs_prog_data *prog_data,
                          nir_shader *s,
+                         void (*debug_output)(const char *msg,
+                                              void *debug_output_data),
+                         void *debug_output_data,
                          int program_id, int variant_id,
                          uint32_t *final_assembly_size)
 {
         struct v3d_compile *c = vir_compile_init(compiler, &key->base, s,
+                                                 debug_output, debug_output_data,
                                                  program_id, variant_id);
 
         c->fs_key = key;

@@ -1895,6 +1895,8 @@ ntq_emit_loop(struct v3d_compile *c, nir_loop *loop)
 
         c->loop_break_block = save_loop_break_block;
         c->loop_cont_block = save_loop_cont_block;
+
+        c->loops++;
 }
 
 static void

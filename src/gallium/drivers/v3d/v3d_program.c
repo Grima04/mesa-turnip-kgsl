@@ -307,6 +307,14 @@ v3d_shader_state_create(struct pipe_context *pctx,
         return so;
 }
 
+static void
+v3d_shader_debug_output(const char *message, void *data)
+{
+        struct v3d_context *v3d = data;
+
+        pipe_debug_message(&v3d->debug, SHADER_INFO, "%s", message);
+}
+
 static struct v3d_compiled_shader *
 v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
 {
@@ -343,6 +351,8 @@ v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
                 qpu_insts = v3d_compile_vs(v3d->screen->compiler,
                                            (struct v3d_vs_key *)key,
                                            shader->prog_data.vs, s,
+                                           v3d_shader_debug_output,
+                                           v3d,
                                            program_id, variant_id,
                                            &shader_size);
                 break;
@@ -352,6 +362,8 @@ v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
                 qpu_insts = v3d_compile_fs(v3d->screen->compiler,
                                            (struct v3d_fs_key *)key,
                                            shader->prog_data.fs, s,
+                                           v3d_shader_debug_output,
+                                           v3d,
                                            program_id, variant_id,
                                            &shader_size);
                 break;
