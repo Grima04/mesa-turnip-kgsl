@@ -894,6 +894,7 @@ void
 v3d_update_shadow_texture(struct pipe_context *pctx,
                           struct pipe_sampler_view *pview)
 {
+        struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_sampler_view *view = v3d_sampler_view(pview);
         struct v3d_resource *shadow = v3d_resource(view->texture);
         struct v3d_resource *orig = v3d_resource(pview->texture);
