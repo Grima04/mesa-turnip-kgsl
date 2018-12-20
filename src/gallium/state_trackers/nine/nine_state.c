@@ -157,7 +157,7 @@ nine_csmt_create( struct NineDevice9 *This )
     (void) mtx_init(&ctx->thread_running, mtx_plain);
     (void) mtx_init(&ctx->thread_resume, mtx_plain);
 
-#if DEBUG
+#if defined(DEBUG) || !defined(NDEBUG)
     u_thread_setname("Main thread");
 #endif
 
