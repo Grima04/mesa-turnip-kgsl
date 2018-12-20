@@ -99,8 +99,7 @@
 
 /* Allocations are always at least 64 byte aligned, so 1 is an invalid value.
  * We use it to indicate the free list is empty. */
-#define EMPTY 1
-#define EMPTY2 UINT32_MAX
+#define EMPTY UINT32_MAX
 
 #define PAGE_SIZE 4096
 
@@ -327,11 +326,11 @@ anv_state_table_add(struct anv_state_table *table, uint32_t *idx,
 }
 
 void
-anv_free_list_push2(union anv_free_list2 *list,
-                    struct anv_state_table *table,
-                    uint32_t first, uint32_t count)
+anv_free_list_push(union anv_free_list *list,
+                   struct anv_state_table *table,
+                   uint32_t first, uint32_t count)
 {
-   union anv_free_list2 current, old, new;
+   union anv_free_list current, old, new;
    uint32_t last = first;
 
    for (uint32_t i = 1; i < count; i++, last++)
@@ -348,13 +347,13 @@ anv_free_list_push2(union anv_free_list2 *list,
 }
 
 struct anv_state *
-anv_free_list_pop2(union anv_free_list2 *list,
-                   struct anv_state_table *table)
+anv_free_list_pop(union anv_free_list *list,
+                  struct anv_state_table *table)
 {
-   union anv_free_list2 current, new, old;
+   union anv_free_list current, new, old;
 
    current.u64 = list->u64;
-   while (current.offset != EMPTY2) {
+   while (current.offset != EMPTY) {
       __sync_synchronize();
       new.offset = table->map[current.offset].next;
       new.count = current.count + 1;
@@ -830,9 +829,9 @@ anv_state_pool_init(struct anv_state_pool *pool,
 
    assert(util_is_power_of_two_or_zero(block_size));
    pool->block_size = block_size;
-   pool->back_alloc_free_list = ANV_FREE_LIST2_EMPTY;
+   pool->back_alloc_free_list = ANV_FREE_LIST_EMPTY;
    for (unsigned i = 0; i < ANV_STATE_BUCKETS; i++) {
-      pool->buckets[i].free_list = ANV_FREE_LIST2_EMPTY;
+      pool->buckets[i].free_list = ANV_FREE_LIST_EMPTY;
       pool->buckets[i].block.next = 0;
       pool->buckets[i].block.end = 0;
    }
@@ -929,8 +928,8 @@ anv_state_pool_return_blocks(struct anv_state_pool *pool,
    }
 
    uint32_t block_bucket = anv_state_pool_get_bucket(block_size);
-   anv_free_list_push2(&pool->buckets[block_bucket].free_list,
-                       &pool->table, st_idx, count);
+   anv_free_list_push(&pool->buckets[block_bucket].free_list,
+                      &pool->table, st_idx, count);
 }
 
 static struct anv_state
@@ -944,8 +943,8 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
    int32_t offset;
 
    /* Try free list first. */
-   state = anv_free_list_pop2(&pool->buckets[bucket].free_list,
-                              &pool->table);
+   state = anv_free_list_pop(&pool->buckets[bucket].free_list,
+                             &pool->table);
    if (state) {
       assert(state->offset >= 0);
       goto done;
@@ -953,7 +952,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
 
    /* Try to grab a chunk from some larger bucket and split it up */
    for (unsigned b = bucket + 1; b < ANV_STATE_BUCKETS; b++) {
-      state = anv_free_list_pop2(&pool->buckets[b].free_list, &pool->table);
+      state = anv_free_list_pop(&pool->buckets[b].free_list, &pool->table);
       if (state) {
          unsigned chunk_size = anv_state_pool_get_bucket_size(b);
          int32_t chunk_offset = state->offset;
@@ -1046,7 +1045,7 @@ anv_state_pool_alloc_back(struct anv_state_pool *pool)
    struct anv_state *state;
    uint32_t alloc_size = pool->block_size;
 
-   state = anv_free_list_pop2(&pool->back_alloc_free_list, &pool->table);
+   state = anv_free_list_pop(&pool->back_alloc_free_list, &pool->table);
    if (state) {
       assert(state->offset < 0);
       goto done;
@@ -1077,11 +1076,11 @@ anv_state_pool_free_no_vg(struct anv_state_pool *pool, struct anv_state state)
 
    if (state.offset < 0) {
       assert(state.alloc_size == pool->block_size);
-      anv_free_list_push2(&pool->back_alloc_free_list,
-                          &pool->table, state.idx, 1);
+      anv_free_list_push(&pool->back_alloc_free_list,
+                         &pool->table, state.idx, 1);
    } else {
-      anv_free_list_push2(&pool->buckets[bucket].free_list,
-                          &pool->table, state.idx, 1);
+      anv_free_list_push(&pool->buckets[bucket].free_list,
+                         &pool->table, state.idx, 1);
    }
 }
 

@@ -606,7 +606,7 @@ anv_bo_init(struct anv_bo *bo, uint32_t gem_handle, uint64_t size)
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
  */
-union anv_free_list2 {
+union anv_free_list {
    struct {
       uint32_t offset;
 
@@ -616,7 +616,7 @@ union anv_free_list2 {
    uint64_t u64;
 };
 
-#define ANV_FREE_LIST2_EMPTY ((union anv_free_list2) { { UINT32_MAX, 0 } })
+#define ANV_FREE_LIST_EMPTY ((union anv_free_list) { { UINT32_MAX, 0 } })
 
 struct anv_block_state {
    union {
@@ -694,7 +694,7 @@ struct anv_state {
 #define ANV_STATE_NULL ((struct anv_state) { .alloc_size = 0 })
 
 struct anv_fixed_size_state_pool {
-   union anv_free_list2 free_list;
+   union anv_free_list free_list;
    struct anv_block_state block;
 };
 
@@ -726,7 +726,7 @@ struct anv_state_pool {
    uint32_t block_size;
 
    /** Free list for "back" allocations */
-   union anv_free_list2 back_alloc_free_list;
+   union anv_free_list back_alloc_free_list;
 
    struct anv_fixed_size_state_pool buckets[ANV_STATE_BUCKETS];
 };
@@ -787,11 +787,11 @@ VkResult anv_state_table_init(struct anv_state_table *table,
 void anv_state_table_finish(struct anv_state_table *table);
 VkResult anv_state_table_add(struct anv_state_table *table, uint32_t *idx,
                              uint32_t count);
-void anv_free_list_push2(union anv_free_list2 *list,
-                         struct anv_state_table *table,
-                         uint32_t idx, uint32_t count);
-struct anv_state* anv_free_list_pop2(union anv_free_list2 *list,
-                                     struct anv_state_table *table);
+void anv_free_list_push(union anv_free_list *list,
+                        struct anv_state_table *table,
+                        uint32_t idx, uint32_t count);
+struct anv_state* anv_free_list_pop(union anv_free_list *list,
+                                    struct anv_state_table *table);
 
 
 static inline struct anv_state *
