@@ -117,7 +117,7 @@ image_is_renderable(struct radv_device *device, struct radv_image *image)
 
 	if (device->physical_device->rad_info.chip_class >= GFX9 &&
 	    image->type == VK_IMAGE_TYPE_3D &&
-	    vk_format_get_blocksizebits(image->vk_format == 128) &&
+	    vk_format_get_blocksizebits(image->vk_format) == 128 &&
 	    vk_format_is_compressed(image->vk_format))
 		return false;
 	return true;
