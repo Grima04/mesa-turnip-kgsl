@@ -1203,6 +1203,8 @@ uint64_t
 tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle);
 uint64_t
 tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle);
+int
+tu_drm_query_param(struct tu_physical_device *dev, uint32_t param, uint64_t *value);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                                \

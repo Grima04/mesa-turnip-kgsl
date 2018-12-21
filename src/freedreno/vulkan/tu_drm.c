@@ -92,3 +92,24 @@ tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle)
 {
    return tu_gem_info(dev, gem_handle, MSM_INFO_IOVA);
 }
+
+
+int
+tu_drm_query_param(struct tu_physical_device *dev, uint32_t param, uint64_t *value)
+{
+   /* Technically this requires a pipe, but the kernel only supports one pipe anyway
+    * at the time of writing and most of these are clearly pipe independent. */
+   struct drm_msm_param req = {
+      .pipe = MSM_PIPE_3D0,
+      .param = param,
+   };
+
+   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM,
+                                 &req, sizeof(req));
+   if (ret)
+      return ret;
+
+   *value = req.value;
+
+   return 0;
+}
