@@ -817,12 +817,13 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    if (devinfo->ver >= 12)
       OPT(brw_nir_clamp_image_1d_2d_array_sizes);
 
-   static const nir_lower_tex_options tex_options = {
+   const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
       .lower_txf_offset = true,
       .lower_rect_offset = true,
       .lower_tex_without_implicit_lod = true,
       .lower_txd_cube_map = true,
+      .lower_txd_3d = devinfo->verx10 >= 125,
       .lower_txb_shadow_clamp = true,
       .lower_txd_shadow_clamp = true,
       .lower_txd_offset_clamp = true,
