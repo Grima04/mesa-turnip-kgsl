@@ -201,6 +201,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       /* 3DSTATE_CONSTANT_XS requires the start of UBOs to be 32B aligned */
       return 32;
+   case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
+      return IRIS_MAP_BUFFER_ALIGNMENT;
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
       /* Choose a cacheline (64 bytes) so that we can safely have the CPU and
        * GPU writing the same SSBO on non-coherent systems (Atom CPUs).  With

@@ -794,6 +794,102 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 }
 
 static void
+iris_unmap_copy_region(struct iris_transfer *map)
+{
+   struct pipe_transfer *xfer = &map->base;
+   struct pipe_box *dst_box = &xfer->box;
+   struct pipe_box src_box = (struct pipe_box) {
+      .x = xfer->resource->target == PIPE_BUFFER ?
+           xfer->box.x % IRIS_MAP_BUFFER_ALIGNMENT : 0,
+      .width = dst_box->width,
+      .height = dst_box->height,
+      .depth = dst_box->depth,
+   };
+
+   if (xfer->usage & PIPE_TRANSFER_WRITE) {
+      iris_copy_region(map->blorp, map->batch, xfer->resource, xfer->level,
+                       dst_box->x, dst_box->y, dst_box->z, map->staging, 0,
+                       &src_box);
+   }
+
+   iris_resource_destroy(map->staging->screen, map->staging);
+
+   map->ptr = NULL;
+}
+
+static void
+iris_map_copy_region(struct iris_transfer *map)
+{
+   struct pipe_screen *pscreen = &map->batch->screen->base;
+   struct pipe_transfer *xfer = &map->base;
+   struct pipe_box *box = &xfer->box;
+   struct iris_resource *res = (void *) xfer->resource;
+
+   unsigned extra = xfer->resource->target == PIPE_BUFFER ?
+                    box->x % IRIS_MAP_BUFFER_ALIGNMENT : 0;
+
+   struct pipe_resource templ = (struct pipe_resource) {
+      .usage = PIPE_USAGE_STAGING,
+      .width0 = box->width + extra,
+      .height0 = box->height,
+      .depth0 = 1,
+      .nr_samples = xfer->resource->nr_samples,
+      .nr_storage_samples = xfer->resource->nr_storage_samples,
+      .array_size = box->depth,
+   };
+
+   if (xfer->resource->target == PIPE_BUFFER)
+      templ.target = PIPE_BUFFER;
+   else if (templ.array_size > 1)
+      templ.target = PIPE_TEXTURE_2D_ARRAY;
+   else
+      templ.target = PIPE_TEXTURE_2D;
+
+   /* Depth, stencil, and ASTC can't be linear surfaces, so we can't use
+    * xfer->resource->format directly.  Pick a bpb compatible format so
+    * resource creation will succeed; blorp_copy will override it anyway.
+    */
+   switch (util_format_get_blocksizebits(res->internal_format)) {
+   case 8:   templ.format = PIPE_FORMAT_R8_UINT;           break;
+   case 16:  templ.format = PIPE_FORMAT_R8G8_UINT;         break;
+   case 24:  templ.format = PIPE_FORMAT_R8G8B8_UINT;       break;
+   case 32:  templ.format = PIPE_FORMAT_R8G8B8A8_UINT;     break;
+   case 48:  templ.format = PIPE_FORMAT_R16G16B16_UINT;    break;
+   case 64:  templ.format = PIPE_FORMAT_R16G16B16A16_UINT; break;
+   case 96:  templ.format = PIPE_FORMAT_R32G32B32_UINT;    break;
+   case 128: templ.format = PIPE_FORMAT_R32G32B32A32_UINT; break;
+   default: unreachable("Invalid bpb");
+   }
+
+   map->staging = iris_resource_create(pscreen, &templ);
+   assert(map->staging);
+
+   if (templ.target != PIPE_BUFFER) {
+      struct isl_surf *surf = &((struct iris_resource *) map->staging)->surf;
+      xfer->stride = isl_surf_get_row_pitch_B(surf);
+      xfer->layer_stride = isl_surf_get_array_pitch(surf);
+   }
+
+   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+      iris_copy_region(map->blorp, map->batch, map->staging, 0, extra, 0, 0,
+                       xfer->resource, xfer->level, box);
+      /* Ensure writes to the staging BO land before we map it below. */
+      iris_emit_pipe_control_flush(map->batch,
+                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_CS_STALL);
+   }
+
+   struct iris_bo *staging_bo = iris_resource_bo(map->staging);
+
+   if (iris_batch_references(map->batch, staging_bo))
+      iris_batch_flush(map->batch);
+
+   map->ptr = iris_bo_map(map->dbg, staging_bo, xfer->usage) + extra;
+
+   map->unmap = iris_unmap_copy_region;
+}
+
+static void
 get_image_offset_el(struct isl_surf *surf, unsigned level, unsigned z,
                     unsigned *out_x0_el, unsigned *out_y0_el)
 {
@@ -1099,9 +1195,7 @@ iris_transfer_map(struct pipe_context *ctx,
     if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE)
        usage |= PIPE_TRANSFER_DISCARD_RANGE;
 
-   if (surf->tiling != ISL_TILING_LINEAR &&
-       (usage & PIPE_TRANSFER_MAP_DIRECTLY))
-      return NULL;
+   bool map_would_stall = false;
 
    if (resource->target != PIPE_BUFFER) {
       iris_resource_access_raw(ice, &ice->batches[IRIS_BATCH_RENDER], res,
@@ -1110,13 +1204,18 @@ iris_transfer_map(struct pipe_context *ctx,
    }
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-         if (iris_batch_references(&ice->batches[i], res->bo))
-            iris_batch_flush(&ice->batches[i]);
-      }
+      map_would_stall = iris_bo_busy(res->bo);
+
+      for (int i = 0; i < IRIS_BATCH_COUNT; i++)
+         map_would_stall |= iris_batch_references(&ice->batches[i], res->bo);
+
+      if (map_would_stall && (usage & PIPE_TRANSFER_DONTBLOCK) &&
+                             (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+         return NULL;
    }
 
-   if ((usage & PIPE_TRANSFER_DONTBLOCK) && iris_bo_busy(res->bo))
+   if (surf->tiling != ISL_TILING_LINEAR &&
+       (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
 
    struct iris_transfer *map = slab_alloc(&ice->transfer_pool);
@@ -1141,13 +1240,53 @@ iris_transfer_map(struct pipe_context *ctx,
                    PIPE_TRANSFER_COHERENT |
                    PIPE_TRANSFER_DISCARD_RANGE);
 
-   if (surf->tiling == ISL_TILING_W) {
-      // XXX: just teach iris_map_tiled_memcpy about W tiling...
-      iris_map_s8(map);
-   } else if (surf->tiling != ISL_TILING_LINEAR) {
-      iris_map_tiled_memcpy(map);
+   /* Avoid using GPU copies for persistent/coherent buffers, as the idea
+    * there is to access them simultaneously on the CPU & GPU.  This also
+    * avoids trying to use GPU copies for our u_upload_mgr buffers which
+    * contain state we're constructing for a GPU draw call, which would
+    * kill us with infinite stack recursion.
+    */
+   bool no_gpu = usage & (PIPE_TRANSFER_PERSISTENT |
+                          PIPE_TRANSFER_COHERENT |
+                          PIPE_TRANSFER_MAP_DIRECTLY);
+
+   /* GPU copies are not useful for buffer reads.  Instead of stalling to
+    * read from the original buffer, we'd simply copy it to a temporary...
+    * then stall (a bit longer) to read from that buffer.
+    *
+    * Images are less clear-cut.  Color resolves are destructive, removing
+    * the underlying compression, so we'd rather blit the data to a linear
+    * temporary and map that, to avoid the resolve.  (It might be better to
+    * a tiled temporary and use the tiled_memcpy paths...)
+    */
+   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) &&
+       res->aux.usage != ISL_AUX_USAGE_CCS_E &&
+       res->aux.usage != ISL_AUX_USAGE_CCS_D) {
+      no_gpu = true;
+   }
+
+   if (map_would_stall && !no_gpu) {
+      /* If we need a synchronous mapping and the resource is busy,
+       * we copy to/from a linear temporary buffer using the GPU.
+       */
+      map->batch = &ice->batches[IRIS_BATCH_RENDER];
+      map->blorp = &ice->blorp;
+      iris_map_copy_region(map);
    } else {
-      iris_map_direct(map);
+      /* Otherwise we're free to map on the CPU.  Flush if needed. */
+      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+         if (iris_batch_references(&ice->batches[i], res->bo))
+            iris_batch_flush(&ice->batches[i]);
+      }
+
+      if (surf->tiling == ISL_TILING_W) {
+         /* TODO: Teach iris_map_tiled_memcpy about W-tiling... */
+         iris_map_s8(map);
+      } else if (surf->tiling != ISL_TILING_LINEAR) {
+         iris_map_tiled_memcpy(map);
+      } else {
+         iris_map_direct(map);
+      }
    }
 
    return map->ptr;

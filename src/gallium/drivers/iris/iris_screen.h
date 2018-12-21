@@ -38,6 +38,7 @@ struct iris_bo;
 
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_SOL_BUFFERS 4
+#define IRIS_MAP_BUFFER_ALIGNMENT 64
 
 struct iris_screen {
    struct pipe_screen base;

@@ -180,6 +180,11 @@ struct iris_transfer {
    void *buffer;
    void *ptr;
 
+   /** A linear staging resource for GPU-based copy_region transfers. */
+   struct pipe_resource *staging;
+   struct blorp_context *blorp;
+   struct iris_batch *batch;
+
    void (*unmap)(struct iris_transfer *);
 };
 
