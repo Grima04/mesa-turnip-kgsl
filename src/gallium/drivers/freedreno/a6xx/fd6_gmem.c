@@ -64,6 +64,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		struct fd_resource_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t offset = 0;
+		uint32_t tile_mode;
 
 		if (!pfb->cbufs[i])
 			continue;
@@ -79,7 +80,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		uint32_t base = gmem ? gmem->cbuf_base[i] : 0;
 		slice = fd_resource_slice(rsc, psurf->u.tex.level);
 		format = fd6_pipe2color(pformat);
-		swap = fd6_pipe2swap(pformat);
 		sint = util_format_is_pure_sint(pformat);
 		uint = util_format_is_pure_uint(pformat);
 
@@ -90,13 +90,20 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 									psurf->u.tex.first_layer);
 
 		stride = slice->pitch * rsc->cpp * pfb->samples;
+		swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pformat);
+
+		if (rsc->tile_mode &&
+			fd_resource_level_linear(psurf->texture, psurf->u.tex.level))
+			tile_mode = TILE6_LINEAR;
+		else
+			tile_mode = rsc->tile_mode;
 
 		debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
 
 		OUT_PKT4(ring, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
 		OUT_RING(ring, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format) |
-				A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(rsc->tile_mode) |
+				A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
 				A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(swap));
 		OUT_RING(ring, A6XX_RB_MRT_PITCH(stride));
 		OUT_RING(ring, A6XX_RB_MRT_ARRAY_PITCH(slice->size0));
@@ -617,18 +624,20 @@ emit_blit(struct fd_batch *batch,
 	enum a6xx_color_fmt format = fd6_pipe2color(pfmt);
 	uint32_t stride = slice->pitch * rsc->cpp;
 	uint32_t size = slice->size0;
-	enum a3xx_color_swap swap = fd6_pipe2swap(pfmt);
+	enum a3xx_color_swap swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pfmt);
 	enum a3xx_msaa_samples samples =
 			fd_msaa_samples(rsc->base.nr_samples);
+	uint32_t tile_mode;
 
-	// TODO: tile mode
-	// bool tiled;
-	// tiled = rsc->tile_mode &&
-	//   !fd_resource_level_linear(&rsc->base, psurf->u.tex.level);
+	if (rsc->tile_mode &&
+		fd_resource_level_linear(&rsc->base, psurf->u.tex.level))
+		tile_mode = TILE6_LINEAR;
+	else
+		tile_mode = rsc->tile_mode;
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_DST_INFO, 5);
 	OUT_RING(ring,
-			 A6XX_RB_BLIT_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+			 A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
 			 A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
 			 A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
 			 A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));

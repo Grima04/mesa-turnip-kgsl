@@ -102,15 +102,6 @@ can_do_blit(const struct pipe_blit_info *info)
 	fail_if(util_format_is_compressed(info->src.format) &&
 			info->src.format != info->dst.format);
 
-	/* hw ignores {SRC,DST}_INFO.COLOR_SWAP if {SRC,DST}_INFO.TILE_MODE
-	 * is set (not linear).  We can kind of get around that when tiling/
-	 * untiling by setting both src and dst COLOR_SWAP=WZYX, but that
-	 * means the formats must match:
-	 */
-	fail_if((fd_resource(info->dst.resource)->tile_mode ||
-			 fd_resource(info->src.resource)->tile_mode) &&
-			info->dst.format != info->src.format);
-
 	/* src box can be inverted, which we don't support.. dst box cannot: */
 	fail_if((info->src.box.width < 0) || (info->src.box.height < 0));
 
@@ -358,8 +349,8 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	dtile = fd_resource_level_linear(info->dst.resource, info->dst.level) ?
 			TILE6_LINEAR : dst->tile_mode;
 
-	sswap = fd6_pipe2swap(info->src.format);
-	dswap = fd6_pipe2swap(info->dst.format);
+	sswap = stile ? WZYX : fd6_pipe2swap(info->src.format);
+	dswap = dtile ? WZYX : fd6_pipe2swap(info->dst.format);
 
 	if (util_format_is_compressed(info->src.format)) {
 		debug_assert(info->src.format == info->dst.format);
@@ -385,16 +376,6 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 
 	uint32_t width = DIV_ROUND_UP(u_minify(src->base.width0, info->src.level), blockwidth) * nelements;
 	uint32_t height = DIV_ROUND_UP(u_minify(src->base.height0, info->src.level), blockheight);
-
-	/* if dtile, then dswap ignored by hw, and likewise if stile then sswap
-	 * ignored by hw.. but in this case we have already rejected the blit
-	 * if src and dst formats differ, so juse use WZYX for both src and
-	 * dst swap mode (so we don't change component order)
-	 */
-	if (stile || dtile) {
-		debug_assert(info->src.format == info->dst.format);
-		sswap = dswap = WZYX;
-	}
 
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A2XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
@@ -582,5 +563,8 @@ fd6_tile_mode(const struct pipe_resource *tmpl)
 	/* basically just has to be a format we can blit, so uploads/downloads
 	 * via linear staging buffer works:
 	 */
-	return TILE6_3;
+	if (ok_format(tmpl->format))
+		return TILE6_3;
+
+	return TILE6_LINEAR;
 }

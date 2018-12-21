@@ -29,6 +29,7 @@
 #include "util/u_format.h"
 
 #include "fd6_screen.h"
+#include "fd6_blitter.h"
 #include "fd6_context.h"
 #include "fd6_format.h"
 #include "fd6_resource.h"
@@ -134,4 +135,5 @@ fd6_screen_init(struct pipe_screen *pscreen)
 	pscreen->is_format_supported = fd6_screen_is_format_supported;
 
 	screen->setup_slices = fd6_setup_slices;
+	screen->tile_mode = fd6_tile_mode;
 }

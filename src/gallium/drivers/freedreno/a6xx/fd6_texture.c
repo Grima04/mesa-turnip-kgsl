@@ -246,7 +246,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	so->texconst0 =
 		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
 		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-		fd6_tex_swiz(format, cso->swizzle_r, cso->swizzle_g,
+		fd6_tex_swiz(prsc, cso->swizzle_r, cso->swizzle_g,
 				cso->swizzle_b, cso->swizzle_a);
 
 	/* NOTE: since we sample z24s8 using 8888_UINT format, the swizzle
@@ -257,8 +257,12 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	 * Note that gallium expects stencil sampler to return (s,s,s,s)
 	 * which isn't quite true.  To make that happen we'd have to massage
 	 * the swizzle.  But in practice only the .x component is used.
+	 *
+	 * Skip this in the tile case because tiled formats are not swapped
+	 * and we have already applied the inverse swap in fd6_tex_swiz()
+	 * to componsate for that.
 	 */
-	if (format == PIPE_FORMAT_X24S8_UINT) {
+	if ((format == PIPE_FORMAT_X24S8_UINT) && !rsc->tile_mode) {
 		so->texconst0 |= A6XX_TEX_CONST_0_SWAP(XYZW);
 	}
 
