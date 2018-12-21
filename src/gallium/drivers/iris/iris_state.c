@@ -4713,9 +4713,8 @@ iris_upload_compute_state(struct iris_context *ice,
             struct iris_bo *bo =
                iris_get_scratch_space(ice, prog_data->total_scratch,
                                       MESA_SHADER_COMPUTE);
-            uint32_t scratch_addr = bo->gtt_offset;
             vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
-            vfe.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
+            vfe.ScratchSpaceBasePointer = rw_bo(bo, 0);
          }
 
          vfe.MaximumNumberofThreads =
