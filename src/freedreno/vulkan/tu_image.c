@@ -31,6 +31,101 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+
+static inline bool
+image_level_linear(struct tu_image *image, int level)
+{
+   unsigned w = u_minify(image->extent.width, level);
+   return w < 16;
+}
+
+/* indexed by cpp: */
+static const struct {
+   unsigned pitchalign;
+   unsigned heightalign;
+} tile_alignment[] = {
+   [1]  = { 128, 32 },
+   [2]  = { 128, 16 },
+   [3]  = { 128, 16 },
+   [4]  = {  64, 16 },
+   [8]  = {  64, 16 },
+   [12] = {  64, 16 },
+   [16] = {  64, 16 },
+};
+
+static void
+setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
+{
+   enum vk_format_layout layout = vk_format_description(pCreateInfo->format)->layout;
+   uint32_t layer_size = 0;
+   uint32_t width = pCreateInfo->extent.width;
+   uint32_t height = pCreateInfo->extent.height;
+   uint32_t depth = pCreateInfo->extent.depth;
+   bool layer_first = pCreateInfo->imageType != VK_IMAGE_TYPE_3D;
+   uint32_t alignment = pCreateInfo->imageType == VK_IMAGE_TYPE_3D ? 4096 : 1;
+   uint32_t cpp = vk_format_get_blocksize(pCreateInfo->format);
+
+   uint32_t heightalign = tile_alignment[cpp].heightalign;
+
+   for (unsigned level = 0; level < pCreateInfo->mipLevels; level++) {
+      struct tu_image_level *slice = &image->levels[level];
+      bool linear_level = image_level_linear(image, level);
+      uint32_t aligned_height = height;
+      uint32_t blocks;
+      uint32_t pitchalign;
+
+      if (image->tile_mode && !linear_level) {
+         pitchalign = tile_alignment[cpp].pitchalign;
+         aligned_height = align(aligned_height, heightalign);
+      } else {
+         pitchalign = 64;
+
+         /* The blits used for mem<->gmem work at a granularity of
+          * 32x32, which can cause faults due to over-fetch on the
+          * last level.  The simple solution is to over-allocate a
+          * bit the last level to ensure any over-fetch is harmless.
+          * The pitch is already sufficiently aligned, but height
+          * may not be:
+          */
+         if ((level + 1 == pCreateInfo->mipLevels))
+            aligned_height = align(aligned_height, 32);
+      }
+
+      if (layout == VK_FORMAT_LAYOUT_ASTC)
+         slice->pitch =
+            util_align_npot(width, pitchalign * vk_format_get_blockwidth(pCreateInfo->format));
+      else
+         slice->pitch = align(width, pitchalign);
+
+      slice->offset = layer_size;
+      blocks = vk_format_get_block_count(pCreateInfo->format, slice->pitch, aligned_height);
+
+      /* 1d array and 2d array textures must all have the same layer size
+       * for each miplevel on a3xx. 3d textures can have different layer
+       * sizes for high levels, but the hw auto-sizer is buggy (or at least
+       * different than what this code does), so as soon as the layer size
+       * range gets into range, we stop reducing it.
+       */
+      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D && (
+               level == 1 ||
+               (level > 1 && image->levels[level - 1].size > 0xf000)))
+         slice->size = align(blocks * cpp, alignment);
+      else if (level == 0 || layer_first || alignment == 1)
+         slice->size = align(blocks * cpp, alignment);
+      else
+         slice->size = image->levels[level - 1].size;
+
+      layer_size += slice->size * depth;
+
+      width = u_minify(width, 1);
+      height = u_minify(height, 1);
+      depth = u_minify(depth, 1);
+   }
+
+   image->layer_size = layer_size;
+}
+
+
 VkResult
 tu_image_create(VkDevice _device,
                 const struct tu_image_create_info *create_info,
@@ -63,6 +158,7 @@ tu_image_create(VkDevice _device,
    image->tiling = pCreateInfo->tiling;
    image->usage = pCreateInfo->usage;
    image->flags = pCreateInfo->flags;
+   image->extent = pCreateInfo->extent;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
@@ -79,6 +175,10 @@ tu_image_create(VkDevice _device,
      vk_find_struct_const(pCreateInfo->pNext,
                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR) != NULL;
 
+   image->tile_mode = pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL ? 3 : 0;
+   setup_slices(image, pCreateInfo);
+
+   image->size = image->layer_size * pCreateInfo->arrayLayers;
    *pImage = tu_image_to_handle(image);
 
    return VK_SUCCESS;

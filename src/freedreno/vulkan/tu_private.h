@@ -904,6 +904,13 @@ tu_is_colorbuffer_format_supported(VkFormat format, bool *blendable);
 bool
 tu_dcc_formats_compatible(VkFormat format1, VkFormat format2);
 
+
+struct tu_image_level {
+    VkDeviceSize offset;
+    VkDeviceSize size;
+    uint32_t pitch;
+};
+
 struct tu_image
 {
    VkImageType type;
@@ -915,9 +922,15 @@ struct tu_image
    VkImageUsageFlags usage;  /**< Superset of VkImageCreateInfo::usage. */
    VkImageTiling tiling;     /** VkImageCreateInfo::tiling */
    VkImageCreateFlags flags; /** VkImageCreateInfo::flags */
+   VkExtent3D extent;
 
    VkDeviceSize size;
    uint32_t alignment;
+
+   /* memory layout */
+   VkDeviceSize layer_size;
+   struct tu_image_level levels[15];
+   unsigned tile_mode;
 
    unsigned queue_family_mask;
    bool exclusive;

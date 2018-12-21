@@ -203,6 +203,28 @@ vk_format_get_blockheight(VkFormat format)
    return desc->block.height;
 }
 
+static inline unsigned
+vk_format_get_block_count_width(VkFormat format, unsigned width)
+{
+   unsigned blockwidth = vk_format_get_blockwidth(format);
+   return (width + blockwidth - 1) / blockwidth;
+}
+
+static inline unsigned
+vk_format_get_block_count_height(VkFormat format, unsigned height)
+{
+   unsigned blockheight = vk_format_get_blockheight(format);
+   return (height + blockheight - 1) / blockheight;
+}
+
+static inline unsigned
+vk_format_get_block_count(VkFormat format, unsigned width, unsigned height)
+{
+   return vk_format_get_block_count_width(format, width) *
+          vk_format_get_block_count_height(format, height);
+}
+
+
 /**
  * Return the index of the first non-void channel
  * -1 if no non-void channels
