@@ -179,7 +179,8 @@ tu_physical_device_init(struct tu_physical_device *device,
                        "device %s does not use the msm kernel driver", path);
    }
 
-   if (version->version_major != 1 || version->version_minor < 3) {
+   if (version->version_major != min_version_major ||
+       version->version_minor < min_version_minor) {
       result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                          "kernel driver for device %s has version %d.%d, "
                          "but Vulkan requires version >= %d.%d",
