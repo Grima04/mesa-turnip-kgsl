@@ -930,6 +930,13 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
       return;
 
    unsigned flush = PIPE_CONTROL_CS_STALL;
+
+   /* We've likely used the rendering engine (i.e. BLORP) to write to this
+    * surface.  Flush the render cache so the data actually lands.
+    */
+   if (batch->name != IRIS_BATCH_COMPUTE)
+      flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
+
    uint64_t dirty = 0ull;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
