@@ -3909,6 +3909,55 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       struct anv_image_view *iview = fb->attachments[a];
       const struct anv_image *image = iview->image;
 
+      if ((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) &&
+          image->vk_format != iview->vk_format) {
+         enum anv_fast_clear_type fast_clear_type =
+            anv_layout_to_fast_clear_type(&cmd_buffer->device->info,
+                                          image, VK_IMAGE_ASPECT_COLOR_BIT,
+                                          att_state->current_layout);
+
+         /* If any clear color was used, flush it down the aux surfaces. If we
+          * don't do it now using the view's format we might use the clear
+          * color incorrectly in the following resolves (for example with an
+          * SRGB view & a UNORM image).
+          */
+         if (fast_clear_type != ANV_FAST_CLEAR_NONE) {
+            anv_perf_warn(cmd_buffer->device->instance, fb,
+                          "Doing a partial resolve to get rid of clear color at the "
+                          "end of a renderpass due to an image/view format mismatch");
+
+            uint32_t base_layer, layer_count;
+            if (image->type == VK_IMAGE_TYPE_3D) {
+               base_layer = 0;
+               layer_count = anv_minify(iview->image->extent.depth,
+                                        iview->planes[0].isl.base_level);
+            } else {
+               base_layer = iview->planes[0].isl.base_array_layer;
+               layer_count = fb->layers;
+            }
+
+            for (uint32_t a = 0; a < layer_count; a++) {
+               uint32_t array_layer = base_layer + a;
+               if (image->samples == 1) {
+                  anv_cmd_predicated_ccs_resolve(cmd_buffer, image,
+                                                 iview->planes[0].isl.format,
+                                                 VK_IMAGE_ASPECT_COLOR_BIT,
+                                                 iview->planes[0].isl.base_level,
+                                                 array_layer,
+                                                 ISL_AUX_OP_PARTIAL_RESOLVE,
+                                                 ANV_FAST_CLEAR_NONE);
+               } else {
+                  anv_cmd_predicated_mcs_resolve(cmd_buffer, image,
+                                                 iview->planes[0].isl.format,
+                                                 VK_IMAGE_ASPECT_COLOR_BIT,
+                                                 base_layer,
+                                                 ISL_AUX_OP_PARTIAL_RESOLVE,
+                                                 ANV_FAST_CLEAR_NONE);
+               }
+            }
+         }
+      }
+
       /* Transition the image into the final layout for this render pass */
       VkImageLayout target_layout =
          cmd_state->pass->attachments[a].final_layout;
