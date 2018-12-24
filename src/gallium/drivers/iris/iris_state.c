@@ -2088,6 +2088,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    struct iris_resource *stencil_res;
 
    unsigned samples = util_framebuffer_get_num_samples(state);
+   unsigned layers = util_framebuffer_get_num_layers(state);
 
    if (cso->samples != samples) {
       ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
@@ -2097,7 +2098,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    }
 
-   if ((cso->layers == 0) != (state->layers == 0)) {
+   if ((cso->layers == 0) != (layers == 0)) {
       ice->state.dirty |= IRIS_DIRTY_CLIP;
    }
 
@@ -2107,6 +2108,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    util_copy_framebuffer_state(cso, state);
    cso->samples = samples;
+   cso->layers = layers;
 
    struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
