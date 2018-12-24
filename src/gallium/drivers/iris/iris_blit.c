@@ -411,8 +411,6 @@ iris_resource_copy_region(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
-   iris_batch_maybe_flush(batch, 1500);
-
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
@@ -423,6 +421,8 @@ iris_resource_copy_region(struct pipe_context *ctx,
          .buffer = iris_resource_bo(dst), .offset = dstx,
       };
 
+      iris_batch_maybe_flush(batch, 1500);
+
       blorp_buffer_copy(&blorp_batch, src_addr, dst_addr, src_box->width);
    } else {
       // XXX: what about one surface being a buffer and not the other?
@@ -431,16 +431,14 @@ iris_resource_copy_region(struct pipe_context *ctx,
       iris_blorp_surf_for_resource(&src_surf, src, ISL_AUX_USAGE_NONE, false);
       iris_blorp_surf_for_resource(&dst_surf, dst, ISL_AUX_USAGE_NONE, true);
 
-      // XXX: ???
-      unsigned dst_layer = dstz;
-      unsigned src_layer = src_box->z;
+      for (int slice = 0; slice < src_box->depth; slice++) {
+         iris_batch_maybe_flush(batch, 1500);
 
-      assert(src_box->depth == 1);
-
-      blorp_copy(&blorp_batch, &src_surf, src_level, src_layer,
-                 &dst_surf, dst_level, dst_layer,
-                 src_box->x, src_box->y, dstx, dsty,
-                 src_box->width, src_box->height);
+         blorp_copy(&blorp_batch, &src_surf, src_level, src_box->z + slice,
+                    &dst_surf, dst_level, dstz + slice,
+                    src_box->x, src_box->y, dstx, dsty,
+                    src_box->width, src_box->height);
+      }
    }
 
    blorp_batch_finish(&blorp_batch);
