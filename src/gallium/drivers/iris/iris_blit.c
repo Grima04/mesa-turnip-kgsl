@@ -472,25 +472,27 @@ get_copy_region_aux_settings(const struct gen_device_info *devinfo,
 }
 
 /**
- * The pipe->resource_copy_region() driver hook.
+ * Perform a GPU-based raw memory copy between compatible view classes.
  *
- * This implements ARB_copy_image semantics - a raw memory copy between
- * compatible view classes.
+ * Does not perform any flushing - the new data may still be left in the
+ * render cache, and old data may remain in other caches.
+ *
+ * Wraps blorp_copy() and blorp_buffer_copy().
  */
-static void
-iris_resource_copy_region(struct pipe_context *ctx,
-                          struct pipe_resource *dst,
-                          unsigned dst_level,
-                          unsigned dstx, unsigned dsty, unsigned dstz,
-                          struct pipe_resource *src,
-                          unsigned src_level,
-                          const struct pipe_box *src_box)
+void
+iris_copy_region(struct blorp_context *blorp,
+                 struct iris_batch *batch,
+                 struct pipe_resource *dst,
+                 unsigned dst_level,
+                 unsigned dstx, unsigned dsty, unsigned dstz,
+                 struct pipe_resource *src,
+                 unsigned src_level,
+                 const struct pipe_box *src_box)
 {
-   struct iris_screen *screen = (void *) ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
    struct blorp_batch blorp_batch;
-   struct iris_context *ice = (void *) ctx;
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_context *ice = blorp->driver_ctx;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_resource *src_res = (void *) src;
    struct iris_resource *dst_res = (void *) dst;
 
@@ -547,8 +549,30 @@ iris_resource_copy_region(struct pipe_context *ctx,
 
       iris_resource_finish_write(ice, dst_res, dst_level, dstz,
                                  src_box->depth, dst_aux_usage);
-
    }
+}
+
+
+/**
+ * The pipe->resource_copy_region() driver hook.
+ *
+ * This implements ARB_copy_image semantics - a raw memory copy between
+ * compatible view classes.
+ */
+static void
+iris_resource_copy_region(struct pipe_context *ctx,
+                          struct pipe_resource *dst,
+                          unsigned dst_level,
+                          unsigned dstx, unsigned dsty, unsigned dstz,
+                          struct pipe_resource *src,
+                          unsigned src_level,
+                          const struct pipe_box *src_box)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   iris_copy_region(&ice->blorp, batch, dst, dst_level, dstx, dsty, dstz,
+                    src, src_level, src_box);
 }
 
 void

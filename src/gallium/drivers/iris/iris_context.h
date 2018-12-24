@@ -666,6 +666,14 @@ void iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
                                   enum isl_aux_usage aux_usage,
                                   unsigned level,
                                   bool is_render_target);
+void iris_copy_region(struct blorp_context *blorp,
+                      struct iris_batch *batch,
+                      struct pipe_resource *dst,
+                      unsigned dst_level,
+                      unsigned dstx, unsigned dsty, unsigned dstz,
+                      struct pipe_resource *src,
+                      unsigned src_level,
+                      const struct pipe_box *src_box);
 
 /* iris_draw.c */
 
