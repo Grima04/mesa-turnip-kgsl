@@ -737,6 +737,7 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
 static void
 anv_cmd_predicated_ccs_resolve(struct anv_cmd_buffer *cmd_buffer,
                                const struct anv_image *image,
+                               enum isl_format format,
                                VkImageAspectFlagBits aspect,
                                uint32_t level, uint32_t array_layer,
                                enum isl_aux_op resolve_op,
@@ -761,13 +762,14 @@ anv_cmd_predicated_ccs_resolve(struct anv_cmd_buffer *cmd_buffer,
        image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       resolve_op = ISL_AUX_OP_FULL_RESOLVE;
 
-   anv_image_ccs_op(cmd_buffer, image, aspect, level,
+   anv_image_ccs_op(cmd_buffer, image, format, aspect, level,
                     array_layer, 1, resolve_op, NULL, true);
 }
 
 static void
 anv_cmd_predicated_mcs_resolve(struct anv_cmd_buffer *cmd_buffer,
                                const struct anv_image *image,
+                               enum isl_format format,
                                VkImageAspectFlagBits aspect,
                                uint32_t array_layer,
                                enum isl_aux_op resolve_op,
@@ -781,7 +783,7 @@ anv_cmd_predicated_mcs_resolve(struct anv_cmd_buffer *cmd_buffer,
                                      aspect, 0, array_layer,
                                      resolve_op, fast_clear_supported);
 
-   anv_image_mcs_op(cmd_buffer, image, aspect,
+   anv_image_mcs_op(cmd_buffer, image, format, aspect,
                     array_layer, 1, resolve_op, NULL, true);
 #else
    unreachable("MCS resolves are unsupported on Ivybridge and Bay Trail");
@@ -1037,8 +1039,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
             uint32_t level_layer_count =
                MIN2(layer_count, aux_layers - base_layer);
 
-            anv_image_ccs_op(cmd_buffer, image, aspect, level,
-                             base_layer, level_layer_count,
+            anv_image_ccs_op(cmd_buffer, image,
+                             image->planes[plane].surface.isl.format,
+                             aspect, level, base_layer, level_layer_count,
                              ISL_AUX_OP_AMBIGUATE, NULL, false);
 
             if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
@@ -1055,8 +1058,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          }
 
          assert(base_level == 0 && level_count == 1);
-         anv_image_mcs_op(cmd_buffer, image, aspect,
-                          base_layer, layer_count,
+         anv_image_mcs_op(cmd_buffer, image,
+                          image->planes[plane].surface.isl.format,
+                          aspect, base_layer, layer_count,
                           ISL_AUX_OP_FAST_CLEAR, NULL, false);
       }
       return;
@@ -1133,8 +1137,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       for (uint32_t a = 0; a < level_layer_count; a++) {
          uint32_t array_layer = base_layer + a;
          if (image->samples == 1) {
-            anv_cmd_predicated_ccs_resolve(cmd_buffer, image, aspect,
-                                           level, array_layer, resolve_op,
+            anv_cmd_predicated_ccs_resolve(cmd_buffer, image,
+                                           image->planes[plane].surface.isl.format,
+                                           aspect, level, array_layer, resolve_op,
                                            final_fast_clear);
          } else {
             /* We only support fast-clear on the first layer so partial
@@ -1145,8 +1150,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                 array_layer != 0)
                continue;
 
-            anv_cmd_predicated_mcs_resolve(cmd_buffer, image, aspect,
-                                           array_layer, resolve_op,
+            anv_cmd_predicated_mcs_resolve(cmd_buffer, image,
+                                           image->planes[plane].surface.isl.format,
+                                           aspect, array_layer, resolve_op,
                                            final_fast_clear);
          }
       }
@@ -3674,12 +3680,16 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             union isl_color_value clear_color = {};
             anv_clear_color_from_att_state(&clear_color, att_state, iview);
             if (iview->image->samples == 1) {
-               anv_image_ccs_op(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
+               anv_image_ccs_op(cmd_buffer, image,
+                                iview->planes[0].isl.format,
+                                VK_IMAGE_ASPECT_COLOR_BIT,
                                 0, 0, 1, ISL_AUX_OP_FAST_CLEAR,
                                 &clear_color,
                                 false);
             } else {
-               anv_image_mcs_op(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
+               anv_image_mcs_op(cmd_buffer, image,
+                                iview->planes[0].isl.format,
+                                VK_IMAGE_ASPECT_COLOR_BIT,
                                 0, 1, ISL_AUX_OP_FAST_CLEAR,
                                 &clear_color,
                                 false);
