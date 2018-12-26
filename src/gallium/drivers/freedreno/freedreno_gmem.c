@@ -120,7 +120,8 @@ calculate_tiles(struct fd_batch *batch)
 	uint8_t cbuf_cpp[MAX_RENDER_TARGETS] = {0}, zsbuf_cpp[2] = {0};
 	uint32_t i, j, t, xoff, yoff;
 	uint32_t tpp_x, tpp_y;
-	bool has_zs = !!(batch->resolve & (FD_BUFFER_DEPTH | FD_BUFFER_STENCIL));
+	bool has_zs = !!((batch->resolve | batch->restore) &
+			(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL));
 	int tile_n[npipes];
 
 	if (has_zs) {

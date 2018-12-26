@@ -144,9 +144,13 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 			} else {
 				batch->invalidated |= FD_BUFFER_DEPTH;
 			}
-			buffers |= FD_BUFFER_DEPTH;
-			resource_written(batch, pfb->zsbuf->texture);
 			batch->gmem_reason |= FD_GMEM_DEPTH_ENABLED;
+			if (fd_depth_write_enabled(ctx)) {
+				buffers |= FD_BUFFER_DEPTH;
+				resource_written(batch, pfb->zsbuf->texture);
+			} else {
+				resource_read(batch, pfb->zsbuf->texture);
+			}
 		}
 
 		if (fd_stencil_enabled(ctx)) {
@@ -155,9 +159,9 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 			} else {
 				batch->invalidated |= FD_BUFFER_STENCIL;
 			}
+			batch->gmem_reason |= FD_GMEM_STENCIL_ENABLED;
 			buffers |= FD_BUFFER_STENCIL;
 			resource_written(batch, pfb->zsbuf->texture);
-			batch->gmem_reason |= FD_GMEM_STENCIL_ENABLED;
 		}
 	}
 
