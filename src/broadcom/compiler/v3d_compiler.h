@@ -706,25 +706,15 @@ const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devin
 void v3d_compiler_free(const struct v3d_compiler *compiler);
 void v3d_optimize_nir(struct nir_shader *s);
 
-uint64_t *v3d_compile_vs(const struct v3d_compiler *compiler,
-                         struct v3d_vs_key *key,
-                         struct v3d_vs_prog_data *prog_data,
-                         nir_shader *s,
-                         void (*debug_output)(const char *msg,
-                                              void *debug_output_data),
-                         void *debug_output_data,
-                         int program_id, int variant_id,
-                         uint32_t *final_assembly_size);
-
-uint64_t *v3d_compile_fs(const struct v3d_compiler *compiler,
-                         struct v3d_fs_key *key,
-                         struct v3d_fs_prog_data *prog_data,
-                         nir_shader *s,
-                         void (*debug_output)(const char *msg,
-                                              void *debug_output_data),
-                         void *debug_output_data,
-                         int program_id, int variant_id,
-                         uint32_t *final_assembly_size);
+uint64_t *v3d_compile(const struct v3d_compiler *compiler,
+                      struct v3d_key *key,
+                      struct v3d_prog_data **prog_data,
+                      nir_shader *s,
+                      void (*debug_output)(const char *msg,
+                                           void *debug_output_data),
+                      void *debug_output_data,
+                      int program_id, int variant_id,
+                      uint32_t *final_assembly_size);
 
 void v3d_nir_to_vir(struct v3d_compile *c);
 

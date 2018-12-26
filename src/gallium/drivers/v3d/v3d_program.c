@@ -354,32 +354,12 @@ v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key)
         uint64_t *qpu_insts;
         uint32_t shader_size;
 
-        switch (s->info.stage) {
-        case MESA_SHADER_VERTEX:
-                shader->prog_data.vs = rzalloc(shader, struct v3d_vs_prog_data);
-
-                qpu_insts = v3d_compile_vs(v3d->screen->compiler,
-                                           (struct v3d_vs_key *)key,
-                                           shader->prog_data.vs, s,
-                                           v3d_shader_debug_output,
-                                           v3d,
-                                           program_id, variant_id,
-                                           &shader_size);
-                break;
-        case MESA_SHADER_FRAGMENT:
-                shader->prog_data.fs = rzalloc(shader, struct v3d_fs_prog_data);
-
-                qpu_insts = v3d_compile_fs(v3d->screen->compiler,
-                                           (struct v3d_fs_key *)key,
-                                           shader->prog_data.fs, s,
-                                           v3d_shader_debug_output,
-                                           v3d,
-                                           program_id, variant_id,
-                                           &shader_size);
-                break;
-        default:
-                unreachable("bad stage");
-        }
+        qpu_insts = v3d_compile(v3d->screen->compiler, key,
+                                &shader->prog_data.base, s,
+                                v3d_shader_debug_output,
+                                v3d,
+                                program_id, variant_id, &shader_size);
+        ralloc_steal(shader, shader->prog_data.base);
 
         v3d_set_shader_uniform_dirty_flags(shader);
 
