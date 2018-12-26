@@ -241,6 +241,10 @@ v3d_generate_code_block(struct v3d_compile *c,
                                 src[i] = temp_registers[index];
                                 break;
                         case QFILE_UNIF:
+                                /* XXX perf: If the last ldunif we emitted was
+                                 * the same uniform value, skip it.  Common
+                                 * for multop/umul24 sequences.
+                                 */
                                 if (!emitted_ldunif) {
                                         new_ldunif_instr(qinst, i);
                                         c->num_uniforms++;
