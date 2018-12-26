@@ -1512,7 +1512,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                           unsigned size)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-   const unsigned cpp = fmtl->bpb / 8;
+   const unsigned cpp = format == ISL_FORMAT_RAW ? 1 : fmtl->bpb / 8;
 
    /* The ARB_texture_buffer_specification says:
     *
@@ -1808,17 +1808,30 @@ iris_set_shader_images(struct pipe_context *ctx,
          }
 
          isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
-         enum isl_format isl_format =
+         enum isl_format isl_fmt =
             iris_format_for_usage(devinfo, img->format, usage).fmt;
 
-         if (img->shader_access & PIPE_IMAGE_ACCESS_READ)
-            isl_format = isl_lower_storage_image_format(devinfo, isl_format);
+         bool untyped_fallback = false;
+
+         if (img->shader_access & PIPE_IMAGE_ACCESS_READ) {
+            /* On Gen8, try to use typed surfaces reads (which support a
+             * limited number of formats), and if not possible, fall back
+             * to untyped reads.
+             */
+            untyped_fallback = GEN_GEN == 8 &&
+               !isl_has_matching_typed_storage_image_format(devinfo, isl_fmt);
+
+            if (untyped_fallback)
+               isl_fmt = ISL_FORMAT_RAW;
+            else
+               isl_fmt = isl_lower_storage_image_format(devinfo, isl_fmt);
+         }
 
          shs->image[start_slot + i].access = img->shader_access;
 
          if (res->base.target != PIPE_BUFFER) {
             struct isl_view view = {
-               .format = isl_format,
+               .format = isl_fmt,
                .base_level = img->u.tex.level,
                .levels = 1,
                .base_array_layer = img->u.tex.first_layer,
@@ -1827,13 +1840,19 @@ iris_set_shader_images(struct pipe_context *ctx,
                .usage = usage,
             };
 
-            fill_surface_state(&screen->isl_dev, map, res, &view);
+            if (untyped_fallback) {
+               fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
+                                         isl_fmt, 0, res->bo->size);
+            } else {
+               fill_surface_state(&screen->isl_dev, map, res, &view);
+            }
+
             isl_surf_fill_image_param(&screen->isl_dev,
                                       &shs->image[start_slot + i].param,
                                       &res->surf, &view);
          } else {
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
-                                      isl_format, img->u.buf.offset,
+                                      isl_fmt, img->u.buf.offset,
                                       img->u.buf.size);
             fill_buffer_image_param(&shs->image[start_slot + i].param,
                                     img->format, img->u.buf.size);
