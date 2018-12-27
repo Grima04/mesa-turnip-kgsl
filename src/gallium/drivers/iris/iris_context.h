@@ -46,6 +46,7 @@ struct blorp_params;
 #define IRIS_MAX_ABOS 16
 #define IRIS_MAX_SSBOS 16
 #define IRIS_MAX_VIEWPORTS 16
+#define IRIS_MAX_CLIP_PLANES 8
 
 /**
  * Dirty flags.  When state changes, we flag some combination of these

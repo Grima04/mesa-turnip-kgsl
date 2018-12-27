@@ -601,6 +601,10 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
       rzalloc_array(mem_ctx, enum brw_param_builtin, IRIS_MAX_SYSTEM_VALUES);
    unsigned num_system_values = 0;
 
+   unsigned patch_vert_idx = -1;
+   unsigned ucp_idx[IRIS_MAX_CLIP_PLANES];
+   memset(ucp_idx, -1, sizeof(ucp_idx));
+
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
    nir_builder b;
@@ -616,30 +620,41 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             continue;
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
-         unsigned idx = num_system_values;
+         nir_ssa_def *offset;
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_user_clip_plane: {
             unsigned ucp = nir_intrinsic_ucp_id(intrin);
+
+            if (ucp_idx[ucp] == -1) {
+               ucp_idx[ucp] = num_system_values;
+               num_system_values += 4;
+            }
+
             for (int i = 0; i < 4; i++) {
-               system_values[num_system_values++] =
+               system_values[ucp_idx[ucp] + i] =
                   BRW_PARAM_BUILTIN_CLIP_PLANE(ucp, i);
             }
+
+            b.cursor = nir_before_instr(instr);
+            offset = nir_imm_int(&b, ucp_idx[ucp] * sizeof(uint32_t));
             break;
          }
          case nir_intrinsic_load_patch_vertices_in:
-            system_values[num_system_values++] =
+            if (patch_vert_idx == -1)
+               patch_vert_idx = num_system_values++;
+
+            system_values[patch_vert_idx] =
                BRW_PARAM_BUILTIN_PATCH_VERTICES_IN;
+
+            b.cursor = nir_before_instr(instr);
+            offset = nir_imm_int(&b, patch_vert_idx * sizeof(uint32_t));
             break;
          default:
             continue;
          }
 
-         b.cursor = nir_before_instr(instr);
-
          unsigned comps = nir_intrinsic_dest_components(intrin);
-         nir_ssa_def *offset = nir_imm_int(&b, idx * sizeof(uint32_t));
 
          nir_intrinsic_instr *load =
             nir_intrinsic_instr_create(nir, nir_intrinsic_load_ubo);
