@@ -78,6 +78,8 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 .gather_component = instr->component,
 
                 .coefficient_mode = instr->op == nir_texop_txd,
+
+                .disable_autolod = instr->op == nir_texop_tg4
         };
 
         int non_array_components = instr->coord_components - instr->is_array;
@@ -119,10 +121,8 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                                       ntq_get_src(c, instr->src[i].src, 0),
                                       &tmu_writes);
 
-                        if (instr->op != nir_texop_txf &&
-                            instr->op != nir_texop_tg4) {
+                        if (instr->op != nir_texop_txf)
                                 p2_unpacked.disable_autolod = true;
-                        }
                         break;
 
                 case nir_tex_src_comparator:
