@@ -132,14 +132,30 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                         break;
 
                 case nir_tex_src_offset: {
-                        nir_const_value *offset =
-                                nir_src_as_const_value(instr->src[i].src);
+                        if (nir_src_is_const(instr->src[i].src)) {
+                                nir_const_value *offset =
+                                        nir_src_as_const_value(instr->src[i].src);
 
-                        p2_unpacked.offset_s = offset->i32[0];
-                        if (instr->coord_components >= 2)
-                                p2_unpacked.offset_t = offset->i32[1];
-                        if (instr->coord_components >= 3)
-                                p2_unpacked.offset_r = offset->i32[2];
+                                p2_unpacked.offset_s = offset->i32[0];
+                                if (instr->coord_components >= 2)
+                                        p2_unpacked.offset_t = offset->i32[1];
+                                if (instr->coord_components >= 3)
+                                        p2_unpacked.offset_r = offset->i32[2];
+                        } else {
+                                struct qreg mask = vir_uniform_ui(c, 0xf);
+                                struct qreg x, y, offset;
+
+                                x = vir_AND(c, ntq_get_src(c, instr->src[i].src,
+                                                           0), mask);
+                                y = vir_AND(c, ntq_get_src(c, instr->src[i].src,
+                                                           1), mask);
+                                offset = vir_OR(c, x,
+                                                vir_SHL(c, y,
+                                                        vir_uniform_ui(c, 4)));
+
+                                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUOFF,
+                                              offset, &tmu_writes);
+                        }
                         break;
                 }
 
