@@ -3085,6 +3085,12 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_txd_offset_clamp;
 
+   /**
+    * If true, apply a .bagr swizzle on tg4 results to handle Broadcom's
+    * mixed-up tg4 locations.
+    */
+   bool lower_tg4_broadcom_swizzle;
+
    enum nir_lower_tex_packing lower_tex_packing[32];
 } nir_lower_tex_options;
 
