@@ -139,6 +139,11 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 256;
 
+        case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
+                if (screen->devinfo.ver < 40)
+                        return 0;
+                return 4;
+
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
 
