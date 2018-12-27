@@ -456,7 +456,7 @@ nv30_miptree_create(struct pipe_screen *pscreen,
    for (l = 0; l <= pt->last_level; l++) {
       struct nv30_miptree_level *lvl = &mt->level[l];
       unsigned nbx = util_format_get_nblocksx(pt->format, w);
-      unsigned nby = util_format_get_nblocksx(pt->format, h);
+      unsigned nby = util_format_get_nblocksy(pt->format, h);
 
       lvl->offset = size;
       lvl->pitch  = mt->uniform_pitch;
