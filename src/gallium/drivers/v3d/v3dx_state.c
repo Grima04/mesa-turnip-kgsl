@@ -542,9 +542,13 @@ v3d_create_sampler_state(struct pipe_context *pctx,
                  cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST);
 
 #if V3D_VERSION >= 40
-        so->bo = v3d_bo_alloc(v3d->screen, cl_packet_length(SAMPLER_STATE),
-                              "sampler");
-        void *map = v3d_bo_map(so->bo);
+        void *map;
+        u_upload_alloc(v3d->state_uploader, 0,
+                       cl_packet_length(SAMPLER_STATE),
+                       32, /* XXX: 8 for unextended samplers. */
+                       &so->sampler_state_offset,
+                       &so->sampler_state,
+                       &map);
 
         v3dx_pack(map, SAMPLER_STATE, sampler) {
                 sampler.wrap_i_border = false;
@@ -656,7 +660,7 @@ v3d_sampler_state_delete(struct pipe_context *pctx,
         struct pipe_sampler_state *psampler = hwcso;
         struct v3d_sampler_state *sampler = v3d_sampler_state(psampler);
 
-        v3d_bo_unreference(&sampler->bo);
+        pipe_resource_reference(&sampler->sampler_state, NULL);
         free(psampler);
 }
 

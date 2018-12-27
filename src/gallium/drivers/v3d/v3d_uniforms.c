@@ -214,7 +214,9 @@ write_tmu_p1(struct v3d_job *job,
         struct pipe_sampler_state *psampler = texstate->samplers[unit];
         struct v3d_sampler_state *sampler = v3d_sampler_state(psampler);
 
-        cl_aligned_reloc(&job->indirect, uniforms, sampler->bo,
+        cl_aligned_reloc(&job->indirect, uniforms,
+                         v3d_resource(sampler->sampler_state)->bo,
+                         sampler->sampler_state_offset |
                          v3d_tmu_config_data_get_value(data));
 }
 

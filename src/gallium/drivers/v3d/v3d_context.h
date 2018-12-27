@@ -114,7 +114,8 @@ struct v3d_sampler_state {
         /* V3D 3.x: Packed texture state. */
         uint8_t texture_shader_state[32];
         /* V3D 4.x: Sampler state struct. */
-        struct v3d_bo *bo;
+        struct pipe_resource *sampler_state;
+        uint32_t sampler_state_offset;
 };
 
 struct v3d_texture_stateobj {
