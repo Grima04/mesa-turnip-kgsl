@@ -265,6 +265,7 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
 {
    struct nv30_context *nv30 = nv30_context(pipe);
    struct nouveau_device *dev = nv30->screen->base.device;
+   struct nv30_miptree *mt = nv30_miptree(pt);
    struct nv30_transfer *tx;
    unsigned access = 0;
    int ret;
@@ -288,7 +289,8 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
                    tx->nblocksx, tx->nblocksy, &tx->img);
 
    ret = nouveau_bo_new(dev, NOUVEAU_BO_GART | NOUVEAU_BO_MAP, 0,
-                        tx->base.layer_stride, NULL, &tx->tmp.bo);
+                        tx->base.layer_stride * tx->base.box.depth, NULL,
+                        &tx->tmp.bo);
    if (ret) {
       pipe_resource_reference(&tx->base.resource, NULL);
       FREE(tx);
@@ -308,8 +310,25 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
    tx->tmp.y1     = tx->tmp.h;
    tx->tmp.z      = 0;
 
-   if (usage & PIPE_TRANSFER_READ)
-      nv30_transfer_rect(nv30, NEAREST, &tx->img, &tx->tmp);
+   if (usage & PIPE_TRANSFER_READ) {
+      bool is_3d = mt->base.base.target == PIPE_TEXTURE_3D;
+      unsigned offset = tx->img.offset;
+      unsigned z = tx->img.z;
+      unsigned i;
+      for (i = 0; i < box->depth; ++i) {
+         nv30_transfer_rect(nv30, NEAREST, &tx->img, &tx->tmp);
+         if (is_3d && mt->swizzled)
+            tx->img.z++;
+         else if (is_3d)
+            tx->img.offset += mt->level[level].zslice_size;
+         else
+            tx->img.offset += mt->layer_size;
+         tx->tmp.offset += tx->base.layer_stride;
+      }
+      tx->img.z = z;
+      tx->img.offset = offset;
+      tx->tmp.offset = 0;
+   }
 
    if (tx->tmp.bo->map) {
       *ptransfer = &tx->base;
@@ -338,9 +357,21 @@ nv30_miptree_transfer_unmap(struct pipe_context *pipe,
 {
    struct nv30_context *nv30 = nv30_context(pipe);
    struct nv30_transfer *tx = nv30_transfer(ptx);
+   struct nv30_miptree *mt = nv30_miptree(tx->base.resource);
+   unsigned i;
 
    if (ptx->usage & PIPE_TRANSFER_WRITE) {
-      nv30_transfer_rect(nv30, NEAREST, &tx->tmp, &tx->img);
+      bool is_3d = mt->base.base.target == PIPE_TEXTURE_3D;
+      for (i = 0; i < tx->base.box.depth; ++i) {
+         nv30_transfer_rect(nv30, NEAREST, &tx->tmp, &tx->img);
+         if (is_3d && mt->swizzled)
+            tx->img.z++;
+         else if (is_3d)
+            tx->img.offset += mt->level[tx->base.level].zslice_size;
+         else
+            tx->img.offset += mt->layer_size;
+         tx->tmp.offset += tx->base.layer_stride;
+      }
 
       /* Allow the copies above to finish executing before freeing the source */
       nouveau_fence_work(nv30->screen->base.fence.current,
