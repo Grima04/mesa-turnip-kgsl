@@ -83,6 +83,9 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
       struct virgl_screen *vs = virgl_screen(ctx->screen);
       if (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) {
+         if (trans->range.end <= trans->range.start)
+            goto out;
+
          transfer->box.x += trans->range.start;
          transfer->box.width = trans->range.end - trans->range.start;
          trans->offset = transfer->box.x;
@@ -96,6 +99,7 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
 
    }
 
+out:
    virgl_resource_destroy_transfer(vctx, trans);
 }
 
