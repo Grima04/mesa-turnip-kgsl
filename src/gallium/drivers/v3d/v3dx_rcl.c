@@ -374,6 +374,15 @@ v3d_rcl_emit_stores(struct v3d_job *job, struct v3d_cl *cl)
                 }
         }
 #else /* V3D_VERSION >= 40 */
+        /* If we're emitting an RCL with GL_ARB_framebuffer_no_attachments,
+         * we still need to emit some sort of store.
+         */
+        if (!job->store) {
+                cl_emit(cl, STORE_TILE_BUFFER_GENERAL, store) {
+                        store.buffer_to_store = NONE;
+                }
+        }
+
         assert(!stores_pending);
 
         /* GFXH-1461/GFXH-1689: The per-buffer store command's clear

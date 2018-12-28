@@ -128,6 +128,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
         case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
         case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
+        case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
                 return 1;
 
         case PIPE_CAP_GENERATE_MIPMAP:
@@ -396,7 +397,11 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
                 }
         }
 
+        /* FORMAT_NONE gets allowed for ARB_framebuffer_no_attachments's probe
+         * of FRAMEBUFFER_MAX_SAMPLES
+         */
         if ((usage & PIPE_BIND_RENDER_TARGET) &&
+            format != PIPE_FORMAT_NONE &&
             !v3d_rt_format_supported(&screen->devinfo, format)) {
                 return FALSE;
         }

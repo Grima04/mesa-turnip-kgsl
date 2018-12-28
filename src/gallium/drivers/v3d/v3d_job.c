@@ -267,8 +267,6 @@ v3d_get_job(struct v3d_context *v3d,
                         job->msaa = true;
         }
 
-        v3d_job_set_tile_buffer_size(job);
-
         for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
                 if (cbufs[i])
                         _mesa_hash_table_insert(v3d->write_jobs,
@@ -302,6 +300,11 @@ v3d_get_job_for_fbo(struct v3d_context *v3d)
         struct pipe_surface **cbufs = v3d->framebuffer.cbufs;
         struct pipe_surface *zsbuf = v3d->framebuffer.zsbuf;
         struct v3d_job *job = v3d_get_job(v3d, cbufs, zsbuf);
+
+        if (v3d->framebuffer.samples >= 1)
+                job->msaa = true;
+
+        v3d_job_set_tile_buffer_size(job);
 
         /* The dirty flags are tracking what's been updated while v3d->job has
          * been bound, so set them all to ~0 when switching between jobs.  We
