@@ -496,9 +496,9 @@ declare_uniform_range(struct v3d_compile *c, uint32_t start, uint32_t size)
  * on the compare_instr's result.
  */
 static bool
-ntq_emit_comparison(struct v3d_compile *c, struct qreg *dest,
+ntq_emit_comparison(struct v3d_compile *c,
                     nir_alu_instr *compare_instr,
-                    nir_alu_instr *sel_instr)
+                    enum v3d_qpu_cond *out_cond)
 {
         struct qreg src0 = ntq_get_alu_src(c, compare_instr, 0);
         struct qreg src1;
@@ -554,33 +554,7 @@ ntq_emit_comparison(struct v3d_compile *c, struct qreg *dest,
                 return false;
         }
 
-        enum v3d_qpu_cond cond = (cond_invert ?
-                                  V3D_QPU_COND_IFNA :
-                                  V3D_QPU_COND_IFA);
-
-        switch (sel_instr->op) {
-        case nir_op_seq:
-        case nir_op_sne:
-        case nir_op_sge:
-        case nir_op_slt:
-                *dest = vir_SEL(c, cond,
-                                vir_uniform_f(c, 1.0), vir_uniform_f(c, 0.0));
-                break;
-
-        case nir_op_b32csel:
-                *dest = vir_SEL(c, cond,
-                                ntq_get_alu_src(c, sel_instr, 1),
-                                ntq_get_alu_src(c, sel_instr, 2));
-                break;
-
-        default:
-                *dest = vir_SEL(c, cond,
-                                vir_uniform_ui(c, ~0), vir_uniform_ui(c, 0));
-                break;
-        }
-
-        /* Make the temporary for nir_store_dest(). */
-        *dest = vir_MOV(c, *dest);
+        *out_cond = cond_invert ? V3D_QPU_COND_IFNA : V3D_QPU_COND_IFA;
 
         return true;
 }
@@ -602,9 +576,9 @@ static struct qreg ntq_emit_bcsel(struct v3d_compile *c, nir_alu_instr *instr,
         if (!compare)
                 goto out;
 
-        struct qreg dest;
-        if (ntq_emit_comparison(c, &dest, compare, instr))
-                return dest;
+        enum v3d_qpu_cond cond;
+        if (ntq_emit_comparison(c, compare, &cond))
+                return vir_MOV(c, vir_SEL(c, cond, src[1], src[2]));
 
 out:
         vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
@@ -749,7 +723,16 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_seq:
         case nir_op_sne:
         case nir_op_sge:
-        case nir_op_slt:
+        case nir_op_slt: {
+                enum v3d_qpu_cond cond;
+                MAYBE_UNUSED bool ok = ntq_emit_comparison(c, instr, &cond);
+                assert(ok);
+                result = vir_MOV(c, vir_SEL(c, cond,
+                                            vir_uniform_f(c, 1.0),
+                                            vir_uniform_f(c, 0.0)));
+                break;
+        }
+
         case nir_op_feq32:
         case nir_op_fne32:
         case nir_op_fge32:
@@ -759,11 +742,15 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_ige32:
         case nir_op_uge32:
         case nir_op_ilt32:
-        case nir_op_ult32:
-                if (!ntq_emit_comparison(c, &result, instr, instr)) {
-                        fprintf(stderr, "Bad comparison instruction\n");
-                }
+        case nir_op_ult32: {
+                enum v3d_qpu_cond cond;
+                MAYBE_UNUSED bool ok = ntq_emit_comparison(c, instr, &cond);
+                assert(ok);
+                result = vir_MOV(c, vir_SEL(c, cond,
+                                            vir_uniform_ui(c, ~0),
+                                            vir_uniform_ui(c, 0)));
                 break;
+        }
 
         case nir_op_b32csel:
                 result = ntq_emit_bcsel(c, instr, src);
