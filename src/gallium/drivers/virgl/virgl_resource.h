@@ -55,6 +55,7 @@ struct virgl_transfer {
    struct pipe_transfer base;
    uint32_t offset, l_stride;
    struct util_range range;
+   struct list_head queue_link;
    struct virgl_resource *resolve_tmp;
 };
 
