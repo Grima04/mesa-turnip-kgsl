@@ -1596,6 +1596,14 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_dest(c, &instr->dest, 0, vir_MSF(c));
                 break;
 
+        case nir_intrinsic_load_helper_invocation:
+                vir_PF(c, vir_MSF(c), V3D_QPU_PF_PUSHZ);
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
+                                                  vir_uniform_ui(c, ~0),
+                                                  vir_uniform_ui(c, 0))));
+                break;
+
         case nir_intrinsic_load_front_face:
                 /* The register contains 0 (front) or 1 (back), and we need to
                  * turn it into a NIR bool where true means front.
