@@ -49,6 +49,11 @@ struct virgl_textures_info {
    uint32_t enabled_mask;
 };
 
+struct virgl_rasterizer_state {
+   struct pipe_rasterizer_state rs;
+   uint32_t handle;
+};
+
 struct virgl_context {
    struct pipe_context base;
    struct virgl_cmd_buf *cbuf;
@@ -66,6 +71,7 @@ struct virgl_context {
    unsigned num_vertex_buffers;
    boolean vertex_array_dirty;
 
+   struct virgl_rasterizer_state rs_state;
    struct virgl_so_target so_targets[PIPE_MAX_SO_BUFFERS];
    unsigned num_so_targets;
 
