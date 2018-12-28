@@ -31,6 +31,58 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+#include "adreno_common.xml.h"
+#include "a6xx.xml.h"
+
+struct tu_native_format {
+   enum a6xx_vtx_fmt vtx;
+   enum a6xx_tex_fmt tex;
+   enum a6xx_color_fmt rb;
+   bool present;
+};
+
+/* vertex + texture */
+#define VT(pipe, fmt, rbfmt) \
+   case VK_FORMAT_ ## pipe: \
+      return (struct tu_native_format) { \
+         .present = 1, \
+         .vtx = VFMT6_ ## fmt, \
+         .tex = TFMT6_ ## fmt, \
+         .rb = RB6_ ## rbfmt, \
+      }
+
+/* texture-only */
+#define _T(pipe, fmt, rbfmt) \
+   [VK_FORMAT_ ## pipe] = { \
+      .present = 1, \
+      .vtx = ~0, \
+      .tex = TFMT6_ ## fmt, \
+      .rb = RB6_ ## rbfmt, \
+   }
+
+/* vertex-only */
+#define V_(pipe, fmt, rbfmt) \
+   [VK_FORMAT_ ## pipe] = { \
+      .present = 1, \
+      .vtx = VFMT6_ ## fmt, \
+      .tex = ~0, \
+      .rb = RB6_ ## rbfmt, \
+   }
+
+static const struct tu_native_format
+tu_find_a6xx_format(VkFormat format)
+{
+   switch(format) {
+   VT(R8G8B8A8_UNORM,   8_8_8_8_UNORM, R8G8B8A8_UNORM);
+   VT(R8G8B8A8_SNORM,   8_8_8_8_SNORM, R8G8B8A8_SNORM);
+   VT(R8G8B8A8_UINT,    8_8_8_8_UINT,  R8G8B8A8_UINT);
+   VT(R8G8B8A8_SINT,    8_8_8_8_SINT,  R8G8B8A8_SINT);
+
+   default:
+      return (struct tu_native_format) { .present = 0 };
+   }
+}
+
 static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,
@@ -39,11 +91,31 @@ tu_physical_device_get_format_properties(
 {
    VkFormatFeatureFlags linear = 0, tiled = 0, buffer = 0;
    const struct vk_format_description *desc = vk_format_description(format);
-   if (!desc) {
+   const struct tu_native_format native_fmt = tu_find_a6xx_format(format);
+   if (!desc || !native_fmt.present) {
       out_properties->linearTilingFeatures = linear;
       out_properties->optimalTilingFeatures = tiled;
       out_properties->bufferFeatures = buffer;
       return;
+   }
+
+   linear |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   tiled |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+
+   if (native_fmt.tex != ~0) {
+      linear |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      tiled |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+   }
+
+   if (native_fmt.rb != ~0) {
+      linear |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      tiled |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+   }
+
+   if (native_fmt.vtx != ~0) {
+      buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
    }
 
    out_properties->linearTilingFeatures = linear;
