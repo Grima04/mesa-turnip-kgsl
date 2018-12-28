@@ -19,8 +19,6 @@
 # SOFTWARE.
 
 files_libfreedreno = files(
-  'adreno_common.xml.h',
-  'adreno_pm4.xml.h',
   'disasm.h',
   'freedreno_batch.c',
   'freedreno_batch.h',
@@ -59,7 +57,6 @@ files_libfreedreno = files(
   'freedreno_texture.h',
   'freedreno_util.c',
   'freedreno_util.h',
-  'a2xx/a2xx.xml.h',
   'a2xx/disasm-a2xx.c',
   'a2xx/fd2_blend.c',
   'a2xx/fd2_blend.h',
@@ -90,7 +87,6 @@ files_libfreedreno = files(
   'a2xx/instr-a2xx.h',
   'a2xx/ir-a2xx.c',
   'a2xx/ir-a2xx.h',
-  'a3xx/a3xx.xml.h',
   'a3xx/fd3_blend.c',
   'a3xx/fd3_blend.h',
   'a3xx/fd3_context.c',
@@ -115,7 +111,6 @@ files_libfreedreno = files(
   'a3xx/fd3_texture.h',
   'a3xx/fd3_zsa.c',
   'a3xx/fd3_zsa.h',
-  'a4xx/a4xx.xml.h',
   'a4xx/fd4_blend.c',
   'a4xx/fd4_blend.h',
   'a4xx/fd4_context.c',
@@ -140,7 +135,6 @@ files_libfreedreno = files(
   'a4xx/fd4_texture.h',
   'a4xx/fd4_zsa.c',
   'a4xx/fd4_zsa.h',
-  'a5xx/a5xx.xml.h',
   'a5xx/fd5_blend.c',
   'a5xx/fd5_blend.h',
   'a5xx/fd5_blitter.c',
@@ -174,7 +168,6 @@ files_libfreedreno = files(
   'a5xx/fd5_texture.h',
   'a5xx/fd5_zsa.c',
   'a5xx/fd5_zsa.h',
-  'a6xx/a6xx.xml.h',
   'a6xx/fd6_blend.c',
   'a6xx/fd6_blend.h',
   'a6xx/fd6_blitter.c',

@@ -5,6 +5,7 @@ AM_CFLAGS = \
 	-Wno-packed-bitfield-compat \
 	-I$(top_srcdir)/src/gallium/drivers/freedreno/ir3 \
 	-I$(top_srcdir)/src/freedreno \
+	-I$(top_srcdir)/src/freedreno/registers \
 	-I$(top_builddir)/src/compiler/nir \
 	-I$(top_srcdir)/src/compiler/nir \
 	$(LIBDRM_CFLAGS) \
