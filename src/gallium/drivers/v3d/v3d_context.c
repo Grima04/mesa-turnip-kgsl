@@ -123,6 +123,27 @@ v3d_context_destroy(struct pipe_context *pctx)
         ralloc_free(v3d);
 }
 
+static void
+v3d_get_sample_position(struct pipe_context *pctx,
+                        unsigned sample_count, unsigned sample_index,
+                        float *xy)
+{
+        struct v3d_context *v3d = v3d_context(pctx);
+
+        if (sample_count <= 1) {
+                xy[0] = 0.5;
+                xy[1] = 0.5;
+        } else {
+                static const int xoffsets_v33[] = { 1, -3, 3, -1 };
+                static const int xoffsets_v42[] = { -1, 3, -3, 1 };
+                const int *xoffsets = (v3d->screen->devinfo.ver >= 42 ?
+                                       xoffsets_v42 : xoffsets_v33);
+
+                xy[0] = 0.5 + xoffsets[sample_index] * .125;
+                xy[1] = .125 + sample_index * .25;
+        }
+}
+
 struct pipe_context *
 v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -153,6 +174,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->flush = v3d_pipe_flush;
         pctx->set_debug_callback = v3d_set_debug_callback;
         pctx->invalidate_resource = v3d_invalidate_resource;
+        pctx->get_sample_position = v3d_get_sample_position;
 
         if (screen->devinfo.ver >= 41) {
                 v3d41_draw_init(pctx);
