@@ -416,7 +416,6 @@ struct tu_device
    VkAllocationCallbacks alloc;
 
    struct tu_instance *instance;
-   struct radeon_winsys *ws;
 
    struct tu_meta_state meta_state;
 
@@ -480,7 +479,6 @@ struct tu_descriptor_set
    const struct tu_descriptor_set_layout *layout;
    uint32_t size;
 
-   struct radeon_winsys_bo *bo;
    uint64_t va;
    uint32_t *mapped_ptr;
    struct tu_descriptor_range *dynamic_descriptors;
@@ -501,7 +499,6 @@ struct tu_descriptor_pool_entry
 
 struct tu_descriptor_pool
 {
-   struct radeon_winsys_bo *bo;
    uint8_t *mapped_ptr;
    uint64_t current_offset;
    uint64_t size;
@@ -706,7 +703,6 @@ struct tu_cmd_buffer_upload
    uint8_t *map;
    unsigned offset;
    uint64_t size;
-   struct radeon_winsys_bo *upload_bo;
    struct list_head list;
 };
 
@@ -731,7 +727,7 @@ struct tu_cmd_buffer
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;
    enum tu_cmd_buffer_status status;
-   struct radeon_cmdbuf *cs;
+
    struct tu_cmd_state state;
    struct tu_vertex_binding vertex_bindings[MAX_VBS];
    uint32_t queue_family_index;
@@ -752,11 +748,6 @@ struct tu_cmd_buffer
    bool sample_positions_needed;
 
    VkResult record_result;
-
-   uint32_t gfx9_fence_offset;
-   struct radeon_winsys_bo *gfx9_fence_bo;
-   uint32_t gfx9_fence_idx;
-   uint64_t gfx9_eop_bug_va;
 
    /**
     * Whether a query pool has been resetted and we have to flush caches.
@@ -784,7 +775,6 @@ tu_unaligned_dispatch(struct tu_cmd_buffer *cmd_buffer,
 
 struct tu_event
 {
-   struct radeon_winsys_bo *bo;
    uint64_t *map;
 };
 
@@ -1012,7 +1002,6 @@ tu_image_view_init(struct tu_image_view *view,
 
 struct tu_buffer_view
 {
-   struct radeon_winsys_bo *bo;
    VkFormat vk_format;
    uint64_t range; /**< VkBufferViewCreateInfo::range */
    uint32_t state[4];
@@ -1132,7 +1121,6 @@ tu_device_finish_meta(struct tu_device *device);
 
 struct tu_query_pool
 {
-   struct radeon_winsys_bo *bo;
    uint32_t stride;
    uint32_t availability_offset;
    uint64_t size;
@@ -1143,8 +1131,6 @@ struct tu_query_pool
 
 struct tu_semaphore
 {
-   /* use a winsys sem for non-exportable */
-   struct radeon_winsys_sem *sem;
    uint32_t syncobj;
    uint32_t temp_syncobj;
 };
@@ -1182,19 +1168,9 @@ tu_meta_push_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
 
 struct tu_fence
 {
-   struct radeon_winsys_fence *fence;
-   bool submitted;
-   bool signalled;
-
    uint32_t syncobj;
    uint32_t temp_syncobj;
 };
-
-/* tu_nir_to_llvm.c */
-struct tu_shader_variant_info;
-struct tu_nir_compiler_options;
-
-struct radeon_winsys_sem;
 
 uint32_t
 tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags);
