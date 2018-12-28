@@ -774,6 +774,12 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
         so->base.reference.count = 1;
         so->base.context = pctx;
 
+        if (rsc->separate_stencil &&
+            cso->format == PIPE_FORMAT_X32_S8X24_UINT) {
+                rsc = rsc->separate_stencil;
+                prsc = &rsc->base;
+        }
+
         /* V3D still doesn't support sampling from raster textures, so we will
          * have to copy to a temporary tiled texture.
          */
