@@ -268,6 +268,7 @@ ntq_emit_txs(struct v3d_compile *c, nir_tex_instr *instr)
                 switch (instr->sampler_dim) {
                 case GLSL_SAMPLER_DIM_1D:
                 case GLSL_SAMPLER_DIM_2D:
+                case GLSL_SAMPLER_DIM_MS:
                 case GLSL_SAMPLER_DIM_3D:
                 case GLSL_SAMPLER_DIM_CUBE:
                         /* Don't minify the array size. */
