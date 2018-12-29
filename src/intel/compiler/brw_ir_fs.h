@@ -487,6 +487,16 @@ get_exec_type_size(const fs_inst *inst)
 }
 
 /**
+ * Return whether the instruction isn't an ALU instruction and cannot be
+ * assumed to complete in-order.
+ */
+static inline bool
+is_unordered(const fs_inst *inst)
+{
+   return inst->mlen || inst->is_send_from_grf() || inst->is_math();
+}
+
+/**
  * Return whether the following regioning restriction applies to the specified
  * instruction.  From the Cherryview PRM Vol 7. "Register Region
  * Restrictions":

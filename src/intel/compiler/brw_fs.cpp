@@ -6478,7 +6478,10 @@ fs_visitor::optimize()
       OPT(dead_code_eliminate);
    }
 
-   if (OPT(lower_conversions)) {
+   progress = false;
+   OPT(lower_conversions);
+   OPT(lower_regioning);
+   if (progress) {
       OPT(opt_copy_propagation);
       OPT(dead_code_eliminate);
       OPT(lower_simd_width);

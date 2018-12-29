@@ -64,6 +64,7 @@ COMPILER_FILES = \
 	compiler/brw_fs_live_variables.h \
 	compiler/brw_fs_lower_conversions.cpp \
 	compiler/brw_fs_lower_pack.cpp \
+	compiler/brw_fs_lower_regioning.cpp \
 	compiler/brw_fs_nir.cpp \
 	compiler/brw_fs_reg_allocate.cpp \
 	compiler/brw_fs_register_coalesce.cpp \
