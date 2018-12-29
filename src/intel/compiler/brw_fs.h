@@ -531,6 +531,25 @@ namespace brw {
          return fs_reg(retype(brw_vec8_grf(regs[0], 0), type));
       }
    }
+
+   /**
+    * Remove any modifiers from the \p i-th source region of the instruction,
+    * including negate, abs and any implicit type conversion to the execution
+    * type.  Instead any source modifiers will be implemented as a separate
+    * MOV instruction prior to the original instruction.
+    */
+   inline bool
+   lower_src_modifiers(fs_visitor *v, bblock_t *block, fs_inst *inst, unsigned i)
+   {
+      assert(inst->components_read(i) == 1);
+      const fs_builder ibld(v, block, inst);
+      const fs_reg tmp = ibld.vgrf(get_exec_type(inst));
+
+      ibld.MOV(tmp, inst->src[i]);
+      inst->src[i] = tmp;
+
+      return true;
+   }
 }
 
 void shuffle_from_32bit_read(const brw::fs_builder &bld,

@@ -3862,6 +3862,9 @@ fs_visitor::lower_integer_multiplication()
             high.offset = inst->dst.offset % REG_SIZE;
 
             if (devinfo->gen >= 7) {
+               if (inst->src[1].abs)
+                  lower_src_modifiers(this, block, inst, 1);
+
                if (inst->src[1].file == IMM) {
                   ibld.MUL(low, inst->src[0],
                            brw_imm_uw(inst->src[1].ud & 0xffff));
@@ -3874,6 +3877,9 @@ fs_visitor::lower_integer_multiplication()
                            subscript(inst->src[1], BRW_REGISTER_TYPE_UW, 1));
                }
             } else {
+               if (inst->src[0].abs)
+                  lower_src_modifiers(this, block, inst, 0);
+
                ibld.MUL(low, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 0),
                         inst->src[1]);
                ibld.MUL(high, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 1),
@@ -3891,6 +3897,18 @@ fs_visitor::lower_integer_multiplication()
          }
 
       } else if (inst->opcode == SHADER_OPCODE_MULH) {
+         /* According to the BDW+ BSpec page for the "Multiply Accumulate
+          * High" instruction:
+          *
+          *  "An added preliminary mov is required for source modification on
+          *   src1:
+          *      mov (8) r3.0<1>:d -r3<8;8,1>:d
+          *      mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw
+          *      mach (8) r5.0<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d"
+          */
+         if (devinfo->gen >= 8 && (inst->src[1].negate || inst->src[1].abs))
+            lower_src_modifiers(this, block, inst, 1);
+
          /* Should have been lowered to 8-wide. */
          assert(inst->exec_size <= get_lowered_simd_width(devinfo, inst));
          const fs_reg acc = retype(brw_acc_reg(inst->exec_size),
@@ -3906,8 +3924,6 @@ fs_visitor::lower_integer_multiplication()
              * On Gen8, the multiply instruction does a full 32x32-bit
              * multiply, but in order to do a 64-bit multiply we can simulate
              * the previous behavior and then use a MACH instruction.
-             *
-             * FINISHME: Don't use source modifiers on src1.
              */
             assert(mul->src[1].type == BRW_REGISTER_TYPE_D ||
                    mul->src[1].type == BRW_REGISTER_TYPE_UD);
