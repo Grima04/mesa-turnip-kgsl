@@ -359,10 +359,6 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                 add_read_dep(state, state->last_sf, n);
                 break;
 
-        case V3D_QPU_A_FLPOP:
-                add_write_dep(state, &state->last_sf, n);
-                break;
-
         default:
                 break;
         }
