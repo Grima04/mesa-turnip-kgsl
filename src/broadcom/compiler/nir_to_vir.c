@@ -2009,24 +2009,6 @@ const nir_shader_compiler_options v3d_nir_options = {
         .native_integers = true,
 };
 
-
-#if 0
-static int
-count_nir_instrs(nir_shader *nir)
-{
-        int count = 0;
-        nir_foreach_function(function, nir) {
-                if (!function->impl)
-                        continue;
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr(instr, block)
-                                count++;
-                }
-        }
-        return count;
-}
-#endif
-
 /**
  * When demoting a shader down to single-threaded, removes the THRSW
  * instructions (one will still be inserted at v3d_vir_to_qpu() for the
