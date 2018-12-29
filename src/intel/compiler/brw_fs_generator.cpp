@@ -315,8 +315,6 @@ fs_generator::fire_fb_write(fs_inst *inst,
 
    if (devinfo->gen >= 6)
       brw_inst_set_rt_slot_group(devinfo, insn, inst->group / 16);
-
-   brw_mark_surface_used(&prog_data->base, surf_index);
 }
 
 void
@@ -373,8 +371,6 @@ fs_generator::generate_fb_read(fs_inst *inst, struct brw_reg dst,
    gen9_fb_READ(p, dst, payload, surf_index,
                 inst->header_size, inst->size_written / REG_SIZE,
                 prog_data->persample_dispatch);
-
-   brw_mark_surface_used(&prog_data->base, surf_index);
 }
 
 void
@@ -939,8 +935,6 @@ fs_generator::generate_get_buffer_size(fs_inst *inst,
               inst->header_size > 0,
               simd_mode,
               BRW_SAMPLER_RETURN_FORMAT_SINT32);
-
-   brw_mark_surface_used(prog_data, surf_index.ud);
 }
 
 void
@@ -1225,8 +1219,6 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
                  inst->header_size != 0,
                  simd_mode,
                  return_format);
-
-      brw_mark_surface_used(prog_data, surface + base_binding_table_index);
    } else {
       /* Non-const sampler index */
 
@@ -1790,9 +1782,6 @@ fs_generator::generate_shader_time_add(fs_inst *,
    brw_shader_time_add(p, payload,
                        prog_data->binding_table.shader_time_start);
    brw_pop_insn_state(p);
-
-   brw_mark_surface_used(prog_data,
-                         prog_data->binding_table.shader_time_start);
 }
 
 void

@@ -2895,10 +2895,6 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
       wm_prog_data->binding_table.render_target_read_start -
       wm_prog_data->base.binding_table.texture_start;
 
-   brw_mark_surface_used(
-      bld.shader->stage_prog_data,
-      wm_prog_data->binding_table.render_target_read_start + target);
-
    /* Calculate the fragment coordinates. */
    const fs_reg coords = bld.vgrf(BRW_REGISTER_TYPE_UD, 3);
    bld.MOV(offset(coords, bld, 0), pixel_x);
@@ -3380,7 +3376,6 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       cs_prog_data->uses_num_work_groups = true;
 
       fs_reg surf_index = brw_imm_ud(surface);
-      brw_mark_surface_used(prog_data, surface);
 
       /* Read the 3 GLuint components of gl_NumWorkGroups */
       for (unsigned i = 0; i < 3; i++) {
@@ -3600,18 +3595,10 @@ fs_visitor::get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
       unsigned index = stage_prog_data->binding_table.ssbo_start +
                        nir_src_as_uint(instr->src[src]);
       surf_index = brw_imm_ud(index);
-      brw_mark_surface_used(prog_data, index);
    } else {
       surf_index = vgrf(glsl_type::uint_type);
       bld.ADD(surf_index, get_nir_src(instr->src[src]),
               brw_imm_ud(stage_prog_data->binding_table.ssbo_start));
-
-      /* Assume this may touch any UBO. It would be nice to provide
-       * a tighter bound, but the array information is already lowered away.
-       */
-      brw_mark_surface_used(prog_data,
-                            stage_prog_data->binding_table.ssbo_start +
-                            nir->info.num_ssbos - 1);
    }
 
    return surf_index;
@@ -3897,7 +3884,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          const unsigned index = stage_prog_data->binding_table.ubo_start +
                                 nir_src_as_uint(instr->src[0]);
          surf_index = brw_imm_ud(index);
-         brw_mark_surface_used(prog_data, index);
       } else {
          /* The block index is not a constant. Evaluate the index expression
           * per-channel and add the base UBO index; we have to select a value
@@ -3907,13 +3893,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          bld.ADD(surf_index, get_nir_src(instr->src[0]),
                  brw_imm_ud(stage_prog_data->binding_table.ubo_start));
          surf_index = bld.emit_uniformize(surf_index);
-
-         /* Assume this may touch any UBO. It would be nice to provide
-          * a tighter bound, but the array information is already lowered away.
-          */
-         brw_mark_surface_used(prog_data,
-                               stage_prog_data->binding_table.ubo_start +
-                               nir->info.num_ubos - 1);
       }
 
       if (!nir_src_is_const(instr->src[1])) {
@@ -4170,8 +4149,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       ubld.ADD(buffer_size, size_aligned4, negate(size_padding));
 
       bld.MOV(retype(dest, ret_payload.type), component(buffer_size, 0));
-
-      brw_mark_surface_used(prog_data, index);
       break;
    }
 
@@ -4757,15 +4734,6 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          unreachable("should be lowered");
 
       case nir_tex_src_texture_offset: {
-         /* Figure out the highest possible texture index and mark it as used */
-         uint32_t max_used = texture + instr->texture_array_size - 1;
-         if (instr->op == nir_texop_tg4 && devinfo->gen < 8) {
-            max_used += stage_prog_data->binding_table.gather_texture_start;
-         } else {
-            max_used += stage_prog_data->binding_table.texture_start;
-         }
-         brw_mark_surface_used(prog_data, max_used);
-
          /* Emit code to evaluate the actual indexing expression */
          fs_reg tmp = vgrf(glsl_type::uint_type);
          bld.ADD(tmp, src, brw_imm_ud(texture));

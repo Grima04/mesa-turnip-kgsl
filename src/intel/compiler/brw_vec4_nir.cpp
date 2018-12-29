@@ -387,16 +387,11 @@ vec4_visitor::get_nir_ssbo_intrinsic_index(nir_intrinsic_instr *instr)
       unsigned index = prog_data->base.binding_table.ssbo_start +
                        nir_src_as_uint(instr->src[src]);
       surf_index = brw_imm_ud(index);
-      brw_mark_surface_used(&prog_data->base, index);
    } else {
       surf_index = src_reg(this, glsl_type::uint_type);
       emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[src], 1),
                brw_imm_ud(prog_data->base.binding_table.ssbo_start)));
       surf_index = emit_uniformize(surf_index);
-
-      brw_mark_surface_used(&prog_data->base,
-                            prog_data->base.binding_table.ssbo_start +
-                            nir->info.num_ssbos - 1);
    }
 
    return surf_index;
@@ -492,8 +487,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       emit(MOV(dst_reg(MRF, param_base, glsl_type::int_type, writemask), lod));
 
       emit(inst);
-
-      brw_mark_surface_used(&prog_data->base, index);
       break;
    }
 
@@ -700,7 +693,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          const unsigned index = prog_data->base.binding_table.ubo_start +
                                 nir_src_as_uint(instr->src[0]);
          surf_index = brw_imm_ud(index);
-         brw_mark_surface_used(&prog_data->base, index);
       } else {
          /* The block index is not a constant. Evaluate the index expression
           * per-channel and add the base UBO index; we have to select a value
@@ -711,13 +703,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                                    instr->num_components),
                   brw_imm_ud(prog_data->base.binding_table.ubo_start)));
          surf_index = emit_uniformize(surf_index);
-
-         /* Assume this may touch any UBO. It would be nice to provide
-          * a tighter bound, but the array information is already lowered away.
-          */
-         brw_mark_surface_used(&prog_data->base,
-                               prog_data->base.binding_table.ubo_start +
-                               nir->info.num_ubos - 1);
       }
 
       src_reg offset_reg;
@@ -2031,20 +2016,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
 
       case nir_tex_src_texture_offset: {
-         /* The highest texture which may be used by this operation is
-          * the last element of the array. Mark it here, because the generator
-          * doesn't have enough information to determine the bound.
-          */
-         uint32_t array_size = instr->texture_array_size;
-         uint32_t max_used = texture + array_size - 1;
-         if (instr->op == nir_texop_tg4) {
-            max_used += prog_data->base.binding_table.gather_texture_start;
-         } else {
-            max_used += prog_data->base.binding_table.texture_start;
-         }
-
-         brw_mark_surface_used(&prog_data->base, max_used);
-
          /* Emit code to evaluate the actual indexing expression */
          src_reg src = get_nir_src(instr->src[i].src, 1);
          src_reg temp(this, glsl_type::uint_type);

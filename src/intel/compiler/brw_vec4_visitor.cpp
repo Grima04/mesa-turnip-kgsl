@@ -1748,8 +1748,6 @@ vec4_visitor::emit_pull_constant_load(bblock_t *block, vec4_instruction *inst,
       src = byte_offset(src, 16);
    }
 
-   brw_mark_surface_used(&prog_data->base, index);
-
    if (is_64bit) {
       temp = retype(temp, BRW_REGISTER_TYPE_DF);
       shuffle_64bit_data(orig_temp, src_reg(temp), false, block, inst);

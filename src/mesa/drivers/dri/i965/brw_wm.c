@@ -63,6 +63,9 @@ assign_fs_binding_table_offsets(const struct gen_device_info *devinfo,
          next_binding_table_offset;
       next_binding_table_offset += key->nr_color_regions;
    }
+
+   /* Update the binding table size */
+   prog_data->base.binding_table.size_bytes = next_binding_table_offset * 4;
 }
 
 static void

@@ -896,7 +896,10 @@ brw_assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    stage_prog_data->binding_table.plane_start[2] = next_binding_table_offset;
    next_binding_table_offset += num_textures;
 
-   /* prog_data->base.binding_table.size will be set by brw_mark_surface_used. */
+   /* Set the binding table size.  Some callers may append new entries
+    * and increase this accordingly.
+    */
+   stage_prog_data->binding_table.size_bytes = next_binding_table_offset * 4;
 
    assert(next_binding_table_offset <= BRW_MAX_SURFACES);
    return next_binding_table_offset;

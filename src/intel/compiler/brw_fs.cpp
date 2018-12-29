@@ -2394,8 +2394,6 @@ fs_visitor::lower_constant_loads()
          inst->src[i].nr = dst.nr;
          inst->src[i].offset = (base & (block_sz - 1)) +
                                inst->src[i].offset % 4;
-
-         brw_mark_surface_used(prog_data, index);
       }
 
       if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT &&
@@ -2409,8 +2407,6 @@ fs_visitor::lower_constant_loads()
                                     inst->src[1],
                                     pull_index * 4);
          inst->remove(block);
-
-         brw_mark_surface_used(prog_data, index);
       }
    }
    invalidate_live_intervals();

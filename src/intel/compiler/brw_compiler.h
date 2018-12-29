@@ -643,19 +643,6 @@ brw_stage_prog_data_add_params(struct brw_stage_prog_data *prog_data,
    return prog_data->param + old_nr_params;
 }
 
-static inline void
-brw_mark_surface_used(struct brw_stage_prog_data *prog_data,
-                      unsigned surf_index)
-{
-   /* A binding table index is 8 bits and the top 3 values are reserved for
-    * special things (stateless and SLM).
-    */
-   assert(surf_index <= 252);
-
-   prog_data->binding_table.size_bytes =
-      MAX2(prog_data->binding_table.size_bytes, (surf_index + 1) * 4);
-}
-
 enum brw_barycentric_mode {
    BRW_BARYCENTRIC_PERSPECTIVE_PIXEL       = 0,
    BRW_BARYCENTRIC_PERSPECTIVE_CENTROID    = 1,
