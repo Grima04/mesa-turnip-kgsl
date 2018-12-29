@@ -751,6 +751,7 @@ struct qreg vir_emit_def(struct v3d_compile *c, struct qinst *inst);
 struct qinst *vir_emit_nondef(struct v3d_compile *c, struct qinst *inst);
 void vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond);
 void vir_set_pf(struct qinst *inst, enum v3d_qpu_pf pf);
+void vir_set_uf(struct qinst *inst, enum v3d_qpu_uf uf);
 void vir_set_unpack(struct qinst *inst, int src,
                     enum v3d_qpu_input_unpack unpack);
 

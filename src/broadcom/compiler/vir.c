@@ -291,6 +291,17 @@ vir_set_pf(struct qinst *inst, enum v3d_qpu_pf pf)
         }
 }
 
+void
+vir_set_uf(struct qinst *inst, enum v3d_qpu_uf uf)
+{
+        if (vir_is_add(inst)) {
+                inst->qpu.flags.auf = uf;
+        } else {
+                assert(vir_is_mul(inst));
+                inst->qpu.flags.muf = uf;
+        }
+}
+
 #if 0
 uint8_t
 vir_channels_written(struct qinst *inst)

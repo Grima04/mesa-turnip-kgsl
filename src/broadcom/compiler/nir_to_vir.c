@@ -1736,19 +1736,33 @@ ntq_emit_if(struct v3d_compile *c, nir_if *if_stmt)
                 was_top_level = true;
         }
 
-        /* Set A for executing (execute == 0) and jumping (if->condition ==
-         * 0) channels, and then update execute flags for those to point to
-         * the ELSE block.
-         *
-         * XXX perf: we could reuse ntq_emit_comparison() to generate our if
-         * condition, and the .uf field to ignore non-executing channels, to
-         * reduce the overhead of if statements.
+        /* Set up the flags for the IF condition (taking the THEN branch). */
+        nir_alu_instr *if_condition_alu = ntq_get_alu_parent(if_stmt->condition);
+        enum v3d_qpu_cond cond;
+        if (!if_condition_alu ||
+            !ntq_emit_comparison(c, if_condition_alu, &cond)) {
+                vir_PF(c, ntq_get_src(c, if_stmt->condition, 0),
+                       V3D_QPU_PF_PUSHZ);
+                cond = V3D_QPU_COND_IFNA;
+        }
+
+        /* Update the flags+cond to mean "Taking the ELSE branch (!cond) and
+         * was previously active (execute Z) for updating the exec flags.
          */
-        vir_PF(c, vir_OR(c,
-                         c->execute,
-                         ntq_get_src(c, if_stmt->condition, 0)),
-                V3D_QPU_PF_PUSHZ);
-        vir_MOV_cond(c, V3D_QPU_COND_IFA,
+        if (was_top_level) {
+                cond = v3d_qpu_cond_invert(cond);
+        } else {
+                struct qinst *inst = vir_MOV_dest(c, vir_reg(QFILE_NULL, 0),
+                                                  c->execute);
+                if (cond == V3D_QPU_COND_IFA) {
+                        vir_set_uf(inst, V3D_QPU_UF_NORNZ);
+                } else {
+                        vir_set_uf(inst, V3D_QPU_UF_ANDZ);
+                        cond = V3D_QPU_COND_IFA;
+                }
+        }
+
+        vir_MOV_cond(c, cond,
                      c->execute,
                      vir_uniform_ui(c, else_block->index));
 
