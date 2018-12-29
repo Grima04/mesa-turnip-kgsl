@@ -92,6 +92,24 @@ can_write_to_null(struct v3d_compile *c, struct qinst *inst)
         return true;
 }
 
+static void
+vir_dce_flags(struct v3d_compile *c, struct qinst *inst)
+{
+        if (debug) {
+                fprintf(stderr,
+                        "Removing flags write from: ");
+                vir_dump_inst(c, inst);
+                fprintf(stderr, "\n");
+        }
+
+        assert(inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU);
+
+        inst->qpu.flags.apf = V3D_QPU_PF_NONE;
+        inst->qpu.flags.mpf = V3D_QPU_PF_NONE;
+        inst->qpu.flags.auf = V3D_QPU_UF_NONE;
+        inst->qpu.flags.muf = V3D_QPU_UF_NONE;
+}
+
 bool
 vir_opt_dead_code(struct v3d_compile *c)
 {
@@ -112,7 +130,15 @@ vir_opt_dead_code(struct v3d_compile *c)
         }
 
         vir_for_each_block(block, c) {
+                struct qinst *last_flags_write = NULL;
+
                 vir_for_each_inst_safe(inst, block) {
+                        /* If this instruction reads the flags, we can't
+                         * remove the flags generation for it.
+                         */
+                        if (v3d_qpu_reads_flags(&inst->qpu))
+                                last_flags_write = NULL;
+
                         if (inst->dst.file != QFILE_NULL &&
                             !(inst->dst.file == QFILE_TEMP &&
                               !used[inst->dst.index])) {
@@ -122,10 +148,21 @@ vir_opt_dead_code(struct v3d_compile *c)
                         if (vir_has_side_effects(c, inst))
                                 continue;
 
-                        if (inst->qpu.flags.apf != V3D_QPU_PF_NONE ||
-                            inst->qpu.flags.mpf != V3D_QPU_PF_NONE ||
-                            inst->qpu.flags.auf != V3D_QPU_UF_NONE ||
-                            inst->qpu.flags.muf != V3D_QPU_UF_NONE ||
+                        if (v3d_qpu_writes_flags(&inst->qpu)) {
+                                /* If we obscure a previous flags write,
+                                 * drop it.
+                                 */
+                                if (last_flags_write &&
+                                    (inst->qpu.flags.apf != V3D_QPU_PF_NONE ||
+                                     inst->qpu.flags.mpf != V3D_QPU_PF_NONE)) {
+                                        vir_dce_flags(c, last_flags_write);
+                                        progress = true;
+                                }
+
+                                last_flags_write = inst;
+                        }
+
+                        if (v3d_qpu_writes_flags(&inst->qpu) ||
                             has_nonremovable_reads(c, inst)) {
                                 /* If we can't remove the instruction, but we
                                  * don't need its destination value, just
@@ -162,6 +199,7 @@ vir_opt_dead_code(struct v3d_compile *c)
                                 }
                         }
 
+                        assert(inst != last_flags_write);
                         dce(c, inst);
                         progress = true;
                         continue;
