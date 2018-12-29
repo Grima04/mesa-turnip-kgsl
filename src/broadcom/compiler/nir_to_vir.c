@@ -504,48 +504,49 @@ ntq_emit_comparison(struct v3d_compile *c, struct qreg *dest,
         if (nir_op_infos[compare_instr->op].num_inputs > 1)
                 src1 = ntq_get_alu_src(c, compare_instr, 1);
         bool cond_invert = false;
+        struct qreg nop = vir_reg(QFILE_NULL, 0);
 
         switch (compare_instr->op) {
         case nir_op_feq32:
         case nir_op_seq:
-                vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_FCMP_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHZ);
                 break;
         case nir_op_ieq32:
-                vir_PF(c, vir_XOR(c, src0, src1), V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_XOR_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHZ);
                 break;
 
         case nir_op_fne32:
         case nir_op_sne:
-                vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_FCMP_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHZ);
                 cond_invert = true;
                 break;
         case nir_op_ine32:
-                vir_PF(c, vir_XOR(c, src0, src1), V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_XOR_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHZ);
                 cond_invert = true;
                 break;
 
         case nir_op_fge32:
         case nir_op_sge:
-                vir_PF(c, vir_FCMP(c, src1, src0), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_FCMP_dest(c, nop, src1, src0), V3D_QPU_PF_PUSHC);
                 break;
         case nir_op_ige32:
-                vir_PF(c, vir_MIN(c, src1, src0), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_MIN_dest(c, nop, src1, src0), V3D_QPU_PF_PUSHC);
                 cond_invert = true;
                 break;
         case nir_op_uge32:
-                vir_PF(c, vir_SUB(c, src0, src1), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_SUB_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHC);
                 cond_invert = true;
                 break;
 
         case nir_op_slt:
         case nir_op_flt32:
-                vir_PF(c, vir_FCMP(c, src0, src1), V3D_QPU_PF_PUSHN);
+                vir_set_pf(vir_FCMP_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHN);
                 break;
         case nir_op_ilt32:
-                vir_PF(c, vir_MIN(c, src1, src0), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_MIN_dest(c, nop, src1, src0), V3D_QPU_PF_PUSHC);
                 break;
         case nir_op_ult32:
-                vir_PF(c, vir_SUB(c, src0, src1), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_SUB_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHC);
                 break;
 
         default:
@@ -1691,8 +1692,9 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 static void
 ntq_activate_execute_for_block(struct v3d_compile *c)
 {
-        vir_PF(c, vir_XOR(c, c->execute, vir_uniform_ui(c, c->cur_block->index)),
-               V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_XOR_dest(c, vir_reg(QFILE_NULL, 0),
+                                c->execute, vir_uniform_ui(c, c->cur_block->index)),
+                   V3D_QPU_PF_PUSHZ);
 
         vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute, vir_uniform_ui(c, 0));
 }
