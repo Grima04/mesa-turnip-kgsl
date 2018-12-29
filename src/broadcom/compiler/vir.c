@@ -204,17 +204,6 @@ vir_is_tex(struct qinst *inst)
 }
 
 bool
-vir_depends_on_flags(struct qinst *inst)
-{
-        if (inst->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH) {
-                return (inst->qpu.branch.cond != V3D_QPU_BRANCH_COND_ALWAYS);
-        } else {
-                return (inst->qpu.flags.ac != V3D_QPU_COND_NONE &&
-                        inst->qpu.flags.mc != V3D_QPU_COND_NONE);
-        }
-}
-
-bool
 vir_writes_r3(const struct v3d_device_info *devinfo, struct qinst *inst)
 {
         for (int i = 0; i < vir_get_nsrc(inst); i++) {

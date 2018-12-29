@@ -47,10 +47,7 @@ dce(struct v3d_compile *c, struct qinst *inst)
                 vir_dump_inst(c, inst);
                 fprintf(stderr, "\n");
         }
-        assert(inst->qpu.flags.apf == V3D_QPU_PF_NONE);
-        assert(inst->qpu.flags.mpf == V3D_QPU_PF_NONE);
-        assert(inst->qpu.flags.auf == V3D_QPU_UF_NONE);
-        assert(inst->qpu.flags.muf == V3D_QPU_UF_NONE);
+        assert(!v3d_qpu_writes_flags(&inst->qpu));
         vir_remove_instruction(c, inst);
 }
 

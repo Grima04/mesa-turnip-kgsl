@@ -809,3 +809,44 @@ v3d_qpu_sig_writes_address(const struct v3d_device_info *devinfo,
                 sig->ldtlb ||
                 sig->ldtlbu);
 }
+
+bool
+v3d_qpu_reads_flags(const struct v3d_qpu_instr *inst)
+{
+        if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH) {
+                return inst->branch.cond != V3D_QPU_BRANCH_COND_ALWAYS;
+        } else if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
+                if (inst->flags.ac != V3D_QPU_COND_NONE ||
+                    inst->flags.mc != V3D_QPU_COND_NONE ||
+                    inst->flags.auf != V3D_QPU_UF_NONE ||
+                    inst->flags.muf != V3D_QPU_UF_NONE)
+                        return true;
+
+                switch (inst->alu.add.op) {
+                case V3D_QPU_A_VFLA:
+                case V3D_QPU_A_VFLNA:
+                case V3D_QPU_A_VFLB:
+                case V3D_QPU_A_VFLNB:
+                case V3D_QPU_A_FLAPUSH:
+                case V3D_QPU_A_FLBPUSH:
+                        return true;
+                default:
+                        break;
+                }
+        }
+
+        return false;
+}
+
+bool
+v3d_qpu_writes_flags(const struct v3d_qpu_instr *inst)
+{
+        if (inst->flags.apf != V3D_QPU_PF_NONE ||
+            inst->flags.mpf != V3D_QPU_PF_NONE ||
+            inst->flags.auf != V3D_QPU_UF_NONE ||
+            inst->flags.muf != V3D_QPU_UF_NONE) {
+                return true;
+        }
+
+        return false;
+}
