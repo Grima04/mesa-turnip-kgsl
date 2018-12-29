@@ -399,7 +399,7 @@ fs_inst::is_copy_payload(const brw::simple_allocator &grf_alloc) const
 }
 
 bool
-fs_inst::can_do_source_mods(const struct gen_device_info *devinfo)
+fs_inst::can_do_source_mods(const struct gen_device_info *devinfo) const
 {
    if (devinfo->gen == 6 && is_math())
       return false;
