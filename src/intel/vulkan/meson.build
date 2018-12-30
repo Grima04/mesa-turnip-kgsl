@@ -233,6 +233,7 @@ if with_tests
       executable(
         t,
         ['tests/@0@.c'.format(t), anv_entrypoints[0], anv_extensions_h],
+        c_args : [ c_sse2_args ],
         link_with : libvulkan_intel_test,
         dependencies : [dep_libdrm, dep_thread, dep_m, dep_valgrind],
         include_directories : [
