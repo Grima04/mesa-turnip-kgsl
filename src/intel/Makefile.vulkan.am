@@ -262,15 +262,19 @@ VULKAN_TEST_LDADD = \
 check_PROGRAMS += $(VULKAN_TESTS)
 TESTS += $(VULKAN_TESTS)
 
+vulkan_tests_block_pool_no_free_CFLAGS = $(VULKAN_CFLAGS)
 vulkan_tests_block_pool_no_free_CPPFLAGS = $(VULKAN_CPPFLAGS)
 vulkan_tests_block_pool_no_free_LDADD = $(VULKAN_TEST_LDADD)
 
+vulkan_tests_state_pool_no_free_CFLAGS = $(VULKAN_CFLAGS)
 vulkan_tests_state_pool_no_free_CPPFLAGS = $(VULKAN_CPPFLAGS)
 vulkan_tests_state_pool_no_free_LDADD = $(VULKAN_TEST_LDADD)
 
+vulkan_tests_state_pool_free_list_only_CFLAGS = $(VULKAN_CFLAGS)
 vulkan_tests_state_pool_free_list_only_CPPFLAGS = $(VULKAN_CPPFLAGS)
 vulkan_tests_state_pool_free_list_only_LDADD = $(VULKAN_TEST_LDADD)
 
+vulkan_tests_state_pool_CFLAGS = $(VULKAN_CFLAGS)
 vulkan_tests_state_pool_CPPFLAGS = $(VULKAN_CPPFLAGS)
 vulkan_tests_state_pool_LDADD = $(VULKAN_TEST_LDADD)
 
