@@ -197,6 +197,16 @@ v3d_shader_precompile(struct v3d_context *v3d,
                         .base.shader_state = so,
                 };
 
+                nir_foreach_variable(var, &s->outputs) {
+                        if (var->data.location == FRAG_RESULT_COLOR) {
+                                key.nr_cbufs = 1;
+                        } else if (var->data.location == FRAG_RESULT_DATA0) {
+                                key.nr_cbufs = MAX2(key.nr_cbufs,
+                                                    var->data.location -
+                                                    FRAG_RESULT_DATA0 + 1);
+                        }
+                }
+
                 v3d_setup_shared_precompile_key(so, &key.base);
                 v3d_get_compiled_shader(v3d, &key.base);
         } else {
