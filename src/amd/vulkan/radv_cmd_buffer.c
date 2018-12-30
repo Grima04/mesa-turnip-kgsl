@@ -4761,6 +4761,8 @@ void radv_CmdBeginConditionalRenderingEXT(
 		draw_visible = false;
 	}
 
+	si_emit_cache_flush(cmd_buffer);
+
 	/* Enable predication for this command buffer. */
 	si_emit_set_predication_state(cmd_buffer, draw_visible, va);
 	cmd_buffer->state.predicating = true;
