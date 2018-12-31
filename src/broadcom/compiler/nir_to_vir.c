@@ -559,6 +559,14 @@ ntq_emit_comparison(struct v3d_compile *c,
         return true;
 }
 
+static struct nir_alu_instr *
+ntq_get_alu_parent(nir_src src)
+{
+        if (!src.is_ssa || src.ssa->parent_instr->type != nir_instr_type_alu)
+                return NULL;
+        return nir_instr_as_alu(src.ssa->parent_instr);
+}
+
 /**
  * Attempts to fold a comparison generating a boolean result into the
  * condition code for selecting between two values, instead of comparing the
@@ -567,12 +575,7 @@ ntq_emit_comparison(struct v3d_compile *c,
 static struct qreg ntq_emit_bcsel(struct v3d_compile *c, nir_alu_instr *instr,
                                   struct qreg *src)
 {
-        if (!instr->src[0].src.is_ssa)
-                goto out;
-        if (instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)
-                goto out;
-        nir_alu_instr *compare =
-                nir_instr_as_alu(instr->src[0].src.ssa->parent_instr);
+        nir_alu_instr *compare = ntq_get_alu_parent(instr->src[0].src);
         if (!compare)
                 goto out;
 
