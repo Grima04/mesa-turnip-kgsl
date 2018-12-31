@@ -1715,7 +1715,60 @@ ntq_activate_execute_for_block(struct v3d_compile *c)
 }
 
 static void
-ntq_emit_if(struct v3d_compile *c, nir_if *if_stmt)
+ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
+{
+        nir_block *nir_else_block = nir_if_first_else_block(if_stmt);
+        bool empty_else_block =
+                (nir_else_block == nir_if_last_else_block(if_stmt) &&
+                 exec_list_is_empty(&nir_else_block->instr_list));
+
+        struct qblock *then_block = vir_new_block(c);
+        struct qblock *after_block = vir_new_block(c);
+        struct qblock *else_block;
+        if (empty_else_block)
+                else_block = after_block;
+        else
+                else_block = vir_new_block(c);
+
+        /* Set up the flags for the IF condition (taking the THEN branch). */
+        nir_alu_instr *if_condition_alu = ntq_get_alu_parent(if_stmt->condition);
+        enum v3d_qpu_cond cond;
+        if (!if_condition_alu ||
+            !ntq_emit_comparison(c, if_condition_alu, &cond)) {
+                vir_PF(c, ntq_get_src(c, if_stmt->condition, 0),
+                       V3D_QPU_PF_PUSHZ);
+                cond = V3D_QPU_COND_IFNA;
+        }
+
+        /* Jump to ELSE. */
+        vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
+                   V3D_QPU_BRANCH_COND_ALLNA :
+                   V3D_QPU_BRANCH_COND_ALLA);
+        vir_link_blocks(c->cur_block, else_block);
+        vir_link_blocks(c->cur_block, then_block);
+
+        /* Process the THEN block. */
+        vir_set_emit_block(c, then_block);
+        ntq_emit_cf_list(c, &if_stmt->then_list);
+
+        if (!empty_else_block) {
+                /* At the end of the THEN block, jump to ENDIF */
+                vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALWAYS);
+                vir_link_blocks(c->cur_block, after_block);
+
+                /* Emit the else block. */
+                vir_set_emit_block(c, else_block);
+                ntq_activate_execute_for_block(c);
+                ntq_emit_cf_list(c, &if_stmt->else_list);
+        }
+
+        vir_link_blocks(c->cur_block, after_block);
+
+        vir_set_emit_block(c, after_block);
+}
+
+static void
+ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
 {
         nir_block *nir_else_block = nir_if_first_else_block(if_stmt);
         bool empty_else_block =
@@ -1807,6 +1860,17 @@ ntq_emit_if(struct v3d_compile *c, nir_if *if_stmt)
                 c->execute = c->undef;
         else
                 ntq_activate_execute_for_block(c);
+}
+
+static void
+ntq_emit_if(struct v3d_compile *c, nir_if *nif)
+{
+        if (c->execute.file == QFILE_NULL &&
+            nir_src_is_dynamically_uniform(nif->condition)) {
+                ntq_emit_uniform_if(c, nif);
+        } else {
+                ntq_emit_nonuniform_if(c, nif);
+        }
 }
 
 static void
