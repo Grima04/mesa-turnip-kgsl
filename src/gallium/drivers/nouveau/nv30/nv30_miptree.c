@@ -116,8 +116,22 @@ define_rect(struct pipe_resource *pt, unsigned level, unsigned z,
 
    rect->x0     = util_format_get_nblocksx(pt->format, x) << mt->ms_x;
    rect->y0     = util_format_get_nblocksy(pt->format, y) << mt->ms_y;
-   rect->x1     = rect->x0 + (w << mt->ms_x);
-   rect->y1     = rect->y0 + (h << mt->ms_y);
+   rect->x1     = rect->x0 + (util_format_get_nblocksx(pt->format, w) << mt->ms_x);
+   rect->y1     = rect->y0 + (util_format_get_nblocksy(pt->format, h) << mt->ms_y);
+
+   /* XXX There's some indication that swizzled formats > 4 bytes are treated
+    * differently. However that only applies to RGBA16_FLOAT, RGBA32_FLOAT,
+    * and the DXT* formats. The former aren't properly supported yet, and the
+    * latter avoid swizzled layouts.
+
+   if (mt->swizzled && rect->cpp > 4) {
+      unsigned scale = rect->cpp / 4;
+      rect->w *= scale;
+      rect->x0 *= scale;
+      rect->x1 *= scale;
+      rect->cpp = 4;
+   }
+   */
 }
 
 void
@@ -286,7 +300,7 @@ nv30_miptree_transfer_map(struct pipe_context *pipe, struct pipe_resource *pt,
    tx->nblocksy = util_format_get_nblocksy(pt->format, box->height);
 
    define_rect(pt, level, box->z, box->x, box->y,
-                   tx->nblocksx, tx->nblocksy, &tx->img);
+               box->width, box->height, &tx->img);
 
    ret = nouveau_bo_new(dev, NOUVEAU_BO_GART | NOUVEAU_BO_MAP, 0,
                         tx->base.layer_stride * tx->base.box.depth, NULL,
@@ -435,8 +449,7 @@ nv30_miptree_create(struct pipe_screen *pscreen,
        !util_is_power_of_two_or_zero(pt->width0) ||
        !util_is_power_of_two_or_zero(pt->height0) ||
        !util_is_power_of_two_or_zero(pt->depth0) ||
-       util_format_is_compressed(pt->format) ||
-       util_format_is_float(pt->format) || mt->ms_mode) {
+       mt->ms_mode) {
       mt->uniform_pitch = util_format_get_nblocksx(pt->format, w) * blocksz;
       mt->uniform_pitch = align(mt->uniform_pitch, 64);
       if (pt->bind & PIPE_BIND_SCANOUT) {
@@ -449,8 +462,14 @@ nv30_miptree_create(struct pipe_screen *pscreen,
       }
    }
 
-   if (!mt->uniform_pitch)
+   if (util_format_is_compressed(pt->format)) {
+      // Compressed (DXT) formats are packed tightly. We don't mark them as
+      // swizzled, since their layout is largely linear. However we do end up
+      // omitting the LINEAR flag when texturing them, as the levels are not
+      // uniformly sized (for POT sizes).
+   } else if (!mt->uniform_pitch) {
       mt->swizzled = true;
+   }
 
    size = 0;
    for (l = 0; l <= pt->last_level; l++) {
