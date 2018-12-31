@@ -62,13 +62,13 @@ static void
 tu_get_driver_uuid(void *uuid)
 {
    memset(uuid, 0, VK_UUID_SIZE);
+   snprintf(uuid, VK_UUID_SIZE, "freedreno");
 }
 
 static void
 tu_get_device_uuid(void *uuid)
 {
-   tu_use_args(uuid);
-   tu_stub();
+   memset(uuid, 0, VK_UUID_SIZE);
 }
 
 VkResult
