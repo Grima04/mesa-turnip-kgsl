@@ -29,6 +29,51 @@
 
 #include "vk_format.h"
 
+static void
+tu_bo_list_init(struct tu_bo_list *list)
+{
+   list->count = list->capacity = 0;
+   list->handles = NULL;
+}
+
+static void
+tu_bo_list_destroy(struct tu_bo_list *list)
+{
+   free(list->handles);
+}
+
+static void
+tu_bo_list_reset(struct tu_bo_list *list)
+{
+   list->count = 0;
+}
+
+static uint32_t
+tu_bo_list_add(struct tu_bo_list *list,
+               const struct tu_bo *bo)
+{
+   uint32_t handle = bo->gem_handle;
+   for (uint32_t i = 0; i < list->count; ++i) {
+      if (list->handles[i] == handle)
+         return i;
+   }
+
+   if (list->count == list->capacity) {
+      uint32_t new_capacity = MAX2(2 * list->count, 16);
+      uint32_t *new_handles = realloc(list->handles, new_capacity * sizeof(uint32_t));
+      if (!new_handles)
+         return ~0;
+      list->handles = new_handles;
+      list->capacity = new_capacity;
+   }
+
+   uint32_t ret = list->count;
+   list->handles[list->count] = handle;
+   ++list->count;
+
+   return ret;
+}
+
 const struct tu_dynamic_state default_dynamic_state = {
    .viewport =
      {
@@ -199,6 +244,8 @@ tu_create_cmd_buffer(struct tu_device *device,
       cmd_buffer->queue_family_index = TU_QUEUE_GENERAL;
    }
 
+   tu_bo_list_init(&cmd_buffer->bo_list);
+
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
    list_inithead(&cmd_buffer->upload.list);
@@ -214,6 +261,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
+   tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -221,6 +269,8 @@ static VkResult
 tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 {
    cmd_buffer->record_result = VK_SUCCESS;
+
+   tu_bo_list_reset(&cmd_buffer->bo_list);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
       cmd_buffer->descriptors[i].dirty = 0;

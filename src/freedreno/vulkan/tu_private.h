@@ -403,12 +403,6 @@ struct tu_queue
    VkDeviceQueueCreateFlags flags;
 };
 
-struct tu_bo_list
-{
-   unsigned capacity;
-   pthread_mutex_t mutex;
-};
-
 struct tu_device
 {
    VK_LOADER_DATA _loader_data;
@@ -431,11 +425,6 @@ struct tu_device
    mtx_t shader_slab_mutex;
 
    struct tu_device_extension_table enabled_extensions;
-
-   /* Whether the driver uses a global BO list. */
-   bool use_global_bo_list;
-
-   struct tu_bo_list bo_list;
 };
 
 struct tu_bo
@@ -715,6 +704,13 @@ enum tu_cmd_buffer_status
    TU_CMD_BUFFER_STATUS_PENDING,
 };
 
+struct tu_bo_list
+{
+   uint32_t count;
+   uint32_t capacity;
+   uint32_t *handles;
+};
+
 struct tu_cmd_buffer
 {
    VK_LOADER_DATA _loader_data;
@@ -740,19 +736,9 @@ struct tu_cmd_buffer
 
    struct tu_cmd_buffer_upload upload;
 
-   uint32_t scratch_size_needed;
-   uint32_t compute_scratch_size_needed;
-   uint32_t esgs_ring_size_needed;
-   uint32_t gsvs_ring_size_needed;
-   bool tess_rings_needed;
-   bool sample_positions_needed;
+   struct tu_bo_list bo_list;
 
    VkResult record_result;
-
-   /**
-    * Whether a query pool has been resetted and we have to flush caches.
-    */
-   bool pending_reset_query;
 };
 
 bool
