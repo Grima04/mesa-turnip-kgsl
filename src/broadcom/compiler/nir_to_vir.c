@@ -559,12 +559,28 @@ ntq_emit_comparison(struct v3d_compile *c,
         return true;
 }
 
+/* Finds an ALU instruction that generates our src value that could
+ * (potentially) be greedily emitted in the consuming instruction.
+ */
 static struct nir_alu_instr *
 ntq_get_alu_parent(nir_src src)
 {
         if (!src.is_ssa || src.ssa->parent_instr->type != nir_instr_type_alu)
                 return NULL;
-        return nir_instr_as_alu(src.ssa->parent_instr);
+        nir_alu_instr *instr = nir_instr_as_alu(src.ssa->parent_instr);
+        if (!instr)
+                return NULL;
+
+        /* If the ALU instr's srcs are non-SSA, then we would have to avoid
+         * moving emission of the ALU instr down past another write of the
+         * src.
+         */
+        for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+                if (!instr->src[i].src.is_ssa)
+                        return NULL;
+        }
+
+        return instr;
 }
 
 /**
