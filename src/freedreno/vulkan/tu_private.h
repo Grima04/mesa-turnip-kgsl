@@ -711,6 +711,30 @@ struct tu_bo_list
    uint32_t *handles;
 };
 
+struct tu_cmd_stream_entry
+{
+    /* No ownership */
+   struct tu_bo *bo;
+
+   uint32_t size;
+   uint64_t offset;
+};
+
+struct tu_cmd_stream
+{
+   uint32_t *start;
+   uint32_t *cur;
+   uint32_t *end;
+
+   struct tu_cmd_stream_entry *entries;
+   uint32_t entry_count;
+   uint32_t entry_capacity;
+
+   struct tu_bo **bos;
+   uint32_t bo_count;
+   uint32_t bo_capacity;
+};
+
 struct tu_cmd_buffer
 {
    VK_LOADER_DATA _loader_data;
@@ -737,6 +761,7 @@ struct tu_cmd_buffer
    struct tu_cmd_buffer_upload upload;
 
    struct tu_bo_list bo_list;
+   struct tu_cmd_stream primary_cmd_stream;
 
    VkResult record_result;
 };

@@ -74,6 +74,132 @@ tu_bo_list_add(struct tu_bo_list *list,
    return ret;
 }
 
+static void
+tu_cmd_stream_init(struct tu_cmd_stream *stream)
+{
+   stream->start = stream->cur = stream->end = NULL;
+
+   stream->entry_count = stream->entry_capacity = 0;
+   stream->entries = NULL;
+
+   stream->bo_count = stream->bo_capacity = 0;
+   stream->bos = NULL;
+}
+
+static void
+tu_cmd_stream_finish(struct tu_device *dev,
+                     struct tu_cmd_stream *stream)
+{
+   for (uint32_t i = 0; i < stream->bo_count; ++i) {
+      tu_bo_finish(dev, stream->bos[i]);
+      free(stream->bos[i]);
+   }
+
+   free(stream->entries);
+   free(stream->bos);
+}
+
+static VkResult
+tu_cmd_stream_begin(struct tu_device *dev,
+                    struct tu_cmd_stream *stream,
+                    uint32_t reserve_size)
+{
+   assert(reserve_size);
+
+   if (stream->end - stream->cur < reserve_size) {
+      if (stream->bo_count == stream->bo_capacity) {
+         uint32_t new_capacity = MAX2(4, 2 * stream->bo_capacity);
+         struct tu_bo **new_bos = realloc(stream->bos,
+                                          new_capacity * sizeof(struct tu_bo*));
+         if (!new_bos)
+            abort();
+
+         stream->bo_capacity = new_capacity;
+         stream->bos = new_bos;
+      }
+
+      uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
+      if (stream->bo_count)
+          new_size = MAX2(new_size, stream->bos[stream->bo_count - 1]->size * 2);
+
+      struct tu_bo *new_bo = malloc(sizeof(struct tu_bo));
+      if (!new_bo)
+          abort();
+
+      VkResult result = tu_bo_init_new(dev, new_bo, new_size);
+      if (result != VK_SUCCESS) {
+          free(new_bo);
+          return result;
+      }
+
+      result = tu_bo_map(dev, new_bo);
+      if (result != VK_SUCCESS) {
+          tu_bo_finish(dev, new_bo);
+          free(new_bo);
+          return result;
+      }
+
+      stream->bos[stream->bo_count] = new_bo;
+      ++stream->bo_count;
+
+      stream->start = stream->cur = (uint32_t*)new_bo->map;
+      stream->end = stream->start + new_bo->size / sizeof(uint32_t);
+   }
+   stream->start = stream->cur;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_cmd_stream_end(struct tu_cmd_stream *stream)
+{
+   if (stream->start == stream->cur)
+      return VK_SUCCESS;
+
+   if (stream->entry_capacity == stream->entry_count) {
+       uint32_t new_capacity = MAX2(stream->entry_capacity * 2, 4);
+       struct tu_cmd_stream_entry *new_entries =
+           realloc(stream->entries, new_capacity * sizeof(struct tu_cmd_stream_entry));
+       if (!new_entries)
+           abort(); /* TODO */
+
+       stream->entries = new_entries;
+       stream->entry_capacity = new_capacity;
+   }
+
+   assert (stream->bo_count);
+
+   struct tu_cmd_stream_entry entry;
+   entry.bo = stream->bos[stream->bo_count - 1];
+   entry.size = (stream->cur - stream->start) * sizeof(uint32_t);
+   entry.offset = (stream->start - (uint32_t*)entry.bo->map) * sizeof(uint32_t);
+
+   stream->entries[stream->entry_count] = entry;
+   ++stream->entry_count;
+
+   return VK_SUCCESS;
+}
+
+static void
+tu_cmd_stream_reset(struct tu_device *dev,
+                    struct tu_cmd_stream *stream)
+{
+   for (uint32_t i = 0; i  + 1 < stream->bo_count; ++i) {
+      tu_bo_finish(dev, stream->bos[i]);
+      free(stream->bos[i]);
+   }
+
+   if (stream->bo_count) {
+      stream->bos[0] = stream->bos[stream->bo_count - 1];
+      stream->bo_count = 1;
+
+      stream->start = stream->cur = (uint32_t*)stream->bos[0]->map;
+      stream->end = stream->start + stream->bos[0]->size / sizeof(uint32_t);
+   }
+
+   stream->entry_count = 0;
+}
+
 const struct tu_dynamic_state default_dynamic_state = {
    .viewport =
      {
@@ -245,6 +371,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    }
 
    tu_bo_list_init(&cmd_buffer->bo_list);
+   tu_cmd_stream_init(&cmd_buffer->primary_cmd_stream);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
@@ -261,6 +388,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
+   tu_cmd_stream_finish(cmd_buffer->device, &cmd_buffer->primary_cmd_stream);
    tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
@@ -271,6 +399,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_bo_list_reset(&cmd_buffer->bo_list);
+   tu_cmd_stream_reset(cmd_buffer->device, &cmd_buffer->primary_cmd_stream);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
       cmd_buffer->descriptors[i].dirty = 0;
