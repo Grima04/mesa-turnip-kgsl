@@ -668,6 +668,10 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
             nir_variable *var = nir_deref_instr_get_variable(deref);
 
+            /* XXX: var->data.binding is not set properly.  We need to run
+             * some form of gl_nir_lower_samplers_as_deref() to get it.
+             * This breaks tests which use more than one image.
+             */
             if (img_idx[var->data.binding] == -1) {
                /* GL only allows arrays of arrays of images. */
                assert(glsl_type_is_image(glsl_without_array(var->type)));
