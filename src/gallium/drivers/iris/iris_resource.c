@@ -824,6 +824,12 @@ iris_transfer_map(struct pipe_context *ctx,
    struct iris_resource *res = (struct iris_resource *)resource;
    struct isl_surf *surf = &res->surf;
 
+    /* If we can discard the whole resource, we can also discard the
+     * subrange being accessed.
+     */
+    if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE)
+       usage |= PIPE_TRANSFER_DISCARD_RANGE;
+
    if (surf->tiling != ISL_TILING_LINEAR &&
        (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
@@ -840,9 +846,6 @@ iris_transfer_map(struct pipe_context *ctx,
 
    struct iris_transfer *map = slab_alloc(&ice->transfer_pool);
    struct pipe_transfer *xfer = &map->base;
-
-   // PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE
-   // PIPE_TRANSFER_DISCARD_RANGE
 
    if (!map)
       return NULL;
