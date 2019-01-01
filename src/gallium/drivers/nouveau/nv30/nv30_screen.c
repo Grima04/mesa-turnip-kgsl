@@ -435,6 +435,12 @@ nv30_screen_is_format_supported(struct pipe_screen *pscreen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
+   /* No way to render to a swizzled 3d texture. We don't necessarily know if
+    * it's swizzled or not here, but we have to assume anyways.
+    */
+   if (target == PIPE_TEXTURE_3D && (bindings & PIPE_BIND_RENDER_TARGET))
+      return false;
+
    /* shared is always supported */
    bindings &= ~PIPE_BIND_SHARED;
 
