@@ -45,26 +45,6 @@
 #define ALL_SAMPLERS_XYZW .tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688
 #define KEY_INIT .program_string_id = ish->program_id, ALL_SAMPLERS_XYZW
 
-static struct iris_compiled_shader *
-iris_compile_vs(struct iris_context *, struct iris_uncompiled_shader *,
-                const struct brw_vs_prog_key *);
-static struct iris_compiled_shader *
-iris_compile_tcs(struct iris_context *, struct iris_uncompiled_shader *,
-                 const struct brw_tcs_prog_key *);
-static struct iris_compiled_shader *
-iris_compile_tes(struct iris_context *, struct iris_uncompiled_shader *,
-                 const struct brw_tes_prog_key *);
-static struct iris_compiled_shader *
-iris_compile_gs(struct iris_context *, struct iris_uncompiled_shader *,
-                const struct brw_gs_prog_key *);
-static struct iris_compiled_shader *
-iris_compile_fs(struct iris_context *, struct iris_uncompiled_shader *,
-                const struct brw_wm_prog_key *, struct brw_vue_map *);
-static struct iris_compiled_shader *
-iris_compile_cs(struct iris_context *, struct iris_uncompiled_shader *,
-                const struct brw_cs_prog_key *);
-
-
 static unsigned
 get_new_program_id(struct iris_screen *screen)
 {
@@ -228,316 +208,6 @@ update_so_info(struct pipe_stream_output_info *so_info,
 
       //info->outputs_written |= 1ull << output->register_index;
    }
-}
-
-/**
- * The pipe->create_[stage]_state() driver hooks.
- *
- * Performs basic NIR preprocessing, records any state dependencies, and
- * returns an iris_uncompiled_shader as the Gallium CSO.
- *
- * Actual shader compilation to assembly happens later, at first use.
- */
-static void *
-iris_create_uncompiled_shader(struct pipe_context *ctx,
-                              nir_shader *nir,
-                              const struct pipe_stream_output_info *so_info)
-{
-   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
-
-   struct iris_uncompiled_shader *ish =
-      calloc(1, sizeof(struct iris_uncompiled_shader));
-   if (!ish)
-      return NULL;
-
-   nir = brw_preprocess_nir(screen->compiler, nir);
-
-   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
-   NIR_PASS_V(nir, iris_lower_storage_image_derefs);
-
-   ish->program_id = get_new_program_id(screen);
-   ish->nir = nir;
-   if (so_info) {
-      memcpy(&ish->stream_output, so_info, sizeof(*so_info));
-      update_so_info(&ish->stream_output, nir->info.outputs_written);
-   }
-
-   return ish;
-}
-
-static struct iris_uncompiled_shader *
-iris_create_shader_state(struct pipe_context *ctx,
-                         const struct pipe_shader_state *state)
-{
-   assert(state->type == PIPE_SHADER_IR_NIR);
-
-   return iris_create_uncompiled_shader(ctx, state->ir.nir,
-                                        &state->stream_output);
-}
-
-static void *
-iris_create_vs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
-{
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-
-   /* User clip planes */
-   if (ish->nir->info.clip_distance_array_size == 0)
-      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
-
-   if (screen->precompile) {
-      struct brw_vs_prog_key key = { KEY_INIT };
-
-      iris_compile_vs(ice, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_tcs_state(struct pipe_context *ctx,
-                      const struct pipe_shader_state *state)
-{
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-   struct shader_info *info = &ish->nir->info;
-
-   // XXX: NOS?
-
-   if (screen->precompile) {
-      const unsigned _GL_TRIANGLES = 0x0004;
-      struct brw_tcs_prog_key key = {
-         KEY_INIT,
-         // XXX: make sure the linker fills this out from the TES...
-         .tes_primitive_mode =
-            info->tess.primitive_mode ? info->tess.primitive_mode
-                                      : _GL_TRIANGLES,
-         .outputs_written = info->outputs_written,
-         .patch_outputs_written = info->patch_outputs_written,
-      };
-
-      iris_compile_tcs(ice, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_tes_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
-{
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-   struct shader_info *info = &ish->nir->info;
-
-   // XXX: NOS?
-
-   if (screen->precompile) {
-      struct brw_tes_prog_key key = {
-         KEY_INIT,
-         // XXX: not ideal, need TCS output/TES input unification
-         .inputs_read = info->inputs_read,
-         .patch_inputs_read = info->patch_inputs_read,
-      };
-
-      iris_compile_tes(ice, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_gs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
-{
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-
-   // XXX: NOS?
-
-   if (screen->precompile) {
-      struct brw_gs_prog_key key = { KEY_INIT };
-
-      iris_compile_gs(ice, ish, &key);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_fs_state(struct pipe_context *ctx,
-                     const struct pipe_shader_state *state)
-{
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-   struct shader_info *info = &ish->nir->info;
-
-   ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
-               (1ull << IRIS_NOS_DEPTH_STENCIL_ALPHA) |
-               (1ull << IRIS_NOS_RASTERIZER) |
-               (1ull << IRIS_NOS_BLEND);
-
-   /* The program key needs the VUE map if there are > 16 inputs */
-   if (util_bitcount64(ish->nir->info.inputs_read &
-                       BRW_FS_VARYING_INPUT_MASK) > 16) {
-      ish->nos |= (1ull << IRIS_NOS_LAST_VUE_MAP);
-   }
-
-   if (screen->precompile) {
-      const uint64_t color_outputs = info->outputs_written &
-         ~(BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
-           BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
-           BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
-
-      bool can_rearrange_varyings =
-         util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
-
-      struct brw_wm_prog_key key = {
-         KEY_INIT,
-         .nr_color_regions = util_bitcount(color_outputs),
-         .coherent_fb_fetch = true,
-         .input_slots_valid =
-            can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
-      };
-
-      iris_compile_fs(ice, ish, &key, NULL);
-   }
-
-   return ish;
-}
-
-static void *
-iris_create_compute_state(struct pipe_context *ctx,
-                          const struct pipe_compute_state *state)
-{
-   assert(state->ir_type == PIPE_SHADER_IR_NIR);
-
-   struct iris_context *ice = (void *) ctx;
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_uncompiled_shader *ish =
-      iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
-
-   // XXX: disallow more than 64KB of shared variables
-
-   if (screen->precompile) {
-      struct brw_cs_prog_key key = { KEY_INIT };
-
-      iris_compile_cs(ice, ish, &key);
-   }
-
-   return ish;
-}
-
-/**
- * The pipe->delete_[stage]_state() driver hooks.
- *
- * Frees the iris_uncompiled_shader.
- */
-static void
-iris_delete_shader_state(struct pipe_context *ctx, void *state)
-{
-   struct iris_uncompiled_shader *ish = state;
-
-   ralloc_free(ish->nir);
-   free(ish);
-}
-
-/**
- * The pipe->bind_[stage]_state() driver hook.
- *
- * Binds an uncompiled shader as the current one for a particular stage.
- * Updates dirty tracking to account for the shader's NOS.
- */
-static void
-bind_state(struct iris_context *ice,
-           struct iris_uncompiled_shader *ish,
-           gl_shader_stage stage)
-{
-   uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
-   const uint64_t nos = ish ? ish->nos : 0;
-
-   ice->shaders.uncompiled[stage] = ish;
-   ice->state.dirty |= dirty_bit;
-
-   /* Record that CSOs need to mark IRIS_DIRTY_UNCOMPILED_XS when they change
-    * (or that they no longer need to do so).
-    */
-   for (int i = 0; i < IRIS_NOS_COUNT; i++) {
-      if (nos & (1 << i))
-         ice->state.dirty_for_nos[i] |= dirty_bit;
-      else
-         ice->state.dirty_for_nos[i] &= ~dirty_bit;
-   }
-}
-
-static void
-iris_bind_vs_state(struct pipe_context *ctx, void *state)
-{
-   bind_state((void *) ctx, state, MESA_SHADER_VERTEX);
-}
-
-static void
-iris_bind_tcs_state(struct pipe_context *ctx, void *state)
-{
-   bind_state((void *) ctx, state, MESA_SHADER_TESS_CTRL);
-}
-
-static void
-iris_bind_tes_state(struct pipe_context *ctx, void *state)
-{
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   /* Enabling/disabling optional stages requires a URB reconfiguration. */
-   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
-      ice->state.dirty |= IRIS_DIRTY_URB;
-
-   bind_state((void *) ctx, state, MESA_SHADER_TESS_EVAL);
-}
-
-static void
-iris_bind_gs_state(struct pipe_context *ctx, void *state)
-{
-   struct iris_context *ice = (struct iris_context *)ctx;
-
-   /* Enabling/disabling optional stages requires a URB reconfiguration. */
-   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
-      ice->state.dirty |= IRIS_DIRTY_URB;
-
-   bind_state((void *) ctx, state, MESA_SHADER_GEOMETRY);
-}
-
-static void
-iris_bind_fs_state(struct pipe_context *ctx, void *state)
-{
-   struct iris_context *ice = (struct iris_context *) ctx;
-   struct iris_uncompiled_shader *old_ish =
-      ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-   struct iris_uncompiled_shader *new_ish = state;
-
-   const unsigned color_bits =
-      BITFIELD64_BIT(FRAG_RESULT_COLOR) |
-      BITFIELD64_RANGE(FRAG_RESULT_DATA0, BRW_MAX_DRAW_BUFFERS);
-
-   /* Fragment shader outputs influence HasWriteableRT */
-   if (!old_ish || !new_ish ||
-       (old_ish->nir->info.outputs_written & color_bits) !=
-       (new_ish->nir->info.outputs_written & color_bits))
-      ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
-
-   bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
-}
-
-static void
-iris_bind_cs_state(struct pipe_context *ctx, void *state)
-{
-   bind_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
 /**
@@ -1656,6 +1326,318 @@ iris_get_scratch_space(struct iris_context *ice,
    }
 
    return *bop;
+}
+
+/* ------------------------------------------------------------------- */
+
+/**
+ * The pipe->create_[stage]_state() driver hooks.
+ *
+ * Performs basic NIR preprocessing, records any state dependencies, and
+ * returns an iris_uncompiled_shader as the Gallium CSO.
+ *
+ * Actual shader compilation to assembly happens later, at first use.
+ */
+static void *
+iris_create_uncompiled_shader(struct pipe_context *ctx,
+                              nir_shader *nir,
+                              const struct pipe_stream_output_info *so_info)
+{
+   struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   struct iris_uncompiled_shader *ish =
+      calloc(1, sizeof(struct iris_uncompiled_shader));
+   if (!ish)
+      return NULL;
+
+   nir = brw_preprocess_nir(screen->compiler, nir);
+
+   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
+   NIR_PASS_V(nir, iris_lower_storage_image_derefs);
+
+   ish->program_id = get_new_program_id(screen);
+   ish->nir = nir;
+   if (so_info) {
+      memcpy(&ish->stream_output, so_info, sizeof(*so_info));
+      update_so_info(&ish->stream_output, nir->info.outputs_written);
+   }
+
+   return ish;
+}
+
+static struct iris_uncompiled_shader *
+iris_create_shader_state(struct pipe_context *ctx,
+                         const struct pipe_shader_state *state)
+{
+   assert(state->type == PIPE_SHADER_IR_NIR);
+
+   return iris_create_uncompiled_shader(ctx, state->ir.nir,
+                                        &state->stream_output);
+}
+
+static void *
+iris_create_vs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   /* User clip planes */
+   if (ish->nir->info.clip_distance_array_size == 0)
+      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
+
+   if (screen->precompile) {
+      struct brw_vs_prog_key key = { KEY_INIT };
+
+      iris_compile_vs(ice, ish, &key);
+   }
+
+   return ish;
+}
+
+static void *
+iris_create_tcs_state(struct pipe_context *ctx,
+                      const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
+
+   // XXX: NOS?
+
+   if (screen->precompile) {
+      const unsigned _GL_TRIANGLES = 0x0004;
+      struct brw_tcs_prog_key key = {
+         KEY_INIT,
+         // XXX: make sure the linker fills this out from the TES...
+         .tes_primitive_mode =
+            info->tess.primitive_mode ? info->tess.primitive_mode
+                                      : _GL_TRIANGLES,
+         .outputs_written = info->outputs_written,
+         .patch_outputs_written = info->patch_outputs_written,
+      };
+
+      iris_compile_tcs(ice, ish, &key);
+   }
+
+   return ish;
+}
+
+static void *
+iris_create_tes_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
+
+   // XXX: NOS?
+
+   if (screen->precompile) {
+      struct brw_tes_prog_key key = {
+         KEY_INIT,
+         // XXX: not ideal, need TCS output/TES input unification
+         .inputs_read = info->inputs_read,
+         .patch_inputs_read = info->patch_inputs_read,
+      };
+
+      iris_compile_tes(ice, ish, &key);
+   }
+
+   return ish;
+}
+
+static void *
+iris_create_gs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   // XXX: NOS?
+
+   if (screen->precompile) {
+      struct brw_gs_prog_key key = { KEY_INIT };
+
+      iris_compile_gs(ice, ish, &key);
+   }
+
+   return ish;
+}
+
+static void *
+iris_create_fs_state(struct pipe_context *ctx,
+                     const struct pipe_shader_state *state)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+   struct shader_info *info = &ish->nir->info;
+
+   ish->nos |= (1ull << IRIS_NOS_FRAMEBUFFER) |
+               (1ull << IRIS_NOS_DEPTH_STENCIL_ALPHA) |
+               (1ull << IRIS_NOS_RASTERIZER) |
+               (1ull << IRIS_NOS_BLEND);
+
+   /* The program key needs the VUE map if there are > 16 inputs */
+   if (util_bitcount64(ish->nir->info.inputs_read &
+                       BRW_FS_VARYING_INPUT_MASK) > 16) {
+      ish->nos |= (1ull << IRIS_NOS_LAST_VUE_MAP);
+   }
+
+   if (screen->precompile) {
+      const uint64_t color_outputs = info->outputs_written &
+         ~(BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
+           BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
+           BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
+
+      bool can_rearrange_varyings =
+         util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
+
+      struct brw_wm_prog_key key = {
+         KEY_INIT,
+         .nr_color_regions = util_bitcount(color_outputs),
+         .coherent_fb_fetch = true,
+         .input_slots_valid =
+            can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
+      };
+
+      iris_compile_fs(ice, ish, &key, NULL);
+   }
+
+   return ish;
+}
+
+static void *
+iris_create_compute_state(struct pipe_context *ctx,
+                          const struct pipe_compute_state *state)
+{
+   assert(state->ir_type == PIPE_SHADER_IR_NIR);
+
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_uncompiled_shader *ish =
+      iris_create_uncompiled_shader(ctx, (void *) state->prog, NULL);
+
+   // XXX: disallow more than 64KB of shared variables
+
+   if (screen->precompile) {
+      struct brw_cs_prog_key key = { KEY_INIT };
+
+      iris_compile_cs(ice, ish, &key);
+   }
+
+   return ish;
+}
+
+/**
+ * The pipe->delete_[stage]_state() driver hooks.
+ *
+ * Frees the iris_uncompiled_shader.
+ */
+static void
+iris_delete_shader_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_uncompiled_shader *ish = state;
+
+   ralloc_free(ish->nir);
+   free(ish);
+}
+
+/**
+ * The pipe->bind_[stage]_state() driver hook.
+ *
+ * Binds an uncompiled shader as the current one for a particular stage.
+ * Updates dirty tracking to account for the shader's NOS.
+ */
+static void
+bind_state(struct iris_context *ice,
+           struct iris_uncompiled_shader *ish,
+           gl_shader_stage stage)
+{
+   uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
+   const uint64_t nos = ish ? ish->nos : 0;
+
+   ice->shaders.uncompiled[stage] = ish;
+   ice->state.dirty |= dirty_bit;
+
+   /* Record that CSOs need to mark IRIS_DIRTY_UNCOMPILED_XS when they change
+    * (or that they no longer need to do so).
+    */
+   for (int i = 0; i < IRIS_NOS_COUNT; i++) {
+      if (nos & (1 << i))
+         ice->state.dirty_for_nos[i] |= dirty_bit;
+      else
+         ice->state.dirty_for_nos[i] &= ~dirty_bit;
+   }
+}
+
+static void
+iris_bind_vs_state(struct pipe_context *ctx, void *state)
+{
+   bind_state((void *) ctx, state, MESA_SHADER_VERTEX);
+}
+
+static void
+iris_bind_tcs_state(struct pipe_context *ctx, void *state)
+{
+   bind_state((void *) ctx, state, MESA_SHADER_TESS_CTRL);
+}
+
+static void
+iris_bind_tes_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+
+   /* Enabling/disabling optional stages requires a URB reconfiguration. */
+   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
+      ice->state.dirty |= IRIS_DIRTY_URB;
+
+   bind_state((void *) ctx, state, MESA_SHADER_TESS_EVAL);
+}
+
+static void
+iris_bind_gs_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+
+   /* Enabling/disabling optional stages requires a URB reconfiguration. */
+   if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
+      ice->state.dirty |= IRIS_DIRTY_URB;
+
+   bind_state((void *) ctx, state, MESA_SHADER_GEOMETRY);
+}
+
+static void
+iris_bind_fs_state(struct pipe_context *ctx, void *state)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_uncompiled_shader *old_ish =
+      ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
+   struct iris_uncompiled_shader *new_ish = state;
+
+   const unsigned color_bits =
+      BITFIELD64_BIT(FRAG_RESULT_COLOR) |
+      BITFIELD64_RANGE(FRAG_RESULT_DATA0, BRW_MAX_DRAW_BUFFERS);
+
+   /* Fragment shader outputs influence HasWriteableRT */
+   if (!old_ish || !new_ish ||
+       (old_ish->nir->info.outputs_written & color_bits) !=
+       (new_ish->nir->info.outputs_written & color_bits))
+      ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
+
+   bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
+}
+
+static void
+iris_bind_cs_state(struct pipe_context *ctx, void *state)
+{
+   bind_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
 void
