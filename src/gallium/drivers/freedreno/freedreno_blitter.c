@@ -173,6 +173,33 @@ fd_resource_copy_region(struct pipe_context *pctx,
 {
 	struct fd_context *ctx = fd_context(pctx);
 
+	if (ctx->blit) {
+		struct pipe_blit_info info;
+
+		memset(&info, 0, sizeof info);
+		info.dst.resource = dst;
+		info.dst.level = dst_level;
+		info.dst.box.x = dstx;
+		info.dst.box.y = dsty;
+		info.dst.box.z = dstz;
+		info.dst.box.width = src_box->width;
+		info.dst.box.height = src_box->height;
+		assert(info.dst.box.width >= 0);
+		assert(info.dst.box.height >= 0);
+		info.dst.box.depth = 1;
+		info.dst.format = dst->format;
+		info.src.resource = src;
+		info.src.level = src_level;
+		info.src.box = *src_box;
+		info.src.format = src->format;
+		info.mask = util_format_get_mask(src->format);
+		info.filter = PIPE_TEX_FILTER_NEAREST;
+		info.scissor_enable = 0;
+
+		if (ctx->blit(ctx, &info))
+			return;
+	}
+
 	/* TODO if we have 2d core, or other DMA engine that could be used
 	 * for simple copies and reasonably easily synchronized with the 3d
 	 * core, this is where we'd plug it in..
