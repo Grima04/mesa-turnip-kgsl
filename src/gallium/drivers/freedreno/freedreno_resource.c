@@ -294,8 +294,16 @@ fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
 
 	tmpl.width0  = box->width;
 	tmpl.height0 = box->height;
-	tmpl.depth0  = box->depth;
-	tmpl.array_size = 1;
+	/* for array textures, box->depth is the array_size, otherwise
+	 * for 3d textures, it is the depth:
+	 */
+	if (tmpl.array_size > 1) {
+		tmpl.array_size = box->depth;
+		tmpl.depth0 = 1;
+	} else {
+		tmpl.array_size = 1;
+		tmpl.depth0 = box->depth;
+	}
 	tmpl.last_level = 0;
 	tmpl.bind |= PIPE_BIND_LINEAR;
 
