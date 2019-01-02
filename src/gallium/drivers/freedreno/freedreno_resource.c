@@ -979,10 +979,6 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 	if (info.render_condition_enable && !fd_render_condition_check(pctx))
 		return;
 
-	if (util_try_blit_via_copy_region(pctx, &info)) {
-		return; /* done */
-	}
-
 	if (info.mask & PIPE_MASK_S) {
 		DBG("cannot blit stencil, skipping");
 		info.mask &= ~PIPE_MASK_S;
