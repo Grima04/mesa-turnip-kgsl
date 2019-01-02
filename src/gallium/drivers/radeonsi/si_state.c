@@ -5685,6 +5685,7 @@ static void si_init_config(struct si_context *sctx)
 			break;
 		case CHIP_RAVEN:
 		case CHIP_RAVEN2:
+		case CHIP_RENOIR:
 		case CHIP_NAVI10:
 		case CHIP_NAVI12:
 			pc_lines = 1024;

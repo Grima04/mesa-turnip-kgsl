@@ -93,6 +93,7 @@
 
 #define AMDGPU_RAVEN_RANGE      0x01, 0x81
 #define AMDGPU_RAVEN2_RANGE     0x81, 0xFF
+#define AMDGPU_RENOIR_RANGE     0x01, 0x91
 
 #define AMDGPU_ARCTURUS_RANGE   0x32, 0xFF
 
@@ -141,6 +142,7 @@
 
 #define ASICREV_IS_RAVEN(r)            ASICREV_IS(r, RAVEN)
 #define ASICREV_IS_RAVEN2(r)           ASICREV_IS(r, RAVEN2)
+#define ASICREV_IS_RENOIR(r)           ASICREV_IS(r, RENOIR)
 
 #define ASICREV_IS_ARCTURUS(r)         ASICREV_IS(r, ARCTURUS)
 
