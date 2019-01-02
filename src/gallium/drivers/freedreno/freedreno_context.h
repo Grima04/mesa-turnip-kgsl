@@ -343,7 +343,7 @@ struct fd_context {
 	void (*query_set_stage)(struct fd_batch *batch, enum fd_render_stage stage);
 
 	/* blitter: */
-	void (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info);
+	bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info);
 
 	/* simple gpu "memcpy": */
 	void (*mem_to_mem)(struct fd_ringbuffer *ring, struct pipe_resource *dst,

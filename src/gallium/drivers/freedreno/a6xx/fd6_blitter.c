@@ -562,9 +562,7 @@ fd6_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
 	struct fd_context *ctx = fd_context(pctx);
 
 	if (!can_do_blit(info)) {
-		fd_blitter_pipe_begin(ctx, info->render_condition_enable, false, FD_STAGE_BLIT);
 		fd_blitter_blit(ctx, info);
-		fd_blitter_pipe_end(ctx);
 		return;
 	}
 

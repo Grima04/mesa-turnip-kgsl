@@ -31,7 +31,7 @@
 
 #include "freedreno_context.h"
 
-void fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
+bool fd_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
 
 void fd_resource_copy_region(struct pipe_context *pctx,
 		struct pipe_resource *dst,

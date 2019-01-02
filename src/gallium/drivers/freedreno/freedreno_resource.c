@@ -122,15 +122,15 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 static void
 do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback)
 {
+	struct pipe_context *pctx = &ctx->base;
+
 	/* TODO size threshold too?? */
 	if (!fallback) {
 		/* do blit on gpu: */
-		fd_blitter_pipe_begin(ctx, false, true, FD_STAGE_BLIT);
-		ctx->blit(ctx, blit);
-		fd_blitter_pipe_end(ctx);
+		pctx->blit(pctx, blit);
 	} else {
 		/* do blit on cpu: */
-		util_resource_copy_region(&ctx->base,
+		util_resource_copy_region(pctx,
 				blit->dst.resource, blit->dst.level, blit->dst.box.x,
 				blit->dst.box.y, blit->dst.box.z,
 				blit->src.resource, blit->src.level, &blit->src.box);
@@ -975,17 +975,9 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_blit_info info = *blit_info;
-	bool discard = false;
 
 	if (info.render_condition_enable && !fd_render_condition_check(pctx))
 		return;
-
-	if (!info.scissor_enable && !info.alpha_blend) {
-		discard = util_texrange_covers_whole_level(info.dst.resource,
-				info.dst.level, info.dst.box.x, info.dst.box.y,
-				info.dst.box.z, info.dst.box.width,
-				info.dst.box.height, info.dst.box.depth);
-	}
 
 	if (util_try_blit_via_copy_region(pctx, &info)) {
 		return; /* done */
@@ -1003,9 +995,8 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 		return;
 	}
 
-	fd_blitter_pipe_begin(ctx, info.render_condition_enable, discard, FD_STAGE_BLIT);
-	ctx->blit(ctx, &info);
-	fd_blitter_pipe_end(ctx);
+	if (!(ctx->blit && ctx->blit(ctx, &info)))
+		fd_blitter_blit(ctx, &info);
 }
 
 void
