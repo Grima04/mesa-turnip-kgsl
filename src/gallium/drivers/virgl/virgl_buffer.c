@@ -83,8 +83,10 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
       struct virgl_screen *vs = virgl_screen(ctx->screen);
       if (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) {
-         if (trans->range.end <= trans->range.start)
-            goto out;
+         if (trans->range.end <= trans->range.start) {
+            virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+            return;
+         }
 
          transfer->box.x += trans->range.start;
          transfer->box.width = trans->range.end - trans->range.start;
@@ -92,21 +94,15 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
       }
 
       vctx->num_transfers++;
-      vs->vws->transfer_put(vs->vws, vbuf->hw_res,
-                            &transfer->box, trans->base.stride,
-                            trans->l_stride, trans->offset,
-                            transfer->level);
-
+      virgl_transfer_queue_unmap(&vctx->queue, trans);
    }
-
-out:
-   virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
 }
 
 static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
                                                struct pipe_transfer *transfer,
                                                const struct pipe_box *box)
 {
+   struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_resource *vbuf = virgl_resource(transfer->resource);
    struct virgl_transfer *trans = virgl_transfer(transfer);
 

@@ -40,6 +40,8 @@ bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
    if (res->clean[trans->base.level]) {
       if (vctx->num_draws == 0 && vctx->num_compute == 0)
          return false;
+      if (!virgl_transfer_queue_is_queued(&vctx->queue, trans))
+         return false;
    }
 
    return true;

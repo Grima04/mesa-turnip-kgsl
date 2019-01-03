@@ -762,11 +762,16 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
    /* send the buffer to the remote side for decoding */
    ctx->num_transfers = ctx->num_draws = ctx->num_compute = 0;
 
+   virgl_transfer_queue_clear(&ctx->queue, ctx->cbuf);
    rs->vws->submit_cmd(rs->vws, ctx->cbuf, ctx->cbuf->in_fence_fd,
                        ctx->cbuf->needs_out_fence_fd ? &out_fence_fd : NULL);
 
    if (fence)
       *fence = rs->vws->cs_create_fence(rs->vws, out_fence_fd);
+
+   /* Reserve some space for transfers. */
+   if (ctx->encoded_transfers)
+      ctx->cbuf->cdw = VIRGL_MAX_TBUF_DWORDS;
 
    virgl_encoder_set_sub_ctx(ctx, ctx->hw_sub_ctx_id);
 
@@ -1190,6 +1195,7 @@ virgl_context_destroy( struct pipe_context *ctx )
    if (vctx->uploader)
       u_upload_destroy(vctx->uploader);
    util_primconvert_destroy(vctx->primconvert);
+   virgl_transfer_queue_fini(&vctx->queue);
 
    slab_destroy_child(&vctx->transfer_pool);
    FREE(vctx);
@@ -1333,6 +1339,13 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    virgl_init_so_functions(vctx);
 
    slab_create_child(&vctx->transfer_pool, &rs->transfer_pool);
+   virgl_transfer_queue_init(&vctx->queue, rs, &vctx->transfer_pool);
+   vctx->encoded_transfers = (rs->vws->supports_encoded_transfers &&
+                       (rs->caps.caps.v2.capability_bits & VIRGL_CAP_TRANSFER));
+
+   /* Reserve some space for transfers. */
+   if (vctx->encoded_transfers)
+      vctx->cbuf->cdw = VIRGL_MAX_TBUF_DWORDS;
 
    vctx->primconvert = util_primconvert_create(&vctx->base, rs->caps.caps.v1.prim_mask);
    vctx->uploader = u_upload_create(&vctx->base, 1024 * 1024,
