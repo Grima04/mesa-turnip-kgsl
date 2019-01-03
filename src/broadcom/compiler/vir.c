@@ -61,6 +61,16 @@ vir_has_implicit_uniform(struct qinst *inst)
                 switch (inst->dst.file) {
                 case QFILE_TLBU:
                         return true;
+                case QFILE_MAGIC:
+                        switch (inst->dst.index) {
+                        case V3D_QPU_WADDR_TLBU:
+                        case V3D_QPU_WADDR_TMUAU:
+                        case V3D_QPU_WADDR_SYNCU:
+                                return true;
+                        default:
+                                break;
+                        }
+                        break;
                 default:
                         return inst->has_implicit_uniform;
                 }
