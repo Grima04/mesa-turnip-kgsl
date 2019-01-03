@@ -71,7 +71,7 @@ struct virgl_drm_winsys
 struct virgl_drm_cmd_buf {
    struct virgl_cmd_buf base;
 
-   uint32_t buf[VIRGL_MAX_CMDBUF_DWORDS];
+   uint32_t *buf;
 
    unsigned nres;
    unsigned cres;

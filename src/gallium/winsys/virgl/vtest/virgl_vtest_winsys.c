@@ -411,7 +411,8 @@ alloc:
    return res;
 }
 
-static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws)
+static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws,
+                                                        uint32_t size)
 {
    struct virgl_vtest_cmd_buf *cbuf;
 
@@ -700,6 +701,7 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
    vtws->base.fence_wait = virgl_fence_wait;
    vtws->base.fence_reference = virgl_fence_reference;
    vtws->base.supports_fences =  0;
+   vtws->base.supports_encoded_transfers = 0;
 
    vtws->base.flush_frontbuffer = virgl_vtest_flush_frontbuffer;
 

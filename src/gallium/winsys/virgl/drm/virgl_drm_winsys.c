@@ -564,7 +564,8 @@ static void virgl_drm_resource_wait(struct virgl_winsys *qws,
       goto again;
 }
 
-static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws)
+static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
+                                                      uint32_t size)
 {
    struct virgl_drm_cmd_buf *cbuf;
 
@@ -587,6 +588,14 @@ static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws)
       return NULL;
    }
 
+   cbuf->buf = CALLOC(size, sizeof(uint32_t));
+   if (!cbuf->buf) {
+      FREE(cbuf->res_hlist);
+      FREE(cbuf->res_bo);
+      FREE(cbuf);
+      return NULL;
+   }
+
    cbuf->base.buf = cbuf->buf;
    cbuf->base.in_fence_fd = -1;
    return &cbuf->base;
@@ -598,6 +607,7 @@ static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
 
    FREE(cbuf->res_hlist);
    FREE(cbuf->res_bo);
+   FREE(cbuf->buf);
    FREE(cbuf);
 
 }
@@ -930,6 +940,7 @@ virgl_drm_winsys_create(int drmFD)
    qdws->base.fence_server_sync = virgl_fence_server_sync;
    qdws->base.fence_get_fd = virgl_fence_get_fd;
    qdws->base.supports_fences =  drm_version >= VIRGL_DRM_VERSION_FENCE_FD;
+   qdws->base.supports_encoded_transfers = 1;
 
    qdws->base.get_caps = virgl_drm_get_caps;
 

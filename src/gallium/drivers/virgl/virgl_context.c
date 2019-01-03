@@ -1242,7 +1242,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    vctx = CALLOC_STRUCT(virgl_context);
    const char *host_debug_flagstring;
 
-   vctx->cbuf = rs->vws->cmd_buf_create(rs->vws);
+   vctx->cbuf = rs->vws->cmd_buf_create(rs->vws, VIRGL_MAX_CMDBUF_DWORDS);
    if (!vctx->cbuf) {
       FREE(vctx);
       return NULL;
