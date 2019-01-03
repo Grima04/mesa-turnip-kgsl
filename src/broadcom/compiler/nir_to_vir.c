@@ -118,11 +118,44 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
         bool has_index = instr->intrinsic == nir_intrinsic_load_ubo;
         int offset_src = 0 + has_index;
 
-        /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
-         * 1 (0 is gallium's constant buffer 0).
-         */
-        struct qreg offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
-                                         nir_src_as_uint(instr->src[0]) + 1);
+        struct qreg offset;
+        if (instr->intrinsic == nir_intrinsic_load_uniform) {
+                offset = vir_uniform(c, QUNIFORM_UBO_ADDR, 0);
+
+                /* Find what variable in the default uniform block this
+                 * uniform load is coming from.
+                 */
+                uint32_t base = nir_intrinsic_base(instr);
+                int i;
+                struct v3d_ubo_range *range = NULL;
+                for (i = 0; i < c->num_ubo_ranges; i++) {
+                        range = &c->ubo_ranges[i];
+                        if (base >= range->src_offset &&
+                            base < range->src_offset + range->size) {
+                                break;
+                        }
+                }
+                /* The driver-location-based offset always has to be within a
+                 * declared uniform range.
+                 */
+                assert(i != c->num_ubo_ranges);
+                if (!c->ubo_range_used[i]) {
+                        c->ubo_range_used[i] = true;
+                        range->dst_offset = c->next_ubo_dst_offset;
+                        c->next_ubo_dst_offset += range->size;
+                }
+
+                base = base - range->src_offset + range->dst_offset;
+
+                if (base != 0)
+                        offset = vir_ADD(c, offset, vir_uniform_ui(c, base));
+        } else {
+                /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
+                 * 1 (0 is gallium's constant buffer 0).
+                 */
+                offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                     nir_src_as_uint(instr->src[0]) + 1);
+        }
 
         uint32_t config = (0xffffff00 |
                            tmu_op |
@@ -159,49 +192,6 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         for (int i = 0; i < nir_intrinsic_dest_components(instr); i++)
                 ntq_store_dest(c, &instr->dest, i, vir_MOV(c, vir_LDTMU(c)));
-}
-
-static struct qreg
-indirect_uniform_load(struct v3d_compile *c, nir_intrinsic_instr *intr)
-{
-        struct qreg indirect_offset = ntq_get_src(c, intr->src[0], 0);
-        uint32_t offset = nir_intrinsic_base(intr);
-        struct v3d_ubo_range *range = NULL;
-        unsigned i;
-
-        for (i = 0; i < c->num_ubo_ranges; i++) {
-                range = &c->ubo_ranges[i];
-                if (offset >= range->src_offset &&
-                    offset < range->src_offset + range->size) {
-                        break;
-                }
-        }
-        /* The driver-location-based offset always has to be within a declared
-         * uniform range.
-         */
-        assert(i != c->num_ubo_ranges);
-        if (!c->ubo_range_used[i]) {
-                c->ubo_range_used[i] = true;
-                range->dst_offset = c->next_ubo_dst_offset;
-                c->next_ubo_dst_offset += range->size;
-        }
-
-        offset -= range->src_offset;
-
-        if (range->dst_offset + offset != 0) {
-                indirect_offset = vir_ADD(c, indirect_offset,
-                                          vir_uniform_ui(c, range->dst_offset +
-                                                         offset));
-        }
-
-        /* Adjust for where we stored the TGSI register base. */
-        vir_ADD_dest(c,
-                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA),
-                     vir_uniform(c, QUNIFORM_UBO_ADDR, 0),
-                     indirect_offset);
-
-        vir_emit_thrsw(c);
-        return vir_LDTMU(c);
 }
 
 static struct qreg *
@@ -1618,19 +1608,19 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         switch (instr->intrinsic) {
         case nir_intrinsic_load_uniform:
-                assert(instr->num_components == 1);
                 if (nir_src_is_const(instr->src[0])) {
-                        offset = (nir_intrinsic_base(instr) +
-                                  nir_src_as_uint(instr->src[0]));
+                        int offset = (nir_intrinsic_base(instr) +
+                                      nir_src_as_uint(instr->src[0]));
                         assert(offset % 4 == 0);
                         /* We need dwords */
                         offset = offset / 4;
-                        ntq_store_dest(c, &instr->dest, 0,
-                                       vir_uniform(c, QUNIFORM_UNIFORM,
-                                                   offset));
+                        for (int i = 0; i < instr->num_components; i++) {
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_uniform(c, QUNIFORM_UNIFORM,
+                                                           offset + i));
+                        }
                 } else {
-                        ntq_store_dest(c, &instr->dest, 0,
-                                       indirect_uniform_load(c, instr));
+                        ntq_emit_tmu_general(c, instr);
                 }
                 break;
 
