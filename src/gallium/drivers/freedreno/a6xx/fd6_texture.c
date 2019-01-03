@@ -281,12 +281,17 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->offset = cso->u.buf.offset;
 	} else {
 		unsigned miplevels;
+		enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
 
 		lvl = fd_sampler_first_level(cso);
 		miplevels = fd_sampler_last_level(cso) - lvl;
 		layers = cso->u.tex.last_layer - cso->u.tex.first_layer + 1;
 
-		so->texconst0 |= A6XX_TEX_CONST_0_MIPLVLS(miplevels);
+		if (!fd_resource_level_linear(prsc, lvl))
+			tile_mode = fd_resource(prsc)->tile_mode;
+
+		so->texconst0 |= A6XX_TEX_CONST_0_MIPLVLS(miplevels) |
+			A6XX_TEX_CONST_0_TILE_MODE(tile_mode);
 		so->texconst1 =
 			A6XX_TEX_CONST_1_WIDTH(u_minify(prsc->width0, lvl)) |
 			A6XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));

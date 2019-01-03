@@ -394,13 +394,8 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			static const struct fd6_pipe_sampler_view dummy_view = {};
 			const struct fd6_pipe_sampler_view *view = tex->textures[i] ?
 				fd6_pipe_sampler_view(tex->textures[i]) : &dummy_view;
-			enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
 
-			if (view->base.texture)
-				tile_mode = fd_resource(view->base.texture)->tile_mode;
-
-			OUT_RING(state, view->texconst0 |
-				A6XX_TEX_CONST_0_TILE_MODE(tile_mode));
+			OUT_RING(state, view->texconst0);
 			OUT_RING(state, view->texconst1);
 			OUT_RING(state, view->texconst2);
 			OUT_RING(state, view->texconst3);
