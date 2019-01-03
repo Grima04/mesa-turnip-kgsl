@@ -217,13 +217,17 @@ v3d_shader_precompile(struct v3d_context *v3d,
                 v3d_setup_shared_precompile_key(so, &key.base);
 
                 /* Compile VS: All outputs */
-                for (int vary = 0; vary < 64; vary++) {
-                        if (!(s->info.outputs_written & (1ull << vary)))
-                                continue;
-                        for (int i = 0; i < 4; i++) {
+                nir_foreach_variable(var, &s->outputs) {
+                        unsigned array_len = MAX2(glsl_get_length(var->type), 1);
+                        assert(array_len == 1);
+                        (void)array_len;
+
+                        int slot = var->data.location;
+                        for (int i = 0; i < glsl_get_components(var->type); i++) {
+                                int swiz = var->data.location_frac + i;
                                 key.fs_inputs[key.num_fs_inputs++] =
-                                        v3d_slot_from_slot_and_component(vary,
-                                                                         i);
+                                        v3d_slot_from_slot_and_component(slot,
+                                                                         swiz);
                         }
                 }
 
