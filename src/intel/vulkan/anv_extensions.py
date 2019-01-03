@@ -172,6 +172,7 @@ EXTENSIONS = [
     Extension('VK_GOOGLE_decorate_string',                1, True),
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
     Extension('VK_INTEL_performance_query',               1, 'device->perf'),
+    Extension('VK_INTEL_shader_integer_functions2',       1, 'device->info.gen >= 8'),
     Extension('VK_NV_compute_shader_derivatives',         1, True),
 ]
 
