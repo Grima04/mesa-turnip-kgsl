@@ -724,7 +724,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
            ib.offset = info.start * ib.index_size;
 
            if (ib.user_buffer) {
-                   u_upload_data(vctx->uploader, 0, info.count * ib.index_size, 256,
+                   u_upload_data(vctx->uploader, 0, info.count * ib.index_size, 4,
                                  ib.user_buffer, &ib.offset, &ib.buffer);
                    ib.user_buffer = NULL;
            }
