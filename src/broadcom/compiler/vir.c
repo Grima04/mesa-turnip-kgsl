@@ -961,7 +961,24 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         v3d_set_prog_data(c, prog_data);
 
         *out_prog_data = prog_data;
-        return v3d_return_qpu_insts(c, final_assembly_size);
+
+        char *shaderdb;
+        int ret = asprintf(&shaderdb,
+                           "%s shader: %d inst, %d threads, %d loops, "
+                           "%d uniforms, %d:%d spills:fills",
+                           vir_get_stage_name(c),
+                           c->qpu_inst_count,
+                           c->threads,
+                           c->loops,
+                           c->num_uniforms,
+                           c->spills,
+                           c->fills);
+        if (ret >= 0) {
+                c->debug_output(shaderdb, c->debug_output_data);
+                free(shaderdb);
+        }
+
+       return v3d_return_qpu_insts(c, final_assembly_size);
 }
 
 void
