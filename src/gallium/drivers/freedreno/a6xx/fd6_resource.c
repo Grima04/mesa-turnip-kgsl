@@ -27,18 +27,26 @@
 
 #include "fd6_resource.h"
 
-/* indexed by cpp: */
+/* indexed by cpp, including msaa 2x and 4x: */
 static const struct {
 	unsigned pitchalign;
 	unsigned heightalign;
 } tile_alignment[] = {
 	[1]  = { 128, 32 },
-	[2]  = { 128, 16 },
-	[3]  = { 128, 16 },
+	[2]  = {  64, 32 },
+	[3]  = {  64, 32 },
 	[4]  = {  64, 16 },
+	[6]  = {  64, 16 },
 	[8]  = {  64, 16 },
 	[12] = {  64, 16 },
 	[16] = {  64, 16 },
+	[24] = {  64, 16 },
+	[32] = {  64, 16 },
+	[48] = {  64, 16 },
+	[64] = {  64, 16 },
+
+	/* special cases for r16: */
+	[0]  = { 128, 16 },
 };
 
 /* NOTE: good way to test this is:  (for example)
@@ -51,52 +59,60 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	struct fd_screen *screen = fd_screen(prsc->screen);
 	enum util_format_layout layout = util_format_description(format)->layout;
 	uint32_t pitchalign = screen->gmem_alignw;
-	uint32_t heightalign;
 	uint32_t level, size = 0;
-	uint32_t width = prsc->width0;
-	uint32_t height = prsc->height0;
 	uint32_t depth = prsc->depth0;
+	/* linear dimensions: */
+	uint32_t lwidth = prsc->width0;
+	uint32_t lheight = prsc->height0;
+	/* tile_mode dimensions: */
+	uint32_t twidth = util_next_power_of_two(lwidth);
+	uint32_t theight = util_next_power_of_two(lheight);
 	/* in layer_first layout, the level (slice) contains just one
 	 * layer (since in fact the layer contains the slices)
 	 */
 	uint32_t layers_in_level = rsc->layer_first ? 1 : prsc->array_size;
+	int ta = rsc->cpp;
 
-	heightalign = tile_alignment[rsc->cpp].heightalign;
+	/* The z16/r16 formats seem to not play by the normal tiling rules: */
+	if ((rsc->cpp == 2) && (util_format_get_nr_components(format) == 1))
+		ta = 0;
+
+	debug_assert(ta < ARRAY_SIZE(tile_alignment));
+	debug_assert(tile_alignment[ta].pitchalign);
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
 		bool linear_level = fd_resource_level_linear(prsc, level);
+		uint32_t width, height;
+
+		/* tiled levels of 3D textures are rounded up to PoT dimensions: */
+		if ((prsc->target == PIPE_TEXTURE_3D) && rsc->tile_mode && !linear_level) {
+			width = twidth;
+			height = theight;
+		} else {
+			width = lwidth;
+			height = lheight;
+		}
 		uint32_t aligned_height = height;
 		uint32_t blocks;
 
 		if (rsc->tile_mode && !linear_level) {
-			pitchalign = tile_alignment[rsc->cpp].pitchalign;
-			aligned_height = align(aligned_height, heightalign);
+			pitchalign = tile_alignment[ta].pitchalign;
+			aligned_height = align(aligned_height,
+					tile_alignment[ta].heightalign);
 		} else {
-			if (prsc->target == PIPE_TEXTURE_3D) {
-				unsigned a;
-				if (width >= 64) {
-					a = util_next_power_of_two(MAX2(width, height));
-				} else {
-					a = 16;
-				}
-
-				pitchalign = align(a, 64);
-				aligned_height = align(aligned_height, a);
-			} else {
-				pitchalign = 64;
-			}
-
-			/* The blits used for mem<->gmem work at a granularity of
-			 * 32x32, which can cause faults due to over-fetch on the
-			 * last level.  The simple solution is to over-allocate a
-			 * bit the last level to ensure any over-fetch is harmless.
-			 * The pitch is already sufficiently aligned, but height
-			 * may not be:
-			 */
-			if ((level == prsc->last_level) && (prsc->target != PIPE_BUFFER))
-				aligned_height = align(aligned_height, 32);
+			pitchalign = 64;
 		}
+
+		/* The blits used for mem<->gmem work at a granularity of
+		 * 32x32, which can cause faults due to over-fetch on the
+		 * last level.  The simple solution is to over-allocate a
+		 * bit the last level to ensure any over-fetch is harmless.
+		 * The pitch is already sufficiently aligned, but height
+		 * may not be:
+		 */
+		if ((level == prsc->last_level) && (prsc->target != PIPE_BUFFER))
+			aligned_height = align(aligned_height, 32);
 
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
 			slice->pitch =
@@ -133,9 +149,11 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 				slice->size0, size, aligned_height, blocks);
 #endif
 
-		width = u_minify(width, 1);
-		height = u_minify(height, 1);
 		depth = u_minify(depth, 1);
+		lwidth = u_minify(lwidth, 1);
+		lheight = u_minify(lheight, 1);
+		twidth = u_minify(twidth, 1);
+		theight = u_minify(theight, 1);
 	}
 
 	return size;
