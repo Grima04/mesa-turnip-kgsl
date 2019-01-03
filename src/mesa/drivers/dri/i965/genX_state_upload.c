@@ -530,11 +530,13 @@ pinned_bo_high_bits(struct brw_bo *bo)
  * In the relocation world, we have no idea what the addresses will be, so
  * we can't apply this workaround.  Instead, we tell the kernel to move it
  * to the low 4GB regardless.
+ *
+ * This HW issue is gone on Gen11+.
  */
 static void
 vf_invalidate_for_vb_48bit_transitions(struct brw_context *brw)
 {
-#if GEN_GEN >= 8
+#if GEN_GEN >= 8 && GEN_GEN < 11
    bool need_invalidate = false;
    unsigned i;
 
