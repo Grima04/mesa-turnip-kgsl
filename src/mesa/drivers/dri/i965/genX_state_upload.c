@@ -567,7 +567,7 @@ vf_invalidate_for_vb_48bit_transitions(struct brw_context *brw)
    }
 
    if (need_invalidate) {
-      brw_emit_pipe_control_flush(brw, PIPE_CONTROL_VF_CACHE_INVALIDATE);
+      brw_emit_pipe_control_flush(brw, PIPE_CONTROL_VF_CACHE_INVALIDATE | PIPE_CONTROL_CS_STALL);
    }
 #endif
 }
