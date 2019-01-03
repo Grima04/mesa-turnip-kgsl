@@ -347,12 +347,12 @@ blorp_emit_vertex_buffers(struct blorp_batch *batch,
    blorp_emit_input_varying_data(batch, params, &addrs[1], &size);
    blorp_fill_vertex_buffer_state(batch, vb, 1, addrs[1], size, 0);
 
+   blorp_vf_invalidate_for_vb_48b_transitions(batch, addrs, num_vbs);
+
    const unsigned num_dwords = 1 + num_vbs * GENX(VERTEX_BUFFER_STATE_length);
    uint32_t *dw = blorp_emitn(batch, GENX(3DSTATE_VERTEX_BUFFERS), num_dwords);
    if (!dw)
       return;
-
-   blorp_vf_invalidate_for_vb_48b_transitions(batch, addrs, num_vbs);
 
    for (unsigned i = 0; i < num_vbs; i++) {
       GENX(VERTEX_BUFFER_STATE_pack)(batch, dw, &vb[i]);
