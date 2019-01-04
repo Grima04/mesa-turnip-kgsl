@@ -92,8 +92,6 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    iris_batch_maybe_flush(batch, 1500);
 
-   // XXX: check if BOs are in use by the other batches (compute), if so flush
-
    iris_update_draw_info(ice, info);
 
    iris_update_compiled_shaders(ice);
