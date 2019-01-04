@@ -781,6 +781,16 @@ v3d_fs_set_prog_data(struct v3d_compile *c,
         prog_data->discard = (c->s->info.fs.uses_discard ||
                               c->fs_key->sample_alpha_to_coverage);
         prog_data->uses_center_w = c->uses_center_w;
+
+        /* If the shader has some side effects and hasn't allowed early
+         * fragment tests, disable them.
+         */
+        if (!c->s->info.fs.early_fragment_tests &&
+            (c->s->info.num_images ||
+             c->s->info.num_ssbos ||
+             c->s->info.num_abos)) {
+                prog_data->discard = true;
+        }
 }
 
 static void
