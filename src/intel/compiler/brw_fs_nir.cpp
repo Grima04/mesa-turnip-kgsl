@@ -343,7 +343,7 @@ fs_visitor::nir_emit_impl(nir_function_impl *impl)
       unsigned array_elems =
          reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
       unsigned size = array_elems * reg->num_components;
-      const brw_reg_type reg_type =
+      const brw_reg_type reg_type = reg->bit_size == 8 ? BRW_REGISTER_TYPE_B :
          brw_reg_type_from_bit_size(reg->bit_size, BRW_REGISTER_TYPE_F);
       nir_locals[reg->index] = bld.vgrf(reg_type, size);
    }
@@ -4551,7 +4551,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       fs_reg value = get_nir_src(instr->src[0]);
       if (instr->intrinsic == nir_intrinsic_vote_feq) {
          const unsigned bit_size = nir_src_bit_size(instr->src[0]);
-         value.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_F);
+         value.type = bit_size == 8 ? BRW_REGISTER_TYPE_B :
+            brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_F);
       }
 
       fs_reg uniformized = bld.emit_uniformize(value);
