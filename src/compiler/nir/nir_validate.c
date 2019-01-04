@@ -493,6 +493,12 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
     * pointers should be.
     */
    validate_dest(&instr->dest, state, 0, 0);
+
+   /* Deref instructions as if conditions don't make sense because if
+    * conditions expect well-formed Booleans.  If you want to compare with
+    * NULL, an explicit comparison operation should be used.
+    */
+   validate_assert(state, list_empty(&instr->dest.ssa.if_uses));
 }
 
 static void
