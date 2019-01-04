@@ -114,8 +114,8 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    if (doflushwait)
       ctx->flush(ctx, NULL, 0);
 
-   trans = virgl_resource_create_transfer(ctx, resource, &vtex->metadata,
-                                          level, usage, box);
+   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+                                          &vtex->metadata, level, usage, box);
 
    if (resource->nr_samples > 1) {
       struct pipe_resource tmp_resource;
@@ -147,7 +147,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
 
    ptr = vs->vws->resource_map(vs->vws, hw_res);
    if (!ptr) {
-      slab_free(&vctx->transfer_pool, trans);
+      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
    }
 
@@ -177,7 +177,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (trans->resolve_tmp)
       pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
 
-   virgl_resource_destroy_transfer(vctx, trans);
+   virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
 }
 
 static const struct u_resource_vtbl virgl_texture_vtbl =

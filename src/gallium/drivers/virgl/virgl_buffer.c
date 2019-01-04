@@ -50,8 +50,8 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    if (doflushwait)
       ctx->flush(ctx, NULL, 0);
 
-   trans = virgl_resource_create_transfer(ctx, resource, &vbuf->metadata, level,
-                                          usage, box);
+   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+                                          &vbuf->metadata, level, usage, box);
 
    readback = virgl_res_needs_readback(vctx, vbuf, usage, 0);
    if (readback)
@@ -66,6 +66,7 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
 
    ptr = vs->vws->resource_map(vs->vws, vbuf->hw_res);
    if (!ptr) {
+      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
    }
 
@@ -100,7 +101,7 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
    }
 
 out:
-   virgl_resource_destroy_transfer(vctx, trans);
+   virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
 }
 
 static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
