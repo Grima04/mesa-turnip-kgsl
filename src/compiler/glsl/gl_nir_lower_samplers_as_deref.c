@@ -109,9 +109,6 @@ remove_struct_derefs_prep(nir_deref_instr **p, char **name,
                              glsl_get_struct_elem_name(cur->type, next->strct.index));
 
       remove_struct_derefs_prep(&p[1], name, location, type);
-
-      /* skip over the struct type: */
-      *type = next->type;
       break;
    }
 
