@@ -157,6 +157,32 @@ v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
         abort();
 }
 
+static struct v3d_hw *v3d_isr_hw;
+
+static void
+v3d_isr(uint32_t hub_status)
+{
+        struct v3d_hw *v3d = v3d_isr_hw;
+
+        /* Check the per-core bits */
+        if (hub_status & (1 << 0)) {
+                uint32_t core_status = V3D_READ(V3D_CTL_0_INT_STS);
+
+                if (core_status & V3D_CTL_0_INT_STS_INT_GMPV_SET) {
+                        fprintf(stderr, "GMP violation at 0x%08x\n",
+                                V3D_READ(V3D_GMP_0_VIO_ADDR));
+                        abort();
+                } else {
+                        fprintf(stderr,
+                                "Unexpected ISR with core status 0x%08x\n",
+                                core_status);
+                }
+                abort();
+        }
+
+        return;
+}
+
 void
 v3dX(simulator_init_regs)(struct v3d_hw *v3d)
 {
@@ -171,6 +197,13 @@ v3dX(simulator_init_regs)(struct v3d_hw *v3d)
          */
         V3D_WRITE(V3D_CTL_0_MISCCFG, V3D_CTL_1_MISCCFG_OVRTMUOUT_SET);
 #endif
+
+        uint32_t core_interrupts = V3D_CTL_0_INT_STS_INT_GMPV_SET;
+        V3D_WRITE(V3D_CTL_0_INT_MSK_SET, ~core_interrupts);
+        V3D_WRITE(V3D_CTL_0_INT_MSK_CLR, core_interrupts);
+
+        v3d_isr_hw = v3d;
+        v3d_hw_set_isr(v3d, v3d_isr);
 }
 
 void
