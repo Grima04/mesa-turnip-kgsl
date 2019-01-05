@@ -3127,6 +3127,23 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
 	return radv_GetInstanceProcAddr(instance, pName);
 }
 
+PUBLIC
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
+	VkInstance                                  _instance,
+	const char*                                 pName);
+
+PUBLIC
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
+	VkInstance                                  _instance,
+	const char*                                 pName)
+{
+	RADV_FROM_HANDLE(radv_instance, instance, _instance);
+
+	return radv_lookup_physical_device_entrypoint_checked(pName,
+	                                                      instance ? instance->apiVersion : 0,
+	                                                      instance ? &instance->enabled_extensions : NULL);
+}
+
 PFN_vkVoidFunction radv_GetDeviceProcAddr(
 	VkDevice                                    _device,
 	const char*                                 pName)
@@ -4920,7 +4937,7 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
 	*          vkDestroySurfaceKHR(), and other API which uses VKSurfaceKHR,
 	*          because the loader no longer does so.
 	*/
-	*pSupportedVersion = MIN2(*pSupportedVersion, 3u);
+	*pSupportedVersion = MIN2(*pSupportedVersion, 4u);
 	return VK_SUCCESS;
 }
 
