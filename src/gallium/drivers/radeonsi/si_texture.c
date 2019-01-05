@@ -431,13 +431,17 @@ static bool si_can_disable_dcc(struct si_texture *tex)
 static bool si_texture_discard_dcc(struct si_screen *sscreen,
 				   struct si_texture *tex)
 {
-	if (!si_can_disable_dcc(tex))
+	if (!si_can_disable_dcc(tex)) {
+		assert(tex->display_dcc_offset == 0);
 		return false;
+	}
 
 	assert(tex->dcc_separate_buffer == NULL);
 
 	/* Disable DCC. */
 	tex->dcc_offset = 0;
+	tex->display_dcc_offset = 0;
+	tex->dcc_retile_map_offset = 0;
 
 	/* Notify all contexts about the change. */
 	p_atomic_inc(&sscreen->dirty_tex_counter);
@@ -625,7 +629,9 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 		md.u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
 
 		if (tex->dcc_offset && !tex->dcc_separate_buffer) {
-			uint64_t dcc_offset = tex->dcc_offset;
+			uint64_t dcc_offset =
+				tex->display_dcc_offset ? tex->display_dcc_offset
+							: tex->dcc_offset;
 
 			assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
 			md.u.gfx9.dcc_offset_256B = dcc_offset >> 8;
@@ -761,6 +767,11 @@ static bool si_has_displayable_dcc(struct si_texture *tex)
 	    tex->dcc_offset &&
 	    !tex->surface.u.gfx9.dcc.pipe_aligned &&
 	    !tex->surface.u.gfx9.dcc.rb_aligned)
+		return true;
+
+	/* This needs an explicit flush (flush_resource). */
+	if (sscreen->info.use_display_dcc_with_retile_blit &&
+	    tex->display_dcc_offset)
 		return true;
 
 	return false;
@@ -910,8 +921,12 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 static void si_texture_destroy(struct pipe_screen *screen,
 			       struct pipe_resource *ptex)
 {
+	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct si_texture *tex = (struct si_texture*)ptex;
 	struct si_resource *resource = &tex->buffer;
+
+	if (sscreen->info.chip_class >= GFX9)
+		free(tex->surface.u.gfx9.dcc_retile_map);
 
 	si_texture_reference(&tex->flushed_depth_texture, NULL);
 
@@ -1254,10 +1269,32 @@ si_texture_create_object(struct pipe_screen *screen,
 		if (tex->surface.dcc_size &&
 		    (buf || !(sscreen->debug_flags & DBG(NO_DCC))) &&
 		    (sscreen->info.use_display_dcc_unaligned ||
+		     sscreen->info.use_display_dcc_with_retile_blit ||
 		     !(tex->surface.flags & RADEON_SURF_SCANOUT))) {
 			/* Add space for the DCC buffer. */
 			tex->dcc_offset = align64(tex->size, tex->surface.dcc_alignment);
 			tex->size = tex->dcc_offset + tex->surface.dcc_size;
+
+			if (sscreen->info.chip_class >= GFX9 &&
+			    tex->surface.u.gfx9.dcc_retile_num_elements) {
+				/* Add space for the displayable DCC buffer. */
+				tex->display_dcc_offset =
+					align64(tex->size, tex->surface.u.gfx9.display_dcc_alignment);
+				tex->size = tex->display_dcc_offset +
+					    tex->surface.u.gfx9.display_dcc_size;
+
+				/* Add space for the DCC retile buffer. (16-bit or 32-bit elements) */
+				tex->dcc_retile_map_offset =
+					align64(tex->size, sscreen->info.tcc_cache_line_size);
+
+				if (tex->surface.u.gfx9.dcc_retile_use_uint16) {
+					tex->size = tex->dcc_retile_map_offset +
+						    tex->surface.u.gfx9.dcc_retile_num_elements * 2;
+				} else {
+					tex->size = tex->dcc_retile_map_offset +
+						    tex->surface.u.gfx9.dcc_retile_num_elements * 4;
+				}
+			}
 		}
 	}
 
@@ -1353,6 +1390,46 @@ si_texture_create_object(struct pipe_screen *screen,
 				}
 			}
 		}
+
+		/* Upload the DCC retile map. */
+		if (tex->dcc_retile_map_offset) {
+			/* Use a staging buffer for the upload, because
+			 * the buffer backing the texture is unmappable.
+			 */
+			bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
+			unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
+			struct si_resource *buf =
+				si_aligned_buffer_create(screen, 0, PIPE_USAGE_STREAM,
+							 num_elements * (use_uint16 ? 2 : 4),
+							 sscreen->info.tcc_cache_line_size);
+			uint32_t *ui = (uint32_t*)sscreen->ws->buffer_map(buf->buf, NULL,
+									  PIPE_TRANSFER_WRITE);
+			uint16_t *us = (uint16_t*)ui;
+
+			/* Upload the retile map into a staging buffer. */
+			if (use_uint16) {
+				for (unsigned i = 0; i < num_elements; i++)
+					us[i] = tex->surface.u.gfx9.dcc_retile_map[i];
+			} else {
+				for (unsigned i = 0; i < num_elements; i++)
+					ui[i] = tex->surface.u.gfx9.dcc_retile_map[i];
+			}
+
+			/* Copy the staging buffer to the buffer backing the texture. */
+			struct si_context *sctx = (struct si_context*)sscreen->aux_context;
+			struct pipe_box box;
+			u_box_1d(0, buf->b.b.width0, &box);
+
+			assert(tex->dcc_retile_map_offset <= UINT_MAX);
+			mtx_lock(&sscreen->aux_context_lock);
+			sctx->dma_copy(&sctx->b, &tex->buffer.b.b, 0,
+				       tex->dcc_retile_map_offset, 0, 0,
+				       &buf->b.b, 0, &box);
+			sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
+			mtx_unlock(&sscreen->aux_context_lock);
+
+			si_resource_reference(&buf, NULL);
+		}
 	}
 
 	/* Initialize the CMASK base register value. */
@@ -1381,6 +1458,8 @@ si_texture_create_object(struct pipe_screen *screen,
 
 error:
 	FREE(tex);
+	if (sscreen->info.chip_class >= GFX9)
+		free(surface->u.gfx9.dcc_retile_map);
 	return NULL;
 }
 

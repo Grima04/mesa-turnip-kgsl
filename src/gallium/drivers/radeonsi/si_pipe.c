@@ -210,6 +210,8 @@ static void si_destroy_context(struct pipe_context *context)
 		sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_render_target);
 	if (sctx->cs_clear_render_target_1d_array)
 		sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_render_target_1d_array);
+	if (sctx->cs_dcc_retile)
+		sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_retile);
 
 	if (sctx->blitter)
 		util_blitter_destroy(sctx->blitter);

@@ -226,6 +226,79 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 	return cs;
 }
 
+/* Create a compute shader that copies DCC from one buffer to another
+ * where each DCC buffer has a different layout.
+ *
+ * image[0]: offset remap table (pairs of <src_offset, dst_offset>),
+ *           2 pairs are read
+ * image[1]: DCC source buffer, typed r8_uint
+ * image[2]: DCC destination buffer, typed r8_uint
+ */
+void *si_create_dcc_retile_cs(struct pipe_context *ctx)
+{
+	struct ureg_program *ureg = ureg_create(PIPE_SHADER_COMPUTE);
+	if (!ureg)
+		return NULL;
+
+	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH, 64);
+	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT, 1);
+	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH, 1);
+
+	/* Compute the global thread ID (in idx). */
+	struct ureg_src tid = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_THREAD_ID, 0);
+	struct ureg_src blk = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_BLOCK_ID, 0);
+	struct ureg_dst idx = ureg_writemask(ureg_DECL_temporary(ureg),
+					     TGSI_WRITEMASK_X);
+	ureg_UMAD(ureg, idx, blk, ureg_imm1u(ureg, 64), tid);
+
+	/* Load 2 pairs of offsets for DCC load & store. */
+	struct ureg_src map = ureg_DECL_image(ureg, 0, TGSI_TEXTURE_BUFFER, 0, false, false);
+	struct ureg_dst offsets = ureg_DECL_temporary(ureg);
+	struct ureg_src map_load_args[] = {map, ureg_src(idx)};
+
+	ureg_memory_insn(ureg, TGSI_OPCODE_LOAD, &offsets, 1, map_load_args, 2,
+			 TGSI_MEMORY_RESTRICT, TGSI_TEXTURE_BUFFER, 0);
+
+	struct ureg_src dcc_src = ureg_DECL_image(ureg, 1, TGSI_TEXTURE_BUFFER,
+						  0, false, false);
+	struct ureg_dst dcc_dst = ureg_dst(ureg_DECL_image(ureg, 2, TGSI_TEXTURE_BUFFER,
+							   0, true, false));
+	struct ureg_dst dcc_value[2];
+
+	/* Copy DCC values:
+	 *   dst[offsets.y] = src[offsets.x];
+	 *   dst[offsets.w] = src[offsets.z];
+	 */
+	for (unsigned i = 0; i < 2; i++) {
+		dcc_value[i] = ureg_writemask(ureg_DECL_temporary(ureg), TGSI_WRITEMASK_X);
+
+		struct ureg_src load_args[] =
+			{dcc_src, ureg_scalar(ureg_src(offsets), TGSI_SWIZZLE_X + i*2)};
+		ureg_memory_insn(ureg, TGSI_OPCODE_LOAD, &dcc_value[i], 1, load_args, 2,
+				 TGSI_MEMORY_RESTRICT, TGSI_TEXTURE_BUFFER, 0);
+	}
+
+	dcc_dst = ureg_writemask(dcc_dst, TGSI_WRITEMASK_X);
+
+	for (unsigned i = 0; i < 2; i++) {
+		struct ureg_src store_args[] = {
+			ureg_scalar(ureg_src(offsets), TGSI_SWIZZLE_Y + i*2),
+			ureg_src(dcc_value[i])
+		};
+		ureg_memory_insn(ureg, TGSI_OPCODE_STORE, &dcc_dst, 1, store_args, 2,
+				 TGSI_MEMORY_RESTRICT, TGSI_TEXTURE_BUFFER, 0);
+	}
+	ureg_END(ureg);
+
+	struct pipe_compute_state state = {};
+	state.ir_type = PIPE_SHADER_IR_TGSI;
+	state.prog = ureg_get_tokens(ureg, NULL);
+
+	void *cs = ctx->create_compute_state(ctx, &state);
+	ureg_destroy(ureg);
+	return cs;
+}
+
 /* Create the compute shader that is used to collect the results.
  *
  * One compute grid with a single thread is launched for every query result

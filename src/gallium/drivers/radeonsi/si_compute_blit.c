@@ -416,6 +416,84 @@ void si_compute_copy_image(struct si_context *sctx,
 	si_compute_internal_end(sctx);
 }
 
+void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
+{
+	struct pipe_context *ctx = &sctx->b;
+
+	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
+		       SI_CONTEXT_CS_PARTIAL_FLUSH |
+		       si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_LRU) |
+		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_LRU);
+	si_emit_cache_flush(sctx);
+
+	/* Save states. */
+	void *saved_cs = sctx->cs_shader_state.program;
+	struct pipe_image_view saved_img[3] = {};
+
+	for (unsigned i = 0; i < 3; i++) {
+		util_copy_image_view(&saved_img[i],
+				     &sctx->images[PIPE_SHADER_COMPUTE].views[i]);
+	}
+
+	/* Set images. */
+	bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
+	unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
+	struct pipe_image_view img[3];
+
+	assert(tex->dcc_retile_map_offset && tex->dcc_retile_map_offset <= UINT_MAX);
+	assert(tex->dcc_offset && tex->dcc_offset <= UINT_MAX);
+	assert(tex->display_dcc_offset && tex->display_dcc_offset <= UINT_MAX);
+
+	for (unsigned i = 0; i < 3; i++) {
+		img[i].resource = &tex->buffer.b.b;
+		img[i].access = i == 2 ? PIPE_IMAGE_ACCESS_WRITE : PIPE_IMAGE_ACCESS_READ;
+		img[i].shader_access = SI_IMAGE_ACCESS_AS_BUFFER;
+	}
+
+	img[0].format = use_uint16 ? PIPE_FORMAT_R16G16B16A16_UINT :
+				     PIPE_FORMAT_R32G32B32A32_UINT;
+	img[0].u.buf.offset = tex->dcc_retile_map_offset;
+	img[0].u.buf.size = num_elements * (use_uint16 ? 2 : 4);
+
+	img[1].format = PIPE_FORMAT_R8_UINT;
+	img[1].u.buf.offset = tex->dcc_offset;
+	img[1].u.buf.size = tex->surface.dcc_size;
+
+	img[2].format = PIPE_FORMAT_R8_UINT;
+	img[2].u.buf.offset = tex->display_dcc_offset;
+	img[2].u.buf.size = tex->surface.u.gfx9.display_dcc_size;
+
+	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, img);
+
+	/* Bind the compute shader. */
+	if (!sctx->cs_dcc_retile)
+		sctx->cs_dcc_retile = si_create_dcc_retile_cs(ctx);
+	ctx->bind_compute_state(ctx, sctx->cs_dcc_retile);
+
+	/* Dispatch compute. */
+	/* img[0] has 4 channels per element containing 2 pairs of DCC offsets. */
+	unsigned num_threads = num_elements / 4;
+
+	struct pipe_grid_info info = {};
+	info.block[0] = 64;
+	info.block[1] = 1;
+	info.block[2] = 1;
+	info.grid[0] = DIV_ROUND_UP(num_threads, 64); /* includes the partial block */
+	info.grid[1] = 1;
+	info.grid[2] = 1;
+	info.last_block[0] = num_threads % 64;
+
+	ctx->launch_grid(ctx, &info);
+
+	/* Don't flush caches or wait. The driver will wait at the end of this IB,
+	 * and L2 will be flushed by the kernel fence.
+	 */
+
+	/* Restore states. */
+	ctx->bind_compute_state(ctx, saved_cs);
+	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, saved_img);
+}
+
 void si_init_compute_blit_functions(struct si_context *sctx)
 {
 	sctx->b.clear_buffer = si_pipe_clear_buffer;

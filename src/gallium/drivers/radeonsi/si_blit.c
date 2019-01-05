@@ -1318,6 +1318,9 @@ static void si_flush_resource(struct pipe_context *ctx,
 		si_blit_decompress_color(sctx, tex, 0, res->last_level,
 					 0, util_max_layer(res, 0),
 					 tex->dcc_separate_buffer != NULL);
+
+		if (tex->display_dcc_offset)
+			si_retile_dcc(sctx, tex);
 	}
 
 	/* Always do the analysis even if DCC is disabled at the moment. */

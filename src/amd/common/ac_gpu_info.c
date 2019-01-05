@@ -504,6 +504,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
 
 	printf("    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
+	printf("    use_display_dcc_with_retile_blit = %u\n", info->use_display_dcc_with_retile_blit);
 
 	printf("Memory info:\n");
 	printf("    pte_fragment_size = %u\n", info->pte_fragment_size);

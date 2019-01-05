@@ -277,12 +277,22 @@ struct si_texture {
 	uint64_t			size;
 	struct si_texture		*flushed_depth_texture;
 
-	/* Colorbuffer compression and fast clear. */
+	/* One texture allocation can contain these buffers:
+	 * - image (pixel data)
+	 * - FMASK buffer (MSAA compression)
+	 * - CMASK buffer (MSAA compression and/or legacy fast color clear)
+	 * - HTILE buffer (Z/S compression and fast Z/S clear)
+	 * - DCC buffer (color compression and new fast color clear)
+	 * - displayable DCC buffer (if the DCC buffer is not displayable)
+	 * - DCC retile mapping buffer (if the DCC buffer is not displayable)
+	 */
 	uint64_t			fmask_offset;
 	uint64_t			cmask_offset;
 	uint64_t			cmask_base_address_reg;
 	struct si_resource		*cmask_buffer;
 	uint64_t			dcc_offset; /* 0 = disabled */
+	uint64_t			display_dcc_offset;
+	uint64_t			dcc_retile_map_offset;
 	unsigned			cb_color_info; /* fast clear enable bit */
 	unsigned			color_clear_value[2];
 	unsigned			last_msaa_resolve_target_micro_mode;
@@ -827,6 +837,7 @@ struct si_context {
 	void				*cs_copy_image_1d_array;
 	void				*cs_clear_render_target;
 	void				*cs_clear_render_target_1d_array;
+	void				*cs_dcc_retile;
 	struct si_screen		*screen;
 	struct pipe_debug_callback	debug;
 	struct ac_llvm_compiler		compiler; /* only non-threaded compilation */
@@ -1195,6 +1206,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
                                     unsigned dstx, unsigned dsty,
                                     unsigned width, unsigned height,
 				    bool render_condition_enabled);
+void si_retile_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_init_compute_blit_functions(struct si_context *sctx);
 
 /* si_cp_dma.c */
@@ -1313,6 +1325,7 @@ void *si_create_copy_image_compute_shader(struct pipe_context *ctx);
 void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx);
 void *si_clear_render_target_shader(struct pipe_context *ctx);
 void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
+void *si_create_dcc_retile_cs(struct pipe_context *ctx);
 void *si_create_query_result_cs(struct si_context *sctx);
 
 /* si_test_dma.c */
