@@ -669,7 +669,8 @@ si_mark_image_range_valid(const struct pipe_image_view *view)
 {
 	struct si_resource *res = si_resource(view->resource);
 
-	assert(res && res->b.b.target == PIPE_BUFFER);
+	if (res->b.b.target != PIPE_BUFFER)
+		return;
 
 	util_range_add(&res->valid_buffer_range,
 		       view->u.buf.offset,
@@ -686,7 +687,8 @@ static void si_set_shader_image_desc(struct si_context *ctx,
 
 	res = si_resource(view->resource);
 
-	if (res->b.b.target == PIPE_BUFFER) {
+	if (res->b.b.target == PIPE_BUFFER ||
+	    view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
 		if (view->access & PIPE_IMAGE_ACCESS_WRITE)
 			si_mark_image_range_valid(view);
 
@@ -787,7 +789,8 @@ static void si_set_shader_image(struct si_context *ctx,
 
 	si_set_shader_image_desc(ctx, view, skip_decompress, desc, NULL);
 
-	if (res->b.b.target == PIPE_BUFFER) {
+	if (res->b.b.target == PIPE_BUFFER ||
+	    view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
 		images->needs_color_decompress_mask &= ~(1 << slot);
 		res->bind_history |= PIPE_BIND_SHADER_IMAGE;
 	} else {

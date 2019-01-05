@@ -123,6 +123,8 @@ enum si_clear_code
 	DCC_UNCOMPRESSED       = 0xFFFFFFFF,
 };
 
+#define SI_IMAGE_ACCESS_AS_BUFFER	(1 << 7)
+
 /* Debug flags. */
 enum {
 	/* Shader logging options: */
