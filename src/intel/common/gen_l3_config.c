@@ -321,7 +321,7 @@ static unsigned
 get_l3_way_size(const struct gen_device_info *devinfo)
 {
    const unsigned way_size_per_bank =
-      (devinfo->gen >= 9 && devinfo->l3_banks == 1) || devinfo->gen == 11 ?
+      (devinfo->gen >= 9 && devinfo->l3_banks == 1) || devinfo->gen >= 11 ?
       4 : 2;
 
    assert(devinfo->l3_banks);
