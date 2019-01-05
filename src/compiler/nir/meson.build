@@ -100,6 +100,7 @@ files_libnir = files(
   'nir_format_convert.h',
   'nir_from_ssa.c',
   'nir_gather_info.c',
+  'nir_gather_ssa_types.c',
   'nir_gather_xfb_info.c',
   'nir_gs_count_vertices.c',
   'nir_inline_functions.c',

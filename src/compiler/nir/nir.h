@@ -3044,6 +3044,10 @@ bool nir_lower_vars_to_scratch(nir_shader *shader,
 
 void nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint);
 
+void nir_gather_ssa_types(nir_function_impl *impl,
+                          BITSET_WORD *float_types,
+                          BITSET_WORD *int_types);
+
 void nir_assign_var_locations(struct exec_list *var_list, unsigned *size,
                               int (*type_size)(const struct glsl_type *, bool));
 
