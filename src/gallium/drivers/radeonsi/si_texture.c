@@ -1111,7 +1111,7 @@ si_texture_create_object(struct pipe_screen *screen,
 
 	tex = CALLOC_STRUCT(si_texture);
 	if (!tex)
-		return NULL;
+		goto error;
 
 	resource = &tex->buffer;
 	resource->b.b = *base;
@@ -1186,10 +1186,8 @@ si_texture_create_object(struct pipe_screen *screen,
 			tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
 			tex->cmask_buffer = &tex->buffer;
 
-			if (!tex->surface.fmask_size || !tex->surface.cmask_size) {
-				FREE(tex);
-				return NULL;
-			}
+			if (!tex->surface.fmask_size || !tex->surface.cmask_size)
+				goto error;
 		}
 
 		/* Shared textures must always set up DCC here.
@@ -1210,10 +1208,8 @@ si_texture_create_object(struct pipe_screen *screen,
 		si_init_resource_fields(sscreen, resource, tex->size,
 					  tex->surface.surf_alignment);
 
-		if (!si_alloc_resource(sscreen, resource)) {
-			FREE(tex);
-			return NULL;
-		}
+		if (!si_alloc_resource(sscreen, resource))
+			goto error;
 	} else {
 		resource->buf = buf;
 		resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
@@ -1275,6 +1271,10 @@ si_texture_create_object(struct pipe_screen *screen,
 	}
 
 	return tex;
+
+error:
+	FREE(tex);
+	return NULL;
 }
 
 static enum radeon_surf_mode
