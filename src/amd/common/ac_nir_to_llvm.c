@@ -4095,9 +4095,9 @@ get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
 	unsigned num_comps = intrin->dest.ssa.num_components;
 
 	if (location == VARYING_SLOT_TESS_LEVEL_INNER)
-		writemask = ((1 << num_comps + 1) - 1) << first_component;
+		writemask = ((1 << (num_comps + 1)) - 1) << first_component;
 	else if (location == VARYING_SLOT_TESS_LEVEL_OUTER)
-		writemask = (((1 << num_comps + 1) - 1) << first_component) << 4;
+		writemask = (((1 << (num_comps + 1)) - 1) << first_component) << 4;
 
 	return writemask;
 }
