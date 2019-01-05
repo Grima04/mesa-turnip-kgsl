@@ -37,6 +37,7 @@
 #include <inttypes.h>
 #include "state_tracker/drm_driver.h"
 #include "amd/common/sid.h"
+#include "amd/common/gfx9d.h"
 
 static enum radeon_surf_mode
 si_choose_tiling(struct si_screen *sscreen,
@@ -351,6 +352,11 @@ static void si_get_display_metadata(struct si_screen *sscreen,
 			      metadata->u.gfx9.swizzle_mode % 4 == 2;
 
 		surf->u.gfx9.surf.swizzle_mode = metadata->u.gfx9.swizzle_mode;
+
+		if (metadata->u.gfx9.dcc_offset_256B) {
+			surf->u.gfx9.display_dcc_pitch_max = metadata->u.gfx9.dcc_pitch_max;
+			assert(metadata->u.gfx9.dcc_independent_64B == 1);
+		}
 	} else {
 		surf->u.legacy.pipe_config = metadata->u.legacy.pipe_config;
 		surf->u.legacy.bankw = metadata->u.legacy.bankw;
@@ -617,6 +623,15 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 
 	if (sscreen->info.chip_class >= GFX9) {
 		md.u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
+
+		if (tex->dcc_offset && !tex->dcc_separate_buffer) {
+			uint64_t dcc_offset = tex->dcc_offset;
+
+			assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
+			md.u.gfx9.dcc_offset_256B = dcc_offset >> 8;
+			md.u.gfx9.dcc_pitch_max = tex->surface.u.gfx9.display_dcc_pitch_max;
+			md.u.gfx9.dcc_independent_64B = 1;
+		}
 	} else {
 		md.u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D ?
 					   RADEON_LAYOUT_TILED : RADEON_LAYOUT_LINEAR;
@@ -706,6 +721,23 @@ static void si_get_opaque_metadata(struct si_screen *sscreen,
 	    md->metadata[1] == si_get_bo_metadata_word1(sscreen) &&
 	    G_008F28_COMPRESSION_EN(desc[6])) {
 		tex->dcc_offset = (uint64_t)desc[7] << 8;
+
+		if (sscreen->info.chip_class >= GFX9) {
+			/* Fix up parameters for displayable DCC. Some state
+			 * trackers don't set the SCANOUT flag when importing
+			 * displayable images, so we have to recover the correct
+			 * parameters here.
+			 */
+			tex->surface.u.gfx9.dcc.pipe_aligned =
+				G_008F24_META_PIPE_ALIGNED(desc[5]);
+			tex->surface.u.gfx9.dcc.rb_aligned =
+				G_008F24_META_RB_ALIGNED(desc[5]);
+
+			/* If DCC is unaligned, this can only be a displayable image. */
+			if (!tex->surface.u.gfx9.dcc.pipe_aligned &&
+			    !tex->surface.u.gfx9.dcc.rb_aligned)
+				tex->surface.is_displayable = true;
+		}
 		return;
 	}
 
@@ -713,6 +745,25 @@ static void si_get_opaque_metadata(struct si_screen *sscreen,
 	 * be cleared here.
 	 */
 	tex->dcc_offset = 0;
+}
+
+static bool si_has_displayable_dcc(struct si_texture *tex)
+{
+	struct si_screen *sscreen = (struct si_screen*)tex->buffer.b.b.screen;
+
+	if (sscreen->info.chip_class <= VI)
+		return false;
+
+	/* This needs a cache flush before scanout.
+	 * (it can't be scanned out and rendered to simultaneously)
+	 */
+	if (sscreen->info.use_display_dcc_unaligned &&
+	    tex->dcc_offset &&
+	    !tex->surface.u.gfx9.dcc.pipe_aligned &&
+	    !tex->surface.u.gfx9.dcc.rb_aligned)
+		return true;
+
+	return false;
 }
 
 static boolean si_texture_get_handle(struct pipe_screen* screen,
@@ -759,7 +810,10 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 		 * disable it for external clients that want write
 		 * access.
 		 */
-		if (usage & PIPE_HANDLE_USAGE_SHADER_WRITE && tex->dcc_offset) {
+		if ((usage & PIPE_HANDLE_USAGE_SHADER_WRITE && tex->dcc_offset) ||
+		    /* Displayable DCC requires an explicit flush. */
+		    (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
+		     si_has_displayable_dcc(tex))) {
 			if (si_texture_disable_dcc(sctx, tex)) {
 				update_metadata = true;
 				/* si_texture_disable_dcc flushes the context */
@@ -1012,7 +1066,7 @@ void si_print_texture_info(struct si_screen *sscreen,
 				"alignment=%u, pitch_max=%u, num_dcc_levels=%u\n",
 				tex->dcc_offset, tex->surface.dcc_size,
 				tex->surface.dcc_alignment,
-				tex->surface.u.gfx9.dcc_pitch_max,
+				tex->surface.u.gfx9.display_dcc_pitch_max,
 				tex->surface.num_dcc_levels);
 		}
 
@@ -1199,8 +1253,9 @@ si_texture_create_object(struct pipe_screen *screen,
 		 */
 		if (tex->surface.dcc_size &&
 		    (buf || !(sscreen->debug_flags & DBG(NO_DCC))) &&
-		    !(tex->surface.flags & RADEON_SURF_SCANOUT)) {
-			/* Reserve space for the DCC buffer. */
+		    (sscreen->info.use_display_dcc_unaligned ||
+		     !(tex->surface.flags & RADEON_SURF_SCANOUT))) {
+			/* Add space for the DCC buffer. */
 			tex->dcc_offset = align64(tex->size, tex->surface.dcc_alignment);
 			tex->size = tex->dcc_offset + tex->surface.dcc_size;
 		}
@@ -1509,6 +1564,17 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	tex->buffer.external_usage = usage;
 
 	si_get_opaque_metadata(sscreen, tex, &metadata);
+
+	/* Displayable DCC requires an explicit flush. */
+	if (dedicated &&
+	    !(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
+	    si_has_displayable_dcc(tex)) {
+		/* TODO: do we need to decompress DCC? */
+		if (si_texture_discard_dcc(sscreen, tex)) {
+			/* Update BO metadata after disabling DCC. */
+			si_set_tex_bo_metadata(sscreen, tex);
+		}
+	}
 
 	assert(tex->surface.tile_swizzle == 0);
 	return &tex->buffer.b.b;

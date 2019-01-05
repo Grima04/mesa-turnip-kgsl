@@ -478,7 +478,8 @@ static bool get_display_flag(const struct ac_surf_config *config,
 	unsigned num_channels = config->info.num_channels;
 	unsigned bpe = surf->bpe;
 
-	if (surf->flags & RADEON_SURF_SCANOUT &&
+	if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+	    surf->flags & RADEON_SURF_SCANOUT &&
 	    config->info.samples <= 1 &&
 	    surf->blk_w <= 2 && surf->blk_h == 1) {
 		/* subsampled */
@@ -1217,7 +1218,7 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 
 			surf->u.gfx9.dcc.rb_aligned = din.dccKeyFlags.rbAligned;
 			surf->u.gfx9.dcc.pipe_aligned = din.dccKeyFlags.pipeAligned;
-			surf->u.gfx9.dcc_pitch_max = dout.pitch - 1;
+			surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
 			surf->dcc_size = dout.dccRamSize;
 			surf->dcc_alignment = dout.dccRamBaseAlign;
 			surf->num_dcc_levels = in->numMipLevels;
@@ -1453,6 +1454,19 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	AddrSurfInfoIn.flags.metaPipeUnaligned = 0;
 	AddrSurfInfoIn.flags.metaRbUnaligned = 0;
 
+	/* The display hardware can only read DCC with RB_ALIGNED=0 and
+	 * PIPE_ALIGNED=0. PIPE_ALIGNED really means L2CACHE_ALIGNED.
+	 *
+	 * The CB block requires RB_ALIGNED=1 except 1 RB chips.
+	 * PIPE_ALIGNED is optional, but PIPE_ALIGNED=0 requires L2 flushes
+	 * after rendering, so PIPE_ALIGNED=1 is recommended.
+	 */
+	if (info->use_display_dcc_unaligned && is_color_surface &&
+	    AddrSurfInfoIn.flags.display) {
+		AddrSurfInfoIn.flags.metaPipeUnaligned = 1;
+		AddrSurfInfoIn.flags.metaRbUnaligned = 1;
+	}
+
 	switch (mode) {
 	case RADEON_SURF_MODE_LINEAR_ALIGNED:
 		assert(config->info.samples <= 1);
@@ -1525,6 +1539,13 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 					   surf->bpe * 8, &displayable);
 		if (r)
 			return r;
+
+		/* Display needs unaligned DCC. */
+		if (info->use_display_dcc_unaligned &&
+		    surf->num_dcc_levels &&
+		    (surf->u.gfx9.dcc.pipe_aligned ||
+		     surf->u.gfx9.dcc.rb_aligned))
+			displayable = false;
 	}
 	surf->is_displayable = displayable;
 

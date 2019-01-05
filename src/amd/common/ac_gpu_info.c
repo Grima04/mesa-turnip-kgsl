@@ -503,6 +503,8 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    clock_crystal_freq = %i\n", info->clock_crystal_freq);
 	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
 
+	printf("    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
+
 	printf("Memory info:\n");
 	printf("    pte_fragment_size = %u\n", info->pte_fragment_size);
 	printf("    gart_page_size = %u\n", info->gart_page_size);

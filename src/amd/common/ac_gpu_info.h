@@ -56,6 +56,9 @@ struct radeon_info {
 	uint32_t                    clock_crystal_freq;
 	uint32_t                    tcc_cache_line_size;
 
+	/* Disable RB and pipe alignment to skip the retile blit. (1 RB chips only) */
+	bool                        use_display_dcc_unaligned;
+
 	/* Memory info. */
 	uint32_t                    pte_fragment_size;
 	uint32_t                    gart_page_size;

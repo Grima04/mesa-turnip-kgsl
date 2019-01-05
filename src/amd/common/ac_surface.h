@@ -149,7 +149,7 @@ struct gfx9_surf_layout {
     /* Mipmap level offset within the slice in bytes. Only valid for LINEAR. */
     uint32_t                    offset[RADEON_SURF_MAX_LEVELS];
 
-    uint16_t                    dcc_pitch_max;  /* (mip chain pitch - 1) */
+    uint16_t                    display_dcc_pitch_max;  /* (mip chain pitch - 1) */
 
     uint64_t                    stencil_offset; /* separate stencil */
 };
