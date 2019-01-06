@@ -786,9 +786,6 @@ struct iris_depth_buffer_state {
 struct iris_genx_state {
    struct iris_vertex_buffer_state vertex_buffers[33];
 
-   /** The number of bound vertex buffers. */
-   uint64_t bound_vertex_buffers;
-
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
