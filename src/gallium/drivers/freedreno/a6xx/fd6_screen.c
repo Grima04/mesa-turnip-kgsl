@@ -136,4 +136,5 @@ fd6_screen_init(struct pipe_screen *pscreen)
 
 	screen->setup_slices = fd6_setup_slices;
 	screen->tile_mode = fd6_tile_mode;
+	screen->fill_ubwc_buffer_sizes = fd6_fill_ubwc_buffer_sizes;
 }

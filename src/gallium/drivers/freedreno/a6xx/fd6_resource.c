@@ -27,6 +27,8 @@
 
 #include "fd6_resource.h"
 
+#include "a6xx.xml.h"
+
 /* indexed by cpp, including msaa 2x and 4x: */
 static const struct {
 	unsigned pitchalign;
@@ -157,6 +159,38 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	}
 
 	return size;
+}
+
+uint32_t
+fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
+{
+#define RGB_TILE_WIDTH 16
+#define RBG_TILE_WIDTH_ALIGNMENT 64
+#define RGB_TILE_HEIGHT 4
+#define RGB_TILE_HEIGHT_ALIGNMENT 16
+#define UBWC_PLANE_SIZE_ALIGNMENT 4096
+
+	struct pipe_resource *prsc = &rsc->base;
+	uint32_t width = prsc->width0;
+	uint32_t height = prsc->height0;
+
+	/* limit things to simple single level 2d for now: */
+	if ((prsc->depth0 != 1) || (prsc->array_size != 1) || (prsc->last_level != 0))
+		return 0;
+
+	uint32_t meta_stride =
+		ALIGN_POT(DIV_ROUND_UP(width, RGB_TILE_WIDTH), RBG_TILE_WIDTH_ALIGNMENT);
+	uint32_t meta_scanlines =
+		ALIGN_POT(DIV_ROUND_UP(height, RGB_TILE_HEIGHT), RGB_TILE_HEIGHT_ALIGNMENT);
+	uint32_t meta_plane =
+		ALIGN_POT(meta_stride * meta_scanlines, UBWC_PLANE_SIZE_ALIGNMENT);
+
+	rsc->offset = meta_plane;
+	rsc->ubwc_pitch = meta_stride;
+	rsc->ubwc_size = meta_plane >> 2;
+	rsc->tile_mode = TILE6_3;
+
+	return rsc->ubwc_size;
 }
 
 uint32_t
