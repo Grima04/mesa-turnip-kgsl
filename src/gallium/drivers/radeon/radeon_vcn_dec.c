@@ -835,7 +835,10 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 	decode->sc_coeff_size = 0;
 
 	decode->sw_ctxt_size = RDECODE_SESSION_CONTEXT_SIZE;
-	decode->db_pitch = align(dec->base.width, 32);
+	decode->db_pitch = (((struct si_screen*)dec->screen)->info.family >= CHIP_NAVI10 &&
+			dec->base.width > 32 && dec->stream_type == RDECODE_CODEC_VP9) ?
+			align(dec->base.width, 64) :
+			align(dec->base.width, 32) ;
 	decode->db_surf_tile_config = 0;
 
 	decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
@@ -930,14 +933,18 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 			/* default probability + probability data */
 			ctx_size = 2304 * 5;
 
-			/* SRE collocated context data */
-			ctx_size += 32 * 2 * 64 * 64;
-
-			/* SMP collocated context data */
-			ctx_size += 9 * 64 * 2 * 64 * 64;
-
-			/* SDB left tile pixel */
-			ctx_size += 8 * 2 * 4096;
+			if (((struct si_screen*)dec->screen)->info.family >= CHIP_NAVI10) {
+				/* SRE collocated context data */
+				ctx_size += 32 * 2 * 128 * 68;
+				/* SMP collocated context data */
+				ctx_size += 9 * 64 * 2 * 128 * 68;
+				/* SDB left tile pixel */
+				ctx_size += 8 * 2 * 8192;
+			} else {
+				ctx_size += 32 * 2 * 64 * 64;
+				ctx_size += 9 * 64 * 2 * 64 * 64;
+				ctx_size += 8 * 2 * 4096;
+			}
 
 			if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
 				ctx_size += 8 * 2 * 4096;
@@ -1251,7 +1258,10 @@ static unsigned calc_dpb_size(struct radeon_decoder *dec)
 	case PIPE_VIDEO_FORMAT_VP9:
 		max_references = MAX2(max_references, 9);
 
-		dpb_size = (4096 * 3000 * 3 / 2) * max_references;
+		dpb_size = (((struct si_screen*)dec->screen)->info.family >= CHIP_NAVI10) ?
+			(8192 * 4320 * 3 / 2) * max_references :
+			(4096 * 3000 * 3 / 2) * max_references;
+
 		if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
 			dpb_size *= (3 / 2);
 		break;
