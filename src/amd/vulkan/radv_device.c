@@ -122,19 +122,30 @@ radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
 	snprintf(name, name_len, "%s%s", chip_string, llvm_string);
 }
 
+static uint64_t
+radv_get_visible_vram_size(struct radv_physical_device *device)
+{
+	return MIN2(device->rad_info.vram_size, device->rad_info.vram_vis_size);
+}
+
+static uint64_t
+radv_get_vram_size(struct radv_physical_device *device)
+{
+	return device->rad_info.vram_size - radv_get_visible_vram_size(device);
+}
+
 static void
 radv_physical_device_init_mem_types(struct radv_physical_device *device)
 {
 	STATIC_ASSERT(RADV_MEM_HEAP_COUNT <= VK_MAX_MEMORY_HEAPS);
-	uint64_t visible_vram_size = MIN2(device->rad_info.vram_size,
-	                                  device->rad_info.vram_vis_size);
-
+	uint64_t visible_vram_size = radv_get_visible_vram_size(device);
+	uint64_t vram_size = radv_get_vram_size(device);
 	int vram_index = -1, visible_vram_index = -1, gart_index = -1;
 	device->memory_properties.memoryHeapCount = 0;
-	if (device->rad_info.vram_size - visible_vram_size > 0) {
+	if (vram_size > 0) {
 		vram_index = device->memory_properties.memoryHeapCount++;
 		device->memory_properties.memoryHeaps[vram_index] = (VkMemoryHeap) {
-			.size = device->rad_info.vram_size - visible_vram_size,
+			.size = vram_size,
 			.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
 		};
 	}
