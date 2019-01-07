@@ -1297,7 +1297,7 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
    struct amdgpu_winsys *ws = acs->ctx->ws;
    struct amdgpu_cs_context *cs = acs->cst;
    int i, r;
-   amdgpu_bo_list_handle bo_list = NULL;
+   uint32_t bo_list = 0;
    uint64_t seq_no = 0;
    bool has_user_fence = amdgpu_cs_has_user_fence(cs);
    bool use_bo_list_create = ws->info.drm_minor < 27;
@@ -1308,27 +1308,28 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
       /* The buffer list contains all buffers. This is a slow path that
        * ensures that no buffer is missing in the BO list.
        */
+      unsigned num_handles = 0;
+      struct drm_amdgpu_bo_list_entry *list =
+         alloca(ws->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
       struct amdgpu_winsys_bo *bo;
-      amdgpu_bo_handle *handles;
-      unsigned num = 0;
 
       simple_mtx_lock(&ws->global_bo_list_lock);
-      handles = alloca(sizeof(handles[0]) * ws->num_buffers);
-
       LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, u.real.global_list_item) {
-         assert(num < ws->num_buffers);
-         handles[num++] = bo->bo;
+         if (bo->is_local)
+            continue;
+
+         list[num_handles].bo_handle = bo->u.real.kms_handle;
+         list[num_handles].bo_priority = 0;
+         ++num_handles;
       }
 
-      r = amdgpu_bo_list_create(ws->dev, ws->num_buffers,
-                                handles, NULL, &bo_list);
+      r = amdgpu_bo_list_create_raw(ws->dev, ws->num_buffers, list, &bo_list);
       simple_mtx_unlock(&ws->global_bo_list_lock);
       if (r) {
          fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
          goto cleanup;
       }
-   } else if (!use_bo_list_create) {
-      /* Standard path passing the buffer list via the CS ioctl. */
+   } else {
       if (!amdgpu_add_sparse_backing_buffers(cs)) {
          fprintf(stderr, "amdgpu: amdgpu_add_sparse_backing_buffers failed\n");
          r = -ENOMEM;
@@ -1352,45 +1353,20 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
          ++num_handles;
       }
 
-      bo_list_in.operation = ~0;
-      bo_list_in.list_handle = ~0;
-      bo_list_in.bo_number = num_handles;
-      bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
-      bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)list;
-   } else {
-      /* Legacy path creating the buffer list handle and passing it to the CS ioctl. */
-      unsigned num_handles;
-
-      if (!amdgpu_add_sparse_backing_buffers(cs)) {
-         fprintf(stderr, "amdgpu: amdgpu_add_sparse_backing_buffers failed\n");
-         r = -ENOMEM;
-         goto cleanup;
-      }
-
-      amdgpu_bo_handle *handles = alloca(sizeof(*handles) * cs->num_real_buffers);
-      uint8_t *flags = alloca(sizeof(*flags) * cs->num_real_buffers);
-
-      num_handles = 0;
-      for (i = 0; i < cs->num_real_buffers; ++i) {
-         struct amdgpu_cs_buffer *buffer = &cs->real_buffers[i];
-
-	 if (buffer->bo->is_local)
-            continue;
-
-         assert(buffer->u.real.priority_usage != 0);
-
-         handles[num_handles] = buffer->bo->bo;
-         flags[num_handles] = (util_last_bit(buffer->u.real.priority_usage) - 1) / 2;
-	 ++num_handles;
-      }
-
-      if (num_handles) {
-         r = amdgpu_bo_list_create(ws->dev, num_handles,
-                                   handles, flags, &bo_list);
+      if (use_bo_list_create) {
+         /* Legacy path creating the buffer list handle and passing it to the CS ioctl. */
+         r = amdgpu_bo_list_create_raw(ws->dev, num_handles, list, &bo_list);
          if (r) {
             fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
             goto cleanup;
          }
+      } else {
+         /* Standard path passing the buffer list via the CS ioctl. */
+         bo_list_in.operation = ~0;
+         bo_list_in.list_handle = ~0;
+         bo_list_in.bo_number = num_handles;
+         bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
+         bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)list;
       }
    }
 
@@ -1501,8 +1477,8 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
 
       assert(num_chunks <= ARRAY_SIZE(chunks));
 
-      r = amdgpu_cs_submit_raw(ws->dev, acs->ctx->ctx, bo_list,
-                               num_chunks, chunks, &seq_no);
+      r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                num_chunks, chunks, &seq_no);
    }
 
    if (r) {
@@ -1527,7 +1503,7 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
 
    /* Cleanup. */
    if (bo_list)
-      amdgpu_bo_list_destroy(bo_list);
+      amdgpu_bo_list_destroy_raw(ws->dev, bo_list);
 
 cleanup:
    /* If there was an error, signal the fence, because it won't be signalled
