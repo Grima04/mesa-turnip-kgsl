@@ -2462,13 +2462,13 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
       assert(!buffer->is_user_buffer);
 
-      ice->state.bound_vertex_buffers |= 1ull << (start_slot + i);
-
       pipe_resource_reference(&state->resource, buffer->buffer.resource);
       struct iris_resource *res = (void *) state->resource;
 
-      if (res)
+      if (res) {
+         ice->state.bound_vertex_buffers |= 1ull << (start_slot + i);
          res->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+      }
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
          vb.VertexBufferIndex = start_slot + i;
