@@ -411,17 +411,22 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			static const struct fd6_pipe_sampler_view dummy_view = {};
 			const struct fd6_pipe_sampler_view *view = tex->textures[i] ?
 				fd6_pipe_sampler_view(tex->textures[i]) : &dummy_view;
+			struct fd_resource *rsc = NULL;
+
+			if (view->base.texture)
+				rsc = fd_resource(view->base.texture);
 
 			OUT_RING(state, view->texconst0);
 			OUT_RING(state, view->texconst1);
 			OUT_RING(state, view->texconst2);
-			OUT_RING(state, view->texconst3);
+			OUT_RING(state, view->texconst3 |
+				COND(rsc && view->ubwc_enabled,
+					A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_UNK27));
 
-			if (view->base.texture) {
-				struct fd_resource *rsc = fd_resource(view->base.texture);
+			if (rsc) {
 				if (view->base.format == PIPE_FORMAT_X32_S8X24_UINT)
 					rsc = rsc->stencil;
-				OUT_RELOC(state, rsc->bo, view->offset,
+				OUT_RELOC(state, rsc->bo, view->offset + rsc->offset,
 					(uint64_t)view->texconst5 << 32, 0);
 			} else {
 				OUT_RING(state, 0x00000000);
@@ -429,8 +434,14 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			}
 
 			OUT_RING(state, view->texconst6);
-			OUT_RING(state, view->texconst7);
-			OUT_RING(state, view->texconst8);
+
+			if (rsc && view->ubwc_enabled) {
+				OUT_RELOC(state, rsc->bo, view->offset + rsc->ubwc_offset, 0, 0);
+			} else {
+				OUT_RING(state, 0);
+				OUT_RING(state, 0);
+			}
+
 			OUT_RING(state, view->texconst9);
 			OUT_RING(state, view->texconst10);
 			OUT_RING(state, view->texconst11);

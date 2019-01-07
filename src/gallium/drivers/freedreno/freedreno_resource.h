@@ -78,6 +78,11 @@ struct fd_resource {
 	/* TODO rename to secondary or auxiliary? */
 	struct fd_resource *stencil;
 
+	uint32_t offset;
+	uint32_t ubwc_offset;
+	uint32_t ubwc_pitch;
+	uint32_t ubwc_size;
+
 	/* bitmask of in-flight batches which reference this resource.  Note
 	 * that the batch doesn't hold reference to resources (but instead
 	 * the fd_ringbuffer holds refs to the underlying fd_bo), but in case

@@ -28,6 +28,7 @@
 #ifndef FD6_UTIL_H_
 #define FD6_UTIL_H_
 
+#include "freedreno_resource.h"
 #include "freedreno_util.h"
 
 #include "a6xx.xml.h"
@@ -111,6 +112,12 @@ fd6_ifmt(enum a6xx_color_fmt fmt)
 		unreachable("bad format");
 		return 0;
 	}
+}
+
+static inline bool
+fd6_ubwc_enabled(struct fd_resource *rsc, enum a6xx_tile_mode tile_mode)
+{
+	return rsc->ubwc_size && tile_mode == TILE6_3;
 }
 
 #endif /* FD6_UTIL_H_ */

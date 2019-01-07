@@ -57,6 +57,7 @@ struct fd6_pipe_sampler_view {
 	uint32_t offset;
 	bool astc_srgb;
 	uint16_t seqno;
+	bool ubwc_enabled;
 };
 
 static inline struct fd6_pipe_sampler_view *
