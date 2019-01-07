@@ -457,7 +457,8 @@ lower_mod(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
 }
 
 static bool
-lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
+lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
+                    nir_lower_doubles_options options)
 {
    assert(instr->dest.dest.is_ssa);
    if (instr->dest.dest.ssa.bit_size != 64)
@@ -513,45 +514,43 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
       return false;
    }
 
-   nir_builder bld;
-   nir_builder_init(&bld, nir_cf_node_get_function(&instr->instr.block->cf_node));
-   bld.cursor = nir_before_instr(&instr->instr);
+   b->cursor = nir_before_instr(&instr->instr);
 
-   nir_ssa_def *src = nir_fmov_alu(&bld, instr->src[0],
+   nir_ssa_def *src = nir_fmov_alu(b, instr->src[0],
                                    instr->dest.dest.ssa.num_components);
 
    nir_ssa_def *result;
 
    switch (instr->op) {
    case nir_op_frcp:
-      result = lower_rcp(&bld, src);
+      result = lower_rcp(b, src);
       break;
    case nir_op_fsqrt:
-      result = lower_sqrt_rsq(&bld, src, true);
+      result = lower_sqrt_rsq(b, src, true);
       break;
    case nir_op_frsq:
-      result = lower_sqrt_rsq(&bld, src, false);
+      result = lower_sqrt_rsq(b, src, false);
       break;
    case nir_op_ftrunc:
-      result = lower_trunc(&bld, src);
+      result = lower_trunc(b, src);
       break;
    case nir_op_ffloor:
-      result = lower_floor(&bld, src);
+      result = lower_floor(b, src);
       break;
    case nir_op_fceil:
-      result = lower_ceil(&bld, src);
+      result = lower_ceil(b, src);
       break;
    case nir_op_ffract:
-      result = lower_fract(&bld, src);
+      result = lower_fract(b, src);
       break;
    case nir_op_fround_even:
-      result = lower_round_even(&bld, src);
+      result = lower_round_even(b, src);
       break;
 
    case nir_op_fmod: {
-      nir_ssa_def *src1 = nir_fmov_alu(&bld, instr->src[1],
-                                      instr->dest.dest.ssa.num_components);
-      result = lower_mod(&bld, src, src1);
+      nir_ssa_def *src1 = nir_fmov_alu(b, instr->src[1],
+                                       instr->dest.dest.ssa.num_components);
+      result = lower_mod(b, src, src1);
    }
       break;
    default:
@@ -569,10 +568,13 @@ nir_lower_doubles_impl(nir_function_impl *impl,
 {
    bool progress = false;
 
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_alu)
-            progress |= lower_doubles_instr(nir_instr_as_alu(instr),
+            progress |= lower_doubles_instr(&b, nir_instr_as_alu(instr),
                                             options);
       }
    }
