@@ -616,6 +616,15 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
    }
 }
 
+static bool
+is_array_deref_of_vector(nir_deref_instr *deref)
+{
+   if (deref->deref_type != nir_deref_type_array)
+      return false;
+   nir_deref_instr *parent = nir_deref_instr_parent(deref);
+   return glsl_type_is_vector(parent->type);
+}
+
 static void
 copy_prop_vars_block(struct copy_prop_var_state *state,
                      nir_builder *b, nir_block *block,
@@ -650,6 +659,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
       case nir_intrinsic_load_deref: {
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
+
+         if (is_array_deref_of_vector(src)) {
+            /* Not handled yet. This load won't invalidate existing copies. */
+            break;
+         }
 
          struct copy_entry *src_entry =
             lookup_entry_for_deref(copies, src, nir_derefs_a_contains_b_bit);
@@ -720,6 +734,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
              * store is redundant so remove it.
              */
             nir_instr_remove(instr);
+         } else if (is_array_deref_of_vector(dst)) {
+            /* Not handled yet.  Writing into an element of 'dst' invalidates
+             * any related entries in copies.
+             */
+            kill_aliases(copies, nir_deref_instr_parent(dst), 0xf);
          } else {
             struct value value = {
                .is_ssa = true
@@ -745,6 +764,15 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
             /* This is a no-op self-copy.  Get rid of it */
             nir_instr_remove(instr);
             continue;
+         }
+
+         if (is_array_deref_of_vector(src) || is_array_deref_of_vector(dst)) {
+            /* Cases not handled yet.  Writing into an element of 'dst'
+             * invalidates any related entries in copies.  Reading from 'src'
+             * doesn't invalidate anything, so no action needed for it.
+             */
+            kill_aliases(copies, dst, 0xf);
+            break;
          }
 
          struct copy_entry *src_entry =
