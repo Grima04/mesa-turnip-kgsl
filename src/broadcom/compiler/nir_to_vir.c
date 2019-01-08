@@ -445,7 +445,7 @@ emit_fragcoord_input(struct v3d_compile *c, int attr)
 
 static struct qreg
 emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
-                      uint8_t swizzle)
+                      uint8_t swizzle, int array_index)
 {
         struct qreg r3 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R3);
         struct qreg r5 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R5);
@@ -470,8 +470,9 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         }
 
         int i = c->num_inputs++;
-        c->input_slots[i] = v3d_slot_from_slot_and_component(var->data.location,
-                                                             swizzle);
+        c->input_slots[i] =
+                v3d_slot_from_slot_and_component(var->data.location +
+                                                 array_index, swizzle);
 
         switch (var->data.interpolation) {
         case INTERP_MODE_NONE:
@@ -479,7 +480,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                  * qualifier, then if we're using glShadeModel(GL_FLAT) it
                  * needs to be flat shaded.
                  */
-                switch (var->data.location) {
+                switch (var->data.location + array_index) {
                 case VARYING_SLOT_COL0:
                 case VARYING_SLOT_COL1:
                 case VARYING_SLOT_BFC0:
@@ -517,12 +518,13 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
 }
 
 static void
-emit_fragment_input(struct v3d_compile *c, int attr, nir_variable *var)
+emit_fragment_input(struct v3d_compile *c, int attr, nir_variable *var,
+                    int array_index)
 {
         for (int i = 0; i < glsl_get_vector_elements(var->type); i++) {
                 int chan = var->data.location_frac + i;
                 c->inputs[attr * 4 + chan] =
-                        emit_fragment_varying(c, var, chan);
+                        emit_fragment_varying(c, var, chan, array_index);
         }
 }
 
@@ -1469,10 +1471,8 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                 unsigned array_len = MAX2(glsl_get_length(var->type), 1);
                 unsigned loc = var->data.driver_location;
 
-                assert(array_len == 1);
-                (void)array_len;
                 resize_qreg_array(c, &c->inputs, &c->inputs_array_size,
-                                  (loc + 1) * 4);
+                                  (loc + array_len) * 4);
 
                 if (var->data.location == VARYING_SLOT_POS) {
                         emit_fragcoord_input(c, loc);
@@ -1484,7 +1484,8 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                         c->inputs[loc * 4 + 0] = c->point_x;
                         c->inputs[loc * 4 + 1] = c->point_y;
                 } else {
-                        emit_fragment_input(c, loc, var);
+                        for (int j = 0; j < array_len; j++)
+                                emit_fragment_input(c, loc + j, var, j);
                 }
         }
 }
@@ -2093,10 +2094,10 @@ nir_to_vir(struct v3d_compile *c)
                  * they're not going to be used.
                  */
                 if (c->fs_key->is_points) {
-                        c->point_x = emit_fragment_varying(c, NULL, 0);
-                        c->point_y = emit_fragment_varying(c, NULL, 0);
+                        c->point_x = emit_fragment_varying(c, NULL, 0, 0);
+                        c->point_y = emit_fragment_varying(c, NULL, 0, 0);
                 } else if (c->fs_key->is_lines) {
-                        c->line_x = emit_fragment_varying(c, NULL, 0);
+                        c->line_x = emit_fragment_varying(c, NULL, 0, 0);
                 }
         }
 
