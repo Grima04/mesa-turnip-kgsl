@@ -149,7 +149,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return 4;
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
-                return 400;
+                return 330;
 
 	case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
 		return 140;
