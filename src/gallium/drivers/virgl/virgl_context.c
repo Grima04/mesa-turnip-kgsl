@@ -730,8 +730,6 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
            }
    }
 
-   u_upload_unmap(vctx->uploader);
-
    vctx->num_draws++;
    virgl_hw_set_vertex_buffers(vctx);
    if (info.index_size)
@@ -748,6 +746,9 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
 {
    struct virgl_screen *rs = virgl_screen(ctx->base.screen);
    int out_fence_fd = -1;
+
+   if (ctx->num_draws)
+      u_upload_unmap(ctx->uploader);
 
    /* send the buffer to the remote side for decoding */
    ctx->num_transfers = ctx->num_draws = 0;
