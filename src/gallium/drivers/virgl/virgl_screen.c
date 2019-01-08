@@ -172,7 +172,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_QUERY_TIMESTAMP:
       return 1;
    case PIPE_CAP_QUERY_TIME_ELAPSED:
-      return 0;
+      return 1;
    case PIPE_CAP_TGSI_TEXCOORD:
       return 0;
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
