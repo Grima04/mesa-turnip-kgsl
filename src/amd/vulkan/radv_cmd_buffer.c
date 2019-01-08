@@ -2787,7 +2787,7 @@ void radv_CmdPushDescriptorSetKHR(
 
 void radv_CmdPushDescriptorSetWithTemplateKHR(
 	VkCommandBuffer                             commandBuffer,
-	VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+	VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
 	VkPipelineLayout                            _layout,
 	uint32_t                                    set,
 	const void*                                 pData)
@@ -3247,7 +3247,7 @@ VkResult radv_ResetCommandPool(
 void radv_TrimCommandPool(
     VkDevice                                    device,
     VkCommandPool                               commandPool,
-    VkCommandPoolTrimFlagsKHR                   flags)
+    VkCommandPoolTrimFlags                      flags)
 {
 	RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
 
