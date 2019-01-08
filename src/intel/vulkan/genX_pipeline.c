@@ -105,9 +105,7 @@ emit_vertex_input(struct anv_pipeline *pipeline,
       __builtin_popcount(elements_double) / 2;
 
    const uint32_t total_elems =
-      elem_count + needs_svgs_elem + vs_prog_data->uses_drawid;
-   if (total_elems == 0)
-      return;
+      MAX2(1, elem_count + needs_svgs_elem + vs_prog_data->uses_drawid);
 
    uint32_t *p;
 
