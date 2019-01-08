@@ -37,6 +37,8 @@
 #include "util/build_id.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
+#include "util/os_file.h"
+#include "util/u_atomic.h"
 #include "util/u_string.h"
 #include "git_sha1.h"
 #include "vk_util.h"
@@ -342,6 +344,29 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
 #endif
 }
 
+static uint64_t
+get_available_system_memory()
+{
+   char *meminfo = os_read_file("/proc/meminfo");
+   if (!meminfo)
+      return 0;
+
+   char *str = strstr(meminfo, "MemAvailable:");
+   if (!str) {
+      free(meminfo);
+      return 0;
+   }
+
+   uint64_t kb_mem_available;
+   if (sscanf(str, "MemAvailable: %" PRIx64, &kb_mem_available) == 1) {
+      free(meminfo);
+      return kb_mem_available << 10;
+   }
+
+   free(meminfo);
+   return 0;
+}
+
 static VkResult
 anv_physical_device_init(struct anv_physical_device *device,
                          struct anv_instance *instance,
@@ -480,6 +505,8 @@ anv_physical_device_init(struct anv_physical_device *device,
     * we leave it disabled on gen7.
     */
    device->has_bindless_samplers = device->info.gen >= 8;
+
+   device->has_mem_available = get_available_system_memory() != 0;
 
    /* Starting with Gen10, the timestamp frequency of the command streamer may
     * vary from one part to another. We can query the value from the kernel.
@@ -1617,6 +1644,58 @@ void anv_GetPhysicalDeviceMemoryProperties(
    }
 }
 
+static void
+anv_get_memory_budget(VkPhysicalDevice physicalDevice,
+                      VkPhysicalDeviceMemoryBudgetPropertiesEXT *memoryBudget)
+{
+   ANV_FROM_HANDLE(anv_physical_device, device, physicalDevice);
+   uint64_t sys_available = get_available_system_memory();
+   assert(sys_available > 0);
+
+   VkDeviceSize total_heaps_size = 0;
+   for (size_t i = 0; i < device->memory.heap_count; i++)
+         total_heaps_size += device->memory.heaps[i].size;
+
+   for (size_t i = 0; i < device->memory.heap_count; i++) {
+      VkDeviceSize heap_size = device->memory.heaps[i].size;
+      VkDeviceSize heap_used = device->memory.heaps[i].used;
+      VkDeviceSize heap_budget;
+
+      double heap_proportion = (double) heap_size / total_heaps_size;
+      VkDeviceSize sys_available_prop = sys_available * heap_proportion;
+
+      /*
+       * Let's not incite the app to starve the system: report at most 90% of
+       * available system memory.
+       */
+      uint64_t heap_available = sys_available_prop * 9 / 10;
+      heap_budget = MIN2(heap_size, heap_used + heap_available);
+
+      /*
+       * Round down to the nearest MB
+       */
+      heap_budget &= ~((1ull << 20) - 1);
+
+      /*
+       * The heapBudget value must be non-zero for array elements less than
+       * VkPhysicalDeviceMemoryProperties::memoryHeapCount. The heapBudget
+       * value must be less than or equal to VkMemoryHeap::size for each heap.
+       */
+      assert(0 < heap_budget && heap_budget <= heap_size);
+
+      memoryBudget->heapUsage[i] = heap_used;
+      memoryBudget->heapBudget[i] = heap_budget;
+   }
+
+   /* The heapBudget and heapUsage values must be zero for array elements
+    * greater than or equal to VkPhysicalDeviceMemoryProperties::memoryHeapCount
+    */
+   for (uint32_t i = device->memory.heap_count; i < VK_MAX_MEMORY_HEAPS; i++) {
+      memoryBudget->heapBudget[i] = 0;
+      memoryBudget->heapUsage[i] = 0;
+   }
+}
+
 void anv_GetPhysicalDeviceMemoryProperties2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceMemoryProperties2*          pMemoryProperties)
@@ -1626,6 +1705,9 @@ void anv_GetPhysicalDeviceMemoryProperties2(
 
    vk_foreach_struct(ext, pMemoryProperties->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT:
+         anv_get_memory_budget(physicalDevice, (void*)ext);
+         break;
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
@@ -2815,6 +2897,9 @@ VkResult anv_AllocateMemory(
 
    *pMem = anv_device_memory_to_handle(mem);
 
+   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
+                mem->bo->size);
+
    return VK_SUCCESS;
 
  fail:
@@ -2900,6 +2985,7 @@ void anv_FreeMemory(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_device_memory, mem, _mem);
+   struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    if (mem == NULL)
       return;
@@ -2917,6 +3003,9 @@ void anv_FreeMemory(
    if (mem->ahw)
       AHardwareBuffer_release(mem->ahw);
 #endif
+
+   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
+                -mem->bo->size);
 
    vk_free2(&device->alloc, pAllocator, mem);
 }

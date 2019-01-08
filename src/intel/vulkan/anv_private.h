@@ -912,6 +912,7 @@ struct anv_memory_heap {
    uint64_t          vma_start;
    uint64_t          vma_size;
    bool              supports_48bit_addresses;
+   VkDeviceSize      used;
 };
 
 struct anv_physical_device {
@@ -949,6 +950,7 @@ struct anv_physical_device {
     bool                                        has_context_priority;
     bool                                        use_softpin;
     bool                                        has_context_isolation;
+    bool                                        has_mem_available;
     bool                                        always_use_bindless;
 
     /** True if we can access buffers using A64 messages */
