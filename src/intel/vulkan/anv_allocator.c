@@ -1319,7 +1319,7 @@ anv_bo_cache_import(struct anv_device *device,
    uint32_t gem_handle = anv_gem_fd_to_handle(device, fd);
    if (!gem_handle) {
       pthread_mutex_unlock(&cache->mutex);
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
+      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
    struct anv_cached_bo *bo = anv_bo_cache_lookup_locked(cache, gem_handle);
@@ -1372,7 +1372,7 @@ anv_bo_cache_import(struct anv_device *device,
       if (size == (off_t)-1) {
          anv_gem_close(device, gem_handle);
          pthread_mutex_unlock(&cache->mutex);
-         return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
+         return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
       }
 
       bo = vk_alloc(&device->alloc, sizeof(struct anv_cached_bo), 8,

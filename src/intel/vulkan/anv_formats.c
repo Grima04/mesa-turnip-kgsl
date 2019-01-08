@@ -523,8 +523,8 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
 
       flags |= VK_FORMAT_FEATURE_BLIT_SRC_BIT |
                VK_FORMAT_FEATURE_BLIT_DST_BIT |
-               VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR |
-               VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR;
+               VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+               VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
 
       return flags;
    }
@@ -785,7 +785,7 @@ anv_get_image_format_properties(
    struct anv_physical_device *physical_device,
    const VkPhysicalDeviceImageFormatInfo2 *info,
    VkImageFormatProperties *pImageFormatProperties,
-   VkSamplerYcbcrConversionImageFormatPropertiesKHR *pYcbcrImageFormatProperties)
+   VkSamplerYcbcrConversionImageFormatProperties *pYcbcrImageFormatProperties)
 {
    VkFormatFeatureFlags format_feature_flags;
    VkExtent3D maxExtent;
@@ -1004,7 +1004,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
 {
    ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
-   VkExternalImageFormatPropertiesKHR *external_props = NULL;
+   VkExternalImageFormatProperties *external_props = NULL;
    VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
    struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
    VkResult result;

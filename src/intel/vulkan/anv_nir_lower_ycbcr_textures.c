@@ -38,7 +38,7 @@ static nir_ssa_def *
 y_range(nir_builder *b,
         nir_ssa_def *y_channel,
         int bpc,
-        VkSamplerYcbcrRangeKHR range)
+        VkSamplerYcbcrRange range)
 {
    switch (range) {
    case VK_SAMPLER_YCBCR_RANGE_ITU_FULL:
@@ -60,7 +60,7 @@ static nir_ssa_def *
 chroma_range(nir_builder *b,
              nir_ssa_def *chroma_channel,
              int bpc,
-             VkSamplerYcbcrRangeKHR range)
+             VkSamplerYcbcrRange range)
 {
    switch (range) {
    case VK_SAMPLER_YCBCR_RANGE_ITU_FULL:
@@ -80,7 +80,7 @@ chroma_range(nir_builder *b,
 }
 
 static const nir_const_value *
-ycbcr_model_to_rgb_matrix(VkSamplerYcbcrModelConversionKHR model)
+ycbcr_model_to_rgb_matrix(VkSamplerYcbcrModelConversion model)
 {
    switch (model) {
    case VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601: {

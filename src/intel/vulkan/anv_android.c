@@ -120,7 +120,7 @@ get_ahw_buffer_format_properties(
     * one of the AHARDWAREBUFFER_USAGE_GPU_* usage flags."
     */
    if (!(desc.usage & (gpu_usage)))
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    /* Fill properties fields based on description. */
    VkAndroidHardwareBufferFormatPropertiesANDROID *p = pProperties;
@@ -204,7 +204,7 @@ anv_GetAndroidHardwareBufferPropertiesANDROID(
       AHardwareBuffer_getNativeHandle(buffer);
    int dma_buf = (handle && handle->numFds) ? handle->data[0] : -1;
    if (dma_buf < 0)
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    /* All memory types. */
    uint32_t memory_types = (1ull << pdevice->memory.type_count) - 1;
@@ -261,7 +261,7 @@ anv_GetMemoryAndroidHardwareBufferANDROID(
     * Android hardware buffer object."
     *
     * "VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID must
-    * have been included in VkExportMemoryAllocateInfoKHR::handleTypes when
+    * have been included in VkExportMemoryAllocateInfo::handleTypes when
     * memory was created."
     */
    if (mem->ahw) {
@@ -295,7 +295,7 @@ anv_import_ahw_memory(VkDevice device_h,
     */
    int dma_buf = (handle && handle->numFds) ? handle->data[0] : -1;
    if (dma_buf < 0)
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    uint64_t bo_flags = ANV_BO_EXTERNAL;
    if (device->instance->physicalDevice.supports_48bit_addresses)
@@ -430,7 +430,7 @@ anv_image_from_gralloc(VkDevice device_h,
 
    if (gralloc_info->handle->numFds != 1) {
       return vk_errorf(device->instance, device,
-                       VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
+                       VK_ERROR_INVALID_EXTERNAL_HANDLE,
                        "VkNativeBufferANDROID::handle::numFds is %d, "
                        "expected 1", gralloc_info->handle->numFds);
    }
@@ -466,13 +466,13 @@ anv_image_from_gralloc(VkDevice device_h,
       break;
    case -1:
       result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
+                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "DRM_IOCTL_I915_GEM_GET_TILING failed for "
                          "VkNativeBufferANDROID");
       goto fail_tiling;
    default:
       result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
+                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "DRM_IOCTL_I915_GEM_GET_TILING returned unknown "
                          "tiling %d for VkNativeBufferANDROID", i915_tiling);
       goto fail_tiling;
@@ -494,7 +494,7 @@ anv_image_from_gralloc(VkDevice device_h,
 
    if (bo->size < image->size) {
       result = vk_errorf(device->instance, device,
-                         VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
+                         VK_ERROR_INVALID_EXTERNAL_HANDLE,
                          "dma-buf from VkNativeBufferANDROID is too small for "
                          "VkImage: %"PRIu64"B < %"PRIu64"B",
                          bo->size, image->size);
@@ -560,16 +560,16 @@ VkResult anv_GetSwapchainGrallocUsageANDROID(
     * dEQP-VK.wsi.android.swapchain.*.image_usage to fail.
     */
 
-   const VkPhysicalDeviceImageFormatInfo2KHR image_format_info = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR,
+   const VkPhysicalDeviceImageFormatInfo2 image_format_info = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
       .format = format,
       .type = VK_IMAGE_TYPE_2D,
       .tiling = VK_IMAGE_TILING_OPTIMAL,
       .usage = imageUsage,
    };
 
-   VkImageFormatProperties2KHR image_format_props = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR,
+   VkImageFormatProperties2 image_format_props = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
    };
 
    /* Check that requested format and usage are supported. */
