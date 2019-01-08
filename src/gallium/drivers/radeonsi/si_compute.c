@@ -797,17 +797,39 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
 			  compute_resource_limits);
 
-	radeon_set_sh_reg_seq(cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
-	radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(info->block[0]));
-	radeon_emit(cs, S_00B820_NUM_THREAD_FULL(info->block[1]));
-	radeon_emit(cs, S_00B824_NUM_THREAD_FULL(info->block[2]));
-
 	unsigned dispatch_initiator =
 		S_00B800_COMPUTE_SHADER_EN(1) |
 		S_00B800_FORCE_START_AT_000(1) |
 		/* If the KMD allows it (there is a KMD hw register for it),
 		 * allow launching waves out-of-order. (same as Vulkan) */
 		S_00B800_ORDER_MODE(sctx->chip_class >= CIK);
+
+	uint *last_block = sctx->compute_last_block;
+	bool partial_block_en = last_block[0] || last_block[1] || last_block[2];
+
+	radeon_set_sh_reg_seq(cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
+
+	if (partial_block_en) {
+		unsigned partial[3];
+
+		/* If no partial_block, these should be an entire block size, not 0. */
+		partial[0] = last_block[0] ? last_block[0] : info->block[0];
+		partial[1] = last_block[1] ? last_block[1] : info->block[1];
+		partial[2] = last_block[2] ? last_block[2] : info->block[2];
+
+		radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(info->block[0]) |
+				S_00B81C_NUM_THREAD_PARTIAL(partial[0]));
+		radeon_emit(cs, S_00B820_NUM_THREAD_FULL(info->block[1]) |
+				S_00B820_NUM_THREAD_PARTIAL(partial[1]));
+		radeon_emit(cs, S_00B824_NUM_THREAD_FULL(info->block[2]) |
+				S_00B824_NUM_THREAD_PARTIAL(partial[2]));
+
+		dispatch_initiator |= S_00B800_PARTIAL_TG_EN(1);
+	} else {
+		radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(info->block[0]));
+		radeon_emit(cs, S_00B820_NUM_THREAD_FULL(info->block[1]));
+		radeon_emit(cs, S_00B824_NUM_THREAD_FULL(info->block[2]));
+	}
 
 	if (info->indirect) {
 		uint64_t base_va = r600_resource(info->indirect)->gpu_address;
