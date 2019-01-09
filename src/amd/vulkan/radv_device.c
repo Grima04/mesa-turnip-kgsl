@@ -762,7 +762,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
 			VkPhysicalDeviceVariablePointerFeatures *features = (void *)ext;
 			features->variablePointersStorageBuffer = true;
-			features->variablePointers = false;
+			features->variablePointers = true;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
