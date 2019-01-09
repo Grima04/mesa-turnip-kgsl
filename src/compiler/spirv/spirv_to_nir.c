@@ -1236,6 +1236,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             .type = val->type->members[i]->type,
             .name = ralloc_asprintf(b, "field%d", i),
             .location = -1,
+            .offset = -1,
          };
       }
 
