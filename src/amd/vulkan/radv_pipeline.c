@@ -681,10 +681,11 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 	else
 		blend.cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
 
-	blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(2) |
-		S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
-		S_028B70_ALPHA_TO_MASK_OFFSET2(2) |
-		S_028B70_ALPHA_TO_MASK_OFFSET3(2);
+	blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(3) |
+		S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
+		S_028B70_ALPHA_TO_MASK_OFFSET2(0) |
+		S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+		S_028B70_OFFSET_ROUND(1);
 
 	if (vkms && vkms->alphaToCoverageEnable) {
 		blend.db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(1);
