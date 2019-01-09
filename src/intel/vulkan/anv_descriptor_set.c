@@ -84,6 +84,14 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       unreachable("Unsupported descriptor type");
    }
 
+   /* On gen8 and above when we have softpin enabled, we also need to push
+    * SSBO address ranges so that we can use A64 messages in the shader.
+    */
+   if (device->has_a64_buffer_access &&
+       (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+        type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC))
+      data |= ANV_DESCRIPTOR_ADDRESS_RANGE;
+
    return data;
 }
 
@@ -94,6 +102,9 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 
    if (data & ANV_DESCRIPTOR_IMAGE_PARAM)
       size += BRW_IMAGE_PARAM_SIZE * 4;
+
+   if (data & ANV_DESCRIPTOR_ADDRESS_RANGE)
+      size += sizeof(struct anv_address_range_descriptor);
 
    return size;
 }
@@ -130,6 +141,11 @@ anv_descriptor_data_supports_bindless(const struct anv_physical_device *pdevice,
                                       enum anv_descriptor_data data,
                                       bool sampler)
 {
+   if (data & ANV_DESCRIPTOR_ADDRESS_RANGE) {
+      assert(pdevice->has_a64_buffer_access);
+      return true;
+   }
+
    return false;
 }
 
@@ -1077,6 +1093,9 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
 
    assert(type == bind_layout->type);
 
+   struct anv_address bind_addr = anv_address_add(buffer->address, offset);
+   uint64_t bind_range = anv_buffer_get_range(buffer, offset, range);
+
    if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
        type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
       *desc = (struct anv_descriptor) {
@@ -1091,8 +1110,8 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
          &set->buffer_views[bind_layout->buffer_view_index + element];
 
       bview->format = anv_isl_format_for_descriptor_type(type);
-      bview->range = anv_buffer_get_range(buffer, offset, range);
-      bview->address = anv_address_add(buffer->address, offset);
+      bview->range = bind_range;
+      bview->address = bind_addr;
 
       /* If we're writing descriptors through a push command, we need to
        * allocate the surface state from the command buffer. Otherwise it will
@@ -1102,13 +1121,23 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
          bview->surface_state = anv_state_stream_alloc(alloc_stream, 64, 64);
 
       anv_fill_buffer_surface_state(device, bview->surface_state,
-                                    bview->format,
-                                    bview->address, bview->range, 1);
+                                    bview->format, bind_addr, bind_range, 1);
 
       *desc = (struct anv_descriptor) {
          .type = type,
          .buffer_view = bview,
       };
+   }
+
+   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
+                    element * anv_descriptor_size(bind_layout);
+
+   if (bind_layout->data & ANV_DESCRIPTOR_ADDRESS_RANGE) {
+      struct anv_address_range_descriptor desc = {
+         .address = anv_address_physical(bind_addr),
+         .range = bind_range,
+      };
+      memcpy(desc_map, &desc, sizeof(desc));
    }
 }
 

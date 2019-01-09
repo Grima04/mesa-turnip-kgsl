@@ -278,6 +278,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
                      sizeof(device->chipset_id));
    _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
                      sizeof(device->always_use_bindless));
+   _mesa_sha1_update(&sha1_ctx, &device->has_a64_buffer_access,
+                     sizeof(device->has_a64_buffer_access));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
@@ -1103,8 +1105,14 @@ void anv_GetPhysicalDeviceProperties(
    const uint32_t max_raw_buffer_sz = devinfo->gen >= 7 ?
                                       (1ul << 30) : (1ul << 27);
 
+   const uint32_t max_ssbos = pdevice->has_a64_buffer_access ? UINT16_MAX : 64;
    const uint32_t max_samplers = (devinfo->gen >= 8 || devinfo->is_haswell) ?
                                  128 : 16;
+
+   /* The moment we have anything bindless, claim a high per-stage limit */
+   const uint32_t max_per_stage =
+      pdevice->has_a64_buffer_access ? UINT32_MAX :
+                                       MAX_BINDING_TABLE_SIZE - MAX_RTS;
 
    VkSampleCountFlags sample_counts =
       isl_device_get_sample_counts(&pdevice->isl_dev);
@@ -1127,15 +1135,15 @@ void anv_GetPhysicalDeviceProperties(
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            = max_samplers,
       .maxPerStageDescriptorUniformBuffers      = 64,
-      .maxPerStageDescriptorStorageBuffers      = 64,
+      .maxPerStageDescriptorStorageBuffers      = max_ssbos,
       .maxPerStageDescriptorSampledImages       = max_samplers,
       .maxPerStageDescriptorStorageImages       = MAX_IMAGES,
       .maxPerStageDescriptorInputAttachments    = 64,
-      .maxPerStageResources                     = MAX_BINDING_TABLE_SIZE - MAX_RTS,
+      .maxPerStageResources                     = max_per_stage,
       .maxDescriptorSetSamplers                 = 6 * max_samplers, /* number of stages * maxPerStageDescriptorSamplers */
       .maxDescriptorSetUniformBuffers           = 6 * 64,           /* number of stages * maxPerStageDescriptorUniformBuffers */
       .maxDescriptorSetUniformBuffersDynamic    = MAX_DYNAMIC_BUFFERS / 2,
-      .maxDescriptorSetStorageBuffers           = 6 * 64,           /* number of stages * maxPerStageDescriptorStorageBuffers */
+      .maxDescriptorSetStorageBuffers           = 6 * max_ssbos,    /* number of stages * maxPerStageDescriptorStorageBuffers */
       .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_BUFFERS / 2,
       .maxDescriptorSetSampledImages            = 6 * max_samplers, /* number of stages * maxPerStageDescriptorSampledImages */
       .maxDescriptorSetStorageImages            = 6 * MAX_IMAGES,   /* number of stages * maxPerStageDescriptorStorageImages */

@@ -1521,6 +1521,19 @@ struct anv_vue_header {
    float PointWidth;
 };
 
+/** Struct representing a address/range descriptor
+ *
+ * The fields of this struct correspond directly to the data layout of
+ * nir_address_format_64bit_bounded_global addresses.  The last field is the
+ * offset in the NIR address so it must be zero so that when you load the
+ * descriptor you get a pointer to the start of the range.
+ */
+struct anv_address_range_descriptor {
+   uint64_t address;
+   uint32_t range;
+   uint32_t zero;
+};
+
 enum anv_descriptor_data {
    /** The descriptor contains a BTI reference to a surface state */
    ANV_DESCRIPTOR_SURFACE_STATE  = (1 << 0),
@@ -1532,6 +1545,8 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_IMAGE_PARAM    = (1 << 3),
    /** The descriptor contains auxiliary image layout data */
    ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 4),
+   /** anv_address_range_descriptor with a buffer address and range */
+   ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 5),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -2086,7 +2101,12 @@ struct anv_xfb_binding {
 };
 
 #define ANV_PARAM_PUSH(offset)         ((1 << 16) | (uint32_t)(offset))
+#define ANV_PARAM_IS_PUSH(param)       ((uint32_t)(param) >> 16 == 1)
 #define ANV_PARAM_PUSH_OFFSET(param)   ((param) & 0xffff)
+
+#define ANV_PARAM_DYN_OFFSET(offset)      ((2 << 16) | (uint32_t)(offset))
+#define ANV_PARAM_IS_DYN_OFFSET(param)    ((uint32_t)(param) >> 16 == 2)
+#define ANV_PARAM_DYN_OFFSET_IDX(param)   ((param) & 0xffff)
 
 struct anv_push_constants {
    /* Current allocated size of this push constants data structure.

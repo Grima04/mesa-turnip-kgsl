@@ -594,6 +594,14 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
          *dynamic_offsets += set_layout->dynamic_offset_count;
          *dynamic_offset_count -= set_layout->dynamic_offset_count;
+
+         if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+            cmd_buffer->state.push_constants_dirty |=
+               VK_SHADER_STAGE_COMPUTE_BIT;
+         } else {
+            cmd_buffer->state.push_constants_dirty |=
+               VK_SHADER_STAGE_ALL_GRAPHICS;
+         }
       }
    }
 
@@ -739,7 +747,8 @@ anv_cmd_buffer_merge_dynamic(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static uint32_t
-anv_push_constant_value(struct anv_push_constants *data, uint32_t param)
+anv_push_constant_value(const struct anv_cmd_pipeline_state *state,
+                        const struct anv_push_constants *data, uint32_t param)
 {
    if (BRW_PARAM_IS_BUILTIN(param)) {
       switch (param) {
@@ -754,20 +763,28 @@ anv_push_constant_value(struct anv_push_constants *data, uint32_t param)
       default:
          unreachable("Invalid param builtin");
       }
-   } else {
+   } else if (ANV_PARAM_IS_PUSH(param)) {
       uint32_t offset = ANV_PARAM_PUSH_OFFSET(param);
       assert(offset % sizeof(uint32_t) == 0);
       if (offset < data->size)
          return *(uint32_t *)((uint8_t *)data + offset);
       else
          return 0;
+   } else if (ANV_PARAM_IS_DYN_OFFSET(param)) {
+      unsigned idx = ANV_PARAM_DYN_OFFSET_IDX(param);
+      assert(idx < MAX_DYNAMIC_BUFFERS);
+      return state->dynamic_offsets[idx];
    }
+
+   assert(!"Invalid param");
+   return 0;
 }
 
 struct anv_state
 anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
                               gl_shader_stage stage)
 {
+   struct anv_cmd_pipeline_state *pipeline_state = &cmd_buffer->state.gfx.base;
    struct anv_pipeline *pipeline = cmd_buffer->state.gfx.base.pipeline;
 
    /* If we don't have this stage, bail. */
@@ -780,7 +797,7 @@ anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
       pipeline->shaders[stage]->prog_data;
 
    /* If we don't actually have any push constants, bail. */
-   if (data == NULL || prog_data == NULL || prog_data->nr_params == 0)
+   if (prog_data == NULL || prog_data->nr_params == 0)
       return (struct anv_state) { .offset = 0 };
 
    struct anv_state state =
@@ -790,8 +807,10 @@ anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
 
    /* Walk through the param array and fill the buffer with data */
    uint32_t *u32_map = state.map;
-   for (unsigned i = 0; i < prog_data->nr_params; i++)
-      u32_map[i] = anv_push_constant_value(data, prog_data->param[i]);
+   for (unsigned i = 0; i < prog_data->nr_params; i++) {
+      u32_map[i] = anv_push_constant_value(pipeline_state, data,
+                                           prog_data->param[i]);
+   }
 
    return state;
 }
@@ -799,6 +818,7 @@ anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
 struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
+   struct anv_cmd_pipeline_state *pipeline_state = &cmd_buffer->state.compute.base;
    struct anv_push_constants *data =
       cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
    struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
@@ -826,7 +846,8 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
            i < cs_prog_data->push.cross_thread.dwords;
            i++) {
          assert(prog_data->param[i] != BRW_PARAM_BUILTIN_SUBGROUP_ID);
-         u32_map[i] = anv_push_constant_value(data, prog_data->param[i]);
+         u32_map[i] = anv_push_constant_value(pipeline_state, data,
+                                              prog_data->param[i]);
       }
    }
 
@@ -840,8 +861,8 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
             if (prog_data->param[src] == BRW_PARAM_BUILTIN_SUBGROUP_ID) {
                u32_map[dst] = t;
             } else {
-               u32_map[dst] =
-                  anv_push_constant_value(data, prog_data->param[src]);
+               u32_map[dst] = anv_push_constant_value(pipeline_state, data,
+                                                      prog_data->param[src]);
             }
          }
       }
