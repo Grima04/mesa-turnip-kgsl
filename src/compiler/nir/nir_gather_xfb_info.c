@@ -25,6 +25,17 @@
 
 #include <util/u_math.h>
 
+static nir_xfb_info *
+nir_gather_xfb_info_create(void *mem_ctx, uint16_t output_count, uint16_t varying_count)
+{
+   nir_xfb_info *xfb = rzalloc_size(mem_ctx, sizeof(nir_xfb_info));
+
+   xfb->varyings = rzalloc_size(xfb, sizeof(nir_xfb_varying_info) * varying_count);
+   xfb->outputs = rzalloc_size(xfb, sizeof(nir_xfb_output_info) * output_count);
+
+   return xfb;
+}
+
 static void
 add_var_xfb_outputs(nir_xfb_info *xfb,
                     nir_variable *var,
@@ -51,11 +62,11 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
    } else {
       assert(buffer < NIR_MAX_XFB_BUFFERS);
       if (xfb->buffers_written & (1 << buffer)) {
-         assert(xfb->strides[buffer] == var->data.xfb_stride);
+         assert(xfb->buffers[buffer].stride == var->data.xfb_stride);
          assert(xfb->buffer_to_stream[buffer] == var->data.stream);
       } else {
          xfb->buffers_written |= (1 << buffer);
-         xfb->strides[buffer] = var->data.xfb_stride;
+         xfb->buffers[buffer].stride = var->data.xfb_stride;
          xfb->buffer_to_stream[buffer] = var->data.stream;
       }
 
@@ -87,6 +98,12 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       assert(var->data.location_frac + comp_slots <= 8);
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
       unsigned comp_offset = var->data.location_frac;
+
+      nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
+      varying->type = type;
+      varying->buffer = var->data.xfb_buffer;
+      varying->offset = *offset;
+      xfb->buffers[var->data.xfb_buffer].varying_count++;
 
       while (comp_mask) {
          nir_xfb_output_info *output = &xfb->outputs[xfb->output_count++];
@@ -127,14 +144,17 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
     * it should be good enough for allocation.
     */
    unsigned num_outputs = 0;
+   unsigned num_varyings = 0;
    nir_foreach_variable(var, &shader->outputs) {
-      if (var->data.explicit_xfb_buffer)
+      if (var->data.explicit_xfb_buffer) {
          num_outputs += glsl_count_attribute_slots(var->type, false);
+         num_varyings += glsl_varying_count(var->type);
+      }
    }
-   if (num_outputs == 0)
+   if (num_outputs == 0 || num_varyings == 0)
       return NULL;
 
-   nir_xfb_info *xfb = rzalloc_size(mem_ctx, nir_xfb_info_size(num_outputs));
+   nir_xfb_info *xfb = nir_gather_xfb_info_create(mem_ctx, num_outputs, num_varyings);
 
    /* Walk the list of outputs and add them to the array */
    nir_foreach_variable(var, &shader->outputs) {

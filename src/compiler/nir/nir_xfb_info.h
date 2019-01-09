@@ -30,6 +30,11 @@
 #define NIR_MAX_XFB_STREAMS 4
 
 typedef struct {
+   uint16_t stride;
+   uint16_t varying_count;
+} nir_xfb_buffer_info;
+
+typedef struct {
    uint8_t buffer;
    uint16_t offset;
    uint8_t location;
@@ -37,17 +42,29 @@ typedef struct {
    uint8_t component_offset;
 } nir_xfb_output_info;
 
+typedef struct {
+   const struct glsl_type *type;
+   uint8_t buffer;
+   uint16_t offset;
+} nir_xfb_varying_info;
+
 typedef struct nir_xfb_info {
    uint8_t buffers_written;
    uint8_t streams_written;
 
-   uint16_t strides[NIR_MAX_XFB_BUFFERS];
+   nir_xfb_buffer_info buffers[NIR_MAX_XFB_BUFFERS];
    uint8_t buffer_to_stream[NIR_MAX_XFB_STREAMS];
 
+   uint16_t varying_count;
+   nir_xfb_varying_info *varyings;
+
    uint16_t output_count;
-   nir_xfb_output_info outputs[0];
+   nir_xfb_output_info *outputs;
 } nir_xfb_info;
 
+/* This method doesn't take into account varyings, as it is used to compute
+ * how much size is needed to copy only the outputs.
+ */
 static inline size_t
 nir_xfb_info_size(uint16_t output_count)
 {
