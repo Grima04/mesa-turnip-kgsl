@@ -1428,11 +1428,13 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
 }
 
 static bool
-brw_blorp_get_blit_kernel(struct blorp_context *blorp,
+brw_blorp_get_blit_kernel(struct blorp_batch *batch,
                           struct blorp_params *params,
                           const struct brw_blorp_blit_prog_key *prog_key)
 {
-   if (blorp->lookup_shader(blorp, prog_key, sizeof(*prog_key),
+   struct blorp_context *blorp = batch->blorp;
+
+   if (blorp->lookup_shader(batch, prog_key, sizeof(*prog_key),
                             &params->wm_prog_kernel, &params->wm_prog_data))
       return true;
 
@@ -1455,7 +1457,7 @@ brw_blorp_get_blit_kernel(struct blorp_context *blorp,
                               &prog_data);
 
    bool result =
-      blorp->upload_shader(blorp, prog_key, sizeof(*prog_key),
+      blorp->upload_shader(batch, prog_key, sizeof(*prog_key),
                            program, prog_data.base.program_size,
                            &prog_data.base, sizeof(prog_data),
                            &params->wm_prog_kernel, &params->wm_prog_data);
@@ -2040,10 +2042,10 @@ try_blorp_blit(struct blorp_batch *batch,
    /* For some texture types, we need to pass the layer through the sampler. */
    params->wm_inputs.src_z = params->src.z_offset;
 
-   if (!brw_blorp_get_blit_kernel(batch->blorp, params, wm_prog_key))
+   if (!brw_blorp_get_blit_kernel(batch, params, wm_prog_key))
       return 0;
 
-   if (!blorp_ensure_sf_program(batch->blorp, params))
+   if (!blorp_ensure_sf_program(batch, params))
       return 0;
 
    unsigned result = 0;
