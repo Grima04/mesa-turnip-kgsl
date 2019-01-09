@@ -3305,7 +3305,12 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 			deref_instr = nir_src_as_deref(deref_instr->parent);
 		}
 		descriptor_set = deref_instr->var->data.descriptor_set;
-		base_index = deref_instr->var->data.binding;
+
+		if (deref_instr->var->data.bindless) {
+			base_index = deref_instr->var->data.driver_location;
+			bindless = true;
+		} else
+			base_index = deref_instr->var->data.binding;
 	}
 
 	return ctx->abi->load_sampler_desc(ctx->abi,
