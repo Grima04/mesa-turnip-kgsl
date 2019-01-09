@@ -3282,27 +3282,34 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 		base_index = tex_instr->sampler_index;
 	} else {
 		while(deref_instr->deref_type != nir_deref_type_var) {
-			unsigned array_size = glsl_get_aoa_size(deref_instr->type);
-			if (!array_size)
-				array_size = 1;
+			if (deref_instr->deref_type == nir_deref_type_array) {
+				unsigned array_size = glsl_get_aoa_size(deref_instr->type);
+				if (!array_size)
+					array_size = 1;
 
-			assert(deref_instr->deref_type == nir_deref_type_array);
-			nir_const_value *const_value = nir_src_as_const_value(deref_instr->arr.index);
-			if (const_value) {
-				constant_index += array_size * const_value->u32[0];
+				nir_const_value *const_value = nir_src_as_const_value(deref_instr->arr.index);
+				if (const_value) {
+					constant_index += array_size * const_value->u32[0];
+				} else {
+					LLVMValueRef indirect = get_src(ctx, deref_instr->arr.index);
+
+					indirect = LLVMBuildMul(ctx->ac.builder, indirect,
+						LLVMConstInt(ctx->ac.i32, array_size, false), "");
+
+					if (!index)
+						index = indirect;
+					else
+						index = LLVMBuildAdd(ctx->ac.builder, index, indirect, "");
+				}
+
+				deref_instr = nir_src_as_deref(deref_instr->parent);
+			} else if (deref_instr->deref_type == nir_deref_type_struct) {
+				unsigned sidx = deref_instr->strct.index;
+				deref_instr = nir_src_as_deref(deref_instr->parent);
+				constant_index += glsl_get_record_location_offset(deref_instr->type, sidx);
 			} else {
-				LLVMValueRef indirect = get_src(ctx, deref_instr->arr.index);
-
-				indirect = LLVMBuildMul(ctx->ac.builder, indirect,
-					LLVMConstInt(ctx->ac.i32, array_size, false), "");
-
-                                if (!index)
-					index = indirect;
-				else
-					index = LLVMBuildAdd(ctx->ac.builder, index, indirect, "");
+				unreachable("Unsupported deref type");
 			}
-
-			deref_instr = nir_src_as_deref(deref_instr->parent);
 		}
 		descriptor_set = deref_instr->var->data.descriptor_set;
 
