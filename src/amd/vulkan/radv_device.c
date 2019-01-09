@@ -1350,12 +1350,84 @@ void radv_GetPhysicalDeviceMemoryProperties(
 	*pMemoryProperties = physical_device->memory_properties;
 }
 
+static void
+radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
+				  VkPhysicalDeviceMemoryBudgetPropertiesEXT *memoryBudget)
+{
+	RADV_FROM_HANDLE(radv_physical_device, device, physicalDevice);
+	VkPhysicalDeviceMemoryProperties *memory_properties = &device->memory_properties;
+	uint64_t visible_vram_size = radv_get_visible_vram_size(device);
+	uint64_t vram_size = radv_get_vram_size(device);
+	uint64_t gtt_size = device->rad_info.gart_size;
+	uint64_t heap_budget, heap_usage;
+
+	/* For all memory heaps, the computation of budget is as follow:
+	 *	heap_budget = heap_size - global_heap_usage + app_heap_usage
+	 *
+	 * The Vulkan spec 1.1.97 says that the budget should include any
+	 * currently allocated device memory.
+	 *
+	 * Note that the application heap usages are not really accurate (eg.
+	 * in presence of shared buffers).
+	 */
+	if (vram_size) {
+		heap_usage = device->ws->query_value(device->ws,
+						     RADEON_ALLOCATED_VRAM);
+
+		heap_budget = vram_size -
+			device->ws->query_value(device->ws, RADEON_VRAM_USAGE) +
+			heap_usage;
+
+		memoryBudget->heapBudget[RADV_MEM_HEAP_VRAM] = heap_budget;
+		memoryBudget->heapUsage[RADV_MEM_HEAP_VRAM] = heap_usage;
+	}
+
+	if (visible_vram_size) {
+		heap_usage = device->ws->query_value(device->ws,
+						     RADEON_ALLOCATED_VRAM_VIS);
+
+		heap_budget = visible_vram_size -
+			device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE) +
+			heap_usage;
+
+		memoryBudget->heapBudget[RADV_MEM_HEAP_VRAM_CPU_ACCESS] = heap_budget;
+		memoryBudget->heapUsage[RADV_MEM_HEAP_VRAM_CPU_ACCESS] = heap_usage;
+	}
+
+	if (gtt_size) {
+		heap_usage = device->ws->query_value(device->ws,
+						     RADEON_ALLOCATED_GTT);
+
+		heap_budget = gtt_size -
+			device->ws->query_value(device->ws, RADEON_GTT_USAGE) +
+			heap_usage;
+
+		memoryBudget->heapBudget[RADV_MEM_HEAP_GTT] = heap_budget;
+		memoryBudget->heapUsage[RADV_MEM_HEAP_GTT] = heap_usage;
+	}
+
+	/* The heapBudget and heapUsage values must be zero for array elements
+	 * greater than or equal to
+	 * VkPhysicalDeviceMemoryProperties::memoryHeapCount.
+	 */
+	for (uint32_t i = memory_properties->memoryHeapCount; i < VK_MAX_MEMORY_HEAPS; i++) {
+		memoryBudget->heapBudget[i] = 0;
+		memoryBudget->heapUsage[i] = 0;
+	}
+}
+
 void radv_GetPhysicalDeviceMemoryProperties2(
 	VkPhysicalDevice                            physicalDevice,
 	VkPhysicalDeviceMemoryProperties2          *pMemoryProperties)
 {
 	radv_GetPhysicalDeviceMemoryProperties(physicalDevice,
 					       &pMemoryProperties->memoryProperties);
+
+	VkPhysicalDeviceMemoryBudgetPropertiesEXT *memory_budget =
+		vk_find_struct(pMemoryProperties->pNext,
+			       PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT);
+	if (memory_budget)
+		radv_get_memory_budget_properties(physicalDevice, memory_budget);
 }
 
 VkResult radv_GetMemoryHostPointerPropertiesEXT(
