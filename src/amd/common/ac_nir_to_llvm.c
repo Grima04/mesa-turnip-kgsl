@@ -2838,7 +2838,7 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 	LLVMValueRef src0 = NULL;
 
 	nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
-	int input_index = var->data.location - VARYING_SLOT_VAR0;
+	int input_index = ctx->abi->fs_input_attr_indices[var->data.location - VARYING_SLOT_VAR0];
 	switch (instr->intrinsic) {
 	case nir_intrinsic_interp_deref_at_centroid:
 		location = INTERP_CENTROID;
