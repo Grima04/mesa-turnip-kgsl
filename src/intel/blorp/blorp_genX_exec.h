@@ -82,6 +82,10 @@ static void
 blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
                     struct blorp_address address, uint32_t delta);
 
+static uint64_t
+blorp_get_surface_address(struct blorp_batch *batch,
+                          struct blorp_address address);
+
 #if GEN_GEN >= 7 && GEN_GEN < 10
 static struct blorp_address
 blorp_get_surface_base_address(struct blorp_batch *batch);
@@ -1363,6 +1367,13 @@ blorp_emit_surface_state(struct blorp_batch *batch,
    isl_surf_fill_state(batch->blorp->isl_dev, state,
                        .surf = &surf, .view = &surface->view,
                        .aux_surf = &surface->aux_surf, .aux_usage = aux_usage,
+                       .address =
+                          blorp_get_surface_address(batch, surface->addr),
+                       .aux_address = aux_usage == ISL_AUX_USAGE_NONE ? 0 :
+                          blorp_get_surface_address(batch, surface->aux_addr),
+                       .clear_address = !use_clear_address ? 0 :
+                          blorp_get_surface_address(batch,
+                                                    surface->clear_color_addr),
                        .mocs = surface->addr.mocs,
                        .clear_color = surface->clear_color,
                        .use_clear_address = use_clear_address,
