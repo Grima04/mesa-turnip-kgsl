@@ -668,7 +668,7 @@ if _opencl != 'disabled'
 else
   dep_clc = null_dep
   with_gallium_opencl = false
-  with_gallium_icd = false
+  with_opencl_icd = false
 endif
 
 gl_pkgconfig_c_flags = []
