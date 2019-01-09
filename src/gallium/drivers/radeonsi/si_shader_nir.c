@@ -163,11 +163,12 @@ static void scan_instruction(struct tgsi_shader_info *info,
 			break;
 		}
 		case nir_intrinsic_image_deref_store: {
+			const nir_deref_instr *image_deref = nir_instr_as_deref(intr->src[0].ssa->parent_instr);
 			nir_variable *var = intrinsic_get_var(intr);
 			if (var->data.bindless) {
 				info->uses_bindless_images = true;
 
-				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
+				if (glsl_get_sampler_dim(image_deref->type) == GLSL_SAMPLER_DIM_BUF)
 					info->uses_bindless_buffer_store = true;
 				else
 					info->uses_bindless_image_store = true;
