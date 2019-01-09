@@ -3038,6 +3038,16 @@ typedef enum {
    nir_address_format_64bit_global,
 
    /**
+    * An address format which is a bounds-checked 64-bit global GPU address.
+    *
+    * The address is comprised as a 32-bit vec4 where .xy are a uint64_t base
+    * address stored with the low bits in .x and high bits in .y, .z is a
+    * size, and .w is an offset.  When the final I/O operation is lowered, .w
+    * is checked against .z and the operation is predicated on the result.
+    */
+   nir_address_format_64bit_bounded_global,
+
+   /**
     * An address format which is comprised of a vec2 where the first
     * component is a buffer index and the second is an offset.
     */

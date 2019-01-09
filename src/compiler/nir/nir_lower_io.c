@@ -599,6 +599,13 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return nir_iadd(b, addr, offset);
 
+   case nir_address_format_64bit_bounded_global:
+      assert(addr->num_components == 4);
+      return nir_vec4(b, nir_channel(b, addr, 0),
+                         nir_channel(b, addr, 1),
+                         nir_channel(b, addr, 2),
+                         nir_iadd(b, nir_channel(b, addr, 3), offset));
+
    case nir_address_format_32bit_index_offset:
       assert(addr->num_components == 2);
       return nir_vec2(b, nir_channel(b, addr, 0),
@@ -638,7 +645,8 @@ static bool
 addr_format_is_global(nir_address_format addr_format)
 {
    return addr_format == nir_address_format_32bit_global ||
-          addr_format == nir_address_format_64bit_global;
+          addr_format == nir_address_format_64bit_global ||
+          addr_format == nir_address_format_64bit_bounded_global;
 }
 
 static nir_ssa_def *
@@ -651,11 +659,32 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return addr;
 
+   case nir_address_format_64bit_bounded_global:
+      assert(addr->num_components == 4);
+      return nir_iadd(b, nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)),
+                         nir_u2u64(b, nir_channel(b, addr, 3)));
+
    case nir_address_format_32bit_index_offset:
       unreachable("Cannot get a 64-bit address with this address format");
    }
 
    unreachable("Invalid address format");
+}
+
+static bool
+addr_format_needs_bounds_check(nir_address_format addr_format)
+{
+   return addr_format == nir_address_format_64bit_bounded_global;
+}
+
+static nir_ssa_def *
+addr_is_in_bounds(nir_builder *b, nir_ssa_def *addr,
+                  nir_address_format addr_format, unsigned size)
+{
+   assert(addr_format == nir_address_format_64bit_bounded_global);
+   assert(addr->num_components == 4);
+   return nir_ige(b, nir_channel(b, addr, 2),
+                     nir_iadd_imm(b, nir_channel(b, addr, 3), size));
 }
 
 static nir_ssa_def *
@@ -709,9 +738,32 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    load->num_components = num_components;
    nir_ssa_dest_init(&load->instr, &load->dest, num_components,
                      intrin->dest.ssa.bit_size, intrin->dest.ssa.name);
-   nir_builder_instr_insert(b, &load->instr);
 
-   return &load->dest.ssa;
+   assert(load->dest.ssa.bit_size % 8 == 0);
+
+   if (addr_format_needs_bounds_check(addr_format)) {
+      /* The Vulkan spec for robustBufferAccess gives us quite a few options
+       * as to what we can do with an OOB read.  Unfortunately, returning
+       * undefined values isn't one of them so we return an actual zero.
+       */
+      nir_const_value zero_val;
+      memset(&zero_val, 0, sizeof(zero_val));
+      nir_ssa_def *zero = nir_build_imm(b, load->num_components,
+                                        load->dest.ssa.bit_size, zero_val);
+
+      const unsigned load_size =
+         (load->dest.ssa.bit_size / 8) * load->num_components;
+      nir_push_if(b, addr_is_in_bounds(b, addr, addr_format, load_size));
+
+      nir_builder_instr_insert(b, &load->instr);
+
+      nir_pop_if(b, NULL);
+
+      return nir_if_phi(b, &load->dest.ssa, zero);
+   } else {
+      nir_builder_instr_insert(b, &load->instr);
+      return &load->dest.ssa;
+   }
 }
 
 static void
@@ -759,7 +811,19 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(value->num_components == 1 ||
           value->num_components == intrin->num_components);
    store->num_components = value->num_components;
-   nir_builder_instr_insert(b, &store->instr);
+
+   assert(value->bit_size % 8 == 0);
+
+   if (addr_format_needs_bounds_check(addr_format)) {
+      const unsigned store_size = (value->bit_size / 8) * store->num_components;
+      nir_push_if(b, addr_is_in_bounds(b, addr, addr_format, store_size));
+
+      nir_builder_instr_insert(b, &store->instr);
+
+      nir_pop_if(b, NULL);
+   } else {
+      nir_builder_instr_insert(b, &store->instr);
+   }
 }
 
 static nir_ssa_def *
@@ -802,9 +866,22 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(intrin->dest.ssa.num_components == 1);
    nir_ssa_dest_init(&atomic->instr, &atomic->dest,
                      1, intrin->dest.ssa.bit_size, intrin->dest.ssa.name);
-   nir_builder_instr_insert(b, &atomic->instr);
 
-   return &atomic->dest.ssa;
+   assert(atomic->dest.ssa.bit_size % 8 == 0);
+
+   if (addr_format_needs_bounds_check(addr_format)) {
+      const unsigned atomic_size = atomic->dest.ssa.bit_size / 8;
+      nir_push_if(b, addr_is_in_bounds(b, addr, addr_format, atomic_size));
+
+      nir_builder_instr_insert(b, &atomic->instr);
+
+      nir_pop_if(b, NULL);
+      return nir_if_phi(b, &atomic->dest.ssa,
+                           nir_ssa_undef(b, 1, atomic->dest.ssa.bit_size));
+   } else {
+      nir_builder_instr_insert(b, &atomic->instr);
+      return &atomic->dest.ssa;
+   }
 }
 
 static void
