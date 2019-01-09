@@ -17,9 +17,11 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
+
+#include "tu_private.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -28,10 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tu_private.h"
-#include "vk_enum_to_str.h"
-
 #include "util/u_math.h"
+#include "vk_enum_to_str.h"
 
 /* TODO: Add Android support to tu_log funcs */
 
@@ -74,7 +74,7 @@ tu_logi_v(const char *format, va_list va)
 }
 
 void tu_printflike(3, 4)
-  __tu_finishme(const char *file, int line, const char *format, ...)
+   __tu_finishme(const char *file, int line, const char *format, ...)
 {
    va_list ap;
    char buffer[256];

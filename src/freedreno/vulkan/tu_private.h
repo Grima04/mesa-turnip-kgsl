@@ -21,8 +21,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef TU_PRIVATE_H
@@ -67,7 +67,6 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vulkan_intel.h>
 
 #include "drm/freedreno_ringbuffer.h"
-
 #include "tu_entrypoints.h"
 
 #define MAX_VBS 32
@@ -80,7 +79,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_PUSH_DESCRIPTORS 32
 #define MAX_DYNAMIC_UNIFORM_BUFFERS 16
 #define MAX_DYNAMIC_STORAGE_BUFFERS 8
-#define MAX_DYNAMIC_BUFFERS                                                    \
+#define MAX_DYNAMIC_BUFFERS                                                  \
    (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
 #define MAX_SAMPLES_LOG2 4
 #define NUM_META_FS_KEYS 13
@@ -193,14 +192,14 @@ tu_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
    }
 }
 
-#define for_each_bit(b, dword)                                                 \
-   for (uint32_t __dword = (dword); (b) = __builtin_ffs(__dword) - 1, __dword; \
-        __dword &= ~(1 << (b)))
+#define for_each_bit(b, dword)                                               \
+   for (uint32_t __dword = (dword);                                          \
+        (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
 
-#define typed_memcpy(dest, src, count)                                         \
-   ({                                                                          \
-      STATIC_ASSERT(sizeof(*src) == sizeof(*dest));                            \
-      memcpy((dest), (src), (count) * sizeof(*(src)));                         \
+#define typed_memcpy(dest, src, count)                                       \
+   ({                                                                        \
+      STATIC_ASSERT(sizeof(*src) == sizeof(*dest));                          \
+      memcpy((dest), (src), (count) * sizeof(*(src)));                       \
    })
 
 /* Whenever we generate an error, pass it through this function. Useful for
@@ -218,14 +217,14 @@ __vk_errorf(struct tu_instance *instance,
             const char *format,
             ...);
 
-#define vk_error(instance, error)                                              \
+#define vk_error(instance, error)                                            \
    __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
-#define vk_errorf(instance, error, format, ...)                                \
+#define vk_errorf(instance, error, format, ...)                              \
    __vk_errorf(instance, error, __FILE__, __LINE__, format, ##__VA_ARGS__);
 
 void
 __tu_finishme(const char *file, int line, const char *format, ...)
-  tu_printflike(3, 4);
+   tu_printflike(3, 4);
 void
 tu_loge(const char *format, ...) tu_printflike(1, 2);
 void
@@ -238,21 +237,21 @@ tu_logi_v(const char *format, va_list va);
 /**
  * Print a FINISHME message, including its source location.
  */
-#define tu_finishme(format, ...)                                              \
-   do {                                                                        \
-      static bool reported = false;                                            \
-      if (!reported) {                                                         \
-         __tu_finishme(__FILE__, __LINE__, format, ##__VA_ARGS__);            \
-         reported = true;                                                      \
-      }                                                                        \
+#define tu_finishme(format, ...)                                             \
+   do {                                                                      \
+      static bool reported = false;                                          \
+      if (!reported) {                                                       \
+         __tu_finishme(__FILE__, __LINE__, format, ##__VA_ARGS__);           \
+         reported = true;                                                    \
+      }                                                                      \
    } while (0)
 
 /* A non-fatal assert.  Useful for debugging. */
 #ifdef DEBUG
-#define tu_assert(x)                                                          \
-   ({                                                                          \
-      if (unlikely(!(x)))                                                      \
-         fprintf(stderr, "%s:%d ASSERT: %s\n", __FILE__, __LINE__, #x);        \
+#define tu_assert(x)                                                         \
+   ({                                                                        \
+      if (unlikely(!(x)))                                                    \
+         fprintf(stderr, "%s:%d ASSERT: %s\n", __FILE__, __LINE__, #x);      \
    })
 #else
 #define tu_assert(x)
@@ -260,11 +259,14 @@ tu_logi_v(const char *format, va_list va);
 
 /* Suppress -Wunused in stub functions */
 #define tu_use_args(...) __tu_use_args(0, ##__VA_ARGS__)
-static inline void __tu_use_args(int ignore, ...) {}
+static inline void
+__tu_use_args(int ignore, ...)
+{
+}
 
-#define tu_stub()                                                                 \
-   do {                                                                        \
-      tu_finishme("stub %s", __func__);                                       \
+#define tu_stub()                                                            \
+   do {                                                                      \
+      tu_finishme("stub %s", __func__);                                      \
    } while (0)
 
 void *
@@ -813,11 +815,10 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 
 #define TU_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 
-#define tu_foreach_stage(stage, stage_bits)                                   \
-   for (gl_shader_stage stage,                                                 \
-        __tmp = (gl_shader_stage)((stage_bits)&TU_STAGE_MASK);                \
-        stage = __builtin_ffs(__tmp) - 1, __tmp;                               \
-        __tmp &= ~(1 << (stage)))
+#define tu_foreach_stage(stage, stage_bits)                                  \
+   for (gl_shader_stage stage,                                               \
+        __tmp = (gl_shader_stage)((stage_bits) &TU_STAGE_MASK);              \
+        stage = __builtin_ffs(__tmp) - 1, __tmp; __tmp &= ~(1 << (stage)))
 
 struct tu_shader_module
 {
@@ -904,11 +905,11 @@ tu_is_colorbuffer_format_supported(VkFormat format, bool *blendable);
 bool
 tu_dcc_formats_compatible(VkFormat format1, VkFormat format2);
 
-
-struct tu_image_level {
-    VkDeviceSize offset;
-    VkDeviceSize size;
-    uint32_t pitch;
+struct tu_image_level
+{
+   VkDeviceSize offset;
+   VkDeviceSize size;
+   uint32_t pitch;
 };
 
 struct tu_image
@@ -1026,14 +1027,14 @@ tu_sanitize_image_extent(const VkImageType imageType,
                          const struct VkExtent3D imageExtent)
 {
    switch (imageType) {
-      case VK_IMAGE_TYPE_1D:
-         return (VkExtent3D){ imageExtent.width, 1, 1 };
-      case VK_IMAGE_TYPE_2D:
-         return (VkExtent3D){ imageExtent.width, imageExtent.height, 1 };
-      case VK_IMAGE_TYPE_3D:
-         return imageExtent;
-      default:
-         unreachable("invalid image type");
+   case VK_IMAGE_TYPE_1D:
+      return (VkExtent3D) { imageExtent.width, 1, 1 };
+   case VK_IMAGE_TYPE_2D:
+      return (VkExtent3D) { imageExtent.width, imageExtent.height, 1 };
+   case VK_IMAGE_TYPE_3D:
+      return imageExtent;
+   default:
+      unreachable("invalid image type");
    }
 }
 
@@ -1042,14 +1043,14 @@ tu_sanitize_image_offset(const VkImageType imageType,
                          const struct VkOffset3D imageOffset)
 {
    switch (imageType) {
-      case VK_IMAGE_TYPE_1D:
-         return (VkOffset3D){ imageOffset.x, 0, 0 };
-      case VK_IMAGE_TYPE_2D:
-         return (VkOffset3D){ imageOffset.x, imageOffset.y, 0 };
-      case VK_IMAGE_TYPE_3D:
-         return imageOffset;
-      default:
-         unreachable("invalid image type");
+   case VK_IMAGE_TYPE_1D:
+      return (VkOffset3D) { imageOffset.x, 0, 0 };
+   case VK_IMAGE_TYPE_2D:
+      return (VkOffset3D) { imageOffset.x, imageOffset.y, 0 };
+   case VK_IMAGE_TYPE_3D:
+      return imageOffset;
+   default:
+      unreachable("invalid image type");
    }
 }
 
@@ -1204,30 +1205,32 @@ tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle);
 uint64_t
 tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle);
 int
-tu_drm_query_param(struct tu_physical_device *dev, uint32_t param, uint64_t *value);
+tu_drm_query_param(struct tu_physical_device *dev,
+                   uint32_t param,
+                   uint64_t *value);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
-                                                                               \
+                                                                             \
    static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \
-   {                                                                           \
-      return (struct __tu_type *)_handle;                                     \
-   }                                                                           \
-                                                                               \
+   {                                                                         \
+      return (struct __tu_type *) _handle;                                   \
+   }                                                                         \
+                                                                             \
    static inline __VkType __tu_type##_to_handle(struct __tu_type *_obj)      \
-   {                                                                           \
-      return (__VkType)_obj;                                                   \
+   {                                                                         \
+      return (__VkType) _obj;                                                \
    }
 
 #define TU_DEFINE_NONDISP_HANDLE_CASTS(__tu_type, __VkType)                  \
-                                                                               \
+                                                                             \
    static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \
-   {                                                                           \
-      return (struct __tu_type *)(uintptr_t)_handle;                          \
-   }                                                                           \
-                                                                               \
+   {                                                                         \
+      return (struct __tu_type *) (uintptr_t) _handle;                       \
+   }                                                                         \
+                                                                             \
    static inline __VkType __tu_type##_to_handle(struct __tu_type *_obj)      \
-   {                                                                           \
-      return (__VkType)(uintptr_t)_obj;                                        \
+   {                                                                         \
+      return (__VkType)(uintptr_t) _obj;                                     \
    }
 
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
@@ -1245,9 +1248,9 @@ TU_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer_view, VkBufferView)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_pool, VkDescriptorPool)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, VkDescriptorSet)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout,
-                                VkDescriptorSetLayout)
+                               VkDescriptorSetLayout)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_update_template,
-                                VkDescriptorUpdateTemplateKHR)
+                               VkDescriptorUpdateTemplateKHR)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, VkDeviceMemory)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_fence, VkFence)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_event, VkEvent)

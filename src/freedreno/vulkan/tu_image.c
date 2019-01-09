@@ -21,16 +21,16 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include "tu_private.h"
+
 #include "util/debug.h"
 #include "util/u_atomic.h"
 #include "vk_format.h"
 #include "vk_util.h"
-
 
 static inline bool
 image_level_linear(struct tu_image *image, int level)
@@ -40,23 +40,20 @@ image_level_linear(struct tu_image *image, int level)
 }
 
 /* indexed by cpp: */
-static const struct {
+static const struct
+{
    unsigned pitchalign;
    unsigned heightalign;
 } tile_alignment[] = {
-   [1]  = { 128, 32 },
-   [2]  = { 128, 16 },
-   [3]  = { 128, 16 },
-   [4]  = {  64, 16 },
-   [8]  = {  64, 16 },
-   [12] = {  64, 16 },
-   [16] = {  64, 16 },
+   [1] = { 128, 32 }, [2] = { 128, 16 }, [3] = { 128, 16 }, [4] = { 64, 16 },
+   [8] = { 64, 16 },  [12] = { 64, 16 }, [16] = { 64, 16 },
 };
 
 static void
 setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
 {
-   enum vk_format_layout layout = vk_format_description(pCreateInfo->format)->layout;
+   enum vk_format_layout layout =
+      vk_format_description(pCreateInfo->format)->layout;
    uint32_t layer_size = 0;
    uint32_t width = pCreateInfo->extent.width;
    uint32_t height = pCreateInfo->extent.height;
@@ -92,13 +89,15 @@ setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
       }
 
       if (layout == VK_FORMAT_LAYOUT_ASTC)
-         slice->pitch =
-            util_align_npot(width, pitchalign * vk_format_get_blockwidth(pCreateInfo->format));
+         slice->pitch = util_align_npot(
+            width,
+            pitchalign * vk_format_get_blockwidth(pCreateInfo->format));
       else
          slice->pitch = align(width, pitchalign);
 
       slice->offset = layer_size;
-      blocks = vk_format_get_block_count(pCreateInfo->format, slice->pitch, aligned_height);
+      blocks = vk_format_get_block_count(pCreateInfo->format, slice->pitch,
+                                         aligned_height);
 
       /* 1d array and 2d array textures must all have the same layer size
        * for each miplevel on a3xx. 3d textures can have different layer
@@ -106,9 +105,9 @@ setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
        * different than what this code does), so as soon as the layer size
        * range gets into range, we stop reducing it.
        */
-      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D && (
-               level == 1 ||
-               (level > 1 && image->levels[level - 1].size > 0xf000)))
+      if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
+          (level == 1 ||
+           (level > 1 && image->levels[level - 1].size > 0xf000)))
          slice->size = align(blocks * cpp, alignment);
       else if (level == 0 || layer_first || alignment == 1)
          slice->size = align(blocks * cpp, alignment);
@@ -124,7 +123,6 @@ setup_slices(struct tu_image *image, const VkImageCreateInfo *pCreateInfo)
 
    image->layer_size = layer_size;
 }
-
 
 VkResult
 tu_image_create(VkDevice _device,
@@ -144,10 +142,7 @@ tu_image_create(VkDevice _device,
    tu_assert(pCreateInfo->extent.height > 0);
    tu_assert(pCreateInfo->extent.depth > 0);
 
-   image = vk_zalloc2(&device->alloc,
-                      alloc,
-                      sizeof(*image),
-                      8,
+   image = vk_zalloc2(&device->alloc, alloc, sizeof(*image), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -167,13 +162,13 @@ tu_image_create(VkDevice _device,
              VK_QUEUE_FAMILY_EXTERNAL_KHR)
             image->queue_family_mask |= (1u << TU_MAX_QUEUE_FAMILIES) - 1u;
          else
-            image->queue_family_mask |= 1u
-                                        << pCreateInfo->pQueueFamilyIndices[i];
+            image->queue_family_mask |=
+               1u << pCreateInfo->pQueueFamilyIndices[i];
    }
 
    image->shareable =
-     vk_find_struct_const(pCreateInfo->pNext,
-                          EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR) != NULL;
+      vk_find_struct_const(pCreateInfo->pNext,
+                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR) != NULL;
 
    image->tile_mode = pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL ? 3 : 0;
    setup_slices(image, pCreateInfo);
@@ -213,20 +208,19 @@ tu_CreateImage(VkDevice device,
 {
 #ifdef ANDROID
    const VkNativeBufferANDROID *gralloc_info =
-     vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
+      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
 
    if (gralloc_info)
-      return tu_image_from_gralloc(
-        device, pCreateInfo, gralloc_info, pAllocator, pImage);
+      return tu_image_from_gralloc(device, pCreateInfo, gralloc_info,
+                                   pAllocator, pImage);
 #endif
 
    return tu_image_create(device,
-                           &(struct tu_image_create_info) {
+                          &(struct tu_image_create_info) {
                              .vk_info = pCreateInfo,
                              .scanout = false,
-                           },
-                           pAllocator,
-                           pImage);
+                          },
+                          pAllocator, pImage);
 }
 
 void
@@ -263,10 +257,7 @@ tu_CreateImageView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_image_view *view;
 
-   view = vk_alloc2(&device->alloc,
-                    pAllocator,
-                    sizeof(*view),
-                    8,
+   view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (view == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -299,8 +290,8 @@ tu_buffer_view_init(struct tu_buffer_view *view,
    TU_FROM_HANDLE(tu_buffer, buffer, pCreateInfo->buffer);
 
    view->range = pCreateInfo->range == VK_WHOLE_SIZE
-                   ? buffer->size - pCreateInfo->offset
-                   : pCreateInfo->range;
+                    ? buffer->size - pCreateInfo->offset
+                    : pCreateInfo->range;
    view->vk_format = pCreateInfo->format;
 }
 
@@ -313,10 +304,7 @@ tu_CreateBufferView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer_view *view;
 
-   view = vk_alloc2(&device->alloc,
-                    pAllocator,
-                    sizeof(*view),
-                    8,
+   view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!view)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);

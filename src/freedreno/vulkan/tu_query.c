@@ -19,9 +19,11 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
+
+#include "tu_private.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -29,7 +31,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "tu_private.h"
 #include "nir/nir_builder.h"
 
 VkResult
@@ -39,11 +40,9 @@ tu_CreateQueryPool(VkDevice _device,
                    VkQueryPool *pQueryPool)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_query_pool *pool = vk_alloc2(&device->alloc,
-                                           pAllocator,
-                                           sizeof(*pool),
-                                           8,
-                                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   struct tu_query_pool *pool =
+      vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (!pool)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);

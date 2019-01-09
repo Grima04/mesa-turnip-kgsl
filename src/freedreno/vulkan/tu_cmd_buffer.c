@@ -21,11 +21,12 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include "tu_private.h"
+
 #include "vk_format.h"
 
 const struct tu_dynamic_state default_dynamic_state = {
@@ -85,22 +86,19 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    dest->discard_rectangle.count = src->discard_rectangle.count;
 
    if (copy_mask & TU_DYNAMIC_VIEWPORT) {
-      if (memcmp(&dest->viewport.viewports,
-                 &src->viewport.viewports,
+      if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
                  src->viewport.count * sizeof(VkViewport))) {
-         typed_memcpy(dest->viewport.viewports,
-                      src->viewport.viewports,
+         typed_memcpy(dest->viewport.viewports, src->viewport.viewports,
                       src->viewport.count);
          dest_mask |= TU_DYNAMIC_VIEWPORT;
       }
    }
 
    if (copy_mask & TU_DYNAMIC_SCISSOR) {
-      if (memcmp(&dest->scissor.scissors,
-                 &src->scissor.scissors,
+      if (memcmp(&dest->scissor.scissors, &src->scissor.scissors,
                  src->scissor.count * sizeof(VkRect2D))) {
-         typed_memcpy(
-           dest->scissor.scissors, src->scissor.scissors, src->scissor.count);
+         typed_memcpy(dest->scissor.scissors, src->scissor.scissors,
+                      src->scissor.count);
          dest_mask |= TU_DYNAMIC_SCISSOR;
       }
    }
@@ -113,16 +111,15 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    }
 
    if (copy_mask & TU_DYNAMIC_DEPTH_BIAS) {
-      if (memcmp(
-            &dest->depth_bias, &src->depth_bias, sizeof(src->depth_bias))) {
+      if (memcmp(&dest->depth_bias, &src->depth_bias,
+                 sizeof(src->depth_bias))) {
          dest->depth_bias = src->depth_bias;
          dest_mask |= TU_DYNAMIC_DEPTH_BIAS;
       }
    }
 
    if (copy_mask & TU_DYNAMIC_BLEND_CONSTANTS) {
-      if (memcmp(&dest->blend_constants,
-                 &src->blend_constants,
+      if (memcmp(&dest->blend_constants, &src->blend_constants,
                  sizeof(src->blend_constants))) {
          typed_memcpy(dest->blend_constants, src->blend_constants, 4);
          dest_mask |= TU_DYNAMIC_BLEND_CONSTANTS;
@@ -130,8 +127,7 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    }
 
    if (copy_mask & TU_DYNAMIC_DEPTH_BOUNDS) {
-      if (memcmp(&dest->depth_bounds,
-                 &src->depth_bounds,
+      if (memcmp(&dest->depth_bounds, &src->depth_bounds,
                  sizeof(src->depth_bounds))) {
          dest->depth_bounds = src->depth_bounds;
          dest_mask |= TU_DYNAMIC_DEPTH_BOUNDS;
@@ -139,8 +135,7 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    }
 
    if (copy_mask & TU_DYNAMIC_STENCIL_COMPARE_MASK) {
-      if (memcmp(&dest->stencil_compare_mask,
-                 &src->stencil_compare_mask,
+      if (memcmp(&dest->stencil_compare_mask, &src->stencil_compare_mask,
                  sizeof(src->stencil_compare_mask))) {
          dest->stencil_compare_mask = src->stencil_compare_mask;
          dest_mask |= TU_DYNAMIC_STENCIL_COMPARE_MASK;
@@ -148,8 +143,7 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    }
 
    if (copy_mask & TU_DYNAMIC_STENCIL_WRITE_MASK) {
-      if (memcmp(&dest->stencil_write_mask,
-                 &src->stencil_write_mask,
+      if (memcmp(&dest->stencil_write_mask, &src->stencil_write_mask,
                  sizeof(src->stencil_write_mask))) {
          dest->stencil_write_mask = src->stencil_write_mask;
          dest_mask |= TU_DYNAMIC_STENCIL_WRITE_MASK;
@@ -157,8 +151,7 @@ tu_bind_dynamic_state(struct tu_cmd_buffer *cmd_buffer,
    }
 
    if (copy_mask & TU_DYNAMIC_STENCIL_REFERENCE) {
-      if (memcmp(&dest->stencil_reference,
-                 &src->stencil_reference,
+      if (memcmp(&dest->stencil_reference, &src->stencil_reference,
                  sizeof(src->stencil_reference))) {
          dest->stencil_reference = src->stencil_reference;
          dest_mask |= TU_DYNAMIC_STENCIL_REFERENCE;
@@ -184,8 +177,8 @@ tu_create_cmd_buffer(struct tu_device *device,
                      VkCommandBuffer *pCommandBuffer)
 {
    struct tu_cmd_buffer *cmd_buffer;
-   cmd_buffer = vk_zalloc(
-     &pool->alloc, sizeof(*cmd_buffer), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -255,7 +248,7 @@ tu_AllocateCommandBuffers(VkDevice _device,
 
       if (!list_empty(&pool->free_cmd_buffers)) {
          struct tu_cmd_buffer *cmd_buffer = list_first_entry(
-           &pool->free_cmd_buffers, struct tu_cmd_buffer, pool_link);
+            &pool->free_cmd_buffers, struct tu_cmd_buffer, pool_link);
 
          list_del(&cmd_buffer->pool_link);
          list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -266,16 +259,16 @@ tu_AllocateCommandBuffers(VkDevice _device,
 
          pCommandBuffers[i] = tu_cmd_buffer_to_handle(cmd_buffer);
       } else {
-         result = tu_create_cmd_buffer(
-           device, pool, pAllocateInfo->level, &pCommandBuffers[i]);
+         result = tu_create_cmd_buffer(device, pool, pAllocateInfo->level,
+                                       &pCommandBuffers[i]);
       }
       if (result != VK_SUCCESS)
          break;
    }
 
    if (result != VK_SUCCESS) {
-      tu_FreeCommandBuffers(
-        _device, pAllocateInfo->commandPool, i, pCommandBuffers);
+      tu_FreeCommandBuffers(_device, pAllocateInfo->commandPool, i,
+                            pCommandBuffers);
 
       /* From the Vulkan 1.0.66 spec:
        *
@@ -286,8 +279,7 @@ tu_AllocateCommandBuffers(VkDevice _device,
        *  command, set all entries of the pCommandBuffers array to
        *  NULL and return the error."
        */
-      memset(pCommandBuffers,
-             0,
+      memset(pCommandBuffers, 0,
              sizeof(*pCommandBuffers) * pAllocateInfo->commandBufferCount);
    }
 
@@ -344,11 +336,11 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    /* setup initial configuration into command buffer */
    if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       switch (cmd_buffer->queue_family_index) {
-         case TU_QUEUE_GENERAL:
-            /* init */
-            break;
-         default:
-            break;
+      case TU_QUEUE_GENERAL:
+         /* init */
+         break;
+      default:
+         break;
       }
    }
 
@@ -492,10 +484,7 @@ tu_CreateCommandPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_cmd_pool *pool;
 
-   pool = vk_alloc2(&device->alloc,
-                    pAllocator,
-                    sizeof(*pool),
-                    8,
+   pool = vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pool == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -526,14 +515,14 @@ tu_DestroyCommandPool(VkDevice _device,
    if (!pool)
       return;
 
-   list_for_each_entry_safe(
-     struct tu_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
+   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
+                            &pool->cmd_buffers, pool_link)
    {
       tu_cmd_buffer_destroy(cmd_buffer);
    }
 
-   list_for_each_entry_safe(
-     struct tu_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
+   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
+                            &pool->free_cmd_buffers, pool_link)
    {
       tu_cmd_buffer_destroy(cmd_buffer);
    }
@@ -549,8 +538,8 @@ tu_ResetCommandPool(VkDevice device,
    TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
    VkResult result;
 
-   list_for_each_entry(
-     struct tu_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
+   list_for_each_entry(struct tu_cmd_buffer, cmd_buffer, &pool->cmd_buffers,
+                       pool_link)
    {
       result = tu_reset_cmd_buffer(cmd_buffer);
       if (result != VK_SUCCESS)
@@ -570,8 +559,8 @@ tu_TrimCommandPool(VkDevice device,
    if (!pool)
       return;
 
-   list_for_each_entry_safe(
-     struct tu_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
+   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
+                            &pool->free_cmd_buffers, pool_link)
    {
       tu_cmd_buffer_destroy(cmd_buffer);
    }
@@ -589,8 +578,8 @@ tu_CmdBeginRenderPass2KHR(VkCommandBuffer commandBuffer,
                           const VkRenderPassBeginInfo *pRenderPassBeginInfo,
                           const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
 {
-   tu_CmdBeginRenderPass(
-     commandBuffer, pRenderPassBeginInfo, pSubpassBeginInfo->contents);
+   tu_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
+                         pSubpassBeginInfo->contents);
 }
 
 void
@@ -861,14 +850,9 @@ tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
    info.pEvents = NULL;
    info.srcStageMask = srcStageMask;
 
-   tu_barrier(cmd_buffer,
-               memoryBarrierCount,
-               pMemoryBarriers,
-               bufferMemoryBarrierCount,
-               pBufferMemoryBarriers,
-               imageMemoryBarrierCount,
-               pImageMemoryBarriers,
-               &info);
+   tu_barrier(cmd_buffer, memoryBarrierCount, pMemoryBarriers,
+              bufferMemoryBarrierCount, pBufferMemoryBarriers,
+              imageMemoryBarrierCount, pImageMemoryBarriers, &info);
 }
 
 static void
@@ -921,14 +905,9 @@ tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
    info.pEvents = pEvents;
    info.srcStageMask = 0;
 
-   tu_barrier(cmd_buffer,
-               memoryBarrierCount,
-               pMemoryBarriers,
-               bufferMemoryBarrierCount,
-               pBufferMemoryBarriers,
-               imageMemoryBarrierCount,
-               pImageMemoryBarriers,
-               &info);
+   tu_barrier(cmd_buffer, memoryBarrierCount, pMemoryBarriers,
+              bufferMemoryBarrierCount, pBufferMemoryBarriers,
+              imageMemoryBarrierCount, pImageMemoryBarriers, &info);
 }
 
 void

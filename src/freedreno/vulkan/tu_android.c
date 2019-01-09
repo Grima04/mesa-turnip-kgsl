@@ -17,18 +17,19 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
+
+#include "tu_private.h"
 
 #include <hardware/gralloc.h>
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
 #include <libsync.h>
+
 #include <vulkan/vk_android_native_buffer.h>
 #include <vulkan/vk_icd.h>
-
-#include "tu_private.h"
 
 static int
 tu_hal_open(const struct hw_module_t *mod,
@@ -120,18 +121,16 @@ tu_image_from_gralloc(VkDevice device_h,
    VkResult result;
 
    result = tu_image_create(
-     device_h,
-     &(struct tu_image_create_info){
-       .vk_info = base_info, .scanout = true, .no_metadata_planes = true },
-     alloc,
-     &image_h);
+      device_h,
+      &(struct tu_image_create_info) {
+         .vk_info = base_info, .scanout = true, .no_metadata_planes = true },
+      alloc, &image_h);
 
    if (result != VK_SUCCESS)
       return result;
 
    if (gralloc_info->handle->numFds != 1) {
-      return vk_errorf(device->instance,
-                       VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
+      return vk_errorf(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR,
                        "VkNativeBufferANDROID::handle::numFds is %d, "
                        "expected 1",
                        gralloc_info->handle->numFds);
@@ -163,12 +162,11 @@ tu_image_from_gralloc(VkDevice device_h,
    /* Find the first VRAM memory type, or GART for PRIME images. */
    int memory_type_index = -1;
    for (int i = 0;
-        i < device->physical_device->memory_properties.memoryTypeCount;
-        ++i) {
+        i < device->physical_device->memory_properties.memoryTypeCount; ++i) {
       bool is_local =
-        !!(device->physical_device->memory_properties.memoryTypes[i]
-             .propertyFlags &
-           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+         !!(device->physical_device->memory_properties.memoryTypes[i]
+               .propertyFlags &
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
       if (is_local) {
          memory_type_index = i;
          break;
@@ -180,15 +178,14 @@ tu_image_from_gralloc(VkDevice device_h,
       memory_type_index = 0;
 
    result =
-     tu_AllocateMemory(device_h,
-                        &(VkMemoryAllocateInfo){
-                          .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                          .pNext = &import_info,
-                          .allocationSize = image->size,
-                          .memoryTypeIndex = memory_type_index,
+      tu_AllocateMemory(device_h,
+                        &(VkMemoryAllocateInfo) {
+                           .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                           .pNext = &import_info,
+                           .allocationSize = image->size,
+                           .memoryTypeIndex = memory_type_index,
                         },
-                        alloc,
-                        &memory_h);
+                        alloc, &memory_h);
    if (result != VK_SUCCESS)
       goto fail_create_image;
 
@@ -248,42 +245,39 @@ tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
 
    /* Check that requested format and usage are supported. */
    result = tu_GetPhysicalDeviceImageFormatProperties2(
-     phys_dev_h, &image_format_info, &image_format_props);
+      phys_dev_h, &image_format_info, &image_format_props);
    if (result != VK_SUCCESS) {
-      return vk_errorf(device->instance,
-                       result,
+      return vk_errorf(device->instance, result,
                        "tu_GetPhysicalDeviceImageFormatProperties2 failed "
                        "inside %s",
                        __func__);
    }
 
-   if (unmask32(&imageUsage,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))
+   if (unmask32(&imageUsage, VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))
       *grallocUsage |= GRALLOC_USAGE_HW_RENDER;
 
-   if (unmask32(&imageUsage,
-                VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-                  VK_IMAGE_USAGE_STORAGE_BIT |
-                  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
+   if (unmask32(&imageUsage, VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                VK_IMAGE_USAGE_SAMPLED_BIT |
+                                VK_IMAGE_USAGE_STORAGE_BIT |
+                                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
       *grallocUsage |= GRALLOC_USAGE_HW_TEXTURE;
 
    /* All VkImageUsageFlags not explicitly checked here are unsupported for
     * gralloc swapchains.
     */
    if (imageUsage != 0) {
-      return vk_errorf(device->instance,
-                       VK_ERROR_FORMAT_NOT_SUPPORTED,
+      return vk_errorf(device->instance, VK_ERROR_FORMAT_NOT_SUPPORTED,
                        "unsupported VkImageUsageFlags(0x%x) for gralloc "
                        "swapchain",
                        imageUsage);
    }
 
    /*
-   * FINISHME: Advertise all display-supported formats. Mostly
-   * DRM_FORMAT_ARGB2101010 and DRM_FORMAT_ABGR2101010, but need to check
-   * what we need for 30-bit colors.
-   */
+    * FINISHME: Advertise all display-supported formats. Mostly
+    * DRM_FORMAT_ARGB2101010 and DRM_FORMAT_ABGR2101010, but need to check
+    * what we need for 30-bit colors.
+    */
    if (format == VK_FORMAT_B8G8R8A8_UNORM ||
        format == VK_FORMAT_B5G6R5_UNORM_PACK16) {
       *grallocUsage |= GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER |
@@ -307,27 +301,25 @@ tu_AcquireImageANDROID(VkDevice device,
 
    if (semaphore != VK_NULL_HANDLE) {
       int semaphore_fd =
-        nativeFenceFd >= 0 ? dup(nativeFenceFd) : nativeFenceFd;
+         nativeFenceFd >= 0 ? dup(nativeFenceFd) : nativeFenceFd;
       semaphore_result = tu_ImportSemaphoreFdKHR(
-        device,
-        &(VkImportSemaphoreFdInfoKHR){
-          .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
-          .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR,
-          .fd = semaphore_fd,
-          .semaphore = semaphore,
-        });
+         device, &(VkImportSemaphoreFdInfoKHR) {
+                    .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
+                    .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR,
+                    .fd = semaphore_fd,
+                    .semaphore = semaphore,
+                 });
    }
 
    if (fence != VK_NULL_HANDLE) {
       int fence_fd = nativeFenceFd >= 0 ? dup(nativeFenceFd) : nativeFenceFd;
       fence_result = tu_ImportFenceFdKHR(
-        device,
-        &(VkImportFenceFdInfoKHR){
-          .sType = VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR,
-          .flags = VK_FENCE_IMPORT_TEMPORARY_BIT_KHR,
-          .fd = fence_fd,
-          .fence = fence,
-        });
+         device, &(VkImportFenceFdInfoKHR) {
+                    .sType = VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR,
+                    .flags = VK_FENCE_IMPORT_TEMPORARY_BIT_KHR,
+                    .fd = fence_fd,
+                    .fence = fence,
+                 });
    }
 
    close(nativeFenceFd);
@@ -358,13 +350,13 @@ tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
    for (uint32_t i = 0; i < waitSemaphoreCount; ++i) {
       int tmp_fd;
       result = tu_GetSemaphoreFdKHR(
-        tu_device_to_handle(queue->device),
-        &(VkSemaphoreGetFdInfoKHR){
-          .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
-          .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT_KHR,
-          .semaphore = pWaitSemaphores[i],
-        },
-        &tmp_fd);
+         tu_device_to_handle(queue->device),
+         &(VkSemaphoreGetFdInfoKHR) {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+            .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT_KHR,
+            .semaphore = pWaitSemaphores[i],
+         },
+         &tmp_fd);
       if (result != VK_SUCCESS) {
          if (fd >= 0)
             close(fd);

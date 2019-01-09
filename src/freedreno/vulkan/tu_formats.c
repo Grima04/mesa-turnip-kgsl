@@ -19,19 +19,17 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include "tu_private.h"
 
-#include "vk_format.h"
-
-#include "vk_util.h"
-
 #include "util/format_r11g11b10f.h"
 #include "util/format_srgb.h"
 #include "util/u_half.h"
+#include "vk_format.h"
+#include "vk_util.h"
 
 static void
 tu_physical_device_get_format_properties(
@@ -60,8 +58,8 @@ tu_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
-   tu_physical_device_get_format_properties(
-     physical_device, format, pFormatProperties);
+   tu_physical_device_get_format_properties(physical_device, format,
+                                            pFormatProperties);
 }
 
 void
@@ -73,13 +71,14 @@ tu_GetPhysicalDeviceFormatProperties2(
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
    tu_physical_device_get_format_properties(
-     physical_device, format, &pFormatProperties->formatProperties);
+      physical_device, format, &pFormatProperties->formatProperties);
 }
 
 static VkResult
-tu_get_image_format_properties(struct tu_physical_device *physical_device,
-                               const VkPhysicalDeviceImageFormatInfo2KHR *info,
-                               VkImageFormatProperties *pImageFormatProperties)
+tu_get_image_format_properties(
+   struct tu_physical_device *physical_device,
+   const VkPhysicalDeviceImageFormatInfo2KHR *info,
+   VkImageFormatProperties *pImageFormatProperties)
 
 {
    VkFormatProperties format_props;
@@ -89,8 +88,8 @@ tu_get_image_format_properties(struct tu_physical_device *physical_device,
    uint32_t maxArraySize;
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
-   tu_physical_device_get_format_properties(
-     physical_device, info->format, &format_props);
+   tu_physical_device_get_format_properties(physical_device, info->format,
+                                            &format_props);
    if (info->tiling == VK_IMAGE_TILING_LINEAR) {
       format_feature_flags = format_props.linearTilingFeatures;
    } else if (info->tiling == VK_IMAGE_TILING_OPTIMAL) {
@@ -107,29 +106,29 @@ tu_get_image_format_properties(struct tu_physical_device *physical_device,
       goto unsupported;
 
    switch (info->type) {
-      default:
-         unreachable("bad vkimage type\n");
-      case VK_IMAGE_TYPE_1D:
-         maxExtent.width = 16384;
-         maxExtent.height = 1;
-         maxExtent.depth = 1;
-         maxMipLevels = 15; /* log2(maxWidth) + 1 */
-         maxArraySize = 2048;
-         break;
-      case VK_IMAGE_TYPE_2D:
-         maxExtent.width = 16384;
-         maxExtent.height = 16384;
-         maxExtent.depth = 1;
-         maxMipLevels = 15; /* log2(maxWidth) + 1 */
-         maxArraySize = 2048;
-         break;
-      case VK_IMAGE_TYPE_3D:
-         maxExtent.width = 2048;
-         maxExtent.height = 2048;
-         maxExtent.depth = 2048;
-         maxMipLevels = 12; /* log2(maxWidth) + 1 */
-         maxArraySize = 1;
-         break;
+   default:
+      unreachable("bad vkimage type\n");
+   case VK_IMAGE_TYPE_1D:
+      maxExtent.width = 16384;
+      maxExtent.height = 1;
+      maxExtent.depth = 1;
+      maxMipLevels = 15; /* log2(maxWidth) + 1 */
+      maxArraySize = 2048;
+      break;
+   case VK_IMAGE_TYPE_2D:
+      maxExtent.width = 16384;
+      maxExtent.height = 16384;
+      maxExtent.depth = 1;
+      maxMipLevels = 15; /* log2(maxWidth) + 1 */
+      maxArraySize = 2048;
+      break;
+   case VK_IMAGE_TYPE_3D:
+      maxExtent.width = 2048;
+      maxExtent.height = 2048;
+      maxExtent.depth = 2048;
+      maxMipLevels = 12; /* log2(maxWidth) + 1 */
+      maxArraySize = 1;
+      break;
    }
 
    if (info->tiling == VK_IMAGE_TILING_OPTIMAL &&
@@ -139,8 +138,8 @@ tu_get_image_format_properties(struct tu_physical_device *physical_device,
          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
        !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
-      sampleCounts |=
-        VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
+      sampleCounts |= VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
+                      VK_SAMPLE_COUNT_8_BIT;
    }
 
    if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
@@ -168,7 +167,7 @@ tu_get_image_format_properties(struct tu_physical_device *physical_device,
       }
    }
 
-   *pImageFormatProperties = (VkImageFormatProperties){
+   *pImageFormatProperties = (VkImageFormatProperties) {
       .maxExtent = maxExtent,
       .maxMipLevels = maxMipLevels,
       .maxArrayLayers = maxArraySize,
@@ -182,7 +181,7 @@ tu_get_image_format_properties(struct tu_physical_device *physical_device,
 
    return VK_SUCCESS;
 unsupported:
-   *pImageFormatProperties = (VkImageFormatProperties){
+   *pImageFormatProperties = (VkImageFormatProperties) {
       .maxExtent = { 0, 0, 0 },
       .maxMipLevels = 0,
       .maxArrayLayers = 0,
@@ -215,44 +214,44 @@ tu_GetPhysicalDeviceImageFormatProperties(
       .flags = createFlags,
    };
 
-   return tu_get_image_format_properties(
-     physical_device, &info, pImageFormatProperties);
+   return tu_get_image_format_properties(physical_device, &info,
+                                         pImageFormatProperties);
 }
 
 static void
 get_external_image_format_properties(
-  const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
-  VkExternalMemoryHandleTypeFlagBitsKHR handleType,
-  VkExternalMemoryPropertiesKHR *external_properties)
+   const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
+   VkExternalMemoryHandleTypeFlagBitsKHR handleType,
+   VkExternalMemoryPropertiesKHR *external_properties)
 {
    VkExternalMemoryFeatureFlagBitsKHR flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR export_flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR compat_flags = 0;
    switch (handleType) {
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-         switch (pImageFormatInfo->type) {
-            case VK_IMAGE_TYPE_2D:
-               flags = VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_KHR |
-                       VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHR |
-                       VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
-               compat_flags = export_flags =
-                 VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR |
-                 VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-               break;
-            default:
-               break;
-         }
-         break;
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-         flags = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
-         compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      switch (pImageFormatInfo->type) {
+      case VK_IMAGE_TYPE_2D:
+         flags = VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_KHR |
+                 VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHR |
+                 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
+         compat_flags = export_flags =
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR |
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
          break;
       default:
          break;
+      }
+      break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+      flags = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
+      compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+      break;
+   default:
+      break;
    }
 
-   *external_properties = (VkExternalMemoryPropertiesKHR){
+   *external_properties = (VkExternalMemoryPropertiesKHR) {
       .externalMemoryFeatures = flags,
       .exportFromImportedHandleTypes = export_flags,
       .compatibleHandleTypes = compat_flags,
@@ -271,7 +270,7 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    VkResult result;
 
    result = tu_get_image_format_properties(
-     physical_device, base_info, &base_props->imageFormatProperties);
+      physical_device, base_info, &base_props->imageFormatProperties);
    if (result != VK_SUCCESS)
       return result;
 
@@ -279,11 +278,11 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    vk_foreach_struct_const(s, base_info->pNext)
    {
       switch (s->sType) {
-         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHR:
-            external_info = (const void *)s;
-            break;
-         default:
-            break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO_KHR:
+         external_info = (const void *) s;
+         break;
+      default:
+         break;
       }
    }
 
@@ -291,11 +290,11 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    vk_foreach_struct(s, base_props->pNext)
    {
       switch (s->sType) {
-         case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHR:
-            external_props = (void *)s;
-            break;
-         default:
-            break;
+      case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES_KHR:
+         external_props = (void *) s;
+         break;
+      default:
+         break;
       }
    }
 
@@ -307,29 +306,27 @@ tu_GetPhysicalDeviceImageFormatProperties2(
     */
    if (external_info && external_info->handleType != 0) {
       switch (external_info->handleType) {
-         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
-         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-            get_external_image_format_properties(
-              base_info,
-              external_info->handleType,
-              &external_props->externalMemoryProperties);
-            break;
-         default:
-            /* From the Vulkan 1.0.42 spec:
-             *
-             *    If handleType is not compatible with the [parameters]
-             * specified
-             *    in VkPhysicalDeviceImageFormatInfo2KHR, then
-             *    vkGetPhysicalDeviceImageFormatProperties2KHR returns
-             *    VK_ERROR_FORMAT_NOT_SUPPORTED.
-             */
-            result =
-              vk_errorf(physical_device->instance,
-                        VK_ERROR_FORMAT_NOT_SUPPORTED,
-                        "unsupported VkExternalMemoryTypeFlagBitsKHR 0x%x",
-                        external_info->handleType);
-            goto fail;
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+         get_external_image_format_properties(
+            base_info, external_info->handleType,
+            &external_props->externalMemoryProperties);
+         break;
+      default:
+         /* From the Vulkan 1.0.42 spec:
+          *
+          *    If handleType is not compatible with the [parameters]
+          * specified
+          *    in VkPhysicalDeviceImageFormatInfo2KHR, then
+          *    vkGetPhysicalDeviceImageFormatProperties2KHR returns
+          *    VK_ERROR_FORMAT_NOT_SUPPORTED.
+          */
+         result = vk_errorf(
+            physical_device->instance, VK_ERROR_FORMAT_NOT_SUPPORTED,
+            "unsupported VkExternalMemoryTypeFlagBitsKHR 0x%x",
+            external_info->handleType);
+         goto fail;
       }
    }
 
@@ -344,7 +341,7 @@ fail:
        *    the implementation for use in vkCreateImage, then all members of
        *    imageFormatProperties will be filled with zero.
        */
-      base_props->imageFormatProperties = (VkImageFormatProperties){ 0 };
+      base_props->imageFormatProperties = (VkImageFormatProperties) { 0 };
    }
 
    return result;
@@ -386,25 +383,25 @@ tu_GetPhysicalDeviceExternalBufferProperties(
    VkExternalMemoryHandleTypeFlagsKHR export_flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR compat_flags = 0;
    switch (pExternalBufferInfo->handleType) {
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-         flags = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHR |
-                 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
-         compat_flags = export_flags =
-           VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR |
-           VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-         break;
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-         flags = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
-         compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
-         break;
-      default:
-         break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      flags = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHR |
+              VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
+      compat_flags = export_flags =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR |
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+      flags = VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR;
+      compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+      break;
+   default:
+      break;
    }
    pExternalBufferProperties->externalMemoryProperties =
-     (VkExternalMemoryPropertiesKHR){
-        .externalMemoryFeatures = flags,
-        .exportFromImportedHandleTypes = export_flags,
-        .compatibleHandleTypes = compat_flags,
-     };
+      (VkExternalMemoryPropertiesKHR) {
+         .externalMemoryFeatures = flags,
+         .exportFromImportedHandleTypes = export_flags,
+         .compatibleHandleTypes = compat_flags,
+      };
 }

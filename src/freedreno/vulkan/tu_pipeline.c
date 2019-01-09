@@ -21,21 +21,21 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include "tu_private.h"
+
+#include "main/menums.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "spirv/nir_spirv.h"
+#include "util/debug.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
-#include "vk_util.h"
-
-#include "main/menums.h"
-#include "util/debug.h"
 #include "vk_format.h"
+#include "vk_util.h"
 
 VkResult
 tu_graphics_pipeline_create(
@@ -63,12 +63,9 @@ tu_CreateGraphicsPipelines(VkDevice _device,
 
    for (; i < count; i++) {
       VkResult r;
-      r = tu_graphics_pipeline_create(_device,
-                                       pipelineCache,
-                                       &pCreateInfos[i],
-                                       NULL,
-                                       pAllocator,
-                                       &pPipelines[i]);
+      r =
+         tu_graphics_pipeline_create(_device, pipelineCache, &pCreateInfos[i],
+                                     NULL, pAllocator, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
@@ -101,8 +98,8 @@ tu_CreateComputePipelines(VkDevice _device,
    unsigned i = 0;
    for (; i < count; i++) {
       VkResult r;
-      r = tu_compute_pipeline_create(
-        _device, pipelineCache, &pCreateInfos[i], pAllocator, &pPipelines[i]);
+      r = tu_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i],
+                                     pAllocator, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;

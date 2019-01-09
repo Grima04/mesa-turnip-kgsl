@@ -20,8 +20,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef VK_FORMAT_H
@@ -29,6 +29,7 @@
 
 #include <assert.h>
 #include <util/macros.h>
+
 #include <vulkan/vulkan.h>
 
 enum vk_format_layout
@@ -224,7 +225,6 @@ vk_format_get_block_count(VkFormat format, unsigned width, unsigned height)
           vk_format_get_block_count_height(format, height);
 }
 
-
 /**
  * Return the index of the first non-void channel
  * -1 if no non-void channels
@@ -261,24 +261,24 @@ static inline VkImageAspectFlags
 vk_format_aspects(VkFormat format)
 {
    switch (format) {
-      case VK_FORMAT_UNDEFINED:
-         return 0;
+   case VK_FORMAT_UNDEFINED:
+      return 0;
 
-      case VK_FORMAT_S8_UINT:
-         return VK_IMAGE_ASPECT_STENCIL_BIT;
+   case VK_FORMAT_S8_UINT:
+      return VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      case VK_FORMAT_D16_UNORM_S8_UINT:
-      case VK_FORMAT_D24_UNORM_S8_UINT:
-      case VK_FORMAT_D32_SFLOAT_S8_UINT:
-         return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+   case VK_FORMAT_D16_UNORM_S8_UINT:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      case VK_FORMAT_D16_UNORM:
-      case VK_FORMAT_X8_D24_UNORM_PACK32:
-      case VK_FORMAT_D32_SFLOAT:
-         return VK_IMAGE_ASPECT_DEPTH_BIT;
+   case VK_FORMAT_D16_UNORM:
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D32_SFLOAT:
+      return VK_IMAGE_ASPECT_DEPTH_BIT;
 
-      default:
-         return VK_IMAGE_ASPECT_COLOR_BIT;
+   default:
+      return VK_IMAGE_ASPECT_COLOR_BIT;
    }
 }
 
@@ -292,32 +292,32 @@ tu_swizzle_conv(VkComponentSwizzle component,
    if (vk_swiz == VK_COMPONENT_SWIZZLE_IDENTITY)
       vk_swiz = component;
    switch (vk_swiz) {
-      case VK_COMPONENT_SWIZZLE_ZERO:
-         return VK_SWIZZLE_0;
-      case VK_COMPONENT_SWIZZLE_ONE:
-         return VK_SWIZZLE_1;
-      case VK_COMPONENT_SWIZZLE_R:
-         for (x = 0; x < 4; x++)
-            if (chan[x] == 0)
-               return x;
-         return VK_SWIZZLE_0;
-      case VK_COMPONENT_SWIZZLE_G:
-         for (x = 0; x < 4; x++)
-            if (chan[x] == 1)
-               return x;
-         return VK_SWIZZLE_0;
-      case VK_COMPONENT_SWIZZLE_B:
-         for (x = 0; x < 4; x++)
-            if (chan[x] == 2)
-               return x;
-         return VK_SWIZZLE_0;
-      case VK_COMPONENT_SWIZZLE_A:
-         for (x = 0; x < 4; x++)
-            if (chan[x] == 3)
-               return x;
-         return VK_SWIZZLE_1;
-      default:
-         unreachable("Illegal swizzle");
+   case VK_COMPONENT_SWIZZLE_ZERO:
+      return VK_SWIZZLE_0;
+   case VK_COMPONENT_SWIZZLE_ONE:
+      return VK_SWIZZLE_1;
+   case VK_COMPONENT_SWIZZLE_R:
+      for (x = 0; x < 4; x++)
+         if (chan[x] == 0)
+            return x;
+      return VK_SWIZZLE_0;
+   case VK_COMPONENT_SWIZZLE_G:
+      for (x = 0; x < 4; x++)
+         if (chan[x] == 1)
+            return x;
+      return VK_SWIZZLE_0;
+   case VK_COMPONENT_SWIZZLE_B:
+      for (x = 0; x < 4; x++)
+         if (chan[x] == 2)
+            return x;
+      return VK_SWIZZLE_0;
+   case VK_COMPONENT_SWIZZLE_A:
+      for (x = 0; x < 4; x++)
+         if (chan[x] == 3)
+            return x;
+      return VK_SWIZZLE_1;
+   default:
+      unreachable("Illegal swizzle");
    }
 }
 
@@ -343,15 +343,15 @@ vk_format_is_compressed(VkFormat format)
    }
 
    switch (desc->layout) {
-      case VK_FORMAT_LAYOUT_S3TC:
-      case VK_FORMAT_LAYOUT_RGTC:
-      case VK_FORMAT_LAYOUT_ETC:
-      case VK_FORMAT_LAYOUT_BPTC:
-      case VK_FORMAT_LAYOUT_ASTC:
-         /* XXX add other formats in the future */
-         return true;
-      default:
-         return false;
+   case VK_FORMAT_LAYOUT_S3TC:
+   case VK_FORMAT_LAYOUT_RGTC:
+   case VK_FORMAT_LAYOUT_ETC:
+   case VK_FORMAT_LAYOUT_BPTC:
+   case VK_FORMAT_LAYOUT_ASTC:
+      /* XXX add other formats in the future */
+      return true;
+   default:
+      return false;
    }
 }
 
@@ -418,14 +418,14 @@ static inline VkFormat
 vk_format_depth_only(VkFormat format)
 {
    switch (format) {
-      case VK_FORMAT_D16_UNORM_S8_UINT:
-         return VK_FORMAT_D16_UNORM;
-      case VK_FORMAT_D24_UNORM_S8_UINT:
-         return VK_FORMAT_X8_D24_UNORM_PACK32;
-      case VK_FORMAT_D32_SFLOAT_S8_UINT:
-         return VK_FORMAT_D32_SFLOAT;
-      default:
-         return format;
+   case VK_FORMAT_D16_UNORM_S8_UINT:
+      return VK_FORMAT_D16_UNORM;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return VK_FORMAT_X8_D24_UNORM_PACK32;
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      return VK_FORMAT_D32_SFLOAT;
+   default:
+      return format;
    }
 }
 
@@ -449,39 +449,39 @@ static inline VkFormat
 vk_format_no_srgb(VkFormat format)
 {
    switch (format) {
-      case VK_FORMAT_R8_SRGB:
-         return VK_FORMAT_R8_UNORM;
-      case VK_FORMAT_R8G8_SRGB:
-         return VK_FORMAT_R8G8_UNORM;
-      case VK_FORMAT_R8G8B8_SRGB:
-         return VK_FORMAT_R8G8B8_UNORM;
-      case VK_FORMAT_B8G8R8_SRGB:
-         return VK_FORMAT_B8G8R8_UNORM;
-      case VK_FORMAT_R8G8B8A8_SRGB:
-         return VK_FORMAT_R8G8B8A8_UNORM;
-      case VK_FORMAT_B8G8R8A8_SRGB:
-         return VK_FORMAT_B8G8R8A8_UNORM;
-      case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-         return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-      case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
-         return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-      case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
-         return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-      case VK_FORMAT_BC2_SRGB_BLOCK:
-         return VK_FORMAT_BC2_UNORM_BLOCK;
-      case VK_FORMAT_BC3_SRGB_BLOCK:
-         return VK_FORMAT_BC3_UNORM_BLOCK;
-      case VK_FORMAT_BC7_SRGB_BLOCK:
-         return VK_FORMAT_BC7_UNORM_BLOCK;
-      case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-         return VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
-      case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
-         return VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK;
-      case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
-         return VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
-      default:
-         assert(!vk_format_is_srgb(format));
-         return format;
+   case VK_FORMAT_R8_SRGB:
+      return VK_FORMAT_R8_UNORM;
+   case VK_FORMAT_R8G8_SRGB:
+      return VK_FORMAT_R8G8_UNORM;
+   case VK_FORMAT_R8G8B8_SRGB:
+      return VK_FORMAT_R8G8B8_UNORM;
+   case VK_FORMAT_B8G8R8_SRGB:
+      return VK_FORMAT_B8G8R8_UNORM;
+   case VK_FORMAT_R8G8B8A8_SRGB:
+      return VK_FORMAT_R8G8B8A8_UNORM;
+   case VK_FORMAT_B8G8R8A8_SRGB:
+      return VK_FORMAT_B8G8R8A8_UNORM;
+   case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+      return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+   case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+      return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+   case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+      return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+   case VK_FORMAT_BC2_SRGB_BLOCK:
+      return VK_FORMAT_BC2_UNORM_BLOCK;
+   case VK_FORMAT_BC3_SRGB_BLOCK:
+      return VK_FORMAT_BC3_UNORM_BLOCK;
+   case VK_FORMAT_BC7_SRGB_BLOCK:
+      return VK_FORMAT_BC7_UNORM_BLOCK;
+   case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+      return VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
+   case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+      return VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK;
+   case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+      return VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK;
+   default:
+      assert(!vk_format_is_srgb(format));
+      return format;
    }
 }
 
@@ -521,16 +521,16 @@ vk_format_get_component_bits(VkFormat format,
    }
 
    switch (desc->swizzle[component]) {
-      case VK_SWIZZLE_X:
-         return desc->channel[0].size;
-      case VK_SWIZZLE_Y:
-         return desc->channel[1].size;
-      case VK_SWIZZLE_Z:
-         return desc->channel[2].size;
-      case VK_SWIZZLE_W:
-         return desc->channel[3].size;
-      default:
-         return 0;
+   case VK_SWIZZLE_X:
+      return desc->channel[0].size;
+   case VK_SWIZZLE_Y:
+      return desc->channel[1].size;
+   case VK_SWIZZLE_Z:
+      return desc->channel[2].size;
+   case VK_SWIZZLE_W:
+      return desc->channel[3].size;
+   default:
+      return 0;
    }
 }
 
@@ -538,22 +538,22 @@ static inline VkFormat
 vk_to_non_srgb_format(VkFormat format)
 {
    switch (format) {
-      case VK_FORMAT_R8_SRGB:
-         return VK_FORMAT_R8_UNORM;
-      case VK_FORMAT_R8G8_SRGB:
-         return VK_FORMAT_R8G8_UNORM;
-      case VK_FORMAT_R8G8B8_SRGB:
-         return VK_FORMAT_R8G8B8_UNORM;
-      case VK_FORMAT_B8G8R8_SRGB:
-         return VK_FORMAT_B8G8R8_UNORM;
-      case VK_FORMAT_R8G8B8A8_SRGB:
-         return VK_FORMAT_R8G8B8A8_UNORM;
-      case VK_FORMAT_B8G8R8A8_SRGB:
-         return VK_FORMAT_B8G8R8A8_UNORM;
-      case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-         return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-      default:
-         return format;
+   case VK_FORMAT_R8_SRGB:
+      return VK_FORMAT_R8_UNORM;
+   case VK_FORMAT_R8G8_SRGB:
+      return VK_FORMAT_R8G8_UNORM;
+   case VK_FORMAT_R8G8B8_SRGB:
+      return VK_FORMAT_R8G8B8_UNORM;
+   case VK_FORMAT_B8G8R8_SRGB:
+      return VK_FORMAT_B8G8R8_UNORM;
+   case VK_FORMAT_R8G8B8A8_SRGB:
+      return VK_FORMAT_R8G8B8A8_UNORM;
+   case VK_FORMAT_B8G8R8A8_SRGB:
+      return VK_FORMAT_B8G8R8A8_UNORM;
+   case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+      return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+   default:
+      return format;
    }
 }
 

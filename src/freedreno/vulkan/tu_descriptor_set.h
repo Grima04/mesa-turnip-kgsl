@@ -17,8 +17,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef TU_DESCRIPTOR_SET_H
@@ -96,7 +96,7 @@ static inline const uint32_t *
 tu_immutable_samplers(const struct tu_descriptor_set_layout *set,
                       const struct tu_descriptor_set_binding_layout *binding)
 {
-   return (const uint32_t *)((const char *)set +
-                             binding->immutable_samplers_offset);
+   return (const uint32_t *) ((const char *) set +
+                              binding->immutable_samplers_offset);
 }
 #endif /* TU_DESCRIPTOR_SET_H */

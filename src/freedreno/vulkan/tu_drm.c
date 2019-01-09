@@ -18,19 +18,17 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
-
-#include <stdint.h>
-#include <sys/ioctl.h>
-#include <errno.h>
-
-#include <msm_drm.h>
 
 #include "tu_private.h"
 
 #include "xf86drm.h"
+#include <errno.h>
+#include <msm_drm.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
 
 /**
  * Return gem handle on success. Return 0 on failure.
@@ -43,9 +41,8 @@ tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags)
       .flags = flags,
    };
 
-
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd, DRM_MSM_GEM_NEW,
-                                 &req, sizeof(req));
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+                                 DRM_MSM_GEM_NEW, &req, sizeof(req));
    if (ret)
       return 0;
 
@@ -71,8 +68,8 @@ tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t flags)
       .flags = flags,
    };
 
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd, DRM_MSM_GEM_INFO,
-                                 &req, sizeof(req));
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+                                 DRM_MSM_GEM_INFO, &req, sizeof(req));
    if (ret == -1)
       return UINT64_MAX;
 
@@ -93,19 +90,21 @@ tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle)
    return tu_gem_info(dev, gem_handle, MSM_INFO_IOVA);
 }
 
-
 int
-tu_drm_query_param(struct tu_physical_device *dev, uint32_t param, uint64_t *value)
+tu_drm_query_param(struct tu_physical_device *dev,
+                   uint32_t param,
+                   uint64_t *value)
 {
-   /* Technically this requires a pipe, but the kernel only supports one pipe anyway
-    * at the time of writing and most of these are clearly pipe independent. */
+   /* Technically this requires a pipe, but the kernel only supports one pipe
+    * anyway at the time of writing and most of these are clearly pipe
+    * independent. */
    struct drm_msm_param req = {
       .pipe = MSM_PIPE_3D0,
       .param = param,
    };
 
-   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM,
-                                 &req, sizeof(req));
+   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM, &req,
+                                 sizeof(req));
    if (ret)
       return ret;
 

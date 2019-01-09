@@ -21,8 +21,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 #include "tu_private.h"
 
@@ -47,24 +47,24 @@ tu_CreateRenderPass(VkDevice _device,
    attachments_offset = size;
    size += pCreateInfo->attachmentCount * sizeof(pass->attachments[0]);
 
-   pass = vk_alloc2(
-     &device->alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pass = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pass == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(pass, 0, size);
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
-   pass->attachments = (void *)pass + attachments_offset;
+   pass->attachments = (void *) pass + attachments_offset;
 
    vk_foreach_struct(ext, pCreateInfo->pNext)
    {
       switch (ext->sType) {
-         case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR:
-            multiview_info = (VkRenderPassMultiviewCreateInfoKHR *)ext;
-            break;
-         default:
-            break;
+      case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR:
+         multiview_info = (VkRenderPassMultiviewCreateInfoKHR *) ext;
+         break;
+      default:
+         break;
       }
    }
 
@@ -86,18 +86,16 @@ tu_CreateRenderPass(VkDevice _device,
       const VkSubpassDescription *desc = &pCreateInfo->pSubpasses[i];
 
       subpass_attachment_count +=
-        desc->inputAttachmentCount + desc->colorAttachmentCount +
-        (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
-        (desc->pDepthStencilAttachment != NULL);
+         desc->inputAttachmentCount + desc->colorAttachmentCount +
+         (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
+         (desc->pDepthStencilAttachment != NULL);
    }
 
    if (subpass_attachment_count) {
       pass->subpass_attachments = vk_alloc2(
-        &device->alloc,
-        pAllocator,
-        subpass_attachment_count * sizeof(struct tu_subpass_attachment),
-        8,
-        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         &device->alloc, pAllocator,
+         subpass_attachment_count * sizeof(struct tu_subpass_attachment), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (pass->subpass_attachments == NULL) {
          vk_free2(&device->alloc, pAllocator, pass);
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -121,13 +119,13 @@ tu_CreateRenderPass(VkDevice _device,
          p += desc->inputAttachmentCount;
 
          for (uint32_t j = 0; j < desc->inputAttachmentCount; j++) {
-            subpass->input_attachments[j] = (struct tu_subpass_attachment){
+            subpass->input_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pInputAttachments[j].attachment,
                .layout = desc->pInputAttachments[j].layout,
             };
             if (desc->pInputAttachments[j].attachment != VK_ATTACHMENT_UNUSED)
                pass->attachments[desc->pInputAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
          }
       }
 
@@ -136,17 +134,18 @@ tu_CreateRenderPass(VkDevice _device,
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
-            subpass->color_attachments[j] = (struct tu_subpass_attachment){
+            subpass->color_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pColorAttachments[j].attachment,
                .layout = desc->pColorAttachments[j].layout,
             };
-            if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
+            if (desc->pColorAttachments[j].attachment !=
+                VK_ATTACHMENT_UNUSED) {
                pass->attachments[desc->pColorAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
                color_sample_count =
-                 pCreateInfo
-                   ->pAttachments[desc->pColorAttachments[j].attachment]
-                   .samples;
+                  pCreateInfo
+                     ->pAttachments[desc->pColorAttachments[j].attachment]
+                     .samples;
             }
          }
       }
@@ -158,55 +157,56 @@ tu_CreateRenderPass(VkDevice _device,
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             uint32_t a = desc->pResolveAttachments[j].attachment;
-            subpass->resolve_attachments[j] = (struct tu_subpass_attachment){
+            subpass->resolve_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pResolveAttachments[j].attachment,
                .layout = desc->pResolveAttachments[j].layout,
             };
             if (a != VK_ATTACHMENT_UNUSED) {
                subpass->has_resolve = true;
                pass->attachments[desc->pResolveAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
             }
          }
       }
 
       if (desc->pDepthStencilAttachment) {
-         subpass->depth_stencil_attachment = (struct tu_subpass_attachment){
+         subpass->depth_stencil_attachment = (struct tu_subpass_attachment) {
             .attachment = desc->pDepthStencilAttachment->attachment,
             .layout = desc->pDepthStencilAttachment->layout,
          };
          if (desc->pDepthStencilAttachment->attachment !=
              VK_ATTACHMENT_UNUSED) {
             pass->attachments[desc->pDepthStencilAttachment->attachment]
-              .view_mask |= subpass->view_mask;
+               .view_mask |= subpass->view_mask;
             depth_sample_count =
-              pCreateInfo
-                ->pAttachments[desc->pDepthStencilAttachment->attachment]
-                .samples;
+               pCreateInfo
+                  ->pAttachments[desc->pDepthStencilAttachment->attachment]
+                  .samples;
          }
       } else {
          subpass->depth_stencil_attachment.attachment = VK_ATTACHMENT_UNUSED;
       }
 
-      subpass->max_sample_count = MAX2(color_sample_count, depth_sample_count);
+      subpass->max_sample_count =
+         MAX2(color_sample_count, depth_sample_count);
    }
 
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
       uint32_t dst = pCreateInfo->pDependencies[i].dstSubpass;
       if (dst == VK_SUBPASS_EXTERNAL) {
          pass->end_barrier.src_stage_mask =
-           pCreateInfo->pDependencies[i].srcStageMask;
+            pCreateInfo->pDependencies[i].srcStageMask;
          pass->end_barrier.src_access_mask =
-           pCreateInfo->pDependencies[i].srcAccessMask;
+            pCreateInfo->pDependencies[i].srcAccessMask;
          pass->end_barrier.dst_access_mask =
-           pCreateInfo->pDependencies[i].dstAccessMask;
+            pCreateInfo->pDependencies[i].dstAccessMask;
       } else {
          pass->subpasses[dst].start_barrier.src_stage_mask =
-           pCreateInfo->pDependencies[i].srcStageMask;
+            pCreateInfo->pDependencies[i].srcStageMask;
          pass->subpasses[dst].start_barrier.src_access_mask =
-           pCreateInfo->pDependencies[i].srcAccessMask;
+            pCreateInfo->pDependencies[i].srcAccessMask;
          pass->subpasses[dst].start_barrier.dst_access_mask =
-           pCreateInfo->pDependencies[i].dstAccessMask;
+            pCreateInfo->pDependencies[i].dstAccessMask;
       }
    }
 
@@ -234,15 +234,15 @@ tu_CreateRenderPass2KHR(VkDevice _device,
    attachments_offset = size;
    size += pCreateInfo->attachmentCount * sizeof(pass->attachments[0]);
 
-   pass = vk_alloc2(
-     &device->alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pass = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pass == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(pass, 0, size);
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
-   pass->attachments = (void *)pass + attachments_offset;
+   pass->attachments = (void *) pass + attachments_offset;
 
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
@@ -262,18 +262,16 @@ tu_CreateRenderPass2KHR(VkDevice _device,
       const VkSubpassDescription2KHR *desc = &pCreateInfo->pSubpasses[i];
 
       subpass_attachment_count +=
-        desc->inputAttachmentCount + desc->colorAttachmentCount +
-        (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
-        (desc->pDepthStencilAttachment != NULL);
+         desc->inputAttachmentCount + desc->colorAttachmentCount +
+         (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
+         (desc->pDepthStencilAttachment != NULL);
    }
 
    if (subpass_attachment_count) {
       pass->subpass_attachments = vk_alloc2(
-        &device->alloc,
-        pAllocator,
-        subpass_attachment_count * sizeof(struct tu_subpass_attachment),
-        8,
-        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         &device->alloc, pAllocator,
+         subpass_attachment_count * sizeof(struct tu_subpass_attachment), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (pass->subpass_attachments == NULL) {
          vk_free2(&device->alloc, pAllocator, pass);
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -296,13 +294,13 @@ tu_CreateRenderPass2KHR(VkDevice _device,
          p += desc->inputAttachmentCount;
 
          for (uint32_t j = 0; j < desc->inputAttachmentCount; j++) {
-            subpass->input_attachments[j] = (struct tu_subpass_attachment){
+            subpass->input_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pInputAttachments[j].attachment,
                .layout = desc->pInputAttachments[j].layout,
             };
             if (desc->pInputAttachments[j].attachment != VK_ATTACHMENT_UNUSED)
                pass->attachments[desc->pInputAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
          }
       }
 
@@ -311,17 +309,18 @@ tu_CreateRenderPass2KHR(VkDevice _device,
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
-            subpass->color_attachments[j] = (struct tu_subpass_attachment){
+            subpass->color_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pColorAttachments[j].attachment,
                .layout = desc->pColorAttachments[j].layout,
             };
-            if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
+            if (desc->pColorAttachments[j].attachment !=
+                VK_ATTACHMENT_UNUSED) {
                pass->attachments[desc->pColorAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
                color_sample_count =
-                 pCreateInfo
-                   ->pAttachments[desc->pColorAttachments[j].attachment]
-                   .samples;
+                  pCreateInfo
+                     ->pAttachments[desc->pColorAttachments[j].attachment]
+                     .samples;
             }
          }
       }
@@ -333,55 +332,56 @@ tu_CreateRenderPass2KHR(VkDevice _device,
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             uint32_t a = desc->pResolveAttachments[j].attachment;
-            subpass->resolve_attachments[j] = (struct tu_subpass_attachment){
+            subpass->resolve_attachments[j] = (struct tu_subpass_attachment) {
                .attachment = desc->pResolveAttachments[j].attachment,
                .layout = desc->pResolveAttachments[j].layout,
             };
             if (a != VK_ATTACHMENT_UNUSED) {
                subpass->has_resolve = true;
                pass->attachments[desc->pResolveAttachments[j].attachment]
-                 .view_mask |= subpass->view_mask;
+                  .view_mask |= subpass->view_mask;
             }
          }
       }
 
       if (desc->pDepthStencilAttachment) {
-         subpass->depth_stencil_attachment = (struct tu_subpass_attachment){
+         subpass->depth_stencil_attachment = (struct tu_subpass_attachment) {
             .attachment = desc->pDepthStencilAttachment->attachment,
             .layout = desc->pDepthStencilAttachment->layout,
          };
          if (desc->pDepthStencilAttachment->attachment !=
              VK_ATTACHMENT_UNUSED) {
             pass->attachments[desc->pDepthStencilAttachment->attachment]
-              .view_mask |= subpass->view_mask;
+               .view_mask |= subpass->view_mask;
             depth_sample_count =
-              pCreateInfo
-                ->pAttachments[desc->pDepthStencilAttachment->attachment]
-                .samples;
+               pCreateInfo
+                  ->pAttachments[desc->pDepthStencilAttachment->attachment]
+                  .samples;
          }
       } else {
          subpass->depth_stencil_attachment.attachment = VK_ATTACHMENT_UNUSED;
       }
 
-      subpass->max_sample_count = MAX2(color_sample_count, depth_sample_count);
+      subpass->max_sample_count =
+         MAX2(color_sample_count, depth_sample_count);
    }
 
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
       uint32_t dst = pCreateInfo->pDependencies[i].dstSubpass;
       if (dst == VK_SUBPASS_EXTERNAL) {
          pass->end_barrier.src_stage_mask =
-           pCreateInfo->pDependencies[i].srcStageMask;
+            pCreateInfo->pDependencies[i].srcStageMask;
          pass->end_barrier.src_access_mask =
-           pCreateInfo->pDependencies[i].srcAccessMask;
+            pCreateInfo->pDependencies[i].srcAccessMask;
          pass->end_barrier.dst_access_mask =
-           pCreateInfo->pDependencies[i].dstAccessMask;
+            pCreateInfo->pDependencies[i].dstAccessMask;
       } else {
          pass->subpasses[dst].start_barrier.src_stage_mask =
-           pCreateInfo->pDependencies[i].srcStageMask;
+            pCreateInfo->pDependencies[i].srcStageMask;
          pass->subpasses[dst].start_barrier.src_access_mask =
-           pCreateInfo->pDependencies[i].srcAccessMask;
+            pCreateInfo->pDependencies[i].srcAccessMask;
          pass->subpasses[dst].start_barrier.dst_access_mask =
-           pCreateInfo->pDependencies[i].dstAccessMask;
+            pCreateInfo->pDependencies[i].dstAccessMask;
       }
    }
 

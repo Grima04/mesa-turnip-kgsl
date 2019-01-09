@@ -17,8 +17,8 @@
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include "tu_private.h"
@@ -45,12 +45,8 @@ tu_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_image, dest_image, destImage);
    TU_FROM_HANDLE(tu_buffer, src_buffer, srcBuffer);
 
-   meta_copy_buffer_to_image(cmd_buffer,
-                             src_buffer,
-                             dest_image,
-                             destImageLayout,
-                             regionCount,
-                             pRegions);
+   meta_copy_buffer_to_image(cmd_buffer, src_buffer, dest_image,
+                             destImageLayout, regionCount, pRegions);
 }
 
 static void
@@ -75,8 +71,8 @@ tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
    TU_FROM_HANDLE(tu_buffer, dst_buffer, destBuffer);
 
-   meta_copy_image_to_buffer(
-     cmd_buffer, dst_buffer, src_image, srcImageLayout, regionCount, pRegions);
+   meta_copy_image_to_buffer(cmd_buffer, dst_buffer, src_image,
+                             srcImageLayout, regionCount, pRegions);
 }
 
 static void
@@ -103,11 +99,6 @@ tu_CmdCopyImage(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
    TU_FROM_HANDLE(tu_image, dest_image, destImage);
 
-   meta_copy_image(cmd_buffer,
-                   src_image,
-                   srcImageLayout,
-                   dest_image,
-                   destImageLayout,
-                   regionCount,
-                   pRegions);
+   meta_copy_image(cmd_buffer, src_image, srcImageLayout, dest_image,
+                   destImageLayout, regionCount, pRegions);
 }
