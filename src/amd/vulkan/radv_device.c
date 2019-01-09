@@ -1299,7 +1299,7 @@ void radv_GetPhysicalDeviceQueueFamilyProperties(
 {
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	if (!pQueueFamilyProperties) {
-		return radv_get_physical_device_queue_family_properties(pdevice, pCount, NULL);
+		radv_get_physical_device_queue_family_properties(pdevice, pCount, NULL);
 		return;
 	}
 	VkQueueFamilyProperties *properties[] = {
@@ -1318,7 +1318,7 @@ void radv_GetPhysicalDeviceQueueFamilyProperties2(
 {
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	if (!pQueueFamilyProperties) {
-		return radv_get_physical_device_queue_family_properties(pdevice, pCount, NULL);
+		radv_get_physical_device_queue_family_properties(pdevice, pCount, NULL);
 		return;
 	}
 	VkQueueFamilyProperties *properties[] = {
@@ -1343,8 +1343,8 @@ void radv_GetPhysicalDeviceMemoryProperties2(
 	VkPhysicalDevice                            physicalDevice,
 	VkPhysicalDeviceMemoryProperties2          *pMemoryProperties)
 {
-	return radv_GetPhysicalDeviceMemoryProperties(physicalDevice,
-						      &pMemoryProperties->memoryProperties);
+	radv_GetPhysicalDeviceMemoryProperties(physicalDevice,
+					       &pMemoryProperties->memoryProperties);
 }
 
 VkResult radv_GetMemoryHostPointerPropertiesEXT(
