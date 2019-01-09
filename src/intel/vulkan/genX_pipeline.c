@@ -1116,10 +1116,8 @@ emit_3dstate_clip(struct anv_pipeline *pipeline,
       clip.FrontWinding            = vk_to_gen_front_face[rs_info->frontFace];
       clip.CullMode                = vk_to_gen_cullmode[rs_info->cullMode];
       clip.ViewportZClipTestEnable = !pipeline->depth_clamp_enable;
-      if (last) {
-         clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
-         clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
-      }
+      clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
+      clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
 #else
       clip.NonPerspectiveBarycentricEnable = wm_prog_data ?
          (wm_prog_data->barycentric_interp_modes &
