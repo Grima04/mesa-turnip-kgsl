@@ -769,7 +769,7 @@ struct tu_cmd_buffer
    struct tu_cmd_buffer_upload upload;
 
    struct tu_bo_list bo_list;
-   struct tu_cmd_stream primary_cmd_stream;
+   struct tu_cmd_stream cs;
 
    VkResult record_result;
 };

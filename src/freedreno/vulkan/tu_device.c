@@ -1195,14 +1195,14 @@ tu_QueueSubmit(VkQueue _queue,
       uint32_t entry_count = 0;
       for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
          TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
-         entry_count += cmdbuf->primary_cmd_stream.entry_count;
+         entry_count += cmdbuf->cs.entry_count;
       }
 
       struct drm_msm_gem_submit_cmd cmds[entry_count];
       uint32_t entry_idx = 0;
       for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
          TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
-         struct tu_cmd_stream *stream = &cmdbuf->primary_cmd_stream;
+         struct tu_cmd_stream *stream = &cmdbuf->cs;
          for (unsigned i = 0; i < stream->entry_count; ++i, ++entry_idx) {
             cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
             cmds[entry_idx].submit_idx = tu_bo_list_add(&bo_list, stream->entries[i].bo);
