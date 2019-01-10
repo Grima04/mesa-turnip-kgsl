@@ -25,6 +25,21 @@
 
 #include <util/u_math.h>
 
+static void
+add_var_xfb_varying(nir_xfb_info *xfb,
+                    nir_variable *var,
+                    unsigned offset,
+                    const struct glsl_type *type)
+{
+   nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
+
+   varying->type = type;
+   varying->buffer = var->data.xfb_buffer;
+   varying->offset = offset;
+   xfb->buffers[var->data.xfb_buffer].varying_count++;
+}
+
+
 static nir_xfb_info *
 nir_gather_xfb_info_create(void *mem_ctx, uint16_t output_count, uint16_t varying_count)
 {
@@ -42,7 +57,8 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
                     unsigned buffer,
                     unsigned *location,
                     unsigned *offset,
-                    const struct glsl_type *type)
+                    const struct glsl_type *type,
+                    bool varying_added)
 {
    /* If this type contains a 64-bit value, align to 8 bytes */
    if (glsl_type_contains_64bit(type))
@@ -50,14 +66,22 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
 
    if (glsl_type_is_array_or_matrix(type) && !var->data.compact) {
       unsigned length = glsl_get_length(type);
+
       const struct glsl_type *child_type = glsl_get_array_element(type);
+      if (!glsl_type_is_array(child_type) &&
+          !glsl_type_is_struct(child_type)) {
+
+         add_var_xfb_varying(xfb, var, *offset, type);
+         varying_added = true;
+      }
+
       for (unsigned i = 0; i < length; i++)
-         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type);
+         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type, varying_added);
    } else if (glsl_type_is_struct_or_ifc(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);
-         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type);
+         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type, varying_added);
       }
    } else {
       assert(buffer < NIR_MAX_XFB_BUFFERS);
@@ -99,11 +123,9 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
       unsigned comp_offset = var->data.location_frac;
 
-      nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
-      varying->type = type;
-      varying->buffer = var->data.xfb_buffer;
-      varying->offset = *offset;
-      xfb->buffers[var->data.xfb_buffer].varying_count++;
+      if (!varying_added) {
+         add_var_xfb_varying(xfb, var, *offset, type);
+      }
 
       while (comp_mask) {
          nir_xfb_output_info *output = &xfb->outputs[xfb->output_count++];
@@ -187,7 +209,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
       if (var->data.explicit_offset && !is_array_block) {
          unsigned offset = var->data.offset;
          add_var_xfb_outputs(xfb, var, var->data.xfb_buffer,
-                             &location, &offset, var->type);
+                             &location, &offset, var->type, false);
       } else if (is_array_block) {
          assert(glsl_type_is_struct_or_ifc(var->interface_type));
 
@@ -205,7 +227,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
 
                unsigned offset = foffset;
                add_var_xfb_outputs(xfb, var, var->data.xfb_buffer + b,
-                                   &location, &offset, ftype);
+                                   &location, &offset, ftype, false);
             }
          }
       }
