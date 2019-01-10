@@ -76,7 +76,6 @@ _eglInitDriverFallbacks(_EGLDriver *drv)
 
    drv->API.WaitClient = (void*) _eglReturnFalse;
    drv->API.WaitNative = (void*) _eglReturnFalse;
-   drv->API.GetProcAddress = (void*) _eglReturnFalse;
 
    drv->API.GetSyncAttrib = _eglGetSyncAttrib;
 }

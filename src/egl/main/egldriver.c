@@ -109,7 +109,7 @@ _eglMatchDriver(_EGLDisplay *disp)
 __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname)
 {
-   if (_eglGetDriver())
+   if (_eglGetDriver() && _eglDriver->API.GetProcAddress)
       return _eglDriver->API.GetProcAddress(_eglDriver, procname);
 
    return NULL;
