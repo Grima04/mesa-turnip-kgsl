@@ -941,6 +941,8 @@ struct tu_image
    VkImageTiling tiling;     /** VkImageCreateInfo::tiling */
    VkImageCreateFlags flags; /** VkImageCreateInfo::flags */
    VkExtent3D extent;
+   uint32_t level_count;
+   uint32_t layer_count;
 
    VkDeviceSize size;
    uint32_t alignment;
@@ -971,14 +973,18 @@ static inline uint32_t
 tu_get_layerCount(const struct tu_image *image,
                   const VkImageSubresourceRange *range)
 {
-   abort();
+   return range->layerCount == VK_REMAINING_ARRAY_LAYERS
+             ? image->layer_count - range->baseArrayLayer
+             : range->layerCount;
 }
 
 static inline uint32_t
 tu_get_levelCount(const struct tu_image *image,
                   const VkImageSubresourceRange *range)
 {
-   abort();
+   return range->levelCount == VK_REMAINING_MIP_LEVELS
+             ? image->level_count - range->baseMipLevel
+             : range->levelCount;
 }
 
 struct tu_image_view

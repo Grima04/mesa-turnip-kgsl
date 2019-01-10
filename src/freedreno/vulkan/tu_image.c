@@ -154,6 +154,8 @@ tu_image_create(VkDevice _device,
    image->usage = pCreateInfo->usage;
    image->flags = pCreateInfo->flags;
    image->extent = pCreateInfo->extent;
+   image->level_count = pCreateInfo->mipLevels;
+   image->layer_count = pCreateInfo->arrayLayers;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
@@ -184,6 +186,41 @@ tu_image_view_init(struct tu_image_view *iview,
                    struct tu_device *device,
                    const VkImageViewCreateInfo *pCreateInfo)
 {
+   TU_FROM_HANDLE(tu_image, image, pCreateInfo->image);
+   const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
+
+   switch (image->type) {
+   case VK_IMAGE_TYPE_1D:
+   case VK_IMAGE_TYPE_2D:
+      assert(range->baseArrayLayer + tu_get_layerCount(image, range) <=
+             image->layer_count);
+      break;
+   case VK_IMAGE_TYPE_3D:
+      assert(range->baseArrayLayer + tu_get_layerCount(image, range) <=
+             tu_minify(image->extent.depth, range->baseMipLevel));
+      break;
+   default:
+      unreachable("bad VkImageType");
+   }
+
+   iview->image = image;
+   iview->type = pCreateInfo->viewType;
+   iview->vk_format = pCreateInfo->format;
+   iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;
+
+   if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      iview->vk_format = vk_format_stencil_only(iview->vk_format);
+   } else if (iview->aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+      iview->vk_format = vk_format_depth_only(iview->vk_format);
+   }
+
+   // should we minify?
+   iview->extent = image->extent;
+
+   iview->base_layer = range->baseArrayLayer;
+   iview->layer_count = tu_get_layerCount(image, range);
+   iview->base_mip = range->baseMipLevel;
+   iview->level_count = tu_get_levelCount(image, range);
 }
 
 unsigned
