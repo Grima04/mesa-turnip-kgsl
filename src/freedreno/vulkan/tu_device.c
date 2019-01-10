@@ -1185,6 +1185,62 @@ tu_QueueSubmit(VkQueue _queue,
                const VkSubmitInfo *pSubmits,
                VkFence _fence)
 {
+   TU_FROM_HANDLE(tu_queue, queue, _queue);
+
+   for (uint32_t i = 0; i < submitCount; ++i) {
+      const VkSubmitInfo *submit = pSubmits + i;
+      struct tu_bo_list bo_list;
+      tu_bo_list_init(&bo_list);
+
+      uint32_t entry_count = 0;
+      for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+         entry_count += cmdbuf->primary_cmd_stream.entry_count;
+      }
+
+      struct drm_msm_gem_submit_cmd cmds[entry_count];
+      uint32_t entry_idx = 0;
+      for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+         struct tu_cmd_stream *stream = &cmdbuf->primary_cmd_stream;
+         for (unsigned i = 0; i < stream->entry_count; ++i, ++entry_idx) {
+            cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
+            cmds[entry_idx].submit_idx = tu_bo_list_add(&bo_list, stream->entries[i].bo);
+            cmds[entry_idx].submit_offset = stream->entries[i].offset;
+            cmds[entry_idx].size = stream->entries[i].size;
+            cmds[entry_idx].pad = 0;
+            cmds[entry_idx].nr_relocs = 0;
+            cmds[entry_idx].relocs = 0;
+
+         }
+      }
+
+      struct drm_msm_gem_submit_bo bos[bo_list.count];
+      for (unsigned i = 0; i < bo_list.count; ++i) {
+         bos[i].flags = MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE;
+         bos[i].handle = bo_list.handles[i];
+         bos[i].presumed = 0;
+      }
+
+      struct drm_msm_gem_submit req = {
+         .flags = MSM_PIPE_3D0,
+         .queueid = queue->msm_queue_id,
+         .bos = (uint64_t)(uintptr_t)bos,
+         .nr_bos = bo_list.count,
+         .cmds = (uint64_t)(uintptr_t)cmds,
+         .nr_cmds = entry_count,
+      };
+
+      int ret = drmCommandWriteRead(queue->device->physical_device->local_fd,
+                                    DRM_MSM_GEM_SUBMIT,
+                                    &req, sizeof(req));
+      if (ret) {
+         fprintf(stderr, "submit failed: %s\n", strerror(errno));
+         abort();
+      }
+
+      tu_bo_list_destroy(&bo_list);
+   }
    return VK_SUCCESS;
 }
 
