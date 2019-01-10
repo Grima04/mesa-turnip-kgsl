@@ -42,16 +42,4 @@
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   drv->API.GetConfigs = _eglGetConfigs;
-   drv->API.ChooseConfig = _eglChooseConfig;
-   drv->API.GetConfigAttrib = _eglGetConfigAttrib;
-
-   drv->API.QueryContext = _eglQueryContext;
-
-   drv->API.QuerySurface = _eglQuerySurface;
-   drv->API.SurfaceAttrib = _eglSurfaceAttrib;
-
-   drv->API.SwapInterval = _eglSwapInterval;
-
-   drv->API.GetSyncAttrib = _eglGetSyncAttrib;
 }
