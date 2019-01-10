@@ -35,13 +35,6 @@
 #include "eglsync.h"
 
 
-static EGLBoolean
-_eglReturnFalse(void)
-{
-   return EGL_FALSE;
-}
-
-
 /**
  * Plug all the available fallback routines into the given driver's
  * dispatch table.
@@ -53,29 +46,12 @@ _eglInitDriverFallbacks(_EGLDriver *drv)
    drv->API.ChooseConfig = _eglChooseConfig;
    drv->API.GetConfigAttrib = _eglGetConfigAttrib;
 
-   drv->API.CreateContext = (void*) _eglReturnFalse;
-   drv->API.DestroyContext = (void*) _eglReturnFalse;
-   drv->API.MakeCurrent = (void*) _eglReturnFalse;
    drv->API.QueryContext = _eglQueryContext;
 
-   drv->API.CreateWindowSurface = (void*) _eglReturnFalse;
-   drv->API.CreatePixmapSurface = (void*) _eglReturnFalse;
-   drv->API.CreatePbufferSurface = (void*) _eglReturnFalse;
-   drv->API.CreatePbufferFromClientBuffer =
-      (void*) _eglReturnFalse;
-   drv->API.DestroySurface = (void*) _eglReturnFalse;
    drv->API.QuerySurface = _eglQuerySurface;
    drv->API.SurfaceAttrib = _eglSurfaceAttrib;
 
-   drv->API.BindTexImage = (void*) _eglReturnFalse;
-   drv->API.ReleaseTexImage = (void*) _eglReturnFalse;
-   drv->API.CopyBuffers = (void*) _eglReturnFalse;
-   drv->API.SwapBuffers = (void*) _eglReturnFalse;
-   drv->API.SetDamageRegion = (void*) _eglReturnFalse;
    drv->API.SwapInterval = _eglSwapInterval;
-
-   drv->API.WaitClient = (void*) _eglReturnFalse;
-   drv->API.WaitNative = (void*) _eglReturnFalse;
 
    drv->API.GetSyncAttrib = _eglGetSyncAttrib;
 }
