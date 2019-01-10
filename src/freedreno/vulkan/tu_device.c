@@ -949,7 +949,7 @@ tu_GetPhysicalDeviceMemoryProperties2(
       physicalDevice, &pMemoryProperties->memoryProperties);
 }
 
-static int
+static VkResult
 tu_queue_init(struct tu_device *device,
               struct tu_queue *queue,
               uint32_t queue_family_index,
@@ -962,12 +962,27 @@ tu_queue_init(struct tu_device *device,
    queue->queue_idx = idx;
    queue->flags = flags;
 
+   struct drm_msm_submitqueue req = {
+      .flags = 0,
+      .prio = 0,
+   };
+
+   int ret = drmCommandWriteRead(device->physical_device->local_fd,
+                                 DRM_MSM_SUBMITQUEUE_NEW,
+                                 &req, sizeof(req));
+   if (ret)
+      return VK_ERROR_INITIALIZATION_FAILED;
+
+   queue->msm_queue_id = req.id;
    return VK_SUCCESS;
 }
 
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
+   drmCommandWrite(queue->device->physical_device->local_fd,
+                   DRM_MSM_SUBMITQUEUE_CLOSE,
+                   &queue->msm_queue_id, sizeof(uint32_t));
 }
 
 static int
