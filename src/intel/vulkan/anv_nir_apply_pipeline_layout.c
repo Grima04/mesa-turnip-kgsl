@@ -528,8 +528,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       }
    }
 
-   if (map->image_count > 0) {
-      assert(map->image_count <= MAX_IMAGES);
+   if (map->image_count > 0 && pdevice->compiler->devinfo->gen < 9) {
+      assert(map->image_count <= MAX_GEN8_IMAGES);
       assert(shader->num_uniforms == prog_data->nr_params * 4);
       state.first_image_uniform = shader->num_uniforms;
       uint32_t *param = brw_stage_prog_data_add_params(prog_data,
