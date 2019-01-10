@@ -49,10 +49,6 @@ _eglReturnFalse(void)
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   /* the driver has to implement these */
-   drv->API.Initialize = NULL;
-   drv->API.Terminate = NULL;
-
    drv->API.GetConfigs = _eglGetConfigs;
    drv->API.ChooseConfig = _eglChooseConfig;
    drv->API.GetConfigAttrib = _eglGetConfigAttrib;
@@ -82,22 +78,5 @@ _eglInitDriverFallbacks(_EGLDriver *drv)
    drv->API.WaitNative = (void*) _eglReturnFalse;
    drv->API.GetProcAddress = (void*) _eglReturnFalse;
 
-   drv->API.CreateImageKHR = NULL;
-   drv->API.DestroyImageKHR = NULL;
-
-   drv->API.CreateSyncKHR = NULL;
-   drv->API.DestroySyncKHR = NULL;
-   drv->API.ClientWaitSyncKHR = NULL;
-   drv->API.WaitSyncKHR = NULL;
-   drv->API.SignalSyncKHR = NULL;
    drv->API.GetSyncAttrib = _eglGetSyncAttrib;
-   drv->API.DupNativeFenceFDANDROID = NULL;
-
-   drv->API.CreateDRMImageMESA = NULL;
-   drv->API.ExportDRMImageMESA = NULL;
-
-   drv->API.SwapBuffersRegionNOK = NULL;
-
-   drv->API.ExportDMABUFImageQueryMESA = NULL;
-   drv->API.ExportDMABUFImageMESA = NULL;
 }
