@@ -1552,8 +1552,21 @@ tu_BindBufferMemory(VkDevice device,
 VkResult
 tu_BindImageMemory2(VkDevice device,
                     uint32_t bindInfoCount,
-                    const VkBindImageMemoryInfoKHR *pBindInfos)
+                    const VkBindImageMemoryInfo *pBindInfos)
 {
+   for (uint32_t i = 0; i < bindInfoCount; ++i) {
+      TU_FROM_HANDLE(tu_image, image, pBindInfos[i].image);
+      TU_FROM_HANDLE(tu_device_memory, mem, pBindInfos[i].memory);
+
+      if (mem) {
+         image->bo = &mem->bo;
+         image->bo_offset = pBindInfos[i].memoryOffset;
+      } else {
+         image->bo = NULL;
+         image->bo_offset = 0;
+      }
+   }
+
    return VK_SUCCESS;
 }
 
@@ -1563,7 +1576,7 @@ tu_BindImageMemory(VkDevice device,
                    VkDeviceMemory memory,
                    VkDeviceSize memoryOffset)
 {
-   const VkBindImageMemoryInfoKHR info = {
+   const VkBindImageMemoryInfo info = {
       .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR,
       .image = image,
       .memory = memory,

@@ -956,6 +956,10 @@ struct tu_image
 
    /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
    VkDeviceMemory owned_memory;
+
+   /* Set when bound */
+   const struct tu_bo *bo;
+   VkDeviceSize bo_offset;
 };
 
 unsigned
