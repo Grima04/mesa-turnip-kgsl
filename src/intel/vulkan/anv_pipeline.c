@@ -544,6 +544,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                                     pipeline->device->robust_buffer_access,
                                     layout, nir, prog_data,
                                     &stage->bind_map);
+      NIR_PASS_V(nir, nir_opt_constant_folding);
    }
 
    if (nir->info.stage != MESA_SHADER_COMPUTE)
