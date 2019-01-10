@@ -701,15 +701,13 @@ static void store_emit(
 						      info->uses_bindless_buffer_atomic,
 						      info->uses_bindless_image_load |
 						      info->uses_bindless_image_atomic);
-	LLVMValueRef chans[4], value;
+	LLVMValueRef chans[4];
 	LLVMValueRef vindex = ctx->i32_0;
 	LLVMValueRef voffset = ctx->i32_0;
 	struct ac_image_args args = {};
 
 	for (unsigned chan = 0; chan < 4; ++chan)
 		chans[chan] = lp_build_emit_fetch(bld_base, inst, 1, chan);
-
-	value = ac_build_gather_values(&ctx->ac, chans, 4);
 
 	if (inst->Dst[0].Register.File == TGSI_FILE_BUFFER) {
 		args.resource = shader_buffer_fetch_rsrc(ctx, &resource_reg, false);
@@ -731,13 +729,17 @@ static void store_emit(
 
 	if (inst->Dst[0].Register.File == TGSI_FILE_BUFFER) {
 		store_emit_buffer(ctx, args.resource, inst->Dst[0].Register.WriteMask,
-				  value, voffset, args.cache_policy, writeonly_memory);
+				  ac_build_gather_values(&ctx->ac, chans, 4),
+				  voffset, args.cache_policy, writeonly_memory);
 		return;
 	}
 
 	if (target == TGSI_TEXTURE_BUFFER) {
+		unsigned num_channels = util_last_bit(inst->Dst[0].Register.WriteMask);
+		num_channels = util_next_power_of_two(num_channels);
+
 		LLVMValueRef buf_args[6] = {
-			value,
+			ac_build_gather_values(&ctx->ac, chans, 4),
 			args.resource,
 			vindex,
 			ctx->i32_0, /* voffset */
@@ -751,15 +753,22 @@ static void store_emit(
 			buf_args[5] = LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_slc), 0);
 		}
 
+		const char *types[] = { "f32", "v2f32", "v4f32" };
+		char name[128];
+
+		snprintf(name, sizeof(name), "%s.%s",
+			 HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.struct.buffer.store.format" :
+					       "llvm.amdgcn.buffer.store.format",
+			 types[CLAMP(num_channels, 1, 3) - 1]);
+
 		emit_data->output[emit_data->chan] = ac_build_intrinsic(
 			&ctx->ac,
-			HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.struct.buffer.store.format.v4f32" :
-					      "llvm.amdgcn.buffer.store.format.v4f32",
+			name,
 			ctx->voidt, buf_args, 6,
 			ac_get_store_intr_attribs(writeonly_memory));
 	} else {
 		args.opcode = ac_image_store;
-		args.data[0] = value;
+		args.data[0] = ac_build_gather_values(&ctx->ac, chans, 4);
 		args.dim = ac_image_dim_from_tgsi_target(ctx->screen, inst->Memory.Texture);
 		args.attributes = ac_get_store_intr_attribs(writeonly_memory);
 		args.dmask = 0xf;
