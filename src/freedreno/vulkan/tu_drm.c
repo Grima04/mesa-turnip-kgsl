@@ -78,6 +78,32 @@ tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size)
    return 0;
 }
 
+int
+tu_drm_submitqueue_new(const struct tu_device *dev,
+                       int priority,
+                       uint32_t *queue_id)
+{
+   struct drm_msm_submitqueue req = {
+      .flags = 0,
+      .prio = priority,
+   };
+
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+                                 DRM_MSM_SUBMITQUEUE_NEW, &req, sizeof(req));
+   if (ret)
+      return ret;
+
+   *queue_id = req.id;
+   return 0;
+}
+
+void
+tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
+{
+   drmCommandWrite(dev->physical_device->local_fd, DRM_MSM_SUBMITQUEUE_CLOSE,
+                   &queue_id, sizeof(uint32_t));
+}
+
 /**
  * Return gem handle on success. Return 0 on failure.
  */

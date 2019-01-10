@@ -1195,6 +1195,14 @@ tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);
 int
 tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size);
 
+int
+tu_drm_submitqueue_new(const struct tu_device *dev,
+                       int priority,
+                       uint32_t *queue_id);
+
+void
+tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
+
 uint32_t
 tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags);
 void

@@ -949,27 +949,17 @@ tu_queue_init(struct tu_device *device,
    queue->queue_idx = idx;
    queue->flags = flags;
 
-   struct drm_msm_submitqueue req = {
-      .flags = 0,
-      .prio = 0,
-   };
-
-   int ret = drmCommandWriteRead(device->physical_device->local_fd,
-                                 DRM_MSM_SUBMITQUEUE_NEW,
-                                 &req, sizeof(req));
+   int ret = tu_drm_submitqueue_new(device, 0, &queue->msm_queue_id);
    if (ret)
       return VK_ERROR_INITIALIZATION_FAILED;
 
-   queue->msm_queue_id = req.id;
    return VK_SUCCESS;
 }
 
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
-   drmCommandWrite(queue->device->physical_device->local_fd,
-                   DRM_MSM_SUBMITQUEUE_CLOSE,
-                   &queue->msm_queue_id, sizeof(uint32_t));
+   tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
 static int
