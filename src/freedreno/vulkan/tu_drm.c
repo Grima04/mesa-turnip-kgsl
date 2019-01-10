@@ -31,6 +31,53 @@
 
 #include "drm/msm_drm.h"
 
+static int
+tu_drm_get_param(const struct tu_physical_device *dev,
+                 uint32_t param,
+                 uint64_t *value)
+{
+   /* Technically this requires a pipe, but the kernel only supports one pipe
+    * anyway at the time of writing and most of these are clearly pipe
+    * independent. */
+   struct drm_msm_param req = {
+      .pipe = MSM_PIPE_3D0,
+      .param = param,
+   };
+
+   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM, &req,
+                                 sizeof(req));
+   if (ret)
+      return ret;
+
+   *value = req.value;
+
+   return 0;
+}
+
+int
+tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id)
+{
+   uint64_t value;
+   int ret = tu_drm_get_param(dev, MSM_PARAM_GPU_ID, &value);
+   if (ret)
+      return ret;
+
+   *id = value;
+   return 0;
+}
+
+int
+tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size)
+{
+   uint64_t value;
+   int ret = tu_drm_get_param(dev, MSM_PARAM_GMEM_SIZE, &value);
+   if (ret)
+      return ret;
+
+   *size = value;
+   return 0;
+}
+
 /**
  * Return gem handle on success. Return 0 on failure.
  */
@@ -89,27 +136,4 @@ uint64_t
 tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle)
 {
    return tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
-}
-
-int
-tu_drm_query_param(struct tu_physical_device *dev,
-                   uint32_t param,
-                   uint64_t *value)
-{
-   /* Technically this requires a pipe, but the kernel only supports one pipe
-    * anyway at the time of writing and most of these are clearly pipe
-    * independent. */
-   struct drm_msm_param req = {
-      .pipe = MSM_PIPE_3D0,
-      .param = param,
-   };
-
-   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM, &req,
-                                 sizeof(req));
-   if (ret)
-      return ret;
-
-   *value = req.value;
-
-   return 0;
 }

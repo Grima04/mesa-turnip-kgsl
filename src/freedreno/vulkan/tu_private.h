@@ -1189,6 +1189,12 @@ struct tu_fence
    uint32_t temp_syncobj;
 };
 
+int
+tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);
+
+int
+tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size);
+
 uint32_t
 tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags);
 void
@@ -1197,10 +1203,6 @@ uint64_t
 tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle);
 uint64_t
 tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle);
-int
-tu_drm_query_param(struct tu_physical_device *dev,
-                   uint32_t param,
-                   uint64_t *value);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \

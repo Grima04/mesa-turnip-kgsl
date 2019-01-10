@@ -152,7 +152,6 @@ tu_physical_device_init(struct tu_physical_device *device,
    drmVersionPtr version;
    int fd;
    int master_fd = -1;
-   uint64_t val;
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
@@ -214,23 +213,21 @@ tu_physical_device_init(struct tu_physical_device *device,
    device->master_fd = master_fd;
    device->local_fd = fd;
 
-   if (tu_drm_query_param(device, MSM_PARAM_GPU_ID, &val)) {
+   if (tu_drm_get_gpu_id(device, &device->gpu_id)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
          tu_logi("Could not query the GPU ID");
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "could not get GPU ID");
       goto fail;
    }
-   device->gpu_id = val;
 
-   if (tu_drm_query_param(device, MSM_PARAM_GMEM_SIZE, &val)) {
+   if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
          tu_logi("Could not query the GMEM size");
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "could not get GMEM size");
       goto fail;
    }
-   device->gmem_size = val;
 
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "FD%d", device->gpu_id);
