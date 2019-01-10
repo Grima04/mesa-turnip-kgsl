@@ -28,7 +28,7 @@
 #include "tu_private.h"
 
 #include "vk_format.h"
-
+#include "adreno_pm4.xml.h"
 void
 tu_bo_list_init(struct tu_bo_list *list)
 {
@@ -199,6 +199,30 @@ tu_cmd_stream_reset(struct tu_device *dev,
 
    stream->entry_count = 0;
 }
+
+static unsigned
+_odd_parity_bit(unsigned val)
+{
+        /* See: http://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
+         * note that we want odd parity so 0x6996 is inverted.
+         */
+        val ^= val >> 16;
+        val ^= val >> 8;
+        val ^= val >> 4;
+        val &= 0xf;
+        return (~0x6996 >> val) & 1;
+}
+
+static void
+OUT_PKT7(struct tu_cmd_stream *stream, uint8_t opcode, uint16_t cnt)
+{
+   *stream->cur++ = CP_TYPE7_PKT | cnt |
+                   (_odd_parity_bit(cnt) << 15) |
+                   ((opcode & 0x7f) << 16) |
+                   ((_odd_parity_bit(opcode) << 23));
+}
+
+
 
 const struct tu_dynamic_state default_dynamic_state = {
    .viewport =
@@ -525,6 +549,15 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
 
+   result = tu_cmd_stream_begin(cmd_buffer->device,
+                                &cmd_buffer->primary_cmd_stream, 4096);
+
+   /* Put some stuff in so we do not have empty command buffers. */
+   OUT_PKT7(&cmd_buffer->primary_cmd_stream, CP_NOP, 4);
+   *cmd_buffer->primary_cmd_stream.cur++ = 0;
+   *cmd_buffer->primary_cmd_stream.cur++ = 0;
+   *cmd_buffer->primary_cmd_stream.cur++ = 0;
+   *cmd_buffer->primary_cmd_stream.cur++ = 0;
    return result;
 }
 
@@ -572,6 +605,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
+   tu_cmd_stream_end(&cmd_buffer->primary_cmd_stream);
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
    return cmd_buffer->record_result;
