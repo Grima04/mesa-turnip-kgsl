@@ -401,6 +401,7 @@ struct tu_queue
    VkDeviceQueueCreateFlags flags;
 
    uint32_t msm_queue_id;
+   int submit_fence_fd;
 };
 
 struct tu_device

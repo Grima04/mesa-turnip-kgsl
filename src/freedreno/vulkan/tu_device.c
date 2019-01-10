@@ -28,6 +28,7 @@
 #include "tu_private.h"
 
 #include <fcntl.h>
+#include <libsync.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -953,12 +954,17 @@ tu_queue_init(struct tu_device *device,
    if (ret)
       return VK_ERROR_INITIALIZATION_FAILED;
 
+   queue->submit_fence_fd = -1;
+
    return VK_SUCCESS;
 }
 
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
+   if (queue->submit_fence_fd >= 0) {
+      close(queue->submit_fence_fd);
+   }
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
@@ -1166,6 +1172,7 @@ tu_QueueSubmit(VkQueue _queue,
 
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;
+      const bool last_submit = (i == submitCount - 1);
       struct tu_bo_list bo_list;
       tu_bo_list_init(&bo_list);
 
@@ -1199,8 +1206,13 @@ tu_QueueSubmit(VkQueue _queue,
          bos[i].presumed = 0;
       }
 
+      uint32_t flags = MSM_PIPE_3D0;
+      if (last_submit) {
+         flags |= MSM_SUBMIT_FENCE_FD_OUT;
+      }
+
       struct drm_msm_gem_submit req = {
-         .flags = MSM_PIPE_3D0,
+         .flags = flags,
          .queueid = queue->msm_queue_id,
          .bos = (uint64_t)(uintptr_t)bos,
          .nr_bos = bo_list.count,
@@ -1217,6 +1229,14 @@ tu_QueueSubmit(VkQueue _queue,
       }
 
       tu_bo_list_destroy(&bo_list);
+
+      if (last_submit) {
+         /* no need to merge fences as queue execution is serialized */
+         if (queue->submit_fence_fd >= 0) {
+            close(queue->submit_fence_fd);
+         }
+         queue->submit_fence_fd = req.fence_fd;
+      }
    }
    return VK_SUCCESS;
 }
@@ -1224,6 +1244,17 @@ tu_QueueSubmit(VkQueue _queue,
 VkResult
 tu_QueueWaitIdle(VkQueue _queue)
 {
+   TU_FROM_HANDLE(tu_queue, queue, _queue);
+
+   if (queue->submit_fence_fd >= 0) {
+      int ret = sync_wait(queue->submit_fence_fd, -1);
+      if (ret)
+         tu_loge("sync_wait on fence fd %d failed", queue->submit_fence_fd);
+
+      close(queue->submit_fence_fd);
+      queue->submit_fence_fd = -1;
+   }
+
    return VK_SUCCESS;
 }
 
