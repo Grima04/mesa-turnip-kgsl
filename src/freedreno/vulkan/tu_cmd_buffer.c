@@ -29,26 +29,26 @@
 
 #include "vk_format.h"
 
-static void
+void
 tu_bo_list_init(struct tu_bo_list *list)
 {
    list->count = list->capacity = 0;
    list->handles = NULL;
 }
 
-static void
+void
 tu_bo_list_destroy(struct tu_bo_list *list)
 {
    free(list->handles);
 }
 
-static void
+void
 tu_bo_list_reset(struct tu_bo_list *list)
 {
    list->count = 0;
 }
 
-static uint32_t
+uint32_t
 tu_bo_list_add(struct tu_bo_list *list,
                const struct tu_bo *bo)
 {

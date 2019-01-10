@@ -713,6 +713,12 @@ struct tu_bo_list
    uint32_t *handles;
 };
 
+void tu_bo_list_init(struct tu_bo_list *list);
+void tu_bo_list_destroy(struct tu_bo_list *list);
+void tu_bo_list_reset(struct tu_bo_list *list);
+uint32_t tu_bo_list_add(struct tu_bo_list *list,
+                        const struct tu_bo *bo);
+
 struct tu_cmd_stream_entry
 {
     /* No ownership */
