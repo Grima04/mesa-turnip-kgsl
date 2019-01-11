@@ -678,6 +678,11 @@ struct tu_cmd_state
    uint32_t index_type;
    uint32_t max_index_count;
    uint64_t index_va;
+
+   const struct tu_render_pass *pass;
+   const struct tu_subpass *subpass;
+   const struct tu_framebuffer *framebuffer;
+   struct tu_attachment_state *attachments;
 };
 
 struct tu_cmd_pool

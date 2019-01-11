@@ -315,6 +315,65 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    return cmd_buffer->record_result;
 }
 
+static VkResult
+tu_cmd_state_setup_attachments(struct tu_cmd_buffer *cmd_buffer,
+                               struct tu_render_pass *pass,
+                               const VkRenderPassBeginInfo *info)
+{
+   struct tu_cmd_state *state = &cmd_buffer->state;
+
+   if (pass->attachment_count == 0) {
+      state->attachments = NULL;
+      return VK_SUCCESS;
+   }
+
+   state->attachments =
+      vk_alloc(&cmd_buffer->pool->alloc,
+               pass->attachment_count * sizeof(state->attachments[0]), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (state->attachments == NULL) {
+      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return cmd_buffer->record_result;
+   }
+
+   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
+      const struct tu_render_pass_attachment *att = &pass->attachments[i];
+      VkImageAspectFlags att_aspects = vk_format_aspects(att->format);
+      VkImageAspectFlags clear_aspects = 0;
+
+      if (att_aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
+         /* color attachment */
+         if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+            clear_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
+         }
+      } else {
+         /* depthstencil attachment */
+         if ((att_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+             att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+            clear_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
+            if ((att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+                att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+               clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
+         }
+         if ((att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+             att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+            clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
+         }
+      }
+
+      state->attachments[i].pending_clear_aspects = clear_aspects;
+      state->attachments[i].cleared_views = 0;
+      if (clear_aspects && info) {
+         assert(info->clearValueCount > i);
+         state->attachments[i].clear_value = info->pClearValues[i];
+      }
+
+      state->attachments[i].current_layout = att->initial_layout;
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 tu_AllocateCommandBuffers(VkDevice _device,
                           const VkCommandBufferAllocateInfo *pAllocateInfo,
@@ -489,6 +548,8 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    VkResult result = tu_cs_end(&cmd_buffer->cs);
    if (result != VK_SUCCESS)
       cmd_buffer->record_result = result;
+
+   assert(!cmd_buffer->state.attachments);
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
@@ -668,6 +729,19 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                       const VkRenderPassBeginInfo *pRenderPassBegin,
                       VkSubpassContents contents)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
+   TU_FROM_HANDLE(tu_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+   VkResult result;
+
+   cmd_buffer->state.pass = pass;
+   cmd_buffer->state.subpass = pass->subpasses;
+   cmd_buffer->state.framebuffer = framebuffer;
+
+   result =
+      tu_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin);
+   if (result != VK_SUCCESS)
+      return;
 }
 
 void
@@ -900,6 +974,14 @@ tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
 void
 tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+   cmd_buffer->state.attachments = NULL;
+
+   cmd_buffer->state.pass = NULL;
+   cmd_buffer->state.subpass = NULL;
+   cmd_buffer->state.framebuffer = NULL;
 }
 
 void
