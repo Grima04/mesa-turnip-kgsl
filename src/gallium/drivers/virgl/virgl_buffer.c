@@ -120,7 +120,7 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
     * We'll end up flushing 25 --> 70.
     */
    util_range_add(&trans->range, box->x, box->x + box->width);
-   vbuf->clean = FALSE;
+   vbuf->clean[0] = FALSE;
 }
 
 static const struct u_resource_vtbl virgl_buffer_vtbl =

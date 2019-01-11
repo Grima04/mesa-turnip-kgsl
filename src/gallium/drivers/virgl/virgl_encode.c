@@ -64,7 +64,7 @@ static void virgl_encoder_write_res(struct virgl_context *ctx,
 static void virgl_dirty_res(struct virgl_resource *res)
 {
    if (res)
-      res->clean = FALSE;
+      res->clean[0] = FALSE;
 }
 
 int virgl_encode_bind_object(struct virgl_context *ctx,

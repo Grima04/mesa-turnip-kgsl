@@ -46,7 +46,7 @@ struct virgl_resource_metadata
 
 struct virgl_resource {
    struct u_resource u;
-   boolean clean;
+   boolean clean[VR_MAX_TEXTURE_2D_LEVELS];
    struct virgl_hw_res *hw_res;
    struct virgl_resource_metadata metadata;
 };

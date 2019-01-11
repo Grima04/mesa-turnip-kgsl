@@ -44,7 +44,7 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
                               unsigned usage)
 {
    bool readback = true;
-   if (res->clean)
+   if (res->clean[0])
       readback = false;
    else if (usage & PIPE_TRANSFER_DISCARD_RANGE)
       readback = false;
@@ -61,7 +61,6 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
 
-   res->clean = TRUE;
    res->u.b = *templ;
    res->u.b.screen = &vs->base;
    pipe_reference_init(&res->u.b.reference, 1);
@@ -80,6 +79,9 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
       FREE(res);
       return NULL;
    }
+
+   for (uint32_t i = 0; i < VR_MAX_TEXTURE_2D_LEVELS; i++)
+      res->clean[i] = TRUE;
 
    if (templ->target == PIPE_BUFFER)
       virgl_buffer_init(res);
