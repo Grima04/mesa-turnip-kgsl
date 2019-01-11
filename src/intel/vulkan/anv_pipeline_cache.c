@@ -239,6 +239,7 @@ anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
                                                  sha1_compare_func);
    } else {
       cache->cache = NULL;
+      cache->nir_cache = NULL;
    }
 }
 
@@ -670,7 +671,7 @@ anv_device_search_for_nir(struct anv_device *device,
                           unsigned char sha1_key[20],
                           void *mem_ctx)
 {
-   if (cache) {
+   if (cache && cache->nir_cache) {
       const struct serialized_nir *snir = NULL;
 
       pthread_mutex_lock(&cache->mutex);
@@ -702,7 +703,7 @@ anv_device_upload_nir(struct anv_device *device,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20])
 {
-   if (cache) {
+   if (cache && cache->nir_cache) {
       pthread_mutex_lock(&cache->mutex);
       struct hash_entry *entry =
          _mesa_hash_table_search(cache->nir_cache, sha1_key);
