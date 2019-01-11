@@ -701,7 +701,9 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    iris_batch_emit(batch, math, sizeof(math));
 
    /* WaDividePSInvocationCountBy4:HSW,BDW */
-   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS && q->index == 7 && devinfo->gen == 8)
+   if (devinfo->gen == 8 &&
+       q->type == PIPE_QUERY_PIPELINE_STATISTICS &&
+       q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
       shr_gpr0_by_2_bits(ice);
 
    if (q->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
@@ -724,7 +726,8 @@ iris_create_query(struct pipe_context *ctx,
    q->type = query_type;
    q->index = index;
 
-   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS && q->index == 10)
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS &&
+       q->index == PIPE_STAT_QUERY_CS_INVOCATIONS)
       q->batch_idx = IRIS_BATCH_COMPUTE;
    else
       q->batch_idx = IRIS_BATCH_RENDER;
