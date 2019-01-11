@@ -7406,6 +7406,65 @@ fs_visitor::lower_barycentrics()
    return progress;
 }
 
+/**
+ * Lower a derivative instruction as the floating-point difference of two
+ * swizzles of the source, specified as \p swz0 and \p swz1.
+ */
+static bool
+lower_derivative(fs_visitor *v, bblock_t *block, fs_inst *inst,
+                 unsigned swz0, unsigned swz1)
+{
+   const fs_builder ibld(v, block, inst);
+   const fs_reg tmp0 = ibld.vgrf(inst->src[0].type);
+   const fs_reg tmp1 = ibld.vgrf(inst->src[0].type);
+
+   ibld.emit(SHADER_OPCODE_QUAD_SWIZZLE, tmp0, inst->src[0], brw_imm_ud(swz0));
+   ibld.emit(SHADER_OPCODE_QUAD_SWIZZLE, tmp1, inst->src[0], brw_imm_ud(swz1));
+
+   inst->resize_sources(2);
+   inst->src[0] = negate(tmp0);
+   inst->src[1] = tmp1;
+   inst->opcode = BRW_OPCODE_ADD;
+
+   return true;
+}
+
+/**
+ * Lower derivative instructions on platforms where codegen cannot implement
+ * them efficiently (i.e. XeHP).
+ */
+bool
+fs_visitor::lower_derivatives()
+{
+   bool progress = false;
+
+   if (devinfo->verx10 < 125)
+      return false;
+
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      if (inst->opcode == FS_OPCODE_DDX_COARSE)
+         progress |= lower_derivative(this, block, inst,
+                                      BRW_SWIZZLE_XXXX, BRW_SWIZZLE_YYYY);
+
+      else if (inst->opcode == FS_OPCODE_DDX_FINE)
+         progress |= lower_derivative(this, block, inst,
+                                      BRW_SWIZZLE_XXZZ, BRW_SWIZZLE_YYWW);
+
+      else if (inst->opcode == FS_OPCODE_DDY_COARSE)
+         progress |= lower_derivative(this, block, inst,
+                                      BRW_SWIZZLE_XXXX, BRW_SWIZZLE_ZZZZ);
+
+      else if (inst->opcode == FS_OPCODE_DDY_FINE)
+         progress |= lower_derivative(this, block, inst,
+                                      BRW_SWIZZLE_XYXY, BRW_SWIZZLE_ZWZW);
+   }
+
+   if (progress)
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
+
+   return progress;
+}
+
 void
 fs_visitor::dump_instructions() const
 {
@@ -7978,7 +8037,10 @@ fs_visitor::optimize()
       OPT(dead_code_eliminate);
    }
 
-   if (OPT(lower_regioning)) {
+   progress = false;
+   OPT(lower_derivatives);
+   OPT(lower_regioning);
+   if (progress) {
       OPT(opt_copy_propagation);
       OPT(dead_code_eliminate);
       OPT(lower_simd_width);
