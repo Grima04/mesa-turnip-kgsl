@@ -1039,8 +1039,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    b->func = func;
    b->nb.cursor = nir_after_cf_list(&func->impl->body);
    b->has_loop_continue = false;
-   b->phi_table = _mesa_hash_table_create(b, _mesa_hash_pointer,
-                                          _mesa_key_pointer_equal);
+   b->phi_table = _mesa_pointer_hash_table_create(b);
 
    vtn_emit_cf_list(b, &func->body, NULL, NULL, instruction_handler);
 

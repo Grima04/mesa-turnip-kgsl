@@ -176,10 +176,8 @@ nir_visitor::nir_visitor(nir_shader *shader)
    this->supports_ints = shader->options->native_integers;
    this->shader = shader;
    this->is_global = true;
-   this->var_table = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                             _mesa_key_pointer_equal);
-   this->overload_table = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                                  _mesa_key_pointer_equal);
+   this->var_table = _mesa_pointer_hash_table_create(NULL);
+   this->overload_table = _mesa_pointer_hash_table_create(NULL);
    this->result = NULL;
    this->impl = NULL;
    memset(&this->b, 0, sizeof(this->b));

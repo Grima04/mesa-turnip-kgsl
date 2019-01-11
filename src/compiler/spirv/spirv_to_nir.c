@@ -4406,8 +4406,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       progress = false;
       foreach_list_typed(struct vtn_function, func, node, &b->functions) {
          if (func->referenced && !func->emitted) {
-            b->const_table = _mesa_hash_table_create(b, _mesa_hash_pointer,
-                                                     _mesa_key_pointer_equal);
+            b->const_table = _mesa_pointer_hash_table_create(b);
 
             vtn_function_emit(b, func, vtn_handle_body_instruction);
             progress = true;
