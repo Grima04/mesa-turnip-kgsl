@@ -79,7 +79,6 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 		       SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
-	si_emit_cache_flush(sctx);
 
 	/* Save states. */
 	void *saved_cs = sctx->cs_shader_state.program;
