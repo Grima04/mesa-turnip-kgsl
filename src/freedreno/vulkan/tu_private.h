@@ -66,7 +66,6 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_intel.h>
 
-#include "drm/freedreno_ringbuffer.h"
 #include "tu_entrypoints.h"
 
 #define MAX_VBS 32
@@ -293,7 +292,6 @@ struct tu_physical_device
    int local_fd;
    int master_fd;
 
-   struct fd_device *drm_device;
    unsigned gpu_id;
    uint32_t gmem_size;
 

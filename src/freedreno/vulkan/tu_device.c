@@ -214,15 +214,6 @@ tu_physical_device_init(struct tu_physical_device *device,
    device->master_fd = master_fd;
    device->local_fd = fd;
 
-   device->drm_device = fd_device_new_dup(fd);
-   if (!device->drm_device) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not create the libdrm device");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not create the libdrm device");
-      goto fail;
-   }
-
    if (tu_drm_query_param(device, MSM_PARAM_GPU_ID, &val)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
          tu_logi("Could not query the GPU ID");
@@ -282,8 +273,6 @@ tu_physical_device_init(struct tu_physical_device *device,
    return VK_SUCCESS;
 
 fail:
-   if (device->drm_device)
-      fd_device_del(device->drm_device);
    close(fd);
    if (master_fd != -1)
       close(master_fd);

@@ -84,7 +84,6 @@ libvulkan_freedreno = shared_library(
     inc_freedreno,
   ],
   link_with : [
-    libfreedreno_drm,
     libvulkan_util,
     libmesa_util,
   ],
