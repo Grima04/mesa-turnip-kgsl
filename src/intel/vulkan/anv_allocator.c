@@ -1201,8 +1201,7 @@ struct anv_cached_bo {
 VkResult
 anv_bo_cache_init(struct anv_bo_cache *cache)
 {
-   cache->bo_map = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                           _mesa_key_pointer_equal);
+   cache->bo_map = _mesa_pointer_hash_table_create(NULL);
    if (!cache->bo_map)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 

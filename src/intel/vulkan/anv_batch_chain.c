@@ -75,8 +75,7 @@ anv_reloc_list_init_clone(struct anv_reloc_list *list,
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   list->deps = _mesa_set_create(NULL, _mesa_hash_pointer,
-                                 _mesa_key_pointer_equal);
+   list->deps = _mesa_pointer_set_create(NULL);
 
    if (!list->deps) {
       vk_free(alloc, list->relocs);

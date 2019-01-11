@@ -110,8 +110,7 @@ add_drm_fd(int fd)
 {
    struct refcnt_hash_table *r = malloc(sizeof(*r));
    r->refcnt = 1;
-   r->t = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                  _mesa_key_pointer_equal);
+   r->t = _mesa_pointer_hash_table_create(NULL);
    _mesa_hash_table_insert(fds_to_bo_sizes, (void*)(uintptr_t)fd,
                            (void*)(uintptr_t)r);
 }
@@ -426,8 +425,7 @@ ioctl(int fd, unsigned long request, ...)
 static void __attribute__ ((constructor))
 init(void)
 {
-   fds_to_bo_sizes = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                             _mesa_key_pointer_equal);
+   fds_to_bo_sizes = _mesa_pointer_hash_table_create(NULL);
    libc_open = dlsym(RTLD_NEXT, "open");
    libc_close = dlsym(RTLD_NEXT, "close");
    libc_fcntl = dlsym(RTLD_NEXT, "fcntl");
