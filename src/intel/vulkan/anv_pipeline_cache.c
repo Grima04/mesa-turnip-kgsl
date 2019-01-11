@@ -258,6 +258,13 @@ anv_pipeline_cache_finish(struct anv_pipeline_cache *cache)
 
       _mesa_hash_table_destroy(cache->cache, NULL);
    }
+
+   if (cache->nir_cache) {
+      hash_table_foreach(cache->nir_cache, entry)
+         ralloc_free(entry->data);
+
+      _mesa_hash_table_destroy(cache->nir_cache, NULL);
+   }
 }
 
 static struct anv_shader_bin *
