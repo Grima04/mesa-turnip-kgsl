@@ -780,6 +780,9 @@ struct tu_cmd_state
    struct tu_attachment_state *attachments;
 
    struct tu_tiling_config tiling_config;
+
+   struct tu_cs_entry tile_load_ib;
+   struct tu_cs_entry tile_store_ib;
 };
 
 struct tu_cmd_pool
@@ -858,6 +861,7 @@ struct tu_cmd_buffer
 
    struct tu_bo_list bo_list;
    struct tu_cs cs;
+   struct tu_cs tile_cs;
 
    uint16_t marker_reg;
    uint32_t marker_seqno;
@@ -865,8 +869,7 @@ struct tu_cmd_buffer
    struct tu_bo scratch_bo;
    uint32_t scratch_seqno;
 
-   /* current cs; command packets are always emitted to it */
-   struct tu_cs *cur_cs;
+   bool wait_for_idle;
 };
 
 bool
