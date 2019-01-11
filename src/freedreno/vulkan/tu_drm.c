@@ -24,11 +24,12 @@
 
 #include "tu_private.h"
 
-#include "xf86drm.h"
 #include <errno.h>
-#include <msm_drm.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <xf86drm.h>
+
+#include "drm/msm_drm.h"
 
 /**
  * Return gem handle on success. Return 0 on failure.
@@ -61,11 +62,11 @@ tu_gem_close(struct tu_device *dev, uint32_t gem_handle)
 
 /** Return UINT64_MAX on error. */
 static uint64_t
-tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t flags)
+tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t info)
 {
    struct drm_msm_gem_info req = {
       .handle = gem_handle,
-      .flags = flags,
+      .info = info,
    };
 
    int ret = drmCommandWriteRead(dev->physical_device->local_fd,
@@ -73,21 +74,21 @@ tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t flags)
    if (ret == -1)
       return UINT64_MAX;
 
-   return req.offset;
+   return req.value;
 }
 
 /** Return UINT64_MAX on error. */
 uint64_t
 tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle)
 {
-   return tu_gem_info(dev, gem_handle, 0);
+   return tu_gem_info(dev, gem_handle, MSM_INFO_GET_OFFSET);
 }
 
 /** Return UINT64_MAX on error. */
 uint64_t
 tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle)
 {
-   return tu_gem_info(dev, gem_handle, MSM_INFO_IOVA);
+   return tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
 }
 
 int
