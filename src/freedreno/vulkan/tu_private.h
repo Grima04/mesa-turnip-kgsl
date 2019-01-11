@@ -1204,13 +1204,13 @@ void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
 uint32_t
-tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags);
+tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags);
 void
-tu_gem_close(struct tu_device *dev, uint32_t gem_handle);
+tu_gem_close(const struct tu_device *dev, uint32_t gem_handle);
 uint64_t
-tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle);
+tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle);
 uint64_t
-tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle);
+tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \

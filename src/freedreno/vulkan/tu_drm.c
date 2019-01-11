@@ -108,7 +108,7 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
  * Return gem handle on success. Return 0 on failure.
  */
 uint32_t
-tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags)
+tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags)
 {
    struct drm_msm_gem_new req = {
       .size = size,
@@ -124,7 +124,7 @@ tu_gem_new(struct tu_device *dev, uint64_t size, uint32_t flags)
 }
 
 void
-tu_gem_close(struct tu_device *dev, uint32_t gem_handle)
+tu_gem_close(const struct tu_device *dev, uint32_t gem_handle)
 {
    struct drm_gem_close req = {
       .handle = gem_handle,
@@ -135,7 +135,7 @@ tu_gem_close(struct tu_device *dev, uint32_t gem_handle)
 
 /** Return UINT64_MAX on error. */
 static uint64_t
-tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t info)
+tu_gem_info(const struct tu_device *dev, uint32_t gem_handle, uint32_t info)
 {
    struct drm_msm_gem_info req = {
       .handle = gem_handle,
@@ -152,14 +152,14 @@ tu_gem_info(struct tu_device *dev, uint32_t gem_handle, uint32_t info)
 
 /** Return UINT64_MAX on error. */
 uint64_t
-tu_gem_info_offset(struct tu_device *dev, uint32_t gem_handle)
+tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle)
 {
    return tu_gem_info(dev, gem_handle, MSM_INFO_GET_OFFSET);
 }
 
 /** Return UINT64_MAX on error. */
 uint64_t
-tu_gem_info_iova(struct tu_device *dev, uint32_t gem_handle)
+tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle)
 {
    return tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
 }
