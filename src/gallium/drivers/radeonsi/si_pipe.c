@@ -510,14 +510,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (sscreen->debug_flags & DBG(FORCE_DMA))
 		sctx->b.resource_copy_region = sctx->dma_copy;
 
-	bool dst_stream_policy = SI_COMPUTE_DST_CACHE_POLICY != L2_LRU;
-	sctx->cs_clear_buffer = si_create_dma_compute_shader(&sctx->b,
-					     SI_COMPUTE_CLEAR_DW_PER_THREAD,
-					     dst_stream_policy, false);
-	sctx->cs_copy_buffer = si_create_dma_compute_shader(&sctx->b,
-					     SI_COMPUTE_COPY_DW_PER_THREAD,
-					     dst_stream_policy, true);
-
 	sctx->blitter = util_blitter_create(&sctx->b);
 	if (sctx->blitter == NULL)
 		goto fail;
