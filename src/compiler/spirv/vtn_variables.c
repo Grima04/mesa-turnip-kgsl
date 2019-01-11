@@ -1800,6 +1800,18 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    ptr->type = ptr_type->deref;
    ptr->ptr_type = ptr_type;
 
+   /* To work around https://github.com/KhronosGroup/glslang/issues/179 we
+    * need to whack the mode because it creates a function parameter with the
+    * Function storage class even though it's a pointer to a sampler.  If we
+    * don't do this, then NIR won't get rid of the deref_cast for us.
+    */
+   if (ptr->mode == vtn_variable_mode_function &&
+       (ptr->type->base_type == vtn_base_type_sampler ||
+        ptr->type->base_type == vtn_base_type_sampled_image)) {
+      ptr->mode = vtn_variable_mode_uniform;
+      nir_mode = nir_var_uniform;
+   }
+
    if (vtn_pointer_uses_ssa_offset(b, ptr)) {
       /* This pointer type needs to have actual storage */
       vtn_assert(ptr_type->type);
