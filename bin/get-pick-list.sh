@@ -44,7 +44,7 @@ is_sha_nomination()
 		# Treat only the current line
 		id=`echo "$fixes" | tail -n $fixes_count | head -n 1 | cut -d : -f 2`
 		fixes_count=$(($fixes_count-1))
-		if ! git show $id &>/dev/null; then
+		if ! git show $id >/dev/null 2>&1; then
 			echo WARNING: Commit $1 lists invalid sha $id
 		fi
 	done
