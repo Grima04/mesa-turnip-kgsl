@@ -334,10 +334,16 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       for (int i = 0; i < MAX_VERTEX_STREAMS; i++)
          q->result |= stream_overflowed((void *) q->map, i);
       break;
+   case PIPE_QUERY_PIPELINE_STATISTICS:
+      q->result = q->map->end - q->map->start;
+
+      /* WaDividePSInvocationCountBy4:HSW,BDW */
+      if (devinfo->gen == 8 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+         q->result /= 4;
+      break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
-   case PIPE_QUERY_PIPELINE_STATISTICS:
    default:
       q->result = q->map->end - q->map->start;
       break;
@@ -864,12 +870,6 @@ iris_get_query_result(struct pipe_context *ctx,
          break;
       case 7:
          result->pipeline_statistics.ps_invocations = q->result;
-         /* Implement the "WaDividePSInvocationCountBy4:HSW,BDW" workaround:
-          * "Invocation counter is 4 times actual.  WA: SW to divide HW reported
-          *  PS Invocations value by 4."
-          */
-         if (screen->devinfo.gen == 8)
-            result->pipeline_statistics.ps_invocations /= 4;
          break;
       case 8:
          result->pipeline_statistics.hs_invocations = q->result;
