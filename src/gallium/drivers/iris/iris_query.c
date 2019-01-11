@@ -235,7 +235,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
                                      SO_NUM_PRIMS_WRITTEN(q->index),
                                      q->bo, offset, false);
       break;
-   case PIPE_QUERY_PIPELINE_STATISTICS: {
+   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE: {
       static const uint32_t index_to_reg[] = {
          IA_VERTICES_COUNT,
          IA_PRIMITIVES_COUNT,
@@ -334,7 +334,7 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       for (int i = 0; i < MAX_VERTEX_STREAMS; i++)
          q->result |= stream_overflowed((void *) q->map, i);
       break;
-   case PIPE_QUERY_PIPELINE_STATISTICS:
+   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
       q->result = q->map->end - q->map->start;
 
       /* WaDividePSInvocationCountBy4:HSW,BDW */
@@ -702,7 +702,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 
    /* WaDividePSInvocationCountBy4:HSW,BDW */
    if (devinfo->gen == 8 &&
-       q->type == PIPE_QUERY_PIPELINE_STATISTICS &&
+       q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
       shr_gpr0_by_2_bits(ice);
 
@@ -726,7 +726,7 @@ iris_create_query(struct pipe_context *ctx,
    q->type = query_type;
    q->index = index;
 
-   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS &&
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_CS_INVOCATIONS)
       q->batch_idx = IRIS_BATCH_COMPUTE;
    else
@@ -848,45 +848,7 @@ iris_get_query_result(struct pipe_context *ctx,
 
    assert(q->ready);
 
-   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS) {
-      switch (q->index) {
-      case 0:
-         result->pipeline_statistics.ia_vertices = q->result;
-         break;
-      case 1:
-         result->pipeline_statistics.ia_primitives = q->result;
-         break;
-      case 2:
-         result->pipeline_statistics.vs_invocations = q->result;
-         break;
-      case 3:
-         result->pipeline_statistics.gs_invocations = q->result;
-         break;
-      case 4:
-         result->pipeline_statistics.gs_primitives = q->result;
-         break;
-      case 5:
-         result->pipeline_statistics.c_invocations = q->result;
-         break;
-      case 6:
-         result->pipeline_statistics.c_primitives = q->result;
-         break;
-      case 7:
-         result->pipeline_statistics.ps_invocations = q->result;
-         break;
-      case 8:
-         result->pipeline_statistics.hs_invocations = q->result;
-         break;
-      case 9:
-         result->pipeline_statistics.ds_invocations = q->result;
-         break;
-      case 10:
-         result->pipeline_statistics.cs_invocations = q->result;
-         break;
-      }
-   } else {
-      result->u64 = q->result;
-   }
+   result->u64 = q->result;
 
    return true;
 }
