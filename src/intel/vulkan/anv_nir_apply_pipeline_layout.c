@@ -25,6 +25,7 @@
 #include "program/prog_parameter.h"
 #include "nir/nir_builder.h"
 #include "compiler/brw_nir.h"
+#include "util/set.h"
 
 /* Sampler tables don't actually have a maximum size but we pick one just so
  * that we don't end up emitting too much state on-the-fly.
@@ -40,6 +41,9 @@ struct apply_pipeline_layout_state {
 
    struct anv_pipeline_layout *layout;
    bool add_bounds_checks;
+
+   /* Place to flag lowered instructions so we don't lower them twice */
+   struct set *lowered_instrs;
 
    bool uses_constants;
    uint8_t constants_offset;
@@ -143,6 +147,176 @@ get_used_bindings_block(nir_block *block,
    }
 }
 
+static bool
+find_descriptor_for_index_src(nir_src src,
+                              struct apply_pipeline_layout_state *state)
+{
+   nir_intrinsic_instr *intrin = nir_src_as_intrinsic(src);
+
+   while (intrin && intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex)
+      intrin = nir_src_as_intrinsic(intrin->src[0]);
+
+   if (!intrin || intrin->intrinsic != nir_intrinsic_vulkan_resource_index)
+      return false;
+
+   return true;
+}
+
+static bool
+nir_deref_find_descriptor(nir_deref_instr *deref,
+                          struct apply_pipeline_layout_state *state)
+{
+   while (1) {
+      /* Nothing we will use this on has a variable */
+      assert(deref->deref_type != nir_deref_type_var);
+
+      nir_deref_instr *parent = nir_src_as_deref(deref->parent);
+      if (!parent)
+         break;
+
+      deref = parent;
+   }
+   assert(deref->deref_type == nir_deref_type_cast);
+
+   nir_intrinsic_instr *intrin = nir_src_as_intrinsic(deref->parent);
+   if (!intrin || intrin->intrinsic != nir_intrinsic_load_vulkan_descriptor)
+      return false;
+
+   return find_descriptor_for_index_src(intrin->src[0], state);
+}
+
+static nir_ssa_def *
+build_index_for_res_reindex(nir_intrinsic_instr *intrin,
+                            struct apply_pipeline_layout_state *state)
+{
+   nir_builder *b = &state->builder;
+
+   if (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
+      nir_ssa_def *bti =
+         build_index_for_res_reindex(nir_src_as_intrinsic(intrin->src[0]), state);
+
+      b->cursor = nir_before_instr(&intrin->instr);
+      return nir_iadd(b, bti, nir_ssa_for_src(b, intrin->src[1], 1));
+   }
+
+   assert(intrin->intrinsic == nir_intrinsic_vulkan_resource_index);
+
+   uint32_t set = nir_intrinsic_desc_set(intrin);
+   uint32_t binding = nir_intrinsic_binding(intrin);
+
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &state->layout->set[set].layout->binding[binding];
+
+   uint32_t surface_index = state->set[set].surface_offsets[binding];
+   uint32_t array_size = bind_layout->array_size;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   nir_ssa_def *array_index = nir_ssa_for_src(b, intrin->src[0], 1);
+   if (nir_src_is_const(intrin->src[0]) || state->add_bounds_checks)
+      array_index = nir_umin(b, array_index, nir_imm_int(b, array_size - 1));
+
+   return nir_iadd_imm(b, array_index, surface_index);
+}
+
+static nir_ssa_def *
+build_index_offset_for_deref(nir_deref_instr *deref,
+                             struct apply_pipeline_layout_state *state)
+{
+   nir_builder *b = &state->builder;
+
+   nir_deref_instr *parent = nir_deref_instr_parent(deref);
+   if (parent) {
+      nir_ssa_def *addr = build_index_offset_for_deref(parent, state);
+
+      b->cursor = nir_before_instr(&deref->instr);
+      return nir_explicit_io_address_from_deref(b, deref, addr,
+                                                nir_address_format_32bit_index_offset);
+   }
+
+   nir_intrinsic_instr *load_desc = nir_src_as_intrinsic(deref->parent);
+   assert(load_desc->intrinsic == nir_intrinsic_load_vulkan_descriptor);
+
+   nir_ssa_def *index =
+      build_index_for_res_reindex(nir_src_as_intrinsic(load_desc->src[0]), state);
+
+   /* Return a 0 offset which will get picked up by the recursion */
+   b->cursor = nir_before_instr(&deref->instr);
+   return nir_vec2(b, index, nir_imm_int(b, 0));
+}
+
+static bool
+try_lower_direct_buffer_intrinsic(nir_intrinsic_instr *intrin,
+                                  struct apply_pipeline_layout_state *state)
+{
+   nir_builder *b = &state->builder;
+
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   if (deref->mode != nir_var_mem_ssbo)
+      return false;
+
+   if (!nir_deref_find_descriptor(deref, state))
+      return false;
+
+   nir_ssa_def *addr = build_index_offset_for_deref(deref, state);
+
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_lower_explicit_io_instr(b, intrin, addr,
+                               nir_address_format_32bit_index_offset);
+   return true;
+}
+
+static void
+lower_direct_buffer_access(nir_function_impl *impl,
+                           struct apply_pipeline_layout_state *state)
+{
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_load_deref:
+         case nir_intrinsic_store_deref:
+         case nir_intrinsic_deref_atomic_add:
+         case nir_intrinsic_deref_atomic_imin:
+         case nir_intrinsic_deref_atomic_umin:
+         case nir_intrinsic_deref_atomic_imax:
+         case nir_intrinsic_deref_atomic_umax:
+         case nir_intrinsic_deref_atomic_and:
+         case nir_intrinsic_deref_atomic_or:
+         case nir_intrinsic_deref_atomic_xor:
+         case nir_intrinsic_deref_atomic_exchange:
+         case nir_intrinsic_deref_atomic_comp_swap:
+         case nir_intrinsic_deref_atomic_fmin:
+         case nir_intrinsic_deref_atomic_fmax:
+         case nir_intrinsic_deref_atomic_fcomp_swap:
+            try_lower_direct_buffer_intrinsic(intrin, state);
+            break;
+
+         case nir_intrinsic_get_buffer_size: {
+            /* The get_buffer_size intrinsic always just takes a
+             * index/reindex intrinsic.
+             */
+            if (!find_descriptor_for_index_src(intrin->src[0], state))
+               break;
+
+            nir_ssa_def *index =
+               build_index_for_res_reindex(nir_src_as_intrinsic(intrin->src[0]),
+                                           state);
+            nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
+                                  nir_src_for_ssa(index));
+            _mesa_set_add(state->lowered_instrs, intrin);
+         }
+
+         default:
+            break;
+         }
+      }
+   }
+}
+
 static void
 lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
                           struct apply_pipeline_layout_state *state)
@@ -228,6 +402,9 @@ static void
 lower_get_buffer_size(nir_intrinsic_instr *intrin,
                       struct apply_pipeline_layout_state *state)
 {
+   if (_mesa_set_search(state->lowered_instrs, intrin))
+      return;
+
    nir_builder *b = &state->builder;
 
    b->cursor = nir_before_instr(&intrin->instr);
@@ -539,14 +716,15 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                               struct brw_stage_prog_data *prog_data,
                               struct anv_pipeline_bind_map *map)
 {
+   void *mem_ctx = ralloc_context(NULL);
+
    struct apply_pipeline_layout_state state = {
       .pdevice = pdevice,
       .shader = shader,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
+      .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
    };
-
-   void *mem_ctx = ralloc_context(NULL);
 
    for (unsigned s = 0; s < layout->num_sets; s++) {
       const unsigned count = layout->set[s].layout->binding_count;
@@ -734,6 +912,38 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
    nir_foreach_function(function, shader) {
       if (!function->impl)
          continue;
+
+      /* Before we do the normal lowering, we look for any SSBO operations
+       * that we can lower to the BTI model and lower them up-front.  The BTI
+       * model can perform better than the A64 model for a couple reasons:
+       *
+       *  1. 48-bit address calculations are potentially expensive and using
+       *     the BTI model lets us simply compute 32-bit offsets and the
+       *     hardware adds the 64-bit surface base address.
+       *
+       *  2. The BTI messages, because they use surface states, do bounds
+       *     checking for us.  With the A64 model, we have to do our own
+       *     bounds checking and this means wider pointers and extra
+       *     calculations and branching in the shader.
+       *
+       * The solution to both of these is to convert things to the BTI model
+       * opportunistically.  The reason why we need to do this as a pre-pass
+       * is for two reasons:
+       *
+       *  1. The BTI model requires nir_address_format_32bit_index_offset
+       *     pointers which are not the same type as the pointers needed for
+       *     the A64 model.  Because all our derefs are set up for the A64
+       *     model (in case we have variable pointers), we have to crawl all
+       *     the way back to the vulkan_resource_index intrinsic and build a
+       *     completely fresh index+offset calculation.
+       *
+       *  2. Because the variable-pointers-capable lowering that we do as part
+       *     of apply_pipeline_layout_block is destructive (It really has to
+       *     be to handle variable pointers properly), we've lost the deref
+       *     information by the time we get to the load/store/atomic
+       *     intrinsics in that pass.
+       */
+      lower_direct_buffer_access(function->impl, &state);
 
       nir_builder_init(&state.builder, function->impl);
       nir_foreach_block(block, function->impl)
