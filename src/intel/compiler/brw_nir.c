@@ -544,6 +544,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       progress = false;
       OPT(nir_split_array_vars, nir_var_function);
       OPT(nir_shrink_vec_array_vars, nir_var_function);
+      OPT(nir_opt_deref);
       OPT(nir_lower_vars_to_ssa);
       if (allow_copies) {
          /* Only run this pass in the first call to brw_nir_optimize.  Later
