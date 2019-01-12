@@ -1797,7 +1797,6 @@ struct vtn_pointer *
 vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
                      struct vtn_type *ptr_type)
 {
-   vtn_assert(ssa->num_components <= 2 && ssa->bit_size == 32);
    vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
 
    struct vtn_type *interface_type = ptr_type->deref;
