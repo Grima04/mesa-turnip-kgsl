@@ -28,6 +28,8 @@
 #include "util/bitscan.h"
 #include "util/u_dynarray.h"
 
+static const bool debug = false;
+
 /**
  * Variable-based copy propagation
  *
@@ -626,17 +628,83 @@ is_array_deref_of_vector(nir_deref_instr *deref)
 }
 
 static void
+print_value(struct value *value, unsigned num_components)
+{
+   if (!value->is_ssa) {
+      printf(" %s ", glsl_get_type_name(value->deref->type));
+      nir_print_deref(value->deref, stdout);
+      return;
+   }
+
+   bool same_ssa = true;
+   for (unsigned i = 0; i < num_components; i++) {
+      if (i > 0 && value->ssa[i - 1] != value->ssa[i]) {
+         same_ssa = false;
+         break;
+      }
+   }
+   if (same_ssa) {
+      printf(" ssa_%d", value->ssa[0]->index);
+   } else {
+      for (int i = 0; i < num_components; i++) {
+         if (value->ssa[i])
+            printf(" ssa_%d[%u]", value->ssa[i]->index, i);
+         else
+            printf(" _");
+      }
+   }
+}
+
+static void
+print_copy_entry(struct copy_entry *entry)
+{
+   printf("    %s ", glsl_get_type_name(entry->dst->type));
+   nir_print_deref(entry->dst, stdout);
+   printf(":\t");
+
+   unsigned num_components = glsl_get_vector_elements(entry->dst->type);
+   print_value(&entry->src, num_components);
+   printf("\n");
+}
+
+static void
+dump_instr(nir_instr *instr)
+{
+   printf("  ");
+   nir_print_instr(instr, stdout);
+   printf("\n");
+}
+
+static void
+dump_copy_entries(struct util_dynarray *copies)
+{
+   util_dynarray_foreach(copies, struct copy_entry, iter)
+      print_copy_entry(iter);
+   printf("\n");
+}
+
+static void
 copy_prop_vars_block(struct copy_prop_var_state *state,
                      nir_builder *b, nir_block *block,
                      struct util_dynarray *copies)
 {
+   if (debug) {
+      printf("# block%d\n", block->index);
+      dump_copy_entries(copies);
+   }
+
    nir_foreach_instr_safe(instr, block) {
+      if (debug && instr->type == nir_instr_type_deref)
+         dump_instr(instr);
+
       if (instr->type == nir_instr_type_call) {
+         if (debug) dump_instr(instr);
          apply_barrier_for_modes(copies, nir_var_shader_out |
                                          nir_var_shader_temp |
                                          nir_var_function_temp |
                                          nir_var_mem_ssbo |
                                          nir_var_mem_shared);
+         if (debug) dump_copy_entries(copies);
          continue;
       }
 
@@ -647,6 +715,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       switch (intrin->intrinsic) {
       case nir_intrinsic_barrier:
       case nir_intrinsic_memory_barrier:
+         if (debug) dump_instr(instr);
+
          apply_barrier_for_modes(copies, nir_var_shader_out |
                                          nir_var_mem_ssbo |
                                          nir_var_mem_shared);
@@ -654,10 +724,14 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
       case nir_intrinsic_emit_vertex:
       case nir_intrinsic_emit_vertex_with_counter:
+         if (debug) dump_instr(instr);
+
          apply_barrier_for_modes(copies, nir_var_shader_out);
          break;
 
       case nir_intrinsic_load_deref: {
+         if (debug) dump_instr(instr);
+
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
 
          if (is_array_deref_of_vector(src)) {
@@ -726,6 +800,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       }
 
       case nir_intrinsic_store_deref: {
+         if (debug) dump_instr(instr);
+
          nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
          struct copy_entry *entry =
             lookup_entry_for_deref(copies, dst, nir_derefs_equal_bit);
@@ -757,6 +833,8 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       }
 
       case nir_intrinsic_copy_deref: {
+         if (debug) dump_instr(instr);
+
          nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
          nir_deref_instr *src = nir_src_as_deref(intrin->src[1]);
 
@@ -818,12 +896,15 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       case nir_intrinsic_deref_atomic_xor:
       case nir_intrinsic_deref_atomic_exchange:
       case nir_intrinsic_deref_atomic_comp_swap:
+         if (debug) dump_instr(instr);
          kill_aliases(copies, nir_src_as_deref(intrin->src[0]), 0xf);
          break;
 
       default:
-         break;
+         continue; /* To skip the debug below. */
       }
+
+      if (debug) dump_copy_entries(copies);
    }
 }
 
@@ -909,6 +990,11 @@ static bool
 nir_copy_prop_vars_impl(nir_function_impl *impl)
 {
    void *mem_ctx = ralloc_context(NULL);
+
+   if (debug) {
+      nir_metadata_require(impl, nir_metadata_block_index);
+      printf("## nir_copy_prop_vars_impl for %s\n", impl->function->name);
+   }
 
    struct copy_prop_var_state state = {
       .impl = impl,
