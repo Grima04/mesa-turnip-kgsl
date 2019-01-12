@@ -158,10 +158,13 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
    if (nir_src_is_const(intrin->src[0]) || state->add_bounds_checks)
       array_index = nir_umin(b, array_index, nir_imm_int(b, array_size - 1));
 
-   nir_ssa_def *block_index = nir_iadd_imm(b, array_index, surface_index);
+   /* We're using nir_address_format_vk_index_offset */
+   nir_ssa_def *index =
+      nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
+                  nir_imm_int(b, 0));
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(block_index));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(index));
    nir_instr_remove(&intrin->instr);
 }
 
@@ -178,8 +181,12 @@ lower_res_reindex_intrinsic(nir_intrinsic_instr *intrin,
     * add of the two indices.
     */
    assert(intrin->src[0].is_ssa && intrin->src[1].is_ssa);
-   nir_ssa_def *new_index = nir_iadd(b, intrin->src[0].ssa,
-                                        intrin->src[1].ssa);
+   nir_ssa_def *old_index = intrin->src[0].ssa;
+   nir_ssa_def *offset = intrin->src[1].ssa;
+
+   nir_ssa_def *new_index =
+      nir_vec2(b, nir_iadd(b, nir_channel(b, old_index, 0), offset),
+                  nir_channel(b, old_index, 1));
 
    assert(intrin->dest.is_ssa);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(new_index));
@@ -196,11 +203,30 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
 
    /* We follow the nir_address_format_vk_index_offset model */
    assert(intrin->src[0].is_ssa);
-   nir_ssa_def *vec2 = nir_vec2(b, intrin->src[0].ssa, nir_imm_int(b, 0));
+   nir_ssa_def *index = intrin->src[0].ssa;
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(vec2));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(index));
    nir_instr_remove(&intrin->instr);
+}
+
+static void
+lower_get_buffer_size(nir_intrinsic_instr *intrin,
+                      struct apply_pipeline_layout_state *state)
+{
+   nir_builder *b = &state->builder;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   assert(intrin->src[0].is_ssa);
+   nir_ssa_def *index = intrin->src[0].ssa;
+
+   /* We're following the nir_address_format_vk_index_offset model so the
+    * binding table index is the first component of the address.  The
+    * back-end wants a scalar binding table index source.
+    */
+   nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
+                         nir_src_for_ssa(nir_channel(b, index, 0)));
 }
 
 static void
@@ -401,6 +427,9 @@ apply_pipeline_layout_block(nir_block *block,
             break;
          case nir_intrinsic_load_vulkan_descriptor:
             lower_load_vulkan_descriptor(intrin, state);
+            break;
+         case nir_intrinsic_get_buffer_size:
+            lower_get_buffer_size(intrin, state);
             break;
          case nir_intrinsic_image_deref_load:
          case nir_intrinsic_image_deref_store:
