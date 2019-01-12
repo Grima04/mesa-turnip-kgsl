@@ -2454,7 +2454,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          struct vtn_access_chain chain = {
             .length = 0,
          };
-         ptr = vtn_ssa_offset_pointer_dereference(b, ptr, &chain);
+         ptr = vtn_pointer_dereference(b, ptr, &chain);
          vtn_assert(ptr->block_index);
       }
 
