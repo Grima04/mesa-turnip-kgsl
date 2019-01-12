@@ -3428,14 +3428,6 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
 			if (radv_pipeline_has_gs(pipeline)) {
 				if (device->physical_device->rad_info.chip_class <= VI)
 					ia_multi_vgt_param.partial_es_wave = true;
-
-				if (device->physical_device->rad_info.family == CHIP_TONGA ||
-				    device->physical_device->rad_info.family == CHIP_FIJI ||
-				    device->physical_device->rad_info.family == CHIP_POLARIS10 ||
-				    device->physical_device->rad_info.family == CHIP_POLARIS11 ||
-				    device->physical_device->rad_info.family == CHIP_POLARIS12 ||
-				    device->physical_device->rad_info.family == CHIP_VEGAM)
-					ia_multi_vgt_param.partial_vs_wave = true;
 			} else {
 				ia_multi_vgt_param.partial_vs_wave = true;
 			}
@@ -3451,6 +3443,26 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
 	     prim == V_008958_DI_PT_LINESTRIP_ADJ ||
 	     prim == V_008958_DI_PT_TRISTRIP_ADJ)) {
 		ia_multi_vgt_param.partial_vs_wave = true;
+	}
+
+	if (radv_pipeline_has_gs(pipeline)) {
+		/* On these chips there is the possibility of a hang if the
+		 * pipeline uses a GS and partial_vs_wave is not set.
+		 *
+		 * This mostly does not hit 4-SE chips, as those typically set
+		 * ia_switch_on_eoi and then partial_vs_wave is set for pipelines
+		 * with GS due to another workaround.
+		 *
+		 * Reproducer: https://bugs.freedesktop.org/show_bug.cgi?id=109242
+		 */
+		if (device->physical_device->rad_info.family == CHIP_TONGA ||
+		    device->physical_device->rad_info.family == CHIP_FIJI ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS10 ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS11 ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS12 ||
+	            device->physical_device->rad_info.family == CHIP_VEGAM) {
+			ia_multi_vgt_param.partial_vs_wave = true;
+		}
 	}
 
 	ia_multi_vgt_param.base =
