@@ -41,10 +41,10 @@ bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
 
 bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
-                              unsigned usage)
+                              unsigned usage, unsigned level)
 {
    bool readback = true;
-   if (res->clean[0])
+   if (res->clean[level])
       readback = false;
    else if (usage & PIPE_TRANSFER_DISCARD_RANGE)
       readback = false;
@@ -281,6 +281,10 @@ boolean virgl_resource_get_handle(struct pipe_screen *screen,
 
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
 {
-   if (res)
-      res->clean[0] = FALSE;
+   if (res) {
+      if (res->u.b.target == PIPE_BUFFER)
+         res->clean[0] = FALSE;
+      else
+         res->clean[level] = FALSE;
+   }
 }

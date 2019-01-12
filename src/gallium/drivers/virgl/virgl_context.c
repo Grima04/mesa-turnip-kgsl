@@ -70,15 +70,19 @@ static void virgl_attach_res_framebuffer(struct virgl_context *vctx)
    surf = vctx->framebuffer.zsbuf;
    if (surf) {
       res = virgl_resource(surf->texture);
-      if (res)
+      if (res) {
          vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
+         virgl_resource_dirty(res, surf->u.tex.level);
+      }
    }
    for (i = 0; i < vctx->framebuffer.nr_cbufs; i++) {
       surf = vctx->framebuffer.cbufs[i];
       if (surf) {
          res = virgl_resource(surf->texture);
-         if (res)
+         if (res) {
             vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
+            virgl_resource_dirty(res, surf->u.tex.level);
+         }
       }
    }
 }
@@ -975,7 +979,7 @@ static void virgl_resource_copy_region(struct pipe_context *ctx,
    struct virgl_resource *dres = virgl_resource(dst);
    struct virgl_resource *sres = virgl_resource(src);
 
-   virgl_resource_dirty(dres, 0);
+   virgl_resource_dirty(dres, dst_level);
    virgl_encode_resource_copy_region(vctx, dres,
                                     dst_level, dstx, dsty, dstz,
                                     sres, src_level,
@@ -1000,7 +1004,7 @@ static void virgl_blit(struct pipe_context *ctx,
           (util_format_is_srgb(blit->dst.resource->format) ==
             util_format_is_srgb(blit->dst.format)));
 
-   virgl_resource_dirty(dres, 0);
+   virgl_resource_dirty(dres, blit->dst.level);
    virgl_encode_blit(vctx, dres, sres,
                     blit);
 }

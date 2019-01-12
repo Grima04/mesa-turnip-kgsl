@@ -137,7 +137,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       trans->resolve_tmp = NULL;
    }
 
-   readback = virgl_res_needs_readback(vctx, vtex, usage);
+   readback = virgl_res_needs_readback(vctx, vtex, usage, level);
    if (readback)
       vs->vws->transfer_get(vs->vws, hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
@@ -165,7 +165,6 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
       if (!(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
          struct virgl_screen *vs = virgl_screen(ctx->screen);
-         vtex->clean[0] = FALSE;
          vctx->num_transfers++;
          vs->vws->transfer_put(vs->vws, vtex->hw_res,
                                &transfer->box, trans->base.stride,

@@ -615,7 +615,6 @@ int virgl_encode_sampler_view(struct virgl_context *ctx,
    if (res->u.b.target == PIPE_BUFFER) {
       virgl_encoder_write_dword(ctx->cbuf, state->u.buf.offset / elem_size);
       virgl_encoder_write_dword(ctx->cbuf, (state->u.buf.offset + state->u.buf.size) / elem_size - 1);
-      virgl_resource_dirty(res, 0);
    } else {
       virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_layer | state->u.tex.last_layer << 16);
       virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_level | state->u.tex.last_level << 8);
@@ -1002,7 +1001,7 @@ int virgl_encode_set_shader_images(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, images[i].u.buf.offset);
          virgl_encoder_write_dword(ctx->cbuf, images[i].u.buf.size);
          virgl_encoder_write_res(ctx, res);
-         virgl_resource_dirty(res, 0);
+         virgl_resource_dirty(res, images[i].u.tex.level);
       } else {
          virgl_encoder_write_dword(ctx->cbuf, 0);
          virgl_encoder_write_dword(ctx->cbuf, 0);

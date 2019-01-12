@@ -53,7 +53,7 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    trans = virgl_resource_create_transfer(ctx, resource, &vbuf->metadata, level,
                                           usage, box);
 
-   readback = virgl_res_needs_readback(vctx, vbuf, usage);
+   readback = virgl_res_needs_readback(vctx, vbuf, usage, 0);
    if (readback)
       vs->vws->transfer_get(vs->vws, vbuf->hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
