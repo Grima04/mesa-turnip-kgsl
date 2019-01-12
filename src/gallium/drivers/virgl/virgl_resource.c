@@ -278,3 +278,9 @@ boolean virgl_resource_get_handle(struct pipe_screen *screen,
                                        res->metadata.stride[0],
                                        whandle);
 }
+
+void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
+{
+   if (res)
+      res->clean[0] = FALSE;
+}

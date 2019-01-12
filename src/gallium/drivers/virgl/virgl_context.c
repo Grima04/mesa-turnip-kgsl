@@ -234,7 +234,7 @@ static struct pipe_surface *virgl_create_surface(struct pipe_context *ctx,
           (util_format_is_srgb(templ->format) ==
            util_format_is_srgb(resource->format)));
 
-   res->clean[0] = FALSE;
+   virgl_resource_dirty(res, 0);
    handle = virgl_object_assign_handle();
    pipe_reference_init(&surf->base.reference, 1);
    pipe_resource_reference(&surf->base.texture, resource);
@@ -521,7 +521,7 @@ void virgl_transfer_inline_write(struct pipe_context *ctx,
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_resource *grres = virgl_resource(res);
 
-   grres->clean[0] = FALSE;
+   virgl_resource_dirty(grres, 0);
 
    if (virgl_res_needs_flush_wait(vctx, grres, usage)) {
       ctx->flush(ctx, NULL, 0);
@@ -975,7 +975,7 @@ static void virgl_resource_copy_region(struct pipe_context *ctx,
    struct virgl_resource *dres = virgl_resource(dst);
    struct virgl_resource *sres = virgl_resource(src);
 
-   dres->clean[0] = FALSE;
+   virgl_resource_dirty(dres, 0);
    virgl_encode_resource_copy_region(vctx, dres,
                                     dst_level, dstx, dsty, dstz,
                                     sres, src_level,
@@ -1000,7 +1000,7 @@ static void virgl_blit(struct pipe_context *ctx,
           (util_format_is_srgb(blit->dst.resource->format) ==
             util_format_is_srgb(blit->dst.format)));
 
-   dres->clean[0] = FALSE;
+   virgl_resource_dirty(dres, 0);
    virgl_encode_blit(vctx, dres, sres,
                     blit);
 }

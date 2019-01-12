@@ -137,7 +137,7 @@ static boolean virgl_begin_query(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_query *query = virgl_query(q);
 
-   query->buf->clean[0] = FALSE;
+   virgl_resource_dirty(query->buf, 0);
    virgl_encoder_begin_query(vctx, query->handle);
    return true;
 }

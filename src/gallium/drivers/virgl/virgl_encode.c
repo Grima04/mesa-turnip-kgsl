@@ -61,12 +61,6 @@ static void virgl_encoder_write_res(struct virgl_context *ctx,
    }
 }
 
-static void virgl_dirty_res(struct virgl_resource *res)
-{
-   if (res)
-      res->clean[0] = FALSE;
-}
-
 int virgl_encode_bind_object(struct virgl_context *ctx,
                             uint32_t handle, uint32_t object)
 {
@@ -621,7 +615,7 @@ int virgl_encode_sampler_view(struct virgl_context *ctx,
    if (res->u.b.target == PIPE_BUFFER) {
       virgl_encoder_write_dword(ctx->cbuf, state->u.buf.offset / elem_size);
       virgl_encoder_write_dword(ctx->cbuf, (state->u.buf.offset + state->u.buf.size) / elem_size - 1);
-      virgl_dirty_res(res);
+      virgl_resource_dirty(res, 0);
    } else {
       virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_layer | state->u.tex.last_layer << 16);
       virgl_encoder_write_dword(ctx->cbuf, state->u.tex.first_level | state->u.tex.last_level << 8);
@@ -956,7 +950,7 @@ int virgl_encode_set_shader_buffers(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_offset);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
          virgl_encoder_write_res(ctx, res);
-         virgl_dirty_res(res);
+         virgl_resource_dirty(res, 0);
       } else {
          virgl_encoder_write_dword(ctx->cbuf, 0);
          virgl_encoder_write_dword(ctx->cbuf, 0);
@@ -980,7 +974,7 @@ int virgl_encode_set_hw_atomic_buffers(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_offset);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
          virgl_encoder_write_res(ctx, res);
-         virgl_dirty_res(res);
+         virgl_resource_dirty(res, 0);
       } else {
          virgl_encoder_write_dword(ctx->cbuf, 0);
          virgl_encoder_write_dword(ctx->cbuf, 0);
@@ -1008,7 +1002,7 @@ int virgl_encode_set_shader_images(struct virgl_context *ctx,
          virgl_encoder_write_dword(ctx->cbuf, images[i].u.buf.offset);
          virgl_encoder_write_dword(ctx->cbuf, images[i].u.buf.size);
          virgl_encoder_write_res(ctx, res);
-         virgl_dirty_res(res);
+         virgl_resource_dirty(res, 0);
       } else {
          virgl_encoder_write_dword(ctx->cbuf, 0);
          virgl_encoder_write_dword(ctx->cbuf, 0);
