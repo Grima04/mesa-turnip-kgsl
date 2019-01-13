@@ -3719,9 +3719,11 @@ iris_populate_binding_table(struct iris_context *ice,
       }
    }
 
-   bt_assert(texture_start, info->num_textures > 0);
+   unsigned num_textures = util_last_bit(info->textures_used);
 
-   for (int i = 0; i < info->num_textures; i++) {
+   bt_assert(texture_start, num_textures > 0);
+
+   for (int i = 0; i < num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
       uint32_t addr = view ? use_sampler_view(batch, view)
                            : use_null_surface(batch, ice);

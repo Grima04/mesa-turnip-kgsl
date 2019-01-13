@@ -543,10 +543,12 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
 {
    const struct shader_info *info = &nir->info;
 
-   if (info->num_textures) {
+   unsigned num_textures = util_last_bit(info->textures_used);
+
+   if (num_textures) {
       prog_data->binding_table.texture_start = next_binding_table_offset;
       prog_data->binding_table.gather_texture_start = next_binding_table_offset;
-      next_binding_table_offset += info->num_textures;
+      next_binding_table_offset += num_textures;
    } else {
       prog_data->binding_table.texture_start = 0xd0d0d0d0;
       prog_data->binding_table.gather_texture_start = 0xd0d0d0d0;
@@ -581,10 +583,10 @@ assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    prog_data->binding_table.plane_start[0] = prog_data->binding_table.texture_start;
 
    prog_data->binding_table.plane_start[1] = next_binding_table_offset;
-   next_binding_table_offset += info->num_textures;
+   next_binding_table_offset += num_textures;
 
    prog_data->binding_table.plane_start[2] = next_binding_table_offset;
-   next_binding_table_offset += info->num_textures;
+   next_binding_table_offset += num_textures;
 
    /* Set the binding table size */
    prog_data->binding_table.size_bytes = next_binding_table_offset * 4;
