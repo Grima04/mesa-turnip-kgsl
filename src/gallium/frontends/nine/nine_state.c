@@ -1352,6 +1352,8 @@ NineDevice9_ResolveZ( struct NineDevice9 *device )
 
 #define ALPHA_TO_COVERAGE_ENABLE   MAKEFOURCC('A', '2', 'M', '1')
 #define ALPHA_TO_COVERAGE_DISABLE  MAKEFOURCC('A', '2', 'M', '0')
+#define FETCH4_ENABLE              MAKEFOURCC('G', 'E', 'T', '4')
+#define FETCH4_DISABLE             MAKEFOURCC('G', 'E', 'T', '1')
 
 /* Nine_context functions.
  * Serialized through CSMT macros.
@@ -1498,6 +1500,18 @@ CSMT_ITEM_NO_WAIT(nine_context_set_sampler_state,
                   ARG_VAL(DWORD, Value))
 {
     struct nine_context *context = &device->context;
+
+    if (unlikely(Type == D3DSAMP_MIPMAPLODBIAS)) {
+        if (Value == FETCH4_ENABLE ||
+            Value == FETCH4_DISABLE) {
+            context->rs[NINED3DRS_FETCH4] &= ~(1 << Sampler);
+            context->rs[NINED3DRS_FETCH4] |= (Value == FETCH4_ENABLE) << Sampler;
+            context->changed.group |= NINE_STATE_PS_PARAMS_MISC;
+            if (Value == FETCH4_ENABLE)
+                WARN_ONCE("FETCH4 support is incomplete. Please report if buggy shadows.");
+            return;
+        }
+    }
 
     if (unlikely(!nine_check_sampler_state_value(Type, Value)))
         return;
@@ -2739,7 +2753,8 @@ static const DWORD nine_render_state_defaults[NINED3DRS_LAST + 1] =
     [NINED3DRS_VSPOINTSIZE] = FALSE,
     [NINED3DRS_RTMASK] = 0xf,
     [NINED3DRS_ALPHACOVERAGE] = FALSE,
-    [NINED3DRS_MULTISAMPLE] = FALSE
+    [NINED3DRS_MULTISAMPLE] = FALSE,
+    [NINED3DRS_FETCH4] = 0
 };
 static const DWORD nine_tex_stage_state_defaults[NINED3DTSS_LAST + 1] =
 {
