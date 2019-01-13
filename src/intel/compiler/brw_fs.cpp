@@ -855,6 +855,7 @@ fs_inst::components_read(unsigned i) const
       return i == 1 ? src[2].ud : 1;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
       assert(src[2].file == IMM);
       if (i == 1) {
          /* Data source */
@@ -5298,7 +5299,7 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    if (devinfo->gen >= 9) {
       /* On Skylake and above, we have SENDS */
       mlen = 2 * (inst->exec_size / 8);
-      ex_mlen = src_comps * (inst->exec_size / 8);
+      ex_mlen = src_comps * type_sz(src.type) * inst->exec_size / REG_SIZE;
       payload = retype(bld.move_to_vgrf(addr, 1), BRW_REGISTER_TYPE_UD);
       payload2 = retype(bld.move_to_vgrf(src, src_comps),
                         BRW_REGISTER_TYPE_UD);
@@ -5349,6 +5350,13 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                             arg,   /* atomic_op */
                                             !inst->dst.is_null());
       break;
+
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
+      desc = brw_dp_a64_untyped_atomic_desc(devinfo, inst->exec_size, 64,
+                                            arg,   /* atomic_op */
+                                            !inst->dst.is_null());
+      break;
+
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_float_desc(devinfo, inst->exec_size,
@@ -5558,6 +5566,7 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
       case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
+      case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
       case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT_LOGICAL:
          lower_a64_logical_send(ibld, inst);
          break;
@@ -6147,6 +6156,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       return devinfo->gen <= 8 ? 8 : MIN2(16, inst->exec_size);
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
+   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       return 8;
 

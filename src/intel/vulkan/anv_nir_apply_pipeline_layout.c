@@ -253,13 +253,19 @@ build_index_offset_for_deref(nir_deref_instr *deref,
 }
 
 static bool
-try_lower_direct_buffer_intrinsic(nir_intrinsic_instr *intrin,
+try_lower_direct_buffer_intrinsic(nir_intrinsic_instr *intrin, bool is_atomic,
                                   struct apply_pipeline_layout_state *state)
 {
    nir_builder *b = &state->builder;
 
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    if (deref->mode != nir_var_mem_ssbo)
+      return false;
+
+   /* 64-bit atomics only support A64 messages so we can't lower them to the
+    * index+offset model.
+    */
+   if (is_atomic && nir_dest_bit_size(intrin->dest) == 64)
       return false;
 
    if (!nir_deref_find_descriptor(deref, state))
@@ -286,6 +292,8 @@ lower_direct_buffer_access(nir_function_impl *impl,
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_deref:
          case nir_intrinsic_store_deref:
+            try_lower_direct_buffer_intrinsic(intrin, false, state);
+            break;
          case nir_intrinsic_deref_atomic_add:
          case nir_intrinsic_deref_atomic_imin:
          case nir_intrinsic_deref_atomic_umin:
@@ -299,7 +307,7 @@ lower_direct_buffer_access(nir_function_impl *impl,
          case nir_intrinsic_deref_atomic_fmin:
          case nir_intrinsic_deref_atomic_fmax:
          case nir_intrinsic_deref_atomic_fcomp_swap:
-            try_lower_direct_buffer_intrinsic(intrin, state);
+            try_lower_direct_buffer_intrinsic(intrin, true, state);
             break;
 
          case nir_intrinsic_get_buffer_size: {

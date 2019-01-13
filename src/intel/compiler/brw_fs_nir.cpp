@@ -4928,6 +4928,13 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
    if (stage == MESA_SHADER_FRAGMENT)
       brw_wm_prog_data(prog_data)->has_side_effects = true;
 
+   /* The BTI untyped atomic messages only support 32-bit atomics.  If you
+    * just look at the big table of messages in the Vol 7 of the SKL PRM, they
+    * appear to exist.  However, if you look at Vol 2a, there are no message
+    * descriptors provided for Qword atomic ops except for A64 messages.
+    */
+   assert(nir_dest_bit_size(instr->dest) == 32);
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -5092,8 +5099,14 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
       data = tmp;
    }
 
-   bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL,
-            dest, addr, data, brw_imm_ud(op));
+   if (nir_dest_bit_size(instr->dest) == 64) {
+      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL,
+               dest, addr, data, brw_imm_ud(op));
+   } else {
+      assert(nir_dest_bit_size(instr->dest) == 32);
+      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL,
+               dest, addr, data, brw_imm_ud(op));
+   }
 }
 
 void
