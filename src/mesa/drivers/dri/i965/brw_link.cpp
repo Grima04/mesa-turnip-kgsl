@@ -324,6 +324,8 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
       brw_shader_gather_info(prog->nir, prog);
 
       NIR_PASS_V(prog->nir, gl_nir_lower_samplers, shProg);
+      prog->info.textures_used = prog->nir->info.textures_used;
+      prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
       NIR_PASS_V(prog->nir, gl_nir_lower_atomics, shProg, false);
       NIR_PASS_V(prog->nir, nir_lower_atomics_to_ssbo,
                  prog->nir->info.num_abos);

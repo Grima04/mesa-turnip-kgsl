@@ -848,12 +848,18 @@ st_nir_assign_varying_locations(struct st_context *st, nir_shader *nir)
 
 void
 st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
-                      struct gl_shader_program *shader_program)
+                      struct gl_shader_program *shader_program,
+                      struct gl_program *prog)
 {
    if (screen->get_param(screen, PIPE_CAP_NIR_SAMPLERS_AS_DEREF))
       NIR_PASS_V(nir, gl_nir_lower_samplers_as_deref, shader_program);
    else
       NIR_PASS_V(nir, gl_nir_lower_samplers, shader_program);
+
+   if (prog) {
+      prog->info.textures_used = nir->info.textures_used;
+      prog->info.textures_used_by_txf = nir->info.textures_used_by_txf;
+   }
 }
 
 /* Last third of preparing nir from glsl, which happens after shader
@@ -891,7 +897,7 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
       NIR_PASS_V(nir, st_nir_lower_uniforms_to_ubo);
    }
 
-   st_nir_lower_samplers(screen, nir, shader_program);
+   st_nir_lower_samplers(screen, nir, shader_program, prog);
 }
 
 } /* extern "C" */
