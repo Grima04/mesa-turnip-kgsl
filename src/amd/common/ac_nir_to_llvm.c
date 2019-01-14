@@ -3913,8 +3913,13 @@ glsl_base_to_llvm_type(struct ac_llvm_context *ac,
 	case GLSL_TYPE_BOOL:
 	case GLSL_TYPE_SUBROUTINE:
 		return ac->i32;
-	case GLSL_TYPE_FLOAT: /* TODO handle mediump */
+	case GLSL_TYPE_INT16:
+	case GLSL_TYPE_UINT16:
+		return ac->i16;
+	case GLSL_TYPE_FLOAT:
 		return ac->f32;
+	case GLSL_TYPE_FLOAT16:
+		return ac->f16;
 	case GLSL_TYPE_INT64:
 	case GLSL_TYPE_UINT64:
 		return ac->i64;
