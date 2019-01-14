@@ -764,7 +764,7 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
          * the modifiers to see if we're allocating a scanout object.
          */
         if (screen->ro &&
-            ((tmpl->bind & PIPE_BIND_SCANOUT) ||
+            ((tmpl->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) ||
              (count == 1 && modifiers[0] == DRM_FORMAT_MOD_LINEAR))) {
                 struct winsys_handle handle;
                 rsc->scanout =
