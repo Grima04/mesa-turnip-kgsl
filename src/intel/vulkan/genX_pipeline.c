@@ -508,10 +508,10 @@ emit_rs_state(struct anv_pipeline *pipeline,
 
 #if GEN_GEN >= 9
    /* GEN9+ splits ViewportZClipTestEnable into near and far enable bits */
-   raster.ViewportZFarClipTestEnable = !pipeline->depth_clamp_enable;
-   raster.ViewportZNearClipTestEnable = !pipeline->depth_clamp_enable;
+   raster.ViewportZFarClipTestEnable = pipeline->depth_clip_enable;
+   raster.ViewportZNearClipTestEnable = pipeline->depth_clip_enable;
 #elif GEN_GEN >= 8
-   raster.ViewportZClipTestEnable = !pipeline->depth_clamp_enable;
+   raster.ViewportZClipTestEnable = pipeline->depth_clip_enable;
 #endif
 
    raster.GlobalDepthOffsetEnableSolid = rs_info->depthBiasEnable;
@@ -1113,7 +1113,7 @@ emit_3dstate_clip(struct anv_pipeline *pipeline,
 #if GEN_GEN == 7
       clip.FrontWinding            = vk_to_gen_front_face[rs_info->frontFace];
       clip.CullMode                = vk_to_gen_cullmode[rs_info->cullMode];
-      clip.ViewportZClipTestEnable = !pipeline->depth_clamp_enable;
+      clip.ViewportZClipTestEnable = pipeline->depth_clip_enable;
       clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
       clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
 #else

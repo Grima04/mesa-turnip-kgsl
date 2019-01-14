@@ -2624,6 +2624,7 @@ struct anv_pipeline {
    bool                                         writes_stencil;
    bool                                         stencil_test_enable;
    bool                                         depth_clamp_enable;
+   bool                                         depth_clip_enable;
    bool                                         sample_shading_enable;
    bool                                         kill_pixel;
 

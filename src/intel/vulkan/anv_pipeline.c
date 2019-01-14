@@ -1517,6 +1517,16 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
    pipeline->depth_clamp_enable = pCreateInfo->pRasterizationState &&
                                   pCreateInfo->pRasterizationState->depthClampEnable;
 
+   /* Previously we enabled depth clipping when !depthClampEnable.
+    * DepthClipStateCreateInfo now makes depth clipping explicit so if the
+    * clipping info is available, use its enable value to determine clipping,
+    * otherwise fallback to the previous !depthClampEnable logic.
+    */
+   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *clip_info =
+      vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+                           PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+   pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable : !pipeline->depth_clamp_enable;
+
    pipeline->sample_shading_enable = pCreateInfo->pMultisampleState &&
                                      pCreateInfo->pMultisampleState->sampleShadingEnable;
 
