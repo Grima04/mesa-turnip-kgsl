@@ -53,7 +53,7 @@ find_continue_block(nir_loop *loop)
  */
 static bool
 phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
-                                                       const nir_block *continue_block,
+                                                       const nir_block *entry_block,
                                                        uint32_t *entry_val,
                                                        uint32_t *continue_val)
 {
@@ -69,7 +69,7 @@ phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
        if (!const_src)
           return false;
 
-       if (src->pred == continue_block) {
+       if (src->pred != entry_block) {
           *continue_val = const_src->u32[0];
        } else {
           *entry_val = const_src->u32[0];
@@ -137,7 +137,7 @@ static bool
 opt_peel_loop_initial_if(nir_loop *loop)
 {
    nir_block *header_block = nir_loop_first_block(loop);
-   MAYBE_UNUSED nir_block *prev_block =
+   nir_block *const prev_block =
       nir_cf_node_as_block(nir_cf_node_prev(&loop->cf_node));
 
    /* It would be insane if this were not true */
@@ -149,8 +149,6 @@ opt_peel_loop_initial_if(nir_loop *loop)
     */
    if (header_block->predecessors->entries != 2)
       return false;
-
-   nir_block *continue_block = find_continue_block(loop);
 
    nir_cf_node *if_node = nir_cf_node_next(&header_block->cf_node);
    if (!if_node || if_node->type != nir_cf_node_if)
@@ -169,7 +167,7 @@ opt_peel_loop_initial_if(nir_loop *loop)
 
    uint32_t entry_val = 0, continue_val = 0;
    if (!phi_has_constant_from_outside_and_one_from_inside_loop(cond_phi,
-                                                               continue_block,
+                                                               prev_block,
                                                                &entry_val,
                                                                &continue_val))
       return false;
@@ -236,14 +234,15 @@ opt_peel_loop_initial_if(nir_loop *loop)
                         nir_after_cf_list(entry_list));
    nir_cf_reinsert(&tmp, nir_before_cf_node(&loop->cf_node));
 
-   nir_cf_reinsert(&header, nir_after_block_before_jump(continue_block));
-
-   /* Get continue block again as the previous reinsert might have removed the block. */
-   continue_block = find_continue_block(loop);
+   nir_cf_reinsert(&header,
+                   nir_after_block_before_jump(find_continue_block(loop)));
 
    nir_cf_extract(&tmp, nir_before_cf_list(continue_list),
                         nir_after_cf_list(continue_list));
-   nir_cf_reinsert(&tmp, nir_after_block_before_jump(continue_block));
+
+   /* Get continue block again as the previous reinsert might have removed the block. */
+   nir_cf_reinsert(&tmp,
+                   nir_after_block_before_jump(find_continue_block(loop)));
 
    nir_cf_node_remove(&nif->cf_node);
 
