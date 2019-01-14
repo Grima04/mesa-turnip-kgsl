@@ -555,6 +555,9 @@ iris_screen_create(int fd)
    if (!gen_get_device_info(screen->pci_id, &screen->devinfo))
       return NULL;
 
+   if (screen->devinfo.gen < 8 || screen->devinfo.is_cherryview)
+      return NULL;
+
    screen->devinfo.timestamp_frequency =
       iris_getparam_integer(screen, I915_PARAM_CS_TIMESTAMP_FREQUENCY);
 
