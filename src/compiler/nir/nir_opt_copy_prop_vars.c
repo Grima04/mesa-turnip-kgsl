@@ -63,10 +63,26 @@ struct vars_written {
 struct value {
    bool is_ssa;
    union {
-      nir_ssa_def *ssa[4];
+      struct {
+         nir_ssa_def *def[4];
+         uint8_t component[4];
+      } ssa;
       nir_deref_instr *deref;
    };
 };
+
+static void
+value_set_ssa_components(struct value *value, nir_ssa_def *def,
+                         unsigned num_components)
+{
+   if (!value->is_ssa)
+      memset(&value->ssa, 0, sizeof(value->ssa));
+   value->is_ssa = true;
+   for (unsigned i = 0; i < num_components; i++) {
+      value->ssa.def[i] = def;
+      value->ssa.component[i] = i;
+   }
+}
 
 struct copy_entry {
    struct value src;
@@ -96,7 +112,8 @@ value_equals_store_src(struct value *value, nir_intrinsic_instr *intrin)
 
    for (unsigned i = 0; i < intrin->num_components; i++) {
       if ((write_mask & (1 << i)) &&
-          value->ssa[i] != intrin->src[1].ssa)
+          (value->ssa.def[i] != intrin->src[1].ssa ||
+           value->ssa.component[i] != i))
          return false;
    }
 
@@ -374,12 +391,14 @@ store_to_entry(struct copy_prop_var_state *state, struct copy_entry *entry,
    if (value->is_ssa) {
       /* Clear src if it was being used as non-SSA. */
       if (!entry->src.is_ssa)
-         memset(entry->src.ssa, 0, sizeof(entry->src.ssa));
+         memset(&entry->src.ssa, 0, sizeof(entry->src.ssa));
       entry->src.is_ssa = true;
       /* Only overwrite the written components */
       for (unsigned i = 0; i < 4; i++) {
-         if (write_mask & (1 << i))
-            entry->src.ssa[i] = value->ssa[i];
+         if (write_mask & (1 << i)) {
+            entry->src.ssa.def[i] = value->ssa.def[i];
+            entry->src.ssa.component[i] = value->ssa.component[i];
+         }
       }
    } else {
       /* Non-ssa stores always write everything */
@@ -411,10 +430,13 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    nir_component_mask_t available = 0;
    bool all_same = true;
    for (unsigned i = 0; i < num_components; i++) {
-      if (value->ssa[i])
+      if (value->ssa.def[i])
          available |= (1 << i);
 
-      if (value->ssa[i] != value->ssa[0])
+      if (value->ssa.def[i] != value->ssa.def[0])
+         all_same = false;
+
+      if (value->ssa.component[i] != i)
          all_same = false;
    }
 
@@ -443,8 +465,8 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    bool keep_intrin = false;
    nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < num_components; i++) {
-      if (value->ssa[i]) {
-         comps[i] = nir_channel(b, value->ssa[i], i);
+      if (value->ssa.def[i]) {
+         comps[i] = nir_channel(b, value->ssa.def[i], value->ssa.component[i]);
       } else {
          /* We don't have anything for this component in our
           * list.  Just re-use a channel from the load.
@@ -460,8 +482,7 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    }
 
    nir_ssa_def *vec = nir_vec(b, comps, num_components);
-   for (unsigned i = 0; i < num_components; i++)
-      value->ssa[i] = vec;
+   value_set_ssa_components(value, vec, num_components);
 
    if (!keep_intrin) {
       /* Removing this instruction should not touch the cursor because we
@@ -638,17 +659,18 @@ print_value(struct value *value, unsigned num_components)
 
    bool same_ssa = true;
    for (unsigned i = 0; i < num_components; i++) {
-      if (i > 0 && value->ssa[i - 1] != value->ssa[i]) {
+      if (value->ssa.component[i] != i ||
+          (i > 0 && value->ssa.def[i - 1] != value->ssa.def[i])) {
          same_ssa = false;
          break;
       }
    }
    if (same_ssa) {
-      printf(" ssa_%d", value->ssa[0]->index);
+      printf(" ssa_%d", value->ssa.def[0]->index);
    } else {
       for (int i = 0; i < num_components; i++) {
-         if (value->ssa[i])
-            printf(" ssa_%d[%u]", value->ssa[i]->index, i);
+         if (value->ssa.def[i])
+            printf(" ssa_%d[%u]", value->ssa.def[i]->index, value->ssa.component[i]);
          else
             printf(" _");
       }
@@ -755,11 +777,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                    * rewrite the vecN itself.
                    */
                   nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                                 nir_src_for_ssa(value.ssa[0]),
-                                                 value.ssa[0]->parent_instr);
+                                                 nir_src_for_ssa(value.ssa.def[0]),
+                                                 value.ssa.def[0]->parent_instr);
                } else {
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                           nir_src_for_ssa(value.ssa[0]));
+                                           nir_src_for_ssa(value.ssa.def[0]));
                }
             } else {
                /* We're turning it into a load of a different variable */
@@ -767,16 +789,13 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
                /* Put it back in again. */
                nir_builder_instr_insert(b, instr);
-
-               value.is_ssa = true;
-               for (unsigned i = 0; i < intrin->num_components; i++)
-                  value.ssa[i] = &intrin->dest.ssa;
+               value_set_ssa_components(&value, &intrin->dest.ssa,
+                                        intrin->num_components);
             }
             state->progress = true;
          } else {
-            value.is_ssa = true;
-            for (unsigned i = 0; i < intrin->num_components; i++)
-               value.ssa[i] = &intrin->dest.ssa;
+            value_set_ssa_components(&value, &intrin->dest.ssa,
+                                     intrin->num_components);
          }
 
          /* Now that we have a value, we're going to store it back so that we
@@ -816,13 +835,9 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
              */
             kill_aliases(copies, nir_deref_instr_parent(dst), 0xf);
          } else {
-            struct value value = {
-               .is_ssa = true
-            };
-
-            for (unsigned i = 0; i < intrin->num_components; i++)
-               value.ssa[i] = intrin->src[1].ssa;
-
+            struct value value = {};
+            value_set_ssa_components(&value, intrin->src[1].ssa,
+                                     intrin->num_components);
             unsigned wrmask = nir_intrinsic_write_mask(intrin);
             struct copy_entry *entry =
                get_entry_and_kill_aliases(copies, dst, wrmask);
@@ -859,7 +874,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          if (try_load_from_entry(state, src_entry, b, intrin, src, &value)) {
             /* If load works, intrin (the copy_deref) is removed. */
             if (value.is_ssa) {
-               nir_store_deref(b, dst, value.ssa[0], 0xf);
+               nir_store_deref(b, dst, value.ssa.def[0], 0xf);
             } else {
                /* If this would be a no-op self-copy, don't bother. */
                if (nir_compare_derefs(value.deref, dst) & nir_derefs_equal_bit)
