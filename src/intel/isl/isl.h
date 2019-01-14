@@ -1636,6 +1636,13 @@ bool
 isl_has_matching_typed_storage_image_format(const struct gen_device_info *devinfo,
                                             enum isl_format fmt);
 
+static inline enum isl_tiling
+isl_tiling_flag_to_enum(isl_tiling_flags_t flag)
+{
+   assert(__builtin_popcount(flag) == 1);
+   return (enum isl_tiling) (__builtin_ffs(flag) - 1);
+}
+
 static inline bool
 isl_tiling_is_any_y(enum isl_tiling tiling)
 {

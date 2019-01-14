@@ -384,7 +384,7 @@ isl_surf_choose_tiling(const struct isl_device *dev,
    if (info->usage & ISL_SURF_USAGE_HIZ_BIT) {
       assert(info->format == ISL_FORMAT_HIZ);
       assert(tiling_flags == ISL_TILING_HIZ_BIT);
-      *tiling = ISL_TILING_HIZ;
+      *tiling = isl_tiling_flag_to_enum(tiling_flags);
       return true;
    }
 
@@ -392,7 +392,7 @@ isl_surf_choose_tiling(const struct isl_device *dev,
    if (info->usage & ISL_SURF_USAGE_CCS_BIT) {
       assert(isl_format_get_layout(info->format)->txc == ISL_TXC_CCS);
       assert(tiling_flags == ISL_TILING_CCS_BIT);
-      *tiling = ISL_TILING_CCS;
+      *tiling = isl_tiling_flag_to_enum(tiling_flags);
       return true;
    }
 
