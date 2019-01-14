@@ -49,6 +49,37 @@ find_continue_block(nir_loop *loop)
 }
 
 /**
+ * Does a phi have one constant value from outside a loop and one from inside?
+ */
+static bool
+phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
+                                                       const nir_block *continue_block,
+                                                       uint32_t *entry_val,
+                                                       uint32_t *continue_val)
+{
+   /* We already know we have exactly one continue */
+   assert(exec_list_length(&phi->srcs) == 2);
+
+   *entry_val = 0;
+   *continue_val = 0;
+
+    nir_foreach_phi_src(src, phi) {
+       assert(src->src.is_ssa);
+       nir_const_value *const_src = nir_src_as_const_value(src->src);
+       if (!const_src)
+          return false;
+
+       if (src->pred == continue_block) {
+          *continue_val = const_src->u32[0];
+       } else {
+          *entry_val = const_src->u32[0];
+       }
+    }
+
+    return true;
+}
+
+/**
  * This optimization detects if statements at the tops of loops where the
  * condition is a phi node of two constants and moves half of the if to above
  * the loop and the other half of the if to the end of the loop.  A simple for
@@ -136,23 +167,12 @@ opt_peel_loop_initial_if(nir_loop *loop)
    if (cond->parent_instr->block != header_block)
       return false;
 
-   /* We already know we have exactly one continue */
-   assert(exec_list_length(&cond_phi->srcs) == 2);
-
    uint32_t entry_val = 0, continue_val = 0;
-   nir_foreach_phi_src(src, cond_phi) {
-      assert(src->src.is_ssa);
-      nir_const_value *const_src = nir_src_as_const_value(src->src);
-      if (!const_src)
-         return false;
-
-      if (src->pred == continue_block) {
-         continue_val = const_src->u32[0];
-      } else {
-         assert(src->pred == prev_block);
-         entry_val = const_src->u32[0];
-      }
-   }
+   if (!phi_has_constant_from_outside_and_one_from_inside_loop(cond_phi,
+                                                               continue_block,
+                                                               &entry_val,
+                                                               &continue_val))
+      return false;
 
    /* If they both execute or both don't execute, this is a job for
     * nir_dead_cf, not this pass.
