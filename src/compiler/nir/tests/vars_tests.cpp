@@ -461,7 +461,7 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load_in_two_blocks)
    }
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuses_previous_load)
+TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previous_load)
 {
    nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
    nir_variable *in1 = create_ivec2(nir_var_mem_ssbo, "in1");
@@ -497,7 +497,7 @@ TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuse
    ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuses_previous_copy)
+TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previous_copy)
 {
    nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
    nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
@@ -521,7 +521,7 @@ TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuse
    ASSERT_EQ(nir_intrinsic_get_var(load, 0), in0);
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_gets_reused)
+TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_gets_reused)
 {
    nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
    nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
@@ -555,7 +555,7 @@ TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_gets_
    ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_direct_array_deref_on_vector)
+TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
 {
    nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
    nir_variable *out0 = create_int(nir_var_mem_ssbo, "out0");
