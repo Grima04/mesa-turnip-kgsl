@@ -264,7 +264,7 @@ if with_swr_arches.contains('knl')
     [files_swr_common, files_swr_arch],
     cpp_args : [
       swr_cpp_args, swr_knl_args, '-DKNOB_ARCH=KNOB_ARCH_AVX512',
-      '-DKNOB_ARCH_KNIGHTS',
+      '-DSIMD_ARCH_KNIGHTS',
     ],
     link_args : [ld_args_gc_sections],
     include_directories : [swr_incs],
