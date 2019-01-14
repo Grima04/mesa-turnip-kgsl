@@ -461,6 +461,145 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load_in_two_blocks)
    }
 }
 
+TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuses_previous_load)
+{
+   nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
+   nir_variable *in1 = create_ivec2(nir_var_mem_ssbo, "in1");
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+   nir_variable *out = create_int(nir_var_mem_ssbo, "out");
+
+   nir_store_var(b, vec, nir_load_var(b, in0), 1 << 0);
+   nir_store_var(b, vec, nir_load_var(b, in1), 1 << 1);
+
+   /* This load will be dropped, as vec.y (or vec[1]) is already known. */
+   nir_deref_instr *deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+   nir_ssa_def *loaded_from_deref = nir_load_deref(b, deref);
+
+   /* This store should use the value loaded from in1. */
+   nir_store_var(b, out, loaded_from_deref, 1 << 0);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   nir_intrinsic_instr *store = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(store->src[1].is_ssa);
+
+   /* NOTE: The ALU instruction is how we get the vec.y. */
+   ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
+}
+
+TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_reuses_previous_copy)
+{
+   nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+
+   nir_copy_var(b, vec, in0);
+
+   /* This load will be replaced with one from in0. */
+   nir_deref_instr *deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+   nir_load_deref(b, deref);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+
+   nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_deref, 0);
+   ASSERT_EQ(nir_intrinsic_get_var(load, 0), in0);
+}
+
+TEST_F(nir_copy_prop_vars_test, DISABLED_load_direct_array_deref_on_vector_gets_reused)
+{
+   nir_variable *in0 = create_ivec2(nir_var_mem_ssbo, "in0");
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+   nir_variable *out = create_ivec2(nir_var_mem_ssbo, "out");
+
+   /* Loading "vec[1]" deref will save the information about vec.y. */
+   nir_deref_instr *deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+   nir_load_deref(b, deref);
+
+   /* Store to vec.x. */
+   nir_store_var(b, vec, nir_load_var(b, in0), 1 << 0);
+
+   /* This load will be dropped, since both vec.x and vec.y are known. */
+   nir_ssa_def *loaded_from_vec = nir_load_var(b, vec);
+   nir_store_var(b, out, loaded_from_vec, 0x3);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   nir_intrinsic_instr *store = get_intrinsic(nir_intrinsic_store_deref, 1);
+   ASSERT_TRUE(store->src[1].is_ssa);
+   ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
+}
+
+TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_direct_array_deref_on_vector)
+{
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+   nir_variable *out0 = create_int(nir_var_mem_ssbo, "out0");
+   nir_variable *out1 = create_ivec2(nir_var_mem_ssbo, "out1");
+
+   /* Store to "vec[1]" and "vec[0]". */
+   nir_deref_instr *store_deref_y =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+   nir_store_deref(b, store_deref_y, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *store_deref_x =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 0));
+   nir_store_deref(b, store_deref_x, nir_imm_int(b, 10), 1);
+
+   /* Both loads below will be dropped, because the values are already known. */
+   nir_deref_instr *load_deref_y =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+   nir_store_var(b, out0, nir_load_deref(b, load_deref_y), 1);
+
+   nir_store_var(b, out1, nir_load_var(b, vec), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 4);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 0);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 4);
+
+   /* Third store will just use the value from first store. */
+   nir_intrinsic_instr *first_store = get_intrinsic(nir_intrinsic_store_deref, 0);
+   nir_intrinsic_instr *third_store = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(third_store->src[1].is_ssa);
+   EXPECT_EQ(third_store->src[1].ssa, first_store->src[1].ssa);
+
+   /* Fourth store will compose first and second store values. */
+   nir_intrinsic_instr *fourth_store = get_intrinsic(nir_intrinsic_store_deref, 3);
+   ASSERT_TRUE(fourth_store->src[1].is_ssa);
+   EXPECT_TRUE(nir_src_as_alu_instr(&fourth_store->src[1]));
+}
+
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_block)
 {
    nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 2);
