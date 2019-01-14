@@ -1243,7 +1243,7 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 			}
 			const char *intrname =
 				HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.s.buffer.load.f32"
-						    : "llvm.SI.load.const";
+						    : "llvm.SI.load.const.v4i32";
 			unsigned num_args = HAVE_LLVM >= 0x0800 ? 3 : 2;
 			LLVMValueRef args[3] = {
 				rsrc,
