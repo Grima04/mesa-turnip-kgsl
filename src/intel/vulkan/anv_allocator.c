@@ -546,19 +546,17 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
    cleanup->size = size;
    cleanup->gem_handle = gem_handle;
 
-#if 0
    /* Regular objects are created I915_CACHING_CACHED on LLC platforms and
     * I915_CACHING_NONE on non-LLC platforms. However, userptr objects are
     * always created as I915_CACHING_CACHED, which on non-LLC means
-    * snooped. That can be useful but comes with a bit of overheard.  Since
-    * we're eplicitly clflushing and don't want the overhead we need to turn
-    * it off. */
-   if (!pool->device->info.has_llc) {
-      anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_NONE);
-      anv_gem_set_domain(pool->device, gem_handle,
-                         I915_GEM_DOMAIN_GTT, I915_GEM_DOMAIN_GTT);
-   }
-#endif
+    * snooped.
+    *
+    * On platforms that support softpin, we are not going to use userptr
+    * anymore, but we still want to rely on the snooped states. So make sure
+    * everything is set to I915_CACHING_CACHED.
+    */
+   if (!pool->device->info.has_llc)
+      anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_CACHED);
 
    /* Now that we successfull allocated everything, we can write the new
     * center_bo_offset back into pool. */
@@ -1403,6 +1401,14 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, struct anv_bo *bo, uint32_t size)
       anv_gem_close(pool->device, new_bo.gem_handle);
       anv_vma_free(pool->device, &new_bo);
       return vk_error(VK_ERROR_MEMORY_MAP_FAILED);
+   }
+
+   /* We are removing the state flushes, so lets make sure that these buffers
+    * are cached/snooped.
+    */
+   if (!pool->device->info.has_llc) {
+      anv_gem_set_caching(pool->device, new_bo.gem_handle,
+                          I915_CACHING_CACHED);
    }
 
    *bo = new_bo;
