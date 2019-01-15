@@ -1358,6 +1358,9 @@ void pipe_swizzle_4f(float *dst, const float *src,
 void util_format_unswizzle_4f(float *dst, const float *src,
                               const unsigned char swz[4]);
 
+enum pipe_format
+util_format_snorm8_to_sint8(enum pipe_format format);
+
 #ifdef __cplusplus
 } // extern "C" {
 #endif

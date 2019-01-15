@@ -1012,36 +1012,8 @@ void si_resource_copy_region(struct pipe_context *ctx,
 	 * Note that some chips avoid this issue by using SDMA.
 	 */
 	if (util_format_is_snorm8(dst_templ.format)) {
-		switch (dst_templ.format) {
-		case PIPE_FORMAT_R8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_R8_SINT;
-			break;
-		case PIPE_FORMAT_R8G8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_R8G8_SINT;
-			break;
-		case PIPE_FORMAT_R8G8B8X8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_R8G8B8X8_SINT;
-			break;
-		case PIPE_FORMAT_R8G8B8A8_SNORM:
-		/* There are no SINT variants for ABGR and XBGR, so we have to use RGBA. */
-		case PIPE_FORMAT_A8B8G8R8_SNORM:
-		case PIPE_FORMAT_X8B8G8R8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_R8G8B8A8_SINT;
-			break;
-		case PIPE_FORMAT_A8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_A8_SINT;
-			break;
-		case PIPE_FORMAT_L8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_L8_SINT;
-			break;
-		case PIPE_FORMAT_L8A8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_L8A8_SINT;
-			break;
-		case PIPE_FORMAT_I8_SNORM:
-			dst_templ.format = src_templ.format = PIPE_FORMAT_I8_SINT;
-			break;
-		default:; /* fall through */
-		}
+		dst_templ.format = src_templ.format =
+			util_format_snorm8_to_sint8(dst_templ.format);
 	}
 
 	vi_disable_dcc_if_incompatible_format(sctx, dst, dst_level,
