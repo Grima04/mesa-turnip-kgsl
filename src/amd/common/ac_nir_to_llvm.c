@@ -1465,7 +1465,8 @@ static LLVMValueRef extract_vector_range(struct ac_llvm_context *ctx, LLVMValueR
 
 static unsigned get_cache_policy(struct ac_nir_context *ctx,
 				 enum gl_access_qualifier access,
-				 bool may_store_unaligned)
+				 bool may_store_unaligned,
+				 bool writeonly_memory)
 {
 	unsigned cache_policy = 0;
 
@@ -1474,6 +1475,11 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 	 * get unaligned stores is through shader images.
 	 */
 	if (((may_store_unaligned && ctx->ac.chip_class == SI) ||
+	     /* If this is write-only, don't keep data in L1 to prevent
+	      * evicting L1 cache lines that may be needed by other
+	      * instructions.
+	      */
+	     writeonly_memory ||
 	     access & (ACCESS_COHERENT | ACCESS_VOLATILE))) {
 		cache_policy |= ac_glc;
 	}
@@ -1489,7 +1495,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 	int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
 	unsigned writemask = nir_intrinsic_write_mask(instr);
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
-	unsigned cache_policy = get_cache_policy(ctx, access, false);
+	bool writeonly_memory = access & ACCESS_NON_READABLE;
+	unsigned cache_policy = get_cache_policy(ctx, access, false, writeonly_memory);
 	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
@@ -1646,7 +1653,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 	int elem_size_bytes = instr->dest.ssa.bit_size / 8;
 	int num_components = instr->num_components;
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
-	unsigned cache_policy = get_cache_policy(ctx, access, false);
+	unsigned cache_policy = get_cache_policy(ctx, access, false, false);
 	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef offset = get_src(ctx, instr->src[1]);
@@ -2359,7 +2366,8 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 
 	type = glsl_without_array(type);
 
-	args.cache_policy = get_cache_policy(ctx, var->data.image.access, false);
+	args.cache_policy =
+		get_cache_policy(ctx, var->data.image.access, false, false);
 
 	const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -2401,9 +2409,11 @@ static void visit_image_store(struct ac_nir_context *ctx,
 	const nir_variable *var = get_image_variable(instr);
 	const struct glsl_type *type = glsl_without_array(var->type);
 	const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
+	bool writeonly_memory = var->data.image.access & ACCESS_NON_READABLE;
 	struct ac_image_args args = {};
 
-	args.cache_policy = get_cache_policy(ctx, var->data.image.access, true);
+	args.cache_policy = get_cache_policy(ctx, var->data.image.access, true,
+					     writeonly_memory);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
 		char name[48];
