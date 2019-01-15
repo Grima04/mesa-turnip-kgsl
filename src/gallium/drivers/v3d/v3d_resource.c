@@ -814,8 +814,10 @@ v3d_resource_from_handle(struct pipe_screen *pscreen,
                 rsc->tiled = false;
                 break;
         case DRM_FORMAT_MOD_BROADCOM_UIF:
-        case DRM_FORMAT_MOD_INVALID:
                 rsc->tiled = true;
+                break;
+        case DRM_FORMAT_MOD_INVALID:
+                rsc->tiled = screen->ro == NULL;
                 break;
         default:
                 fprintf(stderr,
