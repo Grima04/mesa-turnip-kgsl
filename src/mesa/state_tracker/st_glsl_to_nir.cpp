@@ -616,7 +616,7 @@ st_nir_link_shaders(nir_shader **producer, nir_shader **consumer, bool scalar)
        * See the following thread for more details of the problem:
        * https://lists.freedesktop.org/archives/mesa-dev/2017-July/162106.html
        */
-      nir_variable_mode indirect_mask = nir_var_function;
+      nir_variable_mode indirect_mask = nir_var_function_temp;
 
       NIR_PASS_V(*producer, nir_lower_indirect_derefs, indirect_mask);
       NIR_PASS_V(*consumer, nir_lower_indirect_derefs, indirect_mask);

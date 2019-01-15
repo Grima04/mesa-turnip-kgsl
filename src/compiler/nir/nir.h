@@ -98,7 +98,7 @@ typedef enum {
    nir_var_shader_in       = (1 << 0),
    nir_var_shader_out      = (1 << 1),
    nir_var_shader_temp     = (1 << 2),
-   nir_var_function        = (1 << 3),
+   nir_var_function_temp   = (1 << 3),
    nir_var_uniform         = (1 << 4),
    nir_var_ubo             = (1 << 5),
    nir_var_system_value    = (1 << 6),
@@ -441,7 +441,7 @@ typedef struct nir_variable {
 static inline bool
 nir_variable_is_global(const nir_variable *var)
 {
-   return var->data.mode != nir_var_function;
+   return var->data.mode != nir_var_function_temp;
 }
 
 typedef struct nir_register {
@@ -2324,7 +2324,7 @@ void nir_shader_add_variable(nir_shader *shader, nir_variable *var);
 static inline void
 nir_function_impl_add_variable(nir_function_impl *impl, nir_variable *var)
 {
-   assert(var->data.mode == nir_var_function);
+   assert(var->data.mode == nir_var_function_temp);
    exec_list_push_tail(&impl->locals, &var->node);
 }
 

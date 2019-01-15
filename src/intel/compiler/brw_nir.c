@@ -527,7 +527,7 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
    if (compiler->glsl_compiler_options[stage].EmitNoIndirectOutput)
       indirect_mask |= nir_var_shader_out;
    if (compiler->glsl_compiler_options[stage].EmitNoIndirectTemp)
-      indirect_mask |= nir_var_function;
+      indirect_mask |= nir_var_function_temp;
 
    return indirect_mask;
 }
@@ -542,8 +542,8 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
    bool progress;
    do {
       progress = false;
-      OPT(nir_split_array_vars, nir_var_function);
-      OPT(nir_shrink_vec_array_vars, nir_var_function);
+      OPT(nir_split_array_vars, nir_var_function_temp);
+      OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
       OPT(nir_opt_deref);
       OPT(nir_lower_vars_to_ssa);
       if (allow_copies) {
@@ -619,7 +619,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
    /* Workaround Gfxbench unused local sampler variable which will trigger an
     * assert in the opt_large_constants pass.
     */
-   OPT(nir_remove_dead_variables, nir_var_function);
+   OPT(nir_remove_dead_variables, nir_var_function_temp);
 
    return nir;
 }
@@ -714,7 +714,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    } while (progress);
 
    if (lowered_64bit_ops) {
-      OPT(nir_lower_constant_initializers, nir_var_function);
+      OPT(nir_lower_constant_initializers, nir_var_function_temp);
       OPT(nir_lower_returns);
       OPT(nir_inline_functions);
       OPT(nir_opt_deref);
@@ -728,7 +728,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    }
    assert(exec_list_length(&nir->functions) == 1);
 
-   OPT(nir_lower_constant_initializers, ~nir_var_function);
+   OPT(nir_lower_constant_initializers, ~nir_var_function_temp);
 
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       OPT(nir_lower_gs_intrinsics);
@@ -754,7 +754,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    OPT(nir_lower_global_vars_to_local);
 
    OPT(nir_split_var_copies);
-   OPT(nir_split_struct_vars, nir_var_function);
+   OPT(nir_split_struct_vars, nir_var_function_temp);
 
    nir = brw_nir_optimize(nir, compiler, is_scalar, true);
 

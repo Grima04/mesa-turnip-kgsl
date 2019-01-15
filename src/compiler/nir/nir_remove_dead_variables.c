@@ -71,7 +71,7 @@ add_var_use_deref(nir_deref_instr *deref, struct set *live)
     * all means we need to keep it alive.
     */
    assert(deref->mode == deref->var->data.mode);
-   if (!(deref->mode & (nir_var_function | nir_var_shader_temp | nir_var_shared)) ||
+   if (!(deref->mode & (nir_var_function_temp | nir_var_shader_temp | nir_var_shared)) ||
        deref_used_for_not_store(deref))
       _mesa_set_add(live, deref->var);
 }
@@ -186,7 +186,7 @@ nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes)
    if (modes & nir_var_shared)
       progress = remove_dead_vars(&shader->shared, live) || progress;
 
-   if (modes & nir_var_function) {
+   if (modes & nir_var_function_temp) {
       nir_foreach_function(function, shader) {
          if (function->impl) {
             if (remove_dead_vars(&function->impl->locals, live))

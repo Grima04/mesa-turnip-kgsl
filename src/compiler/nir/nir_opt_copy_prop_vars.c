@@ -134,7 +134,7 @@ gather_vars_written(struct copy_prop_var_state *state,
          if (instr->type == nir_instr_type_call) {
             written->modes |= nir_var_shader_out |
                               nir_var_shader_temp |
-                              nir_var_function |
+                              nir_var_function_temp |
                               nir_var_ssbo |
                               nir_var_shared;
             continue;
@@ -625,7 +625,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       if (instr->type == nir_instr_type_call) {
          apply_barrier_for_modes(copies, nir_var_shader_out |
                                          nir_var_shader_temp |
-                                         nir_var_function |
+                                         nir_var_function_temp |
                                          nir_var_ssbo |
                                          nir_var_shared);
          continue;

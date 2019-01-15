@@ -115,7 +115,7 @@ init_field_for_type(struct field *field, struct field *parent,
          var_type = wrap_type_in_array(var_type, f->type);
 
       nir_variable_mode mode = state->base_var->data.mode;
-      if (mode == nir_var_function) {
+      if (mode == nir_var_function_temp) {
          field->var = nir_local_variable_create(state->impl, var_type, name);
       } else {
          field->var = nir_variable_create(state->shader, mode, var_type, name);
@@ -259,7 +259,7 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
    struct hash_table *var_field_map =
       _mesa_pointer_hash_table_create(mem_ctx);
 
-   assert((modes & (nir_var_shader_temp | nir_var_function)) == modes);
+   assert((modes & (nir_var_shader_temp | nir_var_function_temp)) == modes);
 
    bool has_global_splits = false;
    if (modes & nir_var_shader_temp) {
@@ -274,7 +274,7 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
          continue;
 
       bool has_local_splits = false;
-      if (modes & nir_var_function) {
+      if (modes & nir_var_function_temp) {
          has_local_splits = split_var_list_structs(shader, function->impl,
                                                    &function->impl->locals,
                                                    var_field_map, mem_ctx);
@@ -454,7 +454,7 @@ create_split_array_vars(struct array_var_info *var_info,
       name = ralloc_asprintf(mem_ctx, "(%s)", name);
 
       nir_variable_mode mode = var_info->base_var->data.mode;
-      if (mode == nir_var_function) {
+      if (mode == nir_var_function_temp) {
          split->var = nir_local_variable_create(impl,
                                                 var_info->split_var_type, name);
       } else {
@@ -794,7 +794,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
    void *mem_ctx = ralloc_context(NULL);
    struct hash_table *var_info_map = _mesa_pointer_hash_table_create(mem_ctx);
 
-   assert((modes & (nir_var_shader_temp | nir_var_function)) == modes);
+   assert((modes & (nir_var_shader_temp | nir_var_function_temp)) == modes);
 
    bool has_global_array = false;
    if (modes & nir_var_shader_temp) {
@@ -808,7 +808,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
          continue;
 
       bool has_local_array = false;
-      if (modes & nir_var_function) {
+      if (modes & nir_var_function_temp) {
          has_local_array = init_var_list_array_infos(&function->impl->locals,
                                                      var_info_map, mem_ctx);
       }
@@ -838,7 +838,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
          continue;
 
       bool has_local_splits = false;
-      if (modes & nir_var_function) {
+      if (modes & nir_var_function_temp) {
          has_local_splits = split_var_list_arrays(shader, function->impl,
                                                   &function->impl->locals,
                                                   var_info_map, mem_ctx);
@@ -1494,7 +1494,7 @@ function_impl_has_vars_with_modes(nir_function_impl *impl,
    if ((modes & nir_var_shader_temp) && !exec_list_is_empty(&shader->globals))
       return true;
 
-   if ((modes & nir_var_function) && !exec_list_is_empty(&impl->locals))
+   if ((modes & nir_var_function_temp) && !exec_list_is_empty(&impl->locals))
       return true;
 
    return false;
@@ -1512,7 +1512,7 @@ function_impl_has_vars_with_modes(nir_function_impl *impl,
 bool
 nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
 {
-   assert((modes & (nir_var_shader_temp | nir_var_function)) == modes);
+   assert((modes & (nir_var_shader_temp | nir_var_function_temp)) == modes);
 
    void *mem_ctx = ralloc_context(NULL);
 
@@ -1549,7 +1549,7 @@ nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
          continue;
 
       bool locals_shrunk = false;
-      if (modes & nir_var_function) {
+      if (modes & nir_var_function_temp) {
          locals_shrunk = shrink_vec_var_list(&function->impl->locals,
                                              var_usage_map);
       }

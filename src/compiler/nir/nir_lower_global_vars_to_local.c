@@ -91,7 +91,7 @@ nir_lower_global_vars_to_local(nir_shader *shader)
 
       if (impl != NULL) {
          exec_node_remove(&var->node);
-         var->data.mode = nir_var_function;
+         var->data.mode = nir_var_function_temp;
          exec_list_push_tail(&impl->locals, &var->node);
          nir_metadata_preserve(impl, nir_metadata_block_index |
                                      nir_metadata_dominance |

@@ -120,7 +120,7 @@ remove_dead_write_vars_local(void *mem_ctx, nir_block *block)
       if (instr->type == nir_instr_type_call) {
          clear_unused_for_modes(&unused_writes, nir_var_shader_out |
                                                 nir_var_shader_temp |
-                                                nir_var_function |
+                                                nir_var_function_temp |
                                                 nir_var_ssbo |
                                                 nir_var_shared);
          continue;

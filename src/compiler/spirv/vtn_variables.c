@@ -1698,7 +1698,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassFunction:
       mode = vtn_variable_mode_function;
-      nir_mode = nir_var_function;
+      nir_mode = nir_var_function_temp;
       break;
    case SpvStorageClassWorkgroup:
       mode = vtn_variable_mode_workgroup;
