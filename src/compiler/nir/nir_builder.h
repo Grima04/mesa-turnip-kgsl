@@ -928,7 +928,9 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
    case nir_deref_type_array:
    case nir_deref_type_array_wildcard:
       assert(glsl_type_is_matrix(parent->type) ||
-             glsl_type_is_array(parent->type));
+             glsl_type_is_array(parent->type) ||
+             (leader->deref_type == nir_deref_type_array &&
+              glsl_type_is_vector(parent->type)));
       assert(glsl_get_length(parent->type) ==
              glsl_get_length(leader_parent->type));
 
