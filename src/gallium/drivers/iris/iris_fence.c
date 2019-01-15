@@ -138,9 +138,9 @@ iris_fence_reference(struct pipe_screen *p_screen,
    *dst = src;
 }
 
-static bool
-check_syncpt(struct pipe_screen *p_screen,
-             struct iris_syncpt *syncpt)
+bool
+iris_check_syncpt(struct pipe_screen *p_screen,
+                  struct iris_syncpt *syncpt)
 {
    if (!syncpt)
       return false;
@@ -175,7 +175,7 @@ iris_fence_flush(struct pipe_context *ctx,
    pipe_reference_init(&fence->ref, 1);
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
-      if (!check_syncpt(ctx->screen, ice->batches[b].last_syncpt))
+      if (!iris_check_syncpt(ctx->screen, ice->batches[b].last_syncpt))
          continue;
 
       iris_syncpt_reference(screen, &fence->syncpt[fence->count++],

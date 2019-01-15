@@ -35,8 +35,10 @@
 #include "pipe/p_screen.h"
 #include "util/fast_idiv_by_const.h"
 #include "util/u_inlines.h"
+#include "util/u_upload_mgr.h"
 #include "iris_context.h"
 #include "iris_defines.h"
+#include "iris_fence.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "vulkan/util/vk_util.h"
@@ -107,8 +109,9 @@ struct iris_query {
 
    uint64_t result;
 
-   struct iris_bo *bo;
+   struct iris_state_ref query_state_ref;
    struct iris_query_snapshots *map;
+   struct iris_syncpt *syncpt;
 
    int batch_idx;
 };
@@ -161,13 +164,15 @@ mark_available(struct iris_context *ice, struct iris_query *q)
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    unsigned flags = PIPE_CONTROL_WRITE_IMMEDIATE;
    unsigned offset = offsetof(struct iris_query_snapshots, snapshots_landed);
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+   offset += q->query_state_ref.offset;
 
    if (!iris_is_query_pipelined(q)) {
-      ice->vtbl.store_data_imm64(batch, q->bo, offset, true);
+      ice->vtbl.store_data_imm64(batch, bo, offset, true);
    } else {
       /* Order available *after* the query results. */
       flags |= PIPE_CONTROL_FLUSH_ENABLE;
-      iris_emit_pipe_control_write(batch, flags, q->bo, offset, true);
+      iris_emit_pipe_control_write(batch, flags, bo, offset, true);
    }
 }
 
@@ -183,9 +188,10 @@ iris_pipelined_write(struct iris_batch *batch,
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    const unsigned optional_cs_stall =
       devinfo->gen == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    iris_emit_pipe_control_write(batch, flags | optional_cs_stall,
-                                q->bo, offset, 0ull);
+                                bo, offset, 0ull);
 }
 
 static void
@@ -193,6 +199,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 {
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    if (!iris_is_query_pipelined(q)) {
       iris_emit_pipe_control_flush(batch,
@@ -228,12 +235,12 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       ice->vtbl.store_register_mem64(batch,
                                      q->index == 0 ? CL_INVOCATION_COUNT :
                                      SO_PRIM_STORAGE_NEEDED(q->index),
-                                     q->bo, offset, false);
+                                     bo, offset, false);
       break;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
       ice->vtbl.store_register_mem64(batch,
                                      SO_NUM_PRIMS_WRITTEN(q->index),
-                                     q->bo, offset, false);
+                                     bo, offset, false);
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE: {
       static const uint32_t index_to_reg[] = {
@@ -251,7 +258,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       };
       const uint32_t reg = index_to_reg[q->index];
 
-      ice->vtbl.store_register_mem64(batch, reg, q->bo, offset, false);
+      ice->vtbl.store_register_mem64(batch, reg, bo, offset, false);
       break;
    }
    default:
@@ -264,20 +271,22 @@ write_overflow_values(struct iris_context *ice, struct iris_query *q, bool end)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    uint32_t count = q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ? 1 : 4;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+   uint32_t offset = q->query_state_ref.offset;
 
    iris_emit_pipe_control_flush(batch,
                                 PIPE_CONTROL_CS_STALL |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
    for (uint32_t i = 0; i < count; i++) {
       int s = q->index + i;
-      int g_idx = offsetof(struct iris_query_so_overflow,
+      int g_idx = offset + offsetof(struct iris_query_so_overflow,
                            stream[s].num_prims[end]);
-      int w_idx = offsetof(struct iris_query_so_overflow,
+      int w_idx = offset + offsetof(struct iris_query_so_overflow,
                            stream[s].prim_storage_needed[end]);
       ice->vtbl.store_register_mem64(batch, SO_NUM_PRIMS_WRITTEN(s),
-                                     q->bo, g_idx, false);
+                                     bo, g_idx, false);
       ice->vtbl.store_register_mem64(batch, SO_PRIM_STORAGE_NEEDED(s),
-                                     q->bo, w_idx, false);
+                                     bo, w_idx, false);
    }
 }
 
@@ -524,18 +533,20 @@ load_overflow_data_to_cs_gprs(struct iris_context *ice,
                               int idx)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+   uint32_t offset = q->query_state_ref.offset;
 
-   ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(1), bo, offset +
                                  offsetof(struct iris_query_so_overflow,
                                           stream[idx].prim_storage_needed[0]));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(2), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(2), bo, offset +
                                  offsetof(struct iris_query_so_overflow,
                                           stream[idx].prim_storage_needed[1]));
 
-   ice->vtbl.load_register_mem64(batch, CS_GPR(3), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(3), bo, offset +
                                  offsetof(struct iris_query_so_overflow,
                                           stream[idx].num_prims[0]));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(4), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(4), bo, offset +
                                  offsetof(struct iris_query_so_overflow,
                                           stream[idx].num_prims[1]));
 }
@@ -667,6 +678,8 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+   uint32_t offset = q->query_state_ref.offset;
 
    if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
@@ -675,7 +688,8 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    }
 
    if (q->type == PIPE_QUERY_TIMESTAMP) {
-      ice->vtbl.load_register_mem64(batch, CS_GPR(0), q->bo,
+      ice->vtbl.load_register_mem64(batch, CS_GPR(0), bo,
+                                    offset +
                                     offsetof(struct iris_query_snapshots, start));
       /* TODO: This discards any fractional bits of the timebase scale.
        * We would need to do a bit of fixed point math on the CS ALU, or
@@ -686,9 +700,11 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
       return;
    }
 
-   ice->vtbl.load_register_mem64(batch, CS_GPR(1), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(1), bo,
+                                 offset +
                                  offsetof(struct iris_query_snapshots, start));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(2), q->bo,
+   ice->vtbl.load_register_mem64(batch, CS_GPR(2), bo,
+                                 offset +
                                  offsetof(struct iris_query_snapshots, end));
 
    static const uint32_t math[] = {
@@ -738,7 +754,8 @@ static void
 iris_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
 {
    struct iris_query *query = (void *) p_query;
-   iris_bo_unreference(query->bo);
+   struct iris_screen *screen = (void *) ctx->screen;
+   iris_syncpt_reference(screen, &query->syncpt, NULL);
    free(query);
 }
 
@@ -746,17 +763,25 @@ iris_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
 static boolean
 iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
 {
-   struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
+   void *ptr = NULL;
+   uint32_t size;
 
-   iris_bo_unreference(q->bo);
-   q->bo = iris_bo_alloc(screen->bufmgr, "query object", 4096,
-                         IRIS_MEMZONE_OTHER);
-   if (!q->bo)
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+       q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      size = sizeof(struct iris_query_so_overflow);
+   else
+      size = sizeof(struct iris_query_snapshots);
+
+   u_upload_alloc(ice->query_buffer_uploader, 0,
+                  size, size, &q->query_state_ref.offset,
+                  &q->query_state_ref.res, &ptr);
+
+   if (!iris_resource_bo(q->query_state_ref.res))
       return false;
 
-   q->map = iris_bo_map(&ice->dbg, q->bo, MAP_READ | MAP_WRITE | MAP_ASYNC);
+   q->map = ptr;
    if (!q->map)
       return false;
 
@@ -773,7 +798,9 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
       write_overflow_values(ice, q, false);
    else
-      write_value(ice, q, offsetof(struct iris_query_snapshots, start));
+      write_value(ice, q,
+                  q->query_state_ref.offset +
+                  offsetof(struct iris_query_snapshots, start));
 
    return true;
 }
@@ -783,9 +810,14 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
+   struct iris_batch *batch = &ice->batches[q->batch_idx];
+   struct iris_screen *screen = (void *) ctx->screen;
 
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       iris_begin_query(ctx, query);
+      struct iris_syncpt *syncpt =
+         ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
+      iris_syncpt_reference(screen, &q->syncpt, syncpt);
       mark_available(ice, q);
       return true;
    }
@@ -799,7 +831,13 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
        q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
       write_overflow_values(ice, q, true);
    else
-      write_value(ice, q, offsetof(struct iris_query_snapshots, end));
+      write_value(ice, q,
+                  q->query_state_ref.offset +
+                  offsetof(struct iris_query_snapshots, end));
+
+   struct iris_syncpt *syncpt =
+      ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
+   iris_syncpt_reference(screen, &q->syncpt, syncpt);
    mark_available(ice, q);
 
    return true;
@@ -830,14 +868,15 @@ iris_get_query_result(struct pipe_context *ctx,
    struct iris_query *q = (void *) query;
    struct iris_screen *screen = (void *) ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    if (!q->ready) {
-      if (iris_batch_references(&ice->batches[q->batch_idx], q->bo))
+      if (iris_batch_references(&ice->batches[q->batch_idx], bo))
          iris_batch_flush(&ice->batches[q->batch_idx]);
 
-      if (!q->map->snapshots_landed) {
+      while (!q->map->snapshots_landed) {
          if (wait)
-            iris_bo_wait_rendering(q->bo);
+            iris_check_syncpt(ctx->screen, q->syncpt);
          else
             return false;
       }
@@ -867,6 +906,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    struct iris_resource *res = (void *) p_res;
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
    unsigned snapshots_landed_offset =
       offsetof(struct iris_query_snapshots, snapshots_landed);
 
@@ -878,11 +918,11 @@ iris_get_query_result_resource(struct pipe_context *ctx,
        * now so that progress happens.  Either way, copy the snapshots
        * landed field to the destination resource.
        */
-      if (iris_batch_references(batch, q->bo))
+      if (iris_batch_references(batch, bo))
          iris_batch_flush(batch);
 
       ice->vtbl.copy_mem_mem(batch, iris_resource_bo(p_res), offset,
-                             q->bo, snapshots_landed_offset,
+                             bo, snapshots_landed_offset,
                              result_type <= PIPE_QUERY_TYPE_U32 ? 4 : 8);
       return;
    }
@@ -919,7 +959,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 
    if (predicated) {
       ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, q->bo,
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, bo,
                                     snapshots_landed_offset);
       uint32_t predicate = MI_PREDICATE |
                            MI_PREDICATE_LOADOP_LOADINV |
@@ -975,6 +1015,7 @@ set_predicate_for_result(struct iris_context *ice,
                          bool inverted)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    /* The CPU doesn't have the query result yet; use hardware predication */
    ice->state.predicate = IRIS_PREDICATE_STATE_USE_BIT;
@@ -993,10 +1034,12 @@ set_predicate_for_result(struct iris_context *ice,
       break;
    default:
       /* PIPE_QUERY_OCCLUSION_* */
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, q->bo,
-         offsetof(struct iris_query_snapshots, start));
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC1, q->bo,
-         offsetof(struct iris_query_snapshots, end));
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, bo,
+         offsetof(struct iris_query_snapshots, start) +
+         q->query_state_ref.offset);
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC1, bo,
+         offsetof(struct iris_query_snapshots, end) +
+         q->query_state_ref.offset);
       break;
    }
 
@@ -1013,10 +1056,11 @@ set_predicate_for_result(struct iris_context *ice,
     * a different MI_PREDICATE_DATA register.  So, we save the result to
     * memory and reload it in iris_launch_grid.
     */
-   unsigned offset = offsetof(struct iris_query_snapshots, predicate_data);
+   unsigned offset = q->query_state_ref.offset +
+                     offsetof(struct iris_query_snapshots, predicate_data);
    ice->vtbl.store_register_mem64(batch, MI_PREDICATE_DATA,
-                                  q->bo, offset, false);
-   ice->state.compute_predicate = q->bo;
+                                  bo, offset, false);
+   ice->state.compute_predicate = bo;
 }
 
 static void

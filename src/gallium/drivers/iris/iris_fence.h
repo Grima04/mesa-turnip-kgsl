@@ -41,7 +41,8 @@ void iris_syncpt_destroy(struct iris_screen *, struct iris_syncpt *);
 void iris_batch_add_syncpt(struct iris_batch *batch,
                            struct iris_syncpt *syncpt,
                            unsigned flags);
-
+bool iris_check_syncpt(struct pipe_screen *screen,
+                       struct iris_syncpt *syncpt);
 static inline void
 iris_syncpt_reference(struct iris_screen *screen,
                       struct iris_syncpt **dst,

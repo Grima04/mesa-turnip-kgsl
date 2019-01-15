@@ -446,6 +446,8 @@ struct iris_context {
 
    struct iris_batch batches[IRIS_BATCH_COUNT];
 
+   struct u_upload_mgr *query_buffer_uploader;
+
    struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
