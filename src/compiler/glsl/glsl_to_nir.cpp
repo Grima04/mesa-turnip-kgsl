@@ -367,7 +367,7 @@ nir_visitor::visit(ir_variable *ir)
 
    case ir_var_uniform:
       if (ir->get_interface_type())
-         var->data.mode = nir_var_ubo;
+         var->data.mode = nir_var_mem_ubo;
       else
          var->data.mode = nir_var_uniform;
       break;

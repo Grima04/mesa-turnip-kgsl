@@ -259,7 +259,7 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
       assert(base->mode == vtn_variable_mode_ssbo ||
              base->mode == vtn_variable_mode_ubo);
       nir_variable_mode nir_mode =
-         base->mode == vtn_variable_mode_ssbo ? nir_var_ssbo : nir_var_ubo;
+         base->mode == vtn_variable_mode_ssbo ? nir_var_ssbo : nir_var_mem_ubo;
 
       tail = nir_build_deref_cast(&b->nb, desc, nir_mode, type->type,
                                   base->ptr_type->stride);
@@ -1662,7 +1662,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
    case SpvStorageClassUniform:
       if (interface_type->block) {
          mode = vtn_variable_mode_ubo;
-         nir_mode = nir_var_ubo;
+         nir_mode = nir_var_mem_ubo;
       } else if (interface_type->buffer_block) {
          mode = vtn_variable_mode_ssbo;
          nir_mode = nir_var_ssbo;

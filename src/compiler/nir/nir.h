@@ -100,7 +100,7 @@ typedef enum {
    nir_var_shader_temp     = (1 << 2),
    nir_var_function_temp   = (1 << 3),
    nir_var_uniform         = (1 << 4),
-   nir_var_ubo             = (1 << 5),
+   nir_var_mem_ubo         = (1 << 5),
    nir_var_system_value    = (1 << 6),
    nir_var_ssbo            = (1 << 7),
    nir_var_shared          = (1 << 8),

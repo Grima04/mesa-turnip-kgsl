@@ -413,7 +413,7 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "shader_out";
    case nir_var_uniform:
       return "uniform";
-   case nir_var_ubo:
+   case nir_var_mem_ubo:
       return "ubo";
    case nir_var_system_value:
       return "system";
@@ -506,7 +506,7 @@ print_var_decl(nir_variable *var, print_state *state)
    if (var->data.mode == nir_var_shader_in ||
        var->data.mode == nir_var_shader_out ||
        var->data.mode == nir_var_uniform ||
-       var->data.mode == nir_var_ubo ||
+       var->data.mode == nir_var_mem_ubo ||
        var->data.mode == nir_var_ssbo) {
       const char *loc = NULL;
       char buf[4];

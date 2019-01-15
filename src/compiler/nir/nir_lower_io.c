@@ -54,7 +54,7 @@ nir_assign_var_locations(struct exec_list *var_list, unsigned *size,
        * UBOs have their own address spaces, so don't count them towards the
        * number of global uniforms
        */
-      if (var->data.mode == nir_var_ubo || var->data.mode == nir_var_ssbo)
+      if (var->data.mode == nir_var_mem_ubo || var->data.mode == nir_var_ssbo)
          continue;
 
       var->data.driver_location = location;
@@ -587,7 +587,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_op op;
    switch (mode) {
-   case nir_var_ubo:
+   case nir_var_mem_ubo:
       op = nir_intrinsic_load_ubo;
       break;
    case nir_var_ssbo:
@@ -602,7 +602,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    load->src[0] = nir_src_for_ssa(addr_to_index(b, addr, addr_format));
    load->src[1] = nir_src_for_ssa(addr_to_offset(b, addr, addr_format));
 
-   if (mode != nir_var_ubo)
+   if (mode != nir_var_mem_ubo)
       nir_intrinsic_set_access(load, nir_intrinsic_access(intrin));
 
    /* TODO: We should try and provide a better alignment.  For OpenCL, we need

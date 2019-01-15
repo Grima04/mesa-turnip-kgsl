@@ -677,7 +677,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 */
 		if (variable->interface_type != NULL) {
 			if (variable->data.mode == nir_var_uniform ||
-			    variable->data.mode == nir_var_ubo) {
+			    variable->data.mode == nir_var_mem_ubo) {
 
 				unsigned block_count;
 				if (base_type != GLSL_TYPE_INTERFACE) {

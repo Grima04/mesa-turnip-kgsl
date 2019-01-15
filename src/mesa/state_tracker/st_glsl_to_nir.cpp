@@ -253,7 +253,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
        * UBO's have their own address spaces, so don't count them towards the
        * number of global uniforms
        */
-      if (uniform->data.mode == nir_var_ubo || uniform->data.mode == nir_var_ssbo)
+      if (uniform->data.mode == nir_var_mem_ubo || uniform->data.mode == nir_var_ssbo)
          continue;
 
       const struct glsl_type *type = glsl_without_array(uniform->type);

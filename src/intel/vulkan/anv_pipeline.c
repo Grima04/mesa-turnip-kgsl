@@ -211,7 +211,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_ubo | nir_var_ssbo,
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_ssbo,
               nir_address_format_vk_index_offset);
 
    NIR_PASS_V(nir, nir_propagate_invariant);
