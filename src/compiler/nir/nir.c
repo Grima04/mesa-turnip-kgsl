@@ -129,7 +129,7 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
       assert(!"nir_shader_add_variable cannot be used for local variables");
       break;
 
-   case nir_var_private:
+   case nir_var_shader_temp:
       exec_list_push_tail(&shader->globals, &var->node);
       break;
 

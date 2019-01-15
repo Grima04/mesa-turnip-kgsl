@@ -97,7 +97,7 @@ typedef struct {
 typedef enum {
    nir_var_shader_in       = (1 << 0),
    nir_var_shader_out      = (1 << 1),
-   nir_var_private         = (1 << 2),
+   nir_var_shader_temp     = (1 << 2),
    nir_var_function        = (1 << 3),
    nir_var_uniform         = (1 << 4),
    nir_var_ubo             = (1 << 5),

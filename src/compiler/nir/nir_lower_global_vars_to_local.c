@@ -36,7 +36,7 @@ static void
 register_var_use(nir_variable *var, nir_function_impl *impl,
                  struct hash_table *var_func_table)
 {
-   if (var->data.mode != nir_var_private)
+   if (var->data.mode != nir_var_shader_temp)
       return;
 
    struct hash_entry *entry =
@@ -87,7 +87,7 @@ nir_lower_global_vars_to_local(nir_shader *shader)
       nir_variable *var = (void *)entry->key;
       nir_function_impl *impl = entry->data;
 
-      assert(var->data.mode == nir_var_private);
+      assert(var->data.mode == nir_var_shader_temp);
 
       if (impl != NULL) {
          exec_node_remove(&var->node);

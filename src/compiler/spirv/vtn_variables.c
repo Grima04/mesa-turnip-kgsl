@@ -1694,7 +1694,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassPrivate:
       mode = vtn_variable_mode_private;
-      nir_mode = nir_var_private;
+      nir_mode = nir_var_shader_temp;
       break;
    case SpvStorageClassFunction:
       mode = vtn_variable_mode_function;

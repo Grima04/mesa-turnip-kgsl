@@ -191,7 +191,7 @@ TEST_F(nir_redundant_load_vars_test, invalidate_inside_if_block)
     * if statement.  They should be invalidated accordingly.
     */
 
-   nir_variable **g = create_many_int(nir_var_private, "g", 3);
+   nir_variable **g = create_many_int(nir_var_shader_temp, "g", 3);
    nir_variable **out = create_many_int(nir_var_shader_out, "out", 3);
 
    nir_load_var(b, g[0]);

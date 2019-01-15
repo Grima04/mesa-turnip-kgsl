@@ -103,7 +103,7 @@ st_nir_assign_vs_in_locations(nir_shader *nir)
           * set.
           */
          exec_node_remove(&var->node);
-         var->data.mode = nir_var_private;
+         var->data.mode = nir_var_shader_temp;
          exec_list_push_tail(&nir->globals, &var->node);
       }
    }

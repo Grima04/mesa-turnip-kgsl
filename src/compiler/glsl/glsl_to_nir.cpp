@@ -324,7 +324,7 @@ nir_visitor::visit(ir_variable *ir)
    case ir_var_auto:
    case ir_var_temporary:
       if (is_global)
-         var->data.mode = nir_var_private;
+         var->data.mode = nir_var_shader_temp;
       else
          var->data.mode = nir_var_function;
       break;
@@ -1564,7 +1564,7 @@ nir_visitor::visit(ir_expression *ir)
           * sense, we'll just turn it into a load which will probably
           * eventually end up as an SSA definition.
           */
-         assert(this->deref->mode == nir_var_private);
+         assert(this->deref->mode == nir_var_shader_temp);
          op = nir_intrinsic_load_deref;
       }
 
