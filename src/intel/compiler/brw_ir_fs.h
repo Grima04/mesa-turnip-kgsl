@@ -477,6 +477,27 @@ get_exec_type(const fs_inst *inst)
 
    assert(exec_type != BRW_REGISTER_TYPE_B);
 
+   /* Promotion of the execution type to 32-bit for conversions from or to
+    * half-float seems to be consistent with the following text from the
+    * Cherryview PRM Vol. 7, "Execution Data Type":
+    *
+    * "When single precision and half precision floats are mixed between
+    *  source operands or between source and destination operand [..] single
+    *  precision float is the execution datatype."
+    *
+    * and from "Register Region Restrictions":
+    *
+    * "Conversion between Integer and HF (Half Float) must be DWord aligned
+    *  and strided by a DWord on the destination."
+    */
+   if (type_sz(exec_type) == 2 &&
+       inst->dst.type != exec_type) {
+      if (exec_type == BRW_REGISTER_TYPE_HF)
+         exec_type = BRW_REGISTER_TYPE_F;
+      else if (inst->dst.type == BRW_REGISTER_TYPE_HF)
+         exec_type = BRW_REGISTER_TYPE_D;
+   }
+
    return exec_type;
 }
 
