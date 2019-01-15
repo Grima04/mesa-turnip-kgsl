@@ -504,6 +504,10 @@ The integer capabilities:
 * ``PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK``: Whether pipe_grid_info::last_block
   is implemented by the driver. See struct pipe_grid_info for more details.
 * ``PIPE_CAP_COMPUTE_SHADER_DERIVATIVE``: True if the driver supports derivatives (and texture lookups with implicit derivatives) in compute shaders.
+* ``PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS``:  Whether the TGSI pass to shrink IO
+  arrays should be skipped and enforce keeping the declared array sizes instead.
+  A driver might rely on the input mapping that was defined with the original
+  GLSL code.
 
 .. _pipe_capf:
 
