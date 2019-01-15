@@ -132,8 +132,6 @@ blorp_alloc_binding_table(struct blorp_batch *batch, unsigned num_entries,
       surface_offsets[i] = surface_state.offset;
       surface_maps[i] = surface_state.map;
    }
-
-   anv_state_flush(cmd_buffer->device, bt_state);
 }
 
 static void *
@@ -191,9 +189,8 @@ blorp_get_workaround_page(struct blorp_batch *batch)
 static void
 blorp_flush_range(struct blorp_batch *batch, void *start, size_t size)
 {
-   struct anv_device *device = batch->blorp->driver_ctx;
-   if (!device->info.has_llc)
-      gen_flush_range(start, size);
+   /* We don't need to flush states anymore, since everything will be snooped.
+    */
 }
 
 static void

@@ -68,8 +68,6 @@ gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
                                  &sf_clip_viewport);
    }
 
-   anv_state_flush(cmd_buffer->device, sf_clip_state);
-
    anv_batch_emit(&cmd_buffer->batch,
                   GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), clip) {
       clip.SFClipViewportPointer = sf_clip_state.offset;
@@ -96,8 +94,6 @@ gen8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
 
       GENX(CC_VIEWPORT_pack)(NULL, cc_state.map + i * 8, &cc_viewport);
    }
-
-   anv_state_flush(cmd_buffer->device, cc_state);
 
    anv_batch_emit(&cmd_buffer->batch,
                   GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), cc) {
@@ -441,8 +437,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       };
       GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
 
-      anv_state_flush(cmd_buffer->device, cc_state);
-
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), ccp) {
          ccp.ColorCalcStatePointer        = cc_state.offset;
          ccp.ColorCalcStatePointerValid   = true;
@@ -490,8 +484,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .BlendConstantColorAlpha = d->blend_constants[3],
       };
       GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
-
-      anv_state_flush(cmd_buffer->device, cc_state);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), ccp) {
          ccp.ColorCalcStatePointer = cc_state.offset;

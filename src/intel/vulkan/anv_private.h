@@ -1125,15 +1125,6 @@ anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
       return device->default_mocs;
 }
 
-static void inline
-anv_state_flush(struct anv_device *device, struct anv_state state)
-{
-   if (device->info.has_llc)
-      return;
-
-   gen_flush_range(state.map, state.alloc_size);
-}
-
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 

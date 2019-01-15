@@ -1327,8 +1327,6 @@ anv_image_fill_surface_state(struct anv_device *device,
       }
    }
 
-   anv_state_flush(device, state_inout->state);
-
    if (image_param_out) {
       assert(view_usage == ISL_SURF_USAGE_STORAGE_BIT);
       isl_surf_fill_image_param(&device->isl_dev, image_param_out,

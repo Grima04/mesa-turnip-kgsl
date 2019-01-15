@@ -2251,8 +2251,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    assert(image == map->image_count);
 
  out:
-   anv_state_flush(cmd_buffer->device, *bt_state);
-
 #if GEN_GEN >= 11
    /* The PIPE_CONTROL command description says:
     *
@@ -2323,8 +2321,6 @@ emit_samplers(struct anv_cmd_buffer *cmd_buffer,
       memcpy(state->map + (s * 16),
              sampler->state[binding->plane], sizeof(sampler->state[0]));
    }
-
-   anv_state_flush(cmd_buffer->device, *state);
 
    return VK_SUCCESS;
 }
@@ -2741,8 +2737,6 @@ emit_base_vertex_instance(struct anv_cmd_buffer *cmd_buffer,
    ((uint32_t *)id_state.map)[0] = base_vertex;
    ((uint32_t *)id_state.map)[1] = base_instance;
 
-   anv_state_flush(cmd_buffer->device, id_state);
-
    struct anv_address addr = {
       .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
       .offset = id_state.offset,
@@ -2758,8 +2752,6 @@ emit_draw_index(struct anv_cmd_buffer *cmd_buffer, uint32_t draw_index)
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 4, 4);
 
    ((uint32_t *)state.map)[0] = draw_index;
-
-   anv_state_flush(cmd_buffer->device, state);
 
    struct anv_address addr = {
       .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
@@ -3222,7 +3214,6 @@ void genX(CmdDispatchBase)(
       sizes[0] = groupCountX;
       sizes[1] = groupCountY;
       sizes[2] = groupCountZ;
-      anv_state_flush(cmd_buffer->device, state);
       cmd_buffer->state.compute.num_workgroups = (struct anv_address) {
          .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = state.offset,
