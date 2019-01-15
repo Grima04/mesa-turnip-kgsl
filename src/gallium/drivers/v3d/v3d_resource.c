@@ -705,6 +705,42 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                    int count)
 {
         struct v3d_screen *screen = v3d_screen(pscreen);
+
+        /* If we're in a renderonly setup, use the other device to perform our
+         * (linear) allocation and just import it to v3d.  The other device
+         * may be using CMA, and V3D can import from CMA but doesn't do CMA
+         * allocations on its own.
+         *
+         * We always allocate this way for SHARED, because get_handle will
+         * need a resource on the display fd.
+         */
+        if (screen->ro && (tmpl->bind & (PIPE_BIND_SCANOUT |
+                                         PIPE_BIND_SHARED))) {
+                struct winsys_handle handle;
+                struct pipe_resource scanout_tmpl = *tmpl;
+                struct renderonly_scanout *scanout =
+                        renderonly_scanout_for_resource(&scanout_tmpl,
+                                                        screen->ro,
+                                                        &handle);
+                if (!scanout) {
+                        fprintf(stderr, "Failed to create scanout resource\n");
+                        return NULL;
+                }
+                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+                /* The fd is all we need.  Destroy the old scanout (and its
+                 * GEM handle on kms_fd) before resource_from_handle()'s
+                 * renderonly_create_gpu_import_for_resource() call which will
+                 * also get a kms_fd GEM handle for the fd.
+                 */
+                renderonly_scanout_destroy(scanout, screen->ro);
+                struct pipe_resource *prsc =
+                        pscreen->resource_from_handle(pscreen, tmpl,
+                                                      &handle,
+                                                      PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
+                close(handle.handle);
+                return prsc;
+        }
+
         bool linear_ok = find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
         struct v3d_resource *rsc = v3d_resource_setup(pscreen, tmpl);
         struct pipe_resource *prsc = &rsc->base;
@@ -718,10 +754,6 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
         /* Cursors are always linear, and the user can request linear as well.
          */
         if (tmpl->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR))
-                should_tile = false;
-
-        /* No tiling when we're sharing with another device (pl111). */
-        if (screen->ro && (tmpl->bind & PIPE_BIND_SCANOUT))
                 should_tile = false;
 
         /* 1D and 1D_ARRAY textures are always raster-order. */
@@ -755,31 +787,8 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
         v3d_setup_slices(rsc, 0);
 
-        /* If we're in a renderonly setup, use the other device to perform our
-         * (linear) allocaton and just import it to v3d.  The other device may
-         * be using CMA, and V3D can import from CMA but doesn't do CMA
-         * allocations on its own.
-         *
-         * Note that DRI3 doesn't give us tmpl->bind flags, so we have to use
-         * the modifiers to see if we're allocating a scanout object.
-         */
-        if (screen->ro &&
-            ((tmpl->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) ||
-             (count == 1 && modifiers[0] == DRM_FORMAT_MOD_LINEAR))) {
-                struct winsys_handle handle;
-                rsc->scanout =
-                   renderonly_scanout_for_resource(prsc, screen->ro, &handle);
-                if (!rsc->scanout) {
-                        fprintf(stderr, "Failed to create scanout resource\n");
-                        goto fail;
-                }
-                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-                rsc->bo = v3d_bo_open_dmabuf(screen, handle.handle);
-                v3d_debug_resource_layout(rsc, "scanout");
-        } else {
-                if (!v3d_resource_bo_alloc(rsc))
-                        goto fail;
-        }
+        if (!v3d_resource_bo_alloc(rsc))
+           goto fail;
 
         return prsc;
 fail:
