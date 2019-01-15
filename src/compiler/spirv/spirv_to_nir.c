@@ -1044,14 +1044,16 @@ vtn_type_layout_std430(struct vtn_builder *b, struct vtn_type *type,
 {
    switch (type->base_type) {
    case vtn_base_type_scalar: {
-      uint32_t comp_size = glsl_get_bit_size(type->type) / 8;
+      uint32_t comp_size = glsl_type_is_boolean(type->type)
+         ? 4 : glsl_get_bit_size(type->type) / 8;
       *size_out = comp_size;
       *align_out = comp_size;
       return type;
    }
 
    case vtn_base_type_vector: {
-      uint32_t comp_size = glsl_get_bit_size(type->type) / 8;
+      uint32_t comp_size = glsl_type_is_boolean(type->type)
+         ? 4 : glsl_get_bit_size(type->type) / 8;
       unsigned align_comps = type->length == 3 ? 4 : type->length;
       *size_out = comp_size * type->length,
       *align_out = comp_size * align_comps;
@@ -1170,7 +1172,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       val->type->base_type = vtn_base_type_vector;
       val->type->type = glsl_vector_type(glsl_get_base_type(base->type), elems);
       val->type->length = elems;
-      val->type->stride = glsl_get_bit_size(base->type) / 8;
+      val->type->stride = glsl_type_is_boolean(val->type->type)
+         ? 4 : glsl_get_bit_size(base->type) / 8;
       val->type->array_element = base;
       break;
    }
