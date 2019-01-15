@@ -632,6 +632,9 @@ struct tu_buffer
 
    VkBufferUsageFlags usage;
    VkBufferCreateFlags flags;
+
+   struct tu_bo *bo;
+   VkDeviceSize bo_offset;
 };
 
 enum tu_dynamic_state_bits

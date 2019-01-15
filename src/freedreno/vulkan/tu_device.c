@@ -1586,6 +1586,17 @@ tu_BindBufferMemory2(VkDevice device,
                      uint32_t bindInfoCount,
                      const VkBindBufferMemoryInfoKHR *pBindInfos)
 {
+   for (uint32_t i = 0; i < bindInfoCount; ++i) {
+      TU_FROM_HANDLE(tu_device_memory, mem, pBindInfos[i].memory);
+      TU_FROM_HANDLE(tu_buffer, buffer, pBindInfos[i].buffer);
+
+      if (mem) {
+         buffer->bo = &mem->bo;
+         buffer->bo_offset = pBindInfos[i].memoryOffset;
+      } else {
+         buffer->bo = NULL;
+      }
+   }
    return VK_SUCCESS;
 }
 
