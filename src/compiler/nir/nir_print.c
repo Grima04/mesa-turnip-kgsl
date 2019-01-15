@@ -417,7 +417,7 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "ubo";
    case nir_var_system_value:
       return "system";
-   case nir_var_ssbo:
+   case nir_var_mem_ssbo:
       return "ssbo";
    case nir_var_shared:
       return "shared";
@@ -507,7 +507,7 @@ print_var_decl(nir_variable *var, print_state *state)
        var->data.mode == nir_var_shader_out ||
        var->data.mode == nir_var_uniform ||
        var->data.mode == nir_var_mem_ubo ||
-       var->data.mode == nir_var_ssbo) {
+       var->data.mode == nir_var_mem_ssbo) {
       const char *loc = NULL;
       char buf[4];
 

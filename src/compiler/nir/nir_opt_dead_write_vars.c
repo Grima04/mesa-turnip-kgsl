@@ -121,7 +121,7 @@ remove_dead_write_vars_local(void *mem_ctx, nir_block *block)
          clear_unused_for_modes(&unused_writes, nir_var_shader_out |
                                                 nir_var_shader_temp |
                                                 nir_var_function_temp |
-                                                nir_var_ssbo |
+                                                nir_var_mem_ssbo |
                                                 nir_var_shared);
          continue;
       }
@@ -134,7 +134,7 @@ remove_dead_write_vars_local(void *mem_ctx, nir_block *block)
       case nir_intrinsic_barrier:
       case nir_intrinsic_memory_barrier: {
          clear_unused_for_modes(&unused_writes, nir_var_shader_out |
-                                                nir_var_ssbo |
+                                                nir_var_mem_ssbo |
                                                 nir_var_shared);
          break;
       }

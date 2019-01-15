@@ -54,7 +54,7 @@ nir_assign_var_locations(struct exec_list *var_list, unsigned *size,
        * UBOs have their own address spaces, so don't count them towards the
        * number of global uniforms
        */
-      if (var->data.mode == nir_var_mem_ubo || var->data.mode == nir_var_ssbo)
+      if (var->data.mode == nir_var_mem_ubo || var->data.mode == nir_var_mem_ssbo)
          continue;
 
       var->data.driver_location = location;
@@ -590,7 +590,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_var_mem_ubo:
       op = nir_intrinsic_load_ubo;
       break;
-   case nir_var_ssbo:
+   case nir_var_mem_ssbo:
       op = nir_intrinsic_load_ssbo;
       break;
    default:
@@ -628,7 +628,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_op op;
    switch (mode) {
-   case nir_var_ssbo:
+   case nir_var_mem_ssbo:
       op = nir_intrinsic_store_ssbo;
       break;
    default:
@@ -666,7 +666,7 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_op op;
    switch (mode) {
-   case nir_var_ssbo:
+   case nir_var_mem_ssbo:
       switch (intrin->intrinsic) {
 #define OP(O) case nir_intrinsic_deref_##O: op = nir_intrinsic_ssbo_##O; break;
       OP(atomic_exchange)

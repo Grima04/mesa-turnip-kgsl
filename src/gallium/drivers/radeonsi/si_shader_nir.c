@@ -701,7 +701,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				_mesa_set_add(ubo_set, variable->interface_type);
 			}
 
-			if (variable->data.mode == nir_var_ssbo) {
+			if (variable->data.mode == nir_var_mem_ssbo) {
 				/* TODO: make this more accurate */
 				info->shader_buffers_declared =
 					u_bit_consecutive(0, SI_NUM_SHADER_BUFFERS);

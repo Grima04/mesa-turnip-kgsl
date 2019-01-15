@@ -373,7 +373,7 @@ nir_visitor::visit(ir_variable *ir)
       break;
 
    case ir_var_shader_storage:
-      var->data.mode = nir_var_ssbo;
+      var->data.mode = nir_var_mem_ssbo;
       break;
 
    case ir_var_system_value:

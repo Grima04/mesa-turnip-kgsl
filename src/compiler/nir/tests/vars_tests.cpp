@@ -237,7 +237,7 @@ TEST_F(nir_redundant_load_vars_test, invalidate_live_load_in_the_end_of_loop)
     * body.
     */
 
-   nir_variable *v = create_int(nir_var_ssbo, "v");
+   nir_variable *v = create_int(nir_var_mem_ssbo, "v");
 
    nir_load_var(b, v);
 
@@ -433,7 +433,7 @@ TEST_F(nir_copy_prop_vars_test, store_store_load_different_components_in_many_bl
 
 TEST_F(nir_copy_prop_vars_test, memory_barrier_in_two_blocks)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 4);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 4);
 
    nir_store_var(b, v[0], nir_imm_int(b, 1), 1);
    nir_store_var(b, v[1], nir_imm_int(b, 2), 1);
@@ -490,7 +490,7 @@ TEST_F(nir_copy_prop_vars_test, simple_store_load_in_two_blocks)
 
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_block)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 2);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 2);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
 
@@ -500,7 +500,7 @@ TEST_F(nir_dead_write_vars_test, no_dead_writes_in_block)
 
 TEST_F(nir_dead_write_vars_test, no_dead_writes_different_components_in_block)
 {
-   nir_variable **v = create_many_ivec2(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_ivec2(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1 << 0);
    nir_store_var(b, v[0], nir_load_var(b, v[2]), 1 << 1);
@@ -511,7 +511,7 @@ TEST_F(nir_dead_write_vars_test, no_dead_writes_different_components_in_block)
 
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_if_statement)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 6);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 6);
 
    nir_store_var(b, v[2], nir_load_var(b, v[0]), 1);
    nir_store_var(b, v[3], nir_load_var(b, v[1]), 1);
@@ -531,7 +531,7 @@ TEST_F(nir_dead_write_vars_test, no_dead_writes_in_if_statement)
 
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_loop_statement)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
 
@@ -553,7 +553,7 @@ TEST_F(nir_dead_write_vars_test, no_dead_writes_in_loop_statement)
 
 TEST_F(nir_dead_write_vars_test, dead_write_in_block)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
    nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
@@ -571,7 +571,7 @@ TEST_F(nir_dead_write_vars_test, dead_write_in_block)
 
 TEST_F(nir_dead_write_vars_test, dead_write_components_in_block)
 {
-   nir_variable **v = create_many_ivec2(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_ivec2(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1 << 0);
    nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
@@ -595,7 +595,7 @@ TEST_F(nir_dead_write_vars_test, dead_write_components_in_block)
 
 TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_in_two_blocks)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
    nir_ssa_def *load_v2 = nir_load_var(b, v[2]);
@@ -617,7 +617,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_in_two_blocks)
 
 TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_components_in_two_blocks)
 {
-   nir_variable **v = create_many_ivec2(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_ivec2(nir_var_mem_ssbo, "v", 3);
 
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1 << 0);
 
@@ -639,7 +639,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_write_components_in_two_blocks)
 
 TEST_F(nir_dead_write_vars_test, DISABLED_dead_writes_in_if_statement)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 4);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 4);
 
    /* Both branches will overwrite, making the previous store dead. */
    nir_store_var(b, v[0], nir_load_var(b, v[1]), 1);
@@ -670,7 +670,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_dead_writes_in_if_statement)
 
 TEST_F(nir_dead_write_vars_test, DISABLED_memory_barrier_in_two_blocks)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 2);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 2);
 
    nir_store_var(b, v[0], nir_imm_int(b, 1), 1);
    nir_store_var(b, v[1], nir_imm_int(b, 2), 1);
@@ -693,7 +693,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_memory_barrier_in_two_blocks)
 
 TEST_F(nir_dead_write_vars_test, DISABLED_unrelated_barrier_in_two_blocks)
 {
-   nir_variable **v = create_many_int(nir_var_ssbo, "v", 3);
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 3);
    nir_variable *out = create_int(nir_var_shader_out, "out");
 
    nir_store_var(b, out, nir_load_var(b, v[1]), 1);
