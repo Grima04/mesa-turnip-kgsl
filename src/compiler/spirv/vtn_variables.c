@@ -1702,7 +1702,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassWorkgroup:
       mode = vtn_variable_mode_workgroup;
-      nir_mode = nir_var_shared;
+      nir_mode = nir_var_mem_shared;
       break;
    case SpvStorageClassAtomicCounter:
       mode = vtn_variable_mode_uniform;
@@ -1974,7 +1974,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
           * SPIR-V.
           */
          var->var->type = glsl_get_bare_type(var->type->type);
-         var->var->data.mode = nir_var_shared;
+         var->var->data.mode = nir_var_mem_shared;
       }
       break;
 

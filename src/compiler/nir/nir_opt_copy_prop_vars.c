@@ -136,7 +136,7 @@ gather_vars_written(struct copy_prop_var_state *state,
                               nir_var_shader_temp |
                               nir_var_function_temp |
                               nir_var_mem_ssbo |
-                              nir_var_shared;
+                              nir_var_mem_shared;
             continue;
          }
 
@@ -149,7 +149,7 @@ gather_vars_written(struct copy_prop_var_state *state,
          case nir_intrinsic_memory_barrier:
             written->modes |= nir_var_shader_out |
                               nir_var_mem_ssbo |
-                              nir_var_shared;
+                              nir_var_mem_shared;
             break;
 
          case nir_intrinsic_emit_vertex:
@@ -627,7 +627,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                                          nir_var_shader_temp |
                                          nir_var_function_temp |
                                          nir_var_mem_ssbo |
-                                         nir_var_shared);
+                                         nir_var_mem_shared);
          continue;
       }
 
@@ -640,7 +640,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
       case nir_intrinsic_memory_barrier:
          apply_barrier_for_modes(copies, nir_var_shader_out |
                                          nir_var_mem_ssbo |
-                                         nir_var_shared);
+                                         nir_var_mem_shared);
          break;
 
       case nir_intrinsic_emit_vertex:

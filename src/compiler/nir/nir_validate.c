@@ -448,7 +448,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       case nir_deref_type_array_wildcard:
          if (instr->mode == nir_var_mem_ubo ||
              instr->mode == nir_var_mem_ssbo ||
-             instr->mode == nir_var_shared) {
+             instr->mode == nir_var_mem_shared) {
             /* Shared variables and UBO/SSBOs have a bit more relaxed rules
              * because we need to be able to handle array derefs on vectors.
              * Fortunately, nir_lower_io handles these just fine.

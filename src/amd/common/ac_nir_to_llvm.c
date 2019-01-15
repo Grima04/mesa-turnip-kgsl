@@ -1891,7 +1891,7 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 	LLVMValueRef ret;
 	unsigned const_index;
 	unsigned stride = 4;
-	int mode = nir_var_shared;
+	int mode = nir_var_mem_shared;
 	
 	if (var) {
 		bool vs_in = ctx->stage == MESA_SHADER_VERTEX &&
@@ -1964,7 +1964,7 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 			}
 		}
 		break;
-	case nir_var_shared: {
+	case nir_var_mem_shared: {
 		LLVMValueRef address = get_src(ctx, instr->src[0]);
 		LLVMValueRef val = LLVMBuildLoad(ctx->ac.builder, address, "");
 		return LLVMBuildBitCast(ctx->ac.builder, val,
@@ -2103,7 +2103,7 @@ visit_store_var(struct ac_nir_context *ctx,
 			}
 		}
 		break;
-	case nir_var_shared: {
+	case nir_var_mem_shared: {
 		int writemask = instr->const_index[0];
 		LLVMValueRef address = get_src(ctx, instr->src[0]);
 		LLVMValueRef val = get_src(ctx, instr->src[1]);
@@ -3792,7 +3792,7 @@ static void visit_jump(struct ac_llvm_context *ctx,
 static void visit_deref(struct ac_nir_context *ctx,
                         nir_deref_instr *instr)
 {
-	if (instr->mode != nir_var_shared)
+	if (instr->mode != nir_var_mem_shared)
 		return;
 
 	LLVMValueRef result = NULL;

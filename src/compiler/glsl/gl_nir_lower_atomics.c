@@ -102,7 +102,7 @@ lower_deref_instr(nir_builder *b, nir_intrinsic_instr *instr,
 
    if (var->data.mode != nir_var_uniform &&
        var->data.mode != nir_var_mem_ssbo &&
-       var->data.mode != nir_var_shared)
+       var->data.mode != nir_var_mem_shared)
       return false; /* atomics passed as function arguments can't be lowered */
 
    const unsigned uniform_loc = var->data.location;
