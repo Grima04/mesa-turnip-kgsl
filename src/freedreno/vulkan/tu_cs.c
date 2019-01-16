@@ -127,29 +127,31 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
 VkResult
 tu_cs_end(struct tu_cs *cs)
 {
+   /* no command packet at all */
    if (cs->start == cs->cur)
       return VK_SUCCESS;
 
+   /* grow cs->entries if needed */
    if (cs->entry_capacity == cs->entry_count) {
       uint32_t new_capacity = MAX2(cs->entry_capacity * 2, 4);
       struct tu_cs_entry *new_entries =
          realloc(cs->entries, new_capacity * sizeof(struct tu_cs_entry));
       if (!new_entries)
-         abort(); /* TODO */
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       cs->entries = new_entries;
       cs->entry_capacity = new_capacity;
    }
 
    assert(cs->bo_count);
+   const struct tu_bo *bo = cs->bos[cs->bo_count - 1];
 
-   struct tu_cs_entry entry;
-   entry.bo = cs->bos[cs->bo_count - 1];
-   entry.size = (cs->cur - cs->start) * sizeof(uint32_t);
-   entry.offset = (cs->start - (uint32_t *) entry.bo->map) * sizeof(uint32_t);
-
-   cs->entries[cs->entry_count] = entry;
-   ++cs->entry_count;
+   /* add an entry for [cs->start, cs->cur] */
+   cs->entries[cs->entry_count++] = (struct tu_cs_entry) {
+      .bo = bo,
+      .size = (cs->cur - cs->start) * sizeof(uint32_t),
+      .offset = (cs->start - (uint32_t *) bo->map) * sizeof(uint32_t),
+   };
 
    return VK_SUCCESS;
 }

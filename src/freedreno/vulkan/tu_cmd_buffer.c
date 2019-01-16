@@ -459,7 +459,10 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   tu_cs_end(&cmd_buffer->cs);
+   VkResult result = tu_cs_end(&cmd_buffer->cs);
+   if (result != VK_SUCCESS)
+      cmd_buffer->record_result = result;
+
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
    return cmd_buffer->record_result;

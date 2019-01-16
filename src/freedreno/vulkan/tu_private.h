@@ -720,7 +720,7 @@ uint32_t tu_bo_list_add(struct tu_bo_list *list,
 struct tu_cs_entry
 {
    /* No ownership */
-   struct tu_bo *bo;
+   const struct tu_bo *bo;
 
    uint32_t size;
    uint64_t offset;
