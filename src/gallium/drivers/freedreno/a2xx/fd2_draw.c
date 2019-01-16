@@ -207,7 +207,7 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 					FD_DIRTY_FRAMEBUFFER | FD_DIRTY_SCISSOR));
 
 	fd2_emit_vertex_bufs(ring, 0x9c, (struct fd2_vertex_buf[]) {
-			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 48 },
+			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36 },
 		}, 1);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);

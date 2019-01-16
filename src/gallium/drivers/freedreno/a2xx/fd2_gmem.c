@@ -120,7 +120,7 @@ fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	fd2_emit_vertex_bufs(ring, 0x9c, (struct fd2_vertex_buf[]) {
-			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 48 },
+			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36 },
 		}, 1);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
@@ -254,8 +254,8 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	float x0, y0, x1, y1;
 
 	fd2_emit_vertex_bufs(ring, 0x9c, (struct fd2_vertex_buf[]) {
-			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 48, .offset = 0x30 },
-			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 32, .offset = 0x60 },
+			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36, },
+			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 24, .offset = 36 },
 		}, 2);
 
 	/* write texture coordinates to vertexbuf: */
