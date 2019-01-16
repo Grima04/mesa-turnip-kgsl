@@ -1626,8 +1626,12 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    } else {
       if (vtn_var->var) {
          if (vtn_var->var->num_members == 0) {
-            assert(member == -1);
-            apply_var_decoration(b, &vtn_var->var->data, dec);
+            /* We call this function on types as well as variables and not all
+             * struct types get split so we can end up having stray member
+             * decorations; just ignore them.
+             */
+            if (member == -1)
+               apply_var_decoration(b, &vtn_var->var->data, dec);
          } else if (member >= 0) {
             /* Member decorations must come from a type */
             assert(val->value_type == vtn_value_type_type);
@@ -2040,7 +2044,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
 
-      if (glsl_type_is_struct(interface_type->type)) {
+      if (interface_type->base_type == vtn_base_type_struct &&
+          interface_type->block) {
          /* It's a struct.  Set it up as per-member. */
          var->var->num_members = glsl_get_length(interface_type->type);
          var->var->members = rzalloc_array(var->var, struct nir_variable_data,
