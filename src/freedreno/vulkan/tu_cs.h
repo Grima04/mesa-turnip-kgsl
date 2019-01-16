@@ -25,7 +25,7 @@
 
 #include "tu_private.h"
 
-#include "adreno_pm4.xml.h"
+#include "registers/adreno_pm4.xml.h"
 
 void
 tu_cs_init(struct tu_cs *cs);
@@ -101,9 +101,35 @@ tu_cs_emit_pkt7(struct tu_cs *cs, uint8_t opcode, uint16_t cnt)
 }
 
 static inline void
-tu_cs_emit_wfi5(struct tu_cs *cs)
+tu_cs_emit_wfi(struct tu_cs *cs)
 {
    tu_cs_emit_pkt7(cs, CP_WAIT_FOR_IDLE, 0);
+}
+
+static inline void
+tu_cs_emit_qw(struct tu_cs *cs, uint64_t value)
+{
+   tu_cs_emit(cs, (uint32_t) value);
+   tu_cs_emit(cs, (uint32_t) (value >> 32));
+}
+
+static inline void
+tu_cs_emit_write_reg(struct tu_cs *cs, uint16_t reg, uint32_t value)
+{
+   tu_cs_emit_pkt4(cs, reg, 1);
+   tu_cs_emit(cs, value);
+}
+
+static inline void
+tu_cs_emit_ib(struct tu_cs *cs, const struct tu_cs *target)
+{
+   for (uint32_t i = 0; i < target->entry_count; i++) {
+      const struct tu_cs_entry *entry = target->entries + i;
+
+      tu_cs_emit_pkt7(cs, CP_INDIRECT_BUFFER, 3);
+      tu_cs_emit_qw(cs, entry->bo->iova + entry->offset);
+      tu_cs_emit(cs, entry->size / sizeof(uint32_t));
+   }
 }
 
 #endif /* TU_CS_H */
