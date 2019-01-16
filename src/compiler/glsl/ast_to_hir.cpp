@@ -3476,6 +3476,11 @@ apply_image_qualifier_to_variable(const struct ast_type_qualifier *qual,
       }
 
       var->data.image_format = qual->image_format;
+   } else if (state->has_image_load_formatted()) {
+      if (var->data.mode == ir_var_uniform &&
+          state->EXT_shader_image_load_formatted_warn) {
+         _mesa_glsl_warning(loc, state, "GL_EXT_image_load_formatted used");
+      }
    } else {
       if (var->data.mode == ir_var_uniform) {
          if (state->es_shader) {
