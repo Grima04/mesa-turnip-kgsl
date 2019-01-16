@@ -58,6 +58,20 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
 	}
 }
 
+static void si_compute_internal_begin(struct si_context *sctx)
+{
+	sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
+	sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+	sctx->render_cond_force_off = true;
+}
+
+static void si_compute_internal_end(struct si_context *sctx)
+{
+	sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
+	sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+	sctx->render_cond_force_off = false;
+}
+
 static void si_compute_do_clear_or_copy(struct si_context *sctx,
 					struct pipe_resource *dst,
 					unsigned dst_offset,
@@ -77,6 +91,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	assert(dst->target != PIPE_BUFFER || dst_offset + size <= dst->width0);
 	assert(!src || src_offset + size <= src->width0);
 
+	si_compute_internal_begin(sctx);
 	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 		       SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
@@ -157,6 +172,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	/* Restore states. */
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
+	si_compute_internal_end(sctx);
 }
 
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
@@ -311,6 +327,7 @@ void si_compute_copy_image(struct si_context *sctx,
 	if (width == 0 || height == 0)
 		return;
 
+	si_compute_internal_begin(sctx);
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
 	si_make_CB_shader_coherent(sctx, dst->nr_samples, true);
@@ -401,6 +418,7 @@ void si_compute_copy_image(struct si_context *sctx,
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, saved_image);
 	ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
+	si_compute_internal_end(sctx);
 }
 
 void si_init_compute_blit_functions(struct si_context *sctx)
