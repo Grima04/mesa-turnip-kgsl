@@ -34,6 +34,7 @@
 #include "util/u_memory.h"
 #include "util/slab.h"
 #include "os/os_thread.h"
+#include "renderonly/renderonly.h"
 
 #include "freedreno_batch_cache.h"
 #include "freedreno_perfcntr.h"
@@ -101,6 +102,8 @@ struct fd_screen {
 
 	unsigned num_supported_modifiers;
 	const uint64_t *supported_modifiers;
+
+	struct renderonly *ro;
 };
 
 static inline struct fd_screen *
@@ -111,12 +114,14 @@ fd_screen(struct pipe_screen *pscreen)
 
 boolean fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
+		struct renderonly_scanout *scanout,
 		unsigned stride,
 		struct winsys_handle *whandle);
 struct fd_bo * fd_screen_bo_from_handle(struct pipe_screen *pscreen,
 		struct winsys_handle *whandle);
 
-struct pipe_screen * fd_screen_create(struct fd_device *dev);
+struct pipe_screen *
+fd_screen_create(struct fd_device *dev, struct renderonly *ro);
 
 static inline boolean
 is_a20x(struct fd_screen *screen)

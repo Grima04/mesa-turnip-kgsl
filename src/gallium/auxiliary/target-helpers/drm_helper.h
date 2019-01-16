@@ -248,7 +248,7 @@ pipe_freedreno_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = fd_drm_screen_create(fd);
+   screen = fd_drm_screen_create(fd, NULL);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 

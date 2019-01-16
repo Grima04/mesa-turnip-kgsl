@@ -147,6 +147,9 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 	if (screen->dev)
 		fd_device_del(screen->dev);
 
+	if (screen->ro)
+		FREE(screen->ro);
+
 	fd_bc_fini(&screen->batch_cache);
 
 	slab_destroy_parent(&screen->transfer_pool);
@@ -637,6 +640,7 @@ fd_get_compiler_options(struct pipe_screen *pscreen,
 boolean
 fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
+		struct renderonly_scanout *scanout,
 		unsigned stride,
 		struct winsys_handle *whandle)
 {
@@ -645,6 +649,8 @@ fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 	if (whandle->type == WINSYS_HANDLE_TYPE_SHARED) {
 		return fd_bo_get_name(bo, &whandle->handle) == 0;
 	} else if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
+		if (renderonly_get_handle(scanout, whandle))
+			return TRUE;
 		whandle->handle = fd_bo_handle(bo);
 		return TRUE;
 	} else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
@@ -713,7 +719,7 @@ fd_screen_bo_from_handle(struct pipe_screen *pscreen,
 }
 
 struct pipe_screen *
-fd_screen_create(struct fd_device *dev)
+fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 {
 	struct fd_screen *screen = CALLOC_STRUCT(fd_screen);
 	struct pipe_screen *pscreen;
@@ -733,6 +739,14 @@ fd_screen_create(struct fd_device *dev)
 
 	screen->dev = dev;
 	screen->refcnt = 1;
+
+	if (ro) {
+		screen->ro = renderonly_dup(ro);
+		if (!screen->ro) {
+			DBG("could not create renderonly object");
+			goto fail;
+		}
+	}
 
 	// maybe this should be in context?
 	screen->pipe = fd_pipe_new(screen->dev, FD_PIPE_3D);

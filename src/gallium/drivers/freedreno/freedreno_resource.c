@@ -663,6 +663,9 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 	fd_bc_invalidate_resource(rsc, true);
 	if (rsc->bo)
 		fd_bo_del(rsc->bo);
+	if (rsc->scanout)
+		renderonly_scanout_destroy(rsc->scanout, fd_screen(pscreen)->ro);
+
 	util_range_destroy(&rsc->valid_buffer_range);
 	FREE(rsc);
 }
@@ -688,7 +691,7 @@ fd_resource_get_handle(struct pipe_screen *pscreen,
 
 	handle->modifier = fd_resource_modifier(rsc);
 
-	return fd_screen_bo_get_handle(pscreen, rsc->bo,
+	return fd_screen_bo_get_handle(pscreen, rsc->bo, rsc->scanout,
 			rsc->slices[0].pitch * rsc->cpp, handle);
 }
 
@@ -845,10 +848,36 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		const uint64_t *modifiers, int count)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
-	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
-	struct pipe_resource *prsc = &rsc->base;
+	struct fd_resource *rsc;
+	struct pipe_resource *prsc;
 	enum pipe_format format = tmpl->format;
 	uint32_t size;
+
+	if (screen->ro && (tmpl->bind & PIPE_BIND_SCANOUT)) {
+		struct pipe_resource scanout_templat = *tmpl;
+		struct renderonly_scanout *scanout;
+		struct winsys_handle handle;
+
+		scanout = renderonly_scanout_for_resource(&scanout_templat,
+												  screen->ro, &handle);
+		if (!scanout)
+			return NULL;
+
+		renderonly_scanout_destroy(scanout, screen->ro);
+
+		assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+		rsc = fd_resource(pscreen->resource_from_handle(pscreen, tmpl,
+														&handle,
+														PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
+		close(handle.handle);
+		if (!rsc)
+			return NULL;
+
+		return &rsc->base;
+	}
+
+	rsc = CALLOC_STRUCT(fd_resource);
+	prsc = &rsc->base;
 
 	DBG("%p: target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
 			"nr_samples=%u, usage=%u, bind=%x, flags=%x", prsc,
@@ -1049,6 +1078,12 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	}
 
 	assert(rsc->cpp);
+
+	if (screen->ro) {
+		rsc->scanout =
+			renderonly_create_gpu_import_for_resource(prsc, screen->ro, NULL);
+		/* failure is expected in some cases.. */
+	}
 
 	return prsc;
 
