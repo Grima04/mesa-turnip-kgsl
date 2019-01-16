@@ -1904,11 +1904,16 @@ typedef struct nir_if {
 typedef struct {
    nir_if *nif;
 
+   /** Instruction that generates nif::condition. */
    nir_instr *conditional_instr;
 
+   /** Block within ::nif that has the break instruction. */
    nir_block *break_block;
+
+   /** Last block for the then- or else-path that does not contain the break. */
    nir_block *continue_from_block;
 
+   /** True when ::break_block is in the else-path of ::nif. */
    bool continue_from_then;
 
    struct list_head loop_terminator_link;
