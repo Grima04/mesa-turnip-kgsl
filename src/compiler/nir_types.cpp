@@ -721,3 +721,9 @@ glsl_type_get_image_count(const struct glsl_type *type)
 
    return 0;
 }
+
+unsigned
+glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
+{
+   return type->explicit_size(align_to_stride);
+}
