@@ -53,7 +53,21 @@ namespace {
    unsigned
    required_dst_byte_stride(const fs_inst *inst)
    {
-      if (type_sz(inst->dst.type) < get_exec_type_size(inst) &&
+      if (inst->dst.is_accumulator()) {
+         /* If the destination is an accumulator, insist that we leave the
+          * stride alone.  We cannot "fix" accumulator destinations by writing
+          * to a temporary and emitting a MOV into the original destination.
+          * For multiply instructions (our one use of the accumulator), the
+          * MUL writes the full 66 bits of the accumulator whereas the MOV we
+          * would emit only writes 33 bits and leaves the top 33 bits
+          * undefined.
+          *
+          * It's safe to just require the original stride here because the
+          * lowering pass will detect the mismatch in has_invalid_src_region
+          * and fix the sources of the multiply instead of the destination.
+          */
+         return inst->dst.stride * type_sz(inst->dst.type);
+      } else if (type_sz(inst->dst.type) < get_exec_type_size(inst) &&
           !is_byte_raw_mov(inst)) {
          return get_exec_type_size(inst);
       } else {
@@ -316,6 +330,14 @@ namespace {
    bool
    lower_dst_region(fs_visitor *v, bblock_t *block, fs_inst *inst)
    {
+      /* We cannot replace the result of an integer multiply which writes the
+       * accumulator because MUL+MACH pairs act on the accumulator as a 66-bit
+       * value whereas the MOV will act on only 32 or 33 bits of the
+       * accumulator.
+       */
+      assert(inst->opcode != BRW_OPCODE_MUL || !inst->dst.is_accumulator() ||
+             brw_reg_type_is_floating_point(inst->dst.type));
+
       const fs_builder ibld(v, block, inst);
       const unsigned stride = required_dst_byte_stride(inst) /
                               type_sz(inst->dst.type);
