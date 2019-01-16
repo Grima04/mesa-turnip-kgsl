@@ -37,8 +37,22 @@ VkResult
 tu_cs_end(struct tu_cs *cs);
 void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
-VkResult
-tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size);
+
+/**
+ * Reserve space from a command stream for \a size uint32_t values.
+ */
+static inline VkResult
+tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
+{
+   if (cs->end - cs->cur >= size)
+      return VK_SUCCESS;
+
+   VkResult result = tu_cs_end(cs);
+   if (result != VK_SUCCESS)
+      return result;
+
+   return tu_cs_begin(dev, cs, size);
+}
 
 /**
  * Emit a uint32_t value into a command stream, without boundary checking.

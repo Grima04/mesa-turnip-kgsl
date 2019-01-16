@@ -180,19 +180,3 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
 
    cs->entry_count = 0;
 }
-
-/**
- * Reserve space from a command stream for \a size uint32_t values.
- */
-VkResult
-tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
-{
-   if (cs->end - cs->cur >= size)
-      return VK_SUCCESS;
-
-   VkResult result = tu_cs_end(cs);
-   if (result != VK_SUCCESS)
-      return result;
-
-   return tu_cs_begin(dev, cs, size);
-}
