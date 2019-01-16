@@ -717,22 +717,22 @@ void tu_bo_list_reset(struct tu_bo_list *list);
 uint32_t tu_bo_list_add(struct tu_bo_list *list,
                         const struct tu_bo *bo);
 
-struct tu_cmd_stream_entry
+struct tu_cs_entry
 {
-    /* No ownership */
+   /* No ownership */
    struct tu_bo *bo;
 
    uint32_t size;
    uint64_t offset;
 };
 
-struct tu_cmd_stream
+struct tu_cs
 {
    uint32_t *start;
    uint32_t *cur;
    uint32_t *end;
 
-   struct tu_cmd_stream_entry *entries;
+   struct tu_cs_entry *entries;
    uint32_t entry_count;
    uint32_t entry_capacity;
 
@@ -767,7 +767,7 @@ struct tu_cmd_buffer
    struct tu_cmd_buffer_upload upload;
 
    struct tu_bo_list bo_list;
-   struct tu_cmd_stream cs;
+   struct tu_cs cs;
 
    VkResult record_result;
 };

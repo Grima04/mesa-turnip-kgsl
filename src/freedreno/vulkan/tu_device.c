@@ -1166,25 +1166,25 @@ tu_QueueSubmit(VkQueue _queue,
       tu_bo_list_init(&bo_list);
 
       uint32_t entry_count = 0;
-      for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
+      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
          TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
          entry_count += cmdbuf->cs.entry_count;
       }
 
       struct drm_msm_gem_submit_cmd cmds[entry_count];
       uint32_t entry_idx = 0;
-      for(uint32_t j = 0; j < submit->commandBufferCount; ++j) {
+      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
          TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
-         struct tu_cmd_stream *stream = &cmdbuf->cs;
-         for (unsigned i = 0; i < stream->entry_count; ++i, ++entry_idx) {
+         struct tu_cs *cs = &cmdbuf->cs;
+         for (unsigned i = 0; i < cs->entry_count; ++i, ++entry_idx) {
             cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
-            cmds[entry_idx].submit_idx = tu_bo_list_add(&bo_list, stream->entries[i].bo);
-            cmds[entry_idx].submit_offset = stream->entries[i].offset;
-            cmds[entry_idx].size = stream->entries[i].size;
+            cmds[entry_idx].submit_idx =
+               tu_bo_list_add(&bo_list, cs->entries[i].bo);
+            cmds[entry_idx].submit_offset = cs->entries[i].offset;
+            cmds[entry_idx].size = cs->entries[i].size;
             cmds[entry_idx].pad = 0;
             cmds[entry_idx].nr_relocs = 0;
             cmds[entry_idx].relocs = 0;
-
          }
       }
 

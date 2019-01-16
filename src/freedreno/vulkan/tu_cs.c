@@ -24,52 +24,49 @@
 #include "tu_cs.h"
 
 void
-tu_cmd_stream_init(struct tu_cmd_stream *stream)
+tu_cs_init(struct tu_cs *cs)
 {
-   stream->start = stream->cur = stream->end = NULL;
+   cs->start = cs->cur = cs->end = NULL;
 
-   stream->entry_count = stream->entry_capacity = 0;
-   stream->entries = NULL;
+   cs->entry_count = cs->entry_capacity = 0;
+   cs->entries = NULL;
 
-   stream->bo_count = stream->bo_capacity = 0;
-   stream->bos = NULL;
+   cs->bo_count = cs->bo_capacity = 0;
+   cs->bos = NULL;
 }
 
 void
-tu_cmd_stream_finish(struct tu_device *dev, struct tu_cmd_stream *stream)
+tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
 {
-   for (uint32_t i = 0; i < stream->bo_count; ++i) {
-      tu_bo_finish(dev, stream->bos[i]);
-      free(stream->bos[i]);
+   for (uint32_t i = 0; i < cs->bo_count; ++i) {
+      tu_bo_finish(dev, cs->bos[i]);
+      free(cs->bos[i]);
    }
 
-   free(stream->entries);
-   free(stream->bos);
+   free(cs->entries);
+   free(cs->bos);
 }
 
 VkResult
-tu_cmd_stream_begin(struct tu_device *dev,
-                    struct tu_cmd_stream *stream,
-                    uint32_t reserve_size)
+tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
 {
    assert(reserve_size);
 
-   if (stream->end - stream->cur < reserve_size) {
-      if (stream->bo_count == stream->bo_capacity) {
-         uint32_t new_capacity = MAX2(4, 2 * stream->bo_capacity);
+   if (cs->end - cs->cur < reserve_size) {
+      if (cs->bo_count == cs->bo_capacity) {
+         uint32_t new_capacity = MAX2(4, 2 * cs->bo_capacity);
          struct tu_bo **new_bos =
-            realloc(stream->bos, new_capacity * sizeof(struct tu_bo *));
+            realloc(cs->bos, new_capacity * sizeof(struct tu_bo *));
          if (!new_bos)
             abort();
 
-         stream->bo_capacity = new_capacity;
-         stream->bos = new_bos;
+         cs->bo_capacity = new_capacity;
+         cs->bos = new_bos;
       }
 
       uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
-      if (stream->bo_count)
-         new_size =
-            MAX2(new_size, stream->bos[stream->bo_count - 1]->size * 2);
+      if (cs->bo_count)
+         new_size = MAX2(new_size, cs->bos[cs->bo_count - 1]->size * 2);
 
       struct tu_bo *new_bo = malloc(sizeof(struct tu_bo));
       if (!new_bo)
@@ -88,78 +85,75 @@ tu_cmd_stream_begin(struct tu_device *dev,
          return result;
       }
 
-      stream->bos[stream->bo_count] = new_bo;
-      ++stream->bo_count;
+      cs->bos[cs->bo_count] = new_bo;
+      ++cs->bo_count;
 
-      stream->start = stream->cur = (uint32_t *) new_bo->map;
-      stream->end = stream->start + new_bo->size / sizeof(uint32_t);
+      cs->start = cs->cur = (uint32_t *) new_bo->map;
+      cs->end = cs->start + new_bo->size / sizeof(uint32_t);
    }
-   stream->start = stream->cur;
+   cs->start = cs->cur;
 
    return VK_SUCCESS;
 }
 
 VkResult
-tu_cmd_stream_end(struct tu_cmd_stream *stream)
+tu_cs_end(struct tu_cs *cs)
 {
-   if (stream->start == stream->cur)
+   if (cs->start == cs->cur)
       return VK_SUCCESS;
 
-   if (stream->entry_capacity == stream->entry_count) {
-      uint32_t new_capacity = MAX2(stream->entry_capacity * 2, 4);
-      struct tu_cmd_stream_entry *new_entries = realloc(
-         stream->entries, new_capacity * sizeof(struct tu_cmd_stream_entry));
+   if (cs->entry_capacity == cs->entry_count) {
+      uint32_t new_capacity = MAX2(cs->entry_capacity * 2, 4);
+      struct tu_cs_entry *new_entries =
+         realloc(cs->entries, new_capacity * sizeof(struct tu_cs_entry));
       if (!new_entries)
          abort(); /* TODO */
 
-      stream->entries = new_entries;
-      stream->entry_capacity = new_capacity;
+      cs->entries = new_entries;
+      cs->entry_capacity = new_capacity;
    }
 
-   assert(stream->bo_count);
+   assert(cs->bo_count);
 
-   struct tu_cmd_stream_entry entry;
-   entry.bo = stream->bos[stream->bo_count - 1];
-   entry.size = (stream->cur - stream->start) * sizeof(uint32_t);
-   entry.offset =
-      (stream->start - (uint32_t *) entry.bo->map) * sizeof(uint32_t);
+   struct tu_cs_entry entry;
+   entry.bo = cs->bos[cs->bo_count - 1];
+   entry.size = (cs->cur - cs->start) * sizeof(uint32_t);
+   entry.offset = (cs->start - (uint32_t *) entry.bo->map) * sizeof(uint32_t);
 
-   stream->entries[stream->entry_count] = entry;
-   ++stream->entry_count;
+   cs->entries[cs->entry_count] = entry;
+   ++cs->entry_count;
 
    return VK_SUCCESS;
 }
 
 void
-tu_cmd_stream_reset(struct tu_device *dev, struct tu_cmd_stream *stream)
+tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
 {
-   for (uint32_t i = 0; i + 1 < stream->bo_count; ++i) {
-      tu_bo_finish(dev, stream->bos[i]);
-      free(stream->bos[i]);
+   for (uint32_t i = 0; i + 1 < cs->bo_count; ++i) {
+      tu_bo_finish(dev, cs->bos[i]);
+      free(cs->bos[i]);
    }
 
-   if (stream->bo_count) {
-      stream->bos[0] = stream->bos[stream->bo_count - 1];
-      stream->bo_count = 1;
+   if (cs->bo_count) {
+      cs->bos[0] = cs->bos[cs->bo_count - 1];
+      cs->bo_count = 1;
 
-      stream->start = stream->cur = (uint32_t *) stream->bos[0]->map;
-      stream->end = stream->start + stream->bos[0]->size / sizeof(uint32_t);
+      cs->start = cs->cur = (uint32_t *) cs->bos[0]->map;
+      cs->end = cs->start + cs->bos[0]->size / sizeof(uint32_t);
    }
 
-   stream->entry_count = 0;
+   cs->entry_count = 0;
 }
 
 VkResult
-tu_cs_check_space(struct tu_device *dev,
-                  struct tu_cmd_stream *stream,
-                  size_t size)
+tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
 {
-   if (stream->end - stream->cur >= size)
+   if (cs->end - cs->cur >= size)
       return VK_SUCCESS;
 
-   VkResult result = tu_cmd_stream_end(stream);
+   VkResult result = tu_cs_end(cs);
    if (result != VK_SUCCESS)
       return result;
 
-   return tu_cmd_stream_begin(dev, stream, size);
+   return tu_cs_begin(dev, cs, size);
 }

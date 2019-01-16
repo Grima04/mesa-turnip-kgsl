@@ -28,28 +28,24 @@
 #include "adreno_pm4.xml.h"
 
 void
-tu_cmd_stream_init(struct tu_cmd_stream *stream);
+tu_cs_init(struct tu_cs *cs);
 void
-tu_cmd_stream_finish(struct tu_device *dev, struct tu_cmd_stream *stream);
+tu_cs_finish(struct tu_device *dev, struct tu_cs *cs);
 VkResult
-tu_cmd_stream_begin(struct tu_device *dev,
-                    struct tu_cmd_stream *stream,
-                    uint32_t reserve_size);
+tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size);
 VkResult
-tu_cmd_stream_end(struct tu_cmd_stream *stream);
+tu_cs_end(struct tu_cs *cs);
 void
-tu_cmd_stream_reset(struct tu_device *dev, struct tu_cmd_stream *stream);
+tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 VkResult
-tu_cs_check_space(struct tu_device *dev,
-                  struct tu_cmd_stream *stream,
-                  size_t size);
+tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size);
 
 static inline void
-tu_cs_emit(struct tu_cmd_stream *stream, uint32_t value)
+tu_cs_emit(struct tu_cs *cs, uint32_t value)
 {
-   assert(stream->cur < stream->end);
-   *stream->cur = value;
-   ++stream->cur;
+   assert(cs->cur < cs->end);
+   *cs->cur = value;
+   ++cs->cur;
 }
 
 static inline unsigned
@@ -66,25 +62,25 @@ tu_odd_parity_bit(unsigned val)
 }
 
 static inline void
-tu_cs_emit_pkt4(struct tu_cmd_stream *stream, uint16_t regindx, uint16_t cnt)
+tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
 {
-   tu_cs_emit(stream, CP_TYPE4_PKT | cnt | (tu_odd_parity_bit(cnt) << 7) |
-                         ((regindx & 0x3ffff) << 8) |
-                         ((tu_odd_parity_bit(regindx) << 27)));
+   tu_cs_emit(cs, CP_TYPE4_PKT | cnt | (tu_odd_parity_bit(cnt) << 7) |
+                     ((regindx & 0x3ffff) << 8) |
+                     ((tu_odd_parity_bit(regindx) << 27)));
 }
 
 static inline void
-tu_cs_emit_pkt7(struct tu_cmd_stream *stream, uint8_t opcode, uint16_t cnt)
+tu_cs_emit_pkt7(struct tu_cs *cs, uint8_t opcode, uint16_t cnt)
 {
-   tu_cs_emit(stream, CP_TYPE7_PKT | cnt | (tu_odd_parity_bit(cnt) << 15) |
-                         ((opcode & 0x7f) << 16) |
-                         ((tu_odd_parity_bit(opcode) << 23)));
+   tu_cs_emit(cs, CP_TYPE7_PKT | cnt | (tu_odd_parity_bit(cnt) << 15) |
+                     ((opcode & 0x7f) << 16) |
+                     ((tu_odd_parity_bit(opcode) << 23)));
 }
 
 static inline void
-tu_cs_emit_wfi5(struct tu_cmd_stream *stream)
+tu_cs_emit_wfi5(struct tu_cs *cs)
 {
-   tu_cs_emit_pkt7(stream, CP_WAIT_FOR_IDLE, 0);
+   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_IDLE, 0);
 }
 
 #endif /* TU_CS_H */

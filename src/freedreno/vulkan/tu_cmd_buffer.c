@@ -247,7 +247,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    }
 
    tu_bo_list_init(&cmd_buffer->bo_list);
-   tu_cmd_stream_init(&cmd_buffer->cs);
+   tu_cs_init(&cmd_buffer->cs);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
@@ -264,7 +264,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
-   tu_cmd_stream_finish(cmd_buffer->device, &cmd_buffer->cs);
+   tu_cs_finish(cmd_buffer->device, &cmd_buffer->cs);
    tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
@@ -275,7 +275,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_bo_list_reset(&cmd_buffer->bo_list);
-   tu_cmd_stream_reset(cmd_buffer->device, &cmd_buffer->cs);
+   tu_cs_reset(cmd_buffer->device, &cmd_buffer->cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
       cmd_buffer->descriptors[i].dirty = 0;
@@ -401,8 +401,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
 
-   result = tu_cmd_stream_begin(cmd_buffer->device,
-                                &cmd_buffer->cs, 4096);
+   result = tu_cs_begin(cmd_buffer->device, &cmd_buffer->cs, 4096);
 
    /* Put some stuff in so we do not have empty command buffers. */
    tu_cs_emit_pkt7(&cmd_buffer->cs, CP_NOP, 4);
@@ -458,7 +457,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   tu_cmd_stream_end(&cmd_buffer->cs);
+   tu_cs_end(&cmd_buffer->cs);
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
    return cmd_buffer->record_result;
