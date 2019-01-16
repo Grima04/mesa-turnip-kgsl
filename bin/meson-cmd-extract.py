@@ -26,6 +26,7 @@ This only works for meson 0.49.0 and newer.
 """
 
 import argparse
+import ast
 import configparser
 import pathlib
 import sys
@@ -57,6 +58,16 @@ def build_cmd(conf: configparser.ConfigParser) -> str:
             args.append(f'-D{k}="{v}"')
         else:
             args.append(f'-D{k}={v}')
+
+    cf = conf['properties'].get('cross_file')
+    if cf:
+        args.append('--cross-file={}'.format(cf))
+    nf = conf['properties'].get('native_file')
+    if nf:
+        # this will be in the form "['str', 'str']", so use ast.literal_eval to
+        # convert it to a list of strings.
+        nf = ast.literal_eval(nf)
+        args.extend(['--native-file={}'.format(f) for f in nf])
     return ' '.join(args)
 
 
