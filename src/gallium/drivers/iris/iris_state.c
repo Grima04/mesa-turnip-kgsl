@@ -1122,8 +1122,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       malloc(sizeof(struct iris_rasterizer_state));
 
 #if 0
-   point_quad_rasterization -> SBE?
-
    not necessary?
    {
       poly_smooth
@@ -1167,7 +1165,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
          state->line_smooth ? _10pixels : _05pixels;
       sf.LastPixelEnable = state->line_last_pixel;
       sf.LineWidth = line_width;
-      sf.SmoothPointEnable = state->point_smooth || state->multisample;
+      sf.SmoothPointEnable = (state->point_smooth || state->multisample) &&
+                             !state->point_quad_rasterization;
       sf.PointWidthSource = state->point_size_per_vertex ? Vertex : State;
       sf.PointWidth = state->point_size;
 
@@ -1192,7 +1191,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       rr.GlobalDepthOffsetConstant = state->offset_units * 2;
       rr.GlobalDepthOffsetScale = state->offset_scale;
       rr.GlobalDepthOffsetClamp = state->offset_clamp;
-      rr.SmoothPointEnable = state->point_smooth || state->multisample;
+      rr.SmoothPointEnable = state->point_smooth;
       rr.AntialiasingEnable = state->line_smooth;
       rr.ScissorRectangleEnable = state->scissor;
 #if GEN_GEN >= 9
