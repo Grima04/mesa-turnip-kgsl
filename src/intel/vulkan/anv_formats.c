@@ -1044,7 +1044,10 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
    if (result != VK_SUCCESS)
       goto fail;
 
-   if (android_usage) {
+   bool ahw_supported =
+      physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer;
+
+   if (ahw_supported && android_usage) {
       android_usage->androidHardwareBufferUsage =
          anv_ahw_usage_from_vk_usage(base_info->flags,
                                      base_info->usage);
@@ -1067,9 +1070,11 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
             external_props->externalMemoryProperties = prime_fd_props;
          break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
-         if (external_props)
+         if (ahw_supported && external_props) {
             external_props->externalMemoryProperties = android_image_props;
-         break;
+            break;
+         }
+      /* fallthrough if ahw not supported */
       default:
          /* From the Vulkan 1.0.42 spec:
           *
@@ -1147,15 +1152,19 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
    if (pExternalBufferInfo->flags)
       goto unsupported;
 
+   ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
+
    switch (pExternalBufferInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       pExternalBufferProperties->externalMemoryProperties = prime_fd_props;
       return;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
-      pExternalBufferProperties->externalMemoryProperties =
-         android_buffer_props;
-      return;
+      if (physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer) {
+         pExternalBufferProperties->externalMemoryProperties = android_buffer_props;
+         return;
+      }
+      /* fallthrough if ahw not supported */
    default:
       goto unsupported;
    }
