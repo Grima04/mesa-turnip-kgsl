@@ -40,6 +40,9 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 VkResult
 tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size);
 
+/**
+ * Emit a uint32_t value into a command stream, without boundary checking.
+ */
 static inline void
 tu_cs_emit(struct tu_cs *cs, uint32_t value)
 {
@@ -61,6 +64,9 @@ tu_odd_parity_bit(unsigned val)
    return (~0x6996 >> val) & 1;
 }
 
+/**
+ * Emit a type-4 command packet header into a command stream.
+ */
 static inline void
 tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
 {
@@ -69,6 +75,9 @@ tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
                      ((tu_odd_parity_bit(regindx) << 27)));
 }
 
+/**
+ * Emit a type-7 command packet header into a command stream.
+ */
 static inline void
 tu_cs_emit_pkt7(struct tu_cs *cs, uint8_t opcode, uint16_t cnt)
 {

@@ -23,6 +23,9 @@
 
 #include "tu_cs.h"
 
+/**
+ * Initialize a command stream.
+ */
 void
 tu_cs_init(struct tu_cs *cs)
 {
@@ -35,6 +38,9 @@ tu_cs_init(struct tu_cs *cs)
    cs->bos = NULL;
 }
 
+/**
+ * Finish and release all resources owned by a command stream.
+ */
 void
 tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
 {
@@ -47,6 +53,10 @@ tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
    free(cs->bos);
 }
 
+/**
+ * Begin (or continue) command packet emission.  This will reserve space from
+ * the command stream for at least \a reserve_size uint32_t values.
+ */
 VkResult
 tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
 {
@@ -96,6 +106,10 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
    return VK_SUCCESS;
 }
 
+/**
+ * End command packet emission by adding an IB entry for the command packets
+ * emitted since the last call to tu_cs_begin.
+ */
 VkResult
 tu_cs_end(struct tu_cs *cs)
 {
@@ -126,6 +140,10 @@ tu_cs_end(struct tu_cs *cs)
    return VK_SUCCESS;
 }
 
+/**
+ * Reset a command stream to its initial state.  This discards all comand
+ * packets in \a cs, but does not necessarily release all resources.
+ */
 void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
 {
@@ -145,6 +163,9 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
    cs->entry_count = 0;
 }
 
+/**
+ * Reserve space from a command stream for \a size uint32_t values.
+ */
 VkResult
 tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
 {
