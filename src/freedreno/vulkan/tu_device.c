@@ -83,20 +83,6 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
    if (!gem_handle)
       goto fail_new;
 
-   /* Calling DRM_MSM_GEM_INFO forces the kernel to allocate backing pages. We
-    * want immediate backing pages because vkAllocateMemory and friends must
-    * not lazily fail.
-    *
-    * TODO(chadv): Must we really call DRM_MSM_GEM_INFO to acquire backing
-    * pages? I infer so from reading comments in msm_bo.c:bo_allocate(), but
-    * maybe I misunderstand.
-    */
-
-   /* TODO: Do we need 'offset' if we have 'iova'? */
-   uint64_t offset = tu_gem_info_offset(dev, gem_handle);
-   if (!offset)
-      goto fail_info;
-
    uint64_t iova = tu_gem_info_iova(dev, gem_handle);
    if (!iova)
       goto fail_info;
@@ -104,7 +90,6 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
    *bo = (struct tu_bo) {
       .gem_handle = gem_handle,
       .size = size,
-      .offset = offset,
       .iova = iova,
    };
 
@@ -122,9 +107,13 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
    if (bo->map)
       return VK_SUCCESS;
 
+   uint64_t offset = tu_gem_info_offset(dev, bo->gem_handle);
+   if (!offset)
+	   return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
    /* TODO: Should we use the wrapper os_mmap() like Freedreno does? */
    void *map = mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                    dev->physical_device->local_fd, bo->offset);
+                    dev->physical_device->local_fd, offset);
    if (map == MAP_FAILED)
       return vk_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
 

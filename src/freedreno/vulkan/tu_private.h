@@ -432,7 +432,6 @@ struct tu_bo
 {
    uint32_t gem_handle;
    uint64_t size;
-   uint64_t offset;
    uint64_t iova;
    void *map;
 };
