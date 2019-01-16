@@ -104,7 +104,8 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t byte_size)
 VkResult
 tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
 {
-   assert(reserve_size);
+   /* no dangling command packet */
+   assert(cs->start == cs->cur);
 
    if (cs->end - cs->cur < reserve_size) {
       uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
@@ -115,7 +116,6 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
       if (result != VK_SUCCESS)
          return result;
    }
-   cs->start = cs->cur;
 
    return VK_SUCCESS;
 }
@@ -152,6 +152,8 @@ tu_cs_end(struct tu_cs *cs)
       .size = (cs->cur - cs->start) * sizeof(uint32_t),
       .offset = (cs->start - (uint32_t *) bo->map) * sizeof(uint32_t),
    };
+
+   cs->start = cs->cur;
 
    return VK_SUCCESS;
 }
