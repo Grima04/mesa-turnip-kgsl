@@ -256,6 +256,10 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    const struct gen_device_info *devinfo = &screen->devinfo;
    enum blorp_batch_flags blorp_flags = 0;
 
+   /* We don't support color masking. */
+   assert((info->mask & PIPE_MASK_RGBA) == PIPE_MASK_RGBA ||
+          (info->mask & PIPE_MASK_RGBA) == 0);
+
    if (info->render_condition_enable) {
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
          return;
