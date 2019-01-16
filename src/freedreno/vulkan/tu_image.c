@@ -283,6 +283,12 @@ tu_GetImageSubresourceLayout(VkDevice _device,
                              const VkImageSubresource *pSubresource,
                              VkSubresourceLayout *pLayout)
 {
+   tu_stub();
+
+   /* Even though this is a stub, let's avoid heisenbugs by providing
+    * deterministic behavior.
+    */
+   memset(pLayout, 0, sizeof(*pLayout));
 }
 
 VkResult
