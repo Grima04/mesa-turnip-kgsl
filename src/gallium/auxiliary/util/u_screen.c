@@ -323,6 +323,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
    case PIPE_CAP_TGSI_ATOMFADD:
    case PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS:
+   case PIPE_CAP_IMAGE_LOAD_FORMATTED:
       return 0;
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:

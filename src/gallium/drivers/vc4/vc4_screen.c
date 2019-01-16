@@ -296,6 +296,7 @@ vc4_screen_get_shader_param(struct pipe_screen *pscreen,
         case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
+        case PIPE_SHADER_CAP_IMAGE_LOAD_FORMATTED:
                 return 0;
         case PIPE_SHADER_CAP_SCALAR_ISA:
                 return 1;

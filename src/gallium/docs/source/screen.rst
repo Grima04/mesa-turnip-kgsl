@@ -508,6 +508,7 @@ The integer capabilities:
   arrays should be skipped and enforce keeping the declared array sizes instead.
   A driver might rely on the input mapping that was defined with the original
   GLSL code.
+* ``PIPE_CAP_IMAGE_LOAD_FORMATTED``: True if a format for image loads does not need to be specified in the shader IR
 
 .. _pipe_capf:
 
