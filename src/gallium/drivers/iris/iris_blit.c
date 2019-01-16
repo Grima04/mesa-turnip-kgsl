@@ -353,20 +353,31 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
-   for (int slice = 0; slice < info->dst.box.depth; slice++) {
-      iris_batch_maybe_flush(batch, 1500);
+   unsigned main_mask;
+   if (info->dst.format == PIPE_FORMAT_S8_UINT)
+      main_mask = PIPE_MASK_S;
+   else if (util_format_is_depth_or_stencil(info->dst.format))
+      main_mask = PIPE_MASK_Z;
+   else
+      main_mask = PIPE_MASK_RGBA;
 
-      blorp_blit(&blorp_batch,
-                 &src_surf, info->src.level, info->src.box.z + slice,
-                 src_fmt.fmt, src_fmt.swizzle,
-                 &dst_surf, info->dst.level, info->dst.box.z + slice,
-                 dst_fmt.fmt, ISL_SWIZZLE_IDENTITY,
-                 src_x0, src_y0, src_x1, src_y1,
-                 dst_x0, dst_y0, dst_x1, dst_y1,
-                 filter, mirror_x, mirror_y);
+   if (info->mask & main_mask) {
+      for (int slice = 0; slice < info->dst.box.depth; slice++) {
+         iris_batch_maybe_flush(batch, 1500);
+
+         blorp_blit(&blorp_batch,
+                    &src_surf, info->src.level, info->src.box.z + slice,
+                    src_fmt.fmt, src_fmt.swizzle,
+                    &dst_surf, info->dst.level, info->dst.box.z + slice,
+                    dst_fmt.fmt, ISL_SWIZZLE_IDENTITY,
+                    src_x0, src_y0, src_x1, src_y1,
+                    dst_x0, dst_y0, dst_x1, dst_y1,
+                    filter, mirror_x, mirror_y);
+      }
    }
 
-   if (util_format_is_depth_and_stencil(info->dst.format) &&
+   if ((info->mask & PIPE_MASK_S) &&
+       util_format_is_depth_and_stencil(info->dst.format) &&
        util_format_has_stencil(util_format_description(info->src.format))) {
       struct iris_resource *src_res, *dst_res, *junk;
       iris_get_depth_stencil_resources(info->src.resource, &junk, &src_res);
