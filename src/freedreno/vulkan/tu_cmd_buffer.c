@@ -399,9 +399,11 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
    }
 
-   cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
-
    result = tu_cs_begin(cmd_buffer->device, &cmd_buffer->cs, 4096);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
 
    /* Put some stuff in so we do not have empty command buffers. */
    tu_cs_emit_pkt7(&cmd_buffer->cs, CP_NOP, 4);
@@ -410,7 +412,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    tu_cs_emit(&cmd_buffer->cs, 0);
    tu_cs_emit(&cmd_buffer->cs, 0);
 
-   return result;
+   return VK_SUCCESS;
 }
 
 void

@@ -53,6 +53,50 @@ tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
    free(cs->bos);
 }
 
+/*
+ * Allocate and add a BO to a command stream.  Following command packets will
+ * be emitted to the new BO.
+ */
+static VkResult
+tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t byte_size)
+{
+   /* grow cs->bos if needed */
+   if (cs->bo_count == cs->bo_capacity) {
+      uint32_t new_capacity = MAX2(4, 2 * cs->bo_capacity);
+      struct tu_bo **new_bos =
+         realloc(cs->bos, new_capacity * sizeof(struct tu_bo *));
+      if (!new_bos)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      cs->bo_capacity = new_capacity;
+      cs->bos = new_bos;
+   }
+
+   struct tu_bo *new_bo = malloc(sizeof(struct tu_bo));
+   if (!new_bo)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   VkResult result = tu_bo_init_new(dev, new_bo, byte_size);
+   if (result != VK_SUCCESS) {
+      free(new_bo);
+      return result;
+   }
+
+   result = tu_bo_map(dev, new_bo);
+   if (result != VK_SUCCESS) {
+      tu_bo_finish(dev, new_bo);
+      free(new_bo);
+      return result;
+   }
+
+   cs->bos[cs->bo_count++] = new_bo;
+
+   cs->start = cs->cur = (uint32_t *) new_bo->map;
+   cs->end = cs->start + new_bo->size / sizeof(uint32_t);
+
+   return VK_SUCCESS;
+}
+
 /**
  * Begin (or continue) command packet emission.  This will reserve space from
  * the command stream for at least \a reserve_size uint32_t values.
@@ -63,43 +107,13 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
    assert(reserve_size);
 
    if (cs->end - cs->cur < reserve_size) {
-      if (cs->bo_count == cs->bo_capacity) {
-         uint32_t new_capacity = MAX2(4, 2 * cs->bo_capacity);
-         struct tu_bo **new_bos =
-            realloc(cs->bos, new_capacity * sizeof(struct tu_bo *));
-         if (!new_bos)
-            abort();
-
-         cs->bo_capacity = new_capacity;
-         cs->bos = new_bos;
-      }
-
       uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
       if (cs->bo_count)
          new_size = MAX2(new_size, cs->bos[cs->bo_count - 1]->size * 2);
 
-      struct tu_bo *new_bo = malloc(sizeof(struct tu_bo));
-      if (!new_bo)
-         abort();
-
-      VkResult result = tu_bo_init_new(dev, new_bo, new_size);
-      if (result != VK_SUCCESS) {
-         free(new_bo);
+      VkResult result = tu_cs_add_bo(dev, cs, new_size);
+      if (result != VK_SUCCESS)
          return result;
-      }
-
-      result = tu_bo_map(dev, new_bo);
-      if (result != VK_SUCCESS) {
-         tu_bo_finish(dev, new_bo);
-         free(new_bo);
-         return result;
-      }
-
-      cs->bos[cs->bo_count] = new_bo;
-      ++cs->bo_count;
-
-      cs->start = cs->cur = (uint32_t *) new_bo->map;
-      cs->end = cs->start + new_bo->size / sizeof(uint32_t);
    }
    cs->start = cs->cur;
 
