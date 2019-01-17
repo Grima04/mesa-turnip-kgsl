@@ -2178,8 +2178,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          surface_state = sstate.state;
          assert(surface_state.alloc_size);
          add_surface_state_relocs(cmd_buffer, sstate);
-         image++;
-
          if (devinfo->gen < 9) {
             assert(image < MAX_GEN8_IMAGES);
             struct brw_image_param *image_param =
@@ -2188,6 +2186,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             *image_param =
                desc->image_view->planes[binding->plane].storage_image_param;
          }
+         image++;
          break;
       }
 
@@ -2232,8 +2231,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(surface_state.alloc_size);
          add_surface_reloc(cmd_buffer, surface_state,
                            desc->buffer_view->address);
-         image++;
-
          if (devinfo->gen < 9) {
             assert(image < MAX_GEN8_IMAGES);
             struct brw_image_param *image_param =
@@ -2241,6 +2238,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
             *image_param = desc->buffer_view->storage_image_param;
          }
+         image++;
          break;
 
       default:
