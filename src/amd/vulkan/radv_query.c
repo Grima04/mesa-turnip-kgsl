@@ -1692,7 +1692,7 @@ void radv_CmdWriteTimestamp(
 			radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
 			radeon_emit(cs, COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM |
 				    COPY_DATA_SRC_SEL(COPY_DATA_TIMESTAMP) |
-				    COPY_DATA_DST_SEL(V_370_MEM_ASYNC));
+				    COPY_DATA_DST_SEL(V_370_MEM));
 			radeon_emit(cs, 0);
 			radeon_emit(cs, 0);
 			radeon_emit(cs, query_va);

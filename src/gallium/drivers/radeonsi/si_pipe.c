@@ -528,7 +528,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		/* Initialize the memory. */
 		struct radeon_cmdbuf *cs = sctx->gfx_cs;
 		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-		radeon_emit(cs, S_370_DST_SEL(V_370_MEMORY_SYNC) |
+		radeon_emit(cs, S_370_DST_SEL(V_370_MEM_GRBM) |
 			    S_370_WR_CONFIRM(1) |
 			    S_370_ENGINE_SEL(V_370_ME));
 		radeon_emit(cs, sctx->wait_mem_scratch->gpu_address);
