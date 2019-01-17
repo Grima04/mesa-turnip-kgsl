@@ -2772,6 +2772,23 @@ void nir_metadata_set_validation_flag(nir_shader *shader);
 void nir_metadata_check_validation_flag(nir_shader *shader);
 
 static inline bool
+should_skip_nir(const char *name)
+{
+   static const char *list = NULL;
+   if (!list) {
+      /* Comma separated list of names to skip. */
+      list = getenv("NIR_SKIP");
+      if (!list)
+         list = "";
+   }
+
+   if (!list[0])
+      return false;
+
+   return comma_separated_list_contains(list, name);
+}
+
+static inline bool
 should_clone_nir(void)
 {
    static int should_clone = -1;
@@ -2804,12 +2821,17 @@ should_print_nir(void)
 static inline void nir_validate_shader(nir_shader *shader, const char *when) { (void) shader; (void)when; }
 static inline void nir_metadata_set_validation_flag(nir_shader *shader) { (void) shader; }
 static inline void nir_metadata_check_validation_flag(nir_shader *shader) { (void) shader; }
+static inline bool should_skip_nir(const char *pass_name) { return false; }
 static inline bool should_clone_nir(void) { return false; }
 static inline bool should_serialize_deserialize_nir(void) { return false; }
 static inline bool should_print_nir(void) { return false; }
 #endif /* NDEBUG */
 
 #define _PASS(pass, nir, do_pass) do {                               \
+   if (should_skip_nir(#pass)) {                                     \
+      printf("skipping %s\n", #pass);                                \
+      break;                                                         \
+   }                                                                 \
    do_pass                                                           \
    nir_validate_shader(nir, "after " #pass);                         \
    if (should_clone_nir()) {                                         \
@@ -2842,6 +2864,8 @@ static inline bool should_print_nir(void) { return false; }
    if (should_print_nir())                                           \
       nir_print_shader(nir, stdout);                                 \
 )
+
+#define NIR_SKIP(name) should_skip_nir(#name)
 
 void nir_calc_dominance_impl(nir_function_impl *impl);
 void nir_calc_dominance(nir_shader *shader);
