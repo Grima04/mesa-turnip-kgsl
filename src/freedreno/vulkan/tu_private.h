@@ -51,6 +51,7 @@
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 
+#include "drm/msm_drm.h"
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
 
@@ -708,14 +709,19 @@ struct tu_bo_list
 {
    uint32_t count;
    uint32_t capacity;
-   uint32_t *handles;
+   struct drm_msm_gem_submit_bo *bo_infos;
 };
 
-void tu_bo_list_init(struct tu_bo_list *list);
-void tu_bo_list_destroy(struct tu_bo_list *list);
-void tu_bo_list_reset(struct tu_bo_list *list);
-uint32_t tu_bo_list_add(struct tu_bo_list *list,
-                        const struct tu_bo *bo);
+void
+tu_bo_list_init(struct tu_bo_list *list);
+void
+tu_bo_list_destroy(struct tu_bo_list *list);
+void
+tu_bo_list_reset(struct tu_bo_list *list);
+uint32_t
+tu_bo_list_add(struct tu_bo_list *list,
+               const struct tu_bo *bo,
+               uint32_t flags);
 
 struct tu_cs_entry
 {

@@ -1178,21 +1178,14 @@ tu_QueueSubmit(VkQueue _queue,
          struct tu_cs *cs = &cmdbuf->cs;
          for (unsigned i = 0; i < cs->entry_count; ++i, ++entry_idx) {
             cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
-            cmds[entry_idx].submit_idx =
-               tu_bo_list_add(&bo_list, cs->entries[i].bo);
+            cmds[entry_idx].submit_idx = tu_bo_list_add(
+               &bo_list, cs->entries[i].bo, MSM_SUBMIT_BO_READ);
             cmds[entry_idx].submit_offset = cs->entries[i].offset;
             cmds[entry_idx].size = cs->entries[i].size;
             cmds[entry_idx].pad = 0;
             cmds[entry_idx].nr_relocs = 0;
             cmds[entry_idx].relocs = 0;
          }
-      }
-
-      struct drm_msm_gem_submit_bo bos[bo_list.count];
-      for (unsigned i = 0; i < bo_list.count; ++i) {
-         bos[i].flags = MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE;
-         bos[i].handle = bo_list.handles[i];
-         bos[i].presumed = 0;
       }
 
       uint32_t flags = MSM_PIPE_3D0;
@@ -1203,7 +1196,7 @@ tu_QueueSubmit(VkQueue _queue,
       struct drm_msm_gem_submit req = {
          .flags = flags,
          .queueid = queue->msm_queue_id,
-         .bos = (uint64_t)(uintptr_t)bos,
+         .bos = (uint64_t)(uintptr_t) bo_list.bo_infos,
          .nr_bos = bo_list.count,
          .cmds = (uint64_t)(uintptr_t)cmds,
          .nr_cmds = entry_count,

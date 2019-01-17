@@ -35,13 +35,13 @@ void
 tu_bo_list_init(struct tu_bo_list *list)
 {
    list->count = list->capacity = 0;
-   list->handles = NULL;
+   list->bo_infos = NULL;
 }
 
 void
 tu_bo_list_destroy(struct tu_bo_list *list)
 {
-   free(list->handles);
+   free(list->bo_infos);
 }
 
 void
@@ -50,27 +50,39 @@ tu_bo_list_reset(struct tu_bo_list *list)
    list->count = 0;
 }
 
+/**
+ * \a flags consists of MSM_SUBMIT_BO_FLAGS.
+ */
 uint32_t
 tu_bo_list_add(struct tu_bo_list *list,
-               const struct tu_bo *bo)
+               const struct tu_bo *bo,
+               uint32_t flags)
 {
    uint32_t handle = bo->gem_handle;
    for (uint32_t i = 0; i < list->count; ++i) {
-      if (list->handles[i] == handle)
+      if (list->bo_infos[i].handle == handle) {
+         list->bo_infos[i].flags |= flags;
          return i;
+      }
    }
 
+   /* grow list->bo_infos if needed */
    if (list->count == list->capacity) {
       uint32_t new_capacity = MAX2(2 * list->count, 16);
-      uint32_t *new_handles = realloc(list->handles, new_capacity * sizeof(uint32_t));
-      if (!new_handles)
+      struct drm_msm_gem_submit_bo *new_bo_infos = realloc(
+         list->bo_infos, new_capacity * sizeof(struct drm_msm_gem_submit_bo));
+      if (!new_bo_infos)
          return ~0;
-      list->handles = new_handles;
+      list->bo_infos = new_bo_infos;
       list->capacity = new_capacity;
    }
 
    uint32_t ret = list->count;
-   list->handles[list->count] = handle;
+   list->bo_infos[list->count] = (struct drm_msm_gem_submit_bo) {
+      .flags = flags,
+      .handle = bo->gem_handle,
+      .presumed = bo->iova,
+   };
    ++list->count;
 
    return ret;
