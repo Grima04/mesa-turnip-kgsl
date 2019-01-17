@@ -973,15 +973,10 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 	enum chip_class chip_class = cmd_buffer->device->physical_device->rad_info.chip_class;
 	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 128);
 
-	uint32_t *ptr = NULL;
-	uint64_t va = 0;
-	if (chip_class == GFX9) {
-		va = cmd_buffer->gfx9_fence_va;
-		ptr = &cmd_buffer->gfx9_fence_idx;
-	}
 	si_cs_emit_cache_flush(cmd_buffer->cs,
 	                       cmd_buffer->device->physical_device->rad_info.chip_class,
-			       ptr, va,
+			       &cmd_buffer->gfx9_fence_idx,
+			       cmd_buffer->gfx9_fence_va,
 	                       radv_cmd_buffer_uses_mec(cmd_buffer),
 	                       cmd_buffer->state.flush_bits,
 			       cmd_buffer->gfx9_eop_bug_va);
