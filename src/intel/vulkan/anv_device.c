@@ -1108,6 +1108,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
+         VkPhysicalDeviceImagelessFramebufferFeaturesKHR *features =
+            (VkPhysicalDeviceImagelessFramebufferFeaturesKHR *)ext;
+         features->imagelessFramebuffer = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features = (void *)ext;
          features->protectedMemory = false;
@@ -3708,17 +3715,33 @@ VkResult anv_CreateFramebuffer(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
-   size_t size = sizeof(*framebuffer) +
-                 sizeof(struct anv_image_view *) * pCreateInfo->attachmentCount;
-   framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
-                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (framebuffer == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   size_t size = sizeof(*framebuffer);
 
-   framebuffer->attachment_count = pCreateInfo->attachmentCount;
-   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-      VkImageView _iview = pCreateInfo->pAttachments[i];
-      framebuffer->attachments[i] = anv_image_view_from_handle(_iview);
+   /* VK_KHR_imageless_framebuffer extension says:
+    *
+    *    If flags includes VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR,
+    *    parameter pAttachments is ignored.
+    */
+   if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
+      size += sizeof(struct anv_image_view *) * pCreateInfo->attachmentCount;
+      framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (framebuffer == NULL)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+         ANV_FROM_HANDLE(anv_image_view, iview, pCreateInfo->pAttachments[i]);
+         framebuffer->attachments[i] = iview;
+      }
+      framebuffer->attachment_count = pCreateInfo->attachmentCount;
+   } else {
+      assert(device->enabled_extensions.KHR_imageless_framebuffer);
+      framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (framebuffer == NULL)
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      framebuffer->attachment_count = 0;
    }
 
    framebuffer->width = pCreateInfo->width;

@@ -246,7 +246,7 @@ color_attachment_compute_aux_usage(struct anv_device * device,
                                    union isl_color_value *fast_clear_color)
 {
    struct anv_attachment_state *att_state = &cmd_state->attachments[att];
-   struct anv_image_view *iview = cmd_state->framebuffer->attachments[att];
+   struct anv_image_view *iview = cmd_state->attachments[att].image_view;
 
    assert(iview->n_planes == 1);
 
@@ -388,7 +388,7 @@ depth_stencil_attachment_compute_aux_usage(struct anv_device *device,
    struct anv_render_pass_attachment *pass_att =
       &cmd_state->pass->attachments[att];
    struct anv_attachment_state *att_state = &cmd_state->attachments[att];
-   struct anv_image_view *iview = cmd_state->framebuffer->attachments[att];
+   struct anv_image_view *iview = cmd_state->attachments[att].image_view;
 
    /* These will be initialized after the first subpass transition. */
    att_state->aux_usage = ISL_AUX_USAGE_NONE;
@@ -1194,6 +1194,7 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
 {
    const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
    struct anv_cmd_state *state = &cmd_buffer->state;
+   struct anv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 
    vk_free(&cmd_buffer->pool->alloc, state->attachments);
 
@@ -1233,6 +1234,12 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
    next_state.offset += ss_stride;
    next_state.map += ss_stride;
 
+   const VkRenderPassAttachmentBeginInfoKHR *begin_attachment =
+      vk_find_struct_const(begin, RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
+
+   if (begin && !begin_attachment)
+      assert(pass->attachment_count == framebuffer->attachment_count);
+
    for (uint32_t i = 0; i < pass->attachment_count; ++i) {
       if (vk_format_is_color(pass->attachments[i].format)) {
          state->attachments[i].color.state = next_state;
@@ -1245,14 +1252,19 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          next_state.offset += ss_stride;
          next_state.map += ss_stride;
       }
+
+      if (begin_attachment && begin_attachment->attachmentCount != 0) {
+         assert(begin_attachment->attachmentCount == pass->attachment_count);
+         ANV_FROM_HANDLE(anv_image_view, iview, begin_attachment->pAttachments[i]);
+         cmd_buffer->state.attachments[i].image_view = iview;
+      } else if (framebuffer && i < framebuffer->attachment_count) {
+         cmd_buffer->state.attachments[i].image_view = framebuffer->attachments[i];
+      }
    }
    assert(next_state.offset == state->render_pass_states.offset +
                                state->render_pass_states.alloc_size);
 
    if (begin) {
-      ANV_FROM_HANDLE(anv_framebuffer, framebuffer, begin->framebuffer);
-      assert(pass->attachment_count == framebuffer->attachment_count);
-
       isl_null_fill_state(isl_dev, state->null_surface_state.map,
                           isl_extent3d(framebuffer->width,
                                        framebuffer->height,
@@ -1295,7 +1307,7 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          if (clear_aspects)
             state->attachments[i].clear_value = begin->pClearValues[i];
 
-         struct anv_image_view *iview = framebuffer->attachments[i];
+         struct anv_image_view *iview = cmd_buffer->state.attachments[i].image_view;
          anv_assert(iview->vk_format == att->format);
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
@@ -4072,7 +4084,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       assert(a < cmd_state->pass->attachment_count);
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
 
-      struct anv_image_view *iview = fb->attachments[a];
+      struct anv_image_view *iview = cmd_state->attachments[a].image_view;
       const struct anv_image *image = iview->image;
 
       /* A resolve is necessary before use as an input attachment if the clear
@@ -4409,8 +4421,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
             cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
          }
 
-         struct anv_image_view *src_iview = fb->attachments[src_att];
-         struct anv_image_view *dst_iview = fb->attachments[dst_att];
+         struct anv_image_view *src_iview = cmd_state->attachments[src_att].image_view;
+         struct anv_image_view *dst_iview = cmd_state->attachments[dst_att].image_view;
 
          const VkRect2D render_area = cmd_buffer->state.render_area;
 
@@ -4464,8 +4476,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
       }
 
-      struct anv_image_view *src_iview = fb->attachments[src_att];
-      struct anv_image_view *dst_iview = fb->attachments[dst_att];
+      struct anv_image_view *src_iview = cmd_state->attachments[src_att].image_view;
+      struct anv_image_view *dst_iview = cmd_state->attachments[dst_att].image_view;
 
       const VkRect2D render_area = cmd_buffer->state.render_area;
 
@@ -4578,7 +4590,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       assert(a != VK_ATTACHMENT_UNUSED);
 
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
-      struct anv_image_view *iview = fb->attachments[a];
+      struct anv_image_view *iview = cmd_state->attachments[a].image_view;;
       const struct anv_image *image = iview->image;
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -4608,7 +4620,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
 
       assert(a < cmd_state->pass->attachment_count);
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
-      struct anv_image_view *iview = fb->attachments[a];
+      struct anv_image_view *iview = cmd_state->attachments[a].image_view;
       const struct anv_image *image = iview->image;
 
       if ((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) &&
@@ -4624,7 +4636,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           * SRGB view & a UNORM image).
           */
          if (fast_clear_type != ANV_FAST_CLEAR_NONE) {
-            anv_perf_warn(cmd_buffer->device->instance, fb,
+            anv_perf_warn(cmd_buffer->device->instance, iview,
                           "Doing a partial resolve to get rid of clear color at the "
                           "end of a renderpass due to an image/view format mismatch");
 
@@ -4776,7 +4788,7 @@ void genX(CmdEndRenderPass)(
    cmd_buffer->state.hiz_enabled = false;
 
 #ifndef NDEBUG
-   anv_dump_add_framebuffer(cmd_buffer, cmd_buffer->state.framebuffer);
+   anv_dump_add_attachments(cmd_buffer);
 #endif
 
    /* Remove references to render pass specific state. This enables us to

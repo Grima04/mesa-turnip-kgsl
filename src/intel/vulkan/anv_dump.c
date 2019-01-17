@@ -410,16 +410,15 @@ dump_add_image(struct anv_cmd_buffer *cmd_buffer, struct anv_image *image,
 }
 
 void
-anv_dump_add_framebuffer(struct anv_cmd_buffer *cmd_buffer,
-                         struct anv_framebuffer *fb)
+anv_dump_add_attachments(struct anv_cmd_buffer *cmd_buffer)
 {
    if (!dump_lock(ANV_DUMP_FRAMEBUFFERS_BIT))
       return;
 
    unsigned dump_idx = dump_count++;
 
-   for (unsigned i = 0; i < fb->attachment_count; i++) {
-      struct anv_image_view *iview = fb->attachments[i];
+   for (unsigned i = 0; i < cmd_buffer->state.pass->attachment_count; i++) {
+      struct anv_image_view *iview = cmd_buffer->state.attachments[i].image_view;
 
       uint32_t b;
       for_each_bit(b, iview->image->aspects) {
@@ -436,7 +435,7 @@ anv_dump_add_framebuffer(struct anv_cmd_buffer *cmd_buffer,
             unreachable("Invalid aspect");
          }
 
-         char *filename = ralloc_asprintf(dump_ctx, "framebuffer%04d-%d%s.ppm",
+         char *filename = ralloc_asprintf(dump_ctx, "attachment%04d-%d%s.ppm",
                                           dump_idx, i, suffix);
 
          unsigned plane = anv_image_aspect_to_plane(iview->image->aspects, aspect);
