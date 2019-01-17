@@ -71,15 +71,33 @@ namespace {
           !is_byte_raw_mov(inst)) {
          return get_exec_type_size(inst);
       } else {
-         unsigned stride = inst->dst.stride * type_sz(inst->dst.type);
+         /* Calculate the maximum byte stride and the minimum/maximum type
+          * size across all source and destination operands we are required to
+          * lower.
+          */
+         unsigned max_stride = inst->dst.stride * type_sz(inst->dst.type);
+         unsigned min_size = type_sz(inst->dst.type);
+         unsigned max_size = type_sz(inst->dst.type);
 
          for (unsigned i = 0; i < inst->sources; i++) {
-            if (!is_uniform(inst->src[i]) && !inst->is_control_source(i))
-               stride = MAX2(stride, inst->src[i].stride *
-                             type_sz(inst->src[i].type));
+            if (!is_uniform(inst->src[i]) && !inst->is_control_source(i)) {
+               const unsigned size = type_sz(inst->src[i].type);
+               max_stride = MAX2(max_stride, inst->src[i].stride * size);
+               min_size = MIN2(min_size, size);
+               max_size = MAX2(max_size, size);
+            }
          }
 
-         return stride;
+         /* All operands involved in lowering need to fit in the calculated
+          * stride.
+          */
+         assert(max_size <= 4 * min_size);
+
+         /* Attempt to use the largest byte stride among all present operands,
+          * but never exceed a stride of 4 since that would lead to illegal
+          * destination regions during lowering.
+          */
+         return MIN2(max_stride, 4 * min_size);
       }
    }
 
