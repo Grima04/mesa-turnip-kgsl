@@ -1811,7 +1811,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
        * saying that render target writes are ongoing.
        */
       if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
-         bits &= ~(ANV_PIPE_RENDER_TARGET_WRITES);
+         bits &= ~(ANV_PIPE_RENDER_TARGET_BUFFER_WRITES);
 
       bits &= ~(ANV_PIPE_FLUSH_BITS | ANV_PIPE_CS_STALL_BIT);
    }
@@ -2828,8 +2828,6 @@ void genX(CmdDraw)(
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = 0;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 void genX(CmdDrawIndexed)(
@@ -2873,8 +2871,6 @@ void genX(CmdDrawIndexed)(
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = vertexOffset;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 /* Auto-Draw / Indirect Registers */
@@ -3012,8 +3008,6 @@ void genX(CmdDrawIndirect)(
 
       offset += stride;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 void genX(CmdDrawIndexedIndirect)(
@@ -3057,8 +3051,6 @@ void genX(CmdDrawIndexedIndirect)(
 
       offset += stride;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 #define TMP_DRAW_COUNT_REG MI_ALU_REG14
@@ -3218,8 +3210,6 @@ void genX(CmdDrawIndirectCountKHR)(
 
       offset += stride;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 void genX(CmdDrawIndexedIndirectCountKHR)(
@@ -3280,8 +3270,6 @@ void genX(CmdDrawIndexedIndirectCountKHR)(
 
       offset += stride;
    }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_WRITES;
 }
 
 static VkResult

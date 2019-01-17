@@ -733,7 +733,7 @@ void genX(CmdCopyQueryPoolResults)(
     * to ensure proper ordering of the commands from the 3d pipe and the
     * command streamer.
     */
-   if (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_RENDER_TARGET_WRITES) {
+   if (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_RENDER_TARGET_BUFFER_WRITES) {
       cmd_buffer->state.pending_pipe_bits |=
          ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
    }

@@ -475,6 +475,8 @@ void anv_CmdCopyImageToBuffer(
 
    copy_buffer_to_image(cmd_buffer, dst_buffer, src_image, srcImageLayout,
                         regionCount, pRegions, false);
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }
 
 static bool
@@ -682,6 +684,8 @@ void anv_CmdCopyBuffer(
    }
 
    blorp_batch_finish(&batch);
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }
 
 void anv_CmdUpdateBuffer(
@@ -737,6 +741,8 @@ void anv_CmdUpdateBuffer(
    }
 
    blorp_batch_finish(&batch);
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }
 
 void anv_CmdFillBuffer(
@@ -824,6 +830,8 @@ void anv_CmdFillBuffer(
    }
 
    blorp_batch_finish(&batch);
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }
 
 void anv_CmdClearColorImage(
