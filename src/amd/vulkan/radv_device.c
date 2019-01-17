@@ -1965,134 +1965,138 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		     uint32_t tess_offchip_ring_size,
 		     struct radeon_winsys_bo *tess_rings_bo)
 {
-	uint64_t esgs_va = 0, gsvs_va = 0;
-	uint64_t tess_va = 0, tess_offchip_va = 0;
 	uint32_t *desc = &map[4];
 
-	if (esgs_ring_bo)
-		esgs_va = radv_buffer_get_va(esgs_ring_bo);
-	if (gsvs_ring_bo)
-		gsvs_va = radv_buffer_get_va(gsvs_ring_bo);
-	if (tess_rings_bo) {
-		tess_va = radv_buffer_get_va(tess_rings_bo);
-		tess_offchip_va = tess_va + tess_offchip_ring_offset;
+	if (esgs_ring_bo) {
+		uint64_t esgs_va = radv_buffer_get_va(esgs_ring_bo);
+
+		/* stride 0, num records - size, add tid, swizzle, elsize4,
+		   index stride 64 */
+		desc[0] = esgs_va;
+		desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32) |
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(true);
+		desc[2] = esgs_ring_size;
+		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(1) |
+			  S_008F0C_INDEX_STRIDE(3) |
+			  S_008F0C_ADD_TID_ENABLE(true);
+
+		/* GS entry for ES->GS ring */
+		/* stride 0, num records - size, elsize0,
+		   index stride 0 */
+		desc[4] = esgs_va;
+		desc[5] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32)|
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[6] = esgs_ring_size;
+		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(0) |
+			  S_008F0C_INDEX_STRIDE(0) |
+			  S_008F0C_ADD_TID_ENABLE(false);
 	}
 
-	/* stride 0, num records - size, add tid, swizzle, elsize4,
-	   index stride 64 */
-	desc[0] = esgs_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32) |
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(true);
-	desc[2] = esgs_ring_size;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(1) |
-		S_008F0C_INDEX_STRIDE(3) |
-		S_008F0C_ADD_TID_ENABLE(true);
-
-	desc += 4;
-	/* GS entry for ES->GS ring */
-	/* stride 0, num records - size, elsize0,
-	   index stride 0 */
-	desc[0] = esgs_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32)|
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(false);
-	desc[2] = esgs_ring_size;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(0) |
-		S_008F0C_INDEX_STRIDE(0) |
-		S_008F0C_ADD_TID_ENABLE(false);
-
-	desc += 4;
-	/* VS entry for GS->VS ring */
-	/* stride 0, num records - size, elsize0,
-	   index stride 0 */
-	desc[0] = gsvs_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(false);
-	desc[2] = gsvs_ring_size;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(0) |
-		S_008F0C_INDEX_STRIDE(0) |
-		S_008F0C_ADD_TID_ENABLE(false);
-	desc += 4;
-
-	/* stride gsvs_itemsize, num records 64
-	   elsize 4, index stride 16 */
-	/* shader will patch stride and desc[2] */
-	desc[0] = gsvs_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(true);
-	desc[2] = 0;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(1) |
-		S_008F0C_INDEX_STRIDE(1) |
-		S_008F0C_ADD_TID_ENABLE(true);
-	desc += 4;
-
-	desc[0] = tess_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(tess_va >> 32) |
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(false);
-	desc[2] = tess_factor_ring_size;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(0) |
-		S_008F0C_INDEX_STRIDE(0) |
-		S_008F0C_ADD_TID_ENABLE(false);
-	desc += 4;
-
-	desc[0] = tess_offchip_va;
-	desc[1] = S_008F04_BASE_ADDRESS_HI(tess_offchip_va >> 32) |
-		S_008F04_STRIDE(0) |
-		S_008F04_SWIZZLE_ENABLE(false);
-	desc[2] = tess_offchip_ring_size;
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-		S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-		S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-		S_008F0C_ELEMENT_SIZE(0) |
-		S_008F0C_INDEX_STRIDE(0) |
-		S_008F0C_ADD_TID_ENABLE(false);
-	desc += 4;
-
-	/* add sample positions after all rings */
-	memcpy(desc, queue->device->sample_locations_1x, 8);
-	desc += 2;
-	memcpy(desc, queue->device->sample_locations_2x, 16);
-	desc += 4;
-	memcpy(desc, queue->device->sample_locations_4x, 32);
 	desc += 8;
-	memcpy(desc, queue->device->sample_locations_8x, 64);
+
+	if (gsvs_ring_bo) {
+		uint64_t gsvs_va = radv_buffer_get_va(gsvs_ring_bo);
+
+		/* VS entry for GS->VS ring */
+		/* stride 0, num records - size, elsize0,
+		   index stride 0 */
+		desc[0] = gsvs_va;
+		desc[1] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[2] = gsvs_ring_size;
+		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(0) |
+			  S_008F0C_INDEX_STRIDE(0) |
+			  S_008F0C_ADD_TID_ENABLE(false);
+
+		/* stride gsvs_itemsize, num records 64
+		   elsize 4, index stride 16 */
+		/* shader will patch stride and desc[2] */
+		desc[4] = gsvs_va;
+		desc[5] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(true);
+		desc[6] = 0;
+		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(1) |
+			  S_008F0C_INDEX_STRIDE(1) |
+			  S_008F0C_ADD_TID_ENABLE(true);
+	}
+
+	desc += 8;
+
+	if (tess_rings_bo) {
+		uint64_t tess_va = radv_buffer_get_va(tess_rings_bo);
+		uint64_t tess_offchip_va = tess_va + tess_offchip_ring_offset;
+
+		desc[0] = tess_va;
+		desc[1] = S_008F04_BASE_ADDRESS_HI(tess_va >> 32) |
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[2] = tess_factor_ring_size;
+		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(0) |
+			  S_008F0C_INDEX_STRIDE(0) |
+			  S_008F0C_ADD_TID_ENABLE(false);
+
+		desc[4] = tess_offchip_va;
+		desc[5] = S_008F04_BASE_ADDRESS_HI(tess_offchip_va >> 32) |
+			  S_008F04_STRIDE(0) |
+			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[6] = tess_offchip_ring_size;
+		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+			  S_008F0C_ELEMENT_SIZE(0) |
+			  S_008F0C_INDEX_STRIDE(0) |
+			  S_008F0C_ADD_TID_ENABLE(false);
+	}
+
+	desc += 8;
+
+	if (add_sample_positions) {
+		/* add sample positions after all rings */
+		memcpy(desc, queue->device->sample_locations_1x, 8);
+		desc += 2;
+		memcpy(desc, queue->device->sample_locations_2x, 16);
+		desc += 4;
+		memcpy(desc, queue->device->sample_locations_4x, 32);
+		desc += 8;
+		memcpy(desc, queue->device->sample_locations_8x, 64);
+	}
 }
 
 static unsigned
