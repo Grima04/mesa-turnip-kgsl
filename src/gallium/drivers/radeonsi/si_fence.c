@@ -266,7 +266,8 @@ static void si_fine_fence_set(struct si_context *ctx,
 	if (flags & PIPE_FLUSH_TOP_OF_PIPE) {
 		struct radeon_cmdbuf *cs = ctx->gfx_cs;
 		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-		radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
+		radeon_emit(cs, S_370_DST_SEL(ctx->chip_class >= CIK ? V_370_MEM
+								     : V_370_MEM_GRBM) |
 			S_370_WR_CONFIRM(1) |
 			S_370_ENGINE_SEL(V_370_PFP));
 		radeon_emit(cs, fence_va);
