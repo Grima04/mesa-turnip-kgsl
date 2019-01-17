@@ -2435,7 +2435,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		    tess_rings_bo || add_sample_positions) {
 			size = 112; /* 2 dword + 2 padding + 4 dword * 6 */
 			if (add_sample_positions)
-				size += 256; /* 32+16+8+4+2+1 samples * 4 * 2 = 248 bytes. */
+				size += 128; /* 64+32+16+8 = 120 bytes */
 		}
 		else if (scratch_bo)
 			size = 8; /* 2 dword */
