@@ -660,7 +660,6 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 				unsigned event, unsigned event_flags,
 				unsigned data_sel,
 				uint64_t va,
-				uint32_t old_fence,
 				uint32_t new_fence,
 				uint64_t gfx9_eop_bug_va)
 {
@@ -707,7 +706,7 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 			radeon_emit(cs, op);
 			radeon_emit(cs, va);
 			radeon_emit(cs, ((va >> 32) & 0xffff) | sel);
-			radeon_emit(cs, old_fence); /* immediate data */
+			radeon_emit(cs, 0); /* immediate data */
 			radeon_emit(cs, 0); /* unused */
 		}
 
@@ -801,7 +800,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 							   V_028A90_FLUSH_AND_INV_CB_DATA_TS,
 							   0,
 							   EOP_DATA_SEL_DISCARD,
-							   0, 0, 0,
+							   0, 0,
 							   gfx9_eop_bug_va);
 			}
 		}
@@ -868,11 +867,11 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 					 RADV_CMD_FLAG_INV_VMEM_L1);
 		}
 		assert(flush_cnt);
-		uint32_t old_fence = (*flush_cnt)++;
+		(*flush_cnt)++;
 
 		si_cs_emit_write_event_eop(cs, chip_class, false, cb_db_event, tc_flags,
 					   EOP_DATA_SEL_VALUE_32BIT,
-					   flush_va, old_fence, *flush_cnt,
+					   flush_va, *flush_cnt,
 					   gfx9_eop_bug_va);
 		radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, flush_va,
 				 *flush_cnt, 0xffffffff);
