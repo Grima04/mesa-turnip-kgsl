@@ -1596,7 +1596,8 @@ void si_trace_emit(struct si_context *sctx)
 	uint32_t trace_id = ++sctx->current_saved_cs->trace_id;
 
 	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-	radeon_emit(cs, S_370_DST_SEL(V_370_MEM_GRBM) |
+	radeon_emit(cs, S_370_DST_SEL(sctx->chip_class >= CIK ? V_370_MEM
+							      : V_370_MEM_GRBM) |
 		    S_370_WR_CONFIRM(1) |
 		    S_370_ENGINE_SEL(V_370_ME));
 	radeon_emit(cs, va);
