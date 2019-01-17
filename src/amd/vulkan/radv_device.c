@@ -2456,6 +2456,29 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	} else
 		descriptor_bo = queue->descriptor_bo;
 
+	if (descriptor_bo != queue->descriptor_bo) {
+		uint32_t *map = (uint32_t*)queue->device->ws->buffer_map(descriptor_bo);
+
+		if (scratch_bo) {
+			uint64_t scratch_va = radv_buffer_get_va(scratch_bo);
+			uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) |
+				         S_008F04_SWIZZLE_ENABLE(1);
+			map[0] = scratch_va;
+			map[1] = rsrc1;
+		}
+
+		if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo || add_sample_positions)
+			fill_geom_tess_rings(queue, map, add_sample_positions,
+					     esgs_ring_size, esgs_ring_bo,
+					     gsvs_ring_size, gsvs_ring_bo,
+					     tess_factor_ring_size,
+					     tess_offchip_ring_offset,
+					     tess_offchip_ring_size,
+					     tess_rings_bo);
+
+		queue->device->ws->buffer_unmap(descriptor_bo);
+	}
+
 	for(int i = 0; i < 3; ++i) {
 		struct radeon_cmdbuf *cs = NULL;
 		cs = queue->device->ws->cs_create(queue->device->ws,
@@ -2478,30 +2501,6 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			break;
 		case RADV_QUEUE_TRANSFER:
 			break;
-		}
-
-		if (descriptor_bo != queue->descriptor_bo) {
-			uint32_t *map = (uint32_t*)queue->device->ws->buffer_map(descriptor_bo);
-
-			if (scratch_bo) {
-				uint64_t scratch_va = radv_buffer_get_va(scratch_bo);
-				uint32_t rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) |
-				                 S_008F04_SWIZZLE_ENABLE(1);
-				map[0] = scratch_va;
-				map[1] = rsrc1;
-			}
-
-			if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo ||
-			    add_sample_positions)
-				fill_geom_tess_rings(queue, map, add_sample_positions,
-						     esgs_ring_size, esgs_ring_bo,
-						     gsvs_ring_size, gsvs_ring_bo,
-						     tess_factor_ring_size,
-						     tess_offchip_ring_offset,
-						     tess_offchip_ring_size,
-						     tess_rings_bo);
-
-			queue->device->ws->buffer_unmap(descriptor_bo);
 		}
 
 		if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo)  {
