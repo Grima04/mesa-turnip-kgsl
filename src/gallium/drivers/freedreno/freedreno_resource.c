@@ -498,7 +498,21 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 			if (usage & PIPE_TRANSFER_READ) {
 				fd_blit_to_staging(ctx, trans);
-				fd_bo_cpu_prep(rsc->bo, ctx->pipe, DRM_FREEDRENO_PREP_READ);
+
+				struct fd_batch *batch = NULL;
+				fd_batch_reference(&batch, staging_rsc->write_batch);
+
+				/* we can't fd_bo_cpu_prep() until the blit to staging
+				 * is submitted to kernel.. in that case write_batch
+				 * wouldn't be NULL yet:
+				 */
+				if (batch) {
+					fd_batch_sync(batch);
+					fd_batch_reference(&batch, NULL);
+				}
+
+				fd_bo_cpu_prep(staging_rsc->bo, ctx->pipe,
+						DRM_FREEDRENO_PREP_READ);
 			}
 
 			buf = fd_bo_map(staging_rsc->bo);
