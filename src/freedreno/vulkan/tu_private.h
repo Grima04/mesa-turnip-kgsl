@@ -712,6 +712,8 @@ struct tu_bo_list
    struct drm_msm_gem_submit_bo *bo_infos;
 };
 
+#define TU_BO_LIST_FAILED (~0)
+
 void
 tu_bo_list_init(struct tu_bo_list *list);
 void
@@ -722,6 +724,8 @@ uint32_t
 tu_bo_list_add(struct tu_bo_list *list,
                const struct tu_bo *bo,
                uint32_t flags);
+VkResult
+tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
 
 struct tu_cs_entry
 {

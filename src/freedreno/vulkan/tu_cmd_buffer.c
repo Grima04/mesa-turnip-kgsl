@@ -53,15 +53,14 @@ tu_bo_list_reset(struct tu_bo_list *list)
 /**
  * \a flags consists of MSM_SUBMIT_BO_FLAGS.
  */
-uint32_t
-tu_bo_list_add(struct tu_bo_list *list,
-               const struct tu_bo *bo,
-               uint32_t flags)
+static uint32_t
+tu_bo_list_add_info(struct tu_bo_list *list,
+                    const struct drm_msm_gem_submit_bo *bo_info)
 {
-   uint32_t handle = bo->gem_handle;
    for (uint32_t i = 0; i < list->count; ++i) {
-      if (list->bo_infos[i].handle == handle) {
-         list->bo_infos[i].flags |= flags;
+      if (list->bo_infos[i].handle == bo_info->handle) {
+         assert(list->bo_infos[i].presumed == bo_info->presumed);
+         list->bo_infos[i].flags |= bo_info->flags;
          return i;
       }
    }
@@ -72,20 +71,36 @@ tu_bo_list_add(struct tu_bo_list *list,
       struct drm_msm_gem_submit_bo *new_bo_infos = realloc(
          list->bo_infos, new_capacity * sizeof(struct drm_msm_gem_submit_bo));
       if (!new_bo_infos)
-         return ~0;
+         return TU_BO_LIST_FAILED;
       list->bo_infos = new_bo_infos;
       list->capacity = new_capacity;
    }
 
-   uint32_t ret = list->count;
-   list->bo_infos[list->count] = (struct drm_msm_gem_submit_bo) {
-      .flags = flags,
-      .handle = bo->gem_handle,
-      .presumed = bo->iova,
-   };
-   ++list->count;
+   list->bo_infos[list->count] = *bo_info;
+   return list->count++;
+}
 
-   return ret;
+uint32_t
+tu_bo_list_add(struct tu_bo_list *list,
+               const struct tu_bo *bo,
+               uint32_t flags)
+{
+   return tu_bo_list_add_info(list, &(struct drm_msm_gem_submit_bo) {
+                                       .flags = flags,
+                                       .handle = bo->gem_handle,
+                                       .presumed = bo->iova,
+                                    });
+}
+
+VkResult
+tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
+{
+   for (uint32_t i = 0; i < other->count; i++) {
+      if (tu_bo_list_add_info(list, other->bo_infos + i) == TU_BO_LIST_FAILED)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   return VK_SUCCESS;
 }
 
 const struct tu_dynamic_state default_dynamic_state = {
