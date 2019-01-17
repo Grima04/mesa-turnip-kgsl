@@ -2090,14 +2090,6 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
        */
       if (shader->CompileStatus == COMPILE_SUCCESS)
          return;
-
-      if (shader->CompileStatus == COMPILED_NO_OPTS) {
-         opt_shader_and_create_symbol_table(ctx,
-                                            NULL, /* source_symbols */
-                                            shader);
-         shader->CompileStatus = COMPILE_SUCCESS;
-         return;
-      }
    }
 
    struct _mesa_glsl_parse_state *state =
@@ -2153,13 +2145,7 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
    if (!state->error && !shader->ir->is_empty()) {
       assign_subroutine_indexes(state);
       lower_subroutine(shader->ir, state);
-
-      if (!ctx->Cache || force_recompile)
-         opt_shader_and_create_symbol_table(ctx, state->symbols, shader);
-      else {
-         reparent_ir(shader->ir, shader->ir);
-         shader->CompileStatus = COMPILED_NO_OPTS;
-      }
+      opt_shader_and_create_symbol_table(ctx, state->symbols, shader);
    }
 
    if (!force_recompile) {
