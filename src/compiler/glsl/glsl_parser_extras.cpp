@@ -2155,6 +2155,15 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
 
    delete state->symbols;
    ralloc_free(state);
+
+   if (ctx->Cache) {
+      char sha1_buf[41];
+      disk_cache_put_key(ctx->Cache, shader->sha1);
+      if (ctx->_Shader->Flags & GLSL_CACHE_INFO) {
+         _mesa_sha1_format(sha1_buf, shader->sha1);
+         fprintf(stderr, "marking shader: %s\n", sha1_buf);
+      }
+   }
 }
 
 } /* extern "C" */
