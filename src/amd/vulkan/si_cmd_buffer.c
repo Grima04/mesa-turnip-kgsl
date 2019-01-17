@@ -976,7 +976,7 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 	uint32_t *ptr = NULL;
 	uint64_t va = 0;
 	if (chip_class == GFX9) {
-		va = radv_buffer_get_va(cmd_buffer->gfx9_fence_bo) + cmd_buffer->gfx9_fence_offset;
+		va = cmd_buffer->gfx9_fence_va;
 		ptr = &cmd_buffer->gfx9_fence_idx;
 	}
 	si_cs_emit_cache_flush(cmd_buffer->cs,

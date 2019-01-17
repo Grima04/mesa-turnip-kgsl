@@ -1116,8 +1116,7 @@ struct radv_cmd_buffer {
 
 	VkResult record_result;
 
-	uint32_t gfx9_fence_offset;
-	struct radeon_winsys_bo *gfx9_fence_bo;
+	uint64_t gfx9_fence_va;
 	uint32_t gfx9_fence_idx;
 	uint64_t gfx9_eop_bug_va;
 
