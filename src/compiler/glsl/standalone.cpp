@@ -138,6 +138,8 @@ initialize_context(struct gl_context *ctx, gl_api api)
     */
    ctx->Const.GLSLVersion = options->glsl_version;
    ctx->Extensions.ARB_ES3_compatibility = true;
+   ctx->Extensions.ARB_ES3_1_compatibility = true;
+   ctx->Extensions.ARB_ES3_2_compatibility = true;
    ctx->Const.MaxComputeWorkGroupCount[0] = 65535;
    ctx->Const.MaxComputeWorkGroupCount[1] = 65535;
    ctx->Const.MaxComputeWorkGroupCount[2] = 65535;
@@ -265,6 +267,9 @@ initialize_context(struct gl_context *ctx, gl_api api)
       ctx->Const.MaxUniformBufferBindings = 84;
       ctx->Const.MaxVertexStreams = 4;
       ctx->Const.MaxTransformFeedbackBuffers = 4;
+      ctx->Const.MaxShaderStorageBufferBindings = 4;
+      ctx->Const.MaxShaderStorageBlockSize = 4096;
+      ctx->Const.MaxAtomicBufferBindings = 4;
 
       ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs = 16;
       ctx->Const.Program[MESA_SHADER_VERTEX].MaxTextureImageUnits = 16;
