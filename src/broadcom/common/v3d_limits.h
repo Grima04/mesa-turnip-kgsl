@@ -30,7 +30,7 @@
 /* Not specifically a hardware limit, just coordination between compiler and
  * driver.
  */
-#define V3D_MAX_TEXTURE_SAMPLERS 32
+#define V3D_MAX_TEXTURE_SAMPLERS 16
 
 #define V3D_MAX_MIP_LEVELS 12
 

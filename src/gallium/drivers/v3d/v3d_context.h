@@ -118,11 +118,11 @@ struct v3d_sampler_state {
 };
 
 struct v3d_texture_stateobj {
-        struct pipe_sampler_view *textures[PIPE_MAX_SAMPLERS];
+        struct pipe_sampler_view *textures[V3D_MAX_TEXTURE_SAMPLERS];
         unsigned num_textures;
-        struct pipe_sampler_state *samplers[PIPE_MAX_SAMPLERS];
+        struct pipe_sampler_state *samplers[V3D_MAX_TEXTURE_SAMPLERS];
         unsigned num_samplers;
-        struct v3d_cl_reloc texture_state[PIPE_MAX_SAMPLERS];
+        struct v3d_cl_reloc texture_state[V3D_MAX_TEXTURE_SAMPLERS];
 };
 
 struct v3d_shader_uniform_info {
