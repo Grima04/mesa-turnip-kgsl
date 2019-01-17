@@ -143,7 +143,7 @@ intelInitExtensions(struct gl_context *ctx)
    ctx->Extensions.OES_texture_half_float_linear = true;
 
    if (devinfo->gen >= 8)
-      ctx->Const.GLSLVersion = 450;
+      ctx->Const.GLSLVersion = 460;
    else if (devinfo->is_haswell && can_do_pipelined_register_writes(brw->screen))
       ctx->Const.GLSLVersion = 450;
    else if (devinfo->gen >= 7 && can_do_pipelined_register_writes(brw->screen))

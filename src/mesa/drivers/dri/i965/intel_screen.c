@@ -2378,7 +2378,7 @@ set_max_gl_versions(struct intel_screen *screen)
    case 10:
    case 9:
    case 8:
-      dri_screen->max_gl_core_version = 45;
+      dri_screen->max_gl_core_version = 46;
       dri_screen->max_gl_compat_version = 30;
       dri_screen->max_gl_es1_version = 11;
       dri_screen->max_gl_es2_version = has_astc ? 32 : 31;
