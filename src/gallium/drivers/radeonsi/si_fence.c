@@ -259,21 +259,16 @@ static void si_fine_fence_set(struct si_context *ctx,
 
 	*fence_ptr = 0;
 
-	uint64_t fence_va = fine->buf->gpu_address + fine->offset;
-
-	radeon_add_to_buffer_list(ctx, ctx->gfx_cs, fine->buf,
-				  RADEON_USAGE_WRITE, RADEON_PRIO_QUERY);
 	if (flags & PIPE_FLUSH_TOP_OF_PIPE) {
-		struct radeon_cmdbuf *cs = ctx->gfx_cs;
-		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-		radeon_emit(cs, S_370_DST_SEL(ctx->chip_class >= CIK ? V_370_MEM
-								     : V_370_MEM_GRBM) |
-			S_370_WR_CONFIRM(1) |
-			S_370_ENGINE_SEL(V_370_PFP));
-		radeon_emit(cs, fence_va);
-		radeon_emit(cs, fence_va >> 32);
-		radeon_emit(cs, 0x80000000);
+		uint32_t value = 0x80000000;
+
+		si_cp_write_data(ctx, fine->buf, fine->offset, 4,
+				 V_370_MEM, V_370_PFP, &value);
 	} else if (flags & PIPE_FLUSH_BOTTOM_OF_PIPE) {
+		uint64_t fence_va = fine->buf->gpu_address + fine->offset;
+
+		radeon_add_to_buffer_list(ctx, ctx->gfx_cs, fine->buf,
+					  RADEON_USAGE_WRITE, RADEON_PRIO_QUERY);
 		si_cp_release_mem(ctx,
 				  V_028A90_BOTTOM_OF_PIPE_TS, 0,
 				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,

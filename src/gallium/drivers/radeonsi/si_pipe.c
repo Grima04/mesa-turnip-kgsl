@@ -526,17 +526,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 			goto fail;
 
 		/* Initialize the memory. */
-		struct radeon_cmdbuf *cs = sctx->gfx_cs;
-		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-		radeon_emit(cs, S_370_DST_SEL(sctx->chip_class >= CIK ? V_370_MEM
-								      : V_370_MEM_GRBM) |
-			    S_370_WR_CONFIRM(1) |
-			    S_370_ENGINE_SEL(V_370_ME));
-		radeon_emit(cs, sctx->wait_mem_scratch->gpu_address);
-		radeon_emit(cs, sctx->wait_mem_scratch->gpu_address >> 32);
-		radeon_emit(cs, sctx->wait_mem_number);
-		radeon_add_to_buffer_list(sctx, cs, sctx->wait_mem_scratch,
-					  RADEON_USAGE_WRITE, RADEON_PRIO_FENCE);
+		si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4,
+				 V_370_MEM, V_370_ME, &sctx->wait_mem_number);
 	}
 
 	/* CIK cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads

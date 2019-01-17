@@ -1176,6 +1176,9 @@ void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf
 			      uint64_t offset, unsigned size);
 void cik_emit_prefetch_L2(struct si_context *sctx, bool vertex_stage_only);
 void si_test_gds(struct si_context *sctx);
+void si_cp_write_data(struct si_context *sctx, struct r600_resource *buf,
+		      unsigned offset, unsigned size, unsigned dst_sel,
+		      unsigned engine, const void *data);
 
 /* si_debug.c */
 void si_save_cs(struct radeon_winsys *ws, struct radeon_cmdbuf *cs,

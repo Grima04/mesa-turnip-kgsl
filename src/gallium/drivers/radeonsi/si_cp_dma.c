@@ -581,3 +581,28 @@ void si_test_gds(struct si_context *sctx)
 	pipe_resource_reference(&dst, NULL);
 	exit(0);
 }
+
+void si_cp_write_data(struct si_context *sctx, struct r600_resource *buf,
+		      unsigned offset, unsigned size, unsigned dst_sel,
+		      unsigned engine, const void *data)
+{
+	struct radeon_cmdbuf *cs = sctx->gfx_cs;
+
+	assert(offset % 4 == 0);
+	assert(size % 4 == 0);
+
+	if (sctx->chip_class == SI && dst_sel == V_370_MEM)
+		dst_sel = V_370_MEM_GRBM;
+
+	radeon_add_to_buffer_list(sctx, cs, buf,
+				  RADEON_USAGE_WRITE, RADEON_PRIO_CP_DMA);
+	uint64_t va = buf->gpu_address + offset;
+
+	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + size/4, 0));
+	radeon_emit(cs, S_370_DST_SEL(dst_sel) |
+		    S_370_WR_CONFIRM(1) |
+		    S_370_ENGINE_SEL(engine));
+	radeon_emit(cs, va);
+	radeon_emit(cs, va >> 32);
+	radeon_emit_array(cs, (const uint32_t*)data, size/4);
+}

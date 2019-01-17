@@ -1592,17 +1592,11 @@ si_draw_rectangle(struct blitter_context *blitter,
 void si_trace_emit(struct si_context *sctx)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	uint64_t va = sctx->current_saved_cs->trace_buf->gpu_address;
 	uint32_t trace_id = ++sctx->current_saved_cs->trace_id;
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
-	radeon_emit(cs, S_370_DST_SEL(sctx->chip_class >= CIK ? V_370_MEM
-							      : V_370_MEM_GRBM) |
-		    S_370_WR_CONFIRM(1) |
-		    S_370_ENGINE_SEL(V_370_ME));
-	radeon_emit(cs, va);
-	radeon_emit(cs, va >> 32);
-	radeon_emit(cs, trace_id);
+	si_cp_write_data(sctx, sctx->current_saved_cs->trace_buf,
+			 0, 4, V_370_MEM, V_370_ME, &trace_id);
+
 	radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
 	radeon_emit(cs, AC_ENCODE_TRACE_POINT(trace_id));
 

@@ -1821,7 +1821,6 @@ static void si_upload_bindless_descriptor(struct si_context *sctx,
 					  unsigned num_dwords)
 {
 	struct si_descriptors *desc = &sctx->bindless_descriptors;
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	unsigned desc_slot_offset = desc_slot * 16;
 	uint32_t *data;
 	uint64_t va;
@@ -1829,13 +1828,8 @@ static void si_upload_bindless_descriptor(struct si_context *sctx,
 	data = desc->list + desc_slot_offset;
 	va = desc->gpu_address + desc_slot_offset * 4;
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + num_dwords, 0));
-	radeon_emit(cs, S_370_DST_SEL(V_370_TC_L2) |
-		    S_370_WR_CONFIRM(1) |
-		    S_370_ENGINE_SEL(V_370_ME));
-	radeon_emit(cs, va);
-	radeon_emit(cs, va >> 32);
-	radeon_emit_array(cs, data, num_dwords);
+	si_cp_write_data(sctx, desc->buffer, va - desc->buffer->gpu_address,
+			 num_dwords * 4, V_370_TC_L2, V_370_ME, data);
 }
 
 static void si_upload_bindless_descriptors(struct si_context *sctx)
