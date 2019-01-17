@@ -1186,6 +1186,8 @@ tu_QueueSubmit(VkQueue _queue,
             cmds[entry_idx].nr_relocs = 0;
             cmds[entry_idx].relocs = 0;
          }
+
+         tu_bo_list_merge(&bo_list, &cmdbuf->bo_list);
       }
 
       uint32_t flags = MSM_PIPE_3D0;
