@@ -2093,8 +2093,6 @@ fill_geom_tess_rings(struct radv_queue *queue,
 	memcpy(desc, queue->device->sample_locations_4x, 32);
 	desc += 8;
 	memcpy(desc, queue->device->sample_locations_8x, 64);
-	desc += 16;
-	memcpy(desc, queue->device->sample_locations_16x, 128);
 }
 
 static unsigned
