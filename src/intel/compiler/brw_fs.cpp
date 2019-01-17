@@ -3996,18 +3996,22 @@ fs_visitor::lower_integer_multiplication()
 
             bool needs_mov = false;
             fs_reg orig_dst = inst->dst;
+
+            /* Get a new VGRF for the "low" 32x16-bit multiplication result if
+             * reusing the original destination is impossible due to hardware
+             * restrictions, source/destination overlap, or it being the null
+             * register.
+             */
             fs_reg low = inst->dst;
             if (orig_dst.is_null() || orig_dst.file == MRF ||
                 regions_overlap(inst->dst, inst->size_written,
                                 inst->src[0], inst->size_read(0)) ||
                 regions_overlap(inst->dst, inst->size_written,
-                                inst->src[1], inst->size_read(1))) {
+                                inst->src[1], inst->size_read(1)) ||
+                inst->dst.stride >= 4) {
                needs_mov = true;
-               /* Get a new VGRF but keep the same stride as inst->dst */
                low = fs_reg(VGRF, alloc.allocate(regs_written(inst)),
                             inst->dst.type);
-               low.stride = inst->dst.stride;
-               low.offset = inst->dst.offset % REG_SIZE;
             }
 
             /* Get a new VGRF but keep the same stride as inst->dst */
