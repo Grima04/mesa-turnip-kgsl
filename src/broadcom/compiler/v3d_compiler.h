@@ -557,7 +557,7 @@ struct v3d_compile {
         struct qreg cs_shared_offset;
         int local_invocation_index_bits;
 
-        uint8_t vattr_sizes[V3D_MAX_VS_INPUTS];
+        uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
         uint32_t num_vpm_writes;
 
         /* Size in bytes of registers that have been spilled. This is how much
@@ -686,7 +686,7 @@ struct v3d_vs_prog_data {
         bool uses_iid, uses_vid;
 
         /* Number of components read from each vertex attribute. */
-        uint8_t vattr_sizes[32];
+        uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
 
         /* Total number of components read, for the shader state record. */
         uint32_t vpm_input_size;
