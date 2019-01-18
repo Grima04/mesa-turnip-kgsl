@@ -327,6 +327,8 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
     */
    // XXX: skip some if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
    ice->state.dirty |= ~(IRIS_DIRTY_POLYGON_STIPPLE |
+                         IRIS_DIRTY_SO_BUFFERS |
+                         IRIS_DIRTY_SO_DECL_LIST |
                          IRIS_DIRTY_LINE_STIPPLE);
 
    if (params->dst.enabled) {
