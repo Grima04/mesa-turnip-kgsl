@@ -117,6 +117,8 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
          return result;
    }
 
+   assert(cs->end - cs->cur >= reserve_size);
+
    return VK_SUCCESS;
 }
 

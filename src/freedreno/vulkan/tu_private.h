@@ -747,6 +747,9 @@ struct tu_cs
    uint32_t *cur;
    uint32_t *end;
 
+   /* for tu_cs_reserve_space_assert */
+   uint32_t *reserved_end;
+
    struct tu_cs_entry *entries;
    uint32_t entry_count;
    uint32_t entry_capacity;

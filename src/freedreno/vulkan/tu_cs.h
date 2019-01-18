@@ -42,16 +42,34 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
  * Reserve space from a command stream for \a size uint32_t values.
  */
 static inline VkResult
-tu_cs_check_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
+tu_cs_reserve_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
 {
-   if (cs->end - cs->cur >= size)
+   if (cs->end - cs->cur >= size) {
+      cs->reserved_end = cs->cur + size;
       return VK_SUCCESS;
+   }
 
    VkResult result = tu_cs_end(cs);
    if (result != VK_SUCCESS)
       return result;
 
-   return tu_cs_begin(dev, cs, size);
+   result = tu_cs_begin(dev, cs, size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cs->reserved_end = cs->cur + size;
+   assert(cs->reserved_end <= cs->end);
+
+   return VK_SUCCESS;
+}
+
+/**
+ * Assert that we did not exceed the reserved space.
+ */
+static inline void
+tu_cs_reserve_space_assert(struct tu_cs *cs)
+{
+   assert(cs->cur <= cs->reserved_end);
 }
 
 /**
