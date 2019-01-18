@@ -4546,7 +4546,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
                high_bits = res->bo->gtt_offset >> 32ull;
                if (high_bits != ice->state.last_vbo_high_bits[i]) {
-                  flush_flags |= PIPE_CONTROL_VF_CACHE_INVALIDATE;
+                  flush_flags |= PIPE_CONTROL_VF_CACHE_INVALIDATE |
+                                 PIPE_CONTROL_CS_STALL;
                   ice->state.last_vbo_high_bits[i] = high_bits;
                }
 
@@ -4671,7 +4672,8 @@ iris_upload_render_state(struct iris_context *ice,
       /* The VF cache key only uses 32-bits, see vertex buffer comment above */
       uint16_t high_bits = bo->gtt_offset >> 32ull;
       if (high_bits != ice->state.last_index_bo_high_bits) {
-         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE);
+         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE |
+                                             PIPE_CONTROL_CS_STALL);
          ice->state.last_index_bo_high_bits = high_bits;
       }
    }

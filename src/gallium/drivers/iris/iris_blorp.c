@@ -216,7 +216,8 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *blorp_batch,
    }
 
    if (need_invalidate) {
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE);
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE |
+                                          PIPE_CONTROL_CS_STALL);
    }
 }
 
