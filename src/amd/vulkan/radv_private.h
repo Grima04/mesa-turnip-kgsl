@@ -1055,6 +1055,8 @@ struct radv_cmd_state {
 	/* Conditional rendering info. */
 	int predication_type; /* -1: disabled, 0: normal, 1: inverted */
 	uint64_t predication_va;
+
+	bool context_roll_without_scissor_emitted;
 };
 
 struct radv_cmd_pool {
