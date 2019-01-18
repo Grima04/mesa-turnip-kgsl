@@ -784,10 +784,19 @@ struct tu_cmd_buffer
 
    struct tu_cmd_buffer_upload upload;
 
+   VkResult record_result;
+
    struct tu_bo_list bo_list;
    struct tu_cs cs;
 
-   VkResult record_result;
+   uint16_t marker_reg;
+   uint32_t marker_seqno;
+
+   struct tu_bo scratch_bo;
+   uint32_t scratch_seqno;
+
+   /* current cs; command packets are always emitted to it */
+   struct tu_cs *cur_cs;
 };
 
 bool

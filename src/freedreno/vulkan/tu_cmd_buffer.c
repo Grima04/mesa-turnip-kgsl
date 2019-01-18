@@ -27,8 +27,12 @@
 
 #include "tu_private.h"
 
+#include "registers/adreno_pm4.xml.h"
+#include "registers/adreno_common.xml.h"
+#include "registers/a6xx.xml.h"
+
 #include "vk_format.h"
-#include "adreno_pm4.xml.h"
+
 #include "tu_cs.h"
 
 void
@@ -101,6 +105,206 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
    }
 
    return VK_SUCCESS;
+}
+
+static void
+tu6_emit_marker(struct tu_cmd_buffer *cmd)
+{
+   tu_cs_emit_write_reg(cmd->cur_cs, cmd->marker_reg, ++cmd->marker_seqno);
+}
+
+static void
+tu6_emit_event_write(struct tu_cmd_buffer *cmd,
+                     enum vgt_event_type event,
+                     bool need_seqno)
+{
+   struct tu_cs *cs = cmd->cur_cs;
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, need_seqno ? 4 : 1);
+   tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(event));
+   if (need_seqno) {
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
+      tu_cs_emit(cs, ++cmd->scratch_seqno);
+   }
+}
+
+static void
+tu6_emit_cache_flush(struct tu_cmd_buffer *cmd)
+{
+   tu6_emit_event_write(cmd, 0x31, false);
+}
+
+static void
+tu6_init_hw(struct tu_cmd_buffer *cmd)
+{
+   struct tu_cs *cs = cmd->cur_cs;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_cache_flush(cmd);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 0xfffff);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_CCU_CNTL, 0x7c400004);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE00, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE0F, 0x3f);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_B605, 0x44);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_B600, 0x100000);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BE00, 0x80);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BE01, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9600, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8600, 0x880);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BE04, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE03, 0x00000410);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_IBO_COUNT, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_B182, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BB11, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_UNKNOWN_0E12, 0x3200000);
+   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_CLIENT_PF, 4);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E01, 0x0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AB00, 0x5);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A009, 0x00000001);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8811, 0x00000010);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x1f);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_SRGB_CNTL, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8101, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8109, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8110, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_RENDER_CONTROL0, 0x401);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_RENDER_CONTROL1, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8810, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8818, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8819, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881A, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881B, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881C, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881D, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881E, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_88F0, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9101, 0xffff00);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9107, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9236, 1);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9300, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_SO_OVERRIDE,
+                        A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9801, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9806, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9980, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9B06, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9B06, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A81B, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_B183, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8099, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_809B, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A0, 2);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80AF, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9210, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9211, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9602, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9981, 0x3);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9E72, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9108, 0x3);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_TP_UNKNOWN_B304, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_TP_UNKNOWN_B309, 0x000000a2);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8804, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A4, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A5, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A6, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8805, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8806, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8878, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8879, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_CONTROL_5_REG, 0xfc);
+
+   tu6_emit_marker(cmd);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_MODE_CNTL, 0x00000000);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A008, 0);
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x0000001f);
+
+   /* we don't use this yet.. probably best to disable.. */
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
+                     CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
+                     CP_SET_DRAW_STATE__0_GROUP_ID(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_BASE_LO(0), 3);
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_BASE_LO_0 */
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_BASE_HI_0 */
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUFFER_SIZE_0 */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_FLUSH_BASE_LO(0), 2);
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_FLUSH_BASE_LO_0 */
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_FLUSH_BASE_HI_0 */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUF_CNTL, 1);
+   tu_cs_emit(cs, 0x00000000); /* VPC_SO_BUF_CNTL */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(0), 1);
+   tu_cs_emit(cs, 0x00000000); /* UNKNOWN_E2AB */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_BASE_LO(1), 3);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(1), 6);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(2), 6);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_OFFSET(3), 3);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_CTRL_REG0, 1);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CTRL_REG0, 1);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LRZ_CNTL, 1);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_LRZ_CNTL, 1);
+   tu_cs_emit(cs, 0x00000000);
+
+   tu_cs_reserve_space_assert(cs);
 }
 
 const struct tu_dynamic_state default_dynamic_state = {
@@ -280,12 +484,21 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    list_inithead(&cmd_buffer->upload.list);
 
+   cmd_buffer->marker_reg = REG_A6XX_CP_SCRATCH_REG(
+      cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ? 7 : 6);
+
+   VkResult result = tu_bo_init_new(device, &cmd_buffer->scratch_bo, 0x1000);
+   if (result != VK_SUCCESS)
+      return result;
+
    return VK_SUCCESS;
 }
 
 static void
 tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 {
+   tu_bo_finish(cmd_buffer->device, &cmd_buffer->scratch_bo);
+
    list_del(&cmd_buffer->pool_link);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
@@ -474,29 +687,27 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
+   result = tu_cs_begin(cmd_buffer->device, &cmd_buffer->cs, 4096);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cmd_buffer->marker_seqno = 0;
+   cmd_buffer->scratch_seqno = 0;
+
+   cmd_buffer->cur_cs = &cmd_buffer->cs;
+
    /* setup initial configuration into command buffer */
    if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       switch (cmd_buffer->queue_family_index) {
       case TU_QUEUE_GENERAL:
-         /* init */
+         tu6_init_hw(cmd_buffer);
          break;
       default:
          break;
       }
    }
 
-   result = tu_cs_begin(cmd_buffer->device, &cmd_buffer->cs, 4096);
-   if (result != VK_SUCCESS)
-      return result;
-
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
-
-   /* Put some stuff in so we do not have empty command buffers. */
-   tu_cs_emit_pkt7(&cmd_buffer->cs, CP_NOP, 4);
-   tu_cs_emit(&cmd_buffer->cs, 0);
-   tu_cs_emit(&cmd_buffer->cs, 0);
-   tu_cs_emit(&cmd_buffer->cs, 0);
-   tu_cs_emit(&cmd_buffer->cs, 0);
 
    return VK_SUCCESS;
 }
@@ -544,6 +755,11 @@ VkResult
 tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (cmd_buffer->scratch_seqno) {
+      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->scratch_bo,
+                     MSM_SUBMIT_BO_WRITE);
+   }
 
    VkResult result = tu_cs_end(&cmd_buffer->cs);
    if (result != VK_SUCCESS)
