@@ -310,6 +310,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
    case PIPE_CAP_TGSI_ATOMFADD:
+   case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
+   case PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
