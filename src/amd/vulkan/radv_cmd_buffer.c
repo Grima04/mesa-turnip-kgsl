@@ -2074,10 +2074,60 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool
 	radv_flush_constants(cmd_buffer, VK_SHADER_STAGE_ALL_GRAPHICS);
 }
 
+struct radv_draw_info {
+	/**
+	 * Number of vertices.
+	 */
+	uint32_t count;
+
+	/**
+	 * Index of the first vertex.
+	 */
+	int32_t vertex_offset;
+
+	/**
+	 * First instance id.
+	 */
+	uint32_t first_instance;
+
+	/**
+	 * Number of instances.
+	 */
+	uint32_t instance_count;
+
+	/**
+	 * First index (indexed draws only).
+	 */
+	uint32_t first_index;
+
+	/**
+	 * Whether it's an indexed draw.
+	 */
+	bool indexed;
+
+	/**
+	 * Indirect draw parameters resource.
+	 */
+	struct radv_buffer *indirect;
+	uint64_t indirect_offset;
+	uint32_t stride;
+
+	/**
+	 * Draw count parameters resource.
+	 */
+	struct radv_buffer *count_buffer;
+	uint64_t count_buffer_offset;
+
+	/**
+	 * Stream output parameters resource.
+	 */
+	struct radv_buffer *strmout_buffer;
+	uint64_t strmout_buffer_offset;
+};
+
 static void
-radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, bool indexed_draw,
-			 bool instanced_draw, bool indirect_draw,
-			 uint32_t draw_vertex_count)
+radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
+			 const struct radv_draw_info *draw_info)
 {
 	struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
 	struct radv_cmd_state *state = &cmd_buffer->state;
@@ -2087,8 +2137,9 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, bool indexed_draw,
 
 	/* Draw state. */
 	ia_multi_vgt_param =
-		si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw,
-					  indirect_draw, draw_vertex_count);
+		si_get_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
+					  draw_info->indirect,
+					  draw_info->indirect ? 0 : draw_info->count);
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
 		if (info->chip_class >= GFX9) {
@@ -2108,7 +2159,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, bool indexed_draw,
 
 	/* Primitive restart. */
 	primitive_reset_en =
-		indexed_draw && state->pipeline->graphics.prim_restart_enable;
+		draw_info->indexed && state->pipeline->graphics.prim_restart_enable;
 
 	if (primitive_reset_en != state->last_primitive_reset_en) {
 		state->last_primitive_reset_en = primitive_reset_en;
@@ -3411,57 +3462,6 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer,
 	}
 }
 
-struct radv_draw_info {
-	/**
-	 * Number of vertices.
-	 */
-	uint32_t count;
-
-	/**
-	 * Index of the first vertex.
-	 */
-	int32_t vertex_offset;
-
-	/**
-	 * First instance id.
-	 */
-	uint32_t first_instance;
-
-	/**
-	 * Number of instances.
-	 */
-	uint32_t instance_count;
-
-	/**
-	 * First index (indexed draws only).
-	 */
-	uint32_t first_index;
-
-	/**
-	 * Whether it's an indexed draw.
-	 */
-	bool indexed;
-
-	/**
-	 * Indirect draw parameters resource.
-	 */
-	struct radv_buffer *indirect;
-	uint64_t indirect_offset;
-	uint32_t stride;
-
-	/**
-	 * Draw count parameters resource.
-	 */
-	struct radv_buffer *count_buffer;
-	uint64_t count_buffer_offset;
-
-	/**
-	 * Stream output parameters resource.
-	 */
-	struct radv_buffer *strmout_buffer;
-	uint64_t strmout_buffer_offset;
-};
-
 static void
 radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 		       const struct radv_draw_info *info)
@@ -3672,9 +3672,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
 
-	radv_emit_draw_registers(cmd_buffer, info->indexed,
-				 info->instance_count > 1, info->indirect,
-				 info->indirect ? 0 : info->count);
+	radv_emit_draw_registers(cmd_buffer, info);
 
 	if (late_scissor_emission)
 		radv_emit_scissor(cmd_buffer);
