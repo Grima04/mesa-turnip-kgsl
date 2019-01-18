@@ -542,6 +542,225 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
    return progress;
 }
 
+/**
+ * Get the SSA value from a phi node that corresponds to a specific block
+ */
+static nir_ssa_def *
+ssa_for_phi_from_block(nir_phi_instr *phi, nir_block *block)
+{
+   nir_foreach_phi_src(src, phi) {
+      if (src->pred == block)
+         return src->src.ssa;
+   }
+
+   assert(!"Block is not a predecessor of phi.");
+   return NULL;
+}
+
+/**
+ * Simplify a bcsel whose sources are all phi nodes from the loop header block
+ *
+ * bcsel instructions in a loop that meet the following criteria can be
+ * converted to phi nodes:
+ *
+ * - The loop has no continue instructions other than the "natural" continue
+ *   at the bottom of the loop.
+ *
+ * - All of the sources of the bcsel are phi nodes in the header block of the
+ *   loop.
+ *
+ * - The phi node representing the condition of the bcsel instruction chooses
+ *   only constant values.
+ *
+ * The contant value from the condition will select one of the other sources
+ * when entered from outside the loop and the remaining source when entered
+ * from the continue block.  Since each of these sources is also a phi node in
+ * the header block, the value of the phi node can be "evaluated."  These
+ * evaluated phi nodes provide the sources for a new phi node.  All users of
+ * the bcsel result are updated to use the phi node result.
+ *
+ * The replacement transforms loops like:
+ *
+ *    vec1 32 ssa_7 = undefined
+ *    vec1 32 ssa_8 = load_const (0x00000001)
+ *    vec1 32 ssa_9 = load_const (0x000000c8)
+ *    vec1 32 ssa_10 = load_const (0x00000000)
+ *    // succs: block_1
+ *    loop {
+ *            block block_1:
+ *            // preds: block_0 block_4
+ *            vec1 32 ssa_11 = phi block_0: ssa_1, block_4: ssa_14
+ *            vec1 32 ssa_12 = phi block_0: ssa_10, block_4: ssa_15
+ *            vec1 32 ssa_13 = phi block_0: ssa_7, block_4: ssa_25
+ *            vec1 32 ssa_14 = b32csel ssa_12, ssa_13, ssa_11
+ *            vec1 32 ssa_16 = ige32 ssa_14, ssa_9
+ *            ...
+ *            vec1 32 ssa_15 = load_const (0xffffffff)
+ *            ...
+ *            vec1 32 ssa_25 = iadd ssa_14, ssa_8
+ *            // succs: block_1
+ *    }
+ *
+ * into:
+ *
+ *    vec1 32 ssa_7 = undefined
+ *    vec1 32 ssa_8 = load_const (0x00000001)
+ *    vec1 32 ssa_9 = load_const (0x000000c8)
+ *    vec1 32 ssa_10 = load_const (0x00000000)
+ *    // succs: block_1
+ *    loop {
+ *            block block_1:
+ *            // preds: block_0 block_4
+ *            vec1 32 ssa_11 = phi block_0: ssa_1, block_4: ssa_14
+ *            vec1 32 ssa_12 = phi block_0: ssa_10, block_4: ssa_15
+ *            vec1 32 ssa_13 = phi block_0: ssa_7, block_4: ssa_25
+ *            vec1 32 sss_26 = phi block_0: ssa_1, block_4: ssa_25
+ *            vec1 32 ssa_16 = ige32 ssa_26, ssa_9
+ *            ...
+ *            vec1 32 ssa_15 = load_const (0xffffffff)
+ *            ...
+ *            vec1 32 ssa_25 = iadd ssa_26, ssa_8
+ *            // succs: block_1
+ *    }
+ *
+ * \note
+ * It may be possible modify this function to not require a phi node as the
+ * source of the bcsel that is selected when entering from outside the loop.
+ * The only restriction is that the source must be geneated outside the loop
+ * (since it will become the source of a phi node in the header block of the
+ * loop).
+ */
+static bool
+opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
+{
+   bool progress = false;
+   nir_block *header_block = nir_loop_first_block(loop);
+   nir_block *const prev_block =
+      nir_cf_node_as_block(nir_cf_node_prev(&loop->cf_node));
+
+   /* It would be insane if this were not true */
+   assert(_mesa_set_search(header_block->predecessors, prev_block));
+
+   /* The loop must have exactly one continue block which could be a block
+    * ending in a continue instruction or the "natural" continue from the
+    * last block in the loop back to the top.
+    */
+   if (header_block->predecessors->entries != 2)
+      return false;
+
+   /* We can move any bcsel that can guaranteed to execut on every iteration
+    * of a loop.  For now this is accomplished by only taking bcsels from the
+    * header_block.  In the future, this could be expanced to include any
+    * bcsel that must come before any break.
+    *
+    * For more details, see
+    * https://gitlab.freedesktop.org/mesa/mesa/merge_requests/170#note_110305
+    */
+   nir_foreach_instr_safe(instr, header_block) {
+      if (instr->type != nir_instr_type_alu)
+         continue;
+
+      nir_alu_instr *const bcsel = nir_instr_as_alu(instr);
+      if (bcsel->op != nir_op_bcsel &&
+          bcsel->op != nir_op_b32csel &&
+          bcsel->op != nir_op_fcsel)
+         continue;
+
+      bool match = true;
+      for (unsigned i = 0; i < 3; i++) {
+         /* FINISHME: The abs and negate cases could be handled by adding
+          * move instructions at the bottom of the continue block and more
+          * phi nodes in the header_block.
+          */
+         if (!bcsel->src[i].src.is_ssa ||
+             bcsel->src[i].src.ssa->parent_instr->type != nir_instr_type_phi ||
+             bcsel->src[i].src.ssa->parent_instr->block != header_block ||
+             bcsel->src[i].negate || bcsel->src[i].abs) {
+            match = false;
+            break;
+         }
+      }
+
+      if (!match)
+         continue;
+
+      nir_phi_instr *const cond_phi =
+         nir_instr_as_phi(bcsel->src[0].src.ssa->parent_instr);
+
+      uint32_t entry_val = 0, continue_val = 0;
+      if (!phi_has_constant_from_outside_and_one_from_inside_loop(cond_phi,
+                                                                  prev_block,
+                                                                  &entry_val,
+                                                                  &continue_val))
+         continue;
+
+      /* If they both execute or both don't execute, this is a job for
+       * nir_dead_cf, not this pass.
+       */
+      if ((entry_val && continue_val) || (!entry_val && !continue_val))
+         continue;
+
+      const unsigned entry_src = entry_val ? 1 : 2;
+      const unsigned continue_src = entry_val ? 2 : 1;
+
+      /* Create a new phi node that selects the value for prev_block from
+       * the bcsel source that is selected by entry_val and the value for
+       * continue_block from the other bcsel source.  Both sources have
+       * already been verified to be phi nodes.
+       */
+      nir_block *const continue_block = find_continue_block(loop);
+      nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
+      nir_phi_src *phi_src;
+
+      phi_src = ralloc(phi, nir_phi_src);
+      phi_src->pred = prev_block;
+      phi_src->src =
+         nir_src_for_ssa(ssa_for_phi_from_block(nir_instr_as_phi(bcsel->src[entry_src].src.ssa->parent_instr),
+                                                prev_block));
+      exec_list_push_tail(&phi->srcs, &phi_src->node);
+
+      phi_src = ralloc(phi, nir_phi_src);
+      phi_src->pred = continue_block;
+      phi_src->src =
+         nir_src_for_ssa(ssa_for_phi_from_block(nir_instr_as_phi(bcsel->src[continue_src].src.ssa->parent_instr),
+                                                continue_block));
+      exec_list_push_tail(&phi->srcs, &phi_src->node);
+
+      nir_ssa_dest_init(&phi->instr,
+                        &phi->dest,
+                        nir_dest_num_components(bcsel->dest.dest),
+                        nir_dest_bit_size(bcsel->dest.dest),
+                        NULL);
+
+      b->cursor = nir_after_phis(header_block);
+      nir_builder_instr_insert(b, &phi->instr);
+
+      /* Modify all readers of the bcsel instruction to read the result of
+       * the phi.
+       */
+      nir_foreach_use_safe(use_src, &bcsel->dest.dest.ssa) {
+         nir_instr_rewrite_src(use_src->parent_instr,
+                               use_src,
+                               nir_src_for_ssa(&phi->dest.ssa));
+      }
+
+      nir_foreach_if_use_safe(use_src, &bcsel->dest.dest.ssa) {
+         nir_if_rewrite_condition(use_src->parent_if,
+                                  nir_src_for_ssa(&phi->dest.ssa));
+      }
+
+      /* Since the original bcsel instruction no longer has any readers,
+       * just remove it.
+       */
+      nir_instr_remove_v(&bcsel->instr);
+      ralloc_free(bcsel);
+
+      progress = true;
+   }
+
+   return progress;
+}
+
 static bool
 is_block_empty(nir_block *block)
 {
@@ -1109,6 +1328,7 @@ opt_if_cf_list(nir_builder *b, struct exec_list *cf_list)
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
          progress |= opt_if_cf_list(b, &loop->body);
+         progress |= opt_simplify_bcsel_of_phi(b, loop);
          progress |= opt_peel_loop_initial_if(loop);
          progress |= opt_if_loop_last_continue(loop);
          break;
