@@ -2462,6 +2462,8 @@
       <value name="XOR" value="3"/>
     </field>
     <field name="Compare Operation" start="0" end="1" type="uint" prefix="COMPARE">
+      <value name="TRUE" value="0"/>
+      <value name="FALSE" value="1"/>
       <value name="SRCS_EQUAL" value="2"/>
       <value name="DELTAS_EQUAL" value="3"/>
     </field>

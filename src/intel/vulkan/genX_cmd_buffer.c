@@ -3568,7 +3568,6 @@ void genX(CmdDispatchIndirect)(
    }
 
    /* predicate = !predicate; */
-#define COMPARE_FALSE                           1
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
       mip.CombineOperation = COMBINE_OR;
