@@ -259,10 +259,10 @@ memzone_for_address(uint64_t address)
    if (address > IRIS_MEMZONE_DYNAMIC_START)
       return IRIS_MEMZONE_DYNAMIC;
 
-   if (address > IRIS_MEMZONE_SURFACE_START)
+   if (address >= IRIS_MEMZONE_SURFACE_START)
       return IRIS_MEMZONE_SURFACE;
 
-   if (address > IRIS_MEMZONE_BINDER_START)
+   if (address >= IRIS_MEMZONE_BINDER_START)
       return IRIS_MEMZONE_BINDER;
 
    return IRIS_MEMZONE_SHADER;
