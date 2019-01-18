@@ -3046,6 +3046,11 @@ void radv_CmdSetViewport(
 	assert(firstViewport < MAX_VIEWPORTS);
 	assert(total_count >= 1 && total_count <= MAX_VIEWPORTS);
 
+	if (!memcmp(state->dynamic.viewport.viewports + firstViewport,
+		    pViewports, viewportCount * sizeof(*pViewports))) {
+		return;
+	}
+
 	memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
 	       viewportCount * sizeof(*pViewports));
 
@@ -3065,6 +3070,11 @@ void radv_CmdSetScissor(
 	assert(firstScissor < MAX_SCISSORS);
 	assert(total_count >= 1 && total_count <= MAX_SCISSORS);
 
+	if (!memcmp(state->dynamic.scissor.scissors + firstScissor, pScissors,
+		    scissorCount * sizeof(*pScissors))) {
+		return;
+	}
+
 	memcpy(state->dynamic.scissor.scissors + firstScissor, pScissors,
 	       scissorCount * sizeof(*pScissors));
 
@@ -3076,6 +3086,10 @@ void radv_CmdSetLineWidth(
 	float                                       lineWidth)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+	if (cmd_buffer->state.dynamic.line_width == lineWidth)
+		return;
+
 	cmd_buffer->state.dynamic.line_width = lineWidth;
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
 }
@@ -3087,12 +3101,19 @@ void radv_CmdSetDepthBias(
 	float                                       depthBiasSlopeFactor)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
 
-	cmd_buffer->state.dynamic.depth_bias.bias = depthBiasConstantFactor;
-	cmd_buffer->state.dynamic.depth_bias.clamp = depthBiasClamp;
-	cmd_buffer->state.dynamic.depth_bias.slope = depthBiasSlopeFactor;
+	if (state->dynamic.depth_bias.bias == depthBiasConstantFactor &&
+	    state->dynamic.depth_bias.clamp == depthBiasClamp &&
+	    state->dynamic.depth_bias.slope == depthBiasSlopeFactor) {
+		return;
+	}
 
-	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
+	state->dynamic.depth_bias.bias = depthBiasConstantFactor;
+	state->dynamic.depth_bias.clamp = depthBiasClamp;
+	state->dynamic.depth_bias.slope = depthBiasSlopeFactor;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 }
 
 void radv_CmdSetBlendConstants(
@@ -3100,11 +3121,14 @@ void radv_CmdSetBlendConstants(
 	const float                                 blendConstants[4])
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
 
-	memcpy(cmd_buffer->state.dynamic.blend_constants,
-	       blendConstants, sizeof(float) * 4);
+	if (!memcmp(state->dynamic.blend_constants, blendConstants, sizeof(float) * 4))
+		return;
 
-	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS;
+	memcpy(state->dynamic.blend_constants, blendConstants, sizeof(float) * 4);
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS;
 }
 
 void radv_CmdSetDepthBounds(
@@ -3113,11 +3137,17 @@ void radv_CmdSetDepthBounds(
 	float                                       maxDepthBounds)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
 
-	cmd_buffer->state.dynamic.depth_bounds.min = minDepthBounds;
-	cmd_buffer->state.dynamic.depth_bounds.max = maxDepthBounds;
+	if (state->dynamic.depth_bounds.min == minDepthBounds &&
+	    state->dynamic.depth_bounds.max == maxDepthBounds) {
+		return;
+	}
 
-	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
+	state->dynamic.depth_bounds.min = minDepthBounds;
+	state->dynamic.depth_bounds.max = maxDepthBounds;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
 }
 
 void radv_CmdSetStencilCompareMask(
@@ -3126,13 +3156,21 @@ void radv_CmdSetStencilCompareMask(
 	uint32_t                                    compareMask)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	bool front_same = state->dynamic.stencil_compare_mask.front == compareMask;
+	bool back_same = state->dynamic.stencil_compare_mask.back == compareMask;
+
+	if ((!(faceMask & VK_STENCIL_FACE_FRONT_BIT) || front_same) &&
+	    (!(faceMask & VK_STENCIL_FACE_BACK_BIT) || back_same)) {
+		return;
+	}
 
 	if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-		cmd_buffer->state.dynamic.stencil_compare_mask.front = compareMask;
+		state->dynamic.stencil_compare_mask.front = compareMask;
 	if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-		cmd_buffer->state.dynamic.stencil_compare_mask.back = compareMask;
+		state->dynamic.stencil_compare_mask.back = compareMask;
 
-	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
 }
 
 void radv_CmdSetStencilWriteMask(
@@ -3141,13 +3179,21 @@ void radv_CmdSetStencilWriteMask(
 	uint32_t                                    writeMask)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	bool front_same = state->dynamic.stencil_write_mask.front == writeMask;
+	bool back_same = state->dynamic.stencil_write_mask.back == writeMask;
+
+	if ((!(faceMask & VK_STENCIL_FACE_FRONT_BIT) || front_same) &&
+	    (!(faceMask & VK_STENCIL_FACE_BACK_BIT) || back_same)) {
+		return;
+	}
 
 	if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-		cmd_buffer->state.dynamic.stencil_write_mask.front = writeMask;
+		state->dynamic.stencil_write_mask.front = writeMask;
 	if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-		cmd_buffer->state.dynamic.stencil_write_mask.back = writeMask;
+		state->dynamic.stencil_write_mask.back = writeMask;
 
-	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
 }
 
 void radv_CmdSetStencilReference(
@@ -3156,6 +3202,14 @@ void radv_CmdSetStencilReference(
 	uint32_t                                    reference)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	bool front_same = state->dynamic.stencil_reference.front == reference;
+	bool back_same = state->dynamic.stencil_reference.back == reference;
+
+	if ((!(faceMask & VK_STENCIL_FACE_FRONT_BIT) || front_same) &&
+	    (!(faceMask & VK_STENCIL_FACE_BACK_BIT) || back_same)) {
+		return;
+	}
 
 	if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
 		cmd_buffer->state.dynamic.stencil_reference.front = reference;
@@ -3177,6 +3231,11 @@ void radv_CmdSetDiscardRectangleEXT(
 
 	assert(firstDiscardRectangle < MAX_DISCARD_RECTANGLES);
 	assert(total_count >= 1 && total_count <= MAX_DISCARD_RECTANGLES);
+
+	if (!memcmp(state->dynamic.discard_rectangle.rectangles + firstDiscardRectangle,
+		    pDiscardRectangles, discardRectangleCount * sizeof(*pDiscardRectangles))) {
+		return;
+	}
 
 	typed_memcpy(&state->dynamic.discard_rectangle.rectangles[firstDiscardRectangle],
 	             pDiscardRectangles, discardRectangleCount);
