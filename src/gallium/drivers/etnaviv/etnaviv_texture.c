@@ -172,7 +172,9 @@ etna_resource_sampler_compatible(struct etna_resource *res)
    if (res->layout == ETNA_LAYOUT_SUPER_TILED && VIV_FEATURE(screen, chipMinorFeatures2, SUPERTILED_TEXTURE))
       return true;
 
-   /* TODO: LINEAR_TEXTURE_SUPPORT */
+   /* This GPU supports texturing from linear textures? */
+   if (res->layout == ETNA_LAYOUT_LINEAR && VIV_FEATURE(screen, chipMinorFeatures1, LINEAR_TEXTURE_SUPPORT))
+      return true;
 
    /* Otherwise, only support tiled layouts */
    if (res->layout != ETNA_LAYOUT_TILED)
