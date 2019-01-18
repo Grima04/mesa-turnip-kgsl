@@ -1185,8 +1185,7 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
          return false;
       }
 
-      if ((this->offset / 4) / info->Buffers[buffer].Stride !=
-          (xfb_offset - 1) / info->Buffers[buffer].Stride) {
+      if (xfb_offset > info->Buffers[buffer].Stride) {
          linker_error(prog, "xfb_offset (%d) overflows xfb_stride (%d) for "
                       "buffer (%d)", xfb_offset * 4,
                       info->Buffers[buffer].Stride * 4, buffer);
