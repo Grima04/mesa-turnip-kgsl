@@ -27,6 +27,10 @@
 #include "nir_control_flow.h"
 #include "nir_loop_analyze.h"
 
+static nir_ssa_def *clone_alu_and_replace_src_defs(nir_builder *b,
+                                                   const nir_alu_instr *alu,
+                                                   nir_ssa_def **src_defs);
+
 /**
  * Gets the single block that jumps back to the loop header. Already assumes
  * there is exactly one such block.
@@ -247,6 +251,295 @@ opt_peel_loop_initial_if(nir_loop *loop)
    nir_cf_node_remove(&nif->cf_node);
 
    return true;
+}
+
+static bool
+alu_instr_is_comparison(const nir_alu_instr *alu)
+{
+   switch (alu->op) {
+   case nir_op_flt32:
+   case nir_op_fge32:
+   case nir_op_feq32:
+   case nir_op_fne32:
+   case nir_op_ilt32:
+   case nir_op_ult32:
+   case nir_op_ige32:
+   case nir_op_uge32:
+   case nir_op_ieq32:
+   case nir_op_ine32:
+      return true;
+   default:
+      return nir_alu_instr_is_comparison(alu);
+   }
+}
+
+static bool
+alu_instr_is_type_conversion(const nir_alu_instr *alu)
+{
+   return nir_op_infos[alu->op].num_inputs == 1 &&
+          nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type) !=
+          nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+}
+
+/**
+ * Splits ALU instructions that have a source that is a phi node
+ *
+ * ALU instructions in the header block of a loop that meet the following
+ * criteria can be split.
+ *
+ * - The loop has no continue instructions other than the "natural" continue
+ *   at the bottom of the loop.
+ *
+ * - At least one source of the instruction is a phi node from the header block.
+ *
+ * and either this rule
+ *
+ * - The phi node selects undef from the block before the loop and a value
+ *   from the continue block of the loop.
+ *
+ * or these two rules
+ *
+ * - The phi node selects a constant from the block before the loop.
+ *
+ * - The non-phi source of the ALU instruction comes from a block that
+ *   dominates the block before the loop.  The most common failure mode for
+ *   this check is sources that are generated in the loop header block.
+ *
+ * The split process moves the original ALU instruction to the bottom of the
+ * loop.  The phi node source is replaced with the value from the phi node
+ * selected from the continue block (i.e., the non-undef value).  A new phi
+ * node is added to the header block that selects either undef from the block
+ * before the loop or the result of the (moved) ALU instruction.
+ *
+ * The splitting transforms a loop like:
+ *
+ *    vec1 32 ssa_7 = undefined
+ *    vec1 32 ssa_8 = load_const (0x00000001)
+ *    vec1 32 ssa_10 = load_const (0x00000000)
+ *    // succs: block_1
+ *    loop {
+ *            block block_1:
+ *            // preds: block_0 block_4
+ *            vec1 32 ssa_11 = phi block_0: ssa_7, block_4: ssa_15
+ *            vec1 32 ssa_12 = phi block_0: ssa_1, block_4: ssa_15
+ *            vec1 32 ssa_13 = phi block_0: ssa_10, block_4: ssa_16
+ *            vec1 32 ssa_14 = iadd ssa_11, ssa_8
+ *            vec1 32 ssa_15 = b32csel ssa_13, ssa_14, ssa_12
+ *            ...
+ *            // succs: block_1
+ *    }
+ *
+ * into:
+ *
+ *    vec1 32 ssa_7 = undefined
+ *    vec1 32 ssa_8 = load_const (0x00000001)
+ *    vec1 32 ssa_10 = load_const (0x00000000)
+ *    // succs: block_1
+ *    loop {
+ *            block block_1:
+ *            // preds: block_0 block_4
+ *            vec1 32 ssa_11 = phi block_0: ssa_7, block_4: ssa_15
+ *            vec1 32 ssa_12 = phi block_0: ssa_1, block_4: ssa_15
+ *            vec1 32 ssa_13 = phi block_0: ssa_10, block_4: ssa_16
+ *            vec1 32 ssa_21 = phi block_0: sss_7, block_4: ssa_20
+ *            vec1 32 ssa_15 = b32csel ssa_13, ssa_21, ssa_12
+ *            ...
+ *            vec1 32 ssa_20 = iadd ssa_15, ssa_8
+ *            // succs: block_1
+ *    }
+ *
+ * If the phi does not select an undef, the instruction is duplicated in the
+ * loop continue block (as in the undef case) and in the previous block.  When
+ * the ALU instruction is duplicated in the previous block, the correct source
+ * must be selected from the phi node.
+ */
+static bool
+opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
+{
+   bool progress = false;
+   nir_block *header_block = nir_loop_first_block(loop);
+   nir_block *const prev_block =
+      nir_cf_node_as_block(nir_cf_node_prev(&loop->cf_node));
+
+   /* It would be insane if this were not true */
+   assert(_mesa_set_search(header_block->predecessors, prev_block));
+
+   /* The loop must have exactly one continue block which could be a block
+    * ending in a continue instruction or the "natural" continue from the
+    * last block in the loop back to the top.
+    */
+   if (header_block->predecessors->entries != 2)
+      return false;
+
+   nir_foreach_instr_safe(instr, header_block) {
+      if (instr->type != nir_instr_type_alu)
+         continue;
+
+      nir_alu_instr *const alu = nir_instr_as_alu(instr);
+
+      /* Most ALU ops produce an undefined result if any source is undef.
+       * However, operations like bcsel only produce undefined results of the
+       * first operand is undef.  Even in the undefined case, the result
+       * should be one of the other two operands, so the result of the bcsel
+       * should never be replaced with undef.
+       *
+       * nir_op_vec{2,3,4}, nir_op_imov, and nir_op_fmov are excluded because
+       * they can easily lead to infinite optimization loops.
+       */
+      if (alu->op == nir_op_bcsel ||
+          alu->op == nir_op_b32csel ||
+          alu->op == nir_op_fcsel ||
+          alu->op == nir_op_vec2 ||
+          alu->op == nir_op_vec3 ||
+          alu->op == nir_op_vec4 ||
+          alu->op == nir_op_imov ||
+          alu->op == nir_op_fmov ||
+          alu_instr_is_comparison(alu) ||
+          alu_instr_is_type_conversion(alu))
+         continue;
+
+      bool has_phi_src_from_prev_block = false;
+      bool all_non_phi_exist_in_prev_block = true;
+      bool is_prev_result_undef = true;
+      bool is_prev_result_const = true;
+      nir_ssa_def *prev_srcs[8];     // FINISHME: Array size?
+      nir_ssa_def *continue_srcs[8]; // FINISHME: Array size?
+
+      for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         nir_instr *const src_instr = alu->src[i].src.ssa->parent_instr;
+
+         /* If the source is a phi in the loop header block, then the
+          * prev_srcs and continue_srcs will come from the different sources
+          * of the phi.
+          */
+         if (src_instr->type == nir_instr_type_phi &&
+             src_instr->block == header_block) {
+            nir_phi_instr *const phi = nir_instr_as_phi(src_instr);
+
+            /* Only strictly need to NULL out the pointers when the assertions
+             * (below) are compiled in.  Debugging a NULL pointer deref in the
+             * wild is easier than debugging a random pointer deref, so set
+             * NULL unconditionally just to be safe.
+             */
+            prev_srcs[i] = NULL;
+            continue_srcs[i] = NULL;
+
+            nir_foreach_phi_src(src_of_phi, phi) {
+               if (src_of_phi->pred == prev_block) {
+                  if (src_of_phi->src.ssa->parent_instr->type !=
+                      nir_instr_type_ssa_undef) {
+                     is_prev_result_undef = false;
+                  }
+
+                  if (src_of_phi->src.ssa->parent_instr->type !=
+                      nir_instr_type_load_const) {
+                     is_prev_result_const = false;
+                  }
+
+                  prev_srcs[i] = src_of_phi->src.ssa;
+                  has_phi_src_from_prev_block = true;
+               } else
+                  continue_srcs[i] = src_of_phi->src.ssa;
+            }
+
+            assert(prev_srcs[i] != NULL);
+            assert(continue_srcs[i] != NULL);
+         } else {
+            /* If the source is not a phi (or a phi in a block other than the
+             * loop header), then the value must exist in prev_block.
+             */
+            if (!nir_block_dominates(src_instr->block, prev_block)) {
+               all_non_phi_exist_in_prev_block = false;
+               break;
+            }
+
+            prev_srcs[i] = alu->src[i].src.ssa;
+            continue_srcs[i] = alu->src[i].src.ssa;
+         }
+      }
+
+      if (has_phi_src_from_prev_block && all_non_phi_exist_in_prev_block &&
+          (is_prev_result_undef || is_prev_result_const)) {
+         nir_block *const continue_block = find_continue_block(loop);
+         nir_ssa_def *prev_value;
+
+         if (!is_prev_result_undef) {
+            b->cursor = nir_after_block(prev_block);
+            prev_value = clone_alu_and_replace_src_defs(b, alu, prev_srcs);
+         } else {
+            /* Since the undef used as the source of the original ALU
+             * instruction may have different number of components or
+             * bit size than the result of that instruction, a new
+             * undef must be created.
+             */
+            nir_ssa_undef_instr *undef =
+               nir_ssa_undef_instr_create(b->shader,
+                                          alu->dest.dest.ssa.num_components,
+                                          alu->dest.dest.ssa.bit_size);
+
+            nir_instr_insert_after_block(prev_block, &undef->instr);
+
+            prev_value = &undef->def;
+         }
+
+         /* Make a copy of the original ALU instruction.  Replace the sources
+          * of the new instruction that read a phi with an undef source from
+          * prev_block with the non-undef source of that phi.
+          *
+          * Insert the new instruction at the end of the continue block.
+          */
+         b->cursor = nir_after_block(continue_block);
+
+         nir_ssa_def *const alu_copy =
+            clone_alu_and_replace_src_defs(b, alu, continue_srcs);
+
+         /* Make a new phi node that selects a value from prev_block and the
+          * result of the new instruction from continue_block.
+          */
+         nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
+         nir_phi_src *phi_src;
+
+         phi_src = ralloc(phi, nir_phi_src);
+         phi_src->pred = prev_block;
+         phi_src->src = nir_src_for_ssa(prev_value);
+         exec_list_push_tail(&phi->srcs, &phi_src->node);
+
+         phi_src = ralloc(phi, nir_phi_src);
+         phi_src->pred = continue_block;
+         phi_src->src = nir_src_for_ssa(alu_copy);
+         exec_list_push_tail(&phi->srcs, &phi_src->node);
+
+         nir_ssa_dest_init(&phi->instr, &phi->dest,
+                           alu_copy->num_components, alu_copy->bit_size, NULL);
+
+         b->cursor = nir_after_phis(header_block);
+         nir_builder_instr_insert(b, &phi->instr);
+
+         /* Modify all readers of the original ALU instruction to read the
+          * result of the phi.
+          */
+         nir_foreach_use_safe(use_src, &alu->dest.dest.ssa) {
+            nir_instr_rewrite_src(use_src->parent_instr,
+                                  use_src,
+                                  nir_src_for_ssa(&phi->dest.ssa));
+         }
+
+         nir_foreach_if_use_safe(use_src, &alu->dest.dest.ssa) {
+            nir_if_rewrite_condition(use_src->parent_if,
+                                     nir_src_for_ssa(&phi->dest.ssa));
+         }
+
+         /* Since the original ALU instruction no longer has any readers, just
+          * remove it.
+          */
+         nir_instr_remove_v(&alu->instr);
+         ralloc_free(alu);
+
+         progress = true;
+      }
+   }
+
+   return progress;
 }
 
 static bool
@@ -853,6 +1146,7 @@ opt_if_safe_cf_list(nir_builder *b, struct exec_list *cf_list)
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(cf_node);
          progress |= opt_if_safe_cf_list(b, &loop->body);
+         progress |= opt_split_alu_of_phi(b, loop);
          break;
       }
 
