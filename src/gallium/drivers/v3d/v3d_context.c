@@ -224,7 +224,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
         V3D_DEBUG |= saved_shaderdb_flag;
 
-        v3d->sample_mask = (1 << VC5_MAX_SAMPLES) - 1;
+        v3d->sample_mask = (1 << V3D_MAX_SAMPLES) - 1;
         v3d->active_queries = true;
 
         return &v3d->base;

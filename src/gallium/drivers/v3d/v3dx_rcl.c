@@ -207,7 +207,7 @@ v3d_rcl_emit_loads(struct v3d_job *job, struct v3d_cl *cl)
 {
         uint32_t loads_pending = job->load;
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 if (!(loads_pending & bit))
                         continue;
@@ -305,7 +305,7 @@ v3d_rcl_emit_stores(struct v3d_job *job, struct v3d_cl *cl)
          * perspective.  Non-MSAA surfaces will use
          * STORE_MULTI_SAMPLE_RESOLVED_TILE_COLOR_BUFFER_EXTENDED.
          */
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 if (!(job->store & bit))
                         continue;
@@ -507,7 +507,7 @@ v3dX(emit_rcl)(struct v3d_job *job)
         v3d_job_add_bo(job, job->rcl.bo);
 
         int nr_cbufs = 0;
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (job->cbufs[i])
                         nr_cbufs = i + 1;
         }

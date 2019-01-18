@@ -62,7 +62,7 @@ v3d_job_free(struct v3d_context *v3d, struct v3d_job *job)
                 }
         }
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (job->cbufs[i]) {
                         remove_from_ht(v3d->write_jobs, job->cbufs[i]->texture);
                         pipe_surface_reference(&job->cbufs[i], NULL);
@@ -204,7 +204,7 @@ v3d_job_set_tile_buffer_size(struct v3d_job *job)
                 tile_size_index++;
 
         int max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (job->cbufs[i]) {
                         struct v3d_surface *surf = v3d_surface(job->cbufs[i]);
                         max_bpp = MAX2(max_bpp, surf->internal_bpp);
@@ -251,7 +251,7 @@ v3d_get_job(struct v3d_context *v3d,
          */
         struct v3d_job *job = v3d_job_create(v3d);
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (cbufs[i]) {
                         v3d_flush_jobs_reading_resource(v3d, cbufs[i]->texture);
                         pipe_surface_reference(&job->cbufs[i], cbufs[i]);
@@ -267,7 +267,7 @@ v3d_get_job(struct v3d_context *v3d,
                         job->msaa = true;
         }
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (cbufs[i])
                         _mesa_hash_table_insert(v3d->write_jobs,
                                                 cbufs[i]->texture, job);

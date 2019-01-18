@@ -317,7 +317,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         attr.maximum_index = 0xffffff;
 #endif
                 }
-                STATIC_ASSERT(sizeof(vtx->attrs) >= VC5_MAX_ATTRIBUTES * size);
+                STATIC_ASSERT(sizeof(vtx->attrs) >= V3D_MAX_ATTRIBUTES * size);
         }
 
         if (vtx->num_elements == 0) {
@@ -700,7 +700,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 rsc->initialized_buffers |= PIPE_CLEAR_STENCIL;
         }
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 int blend_rt = v3d->blend->base.independent_blend_enable ? i : 0;
 
@@ -780,7 +780,7 @@ v3d_tlb_clear(struct v3d_job *job, unsigned buffers,
                 buffers &= ~PIPE_CLEAR_DEPTHSTENCIL;
         }
 
-        for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 uint32_t bit = PIPE_CLEAR_COLOR0 << i;
                 if (!(buffers & bit))
                         continue;

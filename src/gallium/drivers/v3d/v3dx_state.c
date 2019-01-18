@@ -78,7 +78,7 @@ static void
 v3d_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
         struct v3d_context *v3d = v3d_context(pctx);
-        v3d->sample_mask = sample_mask & ((1 << VC5_MAX_SAMPLES) - 1);
+        v3d->sample_mask = sample_mask & ((1 << V3D_MAX_SAMPLES) - 1);
         v3d->dirty |= VC5_DIRTY_SAMPLE_STATE;
 }
 
@@ -131,7 +131,7 @@ v3d_create_blend_state(struct pipe_context *pctx,
         so->base = *cso;
 
         if (cso->independent_blend_enable) {
-                for (int i = 0; i < VC5_MAX_DRAW_BUFFERS; i++) {
+                for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                         so->blend_enables |= cso->rt[i].blend_enable << i;
 
                         /* V3D 4.x is when we got independent blend enables. */
@@ -140,7 +140,7 @@ v3d_create_blend_state(struct pipe_context *pctx,
                 }
         } else {
                 if (cso->rt[0].blend_enable)
-                        so->blend_enables = (1 << VC5_MAX_DRAW_BUFFERS) - 1;
+                        so->blend_enables = (1 << V3D_MAX_DRAW_BUFFERS) - 1;
         }
 
         return so;
@@ -407,10 +407,10 @@ v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
          */
         uint32_t *attrs;
         u_upload_alloc(v3d->state_uploader, 0,
-                       VC5_MAX_ATTRIBUTES * 4 * sizeof(float), 16,
+                       V3D_MAX_ATTRIBUTES * 4 * sizeof(float), 16,
                        &so->defaults_offset, &so->defaults, (void **)&attrs);
 
-        for (int i = 0; i < VC5_MAX_ATTRIBUTES; i++) {
+        for (int i = 0; i < V3D_MAX_ATTRIBUTES; i++) {
                 attrs[i * 4 + 0] = 0;
                 attrs[i * 4 + 1] = 0;
                 attrs[i * 4 + 2] = 0;

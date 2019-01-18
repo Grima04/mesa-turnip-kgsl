@@ -181,7 +181,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
-                return VC5_MAX_MIP_LEVELS;
+                return V3D_MAX_MIP_LEVELS;
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
                 return 2048;
 
@@ -260,14 +260,14 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
 
         case PIPE_SHADER_CAP_MAX_INPUTS:
                 if (shader == PIPE_SHADER_FRAGMENT)
-                        return VC5_MAX_FS_INPUTS / 4;
+                        return V3D_MAX_FS_INPUTS / 4;
                 else
-                        return VC5_MAX_ATTRIBUTES;
+                        return V3D_MAX_ATTRIBUTES;
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
                 if (shader == PIPE_SHADER_FRAGMENT)
                         return 4;
                 else
-                        return VC5_MAX_FS_INPUTS / 4;
+                        return V3D_MAX_FS_INPUTS / 4;
         case PIPE_SHADER_CAP_MAX_TEMPS:
                 return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
         case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
@@ -300,7 +300,7 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 return 1;
         case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
         case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-                return VC5_MAX_TEXTURE_SAMPLERS;
+                return V3D_MAX_TEXTURE_SAMPLERS;
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
                 return PIPE_MAX_SHADER_BUFFERS;
@@ -340,7 +340,7 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
         if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
                 return false;
 
-        if (sample_count > 1 && sample_count != VC5_MAX_SAMPLES)
+        if (sample_count > 1 && sample_count != V3D_MAX_SAMPLES)
                 return FALSE;
 
         if (target >= PIPE_MAX_TEXTURE_TYPES) {

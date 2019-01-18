@@ -190,10 +190,10 @@ struct v3d_vertexbuf_stateobj {
 };
 
 struct v3d_vertex_stateobj {
-        struct pipe_vertex_element pipe[VC5_MAX_ATTRIBUTES];
+        struct pipe_vertex_element pipe[V3D_MAX_ATTRIBUTES];
         unsigned num_elements;
 
-        uint8_t attrs[16 * VC5_MAX_ATTRIBUTES];
+        uint8_t attrs[16 * V3D_MAX_ATTRIBUTES];
         struct pipe_resource *defaults;
         uint32_t defaults_offset;
 };
