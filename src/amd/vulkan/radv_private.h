@@ -1367,6 +1367,8 @@ struct radv_pipeline {
 	VkShaderStageFlags                           active_stages;
 
 	struct radeon_cmdbuf                      cs;
+	uint32_t                                  ctx_cs_hash;
+	struct radeon_cmdbuf                      ctx_cs;
 
 	struct radv_vertex_elements_info             vertex_elements;
 
