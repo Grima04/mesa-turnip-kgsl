@@ -35,6 +35,7 @@
 #include "v3d_context.h"
 #include "v3d_tiling.h"
 #include "broadcom/common/v3d_macros.h"
+#include "broadcom/compiler/v3d_compiler.h"
 #include "broadcom/cle/v3dx_pack.h"
 
 static void
@@ -407,10 +408,10 @@ v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
          */
         uint32_t *attrs;
         u_upload_alloc(v3d->state_uploader, 0,
-                       V3D_MAX_ATTRIBUTES * 4 * sizeof(float), 16,
+                       V3D_MAX_VS_INPUTS * sizeof(float), 16,
                        &so->defaults_offset, &so->defaults, (void **)&attrs);
 
-        for (int i = 0; i < V3D_MAX_ATTRIBUTES; i++) {
+        for (int i = 0; i < V3D_MAX_VS_INPUTS / 4; i++) {
                 attrs[i * 4 + 0] = 0;
                 attrs[i * 4 + 1] = 0;
                 attrs[i * 4 + 2] = 0;

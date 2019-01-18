@@ -37,6 +37,7 @@
 #include "v3d_screen.h"
 #include "v3d_context.h"
 #include "v3d_resource.h"
+#include "broadcom/compiler/v3d_compiler.h"
 
 void
 v3d_flush(struct pipe_context *pctx)

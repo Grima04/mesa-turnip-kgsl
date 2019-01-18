@@ -35,12 +35,6 @@
 
 struct v3d_bo;
 
-#define V3D_MAX_MIP_LEVELS 12
-#define V3D_MAX_TEXTURE_SAMPLERS 32
-#define V3D_MAX_SAMPLES 4
-#define V3D_MAX_DRAW_BUFFERS 4
-#define V3D_MAX_ATTRIBUTES 16
-
 /* These are tunable parameters in the HW design, but all the V3D
  * implementations agree.
  */

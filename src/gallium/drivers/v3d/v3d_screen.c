@@ -262,7 +262,7 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 if (shader == PIPE_SHADER_FRAGMENT)
                         return V3D_MAX_FS_INPUTS / 4;
                 else
-                        return V3D_MAX_ATTRIBUTES;
+                        return V3D_MAX_VS_INPUTS / 4;
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
                 if (shader == PIPE_SHADER_FRAGMENT)
                         return 4;

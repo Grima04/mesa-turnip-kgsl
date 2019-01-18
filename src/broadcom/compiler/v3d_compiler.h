@@ -34,17 +34,13 @@
 #include "util/macros.h"
 #include "common/v3d_debug.h"
 #include "common/v3d_device_info.h"
+#include "common/v3d_limits.h"
 #include "compiler/nir/nir.h"
 #include "util/list.h"
 #include "util/u_math.h"
 
 #include "qpu/qpu_instr.h"
 #include "pipe/p_state.h"
-
-#define V3D_MAX_TEXTURE_SAMPLERS 32
-#define V3D_MAX_SAMPLES 4
-#define V3D_MAX_FS_INPUTS 64
-#define V3D_MAX_VS_INPUTS 64
 
 struct nir_builder;
 

@@ -38,6 +38,7 @@
 #include "xf86drm.h"
 #include "v3d_drm.h"
 #include "v3d_screen.h"
+#include "broadcom/common/v3d_limits.h"
 
 struct v3d_job;
 struct v3d_bo;
@@ -190,10 +191,10 @@ struct v3d_vertexbuf_stateobj {
 };
 
 struct v3d_vertex_stateobj {
-        struct pipe_vertex_element pipe[V3D_MAX_ATTRIBUTES];
+        struct pipe_vertex_element pipe[V3D_MAX_VS_INPUTS / 4];
         unsigned num_elements;
 
-        uint8_t attrs[16 * V3D_MAX_ATTRIBUTES];
+        uint8_t attrs[16 * (V3D_MAX_VS_INPUTS / 4)];
         struct pipe_resource *defaults;
         uint32_t defaults_offset;
 };
