@@ -477,6 +477,9 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->always_flush_cache =
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
+   device->has_mmap_offset =
+      anv_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
+
    /* GENs prior to 8 do not support EU/Subslice info */
    if (device->info.gen >= 8) {
       device->subslice_total = anv_gem_get_param(fd, I915_PARAM_SUBSLICE_TOTAL);
@@ -3697,7 +3700,11 @@ VkResult anv_MapMemory(
       gem_flags |= I915_MMAP_WC;
 
    /* GEM will fail to map if the offset isn't 4k-aligned.  Round down. */
-   uint64_t map_offset = offset & ~4095ull;
+   uint64_t map_offset;
+   if (!device->physical->has_mmap_offset)
+      map_offset = offset & ~4095ull;
+   else
+      map_offset = 0;
    assert(offset >= map_offset);
    uint64_t map_size = (offset + size) - map_offset;
 

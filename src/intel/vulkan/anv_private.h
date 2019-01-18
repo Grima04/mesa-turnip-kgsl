@@ -1044,6 +1044,7 @@ struct anv_physical_device {
     bool                                        has_context_priority;
     bool                                        has_context_isolation;
     bool                                        has_mem_available;
+    bool                                        has_mmap_offset;
     uint64_t                                    gtt_size;
 
     bool                                        use_softpin;
