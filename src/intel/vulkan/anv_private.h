@@ -1825,19 +1825,47 @@ anv_pipe_flush_bits_for_access_flags(VkAccessFlags flags)
    for_each_bit(b, flags) {
       switch ((VkAccessFlagBits)(1 << b)) {
       case VK_ACCESS_SHADER_WRITE_BIT:
+         /* We're transitioning a buffer that was previously used as write
+          * destination through the data port. To make its content available
+          * to future operations, flush the data cache.
+          */
          pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
+         /* We're transitioning a buffer that was previously used as render
+          * target. To make its content available to future operations, flush
+          * the render target cache.
+          */
          pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+         /* We're transitioning a buffer that was previously used as depth
+          * buffer. To make its content available to future operations, flush
+          * the depth cache.
+          */
          pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_TRANSFER_WRITE_BIT:
+         /* We're transitioning a buffer that was previously used as a
+          * transfer write destination. Generic write operations include color
+          * & depth operations as well as buffer operations like :
+          *     - vkCmdClearColorImage()
+          *     - vkCmdClearDepthStencilImage()
+          *     - vkCmdBlitImage()
+          *     - vkCmdCopy*(), vkCmdUpdate*(), vkCmdFill*()
+          *
+          * Most of these operations are implemented using Blorp which writes
+          * through the render target, so flush that cache to make it visible
+          * to future operations. And for depth related operations we also
+          * need to flush the depth cache.
+          */
          pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_MEMORY_WRITE_BIT:
+         /* We're transitioning a buffer for generic write operations. Flush
+          * all the caches.
+          */
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
       default:
@@ -1857,26 +1885,65 @@ anv_pipe_invalidate_bits_for_access_flags(VkAccessFlags flags)
    for_each_bit(b, flags) {
       switch ((VkAccessFlagBits)(1 << b)) {
       case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
+         /* Indirect draw commands take a buffer as input that we're going to
+          * read from the command streamer to load some of the HW registers
+          * (see genX_cmd_buffer.c:load_indirect_parameters). This requires a
+          * command streamer stall so that all the cache flushes have
+          * completed before the command streamer loads from memory.
+          */
+         pipe_bits |=  ANV_PIPE_CS_STALL_BIT;
+         /* Indirect draw commands also set gl_BaseVertex & gl_BaseIndex
+          * through a vertex buffer, so invalidate that cache.
+          */
+         pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+         /* For CmdDipatchIndirect, we also load gl_NumWorkGroups through a
+          * UBO from the buffer, so we need to invalidate constant cache.
+          */
+         pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
+         break;
       case VK_ACCESS_INDEX_READ_BIT:
       case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
+         /* We transitioning a buffer to be used for as input for vkCmdDraw*
+          * commands, so we invalidate the VF cache to make sure there is no
+          * stale data when we start rendering.
+          */
          pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
          break;
       case VK_ACCESS_UNIFORM_READ_BIT:
+         /* We transitioning a buffer to be used as uniform data. Because
+          * uniform is accessed through the data port & sampler, we need to
+          * invalidate the texture cache (sampler) & constant cache (data
+          * port) to avoid stale data.
+          */
          pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
          pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
          break;
       case VK_ACCESS_SHADER_READ_BIT:
       case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
       case VK_ACCESS_TRANSFER_READ_BIT:
+         /* Transitioning a buffer to be read through the sampler, so
+          * invalidate the texture cache, we don't want any stale data.
+          */
          pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
          break;
       case VK_ACCESS_MEMORY_READ_BIT:
+         /* Transitioning a buffer for generic read, invalidate all the
+          * caches.
+          */
          pipe_bits |= ANV_PIPE_INVALIDATE_BITS;
          break;
       case VK_ACCESS_MEMORY_WRITE_BIT:
+         /* Generic write, make sure all previously written things land in
+          * memory.
+          */
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
       case VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT:
+         /* Transitioning a buffer for conditional rendering. We'll load the
+          * content of this buffer into HW registers using the command
+          * streamer, so we need to stall the command streamer to make sure
+          * any in-flight flush operations have completed.
+          */
          pipe_bits |= ANV_PIPE_CS_STALL_BIT;
          break;
       default:
