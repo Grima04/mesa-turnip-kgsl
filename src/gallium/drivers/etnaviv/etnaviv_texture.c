@@ -203,6 +203,7 @@ etna_texture_handle_incompatible(struct pipe_context *pctx, struct pipe_resource
                            PIPE_BIND_BLENDABLE);
          res->texture =
             etna_resource_alloc(pctx->screen, ETNA_LAYOUT_TILED,
+                                ETNA_ADDRESSING_MODE_TILED,
                                 DRM_FORMAT_MOD_LINEAR, &templat);
       }
 

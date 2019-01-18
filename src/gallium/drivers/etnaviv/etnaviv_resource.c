@@ -188,7 +188,8 @@ static bool is_rs_align(struct etna_screen *screen,
 /* Create a new resource object, using the given template info */
 struct pipe_resource *
 etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
-                    uint64_t modifier, const struct pipe_resource *templat)
+                    enum etna_resource_addressing_mode mode, uint64_t modifier,
+                    const struct pipe_resource *templat)
 {
    struct etna_screen *screen = etna_screen(pscreen);
    struct etna_resource *rsc;
@@ -280,6 +281,7 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    rsc->base.nr_samples = nr_samples;
    rsc->layout = layout;
    rsc->halign = halign;
+   rsc->addressing_mode = mode;
 
    pipe_reference_init(&rsc->base.reference, 1);
    list_inithead(&rsc->list);
@@ -316,12 +318,14 @@ etna_resource_create(struct pipe_screen *pscreen,
 {
    struct etna_screen *screen = etna_screen(pscreen);
 
-   /* Figure out what tiling to use -- for now, assume that texture cannot be linear.
-    * there is a capability LINEAR_TEXTURE_SUPPORT (supported on gc880 and
-    * gc2000 at least), but not sure how it works.
+   /* Figure out what tiling and address mode to use -- for now, assume that
+    * texture cannot be linear. there is a capability LINEAR_TEXTURE_SUPPORT
+    * (supported on gc880 and gc2000 at least), but not sure how it works.
     * Buffers always have LINEAR layout.
     */
    unsigned layout = ETNA_LAYOUT_LINEAR;
+   enum etna_resource_addressing_mode mode = ETNA_ADDRESSING_MODE_TILED;
+
    if (etna_resource_sampler_only(templat)) {
       /* The buffer is only used for texturing, so create something
        * directly compatible with the sampler.  Such a buffer can
@@ -364,7 +368,7 @@ etna_resource_create(struct pipe_screen *pscreen,
       layout = ETNA_LAYOUT_LINEAR;
 
    /* modifier is only used for scanout surfaces, so safe to use LINEAR here */
-   return etna_resource_alloc(pscreen, layout, DRM_FORMAT_MOD_LINEAR, templat);
+   return etna_resource_alloc(pscreen, layout, mode, DRM_FORMAT_MOD_LINEAR, templat);
 }
 
 enum modifier_priority {
@@ -445,7 +449,7 @@ etna_resource_create_modifiers(struct pipe_screen *pscreen,
    tmpl.bind |= PIPE_BIND_SCANOUT;
 
    return etna_resource_alloc(pscreen, modifier_to_layout(modifier),
-                              modifier, &tmpl);
+                              ETNA_ADDRESSING_MODE_TILED, modifier, &tmpl);
 }
 
 static void
@@ -518,6 +522,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    rsc->seqno = 1;
    rsc->layout = modifier_to_layout(handle->modifier);
    rsc->halign = TEXTURE_HALIGN_FOUR;
+   rsc->addressing_mode = ETNA_ADDRESSING_MODE_TILED;
 
 
    level->width = tmpl->width0;
