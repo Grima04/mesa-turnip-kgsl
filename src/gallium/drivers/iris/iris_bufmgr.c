@@ -369,10 +369,6 @@ get_bucket_allocator(struct iris_bufmgr *bufmgr,
                      enum iris_memory_zone memzone,
                      uint64_t size)
 {
-   /* Bucketing is not worth using for binders...we'll never have 64... */
-   if (memzone == IRIS_MEMZONE_BINDER)
-      return NULL;
-
    /* Skip using the bucket allocator for very large sizes, as it allocates
     * 64 of them and this can balloon rather quickly.
     */
@@ -401,6 +397,10 @@ vma_alloc(struct iris_bufmgr *bufmgr,
 {
    if (memzone == IRIS_MEMZONE_BORDER_COLOR_POOL)
       return IRIS_BORDER_COLOR_POOL_ADDRESS;
+
+   /* The binder handles its own allocations.  Return non-zero here. */
+   if (memzone == IRIS_MEMZONE_BINDER)
+      return IRIS_MEMZONE_BINDER_START;
 
    struct bo_cache_bucket *bucket =
       get_bucket_allocator(bufmgr, memzone, size);
@@ -434,6 +434,11 @@ vma_free(struct iris_bufmgr *bufmgr,
       return;
 
    enum iris_memory_zone memzone = memzone_for_address(address);
+
+   /* The binder handles its own allocations. */
+   if (memzone == IRIS_MEMZONE_BINDER)
+      return;
+
    struct bo_cache_bucket *bucket =
       get_bucket_allocator(bufmgr, memzone, size);
 
@@ -1286,7 +1291,8 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    _mesa_hash_table_destroy(bufmgr->handle_table, NULL);
 
    for (int z = 0; z < IRIS_MEMZONE_COUNT; z++) {
-      util_vma_heap_finish(&bufmgr->vma_allocator[z]);
+      if (z != IRIS_MEMZONE_BINDER)
+         util_vma_heap_finish(&bufmgr->vma_allocator[z]);
    }
 
    free(bufmgr);
@@ -1611,9 +1617,6 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
 
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SHADER],
                       PAGE_SIZE, _4GB);
-   util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_BINDER],
-                      IRIS_MEMZONE_BINDER_START,
-                      IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
                       IRIS_MEMZONE_SURFACE_START,
                       _4GB - IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);

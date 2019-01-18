@@ -71,10 +71,23 @@ binder_realloc(struct iris_context *ice)
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_binder *binder = &ice->state.binder;
 
-   iris_bo_unreference(binder->bo);
+   uint64_t next_address = IRIS_MEMZONE_BINDER_START;
+
+   if (binder->bo) {
+      /* Place the new binder just after the old binder, unless we've hit the
+       * end of the memory zone...then wrap around to the start again.
+       */
+      next_address = binder->bo->gtt_offset + IRIS_BINDER_SIZE;
+      if (next_address >= IRIS_MEMZONE_SURFACE_START)
+         next_address = IRIS_MEMZONE_BINDER_START;
+
+      iris_bo_unreference(binder->bo);
+   }
+
 
    binder->bo =
       iris_bo_alloc(bufmgr, "binder", IRIS_BINDER_SIZE, IRIS_MEMZONE_BINDER);
+   binder->bo->gtt_offset = next_address;
    binder->map = iris_bo_map(NULL, binder->bo, MAP_WRITE);
    binder->insert_point = INIT_INSERT_POINT;
 
