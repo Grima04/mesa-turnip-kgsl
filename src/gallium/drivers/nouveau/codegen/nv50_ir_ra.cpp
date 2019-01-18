@@ -2142,7 +2142,8 @@ bool
 RegAlloc::InsertConstraintsPass::isScalarTexGM107(TexInstruction *tex)
 {
    if (tex->tex.sIndirectSrc >= 0 ||
-       tex->tex.rIndirectSrc >= 0)
+       tex->tex.rIndirectSrc >= 0 ||
+       tex->tex.derivAll)
       return false;
 
    if (tex->tex.mask == 5 || tex->tex.mask == 6)

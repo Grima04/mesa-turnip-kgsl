@@ -2863,6 +2863,7 @@ void
 CodeEmitterGM107::emitTEXS()
 {
    const TexInstruction *insn = this->insn->asTex();
+   assert(!insn->tex.derivAll);
 
    switch (insn->op) {
    case OP_TEX:
