@@ -168,6 +168,12 @@ option(
   description : 'Location relative to prefix to put vulkan icds on install. Default: $datadir/vulkan/icd.d'
 )
 option(
+  'vulkan-overlay-layer',
+  type : 'boolean',
+  value : false,
+  description : 'Whether to build the vulkan overlay layer'
+)
+option(
   'shared-glapi',
   type : 'boolean',
   value : true,
