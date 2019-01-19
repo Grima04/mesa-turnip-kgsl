@@ -172,45 +172,45 @@ static void amdgpu_fence_submitted(struct pipe_fence_handle *fence,
                                    uint64_t seq_no,
                                    uint64_t *user_fence_cpu_address)
 {
-   struct amdgpu_fence *rfence = (struct amdgpu_fence*)fence;
+   struct amdgpu_fence *afence = (struct amdgpu_fence*)fence;
 
-   rfence->fence.fence = seq_no;
-   rfence->user_fence_cpu_address = user_fence_cpu_address;
-   util_queue_fence_signal(&rfence->submitted);
+   afence->fence.fence = seq_no;
+   afence->user_fence_cpu_address = user_fence_cpu_address;
+   util_queue_fence_signal(&afence->submitted);
 }
 
 static void amdgpu_fence_signalled(struct pipe_fence_handle *fence)
 {
-   struct amdgpu_fence *rfence = (struct amdgpu_fence*)fence;
+   struct amdgpu_fence *afence = (struct amdgpu_fence*)fence;
 
-   rfence->signalled = true;
-   util_queue_fence_signal(&rfence->submitted);
+   afence->signalled = true;
+   util_queue_fence_signal(&afence->submitted);
 }
 
 bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
                        bool absolute)
 {
-   struct amdgpu_fence *rfence = (struct amdgpu_fence*)fence;
+   struct amdgpu_fence *afence = (struct amdgpu_fence*)fence;
    uint32_t expired;
    int64_t abs_timeout;
    uint64_t *user_fence_cpu;
    int r;
 
-   if (rfence->signalled)
+   if (afence->signalled)
       return true;
 
    /* Handle syncobjs. */
-   if (amdgpu_fence_is_syncobj(rfence)) {
+   if (amdgpu_fence_is_syncobj(afence)) {
       /* Absolute timeouts are only be used by BO fences, which aren't
        * backed by syncobjs.
        */
       assert(!absolute);
 
-      if (amdgpu_cs_syncobj_wait(rfence->ws->dev, &rfence->syncobj, 1,
+      if (amdgpu_cs_syncobj_wait(afence->ws->dev, &afence->syncobj, 1,
                                  timeout, 0, NULL))
          return false;
 
-      rfence->signalled = true;
+      afence->signalled = true;
       return true;
    }
 
@@ -222,13 +222,13 @@ bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
    /* The fence might not have a number assigned if its IB is being
     * submitted in the other thread right now. Wait until the submission
     * is done. */
-   if (!util_queue_fence_wait_timeout(&rfence->submitted, abs_timeout))
+   if (!util_queue_fence_wait_timeout(&afence->submitted, abs_timeout))
       return false;
 
-   user_fence_cpu = rfence->user_fence_cpu_address;
+   user_fence_cpu = afence->user_fence_cpu_address;
    if (user_fence_cpu) {
-      if (*user_fence_cpu >= rfence->fence.fence) {
-         rfence->signalled = true;
+      if (*user_fence_cpu >= afence->fence.fence) {
+         afence->signalled = true;
          return true;
       }
 
@@ -238,7 +238,7 @@ bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
    }
 
    /* Now use the libdrm query. */
-   r = amdgpu_cs_query_fence_status(&rfence->fence,
+   r = amdgpu_cs_query_fence_status(&afence->fence,
 				    abs_timeout,
 				    AMDGPU_QUERY_FENCE_TIMEOUT_IS_ABSOLUTE,
 				    &expired);
@@ -250,7 +250,7 @@ bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
    if (expired) {
       /* This variable can only transition from false to true, so it doesn't
        * matter if threads race for it. */
-      rfence->signalled = true;
+      afence->signalled = true;
       return true;
    }
    return false;
