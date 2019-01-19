@@ -33,7 +33,7 @@ void si_need_gfx_cs_space(struct si_context *ctx)
 	struct radeon_cmdbuf *cs = ctx->gfx_cs;
 
 	/* There is no need to flush the DMA IB here, because
-	 * r600_need_dma_space always flushes the GFX IB if there is
+	 * si_need_dma_space always flushes the GFX IB if there is
 	 * a conflict, which means any unflushed DMA commands automatically
 	 * precede the GFX IB (= they had no dependency on the GFX IB when
 	 * they were submitted).

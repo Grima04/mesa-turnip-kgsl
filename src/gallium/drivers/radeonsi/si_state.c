@@ -2151,7 +2151,7 @@ static boolean si_is_format_supported(struct pipe_screen *screen,
 	unsigned retval = 0;
 
 	if (target >= PIPE_MAX_TEXTURE_TYPES) {
-		PRINT_ERR("r600: unsupported texture type %d\n", target);
+		PRINT_ERR("radeonsi: unsupported texture type %d\n", target);
 		return false;
 	}
 
