@@ -1650,15 +1650,15 @@ radeon_cs_memory_below_limit(struct si_screen *screen,
  */
 static inline void radeon_add_to_buffer_list(struct si_context *sctx,
 					     struct radeon_cmdbuf *cs,
-					     struct si_resource *rbo,
+					     struct si_resource *bo,
 					     enum radeon_bo_usage usage,
 					     enum radeon_bo_priority priority)
 {
 	assert(usage);
 	sctx->ws->cs_add_buffer(
-		cs, rbo->buf,
+		cs, bo->buf,
 		(enum radeon_bo_usage)(usage | RADEON_USAGE_SYNCHRONIZED),
-		rbo->domains, priority);
+		bo->domains, priority);
 }
 
 /**
@@ -1680,18 +1680,18 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx,
  */
 static inline void
 radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
-					struct si_resource *rbo,
+					struct si_resource *bo,
 					enum radeon_bo_usage usage,
 					enum radeon_bo_priority priority,
 					bool check_mem)
 {
 	if (check_mem &&
 	    !radeon_cs_memory_below_limit(sctx->screen, sctx->gfx_cs,
-					  sctx->vram + rbo->vram_usage,
-					  sctx->gtt + rbo->gart_usage))
+					  sctx->vram + bo->vram_usage,
+					  sctx->gtt + bo->gart_usage))
 		si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
-	radeon_add_to_buffer_list(sctx, sctx->gfx_cs, rbo, usage, priority);
+	radeon_add_to_buffer_list(sctx, sctx->gfx_cs, bo, usage, priority);
 }
 
 #define PRINT_ERR(fmt, args...) \

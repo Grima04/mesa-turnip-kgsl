@@ -248,12 +248,12 @@ bool si_alloc_resource(struct si_screen *sscreen,
 static void si_buffer_destroy(struct pipe_screen *screen,
 			      struct pipe_resource *buf)
 {
-	struct si_resource *rbuffer = si_resource(buf);
+	struct si_resource *buffer = si_resource(buf);
 
 	threaded_resource_deinit(buf);
-	util_range_destroy(&rbuffer->valid_buffer_range);
-	pb_reference(&rbuffer->buf, NULL);
-	FREE(rbuffer);
+	util_range_destroy(&buffer->valid_buffer_range);
+	pb_reference(&buffer->buf, NULL);
+	FREE(buffer);
 }
 
 /* Reallocate the buffer a update all resource bindings where the buffer is
@@ -264,32 +264,32 @@ static void si_buffer_destroy(struct pipe_screen *screen,
  */
 static bool
 si_invalidate_buffer(struct si_context *sctx,
-		     struct si_resource *rbuffer)
+		     struct si_resource *buf)
 {
 	/* Shared buffers can't be reallocated. */
-	if (rbuffer->b.is_shared)
+	if (buf->b.is_shared)
 		return false;
 
 	/* Sparse buffers can't be reallocated. */
-	if (rbuffer->flags & RADEON_FLAG_SPARSE)
+	if (buf->flags & RADEON_FLAG_SPARSE)
 		return false;
 
 	/* In AMD_pinned_memory, the user pointer association only gets
 	 * broken when the buffer is explicitly re-allocated.
 	 */
-	if (rbuffer->b.is_user_ptr)
+	if (buf->b.is_user_ptr)
 		return false;
 
 	/* Check if mapping this buffer would cause waiting for the GPU. */
-	if (si_rings_is_buffer_referenced(sctx, rbuffer->buf, RADEON_USAGE_READWRITE) ||
-	    !sctx->ws->buffer_wait(rbuffer->buf, 0, RADEON_USAGE_READWRITE)) {
-		uint64_t old_va = rbuffer->gpu_address;
+	if (si_rings_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
+	    !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
+		uint64_t old_va = buf->gpu_address;
 
 		/* Reallocate the buffer in the same pipe_resource. */
-		si_alloc_resource(sctx->screen, rbuffer);
-		si_rebind_buffer(sctx, &rbuffer->b.b, old_va);
+		si_alloc_resource(sctx->screen, buf);
+		si_rebind_buffer(sctx, &buf->b.b, old_va);
 	} else {
-		util_range_set_empty(&rbuffer->valid_buffer_range);
+		util_range_set_empty(&buf->valid_buffer_range);
 	}
 
 	return true;
@@ -325,11 +325,11 @@ static void si_invalidate_resource(struct pipe_context *ctx,
 				   struct pipe_resource *resource)
 {
 	struct si_context *sctx = (struct si_context*)ctx;
-	struct si_resource *rbuffer = si_resource(resource);
+	struct si_resource *buf = si_resource(resource);
 
 	/* We currently only do anyting here for buffers */
 	if (resource->target == PIPE_BUFFER)
-		(void)si_invalidate_buffer(sctx, rbuffer);
+		(void)si_invalidate_buffer(sctx, buf);
 }
 
 static void *si_buffer_get_transfer(struct pipe_context *ctx,
@@ -370,7 +370,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 				    struct pipe_transfer **ptransfer)
 {
 	struct si_context *sctx = (struct si_context*)ctx;
-	struct si_resource *rbuffer = si_resource(resource);
+	struct si_resource *buf = si_resource(resource);
 	uint8_t *data;
 
 	assert(box->x + box->width <= resource->width0);
@@ -386,7 +386,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 	 *
 	 * So don't ever use staging buffers.
 	 */
-	if (rbuffer->b.is_user_ptr)
+	if (buf->b.is_user_ptr)
 		usage |= PIPE_TRANSFER_PERSISTENT;
 
 	/* See if the buffer range being mapped has never been initialized,
@@ -394,8 +394,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 	if (!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED |
 		       TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED)) &&
 	    usage & PIPE_TRANSFER_WRITE &&
-	    !rbuffer->b.is_shared &&
-	    !util_ranges_intersect(&rbuffer->valid_buffer_range, box->x, box->x + box->width)) {
+	    !buf->b.is_shared &&
+	    !util_ranges_intersect(&buf->valid_buffer_range, box->x, box->x + box->width)) {
 		usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
 	}
 
@@ -414,8 +414,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 	    !(usage & PIPE_TRANSFER_PERSISTENT) &&
 	    /* Try not to decrement the counter if it's not positive. Still racy,
 	     * but it makes it harder to wrap the counter from INT_MIN to INT_MAX. */
-	    rbuffer->max_forced_staging_uploads > 0 &&
-	    p_atomic_dec_return(&rbuffer->max_forced_staging_uploads) >= 0) {
+	    buf->max_forced_staging_uploads > 0 &&
+	    p_atomic_dec_return(&buf->max_forced_staging_uploads) >= 0) {
 		usage &= ~(PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE |
 			   PIPE_TRANSFER_UNSYNCHRONIZED);
 		usage |= PIPE_TRANSFER_DISCARD_RANGE;
@@ -427,7 +427,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 		       TC_TRANSFER_MAP_NO_INVALIDATE))) {
 		assert(usage & PIPE_TRANSFER_WRITE);
 
-		if (si_invalidate_buffer(sctx, rbuffer)) {
+		if (si_invalidate_buffer(sctx, buf)) {
 			/* At this point, the buffer is always idle. */
 			usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
 		} else {
@@ -439,15 +439,15 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 	if ((usage & PIPE_TRANSFER_DISCARD_RANGE) &&
 	    ((!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED |
 			 PIPE_TRANSFER_PERSISTENT))) ||
-	     (rbuffer->flags & RADEON_FLAG_SPARSE))) {
+	     (buf->flags & RADEON_FLAG_SPARSE))) {
 		assert(usage & PIPE_TRANSFER_WRITE);
 
 		/* Check if mapping this buffer would cause waiting for the GPU.
 		 */
-		if (rbuffer->flags & RADEON_FLAG_SPARSE ||
+		if (buf->flags & RADEON_FLAG_SPARSE ||
 		    force_discard_range ||
-		    si_rings_is_buffer_referenced(sctx, rbuffer->buf, RADEON_USAGE_READWRITE) ||
-		    !sctx->ws->buffer_wait(rbuffer->buf, 0, RADEON_USAGE_READWRITE)) {
+		    si_rings_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
+		    !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
 			/* Do a wait-free write-only transfer using a temporary buffer. */
 			unsigned offset;
 			struct si_resource *staging = NULL;
@@ -462,7 +462,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 				data += box->x % SI_MAP_BUFFER_ALIGNMENT;
 				return si_buffer_get_transfer(ctx, resource, usage, box,
 								ptransfer, data, staging, offset);
-			} else if (rbuffer->flags & RADEON_FLAG_SPARSE) {
+			} else if (buf->flags & RADEON_FLAG_SPARSE) {
 				return NULL;
 			}
 		} else {
@@ -473,9 +473,9 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 	/* Use a staging buffer in cached GTT for reads. */
 	else if (((usage & PIPE_TRANSFER_READ) &&
 		  !(usage & PIPE_TRANSFER_PERSISTENT) &&
-		  (rbuffer->domains & RADEON_DOMAIN_VRAM ||
-		   rbuffer->flags & RADEON_FLAG_GTT_WC)) ||
-		 (rbuffer->flags & RADEON_FLAG_SPARSE)) {
+		  (buf->domains & RADEON_DOMAIN_VRAM ||
+		   buf->flags & RADEON_FLAG_GTT_WC)) ||
+		 (buf->flags & RADEON_FLAG_SPARSE)) {
 		struct si_resource *staging;
 
 		assert(!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC));
@@ -498,12 +498,12 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 
 			return si_buffer_get_transfer(ctx, resource, usage, box,
 							ptransfer, data, staging, 0);
-		} else if (rbuffer->flags & RADEON_FLAG_SPARSE) {
+		} else if (buf->flags & RADEON_FLAG_SPARSE) {
 			return NULL;
 		}
 	}
 
-	data = si_buffer_map_sync_with_rings(sctx, rbuffer, usage);
+	data = si_buffer_map_sync_with_rings(sctx, buf, usage);
 	if (!data) {
 		return NULL;
 	}
@@ -518,7 +518,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx,
 				      const struct pipe_box *box)
 {
 	struct si_transfer *stransfer = (struct si_transfer*)transfer;
-	struct si_resource *rbuffer = si_resource(transfer->resource);
+	struct si_resource *buf = si_resource(transfer->resource);
 
 	if (stransfer->staging) {
 		/* Copy the staging buffer into the original one. */
@@ -528,7 +528,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx,
 			       box->width);
 	}
 
-	util_range_add(&rbuffer->valid_buffer_range, box->x,
+	util_range_add(&buf->valid_buffer_range, box->x,
 		       box->x + box->width);
 }
 
@@ -601,23 +601,23 @@ static struct si_resource *
 si_alloc_buffer_struct(struct pipe_screen *screen,
 		       const struct pipe_resource *templ)
 {
-	struct si_resource *rbuffer;
+	struct si_resource *buf;
 
-	rbuffer = MALLOC_STRUCT(si_resource);
+	buf = MALLOC_STRUCT(si_resource);
 
-	rbuffer->b.b = *templ;
-	rbuffer->b.b.next = NULL;
-	pipe_reference_init(&rbuffer->b.b.reference, 1);
-	rbuffer->b.b.screen = screen;
+	buf->b.b = *templ;
+	buf->b.b.next = NULL;
+	pipe_reference_init(&buf->b.b.reference, 1);
+	buf->b.b.screen = screen;
 
-	rbuffer->b.vtbl = &si_buffer_vtbl;
-	threaded_resource_init(&rbuffer->b.b);
+	buf->b.vtbl = &si_buffer_vtbl;
+	threaded_resource_init(&buf->b.b);
 
-	rbuffer->buf = NULL;
-	rbuffer->bind_history = 0;
-	rbuffer->TC_L2_dirty = false;
-	util_range_init(&rbuffer->valid_buffer_range);
-	return rbuffer;
+	buf->buf = NULL;
+	buf->bind_history = 0;
+	buf->TC_L2_dirty = false;
+	util_range_init(&buf->valid_buffer_range);
+	return buf;
 }
 
 static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
@@ -625,21 +625,21 @@ static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
 					      unsigned alignment)
 {
 	struct si_screen *sscreen = (struct si_screen*)screen;
-	struct si_resource *rbuffer = si_alloc_buffer_struct(screen, templ);
+	struct si_resource *buf = si_alloc_buffer_struct(screen, templ);
 
 	if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-		rbuffer->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
+		buf->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
 
-	si_init_resource_fields(sscreen, rbuffer, templ->width0, alignment);
+	si_init_resource_fields(sscreen, buf, templ->width0, alignment);
 
 	if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-		rbuffer->flags |= RADEON_FLAG_SPARSE;
+		buf->flags |= RADEON_FLAG_SPARSE;
 
-	if (!si_alloc_resource(sscreen, rbuffer)) {
-		FREE(rbuffer);
+	if (!si_alloc_resource(sscreen, buf)) {
+		FREE(buf);
 		return NULL;
 	}
-	return &rbuffer->b.b;
+	return &buf->b.b;
 }
 
 struct pipe_resource *pipe_aligned_buffer_create(struct pipe_screen *screen,
@@ -676,26 +676,26 @@ si_buffer_from_user_memory(struct pipe_screen *screen,
 {
 	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct radeon_winsys *ws = sscreen->ws;
-	struct si_resource *rbuffer = si_alloc_buffer_struct(screen, templ);
+	struct si_resource *buf = si_alloc_buffer_struct(screen, templ);
 
-	rbuffer->domains = RADEON_DOMAIN_GTT;
-	rbuffer->flags = 0;
-	rbuffer->b.is_user_ptr = true;
-	util_range_add(&rbuffer->valid_buffer_range, 0, templ->width0);
-	util_range_add(&rbuffer->b.valid_buffer_range, 0, templ->width0);
+	buf->domains = RADEON_DOMAIN_GTT;
+	buf->flags = 0;
+	buf->b.is_user_ptr = true;
+	util_range_add(&buf->valid_buffer_range, 0, templ->width0);
+	util_range_add(&buf->b.valid_buffer_range, 0, templ->width0);
 
 	/* Convert a user pointer to a buffer. */
-	rbuffer->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0);
-	if (!rbuffer->buf) {
-		FREE(rbuffer);
+	buf->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0);
+	if (!buf->buf) {
+		FREE(buf);
 		return NULL;
 	}
 
-	rbuffer->gpu_address = ws->buffer_get_virtual_address(rbuffer->buf);
-	rbuffer->vram_usage = 0;
-	rbuffer->gart_usage = templ->width0;
+	buf->gpu_address = ws->buffer_get_virtual_address(buf->buf);
+	buf->vram_usage = 0;
+	buf->gart_usage = templ->width0;
 
-	return &rbuffer->b.b;
+	return &buf->b.b;
 }
 
 static struct pipe_resource *si_resource_create(struct pipe_screen *screen,

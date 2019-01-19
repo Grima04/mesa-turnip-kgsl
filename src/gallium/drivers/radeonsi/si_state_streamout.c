@@ -43,7 +43,7 @@ si_create_so_target(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_streamout_target *t;
-	struct si_resource *rbuffer = si_resource(buffer);
+	struct si_resource *buf = si_resource(buffer);
 
 	t = CALLOC_STRUCT(si_streamout_target);
 	if (!t) {
@@ -64,7 +64,7 @@ si_create_so_target(struct pipe_context *ctx,
 	t->b.buffer_offset = buffer_offset;
 	t->b.buffer_size = buffer_size;
 
-	util_range_add(&rbuffer->valid_buffer_range, buffer_offset,
+	util_range_add(&buf->valid_buffer_range, buffer_offset,
 		       buffer_offset + buffer_size);
 	return &t->b;
 }
