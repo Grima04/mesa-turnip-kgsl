@@ -104,8 +104,9 @@ anv_shader_compile_to_nir(struct anv_device *device,
                           gl_shader_stage stage,
                           const VkSpecializationInfo *spec_info)
 {
-   const struct brw_compiler *compiler =
-      device->instance->physicalDevice.compiler;
+   const struct anv_physical_device *pdevice =
+      &device->instance->physicalDevice;
+   const struct brw_compiler *compiler = pdevice->compiler;
    const nir_shader_compiler_options *nir_options =
       compiler->glsl_compiler_options[stage].NirOptions;
 
@@ -136,17 +137,17 @@ anv_shader_compile_to_nir(struct anv_device *device,
       .caps = {
          .device_group = true,
          .draw_parameters = true,
-         .float64 = device->instance->physicalDevice.info.gen >= 8,
+         .float64 = pdevice->info.gen >= 8,
          .image_write_without_format = true,
-         .int16 = device->instance->physicalDevice.info.gen >= 8,
-         .int64 = device->instance->physicalDevice.info.gen >= 8,
+         .int16 = pdevice->info.gen >= 8,
+         .int64 = pdevice->info.gen >= 8,
          .min_lod = true,
          .multiview = true,
-         .post_depth_coverage = device->instance->physicalDevice.info.gen >= 9,
+         .post_depth_coverage = pdevice->info.gen >= 9,
          .shader_viewport_index_layer = true,
-         .stencil_export = device->instance->physicalDevice.info.gen >= 9,
-         .storage_8bit = device->instance->physicalDevice.info.gen >= 8,
-         .storage_16bit = device->instance->physicalDevice.info.gen >= 8,
+         .stencil_export = pdevice->info.gen >= 9,
+         .storage_8bit = pdevice->info.gen >= 8,
+         .storage_16bit = pdevice->info.gen >= 8,
          .subgroup_arithmetic = true,
          .subgroup_basic = true,
          .subgroup_ballot = true,
