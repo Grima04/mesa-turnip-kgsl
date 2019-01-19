@@ -51,6 +51,7 @@ subdir('util')
 subdir('mapi')
 # TODO: opengl
 subdir('compiler')
+subdir('imgui')
 if with_platform_wayland
   subdir('egl/wayland/wayland-drm')
 endif
