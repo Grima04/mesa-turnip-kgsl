@@ -497,7 +497,7 @@ static void si_set_sampler_view(struct si_context *sctx,
 				bool disallow_early_out)
 {
 	struct si_samplers *samplers = &sctx->samplers[shader];
-	struct si_sampler_view *rview = (struct si_sampler_view*)view;
+	struct si_sampler_view *sview = (struct si_sampler_view*)view;
 	struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
 	unsigned desc_slot = si_get_sampler_slot(slot);
 	uint32_t *desc = descs->list + desc_slot * 16;
@@ -508,7 +508,7 @@ static void si_set_sampler_view(struct si_context *sctx,
 	if (view) {
 		struct si_texture *tex = (struct si_texture *)view->texture;
 
-		si_set_sampler_view_desc(sctx, rview,
+		si_set_sampler_view_desc(sctx, sview,
 					 samplers->sampler_states[slot], desc);
 
 		if (tex->buffer.b.b.target == PIPE_BUFFER) {
@@ -539,7 +539,7 @@ static void si_set_sampler_view(struct si_context *sctx,
 		 * updated. */
 		si_sampler_view_add_buffer(sctx, view->texture,
 					   RADEON_USAGE_READ,
-					   rview->is_stencil_sampler, true);
+					   sview->is_stencil_sampler, true);
 	} else {
 		pipe_sampler_view_reference(&samplers->views[slot], NULL);
 		memcpy(desc, null_texture_descriptor, 8*4);
