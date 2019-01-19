@@ -32,9 +32,9 @@
 #include "si_build_pm4.h"
 #include "si_compute.h"
 
-#define COMPUTE_DBG(rscreen, fmt, args...) \
+#define COMPUTE_DBG(sscreen, fmt, args...) \
 	do { \
-		if ((rscreen->debug_flags & DBG(COMPUTE))) fprintf(stderr, fmt, ##args); \
+		if ((sscreen->debug_flags & DBG(COMPUTE))) fprintf(stderr, fmt, ##args); \
 	} while (0);
 
 struct dispatch_packet {

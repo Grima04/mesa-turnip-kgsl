@@ -482,7 +482,7 @@ static bool si_texture_discard_dcc(struct si_screen *sscreen,
  *   context 1 & 2 read garbage, because DCC is disabled, yet there are
  *   compressed tiled
  *
- * \param sctx  the current context if you have one, or rscreen->aux_context
+ * \param sctx  the current context if you have one, or sscreen->aux_context
  *              if you don't.
  */
 bool si_texture_disable_dcc(struct si_context *sctx,
