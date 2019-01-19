@@ -221,7 +221,7 @@ static bool si_emit_derived_tess_state(struct si_context *sctx,
 	assert(num_tcs_input_cp <= 32);
 	assert(num_tcs_output_cp <= 32);
 
-	uint64_t ring_va = r600_resource(sctx->tess_rings)->gpu_address;
+	uint64_t ring_va = si_resource(sctx->tess_rings)->gpu_address;
 	assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
 	tcs_in_layout = S_VS_STATE_LS_OUT_PATCH_SIZE(input_patch_size / 4) |
@@ -737,10 +737,10 @@ static void si_emit_draw_packets(struct si_context *sctx,
 
 		index_max_size = (indexbuf->width0 - index_offset) /
 				  index_size;
-		index_va = r600_resource(indexbuf)->gpu_address + index_offset;
+		index_va = si_resource(indexbuf)->gpu_address + index_offset;
 
 		radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-				      r600_resource(indexbuf),
+				      si_resource(indexbuf),
 				      RADEON_USAGE_READ, RADEON_PRIO_INDEX_BUFFER);
 	} else {
 		/* On CI and later, non-indexed draws overwrite VGT_INDEX_TYPE,
@@ -751,7 +751,7 @@ static void si_emit_draw_packets(struct si_context *sctx,
 	}
 
 	if (indirect) {
-		uint64_t indirect_va = r600_resource(indirect->buffer)->gpu_address;
+		uint64_t indirect_va = si_resource(indirect->buffer)->gpu_address;
 
 		assert(indirect_va % 8 == 0);
 
@@ -763,7 +763,7 @@ static void si_emit_draw_packets(struct si_context *sctx,
 		radeon_emit(cs, indirect_va >> 32);
 
 		radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-				      r600_resource(indirect->buffer),
+				      si_resource(indirect->buffer),
 				      RADEON_USAGE_READ, RADEON_PRIO_DRAW_INDIRECT);
 
 		unsigned di_src_sel = index_size ? V_0287F0_DI_SRC_SEL_DMA
@@ -792,8 +792,8 @@ static void si_emit_draw_packets(struct si_context *sctx,
 			uint64_t count_va = 0;
 
 			if (indirect->indirect_draw_count) {
-				struct r600_resource *params_buf =
-					r600_resource(indirect->indirect_draw_count);
+				struct si_resource *params_buf =
+					si_resource(indirect->indirect_draw_count);
 
 				radeon_add_to_buffer_list(
 					sctx, sctx->gfx_cs, params_buf,
@@ -1418,11 +1418,11 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			/* info->start will be added by the drawing code */
 			index_offset -= start_offset;
 		} else if (sctx->chip_class <= CIK &&
-			   r600_resource(indexbuf)->TC_L2_dirty) {
+			   si_resource(indexbuf)->TC_L2_dirty) {
 			/* VI reads index buffers through TC L2, so it doesn't
 			 * need this. */
 			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
-			r600_resource(indexbuf)->TC_L2_dirty = false;
+			si_resource(indexbuf)->TC_L2_dirty = false;
 		}
 	}
 
@@ -1434,15 +1434,15 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		/* Indirect buffers use TC L2 on GFX9, but not older hw. */
 		if (sctx->chip_class <= VI) {
-			if (r600_resource(indirect->buffer)->TC_L2_dirty) {
+			if (si_resource(indirect->buffer)->TC_L2_dirty) {
 				sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
-				r600_resource(indirect->buffer)->TC_L2_dirty = false;
+				si_resource(indirect->buffer)->TC_L2_dirty = false;
 			}
 
 			if (indirect->indirect_draw_count &&
-			    r600_resource(indirect->indirect_draw_count)->TC_L2_dirty) {
+			    si_resource(indirect->indirect_draw_count)->TC_L2_dirty) {
 				sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
-				r600_resource(indirect->indirect_draw_count)->TC_L2_dirty = false;
+				si_resource(indirect->indirect_draw_count)->TC_L2_dirty = false;
 			}
 		}
 	}

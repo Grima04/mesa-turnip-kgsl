@@ -177,7 +177,7 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 
 	pipe_reference_init(&ctx->current_saved_cs->reference, 1);
 
-	ctx->current_saved_cs->trace_buf = r600_resource(
+	ctx->current_saved_cs->trace_buf = si_resource(
 		pipe_buffer_create(ctx->b.screen, 0, PIPE_USAGE_STAGING, 8));
 	if (!ctx->current_saved_cs->trace_buf) {
 		free(ctx->current_saved_cs);

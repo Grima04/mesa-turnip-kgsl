@@ -3570,7 +3570,7 @@ static void si_set_min_samples(struct pipe_context *ctx, unsigned min_samples)
  * @param state 256-bit descriptor; only the high 128 bits are filled in
  */
 void
-si_make_buffer_descriptor(struct si_screen *screen, struct r600_resource *buf,
+si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 			  enum pipe_format format,
 			  unsigned offset, unsigned size,
 			  uint32_t *state)
@@ -4061,7 +4061,7 @@ si_create_sampler_view_custom(struct pipe_context *ctx,
 	/* Buffer resource. */
 	if (texture->target == PIPE_BUFFER) {
 		si_make_buffer_descriptor(sctx->screen,
-					  r600_resource(texture),
+					  si_resource(texture),
 					  state->format,
 					  state->u.buf.offset,
 					  state->u.buf.size,
@@ -4581,7 +4581,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		unsigned num_divisors = util_last_bit(v->instance_divisor_is_fetched);
 
 		v->instance_divisor_factor_buffer =
-			(struct r600_resource*)
+			(struct si_resource*)
 			pipe_buffer_create(&sscreen->b, 0, PIPE_USAGE_DEFAULT,
 					   num_divisors * sizeof(divisor_factors[0]));
 		if (!v->instance_divisor_factor_buffer) {
@@ -4630,7 +4630,7 @@ static void si_delete_vertex_element(struct pipe_context *ctx, void *state)
 
 	if (sctx->vertex_elements == state)
 		sctx->vertex_elements = NULL;
-	r600_resource_reference(&v->instance_divisor_factor_buffer, NULL);
+	si_resource_reference(&v->instance_divisor_factor_buffer, NULL);
 	FREE(state);
 }
 
@@ -4655,7 +4655,7 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 			dsti->stride = src->stride;
 			si_context_add_resource_size(sctx, buf);
 			if (buf)
-				r600_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+				si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
 		}
 	} else {
 		for (i = 0; i < count; i++) {
@@ -4684,7 +4684,7 @@ static void si_set_tess_state(struct pipe_context *ctx,
 	cb.user_buffer = NULL;
 	cb.buffer_size = sizeof(array);
 
-	si_upload_const_buffer(sctx, (struct r600_resource**)&cb.buffer,
+	si_upload_const_buffer(sctx, (struct si_resource**)&cb.buffer,
 			       (void*)array, sizeof(array),
 			       &cb.buffer_offset);
 

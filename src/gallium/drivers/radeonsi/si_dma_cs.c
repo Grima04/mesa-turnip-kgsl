@@ -36,7 +36,7 @@ static void si_dma_emit_wait_idle(struct si_context *sctx)
 		radeon_emit(cs, 0xf0000000); /* NOP */
 }
 
-void si_dma_emit_timestamp(struct si_context *sctx, struct r600_resource *dst,
+void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst,
 			   uint64_t offset)
 {
 	struct radeon_cmdbuf *cs = sctx->dma_cs;
@@ -69,7 +69,7 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 {
 	struct radeon_cmdbuf *cs = sctx->dma_cs;
 	unsigned i, ncopy, csize;
-	struct r600_resource *rdst = r600_resource(dst);
+	struct si_resource *rdst = si_resource(dst);
 
 	assert(offset % 4 == 0);
 	assert(size);
@@ -124,7 +124,7 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 }
 
 void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
-		       struct r600_resource *dst, struct r600_resource *src)
+		       struct si_resource *dst, struct si_resource *src)
 {
 	uint64_t vram = ctx->dma_cs->used_vram;
 	uint64_t gtt = ctx->dma_cs->used_gart;

@@ -175,11 +175,11 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
 	if (!(user_flags & SI_CPDMA_SKIP_BO_LIST_UPDATE)) {
 		if (dst)
 			radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-						  r600_resource(dst),
+						  si_resource(dst),
 						  RADEON_USAGE_WRITE, RADEON_PRIO_CP_DMA);
 		if (src)
 			radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-						  r600_resource(src),
+						  si_resource(src),
 						  RADEON_USAGE_READ, RADEON_PRIO_CP_DMA);
 	}
 
@@ -212,7 +212,7 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 			    uint64_t size, unsigned value, unsigned user_flags,
 			    enum si_coherency coher, enum si_cache_policy cache_policy)
 {
-	struct r600_resource *rdst = r600_resource(dst);
+	struct si_resource *rdst = si_resource(dst);
 	uint64_t va = (rdst ? rdst->gpu_address : 0) + offset;
 	bool is_first = true;
 
@@ -275,7 +275,7 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size,
 	 */
 	if (!sctx->scratch_buffer ||
 	    sctx->scratch_buffer->b.b.width0 < scratch_size) {
-		r600_resource_reference(&sctx->scratch_buffer, NULL);
+		si_resource_reference(&sctx->scratch_buffer, NULL);
 		sctx->scratch_buffer =
 			si_aligned_buffer_create(&sctx->screen->b,
 						   SI_RESOURCE_FLAG_UNMAPPABLE,
@@ -323,14 +323,14 @@ void si_cp_dma_copy_buffer(struct si_context *sctx,
 			/* Mark the buffer range of destination as valid (initialized),
 			 * so that transfer_map knows it should wait for the GPU when mapping
 			 * that range. */
-			util_range_add(&r600_resource(dst)->valid_buffer_range, dst_offset,
+			util_range_add(&si_resource(dst)->valid_buffer_range, dst_offset,
 				       dst_offset + size);
 		}
 
-		dst_offset += r600_resource(dst)->gpu_address;
+		dst_offset += si_resource(dst)->gpu_address;
 	}
 	if (src)
-		src_offset += r600_resource(src)->gpu_address;
+		src_offset += si_resource(src)->gpu_address;
 
 	/* The workarounds aren't needed on Fiji and beyond. */
 	if (sctx->family <= CHIP_CARRIZO ||
@@ -402,7 +402,7 @@ void si_cp_dma_copy_buffer(struct si_context *sctx,
 	}
 
 	if (dst && cache_policy != L2_BYPASS)
-		r600_resource(dst)->TC_L2_dirty = true;
+		si_resource(dst)->TC_L2_dirty = true;
 
 	/* If it's not a prefetch or GDS copy... */
 	if (dst && src && (dst != src || dst_offset != src_offset))
@@ -582,7 +582,7 @@ void si_test_gds(struct si_context *sctx)
 	exit(0);
 }
 
-void si_cp_write_data(struct si_context *sctx, struct r600_resource *buf,
+void si_cp_write_data(struct si_context *sctx, struct si_resource *buf,
 		      unsigned offset, unsigned size, unsigned dst_sel,
 		      unsigned engine, const void *data)
 {

@@ -529,11 +529,11 @@ void si_query_buffer_destroy(struct si_screen *sscreen, struct si_query_buffer *
 	while (prev) {
 		struct si_query_buffer *qbuf = prev;
 		prev = prev->previous;
-		r600_resource_reference(&qbuf->buf, NULL);
+		si_resource_reference(&qbuf->buf, NULL);
 		FREE(qbuf);
 	}
 
-	r600_resource_reference(&buffer->buf, NULL);
+	si_resource_reference(&buffer->buf, NULL);
 }
 
 void si_query_buffer_reset(struct si_context *sctx, struct si_query_buffer *buffer)
@@ -543,7 +543,7 @@ void si_query_buffer_reset(struct si_context *sctx, struct si_query_buffer *buff
 		struct si_query_buffer *qbuf = buffer->previous;
 		buffer->previous = qbuf->previous;
 
-		r600_resource_reference(&buffer->buf, NULL);
+		si_resource_reference(&buffer->buf, NULL);
 		buffer->buf = qbuf->buf; /* move ownership */
 		FREE(qbuf);
 	}
@@ -553,7 +553,7 @@ void si_query_buffer_reset(struct si_context *sctx, struct si_query_buffer *buff
 	if (buffer->buf &&
 	    (si_rings_is_buffer_referenced(sctx, buffer->buf->buf, RADEON_USAGE_READWRITE) ||
 	     !sctx->ws->buffer_wait(buffer->buf->buf, 0, RADEON_USAGE_READWRITE))) {
-		r600_resource_reference(&buffer->buf, NULL);
+		si_resource_reference(&buffer->buf, NULL);
 	}
 }
 
@@ -578,14 +578,14 @@ bool si_query_buffer_alloc(struct si_context *sctx, struct si_query_buffer *buff
 	 */
 	struct si_screen *screen = sctx->screen;
 	unsigned buf_size = MAX2(size, screen->info.min_alloc_size);
-	buffer->buf = r600_resource(
+	buffer->buf = si_resource(
 		pipe_buffer_create(&screen->b, 0, PIPE_USAGE_STAGING, buf_size));
 	if (unlikely(!buffer->buf))
 		return false;
 
 	if (prepare_buffer) {
 		if (unlikely(!prepare_buffer(sctx, buffer))) {
-			r600_resource_reference(&buffer->buf, NULL);
+			si_resource_reference(&buffer->buf, NULL);
 			return false;
 		}
 	}
@@ -600,7 +600,7 @@ void si_query_hw_destroy(struct si_screen *sscreen,
 	struct si_query_hw *query = (struct si_query_hw *)rquery;
 
 	si_query_buffer_destroy(sscreen, &query->buffer);
-	r600_resource_reference(&query->workaround_buf, NULL);
+	si_resource_reference(&query->workaround_buf, NULL);
 	FREE(rquery);
 }
 
@@ -654,11 +654,11 @@ static void si_query_hw_get_result_resource(struct si_context *sctx,
 
 static void si_query_hw_do_emit_start(struct si_context *sctx,
 				      struct si_query_hw *query,
-				      struct r600_resource *buffer,
+				      struct si_resource *buffer,
 				      uint64_t va);
 static void si_query_hw_do_emit_stop(struct si_context *sctx,
 				     struct si_query_hw *query,
-				     struct r600_resource *buffer,
+				     struct si_resource *buffer,
 				     uint64_t va);
 static void si_query_hw_add_result(struct si_screen *sscreen,
 				   struct si_query_hw *, void *buffer,
@@ -786,7 +786,7 @@ static void emit_sample_streamout(struct radeon_cmdbuf *cs, uint64_t va,
 
 static void si_query_hw_do_emit_start(struct si_context *sctx,
 					struct si_query_hw *query,
-					struct r600_resource *buffer,
+					struct si_resource *buffer,
 					uint64_t va)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
@@ -853,7 +853,7 @@ static void si_query_hw_emit_start(struct si_context *sctx,
 
 static void si_query_hw_do_emit_stop(struct si_context *sctx,
 				       struct si_query_hw *query,
-				       struct r600_resource *buffer,
+				       struct si_resource *buffer,
 				       uint64_t va)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
@@ -951,7 +951,7 @@ static void si_query_hw_emit_stop(struct si_context *sctx,
 }
 
 static void emit_set_predicate(struct si_context *ctx,
-			       struct r600_resource *buf, uint64_t va,
+			       struct si_resource *buf, uint64_t va,
 			       uint32_t op)
 {
 	struct radeon_cmdbuf *cs = ctx->gfx_cs;
@@ -1094,7 +1094,7 @@ bool si_query_hw_begin(struct si_context *sctx,
 	if (!(query->flags & SI_QUERY_HW_FLAG_BEGIN_RESUMES))
 		si_query_buffer_reset(sctx, &query->buffer);
 
-	r600_resource_reference(&query->workaround_buf, NULL);
+	si_resource_reference(&query->workaround_buf, NULL);
 
 	si_query_hw_emit_start(sctx, query);
 	if (!query->buffer.buf)
@@ -1561,7 +1561,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx,
 			ssbo[2].buffer_offset = offset;
 			ssbo[2].buffer_size = 8;
 
-			r600_resource(resource)->TC_L2_dirty = true;
+			si_resource(resource)->TC_L2_dirty = true;
 		}
 
 		sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, 3, ssbo);

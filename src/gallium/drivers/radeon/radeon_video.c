@@ -63,8 +63,8 @@ bool si_vid_create_buffer(struct pipe_screen *screen, struct rvid_buffer *buffer
 	 * able to move buffers around individually, so request a
 	 * non-sub-allocated buffer.
 	 */
-	buffer->res = r600_resource(pipe_buffer_create(screen, PIPE_BIND_SHARED,
-						       usage, size));
+	buffer->res = si_resource(pipe_buffer_create(screen, PIPE_BIND_SHARED,
+						     usage, size));
 
 	return buffer->res != NULL;
 }
@@ -72,7 +72,7 @@ bool si_vid_create_buffer(struct pipe_screen *screen, struct rvid_buffer *buffer
 /* destroy a buffer */
 void si_vid_destroy_buffer(struct rvid_buffer *buffer)
 {
-	r600_resource_reference(&buffer->res, NULL);
+	si_resource_reference(&buffer->res, NULL);
 }
 
 /* reallocate a buffer, preserving its content */

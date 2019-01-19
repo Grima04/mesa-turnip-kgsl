@@ -600,8 +600,8 @@ struct si_shader {
 	struct si_shader_part		*epilog;
 
 	struct si_pm4_state		*pm4;
-	struct r600_resource		*bo;
-	struct r600_resource		*scratch_bo;
+	struct si_resource		*bo;
+	struct si_resource		*scratch_bo;
 	struct si_shader_key		key;
 	struct util_queue_fence		ready;
 	bool				compilation_failed;

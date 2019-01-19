@@ -43,7 +43,7 @@ si_create_so_target(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_streamout_target *t;
-	struct r600_resource *rbuffer = r600_resource(buffer);
+	struct si_resource *rbuffer = si_resource(buffer);
 
 	t = CALLOC_STRUCT(si_streamout_target);
 	if (!t) {
@@ -74,7 +74,7 @@ static void si_so_target_destroy(struct pipe_context *ctx,
 {
 	struct si_streamout_target *t = (struct si_streamout_target*)target;
 	pipe_resource_reference(&t->b.buffer, NULL);
-	r600_resource_reference(&t->buf_filled_size, NULL);
+	si_resource_reference(&t->buf_filled_size, NULL);
 	FREE(t);
 }
 
@@ -109,7 +109,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 		 */
 		for (i = 0; i < sctx->streamout.num_targets; i++)
 			if (sctx->streamout.targets[i])
-				r600_resource(sctx->streamout.targets[i]->b.buffer)->TC_L2_dirty = true;
+				si_resource(sctx->streamout.targets[i]->b.buffer)->TC_L2_dirty = true;
 
 		/* Invalidate the scalar cache in case a streamout buffer is
 		 * going to be used as a constant buffer.
@@ -180,7 +180,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 			sbuf.buffer_size = targets[i]->buffer_offset +
 					   targets[i]->buffer_size;
 			si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, &sbuf);
-			r600_resource(targets[i]->buffer)->bind_history |= PIPE_BIND_STREAM_OUTPUT;
+			si_resource(targets[i]->buffer)->bind_history |= PIPE_BIND_STREAM_OUTPUT;
 		} else {
 			si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
 		}

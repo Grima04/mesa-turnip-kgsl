@@ -37,8 +37,8 @@ static void si_dma_copy_buffer(struct si_context *ctx,
 {
 	struct radeon_cmdbuf *cs = ctx->dma_cs;
 	unsigned i, ncopy, count, max_size, sub_cmd, shift;
-	struct r600_resource *rdst = r600_resource(dst);
-	struct r600_resource *rsrc = r600_resource(src);
+	struct si_resource *rdst = si_resource(dst);
+	struct si_resource *rsrc = si_resource(src);
 
 	/* Mark the buffer range of destination as valid (initialized),
 	 * so that transfer_map knows it should wait for the GPU when mapping

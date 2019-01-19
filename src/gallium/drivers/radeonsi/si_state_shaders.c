@@ -3089,7 +3089,7 @@ static int si_update_scratch_buffer(struct si_context *sctx,
 	/* Update the shader state to use the new shader bo. */
 	si_shader_init_pm4_state(sctx->screen, shader);
 
-	r600_resource_reference(&shader->scratch_bo, sctx->scratch_buffer);
+	si_resource_reference(&shader->scratch_bo, sctx->scratch_buffer);
 
 	si_shader_unlock(shader);
 	return 1;
@@ -3199,7 +3199,7 @@ static bool si_update_spi_tmpring_size(struct si_context *sctx)
 	if (scratch_needed_size > 0) {
 		if (scratch_needed_size > current_scratch_buffer_size) {
 			/* Create a bigger scratch buffer */
-			r600_resource_reference(&sctx->scratch_buffer, NULL);
+			si_resource_reference(&sctx->scratch_buffer, NULL);
 
 			sctx->scratch_buffer =
 				si_aligned_buffer_create(&sctx->screen->b,
@@ -3249,10 +3249,10 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
 
 	si_init_config_add_vgt_flush(sctx);
 
-	si_pm4_add_bo(sctx->init_config, r600_resource(sctx->tess_rings),
+	si_pm4_add_bo(sctx->init_config, si_resource(sctx->tess_rings),
 		      RADEON_USAGE_READWRITE, RADEON_PRIO_SHADER_RINGS);
 
-	uint64_t factor_va = r600_resource(sctx->tess_rings)->gpu_address +
+	uint64_t factor_va = si_resource(sctx->tess_rings)->gpu_address +
 			     sctx->screen->tess_offchip_ring_size;
 
 	/* Append these registers to the init config state. */

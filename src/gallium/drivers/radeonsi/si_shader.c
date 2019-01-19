@@ -5242,7 +5242,7 @@ int si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader)
 	       !mainb->rodata_size);
 	assert(!epilog || !epilog->rodata_size);
 
-	r600_resource_reference(&shader->bo, NULL);
+	si_resource_reference(&shader->bo, NULL);
 	shader->bo = si_aligned_buffer_create(&sscreen->b,
 					      sscreen->cpdma_prefetch_writes_memory ?
 						0 : SI_RESOURCE_FLAG_READ_ONLY,
@@ -8118,9 +8118,9 @@ int si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compile
 void si_shader_destroy(struct si_shader *shader)
 {
 	if (shader->scratch_bo)
-		r600_resource_reference(&shader->scratch_bo, NULL);
+		si_resource_reference(&shader->scratch_bo, NULL);
 
-	r600_resource_reference(&shader->bo, NULL);
+	si_resource_reference(&shader->bo, NULL);
 
 	if (!shader->is_binary_shared)
 		ac_shader_binary_clean(&shader->binary);

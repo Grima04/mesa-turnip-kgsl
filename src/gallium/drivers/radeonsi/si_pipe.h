@@ -202,7 +202,7 @@ struct u_suballocator;
 /* Only 32-bit buffer allocations are supported, gallium doesn't support more
  * at the moment.
  */
-struct r600_resource {
+struct si_resource {
 	struct threaded_resource	b;
 
 	/* Winsys objects. */
@@ -252,12 +252,12 @@ struct r600_resource {
 
 struct si_transfer {
 	struct threaded_transfer	b;
-	struct r600_resource		*staging;
+	struct si_resource		*staging;
 	unsigned			offset;
 };
 
 struct si_texture {
-	struct r600_resource		buffer;
+	struct si_resource		buffer;
 
 	struct radeon_surf		surface;
 	uint64_t			size;
@@ -267,7 +267,7 @@ struct si_texture {
 	uint64_t			fmask_offset;
 	uint64_t			cmask_offset;
 	uint64_t			cmask_base_address_reg;
-	struct r600_resource		*cmask_buffer;
+	struct si_resource		*cmask_buffer;
 	uint64_t			dcc_offset; /* 0 = disabled */
 	unsigned			cb_color_info; /* fast clear enable bit */
 	unsigned			color_clear_value[2];
@@ -310,9 +310,9 @@ struct si_texture {
 	 * target == 2D and last_level == 0. If enabled, dcc_offset contains
 	 * the absolute GPUVM address, not the relative one.
 	 */
-	struct r600_resource		*dcc_separate_buffer;
+	struct si_resource		*dcc_separate_buffer;
 	/* When DCC is temporarily disabled, the separate buffer is here. */
-	struct r600_resource		*last_dcc_separate_buffer;
+	struct si_resource		*last_dcc_separate_buffer;
 	/* Estimate of how much this color buffer is written to in units of
 	 * full-screen draws: ps_invocations / (width * height)
 	 * Shader kills, late Z, and blending with trivial discards make it
@@ -664,7 +664,7 @@ struct si_streamout_target {
 	struct pipe_stream_output_target b;
 
 	/* The buffer where BUFFER_FILLED_SIZE is stored. */
-	struct r600_resource	*buf_filled_size;
+	struct si_resource	*buf_filled_size;
 	unsigned		buf_filled_size_offset;
 	bool			buf_filled_size_valid;
 
@@ -758,7 +758,7 @@ struct si_saved_cs {
 	struct pipe_reference	reference;
 	struct si_context	*ctx;
 	struct radeon_saved_cs	gfx;
-	struct r600_resource	*trace_buf;
+	struct si_resource	*trace_buf;
 	unsigned		trace_id;
 
 	unsigned		gfx_last_dw;
@@ -778,7 +778,7 @@ struct si_context {
 	struct radeon_cmdbuf		*dma_cs;
 	struct pipe_fence_handle	*last_gfx_fence;
 	struct pipe_fence_handle	*last_sdma_fence;
-	struct r600_resource		*eop_bug_scratch;
+	struct si_resource		*eop_bug_scratch;
 	struct u_upload_mgr		*cached_gtt_allocator;
 	struct threaded_context		*tc;
 	struct u_suballocator		*allocator_zeroed_memory;
@@ -806,7 +806,7 @@ struct si_context {
 	struct pipe_debug_callback	debug;
 	struct ac_llvm_compiler		compiler; /* only non-threaded compilation */
 	struct si_shader_ctx_state	fixed_func_tcs_shader;
-	struct r600_resource		*wait_mem_scratch;
+	struct si_resource		*wait_mem_scratch;
 	unsigned			wait_mem_number;
 	uint16_t			prefetch_L2_mask;
 
@@ -872,7 +872,7 @@ struct si_context {
 
 	/* vertex buffer descriptors */
 	uint32_t *vb_descriptors_gpu_list;
-	struct r600_resource *vb_descriptors_buffer;
+	struct si_resource *vb_descriptors_buffer;
 	unsigned vb_descriptors_offset;
 
 	/* shader descriptors */
@@ -891,7 +891,7 @@ struct si_context {
 	struct pipe_resource		*gsvs_ring;
 	struct pipe_resource		*tess_rings;
 	union pipe_color_union		*border_color_table; /* in CPU memory, any endian */
-	struct r600_resource		*border_color_buffer;
+	struct si_resource		*border_color_buffer;
 	union pipe_color_union		*border_color_map; /* in VRAM (slow access), little endian */
 	unsigned			border_color_count;
 	unsigned			num_vs_blit_sgprs;
@@ -964,11 +964,11 @@ struct si_context {
 	enum pipe_prim_type	current_rast_prim; /* primitive type after TES, GS */
 
 	/* Scratch buffer */
-	struct r600_resource	*scratch_buffer;
+	struct si_resource	*scratch_buffer;
 	unsigned		scratch_waves;
 	unsigned		spi_tmpring_size;
 
-	struct r600_resource	*compute_scratch_buffer;
+	struct si_resource	*compute_scratch_buffer;
 
 	/* Emitted derived tessellation state. */
 	/* Local shader (VS), or HS if LS-HS are merged. */
@@ -1136,17 +1136,17 @@ bool si_rings_is_buffer_referenced(struct si_context *sctx,
 				   struct pb_buffer *buf,
 				   enum radeon_bo_usage usage);
 void *si_buffer_map_sync_with_rings(struct si_context *sctx,
-				    struct r600_resource *resource,
+				    struct si_resource *resource,
 				    unsigned usage);
 void si_init_resource_fields(struct si_screen *sscreen,
-			     struct r600_resource *res,
+			     struct si_resource *res,
 			     uint64_t size, unsigned alignment);
 bool si_alloc_resource(struct si_screen *sscreen,
-		       struct r600_resource *res);
+		       struct si_resource *res);
 struct pipe_resource *pipe_aligned_buffer_create(struct pipe_screen *screen,
 						 unsigned flags, unsigned usage,
 						 unsigned size, unsigned alignment);
-struct r600_resource *si_aligned_buffer_create(struct pipe_screen *screen,
+struct si_resource *si_aligned_buffer_create(struct pipe_screen *screen,
 					       unsigned flags, unsigned usage,
 					       unsigned size, unsigned alignment);
 void si_replace_buffer_storage(struct pipe_context *ctx,
@@ -1207,7 +1207,7 @@ void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf
 			      uint64_t offset, unsigned size);
 void cik_emit_prefetch_L2(struct si_context *sctx, bool vertex_stage_only);
 void si_test_gds(struct si_context *sctx);
-void si_cp_write_data(struct si_context *sctx, struct r600_resource *buf,
+void si_cp_write_data(struct si_context *sctx, struct si_resource *buf,
 		      unsigned offset, unsigned size, unsigned dst_sel,
 		      unsigned engine, const void *data);
 
@@ -1229,12 +1229,12 @@ bool si_replace_shader(unsigned num, struct ac_shader_binary *binary);
 void si_init_dma_functions(struct si_context *sctx);
 
 /* si_dma_cs.c */
-void si_dma_emit_timestamp(struct si_context *sctx, struct r600_resource *dst,
+void si_dma_emit_timestamp(struct si_context *sctx, struct si_resource *dst,
 			   uint64_t offset);
 void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 			  uint64_t offset, uint64_t size, unsigned clear_value);
 void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
-		       struct r600_resource *dst, struct r600_resource *src);
+		       struct si_resource *dst, struct si_resource *src);
 void si_flush_dma_cs(struct si_context *ctx, unsigned flags,
 		     struct pipe_fence_handle **fence);
 void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst,
@@ -1244,7 +1244,7 @@ void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst
 void si_cp_release_mem(struct si_context *ctx,
 		       unsigned event, unsigned event_flags,
 		       unsigned dst_sel, unsigned int_sel, unsigned data_sel,
-		       struct r600_resource *buf, uint64_t va,
+		       struct si_resource *buf, uint64_t va,
 		       uint32_t new_fence, unsigned query_type);
 unsigned si_cp_write_fence_dwords(struct si_screen *screen);
 void si_cp_wait_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
@@ -1365,13 +1365,13 @@ void si_init_context_texture_functions(struct si_context *sctx);
  * common helpers
  */
 
-static inline struct r600_resource *r600_resource(struct pipe_resource *r)
+static inline struct si_resource *si_resource(struct pipe_resource *r)
 {
-	return (struct r600_resource*)r;
+	return (struct si_resource*)r;
 }
 
 static inline void
-r600_resource_reference(struct r600_resource **ptr, struct r600_resource *res)
+si_resource_reference(struct si_resource **ptr, struct si_resource *res)
 {
 	pipe_resource_reference((struct pipe_resource **)ptr,
 				(struct pipe_resource *)res);
@@ -1403,8 +1403,8 @@ si_context_add_resource_size(struct si_context *sctx, struct pipe_resource *r)
 {
 	if (r) {
 		/* Add memory usage for need_gfx_cs_space */
-		sctx->vram += r600_resource(r)->vram_usage;
-		sctx->gtt += r600_resource(r)->gart_usage;
+		sctx->vram += si_resource(r)->vram_usage;
+		sctx->gtt += si_resource(r)->gart_usage;
 	}
 }
 
@@ -1650,7 +1650,7 @@ radeon_cs_memory_below_limit(struct si_screen *screen,
  */
 static inline void radeon_add_to_buffer_list(struct si_context *sctx,
 					     struct radeon_cmdbuf *cs,
-					     struct r600_resource *rbo,
+					     struct si_resource *rbo,
 					     enum radeon_bo_usage usage,
 					     enum radeon_bo_priority priority)
 {
@@ -1680,7 +1680,7 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx,
  */
 static inline void
 radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
-					struct r600_resource *rbo,
+					struct si_resource *rbo,
 					enum radeon_bo_usage usage,
 					enum radeon_bo_priority priority,
 					bool check_mem)

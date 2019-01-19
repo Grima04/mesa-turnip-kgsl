@@ -167,7 +167,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 		       (cache_policy == L2_BYPASS ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0);
 
 	if (cache_policy != L2_BYPASS)
-		r600_resource(dst)->TC_L2_dirty = true;
+		si_resource(dst)->TC_L2_dirty = true;
 
 	/* Restore states. */
 	ctx->bind_compute_state(ctx, saved_cs);
@@ -297,8 +297,8 @@ void si_copy_buffer(struct si_context *sctx,
 
 	/* Only use compute for VRAM copies on dGPUs. */
 	if (sctx->screen->info.has_dedicated_vram &&
-	    r600_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
-	    r600_resource(src)->domains & RADEON_DOMAIN_VRAM &&
+	    si_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
+	    si_resource(src)->domains & RADEON_DOMAIN_VRAM &&
 	    size > 32 * 1024 &&
 	    dst_offset % 4 == 0 && src_offset % 4 == 0 && size % 4 == 0) {
 		si_compute_do_clear_or_copy(sctx, dst, dst_offset, src, src_offset,

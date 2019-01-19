@@ -163,11 +163,11 @@ static void si_destroy_context(struct pipe_context *context)
 	pipe_resource_reference(&sctx->tess_rings, NULL);
 	pipe_resource_reference(&sctx->null_const_buf.buffer, NULL);
 	pipe_resource_reference(&sctx->sample_pos_buffer, NULL);
-	r600_resource_reference(&sctx->border_color_buffer, NULL);
+	si_resource_reference(&sctx->border_color_buffer, NULL);
 	free(sctx->border_color_table);
-	r600_resource_reference(&sctx->scratch_buffer, NULL);
-	r600_resource_reference(&sctx->compute_scratch_buffer, NULL);
-	r600_resource_reference(&sctx->wait_mem_scratch, NULL);
+	si_resource_reference(&sctx->scratch_buffer, NULL);
+	si_resource_reference(&sctx->compute_scratch_buffer, NULL);
+	si_resource_reference(&sctx->wait_mem_scratch, NULL);
 
 	si_pm4_free_state(sctx, sctx->init_config, ~0);
 	if (sctx->init_config_gs_rings)
@@ -246,7 +246,7 @@ static void si_destroy_context(struct pipe_context *context)
 
 	sctx->ws->fence_reference(&sctx->last_gfx_fence, NULL);
 	sctx->ws->fence_reference(&sctx->last_sdma_fence, NULL);
-	r600_resource_reference(&sctx->eop_bug_scratch, NULL);
+	si_resource_reference(&sctx->eop_bug_scratch, NULL);
 
 	si_destroy_compiler(&sctx->compiler);
 
@@ -418,7 +418,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (sctx->chip_class == CIK ||
 	    sctx->chip_class == VI ||
 	    sctx->chip_class == GFX9) {
-		sctx->eop_bug_scratch = r600_resource(
+		sctx->eop_bug_scratch = si_resource(
 			pipe_buffer_create(&sscreen->b, 0, PIPE_USAGE_DEFAULT,
 					   16 * sscreen->info.num_render_backends));
 		if (!sctx->eop_bug_scratch)
@@ -487,7 +487,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx->border_color_table)
 		goto fail;
 
-	sctx->border_color_buffer = r600_resource(
+	sctx->border_color_buffer = si_resource(
 		pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT,
 				   SI_MAX_BORDER_COLORS *
 				   sizeof(*sctx->border_color_table)));
@@ -524,7 +524,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	sctx->sample_mask = 0xffff;
 
 	if (sctx->chip_class >= GFX9) {
-		sctx->wait_mem_scratch = r600_resource(
+		sctx->wait_mem_scratch = si_resource(
 			pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, 4));
 		if (!sctx->wait_mem_scratch)
 			goto fail;
@@ -725,7 +725,7 @@ static void si_test_vmfault(struct si_screen *sscreen)
 		exit(1);
 	}
 
-	r600_resource(buf)->gpu_address = 0; /* cause a VM fault */
+	si_resource(buf)->gpu_address = 0; /* cause a VM fault */
 
 	if (sscreen->debug_flags & DBG(TEST_VMFAULT_CP)) {
 		si_cp_dma_copy_buffer(sctx, buf, buf, 0, 4, 4, 0,

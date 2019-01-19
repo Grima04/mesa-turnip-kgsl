@@ -33,7 +33,7 @@
 #include "si_build_pm4.h"
 
 struct si_fine_fence {
-	struct r600_resource *buf;
+	struct si_resource *buf;
 	unsigned offset;
 };
 
@@ -69,7 +69,7 @@ struct si_multi_fence {
 void si_cp_release_mem(struct si_context *ctx,
 		       unsigned event, unsigned event_flags,
 		       unsigned dst_sel, unsigned int_sel, unsigned data_sel,
-		       struct r600_resource *buf, uint64_t va,
+		       struct si_resource *buf, uint64_t va,
 		       uint32_t new_fence, unsigned query_type)
 {
 	struct radeon_cmdbuf *cs = ctx->gfx_cs;
@@ -93,7 +93,7 @@ void si_cp_release_mem(struct si_context *ctx,
 		    query_type != PIPE_QUERY_OCCLUSION_COUNTER &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
-			struct r600_resource *scratch = ctx->eop_bug_scratch;
+			struct si_resource *scratch = ctx->eop_bug_scratch;
 
 			assert(16 * ctx->screen->info.num_render_backends <=
 			       scratch->b.b.width0);
@@ -117,7 +117,7 @@ void si_cp_release_mem(struct si_context *ctx,
 	} else {
 		if (ctx->chip_class == CIK ||
 		    ctx->chip_class == VI) {
-			struct r600_resource *scratch = ctx->eop_bug_scratch;
+			struct si_resource *scratch = ctx->eop_bug_scratch;
 			uint64_t va = scratch->gpu_address;
 
 			/* Two EOP events are required to make all engines go idle
@@ -200,7 +200,7 @@ static void si_fence_reference(struct pipe_screen *screen,
 		ws->fence_reference(&(*rdst)->gfx, NULL);
 		ws->fence_reference(&(*rdst)->sdma, NULL);
 		tc_unflushed_batch_token_reference(&(*rdst)->tc_token, NULL);
-		r600_resource_reference(&(*rdst)->fine.buf, NULL);
+		si_resource_reference(&(*rdst)->fine.buf, NULL);
 		FREE(*rdst);
 	}
         *rdst = rsrc;
@@ -340,7 +340,7 @@ static boolean si_fence_finish(struct pipe_screen *screen,
 	if (rfence->fine.buf &&
 	    si_fine_fence_signaled(rws, &rfence->fine)) {
 		rws->fence_reference(&rfence->gfx, NULL);
-		r600_resource_reference(&rfence->fine.buf, NULL);
+		si_resource_reference(&rfence->fine.buf, NULL);
 		return true;
 	}
 

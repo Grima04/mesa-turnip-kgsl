@@ -431,7 +431,7 @@ void si_texture_discard_cmask(struct si_screen *sscreen,
 	tex->cb_color_info &= ~S_028C70_FAST_CLEAR(1);
 
 	if (tex->cmask_buffer != &tex->buffer)
-	    r600_resource_reference(&tex->cmask_buffer, NULL);
+	    si_resource_reference(&tex->cmask_buffer, NULL);
 
 	tex->cmask_buffer = NULL;
 
@@ -577,12 +577,12 @@ static void si_reallocate_texture_inplace(struct si_context *sctx,
 	if (tex->cmask_buffer == &tex->buffer)
 		tex->cmask_buffer = NULL;
 	else
-		r600_resource_reference(&tex->cmask_buffer, NULL);
+		si_resource_reference(&tex->cmask_buffer, NULL);
 
 	if (new_tex->cmask_buffer == &new_tex->buffer)
 		tex->cmask_buffer = &tex->buffer;
 	else
-		r600_resource_reference(&tex->cmask_buffer, new_tex->cmask_buffer);
+		si_resource_reference(&tex->cmask_buffer, new_tex->cmask_buffer);
 
 	tex->dcc_offset = new_tex->dcc_offset;
 	tex->cb_color_info = new_tex->cb_color_info;
@@ -606,9 +606,9 @@ static void si_reallocate_texture_inplace(struct si_context *sctx,
 
 	tex->separate_dcc_dirty = new_tex->separate_dcc_dirty;
 	tex->dcc_gather_statistics = new_tex->dcc_gather_statistics;
-	r600_resource_reference(&tex->dcc_separate_buffer,
+	si_resource_reference(&tex->dcc_separate_buffer,
 				new_tex->dcc_separate_buffer);
-	r600_resource_reference(&tex->last_dcc_separate_buffer,
+	si_resource_reference(&tex->last_dcc_separate_buffer,
 				new_tex->last_dcc_separate_buffer);
 
 	if (new_bind_flag == PIPE_BIND_LINEAR) {
@@ -726,7 +726,7 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 {
 	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct si_context *sctx;
-	struct r600_resource *res = r600_resource(resource);
+	struct si_resource *res = si_resource(resource);
 	struct si_texture *tex = (struct si_texture*)resource;
 	struct radeon_bo_metadata metadata;
 	bool update_metadata = false;
@@ -865,16 +865,16 @@ static void si_texture_destroy(struct pipe_screen *screen,
 			       struct pipe_resource *ptex)
 {
 	struct si_texture *tex = (struct si_texture*)ptex;
-	struct r600_resource *resource = &tex->buffer;
+	struct si_resource *resource = &tex->buffer;
 
 	si_texture_reference(&tex->flushed_depth_texture, NULL);
 
 	if (tex->cmask_buffer != &tex->buffer) {
-	    r600_resource_reference(&tex->cmask_buffer, NULL);
+	    si_resource_reference(&tex->cmask_buffer, NULL);
 	}
 	pb_reference(&resource->buf, NULL);
-	r600_resource_reference(&tex->dcc_separate_buffer, NULL);
-	r600_resource_reference(&tex->last_dcc_separate_buffer, NULL);
+	si_resource_reference(&tex->dcc_separate_buffer, NULL);
+	si_resource_reference(&tex->last_dcc_separate_buffer, NULL);
 	FREE(tex);
 }
 
@@ -1117,7 +1117,7 @@ si_texture_create_object(struct pipe_screen *screen,
 			 struct radeon_surf *surface)
 {
 	struct si_texture *tex;
-	struct r600_resource *resource;
+	struct si_resource *resource;
 	struct si_screen *sscreen = (struct si_screen*)screen;
 
 	tex = CALLOC_STRUCT(si_texture);
@@ -1637,7 +1637,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 	struct si_context *sctx = (struct si_context*)ctx;
 	struct si_texture *tex = (struct si_texture*)texture;
 	struct si_transfer *trans;
-	struct r600_resource *buf;
+	struct si_resource *buf;
 	unsigned offset = 0;
 	char *map;
 	bool use_staging_texture = false;
@@ -1811,7 +1811,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 	return map + offset;
 
 fail_trans:
-	r600_resource_reference(&trans->staging, NULL);
+	si_resource_reference(&trans->staging, NULL);
 	pipe_resource_reference(&trans->b.b.resource, NULL);
 	FREE(trans);
 	return NULL;
@@ -1829,7 +1829,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx,
 	 * we don't run out of the CPU address space.
 	 */
 	if (sizeof(void*) == 4) {
-		struct r600_resource *buf =
+		struct si_resource *buf =
 			stransfer->staging ? stransfer->staging : &tex->buffer;
 
 		sctx->ws->buffer_unmap(buf->buf);
@@ -1848,7 +1848,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx,
 
 	if (stransfer->staging) {
 		sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->size;
-		r600_resource_reference(&stransfer->staging, NULL);
+		si_resource_reference(&stransfer->staging, NULL);
 	}
 
 	/* Heuristic for {upload, draw, upload, draw, ..}:

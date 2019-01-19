@@ -667,7 +667,7 @@ static void si_pc_emit_select(struct si_context *sctx,
 }
 
 static void si_pc_emit_start(struct si_context *sctx,
-			     struct r600_resource *buffer, uint64_t va)
+			     struct si_resource *buffer, uint64_t va)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
@@ -693,7 +693,7 @@ static void si_pc_emit_start(struct si_context *sctx,
 /* Note: The buffer was already added in si_pc_emit_start, so we don't have to
  * do it again in here. */
 static void si_pc_emit_stop(struct si_context *sctx,
-			    struct r600_resource *buffer, uint64_t va)
+			    struct si_resource *buffer, uint64_t va)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
@@ -776,7 +776,7 @@ static void si_pc_query_destroy(struct si_screen *sscreen,
 static void si_pc_query_resume(struct si_context *sctx, struct si_query *rquery)
 /*
 				   struct si_query_hw *hwquery,
-				   struct r600_resource *buffer, uint64_t va)*/
+				   struct si_resource *buffer, uint64_t va)*/
 {
 	struct si_query_pc *query = (struct si_query_pc *)rquery;
 	int current_se = -1;

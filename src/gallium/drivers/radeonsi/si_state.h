@@ -132,7 +132,7 @@ struct si_stencil_ref {
 
 struct si_vertex_elements
 {
-	struct r600_resource		*instance_divisor_factor_buffer;
+	struct si_resource		*instance_divisor_factor_buffer;
 	uint32_t			rsrc_word3[SI_MAX_ATTRIBS];
 	uint16_t			src_offset[SI_MAX_ATTRIBS];
 	uint8_t				fix_fetch[SI_MAX_ATTRIBS];
@@ -384,7 +384,7 @@ struct si_descriptors {
 	uint32_t *gpu_list;
 
 	/* The buffer where the descriptors have been uploaded. */
-	struct r600_resource *buffer;
+	struct si_resource *buffer;
 	uint64_t gpu_address;
 
 	/* The maximum number of descriptors. */
@@ -465,7 +465,7 @@ bool si_upload_compute_shader_descriptors(struct si_context *sctx);
 void si_release_all_descriptors(struct si_context *sctx);
 void si_all_descriptors_begin_new_cs(struct si_context *sctx);
 void si_all_resident_buffers_begin_new_cs(struct si_context *sctx);
-void si_upload_const_buffer(struct si_context *sctx, struct r600_resource **rbuffer,
+void si_upload_const_buffer(struct si_context *sctx, struct si_resource **rbuffer,
 			    const uint8_t *ptr, unsigned size, uint32_t *const_offset);
 void si_update_all_texture_descriptors(struct si_context *sctx);
 void si_shader_change_notify(struct si_context *sctx);
@@ -492,7 +492,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf,
 void si_init_state_functions(struct si_context *sctx);
 void si_init_screen_state_functions(struct si_screen *sscreen);
 void
-si_make_buffer_descriptor(struct si_screen *screen, struct r600_resource *buf,
+si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 			  enum pipe_format format,
 			  unsigned offset, unsigned size,
 			  uint32_t *state);

@@ -36,7 +36,7 @@ struct si_context;
 struct si_query;
 struct si_query_buffer;
 struct si_query_hw;
-struct r600_resource;
+struct si_resource;
 
 enum {
 	SI_QUERY_DRAW_CALLS = PIPE_QUERY_DRIVER_SPECIFIC,
@@ -164,10 +164,10 @@ struct si_query_hw_ops {
 	bool (*prepare_buffer)(struct si_context *, struct si_query_buffer *);
 	void (*emit_start)(struct si_context *,
 			   struct si_query_hw *,
-			   struct r600_resource *buffer, uint64_t va);
+			   struct si_resource *buffer, uint64_t va);
 	void (*emit_stop)(struct si_context *,
 			  struct si_query_hw *,
-			  struct r600_resource *buffer, uint64_t va);
+			  struct si_resource *buffer, uint64_t va);
 	void (*clear_result)(struct si_query_hw *, union pipe_query_result *);
 	void (*add_result)(struct si_screen *screen,
 			   struct si_query_hw *, void *buffer,
@@ -176,7 +176,7 @@ struct si_query_hw_ops {
 
 struct si_query_buffer {
 	/* The buffer where query results are stored. */
-	struct r600_resource		*buf;
+	struct si_resource		*buf;
 	/* Offset of the next free result after current query data */
 	unsigned			results_end;
 	/* If a query buffer is full, a new buffer is created and the old one
@@ -206,7 +206,7 @@ struct si_query_hw {
 	unsigned stream;
 
 	/* Workaround via compute shader */
-	struct r600_resource *workaround_buf;
+	struct si_resource *workaround_buf;
 	unsigned workaround_offset;
 };
 
