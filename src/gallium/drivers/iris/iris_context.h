@@ -263,6 +263,9 @@ struct iris_compiled_shader {
    enum brw_param_builtin *system_values;
    unsigned num_system_values;
 
+   /** Number of constbufs expected by the shader. */
+   unsigned num_cbufs;
+
    /**
     * Derived 3DSTATE_STREAMOUT and 3DSTATE_SO_DECL_LIST packets
     * (the VUE-based information for transform feedback outputs).
@@ -642,8 +645,6 @@ void gen11_init_state(struct iris_context *ice);
 /* iris_program.c */
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
-unsigned iris_get_shader_num_ubos(const struct iris_context *ice,
-                                  gl_shader_stage stage);
 struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
                                        unsigned per_thread_scratch,
                                        gl_shader_stage stage);
@@ -665,7 +666,8 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
                                                 struct brw_stage_prog_data *,
                                                 uint32_t *streamout,
                                                 enum brw_param_builtin *sysv,
-                                                unsigned num_system_values);
+                                                unsigned num_system_values,
+                                                unsigned num_cbufs);
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);

@@ -3754,11 +3754,9 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
-   const int num_ubos = iris_get_shader_num_ubos(ice, stage);
+   bt_assert(ubo_start, shader->num_cbufs > 0);
 
-   bt_assert(ubo_start, num_ubos > 0);
-
-   for (int i = 0; i < num_ubos; i++) {
+   for (int i = 0; i < shader->num_cbufs; i++) {
       uint32_t addr = use_const_buffer(batch, ice, &shs->constbuf[i]);
       push_bt_entry(addr);
    }
