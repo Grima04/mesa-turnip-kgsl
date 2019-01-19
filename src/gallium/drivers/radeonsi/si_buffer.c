@@ -301,22 +301,22 @@ void si_replace_buffer_storage(struct pipe_context *ctx,
 				 struct pipe_resource *src)
 {
 	struct si_context *sctx = (struct si_context*)ctx;
-	struct si_resource *rdst = si_resource(dst);
-	struct si_resource *rsrc = si_resource(src);
-	uint64_t old_gpu_address = rdst->gpu_address;
+	struct si_resource *sdst = si_resource(dst);
+	struct si_resource *ssrc = si_resource(src);
+	uint64_t old_gpu_address = sdst->gpu_address;
 
-	pb_reference(&rdst->buf, rsrc->buf);
-	rdst->gpu_address = rsrc->gpu_address;
-	rdst->b.b.bind = rsrc->b.b.bind;
-	rdst->b.max_forced_staging_uploads = rsrc->b.max_forced_staging_uploads;
-	rdst->max_forced_staging_uploads = rsrc->max_forced_staging_uploads;
-	rdst->flags = rsrc->flags;
+	pb_reference(&sdst->buf, ssrc->buf);
+	sdst->gpu_address = ssrc->gpu_address;
+	sdst->b.b.bind = ssrc->b.b.bind;
+	sdst->b.max_forced_staging_uploads = ssrc->b.max_forced_staging_uploads;
+	sdst->max_forced_staging_uploads = ssrc->max_forced_staging_uploads;
+	sdst->flags = ssrc->flags;
 
-	assert(rdst->vram_usage == rsrc->vram_usage);
-	assert(rdst->gart_usage == rsrc->gart_usage);
-	assert(rdst->bo_size == rsrc->bo_size);
-	assert(rdst->bo_alignment == rsrc->bo_alignment);
-	assert(rdst->domains == rsrc->domains);
+	assert(sdst->vram_usage == ssrc->vram_usage);
+	assert(sdst->gart_usage == ssrc->gart_usage);
+	assert(sdst->bo_size == ssrc->bo_size);
+	assert(sdst->bo_alignment == ssrc->bo_alignment);
+	assert(sdst->domains == ssrc->domains);
 
 	si_rebind_buffer(sctx, dst, old_gpu_address);
 }

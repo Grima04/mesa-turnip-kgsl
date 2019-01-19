@@ -212,8 +212,8 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 			    uint64_t size, unsigned value, unsigned user_flags,
 			    enum si_coherency coher, enum si_cache_policy cache_policy)
 {
-	struct si_resource *rdst = si_resource(dst);
-	uint64_t va = (rdst ? rdst->gpu_address : 0) + offset;
+	struct si_resource *sdst = si_resource(dst);
+	uint64_t va = (sdst ? sdst->gpu_address : 0) + offset;
 	bool is_first = true;
 
 	assert(size && size % 4 == 0);
@@ -221,11 +221,11 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 	/* Mark the buffer range of destination as valid (initialized),
 	 * so that transfer_map knows it should wait for the GPU when mapping
 	 * that range. */
-	if (rdst)
-		util_range_add(&rdst->valid_buffer_range, offset, offset + size);
+	if (sdst)
+		util_range_add(&sdst->valid_buffer_range, offset, offset + size);
 
 	/* Flush the caches. */
-	if (rdst && !(user_flags & SI_CPDMA_SKIP_GFX_SYNC)) {
+	if (sdst && !(user_flags & SI_CPDMA_SKIP_GFX_SYNC)) {
 		sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 			       SI_CONTEXT_CS_PARTIAL_FLUSH |
 			       si_get_flush_flags(sctx, coher, cache_policy);
@@ -233,7 +233,7 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 
 	while (size) {
 		unsigned byte_count = MIN2(size, cp_dma_max_byte_count(sctx));
-		unsigned dma_flags = CP_DMA_CLEAR | (rdst ? 0 : CP_DMA_DST_IS_GDS);
+		unsigned dma_flags = CP_DMA_CLEAR | (sdst ? 0 : CP_DMA_DST_IS_GDS);
 
 		si_cp_dma_prepare(sctx, dst, NULL, byte_count, size, user_flags,
 				  coher, &is_first, &dma_flags);
@@ -245,8 +245,8 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 		va += byte_count;
 	}
 
-	if (rdst && cache_policy != L2_BYPASS)
-		rdst->TC_L2_dirty = true;
+	if (sdst && cache_policy != L2_BYPASS)
+		sdst->TC_L2_dirty = true;
 
 	/* If it's not a framebuffer fast clear... */
 	if (coher == SI_COHERENCY_SHADER)

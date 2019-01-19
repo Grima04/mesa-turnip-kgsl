@@ -193,17 +193,17 @@ static void si_fence_reference(struct pipe_screen *screen,
 			       struct pipe_fence_handle *src)
 {
 	struct radeon_winsys *ws = ((struct si_screen*)screen)->ws;
-	struct si_multi_fence **rdst = (struct si_multi_fence **)dst;
-	struct si_multi_fence *rsrc = (struct si_multi_fence *)src;
+	struct si_multi_fence **sdst = (struct si_multi_fence **)dst;
+	struct si_multi_fence *ssrc = (struct si_multi_fence *)src;
 
-	if (pipe_reference(&(*rdst)->reference, &rsrc->reference)) {
-		ws->fence_reference(&(*rdst)->gfx, NULL);
-		ws->fence_reference(&(*rdst)->sdma, NULL);
-		tc_unflushed_batch_token_reference(&(*rdst)->tc_token, NULL);
-		si_resource_reference(&(*rdst)->fine.buf, NULL);
-		FREE(*rdst);
+	if (pipe_reference(&(*sdst)->reference, &ssrc->reference)) {
+		ws->fence_reference(&(*sdst)->gfx, NULL);
+		ws->fence_reference(&(*sdst)->sdma, NULL);
+		tc_unflushed_batch_token_reference(&(*sdst)->tc_token, NULL);
+		si_resource_reference(&(*sdst)->fine.buf, NULL);
+		FREE(*sdst);
 	}
-        *rdst = rsrc;
+        *sdst = ssrc;
 }
 
 static struct si_multi_fence *si_create_multi_fence()
