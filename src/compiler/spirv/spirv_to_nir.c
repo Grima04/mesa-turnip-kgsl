@@ -1308,6 +1308,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          case SpvStorageClassStorageBuffer:
             val->type->type = b->options->ssbo_ptr_type;
             break;
+         case SpvStorageClassPhysicalStorageBufferEXT:
+            val->type->type = b->options->phys_ssbo_ptr_type;
+            break;
          case SpvStorageClassPushConstant:
             val->type->type = b->options->push_const_ptr_type;
             break;
@@ -3718,6 +3721,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(post_depth_coverage, cap);
          break;
 
+      case SpvCapabilityPhysicalStorageBufferAddressesEXT:
+         spv_check_supported(physical_storage_buffer_address, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability");
       }
@@ -3729,7 +3736,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpMemoryModel:
-      vtn_assert(w[1] == SpvAddressingModelLogical);
+      vtn_assert(w[1] == SpvAddressingModelLogical ||
+                 (b->options &&
+                  b->options->caps.physical_storage_buffer_address &&
+                  w[1] == SpvAddressingModelPhysicalStorageBuffer64EXT));
       vtn_assert(w[2] == SpvMemoryModelSimple ||
                  w[2] == SpvMemoryModelGLSL450);
       break;

@@ -62,6 +62,7 @@ vtn_pointer_is_external_block(struct vtn_builder *b,
 {
    return ptr->mode == vtn_variable_mode_ssbo ||
           ptr->mode == vtn_variable_mode_ubo ||
+          ptr->mode == vtn_variable_mode_phys_ssbo ||
           ptr->mode == vtn_variable_mode_push_constant ||
           (ptr->mode == vtn_variable_mode_workgroup &&
            b->options->lower_workgroup_access_to_offsets);
@@ -1521,6 +1522,11 @@ apply_var_decoration(struct vtn_builder *b,
       /* HLSL semantic decorations can safely be ignored by the driver. */
       break;
 
+   case SpvDecorationRestrictPointerEXT:
+   case SpvDecorationAliasedPointerEXT:
+      /* TODO: We should actually plumb alias information through NIR. */
+      break;
+
    default:
       vtn_fail("Unhandled decoration");
    }
@@ -1682,6 +1688,10 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       mode = vtn_variable_mode_ssbo;
       nir_mode = nir_var_mem_ssbo;
       break;
+   case SpvStorageClassPhysicalStorageBufferEXT:
+      mode = vtn_variable_mode_phys_ssbo;
+      nir_mode = nir_var_mem_global;
+      break;
    case SpvStorageClassUniformConstant:
       mode = vtn_variable_mode_uniform;
       nir_mode = nir_var_uniform;
@@ -1760,13 +1770,23 @@ vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr)
       }
    } else {
       if (vtn_pointer_is_external_block(b, ptr) &&
-          vtn_type_contains_block(b, ptr->type)) {
+          vtn_type_contains_block(b, ptr->type) &&
+          ptr->mode != vtn_variable_mode_phys_ssbo) {
          const unsigned bit_size = glsl_get_bit_size(ptr->ptr_type->type);
          const unsigned num_components =
             glsl_get_vector_elements(ptr->ptr_type->type);
 
          /* In this case, we're looking for a block index and not an actual
           * deref.
+          *
+          * For PhysicalStorageBufferEXT pointers, we don't have a block index
+          * at all because we get the pointer directly from the client.  This
+          * assumes that there will never be a SSBO binding variable using the
+          * PhysicalStorageBufferEXT storage class.  This assumption appears
+          * to be correct according to the Vulkan spec because the table,
+          * "Shader Resource and Storage Class Correspondence," the only the
+          * Uniform storage class with BufferBlock or the StorageBuffer
+          * storage class with Block can be used.
           */
          if (!ptr->block_index) {
             /* If we don't have a block_index then we must be a pointer to the
@@ -1843,7 +1863,8 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
          assert(ssa->bit_size == 32 && ssa->num_components == 1);
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
                                            glsl_get_bare_type(deref_type), 0);
-      } else if (vtn_type_contains_block(b, ptr->type)) {
+      } else if (vtn_type_contains_block(b, ptr->type) &&
+                 ptr->mode != vtn_variable_mode_phys_ssbo) {
          /* This is a pointer to somewhere in an array of blocks, not a
           * pointer to somewhere inside the block.  We squashed it into a
           * random vector type before so just pick off the first channel and
@@ -1853,6 +1874,15 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
       } else {
          /* This is a pointer to something internal or a pointer inside a
           * block.  It's just a regular cast.
+          *
+          * For PhysicalStorageBufferEXT pointers, we don't have a block index
+          * at all because we get the pointer directly from the client.  This
+          * assumes that there will never be a SSBO binding variable using the
+          * PhysicalStorageBufferEXT storage class.  This assumption appears
+          * to be correct according to the Vulkan spec because the table,
+          * "Shader Resource and Storage Class Correspondence," the only the
+          * Uniform storage class with BufferBlock or the StorageBuffer
+          * storage class with Block can be used.
           */
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
                                            ptr_type->deref->type,
@@ -1933,6 +1963,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_push_constant:
       b->shader->num_uniforms = vtn_type_block_size(b, type);
       break;
+
+   case vtn_variable_mode_phys_ssbo:
+      vtn_fail("Cannot create a variable with the "
+               "PhysicalStorageBufferEXT storage class");
+      break;
+
    default:
       /* No tallying is needed */
       break;
@@ -2087,6 +2123,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_cross_workgroup:
       /* These don't need actual variables. */
       break;
+
+   case vtn_variable_mode_phys_ssbo:
+      unreachable("Should have been caught before");
    }
 
    if (initializer) {

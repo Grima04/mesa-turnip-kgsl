@@ -417,6 +417,7 @@ enum vtn_variable_mode {
    vtn_variable_mode_uniform,
    vtn_variable_mode_ubo,
    vtn_variable_mode_ssbo,
+   vtn_variable_mode_phys_ssbo,
    vtn_variable_mode_push_constant,
    vtn_variable_mode_workgroup,
    vtn_variable_mode_cross_workgroup,
