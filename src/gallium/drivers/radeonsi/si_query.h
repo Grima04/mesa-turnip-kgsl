@@ -211,13 +211,13 @@ struct si_query_hw {
 };
 
 void si_query_hw_destroy(struct si_screen *sscreen,
-			 struct si_query *rquery);
+			 struct si_query *squery);
 bool si_query_hw_begin(struct si_context *sctx,
-		       struct si_query *rquery);
+		       struct si_query *squery);
 bool si_query_hw_end(struct si_context *sctx,
-		     struct si_query *rquery);
+		     struct si_query *squery);
 bool si_query_hw_get_result(struct si_context *sctx,
-			    struct si_query *rquery,
+			    struct si_query *squery,
 			    bool wait,
 			    union pipe_query_result *result);
 void si_query_hw_suspend(struct si_context *sctx, struct si_query *query);

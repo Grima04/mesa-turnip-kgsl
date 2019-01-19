@@ -757,9 +757,9 @@ static void si_pc_emit_read(struct si_context *sctx,
 }
 
 static void si_pc_query_destroy(struct si_screen *sscreen,
-				struct si_query *rquery)
+				struct si_query *squery)
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 
 	while (query->groups) {
 		struct si_query_group *group = query->groups;
@@ -773,12 +773,12 @@ static void si_pc_query_destroy(struct si_screen *sscreen,
 	FREE(query);
 }
 
-static void si_pc_query_resume(struct si_context *sctx, struct si_query *rquery)
+static void si_pc_query_resume(struct si_context *sctx, struct si_query *squery)
 /*
 				   struct si_query_hw *hwquery,
 				   struct si_resource *buffer, uint64_t va)*/
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 	int current_se = -1;
 	int current_instance = -1;
 
@@ -808,9 +808,9 @@ static void si_pc_query_resume(struct si_context *sctx, struct si_query *rquery)
 	si_pc_emit_start(sctx, query->buffer.buf, va);
 }
 
-static void si_pc_query_suspend(struct si_context *sctx, struct si_query *rquery)
+static void si_pc_query_suspend(struct si_context *sctx, struct si_query *squery)
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 
 	if (!query->buffer.buf)
 		return;
@@ -842,28 +842,28 @@ static void si_pc_query_suspend(struct si_context *sctx, struct si_query *rquery
 	si_pc_emit_instance(sctx, -1, -1);
 }
 
-static bool si_pc_query_begin(struct si_context *ctx, struct si_query *rquery)
+static bool si_pc_query_begin(struct si_context *ctx, struct si_query *squery)
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 
 	si_query_buffer_reset(ctx, &query->buffer);
 
 	LIST_ADDTAIL(&query->b.active_list, &ctx->active_queries);
 	ctx->num_cs_dw_queries_suspend += query->b.num_cs_dw_suspend;
 
-	si_pc_query_resume(ctx, rquery);
+	si_pc_query_resume(ctx, squery);
 
 	return true;
 }
 
-static bool si_pc_query_end(struct si_context *ctx, struct si_query *rquery)
+static bool si_pc_query_end(struct si_context *ctx, struct si_query *squery)
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 
-	si_pc_query_suspend(ctx, rquery);
+	si_pc_query_suspend(ctx, squery);
 
-	LIST_DEL(&rquery->active_list);
-	ctx->num_cs_dw_queries_suspend -= rquery->num_cs_dw_suspend;
+	LIST_DEL(&squery->active_list);
+	ctx->num_cs_dw_queries_suspend -= squery->num_cs_dw_suspend;
 
 	return query->buffer.buf != NULL;
 }
@@ -885,10 +885,10 @@ static void si_pc_query_add_result(struct si_query_pc *query,
 	}
 }
 
-static bool si_pc_query_get_result(struct si_context *sctx, struct si_query *rquery,
+static bool si_pc_query_get_result(struct si_context *sctx, struct si_query *squery,
 				   bool wait, union pipe_query_result *result)
 {
-	struct si_query_pc *query = (struct si_query_pc *)rquery;
+	struct si_query_pc *query = (struct si_query_pc *)squery;
 
 	memset(result, 0, sizeof(result->batch[0]) * query->num_counters);
 
@@ -898,7 +898,7 @@ static bool si_pc_query_get_result(struct si_context *sctx, struct si_query *rqu
 		unsigned results_base = 0;
 		void *map;
 
-		if (rquery->b.flushed)
+		if (squery->b.flushed)
 			map = sctx->ws->buffer_map(qbuf->buf->buf, NULL, usage);
 		else
 			map = si_buffer_map_sync_with_rings(sctx, qbuf->buf, usage);
