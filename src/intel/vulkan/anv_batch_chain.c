@@ -1393,6 +1393,20 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       anv_execbuf_add_bo_set(execbuf, cmd_buffer->surface_relocs.deps, 0,
                              &cmd_buffer->device->alloc);
 
+      /* Add the BOs for all the pinned buffers */
+      if (cmd_buffer->device->pinned_buffers->entries) {
+         struct set *pinned_bos = _mesa_pointer_set_create(NULL);
+         if (pinned_bos == NULL)
+            return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         set_foreach(cmd_buffer->device->pinned_buffers, entry) {
+            const struct anv_buffer *buffer = entry->key;
+            _mesa_set_add(pinned_bos, buffer->address.bo);
+         }
+         anv_execbuf_add_bo_set(execbuf, pinned_bos, 0,
+                                &cmd_buffer->device->alloc);
+         _mesa_set_destroy(pinned_bos, NULL);
+      }
+
       struct anv_block_pool *pool;
       pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {

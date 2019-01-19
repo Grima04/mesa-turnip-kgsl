@@ -884,6 +884,7 @@ void anv_GetPhysicalDeviceFeatures2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures2*                  pFeatures)
 {
+   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    anv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
    vk_foreach_struct(ext, pFeatures->pNext) {
@@ -902,12 +903,19 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
          VkPhysicalDevice16BitStorageFeatures *features =
             (VkPhysicalDevice16BitStorageFeatures *)ext;
-         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-
          features->storageBuffer16BitAccess = pdevice->info.gen >= 8;
          features->uniformAndStorageBuffer16BitAccess = pdevice->info.gen >= 8;
          features->storagePushConstant16 = pdevice->info.gen >= 8;
          features->storageInputOutput16 = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT: {
+         VkPhysicalDeviceBufferAddressFeaturesEXT *features = (void *)ext;
+         features->bufferDeviceAddress = pdevice->use_softpin &&
+                                         pdevice->info.gen >= 8;
+         features->bufferDeviceAddressCaptureReplay = false;
+         features->bufferDeviceAddressMultiDevice = false;
          break;
       }
 
@@ -1933,6 +1941,9 @@ VkResult anv_CreateDevice(
    if (device->info.gen >= 10)
       anv_device_init_hiz_clear_value_bo(device);
 
+   if (physical_device->use_softpin)
+      device->pinned_buffers = _mesa_pointer_set_create(NULL);
+
    anv_scratch_pool_init(device, &device->scratch_pool);
 
    anv_queue_init(device, &device->queue);
@@ -2022,6 +2033,9 @@ void anv_DestroyDevice(
    anv_pipeline_cache_finish(&device->default_pipeline_cache);
 
    anv_queue_finish(&device->queue);
+
+   if (physical_device->use_softpin)
+      _mesa_set_destroy(device->pinned_buffers, NULL);
 
 #ifdef HAVE_VALGRIND
    /* We only need to free these to prevent valgrind errors.  The backing
@@ -3072,6 +3086,12 @@ VkResult anv_CreateBuffer(
    buffer->usage = pCreateInfo->usage;
    buffer->address = ANV_NULL_ADDRESS;
 
+   if (buffer->usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_EXT) {
+      pthread_mutex_lock(&device->mutex);
+      _mesa_set_add(device->pinned_buffers, buffer);
+      pthread_mutex_unlock(&device->mutex);
+   }
+
    *pBuffer = anv_buffer_to_handle(buffer);
 
    return VK_SUCCESS;
@@ -3088,7 +3108,24 @@ void anv_DestroyBuffer(
    if (!buffer)
       return;
 
+   if (buffer->usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_EXT) {
+      pthread_mutex_lock(&device->mutex);
+      _mesa_set_remove_key(device->pinned_buffers, buffer);
+      pthread_mutex_unlock(&device->mutex);
+   }
+
    vk_free2(&device->alloc, pAllocator, buffer);
+}
+
+VkDeviceAddress anv_GetBufferDeviceAddressEXT(
+    VkDevice                                    device,
+    const VkBufferDeviceAddressInfoEXT*         pInfo)
+{
+   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
+
+   assert(buffer->address.bo->flags & EXEC_OBJECT_PINNED);
+
+   return anv_address_physical(buffer->address);
 }
 
 void

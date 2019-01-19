@@ -1099,6 +1099,12 @@ struct anv_device {
     struct anv_bo                               trivial_batch_bo;
     struct anv_bo                               hiz_clear_bo;
 
+    /* Set of pointers to anv_buffer objects for all pinned buffers.  Pinned
+     * buffers are always resident because they could be used at any time via
+     * VK_EXT_buffer_device_address.
+     */
+    struct set *                                pinned_buffers;
+
     struct anv_pipeline_cache                   default_pipeline_cache;
     struct blorp_context                        blorp;
 

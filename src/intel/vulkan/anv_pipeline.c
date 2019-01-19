@@ -145,6 +145,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .int64 = pdevice->info.gen >= 8,
          .min_lod = true,
          .multiview = true,
+         .physical_storage_buffer_address = pdevice->info.gen >= 8 &&
+                                            pdevice->use_softpin,
          .post_depth_coverage = pdevice->info.gen >= 9,
          .shader_viewport_index_layer = true,
          .stencil_export = pdevice->info.gen >= 9,
@@ -162,6 +164,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
       },
       .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
       .ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .phys_ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT64, 1),
       .push_const_ptr_type = glsl_uint_type(),
       .shared_ptr_type = glsl_uint_type(),
    };
@@ -217,6 +220,9 @@ anv_shader_compile_to_nir(struct anv_device *device,
 
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_vk_index_offset);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
+              nir_address_format_64bit_global);
 
    NIR_PASS_V(nir, nir_propagate_invariant);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
