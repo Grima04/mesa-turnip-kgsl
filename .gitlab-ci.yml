@@ -1,0 +1,49 @@
+# This is the tag of the docker image used for the build jobs. If the
+# image doesn't exist yet, the containers-build stage generates it.
+#
+# In order to generate a new image, one should generally change the tag.
+# While removing the image from the registry would also work, that's not
+# recommended except for ephemeral images during development: Replacing
+# an image after a significant amount of time might pull in newer
+# versions of gcc/clang or other packages, which might break the build
+# with older commits using the same tag.
+#
+# After merging a change resulting in generating a new image to the
+# main repository, it's recommended to remove the image from the source
+# repository's container registry, so that the image from the main
+# repository's registry will be used there as well.
+#
+# The format of the tag is "%Y-%m-%d-${counter}" where ${counter} stays
+# at "01" unless you have multiple updates on the same day :)
+variables:
+  UBUNTU_TAG: 2019-01-31-01
+  UBUNTU_IMAGE: "$CI_REGISTRY/$CI_PROJECT_PATH/ubuntu:$UBUNTU_TAG"
+
+
+stages:
+  - containers-build
+
+
+# CONTAINERS
+
+containers:ubuntu:
+  stage: containers-build
+  image: docker:stable
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  script:
+    # Enable experimental features such as `docker manifest inspect`
+    - mkdir -p ~/.docker
+    - "echo '{\"experimental\": \"enabled\"}' > ~/.docker/config.json"
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # Check if the image (with the specific tag) already exists
+    - docker manifest inspect $UBUNTU_IMAGE && exit || true
+    - docker build -t $UBUNTU_IMAGE -f .gitlab-ci/Dockerfile.ubuntu .
+    - docker push $UBUNTU_IMAGE
+  only:
+    changes:
+      - .gitlab-ci.yml
+      - .gitlab-ci/Dockerfile.ubuntu
