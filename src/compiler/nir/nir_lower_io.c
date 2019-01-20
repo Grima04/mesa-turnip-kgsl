@@ -676,6 +676,10 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       else
          op = nir_intrinsic_load_ssbo;
       break;
+   case nir_var_mem_global:
+      assert(addr_format_is_global(addr_format));
+      op = nir_intrinsic_load_global;
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -722,6 +726,10 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       else
          op = nir_intrinsic_store_ssbo;
       break;
+   case nir_var_mem_global:
+      assert(addr_format_is_global(addr_format));
+      op = nir_intrinsic_store_global;
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -766,6 +774,10 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
          op = global_atomic_for_deref(intrin->intrinsic);
       else
          op = ssbo_atomic_for_deref(intrin->intrinsic);
+      break;
+   case nir_var_mem_global:
+      assert(addr_format_is_global(addr_format));
+      op = global_atomic_for_deref(intrin->intrinsic);
       break;
    default:
       unreachable("Unsupported explicit IO variable mode");
