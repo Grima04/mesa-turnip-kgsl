@@ -22,6 +22,7 @@ variables:
 
 stages:
   - containers-build
+  - build+test
 
 
 # CONTAINERS
@@ -47,3 +48,63 @@ containers:ubuntu:
     changes:
       - .gitlab-ci.yml
       - .gitlab-ci/Dockerfile.ubuntu
+
+
+# BUILD
+
+.build:
+  image: $UBUNTU_IMAGE
+  stage: build+test
+  artifacts:
+    when: on_failure
+    untracked: true
+
+.meson-build:
+  extends: .build
+  before_script:
+    # We need to control the version of llvm-config we're using, so we'll
+    # generate a native file to do so. This requires meson >=0.49
+    - if test -n "$LLVM_VERSION"; then
+        LLVM_CONFIG="llvm-config-${LLVM_VERSION}";
+        echo -e "[binaries]\nllvm-config = '`which $LLVM_CONFIG`'" > native.file;
+        $LLVM_CONFIG --version;
+      else
+        touch native.file;
+      fi
+    - meson --version
+    - meson _build
+            --native-file=native.file
+            -D build-tests=true
+            -D libunwind=${UNWIND}
+            ${DRI_LOADERS}
+            -D dri-drivers=${DRI_DRIVERS:-[]}
+            ${GALLIUM_ST}
+            -D gallium-drivers=${GALLIUM_DRIVERS:-[]}
+            -D vulkan-drivers=${VULKAN_DRIVERS:-[]}
+    - cd _build
+    - meson configure
+  script:
+    - ninja
+    - ninja test
+
+build:meson-vulkan:
+  extends: .meson-build
+  variables:
+    UNWIND: "false"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D gbm=false
+      -D egl=false
+      -D platforms=x11,wayland,drm
+      -D osmesa=none
+    GALLIUM_ST: >
+      -D dri3=true
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+    VULKAN_DRIVERS: intel,amd
+    LLVM_VERSION: "7"
