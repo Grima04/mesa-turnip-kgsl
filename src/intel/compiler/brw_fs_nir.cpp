@@ -950,7 +950,21 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
             : bld.MOV(result, brw_imm_f(1.0f));
 
          set_predicate(BRW_PREDICATE_NORMAL, inst);
-      } else if (type_sz(op[0].type) < 8) {
+      } else if (type_sz(op[0].type) == 2) {
+         /* AND(val, 0x8000) gives the sign bit.
+          *
+          * Predicated OR ORs 1.0 (0x3c00) with the sign bit if val is not zero.
+          */
+         fs_reg zero = retype(brw_imm_uw(0), BRW_REGISTER_TYPE_HF);
+         bld.CMP(bld.null_reg_f(), op[0], zero, BRW_CONDITIONAL_NZ);
+
+         op[0].type = BRW_REGISTER_TYPE_UW;
+         result.type = BRW_REGISTER_TYPE_UW;
+         bld.AND(result, op[0], brw_imm_uw(0x8000u));
+
+         inst = bld.OR(result, result, brw_imm_uw(0x3c00u));
+         inst->predicate = BRW_PREDICATE_NORMAL;
+      } else if (type_sz(op[0].type) == 4) {
          /* AND(val, 0x80000000) gives the sign bit.
           *
           * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
@@ -972,6 +986,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
           * - The sign is encoded in the high 32-bit of each DF
           * - We need to produce a DF result.
           */
+         assert(type_sz(op[0].type) == 8);
 
          fs_reg zero = vgrf(glsl_type::double_type);
          bld.MOV(zero, setup_imm_df(bld, 0.0));
