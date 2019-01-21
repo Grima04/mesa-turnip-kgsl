@@ -805,7 +805,9 @@ script:
 
       mkdir build &&
       cd build &&
-      ../autogen.sh --enable-debug
+      ../autogen.sh
+        --enable-autotools
+        --enable-debug
         $LIBUNWIND_FLAGS
         $DRI_LOADERS
         --with-dri-drivers=$DRI_DRIVERS
