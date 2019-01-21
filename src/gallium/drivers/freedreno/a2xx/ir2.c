@@ -93,6 +93,116 @@ static unsigned alu_scalar_prio(struct ir2_instr *instr)
 	return instr->alu.vector_opc == VECTOR_NONE ? 0 : 3;
 }
 
+/* this is a bit messy:
+ * we want to find a slot where we can insert a scalar MOV with
+ * a vector instruction that was already scheduled
+ */
+static struct ir2_sched_instr*
+insert(struct ir2_context *ctx, unsigned block_idx, unsigned reg_idx,
+	struct ir2_src src1, unsigned *comp)
+{
+	struct ir2_sched_instr *sched = NULL, *s;
+	unsigned i, mask = 0xf;
+
+	/* go first earliest point where the mov can be inserted */
+	for (i = ctx->instr_sched_count-1; i > 0; i--) {
+		s = &ctx->instr_sched[i - 1];
+
+		if (s->instr && s->instr->block_idx != block_idx)
+			break;
+		if (s->instr_s && s->instr_s->block_idx != block_idx)
+			break;
+
+		if (src1.type == IR2_SRC_SSA) {
+			if ((s->instr && s->instr->idx == src1.num) ||
+				(s->instr_s && s->instr_s->idx == src1.num))
+				break;
+		}
+
+		unsigned mr = ~(s->reg_state[reg_idx/8] >> reg_idx%8*4 & 0xf);
+		if ((mask & mr) == 0)
+			break;
+
+		mask &= mr;
+		if (s->instr_s || s->instr->src_count == 3)
+			continue;
+
+		if (s->instr->type != IR2_ALU || s->instr->alu.export >= 0)
+			continue;
+
+		sched = s;
+	}
+	*comp = ffs(mask) - 1;
+	return sched;
+}
+
+/* case1:
+ * in this case, insert a mov to place the 2nd src into to same reg
+ * (scalar sources come from the same register)
+ *
+ * this is a common case which works when one of the srcs is input/const
+ * but for instrs which have 2 ssa/reg srcs, then its not ideal
+ */
+static bool
+scalarize_case1(struct ir2_context *ctx, struct ir2_instr *instr, bool order)
+{
+	struct ir2_src src0 = instr->src[ order];
+	struct ir2_src src1 = instr->src[!order];
+	struct ir2_sched_instr *sched;
+	struct ir2_instr *ins;
+	struct ir2_reg *reg;
+	unsigned idx, comp;
+
+	switch (src0.type) {
+	case IR2_SRC_CONST:
+	case IR2_SRC_INPUT:
+		return false;
+	default:
+		break;
+	}
+
+	/* TODO, insert needs logic for this */
+	if (src1.type == IR2_SRC_REG)
+		return false;
+
+	/* we could do something if they match src1.. */
+	if (src0.negate || src0.abs)
+		return false;
+
+	reg = get_reg_src(ctx, &src0);
+
+	/* result not used more since we will overwrite */
+	for (int i = 0; i < 4; i++)
+		if (reg->comp[i].ref_count != !!(instr->alu.write_mask & 1 << i))
+			return false;
+
+	/* find a place to insert the mov */
+	sched = insert(ctx, instr->block_idx, reg->idx, src1, &comp);
+	if (!sched)
+		return false;
+
+	ins = &ctx->instr[idx = ctx->instr_count++];
+	ins->idx = idx;
+	ins->type = IR2_ALU;
+	ins->src[0] = src1;
+	ins->src_count = 1;
+	ins->is_ssa = true;
+	ins->ssa.idx = reg->idx;
+	ins->ssa.ncomp = 1;
+	ins->ssa.comp[0].c = comp;
+	ins->alu.scalar_opc = MAXs;
+	ins->alu.export = -1;
+	ins->alu.write_mask = 1;
+	ins->pred = instr->pred;
+	ins->block_idx = instr->block_idx;
+
+	instr->src[0] = src0;
+	instr->alu.src1_swizzle = comp;
+
+	sched->instr_s = ins;
+	return true;
+}
+
 /* fill sched with next fetch or (vector and/or scalar) alu instruction */
 static int sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
 {
@@ -203,6 +313,28 @@ static int sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
 	}
 
 	assert(instr_v || instr_s);
+
+	/* now, we try more complex insertion of vector instruction as scalar
+	 * TODO: if we are smart we can still insert if instr_v->src_count==3
+	 */
+	if (!instr_s && instr_v->src_count < 3) {
+		ir2_foreach_avail(instr) {
+			if (!is_alu_compatible(instr_v, instr) || !scalar_possible(instr))
+				continue;
+
+			/* at this point, src_count should always be 2 */
+			assert(instr->src_count == 2);
+
+			if (scalarize_case1(ctx, instr, 0)) {
+				instr_s = instr;
+				break;
+			}
+			if (scalarize_case1(ctx, instr, 1)) {
+				instr_s = instr;
+				break;
+			}
+		}
+	}
 
 	/* free src registers */
 	if (instr_v) {
