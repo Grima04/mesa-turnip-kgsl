@@ -87,6 +87,7 @@ struct fd_screen {
 	 */
 	struct fd_pipe *pipe;
 
+	uint32_t (*fill_ubwc_buffer_sizes)(struct fd_resource *rsc);
 	uint32_t (*setup_slices)(struct fd_resource *rsc);
 	unsigned (*tile_mode)(const struct pipe_resource *prsc);
 
