@@ -122,8 +122,8 @@ calculate_tiles(struct fd_batch *batch)
 	uint8_t cbuf_cpp[MAX_RENDER_TARGETS] = {0}, zsbuf_cpp[2] = {0};
 	uint32_t i, j, t, xoff, yoff;
 	uint32_t tpp_x, tpp_y;
-	bool has_zs = !!((batch->resolve | batch->restore) &
-			(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL));
+	bool has_zs = !!(batch->gmem_reason & (FD_GMEM_DEPTH_ENABLED |
+		FD_GMEM_STENCIL_ENABLED | FD_GMEM_CLEARS_DEPTH_STENCIL));
 	int tile_n[npipes];
 
 	if (has_zs) {
@@ -131,6 +131,10 @@ calculate_tiles(struct fd_batch *batch)
 		zsbuf_cpp[0] = rsc->cpp;
 		if (rsc->stencil)
 			zsbuf_cpp[1] = rsc->stencil->cpp;
+	} else {
+		/* we might have a zsbuf, but it isn't used */
+		batch->restore &= ~(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL);
+		batch->resolve &= ~(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL);
 	}
 	for (i = 0; i < pfb->nr_cbufs; i++) {
 		if (pfb->cbufs[i])
