@@ -972,12 +972,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
           */
          bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
 
-         fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
          op[0].type = BRW_REGISTER_TYPE_UD;
          result.type = BRW_REGISTER_TYPE_UD;
-         bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
+         bld.AND(result, op[0], brw_imm_ud(0x80000000u));
 
-         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+         inst = bld.OR(result, result, brw_imm_ud(0x3f800000u));
          inst->predicate = BRW_PREDICATE_NORMAL;
       } else {
          /* For doubles we do the same but we need to consider:
