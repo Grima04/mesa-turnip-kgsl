@@ -2022,7 +2022,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * able to preserve that information.
        */
 
-      struct vtn_type *interface_type = var->type;
+      struct vtn_type *per_vertex_type = var->type;
       if (is_per_vertex_inout(var, b->shader->info.stage)) {
          /* In Geometry shaders (and some tessellation), inputs come
           * in per-vertex arrays.  However, some builtins come in
@@ -2030,24 +2030,40 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
           * any case, there are no non-builtin arrays allowed so this
           * check should be sufficient.
           */
-         interface_type = var->type->array_element;
+         per_vertex_type = var->type->array_element;
       }
 
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       /* In Vulkan, shader I/O variables don't have any explicit layout but
        * some layouts may have leaked through due to type deduplication in
-       * the SPIR-V.
+       * the SPIR-V.  We do, however, keep the layouts in the variable's
+       * interface_type because we need offsets for XFB arrays of blocks.
        */
       var->var->type = glsl_get_bare_type(var->type->type);
-      var->var->interface_type = interface_type->type;
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
 
-      if (interface_type->base_type == vtn_base_type_struct &&
-          interface_type->block) {
+      /* Figure out the interface block type. */
+      struct vtn_type *iface_type = per_vertex_type;
+      if (var->mode == vtn_variable_mode_output &&
+          (b->shader->info.stage == MESA_SHADER_VERTEX ||
+           b->shader->info.stage == MESA_SHADER_TESS_EVAL ||
+           b->shader->info.stage == MESA_SHADER_GEOMETRY)) {
+         /* For vertex data outputs, we can end up with arrays of blocks for
+          * transform feedback where each array element corresponds to a
+          * different XFB output buffer.
+          */
+         while (iface_type->base_type == vtn_base_type_array)
+            iface_type = iface_type->array_element;
+      }
+      if (iface_type->base_type == vtn_base_type_struct && iface_type->block)
+         var->var->interface_type = iface_type->type;
+
+      if (per_vertex_type->base_type == vtn_base_type_struct &&
+          per_vertex_type->block) {
          /* It's a struct.  Set it up as per-member. */
-         var->var->num_members = glsl_get_length(interface_type->type);
+         var->var->num_members = glsl_get_length(per_vertex_type->type);
          var->var->members = rzalloc_array(var->var, struct nir_variable_data,
                                            var->var->num_members);
 
@@ -2058,9 +2074,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       }
 
       /* For inputs and outputs, we need to grab locations and builtin
-       * information from the interface type.
+       * information from the per-vertex type.
        */
-      vtn_foreach_decoration(b, vtn_value(b, interface_type->id,
+      vtn_foreach_decoration(b, vtn_value(b, per_vertex_type->id,
                                           vtn_value_type_type),
                              var_decoration_cb, var);
       break;
