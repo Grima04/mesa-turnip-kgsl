@@ -374,6 +374,9 @@ v3d_bo_open_handle(struct v3d_screen *screen,
 
         util_hash_table_set(screen->bo_handles, (void *)(uintptr_t)handle, bo);
 
+        screen->bo_count++;
+        screen->bo_size += bo->size;
+
 done:
         mtx_unlock(&screen->bo_handles_mutex);
         return bo;
