@@ -165,15 +165,6 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		}
 	}
 
-	if (ctx->dirty & FD_DIRTY_FRAMEBUFFER) {
-		for (i = 0; i < pfb->nr_cbufs; i++) {
-			if (!pfb->cbufs[i])
-				continue;
-
-			resource_written(batch, pfb->cbufs[i]->texture);
-		}
-	}
-
 	if (fd_logicop_enabled(ctx))
 		batch->gmem_reason |= FD_GMEM_LOGICOP_ENABLED;
 
@@ -195,6 +186,9 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
 		if (fd_blend_enabled(ctx, i))
 			batch->gmem_reason |= FD_GMEM_BLEND_ENABLED;
+
+		if (ctx->dirty & FD_DIRTY_FRAMEBUFFER)
+			resource_written(batch, pfb->cbufs[i]->texture);
 	}
 
 	/* Mark SSBOs as being written.. we don't actually know which ones are

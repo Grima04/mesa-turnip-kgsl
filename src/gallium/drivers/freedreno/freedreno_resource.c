@@ -1188,24 +1188,30 @@ fd_blitter_pipe_end(struct fd_context *ctx)
 static void
 fd_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
+	struct fd_context *ctx = fd_context(pctx);
 	struct fd_resource *rsc = fd_resource(prsc);
 
 	/*
 	 * TODO I guess we could track that the resource is invalidated and
 	 * use that as a hint to realloc rather than stall in _transfer_map(),
 	 * even in the non-DISCARD_WHOLE_RESOURCE case?
+	 *
+	 * Note: we set dirty bits to trigger invalidate logic fd_draw_vbo
 	 */
 
 	if (rsc->write_batch) {
 		struct fd_batch *batch = rsc->write_batch;
 		struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
-		if (pfb->zsbuf && pfb->zsbuf->texture == prsc)
+		if (pfb->zsbuf && pfb->zsbuf->texture == prsc) {
 			batch->resolve &= ~(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL);
+			ctx->dirty |= FD_DIRTY_ZSA;
+		}
 
 		for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
 			if (pfb->cbufs[i] && pfb->cbufs[i]->texture == prsc) {
 				batch->resolve &= ~(PIPE_CLEAR_COLOR0 << i);
+				ctx->dirty |= FD_DIRTY_FRAMEBUFFER;
 			}
 		}
 	}
