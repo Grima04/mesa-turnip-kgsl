@@ -87,6 +87,30 @@ containers:ubuntu:
     - ninja
     - ninja test
 
+.make-build:
+  extends: .build
+  variables:
+    MAKEFLAGS: "-j4"
+  before_script:
+    - if test -n "$LLVM_VERSION"; then
+        export LLVM_CONFIG="llvm-config-${LLVM_VERSION}";
+      fi
+    - mkdir build
+    - cd build
+    - ../autogen.sh
+        --enable-autotools
+        --enable-debug
+        $LIBUNWIND_FLAGS
+        $DRI_LOADERS
+        --with-dri-drivers=$DRI_DRIVERS
+        $GALLIUM_ST
+        --with-gallium-drivers=$GALLIUM_DRIVERS
+        --with-vulkan-drivers=$VULKAN_DRIVERS
+        --disable-llvm-shared-libs
+  script:
+    - make
+    - eval $MAKE_CHECK_COMMAND
+
 build:meson-vulkan:
   extends: .meson-build
   variables:
@@ -108,3 +132,28 @@ build:meson-vulkan:
       -D gallium-opencl=disabled
     VULKAN_DRIVERS: intel,amd
     LLVM_VERSION: "7"
+
+build:make-vulkan:
+  extends: .make-build
+  variables:
+    MAKE_CHECK_COMMAND: "make -C src/gtest check && make -C src/intel check"
+    LLVM_VERSION: "7"
+    DRI_LOADERS: >
+      --disable-glx
+      --disable-gbm
+      --disable-egl
+      --with-platforms=x11,wayland,drm
+    DRI_DRIVERS: ""
+    GALLIUM_ST: >
+      --enable-dri
+      --enable-dri3
+      --disable-opencl
+      --disable-xa
+      --disable-nine
+      --disable-xvmc
+      --disable-vdpau
+      --disable-va
+      --disable-omx-bellagio
+      --disable-gallium-osmesa
+    VULKAN_DRIVERS: intel,radeon
+    LIBUNWIND_FLAGS: --disable-libunwind
