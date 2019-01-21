@@ -802,6 +802,8 @@ struct si_context {
 	void				*cs_copy_buffer;
 	void				*cs_copy_image;
 	void				*cs_copy_image_1d_array;
+	void				*cs_clear_render_target;
+	void				*cs_clear_render_target_1d_array;
 	struct si_screen		*screen;
 	struct pipe_debug_callback	debug;
 	struct ac_llvm_compiler		compiler; /* only non-threaded compilation */
@@ -1179,6 +1181,11 @@ void si_compute_copy_image(struct si_context *sctx,
 			   unsigned src_level,
 			   unsigned dstx, unsigned dsty, unsigned dstz,
 			   const struct pipe_box *src_box);
+void si_compute_clear_render_target(struct pipe_context *ctx,
+                                    struct pipe_surface *dstsurf,
+                                    const union pipe_color_union *color,
+                                    unsigned dstx, unsigned dsty,
+                                    unsigned width, unsigned height);
 void si_init_compute_blit_functions(struct si_context *sctx);
 
 /* si_cp_dma.c */
@@ -1294,6 +1301,8 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 				   bool dst_stream_cache_policy, bool is_copy);
 void *si_create_copy_image_compute_shader(struct pipe_context *ctx);
 void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx);
+void *si_clear_render_target_shader(struct pipe_context *ctx);
+void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
 void *si_create_query_result_cs(struct si_context *sctx);
 
 /* si_test_dma.c */

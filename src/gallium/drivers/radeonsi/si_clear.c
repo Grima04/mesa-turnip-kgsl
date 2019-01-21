@@ -680,6 +680,12 @@ static void si_clear_render_target(struct pipe_context *ctx,
 				   bool render_condition_enabled)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
+	struct si_texture *sdst = (struct si_texture*)dst->texture;
+
+	if (dst->texture->nr_samples <= 1 && !sdst->dcc_offset) {
+		si_compute_clear_render_target(ctx, dst, color, dstx, dsty, width, height);
+		return;
+	}
 
 	si_blitter_begin(sctx, SI_CLEAR_SURFACE |
 			 (render_condition_enabled ? 0 : SI_DISABLE_RENDER_COND));
