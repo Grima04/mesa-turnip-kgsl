@@ -3303,6 +3303,27 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	}
 }
 
+static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx,
+						    unsigned base_index,
+						    unsigned constant_index,
+						    LLVMValueRef dynamic_index)
+{
+	LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, base_index * 4, 0);
+	LLVMValueRef index = LLVMBuildAdd(ctx->ac.builder, dynamic_index,
+					  LLVMConstInt(ctx->ac.i32, constant_index, 0), "");
+
+	/* Bindless uniforms are 64bit so multiple index by 8 */
+	index = LLVMBuildMul(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i32, 8, 0), "");
+	offset = LLVMBuildAdd(ctx->ac.builder, offset, index, "");
+
+	LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, ctx->ac.i32_0);
+
+	LLVMValueRef ret = ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset,
+						NULL, 0, false, false, true, true);
+
+	return LLVMBuildBitCast(ctx->ac.builder, ret, ctx->ac.i32, "");
+}
+
 static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 				     nir_deref_instr *deref_instr,
 				     enum ac_descriptor_type desc_type,
@@ -3353,8 +3374,15 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 		descriptor_set = deref_instr->var->data.descriptor_set;
 
 		if (deref_instr->var->data.bindless) {
+			/* For now just assert on unhandled variable types */
+			assert(deref_instr->var->data.mode == nir_var_uniform);
+
 			base_index = deref_instr->var->data.driver_location;
 			bindless = true;
+
+			index = index ? index : ctx->ac.i32_0;
+			index = get_bindless_index_from_uniform(ctx, base_index,
+								constant_index, index);
 		} else
 			base_index = deref_instr->var->data.binding;
 	}
