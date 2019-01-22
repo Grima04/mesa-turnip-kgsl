@@ -4031,6 +4031,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpPtrAccessChain:
    case SpvOpInBoundsAccessChain:
    case SpvOpArrayLength:
+   case SpvOpConvertPtrToU:
+   case SpvOpConvertUToPtr:
       vtn_handle_variables(b, opcode, w, count);
       break;
 
@@ -4187,8 +4189,6 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpSConvert:
    case SpvOpFConvert:
    case SpvOpQuantizeToF16:
-   case SpvOpConvertPtrToU:
-   case SpvOpConvertUToPtr:
    case SpvOpPtrCastToGeneric:
    case SpvOpGenericCastToPtr:
    case SpvOpBitcast:

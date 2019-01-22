@@ -2150,6 +2150,44 @@ vtn_assert_types_equal(struct vtn_builder *b, SpvOp opcode,
             glsl_get_type_name(src_type->type));
 }
 
+static nir_ssa_def *
+nir_shrink_zero_pad_vec(nir_builder *b, nir_ssa_def *val,
+                        unsigned num_components)
+{
+   if (val->num_components == num_components)
+      return val;
+
+   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < num_components; i++) {
+      if (i < val->num_components)
+         comps[i] = nir_channel(b, val, i);
+      else
+         comps[i] = nir_imm_intN_t(b, 0, val->bit_size);
+   }
+   return nir_vec(b, comps, num_components);
+}
+
+static nir_ssa_def *
+nir_sloppy_bitcast(nir_builder *b, nir_ssa_def *val,
+                   const struct glsl_type *type)
+{
+   const unsigned num_components = glsl_get_vector_elements(type);
+   const unsigned bit_size = glsl_get_bit_size(type);
+
+   /* First, zero-pad to ensure that the value is big enough that when we
+    * bit-cast it, we don't loose anything.
+    */
+   if (val->bit_size < bit_size) {
+      const unsigned src_num_components_needed =
+         vtn_align_u32(val->num_components, bit_size / val->bit_size);
+      val = nir_shrink_zero_pad_vec(b, val, src_num_components_needed);
+   }
+
+   val = nir_bitcast_vector(b, val, bit_size);
+
+   return nir_shrink_zero_pad_vec(b, val, num_components);
+}
+
 void
 vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                      const uint32_t *w, unsigned count)
@@ -2349,6 +2387,41 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
       val->ssa = vtn_create_ssa_value(b, glsl_uint_type());
       val->ssa->def = array_length;
+      break;
+   }
+
+   case SpvOpConvertPtrToU: {
+      struct vtn_value *u_val = vtn_push_value(b, w[2], vtn_value_type_ssa);
+
+      vtn_fail_if(u_val->type->base_type != vtn_base_type_vector &&
+                  u_val->type->base_type != vtn_base_type_scalar,
+                  "OpConvertPtrToU can only be used to cast to a vector or "
+                  "scalar type");
+
+      /* The pointer will be converted to an SSA value automatically */
+      nir_ssa_def *ptr_ssa = vtn_ssa_value(b, w[3])->def;
+
+      u_val->ssa = vtn_create_ssa_value(b, u_val->type->type);
+      u_val->ssa->def = nir_sloppy_bitcast(&b->nb, ptr_ssa, u_val->type->type);
+      break;
+   }
+
+   case SpvOpConvertUToPtr: {
+      struct vtn_value *ptr_val =
+         vtn_push_value(b, w[2], vtn_value_type_pointer);
+      struct vtn_value *u_val = vtn_value(b, w[3], vtn_value_type_ssa);
+
+      vtn_fail_if(ptr_val->type->type == NULL,
+                  "OpConvertUToPtr can only be used on physical pointers");
+
+      vtn_fail_if(u_val->type->base_type != vtn_base_type_vector &&
+                  u_val->type->base_type != vtn_base_type_scalar,
+                  "OpConvertUToPtr can only be used to cast from a vector or "
+                  "scalar type");
+
+      nir_ssa_def *ptr_ssa = nir_sloppy_bitcast(&b->nb, u_val->ssa->def,
+                                                ptr_val->type->type);
+      ptr_val->pointer = vtn_pointer_from_ssa(b, ptr_ssa, ptr_val->type);
       break;
    }
 
