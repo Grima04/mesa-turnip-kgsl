@@ -71,14 +71,14 @@ glsl_get_struct_field(const glsl_type *type, unsigned index)
    return type->fields.structure[index].type;
 }
 
-const int
+int
 glsl_get_struct_field_offset(const struct glsl_type *type,
                              unsigned index)
 {
    return type->fields.structure[index].offset;
 }
 
-const unsigned
+unsigned
 glsl_get_explicit_stride(const struct glsl_type *type)
 {
    return type->explicit_stride;
