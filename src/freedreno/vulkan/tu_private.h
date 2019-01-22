@@ -72,6 +72,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_VBS 32
 #define MAX_VERTEX_ATTRIBS 32
 #define MAX_RTS 8
+#define MAX_VSC_PIPES 32
 #define MAX_VIEWPORTS 16
 #define MAX_SCISSORS 16
 #define MAX_DISCARD_RECTANGLES 4
@@ -666,6 +667,37 @@ struct tu_descriptor_state
    uint32_t dynamic_buffers[4 * MAX_DYNAMIC_BUFFERS];
 };
 
+struct tu_tile
+{
+   uint8_t pipe;
+   uint8_t slot;
+   VkOffset2D begin;
+   VkOffset2D end;
+};
+
+struct tu_tiling_config
+{
+   VkRect2D render_area;
+   uint32_t buffer_cpp[MAX_RTS + 2];
+   uint32_t buffer_count;
+
+   /* position and size of the first tile */
+   VkRect2D tile0;
+   /* number of tiles */
+   VkExtent2D tile_count;
+
+   uint32_t gmem_offsets[MAX_RTS + 2];
+
+   /* size of the first VSC pipe */
+   VkExtent2D pipe0;
+   /* number of VSC pipes */
+   VkExtent2D pipe_count;
+
+   /* pipe register values */
+   uint32_t pipe_config[MAX_VSC_PIPES];
+   uint32_t pipe_sizes[MAX_VSC_PIPES];
+};
+
 struct tu_cmd_state
 {
    /* Vertex descriptors */
@@ -685,6 +717,8 @@ struct tu_cmd_state
    const struct tu_subpass *subpass;
    const struct tu_framebuffer *framebuffer;
    struct tu_attachment_state *attachments;
+
+   struct tu_tiling_config tiling_config;
 };
 
 struct tu_cmd_pool

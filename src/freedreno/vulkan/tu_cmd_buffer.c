@@ -107,6 +107,213 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
    return VK_SUCCESS;
 }
 
+static VkResult
+tu_tiling_config_update_gmem_layout(struct tu_tiling_config *tiling,
+                                    const struct tu_device *dev)
+{
+   const uint32_t gmem_size = dev->physical_device->gmem_size;
+   uint32_t offset = 0;
+
+   for (uint32_t i = 0; i < tiling->buffer_count; i++) {
+      /* 16KB-aligned */
+      offset = align(offset, 0x4000);
+
+      tiling->gmem_offsets[i] = offset;
+      offset += tiling->tile0.extent.width * tiling->tile0.extent.height *
+                tiling->buffer_cpp[i];
+   }
+
+   return offset <= gmem_size ? VK_SUCCESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;
+}
+
+static void
+tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
+                                    const struct tu_device *dev)
+{
+   const uint32_t tile_align_w = dev->physical_device->tile_align_w;
+   const uint32_t tile_align_h = dev->physical_device->tile_align_h;
+   const uint32_t max_tile_width = 1024; /* A6xx */
+
+   tiling->tile0.offset = (VkOffset2D) {
+      .x = tiling->render_area.offset.x & ~(tile_align_w - 1),
+      .y = tiling->render_area.offset.y & ~(tile_align_h - 1),
+   };
+
+   const uint32_t ra_width =
+      tiling->render_area.extent.width +
+      (tiling->render_area.offset.x - tiling->tile0.offset.x);
+   const uint32_t ra_height =
+      tiling->render_area.extent.height +
+      (tiling->render_area.offset.y - tiling->tile0.offset.y);
+
+   /* start from 1 tile */
+   tiling->tile_count = (VkExtent2D) {
+      .width = 1,
+      .height = 1,
+   };
+   tiling->tile0.extent = (VkExtent2D) {
+      .width = align(ra_width, tile_align_w),
+      .height = align(ra_height, tile_align_h),
+   };
+
+   /* do not exceed max tile width */
+   while (tiling->tile0.extent.width > max_tile_width) {
+      tiling->tile_count.width++;
+      tiling->tile0.extent.width =
+         align(ra_width / tiling->tile_count.width, tile_align_w);
+   }
+
+   /* do not exceed gmem size */
+   while (tu_tiling_config_update_gmem_layout(tiling, dev) != VK_SUCCESS) {
+      if (tiling->tile0.extent.width > tiling->tile0.extent.height) {
+         tiling->tile_count.width++;
+         tiling->tile0.extent.width =
+            align(ra_width / tiling->tile_count.width, tile_align_w);
+      } else {
+         tiling->tile_count.height++;
+         tiling->tile0.extent.height =
+            align(ra_height / tiling->tile_count.height, tile_align_h);
+      }
+   }
+}
+
+static void
+tu_tiling_config_update_pipe_layout(struct tu_tiling_config *tiling,
+                                    const struct tu_device *dev)
+{
+   const uint32_t max_pipe_count = 32; /* A6xx */
+
+   /* start from 1 tile per pipe */
+   tiling->pipe0 = (VkExtent2D) {
+      .width = 1,
+      .height = 1,
+   };
+   tiling->pipe_count = tiling->tile_count;
+
+   /* do not exceed max pipe count vertically */
+   while (tiling->pipe_count.height > max_pipe_count) {
+      tiling->pipe0.height += 2;
+      tiling->pipe_count.height =
+         (tiling->tile_count.height + tiling->pipe0.height - 1) /
+         tiling->pipe0.height;
+   }
+
+   /* do not exceed max pipe count */
+   while (tiling->pipe_count.width * tiling->pipe_count.height >
+          max_pipe_count) {
+      tiling->pipe0.width += 1;
+      tiling->pipe_count.width =
+         (tiling->tile_count.width + tiling->pipe0.width - 1) /
+         tiling->pipe0.width;
+   }
+}
+
+static void
+tu_tiling_config_update_pipes(struct tu_tiling_config *tiling,
+                              const struct tu_device *dev)
+{
+   const uint32_t max_pipe_count = 32; /* A6xx */
+   const uint32_t used_pipe_count =
+      tiling->pipe_count.width * tiling->pipe_count.height;
+   const VkExtent2D last_pipe = {
+      .width = tiling->tile_count.width % tiling->pipe0.width,
+      .height = tiling->tile_count.height % tiling->pipe0.height,
+   };
+
+   assert(used_pipe_count <= max_pipe_count);
+   assert(max_pipe_count <= ARRAY_SIZE(tiling->pipe_config));
+
+   for (uint32_t y = 0; y < tiling->pipe_count.height; y++) {
+      for (uint32_t x = 0; x < tiling->pipe_count.width; x++) {
+         const uint32_t pipe_x = tiling->pipe0.width * x;
+         const uint32_t pipe_y = tiling->pipe0.height * y;
+         const uint32_t pipe_w = (x == tiling->pipe_count.width - 1)
+                                    ? last_pipe.width
+                                    : tiling->pipe0.width;
+         const uint32_t pipe_h = (y == tiling->pipe_count.height - 1)
+                                    ? last_pipe.height
+                                    : tiling->pipe0.height;
+         const uint32_t n = tiling->pipe_count.width * y + x;
+
+         tiling->pipe_config[n] = A6XX_VSC_PIPE_CONFIG_REG_X(pipe_x) |
+                                  A6XX_VSC_PIPE_CONFIG_REG_Y(pipe_y) |
+                                  A6XX_VSC_PIPE_CONFIG_REG_W(pipe_w) |
+                                  A6XX_VSC_PIPE_CONFIG_REG_H(pipe_h);
+         tiling->pipe_sizes[n] = CP_SET_BIN_DATA5_0_VSC_SIZE(pipe_w * pipe_h);
+      }
+   }
+
+   memset(tiling->pipe_config + used_pipe_count, 0,
+          sizeof(uint32_t) * (max_pipe_count - used_pipe_count));
+}
+
+static void
+tu_tiling_config_update(struct tu_tiling_config *tiling,
+                        const struct tu_device *dev,
+                        const uint32_t *buffer_cpp,
+                        uint32_t buffer_count,
+                        const VkRect2D *render_area)
+{
+   /* see if there is any real change */
+   const bool ra_changed =
+      render_area &&
+      memcmp(&tiling->render_area, render_area, sizeof(*render_area));
+   const bool buf_changed = tiling->buffer_count != buffer_count ||
+                            memcmp(tiling->buffer_cpp, buffer_cpp,
+                                   sizeof(*buffer_cpp) * buffer_count);
+   if (!ra_changed && !buf_changed)
+      return;
+
+   if (ra_changed)
+      tiling->render_area = *render_area;
+
+   if (buf_changed) {
+      memcpy(tiling->buffer_cpp, buffer_cpp,
+             sizeof(*buffer_cpp) * buffer_count);
+      tiling->buffer_count = buffer_count;
+   }
+
+   tu_tiling_config_update_tile_layout(tiling, dev);
+   tu_tiling_config_update_pipe_layout(tiling, dev);
+   tu_tiling_config_update_pipes(tiling, dev);
+}
+
+static void
+tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
+                          const struct tu_device *dev,
+                          uint32_t tx,
+                          uint32_t ty,
+                          struct tu_tile *tile)
+{
+   /* find the pipe and the slot for tile (tx, ty) */
+   const uint32_t px = tx / tiling->pipe0.width;
+   const uint32_t py = ty / tiling->pipe0.height;
+   const uint32_t sx = tx - tiling->pipe0.width * px;
+   const uint32_t sy = ty - tiling->pipe0.height * py;
+
+   assert(tx < tiling->tile_count.width && ty < tiling->tile_count.height);
+   assert(px < tiling->pipe_count.width && py < tiling->pipe_count.height);
+   assert(sx < tiling->pipe0.width && sy < tiling->pipe0.height);
+
+   /* convert to 1D indices */
+   tile->pipe = tiling->pipe_count.width * py + px;
+   tile->slot = tiling->pipe0.width * sy + sx;
+
+   /* get the blit area for the tile */
+   tile->begin = (VkOffset2D) {
+      .x = tiling->tile0.offset.x + tiling->tile0.extent.width * tx,
+      .y = tiling->tile0.offset.y + tiling->tile0.extent.height * ty,
+   };
+   tile->end.x =
+      (tx == tiling->tile_count.width - 1)
+         ? tiling->render_area.offset.x + tiling->render_area.extent.width
+         : tile->begin.x + tiling->tile0.extent.width;
+   tile->end.y =
+      (ty == tiling->tile_count.height - 1)
+         ? tiling->render_area.offset.y + tiling->render_area.extent.height
+         : tile->begin.y + tiling->tile0.extent.height;
+}
+
 static void
 tu6_emit_marker(struct tu_cmd_buffer *cmd)
 {
@@ -305,6 +512,57 @@ tu6_init_hw(struct tu_cmd_buffer *cmd)
    tu_cs_emit(cs, 0x00000000);
 
    tu_cs_reserve_space_assert(cs);
+}
+
+static void
+tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
+{
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   for (uint32_t y = 0; y < tiling->tile_count.height; y++) {
+      for (uint32_t x = 0; x < tiling->tile_count.width; x++) {
+         struct tu_tile tile;
+         tu_tiling_config_get_tile(tiling, cmd->device, x, y, &tile);
+         /* TODO */
+      }
+   }
+}
+
+static void
+tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
+                            const VkRect2D *render_area)
+{
+   const struct tu_device *dev = cmd->device;
+   const struct tu_render_pass *pass = cmd->state.pass;
+   const struct tu_subpass *subpass = cmd->state.subpass;
+   struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   uint32_t buffer_cpp[MAX_RTS + 2];
+   uint32_t buffer_count = 0;
+
+   for (uint32_t i = 0; i < subpass->color_count; ++i) {
+      const uint32_t a = subpass->color_attachments[i].attachment;
+      if (a == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      const struct tu_render_pass_attachment *att = &pass->attachments[a];
+      buffer_cpp[buffer_count++] =
+         vk_format_get_blocksize(att->format) * att->samples;
+   }
+
+   if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+      const uint32_t a = subpass->depth_stencil_attachment.attachment;
+      const struct tu_render_pass_attachment *att = &pass->attachments[a];
+
+      /* TODO */
+      assert(att->format != VK_FORMAT_D32_SFLOAT_S8_UINT);
+
+      buffer_cpp[buffer_count++] =
+         vk_format_get_blocksize(att->format) * att->samples;
+   }
+
+   tu_tiling_config_update(tiling, dev, buffer_cpp, buffer_count,
+                           render_area);
 }
 
 const struct tu_dynamic_state default_dynamic_state = {
@@ -958,6 +1216,8 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       tu_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin);
    if (result != VK_SUCCESS)
       return;
+
+   tu_cmd_update_tiling_config(cmd_buffer, &pRenderPassBegin->renderArea);
 }
 
 void
@@ -972,6 +1232,12 @@ tu_CmdBeginRenderPass2KHR(VkCommandBuffer commandBuffer,
 void
 tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   tu_cmd_render_tiles(cmd);
+
+   cmd->state.subpass++;
+   tu_cmd_update_tiling_config(cmd, NULL);
 }
 
 void
@@ -1191,6 +1457,8 @@ void
 tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   tu_cmd_render_tiles(cmd_buffer);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    cmd_buffer->state.attachments = NULL;
