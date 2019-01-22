@@ -66,13 +66,12 @@ struct si_multi_fence {
  * \param old_value	Previous fence value (for a bug workaround)
  * \param new_value	Fence value to write for this event.
  */
-void si_cp_release_mem(struct si_context *ctx,
+void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		       unsigned event, unsigned event_flags,
 		       unsigned dst_sel, unsigned int_sel, unsigned data_sel,
 		       struct si_resource *buf, uint64_t va,
 		       uint32_t new_fence, unsigned query_type)
 {
-	struct radeon_cmdbuf *cs = ctx->gfx_cs;
 	unsigned op = EVENT_TYPE(event) |
 		      EVENT_INDEX(event == V_028A90_CS_DONE ||
 				  event == V_028A90_PS_DONE ? 6 : 5) |
@@ -269,7 +268,7 @@ static void si_fine_fence_set(struct si_context *ctx,
 
 		radeon_add_to_buffer_list(ctx, ctx->gfx_cs, fine->buf,
 					  RADEON_USAGE_WRITE, RADEON_PRIO_QUERY);
-		si_cp_release_mem(ctx,
+		si_cp_release_mem(ctx, ctx->gfx_cs,
 				  V_028A90_BOTTOM_OF_PIPE_TS, 0,
 				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 				  EOP_DATA_SEL_VALUE_32BIT,

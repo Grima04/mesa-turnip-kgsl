@@ -820,7 +820,7 @@ static void si_query_hw_do_emit_start(struct si_context *sctx,
 			emit_sample_streamout(cs, va + 32 * stream, stream);
 		break;
 	case PIPE_QUERY_TIME_ELAPSED:
-		si_cp_release_mem(sctx, V_028A90_BOTTOM_OF_PIPE_TS, 0,
+		si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0,
 				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 				  EOP_DATA_SEL_TIMESTAMP, NULL, va,
 				  0, query->b.type);
@@ -896,7 +896,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx,
 		va += 8;
 		/* fall through */
 	case PIPE_QUERY_TIMESTAMP:
-		si_cp_release_mem(sctx, V_028A90_BOTTOM_OF_PIPE_TS, 0,
+		si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0,
 				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 				  EOP_DATA_SEL_TIMESTAMP, NULL, va,
 				  0, query->b.type);
@@ -921,7 +921,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx,
 				  RADEON_PRIO_QUERY);
 
 	if (fence_va) {
-		si_cp_release_mem(sctx, V_028A90_BOTTOM_OF_PIPE_TS, 0,
+		si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0,
 				  EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 				  EOP_DATA_SEL_VALUE_32BIT,
 				  query->buffer.buf, fence_va, 0x80000000,

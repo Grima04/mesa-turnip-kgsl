@@ -1274,7 +1274,7 @@ void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst
 			    uint64_t offset, uint64_t size, unsigned value);
 
 /* si_fence.c */
-void si_cp_release_mem(struct si_context *ctx,
+void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		       unsigned event, unsigned event_flags,
 		       unsigned dst_sel, unsigned int_sel, unsigned data_sel,
 		       struct si_resource *buf, uint64_t va,

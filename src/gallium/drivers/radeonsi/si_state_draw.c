@@ -945,7 +945,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 
 			/* Necessary for DCC */
 			if (sctx->chip_class == GFX8)
-				si_cp_release_mem(sctx,
+				si_cp_release_mem(sctx, cs,
 						  V_028A90_FLUSH_AND_INV_CB_DATA_TS,
 						  0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
 						  EOP_DATA_SEL_DISCARD, NULL,
@@ -1062,7 +1062,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 		va = sctx->wait_mem_scratch->gpu_address;
 		sctx->wait_mem_number++;
 
-		si_cp_release_mem(sctx, cb_db_event, tc_flags,
+		si_cp_release_mem(sctx, cs, cb_db_event, tc_flags,
 				  EOP_DST_SEL_MEM,
 				  EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM,
 				  EOP_DATA_SEL_VALUE_32BIT,
