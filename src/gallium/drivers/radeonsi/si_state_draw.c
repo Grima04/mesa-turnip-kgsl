@@ -1372,7 +1372,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	}
 
 	if (sctx->do_update_shaders && !si_update_shaders(sctx))
-		return;
+		goto return_cleanup;
 
 	if (index_size) {
 		/* Translate or upload, if needed. */
@@ -1454,7 +1454,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	 * need_cs_space flush before we add buffers to the buffer list.
 	 */
 	if (!si_upload_vertex_buffer_descriptors(sctx))
-		return;
+		goto return_cleanup;
 
 	/* Use optimal packet order based on whether we need to sync the pipeline. */
 	if (unlikely(sctx->flags & (SI_CONTEXT_FLUSH_AND_INV_CB |
@@ -1472,7 +1472,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
 
 		if (!si_upload_graphics_shader_descriptors(sctx))
-			return;
+			goto return_cleanup;
 
 		/* Emit all states except possibly render condition. */
 		si_emit_all_states(sctx, info, masked_atoms);
@@ -1539,6 +1539,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		if (G_0286E8_WAVESIZE(sctx->spi_tmpring_size))
 			sctx->num_spill_draw_calls++;
 	}
+
+return_cleanup:
 	if (index_size && indexbuf != info->index.resource)
 		pipe_resource_reference(&indexbuf, NULL);
 }
