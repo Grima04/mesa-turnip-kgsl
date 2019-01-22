@@ -497,7 +497,8 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
    case SpvOpMemberDecorate:
    case SpvOpDecorateStringGOOGLE:
    case SpvOpMemberDecorateStringGOOGLE:
-   case SpvOpExecutionMode: {
+   case SpvOpExecutionMode:
+   case SpvOpExecutionModeId: {
       struct vtn_value *val = vtn_untyped_value(b, target);
 
       struct vtn_decoration *dec = rzalloc(b, struct vtn_decoration);
@@ -513,6 +514,7 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
                      "Member argument of OpMemberDecorate too large");
          break;
       case SpvOpExecutionMode:
+      case SpvOpExecutionModeId:
          dec->scope = VTN_DEC_EXECUTION_MODE;
          break;
       default:
@@ -3755,6 +3757,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpExecutionMode:
+   case SpvOpExecutionModeId:
    case SpvOpDecorationGroup:
    case SpvOpDecorate:
    case SpvOpMemberDecorate:
