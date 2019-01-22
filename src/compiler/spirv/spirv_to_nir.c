@@ -4441,16 +4441,16 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    /* Set shader info defaults */
    b->shader->info.gs.invocations = 1;
 
-   /* Parse execution modes */
-   vtn_foreach_execution_mode(b, b->entry_point,
-                              vtn_handle_execution_mode, NULL);
-
    b->specializations = spec;
    b->num_specializations = num_spec;
 
    /* Handle all variable, type, and constant instructions */
    words = vtn_foreach_instruction(b, words, word_end,
                                    vtn_handle_variable_or_type_instruction);
+
+   /* Parse execution modes */
+   vtn_foreach_execution_mode(b, b->entry_point,
+                              vtn_handle_execution_mode, NULL);
 
    if (b->workgroup_size_builtin) {
       vtn_assert(b->workgroup_size_builtin->type->type ==
