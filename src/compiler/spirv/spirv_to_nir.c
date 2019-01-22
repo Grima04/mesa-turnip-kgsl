@@ -3826,7 +3826,15 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       b->shader->info.cs.local_size[1] = mode->literals[1];
       b->shader->info.cs.local_size[2] = mode->literals[2];
       break;
+
+   case SpvExecutionModeLocalSizeId:
+      b->shader->info.cs.local_size[0] = vtn_constant_uint(b, mode->literals[0]);
+      b->shader->info.cs.local_size[1] = vtn_constant_uint(b, mode->literals[1]);
+      b->shader->info.cs.local_size[2] = vtn_constant_uint(b, mode->literals[2]);
+      break;
+
    case SpvExecutionModeLocalSizeHint:
+   case SpvExecutionModeLocalSizeHintId:
       break; /* Nothing to do with this */
 
    case SpvExecutionModeOutputVertices:
