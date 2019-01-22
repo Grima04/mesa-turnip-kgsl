@@ -1028,6 +1028,9 @@ iris_render_condition(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
 
+   /* The old condition isn't relevant; we'll update it if necessary */
+   ice->state.compute_predicate = NULL;
+
    if (!q) {
       ice->state.predicate = IRIS_PREDICATE_STATE_RENDER;
       return;
