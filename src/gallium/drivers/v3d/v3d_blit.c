@@ -517,6 +517,7 @@ v3d_tfu_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
 void
 v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
+        struct v3d_context *v3d = v3d_context(pctx);
         struct pipe_blit_info info = *blit_info;
 
         if (info.mask & PIPE_MASK_S) {
@@ -529,4 +530,11 @@ v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 
         if (info.mask)
                 v3d_render_blit(pctx, &info);
+
+        /* Flush our blit jobs immediately.  They're unlikely to get reused by
+         * normal drawing or other blits, and without flushing we can easily
+         * run into unexpected OOMs when blits are used for a large series of
+         * texture uploads before using the textures.
+         */
+        v3d_flush_jobs_writing_resource(v3d, info.dst.resource);
 }
