@@ -2924,12 +2924,10 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 
 	}
 
-	LLVMValueRef array_idx = ctx->ac.i32_0;
+	LLVMValueRef attrib_idx = ctx->ac.i32_0;
 	while(deref_instr->deref_type != nir_deref_type_var) {
 		if (deref_instr->deref_type == nir_deref_type_array) {
-			unsigned array_size = glsl_get_aoa_size(deref_instr->type);
-			if (!array_size)
-				array_size = 1;
+			unsigned array_size = glsl_count_attribute_slots(deref_instr->type, false);
 
 			LLVMValueRef offset;
 			nir_const_value *const_value = nir_src_as_const_value(deref_instr->arr.index);
@@ -2942,23 +2940,26 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 						      LLVMConstInt(ctx->ac.i32, array_size, false), "");
 			}
 
-			array_idx = LLVMBuildAdd(ctx->ac.builder, array_idx, offset, "");
+			attrib_idx = LLVMBuildAdd(ctx->ac.builder, attrib_idx, offset, "");
 			deref_instr = nir_src_as_deref(deref_instr->parent);
+		} else if (deref_instr->deref_type == nir_deref_type_struct) {
+			LLVMValueRef offset;
+			unsigned sidx = deref_instr->strct.index;
+			deref_instr = nir_src_as_deref(deref_instr->parent);
+			offset = LLVMConstInt(ctx->ac.i32, glsl_get_record_location_offset(deref_instr->type, sidx), false);
+			attrib_idx = LLVMBuildAdd(ctx->ac.builder, attrib_idx, offset, "");
 		} else {
 			unreachable("Unsupported deref type");
 		}
 
 	}
 
-	unsigned input_array_size = glsl_get_aoa_size(var->type);
-	if (!input_array_size)
-		input_array_size = 1;
-
+	unsigned attrib_size = glsl_count_attribute_slots(var->type, false);
 	for (chan = 0; chan < 4; chan++) {
-		LLVMValueRef gather = LLVMGetUndef(LLVMVectorType(ctx->ac.f32, input_array_size));
+		LLVMValueRef gather = LLVMGetUndef(LLVMVectorType(ctx->ac.f32, attrib_size));
 		LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, chan, false);
 
-		for (unsigned idx = 0; idx < input_array_size; ++idx) {
+		for (unsigned idx = 0; idx < attrib_size; ++idx) {
 			LLVMValueRef v, attr_number;
 
 			attr_number = LLVMConstInt(ctx->ac.i32, input_base + idx, false);
@@ -2981,7 +2982,7 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 							LLVMConstInt(ctx->ac.i32, idx, false), "");
 		}
 
-		result[chan] = LLVMBuildExtractElement(ctx->ac.builder, gather, array_idx, "");
+		result[chan] = LLVMBuildExtractElement(ctx->ac.builder, gather, attrib_idx, "");
 
 	}
 	return ac_build_varying_gather_values(&ctx->ac, result, instr->num_components,
