@@ -3358,7 +3358,7 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
       switch (opcode) {
       case SpvOpEmitStreamVertex:
       case SpvOpEndStreamPrimitive: {
-         unsigned stream = vtn_constant_value(b, w[1])->values[0].u32[0];
+         unsigned stream = vtn_constant_uint(b, w[1]);
          nir_intrinsic_set_stream_id(intrin, stream);
          break;
       }
@@ -3372,23 +3372,19 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpMemoryBarrier: {
-      SpvScope scope = vtn_constant_value(b, w[1])->values[0].u32[0];
-      SpvMemorySemanticsMask semantics =
-         vtn_constant_value(b, w[2])->values[0].u32[0];
+      SpvScope scope = vtn_constant_uint(b, w[1]);
+      SpvMemorySemanticsMask semantics = vtn_constant_uint(b, w[2]);
       vtn_emit_memory_barrier(b, scope, semantics);
       return;
    }
 
    case SpvOpControlBarrier: {
-      SpvScope execution_scope =
-         vtn_constant_value(b, w[1])->values[0].u32[0];
+      SpvScope execution_scope = vtn_constant_uint(b, w[1]);
       if (execution_scope == SpvScopeWorkgroup)
          vtn_emit_barrier(b, nir_intrinsic_barrier);
 
-      SpvScope memory_scope =
-         vtn_constant_value(b, w[2])->values[0].u32[0];
-      SpvMemorySemanticsMask memory_semantics =
-         vtn_constant_value(b, w[3])->values[0].u32[0];
+      SpvScope memory_scope = vtn_constant_uint(b, w[2]);
+      SpvMemorySemanticsMask memory_semantics = vtn_constant_uint(b, w[3]);
       vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
       break;
    }
