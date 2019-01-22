@@ -751,7 +751,8 @@ static void si_setup_tgsi_user_data(struct si_context *sctx,
 
 unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
 					unsigned waves_per_threadgroup,
-					unsigned max_waves_per_sh)
+					unsigned max_waves_per_sh,
+					unsigned threadgroups_per_cu)
 {
 	unsigned compute_resource_limits =
 		S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
@@ -767,7 +768,9 @@ unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
 		if (num_cu_per_se % 4 && waves_per_threadgroup == 1)
 			compute_resource_limits |= S_00B854_FORCE_SIMD_DIST(1);
 
-		compute_resource_limits |= S_00B854_WAVES_PER_SH(max_waves_per_sh);
+		assert(threadgroups_per_cu >= 1 && threadgroups_per_cu <= 8);
+		compute_resource_limits |= S_00B854_WAVES_PER_SH(max_waves_per_sh) |
+					   S_00B854_CU_GROUP_COUNT(threadgroups_per_cu - 1);
 	} else {
 		/* GFX6 */
 		if (max_waves_per_sh) {
@@ -789,7 +792,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 
 	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
 			  si_get_compute_resource_limits(sscreen, waves_per_threadgroup,
-							 sctx->cs_max_waves_per_sh));
+							 sctx->cs_max_waves_per_sh, 1));
 
 	unsigned dispatch_initiator =
 		S_00B800_COMPUTE_SHADER_EN(1) |
