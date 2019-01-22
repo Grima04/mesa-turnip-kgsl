@@ -323,6 +323,8 @@ static struct Context {
    struct window registers_window;
 } context;
 
+thread_local ImGuiContext* __MesaImGui;
+
 static int
 map_key(int k)
 {

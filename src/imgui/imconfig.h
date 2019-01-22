@@ -13,6 +13,11 @@
 
 #pragma once
 
+// Have each embedded of ImGui define this symbol :
+struct ImGuiContext;
+extern thread_local ImGuiContext* __MesaImGui;
+#define GImGui __MesaImGui
+
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
