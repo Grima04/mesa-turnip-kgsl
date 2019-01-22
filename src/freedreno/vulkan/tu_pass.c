@@ -405,10 +405,12 @@ tu_DestroyRenderPass(VkDevice _device,
 }
 
 void
-tu_GetRenderAreaGranularity(VkDevice device,
+tu_GetRenderAreaGranularity(VkDevice _device,
                             VkRenderPass renderPass,
                             VkExtent2D *pGranularity)
 {
-   pGranularity->width = 1;
-   pGranularity->height = 1;
+   TU_FROM_HANDLE(tu_device, device, _device);
+
+   pGranularity->width = device->physical_device->tile_align_w;
+   pGranularity->height = device->physical_device->tile_align_h;
 }

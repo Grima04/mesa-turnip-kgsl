@@ -295,6 +295,8 @@ struct tu_physical_device
 
    unsigned gpu_id;
    uint32_t gmem_size;
+   uint32_t tile_align_w;
+   uint32_t tile_align_h;
 
    /* This is the drivers on-disk cache used as a fallback as opposed to
     * the pipeline cache defined by apps.

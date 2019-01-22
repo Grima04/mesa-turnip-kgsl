@@ -223,8 +223,9 @@ tu_physical_device_init(struct tu_physical_device *device,
    sprintf(device->name, "FD%d", device->gpu_id);
 
    switch (device->gpu_id) {
-   case 530:
    case 630:
+      device->tile_align_w = 32;
+      device->tile_align_h = 32;
       break;
    default:
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
