@@ -3309,6 +3309,14 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
 
    brw_push_insn_state(p);
 
+   /* The flag register is only used on Gen7 in align1 mode, so avoid setting
+    * unnecessary bits in the instruction words, get the information we need
+    * and reset the default flag register. This allows more instructions to be
+    * compacted.
+    */
+   const unsigned flag_subreg = p->current->flag_subreg;
+   brw_set_default_flag_reg(p, 0, 0);
+
    if (brw_get_default_access_mode(p) == BRW_ALIGN_1) {
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
 
@@ -3342,8 +3350,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
           */
          inst = brw_FBL(p, vec1(dst), exec_mask);
       } else {
-         const struct brw_reg flag = brw_flag_reg(p->current->flag_subreg / 2,
-                                                  p->current->flag_subreg % 2);
+         const struct brw_reg flag = brw_flag_subreg(flag_subreg);
 
          brw_set_default_exec_size(p, BRW_EXECUTE_1);
          brw_MOV(p, retype(flag, BRW_REGISTER_TYPE_UD), brw_imm_ud(0));
@@ -3363,6 +3370,8 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
             brw_inst_set_group(devinfo, inst, lower_size * i + 8 * qtr_control);
             brw_inst_set_cond_modifier(devinfo, inst, BRW_CONDITIONAL_Z);
             brw_inst_set_exec_size(devinfo, inst, cvt(lower_size) - 1);
+            brw_inst_set_flag_reg_nr(devinfo, inst, flag_subreg / 2);
+            brw_inst_set_flag_subreg_nr(devinfo, inst, flag_subreg % 2);
          }
 
          /* Find the first bit set in the exec_size-wide portion of the flag
