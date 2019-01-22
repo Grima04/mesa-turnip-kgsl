@@ -939,6 +939,12 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 
 		/* dynamic_index is the bindless handle */
 		if (image) {
+			/* For simplicity, bindless image descriptors use fixed
+			 * 16-dword slots for now.
+			 */
+			dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
+					     LLVMConstInt(ctx->i32, 2, 0), "");
+
 			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
 						  dcc_off, true);
 		}
