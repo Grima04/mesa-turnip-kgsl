@@ -147,7 +147,7 @@ static const struct v3d_format format_table[] = {
 #if V3D_VERSION >= 40
         FORMAT(S8_UINT_Z24_UNORM, D24S8,        DEPTH24_X8,  SWIZ_XXXX, 32, 1),
         FORMAT(X8Z24_UNORM,       D24S8,        DEPTH24_X8,  SWIZ_XXXX, 32, 1),
-        FORMAT(S8X24_UINT,        S8,           DEPTH_COMP32F, SWIZ_XXXX, 32, 1),
+        FORMAT(S8X24_UINT,        S8,           RGBA8UI, SWIZ_XXXX, 16, 1),
         FORMAT(Z32_FLOAT,         D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32, 1),
         FORMAT(Z16_UNORM,         D16,          DEPTH_COMP16,SWIZ_XXXX, 32, 1),
 
