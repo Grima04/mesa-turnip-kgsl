@@ -600,6 +600,7 @@ struct vtn_builder {
    gl_shader_stage entry_point_stage;
    const char *entry_point_name;
    struct vtn_value *entry_point;
+   struct vtn_value *workgroup_size_builtin;
    bool origin_upper_left;
    bool pixel_center_integer;
    bool variable_pointers;

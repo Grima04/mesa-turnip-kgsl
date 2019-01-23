@@ -1564,10 +1564,7 @@ handle_workgroup_size_decoration_cb(struct vtn_builder *b,
       return;
 
    vtn_assert(val->type->type == glsl_vector_type(GLSL_TYPE_UINT, 3));
-
-   b->shader->info.cs.local_size[0] = val->constant->values[0].u32[0];
-   b->shader->info.cs.local_size[1] = val->constant->values[0].u32[1];
-   b->shader->info.cs.local_size[2] = val->constant->values[0].u32[2];
+   b->workgroup_size_builtin = val;
 }
 
 static void
@@ -4454,6 +4451,18 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    /* Handle all variable, type, and constant instructions */
    words = vtn_foreach_instruction(b, words, word_end,
                                    vtn_handle_variable_or_type_instruction);
+
+   if (b->workgroup_size_builtin) {
+      vtn_assert(b->workgroup_size_builtin->type->type ==
+                 glsl_vector_type(GLSL_TYPE_UINT, 3));
+
+      nir_const_value *const_size =
+         &b->workgroup_size_builtin->constant->values[0];
+
+      b->shader->info.cs.local_size[0] = const_size->u32[0];
+      b->shader->info.cs.local_size[1] = const_size->u32[1];
+      b->shader->info.cs.local_size[2] = const_size->u32[2];
+   }
 
    /* Set types on all vtn_values */
    vtn_foreach_instruction(b, words, word_end, vtn_set_instruction_result_type);
