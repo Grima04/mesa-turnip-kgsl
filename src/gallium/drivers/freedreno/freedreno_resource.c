@@ -667,6 +667,16 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 	FREE(rsc);
 }
 
+static uint64_t
+fd_resource_modifier(struct fd_resource *rsc)
+{
+	if (!rsc->tile_mode)
+		return DRM_FORMAT_MOD_LINEAR;
+
+	/* TODO invent a modifier for tiled but not UBWC buffers: */
+	return DRM_FORMAT_MOD_INVALID;
+}
+
 static boolean
 fd_resource_get_handle(struct pipe_screen *pscreen,
 		struct pipe_context *pctx,
@@ -675,6 +685,8 @@ fd_resource_get_handle(struct pipe_screen *pscreen,
 		unsigned usage)
 {
 	struct fd_resource *rsc = fd_resource(prsc);
+
+	handle->modifier = fd_resource_modifier(rsc);
 
 	return fd_screen_bo_get_handle(pscreen, rsc->bo,
 			rsc->slices[0].pitch * rsc->cpp, handle);
