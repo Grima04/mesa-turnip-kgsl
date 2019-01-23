@@ -219,6 +219,16 @@ ac_to_integer_type(struct ac_llvm_context *ctx, LLVMTypeRef t)
 		return LLVMVectorType(to_integer_type_scalar(ctx, elem_type),
 		                      LLVMGetVectorSize(t));
 	}
+	if (LLVMGetTypeKind(t) == LLVMPointerTypeKind) {
+		switch (LLVMGetPointerAddressSpace(t)) {
+		case AC_ADDR_SPACE_GLOBAL:
+			return ctx->i64;
+		case AC_ADDR_SPACE_LDS:
+			return ctx->i32;
+		default:
+			unreachable("unhandled address space");
+		}
+	}
 	return to_integer_type_scalar(ctx, t);
 }
 
@@ -226,6 +236,9 @@ LLVMValueRef
 ac_to_integer(struct ac_llvm_context *ctx, LLVMValueRef v)
 {
 	LLVMTypeRef type = LLVMTypeOf(v);
+	if (LLVMGetTypeKind(type) == LLVMPointerTypeKind) {
+		return LLVMBuildPtrToInt(ctx->builder, v, ac_to_integer_type(ctx, type), "");
+	}
 	return LLVMBuildBitCast(ctx->builder, v, ac_to_integer_type(ctx, type), "");
 }
 
