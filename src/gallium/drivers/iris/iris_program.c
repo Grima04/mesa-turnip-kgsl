@@ -175,11 +175,34 @@ iris_lower_storage_image_derefs(nir_shader *nir)
 
 // XXX: need unify_interfaces() at link time...
 
+/**
+ * Fix an uncompiled shader's stream output info.
+ *
+ * Core Gallium stores output->register_index as a "slot" number, where
+ * slots are assigned consecutively to all outputs in info->outputs_written.
+ * This naive packing of outputs doesn't work for us - we too have slots,
+ * but the layout is defined by the VUE map, which we won't have until we
+ * compile a specific shader variant.  So, we remap these and simply store
+ * VARYING_SLOT_* in our copy's output->register_index fields.
+ *
+ * We also fix up VARYING_SLOT_{LAYER,VIEWPORT,PSIZ} to select the Y/Z/W
+ * components of our VUE header.  See brw_vue_map.c for the layout.
+ */
 static void
-update_so_info(struct pipe_stream_output_info *so_info)
+update_so_info(struct pipe_stream_output_info *so_info,
+               uint64_t outputs_written)
 {
+   uint8_t reverse_map[64] = {};
+   unsigned slot = 0;
+   while (outputs_written) {
+      reverse_map[slot++] = u_bit_scan64(&outputs_written);
+   }
+
    for (unsigned i = 0; i < so_info->num_outputs; i++) {
       struct pipe_stream_output *output = &so_info->output[i];
+
+      /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
+      output->register_index = reverse_map[output->register_index];
 
       /* The VUE header contains three scalar fields packed together:
        * - gl_PointSize is stored in VARYING_SLOT_PSIZ.w
@@ -237,7 +260,7 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    ish->nir = nir;
    if (so_info) {
       memcpy(&ish->stream_output, so_info, sizeof(*so_info));
-      update_so_info(&ish->stream_output);
+      update_so_info(&ish->stream_output, nir->info.outputs_written);
    }
 
    return ish;
