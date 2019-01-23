@@ -503,19 +503,22 @@ v3d_set_framebuffer_state(struct pipe_context *pctx,
         v3d->dirty |= VC5_DIRTY_FRAMEBUFFER;
 }
 
-static uint32_t translate_wrap(uint32_t pipe_wrap, bool using_nearest)
+static enum V3DX(Wrap_Mode)
+translate_wrap(uint32_t pipe_wrap, bool using_nearest)
 {
         switch (pipe_wrap) {
         case PIPE_TEX_WRAP_REPEAT:
-                return 0;
+                return V3D_WRAP_MODE_REPEAT;
         case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-                return 1;
+                return V3D_WRAP_MODE_CLAMP;
         case PIPE_TEX_WRAP_MIRROR_REPEAT:
-                return 2;
+                return V3D_WRAP_MODE_MIRROR;
         case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-                return 3;
+                return V3D_WRAP_MODE_BORDER;
         case PIPE_TEX_WRAP_CLAMP:
-                return (using_nearest ? 1 : 3);
+                return (using_nearest ?
+                        V3D_WRAP_MODE_CLAMP :
+                        V3D_WRAP_MODE_BORDER);
         default:
                 unreachable("Unknown wrap mode");
         }
