@@ -1185,7 +1185,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
                                     struct pipe_surface *dstsurf,
                                     const union pipe_color_union *color,
                                     unsigned dstx, unsigned dsty,
-                                    unsigned width, unsigned height);
+                                    unsigned width, unsigned height,
+				    bool render_condition_enabled);
 void si_init_compute_blit_functions(struct si_context *sctx);
 
 /* si_cp_dma.c */

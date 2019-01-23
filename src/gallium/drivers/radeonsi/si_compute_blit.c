@@ -432,7 +432,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 				    struct pipe_surface *dstsurf,
 				    const union pipe_color_union *color,
 				    unsigned dstx, unsigned dsty,
-				    unsigned width, unsigned height)
+				    unsigned width, unsigned height,
+				    bool render_condition_enabled)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	unsigned num_layers = dstsurf->u.tex.last_layer - dstsurf->u.tex.first_layer + 1;
@@ -452,6 +453,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 	}
 
 	si_compute_internal_begin(sctx);
+	sctx->render_cond_force_off = !render_condition_enabled;
+
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
 	si_make_CB_shader_coherent(sctx, dstsurf->texture->nr_samples, true);
