@@ -410,7 +410,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 	 * the depth buffer, etc)
 	 */
 	cleared_buffers = buffers & (FD_BUFFER_ALL & ~batch->restore);
-	batch->cleared |= cleared_buffers;
+	batch->cleared |= buffers;
 	batch->invalidated |= cleared_buffers;
 
 	batch->resolve |= buffers;
