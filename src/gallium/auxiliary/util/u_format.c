@@ -149,45 +149,25 @@ util_format_is_pure_uint(enum pipe_format format)
 }
 
 /**
- * Returns true if all non-void channels are normalized signed.
+ * Returns true if the format contains normalized signed channels.
  */
 boolean
 util_format_is_snorm(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
-   int i;
 
-   if (desc->is_mixed)
-      return FALSE;
-
-   i = util_format_get_first_non_void_channel(format);
-   if (i == -1)
-      return FALSE;
-
-   return desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED &&
-          !desc->channel[i].pure_integer &&
-          desc->channel[i].normalized;
+   return desc->is_snorm;
 }
 
 /**
- * Returns true if all non-void channels are normalized unsigned.
+ * Returns true if the format contains normalized unsigned channels.
  */
 boolean
 util_format_is_unorm(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
-   int i;
 
-   if (desc->is_mixed)
-      return FALSE;
-
-   i = util_format_get_first_non_void_channel(format);
-   if (i == -1)
-      return FALSE;
-
-   return desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED &&
-          !desc->channel[i].pure_integer &&
-          desc->channel[i].normalized;
+   return desc->is_unorm;
 }
 
 boolean
