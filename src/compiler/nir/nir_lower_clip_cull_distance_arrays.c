@@ -144,9 +144,9 @@ combine_clip_cull(nir_shader *nir,
          cull = var;
    }
 
-   /* if the GLSL lowering pass has already run, don't bother repeating */
    if (!cull && clip) {
-      if (!glsl_type_is_array(clip->type))
+      /* The GLSL IR lowering pass must have converted these to vectors */
+      if (!clip->data.compact)
          return false;
    }
 
