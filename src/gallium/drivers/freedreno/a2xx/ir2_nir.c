@@ -292,7 +292,6 @@ instr_create_alu(struct ir2_context *ctx, nir_op opcode, unsigned ncomp)
 		[nir_op_fmov] = {MAXs, MAXv},
 		[nir_op_fsign] = {-1, CNDGTEv},
 		[nir_op_fnot] = {SETEs, SETEv},
-      [nir_op_f2b32] = {SETNEs, SETNEv},
 		[nir_op_for] = {MAXs, MAXv},
 		[nir_op_fand] = {MINs, MINv},
 		[nir_op_fxor] = {-1, SETNEv},
@@ -446,7 +445,6 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr * alu)
 		instr->src[1] = tmp;
 		break;
 	case nir_op_fcsel:
-	case nir_op_bcsel:
 		tmp = instr->src[1];
 		instr->src[1] = instr->src[2];
 		instr->src[2] = tmp;

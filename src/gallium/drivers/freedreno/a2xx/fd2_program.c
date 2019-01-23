@@ -232,7 +232,7 @@ fd2_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	vp = prog->vp;
 
-    /* find variant matching the linked fragment shader */
+	/* find variant matching the linked fragment shader */
 	if (!binning) {
 		fp = prog->fp;
 		for (variant = 1; variant < ARRAY_SIZE(vp->variant); variant++) {
