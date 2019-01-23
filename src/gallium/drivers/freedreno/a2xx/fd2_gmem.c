@@ -263,7 +263,7 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	float x0, y0, x1, y1;
 
 	fd2_emit_vertex_bufs(ring, 0x9c, (struct fd2_vertex_buf[]) {
-			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36, },
+			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36 },
 			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 24, .offset = 36 },
 		}, 2);
 
@@ -273,7 +273,7 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	y0 = ((float)tile->yoff) / ((float)pfb->height);
 	y1 = ((float)tile->yoff + bin_h) / ((float)pfb->height);
 	OUT_PKT3(ring, CP_MEM_WRITE, 9);
-	OUT_RELOC(ring, fd_resource(fd2_ctx->solid_vertexbuf)->bo, 0x60, 0, 0);
+	OUT_RELOC(ring, fd_resource(fd2_ctx->solid_vertexbuf)->bo, 36, 0, 0);
 	OUT_RING(ring, fui(x0));
 	OUT_RING(ring, fui(y0));
 	OUT_RING(ring, fui(x1));
@@ -685,7 +685,7 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 			A2XX_PA_SC_SCREEN_SCISSOR_BR_Y(tile->bin_h));
 
 	/* tile offset for gl_FragCoord on a20x (C64 in fragment shader) */
-	if (is_a20x(batch->ctx->screen)) {
+	if (is_a20x(ctx->screen)) {
 		OUT_PKT3(ring, CP_SET_CONSTANT, 5);
 		OUT_RING(ring, 0x00000580);
 		OUT_RING(ring, fui(tile->xoff));

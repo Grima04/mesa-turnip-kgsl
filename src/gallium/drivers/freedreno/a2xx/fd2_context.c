@@ -56,6 +56,8 @@ create_solid_vertexbuf(struct pipe_context *pctx)
 			+0.000000, +1.000000,
 			/* SCREEN_SCISSOR_BR value (must be at 60 byte offset in page) */
 			0.0,
+			/* zero indices dummy draw workaround (3 16-bit zeros) */
+			0.0, 0.0,
 	};
 	struct pipe_resource *prsc = pipe_buffer_create(pctx->screen,
 			PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE, sizeof(init_shader_const));

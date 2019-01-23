@@ -109,7 +109,7 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 		OUT_RING(ring, 0x0003c004);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000003);
-		OUT_RELOC(ring, fd_resource(fd2_context(ctx)->solid_vertexbuf)->bo, 0x80, 0, 0);
+		OUT_RELOC(ring, fd_resource(fd2_context(ctx)->solid_vertexbuf)->bo, 64, 0, 0);
 		OUT_RING(ring, 0x00000006);
 	} else {
 		OUT_WFI (ring);
