@@ -148,6 +148,12 @@ combine_clip_cull(nir_shader *nir,
       /* The GLSL IR lowering pass must have converted these to vectors */
       if (!clip->data.compact)
          return false;
+
+      /* If this pass has already run, don't repeat.  We would think that
+       * the combined clip/cull distance array was clip-only and mess up.
+       */
+      if (clip->data.how_declared == nir_var_hidden)
+         return false;
    }
 
    const unsigned clip_array_size = get_unwrapped_array_length(nir, clip);
@@ -158,11 +164,15 @@ combine_clip_cull(nir_shader *nir,
       nir->info.cull_distance_array_size = cull_array_size;
    }
 
-   if (clip)
+   if (clip) {
       clip->data.compact = true;
+      clip->data.how_declared = nir_var_hidden;
+   }
 
-   if (cull)
+   if (cull) {
       cull->data.compact = true;
+      cull->data.how_declared = nir_var_hidden;
+   }
 
    if (cull_array_size > 0) {
       if (clip_array_size == 0) {
