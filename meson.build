@@ -213,8 +213,8 @@ endif
 if with_gallium_imx and not with_gallium_etnaviv
   error('IMX driver requires etnaviv driver')
 endif
-if with_gallium_kmsro and not with_gallium_vc4
-  error('kmsro driver requires vc4 driver')
+if with_gallium_kmsro and not (with_gallium_vc4 or with_gallium_etnaviv)
+  error('kmsro driver requires one or more renderonly drivers (vc4, etnaviv)')
 endif
 if with_gallium_tegra and not with_gallium_nouveau
   error('tegra driver requires nouveau driver')

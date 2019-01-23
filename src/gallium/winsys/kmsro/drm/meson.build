@@ -18,6 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+kmsro_c_args = []
+if with_gallium_etnaviv
+  kmsro_c_args += '-DGALLIUM_ETNAVIV'
+endif
+if with_gallium_vc4
+  kmsro_c_args += '-DGALLIUM_VC4'
+endif
+
 libkmsrowinsys = static_library(
   'kmsrowinsys',
   files('kmsro_drm_winsys.c'),
@@ -25,9 +33,8 @@ libkmsrowinsys = static_library(
     inc_src, inc_include,
     inc_gallium, inc_gallium_aux, inc_gallium_winsys,
   ],
-  c_args : [c_vis_args],
+  c_args : [c_vis_args, kmsro_c_args],
   dependencies: dep_libdrm,
-  link_with : libvc4winsys,
 )
 
 driver_kmsro = declare_dependency(

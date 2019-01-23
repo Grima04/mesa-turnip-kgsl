@@ -27,6 +27,7 @@
 
 #include "kmsro_drm_public.h"
 #include "vc4/drm/vc4_drm_public.h"
+#include "etnaviv/drm/etnaviv_drm_public.h"
 #include "xf86drm.h"
 
 #include "pipe/p_screen.h"
@@ -34,22 +35,39 @@
 
 struct pipe_screen *kmsro_drm_screen_create(int fd)
 {
+   struct pipe_screen *screen = NULL;
    struct renderonly ro = {
+      .kms_fd = fd,
+      .gpu_fd = -1,
+   };
+
+#if defined(GALLIUM_VC4)
+   ro.gpu_fd = drmOpenWithType("vc4", NULL, DRM_NODE_RENDER);
+   if (ro.gpu_fd >= 0) {
       /* Passes the vc4-allocated BO through to the KMS-only DRM device using
        * PRIME buffer sharing.  The VC4 BO must be linear, which the SCANOUT
        * flag on allocation will have ensured.
        */
-      .create_for_resource = renderonly_create_gpu_import_for_resource,
-      .kms_fd = fd,
-      .gpu_fd = drmOpenWithType("vc4", NULL, DRM_NODE_RENDER),
-   };
+      ro.create_for_resource = renderonly_create_gpu_import_for_resource,
+      screen = vc4_drm_screen_create_renderonly(&ro);
+      if (!screen)
+         close(ro.gpu_fd);
 
-   if (ro.gpu_fd < 0)
-      return NULL;
+      return screen;
+   }
+#endif
 
-   struct pipe_screen *screen = vc4_drm_screen_create_renderonly(&ro);
-   if (!screen)
-      close(ro.gpu_fd);
+#if defined(GALLIUM_ETNAVIV)
+   ro.gpu_fd = drmOpenWithType("etnaviv", NULL, DRM_NODE_RENDER);
+   if (ro.gpu_fd >= 0) {
+      ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+      screen = etna_drm_screen_create_renderonly(&ro);
+      if (!screen)
+         close(ro.gpu_fd);
+
+      return screen;
+   }
+#endif
 
    return screen;
 }
