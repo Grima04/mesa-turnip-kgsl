@@ -2107,7 +2107,7 @@ visit_store_var(struct ac_nir_context *ctx,
 		int writemask = instr->const_index[0];
 		LLVMValueRef address = get_src(ctx, instr->src[0]);
 		LLVMValueRef val = get_src(ctx, instr->src[1]);
-		if (util_is_power_of_two_nonzero(writemask)) {
+		if (writemask == (1u << ac_get_llvm_num_components(val)) - 1) {
 			val = LLVMBuildBitCast(
 			   ctx->ac.builder, val,
 			   LLVMGetElementType(LLVMTypeOf(address)), "");
