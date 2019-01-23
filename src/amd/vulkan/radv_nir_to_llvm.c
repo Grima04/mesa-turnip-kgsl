@@ -701,6 +701,9 @@ static void allocate_user_sgprs(struct radv_shader_context *ctx,
 	if (ctx->shader_info->info.loads_push_constants)
 		user_sgpr_count++;
 
+	if (ctx->streamout_buffers)
+		user_sgpr_count++;
+
 	uint32_t available_sgprs = ctx->options->chip_class >= GFX9 && stage != MESA_SHADER_COMPUTE ? 32 : 16;
 	uint32_t remaining_sgprs = available_sgprs - user_sgpr_count;
 	uint32_t num_desc_set =
