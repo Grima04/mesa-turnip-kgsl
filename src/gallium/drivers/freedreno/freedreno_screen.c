@@ -881,12 +881,11 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		screen->num_vsc_pipes = 8;
 	}
 
-	/* NOTE: don't enable reordering on a2xx, since completely untested.
-	 * Also, don't enable if we have too old of a kernel to support
+	/* NOTE: don't enable if we have too old of a kernel to support
 	 * growable cmdstream buffers, since memory requirement for cmdstream
 	 * buffers would be too much otherwise.
 	 */
-	if ((screen->gpu_id >= 300) && (fd_device_version(dev) >= FD_VERSION_UNLIMITED_CMDS))
+	if (fd_device_version(dev) >= FD_VERSION_UNLIMITED_CMDS)
 		screen->reorder = !(fd_mesa_debug & FD_DBG_INORDER);
 
 	fd_bc_init(&screen->batch_cache);
