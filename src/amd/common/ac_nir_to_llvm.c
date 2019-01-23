@@ -3586,7 +3586,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	 * It's unnecessary if the original texture format was
 	 * Z32_FLOAT, but we don't know that here.
 	 */
-	if (args.compare && ctx->ac.chip_class == VI && ctx->abi->clamp_shadow_reference)
+	if (args.compare && ctx->ac.chip_class >= VI && ctx->abi->clamp_shadow_reference)
 		args.compare = ac_build_clamp(&ctx->ac, ac_to_float(&ctx->ac, args.compare));
 
 	/* pack derivatives */
