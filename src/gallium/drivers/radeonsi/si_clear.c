@@ -34,15 +34,6 @@ enum {
 	SI_CLEAR_SURFACE = SI_SAVE_FRAMEBUFFER | SI_SAVE_FRAGMENT_STATE,
 };
 
-enum si_dcc_clear_code
-{
-	DCC_CLEAR_COLOR_0000   = 0x00000000,
-	DCC_CLEAR_COLOR_0001   = 0x40404040,
-	DCC_CLEAR_COLOR_1110   = 0x80808080,
-	DCC_CLEAR_COLOR_1111   = 0xC0C0C0C0,
-	DCC_CLEAR_COLOR_REG    = 0x20202020,
-};
-
 static void si_alloc_separate_cmask(struct si_screen *sscreen,
 				    struct si_texture *tex)
 {

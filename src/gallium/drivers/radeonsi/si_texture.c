@@ -1242,10 +1242,59 @@ si_texture_create_object(struct pipe_screen *screen,
 
 	/* Initialize DCC only if the texture is not being imported. */
 	if (!buf && tex->dcc_offset) {
-		si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
-					 tex->dcc_offset,
-					 tex->surface.dcc_size,
-					 0xFFFFFFFF);
+		/* Clear DCC to black for all tiles with DCC enabled.
+		 *
+		 * This fixes corruption in 3DMark Slingshot Extreme, which
+		 * uses uninitialized textures, causing corruption.
+		 */
+		if (tex->surface.num_dcc_levels == tex->buffer.b.b.last_level + 1 &&
+		    tex->buffer.b.b.nr_samples <= 2) {
+			/* Simple case - all tiles have DCC enabled. */
+			si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+					       tex->dcc_offset,
+					       tex->surface.dcc_size,
+					       DCC_CLEAR_COLOR_0000);
+		} else if (sscreen->info.chip_class >= GFX9) {
+			/* Clear to uncompressed. Clearing this to black is complicated. */
+			si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+					       tex->dcc_offset,
+					       tex->surface.dcc_size,
+					       DCC_UNCOMPRESSED);
+		} else {
+			/* GFX8: Initialize mipmap levels and multisamples separately. */
+			if (tex->buffer.b.b.nr_samples >= 2) {
+				/* Clearing this to black is complicated. */
+				si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+						       tex->dcc_offset,
+						       tex->surface.dcc_size,
+						       DCC_UNCOMPRESSED);
+			} else {
+				/* Clear the enabled mipmap levels to black. */
+				unsigned size = 0;
+
+				for (unsigned i = 0; i < tex->surface.num_dcc_levels; i++) {
+					if (!tex->surface.u.legacy.level[i].dcc_fast_clear_size)
+						break;
+
+					size = tex->surface.u.legacy.level[i].dcc_offset +
+					       tex->surface.u.legacy.level[i].dcc_fast_clear_size;
+				}
+
+				/* Mipmap levels with DCC. */
+				if (size) {
+					si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+							       tex->dcc_offset, size,
+							       DCC_CLEAR_COLOR_0000);
+				}
+				/* Mipmap levels without DCC. */
+				if (size != tex->surface.dcc_size) {
+					si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+							       tex->dcc_offset + size,
+							       tex->surface.dcc_size - size,
+							       DCC_UNCOMPRESSED);
+				}
+			}
+		}
 	}
 
 	/* Initialize the CMASK base register value. */
