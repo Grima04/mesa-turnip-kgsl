@@ -111,6 +111,14 @@ containers:ubuntu:
     - make
     - eval $MAKE_CHECK_COMMAND
 
+.scons-build:
+  extends: .build
+  variables:
+    SCONSFLAGS: "-j4"
+  script:
+    - scons $SCONS_TARGET
+    - eval $SCONS_CHECK_COMMAND
+
 build:meson-vulkan:
   extends: .meson-build
   variables:
@@ -157,3 +165,9 @@ build:make-vulkan:
       --disable-gallium-osmesa
     VULKAN_DRIVERS: intel,radeon
     LIBUNWIND_FLAGS: --disable-libunwind
+
+build:scons-nollvm:
+  extends: .scons-build
+  variables:
+    SCONS_TARGET: "llvm=0"
+    SCONS_CHECK_COMMAND: "scons llvm=0 check"
