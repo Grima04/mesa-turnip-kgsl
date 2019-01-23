@@ -436,7 +436,9 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->bo_flags = bo_flags;
    pool->nbos = 0;
    pool->size = 0;
+   pool->center_bo_offset = 0;
    pool->start_address = gen_canonical_address(start_address);
+   pool->map = NULL;
 
    /* This pointer will always point to the first BO in the list */
    pool->bo = &pool->bos[0];
@@ -536,6 +538,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       if (map == MAP_FAILED)
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_MEMORY_MAP_FAILED, "gem mmap failed: %m");
+      assert(center_bo_offset == 0);
    } else {
       /* Just leak the old map until we destroy the pool.  We can't munmap it
        * without races or imposing locking on the block allocate fast path. On
@@ -549,6 +552,11 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       if (map == MAP_FAILED)
          return vk_errorf(pool->device->instance, pool->device,
                           VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
+
+      /* Now that we mapped the new memory, we can write the new
+       * center_bo_offset back into pool and update pool->map. */
+      pool->center_bo_offset = center_bo_offset;
+      pool->map = map + center_bo_offset;
       gem_handle = anv_gem_userptr(pool->device, map, size);
       if (gem_handle == 0) {
          munmap(map, size);
@@ -572,10 +580,6 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     */
    if (!pool->device->info.has_llc)
       anv_gem_set_caching(pool->device, gem_handle, I915_CACHING_CACHED);
-
-   /* Now that we successfull allocated everything, we can write the new
-    * center_bo_offset back into pool. */
-   pool->center_bo_offset = center_bo_offset;
 
    /* For block pool BOs we have to be a bit careful about where we place them
     * in the GTT.  There are two documented workarounds for state base address
@@ -670,8 +674,12 @@ anv_block_pool_get_bo(struct anv_block_pool *pool, int32_t *offset)
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset)
 {
-   struct anv_bo *bo = anv_block_pool_get_bo(pool, &offset);
-   return bo->map + pool->center_bo_offset + offset;
+   if (pool->bo_flags & EXEC_OBJECT_PINNED) {
+      struct anv_bo *bo = anv_block_pool_get_bo(pool, &offset);
+      return bo->map + offset;
+   } else {
+      return pool->map + offset;
+   }
 }
 
 /** Grows and re-centers the block pool.

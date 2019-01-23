@@ -663,6 +663,19 @@ struct anv_block_pool {
     */
    uint32_t center_bo_offset;
 
+   /* Current memory map of the block pool.  This pointer may or may not
+    * point to the actual beginning of the block pool memory.  If
+    * anv_block_pool_alloc_back has ever been called, then this pointer
+    * will point to the "center" position of the buffer and all offsets
+    * (negative or positive) given out by the block pool alloc functions
+    * will be valid relative to this pointer.
+    *
+    * In particular, map == bo.map + center_offset
+    *
+    * DO NOT access this pointer directly. Use anv_block_pool_map() instead,
+    * since it will handle the softpin case as well, where this points to NULL.
+    */
+   void *map;
    int fd;
 
    /**
