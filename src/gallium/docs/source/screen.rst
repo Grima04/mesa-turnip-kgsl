@@ -487,6 +487,7 @@ The integer capabilities:
 * ``PIPE_CAP_DEST_SURFACE_SRGB_CONTROL``: Indicates whether the drivers
   supports switching the format between sRGB and linear for a surface that is
   used as destination in draw and blit calls.
+* ``PIPE_CAP_NIR_COMPACT_ARRAYS``: True if the compiler backend supports NIR's compact array feature, for all shader stages.
 
 .. _pipe_capf:
 
