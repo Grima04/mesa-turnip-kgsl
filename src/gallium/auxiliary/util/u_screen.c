@@ -394,6 +394,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_TEXTURE_SHADOW_MAP: /* Enables ARB_shadow */
       return 1;
 
+   case PIPE_CAP_FLATSHADE:
+      return 1;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }
