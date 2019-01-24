@@ -2166,7 +2166,7 @@ handle_fs_input_decl(struct radv_shader_context *ctx,
 
 		interp = lookup_interp_param(&ctx->abi, variable->data.interpolation, interp_type);
 	}
-	bool is_16bit = glsl_type_is_16bit(variable->type);
+	bool is_16bit = glsl_type_is_16bit(glsl_without_array(variable->type));
 	LLVMTypeRef type = is_16bit ? ctx->ac.i16 : ctx->ac.i32;
 	if (interp == NULL)
 		interp = LLVMGetUndef(type);

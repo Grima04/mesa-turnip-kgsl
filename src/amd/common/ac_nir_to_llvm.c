@@ -3980,7 +3980,7 @@ ac_handle_shader_output_decl(struct ac_llvm_context *ctx,
 		}
 	}
 
-	bool is_16bit = glsl_type_is_16bit(variable->type);
+	bool is_16bit = glsl_type_is_16bit(glsl_without_array(variable->type));
 	LLVMTypeRef type = is_16bit ? ctx->f16 : ctx->f32;
 	for (unsigned i = 0; i < attrib_count; ++i) {
 		for (unsigned chan = 0; chan < 4; chan++) {
