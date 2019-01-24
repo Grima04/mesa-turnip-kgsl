@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Intel Corporation
+ * Copyright © 2015-2019 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,6 +24,18 @@
 /** @file brw_eu_validate.c
  *
  * This file implements a pass that validates shader assembly.
+ *
+ * The restrictions implemented herein are intended to verify that instructions
+ * in shader assembly do not violate restrictions documented in the graphics
+ * programming reference manuals.
+ *
+ * The restrictions are difficult for humans to quickly verify due to their
+ * complexity and abundance.
+ *
+ * It is critical that this code is thoroughly unit tested because false
+ * results will lead developers astray, which is worse than having no validator
+ * at all. Functional changes to this file without corresponding unit tests (in
+ * test_eu_validate.cpp) will be rejected.
  */
 
 #include "brw_eu.h"
