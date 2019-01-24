@@ -409,7 +409,7 @@ handle_3dstate_vertex_buffers(struct gen_batch_decode_ctx *ctx,
             ready = true;
          } else if (strcmp(vbs_iter.name, "End Address") == 0) {
             if (vb.map && vbs_iter.raw_value >= vb.addr)
-               vb_size = vbs_iter.raw_value - vb.addr;
+               vb_size = (vbs_iter.raw_value + 1) - vb.addr;
             else
                vb_size = 0;
             ready = true;
