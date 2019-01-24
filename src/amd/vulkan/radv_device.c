@@ -869,6 +869,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->memoryPriority = VK_TRUE;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT: {
+			VkPhysicalDeviceBufferAddressFeaturesEXT *features =
+				(VkPhysicalDeviceBufferAddressFeaturesEXT *)ext;
+			features->bufferDeviceAddress = true;
+			features->bufferDeviceAddressCaptureReplay = false;
+			features->bufferDeviceAddressMultiDevice = false;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1694,7 +1702,8 @@ VkResult radv_CreateDevice(
 	 * from the descriptor set anymore, so we have to use a global BO list.
 	 */
 	device->use_global_bo_list =
-		device->enabled_extensions.EXT_descriptor_indexing;
+		device->enabled_extensions.EXT_descriptor_indexing ||
+		device->enabled_extensions.EXT_buffer_device_address;
 
 	mtx_init(&device->shader_slab_mutex, mtx_plain);
 	list_inithead(&device->shader_slabs);
@@ -4031,6 +4040,15 @@ void radv_DestroyBuffer(
 
 	vk_free2(&device->alloc, pAllocator, buffer);
 }
+
+VkDeviceAddress radv_GetBufferDeviceAddressEXT(
+	VkDevice                                    device,
+	const VkBufferDeviceAddressInfoEXT*         pInfo)
+{
+	RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
+	return radv_buffer_get_va(buffer->bo) + buffer->offset;
+}
+
 
 static inline unsigned
 si_tile_mode_index(const struct radv_image *image, unsigned level, bool stencil)
