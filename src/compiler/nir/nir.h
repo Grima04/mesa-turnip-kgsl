@@ -2825,7 +2825,7 @@ should_print_nir(void)
 static inline void nir_validate_shader(nir_shader *shader, const char *when) { (void) shader; (void)when; }
 static inline void nir_metadata_set_validation_flag(nir_shader *shader) { (void) shader; }
 static inline void nir_metadata_check_validation_flag(nir_shader *shader) { (void) shader; }
-static inline bool should_skip_nir(const char *pass_name) { return false; }
+static inline bool should_skip_nir(UNUSED const char *pass_name) { return false; }
 static inline bool should_clone_nir(void) { return false; }
 static inline bool should_serialize_deserialize_nir(void) { return false; }
 static inline bool should_print_nir(void) { return false; }
