@@ -1881,7 +1881,8 @@ static LLVMValueRef load_tess_varyings(struct ac_nir_context *ctx,
 static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 				   nir_intrinsic_instr *instr)
 {
-	nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
+	nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+	nir_variable *var = nir_deref_instr_get_variable(deref);
 
 	LLVMValueRef values[8];
 	int idx = 0;
@@ -1902,11 +1903,14 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 		comp = var->data.location_frac;
 		mode = var->data.mode;
 
-		get_deref_offset(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), vs_in, NULL, NULL,
+		get_deref_offset(ctx, deref, vs_in, NULL, NULL,
 				 &const_index, &indir_index);
 	}
 
-	if (instr->dest.ssa.bit_size == 64)
+	if (instr->dest.ssa.bit_size == 64 &&
+	    (deref->mode == nir_var_shader_in ||
+	     deref->mode == nir_var_shader_out ||
+	     deref->mode == nir_var_function_temp))
 		ve *= 2;
 
 	switch (mode) {
@@ -1920,8 +1924,8 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 			LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
 			LLVMValueRef indir_index;
 			unsigned const_index, vertex_index;
-			get_deref_offset(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-			                 false, &vertex_index, NULL, &const_index, &indir_index);
+			get_deref_offset(ctx, deref, false, &vertex_index, NULL,
+			                 &const_index, &indir_index);
 
 			return ctx->abi->load_inputs(ctx->abi, var->data.location,
 						     var->data.driver_location,
@@ -2024,7 +2028,9 @@ visit_store_var(struct ac_nir_context *ctx,
 		comp = var->data.location_frac;
 	}
 
-	if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src)) == 64) {
+	if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src)) == 64 &&
+	    (deref->mode == nir_var_shader_out ||
+	     deref->mode == nir_var_function_temp)) {
 
 		src = LLVMBuildBitCast(ctx->ac.builder, src,
 		                       LLVMVectorType(ctx->ac.f32, ac_get_llvm_num_components(src) * 2),
