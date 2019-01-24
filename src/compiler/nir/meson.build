@@ -126,6 +126,7 @@ files_libnir = files(
   'nir_lower_double_ops.c',
   'nir_lower_drawpixels.c',
   'nir_lower_fb_read.c',
+  'nir_lower_flatshade.c',
   'nir_lower_flrp.c',
   'nir_lower_fragcoord_wtrans.c',
   'nir_lower_frexp.c',

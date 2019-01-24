@@ -245,6 +245,7 @@ NIR_FILES = \
 	nir/nir_lower_double_ops.c \
 	nir/nir_lower_drawpixels.c \
 	nir/nir_lower_fb_read.c \
+	nir/nir_lower_flatshade.c \
 	nir/nir_lower_flrp.c \
 	nir/nir_lower_fragcoord_wtrans.c \
 	nir/nir_lower_frexp.c \
