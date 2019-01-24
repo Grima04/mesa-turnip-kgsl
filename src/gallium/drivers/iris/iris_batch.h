@@ -118,9 +118,6 @@ struct iris_batch {
       struct set *depth;
    } cache;
 
-   /** Map from batch offset to iris_alloc_state data (with DEBUG_BATCH) */
-   // XXX: unused
-   struct hash_table *state_sizes;
    struct gen_batch_decode_ctx decoder;
 
    /** Have we emitted any draw calls to this batch? */

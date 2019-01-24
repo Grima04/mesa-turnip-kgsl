@@ -148,18 +148,6 @@ decode_batch(struct iris_batch *batch)
                    batch->exec_bos[0]->gtt_offset);
 }
 
-static bool
-uint_key_compare(const void *a, const void *b)
-{
-   return a == b;
-}
-
-static uint32_t
-uint_key_hash(const void *key)
-{
-   return (uintptr_t) key;
-}
-
 void
 iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
@@ -205,15 +193,13 @@ iris_init_batch(struct iris_batch *batch,
    }
 
    if (unlikely(INTEL_DEBUG)) {
-      batch->state_sizes =
-         _mesa_hash_table_create(NULL, uint_key_hash, uint_key_compare);
-
       const unsigned decode_flags =
          GEN_BATCH_DECODE_FULL |
          ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
          GEN_BATCH_DECODE_OFFSETS |
          GEN_BATCH_DECODE_FLOATS;
 
+      /* TODO: track state size so we can print the right # of entries */
       gen_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
                                 stderr, decode_flags, NULL,
                                 decode_get_bo, NULL, batch);
@@ -363,9 +349,6 @@ iris_batch_reset(struct iris_batch *batch)
    iris_batch_add_syncpt(batch, syncpt, I915_EXEC_FENCE_SIGNAL);
    iris_syncpt_reference(screen, &syncpt, NULL);
 
-   if (batch->state_sizes)
-      _mesa_hash_table_clear(batch->state_sizes, NULL);
-
    iris_cache_sets_clear(batch);
 }
 
@@ -399,10 +382,8 @@ iris_batch_free(struct iris_batch *batch)
    _mesa_hash_table_destroy(batch->cache.render, NULL);
    _mesa_set_destroy(batch->cache.depth, NULL);
 
-   if (batch->state_sizes) {
-      _mesa_hash_table_destroy(batch->state_sizes, NULL);
+   if (unlikely(INTEL_DEBUG))
       gen_batch_decode_ctx_finish(&batch->decoder);
-   }
 }
 
 /**
