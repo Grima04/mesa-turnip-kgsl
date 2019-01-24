@@ -106,11 +106,6 @@ if with_gallium_v3d
 else
   driver_v3d = declare_dependency()
 endif
-if with_gallium_imx
-  subdir('winsys/imx/drm')
-else
-  driver_imx = declare_dependency()
-endif
 if with_gallium_tegra
   subdir('winsys/tegra/drm')
   subdir('drivers/tegra')

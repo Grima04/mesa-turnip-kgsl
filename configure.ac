@@ -1408,7 +1408,7 @@ GALLIUM_DRIVERS_DEFAULT="r300,r600,svga,swrast"
 AC_ARG_WITH([gallium-drivers],
     [AS_HELP_STRING([--with-gallium-drivers@<:@=DIRS...@:>@],
         [comma delimited Gallium drivers list, e.g.
-        "i915,nouveau,r300,r600,radeonsi,freedreno,kmsro,svga,swrast,swr,tegra,v3d,vc4,virgl,etnaviv,imx"
+        "i915,nouveau,r300,r600,radeonsi,freedreno,kmsro,svga,swrast,swr,tegra,v3d,vc4,virgl,etnaviv"
         @<:@default=r300,r600,svga,swrast@:>@])],
     [with_gallium_drivers="$withval"],
     [with_gallium_drivers="$GALLIUM_DRIVERS_DEFAULT"])
@@ -2741,9 +2741,6 @@ if test -n "$with_gallium_drivers"; then
             PKG_CHECK_MODULES([ETNAVIV], [libdrm >= $LIBDRM_ETNAVIV_REQUIRED libdrm_etnaviv >= $LIBDRM_ETNAVIV_REQUIRED])
             require_libdrm "etnaviv"
             ;;
-       ximx)
-            HAVE_GALLIUM_IMX=yes
-            ;;
         xtegra)
             HAVE_GALLIUM_TEGRA=yes
             require_libdrm "tegra"
@@ -2864,10 +2861,6 @@ AM_CONDITIONAL(HAVE_SWR_BUILTIN, test "x$HAVE_SWR_BUILTIN" = xyes)
 
 dnl We need to validate some needed dependencies for renderonly drivers.
 
-if test "x$HAVE_GALLIUM_ETNAVIV" != xyes -a "x$HAVE_GALLIUM_IMX" = xyes  ; then
-    AC_MSG_ERROR([Building with imx requires etnaviv])
-fi
-
 if test "x$HAVE_GALLIUM_VC4" != xyes -a "x$HAVE_GALLIUM_KMSRO" = xyes  ; then
     AC_MSG_ERROR([Building with kmsro requires vc4])
 fi
@@ -2952,7 +2945,7 @@ if test "x$enable_llvm" = xyes; then
     fi
 
     dnl The gallium-xlib GLX and gallium OSMesa targets directly embed the
-    dnl swr/llvmpipe driver into the final binary.  Adding LLVM_LIBS results in 
+    dnl swr/llvmpipe driver into the final binary.  Adding LLVM_LIBS results in
     dnl the LLVM library propagated in the Libs.private of the respective .pc
     dnl file which ensures complete dependency information when statically
     dnl linking.
@@ -2973,7 +2966,6 @@ AM_CONDITIONAL(HAVE_GALLIUM_RADEONSI, test "x$HAVE_GALLIUM_RADEONSI" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_NOUVEAU, test "x$HAVE_GALLIUM_NOUVEAU" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_FREEDRENO, test "x$HAVE_GALLIUM_FREEDRENO" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_ETNAVIV, test "x$HAVE_GALLIUM_ETNAVIV" = xyes)
-AM_CONDITIONAL(HAVE_GALLIUM_IMX, test "x$HAVE_GALLIUM_IMX" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_TEGRA, test "x$HAVE_GALLIUM_TEGRA" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_SOFTPIPE, test "x$HAVE_GALLIUM_SOFTPIPE" = xyes)
 AM_CONDITIONAL(HAVE_GALLIUM_LLVMPIPE, test "x$HAVE_GALLIUM_LLVMPIPE" = xyes)
@@ -3125,7 +3117,6 @@ AC_CONFIG_FILES([Makefile
                  src/gallium/drivers/swr/Makefile
                  src/gallium/drivers/tegra/Makefile
                  src/gallium/drivers/etnaviv/Makefile
-                 src/gallium/drivers/imx/Makefile
                  src/gallium/drivers/v3d/Makefile
                  src/gallium/drivers/vc4/Makefile
                  src/gallium/drivers/virgl/Makefile
@@ -3160,7 +3151,6 @@ AC_CONFIG_FILES([Makefile
                  src/gallium/tests/trivial/Makefile
                  src/gallium/tests/unit/Makefile
                  src/gallium/winsys/etnaviv/drm/Makefile
-                 src/gallium/winsys/imx/drm/Makefile
                  src/gallium/winsys/freedreno/drm/Makefile
                  src/gallium/winsys/i915/drm/Makefile
                  src/gallium/winsys/nouveau/drm/Makefile

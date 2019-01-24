@@ -131,7 +131,7 @@ if _drivers.contains('auto')
       ]
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
       _drivers = [
-        'kmsro', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'imx', 'nouveau',
+        'kmsro', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'nouveau',
         'tegra', 'virgl', 'swrast',
       ]
     else
@@ -155,7 +155,6 @@ with_gallium_softpipe = _drivers.contains('swrast')
 with_gallium_vc4 = _drivers.contains('vc4')
 with_gallium_v3d = _drivers.contains('v3d')
 with_gallium_etnaviv = _drivers.contains('etnaviv')
-with_gallium_imx = _drivers.contains('imx')
 with_gallium_tegra = _drivers.contains('tegra')
 with_gallium_i915 = _drivers.contains('i915')
 with_gallium_svga = _drivers.contains('svga')
@@ -209,9 +208,6 @@ if with_dri_swrast and (with_gallium_softpipe or with_gallium_swr)
 endif
 if with_dri_i915 and with_gallium_i915
   error('Only one i915 provider can be built')
-endif
-if with_gallium_imx and not with_gallium_etnaviv
-  error('IMX driver requires etnaviv driver')
 endif
 if with_gallium_kmsro and not (with_gallium_vc4 or with_gallium_etnaviv)
   error('kmsro driver requires one or more renderonly drivers (vc4, etnaviv)')
