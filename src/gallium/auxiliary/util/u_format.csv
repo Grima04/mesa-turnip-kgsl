@@ -45,7 +45,7 @@
 #   - optionally followed by 'p' if it is pure
 #   - number of bits
 # - channel swizzle 
-# - color space: rgb, yub, sz
+# - color space: rgb, srgb, yuv, zs
 # - (optional) channel encoding for big-endian targets
 # - (optional) channel swizzle for big-endian targets
 #
