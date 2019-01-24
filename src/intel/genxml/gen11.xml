@@ -3681,4 +3681,9 @@
     <field name="Enabled Texel Offset Precision Fix Mask" start="17" end="17" type="bool"/>
   </register>
 
+  <register name="COMMON_SLICE_CHICKEN3" length="1" num="0x7304">
+    <field name="PS Thread Panic Dispatch" start="6" end="7" type="uint"/>
+    <field name="PS Thread Panic Dispatch Mask" start="22" end="23" type="uint"/>
+  </register>
+
 </genxml>
