@@ -24,6 +24,7 @@
 #include "common/gen_decoder.h"
 #include "gen_disasm.h"
 #include "util/macros.h"
+#include "main/macros.h" /* Needed for ROUND_DOWN_TO */
 
 #include <string.h>
 
@@ -169,7 +170,8 @@ ctx_print_buffer(struct gen_batch_decode_ctx *ctx,
                  uint32_t pitch,
                  int max_lines)
 {
-   const uint32_t *dw_end = bo.map + MIN2(bo.size, read_length);
+   const uint32_t *dw_end =
+         bo.map + ROUND_DOWN_TO(MIN2(bo.size, read_length), 4);
 
    int column_count = 0, line_count = -1;
    for (const uint32_t *dw = bo.map; dw < dw_end; dw++) {
