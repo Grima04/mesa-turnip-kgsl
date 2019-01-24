@@ -483,6 +483,7 @@ The integer capabilities:
 * ``PIPE_CAP_TGSI_ATOMFADD``: Atomic floating point adds are supported on
   images, buffers, and shared memory.
 * ``PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND``: True if the driver needs blend state to use zero/one instead of destination alpha for RGB/XRGB formats.
+* ``PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS``: True if the driver wants TESSINNER and TESSOUTER to be inputs (rather than system values) for tessellation evaluation shaders.
 
 .. _pipe_capf:
 
