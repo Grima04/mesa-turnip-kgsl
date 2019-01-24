@@ -214,25 +214,42 @@ cross_validate_types_and_qualifiers(struct gl_context *ctx,
    }
 
    if (type_to_match != output->type) {
-      /* There is a bit of a special case for gl_TexCoord.  This
-       * built-in is unsized by default.  Applications that variable
-       * access it must redeclare it with a size.  There is some
-       * language in the GLSL spec that implies the fragment shader
-       * and vertex shader do not have to agree on this size.  Other
-       * driver behave this way, and one or two applications seem to
-       * rely on it.
-       *
-       * Neither declaration needs to be modified here because the array
-       * sizes are fixed later when update_array_sizes is called.
-       *
-       * From page 48 (page 54 of the PDF) of the GLSL 1.10 spec:
-       *
-       *     "Unlike user-defined varying variables, the built-in
-       *     varying variables don't have a strict one-to-one
-       *     correspondence between the vertex language and the
-       *     fragment language."
-       */
-      if (!output->type->is_array() || !is_gl_identifier(output->name)) {
+      if (output->type->is_struct()) {
+         /* Structures across shader stages can have different name
+          * and considered to match in type if and only if structure
+          * members match in name, type, qualification, and declaration
+          * order.
+          */
+         if (!output->type->record_compare(type_to_match, false, true)) {
+            linker_error(prog,
+                  "%s shader output `%s' declared as struct `%s', "
+                  "doesn't match in type with %s shader input "
+                  "declared as struct `%s'\n",
+                  _mesa_shader_stage_to_string(producer_stage),
+                  output->name,
+                  output->type->name,
+                  _mesa_shader_stage_to_string(consumer_stage),
+                  input->type->name);
+         }
+      } else if (!output->type->is_array() || !is_gl_identifier(output->name)) {
+         /* There is a bit of a special case for gl_TexCoord.  This
+          * built-in is unsized by default.  Applications that variable
+          * access it must redeclare it with a size.  There is some
+          * language in the GLSL spec that implies the fragment shader
+          * and vertex shader do not have to agree on this size.  Other
+          * driver behave this way, and one or two applications seem to
+          * rely on it.
+          *
+          * Neither declaration needs to be modified here because the array
+          * sizes are fixed later when update_array_sizes is called.
+          *
+          * From page 48 (page 54 of the PDF) of the GLSL 1.10 spec:
+          *
+          *     "Unlike user-defined varying variables, the built-in
+          *     varying variables don't have a strict one-to-one
+          *     correspondence between the vertex language and the
+          *     fragment language."
+          */
          linker_error(prog,
                       "%s shader output `%s' declared as type `%s', "
                       "but %s shader input declared as type `%s'\n",

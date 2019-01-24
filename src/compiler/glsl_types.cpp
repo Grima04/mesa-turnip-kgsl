@@ -1008,7 +1008,8 @@ glsl_type::get_array_instance(const glsl_type *base,
 
 
 bool
-glsl_type::record_compare(const glsl_type *b, bool match_locations) const
+glsl_type::record_compare(const glsl_type *b, bool match_name,
+                          bool match_locations) const
 {
    if (this->length != b->length)
       return false;
@@ -1025,9 +1026,16 @@ glsl_type::record_compare(const glsl_type *b, bool match_locations) const
     *     type definitions, and field names to be considered the same type."
     *
     * GLSL ES behaves the same (Ver 1.00 Sec 4.2.4, Ver 3.00 Sec 4.2.5).
+    *
+    * Section 7.4.1 (Shader Interface Matching) of the OpenGL 4.30 spec says:
+    *
+    *     "Variables or block members declared as structures are considered
+    *     to match in type if and only if structure members match in name,
+    *     type, qualification, and declaration order."
     */
-   if (strcmp(this->name, b->name) != 0)
-      return false;
+   if (match_name)
+      if (strcmp(this->name, b->name) != 0)
+         return false;
 
    for (unsigned i = 0; i < this->length; i++) {
       if (this->fields.structure[i].type != b->fields.structure[i].type)
@@ -1098,7 +1106,8 @@ glsl_type::record_key_compare(const void *a, const void *b)
    const glsl_type *const key1 = (glsl_type *) a;
    const glsl_type *const key2 = (glsl_type *) b;
 
-   return strcmp(key1->name, key2->name) == 0 && key1->record_compare(key2);
+   return strcmp(key1->name, key2->name) == 0 &&
+                 key1->record_compare(key2, true);
 }
 
 

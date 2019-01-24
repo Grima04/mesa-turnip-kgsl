@@ -934,11 +934,15 @@ public:
    /**
     * Compare a record type against another record type.
     *
-    * This is useful for matching record types declared across shader stages.
+    * This is useful for matching record types declared on the same shader
+    * stage as well as across different shader stages.
+    * The option to not match name is needed for matching record types
+    * declared across different shader stages.
     * The option to not match locations is to deal with places where the
     * same struct is defined in a block which has a location set on it.
     */
-   bool record_compare(const glsl_type *b, bool match_locations = true) const;
+   bool record_compare(const glsl_type *b, bool match_name,
+                       bool match_locations = true) const;
 
    /**
     * Get the type interface packing.
