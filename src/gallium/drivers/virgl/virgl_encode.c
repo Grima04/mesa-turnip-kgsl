@@ -37,6 +37,8 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
+#define VIRGL_ENCODE_MAX_DWORDS MIN2(VIRGL_MAX_CMDBUF_DWORDS, VIRGL_CMD0_MAX_DWORDS)
+
 static int virgl_encoder_write_cmd_dword(struct virgl_context *ctx,
                                         uint32_t dword)
 {
@@ -295,10 +297,10 @@ int virgl_encode_shader_state(struct virgl_context *ctx,
    while (left_bytes) {
       uint32_t length, offlen;
       int hdr_len = base_hdr_size + (first_pass ? strm_hdr_size : 0);
-      if (ctx->cbuf->cdw + hdr_len + 1 >= VIRGL_MAX_CMDBUF_DWORDS)
+      if (ctx->cbuf->cdw + hdr_len + 1 >= VIRGL_ENCODE_MAX_DWORDS)
          ctx->base.flush(&ctx->base, NULL, 0);
 
-      thispass = (VIRGL_MAX_CMDBUF_DWORDS - ctx->cbuf->cdw - hdr_len - 1) * 4;
+      thispass = (VIRGL_ENCODE_MAX_DWORDS - ctx->cbuf->cdw - hdr_len - 1) * 4;
 
       length = MIN2(thispass, left_bytes);
       len = ((length + 3) / 4) + hdr_len;
@@ -547,7 +549,7 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
    transfer.base.box = *box;
 
    length = 11 + (size + 3) / 4;
-   if ((ctx->cbuf->cdw + length + 1) > VIRGL_MAX_CMDBUF_DWORDS) {
+   if ((ctx->cbuf->cdw + length + 1) > VIRGL_ENCODE_MAX_DWORDS) {
       if (box->height > 1 || box->depth > 1) {
          debug_printf("inline transfer failed due to multi dimensions and too large\n");
          assert(0);
@@ -556,10 +558,10 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
 
    left_bytes = size;
    while (left_bytes) {
-      if (ctx->cbuf->cdw + 12 >= VIRGL_MAX_CMDBUF_DWORDS)
+      if (ctx->cbuf->cdw + 12 >= VIRGL_ENCODE_MAX_DWORDS)
          ctx->base.flush(&ctx->base, NULL, 0);
 
-      thispass = (VIRGL_MAX_CMDBUF_DWORDS - ctx->cbuf->cdw - 12) * 4;
+      thispass = (VIRGL_ENCODE_MAX_DWORDS - ctx->cbuf->cdw - 12) * 4;
 
       length = MIN2(thispass, left_bytes);
 

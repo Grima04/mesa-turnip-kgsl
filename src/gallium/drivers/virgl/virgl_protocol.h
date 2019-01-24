@@ -105,6 +105,7 @@ enum virgl_context_cmd {
 */
 
 #define VIRGL_CMD0(cmd, obj, len) ((cmd) | ((obj) << 8) | ((len) << 16))
+#define VIRGL_CMD0_MAX_DWORDS (((1ULL << 16) - 1) / 4) * 4
 
 /* hw specification */
 #define VIRGL_MAX_COLOR_BUFS 8
