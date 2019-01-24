@@ -17,15 +17,15 @@ Contibutors
 
 Status
 
-    Draft
+    Complete
 
 Version
 
-    Version 1, 2018-11-05
+    Version 3, 2019-01-24
 
 Number
 
-    EGL Extension #TBD
+    EGL Extension 131
 
 Dependencies
 
@@ -58,8 +58,8 @@ Overview
 
 New Procedures and Functions
 
-    char* eglGetDisplayDriverConfig(EGLDisplay disp);
-    const char* eglGetDisplayDriverName(EGLDisplay disp);
+    char* eglGetDisplayDriverConfig(EGLDisplay dpy);
+    const char* eglGetDisplayDriverName(EGLDisplay dpy);
 
 Description
 
@@ -83,8 +83,13 @@ New Tokens
 
 Issues
 
+    None
 
 
 Revision History
 
-    Version 1, 2018-11-05
+    Version 1, 2018-11-05 - First draft (Veluri Mithun)
+    Version 2, 2019-01-23 - Final version (Veluri Mithun)
+    Version 3, 2019-01-24 - Mark as complete, add Khronos extension
+                            number, fix parameter name in prototypes,
+                            write revision history (Eric Engestrom)
