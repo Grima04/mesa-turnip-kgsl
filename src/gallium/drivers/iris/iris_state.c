@@ -4956,8 +4956,8 @@ iris_destroy_state(struct iris_context *ice)
       const int i = u_bit_scan64(&bound_vbs);
       pipe_resource_reference(&genx->vertex_buffers[i].resource, NULL);
    }
+   free(ice->state.genx);
 
-   // XXX: unreference resources/surfaces.
    for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
       pipe_surface_reference(&ice->state.framebuffer.cbufs[i], NULL);
    }
@@ -4966,9 +4966,28 @@ iris_destroy_state(struct iris_context *ice)
    for (int stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       struct iris_shader_state *shs = &ice->state.shaders[stage];
       pipe_resource_reference(&shs->sampler_table.res, NULL);
+      for (int i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
+         pipe_resource_reference(&shs->constbuf[i].data.res, NULL);
+         pipe_resource_reference(&shs->constbuf[i].surface_state.res, NULL);
+      }
+      for (int i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
+         pipe_resource_reference(&shs->image[i].res, NULL);
+         pipe_resource_reference(&shs->image[i].surface_state.res, NULL);
+      }
+      for (int i = 0; i < PIPE_MAX_SHADER_BUFFERS; i++) {
+         pipe_resource_reference(&shs->ssbo[i], NULL);
+         pipe_resource_reference(&shs->ssbo_surface_state[i].res, NULL);
+      }
+      for (int i = 0; i < IRIS_MAX_TEXTURE_SAMPLERS; i++) {
+         pipe_sampler_view_reference((struct pipe_sampler_view **)
+                                     &shs->textures[i], NULL);
+      }
    }
-   free(ice->state.genx);
 
+   pipe_resource_reference(&ice->state.grid_size.res, NULL);
+   pipe_resource_reference(&ice->state.grid_surf_state.res, NULL);
+
+   pipe_resource_reference(&ice->state.null_fb.res, NULL);
    pipe_resource_reference(&ice->state.unbound_tex.res, NULL);
 
    pipe_resource_reference(&ice->state.last_res.cc_vp, NULL);
