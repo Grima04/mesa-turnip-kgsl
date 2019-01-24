@@ -426,11 +426,6 @@ static const struct dri2_extension_match swrast_core_extensions[] = {
    { NULL, 0, 0 }
 };
 
-static const struct dri2_extension_match optional_driver_extensions[] = {
-   { __DRI_CONFIG_OPTIONS, 1, offsetof(struct dri2_egl_display, configOptions) },
-   { NULL, 0, 0 }
-};
-
 static const struct dri2_extension_match optional_core_extensions[] = {
    { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness) },
    { __DRI2_NO_ERROR, 1, offsetof(struct dri2_egl_display, no_error) },
@@ -515,8 +510,6 @@ dri2_load_driver_dri3(_EGLDisplay *disp)
    }
    dri2_dpy->driver_extensions = extensions;
 
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
-
    return EGL_TRUE;
 }
 
@@ -535,8 +528,6 @@ dri2_load_driver(_EGLDisplay *disp)
       return EGL_FALSE;
    }
    dri2_dpy->driver_extensions = extensions;
-
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
 
    return EGL_TRUE;
 }
@@ -557,8 +548,6 @@ dri2_load_driver_swrast(_EGLDisplay *disp)
    }
    dri2_dpy->driver_extensions = extensions;
 
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
-
    return EGL_TRUE;
 }
 
@@ -574,26 +563,6 @@ dri2_renderer_query_integer(struct dri2_egl_display *dri2_dpy, int param)
 
    return value;
 }
-
-static const char *
-dri2_query_driver_name(_EGLDisplay *disp)
-{
-    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-    return dri2_dpy->driver_name;
-}
-
-static char *
-dri2_query_driver_config(_EGLDisplay *disp)
-{
-    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-    const __DRIconfigOptionsExtension *ext = dri2_dpy->configOptions;
-
-    if (ext->base.version >= 2)
-        return ext->getXml(dri2_dpy->driver_name);
-
-    return strdup(ext->xml);
-}
-
 
 void
 dri2_setup_screen(_EGLDisplay *disp)
@@ -638,10 +607,6 @@ dri2_setup_screen(_EGLDisplay *disp)
    assert(dri2_dpy->image_driver || dri2_dpy->dri2 || dri2_dpy->swrast);
    disp->Extensions.KHR_no_config_context = EGL_TRUE;
    disp->Extensions.KHR_surfaceless_context = EGL_TRUE;
-
-   if (dri2_dpy->configOptions) {
-       disp->Extensions.MESA_query_driver = EGL_TRUE;
-   }
 
    /* Report back to EGL the bitmask of priorities supported */
    disp->Extensions.IMG_context_priority =
@@ -3264,8 +3229,6 @@ _eglInitDriver(_EGLDriver *dri2_drv)
    dri2_drv->API.DestroyImageKHR = dri2_destroy_image_khr;
    dri2_drv->API.CreateWaylandBufferFromImageWL = dri2_create_wayland_buffer_from_image;
    dri2_drv->API.QuerySurface = dri2_query_surface;
-   dri2_drv->API.QueryDriverName = dri2_query_driver_name;
-   dri2_drv->API.QueryDriverConfig = dri2_query_driver_config;
 #ifdef HAVE_LIBDRM
    dri2_drv->API.CreateDRMImageMESA = dri2_create_drm_image_mesa;
    dri2_drv->API.ExportDRMImageMESA = dri2_export_drm_image_mesa;
