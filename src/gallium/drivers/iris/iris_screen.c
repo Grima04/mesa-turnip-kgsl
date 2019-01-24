@@ -382,8 +382,6 @@ iris_get_compute_param(struct pipe_screen *pscreen,
    struct brw_compiler *compiler = screen->compiler;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
-   // XXX: cherryview fusing
-
    const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
    const uint32_t max_invocations = 32 * max_threads;
 

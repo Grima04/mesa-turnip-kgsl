@@ -637,7 +637,6 @@ iris_init_render_context(struct iris_screen *screen,
    init_state_base_address(batch);
 
 #if GEN_GEN >= 9
-   // XXX: INSTPM on Gen8
    iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
@@ -705,11 +704,11 @@ iris_init_render_context(struct iris_screen *screen,
    iris_emit_cmd(batch, GENX(3DSTATE_WM_HZ_OP), foo);
 
    /* No polygon stippling offsets are necessary. */
-   // XXX: may need to set an offset for origin-UL framebuffers
+   /* TODO: may need to set an offset for origin-UL framebuffers */
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
    /* Set a static partitioning of the push constant area. */
-   // XXX: this may be a bad idea...could starve the push ringbuffers...
+   /* TODO: this may be a bad idea...could starve the push ringbuffers... */
    for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
       iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
          alloc._3DCommandSubOpcode = 18 + i;
@@ -1121,19 +1120,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    struct iris_rasterizer_state *cso =
       malloc(sizeof(struct iris_rasterizer_state));
 
-#if 0
-   not necessary?
-   {
-      poly_smooth
-      bottom_edge_rule
-
-      offset_units_unscaled - cap not exposed
-   }
-   #endif
-
-   // XXX: it may make more sense just to store the pipe_rasterizer_state,
-   // we're copying a lot of booleans here.  But we don't need all of them...
-
    cso->multisample = state->multisample;
    cso->force_persample_interp = state->force_persample_interp;
    cso->clip_halfz = state->clip_halfz;
@@ -1200,7 +1186,7 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
 #else
       rr.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
 #endif
-      //rr.ConservativeRasterizationEnable = not yet supported by Gallium...
+      /* TODO: ConservativeRasterizationEnable */
    }
 
    iris_pack_command(GENX(3DSTATE_CLIP), cso->clip, cl) {
@@ -3161,8 +3147,8 @@ iris_populate_fs_key(const struct iris_context *ice,
 
    key->coherent_fb_fetch = true;
 
-   // XXX: key->force_dual_color_blend for unigine
-   // XXX: respect hint for high_quality_derivatives:1;
+   /* TODO: support key->force_dual_color_blend for Unigine */
+   /* TODO: Respect glHint for key->high_quality_derivatives */
 }
 
 static void
@@ -3171,13 +3157,6 @@ iris_populate_cs_key(const struct iris_context *ice,
 {
 }
 
-#if 0
-   // XXX: these need to go in INIT_THREAD_DISPATCH_FIELDS
-   pkt.SamplerCount =                                                     \
-      DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4);          \
-
-#endif
-
 static uint64_t
 KSP(const struct iris_compiled_shader *shader)
 {
@@ -3185,9 +3164,12 @@ KSP(const struct iris_compiled_shader *shader)
    return iris_bo_offset_from_base_address(res->bo) + shader->assembly.offset;
 }
 
-// Gen11 workaround table #2056 WABTPPrefetchDisable suggests to disable
-// prefetching of binding tables in A0 and B0 steppings.  XXX: Revisit
-// this WA on C0 stepping.
+/* Gen11 workaround table #2056 WABTPPrefetchDisable suggests to disable
+ * prefetching of binding tables in A0 and B0 steppings.  XXX: Revisit
+ * this WA on C0 stepping.
+ *
+ * TODO: Fill out SamplerCount for prefetching?
+ */
 
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix, stage)                   \
    pkt.KernelStartPointer = KSP(shader);                                  \
@@ -3354,7 +3336,6 @@ iris_store_fs_state(struct iris_context *ice,
 
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
       ps.VectorMaskEnable = true;
-      //ps.SamplerCount = ...
       // XXX: WABTPPrefetchDisable, see above, drop at C0
       ps.BindingTableEntryCount = GEN_GEN == 11 ? 0 :
          prog_data->binding_table.size_bytes / 4;
@@ -3776,7 +3757,7 @@ iris_populate_binding_table(struct iris_context *ice,
    }
 
 #if 0
-      // XXX: not implemented yet
+      /* XXX: YUV surfaces not implemented yet */
       bt_assert(plane_start[1], ...);
       bt_assert(plane_start[2], ...);
 #endif
@@ -4620,7 +4601,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   // XXX: Gen8 - PMA fix
+   /* TODO: Gen8 PMA fix */
 }
 
 static void
@@ -4725,7 +4706,7 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_stream_output_target *so =
          (void *) draw->count_from_stream_output;
 
-      // XXX: avoid if possible
+      /* XXX: Replace with actual cache tracking */
       iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
 
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
@@ -4834,18 +4815,14 @@ iris_upload_compute_state(struct iris_context *ice,
          vfe.NumberofURBEntries = 2;
          vfe.URBEntryAllocationSize = 2;
 
-         // XXX: Use Indirect Payload Storage?
          vfe.CURBEAllocationSize =
             ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
                   cs_prog_data->push.cross_thread.regs, 2);
       }
    }
 
-   // XXX: hack iris_set_constant_buffers to upload these thread counts
-   // XXX: along with regular uniforms for compute shaders, somehow.
-
+   /* TODO: Combine subgroup-id with cbuf0 so we can push regular uniforms */
    uint32_t curbe_data_offset = 0;
-   // TODO: Move subgroup-id into uniforms ubo so we can push uniforms
    assert(cs_prog_data->push.cross_thread.dwords == 0 &&
           cs_prog_data->push.per_thread.dwords == 1 &&
           cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
