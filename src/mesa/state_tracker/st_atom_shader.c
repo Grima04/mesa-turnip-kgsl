@@ -119,6 +119,9 @@ st_update_fp( struct st_context *st )
 
       key.st = st->has_shareable_shaders ? NULL : st;
 
+      key.lower_flatshade = st->lower_flatshade &&
+                            st->ctx->Light.ShadeModel == GL_FLAT;
+
       /* _NEW_FRAG_CLAMP */
       key.clamp_color = st->clamp_frag_color_in_shader &&
                         st->ctx->Color._ClampFragmentColor;

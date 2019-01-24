@@ -227,6 +227,10 @@ st_invalidate_state(struct gl_context *ctx)
                     _NEW_POINT))
       st->dirty |= ST_NEW_RASTERIZER;
 
+   if ((new_state & _NEW_LIGHT) &&
+       st->lower_flatshade)
+      st->dirty |= ST_NEW_FS_STATE;
+
    if (new_state & _NEW_PROJECTION &&
        st_user_clip_planes_enabled(ctx))
       st->dirty |= ST_NEW_CLIP_STATE;
@@ -664,6 +668,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       screen->get_param(screen, PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND);
    st->has_signed_vertex_buffer_offset =
       screen->get_param(screen, PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET);
+   st->lower_flatshade =
+      !screen->get_param(screen, PIPE_CAP_FLATSHADE);
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
@@ -731,6 +737,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    st->shader_has_one_variant[MESA_SHADER_FRAGMENT] =
          st->has_shareable_shaders &&
+         !st->lower_flatshade &&
          !st->clamp_frag_color_in_shader &&
          !st->clamp_frag_depth_in_shader &&
          !st->force_persample_in_shader;

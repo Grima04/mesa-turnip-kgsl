@@ -130,6 +130,8 @@ struct st_fp_variant_key
    char texture_targets[MAX_NUM_FRAGMENT_REGISTERS_ATI];
 
    struct st_external_sampler_key external;
+
+   GLuint lower_flatshade:1;
 };
 
 

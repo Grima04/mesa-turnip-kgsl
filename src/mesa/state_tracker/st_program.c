@@ -1161,6 +1161,9 @@ st_create_fp_variant(struct st_context *st,
       if (key->clamp_color)
          NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
 
+      if (key->lower_flatshade)
+         NIR_PASS_V(tgsi.ir.nir, nir_lower_flatshade);
+
       if (key->persample_shading) {
           nir_shader *shader = tgsi.ir.nir;
           nir_foreach_variable(var, &shader->inputs)
