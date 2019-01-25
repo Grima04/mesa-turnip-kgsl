@@ -213,27 +213,6 @@ fs_visitor::DEP_RESOLVE_MOV(const fs_builder &bld, int grf)
 }
 
 bool
-fs_inst::equals(fs_inst *inst) const
-{
-   return (opcode == inst->opcode &&
-           dst.equals(inst->dst) &&
-           src[0].equals(inst->src[0]) &&
-           src[1].equals(inst->src[1]) &&
-           src[2].equals(inst->src[2]) &&
-           saturate == inst->saturate &&
-           predicate == inst->predicate &&
-           conditional_mod == inst->conditional_mod &&
-           mlen == inst->mlen &&
-           base_mrf == inst->base_mrf &&
-           target == inst->target &&
-           eot == inst->eot &&
-           header_size == inst->header_size &&
-           shadow_compare == inst->shadow_compare &&
-           exec_size == inst->exec_size &&
-           offset == inst->offset);
-}
-
-bool
 fs_inst::is_send_from_grf() const
 {
    switch (opcode) {
@@ -3410,7 +3389,13 @@ fs_visitor::remove_duplicate_mrf_writes()
       if (inst->opcode == BRW_OPCODE_MOV &&
 	  inst->dst.file == MRF) {
          fs_inst *prev_inst = last_mrf_move[inst->dst.nr];
-	 if (prev_inst && inst->equals(prev_inst)) {
+	 if (prev_inst && prev_inst->opcode == BRW_OPCODE_MOV &&
+             inst->dst.equals(prev_inst->dst) &&
+             inst->src[0].equals(prev_inst->src[0]) &&
+             inst->saturate == prev_inst->saturate &&
+             inst->predicate == prev_inst->predicate &&
+             inst->conditional_mod == prev_inst->conditional_mod &&
+             inst->exec_size == prev_inst->exec_size) {
 	    inst->remove(block);
 	    progress = true;
 	    continue;
