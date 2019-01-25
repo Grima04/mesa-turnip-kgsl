@@ -589,7 +589,6 @@ radv_emit_userdata_address(struct radv_cmd_buffer *cmd_buffer,
 		return;
 
 	assert(loc->num_sgprs == 1);
-	assert(!loc->indirect);
 
 	radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
 				 base_reg + loc->sgpr_idx * 4, va, false);
@@ -4158,7 +4157,6 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		if (loc->sgpr_idx != -1) {
-			assert(!loc->indirect);
 			assert(loc->num_sgprs == 3);
 
 			radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0 +

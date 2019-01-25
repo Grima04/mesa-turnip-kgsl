@@ -553,11 +553,10 @@ create_llvm_function(LLVMContextRef ctx, LLVMModuleRef module,
 
 static void
 set_loc(struct radv_userdata_info *ud_info, uint8_t *sgpr_idx,
-	uint8_t num_sgprs, bool indirect)
+	uint8_t num_sgprs)
 {
 	ud_info->sgpr_idx = *sgpr_idx;
 	ud_info->num_sgprs = num_sgprs;
-	ud_info->indirect = indirect;
 	*sgpr_idx += num_sgprs;
 }
 
@@ -569,7 +568,7 @@ set_loc_shader(struct radv_shader_context *ctx, int idx, uint8_t *sgpr_idx,
 		&ctx->shader_info->user_sgprs_locs.shader_data[idx];
 	assert(ud_info);
 
-	set_loc(ud_info, sgpr_idx, num_sgprs, false);
+	set_loc(ud_info, sgpr_idx, num_sgprs);
 }
 
 static void
@@ -581,18 +580,16 @@ set_loc_shader_ptr(struct radv_shader_context *ctx, int idx, uint8_t *sgpr_idx)
 }
 
 static void
-set_loc_desc(struct radv_shader_context *ctx, int idx,  uint8_t *sgpr_idx,
-	     bool indirect)
+set_loc_desc(struct radv_shader_context *ctx, int idx, uint8_t *sgpr_idx)
 {
 	struct radv_userdata_locations *locs =
 		&ctx->shader_info->user_sgprs_locs;
 	struct radv_userdata_info *ud_info = &locs->descriptor_sets[idx];
 	assert(ud_info);
 
-	set_loc(ud_info, sgpr_idx, 1, indirect);
+	set_loc(ud_info, sgpr_idx, 1);
 
-	if (!indirect)
-		locs->descriptor_sets_enabled |= 1 << idx;
+	locs->descriptor_sets_enabled |= 1 << idx;
 }
 
 struct user_sgpr_info {
@@ -851,7 +848,7 @@ set_global_input_locs(struct radv_shader_context *ctx, gl_shader_stage stage,
 		for (unsigned i = 0; i < num_sets; ++i) {
 			if ((ctx->shader_info->info.desc_set_used_mask & (1 << i)) &&
 			    ctx->options->layout->set[i].layout->shader_stages & stage_mask) {
-				set_loc_desc(ctx, i, user_sgpr_idx, false);
+				set_loc_desc(ctx, i, user_sgpr_idx);
 			} else
 				ctx->descriptor_sets[i] = NULL;
 		}
