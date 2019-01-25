@@ -809,6 +809,14 @@ optimizations.extend([
               ('ubfe', 'value', 'offset', 'bits')),
     'options->lower_bitfield_extract'),
 
+   # Note that these opcodes are defined to only use the five least significant bits of 'offset' and 'bits'
+   (('ubfe', 'value', 'offset', ('iand', 31, 'bits')), ('ubfe', 'value', 'offset', 'bits')),
+   (('ubfe', 'value', ('iand', 31, 'offset'), 'bits'), ('ubfe', 'value', 'offset', 'bits')),
+   (('ibfe', 'value', 'offset', ('iand', 31, 'bits')), ('ibfe', 'value', 'offset', 'bits')),
+   (('ibfe', 'value', ('iand', 31, 'offset'), 'bits'), ('ibfe', 'value', 'offset', 'bits')),
+   (('bfm', 'bits', ('iand', 31, 'offset')), ('bfm', 'bits', 'offset')),
+   (('bfm', ('iand', 31, 'bits'), 'offset'), ('bfm', 'bits', 'offset')),
+
    (('ibitfield_extract', 'value', 'offset', 'bits'),
     ('bcsel', ('ieq', 0, 'bits'),
      0,
