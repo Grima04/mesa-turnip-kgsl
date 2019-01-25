@@ -79,9 +79,8 @@ static inline uint32_t
 v3d_get_utile_pixel_offset(uint32_t cpp, uint32_t x, uint32_t y)
 {
         uint32_t utile_w = v3d_utile_width(cpp);
-        uint32_t utile_h = v3d_utile_height(cpp);
 
-        assert(x < utile_w && y < utile_h);
+        assert(x < utile_w && y < v3d_utile_height(cpp));
 
         return x * cpp + y * utile_w * cpp;
 }
