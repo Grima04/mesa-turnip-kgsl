@@ -265,7 +265,7 @@ class ABIPrinter(object):
             if not self.need_entry_point(ent):
                 continue
             export = self.api_call if not ent.hidden else ''
-            if not ent.hidden:
+            if not ent.hidden or not self.lib_need_non_hidden_entries:
                 decls.append(self._c_decl(ent, prefix, True, export) + ';')
 
         return "\n".join(decls)
