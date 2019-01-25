@@ -713,29 +713,20 @@ static void allocate_user_sgprs(struct radv_shader_context *ctx,
 
 static void
 declare_global_input_sgprs(struct radv_shader_context *ctx,
-			   gl_shader_stage stage,
-			   bool has_previous_stage,
-			   gl_shader_stage previous_stage,
 			   const struct user_sgpr_info *user_sgpr_info,
 			   struct arg_info *args,
 			   LLVMValueRef *desc_sets)
 {
 	LLVMTypeRef type = ac_array_in_const32_addr_space(ctx->ac.i8);
-	unsigned num_sets = ctx->options->layout ?
-			    ctx->options->layout->num_sets : 0;
-	unsigned stage_mask = 1 << stage;
-
-	if (has_previous_stage)
-		stage_mask |= 1 << previous_stage;
 
 	/* 1 for each descriptor set */
 	if (!user_sgpr_info->indirect_all_descriptor_sets) {
-		for (unsigned i = 0; i < num_sets; ++i) {
-			if ((ctx->shader_info->info.desc_set_used_mask & (1 << i)) &&
-			    ctx->options->layout->set[i].layout->shader_stages & stage_mask) {
-				add_array_arg(args, type,
-					      &ctx->descriptor_sets[i]);
-			}
+		uint32_t mask = ctx->shader_info->info.desc_set_used_mask;
+
+		while (mask) {
+			int i = u_bit_scan(&mask);
+
+			add_array_arg(args, type, &ctx->descriptor_sets[i]);
 		}
 	} else {
 		add_array_arg(args, ac_array_in_const32_addr_space(type), desc_sets);
@@ -832,41 +823,31 @@ declare_tes_input_vgprs(struct radv_shader_context *ctx, struct arg_info *args)
 }
 
 static void
-set_global_input_locs(struct radv_shader_context *ctx, gl_shader_stage stage,
-		      bool has_previous_stage, gl_shader_stage previous_stage,
+set_global_input_locs(struct radv_shader_context *ctx,
 		      const struct user_sgpr_info *user_sgpr_info,
 		      LLVMValueRef desc_sets, uint8_t *user_sgpr_idx)
 {
-	unsigned num_sets = ctx->options->layout ?
-			    ctx->options->layout->num_sets : 0;
-	unsigned stage_mask = 1 << stage;
-
-	if (has_previous_stage)
-		stage_mask |= 1 << previous_stage;
+	uint32_t mask = ctx->shader_info->info.desc_set_used_mask;
 
 	if (!user_sgpr_info->indirect_all_descriptor_sets) {
-		for (unsigned i = 0; i < num_sets; ++i) {
-			if ((ctx->shader_info->info.desc_set_used_mask & (1 << i)) &&
-			    ctx->options->layout->set[i].layout->shader_stages & stage_mask) {
-				set_loc_desc(ctx, i, user_sgpr_idx);
-			} else
-				ctx->descriptor_sets[i] = NULL;
+		while (mask) {
+			int i = u_bit_scan(&mask);
+
+			set_loc_desc(ctx, i, user_sgpr_idx);
 		}
 	} else {
 		set_loc_shader_ptr(ctx, AC_UD_INDIRECT_DESCRIPTOR_SETS,
 			           user_sgpr_idx);
 
-		for (unsigned i = 0; i < num_sets; ++i) {
-			if ((ctx->shader_info->info.desc_set_used_mask & (1 << i)) &&
-			    ctx->options->layout->set[i].layout->shader_stages & stage_mask) {
-				ctx->descriptor_sets[i] =
-					ac_build_load_to_sgpr(&ctx->ac,
-							      desc_sets,
-							      LLVMConstInt(ctx->ac.i32, i, false));
+		while (mask) {
+			int i = u_bit_scan(&mask);
 
-			} else
-				ctx->descriptor_sets[i] = NULL;
+			ctx->descriptor_sets[i] =
+				ac_build_load_to_sgpr(&ctx->ac, desc_sets,
+						      LLVMConstInt(ctx->ac.i32, i, false));
+
 		}
+
 		ctx->shader_info->need_indirect_descriptor_sets = true;
 	}
 
@@ -952,9 +933,8 @@ static void create_function(struct radv_shader_context *ctx,
 
 	switch (stage) {
 	case MESA_SHADER_COMPUTE:
-		declare_global_input_sgprs(ctx, stage, has_previous_stage,
-					   previous_stage, &user_sgpr_info,
-					   &args, &desc_sets);
+		declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
+					   &desc_sets);
 
 		if (ctx->shader_info->info.cs.uses_grid_size) {
 			add_arg(&args, ARG_SGPR, ctx->ac.v3i32,
@@ -975,9 +955,9 @@ static void create_function(struct radv_shader_context *ctx,
 			&ctx->abi.local_invocation_ids);
 		break;
 	case MESA_SHADER_VERTEX:
-		declare_global_input_sgprs(ctx, stage, has_previous_stage,
-					   previous_stage, &user_sgpr_info,
-					   &args, &desc_sets);
+		declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
+					   &desc_sets);
+
 		declare_vs_specific_input_sgprs(ctx, stage, has_previous_stage,
 						previous_stage, &args);
 
@@ -1008,11 +988,9 @@ static void create_function(struct radv_shader_context *ctx,
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, NULL); // unknown
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, NULL); // unknown
 
-			declare_global_input_sgprs(ctx, stage,
-						   has_previous_stage,
-						   previous_stage,
-						   &user_sgpr_info, &args,
+			declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
 						   &desc_sets);
+
 			declare_vs_specific_input_sgprs(ctx, stage,
 							has_previous_stage,
 							previous_stage, &args);
@@ -1028,10 +1006,7 @@ static void create_function(struct radv_shader_context *ctx,
 
 			declare_vs_input_vgprs(ctx, &args);
 		} else {
-			declare_global_input_sgprs(ctx, stage,
-						   has_previous_stage,
-						   previous_stage,
-						   &user_sgpr_info, &args,
+			declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
 						   &desc_sets);
 
 			if (needs_view_index)
@@ -1048,9 +1023,8 @@ static void create_function(struct radv_shader_context *ctx,
 		}
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		declare_global_input_sgprs(ctx, stage, has_previous_stage,
-					   previous_stage, &user_sgpr_info,
-					   &args, &desc_sets);
+		declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
+					   &desc_sets);
 
 		if (needs_view_index)
 			add_arg(&args, ARG_SGPR, ctx->ac.i32,
@@ -1081,10 +1055,7 @@ static void create_function(struct radv_shader_context *ctx,
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, NULL); // unknown
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, NULL); // unknown
 
-			declare_global_input_sgprs(ctx, stage,
-						   has_previous_stage,
-						   previous_stage,
-						   &user_sgpr_info, &args,
+			declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
 						   &desc_sets);
 
 			if (previous_stage != MESA_SHADER_TESS_EVAL) {
@@ -1115,10 +1086,7 @@ static void create_function(struct radv_shader_context *ctx,
 				declare_tes_input_vgprs(ctx, &args);
 			}
 		} else {
-			declare_global_input_sgprs(ctx, stage,
-						   has_previous_stage,
-						   previous_stage,
-						   &user_sgpr_info, &args,
+			declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
 						   &desc_sets);
 
 			if (needs_view_index)
@@ -1146,9 +1114,8 @@ static void create_function(struct radv_shader_context *ctx,
 		}
 		break;
 	case MESA_SHADER_FRAGMENT:
-		declare_global_input_sgprs(ctx, stage, has_previous_stage,
-					   previous_stage, &user_sgpr_info,
-					   &args, &desc_sets);
+		declare_global_input_sgprs(ctx, &user_sgpr_info, &args,
+					   &desc_sets);
 
 		add_arg(&args, ARG_SGPR, ctx->ac.i32, &ctx->abi.prim_mask);
 		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->persp_sample);
@@ -1207,8 +1174,7 @@ static void create_function(struct radv_shader_context *ctx,
 	if (has_previous_stage)
 		user_sgpr_idx = 0;
 
-	set_global_input_locs(ctx, stage, has_previous_stage, previous_stage,
-			      &user_sgpr_info, desc_sets, &user_sgpr_idx);
+	set_global_input_locs(ctx, &user_sgpr_info, desc_sets, &user_sgpr_idx);
 
 	switch (stage) {
 	case MESA_SHADER_COMPUTE:
