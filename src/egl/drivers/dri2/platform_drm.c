@@ -98,6 +98,7 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
    const struct gbm_dri_visual *visual = NULL;
    int shifts[4];
    unsigned int sizes[4];
+   bool is_float;
    int i;
 
    /* Check that the EGLConfig being used to render to the surface is
@@ -106,6 +107,8 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
     * this.
     */
    dri2_get_shifts_and_sizes(dri2_dpy->core, config, shifts, sizes);
+
+   dri2_get_render_type_float(dri2_dpy->core, config, &is_float);
 
    for (i = 0; i < dri2_dpy->gbm_dri->num_visuals; i++) {
       visual = &dri2_dpy->gbm_dri->visual_table[i];
@@ -123,7 +126,8 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
        sizes[0] != visual->rgba_sizes.red ||
        sizes[1] != visual->rgba_sizes.green ||
        sizes[2] != visual->rgba_sizes.blue ||
-       (sizes[3] > 0 && sizes[3] != visual->rgba_sizes.alpha)) {
+       (sizes[3] > 0 && sizes[3] != visual->rgba_sizes.alpha) ||
+       is_float != visual->is_float) {
       return false;
    }
 
@@ -617,8 +621,11 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
       const __DRIconfig *config = dri2_dpy->driver_configs[i];
       int shifts[4];
       unsigned int sizes[4];
+      bool is_float;
 
       dri2_get_shifts_and_sizes(dri2_dpy->core, config, shifts, sizes);
+
+      dri2_get_render_type_float(dri2_dpy->core, config, &is_float);
 
       for (unsigned j = 0; j < num_visuals; j++) {
          struct dri2_egl_config *dri2_conf;
@@ -630,7 +637,8 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
              visuals[j].rgba_sizes.red != sizes[0] ||
              visuals[j].rgba_sizes.green != sizes[1] ||
              visuals[j].rgba_sizes.blue != sizes[2] ||
-             visuals[j].rgba_sizes.alpha != sizes[3])
+             visuals[j].rgba_sizes.alpha != sizes[3] ||
+             visuals[j].is_float != is_float)
             continue;
 
          const EGLint attr_list[] = {

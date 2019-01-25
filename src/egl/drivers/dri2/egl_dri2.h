@@ -409,6 +409,11 @@ dri2_get_shifts_and_sizes(const __DRIcoreExtension *core,
 		          const __DRIconfig *config, int *shifts,
 			  unsigned int *sizes);
 
+void
+dri2_get_render_type_float(const __DRIcoreExtension *core,
+                           const __DRIconfig *config,
+                           bool *is_float);
+
 struct dri2_egl_config *
 dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
                 EGLint surface_type, const EGLint *attr_list,

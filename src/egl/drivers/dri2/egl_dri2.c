@@ -239,6 +239,17 @@ dri2_get_shifts_and_sizes(const __DRIcoreExtension *core,
    core->getConfigAttrib(config, __DRI_ATTRIB_ALPHA_SIZE, &sizes[3]);
 }
 
+void
+dri2_get_render_type_float(const __DRIcoreExtension *core,
+                           const __DRIconfig *config,
+                           bool *is_float)
+{
+   unsigned int render_type;
+
+   core->getConfigAttrib(config, __DRI_ATTRIB_RENDER_TYPE, &render_type);
+   *is_float = (render_type & __DRI_ATTRIB_FLOAT_BIT) ? true : false;
+}
+
 struct dri2_egl_config *
 dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
                 EGLint surface_type, const EGLint *attr_list,
@@ -268,6 +279,9 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
 
       switch (attrib) {
       case __DRI_ATTRIB_RENDER_TYPE:
+         if (value & __DRI_ATTRIB_FLOAT_BIT)
+            _eglSetConfigKey(&base, EGL_COLOR_COMPONENT_TYPE_EXT,
+                             EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT);
          if (value & __DRI_ATTRIB_RGBA_BIT)
             value = EGL_RGB_BUFFER;
          else if (value & __DRI_ATTRIB_LUMINANCE_BIT)
