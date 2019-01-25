@@ -222,7 +222,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
       const unsigned store_src_comps = store_bytes / (bit_size / 8);
       assert(store_first_src_comp + store_src_comps <= num_components);
 
-      unsigned src_swiz[4];
+      unsigned src_swiz[4] = { 0, };
       for (unsigned i = 0; i < store_src_comps; i++)
          src_swiz[i] = store_first_src_comp + i;
       nir_ssa_def *store_value =
