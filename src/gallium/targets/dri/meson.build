@@ -66,6 +66,7 @@ libgallium_dri = shared_library(
 )
 
 foreach d : [[with_gallium_kmsro, [
+               'exynos_dri.so',
                'hx8357d_dri.so',
                'ili9225_dri.so',
                'ili9341_dri.so',
@@ -77,6 +78,7 @@ foreach d : [[with_gallium_kmsro, [
                'rockchip_dri.so',
                'st7586.so',
                'st7735r.so',
+	       'sun4i-drm_dri.so',
              ]],
              [with_gallium_radeonsi, 'radeonsi_dri.so'],
              [with_gallium_nouveau, 'nouveau_dri.so'],
