@@ -350,7 +350,6 @@ instr_create_alu_reg(struct ir2_context *ctx, nir_op opcode,
 {
 	struct ir2_instr *instr;
 	struct ir2_reg *reg;
-	unsigned ncomp, max_comp;
 
 	reg = share_reg ? share_reg->reg : &ctx->reg[ctx->reg_count++];
 	reg->ncomp = MAX2(reg->ncomp, util_logbase2(write_mask) + 1);
