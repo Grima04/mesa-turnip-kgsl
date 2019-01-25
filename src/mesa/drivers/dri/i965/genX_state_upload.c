@@ -998,7 +998,8 @@ genX(emit_index_buffer)(struct brw_context *brw)
 
    brw_batch_emit(brw, GENX(3DSTATE_INDEX_BUFFER), ib) {
 #if GEN_GEN < 8 && !GEN_IS_HASWELL
-      ib.CutIndexEnable = brw->prim_restart.enable_cut_index;
+      assert(brw->ib.enable_cut_index == brw->prim_restart.enable_cut_index);
+      ib.CutIndexEnable = brw->ib.enable_cut_index;
 #endif
       ib.IndexFormat = brw_get_index_type(index_buffer->index_size);
 
