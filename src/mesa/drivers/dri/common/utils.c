@@ -181,28 +181,41 @@ driCreateConfigs(mesa_format format,
 		 GLboolean enable_accum, GLboolean color_depth_match,
 		 GLboolean mutable_render_buffer)
 {
-   static const uint32_t masks_table[][4] = {
+   static const struct {
+      uint32_t masks[4];
+      int shifts[4];
+   } format_table[] = {
       /* MESA_FORMAT_B5G6R5_UNORM */
-      { 0x0000F800, 0x000007E0, 0x0000001F, 0x00000000 },
+      {{ 0x0000F800, 0x000007E0, 0x0000001F, 0x00000000 },
+       { 11, 5, 0, -1 }},
       /* MESA_FORMAT_B8G8R8X8_UNORM */
-      { 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000 },
+      {{ 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000 },
+       { 16, 8, 0, -1 }},
       /* MESA_FORMAT_B8G8R8A8_UNORM */
-      { 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000 },
+      {{ 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000 },
+       { 16, 8, 0, 24 }},
       /* MESA_FORMAT_B10G10R10X2_UNORM */
-      { 0x3FF00000, 0x000FFC00, 0x000003FF, 0x00000000 },
+      {{ 0x3FF00000, 0x000FFC00, 0x000003FF, 0x00000000 },
+       { 20, 10, 0, -1 }},
       /* MESA_FORMAT_B10G10R10A2_UNORM */
-      { 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000 },
+      {{ 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000 },
+       { 20, 10, 0, 30 }},
       /* MESA_FORMAT_R8G8B8A8_UNORM */
-      { 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 },
+      {{ 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 },
+       { 0, 8, 16, 24 }},
       /* MESA_FORMAT_R8G8B8X8_UNORM */
-      { 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000 },
+      {{ 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000 },
+       { 0, 8, 16, -1 }},
       /* MESA_FORMAT_R10G10B10X2_UNORM */
-      { 0x000003FF, 0x000FFC00, 0x3FF00000, 0x00000000 },
+      {{ 0x000003FF, 0x000FFC00, 0x3FF00000, 0x00000000 },
+       { 0, 10, 20, -1 }},
       /* MESA_FORMAT_R10G10B10A2_UNORM */
-      { 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000 },
+      {{ 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000 },
+       { 0, 10, 20, 30 }},
    };
 
    const uint32_t * masks;
+   const int * shifts;
    __DRIconfig **configs, **c;
    struct gl_config *modes;
    unsigned i, j, k, h;
@@ -216,34 +229,43 @@ driCreateConfigs(mesa_format format,
 
    switch (format) {
    case MESA_FORMAT_B5G6R5_UNORM:
-      masks = masks_table[0];
+      masks = format_table[0].masks;
+      shifts = format_table[0].shifts;
       break;
    case MESA_FORMAT_B8G8R8X8_UNORM:
    case MESA_FORMAT_B8G8R8X8_SRGB:
-      masks = masks_table[1];
+      masks = format_table[1].masks;
+      shifts = format_table[1].shifts;
       break;
    case MESA_FORMAT_B8G8R8A8_UNORM:
    case MESA_FORMAT_B8G8R8A8_SRGB:
-      masks = masks_table[2];
+      masks = format_table[2].masks;
+      shifts = format_table[2].shifts;
       break;
    case MESA_FORMAT_R8G8B8A8_UNORM:
    case MESA_FORMAT_R8G8B8A8_SRGB:
-      masks = masks_table[5];
+      masks = format_table[5].masks;
+      shifts = format_table[5].shifts;
       break;
    case MESA_FORMAT_R8G8B8X8_UNORM:
-      masks = masks_table[6];
+      masks = format_table[6].masks;
+      shifts = format_table[6].shifts;
       break;
    case MESA_FORMAT_B10G10R10X2_UNORM:
-      masks = masks_table[3];
+      masks = format_table[3].masks;
+      shifts = format_table[3].shifts;
       break;
    case MESA_FORMAT_B10G10R10A2_UNORM:
-      masks = masks_table[4];
+      masks = format_table[4].masks;
+      shifts = format_table[4].shifts;
       break;
    case MESA_FORMAT_R10G10B10X2_UNORM:
-      masks = masks_table[7];
+      masks = format_table[7].masks;
+      shifts = format_table[7].shifts;
       break;
    case MESA_FORMAT_R10G10B10A2_UNORM:
-      masks = masks_table[8];
+      masks = format_table[8].masks;
+      shifts = format_table[8].shifts;
       break;
    default:
       fprintf(stderr, "[%s:%u] Unknown framebuffer type %s (%d).\n",
@@ -294,6 +316,10 @@ driCreateConfigs(mesa_format format,
 		    modes->greenMask = masks[1];
 		    modes->blueMask  = masks[2];
 		    modes->alphaMask = masks[3];
+		    modes->redShift   = shifts[0];
+		    modes->greenShift = shifts[1];
+		    modes->blueShift  = shifts[2];
+		    modes->alphaShift = shifts[3];
 		    modes->rgbBits   = modes->redBits + modes->greenBits
 		    	+ modes->blueBits + modes->alphaBits;
 
@@ -414,9 +440,13 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
     __ATTRIB(__DRI_ATTRIB_TRANSPARENT_BLUE_VALUE,	transparentBlue),
     __ATTRIB(__DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE,	transparentAlpha),
     __ATTRIB(__DRI_ATTRIB_RED_MASK,			redMask),
+    __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift),
     __ATTRIB(__DRI_ATTRIB_GREEN_MASK,			greenMask),
+    __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift),
     __ATTRIB(__DRI_ATTRIB_BLUE_MASK,			blueMask),
+    __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift),
     __ATTRIB(__DRI_ATTRIB_ALPHA_MASK,			alphaMask),
+    __ATTRIB(__DRI_ATTRIB_ALPHA_SHIFT,			alphaShift),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_WIDTH,		maxPbufferWidth),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_HEIGHT,		maxPbufferHeight),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_PIXELS,		maxPbufferPixels),

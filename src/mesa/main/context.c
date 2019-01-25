@@ -1564,9 +1564,12 @@ check_compatible(const struct gl_context *ctx,
        ctxvis->foo != bufvis->foo)     \
       return GL_FALSE
 
-   check_component(redMask);
-   check_component(greenMask);
-   check_component(blueMask);
+   check_component(redShift);
+   check_component(greenShift);
+   check_component(blueShift);
+   check_component(redBits);
+   check_component(greenBits);
+   check_component(blueBits);
    check_component(depthBits);
    check_component(stencilBits);
 
