@@ -127,6 +127,8 @@ dri_fill_in_modes(struct dri_screen *screen)
       MESA_FORMAT_B8G8R8A8_SRGB,
       MESA_FORMAT_B8G8R8X8_SRGB,
       MESA_FORMAT_B5G6R5_UNORM,
+      MESA_FORMAT_RGBA_FLOAT16,
+      MESA_FORMAT_RGBX_FLOAT16,
 
       /* The 32-bit RGBA format must not precede the 32-bit BGRA format.
        * Likewise for RGBX and BGRX.  Otherwise, the GLX client and the GLX
@@ -159,6 +161,8 @@ dri_fill_in_modes(struct dri_screen *screen)
       PIPE_FORMAT_BGRA8888_SRGB,
       PIPE_FORMAT_BGRX8888_SRGB,
       PIPE_FORMAT_B5G6R5_UNORM,
+      PIPE_FORMAT_R16G16B16A16_FLOAT,
+      PIPE_FORMAT_R16G16B16X16_FLOAT,
       PIPE_FORMAT_RGBA8888_UNORM,
       PIPE_FORMAT_RGBX8888_UNORM,
    };
@@ -174,6 +178,7 @@ dri_fill_in_modes(struct dri_screen *screen)
    bool mixed_color_depth;
    bool allow_rgba_ordering;
    bool allow_rgb10;
+   bool allow_fp16;
 
    static const GLenum back_buffer_modes[] = {
       __DRI_ATTRIB_SWAP_NONE, __DRI_ATTRIB_SWAP_UNDEFINED,
@@ -192,6 +197,8 @@ dri_fill_in_modes(struct dri_screen *screen)
 
    allow_rgba_ordering = dri_loader_get_cap(screen, DRI_LOADER_CAP_RGBA_ORDERING);
    allow_rgb10 = driQueryOptionb(&screen->dev->option_cache, "allow_rgb10_configs");
+   allow_fp16 = driQueryOptionb(&screen->dev->option_cache, "allow_fp16_configs");
+   allow_fp16 &= dri_loader_get_cap(screen, DRI_LOADER_CAP_FP16);
 
    msaa_samples_max = (screen->st_api->feature_mask & ST_API_FEATURE_MS_VISUALS_MASK)
       ? MSAA_VISUAL_MAX_SAMPLES : 1;
@@ -258,6 +265,11 @@ dri_fill_in_modes(struct dri_screen *screen)
            mesa_formats[format] == MESA_FORMAT_R10G10B10X2_UNORM))
          continue;
 
+      if (!allow_fp16 &&
+          (mesa_formats[format] == MESA_FORMAT_RGBA_FLOAT16 ||
+           mesa_formats[format] == MESA_FORMAT_RGBX_FLOAT16))
+         continue;
+
       if (!p_screen->is_format_supported(p_screen, pipe_formats[format],
                                          PIPE_TEXTURE_2D, 0, 0,
                                          PIPE_BIND_RENDER_TARGET |
@@ -322,6 +334,17 @@ dri_fill_st_visual(struct st_visual *stvis,
 
    /* Deduce the color format. */
    switch (mode->redMask) {
+   case 0:
+      /* Formats > 32 bpp */
+      assert(mode->floatMode);
+      if (mode->alphaShift > -1) {
+         assert(mode->alphaShift == 48);
+         stvis->color_format = PIPE_FORMAT_R16G16B16A16_FLOAT;
+      } else {
+         stvis->color_format = PIPE_FORMAT_R16G16B16X16_FLOAT;
+      }
+      break;
+
    case 0x3FF00000:
       if (mode->alphaMask) {
          assert(mode->alphaMask == 0xC0000000);

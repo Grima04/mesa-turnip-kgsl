@@ -380,6 +380,12 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
 }
 
 static const struct dri2_format_mapping dri2_format_table[] = {
+      { __DRI_IMAGE_FOURCC_ABGR16161616F, __DRI_IMAGE_FORMAT_ABGR16161616F,
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_R16G16B16A16_FLOAT, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR16161616F, 4 } } },
+      { __DRI_IMAGE_FOURCC_XBGR16161616F, __DRI_IMAGE_FORMAT_XBGR16161616F,
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_R16G16B16X16_FLOAT, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR16161616F, 4 } } },
       { __DRI_IMAGE_FOURCC_ARGB2101010,   __DRI_IMAGE_FORMAT_ARGB2101010,
         __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B10G10R10A2_UNORM, 1,
         { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB2101010, 4 } } },

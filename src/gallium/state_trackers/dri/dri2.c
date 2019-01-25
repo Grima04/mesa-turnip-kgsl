@@ -153,6 +153,12 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
        * may occur as the stvis->color_format.
        */
       switch(format) {
+      case PIPE_FORMAT_R16G16B16A16_FLOAT:
+         depth = 64;
+         break;
+      case PIPE_FORMAT_R16G16B16X16_FLOAT:
+         depth = 48;
+         break;
       case PIPE_FORMAT_B10G10R10A2_UNORM:
       case PIPE_FORMAT_R10G10B10A2_UNORM:
       case PIPE_FORMAT_BGRA8888_UNORM:
@@ -231,6 +237,12 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
       }
 
       switch (pf) {
+      case PIPE_FORMAT_R16G16B16A16_FLOAT:
+         image_format = __DRI_IMAGE_FORMAT_ABGR16161616F;
+         break;
+      case PIPE_FORMAT_R16G16B16X16_FLOAT:
+         image_format = __DRI_IMAGE_FORMAT_XBGR16161616F;
+         break;
       case PIPE_FORMAT_B5G5R5A1_UNORM:
          image_format = __DRI_IMAGE_FORMAT_ARGB1555;
          break;
@@ -304,6 +316,12 @@ dri2_allocate_buffer(__DRIscreen *sPriv,
    bind |= PIPE_BIND_SHARED;
 
    switch (format) {
+      case 64:
+         pf = PIPE_FORMAT_R16G16B16A16_FLOAT;
+         break;
+      case 48:
+         pf = PIPE_FORMAT_R16G16B16X16_FLOAT;
+         break;
       case 32:
          pf = PIPE_FORMAT_BGRA8888_UNORM;
          break;
