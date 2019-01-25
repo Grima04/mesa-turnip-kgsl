@@ -226,6 +226,7 @@ driCreateConfigs(mesa_format format,
    int blue_bits;
    int alpha_bits;
    bool is_srgb;
+   bool is_float;
 
    switch (format) {
    case MESA_FORMAT_B5G6R5_UNORM:
@@ -279,6 +280,7 @@ driCreateConfigs(mesa_format format,
    blue_bits = _mesa_get_format_bits(format, GL_BLUE_BITS);
    alpha_bits = _mesa_get_format_bits(format, GL_ALPHA_BITS);
    is_srgb = _mesa_is_format_srgb(format);
+   is_float = _mesa_get_format_datatype(format) == GL_FLOAT;
 
    num_modes = num_depth_stencil_bits * num_db_modes * num_accum_bits * num_msaa_modes;
    configs = calloc(num_modes + 1, sizeof *configs);
@@ -308,6 +310,7 @@ driCreateConfigs(mesa_format format,
 		    c++;
 
 		    memset(modes, 0, sizeof *modes);
+		    modes->floatMode = is_float;
 		    modes->redBits   = red_bits;
 		    modes->greenBits = green_bits;
 		    modes->blueBits  = blue_bits;
@@ -481,6 +484,8 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     case __DRI_ATTRIB_RENDER_TYPE:
         /* no support for color index mode */
 	*value = __DRI_ATTRIB_RGBA_BIT;
+        if (config->modes.floatMode)
+            *value |= __DRI_ATTRIB_FLOAT_BIT;
 	break;
     case __DRI_ATTRIB_CONFIG_CAVEAT:
 	if (config->modes.visualRating == GLX_NON_CONFORMANT_CONFIG)
