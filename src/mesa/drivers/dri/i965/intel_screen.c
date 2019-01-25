@@ -100,6 +100,7 @@ DRI_CONF_BEGIN
       DRI_CONF_GLSL_ZERO_INIT("false")
       DRI_CONF_ALLOW_RGB10_CONFIGS("false")
       DRI_CONF_ALLOW_RGB565_CONFIGS("true")
+      DRI_CONF_ALLOW_FP16_CONFIGS("false")
    DRI_CONF_SECTION_END
 DRI_CONF_END
 };
@@ -189,6 +190,12 @@ static const struct __DRI2flushExtensionRec intelFlushExtension = {
 };
 
 static const struct intel_image_format intel_image_formats[] = {
+   { __DRI_IMAGE_FOURCC_ABGR16161616F, __DRI_IMAGE_COMPONENTS_RGBA, 1,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR16161616F, 8 } } },
+
+   { __DRI_IMAGE_FOURCC_XBGR16161616F, __DRI_IMAGE_COMPONENTS_RGB, 1,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR16161616F, 8 } } },
+
    { __DRI_IMAGE_FOURCC_ARGB2101010, __DRI_IMAGE_COMPONENTS_RGBA, 1,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB2101010, 4 } } },
 
@@ -1734,7 +1741,11 @@ intelCreateBuffer(__DRIscreen *dri_screen,
       fb->Visual.samples = num_samples;
    }
 
-   if (mesaVis->redBits == 10 && mesaVis->alphaBits > 0) {
+   if (mesaVis->redBits == 16 && mesaVis->alphaBits > 0 && mesaVis->floatMode) {
+      rgbFormat = MESA_FORMAT_RGBA_FLOAT16;
+   } else if (mesaVis->redBits == 16 && mesaVis->floatMode) {
+      rgbFormat = MESA_FORMAT_RGBX_FLOAT16;
+   } else if (mesaVis->redBits == 10 && mesaVis->alphaBits > 0) {
       rgbFormat = mesaVis->redMask == 0x3ff00000 ? MESA_FORMAT_B10G10R10A2_UNORM
                                                  : MESA_FORMAT_R10G10B10A2_UNORM;
    } else if (mesaVis->redBits == 10) {
@@ -2175,6 +2186,15 @@ intel_allowed_format(__DRIscreen *dri_screen, mesa_format format)
    if (!allow_rgb565_configs && format == MESA_FORMAT_B5G6R5_UNORM)
       return false;
 
+   /* Shall we expose fp16 formats? */
+   bool allow_fp16_configs = driQueryOptionb(&screen->optionCache,
+                                             "allow_fp16_configs");
+   allow_fp16_configs &= intel_loader_get_cap(dri_screen, DRI_LOADER_CAP_FP16);
+   if (!allow_fp16_configs &&
+       (format == MESA_FORMAT_RGBA_FLOAT16 ||
+        format == MESA_FORMAT_RGBX_FLOAT16))
+      return false;
+
    return true;
 }
 
@@ -2191,6 +2211,9 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
       /* For 10 bpc, 30 bit depth framebuffers. */
       MESA_FORMAT_B10G10R10A2_UNORM,
       MESA_FORMAT_B10G10R10X2_UNORM,
+
+      MESA_FORMAT_RGBA_FLOAT16,
+      MESA_FORMAT_RGBX_FLOAT16,
 
       /* The 32-bit RGBA format must not precede the 32-bit BGRA format.
        * Likewise for RGBX and BGRX.  Otherwise, the GLX client and the GLX
