@@ -182,11 +182,12 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    static const struct {
       const char *format_name;
-      unsigned int rgba_masks[4];
+      int rgba_shifts[4];
+      unsigned int rgba_sizes[4];
    } visuals[] = {
-      { "ARGB8888", { 0xff0000, 0xff00, 0xff, 0xff000000 } },
-      { "RGB888",   { 0xff0000, 0xff00, 0xff, 0x0 } },
-      { "RGB565",   { 0x00f800, 0x07e0, 0x1f, 0x0 } },
+      { "ARGB8888", { 16, 8, 0, 24 }, { 8, 8, 8, 8 } },
+      { "RGB888",   { 16, 8, 0, -1 }, { 8, 8, 8, 0 } },
+      { "RGB565",   { 11, 5, 0, -1 }, { 5, 6, 5, 0 } },
    };
    unsigned int format_count[ARRAY_SIZE(visuals)] = { 0 };
    unsigned int config_count = 0;
@@ -197,7 +198,7 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
 
          dri2_conf = dri2_add_config(disp, dri2_dpy->driver_configs[i],
                config_count + 1, EGL_PBUFFER_BIT, NULL,
-               visuals[j].rgba_masks);
+               visuals[j].rgba_shifts, visuals[j].rgba_sizes);
 
          if (dri2_conf) {
             if (dri2_conf->base.ConfigID == config_count + 1)

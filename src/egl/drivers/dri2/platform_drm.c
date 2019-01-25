@@ -96,7 +96,8 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
                               struct gbm_surface *surface)
 {
    const struct gbm_dri_visual *visual = NULL;
-   unsigned int red, green, blue, alpha;
+   int shifts[4];
+   unsigned int sizes[4];
    int i;
 
    /* Check that the EGLConfig being used to render to the surface is
@@ -104,10 +105,7 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
     * otherwise-compatible formats is relatively common, explicitly allow
     * this.
     */
-   dri2_dpy->core->getConfigAttrib(config, __DRI_ATTRIB_RED_MASK, &red);
-   dri2_dpy->core->getConfigAttrib(config, __DRI_ATTRIB_GREEN_MASK, &green);
-   dri2_dpy->core->getConfigAttrib(config, __DRI_ATTRIB_BLUE_MASK, &blue);
-   dri2_dpy->core->getConfigAttrib(config, __DRI_ATTRIB_ALPHA_MASK, &alpha);
+   dri2_get_shifts_and_sizes(dri2_dpy->core, config, shifts, sizes);
 
    for (i = 0; i < dri2_dpy->gbm_dri->num_visuals; i++) {
       visual = &dri2_dpy->gbm_dri->visual_table[i];
@@ -118,10 +116,14 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
    if (i == dri2_dpy->gbm_dri->num_visuals)
       return false;
 
-   if (red != visual->rgba_masks.red ||
-       green != visual->rgba_masks.green ||
-       blue != visual->rgba_masks.blue ||
-       (alpha && visual->rgba_masks.alpha && alpha != visual->rgba_masks.alpha)) {
+   if (shifts[0] != visual->rgba_shifts.red ||
+       shifts[1] != visual->rgba_shifts.green ||
+       shifts[2] != visual->rgba_shifts.blue ||
+       (shifts[3] > -1 && shifts[3] != visual->rgba_shifts.alpha) ||
+       sizes[0] != visual->rgba_sizes.red ||
+       sizes[1] != visual->rgba_sizes.green ||
+       sizes[2] != visual->rgba_sizes.blue ||
+       (sizes[3] > 0 && sizes[3] != visual->rgba_sizes.alpha)) {
       return false;
    }
 
@@ -612,24 +614,23 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
    memset(format_count, 0, num_visuals * sizeof(unsigned int));
 
    for (unsigned i = 0; dri2_dpy->driver_configs[i]; i++) {
-      unsigned int red, green, blue, alpha;
+      const __DRIconfig *config = dri2_dpy->driver_configs[i];
+      int shifts[4];
+      unsigned int sizes[4];
 
-      dri2_dpy->core->getConfigAttrib(dri2_dpy->driver_configs[i],
-                                      __DRI_ATTRIB_RED_MASK, &red);
-      dri2_dpy->core->getConfigAttrib(dri2_dpy->driver_configs[i],
-                                      __DRI_ATTRIB_GREEN_MASK, &green);
-      dri2_dpy->core->getConfigAttrib(dri2_dpy->driver_configs[i],
-                                      __DRI_ATTRIB_BLUE_MASK, &blue);
-      dri2_dpy->core->getConfigAttrib(dri2_dpy->driver_configs[i],
-                                      __DRI_ATTRIB_ALPHA_MASK, &alpha);
+      dri2_get_shifts_and_sizes(dri2_dpy->core, config, shifts, sizes);
 
       for (unsigned j = 0; j < num_visuals; j++) {
          struct dri2_egl_config *dri2_conf;
 
-         if (visuals[j].rgba_masks.red != red ||
-             visuals[j].rgba_masks.green != green ||
-             visuals[j].rgba_masks.blue != blue ||
-             visuals[j].rgba_masks.alpha != alpha)
+         if (visuals[j].rgba_shifts.red != shifts[0] ||
+             visuals[j].rgba_shifts.green != shifts[1] ||
+             visuals[j].rgba_shifts.blue != shifts[2] ||
+             visuals[j].rgba_shifts.alpha != shifts[3] ||
+             visuals[j].rgba_sizes.red != sizes[0] ||
+             visuals[j].rgba_sizes.green != sizes[1] ||
+             visuals[j].rgba_sizes.blue != sizes[2] ||
+             visuals[j].rgba_sizes.alpha != sizes[3])
             continue;
 
          const EGLint attr_list[] = {
@@ -638,7 +639,7 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
          };
 
          dri2_conf = dri2_add_config(disp, dri2_dpy->driver_configs[i],
-               config_count + 1, EGL_WINDOW_BIT, attr_list, NULL);
+               config_count + 1, EGL_WINDOW_BIT, attr_list, NULL, NULL);
          if (dri2_conf) {
             if (dri2_conf->base.ConfigID == config_count + 1)
                config_count++;
