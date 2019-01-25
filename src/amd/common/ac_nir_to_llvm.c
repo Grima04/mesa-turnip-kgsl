@@ -429,32 +429,6 @@ static LLVMValueRef emit_imul_high(struct ac_llvm_context *ctx,
 	return result;
 }
 
-static LLVMValueRef emit_bitfield_extract(struct ac_llvm_context *ctx,
-					  bool is_signed,
-					  const LLVMValueRef srcs[3])
-{
-	LLVMValueRef result;
-
-	if (HAVE_LLVM >= 0x0800) {
-		LLVMValueRef icond = LLVMBuildICmp(ctx->builder, LLVMIntEQ, srcs[2], LLVMConstInt(ctx->i32, 32, false), "");
-		result = ac_build_bfe(ctx, srcs[0], srcs[1], srcs[2], is_signed);
-		result = LLVMBuildSelect(ctx->builder, icond, srcs[0], result, "");
-	} else {
-		/* FIXME: LLVM 7+ returns incorrect result when count is 0.
-		 * https://bugs.freedesktop.org/show_bug.cgi?id=107276
-		 */
-		LLVMValueRef zero = ctx->i32_0;
-		LLVMValueRef icond1 = LLVMBuildICmp(ctx->builder, LLVMIntEQ, srcs[2], LLVMConstInt(ctx->i32, 32, false), "");
-		LLVMValueRef icond2 = LLVMBuildICmp(ctx->builder, LLVMIntEQ, srcs[2], zero, "");
-
-		result = ac_build_bfe(ctx, srcs[0], srcs[1], srcs[2], is_signed);
-		result = LLVMBuildSelect(ctx->builder, icond1, srcs[0], result, "");
-		result = LLVMBuildSelect(ctx->builder, icond2, zero, result, "");
-	}
-
-	return result;
-}
-
 static LLVMValueRef emit_bfm(struct ac_llvm_context *ctx,
 			     LLVMValueRef bits, LLVMValueRef offset)
 {
@@ -837,11 +811,11 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	case nir_op_bitfield_select:
 		result = emit_bitfield_select(&ctx->ac, src[0], src[1], src[2]);
 		break;
-	case nir_op_ibitfield_extract:
-		result = emit_bitfield_extract(&ctx->ac, true, src);
+	case nir_op_ubfe:
+		result = ac_build_bfe(&ctx->ac, src[0], src[1], src[2], false);
 		break;
-	case nir_op_ubitfield_extract:
-		result = emit_bitfield_extract(&ctx->ac, false, src);
+	case nir_op_ibfe:
+		result = ac_build_bfe(&ctx->ac, src[0], src[1], src[2], true);
 		break;
 	case nir_op_bitfield_reverse:
 		result = ac_build_bitfield_reverse(&ctx->ac, src[0]);

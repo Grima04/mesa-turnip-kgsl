@@ -2798,11 +2798,22 @@ LLVMValueRef ac_build_bfe(struct ac_llvm_context *ctx, LLVMValueRef input,
 		width,
 	};
 
-	return ac_build_intrinsic(ctx,
-				  is_signed ? "llvm.amdgcn.sbfe.i32" :
-					      "llvm.amdgcn.ubfe.i32",
-				  ctx->i32, args, 3,
-				  AC_FUNC_ATTR_READNONE);
+	LLVMValueRef result = ac_build_intrinsic(ctx,
+						 is_signed ? "llvm.amdgcn.sbfe.i32" :
+							     "llvm.amdgcn.ubfe.i32",
+						 ctx->i32, args, 3,
+						 AC_FUNC_ATTR_READNONE);
+
+	if (HAVE_LLVM < 0x0800) {
+		/* FIXME: LLVM 7+ returns incorrect result when count is 0.
+		 * https://bugs.freedesktop.org/show_bug.cgi?id=107276
+		 */
+		LLVMValueRef zero = ctx->i32_0;
+		LLVMValueRef icond = LLVMBuildICmp(ctx->builder, LLVMIntEQ, width, zero, "");
+		result = LLVMBuildSelect(ctx->builder, icond, zero, result, "");
+	}
+
+	return result;
 }
 
 LLVMValueRef ac_build_imad(struct ac_llvm_context *ctx, LLVMValueRef s0,
