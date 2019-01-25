@@ -1551,6 +1551,9 @@ static VkResult radv_bo_list_add(struct radv_device *device,
 {
 	struct radv_bo_list *bo_list = &device->bo_list;
 
+	if (bo->is_local)
+		return VK_SUCCESS;
+
 	if (unlikely(!device->use_global_bo_list))
 		return VK_SUCCESS;
 
@@ -1577,6 +1580,9 @@ static void radv_bo_list_remove(struct radv_device *device,
 				struct radeon_winsys_bo *bo)
 {
 	struct radv_bo_list *bo_list = &device->bo_list;
+
+	if (bo->is_local)
+		return;
 
 	if (unlikely(!device->use_global_bo_list))
 		return;
