@@ -455,34 +455,30 @@ static LLVMValueRef emit_bitfield_extract(struct ac_llvm_context *ctx,
 	return result;
 }
 
-static LLVMValueRef emit_bitfield_insert(struct ac_llvm_context *ctx,
-					 LLVMValueRef src0, LLVMValueRef src1,
-					 LLVMValueRef src2, LLVMValueRef src3)
+static LLVMValueRef emit_bfm(struct ac_llvm_context *ctx,
+			     LLVMValueRef bits, LLVMValueRef offset)
 {
-	LLVMValueRef bfi_args[3], result;
+	/* mask = ((1 << bits) - 1) << offset */
+	return LLVMBuildShl(ctx->builder,
+			    LLVMBuildSub(ctx->builder,
+					 LLVMBuildShl(ctx->builder,
+						      ctx->i32_1,
+						      bits, ""),
+					 ctx->i32_1, ""),
+			    offset, "");
+}
 
-	bfi_args[0] = LLVMBuildShl(ctx->builder,
-				   LLVMBuildSub(ctx->builder,
-						LLVMBuildShl(ctx->builder,
-							     ctx->i32_1,
-							     src3, ""),
-						ctx->i32_1, ""),
-				   src2, "");
-	bfi_args[1] = LLVMBuildShl(ctx->builder, src1, src2, "");
-	bfi_args[2] = src0;
-
-	LLVMValueRef icond = LLVMBuildICmp(ctx->builder, LLVMIntEQ, src3, LLVMConstInt(ctx->i32, 32, false), "");
-
+static LLVMValueRef emit_bitfield_select(struct ac_llvm_context *ctx,
+					 LLVMValueRef mask, LLVMValueRef insert,
+					 LLVMValueRef base)
+{
 	/* Calculate:
-	 *   (arg0 & arg1) | (~arg0 & arg2) = arg2 ^ (arg0 & (arg1 ^ arg2)
+	 *   (mask & insert) | (~mask & base) = base ^ (mask & (insert ^ base))
 	 * Use the right-hand side, which the LLVM backend can convert to V_BFI.
 	 */
-	result = LLVMBuildXor(ctx->builder, bfi_args[2],
-			      LLVMBuildAnd(ctx->builder, bfi_args[0],
-					   LLVMBuildXor(ctx->builder, bfi_args[1], bfi_args[2], ""), ""), "");
-
-	result = LLVMBuildSelect(ctx->builder, icond, src1, result, "");
-	return result;
+	return LLVMBuildXor(ctx->builder, base,
+			    LLVMBuildAnd(ctx->builder, mask,
+					 LLVMBuildXor(ctx->builder, insert, base, ""), ""), "");
 }
 
 static LLVMValueRef emit_pack_half_2x16(struct ac_llvm_context *ctx,
@@ -835,14 +831,17 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		else
 			result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ldexp.f64", ctx->ac.f64, src, 2, AC_FUNC_ATTR_READNONE);
 		break;
+	case nir_op_bfm:
+		result = emit_bfm(&ctx->ac, src[0], src[1]);
+		break;
+	case nir_op_bitfield_select:
+		result = emit_bitfield_select(&ctx->ac, src[0], src[1], src[2]);
+		break;
 	case nir_op_ibitfield_extract:
 		result = emit_bitfield_extract(&ctx->ac, true, src);
 		break;
 	case nir_op_ubitfield_extract:
 		result = emit_bitfield_extract(&ctx->ac, false, src);
-		break;
-	case nir_op_bitfield_insert:
-		result = emit_bitfield_insert(&ctx->ac, src[0], src[1], src[2], src[3]);
 		break;
 	case nir_op_bitfield_reverse:
 		result = ac_build_bitfield_reverse(&ctx->ac, src[0]);
