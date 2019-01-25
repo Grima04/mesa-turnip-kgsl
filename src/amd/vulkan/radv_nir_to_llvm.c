@@ -433,7 +433,6 @@ get_tcs_out_current_patch_data_offset(struct radv_shader_context *ctx)
 struct arg_info {
 	LLVMTypeRef types[MAX_ARGS];
 	LLVMValueRef *assign[MAX_ARGS];
-	unsigned array_params_mask;
 	uint8_t count;
 	uint8_t sgpr_count;
 	uint8_t num_sgprs_used;
@@ -462,13 +461,6 @@ add_arg(struct arg_info *info, enum ac_arg_regfile regfile, LLVMTypeRef type,
 		assert(regfile == ARG_VGPR);
 		info->num_vgprs_used += ac_get_type_size(type) / 4;
 	}
-}
-
-static inline void
-add_array_arg(struct arg_info *info, LLVMTypeRef type, LLVMValueRef *param_ptr)
-{
-	info->array_params_mask |= (1 << info->count);
-	add_arg(info, ARG_SGPR, type, param_ptr);
 }
 
 static void assign_arguments(LLVMValueRef main_function,
@@ -509,10 +501,11 @@ create_llvm_function(LLVMContextRef ctx, LLVMModuleRef module,
 
 	LLVMSetFunctionCallConv(main_function, RADEON_LLVM_AMDGPU_CS);
 	for (unsigned i = 0; i < args->sgpr_count; ++i) {
+		LLVMValueRef P = LLVMGetParam(main_function, i);
+
 		ac_add_function_attr(ctx, main_function, i + 1, AC_FUNC_ATTR_INREG);
 
-		if (args->array_params_mask & (1 << i)) {
-			LLVMValueRef P = LLVMGetParam(main_function, i);
+		if (LLVMGetTypeKind(LLVMTypeOf(P)) == LLVMPointerTypeKind) {
 			ac_add_function_attr(ctx, main_function, i + 1, AC_FUNC_ATTR_NOALIAS);
 			ac_add_attr_dereferenceable(P, UINT64_MAX);
 		}
@@ -726,15 +719,16 @@ declare_global_input_sgprs(struct radv_shader_context *ctx,
 		while (mask) {
 			int i = u_bit_scan(&mask);
 
-			add_array_arg(args, type, &ctx->descriptor_sets[i]);
+			add_arg(args, ARG_SGPR, type, &ctx->descriptor_sets[i]);
 		}
 	} else {
-		add_array_arg(args, ac_array_in_const32_addr_space(type), desc_sets);
+		add_arg(args, ARG_SGPR, ac_array_in_const32_addr_space(type),
+			desc_sets);
 	}
 
 	if (ctx->shader_info->info.loads_push_constants) {
 		/* 1 for push constants and dynamic descriptors */
-		add_array_arg(args, type, &ctx->abi.push_constants);
+		add_arg(args, ARG_SGPR, type, &ctx->abi.push_constants);
 	}
 
 	if (ctx->shader_info->info.so.num_outputs) {
