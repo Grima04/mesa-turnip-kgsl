@@ -497,6 +497,10 @@ optimizations = [
    (('ult', ('umax', a, b), a), False),
    (('uge', a, ('umax', b, a)), ('uge', a, b)),
    (('uge', ('umin', a, b), a), ('uge', b, a)),
+   (('ult', a, ('iand', b, a)), False),
+   (('ult', ('ior', a, b), a), False),
+   (('uge', a, ('iand', b, a)), True),
+   (('uge', ('ior', a, b), a), True),
 
    (('ilt', '#a', ('imax', '#b', c)), ('ior', ('ilt', a, b), ('ilt', a, c))),
    (('ilt', ('imin', '#a', b), '#c'), ('ior', ('ilt', a, c), ('ilt', b, c))),
