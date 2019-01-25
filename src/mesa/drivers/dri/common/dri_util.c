@@ -887,6 +887,14 @@ static const struct {
       .mesa_format  =        MESA_FORMAT_B8G8R8X8_UNORM,
    },
    {
+      .image_format = __DRI_IMAGE_FORMAT_ABGR16161616F,
+      .mesa_format  =        MESA_FORMAT_RGBA_FLOAT16,
+   },
+   {
+      .image_format = __DRI_IMAGE_FORMAT_XBGR16161616F,
+      .mesa_format  =        MESA_FORMAT_RGBX_FLOAT16,
+   },
+   {
       .image_format = __DRI_IMAGE_FORMAT_ARGB2101010,
       .mesa_format  =        MESA_FORMAT_B10G10R10A2_UNORM,
    },

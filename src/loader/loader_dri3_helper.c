@@ -1120,6 +1120,9 @@ dri3_cpp_for_format(uint32_t format) {
    case  __DRI_IMAGE_FORMAT_SARGB8:
    case  __DRI_IMAGE_FORMAT_SABGR8:
       return 4;
+   case __DRI_IMAGE_FORMAT_XBGR16161616F:
+   case __DRI_IMAGE_FORMAT_ABGR16161616F:
+      return 8;
    case  __DRI_IMAGE_FORMAT_NONE:
    default:
       return 0;
@@ -1178,6 +1181,8 @@ image_format_to_fourcc(int format)
    case __DRI_IMAGE_FORMAT_ARGB2101010: return __DRI_IMAGE_FOURCC_ARGB2101010;
    case __DRI_IMAGE_FORMAT_XBGR2101010: return __DRI_IMAGE_FOURCC_XBGR2101010;
    case __DRI_IMAGE_FORMAT_ABGR2101010: return __DRI_IMAGE_FOURCC_ABGR2101010;
+   case __DRI_IMAGE_FORMAT_XBGR16161616F: return __DRI_IMAGE_FOURCC_XBGR16161616F;
+   case __DRI_IMAGE_FORMAT_ABGR16161616F: return __DRI_IMAGE_FOURCC_ABGR16161616F;
    }
    return 0;
 }
