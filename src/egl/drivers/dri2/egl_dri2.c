@@ -2422,6 +2422,8 @@ dri2_num_fourcc_format_planes(EGLint format)
    case DRM_FORMAT_ABGR2101010:
    case DRM_FORMAT_RGBA1010102:
    case DRM_FORMAT_BGRA1010102:
+   case DRM_FORMAT_XBGR16161616F:
+   case DRM_FORMAT_ABGR16161616F:
    case DRM_FORMAT_YUYV:
    case DRM_FORMAT_YVYU:
    case DRM_FORMAT_UYVY:

@@ -110,6 +110,18 @@ dri_get_buffers_with_format(__DRIdrawable * driDrawable,
                                    count, out_count, surf->dri_private);
 }
 
+static unsigned
+dri_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
+{
+   /* Note: loaderPrivate is _EGLDisplay* */
+   switch (cap) {
+   case DRI_LOADER_CAP_FP16:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
 static int
 image_get_buffers(__DRIdrawable *driDrawable,
                   unsigned int format,
@@ -207,11 +219,12 @@ static const __DRIimageLookupExtension image_lookup_extension = {
 };
 
 static const __DRIdri2LoaderExtension dri2_loader_extension = {
-   .base = { __DRI_DRI2_LOADER, 3 },
+   .base = { __DRI_DRI2_LOADER, 4 },
 
    .getBuffers              = dri_get_buffers,
    .flushFrontBuffer        = dri_flush_front_buffer,
    .getBuffersWithFormat    = dri_get_buffers_with_format,
+   .getCapability           = dri_get_capability,
 };
 
 static const __DRIimageLoaderExtension image_loader_extension = {
@@ -535,6 +548,18 @@ static const struct gbm_dri_visual gbm_dri_visuals_table[] = {
      GBM_FORMAT_ABGR2101010, __DRI_IMAGE_FORMAT_ABGR2101010,
      { 0, 10, 20, 30 },
      { 10, 10, 10, 2 },
+   },
+   {
+     GBM_FORMAT_XBGR16161616F, __DRI_IMAGE_FORMAT_XBGR16161616F,
+     { 0, 16, 32, -1 },
+     { 16, 16, 16, 0 },
+     true,
+   },
+   {
+     GBM_FORMAT_ABGR16161616F, __DRI_IMAGE_FORMAT_ABGR16161616F,
+     { 0, 16, 32, 48 },
+     { 16, 16, 16, 16 },
+     true,
    },
 };
 
