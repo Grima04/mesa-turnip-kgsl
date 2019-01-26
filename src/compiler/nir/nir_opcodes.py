@@ -787,14 +787,12 @@ binop_convert("pack_32_2x16_split", tuint32, tuint16, "",
               "src0 | ((uint32_t)src1 << 16)")
 
 # bfm implements the behavior of the first operation of the SM5 "bfi" assembly
-# and that of the "bfi1" i965 instruction. That is, it has undefined behavior
-# if either of its arguments are 32.
+# and that of the "bfi1" i965 instruction. That is, the bits and offset values
+# are from the low five bits of src0 and src1, respectively.
 binop_convert("bfm", tuint32, tint32, "", """
-int bits = src0, offset = src1;
-if (offset < 0 || bits < 0 || offset > 31 || bits > 31 || offset + bits > 32)
-   dst = 0; /* undefined */
-else
-   dst = ((1u << bits) - 1) << offset;
+int bits = src0 & 0x1F;
+int offset = src1 & 0x1F;
+dst = ((1u << bits) - 1) << offset;
 """)
 
 opcode("ldexp", 0, tfloat, [0, 0], [tfloat, tint32], False, "", """
@@ -873,15 +871,14 @@ if (mask == 0) {
 }
 """)
 
-# SM5 ubfe/ibfe assembly
+# SM5 ubfe/ibfe assembly: only the 5 least significant bits of offset and bits are used.
 opcode("ubfe", 0, tuint32,
-       [0, 0, 0], [tuint32, tint32, tint32], False, "", """
+       [0, 0, 0], [tuint32, tuint32, tuint32], False, "", """
 unsigned base = src0;
-int offset = src1, bits = src2;
+unsigned offset = src1 & 0x1F;
+unsigned bits = src2 & 0x1F;
 if (bits == 0) {
    dst = 0;
-} else if (bits < 0 || offset < 0) {
-   dst = 0; /* undefined */
 } else if (offset + bits < 32) {
    dst = (base << (32 - bits - offset)) >> (32 - bits);
 } else {
@@ -889,13 +886,12 @@ if (bits == 0) {
 }
 """)
 opcode("ibfe", 0, tint32,
-       [0, 0, 0], [tint32, tint32, tint32], False, "", """
+       [0, 0, 0], [tint32, tuint32, tuint32], False, "", """
 int base = src0;
-int offset = src1, bits = src2;
+unsigned offset = src1 & 0x1F;
+unsigned bits = src2 & 0x1F;
 if (bits == 0) {
    dst = 0;
-} else if (bits < 0 || offset < 0) {
-   dst = 0; /* undefined */
 } else if (offset + bits < 32) {
    dst = (base << (32 - bits - offset)) >> (32 - bits);
 } else {

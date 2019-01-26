@@ -912,7 +912,6 @@ static const nir_shader_compiler_options nir_options = {
    .lower_bitfield_insert_to_shifts = false,
    .lower_bitfield_reverse = false,
    .lower_bit_count = false,
-   .lower_bfm = false,
    .lower_ifind_msb = false,
    .lower_find_lsb = false,
    .lower_uadd_carry = true, // TODO

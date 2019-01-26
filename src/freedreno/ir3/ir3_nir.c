@@ -54,7 +54,6 @@ static const nir_shader_compiler_options options = {
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
-		.lower_bfm = true,
 		.use_interpolated_input_intrinsics = true,
 };
 
@@ -79,7 +78,6 @@ static const nir_shader_compiler_options options_a6xx = {
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
-		.lower_bfm = true,
 		.use_interpolated_input_intrinsics = true,
 };
 

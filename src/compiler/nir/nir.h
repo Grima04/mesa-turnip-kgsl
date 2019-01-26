@@ -2282,18 +2282,16 @@ typedef struct nir_shader_compiler_options {
    bool lower_fmod;
    /** Lowers ibitfield_extract/ubitfield_extract to ibfe/ubfe. */
    bool lower_bitfield_extract;
-   /** Lowers ibitfield_extract/ubitfield_extract to bfm, compares, shifts. */
+   /** Lowers ibitfield_extract/ubitfield_extract to compares, shifts. */
    bool lower_bitfield_extract_to_shifts;
    /** Lowers bitfield_insert to bfi/bfm */
    bool lower_bitfield_insert;
-   /** Lowers bitfield_insert to bfm, compares, and shifts. */
+   /** Lowers bitfield_insert to compares, and shifts. */
    bool lower_bitfield_insert_to_shifts;
    /** Lowers bitfield_reverse to shifts. */
    bool lower_bitfield_reverse;
    /** Lowers bit_count to shifts. */
    bool lower_bit_count;
-   /** Lowers bfm to shifts and subtracts. */
-   bool lower_bfm;
    /** Lowers ifind_msb to compare and ufind_msb */
    bool lower_ifind_msb;
    /** Lowers find_lsb to ufind_msb and logic ops */
