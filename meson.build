@@ -162,9 +162,9 @@ with_gallium_virgl = _drivers.contains('virgl')
 with_gallium_swr = _drivers.contains('swr')
 
 if cc.get_id() == 'intel'
-  if meson.version().verson_compare('< 0.49.0')
+  if meson.version().version_compare('< 0.49.0')
     error('Meson does not have sufficient support of ICC before 0.49.0 to compile mesa')
-  elif with_gallium_swr and meson.version().verson_compare('== 0.49.0')
+  elif with_gallium_swr and meson.version().version_compare('== 0.49.0')
     warning('Meson as of 0.49.0 is sufficient for compiling mesa with ICC, but there are some caveats with SWR. 0.49.1 should resolve all of these')
   endif
 endif
