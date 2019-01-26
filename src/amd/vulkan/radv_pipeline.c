@@ -2727,11 +2727,18 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 	const VkConservativeRasterizationModeEXT mode =
 		radv_get_conservative_raster_mode(vkraster);
 	uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
+	bool depth_clip_disable = vkraster->depthClampEnable;
+
+	const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
+		vk_find_struct_const(vkraster->pNext, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+	if (depth_clip_state) {
+		depth_clip_disable = !depth_clip_state->depthClipEnable;
+	}
 
 	radeon_set_context_reg(ctx_cs, R_028810_PA_CL_CLIP_CNTL,
 	                       S_028810_DX_CLIP_SPACE_DEF(1) | // vulkan uses DX conventions.
-	                       S_028810_ZCLIP_NEAR_DISABLE(vkraster->depthClampEnable ? 1 : 0) |
-	                       S_028810_ZCLIP_FAR_DISABLE(vkraster->depthClampEnable ? 1 : 0) |
+	                       S_028810_ZCLIP_NEAR_DISABLE(depth_clip_disable ? 1 : 0) |
+	                       S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
 	                       S_028810_DX_RASTERIZATION_KILL(vkraster->rasterizerDiscardEnable ? 1 : 0) |
 	                       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 

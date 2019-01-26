@@ -881,6 +881,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->bufferDeviceAddressMultiDevice = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+			VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
+				(VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
+			features->depthClipEnable = true;
+			break;
+		}
 		default:
 			break;
 		}

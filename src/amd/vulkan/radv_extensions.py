@@ -100,6 +100,7 @@ EXTENSIONS = [
     Extension('VK_EXT_display_surface_counter',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_display_control',                   1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_debug_report',                      9, True),
+    Extension('VK_EXT_depth_clip_enable',                 1, True),
     Extension('VK_EXT_depth_range_unrestricted',          1, True),
     Extension('VK_EXT_descriptor_indexing',               2, True),
     Extension('VK_EXT_discard_rectangles',                1, True),
