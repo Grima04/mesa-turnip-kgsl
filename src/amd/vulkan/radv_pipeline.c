@@ -2657,8 +2657,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
 			      S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
 
-	if (pipeline->device->enabled_extensions.EXT_depth_range_unrestricted &&
-	    !pCreateInfo->pRasterizationState->depthClampEnable &&
+	if (!pCreateInfo->pRasterizationState->depthClampEnable &&
 	    ps->info.info.ps.writes_z) {
 		/* From VK_EXT_depth_range_unrestricted spec:
 		 *
