@@ -1333,7 +1333,7 @@ void si_init_perfcounters(struct si_screen *screen)
 	for (i = 0; i < num_blocks; ++i) {
 		struct si_pc_block *block = &pc->blocks[i];
 		block->b = &blocks[i];
-		block->num_instances = block->b->instances;
+		block->num_instances = MAX2(1, block->b->instances);
 
 		if (!strcmp(block->b->b->name, "CB") ||
 		    !strcmp(block->b->b->name, "DB"))
