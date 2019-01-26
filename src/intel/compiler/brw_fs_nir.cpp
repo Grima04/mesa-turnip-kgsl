@@ -3782,7 +3782,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const fs_reg data = retype(get_nir_src(instr->src[2]),
                                  BRW_REGISTER_TYPE_UD);
 
-      brw_wm_prog_data(prog_data)->has_side_effects = true;
+      if (stage == MESA_SHADER_FRAGMENT)
+         brw_wm_prog_data(prog_data)->has_side_effects = true;
 
       emit_untyped_write(bld, image, addr, data, 1,
                          instr->num_components);
