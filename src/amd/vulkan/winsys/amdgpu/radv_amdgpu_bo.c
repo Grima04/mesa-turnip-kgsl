@@ -302,7 +302,8 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 			     uint64_t size,
 			     unsigned alignment,
 			     enum radeon_bo_domain initial_domain,
-			     unsigned flags)
+			     unsigned flags,
+			     unsigned priority)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo;
@@ -392,6 +393,7 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	bo->bo = buf_handle;
 	bo->initial_domain = initial_domain;
 	bo->is_shared = false;
+	bo->priority = priority;
 
 	if (initial_domain & RADEON_DOMAIN_VRAM)
 		p_atomic_add(&ws->allocated_vram,
@@ -460,7 +462,8 @@ radv_amdgpu_get_optimal_vm_alignment(struct radv_amdgpu_winsys *ws,
 static struct radeon_winsys_bo *
 radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
                                void *pointer,
-                               uint64_t size)
+                               uint64_t size,
+			       unsigned priority)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	amdgpu_bo_handle buf_handle;
@@ -498,6 +501,7 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	bo->ws = ws;
 	bo->bo = buf_handle;
 	bo->initial_domain = RADEON_DOMAIN_GTT;
+	bo->priority = priority;
 
 	p_atomic_add(&ws->allocated_gtt,
 		     align64(bo->size, ws->info.gart_page_size));
@@ -518,7 +522,8 @@ error:
 
 static struct radeon_winsys_bo *
 radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
-			      int fd, unsigned *stride,
+			      int fd, unsigned priority,
+			      unsigned *stride,
 			      unsigned *offset)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
@@ -565,6 +570,7 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 	bo->size = result.alloc_size;
 	bo->is_shared = true;
 	bo->ws = ws;
+	bo->priority = priority;
 	bo->ref_count = 1;
 
 	if (bo->initial_domain & RADEON_DOMAIN_VRAM)

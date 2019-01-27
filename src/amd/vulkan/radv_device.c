@@ -2373,7 +2373,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		                                              scratch_size,
 		                                              4096,
 		                                              RADEON_DOMAIN_VRAM,
-		                                              ring_bo_flags);
+		                                              ring_bo_flags,
+		                                              RADV_BO_PRIORITY_SCRATCH);
 		if (!scratch_bo)
 			goto fail;
 	} else
@@ -2384,7 +2385,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		                                                      compute_scratch_size,
 		                                                      4096,
 		                                                      RADEON_DOMAIN_VRAM,
-		                                                      ring_bo_flags);
+		                                                      ring_bo_flags,
+		                                                      RADV_BO_PRIORITY_SCRATCH);
 		if (!compute_scratch_bo)
 			goto fail;
 
@@ -2396,7 +2398,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 								esgs_ring_size,
 								4096,
 								RADEON_DOMAIN_VRAM,
-								ring_bo_flags);
+								ring_bo_flags,
+								RADV_BO_PRIORITY_SCRATCH);
 		if (!esgs_ring_bo)
 			goto fail;
 	} else {
@@ -2409,7 +2412,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 								gsvs_ring_size,
 								4096,
 								RADEON_DOMAIN_VRAM,
-								ring_bo_flags);
+								ring_bo_flags,
+								RADV_BO_PRIORITY_SCRATCH);
 		if (!gsvs_ring_bo)
 			goto fail;
 	} else {
@@ -2422,7 +2426,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 								 tess_offchip_ring_offset + tess_offchip_ring_size,
 								 256,
 								 RADEON_DOMAIN_VRAM,
-								 ring_bo_flags);
+								 ring_bo_flags,
+								 RADV_BO_PRIORITY_SCRATCH);
 		if (!tess_rings_bo)
 			goto fail;
 	} else {
@@ -2450,7 +2455,8 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		                                                 RADEON_DOMAIN_VRAM,
 		                                                 RADEON_FLAG_CPU_ACCESS |
 								 RADEON_FLAG_NO_INTERPROCESS_SHARING |
-								 RADEON_FLAG_READ_ONLY);
+								 RADEON_FLAG_READ_ONLY,
+								 RADV_BO_PRIORITY_DESCRIPTOR);
 		if (!descriptor_bo)
 			goto fail;
 	} else
@@ -3088,7 +3094,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		       import_info->handleType ==
 		       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 		mem->bo = device->ws->buffer_from_fd(device->ws, import_info->fd,
-						     NULL, NULL);
+						     RADV_BO_PRIORITY_DEFAULT, NULL, NULL);
 		if (!mem->bo) {
 			result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 			goto fail;
@@ -3099,7 +3105,8 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		assert(host_ptr_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT);
 		assert(mem_type_index == RADV_MEM_TYPE_GTT_CACHED);
 		mem->bo = device->ws->buffer_from_ptr(device->ws, host_ptr_info->pHostPointer,
-		                                      pAllocateInfo->allocationSize);
+		                                      pAllocateInfo->allocationSize,
+		                                      RADV_BO_PRIORITY_DEFAULT);
 		if (!mem->bo) {
 			result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 			goto fail;
@@ -3126,7 +3133,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
 		mem->bo = device->ws->buffer_create(device->ws, alloc_size, device->physical_device->rad_info.max_alignment,
-		                                    domain, flags);
+		                                    domain, flags, RADV_BO_PRIORITY_DEFAULT);
 
 		if (!mem->bo) {
 			result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
@@ -3886,7 +3893,8 @@ VkResult radv_CreateEvent(
 
 	event->bo = device->ws->buffer_create(device->ws, 8, 8,
 					      RADEON_DOMAIN_GTT,
-					      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING);
+					      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+					      RADV_BO_PRIORITY_FENCE);
 	if (!event->bo) {
 		vk_free2(&device->alloc, pAllocator, event);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -3972,7 +3980,8 @@ VkResult radv_CreateBuffer(
 	if (pCreateInfo->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
 		buffer->bo = device->ws->buffer_create(device->ws,
 		                                       align64(buffer->size, 4096),
-		                                       4096, 0, RADEON_FLAG_VIRTUAL);
+		                                       4096, 0, RADEON_FLAG_VIRTUAL,
+		                                       RADV_BO_PRIORITY_VIRTUAL);
 		if (!buffer->bo) {
 			vk_free2(&device->alloc, pAllocator, buffer);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);

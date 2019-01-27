@@ -243,7 +243,8 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws,
 						  RADEON_DOMAIN_GTT,
 						  RADEON_FLAG_CPU_ACCESS |
 						  RADEON_FLAG_NO_INTERPROCESS_SHARING |
-						  RADEON_FLAG_READ_ONLY);
+						  RADEON_FLAG_READ_ONLY,
+						  RADV_BO_PRIORITY_CS);
 		if (!cs->ib_buffer) {
 			free(cs);
 			return NULL;
@@ -358,7 +359,8 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 						   RADEON_DOMAIN_GTT,
 						   RADEON_FLAG_CPU_ACCESS |
 						   RADEON_FLAG_NO_INTERPROCESS_SHARING |
-						   RADEON_FLAG_READ_ONLY);
+						   RADEON_FLAG_READ_ONLY,
+						   RADV_BO_PRIORITY_CS);
 
 	if (!cs->ib_buffer) {
 		cs->base.cdw = 0;
@@ -1016,7 +1018,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 							   RADEON_DOMAIN_GTT,
 							   RADEON_FLAG_CPU_ACCESS |
 							   RADEON_FLAG_NO_INTERPROCESS_SHARING |
-							   RADEON_FLAG_READ_ONLY);
+							   RADEON_FLAG_READ_ONLY,
+							   RADV_BO_PRIORITY_CS);
 				ptr = ws->buffer_map(bos[j]);
 
 				if (needs_preamble) {
@@ -1055,7 +1058,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 						   RADEON_DOMAIN_GTT,
 						   RADEON_FLAG_CPU_ACCESS |
 						   RADEON_FLAG_NO_INTERPROCESS_SHARING |
-						   RADEON_FLAG_READ_ONLY);
+						   RADEON_FLAG_READ_ONLY,
+						   RADV_BO_PRIORITY_CS);
 			ptr = ws->buffer_map(bos[0]);
 
 			if (preamble_cs) {
@@ -1249,8 +1253,9 @@ static struct radeon_winsys_ctx *radv_amdgpu_ctx_create(struct radeon_winsys *_w
 	assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * sizeof(uint64_t) <= 4096);
 	ctx->fence_bo = ws->base.buffer_create(&ws->base, 4096, 8,
 	                                      RADEON_DOMAIN_GTT,
-	                                      RADEON_FLAG_CPU_ACCESS|
-					       RADEON_FLAG_NO_INTERPROCESS_SHARING);
+	                                      RADEON_FLAG_CPU_ACCESS |
+					      RADEON_FLAG_NO_INTERPROCESS_SHARING,
+					      RADV_BO_PRIORITY_CS);
 	if (ctx->fence_bo)
 		ctx->fence_map = (uint64_t*)ws->base.buffer_map(ctx->fence_bo);
 	if (ctx->fence_map)
