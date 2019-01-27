@@ -970,7 +970,6 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 	if (!cmd_buffer->state.flush_bits)
 		return;
 
-	enum chip_class chip_class = cmd_buffer->device->physical_device->rad_info.chip_class;
 	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 128);
 
 	si_cs_emit_cache_flush(cmd_buffer->cs,
