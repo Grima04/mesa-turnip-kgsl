@@ -55,7 +55,7 @@ tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
 
 /**
  * Get the offset of the command packets emitted since the last call to
- * tu_cs_end.
+ * tu_cs_add_entry.
  */
 static uint32_t
 tu_cs_get_offset(const struct tu_cs *cs)
@@ -66,7 +66,7 @@ tu_cs_get_offset(const struct tu_cs *cs)
 
 /**
  * Get the size of the command packets emitted since the last call to
- * tu_cs_end.
+ * tu_cs_add_entry.
  */
 static uint32_t
 tu_cs_get_size(const struct tu_cs *cs)
@@ -85,7 +85,7 @@ tu_cs_get_space(const struct tu_cs *cs)
 
 /**
  * Return true if there is no command packet emitted since the last call to
- * tu_cs_end.
+ * tu_cs_add_entry.
  */
 static uint32_t
 tu_cs_is_empty(const struct tu_cs *cs)
@@ -138,6 +138,54 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t byte_size)
 }
 
 /**
+ * Reserve an IB entry.
+ */
+static VkResult
+tu_cs_reserve_entry(struct tu_cs *cs)
+{
+   /* grow cs->entries if needed */
+   if (cs->entry_count == cs->entry_capacity) {
+      uint32_t new_capacity = MAX2(4, cs->entry_capacity * 2);
+      struct tu_cs_entry *new_entries =
+         realloc(cs->entries, new_capacity * sizeof(struct tu_cs_entry));
+      if (!new_entries)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      cs->entry_capacity = new_capacity;
+      cs->entries = new_entries;
+   }
+
+   return VK_SUCCESS;
+}
+
+/**
+ * Add an IB entry for the command packets emitted since the last call to this
+ * function.
+ */
+static void
+tu_cs_add_entry(struct tu_cs *cs)
+{
+   /* disallow empty entry */
+   assert(!tu_cs_is_empty(cs));
+
+   /*
+    * because we disallow empty entry, tu_cs_add_bo and tu_cs_reserve_entry
+    * must both have been called
+    */
+   assert(cs->bo_count);
+   assert(cs->entry_count < cs->entry_capacity);
+
+   /* add an entry for [cs->start, cs->cur] */
+   cs->entries[cs->entry_count++] = (struct tu_cs_entry) {
+      .bo = cs->bos[cs->bo_count - 1],
+      .size = tu_cs_get_size(cs) * sizeof(uint32_t),
+      .offset = tu_cs_get_offset(cs) * sizeof(uint32_t),
+   };
+
+   cs->start = cs->cur;
+}
+
+/**
  * Begin (or continue) command packet emission.  This will reserve space from
  * the command stream for at least \a reserve_size uint32_t values.
  */
@@ -173,28 +221,11 @@ tu_cs_end(struct tu_cs *cs)
    if (tu_cs_is_empty(cs))
       return VK_SUCCESS;
 
-   /* grow cs->entries if needed */
-   if (cs->entry_capacity == cs->entry_count) {
-      uint32_t new_capacity = MAX2(cs->entry_capacity * 2, 4);
-      struct tu_cs_entry *new_entries =
-         realloc(cs->entries, new_capacity * sizeof(struct tu_cs_entry));
-      if (!new_entries)
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
+   VkResult result = tu_cs_reserve_entry(cs);
+   if (result != VK_SUCCESS)
+      return result;
 
-      cs->entries = new_entries;
-      cs->entry_capacity = new_capacity;
-   }
-
-   assert(cs->bo_count);
-
-   /* add an entry for [cs->start, cs->cur] */
-   cs->entries[cs->entry_count++] = (struct tu_cs_entry) {
-      .bo = cs->bos[cs->bo_count - 1],
-      .size = tu_cs_get_size(cs) * sizeof(uint32_t),
-      .offset = tu_cs_get_offset(cs) * sizeof(uint32_t),
-   };
-
-   cs->start = cs->cur;
+   tu_cs_add_entry(cs);
 
    return VK_SUCCESS;
 }
