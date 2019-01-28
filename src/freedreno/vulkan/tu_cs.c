@@ -31,7 +31,21 @@ tu_cs_init(struct tu_cs *cs, uint32_t initial_size)
 {
    memset(cs, 0, sizeof(*cs));
 
+   cs->mode = TU_CS_MODE_GROW;
    cs->next_bo_size = initial_size;
+}
+
+/**
+ * Initialize a command stream as a wrapper to an external buffer.
+ */
+void
+tu_cs_init_external(struct tu_cs *cs, uint32_t *start, uint32_t *end)
+{
+   memset(cs, 0, sizeof(*cs));
+
+   cs->mode = TU_CS_MODE_EXTERNAL;
+   cs->start = cs->reserved_end = cs->cur = start;
+   cs->end = end;
 }
 
 /**
@@ -96,6 +110,9 @@ tu_cs_is_empty(const struct tu_cs *cs)
 static VkResult
 tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
 {
+   /* no BO for TU_CS_MODE_EXTERNAL */
+   assert(cs->mode != TU_CS_MODE_EXTERNAL);
+
    /* no dangling command packet */
    assert(tu_cs_is_empty(cs));
 
@@ -142,6 +159,9 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
 static VkResult
 tu_cs_reserve_entry(struct tu_device *dev, struct tu_cs *cs)
 {
+   /* entries are only for TU_CS_MODE_GROW */
+   assert(cs->mode == TU_CS_MODE_GROW);
+
    /* grow cs->entries if needed */
    if (cs->entry_count == cs->entry_capacity) {
       uint32_t new_capacity = MAX2(4, cs->entry_capacity * 2);
@@ -164,6 +184,9 @@ tu_cs_reserve_entry(struct tu_device *dev, struct tu_cs *cs)
 static void
 tu_cs_add_entry(struct tu_cs *cs)
 {
+   /* entries are only for TU_CS_MODE_GROW */
+   assert(cs->mode == TU_CS_MODE_GROW);
+
    /* disallow empty entry */
    assert(!tu_cs_is_empty(cs));
 
@@ -200,12 +223,13 @@ tu_cs_begin(struct tu_cs *cs)
 void
 tu_cs_end(struct tu_cs *cs)
 {
-   if (!tu_cs_is_empty(cs))
+   if (cs->mode == TU_CS_MODE_GROW && !tu_cs_is_empty(cs))
       tu_cs_add_entry(cs);
 }
 
 /**
  * Reserve space from a command stream for \a reserved_size uint32_t values.
+ * This never fails when \a cs has mode TU_CS_MODE_EXTERNAL.
  */
 VkResult
 tu_cs_reserve_space(struct tu_device *dev,
@@ -213,6 +237,11 @@ tu_cs_reserve_space(struct tu_device *dev,
                     uint32_t reserved_size)
 {
    if (tu_cs_get_space(cs) < reserved_size) {
+      if (cs->mode == TU_CS_MODE_EXTERNAL) {
+         unreachable("cannot grow external buffer");
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+
       /* add an entry for the exiting command packets */
       if (!tu_cs_is_empty(cs))
          tu_cs_add_entry(cs);
@@ -228,8 +257,12 @@ tu_cs_reserve_space(struct tu_device *dev,
    assert(tu_cs_get_space(cs) >= reserved_size);
    cs->reserved_end = cs->cur + reserved_size;
 
-   /* reserve an entry for the next call to this function or tu_cs_end */
-   return tu_cs_reserve_entry(dev, cs);
+   if (cs->mode == TU_CS_MODE_GROW) {
+      /* reserve an entry for the next call to this function or tu_cs_end */
+      return tu_cs_reserve_entry(dev, cs);
+   }
+
+   return VK_SUCCESS;
 }
 
 /**
@@ -239,6 +272,12 @@ tu_cs_reserve_space(struct tu_device *dev,
 void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
 {
+   if (cs->mode == TU_CS_MODE_EXTERNAL) {
+      assert(!cs->bo_count && !cs->entry_count);
+      cs->reserved_end = cs->cur = cs->start;
+      return;
+   }
+
    for (uint32_t i = 0; i + 1 < cs->bo_count; ++i) {
       tu_bo_finish(dev, cs->bos[i]);
       free(cs->bos[i]);

@@ -31,6 +31,9 @@ void
 tu_cs_init(struct tu_cs *cs, uint32_t initial_size);
 
 void
+tu_cs_init_external(struct tu_cs *cs, uint32_t *start, uint32_t *end);
+
+void
 tu_cs_finish(struct tu_device *dev, struct tu_cs *cs);
 
 void
@@ -53,6 +56,7 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 static inline uint32_t
 tu_cs_get_call_size(const struct tu_cs *cs)
 {
+   assert(cs->mode == TU_CS_MODE_GROW);
    /* each CP_INDIRECT_BUFFER needs 4 dwords */
    return cs->entry_count * 4;
 }
@@ -155,6 +159,7 @@ tu_cs_emit_ib(struct tu_cs *cs, const struct tu_cs_entry *entry)
 static inline void
 tu_cs_emit_call(struct tu_cs *cs, const struct tu_cs *target)
 {
+   assert(target->mode == TU_CS_MODE_GROW);
    for (uint32_t i = 0; i < target->entry_count; i++)
       tu_cs_emit_ib(cs, target->entries + i);
 }

@@ -447,6 +447,57 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo);
 VkResult
 tu_bo_map(struct tu_device *dev, struct tu_bo *bo);
 
+struct tu_cs_entry
+{
+   /* No ownership */
+   const struct tu_bo *bo;
+
+   uint32_t size;
+   uint64_t offset;
+};
+
+enum tu_cs_mode
+{
+
+   /*
+    * A command stream in TU_CS_MODE_GROW mode grows automatically whenever it
+    * is full.  tu_cs_begin must be called before command packet emission and
+    * tu_cs_end must be called after.
+    *
+    * This mode may create multiple entries internally.  The entries must be
+    * submitted together.
+    */
+   TU_CS_MODE_GROW,
+
+   /*
+    * A command stream in TU_CS_MODE_EXTERNAL mode wraps an external,
+    * fixed-size buffer.  tu_cs_begin and tu_cs_end are optional and have no
+    * effect on it.
+    *
+    * This mode does not create any entry or any BO.
+    */
+   TU_CS_MODE_EXTERNAL,
+};
+
+struct tu_cs
+{
+   uint32_t *start;
+   uint32_t *cur;
+   uint32_t *reserved_end;
+   uint32_t *end;
+
+   enum tu_cs_mode mode;
+   uint32_t next_bo_size;
+
+   struct tu_cs_entry *entries;
+   uint32_t entry_count;
+   uint32_t entry_capacity;
+
+   struct tu_bo **bos;
+   uint32_t bo_count;
+   uint32_t bo_capacity;
+};
+
 struct tu_device_memory
 {
    struct tu_bo bo;
@@ -767,33 +818,6 @@ tu_bo_list_add(struct tu_bo_list *list,
                uint32_t flags);
 VkResult
 tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
-
-struct tu_cs_entry
-{
-   /* No ownership */
-   const struct tu_bo *bo;
-
-   uint32_t size;
-   uint64_t offset;
-};
-
-struct tu_cs
-{
-   uint32_t *start;
-   uint32_t *cur;
-   uint32_t *reserved_end;
-   uint32_t *end;
-
-   uint32_t next_bo_size;
-
-   struct tu_cs_entry *entries;
-   uint32_t entry_count;
-   uint32_t entry_capacity;
-
-   struct tu_bo **bos;
-   uint32_t bo_count;
-   uint32_t bo_capacity;
-};
 
 struct tu_cmd_buffer
 {
