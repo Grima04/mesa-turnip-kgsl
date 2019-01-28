@@ -404,6 +404,12 @@ build:make-gallium-st-clover-llvm-6:
   variables:
     LLVM_VERSION: "6.0"
 
+build:make-gallium-st-clover-llvm-7:
+  extends: build:make-gallium-st-clover-llvm-39
+  variables:
+    LLVM_VERSION: "7"
+    GALLIUM_DRIVERS: "r600,radeonsi"
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
