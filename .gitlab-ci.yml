@@ -399,6 +399,11 @@ build:make-gallium-st-clover-llvm-5:
   variables:
     LLVM_VERSION: "5.0"
 
+build:make-gallium-st-clover-llvm-6:
+  extends: build:make-gallium-st-clover-llvm-39
+  variables:
+    LLVM_VERSION: "6.0"
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
