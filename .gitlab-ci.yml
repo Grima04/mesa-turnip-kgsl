@@ -365,6 +365,30 @@ build:make-gallium-drivers-other:
     LLVM_VERSION: "3.9"
     GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
 
+build:make-gallium-st-clover-llvm-39:
+  extends: .make-build
+  variables:
+    MAKE_CHECK_COMMAND: "true"
+    LLVM_VERSION: "3.9"
+    DRI_LOADERS: >
+      --disable-glx
+      --disable-gbm
+      --disable-egl
+    GALLIUM_ST: >
+      --disable-dri
+      --enable-opencl
+      --enable-opencl-icd
+      --enable-llvm
+      --disable-xa
+      --disable-nine
+      --disable-xvmc
+      --disable-vdpau
+      --disable-va
+      --disable-omx-bellagio
+      --disable-gallium-osmesa
+    GALLIUM_DRIVERS: "r600"
+    LIBUNWIND_FLAGS: --enable-libunwind
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
