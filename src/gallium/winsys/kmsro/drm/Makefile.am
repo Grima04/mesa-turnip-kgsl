@@ -37,6 +37,10 @@ if HAVE_GALLIUM_VC4
 AM_CFLAGS += -DGALLIUM_VC4
 endif
 
+if HAVE_GALLIUM_FREEDRENO
+AM_CFLAGS += -DGALLIUM_FREEDRENO
+endif
+
 noinst_LTLIBRARIES = libkmsrodrm.la
 
 libkmsrodrm_la_SOURCES = $(C_SOURCES)

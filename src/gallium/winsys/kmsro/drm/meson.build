@@ -25,6 +25,9 @@ endif
 if with_gallium_vc4
   kmsro_c_args += '-DGALLIUM_VC4'
 endif
+if with_gallium_freedreno
+  kmsro_c_args += '-DGALLIUM_FREEDRENO'
+endif
 
 libkmsrowinsys = static_library(
   'kmsrowinsys',

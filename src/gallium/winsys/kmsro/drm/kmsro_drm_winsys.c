@@ -28,6 +28,7 @@
 #include "kmsro_drm_public.h"
 #include "vc4/drm/vc4_drm_public.h"
 #include "etnaviv/drm/etnaviv_drm_public.h"
+#include "freedreno/drm/freedreno_drm_public.h"
 #include "xf86drm.h"
 
 #include "pipe/p_screen.h"
@@ -62,6 +63,18 @@ struct pipe_screen *kmsro_drm_screen_create(int fd)
    if (ro.gpu_fd >= 0) {
       ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
       screen = etna_drm_screen_create_renderonly(&ro);
+      if (!screen)
+         close(ro.gpu_fd);
+
+      return screen;
+   }
+#endif
+
+#if defined(GALLIUM_FREEDRENO)
+   ro.gpu_fd = drmOpenWithType("msm", NULL, DRM_NODE_RENDER);
+   if (ro.gpu_fd >= 0) {
+      ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+      screen = fd_drm_screen_create(ro.gpu_fd, &ro);
       if (!screen)
          close(ro.gpu_fd);
 
