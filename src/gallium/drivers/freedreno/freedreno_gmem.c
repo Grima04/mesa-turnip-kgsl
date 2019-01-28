@@ -77,24 +77,25 @@ static uint32_t bin_width(struct fd_screen *screen)
 
 static uint32_t
 total_size(uint8_t cbuf_cpp[], uint8_t zsbuf_cpp[2],
-		   uint32_t bin_w, uint32_t bin_h, struct fd_gmem_stateobj *gmem)
+		   uint32_t bin_w, uint32_t bin_h, uint32_t gmem_align,
+		   struct fd_gmem_stateobj *gmem)
 {
 	uint32_t total = 0, i;
 
 	for (i = 0; i < MAX_RENDER_TARGETS; i++) {
 		if (cbuf_cpp[i]) {
-			gmem->cbuf_base[i] = align(total, 0x4000);
+			gmem->cbuf_base[i] = align(total, gmem_align);
 			total = gmem->cbuf_base[i] + cbuf_cpp[i] * bin_w * bin_h;
 		}
 	}
 
 	if (zsbuf_cpp[0]) {
-		gmem->zsbuf_base[0] = align(total, 0x4000);
+		gmem->zsbuf_base[0] = align(total, gmem_align);
 		total = gmem->zsbuf_base[0] + zsbuf_cpp[0] * bin_w * bin_h;
 	}
 
 	if (zsbuf_cpp[1]) {
-		gmem->zsbuf_base[1] = align(total, 0x4000);
+		gmem->zsbuf_base[1] = align(total, gmem_align);
 		total = gmem->zsbuf_base[1] + zsbuf_cpp[1] * bin_w * bin_h;
 	}
 
@@ -116,6 +117,7 @@ calculate_tiles(struct fd_batch *batch)
 	uint32_t minx, miny, width, height;
 	uint32_t nbins_x = 1, nbins_y = 1;
 	uint32_t bin_w, bin_h;
+	uint32_t gmem_align = 0x4000;
 	uint32_t max_width = bin_width(screen);
 	uint8_t cbuf_cpp[MAX_RENDER_TARGETS] = {0}, zsbuf_cpp[2] = {0};
 	uint32_t i, j, t, xoff, yoff;
@@ -178,10 +180,18 @@ calculate_tiles(struct fd_batch *batch)
 				zsbuf_cpp[0], width, height);
 	}
 
+	if (is_a20x(screen) && batch->cleared) {
+		/* under normal circumstances the requirement would be 4K
+		 * but the fast clear path requires an alignment of 32K
+		 */
+		gmem_align = 0x8000;
+	}
+
 	/* then find a bin width/height that satisfies the memory
 	 * constraints:
 	 */
-	while (total_size(cbuf_cpp, zsbuf_cpp, bin_w, bin_h, gmem) > gmem_size) {
+	while (total_size(cbuf_cpp, zsbuf_cpp, bin_w, bin_h, gmem_align, gmem) >
+		   gmem_size) {
 		if (bin_w > bin_h) {
 			nbins_x++;
 			bin_w = align(width / nbins_x, gmem_alignw);

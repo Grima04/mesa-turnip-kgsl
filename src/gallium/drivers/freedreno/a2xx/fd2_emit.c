@@ -360,7 +360,7 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_ZSA)) {
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_RB_COLORCONTROL));
-		OUT_RING(ring, blend ? zsa->rb_colorcontrol | blend->rb_colorcontrol : 0);
+		OUT_RING(ring, zsa->rb_colorcontrol | blend->rb_colorcontrol);
 	}
 
 	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_FRAMEBUFFER)) {
@@ -370,13 +370,13 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_RB_BLEND_CONTROL));
-		OUT_RING(ring, blend ? blend->rb_blendcontrol_alpha |
+		OUT_RING(ring, blend->rb_blendcontrol_alpha |
 			COND(has_alpha, blend->rb_blendcontrol_rgb) |
-			COND(!has_alpha, blend->rb_blendcontrol_no_alpha_rgb) : 0);
+			COND(!has_alpha, blend->rb_blendcontrol_no_alpha_rgb));
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_MASK));
-		OUT_RING(ring, blend ? blend->rb_colormask : 0xf);
+		OUT_RING(ring, blend->rb_colormask);
 	}
 
 	if (dirty & FD_DIRTY_BLEND_COLOR) {

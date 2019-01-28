@@ -39,6 +39,7 @@
 #include "fd2_program.h"
 #include "fd2_util.h"
 #include "fd2_zsa.h"
+#include "fd2_draw.h"
 #include "instr-a2xx.h"
 
 static uint32_t fmt2swap(enum pipe_format format)
@@ -473,6 +474,58 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		reg |= A2XX_RB_DEPTH_INFO_DEPTH_FORMAT(fd_pipe2depth(pfb->zsbuf->format));
 	OUT_RING(ring, reg);                         /* RB_DEPTH_INFO */
 
+	/* fast clear patches */
+	int depth_size = -1;
+	int color_size = -1;
+
+	if (pfb->cbufs[0])
+		color_size = util_format_get_blocksizebits(format) == 32 ? 4 : 2;
+
+	if (pfb->zsbuf)
+		depth_size = fd_pipe2depth(pfb->zsbuf->format) == 1 ? 4 : 2;
+
+	for (int i = 0; i < fd_patch_num_elements(&batch->gmem_patches); i++) {
+		struct fd_cs_patch *patch = fd_patch_element(&batch->gmem_patches, i);
+		uint32_t color_base = 0, depth_base = gmem->zsbuf_base[0];
+		uint32_t size, lines;
+
+		/* note: 1 "line" is 512 bytes in both color/depth areas (1K total) */
+		switch (patch->val) {
+		case GMEM_PATCH_FASTCLEAR_COLOR:
+			size = align(gmem->bin_w * gmem->bin_h * color_size, 0x4000);
+			lines = size / 1024;
+			depth_base = size / 2;
+			break;
+		case GMEM_PATCH_FASTCLEAR_DEPTH:
+			size = align(gmem->bin_w * gmem->bin_h * depth_size, 0x4000);
+			lines = size / 1024;
+			color_base = depth_base;
+			depth_base = depth_base + size / 2;
+			break;
+		case GMEM_PATCH_FASTCLEAR_COLOR_DEPTH:
+			lines = align(gmem->bin_w * gmem->bin_h * color_size * 2, 0x4000) / 1024;
+			break;
+		case GMEM_PATCH_RESTORE_INFO:
+			patch->cs[0] = gmem->bin_w;
+			patch->cs[1] = A2XX_RB_COLOR_INFO_SWAP(fmt2swap(format)) |
+					A2XX_RB_COLOR_INFO_FORMAT(fd2_pipe2color(format));
+			patch->cs[2] = A2XX_RB_DEPTH_INFO_DEPTH_BASE(gmem->zsbuf_base[0]);
+			if (pfb->zsbuf)
+				patch->cs[2] |= A2XX_RB_DEPTH_INFO_DEPTH_FORMAT(fd_pipe2depth(pfb->zsbuf->format));
+			continue;
+		default:
+			continue;
+		}
+
+		patch->cs[0] = A2XX_PA_SC_SCREEN_SCISSOR_BR_X(32) |
+			A2XX_PA_SC_SCREEN_SCISSOR_BR_Y(lines);
+		patch->cs[4] = A2XX_RB_COLOR_INFO_BASE(color_base) |
+			A2XX_RB_COLOR_INFO_FORMAT(COLORX_8_8_8_8);
+		patch->cs[5] = A2XX_RB_DEPTH_INFO_DEPTH_BASE(depth_base) |
+			A2XX_RB_DEPTH_INFO_DEPTH_FORMAT(1);
+	}
+	util_dynarray_resize(&batch->gmem_patches, 0);
+
 	/* set to zero, for some reason hardware doesn't like certain values */
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_CURRENT_BIN_ID_MIN));
@@ -607,6 +660,7 @@ static void
 fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 {
 	struct fd_context *ctx = batch->ctx;
+	struct fd2_context *fd2_ctx = fd2_context(ctx);
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	enum pipe_format format = pipe_surface_format(pfb->cbufs[0]);
@@ -623,6 +677,12 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_OFFSET));
 	OUT_RING(ring, A2XX_PA_SC_WINDOW_OFFSET_X(-tile->xoff) |
 			A2XX_PA_SC_WINDOW_OFFSET_Y(-tile->yoff));
+
+	/* write SCISSOR_BR to memory so fast clear path can restore from it */
+	OUT_PKT3(ring, CP_MEM_WRITE, 2);
+	OUT_RELOC(ring, fd_resource(fd2_ctx->solid_vertexbuf)->bo, 60, 0, 0);
+	OUT_RING(ring, A2XX_PA_SC_SCREEN_SCISSOR_BR_X(tile->bin_w) |
+			A2XX_PA_SC_SCREEN_SCISSOR_BR_Y(tile->bin_h));
 
 	/* tile offset for gl_FragCoord on a20x (C64 in fragment shader) */
 	if (is_a20x(batch->ctx->screen)) {

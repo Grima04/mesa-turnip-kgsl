@@ -145,6 +145,11 @@ struct fd_batch {
 	 */
 	struct util_dynarray rbrc_patches;
 
+	/* Keep track of GMEM related values that need to be patched up once we
+	 * know the gmem layout:
+	 */
+	struct util_dynarray gmem_patches;
+
 	/* Keep track of pointer to start of MEM exports for a20x binning shaders
 	 *
 	 * this is so the end of the shader can be cut off at the right point

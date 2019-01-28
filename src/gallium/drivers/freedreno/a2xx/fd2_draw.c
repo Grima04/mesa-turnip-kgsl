@@ -208,23 +208,13 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 	return true;
 }
 
-
-static bool
-fd2_clear(struct fd_context *ctx, unsigned buffers,
-		const union pipe_color_union *color, double depth, unsigned stencil)
+static void
+clear_state(struct fd_batch *batch, struct fd_ringbuffer *ring,
+	unsigned buffers, bool fast_clear)
 {
+	struct fd_context *ctx = batch->ctx;
 	struct fd2_context *fd2_ctx = fd2_context(ctx);
-	struct fd_ringbuffer *ring = ctx->batch->draw;
-	struct pipe_framebuffer_state *fb = &ctx->batch->framebuffer;
-	uint32_t reg, colr = 0;
-
-	if ((buffers & PIPE_CLEAR_COLOR) && fb->nr_cbufs)
-		colr = pack_rgba(PIPE_FORMAT_R8G8B8A8_UNORM, color->f);
-
-	/* emit generic state now: */
-	fd2_emit_state(ctx, ctx->dirty &
-			(FD_DIRTY_BLEND | FD_DIRTY_VIEWPORT |
-					FD_DIRTY_FRAMEBUFFER | FD_DIRTY_SCISSOR));
+	uint32_t reg;
 
 	fd2_emit_vertex_bufs(ring, 0x9c, (struct fd2_vertex_buf[]) {
 			{ .prsc = fd2_ctx->solid_vertexbuf, .size = 36 },
@@ -234,96 +224,28 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_INDX_OFFSET));
 	OUT_RING(ring, 0);
 
-	if (!is_a20x(ctx->screen)) {
-		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
-		OUT_RING(ring, 0x0000028f);
-	}
-
 	fd2_program_emit(ctx, ring, &ctx->solid_prog);
 
 	OUT_PKT0(ring, REG_A2XX_TC_CNTL_STATUS, 1);
 	OUT_RING(ring, A2XX_TC_CNTL_STATUS_L2_INVALIDATE);
 
-	if (is_a20x(ctx->screen)) {
-		OUT_PKT3(ring, CP_SET_CONSTANT, 5);
-		OUT_RING(ring, 0x00000480);
-		OUT_RING(ring, color->ui[0]);
-		OUT_RING(ring, color->ui[1]);
-		OUT_RING(ring, color->ui[2]);
-		OUT_RING(ring, color->ui[3]);
-	} else {
+	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-		OUT_RING(ring, CP_REG(REG_A2XX_CLEAR_COLOR));
-		OUT_RING(ring, colr);
-	}
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_A220_RB_LRZ_VSC_CONTROL));
-	OUT_RING(ring, 0x00000084);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
-	reg = 0;
-	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
-		reg |= A2XX_RB_COPY_CONTROL_DEPTH_CLEAR_ENABLE;
-		switch (fd_pipe2depth(fb->zsbuf->format)) {
-		case DEPTHX_24_8:
-			if (buffers & PIPE_CLEAR_DEPTH)
-				reg |= A2XX_RB_COPY_CONTROL_CLEAR_MASK(0xe);
-			if (buffers & PIPE_CLEAR_STENCIL)
-				reg |= A2XX_RB_COPY_CONTROL_CLEAR_MASK(0x1);
-			break;
-		case DEPTHX_16:
-			if (buffers & PIPE_CLEAR_DEPTH)
-				reg |= A2XX_RB_COPY_CONTROL_CLEAR_MASK(0xf);
-			break;
-		default:
-			debug_assert(0);
-			break;
-		}
-	}
-	OUT_RING(ring, reg);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTH_CLEAR));
-	reg = 0;
-	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
-		switch (fd_pipe2depth(fb->zsbuf->format)) {
-		case DEPTHX_24_8:
-			reg = (((uint32_t)(0xffffff * depth)) << 8) |
-				(stencil & 0xff);
-			break;
-		case DEPTHX_16:
-			reg = (uint32_t)(0xffffffff * depth);
-			break;
-		default:
-			debug_assert(0);
-			break;
-		}
-	}
-	OUT_RING(ring, reg);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTHCONTROL));
-	reg = 0;
-	if (buffers & PIPE_CLEAR_DEPTH) {
-		reg |= A2XX_RB_DEPTHCONTROL_ZFUNC(FUNC_ALWAYS) |
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTHCONTROL));
+		reg = 0;
+		if (buffers & PIPE_CLEAR_DEPTH) {
+			reg |= A2XX_RB_DEPTHCONTROL_ZFUNC(FUNC_ALWAYS) |
 				A2XX_RB_DEPTHCONTROL_Z_ENABLE |
 				A2XX_RB_DEPTHCONTROL_Z_WRITE_ENABLE |
 				A2XX_RB_DEPTHCONTROL_EARLY_Z_ENABLE;
+		}
+		if (buffers & PIPE_CLEAR_STENCIL) {
+			reg |= A2XX_RB_DEPTHCONTROL_STENCILFUNC(FUNC_ALWAYS) |
+					A2XX_RB_DEPTHCONTROL_STENCIL_ENABLE |
+					A2XX_RB_DEPTHCONTROL_STENCILZPASS(STENCIL_REPLACE);
+		}
+		OUT_RING(ring, reg);
 	}
-	if (buffers & PIPE_CLEAR_STENCIL) {
-		reg |= A2XX_RB_DEPTHCONTROL_STENCILFUNC(FUNC_ALWAYS) |
-				A2XX_RB_DEPTHCONTROL_STENCIL_ENABLE |
-				A2XX_RB_DEPTHCONTROL_STENCILZPASS(STENCIL_REPLACE);
-	}
-	OUT_RING(ring, reg);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
-	OUT_RING(ring, CP_REG(REG_A2XX_RB_STENCILREFMASK_BF));
-	OUT_RING(ring, 0xff000000 | A2XX_RB_STENCILREFMASK_BF_STENCILWRITEMASK(0xff));
-	OUT_RING(ring, 0xff000000 | A2XX_RB_STENCILREFMASK_STENCILWRITEMASK(0xff));
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COLORCONTROL));
@@ -338,17 +260,18 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 	OUT_RING(ring, 0x00000000);        /* PA_CL_CLIP_CNTL */
 	OUT_RING(ring, A2XX_PA_SU_SC_MODE_CNTL_PROVOKING_VTX_LAST |  /* PA_SU_SC_MODE_CNTL */
 			A2XX_PA_SU_SC_MODE_CNTL_FRONT_PTYPE(PC_DRAW_TRIANGLES) |
-			A2XX_PA_SU_SC_MODE_CNTL_BACK_PTYPE(PC_DRAW_TRIANGLES));
+			A2XX_PA_SU_SC_MODE_CNTL_BACK_PTYPE(PC_DRAW_TRIANGLES) |
+			(fast_clear ? A2XX_PA_SU_SC_MODE_CNTL_MSAA_ENABLE : 0));
+
+	if (fast_clear) {
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_AA_CONFIG));
+		OUT_RING(ring, A2XX_PA_SC_AA_CONFIG_MSAA_NUM_SAMPLES(3));
+	}
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_AA_MASK));
 	OUT_RING(ring, 0x0000ffff);
-
-	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
-	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
-	OUT_RING(ring, xy2d(0,0));	        /* PA_SC_WINDOW_SCISSOR_TL */
-	OUT_RING(ring, xy2d(fb->width,      /* PA_SC_WINDOW_SCISSOR_BR */
-			fb->height));
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_MASK));
@@ -361,30 +284,326 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 		OUT_RING(ring, 0x0);
 	}
 
-	if (!is_a20x(ctx->screen)) {
-		OUT_PKT3(ring, CP_SET_CONSTANT, 3);
-		OUT_RING(ring, CP_REG(REG_A2XX_VGT_MAX_VTX_INDX));
-		OUT_RING(ring, 3);                 /* VGT_MAX_VTX_INDX */
-		OUT_RING(ring, 0);                 /* VGT_MIN_VTX_INDX */
-	}
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_BLEND_CONTROL));
+	OUT_RING(ring, 0);
 
-	fd_draw(ctx->batch, ring, DI_PT_RECTLIST, IGNORE_VISIBILITY,
-			DI_SRC_SEL_AUTO_INDEX, 3, 0, INDEX_SIZE_IGN, 0, 0, NULL);
+	if (is_a20x(batch->ctx->screen))
+		return;
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+	OUT_RING(ring, CP_REG(REG_A2XX_VGT_MAX_VTX_INDX));
+	OUT_RING(ring, 3);                 /* VGT_MAX_VTX_INDX */
+	OUT_RING(ring, 0);                 /* VGT_MIN_VTX_INDX */
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_STENCILREFMASK_BF));
+	OUT_RING(ring, 0xff000000 | A2XX_RB_STENCILREFMASK_BF_STENCILWRITEMASK(0xff));
+	OUT_RING(ring, 0xff000000 | A2XX_RB_STENCILREFMASK_STENCILWRITEMASK(0xff));
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_A220_RB_LRZ_VSC_CONTROL));
+	OUT_RING(ring, 0x00000084);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
+	OUT_RING(ring, 0x0000028f);
+}
+
+static void
+clear_state_restore(struct fd_context *ctx, struct fd_ringbuffer *ring)
+{
+	if (is_a20x(ctx->screen))
+		return;
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
+	OUT_RING(ring, 0x00000000);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_A220_RB_LRZ_VSC_CONTROL));
 	OUT_RING(ring, 0x00000000);
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-	OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
-	OUT_RING(ring, 0x00000000);
+	OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
+	OUT_RING(ring, 0x0000003b);
+}
 
-	if (!is_a20x(ctx->screen)) {
+static void
+clear_fast(struct fd_batch *batch, struct fd_ringbuffer *ring,
+	uint32_t color_clear, uint32_t depth_clear, unsigned patch_type)
+{
+	BEGIN_RING(ring, 8); /* preallocate next 2 packets (for patching) */
+
+	/* zero values are patched in */
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_BR));
+	OUT_RINGP(ring, patch_type, &batch->gmem_patches);
+	OUT_RING(ring, 0);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 4);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_SURFACE_INFO));
+	OUT_RING(ring, 0x8000 | 32);
+	OUT_RING(ring, 0);
+	OUT_RING(ring, 0);
+
+	/* set fill values */
+	if (!is_a20x(batch->ctx->screen)) {
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
-		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
-		OUT_RING(ring, 0x0000003b);
+		OUT_RING(ring, CP_REG(REG_A2XX_CLEAR_COLOR));
+		OUT_RING(ring, color_clear);
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
+		OUT_RING(ring, A2XX_RB_COPY_CONTROL_DEPTH_CLEAR_ENABLE |
+			A2XX_RB_COPY_CONTROL_CLEAR_MASK(0xf));
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTH_CLEAR));
+		OUT_RING(ring, depth_clear);
+	} else {
+		const float sc = 1.0f / 255.0f;
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+		OUT_RING(ring, 0x00000480);
+		OUT_RING(ring, fui((float) (color_clear >>  0 & 0xff) * sc));
+		OUT_RING(ring, fui((float) (color_clear >>  8 & 0xff) * sc));
+		OUT_RING(ring, fui((float) (color_clear >> 16 & 0xff) * sc));
+		OUT_RING(ring, fui((float) (color_clear >> 24 & 0xff) * sc));
+
+		// XXX if using float the rounding error breaks it..
+		float depth = ((double) (depth_clear >> 8)) * (1.0/(double) 0xffffff);
+		assert((unsigned) (((double) depth * (double) 0xffffff)) ==
+			(depth_clear >> 8));
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+		OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VPORT_ZSCALE));
+		OUT_RING(ring, fui(0.0f));
+		OUT_RING(ring, fui(depth));
+
+		OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+		OUT_RING(ring, CP_REG(REG_A2XX_RB_STENCILREFMASK_BF));
+		OUT_RING(ring, 0xff000000 |
+			A2XX_RB_STENCILREFMASK_BF_STENCILREF(depth_clear & 0xff) |
+			A2XX_RB_STENCILREFMASK_BF_STENCILWRITEMASK(0xff));
+		OUT_RING(ring, 0xff000000 |
+			A2XX_RB_STENCILREFMASK_STENCILREF(depth_clear & 0xff) |
+			A2XX_RB_STENCILREFMASK_STENCILWRITEMASK(0xff));
 	}
 
+	fd_draw(batch, ring, DI_PT_RECTLIST, IGNORE_VISIBILITY,
+			DI_SRC_SEL_AUTO_INDEX, 3, 0, INDEX_SIZE_IGN, 0, 0, NULL);
+}
+
+static bool
+fd2_clear_fast(struct fd_context *ctx, unsigned buffers,
+		const union pipe_color_union *color, double depth, unsigned stencil)
+{
+	/* using 4x MSAA allows clearing ~2x faster
+	 * then we can use higher bpp clearing to clear lower bpp
+	 * 1 "pixel" can clear 64 bits (rgba8+depth24+stencil8)
+	 * note: its possible to clear with 32_32_32_32 format but its not faster
+	 * note: fast clear doesn't work with sysmem rendering
+	 * (sysmem rendering is disabled when clear is used)
+	 *
+	 * we only have 16-bit / 32-bit color formats
+	 * and 16-bit / 32-bit depth formats
+	 * so there are only a few possible combinations
+	 *
+	 * if the bpp of the color/depth doesn't match
+	 * we clear with depth/color individually
+	 */
+	struct fd2_context *fd2_ctx = fd2_context(ctx);
+	struct fd_batch *batch = ctx->batch;
+	struct fd_ringbuffer *ring = batch->draw;
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+	uint32_t color_clear = 0, depth_clear = 0;
+	enum pipe_format format = pipe_surface_format(pfb->cbufs[0]);
+	int depth_size = -1; /* -1: no clear, 0: clear 16-bit, 1: clear 32-bit */
+	int color_size = -1;
+
+	/* TODO: need to test performance on a22x */
+	if (!is_a20x(ctx->screen))
+		return false;
+
+	if (buffers & PIPE_CLEAR_COLOR)
+		color_size = util_format_get_blocksizebits(format) == 32;
+
+	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))
+		depth_size = fd_pipe2depth(pfb->zsbuf->format) == DEPTHX_24_8;
+
+	assert(color_size >= 0 || depth_size >= 0);
+
+	/* when clearing 24_8, depth/stencil must be both cleared
+	 * TODO: if buffer isn't attached we can clear it anyway
+	 */
+	if (depth_size == 1 && !(buffers & PIPE_CLEAR_STENCIL) != !(buffers & PIPE_CLEAR_DEPTH))
+		return false;
+
+	if (color_size == 0) {
+		color_clear = pack_rgba(format, color->f);
+		color_clear = (color_clear << 16) | (color_clear & 0xffff);
+	} else if (color_size == 1) {
+		color_clear = pack_rgba(format, color->f);
+	}
+
+	if (depth_size == 0) {
+		depth_clear = (uint32_t)(0xffff * depth);
+		depth_clear |= depth_clear << 16;
+	} else if (depth_size == 1) {
+		depth_clear = (((uint32_t)(0xffffff * depth)) << 8);
+		depth_clear |= (stencil & 0xff);
+	}
+
+	/* disable "window" scissor.. */
+	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
+	OUT_RING(ring, xy2d(0, 0));
+	OUT_RING(ring, xy2d(0x7fff, 0x7fff));
+
+	/* make sure we fill all "pixels" (in SCREEN_SCISSOR) */
+	OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
+	OUT_RING(ring, fui(4096.0));
+	OUT_RING(ring, fui(4096.0));
+	OUT_RING(ring, fui(4096.0));
+	OUT_RING(ring, fui(4096.0));
+
+	clear_state(batch, ring, ~0u, true);
+
+	if (color_size >= 0 && depth_size != color_size)
+		clear_fast(batch, ring, color_clear, color_clear, GMEM_PATCH_FASTCLEAR_COLOR);
+
+	if (depth_size >= 0 && depth_size != color_size)
+		clear_fast(batch, ring, depth_clear, depth_clear, GMEM_PATCH_FASTCLEAR_DEPTH);
+
+	if (depth_size == color_size)
+		clear_fast(batch, ring, color_clear, depth_clear, GMEM_PATCH_FASTCLEAR_COLOR_DEPTH);
+
+	clear_state_restore(ctx, ring);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_AA_CONFIG));
+	OUT_RING(ring, 0);
+
+	/* can't patch in SCREEN_SCISSOR_BR as it can be different for each tile.
+	 * MEM_WRITE the value in tile_renderprep, and use CP_LOAD_CONSTANT_CONTEXT
+	 * the value is read from byte offset 60 in the given bo
+	 */
+	OUT_PKT3(ring, CP_LOAD_CONSTANT_CONTEXT, 3);
+	OUT_RELOC(ring, fd_resource(fd2_ctx->solid_vertexbuf)->bo, 0, 0, 0);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_SCREEN_SCISSOR_BR));
+	OUT_RING(ring, 1);
+
+	OUT_PKT3(ring, CP_SET_CONSTANT, 4);
+	OUT_RING(ring, CP_REG(REG_A2XX_RB_SURFACE_INFO));
+	OUT_RINGP(ring, GMEM_PATCH_RESTORE_INFO, &batch->gmem_patches);
+	OUT_RING(ring, 0);
+	OUT_RING(ring, 0);
+	return true;
+}
+
+static bool
+fd2_clear(struct fd_context *ctx, unsigned buffers,
+		const union pipe_color_union *color, double depth, unsigned stencil)
+{
+	struct fd_ringbuffer *ring = ctx->batch->draw;
+	struct pipe_framebuffer_state *fb = &ctx->batch->framebuffer;
+
+	if (fd2_clear_fast(ctx, buffers, color, depth, stencil))
+		goto dirty;
+
+	/* set clear value */
+	if (is_a20x(ctx->screen)) {
+		if (buffers & PIPE_CLEAR_COLOR) {
+			/* C0 used by fragment shader */
+			OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+			OUT_RING(ring, 0x00000480);
+			OUT_RING(ring, color->ui[0]);
+			OUT_RING(ring, color->ui[1]);
+			OUT_RING(ring, color->ui[2]);
+			OUT_RING(ring, color->ui[3]);
+		}
+
+		if (buffers & PIPE_CLEAR_DEPTH) {
+			/* use viewport to set depth value */
+			OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+			OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VPORT_ZSCALE));
+			OUT_RING(ring, fui(0.0f));
+			OUT_RING(ring, fui(depth));
+		}
+
+		if (buffers & PIPE_CLEAR_STENCIL) {
+			OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+			OUT_RING(ring, CP_REG(REG_A2XX_RB_STENCILREFMASK_BF));
+			OUT_RING(ring, 0xff000000 |
+				A2XX_RB_STENCILREFMASK_BF_STENCILREF(stencil) |
+				A2XX_RB_STENCILREFMASK_BF_STENCILWRITEMASK(0xff));
+			OUT_RING(ring, 0xff000000 |
+				A2XX_RB_STENCILREFMASK_STENCILREF(stencil) |
+				A2XX_RB_STENCILREFMASK_STENCILWRITEMASK(0xff));
+		}
+	} else {
+		if (buffers & PIPE_CLEAR_COLOR) {
+			OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+			OUT_RING(ring, CP_REG(REG_A2XX_CLEAR_COLOR));
+			OUT_RING(ring, pack_rgba(PIPE_FORMAT_R8G8B8A8_UNORM, color->f));
+		}
+
+		if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
+			uint32_t clear_mask, depth_clear;
+			if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
+				switch (fd_pipe2depth(fb->zsbuf->format)) {
+				case DEPTHX_24_8:
+					clear_mask = ((buffers & PIPE_CLEAR_DEPTH) ? 0xe : 0) |
+						((buffers & PIPE_CLEAR_STENCIL) ? 0x1 : 0);
+					depth_clear = (((uint32_t)(0xffffff * depth)) << 8) |
+						(stencil & 0xff);
+					break;
+				case DEPTHX_16:
+					clear_mask = 0xf;
+					depth_clear = (uint32_t)(0xffffffff * depth);
+					break;
+				default:
+					debug_assert(0);
+					break;
+				}
+			}
+
+			OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+			OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
+			OUT_RING(ring, A2XX_RB_COPY_CONTROL_DEPTH_CLEAR_ENABLE |
+				A2XX_RB_COPY_CONTROL_CLEAR_MASK(clear_mask));
+
+			OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+			OUT_RING(ring, CP_REG(REG_A2XX_RB_DEPTH_CLEAR));
+			OUT_RING(ring, depth_clear);
+		}
+	}
+
+	/* scissor state */
+	OUT_PKT3(ring, CP_SET_CONSTANT, 3);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_SC_WINDOW_SCISSOR_TL));
+	OUT_RING(ring, xy2d(0, 0));
+	OUT_RING(ring, xy2d(fb->width, fb->height));
+
+	/* viewport state */
+	OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+	OUT_RING(ring, CP_REG(REG_A2XX_PA_CL_VPORT_XSCALE));
+	OUT_RING(ring, fui((float) fb->width / 2.0));
+	OUT_RING(ring, fui((float) fb->width / 2.0));
+	OUT_RING(ring, fui((float) fb->height / 2.0));
+	OUT_RING(ring, fui((float) fb->height / 2.0));
+
+	/* common state */
+	clear_state(ctx->batch, ring, buffers, false);
+
+	fd_draw(ctx->batch, ring, DI_PT_RECTLIST, IGNORE_VISIBILITY,
+			DI_SRC_SEL_AUTO_INDEX, 3, 0, INDEX_SIZE_IGN, 0, 0, NULL);
+
+	clear_state_restore(ctx, ring);
+
+dirty:
 	ctx->dirty |= FD_DIRTY_ZSA |
 			FD_DIRTY_VIEWPORT |
 			FD_DIRTY_RASTERIZER |
@@ -392,7 +611,8 @@ fd2_clear(struct fd_context *ctx, unsigned buffers,
 			FD_DIRTY_PROG |
 			FD_DIRTY_CONST |
 			FD_DIRTY_BLEND |
-			FD_DIRTY_FRAMEBUFFER;
+			FD_DIRTY_FRAMEBUFFER |
+			FD_DIRTY_SCISSOR;
 
 	ctx->dirty_shader[PIPE_SHADER_VERTEX]   |= FD_DIRTY_SHADER_PROG;
 	ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST;

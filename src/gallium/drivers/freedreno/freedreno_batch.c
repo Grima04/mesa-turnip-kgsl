@@ -90,8 +90,10 @@ batch_init(struct fd_batch *batch)
 
 	util_dynarray_init(&batch->draw_patches, NULL);
 
-	if (is_a2xx(ctx->screen))
+	if (is_a2xx(ctx->screen)) {
 		util_dynarray_init(&batch->shader_patches, NULL);
+		util_dynarray_init(&batch->gmem_patches, NULL);
+	}
 
 	if (is_a3xx(ctx->screen))
 		util_dynarray_init(&batch->rbrc_patches, NULL);
@@ -167,8 +169,10 @@ batch_fini(struct fd_batch *batch)
 
 	util_dynarray_fini(&batch->draw_patches);
 
-	if (is_a2xx(batch->ctx->screen))
+	if (is_a2xx(batch->ctx->screen)) {
 		util_dynarray_fini(&batch->shader_patches);
+		util_dynarray_fini(&batch->gmem_patches);
+	}
 
 	if (is_a3xx(batch->ctx->screen))
 		util_dynarray_fini(&batch->rbrc_patches);
