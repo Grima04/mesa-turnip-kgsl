@@ -31,6 +31,7 @@
 #include "fd2_emit.h"
 #include "fd2_gmem.h"
 #include "fd2_program.h"
+#include "fd2_query.h"
 #include "fd2_rasterizer.h"
 #include "fd2_texture.h"
 #include "fd2_zsa.h"
@@ -119,6 +120,8 @@ fd2_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
 	/* construct vertex state used for solid ops (clear, and gmem<->mem) */
 	fd2_ctx->solid_vertexbuf = create_solid_vertexbuf(pctx);
+
+	fd2_query_context_init(pctx);
 
 	return pctx;
 }

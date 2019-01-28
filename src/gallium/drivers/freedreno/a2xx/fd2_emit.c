@@ -424,6 +424,15 @@ fd2_emit_restore(struct fd_context *ctx, struct fd_ringbuffer *ring)
 		OUT_RING(ring, 0x0000003b);
 	}
 
+	/* enable perfcntrs */
+	OUT_PKT0(ring, REG_A2XX_CP_PERFMON_CNTL, 1);
+	OUT_RING(ring, COND(fd_mesa_debug & FD_DBG_PERFC, 1));
+
+	/* note: perfcntrs don't work without the PM_OVERRIDE bit */
+	OUT_PKT0(ring, REG_A2XX_RBBM_PM_OVERRIDE1, 2);
+	OUT_RING(ring, 0xffffffff);
+	OUT_RING(ring, 0x00000fff);
+
 	OUT_PKT0(ring, REG_A2XX_TP0_CHICKEN, 1);
 	OUT_RING(ring, 0x00000002);
 
