@@ -228,6 +228,26 @@ build:meson-gallium-drivers-other:
     GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
     LLVM_VERSION: "5.0"
 
+build:meson-gallium-clover-llvm5:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=false
+      -D gbm=false
+    GALLIUM_ST: >
+      -D dri3=false
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=icd
+    GALLIUM_DRIVERS: "r600"
+    LLVM_VERSION: "5.0"
+
 build:make-vulkan:
   extends: .make-build
   variables:
