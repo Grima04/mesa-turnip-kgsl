@@ -96,6 +96,9 @@ tu_cs_is_empty(const struct tu_cs *cs)
 static VkResult
 tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
 {
+   /* no dangling command packet */
+   assert(tu_cs_is_empty(cs));
+
    /* grow cs->bos if needed */
    if (cs->bo_count == cs->bo_capacity) {
       uint32_t new_capacity = MAX2(4, 2 * cs->bo_capacity);
@@ -137,7 +140,7 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
  * Reserve an IB entry.
  */
 static VkResult
-tu_cs_reserve_entry(struct tu_cs *cs)
+tu_cs_reserve_entry(struct tu_device *dev, struct tu_cs *cs)
 {
    /* grow cs->entries if needed */
    if (cs->entry_count == cs->entry_capacity) {
@@ -182,47 +185,51 @@ tu_cs_add_entry(struct tu_cs *cs)
 }
 
 /**
- * Begin (or continue) command packet emission.  This will reserve space from
- * the command stream for at least \a reserve_size uint32_t values.
+ * Begin (or continue) command packet emission.  This does nothing but sanity
+ * checks currently.
  */
-VkResult
-tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
+void
+tu_cs_begin(struct tu_cs *cs)
 {
-   /* no dangling command packet */
    assert(tu_cs_is_empty(cs));
-
-   if (tu_cs_get_space(cs) < reserve_size) {
-      uint32_t new_size = MAX2(cs->next_bo_size, reserve_size);
-      VkResult result = tu_cs_add_bo(dev, cs, new_size);
-      if (result != VK_SUCCESS)
-         return result;
-
-      cs->next_bo_size = new_size * 2;
-   }
-
-   assert(tu_cs_get_space(cs) >= reserve_size);
-
-   return VK_SUCCESS;
 }
 
 /**
- * End command packet emission by adding an IB entry for the command packets
- * emitted since the last call to tu_cs_begin.
+ * End command packet emission and add an IB entry.
  */
-VkResult
+void
 tu_cs_end(struct tu_cs *cs)
 {
-   /* no command packet at all */
-   if (tu_cs_is_empty(cs))
-      return VK_SUCCESS;
+   if (!tu_cs_is_empty(cs))
+      tu_cs_add_entry(cs);
+}
 
-   VkResult result = tu_cs_reserve_entry(cs);
-   if (result != VK_SUCCESS)
-      return result;
+/**
+ * Reserve space from a command stream for \a reserved_size uint32_t values.
+ */
+VkResult
+tu_cs_reserve_space(struct tu_device *dev,
+                    struct tu_cs *cs,
+                    uint32_t reserved_size)
+{
+   if (tu_cs_get_space(cs) < reserved_size) {
+      /* add an entry for the exiting command packets */
+      if (!tu_cs_is_empty(cs))
+         tu_cs_add_entry(cs);
 
-   tu_cs_add_entry(cs);
+      /* switch to a new BO */
+      uint32_t new_size = MAX2(cs->next_bo_size, reserved_size);
+      VkResult result = tu_cs_add_bo(dev, cs, new_size);
+      if (result != VK_SUCCESS)
+         return result;
+      cs->next_bo_size = new_size * 2;
+   }
 
-   return VK_SUCCESS;
+   assert(tu_cs_get_space(cs) >= reserved_size);
+   cs->reserved_end = cs->cur + reserved_size;
+
+   /* reserve an entry for the next call to this function or tu_cs_end */
+   return tu_cs_reserve_entry(dev, cs);
 }
 
 /**

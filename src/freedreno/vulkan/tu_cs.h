@@ -29,39 +29,23 @@
 
 void
 tu_cs_init(struct tu_cs *cs, uint32_t initial_size);
+
 void
 tu_cs_finish(struct tu_device *dev, struct tu_cs *cs);
-VkResult
-tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size);
-VkResult
+
+void
+tu_cs_begin(struct tu_cs *cs);
+
+void
 tu_cs_end(struct tu_cs *cs);
+
+VkResult
+tu_cs_reserve_space(struct tu_device *dev,
+                    struct tu_cs *cs,
+                    uint32_t reserved_size);
+
 void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
-
-/**
- * Reserve space from a command stream for \a size uint32_t values.
- */
-static inline VkResult
-tu_cs_reserve_space(struct tu_device *dev, struct tu_cs *cs, size_t size)
-{
-   if (cs->end - cs->cur >= size) {
-      cs->reserved_end = cs->cur + size;
-      return VK_SUCCESS;
-   }
-
-   VkResult result = tu_cs_end(cs);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = tu_cs_begin(dev, cs, size);
-   if (result != VK_SUCCESS)
-      return result;
-
-   cs->reserved_end = cs->cur + size;
-   assert(cs->reserved_end <= cs->end);
-
-   return VK_SUCCESS;
-}
 
 /**
  * Assert that we did not exceed the reserved space.

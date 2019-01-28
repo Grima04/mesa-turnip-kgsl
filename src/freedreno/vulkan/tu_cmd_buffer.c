@@ -945,9 +945,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   result = tu_cs_begin(cmd_buffer->device, &cmd_buffer->cs, 4096);
-   if (result != VK_SUCCESS)
-      return result;
+   tu_cs_begin(&cmd_buffer->cs);
 
    cmd_buffer->marker_seqno = 0;
    cmd_buffer->scratch_seqno = 0;
@@ -1019,9 +1017,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_WRITE);
    }
 
-   VkResult result = tu_cs_end(&cmd_buffer->cs);
-   if (result != VK_SUCCESS)
-      cmd_buffer->record_result = result;
+   tu_cs_end(&cmd_buffer->cs);
 
    assert(!cmd_buffer->state.attachments);
 
