@@ -328,6 +328,31 @@ build:make-loader-classic-dri:
       --disable-gallium-osmesa
     LIBUNWIND_FLAGS: --disable-libunwind
 
+# NOTE: Building SWR is 2x (yes two) times slower than all the other
+# gallium drivers combined.
+# Start this early so that it doesn't hunder the run time.
+build:make-gallium-drivers-swr:
+  extends: .make-build
+  variables:
+    MAKE_CHECK_COMMAND: "true"
+    LLVM_VERSION: "6.0"
+    DRI_LOADERS: >
+      --disable-glx
+      --disable-gbm
+      --disable-egl
+    GALLIUM_ST: >
+      --enable-dri
+      --disable-opencl
+      --disable-xa
+      --disable-nine
+      --disable-xvmc
+      --disable-vdpau
+      --disable-va
+      --disable-omx-bellagio
+      --disable-gallium-osmesa
+    GALLIUM_DRIVERS: "swr"
+    LIBUNWIND_FLAGS: --enable-libunwind
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
