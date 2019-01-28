@@ -410,6 +410,32 @@ build:make-gallium-st-clover-llvm-7:
     LLVM_VERSION: "7"
     GALLIUM_DRIVERS: "r600,radeonsi"
 
+build:make-gallium-st-other:
+  extends: .make-build
+  variables:
+    MAKE_CHECK_COMMAND: "true"
+    # We should be testing 3.3, but 3.9 is the oldest that still exists in ubuntu
+    LLVM_VERSION: "3.9"
+    DRI_LOADERS: >
+      --disable-glx
+      --disable-gbm
+      --disable-egl
+    GALLIUM_ST: >
+      --enable-dri
+      --disable-opencl
+      --enable-xa
+      --enable-nine
+      --enable-xvmc
+      --enable-vdpau
+      --enable-va
+      --enable-omx-bellagio
+      --enable-gallium-osmesa
+    # We need swrast for osmesa and nine.
+    # i915 most likely doesn't work with most ST.
+    # Regardless - we're doing a quick build test here.
+    GALLIUM_DRIVERS: "i915,swrast"
+    LIBUNWIND_FLAGS: --enable-libunwind
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
