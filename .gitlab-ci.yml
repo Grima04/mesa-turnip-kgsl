@@ -305,6 +305,29 @@ build:make-vulkan:
     VULKAN_DRIVERS: intel,radeon
     LIBUNWIND_FLAGS: --disable-libunwind
 
+build:make-loader-classic-dri:
+  extends: .make-build
+  variables:
+    MAKE_CHECK_COMMAND: "make check"
+    DRI_LOADERS: >
+      --enable-glx
+      --enable-gbm
+      --enable-egl
+      --with-platforms=x11,wayland,drm,surfaceless
+      --enable-osmesa
+    DRI_DRIVERS: "i915,i965,radeon,r200,swrast,nouveau"
+    GALLIUM_ST: >
+      --enable-dri
+      --disable-opencl
+      --disable-xa
+      --disable-nine
+      --disable-xvmc
+      --disable-vdpau
+      --disable-va
+      --disable-omx-bellagio
+      --disable-gallium-osmesa
+    LIBUNWIND_FLAGS: --disable-libunwind
+
 build:scons-nollvm:
   extends: .scons-build
   variables:

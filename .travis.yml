@@ -32,29 +32,6 @@ env:
 matrix:
   include:
     - env:
-        - LABEL="make loaders/classic DRI"
-        - BUILD=make
-        - MAKEFLAGS="-j4"
-        - MAKE_CHECK_COMMAND="make check"
-        - DRI_LOADERS="--enable-glx --enable-gbm --enable-egl --with-platforms=x11,drm,surfaceless,wayland --enable-osmesa"
-        - DRI_DRIVERS="i915,i965,radeon,r200,swrast,nouveau"
-        - GALLIUM_ST="--enable-dri --disable-opencl --disable-xa --disable-nine --disable-xvmc --disable-vdpau --disable-va --disable-omx-bellagio --disable-gallium-osmesa"
-        - GALLIUM_DRIVERS=""
-        - VULKAN_DRIVERS=""
-        - LIBUNWIND_FLAGS="--disable-libunwind"
-      addons:
-        apt:
-          packages:
-            - xz-utils
-            - x11proto-xf86vidmode-dev
-            - libxxf86vm-dev
-            - libexpat1-dev
-            - libx11-xcb-dev
-            - libxdamage-dev
-            - libxfixes-dev
-            - python3-pip
-            - python3-setuptools
-    - env:
         # NOTE: Building SWR is 2x (yes two) times slower than all the other
         # gallium drivers combined.
         # Start this early so that it doesn't hunder the run time.
