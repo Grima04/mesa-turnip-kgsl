@@ -353,6 +353,12 @@ build:make-gallium-drivers-swr:
     GALLIUM_DRIVERS: "swr"
     LIBUNWIND_FLAGS: --enable-libunwind
 
+build:make-gallium-drivers-radeonsi:
+  extends: build:make-gallium-drivers-swr
+  variables:
+    LLVM_VERSION: "7"
+    GALLIUM_DRIVERS: "radeonsi"
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
