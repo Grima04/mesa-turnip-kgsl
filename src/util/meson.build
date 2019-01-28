@@ -52,6 +52,7 @@ files_mesa_util = files(
   'mesa-sha1.h',
   'os_time.c',
   'os_time.h',
+  'os_file.c',
   'os_misc.c',
   'os_misc.h',
   'u_process.c',
