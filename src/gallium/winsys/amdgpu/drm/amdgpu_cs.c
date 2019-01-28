@@ -33,14 +33,6 @@
 
 #include "amd/common/sid.h"
 
-#ifndef AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE
-#define AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE (1 << 3)
-#endif
-
-#ifndef AMDGPU_CHUNK_ID_BO_HANDLES
-#define AMDGPU_CHUNK_ID_BO_HANDLES 0x06
-#endif
-
 DEBUG_GET_ONCE_BOOL_OPTION(noop, "RADEON_NOOP", false)
 
 /* FENCES */
