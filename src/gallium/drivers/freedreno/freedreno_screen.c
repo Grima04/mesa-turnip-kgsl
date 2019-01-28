@@ -153,7 +153,7 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 		fd_device_del(screen->dev);
 
 	if (screen->ro)
-		FREE(screen->ro);
+		screen->ro->destroy(screen->ro);
 
 	fd_bc_fini(&screen->batch_cache);
 	fd_gmem_screen_fini(pscreen);
@@ -903,15 +903,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	pscreen = &screen->base;
 
 	screen->dev = dev;
+	screen->ro = ro;
 	screen->refcnt = 1;
-
-	if (ro) {
-		screen->ro = renderonly_dup(ro);
-		if (!screen->ro) {
-			DBG("could not create renderonly object");
-			goto fail;
-		}
-	}
 
 	// maybe this should be in context?
 	screen->pipe = fd_pipe_new(screen->dev, FD_PIPE_3D);

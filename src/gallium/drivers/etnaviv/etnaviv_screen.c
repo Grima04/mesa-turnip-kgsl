@@ -99,7 +99,7 @@ etna_screen_destroy(struct pipe_screen *pscreen)
       etna_gpu_del(screen->gpu);
 
    if (screen->ro)
-      FREE(screen->ro);
+      screen->ro->destroy(screen->ro);
 
    if (screen->dev)
       etna_device_del(screen->dev);
@@ -939,7 +939,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    pscreen = &screen->base;
    screen->dev = dev;
    screen->gpu = gpu;
-   screen->ro = renderonly_dup(ro);
+   screen->ro = ro;
    screen->refcnt = 1;
 
    if (!screen->ro) {

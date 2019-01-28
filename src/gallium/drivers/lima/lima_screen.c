@@ -54,7 +54,7 @@ lima_screen_destroy(struct pipe_screen *pscreen)
    slab_destroy_parent(&screen->transfer_pool);
 
    if (screen->ro)
-      free(screen->ro);
+      screen->ro->destroy(screen->ro);
 
    if (screen->pp_buffer)
       lima_bo_unreference(screen->pp_buffer);
@@ -621,6 +621,7 @@ lima_screen_create(int fd, struct renderonly *ro)
       return NULL;
 
    screen->fd = fd;
+   screen->ro = ro;
 
    lima_screen_parse_env();
 
@@ -692,14 +693,6 @@ lima_screen_create(int fd, struct renderonly *ro)
    pp_frame_rsw[9] = screen->pp_buffer->va + pp_clear_program_offset;
    pp_frame_rsw[13] = 0x00000100;
 
-   if (ro) {
-      screen->ro = renderonly_dup(ro);
-      if (!screen->ro) {
-         fprintf(stderr, "Failed to dup renderonly object\n");
-         goto err_out3;
-      }
-   }
-
    screen->base.destroy = lima_screen_destroy;
    screen->base.get_name = lima_screen_get_name;
    screen->base.get_vendor = lima_screen_get_vendor;
@@ -722,8 +715,6 @@ lima_screen_create(int fd, struct renderonly *ro)
 
    return &screen->base;
 
-err_out3:
-   lima_bo_unreference(screen->pp_buffer);
 err_out2:
    lima_bo_table_fini(screen);
 err_out1:
