@@ -863,6 +863,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->scalarBlockLayout = pdevice->rad_info.chip_class >= CIK;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
+			VkPhysicalDeviceMemoryPriorityFeaturesEXT *features =
+				(VkPhysicalDeviceMemoryPriorityFeaturesEXT *)ext;
+			features->memoryPriority = VK_TRUE;
+			break;
+		}
 		default:
 			break;
 		}
@@ -3086,6 +3092,16 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		mem->buffer = NULL;
 	}
 
+	float priority_float = 0.5;
+	const struct VkMemoryPriorityAllocateInfoEXT *priority_ext =
+		vk_find_struct_const(pAllocateInfo->pNext,
+				     MEMORY_PRIORITY_ALLOCATE_INFO_EXT);
+	if (priority_ext)
+		priority_float = priority_ext->priority;
+
+	unsigned priority = MIN2(RADV_BO_PRIORITY_APPLICATION_MAX - 1,
+	                         (int)(priority_float * RADV_BO_PRIORITY_APPLICATION_MAX));
+
 	mem->user_ptr = NULL;
 
 	if (import_info) {
@@ -3094,7 +3110,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		       import_info->handleType ==
 		       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 		mem->bo = device->ws->buffer_from_fd(device->ws, import_info->fd,
-						     RADV_BO_PRIORITY_DEFAULT, NULL, NULL);
+						     priority, NULL, NULL);
 		if (!mem->bo) {
 			result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 			goto fail;
@@ -3106,7 +3122,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		assert(mem_type_index == RADV_MEM_TYPE_GTT_CACHED);
 		mem->bo = device->ws->buffer_from_ptr(device->ws, host_ptr_info->pHostPointer,
 		                                      pAllocateInfo->allocationSize,
-		                                      RADV_BO_PRIORITY_DEFAULT);
+		                                      priority);
 		if (!mem->bo) {
 			result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
 			goto fail;
@@ -3133,7 +3149,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
 		mem->bo = device->ws->buffer_create(device->ws, alloc_size, device->physical_device->rad_info.max_alignment,
-		                                    domain, flags, RADV_BO_PRIORITY_DEFAULT);
+		                                    domain, flags, priority);
 
 		if (!mem->bo) {
 			result = VK_ERROR_OUT_OF_DEVICE_MEMORY;

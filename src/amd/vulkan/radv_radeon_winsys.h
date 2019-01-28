@@ -191,8 +191,6 @@ struct radv_winsys_bo_list {
 /* Kernel effectively allows 0-31. This sets some priorities for fixed
  * functionality buffers */
 enum {
-	RADV_BO_PRIORITY_DEFAULT = 14,
-
 	RADV_BO_PRIORITY_APPLICATION_MAX = 28,
 
 	/* virtual buffers have 0 priority since the priority is not used. */
