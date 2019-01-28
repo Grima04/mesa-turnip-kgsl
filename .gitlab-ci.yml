@@ -359,6 +359,12 @@ build:make-gallium-drivers-radeonsi:
     LLVM_VERSION: "7"
     GALLIUM_DRIVERS: "radeonsi"
 
+build:make-gallium-drivers-other:
+  extends: build:make-gallium-drivers-swr
+  variables:
+    LLVM_VERSION: "3.9"
+    GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
+
 build:scons-nollvm:
   extends: .scons-build
   variables:
