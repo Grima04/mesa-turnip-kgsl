@@ -253,6 +253,12 @@ build:meson-gallium-clover-llvm6:
   variables:
     LLVM_VERSION: "6.0"
 
+build:meson-gallium-clover-llvm7:
+  extends: build:meson-gallium-clover-llvm5
+  variables:
+    GALLIUM_DRIVERS: "r600,radeonsi"
+    LLVM_VERSION: "7"
+
 build:make-vulkan:
   extends: .make-build
   variables:

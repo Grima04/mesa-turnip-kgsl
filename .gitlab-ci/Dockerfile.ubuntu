@@ -32,6 +32,8 @@ RUN apt-get install -y \
       libclang-5.0-dev \
       clang-6.0 \
       libclang-6.0-dev \
+      clang-7 \
+      libclang-7-dev \
       libclc-dev \
       xz-utils \
       libexpat1-dev \
