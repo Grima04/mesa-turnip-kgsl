@@ -188,6 +188,26 @@ build:meson-gallium-swr:
     GALLIUM_DRIVERS: "swr"
     LLVM_VERSION: "6.0"
 
+build:meson-gallium-radeonsi:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=false
+      -D gbm=false
+    GALLIUM_ST: >
+      -D dri3=false
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+    GALLIUM_DRIVERS: "radeonsi"
+    LLVM_VERSION: "7"
+
 build:make-vulkan:
   extends: .make-build
   variables:
