@@ -395,6 +395,9 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	bo->is_shared = false;
 	bo->priority = priority;
 
+	r = amdgpu_bo_export(buf_handle, amdgpu_bo_handle_type_kms, &bo->bo_handle);
+	assert(!r);
+
 	if (initial_domain & RADEON_DOMAIN_VRAM)
 		p_atomic_add(&ws->allocated_vram,
 			     align64(bo->size, ws->info.gart_page_size));
@@ -503,6 +506,9 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws,
 	bo->initial_domain = RADEON_DOMAIN_GTT;
 	bo->priority = priority;
 
+	MAYBE_UNUSED int r = amdgpu_bo_export(buf_handle, amdgpu_bo_handle_type_kms, &bo->bo_handle);
+	assert(!r);
+
 	p_atomic_add(&ws->allocated_gtt,
 		     align64(bo->size, ws->info.gart_page_size));
 
@@ -572,6 +578,9 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 	bo->ws = ws;
 	bo->priority = priority;
 	bo->ref_count = 1;
+
+	r = amdgpu_bo_export(result.buf_handle, amdgpu_bo_handle_type_kms, &bo->bo_handle);
+	assert(!r);
 
 	if (bo->initial_domain & RADEON_DOMAIN_VRAM)
 		p_atomic_add(&ws->allocated_vram,
