@@ -144,6 +144,27 @@ build:meson-vulkan:
     VULKAN_DRIVERS: intel,amd
     LLVM_VERSION: "7"
 
+build:meson-loader-classic-dri:
+  extends: .meson-build
+  variables:
+    UNWIND: "false"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=true
+      -D egl=true
+      -D platforms=x11,wayland,drm,surfaceless
+      -D osmesa=classic
+    DRI_DRIVERS: "i915,i965,r100,r200,swrast,nouveau"
+    GALLIUM_ST: >
+      -D dri3=true
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+
 build:make-vulkan:
   extends: .make-build
   variables:
