@@ -22,6 +22,7 @@ RUN apt-get install -y \
       libva-dev \
       llvm-3.9-dev \
       libclang-3.9-dev \
+      llvm-6.0-dev \
       llvm-7-dev \
       xz-utils \
       libexpat1-dev \
