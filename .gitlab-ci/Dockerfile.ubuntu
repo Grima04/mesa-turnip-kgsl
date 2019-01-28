@@ -35,6 +35,8 @@ RUN apt-get install -y \
       clang-7 \
       libclang-7-dev \
       libclc-dev \
+      libxvmc-dev \
+      libomxil-bellagio-dev \
       xz-utils \
       libexpat1-dev \
       libx11-xcb-dev \

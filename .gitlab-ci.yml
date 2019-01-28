@@ -259,6 +259,27 @@ build:meson-gallium-clover-llvm7:
     GALLIUM_DRIVERS: "r600,radeonsi"
     LLVM_VERSION: "7"
 
+build:meson-gallium-st-other:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=false
+      -D gbm=false
+    GALLIUM_ST: >
+      -D dri3=true
+      -D gallium-vdpau=true
+      -D gallium-xvmc=true
+      -D gallium-omx=bellagio
+      -D gallium-va=true
+      -D gallium-xa=true
+      -D gallium-nine=true
+      -D gallium-opencl=disabled
+      -D osmesa=gallium
+    GALLIUM_DRIVERS: "nouveau,swrast"
+    LLVM_VERSION: "5.0"
+
 build:make-vulkan:
   extends: .make-build
   variables:
