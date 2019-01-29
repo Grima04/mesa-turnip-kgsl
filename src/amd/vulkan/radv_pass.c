@@ -81,11 +81,14 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 			pass_att->last_subpass_idx = i;
 		}
 
+		subpass->has_color_att = false;
 		for (uint32_t j = 0; j < subpass->color_count; j++) {
 			struct radv_subpass_attachment *subpass_att =
 				&subpass->color_attachments[j];
 			if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
 				continue;
+
+			subpass->has_color_att = true;
 
 			struct radv_render_pass_attachment *pass_att =
 				&pass->attachments[subpass_att->attachment];

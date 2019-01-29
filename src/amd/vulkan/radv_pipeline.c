@@ -1375,15 +1375,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 	 *    disabled or if the subpass of the render pass the pipeline is
 	 *    created against does not use any color attachments.
 	 */
-	bool uses_color_att = false;
-	for (unsigned i = 0; i < subpass->color_count; ++i) {
-		if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
-			uses_color_att = true;
-			break;
-		}
-	}
-
-	if (uses_color_att && states & RADV_DYNAMIC_BLEND_CONSTANTS) {
+	if (subpass->has_color_att && states & RADV_DYNAMIC_BLEND_CONSTANTS) {
 		assert(pCreateInfo->pColorBlendState);
 		typed_memcpy(dynamic->blend_constants,
 			     pCreateInfo->pColorBlendState->blendConstants, 4);

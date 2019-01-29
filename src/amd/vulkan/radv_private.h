@@ -1828,6 +1828,9 @@ struct radv_subpass {
 	/** Subpass has at least one resolve attachment */
 	bool                                         has_resolve;
 
+	/** Subpass has at least one color attachment */
+	bool                                         has_color_att;
+
 	struct radv_subpass_barrier                  start_barrier;
 
 	uint32_t                                     view_mask;
