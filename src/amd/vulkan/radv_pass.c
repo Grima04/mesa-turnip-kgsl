@@ -33,6 +33,7 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 {
 	for (uint32_t i = 0; i < pass->subpass_count; i++) {
 		struct radv_subpass *subpass = &pass->subpasses[i];
+		uint32_t color_sample_count = 1, depth_sample_count = 1;
 
 		/* We don't allow depth_stencil_attachment to be non-NULL and
 		 * be VK_ATTACHMENT_UNUSED.  This way something can just check
@@ -53,6 +54,43 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 				&pass->attachments[subpass_att->attachment];
 
 			pass_att->last_subpass_idx = i;
+		}
+
+		for (uint32_t j = 0; j < subpass->color_count; j++) {
+			struct radv_subpass_attachment *subpass_att =
+				&subpass->color_attachments[j];
+			if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
+				continue;
+
+			struct radv_render_pass_attachment *pass_att =
+				&pass->attachments[subpass_att->attachment];
+
+			color_sample_count = pass_att->samples;
+		}
+
+		if (subpass->depth_stencil_attachment) {
+			const uint32_t a =
+				subpass->depth_stencil_attachment->attachment;
+			struct radv_render_pass_attachment *pass_att =
+				&pass->attachments[a];
+			depth_sample_count = pass_att->samples;
+		}
+
+		subpass->max_sample_count = MAX2(color_sample_count,
+						 depth_sample_count);
+
+		/* We have to handle resolve attachments specially */
+		subpass->has_resolve = false;
+		if (subpass->resolve_attachments) {
+			for (uint32_t j = 0; j < subpass->color_count; j++) {
+				struct radv_subpass_attachment *resolve_att =
+					&subpass->resolve_attachments[j];
+
+				if (resolve_att->attachment == VK_ATTACHMENT_UNUSED)
+					continue;
+
+				subpass->has_resolve = true;
+			}
 		}
 	}
 }
@@ -139,7 +177,6 @@ VkResult radv_CreateRenderPass(
 	p = pass->subpass_attachments;
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
 		const VkSubpassDescription *desc = &pCreateInfo->pSubpasses[i];
-		uint32_t color_sample_count = 1, depth_sample_count = 1;
 		struct radv_subpass *subpass = &pass->subpasses[i];
 
 		subpass->input_count = desc->inputAttachmentCount;
@@ -171,13 +208,9 @@ VkResult radv_CreateRenderPass(
 					.attachment = desc->pColorAttachments[j].attachment,
 					.layout = desc->pColorAttachments[j].layout,
 				};
-				if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-					color_sample_count = pCreateInfo->pAttachments[desc->pColorAttachments[j].attachment].samples;
-				}
 			}
 		}
 
-		subpass->has_resolve = false;
 		if (desc->pResolveAttachments) {
 			subpass->resolve_attachments = p;
 			p += desc->colorAttachmentCount;
@@ -188,9 +221,6 @@ VkResult radv_CreateRenderPass(
 					.attachment = desc->pResolveAttachments[j].attachment,
 					.layout = desc->pResolveAttachments[j].layout,
 				};
-				if (a != VK_ATTACHMENT_UNUSED) {
-					subpass->has_resolve = true;
-				}
 			}
 		}
 
@@ -201,13 +231,7 @@ VkResult radv_CreateRenderPass(
 				.attachment = desc->pDepthStencilAttachment->attachment,
 				.layout = desc->pDepthStencilAttachment->layout,
 			};
-			if (desc->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
-				depth_sample_count = pCreateInfo->pAttachments[desc->pDepthStencilAttachment->attachment].samples;
-			}
 		}
-
-		subpass->max_sample_count = MAX2(color_sample_count,
-						 depth_sample_count);
 	}
 
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
@@ -311,7 +335,6 @@ VkResult radv_CreateRenderPass2KHR(
 	p = pass->subpass_attachments;
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
 		const VkSubpassDescription2KHR *desc = &pCreateInfo->pSubpasses[i];
-		uint32_t color_sample_count = 1, depth_sample_count = 1;
 		struct radv_subpass *subpass = &pass->subpasses[i];
 
 		subpass->input_count = desc->inputAttachmentCount;
@@ -341,13 +364,9 @@ VkResult radv_CreateRenderPass2KHR(
 					.attachment = desc->pColorAttachments[j].attachment,
 					.layout = desc->pColorAttachments[j].layout,
 				};
-				if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-					color_sample_count = pCreateInfo->pAttachments[desc->pColorAttachments[j].attachment].samples;
-				}
 			}
 		}
 
-		subpass->has_resolve = false;
 		if (desc->pResolveAttachments) {
 			subpass->resolve_attachments = p;
 			p += desc->colorAttachmentCount;
@@ -358,9 +377,6 @@ VkResult radv_CreateRenderPass2KHR(
 					.attachment = desc->pResolveAttachments[j].attachment,
 					.layout = desc->pResolveAttachments[j].layout,
 				};
-				if (a != VK_ATTACHMENT_UNUSED) {
-					subpass->has_resolve = true;
-				}
 			}
 		}
 
@@ -371,13 +387,7 @@ VkResult radv_CreateRenderPass2KHR(
 				.attachment = desc->pDepthStencilAttachment->attachment,
 				.layout = desc->pDepthStencilAttachment->layout,
 			};
-			if (desc->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
-				depth_sample_count = pCreateInfo->pAttachments[desc->pDepthStencilAttachment->attachment].samples;
-			}
 		}
-
-		subpass->max_sample_count = MAX2(color_sample_count,
-						 depth_sample_count);
 	}
 
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
