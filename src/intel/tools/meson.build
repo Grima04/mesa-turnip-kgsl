@@ -34,7 +34,6 @@ aubinator = executable(
   include_directories : [inc_common, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util, libaub],
   c_args : [c_vis_args, no_override_init_args],
-  build_by_default : true,
   install : true
 )
 
@@ -45,7 +44,6 @@ aubinator_error_decode = executable(
   include_directories : [inc_common, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util],
   c_args : [c_vis_args, no_override_init_args],
-  build_by_default : true,
   install : true
 )
 
@@ -56,7 +54,6 @@ i965_disasm = executable(
   include_directories : [inc_common, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util],
   c_args : [c_vis_args, no_override_init_args],
-  build_by_default : true,
   install : true
 )
 
@@ -67,7 +64,6 @@ error2aub = executable(
   include_directories : [inc_common, inc_intel, inc_drm_uapi],
   link_with : [libintel_dev],
   c_args : [c_vis_args, no_override_init_args],
-  build_by_default : true,
   install : true
 )
 
@@ -91,7 +87,6 @@ libintel_sanitize_gpu = shared_library(
   include_directories : [inc_common, inc_intel, inc_drm_uapi],
   link_with : [libintel_common, libmesa_util],
   c_args : [c_vis_args, no_override_init_args, c_sse2_args],
-  build_by_default : true,
   install_dir: get_option('libexecdir'),
   install: true
 )
@@ -112,7 +107,6 @@ libintel_dump_gpu = shared_library(
   include_directories : [inc_common, inc_intel, inc_drm_uapi],
   link_with : libintel_dev,
   c_args : [c_vis_args, no_override_init_args],
-  build_by_default : true,
   install_dir: get_option('libexecdir'),
   install: true
 )
@@ -128,7 +122,6 @@ if with_tools.contains('intel-ui')
     link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util, libaub],
     c_args : [c_vis_args, no_override_init_args],
     cpp_args : [ '-fpermissive', '-std=c++11', '-Wno-parentheses', '-Wno-class-memaccess' ],
-    build_by_default : true,
     install : true
   )
 endif
