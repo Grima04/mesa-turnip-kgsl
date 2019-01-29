@@ -633,8 +633,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass_attachment src_att = subpass->color_attachments[i];
 		struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
 
-		if (src_att.attachment == VK_ATTACHMENT_UNUSED ||
-		    dest_att.attachment == VK_ATTACHMENT_UNUSED)
+		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
 		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
@@ -661,8 +660,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass_attachment src_att = subpass->color_attachments[i];
 		struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
 
-		if (src_att.attachment == VK_ATTACHMENT_UNUSED ||
-		    dest_att.attachment == VK_ATTACHMENT_UNUSED)
+		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
 		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
@@ -710,8 +708,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass_attachment src_att = subpass->color_attachments[i];
 		struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
 
-		if (src_att.attachment == VK_ATTACHMENT_UNUSED ||
-		    dest_att.attachment == VK_ATTACHMENT_UNUSED)
+		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
 		struct radv_image *src_image =
