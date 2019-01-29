@@ -3420,7 +3420,7 @@ void radv_CmdBeginRenderPass(
 
 	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
 							   cmd_buffer->cs, 2048);
-	MAYBE_UNUSED VkResult result;
+	VkResult result;
 
 	cmd_buffer->state.framebuffer = framebuffer;
 	cmd_buffer->state.pass = pass;
