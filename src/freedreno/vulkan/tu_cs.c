@@ -53,6 +53,46 @@ tu_cs_finish(struct tu_device *dev, struct tu_cs *cs)
    free(cs->bos);
 }
 
+/**
+ * Get the offset of the command packets emitted since the last call to
+ * tu_cs_end.
+ */
+static uint32_t
+tu_cs_get_offset(const struct tu_cs *cs)
+{
+   assert(cs->bo_count);
+   return cs->start - (uint32_t *) cs->bos[cs->bo_count - 1]->map;
+}
+
+/**
+ * Get the size of the command packets emitted since the last call to
+ * tu_cs_end.
+ */
+static uint32_t
+tu_cs_get_size(const struct tu_cs *cs)
+{
+   return cs->cur - cs->start;
+}
+
+/**
+ * Get the size of the remaining space in the current BO.
+ */
+static uint32_t
+tu_cs_get_space(const struct tu_cs *cs)
+{
+   return cs->end - cs->cur;
+}
+
+/**
+ * Return true if there is no command packet emitted since the last call to
+ * tu_cs_end.
+ */
+static uint32_t
+tu_cs_is_empty(const struct tu_cs *cs)
+{
+   return tu_cs_get_size(cs) == 0;
+}
+
 /*
  * Allocate and add a BO to a command stream.  Following command packets will
  * be emitted to the new BO.
@@ -105,9 +145,9 @@ VkResult
 tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
 {
    /* no dangling command packet */
-   assert(cs->start == cs->cur);
+   assert(tu_cs_is_empty(cs));
 
-   if (cs->end - cs->cur < reserve_size) {
+   if (tu_cs_get_space(cs) < reserve_size) {
       uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
       if (cs->bo_count)
          new_size = MAX2(new_size, cs->bos[cs->bo_count - 1]->size * 2);
@@ -117,7 +157,7 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
          return result;
    }
 
-   assert(cs->end - cs->cur >= reserve_size);
+   assert(tu_cs_get_space(cs) >= reserve_size);
 
    return VK_SUCCESS;
 }
@@ -130,7 +170,7 @@ VkResult
 tu_cs_end(struct tu_cs *cs)
 {
    /* no command packet at all */
-   if (cs->start == cs->cur)
+   if (tu_cs_is_empty(cs))
       return VK_SUCCESS;
 
    /* grow cs->entries if needed */
@@ -146,13 +186,12 @@ tu_cs_end(struct tu_cs *cs)
    }
 
    assert(cs->bo_count);
-   const struct tu_bo *bo = cs->bos[cs->bo_count - 1];
 
    /* add an entry for [cs->start, cs->cur] */
    cs->entries[cs->entry_count++] = (struct tu_cs_entry) {
-      .bo = bo,
-      .size = (cs->cur - cs->start) * sizeof(uint32_t),
-      .offset = (cs->start - (uint32_t *) bo->map) * sizeof(uint32_t),
+      .bo = cs->bos[cs->bo_count - 1],
+      .size = tu_cs_get_size(cs) * sizeof(uint32_t),
+      .offset = tu_cs_get_offset(cs) * sizeof(uint32_t),
    };
 
    cs->start = cs->cur;
