@@ -205,7 +205,10 @@ if with_swr_arches.contains('avx')
   swr_arch_libs += shared_library(
     'swrAVX',
     [files_swr_common, files_swr_arch],
-    cpp_args : [swr_cpp_args, swr_avx_args, '-DKNOB_ARCH=KNOB_ARCH_AVX'],
+    cpp_args : [
+      cpp_msvc_compat_args, swr_cpp_args, swr_avx_args,
+      '-DKNOB_ARCH=KNOB_ARCH_AVX',
+    ],
     link_args : [ld_args_gc_sections],
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
@@ -231,7 +234,10 @@ if with_swr_arches.contains('avx2')
   swr_arch_libs += shared_library(
     'swrAVX2',
     [files_swr_common, files_swr_arch],
-    cpp_args : [swr_cpp_args, swr_avx2_args, '-DKNOB_ARCH=KNOB_ARCH_AVX2'],
+    cpp_args : [
+      cpp_msvc_compat_args, swr_cpp_args, swr_avx2_args,
+      '-DKNOB_ARCH=KNOB_ARCH_AVX2',
+    ],
     link_args : [ld_args_gc_sections],
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
@@ -254,8 +260,8 @@ if with_swr_arches.contains('knl')
     'swrKNL',
     [files_swr_common, files_swr_arch],
     cpp_args : [
-      swr_cpp_args, swr_knl_args, '-DKNOB_ARCH=KNOB_ARCH_AVX512',
-      '-DSIMD_ARCH_KNIGHTS',
+      cpp_msvc_compat_args, swr_cpp_args, swr_knl_args,
+      '-DKNOB_ARCH=KNOB_ARCH_AVX512', '-DSIMD_ARCH_KNIGHTS',
     ],
     link_args : [ld_args_gc_sections],
     include_directories : [swr_incs],
@@ -278,7 +284,10 @@ if with_swr_arches.contains('skx')
   swr_arch_libs += shared_library(
     'swrSKX',
     [files_swr_common, files_swr_arch],
-    cpp_args : [swr_cpp_args, swr_skx_args, '-DKNOB_ARCH=KNOB_ARCH_AVX512'],
+    cpp_args : [
+      cpp_msvc_compat_args, swr_cpp_args, swr_skx_args,
+      '-DKNOB_ARCH=KNOB_ARCH_AVX512',
+    ],
     link_args : [ld_args_gc_sections],
     include_directories : [swr_incs],
     dependencies : [dep_thread, dep_llvm],
@@ -297,7 +306,10 @@ libmesaswr = static_library(
   'mesaswr',
   [files_swr_mesa, files_swr_common, gen_knobs_h, gen_knobs_cpp,
    gen_builder_hpp, gen_builder_meta_hpp, gen_builder_intrin_hpp],
-  cpp_args : [cpp_vis_args, swr_cpp_args, swr_avx_args, swr_arch_defines],
+  cpp_args : [
+    cpp_msvc_compat_args, cpp_vis_args, swr_cpp_args, swr_avx_args,
+    swr_arch_defines,
+  ],
   include_directories : [inc_common, swr_incs],
   dependencies : dep_llvm,
 )
