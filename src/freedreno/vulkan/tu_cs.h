@@ -48,6 +48,16 @@ void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 
 /**
+ * Get the size needed for tu_cs_emit_call.
+ */
+static inline uint32_t
+tu_cs_get_call_size(const struct tu_cs *cs)
+{
+   /* each CP_INDIRECT_BUFFER needs 4 dwords */
+   return cs->entry_count * 4;
+}
+
+/**
  * Assert that we did not exceed the reserved space.
  */
 static inline void
@@ -124,16 +134,29 @@ tu_cs_emit_write_reg(struct tu_cs *cs, uint16_t reg, uint32_t value)
    tu_cs_emit(cs, value);
 }
 
+/**
+ * Emit a CP_INDIRECT_BUFFER command packet.
+ */
 static inline void
-tu_cs_emit_ib(struct tu_cs *cs, const struct tu_cs *target)
+tu_cs_emit_ib(struct tu_cs *cs, const struct tu_cs_entry *entry)
 {
-   for (uint32_t i = 0; i < target->entry_count; i++) {
-      const struct tu_cs_entry *entry = target->entries + i;
+   assert(entry->offset % sizeof(uint32_t) == 0);
+   assert(entry->size % sizeof(uint32_t) == 0);
 
-      tu_cs_emit_pkt7(cs, CP_INDIRECT_BUFFER, 3);
-      tu_cs_emit_qw(cs, entry->bo->iova + entry->offset);
-      tu_cs_emit(cs, entry->size / sizeof(uint32_t));
-   }
+   tu_cs_emit_pkt7(cs, CP_INDIRECT_BUFFER, 3);
+   tu_cs_emit_qw(cs, entry->bo->iova + entry->offset);
+   tu_cs_emit(cs, entry->size / sizeof(uint32_t));
+}
+
+/**
+ * Emit a CP_INDIRECT_BUFFER command packet for each entry in the target
+ * command stream.
+ */
+static inline void
+tu_cs_emit_call(struct tu_cs *cs, const struct tu_cs *target)
+{
+   for (uint32_t i = 0; i < target->entry_count; i++)
+      tu_cs_emit_ib(cs, target->entries + i);
 }
 
 #endif /* TU_CS_H */
