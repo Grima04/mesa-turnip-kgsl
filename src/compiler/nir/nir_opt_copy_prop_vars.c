@@ -302,12 +302,17 @@ lookup_entry_for_deref(struct util_dynarray *copies,
                        nir_deref_instr *deref,
                        nir_deref_compare_result allowed_comparisons)
 {
+   struct copy_entry *entry = NULL;
    util_dynarray_foreach(copies, struct copy_entry, iter) {
-      if (nir_compare_derefs(iter->dst, deref) & allowed_comparisons)
-         return iter;
+      nir_deref_compare_result result = nir_compare_derefs(iter->dst, deref);
+      if (result & allowed_comparisons) {
+         entry = iter;
+         if (result & nir_derefs_equal_bit)
+            break;
+         /* Keep looking in case we have an equal match later in the array. */
+      }
    }
-
-   return NULL;
+   return entry;
 }
 
 static struct copy_entry *
