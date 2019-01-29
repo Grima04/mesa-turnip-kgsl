@@ -165,6 +165,25 @@ build:meson-loader-classic-dri:
       -D gallium-nine=false
       -D gallium-opencl=disabled
 
+build:meson-glvnd:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glvnd=true
+      -D egl=true
+      -D gbm=true
+      -D glx=dri
+    DRI_DRIVERS: "i965"
+    GALLIUM_ST: >
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't hunder the run time.
