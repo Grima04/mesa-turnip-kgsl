@@ -123,8 +123,6 @@ VkResult radv_CreateRenderPass(
 					.attachment = desc->pInputAttachments[j].attachment,
 					.layout = desc->pInputAttachments[j].layout,
 				};
-				if (desc->pInputAttachments[j].attachment != VK_ATTACHMENT_UNUSED)
-					pass->attachments[desc->pInputAttachments[j].attachment].view_mask |= subpass->view_mask;
 			}
 		}
 
@@ -138,7 +136,6 @@ VkResult radv_CreateRenderPass(
 					.layout = desc->pColorAttachments[j].layout,
 				};
 				if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-					pass->attachments[desc->pColorAttachments[j].attachment].view_mask |= subpass->view_mask;
 					color_sample_count = pCreateInfo->pAttachments[desc->pColorAttachments[j].attachment].samples;
 				}
 			}
@@ -157,7 +154,6 @@ VkResult radv_CreateRenderPass(
 				};
 				if (a != VK_ATTACHMENT_UNUSED) {
 					subpass->has_resolve = true;
-					pass->attachments[desc->pResolveAttachments[j].attachment].view_mask |= subpass->view_mask;
 				}
 			}
 		}
@@ -168,7 +164,6 @@ VkResult radv_CreateRenderPass(
 				.layout = desc->pDepthStencilAttachment->layout,
 			};
 			if (desc->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
-				pass->attachments[desc->pDepthStencilAttachment->attachment].view_mask |= subpass->view_mask;
 				depth_sample_count = pCreateInfo->pAttachments[desc->pDepthStencilAttachment->attachment].samples;
 			}
 		} else {
@@ -290,8 +285,6 @@ VkResult radv_CreateRenderPass2KHR(
 					.attachment = desc->pInputAttachments[j].attachment,
 					.layout = desc->pInputAttachments[j].layout,
 				};
-				if (desc->pInputAttachments[j].attachment != VK_ATTACHMENT_UNUSED)
-					pass->attachments[desc->pInputAttachments[j].attachment].view_mask |= subpass->view_mask;
 			}
 		}
 
@@ -305,7 +298,6 @@ VkResult radv_CreateRenderPass2KHR(
 					.layout = desc->pColorAttachments[j].layout,
 				};
 				if (desc->pColorAttachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-					pass->attachments[desc->pColorAttachments[j].attachment].view_mask |= subpass->view_mask;
 					color_sample_count = pCreateInfo->pAttachments[desc->pColorAttachments[j].attachment].samples;
 				}
 			}
@@ -324,7 +316,6 @@ VkResult radv_CreateRenderPass2KHR(
 				};
 				if (a != VK_ATTACHMENT_UNUSED) {
 					subpass->has_resolve = true;
-					pass->attachments[desc->pResolveAttachments[j].attachment].view_mask |= subpass->view_mask;
 				}
 			}
 		}
@@ -335,7 +326,6 @@ VkResult radv_CreateRenderPass2KHR(
 				.layout = desc->pDepthStencilAttachment->layout,
 			};
 			if (desc->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
-				pass->attachments[desc->pDepthStencilAttachment->attachment].view_mask |= subpass->view_mask;
 				depth_sample_count = pCreateInfo->pAttachments[desc->pDepthStencilAttachment->attachment].samples;
 			}
 		} else {

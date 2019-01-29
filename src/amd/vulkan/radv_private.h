@@ -1839,7 +1839,6 @@ struct radv_render_pass_attachment {
 	VkAttachmentLoadOp                           stencil_load_op;
 	VkImageLayout                                initial_layout;
 	VkImageLayout                                final_layout;
-	uint32_t                                     view_mask;
 };
 
 struct radv_render_pass {
