@@ -122,6 +122,11 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
         .configuration = pipe_default_configuration_query,
     },
     {
+        .driver_name = "panfrost",
+        .create_screen = pipe_panfrost_create_screen,
+        .configuration = pipe_default_configuration_query,
+    },
+    {
         .driver_name = "etnaviv",
         .create_screen = pipe_etna_create_screen,
         .configuration = pipe_default_configuration_query,

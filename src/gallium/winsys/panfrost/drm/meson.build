@@ -18,32 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-kmsro_c_args = []
-if with_gallium_etnaviv
-  kmsro_c_args += '-DGALLIUM_ETNAVIV'
-endif
-if with_gallium_vc4
-  kmsro_c_args += '-DGALLIUM_VC4'
-endif
-if with_gallium_freedreno
-  kmsro_c_args += '-DGALLIUM_FREEDRENO'
-endif
-if with_gallium_panfrost
-  kmsro_c_args += '-DGALLIUM_PANFROST'
-endif
-
-libkmsrowinsys = static_library(
-  'kmsrowinsys',
-  files('kmsro_drm_winsys.c'),
+libpanfrostwinsys = static_library(
+  'panfrostwinsys',
+  files('panfrost_drm_winsys.c'),
   include_directories : [
     inc_src, inc_include,
-    inc_gallium, inc_gallium_aux, inc_gallium_winsys,
+    inc_gallium, inc_gallium_aux, inc_gallium_drivers,
   ],
-  c_args : [c_vis_args, kmsro_c_args],
-  dependencies: dep_libdrm,
-)
-
-driver_kmsro = declare_dependency(
-  compile_args : '-DGALLIUM_KMSRO',
-  link_with : libkmsrowinsys,
+  c_args : [c_vis_args],
 )

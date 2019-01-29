@@ -333,6 +333,29 @@ pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
 
 #endif
 
+#ifdef GALLIUM_PANFROST
+#include "panfrost/drm/panfrost_drm_public.h"
+
+struct pipe_screen *
+pipe_panfrost_create_screen(int fd, const struct pipe_screen_config *config)
+{
+   struct pipe_screen *screen;
+
+   screen = panfrost_drm_screen_create(fd);
+   return screen ? debug_screen_wrap(screen) : NULL;
+}
+
+#else
+
+struct pipe_screen *
+pipe_panfrost_create_screen(int fd, const struct pipe_screen_config *config)
+{
+   fprintf(stderr, "panfrost: driver missing\n");
+   return NULL;
+}
+
+#endif
+
 #ifdef GALLIUM_ETNAVIV
 #include "etnaviv/drm/etnaviv_drm_public.h"
 
