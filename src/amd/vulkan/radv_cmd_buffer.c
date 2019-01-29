@@ -3401,20 +3401,13 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
 
-	for (unsigned i = 0; i < subpass->color_count; ++i) {
-		if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
-			radv_handle_subpass_image_transition(cmd_buffer,
-							    subpass->color_attachments[i]);
-	}
+	for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
+		const uint32_t a = subpass->attachments[i].attachment;
+		if (a == VK_ATTACHMENT_UNUSED)
+			continue;
 
-	for (unsigned i = 0; i < subpass->input_count; ++i) {
 		radv_handle_subpass_image_transition(cmd_buffer,
-						     subpass->input_attachments[i]);
-	}
-
-	if (subpass->depth_stencil_attachment) {
-		radv_handle_subpass_image_transition(cmd_buffer,
-						     *subpass->depth_stencil_attachment);
+						     subpass->attachments[i]);
 	}
 
 	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
