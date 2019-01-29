@@ -42,6 +42,10 @@ radv_render_pass_add_subpass_dep(struct radv_render_pass *pass,
 	if (src == dst)
 		return;
 
+	/* Accumulate all ingoing external dependencies to the first subpass. */
+	if (src == VK_SUBPASS_EXTERNAL)
+		dst = 0;
+
 	if (dst == VK_SUBPASS_EXTERNAL) {
 		pass->end_barrier.src_stage_mask |= dep->srcStageMask;
 		pass->end_barrier.src_access_mask |= dep->srcAccessMask;
