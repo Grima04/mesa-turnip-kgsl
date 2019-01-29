@@ -51,9 +51,11 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
  * Assert that we did not exceed the reserved space.
  */
 static inline void
-tu_cs_reserve_space_assert(struct tu_cs *cs)
+tu_cs_sanity_check(const struct tu_cs *cs)
 {
+   assert(cs->start <= cs->cur);
    assert(cs->cur <= cs->reserved_end);
+   assert(cs->reserved_end <= cs->end);
 }
 
 /**

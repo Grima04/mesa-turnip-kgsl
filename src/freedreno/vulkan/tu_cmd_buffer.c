@@ -511,7 +511,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd)
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_LRZ_CNTL, 1);
    tu_cs_emit(cs, 0x00000000);
 
-   tu_cs_reserve_space_assert(cs);
+   tu_cs_sanity_check(cs);
 }
 
 static void

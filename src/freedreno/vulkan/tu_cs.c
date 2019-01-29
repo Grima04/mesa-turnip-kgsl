@@ -130,7 +130,7 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
 
    cs->bos[cs->bo_count++] = new_bo;
 
-   cs->start = cs->cur = (uint32_t *) new_bo->map;
+   cs->start = cs->cur = cs->reserved_end = (uint32_t *) new_bo->map;
    cs->end = cs->start + new_bo->size / sizeof(uint32_t);
 
    return VK_SUCCESS;
@@ -248,7 +248,7 @@ tu_cs_reset(struct tu_device *dev, struct tu_cs *cs)
       cs->bos[0] = cs->bos[cs->bo_count - 1];
       cs->bo_count = 1;
 
-      cs->start = cs->cur = (uint32_t *) cs->bos[0]->map;
+      cs->start = cs->cur = cs->reserved_end = (uint32_t *) cs->bos[0]->map;
       cs->end = cs->start + cs->bos[0]->size / sizeof(uint32_t);
    }
 

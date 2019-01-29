@@ -781,10 +781,8 @@ struct tu_cs
 {
    uint32_t *start;
    uint32_t *cur;
-   uint32_t *end;
-
-   /* for tu_cs_reserve_space_assert */
    uint32_t *reserved_end;
+   uint32_t *end;
 
    uint32_t next_bo_size;
 
