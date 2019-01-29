@@ -1205,10 +1205,10 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 	if (!framebuffer || !subpass)
 		return;
 
-	att_idx = subpass->depth_stencil_attachment.attachment;
-	if (att_idx == VK_ATTACHMENT_UNUSED)
+	if (!subpass->depth_stencil_attachment)
 		return;
 
+	att_idx = subpass->depth_stencil_attachment->attachment;
 	att = &framebuffer->attachments[att_idx];
 	if (att->attachment->image != image)
 		return;
@@ -1222,7 +1222,7 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 	 */
 	if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
 	    ds_clear_value.depth == 0.0) {
-		VkImageLayout layout = subpass->depth_stencil_attachment.layout;
+		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
 
 		radv_update_zrange_precision(cmd_buffer, &att->ds, image,
 					     layout, false);
@@ -1575,9 +1575,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			num_bpp64_colorbufs++;
 	}
 
-	if(subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
-		int idx = subpass->depth_stencil_attachment.attachment;
-		VkImageLayout layout = subpass->depth_stencil_attachment.layout;
+	if (subpass->depth_stencil_attachment) {
+		int idx = subpass->depth_stencil_attachment->attachment;
+		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
 		struct radv_attachment_info *att = &framebuffer->attachments[idx];
 		struct radv_image *image = att->attachment->image;
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, att->attachment->bo);
@@ -3412,9 +3412,9 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 						     subpass->input_attachments[i]);
 	}
 
-	if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+	if (subpass->depth_stencil_attachment) {
 		radv_handle_subpass_image_transition(cmd_buffer,
-						     subpass->depth_stencil_attachment);
+						     *subpass->depth_stencil_attachment);
 	}
 
 	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);

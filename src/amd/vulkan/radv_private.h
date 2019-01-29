@@ -1815,12 +1815,15 @@ struct radv_subpass_attachment {
 };
 
 struct radv_subpass {
+	uint32_t                                     attachment_count;
+	struct radv_subpass_attachment *             attachments;
+
 	uint32_t                                     input_count;
 	uint32_t                                     color_count;
 	struct radv_subpass_attachment *             input_attachments;
 	struct radv_subpass_attachment *             color_attachments;
 	struct radv_subpass_attachment *             resolve_attachments;
-	struct radv_subpass_attachment               depth_stencil_attachment;
+	struct radv_subpass_attachment *             depth_stencil_attachment;
 
 	/** Subpass has at least one resolve attachment */
 	bool                                         has_resolve;

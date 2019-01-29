@@ -675,7 +675,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass resolve_subpass = {
 			.color_count = 2,
 			.color_attachments = (struct radv_subpass_attachment[]) { src_att, dest_att },
-			.depth_stencil_attachment = { .attachment = VK_ATTACHMENT_UNUSED },
+			.depth_stencil_attachment = NULL,
 		};
 
 		radv_cmd_buffer_set_subpass(cmd_buffer, &resolve_subpass);
