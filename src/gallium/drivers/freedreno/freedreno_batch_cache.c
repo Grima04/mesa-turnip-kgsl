@@ -402,7 +402,7 @@ key_surf(struct key *key, unsigned idx, unsigned pos, struct pipe_surface *psurf
 	key->surf[idx].texture = psurf->texture;
 	key->surf[idx].u = psurf->u;
 	key->surf[idx].pos = pos;
-	key->surf[idx].samples = psurf->nr_samples;
+	key->surf[idx].samples = MAX2(1, psurf->nr_samples);
 	key->surf[idx].format = psurf->format;
 }
 
