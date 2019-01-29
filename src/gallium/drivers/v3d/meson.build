@@ -52,10 +52,11 @@ files_per_version = files(
   'v3dx_state.c',
 )
 
-v3dv3_c_args = []
+v3d_args = ['-DV3D_BUILD_NEON']
+
 dep_v3dv3 = dependency('v3dv3', required: false)
 if dep_v3dv3.found()
-  v3dv3_c_args = '-DUSE_V3D_SIMULATOR'
+  v3d_args += '-DUSE_V3D_SIMULATOR'
 endif
 
 v3d_versions = ['33', '41']
@@ -69,7 +70,7 @@ foreach ver : v3d_versions
       inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
       inc_gallium_drivers, inc_drm_uapi,
     ],
-    c_args : [c_vis_args, v3dv3_c_args, '-DV3D_VERSION=' + ver],
+    c_args : [c_vis_args, v3d_args, '-DV3D_VERSION=' + ver],
     cpp_args : [cpp_vis_args],
     dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind],
 )
@@ -83,8 +84,8 @@ libv3d = static_library(
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
     inc_gallium_drivers, inc_drm_uapi,
   ],
-  c_args : [c_vis_args, v3dv3_c_args],
-  cpp_args : [cpp_vis_args, v3dv3_c_args],
+  c_args : [c_vis_args, v3d_args],
+  cpp_args : [cpp_vis_args, v3d_args],
   dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
   link_with: per_version_libs,
 )
