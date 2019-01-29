@@ -113,7 +113,9 @@ can_do_blit(const struct pipe_blit_info *info)
 	debug_assert(info->dst.box.height >= 0);
 	debug_assert(info->dst.box.depth >= 0);
 
-	fail_if(info->dst.resource->nr_samples + info->src.resource->nr_samples > 2);
+	/* non-multisampled could either have nr_samples == 0 or == 1 */
+	fail_if(info->dst.resource->nr_samples > 1);
+	fail_if(info->src.resource->nr_samples > 1);
 
 	fail_if(info->window_rectangle_include);
 
