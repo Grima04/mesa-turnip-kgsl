@@ -2425,28 +2425,8 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 
 void
 radv_cmd_buffer_set_subpass(struct radv_cmd_buffer *cmd_buffer,
-			    const struct radv_subpass *subpass, bool transitions)
+			    const struct radv_subpass *subpass)
 {
-	if (transitions) {
-		radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
-
-		for (unsigned i = 0; i < subpass->color_count; ++i) {
-			if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
-				radv_handle_subpass_image_transition(cmd_buffer,
-				                                     subpass->color_attachments[i]);
-		}
-
-		for (unsigned i = 0; i < subpass->input_count; ++i) {
-			radv_handle_subpass_image_transition(cmd_buffer,
-							subpass->input_attachments[i]);
-		}
-
-		if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
-			radv_handle_subpass_image_transition(cmd_buffer,
-							subpass->depth_stencil_attachment);
-		}
-	}
-
 	cmd_buffer->state.subpass = subpass;
 
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
@@ -2629,7 +2609,7 @@ VkResult radv_BeginCommandBuffer(
 		if (result != VK_SUCCESS)
 			return result;
 
-		radv_cmd_buffer_set_subpass(cmd_buffer, subpass, false);
+		radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 	}
 
 	if (unlikely(cmd_buffer->device->trace_bo)) {
@@ -3419,7 +3399,25 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
 							   cmd_buffer->cs, 2048);
 
-	radv_cmd_buffer_set_subpass(cmd_buffer, subpass, true);
+	radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
+
+	for (unsigned i = 0; i < subpass->color_count; ++i) {
+		if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
+			radv_handle_subpass_image_transition(cmd_buffer,
+							    subpass->color_attachments[i]);
+	}
+
+	for (unsigned i = 0; i < subpass->input_count; ++i) {
+		radv_handle_subpass_image_transition(cmd_buffer,
+						     subpass->input_attachments[i]);
+	}
+
+	if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+		radv_handle_subpass_image_transition(cmd_buffer,
+						     subpass->depth_stencil_attachment);
+	}
+
+	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 	radv_cmd_buffer_clear_subpass(cmd_buffer);
 
 	assert(cmd_buffer->cs->cdw <= cdw_max);

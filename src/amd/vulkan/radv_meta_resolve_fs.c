@@ -623,7 +623,7 @@ radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
 			.depth_stencil_attachment = { .attachment = VK_ATTACHMENT_UNUSED },
 		};
 
-		radv_cmd_buffer_set_subpass(cmd_buffer, &resolve_subpass, false);
+		radv_cmd_buffer_set_subpass(cmd_buffer, &resolve_subpass);
 
 		emit_resolve(cmd_buffer,
 			     src_iview,

@@ -426,7 +426,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 		.depth_stencil_attachment = (struct radv_subpass_attachment) { VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED }
 	};
 
-	radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass, false);
+	radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass);
 
 	radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			     pipeline);
@@ -450,7 +450,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 		radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);
 	}
 
-	radv_cmd_buffer_set_subpass(cmd_buffer, subpass, false);
+	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 }
 
 
@@ -1286,6 +1286,7 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
 				image->offset + image->cmask.offset,
 				image->cmask.size, value);
 }
+
 
 uint32_t
 radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
