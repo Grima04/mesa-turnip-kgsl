@@ -4592,6 +4592,9 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 			return;
 	}
 
+	if (src_layout == dst_layout)
+		return;
+
 	unsigned src_queue_mask =
 		radv_image_queue_family_mask(image, src_family,
 					     cmd_buffer->queue_family_index);
