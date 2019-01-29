@@ -477,6 +477,16 @@ enum tu_cs_mode
     * This mode does not create any entry or any BO.
     */
    TU_CS_MODE_EXTERNAL,
+
+   /*
+    * A command stream in TU_CS_MODE_SUB_STREAM mode does not support direct
+    * command packet emission.  tu_cs_begin_sub_stream must be called to get a
+    * sub-stream to emit comamnd packets to.  When done with the sub-stream,
+    * tu_cs_end_sub_stream must be called.
+    *
+    * This mode does not create any entry internally.
+    */
+   TU_CS_MODE_SUB_STREAM,
 };
 
 struct tu_cs

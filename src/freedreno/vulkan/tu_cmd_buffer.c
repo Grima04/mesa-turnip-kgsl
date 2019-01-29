@@ -736,7 +736,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    }
 
    tu_bo_list_init(&cmd_buffer->bo_list);
-   tu_cs_init(&cmd_buffer->cs, 4096);
+   tu_cs_init(&cmd_buffer->cs, TU_CS_MODE_GROW, 4096);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 

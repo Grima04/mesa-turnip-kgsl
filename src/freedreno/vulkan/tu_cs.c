@@ -27,11 +27,13 @@
  * Initialize a command stream.
  */
 void
-tu_cs_init(struct tu_cs *cs, uint32_t initial_size)
+tu_cs_init(struct tu_cs *cs, enum tu_cs_mode mode, uint32_t initial_size)
 {
+   assert(mode != TU_CS_MODE_EXTERNAL);
+
    memset(cs, 0, sizeof(*cs));
 
-   cs->mode = TU_CS_MODE_GROW;
+   cs->mode = mode;
    cs->next_bo_size = initial_size;
 }
 
@@ -209,11 +211,12 @@ tu_cs_add_entry(struct tu_cs *cs)
 
 /**
  * Begin (or continue) command packet emission.  This does nothing but sanity
- * checks currently.
+ * checks currently.  \a cs must not be in TU_CS_MODE_SUB_STREAM mode.
  */
 void
 tu_cs_begin(struct tu_cs *cs)
 {
+   assert(cs->mode != TU_CS_MODE_SUB_STREAM);
    assert(tu_cs_is_empty(cs));
 }
 
@@ -223,8 +226,57 @@ tu_cs_begin(struct tu_cs *cs)
 void
 tu_cs_end(struct tu_cs *cs)
 {
+   assert(cs->mode != TU_CS_MODE_SUB_STREAM);
+
    if (cs->mode == TU_CS_MODE_GROW && !tu_cs_is_empty(cs))
       tu_cs_add_entry(cs);
+}
+
+/**
+ * Begin command packet emission to a sub-stream.  \a cs must be in
+ * TU_CS_MODE_SUB_STREAM mode.
+ *
+ * Return \a sub_cs which is in TU_CS_MODE_EXTERNAL mode.
+ */
+VkResult
+tu_cs_begin_sub_stream(struct tu_device *dev,
+                       struct tu_cs *cs,
+                       uint32_t size,
+                       struct tu_cs *sub_cs)
+{
+   assert(cs->mode == TU_CS_MODE_SUB_STREAM);
+   assert(size);
+
+   VkResult result = tu_cs_reserve_space(dev, cs, size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   tu_cs_init_external(sub_cs, cs->cur, cs->reserved_end);
+
+   return VK_SUCCESS;
+}
+
+/**
+ * End command packet emission to a sub-stream.  \a sub_cs becomes invalid
+ * after this call.
+ *
+ * Return an IB entry for the sub-stream.  The entry has the same lifetime as
+ * \a cs.
+ */
+struct tu_cs_entry
+tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs)
+{
+   assert(cs->mode == TU_CS_MODE_SUB_STREAM);
+   assert(cs->bo_count);
+   assert(sub_cs->cur >= cs->start && sub_cs->cur <= cs->reserved_end);
+
+   cs->cur = sub_cs->cur;
+
+   return (struct tu_cs_entry) {
+      .bo = cs->bos[cs->bo_count - 1],
+      .size = tu_cs_get_size(cs) * sizeof(uint32_t),
+      .offset = tu_cs_get_offset(cs) * sizeof(uint32_t),
+   };
 }
 
 /**
@@ -243,8 +295,12 @@ tu_cs_reserve_space(struct tu_device *dev,
       }
 
       /* add an entry for the exiting command packets */
-      if (!tu_cs_is_empty(cs))
+      if (!tu_cs_is_empty(cs)) {
+         /* no direct command packet for TU_CS_MODE_SUB_STREAM */
+         assert(cs->mode != TU_CS_MODE_SUB_STREAM);
+
          tu_cs_add_entry(cs);
+      }
 
       /* switch to a new BO */
       uint32_t new_size = MAX2(cs->next_bo_size, reserved_size);

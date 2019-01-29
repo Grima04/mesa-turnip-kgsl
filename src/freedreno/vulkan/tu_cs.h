@@ -28,7 +28,7 @@
 #include "registers/adreno_pm4.xml.h"
 
 void
-tu_cs_init(struct tu_cs *cs, uint32_t initial_size);
+tu_cs_init(struct tu_cs *cs, enum tu_cs_mode mode, uint32_t initial_size);
 
 void
 tu_cs_init_external(struct tu_cs *cs, uint32_t *start, uint32_t *end);
@@ -41,6 +41,15 @@ tu_cs_begin(struct tu_cs *cs);
 
 void
 tu_cs_end(struct tu_cs *cs);
+
+VkResult
+tu_cs_begin_sub_stream(struct tu_device *dev,
+                       struct tu_cs *cs,
+                       uint32_t size,
+                       struct tu_cs *sub_cs);
+
+struct tu_cs_entry
+tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs);
 
 VkResult
 tu_cs_reserve_space(struct tu_device *dev,
