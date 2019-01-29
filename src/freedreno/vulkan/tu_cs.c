@@ -27,15 +27,11 @@
  * Initialize a command stream.
  */
 void
-tu_cs_init(struct tu_cs *cs)
+tu_cs_init(struct tu_cs *cs, uint32_t initial_size)
 {
-   cs->start = cs->cur = cs->end = NULL;
+   memset(cs, 0, sizeof(*cs));
 
-   cs->entry_count = cs->entry_capacity = 0;
-   cs->entries = NULL;
-
-   cs->bo_count = cs->bo_capacity = 0;
-   cs->bos = NULL;
+   cs->next_bo_size = initial_size;
 }
 
 /**
@@ -98,7 +94,7 @@ tu_cs_is_empty(const struct tu_cs *cs)
  * be emitted to the new BO.
  */
 static VkResult
-tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t byte_size)
+tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t size)
 {
    /* grow cs->bos if needed */
    if (cs->bo_count == cs->bo_capacity) {
@@ -116,7 +112,7 @@ tu_cs_add_bo(struct tu_device *dev, struct tu_cs *cs, uint32_t byte_size)
    if (!new_bo)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   VkResult result = tu_bo_init_new(dev, new_bo, byte_size);
+   VkResult result = tu_bo_init_new(dev, new_bo, size * sizeof(uint32_t));
    if (result != VK_SUCCESS) {
       free(new_bo);
       return result;
@@ -196,13 +192,12 @@ tu_cs_begin(struct tu_device *dev, struct tu_cs *cs, uint32_t reserve_size)
    assert(tu_cs_is_empty(cs));
 
    if (tu_cs_get_space(cs) < reserve_size) {
-      uint32_t new_size = MAX2(16384, reserve_size * sizeof(uint32_t));
-      if (cs->bo_count)
-         new_size = MAX2(new_size, cs->bos[cs->bo_count - 1]->size * 2);
-
+      uint32_t new_size = MAX2(cs->next_bo_size, reserve_size);
       VkResult result = tu_cs_add_bo(dev, cs, new_size);
       if (result != VK_SUCCESS)
          return result;
+
+      cs->next_bo_size = new_size * 2;
    }
 
    assert(tu_cs_get_space(cs) >= reserve_size);

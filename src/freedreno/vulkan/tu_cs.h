@@ -28,7 +28,7 @@
 #include "registers/adreno_pm4.xml.h"
 
 void
-tu_cs_init(struct tu_cs *cs);
+tu_cs_init(struct tu_cs *cs, uint32_t initial_size);
 void
 tu_cs_finish(struct tu_device *dev, struct tu_cs *cs);
 VkResult

@@ -786,6 +786,8 @@ struct tu_cs
    /* for tu_cs_reserve_space_assert */
    uint32_t *reserved_end;
 
+   uint32_t next_bo_size;
+
    struct tu_cs_entry *entries;
    uint32_t entry_count;
    uint32_t entry_capacity;
