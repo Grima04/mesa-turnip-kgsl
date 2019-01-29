@@ -242,6 +242,10 @@ bool si_alloc_resource(struct si_screen *sscreen,
 			res->gpu_address, res->gpu_address + res->buf->size,
 			res->buf->size);
 	}
+
+	if (res->b.b.flags & SI_RESOURCE_FLAG_CLEAR)
+		si_screen_clear_buffer(sscreen, &res->b.b, 0, res->bo_size, 0);
+
 	return true;
 }
 

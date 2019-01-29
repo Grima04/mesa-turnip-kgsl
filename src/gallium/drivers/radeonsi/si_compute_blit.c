@@ -275,15 +275,8 @@ static void si_pipe_clear_buffer(struct pipe_context *ctx,
 				 const void *clear_value,
 				 int clear_value_size)
 {
-	enum si_coherency coher;
-
-	if (dst->flags & SI_RESOURCE_FLAG_SO_FILLED_SIZE)
-		coher = SI_COHERENCY_CP;
-	else
-		coher = SI_COHERENCY_SHADER;
-
 	si_clear_buffer((struct si_context*)ctx, dst, offset, size, (uint32_t*)clear_value,
-			clear_value_size, coher);
+			clear_value_size, SI_COHERENCY_SHADER);
 }
 
 void si_copy_buffer(struct si_context *sctx,
