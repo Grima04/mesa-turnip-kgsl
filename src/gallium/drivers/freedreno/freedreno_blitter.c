@@ -160,7 +160,6 @@ fd_blitter_pipe_copy_region(struct fd_context *ctx,
 /**
  * Copy a block of pixels from one resource to another.
  * The resource must be of the same format.
- * Resources with nr_samples > 1 are not allowed.
  */
 void
 fd_resource_copy_region(struct pipe_context *pctx,

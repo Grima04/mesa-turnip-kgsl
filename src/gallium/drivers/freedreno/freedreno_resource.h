@@ -100,7 +100,6 @@ struct fd_resource {
 	uint16_t seqno;
 
 	unsigned tile_mode : 2;
-	unsigned preferred_tile_mode : 2;
 
 	/*
 	 * LRZ
