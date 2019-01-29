@@ -3389,6 +3389,19 @@ void radv_TrimCommandPool(
 	}
 }
 
+static uint32_t
+radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t subpass_id = state->subpass - state->pass->subpasses;
+
+	/* The id of this subpass shouldn't exceed the number of subpasses in
+	 * this render pass minus 1.
+	 */
+	assert(subpass_id < state->pass->subpass_count);
+	return subpass_id;
+}
+
 static void
 radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 			      uint32_t subpass_id)
@@ -3414,6 +3427,29 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 	radv_cmd_buffer_clear_subpass(cmd_buffer);
 
 	assert(cmd_buffer->cs->cdw <= cdw_max);
+}
+
+static void
+radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	const struct radv_subpass *subpass = state->subpass;
+	uint32_t subpass_id = radv_get_subpass_id(cmd_buffer);
+
+	radv_cmd_buffer_resolve_subpass(cmd_buffer);
+
+	for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
+		const uint32_t a = subpass->attachments[i].attachment;
+		if (a == VK_ATTACHMENT_UNUSED)
+			continue;
+
+		if (state->pass->attachments[a].last_subpass_idx != subpass_id)
+			continue;
+
+		VkImageLayout layout = state->pass->attachments[a].final_layout;
+		radv_handle_subpass_image_transition(cmd_buffer,
+		                      (struct radv_subpass_attachment){a, layout});
+	}
 }
 
 void radv_CmdBeginRenderPass(
@@ -3446,28 +3482,14 @@ void radv_CmdBeginRenderPass2KHR(
 				pSubpassBeginInfo->contents);
 }
 
-static uint32_t
-radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
-{
-	struct radv_cmd_state *state = &cmd_buffer->state;
-	uint32_t subpass_id = state->subpass - state->pass->subpasses;
-
-	/* The id of this subpass shouldn't exceed the number of subpasses in
-	 * this render pass minus 1.
-	 */
-	assert(subpass_id < state->pass->subpass_count);
-	return subpass_id;
-}
-
 void radv_CmdNextSubpass(
     VkCommandBuffer                             commandBuffer,
     VkSubpassContents                           contents)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-	radv_cmd_buffer_resolve_subpass(cmd_buffer);
-
 	uint32_t prev_subpass = radv_get_subpass_id(cmd_buffer);
+	radv_cmd_buffer_end_subpass(cmd_buffer);
 	radv_cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
@@ -4336,13 +4358,7 @@ void radv_CmdEndRenderPass(
 
 	radv_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
 
-	radv_cmd_buffer_resolve_subpass(cmd_buffer);
-
-	for (unsigned i = 0; i < cmd_buffer->state.framebuffer->attachment_count; ++i) {
-		VkImageLayout layout = cmd_buffer->state.pass->attachments[i].final_layout;
-		radv_handle_subpass_image_transition(cmd_buffer,
-		                      (struct radv_subpass_attachment){i, layout});
-	}
+	radv_cmd_buffer_end_subpass(cmd_buffer);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
 
