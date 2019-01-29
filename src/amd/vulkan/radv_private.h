@@ -1841,6 +1841,9 @@ struct radv_render_pass_attachment {
 	VkAttachmentLoadOp                           stencil_load_op;
 	VkImageLayout                                initial_layout;
 	VkImageLayout                                final_layout;
+
+	/* The subpass id in which the attachment will be used last. */
+	uint32_t                                     last_subpass_idx;
 };
 
 struct radv_render_pass {

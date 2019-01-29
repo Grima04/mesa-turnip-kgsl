@@ -42,6 +42,18 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 		if (subpass->depth_stencil_attachment &&
 		    subpass->depth_stencil_attachment->attachment == VK_ATTACHMENT_UNUSED)
 			subpass->depth_stencil_attachment = NULL;
+
+		for (uint32_t j = 0; j < subpass->attachment_count; j++) {
+			struct radv_subpass_attachment *subpass_att =
+				&subpass->attachments[j];
+			if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
+				continue;
+
+			struct radv_render_pass_attachment *pass_att =
+				&pass->attachments[subpass_att->attachment];
+
+			pass_att->last_subpass_idx = i;
+		}
 	}
 }
 
