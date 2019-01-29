@@ -4646,6 +4646,7 @@ struct radv_barrier_info {
 	uint32_t eventCount;
 	const VkEvent *pEvents;
 	VkPipelineStageFlags srcStageMask;
+	VkPipelineStageFlags dstStageMask;
 };
 
 static void
@@ -4697,7 +4698,19 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 		                                        image);
 	}
 
-	radv_stage_flush(cmd_buffer, info->srcStageMask);
+	/* The Vulkan spec 1.1.98 says:
+	 *
+	 * "An execution dependency with only
+	 *  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT in the destination stage mask
+	 *  will only prevent that stage from executing in subsequently
+	 *  submitted commands. As this stage does not perform any actual
+	 *  execution, this is not observable - in effect, it does not delay
+	 *  processing of subsequent commands. Similarly an execution dependency
+	 *  with only VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT in the source stage mask
+	 *  will effectively not wait for any prior commands to complete."
+	 */
+	if (info->dstStageMask != VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+		radv_stage_flush(cmd_buffer, info->srcStageMask);
 	cmd_buffer->state.flush_bits |= src_flush_bits;
 
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
@@ -4738,6 +4751,7 @@ void radv_CmdPipelineBarrier(
 	info.eventCount = 0;
 	info.pEvents = NULL;
 	info.srcStageMask = srcStageMask;
+	info.dstStageMask = destStageMask;
 
 	radv_barrier(cmd_buffer, memoryBarrierCount, pMemoryBarriers,
 		     bufferMemoryBarrierCount, pBufferMemoryBarriers,

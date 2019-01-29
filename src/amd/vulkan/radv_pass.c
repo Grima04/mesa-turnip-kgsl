@@ -47,11 +47,13 @@ radv_render_pass_add_subpass_dep(struct radv_render_pass *pass,
 		dst = 0;
 
 	if (dst == VK_SUBPASS_EXTERNAL) {
-		pass->end_barrier.src_stage_mask |= dep->srcStageMask;
+		if (dep->dstStageMask != VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+			pass->end_barrier.src_stage_mask |= dep->srcStageMask;
 		pass->end_barrier.src_access_mask |= dep->srcAccessMask;
 		pass->end_barrier.dst_access_mask |= dep->dstAccessMask;
 	} else {
-		pass->subpasses[dst].start_barrier.src_stage_mask |= dep->srcStageMask;
+		if (dep->dstStageMask != VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+			pass->subpasses[dst].start_barrier.src_stage_mask |= dep->srcStageMask;
 		pass->subpasses[dst].start_barrier.src_access_mask |= dep->srcAccessMask;
 		pass->subpasses[dst].start_barrier.dst_access_mask |= dep->dstAccessMask;
 	}
