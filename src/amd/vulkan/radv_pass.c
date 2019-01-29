@@ -29,6 +29,31 @@
 #include "vk_util.h"
 
 static void
+radv_render_pass_add_subpass_dep(struct radv_render_pass *pass,
+				 const VkSubpassDependency2KHR *dep)
+{
+	uint32_t src = dep->srcSubpass;
+	uint32_t dst = dep->dstSubpass;
+
+	/* Ignore subpass self-dependencies as they allow the app to call
+	 * vkCmdPipelineBarrier() inside the render pass and the driver should
+	 * only do the barrier when called, not when starting the render pass.
+	 */
+	if (src == dst)
+		return;
+
+	if (dst == VK_SUBPASS_EXTERNAL) {
+		pass->end_barrier.src_stage_mask = dep->srcStageMask;
+		pass->end_barrier.src_access_mask = dep->srcAccessMask;
+		pass->end_barrier.dst_access_mask = dep->dstAccessMask;
+	} else {
+		pass->subpasses[dst].start_barrier.src_stage_mask = dep->srcStageMask;
+		pass->subpasses[dst].start_barrier.src_access_mask = dep->srcAccessMask;
+		pass->subpasses[dst].start_barrier.dst_access_mask = dep->dstAccessMask;
+	}
+}
+
+static void
 radv_render_pass_compile(struct radv_render_pass *pass)
 {
 	for (uint32_t i = 0; i < pass->subpass_count; i++) {
@@ -235,26 +260,17 @@ VkResult radv_CreateRenderPass(
 	}
 
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
-		uint32_t src = pCreateInfo->pDependencies[i].srcSubpass;
-		uint32_t dst = pCreateInfo->pDependencies[i].dstSubpass;
-
-		/* Ignore subpass self-dependencies as they allow the app to
-		 * call vkCmdPipelineBarrier() inside the render pass and the
-		 * driver should only do the barrier when called, not when
-		 * starting the render pass.
-		 */
-		if (src == dst)
-			continue;
-
-		if (dst == VK_SUBPASS_EXTERNAL) {
-			pass->end_barrier.src_stage_mask = pCreateInfo->pDependencies[i].srcStageMask;
-			pass->end_barrier.src_access_mask = pCreateInfo->pDependencies[i].srcAccessMask;
-			pass->end_barrier.dst_access_mask = pCreateInfo->pDependencies[i].dstAccessMask;
-		} else {
-			pass->subpasses[dst].start_barrier.src_stage_mask = pCreateInfo->pDependencies[i].srcStageMask;
-			pass->subpasses[dst].start_barrier.src_access_mask = pCreateInfo->pDependencies[i].srcAccessMask;
-			pass->subpasses[dst].start_barrier.dst_access_mask = pCreateInfo->pDependencies[i].dstAccessMask;
-		}
+		/* Convert to a Dependency2KHR */
+		struct VkSubpassDependency2KHR dep2 = {
+			.srcSubpass       = pCreateInfo->pDependencies[i].srcSubpass,
+			.dstSubpass       = pCreateInfo->pDependencies[i].dstSubpass,
+			.srcStageMask     = pCreateInfo->pDependencies[i].srcStageMask,
+			.dstStageMask     = pCreateInfo->pDependencies[i].dstStageMask,
+			.srcAccessMask    = pCreateInfo->pDependencies[i].srcAccessMask,
+			.dstAccessMask    = pCreateInfo->pDependencies[i].dstAccessMask,
+			.dependencyFlags  = pCreateInfo->pDependencies[i].dependencyFlags,
+		};
+		radv_render_pass_add_subpass_dep(pass, &dep2);
 	}
 
 	radv_render_pass_compile(pass);
@@ -391,26 +407,8 @@ VkResult radv_CreateRenderPass2KHR(
 	}
 
 	for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
-		uint32_t src = pCreateInfo->pDependencies[i].srcSubpass;
-		uint32_t dst = pCreateInfo->pDependencies[i].dstSubpass;
-
-		/* Ignore subpass self-dependencies as they allow the app to
-		 * call vkCmdPipelineBarrier() inside the render pass and the
-		 * driver should only do the barrier when called, not when
-		 * starting the render pass.
-		 */
-		if (src == dst)
-			continue;
-
-		if (dst == VK_SUBPASS_EXTERNAL) {
-			pass->end_barrier.src_stage_mask = pCreateInfo->pDependencies[i].srcStageMask;
-			pass->end_barrier.src_access_mask = pCreateInfo->pDependencies[i].srcAccessMask;
-			pass->end_barrier.dst_access_mask = pCreateInfo->pDependencies[i].dstAccessMask;
-		} else {
-			pass->subpasses[dst].start_barrier.src_stage_mask = pCreateInfo->pDependencies[i].srcStageMask;
-			pass->subpasses[dst].start_barrier.src_access_mask = pCreateInfo->pDependencies[i].srcAccessMask;
-			pass->subpasses[dst].start_barrier.dst_access_mask = pCreateInfo->pDependencies[i].dstAccessMask;
-		}
+		radv_render_pass_add_subpass_dep(pass,
+						 &pCreateInfo->pDependencies[i]);
 	}
 
 	radv_render_pass_compile(pass);
