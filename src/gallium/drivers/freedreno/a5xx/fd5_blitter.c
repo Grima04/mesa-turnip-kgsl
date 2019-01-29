@@ -122,7 +122,8 @@ can_do_blit(const struct pipe_blit_info *info)
 	debug_assert(info->dst.box.height >= 0);
 	debug_assert(info->dst.box.depth >= 0);
 
-	if (info->dst.resource->nr_samples + info->src.resource->nr_samples)
+	if ((info->dst.resource->nr_samples > 1) ||
+			(info->src.resource->nr_samples > 1))
 		return false;
 
 	if (info->scissor_enable)
