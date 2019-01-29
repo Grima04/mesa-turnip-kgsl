@@ -4356,9 +4356,9 @@ void radv_CmdEndRenderPass(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-	radv_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
-
 	radv_cmd_buffer_end_subpass(cmd_buffer);
+
+	radv_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
 
