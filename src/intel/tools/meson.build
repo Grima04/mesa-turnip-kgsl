@@ -123,7 +123,7 @@ if with_tools.contains('intel-ui')
     include_directories : [inc_common, inc_intel],
     link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util, libaub],
     c_args : [c_vis_args, no_override_init_args],
-    cpp_args : ['-fpermissive', '-std=c++11', '-Wno-parentheses', '-Wno-class-memaccess'],
+    cpp_args : ['-fpermissive', '-Wno-parentheses', '-Wno-class-memaccess'],
     install : true
   )
 endif
