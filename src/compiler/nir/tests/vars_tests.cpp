@@ -33,17 +33,20 @@ protected:
    nir_vars_test();
    ~nir_vars_test();
 
-   nir_variable *create_int(nir_variable_mode mode, const char *name) {
+   nir_variable *create_var(nir_variable_mode mode, const glsl_type *type,
+                            const char *name) {
       if (mode == nir_var_function_temp)
-         return nir_local_variable_create(b->impl, glsl_int_type(), name);
-      return nir_variable_create(b->shader, mode, glsl_int_type(), name);
+         return nir_local_variable_create(b->impl, type, name);
+      else
+         return nir_variable_create(b->shader, mode, type, name);
+   }
+
+   nir_variable *create_int(nir_variable_mode mode, const char *name) {
+      return create_var(mode, glsl_int_type(), name);
    }
 
    nir_variable *create_ivec2(nir_variable_mode mode, const char *name) {
-      const glsl_type *var_type = glsl_vector_type(GLSL_TYPE_INT, 2);
-      if (mode == nir_var_function_temp)
-         return nir_local_variable_create(b->impl, var_type, name);
-      return nir_variable_create(b->shader, mode, var_type, name);
+      return create_var(mode, glsl_vector_type(GLSL_TYPE_INT, 2), name);
    }
 
    nir_variable **create_many_int(nir_variable_mode mode, const char *prefix, unsigned count) {
@@ -598,6 +601,120 @@ TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
    nir_intrinsic_instr *fourth_store = get_intrinsic(nir_intrinsic_store_deref, 3);
    ASSERT_TRUE(fourth_store->src[1].is_ssa);
    EXPECT_TRUE(nir_src_as_alu_instr(&fourth_store->src[1]));
+}
+
+TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_indirect_array_deref_on_vector)
+{
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+   nir_variable *idx = create_int(nir_var_mem_ssbo, "idx");
+   nir_variable *out = create_int(nir_var_mem_ssbo, "out");
+
+   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+
+   /* Store to vec[idx]. */
+   nir_deref_instr *store_deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), idx_ssa);
+   nir_store_deref(b, store_deref, nir_imm_int(b, 20), 1);
+
+   /* Load from vec[idx] to store in out. This load should be dropped. */
+   nir_deref_instr *load_deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), idx_ssa);
+   nir_store_var(b, out, nir_load_deref(b, load_deref), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   /* Store to vec[idx] propagated to out. */
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_store_deref, 0);
+   nir_intrinsic_instr *second = get_intrinsic(nir_intrinsic_store_deref, 1);
+   ASSERT_TRUE(first->src[1].is_ssa);
+   ASSERT_TRUE(second->src[1].is_ssa);
+   EXPECT_EQ(first->src[1].ssa, second->src[1].ssa);
+}
+
+TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_direct_and_indirect_array_deref_on_vector)
+{
+   nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
+   nir_variable *idx = create_int(nir_var_mem_ssbo, "idx");
+   nir_variable **out = create_many_int(nir_var_mem_ssbo, "out", 2);
+
+   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+
+   /* Store to vec. */
+   nir_store_var(b, vec, nir_imm_ivec2(b, 10, 10), 1 | 2);
+
+   /* Load from vec[idx]. This load is currently not dropped. */
+   nir_deref_instr *indirect =
+      nir_build_deref_array(b, nir_build_deref_var(b, vec), idx_ssa);
+   nir_store_var(b, out[0], nir_load_deref(b, indirect), 1);
+
+   /* Load from vec[idx] again. This load should be dropped. */
+   nir_store_var(b, out[1], nir_load_deref(b, indirect), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   /* Store to vec[idx] propagated to out. */
+   nir_intrinsic_instr *second = get_intrinsic(nir_intrinsic_store_deref, 1);
+   nir_intrinsic_instr *third = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(second->src[1].is_ssa);
+   ASSERT_TRUE(third->src[1].is_ssa);
+   EXPECT_EQ(second->src[1].ssa, third->src[1].ssa);
+}
+
+TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref)
+{
+   nir_variable *arr = create_var(nir_var_mem_ssbo,
+                                  glsl_array_type(glsl_int_type(), 10, 0),
+                                  "arr");
+   nir_variable *idx = create_int(nir_var_mem_ssbo, "idx");
+   nir_variable *out = create_int(nir_var_mem_ssbo, "out");
+
+   nir_ssa_def *idx_ssa = nir_load_var(b, idx);
+
+   /* Store to arr[idx]. */
+   nir_deref_instr *store_deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, arr), idx_ssa);
+   nir_store_deref(b, store_deref, nir_imm_int(b, 20), 1);
+
+   /* Load from arr[idx] to store in out. This load should be dropped. */
+   nir_deref_instr *load_deref =
+      nir_build_deref_array(b, nir_build_deref_var(b, arr), idx_ssa);
+   nir_store_var(b, out, nir_load_deref(b, load_deref), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 2);
+
+   /* Store to arr[idx] propagated to out. */
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_store_deref, 0);
+   nir_intrinsic_instr *second = get_intrinsic(nir_intrinsic_store_deref, 1);
+   ASSERT_TRUE(first->src[1].is_ssa);
+   ASSERT_TRUE(second->src[1].is_ssa);
+   EXPECT_EQ(first->src[1].ssa, second->src[1].ssa);
 }
 
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_block)
