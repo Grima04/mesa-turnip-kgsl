@@ -3409,6 +3409,22 @@ void radv_TrimCommandPool(
 	}
 }
 
+static void
+radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
+			      uint32_t subpass_id)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	struct radv_subpass *subpass = &state->pass->subpasses[subpass_id];
+
+	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
+							   cmd_buffer->cs, 2048);
+
+	radv_cmd_buffer_set_subpass(cmd_buffer, subpass, true);
+	radv_cmd_buffer_clear_subpass(cmd_buffer);
+
+	assert(cmd_buffer->cs->cdw <= cdw_max);
+}
+
 void radv_CmdBeginRenderPass(
 	VkCommandBuffer                             commandBuffer,
 	const VkRenderPassBeginInfo*                pRenderPassBegin,
@@ -3417,9 +3433,6 @@ void radv_CmdBeginRenderPass(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBegin->renderPass);
 	RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
-
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
-							   cmd_buffer->cs, 2048);
 	VkResult result;
 
 	cmd_buffer->state.framebuffer = framebuffer;
@@ -3430,10 +3443,7 @@ void radv_CmdBeginRenderPass(
 	if (result != VK_SUCCESS)
 		return;
 
-	radv_cmd_buffer_set_subpass(cmd_buffer, pass->subpasses, true);
-	assert(cmd_buffer->cs->cdw <= cdw_max);
-
-	radv_cmd_buffer_clear_subpass(cmd_buffer);
+	radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
 void radv_CmdBeginRenderPass2KHR(
@@ -3445,6 +3455,19 @@ void radv_CmdBeginRenderPass2KHR(
 				pSubpassBeginInfo->contents);
 }
 
+static uint32_t
+radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t subpass_id = state->subpass - state->pass->subpasses;
+
+	/* The id of this subpass shouldn't exceed the number of subpasses in
+	 * this render pass minus 1.
+	 */
+	assert(subpass_id < state->pass->subpass_count);
+	return subpass_id;
+}
+
 void radv_CmdNextSubpass(
     VkCommandBuffer                             commandBuffer,
     VkSubpassContents                           contents)
@@ -3453,11 +3476,8 @@ void radv_CmdNextSubpass(
 
 	radv_cmd_buffer_resolve_subpass(cmd_buffer);
 
-	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs,
-					      2048);
-
-	radv_cmd_buffer_set_subpass(cmd_buffer, cmd_buffer->state.subpass + 1, true);
-	radv_cmd_buffer_clear_subpass(cmd_buffer);
+	uint32_t prev_subpass = radv_get_subpass_id(cmd_buffer);
+	radv_cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
 void radv_CmdNextSubpass2KHR(
