@@ -255,6 +255,27 @@ namespace {
       std::vector<device *> devs;
       const bool create_library =
          opts.find("-create-library") != std::string::npos;
+      const bool enable_link_options =
+         opts.find("-enable-link-options") != std::string::npos;
+      const bool has_link_options =
+         opts.find("-cl-denorms-are-zero") != std::string::npos ||
+         opts.find("-cl-no-signed-zeroes") != std::string::npos ||
+         opts.find("-cl-unsafe-math-optimizations") != std::string::npos ||
+         opts.find("-cl-finite-math-only") != std::string::npos ||
+         opts.find("-cl-fast-relaxed-math") != std::string::npos ||
+         opts.find("-cl-no-subgroup-ifp") != std::string::npos;
+
+      // According to the OpenCL 1.2 specification, "[the
+      // -enable-link-options] option must be specified with the
+      // create-library option".
+      if (enable_link_options && !create_library)
+         throw error(CL_INVALID_LINKER_OPTIONS);
+
+      // According to the OpenCL 1.2 specification, "the
+      // [program linking options] can be specified when linking a program
+      // executable".
+      if (has_link_options && create_library)
+         throw error(CL_INVALID_LINKER_OPTIONS);
 
       for (auto &dev : all_devs) {
          const auto has_binary = [&](const program &prog) {
@@ -286,6 +307,20 @@ namespace {
          // cases will return a CL_INVALID_OPERATION error."
          else if (any_of(has_binary, progs))
             throw error(CL_INVALID_OPERATION);
+
+         // According to the OpenCL 1.2 specification, "[t]he linker may apply
+         // [program linking options] to all compiled program objects
+         // specified to clLinkProgram. The linker may apply these options
+         // only to libraries which were created with the
+         // -enable-link-option."
+         else if (has_link_options && any_of([&](const program &prog) {
+                  const auto t = prog.build(dev).binary_type();
+                  return !(t == CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT ||
+                          (t == CL_PROGRAM_BINARY_TYPE_LIBRARY &&
+                           prog.build(dev).opts.find("-enable-link-options") !=
+                              std::string::npos));
+               }, progs))
+            throw error(CL_INVALID_LINKER_OPTIONS);
       }
 
       return map(derefs(), devs);
