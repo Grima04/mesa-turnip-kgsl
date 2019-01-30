@@ -4231,7 +4231,8 @@ fs_visitor::lower_integer_multiplication()
          } else if (!inst->dst.is_accumulator() &&
                     (inst->dst.type == BRW_REGISTER_TYPE_D ||
                      inst->dst.type == BRW_REGISTER_TYPE_UD) &&
-                    !devinfo->has_integer_dword_mul) {
+                    (!devinfo->has_integer_dword_mul ||
+                     devinfo->verx10 >= 125)) {
             lower_mul_dword_inst(inst, block);
             inst->remove(block);
             progress = true;
