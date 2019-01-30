@@ -461,18 +461,22 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0]->cat5.type = TYPE_F32;
 		break;
 		break;
+	case nir_op_flt16:
 	case nir_op_flt32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		break;
+	case nir_op_fge16:
 	case nir_op_fge32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
 		break;
+	case nir_op_feq16:
 	case nir_op_feq32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
 		break;
+	case nir_op_fne16:
 	case nir_op_fne32:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
@@ -572,26 +576,32 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_ushr:
 		dst[0] = ir3_SHR_B(b, src[0], 0, src[1], 0);
 		break;
+	case nir_op_ilt16:
 	case nir_op_ilt32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		break;
+	case nir_op_ige16:
 	case nir_op_ige32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
 		break;
+	case nir_op_ieq16:
 	case nir_op_ieq32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
 		break;
+	case nir_op_ine16:
 	case nir_op_ine32:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		break;
+	case nir_op_ult16:
 	case nir_op_ult32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_LT;
 		break;
+	case nir_op_uge16:
 	case nir_op_uge32:
 		dst[0] = ir3_CMPS_U(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_GE;
@@ -665,7 +675,17 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 
 	if (nir_alu_type_get_base_type(info->output_type) == nir_type_bool) {
 		assert(dst_sz == 1);
+
+		if (nir_dest_bit_size(alu->dest.dest) < 32)
+			dst[0]->regs[0]->flags |= IR3_REG_HALF;
+
 		dst[0] = ir3_n2b(b, dst[0]);
+	}
+
+	if (nir_dest_bit_size(alu->dest.dest) < 32) {
+		for (unsigned i = 0; i < dst_sz; i++) {
+			dst[i]->regs[0]->flags |= IR3_REG_HALF;
+		}
 	}
 
 	ir3_put_dst(ctx, &alu->dest.dest);
