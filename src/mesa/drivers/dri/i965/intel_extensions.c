@@ -327,5 +327,6 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_color_buffer_float = true;
 
    ctx->Extensions.EXT_texture_compression_s3tc = true;
+   ctx->Extensions.EXT_texture_compression_s3tc_srgb = true;
    ctx->Extensions.ANGLE_texture_compression_dxt = true;
 }
