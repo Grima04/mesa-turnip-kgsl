@@ -529,6 +529,13 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
           [4, 4], [src_type, src_type], False, _2src_commutative,
           final(reduce_(reduce_(src0, src1), reduce_(src2, src3))))
 
+def binop_reduce_all_sizes(name, output_size, src_type, prereduce_expr,
+                           reduce_expr, final_expr):
+   binop_reduce(name, output_size, tbool1, src_type,
+                prereduce_expr, reduce_expr, final_expr)
+   binop_reduce("b32" + name[1:], output_size, tbool32, src_type,
+                prereduce_expr, reduce_expr, final_expr)
+
 binop("fadd", tfloat, _2src_commutative + associative,"""
 if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
    if (bit_size == 64)
@@ -710,23 +717,14 @@ binop_compare_all_sizes("uge", tuint, "", "src0 >= src1")
 
 # integer-aware GLSL-style comparisons that compare floats and ints
 
-binop_reduce("ball_fequal",  1, tbool1, tfloat, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
-binop_reduce("bany_fnequal", 1, tbool1, tfloat, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
-binop_reduce("ball_iequal",  1, tbool1, tint, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
-binop_reduce("bany_inequal", 1, tbool1, tint, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
-
-binop_reduce("b32all_fequal",  1, tbool32, tfloat, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
-binop_reduce("b32any_fnequal", 1, tbool32, tfloat, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
-binop_reduce("b32all_iequal",  1, tbool32, tint, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
-binop_reduce("b32any_inequal", 1, tbool32, tint, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
+binop_reduce_all_sizes("ball_fequal",  1, tfloat, "{src0} == {src1}",
+                       "{src0} && {src1}", "{src}")
+binop_reduce_all_sizes("bany_fnequal", 1, tfloat, "{src0} != {src1}",
+                       "{src0} || {src1}", "{src}")
+binop_reduce_all_sizes("ball_iequal",  1, tint, "{src0} == {src1}",
+                       "{src0} && {src1}", "{src}")
+binop_reduce_all_sizes("bany_inequal", 1, tint, "{src0} != {src1}",
+                       "{src0} || {src1}", "{src}")
 
 # non-integer-aware GLSL-style comparisons that return 0.0 or 1.0
 
