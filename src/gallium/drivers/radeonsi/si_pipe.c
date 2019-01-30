@@ -430,8 +430,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	}
 
 	sctx->allocator_zeroed_memory =
-		u_suballocator_create(&sctx->b, sscreen->info.gart_page_size,
+		u_suballocator_create(&sctx->b, 128 * 1024,
 				      0, PIPE_USAGE_DEFAULT,
+				      SI_RESOURCE_FLAG_UNMAPPABLE |
 				      SI_RESOURCE_FLAG_CLEAR, false);
 	if (!sctx->allocator_zeroed_memory)
 		goto fail;
