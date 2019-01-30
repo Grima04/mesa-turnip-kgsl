@@ -889,6 +889,7 @@ typedef enum {
    nir_type_bool =      6,
    nir_type_float =     128,
    nir_type_bool1 =     1  | nir_type_bool,
+   nir_type_bool16 =    16 | nir_type_bool,
    nir_type_bool32 =    32 | nir_type_bool,
    nir_type_int1 =      1  | nir_type_int,
    nir_type_int8 =      8  | nir_type_int,
