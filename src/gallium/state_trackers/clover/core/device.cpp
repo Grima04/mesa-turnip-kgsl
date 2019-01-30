@@ -45,7 +45,8 @@ namespace {
 device::device(clover::platform &platform, pipe_loader_device *ldev) :
    platform(platform), ldev(ldev) {
    pipe = pipe_loader_create_screen(ldev);
-   if (!pipe || !pipe->get_param(pipe, PIPE_CAP_COMPUTE)) {
+   if (!pipe || !pipe->get_param(pipe, PIPE_CAP_COMPUTE) ||
+       !supports_ir(PIPE_SHADER_IR_NATIVE)) {
       if (pipe)
          pipe->destroy(pipe);
       throw error(CL_INVALID_DEVICE);
