@@ -498,6 +498,10 @@ def binop_compare(name, ty, alg_props, const_expr):
 def binop_compare32(name, ty, alg_props, const_expr):
    binop_convert(name, tbool32, ty, alg_props, const_expr)
 
+def binop_compare_all_sizes(name, ty, alg_props, const_expr):
+   binop_compare(name, ty, alg_props, const_expr)
+   binop_compare32(name + "32", ty, alg_props, const_expr)
+
 def binop_horiz(name, out_size, out_type, src1_size, src1_type, src2_size,
                 src2_type, const_expr):
    opcode(name, out_size, out_type, [src1_size, src2_size], [src1_type, src2_type],
@@ -693,26 +697,16 @@ binop("frem", tfloat, "", "src0 - src1 * truncf(src0 / src1)")
 
 # these integer-aware comparisons return a boolean (0 or ~0)
 
-binop_compare("flt", tfloat, "", "src0 < src1")
-binop_compare("fge", tfloat, "", "src0 >= src1")
-binop_compare("feq", tfloat, _2src_commutative, "src0 == src1")
-binop_compare("fne", tfloat, _2src_commutative, "src0 != src1")
-binop_compare("ilt", tint, "", "src0 < src1")
-binop_compare("ige", tint, "", "src0 >= src1")
-binop_compare("ieq", tint, _2src_commutative, "src0 == src1")
-binop_compare("ine", tint, _2src_commutative, "src0 != src1")
-binop_compare("ult", tuint, "", "src0 < src1")
-binop_compare("uge", tuint, "", "src0 >= src1")
-binop_compare32("flt32", tfloat, "", "src0 < src1")
-binop_compare32("fge32", tfloat, "", "src0 >= src1")
-binop_compare32("feq32", tfloat, _2src_commutative, "src0 == src1")
-binop_compare32("fne32", tfloat, _2src_commutative, "src0 != src1")
-binop_compare32("ilt32", tint, "", "src0 < src1")
-binop_compare32("ige32", tint, "", "src0 >= src1")
-binop_compare32("ieq32", tint, _2src_commutative, "src0 == src1")
-binop_compare32("ine32", tint, _2src_commutative, "src0 != src1")
-binop_compare32("ult32", tuint, "", "src0 < src1")
-binop_compare32("uge32", tuint, "", "src0 >= src1")
+binop_compare_all_sizes("flt", tfloat, "", "src0 < src1")
+binop_compare_all_sizes("fge", tfloat, "", "src0 >= src1")
+binop_compare_all_sizes("feq", tfloat, _2src_commutative, "src0 == src1")
+binop_compare_all_sizes("fne", tfloat, _2src_commutative, "src0 != src1")
+binop_compare_all_sizes("ilt", tint, "", "src0 < src1")
+binop_compare_all_sizes("ige", tint, "", "src0 >= src1")
+binop_compare_all_sizes("ieq", tint, _2src_commutative, "src0 == src1")
+binop_compare_all_sizes("ine", tint, _2src_commutative, "src0 != src1")
+binop_compare_all_sizes("ult", tuint, "", "src0 < src1")
+binop_compare_all_sizes("uge", tuint, "", "src0 >= src1")
 
 # integer-aware GLSL-style comparisons that compare floats and ints
 
