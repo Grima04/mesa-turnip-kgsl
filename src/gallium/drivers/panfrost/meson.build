@@ -23,6 +23,10 @@ files_panfrost = files(
   'pan_public.h',
   'pan_screen.c',
   'pan_screen.h',
+
+  'midgard/midgard_compile.c',
+  'midgard/cppwrap.cpp',
+  'midgard/disassemble.c',
 )
 
 inc_panfrost = [
@@ -32,12 +36,25 @@ inc_panfrost = [
   inc_drm_uapi,
   inc_include,
   inc_src,
-  include_directories('include')
+  include_directories('include'),
+  include_directories('midgard'),
 ]
+
+midgard_nir_algebraic_c = custom_target(
+  'midgard_nir_algebraic.c',
+  input : 'midgard/midgard_nir_algebraic.py',
+  output : 'midgard_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
+  ],
+  capture : true,
+  depend_files : nir_algebraic_py,
+)
 
 libpanfrost = static_library(
   'panfrost',
-  [files_panfrost],
+  [files_panfrost, midgard_nir_algebraic_c],
   dependencies: [
     dep_thread,
     idep_nir
@@ -49,4 +66,27 @@ libpanfrost = static_library(
 driver_panfrost = declare_dependency(
   compile_args : ['-DGALLIUM_PANFROST', '-Wno-pointer-arith'],
   link_with : [libpanfrost, libpanfrostwinsys],
+)
+
+files_midgard = files(
+  'midgard/midgard_compile.c',
+  'midgard/cppwrap.cpp',
+  'midgard/disassemble.c',
+  'midgard/cmdline.c',
+)
+
+midgard_compiler = executable(
+  'midgard_compiler',
+  [files_midgard, midgard_nir_algebraic_c],
+  include_directories : inc_panfrost,
+  dependencies : [
+    dep_thread,
+    idep_nir
+  ],
+  link_with : [
+    libgallium,
+    libglsl_standalone,
+    libmesa_util
+  ],
+  build_by_default : true
 )
