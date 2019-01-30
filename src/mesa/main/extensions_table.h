@@ -285,6 +285,7 @@ EXT(EXT_texture_compression_dxt1            , ANGLE_texture_compression_dxt     
 EXT(EXT_texture_compression_latc            , EXT_texture_compression_latc           , GLL,  x ,  x ,  x , 2006)
 EXT(EXT_texture_compression_rgtc            , ARB_texture_compression_rgtc           , GLL, GLC,  x ,  30, 2004)
 EXT(EXT_texture_compression_s3tc            , EXT_texture_compression_s3tc           , GLL, GLC,  x , ES2, 2000)
+EXT(EXT_texture_compression_s3tc_srgb       , EXT_texture_compression_s3tc_srgb      ,  x ,  x,   x , ES2, 2016)
 EXT(EXT_texture_cube_map                    , ARB_texture_cube_map                   , GLL,  x ,  x ,  x , 2001)
 EXT(EXT_texture_cube_map_array              , OES_texture_cube_map_array             ,  x ,  x ,  x ,  31, 2014)
 EXT(EXT_texture_edge_clamp                  , dummy_true                             , GLL,  x ,  x ,  x , 1997)
