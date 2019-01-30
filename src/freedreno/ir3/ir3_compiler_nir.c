@@ -607,16 +607,26 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0]->cat2.condition = IR3_COND_GE;
 		break;
 
+	case nir_op_b16csel:
 	case nir_op_b32csel: {
 		struct ir3_instruction *cond = ir3_b2n(b, src[0]);
+
+		if ((src[0]->regs[0]->flags & IR3_REG_HALF))
+			cond->regs[0]->flags |= IR3_REG_HALF;
+
 		compile_assert(ctx, bs[1] == bs[2]);
-		/* the boolean condition is 32b even if src[1] and src[2] are
-		 * half-precision, but sel.b16 wants all three src's to be the
-		 * same type.
+		/* Make sure the boolean condition has the same bit size as the other
+		 * two arguments, adding a conversion if necessary.
 		 */
-		if (bs[1] < 32)
+		if (bs[1] < bs[0])
 			cond = ir3_COV(b, cond, TYPE_U32, TYPE_U16);
-		dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
+		else if (bs[1] > bs[0])
+			cond = ir3_COV(b, cond, TYPE_U16, TYPE_U32);
+
+		if (bs[1] > 16)
+			dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
+		else
+			dst[0] = ir3_SEL_B16(b, src[1], 0, cond, 0, src[2], 0);
 		break;
 	}
 	case nir_op_bit_count: {
