@@ -251,7 +251,7 @@ static void si_fine_fence_set(struct si_context *ctx,
 
 	assert(util_bitcount(flags & (PIPE_FLUSH_TOP_OF_PIPE | PIPE_FLUSH_BOTTOM_OF_PIPE)) == 1);
 
-	/* Use uncached system memory for the fence. */
+	/* Use cached system memory for the fence. */
 	u_upload_alloc(ctx->cached_gtt_allocator, 0, 4, 4,
 		       &fine->offset, (struct pipe_resource **)&fine->buf, (void **)&fence_ptr);
 	if (!fine->buf)
