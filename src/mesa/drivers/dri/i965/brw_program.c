@@ -42,7 +42,7 @@
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/program.h"
 #include "compiler/glsl/glsl_to_nir.h"
-#include "compiler/glsl/float64_glsl.h"
+#include "glsl/float64_glsl.h"
 
 #include "brw_program.h"
 #include "brw_context.h"

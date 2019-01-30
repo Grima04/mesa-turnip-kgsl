@@ -34,6 +34,8 @@ AM_CFLAGS = \
 	-I$(top_builddir)/src/util \
 	-I$(top_srcdir)/src/mesa/drivers/dri/common \
 	-I$(top_srcdir)/src/gtest/include \
+	-I$(top_builddir)/src/compiler \
+	-I$(top_srcdir)/src/compiler \
 	-I$(top_builddir)/src/compiler/glsl \
 	-I$(top_builddir)/src/compiler/nir \
 	-I$(top_srcdir)/src/compiler/nir \
