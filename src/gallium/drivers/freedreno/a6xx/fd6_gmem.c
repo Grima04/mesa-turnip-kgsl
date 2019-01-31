@@ -200,7 +200,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		if (rsc->stencil) {
 			struct fd_resource_slice *slice = fd_resource_slice(rsc->stencil, 0);
-			stride = slice->pitch * rsc->cpp;
+			stride = slice->pitch * rsc->stencil->cpp;
 			size = slice->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
