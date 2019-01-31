@@ -23,4 +23,6 @@ libfreedreno_la_SOURCES = \
 	$(a6xx_SOURCES) \
 	$(ir3_SOURCES)
 
-EXTRA_DIST = meson.build
+EXTRA_DIST = \
+	ir3/ir3_cmdline.c \
+	meson.build
