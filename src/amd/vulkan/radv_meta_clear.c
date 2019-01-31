@@ -1522,7 +1522,13 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 
 	if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
 		const uint32_t subpass_att = clear_att->colorAttachment;
+		if (subpass_att == VK_ATTACHMENT_UNUSED)
+			return;
+
 		const uint32_t pass_att = subpass->color_attachments[subpass_att].attachment;
+		if (pass_att == VK_ATTACHMENT_UNUSED)
+			return;
+
 		VkImageLayout image_layout = subpass->color_attachments[subpass_att].layout;
 		const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
 		VkClearColorValue clear_value = clear_att->clearValue.color;
@@ -1537,6 +1543,9 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 		}
 	} else {
 		const uint32_t pass_att = subpass->depth_stencil_attachment->attachment;
+		if (pass_att == VK_ATTACHMENT_UNUSED)
+			return;
+
 		VkImageLayout image_layout = subpass->depth_stencil_attachment->layout;
 		const struct radv_image_view *iview = fb->attachments[pass_att].attachment;
 		VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
