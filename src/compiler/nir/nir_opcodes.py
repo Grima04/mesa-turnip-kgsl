@@ -95,6 +95,7 @@ tfloat = "float"
 tint = "int"
 tbool = "bool"
 tbool1 = "bool1"
+tbool8 = "bool8"
 tbool16 = "bool16"
 tbool32 = "bool32"
 tuint = "uint"
@@ -124,7 +125,7 @@ def type_sizes(type_):
     if type_has_size(type_):
         return [type_size(type_)]
     elif type_ == 'bool':
-        return [1, 16, 32]
+        return [1, 8, 16, 32]
     elif type_ == 'float':
         return [16, 32, 64]
     else:
@@ -496,6 +497,9 @@ def binop(name, ty, alg_props, const_expr):
 def binop_compare(name, ty, alg_props, const_expr):
    binop_convert(name, tbool1, ty, alg_props, const_expr)
 
+def binop_compare8(name, ty, alg_props, const_expr):
+   binop_convert(name, tbool8, ty, alg_props, const_expr)
+
 def binop_compare16(name, ty, alg_props, const_expr):
    binop_convert(name, tbool16, ty, alg_props, const_expr)
 
@@ -504,6 +508,7 @@ def binop_compare32(name, ty, alg_props, const_expr):
 
 def binop_compare_all_sizes(name, ty, alg_props, const_expr):
    binop_compare(name, ty, alg_props, const_expr)
+   binop_compare8(name + "8", ty, alg_props, const_expr)
    binop_compare16(name + "16", ty, alg_props, const_expr)
    binop_compare32(name + "32", ty, alg_props, const_expr)
 
@@ -537,6 +542,8 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
 def binop_reduce_all_sizes(name, output_size, src_type, prereduce_expr,
                            reduce_expr, final_expr):
    binop_reduce(name, output_size, tbool1, src_type,
+                prereduce_expr, reduce_expr, final_expr)
+   binop_reduce("b8" + name[1:], output_size, tbool8, src_type,
                 prereduce_expr, reduce_expr, final_expr)
    binop_reduce("b16" + name[1:], output_size, tbool16, src_type,
                 prereduce_expr, reduce_expr, final_expr)
@@ -934,7 +941,9 @@ triop("imed3", tint, "", "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
 triop("umed3", tuint, "", "MAX2(MIN2(MAX2(src0, src1), src2), MIN2(src0, src1))")
 
 opcode("bcsel", 0, tuint, [0, 0, 0],
-      [tbool1, tuint, tuint], False, "", "src0 ? src1 : src2")
+       [tbool1, tuint, tuint], False, "", "src0 ? src1 : src2")
+opcode("b8csel", 0, tuint, [0, 0, 0],
+       [tbool8, tuint, tuint], False, "", "src0 ? src1 : src2")
 opcode("b16csel", 0, tuint, [0, 0, 0],
        [tbool16, tuint, tuint], False, "", "src0 ? src1 : src2")
 opcode("b32csel", 0, tuint, [0, 0, 0],
