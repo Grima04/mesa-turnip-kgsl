@@ -70,6 +70,8 @@ struct spirv_to_nir_options {
    const struct glsl_type *phys_ssbo_ptr_type;
    const struct glsl_type *push_const_ptr_type;
    const struct glsl_type *shared_ptr_type;
+   const struct glsl_type *global_ptr_type;
+   const struct glsl_type *temp_ptr_type;
 
    struct {
       void (*func)(void *private_data,

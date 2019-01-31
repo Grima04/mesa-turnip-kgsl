@@ -32,6 +32,8 @@
 #include "nir/nir_deref.h"
 #include "spirv_info.h"
 
+#include "util/u_math.h"
+
 #include <stdio.h>
 
 void
@@ -1242,7 +1244,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       val->type->base_type = vtn_base_type_array;
       val->type->array_element = array_element;
-      val->type->stride = 0;
+      if (b->shader->info.stage == MESA_SHADER_KERNEL)
+         val->type->stride = glsl_get_cl_size(array_element->type);
 
       vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
       val->type->type = glsl_array_type(array_element->type, val->type->length,
@@ -1268,6 +1271,15 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             .location = -1,
             .offset = -1,
          };
+      }
+
+      if (b->shader->info.stage == MESA_SHADER_KERNEL) {
+         unsigned offset = 0;
+         for (unsigned i = 0; i < num_fields; i++) {
+            offset = align(offset, glsl_get_cl_alignment(fields[i].type));
+            fields[i].offset = offset;
+            offset += glsl_get_cl_size(fields[i].type);
+         }
       }
 
       struct member_decoration_ctx ctx = {
@@ -1307,6 +1319,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
        * declaration.
        */
       val = vtn_untyped_value(b, w[1]);
+      struct vtn_type *deref_type = vtn_untyped_value(b, w[3])->type;
 
       SpvStorageClass storage_class = w[2];
 
@@ -1335,6 +1348,19 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             break;
          case SpvStorageClassWorkgroup:
             val->type->type = b->options->shared_ptr_type;
+            if (b->physical_ptrs)
+               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
+            break;
+         case SpvStorageClassCrossWorkgroup:
+            val->type->type = b->options->global_ptr_type;
+            if (b->physical_ptrs)
+               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
+            break;
+         case SpvStorageClassFunction:
+            if (b->physical_ptrs) {
+               val->type->type = b->options->temp_ptr_type;
+               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
+            }
             break;
          default:
             /* In this case, no variable pointers are allowed so all deref
@@ -3751,12 +3777,18 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
                      "AddressingModelPhysical32 only supported for kernels");
          b->shader->info.cs.ptr_size = 32;
          b->physical_ptrs = true;
+         b->options->shared_ptr_type = glsl_uint_type();
+         b->options->global_ptr_type = glsl_uint_type();
+         b->options->temp_ptr_type = glsl_uint_type();
          break;
       case SpvAddressingModelPhysical64:
          vtn_fail_if(b->shader->info.stage != MESA_SHADER_KERNEL,
                      "AddressingModelPhysical64 only supported for kernels");
          b->shader->info.cs.ptr_size = 64;
          b->physical_ptrs = true;
+         b->options->shared_ptr_type = glsl_uint64_t_type();
+         b->options->global_ptr_type = glsl_uint64_t_type();
+         b->options->temp_ptr_type = glsl_uint64_t_type();
          break;
       case SpvAddressingModelLogical:
          vtn_fail_if(b->shader->info.stage >= MESA_SHADER_STAGES,
@@ -4086,6 +4118,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAccessChain:
    case SpvOpPtrAccessChain:
    case SpvOpInBoundsAccessChain:
+   case SpvOpInBoundsPtrAccessChain:
    case SpvOpArrayLength:
    case SpvOpConvertPtrToU:
    case SpvOpConvertUToPtr:
@@ -4402,6 +4435,10 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
 {
    /* Initialize the vtn_builder object */
    struct vtn_builder *b = rzalloc(NULL, struct vtn_builder);
+   struct spirv_to_nir_options *dup_options =
+      ralloc(b, struct spirv_to_nir_options);
+   *dup_options = *options;
+
    b->spirv = words;
    b->spirv_word_count = word_count;
    b->file = NULL;
@@ -4410,7 +4447,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    exec_list_make_empty(&b->functions);
    b->entry_point_stage = stage;
    b->entry_point_name = entry_point_name;
-   b->options = options;
+   b->options = dup_options;
 
    /*
     * Handle the SPIR-V header (first 5 dwords).

@@ -635,6 +635,8 @@ load("constant", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { address }.
 # const_index[] = { access, align_mul, align_offset }
 load("global", 1, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+# src[] = { address }. const_index[] = { base, range, align_mul, align_offset }
+load("kernel_input", 1, [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, CAN_REORDER])
 
 # Stores work the same way as loads, except now the first source is the value
 # to store and the second (and possibly third) source specify where to store

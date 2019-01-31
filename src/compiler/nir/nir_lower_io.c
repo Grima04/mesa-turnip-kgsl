@@ -680,6 +680,10 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(addr_format_is_global(addr_format));
       op = nir_intrinsic_load_global;
       break;
+   case nir_var_shader_in:
+      assert(addr_format_is_global(addr_format));
+      op = nir_intrinsic_load_kernel_input;
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -687,14 +691,13 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
 
    if (addr_format_is_global(addr_format)) {
-      assert(op == nir_intrinsic_load_global);
       load->src[0] = nir_src_for_ssa(addr_to_global(b, addr, addr_format));
    } else {
       load->src[0] = nir_src_for_ssa(addr_to_index(b, addr, addr_format));
       load->src[1] = nir_src_for_ssa(addr_to_offset(b, addr, addr_format));
    }
 
-   if (mode != nir_var_mem_ubo)
+   if (mode != nir_var_mem_ubo && mode != nir_var_shader_in)
       nir_intrinsic_set_access(load, nir_intrinsic_access(intrin));
 
    /* TODO: We should try and provide a better alignment.  For OpenCL, we need
@@ -821,17 +824,20 @@ lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
 
    b->cursor = nir_after_instr(&deref->instr);
 
-   /* Var derefs must be lowered away by the driver */
-   assert(deref->deref_type != nir_deref_type_var);
+   nir_ssa_def *parent_addr = NULL;
+   if (deref->deref_type != nir_deref_type_var) {
+      assert(deref->parent.is_ssa);
+      parent_addr = deref->parent.ssa;
+   }
 
-   assert(deref->parent.is_ssa);
-   nir_ssa_def *parent_addr = deref->parent.ssa;
 
    nir_ssa_def *addr = NULL;
    assert(deref->dest.is_ssa);
    switch (deref->deref_type) {
    case nir_deref_type_var:
-      unreachable("Must be lowered by the driver");
+      assert(deref->mode == nir_var_shader_in);
+      addr = nir_imm_intN_t(b, deref->var->data.driver_location,
+                            deref->dest.ssa.bit_size);
       break;
 
    case nir_deref_type_array: {

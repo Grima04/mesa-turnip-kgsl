@@ -1872,9 +1872,8 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    } else {
       const struct glsl_type *deref_type = ptr_type->deref->type;
       if (!vtn_pointer_is_external_block(b, ptr)) {
-         assert(ssa->bit_size == 32 && ssa->num_components == 1);
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                           glsl_get_bare_type(deref_type), 0);
+                                           deref_type, 0);
       } else if (vtn_type_contains_block(b, ptr->type) &&
                  ptr->mode != vtn_variable_mode_phys_ssbo) {
          /* This is a pointer to somewhere in an array of blocks, not a
@@ -2317,9 +2316,10 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpAccessChain:
    case SpvOpPtrAccessChain:
-   case SpvOpInBoundsAccessChain: {
+   case SpvOpInBoundsAccessChain:
+   case SpvOpInBoundsPtrAccessChain: {
       struct vtn_access_chain *chain = vtn_access_chain_create(b, count - 4);
-      chain->ptr_as_array = (opcode == SpvOpPtrAccessChain);
+      chain->ptr_as_array = (opcode == SpvOpPtrAccessChain || opcode == SpvOpInBoundsPtrAccessChain);
 
       unsigned idx = 0;
       for (int i = 4; i < count; i++) {

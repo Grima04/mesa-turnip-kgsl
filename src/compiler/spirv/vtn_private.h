@@ -571,7 +571,7 @@ struct vtn_builder {
    size_t spirv_word_count;
 
    nir_shader *shader;
-   const struct spirv_to_nir_options *options;
+   struct spirv_to_nir_options *options;
    struct vtn_block *block;
 
    /* Current offset, file, line, and column.  Useful for debugging.  Set

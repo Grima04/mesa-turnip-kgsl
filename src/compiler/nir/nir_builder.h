@@ -828,6 +828,14 @@ nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn)
    return nir_imov_alu(build, *src, num_components);
 }
 
+static inline unsigned
+nir_get_ptr_bitsize(nir_builder *build)
+{
+   if (build->shader->info.stage == MESA_SHADER_KERNEL)
+      return build->shader->info.cs.ptr_size;
+   return 32;
+}
+
 static inline nir_deref_instr *
 nir_build_deref_var(nir_builder *build, nir_variable *var)
 {
@@ -838,7 +846,8 @@ nir_build_deref_var(nir_builder *build, nir_variable *var)
    deref->type = var->type;
    deref->var = var;
 
-   nir_ssa_dest_init(&deref->instr, &deref->dest, 1, 32, NULL);
+   nir_ssa_dest_init(&deref->instr, &deref->dest, 1,
+                     nir_get_ptr_bitsize(build), NULL);
 
    nir_builder_instr_insert(build, &deref->instr);
 
