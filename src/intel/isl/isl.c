@@ -99,6 +99,9 @@ isl_device_init(struct isl_device *dev,
                 const struct gen_device_info *info,
                 bool has_bit6_swizzling)
 {
+   /* Gen8+ don't have bit6 swizzling, ensure callsite is not confused. */
+   assert(!(has_bit6_swizzling && info->gen >= 8));
+
    dev->info = info;
    dev->use_separate_stencil = ISL_DEV_GEN(dev) >= 6;
    dev->has_bit6_swizzling = has_bit6_swizzling;
