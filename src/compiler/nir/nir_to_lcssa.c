@@ -45,6 +45,7 @@ typedef struct {
    /* The loop we store information for */
    nir_loop *loop;
 
+   bool progress;
 } lcssa_state;
 
 static bool
@@ -168,6 +169,7 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
       }
    }
 
+   state->progress = true;
    return true;
 }
 
@@ -176,8 +178,10 @@ convert_to_lcssa(nir_cf_node *cf_node, lcssa_state *state)
 {
    switch (cf_node->type) {
    case nir_cf_node_block:
-      nir_foreach_instr(instr, nir_cf_node_as_block(cf_node))
-         nir_foreach_ssa_def(instr, convert_loop_exit_for_ssa, state);
+      if (state->loop) {
+         nir_foreach_instr(instr, nir_cf_node_as_block(cf_node))
+            nir_foreach_ssa_def(instr, convert_loop_exit_for_ssa, state);
+      }
       return;
    case nir_cf_node_if: {
       nir_if *if_stmt = nir_cf_node_as_if(cf_node);
@@ -203,7 +207,8 @@ convert_to_lcssa(nir_cf_node *cf_node, lcssa_state *state)
 }
 
 void
-nir_convert_loop_to_lcssa(nir_loop *loop) {
+nir_convert_loop_to_lcssa(nir_loop *loop)
+{
    nir_function_impl *impl = nir_cf_node_get_function(&loop->cf_node);
 
    nir_metadata_require(impl, nir_metadata_block_index);
@@ -217,3 +222,36 @@ nir_convert_loop_to_lcssa(nir_loop *loop) {
 
    ralloc_free(state);
 }
+
+bool
+nir_convert_to_lcssa(nir_shader *shader)
+{
+   bool progress = false;
+   lcssa_state *state = rzalloc(NULL, lcssa_state);
+   state->shader = shader;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl == NULL)
+         continue;
+
+      state->progress = false;
+      nir_metadata_require(function->impl, nir_metadata_block_index);
+
+      foreach_list_typed(nir_cf_node, node, node, &function->impl->body)
+         convert_to_lcssa(node, state);
+
+      if (state->progress) {
+         progress = true;
+         nir_metadata_preserve(function->impl, nir_metadata_block_index |
+                                               nir_metadata_dominance);
+      } else {
+#ifndef NDEBUG
+         function->impl->valid_metadata &= ~nir_metadata_not_properly_reset;
+#endif
+      }
+   }
+
+   ralloc_free(state);
+   return progress;
+}
+
