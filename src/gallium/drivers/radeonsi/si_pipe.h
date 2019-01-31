@@ -110,6 +110,8 @@
 #define SI_RESOURCE_FLAG_READ_ONLY	(PIPE_RESOURCE_FLAG_DRV_PRIV << 5)
 #define SI_RESOURCE_FLAG_32BIT		(PIPE_RESOURCE_FLAG_DRV_PRIV << 6)
 #define SI_RESOURCE_FLAG_CLEAR		(PIPE_RESOURCE_FLAG_DRV_PRIV << 7)
+/* For const_uploader, upload data via GTT and copy to VRAM on context flush via SDMA. */
+#define SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA  (PIPE_RESOURCE_FLAG_DRV_PRIV << 8)
 
 enum si_clear_code
 {
@@ -776,6 +778,14 @@ struct si_saved_cs {
 	int64_t			time_flush;
 };
 
+struct si_sdma_upload {
+	struct si_resource	*dst;
+	struct si_resource	*src;
+	unsigned		src_offset;
+	unsigned		dst_offset;
+	unsigned		size;
+};
+
 struct si_context {
 	struct pipe_context		b; /* base class */
 
@@ -1081,6 +1091,12 @@ struct si_context {
 	bool				render_cond_invert;
 	bool				render_cond_force_off; /* for u_blitter */
 
+	/* For uploading data via GTT and copy to VRAM on context flush via SDMA. */
+	bool				sdma_uploads_in_progress;
+	struct si_sdma_upload		*sdma_uploads;
+	unsigned			num_sdma_uploads;
+	unsigned			max_sdma_uploads;
+
 	/* Statistics gathering for the DCC enablement heuristic. It can't be
 	 * in si_texture because si_texture can be shared by multiple
 	 * contexts. This is for back buffers only. We shouldn't get too many
@@ -1280,6 +1296,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 		     struct pipe_fence_handle **fence);
 void si_begin_new_gfx_cs(struct si_context *ctx);
 void si_need_gfx_cs_space(struct si_context *ctx);
+void si_unref_sdma_uploads(struct si_context *sctx);
 
 /* si_gpu_load.c */
 void si_gpu_load_kill_thread(struct si_screen *sscreen);

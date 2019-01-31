@@ -440,7 +440,15 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 		}
 	}
 
-	if ((usage & PIPE_TRANSFER_DISCARD_RANGE) &&
+	if (usage & PIPE_TRANSFER_FLUSH_EXPLICIT &&
+	    buf->b.b.flags & SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA) {
+		usage &= ~(PIPE_TRANSFER_UNSYNCHRONIZED |
+			   PIPE_TRANSFER_PERSISTENT);
+		usage |= PIPE_TRANSFER_DISCARD_RANGE;
+		force_discard_range = true;
+	}
+
+	if (usage & PIPE_TRANSFER_DISCARD_RANGE &&
 	    ((!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED |
 			 PIPE_TRANSFER_PERSISTENT))) ||
 	     (buf->flags & RADEON_FLAG_SPARSE))) {
@@ -453,10 +461,20 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx,
 		    si_rings_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
 		    !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
 			/* Do a wait-free write-only transfer using a temporary buffer. */
-			unsigned offset;
+			struct u_upload_mgr *uploader;
 			struct si_resource *staging = NULL;
+			unsigned offset;
 
-			u_upload_alloc(ctx->stream_uploader, 0,
+			/* If we are not called from the driver thread, we have
+			 * to use the uploader from u_threaded_context, which is
+			 * local to the calling thread.
+			 */
+			if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
+				uploader = sctx->tc->base.stream_uploader;
+			else
+				uploader = sctx->b.stream_uploader;
+
+			u_upload_alloc(uploader, 0,
                                        box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT),
 				       sctx->screen->info.tcc_cache_line_size,
 				       &offset, (struct pipe_resource**)&staging,
@@ -521,6 +539,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx,
 				      struct pipe_transfer *transfer,
 				      const struct pipe_box *box)
 {
+	struct si_context *sctx = (struct si_context*)ctx;
 	struct si_transfer *stransfer = (struct si_transfer*)transfer;
 	struct si_resource *buf = si_resource(transfer->resource);
 
@@ -529,10 +548,49 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx,
 				      transfer->box.x % SI_MAP_BUFFER_ALIGNMENT +
 				      (box->x - transfer->box.x);
 
+		if (buf->b.b.flags & SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA) {
+			/* This should be true for all uploaders. */
+			assert(transfer->box.x == 0);
+
+			/* Find a previous upload and extend its range. The last
+			 * upload is likely to be at the end of the list.
+			 */
+			for (int i = sctx->num_sdma_uploads - 1; i >= 0; i--) {
+				struct si_sdma_upload *up = &sctx->sdma_uploads[i];
+
+				if (up->dst != buf)
+					continue;
+
+				assert(up->src == stransfer->staging);
+				assert(box->x > up->dst_offset);
+				up->size = box->x + box->width - up->dst_offset;
+				return;
+			}
+
+			/* Enlarge the array if it's full. */
+			if (sctx->num_sdma_uploads == sctx->max_sdma_uploads) {
+				unsigned size;
+
+				sctx->max_sdma_uploads += 4;
+				size = sctx->max_sdma_uploads * sizeof(sctx->sdma_uploads[0]);
+				sctx->sdma_uploads = realloc(sctx->sdma_uploads, size);
+			}
+
+			/* Add a new upload. */
+			struct si_sdma_upload *up =
+				&sctx->sdma_uploads[sctx->num_sdma_uploads++];
+			up->dst = up->src = NULL;
+			si_resource_reference(&up->dst, buf);
+			si_resource_reference(&up->src, stransfer->staging);
+			up->dst_offset = box->x;
+			up->src_offset = src_offset;
+			up->size = box->width;
+			return;
+		}
+
 		/* Copy the staging buffer into the original one. */
-		si_copy_buffer((struct si_context*)ctx, transfer->resource,
-			       &stransfer->staging->b.b, box->x, src_offset,
-			       box->width);
+		si_copy_buffer(sctx, transfer->resource, &stransfer->staging->b.b,
+			       box->x, src_offset, box->width);
 	}
 
 	util_range_add(&buf->valid_buffer_range, box->x,
