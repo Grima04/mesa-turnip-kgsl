@@ -676,6 +676,7 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
    if (cb && cb->user_buffer) {
       u_upload_data(tc->base.const_uploader, 0, cb->buffer_size, 64,
                     cb->user_buffer, &offset, &buffer);
+      u_upload_unmap(tc->base.const_uploader);
    }
 
    struct tc_constant_buffer *p =
