@@ -73,19 +73,15 @@ tu_get_device_uuid(void *uuid)
    memset(uuid, 0, VK_UUID_SIZE);
 }
 
-VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
+static VkResult
+tu_bo_init(struct tu_device *dev,
+           struct tu_bo *bo,
+           uint32_t gem_handle,
+           uint64_t size)
 {
-   /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
-    * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
-    */
-   uint32_t gem_handle = tu_gem_new(dev, size, MSM_BO_WC);
-   if (!gem_handle)
-      goto fail_new;
-
    uint64_t iova = tu_gem_info_iova(dev, gem_handle);
    if (!iova)
-      goto fail_info;
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    *bo = (struct tu_bo) {
       .gem_handle = gem_handle,
@@ -94,11 +90,50 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
    };
 
    return VK_SUCCESS;
+}
 
-fail_info:
-   tu_gem_close(dev, bo->gem_handle);
-fail_new:
-   return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+VkResult
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
+{
+   /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
+    * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
+    */
+   uint32_t gem_handle = tu_gem_new(dev, size, MSM_BO_WC);
+   if (!gem_handle)
+      return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+   VkResult result = tu_bo_init(dev, bo, gem_handle, size);
+   if (result != VK_SUCCESS) {
+      tu_gem_close(dev, gem_handle);
+      return vk_error(dev->instance, result);
+   }
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_bo_init_dmabuf(struct tu_device *dev,
+                  struct tu_bo *bo,
+                  uint64_t size,
+                  int fd)
+{
+   uint32_t gem_handle = tu_gem_import_dmabuf(dev, fd, size);
+   if (!gem_handle)
+      return vk_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+   VkResult result = tu_bo_init(dev, bo, gem_handle, size);
+   if (result != VK_SUCCESS) {
+      tu_gem_close(dev, gem_handle);
+      return vk_error(dev->instance, result);
+   }
+
+   return VK_SUCCESS;
+}
+
+int
+tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
+{
+   return tu_gem_export_dmabuf(dev, bo->gem_handle);
 }
 
 VkResult
@@ -109,7 +144,7 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
 
    uint64_t offset = tu_gem_info_offset(dev, bo->gem_handle);
    if (!offset)
-	   return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    /* TODO: Should we use the wrapper os_mmap() like Freedreno does? */
    void *map = mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,

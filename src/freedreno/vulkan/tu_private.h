@@ -442,6 +442,13 @@ struct tu_bo
 
 VkResult
 tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size);
+VkResult
+tu_bo_init_dmabuf(struct tu_device *dev,
+                  struct tu_bo *bo,
+                  uint64_t size,
+                  int fd);
+int
+tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo);
 void
 tu_bo_finish(struct tu_device *dev, struct tu_bo *bo);
 VkResult
@@ -1315,6 +1322,12 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
 uint32_t
 tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags);
+uint32_t
+tu_gem_import_dmabuf(const struct tu_device *dev,
+                     int prime_fd,
+                     uint64_t size);
+int
+tu_gem_export_dmabuf(const struct tu_device *dev, uint32_t gem_handle);
 void
 tu_gem_close(const struct tu_device *dev, uint32_t gem_handle);
 uint64_t

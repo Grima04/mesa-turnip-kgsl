@@ -25,6 +25,7 @@
 #include "tu_private.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <xf86drm.h>
@@ -121,6 +122,34 @@ tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags)
       return 0;
 
    return req.handle;
+}
+
+uint32_t
+tu_gem_import_dmabuf(const struct tu_device *dev, int prime_fd, uint64_t size)
+{
+   /* lseek() to get the real size */
+   off_t real_size = lseek(prime_fd, 0, SEEK_END);
+   lseek(prime_fd, 0, SEEK_SET);
+   if (real_size < 0 || (uint64_t) real_size < size)
+      return 0;
+
+   uint32_t gem_handle;
+   int ret = drmPrimeFDToHandle(dev->physical_device->local_fd, prime_fd,
+                                &gem_handle);
+   if (ret)
+      return 0;
+
+   return gem_handle;
+}
+
+int
+tu_gem_export_dmabuf(const struct tu_device *dev, uint32_t gem_handle)
+{
+   int prime_fd;
+   int ret = drmPrimeHandleToFD(dev->physical_device->local_fd, gem_handle,
+                                DRM_CLOEXEC, &prime_fd);
+
+   return ret == 0 ? prime_fd : -1;
 }
 
 void
