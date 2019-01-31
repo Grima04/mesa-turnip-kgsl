@@ -1889,6 +1889,20 @@ intel_init_bufmgr(struct intel_screen *screen)
 static bool
 intel_detect_swizzling(struct intel_screen *screen)
 {
+   /* Broadwell PRM says:
+    *
+    *   "Before Gen8, there was a historical configuration control field to
+    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
+    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
+    *    DISP_ARB_CTL[14:13].
+    *
+    *    For Gen8 and subsequent generations, the swizzle fields are all
+    *    reserved, and the CPU's memory controller performs all address
+    *    swizzling modifications."
+    */
+   if (screen->devinfo.gen >= 8)
+      return false;
+
    uint32_t tiling = I915_TILING_X;
    uint32_t swizzle_mode = 0;
    struct brw_bo *buffer =
