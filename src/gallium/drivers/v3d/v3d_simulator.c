@@ -580,6 +580,7 @@ v3d_simulator_init(struct v3d_screen *screen)
         sim_file->gmp = u_mmAllocMem(sim_state.heap, 8096, GMP_ALIGN2, 0);
         sim_file->gmp_vaddr = (sim_state.mem + sim_file->gmp->ofs -
                                sim_state.mem_base);
+        memset(sim_file->gmp_vaddr, 0, 8096);
 }
 
 void
