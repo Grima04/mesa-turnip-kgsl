@@ -1165,6 +1165,7 @@ bool Converter::assignSlots() {
 
    info->io.viewportId = -1;
    info->numInputs = 0;
+   info->numOutputs = 0;
 
    // we have to fixup the uniform locations for arrays
    unsigned numImages = 0;
@@ -1175,6 +1176,37 @@ bool Converter::assignSlots() {
       var->data.driver_location = numImages;
       numImages += type->is_array() ? type->arrays_of_arrays_size() : 1;
    }
+
+   info->numSysVals = 0;
+   for (uint8_t i = 0; i < SYSTEM_VALUE_MAX; ++i) {
+      if (!(nir->info.system_values_read & 1ull << i))
+         continue;
+
+      system_val_to_tgsi_semantic(i, &name, &index);
+      info->sv[info->numSysVals].sn = name;
+      info->sv[info->numSysVals].si = index;
+      info->sv[info->numSysVals].input = 0; // TODO inferSysValDirection(sn);
+
+      switch (i) {
+      case SYSTEM_VALUE_INSTANCE_ID:
+         info->io.instanceId = info->numSysVals;
+         break;
+      case SYSTEM_VALUE_TESS_LEVEL_INNER:
+      case SYSTEM_VALUE_TESS_LEVEL_OUTER:
+         info->sv[info->numSysVals].patch = 1;
+         break;
+      case SYSTEM_VALUE_VERTEX_ID:
+         info->io.vertexId = info->numSysVals;
+         break;
+      default:
+         break;
+      }
+
+      info->numSysVals += 1;
+   }
+
+   if (prog->getType() == Program::TYPE_COMPUTE)
+      return true;
 
    nir_foreach_variable(var, &nir->inputs) {
       const glsl_type *type = var->type;
@@ -1240,7 +1272,6 @@ bool Converter::assignSlots() {
       info->numInputs = std::max<uint8_t>(info->numInputs, vary);
    }
 
-   info->numOutputs = 0;
    nir_foreach_variable(var, &nir->outputs) {
       const glsl_type *type = var->type;
       int slot = var->data.location;
@@ -1330,34 +1361,6 @@ bool Converter::assignSlots() {
             info->out[vary].oread = 1;
       }
       info->numOutputs = std::max<uint8_t>(info->numOutputs, vary);
-   }
-
-   info->numSysVals = 0;
-   for (uint8_t i = 0; i < SYSTEM_VALUE_MAX; ++i) {
-      if (!(nir->info.system_values_read & 1ull << i))
-         continue;
-
-      system_val_to_tgsi_semantic(i, &name, &index);
-      info->sv[info->numSysVals].sn = name;
-      info->sv[info->numSysVals].si = index;
-      info->sv[info->numSysVals].input = 0; // TODO inferSysValDirection(sn);
-
-      switch (i) {
-      case SYSTEM_VALUE_INSTANCE_ID:
-         info->io.instanceId = info->numSysVals;
-         break;
-      case SYSTEM_VALUE_TESS_LEVEL_INNER:
-      case SYSTEM_VALUE_TESS_LEVEL_OUTER:
-         info->sv[info->numSysVals].patch = 1;
-         break;
-      case SYSTEM_VALUE_VERTEX_ID:
-         info->io.vertexId = info->numSysVals;
-         break;
-      default:
-         break;
-      }
-
-      info->numSysVals += 1;
    }
 
    if (info->io.genUserClip > 0) {
