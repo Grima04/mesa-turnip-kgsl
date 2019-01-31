@@ -220,6 +220,8 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 
 	void *cs = ctx->create_compute_state(ctx, &state);
 	ureg_destroy(ureg);
+        ureg_free_tokens(state.prog);
+
 	free(values);
 	return cs;
 }
