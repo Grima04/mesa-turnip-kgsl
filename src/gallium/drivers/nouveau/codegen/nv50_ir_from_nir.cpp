@@ -96,7 +96,10 @@ private:
    // If the found value has not a constant part, the Value gets returned
    // through the Value parameter.
    uint32_t getIndirect(nir_src *, uint8_t, Value *&);
-   uint32_t getIndirect(nir_intrinsic_instr *, uint8_t s, uint8_t c, Value *&);
+   // isScalar indicates that the addressing is scalar, vec4 addressing is
+   // assumed otherwise
+   uint32_t getIndirect(nir_intrinsic_instr *, uint8_t s, uint8_t c, Value *&,
+                        bool isScalar = false);
 
    uint32_t getSlotAddress(nir_intrinsic_instr *, uint8_t idx, uint8_t slot);
 
@@ -785,10 +788,10 @@ Converter::getIndirect(nir_src *src, uint8_t idx, Value *&indirect)
 }
 
 uint32_t
-Converter::getIndirect(nir_intrinsic_instr *insn, uint8_t s, uint8_t c, Value *&indirect)
+Converter::getIndirect(nir_intrinsic_instr *insn, uint8_t s, uint8_t c, Value *&indirect, bool isScalar)
 {
    int32_t idx = nir_intrinsic_base(insn) + getIndirect(&insn->src[s], c, indirect);
-   if (indirect)
+   if (indirect && !isScalar)
       indirect = mkOp2v(OP_SHL, TYPE_U32, getSSA(4, FILE_ADDRESS), indirect, loadImm(NULL, 4));
    return idx;
 }
@@ -2053,6 +2056,18 @@ Converter::visit(nir_intrinsic_instr *insn)
             mkLoad(dType, newDefs[i], sym, indirect)->perPatch = vary.patch;
          }
       }
+      break;
+   }
+   case nir_intrinsic_load_kernel_input: {
+      assert(prog->getType() == Program::TYPE_COMPUTE);
+      assert(insn->num_components == 1);
+
+      LValues &newDefs = convert(&insn->dest);
+      const DataType dType = getDType(insn);
+      Value *indirect;
+      uint32_t idx = getIndirect(insn, 0, 0, indirect, true);
+
+      mkLoad(dType, newDefs[0], mkSymbol(FILE_SHADER_INPUT, 0, dType, idx), indirect);
       break;
    }
    case nir_intrinsic_load_barycentric_at_offset:
