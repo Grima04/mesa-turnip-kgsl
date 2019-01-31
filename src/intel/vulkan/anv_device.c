@@ -419,8 +419,6 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
 
-   bool swizzled = anv_gem_get_bit6_swizzle(fd, I915_TILING_X);
-
    /* Starting with Gen10, the timestamp frequency of the command streamer may
     * vary from one part to another. We can query the value from the kernel.
     */
@@ -472,6 +470,20 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->compiler->constant_buffer_0_is_relative =
       device->info.gen < 8 || !device->has_context_isolation;
    device->compiler->supports_shader_constants = true;
+
+   /* Broadwell PRM says:
+    *
+    *   "Before Gen8, there was a historical configuration control field to
+    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
+    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
+    *    DISP_ARB_CTL[14:13].
+    *
+    *    For Gen8 and subsequent generations, the swizzle fields are all
+    *    reserved, and the CPU's memory controller performs all address
+    *    swizzling modifications."
+    */
+   bool swizzled =
+      device->info.gen < 8 && anv_gem_get_bit6_swizzle(fd, I915_TILING_X);
 
    isl_device_init(&device->isl_dev, &device->info, swizzled);
 
