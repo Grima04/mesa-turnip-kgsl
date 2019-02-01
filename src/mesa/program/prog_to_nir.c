@@ -858,10 +858,9 @@ setup_registers_and_variables(struct ptn_compile *c)
    struct nir_shader *shader = b->shader;
 
    /* Create input variables. */
-   const int num_inputs = util_last_bit64(c->prog->info.inputs_read);
-   for (int i = 0; i < num_inputs; i++) {
-      if (!(c->prog->info.inputs_read & BITFIELD64_BIT(i)))
-         continue;
+   uint64_t inputs_read = c->prog->info.inputs_read;
+   while (inputs_read) {
+      const int i = u_bit_scan64(&inputs_read);
 
       nir_variable *var =
          nir_variable_create(shader, nir_var_shader_in, glsl_vec4_type(),
@@ -907,9 +906,9 @@ setup_registers_and_variables(struct ptn_compile *c)
    int max_outputs = util_last_bit(c->prog->info.outputs_written);
    c->output_regs = rzalloc_array(c, nir_register *, max_outputs);
 
-   for (int i = 0; i < max_outputs; i++) {
-      if (!(c->prog->info.outputs_written & BITFIELD64_BIT(i)))
-         continue;
+   uint64_t outputs_written = c->prog->info.outputs_written;
+   while (outputs_written) {
+      const int i = u_bit_scan64(&outputs_written);
 
       /* Since we can't load from outputs in the IR, we make temporaries
        * for the outputs and emit stores to the real outputs at the end of
