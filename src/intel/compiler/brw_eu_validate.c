@@ -470,6 +470,66 @@ is_packed(unsigned vstride, unsigned width, unsigned hstride)
 }
 
 /**
+ * Returns whether an instruction is an explicit or implicit conversion
+ * to/from half-float.
+ */
+static bool
+is_half_float_conversion(const struct gen_device_info *devinfo,
+                         const brw_inst *inst)
+{
+   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+
+   if (dst_type != src0_type &&
+       (dst_type == BRW_REGISTER_TYPE_HF || src0_type == BRW_REGISTER_TYPE_HF)) {
+      return true;
+   } else if (num_sources > 1) {
+      enum brw_reg_type src1_type = brw_inst_src1_type(devinfo, inst);
+      return dst_type != src1_type &&
+            (dst_type == BRW_REGISTER_TYPE_HF ||
+             src1_type == BRW_REGISTER_TYPE_HF);
+   }
+
+   return false;
+}
+
+/*
+ * Returns whether an instruction is using mixed float operation mode
+ */
+static bool
+is_mixed_float(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   if (devinfo->gen < 8)
+      return false;
+
+   if (inst_is_send(devinfo, inst))
+      return false;
+
+   unsigned opcode = brw_inst_opcode(devinfo, inst);
+   const struct opcode_desc *desc = brw_opcode_desc(devinfo, opcode);
+   if (desc->ndst == 0)
+      return false;
+
+   /* FIXME: support 3-src instructions */
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   assert(num_sources < 3);
+
+   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+
+   if (num_sources == 1)
+      return types_are_mixed_float(src0_type, dst_type);
+
+   enum brw_reg_type src1_type = brw_inst_src1_type(devinfo, inst);
+
+   return types_are_mixed_float(src0_type, src1_type) ||
+          types_are_mixed_float(src0_type, dst_type) ||
+          types_are_mixed_float(src1_type, dst_type);
+}
+
+/**
  * Checks restrictions listed in "General Restrictions Based on Operand Types"
  * in the "Register Region Restrictions" section.
  */
@@ -539,7 +599,100 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
        exec_type_size == 8 && dst_type_size == 4)
       dst_type_size = 8;
 
-   if (exec_type_size > dst_type_size) {
+   if (is_half_float_conversion(devinfo, inst)) {
+      /**
+       * A helper to validate used in the validation of the following restriction
+       * from the BDW+ PRM, Volume 2a, Command Reference, Instructions - MOV:
+       *
+       *    "There is no direct conversion from HF to DF or DF to HF.
+       *     There is no direct conversion from HF to Q/UQ or Q/UQ to HF."
+       *
+       * Even if these restrictions are listed for the MOV instruction, we
+       * validate this more generally, since there is the possibility
+       * of implicit conversions from other instructions, such us implicit
+       * conversion from integer to HF with the ADD instruction in SKL+.
+       */
+      enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+      enum brw_reg_type src1_type = num_sources > 1 ?
+                                    brw_inst_src1_type(devinfo, inst) : 0;
+      ERROR_IF(dst_type == BRW_REGISTER_TYPE_HF &&
+               (type_sz(src0_type) == 8 ||
+                (num_sources > 1 && type_sz(src1_type) == 8)),
+               "There are no direct conversions between 64-bit types and HF");
+
+      ERROR_IF(type_sz(dst_type) == 8 &&
+               (src0_type == BRW_REGISTER_TYPE_HF ||
+                (num_sources > 1 && src1_type == BRW_REGISTER_TYPE_HF)),
+               "There are no direct conversions between 64-bit types and HF");
+
+      /* From the BDW+ PRM:
+       *
+       *   "Conversion between Integer and HF (Half Float) must be
+       *    DWord-aligned and strided by a DWord on the destination."
+       *
+       * Also, the above restrictions seems to be expanded on CHV and SKL+ by:
+       *
+       *   "There is a relaxed alignment rule for word destinations. When
+       *    the destination type is word (UW, W, HF), destination data types
+       *    can be aligned to either the lowest word or the second lowest
+       *    word of the execution channel. This means the destination data
+       *    words can be either all in the even word locations or all in the
+       *    odd word locations."
+       *
+       * We do not implement the second rule as is though, since empirical
+       * testing shows inconsistencies:
+       *   - It suggests that packed 16-bit is not allowed, which is not true.
+       *   - It suggests that conversions from Q/DF to W (which need to be
+       *     64-bit aligned on the destination) are not possible, which is
+       *     not true.
+       *
+       * So from this rule we only validate the implication that conversions
+       * from F to HF need to be DWord strided (except in Align1 mixed
+       * float mode where packed fp16 destination is allowed so long as the
+       * destination is oword-aligned).
+       *
+       * Finally, we only validate this for Align1 because Align16 always
+       * requires packed destinations, so these restrictions can't possibly
+       * apply to Align16 mode.
+       */
+      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+         if ((dst_type == BRW_REGISTER_TYPE_HF &&
+              (brw_reg_type_is_integer(src0_type) ||
+               (num_sources > 1 && brw_reg_type_is_integer(src1_type)))) ||
+             (brw_reg_type_is_integer(dst_type) &&
+              (src0_type == BRW_REGISTER_TYPE_HF ||
+               (num_sources > 1 && src1_type == BRW_REGISTER_TYPE_HF)))) {
+            ERROR_IF(dst_stride * dst_type_size != 4,
+                     "Conversions between integer and half-float must be "
+                     "strided by a DWord on the destination");
+
+            unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
+            ERROR_IF(subreg % 4 != 0,
+                     "Conversions between integer and half-float must be "
+                     "aligned to a DWord on the destination");
+         } else if ((devinfo->is_cherryview || devinfo->gen >= 9) &&
+                    dst_type == BRW_REGISTER_TYPE_HF) {
+            unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
+            ERROR_IF(dst_stride != 2 &&
+                     !(is_mixed_float(devinfo, inst) &&
+                       dst_stride == 1 && subreg % 16 == 0),
+                     "Conversions to HF must have either all words in even "
+                     "word locations or all words in odd word locations or "
+                     "be mixed-float with Oword-aligned packed destination");
+         }
+      }
+   }
+
+   /* There are special regioning rules for mixed-float mode in CHV and SKL that
+    * override the general rule for the ratio of sizes of the destination type
+    * and the execution type. We will add validation for those in a later patch.
+    */
+   bool validate_dst_size_and_exec_size_ratio =
+      !is_mixed_float(devinfo, inst) ||
+      !(devinfo->is_cherryview || devinfo->gen >= 9);
+
+   if (validate_dst_size_and_exec_size_ratio &&
+       exec_type_size > dst_type_size) {
       if (!(dst_type_is_byte && inst_is_raw_move(devinfo, inst))) {
          ERROR_IF(dst_stride * dst_type_size != exec_type_size,
                   "Destination stride must be equal to the ratio of the sizes "

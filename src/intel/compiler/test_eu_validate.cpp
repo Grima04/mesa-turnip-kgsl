@@ -848,6 +848,122 @@ TEST_P(validation_test, byte_destination_relaxed_alignment)
    }
 }
 
+TEST_P(validation_test, half_float_conversion)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src_type;
+      unsigned dst_stride;
+      unsigned dst_subnr;
+      bool expected_result_bdw;
+      bool expected_result_chv_gen9;
+   } inst[] = {
+#define INST_C(dst_type, src_type, dst_stride, dst_subnr, expected_result)  \
+      {                                                                     \
+         BRW_REGISTER_TYPE_##dst_type,                                      \
+         BRW_REGISTER_TYPE_##src_type,                                      \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                                \
+         dst_subnr,                                                         \
+         expected_result,                                                   \
+         expected_result,                                                   \
+      }
+#define INST_S(dst_type, src_type, dst_stride, dst_subnr,                   \
+               expected_result_bdw, expected_result_chv_gen9)               \
+      {                                                                     \
+         BRW_REGISTER_TYPE_##dst_type,                                      \
+         BRW_REGISTER_TYPE_##src_type,                                      \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                                \
+         dst_subnr,                                                         \
+         expected_result_bdw,                                               \
+         expected_result_chv_gen9,                                          \
+      }
+
+      /* MOV to half-float destination */
+      INST_C(HF,  B, 1, 0, false),
+      INST_C(HF,  W, 1, 0, false),
+      INST_C(HF, HF, 1, 0, true),
+      INST_C(HF, HF, 1, 2, true),
+      INST_C(HF,  D, 1, 0, false),
+      INST_S(HF,  F, 1, 0, false, true),
+      INST_C(HF,  Q, 1, 0, false),
+      INST_C(HF,  B, 2, 0, true),
+      INST_C(HF,  B, 2, 2, false),
+      INST_C(HF,  W, 2, 0, true),
+      INST_C(HF,  W, 2, 2, false),
+      INST_C(HF, HF, 2, 0, true),
+      INST_C(HF, HF, 2, 2, true),
+      INST_C(HF,  D, 2, 0, true),
+      INST_C(HF,  D, 2, 2, false),
+      INST_C(HF,  F, 2, 0, true),
+      INST_S(HF,  F, 2, 2, false, true),
+      INST_C(HF,  Q, 2, 0, false),
+      INST_C(HF, DF, 2, 0, false),
+      INST_C(HF,  B, 4, 0, false),
+      INST_C(HF,  W, 4, 0, false),
+      INST_C(HF, HF, 4, 0, true),
+      INST_C(HF, HF, 4, 2, true),
+      INST_C(HF,  D, 4, 0, false),
+      INST_C(HF,  F, 4, 0, false),
+      INST_C(HF,  Q, 4, 0, false),
+      INST_C(HF, DF, 4, 0, false),
+
+      /* MOV from half-float source */
+      INST_C( B, HF, 1, 0, false),
+      INST_C( W, HF, 1, 0, false),
+      INST_C( D, HF, 1, 0, true),
+      INST_C( D, HF, 1, 4, true),
+      INST_C( F, HF, 1, 0, true),
+      INST_C( F, HF, 1, 4, true),
+      INST_C( Q, HF, 1, 0, false),
+      INST_C(DF, HF, 1, 0, false),
+      INST_C( B, HF, 2, 0, false),
+      INST_C( W, HF, 2, 0, true),
+      INST_C( W, HF, 2, 2, false),
+      INST_C( D, HF, 2, 0, false),
+      INST_C( F, HF, 2, 0, true),
+      INST_C( B, HF, 4, 0, true),
+      INST_C( B, HF, 4, 1, false),
+      INST_C( W, HF, 4, 0, false),
+
+#undef INST_C
+#undef INST_S
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      if (!devinfo.has_64bit_types &&
+          (type_sz(inst[i].src_type) == 8 || type_sz(inst[i].dst_type) == 8)) {
+         continue;
+      }
+
+      brw_MOV(p, retype(g0, inst[i].dst_type), retype(g0, inst[i].src_type));
+
+      brw_inst_set_exec_size(&devinfo, last_inst, BRW_EXECUTE_4);
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+      brw_inst_set_dst_da1_subreg_nr(&devinfo, last_inst, inst[i].dst_subnr);
+
+      if (inst[i].src_type == BRW_REGISTER_TYPE_B) {
+         brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+         brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_2);
+         brw_inst_set_src0_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_2);
+      } else {
+         brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+         brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_4);
+         brw_inst_set_src0_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_1);
+      }
+
+      if (devinfo.is_cherryview || devinfo.gen >= 9)
+         EXPECT_EQ(inst[i].expected_result_chv_gen9, validate(p));
+      else
+         EXPECT_EQ(inst[i].expected_result_bdw, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
 TEST_P(validation_test, vector_immediate_destination_alignment)
 {
    static const struct {
