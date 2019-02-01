@@ -258,6 +258,9 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 	if (info.render_condition_enable && !fd_render_condition_check(pctx))
 		return;
 
+	if (ctx->blit && ctx->blit(ctx, &info))
+		return;
+
 	if (info.mask & PIPE_MASK_S) {
 		DBG("cannot blit stencil, skipping");
 		info.mask &= ~PIPE_MASK_S;
@@ -270,8 +273,7 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 		return;
 	}
 
-	if (!(ctx->blit && ctx->blit(ctx, &info)))
-		fd_blitter_blit(ctx, &info);
+	fd_blitter_blit(ctx, &info);
 }
 
 /**
