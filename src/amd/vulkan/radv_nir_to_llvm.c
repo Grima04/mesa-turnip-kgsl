@@ -3372,9 +3372,9 @@ ac_setup_rings(struct radv_shader_context *ctx)
 	}
 }
 
-static unsigned
-ac_nir_get_max_workgroup_size(enum chip_class chip_class,
-			      const struct nir_shader *nir)
+unsigned
+radv_nir_get_max_workgroup_size(enum chip_class chip_class,
+				const struct nir_shader *nir)
 {
 	switch (nir->info.stage) {
 	case MESA_SHADER_TESS_CTRL:
