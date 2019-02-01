@@ -90,13 +90,13 @@ can_do_blit(const struct pipe_blit_info *info)
 	 */
 	fail_if(info->dst.box.depth != info->src.box.depth);
 
-	/* We can blit if both or neither formats are compressed formats... */
-	fail_if(util_format_is_compressed(info->src.format) !=
-			util_format_is_compressed(info->src.format));
-
 	/* Fail if unsupported format: */
 	fail_if(!ok_format(info->src.format));
 	fail_if(!ok_format(info->dst.format));
+
+	/* We can blit if both or neither formats are compressed formats... */
+	fail_if(util_format_is_compressed(info->src.format) !=
+			util_format_is_compressed(info->src.format));
 
 	/* ... but only if they're the same compression format. */
 	fail_if(util_format_is_compressed(info->src.format) &&
