@@ -42,9 +42,6 @@
 #include "vl_types.h"
 #include "vl_compositor.h"
 
-#define MIN_DIRTY (0)
-#define MAX_DIRTY (1 << 15)
-
 enum VS_OUTPUT
 {
    VS_O_VPOS = 0,
@@ -899,8 +896,8 @@ gen_vertex_data(struct vl_compositor *c, struct vl_compositor_state *s, struct u
              dirty->y1 <= drawn.y1) {
 
                // We clear the dirty area anyway, no need for clear_render_target
-               dirty->x0 = dirty->y0 = MAX_DIRTY;
-               dirty->x1 = dirty->y1 = MIN_DIRTY;
+               dirty->x0 = dirty->y0 = VL_COMPOSITOR_MAX_DIRTY;
+               dirty->x1 = dirty->y1 = VL_COMPOSITOR_MIN_DIRTY;
             }
          }
       }
@@ -1030,8 +1027,8 @@ vl_compositor_reset_dirty_area(struct u_rect *dirty)
 {
    assert(dirty);
 
-   dirty->x0 = dirty->y0 = MIN_DIRTY;
-   dirty->x1 = dirty->y1 = MAX_DIRTY;
+   dirty->x0 = dirty->y0 = VL_COMPOSITOR_MIN_DIRTY;
+   dirty->x1 = dirty->y1 = VL_COMPOSITOR_MAX_DIRTY;
 }
 
 void
@@ -1378,8 +1375,8 @@ vl_compositor_render(struct vl_compositor_state *s,
 
       c->pipe->clear_render_target(c->pipe, dst_surface, &s->clear_color,
                                    0, 0, dst_surface->width, dst_surface->height, false);
-      dirty_area->x0 = dirty_area->y0 = MAX_DIRTY;
-      dirty_area->x1 = dirty_area->y1 = MIN_DIRTY;
+      dirty_area->x0 = dirty_area->y0 = VL_COMPOSITOR_MAX_DIRTY;
+      dirty_area->x1 = dirty_area->y1 = VL_COMPOSITOR_MIN_DIRTY;
    }
 
    c->pipe->set_framebuffer_state(c->pipe, &c->fb_state);

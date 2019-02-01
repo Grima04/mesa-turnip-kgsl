@@ -44,6 +44,8 @@ struct pipe_context;
  */
 
 #define VL_COMPOSITOR_MAX_LAYERS 16
+#define VL_COMPOSITOR_MIN_DIRTY (0)
+#define VL_COMPOSITOR_MAX_DIRTY (1 << 15)
 
 /* deinterlace allgorithem */
 enum vl_compositor_deinterlace
