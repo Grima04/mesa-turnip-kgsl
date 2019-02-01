@@ -988,6 +988,87 @@ nir_op_vec(unsigned components)
    }
 }
 
+static inline bool
+nir_is_float_control_signed_zero_inf_nan_preserve(unsigned execution_mode, unsigned bit_size)
+{
+    return (16 == bit_size && execution_mode & FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP16) ||
+        (32 == bit_size && execution_mode & FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP32) ||
+        (64 == bit_size && execution_mode & FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP64);
+}
+
+static inline bool
+nir_is_denorm_flush_to_zero(unsigned execution_mode, unsigned bit_size)
+{
+    return (16 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP16) ||
+        (32 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32) ||
+        (64 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64);
+}
+
+static inline bool
+nir_is_denorm_preserve(unsigned execution_mode, unsigned bit_size)
+{
+    return (16 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP16) ||
+        (32 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP32) ||
+        (64 == bit_size && execution_mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP64);
+}
+
+static inline bool
+nir_is_rounding_mode_rtne(unsigned execution_mode, unsigned bit_size)
+{
+    return (16 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16) ||
+        (32 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP32) ||
+        (64 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64);
+}
+
+static inline bool
+nir_is_rounding_mode_rtz(unsigned execution_mode, unsigned bit_size)
+{
+    return (16 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16) ||
+        (32 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP32) ||
+        (64 == bit_size && execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64);
+}
+
+static inline bool
+nir_has_any_rounding_mode_rtz(unsigned execution_mode)
+{
+    return (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16) ||
+        (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP32) ||
+        (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64);
+}
+
+static inline bool
+nir_has_any_rounding_mode_rtne(unsigned execution_mode)
+{
+    return (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16) ||
+        (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP32) ||
+        (execution_mode & FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64);
+}
+
+static inline nir_rounding_mode
+nir_get_rounding_mode_from_float_controls(unsigned execution_mode,
+                                          nir_alu_type type)
+{
+   if (nir_alu_type_get_base_type(type) != nir_type_float)
+      return nir_rounding_mode_undef;
+
+   unsigned bit_size = nir_alu_type_get_type_size(type);
+
+   if (nir_is_rounding_mode_rtz(execution_mode, bit_size))
+      return nir_rounding_mode_rtz;
+   if (nir_is_rounding_mode_rtne(execution_mode, bit_size))
+      return nir_rounding_mode_rtne;
+   return nir_rounding_mode_undef;
+}
+
+static inline bool
+nir_has_any_rounding_mode_enabled(unsigned execution_mode)
+{
+   bool result =
+      nir_has_any_rounding_mode_rtne(execution_mode) ||
+      nir_has_any_rounding_mode_rtz(execution_mode);
+   return result;
+}
+
 typedef enum {
    /**
     * Operation where the first two sources are commutative.
