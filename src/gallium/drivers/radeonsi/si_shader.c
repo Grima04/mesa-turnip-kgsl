@@ -5380,10 +5380,9 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 
 	/* Compute the per-SIMD wave counts. */
 	if (conf->num_sgprs) {
-		if (sscreen->info.chip_class >= VI)
-			max_simd_waves = MIN2(max_simd_waves, 800 / conf->num_sgprs);
-		else
-			max_simd_waves = MIN2(max_simd_waves, 512 / conf->num_sgprs);
+		max_simd_waves =
+			MIN2(max_simd_waves,
+			     ac_get_num_physical_sgprs(sscreen->info.chip_class) / conf->num_sgprs);
 	}
 
 	if (conf->num_vgprs)
