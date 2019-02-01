@@ -117,7 +117,7 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
          (void) svga_buffer_handle(svga, resource, sbuf->bind_flags);
       }
 
-      if (sbuf->dma.pending > 0) {
+      if (sbuf->dma.pending) {
          svga_buffer_upload_flush(svga, sbuf);
          svga_context_finish(svga);
       }
