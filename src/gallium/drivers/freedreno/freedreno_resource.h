@@ -187,10 +187,6 @@ fd_resource_nr_samples(struct pipe_resource *prsc)
 	return MAX2(1, prsc->nr_samples);
 }
 
-void fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard,
-		enum fd_render_stage stage);
-void fd_blitter_pipe_end(struct fd_context *ctx);
-
 void fd_resource_screen_init(struct pipe_screen *pscreen);
 void fd_resource_context_init(struct pipe_context *pctx);
 
