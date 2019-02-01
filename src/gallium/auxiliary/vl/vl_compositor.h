@@ -72,6 +72,7 @@ struct vl_compositor_layer
    struct pipe_viewport_state viewport;
 
    void *fs;
+   void *cs;
    void *samplers[3];
    void *blend;
 
