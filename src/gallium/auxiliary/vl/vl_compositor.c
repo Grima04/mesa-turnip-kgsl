@@ -28,6 +28,7 @@
 #include "util/u_sampler.h"
 
 #include "vl_compositor_gfx.h"
+#include "vl_compositor_cs.h"
 
 static bool
 init_shaders(struct vl_compositor *c)
@@ -37,18 +38,6 @@ init_shaders(struct vl_compositor *c)
    c->vs = create_vert_shader(c);
    if (!c->vs) {
       debug_printf("Unable to create vertex shader.\n");
-      return false;
-   }
-
-   c->fs_video_buffer = create_frag_shader_video_buffer(c);
-   if (!c->fs_video_buffer) {
-      debug_printf("Unable to create YCbCr-to-RGB fragment shader.\n");
-      return false;
-   }
-
-   c->fs_weave_rgb = create_frag_shader_weave_rgb(c);
-   if (!c->fs_weave_rgb) {
-      debug_printf("Unable to create YCbCr-to-RGB weave fragment shader.\n");
       return false;
    }
 
@@ -74,17 +63,49 @@ init_shaders(struct vl_compositor *c)
       return false;
    }
 
-   c->fs_rgba = create_frag_shader_rgba(c);
-   if (!c->fs_rgba) {
-      debug_printf("Unable to create RGB-to-RGB fragment shader.\n");
-      return false;
-   }
-
    c->fs_rgb_yuv.y = create_frag_shader_rgb_yuv(c, true);
    c->fs_rgb_yuv.uv = create_frag_shader_rgb_yuv(c, false);
    if (!c->fs_rgb_yuv.y || !c->fs_rgb_yuv.uv) {
       debug_printf("Unable to create RGB-to-YUV fragment shader.\n");
       return false;
+   }
+
+   if (c->pipe_compute_supported) {
+      c->cs_video_buffer = vl_compositor_cs_create_shader(c, compute_shader_video_buffer);
+      if (!c->cs_video_buffer) {
+         debug_printf("Unable to create video_buffer compute shader.\n");
+         return false;
+      }
+
+      c->cs_weave_rgb = vl_compositor_cs_create_shader(c, compute_shader_weave);
+      if (!c->cs_weave_rgb) {
+         debug_printf("Unable to create weave_rgb compute shader.\n");
+         return false;
+      }
+
+      c->cs_rgba = vl_compositor_cs_create_shader(c, compute_shader_rgba);
+      if (!c->cs_rgba) {
+         debug_printf("Unable to create RGB-to-RGB compute shader.\n");
+         return false;
+      }
+   } else {
+      c->fs_video_buffer = create_frag_shader_video_buffer(c);
+      if (!c->fs_video_buffer) {
+         debug_printf("Unable to create YCbCr-to-RGB fragment shader.\n");
+         return false;
+      }
+
+      c->fs_weave_rgb = create_frag_shader_weave_rgb(c);
+      if (!c->fs_weave_rgb) {
+         debug_printf("Unable to create YCbCr-to-RGB weave fragment shader.\n");
+         return false;
+      }
+
+      c->fs_rgba = create_frag_shader_rgba(c);
+      if (!c->fs_rgba) {
+         debug_printf("Unable to create RGB-to-RGB fragment shader.\n");
+         return false;
+      }
    }
 
    return true;
@@ -95,17 +116,24 @@ static void cleanup_shaders(struct vl_compositor *c)
    assert(c);
 
    c->pipe->delete_vs_state(c->pipe, c->vs);
-   c->pipe->delete_fs_state(c->pipe, c->fs_video_buffer);
-   c->pipe->delete_fs_state(c->pipe, c->fs_weave_rgb);
    c->pipe->delete_fs_state(c->pipe, c->fs_yuv.weave.y);
    c->pipe->delete_fs_state(c->pipe, c->fs_yuv.weave.uv);
    c->pipe->delete_fs_state(c->pipe, c->fs_yuv.bob.y);
    c->pipe->delete_fs_state(c->pipe, c->fs_yuv.bob.uv);
    c->pipe->delete_fs_state(c->pipe, c->fs_palette.yuv);
    c->pipe->delete_fs_state(c->pipe, c->fs_palette.rgb);
-   c->pipe->delete_fs_state(c->pipe, c->fs_rgba);
    c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.y);
    c->pipe->delete_fs_state(c->pipe, c->fs_rgb_yuv.uv);
+
+   if (c->pipe_compute_supported) {
+      c->pipe->delete_compute_state(c->pipe, c->cs_video_buffer);
+      c->pipe->delete_compute_state(c->pipe, c->cs_weave_rgb);
+      c->pipe->delete_compute_state(c->pipe, c->cs_rgba);
+   } else {
+      c->pipe->delete_fs_state(c->pipe, c->fs_video_buffer);
+      c->pipe->delete_fs_state(c->pipe, c->fs_weave_rgb);
+      c->pipe->delete_fs_state(c->pipe, c->fs_rgba);
+   }
 }
 
 static bool
@@ -409,6 +437,7 @@ vl_compositor_clear_layers(struct vl_compositor_state *s)
       s->layers[i].clearing = i ? false : true;
       s->layers[i].blend = NULL;
       s->layers[i].fs = NULL;
+      s->layers[i].cs = NULL;
       s->layers[i].viewport.scale[2] = 1;
       s->layers[i].viewport.translate[2] = 0;
       s->layers[i].rotate = VL_COMPOSITOR_ROTATE_0;
@@ -532,26 +561,39 @@ vl_compositor_set_buffer_layer(struct vl_compositor_state *s,
       float half_a_line = 0.5f / s->layers[layer].zw.y;
       switch(deinterlace) {
       case VL_COMPOSITOR_WEAVE:
-         s->layers[layer].fs = c->fs_weave_rgb;
+         if (c->pipe_compute_supported)
+            s->layers[layer].cs = c->cs_weave_rgb;
+         else
+            s->layers[layer].fs = c->fs_weave_rgb;
          break;
 
       case VL_COMPOSITOR_BOB_TOP:
          s->layers[layer].zw.x = 0.0f;
          s->layers[layer].src.tl.y += half_a_line;
          s->layers[layer].src.br.y += half_a_line;
-         s->layers[layer].fs = c->fs_video_buffer;
+         if (c->pipe_compute_supported)
+            s->layers[layer].cs = c->cs_video_buffer;
+         else
+            s->layers[layer].fs = c->fs_video_buffer;
          break;
 
       case VL_COMPOSITOR_BOB_BOTTOM:
          s->layers[layer].zw.x = 1.0f;
          s->layers[layer].src.tl.y -= half_a_line;
          s->layers[layer].src.br.y -= half_a_line;
-         s->layers[layer].fs = c->fs_video_buffer;
+         if (c->pipe_compute_supported)
+            s->layers[layer].cs = c->cs_video_buffer;
+         else
+            s->layers[layer].fs = c->fs_video_buffer;
          break;
       }
 
-   } else
-      s->layers[layer].fs = c->fs_video_buffer;
+   } else {
+      if (c->pipe_compute_supported)
+         s->layers[layer].cs = c->cs_video_buffer;
+      else
+         s->layers[layer].fs = c->fs_video_buffer;
+   }
 }
 
 void
@@ -600,7 +642,10 @@ vl_compositor_set_rgba_layer(struct vl_compositor_state *s,
    assert(layer < VL_COMPOSITOR_MAX_LAYERS);
 
    s->used_layers |= 1 << layer;
-   s->layers[layer].fs = c->fs_rgba;
+   if (c->pipe_compute_supported)
+      s->layers[layer].cs = c->cs_rgba;
+   else
+      s->layers[layer].fs = c->fs_rgba;
    s->layers[layer].samplers[0] = c->sampler_linear;
    s->layers[layer].samplers[1] = NULL;
    s->layers[layer].samplers[2] = NULL;
@@ -701,7 +746,11 @@ vl_compositor_render(struct vl_compositor_state *s,
                      bool                        clear_dirty)
 {
    assert(s);
-   vl_compositor_gfx_render(s, c, dst_surface, dirty_area, clear_dirty);
+
+   if (s->layers->cs)
+      vl_compositor_cs_render(s, c, dst_surface, dirty_area, clear_dirty);
+   else
+      vl_compositor_gfx_render(s, c, dst_surface, dirty_area, clear_dirty);
 }
 
 bool
@@ -711,6 +760,7 @@ vl_compositor_init(struct vl_compositor *c, struct pipe_context *pipe)
 
    memset(c, 0, sizeof(*c));
 
+   c->pipe_compute_supported = pipe->screen->get_param(pipe->screen, PIPE_CAP_COMPUTE);
    c->pipe = pipe;
 
    if (!init_pipe_state(c)) {

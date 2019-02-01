@@ -117,6 +117,11 @@ struct vl_compositor
    void *fs_video_buffer;
    void *fs_weave_rgb;
    void *fs_rgba;
+   void *cs_video_buffer;
+   void *cs_weave_rgb;
+   void *cs_rgba;
+
+   bool pipe_compute_supported;
 
    struct {
       struct {
