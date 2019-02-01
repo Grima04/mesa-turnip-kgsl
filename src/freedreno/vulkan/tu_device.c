@@ -1390,7 +1390,33 @@ tu_alloc_memory(struct tu_device *device,
    if (mem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize);
+   const VkImportMemoryFdInfoKHR *fd_info =
+      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
+   if (fd_info && !fd_info->handleType)
+      fd_info = NULL;
+
+   if (fd_info) {
+      assert(fd_info->handleType ==
+                VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+             fd_info->handleType ==
+                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+
+      /*
+       * TODO Importing the same fd twice gives us the same handle without
+       * reference counting.  We need to maintain a per-instance handle-to-bo
+       * table and add reference count to tu_bo.
+       */
+      result = tu_bo_init_dmabuf(device, &mem->bo,
+                                 pAllocateInfo->allocationSize, fd_info->fd);
+      if (result == VK_SUCCESS) {
+         /* take ownership and close the fd */
+         close(fd_info->fd);
+      }
+   } else {
+      result =
+         tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize);
+   }
+
    if (result != VK_SUCCESS) {
       vk_free2(&device->alloc, pAllocator, mem);
       return result;
@@ -1961,6 +1987,41 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
     *          because the loader no longer does so.
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 3u);
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetMemoryFdKHR(VkDevice _device,
+                  const VkMemoryGetFdInfoKHR *pGetFdInfo,
+                  int *pFd)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_device_memory, memory, pGetFdInfo->memory);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR);
+
+   /* At the moment, we support only the below handle types. */
+   assert(pGetFdInfo->handleType ==
+             VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+          pGetFdInfo->handleType ==
+             VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+
+   int prime_fd = tu_bo_export_dmabuf(device, &memory->bo);
+   if (prime_fd < 0)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+   *pFd = prime_fd;
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetMemoryFdPropertiesKHR(VkDevice _device,
+                            VkExternalMemoryHandleTypeFlagBits handleType,
+                            int fd,
+                            VkMemoryFdPropertiesKHR *pMemoryFdProperties)
+{
+   assert(handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+   pMemoryFdProperties->memoryTypeBits = 1;
    return VK_SUCCESS;
 }
 

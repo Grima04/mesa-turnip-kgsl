@@ -73,6 +73,8 @@ EXTENSIONS = [
     Extension('VK_EXT_debug_report',                      9, True),
     Extension('VK_KHR_external_memory_capabilities',      1, True),
     Extension('VK_KHR_external_memory',                   1, True),
+    Extension('VK_KHR_external_memory_fd',                1, True),
+    Extension('VK_EXT_external_memory_dma_buf',           1, True),
 ]
 
 class VkVersion:
