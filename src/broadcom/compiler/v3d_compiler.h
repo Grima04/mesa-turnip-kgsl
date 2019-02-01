@@ -357,7 +357,8 @@ struct v3d_fs_key {
         bool sample_alpha_to_one;
         bool clamp_color;
         bool shade_model_flat;
-        uint8_t nr_cbufs;
+        /* Mask of which color render targets are present. */
+        uint8_t cbufs;
         uint8_t swap_color_rb;
         /* Mask of which render targets need to be written as 32-bit floats */
         uint8_t f32_color_rb;
