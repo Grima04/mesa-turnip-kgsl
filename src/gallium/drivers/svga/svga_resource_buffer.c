@@ -283,9 +283,9 @@ done:
 
 
 static void
-svga_buffer_transfer_flush_region( struct pipe_context *pipe,
-                                   struct pipe_transfer *transfer,
-                                   const struct pipe_box *box)
+svga_buffer_transfer_flush_region(struct pipe_context *pipe,
+                                  struct pipe_transfer *transfer,
+                                  const struct pipe_box *box)
 {
    struct svga_screen *ss = svga_screen(pipe->screen);
    struct svga_buffer *sbuf = svga_buffer(transfer->resource);
@@ -303,8 +303,8 @@ svga_buffer_transfer_flush_region( struct pipe_context *pipe,
 
 
 static void
-svga_buffer_transfer_unmap( struct pipe_context *pipe,
-                            struct pipe_transfer *transfer )
+svga_buffer_transfer_unmap(struct pipe_context *pipe,
+                           struct pipe_transfer *transfer)
 {
    struct svga_screen *ss = svga_screen(pipe->screen);
    struct svga_context *svga = svga_context(pipe);
@@ -349,11 +349,11 @@ svga_buffer_transfer_unmap( struct pipe_context *pipe,
 
 
 static void
-svga_buffer_destroy( struct pipe_screen *screen,
-		     struct pipe_resource *buf )
+svga_buffer_destroy(struct pipe_screen *screen,
+                    struct pipe_resource *buf)
 {
-   struct svga_screen *ss = svga_screen(screen); 
-   struct svga_buffer *sbuf = svga_buffer( buf );
+   struct svga_screen *ss = svga_screen(screen);
+   struct svga_buffer *sbuf = svga_buffer(buf);
 
    assert(!p_atomic_read(&buf->reference.count));
 
@@ -395,7 +395,7 @@ struct u_resource_vtbl svga_buffer_vtbl =
 
 struct pipe_resource *
 svga_buffer_create(struct pipe_screen *screen,
-		   const struct pipe_resource *template)
+                   const struct pipe_resource *template)
 {
    struct svga_screen *ss = svga_screen(screen);
    struct svga_buffer *sbuf;
@@ -483,7 +483,7 @@ struct pipe_resource *
 svga_user_buffer_create(struct pipe_screen *screen,
                         void *ptr,
                         unsigned bytes,
-			unsigned bind)
+                        unsigned bind)
 {
    struct svga_buffer *sbuf;
    struct svga_screen *ss = svga_screen(screen);
@@ -517,6 +517,3 @@ svga_user_buffer_create(struct pipe_screen *screen,
 no_sbuf:
    return NULL;
 }
-
-
-
