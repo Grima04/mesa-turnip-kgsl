@@ -90,7 +90,7 @@ struct vl_compositor_state
 
    bool scissor_valid;
    struct pipe_scissor_state scissor;
-   struct pipe_resource *csc_matrix;
+   struct pipe_resource *shader_params;
 
    union pipe_color_union clear_color;
 

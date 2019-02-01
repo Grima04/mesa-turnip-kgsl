@@ -439,7 +439,7 @@ vl_compositor_set_csc_matrix(struct vl_compositor_state *s,
 
    assert(s);
 
-   float *ptr = pipe_buffer_map(s->pipe, s->csc_matrix,
+   float *ptr = pipe_buffer_map(s->pipe, s->shader_params,
                                PIPE_TRANSFER_WRITE | PIPE_TRANSFER_DISCARD_RANGE,
                                &buf_transfer);
 
@@ -750,15 +750,15 @@ vl_compositor_init_state(struct vl_compositor_state *s, struct pipe_context *pip
     * Const buffer contains the color conversion matrix and bias vectors
     */
    /* XXX: Create with IMMUTABLE/STATIC... although it does change every once in a long while... */
-   s->csc_matrix = pipe_buffer_create_const0
+   s->shader_params = pipe_buffer_create_const0
    (
       pipe->screen,
       PIPE_BIND_CONSTANT_BUFFER,
       PIPE_USAGE_DEFAULT,
-      sizeof(csc_matrix) + 2*sizeof(float)
+      sizeof(csc_matrix) + 4*sizeof(float) + 6*sizeof(int)
    );
 
-   if (!s->csc_matrix)
+   if (!s->shader_params)
       return false;
 
    vl_compositor_clear_layers(s);
@@ -776,5 +776,5 @@ vl_compositor_cleanup_state(struct vl_compositor_state *s)
    assert(s);
 
    vl_compositor_clear_layers(s);
-   pipe_resource_reference(&s->csc_matrix, NULL);
+   pipe_resource_reference(&s->shader_params, NULL);
 }
