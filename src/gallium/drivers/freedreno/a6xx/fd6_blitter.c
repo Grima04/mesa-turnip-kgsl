@@ -505,10 +505,13 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	}
 }
 
-static void
-emit_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+static bool
+fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct fd_batch *batch;
+
+	if (!can_do_blit(info))
+		return false;
 
 	fd_fence_ref(ctx->base.screen, &ctx->last_fence, NULL);
 
@@ -547,16 +550,6 @@ emit_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_batch_flush(batch, false, false);
 	fd_batch_reference(&batch, NULL);
-}
-
-static bool
-fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
-{
-	if (!can_do_blit(info)) {
-		return false;
-	}
-
-	emit_blit(ctx, info);
 
 	return true;
 }
