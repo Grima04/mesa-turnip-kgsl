@@ -544,8 +544,9 @@ tu_GetPhysicalDeviceImageFormatProperties(
                                          pImageFormatProperties);
 }
 
-static void
-get_external_image_format_properties(
+static VkResult
+tu_get_external_image_format_properties(
+   const struct tu_physical_device *physical_device,
    const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
    VkExternalMemoryHandleTypeFlagBitsKHR handleType,
    VkExternalMemoryPropertiesKHR *external_properties)
@@ -553,6 +554,15 @@ get_external_image_format_properties(
    VkExternalMemoryFeatureFlagBitsKHR flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR export_flags = 0;
    VkExternalMemoryHandleTypeFlagsKHR compat_flags = 0;
+
+   /* From the Vulkan 1.1.98 spec:
+    *
+    *    If handleType is not compatible with the format, type, tiling,
+    *    usage, and flags specified in VkPhysicalDeviceImageFormatInfo2,
+    *    then vkGetPhysicalDeviceImageFormatProperties2 returns
+    *    VK_ERROR_FORMAT_NOT_SUPPORTED.
+    */
+
    switch (handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
@@ -566,7 +576,9 @@ get_external_image_format_properties(
             VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
          break;
       default:
-         break;
+         return vk_errorf(physical_device->instance, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                          "VkExternalMemoryTypeFlagBits(0x%x) unsupported for VkImageType(%d)",
+                          handleType, pImageFormatInfo->type);
       }
       break;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
@@ -574,7 +586,9 @@ get_external_image_format_properties(
       compat_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
       break;
    default:
-      break;
+      return vk_errorf(physical_device->instance, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                       "VkExternalMemoryTypeFlagBits(0x%x) unsupported",
+                       handleType);
    }
 
    *external_properties = (VkExternalMemoryPropertiesKHR) {
@@ -582,6 +596,8 @@ get_external_image_format_properties(
       .exportFromImportedHandleTypes = export_flags,
       .compatibleHandleTypes = compat_flags,
    };
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -631,29 +647,11 @@ tu_GetPhysicalDeviceImageFormatProperties2(
     *    present and VkExternalImageFormatPropertiesKHR will be ignored.
     */
    if (external_info && external_info->handleType != 0) {
-      switch (external_info->handleType) {
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
-         get_external_image_format_properties(
-            base_info, external_info->handleType,
-            &external_props->externalMemoryProperties);
-         break;
-      default:
-         /* From the Vulkan 1.0.42 spec:
-          *
-          *    If handleType is not compatible with the [parameters]
-          * specified
-          *    in VkPhysicalDeviceImageFormatInfo2KHR, then
-          *    vkGetPhysicalDeviceImageFormatProperties2KHR returns
-          *    VK_ERROR_FORMAT_NOT_SUPPORTED.
-          */
-         result = vk_errorf(
-            physical_device->instance, VK_ERROR_FORMAT_NOT_SUPPORTED,
-            "unsupported VkExternalMemoryTypeFlagBitsKHR 0x%x",
-            external_info->handleType);
+      result = tu_get_external_image_format_properties(
+         physical_device, base_info, external_info->handleType,
+         &external_props->externalMemoryProperties);
+      if (result != VK_SUCCESS)
          goto fail;
-      }
    }
 
    return VK_SUCCESS;
