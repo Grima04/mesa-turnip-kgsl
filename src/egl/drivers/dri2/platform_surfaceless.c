@@ -181,9 +181,9 @@ dri2_surfaceless_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *dpy)
+surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(dpy);
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    static const struct {
       const char *format_name;
       unsigned int rgba_masks[4];
@@ -199,7 +199,7 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *dpy)
       for (unsigned j = 0; j < ARRAY_SIZE(visuals); j++) {
          struct dri2_egl_config *dri2_conf;
 
-         dri2_conf = dri2_add_config(dpy, dri2_dpy->driver_configs[i],
+         dri2_conf = dri2_add_config(disp, dri2_dpy->driver_configs[i],
                config_count + 1, EGL_PBUFFER_BIT, NULL,
                visuals[j].rgba_masks);
 
@@ -272,9 +272,9 @@ static const __DRIextension *swrast_loader_extensions[] = {
 };
 
 static bool
-surfaceless_probe_device(_EGLDisplay *dpy, bool swrast)
+surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 {
-   struct dri2_egl_display *dri2_dpy = dpy->DriverData;
+   struct dri2_egl_display *dri2_dpy = disp->DriverData;
    const int limit = 64;
    const int base = 128;
    int fd;
@@ -304,14 +304,14 @@ surfaceless_probe_device(_EGLDisplay *dpy, bool swrast)
       }
 
       dri2_dpy->fd = fd;
-      if (dri2_load_driver_dri3(dpy)) {
+      if (dri2_load_driver_dri3(disp)) {
          _EGLDevice *dev = _eglAddDevice(dri2_dpy->fd, swrast);
          if (!dev) {
             dlclose(dri2_dpy->driver);
             _eglLog(_EGL_WARNING, "DRI2: failed to find EGLDevice");
             continue;
          }
-         dpy->Device = dev;
+         disp->Device = dev;
          return true;
       }
 
@@ -331,7 +331,7 @@ surfaceless_probe_device(_EGLDisplay *dpy, bool swrast)
          return false;
       }
 
-      if (dri2_load_driver_swrast(dpy)) {
+      if (dri2_load_driver_swrast(disp)) {
          dri2_dpy->loader_extensions = swrast_loader_extensions;
          return true;
       }

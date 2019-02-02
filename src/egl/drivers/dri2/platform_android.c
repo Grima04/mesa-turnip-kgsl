@@ -457,7 +457,7 @@ droid_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-droid_swap_interval(_EGLDriver *drv, _EGLDisplay *dpy,
+droid_swap_interval(_EGLDriver *drv, _EGLDisplay *disp,
                    _EGLSurface *surf, EGLint interval)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -960,7 +960,7 @@ droid_create_image_from_name(_EGLDisplay *disp, _EGLContext *ctx,
 #endif /* HAVE_DRM_GRALLOC */
 
 static EGLBoolean
-droid_query_surface(_EGLDriver *drv, _EGLDisplay *dpy, _EGLSurface *surf,
+droid_query_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
                     EGLint attribute, EGLint *value)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -982,7 +982,7 @@ droid_query_surface(_EGLDriver *drv, _EGLDisplay *dpy, _EGLSurface *surf,
       default:
          break;
    }
-   return _eglQuerySurface(drv, dpy, surf, attribute, value);
+   return _eglQuerySurface(drv, disp, surf, attribute, value);
 }
 
 static _EGLImage *
@@ -1131,9 +1131,9 @@ droid_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
 }
 
 static EGLBoolean
-droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *dpy)
+droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(dpy);
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    static const struct {
       int format;
       unsigned int rgba_masks[4];
@@ -1178,7 +1178,7 @@ droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *dpy)
          };
 
          struct dri2_egl_config *dri2_conf =
-            dri2_add_config(dpy, dri2_dpy->driver_configs[j],
+            dri2_add_config(disp, dri2_dpy->driver_configs[j],
                             config_count + 1, surface_type, config_attrs,
                             visuals[i].rgba_masks);
          if (dri2_conf) {
