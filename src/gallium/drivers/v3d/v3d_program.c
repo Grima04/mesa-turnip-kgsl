@@ -200,7 +200,7 @@ v3d_shader_precompile(struct v3d_context *v3d,
                 nir_foreach_variable(var, &s->outputs) {
                         if (var->data.location == FRAG_RESULT_COLOR) {
                                 key.nr_cbufs = 1;
-                        } else if (var->data.location == FRAG_RESULT_DATA0) {
+                        } else if (var->data.location >= FRAG_RESULT_DATA0) {
                                 key.nr_cbufs = MAX2(key.nr_cbufs,
                                                     var->data.location -
                                                     FRAG_RESULT_DATA0 + 1);
