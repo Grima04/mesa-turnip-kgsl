@@ -1360,8 +1360,7 @@ NineDevice9_ResolveZ( struct NineDevice9 *device )
 static void
 nine_context_set_texture_apply(struct NineDevice9 *device,
                                DWORD stage,
-                               BOOL enabled,
-                               BOOL shadow,
+                               DWORD fetch4_shadow_enabled,
                                DWORD lod,
                                D3DRESOURCETYPE type,
                                uint8_t pstype,
@@ -1431,8 +1430,7 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
 
 CSMT_ITEM_NO_WAIT(nine_context_set_texture_apply,
                   ARG_VAL(DWORD, stage),
-                  ARG_VAL(BOOL, enabled),
-                  ARG_VAL(BOOL, shadow),
+                  ARG_VAL(DWORD, fetch4_shadow_enabled),
                   ARG_VAL(DWORD, lod),
                   ARG_VAL(D3DRESOURCETYPE, type),
                   ARG_VAL(uint8_t, pstype),
@@ -1441,10 +1439,15 @@ CSMT_ITEM_NO_WAIT(nine_context_set_texture_apply,
                   ARG_BIND_VIEW(struct pipe_sampler_view, view1))
 {
     struct nine_context *context = &device->context;
+    uint enabled = fetch4_shadow_enabled & 1;
+    uint shadow = (fetch4_shadow_enabled >> 1) & 1;
+    uint fetch4_compatible = (fetch4_shadow_enabled >> 2) & 1;
 
     context->texture[stage].enabled = enabled;
     context->samplers_shadow &= ~(1 << stage);
     context->samplers_shadow |= shadow << stage;
+    context->samplers_fetch4 &= ~(1 << stage);
+    context->samplers_fetch4 |= fetch4_compatible << stage;
     context->texture[stage].shadow = shadow;
     context->texture[stage].lod = lod;
     context->texture[stage].type = type;
@@ -1461,8 +1464,7 @@ nine_context_set_texture(struct NineDevice9 *device,
                          DWORD Stage,
                          struct NineBaseTexture9 *tex)
 {
-    BOOL enabled = FALSE;
-    BOOL shadow = FALSE;
+    DWORD fetch4_shadow_enabled = 0;
     DWORD lod = 0;
     D3DRESOURCETYPE type = D3DRTYPE_TEXTURE;
     uint8_t pstype = 0;
@@ -1473,8 +1475,9 @@ nine_context_set_texture(struct NineDevice9 *device,
      * In that case, the texture is rebound later
      * (in NineBaseTexture9_Validate/NineBaseTexture9_UploadSelf). */
     if (tex && tex->base.resource) {
-        enabled = TRUE;
-        shadow = tex->shadow;
+        fetch4_shadow_enabled = 1;
+        fetch4_shadow_enabled |= tex->shadow << 1;
+        fetch4_shadow_enabled |= tex->fetch4_compatible << 2;
         lod = tex->managed.lod;
         type = tex->base.type;
         pstype = tex->pstype;
@@ -1483,8 +1486,9 @@ nine_context_set_texture(struct NineDevice9 *device,
         view1 = NineBaseTexture9_GetSamplerView(tex, 1);
     }
 
-    nine_context_set_texture_apply(device, Stage, enabled,
-                                   shadow, lod, type, pstype,
+    nine_context_set_texture_apply(device, Stage,
+                                   fetch4_shadow_enabled,
+                                   lod, type, pstype,
                                    res, view0, view1);
 }
 

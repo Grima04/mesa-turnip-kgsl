@@ -181,6 +181,28 @@ pipe_to_d3d9_format(enum pipe_format format)
     return nine_pipe_to_d3d9_format_map[format];
 }
 
+static inline boolean
+fetch4_compatible_format( D3DFORMAT fmt )
+{
+    /* Basically formats with only red channel are allowed (with some exceptions) */
+    static const D3DFORMAT allowed[] = { /* TODO: list incomplete */
+        D3DFMT_L8,
+        D3DFMT_L16,
+        D3DFMT_R16F,
+        D3DFMT_R32F,
+        D3DFMT_A8,
+        D3DFMT_DF16,
+        D3DFMT_DF24,
+        D3DFMT_INTZ
+    };
+    unsigned i;
+
+    for (i = 0; i < sizeof(allowed)/sizeof(D3DFORMAT); i++) {
+        if (fmt == allowed[i]) { return TRUE; }
+    }
+    return FALSE;
+}
+
 /* ATI1 and ATI2 are not officially compressed in d3d9 */
 static inline boolean
 compressed_format( D3DFORMAT fmt )

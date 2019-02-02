@@ -27,9 +27,9 @@
 #include "texture9.h"
 #include "cubetexture9.h"
 #include "volumetexture9.h"
+#include "nine_pipe.h"
 
 #if defined(DEBUG) || !defined(NDEBUG)
-#include "nine_pipe.h"
 #include "nine_dump.h"
 #endif
 
@@ -85,6 +85,7 @@ NineBaseTexture9_ctor( struct NineBaseTexture9 *This,
     This->shadow = (This->format != D3DFMT_INTZ && This->format != D3DFMT_DF16 &&
                     This->format != D3DFMT_DF24) &&
                    util_format_has_depth(util_format_description(This->base.info.format));
+    This->fetch4_compatible = fetch4_compatible_format(This->format);
 
     list_inithead(&This->list);
     list_inithead(&This->list2);

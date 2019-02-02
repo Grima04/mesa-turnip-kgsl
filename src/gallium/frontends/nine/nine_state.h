@@ -297,6 +297,7 @@ struct nine_context {
     DWORD samp[NINE_MAX_SAMPLERS][NINED3DSAMP_COUNT];
 
     uint32_t samplers_shadow;
+    uint32_t samplers_fetch4;
 
     uint8_t bound_samplers_mask_vs;
     uint16_t bound_samplers_mask_ps;
