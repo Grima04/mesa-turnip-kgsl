@@ -1967,7 +1967,7 @@ tu_ResetCommandPool(VkDevice device,
 void
 tu_TrimCommandPool(VkDevice device,
                    VkCommandPool commandPool,
-                   VkCommandPoolTrimFlagsKHR flags)
+                   VkCommandPoolTrimFlags flags)
 {
    TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
 

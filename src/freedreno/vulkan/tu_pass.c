@@ -38,7 +38,7 @@ tu_CreateRenderPass(VkDevice _device,
    struct tu_render_pass *pass;
    size_t size;
    size_t attachments_offset;
-   VkRenderPassMultiviewCreateInfoKHR *multiview_info = NULL;
+   VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
 
@@ -60,8 +60,8 @@ tu_CreateRenderPass(VkDevice _device,
    vk_foreach_struct(ext, pCreateInfo->pNext)
    {
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR:
-         multiview_info = (VkRenderPassMultiviewCreateInfoKHR *) ext;
+      case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
+         multiview_info = (VkRenderPassMultiviewCreateInfo *) ext;
          break;
       default:
          break;

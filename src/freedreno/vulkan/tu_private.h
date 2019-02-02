@@ -1448,7 +1448,7 @@ tu_update_descriptor_set_with_template(
    struct tu_device *device,
    struct tu_cmd_buffer *cmd_buffer,
    struct tu_descriptor_set *set,
-   VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
+   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData);
 
 void
@@ -1529,7 +1529,7 @@ TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, VkDescriptorSet)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout,
                                VkDescriptorSetLayout)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_update_template,
-                               VkDescriptorUpdateTemplateKHR)
+                               VkDescriptorUpdateTemplate)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, VkDeviceMemory)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_fence, VkFence)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_event, VkEvent)

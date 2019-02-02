@@ -481,9 +481,9 @@ tu_UpdateDescriptorSets(VkDevice _device,
 VkResult
 tu_CreateDescriptorUpdateTemplate(
    VkDevice _device,
-   const VkDescriptorUpdateTemplateCreateInfoKHR *pCreateInfo,
+   const VkDescriptorUpdateTemplateCreateInfo *pCreateInfo,
    const VkAllocationCallbacks *pAllocator,
-   VkDescriptorUpdateTemplateKHR *pDescriptorUpdateTemplate)
+   VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout,
@@ -510,7 +510,7 @@ tu_CreateDescriptorUpdateTemplate(
 void
 tu_DestroyDescriptorUpdateTemplate(
    VkDevice _device,
-   VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
+   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
@@ -528,7 +528,7 @@ tu_update_descriptor_set_with_template(
    struct tu_device *device,
    struct tu_cmd_buffer *cmd_buffer,
    struct tu_descriptor_set *set,
-   VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
+   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
 {
    TU_FROM_HANDLE(tu_descriptor_update_template, templ,
@@ -540,7 +540,7 @@ void
 tu_UpdateDescriptorSetWithTemplate(
    VkDevice _device,
    VkDescriptorSet descriptorSet,
-   VkDescriptorUpdateTemplateKHR descriptorUpdateTemplate,
+   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
 {
    TU_FROM_HANDLE(tu_device, device, _device);

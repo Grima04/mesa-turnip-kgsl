@@ -604,20 +604,20 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                              VkPhysicalDeviceFeatures2KHR *pFeatures)
+                              VkPhysicalDeviceFeatures2 *pFeatures)
 {
    vk_foreach_struct(ext, pFeatures->pNext)
    {
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR: {
-         VkPhysicalDeviceVariablePointerFeaturesKHR *features = (void *) ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+         VkPhysicalDeviceVariablePointerFeatures *features = (void *) ext;
          features->variablePointersStorageBuffer = false;
          features->variablePointers = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR: {
-         VkPhysicalDeviceMultiviewFeaturesKHR *features =
-            (VkPhysicalDeviceMultiviewFeaturesKHR *) ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+         VkPhysicalDeviceMultiviewFeatures *features =
+            (VkPhysicalDeviceMultiviewFeatures *) ext;
          features->multiview = false;
          features->multiviewGeometryShader = false;
          features->multiviewTessellationShader = false;
@@ -834,7 +834,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
 void
 tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                VkPhysicalDeviceProperties2KHR *pProperties)
+                                VkPhysicalDeviceProperties2 *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    tu_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
@@ -848,26 +848,26 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR: {
-         VkPhysicalDeviceIDPropertiesKHR *properties =
-            (VkPhysicalDeviceIDPropertiesKHR *) ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+         VkPhysicalDeviceIDProperties *properties =
+            (VkPhysicalDeviceIDProperties *) ext;
          memcpy(properties->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          memcpy(properties->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
          properties->deviceLUIDValid = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR: {
-         VkPhysicalDeviceMultiviewPropertiesKHR *properties =
-            (VkPhysicalDeviceMultiviewPropertiesKHR *) ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+         VkPhysicalDeviceMultiviewProperties *properties =
+            (VkPhysicalDeviceMultiviewProperties *) ext;
          properties->maxMultiviewViewCount = MAX_VIEWS;
          properties->maxMultiviewInstanceIndex = INT_MAX;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR: {
-         VkPhysicalDevicePointClippingPropertiesKHR *properties =
-            (VkPhysicalDevicePointClippingPropertiesKHR *) ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+         VkPhysicalDevicePointClippingProperties *properties =
+            (VkPhysicalDevicePointClippingProperties *) ext;
          properties->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES_KHR;
+            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
@@ -909,7 +909,7 @@ void
 tu_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice physicalDevice,
    uint32_t *pQueueFamilyPropertyCount,
-   VkQueueFamilyProperties2KHR *pQueueFamilyProperties)
+   VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
@@ -959,7 +959,7 @@ tu_GetPhysicalDeviceMemoryProperties(
 void
 tu_GetPhysicalDeviceMemoryProperties2(
    VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceMemoryProperties2KHR *pMemoryProperties)
+   VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
 {
    return tu_GetPhysicalDeviceMemoryProperties(
       physicalDevice, &pMemoryProperties->memoryProperties);
@@ -1539,8 +1539,8 @@ tu_GetBufferMemoryRequirements(VkDevice _device,
 void
 tu_GetBufferMemoryRequirements2(
    VkDevice device,
-   const VkBufferMemoryRequirementsInfo2KHR *pInfo,
-   VkMemoryRequirements2KHR *pMemoryRequirements)
+   const VkBufferMemoryRequirementsInfo2 *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
 {
    tu_GetBufferMemoryRequirements(device, pInfo->buffer,
                                   &pMemoryRequirements->memoryRequirements);
@@ -1560,8 +1560,8 @@ tu_GetImageMemoryRequirements(VkDevice _device,
 
 void
 tu_GetImageMemoryRequirements2(VkDevice device,
-                               const VkImageMemoryRequirementsInfo2KHR *pInfo,
-                               VkMemoryRequirements2KHR *pMemoryRequirements)
+                               const VkImageMemoryRequirementsInfo2 *pInfo,
+                               VkMemoryRequirements2 *pMemoryRequirements)
 {
    tu_GetImageMemoryRequirements(device, pInfo->image,
                                  &pMemoryRequirements->memoryRequirements);
@@ -1580,9 +1580,9 @@ tu_GetImageSparseMemoryRequirements(
 void
 tu_GetImageSparseMemoryRequirements2(
    VkDevice device,
-   const VkImageSparseMemoryRequirementsInfo2KHR *pInfo,
+   const VkImageSparseMemoryRequirementsInfo2 *pInfo,
    uint32_t *pSparseMemoryRequirementCount,
-   VkSparseImageMemoryRequirements2KHR *pSparseMemoryRequirements)
+   VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
 {
    tu_stub();
 }
@@ -1598,7 +1598,7 @@ tu_GetDeviceMemoryCommitment(VkDevice device,
 VkResult
 tu_BindBufferMemory2(VkDevice device,
                      uint32_t bindInfoCount,
-                     const VkBindBufferMemoryInfoKHR *pBindInfos)
+                     const VkBindBufferMemoryInfo *pBindInfos)
 {
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       TU_FROM_HANDLE(tu_device_memory, mem, pBindInfos[i].memory);
@@ -1620,8 +1620,8 @@ tu_BindBufferMemory(VkDevice device,
                     VkDeviceMemory memory,
                     VkDeviceSize memoryOffset)
 {
-   const VkBindBufferMemoryInfoKHR info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR,
+   const VkBindBufferMemoryInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
       .buffer = buffer,
       .memory = memory,
       .memoryOffset = memoryOffset
@@ -1658,7 +1658,7 @@ tu_BindImageMemory(VkDevice device,
                    VkDeviceSize memoryOffset)
 {
    const VkBindImageMemoryInfo info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR,
+      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
       .image = image,
       .memory = memory,
       .memoryOffset = memoryOffset
@@ -1991,8 +1991,8 @@ tu_GetMemoryFdPropertiesKHR(VkDevice _device,
 void
 tu_GetPhysicalDeviceExternalSemaphoreProperties(
    VkPhysicalDevice physicalDevice,
-   const VkPhysicalDeviceExternalSemaphoreInfoKHR *pExternalSemaphoreInfo,
-   VkExternalSemaphorePropertiesKHR *pExternalSemaphoreProperties)
+   const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
+   VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
    pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
    pExternalSemaphoreProperties->compatibleHandleTypes = 0;
@@ -2002,8 +2002,8 @@ tu_GetPhysicalDeviceExternalSemaphoreProperties(
 void
 tu_GetPhysicalDeviceExternalFenceProperties(
    VkPhysicalDevice physicalDevice,
-   const VkPhysicalDeviceExternalFenceInfoKHR *pExternalFenceInfo,
-   VkExternalFencePropertiesKHR *pExternalFenceProperties)
+   const VkPhysicalDeviceExternalFenceInfo *pExternalFenceInfo,
+   VkExternalFenceProperties *pExternalFenceProperties)
 {
    pExternalFenceProperties->exportFromImportedHandleTypes = 0;
    pExternalFenceProperties->compatibleHandleTypes = 0;

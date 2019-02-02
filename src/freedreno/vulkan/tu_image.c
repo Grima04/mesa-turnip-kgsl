@@ -161,7 +161,7 @@ tu_image_create(VkDevice _device,
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
       for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; ++i)
          if (pCreateInfo->pQueueFamilyIndices[i] ==
-             VK_QUEUE_FAMILY_EXTERNAL_KHR)
+             VK_QUEUE_FAMILY_EXTERNAL)
             image->queue_family_mask |= (1u << TU_MAX_QUEUE_FAMILIES) - 1u;
          else
             image->queue_family_mask |=
@@ -170,7 +170,7 @@ tu_image_create(VkDevice _device,
 
    image->shareable =
       vk_find_struct_const(pCreateInfo->pNext,
-                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR) != NULL;
+                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
 
    image->tile_mode = pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL ? 3 : 0;
    setup_slices(image, pCreateInfo);
@@ -230,7 +230,7 @@ tu_image_queue_family_mask(const struct tu_image *image,
 {
    if (!image->exclusive)
       return image->queue_family_mask;
-   if (family == VK_QUEUE_FAMILY_EXTERNAL_KHR)
+   if (family == VK_QUEUE_FAMILY_EXTERNAL)
       return (1u << TU_MAX_QUEUE_FAMILIES) - 1u;
    if (family == VK_QUEUE_FAMILY_IGNORED)
       return 1u << queue_family;
