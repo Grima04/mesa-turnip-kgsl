@@ -56,6 +56,18 @@ static bool
 ok_format(enum pipe_format pfmt)
 {
 	enum a6xx_color_fmt fmt = fd6_pipe2color(pfmt);
+
+	switch (pfmt) {
+	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+	case PIPE_FORMAT_Z24X8_UNORM:
+	case PIPE_FORMAT_Z16_UNORM:
+	case PIPE_FORMAT_Z32_UNORM:
+	case PIPE_FORMAT_Z32_FLOAT:
+	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+	case PIPE_FORMAT_S8_UINT:
+		return true;
+	}
+
 	if (fmt == ~0)
 		return false;
 
@@ -137,6 +149,11 @@ can_do_blit(const struct pipe_blit_info *info)
 	}
 
 	fail_if(info->alpha_blend);
+
+	/* We can blit depth and stencil in most cases, except for depth only or
+	 * stencil only to combined zs. */
+	fail_if(info->dst.format == PIPE_FORMAT_Z24_UNORM_S8_UINT &&
+			info->mask != PIPE_MASK_ZS);
 
 	return true;
 }
@@ -505,6 +522,67 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	}
 }
 
+static void
+rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
+{
+	struct pipe_blit_info separate = *info;
+
+	switch (info->src.format) {
+	case PIPE_FORMAT_S8_UINT:
+		debug_assert(info->mask == PIPE_MASK_S);
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R8_UNORM;
+		separate.dst.format = PIPE_FORMAT_R8_UNORM;
+		emit_blit_texture(ring, &separate);
+		break;
+
+	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+		if (info->mask & PIPE_MASK_Z) {
+			separate.mask = PIPE_MASK_R;
+			separate.src.format = PIPE_FORMAT_R32_FLOAT;
+			separate.dst.format = PIPE_FORMAT_R32_FLOAT;
+			emit_blit_texture(ring, &separate);
+		}
+		if (info->mask & PIPE_MASK_S) {
+			separate.mask = PIPE_MASK_R;
+			separate.src.format = PIPE_FORMAT_R8_UNORM;
+			separate.dst.format = PIPE_FORMAT_R8_UNORM;
+			separate.src.resource = &fd_resource(info->src.resource)->stencil->base;
+			separate.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
+			emit_blit_texture(ring, &separate);
+		}
+		break;
+
+	case PIPE_FORMAT_Z16_UNORM:
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R16_UNORM;
+		separate.dst.format = PIPE_FORMAT_R16_UNORM;
+		emit_blit_texture(ring, &separate);
+		break;
+
+	case PIPE_FORMAT_Z32_UNORM:
+	case PIPE_FORMAT_Z32_FLOAT:
+		debug_assert(info->mask == PIPE_MASK_Z);
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R32_UINT;
+		separate.dst.format = PIPE_FORMAT_R32_UINT;
+		emit_blit_texture(ring, &separate);
+		break;
+
+	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+	case PIPE_FORMAT_Z24X8_UNORM:
+	case PIPE_FORMAT_X8Z24_UNORM:
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R32_UINT;
+		separate.dst.format = PIPE_FORMAT_R32_UINT;
+		emit_blit_texture(ring, &separate);
+		break;
+
+	default:
+		unreachable("");
+	}
+}
+
 static bool
 fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
@@ -538,7 +616,12 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		/* I don't *think* we need to handle blits between buffer <-> !buffer */
 		debug_assert(info->src.resource->target != PIPE_BUFFER);
 		debug_assert(info->dst.resource->target != PIPE_BUFFER);
-		emit_blit_texture(batch->draw, info);
+
+		if (info->mask & (PIPE_MASK_ZS)) {
+			rewrite_zs_blit(batch->draw, info);
+		} else {
+			emit_blit_texture(batch->draw, info);
+		}
 	}
 
 	fd6_event_write(batch, batch->draw, 0x1d, true);
