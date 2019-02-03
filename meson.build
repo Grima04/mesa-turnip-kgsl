@@ -1465,6 +1465,10 @@ pkg = import('pkgconfig')
 env_test = environment()
 env_test.set('NM', find_program('nm').path())
 
+# This quirk needs to be applied to sources with functions defined in assembly
+# as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
+gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
+
 subdir('include')
 subdir('bin')
 subdir('src')
