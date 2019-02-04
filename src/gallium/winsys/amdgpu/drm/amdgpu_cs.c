@@ -1366,20 +1366,11 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
       struct drm_amdgpu_cs_chunk chunks[6];
       unsigned num_chunks = 0;
 
-      /* Convert from dwords to bytes. */
-      cs->ib[IB_MAIN].ib_bytes *= 4;
-
-      /* IB */
-      chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_IB;
-      chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_ib) / 4;
-      chunks[num_chunks].chunk_data = (uintptr_t)&cs->ib[IB_MAIN];
-      num_chunks++;
-
-      /* Fence */
-      if (has_user_fence) {
-         chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_FENCE;
-         chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_fence) / 4;
-         chunks[num_chunks].chunk_data = (uintptr_t)&acs->fence_chunk;
+      /* BO list */
+      if (!use_bo_list_create) {
+         chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
+         chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
+         chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
          num_chunks++;
       }
 
@@ -1447,13 +1438,20 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
          num_chunks++;
       }
 
-      /* BO list */
-      if (!use_bo_list_create) {
-         chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
-         chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
-         chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
+      /* Fence */
+      if (has_user_fence) {
+         chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_FENCE;
+         chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_fence) / 4;
+         chunks[num_chunks].chunk_data = (uintptr_t)&acs->fence_chunk;
          num_chunks++;
       }
+
+      /* IB */
+      cs->ib[IB_MAIN].ib_bytes *= 4; /* Convert from dwords to bytes. */
+      chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_IB;
+      chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_ib) / 4;
+      chunks[num_chunks].chunk_data = (uintptr_t)&cs->ib[IB_MAIN];
+      num_chunks++;
 
       assert(num_chunks <= ARRAY_SIZE(chunks));
 
