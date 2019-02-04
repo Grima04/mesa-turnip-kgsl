@@ -1934,7 +1934,8 @@ NVC0LoweringPass::processSurfaceCoordsNVE4(TexInstruction *su)
       su->op == OP_SULDB || su->op == OP_SUSTB || su->op == OP_SUREDB;
    const int slot = su->tex.r;
    const int dim = su->tex.target.getDim();
-   const int arg = dim + (su->tex.target.isArray() || su->tex.target.isCube());
+   const bool array = su->tex.target.isArray() || su->tex.target.isCube();
+   const int arg = dim + array;
    int c;
    Value *zero = bld.mkImm(0);
    Value *p1 = NULL;
@@ -1943,6 +1944,7 @@ NVC0LoweringPass::processSurfaceCoordsNVE4(TexInstruction *su)
    Value *bf, *eau, *off;
    Value *addr, *pred;
    Value *ind = su->getIndirectR();
+   Value *y, *z;
 
    off = bld.getScratch(4);
    bf = bld.getScratch(4);
@@ -1973,34 +1975,42 @@ NVC0LoweringPass::processSurfaceCoordsNVE4(TexInstruction *su)
    for (; c < 3; ++c)
       src[c] = zero;
 
+   if (dim == 2 && !array) {
+      v = loadSuInfo32(ind, slot, NVC0_SU_INFO_UNK1C, su->tex.bindless);
+      src[2] = bld.mkOp2v(OP_SHR, TYPE_U32, bld.getSSA(),
+                          v, bld.loadImm(NULL, 16));
+
+      v = loadSuInfo32(ind, slot, NVC0_SU_INFO_DIM(2), su->tex.bindless);
+      bld.mkOp3(OP_SUCLAMP, TYPE_S32, src[2], src[2], v, zero)
+         ->subOp = NV50_IR_SUBOP_SUCLAMP_SD(0, 2);
+   }
+
    // set predicate output
    if (su->tex.target == TEX_TARGET_BUFFER) {
       src[0]->getInsn()->setFlagsDef(1, pred);
    } else
-   if (su->tex.target.isArray() || su->tex.target.isCube()) {
+   if (array) {
       p1 = bld.getSSA(1, FILE_PREDICATE);
       src[dim]->getInsn()->setFlagsDef(1, p1);
    }
 
    // calculate pixel offset
    if (dim == 1) {
+      y = z = zero;
       if (su->tex.target != TEX_TARGET_BUFFER)
          bld.mkOp2(OP_AND, TYPE_U32, off, src[0], bld.loadImm(NULL, 0xffff));
-   } else
-   if (dim == 3) {
+   } else {
+      y = src[1];
+      z = src[2];
+
       v = loadSuInfo32(ind, slot, NVC0_SU_INFO_UNK1C, su->tex.bindless);
       bld.mkOp3(OP_MADSP, TYPE_U32, off, src[2], v, src[1])
-         ->subOp = NV50_IR_SUBOP_MADSP(4,2,8); // u16l u16l u16l
+         ->subOp = NV50_IR_SUBOP_MADSP(4,4,8); // u16l u16l u16l
 
       v = loadSuInfo32(ind, slot, NVC0_SU_INFO_PITCH, su->tex.bindless);
       bld.mkOp3(OP_MADSP, TYPE_U32, off, off, v, src[0])
-         ->subOp = NV50_IR_SUBOP_MADSP(0,2,8); // u32 u16l u16l
-   } else {
-      assert(dim == 2);
-      v = loadSuInfo32(ind, slot, NVC0_SU_INFO_PITCH, su->tex.bindless);
-      bld.mkOp3(OP_MADSP, TYPE_U32, off, src[1], v, src[0])
-         ->subOp = (su->tex.target.isArray() || su->tex.target.isCube()) ?
-         NV50_IR_SUBOP_MADSP_SD : NV50_IR_SUBOP_MADSP(4,2,8); // u16l u16l u16l
+         ->subOp = array ?
+         NV50_IR_SUBOP_MADSP_SD : NV50_IR_SUBOP_MADSP(0,2,8); // u32 u16l u16l
    }
 
    // calculate effective address part 1
@@ -2013,19 +2023,15 @@ NVC0LoweringPass::processSurfaceCoordsNVE4(TexInstruction *su)
             ->subOp = NV50_IR_SUBOP_V1(7,6,8|2);
       }
    } else {
-      Value *y = src[1];
-      Value *z = src[2];
       uint16_t subOp = 0;
 
       switch (dim) {
       case 1:
-         y = zero;
-         z = zero;
          break;
       case 2:
-         z = off;
-         if (!su->tex.target.isArray() && !su->tex.target.isCube()) {
-            z = loadSuInfo32(ind, slot, NVC0_SU_INFO_UNK1C, su->tex.bindless);
+         if (array) {
+            z = off;
+         } else {
             subOp = NV50_IR_SUBOP_SUBFM_3D;
          }
          break;
@@ -2048,7 +2054,7 @@ NVC0LoweringPass::processSurfaceCoordsNVE4(TexInstruction *su)
       eau = bld.mkOp3v(OP_SUEAU, TYPE_U32, bld.getScratch(4), off, bf, v);
    }
    // add array layer offset
-   if (su->tex.target.isArray() || su->tex.target.isCube()) {
+   if (array) {
       v = loadSuInfo32(ind, slot, NVC0_SU_INFO_ARRAY, su->tex.bindless);
       if (dim == 1)
          bld.mkOp3(OP_MADSP, TYPE_U32, eau, src[1], v, eau)
