@@ -351,8 +351,8 @@ static void r600_add_fence_dependency(struct r600_common_context *rctx,
 	struct radeon_winsys *ws = rctx->ws;
 
 	if (rctx->dma.cs)
-		ws->cs_add_fence_dependency(rctx->dma.cs, fence);
-	ws->cs_add_fence_dependency(rctx->gfx.cs, fence);
+		ws->cs_add_fence_dependency(rctx->dma.cs, fence, 0);
+	ws->cs_add_fence_dependency(rctx->gfx.cs, fence, 0);
 }
 
 static void r600_fence_server_sync(struct pipe_context *ctx,

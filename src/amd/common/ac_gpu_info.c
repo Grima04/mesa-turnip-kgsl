@@ -397,6 +397,7 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 		info->drm_minor >= 13;
 	info->has_2d_tiling = true;
 	info->has_read_registers_query = true;
+	info->has_scheduled_fence_dependency = info->drm_minor >= 28;
 
 	info->num_render_backends = amdinfo->rb_pipes;
 	/* The value returned by the kernel driver was wrong. */
@@ -470,6 +471,10 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 		else
 			info->use_display_dcc_with_retile_blit = true;
 	}
+
+	info->has_gds_ordered_append = info->chip_class >= GFX7 &&
+				       info->drm_minor >= 29 &&
+				       HAVE_LLVM >= 0x0800;
 	return true;
 }
 
@@ -572,6 +577,8 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);
 	printf("    has_2d_tiling = %u\n", info->has_2d_tiling);
 	printf("    has_read_registers_query = %u\n", info->has_read_registers_query);
+	printf("    has_gds_ordered_append = %u\n", info->has_gds_ordered_append);
+	printf("    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
 
 	printf("Shader core info:\n");
 	printf("    max_shader_clock = %i\n", info->max_shader_clock);

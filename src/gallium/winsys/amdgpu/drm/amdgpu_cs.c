@@ -35,6 +35,14 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(noop, "RADEON_NOOP", false)
 
+#ifndef AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID
+#define AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID  (1 << 4)
+#endif
+
+#ifndef AMDGPU_CHUNK_ID_SCHEDULED_DEPENDENCIES
+#define AMDGPU_CHUNK_ID_SCHEDULED_DEPENDENCIES	0x07
+#endif
+
 /* FENCES */
 
 static struct pipe_fence_handle *
@@ -717,6 +725,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
 
 static unsigned amdgpu_ib_max_submit_dwords(enum ib_type ib_type)
 {
+   /* The maximum IB size including all chained IBs. */
    switch (ib_type) {
    case IB_MAIN:
       /* Smaller submits means the GPU gets busy sooner and there is less
@@ -724,6 +733,9 @@ static unsigned amdgpu_ib_max_submit_dwords(enum ib_type ib_type)
        *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
        */
       return 20 * 1024;
+   case IB_PARALLEL_COMPUTE:
+      /* Always chain this IB. */
+      return UINT_MAX;
    default:
       unreachable("bad ib_type");
    }
@@ -739,12 +751,15 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
     */
    struct amdgpu_ib *ib = NULL;
    struct drm_amdgpu_cs_chunk_ib *info = &cs->csc->ib[ib_type];
-   unsigned ib_size = 0;
+   /* This is the minimum size of a contiguous IB. */
+   unsigned ib_size = 4 * 1024 * 4;
 
    switch (ib_type) {
+   case IB_PARALLEL_COMPUTE:
+      ib = &cs->compute_ib;
+      break;
    case IB_MAIN:
       ib = &cs->main;
-      ib_size = 4 * 1024 * 4;
       break;
    default:
       unreachable("unhandled IB type");
@@ -866,6 +881,9 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
       assert(0);
    }
 
+   cs->ib[IB_PARALLEL_COMPUTE].ip_type = AMDGPU_HW_IP_COMPUTE;
+   cs->ib[IB_PARALLEL_COMPUTE].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
+
    memset(cs->buffer_indices_hashlist, -1, sizeof(cs->buffer_indices_hashlist));
    cs->last_added_bo = NULL;
    return true;
@@ -897,6 +915,8 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_cs_context *cs)
    cleanup_fence_list(&cs->fence_dependencies);
    cleanup_fence_list(&cs->syncobj_dependencies);
    cleanup_fence_list(&cs->syncobj_to_signal);
+   cleanup_fence_list(&cs->compute_fence_dependencies);
+   cleanup_fence_list(&cs->compute_start_fence_dependencies);
 
    cs->num_real_buffers = 0;
    cs->num_slab_buffers = 0;
@@ -916,6 +936,8 @@ static void amdgpu_destroy_cs_context(struct amdgpu_cs_context *cs)
    FREE(cs->fence_dependencies.list);
    FREE(cs->syncobj_dependencies.list);
    FREE(cs->syncobj_to_signal.list);
+   FREE(cs->compute_fence_dependencies.list);
+   FREE(cs->compute_start_fence_dependencies.list);
 }
 
 
@@ -949,6 +971,7 @@ amdgpu_cs_create(struct radeon_winsys_ctx *rwctx,
    amdgpu_cs_chunk_fence_info_to_data(&fence_info, (void*)&cs->fence_chunk);
 
    cs->main.ib_type = IB_MAIN;
+   cs->compute_ib.ib_type = IB_PARALLEL_COMPUTE;
 
    if (!amdgpu_init_cs_context(ctx->ws, &cs->csc1, ring_type)) {
       FREE(cs);
@@ -974,6 +997,33 @@ amdgpu_cs_create(struct radeon_winsys_ctx *rwctx,
 
    p_atomic_inc(&ctx->ws->num_cs);
    return &cs->main.base;
+}
+
+static struct radeon_cmdbuf *
+amdgpu_cs_add_parallel_compute_ib(struct radeon_cmdbuf *ib,
+                                  bool uses_gds_ordered_append)
+{
+   struct amdgpu_cs *cs = (struct amdgpu_cs*)ib;
+   struct amdgpu_winsys *ws = cs->ctx->ws;
+
+   if (cs->ring_type != RING_GFX)
+      return NULL;
+
+   /* only one secondary IB can be added */
+   if (cs->compute_ib.ib_mapped)
+      return NULL;
+
+   /* Allocate the compute IB. */
+   if (!amdgpu_get_new_ib(&ws->base, cs, IB_PARALLEL_COMPUTE))
+      return NULL;
+
+   if (uses_gds_ordered_append) {
+      cs->csc1.ib[IB_PARALLEL_COMPUTE].flags |=
+            AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID;
+      cs->csc2.ib[IB_PARALLEL_COMPUTE].flags |=
+            AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID;
+   }
+   return &cs->compute_ib.base;
 }
 
 static bool amdgpu_cs_validate(struct radeon_cmdbuf *rcs)
@@ -1104,6 +1154,11 @@ static void add_fence_to_list(struct amdgpu_fence_list *fences,
    amdgpu_fence_reference(&fences->list[idx], (struct pipe_fence_handle*)fence);
 }
 
+/* TODO: recognizing dependencies as no-ops doesn't take the parallel
+ * compute IB into account. The compute IB won't wait for these.
+ * Also, the scheduler can execute compute and SDMA IBs on any rings.
+ * Should we always insert dependencies?
+ */
 static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
                                      struct amdgpu_fence *fence)
 {
@@ -1120,13 +1175,29 @@ static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
 }
 
 static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
-                                           struct pipe_fence_handle *pfence)
+                                           struct pipe_fence_handle *pfence,
+                                           unsigned dependency_flags)
 {
    struct amdgpu_cs *acs = amdgpu_cs(rws);
    struct amdgpu_cs_context *cs = acs->csc;
    struct amdgpu_fence *fence = (struct amdgpu_fence*)pfence;
 
    util_queue_fence_wait(&fence->submitted);
+
+   if (dependency_flags & RADEON_DEPENDENCY_PARALLEL_COMPUTE_ONLY) {
+      /* Syncobjs are not needed here. */
+      assert(!amdgpu_fence_is_syncobj(fence));
+
+      if (acs->ctx->ws->info.has_scheduled_fence_dependency &&
+          dependency_flags & RADEON_DEPENDENCY_START_FENCE)
+         add_fence_to_list(&cs->compute_start_fence_dependencies, fence);
+      else
+         add_fence_to_list(&cs->compute_fence_dependencies, fence);
+      return;
+   }
+
+   /* Start fences are not needed here. */
+   assert(!(dependency_flags & RADEON_DEPENDENCY_START_FENCE));
 
    if (is_noop_fence_dependency(acs, fence))
       return;
@@ -1324,7 +1395,7 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
       }
 
       struct drm_amdgpu_bo_list_entry *list =
-         alloca(cs->num_real_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
+         alloca((cs->num_real_buffers + 2) * sizeof(struct drm_amdgpu_bo_list_entry));
 
       unsigned num_handles = 0;
       for (i = 0; i < cs->num_real_buffers; ++i) {
@@ -1417,6 +1488,66 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
          num_chunks++;
       }
 
+      /* Submit the parallel compute IB first. */
+      if (cs->ib[IB_PARALLEL_COMPUTE].ib_bytes > 0) {
+         unsigned old_num_chunks = num_chunks;
+
+         /* Add compute fence dependencies. */
+         unsigned num_dependencies = cs->compute_fence_dependencies.num;
+         if (num_dependencies) {
+            struct drm_amdgpu_cs_chunk_dep *dep_chunk =
+               alloca(num_dependencies * sizeof(*dep_chunk));
+
+            for (unsigned i = 0; i < num_dependencies; i++) {
+               struct amdgpu_fence *fence =
+                  (struct amdgpu_fence*)cs->compute_fence_dependencies.list[i];
+
+               assert(util_queue_fence_is_signalled(&fence->submitted));
+               amdgpu_cs_chunk_fence_to_dep(&fence->fence, &dep_chunk[i]);
+            }
+
+            chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_DEPENDENCIES;
+            chunks[num_chunks].length_dw = sizeof(dep_chunk[0]) / 4 * num_dependencies;
+            chunks[num_chunks].chunk_data = (uintptr_t)dep_chunk;
+            num_chunks++;
+         }
+
+         /* Add compute start fence dependencies. */
+         unsigned num_start_dependencies = cs->compute_start_fence_dependencies.num;
+         if (num_start_dependencies) {
+            struct drm_amdgpu_cs_chunk_dep *dep_chunk =
+               alloca(num_start_dependencies * sizeof(*dep_chunk));
+
+            for (unsigned i = 0; i < num_start_dependencies; i++) {
+               struct amdgpu_fence *fence =
+                  (struct amdgpu_fence*)cs->compute_start_fence_dependencies.list[i];
+
+               assert(util_queue_fence_is_signalled(&fence->submitted));
+               amdgpu_cs_chunk_fence_to_dep(&fence->fence, &dep_chunk[i]);
+            }
+
+            chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_SCHEDULED_DEPENDENCIES;
+            chunks[num_chunks].length_dw = sizeof(dep_chunk[0]) / 4 * num_start_dependencies;
+            chunks[num_chunks].chunk_data = (uintptr_t)dep_chunk;
+            num_chunks++;
+         }
+
+         /* Convert from dwords to bytes. */
+         cs->ib[IB_PARALLEL_COMPUTE].ib_bytes *= 4;
+         chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_IB;
+         chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_cs_chunk_ib) / 4;
+         chunks[num_chunks].chunk_data = (uintptr_t)&cs->ib[IB_PARALLEL_COMPUTE];
+         num_chunks++;
+
+         r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                   num_chunks, chunks, NULL);
+         if (r)
+            goto finalize;
+
+         /* Back off the compute chunks. */
+         num_chunks = old_num_chunks;
+      }
+
       /* Syncobj signals. */
       unsigned num_syncobj_to_signal = cs->syncobj_to_signal.num;
       if (num_syncobj_to_signal) {
@@ -1458,6 +1589,7 @@ void amdgpu_cs_submit_ib(void *job, int thread_index)
       r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
                                 num_chunks, chunks, &seq_no);
    }
+finalize:
 
    if (r) {
       if (r == -ENOMEM)
@@ -1543,6 +1675,12 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       }
       if (cs->ring_type == RING_GFX)
          ws->gfx_ib_size_counter += (rcs->prev_dw + rcs->current.cdw) * 4;
+
+      /* Also pad secondary IBs. */
+      if (cs->compute_ib.ib_mapped) {
+         while (cs->compute_ib.base.current.cdw & 7)
+            radeon_emit(&cs->compute_ib.base, 0xffff1000); /* type3 nop packet */
+      }
       break;
    case RING_UVD:
    case RING_UVD_ENC:
@@ -1577,6 +1715,9 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
 
       /* Set IB sizes. */
       amdgpu_ib_finalize(ws, &cs->main);
+
+      if (cs->compute_ib.ib_mapped)
+         amdgpu_ib_finalize(ws, &cs->compute_ib);
 
       /* Create a fence. */
       amdgpu_fence_reference(&cur->fence, NULL);
@@ -1623,6 +1764,8 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    }
 
    amdgpu_get_new_ib(&ws->base, cs, IB_MAIN);
+   if (cs->compute_ib.ib_mapped)
+      amdgpu_get_new_ib(&ws->base, cs, IB_PARALLEL_COMPUTE);
 
    cs->main.base.used_gart = 0;
    cs->main.base.used_vram = 0;
@@ -1644,6 +1787,8 @@ static void amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
    p_atomic_dec(&cs->ctx->ws->num_cs);
    pb_reference(&cs->main.big_ib_buffer, NULL);
    FREE(cs->main.base.prev);
+   pb_reference(&cs->compute_ib.big_ib_buffer, NULL);
+   FREE(cs->compute_ib.base.prev);
    amdgpu_destroy_cs_context(&cs->csc1);
    amdgpu_destroy_cs_context(&cs->csc2);
    amdgpu_fence_reference(&cs->next_fence, NULL);
@@ -1666,6 +1811,7 @@ void amdgpu_cs_init_functions(struct amdgpu_winsys *ws)
    ws->base.ctx_destroy = amdgpu_ctx_destroy;
    ws->base.ctx_query_reset_status = amdgpu_ctx_query_reset_status;
    ws->base.cs_create = amdgpu_cs_create;
+   ws->base.cs_add_parallel_compute_ib = amdgpu_cs_add_parallel_compute_ib;
    ws->base.cs_destroy = amdgpu_cs_destroy;
    ws->base.cs_add_buffer = amdgpu_cs_add_buffer;
    ws->base.cs_validate = amdgpu_cs_validate;

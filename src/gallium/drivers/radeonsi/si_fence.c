@@ -177,8 +177,8 @@ static void si_add_fence_dependency(struct si_context *sctx,
 	struct radeon_winsys *ws = sctx->ws;
 
 	if (sctx->dma_cs)
-		ws->cs_add_fence_dependency(sctx->dma_cs, fence);
-	ws->cs_add_fence_dependency(sctx->gfx_cs, fence);
+		ws->cs_add_fence_dependency(sctx->dma_cs, fence, 0);
+	ws->cs_add_fence_dependency(sctx->gfx_cs, fence, 0);
 }
 
 static void si_add_syncobj_signal(struct si_context *sctx,

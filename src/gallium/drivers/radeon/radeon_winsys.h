@@ -67,6 +67,16 @@ enum radeon_bo_flag { /* bitfield */
     RADEON_FLAG_32BIT =    (1 << 6),
 };
 
+enum radeon_dependency_flag {
+    /* Add the dependency to the parallel compute IB only. */
+    RADEON_DEPENDENCY_PARALLEL_COMPUTE_ONLY = 1 << 0,
+
+    /* Instead of waiting for a job to finish execution, the dependency will
+     * be signaled when the job starts execution.
+     */
+    RADEON_DEPENDENCY_START_FENCE = 1 << 1,
+};
+
 enum radeon_bo_usage { /* bitfield */
     RADEON_USAGE_READ = 2,
     RADEON_USAGE_WRITE = 4,
@@ -493,6 +503,23 @@ struct radeon_winsys {
                                        bool stop_exec_on_failure);
 
     /**
+     * Add a parallel compute IB to a gfx IB. It will share the buffer list
+     * and fence dependencies with the gfx IB. The gfx flush call will submit
+     * both IBs at the same time.
+     *
+     * The compute IB doesn't have an output fence, so the primary IB has
+     * to use a wait packet for synchronization.
+     *
+     * The returned IB is only a stream for writing packets to the new
+     * IB. Calling other winsys functions with it is not allowed, not even
+     * "cs_destroy". Use the gfx IB instead.
+     *
+     * \param cs              Gfx IB
+     */
+    struct radeon_cmdbuf *(*cs_add_parallel_compute_ib)(struct radeon_cmdbuf *cs,
+                                                        bool uses_gds_ordered_append);
+
+    /**
      * Destroy a command stream.
      *
      * \param cs        A command stream to destroy.
@@ -614,9 +641,12 @@ struct radeon_winsys {
     /**
      * Add a fence dependency to the CS, so that the CS will wait for
      * the fence before execution.
+     *
+     * \param dependency_flags  Bitmask of RADEON_DEPENDENCY_*
      */
     void (*cs_add_fence_dependency)(struct radeon_cmdbuf *cs,
-                                    struct pipe_fence_handle *fence);
+                                    struct pipe_fence_handle *fence,
+                                    unsigned dependency_flags);
 
     /**
      * Signal a syncobj when the CS finishes execution.
