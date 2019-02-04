@@ -171,6 +171,9 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_load_base_vertex:
 			info->uses_basevertex = 1;
 			break;
+		case nir_intrinsic_load_draw_id:
+			info->uses_drawid = 1;
+			break;
 		case nir_intrinsic_load_primitive_id:
 			info->uses_primid = 1;
 			break;
