@@ -160,7 +160,7 @@ try_copy_prop(struct v3d_compile *c, struct qinst *inst, struct qinst **movs)
 
                         /* No composing the unpacks. */
                         if (vir_has_unpack(inst, i))
-                            continue;
+                                continue;
 
                         /* these ops can't represent abs. */
                         if (mov->qpu.alu.mul.a_unpack == V3D_QPU_UNPACK_ABS) {
