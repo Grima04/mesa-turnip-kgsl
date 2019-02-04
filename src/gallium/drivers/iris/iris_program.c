@@ -42,11 +42,11 @@
 #include "intel/compiler/brw_nir.h"
 #include "iris_context.h"
 
-#define KEY_INIT_NO_ID                            \
+#define KEY_INIT_NO_ID(gen)                       \
    .tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688, \
    .tex.compressed_multisample_layout_mask = ~0,  \
-   .tex.msaa_16 = ~0
-#define KEY_INIT .program_string_id = ish->program_id, KEY_INIT_NO_ID
+   .tex.msaa_16 = (gen >= 9 ? ~0 : 0)
+#define KEY_INIT(gen) .program_string_id = ish->program_id, KEY_INIT_NO_ID(gen)
 
 static unsigned
 get_new_program_id(struct iris_screen *screen)
@@ -598,8 +598,10 @@ iris_update_compiled_vs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
-   struct brw_vs_prog_key key = { KEY_INIT };
+   struct brw_vs_prog_key key = { KEY_INIT(devinfo->gen) };
    ice->vtbl.populate_vs_key(ice, &ish->nir->info, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
@@ -741,11 +743,13 @@ iris_update_compiled_tcs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    const struct shader_info *tes_info =
       iris_get_shader_info(ice, MESA_SHADER_TESS_EVAL);
    struct brw_tcs_prog_key key = {
-      KEY_INIT_NO_ID,
+      KEY_INIT_NO_ID(devinfo->gen),
       .program_string_id = tcs ? tcs->program_id : 0,
       .tes_primitive_mode = tes_info->tess.primitive_mode,
       .input_vertices = ice->state.vertices_per_patch,
@@ -841,8 +845,10 @@ iris_update_compiled_tes(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
-   struct brw_tes_prog_key key = { KEY_INIT };
+   struct brw_tes_prog_key key = { KEY_INIT(devinfo->gen) };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
    ice->vtbl.populate_tes_key(ice, &key);
 
@@ -936,7 +942,9 @@ iris_update_compiled_gs(struct iris_context *ice)
    struct iris_compiled_shader *shader = NULL;
 
    if (ish) {
-      struct brw_gs_prog_key key = { KEY_INIT };
+      struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+      const struct gen_device_info *devinfo = &screen->devinfo;
+      struct brw_gs_prog_key key = { KEY_INIT(devinfo->gen) };
       ice->vtbl.populate_gs_key(ice, &key);
 
       shader =
@@ -1020,7 +1028,9 @@ iris_update_compiled_fs(struct iris_context *ice)
 {
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-   struct brw_wm_prog_key key = { KEY_INIT };
+      struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+      const struct gen_device_info *devinfo = &screen->devinfo;
+   struct brw_wm_prog_key key = { KEY_INIT(devinfo->gen) };
    ice->vtbl.populate_fs_key(ice, &key);
 
    if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
@@ -1248,7 +1258,9 @@ iris_update_compiled_compute_shader(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
-   struct brw_cs_prog_key key = { KEY_INIT };
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   struct brw_cs_prog_key key = { KEY_INIT(devinfo->gen) };
    ice->vtbl.populate_cs_key(ice, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_CS];
@@ -1392,7 +1404,8 @@ iris_create_vs_state(struct pipe_context *ctx,
       ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
-      struct brw_vs_prog_key key = { KEY_INIT };
+      const struct gen_device_info *devinfo = &screen->devinfo;
+      struct brw_vs_prog_key key = { KEY_INIT(devinfo->gen) };
 
       iris_compile_vs(ice, ish, &key);
    }
@@ -1413,8 +1426,9 @@ iris_create_tcs_state(struct pipe_context *ctx,
 
    if (screen->precompile) {
       const unsigned _GL_TRIANGLES = 0x0004;
+      const struct gen_device_info *devinfo = &screen->devinfo;
       struct brw_tcs_prog_key key = {
-         KEY_INIT,
+         KEY_INIT(devinfo->gen),
          // XXX: make sure the linker fills this out from the TES...
          .tes_primitive_mode =
             info->tess.primitive_mode ? info->tess.primitive_mode
@@ -1441,8 +1455,9 @@ iris_create_tes_state(struct pipe_context *ctx,
    // XXX: NOS?
 
    if (screen->precompile) {
+      const struct gen_device_info *devinfo = &screen->devinfo;
       struct brw_tes_prog_key key = {
-         KEY_INIT,
+         KEY_INIT(devinfo->gen),
          // XXX: not ideal, need TCS output/TES input unification
          .inputs_read = info->inputs_read,
          .patch_inputs_read = info->patch_inputs_read,
@@ -1465,7 +1480,8 @@ iris_create_gs_state(struct pipe_context *ctx,
    // XXX: NOS?
 
    if (screen->precompile) {
-      struct brw_gs_prog_key key = { KEY_INIT };
+      const struct gen_device_info *devinfo = &screen->devinfo;
+      struct brw_gs_prog_key key = { KEY_INIT(devinfo->gen) };
 
       iris_compile_gs(ice, ish, &key);
    }
@@ -1502,8 +1518,9 @@ iris_create_fs_state(struct pipe_context *ctx,
       bool can_rearrange_varyings =
          util_bitcount64(info->inputs_read & BRW_FS_VARYING_INPUT_MASK) <= 16;
 
+      const struct gen_device_info *devinfo = &screen->devinfo;
       struct brw_wm_prog_key key = {
-         KEY_INIT,
+         KEY_INIT(devinfo->gen),
          .nr_color_regions = util_bitcount(color_outputs),
          .coherent_fb_fetch = true,
          .input_slots_valid =
@@ -1530,7 +1547,8 @@ iris_create_compute_state(struct pipe_context *ctx,
    // XXX: disallow more than 64KB of shared variables
 
    if (screen->precompile) {
-      struct brw_cs_prog_key key = { KEY_INIT };
+      const struct gen_device_info *devinfo = &screen->devinfo;
+      struct brw_cs_prog_key key = { KEY_INIT(devinfo->gen) };
 
       iris_compile_cs(ice, ish, &key);
    }
