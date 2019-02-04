@@ -112,7 +112,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
 
    if (devinfo->gen >= 10) {
       /* We don't support vec4 mode on Cannonlake. */
-      for (int i = MESA_SHADER_VERTEX; i < MESA_SHADER_STAGES; i++)
+      for (int i = MESA_SHADER_VERTEX; i < MESA_ALL_SHADER_STAGES; i++)
          compiler->scalar_stage[i] = true;
    } else {
       compiler->scalar_stage[MESA_SHADER_VERTEX] =
@@ -158,7 +158,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       int64_options |= nir_lower_imul_2x32_64;
 
    /* We want the GLSL compiler to emit code that uses condition codes */
-   for (int i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (int i = 0; i < MESA_ALL_SHADER_STAGES; i++) {
       compiler->glsl_compiler_options[i].MaxUnrollIterations = 0;
       compiler->glsl_compiler_options[i].MaxIfDepth =
          devinfo->gen < 6 ? 16 : UINT_MAX;
@@ -247,6 +247,7 @@ brw_prog_data_size(gl_shader_stage stage)
       [MESA_SHADER_GEOMETRY]  = sizeof(struct brw_gs_prog_data),
       [MESA_SHADER_FRAGMENT]  = sizeof(struct brw_wm_prog_data),
       [MESA_SHADER_COMPUTE]   = sizeof(struct brw_cs_prog_data),
+      [MESA_SHADER_KERNEL]    = sizeof(struct brw_cs_prog_data),
    };
    assert((int)stage >= 0 && stage < ARRAY_SIZE(stage_sizes));
    return stage_sizes[stage];
@@ -262,6 +263,7 @@ brw_prog_key_size(gl_shader_stage stage)
       [MESA_SHADER_GEOMETRY]  = sizeof(struct brw_gs_prog_key),
       [MESA_SHADER_FRAGMENT]  = sizeof(struct brw_wm_prog_key),
       [MESA_SHADER_COMPUTE]   = sizeof(struct brw_cs_prog_key),
+      [MESA_SHADER_KERNEL]    = sizeof(struct brw_cs_prog_key),
    };
    assert((int)stage >= 0 && stage < ARRAY_SIZE(stage_sizes));
    return stage_sizes[stage];

@@ -100,7 +100,7 @@ fs_visitor::nir_setup_uniforms()
 
    uniforms = nir->num_uniforms / 4;
 
-   if (stage == MESA_SHADER_COMPUTE) {
+   if (stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL) {
       /* Add uniforms for builtins after regular NIR uniforms. */
       assert(uniforms == prog_data->nr_params);
 
@@ -184,7 +184,8 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          break;
 
       case nir_intrinsic_load_work_group_id:
-         assert(v->stage == MESA_SHADER_COMPUTE);
+         assert(v->stage == MESA_SHADER_COMPUTE ||
+                v->stage == MESA_SHADER_KERNEL);
          reg = &v->nir_system_values[SYSTEM_VALUE_WORK_GROUP_ID];
          if (reg->file == BAD_FILE)
             *reg = *v->emit_cs_work_group_id_setup();
@@ -489,6 +490,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
          nir_emit_fs_intrinsic(abld, nir_instr_as_intrinsic(instr));
          break;
       case MESA_SHADER_COMPUTE:
+      case MESA_SHADER_KERNEL:
          nir_emit_cs_intrinsic(abld, nir_instr_as_intrinsic(instr));
          break;
       default:
@@ -3714,7 +3716,7 @@ void
 fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
                                   nir_intrinsic_instr *instr)
 {
-   assert(stage == MESA_SHADER_COMPUTE);
+   assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
    struct brw_cs_prog_data *cs_prog_data = brw_cs_prog_data(prog_data);
 
    fs_reg dest;
@@ -3792,7 +3794,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_load_shared: {
       assert(devinfo->gen >= 7);
-      assert(stage == MESA_SHADER_COMPUTE);
+      assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
@@ -3828,7 +3830,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_store_shared: {
       assert(devinfo->gen >= 7);
-      assert(stage == MESA_SHADER_COMPUTE);
+      assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
@@ -4280,7 +4282,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          break;
       }
 
-      if (stage != MESA_SHADER_COMPUTE)
+      if (stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_KERNEL)
          slm_fence = false;
 
       /* If the workgroup fits in a single HW thread, the messages for SLM are

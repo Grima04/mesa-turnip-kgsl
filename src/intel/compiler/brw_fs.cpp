@@ -7841,7 +7841,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
       prog_data->total_scratch = brw_get_scratch_size(last_scratch);
 
-      if (stage == MESA_SHADER_COMPUTE) {
+      if (stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL) {
          if (devinfo->is_haswell) {
             /* According to the MEDIA_VFE_STATE's "Per Thread Scratch Space"
              * field documentation, Haswell supports a minimum of 2kB of
@@ -8229,7 +8229,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 bool
 fs_visitor::run_cs(bool allow_spilling)
 {
-   assert(stage == MESA_SHADER_COMPUTE);
+   assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
    setup_cs_payload();
 
@@ -8796,7 +8796,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 fs_reg *
 fs_visitor::emit_cs_work_group_id_setup()
 {
-   assert(stage == MESA_SHADER_COMPUTE);
+   assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
    fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::uvec3_type));
 
