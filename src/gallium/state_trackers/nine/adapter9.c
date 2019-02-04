@@ -547,7 +547,7 @@ NineAdapter9_GetDeviceCaps( struct NineAdapter9 *This,
 
     pCaps->Caps = 0;
 
-    pCaps->Caps2 = D3DCAPS2_CANMANAGERESOURCE |
+    pCaps->Caps2 = /* D3DCAPS2_CANMANAGERESOURCE | */
                 /* D3DCAPS2_CANSHARERESOURCE | */
                 /* D3DCAPS2_CANCALIBRATEGAMMA | */
                    D3DCAPS2_DYNAMICTEXTURES |
