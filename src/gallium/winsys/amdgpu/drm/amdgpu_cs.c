@@ -682,7 +682,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
    else
       buffer_size = 4 *util_next_power_of_two(4 * ib->max_ib_size);
 
-   const unsigned min_size = 8 * 1024 * 4;
+   const unsigned min_size = MAX2(ib->max_check_space_size, 8 * 1024 * 4);
    const unsigned max_size = 512 * 1024 * 4;
 
    buffer_size = MIN2(buffer_size, max_size);
@@ -749,6 +749,11 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
       unreachable("unhandled IB type");
    }
 
+   /* Always allocate at least the size of the biggest cs_check_space call,
+    * because precisely the last call might have requested this size.
+    */
+   ib_size = MAX2(ib_size, ib->max_check_space_size);
+
    if (!amdgpu_cs_has_chaining(cs)) {
       ib_size = MAX2(ib_size,
                      4 * MIN2(util_next_power_of_two(ib->max_ib_size),
@@ -783,6 +788,7 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
 
    ib_size = ib->big_ib_buffer->size - ib->used_ib_space;
    ib->base.current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs->ring_type);
+   assert(ib->base.current.max_dw >= ib->max_check_space_size / 4);
    return true;
 }
 
@@ -978,10 +984,17 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    struct amdgpu_ib *ib = amdgpu_ib(rcs);
    struct amdgpu_cs *cs = amdgpu_cs_from_ib(ib);
    unsigned requested_size = rcs->prev_dw + rcs->current.cdw + dw;
+   unsigned cs_epilog_dw = amdgpu_cs_epilog_dws(cs->ring_type);
+   unsigned need_byte_size = (dw + cs_epilog_dw) * 4;
    uint64_t va;
    uint32_t *new_ptr_ib_size;
 
    assert(rcs->current.cdw <= rcs->current.max_dw);
+
+   /* 125% of the size for IB epilog. */
+   unsigned safe_byte_size = need_byte_size + need_byte_size / 4;
+   ib->max_check_space_size = MAX2(ib->max_check_space_size,
+                                   safe_byte_size);
 
    if (requested_size > amdgpu_ib_max_submit_dwords(ib->ib_type))
       return false;
@@ -1045,7 +1058,8 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    ib->base.current.cdw = 0;
 
    ib->base.current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
-   ib->base.current.max_dw = ib->big_ib_buffer->size / 4 - amdgpu_cs_epilog_dws(cs->ring_type);
+   ib->base.current.max_dw = ib->big_ib_buffer->size / 4 - cs_epilog_dw;
+   assert(ib->base.current.max_dw >= ib->max_check_space_size / 4);
 
    amdgpu_cs_add_buffer(&cs->main.base, ib->big_ib_buffer,
                         RADEON_USAGE_READ, 0, RADEON_PRIO_IB1);

@@ -67,6 +67,13 @@ struct amdgpu_ib {
    struct pb_buffer        *big_ib_buffer;
    uint8_t                 *ib_mapped;
    unsigned                used_ib_space;
+
+   /* The maximum seen size from cs_check_space. If the driver does
+    * cs_check_space and flush, the newly allocated IB should have at least
+    * this size.
+    */
+   unsigned                max_check_space_size;
+
    unsigned                max_ib_size;
    uint32_t                *ptr_ib_size;
    bool                    ptr_ib_size_inside_ib;
