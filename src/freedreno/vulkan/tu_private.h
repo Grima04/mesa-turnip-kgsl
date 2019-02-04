@@ -52,6 +52,11 @@
 #include "vk_debug_report.h"
 
 #include "drm/msm_drm.h"
+
+#include "adreno_common.xml.h"
+#include "adreno_pm4.xml.h"
+#include "a6xx.xml.h"
+
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
 
@@ -1027,6 +1032,7 @@ int
 tu_pack_clear_value(const VkClearValue *val,
                     VkFormat format,
                     uint32_t buf[4]);
+enum a6xx_2d_ifmt tu6_rb_fmt_to_ifmt(enum a6xx_color_fmt fmt);
 
 struct tu_image_level
 {
