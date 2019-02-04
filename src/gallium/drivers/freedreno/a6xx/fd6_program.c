@@ -349,6 +349,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CONFIG, 2);
 	OUT_RING(ring, COND(s[VS].v, A6XX_SP_VS_CONFIG_ENABLED) |
+			 A6XX_SP_VS_CONFIG_NIBO(s[VS].v->image_mapping.num_ibo) |
 			 A6XX_SP_VS_CONFIG_NTEX(s[VS].v->num_samp) |
 			 A6XX_SP_VS_CONFIG_NSAMP(s[VS].v->num_samp));     /* SP_VS_CONFIG */
 	OUT_RING(ring, s[VS].instrlen);							  /* SP_VS_INSTRLEN */
@@ -382,6 +383,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_CONFIG, 2);
 	OUT_RING(ring, COND(s[FS].v, A6XX_SP_FS_CONFIG_ENABLED) |
+			 A6XX_SP_FS_CONFIG_NIBO(s[FS].v->image_mapping.num_ibo) |
 			 A6XX_SP_FS_CONFIG_NTEX(s[FS].v->num_samp) |
 			 A6XX_SP_FS_CONFIG_NSAMP(s[FS].v->num_samp));     /* SP_FS_CONFIG */
 	OUT_RING(ring, s[FS].instrlen);							  /* SP_FS_INSTRLEN */

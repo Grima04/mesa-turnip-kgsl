@@ -53,6 +53,7 @@ enum fd6_state_id {
 	FD6_GROUP_FS_CONST,
 	FD6_GROUP_VS_TEX,
 	FD6_GROUP_FS_TEX,
+	FD6_GROUP_IBO,
 	FD6_GROUP_RASTERIZER,
 	FD6_GROUP_ZSA,
 };
@@ -173,7 +174,9 @@ fd6_stage2shadersb(gl_shader_stage type)
 
 bool fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 		enum a6xx_state_block sb, struct fd_texture_stateobj *tex,
-		unsigned bcolor_offset);
+		unsigned bcolor_offset,
+		const struct ir3_shader_variant *v, struct fd_shaderbuf_stateobj *buf,
+		struct fd_shaderimg_stateobj *img);
 
 void fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit);
 

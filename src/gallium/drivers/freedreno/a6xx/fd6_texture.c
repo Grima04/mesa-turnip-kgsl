@@ -448,7 +448,8 @@ fd6_texture_state(struct fd_context *ctx, enum a6xx_state_block sb,
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->needs_border = needs_border;
 
-	fd6_emit_textures(ctx->pipe, state->stateobj, sb, tex, key.bcolor_offset);
+	fd6_emit_textures(ctx->pipe, state->stateobj, sb, tex, key.bcolor_offset,
+			NULL, NULL, NULL);
 
 	/* NOTE: uses copy of key in state obj, because pointer passed by caller
 	 * is probably on the stack
