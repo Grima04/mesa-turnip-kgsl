@@ -682,15 +682,11 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
    else
       buffer_size = 4 *util_next_power_of_two(4 * ib->max_ib_size);
 
-   buffer_size = MIN2(buffer_size, 4 * 512 * 1024);
+   const unsigned min_size = 8 * 1024 * 4;
+   const unsigned max_size = 512 * 1024 * 4;
 
-   switch (ib->ib_type) {
-   case IB_MAIN:
-      buffer_size = MAX2(buffer_size, 8 * 1024 * 4);
-      break;
-   default:
-      unreachable("unhandled IB type");
-   }
+   buffer_size = MIN2(buffer_size, max_size);
+   buffer_size = MAX2(buffer_size, min_size); /* min_size is more important */
 
    pb = ws->base.buffer_create(&ws->base, buffer_size,
                                ws->info.gart_page_size,
