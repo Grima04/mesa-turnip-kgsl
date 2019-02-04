@@ -73,6 +73,12 @@ struct amdgpu_ib {
    enum ib_type            ib_type;
 };
 
+struct amdgpu_fence_list {
+   struct pipe_fence_handle    **list;
+   unsigned                    num;
+   unsigned                    max;
+};
+
 struct amdgpu_cs_context {
    struct drm_amdgpu_cs_chunk_ib ib[IB_NUM];
 
@@ -96,13 +102,8 @@ struct amdgpu_cs_context {
    unsigned                    last_added_bo_usage;
    uint32_t                    last_added_bo_priority_usage;
 
-   struct pipe_fence_handle    **fence_dependencies;
-   unsigned                    num_fence_dependencies;
-   unsigned                    max_fence_dependencies;
-
-   struct pipe_fence_handle    **syncobj_to_signal;
-   unsigned                    num_syncobj_to_signal;
-   unsigned                    max_syncobj_to_signal;
+   struct amdgpu_fence_list    fence_dependencies;
+   struct amdgpu_fence_list    syncobj_to_signal;
 
    struct pipe_fence_handle    *fence;
 
