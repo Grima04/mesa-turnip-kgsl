@@ -103,6 +103,7 @@ struct amdgpu_cs_context {
    uint32_t                    last_added_bo_priority_usage;
 
    struct amdgpu_fence_list    fence_dependencies;
+   struct amdgpu_fence_list    syncobj_dependencies;
    struct amdgpu_fence_list    syncobj_to_signal;
 
    struct pipe_fence_handle    *fence;
