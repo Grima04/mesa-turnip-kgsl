@@ -263,6 +263,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	unsigned ncoords = ir3_get_image_coords(var, NULL);
 	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned ncomp = ir3_get_num_components_for_glformat(var->data.image.format);
 
 	/* src0 is value
 	 * src1 is coords
@@ -277,10 +278,10 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 */
 
 	stib = ir3_STIB(b, create_immed(b, tex_idx), 0,
-			ir3_create_collect(ctx, value, 4), 0,
+			ir3_create_collect(ctx, value, ncomp), 0,
 			ir3_create_collect(ctx, coords, ncoords), 0,
 			offset, 0);
-	stib->cat6.iim_val = 4;
+	stib->cat6.iim_val = ncomp;
 	stib->cat6.d = ncoords;
 	stib->cat6.type = ir3_get_image_type(var);
 	stib->cat6.typed = true;
