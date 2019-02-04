@@ -1433,7 +1433,15 @@ gm107_create_image_handle(struct pipe_context *pipe,
 
    nvc0->screen->tic.lock[tic->id / 32] |= 1 << (tic->id % 32);
 
-   return 0x100000000ULL | tic->id;
+   // Compute handle. This will include the TIC as well as some additional
+   // info regarding the bound 3d surface layer, if applicable.
+   uint64_t handle = 0x100000000ULL | tic->id;
+   struct nv04_resource *res = nv04_resource(view->resource);
+   if (res->base.target == PIPE_TEXTURE_3D) {
+      handle |= 1 << 11;
+      handle |= view->u.tex.first_layer << (11 + 16);
+   }
+   return handle;
 
 fail:
    FREE(tic);
