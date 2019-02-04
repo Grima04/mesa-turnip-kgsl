@@ -1027,8 +1027,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    while ((rcs->current.cdw & 7) != 4)
       radeon_emit(rcs, 0xffff1000); /* type3 nop packet */
 
-   radeon_emit(rcs, PKT3(ib->ib_type == IB_MAIN ? PKT3_INDIRECT_BUFFER_CIK
-                                           : PKT3_INDIRECT_BUFFER_CONST, 2, 0));
+   radeon_emit(rcs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
    radeon_emit(rcs, va);
    radeon_emit(rcs, va >> 32);
    new_ptr_ib_size = &rcs->current.buf[rcs->current.cdw++];
