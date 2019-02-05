@@ -198,6 +198,7 @@ nvc0_hw_begin_query(struct nvc0_context *nvc0, struct nvc0_query *q)
       nvc0_hw_query_get(push, q, 0xc0 + 0x70, 0x0980a002); /* ROP, PIXELS */
       nvc0_hw_query_get(push, q, 0xc0 + 0x80, 0x0d808002); /* TCP, LAUNCHES */
       nvc0_hw_query_get(push, q, 0xc0 + 0x90, 0x0e809002); /* TEP, LAUNCHES */
+      ((uint64_t *)hq->data)[(12 + 10) * 2] = 0;
       break;
    default:
       break;
@@ -270,6 +271,7 @@ nvc0_hw_end_query(struct nvc0_context *nvc0, struct nvc0_query *q)
       nvc0_hw_query_get(push, q, 0x70, 0x0980a002); /* ROP, PIXELS */
       nvc0_hw_query_get(push, q, 0x80, 0x0d808002); /* TCP, LAUNCHES */
       nvc0_hw_query_get(push, q, 0x90, 0x0e809002); /* TEP, LAUNCHES */
+      ((uint64_t *)hq->data)[10 * 2] = 0;
       break;
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
       /* This query is not issued on GPU because disjoint is forced to false */
