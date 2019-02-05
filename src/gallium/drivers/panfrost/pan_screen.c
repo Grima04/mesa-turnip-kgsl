@@ -48,6 +48,9 @@
 #include "pan_public.h"
 
 #include "pan_context.h"
+#include "midgard/midgard_compile.h"
+
+#include "pan_drm.h"
 
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
@@ -513,7 +516,7 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
                                      enum pipe_shader_ir ir,
                                      enum pipe_shader_type shader)
 {
-        return NULL;
+        return &midgard_nir_options;
 }
 
 struct pipe_screen *
@@ -533,6 +536,18 @@ panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
                 }
         }
 
+        if (is_drm) {
+                screen->driver = panfrost_create_drm_driver(fd);
+        } else {
+                fprintf(stderr, "Legacy (non-DRM) drivers are not supported in upstream Mesa\n");
+                return NULL;
+        }
+
+#ifdef DUMP_PERFORMANCE_COUNTERS
+        screen->driver->allocate_slab(screen, &screen->perf_counters, 64, true, 0, 0, 0);
+        screen->driver->enable_counters(screen);
+#endif
+
         screen->base.destroy = panfrost_destroy_screen;
 
         screen->base.get_name = panfrost_get_name;
@@ -543,7 +558,7 @@ panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
         screen->base.get_paramf = panfrost_get_paramf;
         screen->base.get_timestamp = panfrost_get_timestamp;
         screen->base.is_format_supported = panfrost_is_format_supported;
-        //screen->base.context_create = panfrost_create_context;
+        screen->base.context_create = panfrost_create_context;
         screen->base.flush_frontbuffer = panfrost_flush_frontbuffer;
         screen->base.get_compiler_options = panfrost_screen_get_compiler_options;
         screen->base.fence_reference = panfrost_fence_reference;
@@ -552,6 +567,7 @@ panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
 	screen->last_fragment_id = -1;
 	screen->last_fragment_flushed = true;
 
-        fprintf(stderr, "stub: Upstream panfrost (use downstream fork)\n");
-        return NULL;
+        panfrost_resource_screen_init(screen);
+
+        return &screen->base;
 }

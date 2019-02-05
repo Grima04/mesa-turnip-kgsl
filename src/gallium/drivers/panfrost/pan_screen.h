@@ -42,6 +42,10 @@ struct panfrost_screen;
 
 //#define DUMP_PERFORMANCE_COUNTERS
 
+/* Flags for allocated memory */
+#define PAN_ALLOCATE_EXECUTE (1 << 0)
+#define PAN_ALLOCATE_GROWABLE (1 << 1)
+
 struct panfrost_driver {
 	struct panfrost_bo * (*create_bo) (struct panfrost_screen *screen, const struct pipe_resource *template);
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
@@ -49,7 +53,7 @@ struct panfrost_driver {
 	void (*unmap_bo) (struct panfrost_context *ctx, struct pipe_transfer *transfer);
 	void (*destroy_bo) (struct panfrost_screen *screen, struct panfrost_bo *bo);
 
-	void (*submit_job) (struct panfrost_context *ctx, mali_ptr addr, int nr_atoms);
+	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws);
 	void (*force_flush_fragment) (struct panfrost_context *ctx);
 	void (*allocate_slab) (struct panfrost_screen *screen,
 		               struct panfrost_memory *mem,

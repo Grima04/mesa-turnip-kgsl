@@ -356,6 +356,9 @@ panfrost_flush(
         struct pipe_fence_handle **fence,
         unsigned flags);
 
+mali_ptr
+panfrost_fragment_job(struct panfrost_context *ctx);
+
 void
 panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *meta, const char *src, int type, struct panfrost_shader_state *state);
 

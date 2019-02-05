@@ -23,10 +23,23 @@ files_panfrost = files(
   'pan_public.h',
   'pan_screen.c',
   'pan_screen.h',
+  'pan_resource.c',
+  'pan_resource.h',
 
   'midgard/midgard_compile.c',
   'midgard/cppwrap.cpp',
   'midgard/disassemble.c',
+
+  'pan_context.c',
+  'pan_drm.c',
+  'pan_allocate.c',
+  'pan_assemble.c',
+  'pan_format.c',
+  'pan_swizzle.c',
+  'pan_blending.c',
+  'pan_blend_shaders.c',
+  'pan_wallpaper.c',
+  'pan_pretty_print.c'
 )
 
 inc_panfrost = [
