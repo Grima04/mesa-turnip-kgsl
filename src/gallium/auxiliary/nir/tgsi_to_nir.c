@@ -1805,6 +1805,8 @@ tgsi_to_nir(const void *tgsi_tokens,
    s->num_uniforms = scan.const_file_max[0] + 1;
    s->num_outputs = scan.file_max[TGSI_FILE_OUTPUT] + 1;
 
+   s->info.vs.window_space_position = scan.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+
    c->inputs = rzalloc_array(c, struct nir_variable *, s->num_inputs);
    c->outputs = rzalloc_array(c, struct nir_variable *, s->num_outputs);
 
