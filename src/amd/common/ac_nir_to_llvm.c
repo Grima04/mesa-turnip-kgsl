@@ -1392,10 +1392,31 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx,
                                              nir_intrinsic_instr *instr)
 {
 	LLVMValueRef ptr, addr;
+	LLVMValueRef src0 = get_src(ctx, instr->src[0]);
+	unsigned index = nir_intrinsic_base(instr);
 
-	addr = LLVMConstInt(ctx->ac.i32, nir_intrinsic_base(instr), 0);
-	addr = LLVMBuildAdd(ctx->ac.builder, addr,
-			    get_src(ctx, instr->src[0]), "");
+	addr = LLVMConstInt(ctx->ac.i32, index, 0);
+	addr = LLVMBuildAdd(ctx->ac.builder, addr, src0, "");
+
+	/* Load constant values from user SGPRS when possible, otherwise
+	 * fallback to the default path that loads directly from memory.
+	 */
+	if (LLVMIsConstant(src0) &&
+	    instr->dest.ssa.bit_size == 32) {
+		unsigned count = instr->dest.ssa.num_components;
+		unsigned offset = index;
+
+		offset += LLVMConstIntGetZExtValue(src0);
+		offset /= 4;
+
+		offset -= ctx->abi->base_inline_push_consts;
+
+		if (offset + count <= ctx->abi->num_inline_push_consts) {
+			return ac_build_gather_values(&ctx->ac,
+						      ctx->abi->inline_push_consts + offset,
+						      count);
+		}
+	}
 
 	ptr = ac_build_gep0(&ctx->ac, ctx->abi->push_constants, addr);
 

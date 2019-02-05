@@ -129,10 +129,11 @@ struct radv_nir_compiler_options {
 enum radv_ud_index {
 	AC_UD_SCRATCH_RING_OFFSETS = 0,
 	AC_UD_PUSH_CONSTANTS = 1,
-	AC_UD_INDIRECT_DESCRIPTOR_SETS = 2,
-	AC_UD_VIEW_INDEX = 3,
-	AC_UD_STREAMOUT_BUFFERS = 4,
-	AC_UD_SHADER_START = 5,
+	AC_UD_INLINE_PUSH_CONSTANTS = 2,
+	AC_UD_INDIRECT_DESCRIPTOR_SETS = 3,
+	AC_UD_VIEW_INDEX = 4,
+	AC_UD_STREAMOUT_BUFFERS = 5,
+	AC_UD_SHADER_START = 6,
 	AC_UD_VS_VERTEX_BUFFERS = AC_UD_SHADER_START,
 	AC_UD_VS_BASE_VERTEX_START_INSTANCE,
 	AC_UD_VS_MAX_UD,
@@ -167,6 +168,8 @@ struct radv_shader_info {
 	uint8_t max_push_constant_used;
 	bool has_only_32bit_push_constants;
 	bool has_indirect_push_constants;
+	uint8_t num_inline_push_consts;
+	uint8_t base_inline_push_consts;
 	uint32_t desc_set_used_mask;
 	bool needs_multiview_view_index;
 	bool uses_invocation_id;

@@ -627,6 +627,50 @@ count_vs_user_sgprs(struct radv_shader_context *ctx)
 	return count;
 }
 
+static void allocate_inline_push_consts(struct radv_shader_context *ctx,
+					struct user_sgpr_info *user_sgpr_info)
+{
+	uint8_t remaining_sgprs = user_sgpr_info->remaining_sgprs;
+
+	/* Only supported if shaders use push constants. */
+	if (ctx->shader_info->info.min_push_constant_used == UINT8_MAX)
+		return;
+
+	/* Only supported if shaders don't have indirect push constants. */
+	if (ctx->shader_info->info.has_indirect_push_constants)
+		return;
+
+	/* Only supported for 32-bit push constants. */
+	if (!ctx->shader_info->info.has_only_32bit_push_constants)
+		return;
+
+	uint8_t num_push_consts =
+		(ctx->shader_info->info.max_push_constant_used -
+		 ctx->shader_info->info.min_push_constant_used) / 4;
+
+	/* Check if the number of user SGPRs is large enough. */
+	if (num_push_consts < remaining_sgprs) {
+		ctx->shader_info->info.num_inline_push_consts = num_push_consts;
+	} else {
+		ctx->shader_info->info.num_inline_push_consts = remaining_sgprs;
+	}
+
+	/* Clamp to the maximum number of allowed inlined push constants. */
+	if (ctx->shader_info->info.num_inline_push_consts > AC_MAX_INLINE_PUSH_CONSTS)
+		ctx->shader_info->info.num_inline_push_consts = AC_MAX_INLINE_PUSH_CONSTS;
+
+	if (ctx->shader_info->info.num_inline_push_consts == num_push_consts &&
+	    !ctx->shader_info->info.loads_dynamic_offsets) {
+		/* Disable the default push constants path if all constants are
+		 * inlined and if shaders don't use dynamic descriptors.
+		 */
+		ctx->shader_info->info.loads_push_constants = false;
+	}
+
+	ctx->shader_info->info.base_inline_push_consts =
+		ctx->shader_info->info.min_push_constant_used / 4;
+}
+
 static void allocate_user_sgprs(struct radv_shader_context *ctx,
 				gl_shader_stage stage,
 				bool has_previous_stage,
@@ -706,6 +750,8 @@ static void allocate_user_sgprs(struct radv_shader_context *ctx,
 	} else {
 		user_sgpr_info->remaining_sgprs = remaining_sgprs - num_desc_set;
 	}
+
+	allocate_inline_push_consts(ctx, user_sgpr_info);
 }
 
 static void
@@ -734,6 +780,13 @@ declare_global_input_sgprs(struct radv_shader_context *ctx,
 		/* 1 for push constants and dynamic descriptors */
 		add_arg(args, ARG_SGPR, type, &ctx->abi.push_constants);
 	}
+
+	for (unsigned i = 0; i < ctx->shader_info->info.num_inline_push_consts; i++) {
+		add_arg(args, ARG_SGPR, ctx->ac.i32,
+			&ctx->abi.inline_push_consts[i]);
+	}
+	ctx->abi.num_inline_push_consts = ctx->shader_info->info.num_inline_push_consts;
+	ctx->abi.base_inline_push_consts = ctx->shader_info->info.base_inline_push_consts;
 
 	if (ctx->shader_info->info.so.num_outputs) {
 		add_arg(args, ARG_SGPR,
@@ -851,6 +904,11 @@ set_global_input_locs(struct radv_shader_context *ctx,
 
 	if (ctx->shader_info->info.loads_push_constants) {
 		set_loc_shader_ptr(ctx, AC_UD_PUSH_CONSTANTS, user_sgpr_idx);
+	}
+
+	if (ctx->shader_info->info.num_inline_push_consts) {
+		set_loc_shader(ctx, AC_UD_INLINE_PUSH_CONSTANTS, user_sgpr_idx,
+			       ctx->shader_info->info.num_inline_push_consts);
 	}
 
 	if (ctx->streamout_buffers) {
