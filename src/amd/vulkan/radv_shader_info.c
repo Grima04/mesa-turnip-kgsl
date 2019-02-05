@@ -550,6 +550,7 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 	if (options->layout && options->layout->dynamic_offset_count &&
 	    (options->layout->dynamic_shader_stages & mesa_to_vk_shader_stage(nir->info.stage))) {
 		info->loads_push_constants = true;
+		info->loads_dynamic_offsets = true;
 	}
 
 	nir_foreach_variable(variable, &nir->inputs)
