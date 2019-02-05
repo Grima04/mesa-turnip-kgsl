@@ -1095,7 +1095,7 @@ v3d_qpu_add_pack(const struct v3d_device_info *devinfo,
                 }
                 if (packed == 0)
                         return false;
-                opcode |= packed << 2;
+                opcode = (opcode & ~(1 << 2)) | packed << 2;
                 break;
         }
 
