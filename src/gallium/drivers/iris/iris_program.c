@@ -850,7 +850,8 @@ iris_compile_vs(struct iris_context *ice,
       nir_shader_gather_info(nir, impl);
    }
 
-   // XXX: alt mode
+   if (nir->info.name && strncmp(nir->info.name, "ARB", 3) == 0)
+      prog_data->use_alt_mode = true;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
@@ -1285,7 +1286,8 @@ iris_compile_fs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   // XXX: alt mode
+   if (nir->info.name && strncmp(nir->info.name, "ARB", 3) == 0)
+      prog_data->use_alt_mode = true;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
