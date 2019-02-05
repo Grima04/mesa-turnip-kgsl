@@ -3917,7 +3917,19 @@ enum nir_lower_non_uniform_access_type {
 bool nir_lower_non_uniform_access(nir_shader *shader,
                                   enum nir_lower_non_uniform_access_type);
 
-bool nir_lower_idiv(nir_shader *shader);
+enum nir_lower_idiv_path {
+   /* This path is based on NV50LegalizeSSA::handleDIV(). It is the faster of
+    * the two but it is not exact in some cases (for example, 1091317713u /
+    * 1034u gives 5209173 instead of 1055432) */
+   nir_lower_idiv_fast,
+   /* This path is based on AMDGPUTargetLowering::LowerUDIVREM() and
+    * AMDGPUTargetLowering::LowerSDIVREM(). It requires more instructions than
+    * the nv50 path and many of them are integer multiplications, so it is
+    * probably slower. It should always return the correct result, though. */
+   nir_lower_idiv_precise,
+};
+
+bool nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path);
 
 bool nir_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
 

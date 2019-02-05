@@ -762,7 +762,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       OPT_V(s, nir_opt_algebraic);
       OPT_V(s, nir_lower_bool_to_float);
    } else {
-      OPT_V(s, nir_lower_idiv);
+      OPT_V(s, nir_lower_idiv, nir_lower_idiv_fast);
       OPT_V(s, nir_lower_bool_to_int32);
    }
 
