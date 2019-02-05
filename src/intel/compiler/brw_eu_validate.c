@@ -348,6 +348,17 @@ is_unsupported_inst(const struct gen_device_info *devinfo,
    return brw_opcode_desc(devinfo, brw_inst_opcode(devinfo, inst)) == NULL;
 }
 
+/**
+ * Returns whether a combination of two types would qualify as mixed float
+ * operation mode
+ */
+static inline bool
+types_are_mixed_float(enum brw_reg_type t0, enum brw_reg_type t1)
+{
+   return (t0 == BRW_REGISTER_TYPE_F && t1 == BRW_REGISTER_TYPE_HF) ||
+          (t1 == BRW_REGISTER_TYPE_F && t0 == BRW_REGISTER_TYPE_HF);
+}
+
 static enum brw_reg_type
 execution_type_for_type(enum brw_reg_type type)
 {
@@ -390,20 +401,24 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
    enum brw_reg_type src0_exec_type, src1_exec_type;
 
    /* Execution data type is independent of destination data type, except in
-    * mixed F/HF instructions on CHV and SKL+.
+    * mixed F/HF instructions.
     */
    enum brw_reg_type dst_exec_type = brw_inst_dst_type(devinfo, inst);
 
    src0_exec_type = execution_type_for_type(brw_inst_src0_type(devinfo, inst));
    if (num_sources == 1) {
-      if ((devinfo->gen >= 9 || devinfo->is_cherryview) &&
-          src0_exec_type == BRW_REGISTER_TYPE_HF) {
+      if (src0_exec_type == BRW_REGISTER_TYPE_HF)
          return dst_exec_type;
-      }
       return src0_exec_type;
    }
 
    src1_exec_type = execution_type_for_type(brw_inst_src1_type(devinfo, inst));
+   if (types_are_mixed_float(src0_exec_type, src1_exec_type) ||
+       types_are_mixed_float(src0_exec_type, dst_exec_type) ||
+       types_are_mixed_float(src1_exec_type, dst_exec_type)) {
+      return BRW_REGISTER_TYPE_F;
+   }
+
    if (src0_exec_type == src1_exec_type)
       return src0_exec_type;
 
@@ -431,18 +446,7 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
        src1_exec_type == BRW_REGISTER_TYPE_DF)
       return BRW_REGISTER_TYPE_DF;
 
-   if (devinfo->gen >= 9 || devinfo->is_cherryview) {
-      if (dst_exec_type == BRW_REGISTER_TYPE_F ||
-          src0_exec_type == BRW_REGISTER_TYPE_F ||
-          src1_exec_type == BRW_REGISTER_TYPE_F) {
-         return BRW_REGISTER_TYPE_F;
-      } else {
-         return BRW_REGISTER_TYPE_HF;
-      }
-   }
-
-   assert(src0_exec_type == BRW_REGISTER_TYPE_F);
-   return BRW_REGISTER_TYPE_F;
+   unreachable("not reached");
 }
 
 /**
