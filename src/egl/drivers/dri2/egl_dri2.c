@@ -513,8 +513,9 @@ dri2_open_driver(_EGLDisplay *disp)
                              search_path_vars);
 }
 
-EGLBoolean
-dri2_load_driver_dri3(_EGLDisplay *disp)
+static EGLBoolean
+dri2_load_driver_common(_EGLDisplay *disp,
+                        const struct dri2_extension_match *driver_extensions)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const __DRIextension **extensions;
@@ -523,7 +524,7 @@ dri2_load_driver_dri3(_EGLDisplay *disp)
    if (!extensions)
       return EGL_FALSE;
 
-   if (!dri2_bind_extensions(dri2_dpy, dri3_driver_extensions, extensions, false)) {
+   if (!dri2_bind_extensions(dri2_dpy, driver_extensions, extensions, false)) {
       dlclose(dri2_dpy->driver);
       return EGL_FALSE;
    }
@@ -537,43 +538,19 @@ dri2_load_driver_dri3(_EGLDisplay *disp)
 EGLBoolean
 dri2_load_driver(_EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   const __DRIextension **extensions;
+   return dri2_load_driver_common(disp, dri2_driver_extensions);
+}
 
-   extensions = dri2_open_driver(disp);
-   if (!extensions)
-      return EGL_FALSE;
-
-   if (!dri2_bind_extensions(dri2_dpy, dri2_driver_extensions, extensions, false)) {
-      dlclose(dri2_dpy->driver);
-      return EGL_FALSE;
-   }
-   dri2_dpy->driver_extensions = extensions;
-
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
-
-   return EGL_TRUE;
+EGLBoolean
+dri2_load_driver_dri3(_EGLDisplay *disp)
+{
+   return dri2_load_driver_common(disp, dri3_driver_extensions);
 }
 
 EGLBoolean
 dri2_load_driver_swrast(_EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   const __DRIextension **extensions;
-
-   extensions = dri2_open_driver(disp);
-   if (!extensions)
-      return EGL_FALSE;
-
-   if (!dri2_bind_extensions(dri2_dpy, swrast_driver_extensions, extensions, false)) {
-      dlclose(dri2_dpy->driver);
-      return EGL_FALSE;
-   }
-   dri2_dpy->driver_extensions = extensions;
-
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
-
-   return EGL_TRUE;
+   return dri2_load_driver_common(disp, swrast_driver_extensions);
 }
 
 static unsigned
