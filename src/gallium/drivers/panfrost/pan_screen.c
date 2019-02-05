@@ -32,6 +32,7 @@
 #include "util/u_format.h"
 #include "util/u_format_s3tc.h"
 #include "util/u_video.h"
+#include "util/u_screen.h"
 #include "util/os_time.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
@@ -76,14 +77,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_SM3:
-                return 1;
-
         case PIPE_CAP_POINT_SPRITE:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
-                return PIPE_MAX_COLOR_BUFS;
-
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
 
@@ -93,13 +90,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1; /* TODO: Queries */
 
         case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
-                return 1;
-
         case PIPE_CAP_TEXTURE_SWIZZLE:
                 return 1;
-
-        case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
-                return 0;
 
         case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
@@ -124,9 +116,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_DEPTH_CLIP_DISABLE:
                 return 1;
 
-        case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return 0; /* no streamout */
-
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
                 return 16 * 4;
@@ -138,16 +127,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_VERTEX_STREAMS:
                 return 1;
 
-        case PIPE_CAP_PRIMITIVE_RESTART:
-                return 0; /* We don't understand this yet */
-
         case PIPE_CAP_SHADER_STENCIL_EXPORT:
                 return 1;
-
-        case PIPE_CAP_TGSI_INSTANCEID:
-        case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
-        case PIPE_CAP_START_INSTANCE:
-                return 0; /* TODO: Instances */
 
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
@@ -156,42 +137,21 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
                 return 256; /* for GL3 */
 
-        case PIPE_CAP_MIN_TEXEL_OFFSET:
-                return -8;
-
-        case PIPE_CAP_MAX_TEXEL_OFFSET:
-                return 7;
-
         case PIPE_CAP_CONDITIONAL_RENDER:
                 return 1;
 
-        case PIPE_CAP_TEXTURE_BARRIER:
-                return 0;
-
         case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
-        case PIPE_CAP_VERTEX_COLOR_UNCLAMPED: /* draw module */
-        case PIPE_CAP_VERTEX_COLOR_CLAMPED: /* draw module */
+        case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
+        case PIPE_CAP_VERTEX_COLOR_CLAMPED:
                 return 1;
-
-        case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
-                return 0;
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
                 return 330;
 
-        case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
-        case PIPE_CAP_TGSI_TEX_TXF_LZ:
-                return 0;
-
-        case PIPE_CAP_COMPUTE:
-                return 0;
-
-        case PIPE_CAP_USER_VERTEX_BUFFERS: /* XXX XXX */
+        case PIPE_CAP_USER_VERTEX_BUFFERS: /* TODO */
         case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
                 return 0;
 
-        case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
-        case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
         case PIPE_CAP_TGSI_VS_LAYER_VIEWPORT:
         case PIPE_CAP_DOUBLES:
         case PIPE_CAP_INT64:
@@ -201,18 +161,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
 
-        case PIPE_CAP_TGSI_CAN_COMPACT_CONSTANTS:
-        case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
-        case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
-        case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
-        case PIPE_CAP_TEXTURE_MULTISAMPLE:
-                return 0;
-
         case PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET:
                 return 0xffff;
-
-        case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
-                return 64;
 
         case PIPE_CAP_QUERY_TIMESTAMP:
         case PIPE_CAP_CUBE_MAP_ARRAY:
@@ -220,9 +170,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
                 return 1;
-
-        case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
-                return 0;
 
         case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
                 return 65536;
@@ -247,22 +194,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_TEXTURE_GATHER_SM5:
         case PIPE_CAP_TEXTURE_QUERY_LOD:
-                return 1;
-
-        case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
-        case PIPE_CAP_SAMPLE_SHADING:
-        case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
-                return 0;
-
         case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
-                return 1;
-
-        case PIPE_CAP_TGSI_FS_FINE_DERIVATIVE:
-                return 0;
-
         case PIPE_CAP_SAMPLER_VIEW_TARGET:
-                return 1;
-
         case PIPE_CAP_FAKE_SW_MSAA:
                 return 1;
 
@@ -288,111 +221,33 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_VIDEO_MEMORY: {
-                /* XXX: Do we want to return the full amount fo system memory ? */
                 uint64_t system_memory;
 
                 if (!os_get_total_physical_memory(&system_memory))
                         return 0;
 
-                if (sizeof(void *) == 4)
-                        /* Cap to 2 GB on 32 bits system. We do this because panfrost does
-                         * eat application memory, which is quite limited on 32 bits. App
-                         * shouldn't expect too much available memory. */
-                        system_memory = MIN2(system_memory, 2048 << 20);
-
                 return (int)(system_memory >> 20);
         }
 
         case PIPE_CAP_UMA:
-                return 0;
-
-        case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
                 return 1;
 
+        case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
         case PIPE_CAP_CLIP_HALFZ:
         case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
         case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
-                return 1;
-
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
         case PIPE_CAP_CULL_DISTANCE:
-                return 1;
-
-        case PIPE_CAP_VERTEXID_NOBASE:
-                return 0;
-
-        case PIPE_CAP_POLYGON_OFFSET_CLAMP:
-                return 0;
-
         case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
         case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
-                return 1;
-
         case PIPE_CAP_CLEAR_TEXTURE:
                 return 1;
-
-        case PIPE_CAP_ANISOTROPIC_FILTER:
-        case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
-        case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
-        case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
-        case PIPE_CAP_DEPTH_BOUNDS_TEST:
-        case PIPE_CAP_TGSI_TXQS:
-        case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
-        case PIPE_CAP_SHAREABLE_SHADERS:
-        case PIPE_CAP_DRAW_PARAMETERS:
-        case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
-        case PIPE_CAP_MULTI_DRAW_INDIRECT:
-        case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
-        case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
-        case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
-        case PIPE_CAP_INVALIDATE_BUFFER:
-        case PIPE_CAP_GENERATE_MIPMAP:
-        case PIPE_CAP_STRING_MARKER:
-        case PIPE_CAP_SURFACE_REINTERPRET_BLOCKS:
-        case PIPE_CAP_QUERY_BUFFER_OBJECT:
-        case PIPE_CAP_QUERY_MEMORY_INFO:
-        case PIPE_CAP_PCI_GROUP:
-        case PIPE_CAP_PCI_BUS:
-        case PIPE_CAP_PCI_DEVICE:
-        case PIPE_CAP_PCI_FUNCTION:
-        case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
-        case PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES:
-        case PIPE_CAP_TGSI_VOTE:
-        case PIPE_CAP_MAX_WINDOW_RECTANGLES:
-        case PIPE_CAP_POLYGON_OFFSET_UNITS_UNSCALED:
-        case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
-        case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
-        case PIPE_CAP_NATIVE_FENCE_FD:
-        case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-        case PIPE_CAP_TGSI_FS_FBFETCH:
-        case PIPE_CAP_TGSI_MUL_ZERO_WINS:
-        case PIPE_CAP_TGSI_CLOCK:
-        case PIPE_CAP_POLYGON_MODE_FILL_RECTANGLE:
-        case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
-        case PIPE_CAP_TGSI_BALLOT:
-        case PIPE_CAP_TGSI_TES_LAYER_VIEWPORT:
-        case PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX:
-        case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
-        case PIPE_CAP_POST_DEPTH_COVERAGE:
-        case PIPE_CAP_BINDLESS_TEXTURE:
-        case PIPE_CAP_NIR_SAMPLERS_AS_DEREF:
-        case PIPE_CAP_MEMOBJ:
-        case PIPE_CAP_LOAD_CONSTBUF:
-        case PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS:
-        case PIPE_CAP_TILE_RASTER_ORDER:
-        case PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
-        case PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET:
-        case PIPE_CAP_CONTEXT_PRIORITY_MASK:
-        case PIPE_CAP_FENCE_SIGNAL:
-        case PIPE_CAP_CONSTBUF0_FLAGS:
-                return 0;
 
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
 
         default:
-                debug_printf("Unexpected PIPE_CAP %d query\n", param);
-                return 0;
+                return u_pipe_screen_get_param_defaults(screen, param);
         }
 }
 
