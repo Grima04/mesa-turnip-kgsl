@@ -588,6 +588,7 @@ set_loc_desc(struct radv_shader_context *ctx, int idx, uint8_t *sgpr_idx)
 struct user_sgpr_info {
 	bool need_ring_offsets;
 	bool indirect_all_descriptor_sets;
+	uint8_t remaining_sgprs;
 };
 
 static bool needs_view_index_sgpr(struct radv_shader_context *ctx,
@@ -701,6 +702,9 @@ static void allocate_user_sgprs(struct radv_shader_context *ctx,
 
 	if (remaining_sgprs < num_desc_set) {
 		user_sgpr_info->indirect_all_descriptor_sets = true;
+		user_sgpr_info->remaining_sgprs = remaining_sgprs - 1;
+	} else {
+		user_sgpr_info->remaining_sgprs = remaining_sgprs - num_desc_set;
 	}
 }
 
