@@ -47,6 +47,8 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	const_offset = nir_src_as_const_value(intr->src[0]);
 	compile_assert(ctx, const_offset);
 
+	int ibo_idx = ir3_ssbo_to_ibo(&ctx->so->image_mapping, const_offset->u32[0]);
+
 	offset = ir3_get_src(ctx, &intr->src[1])[0];
 
 	/* src0 is uvec2(offset*4, 0), src1 is offset.. nir already *= 4: */
@@ -56,7 +58,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	}, 2);
 	src1 = ir3_SHR_B(b, offset, 0, create_immed(b, 2), 0);
 
-	ldgb = ir3_LDGB(b, create_immed(b, const_offset->u32[0]), 0,
+	ldgb = ir3_LDGB(b, create_immed(b, ibo_idx), 0,
 			src0, 0, src1, 0);
 	ldgb->regs[0]->wrmask = MASK(intr->num_components);
 	ldgb->cat6.iim_val = intr->num_components;
@@ -86,6 +88,8 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	const_offset = nir_src_as_const_value(intr->src[1]);
 	compile_assert(ctx, const_offset);
 
+	int ibo_idx = ir3_ssbo_to_ibo(&ctx->so->image_mapping,  const_offset->u32[0]);
+
 	offset = ir3_get_src(ctx, &intr->src[2])[0];
 
 	/* src0 is value, src1 is offset, src2 is uvec2(offset*4, 0)..
@@ -98,8 +102,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		create_immed(b, 0),
 	}, 2);
 
-	stgb = ir3_STGB(b, create_immed(b, const_offset->u32[0]), 0,
-			src0, 0, src1, 0, src2, 0);
+	stgb = ir3_STGB(b, create_immed(b, ibo_idx), 0, src0, 0, src1, 0, src2, 0);
 	stgb->cat6.iim_val = ncomp;
 	stgb->cat6.d = 4;
 	stgb->cat6.type = TYPE_U32;
@@ -137,7 +140,9 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	/* can this be non-const buffer_index?  how do we handle that? */
 	const_offset = nir_src_as_const_value(intr->src[0]);
 	compile_assert(ctx, const_offset);
-	ssbo = create_immed(b, const_offset->u32[0]);
+
+	int ibo_idx = ir3_ssbo_to_ibo(&ctx->so->image_mapping,  const_offset->u32[0]);
+	ssbo = create_immed(b, ibo_idx);
 
 	offset = ir3_get_src(ctx, &intr->src[1])[0];
 
@@ -262,7 +267,8 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction * const *value = ir3_get_src(ctx, &intr->src[3]);
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	unsigned ncoords = ir3_get_image_coords(var, NULL);
-	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned ibo_idx = ir3_image_to_ibo(&ctx->so->image_mapping, slot);
 	unsigned ncomp = ir3_get_num_components_for_glformat(var->data.image.format);
 
 	/* src0 is value
@@ -277,7 +283,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 * one over the other in various cases.
 	 */
 
-	stib = ir3_STIB(b, create_immed(b, tex_idx), 0,
+	stib = ir3_STIB(b, create_immed(b, ibo_idx), 0,
 			ir3_create_collect(ctx, value, ncomp), 0,
 			ir3_create_collect(ctx, coords, ncoords), 0,
 			offset, 0);
@@ -300,8 +306,10 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *atomic, *image, *src0, *src1, *src2;
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	unsigned ncoords = ir3_get_image_coords(var, NULL);
+	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned ibo_idx = ir3_image_to_ibo(&ctx->so->image_mapping, slot);
 
-	image = create_immed(b, ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0])));
+	image = create_immed(b, ibo_idx);
 
 	/* src0 is value (or uvec2(value, compare))
 	 * src1 is coords

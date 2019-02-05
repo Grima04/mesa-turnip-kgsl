@@ -28,6 +28,7 @@
 
 #include "ir3_compiler.h"
 #include "ir3_context.h"
+#include "ir3_image.h"
 #include "ir3_shader.h"
 #include "ir3_nir.h"
 
@@ -102,6 +103,8 @@ ir3_context_init(struct ir3_compiler *compiler,
 
 	so->num_uniforms = ctx->s->num_uniforms;
 	so->num_ubos = ctx->s->info.num_ubos;
+
+	ir3_ibo_mapping_init(&so->image_mapping, ctx->s->info.num_textures);
 
 	/* Layout of constant registers, each section aligned to vec4.  Note
 	 * that pointer size (ubo, etc) changes depending on generation.

@@ -896,7 +896,8 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction * const *src0 = ir3_get_src(ctx, &intr->src[1]);
 	struct ir3_instruction *coords[4];
 	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
-	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
 	type_t type = ir3_get_image_type(var);
 
 	/* hmm, this seems a bit odd, but it is what blob does and (at least
@@ -928,7 +929,8 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
-	unsigned tex_idx = ir3_get_image_slot(ctx, nir_src_as_deref(intr->src[0]));
+	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
 	struct ir3_instruction *sam, *lod;
 	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
 

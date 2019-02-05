@@ -29,7 +29,14 @@
 
 #include "ir3_context.h"
 
-unsigned ir3_get_image_slot(struct ir3_context *ctx, nir_deref_instr *deref);
+
+void ir3_ibo_mapping_init(struct ir3_ibo_mapping *mapping, unsigned num_textures);
+unsigned ir3_ssbo_to_ibo(struct ir3_ibo_mapping *mapping, unsigned ssbo);
+unsigned ir3_ssbo_to_tex(struct ir3_ibo_mapping *mapping, unsigned ssbo);
+unsigned ir3_image_to_ibo(struct ir3_ibo_mapping *mapping, unsigned image);
+unsigned ir3_image_to_tex(struct ir3_ibo_mapping *mapping, unsigned image);
+
+unsigned ir3_get_image_slot(nir_deref_instr *deref);
 unsigned ir3_get_image_coords(const nir_variable *var, unsigned *flagsp);
 type_t ir3_get_image_type(const nir_variable *var);
 unsigned ir3_get_num_components_for_glformat(GLuint format);
