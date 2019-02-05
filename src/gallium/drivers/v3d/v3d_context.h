@@ -176,13 +176,6 @@ struct v3d_uncompiled_shader {
         uint16_t tf_specs[16];
         uint16_t tf_specs_psiz[16];
         uint32_t num_tf_specs;
-
-        /**
-         * Flag for if the NIR in this shader originally came from TGSI.  If
-         * so, we need to do some fixups at compile time, due to missing
-         * information in TGSI that exists in NIR.
-         */
-        bool was_tgsi;
 };
 
 struct v3d_compiled_shader {

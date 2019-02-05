@@ -277,8 +277,6 @@ v3d_shader_state_create(struct pipe_context *pctx,
                         fprintf(stderr, "\n");
                 }
                 s = tgsi_to_nir(cso->tokens, &v3d_nir_options);
-
-                so->was_tgsi = true;
         }
 
         nir_variable_mode lower_mode = nir_var_all & ~nir_var_uniform;
@@ -488,6 +486,7 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
         struct v3d_job *job = v3d->job;
         struct v3d_fs_key local_key;
         struct v3d_fs_key *key = &local_key;
+        nir_shader *s = v3d->prog.bind_fs->base.ir.nir;
 
         if (!(v3d->dirty & (VC5_DIRTY_PRIM_MODE |
                             VC5_DIRTY_BLEND |
@@ -546,7 +545,7 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
                         key->f32_color_rb |= 1 << i;
                 }
 
-                if (v3d->prog.bind_fs->was_tgsi) {
+                if (s->info.fs.untyped_color_outputs) {
                         if (util_format_is_pure_uint(cbuf->format))
                                 key->uint_color_rb |= 1 << i;
                         else if (util_format_is_pure_sint(cbuf->format))
