@@ -266,6 +266,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX:
    case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
+   case PIPE_CAP_DEST_SURFACE_SRGB_CONTROL:
       return 1;
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
       return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? 1 : 0;
@@ -336,6 +337,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
    case PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND:
+   case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:

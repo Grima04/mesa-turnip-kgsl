@@ -215,6 +215,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_CLOCK:
    case PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX:
    case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
+   case PIPE_CAP_DEST_SURFACE_SRGB_CONTROL:
       return 1;
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
       return 1; /* class_3d >= NVA0_3D_CLASS; */
@@ -312,6 +313,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_ATOMFADD:
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
    case PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND:
+   case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
