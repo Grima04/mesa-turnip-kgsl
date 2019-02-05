@@ -23,7 +23,8 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "st_glsl_types.h"
 #include "st_nir.h"
-#include "nir_builder.h"
+
+#include "compiler/nir/nir_builder.h"
 
 struct pipe_shader_state *
 st_nir_finish_builtin_shader(struct st_context *st,

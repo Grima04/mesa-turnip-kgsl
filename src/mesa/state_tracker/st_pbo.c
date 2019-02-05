@@ -33,7 +33,6 @@
 #include "state_tracker/st_pbo.h"
 #include "state_tracker/st_cb_bufferobjects.h"
 
-#include "nir_builder.h"
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
@@ -42,6 +41,8 @@
 #include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
+
+#include "compiler/nir/nir_builder.h"
 
 /* Conversion to apply in the fragment shader. */
 enum st_pbo_conversion {
