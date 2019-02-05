@@ -53,7 +53,7 @@ struct panfrost_driver {
 	void (*unmap_bo) (struct panfrost_context *ctx, struct pipe_transfer *transfer);
 	void (*destroy_bo) (struct panfrost_screen *screen, struct panfrost_bo *bo);
 
-	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws);
+	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws, bool is_scanout);
 	void (*force_flush_fragment) (struct panfrost_context *ctx);
 	void (*allocate_slab) (struct panfrost_screen *screen,
 		               struct panfrost_memory *mem,

@@ -50,7 +50,8 @@
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"
 
-#include "pan_drm.h"
+struct panfrost_driver *panfrost_create_drm_driver(int fd);
+struct panfrost_driver *panfrost_create_nondrm_driver(int fd);
 
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
@@ -539,8 +540,12 @@ panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
         if (is_drm) {
                 screen->driver = panfrost_create_drm_driver(fd);
         } else {
-                fprintf(stderr, "Legacy (non-DRM) drivers are not supported in upstream Mesa\n");
+#ifdef PAN_NONDRM_OVERLAY
+                screen->driver = panfrost_create_nondrm_driver(fd);
+#else
+                fprintf(stderr, "Legacy (non-DRM) operation requires out-of-tree overlay\n");
                 return NULL;
+#endif
         }
 
 #ifdef DUMP_PERFORMANCE_COUNTERS

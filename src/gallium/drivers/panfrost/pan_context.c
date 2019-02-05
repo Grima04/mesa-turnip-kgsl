@@ -1431,7 +1431,8 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate)
 
 #ifndef DRY_RUN
         
-	int fragment_id = screen->driver->submit_vs_fs_job(ctx, has_draws);
+        bool is_scanout = panfrost_is_scanout(ctx);
+        int fragment_id = screen->driver->submit_vs_fs_job(ctx, has_draws, is_scanout);
 
         /* If visual, we can stall a frame */
 

@@ -39,7 +39,7 @@ files_panfrost = files(
   'pan_blending.c',
   'pan_blend_shaders.c',
   'pan_wallpaper.c',
-  'pan_pretty_print.c'
+  'pan_pretty_print.c',
 )
 
 inc_panfrost = [
@@ -52,6 +52,21 @@ inc_panfrost = [
   include_directories('include'),
   include_directories('midgard'),
 ]
+
+compile_args_panfrost = [
+  '-DGALLIUM_PANFROST',
+  '-Wno-pointer-arith'
+]
+
+overlay = join_paths(meson.source_root(), meson.current_source_dir(), 'nondrm/pan_nondrm.c')
+nondrm_overlay_check = run_command('ls', overlay)
+has_nondrm_overlay = nondrm_overlay_check.returncode() == 0
+
+if has_nondrm_overlay
+  files_panfrost += files('nondrm/pan_nondrm.c')
+  inc_panfrost += include_directories('nondrm/include')
+  compile_args_panfrost += '-DPAN_NONDRM_OVERLAY'
+endif
 
 midgard_nir_algebraic_c = custom_target(
   'midgard_nir_algebraic.c',
@@ -73,11 +88,11 @@ libpanfrost = static_library(
     idep_nir
   ],
   include_directories : inc_panfrost,
-  c_args : [c_vis_args, c_msvc_compat_args],
+  c_args : [c_vis_args, c_msvc_compat_args, compile_args_panfrost],
 )
 
 driver_panfrost = declare_dependency(
-  compile_args : ['-DGALLIUM_PANFROST', '-Wno-pointer-arith'],
+  compile_args : compile_args_panfrost,
   link_with : [libpanfrost, libpanfrostwinsys],
 )
 
