@@ -31,7 +31,6 @@ b = 'b'
 
 algebraic = [
     (('b2i32', a), ('iand@32', "a@32", 1)),
-    (('isign', a), ('imin', ('imax', a, -1), 1)),
     (('fge', a, b), ('flt', b, a)),
 
     # XXX: We have hw ops for this, just unknown atm..

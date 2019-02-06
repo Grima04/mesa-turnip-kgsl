@@ -758,6 +758,8 @@ optimizations = [
                                                             ('extract_i8', 'v', 3))),
                                            127.0))),
      'options->lower_unpack_snorm_4x8'),
+
+   (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
 ]
 
 invert = OrderedDict([('feq', 'fne'), ('fne', 'feq'), ('fge', 'flt'), ('flt', 'fge')])
