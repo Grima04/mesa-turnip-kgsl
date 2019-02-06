@@ -1048,9 +1048,6 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
 
         case nir_op_unpack_half_2x16_split_x:
-                /* XXX perf: It would be good to be able to merge this unpack
-                 * with whatever uses our result.
-                 */
                 result = vir_FMOV(c, src[0]);
                 vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_L);
                 break;
