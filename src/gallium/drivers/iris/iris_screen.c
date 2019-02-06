@@ -239,7 +239,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEVICE_ID:
       return screen->pci_id;
    case PIPE_CAP_VIDEO_MEMORY:
-      return 0xffffffff; // XXX: bogus
+      return INT_MAX; // XXX: bogus
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
    case PIPE_CAP_MAX_VARYINGS:
       return 32;
