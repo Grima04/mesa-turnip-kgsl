@@ -280,7 +280,7 @@ sources_not_null(const struct gen_device_info *devinfo,
    if (inst_is_split_send(devinfo, inst))
       return (struct string){};
 
-   if (num_sources >= 1)
+   if (num_sources >= 1 && brw_inst_opcode(devinfo, inst) != BRW_OPCODE_SYNC)
       ERROR_IF(src0_is_null(devinfo, inst), "src0 is null");
 
    if (num_sources == 2)
