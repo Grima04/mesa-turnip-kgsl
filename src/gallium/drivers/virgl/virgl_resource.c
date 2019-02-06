@@ -33,11 +33,16 @@ bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
    struct virgl_screen *vs = virgl_screen(vctx->base.screen);
    struct virgl_resource *res = virgl_resource(trans->base.resource);
 
-   if ((!(trans->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED)) &&
-       vs->vws->res_is_referenced(vs->vws, vctx->cbuf, res->hw_res)) {
-      return true;
+   if (trans->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED)
+      return false;
+   if (!vs->vws->res_is_referenced(vs->vws, vctx->cbuf, res->hw_res))
+      return false;
+   if (res->clean[trans->base.level]) {
+      if (vctx->num_draws == 0 && vctx->num_compute == 0)
+         return false;
    }
-   return false;
+
+   return true;
 }
 
 bool virgl_res_needs_readback(struct virgl_context *vctx,
