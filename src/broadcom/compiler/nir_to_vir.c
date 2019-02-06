@@ -547,19 +547,6 @@ ntq_fsign(struct v3d_compile *c, struct qreg src)
         return vir_MOV(c, t);
 }
 
-static struct qreg
-ntq_isign(struct v3d_compile *c, struct qreg src)
-{
-        struct qreg t = vir_get_temp(c);
-
-        vir_MOV_dest(c, t, vir_uniform_ui(c, 0));
-        vir_PF(c, vir_MOV(c, src), V3D_QPU_PF_PUSHZ);
-        vir_MOV_cond(c, V3D_QPU_COND_IFNA, t, vir_uniform_ui(c, 1));
-        vir_PF(c, vir_MOV(c, src), V3D_QPU_PF_PUSHN);
-        vir_MOV_cond(c, V3D_QPU_COND_IFA, t, vir_uniform_ui(c, -1));
-        return vir_MOV(c, t);
-}
-
 static void
 emit_fragcoord_input(struct v3d_compile *c, int attr)
 {
@@ -1024,9 +1011,6 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 
         case nir_op_fsign:
                 result = ntq_fsign(c, src[0]);
-                break;
-        case nir_op_isign:
-                result = ntq_isign(c, src[0]);
                 break;
 
         case nir_op_fabs: {
@@ -2476,6 +2460,7 @@ const nir_shader_compiler_options v3d_nir_options = {
         .lower_fsat = true,
         .lower_fsqrt = true,
         .lower_ifind_msb = true,
+        .lower_isign = true,
         .lower_ldexp = true,
         .lower_mul_high = true,
         .lower_wpos_pntc = true,
