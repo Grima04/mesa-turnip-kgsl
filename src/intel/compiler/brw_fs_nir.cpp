@@ -3201,7 +3201,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
 
    const fs_reg sample = nir_system_values[SYSTEM_VALUE_SAMPLE_ID];
    const fs_reg mcs = wm_key->multisample_fbo ?
-      emit_mcs_fetch(coords, 3, brw_imm_ud(surface)) : fs_reg();
+      emit_mcs_fetch(coords, 3, brw_imm_ud(surface), fs_reg()) : fs_reg();
 
    /* Use either a normal or a CMS texel fetch message depending on whether
     * the framebuffer is single or multisample.  On SKL+ use the wide CMS
@@ -5237,6 +5237,18 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          break;
       }
 
+      case nir_tex_src_texture_handle:
+         assert(nir_tex_instr_src_index(instr, nir_tex_src_texture_offset) == -1);
+         srcs[TEX_LOGICAL_SRC_SURFACE] = fs_reg();
+         srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = bld.emit_uniformize(src);
+         break;
+
+      case nir_tex_src_sampler_handle:
+         assert(nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset) == -1);
+         srcs[TEX_LOGICAL_SRC_SAMPLER] = fs_reg();
+         srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = bld.emit_uniformize(src);
+         break;
+
       case nir_tex_src_ms_mcs:
          assert(instr->op == nir_texop_txf_ms);
          srcs[TEX_LOGICAL_SRC_MCS] = retype(src, BRW_REGISTER_TYPE_D);
@@ -5266,7 +5278,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          srcs[TEX_LOGICAL_SRC_MCS] =
             emit_mcs_fetch(srcs[TEX_LOGICAL_SRC_COORDINATE],
                            instr->coord_components,
-                           srcs[TEX_LOGICAL_SRC_SURFACE]);
+                           srcs[TEX_LOGICAL_SRC_SURFACE],
+                           srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE]);
       } else {
          srcs[TEX_LOGICAL_SRC_MCS] = brw_imm_ud(0u);
       }

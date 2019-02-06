@@ -35,7 +35,8 @@ using namespace brw;
 /* Sample from the MCS surface attached to this multisample texture. */
 fs_reg
 fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
-                           const fs_reg &texture)
+                           const fs_reg &texture,
+                           const fs_reg &texture_handle)
 {
    const fs_reg dest = vgrf(glsl_type::uvec4_type);
 
@@ -43,6 +44,7 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
    srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
    srcs[TEX_LOGICAL_SRC_SURFACE] = texture;
    srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_ud(0);
+   srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = texture_handle;
    srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(components);
    srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
 

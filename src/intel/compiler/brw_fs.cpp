@@ -4685,6 +4685,8 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &mcs,
                                 const fs_reg &surface,
                                 const fs_reg &sampler,
+                                const fs_reg &surface_handle,
+                                const fs_reg &sampler_handle,
                                 const fs_reg &tg4_offset,
                                 unsigned coord_components,
                                 unsigned grad_components)
@@ -4697,9 +4699,14 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
    for (unsigned i = 0; i < ARRAY_SIZE(sources); i++)
       sources[i] = bld.vgrf(BRW_REGISTER_TYPE_F);
 
+   /* We must have exactly one of surface/sampler and surface/sampler_handle */
+   assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
+   assert((sampler.file == BAD_FILE) != (sampler_handle.file == BAD_FILE));
+
    if (op == SHADER_OPCODE_TG4 || op == SHADER_OPCODE_TG4_OFFSET ||
        inst->offset != 0 || inst->eot ||
        op == SHADER_OPCODE_SAMPLEINFO ||
+       sampler_handle.file != BAD_FILE ||
        is_high_sampler(devinfo, sampler)) {
       /* For general texture offsets (no txf workaround), we need a header to
        * put them in.
@@ -4739,7 +4746,21 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
          ubld1.MOV(component(header, 2), brw_imm_ud(0));
       }
 
-      if (is_high_sampler(devinfo, sampler)) {
+      if (sampler_handle.file != BAD_FILE) {
+         /* Bindless sampler handles aren't relative to the sampler state
+          * pointer passed into the shader through SAMPLER_STATE_POINTERS_*.
+          * Instead, it's an absolute pointer relative to dynamic state base
+          * address.
+          *
+          * Sampler states are 16 bytes each and the pointer we give here has
+          * to be 32-byte aligned.  In order to avoid more indirect messages
+          * than required, we assume that all bindless sampler states are
+          * 32-byte aligned.  This sacrifices a bit of general state base
+          * address space but means we can do something more efficient in the
+          * shader.
+          */
+         ubld1.MOV(component(header, 3), sampler_handle);
+      } else if (is_high_sampler(devinfo, sampler)) {
          if (sampler.file == BRW_IMMEDIATE_VALUE) {
             assert(sampler.ud >= 16);
             const int sampler_state_size = 16; /* 16 bytes */
@@ -4942,14 +4963,42 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
    }
 
    inst->sfid = BRW_SFID_SAMPLER;
-   if (surface.file == IMM && sampler.file == IMM) {
+   if (surface.file == IMM &&
+       (sampler.file == IMM || sampler_handle.file != BAD_FILE)) {
       inst->desc = brw_sampler_desc(devinfo,
                                     surface.ud + base_binding_table_index,
-                                    sampler.ud % 16,
+                                    sampler.file == IMM ? sampler.ud % 16 : 0,
                                     msg_type,
                                     simd_mode,
                                     0 /* return_format unused on gen7+ */);
       inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   } else if (surface_handle.file != BAD_FILE) {
+      /* Bindless surface */
+      assert(devinfo->gen >= 9);
+      inst->desc = brw_sampler_desc(devinfo,
+                                    GEN9_BTI_BINDLESS,
+                                    sampler.file == IMM ? sampler.ud % 16 : 0,
+                                    msg_type,
+                                    simd_mode,
+                                    0 /* return_format unused on gen7+ */);
+
+      /* For bindless samplers, the entire address is included in the message
+       * header so we can leave the portion in the message descriptor 0.
+       */
+      if (sampler_handle.file != BAD_FILE || sampler.file == IMM) {
+         inst->src[0] = brw_imm_ud(0);
+      } else {
+         const fs_builder ubld = bld.group(1, 0).exec_all();
+         fs_reg desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.SHL(desc, sampler, brw_imm_ud(8));
+         inst->src[0] = desc;
+      }
+
+      /* We assume that the driver provided the handle in the top 20 bits so
+       * we can use the surface handle directly as the extended descriptor.
+       */
+      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
    } else {
       /* Immediate portion of the descriptor */
       inst->desc = brw_sampler_desc(devinfo,
@@ -4964,7 +5013,9 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
          /* This case is common in GL */
          ubld.MUL(desc, surface, brw_imm_ud(0x101));
       } else {
-         if (sampler.file == IMM) {
+         if (sampler_handle.file != BAD_FILE) {
+            ubld.MOV(desc, surface);
+         } else if (sampler.file == IMM) {
             ubld.OR(desc, surface, brw_imm_ud(sampler.ud << 8));
          } else {
             ubld.SHL(desc, sampler, brw_imm_ud(8));
@@ -4976,8 +5027,8 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       ubld.AND(desc, desc, brw_imm_ud(0xfff));
 
       inst->src[0] = component(desc, 0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
    }
-   inst->src[1] = brw_imm_ud(0); /* ex_desc */
 
    inst->src[2] = src_payload;
    inst->resize_sources(3);
@@ -5009,6 +5060,8 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    const fs_reg &mcs = inst->src[TEX_LOGICAL_SRC_MCS];
    const fs_reg &surface = inst->src[TEX_LOGICAL_SRC_SURFACE];
    const fs_reg &sampler = inst->src[TEX_LOGICAL_SRC_SAMPLER];
+   const fs_reg &surface_handle = inst->src[TEX_LOGICAL_SRC_SURFACE_HANDLE];
+   const fs_reg &sampler_handle = inst->src[TEX_LOGICAL_SRC_SAMPLER_HANDLE];
    const fs_reg &tg4_offset = inst->src[TEX_LOGICAL_SRC_TG4_OFFSET];
    assert(inst->src[TEX_LOGICAL_SRC_COORD_COMPONENTS].file == IMM);
    const unsigned coord_components = inst->src[TEX_LOGICAL_SRC_COORD_COMPONENTS].ud;
@@ -5019,7 +5072,9 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
       lower_sampler_logical_send_gen7(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2, min_lod,
                                       sample_index,
-                                      mcs, surface, sampler, tg4_offset,
+                                      mcs, surface, sampler,
+                                      surface_handle, sampler_handle,
+                                      tg4_offset,
                                       coord_components, grad_components);
    } else if (devinfo->gen >= 5) {
       lower_sampler_logical_send_gen5(bld, inst, op, coordinate,
