@@ -70,6 +70,7 @@ struct ttn_compile {
 
    nir_variable **inputs;
    nir_variable **outputs;
+   nir_variable *samplers[PIPE_MAX_SAMPLERS];
 
    nir_variable *input_var_face;
    nir_variable *input_var_position;
@@ -1168,6 +1169,44 @@ setup_texture_info(nir_tex_instr *instr, unsigned texture)
    }
 }
 
+static enum glsl_base_type
+base_type_for_alu_type(nir_alu_type type)
+{
+   type = nir_alu_type_get_base_type(type);
+
+   switch (type) {
+   case nir_type_float:
+      return GLSL_TYPE_FLOAT;
+   case nir_type_int:
+      return GLSL_TYPE_INT;
+   case nir_type_uint:
+      return GLSL_TYPE_UINT;
+   default:
+      unreachable("invalid type");
+   }
+}
+
+static nir_variable *
+get_sampler_var(struct ttn_compile *c, int binding,
+                enum glsl_sampler_dim dim,
+                bool is_shadow,
+                bool is_array,
+                enum glsl_base_type base_type)
+{
+   nir_variable *var = c->samplers[binding];
+   if (!var) {
+      const struct glsl_type *type =
+         glsl_sampler_type(dim, is_shadow, is_array, base_type);
+      var = nir_variable_create(c->build.shader, nir_var_uniform, type,
+                                "sampler");
+      var->data.binding = binding;
+      var->data.explicit_binding = true;
+      c->samplers[binding] = var;
+   }
+
+   return var;
+}
+
 static void
 ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 {
@@ -1243,6 +1282,9 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       num_srcs++;
    }
 
+   /* Deref sources */
+   num_srcs += 2;
+
    num_srcs += tgsi_inst->Texture.NumOffsets;
 
    instr = nir_tex_instr_create(b->shader, num_srcs);
@@ -1274,14 +1316,12 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       instr->coord_components++;
 
    assert(tgsi_inst->Src[samp].Register.File == TGSI_FILE_SAMPLER);
-   instr->texture_index = tgsi_inst->Src[samp].Register.Index;
-   instr->sampler_index = tgsi_inst->Src[samp].Register.Index;
 
    /* TODO if we supported any opc's which take an explicit SVIEW
     * src, we would use that here instead.  But for the "legacy"
     * texture opc's the SVIEW index is same as SAMP index:
     */
-   sview = instr->texture_index;
+   sview = tgsi_inst->Src[samp].Register.Index;
 
    if (op == nir_texop_lod) {
       instr->dest_type = nir_type_float;
@@ -1291,7 +1331,22 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       instr->dest_type = nir_type_float;
    }
 
+   nir_variable *var =
+      get_sampler_var(c, sview, instr->sampler_dim,
+                      instr->is_shadow,
+                      instr->is_array,
+                      base_type_for_alu_type(instr->dest_type));
+
+   nir_deref_instr *deref = nir_build_deref_var(b, var);
+
    unsigned src_number = 0;
+
+   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
+   instr->src[src_number].src_type = nir_tex_src_texture_deref;
+   src_number++;
+   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
+   instr->src[src_number].src_type = nir_tex_src_sampler_deref;
+   src_number++;
 
    instr->src[src_number].src =
       nir_src_for_ssa(nir_swizzle(b, src[0], SWIZ(X, Y, Z, W),
@@ -1391,6 +1446,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    }
 
    assert(src_number == num_srcs);
+   assert(src_number == instr->num_srcs);
 
    nir_ssa_dest_init(&instr->instr, &instr->dest,
 		     nir_tex_instr_dest_size(instr),
@@ -1417,21 +1473,34 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    struct tgsi_full_instruction *tgsi_inst = &c->token->FullInstruction;
    nir_tex_instr *txs, *qlv;
 
-   txs = nir_tex_instr_create(b->shader, 1);
+   txs = nir_tex_instr_create(b->shader, 2);
    txs->op = nir_texop_txs;
    setup_texture_info(txs, tgsi_inst->Texture.Texture);
 
-   qlv = nir_tex_instr_create(b->shader, 0);
+   qlv = nir_tex_instr_create(b->shader, 1);
    qlv->op = nir_texop_query_levels;
    setup_texture_info(qlv, tgsi_inst->Texture.Texture);
 
    assert(tgsi_inst->Src[1].Register.File == TGSI_FILE_SAMPLER);
-   txs->texture_index = tgsi_inst->Src[1].Register.Index;
-   qlv->texture_index = tgsi_inst->Src[1].Register.Index;
+   int tex_index = tgsi_inst->Src[1].Register.Index;
 
-   /* only single src, the lod: */
-   txs->src[0].src = nir_src_for_ssa(ttn_channel(b, src[0], X));
-   txs->src[0].src_type = nir_tex_src_lod;
+   nir_variable *var =
+      get_sampler_var(c, tex_index, txs->sampler_dim,
+                      txs->is_shadow,
+                      txs->is_array,
+                      base_type_for_alu_type(txs->dest_type));
+
+   nir_deref_instr *deref = nir_build_deref_var(b, var);
+
+   txs->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
+   txs->src[0].src_type = nir_tex_src_texture_deref;
+
+   qlv->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
+   qlv->src[0].src_type = nir_tex_src_texture_deref;
+
+   /* lod: */
+   txs->src[1].src = nir_src_for_ssa(ttn_channel(b, src[0], X));
+   txs->src[1].src_type = nir_tex_src_lod;
 
    nir_ssa_dest_init(&txs->instr, &txs->dest,
 		     nir_tex_instr_dest_size(txs), 32, NULL);
