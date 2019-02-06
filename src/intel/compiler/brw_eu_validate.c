@@ -171,6 +171,20 @@ src1_is_null(const struct gen_device_info *devinfo, const brw_inst *inst)
 }
 
 static bool
+src0_is_acc(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   return brw_inst_src0_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
+          (brw_inst_src0_da_reg_nr(devinfo, inst) & 0xF0) == BRW_ARF_ACCUMULATOR;
+}
+
+static bool
+src1_is_acc(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   return brw_inst_src1_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
+          (brw_inst_src1_da_reg_nr(devinfo, inst) & 0xF0) == BRW_ARF_ACCUMULATOR;
+}
+
+static bool
 src0_is_grf(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
    return brw_inst_src0_reg_file(devinfo, inst) == BRW_GENERAL_REGISTER_FILE;
@@ -273,6 +287,24 @@ sources_not_null(const struct gen_device_info *devinfo,
       ERROR_IF(src1_is_null(devinfo, inst), "src1 is null");
 
    return error_msg;
+}
+
+static bool
+inst_uses_src_acc(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   /* Check instructions that use implicit accumulator sources */
+   switch (brw_inst_opcode(devinfo, inst)) {
+   case BRW_OPCODE_MAC:
+   case BRW_OPCODE_MACH:
+   case BRW_OPCODE_SADA2:
+      return true;
+   }
+
+   /* FIXME: support 3-src instructions */
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   assert(num_sources < 3);
+
+   return src0_is_acc(devinfo, inst) || (num_sources > 1 && src1_is_acc(devinfo, inst));
 }
 
 static struct string
@@ -938,6 +970,223 @@ general_restrictions_on_region_parameters(const struct gen_device_info *devinfo,
    return error_msg;
 }
 
+static struct string
+special_restrictions_for_mixed_float_mode(const struct gen_device_info *devinfo,
+                                          const brw_inst *inst)
+{
+   struct string error_msg = { .str = NULL, .len = 0 };
+
+   const unsigned opcode = brw_inst_opcode(devinfo, inst);
+   const unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   if (num_sources >= 3)
+      return error_msg;
+
+   if (!is_mixed_float(devinfo, inst))
+      return error_msg;
+
+   unsigned exec_size = 1 << brw_inst_exec_size(devinfo, inst);
+   bool is_align16 = brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_16;
+
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+   enum brw_reg_type src1_type = num_sources > 1 ?
+                                 brw_inst_src1_type(devinfo, inst) : 0;
+   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+
+   unsigned dst_stride = STRIDE(brw_inst_dst_hstride(devinfo, inst));
+   bool dst_is_packed = is_packed(exec_size * dst_stride, exec_size, dst_stride);
+
+   /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+    * Float Operations:
+    *
+    *    "Indirect addressing on source is not supported when source and
+    *     destination data types are mixed float."
+    */
+   ERROR_IF(brw_inst_src0_address_mode(devinfo, inst) != BRW_ADDRESS_DIRECT ||
+            (num_sources > 1 &&
+             brw_inst_src1_address_mode(devinfo, inst) != BRW_ADDRESS_DIRECT),
+            "Indirect addressing on source is not supported when source and "
+            "destination data types are mixed float");
+
+   /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+    * Float Operations:
+    *
+    *    "No SIMD16 in mixed mode when destination is f32. Instruction
+    *     execution size must be no more than 8."
+    */
+   ERROR_IF(exec_size > 8 && dst_type == BRW_REGISTER_TYPE_F,
+            "Mixed float mode with 32-bit float destination is limited "
+            "to SIMD8");
+
+   if (is_align16) {
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *   "In Align16 mode, when half float and float data types are mixed
+       *    between source operands OR between source and destination operands,
+       *    the register content are assumed to be packed."
+       *
+       * Since Align16 doesn't have a concept of horizontal stride (or width),
+       * it means that vertical stride must always be 4, since 0 and 2 would
+       * lead to replicated data, and any other value is disallowed in Align16.
+       */
+      ERROR_IF(brw_inst_src0_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_4,
+               "Align16 mixed float mode assumes packed data (vstride must be 4");
+
+      ERROR_IF(num_sources >= 2 &&
+               brw_inst_src1_vstride(devinfo, inst) != BRW_VERTICAL_STRIDE_4,
+               "Align16 mixed float mode assumes packed data (vstride must be 4");
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *   "For Align16 mixed mode, both input and output packed f16 data
+       *    must be oword aligned, no oword crossing in packed f16."
+       *
+       * The previous rule requires that Align16 operands are always packed,
+       * and since there is only one bit for Align16 subnr, which represents
+       * offsets 0B and 16B, this rule is always enforced and we don't need to
+       * validate it.
+       */
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *    "No SIMD16 in mixed mode when destination is packed f16 for both
+       *     Align1 and Align16."
+       *
+       * And:
+       *
+       *   "In Align16 mode, when half float and float data types are mixed
+       *    between source operands OR between source and destination operands,
+       *    the register content are assumed to be packed."
+       *
+       * Which implies that SIMD16 is not available in Align16. This is further
+       * confirmed by:
+       *
+       *    "For Align16 mixed mode, both input and output packed f16 data
+       *     must be oword aligned, no oword crossing in packed f16"
+       *
+       * Since oword-aligned packed f16 data would cross oword boundaries when
+       * the execution size is larger than 8.
+       */
+      ERROR_IF(exec_size > 8, "Align16 mixed float mode is limited to SIMD8");
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *    "No accumulator read access for Align16 mixed float."
+       */
+      ERROR_IF(inst_uses_src_acc(devinfo, inst),
+               "No accumulator read access for Align16 mixed float");
+   } else {
+      assert(!is_align16);
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *    "No SIMD16 in mixed mode when destination is packed f16 for both
+       *     Align1 and Align16."
+       */
+      ERROR_IF(exec_size > 8 && dst_is_packed &&
+               dst_type == BRW_REGISTER_TYPE_HF,
+               "Align1 mixed float mode is limited to SIMD8 when destination "
+               "is packed half-float");
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *    "Math operations for mixed mode:
+       *     - In Align1, f16 inputs need to be strided"
+       */
+      if (opcode == BRW_OPCODE_MATH) {
+         if (src0_type == BRW_REGISTER_TYPE_HF) {
+            ERROR_IF(STRIDE(brw_inst_src0_hstride(devinfo, inst)) <= 1,
+                     "Align1 mixed mode math needs strided half-float inputs");
+         }
+
+         if (num_sources >= 2 && src1_type == BRW_REGISTER_TYPE_HF) {
+            ERROR_IF(STRIDE(brw_inst_src1_hstride(devinfo, inst)) <= 1,
+                     "Align1 mixed mode math needs strided half-float inputs");
+         }
+      }
+
+      if (dst_type == BRW_REGISTER_TYPE_HF && dst_stride == 1) {
+         /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+          * Float Operations:
+          *
+          *    "In Align1, destination stride can be smaller than execution
+          *     type. When destination is stride of 1, 16 bit packed data is
+          *     updated on the destination. However, output packed f16 data
+          *     must be oword aligned, no oword crossing in packed f16."
+          *
+          * The requirement of not crossing oword boundaries for 16-bit oword
+          * aligned data means that execution size is limited to 8.
+          */
+         unsigned subreg;
+         if (brw_inst_dst_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT)
+            subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
+         else
+            subreg = brw_inst_dst_ia_subreg_nr(devinfo, inst);
+         ERROR_IF(subreg % 16 != 0,
+                  "Align1 mixed mode packed half-float output must be "
+                  "oword aligned");
+         ERROR_IF(exec_size > 8,
+                  "Align1 mixed mode packed half-float output must not "
+                  "cross oword boundaries (max exec size is 8)");
+
+         /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+          * Float Operations:
+          *
+          *    "When source is float or half float from accumulator register and
+          *     destination is half float with a stride of 1, the source must
+          *     register aligned. i.e., source must have offset zero."
+          *
+          * Align16 mixed float mode doesn't allow accumulator access on sources,
+          * so we only need to check this for Align1.
+          */
+         if (src0_is_acc(devinfo, inst) &&
+             (src0_type == BRW_REGISTER_TYPE_F ||
+              src0_type == BRW_REGISTER_TYPE_HF)) {
+            ERROR_IF(brw_inst_src0_da1_subreg_nr(devinfo, inst) != 0,
+                     "Mixed float mode requires register-aligned accumulator "
+                     "source reads when destination is packed half-float");
+
+         }
+
+         if (num_sources > 1 &&
+             src1_is_acc(devinfo, inst) &&
+             (src1_type == BRW_REGISTER_TYPE_F ||
+              src1_type == BRW_REGISTER_TYPE_HF)) {
+            ERROR_IF(brw_inst_src1_da1_subreg_nr(devinfo, inst) != 0,
+                     "Mixed float mode requires register-aligned accumulator "
+                     "source reads when destination is packed half-float");
+         }
+      }
+
+      /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+       * Float Operations:
+       *
+       *    "No swizzle is allowed when an accumulator is used as an implicit
+       *     source or an explicit source in an instruction. i.e. when
+       *     destination is half float with an implicit accumulator source,
+       *     destination stride needs to be 2."
+       *
+       * FIXME: it is not quite clear what the first sentence actually means
+       *        or its link to the implication described after it, so we only
+       *        validate the explicit implication, which is clearly described.
+       */
+      if (dst_type == BRW_REGISTER_TYPE_HF &&
+          inst_uses_src_acc(devinfo, inst)) {
+         ERROR_IF(dst_stride != 2,
+                  "Mixed float mode with implicit/explicit accumulator "
+                  "source and half-float destination requires a stride "
+                  "of 2 on the destination");
+      }
+   }
+
+   return error_msg;
+}
+
 /**
  * Creates an \p access_mask for an \p exec_size, \p element_size, and a region
  *
@@ -1576,6 +1825,7 @@ brw_validate_instructions(const struct gen_device_info *devinfo,
          CHECK(send_restrictions);
          CHECK(general_restrictions_based_on_operand_types);
          CHECK(general_restrictions_on_region_parameters);
+         CHECK(special_restrictions_for_mixed_float_mode);
          CHECK(region_alignment_rules);
          CHECK(vector_immediate_restrictions);
          CHECK(special_requirements_for_handling_double_precision_data_types);
