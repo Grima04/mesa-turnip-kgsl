@@ -914,7 +914,6 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	if (screen->tile_mode &&
 			(tmpl->target != PIPE_BUFFER) &&
-			(tmpl->bind & PIPE_BIND_SAMPLER_VIEW) &&
 			!linear) {
 		rsc->tile_mode = screen->tile_mode(tmpl);
 	}
