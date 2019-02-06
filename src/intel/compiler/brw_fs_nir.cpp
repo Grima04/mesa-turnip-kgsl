@@ -2924,11 +2924,15 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
                      SHADER_OPCODE_TXF_CMS_LOGICAL;
 
    /* Emit the instruction. */
-   const fs_reg srcs[] = { coords, fs_reg(), brw_imm_ud(0), fs_reg(),
-                           fs_reg(), sample, mcs,
-                           brw_imm_ud(surface), brw_imm_ud(0),
-                           fs_reg(), brw_imm_ud(3), brw_imm_ud(0) };
-   STATIC_ASSERT(ARRAY_SIZE(srcs) == TEX_LOGICAL_NUM_SRCS);
+   fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
+   srcs[TEX_LOGICAL_SRC_COORDINATE]       = coords;
+   srcs[TEX_LOGICAL_SRC_LOD]              = brw_imm_ud(0);
+   srcs[TEX_LOGICAL_SRC_SAMPLE_INDEX]     = sample;
+   srcs[TEX_LOGICAL_SRC_MCS]              = mcs;
+   srcs[TEX_LOGICAL_SRC_SURFACE]          = brw_imm_ud(surface);
+   srcs[TEX_LOGICAL_SRC_SAMPLER]          = brw_imm_ud(0);
+   srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_ud(3);
+   srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS]  = brw_imm_ud(0);
 
    fs_inst *inst = bld.emit(op, dst, srcs, ARRAY_SIZE(srcs));
    inst->size_written = 4 * inst->dst.component_size(inst->exec_size);
