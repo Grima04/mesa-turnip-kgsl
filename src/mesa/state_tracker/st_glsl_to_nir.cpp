@@ -626,6 +626,13 @@ st_nir_link_shaders(nir_shader **producer, nir_shader **consumer, bool scalar)
 
       st_nir_opts(*producer, scalar);
       st_nir_opts(*consumer, scalar);
+
+      /* Lowering indirects can cause varying to become unused.
+       * nir_compact_varyings() depends on all dead varyings being removed so
+       * we need to call nir_remove_dead_variables() again here.
+       */
+      NIR_PASS_V(*producer, nir_remove_dead_variables, nir_var_shader_out);
+      NIR_PASS_V(*consumer, nir_remove_dead_variables, nir_var_shader_in);
    }
 }
 
