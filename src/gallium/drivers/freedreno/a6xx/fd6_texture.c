@@ -432,19 +432,7 @@ fd6_texture_state(struct fd_context *ctx, enum a6xx_state_block sb,
 		needs_border |= sampler->needs_border;
 	}
 
-	/* This will need update for HS/DS/GS: */
-	if (unlikely(needs_border && (sb == SB6_FS_TEX))) {
-		/* TODO we could probably use fixed offsets for each shader
-		 * stage and avoid the need for # of VS samplers to be part
-		 * of the FS tex state.. but I don't think our handling of
-		 * BCOLOR_OFFSET is actually correct, and trying to use a
-		 * hard coded offset of 16 breaks things.
-		 *
-		 * Note that when this changes, then a corresponding change
-		 * in emit_border_color() is also needed.
-		 */
-		key.bcolor_offset = ctx->tex[PIPE_SHADER_VERTEX].num_samplers;
-	}
+	key.bcolor_offset = fd6_border_color_offset(ctx, sb, tex);
 
 	uint32_t hash = key_hash(&key);
 	struct hash_entry *entry =
