@@ -1735,18 +1735,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
 
-   case nir_op_isign:
-      /*  ASR(val, 31) -> negative val generates 0xffffffff (signed -1).
-       *               -> non-negative val generates 0x00000000.
-       *  Predicated OR sets 1 if val is positive.
-       */
-      assert(nir_dest_bit_size(instr->dest.dest) < 64);
-      emit(CMP(dst_null_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_G));
-      emit(ASR(dst, op[0], brw_imm_d(31)));
-      inst = emit(OR(dst, src_reg(dst), brw_imm_d(1)));
-      inst->predicate = BRW_PREDICATE_NORMAL;
-      break;
-
    case nir_op_ishl:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
       emit(SHL(dst, op[0], op[1]));
