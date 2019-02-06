@@ -105,12 +105,16 @@ inst_is_send(const struct gen_device_info *devinfo, const brw_inst *inst)
 static bool
 inst_is_split_send(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
-   switch (brw_inst_opcode(devinfo, inst)) {
-   case BRW_OPCODE_SENDS:
-   case BRW_OPCODE_SENDSC:
-      return true;
-   default:
-      return false;
+   if (devinfo->gen >= 12) {
+      return inst_is_send(devinfo, inst);
+   } else {
+      switch (brw_inst_opcode(devinfo, inst)) {
+      case BRW_OPCODE_SENDS:
+      case BRW_OPCODE_SENDSC:
+         return true;
+      default:
+         return false;
+      }
    }
 }
 
@@ -126,10 +130,17 @@ signed_type(unsigned type)
    }
 }
 
+static enum brw_reg_type
+inst_dst_type(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   return (devinfo->gen < 12 || !inst_is_send(devinfo, inst)) ?
+      brw_inst_dst_type(devinfo, inst) : BRW_REGISTER_TYPE_D;
+}
+
 static bool
 inst_is_raw_move(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
-   unsigned dst_type = signed_type(brw_inst_dst_type(devinfo, inst));
+   unsigned dst_type = signed_type(inst_dst_type(devinfo, inst));
    unsigned src_type = signed_type(brw_inst_src0_type(devinfo, inst));
 
    if (brw_inst_src0_reg_file(devinfo, inst) == BRW_IMMEDIATE_VALUE) {
@@ -182,12 +193,6 @@ src1_is_acc(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
    return brw_inst_src1_reg_file(devinfo, inst) == BRW_ARCHITECTURE_REGISTER_FILE &&
           (brw_inst_src1_da_reg_nr(devinfo, inst) & 0xF0) == BRW_ARF_ACCUMULATOR;
-}
-
-static bool
-src0_is_grf(const struct gen_device_info *devinfo, const brw_inst *inst)
-{
-   return brw_inst_src0_reg_file(devinfo, inst) == BRW_GENERAL_REGISTER_FILE;
 }
 
 static bool
@@ -366,7 +371,8 @@ send_restrictions(const struct gen_device_info *devinfo,
                "send must use direct addressing");
 
       if (devinfo->gen >= 7) {
-         ERROR_IF(!src0_is_grf(devinfo, inst), "send from non-GRF");
+         ERROR_IF(brw_inst_send_src0_reg_file(devinfo, inst) != BRW_GENERAL_REGISTER_FILE,
+                  "send from non-GRF");
          ERROR_IF(brw_inst_eot(devinfo, inst) &&
                   brw_inst_src0_da_reg_nr(devinfo, inst) < 112,
                   "send with EOT must use g112-g127");
@@ -449,7 +455,7 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
    /* Execution data type is independent of destination data type, except in
     * mixed F/HF instructions.
     */
-   enum brw_reg_type dst_exec_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type dst_exec_type = inst_dst_type(devinfo, inst);
 
    src0_exec_type = execution_type_for_type(brw_inst_src0_type(devinfo, inst));
    if (num_sources == 1) {
@@ -656,10 +662,10 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
     */
 
    unsigned dst_stride = STRIDE(brw_inst_dst_hstride(devinfo, inst));
-   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
    bool dst_type_is_byte =
-      brw_inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_B ||
-      brw_inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_UB;
+      inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_B ||
+      inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_UB;
 
    if (dst_type_is_byte) {
       if (is_packed(exec_size * dst_stride, exec_size, dst_stride)) {
@@ -1348,7 +1354,7 @@ region_alignment_rules(const struct gen_device_info *devinfo,
       return error_msg;
 
    unsigned stride = STRIDE(brw_inst_dst_hstride(devinfo, inst));
-   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
    unsigned element_size = brw_reg_type_to_size(dst_type);
    unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
    unsigned offset = ((exec_size - 1) * stride * element_size) + subreg;
@@ -1555,7 +1561,7 @@ region_alignment_rules(const struct gen_device_info *devinfo,
     * is that the size of the destination type is 4 bytes.
     */
    if (devinfo->gen <= 7 && dst_regs == 2) {
-      enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+      enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
       bool dst_is_packed_dword =
          is_packed(exec_size * stride, exec_size, stride) &&
          brw_reg_type_to_size(dst_type) == 4;
@@ -1606,7 +1612,7 @@ vector_immediate_restrictions(const struct gen_device_info *devinfo,
    if (file != BRW_IMMEDIATE_VALUE)
       return (struct string){};
 
-   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
    unsigned dst_type_size = brw_reg_type_to_size(dst_type);
    unsigned dst_subreg = brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1 ?
                          brw_inst_dst_da1_subreg_nr(devinfo, inst) : 0;
@@ -1670,7 +1676,7 @@ special_requirements_for_handling_double_precision_data_types(
    unsigned exec_type_size = brw_reg_type_to_size(exec_type);
 
    enum brw_reg_file dst_file = brw_inst_dst_reg_file(devinfo, inst);
-   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
    unsigned dst_type_size = brw_reg_type_to_size(dst_type);
    unsigned dst_hstride = STRIDE(brw_inst_dst_hstride(devinfo, inst));
    unsigned dst_reg = brw_inst_dst_da_reg_nr(devinfo, inst);
