@@ -41,6 +41,7 @@
 #include "util/ralloc.h"
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/program.h"
+#include "compiler/glsl/gl_nir.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "glsl/float64_glsl.h"
 
@@ -151,6 +152,7 @@ brw_create_nir(struct brw_context *brw,
    } else {
       nir = prog_to_nir(prog, options);
       NIR_PASS_V(nir, nir_lower_regs_to_ssa); /* turn registers into SSA */
+      NIR_PASS_V(nir, gl_nir_lower_samplers, NULL);
    }
    nir_validate_shader(nir, "before brw_preprocess_nir");
 
