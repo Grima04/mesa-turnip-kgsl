@@ -584,6 +584,8 @@ iris_hiz_exec(struct iris_context *ice,
 
    assert(res->aux.usage == ISL_AUX_USAGE_HIZ && res->aux.bo);
 
+   iris_batch_maybe_flush(batch, 1500);
+
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&surf, &res->base, ISL_AUX_USAGE_HIZ,
                                 level, true);
