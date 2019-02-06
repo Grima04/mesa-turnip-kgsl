@@ -563,20 +563,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_ishr:
 		dst[0] = ir3_ASHR_B(b, src[0], 0, src[1], 0);
 		break;
-	case nir_op_isign: {
-		/* maybe this would be sane to lower in nir.. */
-		struct ir3_instruction *neg, *pos;
-
-		neg = ir3_CMPS_S(b, src[0], 0, create_immed(b, 0), 0);
-		neg->cat2.condition = IR3_COND_LT;
-
-		pos = ir3_CMPS_S(b, src[0], 0, create_immed(b, 0), 0);
-		pos->cat2.condition = IR3_COND_GT;
-
-		dst[0] = ir3_SUB_U(b, pos, 0, neg, 0);
-
-		break;
-	}
 	case nir_op_isub:
 		dst[0] = ir3_SUB_U(b, src[0], 0, src[1], 0);
 		break;
