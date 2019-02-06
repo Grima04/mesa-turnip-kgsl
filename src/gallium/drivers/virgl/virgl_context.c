@@ -751,7 +751,7 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
       u_upload_unmap(ctx->uploader);
 
    /* send the buffer to the remote side for decoding */
-   ctx->num_transfers = ctx->num_draws = 0;
+   ctx->num_transfers = ctx->num_draws = ctx->num_compute = 0;
 
    rs->vws->submit_cmd(rs->vws, ctx->cbuf, ctx->cbuf->in_fence_fd,
                        ctx->cbuf->needs_out_fence_fd ? &out_fence_fd : NULL);
@@ -1163,6 +1163,7 @@ static void virgl_launch_grid(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
    virgl_encode_launch_grid(vctx, info);
+   vctx->num_compute++;
 }
 
 static void

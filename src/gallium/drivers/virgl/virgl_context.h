@@ -79,8 +79,7 @@ struct virgl_context {
 
    struct pipe_resource *ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
    struct pipe_resource *images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
-   int num_transfers;
-   int num_draws;
+   uint32_t num_transfers, num_draws, num_compute;
 
    struct pipe_resource *atomic_buffers[PIPE_MAX_HW_ATOMIC_BUFFERS];
 
