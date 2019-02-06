@@ -528,21 +528,30 @@ brw_inst_set_send_ex_desc(const struct gen_device_info *devinfo,
                           brw_inst *inst, uint32_t value)
 {
    assert(devinfo->gen >= 9);
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC) {
-      brw_inst_set_bits(inst, 94, 91, GET_BITS(value, 31, 28));
-      brw_inst_set_bits(inst, 88, 85, GET_BITS(value, 27, 24));
-      brw_inst_set_bits(inst, 83, 80, GET_BITS(value, 23, 20));
-      brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 19, 16));
-      assert(GET_BITS(value, 15, 0) == 0);
-   } else {
-      assert(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
-             brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC);
-      brw_inst_set_bits(inst, 95, 80, GET_BITS(value, 31, 16));
-      assert(GET_BITS(value, 15, 10) == 0);
-      brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 9, 6));
-      assert(GET_BITS(value, 5, 0) == 0);
-   }
+   brw_inst_set_bits(inst, 94, 91, GET_BITS(value, 31, 28));
+   brw_inst_set_bits(inst, 88, 85, GET_BITS(value, 27, 24));
+   brw_inst_set_bits(inst, 83, 80, GET_BITS(value, 23, 20));
+   brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 19, 16));
+   assert(GET_BITS(value, 15, 0) == 0);
+}
+
+/**
+ * Set the SENDS(C) message extended descriptor immediate.
+ *
+ * This doesn't include the SFID nor the EOT field that were considered to be
+ * part of the extended message descriptor by some versions of the BSpec,
+ * because they are present in the instruction even if the extended message
+ * descriptor is provided indirectly in a register, so we want to specify them
+ * separately.
+ */
+static inline void
+brw_inst_set_sends_ex_desc(const struct gen_device_info *devinfo,
+                           brw_inst *inst, uint32_t value)
+{
+   brw_inst_set_bits(inst, 95, 80, GET_BITS(value, 31, 16));
+   assert(GET_BITS(value, 15, 10) == 0);
+   brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 9, 6));
+   assert(GET_BITS(value, 5, 0) == 0);
 }
 
 /**
@@ -555,18 +564,23 @@ brw_inst_send_ex_desc(const struct gen_device_info *devinfo,
                       const brw_inst *inst)
 {
    assert(devinfo->gen >= 9);
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC) {
-      return (brw_inst_bits(inst, 94, 91) << 28 |
-              brw_inst_bits(inst, 88, 85) << 24 |
-              brw_inst_bits(inst, 83, 80) << 20 |
-              brw_inst_bits(inst, 67, 64) << 16);
-   } else {
-      assert(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
-             brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC);
-      return (brw_inst_bits(inst, 95, 80) << 16 |
-              brw_inst_bits(inst, 67, 64) << 6);
-   }
+   return (brw_inst_bits(inst, 94, 91) << 28 |
+           brw_inst_bits(inst, 88, 85) << 24 |
+           brw_inst_bits(inst, 83, 80) << 20 |
+           brw_inst_bits(inst, 67, 64) << 16);
+}
+
+/**
+ * Get the SENDS(C) message extended descriptor immediate.
+ *
+ * \sa brw_inst_set_send_ex_desc().
+ */
+static inline uint32_t
+brw_inst_sends_ex_desc(const struct gen_device_info *devinfo,
+                       const brw_inst *inst)
+{
+   return (brw_inst_bits(inst, 95, 80) << 16 |
+           brw_inst_bits(inst, 67, 64) << 6);
 }
 
 /**

@@ -2648,7 +2648,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
 
    if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
       brw_inst_set_send_sel_reg32_ex_desc(devinfo, send, 0);
-      brw_inst_set_send_ex_desc(devinfo, send, ex_desc.ud);
+      brw_inst_set_sends_ex_desc(devinfo, send, ex_desc.ud);
    } else {
       assert(ex_desc.file == BRW_ARCHITECTURE_REGISTER_FILE);
       assert(ex_desc.nr == BRW_ARF_ADDRESS);

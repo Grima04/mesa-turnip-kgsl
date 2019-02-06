@@ -1732,7 +1732,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                                 brw_inst_send_ex_desc_ia_subreg_nr(devinfo, inst));
          } else {
             has_imm_ex_desc = true;
-            imm_ex_desc = brw_inst_send_ex_desc(devinfo, inst);
+            imm_ex_desc = brw_inst_sends_ex_desc(devinfo, inst);
             fprintf(file, "0x%08"PRIx32, imm_ex_desc);
          }
       } else {
