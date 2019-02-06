@@ -1013,10 +1013,7 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
 {
    const struct anv_subpass *subpass = cmd_buffer->state.subpass;
    const uint32_t color_att = attachment->colorAttachment;
-
-   if (color_att == VK_ATTACHMENT_UNUSED)
-      return;
-
+   assert(color_att < subpass->color_count);
    const uint32_t att_idx = subpass->color_attachments[color_att].attachment;
 
    if (att_idx == VK_ATTACHMENT_UNUSED)
