@@ -151,7 +151,7 @@ VkResult anv_CreateDescriptorSetLayout(
    uint32_t sampler_count[MESA_SHADER_STAGES] = { 0, };
    uint32_t surface_count[MESA_SHADER_STAGES] = { 0, };
    uint32_t image_count[MESA_SHADER_STAGES] = { 0, };
-   uint32_t buffer_count = 0;
+   uint32_t buffer_view_count = 0;
    uint32_t dynamic_offset_count = 0;
 
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
@@ -211,10 +211,8 @@ VkResult anv_CreateDescriptorSetLayout(
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         set_layout->binding[b].buffer_index = buffer_count;
-         buffer_count += binding->descriptorCount;
+         set_layout->binding[b].buffer_view_index = buffer_view_count;
+         buffer_view_count += binding->descriptorCount;
          /* fall through */
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -222,6 +220,8 @@ VkResult anv_CreateDescriptorSetLayout(
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          anv_foreach_stage(s, binding->stageFlags) {
             set_layout->binding[b].stage[s].surface_index = surface_count[s];
@@ -257,7 +257,7 @@ VkResult anv_CreateDescriptorSetLayout(
       set_layout->shader_stages |= binding->stageFlags;
    }
 
-   set_layout->buffer_count = buffer_count;
+   set_layout->buffer_view_count = buffer_view_count;
    set_layout->dynamic_offset_count = dynamic_offset_count;
 
    *pSetLayout = anv_descriptor_set_layout_to_handle(set_layout);
@@ -300,7 +300,7 @@ sha1_update_descriptor_set_binding_layout(struct mesa_sha1 *ctx,
    SHA1_UPDATE_VALUE(ctx, layout->array_size);
    SHA1_UPDATE_VALUE(ctx, layout->descriptor_index);
    SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_index);
-   SHA1_UPDATE_VALUE(ctx, layout->buffer_index);
+   SHA1_UPDATE_VALUE(ctx, layout->buffer_view_index);
    _mesa_sha1_update(ctx, layout->stage, sizeof(layout->stage));
 
    if (layout->immutable_samplers) {
@@ -316,7 +316,7 @@ sha1_update_descriptor_set_layout(struct mesa_sha1 *ctx,
    SHA1_UPDATE_VALUE(ctx, layout->binding_count);
    SHA1_UPDATE_VALUE(ctx, layout->size);
    SHA1_UPDATE_VALUE(ctx, layout->shader_stages);
-   SHA1_UPDATE_VALUE(ctx, layout->buffer_count);
+   SHA1_UPDATE_VALUE(ctx, layout->buffer_view_count);
    SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_count);
 
    for (uint16_t i = 0; i < layout->binding_count; i++)
@@ -428,14 +428,12 @@ VkResult anv_CreateDescriptorPool(
    struct anv_descriptor_pool *pool;
 
    uint32_t descriptor_count = 0;
-   uint32_t buffer_count = 0;
+   uint32_t buffer_view_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->poolSizeCount; i++) {
       switch (pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         buffer_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+         buffer_view_count += pCreateInfo->pPoolSizes[i].descriptorCount;
       default:
          descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
          break;
@@ -445,7 +443,7 @@ VkResult anv_CreateDescriptorPool(
    const size_t pool_size =
       pCreateInfo->maxSets * sizeof(struct anv_descriptor_set) +
       descriptor_count * sizeof(struct anv_descriptor) +
-      buffer_count * sizeof(struct anv_buffer_view);
+      buffer_view_count * sizeof(struct anv_buffer_view);
    const size_t total_size = sizeof(*pool) + pool_size;
 
    pool = vk_alloc2(&device->alloc, pAllocator, total_size, 8,
@@ -588,7 +586,7 @@ anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout)
    return
       sizeof(struct anv_descriptor_set) +
       layout->size * sizeof(struct anv_descriptor) +
-      layout->buffer_count * sizeof(struct anv_buffer_view);
+      layout->buffer_view_count * sizeof(struct anv_buffer_view);
 }
 
 VkResult
@@ -610,7 +608,7 @@ anv_descriptor_set_create(struct anv_device *device,
    set->size = size;
    set->buffer_views =
       (struct anv_buffer_view *) &set->descriptors[layout->size];
-   set->buffer_count = layout->buffer_count;
+   set->buffer_view_count = layout->buffer_view_count;
 
    /* By defining the descriptors to be zero now, we can later verify that
     * a descriptor has not been populated with user data.
@@ -637,7 +635,7 @@ anv_descriptor_set_create(struct anv_device *device,
    }
 
    /* Allocate surface state for the buffer views. */
-   for (uint32_t b = 0; b < layout->buffer_count; b++) {
+   for (uint32_t b = 0; b < layout->buffer_view_count; b++) {
       set->buffer_views[b].surface_state =
          anv_descriptor_pool_alloc_state(pool);
    }
@@ -654,7 +652,7 @@ anv_descriptor_set_destroy(struct anv_device *device,
 {
    anv_descriptor_set_layout_unref(device, set->layout);
 
-   for (uint32_t b = 0; b < set->buffer_count; b++)
+   for (uint32_t b = 0; b < set->buffer_view_count; b++)
       anv_descriptor_pool_free_state(pool, set->buffer_views[b].surface_state);
 
    anv_descriptor_pool_free_set(pool, set);
@@ -812,7 +810,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
       };
    } else {
       struct anv_buffer_view *bview =
-         &set->buffer_views[bind_layout->buffer_index + element];
+         &set->buffer_views[bind_layout->buffer_view_index + element];
 
       bview->format = anv_isl_format_for_descriptor_type(type);
       bview->range = anv_buffer_get_range(buffer, offset, range);

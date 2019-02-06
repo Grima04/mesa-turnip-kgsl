@@ -1011,7 +1011,7 @@ void anv_CmdPushDescriptorSetKHR(
 
    set->layout = set_layout;
    set->size = anv_descriptor_set_layout_size(set_layout);
-   set->buffer_count = set_layout->buffer_count;
+   set->buffer_view_count = set_layout->buffer_view_count;
    set->buffer_views = push_set->buffer_views;
 
    /* Go through the user supplied descriptors. */
@@ -1102,7 +1102,7 @@ void anv_CmdPushDescriptorSetWithTemplateKHR(
 
    set->layout = set_layout;
    set->size = anv_descriptor_set_layout_size(set_layout);
-   set->buffer_count = set_layout->buffer_count;
+   set->buffer_view_count = set_layout->buffer_view_count;
    set->buffer_views = push_set->buffer_views;
 
    anv_descriptor_set_write_template(cmd_buffer->device, set,
