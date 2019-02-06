@@ -1042,6 +1042,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_SEND:
       return send_has_side_effects;
 
+   case BRW_OPCODE_SYNC:
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:

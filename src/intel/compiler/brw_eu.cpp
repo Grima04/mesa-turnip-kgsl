@@ -467,6 +467,7 @@ enum gen {
 static const struct opcode_desc opcode_descs[] = {
    /* IR,                 HW,  name,      nsrc, ndst, gens */
    { BRW_OPCODE_ILLEGAL,  0,   "illegal", 0,    0,    GEN_ALL },
+   { BRW_OPCODE_SYNC,     1,   "sync",    1,    0,    GEN_GE(GEN12) },
    { BRW_OPCODE_MOV,      1,   "mov",     1,    1,    GEN_LT(GEN12) },
    { BRW_OPCODE_MOV,      97,  "mov",     1,    1,    GEN_GE(GEN12) },
    { BRW_OPCODE_SEL,      2,   "sel",     2,    1,    GEN_LT(GEN12) },

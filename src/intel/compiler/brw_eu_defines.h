@@ -197,6 +197,7 @@ enum PACKED gen10_align1_3src_dst_horizontal_stride {
 enum opcode {
    /* These are the actual hardware instructions. */
    BRW_OPCODE_ILLEGAL,
+   BRW_OPCODE_SYNC,
    BRW_OPCODE_MOV,
    BRW_OPCODE_SEL,
    BRW_OPCODE_MOVI, /**< G45+ */
