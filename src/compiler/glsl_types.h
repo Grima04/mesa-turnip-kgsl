@@ -585,6 +585,16 @@ public:
    }
 
    /**
+    * Query whether or not a type is 32-bit
+    */
+   bool is_32bit() const
+   {
+      return base_type == GLSL_TYPE_UINT ||
+             base_type == GLSL_TYPE_INT ||
+             base_type == GLSL_TYPE_FLOAT;
+   }
+
+   /**
     * Query whether or not a type is a non-array boolean type
     */
    bool is_boolean() const

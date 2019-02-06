@@ -205,6 +205,12 @@ glsl_type_is_16bit(const glsl_type *type)
 }
 
 bool
+glsl_type_is_32bit(const glsl_type *type)
+{
+   return type->is_32bit();
+}
+
+bool
 glsl_type_is_64bit(const glsl_type *type)
 {
    return type->is_64bit();
