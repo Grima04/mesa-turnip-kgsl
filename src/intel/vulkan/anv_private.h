@@ -953,6 +953,10 @@ struct anv_physical_device {
 
     /** True if we can access buffers using A64 messages */
     bool                                        has_a64_buffer_access;
+    /** True if we can use bindless access for images */
+    bool                                        has_bindless_images;
+    /** True if we can use bindless access for samplers */
+    bool                                        has_bindless_samplers;
 
     struct anv_device_extension_table           supported_extensions;
 
@@ -1521,6 +1525,27 @@ struct anv_vue_header {
    float PointWidth;
 };
 
+/** Struct representing a sampled image descriptor
+ *
+ * This descriptor layout is used for sampled images, bare sampler, and
+ * combined image/sampler descriptors.
+ */
+struct anv_sampled_image_descriptor {
+   /** Bindless image handle
+    *
+    * This is expected to already be shifted such that the 20-bit
+    * SURFACE_STATE table index is in the top 20 bits.
+    */
+   uint32_t image;
+
+   /** Bindless sampler handle
+    *
+    * This is assumed to be a 32B-aligned SAMPLER_STATE pointer relative
+    * to the dynamic state base address.
+    */
+   uint32_t sampler;
+};
+
 /** Struct representing a address/range descriptor
  *
  * The fields of this struct correspond directly to the data layout of
@@ -1547,6 +1572,8 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 4),
    /** anv_address_range_descriptor with a buffer address and range */
    ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 5),
+   /** Bindless surface handle */
+   ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 6),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -3454,6 +3481,11 @@ struct anv_sampler {
    uint32_t                     state[3][4];
    uint32_t                     n_planes;
    struct anv_ycbcr_conversion *conversion;
+
+   /* Blob of sampler state data which is guaranteed to be 32-byte aligned
+    * and with a 32-byte stride for use as bindless samplers.
+    */
+   struct anv_state             bindless_state;
 };
 
 struct anv_framebuffer {

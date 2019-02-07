@@ -760,39 +760,64 @@ lower_tex_deref(nir_tex_instr *tex, nir_tex_src_type deref_src_type,
    unsigned array_size =
       state->layout->set[set].layout->binding[binding].array_size;
 
-   nir_tex_src_type offset_src_type;
+   unsigned binding_offset;
    if (deref_src_type == nir_tex_src_texture_deref) {
-      offset_src_type = nir_tex_src_texture_offset;
-      *base_index = state->set[set].surface_offsets[binding] + plane;
+      binding_offset = state->set[set].surface_offsets[binding];
    } else {
       assert(deref_src_type == nir_tex_src_sampler_deref);
-      offset_src_type = nir_tex_src_sampler_offset;
-      *base_index = state->set[set].sampler_offsets[binding] + plane;
+      binding_offset = state->set[set].sampler_offsets[binding];
    }
 
+   nir_builder *b = &state->builder;
+
+   nir_tex_src_type offset_src_type;
    nir_ssa_def *index = NULL;
-   if (deref->deref_type != nir_deref_type_var) {
-      assert(deref->deref_type == nir_deref_type_array);
+   if (binding_offset > MAX_BINDING_TABLE_SIZE) {
+      const unsigned plane_offset =
+         plane * sizeof(struct anv_sampled_image_descriptor);
 
-      if (nir_src_is_const(deref->arr.index)) {
-         unsigned arr_index = nir_src_as_uint(deref->arr.index);
-         *base_index += MIN2(arr_index, array_size - 1);
+      nir_ssa_def *desc =
+         build_descriptor_load(deref, plane_offset, 2, 32, state);
+
+      if (deref_src_type == nir_tex_src_texture_deref) {
+         offset_src_type = nir_tex_src_texture_handle;
+         index = nir_channel(b, desc, 0);
       } else {
-         nir_builder *b = &state->builder;
+         assert(deref_src_type == nir_tex_src_sampler_deref);
+         offset_src_type = nir_tex_src_sampler_handle;
+         index = nir_channel(b, desc, 1);
+      }
+   } else {
+      if (deref_src_type == nir_tex_src_texture_deref) {
+         offset_src_type = nir_tex_src_texture_offset;
+      } else {
+         assert(deref_src_type == nir_tex_src_sampler_deref);
+         offset_src_type = nir_tex_src_sampler_offset;
+      }
 
-         /* From VK_KHR_sampler_ycbcr_conversion:
-          *
-          * If sampler Y’CBCR conversion is enabled, the combined image
-          * sampler must be indexed only by constant integral expressions when
-          * aggregated into arrays in shader code, irrespective of the
-          * shaderSampledImageArrayDynamicIndexing feature.
-          */
-         assert(nir_tex_instr_src_index(tex, nir_tex_src_plane) == -1);
+      *base_index = binding_offset + plane;
 
-         index = nir_ssa_for_src(b, deref->arr.index, 1);
+      if (deref->deref_type != nir_deref_type_var) {
+         assert(deref->deref_type == nir_deref_type_array);
 
-         if (state->add_bounds_checks)
-            index = nir_umin(b, index, nir_imm_int(b, array_size - 1));
+         if (nir_src_is_const(deref->arr.index)) {
+            unsigned arr_index = nir_src_as_uint(deref->arr.index);
+            *base_index += MIN2(arr_index, array_size - 1);
+         } else {
+            /* From VK_KHR_sampler_ycbcr_conversion:
+             *
+             * If sampler Y’CBCR conversion is enabled, the combined image
+             * sampler must be indexed only by constant integral expressions
+             * when aggregated into arrays in shader code, irrespective of
+             * the shaderSampledImageArrayDynamicIndexing feature.
+             */
+            assert(nir_tex_instr_src_index(tex, nir_tex_src_plane) == -1);
+
+            index = nir_ssa_for_src(b, deref->arr.index, 1);
+
+            if (state->add_bounds_checks)
+               index = nir_umin(b, index, nir_imm_int(b, array_size - 1));
+         }
       }
    }
 
@@ -1062,6 +1087,10 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
              anv_descriptor_requires_bindless(pdevice, binding, true)) {
             /* If this descriptor doesn't fit in the binding table or if it
              * requires bindless for some reason, flag it as bindless.
+             *
+             * We also make large sampler arrays bindless because we can avoid
+             * using indirect sends thanks to bindless samplers being packed
+             * less tightly than the sampler table.
              */
             assert(anv_descriptor_supports_bindless(pdevice, binding, true));
             state.set[set].sampler_offsets[b] = BINDLESS_OFFSET;

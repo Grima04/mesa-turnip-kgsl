@@ -328,6 +328,8 @@ VkResult genX(CreateSampler)(
     VkSampler*                                  pSampler)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   const struct anv_physical_device *pdevice =
+      &device->instance->physicalDevice;
    struct anv_sampler *sampler;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
@@ -381,6 +383,17 @@ VkResult genX(CreateSampler)(
          anv_debug_ignored_stype(ext->sType);
          break;
       }
+   }
+
+   if (pdevice->has_bindless_samplers) {
+      /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
+       * for each sampler instead of 16 bytes because we want all bindless
+       * samplers to be 32-byte aligned so we don't have to use indirect
+       * sampler messages on them.
+       */
+      sampler->bindless_state =
+         anv_state_pool_alloc(&device->dynamic_state_pool,
+                              sampler->n_planes * 32, 32);
    }
 
    for (unsigned p = 0; p < sampler->n_planes; p++) {
@@ -452,6 +465,11 @@ VkResult genX(CreateSampler)(
       };
 
       GENX(SAMPLER_STATE_pack)(NULL, sampler->state[p], &sampler_state);
+
+      if (sampler->bindless_state.map) {
+         memcpy(sampler->bindless_state.map + p * 32,
+                sampler->state[p], GENX(SAMPLER_STATE_length) * 4);
+      }
    }
 
    *pSampler = anv_sampler_to_handle(sampler);

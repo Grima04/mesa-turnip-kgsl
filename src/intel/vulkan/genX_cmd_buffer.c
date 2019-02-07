@@ -110,10 +110,18 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionBuffersizeModifyEnable     = true;
 #  endif
 #  if (GEN_GEN >= 9)
-      sba.BindlessSurfaceStateBaseAddress = (struct anv_address) { NULL, 0 };
+      if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
+         sba.BindlessSurfaceStateBaseAddress = (struct anv_address) {
+            .bo = device->surface_state_pool.block_pool.bo,
+            .offset = 0,
+         };
+         sba.BindlessSurfaceStateSize = (1 << 20) - 1;
+      } else {
+         sba.BindlessSurfaceStateBaseAddress = ANV_NULL_ADDRESS;
+         sba.BindlessSurfaceStateSize = 0;
+      }
       sba.BindlessSurfaceStateMOCS = GENX(MOCS);
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-      sba.BindlessSurfaceStateSize = 0;
 #  endif
 #  if (GEN_GEN >= 10)
       sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };

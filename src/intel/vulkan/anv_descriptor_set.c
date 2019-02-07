@@ -45,15 +45,24 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
    switch (type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
       data = ANV_DESCRIPTOR_SAMPLER_STATE;
+      if (device->has_bindless_samplers)
+         data |= ANV_DESCRIPTOR_SAMPLED_IMAGE;
       break;
 
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       data = ANV_DESCRIPTOR_SURFACE_STATE |
              ANV_DESCRIPTOR_SAMPLER_STATE;
+      if (device->has_bindless_images || device->has_bindless_samplers)
+         data |= ANV_DESCRIPTOR_SAMPLED_IMAGE;
       break;
 
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      data = ANV_DESCRIPTOR_SURFACE_STATE;
+      if (device->has_bindless_images)
+         data |= ANV_DESCRIPTOR_SAMPLED_IMAGE;
+      break;
+
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       break;
@@ -100,6 +109,9 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 {
    unsigned size = 0;
 
+   if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE)
+      size += sizeof(struct anv_sampled_image_descriptor);
+
    if (data & ANV_DESCRIPTOR_IMAGE_PARAM)
       size += BRW_IMAGE_PARAM_SIZE * 4;
 
@@ -118,7 +130,17 @@ anv_descriptor_size(const struct anv_descriptor_set_binding_layout *layout)
       return layout->array_size;
    }
 
-   return anv_descriptor_data_size(layout->data);
+   unsigned size = anv_descriptor_data_size(layout->data);
+
+   /* For multi-planar bindings, we make every descriptor consume the maximum
+    * number of planes so we don't have to bother with walking arrays and
+    * adding things up every time.  Fortunately, YCbCr samplers aren't all
+    * that common and likely won't be in the middle of big arrays.
+    */
+   if (layout->max_plane_count > 1)
+      size *= layout->max_plane_count;
+
+   return size;
 }
 
 /** Returns the size in bytes of each descriptor of the given type
@@ -132,7 +154,11 @@ unsigned
 anv_descriptor_type_size(const struct anv_physical_device *pdevice,
                          VkDescriptorType type)
 {
-   assert(type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
+   assert(type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT &&
+          type != VK_DESCRIPTOR_TYPE_SAMPLER &&
+          type != VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE &&
+          type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
    return anv_descriptor_data_size(anv_descriptor_data_for_type(pdevice, type));
 }
 
@@ -144,6 +170,12 @@ anv_descriptor_data_supports_bindless(const struct anv_physical_device *pdevice,
    if (data & ANV_DESCRIPTOR_ADDRESS_RANGE) {
       assert(pdevice->has_a64_buffer_access);
       return true;
+   }
+
+   if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
+      assert(pdevice->has_bindless_images || pdevice->has_bindless_samplers);
+      return sampler ? pdevice->has_bindless_samplers :
+                       pdevice->has_bindless_images;
    }
 
    return false;
@@ -586,6 +618,13 @@ VkResult anv_CreateDescriptorPool(
       unsigned desc_data_size = anv_descriptor_data_size(desc_data) *
                                 pCreateInfo->pPoolSizes[i].descriptorCount;
 
+      /* Combined image sampler descriptors can take up to 3 slots if they
+       * hold a YCbCr image.
+       */
+      if (pCreateInfo->pPoolSizes[i].type ==
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         desc_data_size *= 3;
+
       if (pCreateInfo->pPoolSizes[i].type ==
           VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
          /* Inline uniform blocks are specified to use the descriptor array
@@ -999,6 +1038,18 @@ anv_descriptor_set_write_image_param(uint32_t *param_desc_map,
 #undef WRITE_PARAM_FIELD
 }
 
+static uint32_t
+anv_surface_state_to_handle(struct anv_state state)
+{
+   /* Bits 31:12 of the bindless surface offset in the extended message
+    * descriptor is bits 25:6 of the byte-based address.
+    */
+   assert(state.offset >= 0);
+   uint32_t offset = state.offset;
+   assert((offset & 0x3f) == 0 && offset < (1 << 26));
+   return offset << 6;
+}
+
 void
 anv_descriptor_set_write_image_view(struct anv_device *device,
                                     struct anv_descriptor_set *set,
@@ -1057,6 +1108,33 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
    void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
                     element * anv_descriptor_size(bind_layout);
 
+   if (bind_layout->data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
+      struct anv_sampled_image_descriptor desc_data[3];
+      memset(desc_data, 0, sizeof(desc_data));
+
+      if (image_view) {
+         for (unsigned p = 0; p < image_view->n_planes; p++) {
+            struct anv_surface_state sstate =
+               (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
+               image_view->planes[p].general_sampler_surface_state :
+               image_view->planes[p].optimal_sampler_surface_state;
+            desc_data[p].image = anv_surface_state_to_handle(sstate.state);
+         }
+      }
+
+      if (sampler) {
+         for (unsigned p = 0; p < sampler->n_planes; p++)
+            desc_data[p].sampler = sampler->bindless_state.offset + p * 32;
+      }
+
+      /* We may have max_plane_count < 0 if this isn't a sampled image but it
+       * can be no more than the size of our array of handles.
+       */
+      assert(bind_layout->max_plane_count <= ARRAY_SIZE(desc_data));
+      memcpy(desc_map, desc_data,
+             MAX2(1, bind_layout->max_plane_count) * sizeof(desc_data[0]));
+   }
+
    if (bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM) {
       /* Storage images can only ever have one plane */
       assert(image_view->n_planes == 1);
@@ -1089,6 +1167,13 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
 
    void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
                     element * anv_descriptor_size(bind_layout);
+
+   if (bind_layout->data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
+      struct anv_sampled_image_descriptor desc_data = {
+         .image = anv_surface_state_to_handle(buffer_view->surface_state),
+      };
+      memcpy(desc_map, &desc_data, sizeof(desc_data));
+   }
 
    if (bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM) {
       anv_descriptor_set_write_image_param(desc_map,
