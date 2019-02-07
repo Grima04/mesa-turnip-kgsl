@@ -47,11 +47,7 @@ struct panfrost_screen;
 #define PAN_ALLOCATE_GROWABLE (1 << 1)
 
 struct panfrost_driver {
-	struct panfrost_bo * (*create_bo) (struct panfrost_screen *screen, const struct pipe_resource *template);
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
-	uint8_t * (*map_bo) (struct panfrost_context *ctx, struct pipe_transfer *transfer);
-	void (*unmap_bo) (struct panfrost_context *ctx, struct pipe_transfer *transfer);
-	void (*destroy_bo) (struct panfrost_screen *screen, struct panfrost_bo *bo);
 
 	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws, bool is_scanout);
 	void (*force_flush_fragment) (struct panfrost_context *ctx);
