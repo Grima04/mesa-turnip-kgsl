@@ -522,7 +522,12 @@ _eglQuerySurface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
       *value = surface->PostSubBufferSupportedNV;
       break;
    case EGL_BUFFER_AGE_EXT:
-      if (!disp->Extensions.EXT_buffer_age)
+      /* Both EXT_buffer_age and KHR_partial_update accept EGL_BUFFER_AGE_EXT.
+       * To be precise, the KHR one accepts EGL_BUFFER_AGE_KHR which is an
+       * alias with the same numeric value.
+       */
+      if (!disp->Extensions.EXT_buffer_age &&
+          !disp->Extensions.KHR_partial_update)
          return _eglError(EGL_BAD_ATTRIBUTE, "eglQuerySurface");
 
       _EGLContext *ctx = _eglGetCurrentContext();
