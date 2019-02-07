@@ -87,7 +87,6 @@ brw_blorp_blit_vars_init(nir_builder *b, struct brw_blorp_blit_vars *v,
    v->frag_coord = nir_variable_create(b->shader, nir_var_shader_in,
                                        glsl_vec4_type(), "gl_FragCoord");
    v->frag_coord->data.location = VARYING_SLOT_POS;
-   v->frag_coord->data.origin_upper_left = true;
 
    v->color_out = nir_variable_create(b->shader, nir_var_shader_out,
                                       glsl_vec4_type(), "gl_FragColor");

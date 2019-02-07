@@ -440,7 +440,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		/* Fragment shader position is a system value. */
 		if (nir->info.stage == MESA_SHADER_FRAGMENT &&
 		    variable->data.location == VARYING_SLOT_POS) {
-			if (variable->data.pixel_center_integer)
+			if (nir->info.fs.pixel_center_integer)
 				info->properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER] =
 					TGSI_FS_COORD_PIXEL_CENTER_INTEGER;
 

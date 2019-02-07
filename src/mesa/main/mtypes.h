@@ -2102,10 +2102,6 @@ struct gl_program
    /** Texture units used for samplerExternalOES */
    GLbitfield ExternalSamplersUsed;
 
-   /* Fragement shader only fields */
-   GLboolean OriginUpperLeft;
-   GLboolean PixelCenterInteger;
-
    /** Named parameters, constants, etc. from program text */
    struct gl_program_parameter_list *Parameters;
 

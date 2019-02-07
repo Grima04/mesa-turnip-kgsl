@@ -32,6 +32,8 @@ blorp_nir_init_shader(nir_builder *b,
    nir_builder_init_simple_shader(b, mem_ctx, stage, NULL);
    if (name != NULL)
       b->shader->info.name = ralloc_strdup(b->shader, name);
+   if (stage == MESA_SHADER_FRAGMENT)
+      b->shader->info.fs.origin_upper_left = true;
 }
 
 static inline nir_ssa_def *
@@ -42,7 +44,6 @@ blorp_nir_frag_coord(nir_builder *b)
                           glsl_vec4_type(), "gl_FragCoord");
 
    frag_coord->data.location = VARYING_SLOT_POS;
-   frag_coord->data.origin_upper_left = true;
 
    return nir_load_var(b, frag_coord);
 }

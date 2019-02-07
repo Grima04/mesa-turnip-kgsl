@@ -74,7 +74,6 @@ blorp_params_get_clear_kernel(struct blorp_batch *batch,
          nir_variable_create(b.shader, nir_var_shader_in,
                              glsl_vec4_type(), "gl_FragCoord");
       frag_coord->data.location = VARYING_SLOT_POS;
-      frag_coord->data.origin_upper_left = true;
 
       nir_ssa_def *pos = nir_f2i32(&b, nir_load_var(&b, frag_coord));
       nir_ssa_def *comp = nir_umod(&b, nir_channel(&b, pos, 0),

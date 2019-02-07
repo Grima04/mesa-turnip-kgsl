@@ -195,7 +195,13 @@ typedef struct shader_info {
 
          bool post_depth_coverage;
 
+         /**
+          * \name ARB_fragment_coord_conventions
+          * @{
+          */
          bool pixel_center_integer;
+         bool origin_upper_left;
+         /*@}*/
 
          bool pixel_interlock_ordered;
          bool pixel_interlock_unordered;

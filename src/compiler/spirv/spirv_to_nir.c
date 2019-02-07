@@ -3785,7 +3785,8 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
    switch(mode->exec_mode) {
    case SpvExecutionModeOriginUpperLeft:
    case SpvExecutionModeOriginLowerLeft:
-      b->origin_upper_left =
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.origin_upper_left =
          (mode->exec_mode == SpvExecutionModeOriginUpperLeft);
       break;
 
@@ -3908,7 +3909,8 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    case SpvExecutionModePixelCenterInteger:
-      b->pixel_center_integer = true;
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.pixel_center_integer = true;
       break;
 
    case SpvExecutionModeXfb:

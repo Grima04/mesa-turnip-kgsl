@@ -238,14 +238,6 @@ typedef struct nir_variable {
       unsigned interpolation:2;
 
       /**
-       * \name ARB_fragment_coord_conventions
-       * @{
-       */
-      unsigned origin_upper_left:1;
-      unsigned pixel_center_integer:1;
-      /*@}*/
-
-      /**
        * If non-zero, then this variable may be packed along with other variables
        * into a single varying slot, so this offset should be applied when
        * accessing components.  For example, an offset of 1 means that the x
