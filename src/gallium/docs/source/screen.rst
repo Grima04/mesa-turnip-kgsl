@@ -22,6 +22,8 @@ or integer values, use :ref:`get_param`.
 
 The integer capabilities:
 
+* ``PIPE_CAP_GRAPHICS``: Whether graphics is supported. If not, contexts can
+  only be created with PIPE_CONTEXT_COMPUTE_ONLY.
 * ``PIPE_CAP_NPOT_TEXTURES``: Whether :term:`NPOT` textures may have repeat modes,
   normalized coordinates, and mipmaps.
 * ``PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS``: How many dual-source blend RTs are support.

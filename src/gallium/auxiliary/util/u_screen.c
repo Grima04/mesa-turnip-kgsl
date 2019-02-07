@@ -43,6 +43,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_POINT_SPRITE:
       return 0;
 
+   case PIPE_CAP_GRAPHICS:
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return 1;
 
