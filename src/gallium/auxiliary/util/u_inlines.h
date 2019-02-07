@@ -731,6 +731,17 @@ util_texrange_covers_whole_level(const struct pipe_resource *tex,
           depth == util_num_layers(tex, level);
 }
 
+static inline struct pipe_context *
+pipe_create_multimedia_context(struct pipe_screen *screen)
+{
+   unsigned flags = 0;
+
+   if (!screen->get_param(screen, PIPE_CAP_GRAPHICS))
+      flags |= PIPE_CONTEXT_COMPUTE_ONLY;
+
+   return screen->context_create(screen, NULL, flags);
+}
+
 #ifdef __cplusplus
 }
 #endif

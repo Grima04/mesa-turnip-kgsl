@@ -832,8 +832,7 @@ vl_dri3_screen_create(Display *display, int screen)
    if (!scrn->base.pscreen)
       goto release_pipe;
 
-   scrn->pipe = scrn->base.pscreen->context_create(scrn->base.pscreen,
-                                                   NULL, 0);
+   scrn->pipe = pipe_create_multimedia_context(scrn->base.pscreen);
    if (!scrn->pipe)
        goto no_context;
 
