@@ -139,8 +139,9 @@ iris_fence_reference(struct pipe_screen *p_screen,
 }
 
 bool
-iris_check_syncpt(struct pipe_screen *p_screen,
-                  struct iris_syncpt *syncpt)
+iris_wait_syncpt(struct pipe_screen *p_screen,
+                 struct iris_syncpt *syncpt,
+                 int64_t timeout_nsec)
 {
    if (!syncpt)
       return false;
@@ -149,6 +150,7 @@ iris_check_syncpt(struct pipe_screen *p_screen,
    struct drm_syncobj_wait args = {
       .handles = (uintptr_t)&syncpt->handle,
       .count_handles = 1,
+      .timeout_nsec = timeout_nsec,
    };
    return drm_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args);
 }
@@ -175,7 +177,7 @@ iris_fence_flush(struct pipe_context *ctx,
    pipe_reference_init(&fence->ref, 1);
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
-      if (!iris_check_syncpt(ctx->screen, ice->batches[b].last_syncpt))
+      if (!iris_wait_syncpt(ctx->screen, ice->batches[b].last_syncpt, 0))
          continue;
 
       iris_syncpt_reference(screen, &fence->syncpt[fence->count++],
