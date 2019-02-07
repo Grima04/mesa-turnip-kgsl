@@ -480,11 +480,101 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 	return 0;
 }
 
+static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
+		struct ir3_info *info)
+{
+	struct ir3_register *src1, *src2;
+	instr_cat6_a6xx_t *cat6 = ptr;
+
+	/* first reg should be SSBO binding point: */
+	iassert(instr->regs[1]->flags & IR3_REG_IMMED);
+
+	src1 = instr->regs[2];
+	src2 = instr->regs[3];
+
+	cat6->type      = instr->cat6.type;
+	cat6->d         = instr->cat6.d - 1;
+	cat6->typed     = instr->cat6.typed;
+	cat6->type_size = instr->cat6.iim_val - 1;
+	cat6->opc       = instr->opc;
+	cat6->jmp_tgt   = !!(instr->flags & IR3_INSTR_JP);
+	cat6->sync      = !!(instr->flags & IR3_INSTR_SY);
+	cat6->opc_cat   = 6;
+
+	cat6->src1 = reg(src1, info, instr->repeat, 0);
+	cat6->src2 = reg(src2, info, instr->repeat, 0);
+	cat6->ssbo = instr->regs[1]->iim_val;
+
+	switch (instr->opc) {
+	case OPC_ATOMIC_ADD:
+	case OPC_ATOMIC_SUB:
+	case OPC_ATOMIC_XCHG:
+	case OPC_ATOMIC_INC:
+	case OPC_ATOMIC_DEC:
+	case OPC_ATOMIC_CMPXCHG:
+	case OPC_ATOMIC_MIN:
+	case OPC_ATOMIC_MAX:
+	case OPC_ATOMIC_AND:
+	case OPC_ATOMIC_OR:
+	case OPC_ATOMIC_XOR:
+		cat6->pad1 = 0x1;
+		cat6->pad2 = 0xc;
+		cat6->pad3 = 0x0;
+		cat6->pad4 = 0x3;
+		break;
+	case OPC_STIB:
+		cat6->pad1 = 0x0;
+		cat6->pad2 = 0xc;
+		cat6->pad3 = 0x0;
+		cat6->pad4 = 0x2;
+		break;
+	case OPC_LDC:
+		cat6->pad1 = 0x0;
+		cat6->pad2 = 0x8;
+		cat6->pad3 = 0x0;
+		cat6->pad4 = 0x2;
+		break;
+	default:
+		iassert(0);
+	}
+
+	return 0;
+}
+
 static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
 	struct ir3_register *dst, *src1, *src2;
 	instr_cat6_t *cat6 = ptr;
+
+	/* In a6xx we start using a new instruction encoding for some of
+	 * these instructions:
+	 */
+	if (info->gpu_id >= 600) {
+		switch (instr->opc) {
+		case OPC_ATOMIC_ADD:
+		case OPC_ATOMIC_SUB:
+		case OPC_ATOMIC_XCHG:
+		case OPC_ATOMIC_INC:
+		case OPC_ATOMIC_DEC:
+		case OPC_ATOMIC_CMPXCHG:
+		case OPC_ATOMIC_MIN:
+		case OPC_ATOMIC_MAX:
+		case OPC_ATOMIC_AND:
+		case OPC_ATOMIC_OR:
+		case OPC_ATOMIC_XOR:
+			/* The shared variants of these still use the old encoding: */
+			if (!(instr->flags & IR3_INSTR_G))
+				break;
+			/* fallthrough */
+		case OPC_STIB:
+		case OPC_LDC:
+			return emit_cat6_a6xx(instr, ptr, info);
+		default:
+			break;
+		}
+	}
+
 	bool type_full = type_size(instr->cat6.type) == 32;
 
 	cat6->type     = instr->cat6.type;
