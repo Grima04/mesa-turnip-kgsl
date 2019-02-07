@@ -1645,7 +1645,18 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
    disp->Extensions.ANDROID_framebuffer_target = EGL_TRUE;
    disp->Extensions.ANDROID_image_native_buffer = EGL_TRUE;
    disp->Extensions.ANDROID_recordable = EGL_TRUE;
-   disp->Extensions.EXT_buffer_age = EGL_TRUE;
+
+   /* Querying buffer age requires a buffer to be dequeued.  Without
+    * EGL_ANDROID_native_fence_sync, dequeue might call eglClientWaitSync and
+    * result in a deadlock (the lock is already held by eglQuerySurface).
+    */
+   if (disp->Extensions.ANDROID_native_fence_sync) {
+      disp->Extensions.EXT_buffer_age = EGL_TRUE;
+#if ANDROID_API_LEVEL >= 23
+      disp->Extensions.KHR_partial_update = EGL_TRUE;
+#endif
+   }
+
    disp->Extensions.KHR_image = EGL_TRUE;
 #if ANDROID_API_LEVEL >= 24
    if (dri2_dpy->mutable_render_buffer &&
