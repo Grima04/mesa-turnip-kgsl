@@ -951,6 +951,9 @@ struct anv_physical_device {
     bool                                        has_context_isolation;
     bool                                        always_use_bindless;
 
+    /** True if we can access buffers using A64 messages */
+    bool                                        has_a64_buffer_access;
+
     struct anv_device_extension_table           supported_extensions;
 
     uint32_t                                    eu_total;

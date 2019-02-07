@@ -456,6 +456,11 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->always_use_bindless =
       env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);
 
+   /* We first got the A64 messages on broadwell and we can only use them if
+    * we can pass addresses directly into the shader which requires softpin.
+    */
+   device->has_a64_buffer_access = device->info.gen >= 8 &&
+                                   device->use_softpin;
 
    /* Starting with Gen10, the timestamp frequency of the command streamer may
     * vary from one part to another. We can query the value from the kernel.
@@ -962,8 +967,7 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
          VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features = (void *)ext;
-         features->bufferDeviceAddress = pdevice->use_softpin &&
-                                         pdevice->info.gen >= 8;
+         features->bufferDeviceAddress = pdevice->has_a64_buffer_access;
          features->bufferDeviceAddressCaptureReplay = false;
          features->bufferDeviceAddressMultiDevice = false;
          break;
