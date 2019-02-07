@@ -42,7 +42,7 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
    srcs[TEX_LOGICAL_SRC_COORDINATE] = coordinate;
    srcs[TEX_LOGICAL_SRC_SURFACE] = texture;
-   srcs[TEX_LOGICAL_SRC_SAMPLER] = texture;
+   srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_ud(0);
    srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(components);
    srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
 

@@ -863,7 +863,7 @@ vec4_visitor::emit_mcs_fetch(const glsl_type *coordinate_type,
                                     dst_reg(this, glsl_type::uvec4_type));
    inst->base_mrf = 2;
    inst->src[1] = surface;
-   inst->src[2] = surface;
+   inst->src[2] = brw_imm_ud(0); /* sampler */
 
    int param_base;
 
