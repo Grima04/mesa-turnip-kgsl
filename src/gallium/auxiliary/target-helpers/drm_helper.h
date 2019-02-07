@@ -100,7 +100,6 @@ pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 struct pipe_screen *
 pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 {
-   fprintf(stderr, "kmsro: driver missing\n");
    return NULL;
 }
 
