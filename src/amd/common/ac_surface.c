@@ -658,6 +658,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	 */
 	AddrSurfInfoIn.flags.dccCompatible =
 		info->chip_class >= GFX8 &&
+		info->has_graphics && /* disable DCC on compute-only chips */
 		!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
 		!(surf->flags & RADEON_SURF_DISABLE_DCC) &&
 		!compressed &&
@@ -1122,7 +1123,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		}
 
 		/* DCC */
-		if (!(surf->flags & RADEON_SURF_DISABLE_DCC) && !compressed &&
+		if (info->has_graphics &&
+		    !(surf->flags & RADEON_SURF_DISABLE_DCC) &&
+		    !compressed &&
 		    gfx9_is_dcc_capable(info, in->swizzleMode)) {
 			ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
 			ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};

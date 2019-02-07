@@ -157,7 +157,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK:
 	case PIPE_CAP_IMAGE_LOAD_FORMATTED:
 	case PIPE_CAP_PREFER_COMPUTE_BLIT_FOR_MULTIMEDIA:
-        case PIPE_CAP_TGSI_DIV:
+	case PIPE_CAP_TGSI_DIV:
 		return 1;
 
 	case PIPE_CAP_QUERY_SO_OVERFLOW:
@@ -165,6 +165,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
 	case PIPE_CAP_POST_DEPTH_COVERAGE:
 		return sscreen->info.chip_class >= GFX10;
+
+	case PIPE_CAP_GRAPHICS:
+		return sscreen->info.has_graphics;
 
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
 		return !SI_BIG_ENDIAN && sscreen->info.has_userptr;

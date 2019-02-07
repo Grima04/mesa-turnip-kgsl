@@ -587,6 +587,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     ws->info.has_2d_tiling = ws->info.chip_class <= GFX6 || ws->info.drm_minor >= 35;
     ws->info.has_read_registers_query = ws->info.drm_minor >= 42;
     ws->info.max_alignment = 1024*1024;
+    ws->info.has_graphics = true;
 
     ws->check_vm = strstr(debug_get_option("R600_DEBUG", ""), "check_vm") != NULL;
 

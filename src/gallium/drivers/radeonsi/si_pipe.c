@@ -392,8 +392,14 @@ static void si_set_context_param(struct pipe_context *ctx,
 static struct pipe_context *si_create_context(struct pipe_screen *screen,
                                               unsigned flags)
 {
-	struct si_context *sctx = CALLOC_STRUCT(si_context);
 	struct si_screen* sscreen = (struct si_screen *)screen;
+
+	/* Don't create a context if it's not compute-only and hw is compute-only. */
+	if (!sscreen->info.has_graphics &&
+	    !(flags & PIPE_CONTEXT_COMPUTE_ONLY))
+		return NULL;
+
+	struct si_context *sctx = CALLOC_STRUCT(si_context);
 	struct radeon_winsys *ws = sscreen->ws;
 	int shader, i;
 	bool stop_exec_on_failure = (flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET) != 0;
@@ -520,10 +526,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	si_init_fence_functions(sctx);
 	si_init_query_functions(sctx);
 	si_init_state_compute_functions(sctx);
+	si_init_context_texture_functions(sctx);
 
 	/* Initialize graphics-only context functions. */
 	if (sctx->has_graphics) {
-		si_init_context_texture_functions(sctx);
 		if (sctx->chip_class >= GFX10)
 			gfx10_init_query(sctx);
 		si_init_msaa_functions(sctx);
@@ -1251,8 +1257,9 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	}
 
 	/* Create the auxiliary context. This must be done last. */
-	sscreen->aux_context = si_create_context(
-		&sscreen->b, sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0);
+	sscreen->aux_context = si_create_context(&sscreen->b,
+		(sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+		(sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
 	if (sscreen->options.aux_debug) {
 		struct u_log_context *log = CALLOC_STRUCT(u_log_context);
 		u_log_context_init(log);

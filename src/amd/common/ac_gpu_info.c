@@ -436,6 +436,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
 	assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
 
+	info->has_graphics = gfx.available_rings > 0;
 	info->num_sdma_rings = util_bitcount(dma.available_rings);
 	info->num_compute_rings = util_bitcount(compute.available_rings);
 
