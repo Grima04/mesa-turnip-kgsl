@@ -876,7 +876,7 @@ iris_get_query_result(struct pipe_context *ctx,
 
       while (!q->map->snapshots_landed) {
          if (wait)
-            iris_wait_syncpt(ctx->screen, q->syncpt, 0);
+            iris_wait_syncpt(ctx->screen, q->syncpt, INT64_MAX);
          else
             return false;
       }
