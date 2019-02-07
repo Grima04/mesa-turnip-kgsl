@@ -906,7 +906,7 @@ ttn_umad(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ttn_arr(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
-   ttn_move_dest(b, dest, nir_ffloor(b, nir_fadd(b, src[0], nir_imm_float(b, 0.5))));
+   ttn_move_dest(b, dest, nir_f2i32(b, nir_fround_even(b, src[0])));
 }
 
 static void
