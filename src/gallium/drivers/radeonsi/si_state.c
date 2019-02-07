@@ -4706,7 +4706,7 @@ static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)
 }
 
 /* This only ensures coherency for shader image/buffer stores. */
-static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
+void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
@@ -4820,7 +4820,6 @@ void si_init_state_functions(struct si_context *sctx)
 	sctx->b.set_vertex_buffers = si_set_vertex_buffers;
 
 	sctx->b.texture_barrier = si_texture_barrier;
-	sctx->b.memory_barrier = si_memory_barrier;
 	sctx->b.set_min_samples = si_set_min_samples;
 	sctx->b.set_tess_state = si_set_tess_state;
 

@@ -771,8 +771,11 @@ static void si_clear_texture(struct pipe_context *pipe,
 
 void si_init_clear_functions(struct si_context *sctx)
 {
-	sctx->b.clear = si_clear;
 	sctx->b.clear_render_target = si_clear_render_target;
-	sctx->b.clear_depth_stencil = si_clear_depth_stencil;
 	sctx->b.clear_texture = si_clear_texture;
+
+	if (sctx->has_graphics) {
+		sctx->b.clear = si_clear;
+		sctx->b.clear_depth_stencil = si_clear_depth_stencil;
+	}
 }

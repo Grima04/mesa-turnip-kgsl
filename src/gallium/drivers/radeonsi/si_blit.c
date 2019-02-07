@@ -1352,7 +1352,10 @@ static void si_flush_resource(struct pipe_context *ctx,
 
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 {
-	if (!tex->dcc_offset)
+	/* If graphics is disabled, we can't decompress DCC, but it shouldn't
+	 * be compressed either. The caller should simply discard it.
+	 */
+	if (!tex->dcc_offset || !sctx->has_graphics)
 		return;
 
 	si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level,
@@ -1363,7 +1366,10 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 void si_init_blit_functions(struct si_context *sctx)
 {
 	sctx->b.resource_copy_region = si_resource_copy_region;
-	sctx->b.blit = si_blit;
-	sctx->b.flush_resource = si_flush_resource;
-	sctx->b.generate_mipmap = si_generate_mipmap;
+
+	if (sctx->has_graphics) {
+		sctx->b.blit = si_blit;
+		sctx->b.flush_resource = si_flush_resource;
+		sctx->b.generate_mipmap = si_generate_mipmap;
+	}
 }

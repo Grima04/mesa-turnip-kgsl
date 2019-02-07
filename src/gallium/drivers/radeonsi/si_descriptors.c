@@ -2647,8 +2647,10 @@ void si_all_resident_buffers_begin_new_cs(struct si_context *sctx)
 void si_init_all_descriptors(struct si_context *sctx)
 {
 	int i;
+	unsigned first_shader =
+		sctx->has_graphics ? 0 : PIPE_SHADER_COMPUTE;
 
-	for (i = 0; i < SI_NUM_SHADERS; i++) {
+	for (i = first_shader; i < SI_NUM_SHADERS; i++) {
 		bool is_2nd = sctx->chip_class >= GFX9 &&
 				     (i == PIPE_SHADER_TESS_CTRL ||
 				      i == PIPE_SHADER_GEOMETRY);
@@ -2721,7 +2723,6 @@ void si_init_all_descriptors(struct si_context *sctx)
 	sctx->b.bind_sampler_states = si_bind_sampler_states;
 	sctx->b.set_shader_images = si_set_shader_images;
 	sctx->b.set_constant_buffer = si_pipe_set_constant_buffer;
-	sctx->b.set_polygon_stipple = si_set_polygon_stipple;
 	sctx->b.set_shader_buffers = si_set_shader_buffers;
 	sctx->b.set_sampler_views = si_set_sampler_views;
 	sctx->b.create_texture_handle = si_create_texture_handle;
@@ -2730,6 +2731,11 @@ void si_init_all_descriptors(struct si_context *sctx)
 	sctx->b.create_image_handle = si_create_image_handle;
 	sctx->b.delete_image_handle = si_delete_image_handle;
 	sctx->b.make_image_handle_resident = si_make_image_handle_resident;
+
+	if (!sctx->has_graphics)
+		return;
+
+	sctx->b.set_polygon_stipple = si_set_polygon_stipple;
 
 	/* Shader user data. */
 	sctx->atoms.s.shader_pointers.emit = si_emit_graphics_shader_pointers;

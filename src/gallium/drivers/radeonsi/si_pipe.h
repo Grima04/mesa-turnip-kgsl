@@ -794,7 +794,7 @@ struct si_context {
 
 	struct radeon_winsys		*ws;
 	struct radeon_winsys_ctx	*ctx;
-	struct radeon_cmdbuf		*gfx_cs;
+	struct radeon_cmdbuf		*gfx_cs; /* compute IB if graphics is disabled */
 	struct radeon_cmdbuf		*dma_cs;
 	struct pipe_fence_handle	*last_gfx_fence;
 	struct pipe_fence_handle	*last_sdma_fence;
@@ -832,6 +832,7 @@ struct si_context {
 	unsigned			wait_mem_number;
 	uint16_t			prefetch_L2_mask;
 
+	bool				has_graphics;
 	bool				gfx_flush_in_progress:1;
 	bool				gfx_last_ib_is_busy:1;
 	bool				compute_is_busy:1;

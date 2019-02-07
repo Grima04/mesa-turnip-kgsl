@@ -887,12 +887,14 @@ static void si_launch_grid(
 	    program->shader.compilation_failed)
 		return;
 
-	if (sctx->last_num_draw_calls != sctx->num_draw_calls) {
-		si_update_fb_dirtiness_after_rendering(sctx);
-		sctx->last_num_draw_calls = sctx->num_draw_calls;
-	}
+	if (sctx->has_graphics) {
+		if (sctx->last_num_draw_calls != sctx->num_draw_calls) {
+			si_update_fb_dirtiness_after_rendering(sctx);
+			sctx->last_num_draw_calls = sctx->num_draw_calls;
+		}
 
-	si_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
+		si_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
+	}
 
 	/* Add buffer sizes for memory checking in need_cs_space. */
 	si_context_add_resource_size(sctx, &program->shader.bo->b.b);
@@ -924,7 +926,8 @@ static void si_launch_grid(
 	si_upload_compute_shader_descriptors(sctx);
 	si_emit_compute_shader_pointers(sctx);
 
-	if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
+	if (sctx->has_graphics &&
+	    si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
 		sctx->atoms.s.render_cond.emit(sctx);
 		si_set_atom_dirty(sctx, &sctx->atoms.s.render_cond, false);
 	}

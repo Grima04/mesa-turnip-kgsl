@@ -879,7 +879,7 @@ static void si_emit_surface_sync(struct si_context *sctx,
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class >= GFX9 || !sctx->has_graphics) {
 		/* Flush caches and wait for the caches to assert idle. */
 		radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 5, 0));
 		radeon_emit(cs, cp_coher_cntl);	/* CP_COHER_CNTL */
@@ -902,6 +902,18 @@ void si_emit_cache_flush(struct si_context *sctx)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	uint32_t flags = sctx->flags;
+
+	if (!sctx->has_graphics) {
+		/* Only process compute flags. */
+		flags &= SI_CONTEXT_INV_ICACHE |
+			 SI_CONTEXT_INV_SMEM_L1 |
+			 SI_CONTEXT_INV_VMEM_L1 |
+			 SI_CONTEXT_INV_GLOBAL_L2 |
+			 SI_CONTEXT_WRITEBACK_GLOBAL_L2 |
+			 SI_CONTEXT_INV_L2_METADATA |
+			 SI_CONTEXT_CS_PARTIAL_FLUSH;
+	}
+
 	uint32_t cp_coher_cntl = 0;
 	uint32_t flush_cb_db = flags & (SI_CONTEXT_FLUSH_AND_INV_CB |
 					SI_CONTEXT_FLUSH_AND_INV_DB);
@@ -1068,11 +1080,12 @@ void si_emit_cache_flush(struct si_context *sctx)
 	/* Make sure ME is idle (it executes most packets) before continuing.
 	 * This prevents read-after-write hazards between PFP and ME.
 	 */
-	if (cp_coher_cntl ||
-	    (flags & (SI_CONTEXT_CS_PARTIAL_FLUSH |
-			    SI_CONTEXT_INV_VMEM_L1 |
-			    SI_CONTEXT_INV_GLOBAL_L2 |
-			    SI_CONTEXT_WRITEBACK_GLOBAL_L2))) {
+	if (sctx->has_graphics &&
+	    (cp_coher_cntl ||
+	     (flags & (SI_CONTEXT_CS_PARTIAL_FLUSH |
+		       SI_CONTEXT_INV_VMEM_L1 |
+		       SI_CONTEXT_INV_GLOBAL_L2 |
+		       SI_CONTEXT_WRITEBACK_GLOBAL_L2)))) {
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
 	}

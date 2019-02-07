@@ -464,6 +464,9 @@ bool si_texture_disable_dcc(struct si_context *sctx,
 {
 	struct si_screen *sscreen = sctx->screen;
 
+	if (!sctx->has_graphics)
+		return si_texture_discard_dcc(sscreen, tex);
+
 	if (!si_can_disable_dcc(tex))
 		return false;
 
