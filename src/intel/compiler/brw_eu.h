@@ -911,7 +911,8 @@ brw_send_indirect_message(struct brw_codegen *p,
                           struct brw_reg dst,
                           struct brw_reg payload,
                           struct brw_reg desc,
-                          unsigned desc_imm);
+                          unsigned desc_imm,
+                          bool eot);
 
 void
 brw_send_indirect_split_message(struct brw_codegen *p,
@@ -922,7 +923,8 @@ brw_send_indirect_split_message(struct brw_codegen *p,
                                 struct brw_reg desc,
                                 unsigned desc_imm,
                                 struct brw_reg ex_desc,
-                                unsigned ex_desc_imm);
+                                unsigned ex_desc_imm,
+                                bool eot);
 
 void brw_ff_sync(struct brw_codegen *p,
 		   struct brw_reg dest,

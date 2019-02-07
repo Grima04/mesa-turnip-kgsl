@@ -2481,7 +2481,8 @@ brw_send_indirect_message(struct brw_codegen *p,
                           struct brw_reg dst,
                           struct brw_reg payload,
                           struct brw_reg desc,
-                          unsigned desc_imm)
+                          unsigned desc_imm,
+                          bool eot)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    struct brw_inst *send;
@@ -2518,6 +2519,7 @@ brw_send_indirect_message(struct brw_codegen *p,
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
    brw_inst_set_sfid(devinfo, send, sfid);
+   brw_inst_set_eot(devinfo, send, eot);
 }
 
 void
@@ -2529,7 +2531,8 @@ brw_send_indirect_split_message(struct brw_codegen *p,
                                 struct brw_reg desc,
                                 unsigned desc_imm,
                                 struct brw_reg ex_desc,
-                                unsigned ex_desc_imm)
+                                unsigned ex_desc_imm,
+                                bool eot)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    struct brw_inst *send;
@@ -2574,13 +2577,13 @@ brw_send_indirect_split_message(struct brw_codegen *p,
        * so the caller can specify additional descriptor bits with the
        * desc_imm immediate.
        *
-       * Even though the instruction dispatcher always pulls the SFID from the
-       * instruction itself, the extended descriptor sent to the actual unit
-       * gets the SFID from the extended descriptor which comes from the
-       * address register.  If we don't OR it in, the external unit gets
-       * confused and hangs the GPU.
+       * Even though the instruction dispatcher always pulls the SFID and EOT
+       * fields from the instruction itself, actual external unit which
+       * processes the message gets the SFID and EOT from the extended
+       * descriptor which comes from the address register.  If we don't OR
+       * those two bits in, the external unit may get confused and hang.
        */
-      brw_OR(p, addr, ex_desc, brw_imm_ud(ex_desc_imm | sfid));
+      brw_OR(p, addr, ex_desc, brw_imm_ud(ex_desc_imm | sfid | eot << 5));
 
       brw_pop_insn_state(p);
       ex_desc = addr;
@@ -2613,6 +2616,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
    }
 
    brw_inst_set_sfid(devinfo, send, sfid);
+   brw_inst_set_eot(devinfo, send, eot);
 }
 
 static void
@@ -2645,7 +2649,7 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
       surface = addr;
    }
 
-   brw_send_indirect_message(p, sfid, dst, payload, surface, desc_imm);
+   brw_send_indirect_message(p, sfid, dst, payload, surface, desc_imm, false);
 }
 
 static bool
@@ -3164,7 +3168,8 @@ brw_pixel_interpolator_query(struct brw_codegen *p,
                              dest,
                              mrf,
                              vec1(data),
-                             desc);
+                             desc,
+                             false);
 }
 
 void

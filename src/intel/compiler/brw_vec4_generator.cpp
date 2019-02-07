@@ -330,7 +330,8 @@ generate_tex(struct brw_codegen *p,
                           0 /* sampler */,
                           msg_type,
                           BRW_SAMPLER_SIMD_MODE_SIMD4X2,
-                          return_format));
+                          return_format),
+         false /* EOT */);
 
       /* visitor knows more than we do about the surface limit required,
        * so has already done marking.
@@ -1400,7 +1401,8 @@ generate_pull_constant_load_gen7(struct brw_codegen *p,
                           0 /* sampler */,
                           GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
                           BRW_SAMPLER_SIMD_MODE_SIMD4X2,
-                          0));
+                          0),
+         false /* EOT */);
    }
 }
 
