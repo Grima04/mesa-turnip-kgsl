@@ -391,13 +391,15 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			 0xfcfc0000);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
-	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(s[VS].constlen) | 0x100);    /* HLSQ_VS_CONSTLEN */
+	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(s[VS].constlen) |
+			 A6XX_HLSQ_VS_CNTL_ENABLED);
 	OUT_RING(ring, A6XX_HLSQ_HS_CNTL_CONSTLEN(s[HS].constlen));    /* HLSQ_HS_CONSTLEN */
 	OUT_RING(ring, A6XX_HLSQ_DS_CNTL_CONSTLEN(s[DS].constlen));    /* HLSQ_DS_CONSTLEN */
 	OUT_RING(ring, A6XX_HLSQ_GS_CNTL_CONSTLEN(s[GS].constlen));    /* HLSQ_GS_CONSTLEN */
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL, 1);
-	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(s[FS].constlen) | 0x100);    /* HLSQ_FS_CONSTLEN */
+	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(s[FS].constlen) |
+			 A6XX_HLSQ_FS_CNTL_ENABLED);
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
 	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(fssz) |
