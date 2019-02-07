@@ -33,6 +33,9 @@
 
 struct iris_bo;
 
+#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
+#define WRITE_ONCE(x, v) *(volatile __typeof__(x) *)&(x) = (v)
+
 #define IRIS_MAX_TEXTURE_SAMPLERS 32
 #define IRIS_MAX_SOL_BUFFERS 4
 

@@ -209,8 +209,6 @@ iris_init_batch(struct iris_batch *batch,
    iris_batch_reset(batch);
 }
 
-#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
-
 static struct drm_i915_gem_exec_object2 *
 find_validation_entry(struct iris_batch *batch, struct iris_bo *bo)
 {

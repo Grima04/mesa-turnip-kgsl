@@ -787,7 +787,7 @@ iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
 
    q->result = 0ull;
    q->ready = false;
-   q->map->snapshots_landed = false;
+   WRITE_ONCE(q->map->snapshots_landed, false);
 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->index == 0) {
       ice->state.prims_generated_query_active = true;
@@ -853,7 +853,7 @@ iris_check_query_no_flush(struct iris_context *ice, struct iris_query *q)
    struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
-   if (!q->ready && q->map->snapshots_landed) {
+   if (!q->ready && READ_ONCE(q->map->snapshots_landed)) {
       calculate_result_on_cpu(devinfo, q);
    }
 }
@@ -874,14 +874,14 @@ iris_get_query_result(struct pipe_context *ctx,
       if (iris_batch_references(&ice->batches[q->batch_idx], bo))
          iris_batch_flush(&ice->batches[q->batch_idx]);
 
-      while (!q->map->snapshots_landed) {
+      while (!READ_ONCE(q->map->snapshots_landed)) {
          if (wait)
             iris_wait_syncpt(ctx->screen, q->syncpt, INT64_MAX);
          else
             return false;
       }
 
-      assert(q->map->snapshots_landed);
+      assert(READ_ONCE(q->map->snapshots_landed));
       calculate_result_on_cpu(devinfo, q);
    }
 
@@ -927,7 +927,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       return;
    }
 
-   if (!q->ready && q->map->snapshots_landed) {
+   if (!q->ready && READ_ONCE(q->map->snapshots_landed)) {
       /* The final snapshots happen to have landed, so let's just compute
        * the result on the CPU now...
        */
