@@ -147,7 +147,7 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
 
    u_box_1d(offset, size, &box);
 
-   if (size >= (VIRGL_MAX_CMDBUF_DWORDS * 4))
+   if (resource->width0 >= getpagesize())
       u_default_buffer_subdata(pipe, resource, usage, offset, size, data);
    else
       virgl_transfer_inline_write(pipe, resource, 0, usage, &box, data, 0, 0);
