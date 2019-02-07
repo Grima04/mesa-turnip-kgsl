@@ -888,18 +888,8 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
         emit_mir_instruction(ctx, ins);
 }
 
-/* Components: Number/style of arguments:
- * 	3: One-argument op with r24 (i2f, f2i)
- * 	2: Standard two argument op (fadd, fmul)
- * 	1: Flipped one-argument op (fmov, imov)
- * 	0: Standard one-argument op (frcp)
- * NIR: NIR instruction op.
- * Op: Midgard instruction op.
- */
-
-#define ALU_CASE(_components, nir, _op) \
+#define ALU_CASE(nir, _op) \
 	case nir_op_##nir: \
-		components = _components; \
 		op = midgard_alu_op_##_op; \
 		break;
 
@@ -910,6 +900,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         unsigned dest = nir_dest_index(&instr->dest.dest);
         unsigned nr_components = is_ssa ? instr->dest.dest.ssa.num_components : instr->dest.dest.reg.reg->num_components;
+        unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
 
         /* Most Midgard ALU ops have a 1:1 correspondance to NIR ops; these are
          * supported. A few do not and are commented for now. Also, there are a
@@ -918,70 +909,66 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * convention of the Midgard instruction; actual packing is done in
          * emit_alu below */
 
-        unsigned op, components;
+        unsigned op;
 
         switch (instr->op) {
-                ALU_CASE(2, fadd, fadd);
-                ALU_CASE(2, fmul, fmul);
-                ALU_CASE(2, fmin, fmin);
-                ALU_CASE(2, fmax, fmax);
-                ALU_CASE(2, imin, imin);
-                ALU_CASE(2, imax, imax);
-                ALU_CASE(1, fmov, fmov);
-                ALU_CASE(0, ffloor, ffloor);
-                ALU_CASE(0, fceil, fceil);
-                ALU_CASE(2, fdot3, fdot3);
-                //ALU_CASE(2, fdot3r);
-                ALU_CASE(2, fdot4, fdot4);
-                //ALU_CASE(2, freduce);
-                ALU_CASE(2, iadd, iadd);
-                ALU_CASE(2, isub, isub);
-                ALU_CASE(2, imul, imul);
+                ALU_CASE(fadd, fadd);
+                ALU_CASE(fmul, fmul);
+                ALU_CASE(fmin, fmin);
+                ALU_CASE(fmax, fmax);
+                ALU_CASE(imin, imin);
+                ALU_CASE(imax, imax);
+                ALU_CASE(fmov, fmov);
+                ALU_CASE(ffloor, ffloor);
+                ALU_CASE(fceil, fceil);
+                ALU_CASE(fdot3, fdot3);
+                ALU_CASE(fdot4, fdot4);
+                ALU_CASE(iadd, iadd);
+                ALU_CASE(isub, isub);
+                ALU_CASE(imul, imul);
 
                 /* XXX: Use fmov, not imov, since imov was causing major
                  * issues with texture precision? XXX research */
-                ALU_CASE(1, imov, fmov);
+                ALU_CASE(imov, fmov);
 
-                ALU_CASE(2, feq, feq);
-                ALU_CASE(2, fne, fne);
-                ALU_CASE(2, flt, flt);
-                ALU_CASE(2, ieq, ieq);
-                ALU_CASE(2, ine, ine);
-                ALU_CASE(2, ilt, ilt);
-                //ALU_CASE(2, icsel, icsel);
-                ALU_CASE(0, frcp, frcp);
-                ALU_CASE(0, frsq, frsqrt);
-                ALU_CASE(0, fsqrt, fsqrt);
-                ALU_CASE(0, fexp2, fexp2);
-                ALU_CASE(0, flog2, flog2);
+                ALU_CASE(feq, feq);
+                ALU_CASE(fne, fne);
+                ALU_CASE(flt, flt);
+                ALU_CASE(ieq, ieq);
+                ALU_CASE(ine, ine);
+                ALU_CASE(ilt, ilt);
 
-                ALU_CASE(3, f2i32, f2i);
-                ALU_CASE(3, f2u32, f2u);
-                ALU_CASE(3, i2f32, i2f);
-                ALU_CASE(3, u2f32, u2f);
+                ALU_CASE(frcp, frcp);
+                ALU_CASE(frsq, frsqrt);
+                ALU_CASE(fsqrt, fsqrt);
+                ALU_CASE(fexp2, fexp2);
+                ALU_CASE(flog2, flog2);
 
-                ALU_CASE(0, fsin, fsin);
-                ALU_CASE(0, fcos, fcos);
+                ALU_CASE(f2i32, f2i);
+                ALU_CASE(f2u32, f2u);
+                ALU_CASE(i2f32, i2f);
+                ALU_CASE(u2f32, u2f);
 
-                ALU_CASE(2, iand, iand);
-                ALU_CASE(2, ior, ior);
-                ALU_CASE(2, ixor, ixor);
-                ALU_CASE(0, inot, inot);
-                ALU_CASE(2, ishl, ishl);
-                ALU_CASE(2, ishr, iasr);
-                ALU_CASE(2, ushr, ilsr);
-                //ALU_CASE(2, ilsr, ilsr);
+                ALU_CASE(fsin, fsin);
+                ALU_CASE(fcos, fcos);
 
-                ALU_CASE(2, ball_fequal4, fball_eq);
-                ALU_CASE(2, bany_fnequal4, fbany_neq);
-                ALU_CASE(2, ball_iequal4, iball_eq);
-                ALU_CASE(2, bany_inequal4, ibany_neq);
+                ALU_CASE(iand, iand);
+                ALU_CASE(ior, ior);
+                ALU_CASE(ixor, ixor);
+                ALU_CASE(inot, inot);
+                ALU_CASE(ishl, ishl);
+                ALU_CASE(ishr, iasr);
+                ALU_CASE(ushr, ilsr);
+
+                ALU_CASE(ball_fequal4, fball_eq);
+                ALU_CASE(bany_fnequal4, fbany_neq);
+                ALU_CASE(ball_iequal4, iball_eq);
+                ALU_CASE(bany_inequal4, ibany_neq);
 
         /* For greater-or-equal, we use less-or-equal and flip the
          * arguments */
 
         case nir_op_ige: {
-                components = 2;
                 op = midgard_alu_op_ile;
 
                 /* Swap via temporary */
@@ -993,8 +980,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         }
 
         case nir_op_bcsel: {
-                components = 2;
                 op = midgard_alu_op_fcsel;
+
+                /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
+                nr_inputs = 2;
 
                 emit_condition(ctx, &instr->src[0].src, false);
 
@@ -1016,7 +1005,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         case nir_op_b2f32: {
                 op = midgard_alu_op_iand;
-                components = 0;
                 break;
         }
 
@@ -1026,7 +1014,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 return;
         }
 
-        int _unit = alu_opcode_props[op];
+        /* Fetch unit, quirks, etc information */
+        unsigned opcode_props = alu_opcode_props[op];
+        bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
 
         /* Initialise fields common between scalar/vector instructions */
         midgard_outmod outmod = instr->dest.saturate ? midgard_outmod_sat : midgard_outmod_none;
@@ -1036,7 +1026,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * needs it, or else we may segfault. */
 
         unsigned src0 = nir_alu_src_index(&instr->src[0]);
-        unsigned src1 = components == 2 ? nir_alu_src_index(&instr->src[1]) : SSA_UNUSED_0;
+        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(&instr->src[1]) : SSA_UNUSED_0;
 
         /* Rather than use the instruction generation helpers, we do it
          * ourselves here to avoid the mess */
@@ -1044,23 +1034,22 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
                 .ssa_args = {
-                        .src0 = components == 3 || components == 2 || components == 0 ? src0 : SSA_UNUSED_1,
-                        .src1 = components == 2 ? src1 : components == 1 ? src0 : components == 0 ? SSA_UNUSED_0 : SSA_UNUSED_1,
+                        .src0 = quirk_flipped_r24 ? SSA_UNUSED_1 : src0,
+                        .src1 = quirk_flipped_r24 ? src0         : src1,
                         .dest = dest,
-                        .inline_constant = components == 0
+                        .inline_constant = (nr_inputs == 1) && !quirk_flipped_r24
                 }
         };
 
-        nir_alu_src *nirmod0 = NULL;
-        nir_alu_src *nirmod1 = NULL;
+        nir_alu_src *nirmods[2] = { NULL };
 
-        if (components == 2) {
-                nirmod0 = &instr->src[0];
-                nirmod1 = &instr->src[1];
-        } else if (components == 1) {
-                nirmod1 = &instr->src[0];
-        } else if (components == 0) {
-                nirmod0 = &instr->src[0];
+        if (nr_inputs == 2) {
+                nirmods[0] = &instr->src[0];
+                nirmods[1] = &instr->src[1];
+        } else if (nr_inputs == 1) {
+                nirmods[quirk_flipped_r24] = &instr->src[0];
+        } else {
+                assert(0);
         }
 
         midgard_vector_alu alu = {
@@ -1072,8 +1061,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Writemask only valid for non-SSA NIR */
                 .mask = expand_writemask((1 << nr_components) - 1),
 
-                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmod0)),
-                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmod1)),
+                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0])),
+                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1])),
         };
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
@@ -1097,29 +1086,29 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.constants[0] = 1.0;
         }
 
-        if (_unit == UNIT_VLUT) {
-                /* To avoid duplicating the LUTs (we think?), LUT instructions can only
-                 * operate as if they were scalars. Lower them here by changing the
-                 * component. */
-
-                assert(components == 0);
+        if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
+                /* To avoid duplicating the lookup tables (probably), true LUT
+                 * instructions can only operate as if they were scalars. Lower
+                 * them here by changing the component. */
 
                 uint8_t original_swizzle[4];
-                memcpy(original_swizzle, nirmod0->swizzle, sizeof(nirmod0->swizzle));
+                memcpy(original_swizzle, nirmods[0]->swizzle, sizeof(nirmods[0]->swizzle));
 
                 for (int i = 0; i < nr_components; ++i) {
                         ins.alu.mask = (0x3) << (2 * i); /* Mask the associated component */
 
                         for (int j = 0; j < 4; ++j)
-                                nirmod0->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
+                                nirmods[0]->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
 
-                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmod0));
+                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0]));
                         emit_mir_instruction(ctx, ins);
                 }
         } else {
                 emit_mir_instruction(ctx, ins);
         }
 }
+
+#undef ALU_CASE
 
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)

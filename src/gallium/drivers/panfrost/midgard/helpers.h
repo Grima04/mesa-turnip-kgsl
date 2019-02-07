@@ -52,6 +52,14 @@
 #define OP_CHANNEL_COUNT(c) ((c - 1) << 0)
 #define GET_CHANNEL_COUNT(c) ((c & (0x3 << 0)) ? ((c & (0x3 << 0)) + 1) : 0)
 
+/* For instructions that take a single argument, normally the first argument
+ * slot is used for the argument and the second slot is a dummy #0 constant.
+ * However, there are exceptions: instructions like fmov store their argument
+ * in the _second_ slot and store a dummy r24 in the first slot, designated by
+ * QUIRK_FLIPPED_R24 */
+
+#define QUIRK_FLIPPED_R24 (1 << 2)
+
 /* Vector-independant shorthands for the above; these numbers are arbitrary and
  * not from the ISA. Convert to the above with unit_enum_to_midgard */
 
@@ -162,24 +170,24 @@ midgard_is_integer_op(int op)
 #define UNIT_SMUL ALU_ENAB_SCAL_MUL
 #define UNIT_VLUT ALU_ENAB_VEC_LUT
 
-/* Shorthands for usual combinations of units. LUT is intentionally excluded
- * since it's nutty. */
+/* Shorthands for usual combinations of units */
 
 #define UNITS_MUL (UNIT_VMUL | UNIT_SMUL)
 #define UNITS_ADD (UNIT_VADD | UNIT_SADD)
-#define UNITS_ALL (UNITS_MUL | UNITS_ADD)
+#define UNITS_MOST (UNITS_MUL | UNITS_ADD)
+#define UNITS_ALL (UNITS_MOST | UNIT_VLUT)
 #define UNITS_SCALAR (UNIT_SADD | UNIT_SMUL)
 #define UNITS_VECTOR (UNIT_VMUL | UNIT_VADD)
 #define UNITS_ANY_VECTOR (UNITS_VECTOR | UNIT_VLUT)
 
-static int alu_opcode_props[256] = {
+static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_fadd]		 = UNITS_ADD,
         [midgard_alu_op_fmul]		 = UNITS_MUL | UNIT_VLUT,
         [midgard_alu_op_fmin]		 = UNITS_MUL | UNITS_ADD,
         [midgard_alu_op_fmax]		 = UNITS_MUL | UNITS_ADD,
-        [midgard_alu_op_imin]		 = UNITS_ALL,
-        [midgard_alu_op_imax]		 = UNITS_ALL,
-        [midgard_alu_op_fmov]		 = UNITS_ALL | UNIT_VLUT,
+        [midgard_alu_op_imin]		 = UNITS_MOST,
+        [midgard_alu_op_imax]		 = UNITS_MOST,
+        [midgard_alu_op_fmov]		 = UNITS_ALL | QUIRK_FLIPPED_R24,
         [midgard_alu_op_ffloor]		 = UNITS_ADD,
         [midgard_alu_op_fceil]		 = UNITS_ADD,
 
@@ -188,19 +196,20 @@ static int alu_opcode_props[256] = {
         [midgard_alu_op_fdot3]		 = UNIT_VMUL | OP_CHANNEL_COUNT(3),
         [midgard_alu_op_fdot4]		 = UNIT_VMUL | OP_CHANNEL_COUNT(4),
 
-        [midgard_alu_op_iadd]		 = UNITS_ADD,
-        [midgard_alu_op_isub]		 = UNITS_ADD,
-        [midgard_alu_op_imul]		 = UNITS_ALL,
-        [midgard_alu_op_imov]		 = UNITS_ALL,
+        /* Incredibly, iadd can run on vmul, etc */
+        [midgard_alu_op_iadd]		 = UNITS_MOST,
+        [midgard_alu_op_isub]		 = UNITS_MOST,
+        [midgard_alu_op_imul]		 = UNITS_MOST,
+        [midgard_alu_op_imov]		 = UNITS_MOST | QUIRK_FLIPPED_R24,
 
         /* For vector comparisons, use ball etc */
-        [midgard_alu_op_feq]		 = UNITS_ALL,
-        [midgard_alu_op_fne]		 = UNITS_ALL,
+        [midgard_alu_op_feq]		 = UNITS_MOST,
+        [midgard_alu_op_fne]		 = UNITS_MOST,
         [midgard_alu_op_flt]		 = UNIT_SADD,
-        [midgard_alu_op_ieq]		 = UNITS_ALL,
-        [midgard_alu_op_ine]		 = UNITS_ALL,
-        [midgard_alu_op_ilt]		 = UNITS_ALL,
-        [midgard_alu_op_ile]		 = UNITS_ALL,
+        [midgard_alu_op_ieq]		 = UNITS_MOST,
+        [midgard_alu_op_ine]		 = UNITS_MOST,
+        [midgard_alu_op_ilt]		 = UNITS_MOST,
+        [midgard_alu_op_ile]		 = UNITS_MOST,
 
         [midgard_alu_op_icsel]		 = UNITS_ADD,
         [midgard_alu_op_fcsel]		 = UNITS_ADD | UNIT_SMUL,
@@ -223,14 +232,14 @@ static int alu_opcode_props[256] = {
         [midgard_alu_op_iand]		 = UNITS_ADD, /* XXX: Test case where it's right on smul but not sadd */
         [midgard_alu_op_ior]		 = UNITS_ADD,
         [midgard_alu_op_ixor]		 = UNITS_ADD,
-        [midgard_alu_op_inot]		 = UNITS_ALL,
+        [midgard_alu_op_inot]		 = UNITS_MOST,
         [midgard_alu_op_ishl]		 = UNITS_ADD,
         [midgard_alu_op_iasr]		 = UNITS_ADD,
         [midgard_alu_op_ilsr]		 = UNITS_ADD,
         [midgard_alu_op_ilsr]		 = UNITS_ADD,
 
-        [midgard_alu_op_fball_eq]	 = UNITS_ALL,
-        [midgard_alu_op_fbany_neq]	 = UNITS_ALL,
-        [midgard_alu_op_iball_eq]	 = UNITS_ALL,
-        [midgard_alu_op_ibany_neq]	 = UNITS_ALL
+        [midgard_alu_op_fball_eq]	 = UNITS_MOST,
+        [midgard_alu_op_fbany_neq]	 = UNITS_MOST,
+        [midgard_alu_op_iball_eq]	 = UNITS_MOST,
+        [midgard_alu_op_ibany_neq]	 = UNITS_MOST
 };
