@@ -354,7 +354,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 		opcode = CP_LOAD_STATE6_FRAG;
 		tex_samp_reg = REG_A6XX_SP_CS_TEX_SAMP_LO;
 		tex_const_reg = REG_A6XX_SP_CS_TEX_CONST_LO;
-		tex_count_reg = 0; //REG_A6XX_SP_CS_TEX_COUNT;
+		tex_count_reg = REG_A6XX_SP_CS_TEX_COUNT;
 		break;
 	default:
 		unreachable("bad state block");
@@ -468,10 +468,8 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 		fd_ringbuffer_del(state);
 	}
 
-	if (tex_count_reg) {
-		OUT_PKT4(ring, tex_count_reg, 1);
-		OUT_RING(ring, num_merged_textures);
-	}
+	OUT_PKT4(ring, tex_count_reg, 1);
+	OUT_RING(ring, num_merged_textures);
 
 	return needs_border;
 }
@@ -996,43 +994,56 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 {
 	enum fd_dirty_shader_state dirty = ctx->dirty_shader[PIPE_SHADER_COMPUTE];
 
-	if (dirty & FD_DIRTY_SHADER_TEX) {
-		bool needs_border = false;
-		needs_border |= fd6_emit_textures(ctx->pipe, ring, SB6_CS_TEX,
-				&ctx->tex[PIPE_SHADER_COMPUTE], 0, NULL, NULL, NULL);
+	if (dirty & (FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG |
+			 FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) {
+		struct fd_texture_stateobj *tex = &ctx->tex[PIPE_SHADER_COMPUTE];
+		struct fd_shaderbuf_stateobj *buf = &ctx->shaderbuf[PIPE_SHADER_COMPUTE];
+		struct fd_shaderimg_stateobj *img = &ctx->shaderimg[PIPE_SHADER_COMPUTE];
+		unsigned bcolor_offset = fd6_border_color_offset(ctx, SB6_CS_TEX, tex);
+
+		bool needs_border = fd6_emit_textures(ctx->pipe, ring, SB6_CS_TEX, tex,
+				bcolor_offset, cp, buf, img);
 
 		if (needs_border)
 			emit_border_color(ctx, ring);
 
-#if 0
-		OUT_PKT4(ring, REG_A6XX_TPL1_VS_TEX_COUNT, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_VS_TEX_COUNT, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, REG_A6XX_TPL1_HS_TEX_COUNT, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_HS_TEX_COUNT, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, REG_A6XX_TPL1_DS_TEX_COUNT, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_DS_TEX_COUNT, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, REG_A6XX_TPL1_GS_TEX_COUNT, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_GS_TEX_COUNT, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, REG_A6XX_TPL1_FS_TEX_COUNT, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_FS_TEX_COUNT, 1);
 		OUT_RING(ring, 0);
-#endif
 	}
 
-#if 0
-	OUT_PKT4(ring, REG_A6XX_TPL1_CS_TEX_COUNT, 1);
-	OUT_RING(ring, ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask ?
-			~0 : ctx->tex[PIPE_SHADER_COMPUTE].num_textures);
-#endif
+	if (dirty & (FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE)) {
+		struct fd_ringbuffer *state =
+			fd6_build_ibo_state(ctx, cp, PIPE_SHADER_COMPUTE);
+		const struct ir3_ibo_mapping *mapping = &cp->image_mapping;
 
-//	if (dirty & FD_DIRTY_SHADER_SSBO)
-//		fd6_emit_ssbos(ctx, ring, PIPE_SHADER_COMPUTE);
-//
-//	if (dirty & FD_DIRTY_SHADER_IMAGE)
-//		fd6_emit_images(ctx, ring, PIPE_SHADER_COMPUTE);
+		OUT_PKT7(ring, CP_LOAD_STATE6_FRAG, 3);
+		OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
+			CP_LOAD_STATE6_0_STATE_TYPE(ST6_IBO) |
+			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+			CP_LOAD_STATE6_0_STATE_BLOCK(SB6_CS_SHADER) |
+			CP_LOAD_STATE6_0_NUM_UNIT(mapping->num_ibo));
+		OUT_RB(ring, state);
+
+		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_LO, 2);
+		OUT_RB(ring, state);
+
+		OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_COUNT, 1);
+		OUT_RING(ring, mapping->num_ibo);
+
+		fd_ringbuffer_del(state);
+	}
 }
 
 

@@ -179,6 +179,8 @@ files_libfreedreno = files(
   'a6xx/fd6_blend.h',
   'a6xx/fd6_blitter.c',
   'a6xx/fd6_blitter.h',
+  'a6xx/fd6_compute.c',
+  'a6xx/fd6_compute.h',
   'a6xx/fd6_context.c',
   'a6xx/fd6_context.h',
   'a6xx/fd6_draw.c',

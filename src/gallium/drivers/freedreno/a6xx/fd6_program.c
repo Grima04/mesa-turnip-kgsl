@@ -238,11 +238,9 @@ setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_varian
 struct stage {
 	const struct ir3_shader_variant *v;
 	const struct ir3_info *i;
-	/* const sizes are in units of 4 * vec4 */
-	uint8_t constoff;
+	/* const sizes are in units of vec4, aligned to 4*vec4 */
 	uint8_t constlen;
 	/* instr sizes are in units of 16 instructions */
-	uint8_t instroff;
 	uint8_t instrlen;
 };
 
@@ -287,16 +285,6 @@ setup_stages(struct fd6_program_state *state, struct stage *s, bool binning_pass
 			s[i].instrlen = 0;
 		}
 	}
-
-	unsigned constoff = 0;
-	for (i = 0; i < MAX_STAGES; i++) {
-		s[i].constoff = constoff;
-		constoff += s[i].constlen;
-	}
-
-	s[VS].instroff = 0;
-	s[FS].instroff = 64 - s[FS].instrlen;
-	s[HS].instroff = s[DS].instroff = s[GS].instroff = s[FS].instroff;
 }
 
 static void
