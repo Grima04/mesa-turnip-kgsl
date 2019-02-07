@@ -1558,6 +1558,9 @@ struct anv_descriptor_set_binding_layout {
    /* Bitfield representing the type of data this descriptor contains */
    enum anv_descriptor_data data;
 
+   /* Maximum number of YCbCr texture/sampler planes */
+   uint8_t max_plane_count;
+
    /* Number of array elements in this binding (or size in bytes for inline
     * uniform data)
     */

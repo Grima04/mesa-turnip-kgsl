@@ -289,6 +289,7 @@ VkResult anv_CreateDescriptorSetLayout(
       memset(&set_layout->binding[b], -1, sizeof(set_layout->binding[b]));
 
       set_layout->binding[b].data = 0;
+      set_layout->binding[b].max_plane_count = 0;
       set_layout->binding[b].array_size = 0;
       set_layout->binding[b].immutable_samplers = NULL;
    }
@@ -344,15 +345,26 @@ VkResult anv_CreateDescriptorSetLayout(
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         set_layout->binding[b].max_plane_count = 1;
          if (binding->pImmutableSamplers) {
             set_layout->binding[b].immutable_samplers = samplers;
             samplers += binding->descriptorCount;
 
-            for (uint32_t i = 0; i < binding->descriptorCount; i++)
-               set_layout->binding[b].immutable_samplers[i] =
-                  anv_sampler_from_handle(binding->pImmutableSamplers[i]);
+            for (uint32_t i = 0; i < binding->descriptorCount; i++) {
+               ANV_FROM_HANDLE(anv_sampler, sampler,
+                               binding->pImmutableSamplers[i]);
+
+               set_layout->binding[b].immutable_samplers[i] = sampler;
+               if (set_layout->binding[b].max_plane_count < sampler->n_planes)
+                  set_layout->binding[b].max_plane_count = sampler->n_planes;
+            }
          }
          break;
+
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         set_layout->binding[b].max_plane_count = 1;
+         break;
+
       default:
          break;
       }
@@ -427,6 +439,7 @@ sha1_update_descriptor_set_binding_layout(struct mesa_sha1 *ctx,
    const struct anv_descriptor_set_binding_layout *layout)
 {
    SHA1_UPDATE_VALUE(ctx, layout->data);
+   SHA1_UPDATE_VALUE(ctx, layout->max_plane_count);
    SHA1_UPDATE_VALUE(ctx, layout->array_size);
    SHA1_UPDATE_VALUE(ctx, layout->descriptor_index);
    SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_index);
