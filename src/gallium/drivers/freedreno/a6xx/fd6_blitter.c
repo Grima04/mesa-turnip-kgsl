@@ -114,9 +114,6 @@ can_do_blit(const struct pipe_blit_info *info)
 	fail_if(util_format_is_compressed(info->src.format) &&
 			info->src.format != info->dst.format);
 
-	/* src box can be inverted, which we don't support.. dst box cannot: */
-	fail_if((info->src.box.width < 0) || (info->src.box.height < 0));
-
 	fail_if(!ok_dims(info->src.resource, &info->src.box, info->src.level));
 
 	fail_if(!ok_dims(info->dst.resource, &info->dst.box, info->dst.level));
@@ -347,8 +344,8 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	enum a6xx_tile_mode stile, dtile;
 	enum a3xx_color_swap sswap, dswap;
 	unsigned spitch, dpitch;
-	unsigned sx1, sy1, sx2, sy2;
-	unsigned dx1, dy1, dx2, dy2;
+	int sx1, sy1, sx2, sy2;
+	int dx1, dy1, dx2, dy2;
 
 	if (DEBUG_BLIT_FALLBACK) {
 		fprintf(stderr, "texture blit: ");
