@@ -33,6 +33,8 @@
 #include "i915_drm.h"
 #include "common/gen_decoder.h"
 
+#include "iris_fence.h"
+
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
 
@@ -191,6 +193,22 @@ iris_batch_emit(struct iris_batch *batch, const void *data, unsigned size)
 {
    void *map = iris_get_command_space(batch, size);
    memcpy(map, data, size);
+}
+
+/**
+ * Take a reference to the batch's signalling syncpt.
+ *
+ * Callers can use this to wait for the the current batch under construction
+ * to complete (after flushing it).
+ */
+static inline void
+iris_batch_reference_signal_syncpt(struct iris_batch *batch,
+                                   struct iris_syncpt **out_syncpt)
+{
+   /* The signalling syncpt is the first one in the list. */
+   struct iris_syncpt *syncpt =
+      ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
+   iris_syncpt_reference(batch->screen, out_syncpt, syncpt);
 }
 
 #endif

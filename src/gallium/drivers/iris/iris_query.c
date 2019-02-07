@@ -811,13 +811,10 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
    struct iris_context *ice = (void *) ctx;
    struct iris_query *q = (void *) query;
    struct iris_batch *batch = &ice->batches[q->batch_idx];
-   struct iris_screen *screen = (void *) ctx->screen;
 
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       iris_begin_query(ctx, query);
-      struct iris_syncpt *syncpt =
-         ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
-      iris_syncpt_reference(screen, &q->syncpt, syncpt);
+      iris_batch_reference_signal_syncpt(batch, &q->syncpt);
       mark_available(ice, q);
       return true;
    }
@@ -835,9 +832,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
                   q->query_state_ref.offset +
                   offsetof(struct iris_query_snapshots, end));
 
-   struct iris_syncpt *syncpt =
-      ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
-   iris_syncpt_reference(screen, &q->syncpt, syncpt);
+   iris_batch_reference_signal_syncpt(batch, &q->syncpt);
    mark_available(ice, q);
 
    return true;

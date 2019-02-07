@@ -27,6 +27,8 @@
 #include "util/u_inlines.h"
 
 struct pipe_screen;
+struct iris_screen;
+struct iris_batch;
 
 struct iris_syncpt {
    struct pipe_reference ref;
