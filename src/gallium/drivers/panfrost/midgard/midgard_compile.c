@@ -828,27 +828,27 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
 }
 
 static unsigned
-nir_src_index(nir_src *src)
+nir_src_index(compiler_context *ctx, nir_src *src)
 {
         if (src->is_ssa)
                 return src->ssa->index;
         else
-                return 4096 + src->reg.reg->index;
+                return ctx->func->impl->ssa_alloc + src->reg.reg->index;
 }
 
 static unsigned
-nir_dest_index(nir_dest *dst)
+nir_dest_index(compiler_context *ctx, nir_dest *dst)
 {
         if (dst->is_ssa)
                 return dst->ssa.index;
         else
-                return 4096 + dst->reg.reg->index;
+                return ctx->func->impl->ssa_alloc + dst->reg.reg->index;
 }
 
 static unsigned
-nir_alu_src_index(nir_alu_src *src)
+nir_alu_src_index(compiler_context *ctx, nir_alu_src *src)
 {
-        return nir_src_index(&src->src);
+        return nir_src_index(ctx, &src->src);
 }
 
 /* Midgard puts conditionals in r31.w; move an arbitrary source (the output of
@@ -858,7 +858,7 @@ static void
 emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
 {
         /* XXX: Force component correct */
-        int condition = nir_src_index(src);
+        int condition = nir_src_index(ctx, src);
 
         const midgard_vector_alu_src alu_src = {
                 .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X),
@@ -898,7 +898,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
         bool is_ssa = instr->dest.dest.is_ssa;
 
-        unsigned dest = nir_dest_index(&instr->dest.dest);
+        unsigned dest = nir_dest_index(ctx, &instr->dest.dest);
         unsigned nr_components = is_ssa ? instr->dest.dest.ssa.num_components : instr->dest.dest.reg.reg->num_components;
         unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
 
@@ -1025,8 +1025,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * instructions. The latter can only be fetched if the instruction
          * needs it, or else we may segfault. */
 
-        unsigned src0 = nir_alu_src_index(&instr->src[0]);
-        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(&instr->src[1]) : SSA_UNUSED_0;
+        unsigned src0 = nir_alu_src_index(ctx, &instr->src[0]);
+        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(ctx, &instr->src[1]) : SSA_UNUSED_0;
 
         /* Rather than use the instruction generation helpers, we do it
          * ourselves here to avoid the mess */
@@ -1138,7 +1138,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 offset = nir_intrinsic_base(instr) + const_offset->u32[0];
 
-                reg = nir_dest_index(&instr->dest);
+                reg = nir_dest_index(ctx, &instr->dest);
 
                 if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
                         /* TODO: half-floats */
@@ -1321,7 +1321,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 offset = nir_intrinsic_base(instr) + const_offset->u32[0];
 
-                reg = nir_src_index(&instr->src[0]);
+                reg = nir_src_index(ctx, &instr->src[0]);
 
                 if (ctx->stage == MESA_SHADER_FRAGMENT) {
                         /* gl_FragColor is not emitted with load/store
@@ -1456,7 +1456,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
-                        int index = nir_src_index(&instr->src[i].src);
+                        int index = nir_src_index(ctx, &instr->src[i].src);
 
                         midgard_vector_alu_src alu_src = blank_alu_src;
                         alu_src.swizzle = (COMPONENT_Y << 2);
@@ -1523,7 +1523,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
         /* Simultaneously alias the destination and emit a move for it. The move will be eliminated if possible */
 
-        int o_reg = REGISTER_TEXTURE_BASE + out_reg, o_index = nir_dest_index(&instr->dest);
+        int o_reg = REGISTER_TEXTURE_BASE + out_reg, o_index = nir_dest_index(ctx, &instr->dest);
         alias_ssa(ctx, o_index, SSA_FIXED_REGISTER(o_reg));
         ctx->texture_index[reg] = o_index;
 
