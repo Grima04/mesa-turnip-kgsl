@@ -5,6 +5,10 @@ dist: xenial
 cache:
   ccache: true
 
+env:
+  global:
+    - PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+
 matrix:
   include:
     - env:
