@@ -119,13 +119,24 @@ can_do_blit(const struct pipe_blit_info *info)
 
 	fail_if(info->window_rectangle_include);
 
-	fail_if(info->render_condition_enable);
+	fail_if(util_format_is_srgb(info->src.format));
+	fail_if(util_format_is_srgb(info->dst.format));
+
+	const struct util_format_description *src_desc =
+		util_format_description(info->src.format);
+	const struct util_format_description *dst_desc =
+		util_format_description(info->dst.format);
+	const int common_channels = MIN2(src_desc->nr_channels, dst_desc->nr_channels);
+
+	if (info->mask & PIPE_MASK_RGBA) {
+		for (int i = 0; i < common_channels; i++) {
+			fail_if(memcmp(&src_desc->channel[i],
+						   &dst_desc->channel[i],
+						   sizeof(src_desc->channel[0])));
+		}
+	}
 
 	fail_if(info->alpha_blend);
-
-	fail_if(info->mask != util_format_get_mask(info->src.format));
-
-	fail_if(info->mask != util_format_get_mask(info->dst.format));
 
 	return true;
 }
