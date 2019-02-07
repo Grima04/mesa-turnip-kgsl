@@ -150,7 +150,7 @@ VkResult anv_CreateDescriptorSetLayout(
 
    uint32_t sampler_count[MESA_SHADER_STAGES] = { 0, };
    uint32_t surface_count[MESA_SHADER_STAGES] = { 0, };
-   uint32_t image_count[MESA_SHADER_STAGES] = { 0, };
+   uint32_t image_param_count[MESA_SHADER_STAGES] = { 0, };
    uint32_t buffer_view_count = 0;
    uint32_t dynamic_offset_count = 0;
 
@@ -245,9 +245,12 @@ VkResult anv_CreateDescriptorSetLayout(
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-         anv_foreach_stage(s, binding->stageFlags) {
-            set_layout->binding[b].stage[s].image_index = image_count[s];
-            image_count[s] += binding->descriptorCount;
+         if (device->info.gen < 9) {
+            anv_foreach_stage(s, binding->stageFlags) {
+               set_layout->binding[b].stage[s].image_param_index =
+                  image_param_count[s];
+               image_param_count[s] += binding->descriptorCount;
+            }
          }
          break;
       default:

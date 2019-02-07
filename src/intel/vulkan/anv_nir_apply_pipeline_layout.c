@@ -521,23 +521,23 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
             }
          }
 
-         if (binding->stage[stage].image_index >= 0) {
-            state.set[set].image_offsets[b] = map->image_count;
-            map->image_count += binding->array_size;
+         if (binding->stage[stage].image_param_index >= 0) {
+            state.set[set].image_offsets[b] = map->image_param_count;
+            map->image_param_count += binding->array_size;
          }
       }
    }
 
-   if (map->image_count > 0 && pdevice->compiler->devinfo->gen < 9) {
-      assert(map->image_count <= MAX_GEN8_IMAGES);
+   if (map->image_param_count > 0) {
+      assert(map->image_param_count <= MAX_GEN8_IMAGES);
       assert(shader->num_uniforms == prog_data->nr_params * 4);
       state.first_image_uniform = shader->num_uniforms;
       uint32_t *param = brw_stage_prog_data_add_params(prog_data,
-                                                       map->image_count *
+                                                       map->image_param_count *
                                                        BRW_IMAGE_PARAM_SIZE);
       struct anv_push_constants *null_data = NULL;
       const struct brw_image_param *image_param = null_data->images;
-      for (uint32_t i = 0; i < map->image_count; i++) {
+      for (uint32_t i = 0; i < map->image_param_count; i++) {
          setup_vec4_uniform_value(param + BRW_IMAGE_PARAM_OFFSET_OFFSET,
                                   (uintptr_t)image_param->offset, 2);
          setup_vec4_uniform_value(param + BRW_IMAGE_PARAM_SIZE_OFFSET,
@@ -554,7 +554,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       }
       assert(param == prog_data->param + prog_data->nr_params);
 
-      shader->num_uniforms += map->image_count * BRW_IMAGE_PARAM_SIZE * 4;
+      shader->num_uniforms += map->image_param_count *
+                              BRW_IMAGE_PARAM_SIZE * 4;
       assert(shader->num_uniforms == prog_data->nr_params * 4);
    }
 

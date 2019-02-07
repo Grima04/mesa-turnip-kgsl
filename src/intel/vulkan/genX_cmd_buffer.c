@@ -2070,7 +2070,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    /* We only use push constant space for images before gen9 */
-   if (map->image_count > 0 && devinfo->gen < 9) {
+   if (map->image_param_count > 0) {
       VkResult result =
          anv_cmd_buffer_ensure_push_constant_field(cmd_buffer, stage, images);
       if (result != VK_SUCCESS)
@@ -2203,14 +2203,17 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(surface_state.alloc_size);
          add_surface_state_relocs(cmd_buffer, sstate);
          if (devinfo->gen < 9) {
+            /* We only need the image params on gen8 and earlier.  No image
+             * workarounds that require tiling information are required on
+             * SKL and above.
+             */
             assert(image < MAX_GEN8_IMAGES);
             struct brw_image_param *image_param =
-               &cmd_buffer->state.push_constants[stage]->images[image];
+               &cmd_buffer->state.push_constants[stage]->images[image++];
 
             *image_param =
                desc->image_view->planes[binding->plane].storage_image_param;
          }
-         image++;
          break;
       }
 
@@ -2258,11 +2261,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          if (devinfo->gen < 9) {
             assert(image < MAX_GEN8_IMAGES);
             struct brw_image_param *image_param =
-               &cmd_buffer->state.push_constants[stage]->images[image];
+               &cmd_buffer->state.push_constants[stage]->images[image++];
 
             *image_param = desc->buffer_view->storage_image_param;
          }
-         image++;
          break;
 
       default:
@@ -2272,7 +2274,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       bt_map[s] = surface_state.offset + state_offset;
    }
-   assert(image == map->image_count);
+   assert(image == map->image_param_count);
 
 #if GEN_GEN >= 11
    /* The PIPE_CONTROL command description says:

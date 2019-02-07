@@ -1523,8 +1523,8 @@ struct anv_descriptor_set_binding_layout {
       /* Index into the sampler table for the associated sampler */
       int16_t sampler_index;
 
-      /* Index into the image table for the associated image */
-      int16_t image_index;
+      /* Index into the image param table for the associated image */
+      int16_t image_param_index;
    } stage[MESA_SHADER_STAGES];
 
    /* Immutable samplers (or NULL if no immutable samplers) */
@@ -2535,7 +2535,7 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 struct anv_pipeline_bind_map {
    uint32_t surface_count;
    uint32_t sampler_count;
-   uint32_t image_count;
+   uint32_t image_param_count;
 
    struct anv_pipeline_binding *                surface_to_descriptor;
    struct anv_pipeline_binding *                sampler_to_descriptor;
