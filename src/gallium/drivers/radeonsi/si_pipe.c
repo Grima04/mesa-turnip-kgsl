@@ -849,7 +849,9 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	}
 
 	sscreen->debug_flags = debug_get_flags_option("R600_DEBUG",
-							debug_options, 0);
+						      debug_options, 0);
+	sscreen->debug_flags |= debug_get_flags_option("AMD_DEBUG",
+						       debug_options, 0);
 
 	/* Set functions first. */
 	sscreen->b.context_create = si_pipe_create_context;
