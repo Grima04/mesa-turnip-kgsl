@@ -1779,15 +1779,50 @@ ttn_add_output_stores(struct ttn_compile *c)
    }
 }
 
-struct nir_shader *
-tgsi_to_nir(const void *tgsi_tokens,
-            const nir_shader_compiler_options *options)
+/**
+ * Parses the given TGSI tokens.
+ */
+static void
+ttn_parse_tgsi(struct ttn_compile *c, const void *tgsi_tokens)
 {
    struct tgsi_parse_context parser;
-   struct tgsi_shader_info scan;
+   int ret;
+
+   ret = tgsi_parse_init(&parser, tgsi_tokens);
+   assert(ret == TGSI_PARSE_OK);
+
+   while (!tgsi_parse_end_of_tokens(&parser)) {
+      tgsi_parse_token(&parser);
+      c->token = &parser.FullToken;
+
+      switch (parser.FullToken.Token.Type) {
+      case TGSI_TOKEN_TYPE_DECLARATION:
+         ttn_emit_declaration(c);
+         break;
+
+      case TGSI_TOKEN_TYPE_INSTRUCTION:
+         ttn_emit_instruction(c);
+         break;
+
+      case TGSI_TOKEN_TYPE_IMMEDIATE:
+         ttn_emit_immediate(c);
+         break;
+      }
+   }
+
+   tgsi_parse_free(&parser);
+}
+
+/**
+ * Initializes a TGSI-to-NIR compiler.
+ */
+static struct ttn_compile *
+ttn_compile_init(const void *tgsi_tokens,
+                 const nir_shader_compiler_options *options)
+{
    struct ttn_compile *c;
    struct nir_shader *s;
-   int ret;
+   struct tgsi_shader_info scan;
 
    c = rzalloc(NULL, struct ttn_compile);
 
@@ -1797,6 +1832,7 @@ tgsi_to_nir(const void *tgsi_tokens,
    nir_builder_init_simple_shader(&c->build, NULL,
                                   tgsi_processor_to_shader_stage(scan.processor),
                                   options);
+
    s = c->build.shader;
 
    if (s->info.stage == MESA_SHADER_FRAGMENT)
@@ -1827,32 +1863,26 @@ tgsi_to_nir(const void *tgsi_tokens,
    c->loop_stack = rzalloc_array(c, nir_cursor,
                                  scan.opcode_count[TGSI_OPCODE_BGNLOOP]);
 
-   ret = tgsi_parse_init(&parser, tgsi_tokens);
-   assert(ret == TGSI_PARSE_OK);
 
-   while (!tgsi_parse_end_of_tokens(&parser)) {
-      tgsi_parse_token(&parser);
-      c->token = &parser.FullToken;
-
-      switch (parser.FullToken.Token.Type) {
-      case TGSI_TOKEN_TYPE_DECLARATION:
-         ttn_emit_declaration(c);
-         break;
-
-      case TGSI_TOKEN_TYPE_INSTRUCTION:
-         ttn_emit_instruction(c);
-         break;
-
-      case TGSI_TOKEN_TYPE_IMMEDIATE:
-         ttn_emit_immediate(c);
-         break;
-      }
-   }
-
-   tgsi_parse_free(&parser);
-
+   ttn_parse_tgsi(c, tgsi_tokens);
    ttn_add_output_stores(c);
 
+   nir_validate_shader(c->build.shader, "TTN: after parsing TGSI and creating the NIR shader");
+
+   return c;
+}
+
+struct nir_shader *
+tgsi_to_nir(const void *tgsi_tokens,
+            const nir_shader_compiler_options *options)
+{
+   struct ttn_compile *c;
+   struct nir_shader *s;
+
+   c = ttn_compile_init(tgsi_tokens, options);
+   s = c->build.shader;
    ralloc_free(c);
+
    return s;
 }
+
