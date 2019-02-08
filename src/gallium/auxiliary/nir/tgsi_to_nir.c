@@ -440,6 +440,25 @@ ttn_array_deref(struct ttn_compile *c, nir_variable *var, unsigned offset,
    return nir_build_deref_array(&c->build, deref, index);
 }
 
+/* Special case: Turn the frontface varying into a load of the
+ * frontface intrinsic plus math, and appending the silly floats.
+ */
+static nir_ssa_def *
+ttn_emulate_tgsi_front_face(struct ttn_compile *c)
+{
+   nir_ssa_def *tgsi_frontface[4] = {
+      nir_bcsel(&c->build,
+                nir_load_front_face(&c->build, 1),
+                nir_imm_float(&c->build, 1.0),
+                nir_imm_float(&c->build, -1.0)),
+      nir_imm_float(&c->build, 0.0),
+      nir_imm_float(&c->build, 0.0),
+      nir_imm_float(&c->build, 1.0),
+   };
+
+   return nir_vec(&c->build, tgsi_frontface, 4);
+}
+
 static nir_src
 ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
                            struct tgsi_ind_register *indirect,
@@ -514,22 +533,9 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
    }
 
    case TGSI_FILE_INPUT:
-      /* Special case: Turn the frontface varying into a load of the
-       * frontface intrinsic plus math, and appending the silly floats.
-       */
       if (c->scan->processor == PIPE_SHADER_FRAGMENT &&
           c->scan->input_semantic_name[index] == TGSI_SEMANTIC_FACE) {
-         nir_ssa_def *tgsi_frontface[4] = {
-            nir_bcsel(&c->build,
-                      nir_load_front_face(&c->build, 1),
-                      nir_imm_float(&c->build, 1.0),
-                      nir_imm_float(&c->build, -1.0)),
-            nir_imm_float(&c->build, 0.0),
-            nir_imm_float(&c->build, 0.0),
-            nir_imm_float(&c->build, 1.0),
-         };
-
-         return nir_src_for_ssa(nir_vec(&c->build, tgsi_frontface, 4));
+         return nir_src_for_ssa(ttn_emulate_tgsi_front_face(c));
       } else {
          /* Indirection on input arrays isn't supported by TTN. */
          assert(!dim);
