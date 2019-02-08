@@ -180,6 +180,7 @@ nir_visitor::nir_visitor(nir_shader *shader)
    this->overload_table = _mesa_pointer_hash_table_create(NULL);
    this->result = NULL;
    this->impl = NULL;
+   this->deref = NULL;
    memset(&this->b, 0, sizeof(this->b));
 }
 
