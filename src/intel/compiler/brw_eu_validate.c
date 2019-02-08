@@ -530,6 +530,31 @@ is_mixed_float(const struct gen_device_info *devinfo, const brw_inst *inst)
 }
 
 /**
+ * Returns whether an instruction is an explicit or implicit conversion
+ * to/from byte.
+ */
+static bool
+is_byte_conversion(const struct gen_device_info *devinfo,
+                   const brw_inst *inst)
+{
+   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+
+   if (dst_type != src0_type &&
+       (type_sz(dst_type) == 1 || type_sz(src0_type) == 1)) {
+      return true;
+   } else if (num_sources > 1) {
+      enum brw_reg_type src1_type = brw_inst_src1_type(devinfo, inst);
+      return dst_type != src1_type &&
+            (type_sz(dst_type) == 1 || type_sz(src1_type) == 1);
+   }
+
+   return false;
+}
+
+/**
  * Checks restrictions listed in "General Restrictions Based on Operand Types"
  * in the "Register Region Restrictions" section.
  */
@@ -598,6 +623,31 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
    if (devinfo->gen == 7 && !devinfo->is_haswell &&
        exec_type_size == 8 && dst_type_size == 4)
       dst_type_size = 8;
+
+   if (is_byte_conversion(devinfo, inst)) {
+      /* From the BDW+ PRM, Volume 2a, Command Reference, Instructions - MOV:
+       *
+       *    "There is no direct conversion from B/UB to DF or DF to B/UB.
+       *     There is no direct conversion from B/UB to Q/UQ or Q/UQ to B/UB."
+       *
+       * Even if these restrictions are listed for the MOV instruction, we
+       * validate this more generally, since there is the possibility
+       * of implicit conversions from other instructions.
+       */
+      enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+      enum brw_reg_type src1_type = num_sources > 1 ?
+                                    brw_inst_src1_type(devinfo, inst) : 0;
+
+      ERROR_IF(type_sz(dst_type) == 1 &&
+               (type_sz(src0_type) == 8 ||
+                (num_sources > 1 && type_sz(src1_type) == 8)),
+               "There are no direct conversions between 64-bit types and B/UB");
+
+      ERROR_IF(type_sz(dst_type) == 8 &&
+               (type_sz(src0_type) == 1 ||
+                (num_sources > 1 && type_sz(src1_type) == 1)),
+               "There are no direct conversions between 64-bit types and B/UB");
+   }
 
    if (is_half_float_conversion(devinfo, inst)) {
       /**

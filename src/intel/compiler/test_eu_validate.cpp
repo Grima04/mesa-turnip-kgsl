@@ -848,6 +848,61 @@ TEST_P(validation_test, byte_destination_relaxed_alignment)
    }
 }
 
+TEST_P(validation_test, byte_64bit_conversion)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src_type;
+      unsigned dst_stride;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src_type, dst_stride, expected_result)             \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src_type,                                    \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         expected_result,                                                 \
+      }
+
+      INST(B,   Q, 1, false),
+      INST(B,  UQ, 1, false),
+      INST(B,  DF, 1, false),
+      INST(UB,  Q, 1, false),
+      INST(UB, UQ, 1, false),
+      INST(UB, DF, 1, false),
+
+      INST(B,   Q, 2, false),
+      INST(B,  UQ, 2, false),
+      INST(B , DF, 2, false),
+      INST(UB,  Q, 2, false),
+      INST(UB, UQ, 2, false),
+      INST(UB, DF, 2, false),
+
+      INST(B,   Q, 4, false),
+      INST(B,  UQ, 4, false),
+      INST(B,  DF, 4, false),
+      INST(UB,  Q, 4, false),
+      INST(UB, UQ, 4, false),
+      INST(UB, DF, 4, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      if (!devinfo.has_64bit_types && type_sz(inst[i].src_type) == 8)
+         continue;
+
+      brw_MOV(p, retype(g0, inst[i].dst_type), retype(g0, inst[i].src_type));
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
 TEST_P(validation_test, half_float_conversion)
 {
    static const struct {
