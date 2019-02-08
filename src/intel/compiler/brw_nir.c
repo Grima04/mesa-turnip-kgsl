@@ -949,6 +949,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    nir_lower_tex_options tex_options = {
+      .lower_txd_clamp_bindless_sampler = true,
       .lower_txd_clamp_if_sampler_index_not_lt_16 = true,
    };
 

@@ -1100,6 +1100,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
            (options->lower_txd_shadow && tex->is_shadow) ||
            (options->lower_txd_shadow_clamp && tex->is_shadow && has_min_lod) ||
            (options->lower_txd_offset_clamp && has_offset && has_min_lod) ||
+           (options->lower_txd_clamp_bindless_sampler && has_min_lod &&
+            nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) != -1) ||
            (options->lower_txd_clamp_if_sampler_index_not_lt_16 &&
             has_min_lod && !sampler_index_lt(tex, 16)) ||
            (options->lower_txd_cube_map &&
