@@ -18,7 +18,7 @@ IncludeCategories:
     Priority:        0
   - Regex:           '^"(drm/|ir3/|tu_)'
     Priority:        4
-  - Regex:           '^"(c11/|compiler/|main/|nir/|spirv/|util/|vk_)'
+  - Regex:           '^"(c11/|compiler/|main/|nir/|spirv/|util/|vk_|wsi_)'
     Priority:        3
   - Regex:           '^<(vulkan/)'
     Priority:        2

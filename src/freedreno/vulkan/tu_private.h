@@ -50,6 +50,7 @@
 #include "util/macros.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
+#include "wsi_common.h"
 
 #include "drm/msm_drm.h"
 #include "ir3/ir3_compiler.h"
@@ -298,6 +299,8 @@ struct tu_physical_device
    uint8_t device_uuid[VK_UUID_SIZE];
    uint8_t cache_uuid[VK_UUID_SIZE];
 
+   struct wsi_device wsi_device;
+
    int local_fd;
    int master_fd;
 
@@ -337,6 +340,11 @@ struct tu_instance
 
    struct tu_instance_extension_table enabled_extensions;
 };
+
+VkResult
+tu_wsi_init(struct tu_physical_device *physical_device);
+void
+tu_wsi_finish(struct tu_physical_device *physical_device);
 
 bool
 tu_instance_extension_supported(const char *name);

@@ -293,6 +293,12 @@ tu_physical_device_init(struct tu_physical_device *device,
       goto fail;
    }
 
+   result = tu_wsi_init(device);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail;
+   }
+
    return VK_SUCCESS;
 
 fail:
@@ -305,6 +311,8 @@ fail:
 static void
 tu_physical_device_finish(struct tu_physical_device *device)
 {
+   tu_wsi_finish(device);
+
    disk_cache_destroy(device->disk_cache);
    close(device->local_fd);
    if (device->master_fd != -1)

@@ -71,11 +71,18 @@ libtu_files = files(
   'tu_shader.c',
   'tu_util.c',
   'tu_util.h',
+  'tu_wsi.c',
   'vk_format.h',
 )
 
 tu_deps = []
 tu_flags = []
+
+if with_platform_wayland
+  tu_deps += dep_wayland_client
+  tu_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
+  libtu_files += files('tu_wsi_wayland.c')
+endif
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
@@ -84,10 +91,12 @@ libvulkan_freedreno = shared_library(
     inc_common,
     inc_compiler,
     inc_vulkan_util,
+    inc_vulkan_wsi,
     inc_freedreno,
   ],
   link_with : [
     libvulkan_util,
+    libvulkan_wsi,
     libmesa_util,
     libfreedreno_drm, # required by ir3_shader_get_variant, which we don't use
     libfreedreno_ir3,
@@ -101,6 +110,7 @@ libvulkan_freedreno = shared_library(
     dep_thread,
     dep_valgrind,
     idep_nir,
+    tu_deps,
   ],
   c_args : [c_vis_args, no_override_init_args, tu_flags],
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
