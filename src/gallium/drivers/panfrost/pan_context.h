@@ -106,6 +106,9 @@ struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
 
+        /* Bit mask for supported PIPE_DRAW for this hardware */
+        unsigned draw_modes;
+
         struct pipe_framebuffer_state pipe_framebuffer;
 
         /* The number of concurrent FBOs allowed depends on the number of pools

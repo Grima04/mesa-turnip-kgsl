@@ -1589,14 +1589,10 @@ panfrost_draw_vbo(
 
         int mode = info->mode;
 
-#if 0
-        /* Fallback for non-ES draw modes */
-        /* Primconvert not needed on Midgard anymore due to native
-         * QUADS/POLYGONS. Bifrost/desktop-GL may need it though so not
-         * removing */
+        /* Fallback for unsupported modes */
 
-        if (info->mode >= PIPE_PRIM_QUADS) {
-                if (info->mode == PIPE_PRIM_QUADS && info->count == 4 && ctx->rasterizer && !ctx->rasterizer->base.flatshade) {
+        if (!(ctx->draw_modes & mode)) {
+                if (mode == PIPE_PRIM_QUADS && info->count == 4 && ctx->rasterizer && !ctx->rasterizer->base.flatshade) {
                         mode = PIPE_PRIM_TRIANGLE_FAN;
                 } else {
                         if (info->count < 4) {
@@ -1609,7 +1605,6 @@ panfrost_draw_vbo(
                         return;
                 }
         }
-#endif
 
         ctx->payload_tiler.prefix.draw_mode = g2m_draw_mode(mode);
 
@@ -1623,7 +1618,7 @@ panfrost_draw_vbo(
          * rendering artefacts. It's not clear what these values mean yet. */
 
         ctx->payload_tiler.prefix.unknown_draw &= ~(0x3000 | 0x18000);
-        ctx->payload_tiler.prefix.unknown_draw |= (info->mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
+        ctx->payload_tiler.prefix.unknown_draw |= (mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
 
         if (info->index_size) {
                 /* Calculate the min/max index used so we can figure out how
@@ -2665,9 +2660,10 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->const_uploader = gallium->stream_uploader;
         assert(gallium->stream_uploader);
 
-        ctx->primconvert = util_primconvert_create(gallium,
-                           (1 << PIPE_PRIM_QUADS) - 1);
-        assert(ctx->primconvert);
+        /* Midgard supports ES modes, plus QUADS/QUAD_STRIPS/POLYGON */
+        ctx->draw_modes = (1 << (PIPE_PRIM_POLYGON + 1)) - 1;
+
+        ctx->primconvert = util_primconvert_create(gallium, ctx->draw_modes);
 
         ctx->blitter = util_blitter_create(gallium);
         assert(ctx->blitter);
