@@ -18,6 +18,7 @@
 variables:
   UBUNTU_TAG: 2019-01-31-01
   UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu:$UBUNTU_TAG"
+  UBUNTU_IMAGE_MAIN: "registry.freedesktop.org/mesa/mesa/ubuntu:$UBUNTU_TAG"
 
 
 stages:
@@ -42,6 +43,10 @@ containers:ubuntu:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     # Check if the image (with the specific tag) already exists
     - docker manifest inspect $UBUNTU_IMAGE && exit || true
+    # Try to re-use the image from the main repository's registry
+    - docker image pull $UBUNTU_IMAGE_MAIN &&
+      docker image tag $UBUNTU_IMAGE_MAIN $UBUNTU_IMAGE &&
+      docker image push $UBUNTU_IMAGE && exit || true
     - docker build -t $UBUNTU_IMAGE -f .gitlab-ci/Dockerfile.ubuntu .
     - docker push $UBUNTU_IMAGE
   only:
