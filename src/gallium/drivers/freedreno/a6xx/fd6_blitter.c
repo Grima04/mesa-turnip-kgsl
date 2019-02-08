@@ -147,11 +147,6 @@ can_do_blit(const struct pipe_blit_info *info)
 
 	fail_if(info->alpha_blend);
 
-	/* We can blit depth and stencil in most cases, except for depth only or
-	 * stencil only to combined zs. */
-	fail_if(info->dst.format == PIPE_FORMAT_Z24_UNORM_S8_UINT &&
-			info->mask != PIPE_MASK_ZS);
-
 	return true;
 }
 
@@ -567,6 +562,7 @@ rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		break;
 
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+		debug_assert(info->mask == PIPE_MASK_ZS);
 	case PIPE_FORMAT_Z24X8_UNORM:
 	case PIPE_FORMAT_X8Z24_UNORM:
 		separate.mask = PIPE_MASK_R;
@@ -580,10 +576,53 @@ rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	}
 }
 
+static void
+rewrite_combined_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+{
+	struct pipe_blit_info separate = *info;
+
+	if (DEBUG_BLIT_FALLBACK) {
+		fprintf(stderr, "---- rewrite_combined_zs_blit: ");
+		util_dump_blit_info(stderr, info);
+		fprintf(stderr, "\ndst resource: ");
+		util_dump_resource(stderr, info->dst.resource);
+		fprintf(stderr, "\nsrc resource: ");
+		util_dump_resource(stderr, info->src.resource);
+		fprintf(stderr, "\n");
+	}
+
+	switch (info->mask) {
+	case PIPE_MASK_Z:
+		separate.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
+		separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+		separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+		fd_blitter_blit(ctx, &separate);
+		break;
+
+	case PIPE_MASK_S:
+		separate.mask = PIPE_MASK_A;
+		separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+		separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+		fd_blitter_blit(ctx, &separate);
+		break;
+
+	default:
+		unreachable("");
+	}
+}
+
 static bool
 fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct fd_batch *batch;
+
+	if (info->dst.format == PIPE_FORMAT_Z24_UNORM_S8_UINT &&
+		info->mask != PIPE_MASK_ZS)  {
+		rewrite_combined_zs_blit(ctx, info);
+		return true;
+	}
 
 	if (!can_do_blit(info))
 		return false;
