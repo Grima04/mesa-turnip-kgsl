@@ -823,7 +823,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
              */
             assert(!input->data.assigned);
             if (input->data.used && !input->get_interface_type() &&
-                !input->data.explicit_location && !prog->SeparateShader)
+                !input->data.explicit_location)
                linker_error(prog,
                             "%s shader input `%s' "
                             "has no matching output in the previous stage\n",
