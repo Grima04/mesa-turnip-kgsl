@@ -3543,8 +3543,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		   struct radv_device *device,
 		   struct radv_pipeline_cache *cache,
 		   const VkGraphicsPipelineCreateInfo *pCreateInfo,
-		   const struct radv_graphics_pipeline_create_info *extra,
-		   const VkAllocationCallbacks *alloc)
+		   const struct radv_graphics_pipeline_create_info *extra)
 {
 	VkResult result;
 	bool has_view_index = false;
@@ -3553,8 +3552,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	if (subpass->view_mask)
 		has_view_index = true;
-	if (alloc == NULL)
-		alloc = &device->alloc;
 
 	pipeline->device = device;
 	pipeline->layout = radv_pipeline_layout_from_handle(pCreateInfo->layout);
@@ -3682,7 +3679,7 @@ radv_graphics_pipeline_create(
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	result = radv_pipeline_init(pipeline, device, cache,
-				    pCreateInfo, extra, pAllocator);
+				    pCreateInfo, extra);
 	if (result != VK_SUCCESS) {
 		radv_pipeline_destroy(device, pipeline, pAllocator);
 		return result;
