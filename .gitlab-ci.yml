@@ -17,7 +17,7 @@
 # at "01" unless you have multiple updates on the same day :)
 variables:
   UBUNTU_TAG: 2019-01-31-01
-  UBUNTU_IMAGE: "$CI_REGISTRY/$CI_PROJECT_PATH/ubuntu:$UBUNTU_TAG"
+  UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu:$UBUNTU_TAG"
 
 
 stages:
