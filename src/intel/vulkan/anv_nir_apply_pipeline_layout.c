@@ -745,7 +745,7 @@ lower_load_constant(nir_intrinsic_instr *intrin,
 
 static void
 lower_tex_deref(nir_tex_instr *tex, nir_tex_src_type deref_src_type,
-                unsigned *base_index,
+                unsigned *base_index, unsigned plane,
                 struct apply_pipeline_layout_state *state)
 {
    int deref_src_idx = nir_tex_instr_src_index(tex, deref_src_type);
@@ -763,11 +763,11 @@ lower_tex_deref(nir_tex_instr *tex, nir_tex_src_type deref_src_type,
    nir_tex_src_type offset_src_type;
    if (deref_src_type == nir_tex_src_texture_deref) {
       offset_src_type = nir_tex_src_texture_offset;
-      *base_index = state->set[set].surface_offsets[binding];
+      *base_index = state->set[set].surface_offsets[binding] + plane;
    } else {
       assert(deref_src_type == nir_tex_src_sampler_deref);
       offset_src_type = nir_tex_src_sampler_offset;
-      *base_index = state->set[set].sampler_offsets[binding];
+      *base_index = state->set[set].sampler_offsets[binding] + plane;
    }
 
    nir_ssa_def *index = NULL;
@@ -827,12 +827,10 @@ lower_tex(nir_tex_instr *tex, struct apply_pipeline_layout_state *state)
    unsigned plane = tex_instr_get_and_remove_plane_src(tex);
 
    lower_tex_deref(tex, nir_tex_src_texture_deref,
-                   &tex->texture_index, state);
-   tex->texture_index += plane;
+                   &tex->texture_index, plane, state);
 
    lower_tex_deref(tex, nir_tex_src_sampler_deref,
-                   &tex->sampler_index, state);
-   tex->sampler_index += plane;
+                   &tex->sampler_index, plane, state);
 
    /* The backend only ever uses this to mark used surfaces.  We don't care
     * about that little optimization so it just needs to be non-zero.
