@@ -479,9 +479,9 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
          * on the last submitted render, rather than tracking the last
          * rendering to each texture's BO.
          */
-        if (v3d->tex[PIPE_SHADER_VERTEX].num_textures) {
+        if (v3d->tex[PIPE_SHADER_VERTEX].num_textures || info->indirect) {
                 perf_debug("Blocking binner on last render "
-                           "due to vertex texturing.\n");
+                           "due to vertex texturing or indirect drawing.\n");
                 job->submit.in_sync_bcl = v3d->out_sync;
         }
 
