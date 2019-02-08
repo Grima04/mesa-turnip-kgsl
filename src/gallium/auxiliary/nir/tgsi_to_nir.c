@@ -71,6 +71,9 @@ struct ttn_compile {
    nir_variable **inputs;
    nir_variable **outputs;
 
+   nir_variable *input_var_face;
+   nir_variable *input_var_position;
+
    /**
     * Stack of nir_cursors where instructions should be pushed as we pop
     * back out of the control flow stack.
@@ -284,8 +287,22 @@ ttn_emit_declaration(struct ttn_compile *c)
 
             if (c->scan->processor == PIPE_SHADER_FRAGMENT) {
                if (decl->Semantic.Name == TGSI_SEMANTIC_FACE) {
-                  var->data.location = SYSTEM_VALUE_FRONT_FACE;
-                  var->data.mode = nir_var_system_value;
+                  var->type = glsl_bool_type();
+                  if (c->cap_face_is_sysval) {
+                     var->data.mode = nir_var_system_value;
+                     var->data.location = SYSTEM_VALUE_FRONT_FACE;
+                  } else {
+                     var->data.location = VARYING_SLOT_FACE;
+                  }
+                  c->input_var_face = var;
+               } else if (decl->Semantic.Name == TGSI_SEMANTIC_POSITION) {
+                  if (c->cap_position_is_sysval) {
+                     var->data.mode = nir_var_system_value;
+                     var->data.location = SYSTEM_VALUE_FRAG_COORD;
+                  } else {
+                     var->data.location = VARYING_SLOT_POS;
+                  }
+                  c->input_var_position = var;
                } else {
                   var->data.location =
                      tgsi_varying_semantic_to_slot(decl->Semantic.Name,
@@ -441,20 +458,43 @@ ttn_array_deref(struct ttn_compile *c, nir_variable *var, unsigned offset,
 }
 
 /* Special case: Turn the frontface varying into a load of the
- * frontface intrinsic plus math, and appending the silly floats.
+ * frontface variable, and create the vector as required by TGSI.
  */
 static nir_ssa_def *
 ttn_emulate_tgsi_front_face(struct ttn_compile *c)
 {
-   nir_ssa_def *tgsi_frontface[4] = {
-      nir_bcsel(&c->build,
-                nir_load_front_face(&c->build, 1),
-                nir_imm_float(&c->build, 1.0),
-                nir_imm_float(&c->build, -1.0)),
-      nir_imm_float(&c->build, 0.0),
-      nir_imm_float(&c->build, 0.0),
-      nir_imm_float(&c->build, 1.0),
-   };
+   nir_ssa_def *tgsi_frontface[4];
+
+   if (c->cap_face_is_sysval) {
+      /* When it's a system value, it should be an integer vector: (F, 0, 0, 1)
+       * F is 0xffffffff if front-facing, 0 if not.
+       */
+
+      nir_ssa_def *frontface = nir_load_front_face(&c->build, 1);
+
+      tgsi_frontface[0] = nir_bcsel(&c->build,
+                             frontface,
+                             nir_imm_int(&c->build, 0xffffffff),
+                             nir_imm_int(&c->build, 0));
+      tgsi_frontface[1] = nir_imm_int(&c->build, 0);
+      tgsi_frontface[2] = nir_imm_int(&c->build, 0);
+      tgsi_frontface[3] = nir_imm_int(&c->build, 1);
+   } else {
+      /* When it's an input, it should be a float vector: (F, 0.0, 0.0, 1.0)
+       * F is positive if front-facing, negative if not.
+       */
+
+      assert(c->input_var_face);
+      nir_ssa_def *frontface = nir_load_var(&c->build, c->input_var_face);
+
+      tgsi_frontface[0] = nir_bcsel(&c->build,
+                             frontface,
+                             nir_imm_float(&c->build, 1.0),
+                             nir_imm_float(&c->build, -1.0));
+      tgsi_frontface[1] = nir_imm_float(&c->build, 0.0);
+      tgsi_frontface[2] = nir_imm_float(&c->build, 0.0);
+      tgsi_frontface[3] = nir_imm_float(&c->build, 1.0);
+   }
 
    return nir_vec(&c->build, tgsi_frontface, 4);
 }
@@ -521,6 +561,16 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          op = nir_intrinsic_load_instance_id;
          load = nir_load_instance_id(b);
          break;
+      case TGSI_SEMANTIC_FACE:
+         assert(c->cap_face_is_sysval);
+         op = nir_intrinsic_load_front_face;
+         load = ttn_emulate_tgsi_front_face(c);
+         break;
+      case TGSI_SEMANTIC_POSITION:
+         assert(c->cap_position_is_sysval);
+         op = nir_intrinsic_load_frag_coord;
+         load = nir_load_frag_coord(b);
+         break;
       default:
          unreachable("bad system value");
       }
@@ -535,7 +585,12 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
    case TGSI_FILE_INPUT:
       if (c->scan->processor == PIPE_SHADER_FRAGMENT &&
           c->scan->input_semantic_name[index] == TGSI_SEMANTIC_FACE) {
+         assert(!c->cap_face_is_sysval && c->input_var_face);
          return nir_src_for_ssa(ttn_emulate_tgsi_front_face(c));
+      } else if (c->scan->processor == PIPE_SHADER_FRAGMENT &&
+          c->scan->input_semantic_name[index] == TGSI_SEMANTIC_POSITION) {
+         assert(!c->cap_position_is_sysval && c->input_var_position);
+         return nir_src_for_ssa(nir_load_var(&c->build, c->input_var_position));
       } else {
          /* Indirection on input arrays isn't supported by TTN. */
          assert(!dim);
@@ -1971,6 +2026,7 @@ ttn_finalize_nir(struct ttn_compile *c)
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_lower_system_values);
 
    if (c->cap_packed_uniforms)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
