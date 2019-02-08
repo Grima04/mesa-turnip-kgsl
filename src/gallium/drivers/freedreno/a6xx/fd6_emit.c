@@ -1055,7 +1055,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	//struct fd_context *ctx = batch->ctx;
 
-	fd6_cache_flush(batch, ring);
+	fd6_cache_inv(batch, ring);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
 	OUT_RING(ring, 0xfffff);

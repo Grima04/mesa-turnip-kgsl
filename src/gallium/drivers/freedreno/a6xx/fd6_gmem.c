@@ -463,7 +463,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	if (batch->lrz_clear)
 		fd6_emit_ib(ring, batch->lrz_clear);
 
-	fd6_cache_flush(batch, ring);
+	fd6_cache_inv(batch, ring);
 
 	prepare_tile_setup_ib(batch);
 	prepare_tile_fini_ib(batch);
@@ -1045,7 +1045,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	OUT_RING(ring, 0x0);
 
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
-	fd6_cache_flush(batch, ring);
+	fd6_cache_inv(batch, ring);
 
 #if 0
 	OUT_PKT4(ring, REG_A6XX_PC_POWER_CNTL, 1);

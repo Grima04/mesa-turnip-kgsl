@@ -119,25 +119,53 @@ fd6_emit_add_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
 	g->enable_mask = enable_mask;
 }
 
-static inline void
+static inline unsigned
 fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 		enum vgt_event_type evt, bool timestamp)
 {
+	unsigned seqno = 0;
+
 	fd_reset_wfi(batch);
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, timestamp ? 4 : 1);
 	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(evt));
 	if (timestamp) {
 		struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
+		seqno = ++fd6_ctx->seqno;
 		OUT_RELOCW(ring, fd6_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
-		OUT_RING(ring, ++fd6_ctx->seqno);
+		OUT_RING(ring, seqno);
 	}
+
+	return seqno;
+}
+
+static inline void
+fd6_cache_inv(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
+	fd6_event_write(batch, ring, 0x31, false);
 }
 
 static inline void
 fd6_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
-	fd6_event_write(batch, ring, 0x31, false);
+	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
+	unsigned seqno;
+
+	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_AND_INV_EVENT, true);
+
+	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
+	OUT_RING(ring, 0x00000013);
+	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RING(ring, seqno);
+	OUT_RING(ring, 0xffffffff);
+	OUT_RING(ring, 0x00000010);
+
+	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+
+	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
+	OUT_RING(ring, 0x00000000);
+	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RING(ring, seqno);
 }
 
 static inline void

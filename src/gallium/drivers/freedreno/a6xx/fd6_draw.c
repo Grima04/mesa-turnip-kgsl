@@ -368,7 +368,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	fd6_event_write(batch, ring, FACENESS_FLUSH, true);
 	fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
-	fd6_cache_flush(batch, ring);
+	fd6_cache_inv(batch, ring);
 }
 
 static bool is_z32(enum pipe_format format)
