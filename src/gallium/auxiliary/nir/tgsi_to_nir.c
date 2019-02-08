@@ -479,9 +479,8 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       break;
 
    case TGSI_FILE_SYSTEM_VALUE: {
-      nir_intrinsic_instr *load;
       nir_intrinsic_op op;
-      unsigned ncomp = 1;
+      nir_ssa_def *load;
 
       assert(!indirect);
       assert(!dim);
@@ -489,28 +488,25 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       switch (c->scan->system_value_semantic_name[index]) {
       case TGSI_SEMANTIC_VERTEXID_NOBASE:
          op = nir_intrinsic_load_vertex_id_zero_base;
+         load = nir_load_vertex_id_zero_base(b);
          break;
       case TGSI_SEMANTIC_VERTEXID:
          op = nir_intrinsic_load_vertex_id;
+         load = nir_load_vertex_id(b);
          break;
       case TGSI_SEMANTIC_BASEVERTEX:
          op = nir_intrinsic_load_base_vertex;
+         load = nir_load_base_vertex(b);
          break;
       case TGSI_SEMANTIC_INSTANCEID:
          op = nir_intrinsic_load_instance_id;
+         load = nir_load_instance_id(b);
          break;
       default:
          unreachable("bad system value");
       }
 
-      load = nir_intrinsic_instr_create(b->shader, op);
-      load->num_components = ncomp;
-
-      nir_ssa_dest_init(&load->instr, &load->dest, ncomp, 32, NULL);
-      nir_builder_instr_insert(b, &load->instr);
-
-      src = nir_src_for_ssa(&load->dest.ssa);
-
+      src = nir_src_for_ssa(load);
       b->shader->info.system_values_read |=
          (1 << nir_system_value_from_intrinsic(op));
 
