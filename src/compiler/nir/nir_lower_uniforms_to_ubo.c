@@ -29,11 +29,8 @@
  * point by 1.
  */
 
-#include "compiler/nir/nir.h"
-#include "compiler/nir/nir_builder.h"
-#include "st_nir.h"
-
-#include "program/prog_parameter.h"
+#include "nir.h"
+#include "nir_builder.h"
 
 static bool
 lower_instr(nir_intrinsic_instr *instr, nir_builder *b)
@@ -74,7 +71,7 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b)
 }
 
 bool
-st_nir_lower_uniforms_to_ubo(nir_shader *shader)
+nir_lower_uniforms_to_ubo(nir_shader *shader)
 {
    bool progress = false;
 
@@ -97,4 +94,5 @@ st_nir_lower_uniforms_to_ubo(nir_shader *shader)
 
    return progress;
 }
+
 
