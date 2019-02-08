@@ -883,11 +883,15 @@ anv_descriptor_set_create(struct anv_device *device,
              * UpdateDescriptorSets if needed.  However, if the descriptor
              * set has an immutable sampler, UpdateDescriptorSets may never
              * touch it, so we need to make sure it's 100% valid now.
+             *
+             * We don't need to actually provide a sampler because the helper
+             * will always write in the immutable sampler regardless of what
+             * is in the sampler parameter.
              */
-            desc[i] = (struct anv_descriptor) {
-               .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-               .sampler = layout->binding[b].immutable_samplers[i],
-            };
+            struct VkDescriptorImageInfo info = { };
+            anv_descriptor_set_write_image_view(device, set, &info,
+                                                VK_DESCRIPTOR_TYPE_SAMPLER,
+                                                b, i);
          }
       }
       desc += layout->binding[b].array_size;
@@ -1010,7 +1014,11 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
    struct anv_image_view *image_view = NULL;
    struct anv_sampler *sampler = NULL;
 
-   assert(type == bind_layout->type);
+   /* We get called with just VK_DESCRIPTOR_TYPE_SAMPLER as part of descriptor
+    * set initialization to set the bindless samplers.
+    */
+   assert(type == bind_layout->type ||
+          type == VK_DESCRIPTOR_TYPE_SAMPLER);
 
    switch (type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
