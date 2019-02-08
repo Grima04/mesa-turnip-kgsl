@@ -86,17 +86,6 @@ compile_blend(char **argv)
         prog = standalone_compile_shader(&options, 1, argv);
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
-#if 0
-
-        for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
-                if (prog->_LinkedShaders[i] == NULL)
-                        continue;
-
-                c_do_mat_op_to_vec(prog->_LinkedShaders[i]->ir);
-        }
-
-#endif
-
         midgard_program program;
         nir = glsl_to_nir(prog, MESA_SHADER_FRAGMENT, &midgard_nir_options);
         midgard_compile_shader_nir(nir, &program, true);

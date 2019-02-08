@@ -2276,11 +2276,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         /* Force a clear XXX wrong? */
         if (ctx->last_clear.color)
                 panfrost_clear(&ctx->base, ctx->last_clear.buffers, ctx->last_clear.color, ctx->last_clear.depth, ctx->last_clear.stencil);
-
-#if 0
-        /* Don't consider the buffer dirty */
-        ctx->dirty &= ~PAN_DIRTY_CLEAR;
-#endif
 }
 
 static void *

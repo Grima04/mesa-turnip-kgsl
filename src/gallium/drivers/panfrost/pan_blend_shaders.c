@@ -143,22 +143,6 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
         int size = program.compiled.size;
         uint8_t *dst = program.compiled.data;
 
-#if 0
-        midgard_program program = {
-                .work_register_count = 3,
-                .first_tag = 9,
-                //.blend_patch_offset = 16
-                .blend_patch_offset = -1,
-        };
-
-        char dst[4096];
-
-        FILE *fp = fopen("/home/alyssa/panfrost/midgard/blend.bin", "rb");
-        fread(dst, 1, 2816, fp);
-        fclose(fp);
-        int size = 2816;
-#endif
-
         /* Hot patch in constant color */
 
         if (program.blend_patch_offset >= 0) {
