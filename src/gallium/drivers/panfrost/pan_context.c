@@ -151,12 +151,6 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
 
                 ctx->fragment_rts[0].format |= MALI_MFBD_FORMAT_AFBC;
 
-                /* Change colourspace from RGB to BGR? */
-#if 0
-                ctx->fragment_rts[0].format |= 0x800000;
-                ctx->fragment_rts[0].format &= ~0x20000;
-#endif
-
                 /* Point rendering to our special framebuffer */
                 ctx->fragment_rts[0].framebuffer = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
 
