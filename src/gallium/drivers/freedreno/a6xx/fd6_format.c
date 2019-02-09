@@ -435,11 +435,12 @@ fd6_pipe2swiz(unsigned swiz)
 }
 
 uint32_t
-fd6_tex_swiz(struct pipe_resource *prsc, unsigned swizzle_r, unsigned swizzle_g,
-		unsigned swizzle_b, unsigned swizzle_a)
+fd6_tex_swiz(struct pipe_resource *prsc, enum pipe_format format,
+			 unsigned swizzle_r, unsigned swizzle_g,
+			 unsigned swizzle_b, unsigned swizzle_a)
 {
 	const struct util_format_description *desc =
-			util_format_description(prsc->format);
+			util_format_description(format);
 	unsigned char swiz[4] = {
 			swizzle_r, swizzle_g, swizzle_b, swizzle_a,
 	}, rswiz[4], *swizp;
@@ -450,7 +451,7 @@ fd6_tex_swiz(struct pipe_resource *prsc, unsigned swizzle_r, unsigned swizzle_g,
 		/* for tiled modes, we don't get SWAP, so manually apply that
 		 * extra step of swizzle:
 		 */
-		enum a3xx_color_swap swap = fd6_pipe2swap(prsc->format);
+		enum a3xx_color_swap swap = fd6_pipe2swap(format);
 		unsigned char swapswiz[][4] = {
 				[WZYX] = { 0, 1, 2, 3 },
 				[WXYZ] = { 2, 1, 0, 3 },

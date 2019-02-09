@@ -114,7 +114,7 @@ static void emit_image_tex(struct fd_ringbuffer *ring, unsigned slot,
 	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
 	OUT_RING(ring, A6XX_TEX_CONST_0_FMT(img->fmt) |
-		fd6_tex_swiz(img->prsc, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+		fd6_tex_swiz(img->prsc, img->fmt, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
 			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W) |
 		COND(img->srgb, A6XX_TEX_CONST_0_SRGB));
 	OUT_RING(ring, A6XX_TEX_CONST_1_WIDTH(img->width) |
