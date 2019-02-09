@@ -110,12 +110,12 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    struct virgl_hw_res *hw_res;
    bool doflushwait;
 
-   doflushwait = virgl_res_needs_flush_wait(vctx, vtex, usage);
-   if (doflushwait)
-      ctx->flush(ctx, NULL, 0);
-
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
+
+   doflushwait = virgl_res_needs_flush_wait(vctx, trans);
+   if (doflushwait)
+      ctx->flush(ctx, NULL, 0);
 
    if (resource->nr_samples > 1) {
       struct pipe_resource tmp_resource;

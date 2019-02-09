@@ -524,10 +524,19 @@ void virgl_transfer_inline_write(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_resource *grres = virgl_resource(res);
+   struct virgl_transfer trans = { 0 };
+
+   trans.base.resource = res;
+   trans.base.level = level;
+   trans.base.usage = usage;
+   trans.base.box = *box;
+   trans.base.stride = stride;
+   trans.base.layer_stride = layer_stride;
+   trans.offset = box->x;
 
    virgl_resource_dirty(grres, 0);
 
-   if (virgl_res_needs_flush_wait(vctx, grres, usage)) {
+   if (virgl_res_needs_flush_wait(vctx, &trans)) {
       ctx->flush(ctx, NULL, 0);
 
       vs->vws->resource_wait(vs->vws, grres->hw_res);

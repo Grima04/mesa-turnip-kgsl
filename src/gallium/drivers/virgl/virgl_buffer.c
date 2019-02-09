@@ -42,16 +42,15 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    bool readback;
    bool doflushwait = false;
 
+   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+                                          &vbuf->metadata, level, usage, box);
    if (usage & PIPE_TRANSFER_READ)
       doflushwait = true;
    else
-      doflushwait = virgl_res_needs_flush_wait(vctx, vbuf, usage);
+      doflushwait = virgl_res_needs_flush_wait(vctx, trans);
 
    if (doflushwait)
       ctx->flush(ctx, NULL, 0);
-
-   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
-                                          &vbuf->metadata, level, usage, box);
 
    readback = virgl_res_needs_readback(vctx, vbuf, usage, 0);
    if (readback)

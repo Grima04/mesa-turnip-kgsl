@@ -112,8 +112,7 @@ static inline unsigned pipe_to_virgl_bind(unsigned pbind)
 }
 
 bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
-                                struct virgl_resource *res,
-                                unsigned usage);
+                                struct virgl_transfer *transfer);
 bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
                               unsigned usage, unsigned level);
