@@ -676,7 +676,7 @@ static void si_pc_emit_start(struct si_context *sctx,
 
 	radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
 	radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) |
-			COPY_DATA_DST_SEL(COPY_DATA_DST_MEM_GRBM));
+			COPY_DATA_DST_SEL(COPY_DATA_DST_MEM));
 	radeon_emit(cs, 1); /* immediate */
 	radeon_emit(cs, 0); /* unused */
 	radeon_emit(cs, va);
@@ -732,7 +732,7 @@ static void si_pc_emit_read(struct si_context *sctx,
 
 			radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
 			radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
-					COPY_DATA_DST_SEL(COPY_DATA_DST_MEM_GRBM) |
+					COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
 					COPY_DATA_COUNT_SEL); /* 64 bits */
 			radeon_emit(cs, reg >> 2);
 			radeon_emit(cs, 0); /* unused */
@@ -745,7 +745,7 @@ static void si_pc_emit_read(struct si_context *sctx,
 		for (idx = 0; idx < count; ++idx) {
 			radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
 			radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) |
-					COPY_DATA_DST_SEL(COPY_DATA_DST_MEM_GRBM) |
+					COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
 					COPY_DATA_COUNT_SEL);
 			radeon_emit(cs, 0); /* immediate */
 			radeon_emit(cs, 0);
