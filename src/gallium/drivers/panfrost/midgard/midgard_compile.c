@@ -2335,15 +2335,8 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                 break;
         }
 
-#if 0
-
-        case TAG_TEXTURE_4:
-                /* TODO: Schedule texture ops */
-                break;
-#endif
-
         default:
-                /* XXX: What happens with textures? */
+                /* Texture ops default to single-op-per-bundle scheduling */
                 break;
         }
 
