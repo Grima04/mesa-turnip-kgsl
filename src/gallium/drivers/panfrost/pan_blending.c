@@ -296,7 +296,7 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
  * fixed-function operation breaks down. */
 
 static bool
-panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pipe_blend_color *blend_color, float *out)
+panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pipe_blend_color *blend_color, void *out)
 {
         /* Color components used */
         bool cc[4] = { false };
@@ -335,7 +335,7 @@ panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pip
 
         /* We have the constant -- success! */
 
-        *out = constant;
+        memcpy(out, &constant, sizeof(float));
         return true;
 }
 

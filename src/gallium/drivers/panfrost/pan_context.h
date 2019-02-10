@@ -25,8 +25,6 @@
 #ifndef __BUILDER_H__
 #define __BUILDER_H__
 
-#define MFBD
-
 #define _LARGEFILE64_SOURCE 1
 #define CACHE_LINE_SIZE 1024 /* TODO */
 #include <sys/mman.h>
@@ -44,15 +42,6 @@
 
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
-
-/* TODO: Handle on newer hardware */
-#ifdef MFBD
-#define PANFROST_DEFAULT_FBD (MALI_MFBD)
-#define PANFROST_FRAMEBUFFER struct bifrost_framebuffer
-#else
-#define PANFROST_DEFAULT_FBD (MALI_SFBD)
-#define PANFROST_FRAMEBUFFER struct mali_single_framebuffer
-#endif
 
 #define MAX_DRAW_CALLS 4096
 #define MAX_VARYINGS   4096
@@ -140,15 +129,14 @@ struct panfrost_context {
          * most obvious is the fragment framebuffer descriptor, which carries
          * e.g. clearing information */
 
-#ifdef SFBD
-        struct mali_single_framebuffer fragment_fbd;
-#else
-        struct bifrost_framebuffer fragment_fbd;
-
-        struct bifrost_fb_extra fragment_extra;
-
-        struct bifrost_render_target fragment_rts[4];
-#endif
+        union {
+                struct mali_single_framebuffer fragment_sfbd;
+                struct {
+                        struct bifrost_framebuffer fragment_mfbd;
+                        struct bifrost_fb_extra fragment_extra;
+                        struct bifrost_render_target fragment_rts[4];
+                };
+        };
 
         /* Each draw has corresponding vertex and tiler payloads */
         struct midgard_payload_vertex_tiler payload_vertex;
@@ -190,7 +178,8 @@ struct panfrost_context {
         unsigned varying_height;
 
         struct mali_viewport *viewport;
-        PANFROST_FRAMEBUFFER vt_framebuffer;
+        struct mali_single_framebuffer vt_framebuffer_sfbd;
+        struct bifrost_framebuffer vt_framebuffer_mfbd;
 
         /* TODO: Multiple uniform buffers (index =/= 0), finer updates? */
 

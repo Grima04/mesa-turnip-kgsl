@@ -96,8 +96,8 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         if (type == JOB_TYPE_VERTEX)
                 meta->varying_count += 1;
 
-        /* gl_FragCoord does -not- eat an extra spot; it will be included in our count if we need it */
-
+	/* Note: gl_FragCoord does -not- eat an extra spot; it will be included
+	 * in our count if we need it */
 
         meta->midgard1.unknown2 = 8; /* XXX */
 

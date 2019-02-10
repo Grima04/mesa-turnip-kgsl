@@ -30,8 +30,6 @@
 #include <stdint.h>
 #include <panfrost-misc.h>
 
-#define T8XX
-
 #define MALI_SHORT_PTR_BITS (sizeof(uintptr_t)*8)
 
 #define MALI_FBD_HIERARCHY_WEIGHTS 8
@@ -120,7 +118,7 @@ enum mali_alt_func {
 #define MALI_HAS_MSAA		(1 << 0)
 #define MALI_CAN_DISCARD 	(1 << 5)
 
-/* Applies on T6XX, specifying that programmable blending is in use */
+/* Applies on SFBD systems, specifying that programmable blending is in use */
 #define MALI_HAS_BLEND_SHADER 	(1 << 6)
 
 /* func is mali_func */
@@ -404,7 +402,7 @@ enum mali_format {
 #define MALI_NO_ALPHA_TO_COVERAGE (1 << 10)
 
 struct mali_blend_meta {
-#ifdef T8XX
+#ifndef BIFROST
         /* Base value of 0x200.
          * OR with 0x1 for blending (anything other than REPLACE).
          * OR with 0x2 for programmable blending
@@ -995,7 +993,7 @@ struct mali_vertex_tiler_postfix {
         mali_ptr framebuffer;
 
 #ifdef __LP64__
-#ifndef T8XX
+#ifdef BIFROST
         /* most likely padding to make this a multiple of 64 bytes */
         u64 zero7;
 #endif
@@ -1003,29 +1001,26 @@ struct mali_vertex_tiler_postfix {
 } __attribute__((packed));
 
 struct midgard_payload_vertex_tiler {
-#ifdef T6XX
+#ifndef __LP64__
         union midgard_primitive_size primitive_size;
 #endif
 
         struct mali_vertex_tiler_prefix prefix;
 
-#ifdef T6XX
+#ifndef __LP64__
         u32 zero3;
 #endif
+
         u32 gl_enables; // 0x5
 
         /* Offset for first vertex in buffer */
         u32 draw_start;
 
-#ifdef T6XX
-        u32 zero5;
-#else
-        u64 zero5;
-#endif
+	uintptr_t zero5;
 
         struct mali_vertex_tiler_postfix postfix;
 
-#ifdef T8XX
+#ifdef __LP64__
         union midgard_primitive_size primitive_size;
 #endif
 } __attribute__((packed));
