@@ -241,6 +241,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VIDEO_MEMORY:
       return 0xffffffff; // XXX: bogus
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
+   case PIPE_CAP_MAX_VARYINGS:
       return 32;
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
       /* AMD_pinned_memory assumes the flexibility of using client memory
