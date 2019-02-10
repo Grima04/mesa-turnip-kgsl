@@ -41,6 +41,7 @@
 #include "intel/compiler/brw_compiler.h"
 #include "intel/compiler/brw_nir.h"
 #include "iris_context.h"
+#include "nir/tgsi_to_nir.h"
 
 #define KEY_INIT_NO_ID(gen)                       \
    .tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688, \
@@ -1410,10 +1411,14 @@ static struct iris_uncompiled_shader *
 iris_create_shader_state(struct pipe_context *ctx,
                          const struct pipe_shader_state *state)
 {
-   assert(state->type == PIPE_SHADER_IR_NIR);
+   struct nir_shader *nir;
 
-   return iris_create_uncompiled_shader(ctx, state->ir.nir,
-                                        &state->stream_output);
+   if (state->type == PIPE_SHADER_IR_TGSI)
+      nir = tgsi_to_nir(state->tokens, ctx->screen);
+   else
+      nir = state->ir.nir;
+
+   return iris_create_uncompiled_shader(ctx, nir, &state->stream_output);
 }
 
 static void *
