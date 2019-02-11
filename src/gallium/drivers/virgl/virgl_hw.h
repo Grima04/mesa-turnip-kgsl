@@ -239,6 +239,7 @@ enum virgl_formats {
 #define VIRGL_CAP_FAKE_FP64            (1 << 19)
 #define VIRGL_CAP_BIND_COMMAND_ARGS    (1 << 20)
 #define VIRGL_CAP_MULTI_DRAW_INDIRECT  (1 << 21)
+#define VIRGL_CAP_INDIRECT_PARAMS      (1 << 22)
 #define VIRGL_CAP_TRANSFORM_FEEDBACK3  (1 << 23)
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
