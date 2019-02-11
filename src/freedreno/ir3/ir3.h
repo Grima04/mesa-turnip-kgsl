@@ -1088,7 +1088,7 @@ ir3_MOV(struct ir3_block *block, struct ir3_instruction *src, type_t type)
 		struct ir3_register *src_reg = __ssa_src(instr, src, IR3_REG_ARRAY);
 		src_reg->array = src->regs[0]->array;
 	} else {
-		__ssa_src(instr, src, 0);
+		__ssa_src(instr, src, src->regs[0]->flags & IR3_REG_HIGH);
 	}
 	debug_assert(!(src->regs[0]->flags & IR3_REG_RELATIV));
 	instr->cat1.src_type = type;
