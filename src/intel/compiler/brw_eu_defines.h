@@ -852,12 +852,12 @@ enum tex_logical_srcs {
 };
 
 enum surface_logical_srcs {
+   /** Surface binding table index */
+   SURFACE_LOGICAL_SRC_SURFACE,
    /** Surface address; could be multi-dimensional for typed opcodes */
    SURFACE_LOGICAL_SRC_ADDRESS,
    /** Data to be written or used in an atomic op */
    SURFACE_LOGICAL_SRC_DATA,
-   /** Surface binding table index */
-   SURFACE_LOGICAL_SRC_SURFACE,
    /** Surface number of dimensions.  Affects the size of ADDRESS */
    SURFACE_LOGICAL_SRC_IMM_DIMS,
    /** Per-opcode immediate argument.  For atomics, this is the atomic opcode */
