@@ -283,12 +283,18 @@ tu_GetImageSubresourceLayout(VkDevice _device,
                              const VkImageSubresource *pSubresource,
                              VkSubresourceLayout *pLayout)
 {
-   tu_stub();
+   TU_FROM_HANDLE(tu_image, image, _image);
 
-   /* Even though this is a stub, let's avoid heisenbugs by providing
-    * deterministic behavior.
-    */
-   memset(pLayout, 0, sizeof(*pLayout));
+   const uint32_t layer_offset = image->layer_size * pSubresource->arrayLayer;
+   const struct tu_image_level *level =
+      image->levels + pSubresource->mipLevel;
+
+   pLayout->offset = layer_offset + level->offset;
+   pLayout->size = level->size;
+   pLayout->rowPitch =
+      level->pitch * vk_format_get_blocksize(image->vk_format);
+   pLayout->arrayPitch = image->layer_size;
+   pLayout->depthPitch = level->size;
 }
 
 VkResult
