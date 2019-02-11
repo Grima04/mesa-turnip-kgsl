@@ -212,8 +212,11 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
 
    surf = handle_table_get(drv->htab, surface);
 
-   if (!surf || !surf->buffer || surf->buffer->interlaced)
+   if (!surf || !surf->buffer)
       return VA_STATUS_ERROR_INVALID_SURFACE;
+
+   if (surf->buffer->interlaced)
+     return VA_STATUS_ERROR_OPERATION_FAILED;
 
    surfaces = surf->buffer->get_surfaces(surf->buffer);
    if (!surfaces || !surfaces[0]->texture)
@@ -261,7 +264,7 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
    default:
       /* VaDeriveImage is designed for contiguous planes. */
       FREE(img);
-      return VA_STATUS_ERROR_INVALID_IMAGE_FORMAT;
+      return VA_STATUS_ERROR_OPERATION_FAILED;
    }
 
    img_buf = CALLOC(1, sizeof(vlVaBuffer));
