@@ -964,6 +964,10 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    tex_options.lower_xy_uxvx_external = key_tex->xy_uxvx_image_mask;
    tex_options.lower_ayuv_external = key_tex->ayuv_image_mask;
 
+   /* Setup array of scaling factors for each texture. */
+   memcpy(&tex_options.scale_factors, &key_tex->scale_factors,
+          sizeof(tex_options.scale_factors));
+
    if (nir_lower_tex(nir, &tex_options)) {
       nir_validate_shader(nir, "after nir_lower_tex");
       nir = brw_nir_optimize(nir, compiler, is_scalar, false);

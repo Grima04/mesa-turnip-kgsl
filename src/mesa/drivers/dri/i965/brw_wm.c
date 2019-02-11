@@ -309,6 +309,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
       const int s = u_bit_scan(&mask);
 
       key->swizzles[s] = SWIZZLE_NOOP;
+      key->scale_factors[s] = 0.0f;
 
       int unit_id = prog->SamplerUnits[s];
       const struct gl_texture_unit *unit = &ctx->Texture.Unit[unit_id];
