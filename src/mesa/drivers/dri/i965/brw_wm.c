@@ -407,6 +407,10 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
          }
 
          if (t->Target == GL_TEXTURE_EXTERNAL_OES && intel_tex->planar_format) {
+
+            /* Setup possible scaling factor. */
+            key->scale_factors[s] = intel_tex->planar_format->scaling_factor;
+
             switch (intel_tex->planar_format->components) {
             case __DRI_IMAGE_COMPONENTS_Y_UV:
                key->y_uv_image_mask |= 1 << s;
