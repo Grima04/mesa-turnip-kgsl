@@ -271,11 +271,12 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       /* If the host supports only one sample (e.g., if it is using softpipe),
        * fake multisampling to able to advertise higher GL versions. */
       return (vscreen->caps.caps.v1.max_samples == 1) ? 1 : 0;
+   case PIPE_CAP_MULTI_DRAW_INDIRECT:
+      return !!(vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_MULTI_DRAW_INDIRECT);
    case PIPE_CAP_TEXTURE_GATHER_SM5:
    case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
    case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
    case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
-   case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
    case PIPE_CAP_CLIP_HALFZ:
    case PIPE_CAP_VERTEXID_NOBASE:

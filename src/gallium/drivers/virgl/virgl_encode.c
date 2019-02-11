@@ -469,10 +469,13 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    if (length == VIRGL_DRAW_VBO_SIZE_INDIRECT) {
       virgl_encoder_write_res(ctx, virgl_resource(info->indirect->buffer));
       virgl_encoder_write_dword(ctx->cbuf, info->indirect->offset);
-      virgl_encoder_write_dword(ctx->cbuf, 0); /* indirect stride */
-      virgl_encoder_write_dword(ctx->cbuf, 0); /* indirect draw count */
-      virgl_encoder_write_dword(ctx->cbuf, 0); /* indirect draw count offset */
-      virgl_encoder_write_dword(ctx->cbuf, 0); /* indirect draw count handle */
+      virgl_encoder_write_dword(ctx->cbuf, info->indirect->stride); /* indirect stride */
+      virgl_encoder_write_dword(ctx->cbuf, info->indirect->draw_count); /* indirect draw count */
+      virgl_encoder_write_dword(ctx->cbuf, info->indirect->indirect_draw_count_offset); /* indirect draw count offset */
+      if (info->indirect->indirect_draw_count)
+         virgl_encoder_write_res(ctx, virgl_resource(info->indirect->indirect_draw_count));
+      else
+         virgl_encoder_write_dword(ctx->cbuf, 0); /* indirect draw count handle */
    }
    return 0;
 }
