@@ -447,7 +447,7 @@ mark_textures_used_for_txf(BITSET_WORD *used_for_txf,
    if (!prog)
       return;
 
-   unsigned mask = prog->SamplersUsed & prog->info.textures_used_by_txf;
+   uint32_t mask = prog->info.textures_used_by_txf;
    while (mask) {
       int s = u_bit_scan(&mask);
       BITSET_SET(used_for_txf, prog->SamplerUnits[s]);
