@@ -35,6 +35,110 @@
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
 
+static void
+clear_color(struct iris_context *ice,
+            struct pipe_resource *p_res,
+            unsigned level,
+            const struct pipe_box *box,
+            bool render_condition_enabled,
+            enum isl_format format,
+            union isl_color_value color)
+{
+   struct iris_resource *res = (void *) p_res;
+
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   enum blorp_batch_flags blorp_flags = 0;
+
+   if (render_condition_enabled) {
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+         return;
+
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT)
+         blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
+   }
+
+   iris_batch_maybe_flush(batch, 1500);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
+
+   bool color_write_disable[4] = { false, false, false, false };
+   struct blorp_surf surf;
+   iris_blorp_surf_for_resource(&surf, p_res, ISL_AUX_USAGE_NONE, true);
+
+   if (!isl_format_supports_rendering(devinfo, format) &&
+       isl_format_is_rgbx(format))
+      format = isl_format_rgbx_to_rgba(format);
+
+   blorp_clear(&blorp_batch, &surf, format, ISL_SWIZZLE_IDENTITY,
+               level, box->z, box->depth, box->x, box->y,
+               box->x + box->width, box->y + box->height,
+               color, color_write_disable);
+
+   blorp_batch_finish(&blorp_batch);
+   iris_flush_and_dirty_for_history(ice, batch, res);
+}
+
+
+static void
+clear_depth_stencil(struct iris_context *ice,
+                    struct pipe_resource *p_res,
+                    unsigned level,
+                    const struct pipe_box *box,
+                    bool render_condition_enabled,
+                    bool clear_depth,
+                    bool clear_stencil,
+                    float depth,
+                    uint8_t stencil)
+{
+   struct iris_resource *res = (void *) p_res;
+
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   enum blorp_batch_flags blorp_flags = 0;
+
+   if (render_condition_enabled) {
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+         return;
+
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT)
+         blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
+   }
+
+   iris_batch_maybe_flush(batch, 1500);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
+
+   struct iris_resource *z_res;
+   struct iris_resource *stencil_res;
+   struct blorp_surf z_surf;
+   struct blorp_surf stencil_surf;
+
+   iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
+
+   if (z_res) {
+      iris_blorp_surf_for_resource(&z_surf, &z_res->base,
+                                   ISL_AUX_USAGE_NONE, true);
+   }
+
+   if (stencil_res) {
+      iris_blorp_surf_for_resource(&stencil_surf, &stencil_res->base,
+                                   ISL_AUX_USAGE_NONE, true);
+   }
+
+   blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
+                             level, box->z, box->depth,
+                             box->x, box->y,
+                             box->x + box->width,
+                             box->y + box->height,
+                             clear_depth && z_res, depth,
+                             clear_stencil && stencil_res ? 0xff : 0, stencil);
+
+   blorp_batch_finish(&blorp_batch);
+   iris_flush_and_dirty_for_history(ice, batch, res);
+}
+
 /**
  * The pipe->clear() driver hook.
  *
@@ -49,79 +153,51 @@ iris_clear(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+
    assert(buffers != 0);
-
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-
-   if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
-      return;
-
-   enum blorp_batch_flags blorp_flags = 0;
-   if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT)
-      blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
-
-   iris_batch_maybe_flush(batch, 1500);
-
-   struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       struct pipe_surface *psurf = cso_fb->zsbuf;
-      struct iris_resource *z_res;
-      struct iris_resource *stencil_res;
-      struct blorp_surf z_surf;
-      struct blorp_surf stencil_surf;
-      const unsigned num_layers =
-         psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1;
+      struct pipe_box box = {
+         .width = cso_fb->width,
+         .height = cso_fb->height,
+         .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
+         .z = psurf->u.tex.first_layer,
+      };
 
-      iris_get_depth_stencil_resources(psurf->texture, &z_res, &stencil_res);
-
-      if (z_res) {
-         iris_blorp_surf_for_resource(&z_surf, &z_res->base,
-                                      ISL_AUX_USAGE_NONE, true);
-      }
-
-      if (stencil_res) {
-         iris_blorp_surf_for_resource(&stencil_surf, &stencil_res->base,
-                                      ISL_AUX_USAGE_NONE, true);
-      }
-
-      blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
-                                psurf->u.tex.level, psurf->u.tex.first_layer,
-                                num_layers, 0, 0,
-                                cso_fb->width, cso_fb->height,
-                                (buffers & PIPE_CLEAR_DEPTH) != 0, depth,
-                                (buffers & PIPE_CLEAR_STENCIL) ? 0xff : 0,
-                                stencil);
+      clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
+                          buffers & PIPE_CLEAR_DEPTH,
+                          buffers & PIPE_CLEAR_STENCIL,
+                          depth, stencil);
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
       /* pipe_color_union and isl_color_value are interchangeable */
-      union isl_color_value *clear_color = (void *) p_color;
-      bool color_write_disable[4] = { false, false, false, false };
+      union isl_color_value *color = (void *) p_color;
 
       for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
          if (buffers & (PIPE_CLEAR_COLOR0 << i)) {
             struct pipe_surface *psurf = cso_fb->cbufs[i];
             struct iris_surface *isurf = (void *) psurf;
-            struct blorp_surf surf;
+            struct pipe_box box = {
+               .width = cso_fb->width,
+               .height = cso_fb->height,
+               .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
+               .z = psurf->u.tex.first_layer,
+            };
 
-            iris_blorp_surf_for_resource(&surf, psurf->texture,
-                                         ISL_AUX_USAGE_NONE, true);
-
-            blorp_clear(&blorp_batch, &surf, isurf->view.format,
-                        ISL_SWIZZLE_IDENTITY,
-                        psurf->u.tex.level, psurf->u.tex.first_layer,
-                        psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
-                        0, 0, cso_fb->width, cso_fb->height,
-                        *clear_color, color_write_disable);
+            clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
+                        true, isurf->view.format, *color);
          }
       }
    }
-
-   blorp_batch_finish(&blorp_batch);
 }
 
+/**
+ * The pipe->clear_texture() driver hook.
+ *
+ * This clears the given texture resource.
+ */
 static void
 iris_clear_texture(struct pipe_context *ctx,
                    struct pipe_resource *p_res,
@@ -130,60 +206,28 @@ iris_clear_texture(struct pipe_context *ctx,
                    const void *data)
 {
    struct iris_context *ice = (void *) ctx;
-   struct iris_resource *res = (void *) p_res;
-
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
-
-   iris_batch_maybe_flush(batch, 1500);
-
-   struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
+   struct iris_screen *screen = (void *) ctx->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
    if (util_format_is_depth_or_stencil(p_res->format)) {
       const struct util_format_description *fmt_desc =
          util_format_description(p_res->format);
 
-      struct iris_resource *z_res;
-      struct iris_resource *stencil_res;
-      struct blorp_surf z_surf;
-      struct blorp_surf stencil_surf;
-
       float depth = 0.0;
       uint8_t stencil = 0;
 
-      iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
-
-      if (z_res) {
-         iris_blorp_surf_for_resource(&z_surf, &z_res->base,
-                                      ISL_AUX_USAGE_NONE, true);
+      if (fmt_desc->unpack_z_float)
          fmt_desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
-      }
 
-      if (stencil_res) {
-         iris_blorp_surf_for_resource(&stencil_surf, &stencil_res->base,
-                                      ISL_AUX_USAGE_NONE, true);
+      if (fmt_desc->unpack_s_8uint)
          fmt_desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
-      }
 
-      blorp_clear_depth_stencil(&blorp_batch, &z_surf, &stencil_surf,
-                                level, box->z, box->depth,
-                                box->x, box->y,
-                                box->x + box->width,
-                                box->y + box->height,
-                                z_res != NULL, depth,
-                                stencil_res ? 0xff : 0, stencil);
+      clear_depth_stencil(ice, p_res, level, box, true, true, true,
+                          depth, stencil);
    } else {
       union isl_color_value color;
-      bool color_write_disable[4] = { false, false, false, false };
-      struct blorp_surf surf;
-      iris_blorp_surf_for_resource(&surf, p_res, ISL_AUX_USAGE_NONE, true);
-
+      struct iris_resource *res = (void *) p_res;
       enum isl_format format = res->surf.format;
-
-      if (!isl_format_supports_rendering(devinfo, format) &&
-          isl_format_is_rgbx(format))
-         format = isl_format_rgbx_to_rgba(format);
 
       if (!isl_format_supports_rendering(devinfo, format)) {
          const struct isl_format_layout *fmtl = isl_format_get_layout(format);
@@ -205,38 +249,71 @@ iris_clear_texture(struct pipe_context *ctx,
 
       isl_color_value_unpack(&color, format, data);
 
-      blorp_clear(&blorp_batch, &surf, format, ISL_SWIZZLE_IDENTITY,
-                  level, box->z, box->depth, box->x, box->y,
-                  box->x + box->width, box->y + box->height,
-                  color, color_write_disable);
+      clear_color(ice, p_res, level, box, true, format, color);
    }
-
-   blorp_batch_finish(&blorp_batch);
 }
 
-
+/**
+ * The pipe->clear_render_target() driver hook.
+ *
+ * This clears the given render target surface.
+ */
 static void
 iris_clear_render_target(struct pipe_context *ctx,
-                         struct pipe_surface *dst,
-                         const union pipe_color_union *color,
+                         struct pipe_surface *psurf,
+                         const union pipe_color_union *p_color,
                          unsigned dst_x, unsigned dst_y,
                          unsigned width, unsigned height,
                          bool render_condition_enabled)
 {
-   fprintf(stderr, "XXX: iris_clear_render_target\n");
+   struct iris_context *ice = (void *) ctx;
+   struct iris_surface *isurf = (void *) psurf;
+   struct pipe_box box = {
+      .x = dst_x,
+      .y = dst_y,
+      .z = psurf->u.tex.first_layer,
+      .width = width,
+      .height = height,
+      .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1
+   };
+
+   /* pipe_color_union and isl_color_value are interchangeable */
+   union isl_color_value *color = (void *) p_color;
+
+   clear_color(ice, psurf->texture, psurf->u.tex.level, &box, true,
+               isurf->view.format, *color);
 }
 
+/**
+ * The pipe->clear_depth_stencil() driver hook.
+ *
+ * This clears the given depth/stencil surface.
+ */
 static void
 iris_clear_depth_stencil(struct pipe_context *ctx,
-                         struct pipe_surface *dst,
-                         unsigned clear_flags,
+                         struct pipe_surface *psurf,
+                         unsigned flags,
                          double depth,
                          unsigned stencil,
                          unsigned dst_x, unsigned dst_y,
                          unsigned width, unsigned height,
                          bool render_condition_enabled)
 {
-   fprintf(stderr, "XXX: iris_clear_depth_stencil\n");
+   struct iris_context *ice = (void *) ctx;
+   struct pipe_box box = {
+      .x = dst_x,
+      .y = dst_y,
+      .z = psurf->u.tex.first_layer,
+      .width = width,
+      .height = height,
+      .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1
+   };
+
+   assert(util_format_is_depth_or_stencil(psurf->texture->format));
+
+   clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
+                       flags & PIPE_CLEAR_DEPTH, flags & PIPE_CLEAR_STENCIL,
+                       depth, stencil);
 }
 
 void
