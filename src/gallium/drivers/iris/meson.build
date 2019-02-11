@@ -62,7 +62,7 @@ iris_driinfo_h = custom_target(
 )
 
 iris_gen_libs = []
-foreach v : ['80', '90', '100', '110']
+foreach v : ['80', '90', '100', '110', '120']
   iris_gen_libs += static_library(
     'libiris_gen@0@'.format(v),
     ['iris_blorp.c', 'iris_query.c', 'iris_state.c', gen_xml_pack],
