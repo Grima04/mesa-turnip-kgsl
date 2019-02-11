@@ -69,8 +69,6 @@ COMPILER_FILES = \
 	compiler/brw_fs_register_coalesce.cpp \
 	compiler/brw_fs_saturate_propagation.cpp \
 	compiler/brw_fs_sel_peephole.cpp \
-	compiler/brw_fs_surface_builder.cpp \
-	compiler/brw_fs_surface_builder.h \
 	compiler/brw_fs_validate.cpp \
 	compiler/brw_fs_visitor.cpp \
 	compiler/brw_inst.h \
