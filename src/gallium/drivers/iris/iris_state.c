@@ -821,6 +821,9 @@ struct iris_blend_state {
 
    /** Bitfield of whether blending is enabled for RT[i] - for aux resolves */
    uint8_t blend_enables;
+
+   /** Bitfield of whether color writes are enabled for RT[i] */
+   uint8_t color_write_enables;
 };
 
 static enum pipe_blendfactor
@@ -850,6 +853,7 @@ iris_create_blend_state(struct pipe_context *ctx,
    uint32_t *blend_entry = cso->blend_state + GENX(BLEND_STATE_length);
 
    cso->blend_enables = 0;
+   cso->color_write_enables = 0;
    STATIC_ASSERT(BRW_MAX_DRAW_BUFFERS <= 8);
 
    cso->alpha_to_coverage = state->alpha_to_coverage;
@@ -875,6 +879,9 @@ iris_create_blend_state(struct pipe_context *ctx,
 
       if (rt->blend_enable)
          cso->blend_enables |= 1u << i;
+
+      if (rt->colormask)
+         cso->color_write_enables |= 1u << i;
 
       iris_pack_state(GENX(BLEND_STATE_ENTRY), blend_entry, be) {
          be.LogicOpEnable = state->logicop_enable;
@@ -950,6 +957,25 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
+}
+
+/**
+ * Return true if the FS writes to any color outputs which are not disabled
+ * via color masking.
+ */
+static bool
+has_writeable_rt(const struct iris_blend_state *cso_blend,
+                 const struct shader_info *fs_info)
+{
+   if (!fs_info)
+      return false;
+
+   unsigned rt_outputs = fs_info->outputs_written >> FRAG_RESULT_DATA0;
+
+   if (fs_info->outputs_written & BITFIELD64_BIT(FRAG_RESULT_COLOR))
+      rt_outputs = (1 << BRW_MAX_DRAW_BUFFERS) - 1;
+
+   return cso_blend->color_write_enables & rt_outputs;
 }
 
 /**
@@ -4422,9 +4448,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_PS_BLEND) {
       struct iris_blend_state *cso_blend = ice->state.cso_blend;
       struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
+      const struct shader_info *fs_info =
+         iris_get_shader_info(ice, MESA_SHADER_FRAGMENT);
+
       uint32_t dynamic_pb[GENX(3DSTATE_PS_BLEND_length)];
       iris_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
-         pb.HasWriteableRT = true; // XXX: comes from somewhere :(
+         pb.HasWriteableRT = has_writeable_rt(cso_blend, fs_info);
          pb.AlphaTestEnable = cso_zsa->alpha.enabled;
       }
 

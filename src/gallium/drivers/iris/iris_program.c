@@ -516,6 +516,21 @@ iris_bind_gs_state(struct pipe_context *ctx, void *state)
 static void
 iris_bind_fs_state(struct pipe_context *ctx, void *state)
 {
+   struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_uncompiled_shader *old_ish =
+      ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
+   struct iris_uncompiled_shader *new_ish = state;
+
+   const unsigned color_bits =
+      BITFIELD64_BIT(FRAG_RESULT_COLOR) |
+      BITFIELD64_RANGE(FRAG_RESULT_DATA0, BRW_MAX_DRAW_BUFFERS);
+
+   /* Fragment shader outputs influence HasWriteableRT */
+   if (!old_ish || !new_ish ||
+       (old_ish->nir->info.outputs_written & color_bits) !=
+       (new_ish->nir->info.outputs_written & color_bits))
+      ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
+
    bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
 }
 
