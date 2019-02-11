@@ -86,7 +86,7 @@ iris_get_name(struct pipe_screen *pscreen)
       chipset = "Unknown Intel Chipset";
       break;
    }
-   return &chipset[9];
+   return chipset;
 }
 
 static int
