@@ -66,6 +66,20 @@
 #include "util/u_vector.h"
 #include "mapi/glapi/glapi.h"
 
+/* Additional definitions not yet in the drm_fourcc.h.
+ */
+#ifndef DRM_FORMAT_P010
+#define DRM_FORMAT_P010 	 fourcc_code('P', '0', '1', '0') /* 2x2 subsampled Cb:Cr plane 10 bits per channel */
+#endif
+
+#ifndef DRM_FORMAT_P012
+#define DRM_FORMAT_P012 	 fourcc_code('P', '0', '1', '2') /* 2x2 subsampled Cb:Cr plane 12 bits per channel */
+#endif
+
+#ifndef DRM_FORMAT_P016
+#define DRM_FORMAT_P016 	 fourcc_code('P', '0', '1', '6') /* 2x2 subsampled Cb:Cr plane 16 bits per channel */
+#endif
+
 #define NUM_ATTRIBS 12
 
 static void
@@ -2262,6 +2276,9 @@ dri2_num_fourcc_format_planes(EGLint format)
    case DRM_FORMAT_NV21:
    case DRM_FORMAT_NV16:
    case DRM_FORMAT_NV61:
+   case DRM_FORMAT_P010:
+   case DRM_FORMAT_P012:
+   case DRM_FORMAT_P016:
       return 2;
 
    case DRM_FORMAT_YUV410:
