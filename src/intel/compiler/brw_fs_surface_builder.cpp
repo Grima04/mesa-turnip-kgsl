@@ -44,9 +44,13 @@ namespace brw {
              * scalar.
              */
             const fs_reg usurface = bld.emit_uniformize(surface);
-            const fs_reg srcs[] = {
-               addr, src, usurface, brw_imm_ud(dims), brw_imm_ud(arg)
-            };
+            fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
+            srcs[SURFACE_LOGICAL_SRC_ADDRESS] = addr;
+            srcs[SURFACE_LOGICAL_SRC_DATA] = src;
+            srcs[SURFACE_LOGICAL_SRC_SURFACE] = usurface;
+            srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(dims);
+            srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(arg);
+
             const fs_reg dst = bld.vgrf(BRW_REGISTER_TYPE_UD, rsize);
             fs_inst *inst = bld.emit(opcode, dst, srcs, ARRAY_SIZE(srcs));
 

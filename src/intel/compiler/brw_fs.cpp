@@ -822,26 +822,26 @@ fs_inst::components_read(unsigned i) const
 
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
-      assert(src[3].file == IMM);
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM);
       /* Surface coordinates. */
-      if (i == 0)
-         return src[3].ud;
+      if (i == SURFACE_LOGICAL_SRC_ADDRESS)
+         return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
       /* Surface operation source (ignored for reads). */
-      else if (i == 1)
+      else if (i == SURFACE_LOGICAL_SRC_DATA)
          return 0;
       else
          return 1;
 
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
-      assert(src[3].file == IMM &&
-             src[4].file == IMM);
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
+             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
       /* Surface coordinates. */
-      if (i == 0)
-         return src[3].ud;
+      if (i == SURFACE_LOGICAL_SRC_ADDRESS)
+         return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
       /* Surface operation source. */
-      else if (i == 1)
-         return src[4].ud;
+      else if (i == SURFACE_LOGICAL_SRC_DATA)
+         return src[SURFACE_LOGICAL_SRC_IMM_ARG].ud;
       else
          return 1;
 
@@ -890,28 +890,28 @@ fs_inst::components_read(unsigned i) const
        * src[3] IMM with always 1 dimension.
        * src[4] IMM with arg bitsize for scattered read/write 8, 16, 32
        */
-      assert(src[3].file == IMM &&
-             src[4].file == IMM);
-      return i == 1 ? 0 : 1;
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
+             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
+      return i == SURFACE_LOGICAL_SRC_DATA ? 0 : 1;
 
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
-      assert(src[3].file == IMM &&
-             src[4].file == IMM);
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
+             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
       return 1;
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL: {
-      assert(src[3].file == IMM &&
-             src[4].file == IMM);
-      const unsigned op = src[4].ud;
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
+             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
+      const unsigned op = src[SURFACE_LOGICAL_SRC_IMM_ARG].ud;
       /* Surface coordinates. */
-      if (i == 0)
-         return src[3].ud;
+      if (i == SURFACE_LOGICAL_SRC_ADDRESS)
+         return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
       /* Surface operation source. */
-      else if (i == 1 && op == BRW_AOP_CMPWR)
+      else if (i == SURFACE_LOGICAL_SRC_DATA && op == BRW_AOP_CMPWR)
          return 2;
-      else if (i == 1 && (op == BRW_AOP_INC || op == BRW_AOP_DEC ||
-                          op == BRW_AOP_PREDEC))
+      else if (i == SURFACE_LOGICAL_SRC_DATA &&
+               (op == BRW_AOP_INC || op == BRW_AOP_DEC || op == BRW_AOP_PREDEC))
          return 0;
       else
          return 1;
@@ -920,14 +920,14 @@ fs_inst::components_read(unsigned i) const
       return (i == 0 ? 2 : 1);
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL: {
-      assert(src[3].file == IMM &&
-             src[4].file == IMM);
-      const unsigned op = src[4].ud;
+      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
+             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
+      const unsigned op = src[SURFACE_LOGICAL_SRC_IMM_ARG].ud;
       /* Surface coordinates. */
-      if (i == 0)
-         return src[3].ud;
+      if (i == SURFACE_LOGICAL_SRC_ADDRESS)
+         return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
       /* Surface operation source. */
-      else if (i == 1 && op == BRW_AOP_FCMPWR)
+      else if (i == SURFACE_LOGICAL_SRC_DATA && op == BRW_AOP_FCMPWR)
          return 2;
       else
          return 1;
@@ -5090,16 +5090,16 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    const gen_device_info *devinfo = bld.shader->devinfo;
 
    /* Get the logical send arguments. */
-   const fs_reg &addr = inst->src[0];
-   const fs_reg &src = inst->src[1];
-   const fs_reg &surface = inst->src[2];
-   const UNUSED fs_reg &dims = inst->src[3];
-   const fs_reg &arg = inst->src[4];
+   const fs_reg &addr = inst->src[SURFACE_LOGICAL_SRC_ADDRESS];
+   const fs_reg &src = inst->src[SURFACE_LOGICAL_SRC_DATA];
+   const fs_reg &surface = inst->src[SURFACE_LOGICAL_SRC_SURFACE];
+   const UNUSED fs_reg &dims = inst->src[SURFACE_LOGICAL_SRC_IMM_DIMS];
+   const fs_reg &arg = inst->src[SURFACE_LOGICAL_SRC_IMM_ARG];
    assert(arg.file == IMM);
 
    /* Calculate the total number of components of the payload. */
-   const unsigned addr_sz = inst->components_read(0);
-   const unsigned src_sz = inst->components_read(1);
+   const unsigned addr_sz = inst->components_read(SURFACE_LOGICAL_SRC_ADDRESS);
+   const unsigned src_sz = inst->components_read(SURFACE_LOGICAL_SRC_DATA);
 
    const bool is_typed_access =
       inst->opcode == SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL ||

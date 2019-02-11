@@ -851,6 +851,21 @@ enum tex_logical_srcs {
    TEX_LOGICAL_NUM_SRCS,
 };
 
+enum surface_logical_srcs {
+   /** Surface address; could be multi-dimensional for typed opcodes */
+   SURFACE_LOGICAL_SRC_ADDRESS,
+   /** Data to be written or used in an atomic op */
+   SURFACE_LOGICAL_SRC_DATA,
+   /** Surface binding table index */
+   SURFACE_LOGICAL_SRC_SURFACE,
+   /** Surface number of dimensions.  Affects the size of ADDRESS */
+   SURFACE_LOGICAL_SRC_IMM_DIMS,
+   /** Per-opcode immediate argument.  For atomics, this is the atomic opcode */
+   SURFACE_LOGICAL_SRC_IMM_ARG,
+
+   SURFACE_LOGICAL_NUM_SRCS
+};
+
 #ifdef __cplusplus
 /**
  * Allow brw_urb_write_flags enums to be ORed together.
