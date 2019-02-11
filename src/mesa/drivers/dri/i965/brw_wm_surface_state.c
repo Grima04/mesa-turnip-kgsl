@@ -1171,11 +1171,11 @@ update_stage_texture_surfaces(struct brw_context *brw,
    else
       surf_offset += stage_state->prog_data->binding_table.plane_start[plane];
 
-   unsigned num_samplers = util_last_bit(prog->SamplersUsed);
+   unsigned num_samplers = util_last_bit(prog->info.textures_used);
    for (unsigned s = 0; s < num_samplers; s++) {
       surf_offset[s] = 0;
 
-      if (prog->SamplersUsed & (1 << s)) {
+      if (prog->info.textures_used & (1 << s)) {
          const unsigned unit = prog->SamplerUnits[s];
          const bool used_by_txf = prog->info.textures_used_by_txf & (1 << s);
          struct gl_texture_object *obj = ctx->Texture.Unit[unit]._Current;
