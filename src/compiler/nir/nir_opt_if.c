@@ -96,7 +96,7 @@ phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
  *    block block_1:
  *    vec1 32 ssa_2 = phi block_0: ssa_0, block_7: ssa_5
  *    vec1 32 ssa_3 = phi block_0: ssa_0, block_7: ssa_1
- *    if ssa_2 {
+ *    if ssa_3 {
  *       block block_2:
  *       vec1 32 ssa_4 = load_const (0x00000001)
  *       vec1 32 ssa_5 = iadd ssa_2, ssa_4
@@ -121,9 +121,9 @@ phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
  * // Stuff from block 3
  * loop {
  *    block block_1:
- *    vec1 32 ssa_3 = phi block_0: ssa_0, block_7: ssa_1
+ *    vec1 32 ssa_2 = phi block_0: ssa_0, block_7: ssa_5
  *    vec1 32 ssa_6 = load_const (0x00000004)
- *    vec1 32 ssa_7 = ilt ssa_5, ssa_6
+ *    vec1 32 ssa_7 = ilt ssa_2, ssa_6
  *    if ssa_7 {
  *       block block_5:
  *    } else {
