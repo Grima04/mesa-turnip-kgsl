@@ -3095,6 +3095,9 @@ typedef struct nir_lower_tex_options {
     */
    uint8_t swizzles[32][4];
 
+   /* Can be used to scale sampled values in range required by the format. */
+   float scale_factors[32];
+
    /**
     * Bitmap of textures that need srgb to linear conversion.  If
     * (lower_srgb & (1 << texture_index)) then the rgb (xyz) components
