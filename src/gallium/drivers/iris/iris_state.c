@@ -4407,6 +4407,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             wm.EarlyDepthStencilControl = EDSC_PREPS;
          else if (wm_prog_data->has_side_effects)
             wm.EarlyDepthStencilControl = EDSC_PSEXEC;
+
+         /* We could skip this bit if color writes are enabled. */
+         if (wm_prog_data->has_side_effects || wm_prog_data->uses_kill)
+            wm.ForceThreadDispatchEnable = ForceON;
       }
       iris_emit_merge(batch, cso->wm, dynamic_wm, ARRAY_SIZE(cso->wm));
    }
