@@ -72,7 +72,7 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
    res->u.b = *templ;
    res->u.b.screen = &vs->base;
    pipe_reference_init(&res->u.b.reference, 1);
-   vbind = pipe_to_virgl_bind(templ->bind);
+   vbind = pipe_to_virgl_bind(vs, templ->bind);
    virgl_resource_layout(&res->u.b, &res->metadata);
    res->hw_res = vs->vws->resource_create(vs->vws, templ->target,
                                           templ->format, vbind,
