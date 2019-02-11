@@ -441,32 +441,38 @@ fd6_tex_swiz(struct pipe_resource *prsc, enum pipe_format format,
 {
 	const struct util_format_description *desc =
 			util_format_description(format);
-	unsigned char swiz[4] = {
-			swizzle_r, swizzle_g, swizzle_b, swizzle_a,
-	}, rswiz[4], *swizp;
 
-	util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
+	uint32_t swap = fd6_pipe2swap(format);
+	unsigned char swiz[4];
+	char uswiz[4] = { swizzle_r, swizzle_g, swizzle_b, swizzle_a };
 
-	if (fd_resource(prsc)->tile_mode) {
-		/* for tiled modes, we don't get SWAP, so manually apply that
-		 * extra step of swizzle:
-		 */
-		enum a3xx_color_swap swap = fd6_pipe2swap(format);
-		unsigned char swapswiz[][4] = {
-				[WZYX] = { 0, 1, 2, 3 },
-				[WXYZ] = { 2, 1, 0, 3 },
-				[ZYXW] = { 3, 0, 1, 2 },
-				[XYZW] = { 3, 2, 1, 0 },
+	/* Gallium expects stencil sampler to return (s,s,s,s), so massage
+	 * the swizzle to do so.
+	 */
+	if ((format == PIPE_FORMAT_X24S8_UINT)) {
+		char stencil_swiz[4] = {
+			PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X
 		};
-
-		util_format_compose_swizzles(swapswiz[swap], rswiz, swiz);
-		swizp = swiz;
+		util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
+	} else if (swap != WZYX) {
+		/* Formats with a non-pass-through swap are permutations of RGBA
+		 * formats. We program the permutation using the swap and don't
+		 * need to compose the format swizzle with the user swizzle.
+		 */
+		memcpy(swiz, uswiz, sizeof(swiz));
 	} else {
-		swizp = rswiz;
+		/* Otherwise, it's an unswapped RGBA format or a format like L8 where
+		 * we need the XXX1 swizzle from the gallium format description.
+		 */
+		util_format_compose_swizzles(desc->swizzle, uswiz, swiz);
 	}
 
-	return A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swizp[0])) |
-			A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swizp[1])) |
-			A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swizp[2])) |
-			A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swizp[3]));
+	swap = fd_resource(prsc)->tile_mode ? WZYX : fd6_pipe2swap(format);
+
+	return
+		A6XX_TEX_CONST_0_SWAP(swap) |
+		A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |
+		A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swiz[1])) |
+		A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swiz[2])) |
+		A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swiz[3]));
 }
