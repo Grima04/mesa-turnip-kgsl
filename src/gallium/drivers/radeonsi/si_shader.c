@@ -5664,6 +5664,8 @@ static void si_dump_shader_key_vs(const struct si_shader_key *key,
 		prefix, prolog->instance_divisor_is_one);
 	fprintf(f, "  %s.instance_divisor_is_fetched = %u\n",
 		prefix, prolog->instance_divisor_is_fetched);
+	fprintf(f, "  %s.unpack_instance_id_from_vertex_id = %u\n",
+		prefix, prolog->unpack_instance_id_from_vertex_id);
 	fprintf(f, "  %s.ls_vgpr_fix = %u\n",
 		prefix, prolog->ls_vgpr_fix);
 
@@ -7099,8 +7101,21 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		}
 	}
 
-	ctx->abi.vertex_id = input_vgprs[first_vs_vgpr];
-	ctx->abi.instance_id = input_vgprs[first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1)];
+	unsigned vertex_id_vgpr = first_vs_vgpr;
+	unsigned instance_id_vgpr = first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1);
+
+	ctx->abi.vertex_id = input_vgprs[vertex_id_vgpr];
+	ctx->abi.instance_id = input_vgprs[instance_id_vgpr];
+
+	/* InstanceID = VertexID >> 16;
+	 * VertexID   = VertexID & 0xffff;
+	 */
+	if (key->vs_prolog.states.unpack_instance_id_from_vertex_id) {
+		ctx->abi.instance_id = LLVMBuildLShr(ctx->ac.builder, ctx->abi.vertex_id,
+						     LLVMConstInt(ctx->i32, 16, 0), "");
+		ctx->abi.vertex_id = LLVMBuildAnd(ctx->ac.builder, ctx->abi.vertex_id,
+						  LLVMConstInt(ctx->i32, 0xffff, 0), "");
+	}
 
 	/* Copy inputs to outputs. This should be no-op, as the registers match,
 	 * but it will prevent the compiler from overwriting them unintentionally.
@@ -7112,6 +7127,12 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	}
 	for (i = 0; i < num_input_vgprs; i++) {
 		LLVMValueRef p = input_vgprs[i];
+
+		if (i == vertex_id_vgpr)
+			p = ctx->abi.vertex_id;
+		else if (i == instance_id_vgpr)
+			p = ctx->abi.instance_id;
+
 		p = ac_to_float(&ctx->ac, p);
 		ret = LLVMBuildInsertValue(ctx->ac.builder, ret, p,
 					   key->vs_prolog.num_input_sgprs + i, "");
