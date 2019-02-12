@@ -488,7 +488,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
           *
           * Insert the new instruction at the end of the continue block.
           */
-         b->cursor = nir_after_block(continue_block);
+         b->cursor = nir_after_block_before_jump(continue_block);
 
          nir_ssa_def *const alu_copy =
             clone_alu_and_replace_src_defs(b, alu, continue_srcs);
