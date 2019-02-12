@@ -83,11 +83,12 @@ struct wsi_wayland {
 };
 
 static void
-wsi_wl_display_add_vk_format(struct wsi_wl_display *display, VkFormat format)
+wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
+                             struct u_vector *formats, VkFormat format)
 {
    /* Don't add a format that's already in the list */
    VkFormat *f;
-   u_vector_foreach(f, &display->formats)
+   u_vector_foreach(f, formats)
       if (*f == format)
          return;
 
@@ -99,9 +100,79 @@ wsi_wl_display_add_vk_format(struct wsi_wl_display *display, VkFormat format)
    if (!(props.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
       return;
 
-   f = u_vector_add(&display->formats);
+   f = u_vector_add(formats);
    if (f)
       *f = format;
+}
+
+static void
+wsi_wl_display_add_wl_format(struct wsi_wl_display *display,
+                             struct u_vector *formats, uint32_t wl_format)
+{
+   switch (wl_format) {
+#if 0
+   case WL_DRM_FORMAT_ABGR4444:
+   case WL_DRM_FORMAT_XBGR4444:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R4G4B4A4_UNORM);
+      break;
+   case WL_DRM_FORMAT_BGR565:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R5G6B5_UNORM);
+      break;
+   case WL_DRM_FORMAT_ABGR1555:
+   case WL_DRM_FORMAT_XBGR1555:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R5G5B5A1_UNORM);
+      break;
+   case WL_DRM_FORMAT_XBGR8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R8G8B8_UNORM);
+      /* fallthrough */
+   case WL_DRM_FORMAT_ABGR8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R8G8B8A8_UNORM);
+      break;
+   case WL_DRM_FORMAT_ABGR2101010:
+   case WL_DRM_FORMAT_XBGR2101010:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_R10G10B10A2_UNORM);
+      break;
+   case WL_DRM_FORMAT_ARGB4444:
+   case WL_DRM_FORMAT_XRGB4444:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B4G4R4A4_UNORM);
+      break;
+   case WL_DRM_FORMAT_RGB565:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B5G6R5_UNORM);
+      break;
+   case WL_DRM_FORMAT_ARGB1555:
+   case WL_DRM_FORMAT_XRGB1555:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B5G5R5A1_UNORM);
+      break;
+#endif
+   case WL_DRM_FORMAT_XRGB8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B8G8R8_SRGB);
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B8G8R8_UNORM);
+      /* fallthrough */
+   case WL_DRM_FORMAT_ARGB8888:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B8G8R8A8_SRGB);
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B8G8R8A8_UNORM);
+      break;
+#if 0
+   case WL_DRM_FORMAT_ARGB2101010:
+   case WL_DRM_FORMAT_XRGB2101010:
+      wsi_wl_display_add_vk_format(display, formats,
+                                   VK_FORMAT_B10G10R10A2_UNORM);
+      break;
+#endif
+   }
 }
 
 static void
@@ -160,56 +231,7 @@ drm_handle_format(void *data, struct wl_drm *drm, uint32_t wl_format)
    if (display->formats.element_size == 0)
       return;
 
-   switch (wl_format) {
-#if 0
-   case WL_DRM_FORMAT_ABGR4444:
-   case WL_DRM_FORMAT_XBGR4444:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R4G4B4A4_UNORM);
-      break;
-   case WL_DRM_FORMAT_BGR565:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R5G6B5_UNORM);
-      break;
-   case WL_DRM_FORMAT_ABGR1555:
-   case WL_DRM_FORMAT_XBGR1555:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R5G5B5A1_UNORM);
-      break;
-   case WL_DRM_FORMAT_XBGR8888:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R8G8B8_UNORM);
-      /* fallthrough */
-   case WL_DRM_FORMAT_ABGR8888:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R8G8B8A8_UNORM);
-      break;
-   case WL_DRM_FORMAT_ABGR2101010:
-   case WL_DRM_FORMAT_XBGR2101010:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_R10G10B10A2_UNORM);
-      break;
-   case WL_DRM_FORMAT_ARGB4444:
-   case WL_DRM_FORMAT_XRGB4444:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B4G4R4A4_UNORM);
-      break;
-   case WL_DRM_FORMAT_RGB565:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B5G6R5_UNORM);
-      break;
-   case WL_DRM_FORMAT_ARGB1555:
-   case WL_DRM_FORMAT_XRGB1555:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B5G5R5A1_UNORM);
-      break;
-#endif
-   case WL_DRM_FORMAT_XRGB8888:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B8G8R8_SRGB);
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B8G8R8_UNORM);
-      /* fallthrough */
-   case WL_DRM_FORMAT_ARGB8888:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B8G8R8A8_SRGB);
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B8G8R8A8_UNORM);
-      break;
-#if 0
-   case WL_DRM_FORMAT_ARGB2101010:
-   case WL_DRM_FORMAT_XRGB2101010:
-      wsi_wl_display_add_vk_format(display, VK_FORMAT_B10G10R10A2_UNORM);
-      break;
-#endif
-   }
+   wsi_wl_display_add_wl_format(display, &display->formats, wl_format);
 }
 
 static void
