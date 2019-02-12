@@ -96,6 +96,7 @@ DRI_CONF_BEGIN
    DRI_CONF_SECTION_MISCELLANEOUS
       DRI_CONF_GLSL_ZERO_INIT("false")
       DRI_CONF_ALLOW_RGB10_CONFIGS("false")
+      DRI_CONF_ALLOW_RGB565_CONFIGS("true")
    DRI_CONF_SECTION_END
 DRI_CONF_END
 };
@@ -2198,6 +2199,9 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
    /* Shall we expose 10 bpc formats? */
    bool allow_rgb10_configs = driQueryOptionb(&screen->optionCache,
                                               "allow_rgb10_configs");
+   /* Shall we expose 565 formats? */
+   bool allow_rgb565_configs = driQueryOptionb(&screen->optionCache,
+                                               "allow_rgb565_configs");
 
    /* Generate singlesample configs, each without accumulation buffer
     * and with EGL_MUTABLE_RENDER_BUFFER_BIT_KHR.
@@ -2209,6 +2213,9 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
       if (!allow_rgb10_configs &&
           (formats[i] == MESA_FORMAT_B10G10R10A2_UNORM ||
            formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
+         continue;
+
+      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
          continue;
 
       /* Starting with DRI2 protocol version 1.1 we can request a depth/stencil
@@ -2253,6 +2260,9 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
           formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
          continue;
 
+      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
+         continue;
+
       if (formats[i] == MESA_FORMAT_B5G6R5_UNORM) {
          depth_bits[0] = 16;
          stencil_bits[0] = 0;
@@ -2289,6 +2299,9 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
       if (!allow_rgb10_configs &&
           (formats[i] == MESA_FORMAT_B10G10R10A2_UNORM ||
           formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
+         continue;
+
+      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
          continue;
 
       __DRIconfig **new_configs;
