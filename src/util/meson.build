@@ -78,6 +78,8 @@ files_mesa_util = files(
   'simple_mtx.h',
   'slab.c',
   'slab.h',
+  'softfloat.c',
+  'softfloat.h',
   'string_buffer.c',
   'string_buffer.h',
   'strndup.h',
