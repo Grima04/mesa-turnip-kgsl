@@ -1794,12 +1794,19 @@ static bool si_check_missing_main_part(struct si_screen *sscreen,
 	return true;
 }
 
-/* Select the hw shader variant depending on the current state. */
-static int si_shader_select_with_key(struct si_screen *sscreen,
-				     struct si_shader_ctx_state *state,
-				     struct si_compiler_ctx_state *compiler_state,
-				     struct si_shader_key *key,
-				     int thread_index)
+/**
+ * Select a shader variant according to the shader key.
+ *
+ * \param optimized_or_none  If the key describes an optimized shader variant and
+ *                           the compilation isn't finished, don't select any
+ *                           shader and return an error.
+ */
+int si_shader_select_with_key(struct si_screen *sscreen,
+			      struct si_shader_ctx_state *state,
+			      struct si_compiler_ctx_state *compiler_state,
+			      struct si_shader_key *key,
+			      int thread_index,
+			      bool optimized_or_none)
 {
 	struct si_shader_selector *sel = state->cso;
 	struct si_shader_selector *previous_stage_sel = NULL;
@@ -1815,6 +1822,9 @@ again:
 		   memcmp(&current->key, key, sizeof(*key)) == 0)) {
 		if (unlikely(!util_queue_fence_is_signalled(&current->ready))) {
 			if (current->is_optimized) {
+				if (optimized_or_none)
+					return -1;
+
 				memset(&key->opt, 0, sizeof(key->opt));
 				goto current_not_ready;
 			}
@@ -1851,6 +1861,8 @@ current_not_ready:
 				 * shader so as not to cause a stall due to compilation.
 				 */
 				if (iter->is_optimized) {
+					if (optimized_or_none)
+						return -1;
 					memset(&key->opt, 0, sizeof(key->opt));
 					goto again;
 				}
@@ -1892,12 +1904,13 @@ current_not_ready:
 			util_queue_fence_wait(&previous_stage_sel->ready);
 	}
 
-	/* Compile the main shader part if it doesn't exist. This can happen
-	 * if the initial guess was wrong. */
 	bool is_pure_monolithic =
 		sscreen->use_monolithic_shaders ||
 		memcmp(&key->mono, &zeroed.mono, sizeof(key->mono)) != 0;
 
+	/* Compile the main shader part if it doesn't exist. This can happen
+	 * if the initial guess was wrong.
+	 */
 	if (!is_pure_monolithic) {
 		bool ok;
 
@@ -1954,9 +1967,7 @@ current_not_ready:
 		memcmp(&key->opt, &zeroed.opt, sizeof(key->opt)) != 0;
 
 	/* If it's an optimized shader, compile it asynchronously. */
-	if (shader->is_optimized &&
-	    !is_pure_monolithic &&
-	    thread_index < 0) {
+	if (shader->is_optimized && thread_index < 0) {
 		/* Compile it asynchronously. */
 		util_queue_add_job(&sscreen->shader_compiler_queue_low_priority,
 				   shader, &shader->ready,
@@ -1979,6 +1990,8 @@ current_not_ready:
 		if (sscreen->options.sync_compile)
 			util_queue_fence_wait(&shader->ready);
 
+		if (optimized_or_none)
+			return -1;
 		goto again;
 	}
 
@@ -2015,7 +2028,7 @@ static int si_shader_select(struct pipe_context *ctx,
 
 	si_shader_selector_key(ctx, state->cso, &key);
 	return si_shader_select_with_key(sctx->screen, state, compiler_state,
-					 &key, -1);
+					 &key, -1, false);
 }
 
 static void si_parse_next_shader_property(const struct tgsi_shader_info *info,

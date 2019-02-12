@@ -41,6 +41,7 @@
 
 struct si_screen;
 struct si_shader;
+struct si_shader_ctx_state;
 struct si_shader_selector;
 struct si_texture;
 struct si_qbo_state;
@@ -576,6 +577,12 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 void si_get_active_slot_masks(const struct tgsi_shader_info *info,
 			      uint32_t *const_and_shader_buffers,
 			      uint64_t *samplers_and_images);
+int si_shader_select_with_key(struct si_screen *sscreen,
+			      struct si_shader_ctx_state *state,
+			      struct si_compiler_ctx_state *compiler_state,
+			      struct si_shader_key *key,
+			      int thread_index,
+			      bool optimized_or_none);
 
 /* si_state_draw.c */
 void si_emit_cache_flush(struct si_context *sctx);
