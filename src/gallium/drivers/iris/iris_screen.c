@@ -574,8 +574,7 @@ iris_screen_create(int fd)
 
    screen->precompile = env_var_as_boolean("shader_precompile", true);
 
-   bool hw_has_swizzling = false; // XXX: detect?
-   isl_device_init(&screen->isl_dev, &screen->devinfo, hw_has_swizzling);
+   isl_device_init(&screen->isl_dev, &screen->devinfo, false);
 
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = iris_shader_debug_log;
