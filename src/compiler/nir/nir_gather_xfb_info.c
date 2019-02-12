@@ -33,6 +33,10 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
                     unsigned *offset,
                     const struct glsl_type *type)
 {
+   /* If this type contains a 64-bit value, align to 8 bytes */
+   if (glsl_type_contains_64bit(type))
+      *offset = ALIGN_POT(*offset, 8);
+
    if (glsl_type_is_array(type) || glsl_type_is_matrix(type)) {
       unsigned length = glsl_get_length(type);
       const struct glsl_type *child_type = glsl_get_array_element(type);
