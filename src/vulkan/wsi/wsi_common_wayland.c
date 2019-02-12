@@ -677,7 +677,12 @@ struct wsi_wl_swapchain {
 
    struct wl_surface *                          surface;
    uint32_t                                     surface_version;
+
+   /* non-NULL when wl_drm should be used for wl_buffer creation; otherwise,
+    * zwp_linux_dmabuf_v1 should be used.
+    */
    struct wl_drm *                              drm_wrapper;
+
    struct wl_callback *                         frame;
 
    VkExtent2D                                   extent;
@@ -829,9 +834,10 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    if (result != VK_SUCCESS)
       return result;
 
-   if (image->base.drm_modifier != DRM_FORMAT_MOD_INVALID) {
+   if (!chain->drm_wrapper) {
       /* Only request modifiers if we have dmabuf, else it must be implicit. */
       assert(display->dmabuf);
+      assert(image->base.drm_modifier != DRM_FORMAT_MOD_INVALID);
 
       struct zwp_linux_buffer_params_v1 *params =
          zwp_linux_dmabuf_v1_create_params(display->dmabuf);
@@ -858,6 +864,7 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    } else {
       /* Without passing modifiers, we can't have multi-plane RGB images. */
       assert(image->base.num_planes == 1);
+      assert(image->base.drm_modifier == DRM_FORMAT_MOD_INVALID);
 
       image->buffer =
          wl_drm_create_prime_buffer(chain->drm_wrapper,
@@ -1015,13 +1022,19 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       }
    }
 
-   chain->drm_wrapper = wl_proxy_create_wrapper(chain->display->drm);
-   if (!chain->drm_wrapper) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
+   /* When there are explicit DRM format modifiers, we must use
+    * zwp_linux_dmabuf_v1 for wl_buffer creation.  Otherwise, we must use
+    * wl_drm.
+    */
+   if (!chain->num_drm_modifiers) {
+      chain->drm_wrapper = wl_proxy_create_wrapper(chain->display->drm);
+      if (!chain->drm_wrapper) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail;
+      }
+      wl_proxy_set_queue((struct wl_proxy *) chain->drm_wrapper,
+                         chain->display->queue);
    }
-   wl_proxy_set_queue((struct wl_proxy *) chain->drm_wrapper,
-                      chain->display->queue);
 
    chain->fifo_ready = true;
 
