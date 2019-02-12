@@ -687,9 +687,14 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 
 	struct set *ubo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
 					       _mesa_key_pointer_equal);
+	struct set *ssbo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
+						_mesa_key_pointer_equal);
 
 	/* Intialise const_file_max[0] */
 	info->const_file_max[0] = -1;
+
+	/* The first 8 are reserved for atomic counters using ssbo */
+	unsigned ssbo_idx = 8;
 
 	unsigned ubo_idx = 1;
 	nir_foreach_variable(variable, &nir->uniforms) {
@@ -708,12 +713,16 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 */
 		if (variable->interface_type != NULL) {
 			if (variable->data.mode == nir_var_uniform ||
-			    variable->data.mode == nir_var_mem_ubo) {
+			    variable->data.mode == nir_var_mem_ubo ||
+			    variable->data.mode == nir_var_mem_ssbo) {
+
+				struct set *buf_set = variable->data.mode == nir_var_mem_ssbo ?
+					ssbo_set : ubo_set;
 
 				unsigned block_count;
 				if (base_type != GLSL_TYPE_INTERFACE) {
 					struct set_entry *entry =
-						_mesa_set_search(ubo_set, variable->interface_type);
+						_mesa_set_search(buf_set, variable->interface_type);
 
 					/* Check if we have already processed
 					 * a member from this ubo.
@@ -726,16 +735,18 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 					block_count = aoa_size;
 				}
 
-				info->const_buffers_declared |= u_bit_consecutive(ubo_idx, block_count);
-				ubo_idx += block_count;
+				if (variable->data.mode == nir_var_uniform ||
+				    variable->data.mode == nir_var_mem_ubo) {
+					info->const_buffers_declared |= u_bit_consecutive(ubo_idx, block_count);
+					ubo_idx += block_count;
+				} else {
+					assert(variable->data.mode == nir_var_mem_ssbo);
 
-				_mesa_set_add(ubo_set, variable->interface_type);
-			}
+					info->shader_buffers_declared |= u_bit_consecutive(ssbo_idx, block_count);
+					ssbo_idx += block_count;
+				}
 
-			if (variable->data.mode == nir_var_mem_ssbo) {
-				/* TODO: make this more accurate */
-				info->shader_buffers_declared =
-					u_bit_consecutive(0, SI_NUM_SHADER_BUFFERS);
+				_mesa_set_add(buf_set, variable->interface_type);
 			}
 
 			continue;
@@ -776,6 +787,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	}
 
 	_mesa_set_destroy(ubo_set, NULL);
+	_mesa_set_destroy(ssbo_set, NULL);
 
 	info->num_written_clipdistance = nir->info.clip_distance_array_size;
 	info->num_written_culldistance = nir->info.cull_distance_array_size;
