@@ -128,8 +128,13 @@ static void
 anv_cmd_pipeline_state_finish(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_cmd_pipeline_state *pipe_state)
 {
-   for (uint32_t i = 0; i < ARRAY_SIZE(pipe_state->push_descriptors); i++)
-      vk_free(&cmd_buffer->pool->alloc, pipe_state->push_descriptors[i]);
+   for (uint32_t i = 0; i < ARRAY_SIZE(pipe_state->push_descriptors); i++) {
+      if (pipe_state->push_descriptors[i]) {
+         anv_descriptor_set_layout_unref(cmd_buffer->device,
+             pipe_state->push_descriptors[i]->set.layout);
+         vk_free(&cmd_buffer->pool->alloc, pipe_state->push_descriptors[i]);
+      }
+   }
 }
 
 static void
@@ -975,9 +980,9 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       &pipe_state->push_descriptors[_set];
 
    if (*push_set == NULL) {
-      *push_set = vk_alloc(&cmd_buffer->pool->alloc,
-                           sizeof(struct anv_push_descriptor_set), 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      *push_set = vk_zalloc(&cmd_buffer->pool->alloc,
+                            sizeof(struct anv_push_descriptor_set), 8,
+                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (*push_set == NULL) {
          anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_HOST_MEMORY);
          return NULL;
@@ -986,7 +991,12 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_descriptor_set *set = &(*push_set)->set;
 
-   set->layout = layout;
+   if (set->layout != layout) {
+      if (set->layout)
+         anv_descriptor_set_layout_unref(cmd_buffer->device, set->layout);
+      anv_descriptor_set_layout_ref(layout);
+      set->layout = layout;
+   }
    set->size = anv_descriptor_set_layout_size(layout);
    set->buffer_view_count = layout->buffer_view_count;
    set->buffer_views = (*push_set)->buffer_views;
