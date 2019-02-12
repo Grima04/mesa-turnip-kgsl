@@ -377,6 +377,11 @@ optimizations = [
    (('iand', ('uge(is_used_once)', a, b), ('uge', a, c)), ('uge', a, ('umax', b, c))),
    (('iand', ('uge(is_used_once)', a, c), ('uge', b, c)), ('uge', ('umin', a, b), c)),
 
+   # Common pattern like 'if (i == 0 || i == 1 || ...)'
+   (('ior', ('ieq', a, 0), ('ieq', a, 1)), ('uge', 1, a)),
+   (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
+   (('ior', ('uge', 2, a), ('ieq', a, 3)), ('uge', 3, a)),
+
    (('ior', 'a@bool', ('ieq', a, False)), True),
    (('ior', a, ('inot', a)), -1),
 
