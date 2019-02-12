@@ -805,13 +805,6 @@ static const char* r600_get_device_vendor(struct pipe_screen* pscreen)
 	return "AMD";
 }
 
-static const char *r600_get_marketing_name(struct radeon_winsys *ws)
-{
-	if (!ws->get_chip_name)
-		return NULL;
-	return ws->get_chip_name(ws);
-}
-
 static const char *r600_get_family_name(const struct r600_common_screen *rscreen)
 {
 	switch (rscreen->info.family) {
@@ -1274,11 +1267,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 	ws->query_info(ws, &rscreen->info);
 	rscreen->ws = ws;
 
-	if ((chip_name = r600_get_marketing_name(ws)))
-		snprintf(family_name, sizeof(family_name), "%s / ",
-			 r600_get_family_name(rscreen) + 4);
-	else
-		chip_name = r600_get_family_name(rscreen);
+	chip_name = r600_get_family_name(rscreen);
 
 	if (uname(&uname_data) == 0)
 		snprintf(kernel_version, sizeof(kernel_version),

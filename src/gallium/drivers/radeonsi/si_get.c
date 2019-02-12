@@ -48,13 +48,6 @@ static const char *si_get_device_vendor(struct pipe_screen *pscreen)
 	return "AMD";
 }
 
-static const char *si_get_marketing_name(struct radeon_winsys *ws)
-{
-	if (!ws->get_chip_name)
-		return NULL;
-	return ws->get_chip_name(ws);
-}
-
 static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
 	struct si_screen *sscreen = (struct si_screen *)pscreen;
@@ -943,14 +936,12 @@ static struct disk_cache *si_get_disk_shader_cache(struct pipe_screen *pscreen)
 
 static void si_init_renderer_string(struct si_screen *sscreen)
 {
-	struct radeon_winsys *ws = sscreen->ws;
 	char first_name[256], second_name[32] = {}, kernel_version[128] = {};
 	struct utsname uname_data;
 
-	const char *marketing_name = si_get_marketing_name(ws);
-
-	if (marketing_name) {
-		snprintf(first_name, sizeof(first_name), "%s", marketing_name);
+	if (sscreen->info.marketing_name) {
+		snprintf(first_name, sizeof(first_name), "%s",
+			 sscreen->info.marketing_name);
 		snprintf(second_name, sizeof(second_name), "%s, ",
 			 sscreen->info.name);
 	} else {

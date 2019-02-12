@@ -333,6 +333,8 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 		return false;
 	}
 
+	info->marketing_name = amdgpu_get_marketing_name(dev);
+
 	/* Set which chips have dedicated VRAM. */
 	info->has_dedicated_vram =
 		!(amdinfo->ids_flags & AMDGPU_IDS_FLAGS_FUSION);
