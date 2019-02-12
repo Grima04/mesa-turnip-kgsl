@@ -686,6 +686,16 @@ brw_rnd_mode_from_nir_op (const nir_op op) {
    }
 }
 
+static brw_rnd_mode
+brw_rnd_mode_from_execution_mode(unsigned execution_mode)
+{
+   if (nir_has_any_rounding_mode_rtne(execution_mode))
+      return BRW_RND_MODE_RTNE;
+   if (nir_has_any_rounding_mode_rtz(execution_mode))
+      return BRW_RND_MODE_RTZ;
+   return BRW_RND_MODE_UNSPECIFIED;
+}
+
 fs_reg
 fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
                                                 nir_alu_instr *instr,
@@ -989,6 +999,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 {
    struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
    fs_inst *inst;
+   unsigned execution_mode =
+      bld.shader->nir->info.float_controls_execution_mode;
 
    fs_reg op[4];
    fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, need_dest);
@@ -1198,8 +1210,15 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_iadd:
    case nir_op_fadd:
+      if (nir_has_any_rounding_mode_enabled(execution_mode)) {
+         brw_rnd_mode rnd =
+            brw_rnd_mode_from_execution_mode(execution_mode);
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+                  brw_imm_d(rnd));
+      }
+      /* fallthrough */
+   case nir_op_iadd:
       inst = bld.ADD(result, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
@@ -1215,6 +1234,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
             emit_fsign(bld, instr, result, op, i);
             return;
          }
+      }
+
+      if (nir_has_any_rounding_mode_enabled(execution_mode)) {
+         brw_rnd_mode rnd =
+            brw_rnd_mode_from_execution_mode(execution_mode);
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+                  brw_imm_d(rnd));
       }
 
       inst = bld.MUL(result, op[0], op[1]);
@@ -1750,6 +1776,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
 
    case nir_op_ffma:
+      if (nir_has_any_rounding_mode_enabled(execution_mode)) {
+         brw_rnd_mode rnd =
+            brw_rnd_mode_from_execution_mode(execution_mode);
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+                  brw_imm_d(rnd));
+      }
+
       inst = bld.MAD(result, op[2], op[1], op[0]);
       inst->saturate = instr->dest.saturate;
       break;
