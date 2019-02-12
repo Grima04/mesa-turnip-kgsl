@@ -16,10 +16,13 @@
 # The format of the tag is "%Y-%m-%d-${counter}" where ${counter} stays
 # at "01" unless you have multiple updates on the same day :)
 variables:
-  UBUNTU_TAG: 2019-01-31-01
+  UBUNTU_TAG: 2019-02-12-01
   UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu:$UBUNTU_TAG"
   UBUNTU_IMAGE_MAIN: "registry.freedesktop.org/mesa/mesa/ubuntu:$UBUNTU_TAG"
 
+cache:
+  paths:
+    - ccache
 
 stages:
   - containers-build
@@ -63,10 +66,21 @@ containers:ubuntu:
   artifacts:
     when: on_failure
     untracked: true
+  # Use ccache transparently, and print stats before/after
+  before_script:
+    - export PATH="/usr/lib/ccache:$PATH"
+    - export CCACHE_BASEDIR="$PWD"
+    - export CCACHE_DIR="$PWD/ccache"
+    - export CCACHE_COMPILERCHECK=content
+    - ccache --zero-stats || true
+    - ccache --show-stats || true
+  after_script:
+    - export CCACHE_DIR="$PWD/ccache"
+    - ccache --show-stats
 
 .meson-build:
   extends: .build
-  before_script:
+  script:
     # We need to control the version of llvm-config we're using, so we'll
     # generate a native file to do so. This requires meson >=0.49
     - if test -n "$LLVM_VERSION"; then
@@ -88,7 +102,6 @@ containers:ubuntu:
             -D vulkan-drivers=${VULKAN_DRIVERS:-[]}
     - cd _build
     - meson configure
-  script:
     - ninja -j4
     - ninja test
 
@@ -96,7 +109,7 @@ containers:ubuntu:
   extends: .build
   variables:
     MAKEFLAGS: "-j4"
-  before_script:
+  script:
     - if test -n "$LLVM_VERSION"; then
         export LLVM_CONFIG="llvm-config-${LLVM_VERSION}";
       fi
@@ -112,7 +125,6 @@ containers:ubuntu:
         --with-gallium-drivers=$GALLIUM_DRIVERS
         --with-vulkan-drivers=$VULKAN_DRIVERS
         --disable-llvm-shared-libs
-  script:
     - make
     - eval $MAKE_CHECK_COMMAND
 

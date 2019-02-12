@@ -158,5 +158,8 @@ RUN pip2 install 'scons>=2.4'
 RUN pip2 install mako
 RUN pip3 install mako
 
+# Use ccache to speed up builds
+RUN apt-get install -y ccache
+
 # Cleanup workdir
 WORKDIR /
