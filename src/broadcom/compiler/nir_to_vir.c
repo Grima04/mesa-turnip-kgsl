@@ -1142,7 +1142,9 @@ emit_frag_end(struct v3d_compile *c)
 
                 inst->src[vir_get_implicit_uniform_src(inst)] =
                         vir_uniform_ui(c, tlb_specifier | 0xffffff00);
+                c->writes_z = true;
         } else if (c->s->info.fs.uses_discard ||
+                   !c->s->info.fs.early_fragment_tests ||
                    c->fs_key->sample_alpha_to_coverage ||
                    !has_any_tlb_color_write) {
                 /* Emit passthrough Z if it needed to be delayed until shader
@@ -1172,6 +1174,7 @@ emit_frag_end(struct v3d_compile *c)
 
                 inst->src[vir_get_implicit_uniform_src(inst)] =
                         vir_uniform_ui(c, tlb_specifier | 0xffffff00);
+                c->writes_z = true;
         }
 
         /* XXX: Performance improvement: Merge Z write and color writes TLB
