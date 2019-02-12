@@ -684,6 +684,9 @@ struct wsi_wl_swapchain {
    VkFormat                                     vk_format;
    uint32_t                                     drm_format;
 
+   uint32_t                                     num_drm_modifiers;
+   const uint64_t *                             drm_modifiers;
+
    VkPresentModeKHR                             present_mode;
    bool                                         fifo_ready;
 
@@ -816,29 +819,12 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                   const VkAllocationCallbacks* pAllocator)
 {
    struct wsi_wl_display *display = chain->display;
-   const uint64_t *modifiers = NULL;
-   uint32_t num_modifiers = 0;
    VkResult result;
 
-   if (display->dmabuf && chain->base.wsi->supports_modifiers) {
-      switch (chain->drm_format) {
-      case WL_DRM_FORMAT_ARGB8888:
-         modifiers = u_vector_tail(&display->modifiers.argb8888);
-         num_modifiers = u_vector_length(&display->modifiers.argb8888);
-         break;
-      case WL_DRM_FORMAT_XRGB8888:
-         modifiers = u_vector_tail(&display->modifiers.xrgb8888);
-         num_modifiers = u_vector_length(&display->modifiers.xrgb8888);
-         break;
-      default:
-         break;
-      }
-   }
-
    result = wsi_create_native_image(&chain->base, pCreateInfo,
-                                    num_modifiers > 0 ? 1 : 0,
-                                    &num_modifiers, &modifiers,
-                                    &image->base);
+                                    chain->num_drm_modifiers > 0 ? 1 : 0,
+                                    &chain->num_drm_modifiers,
+                                    &chain->drm_modifiers, &image->base);
 
    if (result != VK_SUCCESS)
       return result;
@@ -1002,6 +988,32 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    wl_proxy_set_queue((struct wl_proxy *) chain->surface,
                       chain->display->queue);
    chain->surface_version = wl_proxy_get_version((void *)surface->surface);
+
+   chain->num_drm_modifiers = 0;
+   chain->drm_modifiers = 0;
+
+   /* Use explicit DRM format modifiers when both the server and the driver
+    * support them.
+    */
+   if (chain->display->dmabuf && chain->base.wsi->supports_modifiers) {
+      struct u_vector *modifiers;
+      switch (chain->drm_format) {
+      case WL_DRM_FORMAT_ARGB8888:
+         modifiers = &chain->display->modifiers.argb8888;
+         break;
+      case WL_DRM_FORMAT_XRGB8888:
+         modifiers = &chain->display->modifiers.xrgb8888;
+         break;
+      default:
+         modifiers = NULL;
+         break;
+      }
+
+      if (modifiers) {
+         chain->drm_modifiers = u_vector_tail(modifiers);
+         chain->num_drm_modifiers = u_vector_length(modifiers);
+      }
+   }
 
    chain->drm_wrapper = wl_proxy_create_wrapper(chain->display->drm);
    if (!chain->drm_wrapper) {
