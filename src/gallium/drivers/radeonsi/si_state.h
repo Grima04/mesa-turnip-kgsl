@@ -556,6 +556,17 @@ void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st);
 void si_set_occlusion_query_state(struct si_context *sctx,
 				  bool old_perfect_enable);
 
+struct si_fast_udiv_info32 {
+   unsigned multiplier; /* the "magic number" multiplier */
+   unsigned pre_shift; /* shift for the dividend before multiplying */
+   unsigned post_shift; /* shift for the dividend after multiplying */
+   int increment; /* 0 or 1; if set then increment the numerator, using one of
+                     the two strategies */
+};
+
+struct si_fast_udiv_info32
+si_compute_fast_udiv_info32(uint32_t D, unsigned num_bits);
+
 /* si_state_binning.c */
 void si_emit_dpbb_state(struct si_context *sctx);
 
@@ -583,6 +594,10 @@ int si_shader_select_with_key(struct si_screen *sscreen,
 			      struct si_shader_key *key,
 			      int thread_index,
 			      bool optimized_or_none);
+void si_shader_selector_key_vs(struct si_context *sctx,
+			       struct si_shader_selector *vs,
+			       struct si_shader_key *key,
+			       struct si_vs_prolog_bits *prolog_key);
 
 /* si_state_draw.c */
 void si_emit_cache_flush(struct si_context *sctx);

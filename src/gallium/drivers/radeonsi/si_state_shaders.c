@@ -1370,10 +1370,10 @@ static unsigned si_get_alpha_test_func(struct si_context *sctx)
 	return PIPE_FUNC_ALWAYS;
 }
 
-static void si_shader_selector_key_vs(struct si_context *sctx,
-				      struct si_shader_selector *vs,
-				      struct si_shader_key *key,
-				      struct si_vs_prolog_bits *prolog_key)
+void si_shader_selector_key_vs(struct si_context *sctx,
+			       struct si_shader_selector *vs,
+			       struct si_shader_key *key,
+			       struct si_vs_prolog_bits *prolog_key)
 {
 	if (!sctx->vertex_elements ||
 	    vs->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS])

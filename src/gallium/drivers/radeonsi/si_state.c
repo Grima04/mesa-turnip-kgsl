@@ -4411,21 +4411,13 @@ static void si_delete_sampler_state(struct pipe_context *ctx, void *state)
  * Vertex elements & buffers
  */
 
-struct util_fast_udiv_info32 {
-   unsigned multiplier; /* the "magic number" multiplier */
-   unsigned pre_shift; /* shift for the dividend before multiplying */
-   unsigned post_shift; /* shift for the dividend after multiplying */
-   int increment; /* 0 or 1; if set then increment the numerator, using one of
-                     the two strategies */
-};
-
-static struct util_fast_udiv_info32
-util_compute_fast_udiv_info32(uint32_t D, unsigned num_bits)
+struct si_fast_udiv_info32
+si_compute_fast_udiv_info32(uint32_t D, unsigned num_bits)
 {
 	struct util_fast_udiv_info info =
 		util_compute_fast_udiv_info(D, num_bits, 32);
 
-	struct util_fast_udiv_info32 result = {
+	struct si_fast_udiv_info32 result = {
 		info.multiplier,
 		info.pre_shift,
 		info.post_shift,
@@ -4441,8 +4433,8 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 	struct si_screen *sscreen = (struct si_screen*)ctx->screen;
 	struct si_vertex_elements *v = CALLOC_STRUCT(si_vertex_elements);
 	bool used[SI_NUM_VERTEX_BUFFERS] = {};
-	struct util_fast_udiv_info32 divisor_factors[SI_MAX_ATTRIBS] = {};
-	STATIC_ASSERT(sizeof(struct util_fast_udiv_info32) == 16);
+	struct si_fast_udiv_info32 divisor_factors[SI_MAX_ATTRIBS] = {};
+	STATIC_ASSERT(sizeof(struct si_fast_udiv_info32) == 16);
 	STATIC_ASSERT(sizeof(divisor_factors[0].multiplier) == 4);
 	STATIC_ASSERT(sizeof(divisor_factors[0].pre_shift) == 4);
 	STATIC_ASSERT(sizeof(divisor_factors[0].post_shift) == 4);
@@ -4476,7 +4468,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 			} else {
 				v->instance_divisor_is_fetched |= 1u << i;
 				divisor_factors[i] =
-					util_compute_fast_udiv_info32(instance_divisor, 32);
+					si_compute_fast_udiv_info32(instance_divisor, 32);
 			}
 		}
 
