@@ -54,6 +54,14 @@ struct wsi_wl_display_drm {
    uint32_t                                     capabilities;
 };
 
+struct wsi_wl_display_dmabuf {
+   struct zwp_linux_dmabuf_v1 *                 wl_dmabuf;
+   struct {
+      struct u_vector                           argb8888;
+      struct u_vector                           xrgb8888;
+   } modifiers;
+};
+
 struct wsi_wl_display {
    /* The real wl_display */
    struct wl_display *                          wl_display;
@@ -62,16 +70,11 @@ struct wsi_wl_display {
    struct wl_event_queue *                      queue;
 
    struct wsi_wl_display_drm                    drm;
-   struct zwp_linux_dmabuf_v1 *                 dmabuf;
+   struct wsi_wl_display_dmabuf                 dmabuf;
 
    struct wsi_wayland *wsi_wl;
    /* Vector of VkFormats supported */
    struct u_vector                            formats;
-
-   struct {
-      struct u_vector                           argb8888;
-      struct u_vector                           xrgb8888;
-   } modifiers;
 
    /* Only used for displays created by wsi_wl_display_create */
    uint32_t                                     refcount;
@@ -284,10 +287,10 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
 
    switch (format) {
    case WL_DRM_FORMAT_ARGB8888:
-      mod = u_vector_add(&display->modifiers.argb8888);
+      mod = u_vector_add(&display->dmabuf.modifiers.argb8888);
       break;
    case WL_DRM_FORMAT_XRGB8888:
-      mod = u_vector_add(&display->modifiers.xrgb8888);
+      mod = u_vector_add(&display->dmabuf.modifiers.xrgb8888);
       break;
    default:
       break;
@@ -319,10 +322,10 @@ registry_handle_global(void *data, struct wl_registry *registry,
          wl_registry_bind(registry, name, &wl_drm_interface, 2);
       wl_drm_add_listener(display->drm.wl_drm, &drm_listener, display);
    } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
-      display->dmabuf =
+      display->dmabuf.wl_dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, 3);
-      zwp_linux_dmabuf_v1_add_listener(display->dmabuf, &dmabuf_listener,
-                                       display);
+      zwp_linux_dmabuf_v1_add_listener(display->dmabuf.wl_dmabuf,
+                                       &dmabuf_listener, display);
    }
 }
 
@@ -342,12 +345,12 @@ wsi_wl_display_finish(struct wsi_wl_display *display)
    assert(display->refcount == 0);
 
    u_vector_finish(&display->formats);
-   u_vector_finish(&display->modifiers.argb8888);
-   u_vector_finish(&display->modifiers.xrgb8888);
+   u_vector_finish(&display->dmabuf.modifiers.argb8888);
+   u_vector_finish(&display->dmabuf.modifiers.xrgb8888);
    if (display->drm.wl_drm)
       wl_drm_destroy(display->drm.wl_drm);
-   if (display->dmabuf)
-      zwp_linux_dmabuf_v1_destroy(display->dmabuf);
+   if (display->dmabuf.wl_dmabuf)
+      zwp_linux_dmabuf_v1_destroy(display->dmabuf.wl_dmabuf);
    if (display->wl_display_wrapper)
       wl_proxy_wrapper_destroy(display->wl_display_wrapper);
    if (display->queue)
@@ -368,8 +371,10 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
 
    if (get_format_list) {
       if (!u_vector_init(&display->formats, sizeof(VkFormat), 8) ||
-          !u_vector_init(&display->modifiers.argb8888, sizeof(uint64_t), 32) ||
-          !u_vector_init(&display->modifiers.xrgb8888, sizeof(uint64_t), 32)) {
+          !u_vector_init(&display->dmabuf.modifiers.argb8888,
+                         sizeof(uint64_t), 32) ||
+          !u_vector_init(&display->dmabuf.modifiers.xrgb8888,
+                         sizeof(uint64_t), 32)) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
       }
@@ -861,11 +866,11 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
 
    if (!chain->drm_wrapper) {
       /* Only request modifiers if we have dmabuf, else it must be implicit. */
-      assert(display->dmabuf);
+      assert(display->dmabuf.wl_dmabuf);
       assert(image->base.drm_modifier != DRM_FORMAT_MOD_INVALID);
 
       struct zwp_linux_buffer_params_v1 *params =
-         zwp_linux_dmabuf_v1_create_params(display->dmabuf);
+         zwp_linux_dmabuf_v1_create_params(display->dmabuf.wl_dmabuf);
       wl_proxy_set_queue((struct wl_proxy *) params, chain->display->queue);
 
       for (int i = 0; i < image->base.num_planes; i++) {
@@ -1027,14 +1032,15 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    /* Use explicit DRM format modifiers when both the server and the driver
     * support them.
     */
-   if (chain->display->dmabuf && chain->base.wsi->supports_modifiers) {
+   if (chain->display->dmabuf.wl_dmabuf &&
+       chain->base.wsi->supports_modifiers) {
       struct u_vector *modifiers;
       switch (chain->drm_format) {
       case WL_DRM_FORMAT_ARGB8888:
-         modifiers = &chain->display->modifiers.argb8888;
+         modifiers = &chain->display->dmabuf.modifiers.argb8888;
          break;
       case WL_DRM_FORMAT_XRGB8888:
-         modifiers = &chain->display->modifiers.xrgb8888;
+         modifiers = &chain->display->dmabuf.modifiers.xrgb8888;
          break;
       default:
          modifiers = NULL;
