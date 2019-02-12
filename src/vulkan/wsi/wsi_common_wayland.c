@@ -49,13 +49,19 @@
 
 struct wsi_wayland;
 
+struct wsi_wl_display_drm {
+   struct wl_drm *                              wl_drm;
+   uint32_t                                     capabilities;
+};
+
 struct wsi_wl_display {
    /* The real wl_display */
    struct wl_display *                          wl_display;
    /* Actually a proxy wrapper around the event queue */
    struct wl_display *                          wl_display_wrapper;
    struct wl_event_queue *                      queue;
-   struct wl_drm *                              drm;
+
+   struct wsi_wl_display_drm                    drm;
    struct zwp_linux_dmabuf_v1 *                 dmabuf;
 
    struct wsi_wayland *wsi_wl;
@@ -66,8 +72,6 @@ struct wsi_wl_display {
       struct u_vector                           argb8888;
       struct u_vector                           xrgb8888;
    } modifiers;
-
-   uint32_t                                     capabilities;
 
    /* Only used for displays created by wsi_wl_display_create */
    uint32_t                                     refcount;
@@ -244,7 +248,7 @@ drm_handle_capabilities(void *data, struct wl_drm *drm, uint32_t capabilities)
 {
    struct wsi_wl_display *display = data;
 
-   display->capabilities = capabilities;
+   display->drm.capabilities = capabilities;
 }
 
 static const struct wl_drm_listener drm_listener = {
@@ -308,13 +312,12 @@ registry_handle_global(void *data, struct wl_registry *registry,
    struct wsi_wl_display *display = data;
 
    if (strcmp(interface, "wl_drm") == 0) {
-      assert(display->drm == NULL);
+      assert(display->drm.wl_drm == NULL);
 
       assert(version >= 2);
-      display->drm = wl_registry_bind(registry, name, &wl_drm_interface, 2);
-
-      if (display->drm)
-         wl_drm_add_listener(display->drm, &drm_listener, display);
+      display->drm.wl_drm =
+         wl_registry_bind(registry, name, &wl_drm_interface, 2);
+      wl_drm_add_listener(display->drm.wl_drm, &drm_listener, display);
    } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
       display->dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, 3);
@@ -341,8 +344,8 @@ wsi_wl_display_finish(struct wsi_wl_display *display)
    u_vector_finish(&display->formats);
    u_vector_finish(&display->modifiers.argb8888);
    u_vector_finish(&display->modifiers.xrgb8888);
-   if (display->drm)
-      wl_drm_destroy(display->drm);
+   if (display->drm.wl_drm)
+      wl_drm_destroy(display->drm.wl_drm);
    if (display->dmabuf)
       zwp_linux_dmabuf_v1_destroy(display->dmabuf);
    if (display->wl_display_wrapper)
@@ -399,7 +402,7 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    /* Round-trip to get the wl_drm global */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
-   if (!display->drm) {
+   if (!display->drm.wl_drm) {
       result = VK_ERROR_SURFACE_LOST_KHR;
       goto fail_registry;
    }
@@ -408,7 +411,7 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
    /* We need prime support */
-   if (!(display->capabilities & WL_DRM_CAPABILITY_PRIME)) {
+   if (!(display->drm.capabilities & WL_DRM_CAPABILITY_PRIME)) {
       result = VK_ERROR_SURFACE_LOST_KHR;
       goto fail_registry;
    }
@@ -1049,7 +1052,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * wl_drm.
     */
    if (!chain->num_drm_modifiers) {
-      chain->drm_wrapper = wl_proxy_create_wrapper(chain->display->drm);
+      chain->drm_wrapper =
+         wl_proxy_create_wrapper(chain->display->drm.wl_drm);
       if (!chain->drm_wrapper) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
