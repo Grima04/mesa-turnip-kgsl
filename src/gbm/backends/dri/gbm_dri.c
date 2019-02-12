@@ -56,14 +56,6 @@
 #include "wayland-drm.h"
 #endif
 
-#ifndef DRM_FORMAT_MOD_INVALID
-#define DRM_FORMAT_MOD_INVALID ((1ULL<<56) - 1)
-#endif
-
-#ifndef DRM_FORMAT_MOD_LINEAR
-#define DRM_FORMAT_MOD_LINEAR 0
-#endif
-
 static __DRIimage *
 dri_lookup_egl_image(__DRIscreen *screen, void *image, void *data)
 {
