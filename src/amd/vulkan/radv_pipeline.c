@@ -3183,11 +3183,11 @@ radv_compute_db_shader_control(const struct radv_device *device,
 	bool disable_rbplus = device->physical_device->has_rbplus &&
 	                      !device->physical_device->rbplus_allowed;
 
-	/* Do not enable the gl_SampleMask fragment shader output if MSAA is
-	 * disabled.
+	/* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
+	 * but this appears to break Project Cars (DXVK). See
+	 * https://bugs.freedesktop.org/show_bug.cgi?id=109401
 	 */
-	bool mask_export_enable = ms->num_samples > 1 &&
-				  ps->info.info.ps.writes_sample_mask;
+	bool mask_export_enable = ps->info.info.ps.writes_sample_mask;
 
 	return  S_02880C_Z_EXPORT_ENABLE(ps->info.info.ps.writes_z) |
 		S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.info.ps.writes_stencil) |
