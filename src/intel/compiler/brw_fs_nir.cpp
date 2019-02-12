@@ -3940,7 +3940,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_atomic_exchange:
-   case nir_intrinsic_image_atomic_comp_swap: {
+   case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_max:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_comp_swap: {
       if (stage == MESA_SHADER_FRAGMENT &&
           instr->intrinsic != nir_intrinsic_image_load)
          brw_wm_prog_data(prog_data)->has_side_effects = true;
@@ -3950,20 +3960,43 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const GLenum format = nir_intrinsic_format(instr);
 
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] =
-         get_nir_image_intrinsic_image(bld, instr);
+
+      switch (instr->intrinsic) {
+      case nir_intrinsic_image_load:
+      case nir_intrinsic_image_store:
+      case nir_intrinsic_image_atomic_add:
+      case nir_intrinsic_image_atomic_min:
+      case nir_intrinsic_image_atomic_max:
+      case nir_intrinsic_image_atomic_and:
+      case nir_intrinsic_image_atomic_or:
+      case nir_intrinsic_image_atomic_xor:
+      case nir_intrinsic_image_atomic_exchange:
+      case nir_intrinsic_image_atomic_comp_swap:
+         srcs[SURFACE_LOGICAL_SRC_SURFACE] =
+            get_nir_image_intrinsic_image(bld, instr);
+         break;
+
+      default:
+         /* Bindless */
+         srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] =
+            bld.emit_uniformize(get_nir_src(instr->src[0]));
+         break;
+      }
+
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] =
          brw_imm_ud(image_intrinsic_coord_components(instr));
 
       /* Emit an image load, store or atomic op. */
-      if (instr->intrinsic == nir_intrinsic_image_load) {
+      if (instr->intrinsic == nir_intrinsic_image_load ||
+          instr->intrinsic == nir_intrinsic_bindless_image_load) {
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          fs_inst *inst =
             bld.emit(SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL,
                      dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          inst->size_written = instr->num_components * dispatch_width * 4;
-      } else if (instr->intrinsic == nir_intrinsic_image_store) {
+      } else if (instr->intrinsic == nir_intrinsic_image_store ||
+                 instr->intrinsic == nir_intrinsic_bindless_image_store) {
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          srcs[SURFACE_LOGICAL_SRC_DATA] = get_nir_src(instr->src[3]);
          bld.emit(SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL,
@@ -3974,6 +4007,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          switch (instr->intrinsic) {
          case nir_intrinsic_image_atomic_add:
+         case nir_intrinsic_bindless_image_atomic_add:
             assert(num_srcs == 4);
 
             op = get_op_for_atomic_add(instr, 3);
@@ -3982,26 +4016,33 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                num_srcs = 3;
             break;
          case nir_intrinsic_image_atomic_min:
+         case nir_intrinsic_bindless_image_atomic_min:
             assert(format == GL_R32UI || format == GL_R32I);
             op = (format == GL_R32I) ? BRW_AOP_IMIN : BRW_AOP_UMIN;
             break;
          case nir_intrinsic_image_atomic_max:
+         case nir_intrinsic_bindless_image_atomic_max:
             assert(format == GL_R32UI || format == GL_R32I);
             op = (format == GL_R32I) ? BRW_AOP_IMAX : BRW_AOP_UMAX;
             break;
          case nir_intrinsic_image_atomic_and:
+         case nir_intrinsic_bindless_image_atomic_and:
             op = BRW_AOP_AND;
             break;
          case nir_intrinsic_image_atomic_or:
+         case nir_intrinsic_bindless_image_atomic_or:
             op = BRW_AOP_OR;
             break;
          case nir_intrinsic_image_atomic_xor:
+         case nir_intrinsic_bindless_image_atomic_xor:
             op = BRW_AOP_XOR;
             break;
          case nir_intrinsic_image_atomic_exchange:
+         case nir_intrinsic_bindless_image_atomic_exchange:
             op = BRW_AOP_MOV;
             break;
          case nir_intrinsic_image_atomic_comp_swap:
+         case nir_intrinsic_bindless_image_atomic_comp_swap:
             op = BRW_AOP_CMPWR;
             break;
          default:
@@ -4027,16 +4068,22 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_image_size: {
+   case nir_intrinsic_image_size:
+   case nir_intrinsic_bindless_image_size: {
       /* Unlike the [un]typed load and store opcodes, the TXS that this turns
        * into will handle the binding table index for us in the geneerator.
+       * Incidentally, this means that we can handle bindless with exactly the
+       * same code.
        */
       fs_reg image = retype(get_nir_src_imm(instr->src[0]),
                             BRW_REGISTER_TYPE_UD);
       image = bld.emit_uniformize(image);
 
       fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
-      srcs[TEX_LOGICAL_SRC_SURFACE] = image;
+      if (instr->intrinsic == nir_intrinsic_image_size)
+         srcs[TEX_LOGICAL_SRC_SURFACE] = image;
+      else
+         srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = image;
       srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_d(0);
       srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(0);
       srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);

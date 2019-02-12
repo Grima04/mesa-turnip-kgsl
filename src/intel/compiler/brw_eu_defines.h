@@ -852,6 +852,8 @@ enum tex_logical_srcs {
 enum surface_logical_srcs {
    /** Surface binding table index */
    SURFACE_LOGICAL_SRC_SURFACE,
+   /** Surface bindless handle */
+   SURFACE_LOGICAL_SRC_SURFACE_HANDLE,
    /** Surface address; could be multi-dimensional for typed opcodes */
    SURFACE_LOGICAL_SRC_ADDRESS,
    /** Data to be written or used in an atomic op */

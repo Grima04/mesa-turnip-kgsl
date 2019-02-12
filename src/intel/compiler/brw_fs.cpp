@@ -5112,9 +5112,13 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    const fs_reg &addr = inst->src[SURFACE_LOGICAL_SRC_ADDRESS];
    const fs_reg &src = inst->src[SURFACE_LOGICAL_SRC_DATA];
    const fs_reg &surface = inst->src[SURFACE_LOGICAL_SRC_SURFACE];
+   const fs_reg &surface_handle = inst->src[SURFACE_LOGICAL_SRC_SURFACE_HANDLE];
    const UNUSED fs_reg &dims = inst->src[SURFACE_LOGICAL_SRC_IMM_DIMS];
    const fs_reg &arg = inst->src[SURFACE_LOGICAL_SRC_IMM_ARG];
    assert(arg.file == IMM);
+
+   /* We must have exactly one of surface and surface_handle */
+   assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
 
    /* Calculate the total number of components of the payload. */
    const unsigned addr_sz = inst->components_read(SURFACE_LOGICAL_SRC_ADDRESS);
@@ -5308,13 +5312,24 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    if (surface.file == IMM) {
       inst->desc |= surface.ud & 0xff;
       inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   } else if (surface_handle.file != BAD_FILE) {
+      /* Bindless surface */
+      assert(devinfo->gen >= 9);
+      inst->desc |= GEN9_BTI_BINDLESS;
+      inst->src[0] = brw_imm_ud(0);
+
+      /* We assume that the driver provided the handle in the top 20 bits so
+       * we can use the surface handle directly as the extended descriptor.
+       */
+      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
    } else {
       const fs_builder ubld = bld.exec_all().group(1, 0);
       fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       ubld.AND(tmp, surface, brw_imm_ud(0xff));
       inst->src[0] = component(tmp, 0);
+      inst->src[1] = brw_imm_ud(0); /* ex_desc */
    }
-   inst->src[1] = brw_imm_ud(0); /* ex_desc */
 
    /* Finally, the payload */
    inst->src[2] = payload;
