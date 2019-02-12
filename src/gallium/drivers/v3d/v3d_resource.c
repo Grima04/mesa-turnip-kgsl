@@ -32,7 +32,7 @@
 #include "util/u_upload_mgr.h"
 #include "util/u_format_zs.h"
 
-#include "drm_fourcc.h"
+#include "drm-uapi/drm_fourcc.h"
 #include "v3d_screen.h"
 #include "v3d_context.h"
 #include "v3d_resource.h"

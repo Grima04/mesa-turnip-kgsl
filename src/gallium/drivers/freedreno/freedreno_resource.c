@@ -43,7 +43,7 @@
 #include "freedreno_query_hw.h"
 #include "freedreno_util.h"
 
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 #include <errno.h>
 
 /* XXX this should go away, needed for 'struct winsys_handle' */

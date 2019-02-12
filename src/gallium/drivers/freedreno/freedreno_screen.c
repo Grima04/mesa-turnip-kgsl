@@ -39,7 +39,7 @@
 
 #include "util/os_time.h"
 
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

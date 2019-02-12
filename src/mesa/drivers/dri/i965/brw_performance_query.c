@@ -56,7 +56,7 @@
 #include <sys/ioctl.h>
 
 #include <xf86drm.h>
-#include <i915_drm.h>
+#include "drm-uapi/i915_drm.h"
 
 #include "main/hash.h"
 #include "main/macros.h"

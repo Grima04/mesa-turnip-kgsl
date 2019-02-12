@@ -179,7 +179,7 @@ libi965 = static_library(
   [files_i965, i965_oa_sources, ir_expression_operation_h,
    xmlpool_options_h, float64_glsl_h],
   include_directories : [
-    inc_common, inc_intel, inc_dri_common, inc_util, inc_drm_uapi,
+    inc_common, inc_intel, inc_dri_common, inc_util, inc_include,
   ],
   c_args : [c_vis_args, no_override_init_args, c_sse2_args],
   cpp_args : [cpp_vis_args, c_sse2_args],

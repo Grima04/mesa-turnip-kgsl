@@ -208,7 +208,7 @@ libnouveau = static_library(
   'nouveau',
   [files_libnouveau],
   include_directories : [
-    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_drm_uapi
+    inc_src, inc_include, inc_gallium, inc_gallium_aux,
   ],
   c_args : [c_vis_args],
   cpp_args : [cpp_vis_args],

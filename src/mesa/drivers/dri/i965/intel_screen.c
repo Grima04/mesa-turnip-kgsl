@@ -23,7 +23,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 #include <errno.h>
 #include <time.h>
 #include <unistd.h>
@@ -111,7 +111,7 @@ DRI_CONF_END
 
 #include "brw_context.h"
 
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 
 /**
  * For debugging purposes, this returns a time in seconds.

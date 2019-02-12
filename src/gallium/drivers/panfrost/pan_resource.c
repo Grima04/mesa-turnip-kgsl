@@ -29,7 +29,7 @@
 
 #include <xf86drm.h>
 #include <fcntl.h>
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 
 #include "state_tracker/winsys_handle.h"
 #include "util/u_format.h"

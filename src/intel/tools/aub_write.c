@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 #include "intel_aub.h"
 #include "gen_context.h"
 

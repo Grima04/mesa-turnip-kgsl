@@ -41,7 +41,7 @@
 
 #include <fcntl.h>
 
-#include "drm_fourcc.h"
+#include "drm-uapi/drm_fourcc.h"
 
 #include "pan_screen.h"
 #include "pan_resource.h"

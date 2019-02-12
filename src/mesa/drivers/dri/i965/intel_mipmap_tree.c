@@ -25,7 +25,7 @@
 
 #include <GL/gl.h>
 #include <GL/internal/dri_interface.h>
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 
 #include "intel_batchbuffer.h"
 #include "intel_image.h"

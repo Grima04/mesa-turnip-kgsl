@@ -46,7 +46,7 @@
 
 #include "state_tracker/drm_driver.h"
 
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 
 #define ETNA_DRM_VERSION(major, minor) ((major) << 16 | (minor))
 #define ETNA_DRM_VERSION_FENCE_FD      ETNA_DRM_VERSION(1, 1)

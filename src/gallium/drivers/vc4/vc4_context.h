@@ -33,7 +33,7 @@
 #include "xf86drm.h"
 
 #define __user
-#include "vc4_drm.h"
+#include "drm-uapi/vc4_drm.h"
 #include "vc4_bufmgr.h"
 #include "vc4_resource.h"
 #include "vc4_cl.h"

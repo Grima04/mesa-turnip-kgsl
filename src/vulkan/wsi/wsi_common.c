@@ -22,7 +22,7 @@
  */
 
 #include "wsi_common_private.h"
-#include "drm_fourcc.h"
+#include "drm-uapi/drm_fourcc.h"
 #include "util/macros.h"
 #include "vk_util.h"
 

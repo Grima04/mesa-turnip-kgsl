@@ -30,7 +30,7 @@ include $(LOCAL_PATH)/Makefile.sources
 I965_PERGEN_COMMON_INCLUDES := \
 	$(MESA_DRI_C_INCLUDES) \
 	$(MESA_TOP)/src/intel \
-	$(MESA_TOP)/include/drm-uapi
+	$(MESA_TOP)/include
 
 I965_PERGEN_SHARED_LIBRARIES := \
 	$(MESA_DRI_SHARED_LIBRARIES)
@@ -277,7 +277,7 @@ LOCAL_CFLAGS := \
 LOCAL_C_INCLUDES := \
 	$(MESA_DRI_C_INCLUDES) \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_glsl,,) \
-	$(MESA_TOP)/include/drm-uapi
+	$(MESA_TOP)/include
 
 LOCAL_SRC_FILES := \
 	$(i965_FILES)

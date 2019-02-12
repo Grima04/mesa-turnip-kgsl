@@ -29,7 +29,7 @@
 #include <panfrost-job.h>
 #include "pan_screen.h"
 #include "pan_allocate.h"
-#include <drm.h>
+#include "drm-uapi/drm.h"
 
 struct panfrost_bo {
         /* Address to the BO in question */

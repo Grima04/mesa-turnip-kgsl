@@ -37,7 +37,7 @@
 #include "util/hash_table.h"
 
 #include <xf86drm.h>
-#include <i915_drm.h>
+#include "drm-uapi/i915_drm.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 

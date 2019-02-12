@@ -33,7 +33,7 @@
 #include <zlib.h>
 
 #include "aub_write.h"
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 #include "intel_aub.h"
 
 static void __attribute__ ((format(__printf__, 2, 3)))

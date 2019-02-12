@@ -40,7 +40,7 @@
 #include "util/xmlconfig.h"
 #include "util/xmlpool.h"
 
-#include <drm.h>
+#include "drm-uapi/drm.h"
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdio.h>

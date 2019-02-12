@@ -34,9 +34,9 @@
 #include "main/mtypes.h"
 #include "main/errors.h"
 
-#include <drm.h>
+#include "drm-uapi/drm.h"
 #include <intel_bufmgr.h>
-#include <i915_drm.h>
+#include "drm-uapi/i915_drm.h"
 
 #include "intel_screen.h"
 #include "intel_tex_obj.h"

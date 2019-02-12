@@ -98,7 +98,7 @@ foreach g : [['70', ['gen7_cmd_buffer.c']], ['75', ['gen7_cmd_buffer.c']],
     'anv_gen@0@'.format(_gen),
     [anv_gen_files, g[1], anv_entrypoints[0], anv_extensions_h],
     include_directories : [
-      inc_common, inc_compiler, inc_drm_uapi, inc_intel, inc_vulkan_util,
+      inc_common, inc_compiler, inc_include, inc_intel, inc_vulkan_util,
       inc_vulkan_wsi,
     ],
     c_args : [
@@ -183,7 +183,7 @@ libanv_common = static_library(
     gen_xml_pack,
   ],
   include_directories : [
-    inc_common, inc_intel, inc_compiler, inc_drm_uapi, inc_vulkan_util,
+    inc_common, inc_intel, inc_compiler, inc_include, inc_vulkan_util,
     inc_vulkan_wsi,
   ],
   c_args : anv_flags,
@@ -194,7 +194,7 @@ libvulkan_intel = shared_library(
   'vulkan_intel',
   [files('anv_gem.c'), anv_entrypoints[0], anv_extensions_h],
   include_directories : [
-    inc_common, inc_intel, inc_compiler, inc_drm_uapi, inc_vulkan_util,
+    inc_common, inc_intel, inc_compiler, inc_include, inc_vulkan_util,
     inc_vulkan_wsi,
   ],
   link_whole : [libanv_common, libanv_gen_libs],
@@ -215,7 +215,7 @@ if with_tests
     'vulkan_intel_test',
     [files('anv_gem_stubs.c'), anv_entrypoints[0], anv_extensions_h],
     include_directories : [
-      inc_common, inc_intel, inc_compiler, inc_drm_uapi, inc_vulkan_util,
+      inc_common, inc_intel, inc_compiler, inc_include, inc_vulkan_util,
       inc_vulkan_wsi,
     ],
     link_whole : libanv_common,

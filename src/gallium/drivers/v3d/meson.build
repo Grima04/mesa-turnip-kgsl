@@ -68,7 +68,7 @@ foreach ver : v3d_versions
     [files_per_version, v3d_xml_pack, nir_opcodes_h, nir_builder_opcodes_h],
     include_directories : [
       inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
-      inc_gallium_drivers, inc_drm_uapi,
+      inc_gallium_drivers,
     ],
     c_args : [c_vis_args, v3d_args, '-DV3D_VERSION=' + ver],
     cpp_args : [cpp_vis_args],
@@ -82,7 +82,7 @@ libv3d = static_library(
   [files_libv3d, v3d_xml_pack],
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
-    inc_gallium_drivers, inc_drm_uapi,
+    inc_gallium_drivers,
   ],
   c_args : [c_vis_args, v3d_args],
   cpp_args : [cpp_vis_args, v3d_args],

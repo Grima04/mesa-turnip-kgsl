@@ -67,7 +67,7 @@
 #include "brw_context.h"
 #include "string.h"
 
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 
 #ifdef HAVE_VALGRIND
 #include <valgrind.h>

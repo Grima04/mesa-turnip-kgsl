@@ -40,7 +40,7 @@
 #include <time.h>
 #ifdef HAVE_LIBDRM
 #include <xf86drm.h>
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 #endif
 #include <GL/gl.h>
 #include <GL/internal/dri_interface.h>

@@ -36,7 +36,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <xf86drm.h>
-#include <drm_fourcc.h>
+#include "drm-uapi/drm_fourcc.h"
 #include "util/hash_table.h"
 
 #include "vk_util.h"

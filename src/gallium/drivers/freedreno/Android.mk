@@ -39,7 +39,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/ir3 \
-	$(MESA_TOP)/include/drm-uapi
+	$(MESA_TOP)/include
 
 LOCAL_GENERATED_SOURCES := $(MESA_GEN_NIR_H)
 

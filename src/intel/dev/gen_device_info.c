@@ -31,7 +31,7 @@
 #include "util/bitscan.h"
 #include "util/macros.h"
 
-#include <i915_drm.h>
+#include "drm-uapi/i915_drm.h"
 
 /**
  * Get the PCI ID for the device name.

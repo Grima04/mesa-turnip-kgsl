@@ -36,7 +36,7 @@
 #include "util/bitset.h"
 #include "util/slab.h"
 #include "xf86drm.h"
-#include "v3d_drm.h"
+#include "drm-uapi/v3d_drm.h"
 #include "v3d_screen.h"
 #include "broadcom/common/v3d_limits.h"
 

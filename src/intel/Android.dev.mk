@@ -29,7 +29,7 @@ LOCAL_MODULE := libmesa_intel_dev
 
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := $(MESA_TOP)/include/drm-uapi
+LOCAL_C_INCLUDES := $(MESA_TOP)/include
 
 LOCAL_SRC_FILES := $(DEV_FILES)
 

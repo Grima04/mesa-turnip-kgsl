@@ -31,8 +31,8 @@
 #include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 
-#include "drm_fourcc.h"
-#include "vc4_drm.h"
+#include "drm-uapi/drm_fourcc.h"
+#include "drm-uapi/vc4_drm.h"
 #include "vc4_screen.h"
 #include "vc4_context.h"
 #include "vc4_resource.h"

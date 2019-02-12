@@ -37,7 +37,7 @@ LOCAL_SRC_FILES := \
 	$(NVC0_C_SOURCES)
 
 LOCAL_C_INCLUDES := \
-	$(MESA_TOP)/include/drm-uapi
+	$(MESA_TOP)/include
 
 LOCAL_SHARED_LIBRARIES := libdrm_nouveau
 LOCAL_MODULE := libmesa_pipe_nouveau
