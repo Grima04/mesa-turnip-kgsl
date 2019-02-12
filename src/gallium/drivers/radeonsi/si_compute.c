@@ -722,7 +722,7 @@ static void si_setup_tgsi_user_data(struct si_context *sctx,
 	if (info->indirect) {
 		if (program->uses_grid_size) {
 			for (unsigned i = 0; i < 3; ++i) {
-				si_cp_copy_data(sctx,
+				si_cp_copy_data(sctx, sctx->gfx_cs,
 						COPY_DATA_REG, NULL, (grid_size_reg >> 2) + i,
 						COPY_DATA_SRC_MEM, si_resource(info->indirect),
 						info->indirect_offset + 4 * i);

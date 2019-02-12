@@ -681,7 +681,7 @@ static void si_emit_draw_packets(struct si_context *sctx,
 
 		radeon_set_context_reg(cs, R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE,
 				       t->stride_in_dw);
-		si_cp_copy_data(sctx,
+		si_cp_copy_data(sctx, sctx->gfx_cs,
 				COPY_DATA_REG, NULL,
 				R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2,
 				COPY_DATA_SRC_MEM, t->buf_filled_size,

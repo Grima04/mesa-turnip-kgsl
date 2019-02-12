@@ -607,18 +607,17 @@ void si_cp_write_data(struct si_context *sctx, struct si_resource *buf,
 	radeon_emit_array(cs, (const uint32_t*)data, size/4);
 }
 
-void si_cp_copy_data(struct si_context *sctx,
+void si_cp_copy_data(struct si_context *sctx, struct radeon_cmdbuf *cs,
 		     unsigned dst_sel, struct si_resource *dst, unsigned dst_offset,
 		     unsigned src_sel, struct si_resource *src, unsigned src_offset)
 {
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-
+	/* cs can point to the compute IB, which has the buffer list in gfx_cs. */
 	if (dst) {
-		radeon_add_to_buffer_list(sctx, cs, dst,
+		radeon_add_to_buffer_list(sctx, sctx->gfx_cs, dst,
 					  RADEON_USAGE_WRITE, RADEON_PRIO_CP_DMA);
 	}
 	if (src) {
-		radeon_add_to_buffer_list(sctx, cs, src,
+		radeon_add_to_buffer_list(sctx, sctx->gfx_cs, src,
 					  RADEON_USAGE_READ, RADEON_PRIO_CP_DMA);
 	}
 

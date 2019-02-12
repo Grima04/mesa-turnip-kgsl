@@ -671,7 +671,7 @@ static void si_pc_emit_start(struct si_context *sctx,
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
-	si_cp_copy_data(sctx,
+	si_cp_copy_data(sctx, sctx->gfx_cs,
 			COPY_DATA_DST_MEM, buffer, va - buffer->gpu_address,
 			COPY_DATA_IMM, NULL, 1);
 
