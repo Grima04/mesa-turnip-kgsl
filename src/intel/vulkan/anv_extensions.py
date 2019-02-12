@@ -112,6 +112,7 @@ EXTENSIONS = [
     Extension('VK_KHR_surface',                          25, 'ANV_HAS_SURFACE'),
     Extension('VK_KHR_surface_protected_capabilities',    1, 'ANV_HAS_SURFACE'),
     Extension('VK_KHR_swapchain',                        70, 'ANV_HAS_SURFACE'),
+    Extension('VK_KHR_uniform_buffer_standard_layout',    1, True),
     Extension('VK_KHR_variable_pointers',                 1, True),
     Extension('VK_KHR_wayland_surface',                   6, 'VK_USE_PLATFORM_WAYLAND_KHR'),
     Extension('VK_KHR_xcb_surface',                       6, 'VK_USE_PLATFORM_XCB_KHR'),
