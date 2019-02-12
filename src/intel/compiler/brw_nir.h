@@ -121,6 +121,8 @@ bool brw_nir_lower_image_load_store(nir_shader *nir,
                                     const struct gen_device_info *devinfo);
 void brw_nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin,
                                      nir_ssa_def *index);
+void brw_nir_rewrite_bindless_image_intrinsic(nir_intrinsic_instr *intrin,
+                                              nir_ssa_def *handle);
 
 bool brw_nir_lower_mem_access_bit_sizes(nir_shader *shader);
 

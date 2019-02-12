@@ -72,6 +72,8 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       if (device->info.gen < 9)
          data |= ANV_DESCRIPTOR_IMAGE_PARAM;
+      if (device->has_bindless_images)
+         data |= ANV_DESCRIPTOR_STORAGE_IMAGE;
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -111,6 +113,9 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 
    if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE)
       size += sizeof(struct anv_sampled_image_descriptor);
+
+   if (data & ANV_DESCRIPTOR_STORAGE_IMAGE)
+      size += sizeof(struct anv_storage_image_descriptor);
 
    if (data & ANV_DESCRIPTOR_IMAGE_PARAM)
       size += BRW_IMAGE_PARAM_SIZE * 4;
@@ -176,6 +181,11 @@ anv_descriptor_data_supports_bindless(const struct anv_physical_device *pdevice,
       assert(pdevice->has_bindless_images || pdevice->has_bindless_samplers);
       return sampler ? pdevice->has_bindless_samplers :
                        pdevice->has_bindless_images;
+   }
+
+   if (data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
+      assert(pdevice->has_bindless_images);
+      return true;
    }
 
    return false;
@@ -1135,6 +1145,18 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
              MAX2(1, bind_layout->max_plane_count) * sizeof(desc_data[0]));
    }
 
+   if (bind_layout->data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
+      assert(!(bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM));
+      assert(image_view->n_planes == 1);
+      struct anv_storage_image_descriptor desc_data = {
+         .read_write = anv_surface_state_to_handle(
+                           image_view->planes[0].storage_surface_state.state),
+         .write_only = anv_surface_state_to_handle(
+                           image_view->planes[0].writeonly_storage_surface_state.state),
+      };
+      memcpy(desc_map, &desc_data, sizeof(desc_data));
+   }
+
    if (bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM) {
       /* Storage images can only ever have one plane */
       assert(image_view->n_planes == 1);
@@ -1171,6 +1193,17 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    if (bind_layout->data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
       struct anv_sampled_image_descriptor desc_data = {
          .image = anv_surface_state_to_handle(buffer_view->surface_state),
+      };
+      memcpy(desc_map, &desc_data, sizeof(desc_data));
+   }
+
+   if (bind_layout->data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
+      assert(!(bind_layout->data & ANV_DESCRIPTOR_IMAGE_PARAM));
+      struct anv_storage_image_descriptor desc_data = {
+         .read_write = anv_surface_state_to_handle(
+                           buffer_view->storage_surface_state),
+         .write_only = anv_surface_state_to_handle(
+                           buffer_view->writeonly_storage_surface_state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }

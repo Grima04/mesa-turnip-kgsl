@@ -1546,6 +1546,17 @@ struct anv_sampled_image_descriptor {
    uint32_t sampler;
 };
 
+/** Struct representing a storage image descriptor */
+struct anv_storage_image_descriptor {
+   /** Bindless image handles
+    *
+    * These are expected to already be shifted such that the 20-bit
+    * SURFACE_STATE table index is in the top 20 bits.
+    */
+   uint32_t read_write;
+   uint32_t write_only;
+};
+
 /** Struct representing a address/range descriptor
  *
  * The fields of this struct correspond directly to the data layout of
@@ -1574,6 +1585,8 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 5),
    /** Bindless surface handle */
    ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 6),
+   /** Storage image handles */
+   ANV_DESCRIPTOR_STORAGE_IMAGE  = (1 << 7),
 };
 
 struct anv_descriptor_set_binding_layout {

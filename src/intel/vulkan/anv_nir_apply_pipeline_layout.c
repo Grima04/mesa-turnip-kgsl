@@ -677,13 +677,17 @@ lower_image_intrinsic(nir_intrinsic_instr *intrin,
                       struct apply_pipeline_layout_state *state)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
 
    nir_builder *b = &state->builder;
    b->cursor = nir_before_instr(&intrin->instr);
 
+   const bool use_bindless = state->pdevice->has_bindless_images;
+
    if (intrin->intrinsic == nir_intrinsic_image_deref_load_param_intel) {
       b->cursor = nir_instr_remove(&intrin->instr);
 
+      assert(!use_bindless); /* Otherwise our offsets would be wrong */
       const unsigned param = nir_intrinsic_base(intrin);
 
       nir_ssa_def *desc =
@@ -692,9 +696,14 @@ lower_image_intrinsic(nir_intrinsic_instr *intrin,
                                intrin->dest.ssa.bit_size, state);
 
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(desc));
+   } else if (use_bindless) {
+      const bool write_only =
+         (var->data.image.access & ACCESS_NON_READABLE) != 0;
+      nir_ssa_def *desc =
+         build_descriptor_load(deref, 0, 2, 32, state);
+      nir_ssa_def *handle = nir_channel(b, desc, write_only ? 1 : 0);
+      nir_rewrite_image_intrinsic(intrin, handle, true);
    } else {
-      nir_variable *var = nir_deref_instr_get_variable(deref);
-
       unsigned set = var->data.descriptor_set;
       unsigned binding = var->data.binding;
       unsigned binding_offset = state->set[set].surface_offsets[binding];
