@@ -53,16 +53,11 @@ add_binding(struct apply_pipeline_layout_state *state,
 }
 
 static void
-add_var_binding(struct apply_pipeline_layout_state *state, nir_variable *var)
-{
-   add_binding(state, var->data.descriptor_set, var->data.binding);
-}
-
-static void
 add_deref_src_binding(struct apply_pipeline_layout_state *state, nir_src src)
 {
    nir_deref_instr *deref = nir_src_as_deref(src);
-   add_var_binding(state, nir_deref_instr_get_variable(deref));
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   add_binding(state, var->data.descriptor_set, var->data.binding);
 }
 
 static void
