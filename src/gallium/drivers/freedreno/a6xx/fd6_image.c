@@ -38,8 +38,8 @@ static enum a6xx_state_block texsb[] = {
 };
 
 static enum a6xx_state_block imgsb[] = {
-	[PIPE_SHADER_COMPUTE] = SB6_CS_SSBO,
-	[PIPE_SHADER_FRAGMENT] = SB6_SSBO,
+	[PIPE_SHADER_COMPUTE] = SB6_CS_IBO,
+	[PIPE_SHADER_FRAGMENT] = SB6_IBO,
 };
 
 struct fd6_image {

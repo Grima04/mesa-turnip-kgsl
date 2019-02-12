@@ -458,8 +458,8 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		return;
 
 	switch (sb) {
-	case SB6_SSBO:
-	case SB6_CS_SSBO:
+	case SB6_IBO:
+	case SB6_CS_IBO:
 		opcode = CP_LOAD_STATE6_GEOM;
 		break;
 	default:
@@ -922,7 +922,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		emit_border_color(ctx, ring);
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_SSBO)
-		emit_ssbos(ctx, ring, SB6_SSBO, &ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
+		emit_ssbos(ctx, ring, SB6_IBO, &ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE)
 		fd6_emit_images(ctx, ring, PIPE_SHADER_FRAGMENT);
@@ -992,7 +992,7 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 #endif
 
 	if (dirty & FD_DIRTY_SHADER_SSBO)
-		emit_ssbos(ctx, ring, SB6_CS_SSBO, &ctx->shaderbuf[PIPE_SHADER_COMPUTE]);
+		emit_ssbos(ctx, ring, SB6_CS_IBO, &ctx->shaderbuf[PIPE_SHADER_COMPUTE]);
 
 	if (dirty & FD_DIRTY_SHADER_IMAGE)
 		fd6_emit_images(ctx, ring, PIPE_SHADER_COMPUTE);
@@ -1036,7 +1036,7 @@ t7              opcode: CP_WAIT_FOR_IDLE (26) (1 dwords)
 	WRITE(REG_A6XX_GRAS_UNKNOWN_8600, 0x880);
 	WRITE(REG_A6XX_HLSQ_UNKNOWN_BE04, 0);
 	WRITE(REG_A6XX_SP_UNKNOWN_AE03, 0x00000410);
-	WRITE(REG_A6XX_SP_UNKNOWN_AB20, 0);
+	WRITE(REG_A6XX_SP_IBO_COUNT, 0);
 	WRITE(REG_A6XX_SP_UNKNOWN_B182, 0);
 	WRITE(REG_A6XX_HLSQ_UNKNOWN_BB11, 0);
 	WRITE(REG_A6XX_UCHE_UNKNOWN_0E12, 0x3200000);
