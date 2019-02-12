@@ -651,8 +651,7 @@ fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		memset(vinterp, 0, sizeof(vinterp));
 		memset(vpsrepl, 0, sizeof(vpsrepl));
 
-		for (int i = 0; i < state->fs_inputs_count; i++) {
-			int j = state->fs_inputs[i];
+		for (int j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
 
 			/* NOTE: varyings are packed, so if compmask is 0xb
 			 * then first, third, and fourth component occupy
@@ -666,7 +665,7 @@ fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 					(fs->inputs[j].rasterflat && emit->rasterflat)) {
 				uint32_t loc = inloc;
 
-				for (i = 0; i < 4; i++) {
+				for (int i = 0; i < 4; i++) {
 					if (compmask & (1 << i)) {
 						vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
 						loc++;
