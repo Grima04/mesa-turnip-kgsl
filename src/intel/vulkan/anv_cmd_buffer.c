@@ -30,6 +30,7 @@
 #include "anv_private.h"
 
 #include "vk_format_info.h"
+#include "vk_util.h"
 
 /** \file anv_cmd_buffer.c
  *
@@ -1108,6 +1109,19 @@ void anv_CmdPushDescriptorSetKHR(
                                             write->pBufferInfo[j].range);
          }
          break;
+
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+         const VkWriteDescriptorSetInlineUniformBlockEXT *inline_write =
+            vk_find_struct_const(write->pNext,
+                                 WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT);
+         assert(inline_write->dataSize == write->descriptorCount);
+         anv_descriptor_set_write_inline_uniform_data(cmd_buffer->device, set,
+                                                      write->dstBinding,
+                                                      inline_write->pData,
+                                                      write->dstArrayElement,
+                                                      inline_write->dataSize);
+         break;
+      }
 
       default:
          break;

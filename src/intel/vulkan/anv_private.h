@@ -163,6 +163,8 @@ struct gen_l3_config;
 #define MAX_IMAGES 64
 #define MAX_GEN8_IMAGES 8
 #define MAX_PUSH_DESCRIPTORS 32 /* Minimum requirement */
+#define MAX_INLINE_UNIFORM_BLOCK_SIZE 4096
+#define MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS 32
 
 /* The kernel relocation API has a limitation of a 32-bit delta value
  * applied to the address before it is written which, in spite of it being
@@ -1507,6 +1509,8 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_BUFFER_VIEW    = (1 << 2),
    /** The descriptor contains auxiliary image layout data */
    ANV_DESCRIPTOR_IMAGE_PARAM    = (1 << 3),
+   /** The descriptor contains auxiliary image layout data */
+   ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 4),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -1518,7 +1522,9 @@ struct anv_descriptor_set_binding_layout {
    /* Bitfield representing the type of data this descriptor contains */
    enum anv_descriptor_data data;
 
-   /* Number of array elements in this binding */
+   /* Number of array elements in this binding (or size in bytes for inline
+    * uniform data)
+    */
    uint16_t array_size;
 
    /* Index into the flattend descriptor set */
@@ -1732,6 +1738,13 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
                                 uint32_t element,
                                 VkDeviceSize offset,
                                 VkDeviceSize range);
+void
+anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
+                                             struct anv_descriptor_set *set,
+                                             uint32_t binding,
+                                             const void *data,
+                                             size_t offset,
+                                             size_t size);
 
 void
 anv_descriptor_set_write_template(struct anv_device *device,

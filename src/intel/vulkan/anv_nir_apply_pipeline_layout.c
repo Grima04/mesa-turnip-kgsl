@@ -150,18 +150,28 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
    uint32_t set = nir_intrinsic_desc_set(intrin);
    uint32_t binding = nir_intrinsic_binding(intrin);
 
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &state->layout->set[set].layout->binding[binding];
+
    uint32_t surface_index = state->set[set].surface_offsets[binding];
-   uint32_t array_size =
-      state->layout->set[set].layout->binding[binding].array_size;
+   uint32_t array_size = bind_layout->array_size;
 
    nir_ssa_def *array_index = nir_ssa_for_src(b, intrin->src[0], 1);
    if (nir_src_is_const(intrin->src[0]) || state->add_bounds_checks)
       array_index = nir_umin(b, array_index, nir_imm_int(b, array_size - 1));
 
-   /* We're using nir_address_format_vk_index_offset */
-   nir_ssa_def *index =
-      nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
-                  nir_imm_int(b, 0));
+   nir_ssa_def *index;
+   if (bind_layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM) {
+      /* This is an inline uniform block.  Just reference the descriptor set
+       * and use the descriptor offset as the base.
+       */
+      index = nir_imm_ivec2(b, state->set[set].desc_offset,
+                               bind_layout->descriptor_offset);
+   } else {
+      /* We're using nir_address_format_vk_index_offset */
+      index = nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
+                          nir_imm_int(b, 0));
+   }
 
    assert(intrin->dest.is_ssa);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(index));

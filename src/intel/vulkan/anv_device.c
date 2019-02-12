@@ -950,6 +950,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+         VkPhysicalDeviceInlineUniformBlockFeaturesEXT *features =
+            (VkPhysicalDeviceInlineUniformBlockFeaturesEXT *)ext;
+         features->inlineUniformBlock = true;
+         features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
          VkPhysicalDeviceMultiviewFeatures *features =
             (VkPhysicalDeviceMultiviewFeatures *)ext;
@@ -1237,6 +1245,21 @@ void anv_GetPhysicalDeviceProperties2(
          memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          /* The LUID is for Windows. */
          id_props->deviceLUIDValid = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+         VkPhysicalDeviceInlineUniformBlockPropertiesEXT *props =
+            (VkPhysicalDeviceInlineUniformBlockPropertiesEXT *)ext;
+         props->maxInlineUniformBlockSize = MAX_INLINE_UNIFORM_BLOCK_SIZE;
+         props->maxPerStageDescriptorInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS;
+         props->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS;
+         props->maxDescriptorSetInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS;
+         props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS;
          break;
       }
 

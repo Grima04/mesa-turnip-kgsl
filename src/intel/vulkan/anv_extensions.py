@@ -125,6 +125,7 @@ EXTENSIONS = [
     Extension('VK_EXT_external_memory_dma_buf',           1, True),
     Extension('VK_EXT_global_priority',                   1,
               'device->has_context_priority'),
+    Extension('VK_EXT_inline_uniform_block',              1, True),
     Extension('VK_EXT_pci_bus_info',                      2, True),
     Extension('VK_EXT_post_depth_coverage',               1, 'device->info.gen >= 9'),
     Extension('VK_EXT_sampler_filter_minmax',             1, 'device->info.gen >= 9'),

@@ -28,6 +28,7 @@
 #include <fcntl.h>
 
 #include "util/mesa-sha1.h"
+#include "vk_util.h"
 
 #include "anv_private.h"
 
@@ -75,6 +76,10 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       break;
 
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+      data = ANV_DESCRIPTOR_INLINE_UNIFORM;
+      break;
+
    default:
       unreachable("Unsupported descriptor type");
    }
@@ -92,6 +97,11 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 unsigned
 anv_descriptor_size(const struct anv_descriptor_set_binding_layout *layout)
 {
+   if (layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM) {
+      assert(layout->data == ANV_DESCRIPTOR_INLINE_UNIFORM);
+      return layout->array_size;
+   }
+
    return anv_descriptor_data_size(layout->data);
 }
 
@@ -106,6 +116,7 @@ unsigned
 anv_descriptor_type_size(const struct anv_physical_device *pdevice,
                          VkDescriptorType type)
 {
+   assert(type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
    return anv_descriptor_data_size(anv_descriptor_data_for_type(pdevice, type));
 }
 
@@ -295,9 +306,19 @@ VkResult anv_CreateDescriptorSetLayout(
          break;
       }
 
-      set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
-      descriptor_buffer_size += anv_descriptor_size(&set_layout->binding[b]) *
-                                binding->descriptorCount;
+      if (binding->descriptorType ==
+          VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+         /* Inline uniform blocks are specified to use the descriptor array
+          * size as the size in bytes of the block.
+          */
+         descriptor_buffer_size = align_u32(descriptor_buffer_size, 32);
+         set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
+         descriptor_buffer_size += binding->descriptorCount;
+      } else {
+         set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
+         descriptor_buffer_size += anv_descriptor_size(&set_layout->binding[b]) *
+                                   binding->descriptorCount;
+      }
 
       set_layout->shader_stages |= binding->stageFlags;
    }
@@ -472,6 +493,10 @@ VkResult anv_CreateDescriptorPool(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_descriptor_pool *pool;
 
+   const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *inline_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT);
+
    uint32_t descriptor_count = 0;
    uint32_t buffer_view_count = 0;
    uint32_t descriptor_bo_size = 0;
@@ -485,6 +510,16 @@ VkResult anv_CreateDescriptorPool(
 
       unsigned desc_data_size = anv_descriptor_data_size(desc_data) *
                                 pCreateInfo->pPoolSizes[i].descriptorCount;
+
+      if (pCreateInfo->pPoolSizes[i].type ==
+          VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+         /* Inline uniform blocks are specified to use the descriptor array
+          * size as the size in bytes of the block.
+          */
+         assert(inline_info);
+         desc_data_size += pCreateInfo->pPoolSizes[i].descriptorCount;
+      }
+
       descriptor_bo_size += desc_data_size;
 
       descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
@@ -499,6 +534,9 @@ VkResult anv_CreateDescriptorPool(
     */
    descriptor_bo_size += 32 * pCreateInfo->maxSets;
    descriptor_bo_size = ALIGN(descriptor_bo_size, 4096);
+   /* We align inline uniform blocks to 32B */
+   if (inline_info)
+      descriptor_bo_size += 32 * inline_info->maxInlineUniformBlockBindings;
 
    const size_t pool_size =
       pCreateInfo->maxSets * sizeof(struct anv_descriptor_set) +
@@ -971,6 +1009,24 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
    }
 }
 
+void
+anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
+                                             struct anv_descriptor_set *set,
+                                             uint32_t binding,
+                                             const void *data,
+                                             size_t offset,
+                                             size_t size)
+{
+   const struct anv_descriptor_set_binding_layout *bind_layout =
+      &set->layout->binding[binding];
+
+   assert(bind_layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM);
+
+   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset;
+
+   memcpy(desc_map + offset, data, size);
+}
+
 void anv_UpdateDescriptorSets(
     VkDevice                                    _device,
     uint32_t                                    descriptorWriteCount,
@@ -1033,6 +1089,19 @@ void anv_UpdateDescriptorSets(
          }
          break;
 
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+         const VkWriteDescriptorSetInlineUniformBlockEXT *inline_write =
+            vk_find_struct_const(write->pNext,
+                                 WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT);
+         assert(inline_write->dataSize == write->descriptorCount);
+         anv_descriptor_set_write_inline_uniform_data(device, set,
+                                                      write->dstBinding,
+                                                      inline_write->pData,
+                                                      write->dstArrayElement,
+                                                      inline_write->dataSize);
+         break;
+      }
+
       default:
          break;
       }
@@ -1058,14 +1127,23 @@ void anv_UpdateDescriptorSets(
       for (uint32_t j = 0; j < copy->descriptorCount; j++)
          dst_desc[j] = src_desc[j];
 
-      unsigned desc_size = anv_descriptor_size(src_layout);
-      if (desc_size > 0) {
-         assert(desc_size == anv_descriptor_size(dst_layout));
+      if (src_layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM) {
+         assert(src_layout->data == ANV_DESCRIPTOR_INLINE_UNIFORM);
          memcpy(dst->desc_mem.map + dst_layout->descriptor_offset +
-                                    copy->dstArrayElement * desc_size,
+                                    copy->dstArrayElement,
                 src->desc_mem.map + src_layout->descriptor_offset +
-                                    copy->srcArrayElement * desc_size,
-                copy->descriptorCount * desc_size);
+                                    copy->srcArrayElement,
+                copy->descriptorCount);
+      } else {
+         unsigned desc_size = anv_descriptor_size(src_layout);
+         if (desc_size > 0) {
+            assert(desc_size == anv_descriptor_size(dst_layout));
+            memcpy(dst->desc_mem.map + dst_layout->descriptor_offset +
+                                       copy->dstArrayElement * desc_size,
+                   src->desc_mem.map + src_layout->descriptor_offset +
+                                       copy->srcArrayElement * desc_size,
+                   copy->descriptorCount * desc_size);
+         }
       }
    }
 }
@@ -1133,6 +1211,14 @@ anv_descriptor_set_write_template(struct anv_device *device,
                                             entry->array_element + j,
                                             info->offset, info->range);
          }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+         anv_descriptor_set_write_inline_uniform_data(device, set,
+                                                      entry->binding,
+                                                      data + entry->offset,
+                                                      entry->array_element,
+                                                      entry->array_count);
          break;
 
       default:
