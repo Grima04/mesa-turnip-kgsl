@@ -241,12 +241,29 @@ opt_peel_loop_initial_if(nir_loop *loop)
    nir_cf_reinsert(&header,
                    nir_after_block_before_jump(find_continue_block(loop)));
 
+   bool continue_list_jumps =
+      nir_block_ends_in_jump(exec_node_data(nir_block,
+                                            exec_list_get_tail(continue_list),
+                                            cf_node.node));
+
    nir_cf_extract(&tmp, nir_before_cf_list(continue_list),
                         nir_after_cf_list(continue_list));
 
-   /* Get continue block again as the previous reinsert might have removed the block. */
+   /* Get continue block again as the previous reinsert might have removed the
+    * block.  Also, if both the continue list and the continue block ends in
+    * jump instructions, removes the jump from the latter, as it will not be
+    * executed if we insert the continue list before it. */
+
+   nir_block *continue_block = find_continue_block(loop);
+
+   if (continue_list_jumps) {
+      nir_instr *last_instr = nir_block_last_instr(continue_block);
+      if (last_instr && last_instr->type == nir_instr_type_jump)
+         nir_instr_remove(last_instr);
+   }
+
    nir_cf_reinsert(&tmp,
-                   nir_after_block_before_jump(find_continue_block(loop)));
+                   nir_after_block_before_jump(continue_block));
 
    nir_cf_node_remove(&nif->cf_node);
 
