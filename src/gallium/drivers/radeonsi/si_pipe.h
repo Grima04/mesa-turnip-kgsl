@@ -1434,6 +1434,17 @@ si_tile_mode_index(struct si_texture *tex, unsigned level, bool stencil)
 		return tex->surface.u.legacy.tiling_index[level];
 }
 
+static inline unsigned
+si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx)
+{
+	/* Don't count the needed CS space exactly and just use an upper bound.
+	 *
+	 * Also reserve space for stopping queries at the end of IB, because
+	 * the number of active queries is unlimited in theory.
+	 */
+	return 2048 + sctx->num_cs_dw_queries_suspend;
+}
+
 static inline void
 si_context_add_resource_size(struct si_context *sctx, struct pipe_resource *r)
 {
