@@ -334,6 +334,10 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 	}
 
 	info->marketing_name = amdgpu_get_marketing_name(dev);
+	info->is_pro_graphics = info->marketing_name &&
+				(!strcmp(info->marketing_name, "Pro") ||
+				 !strcmp(info->marketing_name, "PRO") ||
+				 !strcmp(info->marketing_name, "Frontier"));
 
 	/* Set which chips have dedicated VRAM. */
 	info->has_dedicated_vram =
