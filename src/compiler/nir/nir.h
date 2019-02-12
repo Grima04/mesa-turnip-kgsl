@@ -918,6 +918,9 @@ typedef struct {
    nir_alu_type input_types[NIR_MAX_VEC_COMPONENTS];
 
    nir_op_algebraic_property algebraic_properties;
+
+   /* Whether this represents a numeric conversion opcode */
+   bool is_conversion;
 } nir_op_info;
 
 extern const nir_op_info nir_op_infos[nir_num_opcodes];
