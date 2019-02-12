@@ -548,10 +548,11 @@ ac_build_gather_values(struct ac_llvm_context *ctx,
 /* Expand a scalar or vector to <dst_channels x type> by filling the remaining
  * channels with undef. Extract at most src_channels components from the input.
  */
-LLVMValueRef ac_build_expand(struct ac_llvm_context *ctx,
-			     LLVMValueRef value,
-			     unsigned src_channels,
-			     unsigned dst_channels)
+static LLVMValueRef
+ac_build_expand(struct ac_llvm_context *ctx,
+		LLVMValueRef value,
+		unsigned src_channels,
+		unsigned dst_channels)
 {
 	LLVMTypeRef elemtype;
 	LLVMValueRef chan[dst_channels];

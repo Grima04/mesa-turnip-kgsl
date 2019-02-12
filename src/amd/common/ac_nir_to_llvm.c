@@ -2508,7 +2508,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		unsigned src_channels = ac_get_llvm_num_components(src);
 
 		if (src_channels == 3)
-			src = ac_build_expand(&ctx->ac, src, 3, 4);
+			src = ac_build_expand_to_vec4(&ctx->ac, src, 3);
 
 		params[0] = src; /* data */
 		params[1] = rsrc;
