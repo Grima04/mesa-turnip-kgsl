@@ -1239,6 +1239,9 @@ void si_test_gds(struct si_context *sctx);
 void si_cp_write_data(struct si_context *sctx, struct si_resource *buf,
 		      unsigned offset, unsigned size, unsigned dst_sel,
 		      unsigned engine, const void *data);
+void si_cp_copy_data(struct si_context *sctx,
+		     unsigned dst_sel, struct si_resource *dst, unsigned dst_offset,
+		     unsigned src_sel, struct si_resource *src, unsigned src_offset);
 
 /* si_debug.c */
 void si_save_cs(struct radeon_winsys *ws, struct radeon_cmdbuf *cs,

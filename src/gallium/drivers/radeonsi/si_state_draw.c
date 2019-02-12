@@ -678,24 +678,14 @@ static void si_emit_draw_packets(struct si_context *sctx,
 	if (info->count_from_stream_output) {
 		struct si_streamout_target *t =
 			(struct si_streamout_target*)info->count_from_stream_output;
-		uint64_t va = t->buf_filled_size->gpu_address +
-			      t->buf_filled_size_offset;
 
 		radeon_set_context_reg(cs, R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE,
 				       t->stride_in_dw);
-
-		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-		radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) |
-			    COPY_DATA_DST_SEL(COPY_DATA_REG) |
-			    COPY_DATA_WR_CONFIRM);
-		radeon_emit(cs, va);     /* src address lo */
-		radeon_emit(cs, va >> 32); /* src address hi */
-		radeon_emit(cs, R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2);
-		radeon_emit(cs, 0); /* unused */
-
-		radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-				      t->buf_filled_size, RADEON_USAGE_READ,
-				      RADEON_PRIO_SO_FILLED_SIZE);
+		si_cp_copy_data(sctx,
+				COPY_DATA_REG, NULL,
+				R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2,
+				COPY_DATA_SRC_MEM, t->buf_filled_size,
+				t->buf_filled_size_offset);
 	}
 
 	/* draw packet */

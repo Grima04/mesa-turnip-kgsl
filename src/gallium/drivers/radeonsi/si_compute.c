@@ -724,22 +724,11 @@ static void si_setup_tgsi_user_data(struct si_context *sctx,
 
 	if (info->indirect) {
 		if (program->uses_grid_size) {
-			uint64_t base_va = si_resource(info->indirect)->gpu_address;
-			uint64_t va = base_va + info->indirect_offset;
-			int i;
-
-			radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
-					 si_resource(info->indirect),
-					 RADEON_USAGE_READ, RADEON_PRIO_DRAW_INDIRECT);
-
-			for (i = 0; i < 3; ++i) {
-				radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-				radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) |
-						COPY_DATA_DST_SEL(COPY_DATA_REG));
-				radeon_emit(cs, (va + 4 * i));
-				radeon_emit(cs, (va + 4 * i) >> 32);
-				radeon_emit(cs, (grid_size_reg >> 2) + i);
-				radeon_emit(cs, 0);
+			for (unsigned i = 0; i < 3; ++i) {
+				si_cp_copy_data(sctx,
+						COPY_DATA_REG, NULL, (grid_size_reg >> 2) + i,
+						COPY_DATA_SRC_MEM, si_resource(info->indirect),
+						info->indirect_offset + 4 * i);
 			}
 		}
 	} else {
