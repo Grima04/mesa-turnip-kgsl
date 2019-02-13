@@ -776,27 +776,22 @@ ntq_get_alu_parent(nir_src src)
         return instr;
 }
 
-/**
- * Attempts to fold a comparison generating a boolean result into the
- * condition code for selecting between two values, instead of comparing the
- * boolean result against 0 to generate the condition code.
- */
-static struct qreg ntq_emit_bcsel(struct v3d_compile *c, nir_alu_instr *instr,
-                                  struct qreg *src)
+/* Turns a NIR bool into a condition code to predicate on. */
+static enum v3d_qpu_cond
+ntq_emit_bool_to_cond(struct v3d_compile *c, nir_src src)
 {
-        nir_alu_instr *compare = ntq_get_alu_parent(instr->src[0].src);
+        nir_alu_instr *compare = ntq_get_alu_parent(src);
         if (!compare)
                 goto out;
 
         enum v3d_qpu_cond cond;
         if (ntq_emit_comparison(c, compare, &cond))
-                return vir_MOV(c, vir_SEL(c, cond, src[1], src[2]));
+                return cond;
 
 out:
-        vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
-        return vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA, src[1], src[2]));
+        vir_PF(c, ntq_get_src(c, src, 0), V3D_QPU_PF_PUSHZ);
+        return V3D_QPU_COND_IFNA;
 }
-
 
 static void
 ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
@@ -965,8 +960,12 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         }
 
         case nir_op_b32csel:
-                result = ntq_emit_bcsel(c, instr, src);
+                result = vir_MOV(c,
+                                 vir_SEL(c,
+                                         ntq_emit_bool_to_cond(c, instr->src[0].src),
+                                         src[1], src[2]));
                 break;
+
         case nir_op_fcsel:
                 vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
@@ -2032,14 +2031,7 @@ ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
                 else_block = vir_new_block(c);
 
         /* Set up the flags for the IF condition (taking the THEN branch). */
-        nir_alu_instr *if_condition_alu = ntq_get_alu_parent(if_stmt->condition);
-        enum v3d_qpu_cond cond;
-        if (!if_condition_alu ||
-            !ntq_emit_comparison(c, if_condition_alu, &cond)) {
-                vir_PF(c, ntq_get_src(c, if_stmt->condition, 0),
-                       V3D_QPU_PF_PUSHZ);
-                cond = V3D_QPU_COND_IFNA;
-        }
+        enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
 
         /* Jump to ELSE. */
         vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
@@ -2091,14 +2083,7 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
         }
 
         /* Set up the flags for the IF condition (taking the THEN branch). */
-        nir_alu_instr *if_condition_alu = ntq_get_alu_parent(if_stmt->condition);
-        enum v3d_qpu_cond cond;
-        if (!if_condition_alu ||
-            !ntq_emit_comparison(c, if_condition_alu, &cond)) {
-                vir_PF(c, ntq_get_src(c, if_stmt->condition, 0),
-                       V3D_QPU_PF_PUSHZ);
-                cond = V3D_QPU_COND_IFNA;
-        }
+        enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
 
         /* Update the flags+cond to mean "Taking the ELSE branch (!cond) and
          * was previously active (execute Z) for updating the exec flags.
