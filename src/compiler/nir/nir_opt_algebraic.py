@@ -565,6 +565,19 @@ optimizations = [
    (('~f2u32', ('i2f', 'a@32')), a),
    (('~f2u32', ('u2f', 'a@32')), a),
 
+   # Section 5.4.1 (Conversion and Scalar Constructors) of the GLSL 4.60 spec
+   # says:
+   #
+   #    It is undefined to convert a negative floating-point value to an
+   #    uint.
+   #
+   # Assuming that (uint)some_float behaves like (uint)(int)some_float allows
+   # some optimizations in the i965 backend to proceed.
+   (('ige', ('f2u', a), b), ('ige', ('f2i', a), b)),
+   (('ige', b, ('f2u', a)), ('ige', b, ('f2i', a))),
+   (('ilt', ('f2u', a), b), ('ilt', ('f2i', a), b)),
+   (('ilt', b, ('f2u', a)), ('ilt', b, ('f2i', a))),
+
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
    (('unpack_64_2x32_split_y', ('pack_64_2x32_split', a, b)), b),
