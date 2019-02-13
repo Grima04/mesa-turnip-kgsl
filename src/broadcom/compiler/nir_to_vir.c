@@ -1897,25 +1897,21 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_discard_if: {
-                /* true (~0) if we're discarding */
-                struct qreg cond = ntq_get_src(c, instr->src[0], 0);
+                enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, instr->src[0]);
 
                 if (c->execute.file != QFILE_NULL) {
-                        /* execute == 0 means the channel is active.  Invert
-                         * the condition so that we can use zero as "executing
-                         * and discarding."
-                         */
-                        vir_PF(c, vir_OR(c, c->execute, vir_NOT(c, cond)),
-                               V3D_QPU_PF_PUSHZ);
-                        vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
-                                                     vir_uniform_ui(c, 0)),
-                                     V3D_QPU_COND_IFA);
-                } else {
-                        vir_PF(c, cond, V3D_QPU_PF_PUSHZ);
-                        vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
-                                                     vir_uniform_ui(c, 0)),
-                                     V3D_QPU_COND_IFNA);
+                        struct qinst *exec_flag = vir_MOV_dest(c, vir_nop_reg(),
+                                                               c->execute);
+                        if (cond == V3D_QPU_COND_IFA) {
+                                vir_set_uf(exec_flag, V3D_QPU_UF_ANDZ);
+                        } else {
+                                vir_set_uf(exec_flag, V3D_QPU_UF_NORNZ);
+                                cond = V3D_QPU_COND_IFA;
+                        }
                 }
+
+                vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
+                                             vir_uniform_ui(c, 0)), cond);
 
                 break;
         }
