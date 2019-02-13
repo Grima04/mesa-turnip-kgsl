@@ -3058,6 +3058,7 @@ typedef struct nir_lower_tex_options {
    unsigned lower_yx_xuxv_external;
    unsigned lower_xy_uxvx_external;
    unsigned lower_ayuv_external;
+   unsigned lower_xyuv_external;
 
    /**
     * To emulate certain texture wrap modes, this can be used
