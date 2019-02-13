@@ -76,18 +76,18 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       assert(var->data.location_frac + comp_slots <= 8);
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
 
-      assert(attrib_slots <= 2);
-      for (unsigned s = 0; s < attrib_slots; s++) {
+      while (comp_mask) {
          nir_xfb_output_info *output = &xfb->outputs[xfb->output_count++];
 
          output->buffer = buffer;
-         output->offset = *offset + s * 16;
+         output->offset = *offset;
          output->location = *location;
-         output->component_mask = (comp_mask >> (s * 4)) & 0xf;
+         output->component_mask = comp_mask & 0xf;
 
+         *offset += util_bitcount(output->component_mask) * 4;
          (*location)++;
+         comp_mask >>= 4;
       }
-      *offset += comp_slots * 4;
    }
 }
 
