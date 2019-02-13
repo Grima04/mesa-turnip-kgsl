@@ -498,6 +498,16 @@ dest_is_ssa(nir_dest *dest, void *data)
    return dest->is_ssa;
 }
 
+static bool
+instr_each_src_and_dest_is_ssa(nir_instr *instr)
+{
+   if (!nir_foreach_dest(instr, dest_is_ssa, NULL) ||
+       !nir_foreach_src(instr, src_is_ssa, NULL))
+      return false;
+
+   return true;
+}
+
 /* This function determines if uses of an instruction can safely be rewritten
  * to use another identical instruction instead. Note that this function must
  * be kept in sync with hash_instr() and nir_instrs_equal() -- only
@@ -509,9 +519,7 @@ static bool
 instr_can_rewrite(nir_instr *instr)
 {
    /* We only handle SSA. */
-   if (!nir_foreach_dest(instr, dest_is_ssa, NULL) ||
-       !nir_foreach_src(instr, src_is_ssa, NULL))
-      return false;
+   assert(instr_each_src_and_dest_is_ssa(instr));
 
    switch (instr->type) {
    case nir_instr_type_alu:
