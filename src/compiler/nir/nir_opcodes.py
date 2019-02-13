@@ -224,6 +224,16 @@ for src_t in [tint, tuint, tfloat, tbool]:
                   unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],
                                                               bit_size, rnd_mode),
                                        dst_t + str(bit_size), src_t, "src0")
+          elif bit_size == 32 and dst_t == tfloat and src_t == tfloat:
+              conv_expr = """
+              if (bit_size > 32 && nir_is_rounding_mode_rtz(execution_mode, 32)) {
+                 dst = _mesa_double_to_float_rtz(src0);
+              } else {
+                 dst = src0;
+              }
+              """
+              unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
+                                   dst_t + str(bit_size), src_t, conv_expr)
           else:
               conv_expr = "src0 != 0" if dst_t == tbool else "src0"
               unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
