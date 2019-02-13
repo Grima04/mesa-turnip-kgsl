@@ -1060,10 +1060,17 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_f2f16_rtne:
    case nir_op_f2f16_rtz:
-      bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
-               brw_imm_d(brw_rnd_mode_from_nir_op(instr->op)));
-      /* fallthrough */
-   case nir_op_f2f16:
+   case nir_op_f2f16: {
+      brw_rnd_mode rnd = BRW_RND_MODE_UNSPECIFIED;
+
+      if (nir_op_f2f16 == instr->op)
+         rnd = brw_rnd_mode_from_execution_mode(execution_mode);
+      else
+         rnd = brw_rnd_mode_from_nir_op(instr->op);
+
+      if (BRW_RND_MODE_UNSPECIFIED != rnd)
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(), brw_imm_d(rnd));
+
       /* In theory, it would be better to use BRW_OPCODE_F32TO16. Depending
        * on the HW gen, it is a special hw opcode or just a MOV, and
        * brw_F32TO16 (at brw_eu_emit) would do the work to chose.
@@ -1077,6 +1084,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
+   }
 
    case nir_op_b2i8:
    case nir_op_b2i16:
@@ -1099,7 +1107,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_f2u64:
    case nir_op_i2i32:
    case nir_op_u2u32:
-   case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
    case nir_op_i2f16:
@@ -1146,6 +1153,21 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst = bld.MOV(result, op[0]);
       if (instr->op == nir_op_fabs)
          inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_f2f32:
+      if (nir_has_any_rounding_mode_enabled(execution_mode)) {
+         brw_rnd_mode rnd =
+            brw_rnd_mode_from_execution_mode(execution_mode);
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+                  brw_imm_d(rnd));
+      }
+
+      if (op[0].type == BRW_REGISTER_TYPE_HF)
+         assert(type_sz(result.type) < 8); /* brw_nir_lower_conversions */
+
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fsign:
