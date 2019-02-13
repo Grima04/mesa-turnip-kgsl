@@ -3506,6 +3506,7 @@ struct gl_framebuffer
 
    GLbitfield _IntegerBuffers;  /**< Which color buffers are integer valued */
    GLbitfield _RGBBuffers;  /**< Which color buffers have baseformat == RGB */
+   GLbitfield _FP32Buffers; /**< Which color buffers are FP32 */
 
    /* ARB_color_buffer_float */
    GLboolean _AllColorBuffersFixedPoint; /* no integer, no float */
@@ -4248,6 +4249,7 @@ struct gl_extensions
    GLboolean EXT_depth_bounds_test;
    GLboolean EXT_disjoint_timer_query;
    GLboolean EXT_draw_buffers2;
+   GLboolean EXT_float_blend;
    GLboolean EXT_framebuffer_multisample;
    GLboolean EXT_framebuffer_multisample_blit_scaled;
    GLboolean EXT_framebuffer_sRGB;
