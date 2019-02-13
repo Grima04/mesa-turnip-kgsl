@@ -949,14 +949,15 @@ static void
 ttn_if(struct ttn_compile *c, nir_ssa_def *src, bool is_uint)
 {
    nir_builder *b = &c->build;
-
-   src = ttn_channel(b, src, X);
+   nir_ssa_def *src_x = ttn_channel(b, src, X);
 
    nir_if *if_stmt = nir_if_create(b->shader);
    if (is_uint) {
-      if_stmt->condition = nir_src_for_ssa(nir_ine(b, src, nir_imm_int(b, 0)));
+      /* equivalent to TGSI UIF, src is interpreted as integer */
+      if_stmt->condition = nir_src_for_ssa(nir_ine(b, src_x, nir_imm_int(b, 0)));
    } else {
-      if_stmt->condition = nir_src_for_ssa(nir_fne(b, src, nir_imm_int(b, 0)));
+      /* equivalent to TGSI IF, src is interpreted as float */
+      if_stmt->condition = nir_src_for_ssa(nir_fne(b, src_x, nir_imm_float(b, 0.0)));
    }
    nir_builder_cf_insert(b, &if_stmt->cf_node);
 
