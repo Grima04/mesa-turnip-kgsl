@@ -902,11 +902,38 @@ print_flags(unsigned flags)
 }
 
 static void *
-iris_bo_map_cpu(struct pipe_debug_callback *dbg,
-                struct iris_bo *bo, unsigned flags)
+iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg,
+                        struct iris_bo *bo, bool wc)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   struct drm_i915_gem_mmap mmap_arg = {
+      .handle = bo->gem_handle,
+      .size = bo->size,
+      .flags = wc ? I915_MMAP_WC : 0,
+   };
+
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
+   if (ret != 0) {
+      DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
+          __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
+      return NULL;
+   }
+   void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+
+   return map;
+}
+
+static void *
+iris_bo_gem_mmap(struct pipe_debug_callback *dbg, struct iris_bo *bo, bool wc)
+{
+   return iris_bo_gem_mmap_legacy(dbg, bo, wc);
+}
+
+static void *
+iris_bo_map_cpu(struct pipe_debug_callback *dbg,
+                struct iris_bo *bo, unsigned flags)
+{
    /* We disallow CPU maps for writing to non-coherent buffers, as the
     * CPU map can become invalidated when a batch is flushed out, which
     * can happen at unpredictable times.  You should use WC maps instead.
@@ -915,18 +942,7 @@ iris_bo_map_cpu(struct pipe_debug_callback *dbg,
 
    if (!bo->map_cpu) {
       DBG("iris_bo_map_cpu: %d (%s)\n", bo->gem_handle, bo->name);
-
-      struct drm_i915_gem_mmap mmap_arg = {
-         .handle = bo->gem_handle,
-         .size = bo->size,
-      };
-      int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
-      if (ret != 0) {
-         DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-      void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+      void *map = iris_bo_gem_mmap(dbg, bo, false);
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_cpu, NULL, map)) {
@@ -971,24 +987,9 @@ static void *
 iris_bo_map_wc(struct pipe_debug_callback *dbg,
                struct iris_bo *bo, unsigned flags)
 {
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-
    if (!bo->map_wc) {
       DBG("iris_bo_map_wc: %d (%s)\n", bo->gem_handle, bo->name);
-
-      struct drm_i915_gem_mmap mmap_arg = {
-         .handle = bo->gem_handle,
-         .size = bo->size,
-         .flags = I915_MMAP_WC,
-      };
-      int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
-      if (ret != 0) {
-         DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
-             __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
-         return NULL;
-      }
-
-      void *map = (void *) (uintptr_t) mmap_arg.addr_ptr;
+      void *map = iris_bo_gem_mmap(dbg, bo, true);
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_wc, NULL, map)) {
