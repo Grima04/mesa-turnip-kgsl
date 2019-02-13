@@ -876,8 +876,13 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_AND(c, src[0], vir_uniform_ui(c, 1));
                 break;
         case nir_op_i2b32:
-        case nir_op_f2b32:
                 vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), src[0]),
+                           V3D_QPU_PF_PUSHZ);
+                result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
+                                            vir_uniform_ui(c, ~0),
+                                            vir_uniform_ui(c, 0)));
+        case nir_op_f2b32:
+                vir_set_pf(vir_FMOV_dest(c, vir_nop_reg(), src[0]),
                            V3D_QPU_PF_PUSHZ);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
                                             vir_uniform_ui(c, ~0),
