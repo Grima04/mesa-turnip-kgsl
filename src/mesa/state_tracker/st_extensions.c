@@ -820,6 +820,12 @@ void st_init_extensions(struct pipe_screen *screen,
           PIPE_FORMAT_R16G16B16A16_SNORM } },
    };
 
+   /* Required: render target, sampler, and blending */
+   static const struct st_extension_format_mapping rt_blendable[] = {
+      { { o(EXT_float_blend) },
+        { PIPE_FORMAT_R32G32B32A32_FLOAT } },
+   };
+
    /* Required: depth stencil and sampler support */
    static const struct st_extension_format_mapping depthstencil_mapping[] = {
       { { o(ARB_depth_buffer_float) },
@@ -1025,6 +1031,10 @@ void st_init_extensions(struct pipe_screen *screen,
    init_format_extensions(screen, extensions, rendertarget_mapping,
                           ARRAY_SIZE(rendertarget_mapping), PIPE_TEXTURE_2D,
                           PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW);
+   init_format_extensions(screen, extensions, rt_blendable,
+                          ARRAY_SIZE(rt_blendable), PIPE_TEXTURE_2D,
+                          PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW |
+                          PIPE_BIND_BLENDABLE);
    init_format_extensions(screen, extensions, depthstencil_mapping,
                           ARRAY_SIZE(depthstencil_mapping), PIPE_TEXTURE_2D,
                           PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_SAMPLER_VIEW);
