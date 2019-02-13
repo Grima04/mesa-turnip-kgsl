@@ -89,7 +89,7 @@ containers:ubuntu:
     - cd _build
     - meson configure
   script:
-    - ninja
+    - ninja -j4
     - ninja test
 
 .make-build:
