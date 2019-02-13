@@ -37,7 +37,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
    if (glsl_type_contains_64bit(type))
       *offset = ALIGN_POT(*offset, 8);
 
-   if (glsl_type_is_array(type) || glsl_type_is_matrix(type)) {
+   if (glsl_type_is_array_or_matrix(type) && !var->data.compact) {
       unsigned length = glsl_get_length(type);
       const struct glsl_type *child_type = glsl_get_array_element(type);
       for (unsigned i = 0; i < length; i++)
@@ -62,16 +62,27 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       assert(var->data.stream < NIR_MAX_XFB_STREAMS);
       xfb->streams_written |= (1 << var->data.stream);
 
-      unsigned comp_slots = glsl_get_component_slots(type);
-      unsigned attrib_slots = DIV_ROUND_UP(comp_slots, 4);
-      assert(attrib_slots == glsl_count_attribute_slots(type, false));
+      unsigned comp_slots;
+      if (var->data.compact) {
+         /* This only happens for clip/cull which are float arrays */
+         assert(glsl_without_array(type) == glsl_float_type());
+         assert(var->data.location == VARYING_SLOT_CLIP_DIST0 ||
+                var->data.location == VARYING_SLOT_CLIP_DIST1);
+         comp_slots = glsl_get_length(type);
+      } else {
+         comp_slots = glsl_get_component_slots(type);
 
-      /* Ensure that we don't have, for instance, a dvec2 with a location_frac
-       * of 2 which would make it crass a location boundary even though it
-       * fits in a single slot.  However, you can have a dvec3 which crosses
-       * the slot boundary with a location_frac of 2.
-       */
-      assert(DIV_ROUND_UP(var->data.location_frac + comp_slots, 4) == attrib_slots);
+         unsigned attrib_slots = DIV_ROUND_UP(comp_slots, 4);
+         assert(attrib_slots == glsl_count_attribute_slots(type, false));
+
+         /* Ensure that we don't have, for instance, a dvec2 with a
+          * location_frac of 2 which would make it crass a location boundary
+          * even though it fits in a single slot.  However, you can have a
+          * dvec3 which crosses the slot boundary with a location_frac of 2.
+          */
+         assert(DIV_ROUND_UP(var->data.location_frac + comp_slots, 4) ==
+                attrib_slots);
+      }
 
       assert(var->data.location_frac + comp_slots <= 8);
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
