@@ -23,6 +23,17 @@
 
 #include "compiler/nir/nir_builder.h"
 
+static inline void
+blorp_nir_init_shader(nir_builder *b,
+                      void *mem_ctx,
+                      gl_shader_stage stage,
+                      const char *name)
+{
+   nir_builder_init_simple_shader(b, mem_ctx, stage, NULL);
+   if (name != NULL)
+      b->shader->info.name = ralloc_strdup(b->shader, name);
+}
+
 static inline nir_ssa_def *
 blorp_nir_frag_coord(nir_builder *b)
 {
