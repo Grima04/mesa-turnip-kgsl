@@ -283,8 +283,10 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                            instr->num_components - 2);
         }
 
-        if (c->execute.file != QFILE_NULL)
-                vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+        if (c->execute.file != QFILE_NULL) {
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
+        }
 
         struct qreg dest;
         if (config == ~0)
@@ -398,7 +400,8 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                         /* Set the flags to the current exec mask.
                          */
                         c->cursor = vir_before_inst(last_inst);
-                        vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+                        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                                   V3D_QPU_PF_PUSHZ);
                         c->cursor = vir_after_inst(last_inst);
 
                         vir_set_cond(last_inst, V3D_QPU_COND_IFA);
@@ -540,9 +543,9 @@ ntq_fsign(struct v3d_compile *c, struct qreg src)
         struct qreg t = vir_get_temp(c);
 
         vir_MOV_dest(c, t, vir_uniform_f(c, 0.0));
-        vir_PF(c, vir_FMOV(c, src), V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_FMOV_dest(c, vir_nop_reg(), src), V3D_QPU_PF_PUSHZ);
         vir_MOV_cond(c, V3D_QPU_COND_IFNA, t, vir_uniform_f(c, 1.0));
-        vir_PF(c, vir_FMOV(c, src), V3D_QPU_PF_PUSHN);
+        vir_set_pf(vir_FMOV_dest(c, vir_nop_reg(), src), V3D_QPU_PF_PUSHN);
         vir_MOV_cond(c, V3D_QPU_COND_IFA, t, vir_uniform_f(c, -1.0));
         return vir_MOV(c, t);
 }
@@ -789,7 +792,8 @@ ntq_emit_bool_to_cond(struct v3d_compile *c, nir_src src)
                 return cond;
 
 out:
-        vir_PF(c, ntq_get_src(c, src, 0), V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), ntq_get_src(c, src, 0)),
+                   V3D_QPU_PF_PUSHZ);
         return V3D_QPU_COND_IFNA;
 }
 
@@ -873,7 +877,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
         case nir_op_i2b32:
         case nir_op_f2b32:
-                vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), src[0]),
+                           V3D_QPU_PF_PUSHZ);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
                                             vir_uniform_ui(c, ~0),
                                             vir_uniform_ui(c, 0)));
@@ -967,7 +972,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
 
         case nir_op_fcsel:
-                vir_PF(c, src[0], V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), src[0]),
+                           V3D_QPU_PF_PUSHZ);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
                                             src[1], src[2]));
                 break;
@@ -1033,7 +1039,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
 
         case nir_op_uadd_carry:
-                vir_PF(c, vir_ADD(c, src[0], src[1]), V3D_QPU_PF_PUSHC);
+                vir_set_pf(vir_ADD_dest(c, vir_nop_reg(), src[0], src[1]),
+                           V3D_QPU_PF_PUSHC);
                 result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
                                             vir_uniform_ui(c, ~0),
                                             vir_uniform_ui(c, 0)));
@@ -1832,7 +1839,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_helper_invocation:
-                vir_PF(c, vir_MSF(c), V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MSF_dest(c, vir_nop_reg()), V3D_QPU_PF_PUSHZ);
                 ntq_store_dest(c, &instr->dest, 0,
                                vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFA,
                                                   vir_uniform_ui(c, ~0),
@@ -1886,7 +1893,8 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_discard:
                 if (c->execute.file != QFILE_NULL) {
-                        vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+                        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                                   V3D_QPU_PF_PUSHZ);
                         vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
                                                      vir_uniform_ui(c, 0)),
                                 V3D_QPU_COND_IFA);
@@ -2103,7 +2111,7 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
         /* Jump to ELSE if nothing is active for THEN, otherwise fall
          * through.
          */
-        vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute), V3D_QPU_PF_PUSHZ);
         vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLNA);
         vir_link_blocks(c->cur_block, else_block);
         vir_link_blocks(c->cur_block, then_block);
@@ -2117,14 +2125,16 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
                  * active channels update their execute flags to point to
                  * ENDIF
                  */
-                vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
                 vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute,
                              vir_uniform_ui(c, after_block->index));
 
                 /* If everything points at ENDIF, then jump there immediately. */
-                vir_PF(c, vir_XOR(c, c->execute,
-                                  vir_uniform_ui(c, after_block->index)),
-                       V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_XOR_dest(c, vir_nop_reg(),
+                                        c->execute,
+                                        vir_uniform_ui(c, after_block->index)),
+                           V3D_QPU_PF_PUSHZ);
                 vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLA);
                 vir_link_blocks(c->cur_block, after_block);
                 vir_link_blocks(c->cur_block, else_block);
@@ -2159,13 +2169,15 @@ ntq_emit_jump(struct v3d_compile *c, nir_jump_instr *jump)
 {
         switch (jump->type) {
         case nir_jump_break:
-                vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
                 vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute,
                              vir_uniform_ui(c, c->loop_break_block->index));
                 break;
 
         case nir_jump_continue:
-                vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                           V3D_QPU_PF_PUSHZ);
                 vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute,
                              vir_uniform_ui(c, c->loop_cont_block->index));
                 break;
@@ -2251,13 +2263,14 @@ ntq_emit_loop(struct v3d_compile *c, nir_loop *loop)
          *
          * XXX: Use the .ORZ flags update, instead.
          */
-        vir_PF(c, vir_XOR(c,
-                          c->execute,
-                          vir_uniform_ui(c, c->loop_cont_block->index)),
-               V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_XOR_dest(c,
+                                vir_nop_reg(),
+                                c->execute,
+                                vir_uniform_ui(c, c->loop_cont_block->index)),
+                   V3D_QPU_PF_PUSHZ);
         vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute, vir_uniform_ui(c, 0));
 
-        vir_PF(c, c->execute, V3D_QPU_PF_PUSHZ);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute), V3D_QPU_PF_PUSHZ);
 
         struct qinst *branch = vir_BRANCH(c, V3D_QPU_BRANCH_COND_ANYA);
         /* Pixels that were not dispatched or have been discarded should not

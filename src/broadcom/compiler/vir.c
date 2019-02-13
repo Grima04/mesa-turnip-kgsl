@@ -1059,51 +1059,6 @@ vir_uniform(struct v3d_compile *c,
         return vir_reg(QFILE_UNIF, uniform);
 }
 
-static bool
-vir_can_set_flags(struct v3d_compile *c, struct qinst *inst)
-{
-        if (c->devinfo->ver >= 40 && (v3d_qpu_reads_vpm(&inst->qpu) ||
-                                      v3d_qpu_uses_sfu(&inst->qpu))) {
-                return false;
-        }
-
-        if (inst->qpu.type != V3D_QPU_INSTR_TYPE_ALU ||
-            (inst->qpu.alu.add.op == V3D_QPU_A_NOP &&
-             inst->qpu.alu.mul.op == V3D_QPU_M_NOP)) {
-               return false;
-        }
-
-        return true;
-}
-
-void
-vir_PF(struct v3d_compile *c, struct qreg src, enum v3d_qpu_pf pf)
-{
-        struct qinst *last_inst = NULL;
-
-        if (!list_empty(&c->cur_block->instructions)) {
-                last_inst = (struct qinst *)c->cur_block->instructions.prev;
-
-                /* Can't stuff the PF into the last last inst if our cursor
-                 * isn't pointing after it.
-                 */
-                struct vir_cursor after_inst = vir_after_inst(last_inst);
-                if (c->cursor.mode != after_inst.mode ||
-                    c->cursor.link != after_inst.link)
-                        last_inst = NULL;
-        }
-
-        if (src.file != QFILE_TEMP ||
-            !c->defs[src.index] ||
-            last_inst != c->defs[src.index] ||
-            !vir_can_set_flags(c, last_inst)) {
-                /* XXX: Make the MOV be the appropriate type */
-                last_inst = vir_MOV_dest(c, vir_nop_reg(), src);
-        }
-
-        vir_set_pf(last_inst, pf);
-}
-
 #define OPTPASS(func)                                                   \
         do {                                                            \
                 bool stage_progress = func(c);                          \

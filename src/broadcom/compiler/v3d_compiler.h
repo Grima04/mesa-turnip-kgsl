@@ -837,8 +837,6 @@ bool vir_init_reg_sets(struct v3d_compiler *compiler);
 
 bool v3d_gl_format_is_return_32(GLenum format);
 
-void vir_PF(struct v3d_compile *c, struct qreg src, enum v3d_qpu_pf pf);
-
 static inline bool
 quniform_contents_is_texture_p0(enum quniform_contents contents)
 {
