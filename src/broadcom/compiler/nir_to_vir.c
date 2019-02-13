@@ -998,9 +998,6 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_ftrunc:
                 result = vir_FTRUNC(c, src[0]);
                 break;
-        case nir_op_ffract:
-                result = vir_FSUB(c, src[0], vir_FFLOOR(c, src[0]));
-                break;
 
         case nir_op_fsin:
                 result = ntq_fsincos(c, src[0], false);
@@ -2444,6 +2441,7 @@ const nir_shader_compiler_options v3d_nir_options = {
         .lower_bitfield_reverse = true,
         .lower_bit_count = true,
         .lower_cs_local_id_from_index = true,
+        .lower_ffract = true,
         .lower_pack_unorm_2x16 = true,
         .lower_pack_snorm_2x16 = true,
         .lower_pack_unorm_4x8 = true,
