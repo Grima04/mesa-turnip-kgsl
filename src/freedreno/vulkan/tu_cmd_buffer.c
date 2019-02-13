@@ -617,17 +617,21 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
                     struct tu_cs *cs,
+                    const struct tu_image_view *iview,
                     uint32_t gmem_offset,
                     const VkClearValue *clear_value)
 {
    const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
    const enum a6xx_color_fmt format = RB6_R8G8B8A8_UNORM;
+   /* must be WZYX; other values are ignored */
+   const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format));
+                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
+                     A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(0xf));
@@ -638,14 +642,10 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
    tu_cs_emit(cs, 0);
 
-   /* att->clear_value? */
-   uint32_t clear_vals[4] = {
-      ((int) (clear_value->color.float32[0] * 255) << 24) |
-         ((int) (clear_value->color.float32[1] * 255) << 16) |
-         ((int) (clear_value->color.float32[2] * 255) << 8) |
-         ((int) (clear_value->color.float32[3] * 255) << 0),
-      0, 0, 0
-   };
+   /* pack clear_value into WZYX order */
+   uint32_t clear_vals[4] = { 0 };
+   tu_pack_clear_value(clear_value, iview->vk_format, clear_vals);
+
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
    tu_cs_emit(cs, clear_vals[0]);
    tu_cs_emit(cs, clear_vals[1]);
@@ -753,13 +753,14 @@ tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
+      const struct tu_image_view *iview = fb->attachments[a].attachment;
       const struct tu_attachment_state *att = attachments + a;
       if (att->pending_clear_aspects) {
          assert(att->pending_clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-         tu6_emit_blit_clear(cmd, cs, tiling->gmem_offsets[gmem_index++],
+         tu6_emit_blit_clear(cmd, cs, iview,
+                             tiling->gmem_offsets[gmem_index++],
                              &att->clear_value);
       } else {
-         const struct tu_image_view *iview = fb->attachments[a].attachment;
          tu6_emit_blit_info(cmd, cs, iview,
                             tiling->gmem_offsets[gmem_index++],
                             A6XX_RB_BLIT_INFO_UNK0 | A6XX_RB_BLIT_INFO_GMEM);

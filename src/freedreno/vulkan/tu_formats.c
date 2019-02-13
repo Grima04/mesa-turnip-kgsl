@@ -337,6 +337,216 @@ tu6_get_native_format(VkFormat format)
    return (fmt && fmt->present) ? fmt : NULL;
 }
 
+static uint32_t
+tu_pack_mask(int bits)
+{
+   assert(bits <= 32);
+   return (1ull << bits) - 1;
+}
+
+static uint32_t
+tu_pack_float32_for_unorm(float val, int bits)
+{
+   const uint32_t max = tu_pack_mask(bits);
+   if (val < 0.0f)
+      return 0;
+   else if (val > 1.0f)
+      return max;
+   else
+      return _mesa_lroundevenf(val * (float) max);
+}
+
+static uint32_t
+tu_pack_float32_for_snorm(float val, int bits)
+{
+   const int32_t max = tu_pack_mask(bits - 1);
+   int32_t tmp;
+   if (val < -1.0f)
+      tmp = -max;
+   else if (val > 1.0f)
+      tmp = max;
+   else
+      tmp = _mesa_lroundevenf(val * (float) max);
+
+   return tmp & tu_pack_mask(bits);
+}
+
+static uint32_t
+tu_pack_float32_for_uscaled(float val, int bits)
+{
+   const uint32_t max = tu_pack_mask(bits);
+   if (val < 0.0f)
+      return 0;
+   else if (val > (float) max)
+      return max;
+   else
+      return (uint32_t) val;
+}
+
+static uint32_t
+tu_pack_float32_for_sscaled(float val, int bits)
+{
+   const int32_t max = tu_pack_mask(bits - 1);
+   const int32_t min = -max - 1;
+   int32_t tmp;
+   if (val < (float) min)
+      tmp = min;
+   else if (val > (float) max)
+      tmp = max;
+   else
+      tmp = (int32_t) val;
+
+   return tmp & tu_pack_mask(bits);
+}
+
+static uint32_t
+tu_pack_uint32_for_uint(uint32_t val, int bits)
+{
+   return val & tu_pack_mask(bits);
+}
+
+static uint32_t
+tu_pack_int32_for_sint(int32_t val, int bits)
+{
+   return val & tu_pack_mask(bits);
+}
+
+static uint32_t
+tu_pack_float32_for_sfloat(float val, int bits)
+{
+   assert(bits == 16 || bits == 32);
+   return bits == 16 ? util_float_to_half(val) : fui(val);
+}
+
+union tu_clear_component_value {
+   float float32;
+   int32_t int32;
+   uint32_t uint32;
+};
+
+static uint32_t
+tu_pack_clear_component_value(union tu_clear_component_value val,
+                              const struct vk_format_channel_description *ch)
+{
+   uint32_t packed;
+
+   switch (ch->type) {
+   case VK_FORMAT_TYPE_UNSIGNED:
+      /* normalized, scaled, or pure integer */
+      assert(ch->normalized + ch->scaled + ch->pure_integer == 1);
+      if (ch->normalized)
+         packed = tu_pack_float32_for_unorm(val.float32, ch->size);
+      else if (ch->scaled)
+         packed = tu_pack_float32_for_uscaled(val.float32, ch->size);
+      else
+         packed = tu_pack_uint32_for_uint(val.uint32, ch->size);
+      break;
+   case VK_FORMAT_TYPE_SIGNED:
+      /* normalized, scaled, or pure integer */
+      assert(ch->normalized + ch->scaled + ch->pure_integer == 1);
+      if (ch->normalized)
+         packed = tu_pack_float32_for_snorm(val.float32, ch->size);
+      else if (ch->scaled)
+         packed = tu_pack_float32_for_sscaled(val.float32, ch->size);
+      else
+         packed = tu_pack_int32_for_sint(val.int32, ch->size);
+      break;
+   case VK_FORMAT_TYPE_FLOAT:
+      packed = tu_pack_float32_for_sfloat(val.float32, ch->size);
+      break;
+   default:
+      unreachable("unexpected channel type");
+      packed = 0;
+      break;
+   }
+
+   assert((packed & tu_pack_mask(ch->size)) == packed);
+   return packed;
+}
+
+static const struct vk_format_channel_description *
+tu_get_format_channel_description(const struct vk_format_description *desc,
+                                  int comp)
+{
+   switch (desc->swizzle[comp]) {
+   case VK_SWIZZLE_X:
+      return &desc->channel[0];
+   case VK_SWIZZLE_Y:
+      return &desc->channel[1];
+   case VK_SWIZZLE_Z:
+      return &desc->channel[2];
+   case VK_SWIZZLE_W:
+      return &desc->channel[3];
+   default:
+      return NULL;
+   }
+}
+
+static union tu_clear_component_value
+tu_get_clear_component_value(const VkClearValue *val, int comp, bool color)
+{
+   union tu_clear_component_value tmp;
+   if (color) {
+      assert(comp < 4);
+      tmp.uint32 = val->color.uint32[comp];
+   } else {
+      assert(comp < 2);
+      if (comp == 0)
+         tmp.float32 = val->depthStencil.depth;
+      else
+         tmp.uint32 = val->depthStencil.stencil;
+   }
+
+   return tmp;
+}
+
+/**
+ * Pack a VkClearValue into a 128-bit buffer.  \a format is respected except
+ * for the component order.  The components are always packed in WZYX order
+ * (i.e., msb is white and lsb is red).
+ *
+ * Return the number of uint32_t's used.
+ */
+int
+tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
+{
+   const struct vk_format_description *desc = vk_format_description(format);
+   assert(desc && desc->layout == VK_FORMAT_LAYOUT_PLAIN);
+
+   /* S8_UINT is special and has no depth */
+   const int max_components =
+      format == VK_FORMAT_S8_UINT ? 2 : desc->nr_channels;
+
+   int buf_offset = 0;
+   int bit_shift = 0;
+   for (int comp = 0; comp < max_components; comp++) {
+      const struct vk_format_channel_description *ch =
+         tu_get_format_channel_description(desc, comp);
+      if (!ch) {
+         assert(format == VK_FORMAT_S8_UINT && comp == 0);
+         continue;
+      }
+
+      union tu_clear_component_value v = tu_get_clear_component_value(
+         val, comp, desc->colorspace != VK_FORMAT_COLORSPACE_ZS);
+
+      /* move to the next uint32_t when there is not enough space */
+      assert(ch->size <= 32);
+      if (bit_shift + ch->size > 32) {
+         buf_offset++;
+         bit_shift = 0;
+      }
+
+      if (bit_shift == 0)
+         buf[buf_offset] = 0;
+
+      buf[buf_offset] |= tu_pack_clear_component_value(v, ch) << bit_shift;
+      bit_shift += ch->size;
+   }
+
+   return buf_offset + 1;
+}
+
 static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,
