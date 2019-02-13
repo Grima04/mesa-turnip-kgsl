@@ -302,6 +302,9 @@ static const struct intel_image_format intel_image_formats[] = {
    { __DRI_IMAGE_FOURCC_AYUV, __DRI_IMAGE_COMPONENTS_AYUV, 1,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR8888, 4 } } },
 
+   { __DRI_IMAGE_FOURCC_XYUV8888, __DRI_IMAGE_COMPONENTS_XYUV, 1,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR8888, 4 } } },
+
    /* For YUYV and UYVY buffers, we set up two overlapping DRI images
     * and treat them as planar buffers in the compositors.
     * Plane 0 is GR88 and samples YU or YV pairs and places Y into

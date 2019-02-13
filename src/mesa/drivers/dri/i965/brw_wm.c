@@ -270,6 +270,9 @@ brw_debug_recompile_sampler_key(struct brw_context *brw,
    found |= key_debug(brw, "ayuv image bound",
                       old_key->ayuv_image_mask,
                       key->ayuv_image_mask);
+   found |= key_debug(brw, "xyuv image bound",
+                      old_key->xyuv_image_mask,
+                      key->xyuv_image_mask);
 
    for (unsigned int i = 0; i < MAX_SAMPLERS; i++) {
       found |= key_debug(brw, "textureGather workarounds",
@@ -431,6 +434,9 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
                break;
             case __DRI_IMAGE_COMPONENTS_AYUV:
                key->ayuv_image_mask |= 1 << s;
+               break;
+            case __DRI_IMAGE_COMPONENTS_XYUV:
+               key->xyuv_image_mask |= 1 << s;
                break;
             default:
                break;
