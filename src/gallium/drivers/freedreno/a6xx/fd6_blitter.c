@@ -66,6 +66,8 @@ ok_format(enum pipe_format pfmt)
 	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
 	case PIPE_FORMAT_S8_UINT:
 		return true;
+	default:
+		break;
 	}
 
 	if (fmt == ~0)
