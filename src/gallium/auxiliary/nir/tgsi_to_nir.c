@@ -858,9 +858,9 @@ ttn_lit(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 
       ttn_move_dest_masked(b, dest,
                            nir_bcsel(b,
-                                     nir_fge(b,
-                                             nir_imm_float(b, 0.0),
-                                             ttn_channel(b, src[0], X)),
+                                     nir_flt(b,
+                                             ttn_channel(b, src[0], X),
+                                             nir_imm_float(b, 0.0)),
                                      nir_imm_float(b, 0.0),
                                      pow),
                            TGSI_WRITEMASK_Z);
