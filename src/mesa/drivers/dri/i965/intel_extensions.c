@@ -97,6 +97,7 @@ intelInitExtensions(struct gl_context *ctx)
    ctx->Extensions.EXT_blend_func_separate = true;
    ctx->Extensions.EXT_blend_minmax = true;
    ctx->Extensions.EXT_draw_buffers2 = true;
+   ctx->Extensions.EXT_float_blend = true;
    ctx->Extensions.EXT_framebuffer_sRGB = true;
    ctx->Extensions.EXT_gpu_program_parameters = true;
    ctx->Extensions.EXT_packed_float = true;
