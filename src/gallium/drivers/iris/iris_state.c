@@ -4483,10 +4483,15 @@ iris_store_cs_state(struct iris_context *ice,
    void *map = shader->derived_data;
 
    iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), map, desc) {
+#if GEN_GEN <= 12 && !GEN_IS_GEN12HP
       desc.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
-      desc.BarrierEnable = cs_prog_data->uses_barrier;
       desc.CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs;
+#else
+      assert(cs_prog_data->push.per_thread.regs == 0);
+      assert(cs_prog_data->push.cross_thread.regs == 0);
+#endif
+      desc.BarrierEnable = cs_prog_data->uses_barrier;
 #if GEN_GEN >= 12
       /* TODO: Check if we are missing workarounds and enable mid-thread
        * preemption.
@@ -5171,9 +5176,11 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
          struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
          iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
-         struct iris_bo *curbe_bo =
-            iris_resource_bo(ice->state.last_res.cs_thread_ids);
-         iris_use_pinned_bo(batch, curbe_bo, false, IRIS_DOMAIN_NONE);
+         if (GEN_GEN <= 12 && !GEN_IS_GEN12HP) {
+            struct iris_bo *curbe_bo =
+               iris_resource_bo(ice->state.last_res.cs_thread_ids);
+            iris_use_pinned_bo(batch, curbe_bo, false, IRIS_DOMAIN_NONE);
+         }
 
          struct brw_stage_prog_data *prog_data = shader->prog_data;
 
@@ -6669,6 +6676,70 @@ iris_load_indirect_location(struct iris_context *ice,
    }
 }
 
+#if GEN_GEN > 12 || GEN_IS_GEN12HP
+
+static void
+iris_upload_compute_walker(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           const struct pipe_grid_info *grid)
+{
+   const uint64_t stage_dirty = ice->state.stage_dirty;
+   struct iris_screen *screen = batch->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   struct iris_binder *binder = &ice->state.binder;
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
+   struct iris_compiled_shader *shader =
+      ice->shaders.prog[MESA_SHADER_COMPUTE];
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
+   const uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
+   const unsigned simd_size =
+      brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
+   const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
+
+   if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
+      iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
+         /* TODO: Enable gen12-hp scratch support*/
+         assert(prog_data->total_scratch == 0);
+
+         cfe.MaximumNumberofThreads =
+            devinfo->max_cs_threads * screen->subslice_total - 1;
+      }
+   }
+
+   if (grid->indirect)
+      iris_load_indirect_location(ice, batch, grid);
+
+   const uint32_t last_mask = brw_cs_right_mask(group_size, simd_size);
+
+   iris_emit_cmd(batch, GENX(COMPUTE_WALKER), cw) {
+      cw.IndirectParameterEnable        = grid->indirect;
+      cw.SIMDSize                       = simd_size / 16;
+      cw.LocalXMaximum                  = grid->block[0] - 1;
+      cw.LocalYMaximum                  = grid->block[1] - 1;
+      cw.LocalZMaximum                  = grid->block[2] - 1;
+      cw.ThreadGroupIDXDimension        = grid->grid[0];
+      cw.ThreadGroupIDYDimension        = grid->grid[1];
+      cw.ThreadGroupIDZDimension        = grid->grid[2];
+      cw.ExecutionMask                  = last_mask;
+
+      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA_HP)) {
+         .KernelStartPointer = KSP(shader),
+         .NumberofThreadsinGPGPUThreadGroup = threads,
+         .SharedLocalMemorySize =
+            encode_slm_size(GEN_GEN, prog_data->total_shared),
+         .BarrierEnable = cs_prog_data->uses_barrier,
+         .SamplerStatePointer = shs->sampler_table.offset,
+         .BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE],
+      };
+
+      assert(brw_cs_push_const_total_size(cs_prog_data, threads) == 0);
+   }
+
+}
+
+#else /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
 static void
 iris_upload_gpgpu_walker(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -6813,6 +6884,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
 }
 
+#endif /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+
 static void
 iris_upload_compute_state(struct iris_context *ice,
                           struct iris_batch *batch,
@@ -6856,7 +6929,11 @@ iris_upload_compute_state(struct iris_context *ice,
    genX(invalidate_aux_map_state)(batch);
 #endif
 
+#if GEN_GEN > 12 || GEN_IS_GEN12HP
+   iris_upload_compute_walker(ice, batch, grid);
+#else
    iris_upload_gpgpu_walker(ice, batch, grid);
+#endif
 
    if (!batch->contains_draw_with_next_seqno) {
       iris_restore_compute_saved_bos(ice, batch, grid);
