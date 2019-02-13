@@ -401,7 +401,7 @@ vir_branch_inst(enum v3d_qpu_branch_cond cond, struct qreg src)
         inst->qpu.branch.ub = true;
         inst->qpu.branch.bdu = V3D_QPU_BRANCH_DEST_REL;
 
-        inst->dst = vir_reg(QFILE_NULL, 0);
+        inst->dst = vir_nop_reg();
         inst->src[0] = src;
         inst->uniform = ~0;
 
@@ -1098,7 +1098,7 @@ vir_PF(struct v3d_compile *c, struct qreg src, enum v3d_qpu_pf pf)
             last_inst != c->defs[src.index] ||
             !vir_can_set_flags(c, last_inst)) {
                 /* XXX: Make the MOV be the appropriate type */
-                last_inst = vir_MOV_dest(c, vir_reg(QFILE_NULL, 0), src);
+                last_inst = vir_MOV_dest(c, vir_nop_reg(), src);
         }
 
         vir_set_pf(last_inst, pf);

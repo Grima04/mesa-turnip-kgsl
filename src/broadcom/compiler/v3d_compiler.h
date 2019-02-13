@@ -105,6 +105,11 @@ static inline struct qreg vir_reg(enum qfile file, uint32_t index)
         return (struct qreg){file, index};
 }
 
+static inline struct qreg vir_nop_reg(void)
+{
+        return (struct qreg){QFILE_NULL, 0};
+}
+
 /**
  * A reference to an actual register at the QPU level, for register
  * allocation.
