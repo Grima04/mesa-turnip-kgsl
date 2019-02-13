@@ -469,6 +469,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    const struct iris_format_info fmt =
       iris_format_for_usage(devinfo, templ->format, isl_usage);
+   res->internal_format = templ->format;
 
    if (templ->target == PIPE_BUFFER) {
       res->surf.tiling = ISL_TILING_LINEAR;
