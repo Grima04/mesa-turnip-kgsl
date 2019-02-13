@@ -4028,6 +4028,10 @@ iris_restore_render_saved_bos(struct iris_context *ice,
 
             iris_use_pinned_bo(batch, zres->bo,
                                ice->state.depth_writes_enabled);
+            if (zres->aux.bo) {
+               iris_use_pinned_bo(batch, zres->aux.bo,
+                                  ice->state.depth_writes_enabled);
+            }
          }
 
          if (sres) {
@@ -4612,6 +4616,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          if (zres) {
             iris_use_pinned_bo(batch, zres->bo,
                                ice->state.depth_writes_enabled);
+            if (zres->aux.bo) {
+               iris_use_pinned_bo(batch, zres->aux.bo,
+                                  ice->state.depth_writes_enabled);
+            }
          }
 
          if (sres) {
