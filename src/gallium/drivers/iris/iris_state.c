@@ -6571,9 +6571,9 @@ iris_upload_render_state(struct iris_context *ice,
 }
 
 static void
-iris_upload_compute_state(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          const struct pipe_grid_info *grid)
+iris_upload_gpgpu_walker(struct iris_context *ice,
+                         struct iris_batch *batch,
+                         const struct pipe_grid_info *grid)
 {
    const uint64_t stage_dirty = ice->state.stage_dirty;
    struct iris_screen *screen = batch->screen;
@@ -6584,43 +6584,11 @@ iris_upload_compute_state(struct iris_context *ice,
       ice->shaders.prog[MESA_SHADER_COMPUTE];
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
-
    const uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
    const unsigned simd_size =
       brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
    const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
 
-   iris_batch_sync_region_start(batch);
-
-   /* Always pin the binder.  If we're emitting new binding table pointers,
-    * we need it.  If not, we're probably inheriting old tables via the
-    * context, and need it anyway.  Since true zero-bindings cases are
-    * practically non-existent, just pin it and avoid last_res tracking.
-    */
-   iris_use_pinned_bo(batch, ice->state.binder.bo, false, IRIS_DOMAIN_NONE);
-
-   if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
-       shs->sysvals_need_upload)
-      upload_sysvals(ice, MESA_SHADER_COMPUTE);
-
-   if (stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_CS)
-      iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
-
-   if (stage_dirty & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS)
-      iris_upload_sampler_states(ice, MESA_SHADER_COMPUTE);
-
-   iris_use_optional_res(batch, shs->sampler_table.res, false,
-                         IRIS_DOMAIN_NONE);
-   iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false,
-                      IRIS_DOMAIN_NONE);
-
-   if (ice->state.need_border_colors)
-      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false,
-                         IRIS_DOMAIN_NONE);
-
-#if GEN_GEN >= 12
-   genX(invalidate_aux_map_state)(batch);
-#endif
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       /* The MEDIA_VFE_STATE documentation for Gen8+ says:
@@ -6748,6 +6716,51 @@ iris_upload_compute_state(struct iris_context *ice,
    }
 
    iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
+}
+
+static void
+iris_upload_compute_state(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const struct pipe_grid_info *grid)
+{
+   const uint64_t stage_dirty = ice->state.stage_dirty;
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
+   struct iris_compiled_shader *shader =
+      ice->shaders.prog[MESA_SHADER_COMPUTE];
+
+   iris_batch_sync_region_start(batch);
+
+   /* Always pin the binder.  If we're emitting new binding table pointers,
+    * we need it.  If not, we're probably inheriting old tables via the
+    * context, and need it anyway.  Since true zero-bindings cases are
+    * practically non-existent, just pin it and avoid last_res tracking.
+    */
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false, IRIS_DOMAIN_NONE);
+
+   if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
+       shs->sysvals_need_upload)
+      upload_sysvals(ice, MESA_SHADER_COMPUTE);
+
+   if (stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_CS)
+      iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
+
+   if (stage_dirty & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS)
+      iris_upload_sampler_states(ice, MESA_SHADER_COMPUTE);
+
+   iris_use_optional_res(batch, shs->sampler_table.res, false,
+                         IRIS_DOMAIN_NONE);
+   iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false,
+                      IRIS_DOMAIN_NONE);
+
+   if (ice->state.need_border_colors)
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false,
+                         IRIS_DOMAIN_NONE);
+
+#if GEN_GEN >= 12
+   genX(invalidate_aux_map_state)(batch);
+#endif
+
+   iris_upload_gpgpu_walker(ice, batch, grid);
 
    if (!batch->contains_draw_with_next_seqno) {
       iris_restore_compute_saved_bos(ice, batch, grid);
