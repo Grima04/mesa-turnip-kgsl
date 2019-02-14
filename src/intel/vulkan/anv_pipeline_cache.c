@@ -127,44 +127,42 @@ static bool
 anv_shader_bin_write_to_blob(const struct anv_shader_bin *shader,
                              struct blob *blob)
 {
-   bool ok;
+   blob_write_uint32(blob, shader->key->size);
+   blob_write_bytes(blob, shader->key->data, shader->key->size);
 
-   ok = blob_write_uint32(blob, shader->key->size);
-   ok = blob_write_bytes(blob, shader->key->data, shader->key->size);
+   blob_write_uint32(blob, shader->kernel_size);
+   blob_write_bytes(blob, shader->kernel.map, shader->kernel_size);
 
-   ok = blob_write_uint32(blob, shader->kernel_size);
-   ok = blob_write_bytes(blob, shader->kernel.map, shader->kernel_size);
+   blob_write_uint32(blob, shader->constant_data_size);
+   blob_write_bytes(blob, shader->constant_data.map,
+                    shader->constant_data_size);
 
-   ok = blob_write_uint32(blob, shader->constant_data_size);
-   ok = blob_write_bytes(blob, shader->constant_data.map,
-                         shader->constant_data_size);
-
-   ok = blob_write_uint32(blob, shader->prog_data_size);
-   ok = blob_write_bytes(blob, shader->prog_data, shader->prog_data_size);
-   ok = blob_write_bytes(blob, shader->prog_data->param,
-                               shader->prog_data->nr_params *
-                               sizeof(*shader->prog_data->param));
+   blob_write_uint32(blob, shader->prog_data_size);
+   blob_write_bytes(blob, shader->prog_data, shader->prog_data_size);
+   blob_write_bytes(blob, shader->prog_data->param,
+                    shader->prog_data->nr_params *
+                    sizeof(*shader->prog_data->param));
 
    if (shader->xfb_info) {
       uint32_t xfb_info_size =
          nir_xfb_info_size(shader->xfb_info->output_count);
-      ok = blob_write_uint32(blob, xfb_info_size);
-      ok = blob_write_bytes(blob, shader->xfb_info, xfb_info_size);
+      blob_write_uint32(blob, xfb_info_size);
+      blob_write_bytes(blob, shader->xfb_info, xfb_info_size);
    } else {
-      ok = blob_write_uint32(blob, 0);
+      blob_write_uint32(blob, 0);
    }
 
-   ok = blob_write_uint32(blob, shader->bind_map.surface_count);
-   ok = blob_write_uint32(blob, shader->bind_map.sampler_count);
-   ok = blob_write_uint32(blob, shader->bind_map.image_count);
-   ok = blob_write_bytes(blob, shader->bind_map.surface_to_descriptor,
-                               shader->bind_map.surface_count *
-                               sizeof(*shader->bind_map.surface_to_descriptor));
-   ok = blob_write_bytes(blob, shader->bind_map.sampler_to_descriptor,
-                               shader->bind_map.sampler_count *
-                               sizeof(*shader->bind_map.sampler_to_descriptor));
+   blob_write_uint32(blob, shader->bind_map.surface_count);
+   blob_write_uint32(blob, shader->bind_map.sampler_count);
+   blob_write_uint32(blob, shader->bind_map.image_count);
+   blob_write_bytes(blob, shader->bind_map.surface_to_descriptor,
+                    shader->bind_map.surface_count *
+                    sizeof(*shader->bind_map.surface_to_descriptor));
+   blob_write_bytes(blob, shader->bind_map.sampler_to_descriptor,
+                    shader->bind_map.sampler_count *
+                    sizeof(*shader->bind_map.sampler_to_descriptor));
 
-   return ok;
+   return !blob->out_of_memory;
 }
 
 static struct anv_shader_bin *
