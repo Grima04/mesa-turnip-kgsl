@@ -3926,10 +3926,15 @@ iris_restore_render_saved_bos(struct iris_context *ice,
          iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
                                           &zres, &sres);
          if (zres) {
+            iris_cache_flush_for_depth(batch, zres->bo);
+
             iris_use_pinned_bo(batch, zres->bo,
                                ice->state.depth_writes_enabled);
          }
+
          if (sres) {
+            iris_cache_flush_for_depth(batch, sres->bo);
+
             iris_use_pinned_bo(batch, sres->bo,
                                ice->state.stencil_writes_enabled);
          }
