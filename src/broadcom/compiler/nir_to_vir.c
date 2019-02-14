@@ -283,7 +283,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                            instr->num_components - 2);
         }
 
-        if (c->execute.file != QFILE_NULL) {
+        if (vir_in_nonuniform_control_flow(c)) {
                 vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
                            V3D_QPU_PF_PUSHZ);
         }
@@ -309,7 +309,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         vir_uniform_ui(c, config);
         }
 
-        if (c->execute.file != QFILE_NULL)
+        if (vir_in_nonuniform_control_flow(c))
                 vir_set_cond(tmu, V3D_QPU_COND_IFA);
 
         vir_emit_thrsw(c);
@@ -394,7 +394,7 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                 /* If we're in control flow, then make this update of the reg
                  * conditional on the execution mask.
                  */
-                if (c->execute.file != QFILE_NULL) {
+                if (vir_in_nonuniform_control_flow(c)) {
                         last_inst->dst.index = qregs[chan].index;
 
                         /* Set the flags to the current exec mask.
@@ -1897,7 +1897,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_discard:
-                if (c->execute.file != QFILE_NULL) {
+                if (vir_in_nonuniform_control_flow(c)) {
                         vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
                                    V3D_QPU_PF_PUSHZ);
                         vir_set_cond(vir_SETMSF_dest(c, vir_nop_reg(),
@@ -1912,7 +1912,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_discard_if: {
                 enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, instr->src[0]);
 
-                if (c->execute.file != QFILE_NULL) {
+                if (vir_in_nonuniform_control_flow(c)) {
                         struct qinst *exec_flag = vir_MOV_dest(c, vir_nop_reg(),
                                                                c->execute);
                         if (cond == V3D_QPU_COND_IFA) {
@@ -2086,7 +2086,7 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
                 else_block = vir_new_block(c);
 
         bool was_uniform_control_flow = false;
-        if (c->execute.file == QFILE_NULL) {
+        if (!vir_in_nonuniform_control_flow(c)) {
                 c->execute = vir_MOV(c, vir_uniform_ui(c, 0));
                 was_uniform_control_flow = true;
         }
@@ -2163,7 +2163,7 @@ ntq_emit_if(struct v3d_compile *c, nir_if *nif)
 {
         bool was_in_control_flow = c->in_control_flow;
         c->in_control_flow = true;
-        if (c->execute.file == QFILE_NULL &&
+        if (!vir_in_nonuniform_control_flow(c) &&
             nir_src_is_dynamically_uniform(nif->condition)) {
                 ntq_emit_uniform_if(c, nif);
         } else {
@@ -2252,7 +2252,7 @@ ntq_emit_loop(struct v3d_compile *c, nir_loop *loop)
         c->in_control_flow = true;
 
         bool was_uniform_control_flow = false;
-        if (c->execute.file == QFILE_NULL) {
+        if (!vir_in_nonuniform_control_flow(c)) {
                 c->execute = vir_MOV(c, vir_uniform_ui(c, 0));
                 was_uniform_control_flow = true;
         }

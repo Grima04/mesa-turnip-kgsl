@@ -846,6 +846,12 @@ quniform_contents_is_texture_p0(enum quniform_contents contents)
                             V3D_MAX_TEXTURE_SAMPLERS));
 }
 
+static inline bool
+vir_in_nonuniform_control_flow(struct v3d_compile *c)
+{
+        return c->execute.file != QFILE_NULL;
+}
+
 static inline struct qreg
 vir_uniform_ui(struct v3d_compile *c, uint32_t ui)
 {
