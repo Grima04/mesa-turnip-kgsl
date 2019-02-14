@@ -1276,11 +1276,6 @@ void anv_CmdResolveImage(
       const uint32_t layer_count =
          anv_get_layerCount(dst_image, &pRegions[r].dstSubresource);
 
-      VkImageAspectFlags src_mask = pRegions[r].srcSubresource.aspectMask;
-      VkImageAspectFlags dst_mask = pRegions[r].dstSubresource.aspectMask;
-
-      assert(anv_image_aspects_compatible(src_mask, dst_mask));
-
       uint32_t aspect_bit;
       anv_foreach_image_aspect_bit(aspect_bit, src_image,
                                    pRegions[r].srcSubresource.aspectMask) {
