@@ -1002,8 +1002,22 @@ tu_graphics_pipeline_create(
    const VkAllocationCallbacks *alloc,
    VkPipeline *pPipeline);
 
+struct tu_native_format
+{
+   int vtx;      /* VFMTn_xxx or -1 */
+   int tex;      /* TFMTn_xxx or -1 */
+   int rb;       /* RBn_xxx or -1 */
+   int swap;     /* enum a3xx_color_swap */
+   bool present; /* internal only; always true to external users */
+};
+
+const struct tu_native_format *
+tu6_get_native_format(VkFormat format);
+
 int
-tu_pack_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4]);
+tu_pack_clear_value(const VkClearValue *val,
+                    VkFormat format,
+                    uint32_t buf[4]);
 
 struct tu_image_level
 {

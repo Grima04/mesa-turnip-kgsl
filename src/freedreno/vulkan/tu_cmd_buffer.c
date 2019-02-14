@@ -427,8 +427,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       const struct tu_image_level *slice =
          &iview->image->levels[iview->base_mip];
       const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
-      const enum a6xx_color_fmt format = RB6_R8G8B8A8_UNORM;
-      const enum a3xx_color_swap swap = WZYX;
       uint32_t stride = 0;
       uint32_t offset = 0;
 
@@ -437,13 +435,17 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       if (vk_format_is_srgb(iview->vk_format))
          srgb_cntl |= (1 << i);
 
+      const struct tu_native_format *format =
+         tu6_get_native_format(iview->vk_format);
+      assert(format && format->rb >= 0);
+
       offset = slice->offset + slice->size * iview->base_layer;
       stride = slice->pitch * vk_format_get_blocksize(iview->vk_format);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
-      tu_cs_emit(cs, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format) |
+      tu_cs_emit(cs, A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format->rb) |
                         A6XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(tile_mode) |
-                        A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(swap));
+                        A6XX_RB_MRT_BUF_INFO_COLOR_SWAP(format->swap));
       tu_cs_emit(cs, A6XX_RB_MRT_PITCH(stride));
       tu_cs_emit(cs, A6XX_RB_MRT_ARRAY_PITCH(slice->size));
       tu_cs_emit_qw(cs, iview->image->bo->iova + iview->image->bo_offset +
@@ -452,7 +454,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          cs, tiling->gmem_offsets[gmem_index++]); /* RB_MRT[i].BASE_GMEM */
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_MRT_REG(i), 1);
-      tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(RB6_R8G8B8A8_UNORM));
+      tu_cs_emit(cs, A6XX_SP_FS_MRT_REG_COLOR_FORMAT(format->rb));
 
 #if 0
       /* when we support UBWC, these would be the system memory
@@ -592,19 +594,20 @@ tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
       slice->pitch * vk_format_get_blocksize(iview->vk_format);
    const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
-   const enum a6xx_color_fmt format = RB6_R8G8B8A8_UNORM;
-   const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
    tu_cs_emit(cs, blit_info);
 
    /* tile mode? */
+   const struct tu_native_format *format =
+      tu6_get_native_format(iview->vk_format);
+   assert(format && format->rb >= 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 5);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
+                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
+                     A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(format->swap));
    tu_cs_emit_qw(cs,
                  iview->image->bo->iova + iview->image->bo_offset + offset);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_PITCH(stride));
@@ -623,14 +626,17 @@ tu6_emit_blit_clear(struct tu_cmd_buffer *cmd,
 {
    const enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
    const enum a3xx_msaa_samples samples = tu6_msaa_samples(1);
-   const enum a6xx_color_fmt format = RB6_R8G8B8A8_UNORM;
+
+   const struct tu_native_format *format =
+      tu6_get_native_format(iview->vk_format);
+   assert(format && format->rb >= 0);
    /* must be WZYX; other values are ignored */
    const enum a3xx_color_swap swap = WZYX;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_TILE_MODE(tile_mode) |
                      A6XX_RB_BLIT_DST_INFO_SAMPLES(samples) |
-                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format) |
+                     A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(format->rb) |
                      A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(swap));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);

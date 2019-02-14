@@ -34,15 +34,6 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
-struct tu_native_format
-{
-   int vtx; /* VFMTn_xxx or -1 */
-   int tex; /* TFMTn_xxx or -1 */
-   int rb;  /* RBn_xxx or -1 */
-   enum a3xx_color_swap swap;
-   bool present;
-};
-
 /**
  * Declare a format table.  A format table is an array of tu_native_format.
  * It can map a consecutive range of VkFormat to the corresponding
@@ -325,7 +316,7 @@ TU_FORMAT_TABLE(tu6_format_table0) = {
 #undef TU_FORMAT_TABLE_FIRST
 #undef TU_FORMAT_TABLE_LAST
 
-static const struct tu_native_format *
+const struct tu_native_format *
 tu6_get_native_format(VkFormat format)
 {
    const struct tu_native_format *fmt = NULL;
