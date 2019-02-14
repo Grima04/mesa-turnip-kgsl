@@ -299,6 +299,20 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 				LLVMValueRef glc);
 
 LLVMValueRef
+ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
+			    LLVMValueRef rsrc,
+			    LLVMValueRef vindex,
+			    LLVMValueRef voffset,
+			    LLVMValueRef soffset,
+			    unsigned num_channels,
+			    unsigned dfmt,
+			    unsigned nfmt,
+			    bool glc,
+			    bool slc,
+			    bool can_speculate,
+			    bool structurized);
+
+LLVMValueRef
 ac_get_thread_id(struct ac_llvm_context *ctx);
 
 #define AC_TID_MASK_TOP_LEFT 0xfffffffc

@@ -1364,6 +1364,44 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
 }
 
+LLVMValueRef
+ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
+			    LLVMValueRef rsrc,
+			    LLVMValueRef vindex,
+			    LLVMValueRef voffset,
+			    LLVMValueRef soffset,
+			    unsigned num_channels,
+			    unsigned dfmt,
+			    unsigned nfmt,
+			    bool glc,
+			    bool slc,
+			    bool can_speculate,
+			    bool structurized)
+{
+	LLVMValueRef args[6];
+	int idx = 0;
+	args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
+	if (structurized)
+		args[idx++] = vindex ? vindex : ctx->i32_0;
+	args[idx++] = voffset ? voffset : ctx->i32_0;
+	args[idx++] = soffset ? soffset : ctx->i32_0;
+	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
+	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	unsigned func = CLAMP(num_channels, 1, 3) - 1;
+
+	LLVMTypeRef types[] = {ctx->i32, ctx->v2i32, ctx->v4i32};
+	const char *type_names[] = {"i32", "v2i32", "v4i32"};
+	const char *indexing_kind = structurized ? "struct" : "raw";
+	char name[256];
+
+	snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.load.%s",
+		 indexing_kind, type_names[func]);
+
+	return ac_build_intrinsic(ctx, name, types[func], args,
+				  idx,
+				  ac_get_load_intr_attribs(can_speculate));
+}
+
 /**
  * Set range metadata on an instruction.  This can only be used on load and
  * call instructions.  If you know an instruction can only produce the values
