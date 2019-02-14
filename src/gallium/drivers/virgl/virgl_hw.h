@@ -235,6 +235,7 @@ enum virgl_formats {
 #define VIRGL_CAP_SRGB_WRITE_CONTROL   (1 << 15)
 #define VIRGL_CAP_QBO                  (1 << 16)
 #define VIRGL_CAP_TRANSFER             (1 << 17)
+#define VIRGL_CAP_FBO_MIXED_COLOR_FORMATS (1 << 18)
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
