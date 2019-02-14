@@ -133,45 +133,6 @@ opt_constant_if(nir_if *if_stmt, bool condition)
 }
 
 static bool
-cf_node_has_side_effects(nir_cf_node *node)
-{
-   nir_foreach_block_in_cf_node(block, node) {
-      bool inside_loop = node->type == nir_cf_node_loop;
-      for (nir_cf_node *n = &block->cf_node; !inside_loop && n != node; n = n->parent) {
-         if (n->type == nir_cf_node_loop)
-            inside_loop = true;
-      }
-
-      nir_foreach_instr(instr, block) {
-         if (instr->type == nir_instr_type_call)
-            return true;
-
-         /* Return instructions can cause us to skip over other side-effecting
-          * instructions after the loop, so consider them to have side effects
-          * here.
-          *
-          * When the block is not inside a loop, break and continue might also
-          * cause a skip.
-          */
-
-         if (instr->type == nir_instr_type_jump &&
-             (!inside_loop || nir_instr_as_jump(instr)->type == nir_jump_return))
-            return true;
-
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (!(nir_intrinsic_infos[intrin->intrinsic].flags &
-             NIR_INTRINSIC_CAN_ELIMINATE))
-            return true;
-      }
-   }
-
-   return false;
-}
-
-static bool
 def_not_live_out(nir_ssa_def *def, void *state)
 {
    nir_block *after = state;
@@ -207,8 +168,38 @@ node_is_dead(nir_cf_node *node)
        nir_block_first_instr(after)->type == nir_instr_type_phi)
       return false;
 
-   if (cf_node_has_side_effects(node))
-      return false;
+   nir_foreach_block_in_cf_node(block, node) {
+      bool inside_loop = node->type == nir_cf_node_loop;
+      for (nir_cf_node *n = &block->cf_node;
+           !inside_loop && n != node; n = n->parent) {
+         if (n->type == nir_cf_node_loop)
+            inside_loop = true;
+      }
+
+      nir_foreach_instr(instr, block) {
+         if (instr->type == nir_instr_type_call)
+            return true;
+
+         /* Return instructions can cause us to skip over other side-effecting
+          * instructions after the loop, so consider them to have side effects
+          * here.
+          *
+          * When the block is not inside a loop, break and continue might also
+          * cause a skip.
+          */
+         if (instr->type == nir_instr_type_jump &&
+             (!inside_loop || nir_instr_as_jump(instr)->type == nir_jump_return))
+            return false;
+
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (!(nir_intrinsic_infos[intrin->intrinsic].flags &
+             NIR_INTRINSIC_CAN_ELIMINATE))
+            return false;
+      }
+   }
 
    nir_function_impl *impl = nir_cf_node_get_function(node);
    nir_metadata_require(impl, nir_metadata_live_ssa_defs |
