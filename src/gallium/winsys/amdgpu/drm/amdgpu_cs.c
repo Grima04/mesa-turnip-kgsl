@@ -384,12 +384,12 @@ static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
 static bool amdgpu_cs_has_chaining(struct amdgpu_cs *cs)
 {
    return cs->ctx->ws->info.chip_class >= CIK &&
-          cs->ring_type == RING_GFX;
+          (cs->ring_type == RING_GFX || cs->ring_type == RING_COMPUTE);
 }
 
-static unsigned amdgpu_cs_epilog_dws(enum ring_type ring_type)
+static unsigned amdgpu_cs_epilog_dws(struct amdgpu_cs *cs)
 {
-   if (ring_type == RING_GFX)
+   if (amdgpu_cs_has_chaining(cs))
       return 4; /* for chaining */
 
    return 0;
@@ -787,7 +787,7 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
    ib->base.current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
 
    ib_size = ib->big_ib_buffer->size - ib->used_ib_space;
-   ib->base.current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs->ring_type);
+   ib->base.current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs);
    assert(ib->base.current.max_dw >= ib->max_check_space_size / 4);
    ib->base.gpu_address = info->va_start;
    return true;
@@ -985,7 +985,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    struct amdgpu_ib *ib = amdgpu_ib(rcs);
    struct amdgpu_cs *cs = amdgpu_cs_from_ib(ib);
    unsigned requested_size = rcs->prev_dw + rcs->current.cdw + dw;
-   unsigned cs_epilog_dw = amdgpu_cs_epilog_dws(cs->ring_type);
+   unsigned cs_epilog_dw = amdgpu_cs_epilog_dws(cs);
    unsigned need_byte_size = (dw + cs_epilog_dw) * 4;
    uint64_t va;
    uint32_t *new_ptr_ib_size;
@@ -1518,7 +1518,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    struct amdgpu_winsys *ws = cs->ctx->ws;
    int error_code = 0;
 
-   rcs->current.max_dw += amdgpu_cs_epilog_dws(cs->ring_type);
+   rcs->current.max_dw += amdgpu_cs_epilog_dws(cs);
 
    switch (cs->ring_type) {
    case RING_DMA:
