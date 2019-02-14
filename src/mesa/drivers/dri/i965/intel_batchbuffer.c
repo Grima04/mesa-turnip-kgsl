@@ -188,6 +188,8 @@ intel_batchbuffer_init(struct brw_context *brw)
 static unsigned
 add_exec_bo(struct intel_batchbuffer *batch, struct brw_bo *bo)
 {
+   assert(bo->bufmgr == batch->batch.bo->bufmgr);
+
    unsigned index = READ_ONCE(bo->index);
 
    if (index < batch->exec_count && batch->exec_bos[index] == bo)
