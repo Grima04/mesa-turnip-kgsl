@@ -30,6 +30,8 @@
 struct iris_batch;
 struct iris_context;
 
+#define IRIS_MAX_MIPLEVELS 15
+
 struct iris_format_info {
    enum isl_format fmt;
    struct isl_swizzle swizzle;
