@@ -1432,8 +1432,6 @@ foreach a : cpp_args
   add_project_arguments(a, language : ['cpp'])
 endforeach
 
-inc_include = include_directories('include')
-
 gl_priv_reqs = []
 
 if with_glx == 'xlib' or with_glx == 'gallium-xlib'
