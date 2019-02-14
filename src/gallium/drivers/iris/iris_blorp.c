@@ -316,11 +316,35 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    /* We've smashed all state compared to what the normal 3D pipeline
     * rendering tracks for GL.
     */
-   // XXX: skip some if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
-   ice->state.dirty |= ~(IRIS_DIRTY_POLYGON_STIPPLE |
+
+   uint64_t skip_bits = (IRIS_DIRTY_POLYGON_STIPPLE |
                          IRIS_DIRTY_SO_BUFFERS |
                          IRIS_DIRTY_SO_DECL_LIST |
-                         IRIS_DIRTY_LINE_STIPPLE);
+                         IRIS_DIRTY_LINE_STIPPLE |
+                         IRIS_ALL_DIRTY_FOR_COMPUTE |
+                         IRIS_DIRTY_SCISSOR_RECT |
+                         IRIS_DIRTY_UNCOMPILED_VS |
+                         IRIS_DIRTY_UNCOMPILED_TCS |
+                         IRIS_DIRTY_UNCOMPILED_TES |
+                         IRIS_DIRTY_UNCOMPILED_GS |
+                         IRIS_DIRTY_UNCOMPILED_FS |
+                         IRIS_DIRTY_VF |
+                         IRIS_DIRTY_SF_CL_VIEWPORT |
+                         IRIS_DIRTY_SAMPLER_STATES_VS |
+                         IRIS_DIRTY_SAMPLER_STATES_TCS |
+                         IRIS_DIRTY_SAMPLER_STATES_TES |
+                         IRIS_DIRTY_SAMPLER_STATES_GS);
+
+   /* we can skip flagging IRIS_DIRTY_DEPTH_BUFFER, if
+    * BLORP_BATCH_NO_EMIT_DEPTH_STENCIL is set.
+    */
+   if (blorp_batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL)
+      skip_bits |= IRIS_DIRTY_DEPTH_BUFFER;
+
+   if (!params->wm_prog_data)
+      skip_bits |= IRIS_DIRTY_BLEND_STATE | IRIS_DIRTY_PS_BLEND;
+
+   ice->state.dirty |= ~skip_bits;
 
    if (params->dst.enabled) {
       iris_render_cache_add_bo(batch, params->dst.addr.buffer,
