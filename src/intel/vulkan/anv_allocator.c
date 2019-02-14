@@ -1021,7 +1021,7 @@ anv_state_pool_return_blocks(struct anv_state_pool *pool,
    assert(chunk_offset % block_size == 0);
 
    uint32_t st_idx;
-   VkResult result = anv_state_table_add(&pool->table, &st_idx, count);
+   UNUSED VkResult result = anv_state_table_add(&pool->table, &st_idx, count);
    assert(result == VK_SUCCESS);
    for (int i = 0; i < count; i++) {
       /* update states that were added back to the state table */
@@ -1164,7 +1164,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
                                                 &padding);
    /* Everytime we allocate a new state, add it to the state pool */
    uint32_t idx;
-   VkResult result = anv_state_table_add(&pool->table, &idx, 1);
+   UNUSED VkResult result = anv_state_table_add(&pool->table, &idx, 1);
    assert(result == VK_SUCCESS);
 
    state = anv_state_table_get(&pool->table, idx);
@@ -1208,7 +1208,7 @@ anv_state_pool_alloc_back(struct anv_state_pool *pool)
    offset = anv_block_pool_alloc_back(&pool->block_pool,
                                       pool->block_size);
    uint32_t idx;
-   VkResult result = anv_state_table_add(&pool->table, &idx, 1);
+   UNUSED VkResult result = anv_state_table_add(&pool->table, &idx, 1);
    assert(result == VK_SUCCESS);
 
    state = anv_state_table_get(&pool->table, idx);

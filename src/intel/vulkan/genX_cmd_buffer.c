@@ -947,7 +947,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    assert(level_count != VK_REMAINING_MIP_LEVELS &&
           layer_count != VK_REMAINING_ARRAY_LAYERS);
    /* Ensure the subresource range is valid. */
-   uint64_t last_level_num = base_level + level_count;
+   UNUSED uint64_t last_level_num = base_level + level_count;
    const uint32_t max_depth = anv_minify(image->extent.depth, base_level);
    UNUSED const uint32_t image_layers = MAX2(image->array_size, max_depth);
    assert((uint64_t)base_layer + layer_count  <= image_layers);
