@@ -294,16 +294,16 @@ struct intel_mipmap_tree
    struct intel_mipmap_tree *stencil_mt;
 
    /**
-    * \brief Stencil texturing miptree for sampling from a stencil texture
+    * \brief Shadow miptree for sampling when the main isn't supported by HW.
     *
-    * Some hardware doesn't support sampling from the stencil texture as
-    * required by the GL_ARB_stencil_texturing extenion. To workaround this we
-    * blit the texture into a new texture that can be sampled.
+    * To workaround various sampler bugs and limitations, we blit the main
+    * texture into a new texture that can be sampled.
     *
-    * \see intel_update_r8stencil()
+    * This miptree may be used for:
+    * - Stencil texturing (pre-BDW) as required by GL_ARB_stencil_texturing.
     */
-   struct intel_mipmap_tree *r8stencil_mt;
-   bool r8stencil_needs_update;
+   struct intel_mipmap_tree *shadow_mt;
+   bool shadow_needs_update;
 
    /**
     * \brief CCS, MCS, or HiZ auxiliary buffer.

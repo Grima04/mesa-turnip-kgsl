@@ -1214,7 +1214,7 @@ intel_miptree_release(struct intel_mipmap_tree **mt)
 
       brw_bo_unreference((*mt)->bo);
       intel_miptree_release(&(*mt)->stencil_mt);
-      intel_miptree_release(&(*mt)->r8stencil_mt);
+      intel_miptree_release(&(*mt)->shadow_mt);
       intel_miptree_aux_buffer_free((*mt)->aux_buf);
       free_aux_state_map((*mt)->aux_state);
 
@@ -2427,7 +2427,7 @@ intel_miptree_finish_write(struct brw_context *brw,
    switch (mt->aux_usage) {
    case ISL_AUX_USAGE_NONE:
       if (mt->format == MESA_FORMAT_S_UINT8 && devinfo->gen <= 7)
-         mt->r8stencil_needs_update = true;
+         mt->shadow_needs_update = true;
       break;
 
    case ISL_AUX_USAGE_MCS:
@@ -2933,9 +2933,9 @@ intel_update_r8stencil(struct brw_context *brw,
 
    assert(src->surf.size_B > 0);
 
-   if (!mt->r8stencil_mt) {
+   if (!mt->shadow_mt) {
       assert(devinfo->gen > 6); /* Handle MIPTREE_LAYOUT_GEN6_HIZ_STENCIL */
-      mt->r8stencil_mt = make_surface(
+      mt->shadow_mt = make_surface(
                             brw,
                             src->target,
                             MESA_FORMAT_R_UINT8,
@@ -2949,13 +2949,13 @@ intel_update_r8stencil(struct brw_context *brw,
                             ISL_TILING_Y0_BIT,
                             ISL_SURF_USAGE_TEXTURE_BIT,
                             BO_ALLOC_BUSY, 0, NULL);
-      assert(mt->r8stencil_mt);
+      assert(mt->shadow_mt);
    }
 
-   if (src->r8stencil_needs_update == false)
+   if (src->shadow_needs_update == false)
       return;
 
-   struct intel_mipmap_tree *dst = mt->r8stencil_mt;
+   struct intel_mipmap_tree *dst = mt->shadow_mt;
 
    for (int level = src->first_level; level <= src->last_level; level++) {
       const unsigned depth = src->surf.dim == ISL_SURF_DIM_3D ?
@@ -2975,7 +2975,7 @@ intel_update_r8stencil(struct brw_context *brw,
    }
 
    brw_cache_flush_for_read(brw, dst->bo);
-   src->r8stencil_needs_update = false;
+   src->shadow_needs_update = false;
 }
 
 static void *
