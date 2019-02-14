@@ -538,6 +538,7 @@ struct v3d_compile {
          * yes, otherwise a block number + 1 that the channel jumped to.
          */
         struct qreg execute;
+        bool in_control_flow;
 
         struct qreg line_x, point_x, point_y;
 
