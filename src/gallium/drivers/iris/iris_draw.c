@@ -180,10 +180,9 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    /* We can't do resolves on the compute engine, so awkwardly, we have to
     * do them on the render batch...
     */
-   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      iris_predraw_resolve_inputs(ice, &ice->batches[IRIS_BATCH_RENDER],
-                                  &ice->state.shaders[stage], NULL, false);
-   }
+   iris_predraw_resolve_inputs(ice, &ice->batches[IRIS_BATCH_RENDER],
+                               &ice->state.shaders[MESA_SHADER_COMPUTE],
+                               NULL, false);
 
    iris_batch_maybe_flush(batch, 1500);
 
