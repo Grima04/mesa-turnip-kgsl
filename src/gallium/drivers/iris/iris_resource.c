@@ -187,14 +187,10 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
       return;
    }
 
-   const struct util_format_description *desc =
-      util_format_description(res->format);
-
-   if (util_format_has_depth(desc)) {
+   if (res->format != PIPE_FORMAT_S8_UINT) {
       *out_z = (void *) res;
       *out_s = (void *) iris_resource_get_separate_stencil(res);
    } else {
-      assert(util_format_has_stencil(desc));
       *out_z = NULL;
       *out_s = (void *) res;
    }
