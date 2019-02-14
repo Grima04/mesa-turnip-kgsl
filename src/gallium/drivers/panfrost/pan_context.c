@@ -2591,6 +2591,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         struct panfrost_query *query = (struct panfrost_query *) q;
 
         switch (query->type) {
+                case PIPE_QUERY_OCCLUSION_COUNTER:
                 case PIPE_QUERY_OCCLUSION_PREDICATE:
                 case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 {
@@ -2633,13 +2634,19 @@ panfrost_get_query_result(struct pipe_context *pipe,
         panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
 
         switch (query->type) {
+                case PIPE_QUERY_OCCLUSION_COUNTER:
                 case PIPE_QUERY_OCCLUSION_PREDICATE:
                 case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
                         /* Read back the query results */
                         unsigned *result = (unsigned *) query->transfer.cpu;
                         unsigned passed = *result;
 
-                        vresult->b = !!passed;
+                        if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
+                                vresult->u64 = passed;
+                        } else {
+                                vresult->b = !!passed;
+                        }
+
                         break;
                 }
                 default:
