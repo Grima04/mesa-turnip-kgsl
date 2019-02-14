@@ -396,6 +396,25 @@ struct tu_meta_state
 
 #define TU_MAX_QUEUE_FAMILIES 1
 
+struct tu_fence
+{
+   bool signaled;
+   int fd;
+};
+
+void
+tu_fence_init(struct tu_fence *fence, bool signaled);
+void
+tu_fence_finish(struct tu_fence *fence);
+void
+tu_fence_update_fd(struct tu_fence *fence, int fd);
+void
+tu_fence_copy(struct tu_fence *fence, const struct tu_fence *src);
+void
+tu_fence_signal(struct tu_fence *fence);
+void
+tu_fence_wait_idle(struct tu_fence *fence);
+
 struct tu_queue
 {
    VK_LOADER_DATA _loader_data;
@@ -405,7 +424,7 @@ struct tu_queue
    VkDeviceQueueCreateFlags flags;
 
    uint32_t msm_queue_id;
-   int submit_fence_fd;
+   struct tu_fence submit_fence;
 };
 
 struct tu_device
@@ -1266,12 +1285,6 @@ tu_meta_push_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
                             uint32_t set,
                             uint32_t descriptorWriteCount,
                             const VkWriteDescriptorSet *pDescriptorWrites);
-
-struct tu_fence
-{
-   uint32_t syncobj;
-   uint32_t temp_syncobj;
-};
 
 int
 tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);

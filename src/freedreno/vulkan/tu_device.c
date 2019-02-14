@@ -979,7 +979,7 @@ tu_queue_init(struct tu_device *device,
    if (ret)
       return VK_ERROR_INITIALIZATION_FAILED;
 
-   queue->submit_fence_fd = -1;
+   tu_fence_init(&queue->submit_fence, false);
 
    return VK_SUCCESS;
 }
@@ -987,9 +987,7 @@ tu_queue_init(struct tu_device *device,
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
-   if (queue->submit_fence_fd >= 0) {
-      close(queue->submit_fence_fd);
-   }
+   tu_fence_finish(&queue->submit_fence);
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
@@ -1252,12 +1250,15 @@ tu_QueueSubmit(VkQueue _queue,
 
       if (last_submit) {
          /* no need to merge fences as queue execution is serialized */
-         if (queue->submit_fence_fd >= 0) {
-            close(queue->submit_fence_fd);
-         }
-         queue->submit_fence_fd = req.fence_fd;
+         tu_fence_update_fd(&queue->submit_fence, req.fence_fd);
       }
    }
+
+   if (_fence != VK_NULL_HANDLE) {
+      TU_FROM_HANDLE(tu_fence, fence, _fence);
+      tu_fence_copy(fence, &queue->submit_fence);
+   }
+
    return VK_SUCCESS;
 }
 
@@ -1266,14 +1267,7 @@ tu_QueueWaitIdle(VkQueue _queue)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
 
-   if (queue->submit_fence_fd >= 0) {
-      int ret = sync_wait(queue->submit_fence_fd, -1);
-      if (ret)
-         tu_loge("sync_wait on fence fd %d failed", queue->submit_fence_fd);
-
-      close(queue->submit_fence_fd);
-      queue->submit_fence_fd = -1;
-   }
+   tu_fence_wait_idle(&queue->submit_fence);
 
    return VK_SUCCESS;
 }
@@ -1653,62 +1647,6 @@ tu_QueueBindSparse(VkQueue _queue,
                    uint32_t bindInfoCount,
                    const VkBindSparseInfo *pBindInfo,
                    VkFence _fence)
-{
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_CreateFence(VkDevice _device,
-               const VkFenceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *pAllocator,
-               VkFence *pFence)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-
-   struct tu_fence *fence =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*fence), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
-   if (!fence)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   *pFence = tu_fence_to_handle(fence);
-
-   return VK_SUCCESS;
-}
-
-void
-tu_DestroyFence(VkDevice _device,
-                VkFence _fence,
-                const VkAllocationCallbacks *pAllocator)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_fence, fence, _fence);
-
-   if (!fence)
-      return;
-
-   vk_free2(&device->alloc, pAllocator, fence);
-}
-
-VkResult
-tu_WaitForFences(VkDevice _device,
-                 uint32_t fenceCount,
-                 const VkFence *pFences,
-                 VkBool32 waitAll,
-                 uint64_t timeout)
-{
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
-{
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
    return VK_SUCCESS;
 }

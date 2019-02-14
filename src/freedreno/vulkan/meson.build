@@ -55,6 +55,7 @@ libtu_files = files(
   'tu_descriptor_set.c',
   'tu_descriptor_set.h',
   'tu_drm.c',
+  'tu_fence.c',
   'tu_formats.c',
   'tu_image.c',
   'tu_meta_blit.c',
