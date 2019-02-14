@@ -1347,20 +1347,33 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 				LLVMValueRef immoffset,
 				LLVMValueRef glc)
 {
-	const char *name = "llvm.amdgcn.tbuffer.load.i32";
-	LLVMTypeRef type = ctx->i32;
-	LLVMValueRef params[] = {
-				rsrc,
-				vindex,
-				voffset,
-				soffset,
-				immoffset,
-				LLVMConstInt(ctx->i32, V_008F0C_BUF_DATA_FORMAT_16, false),
-				LLVMConstInt(ctx->i32, V_008F0C_BUF_NUM_FORMAT_UINT, false),
-				glc,
-				ctx->i1false,
-	};
-	LLVMValueRef res = ac_build_intrinsic(ctx, name, type, params, 9, 0);
+	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
+	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+	LLVMValueRef res;
+
+	if (HAVE_LLVM >= 0x0800) {
+		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
+
+		res = ac_build_llvm8_tbuffer_load(ctx, rsrc, vindex, voffset,
+						  soffset, 1, dfmt, nfmt, glc,
+						  false, true, true);
+	} else {
+		const char *name = "llvm.amdgcn.tbuffer.load.i32";
+		LLVMTypeRef type = ctx->i32;
+		LLVMValueRef params[] = {
+					rsrc,
+					vindex,
+					voffset,
+					soffset,
+					immoffset,
+					LLVMConstInt(ctx->i32, dfmt, false),
+					LLVMConstInt(ctx->i32, nfmt, false),
+					glc,
+					ctx->i1false,
+		};
+		res = ac_build_intrinsic(ctx, name, type, params, 9, 0);
+	}
+
 	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
 }
 
