@@ -1894,7 +1894,9 @@ panfrost_bind_vertex_elements_state(
 static void
 panfrost_delete_vertex_elements_state(struct pipe_context *pctx, void *hwcso)
 {
-        printf("Vertex elements delete leaks descriptor\n");
+        struct panfrost_vertex_state *so = (struct panfrost_vertex_state *) hwcso;
+        unsigned bytes = sizeof(struct mali_attr_meta) * so->num_elements;
+        printf("Vertex elements delete leaks descriptor (%d bytes)\n", bytes);
         free(hwcso);
 }
 
@@ -1919,7 +1921,15 @@ panfrost_delete_shader_state(
         struct pipe_context *pctx,
         void *so)
 {
-        printf("Deleting shader state maybe leaks tokens, per-variant compiled shaders, per-variant  descriptors\n");
+        struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
+
+        if (cso->base.type == PIPE_SHADER_IR_TGSI) {
+                printf("Deleting TGSI shader leaks duplicated tokens\n");
+        }
+
+        unsigned leak = cso->variant_count * sizeof(struct mali_shader_meta);
+        printf("Deleting shader state leaks descriptors (%d bytes), and shader bytecode\n", leak);
+
         free(so);
 }
 
@@ -2412,7 +2422,12 @@ static void
 panfrost_delete_blend_state(struct pipe_context *pipe,
                             void *blend)
 {
-        printf("Deleting blend state may leak blend shader\n");
+        struct panfrost_blend_state *so = (struct panfrost_blend_state *) blend;
+
+        if (so->has_blend_shader) {
+                printf("Deleting blend state leak blend shaders bytecode\n");
+        }
+
         free(blend);
 }
 

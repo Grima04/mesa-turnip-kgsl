@@ -185,52 +185,38 @@ static struct panfrost_bo *
 panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *template)
 {
 	struct panfrost_bo *bo = CALLOC_STRUCT(panfrost_bo);
+
+        /* Calculate the size of the bo */
+
         int bytes_per_pixel = util_format_get_blocksize(template->format);
         int stride = bytes_per_pixel * template->width0; /* TODO: Alignment? */
         size_t sz = stride;
 
         if (template->height0) sz *= template->height0;
-
         if (template->depth0) sz *= template->depth0;
 
-        if ((template->bind & PIPE_BIND_RENDER_TARGET) || (template->bind & PIPE_BIND_DEPTH_STENCIL)) {
-		/* TODO: Mipmapped RTs */
-		//assert(template->last_level == 0);
+        /* Tiling textures is almost always faster, unless we only use it once */
+        bo->tiled = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
 
-		/* Allocate the framebuffer as its own slab of GPU-accessible memory */
-		struct panfrost_memory slab;
-		screen->driver->allocate_slab(screen, &slab, (sz / 4096) + 1, false, 0, 0, 0);
+        if (bo->tiled) {
+                /* For tiled, we don't map directly, so just malloc any old buffer */
 
-		/* Make the resource out of the slab */
-		bo->cpu[0] = slab.cpu;
-		bo->gpu[0] = slab.gpu;
-	} else {
-                /* TODO: For linear resources, allocate straight on the cmdstream for
-                 * zero-copy operation */
-
-                /* Tiling textures is almost always faster, unless we only use it once */
-                bo->tiled = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
-
-                if (bo->tiled) {
-                        /* For tiled, we don't map directly, so just malloc any old buffer */
-
-                        for (int l = 0; l < (template->last_level + 1); ++l) {
-                                bo->cpu[l] = malloc(sz);
-                                //sz >>= 2;
-                        }
-                } else {
-                        /* But for linear, we can! */
-
-                        struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, sz, HEAP_TEXTURE);
-                        struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
-                        struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
-                        bo->entry[0] = p_entry;
-                        bo->cpu[0] = backing->cpu + p_entry->offset;
-                        bo->gpu[0] = backing->gpu + p_entry->offset;
-
-                        /* TODO: Mipmap */
+                for (int l = 0; l < (template->last_level + 1); ++l) {
+                        bo->cpu[l] = malloc(sz);
+                        sz >>= 2;
                 }
-	}
+        } else {
+                /* But for linear, we can! */
+
+                struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, sz, HEAP_TEXTURE);
+                struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
+                struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
+                bo->entry[0] = p_entry;
+                bo->cpu[0] = backing->cpu + p_entry->offset;
+                bo->gpu[0] = backing->gpu + p_entry->offset;
+
+                /* TODO: Mipmap */
+        }
 
         return bo;
 }
@@ -293,8 +279,6 @@ panfrost_resource_create(struct pipe_screen *screen,
 		so->bo = panfrost_create_bo(pscreen, template);
         }
 
-        printf("Created resource %p with scanout %p\n", so, so->scanout);
-
         return (struct pipe_resource *)so;
 }
 
@@ -303,28 +287,28 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
 {
 	struct panfrost_bo *bo = (struct panfrost_bo *)pbo;
 
+        if (bo->entry[0] != NULL) {
+                /* Most allocations have an entry to free */
+                bo->entry[0]->freed = true;
+                pb_slab_free(&screen->slabs, &bo->entry[0]->base);
+        }
+
         if (bo->tiled) {
-                /* CPU is all malloc'ed, so just plain ol' free needed */
+                /* Tiled has a malloc'd CPU, so just plain ol' free needed */
 
                 for (int l = 0; bo->cpu[l]; l++) {
                         free(bo->cpu[l]);
                 }
-        } else if (bo->entry[0] != NULL) {
-                bo->entry[0]->freed = true;
-                pb_slab_free(&screen->slabs, &bo->entry[0]->base);
-        } else {
-                /* TODO */
-                printf("--leaking main allocation--\n");
         }
 
         if (bo->has_afbc) {
                 /* TODO */
-                printf("--leaking afbc--\n");
+                printf("--leaking afbc (%d bytes)--\n", bo->afbc_metadata_size);
         }
 
         if (bo->has_checksum) {
                 /* TODO */
-                printf("--leaking checksum--\n");
+                printf("--leaking checksum (%zd bytes)--\n", bo->checksum_slab.size);
         }
 }
 
