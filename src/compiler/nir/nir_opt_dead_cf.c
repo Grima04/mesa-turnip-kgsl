@@ -133,11 +133,34 @@ opt_constant_if(nir_if *if_stmt, bool condition)
 }
 
 static bool
-def_not_live_out(nir_ssa_def *def, void *state)
+def_only_used_in_cf_node(nir_ssa_def *def, void *_node)
 {
-   nir_block *after = state;
+   nir_cf_node *node = _node;
+   assert(node->type == nir_cf_node_loop || node->type == nir_cf_node_if);
 
-   return !BITSET_TEST(after->live_in, def->live_index);
+   nir_block *before = nir_cf_node_as_block(nir_cf_node_prev(node));
+   nir_block *after = nir_cf_node_as_block(nir_cf_node_next(node));
+
+   nir_foreach_use(use, def) {
+      /* Because NIR is structured, we can easily determine whether or not a
+       * value escapes a CF node by looking at the block indices of its uses
+       * to see if they lie outside the bounds of the CF node.
+       *
+       * Note: Normally, the uses of a phi instruction are considered to be
+       * used in the block that is the predecessor of the phi corresponding to
+       * that use.  If we were computing liveness or something similar, that
+       * would mean a special case here for phis.  However, we're trying here
+       * to determine if the SSA def ever escapes the loop.  If it's used by a
+       * phi that lives outside the loop then it doesn't matter if the
+       * corresponding predecessor is inside the loop or not because the value
+       * can go through the phi into the outside world and escape the loop.
+       */
+      if (use->parent_instr->block->index <= before->index ||
+          use->parent_instr->block->index >= after->index)
+         return false;
+   }
+
+   return true;
 }
 
 /*
@@ -161,12 +184,17 @@ node_is_dead(nir_cf_node *node)
 {
    assert(node->type == nir_cf_node_loop || node->type == nir_cf_node_if);
 
-   nir_block *before = nir_cf_node_as_block(nir_cf_node_prev(node));
    nir_block *after = nir_cf_node_as_block(nir_cf_node_next(node));
 
+   /* Quick check if there are any phis that follow this CF node.  If there
+    * are, then we automatically know it isn't dead.
+    */
    if (!exec_list_is_empty(&after->instr_list) &&
        nir_block_first_instr(after)->type == nir_instr_type_phi)
       return false;
+
+   nir_function_impl *impl = nir_cf_node_get_function(node);
+   nir_metadata_require(impl, nir_metadata_block_index);
 
    nir_foreach_block_in_cf_node(block, node) {
       bool inside_loop = node->type == nir_cf_node_loop;
@@ -191,24 +219,14 @@ node_is_dead(nir_cf_node *node)
              (!inside_loop || nir_instr_as_jump(instr)->type == nir_jump_return))
             return false;
 
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
+         if (instr->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if (!(nir_intrinsic_infos[intrin->intrinsic].flags &
+                NIR_INTRINSIC_CAN_ELIMINATE))
+               return false;
+         }
 
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (!(nir_intrinsic_infos[intrin->intrinsic].flags &
-             NIR_INTRINSIC_CAN_ELIMINATE))
-            return false;
-      }
-   }
-
-   nir_function_impl *impl = nir_cf_node_get_function(node);
-   nir_metadata_require(impl, nir_metadata_live_ssa_defs |
-                              nir_metadata_dominance);
-
-   for (nir_block *cur = after->imm_dom; cur && cur != before;
-        cur = cur->imm_dom) {
-      nir_foreach_instr(instr, cur) {
-         if (!nir_foreach_ssa_def(instr, def_not_live_out, after))
+         if (!nir_foreach_ssa_def(instr, def_only_used_in_cf_node, node))
             return false;
       }
    }
