@@ -69,14 +69,16 @@ enum mali_draw_mode {
 
 /* Applies to tiler_gl_enables */
 
-#define MALI_CULL_FACE_BACK  0x80
-#define MALI_CULL_FACE_FRONT 0x40
 
-#define MALI_FRONT_FACE(v) (v << 5)
+#define MALI_OCCLUSION_QUERY    (1 << 3)
+#define MALI_OCCLUSION_PRECISE  (1 << 4)
+
+#define MALI_FRONT_FACE(v)      (v << 5)
 #define MALI_CCW (0)
 #define MALI_CW  (1)
 
-#define MALI_OCCLUSION_BOOLEAN 0x8
+#define MALI_CULL_FACE_FRONT    (1 << 6)
+#define MALI_CULL_FACE_BACK     (1 << 7)
 
 /* TODO: Might this actually be a finer bitfield? */
 #define MALI_DEPTH_STENCIL_ENABLE 0x6400

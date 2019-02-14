@@ -1105,7 +1105,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         }
 
         if (ctx->occlusion_query) {
-                ctx->payload_tiler.gl_enables |= MALI_OCCLUSION_BOOLEAN;
+                ctx->payload_tiler.gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
                 ctx->payload_tiler.postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
         }
 
