@@ -200,7 +200,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                    aux_usage);
 
       iris_cache_flush_for_render(batch, res->bo, surf->view.format,
-                                  ISL_AUX_USAGE_NONE);
+                                  aux_usage);
    }
 }
 
