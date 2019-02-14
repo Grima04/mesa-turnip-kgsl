@@ -1122,9 +1122,11 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
 {
    struct pipe_screen *pscreen = image->texture->screen;
    struct winsys_handle whandle;
+   struct pipe_resource *tex;
    unsigned usage;
    memset(&whandle, 0, sizeof(whandle));
    whandle.plane = image->plane;
+   int i;
 
    switch (attrib) {
    case __DRI_IMAGE_ATTRIB_STRIDE:
@@ -1139,7 +1141,9 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
       whandle.type = WINSYS_HANDLE_TYPE_FD;
       break;
    case __DRI_IMAGE_ATTRIB_NUM_PLANES:
-      *value = 1;
+      for (i = 0, tex = image->texture; tex; tex = tex->next)
+         i++;
+      *value = i;
       return true;
    case __DRI_IMAGE_ATTRIB_MODIFIER_UPPER:
    case __DRI_IMAGE_ATTRIB_MODIFIER_LOWER:
