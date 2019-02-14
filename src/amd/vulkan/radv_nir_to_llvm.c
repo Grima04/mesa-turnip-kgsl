@@ -2072,7 +2072,7 @@ radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
 	if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
 		unsigned vec_size = LLVMGetVectorSize(LLVMTypeOf(value));
 
-		if (num_channels == vec_size)
+		if (num_channels == 4 && num_channels == vec_size)
 			return value;
 
 		num_channels = MIN2(num_channels, vec_size);
