@@ -21,6 +21,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#undef NDEBUG
+
 #include "hash_table.h"
 
 static void *make_key(uint32_t i)
