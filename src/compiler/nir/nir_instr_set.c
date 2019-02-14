@@ -498,7 +498,7 @@ dest_is_ssa(nir_dest *dest, void *data)
    return dest->is_ssa;
 }
 
-static bool
+static inline bool
 instr_each_src_and_dest_is_ssa(nir_instr *instr)
 {
    if (!nir_foreach_dest(instr, dest_is_ssa, NULL) ||

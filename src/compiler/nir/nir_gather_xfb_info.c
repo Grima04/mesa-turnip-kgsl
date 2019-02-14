@@ -167,6 +167,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
    qsort(xfb->outputs, xfb->output_count, sizeof(xfb->outputs[0]),
          compare_xfb_output_offsets);
 
+#ifndef NDEBUG
    /* Finally, do a sanity check */
    unsigned max_offset[NIR_MAX_XFB_BUFFERS] = {0};
    for (unsigned i = 0; i < xfb->output_count; i++) {
@@ -175,6 +176,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
       unsigned slots = util_bitcount(xfb->outputs[i].component_mask);
       max_offset[xfb->outputs[i].buffer] = xfb->outputs[i].offset + slots * 4;
    }
+#endif
 
    return xfb;
 }
