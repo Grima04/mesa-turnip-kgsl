@@ -58,7 +58,9 @@ struct panfrost_driver {
 		               int extra_flags,
 		               int commit_count,
 		               int extent);
-	void (*enable_counters) (struct panfrost_screen *screen);
+        void (*free_slab) (struct panfrost_screen *screen,
+                           struct panfrost_memory *mem);
+        void (*enable_counters) (struct panfrost_screen *screen);
 };
 
 struct panfrost_screen {

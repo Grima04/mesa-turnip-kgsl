@@ -287,16 +287,18 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
 {
 	struct panfrost_bo *bo = (struct panfrost_bo *)pbo;
 
-        if (bo->entry[0] != NULL) {
-                /* Most allocations have an entry to free */
-                bo->entry[0]->freed = true;
-                pb_slab_free(&screen->slabs, &bo->entry[0]->base);
+        for (int l = 0; l < MAX_MIP_LEVELS; ++l) {
+                if (bo->entry[l] != NULL) {
+                        /* Most allocations have an entry to free */
+                        bo->entry[l]->freed = true;
+                        pb_slab_free(&screen->slabs, &bo->entry[l]->base);
+                }
         }
 
         if (bo->tiled) {
                 /* Tiled has a malloc'd CPU, so just plain ol' free needed */
 
-                for (int l = 0; bo->cpu[l]; l++) {
+                for (int l = 0; l < MAX_MIP_LEVELS; ++l) {
                         free(bo->cpu[l]);
                 }
         }
@@ -509,9 +511,10 @@ panfrost_slab_can_reclaim(void *priv, struct pb_slab_entry *entry)
 static void
 panfrost_slab_free(void *priv, struct pb_slab *slab)
 {
-        /* STUB */
-        //struct panfrost_memory *mem = (struct panfrost_memory *) slab;
-        printf("stub: Tried to free slab\n");
+        struct panfrost_memory *mem = (struct panfrost_memory *) slab;
+        struct panfrost_screen *screen = (struct panfrost_screen *) priv;
+
+        screen->driver->free_slab(screen, mem);
 }
 
 static void
