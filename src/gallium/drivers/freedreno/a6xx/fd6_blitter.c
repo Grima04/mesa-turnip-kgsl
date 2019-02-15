@@ -521,12 +521,22 @@ rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 {
 	struct pipe_blit_info separate = *info;
 
+	if (DEBUG_BLIT_FALLBACK) {
+		fprintf(stderr, "---- rewrite_separate_zs_blit: ");
+		util_dump_blit_info(stderr, info);
+		fprintf(stderr, "\ndst resource: ");
+		util_dump_resource(stderr, info->dst.resource);
+		fprintf(stderr, "\nsrc resource: ");
+		util_dump_resource(stderr, info->src.resource);
+		fprintf(stderr, "\n\n");
+	}
+
 	switch (info->src.format) {
 	case PIPE_FORMAT_S8_UINT:
 		debug_assert(info->mask == PIPE_MASK_S);
 		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R8_UNORM;
-		separate.dst.format = PIPE_FORMAT_R8_UNORM;
+		separate.src.format = PIPE_FORMAT_R8_UINT;
+		separate.dst.format = PIPE_FORMAT_R8_UINT;
 		emit_blit_texture(ring, &separate);
 		break;
 
@@ -539,8 +549,8 @@ rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		}
 		if (info->mask & PIPE_MASK_S) {
 			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R8_UNORM;
-			separate.dst.format = PIPE_FORMAT_R8_UNORM;
+			separate.src.format = PIPE_FORMAT_R8_UINT;
+			separate.dst.format = PIPE_FORMAT_R8_UINT;
 			separate.src.resource = &fd_resource(info->src.resource)->stencil->base;
 			separate.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
 			emit_blit_texture(ring, &separate);
