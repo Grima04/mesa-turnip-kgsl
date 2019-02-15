@@ -299,7 +299,8 @@ iris_clear_render_target(struct pipe_context *ctx,
    /* pipe_color_union and isl_color_value are interchangeable */
    union isl_color_value *color = (void *) p_color;
 
-   clear_color(ice, psurf->texture, psurf->u.tex.level, &box, true,
+   clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
+               render_condition_enabled,
                isurf->view.format, *color);
 }
 
@@ -330,7 +331,8 @@ iris_clear_depth_stencil(struct pipe_context *ctx,
 
    assert(util_format_is_depth_or_stencil(psurf->texture->format));
 
-   clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
+   clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box,
+                       render_condition_enabled,
                        flags & PIPE_CLEAR_DEPTH, flags & PIPE_CLEAR_STENCIL,
                        depth, stencil);
 }
