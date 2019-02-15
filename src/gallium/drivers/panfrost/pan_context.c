@@ -2286,8 +2286,8 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         ctx->pipe_framebuffer.nr_cbufs = fb->nr_cbufs;
         ctx->pipe_framebuffer.samples = fb->samples;
         ctx->pipe_framebuffer.layers = fb->layers;
-        ctx->pipe_framebuffer.width = ALIGN(fb->width, 16);
-        ctx->pipe_framebuffer.height = ALIGN(fb->height, 16);
+        ctx->pipe_framebuffer.width = fb->width;
+        ctx->pipe_framebuffer.height = fb->height;
 
         for (int i = 0; i < PIPE_MAX_COLOR_BUFS; i++) {
                 struct pipe_surface *cb = i < fb->nr_cbufs ? fb->cbufs[i] : NULL;
