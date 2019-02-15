@@ -3023,31 +3023,14 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
    /* Render target change */
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
 
+   ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
+
    ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
 
    if (GEN_GEN == 8)
       ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
-
-#if GEN_GEN == 11
-   // XXX: we may want to flag IRIS_DIRTY_MULTISAMPLE (or SAMPLE_MASK?)
-   // XXX: see commit 979fc1bc9bcc64027ff2cfafd285676f31b930a6
-
-   /* The PIPE_CONTROL command description says:
-    *
-    *   "Whenever a Binding Table Index (BTI) used by a Render Target Message
-    *    points to a different RENDER_SURFACE_STATE, SW must issue a Render
-    *    Target Cache Flush by enabling this bit. When render target flush
-    *    is set due to new association of BTI, PS Scoreboard Stall bit must
-    *    be set in this packet."
-    */
-   // XXX: does this need to happen at 3DSTATE_BTP_PS time?
-   iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
-                                "workaround: RT BTI change [draw]",
-                                PIPE_CONTROL_RENDER_TARGET_FLUSH |
-                                PIPE_CONTROL_STALL_AT_SCOREBOARD);
-#endif
 }
 
 /**
@@ -5295,6 +5278,24 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             ptr.PointertoVSBindingTable = binder->bt_offset[stage];
          }
       }
+   }
+
+   if (GEN_GEN >= 11 && (dirty & IRIS_DIRTY_RENDER_BUFFER)) {
+      // XXX: we may want to flag IRIS_DIRTY_MULTISAMPLE (or SAMPLE_MASK?)
+      // XXX: see commit 979fc1bc9bcc64027ff2cfafd285676f31b930a6
+
+      /* The PIPE_CONTROL command description says:
+       *
+       *   "Whenever a Binding Table Index (BTI) used by a Render Target
+       *    Message points to a different RENDER_SURFACE_STATE, SW must issue a
+       *    Render Target Cache Flush by enabling this bit. When render target
+       *    flush is set due to new association of BTI, PS Scoreboard Stall bit
+       *    must be set in this packet."
+       */
+      // XXX: does this need to happen at 3DSTATE_BTP_PS time?
+      iris_emit_pipe_control_flush(batch, "workaround: RT BTI change [draw]",
+                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
