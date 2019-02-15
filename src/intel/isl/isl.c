@@ -1381,20 +1381,6 @@ isl_calc_row_pitch(const struct isl_device *dev,
    uint32_t alignment_B =
       isl_calc_row_pitch_alignment(surf_info, tile_info);
 
-   /* If pitch isn't given and it can be chosen freely, align it by cache line
-    * allowing one to use blit engine on the surface.
-    */
-   if (surf_info->row_pitch_B == 0 && tile_info->tiling == ISL_TILING_LINEAR) {
-      /* From the Broadwell PRM docs for XY_SRC_COPY_BLT::SourceBaseAddress:
-       *
-       *    "Base address of the destination surface: X=0, Y=0. Lower 32bits
-       *    of the 48bit addressing. When Src Tiling is enabled (Bit_15
-       *    enabled), this address must be 4KB-aligned. When Tiling is not
-       *    enabled, this address should be CL (64byte) aligned."
-       */
-      alignment_B = MAX2(alignment_B, 64);
-   }
-
    const uint32_t min_row_pitch_B =
       isl_calc_min_row_pitch(dev, surf_info, tile_info, phys_total_el,
                              alignment_B);
