@@ -271,10 +271,15 @@ brw_debug_recompile_sampler_key(struct brw_context *brw,
                       old_key->ayuv_image_mask,
                       key->ayuv_image_mask);
 
-
    for (unsigned int i = 0; i < MAX_SAMPLERS; i++) {
       found |= key_debug(brw, "textureGather workarounds",
                          old_key->gen6_gather_wa[i], key->gen6_gather_wa[i]);
+   }
+
+   for (unsigned int i = 0; i < MAX_SAMPLERS; i++) {
+      found |= key_debug_float(brw, "scale factor",
+                               old_key->scale_factors[i],
+                               key->scale_factors[i]);
    }
 
    return found;
