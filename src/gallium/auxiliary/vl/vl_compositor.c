@@ -100,12 +100,12 @@ init_shaders(struct vl_compositor *c)
          debug_printf("Unable to create YCbCr-to-RGB weave fragment shader.\n");
          return false;
       }
+   }
 
-      c->fs_rgba = create_frag_shader_rgba(c);
-      if (!c->fs_rgba) {
-         debug_printf("Unable to create RGB-to-RGB fragment shader.\n");
-         return false;
-      }
+   c->fs_rgba = create_frag_shader_rgba(c);
+   if (!c->fs_rgba) {
+      debug_printf("Unable to create RGB-to-RGB fragment shader.\n");
+      return false;
    }
 
    return true;
@@ -132,8 +132,8 @@ static void cleanup_shaders(struct vl_compositor *c)
    } else {
       c->pipe->delete_fs_state(c->pipe, c->fs_video_buffer);
       c->pipe->delete_fs_state(c->pipe, c->fs_weave_rgb);
-      c->pipe->delete_fs_state(c->pipe, c->fs_rgba);
    }
+   c->pipe->delete_fs_state(c->pipe, c->fs_rgba);
 }
 
 static bool
@@ -642,10 +642,7 @@ vl_compositor_set_rgba_layer(struct vl_compositor_state *s,
    assert(layer < VL_COMPOSITOR_MAX_LAYERS);
 
    s->used_layers |= 1 << layer;
-   if (c->pipe_compute_supported)
-      s->layers[layer].cs = c->cs_rgba;
-   else
-      s->layers[layer].fs = c->fs_rgba;
+   s->layers[layer].fs = c->fs_rgba;
    s->layers[layer].samplers[0] = c->sampler_linear;
    s->layers[layer].samplers[1] = NULL;
    s->layers[layer].samplers[2] = NULL;
