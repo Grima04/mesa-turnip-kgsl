@@ -554,6 +554,14 @@ st_create_vp_variant(struct st_context *st,
    vpv->tgsi.stream_output = stvp->tgsi.stream_output;
    vpv->num_inputs = stvp->num_inputs;
 
+   /* When generating a NIR program, we usually don't have TGSI tokens.
+    * However, we do create them for ARB_vertex_program / fixed-function VS
+    * programs which we may need to use with the draw module for legacy
+    * feedback/select emulation.  If they exist, copy them.
+    */
+   if (stvp->tgsi.tokens)
+      vpv->tgsi.tokens = tgsi_dup_tokens(stvp->tgsi.tokens);
+
    if (stvp->tgsi.type == PIPE_SHADER_IR_NIR) {
       vpv->tgsi.type = PIPE_SHADER_IR_NIR;
       vpv->tgsi.ir.nir = nir_shader_clone(NULL, stvp->tgsi.ir.nir);
@@ -572,8 +580,6 @@ st_create_vp_variant(struct st_context *st,
       vpv->tgsi.ir.nir = NULL;
       return vpv;
    }
-
-   vpv->tgsi.tokens = tgsi_dup_tokens(stvp->tgsi.tokens);
 
    /* Emulate features. */
    if (key->clamp_color || key->passthrough_edgeflags) {
