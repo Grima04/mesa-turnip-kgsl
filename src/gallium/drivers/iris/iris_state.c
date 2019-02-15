@@ -4140,7 +4140,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
       struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
       const int header_dwords = GENX(BLEND_STATE_length);
-      const int rt_dwords = cso_fb->nr_cbufs * GENX(BLEND_STATE_ENTRY_length);
+
+      /* Always write at least one BLEND_STATE - the final RT message will
+       * reference BLEND_STATE[0] even if there aren't color writes.  There
+       * may still be alpha testing, computed depth, and so on.
+       */
+      const int rt_dwords =
+         MAX2(cso_fb->nr_cbufs, 1) * GENX(BLEND_STATE_ENTRY_length);
+
       uint32_t blend_offset;
       uint32_t *blend_map =
          stream_state(batch, ice->state.dynamic_uploader,
