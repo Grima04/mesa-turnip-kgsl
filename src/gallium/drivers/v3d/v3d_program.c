@@ -614,7 +614,7 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
         memset(key, 0, sizeof(*key));
         v3d_setup_shared_key(v3d, &key->base, &v3d->tex[PIPE_SHADER_VERTEX]);
         key->base.shader_state = v3d->prog.bind_vs;
-        key->num_fs_inputs = v3d->prog.fs->prog_data.fs->base.num_inputs;
+        key->num_fs_inputs = v3d->prog.fs->prog_data.fs->num_inputs;
         STATIC_ASSERT(sizeof(key->fs_inputs) ==
                       sizeof(v3d->prog.fs->prog_data.fs->input_slots));
         memcpy(key->fs_inputs, v3d->prog.fs->prog_data.fs->input_slots,

@@ -665,8 +665,6 @@ static void
 v3d_vs_set_prog_data(struct v3d_compile *c,
                      struct v3d_vs_prog_data *prog_data)
 {
-        prog_data->base.num_inputs = c->num_inputs;
-
         /* The vertex data gets format converted by the VPM so that
          * each attribute channel takes up a VPM column.  Precompute
          * the sizes for the shader record.
@@ -722,7 +720,7 @@ static void
 v3d_set_fs_prog_data_inputs(struct v3d_compile *c,
                             struct v3d_fs_prog_data *prog_data)
 {
-        prog_data->base.num_inputs = c->num_inputs;
+        prog_data->num_inputs = c->num_inputs;
         memcpy(prog_data->input_slots, c->input_slots,
                c->num_inputs * sizeof(*c->input_slots));
 

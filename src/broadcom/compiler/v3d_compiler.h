@@ -675,7 +675,6 @@ struct v3d_prog_data {
         uint32_t ubo_size;
         uint32_t spill_size;
 
-        uint8_t num_inputs;
         uint8_t threads;
 
         /* For threads > 1, whether the program should be dispatched in the
@@ -723,6 +722,7 @@ struct v3d_fs_prog_data {
 
         uint32_t centroid_flags[((V3D_MAX_FS_INPUTS - 1) / 24) + 1];
 
+        uint8_t num_inputs;
         bool writes_z;
         bool disable_ez;
         bool uses_center_w;

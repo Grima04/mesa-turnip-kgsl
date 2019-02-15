@@ -1481,7 +1481,6 @@ ntq_emit_vpm_read(struct v3d_compile *c,
 
         if (*num_components_queued != 0) {
                 (*num_components_queued)--;
-                c->num_inputs++;
                 return vir_MOV(c, vpm);
         }
 
@@ -1491,7 +1490,6 @@ ntq_emit_vpm_read(struct v3d_compile *c,
 
         *num_components_queued = num_components - 1;
         *remaining -= num_components;
-        c->num_inputs++;
 
         return vir_MOV(c, vpm);
 }
