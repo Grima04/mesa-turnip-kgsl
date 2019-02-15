@@ -84,6 +84,7 @@ libpanfrost = static_library(
   [files_panfrost, midgard_nir_algebraic_c],
   dependencies: [
     dep_thread,
+    dep_libdrm,
     idep_nir
   ],
   include_directories : inc_panfrost,
