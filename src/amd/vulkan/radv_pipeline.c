@@ -511,6 +511,13 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 
 		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
 			cf = V_028714_SPI_SHADER_ZERO;
+
+			if (blend->need_src_alpha & (1 << i)) {
+				/* Write the alpha channel of MRT0 when alpha coverage is
+				 * enabled because the depth attachment needs it.
+				 */
+				col_format |= V_028714_SPI_SHADER_32_ABGR;
+			}
 		} else {
 			struct radv_render_pass_attachment *attachment = pass->attachments + subpass->color_attachments[i].attachment;
 			bool blend_enable =
@@ -689,6 +696,7 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 
 	if (vkms && vkms->alphaToCoverageEnable) {
 		blend.db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(1);
+		blend.need_src_alpha |= 0x1;
 	}
 
 	blend.cb_target_mask = 0;
