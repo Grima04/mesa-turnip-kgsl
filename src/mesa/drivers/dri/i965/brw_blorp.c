@@ -125,8 +125,7 @@ blorp_surf_for_miptree(struct brw_context *brw,
                        enum isl_aux_usage aux_usage,
                        bool is_render_target,
                        unsigned *level,
-                       unsigned start_layer, unsigned num_layers,
-                       struct isl_surf tmp_surfs[1])
+                       unsigned start_layer, unsigned num_layers)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -406,12 +405,11 @@ brw_blorp_blit_miptrees(struct brw_context *brw,
    intel_miptree_prepare_access(brw, dst_mt, dst_level, 1, dst_layer, 1,
                                 dst_aux_usage, dst_clear_supported);
 
-   struct isl_surf tmp_surfs[2];
    struct blorp_surf src_surf, dst_surf;
    blorp_surf_for_miptree(brw, &src_surf, src_mt, src_aux_usage, false,
-                          &src_level, src_layer, 1, &tmp_surfs[0]);
+                          &src_level, src_layer, 1);
    blorp_surf_for_miptree(brw, &dst_surf, dst_mt, dst_aux_usage, true,
-                          &dst_level, dst_layer, 1, &tmp_surfs[1]);
+                          &dst_level, dst_layer, 1);
 
    struct isl_swizzle src_isl_swizzle = {
       .r = swizzle_to_scs(GET_SWZ(src_swizzle, 0)),
@@ -497,12 +495,11 @@ brw_blorp_copy_miptrees(struct brw_context *brw,
    intel_miptree_prepare_access(brw, dst_mt, dst_level, 1, dst_layer, 1,
                                 dst_aux_usage, dst_clear_supported);
 
-   struct isl_surf tmp_surfs[2];
    struct blorp_surf src_surf, dst_surf;
    blorp_surf_for_miptree(brw, &src_surf, src_mt, src_aux_usage, false,
-                          &src_level, src_layer, 1, &tmp_surfs[0]);
+                          &src_level, src_layer, 1);
    blorp_surf_for_miptree(brw, &dst_surf, dst_mt, dst_aux_usage, true,
-                          &dst_level, dst_layer, 1, &tmp_surfs[1]);
+                          &dst_level, dst_layer, 1);
 
    /* The hardware seems to have issues with having a two different format
     * views of the same texture in the sampler cache at the same time.  It's
@@ -1300,10 +1297,9 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
           irb->mt, irb->mt_level, irb->mt_layer, num_layers);
 
       /* We can't setup the blorp_surf until we've allocated the MCS above */
-      struct isl_surf isl_tmp[2];
       struct blorp_surf surf;
       blorp_surf_for_miptree(brw, &surf, irb->mt, irb->mt->aux_usage, true,
-                             &level, irb->mt_layer, num_layers, isl_tmp);
+                             &level, irb->mt_layer, num_layers);
 
       /* Ivybrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
        *
@@ -1346,10 +1342,9 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
       intel_miptree_prepare_render(brw, irb->mt, level, irb->mt_layer,
                                    num_layers, aux_usage);
 
-      struct isl_surf isl_tmp[2];
       struct blorp_surf surf;
       blorp_surf_for_miptree(brw, &surf, irb->mt, aux_usage, true,
-                             &level, irb->mt_layer, num_layers, isl_tmp);
+                             &level, irb->mt_layer, num_layers);
 
       union isl_color_value clear_color;
       memcpy(clear_color.f32, ctx->Color.ClearColor.f, sizeof(float) * 4);
@@ -1442,7 +1437,6 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
       return;
 
    uint32_t level, start_layer, num_layers;
-   struct isl_surf isl_tmp[4];
    struct blorp_surf depth_surf, stencil_surf;
 
    struct intel_mipmap_tree *depth_mt = NULL;
@@ -1459,8 +1453,7 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
 
       unsigned depth_level = level;
       blorp_surf_for_miptree(brw, &depth_surf, depth_mt, depth_mt->aux_usage,
-                             true, &depth_level, start_layer, num_layers,
-                             &isl_tmp[0]);
+                             true, &depth_level, start_layer, num_layers);
       assert(depth_level == level);
    }
 
@@ -1489,8 +1482,7 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
       unsigned stencil_level = level;
       blorp_surf_for_miptree(brw, &stencil_surf, stencil_mt,
                              ISL_AUX_USAGE_NONE, true,
-                             &stencil_level, start_layer, num_layers,
-                             &isl_tmp[2]);
+                             &stencil_level, start_layer, num_layers);
    }
 
    assert((mask & BUFFER_BIT_DEPTH) || stencil_mask);
@@ -1525,11 +1517,9 @@ brw_blorp_resolve_color(struct brw_context *brw, struct intel_mipmap_tree *mt,
 
    const mesa_format format = _mesa_get_srgb_format_linear(mt->format);
 
-   struct isl_surf isl_tmp[1];
    struct blorp_surf surf;
    blorp_surf_for_miptree(brw, &surf, mt, mt->aux_usage, true,
-                          &level, layer, 1 /* num_layers */,
-                          isl_tmp);
+                          &level, layer, 1 /* num_layers */);
 
    /* Ivybrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
     *
@@ -1570,11 +1560,10 @@ brw_blorp_mcs_partial_resolve(struct brw_context *brw,
    const mesa_format format = _mesa_get_srgb_format_linear(mt->format);
    enum isl_format isl_format = brw_blorp_to_isl_format(brw, format, true);
 
-   struct isl_surf isl_tmp[1];
    struct blorp_surf surf;
    uint32_t level = 0;
    blorp_surf_for_miptree(brw, &surf, mt, ISL_AUX_USAGE_MCS, true,
-                          &level, start_layer, num_layers, isl_tmp);
+                          &level, start_layer, num_layers);
 
    struct blorp_batch batch;
    blorp_batch_init(&brw->blorp, &batch, brw, 0);
@@ -1667,10 +1656,9 @@ intel_hiz_exec(struct brw_context *brw, struct intel_mipmap_tree *mt,
 
    assert(mt->aux_usage == ISL_AUX_USAGE_HIZ && mt->aux_buf);
 
-   struct isl_surf isl_tmp[2];
    struct blorp_surf surf;
    blorp_surf_for_miptree(brw, &surf, mt, ISL_AUX_USAGE_HIZ, true,
-                          &level, start_layer, num_layers, isl_tmp);
+                          &level, start_layer, num_layers);
 
    struct blorp_batch batch;
    blorp_batch_init(&brw->blorp, &batch, brw,
