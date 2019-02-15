@@ -16,7 +16,7 @@ The rules-ng-ng source files this header was generated from are:
 - /work/envytools/rnndb/adreno/a3xx.xml          (  83840 bytes, from 2018-07-10 14:59:32)
 - /work/envytools/rnndb/adreno/a4xx.xml          ( 112086 bytes, from 2018-07-10 14:59:32)
 - /work/envytools/rnndb/adreno/a5xx.xml          ( 147240 bytes, from 2018-09-28 22:41:49)
-- /work/envytools/rnndb/adreno/a6xx.xml          ( 145596 bytes, from 2019-02-13 18:14:29)
+- /work/envytools/rnndb/adreno/a6xx.xml          ( 145669 bytes, from 2019-02-15 07:12:43)
 - /work/envytools/rnndb/adreno/a6xx_gmu.xml      (  10431 bytes, from 2018-09-28 22:41:49)
 - /work/envytools/rnndb/adreno/ocmem.xml         (   1773 bytes, from 2018-07-10 14:59:32)
 
@@ -4877,6 +4877,12 @@ static inline uint32_t A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(enum a3xx_color_swap va
 	return ((val) << A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP__SHIFT) & A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP__MASK;
 }
 #define A6XX_SP_PS_2D_SRC_INFO_FLAGS				0x00001000
+#define A6XX_SP_PS_2D_SRC_INFO_SAMPLES__MASK			0x0000c000
+#define A6XX_SP_PS_2D_SRC_INFO_SAMPLES__SHIFT			14
+static inline uint32_t A6XX_SP_PS_2D_SRC_INFO_SAMPLES(enum a3xx_msaa_samples val)
+{
+	return ((val) << A6XX_SP_PS_2D_SRC_INFO_SAMPLES__SHIFT) & A6XX_SP_PS_2D_SRC_INFO_SAMPLES__MASK;
+}
 #define A6XX_SP_PS_2D_SRC_INFO_FILTER				0x00010000
 
 #define REG_A6XX_SP_PS_2D_SRC_SIZE				0x0000b4c1
