@@ -2118,7 +2118,8 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[attrib_index];
 		unsigned data_format = attrib_format & 0x0f;
 		unsigned num_format = (attrib_format >> 4) & 0x07;
-		bool is_float = num_format == V_008F0C_BUF_NUM_FORMAT_FLOAT;
+		bool is_float = num_format != V_008F0C_BUF_NUM_FORMAT_UINT &&
+		                num_format != V_008F0C_BUF_NUM_FORMAT_SINT;
 
 		if (ctx->options->key.vs.instance_rate_inputs & (1u << attrib_index)) {
 			uint32_t divisor = ctx->options->key.vs.instance_rate_divisors[attrib_index];
