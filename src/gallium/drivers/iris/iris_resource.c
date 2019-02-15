@@ -200,14 +200,14 @@ void
 iris_resource_disable_aux(struct iris_resource *res)
 {
    iris_bo_unreference(res->aux.bo);
+   iris_bo_unreference(res->aux.clear_color_bo);
    free(res->aux.state);
-
-   // XXX: clear color BO
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
+   res->aux.clear_color_bo = NULL;
    res->aux.state = NULL;
 }
 
@@ -294,6 +294,11 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
    UNUSED bool ok = false;
    uint8_t memset_value = 0;
    uint32_t alloc_flags = 0;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   const unsigned clear_color_state_size = devinfo->gen >= 10 ?
+      screen->isl_dev.ss.clear_color_state_size :
+      screen->isl_dev.ss.clear_value_size;
+
 
    assert(!res->aux.bo);
 
@@ -353,31 +358,49 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
    if (!res->aux.state)
       return false;
 
+   uint64_t size = res->aux.surf.size_B;
+
+   /* Allocate space in the buffer for storing the clear color. On modern
+    * platforms (gen > 9), we can read it directly from such buffer.
+    *
+    * On gen <= 9, we are going to store the clear color on the buffer
+    * anyways, and copy it back to the surface state during state emission.
+    */
+   res->aux.clear_color_offset = size;
+   size += clear_color_state_size;
+
    /* Allocate the auxiliary buffer.  ISL has stricter set of alignment rules
     * the drm allocator.  Therefore, one can pass the ISL dimensions in terms
     * of bytes instead of trying to recalculate based on different format
     * block sizes.
     */
-   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer",
-                                     res->aux.surf.size_B,
+   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size,
                                      IRIS_MEMZONE_OTHER, I915_TILING_Y,
                                      res->aux.surf.row_pitch_B, alloc_flags);
    if (!res->aux.bo) {
-      iris_resource_disable_aux(res);
       return false;
    }
 
-   /* Optionally, initialize the auxiliary data to the desired value. */
-   if (memset_value != 0) {
+   if (!(alloc_flags & BO_ALLOC_ZEROED)) {
       void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
+
       if (!map) {
          iris_resource_disable_aux(res);
          return false;
       }
 
-      memset(map, memset_value, res->aux.surf.size_B);
+      if (memset_value != 0)
+         memset(map, memset_value, res->aux.surf.size_B);
+
+      /* Zero the indirect clear color to match ::fast_clear_color. */
+      memset((char *)map + res->aux.clear_color_offset, 0,
+             clear_color_state_size);
+
       iris_bo_unmap(res->aux.bo);
    }
+
+   res->aux.clear_color_bo = res->aux.bo;
+   iris_bo_reference(res->aux.clear_color_bo);
 
    if (res->aux.usage == ISL_AUX_USAGE_HIZ) {
       for (unsigned level = 0; level < res->surf.levels; ++level) {
@@ -1369,6 +1392,56 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    iris_emit_pipe_control_flush(batch, flush);
 
    ice->state.dirty |= dirty;
+}
+
+bool
+iris_resource_set_clear_color(struct iris_context *ice,
+                              struct iris_resource *res,
+                              union isl_color_value color)
+{
+   if (memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
+      res->aux.clear_color = color;
+      struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+      /* We can't update the clear color while the hardware is still using
+       * the previous one for a resolve or sampling from it. Make sure that
+       * there are no pending commands at this point.
+       */
+      /* TODO: Make these pipe controls gen-specific?
+       *
+       * We don't really need them on gen <= 9 where we are reading the
+       * clear color from the surface state and clear_params, so they
+       * shouldn't be needed. On gen11, the clear color is read from this
+       * buffer, but the clear depth is still read from CLEAR_PARAMS, so we
+       * could probably skip it in the HiZ case as well.
+       *
+       * Need to also check that for i965.
+       */
+      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+      for (int i = 0; i < 4; i++) {
+         ice->vtbl.store_data_imm32(batch, res->aux.clear_color_bo,
+                                    res->aux.clear_color_offset + i * 4,
+                                    color.u32[i]);
+      }
+      iris_emit_pipe_control_flush(batch,
+                                   PIPE_CONTROL_STATE_CACHE_INVALIDATE);
+      return true;
+   }
+
+   return false;
+}
+
+union isl_color_value
+iris_resource_get_clear_color(const struct iris_resource *res,
+                              struct iris_bo **clear_color_bo,
+                              uint64_t *clear_color_offset)
+{
+   assert(res->aux.bo);
+
+   if (clear_color_bo)
+      *clear_color_bo = res->aux.clear_color_bo;
+   if (clear_color_offset)
+      *clear_color_offset = res->aux.clear_color_offset;
+   return res->aux.clear_color;
 }
 
 static enum pipe_format
