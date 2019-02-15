@@ -312,6 +312,10 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
                 /* TODO */
                 printf("--leaking checksum (%zd bytes)--\n", bo->checksum_slab.size);
         }
+
+        if (bo->imported) {
+                screen->driver->free_imported_bo(screen, bo);
+        }
 }
 
 static void

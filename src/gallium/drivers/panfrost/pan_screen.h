@@ -60,6 +60,8 @@ struct panfrost_driver {
 		               int extent);
         void (*free_slab) (struct panfrost_screen *screen,
                            struct panfrost_memory *mem);
+        void (*free_imported_bo) (struct panfrost_screen *screen,
+                             struct panfrost_bo *bo);
         void (*enable_counters) (struct panfrost_screen *screen);
 };
 
