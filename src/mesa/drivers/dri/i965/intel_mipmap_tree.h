@@ -301,6 +301,8 @@ struct intel_mipmap_tree
     *
     * This miptree may be used for:
     * - Stencil texturing (pre-BDW) as required by GL_ARB_stencil_texturing.
+    * - To store the decompressed ETC/EAC data in case we emulate the ETC
+    *   compression on Gen 7 or earlier GPUs.
     */
    struct intel_mipmap_tree *shadow_mt;
    bool shadow_needs_update;
@@ -729,6 +731,28 @@ intel_miptree_blt_pitch(struct intel_mipmap_tree *mt)
 isl_memcpy_type
 intel_miptree_get_memcpy_type(mesa_format tiledFormat, GLenum format, GLenum type,
                               uint32_t *cpp);
+
+static inline bool
+intel_miptree_needs_fake_etc(struct brw_context *brw,
+                             struct intel_mipmap_tree *mt)
+{
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   bool is_etc = _mesa_is_format_etc2(mt->format) ||
+                 (mt->format == MESA_FORMAT_ETC1_RGB8);
+
+   return devinfo->gen < 8 && !devinfo->is_baytrail && is_etc;
+}
+
+static inline bool
+intel_miptree_has_etc_shadow(struct brw_context *brw,
+                             struct intel_mipmap_tree *mt)
+{
+   return intel_miptree_needs_fake_etc(brw, mt) && mt->shadow_mt;
+}
+
+void
+intel_miptree_update_etc_shadow_levels(struct brw_context *brw,
+                                       struct intel_mipmap_tree *mt);
 
 #ifdef __cplusplus
 }

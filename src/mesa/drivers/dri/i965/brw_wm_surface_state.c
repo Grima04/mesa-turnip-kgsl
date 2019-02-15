@@ -521,7 +521,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
           */
          mesa_fmt = mt->format;
       } else if (mt->etc_format != MESA_FORMAT_NONE) {
-         mesa_fmt = mt->format;
+         mesa_fmt = mt->shadow_mt->format;
       } else if (plane > 0) {
          mesa_fmt = mt->format;
       } else {
@@ -581,6 +581,9 @@ static void brw_update_texture_surface(struct gl_context *ctx,
          assert(mt->shadow_mt && !mt->shadow_needs_update);
          mt = mt->shadow_mt;
          format = ISL_FORMAT_R8_UINT;
+      } else if (intel_miptree_needs_fake_etc(brw, mt)) {
+         assert(mt->shadow_mt);
+         mt = mt->shadow_mt;
       }
 
       const int surf_index = surf_offset - &brw->wm.base.surf_offset[0];
