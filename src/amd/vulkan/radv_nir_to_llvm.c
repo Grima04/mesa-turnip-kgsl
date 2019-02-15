@@ -2089,8 +2089,10 @@ radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
 		elemtype = LLVMTypeOf(value);
 	}
 
-	for (unsigned i = num_channels; i < 4; i++)
+	for (unsigned i = num_channels; i < 4; i++) {
 		chan[i] = i == 3 ? one : zero;
+		chan[i] = ac_to_float(&ctx->ac, chan[i]);
+	}
 
 	return ac_build_gather_values(&ctx->ac, chan, 4);
 }
