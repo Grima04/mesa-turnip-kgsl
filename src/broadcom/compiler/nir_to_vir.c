@@ -1537,6 +1537,12 @@ ntq_setup_vpm_inputs(struct v3d_compile *c)
                                            &num_components, ~0);
         }
 
+        /* The actual loads will happen directly in nir_intrinsic_load_input
+         * on newer versions.
+         */
+        if (c->devinfo->ver >= 40)
+                return;
+
         for (int loc = 0; loc < ARRAY_SIZE(c->vattr_sizes); loc++) {
                 resize_qreg_array(c, &c->inputs, &c->inputs_array_size,
                                   (loc + 1) * 4);
@@ -1868,12 +1874,43 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_input:
-                for (int i = 0; i < instr->num_components; i++) {
-                        offset = (nir_intrinsic_base(instr) +
-                                  nir_src_as_uint(instr->src[0]));
-                        int comp = nir_intrinsic_component(instr) + i;
-                        ntq_store_dest(c, &instr->dest, i,
-                                       vir_MOV(c, c->inputs[offset * 4 + comp]));
+                offset = (nir_intrinsic_base(instr) +
+                          nir_src_as_uint(instr->src[0]));
+                if (c->s->info.stage != MESA_SHADER_FRAGMENT &&
+                    c->devinfo->ver >= 40) {
+                        /* Emit the LDVPM directly now, rather than at the top
+                         * of the shader like we did for V3D 3.x (which needs
+                         * vpmsetup when not just taking the next offset).
+                         *
+                         * Note that delaying like this may introduce stalls,
+                         * as LDVPMV takes a minimum of 1 instruction but may
+                         * be slower if the VPM unit is busy with another QPU.
+                         */
+                        int index = 0;
+                        if (c->s->info.system_values_read &
+                            (1ull << SYSTEM_VALUE_INSTANCE_ID)) {
+                                index++;
+                        }
+                        if (c->s->info.system_values_read &
+                            (1ull << SYSTEM_VALUE_VERTEX_ID)) {
+                                index++;
+                        }
+                        for (int i = 0; i < offset; i++)
+                                index += c->vattr_sizes[i];
+                        index += nir_intrinsic_component(instr);
+                        for (int i = 0; i < instr->num_components; i++) {
+                                struct qreg vpm_offset =
+                                        vir_uniform_ui(c, index++);
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_LDVPMV_IN(c, vpm_offset));
+                        }
+                } else {
+                        for (int i = 0; i < instr->num_components; i++) {
+                                int comp = nir_intrinsic_component(instr) + i;
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_MOV(c, c->inputs[offset * 4 +
+                                                                    comp]));
+                        }
                 }
                 break;
 
