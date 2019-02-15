@@ -1055,6 +1055,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_imul_2x32_64:
+   case nir_op_umul_2x32_64:
+      bld.MUL(result, op[0], op[1]);
+      break;
+
    case nir_op_imul:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
       bld.MUL(result, op[0], op[1]);

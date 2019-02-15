@@ -171,6 +171,13 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       fp64_options |= nir_lower_fp64_full_software;
    }
 
+   /* The Bspec's section tittled "Instruction_multiply[DevBDW+]" claims that
+    * destination type can be Quadword and source type Doubleword for Gen8 and
+    * Gen9. So, lower 64 bit multiply instruction on rest of the platforms.
+    */
+   if (devinfo->gen < 8 || devinfo->gen > 9)
+      int64_options |= nir_lower_imul_2x32_64;
+
    /* We want the GLSL compiler to emit code that uses condition codes */
    for (int i = 0; i < MESA_SHADER_STAGES; i++) {
       compiler->glsl_compiler_options[i].MaxUnrollIterations = 0;

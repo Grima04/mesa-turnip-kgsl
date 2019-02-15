@@ -2118,6 +2118,7 @@ typedef enum {
    nir_lower_logic64 = (1 << 9),
    nir_lower_minmax64 = (1 << 10),
    nir_lower_shift64 = (1 << 11),
+   nir_lower_imul_2x32_64 = (1 << 12),
 } nir_lower_int64_options;
 
 typedef enum {
@@ -2258,6 +2259,9 @@ typedef struct nir_shader_compiler_options {
     * information must be inferred from the list of input nir_variables.
     */
    bool use_interpolated_input_intrinsics;
+
+   /* Lowers when 32x32->64 bit multiplication is not supported */
+   bool lower_mul_2x32_64;
 
    unsigned max_unroll_iterations;
 

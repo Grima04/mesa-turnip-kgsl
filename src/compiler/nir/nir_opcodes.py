@@ -475,6 +475,12 @@ binop("fmul", tfloat, commutative + associative, "src0 * src1")
 # low 32-bits of signed/unsigned integer multiply
 binop("imul", tint, commutative + associative, "src0 * src1")
 
+# Generate 64 bit result from 2 32 bits quantity
+binop_convert("imul_2x32_64", tint64, tint32, commutative,
+              "(int64_t)src0 * (int64_t)src1")
+binop_convert("umul_2x32_64", tuint64, tuint32, commutative,
+              "(uint64_t)src0 * (uint64_t)src1")
+
 # high 32-bits of signed integer multiply
 binop("imul_high", tint, commutative, """
 if (bit_size == 64) {
