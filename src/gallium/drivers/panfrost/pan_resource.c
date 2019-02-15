@@ -527,15 +527,34 @@ panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *pr
         //fprintf(stderr, "TODO %s\n", __func__);
 }
 
+static enum pipe_format
+panfrost_resource_get_internal_format(struct pipe_resource *prsrc)
+{
+        return prsrc->format;
+}
+
+static void
+panfrost_resource_set_stencil(struct pipe_resource *prsrc,
+                              struct pipe_resource *stencil)
+{
+        pan_resource(prsrc)->separate_stencil = pan_resource(stencil);
+}
+
+static struct pipe_resource *
+panfrost_resource_get_stencil(struct pipe_resource *prsrc)
+{
+        return &pan_resource(prsrc)->separate_stencil->base;
+}
+
 static const struct u_transfer_vtbl transfer_vtbl = {
         .resource_create          = panfrost_resource_create,
         .resource_destroy         = panfrost_resource_destroy,
         .transfer_map             = panfrost_transfer_map,
         .transfer_unmap           = panfrost_transfer_unmap,
         .transfer_flush_region    = u_default_transfer_flush_region,
-        //.get_internal_format      = panfrost_resource_get_internal_format,
-        //.set_stencil              = panfrost_resource_set_stencil,
-        //.get_stencil              = panfrost_resource_get_stencil,
+        .get_internal_format      = panfrost_resource_get_internal_format,
+        .set_stencil              = panfrost_resource_set_stencil,
+        .get_stencil              = panfrost_resource_get_stencil,
 };
 
 void
@@ -548,7 +567,7 @@ panfrost_resource_screen_init(struct panfrost_screen *pscreen)
         pscreen->base.resource_from_handle = panfrost_resource_from_handle;
         pscreen->base.resource_get_handle = panfrost_resource_get_handle;
         pscreen->base.transfer_helper = u_transfer_helper_create(&transfer_vtbl,
-                                                            true, true,
+                                                            true, false,
                                                             true, true);
 
         pb_slabs_init(&pscreen->slabs,

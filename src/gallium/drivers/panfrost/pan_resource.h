@@ -76,6 +76,8 @@ struct panfrost_resource {
 
         struct panfrost_bo *bo;
         struct renderonly_scanout *scanout;
+
+        struct panfrost_resource *separate_stencil;
 };
 
 static inline struct panfrost_resource *
