@@ -1186,10 +1186,15 @@ struct mali_sampler_descriptor {
  */
 
 struct mali_viewport {
-        float floats[4];
+        /* XY clipping planes */
+        float clip_minx;
+        float clip_miny;
+        float clip_maxx;
+        float clip_maxy;
 
-        float depth_range_n;
-        float depth_range_f;
+        /* Depth clipping planes */
+        float clip_minz;
+        float clip_maxz;
 
         u16 viewport0[2];
         u16 viewport1[2];

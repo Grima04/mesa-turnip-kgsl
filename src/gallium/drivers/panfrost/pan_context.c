@@ -548,25 +548,22 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
 
 static void
 panfrost_viewport(struct panfrost_context *ctx,
-                  float depth_range_n,
-                  float depth_range_f,
+                  float depth_clip_near,
+                  float depth_clip_far,
                   int viewport_x0, int viewport_y0,
                   int viewport_x1, int viewport_y1)
 {
-        /* Viewport encoding is asymmetric. Purpose of the floats is unknown? */
+        /* Clip bounds are encoded as floats. The viewport itself is encoded as
+         * (somewhat) asymmetric ints. */
 
         struct mali_viewport ret = {
-                .floats = {
-#if 0
-                        -inff, -inff,
-                        inff, inff,
-#endif
-                        0.0, 0.0,
-                        2048.0, 1600.0,
-                },
+                .clip_minx = viewport_x0,
+                .clip_miny = viewport_y0,
+                .clip_maxx = viewport_x1,
+                .clip_maxy = viewport_x1,
 
-                .depth_range_n = depth_range_n,
-                .depth_range_f = depth_range_f,
+                .clip_minz = depth_clip_near,
+                .clip_maxz = depth_clip_far,
 
                 .viewport0 = { viewport_x0, viewport_y0 },
                 .viewport1 = { MALI_POSITIVE(viewport_x1), MALI_POSITIVE(viewport_y1) },
