@@ -582,7 +582,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
          mt = mt->shadow_mt;
          format = ISL_FORMAT_R8_UINT;
       } else if (intel_miptree_needs_fake_etc(brw, mt)) {
-         assert(mt->shadow_mt);
+         assert(mt->shadow_mt && !mt->shadow_needs_update);
          mt = mt->shadow_mt;
       }
 

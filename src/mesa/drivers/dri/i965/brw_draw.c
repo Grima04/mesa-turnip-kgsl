@@ -559,6 +559,11 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
           tex_obj->mt->format == MESA_FORMAT_S_UINT8) {
          intel_update_r8stencil(brw, tex_obj->mt);
       }
+
+      if (intel_miptree_has_etc_shadow(brw, tex_obj->mt) &&
+          tex_obj->mt->shadow_needs_update) {
+         intel_miptree_update_etc_shadow_levels(brw, tex_obj->mt);
+      }
    }
 
    /* Resolve color for each active shader image. */

@@ -57,11 +57,6 @@ static void *intel_miptree_map_raw(struct brw_context *brw,
                                    GLbitfield mode);
 
 static void intel_miptree_unmap_raw(struct intel_mipmap_tree *mt);
-static void intel_miptree_update_etc_shadow(struct brw_context *brw,
-                                            struct intel_mipmap_tree *mt,
-                                            unsigned int level,
-                                            unsigned int slice,
-                                            int level_w, int level_h);
 
 static bool
 intel_miptree_supports_mcs(struct brw_context *brw,
@@ -3779,7 +3774,6 @@ intel_miptree_unmap(struct brw_context *brw,
                     unsigned int slice)
 {
    struct intel_miptree_map *map = mt->level[level].slice[slice].map;
-   int level_w, level_h;
 
    assert(mt->surf.samples == 1);
 
@@ -3789,21 +3783,10 @@ intel_miptree_unmap(struct brw_context *brw,
    DBG("%s: mt %p (%s) level %d slice %d\n", __func__,
        mt, _mesa_get_format_name(mt->format), level, slice);
 
-   level_w = minify(mt->surf.phys_level0_sa.width,
-                    level - mt->first_level);
-   level_h = minify(mt->surf.phys_level0_sa.height,
-                    level - mt->first_level);
-
    if (map->unmap)
 	   map->unmap(brw, mt, map, level, slice);
 
    intel_miptree_release_map(mt, level, slice);
-
-   if (intel_miptree_has_etc_shadow(brw, mt) && mt->shadow_needs_update) {
-      mt->shadow_needs_update = false;
-      intel_miptree_update_etc_shadow(brw, mt, level, slice, level_w,
-                                      level_h);
-   }
 }
 
 enum isl_surf_dim
