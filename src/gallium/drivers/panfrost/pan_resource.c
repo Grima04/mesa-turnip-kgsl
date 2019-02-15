@@ -414,12 +414,6 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
 
         int swizzled_sz = panfrost_swizzled_size(width, height, bytes_per_pixel);
 
-        /* Allocate the transfer given that known size but do not copy */
-        struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, swizzled_sz, HEAP_TEXTURE);
-        struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
-        struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
-        uint8_t *swizzled = backing->cpu + p_entry->offset;
-
         /* Save the entry. But if there was already an entry here (from a
          * previous upload of the resource), free that one so we don't leak */
 
@@ -427,6 +421,12 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
                 bo->entry[level]->freed = true;
                 pb_slab_free(&screen->slabs, &bo->entry[level]->base);
         }
+
+        /* Allocate the transfer given that known size but do not copy */
+        struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, swizzled_sz, HEAP_TEXTURE);
+        struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
+        struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
+        uint8_t *swizzled = backing->cpu + p_entry->offset;
 
         bo->entry[level] = p_entry;
         bo->gpu[level] = backing->gpu + p_entry->offset;
