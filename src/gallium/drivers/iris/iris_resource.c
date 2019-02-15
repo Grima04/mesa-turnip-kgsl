@@ -362,14 +362,18 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
                                      res->aux.surf.size_B,
                                      IRIS_MEMZONE_OTHER, I915_TILING_Y,
                                      res->aux.surf.row_pitch_B, alloc_flags);
-   if (!res->aux.bo)
+   if (!res->aux.bo) {
+      iris_resource_disable_aux(res);
       return false;
+   }
 
    /* Optionally, initialize the auxiliary data to the desired value. */
    if (memset_value != 0) {
       void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
-      if (!map)
+      if (!map) {
+         iris_resource_disable_aux(res);
          return false;
+      }
 
       memset(map, memset_value, res->aux.surf.size_B);
       iris_bo_unmap(res->aux.bo);
