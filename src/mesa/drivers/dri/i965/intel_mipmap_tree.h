@@ -215,20 +215,10 @@ struct intel_mipmap_tree
     * MESA_FORMAT_Z_FLOAT32, otherwise for MESA_FORMAT_Z24_UNORM_S8_UINT objects it will be
     * MESA_FORMAT_Z24_UNORM_X8_UINT.
     *
-    * For ETC1/ETC2 textures, this is one of the uncompressed mesa texture
-    * formats if the hardware lacks support for ETC1/ETC2. See @ref etc_format.
-    *
     * @see RENDER_SURFACE_STATE.SurfaceFormat
     * @see 3DSTATE_DEPTH_BUFFER.SurfaceFormat
     */
    mesa_format format;
-
-   /**
-    * This variable stores the value of ETC compressed texture format
-    *
-    * @see RENDER_SURFACE_STATE.SurfaceFormat
-    */
-   mesa_format etc_format;
 
    GLuint first_level;
    GLuint last_level;

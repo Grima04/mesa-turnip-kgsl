@@ -706,7 +706,6 @@ miptree_create(struct brw_context *brw,
 
    if (intel_miptree_needs_fake_etc(brw, mt)) {
       mesa_format decomp_format = intel_lower_compressed_format(brw, format);
-      mt->etc_format = format;
       mt->shadow_mt = make_surface(brw, target, decomp_format, first_level,
                                    last_level, width0, height0, depth0,
                                    num_samples, tiling_flags,
@@ -717,10 +716,6 @@ miptree_create(struct brw_context *brw,
          intel_miptree_release(&mt);
          return NULL;
       }
-
-      mt->shadow_mt->etc_format = MESA_FORMAT_NONE;
-   } else {
-      mt->etc_format = MESA_FORMAT_NONE;
    }
 
    if (needs_separate_stencil(brw, mt, format)) {
@@ -1302,8 +1297,6 @@ intel_miptree_match_image(struct intel_mipmap_tree *mt,
       mt_format = MESA_FORMAT_Z24_UNORM_S8_UINT;
    if (mt->format == MESA_FORMAT_Z_FLOAT32 && mt->stencil_mt)
       mt_format = MESA_FORMAT_Z32_FLOAT_S8X24_UINT;
-   if (mt->etc_format != MESA_FORMAT_NONE)
-      mt_format = mt->etc_format;
 
    if (_mesa_get_srgb_format_linear(image->TexFormat) !=
        _mesa_get_srgb_format_linear(mt_format))

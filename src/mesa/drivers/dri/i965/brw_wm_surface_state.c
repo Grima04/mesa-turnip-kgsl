@@ -520,7 +520,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
           * is safe because texture views aren't allowed on depth/stencil.
           */
          mesa_fmt = mt->format;
-      } else if (mt->etc_format != MESA_FORMAT_NONE) {
+      } else if (intel_miptree_has_etc_shadow(brw, mt)) {
          mesa_fmt = mt->shadow_mt->format;
       } else if (plane > 0) {
          mesa_fmt = mt->format;
