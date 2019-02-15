@@ -2919,13 +2919,15 @@ write_transformed_position(nir_builder *b, nir_src input_point_src, int uniform_
 
         /* gl_Position will be written out in screenspace xyz, with w set to
          * the reciprocal we computed earlier. The transformed w component is
-         * then used for perspective-correct varying interpolation */
+         * then used for perspective-correct varying interpolation. The
+         * transformed w component must preserve its original sign; this is
+         * used in depth clipping computations */
 
         nir_ssa_def *screen_space = nir_vec4(b,
                                              nir_channel(b, viewport_xy, 0),
                                              nir_channel(b, viewport_xy, 1),
                                              screen_depth,
-                                             nir_fabs(b, w_recip));
+                                             w_recip);
 
         /* Finally, write out the transformed values to the varying */
 
