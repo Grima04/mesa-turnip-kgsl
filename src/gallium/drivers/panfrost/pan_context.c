@@ -557,10 +557,17 @@ panfrost_viewport(struct panfrost_context *ctx,
          * (somewhat) asymmetric ints. */
 
         struct mali_viewport ret = {
-                .clip_minx = viewport_x0,
-                .clip_miny = viewport_y0,
-                .clip_maxx = viewport_x1,
-                .clip_maxy = viewport_x1,
+                /* By default, do no viewport clipping, i.e. clip to (-inf,
+                 * inf) in each direction. Clipping to the viewport in theory
+                 * should work, but in practice causes issues when we're not
+                 * explicitly trying to scissor */
+
+                .clip_minx = -inff,
+                .clip_miny = -inff,
+                .clip_maxx = inff,
+                .clip_maxy = inff,
+
+                /* We always perform depth clipping (TODO: Can this be disabled?) */
 
                 .clip_minz = depth_clip_near,
                 .clip_maxz = depth_clip_far,
