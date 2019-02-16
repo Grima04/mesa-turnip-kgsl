@@ -784,6 +784,7 @@ struct iris_depth_buffer_state {
  */
 struct iris_genx_state {
    struct iris_vertex_buffer_state vertex_buffers[33];
+   uint32_t last_index_buffer[GENX(3DSTATE_INDEX_BUFFER_length)];
 
    struct iris_depth_buffer_state depth_buffer;
 
@@ -4249,13 +4250,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
       pin_depth_and_stencil_buffers(batch, cso_fb->zsbuf, ice->state.cso_zsa);
    }
 
-   if (draw->index_size == 0 && ice->state.last_res.index_buffer) {
-      /* This draw didn't emit a new index buffer, so we are inheriting the
-       * older index buffer.  This draw didn't need it, but future ones may.
-       */
-      struct iris_bo *bo = iris_resource_bo(ice->state.last_res.index_buffer);
-      iris_use_pinned_bo(batch, bo, false);
-   }
+   iris_use_optional_res(batch, ice->state.last_res.index_buffer, false);
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
       uint64_t bound = ice->state.bound_vertex_buffers;
@@ -5185,13 +5180,21 @@ iris_upload_render_state(struct iris_context *ice,
          offset = 0;
       }
 
+      struct iris_genx_state *genx = ice->state.genx;
       struct iris_bo *bo = iris_resource_bo(ice->state.last_res.index_buffer);
 
-      iris_emit_cmd(batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
+      uint32_t ib_packet[GENX(3DSTATE_INDEX_BUFFER_length)];
+      iris_pack_command(GENX(3DSTATE_INDEX_BUFFER), ib_packet, ib) {
          ib.IndexFormat = draw->index_size >> 1;
          ib.MOCS = mocs(bo);
          ib.BufferSize = bo->size - offset;
-         ib.BufferStartingAddress = ro_bo(bo, offset);
+         ib.BufferStartingAddress = ro_bo(NULL, bo->gtt_offset + offset);
+      }
+
+      if (memcmp(genx->last_index_buffer, ib_packet, sizeof(ib_packet)) != 0) {
+         memcpy(genx->last_index_buffer, ib_packet, sizeof(ib_packet));
+         iris_batch_emit(batch, ib_packet, sizeof(ib_packet));
+         iris_use_pinned_bo(batch, bo, false);
       }
 
       /* The VF cache key only uses 32-bits, see vertex buffer comment above */
@@ -5633,8 +5636,10 @@ iris_rebind_buffer(struct iris_context *ice,
       }
    }
 
-   /* No need to handle these:
-    * - PIPE_BIND_INDEX_BUFFER (emitted for every indexed draw)
+   /* We don't need to handle PIPE_BIND_INDEX_BUFFER here: we re-emit
+    * the 3DSTATE_INDEX_BUFFER packet whenever the address changes.
+    *
+    * There is also no need to handle these:
     * - PIPE_BIND_COMMAND_ARGS_BUFFER (emitted for every indirect draw)
     * - PIPE_BIND_QUERY_BUFFER (no persistent state references)
     */
@@ -6385,6 +6390,14 @@ gen9_toggle_preemption(struct iris_context *ice,
 }
 #endif
 
+static void
+iris_lost_genx_state(struct iris_context *ice, struct iris_batch *batch)
+{
+   struct iris_genx_state *genx = ice->state.genx;
+
+   memset(genx->last_index_buffer, 0, sizeof(genx->last_index_buffer));
+}
+
 void
 genX(init_state)(struct iris_context *ice)
 {
@@ -6459,6 +6472,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.populate_fs_key = iris_populate_fs_key;
    ice->vtbl.populate_cs_key = iris_populate_cs_key;
    ice->vtbl.mocs = mocs;
+   ice->vtbl.lost_genx_state = iris_lost_genx_state;
 
    ice->state.dirty = ~0ull;
 

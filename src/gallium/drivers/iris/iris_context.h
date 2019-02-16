@@ -481,6 +481,7 @@ struct iris_vtable {
    void (*populate_cs_key)(const struct iris_context *ice,
                            struct brw_cs_prog_key *key);
    uint32_t (*mocs)(const struct iris_bo *bo);
+   void (*lost_genx_state)(struct iris_context *ice, struct iris_batch *batch);
 };
 
 /**
