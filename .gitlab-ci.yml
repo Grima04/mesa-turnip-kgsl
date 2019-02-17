@@ -265,7 +265,7 @@ build:meson-gallium-drivers-other:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
+    GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
     LLVM_VERSION: "5.0"
 
 build:meson-gallium-clover-llvm5:
