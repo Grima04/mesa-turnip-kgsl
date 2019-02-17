@@ -158,6 +158,13 @@ midgard_is_integer_op(int op)
         }
 }
 
+/* Is this unit a branch? */
+static bool
+midgard_is_branch_unit(unsigned unit)
+{
+        return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
+}
+
 /* There are five ALU units: VMUL, VADD, SMUL, SADD, LUT. A given opcode is
  * implemented on some subset of these units (or occassionally all of them).
  * This table encodes a bit mask of valid units for each opcode, so the
