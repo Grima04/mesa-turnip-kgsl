@@ -373,6 +373,10 @@ static void
 print_branch_op(int op)
 {
         switch (op) {
+        case midgard_jmp_writeout_op_branch_uncond:
+                printf("uncond.");
+                break;
+
         case midgard_jmp_writeout_op_branch_cond:
                 printf("cond.");
                 break;
@@ -412,6 +416,7 @@ print_branch_cond(int cond)
                 break;
 
         default:
+                printf("unk%X", cond);
                 break;
         }
 }
@@ -470,17 +475,13 @@ print_extended_branch_writeout_field(uint8_t *words)
         midgard_branch_extended br;
         memcpy((char *) &br, (char *) words, sizeof(br));
 
-        printf("br.");
+        printf("brx.");
 
         print_branch_op(br.op);
         print_branch_cond(br.cond);
 
-        /* XXX: This can't be right */
         if (br.unknown)
-                printf(".unknown%d\n", br.unknown);
-
-        if (br.zero)
-                printf(".zero%d\n", br.zero);
+                printf(".unknown%d", br.unknown);
 
         printf(" ");
 

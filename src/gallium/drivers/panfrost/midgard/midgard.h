@@ -231,8 +231,7 @@ __attribute__((__packed__))
         midgard_jmp_writeout_op op : 3; /* == branch_cond */
         unsigned dest_tag : 4; /* tag of branch destination */
         unsigned unknown : 2;
-        signed offset : 7;
-        unsigned zero : 16;
+        signed offset : 23;
         unsigned cond : 16;
 }
 midgard_branch_extended;
