@@ -3182,20 +3182,20 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         int else_idx = ctx->block_count;
         int count_in = ctx->instruction_count;
         midgard_block *else_block = emit_cf_list(ctx, &nif->else_list);
+        int after_else_idx = ctx->block_count;
 
         /* Now that we have the subblocks emitted, fix up the branches */
 
         assert(then_block);
         assert(else_block);
 
-
         if (ctx->instruction_count == count_in) {
                 /* The else block is empty, so don't emit an exit jump */
                 mir_remove_instruction(then_exit);
-                then_branch->branch.target_block = else_idx + 1;
+                then_branch->branch.target_block = after_else_idx;
         } else {
                 then_branch->branch.target_block = else_idx;
-                then_exit->branch.target_block = else_idx + 1;
+                then_exit->branch.target_block = after_else_idx;
         }
 }
 
