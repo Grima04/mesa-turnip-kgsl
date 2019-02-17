@@ -3283,6 +3283,33 @@ emit_cf_list(struct compiler_context *ctx, struct exec_list *list)
         return start_block;
 }
 
+/* Due to lookahead, we need to report the first tag executed in the command
+ * stream and in branch targets. An initial block might be empty, so iterate
+ * until we find one that 'works' */
+
+static unsigned
+midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
+{
+        midgard_block *initial_block = mir_get_block(ctx, block_idx);
+
+        unsigned first_tag = 0;
+
+        do {
+                midgard_bundle *initial_bundle = util_dynarray_element(&initial_block->bundles, midgard_bundle, 0);
+
+                if (initial_bundle) {
+                        first_tag = initial_bundle->tag;
+                        break;
+                }
+
+                /* Initial block is empty, try the next block */
+                initial_block = list_first_entry(&(initial_block->link), midgard_block, link);
+        } while(initial_block != NULL);
+
+        assert(first_tag);
+        return first_tag;
+}
+
 int
 midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_blend)
 {
@@ -3465,11 +3492,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                                 midgard_block *target = mir_get_block(ctx, target_number);
                                 assert(target);
 
-                                /* Determine the destination tag */
-                                midgard_bundle *first = util_dynarray_element(&target->bundles, midgard_bundle, 0);
-                                assert(first);
-
-                                int dest_tag = first->tag;
+                                /* Report the destination tag. */
+                                int dest_tag = midgard_get_first_tag_from_block(ctx, target_number);
 
                                 /* Count up the number of quadwords we're jumping over. That is, the number of quadwords in each of the blocks between (br_block_idx, target_number) */
                                 int quadword_offset = 0;
@@ -3568,28 +3592,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         free(source_order_bundles);
 
-        /* Due to lookahead, we need to report in the command stream the first
-         * tag executed. An initial block might be empty, so iterate until we
-         * find one that 'works' */
-
-        midgard_block *initial_block = list_first_entry(&ctx->blocks, midgard_block, link);
-
-        program->first_tag = 0;
-
-        do {
-                midgard_bundle *initial_bundle = util_dynarray_element(&initial_block->bundles, midgard_bundle, 0);
-
-                if (initial_bundle) {
-                        program->first_tag = initial_bundle->tag;
-                        break;
-                }
-
-                /* Initial block is empty, try the next block */
-                initial_block = list_first_entry(&(initial_block->link), midgard_block, link);
-        } while(initial_block != NULL);
-
-        /* Make sure we actually set the tag */
-        assert(program->first_tag);
+        /* Report the very first tag executed */
+        program->first_tag = midgard_get_first_tag_from_block(ctx, 0);
 
         /* Deal with off-by-one related to the fencepost problem */
         program->work_register_count = ctx->work_registers + 1;
