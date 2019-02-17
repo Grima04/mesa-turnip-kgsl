@@ -64,11 +64,13 @@ typedef struct {
 struct midgard_block;
 
 /* Target types. Defaults to TARGET_GOTO (the type corresponding directly to
- * the hardware), hence why that must be zero */
+ * the hardware), hence why that must be zero. TARGET_DISCARD signals this
+ * instruction is actually a discard op. */
 
 #define TARGET_GOTO 0
 #define TARGET_BREAK 1
 #define TARGET_CONTINUE 2
+#define TARGET_DISCARD 3
 
 typedef struct midgard_branch {
         /* If conditional, the condition is specified in r31.w */
@@ -323,7 +325,7 @@ midgard_create_branch_extended( midgard_condition cond,
                 (cond << 0);
 
         midgard_branch_extended branch = {
-                .op = midgard_jmp_writeout_op_branch_cond,
+                .op = op,
                 .dest_tag = dest_tag,
                 .offset = quadword_offset,
                 .cond = duplicated_cond
@@ -1151,10 +1153,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         /* fallthrough */
 
         case nir_intrinsic_discard: {
-                midgard_condition cond = instr->intrinsic == nir_intrinsic_discard_if ?
-                                         midgard_condition_true : midgard_condition_always;
+                bool conditional = instr->intrinsic == nir_intrinsic_discard_if;
+                struct midgard_instruction discard = v_branch(conditional, false);
+                discard.branch.target_type = TARGET_DISCARD;
+                emit_mir_instruction(ctx, discard);
 
-                EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_discard, 0, 2, cond);
                 ctx->can_discard = true;
                 break;
         }
@@ -3522,19 +3525,40 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                                 if (ins->prepacked_branch) continue;
 
+                                /* Parse some basic branch info */
+                                bool is_compact = ins->unit == ALU_ENAB_BR_COMPACT;
+                                bool is_conditional = ins->branch.conditional;
+                                bool is_inverted = ins->branch.invert_conditional;
+                                bool is_discard = ins->branch.target_type == TARGET_DISCARD;
+
                                 /* Determine the block we're jumping to */
                                 int target_number = ins->branch.target_block;
 
-                                midgard_block *target = mir_get_block(ctx, target_number);
-                                assert(target);
-
-                                /* Report the destination tag. */
-                                int dest_tag = midgard_get_first_tag_from_block(ctx, target_number);
+                                /* Report the destination tag. Discards don't need this */
+                                int dest_tag = is_discard ? 0 : midgard_get_first_tag_from_block(ctx, target_number);
 
                                 /* Count up the number of quadwords we're jumping over. That is, the number of quadwords in each of the blocks between (br_block_idx, target_number) */
                                 int quadword_offset = 0;
 
-                                if (target_number > br_block_idx) {
+                                if (is_discard) {
+                                        /* Jump to the end of the shader. We
+                                         * need to include not only the
+                                         * following blocks, but also the
+                                         * contents of our current block (since
+                                         * discard can come in the middle of
+                                         * the block) */
+
+                                        midgard_block *blk = mir_get_block(ctx, br_block_idx + 1);
+
+                                        for (midgard_bundle *bun = bundle + 1; bun < (midgard_bundle *)((char*) block->bundles.data + block->bundles.size); ++bun) {
+                                                quadword_offset += quadword_size(bun->tag);
+                                        }
+
+                                        mir_foreach_block_from(ctx, blk, b) {
+                                                quadword_offset += b->quadword_count;
+                                        }
+
+                                } else if (target_number > br_block_idx) {
                                         /* Jump forward */
 
                                         for (int idx = br_block_idx + 1; idx < target_number; ++idx) {
@@ -3554,10 +3578,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                                         }
                                 }
 
-                                bool is_compact = ins->unit == ALU_ENAB_BR_COMPACT;
-                                bool is_conditional = ins->branch.conditional;
-                                bool is_inverted = ins->branch.invert_conditional;
-
                                 /* Unconditional extended branches (far jumps)
                                  * have issues, so we always use a conditional
                                  * branch, setting the condition to always for
@@ -3570,18 +3590,22 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                                         is_inverted ? midgard_condition_false :
                                         midgard_condition_true;
 
+                                midgard_jmp_writeout_op op =
+                                        is_discard ? midgard_jmp_writeout_op_discard :
+                                        (is_compact && !is_conditional) ? midgard_jmp_writeout_op_branch_uncond :
+                                        midgard_jmp_writeout_op_branch_cond;
+
                                 if (!is_compact) {
                                         midgard_branch_extended branch =
                                                 midgard_create_branch_extended(
-                                                        cond,
-                                                        midgard_jmp_writeout_op_branch_cond,
+                                                        cond, op,
                                                         dest_tag,
                                                         quadword_offset);
 
                                         memcpy(&ins->branch_extended, &branch, sizeof(branch));
-                                } else if (is_conditional) {
+                                } else if (is_conditional || is_discard) {
                                         midgard_branch_cond branch = {
-                                                .op = midgard_jmp_writeout_op_branch_cond,
+                                                .op = op,
                                                 .dest_tag = dest_tag,
                                                 .offset = quadword_offset,
                                                 .cond = cond
@@ -3591,8 +3615,10 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                                         memcpy(&ins->br_compact, &branch, sizeof(branch));
                                 } else {
+                                        assert(op == midgard_jmp_writeout_op_branch_uncond);
+
                                         midgard_branch_uncond branch = {
-                                                .op = midgard_jmp_writeout_op_branch_uncond,
+                                                .op = op,
                                                 .dest_tag = dest_tag,
                                                 .offset = quadword_offset,
                                                 .unknown = 1
