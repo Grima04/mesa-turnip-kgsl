@@ -186,6 +186,10 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		fd6_ctx->prog = fd6_emit_get_prog(&emit);
 	}
 
+	/* bail if compile failed: */
+	if (!fd6_ctx->prog)
+		return NULL;
+
 	emit.dirty = ctx->dirty;      /* *after* fixup_shader_state() */
 	emit.bs = fd6_emit_get_prog(&emit)->bs;
 	emit.vs = fd6_emit_get_prog(&emit)->vs;
@@ -193,11 +197,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 	const struct ir3_shader_variant *vp = emit.vs;
 	const struct ir3_shader_variant *fp = emit.fs;
-
-	/* do regular pass first, since that is more likely to fail compiling: */
-
-	if (!vp || !fp)
-		return false;
 
 	ctx->stats.vs_regs += ir3_shader_halfregs(vp);
 	ctx->stats.fs_regs += ir3_shader_halfregs(fp);
