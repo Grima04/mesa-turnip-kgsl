@@ -478,7 +478,16 @@ print_extended_branch_writeout_field(uint8_t *words)
         printf("brx.");
 
         print_branch_op(br.op);
-        print_branch_cond(br.cond);
+
+        /* Condition repeated 8 times in all known cases. Check this. */
+
+        unsigned cond = br.cond & 0x3;
+
+        for (unsigned i = 0; i < 16; i += 2) {
+                assert(((br.cond >> i) & 0x3) == cond);
+        }
+
+        print_branch_cond(cond);
 
         if (br.unknown)
                 printf(".unknown%d", br.unknown);
