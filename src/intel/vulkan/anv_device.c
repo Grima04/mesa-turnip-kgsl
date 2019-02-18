@@ -44,9 +44,30 @@
 
 #include "genxml/gen7_pack.h"
 
+/* This is probably far to big but it reflects the max size used for messages
+ * in OpenGLs KHR_debug.
+ */
+#define MAX_DEBUG_MESSAGE_LENGTH    4096
+
 static void
 compiler_debug_log(void *data, const char *fmt, ...)
-{ }
+{
+   char str[MAX_DEBUG_MESSAGE_LENGTH];
+   struct anv_device *device = (struct anv_device *)data;
+
+   if (list_empty(&device->instance->debug_report_callbacks.callbacks))
+      return;
+
+   va_list args;
+   va_start(args, fmt);
+   (void) vsnprintf(str, MAX_DEBUG_MESSAGE_LENGTH, fmt, args);
+   va_end(args);
+
+   vk_debug_report(&device->instance->debug_report_callbacks,
+                   VK_DEBUG_REPORT_DEBUG_BIT_EXT,
+                   VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT,
+                   0, 0, 0, "anv", str);
+}
 
 static void
 compiler_perf_log(void *data, const char *fmt, ...)
