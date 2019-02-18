@@ -555,7 +555,12 @@ setup_stateobj(struct fd_ringbuffer *ring,
 					A6XX_RB_RENDER_CONTROL0_WCOORD) |
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL0_UNK3));
 
-	OUT_RING(ring, COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
+	OUT_RING(ring,
+			COND(samp_mask_regid != regid(63, 0),
+				A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+			COND(samp_id_regid != regid(63, 0),
+				A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
+			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
