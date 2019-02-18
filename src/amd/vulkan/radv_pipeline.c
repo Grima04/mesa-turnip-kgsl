@@ -511,13 +511,6 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 
 		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
 			cf = V_028714_SPI_SHADER_ZERO;
-
-			if (blend->need_src_alpha & (1 << i)) {
-				/* Write the alpha channel of MRT0 when alpha coverage is
-				 * enabled because the depth attachment needs it.
-				 */
-				col_format |= V_028714_SPI_SHADER_32_ABGR;
-			}
 		} else {
 			struct radv_render_pass_attachment *attachment = pass->attachments + subpass->color_attachments[i].attachment;
 			bool blend_enable =
@@ -529,6 +522,14 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 		}
 
 		col_format |= cf << (4 * i);
+	}
+
+	if (!col_format && blend->need_src_alpha & (1 << 0)) {
+		/* When a subpass doesn't have any color attachments, write the
+		 * alpha channel of MRT0 when alpha coverage is enabled because
+		 * the depth attachment needs it.
+		 */
+		col_format |= V_028714_SPI_SHADER_32_ABGR;
 	}
 
 	/* If the i-th target format is set, all previous target formats must
