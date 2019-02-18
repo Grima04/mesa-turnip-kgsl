@@ -1076,6 +1076,7 @@ static inline struct ir3_register * __ssa_src(struct ir3_instruction *instr,
 		flags |= IR3_REG_HALF;
 	reg = ir3_reg_create(instr, 0, IR3_REG_SSA | flags);
 	reg->instr = src;
+	reg->wrmask = src->regs[0]->wrmask;
 	return reg;
 }
 

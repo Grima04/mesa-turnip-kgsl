@@ -340,6 +340,8 @@ ir3_create_collect(struct ir3_context *ctx, struct ir3_instruction *const *arr,
 		ir3_reg_create(collect, 0, IR3_REG_SSA | flags)->instr = elem;
 	}
 
+	collect->regs[0]->wrmask = MASK(arrsz);
+
 	return collect;
 }
 
