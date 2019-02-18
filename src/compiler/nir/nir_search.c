@@ -530,6 +530,73 @@ construct_value(nir_builder *build,
    }
 }
 
+MAYBE_UNUSED static void dump_value(const nir_search_value *val)
+{
+   switch (val->type) {
+   case nir_search_value_constant: {
+      const nir_search_constant *sconst = nir_search_value_as_constant(val);
+      switch (sconst->type) {
+      case nir_type_float:
+         printf("%f", sconst->data.d);
+         break;
+      case nir_type_int:
+         printf("%"PRId64, sconst->data.i);
+         break;
+      case nir_type_uint:
+         printf("0x%"PRIx64, sconst->data.u);
+         break;
+      default:
+         unreachable("bad const type");
+      }
+      break;
+   }
+
+   case nir_search_value_variable: {
+      const nir_search_variable *var = nir_search_value_as_variable(val);
+      if (var->is_constant)
+         printf("#");
+      printf("%c", var->variable + 'a');
+      break;
+   }
+
+   case nir_search_value_expression: {
+      const nir_search_expression *expr = nir_search_value_as_expression(val);
+      printf("(");
+      if (expr->inexact)
+         printf("~");
+      switch (expr->opcode) {
+#define CASE(n) \
+      case nir_search_op_##n: printf(#n); break;
+      CASE(f2b)
+      CASE(b2f)
+      CASE(b2i)
+      CASE(i2b)
+      CASE(i2i)
+      CASE(f2i)
+      CASE(i2f)
+#undef CASE
+      default:
+         printf("%s", nir_op_infos[expr->opcode].name);
+      }
+
+      unsigned num_srcs = 1;
+      if (expr->opcode <= nir_last_opcode)
+         num_srcs = nir_op_infos[expr->opcode].num_inputs;
+
+      for (unsigned i = 0; i < num_srcs; i++) {
+         printf(" ");
+         dump_value(expr->srcs[i]);
+      }
+
+      printf(")");
+      break;
+   }
+   }
+
+   if (val->bit_size > 0)
+      printf("@%d", val->bit_size);
+}
+
 nir_ssa_def *
 nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
                   const nir_search_expression *search,
@@ -566,6 +633,14 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    }
    if (!found)
       return NULL;
+
+#if 0
+   printf("matched: ");
+   dump_value(&search->value);
+   printf(" -> ");
+   dump_value(replace);
+   printf(" ssa_%d\n", instr->dest.dest.ssa.index);
+#endif
 
    build->cursor = nir_before_instr(&instr->instr);
 
