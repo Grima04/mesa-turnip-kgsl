@@ -63,6 +63,9 @@ containers:ubuntu:
 .build:
   image: $UBUNTU_IMAGE
   stage: build+test
+  only:
+    - master
+    - merge_requests
   artifacts:
     when: on_failure
     untracked: true
