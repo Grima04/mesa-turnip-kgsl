@@ -197,7 +197,6 @@ gather_push_constant_info(const nir_shader *nir,
 {
 	nir_const_value *cval = nir_src_as_const_value(instr->src[0]);
 	int base = nir_intrinsic_base(instr);
-	int range = nir_intrinsic_range(instr);
 
 	if (!cval) {
 		info->has_indirect_push_constants = true;
