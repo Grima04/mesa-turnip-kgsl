@@ -148,6 +148,7 @@ i965_lex_yy_c = custom_target(
 i965_asm = executable(
    'i965_asm',
    ['i965_asm.c', i965_gram_tab[0], i965_gram_tab[1], i965_lex_yy_c],
+   dependencies : [dep_thread],
    include_directories : [inc_common, inc_intel],
    link_with : [libintel_common, libintel_compiler, libintel_dev, libmesa_util],
    c_args : [c_vis_args, no_override_init_args],
