@@ -901,6 +901,12 @@ struct tu_cmd_buffer
    bool wait_for_idle;
 };
 
+void
+tu6_emit_event_write(struct tu_cmd_buffer *cmd,
+                     struct tu_cs *cs,
+                     enum vgt_event_type event,
+                     bool need_seqno);
+
 bool
 tu_get_memory_fd(struct tu_device *device,
                  struct tu_device_memory *memory,

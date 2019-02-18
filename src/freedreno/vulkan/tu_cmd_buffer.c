@@ -338,7 +338,7 @@ tu6_emit_marker(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, cmd->marker_reg, ++cmd->marker_seqno);
 }
 
-static void
+void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      enum vgt_event_type event,
