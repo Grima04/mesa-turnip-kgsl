@@ -1571,11 +1571,15 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate)
                 screen->driver->force_flush_fragment(ctx);
 
 #ifdef DUMP_PERFORMANCE_COUNTERS
-        char filename[128];
-        snprintf(filename, sizeof(filename), "/dev/shm/frame%d.mdgprf", ++performance_counter_number);
-        FILE *fp = fopen(filename, "wb");
-        fwrite(screen->perf_counters.cpu,  4096, sizeof(uint32_t), fp);
-        fclose(fp);
+        if (screen->driver->dump_counters) {
+                screen->driver->dump_counters(screen);
+
+                char filename[128];
+                snprintf(filename, sizeof(filename), "/dev/shm/frame%d.mdgprf", ++performance_counter_number);
+                FILE *fp = fopen(filename, "wb");
+                fwrite(screen->perf_counters.cpu,  4096, sizeof(uint32_t), fp);
+                fclose(fp);
+        }
 #endif
 
 #endif
