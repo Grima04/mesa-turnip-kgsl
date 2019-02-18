@@ -10,15 +10,6 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
 }
 
 void
-tu_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                 VkBuffer srcBuffer,
-                 VkBuffer destBuffer,
-                 uint32_t regionCount,
-                 const VkBufferCopy *pRegions)
-{
-}
-
-void
 tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
                    VkBuffer dstBuffer,
                    VkDeviceSize dstOffset,
