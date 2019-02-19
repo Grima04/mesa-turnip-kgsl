@@ -27,11 +27,11 @@
 #include <string.h>
 #include <assert.h>
 
-/* Some self-contained prettyprinting functions shared between panwrap and
+/* Some self-contained prettyprinting functions shared between pandecode and
  * the main driver */
 
 #define DEFINE_CASE(name) case MALI_## name: return "MALI_" #name
-char *panwrap_format_name(enum mali_format format)
+char *pandecode_format_name(enum mali_format format)
 {
 	static char unk_format_str[5];
 

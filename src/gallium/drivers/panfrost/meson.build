@@ -119,3 +119,25 @@ midgard_compiler = executable(
   ],
   build_by_default : true
 )
+
+files_pandecode = files(
+  'pandecode/cmdline.c',
+  'pandecode/decode.c',
+
+  'pan_pretty_print.c',
+
+  'midgard/disassemble.c'
+)
+
+pandecode = executable(
+  'pandecode',
+  files_pandecode,
+  include_directories : inc_panfrost,
+  dependencies : [
+    dep_thread,
+  ],
+  link_with : [
+    libmesa_util
+  ],
+  build_by_default : true
+)
