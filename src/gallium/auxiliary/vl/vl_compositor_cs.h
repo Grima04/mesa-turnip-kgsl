@@ -32,9 +32,9 @@
 
 #include "vl_compositor.h"
 
-char *compute_shader_video_buffer;
-char *compute_shader_weave;
-char *compute_shader_rgba;
+extern const char *compute_shader_video_buffer;
+extern const char *compute_shader_weave;
+extern const char *compute_shader_rgba;
 
 /**
  * create compute shader

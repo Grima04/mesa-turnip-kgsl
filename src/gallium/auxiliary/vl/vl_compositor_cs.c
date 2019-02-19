@@ -40,7 +40,7 @@ struct cs_viewport {
    int translate_y;
 };
 
-char *compute_shader_video_buffer =
+const char *compute_shader_video_buffer =
       "COMP\n"
       "PROPERTY CS_FIXED_BLOCK_WIDTH 8\n"
       "PROPERTY CS_FIXED_BLOCK_HEIGHT 8\n"
@@ -101,7 +101,7 @@ char *compute_shader_video_buffer =
 
       "END\n";
 
-char *compute_shader_weave =
+const char *compute_shader_weave =
       "COMP\n"
       "PROPERTY CS_FIXED_BLOCK_WIDTH 8\n"
       "PROPERTY CS_FIXED_BLOCK_HEIGHT 8\n"
@@ -173,7 +173,7 @@ char *compute_shader_weave =
 
       "END\n";
 
-char *compute_shader_rgba =
+const char *compute_shader_rgba =
       "COMP\n"
       "PROPERTY CS_FIXED_BLOCK_WIDTH 8\n"
       "PROPERTY CS_FIXED_BLOCK_HEIGHT 8\n"
