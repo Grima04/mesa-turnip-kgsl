@@ -324,7 +324,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 			dst[i] = ir3_MOV(b, src[i], TYPE_U32);
 		}
 
-		put_dst(ctx, &alu->dest.dest);
+		ir3_put_dst(ctx, &alu->dest.dest);
 		return;
 	}
 
@@ -344,7 +344,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 			}
 		}
 
-		put_dst(ctx, &alu->dest.dest);
+		ir3_put_dst(ctx, &alu->dest.dest);
 		return;
 	}
 
@@ -649,7 +649,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		break;
 	}
 
-	put_dst(ctx, &alu->dest.dest);
+	ir3_put_dst(ctx, &alu->dest.dest);
 }
 
 /* handles direct/indirect UBO reads: */
@@ -1364,7 +1364,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	}
 
 	if (info->has_dest)
-		put_dst(ctx, &intr->dest);
+		ir3_put_dst(ctx, &intr->dest);
 }
 
 static void
@@ -1692,7 +1692,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		}
 	}
 
-	put_dst(ctx, &tex->dest);
+	ir3_put_dst(ctx, &tex->dest);
 }
 
 static void
@@ -1717,7 +1717,7 @@ emit_tex_query_levels(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (ctx->compiler->levels_add_one)
 		dst[0] = ir3_ADD_U(b, dst[0], 0, create_immed(b, 1), 0);
 
-	put_dst(ctx, &tex->dest);
+	ir3_put_dst(ctx, &tex->dest);
 }
 
 static void
@@ -1761,7 +1761,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 		}
 	}
 
-	put_dst(ctx, &tex->dest);
+	ir3_put_dst(ctx, &tex->dest);
 }
 
 static void

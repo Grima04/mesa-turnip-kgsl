@@ -242,7 +242,7 @@ ir3_get_src(struct ir3_context *ctx, nir_src *src)
 }
 
 void
-put_dst(struct ir3_context *ctx, nir_dest *dst)
+ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
 {
 	unsigned bit_size = nir_dest_bit_size(*dst);
 
