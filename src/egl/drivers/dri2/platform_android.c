@@ -1457,7 +1457,7 @@ droid_probe_device(_EGLDisplay *disp)
 static EGLBoolean
 droid_open_device(_EGLDisplay *disp)
 {
-#define MAX_DRM_DEVICES 32
+#define MAX_DRM_DEVICES 64
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    drmDevicePtr device, devices[MAX_DRM_DEVICES] = { NULL };
    int num_devices;
