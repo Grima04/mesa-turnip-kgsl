@@ -1027,8 +1027,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         }
 
         case nir_op_iabs:
-                result = vir_MAX(c, src[0],
-                                vir_SUB(c, vir_uniform_ui(c, 0), src[0]));
+                result = vir_MAX(c, src[0], vir_NEG(c, src[0]));
                 break;
 
         case nir_op_fddx:
