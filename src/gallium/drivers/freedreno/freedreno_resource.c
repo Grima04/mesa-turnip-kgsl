@@ -373,7 +373,9 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 {
 	struct fd_batch *write_batch = NULL;
 
-	fd_batch_reference(&write_batch, rsc->write_batch);
+	mtx_lock(&ctx->screen->lock);
+	fd_batch_reference_locked(&write_batch, rsc->write_batch);
+	mtx_unlock(&ctx->screen->lock);
 
 	if (usage & PIPE_TRANSFER_WRITE) {
 		struct fd_batch *batch, *batches[32] = {};
@@ -387,7 +389,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 		mtx_lock(&ctx->screen->lock);
 		batch_mask = rsc->batch_mask;
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
-			fd_batch_reference(&batches[batch->idx], batch);
+			fd_batch_reference_locked(&batches[batch->idx], batch);
 		mtx_unlock(&ctx->screen->lock);
 
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
@@ -501,7 +503,10 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 				fd_blit_to_staging(ctx, trans);
 
 				struct fd_batch *batch = NULL;
-				fd_batch_reference(&batch, staging_rsc->write_batch);
+
+				fd_context_lock(ctx);
+				fd_batch_reference_locked(&batch, staging_rsc->write_batch);
+				fd_context_unlock(ctx);
 
 				/* we can't fd_bo_cpu_prep() until the blit to staging
 				 * is submitted to kernel.. in that case write_batch
@@ -550,7 +555,9 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		struct fd_batch *write_batch = NULL;
 
 		/* hold a reference, so it doesn't disappear under us: */
-		fd_batch_reference(&write_batch, rsc->write_batch);
+		fd_context_lock(ctx);
+		fd_batch_reference_locked(&write_batch, rsc->write_batch);
+		fd_context_unlock(ctx);
 
 		if ((usage & PIPE_TRANSFER_WRITE) && write_batch &&
 				write_batch->back_blit) {

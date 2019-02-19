@@ -433,7 +433,7 @@ static void
 flush_write_batch(struct fd_resource *rsc)
 {
 	struct fd_batch *b = NULL;
-	fd_batch_reference(&b, rsc->write_batch);
+	fd_batch_reference_locked(&b, rsc->write_batch);
 
 	mtx_unlock(&b->ctx->screen->lock);
 	fd_batch_flush(b, true, false);

@@ -243,6 +243,10 @@ void __fd_batch_destroy(struct fd_batch *batch);
  * WARNING the _locked() version can briefly drop the lock.  Without
  * recursive mutexes, I'm not sure there is much else we can do (since
  * __fd_batch_destroy() needs to unref resources)
+ *
+ * WARNING you must acquire the screen->lock and use the _locked()
+ * version in case that the batch being ref'd can disappear under
+ * you.
  */
 
 /* fwd-decl prototypes to untangle header dependency :-/ */
