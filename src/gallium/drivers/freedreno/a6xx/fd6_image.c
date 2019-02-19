@@ -85,14 +85,39 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		img->depth  = 0;
 	} else {
 		img->buffer = false;
+
 		unsigned lvl = pimg->u.tex.level;
-		img->offset = rsc->slices[lvl].offset;
+		unsigned layers = pimg->u.tex.last_layer - pimg->u.tex.first_layer + 1;
+
+		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
 		img->pitch  = rsc->slices[lvl].pitch * rsc->cpp;
-		img->array_pitch = rsc->layer_size;
+
+		switch (prsc->target) {
+		case PIPE_TEXTURE_RECT:
+		case PIPE_TEXTURE_1D:
+		case PIPE_TEXTURE_2D:
+			img->array_pitch = rsc->layer_size;
+			img->depth = 1;
+			break;
+		case PIPE_TEXTURE_1D_ARRAY:
+		case PIPE_TEXTURE_2D_ARRAY:
+		case PIPE_TEXTURE_CUBE:
+		case PIPE_TEXTURE_CUBE_ARRAY:
+			img->array_pitch = rsc->layer_size;
+			// TODO the CUBE/CUBE_ARRAY might need to be layers/6 for tex state,
+			// but empirically for ibo state it shouldn't be divided.
+			img->depth = layers;
+			break;
+		case PIPE_TEXTURE_3D:
+			img->array_pitch = rsc->slices[lvl].size0;
+			img->depth  = u_minify(prsc->depth0, lvl);
+			break;
+		default:
+			break;
+		}
 
 		img->width  = u_minify(prsc->width0, lvl);
 		img->height = u_minify(prsc->height0, lvl);
-		img->depth  = u_minify(prsc->depth0, lvl);
 	}
 }
 
@@ -132,9 +157,11 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 
 static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
+	debug_assert(fd_resource(img->prsc)->tile_mode == 0);
+
 	OUT_RING(ring, A6XX_TEX_CONST_0_FMT(img->fmt) |
 		A6XX_TEX_CONST_0_TILE_MODE(fd_resource(img->prsc)->tile_mode) |
-		fd6_tex_swiz(img->prsc, img->fmt, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+		fd6_tex_swiz(img->prsc, img->pfmt, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
 			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W) |
 		COND(img->srgb, A6XX_TEX_CONST_0_SRGB));
 	OUT_RING(ring, A6XX_TEX_CONST_1_WIDTH(img->width) |
