@@ -50,6 +50,7 @@
 
 #ifdef HAVE_LIBDRM
 #include <xf86drm.h>
+#define MAX_DRM_DEVICES 64
 #ifdef USE_DRICONF
 #include "util/xmlconfig.h"
 #include "util/xmlpool.h"
@@ -132,27 +133,14 @@ is_kernel_i915(int fd)
 int
 loader_open_render_node(const char *name)
 {
-   drmDevicePtr *devices, device;
-   int err, render = -ENOENT, fd;
-   unsigned int num, i;
+   drmDevicePtr devices[MAX_DRM_DEVICES], device;
+   int i, num_devices, fd = -1;
 
-   err = drmGetDevices2(0, NULL, 0);
-   if (err < 0)
-      return err;
+   num_devices = drmGetDevices2(0, devices, MAX_DRM_DEVICES);
+   if (num_devices <= 0)
+      return -ENOENT;
 
-   num = err;
-
-   devices = calloc(num, sizeof(*devices));
-   if (!devices)
-      return -ENOMEM;
-
-   err = drmGetDevices2(0, devices, num);
-   if (err < 0) {
-      render = err;
-      goto free;
-   }
-
-   for (i = 0; i < num; i++) {
+   for (i = 0; i < num_devices; i++) {
       device = devices[i];
 
       if ((device->available_nodes & (1 << DRM_NODE_RENDER)) &&
@@ -176,16 +164,15 @@ loader_open_render_node(const char *name)
          }
 
          drmFreeVersion(version);
-         render = fd;
          break;
       }
    }
+   drmFreeDevices(devices, num_devices);
 
-   drmFreeDevices(devices, num);
+   if (i == num_devices)
+      return -ENOENT;
 
-free:
-   free(devices);
-   return render;
+   return fd;
 }
 
 #ifdef USE_DRICONF
@@ -310,8 +297,6 @@ static char *drm_get_id_path_tag_for_fd(int fd)
 
 int loader_get_user_preferred_fd(int default_fd, bool *different_device)
 {
-/* Arbitrary "maximum" value of drm devices. */
-#define MAX_DRM_DEVICES 32
    const char *dri_prime = getenv("DRI_PRIME");
    char *default_tag, *prime = NULL;
    drmDevicePtr devices[MAX_DRM_DEVICES];
