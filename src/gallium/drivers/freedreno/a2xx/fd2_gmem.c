@@ -59,6 +59,28 @@ static uint32_t fmt2swap(enum pipe_format format)
 	}
 }
 
+static bool
+use_hw_binning(struct fd_batch *batch)
+{
+	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+
+	/* we hardcoded a limit of 8 "pipes", we can increase this limit
+	 * at the cost of a slightly larger command stream
+	 * however very few cases will need more than 8
+	 * gmem->num_vsc_pipes == 0 means empty batch (TODO: does it still happen?)
+	 */
+	if (gmem->num_vsc_pipes > 8 || !gmem->num_vsc_pipes)
+		return false;
+
+	/* only a20x hw binning is implement
+	 * a22x is more like a3xx, but perhaps the a20x works? (TODO)
+	 */
+	if (!is_a20x(batch->ctx->screen))
+		return false;
+
+	return fd_binning_enabled && ((gmem->nbins_x * gmem->nbins_y) > 2);
+}
+
 /* transfer from gmem to system memory (ie. normal RAM) */
 
 static void
@@ -533,7 +555,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 	OUT_RING(ring, CP_REG(REG_A2XX_VGT_CURRENT_BIN_ID_MAX));
 	OUT_RING(ring, 0);
 
-	if (is_a20x(ctx->screen) && fd_binning_enabled && gmem->num_vsc_pipes) {
+	if (use_hw_binning(batch)) {
 		/* patch out unneeded memory exports by changing EXEC CF to EXEC_END
 		 *
 		 * in the shader compiler, we guarantee that the shader ends with
@@ -692,7 +714,7 @@ fd2_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 		OUT_RING(ring, fui(0.0f));
 	}
 
-	if (is_a20x(ctx->screen) && fd_binning_enabled) {
+	if (use_hw_binning(batch)) {
 		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
