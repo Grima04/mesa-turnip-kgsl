@@ -322,25 +322,30 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
       dri2_dpy->loader_extensions = NULL;
    }
 
-   /* No DRM device, so attempt to fall back to software path w/o DRM. */
-   if (swrast) {
-      _eglLog(_EGL_DEBUG, "Falling back to surfaceless swrast without DRM.");
-      dri2_dpy->fd = -1;
-      dri2_dpy->driver_name = strdup("swrast");
-      if (!dri2_dpy->driver_name) {
-         return false;
-      }
+   return false;
+}
 
-      if (dri2_load_driver_swrast(disp)) {
-         dri2_dpy->loader_extensions = swrast_loader_extensions;
-         return true;
-      }
+static bool
+surfaceless_probe_device_sw(_EGLDisplay *disp)
+{
+   struct dri2_egl_display *dri2_dpy = disp->DriverData;
 
+   dri2_dpy->fd = -1;
+   disp->Device = _eglAddDevice(dri2_dpy->fd, true);
+   assert(disp->Device);
+
+   dri2_dpy->driver_name = strdup("swrast");
+   if (!dri2_dpy->driver_name)
+      return false;
+
+   if (!dri2_load_driver_swrast(disp)) {
       free(dri2_dpy->driver_name);
       dri2_dpy->driver_name = NULL;
+      return false;
    }
 
-   return false;
+   dri2_dpy->loader_extensions = swrast_loader_extensions;
+   return true;
 }
 
 EGLBoolean
@@ -364,9 +369,15 @@ dri2_initialize_surfaceless(_EGLDriver *drv, _EGLDisplay *disp)
                  "No hardware driver found, falling back to software rendering");
    }
 
-   if (!driver_loaded && !surfaceless_probe_device(disp, true)) {
-      err = "DRI2: failed to load driver";
-      goto cleanup;
+   if (!driver_loaded)
+      driver_loaded = surfaceless_probe_device(disp, true);
+
+   if (!driver_loaded) {
+      _eglLog(_EGL_DEBUG, "Falling back to surfaceless swrast without DRM.");
+      if (!surfaceless_probe_device_sw(disp)) {
+         err = "DRI2: failed to load driver";
+         goto cleanup;
+      }
    }
 
    if (!dri2_create_screen(disp)) {
