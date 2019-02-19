@@ -251,6 +251,8 @@ put_dst(struct ir3_context *ctx, nir_dest *dst)
 	 * ir3_cp will clean up the extra mov:
 	 */
 	for (unsigned i = 0; i < ctx->last_dst_n; i++) {
+		if (!ctx->last_dst[i])
+			continue;
 		if (ctx->last_dst[i]->regs[0]->flags & IR3_REG_HIGH) {
 			ctx->last_dst[i] = ir3_MOV(ctx->block, ctx->last_dst[i], TYPE_U32);
 		}
