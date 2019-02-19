@@ -254,8 +254,6 @@ static const __DRIswrastLoaderExtension swrast_loader_extension = {
    .getImage        = NULL,
 };
 
-#define DRM_RENDER_DEV_NAME  "%s/renderD%d"
-
 static const __DRIextension *image_loader_extensions[] = {
    &image_loader_extension.base,
    &image_lookup_extension.base,
@@ -275,6 +273,7 @@ static bool
 surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 {
 #define MAX_DRM_DEVICES 64
+   const unsigned node_type = swrast ? DRM_NODE_PRIMARY : DRM_NODE_RENDER;
    struct dri2_egl_display *dri2_dpy = disp->DriverData;
    drmDevicePtr device, devices[MAX_DRM_DEVICES] = { NULL };
    int i, num_devices;
@@ -286,10 +285,10 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
    for (i = 0; i < num_devices; ++i) {
       device = devices[i];
 
-      if (!(device->available_nodes & (1 << DRM_NODE_RENDER)))
+      if (!(device->available_nodes & (1 << node_type)))
          continue;
 
-      dri2_dpy->fd = loader_open_device(device->nodes[DRM_NODE_RENDER]);
+      dri2_dpy->fd = loader_open_device(device->nodes[node_type]);
       if (dri2_dpy->fd < 0)
          continue;
 
@@ -300,10 +299,16 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
          continue;
       }
 
-      if (swrast)
-         dri2_dpy->driver_name = strdup("kms_swrast");
-      else
-         dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
+      char *driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
+      if (swrast) {
+         /* Use kms swrast only with vgem */
+         if (strcmp(driver_name, "vgem") == 0)
+            dri2_dpy->driver_name = strdup("kms_swrast");
+         free(driver_name);
+      } else {
+         /* Use the given hardware driver */
+         dri2_dpy->driver_name = driver_name;
+      }
 
       if (dri2_dpy->driver_name && dri2_load_driver_dri3(disp))
          break;
