@@ -180,6 +180,23 @@ ttn_src_for_dest(nir_builder *b, nir_alu_dest *dest)
    return nir_fmov_alu(b, src, 4);
 }
 
+static enum glsl_interp_mode
+ttn_translate_interp_mode(unsigned tgsi_interp)
+{
+   switch (tgsi_interp) {
+   case TGSI_INTERPOLATE_CONSTANT:
+      return INTERP_MODE_FLAT;
+   case TGSI_INTERPOLATE_LINEAR:
+      return INTERP_MODE_NOPERSPECTIVE;
+   case TGSI_INTERPOLATE_PERSPECTIVE:
+      return INTERP_MODE_SMOOTH;
+   case TGSI_INTERPOLATE_COLOR:
+      return INTERP_MODE_SMOOTH;
+   default:
+      unreachable("bad TGSI interpolation mode");
+   }
+}
+
 static void
 ttn_emit_declaration(struct ttn_compile *c)
 {
@@ -314,21 +331,8 @@ ttn_emit_declaration(struct ttn_compile *c)
                var->data.location = VERT_ATTRIB_GENERIC0 + idx;
             }
             var->data.index = 0;
-
-            /* We definitely need to translate the interpolation field, because
-             * nir_print will decode it.
-             */
-            switch (decl->Interp.Interpolate) {
-            case TGSI_INTERPOLATE_CONSTANT:
-               var->data.interpolation = INTERP_MODE_FLAT;
-               break;
-            case TGSI_INTERPOLATE_LINEAR:
-               var->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
-               break;
-            case TGSI_INTERPOLATE_PERSPECTIVE:
-               var->data.interpolation = INTERP_MODE_SMOOTH;
-               break;
-            }
+            var->data.interpolation =
+               ttn_translate_interp_mode(decl->Interp.Interpolate);
 
             exec_list_push_tail(&b->shader->inputs, &var->node);
             c->inputs[idx] = var;
@@ -352,6 +356,8 @@ ttn_emit_declaration(struct ttn_compile *c)
             var->data.mode = nir_var_shader_out;
             var->name = ralloc_asprintf(var, "out_%d", idx);
             var->data.index = 0;
+            var->data.interpolation =
+               ttn_translate_interp_mode(decl->Interp.Interpolate);
 
             if (c->scan->processor == PIPE_SHADER_FRAGMENT) {
                switch (semantic_name) {
