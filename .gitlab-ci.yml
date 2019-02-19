@@ -66,6 +66,7 @@ containers:ubuntu:
   only:
     - master
     - merge_requests
+    - /^ci([-/].*)?$/
   artifacts:
     when: on_failure
     untracked: true
