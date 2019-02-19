@@ -106,7 +106,7 @@ env.CodeGenerate(
     target = 'rasterizer/archrast/gen_ar_event.hpp',
     script = swrroot + 'rasterizer/codegen/gen_archrast.py',
     source = 'rasterizer/archrast/events.proto',
-    command = python_cmd + ' $SCRIPT --proto $SOURCE --proto_private ' + srcroot + '/rasterizer/archrast/events_private.proto --output $TARGET --gen_event_hpp'
+    command = python_cmd + ' $SCRIPT --proto $SOURCE ' + srcroot + '/rasterizer/archrast/events_private.proto --output-dir ' + bldroot + '/rasterizer/archrast'
 )
 Depends('rasterizer/archrast/gen_ar_event.hpp',
         swrroot + 'rasterizer/archrast/events_private.proto')
@@ -117,7 +117,7 @@ env.CodeGenerate(
     target = 'rasterizer/archrast/gen_ar_event.cpp',
     script = swrroot + 'rasterizer/codegen/gen_archrast.py',
     source = 'rasterizer/archrast/events.proto',
-    command = python_cmd + ' $SCRIPT --proto $SOURCE --proto_private ' + srcroot + '/rasterizer/archrast/events_private.proto --output $TARGET --gen_event_cpp'
+    command = python_cmd + ' $SCRIPT --proto $SOURCE ' + srcroot + '/rasterizer/archrast/events_private.proto --output-dir ' + bldroot + '/rasterizer/archrast'
 )
 Depends('rasterizer/archrast/gen_ar_event.cpp',
         swrroot + 'rasterizer/archrast/events_private.proto')
@@ -128,7 +128,7 @@ env.CodeGenerate(
     target = 'rasterizer/archrast/gen_ar_eventhandler.hpp',
     script = swrroot + 'rasterizer/codegen/gen_archrast.py',
     source = 'rasterizer/archrast/events.proto',
-    command = python_cmd + ' $SCRIPT --proto $SOURCE --proto_private ' + srcroot + '/rasterizer/archrast/events_private.proto --output $TARGET --gen_eventhandler_hpp'
+    command = python_cmd + ' $SCRIPT --proto $SOURCE ' + srcroot + '/rasterizer/archrast/events_private.proto --output-dir ' + bldroot + '/rasterizer/archrast'
 )
 Depends('rasterizer/archrast/gen_ar_eventhandler.hpp',
         swrroot + 'rasterizer/archrast/events_private.proto')
@@ -139,7 +139,7 @@ env.CodeGenerate(
     target = 'rasterizer/archrast/gen_ar_eventhandlerfile.hpp',
     script = swrroot + 'rasterizer/codegen/gen_archrast.py',
     source = 'rasterizer/archrast/events.proto',
-    command = python_cmd + ' $SCRIPT --proto $SOURCE --proto_private ' + srcroot + '/rasterizer/archrast/events_private.proto --output $TARGET --gen_eventhandlerfile_hpp'
+    command = python_cmd + ' $SCRIPT --proto $SOURCE ' + srcroot + '/rasterizer/archrast/events_private.proto --output-dir ' + bldroot + '/rasterizer/archrast'
 )
 Depends('rasterizer/archrast/gen_ar_eventhandlerfile.hpp',
         swrroot + 'rasterizer/archrast/events_private.proto')

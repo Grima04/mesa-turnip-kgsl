@@ -159,40 +159,32 @@ rasterizer/archrast/gen_ar_event.hpp: rasterizer/codegen/gen_archrast.py rasteri
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
-		--proto $(srcdir)/rasterizer/archrast/events.proto \
-		--proto_private $(srcdir)/rasterizer/archrast/events_private.proto \
-		--output rasterizer/archrast/gen_ar_event.hpp \
-		--gen_event_hpp
+		--proto $(srcdir)/rasterizer/archrast/events.proto $(srcdir)/rasterizer/archrast/events_private.proto \
+		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
 rasterizer/archrast/gen_ar_event.cpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_event.cpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
-		--proto $(srcdir)/rasterizer/archrast/events.proto \
-		--proto_private $(srcdir)/rasterizer/archrast/events_private.proto \
-		--output rasterizer/archrast/gen_ar_event.cpp \
-		--gen_event_cpp
+		--proto $(srcdir)/rasterizer/archrast/events.proto $(srcdir)/rasterizer/archrast/events_private.proto \
+		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
 rasterizer/archrast/gen_ar_eventhandler.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandler.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
-		--proto $(srcdir)/rasterizer/archrast/events.proto \
-		--proto_private $(srcdir)/rasterizer/archrast/events_private.proto \
-		--output rasterizer/archrast/gen_ar_eventhandler.hpp \
-		--gen_eventhandler_hpp
+		--proto $(srcdir)/rasterizer/archrast/events.proto $(srcdir)/rasterizer/archrast/events_private.proto \
+		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
 rasterizer/archrast/gen_ar_eventhandlerfile.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandlerfile.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
-		--proto $(srcdir)/rasterizer/archrast/events.proto \
-		--proto_private $(srcdir)/rasterizer/archrast/events_private.proto \
-		--output rasterizer/archrast/gen_ar_eventhandlerfile.hpp \
-		--gen_eventhandlerfile_hpp
+		--proto $(srcdir)/rasterizer/archrast/events.proto $(srcdir)/rasterizer/archrast/events_private.proto \
+		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
 rasterizer/core/backends/gen_BackendPixelRate0.cpp \
