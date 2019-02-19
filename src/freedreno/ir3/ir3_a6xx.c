@@ -85,8 +85,8 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		sam = ir3_SAM(b, OPC_ISAM, TYPE_U32, 0b1, 0,
 				tex_idx, tex_idx, ir3_create_collect(ctx, coords, 2), NULL);
 
-		sam->barrier_class = IR3_BARRIER_IMAGE_R;
-		sam->barrier_conflict = IR3_BARRIER_IMAGE_W;
+		sam->barrier_class = IR3_BARRIER_BUFFER_R;
+		sam->barrier_conflict = IR3_BARRIER_BUFFER_W;
 
 		dst[i] = sam;
 	}
