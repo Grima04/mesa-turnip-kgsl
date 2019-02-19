@@ -45,6 +45,8 @@ struct tu_pipeline_builder
    struct tu_pipeline_cache *cache;
    const VkAllocationCallbacks *alloc;
    const VkGraphicsPipelineCreateInfo *create_info;
+
+   bool rasterizer_discard;
 };
 
 static enum tu_dynamic_state_bits
@@ -106,6 +108,84 @@ tu6_primtype(VkPrimitiveTopology topology)
    }
 }
 
+static uint32_t
+tu6_guardband_adj(uint32_t v)
+{
+   if (v > 256)
+      return (uint32_t)(511.0 - 65.0 * (log2(v) - 8.0));
+   else
+      return 511;
+}
+
+void
+tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
+{
+   float offsets[3];
+   float scales[3];
+   scales[0] = viewport->width / 2.0f;
+   scales[1] = viewport->height / 2.0f;
+   scales[2] = viewport->maxDepth - viewport->minDepth;
+   offsets[0] = viewport->x + scales[0];
+   offsets[1] = viewport->y + scales[1];
+   offsets[2] = viewport->minDepth;
+
+   VkOffset2D min;
+   VkOffset2D max;
+   min.x = (int32_t) viewport->x;
+   max.x = (int32_t) ceilf(viewport->x + viewport->width);
+   if (viewport->height >= 0.0f) {
+      min.y = (int32_t) viewport->y;
+      max.y = (int32_t) ceilf(viewport->y + viewport->height);
+   } else {
+      min.y = (int32_t)(viewport->y + viewport->height);
+      max.y = (int32_t) ceilf(viewport->y);
+   }
+   /* the spec allows viewport->height to be 0.0f */
+   if (min.y == max.y)
+      max.y++;
+   assert(min.x >= 0 && min.x < max.x);
+   assert(min.y >= 0 && min.y < max.y);
+
+   VkExtent2D guardband_adj;
+   guardband_adj.width = tu6_guardband_adj(max.x - min.x);
+   guardband_adj.height = tu6_guardband_adj(max.y - min.y);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_VPORT_XOFFSET_0, 6);
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_XOFFSET_0(offsets[0]));
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_XSCALE_0(scales[0]));
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_YOFFSET_0(offsets[1]));
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_YSCALE_0(scales[1]));
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_ZOFFSET_0(offsets[2]));
+   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_ZSCALE_0(scales[2]));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0, 2);
+   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(min.x) |
+                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(min.y));
+   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(max.x - 1) |
+                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(max.y - 1));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ, 1);
+   tu_cs_emit(cs,
+              A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_HORZ(guardband_adj.width) |
+                 A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_VERT(guardband_adj.height));
+}
+
+void
+tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
+{
+   const VkOffset2D min = scissor->offset;
+   const VkOffset2D max = {
+      scissor->offset.x + scissor->extent.width,
+      scissor->offset.y + scissor->extent.height,
+   };
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0, 2);
+   tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(min.x) |
+                     A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(min.y));
+   tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(max.x - 1) |
+                     A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(max.y - 1));
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -160,6 +240,40 @@ tu_pipeline_builder_parse_input_assembly(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
+                                   struct tu_pipeline *pipeline)
+{
+   /* The spec says:
+    *
+    *    pViewportState is a pointer to an instance of the
+    *    VkPipelineViewportStateCreateInfo structure, and is ignored if the
+    *    pipeline has rasterization disabled."
+    *
+    * We leave the relevant registers stale in that case.
+    */
+   if (builder->rasterizer_discard)
+      return;
+
+   const VkPipelineViewportStateCreateInfo *vp_info =
+      builder->create_info->pViewportState;
+
+   struct tu_cs vp_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 15, &vp_cs);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
+      assert(vp_info->viewportCount == 1);
+      tu6_emit_viewport(&vp_cs, vp_info->pViewports);
+   }
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_SCISSOR)) {
+      assert(vp_info->scissorCount == 1);
+      tu6_emit_scissor(&vp_cs, vp_info->pScissors);
+   }
+
+   pipeline->vp.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vp_cs);
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -177,6 +291,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
+   tu_pipeline_builder_parse_viewport(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
@@ -200,6 +315,9 @@ tu_pipeline_builder_init_graphics(
       .create_info = create_info,
       .alloc = alloc,
    };
+
+   builder->rasterizer_discard =
+      create_info->pRasterizationState->rasterizerDiscardEnable;
 }
 
 VkResult

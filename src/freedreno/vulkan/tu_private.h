@@ -78,7 +78,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_VERTEX_ATTRIBS 32
 #define MAX_RTS 8
 #define MAX_VSC_PIPES 32
-#define MAX_VIEWPORTS 16
+#define MAX_VIEWPORTS 1
 #define MAX_SCISSORS 16
 #define MAX_DISCARD_RECTANGLES 4
 #define MAX_PUSH_CONSTANTS_SIZE 128
@@ -991,7 +991,18 @@ struct tu_pipeline
       enum pc_di_primtype primtype;
       bool primitive_restart;
    } ia;
+
+   struct
+   {
+      struct tu_cs_entry state_ib;
+   } vp;
 };
+
+void
+tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport);
+
+void
+tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor);
 
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,
