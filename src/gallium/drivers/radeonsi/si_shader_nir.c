@@ -51,7 +51,36 @@ static nir_variable* intrinsic_get_var(nir_intrinsic_instr *instr)
 	return nir_deref_instr_get_variable(nir_src_as_deref(instr->src[0]));
 }
 
-static void scan_instruction(struct tgsi_shader_info *info,
+static void gather_intrinsic_load_deref_info(const nir_shader *nir,
+					     const nir_intrinsic_instr *instr,
+					     nir_variable *var,
+					     struct tgsi_shader_info *info)
+{
+	assert(var && var->data.mode == nir_var_shader_in);
+
+	switch (nir->info.stage) {
+	case MESA_SHADER_VERTEX: {
+		unsigned i = var->data.driver_location;
+		unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
+
+		for (unsigned j = 0; j < attrib_count; j++, i++) {
+			if (glsl_type_is_64bit(glsl_without_array(var->type))) {
+				/* TODO: set usage mask more accurately for doubles */
+				info->input_usage_mask[i] = TGSI_WRITEMASK_XYZW;
+			} else {
+				uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
+				info->input_usage_mask[i] |= mask << var->data.location_frac;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+static void scan_instruction(const struct nir_shader *nir,
+			     struct tgsi_shader_info *info,
 			     nir_instr *instr)
 {
 	if (instr->type == nir_instr_type_alu) {
@@ -216,6 +245,8 @@ static void scan_instruction(struct tgsi_shader_info *info,
 				glsl_get_base_type(glsl_without_array(var->type));
 
 			if (mode == nir_var_shader_in) {
+				gather_intrinsic_load_deref_info(nir, intr, var, info);
+
 				switch (var->data.interpolation) {
 				case INTERP_MODE_NONE:
 					if (glsl_base_type_is_integer(base_type))
@@ -390,16 +421,10 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 * variable->data.driver_location.
 		 */
 		if (nir->info.stage == MESA_SHADER_VERTEX) {
-			/* TODO: gather the actual input useage and remove this. */
-			info->input_usage_mask[i] = TGSI_WRITEMASK_XYZW;
-
-			if (glsl_type_is_dual_slot(variable->type)) {
-				num_inputs += 2;
-
-				/* TODO: gather the actual input useage and remove this. */
-				info->input_usage_mask[i+1] = TGSI_WRITEMASK_XYZW;
-			} else
+			if (glsl_type_is_dual_slot(glsl_without_array(variable->type)))
 				num_inputs++;
+
+			num_inputs++;
 			continue;
 		}
 
@@ -760,7 +785,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 	nir_foreach_block(block, func->impl) {
 		nir_foreach_instr(instr, block)
-			scan_instruction(info, instr);
+			scan_instruction(nir, info, instr);
 	}
 }
 
