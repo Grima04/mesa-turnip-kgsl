@@ -300,8 +300,7 @@ int loader_get_user_preferred_fd(int default_fd, bool *different_device)
    const char *dri_prime = getenv("DRI_PRIME");
    char *default_tag, *prime = NULL;
    drmDevicePtr devices[MAX_DRM_DEVICES];
-   int i, num_devices, fd;
-   bool found = false;
+   int i, num_devices, fd = -1;
 
    if (dri_prime)
       prime = strdup(dri_prime);
@@ -320,44 +319,34 @@ int loader_get_user_preferred_fd(int default_fd, bool *different_device)
       goto err;
 
    num_devices = drmGetDevices2(0, devices, MAX_DRM_DEVICES);
-   if (num_devices < 0)
+   if (num_devices <= 0)
       goto err;
 
-   /* two format are supported:
-    * "1": choose any other card than the card used by default.
-    * id_path_tag: (for example "pci-0000_02_00_0") choose the card
-    * with this id_path_tag.
-    */
-   if (!strcmp(prime,"1")) {
-      /* Hmm... detection for 2-7 seems to be broken. Oh well ...
-       * Pick the first render device that is not our own.
+   for (i = 0; i < num_devices; i++) {
+      if (!(devices[i]->available_nodes & 1 << DRM_NODE_RENDER))
+         continue;
+
+      /* two formats of DRI_PRIME are supported:
+       * "1": choose any other card than the card used by default.
+       * id_path_tag: (for example "pci-0000_02_00_0") choose the card
+       * with this id_path_tag.
        */
-      for (i = 0; i < num_devices; i++) {
-         if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-             !drm_device_matches_tag(devices[i], default_tag)) {
-
-            found = true;
-            break;
-         }
+      if (!strcmp(prime,"1")) {
+         if (drm_device_matches_tag(devices[i], default_tag))
+            continue;
+      } else {
+         if (!drm_device_matches_tag(devices[i], prime))
+            continue;
       }
-   } else {
-      for (i = 0; i < num_devices; i++) {
-         if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-            drm_device_matches_tag(devices[i], prime)) {
 
-            found = true;
-            break;
-         }
-      }
+      fd = loader_open_device(devices[i]->nodes[DRM_NODE_RENDER]);
+      break;
    }
-
-   if (!found) {
-      drmFreeDevices(devices, num_devices);
-      goto err;
-   }
-
-   fd = loader_open_device(devices[i]->nodes[DRM_NODE_RENDER]);
    drmFreeDevices(devices, num_devices);
+
+   if (i == num_devices)
+      goto err;
+
    if (fd < 0)
       goto err;
 
