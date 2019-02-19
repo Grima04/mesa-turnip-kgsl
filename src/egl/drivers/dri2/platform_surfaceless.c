@@ -274,55 +274,56 @@ static const __DRIextension *swrast_loader_extensions[] = {
 static bool
 surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 {
+#define MAX_DRM_DEVICES 64
    struct dri2_egl_display *dri2_dpy = disp->DriverData;
-   const int limit = 64;
-   const int base = 128;
-   int fd;
-   int i;
+   drmDevicePtr device, devices[MAX_DRM_DEVICES] = { NULL };
+   int i, num_devices;
 
-   /* Attempt to find DRM device. */
-   for (i = 0; i < limit; ++i) {
-      char *card_path;
-      if (asprintf(&card_path, DRM_RENDER_DEV_NAME, DRM_DIR_NAME, base + i) < 0)
+   num_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
+   if (num_devices < 0)
+      return false;
+
+   for (i = 0; i < num_devices; ++i) {
+      device = devices[i];
+
+      if (!(device->available_nodes & (1 << DRM_NODE_RENDER)))
          continue;
 
-      fd = loader_open_device(card_path);
-      free(card_path);
-      if (fd < 0)
+      dri2_dpy->fd = loader_open_device(device->nodes[DRM_NODE_RENDER]);
+      if (dri2_dpy->fd < 0)
          continue;
 
-      if (swrast) {
+      disp->Device = _eglAddDevice(dri2_dpy->fd, swrast);
+      if (!disp->Device) {
+         close(dri2_dpy->fd);
+         dri2_dpy->fd = -1;
+         continue;
+      }
+
+      if (swrast)
          dri2_dpy->driver_name = strdup("kms_swrast");
-         dri2_dpy->loader_extensions = swrast_loader_extensions;
-      } else {
-         dri2_dpy->driver_name = loader_get_driver_for_fd(fd);
-         dri2_dpy->loader_extensions = image_loader_extensions;
-      }
-      if (!dri2_dpy->driver_name) {
-         close(fd);
-         continue;
-      }
+      else
+         dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
 
-      dri2_dpy->fd = fd;
-      if (dri2_load_driver_dri3(disp)) {
-         _EGLDevice *dev = _eglAddDevice(dri2_dpy->fd, swrast);
-         if (!dev) {
-            dlclose(dri2_dpy->driver);
-            _eglLog(_EGL_WARNING, "DRI2: failed to find EGLDevice");
-            continue;
-         }
-         disp->Device = dev;
-         return true;
-      }
+      if (dri2_dpy->driver_name && dri2_load_driver_dri3(disp))
+         break;
 
-      close(fd);
-      dri2_dpy->fd = -1;
       free(dri2_dpy->driver_name);
       dri2_dpy->driver_name = NULL;
-      dri2_dpy->loader_extensions = NULL;
+      close(dri2_dpy->fd);
+      dri2_dpy->fd = -1;
    }
+   drmFreeDevices(devices, num_devices);
 
-   return false;
+   if (i == num_devices)
+      return false;
+
+   if (swrast)
+      dri2_dpy->loader_extensions = swrast_loader_extensions;
+   else
+      dri2_dpy->loader_extensions = image_loader_extensions;
+
+   return true;
 }
 
 static bool
