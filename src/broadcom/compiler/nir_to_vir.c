@@ -746,6 +746,16 @@ ntq_emit_comparison(struct v3d_compile *c,
                 vir_set_pf(vir_SUB_dest(c, nop, src0, src1), V3D_QPU_PF_PUSHC);
                 break;
 
+        case nir_op_i2b32:
+                vir_set_pf(vir_MOV_dest(c, nop, src0), V3D_QPU_PF_PUSHZ);
+                cond_invert = true;
+                break;
+
+        case nir_op_f2b32:
+                vir_set_pf(vir_FMOV_dest(c, nop, src0), V3D_QPU_PF_PUSHZ);
+                cond_invert = true;
+                break;
+
         default:
                 return false;
         }
@@ -875,19 +885,6 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_b2i32:
                 result = vir_AND(c, src[0], vir_uniform_ui(c, 1));
                 break;
-        case nir_op_i2b32:
-                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), src[0]),
-                           V3D_QPU_PF_PUSHZ);
-                result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
-                                            vir_uniform_ui(c, ~0),
-                                            vir_uniform_ui(c, 0)));
-        case nir_op_f2b32:
-                vir_set_pf(vir_FMOV_dest(c, vir_nop_reg(), src[0]),
-                           V3D_QPU_PF_PUSHZ);
-                result = vir_MOV(c, vir_SEL(c, V3D_QPU_COND_IFNA,
-                                            vir_uniform_ui(c, ~0),
-                                            vir_uniform_ui(c, 0)));
-                break;
 
         case nir_op_iadd:
                 result = vir_ADD(c, src[0], src[1]);
@@ -950,6 +947,8 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
         }
 
+        case nir_op_i2b32:
+        case nir_op_f2b32:
         case nir_op_feq32:
         case nir_op_fne32:
         case nir_op_fge32:
