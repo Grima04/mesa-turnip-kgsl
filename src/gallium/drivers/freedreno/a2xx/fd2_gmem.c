@@ -512,18 +512,18 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		/* note: 1 "line" is 512 bytes in both color/depth areas (1K total) */
 		switch (patch->val) {
 		case GMEM_PATCH_FASTCLEAR_COLOR:
-			size = align(gmem->bin_w * gmem->bin_h * color_size, 0x4000);
+			size = align(gmem->bin_w * gmem->bin_h * color_size, 0x8000);
 			lines = size / 1024;
 			depth_base = size / 2;
 			break;
 		case GMEM_PATCH_FASTCLEAR_DEPTH:
-			size = align(gmem->bin_w * gmem->bin_h * depth_size, 0x4000);
+			size = align(gmem->bin_w * gmem->bin_h * depth_size, 0x8000);
 			lines = size / 1024;
 			color_base = depth_base;
 			depth_base = depth_base + size / 2;
 			break;
 		case GMEM_PATCH_FASTCLEAR_COLOR_DEPTH:
-			lines = align(gmem->bin_w * gmem->bin_h * color_size * 2, 0x4000) / 1024;
+			lines = align(gmem->bin_w * gmem->bin_h * color_size * 2, 0x8000) / 1024;
 			break;
 		case GMEM_PATCH_RESTORE_INFO:
 			patch->cs[0] = gmem->bin_w;
