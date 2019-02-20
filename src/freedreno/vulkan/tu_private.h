@@ -901,6 +901,7 @@ struct tu_cmd_buffer
 
    struct tu_bo_list bo_list;
    struct tu_cs cs;
+   struct tu_cs draw_cs;
    struct tu_cs tile_cs;
 
    uint16_t marker_reg;

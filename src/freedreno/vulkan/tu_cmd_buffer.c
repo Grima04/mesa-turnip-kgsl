@@ -1033,7 +1033,8 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
                 const struct tu_tile *tile)
 {
-   VkResult result = tu_cs_reserve_space(cmd->device, cs, 64);
+   const uint32_t render_tile_space = 64 + tu_cs_get_call_size(&cmd->draw_cs);
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, render_tile_space);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -1042,8 +1043,7 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
    tu6_emit_tile_select(cmd, cs, tile);
    tu_cs_emit_ib(cs, &cmd->state.tile_load_ib);
 
-   /* draw IB? */
-
+   tu_cs_emit_call(cs, &cmd->draw_cs);
    cmd->wait_for_idle = true;
 
    tu_cs_emit_ib(cs, &cmd->state.tile_store_ib);
@@ -1343,6 +1343,7 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    tu_bo_list_init(&cmd_buffer->bo_list);
    tu_cs_init(&cmd_buffer->cs, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->draw_cs, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->tile_cs, TU_CS_MODE_SUB_STREAM, 1024);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
@@ -1370,6 +1371,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->cs);
+   tu_cs_finish(cmd_buffer->device, &cmd_buffer->draw_cs);
    tu_cs_finish(cmd_buffer->device, &cmd_buffer->tile_cs);
 
    tu_bo_list_destroy(&cmd_buffer->bo_list);
@@ -1385,6 +1387,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 
    tu_bo_list_reset(&cmd_buffer->bo_list);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->cs);
+   tu_cs_reset(cmd_buffer->device, &cmd_buffer->draw_cs);
    tu_cs_reset(cmd_buffer->device, &cmd_buffer->tile_cs);
 
    for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
@@ -1634,6 +1637,11 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_WRITE);
    }
 
+   for (uint32_t i = 0; i < cmd_buffer->draw_cs.bo_count; i++) {
+      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_cs.bos[i],
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   }
+
    for (uint32_t i = 0; i < cmd_buffer->tile_cs.bo_count; i++) {
       tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->tile_cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
@@ -1837,6 +1845,10 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu_cmd_update_tiling_config(cmd_buffer, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_load_ib(cmd_buffer);
    tu_cmd_prepare_tile_store_ib(cmd_buffer);
+
+   /* draw_cs should contain entries only for this render pass */
+   assert(!cmd_buffer->draw_cs.entry_count);
+   tu_cs_begin(&cmd_buffer->draw_cs);
 }
 
 void
@@ -2080,7 +2092,12 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
+   tu_cs_end(&cmd_buffer->draw_cs);
+
    tu_cmd_render_tiles(cmd_buffer);
+
+   /* discard draw_cs entries now that the tiles are rendered */
+   tu_cs_discard_entries(&cmd_buffer->draw_cs);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    cmd_buffer->state.attachments = NULL;
