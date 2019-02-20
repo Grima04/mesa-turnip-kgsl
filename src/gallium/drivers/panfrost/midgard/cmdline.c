@@ -66,11 +66,11 @@ compile_shader(char **argv)
         }
 
         midgard_program compiled;
-        nir = glsl_to_nir(prog, MESA_SHADER_VERTEX, &midgard_nir_options);
+        nir = glsl_to_nir(&local_ctx, prog, MESA_SHADER_VERTEX, &midgard_nir_options);
         midgard_compile_shader_nir(nir, &compiled, false);
         finalise_to_disk("vertex.bin", &compiled.compiled);
 
-        nir = glsl_to_nir(prog, MESA_SHADER_FRAGMENT, &midgard_nir_options);
+        nir = glsl_to_nir(&local_ctx, prog, MESA_SHADER_FRAGMENT, &midgard_nir_options);
         midgard_compile_shader_nir(nir, &compiled, false);
         finalise_to_disk("fragment.bin", &compiled.compiled);
 }
@@ -91,7 +91,7 @@ compile_blend(char **argv)
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
         midgard_program program;
-        nir = glsl_to_nir(prog, MESA_SHADER_FRAGMENT, &midgard_nir_options);
+        nir = glsl_to_nir(&local_ctx, prog, MESA_SHADER_FRAGMENT, &midgard_nir_options);
         midgard_compile_shader_nir(nir, &program, true);
         finalise_to_disk("blend.bin", &program.compiled);
 }

@@ -116,7 +116,7 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 	if (!prog)
 		errx(1, "couldn't parse `%s'", files[0]);
 
-	nir_shader *nir = glsl_to_nir(prog, stage, nir_options);
+	nir_shader *nir = glsl_to_nir(&local_ctx, prog, stage, nir_options);
 
 	/* required NIR passes: */
 	if (nir_options->lower_all_io_to_temps ||

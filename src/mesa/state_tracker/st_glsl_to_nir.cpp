@@ -361,7 +361,7 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
    if (prog->nir)
       return prog->nir;
 
-   nir_shader *nir = glsl_to_nir(shader_program, stage, options);
+   nir_shader *nir = glsl_to_nir(st->ctx, shader_program, stage, options);
 
    /* Set the next shader stage hint for VS and TES. */
    if (!nir->info.separate_shader &&
