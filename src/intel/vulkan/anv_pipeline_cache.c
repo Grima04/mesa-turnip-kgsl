@@ -683,9 +683,7 @@ anv_device_upload_kernel(struct anv_device *device,
    if (disk_cache) {
       struct blob binary;
       blob_init(&binary);
-      anv_shader_bin_write_to_blob(bin, &binary);
-
-      if (!binary.out_of_memory) {
+      if (anv_shader_bin_write_to_blob(bin, &binary)) {
          cache_key cache_key;
          disk_cache_compute_key(disk_cache, key_data, key_size, cache_key);
 
