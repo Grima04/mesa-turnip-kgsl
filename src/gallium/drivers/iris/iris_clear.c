@@ -36,10 +36,93 @@
 #include "intel/compiler/brw_compiler.h"
 #include "util/format_srgb.h"
 
+static bool
+iris_is_color_fast_clear_compatible(struct iris_context *ice,
+                                    enum isl_format format,
+                                    const union isl_color_value color)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   if (isl_format_has_int_channel(format)) {
+      perf_debug(&ice->dbg, "Integer fast clear not enabled for %s",
+                 isl_format_get_name(format));
+      return false;
+   }
+
+   for (int i = 0; i < 4; i++) {
+      if (!isl_format_has_color_component(format, i)) {
+         continue;
+      }
+
+      if (devinfo->gen < 9 &&
+          color.f32[i] != 0.0f && color.f32[i] != 1.0f) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static bool
+can_fast_clear_color(struct iris_context *ice,
+                     struct pipe_resource *p_res,
+                     unsigned level,
+                     const struct pipe_box *box,
+                     enum isl_format format,
+                     enum isl_format render_format,
+                     union isl_color_value color)
+{
+   struct iris_resource *res = (void *) p_res;
+
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   /* XXX: Need to fix channel select for gen8 before enabling this. */
+   if (devinfo->gen != 9)
+      return false;
+
+   if (res->aux.usage == ISL_AUX_USAGE_NONE)
+      return false;
+
+   /* Surface state can only record one fast clear color value. Therefore
+    * unless different levels/layers agree on the color it can be used to
+    * represent only single level/layer. Here it will be reserved for the
+    * first slice (level 0, layer 0).
+    */
+   if (level > 0 || box->z > 0 || box->depth > 1)
+      return false;
+
+   /* Check for partial clear */
+   if (box->x > 0 || box->y > 0 ||
+       box->width < p_res->width0 ||
+       box->height < p_res->height0) {
+      return false;
+   }
+
+   /* We store clear colors as floats or uints as needed.  If there are
+    * texture views in play, the formats will not properly be respected
+    * during resolves because the resolve operations only know about the
+    * resource and not the renderbuffer.
+    */
+   if (render_format != format)
+      return false;
+
+   /* XXX: if (irb->mt->supports_fast_clear)
+    * see intel_miptree_create_for_dri_image()
+    */
+
+   if (!iris_is_color_fast_clear_compatible(ice, format, color))
+      return false;
+
+   return true;
+}
+
 static union isl_color_value
 convert_fast_clear_color(struct iris_context *ice,
                          struct iris_resource *res,
-                         const union isl_color_value color)
+                         const union isl_color_value color,
+                         struct isl_swizzle swizzle)
 {
    union isl_color_value override_color = color;
    struct pipe_resource *p_res = (void *) res;
@@ -49,23 +132,7 @@ convert_fast_clear_color(struct iris_context *ice,
       util_format_description(format);
    unsigned colormask = util_format_colormask(desc);
 
-   /* The sampler doesn't look at the format of the surface when the fast
-    * clear color is used so we need to implement luminance, intensity and
-    * missing components manually.
-    */
-   if (util_format_is_intensity(format) ||
-       util_format_is_luminance(format) ||
-       util_format_is_luminance_alpha(format)) {
-      override_color.u32[1] = override_color.u32[0];
-      override_color.u32[2] = override_color.u32[0];
-      if (util_format_is_intensity(format))
-         override_color.u32[3] = override_color.u32[0];
-   } else {
-      for (int chan = 0; chan < 3; chan++) {
-         if (!(colormask & (1 << chan)))
-            override_color.u32[chan] = 0;
-      }
-   }
+   override_color = swizzle_color_value(color, swizzle);
 
    if (util_format_is_unorm(format)) {
       for (int i = 0; i < 4; i++)
@@ -118,6 +185,65 @@ convert_fast_clear_color(struct iris_context *ice,
 }
 
 static void
+fast_clear_color(struct iris_context *ice,
+                 struct iris_resource *res,
+                 unsigned level,
+                 const struct pipe_box *box,
+                 enum isl_format format,
+                 union isl_color_value color,
+                 struct isl_swizzle swizzle,
+                 enum blorp_batch_flags blorp_flags)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct pipe_resource *p_res = (void *) res;
+   const enum isl_aux_state aux_state =
+      iris_resource_get_aux_state(res, level, box->z);
+
+   color = convert_fast_clear_color(ice, res, color, swizzle);
+
+   iris_resource_set_clear_color(ice, res, color);
+
+   /* If the buffer is already in ISL_AUX_STATE_CLEAR, the clear
+    * is redundant and can be skipped.
+    */
+   if (aux_state == ISL_AUX_STATE_CLEAR)
+      return;
+
+   /* Ivybrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
+    *
+    *    "Any transition from any value in {Clear, Render, Resolve} to a
+    *    different value in {Clear, Render, Resolve} requires end of pipe
+    *    synchronization."
+    *
+    * In other words, fast clear ops are not properly synchronized with
+    * other drawing.  We need to use a PIPE_CONTROL to ensure that the
+    * contents of the previous draw hit the render target before we resolve
+    * and again afterwards to ensure that the resolve is complete before we
+    * do any more regular drawing.
+    */
+   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
+
+   struct blorp_surf surf;
+   iris_blorp_surf_for_resource(&ice->vtbl, &surf, p_res, res->aux.usage,
+                                level, true);
+
+   blorp_fast_clear(&blorp_batch, &surf, format,
+                    level, box->z, box->depth,
+                    box->x, box->y, box->x + box->width,
+                    box->y + box->height);
+   blorp_batch_finish(&blorp_batch);
+   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   iris_resource_set_aux_state(ice, res, level, box->z,
+                               box->depth, ISL_AUX_STATE_CLEAR);
+   ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+   return;
+}
+
+static void
 clear_color(struct iris_context *ice,
             struct pipe_resource *p_res,
             unsigned level,
@@ -131,7 +257,7 @@ clear_color(struct iris_context *ice,
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   enum blorp_batch_flags blorp_flags = 0;
+   enum blorp_batch_flags blorp_flags = BLORP_BATCH_NO_UPDATE_CLEAR_COLOR;
 
    if (render_condition_enabled) {
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
@@ -143,8 +269,13 @@ clear_color(struct iris_context *ice,
 
    iris_batch_maybe_flush(batch, 1500);
 
-   struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
+   bool can_fast_clear = can_fast_clear_color(ice, p_res, level, box,
+                                              res->surf.format, format, color);
+   if (can_fast_clear) {
+      fast_clear_color(ice, res, level, box, format, color,
+                       swizzle, blorp_flags);
+      return;
+   }
 
    bool color_write_disable[4] = { false, false, false, false };
    enum isl_aux_usage aux_usage =
@@ -157,6 +288,9 @@ clear_color(struct iris_context *ice,
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&ice->vtbl, &surf, p_res, aux_usage, level,
                                 true);
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    if (!isl_format_supports_rendering(devinfo, format) &&
        isl_format_is_rgbx(format))
@@ -256,8 +390,8 @@ fast_clear_depth(struct iris_context *ice,
                                         ISL_AUX_STATE_RESOLVED);
          }
       }
-      const union isl_color_value clear_color = { .f32 = {depth, } };
-      iris_resource_set_clear_color(ice, res, clear_color);
+      const union isl_color_value clear_value = { .f32 = {depth, } };
+      iris_resource_set_clear_color(ice, res, clear_value);
    }
 
    for (unsigned l = 0; l < box->depth; l++) {

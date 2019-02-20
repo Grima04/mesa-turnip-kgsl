@@ -1651,7 +1651,6 @@ fill_surface_state(struct isl_device *isl_dev,
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
       f.aux_address = res->aux.bo->gtt_offset + res->aux.offset;
-      // XXX: clear color
    }
 
    isl_surf_fill_state_s(isl_dev, map, &f);
