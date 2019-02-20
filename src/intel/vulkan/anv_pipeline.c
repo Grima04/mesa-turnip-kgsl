@@ -375,8 +375,15 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
 
    key->nr_color_regions = util_bitcount(key->color_outputs_valid);
 
-   key->replicate_alpha = key->nr_color_regions > 1 &&
-                          ms_info && ms_info->alphaToCoverageEnable;
+   /* To reduce possible shader recompilations we would need to know if
+    * there is a SampleMask output variable to compute if we should emit
+    * code to workaround the issue that hardware disables alpha to coverage
+    * when there is SampleMask output.
+    */
+   key->alpha_to_coverage = ms_info && ms_info->alphaToCoverageEnable;
+
+   /* Vulkan doesn't support fixed-function alpha test */
+   key->alpha_test_replicate_alpha = false;
 
    if (ms_info) {
       /* We should probably pull this out of the shader, but it's fairly

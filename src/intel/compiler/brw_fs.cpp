@@ -4237,7 +4237,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       /* Set "Source0 Alpha Present to RenderTarget" bit in message
        * header.
        */
-      if (inst->target > 0 && key->replicate_alpha)
+      if (inst->target > 0 && prog_data->replicate_alpha)
          g00_bits |= 1 << 11;
 
       /* Set computes stencil to render target */
@@ -4314,7 +4314,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
        */
       setup_color_payload(bld, key, &sources[length], src0_alpha, 1);
       length++;
-   } else if (key->replicate_alpha && inst->target != 0) {
+   } else if (prog_data->replicate_alpha && inst->target != 0) {
       /* Handle the case when fragment shader doesn't write to draw buffer
        * zero. No need to call setup_color_payload() for src0_alpha because
        * alpha value will be undefined.

@@ -398,7 +398,8 @@ struct brw_wm_prog_key {
    bool stats_wm:1;
    bool flat_shade:1;
    unsigned nr_color_regions:5;
-   bool replicate_alpha:1;
+   bool alpha_test_replicate_alpha:1;
+   bool alpha_to_coverage:1;
    bool clamp_fragment_color:1;
    bool persample_interp:1;
    bool multisample_fbo:1;
@@ -707,6 +708,7 @@ struct brw_wm_prog_data {
    bool dispatch_16;
    bool dispatch_32;
    bool dual_src_blend;
+   bool replicate_alpha;
    bool persample_dispatch;
    bool uses_pos_offset;
    bool uses_omask;

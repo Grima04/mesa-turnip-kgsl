@@ -93,8 +93,11 @@ brw_wm_debug_recompile(struct brw_context *brw, struct gl_program *prog,
                       old_key->flat_shade, key->flat_shade);
    found |= key_debug(brw, "number of color buffers",
                       old_key->nr_color_regions, key->nr_color_regions);
-   found |= key_debug(brw, "MRT alpha test or alpha-to-coverage",
-                      old_key->replicate_alpha, key->replicate_alpha);
+   found |= key_debug(brw, "MRT alpha test",
+                      old_key->alpha_test_replicate_alpha,
+                      key->alpha_test_replicate_alpha);
+   found |= key_debug(brw, "alpha to coverage",
+                      old_key->alpha_to_coverage, key->alpha_to_coverage);
    found |= key_debug(brw, "fragment color clamping",
                       old_key->clamp_fragment_color, key->clamp_fragment_color);
    found |= key_debug(brw, "per-sample interpolation",
@@ -569,10 +572,13 @@ brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
    key->force_dual_color_blend = brw->dual_color_blend_by_location &&
       (ctx->Color.BlendEnabled & 1) && ctx->Color.Blend[0]._UsesDualSrc;
 
-   /* _NEW_MULTISAMPLE, _NEW_COLOR, _NEW_BUFFERS */
-   key->replicate_alpha = ctx->DrawBuffer->_NumColorDrawBuffers > 1 &&
-      (_mesa_is_alpha_test_enabled(ctx) ||
-       _mesa_is_alpha_to_coverage_enabled(ctx));
+   /* _NEW_MULTISAMPLE, _NEW_BUFFERS */
+   key->alpha_to_coverage =  _mesa_is_alpha_to_coverage_enabled(ctx);
+
+   /* _NEW_COLOR, _NEW_BUFFERS */
+   key->alpha_test_replicate_alpha =
+      ctx->DrawBuffer->_NumColorDrawBuffers > 1 &&
+      _mesa_is_alpha_test_enabled(ctx);
 
    /* _NEW_BUFFERS _NEW_MULTISAMPLE */
    /* Ignore sample qualifier while computing this flag. */

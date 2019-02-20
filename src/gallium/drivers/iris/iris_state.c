@@ -3335,8 +3335,9 @@ iris_populate_fs_key(const struct iris_context *ice,
 
    key->clamp_fragment_color = rast->clamp_fragment_color;
 
-   key->replicate_alpha = fb->nr_cbufs > 1 &&
-      (zsa->alpha.enabled || blend->alpha_to_coverage);
+   key->alpha_to_coverage = blend->alpha_to_coverage;
+
+   key->alpha_test_replicate_alpha = fb->nr_cbufs > 1 && zsa->alpha.enabled;
 
    /* XXX: only bother if COL0/1 are read */
    key->flat_shade = rast->flatshade;

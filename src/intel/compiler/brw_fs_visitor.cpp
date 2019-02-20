@@ -400,6 +400,82 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
 }
 
 void
+fs_visitor::emit_alpha_to_coverage_workaround(const fs_reg &src0_alpha)
+{
+   /* We need to compute alpha to coverage dithering manually in shader
+    * and replace sample mask store with the bitwise-AND of sample mask and
+    * alpha to coverage dithering.
+    *
+    * The following formula is used to compute final sample mask:
+    *  m = int(16.0 * clamp(src0_alpha, 0.0, 1.0))
+    *  dither_mask = 0x1111 * ((0xfea80 >> (m & ~3)) & 0xf) |
+    *     0x0808 * (m & 2) | 0x0100 * (m & 1)
+    *  sample_mask = sample_mask & dither_mask
+    *
+    * It gives a number of ones proportional to the alpha for 2, 4, 8 or 16
+    * least significant bits of the result:
+    *  0.0000 0000000000000000
+    *  0.0625 0000000100000000
+    *  0.1250 0001000000010000
+    *  0.1875 0001000100010000
+    *  0.2500 1000100010001000
+    *  0.3125 1000100110001000
+    *  0.3750 1001100010011000
+    *  0.4375 1001100110011000
+    *  0.5000 1010101010101010
+    *  0.5625 1010101110101010
+    *  0.6250 1011101010111010
+    *  0.6875 1011101110111010
+    *  0.7500 1110111011101110
+    *  0.8125 1110111111101110
+    *  0.8750 1111111011111110
+    *  0.9375 1111111111111110
+    *  1.0000 1111111111111111
+    */
+   const fs_builder abld = bld.annotate("compute alpha_to_coverage & "
+      "sample_mask");
+
+   /* clamp(src0_alpha, 0.f, 1.f) */
+   const fs_reg float_tmp = abld.vgrf(BRW_REGISTER_TYPE_F);
+   set_saturate(true, abld.MOV(float_tmp, src0_alpha));
+
+   /* 16.0 * clamp(src0_alpha, 0.0, 1.0) */
+   abld.MUL(float_tmp, float_tmp, brw_imm_f(16.0));
+
+   /* m = int(16.0 * clamp(src0_alpha, 0.0, 1.0)) */
+   const fs_reg m = abld.vgrf(BRW_REGISTER_TYPE_UW);
+   abld.MOV(m, float_tmp);
+
+   /* 0x1111 * ((0xfea80 >> (m & ~3)) & 0xf) */
+   const fs_reg int_tmp_1 = abld.vgrf(BRW_REGISTER_TYPE_UW);
+   const fs_reg shift_const = abld.vgrf(BRW_REGISTER_TYPE_UD);
+   abld.MOV(shift_const, brw_imm_d(0xfea80));
+   abld.AND(int_tmp_1, m, brw_imm_uw(~3));
+   abld.SHR(int_tmp_1, shift_const, int_tmp_1);
+   abld.AND(int_tmp_1, int_tmp_1, brw_imm_uw(0xf));
+   abld.MUL(int_tmp_1, int_tmp_1, brw_imm_uw(0x1111));
+
+   /* 0x0808 * (m & 2) */
+   const fs_reg int_tmp_2 = abld.vgrf(BRW_REGISTER_TYPE_UW);
+   abld.AND(int_tmp_2, m, brw_imm_uw(2));
+   abld.MUL(int_tmp_2, int_tmp_2, brw_imm_uw(0x0808));
+
+   abld.OR(int_tmp_1, int_tmp_1, int_tmp_2);
+
+   /* 0x0100 * (m & 1) */
+   const fs_reg int_tmp_3 = abld.vgrf(BRW_REGISTER_TYPE_UW);
+   abld.AND(int_tmp_3, m, brw_imm_uw(1));
+   abld.MUL(int_tmp_3, int_tmp_3, brw_imm_uw(0x0100));
+
+   abld.OR(int_tmp_1, int_tmp_1, int_tmp_3);
+
+   /* sample_mask = sample_mask & dither_mask */
+   const fs_reg mask = abld.vgrf(BRW_REGISTER_TYPE_UD);
+   abld.AND(mask, sample_mask, int_tmp_1);
+   sample_mask = mask;
+}
+
+void
 fs_visitor::emit_fb_writes()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
@@ -427,6 +503,22 @@ fs_visitor::emit_fb_writes()
                            "in SIMD16+ mode.\n");
    }
 
+   /* ANV doesn't know about sample mask output during the wm key creation
+    * so we compute if we need replicate alpha and emit alpha to coverage
+    * workaround here.
+    */
+   prog_data->replicate_alpha = key->alpha_test_replicate_alpha ||
+      (key->nr_color_regions > 1 && key->alpha_to_coverage &&
+       (sample_mask.file == BAD_FILE || devinfo->gen == 6));
+
+   /* From the SKL PRM, Volume 7, "Alpha Coverage":
+    *  "If Pixel Shader outputs oMask, AlphaToCoverage is disabled in
+    *   hardware, regardless of the state setting for this feature."
+    */
+   if (devinfo->gen > 6 && key->alpha_to_coverage &&
+       sample_mask.file != BAD_FILE && this->outputs[0].file != BAD_FILE)
+      emit_alpha_to_coverage_workaround(offset(this->outputs[0], bld, 3));
+
    for (int target = 0; target < key->nr_color_regions; target++) {
       /* Skip over outputs that weren't written. */
       if (this->outputs[target].file == BAD_FILE)
@@ -436,7 +528,7 @@ fs_visitor::emit_fb_writes()
          ralloc_asprintf(this->mem_ctx, "FB write target %d", target));
 
       fs_reg src0_alpha;
-      if (devinfo->gen >= 6 && key->replicate_alpha && target != 0)
+      if (devinfo->gen >= 6 && prog_data->replicate_alpha && target != 0)
          src0_alpha = offset(outputs[0], bld, 3);
 
       inst = emit_single_fb_write(abld, this->outputs[target],
