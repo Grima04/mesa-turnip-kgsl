@@ -485,12 +485,21 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 {
 	struct ir3_register *src1, *src2;
 	instr_cat6_a6xx_t *cat6 = ptr;
+	bool has_dest = (instr->opc == OPC_LDIB);
 
 	/* first reg should be SSBO binding point: */
 	iassert(instr->regs[1]->flags & IR3_REG_IMMED);
 
 	src1 = instr->regs[2];
-	src2 = instr->regs[3];
+
+	if (has_dest) {
+		/* the src2 field in the instruction is actually the destination
+		 * register for load instructions:
+		 */
+		src2 = instr->regs[0];
+	} else {
+		src2 = instr->regs[3];
+	}
 
 	cat6->type      = instr->cat6.type;
 	cat6->d         = instr->cat6.d - 1;
@@ -524,6 +533,12 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		break;
 	case OPC_STIB:
 		cat6->pad1 = 0x0;
+		cat6->pad2 = 0xc;
+		cat6->pad3 = 0x0;
+		cat6->pad4 = 0x2;
+		break;
+	case OPC_LDIB:
+		cat6->pad1 = 0x1;
 		cat6->pad2 = 0xc;
 		cat6->pad3 = 0x0;
 		cat6->pad4 = 0x2;
@@ -568,6 +583,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 				break;
 			/* fallthrough */
 		case OPC_STIB:
+		case OPC_LDIB:
 		case OPC_LDC:
 			return emit_cat6_a6xx(instr, ptr, info);
 		default:
@@ -598,7 +614,6 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 	case OPC_STG:
 	case OPC_STL:
 	case OPC_STP:
-	case OPC_STI:
 	case OPC_STLW:
 	case OPC_STIB:
 		/* no dst, so regs[0] is dummy */

@@ -688,6 +688,7 @@ static inline bool is_load(struct ir3_instruction *instr)
 	switch (instr->opc) {
 	case OPC_LDG:
 	case OPC_LDGB:
+	case OPC_LDIB:
 	case OPC_LDL:
 	case OPC_LDP:
 	case OPC_L2G:
@@ -1360,6 +1361,7 @@ INSTR2(ATOMIC_OR)
 INSTR2(ATOMIC_XOR)
 #if GPU >= 600
 INSTR3(STIB);
+INSTR2(LDIB);
 INSTR3F(G, ATOMIC_ADD)
 INSTR3F(G, ATOMIC_SUB)
 INSTR3F(G, ATOMIC_XCHG)
