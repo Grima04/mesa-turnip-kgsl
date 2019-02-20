@@ -160,6 +160,16 @@ def_only_used_in_cf_node(nir_ssa_def *def, void *_node)
          return false;
    }
 
+   /* Same check for if-condition uses */
+   nir_foreach_if_use(use, def) {
+      nir_block *use_block =
+         nir_cf_node_as_block(nir_cf_node_prev(&use->parent_if->cf_node));
+
+      if (use_block->index <= before->index ||
+          use_block->index >= after->index)
+         return false;
+   }
+
    return true;
 }
 
