@@ -3721,12 +3721,13 @@ void anv_UnmapMemory(
     VkDevice                                    _device,
     VkDeviceMemory                              _memory)
 {
+   ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_device_memory, mem, _memory);
 
    if (mem == NULL || mem->host_ptr)
       return;
 
-   anv_gem_munmap(mem->map, mem->map_size);
+   anv_gem_munmap(device, mem->map, mem->map_size);
 
    mem->map = NULL;
    mem->map_size = 0;

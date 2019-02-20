@@ -434,7 +434,7 @@ anv_block_pool_finish(struct anv_block_pool *pool)
 {
    anv_block_pool_foreach_bo(bo, pool) {
       if (bo->map)
-         anv_gem_munmap(bo->map, bo->size);
+         anv_gem_munmap(pool->device, bo->map, bo->size);
       anv_gem_close(pool->device, bo->gem_handle);
    }
 
@@ -1643,7 +1643,7 @@ anv_device_alloc_bo(struct anv_device *device,
                                     align, alloc_flags, explicit_address);
       if (new_bo.offset == 0) {
          if (new_bo.map)
-            anv_gem_munmap(new_bo.map, size);
+            anv_gem_munmap(device, new_bo.map, size);
          anv_gem_close(device, new_bo.gem_handle);
          return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "failed to allocate virtual address for BO");
@@ -1968,7 +1968,7 @@ anv_device_release_bo(struct anv_device *device,
    assert(bo->refcount == 0);
 
    if (bo->map && !bo->from_host_ptr)
-      anv_gem_munmap(bo->map, bo->size);
+      anv_gem_munmap(device, bo->map, bo->size);
 
    if (bo->_ccs_size > 0) {
       assert(device->physical->has_implicit_ccs);
