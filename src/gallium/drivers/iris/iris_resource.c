@@ -760,13 +760,21 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
       res->mod_info ? res->mod_info->modifier
                     : tiling_to_modifier(res->bo->tiling_mode);
 
-   if (!res->mod_info || res->mod_info->aux_usage != res->aux.usage) {
+   if (ctx &&
+       (!res->mod_info || res->mod_info->aux_usage != res->aux.usage)) {
       struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
       iris_resource_prepare_access(ice, render_batch, res,
                                    0, INTEL_REMAINING_LEVELS,
                                    0, INTEL_REMAINING_LAYERS,
                                    ISL_AUX_USAGE_NONE, false);
       iris_resource_disable_aux(res);
+   } else {
+      if (res->aux.usage != ISL_AUX_USAGE_NONE) {
+         enum isl_aux_state aux_state =
+            iris_resource_get_aux_state(res, 0, 0);
+         assert(aux_state == ISL_AUX_STATE_RESOLVED ||
+                aux_state == ISL_AUX_STATE_PASS_THROUGH);
+      }
    }
 
    switch (whandle->type) {
