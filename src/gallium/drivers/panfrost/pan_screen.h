@@ -35,6 +35,7 @@
 
 #include <panfrost-misc.h>
 #include "pan_allocate.h"
+#include "pan_trace.h"
 
 struct panfrost_context;
 struct panfrost_resource;

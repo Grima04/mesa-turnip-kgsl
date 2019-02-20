@@ -31,6 +31,7 @@ files_panfrost = files(
   'midgard/disassemble.c',
 
   'pan_context.c',
+  'pan_trace.c',
   'pan_drm.c',
   'pan_allocate.c',
   'pan_assemble.c',
