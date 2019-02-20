@@ -488,7 +488,6 @@ files_libmesa_gallium = files(
   'state_tracker/st_atom_sampler.c',
   'state_tracker/st_atom_scissor.c',
   'state_tracker/st_atom_shader.c',
-  'state_tracker/st_atom_shader.h',
   'state_tracker/st_atom_stipple.c',
   'state_tracker/st_atom_storagebuf.c',
   'state_tracker/st_atom_tess.c',
