@@ -2066,7 +2066,6 @@ radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
 {
 	LLVMValueRef zero = is_float ? ctx->ac.f32_0 : ctx->ac.i32_0;
 	LLVMValueRef one = is_float ? ctx->ac.f32_1 : ctx->ac.i32_1;
-	LLVMTypeRef elemtype;
 	LLVMValueRef chan[4];
 
 	if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
@@ -2079,14 +2078,11 @@ radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx,
 
 		for (unsigned i = 0; i < num_channels; i++)
 			chan[i] = ac_llvm_extract_elem(&ctx->ac, value, i);
-
-		elemtype = LLVMGetElementType(LLVMTypeOf(value));
 	} else {
 		if (num_channels) {
 			assert(num_channels == 1);
 			chan[0] = value;
 		}
-		elemtype = LLVMTypeOf(value);
 	}
 
 	for (unsigned i = num_channels; i < 4; i++) {

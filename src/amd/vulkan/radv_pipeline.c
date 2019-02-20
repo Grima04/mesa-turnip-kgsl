@@ -3198,7 +3198,6 @@ radv_compute_db_shader_control(const struct radv_device *device,
 			       const struct radv_pipeline *pipeline,
                                const struct radv_shader_variant *ps)
 {
-	const struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	unsigned z_order;
 	if (ps->info.fs.early_fragment_test || !ps->info.info.ps.writes_memory)
 		z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
