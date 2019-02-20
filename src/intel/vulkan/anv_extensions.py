@@ -24,10 +24,8 @@ COPYRIGHT = """\
  */
 """
 
-import argparse
 import copy
 import re
-import xml.etree.cElementTree as et
 
 def _bool_to_c_expr(b):
     if b is True:
