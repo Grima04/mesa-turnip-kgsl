@@ -56,40 +56,26 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *offset;
-	struct ir3_instruction *sam;
+	struct ir3_instruction *ldib;
 	nir_const_value *buffer_index;
 
 	/* can this be non-const buffer_index?  how do we handle that? */
 	buffer_index = nir_src_as_const_value(intr->src[0]);
 	compile_assert(ctx, buffer_index);
 
-	int tex_idx = ir3_ssbo_to_tex(&ctx->so->image_mapping, buffer_index->u32[0]);
+	int ibo_idx = ir3_ssbo_to_ibo(&ctx->so->image_mapping, buffer_index->u32[0]);
 
 	offset = ssbo_offset(b, ir3_get_src(ctx, &intr->src[1])[0]);
 
-	/* Because texture state for SSBO read is setup as a single component
-	 * format (ie. R32_UINT, etc), we can't read more than the .x component
-	 * in one shot.  Maybe there is some way we could mangle the state to
-	 * read more than one component at a shot, which would result is some-
-	 * what less register usage (given how we have to stick in the dummy
-	 * .y coord) and less alu instructions to calc offsets.  But this is
-	 * also what blob does, so meh?
-	 */
-	for (unsigned i; i < intr->num_components; i++) {
-		struct ir3_instruction *coords[2];
+	ldib = ir3_LDIB(b, create_immed(b, ibo_idx), 0, offset, 0);
+	ldib->regs[0]->wrmask = MASK(intr->num_components);
+	ldib->cat6.iim_val = intr->num_components;
+	ldib->cat6.d = 1;
+	ldib->cat6.type = TYPE_U32;
+	ldib->barrier_class = IR3_BARRIER_BUFFER_R;
+	ldib->barrier_conflict = IR3_BARRIER_BUFFER_W;
 
-		coords[0] = (i == 0) ? offset :
-				ir3_ADD_U(b, offset, 0, create_immed(b, i), 0);
-		coords[1] = create_immed(b, 0);
-
-		sam = ir3_SAM(b, OPC_ISAM, TYPE_U32, 0b1, 0,
-				tex_idx, tex_idx, ir3_create_collect(ctx, coords, 2), NULL);
-
-		sam->barrier_class = IR3_BARRIER_BUFFER_R;
-		sam->barrier_conflict = IR3_BARRIER_BUFFER_W;
-
-		dst[i] = sam;
-	}
+	ir3_split_dest(b, dst, ldib, 0, intr->num_components);
 }
 
 /* src[] = { value, block_index, offset }. const_index[] = { write_mask } */
