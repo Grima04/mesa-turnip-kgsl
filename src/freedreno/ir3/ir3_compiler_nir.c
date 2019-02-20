@@ -1573,9 +1573,18 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (coords == 1) {
 		/* hw doesn't do 1d, so we treat it as 2d with
 		 * height of 1, and patch up the y coord.
-		 * TODO: y coord should be (int)0 in some cases..
 		 */
-		src0[nsrc0++] = create_immed(b, fui(0.5));
+		switch (opc) {
+		case OPC_ISAM:
+		case OPC_ISAML:
+		case OPC_ISAMM:
+			/* These instructions expect integer coord: */
+			src0[nsrc0++] = create_immed(b, 0);
+			break;
+		default:
+			src0[nsrc0++] = create_immed(b, fui(0.5));
+			break;
+		}
 	}
 
 	if (tex->is_shadow && tex->op != nir_texop_lod)

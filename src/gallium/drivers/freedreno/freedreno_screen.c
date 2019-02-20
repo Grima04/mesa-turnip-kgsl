@@ -243,7 +243,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		if (is_a3xx(screen)) return 16;
 		if (is_a4xx(screen)) return 32;
 		if (is_a5xx(screen)) return 32;
-		if (is_a6xx(screen)) return 32;
+		if (is_a6xx(screen)) return 64;
 		return 0;
 	case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
 		/* We could possibly emulate more by pretending 2d/rect textures and
@@ -252,7 +252,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		if (is_a3xx(screen)) return 8192;
 		if (is_a4xx(screen)) return 16384;
 		if (is_a5xx(screen)) return 16384;
-		if (is_a6xx(screen)) return 16384;
+		if (is_a6xx(screen)) return 1 << 27;
 		return 0;
 
 	case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
