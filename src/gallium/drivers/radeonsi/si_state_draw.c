@@ -1591,14 +1591,17 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			}
 		}
 	} else {
-		direct_count = info->count * instance_count;
+		/* Multiply by 3 for strips and fans to get an approximate vertex
+		 * count as triangles. */
+		direct_count = info->count * instance_count *
+			       (prim == PIPE_PRIM_TRIANGLES ? 1 : 3);
 	}
 
 	/* Determine if we can use the primitive discard compute shader. */
 	if (si_compute_prim_discard_enabled(sctx) &&
-	    /* Multiply by 3 for strips and fans to get the vertex count as triangles. */
-	    direct_count * (prim == PIPE_PRIM_TRIANGLES ? 1 : 3) >
-	    sctx->prim_discard_vertex_count_threshold &&
+	    (direct_count > sctx->prim_discard_vertex_count_threshold ?
+	     (sctx->compute_num_verts_rejected += direct_count, true) : /* Add, then return true. */
+	     (sctx->compute_num_verts_ineligible += direct_count, false)) && /* Add, then return false. */
 	    (!info->count_from_stream_output || pd_msg("draw_opaque")) &&
 	    (primitive_restart ?
 	     /* Supported prim types with primitive restart: */
@@ -1648,10 +1651,13 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			index_size = 4;
 			instance_count = 1;
 			primitive_restart = false;
+			sctx->compute_num_verts_rejected -= direct_count;
+			sctx->compute_num_verts_accepted += direct_count;
 			break;
 		case SI_PRIM_DISCARD_DISABLED:
 			break;
 		case SI_PRIM_DISCARD_DRAW_SPLIT:
+			sctx->compute_num_verts_rejected -= direct_count;
 			goto return_cleanup;
 		}
 	}

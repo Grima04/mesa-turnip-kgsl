@@ -255,6 +255,15 @@ static bool si_query_sw_begin(struct si_context *sctx,
 		query->begin_result =
 			p_atomic_read(&sctx->screen->num_shader_cache_hits);
 		break;
+	case SI_QUERY_PD_NUM_PRIMS_ACCEPTED:
+		query->begin_result = sctx->compute_num_verts_accepted;
+		break;
+	case SI_QUERY_PD_NUM_PRIMS_REJECTED:
+		query->begin_result = sctx->compute_num_verts_rejected;
+		break;
+	case SI_QUERY_PD_NUM_PRIMS_INELIGIBLE:
+		query->begin_result = sctx->compute_num_verts_ineligible;
+		break;
 	case SI_QUERY_GPIN_ASIC_ID:
 	case SI_QUERY_GPIN_NUM_SIMD:
 	case SI_QUERY_GPIN_NUM_RB:
@@ -420,6 +429,15 @@ static bool si_query_sw_end(struct si_context *sctx,
 		query->end_result =
 			p_atomic_read(&sctx->screen->num_shader_cache_hits);
 		break;
+	case SI_QUERY_PD_NUM_PRIMS_ACCEPTED:
+		query->end_result = sctx->compute_num_verts_accepted;
+		break;
+	case SI_QUERY_PD_NUM_PRIMS_REJECTED:
+		query->end_result = sctx->compute_num_verts_rejected;
+		break;
+	case SI_QUERY_PD_NUM_PRIMS_INELIGIBLE:
+		query->end_result = sctx->compute_num_verts_ineligible;
+		break;
 	case SI_QUERY_GPIN_ASIC_ID:
 	case SI_QUERY_GPIN_NUM_SIMD:
 	case SI_QUERY_GPIN_NUM_RB:
@@ -464,6 +482,12 @@ static bool si_query_sw_get_result(struct si_context *sctx,
 	case SI_QUERY_GALLIUM_THREAD_BUSY:
 		result->u64 = (query->end_result - query->begin_result) * 100 /
 			      (query->end_time - query->begin_time);
+		return true;
+	case SI_QUERY_PD_NUM_PRIMS_ACCEPTED:
+	case SI_QUERY_PD_NUM_PRIMS_REJECTED:
+	case SI_QUERY_PD_NUM_PRIMS_INELIGIBLE:
+		result->u64 = ((unsigned)query->end_result -
+			       (unsigned)query->begin_result) / 3;
 		return true;
 	case SI_QUERY_GPIN_ASIC_ID:
 		result->u32 = 0;
@@ -1782,6 +1806,10 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
 	X("GPU-surf-sync-busy",		GPU_SURF_SYNC_BUSY,	UINT64, AVERAGE),
 	X("GPU-cp-dma-busy",		GPU_CP_DMA_BUSY,	UINT64, AVERAGE),
 	X("GPU-scratch-ram-busy",	GPU_SCRATCH_RAM_BUSY,	UINT64, AVERAGE),
+
+	X("pd-num-prims-accepted",	PD_NUM_PRIMS_ACCEPTED,	UINT64, AVERAGE),
+	X("pd-num-prims-rejected",	PD_NUM_PRIMS_REJECTED,	UINT64, AVERAGE),
+	X("pd-num-prims-ineligible",	PD_NUM_PRIMS_INELIGIBLE,UINT64, AVERAGE),
 };
 
 #undef X

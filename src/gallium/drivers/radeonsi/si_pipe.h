@@ -1105,6 +1105,9 @@ struct si_context {
 	unsigned			num_resident_handles;
 	uint64_t			num_alloc_tex_transfer_bytes;
 	unsigned			last_tex_ps_draw_ratio; /* for query */
+	unsigned			compute_num_verts_accepted;
+	unsigned			compute_num_verts_rejected;
+	unsigned			compute_num_verts_ineligible; /* due to low vertex count */
 	unsigned			context_roll;
 
 	/* Queries. */
