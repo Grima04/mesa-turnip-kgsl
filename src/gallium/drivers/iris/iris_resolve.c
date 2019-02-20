@@ -191,8 +191,11 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                         ice->state.blend_enables & (1u << i),
                                         draw_aux_buffer_disabled[i]);
 
-      // XXX: NEW_AUX_STATE
-      ice->state.draw_aux_usage[i] = aux_usage;
+      if (ice->state.draw_aux_usage[i] != aux_usage) {
+         ice->state.draw_aux_usage[i] = aux_usage;
+         /* XXX: Need to track which bindings to make dirty */
+         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+      }
 
       iris_resource_prepare_render(ice, batch, res, surf->view.base_level,
                                    surf->view.base_array_layer,
@@ -805,12 +808,12 @@ iris_resource_prepare_ccs_access(struct iris_context *ice,
           * pass-through state.  (You can also think of this as being both a
           * resolve and an ambiguate in one operation.)
           */
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_PASS_THROUGH);
          break;
 
       case ISL_AUX_OP_PARTIAL_RESOLVE:
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
          break;
 
@@ -841,10 +844,10 @@ iris_resource_finish_ccs_write(struct iris_context *ice,
                 aux_usage == ISL_AUX_USAGE_CCS_D);
 
          if (aux_usage == ISL_AUX_USAGE_CCS_E) {
-            iris_resource_set_aux_state(res, level, layer, 1,
+            iris_resource_set_aux_state(ice, res, level, layer, 1,
                                         ISL_AUX_STATE_COMPRESSED_CLEAR);
          } else if (aux_state != ISL_AUX_STATE_PARTIAL_CLEAR) {
-            iris_resource_set_aux_state(res, level, layer, 1,
+            iris_resource_set_aux_state(ice, res, level, layer, 1,
                                         ISL_AUX_STATE_PARTIAL_CLEAR);
          }
          break;
@@ -856,7 +859,7 @@ iris_resource_finish_ccs_write(struct iris_context *ice,
 
       case ISL_AUX_STATE_PASS_THROUGH:
          if (aux_usage == ISL_AUX_USAGE_CCS_E) {
-            iris_resource_set_aux_state(res, level, layer, 1,
+            iris_resource_set_aux_state(ice, res, level, layer, 1,
                                         ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
          } else {
             /* Nothing to do */
@@ -873,7 +876,7 @@ iris_resource_finish_ccs_write(struct iris_context *ice,
       switch (aux_state) {
       case ISL_AUX_STATE_CLEAR:
          assert(aux_usage == ISL_AUX_USAGE_CCS_D);
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_PARTIAL_CLEAR);
          break;
 
@@ -909,7 +912,7 @@ iris_resource_prepare_mcs_access(struct iris_context *ice,
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
       if (!fast_clear_supported) {
          iris_mcs_partial_resolve(ice, batch, res, layer, 1);
-         iris_resource_set_aux_state(res, 0, layer, 1,
+         iris_resource_set_aux_state(ice, res, 0, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
       }
       break;
@@ -935,7 +938,7 @@ iris_resource_finish_mcs_write(struct iris_context *ice,
 
    switch (iris_resource_get_aux_state(res, 0, layer)) {
    case ISL_AUX_STATE_CLEAR:
-      iris_resource_set_aux_state(res, 0, layer, 1,
+      iris_resource_set_aux_state(ice, res, 0, layer, 1,
                                   ISL_AUX_STATE_COMPRESSED_CLEAR);
       break;
 
@@ -992,13 +995,13 @@ iris_resource_prepare_hiz_access(struct iris_context *ice,
 
       switch (hiz_op) {
       case ISL_AUX_OP_FULL_RESOLVE:
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_RESOLVED);
          break;
 
       case ISL_AUX_OP_AMBIGUATE:
          /* The HiZ resolve operation is actually an ambiguate */
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_PASS_THROUGH);
          break;
 
@@ -1019,7 +1022,7 @@ iris_resource_finish_hiz_write(struct iris_context *ice,
    switch (iris_resource_get_aux_state(res, level, layer)) {
    case ISL_AUX_STATE_CLEAR:
       assert(aux_usage == ISL_AUX_USAGE_HIZ);
-      iris_resource_set_aux_state(res, level, layer, 1,
+      iris_resource_set_aux_state(ice, res, level, layer, 1,
                                   ISL_AUX_STATE_COMPRESSED_CLEAR);
       break;
 
@@ -1030,17 +1033,17 @@ iris_resource_finish_hiz_write(struct iris_context *ice,
 
    case ISL_AUX_STATE_RESOLVED:
       if (aux_usage == ISL_AUX_USAGE_HIZ) {
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
       } else {
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_AUX_INVALID);
       }
       break;
 
    case ISL_AUX_STATE_PASS_THROUGH:
       if (aux_usage == ISL_AUX_USAGE_HIZ) {
-         iris_resource_set_aux_state(res, level, layer, 1,
+         iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
       }
       break;
@@ -1176,7 +1179,8 @@ iris_resource_get_aux_state(const struct iris_resource *res,
 }
 
 void
-iris_resource_set_aux_state(struct iris_resource *res, uint32_t level,
+iris_resource_set_aux_state(struct iris_context *ice,
+                            struct iris_resource *res, uint32_t level,
                             uint32_t start_layer, uint32_t num_layers,
                             enum isl_aux_state aux_state)
 {
@@ -1194,8 +1198,8 @@ iris_resource_set_aux_state(struct iris_resource *res, uint32_t level,
    for (unsigned a = 0; a < num_layers; a++) {
       if (res->aux.state[level][start_layer + a] != aux_state) {
          res->aux.state[level][start_layer + a] = aux_state;
-         // XXX: dirty works differently
-         // brw->ctx.NewDriverState |= BRW_NEW_AUX_STATE;
+         /* XXX: Need to track which bindings to make dirty */
+         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
       }
    }
 }

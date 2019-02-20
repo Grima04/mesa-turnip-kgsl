@@ -767,7 +767,10 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
                                    0, INTEL_REMAINING_LEVELS,
                                    0, INTEL_REMAINING_LAYERS,
                                    ISL_AUX_USAGE_NONE, false);
-      iris_resource_disable_aux(res);
+      if (res->aux.usage != ISL_AUX_USAGE_NONE) {
+         iris_resource_disable_aux(res);
+         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+      }
    } else {
       if (res->aux.usage != ISL_AUX_USAGE_NONE) {
          enum isl_aux_state aux_state =

@@ -294,7 +294,8 @@ iris_resource_get_aux_state(const struct iris_resource *res,
  * use iris_resource_prepare_access or iris_resource_finish_write.
  */
 void
-iris_resource_set_aux_state(struct iris_resource *res, uint32_t level,
+iris_resource_set_aux_state(struct iris_context *ice,
+                            struct iris_resource *res, uint32_t level,
                             uint32_t start_layer, uint32_t num_layers,
                             enum isl_aux_state aux_state);
 
