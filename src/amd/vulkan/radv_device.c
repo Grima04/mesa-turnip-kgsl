@@ -739,8 +739,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.alphaToOne                               = true,
 		.multiViewport                            = true,
 		.samplerAnisotropy                        = true,
-		.textureCompressionETC2                   = pdevice->rad_info.chip_class >= GFX9 ||
-		                                            pdevice->rad_info.family == CHIP_STONEY,
+		.textureCompressionETC2                   = radv_device_supports_etc(pdevice),
 		.textureCompressionASTC_LDR               = false,
 		.textureCompressionBC                     = true,
 		.occlusionQueryPrecise                    = true,
