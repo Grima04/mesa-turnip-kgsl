@@ -876,14 +876,15 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 /* Return false if the shader isn't ready. */
 static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
-					     const struct pipe_draw_info *info)
+					     const struct pipe_draw_info *info,
+					     bool primitive_restart)
 {
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 	struct si_shader_key key;
 
 	/* Primitive restart needs ordered counters. */
-	assert(!info->primitive_restart || VERTEX_COUNTER_GDS_MODE == 2);
-	assert(!info->primitive_restart || info->instance_count == 1);
+	assert(!primitive_restart || VERTEX_COUNTER_GDS_MODE == 2);
+	assert(!primitive_restart || info->instance_count == 1);
 
 	memset(&key, 0, sizeof(key));
 	si_shader_selector_key_vs(sctx, sctx->vs_shader.cso, &key, &key.part.vs.prolog);
@@ -894,13 +895,13 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
 	key.opt.cs_prim_type = info->mode;
 	key.opt.cs_indexed = info->index_size != 0;
 	key.opt.cs_instancing = info->instance_count > 1;
-	key.opt.cs_primitive_restart = info->primitive_restart;
+	key.opt.cs_primitive_restart = primitive_restart;
 	key.opt.cs_provoking_vertex_first = rs->provoking_vertex_first;
 
 	/* Primitive restart with triangle strips needs to preserve primitive
 	 * orientation for cases where front and back primitive orientation matters.
 	 */
-	if (info->primitive_restart) {
+	if (primitive_restart) {
 		struct si_shader_selector *ps = sctx->ps_shader.cso;
 
 		key.opt.cs_need_correct_orientation =
@@ -1000,10 +1001,11 @@ static bool si_check_ring_space(struct si_context *sctx, unsigned out_indexbuf_s
 
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
-				      const struct pipe_draw_info *info)
+				      const struct pipe_draw_info *info,
+				      bool primitive_restart)
 {
 	/* If the compute shader compilation isn't finished, this returns false. */
-	if (!si_shader_select_prim_discard_cs(sctx, info))
+	if (!si_shader_select_prim_discard_cs(sctx, info, primitive_restart))
 		return SI_PRIM_DISCARD_DISABLED;
 
 	if (!si_initialize_prim_discard_cmdbuf(sctx))
@@ -1029,6 +1031,8 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
 			   (1 << PIPE_PRIM_TRIANGLE_STRIP))) {
 		/* Split draws. */
 		struct pipe_draw_info split_draw = *info;
+		split_draw.primitive_restart = primitive_restart;
+
 		unsigned base_start = split_draw.start;
 
 		if (prim == PIPE_PRIM_TRIANGLES) {
@@ -1055,7 +1059,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
 				sctx->b.draw_vbo(&sctx->b, &split_draw);
 
 				if (start == 0 &&
-				    split_draw.primitive_restart &&
+				    primitive_restart &&
 				    sctx->cs_prim_discard_state.current->key.opt.cs_need_correct_orientation)
 					sctx->preserve_prim_restart_gds_at_flush = true;
 			}
@@ -1362,9 +1366,11 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
 	si_resource_reference(&indexbuf_desc, NULL);
 
+	bool primitive_restart = sctx->cs_prim_discard_state.current->key.opt.cs_primitive_restart;
+
 	if (VERTEX_COUNTER_GDS_MODE == 1) {
 		gds_offset = sctx->compute_gds_offset;
-		gds_size = info->primitive_restart ? 8 : 4;
+		gds_size = primitive_restart ? 8 : 4;
 		sctx->compute_gds_offset += gds_size;
 
 		/* Reset the counters in GDS for the first dispatch using WRITE_DATA.
@@ -1476,7 +1482,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 			uint32_t gds_prim_restart_continue_bit = 0;
 
 			if (sctx->preserve_prim_restart_gds_at_flush) {
-				assert(info->primitive_restart &&
+				assert(primitive_restart &&
 				       info->mode == PIPE_PRIM_TRIANGLE_STRIP);
 				assert(start_prim < 1 << 31);
 				gds_prim_restart_continue_bit = 1 << 31;

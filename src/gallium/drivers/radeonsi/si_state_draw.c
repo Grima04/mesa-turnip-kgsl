@@ -1414,7 +1414,10 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	unsigned index_size = info->index_size;
 	unsigned index_offset = info->indirect ? info->start * index_size : 0;
 	unsigned instance_count = info->instance_count;
-	bool primitive_restart = info->primitive_restart;
+	bool primitive_restart = info->primitive_restart &&
+				 (!sctx->screen->options.prim_restart_tri_strips_only ||
+				  (prim != PIPE_PRIM_TRIANGLE_STRIP &&
+				   prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
 
 	if (likely(!info->indirect)) {
 		/* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
@@ -1506,7 +1509,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		bool gs_tri_strip_adj_fix =
 			!sctx->tes_shader.cso &&
 			prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY &&
-			!info->primitive_restart;
+			!primitive_restart;
 
 		if (gs_tri_strip_adj_fix != sctx->gs_tri_strip_adj_fix) {
 			sctx->gs_tri_strip_adj_fix = gs_tri_strip_adj_fix;
@@ -1640,7 +1643,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	    /* Check that all buffers are used for read only, because compute
 	     * dispatches can run ahead. */
 	    (si_all_vs_resources_read_only(sctx, index_size ? indexbuf : NULL) || pd_msg("write reference"))) {
-		switch (si_prepare_prim_discard_or_split_draw(sctx, info)) {
+		switch (si_prepare_prim_discard_or_split_draw(sctx, info, primitive_restart)) {
 		case SI_PRIM_DISCARD_ENABLED:
 			original_index_size = index_size;
 			prim_discard_cs_instancing = instance_count > 1;

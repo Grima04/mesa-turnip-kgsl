@@ -1360,7 +1360,8 @@ enum si_prim_discard_outcome {
 void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
-				      const struct pipe_draw_info *info);
+				      const struct pipe_draw_info *info,
+				      bool primitive_restart);
 void si_compute_signal_gfx(struct si_context *sctx);
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 					  const struct pipe_draw_info *info,
