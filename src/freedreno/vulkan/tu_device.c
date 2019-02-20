@@ -344,7 +344,10 @@ static const VkAllocationCallbacks default_alloc = {
 };
 
 static const struct debug_control tu_debug_options[] = {
-   { "startup", TU_DEBUG_STARTUP }, { NULL, 0 }
+   { "startup", TU_DEBUG_STARTUP },
+   { "nir", TU_DEBUG_NIR },
+   { "ir3", TU_DEBUG_IR3 },
+   { NULL, 0 }
 };
 
 const char *
@@ -1078,6 +1081,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
+   device->compiler = ir3_compiler_create(NULL, physical_device->gpu_id);
+   if (!device->compiler)
+      goto fail;
+
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
    ci.pNext = NULL;
@@ -1103,6 +1110,9 @@ fail:
          vk_free(&device->alloc, device->queues[i]);
    }
 
+   if (device->compiler)
+      ralloc_free(device->compiler);
+
    vk_free(&device->alloc, device);
    return result;
 }
@@ -1121,6 +1131,9 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       if (device->queue_count[i])
          vk_free(&device->alloc, device->queues[i]);
    }
+
+   /* the compiler does not use pAllocator */
+   ralloc_free(device->compiler);
 
    VkPipelineCache pc = tu_pipeline_cache_to_handle(device->mem_cache);
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);

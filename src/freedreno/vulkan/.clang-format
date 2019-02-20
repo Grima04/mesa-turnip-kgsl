@@ -16,7 +16,7 @@ IncludeBlocks: Regroup
 IncludeCategories:
   - Regex:           '^"tu_private.h"$'
     Priority:        0
-  - Regex:           '^"(drm/|tu_)'
+  - Regex:           '^"(drm/|ir3/|tu_)'
     Priority:        4
   - Regex:           '^"(c11/|compiler/|main/|nir/|spirv/|util/|vk_)'
     Priority:        3

@@ -52,6 +52,8 @@
 #include "vk_debug_report.h"
 
 #include "drm/msm_drm.h"
+#include "ir3/ir3_compiler.h"
+#include "ir3/ir3_shader.h"
 
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
@@ -315,6 +317,8 @@ struct tu_physical_device
 enum tu_debug_flags
 {
    TU_DEBUG_STARTUP = 1 << 0,
+   TU_DEBUG_NIR = 1 << 1,
+   TU_DEBUG_IR3 = 1 << 2,
 };
 
 struct tu_instance
@@ -446,6 +450,8 @@ struct tu_device
    int queue_count[TU_MAX_QUEUE_FAMILIES];
 
    struct tu_physical_device *physical_device;
+
+   struct ir3_compiler *compiler;
 
    /* Backup in-memory cache to be used if the app doesn't provide one */
    struct tu_pipeline_cache *mem_cache;
@@ -969,11 +975,57 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 
 struct tu_shader_module
 {
-   struct nir_shader *nir;
    unsigned char sha1[20];
-   uint32_t size;
-   char data[0];
+
+   uint32_t code_size;
+   const uint32_t *code[0];
 };
+
+struct tu_shader_compile_options
+{
+   struct ir3_shader_key key;
+
+   bool optimize;
+   bool include_binning_pass;
+};
+
+struct tu_shader
+{
+   struct ir3_shader ir3_shader;
+
+   /* This may be true for vertex shaders.  When true, variants[1] is the
+    * binning variant and binning_binary is non-NULL.
+    */
+   bool has_binning_pass;
+
+   void *binary;
+   void *binning_binary;
+
+   struct ir3_shader_variant variants[0];
+};
+
+struct tu_shader *
+tu_shader_create(struct tu_device *dev,
+                 gl_shader_stage stage,
+                 const VkPipelineShaderStageCreateInfo *stage_info,
+                 const VkAllocationCallbacks *alloc);
+
+void
+tu_shader_destroy(struct tu_device *dev,
+                  struct tu_shader *shader,
+                  const VkAllocationCallbacks *alloc);
+
+void
+tu_shader_compile_options_init(
+   struct tu_shader_compile_options *options,
+   const VkGraphicsPipelineCreateInfo *pipeline_info);
+
+VkResult
+tu_shader_compile(struct tu_device *dev,
+                  struct tu_shader *shader,
+                  const struct tu_shader *next_stage,
+                  const struct tu_shader_compile_options *options,
+                  const VkAllocationCallbacks *alloc);
 
 struct tu_pipeline
 {

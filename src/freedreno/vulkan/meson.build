@@ -68,6 +68,7 @@ libtu_files = files(
   'tu_pipeline_cache.c',
   'tu_private.h',
   'tu_query.c',
+  'tu_shader.c',
   'tu_util.c',
   'tu_util.h',
   'vk_format.h',
@@ -88,6 +89,8 @@ libvulkan_freedreno = shared_library(
   link_with : [
     libvulkan_util,
     libmesa_util,
+    libfreedreno_drm, # required by ir3_shader_get_variant, which we don't use
+    libfreedreno_ir3,
   ],
   dependencies : [
     dep_dl,
