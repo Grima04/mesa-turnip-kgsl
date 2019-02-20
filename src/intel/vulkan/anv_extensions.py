@@ -141,6 +141,26 @@ EXTENSIONS = [
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
 ]
 
+# Sort the extension list the way we expect: KHR, then EXT, then vendors
+# alphabetically. For digits, read them as a whole number sort that.
+# eg.: VK_KHR_8bit_storage < VK_KHR_16bit_storage < VK_EXT_acquire_xlib_display
+def extension_order(ext):
+    order = []
+    for substring in re.split('(KHR|EXT|[0-9]+)', ext.name):
+        if substring == 'KHR':
+            order.append(1)
+        if substring == 'EXT':
+            order.append(2)
+        elif substring.isdigit():
+            order.append(int(substring))
+        else:
+            order.append(substring)
+    return order
+for i in range(len(EXTENSIONS) - 1):
+    if extension_order(EXTENSIONS[i + 1]) < extension_order(EXTENSIONS[i]):
+        print(EXTENSIONS[i + 1].name + ' should come before ' + EXTENSIONS[i].name)
+        exit(1)
+
 class VkVersion:
     def __init__(self, string):
         split = string.split('.')
