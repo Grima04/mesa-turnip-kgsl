@@ -230,7 +230,6 @@ fs_inst::is_send_from_grf() const
    case SHADER_OPCODE_TYPED_ATOMIC:
    case SHADER_OPCODE_TYPED_SURFACE_READ:
    case SHADER_OPCODE_TYPED_SURFACE_WRITE:
-   case SHADER_OPCODE_IMAGE_SIZE:
    case SHADER_OPCODE_URB_WRITE_SIMD8:
    case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
@@ -266,7 +265,6 @@ fs_inst::is_control_source(unsigned arg) const
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
-   case SHADER_OPCODE_IMAGE_SIZE:
    case SHADER_OPCODE_GET_BUFFER_SIZE:
       return arg == 1;
 
@@ -974,7 +972,6 @@ fs_inst::size_read(int arg) const
    case SHADER_OPCODE_TYPED_ATOMIC:
    case SHADER_OPCODE_TYPED_SURFACE_READ:
    case SHADER_OPCODE_TYPED_SURFACE_WRITE:
-   case SHADER_OPCODE_IMAGE_SIZE:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
@@ -4670,7 +4667,7 @@ sampler_msg_type(const gen_device_info *devinfo,
       return shadow_compare ? GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ :
                               GEN9_SAMPLER_MESSAGE_SAMPLE_LZ;
    case SHADER_OPCODE_TXS:
-   case SHADER_OPCODE_IMAGE_SIZE:
+   case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
       return GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
    case SHADER_OPCODE_TXD:
       assert(!shadow_compare || devinfo->gen >= 8 || devinfo->is_haswell);
@@ -4837,7 +4834,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), lod);
       length++;
       break;
-   case SHADER_OPCODE_IMAGE_SIZE:
+   case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
       /* We need an LOD; just use 0 */
       bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), brw_imm_ud(0));
       length++;
@@ -4969,7 +4966,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
    case SHADER_OPCODE_TG4_OFFSET:
       base_binding_table_index = prog_data->binding_table.gather_texture_start;
       break;
-   case SHADER_OPCODE_IMAGE_SIZE:
+   case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
       base_binding_table_index = prog_data->binding_table.image_start;
       break;
    default:
@@ -5538,7 +5535,8 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
-         lower_sampler_logical_send(ibld, inst, SHADER_OPCODE_IMAGE_SIZE);
+         lower_sampler_logical_send(ibld, inst,
+                                    SHADER_OPCODE_IMAGE_SIZE_LOGICAL);
          break;
 
       case FS_OPCODE_TXB_LOGICAL:
