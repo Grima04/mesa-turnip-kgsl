@@ -75,6 +75,37 @@ tu_dynamic_state_bit(VkDynamicState state)
    }
 }
 
+static enum pc_di_primtype
+tu6_primtype(VkPrimitiveTopology topology)
+{
+   switch (topology) {
+   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+      return DI_PT_POINTLIST;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+      return DI_PT_LINELIST;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+      return DI_PT_LINESTRIP;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+      return DI_PT_TRILIST;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+      return DI_PT_TRILIST;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+      return DI_PT_TRIFAN;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+      return DI_PT_LINE_ADJ;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+      return DI_PT_LINESTRIP_ADJ;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+      return DI_PT_TRI_ADJ;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+      return DI_PT_TRISTRIP_ADJ;
+   case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+   default:
+      unreachable("invalid primitive topology");
+      return DI_PT_NONE;
+   }
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -118,6 +149,17 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_input_assembly(struct tu_pipeline_builder *builder,
+                                         struct tu_pipeline *pipeline)
+{
+   const VkPipelineInputAssemblyStateCreateInfo *ia_info =
+      builder->create_info->pInputAssemblyState;
+
+   pipeline->ia.primtype = tu6_primtype(ia_info->topology);
+   pipeline->ia.primitive_restart = ia_info->primitiveRestartEnable;
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -134,6 +176,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       return result;
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
+   tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows

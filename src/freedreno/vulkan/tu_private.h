@@ -985,6 +985,12 @@ struct tu_pipeline
 
    bool need_indirect_descriptor_sets;
    VkShaderStageFlags active_stages;
+
+   struct
+   {
+      enum pc_di_primtype primtype;
+      bool primitive_restart;
+   } ia;
 };
 
 struct tu_userdata_info *
