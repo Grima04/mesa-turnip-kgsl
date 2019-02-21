@@ -977,7 +977,8 @@ struct tu_shader_module
 
 struct tu_pipeline
 {
-   struct tu_device *device;
+   struct tu_cs cs;
+
    struct tu_dynamic_state dynamic_state;
 
    struct tu_pipeline_layout *layout;
@@ -1006,15 +1007,6 @@ struct tu_graphics_pipeline_create_info
    bool db_resummarize;
    uint32_t custom_blend_mode;
 };
-
-VkResult
-tu_graphics_pipeline_create(
-   VkDevice device,
-   VkPipelineCache cache,
-   const VkGraphicsPipelineCreateInfo *pCreateInfo,
-   const struct tu_graphics_pipeline_create_info *extra,
-   const VkAllocationCallbacks *alloc,
-   VkPipeline *pPipeline);
 
 struct tu_native_format
 {
