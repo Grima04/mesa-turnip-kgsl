@@ -52,7 +52,7 @@ foreach v : ['80', '90', '100', '110']
     'libiris_gen@0@'.format(v),
     ['iris_blorp.c', 'iris_state.c', gen_xml_pack],
     include_directories : [inc_common, inc_intel, inc_nir],
-    c_args : [c_vis_args, no_override_init_args,
+    c_args : [c_vis_args, no_override_init_args, c_sse2_args,
               '-DGEN_VERSIONx10=@0@'.format(v)],
     dependencies : [dep_libdrm, dep_valgrind],
   )
@@ -68,8 +68,8 @@ libiris = static_library(
     # these should not be necessary, but main/macros.h...
     inc_mesa, inc_mapi
   ],
-  c_args : [c_vis_args],
-  cpp_args : [cpp_vis_args],
+  c_args : [c_vis_args, c_sse2_args],
+  cpp_args : [cpp_vis_args, c_sse2_args],
   dependencies : [dep_libdrm, dep_valgrind],
   link_with : [iris_gen_libs, libintel_common, libintel_compiler, libintel_dev,
                libisl, libblorp],
