@@ -198,19 +198,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_genxml
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
-
-# ---------------------------------------
-# Build libmesa_isl_tiled_memcpy
-# ---------------------------------------
-include $(CLEAR_VARS)
-
-LOCAL_MODULE := libmesa_isl_tiled_memcpy
-
-LOCAL_SRC_FILES := isl/isl_tiled_memcpy.c
-
-include $(MESA_COMMON_MK)
-include $(BUILD_STATIC_LIBRARY)
-
 # ---------------------------------------
 # Build libmesa_isl_tiled_memcpy
 # ---------------------------------------
