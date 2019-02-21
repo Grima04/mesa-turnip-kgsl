@@ -704,10 +704,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    OPT(nir_lower_system_values);
 
    const nir_lower_subgroups_options subgroups_options = {
-      .subgroup_size = BRW_SUBGROUP_SIZE,
       .ballot_bit_size = 32,
       .lower_to_scalar = true,
-      .lower_subgroup_masks = true,
       .lower_vote_trivial = !is_scalar,
       .lower_shuffle = true,
    };
@@ -810,6 +808,13 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       (INTEL_DEBUG & intel_debug_flag_for_shader_stage(nir->info.stage));
 
    UNUSED bool progress; /* Written by OPT */
+
+   const nir_lower_subgroups_options subgroups_options = {
+      .subgroup_size = BRW_SUBGROUP_SIZE,
+      .ballot_bit_size = 32,
+      .lower_subgroup_masks = true,
+   };
+   OPT(nir_lower_subgroups, &subgroups_options);
 
    OPT(brw_nir_lower_mem_access_bit_sizes);
 
