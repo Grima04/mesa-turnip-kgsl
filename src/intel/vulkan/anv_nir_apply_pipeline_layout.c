@@ -41,7 +41,7 @@ struct apply_pipeline_layout_state {
       bool desc_buffer_used;
       uint8_t desc_offset;
 
-      BITSET_WORD *used;
+      uint8_t *use_count;
       uint8_t *surface_offsets;
       uint8_t *sampler_offsets;
    } set[MAX_SETS];
@@ -54,7 +54,8 @@ add_binding(struct apply_pipeline_layout_state *state,
    const struct anv_descriptor_set_binding_layout *bind_layout =
       &state->layout->set[set].layout->binding[binding];
 
-   BITSET_SET(state->set[set].used, binding);
+   if (state->set[set].use_count[binding] < UINT8_MAX)
+      state->set[set].use_count[binding]++;
 
    /* Only flag the descriptor buffer as used if there's actually data for
     * this binding.  This lets us be lazy and call this function constantly
@@ -505,6 +506,25 @@ apply_pipeline_layout_block(nir_block *block,
    }
 }
 
+struct binding_info {
+   uint32_t binding;
+   uint8_t set;
+   uint16_t score;
+};
+
+static int
+compare_binding_infos(const void *_a, const void *_b)
+{
+   const struct binding_info *a = _a, *b = _b;
+   if (a->score != b->score)
+      return b->score - a->score;
+
+   if (a->set != b->set)
+      return a->set - b->set;
+
+   return a->binding - b->binding;
+}
+
 void
 anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                               bool robust_buffer_access,
@@ -524,8 +544,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
 
    for (unsigned s = 0; s < layout->num_sets; s++) {
       const unsigned count = layout->set[s].layout->binding_count;
-      const unsigned words = BITSET_WORDS(count);
-      state.set[s].used = rzalloc_array(mem_ctx, BITSET_WORD, words);
+      state.set[s].use_count = rzalloc_array(mem_ctx, uint8_t, count);
       state.set[s].surface_offsets = rzalloc_array(mem_ctx, uint8_t, count);
       state.set[s].sampler_offsets = rzalloc_array(mem_ctx, uint8_t, count);
    }
@@ -557,49 +576,85 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       map->surface_count++;
    }
 
+   unsigned used_binding_count = 0;
    for (uint32_t set = 0; set < layout->num_sets; set++) {
       struct anv_descriptor_set_layout *set_layout = layout->set[set].layout;
-
-      BITSET_WORD b, _tmp;
-      BITSET_FOREACH_SET(b, _tmp, state.set[set].used,
-                         set_layout->binding_count) {
-         struct anv_descriptor_set_binding_layout *binding =
-            &set_layout->binding[b];
-
-         if (binding->array_size == 0)
+      for (unsigned b = 0; b < set_layout->binding_count; b++) {
+         if (state.set[set].use_count[b] == 0)
             continue;
 
-         if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
-            state.set[set].surface_offsets[b] = map->surface_count;
-            struct anv_sampler **samplers = binding->immutable_samplers;
-            for (unsigned i = 0; i < binding->array_size; i++) {
-               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-               for (uint8_t p = 0; p < planes; p++) {
-                  map->surface_to_descriptor[map->surface_count++] =
-                     (struct anv_pipeline_binding) {
-                        .set = set,
-                        .binding = b,
-                        .index = i,
-                        .plane = p,
-                     };
-               }
+         used_binding_count++;
+      }
+   }
+
+   struct binding_info *infos =
+      rzalloc_array(mem_ctx, struct binding_info, used_binding_count);
+   used_binding_count = 0;
+   for (uint32_t set = 0; set < layout->num_sets; set++) {
+      struct anv_descriptor_set_layout *set_layout = layout->set[set].layout;
+      for (unsigned b = 0; b < set_layout->binding_count; b++) {
+         if (state.set[set].use_count[b] == 0)
+            continue;
+
+         struct anv_descriptor_set_binding_layout *binding =
+               &layout->set[set].layout->binding[b];
+
+         /* Do a fixed-point calculation to generate a score based on the
+          * number of uses and the binding array size.
+          */
+         uint16_t score = ((uint16_t)state.set[set].use_count[b] << 7) /
+                          binding->array_size;
+
+         infos[used_binding_count++] = (struct binding_info) {
+            .set = set,
+            .binding = b,
+            .score = score,
+         };
+      }
+   }
+
+   /* Order the binding infos based on score with highest scores first.  If
+    * scores are equal we then order by set and binding.
+    */
+   qsort(infos, used_binding_count, sizeof(struct binding_info),
+         compare_binding_infos);
+
+   for (unsigned i = 0; i < used_binding_count; i++) {
+      unsigned set = infos[i].set, b = infos[i].binding;
+      struct anv_descriptor_set_binding_layout *binding =
+            &layout->set[set].layout->binding[b];
+
+      if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
+         state.set[set].surface_offsets[b] = map->surface_count;
+         struct anv_sampler **samplers = binding->immutable_samplers;
+         for (unsigned i = 0; i < binding->array_size; i++) {
+            uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+            for (uint8_t p = 0; p < planes; p++) {
+               map->surface_to_descriptor[map->surface_count++] =
+                  (struct anv_pipeline_binding) {
+                     .set = set,
+                     .binding = b,
+                     .index = i,
+                     .plane = p,
+                  };
             }
          }
+      }
+      assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
 
-         if (binding->data & ANV_DESCRIPTOR_SAMPLER_STATE) {
-            state.set[set].sampler_offsets[b] = map->sampler_count;
-            struct anv_sampler **samplers = binding->immutable_samplers;
-            for (unsigned i = 0; i < binding->array_size; i++) {
-               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-               for (uint8_t p = 0; p < planes; p++) {
-                  map->sampler_to_descriptor[map->sampler_count++] =
-                     (struct anv_pipeline_binding) {
-                        .set = set,
-                        .binding = b,
-                        .index = i,
-                        .plane = p,
-                     };
-               }
+      if (binding->data & ANV_DESCRIPTOR_SAMPLER_STATE) {
+         state.set[set].sampler_offsets[b] = map->sampler_count;
+         struct anv_sampler **samplers = binding->immutable_samplers;
+         for (unsigned i = 0; i < binding->array_size; i++) {
+            uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+            for (uint8_t p = 0; p < planes; p++) {
+               map->sampler_to_descriptor[map->sampler_count++] =
+                  (struct anv_pipeline_binding) {
+                     .set = set,
+                     .binding = b,
+                     .index = i,
+                     .plane = p,
+                  };
             }
          }
       }
@@ -618,7 +673,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       const uint32_t array_size =
          layout->set[set].layout->binding[binding].array_size;
 
-      if (!BITSET_TEST(state.set[set].used, binding))
+      if (state.set[set].use_count[binding] == 0)
          continue;
 
       struct anv_pipeline_binding *pipe_binding =
