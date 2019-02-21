@@ -256,7 +256,28 @@ static struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx)
 {
         struct bifrost_framebuffer framebuffer = {
-                .tiler_meta = 0xf00000c600,
+                /* It is not yet clear what tiler_meta means or how it's
+                 * calculated, but we can tell the lower 32-bits are a
+                 * (monotonically increasing?) function of tile count and
+                 * geometry complexity; I suspect it defines a memory size of
+                 * some kind? for the tiler. It's really unclear at the
+                 * moment... but to add to the confusion, the hardware is happy
+                 * enough to accept a zero in this field, so we don't even have
+                 * to worry about it right now.
+                 *
+                 * The byte (just after the 32-bit mark) is much more
+                 * interesting. The higher nibble I've only ever seen as 0xF,
+                 * but the lower one I've seen as 0x0 or 0xF, and it's not
+                 * obvious what the difference is. But what -is- obvious is
+                 * that when the lower nibble is zero, performance is severely
+                 * degraded compared to when the lower nibble is set.
+                 * Evidently, that nibble enables some sort of fast path,
+                 * perhaps relating to caching or tile flush? Regardless, at
+                 * this point there's no clear reason not to set it, aside from
+                 * substantially increased memory requirements (of the misc_0
+                 * buffer) */
+
+                .tiler_meta = ((uint64_t) 0xff << 32) | 0x0,
 
                 .width1 = MALI_POSITIVE(ctx->pipe_framebuffer.width),
                 .height1 = MALI_POSITIVE(ctx->pipe_framebuffer.height),
@@ -271,10 +292,23 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
 
                 .unknown2 = 0x1f,
 
-                /* Presumably corresponds to unknown_address_X of SFBD */
+                /* Corresponds to unknown_address_X of SFBD */
                 .scratchpad = ctx->scratchpad.gpu,
                 .tiler_scratch_start  = ctx->misc_0.gpu,
-                .tiler_scratch_middle = ctx->misc_0.gpu + /*ctx->misc_0.size*/40960, /* Size depends on the size of the framebuffer and the number of vertices */
+
+                /* The constant added here is, like the lower word of
+                 * tiler_meta, (loosely) another product of framebuffer size
+                 * and geometry complexity. It must be sufficiently large for
+                 * the tiler_meta fast path to work; if it's too small, there
+                 * will be DATA_INVALID_FAULTs. Conversely, it must be less
+                 * than the total size of misc_0, or else there's no room. It's
+                 * possible this constant configures a partition between two
+                 * parts of misc_0? We haven't investigated the functionality,
+                 * as these buffers are internally used by the hardware
+                 * (presumably by the tiler) but not seemingly touched by the driver
+                 */
+
+                .tiler_scratch_middle = ctx->misc_0.gpu + 0xf0000,
 
                 .tiler_heap_start = ctx->tiler_heap.gpu,
                 .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
@@ -2696,7 +2730,7 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         screen->driver->allocate_slab(screen, &ctx->varying_mem, 16384, false, 0, 0, 0);
         screen->driver->allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         screen->driver->allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_GROWABLE, 1, 128);
-        screen->driver->allocate_slab(screen, &ctx->misc_0, 128, false, PAN_ALLOCATE_GROWABLE, 1, 128);
+        screen->driver->allocate_slab(screen, &ctx->misc_0, 128*128, false, PAN_ALLOCATE_GROWABLE, 1, 128);
 
 }
 
