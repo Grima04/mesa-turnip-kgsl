@@ -101,7 +101,7 @@ combine_clip_cull(nir_shader *nir,
    }
 
    if (cull) {
-      assert(clip->data.compact);
+      assert(cull->data.compact);
       cull->data.how_declared = nir_var_hidden;
       cull->data.location = VARYING_SLOT_CLIP_DIST0 + clip_array_size / 4;
       cull->data.location_frac = clip_array_size % 4;
