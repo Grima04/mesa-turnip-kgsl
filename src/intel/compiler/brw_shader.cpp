@@ -276,17 +276,17 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case SHADER_OPCODE_SHADER_TIME_ADD:
       return "shader_time_add";
 
-   case SHADER_OPCODE_UNTYPED_ATOMIC:
+   case VEC4_OPCODE_UNTYPED_ATOMIC:
       return "untyped_atomic";
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       return "untyped_atomic_logical";
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       return "untyped_atomic_float_logical";
-   case SHADER_OPCODE_UNTYPED_SURFACE_READ:
+   case VEC4_OPCODE_UNTYPED_SURFACE_READ:
       return "untyped_surface_read";
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
       return "untyped_surface_read_logical";
-   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
+   case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
       return "untyped_surface_write";
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       return "untyped_surface_write_logical";
@@ -1001,11 +1001,11 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_SEND:
       return send_has_side_effects;
 
-   case SHADER_OPCODE_UNTYPED_ATOMIC:
+   case VEC4_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
-   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
+   case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
@@ -1040,7 +1040,7 @@ backend_instruction::is_volatile() const
    case SHADER_OPCODE_SEND:
       return send_is_volatile;
 
-   case SHADER_OPCODE_UNTYPED_SURFACE_READ:
+   case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:

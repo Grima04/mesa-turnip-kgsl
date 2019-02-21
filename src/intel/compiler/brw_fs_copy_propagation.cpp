@@ -709,18 +709,6 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          }
          break;
 
-      case SHADER_OPCODE_UNTYPED_ATOMIC:
-      case SHADER_OPCODE_UNTYPED_SURFACE_READ:
-      case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
-         /* We only propagate into the surface argument of the
-          * instruction. Everything else goes through LOAD_PAYLOAD.
-          */
-         if (i == 1) {
-            inst->src[i] = val;
-            progress = true;
-         }
-         break;
-
       case FS_OPCODE_FB_WRITE_LOGICAL:
          /* The stencil and omask sources of FS_OPCODE_FB_WRITE_LOGICAL are
           * bit-cast using a strided region so they cannot be immediates.

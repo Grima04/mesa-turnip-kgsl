@@ -367,13 +367,13 @@ schedule_node::set_latency_gen7(bool is_haswell)
       latency = 50;
       break;
 
-   case SHADER_OPCODE_UNTYPED_ATOMIC:
+   case VEC4_OPCODE_UNTYPED_ATOMIC:
       /* See GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
       latency = 14000;
       break;
 
-   case SHADER_OPCODE_UNTYPED_SURFACE_READ:
-   case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
+   case VEC4_OPCODE_UNTYPED_SURFACE_READ:
+   case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
       /* See also GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ */
       latency = is_haswell ? 300 : 600;
       break;

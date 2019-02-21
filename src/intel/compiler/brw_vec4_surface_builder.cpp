@@ -146,7 +146,7 @@ namespace brw {
                         unsigned dims, unsigned size,
                         brw_predicate pred)
       {
-         return emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_READ, src_reg(),
+         return emit_send(bld, VEC4_OPCODE_UNTYPED_SURFACE_READ, src_reg(),
                           emit_insert(bld, addr, dims, true), 1,
                           src_reg(), 0,
                           surface, size, 1, pred);
@@ -165,7 +165,7 @@ namespace brw {
       {
          const bool has_simd4x2 = (bld.shader->devinfo->gen >= 8 ||
                                    bld.shader->devinfo->is_haswell);
-         emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_WRITE, src_reg(),
+         emit_send(bld, VEC4_OPCODE_UNTYPED_SURFACE_WRITE, src_reg(),
                    emit_insert(bld, addr, dims, has_simd4x2),
                    has_simd4x2 ? 1 : dims,
                    emit_insert(bld, src, size, has_simd4x2),
@@ -204,7 +204,7 @@ namespace brw {
                     swizzle(src1, BRW_SWIZZLE_XXXX));
          }
 
-         return emit_send(bld, SHADER_OPCODE_UNTYPED_ATOMIC, src_reg(),
+         return emit_send(bld, VEC4_OPCODE_UNTYPED_ATOMIC, src_reg(),
                           emit_insert(bld, addr, dims, has_simd4x2),
                           has_simd4x2 ? 1 : dims,
                           emit_insert(bld, src_reg(srcs), size, has_simd4x2),
