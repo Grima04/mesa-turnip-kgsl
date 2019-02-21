@@ -710,14 +710,8 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          break;
 
       case SHADER_OPCODE_UNTYPED_ATOMIC:
-      case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT:
       case SHADER_OPCODE_UNTYPED_SURFACE_READ:
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
-      case SHADER_OPCODE_TYPED_ATOMIC:
-      case SHADER_OPCODE_TYPED_SURFACE_READ:
-      case SHADER_OPCODE_TYPED_SURFACE_WRITE:
-      case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
-      case SHADER_OPCODE_BYTE_SCATTERED_READ:
          /* We only propagate into the surface argument of the
           * instruction. Everything else goes through LOAD_PAYLOAD.
           */

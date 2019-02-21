@@ -280,8 +280,6 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "untyped_atomic";
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       return "untyped_atomic_logical";
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT:
-      return "untyped_atomic_float";
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       return "untyped_atomic_float_logical";
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
@@ -304,16 +302,10 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "a64_untyped_atomic_logical";
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       return "a64_untyped_atomic_float_logical";
-   case SHADER_OPCODE_TYPED_ATOMIC:
-      return "typed_atomic";
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
       return "typed_atomic_logical";
-   case SHADER_OPCODE_TYPED_SURFACE_READ:
-      return "typed_surface_read";
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
       return "typed_surface_read_logical";
-   case SHADER_OPCODE_TYPED_SURFACE_WRITE:
-      return "typed_surface_write";
    case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
       return "typed_surface_write_logical";
    case SHADER_OPCODE_MEMORY_FENCE:
@@ -322,12 +314,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       /* For an interlock we actually issue a memory fence via sendc. */
       return "interlock";
 
-   case SHADER_OPCODE_BYTE_SCATTERED_READ:
-      return "byte_scattered_read";
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
       return "byte_scattered_read_logical";
-   case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
-      return "byte_scattered_write";
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
       return "byte_scattered_write_logical";
 
@@ -1015,7 +1003,6 @@ backend_instruction::has_side_effects() const
 
    case SHADER_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT:
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
@@ -1024,11 +1011,8 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_A64_BYTE_SCATTERED_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT_LOGICAL:
-   case SHADER_OPCODE_BYTE_SCATTERED_WRITE:
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
-   case SHADER_OPCODE_TYPED_ATOMIC:
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_TYPED_SURFACE_WRITE:
    case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_MEMORY_FENCE:
    case SHADER_OPCODE_INTERLOCK:
@@ -1058,9 +1042,7 @@ backend_instruction::is_volatile() const
 
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
-   case SHADER_OPCODE_TYPED_SURFACE_READ:
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
-   case SHADER_OPCODE_BYTE_SCATTERED_READ:
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
    case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
