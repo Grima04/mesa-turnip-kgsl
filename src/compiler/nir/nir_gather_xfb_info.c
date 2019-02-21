@@ -72,7 +72,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       } else {
          comp_slots = glsl_get_component_slots(type);
 
-         unsigned attrib_slots = DIV_ROUND_UP(comp_slots, 4);
+         UNUSED unsigned attrib_slots = DIV_ROUND_UP(comp_slots, 4);
          assert(attrib_slots == glsl_count_attribute_slots(type, false));
 
          /* Ensure that we don't have, for instance, a dvec2 with a
