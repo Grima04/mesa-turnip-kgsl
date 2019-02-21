@@ -1002,6 +1002,11 @@ struct tu_pipeline
       uint32_t gras_su_cntl;
       struct tu_cs_entry state_ib;
    } rast;
+
+   struct
+   {
+      struct tu_cs_entry state_ib;
+   } ds;
 };
 
 void
@@ -1020,6 +1025,17 @@ tu6_emit_depth_bias(struct tu_cs *cs,
                     float constant_factor,
                     float clamp,
                     float slope_factor);
+
+void
+tu6_emit_stencil_compare_mask(struct tu_cs *cs,
+                              uint32_t front,
+                              uint32_t back);
+
+void
+tu6_emit_stencil_write_mask(struct tu_cs *cs, uint32_t front, uint32_t back);
+
+void
+tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back);
 
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,

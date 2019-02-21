@@ -49,6 +49,7 @@ struct tu_pipeline_builder
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
    VkSampleCountFlagBits samples;
+   bool use_depth_stencil_attachment;
 };
 
 static enum tu_dynamic_state_bits
@@ -107,6 +108,58 @@ tu6_primtype(VkPrimitiveTopology topology)
    default:
       unreachable("invalid primitive topology");
       return DI_PT_NONE;
+   }
+}
+
+static enum adreno_compare_func
+tu6_compare_func(VkCompareOp op)
+{
+   switch (op) {
+   case VK_COMPARE_OP_NEVER:
+      return FUNC_NEVER;
+   case VK_COMPARE_OP_LESS:
+      return FUNC_LESS;
+   case VK_COMPARE_OP_EQUAL:
+      return FUNC_EQUAL;
+   case VK_COMPARE_OP_LESS_OR_EQUAL:
+      return FUNC_LEQUAL;
+   case VK_COMPARE_OP_GREATER:
+      return FUNC_GREATER;
+   case VK_COMPARE_OP_NOT_EQUAL:
+      return FUNC_NOTEQUAL;
+   case VK_COMPARE_OP_GREATER_OR_EQUAL:
+      return FUNC_GEQUAL;
+   case VK_COMPARE_OP_ALWAYS:
+      return FUNC_ALWAYS;
+   default:
+      unreachable("invalid VkCompareOp");
+      return FUNC_NEVER;
+   }
+}
+
+static enum adreno_stencil_op
+tu6_stencil_op(VkStencilOp op)
+{
+   switch (op) {
+   case VK_STENCIL_OP_KEEP:
+      return STENCIL_KEEP;
+   case VK_STENCIL_OP_ZERO:
+      return STENCIL_ZERO;
+   case VK_STENCIL_OP_REPLACE:
+      return STENCIL_REPLACE;
+   case VK_STENCIL_OP_INCREMENT_AND_CLAMP:
+      return STENCIL_INCR_CLAMP;
+   case VK_STENCIL_OP_DECREMENT_AND_CLAMP:
+      return STENCIL_DECR_CLAMP;
+   case VK_STENCIL_OP_INVERT:
+      return STENCIL_INVERT;
+   case VK_STENCIL_OP_INCREMENT_AND_WRAP:
+      return STENCIL_INCR_WRAP;
+   case VK_STENCIL_OP_DECREMENT_AND_WRAP:
+      return STENCIL_DECR_WRAP;
+   default:
+      unreachable("invalid VkStencilOp");
+      return STENCIL_KEEP;
    }
 }
 
@@ -257,6 +310,84 @@ tu6_emit_depth_bias(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET_CLAMP(clamp));
 }
 
+static void
+tu6_emit_alpha_control_disable(struct tu_cs *cs)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_ALPHA_CONTROL, 1);
+   tu_cs_emit(cs, 0);
+}
+
+static void
+tu6_emit_depth_control(struct tu_cs *cs,
+                       const VkPipelineDepthStencilStateCreateInfo *ds_info)
+{
+   assert(!ds_info->depthBoundsTestEnable);
+
+   uint32_t rb_depth_cntl = 0;
+   if (ds_info->depthTestEnable) {
+      rb_depth_cntl |=
+         A6XX_RB_DEPTH_CNTL_Z_ENABLE |
+         A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
+         A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+
+      if (ds_info->depthWriteEnable)
+         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_CNTL, 1);
+   tu_cs_emit(cs, rb_depth_cntl);
+}
+
+static void
+tu6_emit_stencil_control(struct tu_cs *cs,
+                         const VkPipelineDepthStencilStateCreateInfo *ds_info)
+{
+   uint32_t rb_stencil_control = 0;
+   if (ds_info->stencilTestEnable) {
+      const VkStencilOpState *front = &ds_info->front;
+      const VkStencilOpState *back = &ds_info->back;
+      rb_stencil_control |=
+         A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
+         A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
+         A6XX_RB_STENCIL_CONTROL_STENCIL_READ |
+         A6XX_RB_STENCIL_CONTROL_FUNC(tu6_compare_func(front->compareOp)) |
+         A6XX_RB_STENCIL_CONTROL_FAIL(tu6_stencil_op(front->failOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZPASS(tu6_stencil_op(front->passOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZFAIL(tu6_stencil_op(front->depthFailOp)) |
+         A6XX_RB_STENCIL_CONTROL_FUNC_BF(tu6_compare_func(back->compareOp)) |
+         A6XX_RB_STENCIL_CONTROL_FAIL_BF(tu6_stencil_op(back->failOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZPASS_BF(tu6_stencil_op(back->passOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZFAIL_BF(tu6_stencil_op(back->depthFailOp));
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
+   tu_cs_emit(cs, rb_stencil_control);
+}
+
+void
+tu6_emit_stencil_compare_mask(struct tu_cs *cs, uint32_t front, uint32_t back)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILMASK, 1);
+   tu_cs_emit(
+      cs, A6XX_RB_STENCILMASK_MASK(front) | A6XX_RB_STENCILMASK_BFMASK(back));
+}
+
+void
+tu6_emit_stencil_write_mask(struct tu_cs *cs, uint32_t front, uint32_t back)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILWRMASK, 1);
+   tu_cs_emit(cs, A6XX_RB_STENCILWRMASK_WRMASK(front) |
+                     A6XX_RB_STENCILWRMASK_BFWRMASK(back));
+}
+
+void
+tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILREF, 1);
+   tu_cs_emit(cs,
+              A6XX_RB_STENCILREF_REF(front) | A6XX_RB_STENCILREF_BFREF(back));
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -379,6 +510,51 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
+                                        struct tu_pipeline *pipeline)
+{
+   /* The spec says:
+    *
+    *    pDepthStencilState is a pointer to an instance of the
+    *    VkPipelineDepthStencilStateCreateInfo structure, and is ignored if
+    *    the pipeline has rasterization disabled or if the subpass of the
+    *    render pass the pipeline is created against does not use a
+    *    depth/stencil attachment.
+    *
+    * We disable both depth and stenil tests in those cases.
+    */
+   static const VkPipelineDepthStencilStateCreateInfo dummy_ds_info;
+   const VkPipelineDepthStencilStateCreateInfo *ds_info =
+      builder->use_depth_stencil_attachment
+         ? builder->create_info->pDepthStencilState
+         : &dummy_ds_info;
+
+   struct tu_cs ds_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 12, &ds_cs);
+
+   /* move to hw ctx init? */
+   tu6_emit_alpha_control_disable(&ds_cs);
+
+   tu6_emit_depth_control(&ds_cs, ds_info);
+   tu6_emit_stencil_control(&ds_cs, ds_info);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {
+      tu6_emit_stencil_compare_mask(&ds_cs, ds_info->front.compareMask,
+                                    ds_info->back.compareMask);
+   }
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_WRITE_MASK)) {
+      tu6_emit_stencil_write_mask(&ds_cs, ds_info->front.writeMask,
+                                  ds_info->back.writeMask);
+   }
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_REFERENCE)) {
+      tu6_emit_stencil_reference(&ds_cs, ds_info->front.reference,
+                                 ds_info->back.reference);
+   }
+
+   pipeline->ds.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &ds_cs);
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -398,6 +574,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
+   tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
@@ -425,10 +602,19 @@ tu_pipeline_builder_init_graphics(
    builder->rasterizer_discard =
       create_info->pRasterizationState->rasterizerDiscardEnable;
 
-   if (builder->rasterizer_discard)
+   if (builder->rasterizer_discard) {
       builder->samples = VK_SAMPLE_COUNT_1_BIT;
-   else
+   } else {
       builder->samples = create_info->pMultisampleState->rasterizationSamples;
+
+      const struct tu_render_pass *pass =
+         tu_render_pass_from_handle(create_info->renderPass);
+      const struct tu_subpass *subpass =
+         &pass->subpasses[create_info->subpass];
+
+      builder->use_depth_stencil_attachment =
+         subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
+   }
 }
 
 VkResult
