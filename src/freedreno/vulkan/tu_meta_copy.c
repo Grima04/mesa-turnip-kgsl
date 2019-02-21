@@ -31,6 +31,13 @@
 
 #include "tu_cs.h"
 
+/*
+ * TODO:
+ *   - image -> image copies
+ *   - 3D textures
+ *   - compressed image formats (need to divide offset/extent)
+ */
+
 static uint32_t
 blit_control(enum a6xx_color_fmt fmt)
 {
