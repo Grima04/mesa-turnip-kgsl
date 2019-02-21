@@ -47,6 +47,34 @@ struct tu_pipeline_builder
    const VkGraphicsPipelineCreateInfo *create_info;
 };
 
+static enum tu_dynamic_state_bits
+tu_dynamic_state_bit(VkDynamicState state)
+{
+   switch (state) {
+   case VK_DYNAMIC_STATE_VIEWPORT:
+      return TU_DYNAMIC_VIEWPORT;
+   case VK_DYNAMIC_STATE_SCISSOR:
+      return TU_DYNAMIC_SCISSOR;
+   case VK_DYNAMIC_STATE_LINE_WIDTH:
+      return TU_DYNAMIC_LINE_WIDTH;
+   case VK_DYNAMIC_STATE_DEPTH_BIAS:
+      return TU_DYNAMIC_DEPTH_BIAS;
+   case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
+      return TU_DYNAMIC_BLEND_CONSTANTS;
+   case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
+      return TU_DYNAMIC_DEPTH_BOUNDS;
+   case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
+      return TU_DYNAMIC_STENCIL_COMPARE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
+      return TU_DYNAMIC_STENCIL_WRITE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+      return TU_DYNAMIC_STENCIL_REFERENCE;
+   default:
+      unreachable("invalid dynamic state");
+      return 0;
+   }
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -74,6 +102,22 @@ tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
+                                  struct tu_pipeline *pipeline)
+{
+   const VkPipelineDynamicStateCreateInfo *dynamic_info =
+      builder->create_info->pDynamicState;
+
+   if (!dynamic_info)
+      return;
+
+   for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
+      pipeline->dynamic_state.mask |=
+         tu_dynamic_state_bit(dynamic_info->pDynamicStates[i]);
+   }
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -88,6 +132,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    VkResult result = tu_pipeline_builder_create_pipeline(builder, pipeline);
    if (result != VK_SUCCESS)
       return result;
+
+   tu_pipeline_builder_parse_dynamic(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
