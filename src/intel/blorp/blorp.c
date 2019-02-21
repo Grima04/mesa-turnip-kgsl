@@ -165,7 +165,7 @@ brw_blorp_init_wm_prog_key(struct brw_wm_prog_key *wm_key)
    memset(wm_key, 0, sizeof(*wm_key));
    wm_key->nr_color_regions = 1;
    for (int i = 0; i < MAX_SAMPLERS; i++)
-      wm_key->tex.swizzles[i] = SWIZZLE_XYZW;
+      wm_key->base.tex.swizzles[i] = SWIZZLE_XYZW;
 }
 
 const unsigned *

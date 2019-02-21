@@ -44,7 +44,7 @@ vec4_gs_visitor::vec4_gs_visitor(const struct brw_compiler *compiler,
                                  void *mem_ctx,
                                  bool no_spills,
                                  int shader_time_index)
-   : vec4_visitor(compiler, log_data, &c->key.tex,
+   : vec4_visitor(compiler, log_data, &c->key.base.tex,
                   &prog_data->base, shader,  mem_ctx,
                   no_spills, shader_time_index),
      c(c),
@@ -639,7 +639,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                        &c.input_vue_map, inputs_read,
                        shader->info.separate_shader);
 
-   brw_nir_apply_sampler_key(shader, compiler, &key->tex, is_scalar);
+   brw_nir_apply_sampler_key(shader, compiler, &key->base.tex, is_scalar);
    brw_nir_lower_vue_inputs(shader, &c.input_vue_map);
    brw_nir_lower_vue_outputs(shader);
    brw_postprocess_nir(shader, compiler, is_scalar);

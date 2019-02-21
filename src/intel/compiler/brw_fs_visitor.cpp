@@ -969,7 +969,7 @@ fs_visitor::emit_barrier()
 
 fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                        void *mem_ctx,
-                       const void *key,
+                       const brw_base_prog_key *key,
                        struct brw_stage_prog_data *prog_data,
                        struct gl_program *prog,
                        const nir_shader *shader,
@@ -994,7 +994,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                        int shader_time_index)
    : backend_shader(compiler, log_data, mem_ctx, shader,
                     &prog_data->base.base),
-     key(&c->key), gs_compile(c),
+     key(&c->key.base), gs_compile(c),
      prog_data(&prog_data->base.base), prog(NULL),
      dispatch_width(8),
      shader_time_index(shader_time_index),
@@ -1007,28 +1007,7 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
 void
 fs_visitor::init()
 {
-   switch (stage) {
-   case MESA_SHADER_FRAGMENT:
-      key_tex = &((const brw_wm_prog_key *) key)->tex;
-      break;
-   case MESA_SHADER_VERTEX:
-      key_tex = &((const brw_vs_prog_key *) key)->tex;
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      key_tex = &((const brw_tcs_prog_key *) key)->tex;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      key_tex = &((const brw_tes_prog_key *) key)->tex;
-      break;
-   case MESA_SHADER_GEOMETRY:
-      key_tex = &((const brw_gs_prog_key *) key)->tex;
-      break;
-   case MESA_SHADER_COMPUTE:
-      key_tex = &((const brw_cs_prog_key*) key)->tex;
-      break;
-   default:
-      unreachable("unhandled shader stage");
-   }
+   this->key_tex = &key->tex;
 
    this->max_dispatch_width = 32;
    this->prog_data = this->stage_prog_data;

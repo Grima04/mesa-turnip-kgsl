@@ -127,7 +127,7 @@ brw_codegen_tcs_prog(struct brw_context *brw, struct brw_program *tcp,
       if (tcp) {
          if (tcp->compiled_once) {
             brw_debug_recompile(brw, MESA_SHADER_TESS_CTRL, tcp->program.Id,
-                                key->program_string_id, key);
+                                &key->base);
          }
          tcp->compiled_once = true;
       }
@@ -192,10 +192,8 @@ brw_tcs_populate_key(struct brw_context *brw,
                            tep->program.info.tess.spacing == TESS_SPACING_EQUAL;
 
    if (tcp) {
-      key->program_string_id = tcp->id;
-
       /* _NEW_TEXTURE */
-      brw_populate_sampler_prog_key_data(&brw->ctx, &tcp->program, &key->tex);
+      brw_populate_base_prog_key(&brw->ctx, tcp, &key->base);
    }
 }
 
@@ -229,7 +227,7 @@ brw_upload_tcs_prog(struct brw_context *brw)
 
    tcp = (struct brw_program *) brw->programs[MESA_SHADER_TESS_CTRL];
    if (tcp)
-      tcp->id = key.program_string_id;
+      tcp->id = key.base.program_string_id;
 
    MAYBE_UNUSED bool success = brw_codegen_tcs_prog(brw, tcp, tep, &key);
    assert(success);
@@ -248,8 +246,7 @@ brw_tcs_populate_default_key(const struct brw_compiler *compiler,
 
    memset(key, 0, sizeof(*key));
 
-   key->program_string_id = btcp->id;
-   brw_setup_tex_for_precompile(devinfo, &key->tex, prog);
+   brw_populate_default_base_prog_key(devinfo, btcp, &key->base);
 
    /* Guess that the input and output patches have the same dimensionality. */
    if (devinfo->gen < 8 || compiler->use_tcs_8_patch)

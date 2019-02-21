@@ -83,27 +83,6 @@ keybox_equals(const void *void_a, const void *void_b)
    return memcmp(a->data, b->data, a->size) == 0;
 }
 
-static unsigned
-get_program_string_id(enum iris_program_cache_id cache_id, const void *key)
-{
-   switch (cache_id) {
-   case IRIS_CACHE_VS:
-      return ((struct brw_vs_prog_key *) key)->program_string_id;
-   case IRIS_CACHE_TCS:
-      return ((struct brw_tcs_prog_key *) key)->program_string_id;
-   case IRIS_CACHE_TES:
-      return ((struct brw_tes_prog_key *) key)->program_string_id;
-   case IRIS_CACHE_GS:
-      return ((struct brw_gs_prog_key *) key)->program_string_id;
-   case IRIS_CACHE_CS:
-      return ((struct brw_cs_prog_key *) key)->program_string_id;
-   case IRIS_CACHE_FS:
-      return ((struct brw_wm_prog_key *) key)->program_string_id;
-   default:
-      unreachable("no program string id for this kind of program");
-   }
-}
-
 struct iris_compiled_shader *
 iris_find_cached_shader(struct iris_context *ice,
                         enum iris_program_cache_id cache_id,
@@ -127,8 +106,9 @@ iris_find_previous_compile(const struct iris_context *ice,
 {
    hash_table_foreach(ice->shaders.cache, entry) {
       const struct keybox *keybox = entry->key;
+      const struct brw_base_prog_key *key = (const void *)keybox->data;
       if (keybox->cache_id == cache_id &&
-          get_program_string_id(cache_id, keybox->data) == program_string_id) {
+          key->program_string_id == program_string_id) {
          return keybox->data;
       }
    }

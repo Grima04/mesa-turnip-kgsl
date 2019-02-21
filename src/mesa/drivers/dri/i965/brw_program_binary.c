@@ -164,7 +164,7 @@ deserialize_gen_program(struct blob_reader *reader, struct gl_context *ctx,
 
    union brw_any_prog_key prog_key;
    blob_copy_bytes(reader, &prog_key, brw_prog_key_size(stage));
-   brw_prog_key_set_id(&prog_key, stage, brw_program(prog)->id);
+   prog_key.base.program_string_id = brw_program(prog)->id;
 
    enum brw_cache_id cache_id = brw_stage_cache_id(stage);
 

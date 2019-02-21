@@ -1496,9 +1496,9 @@ brw_blorp_get_blit_kernel(struct blorp_batch *batch,
 
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
-   wm_key.tex.compressed_multisample_layout_mask =
+   wm_key.base.tex.compressed_multisample_layout_mask =
       prog_key->tex_aux_usage == ISL_AUX_USAGE_MCS;
-   wm_key.tex.msaa_16 = prog_key->tex_samples == 16;
+   wm_key.base.tex.msaa_16 = prog_key->tex_samples == 16;
    wm_key.multisample_fbo = prog_key->rt_samples > 1;
 
    program = blorp_compile_fs(blorp, mem_ctx, nir, &wm_key, false,

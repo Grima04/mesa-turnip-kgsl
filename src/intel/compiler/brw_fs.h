@@ -62,7 +62,7 @@ class fs_visitor : public backend_shader
 public:
    fs_visitor(const struct brw_compiler *compiler, void *log_data,
               void *mem_ctx,
-              const void *key,
+              const brw_base_prog_key *key,
               struct brw_stage_prog_data *prog_data,
               struct gl_program *prog,
               const nir_shader *shader,
@@ -304,7 +304,7 @@ public:
    void dump_instruction(backend_instruction *inst);
    void dump_instruction(backend_instruction *inst, FILE *file);
 
-   const void *const key;
+   const brw_base_prog_key *const key;
    const struct brw_sampler_prog_key_data *key_tex;
 
    struct brw_gs_compile *gs_compile;

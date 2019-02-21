@@ -7961,7 +7961,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
 
-   brw_nir_apply_sampler_key(shader, compiler, &key->tex, true);
+   brw_nir_apply_sampler_key(shader, compiler, &key->base.tex, true);
    brw_nir_lower_fs_inputs(shader, devinfo, key);
    brw_nir_lower_fs_outputs(shader);
 
@@ -8003,7 +8003,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
 
-   fs_visitor v8(compiler, log_data, mem_ctx, key,
+   fs_visitor v8(compiler, log_data, mem_ctx, &key->base,
                  &prog_data->base, prog, shader, 8,
                  shader_time_index8);
    if (!v8.run_fs(allow_spilling, false /* do_rep_send */)) {
@@ -8020,7 +8020,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    if (v8.max_dispatch_width >= 16 &&
        likely(!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
       /* Try a SIMD16 compile */
-      fs_visitor v16(compiler, log_data, mem_ctx, key,
+      fs_visitor v16(compiler, log_data, mem_ctx, &key->base,
                      &prog_data->base, prog, shader, 16,
                      shader_time_index16);
       v16.import_uniforms(&v8);
@@ -8040,7 +8040,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
        compiler->devinfo->gen >= 6 &&
        unlikely(INTEL_DEBUG & DEBUG_DO32)) {
       /* Try a SIMD32 compile */
-      fs_visitor v32(compiler, log_data, mem_ctx, key,
+      fs_visitor v32(compiler, log_data, mem_ctx, &key->base,
                      &prog_data->base, prog, shader, 32,
                      shader_time_index32);
       v32.import_uniforms(&v8);
@@ -8222,7 +8222,7 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
                   unsigned dispatch_width)
 {
    nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
-   brw_nir_apply_sampler_key(shader, compiler, &key->tex, true);
+   brw_nir_apply_sampler_key(shader, compiler, &key->base.tex, true);
 
    NIR_PASS_V(shader, brw_nir_lower_cs_intrinsics, dispatch_width);
 
@@ -8267,7 +8267,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    if (min_dispatch_width <= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            src_shader, 8);
-      v8 = new fs_visitor(compiler, log_data, mem_ctx, key, &prog_data->base,
+      v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                          &prog_data->base,
                           NULL, /* Never used in core profile */
                           nir8, 8, shader_time_index);
       if (!v8->run_cs(min_dispatch_width)) {
@@ -8288,7 +8289,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       /* Try a SIMD16 compile */
       nir_shader *nir16 = compile_cs_to_nir(compiler, mem_ctx, key,
                                             src_shader, 16);
-      v16 = new fs_visitor(compiler, log_data, mem_ctx, key, &prog_data->base,
+      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                           &prog_data->base,
                            NULL, /* Never used in core profile */
                            nir16, 16, shader_time_index);
       if (v8)
@@ -8321,7 +8323,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       /* Try a SIMD32 compile */
       nir_shader *nir32 = compile_cs_to_nir(compiler, mem_ctx, key,
                                             src_shader, 32);
-      v32 = new fs_visitor(compiler, log_data, mem_ctx, key, &prog_data->base,
+      v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                           &prog_data->base,
                            NULL, /* Never used in core profile */
                            nir32, 32, shader_time_index);
       if (v8)

@@ -118,7 +118,7 @@ read_and_upload(struct brw_context *brw, struct disk_cache *cache,
     * lookup, so set the id to 0 for the sha1 hashing. program_string_id will
     * be set below.
     */
-   brw_prog_key_set_id(&prog_key, stage, 0);
+   prog_key.base.program_string_id = 0;
 
    gen_shader_sha1(prog, stage, &prog_key, binary_sha1);
 
@@ -194,7 +194,7 @@ read_and_upload(struct brw_context *brw, struct disk_cache *cache,
       unreachable("Unsupported stage!");
    }
 
-   brw_prog_key_set_id(&prog_key, stage, brw_program(prog)->id);
+   prog_key.base.program_string_id = brw_program(prog)->id;
 
    brw_alloc_stage_scratch(brw, stage_state, prog_data->total_scratch);
 
@@ -301,7 +301,7 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_vs_prog_key vs_key;
       brw_vs_populate_key(brw, &vs_key);
-      vs_key.program_string_id = 0;
+      vs_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &vs_key, brw->vs.base.prog_data,
                          brw->vs.base.prog_offset, cache,
@@ -312,7 +312,7 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_tcs_prog_key tcs_key;
       brw_tcs_populate_key(brw, &tcs_key);
-      tcs_key.program_string_id = 0;
+      tcs_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &tcs_key, brw->tcs.base.prog_data,
                          brw->tcs.base.prog_offset, cache,
@@ -323,7 +323,7 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_tes_prog_key tes_key;
       brw_tes_populate_key(brw, &tes_key);
-      tes_key.program_string_id = 0;
+      tes_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &tes_key, brw->tes.base.prog_data,
                          brw->tes.base.prog_offset, cache,
@@ -334,7 +334,7 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_gs_prog_key gs_key;
       brw_gs_populate_key(brw, &gs_key);
-      gs_key.program_string_id = 0;
+      gs_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &gs_key, brw->gs.base.prog_data,
                          brw->gs.base.prog_offset, cache,
@@ -345,7 +345,7 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_wm_prog_key wm_key;
       brw_wm_populate_key(brw, &wm_key);
-      wm_key.program_string_id = 0;
+      wm_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &wm_key, brw->wm.base.prog_data,
                          brw->wm.base.prog_offset, cache,
@@ -365,7 +365,7 @@ brw_disk_cache_write_compute_program(struct brw_context *brw)
    if (prog && !prog->program_written_to_cache) {
       struct brw_cs_prog_key cs_key;
       brw_cs_populate_key(brw, &cs_key);
-      cs_key.program_string_id = 0;
+      cs_key.base.program_string_id = 0;
 
       write_program_data(brw, prog, &cs_key, brw->cs.base.prog_data,
                          brw->cs.base.prog_offset, cache,

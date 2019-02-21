@@ -105,7 +105,7 @@ brw_codegen_cs_prog(struct brw_context *brw,
    if (unlikely(brw->perf_debug)) {
       if (cp->compiled_once) {
          brw_debug_recompile(brw, MESA_SHADER_COMPUTE, cp->program.Id,
-                             key->program_string_id, key);
+                             &key->base);
       }
       cp->compiled_once = true;
 
@@ -138,15 +138,11 @@ brw_cs_populate_key(struct brw_context *brw, struct brw_cs_prog_key *key)
    /* BRW_NEW_COMPUTE_PROGRAM */
    const struct brw_program *cp =
       (struct brw_program *) brw->programs[MESA_SHADER_COMPUTE];
-   const struct gl_program *prog = (struct gl_program *) cp;
 
    memset(key, 0, sizeof(*key));
 
    /* _NEW_TEXTURE */
-   brw_populate_sampler_prog_key_data(ctx, prog, &key->tex);
-
-   /* The unique compute program ID */
-   key->program_string_id = cp->id;
+   brw_populate_base_prog_key(ctx, cp, &key->base);
 }
 
 
@@ -178,7 +174,7 @@ brw_upload_cs_prog(struct brw_context *brw)
       return;
 
    cp = (struct brw_program *) brw->programs[MESA_SHADER_COMPUTE];
-   cp->id = key.program_string_id;
+   cp->id = key.base.program_string_id;
 
    MAYBE_UNUSED bool success = brw_codegen_cs_prog(brw, cp, &key);
    assert(success);
@@ -191,9 +187,7 @@ brw_cs_populate_default_key(const struct brw_compiler *compiler,
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    memset(key, 0, sizeof(*key));
-   key->program_string_id = brw_program(prog)->id;
-
-   brw_setup_tex_for_precompile(devinfo, &key->tex, prog);
+   brw_populate_default_base_prog_key(devinfo, brw_program(prog), &key->base);
 }
 
 bool

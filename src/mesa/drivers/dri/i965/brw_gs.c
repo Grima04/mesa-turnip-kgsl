@@ -105,7 +105,7 @@ brw_codegen_gs_prog(struct brw_context *brw,
    if (unlikely(brw->perf_debug)) {
       if (gp->compiled_once) {
          brw_debug_recompile(brw, MESA_SHADER_GEOMETRY, gp->program.Id,
-                             key->program_string_id, key);
+                             &key->base);
       }
       if (start_busy && !brw_bo_busy(brw->batch.last_bo)) {
          perf_debug("GS compile took %.03f ms and stalled the GPU\n",
@@ -150,10 +150,7 @@ brw_gs_populate_key(struct brw_context *brw,
 
    memset(key, 0, sizeof(*key));
 
-   key->program_string_id = gp->id;
-
-   /* _NEW_TEXTURE */
-   brw_populate_sampler_prog_key_data(ctx, &gp->program, &key->tex);
+   brw_populate_base_prog_key(ctx, gp, &key->base);
 }
 
 void
@@ -179,7 +176,7 @@ brw_upload_gs_prog(struct brw_context *brw)
       return;
 
    gp = (struct brw_program *) brw->programs[MESA_SHADER_GEOMETRY];
-   gp->id = key.program_string_id;
+   gp->id = key.base.program_string_id;
 
    MAYBE_UNUSED bool success = brw_codegen_gs_prog(brw, gp, &key);
    assert(success);
@@ -194,8 +191,8 @@ brw_gs_populate_default_key(const struct brw_compiler *compiler,
 
    memset(key, 0, sizeof(*key));
 
-   brw_setup_tex_for_precompile(devinfo, &key->tex, prog);
-   key->program_string_id = brw_program(prog)->id;
+   brw_populate_default_base_prog_key(devinfo, brw_program(prog),
+                                      &key->base);
 }
 
 bool

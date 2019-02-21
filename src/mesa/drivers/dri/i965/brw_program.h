@@ -73,13 +73,17 @@ void brw_shader_gather_info(nir_shader *nir, struct gl_program *prog);
 
 void brw_setup_tex_for_precompile(const struct gen_device_info *devinfo,
                                   struct brw_sampler_prog_key_data *tex,
-                                  struct gl_program *prog);
+                                  const struct gl_program *prog);
 
-void brw_populate_sampler_prog_key_data(struct gl_context *ctx,
-				        const struct gl_program *prog,
-				        struct brw_sampler_prog_key_data *key);
+void brw_populate_base_prog_key(struct gl_context *ctx,
+                                const struct brw_program *prog,
+                                struct brw_base_prog_key *key);
+void brw_populate_default_base_prog_key(const struct gen_device_info *devinfo,
+                                        const struct brw_program *prog,
+                                        struct brw_base_prog_key *key);
 void brw_debug_recompile(struct brw_context *brw, gl_shader_stage stage,
-                         unsigned api_id, unsigned prog_string_id, void *key);
+                         unsigned api_id, struct brw_base_prog_key *key);
+
 uint32_t
 brw_assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
                                         const struct gl_program *prog,

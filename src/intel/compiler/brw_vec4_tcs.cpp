@@ -42,7 +42,7 @@ vec4_tcs_visitor::vec4_tcs_visitor(const struct brw_compiler *compiler,
                                    void *mem_ctx,
                                    int shader_time_index,
                                    const struct brw_vue_map *input_vue_map)
-   : vec4_visitor(compiler, log_data, &key->tex, &prog_data->base,
+   : vec4_visitor(compiler, log_data, &key->base.tex, &prog_data->base,
                   nir, mem_ctx, false, shader_time_index),
      input_vue_map(input_vue_map), key(key)
 {
@@ -397,7 +397,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                             nir->info.outputs_written,
                             nir->info.patch_outputs_written);
 
-   brw_nir_apply_sampler_key(nir, compiler, &key->tex, is_scalar);
+   brw_nir_apply_sampler_key(nir, compiler, &key->base.tex, is_scalar);
    brw_nir_lower_vue_inputs(nir, &input_vue_map);
    brw_nir_lower_tcs_outputs(nir, &vue_prog_data->vue_map,
                              key->tes_primitive_mode);
@@ -475,7 +475,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
-      fs_visitor v(compiler, log_data, mem_ctx, (void *) key,
+      fs_visitor v(compiler, log_data, mem_ctx, &key->base,
                    &prog_data->base.base, NULL, nir, 8,
                    shader_time_index, &input_vue_map);
       if (!v.run_tcs()) {
