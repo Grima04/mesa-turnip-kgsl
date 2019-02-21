@@ -414,6 +414,16 @@ vk_format_is_color(VkFormat format)
    return !vk_format_is_depth_or_stencil(format);
 }
 
+static inline bool
+vk_format_has_alpha(VkFormat format)
+{
+   const struct vk_format_description *desc = vk_format_description(format);
+
+   return (desc->colorspace == VK_FORMAT_COLORSPACE_RGB ||
+           desc->colorspace == VK_FORMAT_COLORSPACE_SRGB) &&
+          desc->swizzle[3] != VK_SWIZZLE_1;
+}
+
 static inline VkFormat
 vk_format_depth_only(VkFormat format)
 {

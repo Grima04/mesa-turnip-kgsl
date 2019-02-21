@@ -1007,6 +1007,11 @@ struct tu_pipeline
    {
       struct tu_cs_entry state_ib;
    } ds;
+
+   struct
+   {
+      struct tu_cs_entry state_ib;
+   } blend;
 };
 
 void
@@ -1036,6 +1041,9 @@ tu6_emit_stencil_write_mask(struct tu_cs *cs, uint32_t front, uint32_t back);
 
 void
 tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back);
+
+void
+tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4]);
 
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,

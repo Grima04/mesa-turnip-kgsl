@@ -50,6 +50,8 @@ struct tu_pipeline_builder
    /* these states are affectd by rasterizer_discard */
    VkSampleCountFlagBits samples;
    bool use_depth_stencil_attachment;
+   bool use_color_attachments;
+   VkFormat color_attachment_formats[MAX_RTS];
 };
 
 static enum tu_dynamic_state_bits
@@ -77,6 +79,34 @@ tu_dynamic_state_bit(VkDynamicState state)
    default:
       unreachable("invalid dynamic state");
       return 0;
+   }
+}
+
+static bool
+tu_logic_op_reads_dst(VkLogicOp op)
+{
+   switch (op) {
+   case VK_LOGIC_OP_CLEAR:
+   case VK_LOGIC_OP_COPY:
+   case VK_LOGIC_OP_COPY_INVERTED:
+   case VK_LOGIC_OP_SET:
+      return false;
+   default:
+      return true;
+   }
+}
+
+static VkBlendFactor
+tu_blend_factor_no_dst_alpha(VkBlendFactor factor)
+{
+   /* treat dst alpha as 1.0 and avoid reading it */
+   switch (factor) {
+   case VK_BLEND_FACTOR_DST_ALPHA:
+      return VK_BLEND_FACTOR_ONE;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+      return VK_BLEND_FACTOR_ZERO;
+   default:
+      return factor;
    }
 }
 
@@ -160,6 +190,116 @@ tu6_stencil_op(VkStencilOp op)
    default:
       unreachable("invalid VkStencilOp");
       return STENCIL_KEEP;
+   }
+}
+
+static enum a3xx_rop_code
+tu6_rop(VkLogicOp op)
+{
+   switch (op) {
+   case VK_LOGIC_OP_CLEAR:
+      return ROP_CLEAR;
+   case VK_LOGIC_OP_AND:
+      return ROP_AND;
+   case VK_LOGIC_OP_AND_REVERSE:
+      return ROP_AND_REVERSE;
+   case VK_LOGIC_OP_COPY:
+      return ROP_COPY;
+   case VK_LOGIC_OP_AND_INVERTED:
+      return ROP_AND_INVERTED;
+   case VK_LOGIC_OP_NO_OP:
+      return ROP_NOOP;
+   case VK_LOGIC_OP_XOR:
+      return ROP_XOR;
+   case VK_LOGIC_OP_OR:
+      return ROP_OR;
+   case VK_LOGIC_OP_NOR:
+      return ROP_NOR;
+   case VK_LOGIC_OP_EQUIVALENT:
+      return ROP_EQUIV;
+   case VK_LOGIC_OP_INVERT:
+      return ROP_INVERT;
+   case VK_LOGIC_OP_OR_REVERSE:
+      return ROP_OR_REVERSE;
+   case VK_LOGIC_OP_COPY_INVERTED:
+      return ROP_COPY_INVERTED;
+   case VK_LOGIC_OP_OR_INVERTED:
+      return ROP_OR_INVERTED;
+   case VK_LOGIC_OP_NAND:
+      return ROP_NAND;
+   case VK_LOGIC_OP_SET:
+      return ROP_SET;
+   default:
+      unreachable("invalid VkLogicOp");
+      return ROP_NOOP;
+   }
+}
+
+static enum adreno_rb_blend_factor
+tu6_blend_factor(VkBlendFactor factor)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_ZERO:
+      return FACTOR_ZERO;
+   case VK_BLEND_FACTOR_ONE:
+      return FACTOR_ONE;
+   case VK_BLEND_FACTOR_SRC_COLOR:
+      return FACTOR_SRC_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+      return FACTOR_ONE_MINUS_SRC_COLOR;
+   case VK_BLEND_FACTOR_DST_COLOR:
+      return FACTOR_DST_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+      return FACTOR_ONE_MINUS_DST_COLOR;
+   case VK_BLEND_FACTOR_SRC_ALPHA:
+      return FACTOR_SRC_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+      return FACTOR_ONE_MINUS_SRC_ALPHA;
+   case VK_BLEND_FACTOR_DST_ALPHA:
+      return FACTOR_DST_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+      return FACTOR_ONE_MINUS_DST_ALPHA;
+   case VK_BLEND_FACTOR_CONSTANT_COLOR:
+      return FACTOR_CONSTANT_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+      return FACTOR_ONE_MINUS_CONSTANT_COLOR;
+   case VK_BLEND_FACTOR_CONSTANT_ALPHA:
+      return FACTOR_CONSTANT_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
+      return FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+   case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      return FACTOR_SRC_ALPHA_SATURATE;
+   case VK_BLEND_FACTOR_SRC1_COLOR:
+      return FACTOR_SRC1_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+      return FACTOR_ONE_MINUS_SRC1_COLOR;
+   case VK_BLEND_FACTOR_SRC1_ALPHA:
+      return FACTOR_SRC1_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+      return FACTOR_ONE_MINUS_SRC1_ALPHA;
+   default:
+      unreachable("invalid VkBlendFactor");
+      return FACTOR_ZERO;
+   }
+}
+
+static enum a3xx_rb_blend_opcode
+tu6_blend_op(VkBlendOp op)
+{
+   switch (op) {
+   case VK_BLEND_OP_ADD:
+      return BLEND_DST_PLUS_SRC;
+   case VK_BLEND_OP_SUBTRACT:
+      return BLEND_SRC_MINUS_DST;
+   case VK_BLEND_OP_REVERSE_SUBTRACT:
+      return BLEND_DST_MINUS_SRC;
+   case VK_BLEND_OP_MIN:
+      return BLEND_MIN_DST_SRC;
+   case VK_BLEND_OP_MAX:
+      return BLEND_MAX_DST_SRC;
+   default:
+      unreachable("invalid VkBlendOp");
+      return BLEND_DST_PLUS_SRC;
    }
 }
 
@@ -388,6 +528,146 @@ tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back)
               A6XX_RB_STENCILREF_REF(front) | A6XX_RB_STENCILREF_BFREF(back));
 }
 
+static uint32_t
+tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att,
+                         bool has_alpha)
+{
+   const enum a3xx_rb_blend_opcode color_op = tu6_blend_op(att->colorBlendOp);
+   const enum adreno_rb_blend_factor src_color_factor = tu6_blend_factor(
+      has_alpha ? att->srcColorBlendFactor
+                : tu_blend_factor_no_dst_alpha(att->srcColorBlendFactor));
+   const enum adreno_rb_blend_factor dst_color_factor = tu6_blend_factor(
+      has_alpha ? att->dstColorBlendFactor
+                : tu_blend_factor_no_dst_alpha(att->dstColorBlendFactor));
+   const enum a3xx_rb_blend_opcode alpha_op = tu6_blend_op(att->alphaBlendOp);
+   const enum adreno_rb_blend_factor src_alpha_factor =
+      tu6_blend_factor(att->srcAlphaBlendFactor);
+   const enum adreno_rb_blend_factor dst_alpha_factor =
+      tu6_blend_factor(att->dstAlphaBlendFactor);
+
+   return A6XX_RB_MRT_BLEND_CONTROL_RGB_SRC_FACTOR(src_color_factor) |
+          A6XX_RB_MRT_BLEND_CONTROL_RGB_BLEND_OPCODE(color_op) |
+          A6XX_RB_MRT_BLEND_CONTROL_RGB_DEST_FACTOR(dst_color_factor) |
+          A6XX_RB_MRT_BLEND_CONTROL_ALPHA_SRC_FACTOR(src_alpha_factor) |
+          A6XX_RB_MRT_BLEND_CONTROL_ALPHA_BLEND_OPCODE(alpha_op) |
+          A6XX_RB_MRT_BLEND_CONTROL_ALPHA_DEST_FACTOR(dst_alpha_factor);
+}
+
+static uint32_t
+tu6_rb_mrt_control(const VkPipelineColorBlendAttachmentState *att,
+                   uint32_t rb_mrt_control_rop,
+                   bool is_int,
+                   bool has_alpha)
+{
+   uint32_t rb_mrt_control =
+      A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE(att->colorWriteMask);
+
+   /* ignore blending and logic op for integer attachments */
+   if (is_int) {
+      rb_mrt_control |= A6XX_RB_MRT_CONTROL_ROP_CODE(ROP_COPY);
+      return rb_mrt_control;
+   }
+
+   rb_mrt_control |= rb_mrt_control_rop;
+
+   if (att->blendEnable) {
+      rb_mrt_control |= A6XX_RB_MRT_CONTROL_BLEND;
+
+      if (has_alpha)
+         rb_mrt_control |= A6XX_RB_MRT_CONTROL_BLEND2;
+   }
+
+   return rb_mrt_control;
+}
+
+static void
+tu6_emit_rb_mrt_controls(struct tu_cs *cs,
+                         const VkPipelineColorBlendStateCreateInfo *blend_info,
+                         const VkFormat attachment_formats[MAX_RTS],
+                         uint32_t *blend_enable_mask)
+{
+   *blend_enable_mask = 0;
+
+   bool rop_reads_dst = false;
+   uint32_t rb_mrt_control_rop = 0;
+   if (blend_info->logicOpEnable) {
+      rop_reads_dst = tu_logic_op_reads_dst(blend_info->logicOp);
+      rb_mrt_control_rop =
+         A6XX_RB_MRT_CONTROL_ROP_ENABLE |
+         A6XX_RB_MRT_CONTROL_ROP_CODE(tu6_rop(blend_info->logicOp));
+   }
+
+   for (uint32_t i = 0; i < blend_info->attachmentCount; i++) {
+      const VkPipelineColorBlendAttachmentState *att =
+         &blend_info->pAttachments[i];
+      const VkFormat format = attachment_formats[i];
+
+      uint32_t rb_mrt_control = 0;
+      uint32_t rb_mrt_blend_control = 0;
+      if (format != VK_FORMAT_UNDEFINED) {
+         const bool is_int = vk_format_is_int(format);
+         const bool has_alpha = vk_format_has_alpha(format);
+
+         rb_mrt_control =
+            tu6_rb_mrt_control(att, rb_mrt_control_rop, is_int, has_alpha);
+         rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
+
+         if (att->blendEnable || rop_reads_dst)
+            *blend_enable_mask |= 1 << i;
+      }
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
+      tu_cs_emit(cs, rb_mrt_control);
+      tu_cs_emit(cs, rb_mrt_blend_control);
+   }
+
+   for (uint32_t i = blend_info->attachmentCount; i < MAX_RTS; i++) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
+      tu_cs_emit(cs, 0);
+      tu_cs_emit(cs, 0);
+   }
+}
+
+static void
+tu6_emit_blend_control(struct tu_cs *cs,
+                       uint32_t blend_enable_mask,
+                       const VkPipelineMultisampleStateCreateInfo *msaa_info)
+{
+   assert(!msaa_info->sampleShadingEnable);
+   assert(!msaa_info->alphaToOneEnable);
+
+   uint32_t sp_blend_cntl = A6XX_SP_BLEND_CNTL_UNK8;
+   if (blend_enable_mask)
+      sp_blend_cntl |= A6XX_SP_BLEND_CNTL_ENABLED;
+   if (msaa_info->alphaToCoverageEnable)
+      sp_blend_cntl |= A6XX_SP_BLEND_CNTL_ALPHA_TO_COVERAGE;
+
+   const uint32_t sample_mask =
+      msaa_info->pSampleMask ? *msaa_info->pSampleMask
+                             : ((1 << msaa_info->rasterizationSamples) - 1);
+
+   /* set A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND only when enabled? */
+   uint32_t rb_blend_cntl =
+      A6XX_RB_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) |
+      A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND |
+      A6XX_RB_BLEND_CNTL_SAMPLE_MASK(sample_mask);
+   if (msaa_info->alphaToCoverageEnable)
+      rb_blend_cntl |= A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
+   tu_cs_emit(cs, sp_blend_cntl);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLEND_CNTL, 1);
+   tu_cs_emit(cs, rb_blend_cntl);
+}
+
+void
+tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4])
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLEND_RED_F32, 4);
+   tu_cs_emit_array(cs, (const uint32_t *) constants, 4);
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -555,6 +835,53 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_multisample_and_color_blend(
+   struct tu_pipeline_builder *builder, struct tu_pipeline *pipeline)
+{
+   /* The spec says:
+    *
+    *    pMultisampleState is a pointer to an instance of the
+    *    VkPipelineMultisampleStateCreateInfo, and is ignored if the pipeline
+    *    has rasterization disabled.
+    *
+    * Also,
+    *
+    *    pColorBlendState is a pointer to an instance of the
+    *    VkPipelineColorBlendStateCreateInfo structure, and is ignored if the
+    *    pipeline has rasterization disabled or if the subpass of the render
+    *    pass the pipeline is created against does not use any color
+    *    attachments.
+    *
+    * We leave the relevant registers stale when rasterization is disabled.
+    */
+   if (builder->rasterizer_discard)
+      return;
+
+   static const VkPipelineColorBlendStateCreateInfo dummy_blend_info;
+   const VkPipelineMultisampleStateCreateInfo *msaa_info =
+      builder->create_info->pMultisampleState;
+   const VkPipelineColorBlendStateCreateInfo *blend_info =
+      builder->use_color_attachments ? builder->create_info->pColorBlendState
+                                     : &dummy_blend_info;
+
+   struct tu_cs blend_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, MAX_RTS * 3 + 9,
+                          &blend_cs);
+
+   uint32_t blend_enable_mask;
+   tu6_emit_rb_mrt_controls(&blend_cs, blend_info,
+                            builder->color_attachment_formats,
+                            &blend_enable_mask);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_BLEND_CONSTANTS))
+      tu6_emit_blend_constants(&blend_cs, blend_info->blendConstants);
+
+   tu6_emit_blend_control(&blend_cs, blend_enable_mask, msaa_info);
+
+   pipeline->blend.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &blend_cs);
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -575,6 +902,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
    tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);
+   tu_pipeline_builder_parse_multisample_and_color_blend(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
@@ -614,6 +942,15 @@ tu_pipeline_builder_init_graphics(
 
       builder->use_depth_stencil_attachment =
          subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
+
+      for (uint32_t i = 0; i < subpass->color_count; i++) {
+         const uint32_t a = subpass->color_attachments[i].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         builder->color_attachment_formats[i] = pass->attachments[a].format;
+         builder->use_color_attachments = true;
+      }
    }
 }
 
