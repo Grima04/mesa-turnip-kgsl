@@ -76,24 +76,6 @@ namespace {
             return emit_stride(bld, src_reg(tmp), n, has_simd4x2 ? 1 : 4, 1);
          }
       }
-
-      /**
-       * Convert an array of registers back into a VEC4 according to the
-       * layout expected from some shared unit.  If \p has_simd4x2 is true the
-       * argument is left unmodified in SIMD4x2 form, otherwise it will be
-       * rearranged from SIMD8 form.
-       */
-      static src_reg
-      emit_extract(const vec4_builder &bld, const src_reg src,
-                   unsigned n, bool has_simd4x2)
-      {
-         if (src.file == BAD_FILE || n == 0) {
-            return src_reg();
-
-         } else {
-            return emit_stride(bld, src, n, 1, has_simd4x2 ? 1 : 4);
-         }
-      }
    }
 }
 
@@ -227,110 +209,6 @@ namespace brw {
                           has_simd4x2 ? 1 : dims,
                           emit_insert(bld, src_reg(srcs), size, has_simd4x2),
                           has_simd4x2 && size ? 1 : size,
-                          surface, op, rsize, pred);
-      }
-
-      namespace {
-         /**
-          * Initialize the header present in typed surface messages.
-          */
-         src_reg
-         emit_typed_message_header(const vec4_builder &bld)
-         {
-            const vec4_builder ubld = bld.exec_all();
-            const dst_reg dst = bld.vgrf(BRW_REGISTER_TYPE_UD);
-
-            ubld.MOV(dst, brw_imm_d(0));
-
-            if (bld.shader->devinfo->gen == 7 &&
-                !bld.shader->devinfo->is_haswell) {
-               /* The sample mask is used on IVB for the SIMD8 messages that
-                * have no SIMD4x2 variant.  We only use the two X channels
-                * in that case, mask everything else out.
-                */
-               ubld.MOV(writemask(dst, WRITEMASK_W), brw_imm_d(0x11));
-            }
-
-            return src_reg(dst);
-         }
-      }
-
-      /**
-       * Emit a typed surface read opcode.  \p dims determines the number of
-       * components of the address and \p size the number of components of the
-       * returned value.
-       */
-      src_reg
-      emit_typed_read(const vec4_builder &bld, const src_reg &surface,
-                      const src_reg &addr, unsigned dims, unsigned size)
-      {
-         const bool has_simd4x2 = (bld.shader->devinfo->gen >= 8 ||
-                                   bld.shader->devinfo->is_haswell);
-         const src_reg tmp =
-            emit_send(bld, SHADER_OPCODE_TYPED_SURFACE_READ,
-                      emit_typed_message_header(bld),
-                      emit_insert(bld, addr, dims, has_simd4x2),
-                      has_simd4x2 ? 1 : dims,
-                      src_reg(), 0,
-                      surface, size,
-                      has_simd4x2 ? 1 : size);
-
-         return emit_extract(bld, tmp, size, has_simd4x2);
-      }
-
-      /**
-       * Emit a typed surface write opcode.  \p dims determines the number of
-       * components of the address and \p size the number of components of the
-       * argument.
-       */
-      void
-      emit_typed_write(const vec4_builder &bld, const src_reg &surface,
-                       const src_reg &addr, const src_reg &src,
-                       unsigned dims, unsigned size)
-      {
-         const bool has_simd4x2 = (bld.shader->devinfo->gen >= 8 ||
-                                   bld.shader->devinfo->is_haswell);
-         emit_send(bld, SHADER_OPCODE_TYPED_SURFACE_WRITE,
-                   emit_typed_message_header(bld),
-                   emit_insert(bld, addr, dims, has_simd4x2),
-                   has_simd4x2 ? 1 : dims,
-                   emit_insert(bld, src, size, has_simd4x2),
-                   has_simd4x2 ? 1 : size,
-                   surface, size, 0);
-      }
-
-      /**
-       * Emit a typed surface atomic opcode.  \p dims determines the number of
-       * components of the address and \p rsize the number of components of
-       * the returned value (either zero or one).
-       */
-      src_reg
-      emit_typed_atomic(const vec4_builder &bld,
-                        const src_reg &surface, const src_reg &addr,
-                        const src_reg &src0, const src_reg &src1,
-                        unsigned dims, unsigned rsize, unsigned op,
-                        brw_predicate pred)
-      {
-         const bool has_simd4x2 = (bld.shader->devinfo->gen >= 8 ||
-                                   bld.shader->devinfo->is_haswell);
-
-         /* Zip the components of both sources, they are represented as the X
-          * and Y components of the same vector.
-          */
-         const unsigned size = (src0.file != BAD_FILE) + (src1.file != BAD_FILE);
-         const dst_reg srcs = bld.vgrf(BRW_REGISTER_TYPE_UD);
-
-         if (size >= 1)
-            bld.MOV(writemask(srcs, WRITEMASK_X), src0);
-         if (size >= 2)
-            bld.MOV(writemask(srcs, WRITEMASK_Y), src1);
-
-         return emit_send(bld, SHADER_OPCODE_TYPED_ATOMIC,
-                          emit_typed_message_header(bld),
-                          emit_insert(bld, addr, dims, has_simd4x2),
-                          has_simd4x2 ? 1 : dims,
-                          emit_insert(bld, src_reg(srcs), size, has_simd4x2),
-                          has_simd4x2 ? 1 : size,
                           surface, op, rsize, pred);
       }
    }
