@@ -38,7 +38,7 @@ LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/src/mapi \
 	$(MESA_TOP)/src/mesa
 
-LOCAL_SHARED_LIBRARIES := libexpat libz
+LOCAL_SHARED_LIBRARIES := libexpat libz liblog
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_genxml
 
