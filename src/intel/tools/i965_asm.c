@@ -29,7 +29,7 @@
 extern FILE *yyin;
 struct brw_codegen *p;
 static int c_literal_output = 0;
-char *input_filename;
+char *input_filename = NULL;
 int errors;
 
 static void
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
    bool help = false, compact = false;
    void *store;
    uint64_t pci_id = 0;
-   int offset, err;
+   int offset = 0, err;
    int start_offset = 0;
    struct disasm_info *disasm_info;
    struct gen_device_info *devinfo;
@@ -205,12 +205,10 @@ int main(int argc, char **argv)
    brw_validate_instructions(p->devinfo, p->store, 0,
                              p->next_insn_offset, disasm_info);
 
-   int nr_insn = (p->next_insn_offset - start_offset) / 16;
+   const int nr_insn = (p->next_insn_offset - start_offset) / 16;
 
    if (compact)
       brw_compact_instructions(p, start_offset, disasm_info);
-
-   ralloc_free(disasm_info);
 
    for (int i = 0; i < nr_insn; i++) {
       const brw_inst *insn = store + offset;
@@ -226,6 +224,8 @@ int main(int argc, char **argv)
       print_instruction(output, compacted, insn);
    }
 
+   ralloc_free(disasm_info);
+
    if (c_literal_output)
       fprintf(output, "}");
 
@@ -233,11 +233,8 @@ int main(int argc, char **argv)
    goto end;
 
 end:
-   if (input_filename)
-      free(input_filename);
-
-   if (output_file)
-      free(output_file);
+   free(input_filename);
+   free(output_file);
 
    if (yyin)
       fclose(yyin);
