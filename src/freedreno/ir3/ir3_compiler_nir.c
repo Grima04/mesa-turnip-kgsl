@@ -1443,16 +1443,17 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	struct ir3_instruction * const *coord, * const *off, * const *ddx, * const *ddy;
 	struct ir3_instruction *lod, *compare, *proj, *sample_index;
 	bool has_bias = false, has_lod = false, has_proj = false, has_off = false;
-	unsigned i, coords, flags;
+	unsigned i, coords, flags, ncomp;
 	unsigned nsrc0 = 0, nsrc1 = 0;
 	type_t type;
 	opc_t opc = 0;
 
+	ncomp = nir_dest_num_components(tex->dest);
+
 	coord = off = ddx = ddy = NULL;
 	lod = proj = compare = sample_index = NULL;
 
-	/* TODO: might just be one component for gathers? */
-	dst = ir3_get_dst(ctx, &tex->dest, 4);
+	dst = ir3_get_dst(ctx, &tex->dest, ncomp);
 
 	for (unsigned i = 0; i < tex->num_srcs; i++) {
 		switch (tex->src[i].src_type) {
@@ -1667,7 +1668,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	struct ir3_instruction *col0 = ir3_create_collect(ctx, src0, nsrc0);
 	struct ir3_instruction *col1 = ir3_create_collect(ctx, src1, nsrc1);
 
-	sam = ir3_SAM(b, opc, type, 0b1111, flags,
+	sam = ir3_SAM(b, opc, type, MASK(ncomp), flags,
 			tex_idx, tex_idx, col0, col1);
 
 	if ((ctx->astc_srgb & (1 << tex_idx)) && !nir_tex_instr_is_query(tex)) {
@@ -1687,7 +1688,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		ir3_split_dest(b, &dst[3], sam, 3, 1);
 	} else {
 		/* normal (non-workaround) case: */
-		ir3_split_dest(b, dst, sam, 0, 4);
+		ir3_split_dest(b, dst, sam, 0, ncomp);
 	}
 
 	/* GETLOD returns results in 4.8 fixed point */
