@@ -584,6 +584,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       }
    }
 
+   // XXX: we don't actually do aux yet
+   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
+
    res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
 
    const char *name = "miptree";
