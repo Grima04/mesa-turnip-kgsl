@@ -5406,6 +5406,12 @@ static inline uint32_t A6XX_TEX_CONST_10_FLAG_BUFFER_ARRAY_PITCH(uint32_t val)
 #define REG_A6XX_TEX_CONST_15					0x0000000f
 
 #define REG_A6XX_IBO_0						0x00000000
+#define A6XX_IBO_0_TILE_MODE__MASK				0x00000003
+#define A6XX_IBO_0_TILE_MODE__SHIFT				0
+static inline uint32_t A6XX_IBO_0_TILE_MODE(enum a6xx_tile_mode val)
+{
+	return ((val) << A6XX_IBO_0_TILE_MODE__SHIFT) & A6XX_IBO_0_TILE_MODE__MASK;
+}
 #define A6XX_IBO_0_FMT__MASK					0x3fc00000
 #define A6XX_IBO_0_FMT__SHIFT					22
 static inline uint32_t A6XX_IBO_0_FMT(enum a6xx_tex_fmt val)

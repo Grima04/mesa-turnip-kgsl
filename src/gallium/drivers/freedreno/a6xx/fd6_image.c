@@ -157,8 +157,6 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 
 static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
-	debug_assert(fd_resource(img->prsc)->tile_mode == 0);
-
 	OUT_RING(ring, A6XX_TEX_CONST_0_FMT(img->fmt) |
 		A6XX_TEX_CONST_0_TILE_MODE(fd_resource(img->prsc)->tile_mode) |
 		fd6_tex_swiz(img->prsc, img->pfmt, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
@@ -208,9 +206,8 @@ fd6_emit_ssbo_tex(struct fd_ringbuffer *ring, const struct pipe_shader_buffer *p
 
 static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
-	debug_assert(fd_resource(img->prsc)->tile_mode == 0);
-
-	OUT_RING(ring, A6XX_IBO_0_FMT(img->fmt));
+	OUT_RING(ring, A6XX_IBO_0_FMT(img->fmt) |
+		A6XX_IBO_0_TILE_MODE(fd_resource(img->prsc)->tile_mode));
 	OUT_RING(ring, A6XX_IBO_1_WIDTH(img->width) |
 		A6XX_IBO_1_HEIGHT(img->height));
 	OUT_RING(ring, A6XX_IBO_2_PITCH(img->pitch) |
