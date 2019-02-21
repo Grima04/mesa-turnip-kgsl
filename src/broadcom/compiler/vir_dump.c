@@ -348,11 +348,19 @@ void
 vir_dump(struct v3d_compile *c)
 {
         int ip = 0;
+        int pressure = 0;
 
         vir_for_each_block(block, c) {
                 fprintf(stderr, "BLOCK %d:\n", block->index);
                 vir_for_each_inst(inst, block) {
                         if (c->live_intervals_valid) {
+                                for (int i = 0; i < c->num_temps; i++) {
+                                        if (c->temp_start[i] == ip)
+                                                pressure++;
+                                }
+
+                                fprintf(stderr, "P%4d ", pressure);
+
                                 bool first = true;
 
                                 for (int i = 0; i < c->num_temps; i++) {
@@ -364,7 +372,10 @@ vir_dump(struct v3d_compile *c)
                                         } else {
                                                 fprintf(stderr, ", ");
                                         }
-                                        fprintf(stderr, "S%4d", i);
+                                        if (BITSET_TEST(c->spillable, i))
+                                                fprintf(stderr, "S%4d", i);
+                                        else
+                                                fprintf(stderr, "U%4d", i);
                                 }
 
                                 if (first)
@@ -386,6 +397,7 @@ vir_dump(struct v3d_compile *c)
                                                 fprintf(stderr, ", ");
                                         }
                                         fprintf(stderr, "E%4d", i);
+                                        pressure--;
                                 }
 
                                 if (first)
