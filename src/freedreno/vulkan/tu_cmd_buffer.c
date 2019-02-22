@@ -819,6 +819,13 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
+tu6_emit_restart_index(struct tu_cs *cs, uint32_t restart_index)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_RESTART_INDEX, 1);
+   tu_cs_emit(cs, restart_index);
+}
+
+static void
 tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
@@ -1595,6 +1602,18 @@ tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
                         const VkBuffer *pBuffers,
                         const VkDeviceSize *pOffsets)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   assert(firstBinding + bindingCount <= MAX_VBS);
+
+   for (uint32_t i = 0; i < bindingCount; i++) {
+      cmd->state.vb.buffers[firstBinding + i] =
+         tu_buffer_from_handle(pBuffers[i]);
+      cmd->state.vb.offsets[firstBinding + i] = pOffsets[i];
+   }
+
+   /* VB states depend on VkPipelineVertexInputStateCreateInfo */
+   cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
 }
 
 void
@@ -1603,6 +1622,31 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
                       VkDeviceSize offset,
                       VkIndexType indexType)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, buffer);
+
+   /* initialize/update the restart index */
+   if (!cmd->state.index_buffer || cmd->state.index_type != indexType) {
+      struct tu_cs *draw_cs = &cmd->draw_cs;
+      VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 2);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         return;
+      }
+
+      tu6_emit_restart_index(
+         draw_cs, indexType == VK_INDEX_TYPE_UINT32 ? 0xffffffff : 0xffff);
+
+      tu_cs_sanity_check(draw_cs);
+   }
+
+   /* track the BO */
+   if (cmd->state.index_buffer != buf)
+      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+
+   cmd->state.index_buffer = buf;
+   cmd->state.index_offset = offset;
+   cmd->state.index_type = indexType;
 }
 
 void
@@ -1661,6 +1705,21 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
                    VkPipelineBindPoint pipelineBindPoint,
                    VkPipeline _pipeline)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_pipeline, pipeline, _pipeline);
+
+   switch (pipelineBindPoint) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      cmd->state.pipeline = pipeline;
+      cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE;
+      break;
+   case VK_PIPELINE_BIND_POINT_COMPUTE:
+      tu_finishme("binding compute pipeline");
+      break;
+   default:
+      unreachable("unrecognized pipeline bind point");
+      break;
+   }
 }
 
 void
@@ -1669,6 +1728,19 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
                   uint32_t viewportCount,
                   const VkViewport *pViewports)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *draw_cs = &cmd->draw_cs;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 12);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   assert(firstViewport == 0 && viewportCount == 1);
+   tu6_emit_viewport(draw_cs, pViewports);
+
+   tu_cs_sanity_check(draw_cs);
 }
 
 void
@@ -1677,11 +1749,30 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
                  uint32_t scissorCount,
                  const VkRect2D *pScissors)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *draw_cs = &cmd->draw_cs;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 3);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   assert(firstScissor == 0 && scissorCount == 1);
+   tu6_emit_scissor(draw_cs, pScissors);
+
+   tu_cs_sanity_check(draw_cs);
 }
 
 void
 tu_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.dynamic.line_width = lineWidth;
+
+   /* line width depends on VkPipelineRasterizationStateCreateInfo */
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
 }
 
 void
@@ -1690,12 +1781,37 @@ tu_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                    float depthBiasClamp,
                    float depthBiasSlopeFactor)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *draw_cs = &cmd->draw_cs;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 4);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_depth_bias(draw_cs, depthBiasConstantFactor, depthBiasClamp,
+                       depthBiasSlopeFactor);
+
+   tu_cs_sanity_check(draw_cs);
 }
 
 void
 tu_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
                         const float blendConstants[4])
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *draw_cs = &cmd->draw_cs;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, draw_cs, 5);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   tu6_emit_blend_constants(draw_cs, blendConstants);
+
+   tu_cs_sanity_check(draw_cs);
 }
 
 void
@@ -1710,6 +1826,15 @@ tu_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
                             VkStencilFaceFlags faceMask,
                             uint32_t compareMask)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd->state.dynamic.stencil_compare_mask.front = compareMask;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd->state.dynamic.stencil_compare_mask.back = compareMask;
+
+   /* the front/back compare masks must be updated together */
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
 }
 
 void
@@ -1717,6 +1842,15 @@ tu_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
                           VkStencilFaceFlags faceMask,
                           uint32_t writeMask)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd->state.dynamic.stencil_write_mask.front = writeMask;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd->state.dynamic.stencil_write_mask.back = writeMask;
+
+   /* the front/back write masks must be updated together */
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
 }
 
 void
@@ -1724,6 +1858,15 @@ tu_CmdSetStencilReference(VkCommandBuffer commandBuffer,
                           VkStencilFaceFlags faceMask,
                           uint32_t reference)
 {
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+      cmd->state.dynamic.stencil_reference.front = reference;
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+      cmd->state.dynamic.stencil_reference.back = reference;
+
+   /* the front/back references must be updated together */
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
 
 void
@@ -1928,9 +2071,201 @@ struct tu_draw_info
    uint64_t count_buffer_offset;
 };
 
-static void
-tu_draw(struct tu_cmd_buffer *cmd_buffer, const struct tu_draw_info *info)
+enum tu_draw_state_group_id
 {
+   TU_DRAW_STATE_PROGRAM,
+   TU_DRAW_STATE_PROGRAM_BINNING,
+   TU_DRAW_STATE_VI,
+   TU_DRAW_STATE_VI_BINNING,
+   TU_DRAW_STATE_VP,
+   TU_DRAW_STATE_RAST,
+   TU_DRAW_STATE_DS,
+   TU_DRAW_STATE_BLEND,
+
+   TU_DRAW_STATE_COUNT,
+};
+
+struct tu_draw_state_group
+{
+   enum tu_draw_state_group_id id;
+   uint32_t enable_mask;
+   const struct tu_cs_entry *ib;
+};
+
+static void
+tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
+                     struct tu_cs *cs,
+                     const struct tu_draw_info *draw)
+{
+   const struct tu_pipeline *pipeline = cmd->state.pipeline;
+   const struct tu_dynamic_state *dynamic = &cmd->state.dynamic;
+   struct tu_draw_state_group draw_state_groups[TU_DRAW_STATE_COUNT];
+   uint32_t draw_state_group_count = 0;
+
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 256);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   /* TODO lrz */
+
+   uint32_t pc_primitive_cntl = 0;
+   if (pipeline->ia.primitive_restart && draw->indexed)
+      pc_primitive_cntl |= A6XX_PC_PRIMITIVE_CNTL_0_PRIMITIVE_RESTART;
+
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9806, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9990, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A008, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_0, 1);
+   tu_cs_emit(cs, pc_primitive_cntl);
+
+   if (cmd->state.dirty &
+          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_LINE_WIDTH)) {
+      tu6_emit_gras_su_cntl(cs, pipeline->rast.gras_su_cntl,
+                            dynamic->line_width);
+   }
+
+   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {
+      tu6_emit_stencil_compare_mask(cs, dynamic->stencil_compare_mask.front,
+                                    dynamic->stencil_compare_mask.back);
+   }
+
+   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_WRITE_MASK)) {
+      tu6_emit_stencil_write_mask(cs, dynamic->stencil_write_mask.front,
+                                  dynamic->stencil_write_mask.back);
+   }
+
+   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_REFERENCE)) {
+      tu6_emit_stencil_reference(cs, dynamic->stencil_reference.front,
+                                 dynamic->stencil_reference.back);
+   }
+
+   if (cmd->state.dirty &
+       (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_VERTEX_BUFFERS)) {
+      for (uint32_t i = 0; i < pipeline->vi.count; i++) {
+         const uint32_t binding = pipeline->vi.bindings[i];
+         const uint32_t stride = pipeline->vi.strides[i];
+         const struct tu_buffer *buf = cmd->state.vb.buffers[binding];
+         const VkDeviceSize offset = buf->bo_offset +
+                                     cmd->state.vb.offsets[binding] +
+                                     pipeline->vi.offsets[i];
+         const VkDeviceSize size =
+            offset < buf->bo->size ? buf->bo->size - offset : 0;
+
+         tu_cs_emit_pkt4(cs, REG_A6XX_VFD_FETCH(i), 4);
+         tu_cs_emit_qw(cs, buf->bo->iova + offset);
+         tu_cs_emit(cs, size);
+         tu_cs_emit(cs, stride);
+      }
+   }
+
+   /* TODO shader consts */
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) {
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_PROGRAM,
+            .enable_mask = 0x6,
+            .ib = &pipeline->program.state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_PROGRAM_BINNING,
+            .enable_mask = 0x1,
+            .ib = &pipeline->program.binning_state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_VI,
+            .enable_mask = 0x6,
+            .ib = &pipeline->vi.state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_VI_BINNING,
+            .enable_mask = 0x1,
+            .ib = &pipeline->vi.binning_state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_VP,
+            .enable_mask = 0x7,
+            .ib = &pipeline->vp.state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_RAST,
+            .enable_mask = 0x7,
+            .ib = &pipeline->rast.state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_DS,
+            .enable_mask = 0x7,
+            .ib = &pipeline->ds.state_ib,
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_BLEND,
+            .enable_mask = 0x7,
+            .ib = &pipeline->blend.state_ib,
+         };
+   }
+
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);
+   for (uint32_t i = 0; i < draw_state_group_count; i++) {
+      const struct tu_draw_state_group *group = &draw_state_groups[i];
+
+      uint32_t cp_set_draw_state =
+         CP_SET_DRAW_STATE__0_COUNT(group->ib->size / 4) |
+         CP_SET_DRAW_STATE__0_ENABLE_MASK(group->enable_mask) |
+         CP_SET_DRAW_STATE__0_GROUP_ID(group->id);
+      uint64_t iova;
+      if (group->ib->size) {
+         iova = group->ib->bo->iova + group->ib->offset;
+      } else {
+         cp_set_draw_state |= CP_SET_DRAW_STATE__0_DISABLE;
+         iova = 0;
+      }
+
+      tu_cs_emit(cs, cp_set_draw_state);
+      tu_cs_emit_qw(cs, iova);
+   }
+
+   tu_cs_sanity_check(cs);
+
+   /* track BOs */
+   if (cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) {
+      tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+      for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
+         tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
+                        MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+      }
+   }
+   if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) {
+      for (uint32_t i = 0; i < MAX_VBS; i++) {
+         const struct tu_buffer *buf = cmd->state.vb.buffers[i];
+         if (buf)
+            tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+      }
+   }
+
+   cmd->state.dirty = 0;
+}
+
+static void
+tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
+{
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu6_bind_draw_states(cmd, cs, draw);
 }
 
 void

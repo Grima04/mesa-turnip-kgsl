@@ -799,11 +799,29 @@ struct tu_tiling_config
    uint32_t pipe_sizes[MAX_VSC_PIPES];
 };
 
+enum tu_cmd_dirty_bits
+{
+   TU_CMD_DIRTY_PIPELINE = 1 << 0,
+   TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 1,
+
+   TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
+   TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
+   TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK = 1 << 18,
+   TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE = 1 << 19,
+};
+
 struct tu_cmd_state
 {
-   /* Vertex descriptors */
-   uint64_t vb_va;
-   unsigned vb_size;
+   uint32_t dirty;
+
+   struct tu_pipeline *pipeline;
+
+   /* Vertex buffers */
+   struct
+   {
+      struct tu_buffer *buffers[MAX_VBS];
+      VkDeviceSize offsets[MAX_VBS];
+   } vb;
 
    struct tu_dynamic_state dynamic;
 
