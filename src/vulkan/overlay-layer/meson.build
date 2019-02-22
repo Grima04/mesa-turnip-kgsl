@@ -48,6 +48,7 @@ vklayer_mesa_overlay = shared_library(
   link_args : cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro']),
   link_with : [libmesa_util, libvulkan_util],
   install_dir : vklayer_install_dir,
+  install : true
 )
 
 sdata = configuration_data()
