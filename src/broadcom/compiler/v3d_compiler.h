@@ -785,6 +785,7 @@ bool vir_opt_constant_folding(struct v3d_compile *c);
 bool vir_opt_copy_propagate(struct v3d_compile *c);
 bool vir_opt_dead_code(struct v3d_compile *c);
 bool vir_opt_peephole_sf(struct v3d_compile *c);
+bool vir_opt_redundant_flags(struct v3d_compile *c);
 bool vir_opt_small_immediates(struct v3d_compile *c);
 bool vir_opt_vpm(struct v3d_compile *c);
 void v3d_nir_lower_blend(nir_shader *s, struct v3d_compile *c);

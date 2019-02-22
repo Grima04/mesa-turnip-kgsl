@@ -1014,6 +1014,7 @@ vir_optimize(struct v3d_compile *c)
                 bool progress = false;
 
                 OPTPASS(vir_opt_copy_propagate);
+                OPTPASS(vir_opt_redundant_flags);
                 OPTPASS(vir_opt_dead_code);
                 OPTPASS(vir_opt_small_immediates);
 
