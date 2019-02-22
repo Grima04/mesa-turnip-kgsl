@@ -132,7 +132,8 @@ void iris_init_batch(struct iris_batch *batch,
                      struct pipe_debug_callback *dbg,
                      struct iris_batch *all_batches,
                      enum iris_batch_name name,
-                     uint8_t ring);
+                     uint8_t ring,
+                     int priority);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);

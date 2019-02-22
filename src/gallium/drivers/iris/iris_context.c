@@ -32,6 +32,7 @@
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "common/gen_defines.h"
 #include "common/gen_sample_positions.h"
 
 /**
@@ -203,10 +204,16 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    genX_call(devinfo, init_state, ice);
    genX_call(devinfo, init_blorp, ice);
 
+   int priority = 0;
+   if (flags & PIPE_CONTEXT_HIGH_PRIORITY)
+      priority = GEN_CONTEXT_HIGH_PRIORITY;
+   if (flags & PIPE_CONTEXT_LOW_PRIORITY)
+      priority = GEN_CONTEXT_LOW_PRIORITY;
+
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       iris_init_batch(&ice->batches[i], screen, &ice->vtbl, &ice->dbg,
                       ice->batches, (enum iris_batch_name) i,
-                      I915_EXEC_RENDER);
+                      I915_EXEC_RENDER, priority);
    }
 
    ice->vtbl.init_render_context(screen, &ice->batches[IRIS_BATCH_RENDER],

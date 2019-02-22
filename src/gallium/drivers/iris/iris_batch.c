@@ -157,7 +157,8 @@ iris_init_batch(struct iris_batch *batch,
                 struct pipe_debug_callback *dbg,
                 struct iris_batch *all_batches,
                 enum iris_batch_name name,
-                uint8_t engine)
+                uint8_t engine,
+                int priority)
 {
    batch->screen = screen;
    batch->vtbl = vtbl;
@@ -171,6 +172,8 @@ iris_init_batch(struct iris_batch *batch,
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
    assert(batch->hw_ctx_id);
+
+   iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
 
    util_dynarray_init(&batch->exec_fences, ralloc_context(NULL));
    util_dynarray_init(&batch->syncpts, ralloc_context(NULL));
