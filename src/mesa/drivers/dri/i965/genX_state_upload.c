@@ -2446,7 +2446,7 @@ set_scissor_bits(const struct gl_context *ctx, int i,
 
    bbox[0] = MAX2(ctx->ViewportArray[i].X, 0);
    bbox[1] = MIN2(bbox[0] + ctx->ViewportArray[i].Width, fb_width);
-   bbox[2] = MAX2(ctx->ViewportArray[i].Y, 0);
+   bbox[2] = CLAMP(ctx->ViewportArray[i].Y, 0, fb_height);
    bbox[3] = MIN2(bbox[2] + ctx->ViewportArray[i].Height, fb_height);
    _mesa_intersect_scissor_bounding_box(ctx, i, bbox);
 
