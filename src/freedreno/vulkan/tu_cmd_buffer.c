@@ -332,6 +332,20 @@ tu6_msaa_samples(uint32_t samples)
    }
 }
 
+static enum a4xx_index_size
+tu6_index_size(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT16:
+      return INDEX4_SIZE_16_BIT;
+   case VK_INDEX_TYPE_UINT32:
+      return INDEX4_SIZE_32_BIT;
+   default:
+      unreachable("invalid VkIndexType");
+      return INDEX4_SIZE_8_BIT;
+   }
+}
+
 static void
 tu6_emit_marker(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
@@ -2261,11 +2275,80 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 }
 
 static void
+tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
+                     struct tu_cs *cs,
+                     const struct tu_draw_info *draw)
+{
+
+   const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_INDEX_OFFSET, 2);
+   tu_cs_emit(cs, draw->vertex_offset);
+   tu_cs_emit(cs, draw->first_instance);
+
+   /* TODO hw binning */
+   if (draw->indexed) {
+      const enum a4xx_index_size index_size =
+         tu6_index_size(cmd->state.index_type);
+      const uint32_t index_bytes =
+         (cmd->state.index_type == VK_INDEX_TYPE_UINT32) ? 4 : 2;
+      const struct tu_buffer *buf = cmd->state.index_buffer;
+      const VkDeviceSize offset = buf->bo_offset + cmd->state.index_offset +
+                                  index_bytes * draw->first_index;
+      const uint32_t size = index_bytes * draw->count;
+
+      const uint32_t cp_draw_indx =
+         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
+         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
+         CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY) | 0x2000;
+
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
+      tu_cs_emit(cs, cp_draw_indx);
+      tu_cs_emit(cs, draw->instance_count);
+      tu_cs_emit(cs, draw->count);
+      tu_cs_emit(cs, 0x0); /* XXX */
+      tu_cs_emit_qw(cs, buf->bo->iova + offset);
+      tu_cs_emit(cs, size);
+   } else {
+      const uint32_t cp_draw_indx =
+         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
+         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY) | 0x2000;
+
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
+      tu_cs_emit(cs, cp_draw_indx);
+      tu_cs_emit(cs, draw->instance_count);
+      tu_cs_emit(cs, draw->count);
+   }
+}
+
+static void
 tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
    tu6_bind_draw_states(cmd, cs, draw);
+
+   VkResult result = tu_cs_reserve_space(cmd->device, cs, 32);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return;
+   }
+
+   if (draw->indirect) {
+      tu_finishme("indirect draw");
+      return;
+   }
+
+   /* TODO tu6_emit_marker should pick different regs depending on cs */
+   tu6_emit_marker(cmd, cs);
+   tu6_emit_draw_direct(cmd, cs, draw);
+   tu6_emit_marker(cmd, cs);
+
+   cmd->wait_for_idle = true;
+
+   tu_cs_sanity_check(cs);
 }
 
 void
