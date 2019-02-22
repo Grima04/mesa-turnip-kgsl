@@ -63,7 +63,6 @@ nondrm_overlay_check = run_command('ls', overlay)
 has_nondrm_overlay = nondrm_overlay_check.returncode() == 0
 
 if has_nondrm_overlay
-  subdir('nondrm/include')
   files_panfrost += files('nondrm/pan_nondrm.c')
   inc_panfrost += include_directories('nondrm/include')
   compile_args_panfrost += '-DPAN_NONDRM_OVERLAY'
