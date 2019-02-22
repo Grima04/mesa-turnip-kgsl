@@ -919,11 +919,10 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    }
 }
 
-void
+static bool
 brw_nir_apply_sampler_key(nir_shader *nir,
                           const struct brw_compiler *compiler,
-                          const struct brw_sampler_prog_key_data *key_tex,
-                          bool is_scalar)
+                          const struct brw_sampler_prog_key_data *key_tex)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    nir_lower_tex_options tex_options = {
@@ -966,10 +965,21 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    memcpy(&tex_options.scale_factors, &key_tex->scale_factors,
           sizeof(tex_options.scale_factors));
 
-   if (nir_lower_tex(nir, &tex_options)) {
-      nir_validate_shader(nir, "after nir_lower_tex");
+   return nir_lower_tex(nir, &tex_options);
+}
+
+void
+brw_nir_apply_key(nir_shader *nir,
+                  const struct brw_compiler *compiler,
+                  const struct brw_base_prog_key *key,
+                  bool is_scalar)
+{
+   bool progress = false;
+
+   OPT(brw_nir_apply_sampler_key, compiler, &key->tex);
+
+   if (progress)
       brw_nir_optimize(nir, compiler, is_scalar, false);
-   }
 }
 
 enum brw_reg_type
