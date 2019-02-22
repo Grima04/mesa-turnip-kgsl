@@ -53,7 +53,9 @@ compile_shader(char **argv)
                 .do_link = true,
         };
 
-        prog = standalone_compile_shader(&options, 2, argv);
+        static struct gl_context local_ctx;
+
+        prog = standalone_compile_shader(&options, 2, argv, &local_ctx);
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
         for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
@@ -83,7 +85,9 @@ compile_blend(char **argv)
                 .glsl_version = 140,
         };
 
-        prog = standalone_compile_shader(&options, 1, argv);
+        static struct gl_context local_ctx;
+
+        prog = standalone_compile_shader(&options, 1, argv, &local_ctx);
         prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->info.stage = MESA_SHADER_FRAGMENT;
 
         midgard_program program;

@@ -110,8 +110,9 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 	struct gl_shader_program *prog;
 	const nir_shader_compiler_options *nir_options =
 			ir3_get_compiler_options(compiler);
+	static struct gl_context local_ctx;
 
-	prog = standalone_compile_shader(&options, num_files, files);
+	prog = standalone_compile_shader(&options, num_files, files, &local_ctx);
 	if (!prog)
 		errx(1, "couldn't parse `%s'", files[0]);
 
