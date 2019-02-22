@@ -239,9 +239,9 @@ struct stage {
 	const struct ir3_shader_variant *v;
 	const struct ir3_info *i;
 	/* const sizes are in units of vec4, aligned to 4*vec4 */
-	uint8_t constlen;
+	uint16_t constlen;
 	/* instr sizes are in units of 16 instructions */
-	uint8_t instrlen;
+	uint16_t instrlen;
 };
 
 enum {
