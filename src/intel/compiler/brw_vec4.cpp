@@ -2845,7 +2845,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_VERTEX];
-   brw_nir_apply_key(shader, compiler, &key->base, is_scalar);
+   brw_nir_apply_key(shader, compiler, &key->base, 8, is_scalar);
 
    const unsigned *assembly = NULL;
 

@@ -809,13 +809,6 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    UNUSED bool progress; /* Written by OPT */
 
-   const nir_lower_subgroups_options subgroups_options = {
-      .subgroup_size = BRW_SUBGROUP_SIZE,
-      .ballot_bit_size = 32,
-      .lower_subgroup_masks = true,
-   };
-   OPT(nir_lower_subgroups, &subgroups_options);
-
    OPT(brw_nir_lower_mem_access_bit_sizes);
 
    do {
@@ -973,15 +966,47 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    return nir_lower_tex(nir, &tex_options);
 }
 
+static unsigned
+get_subgroup_size(const struct brw_base_prog_key *key,
+                  unsigned max_subgroup_size)
+{
+   switch (key->subgroup_size_type) {
+   case BRW_SUBGROUP_SIZE_API_CONSTANT:
+      /* We have to use the global constant size. */
+      return BRW_SUBGROUP_SIZE;
+
+   case BRW_SUBGROUP_SIZE_UNIFORM:
+      /* It has to be uniform across all invocations but can vary per stage
+       * if we want.  This gives us a bit more freedom.
+       *
+       * For compute, brw_nir_apply_key is called per-dispatch-width so this
+       * is the actual subgroup size and not a maximum.  However, we only
+       * invoke one size of any given compute shader so it's still guaranteed
+       * to be uniform across invocations.
+       */
+      return max_subgroup_size;
+   }
+
+   unreachable("Invalid subgroup size type");
+}
+
 void
 brw_nir_apply_key(nir_shader *nir,
                   const struct brw_compiler *compiler,
                   const struct brw_base_prog_key *key,
+                  unsigned max_subgroup_size,
                   bool is_scalar)
 {
    bool progress = false;
 
    OPT(brw_nir_apply_sampler_key, compiler, &key->tex);
+
+   const nir_lower_subgroups_options subgroups_options = {
+      .subgroup_size = get_subgroup_size(key, max_subgroup_size),
+      .ballot_bit_size = 32,
+      .lower_subgroup_masks = true,
+   };
+   OPT(nir_lower_subgroups, &subgroups_options);
 
    if (progress)
       brw_nir_optimize(nir, compiler, is_scalar, false);

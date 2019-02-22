@@ -47,6 +47,7 @@
 #include "nir/tgsi_to_nir.h"
 
 #define KEY_INIT_NO_ID(gen)                              \
+   .base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM, \
    .base.tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688,   \
    .base.tex.compressed_multisample_layout_mask = ~0,    \
    .base.tex.msaa_16 = (gen >= 9 ? ~0 : 0)

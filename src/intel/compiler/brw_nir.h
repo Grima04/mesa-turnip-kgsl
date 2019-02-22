@@ -140,6 +140,7 @@ void brw_nir_apply_tcs_quads_workaround(nir_shader *nir);
 void brw_nir_apply_key(nir_shader *nir,
                        const struct brw_compiler *compiler,
                        const struct brw_base_prog_key *key,
+                       unsigned max_subgroup_size,
                        bool is_scalar);
 
 enum brw_reg_type brw_type_for_nir_type(const struct gen_device_info *devinfo,

@@ -335,6 +335,7 @@ brw_populate_base_prog_key(struct gl_context *ctx,
                            struct brw_base_prog_key *key)
 {
    key->program_string_id = prog->id;
+   key->subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM;
    brw_populate_sampler_prog_key_data(ctx, &prog->program, &key->tex);
 }
 
@@ -344,6 +345,7 @@ brw_populate_default_base_prog_key(const struct gen_device_info *devinfo,
                                    struct brw_base_prog_key *key)
 {
    key->program_string_id = prog->id;
+   key->subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM;
    brw_setup_tex_for_precompile(devinfo, &key->tex, &prog->program);
 }
 

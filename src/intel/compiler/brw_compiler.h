@@ -203,8 +203,17 @@ struct brw_sampler_prog_key_data {
    float scale_factors[32];
 };
 
+/** An enum representing what kind of input gl_SubgroupSize is. */
+enum PACKED brw_subgroup_size_type
+{
+   BRW_SUBGROUP_SIZE_API_CONSTANT,  /**< Vulkan behavior */
+   BRW_SUBGROUP_SIZE_UNIFORM,       /**< OpenGL behavior */
+};
+
 struct brw_base_prog_key {
    unsigned program_string_id;
+
+   enum brw_subgroup_size_type subgroup_size_type;
 
    struct brw_sampler_prog_key_data tex;
 };

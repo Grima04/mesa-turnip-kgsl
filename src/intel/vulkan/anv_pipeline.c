@@ -355,6 +355,8 @@ static void
 populate_base_prog_key(const struct gen_device_info *devinfo,
                        struct brw_base_prog_key *key)
 {
+   key->subgroup_size_type = BRW_SUBGROUP_SIZE_API_CONSTANT;
+
    populate_sampler_prog_key(devinfo, &key->tex);
 }
 
