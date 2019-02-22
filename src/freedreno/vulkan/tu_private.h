@@ -1047,6 +1047,22 @@ struct tu_pipeline
 
    struct
    {
+      uint8_t bindings[MAX_VERTEX_ATTRIBS];
+      uint16_t strides[MAX_VERTEX_ATTRIBS];
+      uint16_t offsets[MAX_VERTEX_ATTRIBS];
+      uint32_t count;
+
+      uint8_t binning_bindings[MAX_VERTEX_ATTRIBS];
+      uint16_t binning_strides[MAX_VERTEX_ATTRIBS];
+      uint16_t binning_offsets[MAX_VERTEX_ATTRIBS];
+      uint32_t binning_count;
+
+      struct tu_cs_entry state_ib;
+      struct tu_cs_entry binning_state_ib;
+   } vi;
+
+   struct
+   {
       enum pc_di_primtype primtype;
       bool primitive_restart;
    } ia;

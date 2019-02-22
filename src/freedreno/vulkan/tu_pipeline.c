@@ -110,6 +110,32 @@ tu_shader_stage(VkShaderStageFlagBits stage)
    }
 }
 
+static const VkVertexInputAttributeDescription *
+tu_find_vertex_input_attribute(
+   const VkPipelineVertexInputStateCreateInfo *vi_info, uint32_t slot)
+{
+   assert(slot >= VERT_ATTRIB_GENERIC0);
+   slot -= VERT_ATTRIB_GENERIC0;
+   for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
+      if (vi_info->pVertexAttributeDescriptions[i].location == slot)
+         return &vi_info->pVertexAttributeDescriptions[i];
+   }
+   return NULL;
+}
+
+static const VkVertexInputBindingDescription *
+tu_find_vertex_input_binding(
+   const VkPipelineVertexInputStateCreateInfo *vi_info,
+   const VkVertexInputAttributeDescription *vi_attr)
+{
+   assert(vi_attr);
+   for (uint32_t i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
+      if (vi_info->pVertexBindingDescriptions[i].binding == vi_attr->binding)
+         return &vi_info->pVertexBindingDescriptions[i];
+   }
+   return NULL;
+}
+
 static bool
 tu_logic_op_reads_dst(VkLogicOp op)
 {
@@ -911,6 +937,69 @@ tu6_emit_program(struct tu_cs *cs,
                           builder->shader_offsets[MESA_SHADER_FRAGMENT]);
 }
 
+static void
+tu6_emit_vertex_input(struct tu_cs *cs,
+                      const struct ir3_shader_variant *vs,
+                      const VkPipelineVertexInputStateCreateInfo *vi_info,
+                      uint8_t bindings[MAX_VERTEX_ATTRIBS],
+                      uint16_t strides[MAX_VERTEX_ATTRIBS],
+                      uint16_t offsets[MAX_VERTEX_ATTRIBS],
+                      uint32_t *count)
+{
+   uint32_t vfd_decode_idx = 0;
+
+   /* why do we go beyond inputs_count? */
+   assert(vs->inputs_count + 1 <= MAX_VERTEX_ATTRIBS);
+   for (uint32_t i = 0; i <= vs->inputs_count; i++) {
+      if (vs->inputs[i].sysval || !vs->inputs[i].compmask)
+         continue;
+
+      const VkVertexInputAttributeDescription *vi_attr =
+         tu_find_vertex_input_attribute(vi_info, vs->inputs[i].slot);
+      const VkVertexInputBindingDescription *vi_binding =
+         tu_find_vertex_input_binding(vi_info, vi_attr);
+      assert(vi_attr && vi_binding);
+
+      const struct tu_native_format *format =
+         tu6_get_native_format(vi_attr->format);
+      assert(format && format->vtx >= 0);
+
+      uint32_t vfd_decode = A6XX_VFD_DECODE_INSTR_IDX(vfd_decode_idx) |
+                            A6XX_VFD_DECODE_INSTR_FORMAT(format->vtx) |
+                            A6XX_VFD_DECODE_INSTR_SWAP(format->swap) |
+                            A6XX_VFD_DECODE_INSTR_UNK30;
+      if (vi_binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
+         vfd_decode |= A6XX_VFD_DECODE_INSTR_INSTANCED;
+      if (!vk_format_is_int(vi_attr->format))
+         vfd_decode |= A6XX_VFD_DECODE_INSTR_FLOAT;
+
+      const uint32_t vfd_decode_step_rate = 1;
+
+      const uint32_t vfd_dest_cntl =
+         A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vs->inputs[i].compmask) |
+         A6XX_VFD_DEST_CNTL_INSTR_REGID(vs->inputs[i].regid);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DECODE(vfd_decode_idx), 2);
+      tu_cs_emit(cs, vfd_decode);
+      tu_cs_emit(cs, vfd_decode_step_rate);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DEST_CNTL(vfd_decode_idx), 1);
+      tu_cs_emit(cs, vfd_dest_cntl);
+
+      bindings[vfd_decode_idx] = vi_binding->binding;
+      strides[vfd_decode_idx] = vi_binding->stride;
+      offsets[vfd_decode_idx] = vi_attr->offset;
+
+      vfd_decode_idx++;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_0, 1);
+   tu_cs_emit(
+      cs, A6XX_VFD_CONTROL_0_VTXCNT(vfd_decode_idx) | (vfd_decode_idx << 8));
+
+   *count = vfd_decode_idx;
+}
+
 static uint32_t
 tu6_guardband_adj(uint32_t v)
 {
@@ -1419,6 +1508,34 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
+                                       struct tu_pipeline *pipeline)
+{
+   const VkPipelineVertexInputStateCreateInfo *vi_info =
+      builder->create_info->pVertexInputState;
+   const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+
+   struct tu_cs vi_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs,
+                          MAX_VERTEX_ATTRIBS * 5 + 2, &vi_cs);
+   tu6_emit_vertex_input(&vi_cs, &vs->variants[0], vi_info,
+                         pipeline->vi.bindings, pipeline->vi.strides,
+                         pipeline->vi.offsets, &pipeline->vi.count);
+   pipeline->vi.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
+
+   if (vs->has_binning_pass) {
+      tu_cs_begin_sub_stream(builder->device, &pipeline->cs,
+                             MAX_VERTEX_ATTRIBS * 5 + 2, &vi_cs);
+      tu6_emit_vertex_input(
+         &vi_cs, &vs->variants[1], vi_info, pipeline->vi.binning_bindings,
+         pipeline->vi.binning_strides, pipeline->vi.binning_offsets,
+         &pipeline->vi.binning_count);
+      pipeline->vi.binning_state_ib =
+         tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
+   }
+}
+
+static void
 tu_pipeline_builder_parse_input_assembly(struct tu_pipeline_builder *builder,
                                          struct tu_pipeline *pipeline)
 {
@@ -1622,6 +1739,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_shader_stages(builder, *pipeline);
+   tu_pipeline_builder_parse_vertex_input(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
