@@ -29,9 +29,18 @@ stages:
   - build+test
 
 
+# When to automatically run the CI
+.ci-run-policy:
+  only:
+    - master
+    - merge_requests
+    - /^ci([-/].*)?$/
+
+
 # CONTAINERS
 
 containers:ubuntu:
+  extends: .ci-run-policy
   stage: containers-build
   image: docker:stable
   services:
@@ -52,21 +61,14 @@ containers:ubuntu:
       docker image push $UBUNTU_IMAGE && exit || true
     - docker build -t $UBUNTU_IMAGE -f .gitlab-ci/Dockerfile.ubuntu .
     - docker push $UBUNTU_IMAGE
-  only:
-    changes:
-      - .gitlab-ci.yml
-      - .gitlab-ci/Dockerfile.ubuntu
 
 
 # BUILD
 
 .build:
+  extends: .ci-run-policy
   image: $UBUNTU_IMAGE
   stage: build+test
-  only:
-    - master
-    - merge_requests
-    - /^ci([-/].*)?$/
   artifacts:
     when: on_failure
     untracked: true
