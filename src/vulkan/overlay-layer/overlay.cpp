@@ -382,13 +382,13 @@ static struct swapchain_data *new_swapchain_data(VkSwapchainKHR swapchain,
    data->device = device_data;
    data->swapchain = swapchain;
    data->window_size = ImVec2(300, 300);
-   map_object(data->swapchain, data);
+   map_object((void *) data->swapchain, data);
    return data;
 }
 
 static void destroy_swapchain_data(struct swapchain_data *data)
 {
-   unmap_object(data->swapchain);
+   unmap_object((void *) data->swapchain);
    ralloc_free(data);
 }
 
@@ -490,7 +490,7 @@ static void compute_swapchain_display(struct swapchain_data *data)
    const char *format_name = vk_Format_to_str(data->format);
    format_name = format_name ? (format_name + strlen("VK_FORMAT_")) : "unknown";
    ImGui::Text("Swapchain format: %s", format_name);
-   ImGui::Text("Frames: %lu", data->n_frames);
+   ImGui::Text("Frames: %" PRIu64, data->n_frames);
 
    {
       double min_time = FLT_MAX, max_time = 0.0f;
