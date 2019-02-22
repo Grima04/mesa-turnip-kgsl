@@ -70,6 +70,10 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 	img->cpp       = rsc->cpp;
 	img->bo        = rsc->bo;
 
+	/* Treat cube textures as 2d-array: */
+	if (img->type == A6XX_TEX_CUBE)
+		img->type = A6XX_TEX_2D;
+
 	if (prsc->target == PIPE_BUFFER) {
 		img->buffer = true;
 		img->offset = pimg->u.buf.offset;
