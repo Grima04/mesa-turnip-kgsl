@@ -563,7 +563,7 @@ struct v3d_compile {
         int local_invocation_index_bits;
 
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
-        uint32_t num_vpm_writes;
+        uint32_t vpm_output_size;
 
         /* Size in bytes of registers that have been spilled. This is how much
          * space needs to be available in the spill BO per thread per QPU.
@@ -607,10 +607,8 @@ struct v3d_compile {
         enum quniform_contents *uniform_contents;
         uint32_t uniform_array_size;
         uint32_t num_uniforms;
-        uint32_t num_outputs;
         uint32_t output_position_index;
         nir_variable *output_color_var[4];
-        uint32_t output_point_size_index;
         uint32_t output_sample_mask_index;
 
         struct qreg undef;

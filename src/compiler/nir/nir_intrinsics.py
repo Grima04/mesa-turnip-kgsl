@@ -534,6 +534,15 @@ system_value("subgroup_id", 1)
 system_value("local_group_size", 3)
 system_value("global_invocation_id", 3)
 system_value("work_dim", 1)
+# Driver-specific viewport scale/offset parameters.
+#
+# VC4 and V3D need to emit a scaled version of the position in the vertex
+# shaders for binning, and having system values lets us move the math for that
+# into NIR.
+system_value("viewport_x_scale", 1)
+system_value("viewport_y_scale", 1)
+system_value("viewport_z_scale", 1)
+system_value("viewport_z_offset", 1)
 
 # Blend constant color values.  Float values are clamped.#
 system_value("blend_const_color_r_float", 1)
