@@ -201,6 +201,10 @@ struct swapchain_data {
    uint64_t n_frames;
    uint64_t last_present_time;
 
+   unsigned n_frames_since_update;
+   uint64_t last_fps_update;
+   double fps;
+
    double frame_times[200];
 
    double acquire_times[200];
@@ -401,12 +405,24 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
          ((double)now - (double)data->last_present_time) / 1000.0;
    }
 
+   if (data->last_fps_update) {
+      double elapsed = (double)(now - data->last_fps_update);
+      if (elapsed >= 500000.0) {
+         data->fps = ((uint64_t)data->n_frames_since_update * 1000000 / elapsed);
+         data->n_frames_since_update = 0;
+         data->last_fps_update = now;
+      }
+   } else {
+      data->last_fps_update = now;
+   }
+
    struct device_data *device_data = data->device;
    data->stats[data->n_frames % ARRAY_SIZE(data->frame_times)] = device_data->stats;
    memset(&device_data->stats, 0, sizeof(device_data->stats));
 
    data->last_present_time = now;
    data->n_frames++;
+   data->n_frames_since_update++;
 }
 
 static float get_frame_timing(void *_data, int _idx)
@@ -491,6 +507,7 @@ static void compute_swapchain_display(struct swapchain_data *data)
    format_name = format_name ? (format_name + strlen("VK_FORMAT_")) : "unknown";
    ImGui::Text("Swapchain format: %s", format_name);
    ImGui::Text("Frames: %" PRIu64, data->n_frames);
+   ImGui::Text("FPS: %.2f" , data->fps);
 
    {
       double min_time = FLT_MAX, max_time = 0.0f;
