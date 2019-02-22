@@ -521,6 +521,12 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    if (flags & BO_ALLOC_ZEROED)
       zeroed = true;
 
+   if ((flags & BO_ALLOC_COHERENT) && !bufmgr->has_llc) {
+      bo_size = MAX2(ALIGN(size, page_size), page_size);
+      bucket = NULL;
+      goto skip_cache;
+   }
+
    /* Round the allocated size up to a power of two number of pages. */
    bucket = bucket_for_size(bufmgr, size);
 
@@ -579,6 +585,7 @@ retry:
          bo->gtt_offset = 0ull;
       }
    } else {
+skip_cache:
       bo = bo_calloc();
       if (!bo)
          goto err;
@@ -643,6 +650,17 @@ retry:
    }
 
    mtx_unlock(&bufmgr->lock);
+
+   if ((flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
+      struct drm_i915_gem_caching arg = {
+         .handle = bo->gem_handle,
+         .caching = 1,
+      };
+      if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) == 0) {
+         bo->cache_coherent = true;
+         bo->reusable = false;
+      }
+   }
 
    DBG("bo_create: buf %d (%s) %llub\n", bo->gem_handle, bo->name,
        (unsigned long long) size);

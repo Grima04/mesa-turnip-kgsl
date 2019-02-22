@@ -592,6 +592,10 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
 
+   unsigned int flags = 0;
+   if (templ->usage == PIPE_USAGE_STAGING)
+      flags |= BO_ALLOC_COHERENT;
+
    /* These are for u_upload_mgr buffers only */
    assert(!(templ->flags & (IRIS_RESOURCE_FLAG_SHADER_MEMZONE |
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
@@ -600,7 +604,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,
                                  memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
-                                 res->surf.row_pitch_B, 0);
+                                 res->surf.row_pitch_B, flags);
 
    if (!res->bo)
       goto fail;
