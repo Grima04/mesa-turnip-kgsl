@@ -1186,8 +1186,11 @@ can_map_cpu(struct iris_bo *bo, unsigned flags)
     * most drawing while non-persistent mappings are active, we may still use
     * the GPU for blits or other operations, causing batches to happen at
     * inconvenient times.
+    *
+    * If RAW is set, we expect the caller to be able to handle a WC buffer
+    * more efficiently than the involuntary clflushes.
     */
-   if (flags & (MAP_PERSISTENT | MAP_COHERENT | MAP_ASYNC))
+   if (flags & (MAP_PERSISTENT | MAP_COHERENT | MAP_ASYNC | MAP_RAW))
       return false;
 
    return !(flags & MAP_WRITE);
