@@ -552,6 +552,11 @@ optimizations = [
    (('ine', ('ineg', ('b2i', 'a@1')), -1), ('inot', a)),
    (('iand', ('ineg', ('b2i', a)), 1.0), ('b2f', a)),
 
+   # SM5 32-bit shifts are defined to use the 5 least significant bits
+   (('ishl', 'a@32', ('iand', 31, b)), ('ishl', a, b)),
+   (('ishr', 'a@32', ('iand', 31, b)), ('ishr', a, b)),
+   (('ushr', 'a@32', ('iand', 31, b)), ('ushr', a, b)),
+
    # Conversions
    (('i2b32', ('b2i', 'a@32')), a),
    (('f2i', ('ftrunc', a)), ('f2i', a)),
