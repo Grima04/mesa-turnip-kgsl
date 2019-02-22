@@ -272,15 +272,13 @@ fd2_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 	x1 = ((float)tile->xoff + bin_w) / ((float)pfb->width);
 	y0 = ((float)tile->yoff) / ((float)pfb->height);
 	y1 = ((float)tile->yoff + bin_h) / ((float)pfb->height);
-	OUT_PKT3(ring, CP_MEM_WRITE, 9);
+	OUT_PKT3(ring, CP_MEM_WRITE, 7);
 	OUT_RELOC(ring, fd_resource(fd2_ctx->solid_vertexbuf)->bo, 36, 0, 0);
 	OUT_RING(ring, fui(x0));
 	OUT_RING(ring, fui(y0));
 	OUT_RING(ring, fui(x1));
 	OUT_RING(ring, fui(y0));
 	OUT_RING(ring, fui(x0));
-	OUT_RING(ring, fui(y1));
-	OUT_RING(ring, fui(x1));
 	OUT_RING(ring, fui(y1));
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
