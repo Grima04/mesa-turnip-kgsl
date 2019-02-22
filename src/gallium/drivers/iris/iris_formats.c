@@ -427,9 +427,16 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    }
 
    if (usage & PIPE_BIND_RENDER_TARGET) {
-      supported &= isl_format_supports_rendering(devinfo, format);
+      enum isl_format rt_format = format;
+
+      if (isl_format_is_rgbx(format) &&
+          !isl_format_supports_rendering(devinfo, format))
+         rt_format = isl_format_rgbx_to_rgba(format);
+
+      supported &= isl_format_supports_rendering(devinfo, rt_format);
+
       if (!is_integer)
-         supported &= isl_format_supports_alpha_blending(devinfo, format);
+         supported &= isl_format_supports_alpha_blending(devinfo, rt_format);
    }
 
    if (usage & PIPE_BIND_SHADER_IMAGE) {
