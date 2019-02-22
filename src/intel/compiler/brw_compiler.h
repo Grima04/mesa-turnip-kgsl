@@ -208,6 +208,7 @@ enum PACKED brw_subgroup_size_type
 {
    BRW_SUBGROUP_SIZE_API_CONSTANT,  /**< Vulkan behavior */
    BRW_SUBGROUP_SIZE_UNIFORM,       /**< OpenGL behavior */
+   BRW_SUBGROUP_SIZE_VARYING,       /**< VK_EXT_subgroup_size_control */
 };
 
 struct brw_base_prog_key {

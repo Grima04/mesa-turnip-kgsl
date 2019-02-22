@@ -4916,6 +4916,14 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_load_subgroup_size:
+      /* This should only happen for fragment shaders because every other case
+       * is lowered in NIR so we can optimize on it.
+       */
+      assert(stage == MESA_SHADER_FRAGMENT);
+      bld.MOV(retype(dest, BRW_REGISTER_TYPE_D), brw_imm_d(dispatch_width));
+      break;
+
    case nir_intrinsic_load_subgroup_invocation:
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D),
               nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
