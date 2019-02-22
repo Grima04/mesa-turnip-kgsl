@@ -1498,6 +1498,7 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
 
    for (int i = 0; i < count; i++) {
       struct iris_sampler_state *state = shs->samplers[i];
+      struct iris_sampler_view *tex = shs->textures[i];
 
       if (!state) {
          memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
@@ -1506,9 +1507,37 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
       } else {
          ice->state.need_border_colors |= 1 << stage;
 
+         /* We may need to swizzle the border color for format faking.
+          * A/LA formats are faked as R/RG with 000R or R00G swizzles.
+          * This means we need to move the border color's A channel into
+          * the R or G channels so that those read swizzles will move it
+          * back into A.
+          */
+         union pipe_color_union *color = &state->border_color;
+         if (tex) {
+            union pipe_color_union tmp;
+            enum pipe_format internal_format = tex->res->internal_format;
+
+            if (util_format_is_alpha(internal_format)) {
+               unsigned char swz[4] = {
+                  PIPE_SWIZZLE_W, PIPE_SWIZZLE_0,
+                  PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
+               };
+               util_format_apply_color_swizzle(&tmp, color, swz, true);
+               color = &tmp;
+            } else if (util_format_is_luminance_alpha(internal_format) &&
+                       internal_format != PIPE_FORMAT_L8A8_SRGB) {
+               unsigned char swz[4] = {
+                  PIPE_SWIZZLE_X, PIPE_SWIZZLE_W,
+                  PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
+               };
+               util_format_apply_color_swizzle(&tmp, color, swz, true);
+               color = &tmp;
+            }
+         }
+
          /* Stream out the border color and merge the pointer. */
-         uint32_t offset =
-            iris_upload_border_color(ice, &state->border_color);
+         uint32_t offset = iris_upload_border_color(ice, color);
 
          uint32_t dynamic[GENX(SAMPLER_STATE_length)];
          iris_pack_state(GENX(SAMPLER_STATE), dynamic, dyns) {
@@ -1709,7 +1738,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
       }
    } else {
       fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
-                                isv->view.format, ISL_SWIZZLE_IDENTITY,
+                                isv->view.format, isv->view.swizzle,
                                 tmpl->u.buf.offset, tmpl->u.buf.size);
    }
 

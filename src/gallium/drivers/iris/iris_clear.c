@@ -42,6 +42,7 @@ clear_color(struct iris_context *ice,
             const struct pipe_box *box,
             bool render_condition_enabled,
             enum isl_format format,
+            struct isl_swizzle swizzle,
             union isl_color_value color)
 {
    struct iris_resource *res = (void *) p_res;
@@ -79,7 +80,7 @@ clear_color(struct iris_context *ice,
        isl_format_is_rgbx(format))
       format = isl_format_rgbx_to_rgba(format);
 
-   blorp_clear(&blorp_batch, &surf, format, ISL_SWIZZLE_IDENTITY,
+   blorp_clear(&blorp_batch, &surf, format, swizzle,
                level, box->z, box->depth, box->x, box->y,
                box->x + box->width, box->y + box->height,
                color, color_write_disable);
@@ -205,7 +206,8 @@ iris_clear(struct pipe_context *ctx,
             };
 
             clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
-                        true, isurf->view.format, *color);
+                        true, isurf->view.format, isurf->view.swizzle,
+                        *color);
          }
       }
    }
@@ -270,7 +272,8 @@ iris_clear_texture(struct pipe_context *ctx,
 
       isl_color_value_unpack(&color, format, data);
 
-      clear_color(ice, p_res, level, box, true, format, color);
+      clear_color(ice, p_res, level, box, true, format,
+                  ISL_SWIZZLE_IDENTITY, color);
    }
 }
 
@@ -303,7 +306,7 @@ iris_clear_render_target(struct pipe_context *ctx,
 
    clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
                render_condition_enabled,
-               isurf->view.format, *color);
+               isurf->view.format, isurf->view.swizzle, *color);
 }
 
 /**

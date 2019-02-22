@@ -406,7 +406,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                     &src_surf, info->src.level, info->src.box.z + slice,
                     src_fmt.fmt, src_fmt.swizzle,
                     &dst_surf, info->dst.level, info->dst.box.z + slice,
-                    dst_fmt.fmt, ISL_SWIZZLE_IDENTITY,
+                    dst_fmt.fmt, dst_fmt.swizzle,
                     src_x0, src_y0, src_x1, src_y1,
                     dst_x0, dst_y0, dst_x1, dst_y1,
                     filter, mirror_x, mirror_y);
