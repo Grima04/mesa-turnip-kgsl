@@ -92,6 +92,7 @@ struct radv_shader_context {
 	gl_shader_stage stage;
 
 	LLVMValueRef inputs[RADEON_LLVM_MAX_INPUTS * 4];
+	uint64_t float16_shaded_mask;
 
 	uint64_t input_mask;
 	uint64_t output_mask;
@@ -2197,6 +2198,7 @@ static void interp_fs_input(struct radv_shader_context *ctx,
 			    unsigned attr,
 			    LLVMValueRef interp_param,
 			    LLVMValueRef prim_mask,
+			    bool float16,
 			    LLVMValueRef result[4])
 {
 	LLVMValueRef attr_number;
@@ -2229,7 +2231,12 @@ static void interp_fs_input(struct radv_shader_context *ctx,
 	for (chan = 0; chan < 4; chan++) {
 		LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, chan, false);
 
-		if (interp) {
+		if (interp && float16) {
+			result[chan] = ac_build_fs_interp_f16(&ctx->ac,
+							      llvm_chan,
+							      attr_number,
+							      prim_mask, i, j);
+		} else if (interp) {
 			result[chan] = ac_build_fs_interp(&ctx->ac,
 							  llvm_chan,
 							  attr_number,
@@ -2241,7 +2248,30 @@ static void interp_fs_input(struct radv_shader_context *ctx,
 							      attr_number,
 							      prim_mask);
 			result[chan] = LLVMBuildBitCast(ctx->ac.builder, result[chan], ctx->ac.i32, "");
-			result[chan] = LLVMBuildTruncOrBitCast(ctx->ac.builder, result[chan], LLVMTypeOf(interp_param), "");
+			result[chan] = LLVMBuildTruncOrBitCast(ctx->ac.builder, result[chan], float16 ? ctx->ac.i16 : ctx->ac.i32, "");
+		}
+	}
+}
+
+static void mark_16bit_fs_input(struct radv_shader_context *ctx,
+                                const struct glsl_type *type,
+                                int location)
+{
+	if (glsl_type_is_scalar(type) || glsl_type_is_vector(type) || glsl_type_is_matrix(type)) {
+		unsigned attrib_count = glsl_count_attribute_slots(type, false);
+		if (glsl_type_is_16bit(type)) {
+			ctx->float16_shaded_mask |= ((1ull << attrib_count) - 1) << location;
+		}
+	} else if (glsl_type_is_array(type)) {
+		unsigned stride = glsl_count_attribute_slots(glsl_get_array_element(type), false);
+		for (unsigned i = 0; i < glsl_get_length(type); ++i) {
+			mark_16bit_fs_input(ctx, glsl_get_array_element(type), location + i * stride);
+		}
+	} else {
+		assert(glsl_type_is_struct(type));
+		for (unsigned i = 0; i < glsl_get_length(type); i++) {
+			mark_16bit_fs_input(ctx, glsl_get_struct_field(type, i), location);
+			location += glsl_count_attribute_slots(glsl_get_struct_field(type, i), false);
 		}
 	}
 }
@@ -2262,7 +2292,8 @@ handle_fs_input_decl(struct radv_shader_context *ctx,
 		unsigned component_count = variable->data.location_frac +
 		                           glsl_get_length(variable->type);
 		attrib_count = (component_count + 3) / 4;
-	}
+	} else
+		mark_16bit_fs_input(ctx, variable->type, idx);
 
 	mask = ((1ull << attrib_count) - 1) << variable->data.location;
 
@@ -2277,10 +2308,8 @@ handle_fs_input_decl(struct radv_shader_context *ctx,
 
 		interp = lookup_interp_param(&ctx->abi, variable->data.interpolation, interp_type);
 	}
-	bool is_16bit = glsl_type_is_16bit(glsl_without_array(variable->type));
-	LLVMTypeRef type = is_16bit ? ctx->ac.i16 : ctx->ac.i32;
 	if (interp == NULL)
-		interp = LLVMGetUndef(type);
+		interp = LLVMGetUndef(ctx->ac.i32);
 
 	for (unsigned i = 0; i < attrib_count; ++i)
 		ctx->inputs[ac_llvm_reg_index_soa(idx + i, 0)] = interp;
@@ -2346,11 +2375,14 @@ handle_fs_inputs(struct radv_shader_context *ctx,
 		if (i >= VARYING_SLOT_VAR0 || i == VARYING_SLOT_PNTC ||
 		    i == VARYING_SLOT_PRIMITIVE_ID || i == VARYING_SLOT_LAYER) {
 			interp_param = *inputs;
-			interp_fs_input(ctx, index, interp_param, ctx->abi.prim_mask,
+			bool float16 = (ctx->float16_shaded_mask >> i) & 1;
+			interp_fs_input(ctx, index, interp_param, ctx->abi.prim_mask, float16,
 					inputs);
 
 			if (LLVMIsUndef(interp_param))
 				ctx->shader_info->fs.flat_shaded_mask |= 1u << index;
+			if (float16)
+				ctx->shader_info->fs.float16_shaded_mask |= 1u << index;
 			if (i >= VARYING_SLOT_VAR0)
 				ctx->abi.fs_input_attr_indices[i - VARYING_SLOT_VAR0] = index;
 			++index;
@@ -2362,7 +2394,7 @@ handle_fs_inputs(struct radv_shader_context *ctx,
 
 				interp_param = *inputs;
 				interp_fs_input(ctx, index, interp_param,
-						ctx->abi.prim_mask, inputs);
+						ctx->abi.prim_mask, false, inputs);
 				++index;
 			}
 		} else if (i == VARYING_SLOT_POS) {
