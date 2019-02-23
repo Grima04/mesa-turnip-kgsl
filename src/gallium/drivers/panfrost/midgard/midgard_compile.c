@@ -950,6 +950,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(imax, imax);
                 ALU_CASE(fmov, fmov);
                 ALU_CASE(ffloor, ffloor);
+                ALU_CASE(fround_even, froundeven);
+                ALU_CASE(ftrunc, ftrunc);
                 ALU_CASE(fceil, fceil);
                 ALU_CASE(fdot3, fdot3);
                 ALU_CASE(fdot4, fdot4);
