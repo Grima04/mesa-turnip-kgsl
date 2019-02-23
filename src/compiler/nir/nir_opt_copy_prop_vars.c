@@ -835,7 +835,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
              */
             kill_aliases(copies, nir_deref_instr_parent(dst), 0xf);
          } else {
-            struct value value = {};
+            struct value value = {0};
             value_set_ssa_components(&value, intrin->src[1].ssa,
                                      intrin->num_components);
             unsigned wrmask = nir_intrinsic_write_mask(intrin);
