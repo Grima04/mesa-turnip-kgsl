@@ -127,6 +127,7 @@ optimizations = [
    (('flrp@32', a, b, c), ('fadd', ('fmul', c, ('fsub', b, a)), a), 'options->lower_flrp32'),
    (('flrp@64', a, b, c), ('fadd', ('fmul', c, ('fsub', b, a)), a), 'options->lower_flrp64'),
    (('ffloor', a), ('fsub', a, ('ffract', a)), 'options->lower_ffloor'),
+   (('fadd', a, ('fneg', ('ffract', a))), ('ffloor', a), '!options->lower_ffloor'),
    (('ffract', a), ('fsub', a, ('ffloor', a)), 'options->lower_ffract'),
    (('fceil', a), ('fneg', ('ffloor', ('fneg', a))), 'options->lower_fceil'),
    (('~fadd', ('fmul', a, ('fadd', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
