@@ -881,7 +881,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
 		uint32_t i;
 
-		for (i = 0; i < A6XX_MAX_RENDER_TARGETS; i++) {
+		for (i = 0; i < pfb->nr_cbufs; i++) {
 			enum pipe_format format = pipe_surface_format(pfb->cbufs[i]);
 			bool is_int = util_format_is_pure_integer(format);
 			bool has_alpha = util_format_has_alpha(format);
