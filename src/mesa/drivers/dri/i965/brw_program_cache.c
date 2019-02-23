@@ -429,7 +429,7 @@ brw_clear_cache(struct brw_context *brw, struct brw_cache *cache)
              c->cache_id == BRW_CACHE_GS_PROG ||
              c->cache_id == BRW_CACHE_FS_PROG ||
              c->cache_id == BRW_CACHE_CS_PROG) {
-            const void *item_prog_data = c->key + c->key_size;
+            const void *item_prog_data = ((char *)c->key) + c->key_size;
             brw_stage_prog_data_free(item_prog_data);
          }
          free((void *)c->key);
