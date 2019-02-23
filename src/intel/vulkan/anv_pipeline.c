@@ -1221,6 +1221,12 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
          .sampler_to_descriptor = stage.sampler_to_descriptor
       };
 
+      /* Set up a binding for the gl_NumWorkGroups */
+      stage.bind_map.surface_count = 1;
+      stage.bind_map.surface_to_descriptor[0] = (struct anv_pipeline_binding) {
+         .set = ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS,
+      };
+
       void *mem_ctx = ralloc_context(NULL);
 
       stage.nir = anv_pipeline_stage_get_nir(pipeline, cache, mem_ctx, &stage);
@@ -1234,7 +1240,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id,
                  &stage.prog_data.cs);
 
-      anv_fill_binding_table(&stage.prog_data.cs.base, 1);
+      anv_fill_binding_table(&stage.prog_data.cs.base, 0);
 
       const unsigned *shader_code =
          brw_compile_cs(compiler, NULL, mem_ctx, &stage.key.cs,

@@ -2038,16 +2038,14 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    struct anv_subpass *subpass = cmd_buffer->state.subpass;
    struct anv_cmd_pipeline_state *pipe_state;
    struct anv_pipeline *pipeline;
-   uint32_t bias, state_offset;
+   uint32_t state_offset;
 
    switch (stage) {
    case  MESA_SHADER_COMPUTE:
       pipe_state = &cmd_buffer->state.compute.base;
-      bias = 1;
       break;
    default:
       pipe_state = &cmd_buffer->state.gfx.base;
-      bias = 0;
       break;
    }
    pipeline = pipe_state->pipeline;
@@ -2058,39 +2056,18 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    }
 
    struct anv_pipeline_bind_map *map = &pipeline->shaders[stage]->bind_map;
-   if (bias + map->surface_count == 0) {
+   if (map->surface_count == 0) {
       *bt_state = (struct anv_state) { 0, };
       return VK_SUCCESS;
    }
 
    *bt_state = anv_cmd_buffer_alloc_binding_table(cmd_buffer,
-                                                  bias + map->surface_count,
+                                                  map->surface_count,
                                                   &state_offset);
    uint32_t *bt_map = bt_state->map;
 
    if (bt_state->map == NULL)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-
-   if (stage == MESA_SHADER_COMPUTE &&
-       get_cs_prog_data(pipeline)->uses_num_work_groups) {
-      struct anv_state surface_state;
-      surface_state =
-         anv_cmd_buffer_alloc_surface_state(cmd_buffer);
-
-      const enum isl_format format =
-         anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-      anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                    format,
-                                    cmd_buffer->state.compute.num_workgroups,
-                                    12, 1);
-
-      bt_map[0] = surface_state.offset + state_offset;
-      add_surface_reloc(cmd_buffer, surface_state,
-                        cmd_buffer->state.compute.num_workgroups);
-   }
-
-   if (map->surface_count == 0)
-      goto out;
 
    /* We only use push constant space for images before gen9 */
    if (map->image_count > 0 && devinfo->gen < 9) {
@@ -2131,7 +2108,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             surface_state = cmd_buffer->state.null_surface_state;
          }
 
-         bt_map[bias + s] = surface_state.offset + state_offset;
+         bt_map[s] = surface_state.offset + state_offset;
          continue;
       } else if (binding->set == ANV_DESCRIPTOR_SET_SHADER_CONSTANTS) {
          struct anv_state surface_state =
@@ -2150,8 +2127,27 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                        surface_state, format,
                                        constant_data, constant_data_size, 1);
 
-         bt_map[bias + s] = surface_state.offset + state_offset;
+         bt_map[s] = surface_state.offset + state_offset;
          add_surface_reloc(cmd_buffer, surface_state, constant_data);
+         continue;
+      } else if (binding->set == ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS) {
+         /* This is always the first binding for compute shaders */
+         assert(stage == MESA_SHADER_COMPUTE && s == 0);
+         if (!get_cs_prog_data(pipeline)->uses_num_work_groups)
+            continue;
+
+         struct anv_state surface_state =
+            anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+
+         const enum isl_format format =
+            anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+         anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
+                                       format,
+                                       cmd_buffer->state.compute.num_workgroups,
+                                       12, 1);
+         bt_map[s] = surface_state.offset + state_offset;
+         add_surface_reloc(cmd_buffer, surface_state,
+                           cmd_buffer->state.compute.num_workgroups);
          continue;
       }
 
@@ -2274,11 +2270,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          continue;
       }
 
-      bt_map[bias + s] = surface_state.offset + state_offset;
+      bt_map[s] = surface_state.offset + state_offset;
    }
    assert(image == map->image_count);
 
- out:
 #if GEN_GEN >= 11
    /* The PIPE_CONTROL command description says:
     *
