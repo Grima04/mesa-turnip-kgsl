@@ -866,9 +866,16 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_FMAX(c, src[0], src[1]);
                 break;
 
-        case nir_op_f2i32:
-                result = vir_FTOIZ(c, src[0]);
+        case nir_op_f2i32: {
+                nir_alu_instr *src0_alu = ntq_get_alu_parent(instr->src[0].src);
+                if (src0_alu && src0_alu->op == nir_op_fround_even) {
+                        result = vir_FTOIN(c, ntq_get_alu_src(c, src0_alu, 0));
+                } else {
+                        result = vir_FTOIZ(c, src[0]);
+                }
                 break;
+        }
+
         case nir_op_f2u32:
                 result = vir_FTOUZ(c, src[0]);
                 break;
