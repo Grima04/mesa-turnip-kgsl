@@ -1735,6 +1735,63 @@ anv_device_init_hiz_clear_value_bo(struct anv_device *device)
    anv_gem_munmap(map, device->hiz_clear_bo.size);
 }
 
+static bool
+get_bo_from_pool(struct gen_batch_decode_bo *ret,
+                 struct anv_block_pool *pool,
+                 uint64_t address)
+{
+   for (uint32_t i = 0; i < pool->nbos; i++) {
+      uint64_t bo_address = pool->bos[i].offset & (~0ull >> 16);
+      uint32_t bo_size = pool->bos[i].size;
+      if (address >= bo_address && address < (bo_address + bo_size)) {
+         *ret = (struct gen_batch_decode_bo) {
+            .addr = bo_address,
+            .size = bo_size,
+            .map = pool->bos[i].map,
+         };
+         return true;
+      }
+   }
+   return false;
+}
+
+/* Finding a buffer for batch decoding */
+static struct gen_batch_decode_bo
+decode_get_bo(void *v_batch, uint64_t address)
+{
+   struct anv_device *device = v_batch;
+   struct gen_batch_decode_bo ret_bo = {};
+
+   if (get_bo_from_pool(&ret_bo, &device->dynamic_state_pool.block_pool, address))
+      return ret_bo;
+   if (get_bo_from_pool(&ret_bo, &device->instruction_state_pool.block_pool, address))
+      return ret_bo;
+   if (get_bo_from_pool(&ret_bo, &device->binding_table_pool.block_pool, address))
+      return ret_bo;
+   if (get_bo_from_pool(&ret_bo, &device->surface_state_pool.block_pool, address))
+      return ret_bo;
+
+   if (!device->cmd_buffer_being_decoded)
+      return (struct gen_batch_decode_bo) { };
+
+   struct anv_batch_bo **bo;
+
+   u_vector_foreach(bo, &device->cmd_buffer_being_decoded->seen_bbos) {
+      /* The decoder zeroes out the top 16 bits, so we need to as well */
+      uint64_t bo_address = (*bo)->bo.offset & (~0ull >> 16);
+
+      if (address >= bo_address && address < bo_address + (*bo)->bo.size) {
+         return (struct gen_batch_decode_bo) {
+            .addr = bo_address,
+            .size = (*bo)->bo.size,
+            .map = (*bo)->bo.map,
+         };
+      }
+   }
+
+   return (struct gen_batch_decode_bo) { };
+}
+
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -1801,6 +1858,17 @@ VkResult anv_CreateDevice(
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   const unsigned decode_flags =
+      GEN_BATCH_DECODE_FULL |
+      ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
+      GEN_BATCH_DECODE_OFFSETS |
+      GEN_BATCH_DECODE_FLOATS;
+
+   gen_batch_decode_ctx_init(&device->decoder_ctx,
+                             &physical_device->info,
+                             stderr, decode_flags, NULL,
+                             decode_get_bo, NULL, device);
 
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = physical_device->instance;
@@ -2088,6 +2156,8 @@ void anv_DestroyDevice(
    pthread_mutex_destroy(&device->mutex);
 
    anv_gem_destroy_context(device, device->context_id);
+
+   gen_batch_decode_ctx_finish(&device->decoder_ctx);
 
    close(device->fd);
 

@@ -44,6 +44,7 @@
 #endif
 
 #include "common/gen_clflush.h"
+#include "common/gen_decoder.h"
 #include "common/gen_gem.h"
 #include "dev/gen_device_info.h"
 #include "blorp/blorp.h"
@@ -1120,6 +1121,13 @@ struct anv_device {
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
     bool                                        _lost;
+
+    struct gen_batch_decode_ctx                 decoder_ctx;
+    /*
+     * When decoding a anv_cmd_buffer, we might need to search for BOs through
+     * the cmd_buffer's list.
+     */
+    struct anv_cmd_buffer                      *cmd_buffer_being_decoded;
 };
 
 static inline struct anv_state_pool *
