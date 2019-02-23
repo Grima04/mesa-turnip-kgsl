@@ -346,6 +346,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
     * transfers without a temporary resource.
     */
    if (trans->rsc || !(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+      struct etna_screen *screen = ctx->screen;
       uint32_t prep_flags = 0;
 
       /*
@@ -354,11 +355,15 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        * current GPU usage (reads must wait for GPU writes, writes must have
        * exclusive access to the buffer).
        */
+      mtx_lock(&screen->lock);
+
       if ((trans->rsc && (etna_resource(trans->rsc)->status & ETNA_PENDING_WRITE)) ||
           (!trans->rsc &&
            (((usage & PIPE_TRANSFER_READ) && (rsc->status & ETNA_PENDING_WRITE)) ||
            ((usage & PIPE_TRANSFER_WRITE) && rsc->status))))
          pctx->flush(pctx, NULL, 0);
+
+      mtx_unlock(&screen->lock);
 
       if (usage & PIPE_TRANSFER_READ)
          prep_flags |= DRM_ETNA_PREP_READ;

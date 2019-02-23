@@ -31,7 +31,10 @@
 #include "etnaviv_tiling.h"
 #include "pipe/p_state.h"
 #include "util/list.h"
+#include "util/set.h"
+#include "util/u_helpers.h"
 
+struct etna_context;
 struct pipe_screen;
 struct util_dynarray;
 
@@ -94,10 +97,7 @@ struct etna_resource {
 
    enum etna_resource_status status;
 
-   /* resources accessed by queued but not flushed draws are tracked
-    * in the used_resources list. */
-   struct list_head list;
-   struct etna_context *pending_ctx;
+   struct set *pending_ctx;
 };
 
 /* returns TRUE if a is newer than b */
