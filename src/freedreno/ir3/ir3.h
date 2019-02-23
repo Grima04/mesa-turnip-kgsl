@@ -212,7 +212,8 @@ struct ir3_instruction {
 		IR3_INSTR_MARK  = 0x1000,
 		IR3_INSTR_UNUSED= 0x2000,
 	} flags;
-	int repeat;
+	uint8_t repeat;
+	uint8_t nop;
 #ifdef DEBUG
 	unsigned regs_max;
 #endif
