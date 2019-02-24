@@ -80,7 +80,7 @@ panfrost_set_framebuffer_msaa(struct panfrost_context *ctx, bool enabled)
         if (require_sfbd) {
                 SET_BIT(ctx->fragment_sfbd.format, MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B, enabled);
         } else {
-                SET_BIT(ctx->fragment_rts[0].format, MALI_MFBD_FORMAT_MSAA, enabled);
+                SET_BIT(ctx->fragment_rts[0].format.flags, MALI_MFBD_FORMAT_MSAA, enabled);
 
                 SET_BIT(ctx->fragment_mfbd.unk1, (1 << 4) | (1 << 1), enabled);
 
@@ -167,7 +167,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
                 ctx->fragment_rts[0].afbc.stride = 0;
                 ctx->fragment_rts[0].afbc.unk = 0x30009;
 
-                ctx->fragment_rts[0].format |= MALI_MFBD_FORMAT_AFBC;
+                ctx->fragment_rts[0].format.flags |= MALI_MFBD_FORMAT_AFBC;
 
                 /* Point rendering to our special framebuffer */
                 ctx->fragment_rts[0].framebuffer = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
@@ -210,7 +210,12 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
                         assert(0);
                 }
 
-                ctx->fragment_rts[0].format = 0x80008000;
+                struct mali_rt_format null_rt = {
+                        .unk1 = 0x4000000,
+                        .unk4 = 0x8
+                };
+
+                ctx->fragment_rts[0].format = null_rt;
                 ctx->fragment_rts[0].framebuffer = 0;
                 ctx->fragment_rts[0].framebuffer_stride = 0;
         }
@@ -375,9 +380,20 @@ panfrost_new_frag_framebuffer(struct panfrost_context *ctx)
                 fb.rt_count_2 = 1;
                 fb.unk3 = 0x100;
 
+                /* By default, Gallium seems to need a BGR framebuffer */
+                unsigned char bgra[4] = {
+                        PIPE_SWIZZLE_Z, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_X, PIPE_SWIZZLE_W
+                };
+
                 struct bifrost_render_target rt = {
-                        .unk1 = 0x4000000,
-                        .format = 0x860a8899, /* RGBA32, no MSAA */
+                        .format = {
+                                .unk1 = 0x4000000,
+                                .unk2 = 0x1,
+                                .nr_channels = MALI_POSITIVE(4),
+                                .flags = 0x444,
+                                .swizzle = panfrost_translate_swizzle_4(bgra),
+                                .unk4 = 0x8
+                        },
                         .framebuffer = framebuffer,
                         .framebuffer_stride = (stride / 16) & 0xfffffff,
                 };

@@ -201,6 +201,14 @@ static const struct pandecode_flag_info fb_fmt_flag_info[] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
+static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
+        FLAG_INFO(AFBC),
+        FLAG_INFO(MSAA),
+        {}
+};
+#undef FLAG_INFO
+
 extern char *replace_fragment;
 extern char *replace_vertex;
 
@@ -467,6 +475,40 @@ pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
 }
 
 static void
+pandecode_replay_swizzle(unsigned swizzle)
+{
+	pandecode_prop("swizzle = %s | (%s << 3) | (%s << 6) | (%s << 9)",
+			pandecode_channel_name((swizzle >> 0) & 0x7),
+			pandecode_channel_name((swizzle >> 3) & 0x7),
+			pandecode_channel_name((swizzle >> 6) & 0x7),
+			pandecode_channel_name((swizzle >> 9) & 0x7));
+}
+
+static void
+pandecode_rt_format(struct mali_rt_format format)
+{
+        pandecode_log(".format = {\n");
+        pandecode_indent++;
+
+        pandecode_prop("unk1 = 0x%" PRIx32, format.unk1);
+        pandecode_prop("unk2 = 0x%" PRIx32, format.unk2);
+
+        pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
+                        MALI_NEGATIVE(format.nr_channels));
+
+        pandecode_log(".flags = ");
+        pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
+        pandecode_log_cont(",\n");
+
+        pandecode_replay_swizzle(format.swizzle);
+
+        pandecode_prop("unk4 = 0x%" PRIx32, format.unk4);
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+}
+
+static void
 pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
@@ -643,8 +685,7 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
                 pandecode_log("{\n");
                 pandecode_indent++;
 
-                pandecode_prop("unk1 = 0x%" PRIx32, rt->unk1);
-                pandecode_prop("format = 0x%" PRIx32, rt->format);
+                pandecode_rt_format(rt->format);
 
                 /* TODO: How the actual heck does AFBC enabling work here? */
                 if (0) {
@@ -816,16 +857,6 @@ pandecode_replay_blend_equation(const struct mali_blend_equation *blend, const c
 
         pandecode_indent--;
         pandecode_log("},\n");
-}
-
-static void
-pandecode_replay_swizzle(unsigned swizzle)
-{
-	pandecode_prop("swizzle = %s | (%s << 3) | (%s << 6) | (%s << 9)",
-			pandecode_channel_name((swizzle >> 0) & 0x7),
-			pandecode_channel_name((swizzle >> 3) & 0x7),
-			pandecode_channel_name((swizzle >> 6) & 0x7),
-			pandecode_channel_name((swizzle >> 9) & 0x7));
 }
 
 static int

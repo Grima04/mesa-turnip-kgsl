@@ -1346,15 +1346,26 @@ struct mali_single_framebuffer {
         /* More below this, maybe */
 } __attribute__((packed));
 
-/* Format bits for the render target */
+/* Format bits for the render target flags */
 
-#define MALI_MFBD_FORMAT_AFBC 	  (1 << 10)
-#define MALI_MFBD_FORMAT_MSAA 	  (1 << 12)
-#define MALI_MFBD_FORMAT_NO_ALPHA (1 << 25)
+#define MALI_MFBD_FORMAT_AFBC 	  (1 << 5)
+#define MALI_MFBD_FORMAT_MSAA 	  (1 << 7)
+
+struct mali_rt_format {
+        unsigned unk1 : 32;
+        unsigned unk2 : 3;
+
+        unsigned nr_channels : 2; /* MALI_POSITIVE */
+
+        unsigned flags : 11;
+
+        unsigned swizzle : 12;
+
+        unsigned unk4 : 4;
+} __attribute__((packed));
 
 struct bifrost_render_target {
-        u32 unk1; // = 0x4000000
-        u32 format;
+        struct mali_rt_format format;
 
         u64 zero1;
 
