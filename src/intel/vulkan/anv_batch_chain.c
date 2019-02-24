@@ -29,8 +29,6 @@
 
 #include "anv_private.h"
 
-#include "common/gen_decoder.h"
-
 #include "genxml/gen8_pack.h"
 
 #include "util/debug.h"
@@ -1591,50 +1589,6 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
    return VK_SUCCESS;
 }
 
-/* Finding a buffer for batch decoding */
-static struct gen_batch_decode_bo
-decode_get_bo(void *v_batch, uint64_t address)
-{
-   struct anv_cmd_buffer *cmd_buffer = v_batch;
-   struct anv_batch_bo *bo;
-
-   u_vector_foreach(bo, &cmd_buffer->seen_bbos) {
-      /* The decoder zeroes out the top 16 bits, so we need to as well */
-      uint64_t bo_address = bo->bo.offset & (~0ull >> 16);
-
-      if (address >= bo_address && address < bo_address + bo->bo.size) {
-         return (struct gen_batch_decode_bo) {
-            .addr = address,
-            .size = bo->bo.size,
-            .map = bo->bo.map,
-         };
-      }
-   }
-
-   return (struct gen_batch_decode_bo) { };
-}
-
-static void
-decode_batch(struct anv_cmd_buffer *cmd_buffer)
-{
-   struct gen_batch_decode_ctx ctx;
-   struct anv_batch_bo *bo = u_vector_head(&cmd_buffer->seen_bbos);
-   const unsigned decode_flags =
-      GEN_BATCH_DECODE_FULL |
-      ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
-      GEN_BATCH_DECODE_OFFSETS |
-      GEN_BATCH_DECODE_FLOATS;
-
-   gen_batch_decode_ctx_init(&ctx,
-                             &cmd_buffer->device->instance->physicalDevice.info,
-                             stderr, decode_flags, NULL,
-                             decode_get_bo, NULL, cmd_buffer);
-
-   gen_print_batch(&ctx, bo->bo.map, bo->bo.size, bo->bo.offset);
-
-   gen_batch_decode_ctx_finish(&ctx);
-}
-
 VkResult
 anv_cmd_buffer_execbuf(struct anv_device *device,
                        struct anv_cmd_buffer *cmd_buffer,
@@ -1797,9 +1751,6 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
    if (need_out_fence)
       execbuf.execbuf.flags |= I915_EXEC_FENCE_OUT;
-
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
-      decode_batch(cmd_buffer);
 
    result = anv_device_execbuf(device, &execbuf.execbuf, execbuf.bos);
 
