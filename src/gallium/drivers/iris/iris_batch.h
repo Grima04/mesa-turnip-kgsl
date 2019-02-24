@@ -30,7 +30,7 @@
 
 #include "util/u_dynarray.h"
 
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 #include "common/gen_decoder.h"
 
 #include "iris_fence.h"

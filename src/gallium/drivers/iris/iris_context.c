@@ -28,7 +28,7 @@
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_upload_mgr.h"
-#include "i915_drm.h"
+#include "drm-uapi/i915_drm.h"
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
