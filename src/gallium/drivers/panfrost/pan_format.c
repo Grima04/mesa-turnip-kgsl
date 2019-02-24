@@ -91,6 +91,8 @@ static unsigned
 panfrost_translate_channel_width(unsigned size)
 {
         switch (size) {
+                case 4:
+                        return MALI_CHANNEL_4;
                 case 8:
                         return MALI_CHANNEL_8;
                 case 16:
