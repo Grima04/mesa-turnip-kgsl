@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -47,6 +48,8 @@ extern "C" {
    OVERLAY_PARAM_BOOL(pipeline_compute)              \
    OVERLAY_PARAM_BOOL(pipeline_raytracing)           \
    OVERLAY_PARAM_BOOL(acquire_timing)                \
+   OVERLAY_PARAM_CUSTOM(fps_sampling_period)         \
+   OVERLAY_PARAM_CUSTOM(output_file)                 \
    OVERLAY_PARAM_CUSTOM(position)                    \
    OVERLAY_PARAM_CUSTOM(help)
 
@@ -69,6 +72,8 @@ enum overlay_param_enabled {
 struct overlay_params {
    bool enabled[OVERLAY_PARAM_ENABLED_MAX];
    enum overlay_param_position position;
+   FILE *output_file;
+   uint32_t fps_sampling_period; /* us */
    bool help;
 };
 

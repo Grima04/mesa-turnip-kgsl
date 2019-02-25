@@ -211,6 +211,8 @@ static struct instance_data *new_instance_data(VkInstance instance)
 
 static void destroy_instance_data(struct instance_data *data)
 {
+   if (data->params.output_file)
+      fclose(data->params.output_file);
    unmap_object(data->instance);
    ralloc_free(data);
 }
@@ -338,7 +340,8 @@ static void destroy_swapchain_data(struct swapchain_data *data)
 
 static void snapshot_swapchain_frame(struct swapchain_data *data)
 {
-   uint64_t now = os_time_get();
+   struct instance_data *instance_data = data->device->instance;
+   uint64_t now = os_time_get(); /* us */
 
    if (data->last_present_time) {
       data->frame_times[(data->n_frames - 1) % ARRAY_SIZE(data->frame_times)] =
@@ -346,11 +349,15 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
    }
 
    if (data->last_fps_update) {
-      double elapsed = (double)(now - data->last_fps_update);
-      if (elapsed >= 500000.0) {
-         data->fps = ((uint64_t)data->n_frames_since_update * 1000000 / elapsed);
+      double elapsed = (double)(now - data->last_fps_update); /* us */
+      if (elapsed >= instance_data->params.fps_sampling_period) {
+         data->fps = 1000000.0f * data->n_frames_since_update / elapsed;
          data->n_frames_since_update = 0;
          data->last_fps_update = now;
+         if (instance_data->params.output_file) {
+            fprintf(instance_data->params.output_file, "%.2f\n", data->fps);
+            fflush(instance_data->params.output_file);
+         }
       }
    } else {
       data->last_fps_update = now;

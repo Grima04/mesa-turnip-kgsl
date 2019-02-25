@@ -41,6 +41,18 @@ parse_position(const char *str)
    return LAYER_POSITION_TOP_LEFT;
 }
 
+static FILE *
+parse_output_file(const char *str)
+{
+   return fopen(str, "w+");
+}
+
+static uint32_t
+parse_fps_sampling_period(const char *str)
+{
+   return strtol(str, NULL, 0) * 1000;
+}
+
 static bool
 parse_help(const char *str)
 {
@@ -51,11 +63,8 @@ parse_help(const char *str)
    OVERLAY_PARAMS
 #undef OVERLAY_PARAM_BOOL
 #undef OVERLAY_PARAM_CUSTOM
-   fprintf(stderr, "\tposition=\n"
-           "\t\ttop-left\n"
-           "\t\ttop-right\n"
-           "\t\tbottom-left\n"
-           "\t\tbottom-right\n");
+   fprintf(stderr, "\tposition=top-left|top-right|bottom-left|bottom-right\n");
+   fprintf(stderr, "\tfps_sampling_period=number of milliseconds\n");
 
    return true;
 }
@@ -80,7 +89,8 @@ parse_string(const char *s, char *out_param, char *out_value)
       i++;
       for (; !is_delimiter(*s); s++, out_value++, i++)
          *out_value = *s;
-   }
+   } else
+      *(out_value++) = '1';
    *out_value = 0;
 
    if (*s && is_delimiter(*s)) {
@@ -117,6 +127,7 @@ parse_overlay_env(struct overlay_params *params,
    /* Visible by default */
    params->enabled[OVERLAY_PARAM_ENABLED_fps] = true;
    params->enabled[OVERLAY_PARAM_ENABLED_frame_timing] = true;
+   params->fps_sampling_period = 500000; /* 500ms */
 
    if (!env)
       return;
@@ -126,11 +137,12 @@ parse_overlay_env(struct overlay_params *params,
 
 #define OVERLAY_PARAM_BOOL(name)                                        \
       if (!strcmp(#name, key)) {                                        \
-         params->enabled[OVERLAY_PARAM_ENABLED_##name] = strtol(value, NULL, 0); \
+         params->enabled[OVERLAY_PARAM_ENABLED_##name] =                \
+            strtol(value, NULL, 0);                                     \
          continue;                                                      \
       }
-#define OVERLAY_PARAM_CUSTOM(name)              \
-      if (!strcmp(#name, key)) {                \
+#define OVERLAY_PARAM_CUSTOM(name)               \
+      if (!strcmp(#name, key)) {                 \
          params->name = parse_##name(value);     \
          continue;                               \
       }
