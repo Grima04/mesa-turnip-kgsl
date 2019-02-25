@@ -103,6 +103,17 @@ tu_cs_emit(struct tu_cs *cs, uint32_t value)
    ++cs->cur;
 }
 
+/**
+ * Emit an array of uint32_t into a command stream, without boundary checking.
+ */
+static inline void
+tu_cs_emit_array(struct tu_cs *cs, const uint32_t *values, uint32_t length)
+{
+   assert(cs->cur + length <= cs->reserved_end);
+   memcpy(cs->cur, values, sizeof(uint32_t) * length);
+   cs->cur += length;
+}
+
 static inline unsigned
 tu_odd_parity_bit(unsigned val)
 {
