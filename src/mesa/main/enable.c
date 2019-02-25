@@ -1039,9 +1039,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          /* This was added with ARB_vertex_program, but it is also used with
           * GLSL vertex shaders on desktop.
           */
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_ARB_vertex_program(ctx) &&
+             ctx->API != API_OPENGL_CORE)
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          if (ctx->VertexProgram.PointSizeEnabled == state)
             return;
          FLUSH_VERTICES(ctx, _NEW_PROGRAM);
@@ -1816,9 +1816,9 @@ _mesa_IsEnabled( GLenum cap )
          /* This was added with ARB_vertex_program, but it is also used with
           * GLSL vertex shaders on desktop.
           */
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_ARB_vertex_program(ctx) &&
+             ctx->API != API_OPENGL_CORE)
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          return ctx->VertexProgram.PointSizeEnabled;
       case GL_VERTEX_PROGRAM_TWO_SIDE_ARB:
          if (!_mesa_has_ARB_vertex_program(ctx))
