@@ -31,8 +31,8 @@ vk_enum_to_str = custom_target(
   input : ['gen_enum_to_str.py', vk_api_xml],
   output : ['vk_enum_to_str.c', 'vk_enum_to_str.h'],
   command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--outdir',
-    meson.current_build_dir()
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
+    '--outdir', meson.current_build_dir()
   ],
 )
 

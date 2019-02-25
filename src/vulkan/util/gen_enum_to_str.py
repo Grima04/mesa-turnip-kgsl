@@ -95,6 +95,23 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
       % endif
     %endfor
 
+    size_t vk_structure_type_size(const struct VkBaseInStructure *item)
+    {
+        switch(item->sType) {
+    % for struct in structs:
+        % if struct.extension is not None and struct.extension.define is not None:
+    #ifdef ${struct.extension.define}
+        case ${struct.stype}: return sizeof(${struct.name});
+    #endif
+        % else:
+        case ${struct.stype}: return sizeof(${struct.name});
+        % endif
+    %endfor
+        default:
+            unreachable("Undefined struct type.");
+        }
+    }
+
     void vk_load_instance_commands(VkInstance instance,
                                    PFN_vkGetInstanceProcAddr gpa,
                                    struct vk_instance_dispatch_table *table)
@@ -165,6 +182,8 @@ H_TEMPLATE = Template(textwrap.dedent(u"""\
 #endif
       % endif
     % endfor
+
+    size_t vk_structure_type_size(const struct VkBaseInStructure *item);
 
     struct vk_instance_dispatch_table {
         PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
@@ -245,6 +264,7 @@ class VkEnum(object):
 
     def __init__(self, name, values=None):
         self.name = name
+        self.extension = None
         # Maps numbers to names
         self.values = values or dict()
         self.name_to_value = dict()
@@ -266,6 +286,7 @@ class VkEnum(object):
             self.values[value] = name
 
     def add_value_from_xml(self, elem, extension=None):
+        self.extension = extension
         if 'value' in elem.attrib:
             self.add_value(elem.attrib['name'],
                            value=int(elem.attrib['value'], base=0))
@@ -296,7 +317,23 @@ class VkCommand(object):
         self.extension = None
 
 
-def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
+class VkChainStruct(object):
+    """Simple struct-like class representing a single Vulkan struct identified with a VkStructureType"""
+    def __init__(self, name, stype):
+        self.name = name
+        self.stype = stype
+        self.extension = None
+
+
+def struct_get_stype(xml_node):
+    for member in xml_node.findall('./member'):
+        name = member.findall('./name')
+        if len(name) > 0 and name[0].text == "sType":
+            return member.get('values')
+    return None
+
+
+def parse_xml(cmd_factory, enum_factory, ext_factory, struct_factory, filename):
     """Parse the XML file. Accumulate results into the factories.
 
     This parser is a memory efficient iterative XML parser that returns a list
@@ -323,6 +360,12 @@ def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
             cmd_factory(name.text,
                         device_entrypoint=(first_arg.text in ('VkDevice', 'VkCommandBuffer', 'VkQueue')))
 
+    for struct_type in xml.findall('./types/type[@category="struct"]'):
+        name = struct_type.attrib['name']
+        stype = struct_get_stype(struct_type)
+        if stype is not None:
+            struct_factory(name, stype=stype)
+
     platform_define = {}
     for platform in xml.findall('./platforms/platform'):
         name = platform.attrib['name']
@@ -341,6 +384,10 @@ def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
             enum = enum_factory.get(value.attrib['extends'])
             if enum is not None:
                 enum.add_value_from_xml(value, extension)
+        for t in ext_elem.findall('./require/type'):
+            struct = struct_factory.get(t.attrib['name'])
+            if struct is not None:
+                struct.extension = extension
 
         if define:
             for value in ext_elem.findall('./require/type[@name]'):
@@ -369,11 +416,13 @@ def main():
     command_factory = NamedFactory(VkCommand)
     enum_factory = NamedFactory(VkEnum)
     ext_factory = NamedFactory(VkExtension)
+    struct_factory = NamedFactory(VkChainStruct)
     for filename in args.xml_files:
-        parse_xml(command_factory, enum_factory, ext_factory, filename)
+        parse_xml(command_factory, enum_factory, ext_factory, struct_factory, filename)
     commands = sorted(command_factory.registry.values(), key=lambda e: e.name)
     enums = sorted(enum_factory.registry.values(), key=lambda e: e.name)
     extensions = sorted(ext_factory.registry.values(), key=lambda e: e.name)
+    structs = sorted(struct_factory.registry.values(), key=lambda e: e.name)
 
     for template, file_ in [(C_TEMPLATE, os.path.join(args.outdir, 'vk_enum_to_str.c')),
                             (H_TEMPLATE, os.path.join(args.outdir, 'vk_enum_to_str.h'))]:
@@ -383,6 +432,7 @@ def main():
                 commands=commands,
                 enums=enums,
                 extensions=extensions,
+                structs=structs,
                 copyright=COPYRIGHT,
                 FOREIGN_ENUM_VALUES=FOREIGN_ENUM_VALUES))
 
