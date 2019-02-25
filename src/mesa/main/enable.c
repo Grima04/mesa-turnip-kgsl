@@ -1064,7 +1064,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_TILE_RASTER_ORDER_FIXED_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          if (ctx->TileRasterOrderFixed != state) {
             FLUSH_VERTICES(ctx, 0);
             ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
@@ -1073,7 +1074,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_TILE_RASTER_ORDER_INCREASING_X_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          if (ctx->TileRasterOrderIncreasingX != state) {
             FLUSH_VERTICES(ctx, 0);
             ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
@@ -1082,7 +1084,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_TILE_RASTER_ORDER_INCREASING_Y_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          if (ctx->TileRasterOrderIncreasingY != state) {
             FLUSH_VERTICES(ctx, 0);
             ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
@@ -1779,15 +1782,18 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->ConservativeRasterization;
 
       case GL_TILE_RASTER_ORDER_FIXED_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          return ctx->TileRasterOrderFixed;
 
       case GL_TILE_RASTER_ORDER_INCREASING_X_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          return ctx->TileRasterOrderIncreasingX;
 
       case GL_TILE_RASTER_ORDER_INCREASING_Y_MESA:
-         CHECK_EXTENSION(MESA_tile_raster_order);
+         if (!_mesa_has_MESA_tile_raster_order(ctx))
+            goto invalid_enum_error;
          return ctx->TileRasterOrderIncreasingY;
 
       default:
