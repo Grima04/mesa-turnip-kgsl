@@ -1067,9 +1067,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_EXT_stencil_two_side */
       case GL_STENCIL_TEST_TWO_SIDE_EXT:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_EXT_stencil_two_side(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_stencil_two_side);
          if (ctx->Stencil.TestTwoSide == state)
             return;
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewStencil ? 0 : _NEW_STENCIL);
@@ -1832,9 +1831,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_EXT_stencil_two_side */
       case GL_STENCIL_TEST_TWO_SIDE_EXT:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_EXT_stencil_two_side(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_stencil_two_side);
          return ctx->Stencil.TestTwoSide;
 
       case GL_FRAGMENT_PROGRAM_ARB:
