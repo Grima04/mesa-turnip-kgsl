@@ -275,11 +275,6 @@ _mesa_DisableClientStateiEXT( GLenum cap, GLuint index )
    client_state_i(ctx, ctx->Array.VAO, cap, index, GL_FALSE);
 }
 
-#define CHECK_EXTENSION(EXTNAME)					\
-   if (!ctx->Extensions.EXTNAME) {					\
-      goto invalid_enum_error;						\
-   }
-
 /**
  * Return pointer to current texture unit for setting/getting coordinate
  * state.
