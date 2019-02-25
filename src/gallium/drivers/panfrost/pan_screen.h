@@ -46,6 +46,7 @@ struct panfrost_screen;
 /* Flags for allocated memory */
 #define PAN_ALLOCATE_EXECUTE (1 << 0)
 #define PAN_ALLOCATE_GROWABLE (1 << 1)
+#define PAN_ALLOCATE_INVISIBLE (1 << 2)
 
 struct panfrost_driver {
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
