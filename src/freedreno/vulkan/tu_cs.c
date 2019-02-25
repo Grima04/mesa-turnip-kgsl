@@ -307,7 +307,11 @@ tu_cs_reserve_space(struct tu_device *dev,
       VkResult result = tu_cs_add_bo(dev, cs, new_size);
       if (result != VK_SUCCESS)
          return result;
-      cs->next_bo_size = new_size * 2;
+
+      /* double the size for the next bo */
+      new_size <<= 1;
+      if (cs->next_bo_size < new_size)
+         cs->next_bo_size = new_size;
    }
 
    assert(tu_cs_get_space(cs) >= reserved_size);

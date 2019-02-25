@@ -484,7 +484,7 @@ struct tu_cs_entry
    const struct tu_bo *bo;
 
    uint32_t size;
-   uint64_t offset;
+   uint32_t offset;
 };
 
 enum tu_cs_mode
