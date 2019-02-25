@@ -1229,9 +1229,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_OES_EGL_image_external */
       case GL_TEXTURE_EXTERNAL_OES:
-         if (!_mesa_is_gles(ctx))
+         if (!_mesa_has_OES_EGL_image_external(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(OES_EGL_image_external);
          if (!enable_texture(ctx, state, TEXTURE_EXTERNAL_BIT)) {
             return;
          }
@@ -1900,9 +1899,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_OES_EGL_image_external */
       case GL_TEXTURE_EXTERNAL_OES:
-         if (!_mesa_is_gles(ctx))
+         if (!_mesa_has_OES_EGL_image_external(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(OES_EGL_image_external);
          return is_texture_enabled(ctx, TEXTURE_EXTERNAL_BIT);
 
       /* ARB_texture_multisample */
