@@ -1640,7 +1640,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    for (uint32_t i = 0; i < cmd_buffer->tile_cs.bo_count; i++) {
       tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->tile_cs.bos[i],
-                     MSM_SUBMIT_BO_READ);
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    }
 
    tu_cs_end(&cmd_buffer->cs);

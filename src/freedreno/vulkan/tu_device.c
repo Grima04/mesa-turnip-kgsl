@@ -1212,8 +1212,9 @@ tu_QueueSubmit(VkQueue _queue,
          struct tu_cs *cs = &cmdbuf->cs;
          for (unsigned i = 0; i < cs->entry_count; ++i, ++entry_idx) {
             cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
-            cmds[entry_idx].submit_idx = tu_bo_list_add(
-               &bo_list, cs->entries[i].bo, MSM_SUBMIT_BO_READ);
+            cmds[entry_idx].submit_idx =
+               tu_bo_list_add(&bo_list, cs->entries[i].bo,
+                              MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
             cmds[entry_idx].submit_offset = cs->entries[i].offset;
             cmds[entry_idx].size = cs->entries[i].size;
             cmds[entry_idx].pad = 0;
