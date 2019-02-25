@@ -364,7 +364,7 @@ handle_3dstate_vertex_buffers(struct aub_viewer_decode_ctx *ctx,
       if (iter.struct_desc != vbs)
          continue;
 
-      uint64_t buffer_addr;
+      uint64_t buffer_addr = 0;
 
       struct gen_field_iterator vbs_iter;
       gen_field_iterator_init(&vbs_iter, vbs, &iter.p[iter.start_bit / 32], 0, false);
