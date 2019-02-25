@@ -47,6 +47,7 @@ struct panfrost_screen;
 #define PAN_ALLOCATE_EXECUTE (1 << 0)
 #define PAN_ALLOCATE_GROWABLE (1 << 1)
 #define PAN_ALLOCATE_INVISIBLE (1 << 2)
+#define PAN_ALLOCATE_COHERENT_LOCAL (1 << 3)
 
 struct panfrost_driver {
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
