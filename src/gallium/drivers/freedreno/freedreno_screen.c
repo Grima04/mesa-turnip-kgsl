@@ -279,7 +279,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return is_ir3(screen) ? 140 : 120;
 
 	case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
-		if (is_a5xx(screen) || is_a6xx(screen))
+		if (is_a6xx(screen)) return 64;
+		if (is_a5xx(screen)) return 4;
 			return 4;
 		return 0;
 
