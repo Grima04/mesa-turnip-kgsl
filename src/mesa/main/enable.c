@@ -1774,7 +1774,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->IntelConservativeRasterization;
 
       case GL_CONSERVATIVE_RASTERIZATION_NV:
-         CHECK_EXTENSION(NV_conservative_raster);
+         if (!_mesa_has_NV_conservative_raster(ctx))
+            goto invalid_enum_error;
          return ctx->ConservativeRasterization;
 
       case GL_TILE_RASTER_ORDER_FIXED_MESA:
