@@ -949,6 +949,7 @@ struct anv_physical_device {
     bool                                        has_context_priority;
     bool                                        use_softpin;
     bool                                        has_context_isolation;
+    bool                                        always_use_bindless;
 
     struct anv_device_extension_table           supported_extensions;
 
@@ -1564,6 +1565,14 @@ unsigned anv_descriptor_size(const struct anv_descriptor_set_binding_layout *lay
 
 unsigned anv_descriptor_type_size(const struct anv_physical_device *pdevice,
                                   VkDescriptorType type);
+
+bool anv_descriptor_supports_bindless(const struct anv_physical_device *pdevice,
+                                      const struct anv_descriptor_set_binding_layout *binding,
+                                      bool sampler);
+
+bool anv_descriptor_requires_bindless(const struct anv_physical_device *pdevice,
+                                      const struct anv_descriptor_set_binding_layout *binding,
+                                      bool sampler);
 
 struct anv_descriptor_set_layout {
    /* Descriptor set layouts can be destroyed at almost any time */

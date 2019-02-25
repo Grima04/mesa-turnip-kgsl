@@ -26,6 +26,12 @@
 #include "nir/nir_builder.h"
 #include "compiler/brw_nir.h"
 
+/* Sampler tables don't actually have a maximum size but we pick one just so
+ * that we don't end up emitting too much state on-the-fly.
+ */
+#define MAX_SAMPLER_TABLE_SIZE 128
+#define BINDLESS_OFFSET        255
+
 struct apply_pipeline_layout_state {
    const struct anv_physical_device *pdevice;
 
@@ -600,10 +606,20 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                &layout->set[set].layout->binding[b];
 
          /* Do a fixed-point calculation to generate a score based on the
-          * number of uses and the binding array size.
+          * number of uses and the binding array size.  We shift by 7 instead
+          * of 8 because we're going to use the top bit below to make
+          * everything which does not support bindless super higher priority
+          * than things which do.
           */
          uint16_t score = ((uint16_t)state.set[set].use_count[b] << 7) /
                           binding->array_size;
+
+         /* If the descriptor type doesn't support bindless then put it at the
+          * beginning so we guarantee it gets a slot.
+          */
+         if (!anv_descriptor_supports_bindless(pdevice, binding, true) ||
+             !anv_descriptor_supports_bindless(pdevice, binding, false))
+            score |= 1 << 15;
 
          infos[used_binding_count++] = (struct binding_info) {
             .set = set,
@@ -624,37 +640,57 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       struct anv_descriptor_set_binding_layout *binding =
             &layout->set[set].layout->binding[b];
 
+      const uint32_t array_size = binding->array_size;
+
       if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
-         state.set[set].surface_offsets[b] = map->surface_count;
-         struct anv_sampler **samplers = binding->immutable_samplers;
-         for (unsigned i = 0; i < binding->array_size; i++) {
-            uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-            for (uint8_t p = 0; p < planes; p++) {
-               map->surface_to_descriptor[map->surface_count++] =
-                  (struct anv_pipeline_binding) {
-                     .set = set,
-                     .binding = b,
-                     .index = i,
-                     .plane = p,
-                  };
+         if (map->surface_count + array_size > MAX_BINDING_TABLE_SIZE ||
+             anv_descriptor_requires_bindless(pdevice, binding, false)) {
+            /* If this descriptor doesn't fit in the binding table or if it
+             * requires bindless for some reason, flag it as bindless.
+             */
+            assert(anv_descriptor_supports_bindless(pdevice, binding, false));
+            state.set[set].surface_offsets[b] = BINDLESS_OFFSET;
+         } else {
+            state.set[set].surface_offsets[b] = map->surface_count;
+            struct anv_sampler **samplers = binding->immutable_samplers;
+            for (unsigned i = 0; i < binding->array_size; i++) {
+               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+               for (uint8_t p = 0; p < planes; p++) {
+                  map->surface_to_descriptor[map->surface_count++] =
+                     (struct anv_pipeline_binding) {
+                        .set = set,
+                        .binding = b,
+                        .index = i,
+                        .plane = p,
+                     };
+               }
             }
          }
+         assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
       }
-      assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
 
       if (binding->data & ANV_DESCRIPTOR_SAMPLER_STATE) {
-         state.set[set].sampler_offsets[b] = map->sampler_count;
-         struct anv_sampler **samplers = binding->immutable_samplers;
-         for (unsigned i = 0; i < binding->array_size; i++) {
-            uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-            for (uint8_t p = 0; p < planes; p++) {
-               map->sampler_to_descriptor[map->sampler_count++] =
-                  (struct anv_pipeline_binding) {
-                     .set = set,
-                     .binding = b,
-                     .index = i,
-                     .plane = p,
-                  };
+         if (map->sampler_count + array_size > MAX_SAMPLER_TABLE_SIZE ||
+             anv_descriptor_requires_bindless(pdevice, binding, true)) {
+            /* If this descriptor doesn't fit in the binding table or if it
+             * requires bindless for some reason, flag it as bindless.
+             */
+            assert(anv_descriptor_supports_bindless(pdevice, binding, true));
+            state.set[set].sampler_offsets[b] = BINDLESS_OFFSET;
+         } else {
+            state.set[set].sampler_offsets[b] = map->sampler_count;
+            struct anv_sampler **samplers = binding->immutable_samplers;
+            for (unsigned i = 0; i < binding->array_size; i++) {
+               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+               for (uint8_t p = 0; p < planes; p++) {
+                  map->sampler_to_descriptor[map->sampler_count++] =
+                     (struct anv_pipeline_binding) {
+                        .set = set,
+                        .binding = b,
+                        .index = i,
+                        .plane = p,
+                     };
+               }
             }
          }
       }
@@ -674,6 +710,9 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
          layout->set[set].layout->binding[binding].array_size;
 
       if (state.set[set].use_count[binding] == 0)
+         continue;
+
+      if (state.set[set].surface_offsets[binding] >= MAX_BINDING_TABLE_SIZE)
          continue;
 
       struct anv_pipeline_binding *pipe_binding =

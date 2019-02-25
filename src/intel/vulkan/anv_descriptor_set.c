@@ -125,15 +125,50 @@ anv_descriptor_type_size(const struct anv_physical_device *pdevice,
    return anv_descriptor_data_size(anv_descriptor_data_for_type(pdevice, type));
 }
 
+static bool
+anv_descriptor_data_supports_bindless(const struct anv_physical_device *pdevice,
+                                      enum anv_descriptor_data data,
+                                      bool sampler)
+{
+   return false;
+}
+
+bool
+anv_descriptor_supports_bindless(const struct anv_physical_device *pdevice,
+                                 const struct anv_descriptor_set_binding_layout *binding,
+                                 bool sampler)
+{
+   return anv_descriptor_data_supports_bindless(pdevice, binding->data,
+                                                sampler);
+}
+
+bool
+anv_descriptor_requires_bindless(const struct anv_physical_device *pdevice,
+                                 const struct anv_descriptor_set_binding_layout *binding,
+                                 bool sampler)
+{
+   if (pdevice->always_use_bindless)
+      return anv_descriptor_supports_bindless(pdevice, binding, sampler);
+
+   return false;
+}
+
 void anv_GetDescriptorSetLayoutSupport(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
     VkDescriptorSetLayoutSupport*               pSupport)
 {
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   const struct anv_physical_device *pdevice =
+      &device->instance->physicalDevice;
+
    uint32_t surface_count[MESA_SHADER_STAGES] = { 0, };
 
    for (uint32_t b = 0; b < pCreateInfo->bindingCount; b++) {
       const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[b];
+
+      enum anv_descriptor_data desc_data =
+         anv_descriptor_data_for_type(pdevice, binding->descriptorType);
 
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -141,6 +176,9 @@ void anv_GetDescriptorSetLayoutSupport(
          break;
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         if (anv_descriptor_data_supports_bindless(pdevice, desc_data, false))
+            break;
+
          if (binding->pImmutableSamplers) {
             for (uint32_t i = 0; i < binding->descriptorCount; i++) {
                ANV_FROM_HANDLE(anv_sampler, sampler,
@@ -155,6 +193,9 @@ void anv_GetDescriptorSetLayoutSupport(
          break;
 
       default:
+         if (anv_descriptor_data_supports_bindless(pdevice, desc_data, false))
+            break;
+
          anv_foreach_stage(s, binding->stageFlags)
             surface_count[s] += binding->descriptorCount;
          break;

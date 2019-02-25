@@ -276,6 +276,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
    _mesa_sha1_update(&sha1_ctx, &device->chipset_id,
                      sizeof(device->chipset_id));
+   _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
+                     sizeof(device->always_use_bindless));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
@@ -450,6 +452,10 @@ anv_physical_device_init(struct anv_physical_device *device,
 
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
+
+   device->always_use_bindless =
+      env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);
+
 
    /* Starting with Gen10, the timestamp frequency of the command streamer may
     * vary from one part to another. We can query the value from the kernel.
