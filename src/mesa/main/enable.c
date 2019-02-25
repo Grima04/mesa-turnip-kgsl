@@ -107,7 +107,7 @@ client_state(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_NV_primitive_restart */
       case GL_PRIMITIVE_RESTART_NV:
-         if (!ctx->Extensions.NV_primitive_restart)
+         if (!_mesa_has_NV_primitive_restart(ctx))
             goto invalid_enum_error;
          if (ctx->Array.PrimitiveRestart == state)
             return;
@@ -1721,9 +1721,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_NV_primitive_restart */
       case GL_PRIMITIVE_RESTART_NV:
-         if (ctx->API != API_OPENGL_COMPAT || !ctx->Extensions.NV_primitive_restart) {
+         if (!_mesa_has_NV_primitive_restart(ctx))
             goto invalid_enum_error;
-         }
          return ctx->Array.PrimitiveRestart;
 
       /* GL 3.1 primitive restart */
