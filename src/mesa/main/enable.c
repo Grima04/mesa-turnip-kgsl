@@ -1058,9 +1058,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_NV_texture_rectangle */
       case GL_TEXTURE_RECTANGLE_NV:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_NV_texture_rectangle(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(NV_texture_rectangle);
          if (!enable_texture(ctx, state, TEXTURE_RECT_BIT)) {
             return;
          }
@@ -1827,9 +1826,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_NV_texture_rectangle */
       case GL_TEXTURE_RECTANGLE_NV:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_NV_texture_rectangle(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(NV_texture_rectangle);
          return is_texture_enabled(ctx, TEXTURE_RECT_BIT);
 
       /* GL_EXT_stencil_two_side */
