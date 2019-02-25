@@ -1027,9 +1027,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_VERTEX_PROGRAM_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_vertex_program(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          if (ctx->VertexProgram.Enabled == state)
             return;
          FLUSH_VERTICES(ctx, _NEW_PROGRAM);
@@ -1811,9 +1810,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->Point.PointSprite;
 
       case GL_VERTEX_PROGRAM_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_vertex_program(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          return ctx->VertexProgram.Enabled;
       case GL_VERTEX_PROGRAM_POINT_SIZE_ARB:
          /* This was added with ARB_vertex_program, but it is also used with
