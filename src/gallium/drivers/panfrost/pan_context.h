@@ -30,6 +30,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include "pan_resource.h"
+#include "pan_job.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_config.h"
@@ -39,6 +40,7 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "util/u_blitter.h"
+#include "util/hash_table.h"
 
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
@@ -94,6 +96,10 @@ struct panfrost_transient_pool {
 struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
+
+        /* Bound job and map of panfrost_job_key to jobs */
+        struct panfrost_job *job;
+        struct hash_table *jobs;
 
         /* Bit mask for supported PIPE_DRAW for this hardware */
         unsigned draw_modes;

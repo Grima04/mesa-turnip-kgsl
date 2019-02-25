@@ -1712,11 +1712,6 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
         }
 }
 
-static void
-panfrost_draw_vbo(
-        struct pipe_context *pipe,
-        const struct pipe_draw_info *info);
-
 #define CALCULATE_MIN_MAX_INDEX(T, buffer, start, count) \
         for (unsigned _idx = (start); _idx < (start + count); ++_idx) { \
                 T idx = buffer[_idx]; \
@@ -1752,6 +1747,11 @@ panfrost_draw_vbo(
                         return;
                 }
         }
+
+        /* Now that we have a guaranteed terminating path, find the job.
+         * Assignment commented out to prevent unused warning */
+
+        /* struct panfrost_job *job = */ panfrost_get_job_for_fbo(ctx);
 
         ctx->payload_tiler.prefix.draw_mode = g2m_draw_mode(mode);
 
@@ -2843,6 +2843,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         /* Prepare for render! */
 
+        panfrost_job_init(ctx);
         panfrost_emit_vertex_payload(ctx);
         panfrost_emit_tiler_payload(ctx);
         panfrost_invalidate_frame(ctx);
