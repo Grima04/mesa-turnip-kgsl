@@ -1048,9 +1048,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          ctx->VertexProgram.PointSizeEnabled = state;
          break;
       case GL_VERTEX_PROGRAM_TWO_SIDE_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_vertex_program(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          if (ctx->VertexProgram.TwoSideEnabled == state)
             return;
          FLUSH_VERTICES(ctx, _NEW_PROGRAM);
@@ -1822,9 +1821,8 @@ _mesa_IsEnabled( GLenum cap )
          CHECK_EXTENSION(ARB_vertex_program);
          return ctx->VertexProgram.PointSizeEnabled;
       case GL_VERTEX_PROGRAM_TWO_SIDE_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_vertex_program(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_vertex_program);
          return ctx->VertexProgram.TwoSideEnabled;
 
       /* GL_NV_texture_rectangle */
