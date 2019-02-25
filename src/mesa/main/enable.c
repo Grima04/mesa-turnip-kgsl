@@ -1149,7 +1149,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_BLEND_ADVANCED_COHERENT_KHR:
-         CHECK_EXTENSION(KHR_blend_equation_advanced_coherent);
+         if (!_mesa_has_KHR_blend_equation_advanced_coherent(ctx))
+            goto invalid_enum_error;
          if (ctx->Color.BlendCoherent == state)
             return;
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewBlend ? 0 : _NEW_COLOR);
@@ -1772,7 +1773,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->Multisample.SampleShading;
 
       case GL_BLEND_ADVANCED_COHERENT_KHR:
-         CHECK_EXTENSION(KHR_blend_equation_advanced_coherent);
+         if (!_mesa_has_KHR_blend_equation_advanced_coherent(ctx))
+            goto invalid_enum_error;
          return ctx->Color.BlendCoherent;
 
       case GL_CONSERVATIVE_RASTERIZATION_INTEL:
