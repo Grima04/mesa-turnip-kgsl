@@ -1147,9 +1147,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
         break;
 
       case GL_TEXTURE_CUBE_MAP_SEAMLESS:
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_ARB_seamless_cube_map(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_seamless_cube_map);
          if (ctx->Texture.CubeMapSeamless != state) {
             FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT);
             ctx->Texture.CubeMapSeamless = state;
@@ -1866,9 +1865,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->ATIFragmentShader.Enabled;
 
       case GL_TEXTURE_CUBE_MAP_SEAMLESS:
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_ARB_seamless_cube_map(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_seamless_cube_map);
          return ctx->Texture.CubeMapSeamless;
 
       case GL_RASTERIZER_DISCARD:
