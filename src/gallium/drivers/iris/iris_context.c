@@ -198,7 +198,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
                       IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE);
 
    ice->query_buffer_uploader =
-      u_upload_create(ctx, 4096, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,
+      u_upload_create(ctx, 4096, PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING,
                       0);
 
    genX_call(devinfo, init_state, ice);
