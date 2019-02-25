@@ -1136,9 +1136,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* ARB_texture_multisample */
       case GL_SAMPLE_MASK:
-         if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles31(ctx))
+         if (!_mesa_has_ARB_texture_multisample(ctx) && !_mesa_is_gles31(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_texture_multisample);
          if (ctx->Multisample.SampleMask == state)
             return;
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleMask ? 0 :
@@ -1758,9 +1757,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* ARB_texture_multisample */
       case GL_SAMPLE_MASK:
-         if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles31(ctx))
+         if (!_mesa_has_ARB_texture_multisample(ctx) && !_mesa_is_gles31(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_texture_multisample);
          return ctx->Multisample.SampleMask;
 
       /* ARB_sample_shading */
