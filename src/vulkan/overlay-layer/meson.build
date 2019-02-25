@@ -33,6 +33,7 @@ endforeach
 
 vklayer_files = files(
   'overlay.cpp',
+  'overlay_params.c',
   'vk_layer_table.cpp',
 )
 
