@@ -974,9 +974,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_FRAGMENT_PROGRAM_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_fragment_program(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(ARB_fragment_program);
          if (ctx->FragmentProgram.Enabled == state)
             return;
          FLUSH_VERTICES(ctx, _NEW_PROGRAM);
@@ -1671,7 +1670,7 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->Stencil.TestTwoSide;
 
       case GL_FRAGMENT_PROGRAM_ARB:
-         if (ctx->API != API_OPENGL_COMPAT)
+         if (!_mesa_has_ARB_fragment_program(ctx))
             goto invalid_enum_error;
          return ctx->FragmentProgram.Enabled;
 
