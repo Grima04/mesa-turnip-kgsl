@@ -3,9 +3,12 @@ Dear ImGui
 
 This directory contains a copy of the Dear ImGui library at the following commit :
 
-commit 6211f40f3d903dd9df961256e044029c49793aa3
+commit f977871854af941289f2a9090dcc90f7aa3449a8
 Author: omar <omarcornut@gmail.com>
-Date:   Fri Jul 27 12:29:33 2018 +0200
+Date:   Fri Feb 15 13:10:22 2019 +0100
+
+    ImFont: Minor adjustment to the structure.
+    Examples: Removed unused variable.
 
 Embedding the library into one's project is main way people seems to
 work with ImGui. Since this is just for a debugging tool, we're not
