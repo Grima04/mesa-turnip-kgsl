@@ -44,13 +44,6 @@
 #include "varray.h"
 
 
-
-#define CHECK_EXTENSION(EXTNAME, CAP)					\
-   if (!ctx->Extensions.EXTNAME) {					\
-      goto invalid_enum_error;						\
-   }
-
-
 static void
 update_derived_primitive_restart_state(struct gl_context *ctx)
 {
@@ -170,7 +163,6 @@ _mesa_DisableClientState( GLenum cap )
 }
 
 
-#undef CHECK_EXTENSION
 #define CHECK_EXTENSION(EXTNAME, CAP)					\
    if (!ctx->Extensions.EXTNAME) {					\
       goto invalid_enum_error;						\
