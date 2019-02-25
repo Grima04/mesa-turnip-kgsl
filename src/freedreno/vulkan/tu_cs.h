@@ -60,6 +60,17 @@ void
 tu_cs_reset(struct tu_device *dev, struct tu_cs *cs);
 
 /**
+ * Discard all entries.  This allows \a cs to be reused while keeping the
+ * existing BOs and command packets intact.
+ */
+static inline void
+tu_cs_discard_entries(struct tu_cs *cs)
+{
+   assert(cs->mode == TU_CS_MODE_GROW);
+   cs->entry_count = 0;
+}
+
+/**
  * Get the size needed for tu_cs_emit_call.
  */
 static inline uint32_t
