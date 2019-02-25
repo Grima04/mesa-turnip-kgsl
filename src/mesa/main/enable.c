@@ -1092,9 +1092,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_EXT_depth_bounds_test */
       case GL_DEPTH_BOUNDS_TEST_EXT:
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_EXT_depth_bounds_test(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_depth_bounds_test);
          if (ctx->Depth.BoundsTest == state)
             return;
          FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepth ? 0 : _NEW_DEPTH);
@@ -1842,9 +1841,8 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_EXT_depth_bounds_test */
       case GL_DEPTH_BOUNDS_TEST_EXT:
-         if (!_mesa_is_desktop_gl(ctx))
+         if (!_mesa_has_EXT_depth_bounds_test(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_depth_bounds_test);
          return ctx->Depth.BoundsTest;
 
       /* GL_ARB_depth_clamp */
