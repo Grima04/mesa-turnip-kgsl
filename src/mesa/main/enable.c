@@ -1156,9 +1156,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          break;
 
       case GL_RASTERIZER_DISCARD:
-         if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
+         if (!(_mesa_has_EXT_transform_feedback(ctx) || _mesa_is_gles3(ctx)))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_transform_feedback);
          if (ctx->RasterDiscard != state) {
             FLUSH_VERTICES(ctx, 0);
             ctx->NewDriverState |= ctx->DriverFlags.NewRasterizerDiscard;
@@ -1870,9 +1869,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->Texture.CubeMapSeamless;
 
       case GL_RASTERIZER_DISCARD:
-         if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
+         if (!(_mesa_has_EXT_transform_feedback(ctx) || _mesa_is_gles3(ctx)))
             goto invalid_enum_error;
-         CHECK_EXTENSION(EXT_transform_feedback);
          return ctx->RasterDiscard;
 
       /* GL_NV_primitive_restart */
