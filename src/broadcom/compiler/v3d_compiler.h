@@ -1152,4 +1152,8 @@ vir_BRANCH(struct v3d_compile *c, enum v3d_qpu_branch_cond cond)
         vir_for_each_block(_block, c)                                   \
                 vir_for_each_inst(inst, _block)
 
+#define vir_for_each_inst_inorder_safe(inst, c)                         \
+        vir_for_each_block(_block, c)                                   \
+                vir_for_each_inst_safe(inst, _block)
+
 #endif /* V3D_COMPILER_H */
