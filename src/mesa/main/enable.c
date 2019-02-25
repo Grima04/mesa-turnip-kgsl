@@ -1300,20 +1300,6 @@ _mesa_IsEnabledi( GLenum cap, GLuint index )
 
 
 
-
-#undef CHECK_EXTENSION
-#define CHECK_EXTENSION(EXTNAME)			\
-   if (!ctx->Extensions.EXTNAME) {			\
-      goto invalid_enum_error;				\
-   }
-
-#undef CHECK_EXTENSION2
-#define CHECK_EXTENSION2(EXT1, EXT2)				\
-   if (!ctx->Extensions.EXT1 && !ctx->Extensions.EXT2) {	\
-      goto invalid_enum_error;					\
-   }
-
-
 /**
  * Helper function to determine whether a texture target is enabled.
  */
