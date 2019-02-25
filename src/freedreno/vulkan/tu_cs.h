@@ -87,7 +87,7 @@ tu_cs_sanity_check(const struct tu_cs *cs)
 static inline void
 tu_cs_emit(struct tu_cs *cs, uint32_t value)
 {
-   assert(cs->cur < cs->end);
+   assert(cs->cur < cs->reserved_end);
    *cs->cur = value;
    ++cs->cur;
 }
@@ -153,8 +153,10 @@ tu_cs_emit_write_reg(struct tu_cs *cs, uint16_t reg, uint32_t value)
 static inline void
 tu_cs_emit_ib(struct tu_cs *cs, const struct tu_cs_entry *entry)
 {
-   assert(entry->offset % sizeof(uint32_t) == 0);
+   assert(entry->bo);
+   assert(entry->size && entry->offset + entry->size <= entry->bo->size);
    assert(entry->size % sizeof(uint32_t) == 0);
+   assert(entry->offset % sizeof(uint32_t) == 0);
 
    tu_cs_emit_pkt7(cs, CP_INDIRECT_BUFFER, 3);
    tu_cs_emit_qw(cs, entry->bo->iova + entry->offset);
