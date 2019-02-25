@@ -1770,7 +1770,8 @@ _mesa_IsEnabled( GLenum cap )
          return ctx->Color.BlendCoherent;
 
       case GL_CONSERVATIVE_RASTERIZATION_INTEL:
-         CHECK_EXTENSION(INTEL_conservative_rasterization);
+         if (!_mesa_has_INTEL_conservative_rasterization(ctx))
+            goto invalid_enum_error;
          return ctx->IntelConservativeRasterization;
 
       case GL_CONSERVATIVE_RASTERIZATION_NV:
