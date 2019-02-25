@@ -66,7 +66,7 @@ aub_viewer_print_group(struct aub_viewer_decode_ctx *ctx,
          if (last_dword != iter_dword) {
             for (int i = last_dword + 1; i <= iter_dword; i++) {
                ImGui::TextColored(ctx->cfg->dwords_color,
-                                  "0x%08" PRIx64 ":  0x%08x : Dword %d",
+                                  "0x%012" PRIx64 ":  0x%012x : Dword %d",
                                   address + 4 * i, iter.p[i], i);
             }
             last_dword = iter_dword;
@@ -217,7 +217,7 @@ dump_binding_table(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count
 
    if (bind_bo.map == NULL) {
       ImGui::TextColored(ctx->cfg->missing_color,
-                         "binding table unavailable addr=0x%08" PRIx64,
+                         "binding table unavailable addr=0x%012" PRIx64,
                          ctx->surface_base + offset);
       return;
    }
@@ -234,13 +234,13 @@ dump_binding_table(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count
       if (pointers[i] % 32 != 0 ||
           addr < bo.addr || addr + size >= bo.addr + bo.size) {
          ImGui::TextColored(ctx->cfg->missing_color,
-                            "pointer %u: %08x <not valid>", i, pointers[i]);
+                            "pointer %u: %012x <not valid>", i, pointers[i]);
          continue;
       }
 
       const uint8_t *state = (const uint8_t *) bo.map + (addr - bo.addr);
       if (ImGui::TreeNodeEx(&pointers[i], ImGuiTreeNodeFlags_Framed,
-                            "pointer %u: %08x", i, pointers[i])) {
+                            "pointer %u: %012x", i, pointers[i])) {
          aub_viewer_print_group(ctx, strct, addr, state);
          ImGui::TreePop();
       }
@@ -261,7 +261,7 @@ dump_samplers(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count)
 
    if (state_map == NULL) {
       ImGui::TextColored(ctx->cfg->missing_color,
-                         "samplers unavailable addr=0x%08" PRIx64, state_addr);
+                         "samplers unavailable addr=0x%012" PRIx64, state_addr);
       return;
    }
 
@@ -308,12 +308,12 @@ handle_media_interface_descriptor_load(struct aub_viewer_decode_ctx *ctx,
 
    if (desc_map == NULL) {
       ImGui::TextColored(ctx->cfg->missing_color,
-                         "interface descriptors unavailable addr=0x%08" PRIx64, desc_addr);
+                         "interface descriptors unavailable addr=0x%012" PRIx64, desc_addr);
       return;
    }
 
    for (int i = 0; i < descriptor_count; i++) {
-      ImGui::Text("descriptor %d: %08x", i, descriptor_offset);
+      ImGui::Text("descriptor %d: %012x", i, descriptor_offset);
 
       aub_viewer_print_group(ctx, desc, desc_addr, desc_map);
 
@@ -394,7 +394,7 @@ handle_3dstate_vertex_buffers(struct aub_viewer_decode_ctx *ctx,
 
          if (vb.map == NULL) {
             ImGui::TextColored(ctx->cfg->missing_color,
-                               "buffer contents unavailable addr=0x%08" PRIx64, buffer_addr);
+                               "buffer contents unavailable addr=0x%012" PRIx64, buffer_addr);
             continue;
          }
 
@@ -435,7 +435,7 @@ handle_3dstate_index_buffer(struct aub_viewer_decode_ctx *ctx,
 
    if (ib.map == NULL) {
       ImGui::TextColored(ctx->cfg->missing_color,
-                         "buffer contents unavailable addr=0x%08" PRIx64,
+                         "buffer contents unavailable addr=0x%012" PRIx64,
                          buffer_addr);
       return;
    }
@@ -581,7 +581,7 @@ decode_3dstate_constant(struct aub_viewer_decode_ctx *ctx,
          struct gen_batch_decode_bo buffer = ctx_get_bo(ctx, read_addr[i]);
          if (!buffer.map) {
             ImGui::TextColored(ctx->cfg->missing_color,
-                               "constant buffer %d unavailable addr=0x%08" PRIx64,
+                               "constant buffer %d unavailable addr=0x%012" PRIx64,
                                i, read_addr[i]);
             continue;
          }
@@ -655,7 +655,7 @@ decode_dynamic_state_pointers(struct aub_viewer_decode_ctx *ctx,
 
    if (state_map == NULL) {
       ImGui::TextColored(ctx->cfg->missing_color,
-                         "dynamic %s state unavailable addr=0x%08" PRIx64,
+                         "dynamic %s state unavailable addr=0x%012" PRIx64,
                          struct_type, state_addr);
       return;
    }
@@ -908,7 +908,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
 
       if (inst == NULL) {
          ImGui::TextColored(ctx->cfg->error_color,
-                            "0x%08" PRIx64 ": unknown instruction %08x",
+                            "0x%012" PRIx64 ": unknown instruction %012x",
                             offset, p[0]);
          continue;
       }
@@ -926,7 +926,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
       if (ctx->decode_cfg->command_filter.PassFilter(inst->name) &&
           ImGui::TreeNodeEx(p,
                             ImGuiTreeNodeFlags_Framed,
-                            "0x%08" PRIx64 ":  %s",
+                            "0x%012" PRIx64 ":  %s",
                             offset, inst->name)) {
          aub_viewer_print_group(ctx, inst, offset, p);
 
@@ -961,7 +961,7 @@ aub_viewer_render_batch(struct aub_viewer_decode_ctx *ctx,
 
          if (next_batch.map == NULL) {
             ImGui::TextColored(ctx->cfg->missing_color,
-                               "Secondary batch at 0x%08" PRIx64 " unavailable",
+                               "Secondary batch at 0x%012" PRIx64 " unavailable",
                                next_batch.addr);
          } else {
             aub_viewer_render_batch(ctx, next_batch.map, next_batch.size,
