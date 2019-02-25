@@ -43,9 +43,8 @@
 #include "pan_blend_shaders.h"
 #include "pan_wallpaper.h"
 
-#ifdef DUMP_PERFORMANCE_COUNTERS
 static int performance_counter_number = 0;
-#endif
+extern const char *pan_counters_base;
 
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
@@ -1586,17 +1585,15 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate)
         if (panfrost_is_scanout(ctx) && flush_immediate)
                 screen->driver->force_flush_fragment(ctx);
 
-#ifdef DUMP_PERFORMANCE_COUNTERS
-        if (screen->driver->dump_counters) {
+        if (screen->driver->dump_counters && pan_counters_base) {
                 screen->driver->dump_counters(screen);
 
                 char filename[128];
-                snprintf(filename, sizeof(filename), "/dev/shm/frame%d.mdgprf", ++performance_counter_number);
+                snprintf(filename, sizeof(filename), "%s/frame%d.mdgprf", pan_counters_base, ++performance_counter_number);
                 FILE *fp = fopen(filename, "wb");
                 fwrite(screen->perf_counters.cpu,  4096, sizeof(uint32_t), fp);
                 fclose(fp);
         }
-#endif
 
 #endif
 }

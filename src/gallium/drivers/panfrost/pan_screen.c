@@ -53,6 +53,8 @@
 struct panfrost_driver *panfrost_create_drm_driver(int fd);
 struct panfrost_driver *panfrost_create_nondrm_driver(int fd);
 
+const char *pan_counters_base = NULL;
+
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
@@ -551,17 +553,18 @@ panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
 #endif
         }
 
-        /* Enable pantrace iff asked for in the environment */
+        /* Dump memory and/or performance counters iff asked for in the environment */
         const char *pantrace_base = getenv("PANTRACE_BASE");
+        pan_counters_base = getenv("PANCOUNTERS_BASE");
 
         if (pantrace_base) {
                 pantrace_initialize(pantrace_base);
         }
 
-#ifdef DUMP_PERFORMANCE_COUNTERS
-        screen->driver->allocate_slab(screen, &screen->perf_counters, 64, true, 0, 0, 0);
-        screen->driver->enable_counters(screen);
-#endif
+        if (pan_counters_base) {
+                screen->driver->allocate_slab(screen, &screen->perf_counters, 64, true, 0, 0, 0);
+                screen->driver->enable_counters(screen);
+        }
 
         screen->base.destroy = panfrost_destroy_screen;
 

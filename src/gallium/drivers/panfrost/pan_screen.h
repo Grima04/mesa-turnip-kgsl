@@ -41,8 +41,6 @@ struct panfrost_context;
 struct panfrost_resource;
 struct panfrost_screen;
 
-//#define DUMP_PERFORMANCE_COUNTERS
-
 /* Flags for allocated memory */
 #define PAN_ALLOCATE_EXECUTE (1 << 0)
 #define PAN_ALLOCATE_GROWABLE (1 << 1)
