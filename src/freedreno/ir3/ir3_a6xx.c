@@ -374,6 +374,11 @@ get_atomic_dest_mov(struct ir3_instruction *atomic)
 
 	mov->flags |= IR3_INSTR_SY;
 
+	if (atomic->regs[0]->flags & IR3_REG_ARRAY) {
+		mov->regs[0]->flags |= IR3_REG_ARRAY;
+		mov->regs[0]->array = atomic->regs[0]->array;
+	}
+
 	/* it will have already been appended to the end of the block, which
 	 * isn't where we want it, so fix-up the location:
 	 */
