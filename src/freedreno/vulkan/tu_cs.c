@@ -272,11 +272,15 @@ tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs)
 
    cs->cur = sub_cs->cur;
 
-   return (struct tu_cs_entry) {
+   struct tu_cs_entry entry = {
       .bo = cs->bos[cs->bo_count - 1],
       .size = tu_cs_get_size(cs) * sizeof(uint32_t),
       .offset = tu_cs_get_offset(cs) * sizeof(uint32_t),
    };
+
+   cs->start = cs->cur;
+
+   return entry;
 }
 
 /**
