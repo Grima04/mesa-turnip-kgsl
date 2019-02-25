@@ -280,11 +280,6 @@ _mesa_DisableClientStateiEXT( GLenum cap, GLuint index )
       goto invalid_enum_error;						\
    }
 
-#define CHECK_EXTENSION2(EXT1, EXT2)				\
-   if (!ctx->Extensions.EXT1 && !ctx->Extensions.EXT2) {		\
-      goto invalid_enum_error;						\
-   }
-
 /**
  * Return pointer to current texture unit for setting/getting coordinate
  * state.
@@ -1020,9 +1015,11 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
 
       /* GL_NV_point_sprite */
       case GL_POINT_SPRITE_NV:
-         if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
+         if (!(ctx->API == API_OPENGL_COMPAT &&
+               (_mesa_has_ARB_point_sprite(ctx) ||
+                _mesa_has_NV_point_sprite(ctx))) &&
+             !_mesa_has_OES_point_sprite(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION2(NV_point_sprite, ARB_point_sprite);
          if (ctx->Point.PointSprite == state)
             return;
          FLUSH_VERTICES(ctx, _NEW_POINT);
@@ -1806,9 +1803,11 @@ _mesa_IsEnabled( GLenum cap )
 
       /* GL_NV_point_sprite */
       case GL_POINT_SPRITE_NV:
-         if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
+         if (!(ctx->API == API_OPENGL_COMPAT &&
+               (_mesa_has_ARB_point_sprite(ctx) ||
+                _mesa_has_NV_point_sprite(ctx))) &&
+             !_mesa_has_OES_point_sprite(ctx))
             goto invalid_enum_error;
-         CHECK_EXTENSION2(NV_point_sprite, ARB_point_sprite)
          return ctx->Point.PointSprite;
 
       case GL_VERTEX_PROGRAM_ARB:
