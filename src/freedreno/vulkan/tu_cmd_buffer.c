@@ -1104,9 +1104,7 @@ tu_cmd_prepare_tile_load_ib(struct tu_cmd_buffer *cmd)
    }
 
    /* emit to tile-load sub_cs */
-   tu_cs_reserve_space(cmd->device, &sub_cs, tile_load_space);
    tu6_emit_tile_load(cmd, &sub_cs);
-   tu_cs_sanity_check(&sub_cs);
 
    cmd->state.tile_load_ib = tu_cs_end_sub_stream(&cmd->tile_cs, &sub_cs);
 
@@ -1131,9 +1129,7 @@ tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
    }
 
    /* emit to tile-store sub_cs */
-   tu_cs_reserve_space(cmd->device, &sub_cs, tile_store_space);
    tu6_emit_tile_store(cmd, &sub_cs);
-   tu_cs_sanity_check(&sub_cs);
 
    cmd->state.tile_store_ib = tu_cs_end_sub_stream(&cmd->tile_cs, &sub_cs);
 }

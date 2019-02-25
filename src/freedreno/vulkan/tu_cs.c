@@ -221,7 +221,8 @@ tu_cs_begin(struct tu_cs *cs)
 }
 
 /**
- * End command packet emission and add an IB entry.
+ * End command packet emission.  This adds an IB entry when \a cs is in
+ * TU_CS_MODE_GROW mode.
  */
 void
 tu_cs_end(struct tu_cs *cs)
@@ -236,7 +237,9 @@ tu_cs_end(struct tu_cs *cs)
  * Begin command packet emission to a sub-stream.  \a cs must be in
  * TU_CS_MODE_SUB_STREAM mode.
  *
- * Return \a sub_cs which is in TU_CS_MODE_EXTERNAL mode.
+ * Return \a sub_cs which is in TU_CS_MODE_EXTERNAL mode.  tu_cs_begin and
+ * tu_cs_reserve_space are implied and \a sub_cs is ready for command packet
+ * emission.
  */
 VkResult
 tu_cs_begin_sub_stream(struct tu_device *dev,
@@ -252,6 +255,9 @@ tu_cs_begin_sub_stream(struct tu_device *dev,
       return result;
 
    tu_cs_init_external(sub_cs, cs->cur, cs->reserved_end);
+   tu_cs_begin(sub_cs);
+   result = tu_cs_reserve_space(dev, sub_cs, size);
+   assert(result == VK_SUCCESS);
 
    return VK_SUCCESS;
 }
@@ -268,7 +274,10 @@ tu_cs_end_sub_stream(struct tu_cs *cs, struct tu_cs *sub_cs)
 {
    assert(cs->mode == TU_CS_MODE_SUB_STREAM);
    assert(cs->bo_count);
-   assert(sub_cs->cur >= cs->start && sub_cs->cur <= cs->reserved_end);
+   assert(sub_cs->start == cs->cur && sub_cs->end == cs->reserved_end);
+   tu_cs_sanity_check(sub_cs);
+
+   tu_cs_end(sub_cs);
 
    cs->cur = sub_cs->cur;
 
