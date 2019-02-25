@@ -405,7 +405,8 @@ static bool
 texture_query_lod(const _mesa_glsl_parse_state *state)
 {
    return state->stage == MESA_SHADER_FRAGMENT &&
-          state->ARB_texture_query_lod_enable;
+          (state->ARB_texture_query_lod_enable ||
+           state->EXT_texture_query_lod_enable);
 }
 
 static bool
