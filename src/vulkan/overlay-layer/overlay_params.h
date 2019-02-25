@@ -49,6 +49,18 @@ extern "C" {
    OVERLAY_PARAM_BOOL(pipeline_raytracing)           \
    OVERLAY_PARAM_BOOL(acquire)                       \
    OVERLAY_PARAM_BOOL(acquire_timing)                \
+   OVERLAY_PARAM_BOOL(vertices)                      \
+   OVERLAY_PARAM_BOOL(primitives)                    \
+   OVERLAY_PARAM_BOOL(vert_invocations)              \
+   OVERLAY_PARAM_BOOL(geom_invocations)              \
+   OVERLAY_PARAM_BOOL(geom_primitives)               \
+   OVERLAY_PARAM_BOOL(clip_invocations)              \
+   OVERLAY_PARAM_BOOL(clip_primitives)               \
+   OVERLAY_PARAM_BOOL(frag_invocations)              \
+   OVERLAY_PARAM_BOOL(tess_ctrl_patches)             \
+   OVERLAY_PARAM_BOOL(tess_eval_invocations)         \
+   OVERLAY_PARAM_BOOL(compute_invocations)           \
+   OVERLAY_PARAM_BOOL(gpu_timing)                    \
    OVERLAY_PARAM_CUSTOM(fps_sampling_period)         \
    OVERLAY_PARAM_CUSTOM(output_file)                 \
    OVERLAY_PARAM_CUSTOM(position)                    \

@@ -34,6 +34,7 @@
 
 #include "util/debug.h"
 #include "util/hash_table.h"
+#include "util/list.h"
 #include "util/ralloc.h"
 #include "util/os_time.h"
 #include "util/simple_mtx.h"
@@ -47,6 +48,7 @@ struct instance_data {
    VkInstance instance;
 
    struct overlay_params params;
+   bool pipeline_statistics_enabled;
 };
 
 struct frame_stat {
@@ -83,9 +85,12 @@ struct command_buffer_data {
 
    VkCommandBuffer cmd_buffer;
    VkQueryPool pipeline_query_pool;
+   VkQueryPool timestamp_query_pool;
    uint32_t query_index;
 
    struct frame_stat stats;
+
+   struct list_head link; /* link into queue_data::running_command_buffer */
 };
 
 /* Mapped from VkQueue */
@@ -95,6 +100,11 @@ struct queue_data {
    VkQueue queue;
    VkQueueFlags flags;
    uint32_t family_index;
+   uint64_t timestamp_mask;
+
+   VkFence queries_fence;
+
+   struct list_head running_command_buffer;
 };
 
 /* Mapped from VkSwapchainKHR */
@@ -142,7 +152,6 @@ struct swapchain_data {
    VkBuffer upload_font_buffer;
    VkDeviceMemory upload_font_buffer_mem;
 
-   VkFence fence;
    VkSemaphore submission_semaphore;
 
    /**/
@@ -158,6 +167,7 @@ struct swapchain_data {
    double fps;
 
    enum overlay_param_enabled stat_selector;
+   double time_dividor;
    struct frame_stat stats_min, stats_max;
    struct frame_stat frames_stats[200];
 
@@ -167,6 +177,20 @@ struct swapchain_data {
    /* Over fps_sampling_period */
    struct frame_stat accumulated_stats;
 };
+
+static const VkQueryPipelineStatisticFlags overlay_query_flags =
+   VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT |
+   VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+#define OVERLAY_QUERY_COUNT (11)
 
 static struct hash_table *vk_object_to_data = NULL;
 static simple_mtx_t vk_object_to_data_mutex = _SIMPLE_MTX_INITIALIZER_NP;
@@ -251,7 +275,45 @@ static VkLayerDeviceCreateInfo *get_device_chain_info(const VkDeviceCreateInfo *
    return NULL;
 }
 
+static struct VkBaseOutStructure *
+clone_chain(const struct VkBaseInStructure *chain)
+{
+   struct VkBaseOutStructure *head = NULL, *tail = NULL;
+
+   vk_foreach_struct_const(item, chain) {
+      size_t item_size = vk_structure_type_size(item);
+      struct VkBaseOutStructure *new_item =
+         (struct VkBaseOutStructure *)malloc(item_size);;
+
+      memcpy(new_item, item, item_size);
+
+      if (!head)
+         head = new_item;
+      if (tail)
+         tail->pNext = new_item;
+      tail = new_item;
+   }
+
+   return head;
+}
+
+static void
+free_chain(struct VkBaseOutStructure *chain)
+{
+   while (chain) {
+      void *node = chain;
+      chain = chain->pNext;
+      free(node);
+   }
+}
+
 /**/
+
+static void check_vk_result(VkResult err)
+{
+   if (err != VK_SUCCESS)
+      printf("ERROR!\n");
+}
 
 static struct instance_data *new_instance_data(VkInstance instance)
 {
@@ -311,13 +373,33 @@ static struct queue_data *new_queue_data(VkQueue queue,
    data->device = device_data;
    data->queue = queue;
    data->flags = family_props->queueFlags;
+   data->timestamp_mask = (1ul << family_props->timestampValidBits) - 1;
    data->family_index = family_index;
+   LIST_INITHEAD(&data->running_command_buffer);
    map_object(data->queue, data);
+
+   /* Fence synchronizing access to queries on that queue. */
+   VkFenceCreateInfo fence_info = {};
+   fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+   fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+   VkResult err = device_data->vtable.CreateFence(device_data->device,
+                                                  &fence_info,
+                                                  NULL,
+                                                  &data->queries_fence);
+   check_vk_result(err);
 
    if (data->flags & VK_QUEUE_GRAPHICS_BIT)
       device_data->graphic_queue = data;
 
    return data;
+}
+
+static void destroy_queue(struct queue_data *data)
+{
+   struct device_data *device_data = data->device;
+   device_data->vtable.DestroyFence(device_data->device, data->queries_fence, NULL);
+   unmap_object(data->queue);
+   ralloc_free(data);
 }
 
 static void device_map_queues(struct device_data *data,
@@ -360,7 +442,7 @@ static void device_map_queues(struct device_data *data,
 static void device_unmap_queues(struct device_data *data)
 {
    for (uint32_t i = 0; i < data->n_queues; i++)
-      unmap_object(data->queues[i]->queue);
+      destroy_queue(data->queues[i]);
 }
 
 static void destroy_device_data(struct device_data *data)
@@ -372,12 +454,19 @@ static void destroy_device_data(struct device_data *data)
 /**/
 static struct command_buffer_data *new_command_buffer_data(VkCommandBuffer cmd_buffer,
                                                            VkCommandBufferLevel level,
+                                                           VkQueryPool pipeline_query_pool,
+                                                           VkQueryPool timestamp_query_pool,
+                                                           uint32_t query_index,
                                                            struct device_data *device_data)
 {
    struct command_buffer_data *data = rzalloc(NULL, struct command_buffer_data);
    data->device = device_data;
    data->cmd_buffer = cmd_buffer;
    data->level = level;
+   data->pipeline_query_pool = pipeline_query_pool;
+   data->timestamp_query_pool = timestamp_query_pool;
+   data->query_index = query_index;
+   list_inithead(&data->link);
    map_object((void *) data->cmd_buffer, data);
    return data;
 }
@@ -385,9 +474,9 @@ static struct command_buffer_data *new_command_buffer_data(VkCommandBuffer cmd_b
 static void destroy_command_buffer_data(struct command_buffer_data *data)
 {
    unmap_object((void *) data->cmd_buffer);
+   list_delinit(&data->link);
    ralloc_free(data);
 }
-
 
 /**/
 static struct swapchain_data *new_swapchain_data(VkSwapchainKHR swapchain,
@@ -461,7 +550,7 @@ static float get_time_stat(void *_data, int _idx)
       _idx + data->n_frames;
    idx %= ARRAY_SIZE(data->frames_stats);
    /* Time stats are in us. */
-   return data->frames_stats[idx].stats[data->stat_selector] / 1000.0f;
+   return data->frames_stats[idx].stats[data->stat_selector] / data->time_dividor;
 }
 
 static float get_stat(void *_data, int _idx)
@@ -548,11 +637,15 @@ static void compute_swapchain_display(struct swapchain_data *data)
       char hash[40];
       snprintf(hash, sizeof(hash), "##%s", overlay_param_names[s]);
       data->stat_selector = (enum overlay_param_enabled) s;
+      data->time_dividor = 1000.0f;
+      if (s == OVERLAY_PARAM_ENABLED_gpu_timing)
+         data->time_dividor = 1000000.0f;
 
       if (s == OVERLAY_PARAM_ENABLED_frame_timing ||
-          s == OVERLAY_PARAM_ENABLED_acquire_timing) {
-         double min_time = data->stats_min.stats[s] / 1000.0f;
-         double max_time = data->stats_max.stats[s] / 1000.0f;
+          s == OVERLAY_PARAM_ENABLED_acquire_timing ||
+          s == OVERLAY_PARAM_ENABLED_gpu_timing) {
+         double min_time = data->stats_min.stats[s] / data->time_dividor;
+         double max_time = data->stats_max.stats[s] / data->time_dividor;
          ImGui::PlotHistogram(hash, get_time_stat, data,
                               ARRAY_SIZE(data->frames_stats), 0,
                               NULL, min_time, max_time,
@@ -730,7 +823,10 @@ static void CreateOrResizeBuffer(struct device_data *data,
     *buffer_size = new_size;
 }
 
-static void render_swapchain_display(struct swapchain_data *data, unsigned image_index)
+static void render_swapchain_display(struct swapchain_data *data,
+                                     const VkSemaphore *wait_semaphores,
+                                     unsigned n_wait_semaphores,
+                                     unsigned image_index)
 {
    ImDrawData* draw_data = ImGui::GetDrawData();
    if (draw_data->TotalVtxCount == 0)
@@ -922,12 +1018,12 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    submit_info.commandBufferCount = 1;
    submit_info.pCommandBuffers = &command_buffer;
    submit_info.pWaitDstStageMask = &stage_wait;
+   submit_info.waitSemaphoreCount = n_wait_semaphores;
+   submit_info.pWaitSemaphores = wait_semaphores;
    submit_info.signalSemaphoreCount = 1;
    submit_info.pSignalSemaphores = &data->submission_semaphore;
 
-   device_data->vtable.WaitForFences(device_data->device, 1, &data->fence, VK_TRUE, UINT64_MAX);
-   device_data->vtable.ResetFences(device_data->device, 1, &data->fence);
-   device_data->vtable.QueueSubmit(device_data->graphic_queue->queue, 1, &submit_info, data->fence);
+   device_data->vtable.QueueSubmit(device_data->graphic_queue->queue, 1, &submit_info, VK_NULL_HANDLE);
 }
 
 static const uint32_t overlay_vert_spv[] = {
@@ -1317,13 +1413,6 @@ static void setup_swapchain_data(struct swapchain_data *data,
 
       data->frame_data[i].command_buffer = cmd_bufs[i];
    }
-
-   /* Submission fence */
-   VkFenceCreateInfo fence_info = {};
-   fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-   fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-   VK_CHECK(device_data->vtable.CreateFence(device_data->device, &fence_info,
-                                            NULL, &data->fence));
 }
 
 static void shutdown_swapchain_data(struct swapchain_data *data)
@@ -1352,7 +1441,6 @@ static void shutdown_swapchain_data(struct swapchain_data *data)
    }
    device_data->vtable.DestroyCommandPool(device_data->device, data->command_pool, NULL);
 
-   device_data->vtable.DestroyFence(device_data->device, data->fence, NULL);
    if (data->submission_semaphore)
       device_data->vtable.DestroySemaphore(device_data->device, data->submission_semaphore, NULL);
 
@@ -1376,13 +1464,15 @@ static void shutdown_swapchain_data(struct swapchain_data *data)
 }
 
 static void before_present(struct swapchain_data *swapchain_data,
+                           const VkSemaphore *wait_semaphores,
+                           unsigned n_wait_semaphores,
                            unsigned imageIndex)
 {
    snapshot_swapchain_frame(swapchain_data);
 
    if (swapchain_data->n_frames > 0) {
       compute_swapchain_display(swapchain_data);
-      render_swapchain_display(swapchain_data, imageIndex);
+      render_swapchain_display(swapchain_data, wait_semaphores, n_wait_semaphores, imageIndex);
    }
 }
 
@@ -1419,36 +1509,91 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
 {
    struct queue_data *queue_data = FIND_QUEUE_DATA(queue);
    struct device_data *device_data = queue_data->device;
+   uint32_t query_results[OVERLAY_QUERY_COUNT];
 
-   /* If we present on the graphic queue this layer is using to draw an
-    * overlay, we don't need more than submitting the overlay draw prior to
-    * present.
-    */
-   if (queue_data == device_data->graphic_queue) {
-      for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
-         struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(pPresentInfo->pSwapchains[i]);
-         before_present(swapchain_data, pPresentInfo->pImageIndices[i]);
+   if (list_length(&queue_data->running_command_buffer) > 0) {
+      /* Before getting the query results, make sure the operations have
+       * completed.
+       */
+      VkResult err = device_data->vtable.ResetFences(device_data->device,
+                                                     1, &queue_data->queries_fence);
+      check_vk_result(err);
+      err = device_data->vtable.QueueSubmit(queue, 0, NULL, queue_data->queries_fence);
+      check_vk_result(err);
+      err = device_data->vtable.WaitForFences(device_data->device,
+                                              1, &queue_data->queries_fence,
+                                              VK_FALSE, UINT64_MAX);
+      check_vk_result(err);
+
+      /* Now get the results. */
+      list_for_each_entry_safe(struct command_buffer_data, cmd_buffer_data,
+                               &queue_data->running_command_buffer, link) {
+         list_delinit(&cmd_buffer_data->link);
+
+         if (cmd_buffer_data->pipeline_query_pool) {
+            memset(query_results, 0, sizeof(query_results));
+            err =
+               device_data->vtable.GetQueryPoolResults(device_data->device,
+                                                       cmd_buffer_data->pipeline_query_pool,
+                                                       cmd_buffer_data->query_index, 1,
+                                                       sizeof(uint32_t) * OVERLAY_QUERY_COUNT,
+                                                       query_results, 0, VK_QUERY_RESULT_WAIT_BIT);
+            check_vk_result(err);
+
+            for (uint32_t i = OVERLAY_PARAM_ENABLED_vertices;
+                 i <= OVERLAY_PARAM_ENABLED_compute_invocations; i++) {
+               device_data->frame_stats.stats[i] += query_results[i - OVERLAY_PARAM_ENABLED_vertices];
+            }
+         }
+         if (cmd_buffer_data->timestamp_query_pool) {
+            uint64_t gpu_timestamps[2] = { 0 };
+            err =
+               device_data->vtable.GetQueryPoolResults(device_data->device,
+                                                       cmd_buffer_data->timestamp_query_pool,
+                                                       cmd_buffer_data->query_index * 2, 2,
+                                                       2 * sizeof(uint64_t), gpu_timestamps, sizeof(uint64_t),
+                                                       VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_64_BIT);
+            check_vk_result(err);
+
+            gpu_timestamps[0] &= queue_data->timestamp_mask;
+            gpu_timestamps[1] &= queue_data->timestamp_mask;
+            device_data->frame_stats.stats[OVERLAY_PARAM_ENABLED_gpu_timing] +=
+               (gpu_timestamps[1] - gpu_timestamps[0]) *
+               device_data->properties.limits.timestampPeriod;
+         }
       }
-      return queue_data->device->vtable.QueuePresentKHR(queue, pPresentInfo);
    }
 
-   /* Otherwise we need to do cross queue synchronization to tie the overlay
-    * draw into the present queue.
+   /* Otherwise we need to add our overlay drawing semaphore to the list of
+    * semaphores to wait on. If we don't do that the presented picture might
+    * be have incomplete overlay drawings.
     */
-   VkPresentInfoKHR present_info = *pPresentInfo;
-   VkSemaphore *semaphores =
-      (VkSemaphore *)malloc(sizeof(VkSemaphore) * (pPresentInfo->waitSemaphoreCount + pPresentInfo->swapchainCount));
-   for (uint32_t i = 0; i < pPresentInfo->waitSemaphoreCount; i++)
-      semaphores[i] = pPresentInfo->pWaitSemaphores[i];
+   VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
-      struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(pPresentInfo->pSwapchains[i]);
-      before_present(swapchain_data, pPresentInfo->pImageIndices[i]);
-      semaphores[pPresentInfo->waitSemaphoreCount + i] = swapchain_data->submission_semaphore;
+      VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
+      struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+      VkPresentInfoKHR present_info = *pPresentInfo;
+      present_info.swapchainCount = 1;
+      present_info.pSwapchains = &swapchain;
+
+      before_present(swapchain_data,
+                     pPresentInfo->pWaitSemaphores,
+                     pPresentInfo->waitSemaphoreCount,
+                     pPresentInfo->pImageIndices[i]);
+      /* Because the submission of the overlay draw waits on the semaphores
+       * handed for present, we don't need to have this present operation wait
+       * on them as well, we can just wait on the overlay submission
+       * semaphore.
+       */
+      present_info.pWaitSemaphores = &swapchain_data->submission_semaphore;
+      present_info.waitSemaphoreCount = 1;
+
+      VkResult chain_result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
+      if (pPresentInfo->pResults)
+         pPresentInfo->pResults[i] = chain_result;
+      if (chain_result != VK_SUCCESS && result == VK_SUCCESS)
+         result = chain_result;
    }
-   present_info.pWaitSemaphores = semaphores;
-   present_info.waitSemaphoreCount = pPresentInfo->waitSemaphoreCount + pPresentInfo->swapchainCount;
-   VkResult result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
-   free(semaphores);
    return result;
 }
 
@@ -1627,7 +1772,74 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_BeginCommandBuffer(
    struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
-   return device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
+   /* We don't record any query in secondary command buffers, just make sure
+    * we have the right inheritance.
+    */
+   if (cmd_buffer_data->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      VkCommandBufferBeginInfo *begin_info = (VkCommandBufferBeginInfo *)
+         clone_chain((const struct VkBaseInStructure *)pBeginInfo);
+      VkCommandBufferInheritanceInfo *parent_inhe_info = (VkCommandBufferInheritanceInfo *)
+         vk_find_struct(begin_info, COMMAND_BUFFER_INHERITANCE_INFO);
+      VkCommandBufferInheritanceInfo inhe_info = {
+         VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+         NULL,
+         VK_NULL_HANDLE,
+         0,
+         VK_NULL_HANDLE,
+         VK_FALSE,
+         0,
+         overlay_query_flags,
+      };
+
+      if (parent_inhe_info)
+         parent_inhe_info->pipelineStatistics = overlay_query_flags;
+      else {
+         inhe_info.pNext = begin_info->pNext;
+         begin_info->pNext = &inhe_info;
+      }
+
+      VkResult result = device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
+
+      if (!parent_inhe_info)
+         begin_info->pNext = inhe_info.pNext;
+
+      free_chain((struct VkBaseOutStructure *)begin_info);
+
+      return result;
+   }
+
+   /* Primary command buffers with no queries. */
+   if (!cmd_buffer_data->pipeline_query_pool && cmd_buffer_data->timestamp_query_pool)
+      return device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
+
+   /* Otherwise record a begin query as first command. */
+   VkResult result = device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
+
+   if (result == VK_SUCCESS) {
+      if (cmd_buffer_data->pipeline_query_pool) {
+         device_data->vtable.CmdResetQueryPool(commandBuffer,
+                                               cmd_buffer_data->pipeline_query_pool,
+                                               cmd_buffer_data->query_index, 1);
+      }
+      if (cmd_buffer_data->timestamp_query_pool) {
+         device_data->vtable.CmdResetQueryPool(commandBuffer,
+                                               cmd_buffer_data->timestamp_query_pool,
+                                               cmd_buffer_data->query_index * 2, 2);
+      }
+      if (cmd_buffer_data->pipeline_query_pool) {
+         device_data->vtable.CmdBeginQuery(commandBuffer,
+                                           cmd_buffer_data->pipeline_query_pool,
+                                           cmd_buffer_data->query_index, 0);
+      }
+      if (cmd_buffer_data->timestamp_query_pool) {
+         device_data->vtable.CmdWriteTimestamp(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               cmd_buffer_data->timestamp_query_pool,
+                                               cmd_buffer_data->query_index * 2);
+      }
+   }
+
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL overlay_EndCommandBuffer(
@@ -1636,6 +1848,12 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_EndCommandBuffer(
    struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
+   if (cmd_buffer_data->timestamp_query_pool) {
+      device_data->vtable.CmdWriteTimestamp(commandBuffer,
+                                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                            cmd_buffer_data->timestamp_query_pool,
+                                            cmd_buffer_data->query_index * 2 + 1);
+   }
    if (cmd_buffer_data->pipeline_query_pool) {
       device_data->vtable.CmdEndQuery(commandBuffer,
                                       cmd_buffer_data->pipeline_query_pool,
@@ -1686,21 +1904,82 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_AllocateCommandBuffers(
       device_data->vtable.AllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
    if (result != VK_SUCCESS)
       return result;
-   for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; i++)
-      new_command_buffer_data(pCommandBuffers[i], pAllocateInfo->level, device_data);
+
+   VkQueryPool pipeline_query_pool = VK_NULL_HANDLE;
+   VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
+   if (device_data->instance->pipeline_statistics_enabled &&
+       pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      VkQueryPoolCreateInfo pool_info = {
+         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+         NULL,
+         0,
+         VK_QUERY_TYPE_PIPELINE_STATISTICS,
+         pAllocateInfo->commandBufferCount,
+         overlay_query_flags,
+      };
+      VkResult err =
+         device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
+                                             NULL, &pipeline_query_pool);
+      check_vk_result(err);
+   }
+   if (device_data->instance->params.enabled[OVERLAY_PARAM_ENABLED_gpu_timing]) {
+      VkQueryPoolCreateInfo pool_info = {
+         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+         NULL,
+         0,
+         VK_QUERY_TYPE_TIMESTAMP,
+         pAllocateInfo->commandBufferCount * 2,
+         0,
+      };
+      VkResult err =
+         device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
+                                             NULL, &timestamp_query_pool);
+      check_vk_result(err);
+   }
+
+   for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; i++) {
+      new_command_buffer_data(pCommandBuffers[i], pAllocateInfo->level,
+                              pipeline_query_pool, timestamp_query_pool,
+                              i, device_data);
+   }
+
+   if (pipeline_query_pool)
+      map_object(pipeline_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+   if (timestamp_query_pool)
+      map_object(timestamp_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_FreeCommandBuffers(VkDevice device,
-                                                      VkCommandPool commandPool,
-                                                      uint32_t commandBufferCount,
-                                                      const VkCommandBuffer* pCommandBuffers)
+VKAPI_ATTR void VKAPI_CALL overlay_FreeCommandBuffers(
+   VkDevice               device,
+   VkCommandPool          commandPool,
+   uint32_t               commandBufferCount,
+   const VkCommandBuffer* pCommandBuffers)
 {
    struct device_data *device_data = FIND_DEVICE_DATA(device);
    for (uint32_t i = 0; i < commandBufferCount; i++) {
-      struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
+      struct command_buffer_data *cmd_buffer_data =
+         FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
+      uint64_t count = (uintptr_t)find_object_data((void *)cmd_buffer_data->pipeline_query_pool);
+      if (count == 1) {
+         unmap_object(cmd_buffer_data->pipeline_query_pool);
+         device_data->vtable.DestroyQueryPool(device_data->device,
+                                              cmd_buffer_data->pipeline_query_pool, NULL);
+      } else if (count != 0) {
+         map_object(cmd_buffer_data->pipeline_query_pool, (void *)(uintptr_t)(count - 1));
+      }
+      count = (uintptr_t)find_object_data((void *)cmd_buffer_data->timestamp_query_pool);
+      if (count == 1) {
+         unmap_object(cmd_buffer_data->timestamp_query_pool);
+         device_data->vtable.DestroyQueryPool(device_data->device,
+                                              cmd_buffer_data->timestamp_query_pool, NULL);
+      } else if (count != 0) {
+         map_object(cmd_buffer_data->timestamp_query_pool, (void *)(uintptr_t)(count - 1));
+      }
       destroy_command_buffer_data(cmd_buffer_data);
    }
+
    device_data->vtable.FreeCommandBuffers(device, commandPool,
                                           commandBufferCount, pCommandBuffers);
 }
@@ -1724,6 +2003,21 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueueSubmit(
          /* Merge the submitted command buffer stats into the device. */
          for (uint32_t st = 0; st < OVERLAY_PARAM_ENABLED_MAX; st++)
             device_data->frame_stats.stats[st] += cmd_buffer_data->stats.stats[st];
+
+         /* Attach the command buffer to the queue so we remember to read its
+          * pipeline statistics & timestamps at QueuePresent().
+          */
+         if (!cmd_buffer_data->pipeline_query_pool &&
+             !cmd_buffer_data->timestamp_query_pool)
+            continue;
+
+         if (list_empty(&cmd_buffer_data->link)) {
+            list_addtail(&cmd_buffer_data->link,
+                         &queue_data->running_command_buffer);
+         } else {
+            fprintf(stderr, "Command buffer submitted multiple times before present.\n"
+                    "This could lead to invalid data.\n");
+         }
       }
    }
 
@@ -1751,7 +2045,19 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
    // Advance the link info for the next element on the chain
    chain_info->u.pLayerInfo = chain_info->u.pLayerInfo->pNext;
 
-   VkResult result = fpCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
+   VkPhysicalDeviceFeatures device_features = {};
+   VkDeviceCreateInfo device_info = *pCreateInfo;
+
+   if (pCreateInfo->pEnabledFeatures)
+      device_features = *(pCreateInfo->pEnabledFeatures);
+   if (instance_data->pipeline_statistics_enabled) {
+      device_features.inheritedQueries = true;
+      device_features.pipelineStatisticsQuery = true;
+   }
+   device_info.pEnabledFeatures = &device_features;
+
+
+   VkResult result = fpCreateDevice(physicalDevice, &device_info, pAllocator, pDevice);
    if (result != VK_SUCCESS) return result;
 
    struct device_data *device_data = new_device_data(*pDevice, instance_data);
@@ -1811,6 +2117,14 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateInstance(
 
    parse_overlay_env(&instance_data->params, getenv("VK_LAYER_MESA_OVERLAY_CONFIG"));
 
+   for (int i = OVERLAY_PARAM_ENABLED_vertices;
+        i <= OVERLAY_PARAM_ENABLED_compute_invocations; i++) {
+      if (instance_data->params.enabled[i]) {
+         instance_data->pipeline_statistics_enabled = true;
+         break;
+      }
+   }
+
    return result;
 }
 
@@ -1854,10 +2168,12 @@ static const struct {
    ADD_HOOK(AcquireNextImage2KHR),
 
    ADD_HOOK(QueueSubmit),
-   ADD_HOOK(CreateInstance),
-   ADD_HOOK(DestroyInstance),
+
    ADD_HOOK(CreateDevice),
    ADD_HOOK(DestroyDevice),
+
+   ADD_HOOK(CreateInstance),
+   ADD_HOOK(DestroyInstance),
 #undef ADD_HOOK
 };
 
