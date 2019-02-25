@@ -36,8 +36,11 @@ nine_convert_dsa_state(struct pipe_depth_stencil_alpha_state *dsa_state,
 
     if (rs[D3DRS_ZENABLE]) {
         dsa.depth.enabled = 1;
-        dsa.depth.writemask = !!rs[D3DRS_ZWRITEENABLE];
         dsa.depth.func = d3dcmpfunc_to_pipe_func(rs[D3DRS_ZFUNC]);
+        /* Disable depth write if no change can occur */
+        dsa.depth.writemask = !!rs[D3DRS_ZWRITEENABLE] &&
+            dsa.depth.func != PIPE_FUNC_EQUAL &&
+            dsa.depth.func != PIPE_FUNC_NEVER;
     }
 
     if (rs[D3DRS_STENCILENABLE]) {
