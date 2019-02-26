@@ -654,3 +654,30 @@ store("shared", 2, [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, address }.
 # const_index[] = { write_mask, align_mul, align_offset }
 store("global", 2, [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+
+
+# IR3-specific version of most SSBO intrinsics. The only different
+# compare to the originals is that they add an extra source to hold
+# the dword-offset, which is needed by the backend code apart from
+# the byte-offset already provided by NIR in one of the sources.
+#
+# NIR lowering pass 'ir3_nir_lower_io_offset' will replace the
+# original SSBO intrinsics by these, placing the computed
+# dword-offset always in the last source.
+#
+# The float versions are not handled because those are not supported
+# by the backend.
+intrinsic("store_ssbo_ir3",  src_comp=[0, 1, 1, 1],
+          indices=[WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+intrinsic("load_ssbo_ir3",  src_comp=[1, 1, 1], dest_comp=0,
+          indices=[ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
+intrinsic("ssbo_atomic_add_ir3",        src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_imin_ir3",       src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_umin_ir3",       src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_imax_ir3",       src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_umax_ir3",       src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_and_ir3",        src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_or_ir3",         src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_xor_ir3",        src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_exchange_ir3",   src_comp=[1, 1, 1, 1],    dest_comp=1)
+intrinsic("ssbo_atomic_comp_swap_ir3",  src_comp=[1, 1, 1, 1, 1], dest_comp=1)
