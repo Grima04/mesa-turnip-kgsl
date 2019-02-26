@@ -537,18 +537,18 @@ static void compute_swapchain_display(struct swapchain_data *data)
       ImGui::Text("Acquire timing: %.3fms [%.3f, %.3f]",
                   get_acquire_timing(data, ARRAY_SIZE(data->acquire_times) - 1),
                   min_time, max_time);
+   }
 
-      for (uint32_t i = 0; i < ARRAY_SIZE(data->stats_min.stats); i++) {
-         data->stats_min.stats[i] = UINT32_MAX;
-         data->stats_max.stats[i] = 0;
-      }
-      for (uint32_t i = 0; i < MIN2(data->n_frames - 1, ARRAY_SIZE(data->stats)); i++) {
-         for (uint32_t j = 0; j < ARRAY_SIZE(data->stats[0].stats); j++) {
-            data->stats_min.stats[j] = MIN2(data->stats[i].stats[j],
-                                            data->stats_min.stats[j]);
-            data->stats_max.stats[j] = MAX2(data->stats[i].stats[j],
-                                            data->stats_max.stats[j]);
-         }
+   for (uint32_t i = 0; i < ARRAY_SIZE(data->stats_min.stats); i++) {
+      data->stats_min.stats[i] = UINT32_MAX;
+      data->stats_max.stats[i] = 0;
+   }
+   for (uint32_t i = 0; i < MIN2(data->n_frames - 1, ARRAY_SIZE(data->stats)); i++) {
+      for (uint32_t j = 0; j < ARRAY_SIZE(data->stats[0].stats); j++) {
+         data->stats_min.stats[j] = MIN2(data->stats[i].stats[j],
+                                         data->stats_min.stats[j]);
+         data->stats_max.stats[j] = MAX2(data->stats[i].stats[j],
+                                         data->stats_max.stats[j]);
       }
    }
 
