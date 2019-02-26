@@ -135,7 +135,6 @@ vir_print_reg(struct v3d_compile *c, const struct qinst *inst,
 {
         static const char *files[] = {
                 [QFILE_TEMP] = "t",
-                [QFILE_UNIF] = "u",
                 [QFILE_TLB] = "tlb",
                 [QFILE_TLBU] = "tlbu",
         };
@@ -181,14 +180,6 @@ vir_print_reg(struct v3d_compile *c, const struct qinst *inst,
         case QFILE_TLB:
         case QFILE_TLBU:
                 fprintf(stderr, "%s", files[reg.file]);
-                break;
-
-        case QFILE_UNIF:
-                fprintf(stderr, "%s%d", files[reg.file], reg.index);
-                fprintf(stderr, " (");
-                vir_dump_uniform(c->uniform_contents[reg.index],
-                                 c->uniform_data[reg.index]);
-                fprintf(stderr, ")");
                 break;
 
         default:

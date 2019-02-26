@@ -1018,9 +1018,12 @@ vir_uniform(struct v3d_compile *c,
             enum quniform_contents contents,
             uint32_t data)
 {
-        uint32_t uniform = vir_get_uniform_index(c, contents, data);
-
-        return vir_reg(QFILE_UNIF, uniform);
+        struct qinst *inst = vir_NOP(c);
+        inst->qpu.sig.ldunif = true;
+        inst->uniform = vir_get_uniform_index(c, contents, data);
+        inst->dst = vir_get_temp(c);
+        c->defs[inst->dst.index] = inst;
+        return inst->dst;
 }
 
 #define OPTPASS(func)                                                   \

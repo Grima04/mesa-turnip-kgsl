@@ -52,10 +52,7 @@ vir_is_mov_uniform(struct v3d_compile *c, int temp)
 {
         struct qinst *def = c->defs[temp];
 
-        return (def &&
-                (def->qpu.sig.ldunif ||
-                 (vir_is_raw_mov(def) &&
-                  def->src[0].file == QFILE_UNIF)));
+        return def && def->qpu.sig.ldunif;
 }
 
 static int
@@ -222,12 +219,7 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
         int uniform_index = ~0;
         if (is_uniform) {
                 struct qinst *orig_unif = c->defs[spill_temp];
-                if (orig_unif->qpu.sig.ldunif) {
-                        uniform_index = orig_unif->uniform;
-                } else {
-                        assert(orig_unif->src[0].file == QFILE_UNIF);
-                        uniform_index = orig_unif->src[0].index;
-                }
+                uniform_index = orig_unif->uniform;
         }
 
         vir_for_each_inst_inorder_safe(inst, c) {
@@ -240,10 +232,11 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
                         c->cursor = vir_before_inst(inst);
 
                         if (is_uniform) {
-                                inst->src[i] =
-                                        vir_MOV(c, vir_uniform(c,
-                                                               c->uniform_contents[uniform_index],
-                                                               c->uniform_data[uniform_index]));
+                                struct qreg unif =
+                                        vir_uniform(c,
+                                                    c->uniform_contents[uniform_index],
+                                                    c->uniform_data[uniform_index]);
+                                inst->src[i] = unif;
                         } else {
                                 v3d_emit_spill_tmua(c, spill_offset);
                                 vir_emit_thrsw(c);

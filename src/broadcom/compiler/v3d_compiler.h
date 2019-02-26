@@ -69,7 +69,6 @@ enum qfile {
          * or physical registers later.
          */
         QFILE_TEMP,
-        QFILE_UNIF,
         QFILE_TLB,
         QFILE_TLBU,
 

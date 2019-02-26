@@ -354,8 +354,7 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
         if (!list_empty(&c->cur_block->instructions))
                 last_inst = (struct qinst *)c->cur_block->instructions.prev;
 
-        assert(result.file == QFILE_UNIF ||
-               (result.file == QFILE_TEMP &&
+        assert((result.file == QFILE_TEMP &&
                 last_inst && last_inst == c->defs[result.index]));
 
         if (dest->is_ssa) {
@@ -382,7 +381,8 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                 /* Insert a MOV if the source wasn't an SSA def in the
                  * previous instruction.
                  */
-                if (result.file == QFILE_UNIF) {
+                if ((vir_in_nonuniform_control_flow(c) &&
+                     c->defs[last_inst->dst.index]->qpu.sig.ldunif)) {
                         result = vir_MOV(c, result);
                         last_inst = c->defs[result.index];
                 }
@@ -2519,7 +2519,6 @@ v3d_nir_to_vir(struct v3d_compile *c)
         }
 
         vir_optimize(c);
-        vir_lower_uniforms(c);
 
         vir_check_payload_w(c);
 

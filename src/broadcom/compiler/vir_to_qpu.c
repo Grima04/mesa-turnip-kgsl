@@ -92,16 +92,6 @@ new_qpu_nop_before(struct qinst *inst)
         return q;
 }
 
-static void
-new_ldunif_instr(struct qinst *inst, int i)
-{
-        struct qinst *ldunif = new_qpu_nop_before(inst);
-
-        ldunif->qpu.sig.ldunif = true;
-        assert(inst->src[i].file == QFILE_UNIF);
-        ldunif->uniform = inst->src[i].index;
-}
-
 /**
  * Allocates the src register (accumulator or register file) into the RADDR
  * fields of the instruction.
@@ -219,7 +209,6 @@ v3d_generate_code_block(struct v3d_compile *c,
 
                 int nsrc = vir_get_nsrc(qinst);
                 struct qpu_reg src[ARRAY_SIZE(qinst->src)];
-                bool emitted_ldunif = false;
                 for (int i = 0; i < nsrc; i++) {
                         int index = qinst->src[i].index;
                         switch (qinst->src[i].file) {
@@ -235,19 +224,6 @@ v3d_generate_code_block(struct v3d_compile *c,
                                 break;
                         case QFILE_TEMP:
                                 src[i] = temp_registers[index];
-                                break;
-                        case QFILE_UNIF:
-                                /* XXX perf: If the last ldunif we emitted was
-                                 * the same uniform value, skip it.  Common
-                                 * for multop/umul24 sequences.
-                                 */
-                                if (!emitted_ldunif) {
-                                        new_ldunif_instr(qinst, i);
-                                        c->num_uniforms++;
-                                        emitted_ldunif = true;
-                                }
-
-                                src[i] = qpu_acc(5);
                                 break;
                         case QFILE_SMALL_IMM:
                                 src[i].smimm = true;
@@ -301,7 +277,6 @@ v3d_generate_code_block(struct v3d_compile *c,
                         dst = qpu_magic(V3D_QPU_WADDR_TLBU);
                         break;
 
-                case QFILE_UNIF:
                 case QFILE_SMALL_IMM:
                 case QFILE_LOAD_IMM:
                         assert(!"not reached");
