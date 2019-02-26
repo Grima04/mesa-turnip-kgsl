@@ -41,6 +41,26 @@ IRIS_COMMON_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary
 
 #
+# libiris for gen8
+#
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libmesa_iris_gen8
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
+LOCAL_CFLAGS := -DGEN_VERSIONx10=80
+
+LOCAL_C_INCLUDES := $(IRIS_COMMON_INCLUDES)
+
+LOCAL_STATIC_LIBRARIES := $(LIBIRIS_STATIC_LIBS)
+
+LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_genxml
+
+include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)
+
+#
 # libiris for gen9
 #
 
@@ -126,6 +146,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_blorp \
 	libmesa_intel_common \
 	libmesa_intel_compiler \
+	libmesa_iris_gen8 \
 	libmesa_iris_gen9 \
 	libmesa_iris_gen10 \
 	libmesa_iris_gen11
