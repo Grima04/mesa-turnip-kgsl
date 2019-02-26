@@ -2670,5 +2670,15 @@ v3d_nir_to_vir(struct v3d_compile *c)
                         vir_remove_thrsw(c);
         }
 
+        if (c->spill_size &&
+            (V3D_DEBUG & (V3D_DEBUG_VIR |
+                          v3d_debug_flag_for_shader_stage(c->s->info.stage)))) {
+                fprintf(stderr, "%s prog %d/%d spilled VIR:\n",
+                        vir_get_stage_name(c),
+                        c->program_id, c->variant_id);
+                vir_dump(c);
+                fprintf(stderr, "\n");
+        }
+
         v3d_vir_to_qpu(c, temp_registers);
 }
