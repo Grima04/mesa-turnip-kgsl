@@ -1156,25 +1156,29 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			}
 		}
 		break;
-	case nir_intrinsic_load_ssbo:
+		/* All SSBO intrinsics should have been lowered by 'lower_io_offsets'
+		 * pass and replaced by an ir3-specifc version that adds the
+		 * dword-offset in the last source.
+		 */
+	case nir_intrinsic_load_ssbo_ir3:
 		ctx->funcs->emit_intrinsic_load_ssbo(ctx, intr, dst);
 		break;
-	case nir_intrinsic_store_ssbo:
+	case nir_intrinsic_store_ssbo_ir3:
 		ctx->funcs->emit_intrinsic_store_ssbo(ctx, intr);
 		break;
 	case nir_intrinsic_get_buffer_size:
 		emit_intrinsic_ssbo_size(ctx, intr, dst);
 		break;
-	case nir_intrinsic_ssbo_atomic_add:
-	case nir_intrinsic_ssbo_atomic_imin:
-	case nir_intrinsic_ssbo_atomic_umin:
-	case nir_intrinsic_ssbo_atomic_imax:
-	case nir_intrinsic_ssbo_atomic_umax:
-	case nir_intrinsic_ssbo_atomic_and:
-	case nir_intrinsic_ssbo_atomic_or:
-	case nir_intrinsic_ssbo_atomic_xor:
-	case nir_intrinsic_ssbo_atomic_exchange:
-	case nir_intrinsic_ssbo_atomic_comp_swap:
+	case nir_intrinsic_ssbo_atomic_add_ir3:
+	case nir_intrinsic_ssbo_atomic_imin_ir3:
+	case nir_intrinsic_ssbo_atomic_umin_ir3:
+	case nir_intrinsic_ssbo_atomic_imax_ir3:
+	case nir_intrinsic_ssbo_atomic_umax_ir3:
+	case nir_intrinsic_ssbo_atomic_and_ir3:
+	case nir_intrinsic_ssbo_atomic_or_ir3:
+	case nir_intrinsic_ssbo_atomic_xor_ir3:
+	case nir_intrinsic_ssbo_atomic_exchange_ir3:
+	case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
 		dst[0] = ctx->funcs->emit_intrinsic_atomic_ssbo(ctx, intr);
 		break;
 	case nir_intrinsic_load_shared:

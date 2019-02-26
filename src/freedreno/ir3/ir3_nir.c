@@ -188,6 +188,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 
 	OPT_V(s, nir_opt_global_to_local);
 	OPT_V(s, nir_lower_regs_to_ssa);
+	OPT_V(s, ir3_nir_lower_io_offsets);
 
 	if (key) {
 		if (s->info.stage == MESA_SHADER_VERTEX) {
