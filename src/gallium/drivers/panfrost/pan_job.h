@@ -39,6 +39,14 @@ struct panfrost_job_key {
 struct panfrost_job {
         struct panfrost_context *ctx;
         struct panfrost_job_key key;
+
+        /* Buffers cleared (PIPE_CLEAR_* bitmask) */
+        unsigned clear;
+
+        /* Packed clear values */
+        uint32_t clear_color;
+        float clear_depth;
+        unsigned clear_stencil;
 };
 
 /* Functions for managing the above */
