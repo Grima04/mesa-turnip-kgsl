@@ -449,6 +449,49 @@ struct iris_context {
    struct u_upload_mgr *query_buffer_uploader;
 
    struct {
+      struct {
+         /**
+          * Either the value of BaseVertex for indexed draw calls or the value
+          * of the argument <first> for non-indexed draw calls.
+          */
+         int firstvertex;
+         int baseinstance;
+      } params;
+
+      /**
+       * Resource and offset that stores draw_parameters from the indirect
+       * buffer or to the buffer that stures the previous values for non
+       * indirect draws.
+       */
+      struct pipe_resource *draw_params_res;
+      uint32_t draw_params_offset;
+
+      struct {
+         /**
+          * The value of DrawID. This always comes in from it's own vertex
+          * buffer since it's not part of the indirect draw parameters.
+          */
+         int drawid;
+
+         /**
+          * Stores if an indexed or non-indexed draw (~0/0). Useful to
+          * calculate BaseVertex as an AND of firstvertex and is_indexed_draw.
+          */
+         int is_indexed_draw;
+      } derived_params;
+
+      /**
+       * Resource and offset used for GL_ARB_shader_draw_parameters which
+       * contains parameters that are not present in the indirect buffer as
+       * drawid and is_indexed_draw. They will go in their own vertex element.
+       */
+      struct pipe_resource *derived_draw_params_res;
+      uint32_t derived_draw_params_offset;
+
+      bool is_indirect;
+   } draw;
+
+   struct {
       struct iris_uncompiled_shader *uncompiled[MESA_SHADER_STAGES];
       struct iris_compiled_shader *prog[MESA_SHADER_STAGES];
       struct brw_vue_map *last_vue_map;
@@ -522,6 +565,11 @@ struct iris_context {
       struct iris_genx_state *genx;
 
       struct iris_shader_state shaders[MESA_SHADER_STAGES];
+
+      /** Do vertex shader uses shader draw parameters ? */
+      bool vs_uses_draw_params;
+      bool vs_uses_derived_draw_params;
+      bool vs_needs_sgvs_element;
 
       /** Do any samplers (for any stage) need border color? */
       bool need_border_colors;

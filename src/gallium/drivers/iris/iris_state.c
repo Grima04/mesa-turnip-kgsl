@@ -4651,6 +4651,62 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       int count = util_bitcount64(ice->state.bound_vertex_buffers);
+      int dynamic_bound = ice->state.bound_vertex_buffers;
+
+      if (ice->state.vs_uses_draw_params) {
+         if (ice->draw.draw_params_offset == 0) {
+            u_upload_data(ice->state.dynamic_uploader, 0, sizeof(ice->draw.params),
+                          4, &ice->draw.params, &ice->draw.draw_params_offset,
+                          &ice->draw.draw_params_res);
+         }
+         assert(ice->draw.draw_params_res);
+
+         struct iris_vertex_buffer_state *state =
+            &(ice->state.genx->vertex_buffers[count]);
+         pipe_resource_reference(&state->resource, ice->draw.draw_params_res);
+         struct iris_resource *res = (void *) state->resource;
+
+         iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
+            vb.VertexBufferIndex = count;
+            vb.AddressModifyEnable = true;
+            vb.BufferPitch = 0;
+            vb.BufferSize = res->bo->size - ice->draw.draw_params_offset;
+            vb.BufferStartingAddress =
+               ro_bo(NULL, res->bo->gtt_offset +
+                           (int) ice->draw.draw_params_offset);
+            vb.MOCS = mocs(res->bo);
+         }
+         dynamic_bound |= 1ull << count;
+         count++;
+      }
+
+      if (ice->state.vs_uses_derived_draw_params) {
+         u_upload_data(ice->state.dynamic_uploader, 0,
+                       sizeof(ice->draw.derived_params), 4,
+                       &ice->draw.derived_params,
+                       &ice->draw.derived_draw_params_offset,
+                       &ice->draw.derived_draw_params_res);
+
+         struct iris_vertex_buffer_state *state =
+            &(ice->state.genx->vertex_buffers[count]);
+         pipe_resource_reference(&state->resource,
+                                 ice->draw.derived_draw_params_res);
+         struct iris_resource *res = (void *) ice->draw.derived_draw_params_res;
+
+         iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
+             vb.VertexBufferIndex = count;
+            vb.AddressModifyEnable = true;
+            vb.BufferPitch = 0;
+            vb.BufferSize =
+               res->bo->size - ice->draw.derived_draw_params_offset;
+            vb.BufferStartingAddress =
+               ro_bo(NULL, res->bo->gtt_offset +
+                           (int) ice->draw.derived_draw_params_offset);
+            vb.MOCS = mocs(res->bo);
+         }
+         dynamic_bound |= 1ull << count;
+         count++;
+      }
 
       if (count) {
          /* The VF cache designers cut corners, and made the cache key's
@@ -4664,7 +4720,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
           */
          unsigned flush_flags = 0;
 
-         uint64_t bound = ice->state.bound_vertex_buffers;
+         uint64_t bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
             uint16_t high_bits = 0;
@@ -4704,7 +4760,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          }
          map += 1;
 
-         bound = ice->state.bound_vertex_buffers;
+         bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
             memcpy(map, genx->vertex_buffers[i].state,
@@ -4717,8 +4773,59 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
       struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
       const unsigned entries = MAX2(cso->count, 1);
-      iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
-                      (1 + entries * GENX(VERTEX_ELEMENT_STATE_length)));
+      if (!(ice->state.vs_needs_sgvs_element ||
+            ice->state.vs_uses_derived_draw_params)) {
+         iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
+                         (1 + entries * GENX(VERTEX_ELEMENT_STATE_length)));
+      } else {
+         uint32_t dynamic_ves[1 + 33 * GENX(VERTEX_ELEMENT_STATE_length)];
+         const int dyn_count = cso->count +
+            ice->state.vs_needs_sgvs_element +
+            ice->state.vs_uses_derived_draw_params;
+
+         iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS),
+                           &dynamic_ves, ve) {
+            ve.DWordLength =
+               1 + GENX(VERTEX_ELEMENT_STATE_length) * dyn_count - 2;
+         }
+         memcpy(&dynamic_ves[1], &cso->vertex_elements[1], cso->count *
+                GENX(VERTEX_ELEMENT_STATE_length) * sizeof(uint32_t));
+         uint32_t *ve_pack_dest =
+            &dynamic_ves[1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)];
+
+         if (ice->state.vs_needs_sgvs_element) {
+            uint32_t base_ctrl = ice->state.vs_uses_draw_params ?
+                                 VFCOMP_STORE_SRC : VFCOMP_STORE_0;
+            iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+               ve.Valid = true;
+               ve.VertexBufferIndex =
+                  util_bitcount64(ice->state.bound_vertex_buffers);
+               ve.SourceElementFormat = ISL_FORMAT_R32G32_UINT;
+               ve.Component0Control = base_ctrl;
+               ve.Component1Control = base_ctrl;
+               ve.Component2Control = VFCOMP_STORE_0;
+               ve.Component3Control = VFCOMP_STORE_0;
+            }
+            ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+         }
+         if (ice->state.vs_uses_derived_draw_params) {
+            iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+               ve.Valid = true;
+               ve.VertexBufferIndex =
+                  util_bitcount64(ice->state.bound_vertex_buffers) +
+                  ice->state.vs_uses_draw_params;
+               ve.SourceElementFormat = ISL_FORMAT_R32G32_UINT;
+               ve.Component0Control = VFCOMP_STORE_SRC;
+               ve.Component1Control = VFCOMP_STORE_SRC;
+               ve.Component2Control = VFCOMP_STORE_0;
+               ve.Component3Control = VFCOMP_STORE_0;
+            }
+            ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
+         }
+         iris_batch_emit(batch, &dynamic_ves, sizeof(uint32_t) *
+                         (1 + dyn_count * GENX(VERTEX_ELEMENT_STATE_length)));
+      }
+
       iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
                       entries * GENX(3DSTATE_VF_INSTANCING_length));
    }

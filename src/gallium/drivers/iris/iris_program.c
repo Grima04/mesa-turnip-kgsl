@@ -617,6 +617,24 @@ iris_update_compiled_vs(struct iris_context *ice)
                           IRIS_DIRTY_BINDINGS_VS |
                           IRIS_DIRTY_CONSTANTS_VS |
                           IRIS_DIRTY_VF_SGVS;
+      const struct brw_vs_prog_data *vs_prog_data =
+            (void *) shader->prog_data;
+      const bool uses_draw_params = vs_prog_data->uses_firstvertex ||
+                                    vs_prog_data->uses_baseinstance;
+      const bool uses_derived_draw_params = vs_prog_data->uses_drawid ||
+                                            vs_prog_data->uses_is_indexed_draw;
+      const bool needs_sgvs_element = uses_draw_params ||
+                                      vs_prog_data->uses_instanceid ||
+                                      vs_prog_data->uses_vertexid;
+
+      if (ice->state.vs_uses_draw_params != uses_draw_params ||
+          ice->state.vs_uses_derived_draw_params != uses_derived_draw_params) {
+         ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
+                             IRIS_DIRTY_VERTEX_ELEMENTS;
+      }
+      ice->state.vs_uses_draw_params = uses_draw_params;
+      ice->state.vs_uses_derived_draw_params = uses_derived_draw_params;
+      ice->state.vs_needs_sgvs_element = needs_sgvs_element;
    }
 }
 
