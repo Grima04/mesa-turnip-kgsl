@@ -249,17 +249,17 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
  * Optimal hardware path for blitting pixels.
  * Scaling, format conversion, up- and downsampling (resolve) are allowed.
  */
-void
+bool
 fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_blit_info info = *blit_info;
 
 	if (info.render_condition_enable && !fd_render_condition_check(pctx))
-		return;
+		return true;
 
 	if (ctx->blit && ctx->blit(ctx, &info))
-		return;
+		return true;
 
 	if (info.mask & PIPE_MASK_S) {
 		DBG("cannot blit stencil, skipping");
@@ -270,10 +270,10 @@ fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 		DBG("blit unsupported %s -> %s",
 				util_format_short_name(info.src.resource->format),
 				util_format_short_name(info.dst.resource->format));
-		return;
+		return false;
 	}
 
-	fd_blitter_blit(ctx, &info);
+	return fd_blitter_blit(ctx, &info);
 }
 
 /**

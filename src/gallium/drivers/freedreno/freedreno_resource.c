@@ -126,10 +126,7 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback
 	struct pipe_context *pctx = &ctx->base;
 
 	/* TODO size threshold too?? */
-	if (!fallback) {
-		/* do blit on gpu: */
-		pctx->blit(pctx, blit);
-	} else {
+	if (fallback || !fd_blit(pctx, blit)) {
 		/* do blit on cpu: */
 		util_resource_copy_region(pctx,
 				blit->dst.resource, blit->dst.level, blit->dst.box.x,
@@ -1255,6 +1252,13 @@ fd_get_sample_position(struct pipe_context *context,
 	pos_out[1] = ptr[sample_index][1] / 16.0f;
 }
 
+static void
+fd_blit_pipe(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
+{
+	/* wrap fd_blit to return void */
+	fd_blit(pctx, blit_info);
+}
+
 void
 fd_resource_context_init(struct pipe_context *pctx)
 {
@@ -1266,7 +1270,7 @@ fd_resource_context_init(struct pipe_context *pctx)
 	pctx->create_surface = fd_create_surface;
 	pctx->surface_destroy = fd_surface_destroy;
 	pctx->resource_copy_region = fd_resource_copy_region;
-	pctx->blit = fd_blit;
+	pctx->blit = fd_blit_pipe;
 	pctx->flush_resource = fd_flush_resource;
 	pctx->invalidate_resource = fd_invalidate_resource;
 	pctx->get_sample_position = fd_get_sample_position;

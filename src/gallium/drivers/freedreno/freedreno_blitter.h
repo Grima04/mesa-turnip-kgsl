@@ -45,6 +45,6 @@ void fd_resource_copy_region(struct pipe_context *pctx,
 		unsigned src_level,
 		const struct pipe_box *src_box);
 
-void fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info);
+bool fd_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info);
 
 #endif /* FREEDRENO_BLIT_H_ */
