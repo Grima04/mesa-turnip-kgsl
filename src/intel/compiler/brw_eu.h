@@ -285,7 +285,7 @@ brw_message_desc_rlen(const struct gen_device_info *devinfo, uint32_t desc)
 }
 
 static inline bool
-brw_message_desc_header_present(const struct gen_device_info *devinfo,
+brw_message_desc_header_present(MAYBE_UNUSED const struct gen_device_info *devinfo,
                                 uint32_t desc)
 {
    assert(devinfo->gen >= 5);
@@ -293,14 +293,14 @@ brw_message_desc_header_present(const struct gen_device_info *devinfo,
 }
 
 static inline unsigned
-brw_message_ex_desc(const struct gen_device_info *devinfo,
+brw_message_ex_desc(UNUSED const struct gen_device_info *devinfo,
                     unsigned ex_msg_length)
 {
    return SET_BITS(ex_msg_length, 9, 6);
 }
 
 static inline unsigned
-brw_message_ex_desc_ex_mlen(const struct gen_device_info *devinfo,
+brw_message_ex_desc_ex_mlen(UNUSED const struct gen_device_info *devinfo,
                             uint32_t ex_desc)
 {
    return GET_BITS(ex_desc, 9, 6);
@@ -334,14 +334,14 @@ brw_sampler_desc(const struct gen_device_info *devinfo,
 }
 
 static inline unsigned
-brw_sampler_desc_binding_table_index(const struct gen_device_info *devinfo,
+brw_sampler_desc_binding_table_index(UNUSED const struct gen_device_info *devinfo,
                                      uint32_t desc)
 {
    return GET_BITS(desc, 7, 0);
 }
 
 static inline unsigned
-brw_sampler_desc_sampler(const struct gen_device_info *devinfo, uint32_t desc)
+brw_sampler_desc_sampler(UNUSED const struct gen_device_info *devinfo, uint32_t desc)
 {
    return GET_BITS(desc, 11, 8);
 }
@@ -368,7 +368,7 @@ brw_sampler_desc_simd_mode(const struct gen_device_info *devinfo, uint32_t desc)
 }
 
 static  inline unsigned
-brw_sampler_desc_return_format(const struct gen_device_info *devinfo,
+brw_sampler_desc_return_format(MAYBE_UNUSED const struct gen_device_info *devinfo,
                                uint32_t desc)
 {
    assert(devinfo->gen == 4 && !devinfo->is_g4x);
@@ -402,7 +402,7 @@ brw_dp_desc(const struct gen_device_info *devinfo,
 }
 
 static inline unsigned
-brw_dp_desc_binding_table_index(const struct gen_device_info *devinfo,
+brw_dp_desc_binding_table_index(UNUSED const struct gen_device_info *devinfo,
                                 uint32_t desc)
 {
    return GET_BITS(desc, 7, 0);
@@ -751,7 +751,7 @@ brw_dp_a64_byte_scattered_rw_desc(const struct gen_device_info *devinfo,
 
 static inline uint32_t
 brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
-                               unsigned exec_size, /**< 0 for SIMD4x2 */
+                               MAYBE_UNUSED unsigned exec_size, /**< 0 for SIMD4x2 */
                                unsigned bit_size,
                                unsigned atomic_op,
                                bool response_expected)
@@ -772,7 +772,7 @@ brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
 
 static inline uint32_t
 brw_dp_a64_untyped_atomic_float_desc(const struct gen_device_info *devinfo,
-                                     unsigned exec_size,
+                                     MAYBE_UNUSED unsigned exec_size,
                                      unsigned atomic_op,
                                      bool response_expected)
 {
