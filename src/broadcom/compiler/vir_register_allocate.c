@@ -379,9 +379,7 @@ node_to_temp_priority(const void *in_a, const void *in_b)
 }
 
 #define CLASS_BIT_PHYS			(1 << 0)
-#define CLASS_BIT_R0_R2			(1 << 1)
-#define CLASS_BIT_R3			(1 << 2)
-#define CLASS_BIT_R4			(1 << 3)
+#define CLASS_BIT_ACC			(1 << 1)
 
 /**
  * Returns a mapping from QFILE_TEMP indices to struct qpu_regs.
@@ -448,7 +446,7 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
          * incrementally remove bits that the temp definitely can't be in.
          */
         memset(class_bits,
-               CLASS_BIT_PHYS | CLASS_BIT_R0_R2 | CLASS_BIT_R3 | CLASS_BIT_R4,
+               CLASS_BIT_PHYS | CLASS_BIT_ACC,
                sizeof(class_bits));
 
         int ip = 0;
@@ -551,9 +549,7 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
                                           c->compiler->reg_class_phys[thread_index]);
                 } else {
                         assert(class_bits[i] == (CLASS_BIT_PHYS |
-                                                 CLASS_BIT_R0_R2 |
-                                                 CLASS_BIT_R3 |
-                                                 CLASS_BIT_R4));
+                                                 CLASS_BIT_ACC));
                         ra_set_node_class(g, temp_to_node[i],
                                           c->compiler->reg_class_phys_or_acc[thread_index]);
                 }
