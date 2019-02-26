@@ -302,23 +302,23 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,
 			    LLVMValueRef vindex,
 			    LLVMValueRef voffset,
-				LLVMValueRef soffset,
-				LLVMValueRef immoffset,
-				LLVMValueRef glc);
+			    LLVMValueRef soffset,
+			    LLVMValueRef immoffset,
+			    bool glc);
 
 LLVMValueRef
-ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
-			    LLVMValueRef rsrc,
-			    LLVMValueRef vindex,
-			    LLVMValueRef voffset,
-			    LLVMValueRef soffset,
-			    unsigned num_channels,
-			    unsigned dfmt,
-			    unsigned nfmt,
-			    bool glc,
-			    bool slc,
-			    bool can_speculate,
-			    bool structurized);
+ac_build_tbuffer_load(struct ac_llvm_context *ctx,
+		      LLVMValueRef rsrc,
+		      LLVMValueRef vindex,
+		      LLVMValueRef voffset,
+		      LLVMValueRef soffset,
+		      LLVMValueRef immoffset,
+		      unsigned num_channels,
+		      unsigned dfmt,
+		      unsigned nfmt,
+		      bool glc,
+		      bool slc,
+		      bool can_speculate);
 
 LLVMValueRef
 ac_get_thread_id(struct ac_llvm_context *ctx);

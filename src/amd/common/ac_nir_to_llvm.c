@@ -1716,7 +1716,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 							  offset,
 							  ctx->ac.i32_0,
 							  immoffset,
-							  glc);
+							  cache_policy & ac_glc);
 		} else {
 			const char *load_name;
 			LLVMTypeRef data_type;
@@ -1787,7 +1787,7 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx,
 								 offset,
 								 ctx->ac.i32_0,
 								 LLVMConstInt(ctx->ac.i32, 2 * i, 0),
-								 ctx->ac.i1false);
+								 false);
 		}
 		ret = ac_build_gather_values(&ctx->ac, results, num_components);
 	} else {
