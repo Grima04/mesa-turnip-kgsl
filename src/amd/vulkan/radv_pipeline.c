@@ -1244,25 +1244,6 @@ si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
 	}
 }
 
-static unsigned si_map_swizzle(unsigned swizzle)
-{
-	switch (swizzle) {
-	case VK_SWIZZLE_Y:
-		return V_008F0C_SQ_SEL_Y;
-	case VK_SWIZZLE_Z:
-		return V_008F0C_SQ_SEL_Z;
-	case VK_SWIZZLE_W:
-		return V_008F0C_SQ_SEL_W;
-	case VK_SWIZZLE_0:
-		return V_008F0C_SQ_SEL_0;
-	case VK_SWIZZLE_1:
-		return V_008F0C_SQ_SEL_1;
-	default: /* VK_SWIZZLE_X */
-		return V_008F0C_SQ_SEL_X;
-	}
-}
-
-
 static unsigned radv_dynamic_state_mask(VkDynamicState state)
 {
 	switch(state) {
@@ -3557,24 +3538,10 @@ radv_compute_vertex_input_state(struct radv_pipeline *pipeline,
 			&vi_info->pVertexAttributeDescriptions[i];
 		unsigned loc = desc->location;
 		const struct vk_format_description *format_desc;
-		int first_non_void;
-		uint32_t num_format, data_format;
+
 		format_desc = vk_format_description(desc->format);
-		first_non_void = vk_format_get_first_non_void_channel(desc->format);
 
-		num_format = radv_translate_buffer_numformat(format_desc, first_non_void);
-		data_format = radv_translate_buffer_dataformat(format_desc, first_non_void);
-
-		velems->rsrc_word3[loc] = S_008F0C_DST_SEL_X(si_map_swizzle(format_desc->swizzle[0])) |
-			S_008F0C_DST_SEL_Y(si_map_swizzle(format_desc->swizzle[1])) |
-			S_008F0C_DST_SEL_Z(si_map_swizzle(format_desc->swizzle[2])) |
-			S_008F0C_DST_SEL_W(si_map_swizzle(format_desc->swizzle[3])) |
-			S_008F0C_NUM_FORMAT(num_format) |
-			S_008F0C_DATA_FORMAT(data_format);
 		velems->format_size[loc] = format_desc->block.bits / 8;
-		velems->offset[loc] = desc->offset;
-		velems->binding[loc] = desc->binding;
-		velems->count = MAX2(velems->count, loc + 1);
 	}
 
 	for (uint32_t i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
@@ -3582,6 +3549,8 @@ radv_compute_vertex_input_state(struct radv_pipeline *pipeline,
 			&vi_info->pVertexBindingDescriptions[i];
 
 		pipeline->binding_stride[desc->binding] = desc->stride;
+		pipeline->num_vertex_bindings =
+			MAX2(pipeline->num_vertex_bindings, desc->binding + 1);
 	}
 }
 

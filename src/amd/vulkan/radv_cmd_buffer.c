@@ -1988,13 +1988,13 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 {
 	if ((pipeline_is_dirty ||
 	    (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
-	    cmd_buffer->state.pipeline->vertex_elements.count &&
+	    cmd_buffer->state.pipeline->num_vertex_bindings &&
 	    radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.info.vs.has_vertex_buffers) {
 		struct radv_vertex_elements_info *velems = &cmd_buffer->state.pipeline->vertex_elements;
 		unsigned vb_offset;
 		void *vb_ptr;
 		uint32_t i = 0;
-		uint32_t count = velems->count;
+		uint32_t count = cmd_buffer->state.pipeline->num_vertex_bindings;
 		uint64_t va;
 
 		/* allocate some descriptor state for vertex buffers */
@@ -2005,13 +2005,15 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 		for (i = 0; i < count; i++) {
 			uint32_t *desc = &((uint32_t *)vb_ptr)[i * 4];
 			uint32_t offset;
-			int vb = velems->binding[i];
-			struct radv_buffer *buffer = cmd_buffer->vertex_bindings[vb].buffer;
-			uint32_t stride = cmd_buffer->state.pipeline->binding_stride[vb];
+			struct radv_buffer *buffer = cmd_buffer->vertex_bindings[i].buffer;
+			uint32_t stride = cmd_buffer->state.pipeline->binding_stride[i];
+
+			if (!buffer)
+				continue;
 
 			va = radv_buffer_get_va(buffer->bo);
 
-			offset = cmd_buffer->vertex_bindings[vb].offset + velems->offset[i];
+			offset = cmd_buffer->vertex_bindings[i].offset;
 			va += offset + buffer->offset;
 			desc[0] = va;
 			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
@@ -2019,7 +2021,12 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 				desc[2] = (buffer->size - offset - velems->format_size[i]) / stride + 1;
 			else
 				desc[2] = buffer->size - offset;
-			desc[3] = velems->rsrc_word3[i];
+			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+				  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+				  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+				  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
 		}
 
 		va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);

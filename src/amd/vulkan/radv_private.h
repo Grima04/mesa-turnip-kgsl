@@ -1342,11 +1342,7 @@ struct radv_prim_vertex_count {
 };
 
 struct radv_vertex_elements_info {
-	uint32_t rsrc_word3[MAX_VERTEX_ATTRIBS];
 	uint32_t format_size[MAX_VERTEX_ATTRIBS];
-	uint32_t binding[MAX_VERTEX_ATTRIBS];
-	uint32_t offset[MAX_VERTEX_ATTRIBS];
-	uint32_t count;
 };
 
 struct radv_ia_multi_vgt_param_helpers {
@@ -1378,6 +1374,7 @@ struct radv_pipeline {
 	struct radv_vertex_elements_info             vertex_elements;
 
 	uint32_t                                     binding_stride[MAX_VBS];
+	uint8_t                                      num_vertex_bindings;
 
 	uint32_t user_data_0[MESA_SHADER_STAGES];
 	union {
