@@ -1061,18 +1061,24 @@ create_immed(struct ir3_block *block, uint32_t val)
 }
 
 static inline struct ir3_instruction *
-create_uniform(struct ir3_block *block, unsigned n)
+create_uniform_typed(struct ir3_block *block, unsigned n, type_t type)
 {
 	struct ir3_instruction *mov;
+	unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
 
 	mov = ir3_instr_create(block, OPC_MOV);
-	/* TODO get types right? */
-	mov->cat1.src_type = TYPE_F32;
-	mov->cat1.dst_type = TYPE_F32;
-	ir3_reg_create(mov, 0, 0);
-	ir3_reg_create(mov, n, IR3_REG_CONST);
+	mov->cat1.src_type = type;
+	mov->cat1.dst_type = type;
+	ir3_reg_create(mov, 0, flags);
+	ir3_reg_create(mov, n, IR3_REG_CONST | flags);
 
 	return mov;
+}
+
+static inline struct ir3_instruction *
+create_uniform(struct ir3_block *block, unsigned n)
+{
+	return create_uniform_typed(block, n, TYPE_F32);
 }
 
 static inline struct ir3_instruction *
