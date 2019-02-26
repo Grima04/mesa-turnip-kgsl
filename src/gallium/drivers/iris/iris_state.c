@@ -4639,7 +4639,30 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_DEPTH_BUFFER) {
       struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
-      iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
+      /* Do not emit the clear params yets. We need to update the clear value
+       * first.
+       */
+      uint32_t clear_length = GENX(3DSTATE_CLEAR_PARAMS_length) * 4;
+      uint32_t cso_z_size = sizeof(cso_z->packets) - clear_length;
+      iris_batch_emit(batch, cso_z->packets, cso_z_size);
+
+      union isl_color_value clear_value = { .f32 = { 0, } };
+
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      if (cso_fb->zsbuf) {
+         struct iris_resource *zres, *sres;
+         iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
+                                          &zres, &sres);
+         if (zres && zres->aux.bo)
+            clear_value = iris_resource_get_clear_color(zres, NULL, NULL);
+      }
+
+      uint32_t clear_params[GENX(3DSTATE_CLEAR_PARAMS_length)];
+      iris_pack_command(GENX(3DSTATE_CLEAR_PARAMS), clear_params, clear) {
+         clear.DepthClearValueValid = true;
+         clear.DepthClearValue = clear_value.f32[0];
+      }
+      iris_batch_emit(batch, clear_params, clear_length);
    }
 
    if (dirty & (IRIS_DIRTY_DEPTH_BUFFER | IRIS_DIRTY_WM_DEPTH_STENCIL)) {
