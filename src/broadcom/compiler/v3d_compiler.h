@@ -476,6 +476,8 @@ vir_after_block(struct qblock *block)
 struct v3d_compiler {
         const struct v3d_device_info *devinfo;
         struct ra_regs *regs;
+        unsigned int reg_class_any[3];
+        unsigned int reg_class_r5[3];
         unsigned int reg_class_phys[3];
         unsigned int reg_class_phys_or_acc[3];
 };
