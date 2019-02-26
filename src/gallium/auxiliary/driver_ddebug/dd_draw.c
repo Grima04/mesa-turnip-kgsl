@@ -33,6 +33,7 @@
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_process.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_scan.h"
 #include "util/os_time.h"
@@ -1001,6 +1002,15 @@ dd_thread_main(void *input)
    struct dd_context *dctx = (struct dd_context *)input;
    struct dd_screen *dscreen = dd_screen(dctx->base.screen);
    struct pipe_screen *screen = dscreen->screen;
+
+   const char *process_name = util_get_process_name();
+   if (process_name) {
+      char threadname[16];
+      util_snprintf(threadname, sizeof(threadname), "%.*s:ddbg",
+                    (int)MIN2(strlen(process_name), sizeof(threadname) - 6),
+                    process_name);
+      u_thread_setname(threadname);
+   }
 
    mtx_lock(&dctx->mutex);
 
