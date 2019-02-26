@@ -586,16 +586,18 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
 
         bool ok = ra_allocate(g);
         if (!ok) {
-                /* Try to spill, if we can't reduce threading first. */
-                if (thread_index == 0) {
-                        int node = v3d_choose_spill_node(c, g, temp_to_node);
+                int node = v3d_choose_spill_node(c, g, temp_to_node);
 
-                        if (node != -1) {
-                                v3d_spill_reg(c, map[node].temp);
+                /* Don't emit spills using the TMU until we've dropped thread
+                 * conut first.
+                 */
+                if (node != -1 &&
+                    (vir_is_mov_uniform(c, map[node].temp) ||
+                     thread_index == 0)) {
+                        v3d_spill_reg(c, map[node].temp);
 
-                                /* Ask the outer loop to call back in. */
-                                *spilled = true;
-                        }
+                        /* Ask the outer loop to call back in. */
+                        *spilled = true;
                 }
 
                 ralloc_free(g);
