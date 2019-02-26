@@ -444,13 +444,15 @@ fd6_tex_swiz(struct pipe_resource *prsc, enum pipe_format format,
 
 	uint32_t swap = fd6_pipe2swap(format);
 	unsigned char swiz[4];
-	char uswiz[4] = { swizzle_r, swizzle_g, swizzle_b, swizzle_a };
+	const unsigned char uswiz[4] = {
+		swizzle_r, swizzle_g, swizzle_b, swizzle_a
+	};
 
 	/* Gallium expects stencil sampler to return (s,s,s,s), so massage
 	 * the swizzle to do so.
 	 */
 	if ((format == PIPE_FORMAT_X24S8_UINT)) {
-		char stencil_swiz[4] = {
+		const unsigned char stencil_swiz[4] = {
 			PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X
 		};
 		util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
