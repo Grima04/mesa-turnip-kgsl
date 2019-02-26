@@ -672,40 +672,12 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    /* Lower 64-bit operations before nir_optimize so that loop unrolling sees
     * their actual cost.
     */
-   nir_lower_int64_options int64_options =
-      nir_lower_imul64 |
-      nir_lower_isign64 |
-      nir_lower_divmod64 |
-      nir_lower_imul_high64;
-   nir_lower_doubles_options fp64_options =
-      nir_lower_drcp |
-      nir_lower_dsqrt |
-      nir_lower_drsq |
-      nir_lower_dtrunc |
-      nir_lower_dfloor |
-      nir_lower_dceil |
-      nir_lower_dfract |
-      nir_lower_dround_even |
-      nir_lower_dmod;
-
-   if (!devinfo->has_64bit_types) {
-      int64_options |= nir_lower_mov64 |
-                       nir_lower_icmp64 |
-                       nir_lower_iadd64 |
-                       nir_lower_iabs64 |
-                       nir_lower_ineg64 |
-                       nir_lower_logic64 |
-                       nir_lower_minmax64 |
-                       nir_lower_shift64;
-      fp64_options |= nir_lower_fp64_full_software;
-   }
-
    bool lowered_64bit_ops = false;
    do {
       progress = false;
 
-      OPT(nir_lower_int64, int64_options);
-      OPT(nir_lower_doubles, fp64_options);
+      OPT(nir_lower_int64, nir->options->lower_int64_options);
+      OPT(nir_lower_doubles, nir->options->lower_doubles_options);
 
       /* Necessary to lower add -> sub and div -> mul/rcp */
       OPT(nir_opt_algebraic);
