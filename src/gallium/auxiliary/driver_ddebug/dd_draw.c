@@ -283,6 +283,13 @@ dd_dump_shader(struct dd_draw_state *dstate, enum pipe_shader_type sh, FILE *f)
 }
 
 static void
+dd_dump_flush(struct dd_draw_state *dstate, struct call_flush *info, FILE *f)
+{
+   fprintf(f, "%s:\n", __func__+8);
+   DUMP_M(hex, info, flags);
+}
+
+static void
 dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info, FILE *f)
 {
    int sh, i;
@@ -557,6 +564,9 @@ static void
 dd_dump_call(FILE *f, struct dd_draw_state *state, struct dd_call *call)
 {
    switch (call->type) {
+   case CALL_FLUSH:
+      dd_dump_flush(state, &call->info.flush, f);
+      break;
    case CALL_DRAW_VBO:
       dd_dump_draw_vbo(state, &call->info.draw_vbo.draw, f);
       break;
@@ -628,6 +638,8 @@ static void
 dd_unreference_copy_of_call(struct dd_call *dst)
 {
    switch (dst->type) {
+   case CALL_FLUSH:
+      break;
    case CALL_DRAW_VBO:
       pipe_so_target_reference(&dst->info.draw_vbo.draw.count_from_stream_output, NULL);
       pipe_resource_reference(&dst->info.draw_vbo.indirect.buffer, NULL);
@@ -1093,13 +1105,23 @@ dd_create_record(struct dd_context *dctx)
 }
 
 static void
-dd_context_flush(struct pipe_context *_pipe,
-                 struct pipe_fence_handle **fence, unsigned flags)
+dd_add_record(struct dd_context *dctx, struct dd_draw_record *record)
 {
-   struct dd_context *dctx = dd_context(_pipe);
-   struct pipe_context *pipe = dctx->pipe;
+   mtx_lock(&dctx->mutex);
+   if (unlikely(dctx->num_records > 10000)) {
+      dctx->api_stalled = true;
+      /* Since this is only a heuristic to prevent the API thread from getting
+       * too far ahead, we don't need a loop here. */
+      cnd_wait(&dctx->cond, &dctx->mutex);
+      dctx->api_stalled = false;
+   }
 
-   pipe->flush(pipe, fence, flags);
+   if (list_empty(&dctx->records))
+      cnd_signal(&dctx->cond);
+
+   list_addtail(&record->list, &dctx->records);
+   dctx->num_records++;
+   mtx_unlock(&dctx->mutex);
 }
 
 static void
@@ -1125,21 +1147,7 @@ dd_before_draw(struct dd_context *dctx, struct dd_draw_record *record)
       pipe->flush(pipe, NULL, 0);
    }
 
-   mtx_lock(&dctx->mutex);
-   if (unlikely(dctx->num_records > 10000)) {
-      dctx->api_stalled = true;
-      /* Since this is only a heuristic to prevent the API thread from getting
-       * too far ahead, we don't need a loop here. */
-      cnd_wait(&dctx->cond, &dctx->mutex);
-      dctx->api_stalled = false;
-   }
-
-   if (list_empty(&dctx->records))
-      cnd_signal(&dctx->cond);
-
-   list_addtail(&record->list, &dctx->records);
-   dctx->num_records++;
-   mtx_unlock(&dctx->mutex);
+   dd_add_record(dctx, record);
 }
 
 static void
@@ -1187,6 +1195,33 @@ dd_after_draw(struct dd_context *dctx, struct dd_draw_record *record)
    if (dscreen->skip_count && dctx->num_draw_calls % 10000 == 0)
       fprintf(stderr, "Gallium debugger reached %u draw calls.\n",
               dctx->num_draw_calls);
+}
+
+static void
+dd_context_flush(struct pipe_context *_pipe,
+                 struct pipe_fence_handle **fence, unsigned flags)
+{
+   struct dd_context *dctx = dd_context(_pipe);
+   struct pipe_context *pipe = dctx->pipe;
+   struct pipe_screen *screen = pipe->screen;
+   struct dd_draw_record *record = dd_create_record(dctx);
+
+   record->call.type = CALL_FLUSH;
+   record->call.info.flush.flags = flags;
+
+   record->time_before = os_time_get_nano();
+
+   dd_add_record(dctx, record);
+
+   pipe->flush(pipe, &record->bottom_of_pipe, flags);
+   if (fence)
+      screen->fence_reference(screen, fence, record->bottom_of_pipe);
+
+   if (pipe->callback) {
+      pipe->callback(pipe, dd_after_draw_async, record, true);
+   } else {
+      dd_after_draw_async(record);
+   }
 }
 
 static void
