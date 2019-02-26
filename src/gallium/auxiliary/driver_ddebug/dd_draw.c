@@ -988,11 +988,6 @@ dd_report_hang(struct dd_context *dctx)
          dd_write_header(f, dscreen->screen, record->draw_state.base.apitrace_call_number);
          dd_write_record(f, record);
 
-         if (!encountered_hang) {
-            dd_dump_driver_state(dctx, f, PIPE_DUMP_DEVICE_STATUS_REGISTERS);
-            dd_dump_dmesg(f);
-         }
-
          fclose(f);
       }
 
@@ -1003,6 +998,18 @@ dd_report_hang(struct dd_context *dctx)
 
    if (num_later)
       fprintf(stderr, "... and %u additional draws.\n", num_later);
+
+   char name[512];
+   dd_get_debug_filename_and_mkdir(name, sizeof(name), false);
+   FILE *f = fopen(name, "w");
+   if (!f) {
+      fprintf(stderr, "fopen failed\n");
+   } else {
+      dd_write_header(f, dscreen->screen, 0);
+      dd_dump_driver_state(dctx, f, PIPE_DUMP_DEVICE_STATUS_REGISTERS);
+      dd_dump_dmesg(f);
+      fclose(f);
+   }
 
    fprintf(stderr, "\nDone.\n");
    dd_kill_process();
