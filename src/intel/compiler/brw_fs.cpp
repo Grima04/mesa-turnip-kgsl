@@ -7758,9 +7758,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    brw_nir_lower_fs_inputs(shader, devinfo, key);
    brw_nir_lower_fs_outputs(shader);
 
-   if (devinfo->gen < 6) {
-      brw_setup_vue_interpolation(vue_map, shader, prog_data, devinfo);
-   }
+   if (devinfo->gen < 6)
+      brw_setup_vue_interpolation(vue_map, shader, prog_data);
 
    if (!key->multisample_fbo)
       NIR_PASS_V(shader, demote_sample_qualifiers);

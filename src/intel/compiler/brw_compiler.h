@@ -993,8 +993,7 @@ void brw_compute_tess_vue_map(struct brw_vue_map *const vue_map,
 /* brw_interpolation_map.c */
 void brw_setup_vue_interpolation(struct brw_vue_map *vue_map,
                                  struct nir_shader *nir,
-                                 struct brw_wm_prog_data *prog_data,
-                                 const struct gen_device_info *devinfo);
+                                 struct brw_wm_prog_data *prog_data);
 
 enum shader_dispatch_mode {
    DISPATCH_MODE_4X1_SINGLE = 0,
