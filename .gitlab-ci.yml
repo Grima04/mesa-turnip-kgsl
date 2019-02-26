@@ -39,7 +39,7 @@ stages:
 
 # CONTAINERS
 
-containers:ubuntu:
+ubuntu:
   extends: .ci-run-policy
   stage: containers-build
   image: docker:stable
@@ -145,7 +145,7 @@ containers:ubuntu:
     - scons $SCONS_TARGET
     - eval $SCONS_CHECK_COMMAND
 
-build:meson-vulkan:
+meson-vulkan:
   extends: .meson-build
   variables:
     UNWIND: "false"
@@ -167,7 +167,7 @@ build:meson-vulkan:
     VULKAN_DRIVERS: intel,amd
     LLVM_VERSION: "7"
 
-build:meson-loader-classic-dri:
+meson-loader-classic-dri:
   extends: .meson-build
   variables:
     UNWIND: "false"
@@ -188,7 +188,7 @@ build:meson-loader-classic-dri:
       -D gallium-nine=false
       -D gallium-opencl=disabled
 
-build:meson-glvnd:
+meson-glvnd:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -210,7 +210,7 @@ build:meson-glvnd:
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't hunder the run time.
-build:meson-gallium-swr:
+meson-gallium-swr:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -230,7 +230,7 @@ build:meson-gallium-swr:
     GALLIUM_DRIVERS: "swr"
     LLVM_VERSION: "6.0"
 
-build:meson-gallium-radeonsi:
+meson-gallium-radeonsi:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -250,7 +250,7 @@ build:meson-gallium-radeonsi:
     GALLIUM_DRIVERS: "radeonsi"
     LLVM_VERSION: "7"
 
-build:meson-gallium-drivers-other:
+meson-gallium-drivers-other:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -270,7 +270,7 @@ build:meson-gallium-drivers-other:
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
     LLVM_VERSION: "5.0"
 
-build:meson-gallium-clover-llvm5:
+meson-gallium-clover-llvm5:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -290,18 +290,18 @@ build:meson-gallium-clover-llvm5:
     GALLIUM_DRIVERS: "r600"
     LLVM_VERSION: "5.0"
 
-build:meson-gallium-clover-llvm6:
-  extends: build:meson-gallium-clover-llvm5
+meson-gallium-clover-llvm6:
+  extends: meson-gallium-clover-llvm5
   variables:
     LLVM_VERSION: "6.0"
 
-build:meson-gallium-clover-llvm7:
-  extends: build:meson-gallium-clover-llvm5
+meson-gallium-clover-llvm7:
+  extends: meson-gallium-clover-llvm5
   variables:
     GALLIUM_DRIVERS: "r600,radeonsi"
     LLVM_VERSION: "7"
 
-build:meson-gallium-st-other:
+meson-gallium-st-other:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -322,7 +322,7 @@ build:meson-gallium-st-other:
     GALLIUM_DRIVERS: "nouveau,swrast"
     LLVM_VERSION: "5.0"
 
-build:make-vulkan:
+make-vulkan:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "make -C src/gtest check && make -C src/intel check"
@@ -347,7 +347,7 @@ build:make-vulkan:
     VULKAN_DRIVERS: intel,radeon
     LIBUNWIND_FLAGS: --disable-libunwind
 
-build:make-loader-classic-dri:
+make-loader-classic-dri:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "make check"
@@ -373,7 +373,7 @@ build:make-loader-classic-dri:
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't hunder the run time.
-build:make-gallium-drivers-swr:
+make-gallium-drivers-swr:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "true"
@@ -395,19 +395,19 @@ build:make-gallium-drivers-swr:
     GALLIUM_DRIVERS: "swr"
     LIBUNWIND_FLAGS: --enable-libunwind
 
-build:make-gallium-drivers-radeonsi:
-  extends: build:make-gallium-drivers-swr
+make-gallium-drivers-radeonsi:
+  extends: make-gallium-drivers-swr
   variables:
     LLVM_VERSION: "7"
     GALLIUM_DRIVERS: "radeonsi"
 
-build:make-gallium-drivers-other:
-  extends: build:make-gallium-drivers-swr
+make-gallium-drivers-other:
+  extends: make-gallium-drivers-swr
   variables:
     LLVM_VERSION: "3.9"
     GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
 
-build:make-gallium-st-clover-llvm-39:
+make-gallium-st-clover-llvm-39:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "true"
@@ -431,28 +431,28 @@ build:make-gallium-st-clover-llvm-39:
     GALLIUM_DRIVERS: "r600"
     LIBUNWIND_FLAGS: --enable-libunwind
 
-build:make-gallium-st-clover-llvm-4:
-  extends: build:make-gallium-st-clover-llvm-39
+make-gallium-st-clover-llvm-4:
+  extends: make-gallium-st-clover-llvm-39
   variables:
     LLVM_VERSION: "4.0"
 
-build:make-gallium-st-clover-llvm-5:
-  extends: build:make-gallium-st-clover-llvm-39
+make-gallium-st-clover-llvm-5:
+  extends: make-gallium-st-clover-llvm-39
   variables:
     LLVM_VERSION: "5.0"
 
-build:make-gallium-st-clover-llvm-6:
-  extends: build:make-gallium-st-clover-llvm-39
+make-gallium-st-clover-llvm-6:
+  extends: make-gallium-st-clover-llvm-39
   variables:
     LLVM_VERSION: "6.0"
 
-build:make-gallium-st-clover-llvm-7:
-  extends: build:make-gallium-st-clover-llvm-39
+make-gallium-st-clover-llvm-7:
+  extends: make-gallium-st-clover-llvm-39
   variables:
     LLVM_VERSION: "7"
     GALLIUM_DRIVERS: "r600,radeonsi"
 
-build:make-gallium-st-other:
+make-gallium-st-other:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "true"
@@ -478,20 +478,20 @@ build:make-gallium-st-other:
     GALLIUM_DRIVERS: "i915,swrast"
     LIBUNWIND_FLAGS: --enable-libunwind
 
-build:scons-nollvm:
+scons-nollvm:
   extends: .scons-build
   variables:
     SCONS_TARGET: "llvm=0"
     SCONS_CHECK_COMMAND: "scons llvm=0 check"
 
-build:scons-llvm:
+scons-llvm:
   extends: .scons-build
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
     LLVM_VERSION: "3.9"
 
-build:scons-swr:
+scons-swr:
   extends: .scons-build
   variables:
     SCONS_TARGET: "swr=1"
