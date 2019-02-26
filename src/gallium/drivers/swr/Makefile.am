@@ -82,10 +82,10 @@ BUILT_SOURCES = \
 	rasterizer/jitter/gen_builder.hpp \
 	rasterizer/jitter/gen_builder_meta.hpp \
 	rasterizer/jitter/gen_builder_intrin.hpp \
-	rasterizer/archrast/gen_ar_event.hpp \
-	rasterizer/archrast/gen_ar_event.cpp \
-	rasterizer/archrast/gen_ar_eventhandler.hpp \
-	rasterizer/archrast/gen_ar_eventhandlerfile.hpp \
+	rasterizer/codegen/gen_ar_event.hpp \
+	rasterizer/codegen/gen_ar_event.cpp \
+	rasterizer/codegen/gen_ar_eventhandler.hpp \
+	rasterizer/codegen/gen_ar_eventhandlerfile.hpp \
 	rasterizer/core/backends/gen_BackendPixelRate0.cpp \
 	rasterizer/core/backends/gen_BackendPixelRate1.cpp \
 	rasterizer/core/backends/gen_BackendPixelRate2.cpp \
@@ -155,7 +155,7 @@ rasterizer/jitter/gen_builder_intrin.hpp: rasterizer/codegen/gen_llvm_ir_macros.
 		--gen_intrin_h
 	$(AM_V_GEN)touch $@
 
-rasterizer/archrast/gen_ar_event.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_event.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
+rasterizer/codegen/gen_ar_event.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_event.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
@@ -163,7 +163,7 @@ rasterizer/archrast/gen_ar_event.hpp: rasterizer/codegen/gen_archrast.py rasteri
 		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
-rasterizer/archrast/gen_ar_event.cpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_event.cpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
+rasterizer/codegen/gen_ar_event.cpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_event.cpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
@@ -171,7 +171,7 @@ rasterizer/archrast/gen_ar_event.cpp: rasterizer/codegen/gen_archrast.py rasteri
 		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
-rasterizer/archrast/gen_ar_eventhandler.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandler.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
+rasterizer/codegen/gen_ar_eventhandler.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandler.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
@@ -179,7 +179,7 @@ rasterizer/archrast/gen_ar_eventhandler.hpp: rasterizer/codegen/gen_archrast.py 
 		--output-dir rasterizer/codegen
 	$(AM_V_GEN)touch $@
 
-rasterizer/archrast/gen_ar_eventhandlerfile.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandlerfile.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
+rasterizer/codegen/gen_ar_eventhandlerfile.hpp: rasterizer/codegen/gen_archrast.py rasterizer/codegen/templates/gen_ar_eventhandlerfile.hpp rasterizer/archrast/events.proto rasterizer/archrast/events_private.proto rasterizer/codegen/gen_common.py
 	$(MKDIR_GEN)
 	$(PYTHON_GEN) \
 		$(srcdir)/rasterizer/codegen/gen_archrast.py \
