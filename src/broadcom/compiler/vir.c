@@ -146,6 +146,13 @@ vir_is_raw_mov(struct qinst *inst)
                 return false;
         }
 
+        if (inst->qpu.alu.add.a_unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.add.b_unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.mul.a_unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.mul.b_unpack != V3D_QPU_UNPACK_NONE) {
+                return false;
+        }
+
         if (inst->qpu.flags.ac != V3D_QPU_COND_NONE ||
             inst->qpu.flags.mc != V3D_QPU_COND_NONE)
                 return false;
