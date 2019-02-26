@@ -248,7 +248,7 @@ struct ir3_instruction {
 			int src_offset;
 			int dst_offset;
 			int iim_val : 3;      /* for ldgb/stgb, # of components */
-			int d : 3;
+			unsigned d : 3;
 			bool typed : 1;
 		} cat6;
 		struct {
