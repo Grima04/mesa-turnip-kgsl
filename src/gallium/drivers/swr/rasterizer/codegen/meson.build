@@ -73,7 +73,7 @@ foreach x : [['gen_ar_event.hpp', '--gen_event_hpp'],
       prog_python,
       '@INPUT0@',
       '--proto', '@INPUT1@', '@INPUT2@',
-      '--output-dir', 'src/gallium/drivers/swr/rasterizer/codegen'
+      '--output-dir', meson.current_build_dir(),
     ],
     depend_files : files(
       join_paths('templates', x[0]),
