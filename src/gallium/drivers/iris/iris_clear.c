@@ -92,6 +92,105 @@ clear_color(struct iris_context *ice,
                                box->z, box->depth, aux_usage);
 }
 
+static bool
+can_fast_clear_depth(struct iris_context *ice,
+                     struct iris_resource *res,
+                     unsigned level,
+                     const struct pipe_box *box,
+                     float depth)
+{
+   struct pipe_resource *p_res = (void *) res;
+
+   /* Check for partial clears */
+   if (box->x > 0 || box->y > 0 ||
+       box->width < u_minify(p_res->width0, level) ||
+       box->height < u_minify(p_res->height0, level)) {
+      return false;
+   }
+
+   if (!(res->aux.has_hiz & (1 << level)))
+      return false;
+
+   return true;
+}
+
+static void
+fast_clear_depth(struct iris_context *ice,
+                 struct iris_resource *res,
+                 unsigned level,
+                 const struct pipe_box *box,
+                 float depth)
+{
+   struct pipe_resource *p_res = (void *) res;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   /* Quantize the clear value to what can be stored in the actual depth
+    * buffer.  This makes the following check more accurate because it now
+    * checks if the actual depth bits will match.  It also prevents us from
+    * getting a too-accurate depth value during depth testing or when sampling
+    * with HiZ enabled.
+    */
+   const unsigned nbits = p_res->format == PIPE_FORMAT_Z16_UNORM ? 16 : 24;
+   const uint32_t depth_max = (1 << nbits) - 1;
+   depth = p_res->format == PIPE_FORMAT_Z32_FLOAT ? depth :
+      (unsigned)(depth * depth_max) / (float)depth_max;
+
+   /* If we're clearing to a new clear value, then we need to resolve any clear
+    * flags out of the HiZ buffer into the real depth buffer.
+    */
+   if (res->aux.clear_color.f32[0] != depth) {
+      for (unsigned res_level = 0; res_level < res->surf.levels; res_level++) {
+         if (!(res->aux.has_hiz & (1 << res_level)))
+            continue;
+
+         const unsigned level_layers =
+            iris_get_num_logical_layers(res, res_level);
+         for (unsigned layer = 0; layer < level_layers; layer++) {
+            if (res_level == level &&
+                layer >= box->z &&
+                layer < box->z + box->depth) {
+               /* We're going to clear this layer anyway.  Leave it alone. */
+               continue;
+            }
+
+            enum isl_aux_state aux_state =
+               iris_resource_get_aux_state(res, res_level, layer);
+
+            if (aux_state != ISL_AUX_STATE_CLEAR &&
+                aux_state != ISL_AUX_STATE_COMPRESSED_CLEAR) {
+               /* This slice doesn't have any fast-cleared bits. */
+               continue;
+            }
+
+            /* If we got here, then the level may have fast-clear bits that
+             * use the old clear value.  We need to do a depth resolve to get
+             * rid of their use of the clear value before we can change it.
+             * Fortunately, few applications ever change their depth clear
+             * value so this shouldn't happen often.
+             */
+            iris_hiz_exec(ice, batch, res, res_level, layer, 1,
+                          ISL_AUX_OP_FULL_RESOLVE);
+            iris_resource_set_aux_state(ice, res, res_level, layer, 1,
+                                        ISL_AUX_STATE_RESOLVED);
+         }
+      }
+      const union isl_color_value clear_color = { .f32 = {depth, } };
+      iris_resource_set_clear_color(ice, res, clear_color);
+   }
+
+   for (unsigned l = 0; l < box->depth; l++) {
+      enum isl_aux_state aux_state =
+         iris_resource_get_aux_state(res, level, box->z + l);
+      if (aux_state != ISL_AUX_STATE_CLEAR) {
+         iris_hiz_exec(ice, batch, res, level,
+                       box->z + l, 1, ISL_AUX_OP_FAST_CLEAR);
+      }
+   }
+
+   iris_resource_set_aux_state(ice, res, level, box->z, box->depth,
+                               ISL_AUX_STATE_CLEAR);
+   ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
+}
 
 static void
 clear_depth_stencil(struct iris_context *ice,
@@ -119,21 +218,35 @@ clear_depth_stencil(struct iris_context *ice,
 
    iris_batch_maybe_flush(batch, 1500);
 
-   struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
-
    struct iris_resource *z_res;
    struct iris_resource *stencil_res;
    struct blorp_surf z_surf;
    struct blorp_surf stencil_surf;
 
    iris_get_depth_stencil_resources(p_res, &z_res, &stencil_res);
+   if (z_res && clear_depth &&
+       can_fast_clear_depth(ice, z_res, level, box, depth)) {
+      fast_clear_depth(ice, z_res, level, box, depth);
+      iris_flush_and_dirty_for_history(ice, batch, res);
+      clear_depth = false;
+      z_res = false;
+   }
+
+   /* At this point, we might have fast cleared the depth buffer. So if there's
+    * no stencil clear pending, return early.
+    */
+   if (!(clear_depth || clear_stencil)) {
+      return;
+   }
 
    if (z_res) {
       iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
       iris_blorp_surf_for_resource(&ice->vtbl, &z_surf, &z_res->base,
                                    z_res->aux.usage, level, true);
    }
+
+   struct blorp_batch blorp_batch;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    if (stencil_res) {
       iris_blorp_surf_for_resource(&ice->vtbl, &stencil_surf,
