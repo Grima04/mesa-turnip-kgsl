@@ -309,7 +309,20 @@ v3d_generate_code_block(struct v3d_compile *c,
                 }
 
                 if (qinst->qpu.type == V3D_QPU_INSTR_TYPE_ALU) {
-                        if (v3d_qpu_sig_writes_address(c->devinfo,
+                        if (qinst->qpu.sig.ldunif) {
+                                assert(qinst->qpu.alu.add.op == V3D_QPU_A_NOP);
+                                assert(qinst->qpu.alu.mul.op == V3D_QPU_M_NOP);
+
+                                if (!dst.magic ||
+                                    dst.index != V3D_QPU_WADDR_R5) {
+                                        assert(c->devinfo->ver >= 40);
+
+                                        qinst->qpu.sig.ldunif = false;
+                                        qinst->qpu.sig.ldunifrf = true;
+                                        qinst->qpu.sig_addr = dst.index;
+                                        qinst->qpu.sig_magic = dst.magic;
+                                }
+                        } else if (v3d_qpu_sig_writes_address(c->devinfo,
                                                        &qinst->qpu.sig)) {
                                 assert(qinst->qpu.alu.add.op == V3D_QPU_A_NOP);
                                 assert(qinst->qpu.alu.mul.op == V3D_QPU_M_NOP);
@@ -361,7 +374,7 @@ reads_uniform(const struct v3d_device_info *devinfo, uint64_t instruction)
         assert(ok);
 
         if (qpu.sig.ldunif ||
-            qpu.sig.ldunifarf ||
+            qpu.sig.ldunifrf ||
             qpu.sig.wrtmuc) {
                 return true;
         }
