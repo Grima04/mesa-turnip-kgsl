@@ -1196,6 +1196,17 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 		}
 
 		/* 2) IB initialization. */
+
+		/* This needs to be done at the beginning of IBs due to possible
+		 * TTM buffer moves in the kernel.
+		 */
+		si_emit_surface_sync(sctx, cs,
+				     S_0085F0_TC_ACTION_ENA(1) |
+				     S_0085F0_TCL1_ACTION_ENA(1) |
+				     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8) |
+				     S_0085F0_SH_ICACHE_ACTION_ENA(1) |
+				     S_0085F0_SH_KCACHE_ACTION_ENA(1));
+
 		/* Restore the GDS prim restart counter if needed. */
 		if (sctx->preserve_prim_restart_gds_at_flush) {
 			si_cp_copy_data(sctx, cs,

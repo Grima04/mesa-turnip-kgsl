@@ -889,12 +889,13 @@ static void si_emit_draw_packets(struct si_context *sctx,
 	}
 }
 
-static void si_emit_surface_sync(struct si_context *sctx,
-				 unsigned cp_coher_cntl)
+void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
+			  unsigned cp_coher_cntl)
 {
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
+	bool compute_ib = !sctx->has_graphics ||
+			  cs == sctx->prim_discard_compute_cs;
 
-	if (sctx->chip_class >= GFX9 || !sctx->has_graphics) {
+	if (sctx->chip_class >= GFX9 || compute_ib) {
 		/* Flush caches and wait for the caches to assert idle. */
 		radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 5, 0));
 		radeon_emit(cs, cp_coher_cntl);	/* CP_COHER_CNTL */
@@ -914,7 +915,7 @@ static void si_emit_surface_sync(struct si_context *sctx,
 
 	/* ACQUIRE_MEM has an implicit context roll if the current context
 	 * is busy. */
-	if (sctx->has_graphics)
+	if (!compute_ib)
 		sctx->context_roll = true;
 }
 
@@ -1162,7 +1163,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 		/* Invalidate L1 & L2. (L1 is always invalidated on GFX6)
 		 * WB must be set on GFX8+ when TC_ACTION is set.
 		 */
-		si_emit_surface_sync(sctx, cp_coher_cntl |
+		si_emit_surface_sync(sctx, sctx->gfx_cs, cp_coher_cntl |
 				     S_0085F0_TC_ACTION_ENA(1) |
 				     S_0085F0_TCL1_ACTION_ENA(1) |
 				     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8));
@@ -1179,7 +1180,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 			 *
 			 * WB doesn't work without NC.
 			 */
-			si_emit_surface_sync(sctx, cp_coher_cntl |
+			si_emit_surface_sync(sctx, sctx->gfx_cs, cp_coher_cntl |
 					     S_0301F0_TC_WB_ACTION_ENA(1) |
 					     S_0301F0_TC_NC_ACTION_ENA(1));
 			cp_coher_cntl = 0;
@@ -1187,7 +1188,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 		}
 		if (flags & SI_CONTEXT_INV_VMEM_L1) {
 			/* Invalidate per-CU VMEM L1. */
-			si_emit_surface_sync(sctx, cp_coher_cntl |
+			si_emit_surface_sync(sctx, sctx->gfx_cs, cp_coher_cntl |
 					     S_0085F0_TCL1_ACTION_ENA(1));
 			cp_coher_cntl = 0;
 		}
@@ -1195,7 +1196,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 
 	/* If TC flushes haven't cleared this... */
 	if (cp_coher_cntl)
-		si_emit_surface_sync(sctx, cp_coher_cntl);
+		si_emit_surface_sync(sctx, sctx->gfx_cs, cp_coher_cntl);
 
 	if (is_barrier)
 		si_prim_discard_signal_next_compute_ib_start(sctx);

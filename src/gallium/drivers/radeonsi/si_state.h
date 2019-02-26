@@ -604,6 +604,8 @@ void si_shader_selector_key_vs(struct si_context *sctx,
 			       struct si_vs_prolog_bits *prolog_key);
 
 /* si_state_draw.c */
+void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
+			  unsigned cp_coher_cntl);
 void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
 void si_emit_cache_flush(struct si_context *sctx);
 void si_trace_emit(struct si_context *sctx);
