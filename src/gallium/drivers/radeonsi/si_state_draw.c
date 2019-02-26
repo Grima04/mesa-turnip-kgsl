@@ -1328,7 +1328,7 @@ si_all_vs_resources_read_only(struct si_context *sctx,
 	if (indexbuf &&
 	    ws->cs_is_buffer_referenced(cs, si_resource(indexbuf)->buf,
 					RADEON_USAGE_WRITE))
-		return false;
+		goto has_write_reference;
 
 	/* Vertex buffers. */
 	struct si_vertex_elements *velems = sctx->vertex_elements;
@@ -1345,7 +1345,7 @@ si_all_vs_resources_read_only(struct si_context *sctx,
 
 		if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf,
 						RADEON_USAGE_WRITE))
-			return false;
+			goto has_write_reference;
 	}
 
 	/* Constant and shader buffers. */
@@ -1360,7 +1360,7 @@ si_all_vs_resources_read_only(struct si_context *sctx,
 
 		if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf,
 						RADEON_USAGE_WRITE))
-			return false;
+			goto has_write_reference;
 	}
 
 	/* Samplers. */
@@ -1376,7 +1376,7 @@ si_all_vs_resources_read_only(struct si_context *sctx,
 			if (ws->cs_is_buffer_referenced(cs,
 							si_resource(view->texture)->buf,
 							RADEON_USAGE_WRITE))
-				return false;
+				goto has_write_reference;
 		}
 	}
 
@@ -1391,11 +1391,22 @@ si_all_vs_resources_read_only(struct si_context *sctx,
 
 			if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf,
 							RADEON_USAGE_WRITE))
-				return false;
+				goto has_write_reference;
 		}
 	}
 
 	return true;
+
+has_write_reference:
+	/* If the current gfx IB has enough packets, flush it to remove write
+	 * references to buffers.
+	 */
+	if (cs->prev_dw + cs->current.cdw > 2048) {
+		si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
+		assert(si_all_vs_resources_read_only(sctx, indexbuf));
+		return true;
+	}
+	return false;
 }
 
 static ALWAYS_INLINE bool pd_msg(const char *s)
