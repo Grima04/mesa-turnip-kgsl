@@ -532,7 +532,7 @@ sample_with_hiz(const struct gen_device_info *devinfo,
  *   - 7.5.3.2 Depth Buffer Resolve
  *   - 7.5.3.3 Hierarchical Depth Buffer Resolve
  */
-static void
+void
 iris_hiz_exec(struct iris_context *ice,
               struct iris_batch *batch,
               struct iris_resource *res,

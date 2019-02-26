@@ -222,6 +222,13 @@ void iris_resource_disable_aux(struct iris_resource *res);
 #define INTEL_REMAINING_LAYERS UINT32_MAX
 #define INTEL_REMAINING_LEVELS UINT32_MAX
 
+void
+iris_hiz_exec(struct iris_context *ice,
+              struct iris_batch *batch,
+              struct iris_resource *res,
+              unsigned int level, unsigned int start_layer,
+              unsigned int num_layers, enum isl_aux_op op);
+
 /**
  * Prepare a miptree for access
  *
