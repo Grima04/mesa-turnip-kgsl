@@ -475,11 +475,17 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
                           nir_deref_instr *src, struct value *value)
 {
    if (is_array_deref_of_vector(src)) {
-      if (!nir_src_is_const(src->arr.index))
-         return false;
+      if (nir_src_is_const(src->arr.index)) {
+         return load_element_from_ssa_entry_value(state, entry, b, intrin, value,
+                                                  nir_src_as_uint(src->arr.index));
+      }
 
-      return load_element_from_ssa_entry_value(state, entry, b, intrin, value,
-                                               nir_src_as_uint(src->arr.index));
+      /* An SSA copy_entry for the vector won't help indirect load. */
+      if (glsl_type_is_vector(entry->dst->type)) {
+         assert(entry->dst->type == nir_deref_instr_parent(src)->type);
+         /* TODO: If all SSA entries are there, try an if-ladder. */
+         return false;
+      }
    }
 
    *value = entry->src;
@@ -808,16 +814,14 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
 
+         /* Direct array_derefs of vectors operate on the vectors (the parent
+          * deref).  Indirects will be handled like other derefs.
+          */
          int vec_index = 0;
          nir_deref_instr *vec_src = src;
-         if (is_array_deref_of_vector(src)) {
+         if (is_array_deref_of_vector(src) && nir_src_is_const(src->arr.index)) {
             vec_src = nir_deref_instr_parent(src);
             unsigned vec_comps = glsl_get_vector_elements(vec_src->type);
-
-            /* Indirects are not handled yet.  */
-            if (!nir_src_is_const(src->arr.index))
-               break;
-
             vec_index = nir_src_as_uint(src->arr.index);
 
             /* Loading from an invalid index yields an undef */
@@ -891,17 +895,14 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
          assert(glsl_type_is_vector_or_scalar(dst->type));
 
+         /* Direct array_derefs of vectors operate on the vectors (the parent
+          * deref).  Indirects will be handled like other derefs.
+          */
          int vec_index = 0;
          nir_deref_instr *vec_dst = dst;
-         if (is_array_deref_of_vector(dst)) {
+         if (is_array_deref_of_vector(dst) && nir_src_is_const(dst->arr.index)) {
             vec_dst = nir_deref_instr_parent(dst);
             unsigned vec_comps = glsl_get_vector_elements(vec_dst->type);
-
-            /* Indirects are not handled yet.  Kill everything */
-            if (!nir_src_is_const(dst->arr.index)) {
-               kill_aliases(copies, vec_dst, (1 << vec_comps) - 1);
-               break;
-            }
 
             vec_index = nir_src_as_uint(dst->arr.index);
 
@@ -950,11 +951,11 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          unsigned num_components = glsl_get_vector_elements(dst->type);
          unsigned full_mask = (1 << num_components) - 1;
 
-         if (is_array_deref_of_vector(src) || is_array_deref_of_vector(dst)) {
-            /* Cases not handled yet.  Writing into an element of 'dst'
-             * invalidates any related entries in copies.  Reading from 'src'
-             * doesn't invalidate anything, so no action needed for it.
-             */
+         /* Copy of direct array derefs of vectors are not handled.  Just
+          * invalidate what's written and bail.
+          */
+         if ((is_array_deref_of_vector(src) && nir_src_is_const(src->arr.index)) ||
+             (is_array_deref_of_vector(dst) && nir_src_is_const(dst->arr.index))) {
             kill_aliases(copies, dst, full_mask);
             break;
          }

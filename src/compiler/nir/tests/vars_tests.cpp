@@ -603,7 +603,7 @@ TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
    EXPECT_TRUE(nir_src_as_alu_instr(&fourth_store->src[1]));
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_indirect_array_deref_on_vector)
+TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref_on_vector)
 {
    nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
    nir_variable *idx = create_int(nir_var_mem_ssbo, "idx");
@@ -640,7 +640,7 @@ TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_indirect_array_deref_on_vect
    EXPECT_EQ(first->src[1].ssa, second->src[1].ssa);
 }
 
-TEST_F(nir_copy_prop_vars_test, DISABLED_store_load_direct_and_indirect_array_deref_on_vector)
+TEST_F(nir_copy_prop_vars_test, store_load_direct_and_indirect_array_deref_on_vector)
 {
    nir_variable *vec = create_ivec2(nir_var_mem_ssbo, "vec");
    nir_variable *idx = create_int(nir_var_mem_ssbo, "idx");
