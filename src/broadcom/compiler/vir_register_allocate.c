@@ -394,8 +394,6 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
         struct node_to_temp_map map[c->num_temps];
         uint32_t temp_to_node[c->num_temps];
         uint8_t class_bits[c->num_temps];
-        struct qpu_reg *temp_registers = calloc(c->num_temps,
-                                                sizeof(*temp_registers));
         int acc_nodes[ACC_COUNT];
         struct v3d_ra_select_callback_data callback_data = {
                 .next_acc = 0,
@@ -594,17 +592,18 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
 
                         if (node != -1) {
                                 v3d_spill_reg(c, map[node].temp);
-                                ralloc_free(g);
 
                                 /* Ask the outer loop to call back in. */
                                 *spilled = true;
-                                return NULL;
                         }
                 }
 
-                free(temp_registers);
+                ralloc_free(g);
                 return NULL;
         }
+
+        struct qpu_reg *temp_registers = calloc(c->num_temps,
+                                                sizeof(*temp_registers));
 
         for (uint32_t i = 0; i < c->num_temps; i++) {
                 int ra_reg = ra_get_node_reg(g, temp_to_node[i]);
