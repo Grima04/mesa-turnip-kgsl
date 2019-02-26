@@ -366,7 +366,11 @@ struct radv_pipeline_key {
 	uint32_t instance_rate_inputs;
 	uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
 	uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
+	uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
+	uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
+	uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
 	uint64_t vertex_alpha_adjust;
+	uint32_t vertex_post_shuffle;
 	unsigned tess_input_vertices;
 	uint32_t col_format;
 	uint32_t is_int8;

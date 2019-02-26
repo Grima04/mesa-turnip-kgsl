@@ -1903,6 +1903,9 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 		data_format = radv_translate_buffer_dataformat(format_desc, first_non_void);
 
 		key.vertex_attribute_formats[location] = data_format | (num_format << 4);
+		key.vertex_attribute_bindings[location] = desc->binding;
+		key.vertex_attribute_offsets[location] = desc->offset;
+		key.vertex_attribute_strides[location] = input_state->pVertexBindingDescriptions[desc->binding].stride;
 
 		if (pipeline->device->physical_device->rad_info.chip_class <= VI &&
 		    pipeline->device->physical_device->rad_info.family != CHIP_STONEY) {
@@ -1926,6 +1929,26 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 				break;
 			}
 			key.vertex_alpha_adjust |= adjust << (2 * location);
+		}
+
+		switch (desc->format) {
+		case VK_FORMAT_B8G8R8A8_UNORM:
+		case VK_FORMAT_B8G8R8A8_SNORM:
+		case VK_FORMAT_B8G8R8A8_USCALED:
+		case VK_FORMAT_B8G8R8A8_SSCALED:
+		case VK_FORMAT_B8G8R8A8_UINT:
+		case VK_FORMAT_B8G8R8A8_SINT:
+		case VK_FORMAT_B8G8R8A8_SRGB:
+		case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+		case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+		case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+		case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+			key.vertex_post_shuffle |= 1 << location;
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -1955,9 +1978,13 @@ radv_fill_shader_keys(struct radv_shader_variant_key *keys,
 {
 	keys[MESA_SHADER_VERTEX].vs.instance_rate_inputs = key->instance_rate_inputs;
 	keys[MESA_SHADER_VERTEX].vs.alpha_adjust = key->vertex_alpha_adjust;
+	keys[MESA_SHADER_VERTEX].vs.post_shuffle = key->vertex_post_shuffle;
 	for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; ++i) {
 		keys[MESA_SHADER_VERTEX].vs.instance_rate_divisors[i] = key->instance_rate_divisors[i];
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_formats[i] = key->vertex_attribute_formats[i];
+		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_bindings[i] = key->vertex_attribute_bindings[i];
+		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vertex_attribute_offsets[i];
+		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vertex_attribute_strides[i];
 	}
 
 	if (nir[MESA_SHADER_TESS_CTRL]) {
