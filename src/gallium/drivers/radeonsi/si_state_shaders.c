@@ -2043,6 +2043,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	assert(thread_index < ARRAY_SIZE(sscreen->compiler));
 	compiler = &sscreen->compiler[thread_index];
 
+	if (sel->nir)
+		si_lower_nir(sel);
+
 	/* Compile the main shader part for use with a prolog and/or epilog.
 	 * If this fails, the driver will try to compile a monolithic shader
 	 * on demand.
@@ -2239,8 +2242,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 		si_nir_scan_shader(sel->nir, &sel->info);
 		si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
-
-		si_lower_nir(sel);
 	}
 
 	sel->type = sel->info.processor;
