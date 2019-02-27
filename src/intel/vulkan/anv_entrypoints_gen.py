@@ -661,7 +661,7 @@ def main():
                                       device_strmap=device_strmap,
                                       filename=os.path.basename(__file__)))
     except Exception:
-        # In the even there's an error this imports some helpers from mako
+        # In the event there's an error, this imports some helpers from mako
         # to print a useful stack trace and prints it, then exits with
         # status 1, if python is run with debug; otherwise it just raises
         # the exception
