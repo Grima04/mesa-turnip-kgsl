@@ -496,7 +496,7 @@ class EntrypointBase(object):
         self.extensions = []
 
 class Entrypoint(EntrypointBase):
-    def __init__(self, name, return_type, params, guard = None):
+    def __init__(self, name, return_type, params, guard=None):
         super(Entrypoint, self).__init__(name)
         self.return_type = return_type
         self.params = params
@@ -539,9 +539,9 @@ def get_entrypoints(doc, entrypoints_to_defines):
             name = command.find('./proto/name').text
             ret_type = command.find('./proto/type').text
             params = [EntrypointParam(
-                type = p.find('./type').text,
-                name = p.find('./name').text,
-                decl = ''.join(p.itertext())
+                type=p.find('./type').text,
+                name=p.find('./name').text,
+                decl=''.join(p.itertext())
             ) for p in command.findall('./param')]
             guard = entrypoints_to_defines.get(name)
             # They really need to be unique
