@@ -873,7 +873,7 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 			int ret = emit[opc_cat(instr->opc)](instr, dwords, info);
 			if (ret)
 				goto fail;
-			info->instrs_count += 1 + instr->repeat;
+			info->instrs_count += 1 + instr->repeat + instr->nop;
 			dwords += 2;
 
 			if (instr->flags & IR3_INSTR_SS)
