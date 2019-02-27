@@ -2407,6 +2407,12 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       is_shadow && glsl_get_components(ret_type->type) == 1;
    instr->component = gather_component;
 
+   if (sampled.image && (sampled.image->access & ACCESS_NON_UNIFORM))
+      instr->texture_non_uniform = true;
+
+   if (sampled.sampler && (sampled.sampler->access & ACCESS_NON_UNIFORM))
+      instr->sampler_non_uniform = true;
+
    switch (glsl_get_sampler_result_type(image_type)) {
    case GLSL_TYPE_FLOAT:   instr->dest_type = nir_type_float;     break;
    case GLSL_TYPE_INT:     instr->dest_type = nir_type_int;       break;

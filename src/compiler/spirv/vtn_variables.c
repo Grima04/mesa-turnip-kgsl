@@ -1688,6 +1688,22 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    }
 }
 
+static void
+ptr_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
+                  const struct vtn_decoration *dec, void *void_ptr)
+{
+   struct vtn_pointer *ptr = void_ptr;
+
+   switch (dec->decoration) {
+   case SpvDecorationNonUniformEXT:
+      ptr->access |= ACCESS_NON_UNIFORM;
+      break;
+
+   default:
+      break;
+   }
+}
+
 static enum vtn_variable_mode
 vtn_storage_class_to_mode(struct vtn_builder *b,
                           SpvStorageClass class,
@@ -2194,6 +2210,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
+   vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
 
    if ((var->mode == vtn_variable_mode_input ||
         var->mode == vtn_variable_mode_output) &&
@@ -2371,12 +2388,17 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          val->sampled_image->image =
             vtn_pointer_dereference(b, base_val->sampled_image->image, chain);
          val->sampled_image->sampler = base_val->sampled_image->sampler;
+         vtn_foreach_decoration(b, val, ptr_decoration_cb,
+                                val->sampled_image->image);
+         vtn_foreach_decoration(b, val, ptr_decoration_cb,
+                                val->sampled_image->sampler);
       } else {
          vtn_assert(base_val->value_type == vtn_value_type_pointer);
          struct vtn_value *val =
             vtn_push_value(b, w[2], vtn_value_type_pointer);
          val->pointer = vtn_pointer_dereference(b, base_val->pointer, chain);
          val->pointer->ptr_type = ptr_type;
+         vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
       }
       break;
    }
