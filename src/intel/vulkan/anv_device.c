@@ -1031,11 +1031,37 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
+         VkPhysicalDeviceDescriptorIndexingFeaturesEXT *features =
+            (VkPhysicalDeviceDescriptorIndexingFeaturesEXT *)ext;
+         features->shaderInputAttachmentArrayDynamicIndexing = false;
+         features->shaderUniformTexelBufferArrayDynamicIndexing = true;
+         features->shaderStorageTexelBufferArrayDynamicIndexing = true;
+         features->shaderUniformBufferArrayNonUniformIndexing = false;
+         features->shaderSampledImageArrayNonUniformIndexing = true;
+         features->shaderStorageBufferArrayNonUniformIndexing = true;
+         features->shaderStorageImageArrayNonUniformIndexing = true;
+         features->shaderInputAttachmentArrayNonUniformIndexing = false;
+         features->shaderUniformTexelBufferArrayNonUniformIndexing = true;
+         features->shaderStorageTexelBufferArrayNonUniformIndexing = true;
+         features->descriptorBindingUniformBufferUpdateAfterBind = false;
+         features->descriptorBindingSampledImageUpdateAfterBind = true;
+         features->descriptorBindingStorageImageUpdateAfterBind = true;
+         features->descriptorBindingStorageBufferUpdateAfterBind = true;
+         features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+         features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+         features->descriptorBindingUpdateUnusedWhilePending = true;
+         features->descriptorBindingPartiallyBound = true;
+         features->descriptorBindingVariableDescriptorCount = false;
+         features->runtimeDescriptorArray = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
          VkPhysicalDeviceInlineUniformBlockFeaturesEXT *features =
             (VkPhysicalDeviceInlineUniformBlockFeaturesEXT *)ext;
          features->inlineUniformBlock = true;
-         features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
+         features->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
          break;
       }
 
@@ -1313,6 +1339,49 @@ void anv_GetPhysicalDeviceProperties2(
 
          props->independentResolveNone = true;
          props->independentResolve = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
+         VkPhysicalDeviceDescriptorIndexingPropertiesEXT *props =
+            (VkPhysicalDeviceDescriptorIndexingPropertiesEXT *)ext;
+
+         /* It's a bit hard to exactly map our implementation to the limits
+          * described here.  The bindless surface handle in the extended
+          * message descriptors is 20 bits and it's an index into the table of
+          * RENDER_SURFACE_STATE structs that starts at bindless surface base
+          * address.  Given that most things consume two surface states per
+          * view (general/sampled for textures and write-only/read-write for
+          * images), we claim 2^19 things.
+          *
+          * For SSBOs, we just use A64 messages so there is no real limit
+          * there beyond the limit on the total size of a descriptor set.
+          */
+         const unsigned max_bindless_views = 1 << 19;
+
+         props->maxUpdateAfterBindDescriptorsInAllPools = max_bindless_views;
+         props->shaderUniformBufferArrayNonUniformIndexingNative = false;
+         props->shaderSampledImageArrayNonUniformIndexingNative = false;
+         props->shaderStorageBufferArrayNonUniformIndexingNative = true;
+         props->shaderStorageImageArrayNonUniformIndexingNative = false;
+         props->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+         props->robustBufferAccessUpdateAfterBind = true;
+         props->quadDivergentImplicitLod = false;
+         props->maxPerStageDescriptorUpdateAfterBindSamplers = max_bindless_views;
+         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = 0;
+         props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = UINT32_MAX;
+         props->maxPerStageDescriptorUpdateAfterBindSampledImages = max_bindless_views;
+         props->maxPerStageDescriptorUpdateAfterBindStorageImages = max_bindless_views;
+         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = 0;
+         props->maxPerStageUpdateAfterBindResources = UINT32_MAX;
+         props->maxDescriptorSetUpdateAfterBindSamplers = max_bindless_views;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffers = 0;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 0;
+         props->maxDescriptorSetUpdateAfterBindStorageBuffers = UINT32_MAX;
+         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_BUFFERS / 2;
+         props->maxDescriptorSetUpdateAfterBindSampledImages = max_bindless_views;
+         props->maxDescriptorSetUpdateAfterBindStorageImages = max_bindless_views;
+         props->maxDescriptorSetUpdateAfterBindInputAttachments = 0;
          break;
       }
 

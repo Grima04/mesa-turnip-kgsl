@@ -138,6 +138,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
       .lower_workgroup_access_to_offsets = true,
       .caps = {
          .derivative_group = true,
+         .descriptor_array_dynamic_indexing = true,
          .device_group = true,
          .draw_parameters = true,
          .float16 = pdevice->info.gen >= 8,
@@ -152,6 +153,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .multiview = true,
          .physical_storage_buffer_address = pdevice->has_a64_buffer_access,
          .post_depth_coverage = pdevice->info.gen >= 9,
+         .runtime_descriptor_array = true,
          .shader_viewport_index_layer = true,
          .stencil_export = pdevice->info.gen >= 9,
          .storage_8bit = pdevice->info.gen >= 8,
@@ -638,6 +640,13 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                  ssbo_address_format);
 
       NIR_PASS_V(nir, nir_opt_constant_folding);
+
+      /* We don't support non-uniform UBOs and non-uniform SSBO access is
+       * handled naturally by falling back to A64 messages.
+       */
+      NIR_PASS_V(nir, nir_lower_non_uniform_access,
+                 nir_lower_non_uniform_texture_access |
+                 nir_lower_non_uniform_image_access);
    }
 
    if (nir->info.stage != MESA_SHADER_COMPUTE)

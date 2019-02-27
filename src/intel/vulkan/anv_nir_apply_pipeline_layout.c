@@ -268,6 +268,12 @@ try_lower_direct_buffer_intrinsic(nir_intrinsic_instr *intrin, bool is_atomic,
    if (is_atomic && nir_dest_bit_size(intrin->dest) == 64)
       return false;
 
+   /* Normal binding table-based messages can't handle non-uniform access so
+    * we have to fall back to A64.
+    */
+   if (nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM)
+      return false;
+
    if (!nir_deref_find_descriptor(deref, state))
       return false;
 

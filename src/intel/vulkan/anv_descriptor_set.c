@@ -208,7 +208,12 @@ anv_descriptor_requires_bindless(const struct anv_physical_device *pdevice,
    if (pdevice->always_use_bindless)
       return anv_descriptor_supports_bindless(pdevice, binding, sampler);
 
-   return false;
+   static const VkDescriptorBindingFlagBitsEXT flags_requiring_bindless =
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT |
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT;
+
+   return (binding->flags & flags_requiring_bindless) != 0;
 }
 
 void anv_GetDescriptorSetLayoutSupport(
