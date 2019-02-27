@@ -526,7 +526,7 @@ class EntrypointAlias(EntrypointBase):
     def prefixed_name(self, prefix):
         return self.alias.prefixed_name(prefix)
 
-def get_entrypoints(doc, entrypoints_to_defines, start_index):
+def get_entrypoints(doc, entrypoints_to_defines):
     """Extract the entry points from the registry."""
     entrypoints = OrderedDict()
 
@@ -611,8 +611,7 @@ def main():
 
     for filename in args.xml_files:
         doc = et.parse(filename)
-        entrypoints += get_entrypoints(doc, get_entrypoints_defines(doc),
-                                       start_index=len(entrypoints))
+        entrypoints += get_entrypoints(doc, get_entrypoints_defines(doc))
 
     # Manually add CreateDmaBufImageINTEL for which we don't have an extension
     # defined.
