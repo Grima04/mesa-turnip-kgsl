@@ -1041,6 +1041,8 @@ struct tu_pipeline
    struct
    {
       struct tu_bo binary_bo;
+      struct tu_cs_entry state_ib;
+      struct tu_cs_entry binning_state_ib;
    } program;
 
    struct

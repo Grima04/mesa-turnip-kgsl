@@ -56,6 +56,7 @@ struct tu_pipeline_builder
    VkSampleCountFlagBits samples;
    bool use_depth_stencil_attachment;
    bool use_color_attachments;
+   uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
 };
 
@@ -328,6 +329,586 @@ tu6_blend_op(VkBlendOp op)
       unreachable("invalid VkBlendOp");
       return BLEND_DST_PLUS_SRC;
    }
+}
+
+static void
+tu6_emit_vs_config(struct tu_cs *cs, const struct ir3_shader_variant *vs)
+{
+   uint32_t sp_vs_ctrl =
+      A6XX_SP_VS_CTRL_REG0_THREADSIZE(FOUR_QUADS) |
+      A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
+      A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
+      A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack);
+   if (vs->num_samp)
+      sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_PIXLODENABLE;
+
+   uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(vs->num_samp) |
+                           A6XX_SP_VS_CONFIG_NSAMP(vs->num_samp);
+   if (vs->instrlen)
+      sp_vs_config |= A6XX_SP_VS_CONFIG_ENABLED;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CTRL_REG0, 1);
+   tu_cs_emit(cs, sp_vs_ctrl);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CONFIG, 2);
+   tu_cs_emit(cs, sp_vs_config);
+   tu_cs_emit(cs, vs->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_VS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(vs->constlen, 4)) | 0x100);
+}
+
+static void
+tu6_emit_hs_config(struct tu_cs *cs, const struct ir3_shader_variant *hs)
+{
+   uint32_t sp_hs_config = 0;
+   if (hs->instrlen)
+      sp_hs_config |= A6XX_SP_HS_CONFIG_ENABLED;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+   tu_cs_emit(cs, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_CONFIG, 2);
+   tu_cs_emit(cs, sp_hs_config);
+   tu_cs_emit(cs, hs->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_HS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_HS_CNTL_CONSTLEN(align(hs->constlen, 4)));
+}
+
+static void
+tu6_emit_ds_config(struct tu_cs *cs, const struct ir3_shader_variant *ds)
+{
+   uint32_t sp_ds_config = 0;
+   if (ds->instrlen)
+      sp_ds_config |= A6XX_SP_DS_CONFIG_ENABLED;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_CONFIG, 2);
+   tu_cs_emit(cs, sp_ds_config);
+   tu_cs_emit(cs, ds->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_DS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_DS_CNTL_CONSTLEN(align(ds->constlen, 4)));
+}
+
+static void
+tu6_emit_gs_config(struct tu_cs *cs, const struct ir3_shader_variant *gs)
+{
+   uint32_t sp_gs_config = 0;
+   if (gs->instrlen)
+      sp_gs_config |= A6XX_SP_GS_CONFIG_ENABLED;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+   tu_cs_emit(cs, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CONFIG, 2);
+   tu_cs_emit(cs, sp_gs_config);
+   tu_cs_emit(cs, gs->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_GS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_GS_CNTL_CONSTLEN(align(gs->constlen, 4)));
+}
+
+static void
+tu6_emit_fs_config(struct tu_cs *cs, const struct ir3_shader_variant *fs)
+{
+   uint32_t sp_fs_ctrl =
+      A6XX_SP_FS_CTRL_REG0_THREADSIZE(FOUR_QUADS) | 0x1000000 |
+      A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
+      A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
+      A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack);
+   if (fs->total_in > 0 || fs->frag_coord)
+      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_VARYING;
+   if (fs->num_samp > 0)
+      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
+
+   uint32_t sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(fs->num_samp) |
+                           A6XX_SP_FS_CONFIG_NSAMP(fs->num_samp);
+   if (fs->instrlen)
+      sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A99E, 1);
+   tu_cs_emit(cs, 0x7fc0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A9A8, 1);
+   tu_cs_emit(cs, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_AB00, 1);
+   tu_cs_emit(cs, 0x5);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CTRL_REG0, 1);
+   tu_cs_emit(cs, sp_fs_ctrl);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CONFIG, 2);
+   tu_cs_emit(cs, sp_fs_config);
+   tu_cs_emit(cs, fs->instrlen);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) | 0x100);
+}
+
+static void
+tu6_emit_vs_system_values(struct tu_cs *cs,
+                          const struct ir3_shader_variant *vs)
+{
+   const uint32_t vertexid_regid =
+      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
+   const uint32_t instanceid_regid =
+      ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_1, 6);
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_1_REGID4VTX(vertexid_regid) |
+                     A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
+                     0xfcfc0000);
+   tu_cs_emit(cs, 0x0000fcfc); /* VFD_CONTROL_2 */
+   tu_cs_emit(cs, 0xfcfcfcfc); /* VFD_CONTROL_3 */
+   tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
+   tu_cs_emit(cs, 0x0000fcfc); /* VFD_CONTROL_5 */
+   tu_cs_emit(cs, 0x00000000); /* VFD_CONTROL_6 */
+}
+
+static void
+tu6_emit_vpc(struct tu_cs *cs,
+             const struct ir3_shader_variant *vs,
+             const struct ir3_shader_variant *fs,
+             bool binning_pass)
+{
+   struct ir3_shader_linkage linkage = { 0 };
+   ir3_link_shaders(&linkage, vs, fs);
+
+   if (vs->shader->stream_output.num_outputs && !binning_pass)
+      tu_finishme("stream output");
+
+   BITSET_DECLARE(vpc_var_enables, 128) = { 0 };
+   for (uint32_t i = 0; i < linkage.cnt; i++) {
+      const uint32_t comp_count = util_last_bit(linkage.var[i].compmask);
+      for (uint32_t j = 0; j < comp_count; j++)
+         BITSET_SET(vpc_var_enables, linkage.var[i].loc + j);
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
+   tu_cs_emit(cs, ~vpc_var_enables[0]);
+   tu_cs_emit(cs, ~vpc_var_enables[1]);
+   tu_cs_emit(cs, ~vpc_var_enables[2]);
+   tu_cs_emit(cs, ~vpc_var_enables[3]);
+
+   /* a6xx finds position/pointsize at the end */
+   const uint32_t position_regid =
+      ir3_find_output_regid(vs, VARYING_SLOT_POS);
+   const uint32_t pointsize_regid =
+      ir3_find_output_regid(vs, VARYING_SLOT_PSIZ);
+   uint32_t pointsize_loc = 0xff;
+   if (position_regid != regid(63, 0))
+      ir3_link_add(&linkage, position_regid, 0xf, linkage.max_loc);
+   if (pointsize_regid != regid(63, 0)) {
+      pointsize_loc = linkage.max_loc;
+      ir3_link_add(&linkage, pointsize_regid, 0x1, linkage.max_loc);
+   }
+
+   /* map vs outputs to VPC */
+   assert(linkage.cnt <= 32);
+   const uint32_t sp_vs_out_count = (linkage.cnt + 1) / 2;
+   const uint32_t sp_vs_vpc_dst_count = (linkage.cnt + 3) / 4;
+   uint32_t sp_vs_out[16];
+   uint32_t sp_vs_vpc_dst[8];
+   sp_vs_out[sp_vs_out_count - 1] = 0;
+   sp_vs_vpc_dst[sp_vs_vpc_dst_count - 1] = 0;
+   for (uint32_t i = 0; i < linkage.cnt; i++) {
+      ((uint16_t *) sp_vs_out)[i] =
+         A6XX_SP_VS_OUT_REG_A_REGID(linkage.var[i].regid) |
+         A6XX_SP_VS_OUT_REG_A_COMPMASK(linkage.var[i].compmask);
+      ((uint8_t *) sp_vs_vpc_dst)[i] =
+         A6XX_SP_VS_VPC_DST_REG_OUTLOC0(linkage.var[i].loc);
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_OUT_REG(0), sp_vs_out_count);
+   tu_cs_emit_array(cs, sp_vs_out, sp_vs_out_count);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_VPC_DST_REG(0), sp_vs_vpc_dst_count);
+   tu_cs_emit_array(cs, sp_vs_vpc_dst, sp_vs_vpc_dst_count);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
+   tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs->total_in) |
+                     (fs->total_in > 0 ? A6XX_VPC_CNTL_0_VARYING : 0) |
+                     0xff00ff00);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
+   tu_cs_emit(cs, A6XX_VPC_PACK_NUMNONPOSVAR(fs->total_in) |
+                     A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
+                     A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_SIV_CNTL, 1);
+   tu_cs_emit(cs, 0x0000ffff); /* XXX */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
+   tu_cs_emit(cs, A6XX_SP_PRIMITIVE_CNTL_VSOUT(linkage.cnt));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
+   tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(linkage.max_loc) |
+                     (vs->writes_psize ? A6XX_PC_PRIMITIVE_CNTL_1_PSIZE : 0));
+}
+
+static int
+tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
+                     uint32_t index,
+                     uint8_t *interp_mode,
+                     uint8_t *ps_repl_mode)
+{
+   enum
+   {
+      INTERP_SMOOTH = 0,
+      INTERP_FLAT = 1,
+      INTERP_ZERO = 2,
+      INTERP_ONE = 3,
+   };
+   enum
+   {
+      PS_REPL_NONE = 0,
+      PS_REPL_S = 1,
+      PS_REPL_T = 2,
+      PS_REPL_ONE_MINUS_T = 3,
+   };
+
+   const uint32_t compmask = fs->inputs[index].compmask;
+
+   /* NOTE: varyings are packed, so if compmask is 0xb then first, second, and
+    * fourth component occupy three consecutive varying slots
+    */
+   int shift = 0;
+   *interp_mode = 0;
+   *ps_repl_mode = 0;
+   if (fs->inputs[index].slot == VARYING_SLOT_PNTC) {
+      if (compmask & 0x1) {
+         *ps_repl_mode |= PS_REPL_S << shift;
+         shift += 2;
+      }
+      if (compmask & 0x2) {
+         *ps_repl_mode |= PS_REPL_T << shift;
+         shift += 2;
+      }
+      if (compmask & 0x4) {
+         *interp_mode |= INTERP_ZERO << shift;
+         shift += 2;
+      }
+      if (compmask & 0x8) {
+         *interp_mode |= INTERP_ONE << 6;
+         shift += 2;
+      }
+   } else if ((fs->inputs[index].interpolate == INTERP_MODE_FLAT) ||
+              fs->inputs[index].rasterflat) {
+      for (int i = 0; i < 4; i++) {
+         if (compmask & (1 << i)) {
+            *interp_mode |= INTERP_FLAT << shift;
+            shift += 2;
+         }
+      }
+   }
+
+   return shift;
+}
+
+static void
+tu6_emit_vpc_varying_modes(struct tu_cs *cs,
+                           const struct ir3_shader_variant *fs,
+                           bool binning_pass)
+{
+   uint32_t interp_modes[8] = { 0 };
+   uint32_t ps_repl_modes[8] = { 0 };
+
+   if (!binning_pass) {
+      for (int i = -1;
+           (i = ir3_next_varying(fs, i)) < (int) fs->inputs_count;) {
+
+         /* get the mode for input i */
+         uint8_t interp_mode;
+         uint8_t ps_repl_mode;
+         const int bits =
+            tu6_vpc_varying_mode(fs, i, &interp_mode, &ps_repl_mode);
+
+         /* OR the mode into the array */
+         const uint32_t inloc = fs->inputs[i].inloc * 2;
+         uint32_t n = inloc / 32;
+         uint32_t shift = inloc % 32;
+         interp_modes[n] |= interp_mode << shift;
+         ps_repl_modes[n] |= ps_repl_mode << shift;
+         if (shift + bits > 32) {
+            n++;
+            shift = 32 - shift;
+
+            interp_modes[n] |= interp_mode >> shift;
+            ps_repl_modes[n] |= ps_repl_mode >> shift;
+         }
+      }
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
+   tu_cs_emit_array(cs, interp_modes, 8);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
+   tu_cs_emit_array(cs, ps_repl_modes, 8);
+}
+
+static void
+tu6_emit_fs_system_values(struct tu_cs *cs,
+                          const struct ir3_shader_variant *fs)
+{
+   const uint32_t frontfacing_regid =
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRONT_FACE);
+   const uint32_t sampleid_regid =
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_ID);
+   const uint32_t samplemaskin_regid =
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_MASK_IN);
+   const uint32_t fragcoord_xy_regid =
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRAG_COORD);
+   const uint32_t fragcoord_zw_regid = (fragcoord_xy_regid != regid(63, 0))
+                                          ? (fragcoord_xy_regid + 2)
+                                          : fragcoord_xy_regid;
+   const uint32_t varyingcoord_regid =
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_VARYING_COORD);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
+   tu_cs_emit(cs, 0x7);
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(frontfacing_regid) |
+                     A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(sampleid_regid) |
+                     A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samplemaskin_regid) |
+                     0xfc000000);
+   tu_cs_emit(cs,
+              A6XX_HLSQ_CONTROL_3_REG_FRAGCOORDXYREGID(varyingcoord_regid) |
+                 0xfcfcfc00);
+   tu_cs_emit(cs,
+              A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(fragcoord_xy_regid) |
+                 A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(fragcoord_zw_regid) |
+                 0x0000fcfc);
+   tu_cs_emit(cs, 0xfc);
+}
+
+static void
+tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
+   tu_cs_emit(cs, fs->total_in > 0 ? 3 : 1);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_UNKNOWN_A982, 1);
+   tu_cs_emit(cs, 0); /* XXX */
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
+   tu_cs_emit(cs, 0xff); /* XXX */
+
+   uint32_t gras_cntl = 0;
+   if (fs->total_in > 0)
+      gras_cntl |= A6XX_GRAS_CNTL_VARYING;
+   if (fs->frag_coord) {
+      gras_cntl |= A6XX_GRAS_CNTL_UNK3 | A6XX_GRAS_CNTL_XCOORD |
+                   A6XX_GRAS_CNTL_YCOORD | A6XX_GRAS_CNTL_ZCOORD |
+                   A6XX_GRAS_CNTL_WCOORD;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CNTL, 1);
+   tu_cs_emit(cs, gras_cntl);
+
+   uint32_t rb_render_control = 0;
+   if (fs->total_in > 0) {
+      rb_render_control =
+         A6XX_RB_RENDER_CONTROL0_VARYING | A6XX_RB_RENDER_CONTROL0_UNK10;
+   }
+   if (fs->frag_coord) {
+      rb_render_control |=
+         A6XX_RB_RENDER_CONTROL0_UNK3 | A6XX_RB_RENDER_CONTROL0_XCOORD |
+         A6XX_RB_RENDER_CONTROL0_YCOORD | A6XX_RB_RENDER_CONTROL0_ZCOORD |
+         A6XX_RB_RENDER_CONTROL0_WCOORD;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CONTROL0, 2);
+   tu_cs_emit(cs, rb_render_control);
+   tu_cs_emit(cs, (fs->frag_face ? A6XX_RB_RENDER_CONTROL1_FACENESS : 0));
+}
+
+static void
+tu6_emit_fs_outputs(struct tu_cs *cs,
+                    const struct ir3_shader_variant *fs,
+                    uint32_t mrt_count)
+{
+   const uint32_t fragdepth_regid =
+      ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
+   uint32_t fragdata_regid[8];
+   if (fs->color0_mrt) {
+      fragdata_regid[0] = ir3_find_output_regid(fs, FRAG_RESULT_COLOR);
+      for (uint32_t i = 1; i < ARRAY_SIZE(fragdata_regid); i++)
+         fragdata_regid[i] = fragdata_regid[0];
+   } else {
+      for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++)
+         fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
+   tu_cs_emit(
+      cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(fragdepth_regid) | 0xfcfc0000);
+   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
+   for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++) {
+      // TODO we could have a mix of half and full precision outputs,
+      // we really need to figure out half-precision from IR3_REG_HALF
+      tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(fragdata_regid[i]) |
+                        (false ? A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION : 0));
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
+   tu_cs_emit(cs, fs->writes_pos ? A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z : 0);
+   tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
+
+   uint32_t gras_su_depth_plane_cntl = 0;
+   uint32_t rb_depth_plane_cntl = 0;
+   if (fs->has_kill | fs->writes_pos) {
+      gras_su_depth_plane_cntl |= A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
+      rb_depth_plane_cntl |= A6XX_RB_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
+   tu_cs_emit(cs, gras_su_depth_plane_cntl);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
+   tu_cs_emit(cs, rb_depth_plane_cntl);
+}
+
+static void
+tu6_emit_shader_object(struct tu_cs *cs,
+                       gl_shader_stage stage,
+                       const struct ir3_shader_variant *variant,
+                       const struct tu_bo *binary_bo,
+                       uint32_t binary_offset)
+{
+   uint16_t reg;
+   uint8_t opcode;
+   enum a6xx_state_block sb;
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      reg = REG_A6XX_SP_VS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_GEOM;
+      sb = SB6_VS_SHADER;
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      reg = REG_A6XX_SP_HS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_GEOM;
+      sb = SB6_HS_SHADER;
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      reg = REG_A6XX_SP_DS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_GEOM;
+      sb = SB6_DS_SHADER;
+      break;
+   case MESA_SHADER_GEOMETRY:
+      reg = REG_A6XX_SP_GS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_GEOM;
+      sb = SB6_GS_SHADER;
+      break;
+   case MESA_SHADER_FRAGMENT:
+      reg = REG_A6XX_SP_FS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_FRAG;
+      sb = SB6_FS_SHADER;
+      break;
+   case MESA_SHADER_COMPUTE:
+      reg = REG_A6XX_SP_CS_OBJ_START_LO;
+      opcode = CP_LOAD_STATE6_FRAG;
+      sb = SB6_CS_SHADER;
+      break;
+   default:
+      unreachable("invalid gl_shader_stage");
+      opcode = CP_LOAD_STATE6_GEOM;
+      sb = SB6_VS_SHADER;
+      break;
+   }
+
+   if (!variant->instrlen) {
+      tu_cs_emit_pkt4(cs, reg, 2);
+      tu_cs_emit_qw(cs, 0);
+      return;
+   }
+
+   assert(variant->type == stage);
+
+   const uint64_t binary_iova = binary_bo->iova + binary_offset;
+   assert((binary_iova & 0x3) == 0);
+
+   tu_cs_emit_pkt4(cs, reg, 2);
+   tu_cs_emit_qw(cs, binary_iova);
+
+   /* always indirect */
+   const bool indirect = true;
+   if (indirect) {
+      tu_cs_emit_pkt7(cs, opcode, 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                        CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+                        CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                        CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
+                        CP_LOAD_STATE6_0_NUM_UNIT(variant->instrlen));
+      tu_cs_emit_qw(cs, binary_iova);
+   } else {
+      const void *binary = binary_bo->map + binary_offset;
+
+      tu_cs_emit_pkt7(cs, opcode, 3 + variant->info.sizedwords);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                        CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+                        CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                        CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
+                        CP_LOAD_STATE6_0_NUM_UNIT(variant->instrlen));
+      tu_cs_emit_qw(cs, 0);
+      tu_cs_emit_array(cs, binary, variant->info.sizedwords);
+   }
+}
+
+static void
+tu6_emit_program(struct tu_cs *cs,
+                 const struct tu_pipeline_builder *builder,
+                 const struct tu_bo *binary_bo,
+                 bool binning_pass)
+{
+   static const struct ir3_shader_variant dummy_variant = {
+      .type = MESA_SHADER_NONE
+   };
+   assert(builder->shaders[MESA_SHADER_VERTEX]);
+   const struct ir3_shader_variant *vs =
+      &builder->shaders[MESA_SHADER_VERTEX]->variants[0];
+   const struct ir3_shader_variant *hs =
+      builder->shaders[MESA_SHADER_TESS_CTRL]
+         ? &builder->shaders[MESA_SHADER_TESS_CTRL]->variants[0]
+         : &dummy_variant;
+   const struct ir3_shader_variant *ds =
+      builder->shaders[MESA_SHADER_TESS_EVAL]
+         ? &builder->shaders[MESA_SHADER_TESS_EVAL]->variants[0]
+         : &dummy_variant;
+   const struct ir3_shader_variant *gs =
+      builder->shaders[MESA_SHADER_GEOMETRY]
+         ? &builder->shaders[MESA_SHADER_GEOMETRY]->variants[0]
+         : &dummy_variant;
+   const struct ir3_shader_variant *fs =
+      builder->shaders[MESA_SHADER_FRAGMENT]
+         ? &builder->shaders[MESA_SHADER_FRAGMENT]->variants[0]
+         : &dummy_variant;
+
+   if (binning_pass) {
+      vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
+      fs = &dummy_variant;
+   }
+
+   tu6_emit_vs_config(cs, vs);
+   tu6_emit_hs_config(cs, hs);
+   tu6_emit_ds_config(cs, ds);
+   tu6_emit_gs_config(cs, gs);
+   tu6_emit_fs_config(cs, fs);
+
+   tu6_emit_vs_system_values(cs, vs);
+   tu6_emit_vpc(cs, vs, fs, binning_pass);
+   tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
+   tu6_emit_fs_system_values(cs, fs);
+   tu6_emit_fs_inputs(cs, fs);
+   tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count);
+
+   tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo,
+                          builder->shader_offsets[MESA_SHADER_VERTEX]);
+
+   tu6_emit_shader_object(cs, MESA_SHADER_FRAGMENT, fs, binary_bo,
+                          builder->shader_offsets[MESA_SHADER_FRAGMENT]);
 }
 
 static uint32_t
@@ -823,6 +1404,21 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
+                                        struct tu_pipeline *pipeline)
+{
+   struct tu_cs prog_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 512, &prog_cs);
+   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, false);
+   pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 512, &prog_cs);
+   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true);
+   pipeline->program.binning_state_ib =
+      tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+}
+
+static void
 tu_pipeline_builder_parse_input_assembly(struct tu_pipeline_builder *builder,
                                          struct tu_pipeline *pipeline)
 {
@@ -1025,6 +1621,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    }
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
+   tu_pipeline_builder_parse_shader_stages(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
@@ -1080,6 +1677,9 @@ tu_pipeline_builder_init_graphics(
       builder->use_depth_stencil_attachment =
          subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
 
+      assert(subpass->color_count ==
+             create_info->pColorBlendState->attachmentCount);
+      builder->color_attachment_count = subpass->color_count;
       for (uint32_t i = 0; i < subpass->color_count; i++) {
          const uint32_t a = subpass->color_attachments[i].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
