@@ -716,6 +716,9 @@ enum gl_access_qualifier
    ACCESS_VOLATILE      = (1 << 2),
    ACCESS_NON_READABLE  = (1 << 3),
    ACCESS_NON_WRITEABLE = (1 << 4),
+
+   /** The access may use a non-uniform buffer or image index */
+   ACCESS_NON_UNIFORM   = (1 << 5),
 };
 
 /**

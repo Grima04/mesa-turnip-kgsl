@@ -1485,6 +1485,12 @@ typedef struct {
    /* gather offsets */
    int8_t tg4_offsets[4][2];
 
+   /* True if the texture index or handle is not dynamically uniform */
+   bool texture_non_uniform;
+
+   /* True if the sampler index or handle is not dynamically uniform */
+   bool sampler_non_uniform;
+
    /** The texture index
     *
     * If this texture instruction has a nir_tex_src_texture_offset source,
@@ -3258,6 +3264,16 @@ typedef struct nir_lower_tex_options {
 
 bool nir_lower_tex(nir_shader *shader,
                    const nir_lower_tex_options *options);
+
+enum nir_lower_non_uniform_access_type {
+   nir_lower_non_uniform_ubo_access     = (1 << 0),
+   nir_lower_non_uniform_ssbo_access    = (1 << 1),
+   nir_lower_non_uniform_texture_access = (1 << 2),
+   nir_lower_non_uniform_image_access   = (1 << 3),
+};
+
+bool nir_lower_non_uniform_access(nir_shader *shader,
+                                  enum nir_lower_non_uniform_access_type);
 
 bool nir_lower_idiv(nir_shader *shader);
 
