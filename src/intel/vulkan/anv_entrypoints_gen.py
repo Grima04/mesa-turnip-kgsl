@@ -454,7 +454,7 @@ class StringIntMap(object):
     def add_string(self, string, num):
         assert not self.baked
         assert string not in self.strings
-        assert num >= 0 and num < 2**31
+        assert 0 <= num < 2**31
         self.strings[string] = StringIntMapEntry(string, num)
 
     def bake(self):
