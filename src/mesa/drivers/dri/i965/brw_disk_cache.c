@@ -235,6 +235,9 @@ brw_disk_cache_upload_program(struct brw_context *brw, gl_shader_stage stage)
    if (prog == NULL)
       return false;
 
+   if (prog->sh.data->spirv)
+      return false;
+
    if (brw->ctx._Shader->Flags & GLSL_CACHE_FALLBACK)
       goto fail;
 
@@ -296,8 +299,15 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    if (cache == NULL)
       return;
 
-   struct gl_program *prog =
-      brw->ctx._Shader->CurrentProgram[MESA_SHADER_VERTEX];
+   struct gl_program *prog;
+   gl_shader_stage stage;
+   for (stage = MESA_SHADER_VERTEX; stage <= MESA_SHADER_FRAGMENT; stage++) {
+      prog = brw->ctx._Shader->CurrentProgram[stage];
+      if (prog && prog->sh.data->spirv)
+         return;
+   }
+
+   prog = brw->ctx._Shader->CurrentProgram[MESA_SHADER_VERTEX];
    if (prog && !prog->program_written_to_cache) {
       struct brw_vs_prog_key vs_key;
       brw_vs_populate_key(brw, &vs_key);
@@ -362,6 +372,10 @@ brw_disk_cache_write_compute_program(struct brw_context *brw)
 
    struct gl_program *prog =
       brw->ctx._Shader->CurrentProgram[MESA_SHADER_COMPUTE];
+
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_cs_prog_key cs_key;
       brw_cs_populate_key(brw, &cs_key);
