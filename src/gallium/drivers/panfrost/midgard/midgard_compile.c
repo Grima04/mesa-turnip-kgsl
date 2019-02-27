@@ -2060,6 +2060,20 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
         return true;
 }
 
+static bool
+midgard_has_hazard(
+                midgard_instruction **segment, unsigned segment_size,
+                midgard_instruction *ains)
+{
+        for (int s = 0; s < segment_size; ++s)
+                if (!can_run_concurrent_ssa(segment[s], ains))
+                        return true;
+
+        return false;
+
+
+}
+
 /* Schedules, but does not emit, a single basic block. After scheduling, the
  * final tag and size of the block are known, which are necessary for branching
  * */
@@ -2159,7 +2173,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                                 else
                                                         break;
                                         } else {
-                                                if ((units & UNIT_SADD) && !(control & UNIT_SADD))
+                                                if ((units & UNIT_SADD) && !(control & UNIT_SADD) && !midgard_has_hazard(segment, segment_size, ains))
                                                         unit = UNIT_SADD;
                                                 else if (units & UNIT_SMUL)
                                                         unit = ((units & UNIT_VMUL) && !(control & UNIT_VMUL)) ? UNIT_VMUL : UNIT_SMUL;
@@ -2180,14 +2194,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                         if (last_unit < UNIT_VADD && unit >= UNIT_VADD)
                                 segment_size = 0;
 
-                        /* Check for data hazards */
-                        int has_hazard = false;
-
-                        for (int s = 0; s < segment_size; ++s)
-                                if (!can_run_concurrent_ssa(segment[s], ains))
-                                        has_hazard = true;
-
-                        if (has_hazard)
+                        if (midgard_has_hazard(segment, segment_size, ains))
                                 break;
 
                         /* We're good to go -- emit the instruction */
