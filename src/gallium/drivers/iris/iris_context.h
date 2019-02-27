@@ -571,6 +571,9 @@ struct iris_context {
       bool vs_uses_derived_draw_params;
       bool vs_needs_sgvs_element;
 
+      /** Do vertex shader uses edge flag ? */
+      bool vs_needs_edge_flag;
+
       /** Do any samplers (for any stage) need border color? */
       bool need_border_colors;
 
