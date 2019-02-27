@@ -310,6 +310,7 @@ OMX_ERRORTYPE enc_LoadImage_common(vid_enc_PrivateType * priv, OMX_VIDEO_PORTDEF
                                    OMX_BUFFERHEADERTYPE *buf,
                                    struct pipe_video_buffer *vbuf)
 {
+   struct pipe_context *pipe = priv->s_pipe;
    struct pipe_box box = {};
    struct input_buf_private *inp = buf->pInputPortPrivate;
 
@@ -325,30 +326,49 @@ OMX_ERRORTYPE enc_LoadImage_common(vid_enc_PrivateType * priv, OMX_VIDEO_PORTDEF
       box.width = def->nFrameWidth;
       box.height = def->nFrameHeight;
       box.depth = 1;
-      priv->s_pipe->texture_subdata(priv->s_pipe, views[0]->texture, 0,
-                                    PIPE_TRANSFER_WRITE, &box,
-                                    ptr, def->nStride, 0);
+      pipe->texture_subdata(pipe, views[0]->texture, 0,
+                            PIPE_TRANSFER_WRITE, &box,
+                            ptr, def->nStride, 0);
       ptr = ((uint8_t*)buf->pBuffer) + (def->nStride * box.height);
       box.width = def->nFrameWidth / 2;
       box.height = def->nFrameHeight / 2;
       box.depth = 1;
-      priv->s_pipe->texture_subdata(priv->s_pipe, views[1]->texture, 0,
-                                    PIPE_TRANSFER_WRITE, &box,
-                                    ptr, def->nStride, 0);
+      pipe->texture_subdata(pipe, views[1]->texture, 0,
+                            PIPE_TRANSFER_WRITE, &box,
+                            ptr, def->nStride, 0);
    } else {
       struct pipe_blit_info blit;
       struct vl_video_buffer *dst_buf = (struct vl_video_buffer *)vbuf;
 
-      pipe_transfer_unmap(priv->s_pipe, inp->transfer);
+      pipe_transfer_unmap(pipe, inp->transfer);
+
+      /* inp->resource uses PIPE_FORMAT_I8 and the layout looks like this:
+       *
+       * def->nFrameWidth = 4, def->nFrameHeight = 4:
+       * |----|
+       * |YYYY|
+       * |YYYY|
+       * |YYYY|
+       * |YYYY|
+       * |UVUV|
+       * |UVUV|
+       * |----|
+       *
+       * The copy has 2 steps:
+       * - Copy Y to dst_buf->resources[0] as R8.
+       * - Copy UV to dst_buf->resources[1] as R8G8.
+       */
 
       box.width = def->nFrameWidth;
       box.height = def->nFrameHeight;
       box.depth = 1;
 
-      priv->s_pipe->resource_copy_region(priv->s_pipe,
-                                         dst_buf->resources[0],
-                                         0, 0, 0, 0, inp->resource, 0, &box);
+      /* Copy Y */
+      pipe->resource_copy_region(pipe,
+                                 dst_buf->resources[0],
+                                 0, 0, 0, 0, inp->resource, 0, &box);
 
+      /* Copy U */
       memset(&blit, 0, sizeof(blit));
       blit.src.resource = inp->resource;
       blit.src.format = inp->resource->format;
@@ -368,19 +388,20 @@ OMX_ERRORTYPE enc_LoadImage_common(vid_enc_PrivateType * priv, OMX_VIDEO_PORTDEF
       blit.filter = PIPE_TEX_FILTER_NEAREST;
 
       blit.mask = PIPE_MASK_R;
-      priv->s_pipe->blit(priv->s_pipe, &blit);
+      pipe->blit(pipe, &blit);
 
+      /* Copy V */
       blit.src.box.x = 0;
       blit.mask = PIPE_MASK_G;
-      priv->s_pipe->blit(priv->s_pipe, &blit);
-      priv->s_pipe->flush(priv->s_pipe, NULL, 0);
+      pipe->blit(pipe, &blit);
+      pipe->flush(pipe, NULL, 0);
 
       box.width = inp->resource->width0;
       box.height = inp->resource->height0;
       box.depth = inp->resource->depth0;
-      buf->pBuffer = priv->s_pipe->transfer_map(priv->s_pipe, inp->resource, 0,
-                                                PIPE_TRANSFER_WRITE, &box,
-                                                &inp->transfer);
+      buf->pBuffer = pipe->transfer_map(pipe, inp->resource, 0,
+                                        PIPE_TRANSFER_WRITE, &box,
+                                        &inp->transfer);
    }
 
    return OMX_ErrorNone;
