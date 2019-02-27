@@ -25,6 +25,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include "drm-uapi/drm_fourcc.h"
 #include "pipe/p_screen.h"
 #include "util/u_format.h"
 
@@ -137,4 +138,12 @@ fd6_screen_init(struct pipe_screen *pscreen)
 	screen->setup_slices = fd6_setup_slices;
 	screen->tile_mode = fd6_tile_mode;
 	screen->fill_ubwc_buffer_sizes = fd6_fill_ubwc_buffer_sizes;
+
+	static const uint64_t supported_modifiers[] = {
+		DRM_FORMAT_MOD_LINEAR,
+		DRM_FORMAT_MOD_QCOM_COMPRESSED,
+	};
+
+	screen->supported_modifiers = supported_modifiers;
+	screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
 }
