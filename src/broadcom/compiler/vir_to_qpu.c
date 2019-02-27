@@ -240,10 +240,6 @@ v3d_generate_code_block(struct v3d_compile *c,
 
                                 src[i] = qpu_acc(3);
                                 break;
-
-                        case QFILE_TLB:
-                        case QFILE_TLBU:
-                                unreachable("bad vir src file");
                         }
                 }
 
@@ -267,14 +263,6 @@ v3d_generate_code_block(struct v3d_compile *c,
 
                 case QFILE_VPM:
                         dst = qpu_magic(V3D_QPU_WADDR_VPM);
-                        break;
-
-                case QFILE_TLB:
-                        dst = qpu_magic(V3D_QPU_WADDR_TLB);
-                        break;
-
-                case QFILE_TLBU:
-                        dst = qpu_magic(V3D_QPU_WADDR_TLBU);
                         break;
 
                 case QFILE_SMALL_IMM:

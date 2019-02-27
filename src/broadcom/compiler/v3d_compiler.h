@@ -69,8 +69,6 @@ enum qfile {
          * or physical registers later.
          */
         QFILE_TEMP,
-        QFILE_TLB,
-        QFILE_TLBU,
 
         /**
          * VPM reads use this with an index value to say what part of the VPM
@@ -102,6 +100,11 @@ struct qreg {
 static inline struct qreg vir_reg(enum qfile file, uint32_t index)
 {
         return (struct qreg){file, index};
+}
+
+static inline struct qreg vir_magic_reg(uint32_t index)
+{
+        return (struct qreg){QFILE_MAGIC, index};
 }
 
 static inline struct qreg vir_nop_reg(void)

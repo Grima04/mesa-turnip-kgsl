@@ -133,12 +133,6 @@ static void
 vir_print_reg(struct v3d_compile *c, const struct qinst *inst,
               struct qreg reg)
 {
-        static const char *files[] = {
-                [QFILE_TEMP] = "t",
-                [QFILE_TLB] = "tlb",
-                [QFILE_TLBU] = "tlbu",
-        };
-
         switch (reg.file) {
 
         case QFILE_NULL:
@@ -177,13 +171,8 @@ vir_print_reg(struct v3d_compile *c, const struct qinst *inst,
                         reg.index / 4, reg.index % 4);
                 break;
 
-        case QFILE_TLB:
-        case QFILE_TLBU:
-                fprintf(stderr, "%s", files[reg.file]);
-                break;
-
-        default:
-                fprintf(stderr, "%s%d", files[reg.file], reg.index);
+        case QFILE_TEMP:
+                fprintf(stderr, "t%d", reg.index);
                 break;
         }
 }

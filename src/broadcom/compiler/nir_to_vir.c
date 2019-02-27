@@ -1137,9 +1137,10 @@ emit_frag_end(struct v3d_compile *c)
                                         vir_FTOC(c, color[3])));
         }
 
+        struct qreg tlb_reg = vir_magic_reg(V3D_QPU_WADDR_TLB);
+        struct qreg tlbu_reg = vir_magic_reg(V3D_QPU_WADDR_TLBU);
         if (c->output_position_index != -1) {
-                struct qinst *inst = vir_MOV_dest(c,
-                                                  vir_reg(QFILE_TLBU, 0),
+                struct qinst *inst = vir_MOV_dest(c, tlbu_reg,
                                                   c->outputs[c->output_position_index]);
                 uint8_t tlb_specifier = TLB_TYPE_DEPTH;
 
@@ -1167,8 +1168,7 @@ emit_frag_end(struct v3d_compile *c)
                  */
                 c->s->info.fs.uses_discard = true;
 
-                struct qinst *inst = vir_MOV_dest(c,
-                                                  vir_reg(QFILE_TLBU, 0),
+                struct qinst *inst = vir_MOV_dest(c, tlbu_reg,
                                                   vir_nop_reg());
                 uint8_t tlb_specifier = TLB_TYPE_DEPTH;
 
@@ -1221,14 +1221,13 @@ emit_frag_end(struct v3d_compile *c)
                         conf |= ((num_components - 1) <<
                                  TLB_VEC_SIZE_MINUS_1_SHIFT);
 
-                        inst = vir_MOV_dest(c, vir_reg(QFILE_TLBU, 0), color[0]);
+                        inst = vir_MOV_dest(c, tlbu_reg, color[0]);
                         inst->uniform = vir_get_uniform_index(c,
                                                               QUNIFORM_CONSTANT,
                                                               conf);
 
                         for (int i = 1; i < num_components; i++) {
-                                inst = vir_MOV_dest(c, vir_reg(QFILE_TLB, 0),
-                                                    color[i]);
+                                inst = vir_MOV_dest(c, tlb_reg, color[i]);
                         }
                         break;
 
@@ -1260,28 +1259,28 @@ emit_frag_end(struct v3d_compile *c)
                                 a = vir_uniform_f(c, 1.0);
 
                         if (c->fs_key->f32_color_rb & (1 << rt)) {
-                                inst = vir_MOV_dest(c, vir_reg(QFILE_TLBU, 0), r);
+                                inst = vir_MOV_dest(c, tlbu_reg, r);
                                 inst->uniform = vir_get_uniform_index(c,
                                                                       QUNIFORM_CONSTANT,
                                                                       conf);
 
                                 if (num_components >= 2)
-                                        vir_MOV_dest(c, vir_reg(QFILE_TLB, 0), g);
+                                        vir_MOV_dest(c, tlb_reg, g);
                                 if (num_components >= 3)
-                                        vir_MOV_dest(c, vir_reg(QFILE_TLB, 0), b);
+                                        vir_MOV_dest(c, tlb_reg, b);
                                 if (num_components >= 4)
-                                        vir_MOV_dest(c, vir_reg(QFILE_TLB, 0), a);
+                                        vir_MOV_dest(c, tlb_reg, a);
                         } else {
-                                inst = vir_VFPACK_dest(c, vir_reg(QFILE_TLB, 0), r, g);
+                                inst = vir_VFPACK_dest(c, tlb_reg, r, g);
                                 if (conf != ~0) {
-                                        inst->dst.file = QFILE_TLBU;
+                                        inst->dst = tlbu_reg;
                                         inst->uniform = vir_get_uniform_index(c,
                                                                               QUNIFORM_CONSTANT,
                                                                               conf);
                                 }
 
                                 if (num_components >= 3)
-                                        inst = vir_VFPACK_dest(c, vir_reg(QFILE_TLB, 0), b, a);
+                                        inst = vir_VFPACK_dest(c, tlb_reg, b, a);
                         }
                         break;
                 }
