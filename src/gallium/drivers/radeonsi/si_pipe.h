@@ -921,28 +921,6 @@ struct si_context {
 	uint32_t			vs_blit_sh_data[SI_VS_BLIT_SGPRS_POS_TEXCOORD];
 	uint32_t			cs_user_data[4];
 
-        /**
-         * last_block allows disabling threads at the farthermost grid boundary.
-         * Full blocks as specified by "block" are launched, but the threads
-         * outside of "last_block" dimensions are disabled.
-         *
-         * If a block touches the grid boundary in the i-th axis, threads with
-         * THREAD_ID[i] >= last_block[i] are disabled.
-         *
-         * If last_block[i] is 0, it has the same behavior as last_block[i] = block[i],
-         * meaning no effect.
-         *
-         * It's equivalent to doing this at the beginning of the compute shader:
-         *
-         *   for (i = 0; i < 3; i++) {
-         *      if (block_id[i] == grid[i] - 1 &&
-         *          last_block[i] && last_block[i] >= thread_id[i])
-         *         return;
-         *   }
-         * (this could be moved into pipe_grid_info)
-         */
-        uint compute_last_block[3];
-
 	/* Vertex and index buffers. */
 	bool				vertex_buffers_dirty;
 	bool				vertex_buffer_pointer_dirty;

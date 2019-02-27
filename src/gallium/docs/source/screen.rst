@@ -492,6 +492,8 @@ The integer capabilities:
   varyings. This will generally correspond to
   ``PIPE_SHADER_CAP_MAX_INPUTS`` for the fragment shader, but in some
   cases may be a smaller number.
+* ``PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK``: Whether pipe_grid_info::last_block
+  is implemented by the driver. See struct pipe_grid_info for more details.
 
 .. _pipe_capf:
 

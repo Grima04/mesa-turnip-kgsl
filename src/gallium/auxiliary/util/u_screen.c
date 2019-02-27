@@ -341,6 +341,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_MAX_VARYINGS:
       return 8;
 
+   case PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK:
+      return 0;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

@@ -381,7 +381,7 @@ void si_compute_copy_image(struct si_context *sctx,
 				si_create_copy_image_compute_shader_1d_array(ctx);
 		ctx->bind_compute_state(ctx, sctx->cs_copy_image_1d_array);
 		info.block[0] = 64;
-		sctx->compute_last_block[0] = width % 64;
+		info.last_block[0] = width % 64;
 		info.block[1] = 1;
 		info.block[2] = 1;
 		info.grid[0] = DIV_ROUND_UP(width, 64);
@@ -392,9 +392,9 @@ void si_compute_copy_image(struct si_context *sctx,
 			sctx->cs_copy_image = si_create_copy_image_compute_shader(ctx);
 		ctx->bind_compute_state(ctx, sctx->cs_copy_image);
 		info.block[0] = 8;
-		sctx->compute_last_block[0] = width % 8;
+		info.last_block[0] = width % 8;
 		info.block[1] = 8;
-		sctx->compute_last_block[1] = height % 8;
+		info.last_block[1] = height % 8;
 		info.block[2] = 1;
 		info.grid[0] = DIV_ROUND_UP(width, 8);
 		info.grid[1] = DIV_ROUND_UP(height, 8);
@@ -402,9 +402,6 @@ void si_compute_copy_image(struct si_context *sctx,
 	}
 
 	ctx->launch_grid(ctx, &info);
-
-	sctx->compute_last_block[0] = 0;
-	sctx->compute_last_block[1] = 0;
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       (sctx->chip_class <= VI ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0) |
@@ -483,9 +480,9 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 			sctx->cs_clear_render_target = si_clear_render_target_shader(ctx);
 		ctx->bind_compute_state(ctx, sctx->cs_clear_render_target);
 		info.block[0] = 8;
-		sctx->compute_last_block[0] = width % 8;
+		info.last_block[0] = width % 8;
 		info.block[1] = 8;
-		sctx->compute_last_block[1] = height % 8;
+		info.last_block[1] = height % 8;
 		info.block[2] = 1;
 		info.grid[0] = DIV_ROUND_UP(width, 8);
 		info.grid[1] = DIV_ROUND_UP(height, 8);
@@ -496,7 +493,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 				si_clear_render_target_shader_1d_array(ctx);
 		ctx->bind_compute_state(ctx, sctx->cs_clear_render_target_1d_array);
 		info.block[0] = 64;
-		sctx->compute_last_block[0] = width % 64;
+		info.last_block[0] = width % 64;
 		info.block[1] = 1;
 		info.block[2] = 1;
 		info.grid[0] = DIV_ROUND_UP(width, 64);
@@ -505,9 +502,6 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 	}
 
 	ctx->launch_grid(ctx, &info);
-
-	sctx->compute_last_block[0] = 0;
-	sctx->compute_last_block[1] = 0;
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
 		       (sctx->chip_class <= VI ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0) |
