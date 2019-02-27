@@ -1583,8 +1583,6 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate)
 #endif
 }
 
-bool dont_scanout = false;
-
 void
 panfrost_flush(
         struct pipe_context *pipe,
@@ -1592,23 +1590,10 @@ panfrost_flush(
         unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
-        /* If there is nothing drawn, skip the frame */
-        if (!ctx->draw_count && !ctx->frame_cleared) return;
-
-        if (!ctx->frame_cleared) {
-                /* While there are draws, there was no clear. This is a partial
-                 * update, which needs to be handled via the "wallpaper"
-                 * method. We also need to fake a clear, just to get the
-                 * FRAGMENT job correct. */
-
-                panfrost_clear(&ctx->base, ctx->last_clear.buffers, ctx->last_clear.color, ctx->last_clear.depth, ctx->last_clear.stencil);
-
-                panfrost_draw_wallpaper(pipe);
-        }
-
-        /* Frame clear handled, reset */
-        ctx->frame_cleared = false;
+        /* Nothing to do! */
+        if (!ctx->draw_count && !job->clear) return;
 
         /* Whether to stall the pipeline for immediately correct results */
         bool flush_immediate = flags & PIPE_FLUSH_END_OF_FRAME;
@@ -2407,10 +2392,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                         }
                 }
         }
-
-        /* Force a clear XXX wrong? */
-        if (ctx->last_clear.color)
-                panfrost_clear(&ctx->base, ctx->last_clear.buffers, ctx->last_clear.color, ctx->last_clear.depth, ctx->last_clear.stencil);
 }
 
 static void *

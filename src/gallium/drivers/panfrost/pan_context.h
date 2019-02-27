@@ -121,13 +121,6 @@ struct panfrost_context {
         struct panfrost_memory misc_1;
         struct panfrost_memory depth_stencil_buffer;
 
-        struct {
-                unsigned buffers;
-                const union pipe_color_union *color;
-                double depth;
-                unsigned stencil;
-        } last_clear;
-
         struct panfrost_query *occlusion_query;
 
         /* Each render job has multiple framebuffer descriptors associated with
@@ -173,9 +166,6 @@ struct panfrost_context {
 
         /* Per-draw Dirty flags are setup like any other driver */
         int dirty;
-
-        /* Per frame dirty flag - whether there was a clear. If not, we need to do a partial update, maybe */
-        bool frame_cleared;
 
         unsigned vertex_count;
 
