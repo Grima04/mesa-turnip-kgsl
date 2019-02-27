@@ -1069,7 +1069,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         .src0 = quirk_flipped_r24 ? SSA_UNUSED_1 : src0,
                         .src1 = quirk_flipped_r24 ? src0         : src1,
                         .dest = dest,
-                        .inline_constant = (nr_inputs == 1) && !quirk_flipped_r24
                 }
         };
 
