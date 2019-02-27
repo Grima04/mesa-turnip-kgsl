@@ -46,6 +46,11 @@ struct tu_pipeline_builder
    const VkAllocationCallbacks *alloc;
    const VkGraphicsPipelineCreateInfo *create_info;
 
+   struct tu_shader *shaders[MESA_SHADER_STAGES];
+   uint32_t shader_offsets[MESA_SHADER_STAGES];
+   uint32_t binning_vs_offset;
+   uint32_t shader_total_size;
+
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
    VkSampleCountFlagBits samples;
@@ -79,6 +84,28 @@ tu_dynamic_state_bit(VkDynamicState state)
    default:
       unreachable("invalid dynamic state");
       return 0;
+   }
+}
+
+static gl_shader_stage
+tu_shader_stage(VkShaderStageFlagBits stage)
+{
+   switch (stage) {
+   case VK_SHADER_STAGE_VERTEX_BIT:
+      return MESA_SHADER_VERTEX;
+   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+      return MESA_SHADER_TESS_CTRL;
+   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+      return MESA_SHADER_TESS_EVAL;
+   case VK_SHADER_STAGE_GEOMETRY_BIT:
+      return MESA_SHADER_GEOMETRY;
+   case VK_SHADER_STAGE_FRAGMENT_BIT:
+      return MESA_SHADER_FRAGMENT;
+   case VK_SHADER_STAGE_COMPUTE_BIT:
+      return MESA_SHADER_COMPUTE;
+   default:
+      unreachable("invalid VkShaderStageFlagBits");
+      return MESA_SHADER_NONE;
    }
 }
 
@@ -694,6 +721,91 @@ tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
    return VK_SUCCESS;
 }
 
+static VkResult
+tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
+{
+   const VkPipelineShaderStageCreateInfo *stage_infos[MESA_SHADER_STAGES] = {
+      NULL
+   };
+   for (uint32_t i = 0; i < builder->create_info->stageCount; i++) {
+      gl_shader_stage stage =
+         tu_shader_stage(builder->create_info->pStages[i].stage);
+      stage_infos[stage] = &builder->create_info->pStages[i];
+   }
+
+   struct tu_shader_compile_options options;
+   tu_shader_compile_options_init(&options, builder->create_info);
+
+   /* compile shaders in reverse order */
+   struct tu_shader *next_stage_shader = NULL;
+   for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
+        stage > MESA_SHADER_NONE; stage--) {
+      const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
+      if (!stage_info)
+         continue;
+
+      struct tu_shader *shader =
+         tu_shader_create(builder->device, stage, stage_info, builder->alloc);
+      if (!shader)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      VkResult result =
+         tu_shader_compile(builder->device, shader, next_stage_shader,
+                           &options, builder->alloc);
+      if (result != VK_SUCCESS)
+         return result;
+
+      builder->shaders[stage] = shader;
+      builder->shader_offsets[stage] = builder->shader_total_size;
+      builder->shader_total_size +=
+         sizeof(uint32_t) * shader->variants[0].info.sizedwords;
+
+      next_stage_shader = shader;
+   }
+
+   if (builder->shaders[MESA_SHADER_VERTEX]->has_binning_pass) {
+      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+      builder->binning_vs_offset = builder->shader_total_size;
+      builder->shader_total_size +=
+         sizeof(uint32_t) * vs->variants[1].info.sizedwords;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_pipeline_builder_upload_shaders(struct tu_pipeline_builder *builder,
+                                   struct tu_pipeline *pipeline)
+{
+   struct tu_bo *bo = &pipeline->program.binary_bo;
+
+   VkResult result =
+      tu_bo_init_new(builder->device, bo, builder->shader_total_size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = tu_bo_map(builder->device, bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+      const struct tu_shader *shader = builder->shaders[i];
+      if (!shader)
+         continue;
+
+      memcpy(bo->map + builder->shader_offsets[i], shader->binary,
+             sizeof(uint32_t) * shader->variants[0].info.sizedwords);
+   }
+
+   if (builder->shaders[MESA_SHADER_VERTEX]->has_binning_pass) {
+      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+      memcpy(bo->map + builder->binning_vs_offset, vs->binning_binary,
+             sizeof(uint32_t) * vs->variants[1].info.sizedwords);
+   }
+
+   return VK_SUCCESS;
+}
+
 static void
 tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
                                   struct tu_pipeline *pipeline)
@@ -887,6 +999,9 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
                    const VkAllocationCallbacks *alloc)
 {
    tu_cs_finish(dev, &pipeline->cs);
+
+   if (pipeline->program.binary_bo.gem_handle)
+      tu_bo_finish(dev, &pipeline->program.binary_bo);
 }
 
 static VkResult
@@ -896,6 +1011,18 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    VkResult result = tu_pipeline_builder_create_pipeline(builder, pipeline);
    if (result != VK_SUCCESS)
       return result;
+
+   /* compile and upload shaders */
+   result = tu_pipeline_builder_compile_shaders(builder);
+   if (result == VK_SUCCESS)
+      result = tu_pipeline_builder_upload_shaders(builder, *pipeline);
+   if (result != VK_SUCCESS) {
+      tu_pipeline_finish(*pipeline, builder->device, builder->alloc);
+      vk_free2(&builder->device->alloc, builder->alloc, *pipeline);
+      *pipeline = VK_NULL_HANDLE;
+
+      return result;
+   }
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
@@ -910,6 +1037,16 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    assert((*pipeline)->cs.bo_count == 1);
 
    return VK_SUCCESS;
+}
+
+static void
+tu_pipeline_builder_finish(struct tu_pipeline_builder *builder)
+{
+   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (!builder->shaders[i])
+         continue;
+      tu_shader_destroy(builder->device, builder->shaders[i], builder->alloc);
+   }
 }
 
 static void
@@ -972,6 +1109,7 @@ tu_CreateGraphicsPipelines(VkDevice device,
 
       struct tu_pipeline *pipeline;
       VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
+      tu_pipeline_builder_finish(&builder);
 
       if (result != VK_SUCCESS) {
          for (uint32_t j = 0; j < i; j++) {

@@ -1040,6 +1040,11 @@ struct tu_pipeline
 
    struct
    {
+      struct tu_bo binary_bo;
+   } program;
+
+   struct
+   {
       enum pc_di_primtype primtype;
       bool primitive_restart;
    } ia;
