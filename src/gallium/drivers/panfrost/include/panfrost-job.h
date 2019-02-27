@@ -820,10 +820,12 @@ struct mali_uniform_buffer_meta {
  */
 
 /* Applies to unknown_draw */
+
 #define MALI_DRAW_INDEXED_UINT8  (0x10)
 #define MALI_DRAW_INDEXED_UINT16 (0x20)
 #define MALI_DRAW_INDEXED_UINT32 (0x30)
 #define MALI_DRAW_VARYING_SIZE   (0x100)
+#define MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX (0x10000)
 
 struct mali_vertex_tiler_prefix {
         /* This is a dynamic bitfield containing the following things in this order:
