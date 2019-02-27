@@ -47,6 +47,8 @@ struct tu_pipeline_builder
    const VkGraphicsPipelineCreateInfo *create_info;
 
    bool rasterizer_discard;
+   /* these states are affectd by rasterizer_discard */
+   VkSampleCountFlagBits samples;
 };
 
 static enum tu_dynamic_state_bits
@@ -186,6 +188,75 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
                      A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(max.y - 1));
 }
 
+static void
+tu6_emit_gras_unknowns(struct tu_cs *cs)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8000, 1);
+   tu_cs_emit(cs, 0x80);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8001, 1);
+   tu_cs_emit(cs, 0x0);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8004, 1);
+   tu_cs_emit(cs, 0x0);
+}
+
+static void
+tu6_emit_point_size(struct tu_cs *cs)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_POINT_MINMAX, 2);
+   tu_cs_emit(cs, A6XX_GRAS_SU_POINT_MINMAX_MIN(1.0f / 16.0f) |
+                     A6XX_GRAS_SU_POINT_MINMAX_MAX(4092.0f));
+   tu_cs_emit(cs, A6XX_GRAS_SU_POINT_SIZE(1.0f));
+}
+
+static uint32_t
+tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
+                 VkSampleCountFlagBits samples)
+{
+   uint32_t gras_su_cntl = 0;
+
+   if (rast_info->cullMode & VK_CULL_MODE_FRONT_BIT)
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_CULL_FRONT;
+   if (rast_info->cullMode & VK_CULL_MODE_BACK_BIT)
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_CULL_BACK;
+
+   if (rast_info->frontFace == VK_FRONT_FACE_CLOCKWISE)
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_FRONT_CW;
+
+   /* don't set A6XX_GRAS_SU_CNTL_LINEHALFWIDTH */
+
+   if (rast_info->depthBiasEnable)
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_POLY_OFFSET;
+
+   if (samples > VK_SAMPLE_COUNT_1_BIT)
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_MSAA_ENABLE;
+
+   return gras_su_cntl;
+}
+
+void
+tu6_emit_gras_su_cntl(struct tu_cs *cs,
+                      uint32_t gras_su_cntl,
+                      float line_width)
+{
+   assert((gras_su_cntl & A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK) == 0);
+   gras_su_cntl |= A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(line_width / 2.0f);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_CNTL, 1);
+   tu_cs_emit(cs, gras_su_cntl);
+}
+
+void
+tu6_emit_depth_bias(struct tu_cs *cs,
+                    float constant_factor,
+                    float clamp,
+                    float slope_factor)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_POLY_OFFSET_SCALE, 3);
+   tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_SCALE(slope_factor));
+   tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET(constant_factor));
+   tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET_CLAMP(clamp));
+}
+
 static VkResult
 tu_pipeline_builder_create_pipeline(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline **out_pipeline)
@@ -274,6 +345,40 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
 }
 
 static void
+tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
+                                        struct tu_pipeline *pipeline)
+{
+   const VkPipelineRasterizationStateCreateInfo *rast_info =
+      builder->create_info->pRasterizationState;
+
+   assert(!rast_info->depthClampEnable);
+   assert(rast_info->polygonMode == VK_POLYGON_MODE_FILL);
+
+   struct tu_cs rast_cs;
+   tu_cs_begin_sub_stream(builder->device, &pipeline->cs, 20, &rast_cs);
+
+   /* move to hw ctx init? */
+   tu6_emit_gras_unknowns(&rast_cs);
+   tu6_emit_point_size(&rast_cs);
+
+   const uint32_t gras_su_cntl =
+      tu6_gras_su_cntl(rast_info, builder->samples);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_LINE_WIDTH))
+      tu6_emit_gras_su_cntl(&rast_cs, gras_su_cntl, rast_info->lineWidth);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_DEPTH_BIAS)) {
+      tu6_emit_depth_bias(&rast_cs, rast_info->depthBiasConstantFactor,
+                          rast_info->depthBiasClamp,
+                          rast_info->depthBiasSlopeFactor);
+   }
+
+   pipeline->rast.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &rast_cs);
+
+   pipeline->rast.gras_su_cntl = gras_su_cntl;
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -292,6 +397,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
+   tu_pipeline_builder_parse_rasterization(builder, *pipeline);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
@@ -318,6 +424,11 @@ tu_pipeline_builder_init_graphics(
 
    builder->rasterizer_discard =
       create_info->pRasterizationState->rasterizerDiscardEnable;
+
+   if (builder->rasterizer_discard)
+      builder->samples = VK_SAMPLE_COUNT_1_BIT;
+   else
+      builder->samples = create_info->pMultisampleState->rasterizationSamples;
 }
 
 VkResult

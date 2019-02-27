@@ -996,6 +996,12 @@ struct tu_pipeline
    {
       struct tu_cs_entry state_ib;
    } vp;
+
+   struct
+   {
+      uint32_t gras_su_cntl;
+      struct tu_cs_entry state_ib;
+   } rast;
 };
 
 void
@@ -1003,6 +1009,17 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport);
 
 void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor);
+
+void
+tu6_emit_gras_su_cntl(struct tu_cs *cs,
+                      uint32_t gras_su_cntl,
+                      float line_width);
+
+void
+tu6_emit_depth_bias(struct tu_cs *cs,
+                    float constant_factor,
+                    float clamp,
+                    float slope_factor);
 
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,
