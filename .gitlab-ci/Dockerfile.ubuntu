@@ -161,5 +161,8 @@ RUN pip3 install mako
 # Use ccache to speed up builds
 RUN apt-get install -y ccache
 
+# We need xmllint to validate the XML files in Mesa
+RUN apt-get install -y libxml2-utils
+
 # Cleanup workdir
 WORKDIR /
