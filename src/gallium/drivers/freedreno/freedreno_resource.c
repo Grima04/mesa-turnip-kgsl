@@ -1014,7 +1014,7 @@ is_supported_modifier(struct pipe_screen *pscreen, enum pipe_format pfmt,
 
 	/* Get the supported modifiers: */
 	uint64_t modifiers[count];
-	pscreen->query_dmabuf_modifiers(pscreen, pfmt, 0, modifiers, NULL, &count);
+	pscreen->query_dmabuf_modifiers(pscreen, pfmt, count, modifiers, NULL, &count);
 
 	for (int i = 0; i < count; i++)
 		if (modifiers[i] == mod)
