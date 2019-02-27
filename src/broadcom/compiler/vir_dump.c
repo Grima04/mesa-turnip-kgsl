@@ -260,8 +260,7 @@ static void
 vir_dump_alu(struct v3d_compile *c, struct qinst *inst)
 {
         struct v3d_qpu_instr *instr = &inst->qpu;
-        int nsrc = vir_get_non_sideband_nsrc(inst);
-        int sideband_nsrc = vir_get_nsrc(inst);
+        int nsrc = vir_get_nsrc(inst);
         enum v3d_qpu_input_unpack unpack[2];
 
         if (inst->qpu.alu.add.op != V3D_QPU_A_NOP) {
@@ -290,11 +289,10 @@ vir_dump_alu(struct v3d_compile *c, struct qinst *inst)
                 unpack[1] = instr->alu.mul.b_unpack;
         }
 
-        for (int i = 0; i < sideband_nsrc; i++) {
+        for (int i = 0; i < nsrc; i++) {
                 fprintf(stderr, ", ");
                 vir_print_reg(c, inst, inst->src[i]);
-                if (i < nsrc)
-                        fprintf(stderr, "%s", v3d_qpu_unpack_name(unpack[i]));
+                fprintf(stderr, "%s", v3d_qpu_unpack_name(unpack[i]));
         }
 
         vir_dump_sig(c, inst);
@@ -355,13 +353,14 @@ vir_dump_inst(struct v3d_compile *c, struct qinst *inst)
                                 break;
                         }
                 }
-
-                if (vir_has_implicit_uniform(inst)) {
-                        fprintf(stderr, " ");
-                        vir_print_reg(c, inst, inst->src[vir_get_implicit_uniform_src(inst)]);
-                }
-
                 break;
+        }
+
+        if (vir_has_uniform(inst)) {
+                fprintf(stderr, " (");
+                vir_dump_uniform(c->uniform_contents[inst->uniform],
+                                 c->uniform_data[inst->uniform]);
+                fprintf(stderr, ")");
         }
 }
 

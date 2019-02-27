@@ -63,14 +63,6 @@ vir_opt_small_immediates(struct v3d_compile *c)
                                 continue;
                         }
 
-                        if (vir_has_implicit_uniform(inst) &&
-                            i == vir_get_implicit_uniform_src(inst)) {
-                                /* No turning the implicit uniform read into
-                                 * an immediate.
-                                 */
-                                continue;
-                        }
-
                         /* Check if the uniform is suitable as a small
                          * immediate.
                          */

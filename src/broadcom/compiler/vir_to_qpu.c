@@ -214,14 +214,10 @@ v3d_generate_code_block(struct v3d_compile *c,
 
                 struct qinst *temp;
 
-                if (vir_has_implicit_uniform(qinst)) {
-                        int src = vir_get_implicit_uniform_src(qinst);
-                        assert(qinst->src[src].file == QFILE_UNIF);
-                        qinst->uniform = qinst->src[src].index;
+                if (vir_has_uniform(qinst))
                         c->num_uniforms++;
-                }
 
-                int nsrc = vir_get_non_sideband_nsrc(qinst);
+                int nsrc = vir_get_nsrc(qinst);
                 struct qpu_reg src[ARRAY_SIZE(qinst->src)];
                 bool emitted_ldunif = false;
                 for (int i = 0; i < nsrc; i++) {

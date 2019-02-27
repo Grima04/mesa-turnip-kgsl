@@ -415,7 +415,7 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         }
 
         /* inst->sig.ldunif or sideband uniform read */
-        if (qinst->uniform != ~0)
+        if (vir_has_uniform(qinst))
                 add_write_dep(state, &state->last_unif, n);
 
         if (v3d_qpu_reads_flags(inst))

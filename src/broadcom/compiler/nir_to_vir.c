@@ -305,8 +305,8 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         }
 
         if (config != ~0) {
-                tmu->src[vir_get_implicit_uniform_src(tmu)] =
-                        vir_uniform_ui(c, config);
+                tmu->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                     config);
         }
 
         if (vir_in_nonuniform_control_flow(c))
@@ -1149,8 +1149,9 @@ emit_frag_end(struct v3d_compile *c)
                 } else
                         tlb_specifier |= TLB_DEPTH_TYPE_PER_PIXEL;
 
-                inst->src[vir_get_implicit_uniform_src(inst)] =
-                        vir_uniform_ui(c, tlb_specifier | 0xffffff00);
+                inst->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                      tlb_specifier |
+                                                      0xffffff00);
                 c->writes_z = true;
         } else if (c->s->info.fs.uses_discard ||
                    !c->s->info.fs.early_fragment_tests ||
@@ -1181,8 +1182,10 @@ emit_frag_end(struct v3d_compile *c)
                         tlb_specifier |= TLB_DEPTH_TYPE_INVARIANT;
                 }
 
-                inst->src[vir_get_implicit_uniform_src(inst)] =
-                        vir_uniform_ui(c, tlb_specifier | 0xffffff00);
+                inst->uniform = vir_get_uniform_index(c,
+                                                      QUNIFORM_CONSTANT,
+                                                      tlb_specifier |
+                                                      0xffffff00);
                 c->writes_z = true;
         }
 
@@ -1219,8 +1222,9 @@ emit_frag_end(struct v3d_compile *c)
                                  TLB_VEC_SIZE_MINUS_1_SHIFT);
 
                         inst = vir_MOV_dest(c, vir_reg(QFILE_TLBU, 0), color[0]);
-                        inst->src[vir_get_implicit_uniform_src(inst)] =
-                                vir_uniform_ui(c, conf);
+                        inst->uniform = vir_get_uniform_index(c,
+                                                              QUNIFORM_CONSTANT,
+                                                              conf);
 
                         for (int i = 1; i < num_components; i++) {
                                 inst = vir_MOV_dest(c, vir_reg(QFILE_TLB, 0),
@@ -1257,8 +1261,9 @@ emit_frag_end(struct v3d_compile *c)
 
                         if (c->fs_key->f32_color_rb & (1 << rt)) {
                                 inst = vir_MOV_dest(c, vir_reg(QFILE_TLBU, 0), r);
-                                inst->src[vir_get_implicit_uniform_src(inst)] =
-                                        vir_uniform_ui(c, conf);
+                                inst->uniform = vir_get_uniform_index(c,
+                                                                      QUNIFORM_CONSTANT,
+                                                                      conf);
 
                                 if (num_components >= 2)
                                         vir_MOV_dest(c, vir_reg(QFILE_TLB, 0), g);
@@ -1270,8 +1275,9 @@ emit_frag_end(struct v3d_compile *c)
                                 inst = vir_VFPACK_dest(c, vir_reg(QFILE_TLB, 0), r, g);
                                 if (conf != ~0) {
                                         inst->dst.file = QFILE_TLBU;
-                                        inst->src[vir_get_implicit_uniform_src(inst)] =
-                                                vir_uniform_ui(c, conf);
+                                        inst->uniform = vir_get_uniform_index(c,
+                                                                              QUNIFORM_CONSTANT,
+                                                                              conf);
                                 }
 
                                 if (num_components >= 3)
@@ -1882,10 +1888,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                 vir_BARRIERID_dest(c,
                                                    vir_reg(QFILE_MAGIC,
                                                            V3D_QPU_WADDR_SYNCU));
-                        sync->src[vir_get_implicit_uniform_src(sync)] =
-                                vir_uniform_ui(c,
-                                               0xffffff00 |
-                                               V3D_TSY_WAIT_INC_CHECK);
+                        sync->uniform =
+                                vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                      0xffffff00 |
+                                                      V3D_TSY_WAIT_INC_CHECK);
 
                 }
 

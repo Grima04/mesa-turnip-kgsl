@@ -76,7 +76,7 @@ is_lowerable_uniform(struct qinst *inst, int i)
 {
         if (inst->src[i].file != QFILE_UNIF)
                 return false;
-        return i != vir_get_implicit_uniform_src(inst);
+        return true;
 }
 
 /* Returns the number of different uniform values referenced by the
@@ -85,7 +85,7 @@ is_lowerable_uniform(struct qinst *inst, int i)
 static uint32_t
 vir_get_instruction_uniform_count(struct qinst *inst)
 {
-        uint32_t count = 0;
+        uint32_t count = vir_has_uniform(inst);
 
         for (int i = 0; i < vir_get_nsrc(inst); i++) {
                 if (inst->src[i].file != QFILE_UNIF)
@@ -123,8 +123,7 @@ vir_lower_uniforms(struct v3d_compile *c)
                         continue;
 
                 for (int i = 0; i < nsrc; i++) {
-                        if (is_lowerable_uniform(inst, i))
-                                add_uniform(ht, inst->src[i]);
+                        add_uniform(ht, inst->src[i]);
                 }
         }
 
