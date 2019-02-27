@@ -1632,7 +1632,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        *    Use two instructions and a word or DWord intermediate integer type.
        */
       if (nir_dest_bit_size(instr->dest.dest) == 64) {
-         const brw_reg_type type = brw_int_type(2, instr->op == nir_op_extract_i8);
+         const brw_reg_type type = brw_int_type(1, instr->op == nir_op_extract_i8);
 
          if (instr->op == nir_op_extract_i8) {
             /* If we need to sign extend, extract to a word first */
@@ -1641,7 +1641,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
             bld.MOV(result, w_temp);
          } else {
             /* Otherwise use an AND with 0xff and a word type */
-            bld.AND(result, subscript(op[0], type, byte / 2), brw_imm_uw(0xff));
+            bld.AND(result,
+                    subscript(op[0], BRW_REGISTER_TYPE_UW, byte / 2),
+                    brw_imm_uw(0xff));
          }
       } else {
          const brw_reg_type type = brw_int_type(1, instr->op == nir_op_extract_i8);
