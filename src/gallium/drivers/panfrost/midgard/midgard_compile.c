@@ -2162,7 +2162,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                                 if ((units & UNIT_SADD) && !(control & UNIT_SADD))
                                                         unit = UNIT_SADD;
                                                 else if (units & UNIT_SMUL)
-                                                        unit = UNIT_SMUL;
+                                                        unit = ((units & UNIT_VMUL) && !(control & UNIT_VMUL)) ? UNIT_VMUL : UNIT_SMUL;
                                                 else if ((units & UNIT_VADD) && !(control & UNIT_VADD))
                                                         unit = UNIT_VADD;
                                                 else
