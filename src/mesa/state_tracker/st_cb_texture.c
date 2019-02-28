@@ -156,7 +156,9 @@ st_NewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
    if (!obj)
       return NULL;
 
-   /* Pre-allocate a sampler views container to save a branch in the fast path. */
+   /* Pre-allocate a sampler views container to save a branch in the
+    * fast path.
+    */
    obj->sampler_views = calloc(1, sizeof(struct st_sampler_views)
                                + sizeof(struct st_sampler_view));
    if (!obj->sampler_views) {
@@ -2796,7 +2798,7 @@ st_texture_create_from_memory(struct st_context *st,
                               GLuint depth0,
                               GLuint layers,
                               GLuint nr_samples,
-                              GLuint bind )
+                              GLuint bind)
 {
    struct pipe_resource pt, *newtex;
    struct pipe_screen *screen = st->pipe->screen;
