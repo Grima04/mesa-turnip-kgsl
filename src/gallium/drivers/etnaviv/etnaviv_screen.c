@@ -518,18 +518,8 @@ gpu_supports_texure_format(struct etna_screen *screen, uint32_t fmt,
    if (util_format_is_srgb(format))
       supported = VIV_FEATURE(screen, chipMinorFeatures1, HALTI0);
 
-   if (fmt & EXT_FORMAT) {
+   if (fmt & EXT_FORMAT)
       supported = VIV_FEATURE(screen, chipMinorFeatures1, HALTI0);
-
-      /* ETC1 is checked above, as it has its own feature bit. ETC2 is
-       * supported with HALTI0, however that implementation is buggy in hardware.
-       * The blob driver does per-block patching to work around this. As this
-       * is currently not implemented by etnaviv, enable it for HALTI1 (GC3000)
-       * only.
-       */
-      if (util_format_is_etc(format))
-         supported = VIV_FEATURE(screen, chipMinorFeatures2, HALTI1);
-   }
 
    if (fmt & ASTC_FORMAT) {
       supported = screen->specs.tex_astc;
