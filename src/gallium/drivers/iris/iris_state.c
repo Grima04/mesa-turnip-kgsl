@@ -1531,6 +1531,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                           struct iris_bo *bo,
                           void *map,
                           enum isl_format format,
+                          struct isl_swizzle swizzle,
                           unsigned offset,
                           unsigned size)
 {
@@ -1560,7 +1561,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .address = bo->gtt_offset + offset,
                          .size_B = final_size,
                          .format = format,
-                         .swizzle = ISL_SWIZZLE_IDENTITY,
+                         .swizzle = swizzle,
                          .stride_B = cpp,
                          .mocs = mocs(bo));
 }
@@ -1697,8 +1698,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
       }
    } else {
       fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
-                                isv->view.format, tmpl->u.buf.offset,
-                                tmpl->u.buf.size);
+                                isv->view.format, ISL_SWIZZLE_IDENTITY,
+                                tmpl->u.buf.offset, tmpl->u.buf.size);
    }
 
    return &isv->base;
@@ -1903,7 +1904,8 @@ iris_set_shader_images(struct pipe_context *ctx,
 
             if (untyped_fallback) {
                fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
-                                         isl_fmt, 0, res->bo->size);
+                                         isl_fmt, ISL_SWIZZLE_IDENTITY,
+                                         0, res->bo->size);
             } else {
                /* Images don't support compression */
                unsigned aux_modes = 1 << ISL_AUX_USAGE_NONE;
@@ -1921,8 +1923,8 @@ iris_set_shader_images(struct pipe_context *ctx,
                                       &res->surf, &view);
          } else {
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
-                                      isl_fmt, img->u.buf.offset,
-                                      img->u.buf.size);
+                                      isl_fmt, ISL_SWIZZLE_IDENTITY,
+                                      img->u.buf.offset, img->u.buf.size);
             fill_buffer_image_param(&shs->image[start_slot + i].param,
                                     img->format, img->u.buf.size);
          }
