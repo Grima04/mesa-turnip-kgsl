@@ -462,8 +462,9 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx);
 bool si_upload_graphics_shader_descriptors(struct si_context *sctx);
 bool si_upload_compute_shader_descriptors(struct si_context *sctx);
 void si_release_all_descriptors(struct si_context *sctx);
+void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx);
+void si_compute_resources_add_all_to_bo_list(struct si_context *sctx);
 void si_all_descriptors_begin_new_cs(struct si_context *sctx);
-void si_all_resident_buffers_begin_new_cs(struct si_context *sctx);
 void si_upload_const_buffer(struct si_context *sctx, struct si_resource **buf,
 			    const uint8_t *ptr, unsigned size, uint32_t *const_offset);
 void si_update_all_texture_descriptors(struct si_context *sctx);

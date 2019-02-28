@@ -1311,6 +1311,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 	si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));
 
+	if (sctx->bo_list_add_all_gfx_resources)
+		si_gfx_resources_add_all_to_bo_list(sctx);
+
 	/* Set the rasterization primitive type.
 	 *
 	 * This must be done after si_decompress_textures, which can call

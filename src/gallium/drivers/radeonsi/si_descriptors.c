@@ -2614,8 +2614,7 @@ static void si_make_image_handle_resident(struct pipe_context *ctx,
 	}
 }
 
-
-void si_all_resident_buffers_begin_new_cs(struct si_context *sctx)
+static void si_resident_buffers_add_all_to_bo_list(struct si_context *sctx)
 {
 	unsigned num_resident_tex_handles, num_resident_img_handles;
 
@@ -2647,6 +2646,8 @@ void si_all_resident_buffers_begin_new_cs(struct si_context *sctx)
 
 	sctx->num_resident_handles += num_resident_tex_handles +
 					num_resident_img_handles;
+	assert(sctx->bo_list_add_all_resident_resources);
+	sctx->bo_list_add_all_resident_resources = false;
 }
 
 /* INIT/DEINIT/UPLOAD */
@@ -2822,11 +2823,9 @@ void si_release_all_descriptors(struct si_context *sctx)
 	si_release_bindless_descriptors(sctx);
 }
 
-void si_all_descriptors_begin_new_cs(struct si_context *sctx)
+void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx)
 {
-	int i;
-
-	for (i = 0; i < SI_NUM_SHADERS; i++) {
+	for (unsigned i = 0; i < SI_NUM_GRAPHICS_SHADERS; i++) {
 		si_buffer_resources_begin_new_cs(sctx, &sctx->const_and_shader_buffers[i]);
 		si_sampler_views_begin_new_cs(sctx, &sctx->samplers[i]);
 		si_image_views_begin_new_cs(sctx, &sctx->images[i]);
@@ -2834,11 +2833,40 @@ void si_all_descriptors_begin_new_cs(struct si_context *sctx)
 	si_buffer_resources_begin_new_cs(sctx, &sctx->rw_buffers);
 	si_vertex_buffers_begin_new_cs(sctx);
 
-	for (i = 0; i < SI_NUM_DESCS; ++i)
+	if (sctx->bo_list_add_all_resident_resources)
+		si_resident_buffers_add_all_to_bo_list(sctx);
+
+	assert(sctx->bo_list_add_all_gfx_resources);
+	sctx->bo_list_add_all_gfx_resources = false;
+}
+
+void si_compute_resources_add_all_to_bo_list(struct si_context *sctx)
+{
+	unsigned sh = PIPE_SHADER_COMPUTE;
+
+	si_buffer_resources_begin_new_cs(sctx, &sctx->const_and_shader_buffers[sh]);
+	si_sampler_views_begin_new_cs(sctx, &sctx->samplers[sh]);
+	si_image_views_begin_new_cs(sctx, &sctx->images[sh]);
+	si_buffer_resources_begin_new_cs(sctx, &sctx->rw_buffers);
+
+	if (sctx->bo_list_add_all_resident_resources)
+		si_resident_buffers_add_all_to_bo_list(sctx);
+
+	assert(sctx->bo_list_add_all_compute_resources);
+	sctx->bo_list_add_all_compute_resources = false;
+}
+
+void si_all_descriptors_begin_new_cs(struct si_context *sctx)
+{
+	for (unsigned i = 0; i < SI_NUM_DESCS; ++i)
 		si_descriptors_begin_new_cs(sctx, &sctx->descriptors[i]);
 	si_descriptors_begin_new_cs(sctx, &sctx->bindless_descriptors);
 
 	si_shader_pointers_begin_new_cs(sctx);
+
+	sctx->bo_list_add_all_resident_resources = true;
+	sctx->bo_list_add_all_gfx_resources = true;
+	sctx->bo_list_add_all_compute_resources = true;
 }
 
 void si_set_active_descriptors(struct si_context *sctx, unsigned desc_idx,

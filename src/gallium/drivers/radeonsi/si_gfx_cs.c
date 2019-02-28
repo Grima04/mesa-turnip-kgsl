@@ -244,7 +244,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 
 	ctx->cs_shader_state.initialized = false;
 	si_all_descriptors_begin_new_cs(ctx);
-	si_all_resident_buffers_begin_new_cs(ctx);
 
 	if (!ctx->has_graphics) {
 		ctx->initial_gfx_cs_size = ctx->gfx_cs->current.cdw;
