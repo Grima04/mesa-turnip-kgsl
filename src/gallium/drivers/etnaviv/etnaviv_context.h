@@ -70,6 +70,7 @@ struct etna_transfer {
    struct pipe_transfer base;
    struct pipe_resource *rsc;
    void *staging;
+   void *mapped;
 };
 
 struct etna_vertexbuf_state {
