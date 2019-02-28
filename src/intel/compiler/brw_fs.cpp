@@ -5342,20 +5342,6 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    }
 }
 
-/**
- * Initialize the header present in some typed and untyped surface
- * messages.
- */
-static fs_reg
-emit_surface_header(const fs_builder &bld, const fs_reg &sample_mask)
-{
-   fs_builder ubld = bld.exec_all().group(8, 0);
-   const fs_reg dst = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-   ubld.MOV(dst, brw_imm_d(0));
-   ubld.group(1, 0).MOV(component(dst, 7), sample_mask);
-   return dst;
-}
-
 static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
@@ -5382,6 +5368,10 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       inst->opcode == SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL ||
       inst->opcode == SHADER_OPCODE_TYPED_ATOMIC_LOGICAL;
 
+   const bool has_side_effects = inst->has_side_effects();
+   fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
+                                           fs_reg(brw_imm_d(0xffff));
+
    /* From the BDW PRM Volume 7, page 147:
     *
     *  "For the Data Cache Data Port*, the header must be present for the
@@ -5392,17 +5382,20 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
     * messages prior to Gen9, since we have to provide a header anyway.  On
     * Gen11+ the header has been removed so we can only use predication.
     */
-   const unsigned header_sz = devinfo->gen < 9 && is_typed_access ? 1 : 0;
-
-   const bool has_side_effects = inst->has_side_effects();
-   fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
-                                           fs_reg(brw_imm_d(0xffff));
+   fs_reg header;
+   if (devinfo->gen < 9 && is_typed_access) {
+      fs_builder ubld = bld.exec_all().group(8, 0);
+      header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.MOV(header, brw_imm_d(0));
+      ubld.group(1, 0).MOV(component(header, 7), sample_mask);
+   }
+   const unsigned header_sz = header.file != BAD_FILE ? 1 : 0;
 
    fs_reg payload, payload2;
    unsigned mlen, ex_mlen = 0;
    if (devinfo->gen >= 9) {
       /* We have split sends on gen9 and above */
-      assert(header_sz == 0);
+      assert(header.file == BAD_FILE);
       payload = bld.move_to_vgrf(addr, addr_sz);
       payload2 = bld.move_to_vgrf(src, src_sz);
       mlen = addr_sz * (inst->exec_size / 8);
@@ -5415,8 +5408,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       unsigned n = 0;
 
       /* Construct the payload. */
-      if (header_sz)
-         components[n++] = emit_surface_header(bld, sample_mask);
+      if (header.file != BAD_FILE)
+         components[n++] = header;
 
       for (unsigned i = 0; i < addr_sz; i++)
          components[n++] = offset(addr, bld, i);
@@ -5433,7 +5426,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Predicate the instruction on the sample mask if no header is
     * provided.
     */
-   if (!header_sz && sample_mask.file != BAD_FILE &&
+   if (header.file == BAD_FILE && sample_mask.file != BAD_FILE &&
        sample_mask.file != IMM) {
       const fs_builder ubld = bld.group(1, 0).exec_all();
       if (inst->predicate) {
