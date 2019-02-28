@@ -814,7 +814,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    UNUSED bool progress; /* Written by OPT */
 
-   OPT(brw_nir_lower_mem_access_bit_sizes);
+   OPT(brw_nir_lower_mem_access_bit_sizes, devinfo);
 
    do {
       progress = false;

@@ -74,7 +74,8 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static bool
-lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
+lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
+                        const struct gen_device_info *devinfo)
 {
    assert(intrin->dest.is_ssa);
    if (intrin->dest.ssa.bit_size == 32)
@@ -140,7 +141,8 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
 }
 
 static bool
-lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
+lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
+                         const struct gen_device_info *devinfo)
 {
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
@@ -223,7 +225,8 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
 }
 
 static bool
-lower_mem_access_bit_sizes_impl(nir_function_impl *impl)
+lower_mem_access_bit_sizes_impl(nir_function_impl *impl,
+                                const struct gen_device_info *devinfo)
 {
    bool progress = false;
 
@@ -242,14 +245,14 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl)
          case nir_intrinsic_load_global:
          case nir_intrinsic_load_ssbo:
          case nir_intrinsic_load_shared:
-            if (lower_mem_load_bit_size(&b, intrin))
+            if (lower_mem_load_bit_size(&b, intrin, devinfo))
                progress = true;
             break;
 
          case nir_intrinsic_store_global:
          case nir_intrinsic_store_ssbo:
          case nir_intrinsic_store_shared:
-            if (lower_mem_store_bit_size(&b, intrin))
+            if (lower_mem_store_bit_size(&b, intrin, devinfo))
                progress = true;
             break;
 
@@ -284,12 +287,13 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl)
  * handle in hardware and with a trivial write-mask.
  */
 bool
-brw_nir_lower_mem_access_bit_sizes(nir_shader *shader)
+brw_nir_lower_mem_access_bit_sizes(nir_shader *shader,
+                                   const struct gen_device_info *devinfo)
 {
    bool progress = false;
 
    nir_foreach_function(func, shader) {
-      if (func->impl && lower_mem_access_bit_sizes_impl(func->impl))
+      if (func->impl && lower_mem_access_bit_sizes_impl(func->impl, devinfo))
          progress = true;
    }
 
