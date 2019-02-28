@@ -612,7 +612,9 @@ optimizations = [
 
    # Byte extraction
    (('ushr', 'a@32', 24), ('extract_u8', a, 3), '!options->lower_extract_byte'),
+   (('ushr', 'a@64', 56), ('extract_u8', a, 7), '!options->lower_extract_byte'),
    (('ishr', 'a@32', 24), ('extract_i8', a, 3), '!options->lower_extract_byte'),
+   (('ishr', 'a@64', 56), ('extract_i8', a, 7), '!options->lower_extract_byte'),
    (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte')
 ]
 
@@ -629,6 +631,7 @@ optimizations.extend([(('extract_u8', ('extract_u16', a, 1), 0), ('extract_u8', 
 # patterns like those below.
 for op in ('extract_u8', 'extract_i8'):
    optimizations.extend([((op, ('ishl', 'a@32', 24 - 8 * i), 3), (op, a, i)) for i in range(2, -1, -1)])
+   optimizations.extend([((op, ('ishl', 'a@64', 56 - 8 * i), 7), (op, a, i)) for i in range(6, -1, -1)])
 
 optimizations.extend([
     # Word extraction
