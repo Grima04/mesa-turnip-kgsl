@@ -745,10 +745,10 @@ isl_genX(buffer_fill_state_s)(void *state,
 #endif
 
 #if (GEN_GEN >= 8 || GEN_IS_HASWELL)
-   s.ShaderChannelSelectRed = SCS_RED;
-   s.ShaderChannelSelectGreen = SCS_GREEN;
-   s.ShaderChannelSelectBlue = SCS_BLUE;
-   s.ShaderChannelSelectAlpha = SCS_ALPHA;
+   s.ShaderChannelSelectRed = (enum GENX(ShaderChannelSelect)) info->swizzle.r;
+   s.ShaderChannelSelectGreen = (enum GENX(ShaderChannelSelect)) info->swizzle.g;
+   s.ShaderChannelSelectBlue = (enum GENX(ShaderChannelSelect)) info->swizzle.b;
+   s.ShaderChannelSelectAlpha = (enum GENX(ShaderChannelSelect)) info->swizzle.a;
 #endif
 
    GENX(RENDER_SURFACE_STATE_pack)(NULL, state, &s);

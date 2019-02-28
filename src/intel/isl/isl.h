@@ -1361,6 +1361,11 @@ struct isl_buffer_fill_state_info {
     */
    enum isl_format format;
 
+   /**
+    * The swizzle to use in the surface state
+    */
+   struct isl_swizzle swizzle;
+
    uint32_t stride_B;
 };
 

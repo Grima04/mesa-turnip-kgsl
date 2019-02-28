@@ -647,6 +647,7 @@ brw_emit_buffer_surface_state(struct brw_context *brw,
                                                     reloc_flags),
                          .size_B = buffer_size,
                          .format = surface_format,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = pitch,
                          .mocs = brw_get_bo_mocs(devinfo, bo));
 }

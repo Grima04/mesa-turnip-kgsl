@@ -1560,6 +1560,7 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
                          .address = bo->gtt_offset + offset,
                          .size_B = final_size,
                          .format = format,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = cpp,
                          .mocs = mocs(bo));
 }
@@ -2352,6 +2353,7 @@ upload_ubo_surf_state(struct iris_context *ice,
                          .size_B = MIN2(buffer_size,
                                         res->bo->size - cbuf->data.offset),
                          .format = ISL_FORMAT_R32G32B32A32_FLOAT,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = 1,
                          .mocs = mocs(res->bo))
 }
@@ -2509,6 +2511,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
                                   MIN2(buffer->buffer_size,
                                        res->bo->size - buffer->buffer_offset),
                                .format = ISL_FORMAT_RAW,
+                               .swizzle = ISL_SWIZZLE_IDENTITY,
                                .stride_B = 1,
                                .mocs = mocs(res->bo));
       } else {

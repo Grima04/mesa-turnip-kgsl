@@ -1203,6 +1203,7 @@ anv_image_fill_surface_state(struct anv_device *device,
                             .address = anv_address_physical(address),
                             .size_B = surface->isl.size_B,
                             .format = ISL_FORMAT_RAW,
+                            .swizzle = ISL_SWIZZLE_IDENTITY,
                             .stride_B = 1,
                             .mocs = anv_mocs_for_bo(device, address.bo));
       state_inout->address = address,

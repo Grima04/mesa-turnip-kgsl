@@ -3324,6 +3324,7 @@ anv_fill_buffer_surface_state(struct anv_device *device, struct anv_state state,
                          .mocs = device->default_mocs,
                          .size_B = range,
                          .format = format,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = stride);
 }
 
