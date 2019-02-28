@@ -33,6 +33,7 @@
 #include "util/list.h"
 
 struct pipe_screen;
+struct util_dynarray;
 
 struct etna_resource_level {
    unsigned width, padded_width; /* in pixels */
@@ -47,6 +48,10 @@ struct etna_resource_level {
    uint32_t ts_size;
    uint32_t clear_value; /* clear value of resource level (mainly for TS) */
    bool ts_valid;
+
+   /* keep track if we have done some per block patching */
+   bool patched;
+   struct util_dynarray *patch_offsets;
 };
 
 enum etna_resource_addressing_mode {

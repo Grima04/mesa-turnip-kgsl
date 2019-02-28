@@ -28,6 +28,7 @@
 #include "etnaviv_clear_blit.h"
 #include "etnaviv_context.h"
 #include "etnaviv_debug.h"
+#include "etnaviv_etc2.h"
 #include "etnaviv_screen.h"
 
 #include "pipe/p_defines.h"
@@ -55,6 +56,46 @@ etna_compute_offset(enum pipe_format format, const struct pipe_box *box,
           box->y / util_format_get_blockheight(format) * stride +
           box->x / util_format_get_blockwidth(format) *
              util_format_get_blocksize(format);
+}
+
+static void etna_patch_data(void *buffer, const struct pipe_transfer *ptrans)
+{
+   struct pipe_resource *prsc = ptrans->resource;
+   struct etna_resource *rsc = etna_resource(prsc);
+   struct etna_resource_level *level = &rsc->levels[ptrans->level];
+
+   if (likely(!etna_etc2_needs_patching(prsc)))
+      return;
+
+   if (level->patched)
+      return;
+
+   /* do have the offsets of blocks to patch? */
+   if (!level->patch_offsets) {
+      level->patch_offsets = CALLOC_STRUCT(util_dynarray);
+
+      etna_etc2_calculate_blocks(buffer, ptrans->stride,
+                                         ptrans->box.width, ptrans->box.height,
+                                         prsc->format, level->patch_offsets);
+   }
+
+   etna_etc2_patch(buffer, level->patch_offsets);
+
+   level->patched = true;
+}
+
+static void etna_unpatch_data(void *buffer, const struct pipe_transfer *ptrans)
+{
+   struct pipe_resource *prsc = ptrans->resource;
+   struct etna_resource *rsc = etna_resource(prsc);
+   struct etna_resource_level *level = &rsc->levels[ptrans->level];
+
+   if (!level->patched)
+      return;
+
+   etna_etc2_patch(buffer, level->patch_offsets);
+
+   level->patched = false;
 }
 
 static void
@@ -118,6 +159,9 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
       }
    }
+
+   /* We need to have the patched data ready for the GPU. */
+   etna_patch_data(trans->mapped, ptrans);
 
    /*
     * Transfers without a temporary are only pulled into the CPU domain if they
@@ -321,6 +365,14 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       if (usage & PIPE_TRANSFER_WRITE)
          prep_flags |= DRM_ETNA_PREP_WRITE;
 
+      /*
+       * The ETC2 patching operates in-place on the resource, so the resource will
+       * get written even on read-only transfers. This blocks the GPU to sample
+       * from this resource.
+       */
+      if ((usage & PIPE_TRANSFER_READ) && etna_etc2_needs_patching(prsc))
+         prep_flags |= DRM_ETNA_PREP_WRITE;
+
       if (etna_bo_cpu_prep(rsc->bo, prep_flags))
          goto fail_prep;
    }
@@ -339,6 +391,10 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       trans->mapped += res_level->offset +
              etna_compute_offset(prsc->format, box, res_level->stride,
                                  res_level->layer_stride);
+
+      /* We need to have the unpatched data ready for the gfx stack. */
+      if (usage & PIPE_TRANSFER_READ)
+         etna_unpatch_data(trans->mapped, ptrans);
 
       return trans->mapped;
    } else {

@@ -478,6 +478,9 @@ etna_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *prsc)
    pipe_resource_reference(&rsc->texture, NULL);
    pipe_resource_reference(&rsc->external, NULL);
 
+   for (unsigned i = 0; i < ETNA_NUM_LOD; i++)
+      FREE(rsc->levels[i].patch_offsets);
+
    FREE(rsc);
 }
 
