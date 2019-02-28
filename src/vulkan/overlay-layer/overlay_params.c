@@ -58,13 +58,13 @@ parse_help(const char *str)
 {
    fprintf(stderr, "Layer params using VK_LAYER_MESA_OVERLAY_CONFIG=\n");
 #define OVERLAY_PARAM_BOOL(name)                \
-   fprintf(stderr, "\t%s=0/1\n", #name);
+   fprintf(stderr, "\t%s=0|1\n", #name);
 #define OVERLAY_PARAM_CUSTOM(name)
    OVERLAY_PARAMS
 #undef OVERLAY_PARAM_BOOL
 #undef OVERLAY_PARAM_CUSTOM
    fprintf(stderr, "\tposition=top-left|top-right|bottom-left|bottom-right\n");
-   fprintf(stderr, "\tfps_sampling_period=number of milliseconds\n");
+   fprintf(stderr, "\tfps_sampling_period=number-of-milliseconds\n");
 
    return true;
 }
