@@ -755,7 +755,6 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
                          struct winsys_handle *whandle,
                          unsigned usage)
 {
-   struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *)resource;
 
    /* If this is a buffer, stride should be 0 - no need to special case */
@@ -764,25 +763,16 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
       res->mod_info ? res->mod_info->modifier
                     : tiling_to_modifier(res->bo->tiling_mode);
 
-   if (ctx &&
-       (!res->mod_info || res->mod_info->aux_usage != res->aux.usage)) {
-      struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
-      iris_resource_prepare_access(ice, render_batch, res,
-                                   0, INTEL_REMAINING_LEVELS,
-                                   0, INTEL_REMAINING_LAYERS,
-                                   ISL_AUX_USAGE_NONE, false);
-      if (res->aux.usage != ISL_AUX_USAGE_NONE) {
-         iris_resource_disable_aux(res);
-         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
-      }
-   } else {
-      if (res->aux.usage != ISL_AUX_USAGE_NONE) {
-         enum isl_aux_state aux_state =
-            iris_resource_get_aux_state(res, 0, 0);
-         assert(aux_state == ISL_AUX_STATE_RESOLVED ||
-                aux_state == ISL_AUX_STATE_PASS_THROUGH);
-      }
+#ifndef NDEBUG
+   enum isl_aux_usage allowed_usage =
+      res->mod_info ? res->mod_info->aux_usage : ISL_AUX_USAGE_NONE;
+
+   if (res->aux.usage != allowed_usage) {
+      enum isl_aux_state aux_state = iris_resource_get_aux_state(res, 0, 0);
+      assert(aux_state == ISL_AUX_STATE_RESOLVED ||
+             aux_state == ISL_AUX_STATE_PASS_THROUGH);
    }
+#endif
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:
@@ -1338,6 +1328,16 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 static void
 iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_resource *res = (void *) resource;
+   const struct isl_drm_modifier_info *mod = res->mod_info;
+
+   iris_resource_prepare_access(ice, render_batch, res,
+                                0, INTEL_REMAINING_LEVELS,
+                                0, INTEL_REMAINING_LAYERS,
+                                mod ? mod->aux_usage : ISL_AUX_USAGE_NONE,
+                                mod ? mod->supports_clear_color : false);
 }
 
 void
