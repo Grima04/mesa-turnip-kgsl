@@ -536,9 +536,9 @@ dump_state(struct vc4_compile *c, struct schedule_state *state)
                 fprintf(stderr, " (%d cost)\n",
                         get_register_pressure_cost(state, n->inst));
 
-                util_dynarray_foreach(&n->dag.children, struct schedule_node *,
-                                      childp) {
-                        struct schedule_node *child = *childp;
+                util_dynarray_foreach(&n->dag.edges, struct dag_edge, edge) {
+                        struct schedule_node *child =
+                                (struct schedule_node *)edge->child;
                         fprintf(stderr, "   - ");
                         qir_dump_inst(c, child->inst);
                         fprintf(stderr, " (%d parents)\n",
