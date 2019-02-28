@@ -621,8 +621,26 @@ optimizations = [
    (('ishr', 'a@32', 24), ('extract_i8', a, 3), '!options->lower_extract_byte'),
    (('iand', 0xff, ('ushr', a, 16)), ('extract_u8', a, 2), '!options->lower_extract_byte'),
    (('iand', 0xff, ('ushr', a,  8)), ('extract_u8', a, 1), '!options->lower_extract_byte'),
-   (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte'),
+   (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte')
+]
 
+# The ('extract_u8', a, 0) pattern, above, can trigger in cases where the
+# shift count is based on a loop induction variable.  Once the loop is
+# unrolled, constant folding will generate patterns like those below.
+for op in ('ushr', 'ishr'):
+   optimizations.extend([(('extract_u8', (op, 'a@16',  8),     0), ('extract_u8', a, 1))])
+   optimizations.extend([(('extract_u8', (op, 'a@32',  8 * i), 0), ('extract_u8', a, i)) for i in range(1, 4)])
+   optimizations.extend([(('extract_u8', (op, 'a@64',  8 * i), 0), ('extract_u8', a, i)) for i in range(1, 8)])
+
+optimizations.extend([(('extract_u8', ('extract_u16', a, 1), 0), ('extract_u8', a, 2))])
+
+# The ('extract_[iu]8', a, 3) patterns, above, can trigger in cases where the
+# shift count is based on a loop induction variable.  Once the loop is
+# unrolled, constant folding will generate patterns like those below.
+for op in ('extract_u8', 'extract_i8'):
+   optimizations.extend([((op, ('ishl', 'a@32', 24 - 8 * i), 3), (op, a, i)) for i in range(2, -1, -1)])
+
+optimizations.extend([
     # Word extraction
    (('ushr', ('ishl', 'a@32', 16), 16), ('extract_u16', a, 0), '!options->lower_extract_word'),
    (('ushr', 'a@32', 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
@@ -806,7 +824,7 @@ optimizations = [
      'options->lower_unpack_snorm_4x8'),
 
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
-]
+])
 
 # bit_size dependent lowerings
 for bit_size in [8, 16, 32, 64]:
