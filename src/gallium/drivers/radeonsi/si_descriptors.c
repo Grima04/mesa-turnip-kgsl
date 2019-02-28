@@ -1353,7 +1353,8 @@ static void si_set_shader_buffer(struct si_context *sctx,
 static void si_set_shader_buffers(struct pipe_context *ctx,
 				  enum pipe_shader_type shader,
 				  unsigned start_slot, unsigned count,
-				  const struct pipe_shader_buffer *sbuffers)
+				  const struct pipe_shader_buffer *sbuffers,
+				  unsigned writable_bitmask)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_buffer_resources *buffers = &sctx->const_and_shader_buffers[shader];

@@ -1044,7 +1044,8 @@ static void virgl_set_hw_atomic_buffers(struct pipe_context *ctx,
 static void virgl_set_shader_buffers(struct pipe_context *ctx,
                                      enum pipe_shader_type shader,
                                      unsigned start_slot, unsigned count,
-                                     const struct pipe_shader_buffer *buffers)
+                                     const struct pipe_shader_buffer *buffers,
+                                     unsigned writable_bitmask)
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);

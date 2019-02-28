@@ -1692,7 +1692,8 @@ trace_context_set_tess_state(struct pipe_context *_context,
 static void trace_context_set_shader_buffers(struct pipe_context *_context,
                                              enum pipe_shader_type shader,
                                              unsigned start, unsigned nr,
-                                             const struct pipe_shader_buffer *buffers)
+                                             const struct pipe_shader_buffer *buffers,
+                                             unsigned writable_bitmask)
 {
    struct trace_context *tr_context = trace_context(_context);
    struct pipe_context *context = tr_context->pipe;
@@ -1703,10 +1704,12 @@ static void trace_context_set_shader_buffers(struct pipe_context *_context,
    trace_dump_arg(uint, start);
    trace_dump_arg_begin("buffers");
    trace_dump_struct_array(shader_buffer, buffers, nr);
+   trace_dump_arg(uint, writable_bitmask);
    trace_dump_arg_end();
    trace_dump_call_end();
 
-   context->set_shader_buffers(context, shader, start, nr, buffers);
+   context->set_shader_buffers(context, shader, start, nr, buffers,
+                               writable_bitmask);
 }
 
 static void trace_context_set_shader_images(struct pipe_context *_context,

@@ -135,7 +135,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 		sb[1].buffer_offset = src_offset;
 		sb[1].buffer_size = size;
 
-		ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 2, sb);
+		ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 2, sb, 0x1);
 
 		if (!sctx->cs_copy_buffer) {
 			sctx->cs_copy_buffer = si_create_dma_compute_shader(&sctx->b,
@@ -151,7 +151,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 		for (unsigned i = 0; i < 4; i++)
 			sctx->cs_user_data[i] = clear_value[i % (clear_value_size / 4)];
 
-		ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, sb);
+		ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, sb, 0x1);
 
 		if (!sctx->cs_clear_buffer) {
 			sctx->cs_clear_buffer = si_create_dma_compute_shader(&sctx->b,
@@ -172,7 +172,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 
 	/* Restore states. */
 	ctx->bind_compute_state(ctx, saved_cs);
-	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
+	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb, ~0);
 	si_compute_internal_end(sctx);
 }
 

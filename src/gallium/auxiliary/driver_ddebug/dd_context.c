@@ -536,14 +536,16 @@ dd_context_set_shader_images(struct pipe_context *_pipe,
 static void
 dd_context_set_shader_buffers(struct pipe_context *_pipe, unsigned shader,
                               unsigned start, unsigned num_buffers,
-                              const struct pipe_shader_buffer *buffers)
+                              const struct pipe_shader_buffer *buffers,
+                              unsigned writable_bitmask)
 {
    struct dd_context *dctx = dd_context(_pipe);
    struct pipe_context *pipe = dctx->pipe;
 
    safe_memcpy(&dctx->draw_state.shader_buffers[shader][start], buffers,
                sizeof(buffers[0]) * num_buffers);
-   pipe->set_shader_buffers(pipe, shader, start, num_buffers, buffers);
+   pipe->set_shader_buffers(pipe, shader, start, num_buffers, buffers,
+                            writable_bitmask);
 }
 
 static void

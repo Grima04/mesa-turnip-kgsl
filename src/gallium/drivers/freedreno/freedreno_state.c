@@ -113,7 +113,8 @@ static void
 fd_set_shader_buffers(struct pipe_context *pctx,
 		enum pipe_shader_type shader,
 		unsigned start, unsigned count,
-		const struct pipe_shader_buffer *buffers)
+		const struct pipe_shader_buffer *buffers,
+		unsigned writable_bitmask)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[shader];

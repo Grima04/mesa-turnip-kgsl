@@ -583,7 +583,8 @@ tegra_set_debug_callback(struct pipe_context *pcontext,
 static void
 tegra_set_shader_buffers(struct pipe_context *pcontext, unsigned int shader,
                          unsigned start, unsigned count,
-                         const struct pipe_shader_buffer *buffers)
+                         const struct pipe_shader_buffer *buffers,
+                         unsigned writable_bitmask)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
 
