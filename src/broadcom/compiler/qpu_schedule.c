@@ -440,14 +440,14 @@ calculate_forward_deps(struct v3d_compile *c, struct list_head *schedule_list)
 static void
 calculate_reverse_deps(struct v3d_compile *c, struct list_head *schedule_list)
 {
-        struct list_head *node;
         struct schedule_state state;
 
         memset(&state, 0, sizeof(state));
         state.devinfo = c->devinfo;
         state.dir = R;
 
-        for (node = schedule_list->prev; schedule_list != node; node = node->prev) {
+        list_for_each_entry_rev(struct schedule_node, node, schedule_list,
+                                link) {
                 calculate_deps(&state, (struct schedule_node *)node);
         }
 }
