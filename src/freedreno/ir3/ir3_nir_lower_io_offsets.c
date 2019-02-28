@@ -83,6 +83,81 @@ get_ir3_intrinsic_for_ssbo_intrinsic(unsigned intrinsic,
 	return -1;
 }
 
+static nir_ssa_def *
+check_and_propagate_bit_shift32(nir_builder *b, nir_ssa_def *offset,
+								nir_alu_instr *alu_instr, int32_t direction,
+								int32_t shift)
+{
+	debug_assert(alu_instr->src[1].src.is_ssa);
+	nir_ssa_def *shift_ssa = alu_instr->src[1].src.ssa;
+
+	/* Only propagate if the shift is a const value so we can check value range
+	 * statically.
+	 */
+	nir_const_value *const_val = nir_src_as_const_value(alu_instr->src[1].src);
+	if (!const_val)
+		return NULL;
+
+	int32_t current_shift = const_val->i32[0] * direction;
+	int32_t new_shift = current_shift + shift;
+
+	/* If the merge would reverse the direction, bail out.
+	 * e.g, 'x << 2' then 'x >> 4' is not 'x >> 2'.
+	 */
+	if (current_shift * new_shift < 0)
+		return NULL;
+
+	/* If the propagation would overflow an int32_t, bail out too to be on the
+	 * safe side.
+	 */
+	if (new_shift < -31 || new_shift > 31)
+		return NULL;
+
+	b->cursor = nir_before_instr(&alu_instr->instr);
+
+	/* Add or substract shift depending on the final direction (SHR vs. SHL). */
+	if (shift * direction < 0)
+		shift_ssa = nir_isub(b, shift_ssa, nir_imm_int(b, abs(shift)));
+	else
+		shift_ssa = nir_iadd(b, shift_ssa, nir_imm_int(b, abs(shift)));
+
+	return shift_ssa;
+}
+
+static nir_ssa_def *
+try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift)
+{
+	nir_instr *offset_instr = offset->parent_instr;
+	if (offset_instr->type != nir_instr_type_alu)
+		return NULL;
+
+	nir_alu_instr *alu = nir_instr_as_alu(offset_instr);
+	nir_ssa_def *shift_ssa;
+	nir_ssa_def *new_offset = NULL;
+
+	switch (alu->op) {
+	case nir_op_ishl:
+		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, 1, shift);
+		if (shift_ssa)
+			new_offset = nir_ishl(b, alu->src[0].src.ssa, shift_ssa);
+		break;
+	case nir_op_ishr:
+		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, -1, shift);
+		if (shift_ssa)
+			new_offset = nir_ishr(b, alu->src[0].src.ssa, shift_ssa);
+		break;
+	case nir_op_ushr:
+		shift_ssa = check_and_propagate_bit_shift32(b, offset, alu, -1, shift);
+		if (shift_ssa)
+			new_offset = nir_ushr(b, alu->src[0].src.ssa, shift_ssa);
+		break;
+	default:
+		return NULL;
+	}
+
+	return new_offset;
+}
+
 static bool
 lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 					  unsigned ir3_ssbo_opcode, uint8_t offset_src_idx)
@@ -103,6 +178,16 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 
 	debug_assert(intrinsic->src[offset_src_idx].is_ssa);
 	nir_ssa_def *offset = intrinsic->src[offset_src_idx].ssa;
+
+	/* Since we don't have value range checking, we first try to propagate
+	 * the division by 4 ('offset >> 2') into another bit-shift instruction that
+	 * possibly defines the offset. If that's the case, we emit a similar
+	 * instructions adjusting (merging) the shift value.
+	 *
+	 * Here we use the convention that shifting right is negative while shifting
+	 * left is positive. So 'x / 4' ~ 'x >> 2' or 'x << -2'.
+	 */
+	nir_ssa_def *new_offset = try_propagate_bit_shift(b, offset, -2);
 
 	/* The new source that will hold the dword-offset is always the last
 	 * one for every intrinsic.
@@ -127,11 +212,16 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	new_intrinsic->num_components = intrinsic->num_components;
 
 	b->cursor = nir_before_instr(&intrinsic->instr);
-	nir_ssa_def *offset_div_4 = nir_ushr(b, offset, nir_imm_int(b, 2));
-	debug_assert(offset_div_4);
+
+	/* If we managed to propagate the division by 4, just use the new offset
+	 * register and don't emit the SHR.
+	 */
+	if (new_offset)
+		offset = new_offset;
+	else
+		offset = nir_ushr(b, offset, nir_imm_int(b, 2));
 
 	/* Insert the new intrinsic right before the old one. */
-	b->cursor = nir_before_instr(&intrinsic->instr);
 	nir_builder_instr_insert(b, &new_intrinsic->instr);
 
 	/* Replace the last source of the new intrinsic by the result of
@@ -139,7 +229,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	 */
 	nir_instr_rewrite_src(&new_intrinsic->instr,
 						  target_src,
-						  nir_src_for_ssa(offset_div_4));
+						  nir_src_for_ssa(offset));
 
 	if (has_dest) {
 		/* Replace the uses of the original destination by that
