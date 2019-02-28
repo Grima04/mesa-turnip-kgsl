@@ -102,6 +102,13 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 	struct pipe_shader_buffer saved_sb[2] = {};
 	si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
 
+	unsigned saved_writable_mask = 0;
+	for (unsigned i = 0; i < (src ? 2 : 1); i++) {
+		if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+		    (1u << si_get_shaderbuf_slot(i)))
+			saved_writable_mask |= 1 << i;
+	}
+
 	/* The memory accesses are coalesced, meaning that the 1st instruction writes
 	 * the 1st contiguous block of data for the whole wave, the 2nd instruction
 	 * writes the 2nd contiguous block of data, etc.
@@ -172,7 +179,8 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 
 	/* Restore states. */
 	ctx->bind_compute_state(ctx, saved_cs);
-	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb, ~0);
+	ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb,
+				saved_writable_mask);
 	si_compute_internal_end(sctx);
 }
 

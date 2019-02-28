@@ -1356,6 +1356,14 @@ void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
 
 	si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &st->saved_const0);
 	si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 3, st->saved_ssbo);
+
+	st->saved_ssbo_writable_mask = 0;
+
+	for (unsigned i = 0; i < 3; i++) {
+		if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+		    (1u << si_get_shaderbuf_slot(i)))
+			st->saved_ssbo_writable_mask |= 1 << i;
+	}
 }
 
 static void si_emit_db_render_state(struct si_context *sctx)
