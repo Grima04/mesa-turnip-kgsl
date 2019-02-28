@@ -34,6 +34,88 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
+#include "util/format_srgb.h"
+
+static union isl_color_value
+convert_fast_clear_color(struct iris_context *ice,
+                         struct iris_resource *res,
+                         const union isl_color_value color)
+{
+   union isl_color_value override_color = color;
+   struct pipe_resource *p_res = (void *) res;
+
+   const enum pipe_format format = p_res->format;
+   const struct util_format_description *desc =
+      util_format_description(format);
+   unsigned colormask = util_format_colormask(desc);
+
+   /* The sampler doesn't look at the format of the surface when the fast
+    * clear color is used so we need to implement luminance, intensity and
+    * missing components manually.
+    */
+   if (util_format_is_intensity(format) ||
+       util_format_is_luminance(format) ||
+       util_format_is_luminance_alpha(format)) {
+      override_color.u32[1] = override_color.u32[0];
+      override_color.u32[2] = override_color.u32[0];
+      if (util_format_is_intensity(format))
+         override_color.u32[3] = override_color.u32[0];
+   } else {
+      for (int chan = 0; chan < 3; chan++) {
+         if (!(colormask & (1 << chan)))
+            override_color.u32[chan] = 0;
+      }
+   }
+
+   if (util_format_is_unorm(format)) {
+      for (int i = 0; i < 4; i++)
+         override_color.f32[i] = CLAMP(override_color.f32[i], 0.0f, 1.0f);
+   } else if (util_format_is_snorm(format)) {
+      for (int i = 0; i < 4; i++)
+         override_color.f32[i] = CLAMP(override_color.f32[i], -1.0f, 1.0f);
+   } else if (util_format_is_pure_uint(format)) {
+      for (int i = 0; i < 4; i++) {
+         unsigned bits = util_format_get_component_bits(
+            format, UTIL_FORMAT_COLORSPACE_RGB, i);
+         if (bits < 32) {
+            uint32_t max = (1u << bits) - 1;
+            override_color.u32[i] = MIN2(override_color.u32[i], max);
+         }
+      }
+   } else if (util_format_is_pure_sint(format)) {
+      for (int i = 0; i < 4; i++) {
+         unsigned bits = util_format_get_component_bits(
+            format, UTIL_FORMAT_COLORSPACE_RGB, i);
+         if (bits < 32) {
+            int32_t max = (1 << (bits - 1)) - 1;
+            int32_t min = -(1 << (bits - 1));
+            override_color.i32[i] = CLAMP(override_color.i32[i], min, max);
+         }
+      }
+   } else if (format == PIPE_FORMAT_R11G11B10_FLOAT ||
+              format == PIPE_FORMAT_R9G9B9E5_FLOAT) {
+      /* these packed float formats only store unsigned values */
+      for (int i = 0; i < 4; i++)
+         override_color.f32[i] = MAX2(override_color.f32[i], 0.0f);
+   }
+
+   if (!(colormask & 1 << 3)) {
+      if (util_format_is_pure_integer(format))
+         override_color.u32[3] = 1;
+      else
+         override_color.f32[3] = 1.0f;
+   }
+
+   /* Handle linear to SRGB conversion */
+   if (util_format_is_srgb(format)) {
+      for (int i = 0; i < 3; i++) {
+         override_color.f32[i] =
+            util_format_linear_to_srgb_float(override_color.f32[i]);
+      }
+   }
+
+   return override_color;
+}
 
 static void
 clear_color(struct iris_context *ice,
