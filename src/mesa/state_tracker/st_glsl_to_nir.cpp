@@ -991,7 +991,7 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    if (st->ctx->Const.PackedDriverUniformStorage) {
       NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, st_glsl_type_dword_size,
                  (nir_lower_io_options)0);
-      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo);
+      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 4);
    }
 
    st_nir_lower_samplers(screen, nir, shader_program, prog);
