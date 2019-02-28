@@ -198,6 +198,10 @@ apply_blit_scissor(const struct pipe_scissor_state *scissor,
     * clipping 4 * 2 = 8 > 5 in the src.
     */
 
+   if (*src_x0 == *src_x1 || *src_y0 == *src_y1
+       || *dst_x0 == *dst_x1 || *dst_y0 == *dst_y1)
+      return true;
+
    float scale_x = (float) (*src_x1 - *src_x0) / (*dst_x1 - *dst_x0);
    float scale_y = (float) (*src_y1 - *src_y0) / (*dst_y1 - *dst_y0);
 
@@ -217,7 +221,11 @@ apply_blit_scissor(const struct pipe_scissor_state *scissor,
    clip_coordinates(mirror_y, src_y1, dst_y1, dst_y0,
                     clip_dst_y1, clip_dst_y0, scale_y, false);
 
-   return false;
+   /* Check for invalid bounds
+    * Can't blit for 0-dimensions
+    */
+   return *src_x0 == *src_x1 || *src_y0 == *src_y1
+      || *dst_x0 == *dst_x1 || *dst_y0 == *dst_y1;
 }
 
 void
