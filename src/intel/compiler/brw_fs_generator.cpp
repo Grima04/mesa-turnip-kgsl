@@ -2062,7 +2062,15 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_SEND:
          generate_send(inst, dst, src[0], src[1], src[2],
                        inst->ex_mlen > 0 ? src[3] : brw_null_reg());
-         send_count++;
+         if ((inst->desc & 0xff) == BRW_BTI_STATELESS ||
+             (inst->desc & 0xff) == GEN8_BTI_STATELESS_NON_COHERENT) {
+            if (inst->size_written)
+               fill_count++;
+            else
+               spill_count++;
+         } else {
+            send_count++;
+         }
          break;
 
       case SHADER_OPCODE_GET_BUFFER_SIZE:

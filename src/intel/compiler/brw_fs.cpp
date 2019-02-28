@@ -5368,6 +5368,15 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       inst->opcode == SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL ||
       inst->opcode == SHADER_OPCODE_TYPED_ATOMIC_LOGICAL;
 
+   const bool is_surface_access = is_typed_access ||
+      inst->opcode == SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL ||
+      inst->opcode == SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL ||
+      inst->opcode == SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL;
+
+   const bool is_stateless =
+      surface.file == IMM && (surface.ud == BRW_BTI_STATELESS ||
+                              surface.ud == GEN8_BTI_STATELESS_NON_COHERENT);
+
    const bool has_side_effects = inst->has_side_effects();
    fs_reg sample_mask = has_side_effects ? bld.sample_mask_reg() :
                                            fs_reg(brw_imm_d(0xffff));
@@ -5381,25 +5390,63 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
     * we don't attempt to implement sample masks via predication for such
     * messages prior to Gen9, since we have to provide a header anyway.  On
     * Gen11+ the header has been removed so we can only use predication.
+    *
+    * For all stateless A32 messages, we also need a header
     */
    fs_reg header;
-   if (devinfo->gen < 9 && is_typed_access) {
+   if ((devinfo->gen < 9 && is_typed_access) || is_stateless) {
       fs_builder ubld = bld.exec_all().group(8, 0);
       header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       ubld.MOV(header, brw_imm_d(0));
-      ubld.group(1, 0).MOV(component(header, 7), sample_mask);
+      if (is_stateless) {
+         /* Both the typed and scattered byte/dword A32 messages take a buffer
+          * base address in R0.5:[31:0] (See MH1_A32_PSM for typed messages or
+          * MH_A32_GO for byte/dword scattered messages in the SKL PRM Vol. 2d
+          * for more details.)  This is conveniently where the HW places the
+          * scratch surface base address.
+          *
+          * From the SKL PRM Vol. 7 "Per-Thread Scratch Space":
+          *
+          *    "When a thread becomes 'active' it is allocated a portion of
+          *    scratch space, sized according to PerThreadScratchSpace. The
+          *    starting location of each thread’s scratch space allocation,
+          *    ScratchSpaceOffset, is passed in the thread payload in
+          *    R0.5[31:10] and is specified as a 1KB-granular offset from the
+          *    GeneralStateBaseAddress.  The computation of ScratchSpaceOffset
+          *    includes the starting address of the stage’s scratch space
+          *    allocation, as programmed by ScratchSpaceBasePointer."
+          *
+          * The base address is passed in bits R0.5[31:10] and the bottom 10
+          * bits of R0.5 are used for other things.  Therefore, we have to
+          * mask off the bottom 10 bits so that we don't get a garbage base
+          * address.
+          */
+         ubld.group(1, 0).AND(component(header, 5),
+                              retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
+                              brw_imm_ud(0xfffffc00));
+      }
+      if (is_surface_access)
+         ubld.group(1, 0).MOV(component(header, 7), sample_mask);
    }
    const unsigned header_sz = header.file != BAD_FILE ? 1 : 0;
 
    fs_reg payload, payload2;
    unsigned mlen, ex_mlen = 0;
-   if (devinfo->gen >= 9) {
+   if (devinfo->gen >= 9 &&
+       (src.file == BAD_FILE || header.file == BAD_FILE)) {
       /* We have split sends on gen9 and above */
-      assert(header.file == BAD_FILE);
-      payload = bld.move_to_vgrf(addr, addr_sz);
-      payload2 = bld.move_to_vgrf(src, src_sz);
-      mlen = addr_sz * (inst->exec_size / 8);
-      ex_mlen = src_sz * (inst->exec_size / 8);
+      if (header.file == BAD_FILE) {
+         payload = bld.move_to_vgrf(addr, addr_sz);
+         payload2 = bld.move_to_vgrf(src, src_sz);
+         mlen = addr_sz * (inst->exec_size / 8);
+         ex_mlen = src_sz * (inst->exec_size / 8);
+      } else {
+         assert(src.file == BAD_FILE);
+         payload = header;
+         payload2 = bld.move_to_vgrf(addr, addr_sz);
+         mlen = header_sz;
+         ex_mlen = addr_sz * (inst->exec_size / 8);
+      }
    } else {
       /* Allocate space for the payload. */
       const unsigned sz = header_sz + addr_sz + src_sz;
@@ -5426,8 +5473,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Predicate the instruction on the sample mask if no header is
     * provided.
     */
-   if (header.file == BAD_FILE && sample_mask.file != BAD_FILE &&
-       sample_mask.file != IMM) {
+   if ((header.file == BAD_FILE || !is_surface_access) &&
+       sample_mask.file != BAD_FILE && sample_mask.file != IMM) {
       const fs_builder ubld = bld.group(1, 0).exec_all();
       if (inst->predicate) {
          assert(inst->predicate == BRW_PREDICATE_NORMAL);

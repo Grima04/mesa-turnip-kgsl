@@ -77,8 +77,12 @@ static bool
 lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
                         const struct gen_device_info *devinfo)
 {
+   const bool needs_scalar =
+      intrin->intrinsic == nir_intrinsic_load_scratch;
+
    assert(intrin->dest.is_ssa);
-   if (intrin->dest.ssa.bit_size == 32)
+   if (intrin->dest.ssa.bit_size == 32 &&
+       (!needs_scalar || intrin->num_components == 1))
       return false;
 
    const unsigned bit_size = intrin->dest.ssa.bit_size;
@@ -119,7 +123,8 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
          } else {
             assert(load_offset % 4 == 0);
             load_bit_size = 32;
-            load_comps = DIV_ROUND_UP(MIN2(bytes_left, 16), 4);
+            load_comps = needs_scalar ? 1 :
+                         DIV_ROUND_UP(MIN2(bytes_left, 16), 4);
          }
 
          loads[num_loads++] = dup_mem_intrinsic(b, intrin, NULL, load_offset,
@@ -144,6 +149,9 @@ static bool
 lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
                          const struct gen_device_info *devinfo)
 {
+   const bool needs_scalar =
+      intrin->intrinsic == nir_intrinsic_store_scratch;
+
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
 
@@ -159,7 +167,9 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(writemask < (1 << num_components));
 
    if ((value->bit_size <= 32 && num_components == 1) ||
-       (value->bit_size == 32 && writemask == (1 << num_components) - 1))
+       (value->bit_size == 32 &&
+        writemask == (1 << num_components) - 1 &&
+        !needs_scalar))
       return false;
 
    nir_src *offset_src = nir_get_io_offset_src(intrin);
@@ -180,7 +190,6 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
 
    while (BITSET_FFS(mask) != 0) {
       const int start = BITSET_FFS(mask) - 1;
-      assert(start % byte_size == 0);
 
       int end;
       for (end = start + 1; end < bytes_written; end++) {
@@ -198,7 +207,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
       if (chunk_bytes >= 4 && is_dword_aligned) {
          store_align = MAX2(align, 4);
          store_bit_size = 32;
-         store_comps = MIN2(chunk_bytes, 16) / 4;
+         store_comps = needs_scalar ? 1 : MIN2(chunk_bytes, 16) / 4;
       } else {
          store_align = align;
          store_comps = 1;
@@ -208,7 +217,6 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
             store_bit_size = 16;
       }
       const unsigned store_bytes = store_comps * (store_bit_size / 8);
-      assert(store_bytes % byte_size == 0);
 
       nir_ssa_def *packed = nir_extract_bits(b, &value, 1, start * 8,
                                              store_comps, store_bit_size);
@@ -245,6 +253,7 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl,
          case nir_intrinsic_load_global:
          case nir_intrinsic_load_ssbo:
          case nir_intrinsic_load_shared:
+         case nir_intrinsic_load_scratch:
             if (lower_mem_load_bit_size(&b, intrin, devinfo))
                progress = true;
             break;
@@ -252,6 +261,7 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl,
          case nir_intrinsic_store_global:
          case nir_intrinsic_store_ssbo:
          case nir_intrinsic_store_shared:
+         case nir_intrinsic_store_scratch:
             if (lower_mem_store_bit_size(&b, intrin, devinfo))
                progress = true;
             break;
@@ -285,6 +295,12 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl,
  * all nir load/store intrinsics into a series of either 8 or 32-bit
  * load/store intrinsics with a number of components that we can directly
  * handle in hardware and with a trivial write-mask.
+ *
+ * For scratch access, additional consideration has to be made due to the way
+ * that we swizzle the memory addresses to achieve decent cache locality.  In
+ * particular, even though untyped surface read/write messages exist and work,
+ * we can't use them to load multiple components in a single SEND.  For more
+ * detail on the scratch swizzle, see fs_visitor::swizzle_nir_scratch_addr.
  */
 bool
 brw_nir_lower_mem_access_bit_sizes(nir_shader *shader,
