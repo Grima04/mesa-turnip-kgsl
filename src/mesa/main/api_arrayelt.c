@@ -1792,7 +1792,7 @@ _ae_ArrayElement(GLint elt)
    GET_CURRENT_CONTEXT(ctx);
    const AEcontext *actx = AE_CONTEXT(ctx);
    const struct _glapi_table * const disp = GET_DISPATCH();
-   GLboolean do_map;
+   struct gl_vertex_array_object *vao;
 
    /* If PrimitiveRestart is enabled and the index is the RestartIndex
     * then we call PrimitiveRestartNV and return.
@@ -1807,16 +1807,12 @@ _ae_ArrayElement(GLint elt)
       _ae_update_state(ctx);
    }
 
-   /* Determine if we need to map/unmap VBOs */
-   do_map = actx->nr_vbos && !actx->mapped_vbos;
-
-   if (do_map)
-      _ae_map_vbos(ctx);
+   vao = ctx->Array.VAO;
+   _mesa_vao_map_arrays(ctx, vao, GL_MAP_READ_BIT);
 
    _mesa_array_element(ctx, (struct _glapi_table *)disp, elt);
 
-   if (do_map)
-      _ae_unmap_vbos(ctx);
+   _mesa_vao_unmap_arrays(ctx, vao);
 }
 
 
