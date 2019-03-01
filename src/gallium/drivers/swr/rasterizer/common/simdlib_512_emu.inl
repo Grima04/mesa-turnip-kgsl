@@ -559,7 +559,7 @@ static SIMDINLINE Float SIMDCALL
 //
 //      SELECT4(src, control) {
 //          CASE(control[1:0])
-//              0 : tmp[127:0] : = src[127:0]
+//              0:	tmp[127:0] : = src[127:0]
 //              1 : tmp[127:0] : = src[255:128]
 //              2 : tmp[127:0] : = src[383:256]
 //              3 : tmp[127:0] : = src[511:384]
