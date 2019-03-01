@@ -1373,8 +1373,15 @@ _save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
 
 
 static void
-array_element(struct gl_context *ctx, struct _glapi_table *disp, GLuint elt)
+array_element(struct gl_context *ctx, struct _glapi_table *disp,
+              GLint basevertex, GLuint elt)
 {
+   /* Section 10.3.5 Primitive Restart:
+    * [...]
+    *    When one of the *BaseVertex drawing commands specified in section 10.5
+    * is used, the primitive restart comparison occurs before the basevertex
+    * offset is added to the array index.
+    */
    /* If PrimitiveRestart is enabled and the index is the RestartIndex
     * then we call PrimitiveRestartNV and return.
     */
@@ -1383,7 +1390,7 @@ array_element(struct gl_context *ctx, struct _glapi_table *disp, GLuint elt)
       return;
    }
 
-   _mesa_array_element(ctx, disp, elt);
+   _mesa_array_element(ctx, disp, basevertex + elt);
 }
 
 
@@ -1432,15 +1439,15 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
    switch (type) {
    case GL_UNSIGNED_BYTE:
       for (i = 0; i < count; i++)
-         array_element(ctx, GET_DISPATCH(), (basevertex + ((GLubyte *) indices)[i]));
+         array_element(ctx, GET_DISPATCH(), basevertex, ((GLubyte *) indices)[i]);
       break;
    case GL_UNSIGNED_SHORT:
       for (i = 0; i < count; i++)
-         array_element(ctx, GET_DISPATCH(), (basevertex + ((GLushort *) indices)[i]));
+         array_element(ctx, GET_DISPATCH(), basevertex, ((GLushort *) indices)[i]);
       break;
    case GL_UNSIGNED_INT:
       for (i = 0; i < count; i++)
-         array_element(ctx, GET_DISPATCH(), (basevertex + ((GLuint *) indices)[i]));
+         array_element(ctx, GET_DISPATCH(), basevertex, ((GLuint *) indices)[i]);
       break;
    default:
       _mesa_error(ctx, GL_INVALID_ENUM, "glDrawElements(type)");
