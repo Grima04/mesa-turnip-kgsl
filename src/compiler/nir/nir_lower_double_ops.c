@@ -589,6 +589,23 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
    return true;
 }
 
+nir_lower_doubles_options
+nir_lower_doubles_op_to_options_mask(nir_op opcode)
+{
+   switch (opcode) {
+   case nir_op_frcp:          return nir_lower_drcp;
+   case nir_op_fsqrt:         return nir_lower_dsqrt;
+   case nir_op_frsq:          return nir_lower_drsq;
+   case nir_op_ftrunc:        return nir_lower_dtrunc;
+   case nir_op_ffloor:        return nir_lower_dfloor;
+   case nir_op_fceil:         return nir_lower_dceil;
+   case nir_op_ffract:        return nir_lower_dfract;
+   case nir_op_fround_even:   return nir_lower_dround_even;
+   case nir_op_fmod:          return nir_lower_dmod;
+   default:                   return 0;
+   }
+}
+
 static bool
 lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
                     nir_lower_doubles_options options)
@@ -607,55 +624,8 @@ lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
    if (lower_doubles_instr_to_soft(b, instr, options))
       return true;
 
-   switch (instr->op) {
-   case nir_op_frcp:
-      if (!(options & nir_lower_drcp))
-         return false;
-      break;
-
-   case nir_op_fsqrt:
-      if (!(options & nir_lower_dsqrt))
-         return false;
-      break;
-
-   case nir_op_frsq:
-      if (!(options & nir_lower_drsq))
-         return false;
-      break;
-
-   case nir_op_ftrunc:
-      if (!(options & nir_lower_dtrunc))
-         return false;
-      break;
-
-   case nir_op_ffloor:
-      if (!(options & nir_lower_dfloor))
-         return false;
-      break;
-
-   case nir_op_fceil:
-      if (!(options & nir_lower_dceil))
-         return false;
-      break;
-
-   case nir_op_ffract:
-      if (!(options & nir_lower_dfract))
-         return false;
-      break;
-
-   case nir_op_fround_even:
-      if (!(options & nir_lower_dround_even))
-         return false;
-      break;
-
-   case nir_op_fmod:
-      if (!(options & nir_lower_dmod))
-         return false;
-      break;
-
-   default:
+   if (!(options & nir_lower_doubles_op_to_options_mask(instr->op)))
       return false;
-   }
 
    b->cursor = nir_before_instr(&instr->instr);
 
