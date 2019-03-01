@@ -237,6 +237,9 @@ def generate(env):
     hosthost_platform = host_platform.system().lower()
     if hosthost_platform.startswith('cygwin'):
         hosthost_platform = 'cygwin'
+    # Avoid spurious crosscompilation in MSYS2 environment.
+    if hosthost_platform.startswith('mingw'):
+        hosthost_platform = 'windows'
     host_machine = os.environ.get('PROCESSOR_ARCHITEW6432', os.environ.get('PROCESSOR_ARCHITECTURE', host_platform.machine()))
     host_machine = {
         'x86': 'x86',

@@ -30,6 +30,7 @@ Tool-specific initialization for LLVM
 import os
 import os.path
 import re
+import platform as host_platform
 import sys
 import distutils.version
 
@@ -191,6 +192,12 @@ def generate(env):
             'ole32',
             'uuid',
         ])
+
+        # Mingw-w64 zlib is required when building with LLVM support in MSYS2 environment
+        if host_platform.system().lower().startswith('mingw'):
+            env.Append(LIBS = [
+                 'z',
+            ])
 
         if env['msvc']:
             # Some of the LLVM C headers use the inline keyword without
