@@ -288,13 +288,16 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
       } else {
          loc = st_nir_lookup_parameter_index(prog->Parameters, uniform->name);
 
-         if (ctx->Const.PackedDriverUniformStorage) {
+         /* We need to check that loc is not -1 here before accessing the
+          * array. It can be negative for example when we have a struct that
+          * only contains opaque types.
+          */
+         if (loc >= 0 && ctx->Const.PackedDriverUniformStorage) {
             loc = prog->Parameters->ParameterValueOffset[loc];
          }
       }
 
       uniform->data.driver_location = loc;
-
       max = MAX2(max, loc + type_size(uniform->type));
    }
    *size = max;
