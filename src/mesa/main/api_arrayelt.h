@@ -40,11 +40,6 @@ extern void _mesa_array_element(struct gl_context *ctx,
                                 struct _glapi_table *disp, GLint elt);
 extern void GLAPIENTRY _ae_ArrayElement( GLint elt );
 
-/* May optionally be called before a batch of element calls:
- */
-extern void _ae_map_vbos( struct gl_context *ctx );
-extern void _ae_unmap_vbos( struct gl_context *ctx );
-
 extern void
 _mesa_install_arrayelt_vtxfmt(struct _glapi_table *disp,
                               const GLvertexformat *vfmt);
