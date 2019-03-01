@@ -800,8 +800,10 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
 
    prepare_alu_destination_and_sources(bld, inot_instr, &op, false);
 
+   /* Ignore the saturate modifier, if there is one.  The result of the
+    * arithmetic can only be 0 or 1, so the clamping will do nothing anyway.
+    */
    bld.ADD(result, op, brw_imm_d(1));
-   assert(!instr->dest.saturate);
 
    return true;
 }
