@@ -3727,6 +3727,27 @@ surf_state_offset_for_aux(struct iris_resource *res,
           util_bitcount(res->aux.possible_usages & ((1 << aux_usage) - 1));
 }
 
+static void
+surf_state_update_clear_value(struct iris_batch *batch,
+                              struct iris_resource *res,
+                              struct iris_state_ref *state,
+                              enum isl_aux_usage aux_usage)
+{
+   struct isl_device *isl_dev = &batch->screen->isl_dev;
+   struct iris_bo *state_bo = iris_resource_bo(state->res);
+   uint64_t real_offset = state->offset +
+      IRIS_MEMZONE_BINDER_START;
+   uint32_t offset_into_bo = real_offset - state_bo->gtt_offset;
+   uint32_t clear_offset = offset_into_bo +
+      isl_dev->ss.clear_value_offset +
+      surf_state_offset_for_aux(res, aux_usage);
+
+   batch->vtbl->copy_mem_mem(batch, state_bo, clear_offset,
+                             res->aux.clear_color_bo,
+                             res->aux.clear_color_offset,
+                             isl_dev->ss.clear_value_size);
+}
+
 /**
  * Add a surface to the validation list, as well as the buffer containing
  * the corresponding SURFACE_STATE.
@@ -3745,8 +3766,11 @@ use_surface(struct iris_batch *batch,
    iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
    iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
 
-   if (res->aux.bo)
+   if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable);
+      iris_use_pinned_bo(batch, res->aux.clear_color_bo, false);
+      surf_state_update_clear_value(batch, res, &surf->surface_state, aux_usage);
+   }
 
    return surf->surface_state.offset +
           surf_state_offset_for_aux(res, aux_usage);
@@ -3764,8 +3788,12 @@ use_sampler_view(struct iris_context *ice,
    iris_use_pinned_bo(batch, isv->res->bo, false);
    iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.res), false);
 
-   if (isv->res->aux.bo)
+   if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo, false);
+      iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
+      surf_state_update_clear_value(batch, isv->res,
+                                    &isv->surface_state, aux_usage);
+   }
 
    return isv->surface_state.offset +
           surf_state_offset_for_aux(isv->res, aux_usage);
