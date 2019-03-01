@@ -331,7 +331,6 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
 {
    struct etna_context *ctx = priv;
    struct etna_screen *screen = ctx->screen;
-   struct set_entry *entry;
 
    etna_set_state(stream, VIVS_GL_API_MODE, VIVS_GL_API_MODE_OPENGL);
    etna_set_state(stream, VIVS_GL_VERTEX_ELEMENT_CONFIG, 0x00000001);

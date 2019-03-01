@@ -646,7 +646,6 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
                    enum etna_resource_status status)
 {
    struct etna_screen *screen = ctx->screen;
-   struct set_entry *entry;
    struct etna_resource *rsc;
 
    if (!prsc)
