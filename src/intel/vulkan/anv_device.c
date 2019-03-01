@@ -1238,6 +1238,14 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
+         VkPhysicalDeviceExternalMemoryHostPropertiesEXT *props =
+            (VkPhysicalDeviceExternalMemoryHostPropertiesEXT *) ext;
+         /* Userptr needs page aligned memory. */
+         props->minImportedHostPointerAlignment = 4096;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
          VkPhysicalDeviceIDProperties *id_props =
             (VkPhysicalDeviceIDProperties *)ext;
@@ -2463,6 +2471,7 @@ VkResult anv_AllocateMemory(
    mem->map = NULL;
    mem->map_size = 0;
    mem->ahw = NULL;
+   mem->host_ptr = NULL;
 
    uint64_t bo_flags = 0;
 
@@ -2575,6 +2584,30 @@ VkResult anv_AllocateMemory(
       goto success;
    }
 
+   const VkImportMemoryHostPointerInfoEXT *host_ptr_info =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           IMPORT_MEMORY_HOST_POINTER_INFO_EXT);
+   if (host_ptr_info && host_ptr_info->handleType) {
+      if (host_ptr_info->handleType ==
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT) {
+         result = vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         goto fail;
+      }
+
+      assert(host_ptr_info->handleType ==
+             VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT);
+
+      result = anv_bo_cache_import_host_ptr(
+         device, &device->bo_cache, host_ptr_info->pHostPointer,
+         pAllocateInfo->allocationSize, bo_flags, &mem->bo);
+
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      mem->host_ptr = host_ptr_info->pHostPointer;
+      goto success;
+   }
+
    /* Regular allocate (not importing memory). */
 
    if (export_info && export_info->handleTypes)
@@ -2664,6 +2697,32 @@ VkResult anv_GetMemoryFdPropertiesKHR(
    }
 }
 
+VkResult anv_GetMemoryHostPointerPropertiesEXT(
+   VkDevice                                    _device,
+   VkExternalMemoryHandleTypeFlagBits          handleType,
+   const void*                                 pHostPointer,
+   VkMemoryHostPointerPropertiesEXT*           pMemoryHostPointerProperties)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+
+   assert(pMemoryHostPointerProperties->sType ==
+          VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT);
+
+   switch (handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT: {
+      struct anv_physical_device *pdevice = &device->instance->physicalDevice;
+
+      /* Host memory can be imported as any memory type. */
+      pMemoryHostPointerProperties->memoryTypeBits =
+         (1ull << pdevice->memory.type_count) - 1;
+
+      return VK_SUCCESS;
+   }
+   default:
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
+}
+
 void anv_FreeMemory(
     VkDevice                                    _device,
     VkDeviceMemory                              _mem,
@@ -2701,6 +2760,11 @@ VkResult anv_MapMemory(
 
    if (mem == NULL) {
       *ppData = NULL;
+      return VK_SUCCESS;
+   }
+
+   if (mem->host_ptr) {
+      *ppData = mem->host_ptr + offset;
       return VK_SUCCESS;
    }
 
@@ -2756,7 +2820,7 @@ void anv_UnmapMemory(
 {
    ANV_FROM_HANDLE(anv_device_memory, mem, _memory);
 
-   if (mem == NULL)
+   if (mem == NULL || mem->host_ptr)
       return;
 
    anv_gem_munmap(mem->map, mem->map_size);

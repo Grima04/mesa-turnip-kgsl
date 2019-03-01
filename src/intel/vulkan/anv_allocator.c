@@ -1712,6 +1712,66 @@ anv_bo_cache_alloc(struct anv_device *device,
 }
 
 VkResult
+anv_bo_cache_import_host_ptr(struct anv_device *device,
+                             struct anv_bo_cache *cache,
+                             void *host_ptr, uint32_t size,
+                             uint64_t bo_flags, struct anv_bo **bo_out)
+{
+   assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
+   assert((bo_flags & ANV_BO_EXTERNAL) == 0);
+
+   uint32_t gem_handle = anv_gem_userptr(device, host_ptr, size);
+   if (!gem_handle)
+      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+   pthread_mutex_lock(&cache->mutex);
+
+   struct anv_cached_bo *bo = anv_bo_cache_lookup_locked(cache, gem_handle);
+   if (bo) {
+      /* VK_EXT_external_memory_host doesn't require handling importing the
+       * same pointer twice at the same time, but we don't get in the way.  If
+       * kernel gives us the same gem_handle, only succeed if the flags match.
+       */
+      if (bo_flags != bo->bo.flags) {
+         pthread_mutex_unlock(&cache->mutex);
+         return vk_errorf(device->instance, NULL,
+                          VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                          "same host pointer imported two different ways");
+      }
+      __sync_fetch_and_add(&bo->refcount, 1);
+   } else {
+      bo = vk_alloc(&device->alloc, sizeof(struct anv_cached_bo), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!bo) {
+         anv_gem_close(device, gem_handle);
+         pthread_mutex_unlock(&cache->mutex);
+         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+
+      bo->refcount = 1;
+
+      anv_bo_init(&bo->bo, gem_handle, size);
+      bo->bo.flags = bo_flags;
+
+      if (!anv_vma_alloc(device, &bo->bo)) {
+         anv_gem_close(device, bo->bo.gem_handle);
+         pthread_mutex_unlock(&cache->mutex);
+         vk_free(&device->alloc, bo);
+         return vk_errorf(device->instance, NULL,
+                          VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "failed to allocate virtual address for BO");
+      }
+
+      _mesa_hash_table_insert(cache->bo_map, (void *)(uintptr_t)gem_handle, bo);
+   }
+
+   pthread_mutex_unlock(&cache->mutex);
+   *bo_out = &bo->bo;
+
+   return VK_SUCCESS;
+}
+
+VkResult
 anv_bo_cache_import(struct anv_device *device,
                     struct anv_bo_cache *cache,
                     int fd, uint64_t bo_flags,

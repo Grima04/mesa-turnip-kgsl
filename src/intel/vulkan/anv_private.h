@@ -871,6 +871,10 @@ VkResult anv_bo_cache_alloc(struct anv_device *device,
                             struct anv_bo_cache *cache,
                             uint64_t size, uint64_t bo_flags,
                             struct anv_bo **bo);
+VkResult anv_bo_cache_import_host_ptr(struct anv_device *device,
+                                      struct anv_bo_cache *cache,
+                                      void *host_ptr, uint32_t size,
+                                      uint64_t bo_flags, struct anv_bo **bo_out);
 VkResult anv_bo_cache_import(struct anv_device *device,
                              struct anv_bo_cache *cache,
                              int fd, uint64_t bo_flags,
@@ -1488,6 +1492,9 @@ struct anv_device_memory {
     * which we must release when memory is freed.
     */
    struct AHardwareBuffer *                     ahw;
+
+   /* If set, this memory comes from a host pointer. */
+   void *                                       host_ptr;
 };
 
 /**
