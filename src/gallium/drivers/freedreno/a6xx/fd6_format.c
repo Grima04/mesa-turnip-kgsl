@@ -448,7 +448,7 @@ fd6_tex_swiz(enum pipe_format format, unsigned char *swiz,
 	/* Gallium expects stencil sampler to return (s,s,s,s), so massage
 	 * the swizzle to do so.
 	 */
-	if ((format == PIPE_FORMAT_X24S8_UINT)) {
+	if (format == PIPE_FORMAT_X24S8_UINT) {
 		const unsigned char stencil_swiz[4] = {
 			PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X, PIPE_SWIZZLE_X
 		};
