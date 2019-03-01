@@ -220,7 +220,7 @@ freedreno_includes = [
   inc_freedreno, include_directories('ir3'),
 ]
 
-freedreno_c_args = []
+freedreno_c_args = [ c_vis_args, no_override_init_args ]
 if cc.has_argument('-Wpacked-bitfield-compat')
   freedreno_c_args += '-Wno-packed-bitfield-compat'
 endif
