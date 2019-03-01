@@ -1751,6 +1751,35 @@ _ae_unmap_vbos(struct gl_context *ctx)
 }
 
 
+void
+_mesa_array_element(struct gl_context *ctx,
+                    struct _glapi_table *disp, GLint elt)
+{
+   const AEcontext *actx = AE_CONTEXT(ctx);
+
+   if (actx->dirty_state)
+      _ae_update_state(ctx);
+
+   /* emit generic attribute elements */
+   for (const AEattrib *at = actx->attribs; at->func; at++) {
+      const GLubyte *src
+         = ADD_POINTERS(at->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
+                        _mesa_vertex_attrib_address(at->array, at->binding))
+         + elt * at->binding->Stride;
+      at->func(at->index, src);
+   }
+
+   /* emit conventional arrays elements */
+   for (const AEarray *aa = actx->arrays; aa->offset != -1 ; aa++) {
+      const GLubyte *src
+         = ADD_POINTERS(aa->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
+                        _mesa_vertex_attrib_address(aa->array, aa->binding))
+         + elt * aa->binding->Stride;
+      CALL_by_offset(disp, (array_func), aa->offset, ((const void *) src));
+   }
+}
+
+
 /**
  * Called via glArrayElement() and glDrawArrays().
  * Issue the glNormal, glVertex, glColor, glVertexAttrib, etc functions
@@ -1762,8 +1791,6 @@ _ae_ArrayElement(GLint elt)
 {
    GET_CURRENT_CONTEXT(ctx);
    const AEcontext *actx = AE_CONTEXT(ctx);
-   const AEarray *aa;
-   const AEattrib *at;
    const struct _glapi_table * const disp = GET_DISPATCH();
    GLboolean do_map;
 
@@ -1786,23 +1813,7 @@ _ae_ArrayElement(GLint elt)
    if (do_map)
       _ae_map_vbos(ctx);
 
-   /* emit generic attribute elements */
-   for (at = actx->attribs; at->func; at++) {
-      const GLubyte *src
-         = ADD_POINTERS(at->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
-                        _mesa_vertex_attrib_address(at->array, at->binding))
-         + elt * at->binding->Stride;
-      at->func(at->index, src);
-   }
-
-   /* emit conventional arrays elements */
-   for (aa = actx->arrays; aa->offset != -1 ; aa++) {
-      const GLubyte *src
-         = ADD_POINTERS(aa->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
-                        _mesa_vertex_attrib_address(aa->array, aa->binding))
-         + elt * aa->binding->Stride;
-      CALL_by_offset(disp, (array_func), aa->offset, ((const void *) src));
-   }
+   _mesa_array_element(ctx, (struct _glapi_table *)disp, elt);
 
    if (do_map)
       _ae_unmap_vbos(ctx);
