@@ -37,8 +37,6 @@ files_libv3d = files(
   'v3d_screen.h',
   'v3d_simulator.c',
   'v3d_simulator_wrapper.cpp',
-  'v3d_tiling.c',
-  'v3d_tiling.h',
   'v3d_uniforms.c',
 )
 
@@ -77,6 +75,22 @@ foreach ver : v3d_versions
 
 endforeach
 
+v3d_neon_c_args = []
+if host_machine.cpu_family() == 'arm'
+    v3d_neon_c_args = '-mfpu=neon'
+endif
+
+libv3d_neon = static_library(
+  'v3d_neon',
+  'v3d_tiling.c',
+  include_directories : [
+    inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
+    inc_gallium_drivers,
+  ],
+  c_args : [c_vis_args, v3d_args, v3d_neon_c_args],
+  dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
+)
+
 libv3d = static_library(
   'v3d',
   [files_libv3d, v3d_xml_pack],
@@ -87,7 +101,7 @@ libv3d = static_library(
   c_args : [c_vis_args, v3d_args],
   cpp_args : [cpp_vis_args, v3d_args],
   dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
-  link_with: per_version_libs,
+  link_with: [per_version_libs, libv3d_neon],
 )
 
 driver_v3d = declare_dependency(
