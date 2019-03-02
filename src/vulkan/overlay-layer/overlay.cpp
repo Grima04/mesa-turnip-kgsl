@@ -1468,9 +1468,11 @@ static void before_present(struct swapchain_data *swapchain_data,
                            unsigned n_wait_semaphores,
                            unsigned imageIndex)
 {
+   struct instance_data *instance_data = swapchain_data->device->instance;
+
    snapshot_swapchain_frame(swapchain_data);
 
-   if (swapchain_data->n_frames > 0) {
+   if (!instance_data->params.no_display && swapchain_data->n_frames > 0) {
       compute_swapchain_display(swapchain_data);
       render_swapchain_display(swapchain_data, wait_semaphores, n_wait_semaphores, imageIndex);
    }
@@ -1509,6 +1511,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
 {
    struct queue_data *queue_data = FIND_QUEUE_DATA(queue);
    struct device_data *device_data = queue_data->device;
+   struct instance_data *instance_data = device_data->instance;
    uint32_t query_results[OVERLAY_QUERY_COUNT];
 
    if (list_length(&queue_data->running_command_buffer) > 0) {
@@ -1569,30 +1572,43 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
     * be have incomplete overlay drawings.
     */
    VkResult result = VK_SUCCESS;
-   for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
-      VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
-      struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
-      VkPresentInfoKHR present_info = *pPresentInfo;
-      present_info.swapchainCount = 1;
-      present_info.pSwapchains = &swapchain;
+   if (instance_data->params.no_display) {
+      for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
+         VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
+         struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
 
-      before_present(swapchain_data,
-                     pPresentInfo->pWaitSemaphores,
-                     pPresentInfo->waitSemaphoreCount,
-                     pPresentInfo->pImageIndices[i]);
-      /* Because the submission of the overlay draw waits on the semaphores
-       * handed for present, we don't need to have this present operation wait
-       * on them as well, we can just wait on the overlay submission
-       * semaphore.
-       */
-      present_info.pWaitSemaphores = &swapchain_data->submission_semaphore;
-      present_info.waitSemaphoreCount = 1;
+         before_present(swapchain_data,
+                        pPresentInfo->pWaitSemaphores,
+                        pPresentInfo->waitSemaphoreCount,
+                        pPresentInfo->pImageIndices[i]);
+      }
+      result = queue_data->device->vtable.QueuePresentKHR(queue, pPresentInfo);
+   } else {
+      for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
+         VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
+         struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+         VkPresentInfoKHR present_info = *pPresentInfo;
+         present_info.swapchainCount = 1;
+         present_info.pSwapchains = &swapchain;
 
-      VkResult chain_result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
-      if (pPresentInfo->pResults)
-         pPresentInfo->pResults[i] = chain_result;
-      if (chain_result != VK_SUCCESS && result == VK_SUCCESS)
-         result = chain_result;
+         before_present(swapchain_data,
+                        pPresentInfo->pWaitSemaphores,
+                        pPresentInfo->waitSemaphoreCount,
+                        pPresentInfo->pImageIndices[i]);
+         /* Because the submission of the overlay draw waits on the semaphores
+          * handed for present, we don't need to have this present operation
+          * wait on them as well, we can just wait on the overlay submission
+          * semaphore.
+          */
+         present_info.pWaitSemaphores = &swapchain_data->submission_semaphore;
+         present_info.waitSemaphoreCount = 1;
+
+         VkResult chain_result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
+         if (pPresentInfo->pResults)
+            pPresentInfo->pResults[i] = chain_result;
+         if (chain_result != VK_SUCCESS && result == VK_SUCCESS)
+            result = chain_result;
+      }
    }
    return result;
 }

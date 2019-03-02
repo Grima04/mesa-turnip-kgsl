@@ -64,6 +64,7 @@ extern "C" {
    OVERLAY_PARAM_CUSTOM(fps_sampling_period)         \
    OVERLAY_PARAM_CUSTOM(output_file)                 \
    OVERLAY_PARAM_CUSTOM(position)                    \
+   OVERLAY_PARAM_CUSTOM(no_display)                  \
    OVERLAY_PARAM_CUSTOM(help)
 
 enum overlay_param_position {
@@ -88,6 +89,7 @@ struct overlay_params {
    FILE *output_file;
    uint32_t fps_sampling_period; /* us */
    bool help;
+   bool no_display;
 };
 
 const extern char *overlay_param_names[];

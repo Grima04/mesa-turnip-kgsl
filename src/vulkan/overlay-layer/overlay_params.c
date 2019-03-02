@@ -54,6 +54,12 @@ parse_fps_sampling_period(const char *str)
 }
 
 static bool
+parse_no_display(const char *str)
+{
+   return strtol(str, NULL, 0) != 0;
+}
+
+static bool
 parse_help(const char *str)
 {
    fprintf(stderr, "Layer params using VK_LAYER_MESA_OVERLAY_CONFIG=\n");
@@ -65,6 +71,7 @@ parse_help(const char *str)
 #undef OVERLAY_PARAM_CUSTOM
    fprintf(stderr, "\tposition=top-left|top-right|bottom-left|bottom-right\n");
    fprintf(stderr, "\tfps_sampling_period=number-of-milliseconds\n");
+   fprintf(stderr, "\tno_display=0|1\n");
 
    return true;
 }
