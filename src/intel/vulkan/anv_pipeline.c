@@ -612,23 +612,10 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 }
 
 static void
-anv_fill_binding_table(struct brw_stage_prog_data *prog_data, unsigned bias)
-{
-   prog_data->binding_table.size_bytes = 0;
-   prog_data->binding_table.texture_start = bias;
-   prog_data->binding_table.gather_texture_start = bias;
-   prog_data->binding_table.ubo_start = bias;
-   prog_data->binding_table.ssbo_start = bias;
-   prog_data->binding_table.image_start = bias;
-}
-
-static void
 anv_pipeline_link_vs(const struct brw_compiler *compiler,
                      struct anv_pipeline_stage *vs_stage,
                      struct anv_pipeline_stage *next_stage)
 {
-   anv_fill_binding_table(&vs_stage->prog_data.vs.base.base, 0);
-
    if (next_stage)
       brw_nir_link_shaders(compiler, &vs_stage->nir, &next_stage->nir);
 }
@@ -693,8 +680,6 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
 {
    assert(tes_stage && tes_stage->stage == MESA_SHADER_TESS_EVAL);
 
-   anv_fill_binding_table(&tcs_stage->prog_data.tcs.base.base, 0);
-
    brw_nir_link_shaders(compiler, &tcs_stage->nir, &tes_stage->nir);
 
    nir_lower_patch_vertices(tes_stage->nir,
@@ -703,9 +688,6 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
 
    /* Copy TCS info into the TES info */
    merge_tess_info(&tes_stage->nir->info, &tcs_stage->nir->info);
-
-   anv_fill_binding_table(&tcs_stage->prog_data.tcs.base.base, 0);
-   anv_fill_binding_table(&tes_stage->prog_data.tes.base.base, 0);
 
    /* Whacking the key after cache lookup is a bit sketchy, but all of
     * this comes from the SPIR-V, which is part of the hash used for the
@@ -740,8 +722,6 @@ anv_pipeline_link_tes(const struct brw_compiler *compiler,
                       struct anv_pipeline_stage *tes_stage,
                       struct anv_pipeline_stage *next_stage)
 {
-   anv_fill_binding_table(&tes_stage->prog_data.tes.base.base, 0);
-
    if (next_stage)
       brw_nir_link_shaders(compiler, &tes_stage->nir, &next_stage->nir);
 }
@@ -768,8 +748,6 @@ anv_pipeline_link_gs(const struct brw_compiler *compiler,
                      struct anv_pipeline_stage *gs_stage,
                      struct anv_pipeline_stage *next_stage)
 {
-   anv_fill_binding_table(&gs_stage->prog_data.gs.base.base, 0);
-
    if (next_stage)
       brw_nir_link_shaders(compiler, &gs_stage->nir, &next_stage->nir);
 }
@@ -880,8 +858,6 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
    typed_memcpy(stage->bind_map.surface_to_descriptor,
                 rt_bindings, num_rts);
    stage->bind_map.surface_count += num_rts;
-
-   anv_fill_binding_table(&stage->prog_data.wm.base, 0);
 }
 
 static const unsigned *
@@ -1239,8 +1215,6 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id,
                  &stage.prog_data.cs);
-
-      anv_fill_binding_table(&stage.prog_data.cs.base, 0);
 
       const unsigned *shader_code =
          brw_compile_cs(compiler, NULL, mem_ctx, &stage.key.cs,
