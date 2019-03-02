@@ -571,24 +571,25 @@ static void position_layer(struct swapchain_data *data)
 {
    struct device_data *device_data = data->device;
    struct instance_data *instance_data = device_data->instance;
+   const float margin = 10.0f;
 
    ImGui::SetNextWindowBgAlpha(0.5);
    ImGui::SetNextWindowSize(data->window_size, ImGuiCond_Always);
    switch (instance_data->params.position) {
    case LAYER_POSITION_TOP_LEFT:
-      ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+      ImGui::SetNextWindowPos(ImVec2(margin, margin), ImGuiCond_Always);
       break;
    case LAYER_POSITION_TOP_RIGHT:
-      ImGui::SetNextWindowPos(ImVec2(data->width - data->window_size.x, 0),
+      ImGui::SetNextWindowPos(ImVec2(data->width - data->window_size.x - margin, margin),
                               ImGuiCond_Always);
       break;
    case LAYER_POSITION_BOTTOM_LEFT:
-      ImGui::SetNextWindowPos(ImVec2(0, data->height - data->window_size.y),
+      ImGui::SetNextWindowPos(ImVec2(margin, data->height - data->window_size.y - margin),
                               ImGuiCond_Always);
       break;
    case LAYER_POSITION_BOTTOM_RIGHT:
-      ImGui::SetNextWindowPos(ImVec2(data->width - data->window_size.x,
-                                     data->height - data->window_size.y),
+      ImGui::SetNextWindowPos(ImVec2(data->width - data->window_size.x - margin,
+                                     data->height - data->window_size.y - margin),
                               ImGuiCond_Always);
       break;
    }
