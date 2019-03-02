@@ -30,28 +30,12 @@
 #include "pipe/p_video_codec.h"
 
 #include "util/u_video.h"
-#include "util/u_memory.h"
-
-#include "vl/vl_video_buffer.h"
 
 #include "si_pipe.h"
 #include "radeon_video.h"
 #include "radeon_vcn_enc.h"
 
 static const unsigned index_to_shifts[4] = {24, 16, 8, 0};
-
-static void radeon_enc_add_buffer(struct radeon_encoder *enc, struct pb_buffer *buf,
-								  enum radeon_bo_usage usage, enum radeon_bo_domain domain,
-								  signed offset)
-{
-	enc->ws->cs_add_buffer(enc->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED,
-                               domain, 0);
-	uint64_t addr;
-	addr = enc->ws->buffer_get_virtual_address(buf);
-	addr = addr + offset;
-	RADEON_ENC_CS(addr >> 32);
-	RADEON_ENC_CS(addr);
-}
 
 static void radeon_enc_set_emulation_prevention(struct radeon_encoder *enc, bool set)
 {

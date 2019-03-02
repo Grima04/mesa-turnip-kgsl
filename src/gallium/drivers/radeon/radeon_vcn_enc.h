@@ -496,6 +496,10 @@ struct radeon_encoder {
 	bool				need_feedback;
 };
 
+void radeon_enc_add_buffer(struct radeon_encoder *enc, struct pb_buffer *buf,
+			   enum radeon_bo_usage usage, enum radeon_bo_domain domain,
+			   signed offset);
+
 void radeon_enc_1_2_init(struct radeon_encoder *enc);
 
 #endif  // _RADEON_VCN_ENC_H
