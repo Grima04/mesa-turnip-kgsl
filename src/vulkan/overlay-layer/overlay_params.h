@@ -47,6 +47,7 @@ extern "C" {
    OVERLAY_PARAM_BOOL(pipeline_graphics)             \
    OVERLAY_PARAM_BOOL(pipeline_compute)              \
    OVERLAY_PARAM_BOOL(pipeline_raytracing)           \
+   OVERLAY_PARAM_BOOL(acquire)                       \
    OVERLAY_PARAM_BOOL(acquire_timing)                \
    OVERLAY_PARAM_CUSTOM(fps_sampling_period)         \
    OVERLAY_PARAM_CUSTOM(output_file)                 \
