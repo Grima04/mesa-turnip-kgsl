@@ -72,6 +72,7 @@ parse_help(const char *str)
    fprintf(stderr, "\tposition=top-left|top-right|bottom-left|bottom-right\n");
    fprintf(stderr, "\tfps_sampling_period=number-of-milliseconds\n");
    fprintf(stderr, "\tno_display=0|1\n");
+   fprintf(stderr, "\toutput_file=/path/to/output.txt\n");
 
    return true;
 }

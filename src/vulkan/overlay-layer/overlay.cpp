@@ -49,6 +49,8 @@ struct instance_data {
 
    struct overlay_params params;
    bool pipeline_statistics_enabled;
+
+   bool first_line_printed;
 };
 
 struct frame_stat {
@@ -496,6 +498,19 @@ static void destroy_swapchain_data(struct swapchain_data *data)
    ralloc_free(data);
 }
 
+static const char *param_unit(enum overlay_param_enabled param)
+{
+   switch (param) {
+   case OVERLAY_PARAM_ENABLED_frame_timing:
+   case OVERLAY_PARAM_ENABLED_acquire_timing:
+      return "(us)";
+   case OVERLAY_PARAM_ENABLED_gpu_timing:
+      return "(ns)";
+   default:
+      return "";
+   }
+}
+
 static void snapshot_swapchain_frame(struct swapchain_data *data)
 {
    struct device_data *device_data = data->device;
@@ -519,7 +534,38 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
       if (elapsed >= instance_data->params.fps_sampling_period) {
          data->fps = 1000000.0f * data->n_frames_since_update / elapsed;
          if (instance_data->params.output_file) {
-            fprintf(instance_data->params.output_file, "%.2f\n", data->fps);
+            if (!instance_data->first_line_printed) {
+               bool first_column = true;
+
+               instance_data->first_line_printed = true;
+
+#define OVERLAY_PARAM_BOOL(name) \
+               if (instance_data->params.enabled[OVERLAY_PARAM_ENABLED_##name]) { \
+                  fprintf(instance_data->params.output_file, \
+                          "%s%s%s", first_column ? "" : ", ", #name, \
+                          param_unit(OVERLAY_PARAM_ENABLED_##name)); \
+                  first_column = false; \
+               }
+#define OVERLAY_PARAM_CUSTOM(name)
+               OVERLAY_PARAMS
+#undef OVERLAY_PARAM_BOOL
+#undef OVERLAY_PARAM_CUSTOM
+               fprintf(instance_data->params.output_file, "\n");
+            }
+
+            for (int s = 0; s < OVERLAY_PARAM_ENABLED_MAX; s++) {
+               if (!instance_data->params.enabled[s])
+                  continue;
+               if (s == OVERLAY_PARAM_ENABLED_fps) {
+                  fprintf(instance_data->params.output_file,
+                          "%s%.2f", s == 0 ? "" : ", ", data->fps);
+               } else {
+                  fprintf(instance_data->params.output_file,
+                          "%s%" PRIu64, s == 0 ? "" : ", ",
+                          data->accumulated_stats.stats[s]);
+               }
+            }
+            fprintf(instance_data->params.output_file, "\n");
             fflush(instance_data->params.output_file);
          }
 
