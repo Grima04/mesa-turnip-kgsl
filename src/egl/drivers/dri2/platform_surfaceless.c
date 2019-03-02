@@ -301,8 +301,13 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 
       char *driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
       if (swrast) {
-         /* Use kms swrast only with vgem */
-         if (strcmp(driver_name, "vgem") == 0)
+         /* Use kms swrast only with vgem / virtio_gpu.
+          * virtio-gpu fallbacks to software rendering when 3D features
+          * are unavailable since 6c5ab, and kms_swrast is more
+          * feature complete than swrast.
+          */
+         if (strcmp(driver_name, "vgem") == 0 ||
+             strcmp(driver_name, "virtio_gpu") == 0)
             dri2_dpy->driver_name = strdup("kms_swrast");
          free(driver_name);
       } else {
