@@ -148,6 +148,16 @@
 #define RENCODE_FEEDBACK_BUFFER_MODE_LINEAR 			0
 #define RENCODE_FEEDBACK_BUFFER_MODE_CIRCULAR			1
 
+#define RADEON_ENC_CS(value) (enc->cs->current.buf[enc->cs->current.cdw++] = (value))
+#define RADEON_ENC_BEGIN(cmd) { \
+	uint32_t *begin = &enc->cs->current.buf[enc->cs->current.cdw++]; \
+RADEON_ENC_CS(cmd)
+#define RADEON_ENC_READ(buf, domain, off) radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_READ, (domain), (off))
+#define RADEON_ENC_WRITE(buf, domain, off) radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_WRITE, (domain), (off))
+#define RADEON_ENC_READWRITE(buf, domain, off) radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_READWRITE, (domain), (off))
+#define RADEON_ENC_END() *begin = (&enc->cs->current.buf[enc->cs->current.cdw] - begin) * 4; \
+	enc->total_task_size += *begin;}
+
 typedef struct rvcn_enc_session_info_s
 {
     uint32_t	interface_version;
