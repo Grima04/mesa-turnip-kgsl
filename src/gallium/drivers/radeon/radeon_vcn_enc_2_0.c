@@ -72,7 +72,7 @@ static void radeon_enc_quality_params(struct radeon_encoder *enc)
 	enc->enc_pic.quality_params.scene_change_sensitivity = 0;
 	enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
 
-	RADEON_ENC_BEGIN(RENCODE_IB_PARAM_QUALITY_PARAMS);
+	RADEON_ENC_BEGIN(enc->cmd.quality_params);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_sensitivity);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_min_idr_interval);
@@ -81,7 +81,7 @@ static void radeon_enc_quality_params(struct radeon_encoder *enc)
 
 static void radeon_enc_loop_filter_hevc(struct radeon_encoder *enc)
 {
-	RADEON_ENC_BEGIN(RENCODE_HEVC_IB_PARAM_LOOP_FILTER);
+	RADEON_ENC_BEGIN(enc->cmd.deblocking_filter_hevc);
 	RADEON_ENC_CS(enc->enc_pic.hevc_deblock.loop_filter_across_slices_enabled);
 	RADEON_ENC_CS(enc->enc_pic.hevc_deblock.deblocking_filter_disabled);
 	RADEON_ENC_CS(enc->enc_pic.hevc_deblock.beta_offset_div2);
@@ -94,7 +94,7 @@ static void radeon_enc_loop_filter_hevc(struct radeon_encoder *enc)
 
 static void radeon_enc_nalu_sps_hevc(struct radeon_encoder *enc)
 {
-	RADEON_ENC_BEGIN(RENCODE_IB_PARAM_DIRECT_OUTPUT_NALU);
+	RADEON_ENC_BEGIN(enc->cmd.nalu);
 	RADEON_ENC_CS(RENCODE_DIRECT_OUTPUT_NALU_TYPE_SPS);
 	uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
 	int i;
@@ -174,7 +174,7 @@ static void radeon_enc_nalu_sps_hevc(struct radeon_encoder *enc)
 
 static void radeon_enc_nalu_pps_hevc(struct radeon_encoder *enc)
 {
-	RADEON_ENC_BEGIN(RENCODE_IB_PARAM_DIRECT_OUTPUT_NALU);
+	RADEON_ENC_BEGIN(enc->cmd.nalu);
 	RADEON_ENC_CS(RENCODE_DIRECT_OUTPUT_NALU_TYPE_PPS);
 	uint32_t *size_in_bytes = &enc->cs->current.buf[enc->cs->current.cdw++];
 	radeon_enc_reset(enc);
@@ -227,7 +227,7 @@ static void radeon_enc_nalu_pps_hevc(struct radeon_encoder *enc)
 
 static void radeon_enc_input_format(struct radeon_encoder *enc)
 {
-	RADEON_ENC_BEGIN(RENCODE_IB_PARAM_INPUT_FORMAT);
+	RADEON_ENC_BEGIN(enc->cmd.input_format);
 	RADEON_ENC_CS(0);
 	RADEON_ENC_CS(0);
 	RADEON_ENC_CS(0);
@@ -240,7 +240,7 @@ static void radeon_enc_input_format(struct radeon_encoder *enc)
 
 static void radeon_enc_output_format(struct radeon_encoder *enc)
 {
-	RADEON_ENC_BEGIN(RENCODE_IB_PARAM_OUTPUT_FORMAT);
+	RADEON_ENC_BEGIN(enc->cmd.output_format);
 	RADEON_ENC_CS(0);
 	RADEON_ENC_CS(0);
 	RADEON_ENC_CS(0);
@@ -283,4 +283,34 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
 		enc->nalu_sps = radeon_enc_nalu_sps_hevc;
 		enc->nalu_pps = radeon_enc_nalu_pps_hevc;
 	}
+
+	enc->cmd.session_info = RENCODE_IB_PARAM_SESSION_INFO;
+	enc->cmd.task_info = RENCODE_IB_PARAM_TASK_INFO;
+	enc->cmd.session_init = RENCODE_IB_PARAM_SESSION_INIT;
+	enc->cmd.layer_control = RENCODE_IB_PARAM_LAYER_CONTROL;
+	enc->cmd.layer_select = RENCODE_IB_PARAM_LAYER_SELECT;
+	enc->cmd.rc_session_init = RENCODE_IB_PARAM_RATE_CONTROL_SESSION_INIT;
+	enc->cmd.rc_layer_init = RENCODE_IB_PARAM_RATE_CONTROL_LAYER_INIT;
+	enc->cmd.rc_per_pic = RENCODE_IB_PARAM_RATE_CONTROL_PER_PICTURE;
+	enc->cmd.quality_params = RENCODE_IB_PARAM_QUALITY_PARAMS;
+	enc->cmd.nalu = RENCODE_IB_PARAM_DIRECT_OUTPUT_NALU;
+	enc->cmd.slice_header = RENCODE_IB_PARAM_SLICE_HEADER;
+	enc->cmd.input_format = RENCODE_IB_PARAM_INPUT_FORMAT;
+	enc->cmd.output_format = RENCODE_IB_PARAM_OUTPUT_FORMAT;
+	enc->cmd.enc_params = RENCODE_IB_PARAM_ENCODE_PARAMS;
+	enc->cmd.intra_refresh = RENCODE_IB_PARAM_INTRA_REFRESH;
+	enc->cmd.ctx = RENCODE_IB_PARAM_ENCODE_CONTEXT_BUFFER;
+	enc->cmd.bitstream = RENCODE_IB_PARAM_VIDEO_BITSTREAM_BUFFER;
+	enc->cmd.feedback = RENCODE_IB_PARAM_FEEDBACK_BUFFER;
+	enc->cmd.slice_control_hevc = RENCODE_HEVC_IB_PARAM_SLICE_CONTROL;
+	enc->cmd.spec_misc_hevc = RENCODE_HEVC_IB_PARAM_SPEC_MISC;
+	enc->cmd.deblocking_filter_hevc = RENCODE_HEVC_IB_PARAM_LOOP_FILTER;
+	enc->cmd.slice_control_h264 = RENCODE_H264_IB_PARAM_SLICE_CONTROL;
+	enc->cmd.spec_misc_h264 = RENCODE_H264_IB_PARAM_SPEC_MISC;
+	enc->cmd.enc_params_h264 = RENCODE_H264_IB_PARAM_ENCODE_PARAMS;
+	enc->cmd.deblocking_filter_h264 = RENCODE_H264_IB_PARAM_DEBLOCKING_FILTER;
+
+	enc->enc_pic.session_info.interface_version =
+		((RENCODE_FW_INTERFACE_MAJOR_VERSION << RENCODE_IF_MAJOR_VERSION_SHIFT) |
+		(RENCODE_FW_INTERFACE_MINOR_VERSION << RENCODE_IF_MINOR_VERSION_SHIFT));
 }

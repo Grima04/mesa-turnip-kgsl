@@ -356,6 +356,36 @@ typedef struct rvcn_enc_feedback_buffer_s
     uint32_t	feedback_data_size;
 } rvcn_enc_feedback_buffer_t;
 
+typedef struct rvcn_enc_cmd_s
+{
+    uint32_t	session_info;
+    uint32_t	task_info;
+    uint32_t	session_init;
+    uint32_t	layer_control;
+    uint32_t	layer_select;
+    uint32_t	rc_session_init;
+    uint32_t	rc_layer_init;
+    uint32_t	rc_per_pic;
+    uint32_t	quality_params;
+    uint32_t	slice_header;
+    uint32_t	enc_params;
+    uint32_t	intra_refresh;
+    uint32_t	ctx;
+    uint32_t	bitstream;
+    uint32_t	feedback;
+    uint32_t	nalu;
+    uint32_t	slice_control_hevc;
+    uint32_t	spec_misc_hevc;
+    uint32_t	enc_params_hevc;
+    uint32_t	deblocking_filter_hevc;
+    uint32_t	slice_control_h264;
+    uint32_t	spec_misc_h264;
+    uint32_t	enc_params_h264;
+    uint32_t	deblocking_filter_h264;
+    uint32_t	input_format;
+    uint32_t	output_format;
+} rvcn_enc_cmd_t;
+
 typedef void (*radeon_enc_get_buffer)(struct pipe_resource *resource,
 		struct pb_buffer **handle,
 		struct radeon_surf **surface);
@@ -403,6 +433,7 @@ struct radeon_enc_pic {
 	bool	pcm_enabled_flag;
 	bool	sps_temporal_mvp_enabled_flag;
 
+	rvcn_enc_session_info_t session_info;
 	rvcn_enc_task_info_t	task_info;
 	rvcn_enc_session_init_t	session_init;
 	rvcn_enc_layer_control_t	layer_ctrl;
@@ -485,6 +516,7 @@ struct radeon_encoder {
 	struct rvid_buffer		*fb;
 	struct rvid_buffer		cpb;
 	struct radeon_enc_pic	enc_pic;
+	rvcn_enc_cmd_t	cmd;
 
 	unsigned			alignment;
 	unsigned			shifter;
