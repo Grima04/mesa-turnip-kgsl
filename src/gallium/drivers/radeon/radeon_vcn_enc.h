@@ -461,6 +461,8 @@ struct radeon_encoder {
 	void (*op_init_rc_vbv)(struct radeon_encoder *enc);
 	void (*op_speed)(struct radeon_encoder *enc);
 	void (*encode_headers)(struct radeon_encoder *enc);
+	void (*input_format)(struct radeon_encoder *enc);
+	void (*output_format)(struct radeon_encoder *enc);
 
 	unsigned			stream_handle;
 

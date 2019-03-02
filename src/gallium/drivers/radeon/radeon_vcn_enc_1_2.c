@@ -1112,7 +1112,7 @@ static void radeon_enc_headers_hevc(struct radeon_encoder *enc)
 		enc->nalu_sps(enc);
 	}
 	enc->slice_header(enc);
-	enc->encode_params_codec_spec(enc);
+	enc->encode_params(enc);
 }
 
 static void encode(struct radeon_encoder *enc)
@@ -1174,6 +1174,7 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
 		enc->nalu_sps = radeon_enc_nalu_sps;
 		enc->nalu_pps = radeon_enc_nalu_pps;
 		enc->slice_header = radeon_enc_slice_header;
+		enc->encode_params = radeon_enc_encode_params;
 		enc->encode_params_codec_spec = radeon_enc_encode_params_h264;
 		enc->encode_headers = radeon_enc_headers_h264;
 	} else if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC) {
@@ -1186,7 +1187,7 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
 		enc->nalu_vps = radeon_enc_nalu_vps;
 		enc->nalu_aud = radeon_enc_nalu_aud_hevc;
 		enc->slice_header = radeon_enc_slice_header_hevc;
-		enc->encode_params_codec_spec = radeon_enc_encode_params_hevc;
+		enc->encode_params = radeon_enc_encode_params_hevc;
 		enc->encode_headers = radeon_enc_headers_hevc;
 	}
 }
