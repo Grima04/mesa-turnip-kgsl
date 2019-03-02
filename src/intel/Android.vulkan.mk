@@ -318,7 +318,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_intel_compiler \
 	libmesa_anv_entrypoints
 
-LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES) libz libsync liblog
+LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES) libexpat libz libsync liblog
 
 include $(MESA_COMMON_MK)
 include $(BUILD_SHARED_LIBRARY)
