@@ -83,6 +83,7 @@ extern uint64_t INTEL_DEBUG;
 #define DEBUG_NO_HIZ              (1ull << 39)
 #define DEBUG_COLOR               (1ull << 40)
 #define DEBUG_REEMIT              (1ull << 41)
+#define DEBUG_SOFT64              (1ull << 42)
 
 /* These flags are not compatible with the disk shader cache */
 #define DEBUG_DISK_CACHE_DISABLE_MASK DEBUG_SHADER_TIME
@@ -90,7 +91,7 @@ extern uint64_t INTEL_DEBUG;
 /* These flags may affect program generation */
 #define DEBUG_DISK_CACHE_MASK \
    (DEBUG_NO16 | DEBUG_NO_DUAL_OBJECT_GS | DEBUG_NO8 |  DEBUG_SPILL_FS | \
-   DEBUG_SPILL_VEC4 | DEBUG_NO_COMPACTION | DEBUG_DO32)
+   DEBUG_SPILL_VEC4 | DEBUG_NO_COMPACTION | DEBUG_DO32 | DEBUG_SOFT64)
 
 #ifdef HAVE_ANDROID_PLATFORM
 #define LOG_TAG "INTEL-MESA"
