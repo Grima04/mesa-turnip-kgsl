@@ -484,10 +484,11 @@ static void destroy_command_buffer_data(struct command_buffer_data *data)
 static struct swapchain_data *new_swapchain_data(VkSwapchainKHR swapchain,
                                                  struct device_data *device_data)
 {
+   struct instance_data *instance_data = device_data->instance;
    struct swapchain_data *data = rzalloc(NULL, struct swapchain_data);
    data->device = device_data;
    data->swapchain = swapchain;
-   data->window_size = ImVec2(300, 300);
+   data->window_size = ImVec2(instance_data->params.width, instance_data->params.height);
    map_object((void *) data->swapchain, data);
    return data;
 }

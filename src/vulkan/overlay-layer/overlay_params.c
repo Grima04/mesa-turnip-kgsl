@@ -59,6 +59,15 @@ parse_no_display(const char *str)
    return strtol(str, NULL, 0) != 0;
 }
 
+static unsigned
+parse_unsigned(const char *str)
+{
+   return strtol(str, NULL, 0);
+}
+
+#define parse_width(s) parse_unsigned(s)
+#define parse_height(s) parse_unsigned(s)
+
 static bool
 parse_help(const char *str)
 {
@@ -73,6 +82,8 @@ parse_help(const char *str)
    fprintf(stderr, "\tfps_sampling_period=number-of-milliseconds\n");
    fprintf(stderr, "\tno_display=0|1\n");
    fprintf(stderr, "\toutput_file=/path/to/output.txt\n");
+   fprintf(stderr, "\twidth=width-in-pixels\n");
+   fprintf(stderr, "\theight=height-in-pixels\n");
 
    return true;
 }
@@ -136,6 +147,7 @@ parse_overlay_env(struct overlay_params *params,
    params->enabled[OVERLAY_PARAM_ENABLED_fps] = true;
    params->enabled[OVERLAY_PARAM_ENABLED_frame_timing] = true;
    params->fps_sampling_period = 500000; /* 500ms */
+   params->width = params->height = 300;
 
    if (!env)
       return;
