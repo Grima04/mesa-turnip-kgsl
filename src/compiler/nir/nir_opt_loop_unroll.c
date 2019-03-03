@@ -564,7 +564,7 @@ is_loop_small_enough_to_unroll(nir_shader *shader, nir_loop_info *li)
       return true;
 
    bool loop_not_too_large =
-      li->num_instructions * li->max_trip_count <= max_iter * LOOP_UNROLL_LIMIT;
+      li->instr_cost * li->max_trip_count <= max_iter * LOOP_UNROLL_LIMIT;
 
    return loop_not_too_large;
 }

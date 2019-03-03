@@ -114,21 +114,83 @@ init_loop_def(nir_ssa_def *def, void *void_init_loop_state)
    return true;
 }
 
+/** Calculate an estimated cost in number of instructions
+ *
+ * We do this so that we don't unroll loops which will later get massively
+ * inflated due to int64 or fp64 lowering.  The estimates provided here don't
+ * have to be massively accurate; they just have to be good enough that loop
+ * unrolling doesn't cause things to blow up too much.
+ */
+static unsigned
+instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
+{
+   if (instr->type == nir_instr_type_intrinsic ||
+       instr->type == nir_instr_type_tex)
+      return 1;
+
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   const nir_op_info *info = &nir_op_infos[alu->op];
+
+   /* Assume everything 16 or 32-bit is cheap.
+    *
+    * There are no 64-bit ops that don't have a 64-bit thing as their
+    * destination or first source.
+    */
+   if (nir_dest_bit_size(alu->dest.dest) < 64 &&
+       nir_src_bit_size(alu->src[0].src) < 64)
+      return 1;
+
+   bool is_fp64 = nir_dest_bit_size(alu->dest.dest) == 64 &&
+      nir_alu_type_get_base_type(info->output_type) == nir_type_float;
+   for (unsigned i = 0; i < info->num_inputs; i++) {
+      if (nir_src_bit_size(alu->src[i].src) == 64 &&
+          nir_alu_type_get_base_type(info->input_types[i]) == nir_type_float)
+         is_fp64 = true;
+   }
+
+   if (is_fp64) {
+      /* If it's something lowered normally, it's expensive. */
+      unsigned cost = 1;
+      if (options->lower_doubles_options &
+          nir_lower_doubles_op_to_options_mask(alu->op))
+         cost *= 20;
+
+      /* If it's full software, it's even more expensive */
+      if (options->lower_doubles_options & nir_lower_fp64_full_software)
+         cost *= 100;
+
+      return cost;
+   } else {
+      if (options->lower_int64_options &
+          nir_lower_int64_op_to_options_mask(alu->op)) {
+         /* These require a doing the division algorithm. */
+         if (alu->op == nir_op_idiv || alu->op == nir_op_udiv ||
+             alu->op == nir_op_imod || alu->op == nir_op_umod ||
+             alu->op == nir_op_irem)
+            return 100;
+
+         /* Other int64 lowering isn't usually all that expensive */
+         return 5;
+      }
+
+      return 1;
+   }
+}
+
 static bool
 init_loop_block(nir_block *block, loop_info_state *state,
-                bool in_if_branch, bool in_nested_loop)
+                bool in_if_branch, bool in_nested_loop,
+                const nir_shader_compiler_options *options)
 {
    init_loop_state init_state = {.in_if_branch = in_if_branch,
                                  .in_nested_loop = in_nested_loop,
                                  .state = state };
 
    nir_foreach_instr(instr, block) {
-      if (instr->type == nir_instr_type_intrinsic ||
-          instr->type == nir_instr_type_alu ||
-          instr->type == nir_instr_type_tex) {
-         state->loop->info->num_instructions++;
-      }
-
+      state->loop->info->instr_cost += instr_cost(instr, options);
       nir_foreach_ssa_def(instr, init_loop_def, &init_state);
    }
 
@@ -746,6 +808,9 @@ force_unroll_heuristics(loop_info_state *state, nir_block *block)
 static void
 get_loop_info(loop_info_state *state, nir_function_impl *impl)
 {
+   nir_shader *shader = impl->function->shader;
+   const nir_shader_compiler_options *options = shader->options;
+
    /* Initialize all variables to "outside_loop". This also marks defs
     * invariant and constant if they are nir_instr_type_load_consts
     */
@@ -761,17 +826,18 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
       switch (node->type) {
 
       case nir_cf_node_block:
-         init_loop_block(nir_cf_node_as_block(node), state, false, false);
+         init_loop_block(nir_cf_node_as_block(node), state,
+                         false, false, options);
          break;
 
       case nir_cf_node_if:
          nir_foreach_block_in_cf_node(block, node)
-            init_loop_block(block, state, true, false);
+            init_loop_block(block, state, true, false, options);
          break;
 
       case nir_cf_node_loop:
          nir_foreach_block_in_cf_node(block, node) {
-            init_loop_block(block, state, false, true);
+            init_loop_block(block, state, false, true, options);
          }
          break;
 

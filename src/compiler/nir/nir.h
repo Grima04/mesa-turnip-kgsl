@@ -1915,8 +1915,8 @@ typedef struct {
 } nir_loop_terminator;
 
 typedef struct {
-   /* Number of instructions in the loop */
-   unsigned num_instructions;
+   /* Estimated cost (in number of instructions) of the loop */
+   unsigned instr_cost;
 
    /* Maximum number of times the loop is run (if known) */
    unsigned max_trip_count;
