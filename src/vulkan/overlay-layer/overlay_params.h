@@ -34,6 +34,7 @@ extern "C" {
 
 #define OVERLAY_PARAMS                               \
    OVERLAY_PARAM_BOOL(fps)                           \
+   OVERLAY_PARAM_BOOL(frame)                         \
    OVERLAY_PARAM_BOOL(frame_timing)                  \
    OVERLAY_PARAM_BOOL(submit)                        \
    OVERLAY_PARAM_BOOL(draw)                          \

@@ -678,7 +678,8 @@ static void compute_swapchain_display(struct swapchain_data *data)
 
    for (uint32_t s = 0; s < OVERLAY_PARAM_ENABLED_MAX; s++) {
       if (!instance_data->params.enabled[s] ||
-          s == OVERLAY_PARAM_ENABLED_fps)
+          s == OVERLAY_PARAM_ENABLED_fps ||
+          s == OVERLAY_PARAM_ENABLED_frame)
          continue;
 
       char hash[40];
@@ -1560,6 +1561,8 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
    struct device_data *device_data = queue_data->device;
    struct instance_data *instance_data = device_data->instance;
    uint32_t query_results[OVERLAY_QUERY_COUNT];
+
+   device_data->frame_stats.stats[OVERLAY_PARAM_ENABLED_frame]++;
 
    if (list_length(&queue_data->running_command_buffer) > 0) {
       /* Before getting the query results, make sure the operations have
