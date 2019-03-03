@@ -177,7 +177,7 @@ i965_oa_sources = custom_target(
 libi965 = static_library(
   'i965',
   [files_i965, i965_oa_sources, ir_expression_operation_h,
-   xmlpool_options_h, float64_glsl_h],
+   xmlpool_options_h],
   include_directories : [
     inc_common, inc_intel, inc_dri_common, inc_util, inc_include,
   ],

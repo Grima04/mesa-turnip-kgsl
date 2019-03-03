@@ -25,14 +25,18 @@
  *
  */
 
+#include "float64_glsl.h"
 #include "glsl_to_nir.h"
 #include "ir_visitor.h"
 #include "ir_hierarchical_visitor.h"
 #include "ir.h"
+#include "program.h"
 #include "compiler/nir/nir_control_flow.h"
 #include "compiler/nir/nir_builder.h"
+#include "main/errors.h"
 #include "main/imports.h"
 #include "main/mtypes.h"
+#include "main/shaderobj.h"
 #include "util/u_math.h"
 
 /*
@@ -2323,4 +2327,41 @@ nir_visitor::visit(ir_barrier *)
    nir_intrinsic_instr *instr =
       nir_intrinsic_instr_create(this->shader, nir_intrinsic_barrier);
    nir_builder_instr_insert(&b, &instr->instr);
+}
+
+nir_shader *
+glsl_float64_funcs_to_nir(struct gl_context *ctx,
+                          const nir_shader_compiler_options *options)
+{
+   /* We pretend it's a vertex shader.  Ultimately, the stage shouldn't
+    * matter because we're not optimizing anything here.
+    */
+   struct gl_shader *sh = _mesa_new_shader(-1, MESA_SHADER_VERTEX);
+   sh->Source = float64_source;
+   sh->CompileStatus = COMPILE_FAILURE;
+   _mesa_glsl_compile_shader(ctx, sh, false, false, true);
+
+   if (!sh->CompileStatus) {
+      if (sh->InfoLog) {
+         _mesa_problem(ctx,
+                       "fp64 software impl compile failed:\n%s\nsource:\n%s\n",
+                       sh->InfoLog, float64_source);
+      }
+      return NULL;
+   }
+
+   nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_VERTEX, options, NULL);
+
+   nir_visitor v1(nir);
+   nir_function_visitor v2(&v1);
+   v2.run(sh->ir);
+   visit_exec_list(sh->ir, &v1);
+
+   /* _mesa_delete_shader will try to free sh->Source but it's static const */
+   sh->Source = NULL;
+   _mesa_delete_shader(ctx, sh);
+
+   nir_validate_shader(nir, "float64_funcs_to_nir");
+
+   return nir;
 }

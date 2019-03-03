@@ -48,7 +48,6 @@
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/ir_optimization.h"
 #include "compiler/glsl/string_to_uint_map.h"
-#include "compiler/glsl/float64_glsl.h"
 
 static int
 type_size(const struct glsl_type *type)
@@ -341,50 +340,6 @@ st_nir_opts(nir_shader *nir, bool scalar)
    } while (progress);
 }
 
-static nir_shader *
-compile_fp64_funcs(struct gl_context *ctx,
-                   const nir_shader_compiler_options *options,
-                   void *mem_ctx,
-                   gl_shader_stage stage)
-{
-   const GLuint name = ~0;
-   struct gl_shader *sh;
-
-   sh = _mesa_new_shader(name, stage);
-
-   sh->Source = float64_source;
-   sh->CompileStatus = COMPILE_FAILURE;
-   _mesa_compile_shader(ctx, sh);
-
-   if (!sh->CompileStatus) {
-      if (sh->InfoLog) {
-         _mesa_problem(ctx,
-                       "fp64 software impl compile failed:\n%s\nsource:\n%s\n",
-                       sh->InfoLog, float64_source);
-      }
-   }
-
-   struct gl_shader_program *sh_prog;
-   sh_prog = _mesa_new_shader_program(name);
-   sh_prog->Label = NULL;
-   sh_prog->NumShaders = 1;
-   sh_prog->Shaders = (struct gl_shader **)malloc(sizeof(struct gl_shader *));
-   sh_prog->Shaders[0] = sh;
-
-   struct gl_linked_shader *linked = rzalloc(NULL, struct gl_linked_shader);
-   linked->Stage = stage;
-   linked->Program =
-      ctx->Driver.NewProgram(ctx, _mesa_shader_stage_to_program(stage),
-                             name, false);
-
-   linked->ir = sh->ir;
-   sh_prog->_LinkedShaders[stage] = linked;
-
-   nir_shader *nir = glsl_to_nir(sh_prog, stage, options);
-
-   return nir_shader_clone(mem_ctx, nir);
-}
-
 /* First third of converting glsl_to_nir.. this leaves things in a pre-
  * nir_lower_io state, so that shader variants can more easily insert/
  * replace variables, etc.
@@ -426,10 +381,8 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (nir->info.uses_64bit &&
        (options->lower_doubles_options & nir_lower_fp64_full_software) != 0) {
-      nir_shader *fp64 =
-         compile_fp64_funcs(st->ctx, options, ralloc_parent(nir),
-                            nir->info.stage);
-      nir_validate_shader(fp64, "fp64");
+      nir_shader *fp64 = glsl_float64_funcs_to_nir(st->ctx, options);
+      ralloc_steal(ralloc_parent(nir), fp64);
       exec_list_append(&nir->functions, &fp64->functions);
    }
 
