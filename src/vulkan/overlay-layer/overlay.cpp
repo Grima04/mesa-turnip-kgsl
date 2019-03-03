@@ -1527,7 +1527,7 @@ static void before_present(struct swapchain_data *swapchain_data,
    }
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateSwapchainKHR(
+static VkResult overlay_CreateSwapchainKHR(
     VkDevice                                    device,
     const VkSwapchainCreateInfoKHR*             pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -1542,7 +1542,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateSwapchainKHR(
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_DestroySwapchainKHR(
+static void overlay_DestroySwapchainKHR(
     VkDevice                                    device,
     VkSwapchainKHR                              swapchain,
     const VkAllocationCallbacks*                pAllocator)
@@ -1554,7 +1554,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_DestroySwapchainKHR(
    destroy_swapchain_data(swapchain_data);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
+static VkResult overlay_QueuePresentKHR(
     VkQueue                                     queue,
     const VkPresentInfoKHR*                     pPresentInfo)
 {
@@ -1664,7 +1664,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueuePresentKHR(
    return result;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_AcquireNextImageKHR(
+static VkResult overlay_AcquireNextImageKHR(
     VkDevice                                    device,
     VkSwapchainKHR                              swapchain,
     uint64_t                                    timeout,
@@ -1686,7 +1686,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_AcquireNextImageKHR(
    return result;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_AcquireNextImage2KHR(
+static VkResult overlay_AcquireNextImage2KHR(
     VkDevice                                    device,
     const VkAcquireNextImageInfoKHR*            pAcquireInfo,
     uint32_t*                                   pImageIndex)
@@ -1704,7 +1704,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_AcquireNextImage2KHR(
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDraw(
+static void overlay_CmdDraw(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    vertexCount,
     uint32_t                                    instanceCount,
@@ -1718,7 +1718,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDraw(
                                firstVertex, firstInstance);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexed(
+static void overlay_CmdDrawIndexed(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    indexCount,
     uint32_t                                    instanceCount,
@@ -1733,7 +1733,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexed(
                                       firstIndex, vertexOffset, firstInstance);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndirect(
+static void overlay_CmdDrawIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1746,7 +1746,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndirect(
    device_data->vtable.CmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexedIndirect(
+static void overlay_CmdDrawIndexedIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1759,7 +1759,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexedIndirect(
    device_data->vtable.CmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount, stride);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndirectCountKHR(
+static void overlay_CmdDrawIndirectCountKHR(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1776,7 +1776,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndirectCountKHR(
                                                maxDrawCount, stride);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexedIndirectCountKHR(
+static void overlay_CmdDrawIndexedIndirectCountKHR(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1793,7 +1793,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDrawIndexedIndirectCountKHR(
                                                       maxDrawCount, stride);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDispatch(
+static void overlay_CmdDispatch(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    groupCountX,
     uint32_t                                    groupCountY,
@@ -1805,7 +1805,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDispatch(
    device_data->vtable.CmdDispatch(commandBuffer, groupCountX, groupCountY, groupCountZ);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdDispatchIndirect(
+static void overlay_CmdDispatchIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset)
@@ -1816,7 +1816,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdDispatchIndirect(
    device_data->vtable.CmdDispatchIndirect(commandBuffer, buffer, offset);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdBindPipeline(
+static void overlay_CmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipeline                                  pipeline)
@@ -1832,7 +1832,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdBindPipeline(
    device_data->vtable.CmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_BeginCommandBuffer(
+static VkResult overlay_BeginCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     const VkCommandBufferBeginInfo*             pBeginInfo)
 {
@@ -1909,7 +1909,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_BeginCommandBuffer(
    return result;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_EndCommandBuffer(
+static VkResult overlay_EndCommandBuffer(
     VkCommandBuffer                             commandBuffer)
 {
    struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
@@ -1930,7 +1930,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_EndCommandBuffer(
    return device_data->vtable.EndCommandBuffer(commandBuffer);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_ResetCommandBuffer(
+static VkResult overlay_ResetCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     VkCommandBufferResetFlags                   flags)
 {
@@ -1942,7 +1942,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_ResetCommandBuffer(
    return device_data->vtable.ResetCommandBuffer(commandBuffer, flags);
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_CmdExecuteCommands(
+static void overlay_CmdExecuteCommands(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    commandBufferCount,
     const VkCommandBuffer*                      pCommandBuffers)
@@ -1961,7 +1961,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_CmdExecuteCommands(
    device_data->vtable.CmdExecuteCommands(commandBuffer, commandBufferCount, pCommandBuffers);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_AllocateCommandBuffers(
+static VkResult overlay_AllocateCommandBuffers(
    VkDevice                           device,
    const VkCommandBufferAllocateInfo* pAllocateInfo,
    VkCommandBuffer*                   pCommandBuffers)
@@ -2018,7 +2018,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_AllocateCommandBuffers(
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_FreeCommandBuffers(
+static void overlay_FreeCommandBuffers(
    VkDevice               device,
    VkCommandPool          commandPool,
    uint32_t               commandBufferCount,
@@ -2051,7 +2051,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_FreeCommandBuffers(
                                           commandBufferCount, pCommandBuffers);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_QueueSubmit(
+static VkResult overlay_QueueSubmit(
     VkQueue                                     queue,
     uint32_t                                    submitCount,
     const VkSubmitInfo*                         pSubmits,
@@ -2091,7 +2091,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_QueueSubmit(
    return device_data->vtable.QueueSubmit(queue, submitCount, pSubmits, fence);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
+static VkResult overlay_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -2143,7 +2143,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_DestroyDevice(
+static void overlay_DestroyDevice(
     VkDevice                                    device,
     const VkAllocationCallbacks*                pAllocator)
 {
@@ -2153,7 +2153,7 @@ VKAPI_ATTR void VKAPI_CALL overlay_DestroyDevice(
    destroy_device_data(device_data);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateInstance(
+static VkResult overlay_CreateInstance(
     const VkInstanceCreateInfo*                 pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkInstance*                                 pInstance)
@@ -2195,7 +2195,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateInstance(
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL overlay_DestroyInstance(
+static void overlay_DestroyInstance(
     VkInstance                                  instance,
     const VkAllocationCallbacks*                pAllocator)
 {
@@ -2220,6 +2220,7 @@ static const struct {
 
    ADD_HOOK(CmdDraw),
    ADD_HOOK(CmdDrawIndexed),
+   ADD_HOOK(CmdDrawIndirect),
    ADD_HOOK(CmdDrawIndexedIndirect),
    ADD_HOOK(CmdDispatch),
    ADD_HOOK(CmdDispatchIndirect),
