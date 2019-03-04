@@ -665,27 +665,6 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       OPT(nir_lower_alu_to_scalar);
    }
 
-   /* Run opt_algebraic before int64 lowering so we can hopefully get rid
-    * of some int64 instructions.
-    */
-   OPT(nir_opt_algebraic);
-
-   /* Lower 64-bit operations before nir_optimize so that loop unrolling sees
-    * their actual cost.
-    */
-   bool lowered_64bit_ops = false;
-   do {
-      progress = false;
-
-      OPT(nir_lower_int64, nir->options->lower_int64_options);
-      OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
-
-      /* Necessary to lower add -> sub and div -> mul/rcp */
-      OPT(nir_opt_algebraic);
-
-      lowered_64bit_ops |= progress;
-   } while (progress);
-
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       OPT(nir_lower_gs_intrinsics);
 
@@ -713,6 +692,19 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    OPT(nir_split_struct_vars, nir_var_function_temp);
 
    nir = brw_nir_optimize(nir, compiler, is_scalar, true);
+
+   bool lowered_64bit_ops = false;
+   do {
+      progress = false;
+
+      OPT(nir_lower_int64, nir->options->lower_int64_options);
+      OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
+
+      /* Necessary to lower add -> sub and div -> mul/rcp */
+      OPT(nir_opt_algebraic);
+
+      lowered_64bit_ops |= progress;
+   } while (progress);
 
    /* This needs to be run after the first optimization pass but before we
     * lower indirect derefs away
