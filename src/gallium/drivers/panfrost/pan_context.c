@@ -1560,14 +1560,14 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate)
 
         /* If visual, we can stall a frame */
 
-        if (panfrost_is_scanout(ctx) && !flush_immediate)
+        if (!flush_immediate)
                 screen->driver->force_flush_fragment(ctx);
 
         screen->last_fragment_id = fragment_id;
         screen->last_fragment_flushed = false;
 
         /* If readback, flush now (hurts the pipelined performance) */
-        if (panfrost_is_scanout(ctx) && flush_immediate)
+        if (flush_immediate)
                 screen->driver->force_flush_fragment(ctx);
 
         if (screen->driver->dump_counters && pan_counters_base) {
