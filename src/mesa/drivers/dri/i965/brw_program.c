@@ -112,14 +112,14 @@ brw_create_nir(struct brw_context *brw,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   nir_shader *softfp64 = NULL;
    if ((options->lower_doubles_options & nir_lower_fp64_full_software) &&
        nir->info.uses_64bit) {
-      nir_shader *fp64 = glsl_float64_funcs_to_nir(ctx, options);
-      ralloc_steal(ralloc_parent(nir), fp64);
-      exec_list_append(&nir->functions, &fp64->functions);
+      softfp64 = glsl_float64_funcs_to_nir(ctx, options);
+      ralloc_steal(ralloc_parent(nir), softfp64);
    }
 
-   nir = brw_preprocess_nir(brw->screen->compiler, nir);
+   nir = brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
 

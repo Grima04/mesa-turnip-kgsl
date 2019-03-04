@@ -379,11 +379,11 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+   nir_shader *softfp64 = NULL;
    if (nir->info.uses_64bit &&
        (options->lower_doubles_options & nir_lower_fp64_full_software) != 0) {
-      nir_shader *fp64 = glsl_float64_funcs_to_nir(st->ctx, options);
-      ralloc_steal(ralloc_parent(nir), fp64);
-      exec_list_append(&nir->functions, &fp64->functions);
+      softfp64 = glsl_float64_funcs_to_nir(st->ctx, options);
+      ralloc_steal(ralloc_parent(nir), softfp64);
    }
 
    nir_variable_mode mask =
@@ -424,26 +424,11 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
          }
          if (options->lower_doubles_options) {
             NIR_PASS(progress, nir, nir_lower_doubles,
-                     options->lower_doubles_options);
+                     softfp64, options->lower_doubles_options);
          }
          NIR_PASS(progress, nir, nir_opt_algebraic);
          lowered_64bit_ops |= progress;
       } while (progress);
-
-      if (lowered_64bit_ops) {
-         NIR_PASS_V(nir, nir_lower_constant_initializers, nir_var_function_temp);
-         NIR_PASS_V(nir, nir_lower_returns);
-         NIR_PASS_V(nir, nir_inline_functions);
-         NIR_PASS_V(nir, nir_opt_deref);
-      }
-
-      const nir_function *entry_point = nir_shader_get_entrypoint(nir)->function;
-      foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-         if (func != entry_point) {
-            exec_node_remove(&func->node);
-         }
-      }
-      assert(exec_list_length(&nir->functions) == 1);
    }
 
    st_nir_opts(nir, is_scalar);

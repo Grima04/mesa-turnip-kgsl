@@ -653,7 +653,8 @@ lower_bit_size_callback(const nir_alu_instr *alu, UNUSED void *data)
  * is_scalar = true to scalarize everything prior to code gen.
  */
 nir_shader *
-brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
+brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
+                   const nir_shader *softfp64)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    UNUSED bool progress; /* Written by OPT */
@@ -677,28 +678,13 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
       progress = false;
 
       OPT(nir_lower_int64, nir->options->lower_int64_options);
-      OPT(nir_lower_doubles, nir->options->lower_doubles_options);
+      OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
 
       /* Necessary to lower add -> sub and div -> mul/rcp */
       OPT(nir_opt_algebraic);
 
       lowered_64bit_ops |= progress;
    } while (progress);
-
-   if (lowered_64bit_ops) {
-      OPT(nir_lower_constant_initializers, nir_var_function_temp);
-      OPT(nir_lower_returns);
-      OPT(nir_inline_functions);
-      OPT(nir_opt_deref);
-   }
-
-   const nir_function *entry_point = nir_shader_get_entrypoint(nir)->function;
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (func != entry_point) {
-         exec_node_remove(&func->node);
-      }
-   }
-   assert(exec_list_length(&nir->functions) == 1);
 
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       OPT(nir_lower_gs_intrinsics);
@@ -1098,7 +1084,7 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
 
    nir_validate_shader(nir, "in brw_nir_create_passthrough_tcs");
 
-   nir = brw_preprocess_nir(compiler, nir);
+   nir = brw_preprocess_nir(compiler, nir, NULL);
 
    return nir;
 }
