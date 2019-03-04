@@ -708,7 +708,7 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
    return true;
 }
 
-static bool
+bool
 nir_opt_deref_impl(nir_function_impl *impl)
 {
    bool progress = false;

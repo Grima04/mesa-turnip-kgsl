@@ -3325,6 +3325,7 @@ bool nir_opt_dead_cf(nir_shader *shader);
 
 bool nir_opt_dead_write_vars(nir_shader *shader);
 
+bool nir_opt_deref_impl(nir_function_impl *impl);
 bool nir_opt_deref(nir_shader *shader);
 
 bool nir_opt_find_array_copies(nir_shader *shader);
