@@ -892,6 +892,11 @@ si_lower_nir(struct si_shader_selector* sel)
 	} while (progress);
 
 	NIR_PASS_V(sel->nir, nir_lower_bool_to_int32);
+
+	/* Strip the resulting shader so that the shader cache is more likely
+	 * to hit from other similar shaders.
+	 */
+	nir_strip(sel->nir);
 }
 
 static void declare_nir_input_vs(struct si_shader_context *ctx,
