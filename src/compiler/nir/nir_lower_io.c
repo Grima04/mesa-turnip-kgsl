@@ -863,6 +863,12 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
       atomic->src[src++] = nir_src_for_ssa(intrin->src[1 + i].ssa);
    }
 
+   /* Global atomics don't have access flags because they assume that the
+    * address may be non-uniform.
+    */
+   if (!addr_format_is_global(addr_format))
+      nir_intrinsic_set_access(atomic, nir_intrinsic_access(intrin));
+
    assert(intrin->dest.ssa.num_components == 1);
    nir_ssa_dest_init(&atomic->instr, &atomic->dest,
                      1, intrin->dest.ssa.bit_size, intrin->dest.ssa.name);
