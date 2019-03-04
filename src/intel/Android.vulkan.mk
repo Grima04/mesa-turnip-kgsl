@@ -23,9 +23,10 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/Makefile.sources
 
-VK_ENTRYPOINTS_SCRIPT := $(MESA_PYTHON2) $(LOCAL_PATH)/vulkan/anv_entrypoints_gen.py
-
-VK_EXTENSIONS_SCRIPT := $(MESA_PYTHON2) $(LOCAL_PATH)/vulkan/anv_extensions_gen.py
+ANV_ENTRYPOINTS_GEN_SCRIPT := $(LOCAL_PATH)/vulkan/anv_entrypoints_gen.py
+ANV_EXTENSIONS_GEN_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions_gen.py
+ANV_EXTENSIONS_SCRIPT := $(LOCAL_PATH)/vulkan/anv_extensions.py
+VULKAN_API_XML := $(MESA_TOP)/src/vulkan/registry/vk.xml
 
 VULKAN_COMMON_INCLUDES := \
 	$(MESA_TOP)/include \
@@ -64,10 +65,13 @@ $(intermediates)/vulkan/dummy.c:
 	@echo "Gen Dummy: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	$(hide) touch $@
 
-$(intermediates)/vulkan/anv_entrypoints.h: $(intermediates)/vulkan/dummy.c
-	$(VK_ENTRYPOINTS_SCRIPT) \
+$(intermediates)/vulkan/anv_entrypoints.h: $(intermediates)/vulkan/dummy.c \
+					   $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
+					   $(ANV_EXTENSIONS_SCRIPT) \
+					   $(VULKAN_API_XML)
+	$(MESA_PYTHON2) $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
 		--outdir $(dir $@) \
-		--xml $(MESA_TOP)/src/vulkan/registry/vk.xml
+		--xml $(VULKAN_API_XML)
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
         $(intermediates)
@@ -241,22 +245,28 @@ LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_entrypoints.c
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_extensions.c
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_extensions.h
 
-$(intermediates)/vulkan/anv_entrypoints.c:
+$(intermediates)/vulkan/anv_entrypoints.c: $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
+					   $(ANV_EXTENSIONS_SCRIPT) \
+					   $(VULKAN_API_XML)
 	@mkdir -p $(dir $@)
-	$(VK_ENTRYPOINTS_SCRIPT) \
-		--xml $(MESA_TOP)/src/vulkan/registry/vk.xml \
+	$(MESA_PYTHON2) $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
+		--xml $(VULKAN_API_XML) \
 		--outdir $(dir $@)
 
-$(intermediates)/vulkan/anv_extensions.c:
+$(intermediates)/vulkan/anv_extensions.c: $(ANV_EXTENSIONS_GEN_SCRIPT) \
+					  $(ANV_EXTENSIONS_SCRIPT) \
+					  $(VULKAN_API_XML)
 	@mkdir -p $(dir $@)
-	$(VK_EXTENSIONS_SCRIPT) \
-		--xml $(MESA_TOP)/src/vulkan/registry/vk.xml \
+	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
+		--xml $(VULKAN_API_XML) \
 		--out-c $@
 
-$(intermediates)/vulkan/anv_extensions.h:
+$(intermediates)/vulkan/anv_extensions.h: $(ANV_EXTENSIONS_GEN_SCRIPT) \
+					   $(ANV_EXTENSIONS_SCRIPT) \
+					   $(VULKAN_API_XML)
 	@mkdir -p $(dir $@)
-	$(VK_EXTENSIONS_SCRIPT) \
-		--xml $(MESA_TOP)/src/vulkan/registry/vk.xml \
+	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
+		--xml $(VULKAN_API_XML) \
 		--out-h $@
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
