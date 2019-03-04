@@ -56,6 +56,12 @@ struct deref_node {
     */
    bool is_direct;
 
+   /* Set on a root node for a variable to indicate that variable is used by a
+    * cast or passed through some other sequence of instructions that are not
+    * derefs.
+    */
+   bool has_complex_use;
+
    struct deref_node *wildcard;
    struct deref_node *indirect;
    struct deref_node *children[0];
@@ -147,8 +153,13 @@ get_deref_node_recur(nir_deref_instr *deref,
    if (deref->deref_type == nir_deref_type_var)
       return get_deref_node_for_var(deref->var, state);
 
+   if (deref->deref_type == nir_deref_type_cast)
+      return NULL;
+
    struct deref_node *parent =
       get_deref_node_recur(nir_deref_instr_parent(deref), state);
+   if (parent == NULL)
+      return NULL;
 
    switch (deref->deref_type) {
    case nir_deref_type_struct:
@@ -363,9 +374,28 @@ path_may_be_aliased(nir_deref_path *path,
 {
    assert(path->path[0]->deref_type == nir_deref_type_var);
    nir_variable *var = path->path[0]->var;
+   struct deref_node *var_node = get_deref_node_for_var(var, state);
 
-   return path_may_be_aliased_node(get_deref_node_for_var(var, state),
-                                   &path->path[1], state);
+   /* First see if this variable is ever used by anything other than a
+    * load/store.  If there's even so much as a cast in the way, we have to
+    * assume aliasing and bail.
+    */
+   if (var_node->has_complex_use)
+      return true;
+
+   return path_may_be_aliased_node(var_node, &path->path[1], state);
+}
+
+static void
+register_complex_use(nir_deref_instr *deref,
+                     struct lower_variables_state *state)
+{
+   assert(deref->deref_type == nir_deref_type_var);
+   struct deref_node *node = get_deref_node_for_var(deref->var, state);
+   if (node == NULL)
+      return;
+
+   node->has_complex_use = true;
 }
 
 static void
@@ -421,26 +451,41 @@ register_variable_uses(nir_function_impl *impl,
 {
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
+         switch (instr->type) {
+         case nir_instr_type_deref: {
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
 
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if (deref->deref_type == nir_deref_type_var &&
+                nir_deref_instr_has_complex_use(deref))
+               register_complex_use(deref, state);
 
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_load_deref:
-            register_load_instr(intrin, state);
             break;
+         }
 
-         case nir_intrinsic_store_deref:
-            register_store_instr(intrin, state);
-            break;
+         case nir_instr_type_intrinsic: {
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-         case nir_intrinsic_copy_deref:
-            register_copy_instr(intrin, state);
+            switch (intrin->intrinsic) {
+            case nir_intrinsic_load_deref:
+               register_load_instr(intrin, state);
+               break;
+
+            case nir_intrinsic_store_deref:
+               register_store_instr(intrin, state);
+               break;
+
+            case nir_intrinsic_copy_deref:
+               register_copy_instr(intrin, state);
+               break;
+
+            default:
+               continue;
+            }
             break;
+         }
 
          default:
-            continue;
+            break;
          }
       }
    }
@@ -510,6 +555,9 @@ rename_variables(struct lower_variables_state *state)
                continue;
 
             struct deref_node *node = get_deref_node(deref, state);
+            if (node == NULL)
+               continue;
+
             if (node == UNDEF_NODE) {
                /* If we hit this path then we are referencing an invalid
                 * value.  Most likely, we unrolled something and are
@@ -560,6 +608,8 @@ rename_variables(struct lower_variables_state *state)
                continue;
 
             struct deref_node *node = get_deref_node(deref, state);
+            if (node == NULL)
+               continue;
 
             assert(intrin->src[1].is_ssa);
             nir_ssa_def *value = intrin->src[1].ssa;
