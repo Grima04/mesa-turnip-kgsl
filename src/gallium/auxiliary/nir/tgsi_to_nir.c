@@ -414,6 +414,7 @@ ttn_emit_declaration(struct ttn_compile *c)
          case TGSI_FILE_CONSTANT:
             var->data.mode = nir_var_uniform;
             var->name = ralloc_asprintf(var, "uniform_%d", idx);
+            var->data.location = idx;
 
             exec_list_push_tail(&b->shader->uniforms, &var->node);
             break;
