@@ -43,8 +43,11 @@ static const nir_shader_compiler_options options = {
 };
 
 struct nir_shader *
-ir2_tgsi_to_nir(const struct tgsi_token *tokens)
+ir2_tgsi_to_nir(const struct tgsi_token *tokens,
+		struct pipe_screen *screen)
 {
+	/* TODO: pass screen to tgsi_to_nir when it needs that. */
+	(void) screen;
 	return tgsi_to_nir(tokens, &options);
 }
 

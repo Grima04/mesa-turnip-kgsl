@@ -25,6 +25,7 @@
  */
 
 #include "pipe/p_state.h"
+#include "pipe/p_screen.h"
 #include "util/u_string.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -120,7 +121,8 @@ copy_stream_out(struct ir3_stream_output_info *i,
 struct ir3_shader *
 ir3_shader_create(struct ir3_compiler *compiler,
 		const struct pipe_shader_state *cso, gl_shader_stage type,
-		struct pipe_debug_callback *debug)
+		struct pipe_debug_callback *debug,
+		struct pipe_screen *screen)
 {
 	nir_shader *nir;
 	if (cso->type == PIPE_SHADER_IR_NIR) {
@@ -131,7 +133,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->tokens, 0);
 		}
-		nir = ir3_tgsi_to_nir(compiler, cso->tokens);
+		nir = ir3_tgsi_to_nir(compiler, cso->tokens, screen);
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
@@ -156,7 +158,8 @@ ir3_shader_create(struct ir3_compiler *compiler,
 struct ir3_shader *
 ir3_shader_create_compute(struct ir3_compiler *compiler,
 		const struct pipe_compute_state *cso,
-		struct pipe_debug_callback *debug)
+		struct pipe_debug_callback *debug,
+		struct pipe_screen *screen)
 {
 	nir_shader *nir;
 	if (cso->ir_type == PIPE_SHADER_IR_NIR) {
@@ -167,7 +170,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->prog, 0);
 		}
-		nir = ir3_tgsi_to_nir(compiler, cso->prog);
+		nir = ir3_tgsi_to_nir(compiler, cso->prog, screen);
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
@@ -176,8 +179,12 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 }
 
 struct nir_shader *
-ir3_tgsi_to_nir(struct ir3_compiler *compiler, const struct tgsi_token *tokens)
+ir3_tgsi_to_nir(struct ir3_compiler *compiler,
+		const struct tgsi_token *tokens,
+		struct pipe_screen *screen)
 {
+	/* TODO: pass screen to tgsi_to_nir when it needs that. */
+	(void) screen;
 	return tgsi_to_nir(tokens, ir3_get_compiler_options(compiler));
 }
 

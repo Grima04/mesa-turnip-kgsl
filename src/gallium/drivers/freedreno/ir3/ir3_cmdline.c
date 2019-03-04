@@ -49,6 +49,8 @@
 #include "compiler/nir_types.h"
 #include "compiler/spirv/nir_spirv.h"
 
+#include "pipe/p_context.h"
+
 static void dump_info(struct ir3_shader_variant *so, const char *str)
 {
 	uint32_t *bin;
@@ -462,7 +464,7 @@ int main(int argc, char **argv)
 		if (ir3_shader_debug & IR3_DBG_OPTMSGS)
 			tgsi_dump(toks, 0);
 
-		nir = ir3_tgsi_to_nir(compiler, toks);
+		nir = ir3_tgsi_to_nir(compiler, toks, NULL);
 		NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 	} else if (from_spirv) {
 		nir = load_spirv(filenames[0], entry, stage);

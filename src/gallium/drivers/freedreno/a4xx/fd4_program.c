@@ -43,7 +43,7 @@ create_shader_stateobj(struct pipe_context *pctx, const struct pipe_shader_state
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct ir3_compiler *compiler = ctx->screen->compiler;
-	return ir3_shader_create(compiler, cso, type, &ctx->debug);
+	return ir3_shader_create(compiler, cso, type, &ctx->debug, pctx->screen);
 }
 
 static void *

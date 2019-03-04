@@ -102,7 +102,7 @@ fd2_fp_state_create(struct pipe_context *pctx,
 			   (nir_lower_io_options)0);
 	} else {
 		assert(cso->type == PIPE_SHADER_IR_TGSI);
-		so->nir = ir2_tgsi_to_nir(cso->tokens);
+		so->nir = ir2_tgsi_to_nir(cso->tokens, pctx->screen);
 	}
 
 	if (ir2_optimize_nir(so->nir, true))
@@ -142,7 +142,7 @@ fd2_vp_state_create(struct pipe_context *pctx,
 			   (nir_lower_io_options)0);
 	} else {
 		assert(cso->type == PIPE_SHADER_IR_TGSI);
-		so->nir = ir2_tgsi_to_nir(cso->tokens);
+		so->nir = ir2_tgsi_to_nir(cso->tokens, pctx->screen);
 	}
 
 	if (ir2_optimize_nir(so->nir, true))
