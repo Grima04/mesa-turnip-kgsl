@@ -410,6 +410,8 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
      NIR_PASS_V(nir, nir_lower_alu_to_scalar);
    }
 
+   st_nir_opts(nir, is_scalar);
+
    if (lower_64bit) {
       bool lowered_64bit_ops = false;
       bool progress = false;
@@ -429,9 +431,10 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
          NIR_PASS(progress, nir, nir_opt_algebraic);
          lowered_64bit_ops |= progress;
       } while (progress);
-   }
 
-   st_nir_opts(nir, is_scalar);
+      if (progress)
+         st_nir_opts(nir, is_scalar);
+   }
 
    return nir;
 }
