@@ -656,13 +656,12 @@ clone_function_impl(clone_state *state, const nir_function_impl *fi)
 }
 
 nir_function_impl *
-nir_function_impl_clone(const nir_function_impl *fi)
+nir_function_impl_clone(nir_shader *shader, const nir_function_impl *fi)
 {
    clone_state state;
    init_clone_state(&state, NULL, false, false);
 
-   /* We use the same shader */
-   state.ns = fi->function->shader;
+   state.ns = shader;
 
    nir_function_impl *nfi = clone_function_impl(&state, fi);
 

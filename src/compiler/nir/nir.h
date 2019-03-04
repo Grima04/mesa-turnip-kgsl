@@ -2807,7 +2807,8 @@ void nir_print_instr(const nir_instr *instr, FILE *fp);
 void nir_print_deref(const nir_deref_instr *deref, FILE *fp);
 
 nir_shader *nir_shader_clone(void *mem_ctx, const nir_shader *s);
-nir_function_impl *nir_function_impl_clone(const nir_function_impl *fi);
+nir_function_impl *nir_function_impl_clone(nir_shader *shader,
+                                           const nir_function_impl *fi);
 nir_constant *nir_constant_clone(const nir_constant *c, nir_variable *var);
 nir_variable *nir_variable_clone(const nir_variable *c, nir_shader *shader);
 
@@ -2940,6 +2941,9 @@ bool nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes);
 bool nir_lower_returns_impl(nir_function_impl *impl);
 bool nir_lower_returns(nir_shader *shader);
 
+void nir_inline_function_impl(struct nir_builder *b,
+                              const nir_function_impl *impl,
+                              nir_ssa_def **params);
 bool nir_inline_functions(nir_shader *shader);
 
 bool nir_propagate_invariant(nir_shader *shader);
