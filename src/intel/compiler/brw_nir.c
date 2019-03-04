@@ -700,8 +700,6 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
    }
    assert(exec_list_length(&nir->functions) == 1);
 
-   OPT(nir_lower_constant_initializers, ~nir_var_function_temp);
-
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       OPT(nir_lower_gs_intrinsics);
 
