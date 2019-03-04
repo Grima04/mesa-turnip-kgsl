@@ -3378,6 +3378,8 @@ bool nir_opt_undef(nir_shader *shader);
 
 bool nir_opt_conditional_discard(nir_shader *shader);
 
+void nir_strip(nir_shader *shader);
+
 void nir_sweep(nir_shader *shader);
 
 void nir_remap_dual_slot_attributes(nir_shader *shader,
