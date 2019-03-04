@@ -584,6 +584,8 @@ VkResult anv_CreateDescriptorPool(
                          &device->surface_state_pool, 4096);
    pool->surface_state_free_list = NULL;
 
+   list_inithead(&pool->desc_sets);
+
    *pDescriptorPool = anv_descriptor_pool_to_handle(pool);
 
    return VK_SUCCESS;
@@ -606,6 +608,12 @@ void anv_DestroyDescriptorPool(
       anv_gem_close(device, pool->bo.gem_handle);
    }
    anv_state_stream_finish(&pool->surface_state_stream);
+
+   list_for_each_entry_safe(struct anv_descriptor_set, set,
+                            &pool->desc_sets, pool_link) {
+      anv_descriptor_set_destroy(device, pool, set);
+   }
+
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
@@ -682,6 +690,8 @@ anv_descriptor_pool_free_set(struct anv_descriptor_pool *pool,
       entry->size = set->size;
       pool->free_list = (char *) entry - pool->data;
    }
+
+   list_del(&set->pool_link);
 }
 
 struct surface_state_free_list_entry {
@@ -851,6 +861,8 @@ VkResult anv_AllocateDescriptorSets(
       result = anv_descriptor_set_create(device, pool, layout, &set);
       if (result != VK_SUCCESS)
          break;
+
+      list_addtail(&set->pool_link, &pool->desc_sets);
 
       pDescriptorSets[i] = anv_descriptor_set_to_handle(set);
    }
