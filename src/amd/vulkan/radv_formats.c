@@ -1032,10 +1032,22 @@ bool radv_format_pack_clear_color(VkFormat format,
 				assert(channel->size == 8);
 
 				v = util_format_linear_float_to_srgb_8unorm(value->float32[c]);
-			} else if (channel->type == VK_FORMAT_TYPE_UNSIGNED) {
-				v = MAX2(MIN2(value->float32[c], 1.0f), 0.0f) * ((1ULL << channel->size) - 1);
-			} else  {
-				v = MAX2(MIN2(value->float32[c], 1.0f), -1.0f) * ((1ULL << (channel->size - 1)) - 1);
+			} else {
+				float f = MIN2(value->float32[c], 1.0f);
+
+				if (channel->type == VK_FORMAT_TYPE_UNSIGNED) {
+					f = MAX2(f, 0.0f) * ((1ULL << channel->size) - 1);
+				} else {
+					f = MAX2(f, -1.0f) * ((1ULL << (channel->size - 1)) - 1);
+				}
+
+				/* The hardware rounds before conversion. */
+				if (f > 0)
+					f += 0.5f;
+				else
+					f -= 0.5f;
+
+				v = (uint64_t)f;
 			}
 		} else if (channel->type == VK_FORMAT_TYPE_FLOAT) {
 			if (channel->size == 32) {
