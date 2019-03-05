@@ -90,7 +90,7 @@ static inline boolean
 util_bitmask_resize(struct util_bitmask *bm,
                     unsigned minimum_index)
 {
-   unsigned minimum_size = minimum_index + 1;
+   const unsigned minimum_size = minimum_index + 1;
    unsigned new_size;
    util_bitmask_word *new_words;
 
@@ -131,7 +131,7 @@ util_bitmask_resize(struct util_bitmask *bm,
 
 
 /**
- * Lazily update the filled.
+ * Check if we can increment the filled counter.
  */
 static inline void
 util_bitmask_filled_set(struct util_bitmask *bm,
@@ -146,6 +146,10 @@ util_bitmask_filled_set(struct util_bitmask *bm,
    }
 }
 
+
+/**
+ * Check if we need to decrement the filled counter.
+ */
 static inline void
 util_bitmask_filled_unset(struct util_bitmask *bm,
                           unsigned index)
@@ -167,7 +171,7 @@ util_bitmask_add(struct util_bitmask *bm)
 
    assert(bm);
 
-   /* linear search for an empty index */
+   /* linear search for an empty index, starting at filled position */
    word = bm->filled / UTIL_BITMASK_BITS_PER_WORD;
    bit  = bm->filled % UTIL_BITMASK_BITS_PER_WORD;
    mask = 1 << bit;
@@ -249,9 +253,9 @@ boolean
 util_bitmask_get(struct util_bitmask *bm,
                  unsigned index)
 {
-   unsigned word = index / UTIL_BITMASK_BITS_PER_WORD;
-   unsigned bit  = index % UTIL_BITMASK_BITS_PER_WORD;
-   util_bitmask_word mask = 1 << bit;
+   const unsigned word = index / UTIL_BITMASK_BITS_PER_WORD;
+   const unsigned bit  = index % UTIL_BITMASK_BITS_PER_WORD;
+   const util_bitmask_word mask = 1 << bit;
 
    assert(bm);
 
