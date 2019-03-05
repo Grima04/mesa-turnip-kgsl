@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_common = [inc_include, include_directories(
-  '.', 'mapi', 'mesa', 'gallium/include', 'gallium/auxiliary')]
 inc_mesa = include_directories('mesa')
 inc_mapi = include_directories('mapi')
 inc_src = include_directories('.')
@@ -27,6 +25,7 @@ inc_gallium = include_directories('gallium/include')
 inc_gallium_aux = include_directories('gallium/auxiliary')
 inc_amd_common = include_directories('amd/common')
 inc_amd_common_llvm = include_directories('amd/llvm')
+inc_common = [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux]
 
 libglsl_util = static_library(
   'glsl_util',
