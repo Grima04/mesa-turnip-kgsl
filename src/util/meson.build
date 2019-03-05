@@ -170,7 +170,7 @@ endif
 _libmesa_util = static_library(
   'mesa_util',
   [files_mesa_util, format_srgb],
-  include_directories : inc_common,
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : deps_for_libmesa_util,
   link_with: libmesa_format,
   c_args : [c_msvc_compat_args, c_vis_args],
@@ -186,7 +186,7 @@ idep_mesautil = declare_dependency(
 _libxmlconfig = static_library(
   'xmlconfig',
   files_xmlconfig,
-  include_directories : inc_common,
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : [idep_mesautil, dep_expat, dep_m],
   c_args : [
     c_msvc_compat_args, c_vis_args,
@@ -211,7 +211,7 @@ if with_tests
     executable(
       'u_atomic_test',
       files('u_atomic_test.c'),
-      include_directories : inc_common,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : idep_mesautil,
       c_args : [c_msvc_compat_args],
     ),
@@ -223,7 +223,7 @@ if with_tests
     executable(
       'blob_test',
       files('blob_test.c'),
-      include_directories : inc_common,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : idep_mesautil,
       c_args : [c_msvc_compat_args],
     ),
@@ -235,7 +235,7 @@ if with_tests
     executable(
       'rb_tree_test',
       files('rb_tree_test.c'),
-      include_directories : inc_common,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : idep_mesautil,
       c_args : [c_msvc_compat_args],
     ),
@@ -247,7 +247,7 @@ if with_tests
     executable(
       'roundeven_test',
       files('roundeven_test.c'),
-      include_directories : inc_common,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       c_args : [c_msvc_compat_args],
       dependencies : [dep_m],
     ),
@@ -262,7 +262,7 @@ if with_tests
       executable(
         'mesa-sha1_test',
         files('mesa-sha1_test.c'),
-        include_directories : inc_common,
+        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
         link_with : _libmesa_util,
         c_args : [c_msvc_compat_args],
       ),
@@ -275,7 +275,7 @@ if with_tests
     executable(
        'bitset_test',
        files('bitset_test.cpp'),
-       include_directories : inc_common,
+       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
        dependencies : [idep_mesautil, idep_gtest],
      ),
      suite : ['util'],
@@ -284,7 +284,7 @@ if with_tests
   process_test_exe = executable(
     'process_test',
     files('process_test.c'),
-    include_directories : inc_common,
+    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
     dependencies : idep_mesautil,
     c_args : [c_msvc_compat_args],
   )

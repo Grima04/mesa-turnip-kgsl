@@ -6,7 +6,7 @@ libintel_imgui_gtk_deps = [
 libintel_imgui_gtk = static_library(
   'intel_imgui_gtk',
   files('imgui_impl_gtk3.cpp', 'imgui_impl_opengl3.cpp'),
-  include_directories: inc_common,
+  include_directories: [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : libintel_imgui_gtk_deps,
   cpp_args : ['-w'],
   install: false

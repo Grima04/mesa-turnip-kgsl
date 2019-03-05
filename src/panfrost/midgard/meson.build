@@ -59,7 +59,10 @@ libpanfrost_midgard = static_library(
   'panfrost_midgard',
   [libpanfrost_midgard_files, midgard_nir_algebraic_c],
   include_directories : [
-   inc_common,
+   inc_mapi,
+   inc_mesa,
+   inc_gallium,
+   inc_gallium_aux,
    inc_include,
    inc_src,
    inc_panfrost_hw,

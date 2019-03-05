@@ -187,7 +187,7 @@ libr600 = static_library(
   c_args : [c_vis_args, r600_c_args, '-Wstrict-overflow=0'],
   cpp_args : [cpp_vis_args],
   include_directories : [
-    inc_src, inc_common, inc_include, inc_compiler, inc_gallium, inc_gallium_aux, inc_amd_common,
+    inc_src, inc_mapi, inc_mesa, inc_include, inc_compiler, inc_gallium, inc_gallium_aux, inc_amd_common,
     inc_gallium_drivers,
   ],
   dependencies: [dep_libdrm_radeon, dep_elf, dep_llvm, idep_nir, idep_nir_headers],

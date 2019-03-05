@@ -47,7 +47,8 @@ files_panfrost = files(
 )
 
 panfrost_includes = [
-  inc_common,
+  inc_mapi,
+  inc_mesa,
   inc_gallium,
   inc_gallium_aux,
   inc_include,

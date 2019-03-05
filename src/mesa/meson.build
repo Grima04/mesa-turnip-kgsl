@@ -705,7 +705,7 @@ if with_sse41
     'mesa_sse41',
     files('main/streaming-load-memcpy.c', 'main/sse_minmax.c'),
     c_args : [c_vis_args, c_msvc_compat_args, sse41_args],
-    include_directories : inc_common,
+    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   )
 else
   libmesa_sse41 = []
@@ -728,7 +728,7 @@ libmesa_common = static_library(
   files_libmesa_common,
   c_args : [c_vis_args, c_msvc_compat_args, _mesa_windows_args],
   cpp_args : [cpp_vis_args, cpp_msvc_compat_args, _mesa_windows_args],
-  include_directories : [inc_common, inc_libmesa_asm, include_directories('main')],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_libmesa_asm, include_directories('main')],
   dependencies : idep_nir_headers,
   build_by_default : false,
 )
@@ -738,7 +738,7 @@ libmesa_classic = static_library(
   files_libmesa_classic,
   c_args : [c_vis_args, c_msvc_compat_args],
   cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
-  include_directories : [inc_common, inc_libmesa_asm, include_directories('main')],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_libmesa_asm, include_directories('main')],
   link_with : [libmesa_common, libglsl, libmesa_sse41],
   dependencies : idep_nir_headers,
   build_by_default : false,
@@ -749,7 +749,7 @@ libmesa_gallium = static_library(
   files_libmesa_gallium,
   c_args : [c_vis_args, c_msvc_compat_args, _mesa_windows_args],
   cpp_args : [cpp_vis_args, cpp_msvc_compat_args, _mesa_windows_args],
-  include_directories : [inc_common, inc_libmesa_asm, include_directories('main')],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_libmesa_asm, include_directories('main')],
   link_with : [libmesa_common, libglsl, libmesa_sse41],
   dependencies : [idep_nir_headers, dep_vdpau],
   build_by_default : false,

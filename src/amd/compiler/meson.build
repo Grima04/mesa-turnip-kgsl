@@ -86,7 +86,7 @@ _libaco = static_library(
   'aco',
   [libaco_files, aco_opcodes_c, aco_opcodes_h, aco_builder_h],
   include_directories : [
-   inc_common, inc_compiler, inc_mesa, inc_mapi, inc_amd, inc_amd_common, inc_amd_common_llvm,
+   inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, inc_amd, inc_amd_common, inc_amd_common_llvm,
   ],
   link_with : [
     libamd_common

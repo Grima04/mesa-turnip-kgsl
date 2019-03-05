@@ -48,7 +48,7 @@ bifrost_nir_algebraic_c = custom_target(
 libpanfrost_bifrost = static_library(
   'panfrost_bifrost',
   [libpanfrost_bifrost_files, bifrost_nir_algebraic_c],
-  include_directories : [inc_common, inc_include, inc_src, inc_panfrost_hw],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   dependencies: [idep_nir],
   link_with: [libpanfrost_util],
   c_args : [c_vis_args, no_override_init_args],
