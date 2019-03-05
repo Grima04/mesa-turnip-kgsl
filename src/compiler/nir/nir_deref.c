@@ -675,18 +675,42 @@ is_deref_ptr_as_array(nir_instr *instr)
           nir_instr_as_deref(instr)->deref_type == nir_deref_type_ptr_as_array;
 }
 
+/**
+ * Remove casts that just wrap other casts.
+ */
+static bool
+opt_remove_cast_cast(nir_deref_instr *cast)
+{
+   nir_deref_instr *first_cast = cast;
+
+   while (true) {
+      nir_deref_instr *parent = nir_deref_instr_parent(first_cast);
+      if (parent == NULL || parent->deref_type != nir_deref_type_cast)
+         break;
+      first_cast = parent;
+   }
+   if (cast == first_cast)
+      return false;
+
+   nir_instr_rewrite_src(&cast->instr, &cast->parent,
+                         nir_src_for_ssa(first_cast->parent.ssa));
+   return true;
+}
+
 static bool
 opt_deref_cast(nir_deref_instr *cast)
 {
+   bool progress;
+
+   progress = opt_remove_cast_cast(cast);
    if (!is_trivial_deref_cast(cast))
-      return false;
+      return progress;
 
    bool trivial_array_cast = is_trivial_array_deref_cast(cast);
 
    assert(cast->dest.is_ssa);
    assert(cast->parent.is_ssa);
 
-   bool progress = false;
    nir_foreach_use_safe(use_src, &cast->dest.ssa) {
       /* If this isn't a trivial array cast, we can't propagate into
        * ptr_as_array derefs.
