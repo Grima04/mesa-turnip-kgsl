@@ -40,6 +40,6 @@ libvulkan_util = static_library(
   'vulkan_util',
   [files_vulkan_util, vk_enum_to_str],
   include_directories : inc_common,
-  c_args : [c_vis_args],
+  c_args : [c_vis_args, vulkan_wsi_args],
   build_by_default : false,
 )
