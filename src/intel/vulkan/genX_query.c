@@ -402,6 +402,20 @@ void genX(CmdResetQueryPool)(
    }
 }
 
+void genX(ResetQueryPoolEXT)(
+    VkDevice                                    _device,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery,
+    uint32_t                                    queryCount)
+{
+   ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
+
+   for (uint32_t i = 0; i < queryCount; i++) {
+      uint64_t *slot = pool->bo.map + (firstQuery + i) * pool->stride;
+      *slot = 0;
+   }
+}
+
 static const uint32_t vk_pipeline_stat_to_reg[] = {
    GENX(IA_VERTICES_COUNT_num),
    GENX(IA_PRIMITIVES_COUNT_num),
