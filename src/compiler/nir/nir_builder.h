@@ -824,6 +824,8 @@ nir_build_deref_array(nir_builder *build, nir_deref_instr *parent,
           glsl_type_is_matrix(parent->type) ||
           glsl_type_is_vector(parent->type));
 
+   assert(index->bit_size == parent->dest.ssa.bit_size);
+
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_array);
 
@@ -848,6 +850,8 @@ nir_build_deref_ptr_as_array(nir_builder *build, nir_deref_instr *parent,
    assert(parent->deref_type == nir_deref_type_array ||
           parent->deref_type == nir_deref_type_ptr_as_array ||
           parent->deref_type == nir_deref_type_cast);
+
+   assert(index->bit_size == parent->dest.ssa.bit_size);
 
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_ptr_as_array);
@@ -965,7 +969,9 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
 
       if (leader->deref_type == nir_deref_type_array) {
          assert(leader->arr.index.is_ssa);
-         return nir_build_deref_array(b, parent, leader->arr.index.ssa);
+         nir_ssa_def *index = nir_i2i(b, leader->arr.index.ssa,
+                                         parent->dest.ssa.bit_size);
+         return nir_build_deref_array(b, parent, index);
       } else {
          return nir_build_deref_array_wildcard(b, parent);
       }
