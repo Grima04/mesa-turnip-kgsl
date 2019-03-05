@@ -278,7 +278,7 @@ glsl_type_is_array_or_matrix(const struct glsl_type *type)
 }
 
 bool
-glsl_type_is_struct(const struct glsl_type *type)
+glsl_type_is_struct_or_ifc(const struct glsl_type *type)
 {
    return type->is_struct() || type->is_interface();
 }

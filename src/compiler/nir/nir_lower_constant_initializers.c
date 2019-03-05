@@ -47,7 +47,7 @@ build_constant_load(nir_builder *b, nir_deref_instr *deref, nir_constant *c)
          nir_store_deref(b, nir_build_deref_array(b, deref, nir_imm_int(b, i)),
                          &load->def, ~0);
       }
-   } else if (glsl_type_is_struct(deref->type)) {
+   } else if (glsl_type_is_struct_or_ifc(deref->type)) {
       unsigned len = glsl_get_length(deref->type);
       for (unsigned i = 0; i < len; i++) {
          build_constant_load(b, nir_build_deref_struct(b, deref, i),

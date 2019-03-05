@@ -437,7 +437,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 
       switch (instr->deref_type) {
       case nir_deref_type_struct:
-         validate_assert(state, glsl_type_is_struct(parent->type));
+         validate_assert(state, glsl_type_is_struct_or_ifc(parent->type));
          validate_assert(state,
             instr->strct.index < glsl_get_length(parent->type));
          validate_assert(state, instr->type ==
@@ -1017,7 +1017,7 @@ validate_var_decl(nir_variable *var, bool is_global, validate_state *state)
 
    if (var->num_members > 0) {
       const struct glsl_type *without_array = glsl_without_array(var->type);
-      validate_assert(state, glsl_type_is_struct(without_array));
+      validate_assert(state, glsl_type_is_struct_or_ifc(without_array));
       validate_assert(state, var->num_members == glsl_get_length(without_array));
       validate_assert(state, var->members != NULL);
    }

@@ -42,7 +42,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       const struct glsl_type *child_type = glsl_get_array_element(type);
       for (unsigned i = 0; i < length; i++)
          add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type);
-   } else if (glsl_type_is_struct(type)) {
+   } else if (glsl_type_is_struct_or_ifc(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);
@@ -154,7 +154,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
          add_var_xfb_outputs(xfb, var, var->data.xfb_buffer,
                              &location, &offset, var->type);
       } else if (is_array_block) {
-         assert(glsl_type_is_struct(var->interface_type));
+         assert(glsl_type_is_struct_or_ifc(var->interface_type));
 
          unsigned aoa_size = glsl_get_aoa_size(var->type);
          const struct glsl_type *itype = var->interface_type;

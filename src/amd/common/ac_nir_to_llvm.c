@@ -3975,7 +3975,7 @@ glsl_to_llvm_type(struct ac_llvm_context *ac,
 		   glsl_get_length(type));
 	}
 
-	assert(glsl_type_is_struct(type));
+	assert(glsl_type_is_struct_or_ifc(type));
 
 	LLVMTypeRef member_types[glsl_get_length(type)];
 

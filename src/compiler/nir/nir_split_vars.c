@@ -91,7 +91,7 @@ init_field_for_type(struct field *field, struct field *parent,
    };
 
    const struct glsl_type *struct_type = glsl_without_array(type);
-   if (glsl_type_is_struct(struct_type)) {
+   if (glsl_type_is_struct_or_ifc(struct_type)) {
       field->num_fields = glsl_get_length(struct_type),
       field->fields = ralloc_array(state->mem_ctx, struct field,
                                    field->num_fields);
@@ -143,7 +143,7 @@ split_var_list_structs(nir_shader *shader,
     * pull all of the variables we plan to split off of the list
     */
    nir_foreach_variable_safe(var, vars) {
-      if (!glsl_type_is_struct(glsl_without_array(var->type)))
+      if (!glsl_type_is_struct_or_ifc(glsl_without_array(var->type)))
          continue;
 
       exec_node_remove(&var->node);
@@ -205,7 +205,7 @@ split_struct_derefs_impl(nir_function_impl *impl,
                continue;
 
             assert(i > 0);
-            assert(glsl_type_is_struct(path.path[i - 1]->type));
+            assert(glsl_type_is_struct_or_ifc(path.path[i - 1]->type));
             assert(path.path[i - 1]->type ==
                    glsl_without_array(tail_field->type));
 

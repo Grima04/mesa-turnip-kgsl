@@ -53,7 +53,7 @@ member_type(const struct glsl_type *type, unsigned index)
       assert(glsl_get_explicit_stride(type) == 0);
       return glsl_array_type(elem, glsl_get_length(type), 0);
    } else {
-      assert(glsl_type_is_struct(type));
+      assert(glsl_type_is_struct_or_ifc(type));
       assert(index < glsl_get_length(type));
       return glsl_get_struct_field(type, index);
    }

@@ -2268,7 +2268,7 @@ static void mark_16bit_fs_input(struct radv_shader_context *ctx,
 			mark_16bit_fs_input(ctx, glsl_get_array_element(type), location + i * stride);
 		}
 	} else {
-		assert(glsl_type_is_struct(type));
+		assert(glsl_type_is_struct_or_ifc(type));
 		for (unsigned i = 0; i < glsl_get_length(type); i++) {
 			mark_16bit_fs_input(ctx, glsl_get_struct_field(type, i), location);
 			location += glsl_count_attribute_slots(glsl_get_struct_field(type, i), false);

@@ -871,7 +871,7 @@ static inline nir_deref_instr *
 nir_build_deref_struct(nir_builder *build, nir_deref_instr *parent,
                        unsigned index)
 {
-   assert(glsl_type_is_struct(parent->type));
+   assert(glsl_type_is_struct_or_ifc(parent->type));
 
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_struct);
@@ -950,7 +950,7 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
       }
 
    case nir_deref_type_struct:
-      assert(glsl_type_is_struct(parent->type));
+      assert(glsl_type_is_struct_or_ifc(parent->type));
       assert(glsl_get_length(parent->type) ==
              glsl_get_length(leader_parent->type));
 

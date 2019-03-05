@@ -273,7 +273,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
           */
 
          unsigned comps;
-         if (glsl_type_is_struct(type)) {
+         if (glsl_type_is_struct_or_ifc(type)) {
             comps = 4;
          } else {
             comps = glsl_get_vector_elements(type);
@@ -522,7 +522,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
          const struct glsl_type *type = glsl_without_array(var->type);
          for (unsigned int i = 0; i < var->num_state_slots; i++) {
             unsigned comps;
-            if (glsl_type_is_struct(type)) {
+            if (glsl_type_is_struct_or_ifc(type)) {
                /* Builtin struct require specical handling for now we just
                 * make all members vec4. See st_nir_lower_builtin.
                 */

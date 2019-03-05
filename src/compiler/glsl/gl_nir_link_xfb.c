@@ -148,7 +148,7 @@ add_varying_outputs(nir_variable *var,
          location_offset += child_outputs;
          dest_offset += component_slots;
       }
-   } else if (glsl_type_is_struct(type)) {
+   } else if (glsl_type_is_struct_or_ifc(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);

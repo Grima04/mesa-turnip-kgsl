@@ -152,7 +152,7 @@ struct_type_get_field_offset(const struct glsl_type *struct_type,
                              glsl_type_size_align_func size_align,
                              unsigned field_idx)
 {
-   assert(glsl_type_is_struct(struct_type));
+   assert(glsl_type_is_struct_or_ifc(struct_type));
    unsigned offset = 0;
    for (unsigned i = 0; i <= field_idx; i++) {
       unsigned elem_size, elem_align;

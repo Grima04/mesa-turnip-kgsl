@@ -119,7 +119,7 @@ count_uniform_storage_slots(const struct glsl_type *type)
     * type is a composite type or an array where each element occupies
     * more than one slot than we need to recursively process it.
     */
-   if (glsl_type_is_struct(type)) {
+   if (glsl_type_is_struct_or_ifc(type)) {
       unsigned location_count = 0;
 
       for (unsigned i = 0; i < glsl_get_length(type); i++) {
@@ -135,7 +135,7 @@ count_uniform_storage_slots(const struct glsl_type *type)
       const struct glsl_type *element_type = glsl_get_array_element(type);
 
       if (glsl_type_is_array(element_type) ||
-          glsl_type_is_struct(element_type)) {
+          glsl_type_is_struct_or_ifc(element_type)) {
          unsigned element_count = count_uniform_storage_slots(element_type);
          return element_count * glsl_get_length(type);
       }

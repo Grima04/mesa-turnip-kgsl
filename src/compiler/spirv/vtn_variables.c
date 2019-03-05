@@ -116,7 +116,7 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
                             nir_ssa_def *desc_array_index)
 {
    if (!desc_array_index) {
-      vtn_assert(glsl_type_is_struct(var->type->type));
+      vtn_assert(glsl_type_is_struct_or_ifc(var->type->type));
       desc_array_index = nir_imm_int(&b->nb, 0);
    }
 
@@ -315,7 +315,7 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
    }
 
    for (; idx < deref_chain->length; idx++) {
-      if (glsl_type_is_struct(type->type)) {
+      if (glsl_type_is_struct_or_ifc(type->type)) {
          vtn_assert(deref_chain->link[idx].mode == vtn_access_mode_literal);
          unsigned field = deref_chain->link[idx].id;
          tail = nir_build_deref_struct(&b->nb, tail, field);
@@ -608,7 +608,7 @@ _vtn_local_load_store(struct vtn_builder *b, bool load, nir_deref_instr *deref,
          _vtn_local_load_store(b, load, child, inout->elems[i]);
       }
    } else {
-      vtn_assert(glsl_type_is_struct(deref->type));
+      vtn_assert(glsl_type_is_struct_or_ifc(deref->type));
       unsigned elems = glsl_get_length(deref->type);
       for (unsigned i = 0; i < elems; i++) {
          nir_deref_instr *child = nir_build_deref_struct(&b->nb, deref, i);
@@ -2101,7 +2101,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->patch = false;
       vtn_foreach_decoration(b, val, var_is_patch_cb, &var->patch);
       if (glsl_type_is_array(var->type->type) &&
-          glsl_type_is_struct(without_array->type)) {
+          glsl_type_is_struct_or_ifc(without_array->type)) {
          vtn_foreach_decoration(b, vtn_value(b, without_array->id,
                                              vtn_value_type_type),
                                 var_is_patch_cb, &var->patch);

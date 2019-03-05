@@ -768,7 +768,7 @@ can_replace_varying(nir_variable *out_var)
    if (glsl_type_is_array(out_var->type) ||
        glsl_type_is_dual_slot(out_var->type) ||
        glsl_type_is_matrix(out_var->type) ||
-       glsl_type_is_struct(out_var->type))
+       glsl_type_is_struct_or_ifc(out_var->type))
       return false;
 
    /* Limit this pass to scalars for now to keep things simple. Most varyings
