@@ -1118,6 +1118,10 @@ late_optimizations = [
    (('~feq', ('fadd', a, b), 0.0), ('feq', a, ('fneg', b))),
    (('~fne', ('fadd', a, b), 0.0), ('fne', a, ('fneg', b))),
 
+   # nir_lower_to_source_mods will collapse this, but its existence during the
+   # optimization loop can prevent other optimizations.
+   (('fneg', ('fneg', a)), a),
+
    (('~fge', ('fmin(is_used_once)', ('fadd(is_used_once)', a, b), ('fadd', c, d)), 0.0), ('iand', ('fge', a, ('fneg', b)), ('fge', c, ('fneg', d)))),
 
    (('fdot2', a, b), ('fdot_replicated2', a, b), 'options->fdot_replicates'),
