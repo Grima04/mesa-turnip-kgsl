@@ -149,8 +149,12 @@ static void
 iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
 {
    struct iris_context *ice = (void *) ctx;
+   struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_batch *compute_batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
-   if (ice->batches[IRIS_BATCH_RENDER].contains_draw) {
+   if (render_batch->contains_draw ||
+       render_batch->cache.render->entries ||
+       render_batch->cache.depth->entries) {
       iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
                                    PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
@@ -159,7 +163,7 @@ iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
                                    PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
    }
 
-   if (ice->batches[IRIS_BATCH_COMPUTE].contains_draw) {
+   if (compute_batch->contains_draw) {
       iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_COMPUTE],
                                    PIPE_CONTROL_CS_STALL);
       iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_COMPUTE],
@@ -189,11 +193,9 @@ iris_memory_barrier(struct pipe_context *ctx, unsigned flags)
               PIPE_CONTROL_RENDER_TARGET_FLUSH;
    }
 
-   // XXX: don't unconditionally emit flushes in both engines, we don't
-   // even know if we're even using e.g. the compute engine...
-
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw)
+      if (ice->batches[i].contains_draw ||
+          ice->batches[i].cache.render->entries)
          iris_emit_pipe_control_flush(&ice->batches[i], bits);
    }
 }

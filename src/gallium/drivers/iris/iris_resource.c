@@ -1161,11 +1161,9 @@ iris_transfer_flush_region(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
 
-
-   // XXX: don't emit flushes in both engines...? we may also need to flush
-   // even if there isn't a draw yet - may still be stale data in caches...
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw) {
+      if (ice->batches[i].contains_draw ||
+          ice->batches[i].cache.render->entries) {
          iris_batch_maybe_flush(&ice->batches[i], 24);
          iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
       }
@@ -1182,9 +1180,9 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
    if (map->unmap)
       map->unmap(map);
 
-   // XXX: don't emit flushes in both engines...?
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw) {
+      if (ice->batches[i].contains_draw ||
+          ice->batches[i].cache.render->entries) {
          iris_batch_maybe_flush(&ice->batches[i], 24);
          iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
       }
