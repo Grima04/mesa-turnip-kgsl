@@ -3050,7 +3050,7 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 			LLVMValueRef offset;
 			unsigned sidx = deref_instr->strct.index;
 			deref_instr = nir_src_as_deref(deref_instr->parent);
-			offset = LLVMConstInt(ctx->ac.i32, glsl_get_record_location_offset(deref_instr->type, sidx), false);
+			offset = LLVMConstInt(ctx->ac.i32, glsl_get_struct_location_offset(deref_instr->type, sidx), false);
 			attrib_idx = LLVMBuildAdd(ctx->ac.builder, attrib_idx, offset, "");
 		} else {
 			unreachable("Unsupported deref type");
@@ -3471,7 +3471,7 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 			} else if (deref_instr->deref_type == nir_deref_type_struct) {
 				unsigned sidx = deref_instr->strct.index;
 				deref_instr = nir_src_as_deref(deref_instr->parent);
-				constant_index += glsl_get_record_location_offset(deref_instr->type, sidx);
+				constant_index += glsl_get_struct_location_offset(deref_instr->type, sidx);
 			} else {
 				unreachable("Unsupported deref type");
 			}

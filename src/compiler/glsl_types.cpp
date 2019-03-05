@@ -1425,7 +1425,7 @@ glsl_type::component_slots() const
 }
 
 unsigned
-glsl_type::record_location_offset(unsigned length) const
+glsl_type::struct_location_offset(unsigned length) const
 {
    unsigned offset = 0;
    const glsl_type *t = this->without_array();
@@ -1436,7 +1436,7 @@ glsl_type::record_location_offset(unsigned length) const
          const glsl_type *st = t->fields.structure[i].type;
          const glsl_type *wa = st->without_array();
          if (wa->is_struct()) {
-            unsigned r_offset = wa->record_location_offset(wa->length);
+            unsigned r_offset = wa->struct_location_offset(wa->length);
             offset += st->is_array() ?
                st->arrays_of_arrays_size() * r_offset : r_offset;
          } else if (st->is_array() && st->fields.array->is_array()) {

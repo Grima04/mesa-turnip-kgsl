@@ -89,7 +89,7 @@ enum glsl_base_type glsl_get_sampler_result_type(const struct glsl_type *type);
 unsigned glsl_get_sampler_target(const struct glsl_type *type);
 int glsl_get_sampler_coordinate_components(const struct glsl_type *type);
 
-unsigned glsl_get_record_location_offset(const struct glsl_type *type,
+unsigned glsl_get_struct_location_offset(const struct glsl_type *type,
                                          unsigned length);
 
 unsigned glsl_atomic_size(const struct glsl_type *type);

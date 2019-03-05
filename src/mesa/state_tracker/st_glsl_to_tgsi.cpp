@@ -4088,7 +4088,7 @@ glsl_to_tgsi_visitor::calc_deref_offsets(ir_dereference *tail,
       calc_deref_offsets(deref_record->record->as_dereference(), array_elements, index, indirect, location);
 
       assert(field_index >= 0);
-      *location += struct_type->record_location_offset(field_index);
+      *location += struct_type->struct_location_offset(field_index);
       break;
    }
 

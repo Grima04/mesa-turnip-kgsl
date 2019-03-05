@@ -365,7 +365,7 @@ public:
     * For the initial call, length is the index of the member to find the
     * offset for.
     */
-   unsigned record_location_offset(unsigned length) const;
+   unsigned struct_location_offset(unsigned length) const;
 
    /**
     * Calculate the number of unique values from glGetUniformLocation for the

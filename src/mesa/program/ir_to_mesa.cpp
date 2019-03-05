@@ -1679,7 +1679,7 @@ calc_sampler_offsets(struct gl_shader_program *prog, ir_dereference *deref,
       ir_dereference_record *deref_record = deref->as_dereference_record();
       unsigned field_index = deref_record->field_idx;
       *location +=
-         deref_record->record->type->record_location_offset(field_index);
+         deref_record->record->type->struct_location_offset(field_index);
       calc_sampler_offsets(prog, deref_record->record->as_dereference(),
                            offset, array_elements, location);
       break;

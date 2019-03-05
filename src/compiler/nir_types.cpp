@@ -192,10 +192,10 @@ glsl_get_sampler_coordinate_components(const struct glsl_type *type)
 }
 
 unsigned
-glsl_get_record_location_offset(const struct glsl_type *type,
+glsl_get_struct_location_offset(const struct glsl_type *type,
                                 unsigned length)
 {
-   return type->record_location_offset(length);
+   return type->struct_location_offset(length);
 }
 
 bool
