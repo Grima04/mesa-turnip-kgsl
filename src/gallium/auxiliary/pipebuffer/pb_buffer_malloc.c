@@ -70,7 +70,7 @@ malloc_buffer_destroy(struct pb_buffer *buf)
 
 static void *
 malloc_buffer_map(struct pb_buffer *buf, 
-                  unsigned flags,
+                  enum pb_usage_flags flags,
 		  void *flush_ctx)
 {
    return malloc_buffer(buf)->data;
@@ -87,7 +87,7 @@ malloc_buffer_unmap(struct pb_buffer *buf)
 static enum pipe_error 
 malloc_buffer_validate(struct pb_buffer *buf, 
                        struct pb_validate *vl,
-                       unsigned flags)
+                       enum pb_usage_flags flags)
 {
    assert(0);
    return PIPE_ERROR;

@@ -59,13 +59,22 @@ struct pb_vtbl;
 struct pb_validate;
 struct pipe_fence_handle;
 
+enum pb_usage_flags {
+   PB_USAGE_CPU_READ = (1 << 0),
+   PB_USAGE_CPU_WRITE = (1 << 1),
+   PB_USAGE_GPU_READ = (1 << 2),
+   PB_USAGE_GPU_WRITE = (1 << 3),
+   PB_USAGE_DONTBLOCK = (1 << 9),
+   PB_USAGE_UNSYNCHRONIZED = (1 << 10),
+};
 
-#define PB_USAGE_CPU_READ  (1 << 0)
-#define PB_USAGE_CPU_WRITE (1 << 1)
-#define PB_USAGE_GPU_READ  (1 << 2)
-#define PB_USAGE_GPU_WRITE (1 << 3)
-#define PB_USAGE_UNSYNCHRONIZED (1 << 10)
-#define PB_USAGE_DONTBLOCK (1 << 9)
+/* For error checking elsewhere */
+#define PB_USAGE_ALL (PB_USAGE_CPU_READ | \
+                      PB_USAGE_CPU_WRITE | \
+                      PB_USAGE_GPU_READ | \
+                      PB_USAGE_GPU_WRITE | \
+                      PB_USAGE_DONTBLOCK | \
+                      PB_USAGE_UNSYNCHRONIZED)
 
 #define PB_USAGE_CPU_READ_WRITE \
    ( PB_USAGE_CPU_READ | PB_USAGE_CPU_WRITE )
@@ -82,7 +91,7 @@ struct pipe_fence_handle;
 struct pb_desc
 {
    unsigned alignment;
-   unsigned usage;
+   enum pb_usage_flags usage;
 };
 
 
@@ -100,7 +109,7 @@ struct pb_buffer
    struct pipe_reference  reference;
    unsigned               alignment;
    pb_size                size;
-   unsigned               usage;
+   enum pb_usage_flags    usage;
 
    /**
     * Pointer to the virtual function table.
@@ -126,13 +135,13 @@ struct pb_vtbl
     * flags is bitmask of PB_USAGE_CPU_READ/WRITE. 
     */
    void *(*map)( struct pb_buffer *buf, 
-                 unsigned flags, void *flush_ctx );
+                 enum pb_usage_flags flags, void *flush_ctx );
    
    void (*unmap)( struct pb_buffer *buf );
 
    enum pipe_error (*validate)( struct pb_buffer *buf, 
                                 struct pb_validate *vl,
-                                unsigned flags );
+                                enum pb_usage_flags flags );
 
    void (*fence)( struct pb_buffer *buf, 
                   struct pipe_fence_handle *fence );
@@ -160,7 +169,7 @@ struct pb_vtbl
  */
 static inline void *
 pb_map(struct pb_buffer *buf, 
-       unsigned flags, void *flush_ctx)
+       enum pb_usage_flags flags, void *flush_ctx)
 {
    assert(buf);
    if (!buf)
@@ -201,7 +210,8 @@ pb_get_base_buffer( struct pb_buffer *buf,
 
 
 static inline enum pipe_error 
-pb_validate(struct pb_buffer *buf, struct pb_validate *vl, unsigned flags)
+pb_validate(struct pb_buffer *buf, struct pb_validate *vl,
+            enum pb_usage_flags flags)
 {
    assert(buf);
    if (!buf)

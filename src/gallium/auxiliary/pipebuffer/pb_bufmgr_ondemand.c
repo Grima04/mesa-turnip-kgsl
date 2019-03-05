@@ -103,7 +103,7 @@ pb_ondemand_buffer_destroy(struct pb_buffer *_buf)
 
 static void *
 pb_ondemand_buffer_map(struct pb_buffer *_buf, 
-                       unsigned flags, void *flush_ctx)
+                       enum pb_usage_flags flags, void *flush_ctx)
 {
    struct pb_ondemand_buffer *buf = pb_ondemand_buffer(_buf);
 
@@ -172,7 +172,7 @@ pb_ondemand_buffer_instantiate(struct pb_ondemand_buffer *buf)
 static enum pipe_error 
 pb_ondemand_buffer_validate(struct pb_buffer *_buf, 
                             struct pb_validate *vl,
-                            unsigned flags)
+                            enum pb_usage_flags flags)
 {
    struct pb_ondemand_buffer *buf = pb_ondemand_buffer(_buf);
    enum pipe_error ret; 
