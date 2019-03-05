@@ -4993,7 +4993,7 @@ void radv_CmdBindTransformFeedbackBuffersEXT(
 		enabled_mask |= 1 << idx;
 	}
 
-	cmd_buffer->state.streamout.enabled_mask = enabled_mask;
+	cmd_buffer->state.streamout.enabled_mask |= enabled_mask;
 
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 }
