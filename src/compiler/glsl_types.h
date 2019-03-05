@@ -312,7 +312,7 @@ public:
    /**
     * Get the instance of a record type
     */
-   static const glsl_type *get_record_instance(const glsl_struct_field *fields,
+   static const glsl_type *get_struct_instance(const glsl_struct_field *fields,
 					       unsigned num_fields,
 					       const char *name);
 

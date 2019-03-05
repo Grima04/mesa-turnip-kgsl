@@ -486,7 +486,7 @@ const glsl_type *
 glsl_struct_type(const glsl_struct_field *fields,
                  unsigned num_fields, const char *name)
 {
-   return glsl_type::get_record_instance(fields, num_fields, name);
+   return glsl_type::get_struct_instance(fields, num_fields, name);
 }
 
 const glsl_type *

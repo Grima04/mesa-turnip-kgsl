@@ -434,7 +434,7 @@ const glsl_type *glsl_type::get_bare_type() const
          bare_fields[i].name = this->fields.structure[i].name;
       }
       const glsl_type *bare_type =
-         get_record_instance(bare_fields, this->length, this->name);
+         get_struct_instance(bare_fields, this->length, this->name);
       delete[] bare_fields;
       return bare_type;
    }
@@ -1127,7 +1127,7 @@ glsl_type::record_key_hash(const void *a)
 
 
 const glsl_type *
-glsl_type::get_record_instance(const glsl_struct_field *fields,
+glsl_type::get_struct_instance(const glsl_struct_field *fields,
                                unsigned num_fields,
                                const char *name)
 {
@@ -2375,7 +2375,7 @@ decode_type_from_blob(struct blob_reader *blob)
          t = glsl_type::get_interface_instance(fields, num_fields, packing,
                                                row_major, name);
       } else {
-         t = glsl_type::get_record_instance(fields, num_fields, name);
+         t = glsl_type::get_struct_instance(fields, num_fields, name);
       }
 
       free(fields);

@@ -7581,7 +7581,7 @@ ast_struct_specifier::hir(exec_list *instructions,
 
    validate_identifier(this->name, loc, state);
 
-   type = glsl_type::get_record_instance(fields, decl_count, this->name);
+   type = glsl_type::get_struct_instance(fields, decl_count, this->name);
 
    if (!type->is_anonymous() && !state->symbols->add_type(name, type)) {
       const glsl_type *match = state->symbols->get_type(name);
