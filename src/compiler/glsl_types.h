@@ -663,7 +663,7 @@ public:
    /**
     * Query whether or not a type is a record
     */
-   bool is_record() const
+   bool is_struct() const
    {
       return base_type == GLSL_TYPE_STRUCT;
    }

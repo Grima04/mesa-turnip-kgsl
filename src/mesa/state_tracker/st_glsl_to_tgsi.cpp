@@ -1066,7 +1066,7 @@ type_has_array_or_matrix(const glsl_type *type)
    if (type->is_array() || type->is_matrix())
       return true;
 
-   if (type->is_record()) {
+   if (type->is_struct()) {
       for (unsigned i = 0; i < type->length; i++) {
          if (type_has_array_or_matrix(type->fields.structure[i].type)) {
             return true;
@@ -1112,7 +1112,7 @@ glsl_to_tgsi_visitor::get_temp(const glsl_type *type)
       next_temp += type_size(type);
    }
 
-   if (type->is_array() || type->is_record()) {
+   if (type->is_array() || type->is_struct()) {
       src.swizzle = SWIZZLE_NOOP;
    } else {
       src.swizzle = swizzle_for_size(type->vector_elements);
@@ -2732,7 +2732,7 @@ glsl_to_tgsi_visitor::visit(ir_dereference_array *ir)
     * for arrays of structs. Indirect sampler and image indexing is handled
     * elsewhere.
     */
-   int element_size = ir->type->without_array()->is_record() ?
+   int element_size = ir->type->without_array()->is_struct() ?
       st_glsl_storage_type_size(ir->type, var->data.bindless) :
       type_size(ir->type);
 
@@ -2987,7 +2987,7 @@ glsl_to_tgsi_visitor::emit_block_mov(ir_assignment *ir, const struct glsl_type *
                                      st_dst_reg *l, st_src_reg *r,
                                      st_src_reg *cond, bool cond_swap)
 {
-   if (type->is_record()) {
+   if (type->is_struct()) {
       for (unsigned int i = 0; i < type->length; i++) {
          emit_block_mov(ir, type->fields.structure[i].type, l, r,
                         cond, cond_swap);
@@ -3175,7 +3175,7 @@ glsl_to_tgsi_visitor::visit(ir_constant *ir)
     * aggregate constant and move each constant value into it.  If we
     * get lucky, copy propagation will eliminate the extra moves.
     */
-   if (ir->type->is_record()) {
+   if (ir->type->is_struct()) {
       st_src_reg temp_base = get_temp(ir->type);
       st_dst_reg temp = st_dst_reg(temp_base);
 

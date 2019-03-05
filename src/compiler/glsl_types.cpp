@@ -203,7 +203,7 @@ glsl_type::contains_sampler() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_sampler();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_sampler())
             return true;
@@ -217,7 +217,7 @@ glsl_type::contains_sampler() const
 bool
 glsl_type::contains_array() const
 {
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_array())
             return true;
@@ -233,7 +233,7 @@ glsl_type::contains_integer() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_integer();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_integer())
             return true;
@@ -249,7 +249,7 @@ glsl_type::contains_double() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_double();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_double())
             return true;
@@ -265,7 +265,7 @@ glsl_type::contains_64bit() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_64bit();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_64bit())
             return true;
@@ -302,7 +302,7 @@ glsl_type::contains_subroutine() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_subroutine();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_subroutine())
             return true;
@@ -348,7 +348,7 @@ glsl_type::contains_image() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_image();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct() || this->is_interface()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_image())
             return true;
@@ -1429,13 +1429,13 @@ glsl_type::record_location_offset(unsigned length) const
 {
    unsigned offset = 0;
    const glsl_type *t = this->without_array();
-   if (t->is_record()) {
+   if (t->is_struct()) {
       assert(length <= t->length);
 
       for (unsigned i = 0; i < length; i++) {
          const glsl_type *st = t->fields.structure[i].type;
          const glsl_type *wa = st->without_array();
-         if (wa->is_record()) {
+         if (wa->is_struct()) {
             unsigned r_offset = wa->record_location_offset(wa->length);
             offset += st->is_array() ?
                st->arrays_of_arrays_size() * r_offset : r_offset;
@@ -1527,7 +1527,7 @@ glsl_type::varying_count() const
       return size;
    case GLSL_TYPE_ARRAY:
       /* Don't count innermost array elements */
-      if (this->without_array()->is_record() ||
+      if (this->without_array()->is_struct() ||
           this->without_array()->is_interface() ||
           this->fields.array->is_array())
          return this->length * this->fields.array->varying_count();
@@ -1642,7 +1642,7 @@ glsl_type::std140_base_alignment(bool row_major) const
           this->fields.array->is_matrix()) {
          return MAX2(this->fields.array->std140_base_alignment(row_major), 16);
       } else {
-         assert(this->fields.array->is_record() ||
+         assert(this->fields.array->is_struct() ||
                 this->fields.array->is_array());
          return this->fields.array->std140_base_alignment(row_major);
       }
@@ -1685,7 +1685,7 @@ glsl_type::std140_base_alignment(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_record()) {
+   if (this->is_struct()) {
       unsigned base_alignment = 16;
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
@@ -1789,7 +1789,7 @@ glsl_type::std140_size(bool row_major) const
     */
    if (this->is_array()) {
       assert(this->explicit_stride == 0);
-      if (this->without_array()->is_record()) {
+      if (this->without_array()->is_struct()) {
 	 return this->arrays_of_arrays_size() *
             this->without_array()->std140_size(row_major);
       } else {
@@ -1811,7 +1811,7 @@ glsl_type::std140_size(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct() || this->is_interface()) {
       unsigned size = 0;
       unsigned max_align = 0;
 
@@ -1837,7 +1837,7 @@ glsl_type::std140_size(bool row_major) const
 
          max_align = MAX2(align, max_align);
 
-         if (field_type->is_record() && (i + 1 < this->length))
+         if (field_type->is_struct() && (i + 1 < this->length))
             size = glsl_align(size, 16);
       }
       size = glsl_align(size, MAX2(max_align, 16));
@@ -1935,7 +1935,7 @@ glsl_type::std430_base_alignment(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_record()) {
+   if (this->is_struct()) {
       unsigned base_alignment = 0;
       for (unsigned i = 0; i < this->length; i++) {
          bool field_row_major = row_major;
@@ -2029,7 +2029,7 @@ glsl_type::std430_size(bool row_major) const
 
    if (this->is_array()) {
       assert(this->explicit_stride == 0);
-      if (this->without_array()->is_record())
+      if (this->without_array()->is_struct())
          return this->arrays_of_arrays_size() *
             this->without_array()->std430_size(row_major);
       else
@@ -2037,7 +2037,7 @@ glsl_type::std430_size(bool row_major) const
             this->without_array()->std430_base_alignment(row_major);
    }
 
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct() || this->is_interface()) {
       unsigned size = 0;
       unsigned max_align = 0;
 

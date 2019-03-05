@@ -594,7 +594,7 @@ ir_to_mesa_visitor::get_temp(const glsl_type *type)
    src.reladdr = NULL;
    next_temp += type_size(type);
 
-   if (type->is_array() || type->is_record()) {
+   if (type->is_array() || type->is_struct()) {
       src.swizzle = SWIZZLE_NOOP;
    } else {
       src.swizzle = swizzle_for_size(type->vector_elements);
@@ -1879,7 +1879,7 @@ ir_to_mesa_visitor::visit(ir_constant *ir)
     * get lucky, copy propagation will eliminate the extra moves.
     */
 
-   if (ir->type->is_record()) {
+   if (ir->type->is_struct()) {
       src_reg temp_base = get_temp(ir->type);
       dst_reg temp = dst_reg(temp_base);
 

@@ -686,7 +686,7 @@ src_reg::src_reg(class vec4_visitor *v, const struct glsl_type *type)
    this->file = VGRF;
    this->nr = v->alloc.allocate(type_size_vec4(type));
 
-   if (type->is_array() || type->is_record()) {
+   if (type->is_array() || type->is_struct()) {
       this->swizzle = BRW_SWIZZLE_NOOP;
    } else {
       this->swizzle = brw_swizzle_for_size(type->vector_elements);
@@ -716,7 +716,7 @@ dst_reg::dst_reg(class vec4_visitor *v, const struct glsl_type *type)
    this->file = VGRF;
    this->nr = v->alloc.allocate(type_size_vec4(type));
 
-   if (type->is_array() || type->is_record()) {
+   if (type->is_array() || type->is_struct()) {
       this->writemask = WRITEMASK_XYZW;
    } else {
       this->writemask = (1 << type->vector_elements) - 1;
