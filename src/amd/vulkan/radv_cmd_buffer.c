@@ -3446,7 +3446,7 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_subpass *subpass = &state->pass->subpasses[subpass_id];
 
 	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
-							   cmd_buffer->cs, 2048);
+							   cmd_buffer->cs, 4096);
 
 	radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
 
