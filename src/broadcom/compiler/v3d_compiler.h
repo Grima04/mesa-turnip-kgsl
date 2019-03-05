@@ -134,7 +134,6 @@ struct qinst {
         /* Pre-register-allocation references to src/dst registers */
         struct qreg dst;
         struct qreg src[3];
-        bool cond_is_exec_mask;
         bool has_implicit_uniform;
         bool is_last_thrsw;
 

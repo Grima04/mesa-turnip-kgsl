@@ -405,7 +405,6 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                         c->cursor = vir_after_inst(last_inst);
 
                         vir_set_cond(last_inst, V3D_QPU_COND_IFA);
-                        last_inst->cond_is_exec_mask = true;
                 }
         }
 }

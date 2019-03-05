@@ -118,18 +118,9 @@ vir_setup_def(struct v3d_compile *c, struct qblock *block, int ip,
         if (BITSET_TEST(block->use, var) || BITSET_TEST(block->def, var))
                 return;
 
-        /* Easy, common case: unconditional full register update.
-         *
-         * We treat conditioning on the exec mask as the same as not being
-         * conditional.  This makes sure that if the register gets set on
-         * either side of an if, it is treated as being screened off before
-         * the if.  Otherwise, if there was no intervening def, its live
-         * interval doesn't extend back to the start of he program, and if too
-         * many registers did that we'd fail to register allocate.
-         */
-        if (((inst->qpu.flags.ac == V3D_QPU_COND_NONE &&
-              inst->qpu.flags.mc == V3D_QPU_COND_NONE) ||
-             inst->cond_is_exec_mask) &&
+        /* Easy, common case: unconditional full register update.*/
+        if ((inst->qpu.flags.ac == V3D_QPU_COND_NONE &&
+             inst->qpu.flags.mc == V3D_QPU_COND_NONE) &&
             inst->qpu.alu.add.output_pack == V3D_QPU_PACK_NONE &&
             inst->qpu.alu.mul.output_pack == V3D_QPU_PACK_NONE) {
                 BITSET_SET(block->def, var);
