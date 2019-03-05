@@ -32,7 +32,7 @@
 mtx_t glsl_type::hash_mutex = _MTX_INITIALIZER_NP;
 hash_table *glsl_type::explicit_matrix_types = NULL;
 hash_table *glsl_type::array_types = NULL;
-hash_table *glsl_type::record_types = NULL;
+hash_table *glsl_type::struct_types = NULL;
 hash_table *glsl_type::interface_types = NULL;
 hash_table *glsl_type::function_types = NULL;
 hash_table *glsl_type::subroutine_types = NULL;
@@ -486,9 +486,9 @@ _mesa_glsl_release_types(void)
       glsl_type::array_types = NULL;
    }
 
-   if (glsl_type::record_types != NULL) {
-      _mesa_hash_table_destroy(glsl_type::record_types, hash_free_type_function);
-      glsl_type::record_types = NULL;
+   if (glsl_type::struct_types != NULL) {
+      _mesa_hash_table_destroy(glsl_type::struct_types, hash_free_type_function);
+      glsl_type::struct_types = NULL;
    }
 
    if (glsl_type::interface_types != NULL) {
@@ -1135,17 +1135,17 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
 
    mtx_lock(&glsl_type::hash_mutex);
 
-   if (record_types == NULL) {
-      record_types = _mesa_hash_table_create(NULL, record_key_hash,
+   if (struct_types == NULL) {
+      struct_types = _mesa_hash_table_create(NULL, record_key_hash,
                                              record_key_compare);
    }
 
-   const struct hash_entry *entry = _mesa_hash_table_search(record_types,
+   const struct hash_entry *entry = _mesa_hash_table_search(struct_types,
                                                             &key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(fields, num_fields, name);
 
-      entry = _mesa_hash_table_insert(record_types, t, (void *) t);
+      entry = _mesa_hash_table_insert(struct_types, t, (void *) t);
    }
 
    assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_STRUCT);

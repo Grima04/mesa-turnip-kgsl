@@ -954,8 +954,8 @@ private:
    /** Hash table containing the known array types. */
    static struct hash_table *array_types;
 
-   /** Hash table containing the known record types. */
-   static struct hash_table *record_types;
+   /** Hash table containing the known struct types. */
+   static struct hash_table *struct_types;
 
    /** Hash table containing the known interface types. */
    static struct hash_table *interface_types;
