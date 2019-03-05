@@ -158,7 +158,8 @@ brw_create_nir(struct brw_context *brw,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   if (!devinfo->has_64bit_types && nir->info.uses_64bit) {
+   if ((options->lower_doubles_options & nir_lower_fp64_full_software) &&
+       nir->info.uses_64bit) {
       nir_shader *fp64 = compile_fp64_funcs(ctx, options, ralloc_parent(nir), stage);
 
       nir_validate_shader(fp64, "fp64");
