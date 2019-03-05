@@ -1602,11 +1602,13 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 		dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
 		dec->reg.cmd = RDECODE_VCN2_GPCOM_VCPU_CMD;
 		dec->reg.cntl = RDECODE_VCN2_ENGINE_CNTL;
+		dec->jpg.direct_reg = true;
 	} else {
 		dec->reg.data0 = RDECODE_VCN1_GPCOM_VCPU_DATA0;
 		dec->reg.data1 = RDECODE_VCN1_GPCOM_VCPU_DATA1;
 		dec->reg.cmd = RDECODE_VCN1_GPCOM_VCPU_CMD;
 		dec->reg.cntl = RDECODE_VCN1_ENGINE_CNTL;
+		dec->jpg.direct_reg = false;
 	}
 
 	map_msg_fb_it_probs_buf(dec);

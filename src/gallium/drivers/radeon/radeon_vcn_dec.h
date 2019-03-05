@@ -753,6 +753,7 @@ struct jpeg_params {
 	unsigned			dt_uv_pitch;
 	unsigned			dt_luma_top_offset;
 	unsigned			dt_chroma_top_offset;
+	bool				direct_reg;
 };
 
 struct radeon_decoder {
