@@ -109,6 +109,36 @@ is_zero_to_one(nir_alu_instr *instr, unsigned src, unsigned num_components,
    return true;
 }
 
+/**
+ * Exclusive compare with (0, 1).
+ *
+ * This differs from \c is_zero_to_one because that function tests 0 <= src <=
+ * 1 while this function tests 0 < src < 1.
+ */
+static inline bool
+is_gt_0_and_lt_1(nir_alu_instr *instr, unsigned src, unsigned num_components,
+                 const uint8_t *swizzle)
+{
+   /* only constant srcs: */
+   if (!nir_src_is_const(instr->src[src].src))
+      return false;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      switch (nir_op_infos[instr->op].input_types[src]) {
+      case nir_type_float: {
+         double val = nir_src_comp_as_float(instr->src[src].src, swizzle[i]);
+         if (isnan(val) || val <= 0.0f || val >= 1.0f)
+            return false;
+         break;
+      }
+      default:
+         return false;
+      }
+   }
+
+   return true;
+}
+
 static inline bool
 is_not_const_zero(nir_alu_instr *instr, unsigned src, unsigned num_components,
                   const uint8_t *swizzle)
