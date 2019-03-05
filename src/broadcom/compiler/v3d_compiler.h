@@ -419,6 +419,8 @@ struct qblock {
 
         /** @{ used by v3d_vir_live_variables.c */
         BITSET_WORD *def;
+        BITSET_WORD *defin;
+        BITSET_WORD *defout;
         BITSET_WORD *use;
         BITSET_WORD *live_in;
         BITSET_WORD *live_out;
