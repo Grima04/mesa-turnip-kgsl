@@ -440,6 +440,7 @@ link_uniform_blocks(void *mem_ctx,
            GLSL_INTERFACE_PACKING_PACKED)) {
          b->type = resize_block_array(b->type, b->array);
          b->var->type = b->type;
+         b->var->data.max_array_access = b->type->length - 1;
       }
 
       block_size.num_active_uniforms = 0;
