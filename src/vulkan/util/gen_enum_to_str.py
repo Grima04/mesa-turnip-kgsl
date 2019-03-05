@@ -221,15 +221,10 @@ class NamedFactory(object):
 class VkExtension(object):
     """Simple struct-like class representing extensions"""
 
-    def __init__(self, name, number=None, platform=None):
+    def __init__(self, name, number=None, define=None):
         self.name = name
         self.number = number
-        self.define = None
-        if platform is not None:
-            ext = '_KHR'
-            if platform.upper() == 'XLIB_XRANDR':
-                ext = '_EXT'
-            self.define = 'VK_USE_PLATFORM_' + platform.upper() + ext
+        self.define = define
 
 
 class VkEnum(object):
@@ -311,13 +306,19 @@ def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
             cmd_factory(name.text,
                         device_entrypoint=(first_arg.text in ('VkDevice', 'VkCommandBuffer', 'VkQueue')))
 
+    platform_define = {}
+    for platform in xml.findall('./platforms/platform'):
+        name = platform.attrib['name']
+        define = platform.attrib['protect']
+        platform_define[name] = define
+
     for ext_elem in xml.findall('./extensions/extension[@supported="vulkan"]'):
         platform = None
         if "platform" in ext_elem.attrib:
-            platform = ext_elem.attrib['platform']
+            define = platform_define[ext_elem.attrib['platform']]
         extension = ext_factory(ext_elem.attrib['name'],
                                 number=int(ext_elem.attrib['number']),
-                                platform=platform)
+                                define=define)
 
         for value in ext_elem.findall('./require/enum[@extends]'):
             enum = enum_factory.get(value.attrib['extends'])
