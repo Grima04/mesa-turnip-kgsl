@@ -59,6 +59,13 @@ LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 	libsync
 
+ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 27; echo $$?), 0)
+LOCAL_C_INCLUDES += \
+	frameworks/native/libs/nativewindow/include \
+	frameworks/native/libs/arect/include
+LOCAL_HEADER_LIBRARIES += libnativebase_headers
+endif
+
 ifeq ($(BOARD_USES_DRM_GRALLOC),true)
 	LOCAL_CFLAGS += -DHAVE_DRM_GRALLOC
 	LOCAL_SHARED_LIBRARIES += libgralloc_drm
