@@ -26,12 +26,7 @@
 #include <assert.h>
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vk_dispatch_table_helper.h>
 #include <vulkan/vk_layer.h>
-#include <vulkan/vk_layer_data.h>
-#include <vulkan/vk_layer_extension_utils.h>
-#include <vulkan/vk_loader_platform.h>
-#include "vk_layer_table.h"
 
 #include "imgui.h"
 
@@ -44,10 +39,11 @@
 #include "util/simple_mtx.h"
 
 #include "vk_enum_to_str.h"
+#include "vk_util.h"
 
 /* Mapped from VkInstace/VkPhysicalDevice */
 struct instance_data {
-   VkLayerInstanceDispatchTable vtable;
+   struct vk_instance_dispatch_table vtable;
    VkInstance instance;
 
    struct overlay_params params;
@@ -62,7 +58,7 @@ struct queue_data;
 struct device_data {
    struct instance_data *instance;
 
-   VkLayerDispatchTable vtable;
+   struct vk_device_dispatch_table vtable;
    VkPhysicalDevice physical_device;
    VkDevice device;
 
@@ -201,6 +197,33 @@ static void unmap_object(void *obj)
 }
 
 /**/
+
+static VkLayerInstanceCreateInfo *get_instance_chain_info(const VkInstanceCreateInfo *pCreateInfo,
+                                                          VkLayerFunction func)
+{
+   vk_foreach_struct(item, pCreateInfo->pNext) {
+      if (item->sType == VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO &&
+          ((VkLayerInstanceCreateInfo *) item)->function == func)
+         return (VkLayerInstanceCreateInfo *) item;
+   }
+   unreachable("instance chain info not found");
+   return NULL;
+}
+
+static VkLayerDeviceCreateInfo *get_device_chain_info(const VkDeviceCreateInfo *pCreateInfo,
+                                                      VkLayerFunction func)
+{
+   vk_foreach_struct(item, pCreateInfo->pNext) {
+      if (item->sType == VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO &&
+          ((VkLayerDeviceCreateInfo *) item)->function == func)
+         return (VkLayerDeviceCreateInfo *)item;
+   }
+   unreachable("device chain info not found");
+   return NULL;
+}
+
+/**/
+
 static struct instance_data *new_instance_data(VkInstance instance)
 {
    struct instance_data *data = rzalloc(NULL, struct instance_data);
@@ -1645,7 +1668,8 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
     VkDevice*                                   pDevice)
 {
    struct instance_data *instance_data = FIND_PHYSICAL_DEVICE_DATA(physicalDevice);
-   VkLayerDeviceCreateInfo *chain_info = get_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
+   VkLayerDeviceCreateInfo *chain_info =
+      get_device_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
 
    assert(chain_info->u.pLayerInfo);
    PFN_vkGetInstanceProcAddr fpGetInstanceProcAddr = chain_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
@@ -1663,7 +1687,7 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
 
    struct device_data *device_data = new_device_data(*pDevice, instance_data);
    device_data->physical_device = physicalDevice;
-   layer_init_device_dispatch_table(*pDevice, &device_data->vtable, fpGetDeviceProcAddr);
+   vk_load_device_commands(*pDevice, fpGetDeviceProcAddr, &device_data->vtable);
 
    instance_data->vtable.GetPhysicalDeviceProperties(device_data->physical_device,
                                                      &device_data->properties);
@@ -1688,7 +1712,8 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateInstance(
     const VkAllocationCallbacks*                pAllocator,
     VkInstance*                                 pInstance)
 {
-   VkLayerInstanceCreateInfo *chain_info = get_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
+   VkLayerInstanceCreateInfo *chain_info =
+      get_instance_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
 
    assert(chain_info->u.pLayerInfo);
    PFN_vkGetInstanceProcAddr fpGetInstanceProcAddr =
@@ -1706,9 +1731,9 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateInstance(
    if (result != VK_SUCCESS) return result;
 
    struct instance_data *instance_data = new_instance_data(*pInstance);
-   layer_init_instance_dispatch_table(instance_data->instance,
-                                      &instance_data->vtable,
-                                      fpGetInstanceProcAddr);
+   vk_load_instance_commands(instance_data->instance,
+                             fpGetInstanceProcAddr,
+                             &instance_data->vtable);
    instance_data_map_physical_devices(instance_data, true);
 
    parse_overlay_env(&instance_data->params, getenv("VK_LAYER_MESA_OVERLAY_CONFIG"));
