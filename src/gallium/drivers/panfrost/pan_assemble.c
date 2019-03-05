@@ -48,7 +48,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         } else {
                 assert (cso->type == PIPE_SHADER_IR_TGSI);
                 //tgsi_dump(cso->tokens, 0);
-                s = tgsi_to_nir(cso->tokens, &midgard_nir_options);
+                s = tgsi_to_nir(cso->tokens, &ctx->base.screen);
         }
 
         s->info.stage = type == JOB_TYPE_VERTEX ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;

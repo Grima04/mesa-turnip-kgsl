@@ -275,7 +275,7 @@ v3d_shader_state_create(struct pipe_context *pctx,
                         tgsi_dump(cso->tokens, 0);
                         fprintf(stderr, "\n");
                 }
-                s = tgsi_to_nir(cso->tokens, &v3d_nir_options);
+                s = tgsi_to_nir(cso->tokens, pctx->screen);
         }
 
         nir_variable_mode lower_mode = nir_var_all & ~nir_var_uniform;

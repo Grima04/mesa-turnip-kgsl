@@ -23,9 +23,12 @@
  */
 
 #include "util/ralloc.h"
+#include "pipe/p_screen.h"
+
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_control_flow.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/glsl/gl_nir.h"
 #include "compiler/glsl/list.h"
 #include "compiler/shader_enums.h"
 
@@ -91,6 +94,12 @@ struct ttn_compile {
 
    /* How many TGSI_FILE_IMMEDIATE vec4s have been parsed so far. */
    unsigned next_imm;
+
+   bool cap_scalar;
+   bool cap_face_is_sysval;
+   bool cap_position_is_sysval;
+   bool cap_packed_uniforms;
+   bool cap_samplers_as_deref;
 };
 
 #define ttn_swizzle(b, src, x, y, z, w) \
@@ -1813,27 +1822,53 @@ ttn_parse_tgsi(struct ttn_compile *c, const void *tgsi_tokens)
    tgsi_parse_free(&parser);
 }
 
+static void
+ttn_read_pipe_caps(struct ttn_compile *c,
+                   struct pipe_screen *screen)
+{
+   c->cap_scalar = screen->get_shader_param(screen, c->scan->processor, PIPE_SHADER_CAP_SCALAR_ISA);
+   c->cap_packed_uniforms = screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS);
+   c->cap_samplers_as_deref = screen->get_param(screen, PIPE_CAP_NIR_SAMPLERS_AS_DEREF);
+   c->cap_face_is_sysval = screen->get_param(screen, PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL);
+   c->cap_position_is_sysval = screen->get_param(screen, PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL);
+}
+
 /**
  * Initializes a TGSI-to-NIR compiler.
  */
 static struct ttn_compile *
 ttn_compile_init(const void *tgsi_tokens,
-                 const nir_shader_compiler_options *options)
+                 const nir_shader_compiler_options *options,
+                 struct pipe_screen *screen)
 {
    struct ttn_compile *c;
    struct nir_shader *s;
    struct tgsi_shader_info scan;
 
+   assert(options || screen);
    c = rzalloc(NULL, struct ttn_compile);
 
    tgsi_scan_shader(tgsi_tokens, &scan);
    c->scan = &scan;
+
+   if (!options) {
+      options =
+         screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR, scan.processor);
+   }
 
    nir_builder_init_simple_shader(&c->build, NULL,
                                   tgsi_processor_to_shader_stage(scan.processor),
                                   options);
 
    s = c->build.shader;
+
+   if (screen) {
+      ttn_read_pipe_caps(c, screen);
+   } else {
+      /* TTN used to be hard coded to always make FACE a sysval,
+       * so it makes sense to preserve that behavior so users don't break. */
+      c->cap_face_is_sysval = true;
+   }
 
    if (s->info.stage == MESA_SHADER_FRAGMENT)
       s->info.fs.untyped_color_outputs = true;
@@ -1872,14 +1907,105 @@ ttn_compile_init(const void *tgsi_tokens,
    return c;
 }
 
+static void
+ttn_optimize_nir(nir_shader *nir, bool scalar)
+{
+   bool progress;
+   do {
+      progress = false;
+
+      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+      if (scalar) {
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar);
+         NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+      }
+
+      NIR_PASS_V(nir, nir_lower_alu);
+      NIR_PASS_V(nir, nir_lower_pack);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      NIR_PASS(progress, nir, nir_opt_dce);
+
+      if (nir_opt_trivial_continues(nir)) {
+         progress = true;
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      }
+
+      NIR_PASS(progress, nir, nir_opt_if);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
+
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+
+      NIR_PASS(progress, nir, nir_opt_undef);
+      NIR_PASS(progress, nir, nir_opt_conditional_discard);
+
+      if (nir->options->max_unroll_iterations) {
+         NIR_PASS(progress, nir, nir_opt_loop_unroll, (nir_variable_mode)0);
+      }
+
+   } while (progress);
+
+}
+
+/**
+ * Finalizes the NIR in a similar way as st_glsl_to_nir does.
+ *
+ * Drivers expect that these passes are already performed,
+ * so we have to do it here too.
+ */
+static void
+ttn_finalize_nir(struct ttn_compile *c)
+{
+   struct nir_shader *nir = c->build.shader;
+
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+
+   if (c->cap_packed_uniforms)
+      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+
+   if (c->cap_samplers_as_deref)
+      NIR_PASS_V(nir, gl_nir_lower_samplers_as_deref, NULL);
+   else
+      NIR_PASS_V(nir, gl_nir_lower_samplers, NULL);
+
+   ttn_optimize_nir(nir, c->cap_scalar);
+   nir_shader_gather_info(nir, c->build.impl);
+   nir_validate_shader(nir, "TTN: after all optimizations");
+}
+
 struct nir_shader *
 tgsi_to_nir(const void *tgsi_tokens,
-            const nir_shader_compiler_options *options)
+            struct pipe_screen *screen)
 {
    struct ttn_compile *c;
    struct nir_shader *s;
 
-   c = ttn_compile_init(tgsi_tokens, options);
+   c = ttn_compile_init(tgsi_tokens, NULL, screen);
+   s = c->build.shader;
+   ttn_finalize_nir(c);
+   ralloc_free(c);
+
+   return s;
+}
+
+struct nir_shader *
+tgsi_to_nir_noscreen(const void *tgsi_tokens,
+                     const nir_shader_compiler_options *options)
+{
+   struct ttn_compile *c;
+   struct nir_shader *s;
+
+   c = ttn_compile_init(tgsi_tokens, options, NULL);
    s = c->build.shader;
    ralloc_free(c);
 

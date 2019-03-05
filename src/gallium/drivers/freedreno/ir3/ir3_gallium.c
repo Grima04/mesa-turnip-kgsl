@@ -183,9 +183,13 @@ ir3_tgsi_to_nir(struct ir3_compiler *compiler,
 		const struct tgsi_token *tokens,
 		struct pipe_screen *screen)
 {
-	/* TODO: pass screen to tgsi_to_nir when it needs that. */
-	(void) screen;
-	return tgsi_to_nir(tokens, ir3_get_compiler_options(compiler));
+	if (!screen) {
+		const nir_shader_compiler_options *options =
+			ir3_get_compiler_options(compiler);
+		return tgsi_to_nir_noscreen(tokens, options);
+	}
+
+	return tgsi_to_nir(tokens, screen);
 }
 
 /* This has to reach into the fd_context a bit more than the rest of

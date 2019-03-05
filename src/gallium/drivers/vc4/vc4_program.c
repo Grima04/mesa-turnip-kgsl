@@ -2502,7 +2502,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
                         tgsi_dump(cso->tokens, 0);
                         fprintf(stderr, "\n");
                 }
-                s = tgsi_to_nir(cso->tokens, &nir_options);
+                s = tgsi_to_nir(cso->tokens, pctx->screen);
         }
 
         NIR_PASS_V(s, nir_lower_io, nir_var_all & ~nir_var_uniform,

@@ -46,9 +46,11 @@ struct nir_shader *
 ir2_tgsi_to_nir(const struct tgsi_token *tokens,
 		struct pipe_screen *screen)
 {
-	/* TODO: pass screen to tgsi_to_nir when it needs that. */
-	(void) screen;
-	return tgsi_to_nir(tokens, &options);
+	if (!screen) {
+		return tgsi_to_nir_noscreen(tokens, &options);
+	}
+
+	return tgsi_to_nir(tokens, screen);
 }
 
 const nir_shader_compiler_options *
