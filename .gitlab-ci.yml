@@ -16,7 +16,7 @@
 # The format of the tag is "%Y-%m-%d-${counter}" where ${counter} stays
 # at "01" unless you have multiple updates on the same day :)
 variables:
-  UBUNTU_TAG: 2019-02-27-01
+  UBUNTU_TAG: 2019-03-05-01
   UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu:$UBUNTU_TAG"
   UBUNTU_IMAGE_MAIN: "registry.freedesktop.org/mesa/mesa/ubuntu:$UBUNTU_TAG"
 
