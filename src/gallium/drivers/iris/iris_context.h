@@ -410,6 +410,7 @@ struct iris_vtable {
                            struct brw_wm_prog_key *key);
    void (*populate_cs_key)(const struct iris_context *ice,
                            struct brw_cs_prog_key *key);
+   uint32_t (*mocs)(const struct iris_bo *bo);
 };
 
 /**
@@ -659,7 +660,8 @@ void iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
 
 
 /* iris_blit.c */
-void iris_blorp_surf_for_resource(struct blorp_surf *surf,
+void iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
+                                  struct blorp_surf *surf,
                                   struct pipe_resource *p_res,
                                   enum isl_aux_usage aux_usage,
                                   unsigned level,

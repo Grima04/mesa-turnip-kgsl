@@ -170,7 +170,7 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #endif
 
 static uint32_t
-mocs(struct iris_bo *bo)
+mocs(const struct iris_bo *bo)
 {
    return bo && bo->external ? MOCS_PTE : MOCS_WB;
 }
@@ -5903,6 +5903,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.populate_gs_key = iris_populate_gs_key;
    ice->vtbl.populate_fs_key = iris_populate_fs_key;
    ice->vtbl.populate_cs_key = iris_populate_cs_key;
+   ice->vtbl.mocs = mocs;
 
    ice->state.dirty = ~0ull;
 
