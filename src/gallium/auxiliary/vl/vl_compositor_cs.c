@@ -38,6 +38,8 @@ struct cs_viewport {
    struct u_rect area;
    int translate_x;
    int translate_y;
+   float sampler0_w;
+   float sampler0_h;
 };
 
 const char *compute_shader_video_buffer =
@@ -298,8 +300,11 @@ set_viewport(struct vl_compositor_state *s,
    *ptr_int++ = drawn->area.x1;
    *ptr_int++ = drawn->area.y1;
    *ptr_int++ = drawn->translate_x;
-   *ptr_int = drawn->translate_y;
+   *ptr_int++ = drawn->translate_y;
 
+   ptr_float = (float *)ptr_int;
+   *ptr_float++ = drawn->sampler0_w;
+   *ptr_float = drawn->sampler0_h;
    pipe_buffer_unmap(s->pipe, buf_transfer);
 
    return true;
@@ -328,6 +333,8 @@ draw_layers(struct vl_compositor       *c,
          drawn.scale_y = drawn.scale_x;
          drawn.translate_x = (int)layer->viewport.translate[0];
          drawn.translate_y = (int)layer->viewport.translate[1];
+         drawn.sampler0_w = (float)layer->sampler_views[0]->texture->width0;
+         drawn.sampler0_h = (float)layer->sampler_views[0]->texture->height0;
 
          if (memcmp(&drawn, &old_drawn, sizeof(struct cs_viewport))) {
             set_viewport(s, &drawn);
