@@ -157,6 +157,12 @@ glsl_get_component_slots(const struct glsl_type *type)
    return type->component_slots();
 }
 
+unsigned
+glsl_varying_count(const struct glsl_type *type)
+{
+   return type->varying_count();
+}
+
 const char *
 glsl_get_struct_elem_name(const struct glsl_type *type, unsigned index)
 {
