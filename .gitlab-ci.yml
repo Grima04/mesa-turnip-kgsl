@@ -270,7 +270,7 @@ meson-gallium-drivers-other:
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
     LLVM_VERSION: "5.0"
 
-meson-gallium-clover-llvm5:
+meson-gallium-clover-llvm:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -287,19 +287,13 @@ meson-gallium-clover-llvm5:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=icd
-    GALLIUM_DRIVERS: "r600"
-    LLVM_VERSION: "5.0"
-
-meson-gallium-clover-llvm6:
-  extends: meson-gallium-clover-llvm5
-  variables:
-    LLVM_VERSION: "6.0"
-
-meson-gallium-clover-llvm7:
-  extends: meson-gallium-clover-llvm5
-  variables:
     GALLIUM_DRIVERS: "r600,radeonsi"
-    LLVM_VERSION: "7"
+
+meson-gallium-clover-llvm39:
+  extends: meson-gallium-clover-llvm
+  variables:
+    GALLIUM_DRIVERS: "r600"
+    LLVM_VERSION: "3.9"
 
 meson-gallium-st-other:
   extends: .meson-build
@@ -407,11 +401,10 @@ make-gallium-drivers-other:
     LLVM_VERSION: "3.9"
     GALLIUM_DRIVERS: "i915,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv"
 
-make-gallium-st-clover-llvm-39:
+make-gallium-st-clover-llvm:
   extends: .make-build
   variables:
     MAKE_CHECK_COMMAND: "true"
-    LLVM_VERSION: "3.9"
     DRI_LOADERS: >
       --disable-glx
       --disable-gbm
@@ -428,29 +421,14 @@ make-gallium-st-clover-llvm-39:
       --disable-va
       --disable-omx-bellagio
       --disable-gallium-osmesa
-    GALLIUM_DRIVERS: "r600"
     LIBUNWIND_FLAGS: --enable-libunwind
-
-make-gallium-st-clover-llvm-4:
-  extends: make-gallium-st-clover-llvm-39
-  variables:
-    LLVM_VERSION: "4.0"
-
-make-gallium-st-clover-llvm-5:
-  extends: make-gallium-st-clover-llvm-39
-  variables:
-    LLVM_VERSION: "5.0"
-
-make-gallium-st-clover-llvm-6:
-  extends: make-gallium-st-clover-llvm-39
-  variables:
-    LLVM_VERSION: "6.0"
-
-make-gallium-st-clover-llvm-7:
-  extends: make-gallium-st-clover-llvm-39
-  variables:
-    LLVM_VERSION: "7"
     GALLIUM_DRIVERS: "r600,radeonsi"
+
+make-gallium-st-clover-llvm-39:
+  extends: make-gallium-st-clover-llvm
+  variables:
+    LLVM_VERSION: "3.9"
+    GALLIUM_DRIVERS: "r600"
 
 make-gallium-st-other:
   extends: .make-build
