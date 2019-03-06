@@ -196,7 +196,8 @@ setup_border_colors(struct fd_texture_stateobj *tex, struct bcolor_entry *entrie
 		if ((i >= tex->num_textures) || !tex->textures[i])
 			continue;
 
-		enum pipe_format format = tex->textures[i]->format;
+		struct pipe_sampler_view *view = tex->textures[i];
+		enum pipe_format format = view->format;
 		const struct util_format_description *desc =
 				util_format_description(format);
 
@@ -206,8 +207,14 @@ setup_border_colors(struct fd_texture_stateobj *tex, struct bcolor_entry *entrie
 		e->rgb10a2 = 0;
 		e->z24 = 0;
 
+		unsigned char swiz[4];
+
+		fd6_tex_swiz(format, swiz,
+				view->swizzle_r, view->swizzle_g,
+				view->swizzle_b, view->swizzle_a);
+
 		for (j = 0; j < 4; j++) {
-			int c = desc->swizzle[j];
+			int c = swiz[j];
 			int cd = c;
 
 			/*
