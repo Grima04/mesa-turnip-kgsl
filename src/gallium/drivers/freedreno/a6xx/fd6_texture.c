@@ -237,16 +237,6 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	so->base.context = pctx;
 	so->seqno = ++fd6_context(fd_context(pctx))->tex_seqno;
 
-	so->texconst0 =
-		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
-		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-		fd6_tex_swiz(prsc, cso->format, cso->swizzle_r, cso->swizzle_g,
-				cso->swizzle_b, cso->swizzle_a);
-
-	if (util_format_is_srgb(format)) {
-		so->texconst0 |= A6XX_TEX_CONST_0_SRGB;
-	}
-
 	if (cso->target == PIPE_BUFFER) {
 		unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
 
@@ -260,17 +250,12 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->offset = cso->u.buf.offset;
 	} else {
 		unsigned miplevels;
-		enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
 
 		lvl = fd_sampler_first_level(cso);
 		miplevels = fd_sampler_last_level(cso) - lvl;
 		layers = cso->u.tex.last_layer - cso->u.tex.first_layer + 1;
 
-		if (!fd_resource_level_linear(prsc, lvl))
-			tile_mode = fd_resource(prsc)->tile_mode;
-
-		so->texconst0 |= A6XX_TEX_CONST_0_MIPLVLS(miplevels) |
-			A6XX_TEX_CONST_0_TILE_MODE(tile_mode);
+		so->texconst0 |= A6XX_TEX_CONST_0_MIPLVLS(miplevels);
 		so->texconst1 =
 			A6XX_TEX_CONST_1_WIDTH(u_minify(prsc->width0, lvl)) |
 			A6XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
@@ -283,6 +268,10 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 
 		so->ubwc_enabled = rsc->ubwc_size && u_minify(prsc->width0, lvl) >= 16;
 	}
+
+	so->texconst0 |= fd6_tex_const_0(prsc, lvl, cso->format,
+				cso->swizzle_r, cso->swizzle_g,
+				cso->swizzle_b, cso->swizzle_a);
 
 	if (so->ubwc_enabled) {
 		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_PITCH(rsc->ubwc_size);

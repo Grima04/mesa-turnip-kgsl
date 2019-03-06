@@ -40,6 +40,7 @@ struct fd6_image {
 	enum a6xx_tex_type type;
 	bool srgb;
 	uint32_t cpp;
+	uint32_t level;
 	uint32_t width;
 	uint32_t height;
 	uint32_t depth;
@@ -120,6 +121,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 			break;
 		}
 
+		img->level  = lvl;
 		img->width  = u_minify(prsc->width0, lvl);
 		img->height = u_minify(prsc->height0, lvl);
 	}
@@ -161,11 +163,9 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 
 static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
-	OUT_RING(ring, A6XX_TEX_CONST_0_FMT(img->fmt) |
-		A6XX_TEX_CONST_0_TILE_MODE(fd_resource(img->prsc)->tile_mode) |
-		fd6_tex_swiz(img->prsc, img->pfmt, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
-			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W) |
-		COND(img->srgb, A6XX_TEX_CONST_0_SRGB));
+	OUT_RING(ring, fd6_tex_const_0(img->prsc, img->level, img->pfmt,
+			PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W));
 	OUT_RING(ring, A6XX_TEX_CONST_1_WIDTH(img->width) |
 		A6XX_TEX_CONST_1_HEIGHT(img->height));
 	OUT_RING(ring, A6XX_TEX_CONST_2_FETCHSIZE(img->fetchsize) |
@@ -210,8 +210,15 @@ fd6_emit_ssbo_tex(struct fd_ringbuffer *ring, const struct pipe_shader_buffer *p
 
 static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
+	struct fd_resource *rsc = fd_resource(img->prsc);
+	enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
+
+	if (rsc->tile_mode && !fd_resource_level_linear(img->prsc, img->level)) {
+		tile_mode = rsc->tile_mode;
+	}
+
 	OUT_RING(ring, A6XX_IBO_0_FMT(img->fmt) |
-		A6XX_IBO_0_TILE_MODE(fd_resource(img->prsc)->tile_mode));
+		A6XX_IBO_0_TILE_MODE(tile_mode));
 	OUT_RING(ring, A6XX_IBO_1_WIDTH(img->width) |
 		A6XX_IBO_1_HEIGHT(img->height));
 	OUT_RING(ring, A6XX_IBO_2_PITCH(img->pitch) |
