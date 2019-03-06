@@ -113,15 +113,16 @@ const char *compute_shader_weave =
       "DCL SV[1], BLOCK_ID\n"
 
       "DCL CONST[0..5]\n"
-      "DCL SVIEW[0..2], RECT, FLOAT\n"
+      "DCL SVIEW[0..2], 2D_ARRAY, FLOAT\n"
       "DCL SAMP[0..2]\n"
 
       "DCL IMAGE[0], 2D, WR\n"
-      "DCL TEMP[0..9]\n"
+      "DCL TEMP[0..15]\n"
 
       "IMM[0] UINT32 { 8, 8, 1, 0}\n"
       "IMM[1] FLT32 { 1.0, 2.0, 0.0, 0.0}\n"
       "IMM[2] UINT32 { 1, 2, 4, 0}\n"
+      "IMM[3] FLT32 { 0.25, 0.5, 0.125, 0.125}\n"
 
       "UMAD TEMP[0], SV[1], IMM[0], SV[0]\n"
 
@@ -137,26 +138,70 @@ const char *compute_shader_weave =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[2], -CONST[5].xyxy\n"
 
-         /* Texture layer */
-         "UMOD TEMP[2].z, TEMP[2].yyyy, IMM[2].yyyy\n"
-         "UMOD TEMP[3].z, TEMP[2].yyyy, IMM[2].zzzz\n"
-         "USHR TEMP[3].z, TEMP[3].zzzz, IMM[2].xxxx\n"
+         /* Top Y */
+         "U2F TEMP[2], TEMP[2]\n"
+         "DIV TEMP[2].y, TEMP[2].yyyy, IMM[1].yyyy\n"
+         /* Down Y */
+         "MOV TEMP[12], TEMP[2]\n"
 
-         "USHR TEMP[2].y, TEMP[2], IMM[2].xxxx\n"
-         "USHR TEMP[3].xy, TEMP[2], IMM[2].xxxx\n"
+         /* Top UV */
+         "MOV TEMP[3], TEMP[2]\n"
+         "DIV TEMP[3].xy, TEMP[3], IMM[1].yyyy\n"
+         /* Down UV */
+         "MOV TEMP[13], TEMP[3]\n"
 
-         "U2F TEMP[4], TEMP[2]\n"
-         "U2F TEMP[5], TEMP[3]\n"
+         /* Texture offset */
+         "ADD TEMP[2].x, TEMP[2].xxxx, IMM[3].yyyy\n"
+         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[3].xxxx\n"
+         "ADD TEMP[12].x, TEMP[12].xxxx, IMM[3].yyyy\n"
+         "ADD TEMP[12].y, TEMP[12].yyyy, IMM[3].xxxx\n"
+
+         "ADD TEMP[3].x, TEMP[3].xxxx, IMM[3].xxxx\n"
+         "ADD TEMP[3].y, TEMP[3].yyyy, IMM[3].wwww\n"
+         "ADD TEMP[13].x, TEMP[13].xxxx, IMM[3].xxxx\n"
+         "ADD TEMP[13].y, TEMP[13].yyyy, IMM[3].wwww\n"
 
          /* Scale */
-         "DIV TEMP[4], TEMP[4], CONST[3].zwzw\n"
-         "DIV TEMP[5], TEMP[5], CONST[3].zwzw\n"
+         "DIV TEMP[2].xy, TEMP[2], CONST[3].zwzw\n"
+         "DIV TEMP[12].xy, TEMP[12], CONST[3].zwzw\n"
+         "DIV TEMP[3].xy, TEMP[3], CONST[3].zwzw\n"
+         "DIV TEMP[13].xy, TEMP[13], CONST[3].zwzw\n"
+
+         /* Weave offset */
+         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[3].xxxx\n"
+         "ADD TEMP[12].y, TEMP[12].yyyy, -IMM[3].xxxx\n"
+         "ADD TEMP[3].y, TEMP[3].yyyy, IMM[3].xxxx\n"
+         "ADD TEMP[13].y, TEMP[13].yyyy, -IMM[3].xxxx\n"
+
+         /* Texture layer */
+         "MOV TEMP[14].x, TEMP[2].yyyy\n"
+         "MOV TEMP[14].yz, TEMP[3].yyyy\n"
+         "ROUND TEMP[15], TEMP[14]\n"
+         "ADD TEMP[14], TEMP[14], -TEMP[15]\n"
+         "MOV TEMP[14], |TEMP[14]|\n"
+         "MUL TEMP[14], TEMP[14], IMM[1].yyyy\n"
+
+         /* Normalize */
+         "DIV TEMP[2].xy, TEMP[2], CONST[5].zwzw\n"
+         "DIV TEMP[12].xy, TEMP[12], CONST[5].zwzw\n"
+         "DIV TEMP[15].xy, CONST[5].zwzw, IMM[1].yyyy\n"
+         "DIV TEMP[3].xy, TEMP[3], TEMP[15].xyxy\n"
+         "DIV TEMP[13].xy, TEMP[13], TEMP[15].xyxy\n"
 
          /* Fetch texels */
-         "TEX_LZ TEMP[6].x, TEMP[4], SAMP[0], RECT\n"
-         "TEX_LZ TEMP[6].y, TEMP[5], SAMP[1], RECT\n"
-         "TEX_LZ TEMP[6].z, TEMP[5], SAMP[2], RECT\n"
+         "MOV TEMP[2].z, IMM[1].wwww\n"
+         "MOV TEMP[3].z, IMM[1].wwww\n"
+         "TEX_LZ TEMP[10].x, TEMP[2], SAMP[0], 2D_ARRAY\n"
+         "TEX_LZ TEMP[10].y, TEMP[3], SAMP[1], 2D_ARRAY\n"
+         "TEX_LZ TEMP[10].z, TEMP[3], SAMP[2], 2D_ARRAY\n"
 
+         "MOV TEMP[12].z, IMM[1].xxxx\n"
+         "MOV TEMP[13].z, IMM[1].xxxx\n"
+         "TEX_LZ TEMP[11].x, TEMP[12], SAMP[0], 2D_ARRAY\n"
+         "TEX_LZ TEMP[11].y, TEMP[13], SAMP[1], 2D_ARRAY\n"
+         "TEX_LZ TEMP[11].z, TEMP[13], SAMP[2], 2D_ARRAY\n"
+
+         "LRP TEMP[6], TEMP[14], TEMP[11], TEMP[10]\n"
          "MOV TEMP[6].w, IMM[1].xxxx\n"
 
          /* Color Space Conversion */
