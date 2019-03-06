@@ -213,12 +213,6 @@ fd6_sampler_states_bind(struct pipe_context *pctx,
 	}
 }
 
-static bool
-use_astc_srgb_workaround(struct pipe_context *pctx, enum pipe_format format)
-{
-	return false;  // TODO check if this is still needed on a5xx
-}
-
 static struct pipe_sampler_view *
 fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		const struct pipe_sampler_view *cso)
@@ -250,8 +244,6 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 				cso->swizzle_b, cso->swizzle_a);
 
 	if (util_format_is_srgb(format)) {
-		if (use_astc_srgb_workaround(pctx, format))
-			so->astc_srgb = true;
 		so->texconst0 |= A6XX_TEX_CONST_0_SRGB;
 	}
 
@@ -360,34 +352,6 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
 	free(view);
 }
 
-static void
-fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
-		unsigned start, unsigned nr,
-		struct pipe_sampler_view **views)
-{
-	struct fd_context *ctx = fd_context(pctx);
-	struct fd6_context *fd6_ctx = fd6_context(ctx);
-	uint16_t astc_srgb = 0;
-	unsigned i;
-
-	for (i = 0; i < nr; i++) {
-		if (views[i]) {
-			struct fd6_pipe_sampler_view *view =
-					fd6_pipe_sampler_view(views[i]);
-			if (view->astc_srgb)
-				astc_srgb |= (1 << i);
-		}
-	}
-
-	fd_set_sampler_views(pctx, shader, start, nr, views);
-
-	if (shader == PIPE_SHADER_FRAGMENT) {
-		fd6_ctx->fastc_srgb = astc_srgb;
-	} else if (shader == PIPE_SHADER_VERTEX) {
-		fd6_ctx->vastc_srgb = astc_srgb;
-	}
-}
-
 
 static uint32_t
 key_hash(const void *_key)
@@ -485,7 +449,7 @@ fd6_texture_init(struct pipe_context *pctx)
 
 	pctx->create_sampler_view = fd6_sampler_view_create;
 	pctx->sampler_view_destroy = fd6_sampler_view_destroy;
-	pctx->set_sampler_views = fd6_set_sampler_views;
+	pctx->set_sampler_views = fd_set_sampler_views;
 
 	fd6_ctx->tex_cache = _mesa_hash_table_create(NULL, key_hash, key_equals);
 }

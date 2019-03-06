@@ -55,7 +55,6 @@ struct fd6_pipe_sampler_view {
 	uint32_t texconst0, texconst1, texconst2, texconst3, texconst5;
 	uint32_t texconst6, texconst7, texconst8, texconst9, texconst10, texconst11;
 	uint32_t offset;
-	bool astc_srgb;
 	uint16_t seqno;
 	bool ubwc_enabled;
 };
