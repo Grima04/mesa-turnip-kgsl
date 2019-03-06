@@ -221,7 +221,8 @@ const char *compute_shader_rgba =
 
 static void
 cs_launch(struct vl_compositor *c,
-          void                 *cs)
+          void                 *cs,
+          const struct u_rect  *draw_area)
 {
    struct pipe_context *ctx = c->pipe;
 
@@ -241,8 +242,8 @@ cs_launch(struct vl_compositor *c,
    info.block[0] = 8;
    info.block[1] = 8;
    info.block[2] = 1;
-   info.grid[0] = DIV_ROUND_UP(c->fb_state.width, info.block[0]);
-   info.grid[1] = DIV_ROUND_UP(c->fb_state.height, info.block[1]);
+   info.grid[0] = DIV_ROUND_UP(draw_area->x1, info.block[0]);
+   info.grid[1] = DIV_ROUND_UP(draw_area->y1, info.block[1]);
    info.grid[2] = 1;
 
    ctx->launch_grid(ctx, &info);
@@ -346,7 +347,7 @@ draw_layers(struct vl_compositor       *c,
          c->pipe->set_sampler_views(c->pipe, PIPE_SHADER_COMPUTE, 0,
                         num_sampler_views, samplers);
 
-         cs_launch(c, layer->cs);
+         cs_launch(c, layer->cs, &(drawn.area));
 
          if (dirty) {
             struct u_rect drawn = calc_drawn_area(s, layer);
