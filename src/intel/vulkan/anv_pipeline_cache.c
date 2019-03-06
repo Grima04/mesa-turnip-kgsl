@@ -766,6 +766,7 @@ anv_device_upload_nir(struct anv_device *device,
        */
       entry = _mesa_hash_table_search(cache->nir_cache, sha1_key);
       if (entry) {
+         blob_finish(&blob);
          pthread_mutex_unlock(&cache->mutex);
          return;
       }
@@ -775,6 +776,8 @@ anv_device_upload_nir(struct anv_device *device,
       memcpy(snir->sha1_key, sha1_key, 20);
       snir->size = blob.size;
       memcpy(snir->data, blob.data, blob.size);
+
+      blob_finish(&blob);
 
       _mesa_hash_table_insert(cache->nir_cache, snir->sha1_key, snir);
 
