@@ -71,6 +71,7 @@ static const struct nir_shader_compiler_options nir_options = {
 	.lower_extract_word = true,
 	.lower_ffma = true,
 	.lower_fpow = true,
+	.lower_mul_2x32_64 = true,
 	.max_unroll_iterations = 32
 };
 
