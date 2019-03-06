@@ -493,10 +493,14 @@ void
 anv_block_pool_finish(struct anv_block_pool *pool)
 {
    struct anv_mmap_cleanup *cleanup;
+   const bool use_softpin = !!(pool->bo_flags & EXEC_OBJECT_PINNED);
 
    u_vector_foreach(cleanup, &pool->mmap_cleanups) {
-      if (cleanup->map)
+      if (use_softpin)
+         anv_gem_munmap(cleanup->map, cleanup->size);
+      else
          munmap(cleanup->map, cleanup->size);
+
       if (cleanup->gem_handle)
          anv_gem_close(pool->device, cleanup->gem_handle);
    }
