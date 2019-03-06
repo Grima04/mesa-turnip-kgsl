@@ -199,6 +199,20 @@ optimizations = [
    (('inot', ('ieq', a, b)), ('ine', a, b)),
    (('inot', ('ine', a, b)), ('ieq', a, b)),
 
+   # This helps some shaders because, after some optimizations, they end up
+   # with patterns like (-a < -b) || (b < a).  In an ideal world, this sort of
+   # matching would be handled by CSE.
+   (('flt', ('fneg', a), ('fneg', b)), ('flt', b, a)),
+   (('fge', ('fneg', a), ('fneg', b)), ('fge', b, a)),
+   (('feq', ('fneg', a), ('fneg', b)), ('feq', b, a)),
+   (('fne', ('fneg', a), ('fneg', b)), ('fne', b, a)),
+   (('flt', ('fneg', a), -1.0), ('flt', 1.0, a)),
+   (('flt', -1.0, ('fneg', a)), ('flt', a, 1.0)),
+   (('fge', ('fneg', a), -1.0), ('fge', 1.0, a)),
+   (('fge', -1.0, ('fneg', a)), ('fge', a, 1.0)),
+   (('fne', ('fneg', a), -1.0), ('fne', 1.0, a)),
+   (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
+
    # 0.0 >= b2f(a)
    # b2f(a) <= 0.0
    # b2f(a) == 0.0 because b2f(a) can only be 0 or 1
@@ -1123,6 +1137,20 @@ late_optimizations = [
    (('fneg', ('fneg', a)), a),
 
    (('~fge', ('fmin(is_used_once)', ('fadd(is_used_once)', a, b), ('fadd', c, d)), 0.0), ('iand', ('fge', a, ('fneg', b)), ('fge', c, ('fneg', d)))),
+
+   (('flt', ('fneg', a), ('fneg', b)), ('flt', b, a)),
+   (('fge', ('fneg', a), ('fneg', b)), ('fge', b, a)),
+   (('feq', ('fneg', a), ('fneg', b)), ('feq', b, a)),
+   (('fne', ('fneg', a), ('fneg', b)), ('fne', b, a)),
+   (('flt', ('fneg', a), -1.0), ('flt', 1.0, a)),
+   (('flt', -1.0, ('fneg', a)), ('flt', a, 1.0)),
+   (('fge', ('fneg', a), -1.0), ('fge', 1.0, a)),
+   (('fge', -1.0, ('fneg', a)), ('fge', a, 1.0)),
+   (('fne', ('fneg', a), -1.0), ('fne', 1.0, a)),
+   (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
+
+   (('ior', a, a), a),
+   (('iand', a, a), a),
 
    (('fdot2', a, b), ('fdot_replicated2', a, b), 'options->fdot_replicates'),
    (('fdot3', a, b), ('fdot_replicated3', a, b), 'options->fdot_replicates'),
