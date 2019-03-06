@@ -748,7 +748,7 @@ destroy_tex_sampler_cb(GLuint id, void *data, void *userData)
    struct gl_texture_object *texObj = (struct gl_texture_object *) data;
    struct st_context *st = (struct st_context *) userData;
 
-   st_texture_release_sampler_view(st, st_texture_object(texObj));
+   st_texture_release_context_sampler_view(st, st_texture_object(texObj));
 }
 
 

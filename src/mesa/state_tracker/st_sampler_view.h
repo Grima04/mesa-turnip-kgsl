@@ -58,8 +58,8 @@ st_create_texture_sampler_view(struct pipe_context *pipe,
 
 
 extern void
-st_texture_release_sampler_view(struct st_context *st,
-                                struct st_texture_object *stObj);
+st_texture_release_context_sampler_view(struct st_context *st,
+                                        struct st_texture_object *stObj);
 
 extern void
 st_texture_release_all_sampler_views(struct st_context *st,

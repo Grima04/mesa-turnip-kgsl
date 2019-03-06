@@ -185,8 +185,8 @@ st_texture_get_current_sampler_view(const struct st_context *st,
  * which belong to the context before the context is destroyed.
  */
 void
-st_texture_release_sampler_view(struct st_context *st,
-                                struct st_texture_object *stObj)
+st_texture_release_context_sampler_view(struct st_context *st,
+                                        struct st_texture_object *stObj)
 {
    GLuint i;
 
