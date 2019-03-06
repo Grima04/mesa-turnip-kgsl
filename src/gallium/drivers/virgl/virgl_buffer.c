@@ -100,7 +100,6 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
                                                struct pipe_transfer *transfer,
                                                const struct pipe_box *box)
 {
-   struct virgl_resource *vbuf = virgl_resource(transfer->resource);
    struct virgl_transfer *trans = virgl_transfer(transfer);
 
    /*
