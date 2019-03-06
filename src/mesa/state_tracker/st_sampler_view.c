@@ -181,7 +181,8 @@ st_texture_get_current_sampler_view(const struct st_context *st,
 
 /**
  * For the given texture object, release any sampler views which belong
- * to the calling context.
+ * to the calling context.  This is used to free any sampler views
+ * which belong to the context before the context is destroyed.
  */
 void
 st_texture_release_sampler_view(struct st_context *st,
@@ -205,7 +206,8 @@ st_texture_release_sampler_view(struct st_context *st,
 
 /**
  * Release all sampler views attached to the given texture object, regardless
- * of the context.
+ * of the context.  This is called fairly frequently.  For example, whenever
+ * the texture's base level, max level or swizzle change.
  */
 void
 st_texture_release_all_sampler_views(struct st_context *st,
@@ -228,6 +230,10 @@ st_texture_release_all_sampler_views(struct st_context *st,
 }
 
 
+/*
+ * Free the texture's st_sampler_views objects.  This should be called
+ * after st_texture_release_all_sampler_views().
+ */
 void
 st_texture_free_sampler_views(struct st_texture_object *stObj)
 {
