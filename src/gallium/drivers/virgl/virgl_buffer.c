@@ -78,10 +78,8 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
-   struct virgl_resource *vbuf = virgl_resource(transfer->resource);
 
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
-      struct virgl_screen *vs = virgl_screen(ctx->screen);
       if (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) {
          if (trans->range.end <= trans->range.start) {
             virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
@@ -102,7 +100,6 @@ static void virgl_buffer_transfer_flush_region(struct pipe_context *ctx,
                                                struct pipe_transfer *transfer,
                                                const struct pipe_box *box)
 {
-   struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_resource *vbuf = virgl_resource(transfer->resource);
    struct virgl_transfer *trans = virgl_transfer(transfer);
 
