@@ -729,7 +729,7 @@ swr_update_resource_status(struct pipe_context *pipe,
    /* VBO vertex buffers */
    for (uint32_t i = 0; i < ctx->num_vertex_buffers; i++) {
       struct pipe_vertex_buffer *vb = &ctx->vertex_buffer[i];
-      if (!vb->is_user_buffer)
+      if (!vb->is_user_buffer && vb->buffer.resource)
          swr_resource_read(vb->buffer.resource);
    }
 
@@ -1269,28 +1269,7 @@ swr_update_derived(struct pipe_context *pipe,
          struct pipe_vertex_buffer *vb = &ctx->vertex_buffer[i];
 
          pitch = vb->stride;
-         if (!vb->is_user_buffer) {
-            /* VBO */
-            if (!pitch) {
-               /* If pitch=0 (ie vb->stride), buffer contains a single
-                * constant attribute.  Use the stream_pitch which was
-                * calculated during creation of vertex_elements_state for the
-                * size of the attribute. */
-               size = ctx->velems->stream_pitch[i];
-               elems = 1;
-               partial_inbounds = 0;
-               min_vertex_index = 0;
-            } else {
-               /* size is based on buffer->width0 rather than info.max_index
-                * to prevent having to validate VBO on each draw. */
-               size = vb->buffer.resource->width0;
-               elems = size / pitch;
-               partial_inbounds = size % pitch;
-               min_vertex_index = 0;
-            }
-
-            p_data = swr_resource_data(vb->buffer.resource) + vb->buffer_offset;
-         } else {
+         if (vb->is_user_buffer) {
             /* Client buffer
              * client memory is one-time use, re-trigger SWR_NEW_VERTEX to
              * revalidate on each draw */
@@ -1315,7 +1294,29 @@ swr_update_derived(struct pipe_context *pipe,
                      ctx, &ctx->scratch->vertex_buffer, ptr, size);
                p_data = (const uint8_t *)ptr - base;
             }
-         }
+         } else if (vb->buffer.resource) {
+            /* VBO */
+            if (!pitch) {
+               /* If pitch=0 (ie vb->stride), buffer contains a single
+                * constant attribute.  Use the stream_pitch which was
+                * calculated during creation of vertex_elements_state for the
+                * size of the attribute. */
+               size = ctx->velems->stream_pitch[i];
+               elems = 1;
+               partial_inbounds = 0;
+               min_vertex_index = 0;
+            } else {
+               /* size is based on buffer->width0 rather than info.max_index
+                * to prevent having to validate VBO on each draw. */
+               size = vb->buffer.resource->width0;
+               elems = size / pitch;
+               partial_inbounds = size % pitch;
+               min_vertex_index = 0;
+            }
+
+            p_data = swr_resource_data(vb->buffer.resource) + vb->buffer_offset;
+         } else
+            p_data = NULL;
 
          swrVertexBuffers[i] = {0};
          swrVertexBuffers[i].index = i;
