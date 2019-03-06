@@ -183,8 +183,10 @@ nir_split_per_member_structs(nir_shader *shader)
                                        var_to_member_map, dead_ctx);
    progress |= split_variables_in_list(&shader->system_values, shader,
                                        var_to_member_map, dead_ctx);
-   if (!progress)
+   if (!progress) {
+      ralloc_free(dead_ctx);
       return false;
+   }
 
    nir_foreach_function(function, shader) {
       if (!function->impl)
