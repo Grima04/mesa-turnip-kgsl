@@ -79,9 +79,7 @@ vtn_access_link_as_ssa(struct vtn_builder *b, struct vtn_access_link link,
       nir_ssa_def *ssa = vtn_ssa_value(b, link.id)->def;
       if (ssa->bit_size != bit_size)
          ssa = nir_i2i(&b->nb, ssa, bit_size);
-      if (stride != 1)
-         ssa = nir_imul_imm(&b->nb, ssa, stride);
-      return ssa;
+      return nir_imul_imm(&b->nb, ssa, stride);
    }
 }
 

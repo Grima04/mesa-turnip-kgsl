@@ -25,6 +25,7 @@
 #define NIR_BUILDER_H
 
 #include "nir_control_flow.h"
+#include "util/bitscan.h"
 #include "util/half_float.h"
 
 struct exec_list;
@@ -601,13 +602,33 @@ nir_u2u(nir_builder *build, nir_ssa_def *x, unsigned dest_bit_size)
 static inline nir_ssa_def *
 nir_iadd_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
-   return nir_iadd(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   assert(x->bit_size <= 64);
+   if (x->bit_size < 64)
+      y &= (1ull << x->bit_size) - 1;
+
+   if (y == 0) {
+      return x;
+   } else {
+      return nir_iadd(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   }
 }
 
 static inline nir_ssa_def *
 nir_imul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
-   return nir_imul(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   assert(x->bit_size <= 64);
+   if (x->bit_size < 64)
+      y &= (1ull << x->bit_size) - 1;
+
+   if (y == 0) {
+      return nir_imm_intN_t(build, 0, x->bit_size);
+   } else if (y == 1) {
+      return x;
+   } else if (util_is_power_of_two_or_zero64(y)) {
+      return nir_ishl(build, x, nir_imm_int(build, ffsll(y) - 1));
+   } else {
+      return nir_imul(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   }
 }
 
 static inline nir_ssa_def *
