@@ -231,15 +231,20 @@ st_texture_release_all_sampler_views(struct st_context *st,
 
 
 /*
- * Free the texture's st_sampler_views objects.  This should be called
- * after st_texture_release_all_sampler_views().
+ * Delete the texture's sampler views and st_sampler_views containers.
+ * This is to be called just before a texture is deleted.
  */
 void
-st_texture_free_sampler_views(struct st_texture_object *stObj)
+st_delete_texture_sampler_views(struct st_context *st,
+                                struct st_texture_object *stObj)
 {
+   st_texture_release_all_sampler_views(st, stObj);
+
+   /* Free the container of the current per-context sampler views */
    free(stObj->sampler_views);
    stObj->sampler_views = NULL;
 
+   /* Free old sampler view containers */
    while (stObj->sampler_views_old) {
       struct st_sampler_views *views = stObj->sampler_views_old;
       stObj->sampler_views_old = views->next;

@@ -66,7 +66,8 @@ st_texture_release_all_sampler_views(struct st_context *st,
                                      struct st_texture_object *stObj);
 
 void
-st_texture_free_sampler_views(struct st_texture_object *stObj);
+st_delete_texture_sampler_views(struct st_context *st,
+                                struct st_texture_object *stObj);
 
 const struct st_sampler_view *
 st_texture_get_current_sampler_view(const struct st_context *st,
