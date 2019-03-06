@@ -3670,47 +3670,6 @@ iris_store_derived_program_state(struct iris_context *ice,
 
 /* ------------------------------------------------------------------- */
 
-/**
- * Configure the URB.
- *
- * XXX: write a real comment.
- */
-static void
-iris_upload_urb_config(struct iris_context *ice, struct iris_batch *batch)
-{
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   const unsigned push_size_kB = 32;
-   unsigned entries[4];
-   unsigned start[4];
-   unsigned size[4];
-
-   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-      if (!ice->shaders.prog[i]) {
-         size[i] = 1;
-      } else {
-         struct brw_vue_prog_data *vue_prog_data =
-            (void *) ice->shaders.prog[i]->prog_data;
-         size[i] = vue_prog_data->urb_entry_size;
-      }
-      assert(size[i] != 0);
-   }
-
-   gen_get_urb_config(devinfo, 1024 * push_size_kB,
-                      1024 * ice->shaders.urb_size,
-                      ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
-                      ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
-                      size, entries, start);
-
-   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-      iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
-         urb._3DCommandSubOpcode += i;
-         urb.VSURBStartingAddress     = start[i];
-         urb.VSURBEntryAllocationSize = size[i] - 1;
-         urb.VSNumberofURBEntries     = entries[i];
-      }
-   }
-}
-
 static const uint32_t push_constant_opcodes[] = {
    [MESA_SHADER_VERTEX]    = 21,
    [MESA_SHADER_TESS_CTRL] = 25, /* HS */
@@ -4309,7 +4268,22 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_URB) {
-      iris_upload_urb_config(ice, batch);
+      unsigned size[4];
+
+      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+         if (!ice->shaders.prog[i]) {
+            size[i] = 1;
+         } else {
+            struct brw_vue_prog_data *vue_prog_data =
+               (void *) ice->shaders.prog[i]->prog_data;
+            size[i] = vue_prog_data->urb_entry_size;
+         }
+         assert(size[i] != 0);
+      }
+
+      genX(emit_urb_setup)(ice, batch, size,
+                           ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
+                           ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL);
    }
 
    if (dirty & IRIS_DIRTY_BLEND_STATE) {
@@ -5878,6 +5852,32 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
          flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
       pc.Address = rw_bo(bo, offset);
       pc.ImmediateData = imm;
+   }
+}
+
+void
+genX(emit_urb_setup)(struct iris_context *ice,
+                     struct iris_batch *batch,
+                     const unsigned size[4],
+                     bool tess_present, bool gs_present)
+{
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const unsigned push_size_kB = 32;
+   unsigned entries[4];
+   unsigned start[4];
+
+   gen_get_urb_config(devinfo, 1024 * push_size_kB,
+                      1024 * ice->shaders.urb_size,
+                      tess_present, gs_present,
+                      size, entries, start);
+
+   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+      iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
+         urb._3DCommandSubOpcode += i;
+         urb.VSURBStartingAddress     = start[i];
+         urb.VSURBEntryAllocationSize = size[i] - 1;
+         urb.VSNumberofURBEntries     = entries[i];
+      }
    }
 }
 

@@ -711,6 +711,22 @@ void gen8_init_state(struct iris_context *ice);
 void gen9_init_state(struct iris_context *ice);
 void gen10_init_state(struct iris_context *ice);
 void gen11_init_state(struct iris_context *ice);
+void gen8_emit_urb_setup(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const unsigned size[4],
+                          bool tess_present, bool gs_present);
+void gen9_emit_urb_setup(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const unsigned size[4],
+                          bool tess_present, bool gs_present);
+void gen10_emit_urb_setup(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const unsigned size[4],
+                          bool tess_present, bool gs_present);
+void gen11_emit_urb_setup(struct iris_context *ice,
+                          struct iris_batch *batch,
+                          const unsigned size[4],
+                          bool tess_present, bool gs_present);
 
 /* iris_program.c */
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,

@@ -246,26 +246,11 @@ blorp_emit_urb_config(struct blorp_batch *blorp_batch,
 {
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
-   // XXX: Track last URB config and avoid re-emitting it if it's good enough
-   const unsigned push_size_kB = 32;
-   unsigned entries[4];
-   unsigned start[4];
    unsigned size[4] = { vs_entry_size, 1, 1, 1 };
 
-   gen_get_urb_config(devinfo, 1024 * push_size_kB,
-                      1024 * ice->shaders.urb_size,
-                      false, false, size, entries, start);
-
-   for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-      blorp_emit(blorp_batch, GENX(3DSTATE_URB_VS), urb) {
-         urb._3DCommandSubOpcode += i;
-         urb.VSURBStartingAddress     = start[i];
-         urb.VSURBEntryAllocationSize = size[i] - 1;
-         urb.VSNumberofURBEntries     = entries[i];
-      }
-   }
+   genX(emit_urb_setup)(ice, batch, size, false, false);
+   ice->state.dirty |= IRIS_DIRTY_URB;
 }
 
 static void
