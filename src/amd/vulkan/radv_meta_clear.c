@@ -1078,9 +1078,10 @@ build_clear_htile_mask_shader()
 					   nir_intrinsic_vulkan_resource_index);
 
 	buf->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+	buf->num_components = 1;
 	nir_intrinsic_set_desc_set(buf, 0);
 	nir_intrinsic_set_binding(buf, 0);
-	nir_ssa_dest_init(&buf->instr, &buf->dest, 1, 32, NULL);
+	nir_ssa_dest_init(&buf->instr, &buf->dest, buf->num_components, 32, NULL);
 	nir_builder_instr_insert(&b, &buf->instr);
 
 	nir_intrinsic_instr *constants =
