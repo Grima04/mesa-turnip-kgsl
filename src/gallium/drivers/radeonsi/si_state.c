@@ -4710,6 +4710,9 @@ void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
+	if (!(flags & ~PIPE_BARRIER_UPDATE))
+		return;
+
 	/* Subsequent commands must wait for all shader invocations to
 	 * complete. */
 	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |

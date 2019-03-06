@@ -99,6 +99,9 @@ fd_texture_barrier(struct pipe_context *pctx, unsigned flags)
 static void
 fd_memory_barrier(struct pipe_context *pctx, unsigned flags)
 {
+	if (!(flags & ~PIPE_BARRIER_UPDATE))
+		return;
+
 	fd_context_flush(pctx, NULL, 0);
 	/* TODO do we need to check for persistently mapped buffers and fd_bo_cpu_prep()?? */
 }
