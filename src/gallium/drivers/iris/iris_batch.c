@@ -115,9 +115,11 @@ dump_validation_list(struct iris_batch *batch)
  * Return BO information to the batch decoder (for debugging).
  */
 static struct gen_batch_decode_bo
-decode_get_bo(void *v_batch, uint64_t address)
+decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 {
    struct iris_batch *batch = v_batch;
+
+   assert(ppgtt);
 
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
