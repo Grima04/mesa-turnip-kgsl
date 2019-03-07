@@ -476,7 +476,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previou
 
    /* This load will be dropped, as vec.y (or vec[1]) is already known. */
    nir_deref_instr *deref =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
    nir_ssa_def *loaded_from_deref = nir_load_deref(b, deref);
 
    /* This store should use the value loaded from in1. */
@@ -509,7 +509,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previou
 
    /* This load will be replaced with one from in0. */
    nir_deref_instr *deref =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
    nir_load_deref(b, deref);
 
    nir_validate_shader(b->shader, NULL);
@@ -532,7 +532,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_gets_reused)
 
    /* Loading "vec[1]" deref will save the information about vec.y. */
    nir_deref_instr *deref =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
    nir_load_deref(b, deref);
 
    /* Store to vec.x. */
@@ -566,16 +566,16 @@ TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
 
    /* Store to "vec[1]" and "vec[0]". */
    nir_deref_instr *store_deref_y =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
    nir_store_deref(b, store_deref_y, nir_imm_int(b, 20), 1);
 
    nir_deref_instr *store_deref_x =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 0));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 0);
    nir_store_deref(b, store_deref_x, nir_imm_int(b, 10), 1);
 
    /* Both loads below will be dropped, because the values are already known. */
    nir_deref_instr *load_deref_y =
-      nir_build_deref_array(b, nir_build_deref_var(b, vec), nir_imm_int(b, 1));
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, vec), 1);
    nir_store_var(b, out0, nir_load_deref(b, load_deref_y), 1);
 
    nir_store_var(b, out1, nir_load_var(b, vec), 1);

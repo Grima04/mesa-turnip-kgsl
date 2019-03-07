@@ -602,7 +602,7 @@ _vtn_local_load_store(struct vtn_builder *b, bool load, nir_deref_instr *deref,
       unsigned elems = glsl_get_length(deref->type);
       for (unsigned i = 0; i < elems; i++) {
          nir_deref_instr *child =
-            nir_build_deref_array(&b->nb, deref, nir_imm_int(&b->nb, i));
+            nir_build_deref_array_imm(&b->nb, deref, i);
          _vtn_local_load_store(b, load, child, inout->elems[i]);
       }
    } else {

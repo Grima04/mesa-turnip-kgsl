@@ -75,11 +75,10 @@ emit_deref_copy_load_store(nir_builder *b,
       assert(length > 0);
 
       for (unsigned i = 0; i < length; i++) {
-         nir_ssa_def *index = nir_imm_int(b, i);
          emit_deref_copy_load_store(b,
-                                    nir_build_deref_array(b, dst_deref, index),
+                                    nir_build_deref_array_imm(b, dst_deref, i),
                                     dst_deref_arr + 1,
-                                    nir_build_deref_array(b, src_deref, index),
+                                    nir_build_deref_array_imm(b, src_deref, i),
                                     src_deref_arr + 1);
       }
    } else {

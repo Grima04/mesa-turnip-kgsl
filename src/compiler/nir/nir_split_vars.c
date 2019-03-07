@@ -616,11 +616,10 @@ emit_split_copies(nir_builder *b,
                 glsl_get_length(src_path->path[src_level]->type));
          unsigned len = glsl_get_length(dst_path->path[dst_level]->type);
          for (unsigned i = 0; i < len; i++) {
-            nir_ssa_def *idx = nir_imm_int(b, i);
             emit_split_copies(b, dst_info, dst_path, dst_level + 1,
-                              nir_build_deref_array(b, dst, idx),
+                              nir_build_deref_array_imm(b, dst, i),
                               src_info, src_path, src_level + 1,
-                              nir_build_deref_array(b, src, idx));
+                              nir_build_deref_array_imm(b, src, i));
          }
       } else {
          /* Neither side is being split so we just keep going */

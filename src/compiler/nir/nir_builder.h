@@ -844,6 +844,17 @@ nir_build_deref_array(nir_builder *build, nir_deref_instr *parent,
 }
 
 static inline nir_deref_instr *
+nir_build_deref_array_imm(nir_builder *build, nir_deref_instr *parent,
+                          int64_t index)
+{
+   assert(parent->dest.is_ssa);
+   nir_ssa_def *idx_ssa = nir_imm_intN_t(build, index,
+                                         parent->dest.ssa.bit_size);
+
+   return nir_build_deref_array(build, parent, idx_ssa);
+}
+
+static inline nir_deref_instr *
 nir_build_deref_ptr_as_array(nir_builder *build, nir_deref_instr *parent,
                              nir_ssa_def *index)
 {
