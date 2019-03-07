@@ -248,37 +248,33 @@ panfrost_resource_create(struct pipe_screen *screen,
                         assert(0);
         }
 
-        if ((template->bind & PIPE_BIND_RENDER_TARGET) || (template->bind & PIPE_BIND_DEPTH_STENCIL)) {
-                if (template->bind & PIPE_BIND_DISPLAY_TARGET ||
-                    template->bind & PIPE_BIND_SCANOUT ||
-                    template->bind & PIPE_BIND_SHARED) {
-                        struct pipe_resource scanout_templat = *template;
-                        struct renderonly_scanout *scanout;
-                        struct winsys_handle handle;
+        if (template->bind & PIPE_BIND_DISPLAY_TARGET ||
+            template->bind & PIPE_BIND_SCANOUT ||
+            template->bind & PIPE_BIND_SHARED) {
+                struct pipe_resource scanout_templat = *template;
+                struct renderonly_scanout *scanout;
+                struct winsys_handle handle;
 
-                        /* TODO: align width0 and height0? */
+                /* TODO: align width0 and height0? */
 
-                        scanout = renderonly_scanout_for_resource(&scanout_templat,
-                                                                  pscreen->ro, &handle);
-                        if (!scanout)
-                                return NULL;
+                scanout = renderonly_scanout_for_resource(&scanout_templat,
+                                                          pscreen->ro, &handle);
+                if (!scanout)
+                        return NULL;
 
-                        assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-                        /* TODO: handle modifiers? */
-                        so = pan_resource(screen->resource_from_handle(screen, template,
-                                                                         &handle,
-                                                                         PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
-                        close(handle.handle);
-                        if (!so)
-                                return NULL;
+                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+                /* TODO: handle modifiers? */
+                so = pan_resource(screen->resource_from_handle(screen, template,
+                                                                 &handle,
+                                                                 PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
+                close(handle.handle);
+                if (!so)
+                        return NULL;
 
-                        so->scanout = scanout;
-                        pscreen->display_target = so;
-                } else {
-			so->bo = panfrost_create_bo(pscreen, template);
-                }
+                so->scanout = scanout;
+                pscreen->display_target = so;
         } else {
-		so->bo = panfrost_create_bo(pscreen, template);
+                so->bo = panfrost_create_bo(pscreen, template);
         }
 
         return (struct pipe_resource *)so;
