@@ -201,6 +201,25 @@ fast_clear_color(struct iris_context *ice,
 
    color = convert_fast_clear_color(ice, res, color, swizzle);
 
+   if (memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
+      /* We decided that we are going to fast clear, and the color is
+       * changing. But if we have a predicate bit set, the predication
+       * affects whether we should clear or not, and if we shouldn't, we
+       * also shouldn't update the clear color.
+       *
+       * However, we can't simply predicate-update the clear color (the
+       * commands don't support that). And we would lose track of the
+       * color, preventing us from doing some optimizations later.
+       *
+       * Since changing the clear color when the predication bit is enabled
+       * is not something that should happen often, we stall on the CPU here
+       * to resolve the predication, and then proceed.
+       */
+      iris_resolve_conditional_render(ice);
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+         return;
+   }
+
    iris_resource_set_clear_color(ice, res, color);
 
    /* If the buffer is already in ISL_AUX_STATE_CLEAR, the clear
@@ -355,6 +374,27 @@ fast_clear_depth(struct iris_context *ice,
     * flags out of the HiZ buffer into the real depth buffer.
     */
    if (res->aux.clear_color.f32[0] != depth) {
+      /* We decided that we are going to fast clear, and the color is
+       * changing. But if we have a predicate bit set, the predication
+       * affects whether we should clear or not, and if we shouldn't, we
+       * also shouldn't update the clear color.
+       *
+       * However, we can't simply predicate-update the clear color (the
+       * commands don't support that). And we would lose track of the
+       * color, preventing us from doing some optimizations later.
+       *
+       * For depth clears, things are even more complicated, because here we
+       * resolve the other levels/layers if they have a different color than
+       * the current one. That resolve can be predicated, but we also set those
+       * layers as ISL_AUX_STATE_RESOLVED, and this can't be predicated.
+       * Keeping track of the aux state when predication is involved is just
+       * even more complex, so the easiest thing to do when the fast clear
+       * depth is changing is to stall on the CPU and resolve the predication.
+       */
+      iris_resolve_conditional_render(ice);
+      if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
+         return;
+
       for (unsigned res_level = 0; res_level < res->surf.levels; res_level++) {
          if (!(res->aux.has_hiz & (1 << res_level)))
             continue;
