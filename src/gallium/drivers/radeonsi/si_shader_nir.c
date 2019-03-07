@@ -343,8 +343,10 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	info->properties[TGSI_PROPERTY_NEXT_SHADER] =
 		pipe_shader_type_from_mesa(nir->info.next_stage);
 
-	info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] =
-		nir->info.vs.window_space_position;
+	if (nir->info.stage == MESA_SHADER_VERTEX) {
+		info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] =
+			nir->info.vs.window_space_position;
+	}
 
 	if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
 		info->properties[TGSI_PROPERTY_TCS_VERTICES_OUT] =
