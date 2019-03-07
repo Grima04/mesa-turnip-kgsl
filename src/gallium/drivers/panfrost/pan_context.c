@@ -131,6 +131,35 @@ panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource 
         rsrc->bo->has_checksum = true;
 }
 
+static unsigned
+panfrost_sfbd_format_for_surface(struct pipe_surface *surf)
+{
+        /* TODO */
+        return 0xb84e0281; /* RGB32, no MSAA */
+}
+
+static struct mali_rt_format
+panfrost_mfbd_format_for_surface(struct pipe_surface *surf)
+{
+        /* Explode details on the format */
+
+        const struct util_format_description *desc =
+                util_format_description(surf->texture->format);
+
+        /* Fill in accordingly */
+
+        struct mali_rt_format fmt = {
+                .unk1 = 0x4000000,
+                .unk2 = 0x1,
+                .nr_channels = MALI_POSITIVE(desc->nr_channels),
+                .flags = 0x444,
+                .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
+                .unk4 = 0x8
+        };
+
+        return fmt;
+}
+
 static bool panfrost_is_scanout(struct panfrost_context *ctx);
 
 /* These routines link a fragment job with the bound surface, accounting for the
@@ -146,6 +175,18 @@ panfrost_set_fragment_target_cbuf(
 
         signed stride =
                 util_format_get_stride(surf->format, surf->texture->width0);
+
+        /* First, we set the format bits */
+
+        if (ctx->require_sfbd) {
+                ctx->fragment_sfbd.format =
+                        panfrost_sfbd_format_for_surface(surf);
+        } else {
+                ctx->fragment_rts[cb].format =
+                        panfrost_mfbd_format_for_surface(surf);
+        }
+
+        /* Now, we set the layout specific pieces */
 
         if (rsrc->bo->layout == PAN_LINEAR) {
                 mali_ptr framebuffer = rsrc->bo->gpu[0];
@@ -367,7 +408,6 @@ panfrost_new_frag_framebuffer(struct panfrost_context *ctx)
 {
         if (ctx->require_sfbd) {
                 struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
-                fb.format = 0xb84e0281; /* RGB32, no MSAA */
                 memcpy(&ctx->fragment_sfbd, &fb, sizeof(fb));
         } else {
                 struct bifrost_framebuffer fb = panfrost_emit_mfbd(ctx);
@@ -376,24 +416,9 @@ panfrost_new_frag_framebuffer(struct panfrost_context *ctx)
                 fb.rt_count_2 = 1;
                 fb.unk3 = 0x100;
 
-                /* By default, Gallium seems to need a BGR framebuffer */
-                unsigned char bgra[4] = {
-                        PIPE_SWIZZLE_Z, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_X, PIPE_SWIZZLE_W
-                };
-
-                struct bifrost_render_target rt = {
-                        .format = {
-                                .unk1 = 0x4000000,
-                                .unk2 = 0x1,
-                                .nr_channels = MALI_POSITIVE(4),
-                                .flags = 0x444,
-                                .swizzle = panfrost_translate_swizzle_4(bgra),
-                                .unk4 = 0x8
-                        },
-                };
+                struct bifrost_render_target rt = {};
 
                 memcpy(&ctx->fragment_rts[0], &rt, sizeof(rt));
-
                 memset(&ctx->fragment_extra, 0, sizeof(ctx->fragment_extra));
                 memcpy(&ctx->fragment_mfbd, &fb, sizeof(fb));
         }
