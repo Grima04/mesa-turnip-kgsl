@@ -658,7 +658,7 @@ endif
 if get_option('power8') != 'false'
   # on old versions of meson the cpu family would return as ppc64le on little
   # endian power8, this was changed in 0.48 such that the family would always
-  # be ppc64 regardless of endianness, and the the machine.endian() value
+  # be ppc64 regardless of endianness, and then the machine.endian() value
   # should be checked. Since we support versions < 0.48 we need to use
   # startswith.
   if host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 'little'
@@ -1145,10 +1145,10 @@ if dep_thread.found() and host_machine.system() != 'windows'
 endif
 dep_expat = dependency('expat')
 # this only exists on linux so either this is linux and it will be found, or
-# its not linux and and wont
+# it's not linux and wont
 dep_m = cc.find_library('m', required : false)
 
-# Check for libdrm. various drivers have different libdrm version requirements,
+# Check for libdrm. Various drivers have different libdrm version requirements,
 # but we always want to use the same version for all libdrm modules. That means
 # even if driver foo requires 2.4.0 and driver bar requires 2.4.3, if foo and
 # bar are both on use 2.4.3 for both of them
