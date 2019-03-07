@@ -131,36 +131,67 @@ panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource 
         rsrc->bo->has_checksum = true;
 }
 
-/* ..by contrast, this routine runs for every FRAGMENT job, but does no
- * allocation. AFBC is enabled on a per-surface basis */
+static bool panfrost_is_scanout(struct panfrost_context *ctx);
+
+/* These routines link a fragment job with the bound surface, accounting for the
+ * BO layout. This routine runs per-frame */
 
 static void
-panfrost_set_fragment_afbc(struct panfrost_context *ctx)
+panfrost_set_fragment_target_cbuf(
+                struct panfrost_context *ctx,
+                struct pipe_surface *surf,
+                unsigned cb)
 {
-        for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[cb]->texture;
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-                /* Non-AFBC is the default */
-                if (rsrc->bo->layout != PAN_AFBC)
-                        continue;
+        signed stride =
+                util_format_get_stride(surf->format, surf->texture->width0);
 
-                if (ctx->require_sfbd) {
-                        DBG("Color AFBC not supported on SFBD\n");
-                        assert(0);
+        if (rsrc->bo->layout == PAN_LINEAR) {
+                mali_ptr framebuffer = rsrc->bo->gpu[0];
+
+                /* The default is upside down from OpenGL's perspective. */
+                if (panfrost_is_scanout(ctx)) {
+                        framebuffer += stride * (surf->texture->height0 - 1);
+                        stride = -stride;
                 }
 
+                if (ctx->require_sfbd) {
+                        ctx->fragment_sfbd.framebuffer = framebuffer;
+                        ctx->fragment_sfbd.stride = stride;
+                } else {
+                        /* MFBD specifies stride in tiles */
+                        ctx->fragment_rts[cb].framebuffer = framebuffer;
+                        ctx->fragment_rts[cb].framebuffer_stride = stride / 16;
+                }
+        } else if (rsrc->bo->layout == PAN_AFBC) {
+                /* TODO: AFBC on SFBD */
+                assert(!ctx->require_sfbd);
+
                 /* Enable AFBC for the render target */
-                ctx->fragment_rts[0].afbc.metadata = rsrc->bo->afbc_slab.gpu;
-                ctx->fragment_rts[0].afbc.stride = 0;
-                ctx->fragment_rts[0].afbc.unk = 0x30009;
+                ctx->fragment_rts[cb].afbc.metadata = rsrc->bo->afbc_slab.gpu;
+                ctx->fragment_rts[cb].afbc.stride = 0;
+                ctx->fragment_rts[cb].afbc.unk = 0x30009;
 
-                ctx->fragment_rts[0].format.flags |= MALI_MFBD_FORMAT_AFBC;
+                ctx->fragment_rts[cb].format.flags |= MALI_MFBD_FORMAT_AFBC;
 
-                /* Point rendering to our special framebuffer */
-                ctx->fragment_rts[0].framebuffer = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
+                mali_ptr afbc_main = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
+                ctx->fragment_rts[cb].framebuffer = afbc_main;
 
-                /* WAT? Stride is diff from the scanout case */
-                ctx->fragment_rts[0].framebuffer_stride = ctx->pipe_framebuffer.width * 2 * 4;
+                /* TODO: Investigate shift */
+                ctx->fragment_rts[cb].framebuffer_stride = stride << 1;
+        } else {
+                fprintf(stderr, "Invalid render layout (cbuf %d)", cb);
+                assert(0);
+        }
+}
+
+static void
+panfrost_set_fragment_target(struct panfrost_context *ctx)
+{
+        for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
+                struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
+                panfrost_set_fragment_target_cbuf(ctx, surf, cb);
         }
 
         /* Enable depth/stencil AFBC for the framebuffer (not the render target) */
@@ -334,30 +365,8 @@ panfrost_is_scanout(struct panfrost_context *ctx)
 static void
 panfrost_new_frag_framebuffer(struct panfrost_context *ctx)
 {
-        mali_ptr framebuffer;
-        int stride;
-
-        if (ctx->pipe_framebuffer.nr_cbufs > 0) {
-	        framebuffer = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture)->bo->gpu[0];
-                stride = util_format_get_stride(ctx->pipe_framebuffer.cbufs[0]->format, ctx->pipe_framebuffer.width);
-        } else {
-                /* Depth-only framebuffer -> dummy RT */
-                framebuffer = 0;
-                stride = 0;
-        }
-
-        /* The default is upside down from OpenGL's perspective. */
-        if (panfrost_is_scanout(ctx)) {
-                framebuffer += stride * (ctx->pipe_framebuffer.height - 1);
-                stride = -stride;
-        }
-
         if (ctx->require_sfbd) {
                 struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
-
-                fb.framebuffer = framebuffer;
-                fb.stride = stride;
-
                 fb.format = 0xb84e0281; /* RGB32, no MSAA */
                 memcpy(&ctx->fragment_sfbd, &fb, sizeof(fb));
         } else {
@@ -381,8 +390,6 @@ panfrost_new_frag_framebuffer(struct panfrost_context *ctx)
                                 .swizzle = panfrost_translate_swizzle_4(bgra),
                                 .unk4 = 0x8
                         },
-                        .framebuffer = framebuffer,
-                        .framebuffer_stride = (stride / 16) & 0xfffffff,
                 };
 
                 memcpy(&ctx->fragment_rts[0], &rt, sizeof(rt));
@@ -951,7 +958,7 @@ panfrost_fragment_job(struct panfrost_context *ctx)
                 panfrost_clear_mfbd(job);
         }
 
-        panfrost_set_fragment_afbc(ctx);
+        panfrost_set_fragment_target(ctx);
 
         if (ctx->pipe_framebuffer.nr_cbufs == 1) {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;
