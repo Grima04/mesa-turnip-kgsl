@@ -126,6 +126,9 @@ fd6_screen_is_format_supported(struct pipe_screen *pscreen,
 	return retval == usage;
 }
 
+extern const struct fd_perfcntr_group a6xx_perfcntr_groups[];
+extern const unsigned a6xx_num_perfcntr_groups;
+
 void
 fd6_screen_init(struct pipe_screen *pscreen)
 {
@@ -146,4 +149,9 @@ fd6_screen_init(struct pipe_screen *pscreen)
 
 	screen->supported_modifiers = supported_modifiers;
 	screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
+
+	if (fd_mesa_debug & FD_DBG_PERFC) {
+		screen->perfcntr_groups = a6xx_perfcntr_groups;
+		screen->num_perfcntr_groups = a6xx_num_perfcntr_groups;
+	}
 }
