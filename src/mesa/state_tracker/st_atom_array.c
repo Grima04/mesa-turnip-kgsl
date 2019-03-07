@@ -546,14 +546,11 @@ st_update_array(struct st_context *st)
    struct pipe_vertex_element velements[PIPE_MAX_ATTRIBS];
    unsigned num_velements;
 
-   st->vertex_array_out_of_memory = FALSE;
    st->draw_needs_minmax_index = false;
 
    /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
    /* Setup arrays */
    st_setup_arrays(st, vp, vp_variant, velements, vbuffer, &num_vbuffers);
-   if (st->vertex_array_out_of_memory)
-      return;
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup current uploads */

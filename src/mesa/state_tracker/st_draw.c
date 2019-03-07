@@ -183,9 +183,6 @@ st_draw_vbo(struct gl_context *ctx,
 
    prepare_draw(st, ctx);
 
-   if (st->vertex_array_out_of_memory)
-      return;
-
    /* Initialize pipe_draw_info. */
    info.primitive_restart = false;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
@@ -289,9 +286,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
 
    assert(stride);
    prepare_draw(st, ctx);
-
-   if (st->vertex_array_out_of_memory)
-      return;
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
