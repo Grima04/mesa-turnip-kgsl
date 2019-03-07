@@ -331,16 +331,7 @@ st_destroy_context(struct st_context *st);
 
 
 extern void
-st_init_driver_functions(struct pipe_screen *screen,
-                         struct dd_function_table *functions);
-
-
-extern void
 st_invalidate_buffers(struct st_context *st);
-
-
-extern uint64_t
-st_get_active_states(struct gl_context *ctx);
 
 
 /**

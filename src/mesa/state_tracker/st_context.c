@@ -572,118 +572,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 }
 
 
-struct st_context *
-st_create_context(gl_api api, struct pipe_context *pipe,
-                  const struct gl_config *visual,
-                  struct st_context *share,
-                  const struct st_config_options *options,
-                  bool no_error)
-{
-   struct gl_context *ctx;
-   struct gl_context *shareCtx = share ? share->ctx : NULL;
-   struct dd_function_table funcs;
-   struct st_context *st;
-
-   util_cpu_detect();
-
-   memset(&funcs, 0, sizeof(funcs));
-   st_init_driver_functions(pipe->screen, &funcs);
-
-   ctx = calloc(1, sizeof(struct gl_context));
-   if (!ctx)
-      return NULL;
-
-   if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
-      free(ctx);
-      return NULL;
-   }
-
-   st_debug_init();
-
-   if (pipe->screen->get_disk_shader_cache &&
-       !(ST_DEBUG & DEBUG_TGSI))
-      ctx->Cache = pipe->screen->get_disk_shader_cache(pipe->screen);
-
-   /* XXX: need a capability bit in gallium to query if the pipe
-    * driver prefers DP4 or MUL/MAD for vertex transformation.
-    */
-   if (debug_get_option_mesa_mvp_dp4())
-      ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].OptimizeForAOS = GL_TRUE;
-
-   st = st_create_context_priv(ctx, pipe, options, no_error);
-   if (!st) {
-      _mesa_destroy_context(ctx);
-   }
-
-   return st;
-}
-
-
-/**
- * Callback to release the sampler view attached to a texture object.
- * Called by _mesa_HashWalk().
- */
-static void
-destroy_tex_sampler_cb(GLuint id, void *data, void *userData)
-{
-   struct gl_texture_object *texObj = (struct gl_texture_object *) data;
-   struct st_context *st = (struct st_context *) userData;
-
-   st_texture_release_sampler_view(st, st_texture_object(texObj));
-}
-
-
-void
-st_destroy_context(struct st_context *st)
-{
-   struct gl_context *ctx = st->ctx;
-   struct st_framebuffer *stfb, *next;
-
-   GET_CURRENT_CONTEXT(curctx);
-
-   if (curctx == NULL) {
-      /* No current context, but we need one to release
-       * renderbuffer surface when we release framebuffer.
-       * So temporarily bind the context.
-       */
-      _mesa_make_current(ctx, NULL, NULL);
-   }
-
-   /* This must be called first so that glthread has a chance to finish */
-   _mesa_glthread_destroy(ctx);
-
-   _mesa_HashWalk(ctx->Shared->TexObjects, destroy_tex_sampler_cb, st);
-
-   st_reference_fragprog(st, &st->fp, NULL);
-   st_reference_prog(st, &st->gp, NULL);
-   st_reference_vertprog(st, &st->vp, NULL);
-   st_reference_prog(st, &st->tcp, NULL);
-   st_reference_prog(st, &st->tep, NULL);
-   st_reference_compprog(st, &st->cp, NULL);
-
-   /* release framebuffer in the winsys buffers list */
-   LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {
-      st_framebuffer_reference(&stfb, NULL);
-   }
-
-   pipe_sampler_view_reference(&st->pixel_xfer.pixelmap_sampler_view, NULL);
-   pipe_resource_reference(&st->pixel_xfer.pixelmap_texture, NULL);
-
-   _vbo_DestroyContext(ctx);
-
-   st_destroy_program_variants(st);
-
-   _mesa_free_context_data(ctx);
-
-   /* This will free the st_context too, so 'st' must not be accessed
-    * afterwards. */
-   st_destroy_context_priv(st, true);
-   st = NULL;
-
-   free(ctx);
-}
-
-
 static void
 st_emit_string_marker(struct gl_context *ctx, const GLchar *string, GLsizei len)
 {
@@ -727,7 +615,7 @@ st_get_driver_uuid(struct gl_context *ctx, char *uuid)
 }
 
 
-void
+static void
 st_init_driver_functions(struct pipe_screen *screen,
                          struct dd_function_table *functions)
 {
@@ -797,4 +685,119 @@ st_init_driver_functions(struct pipe_screen *screen,
       functions->ProgramBinaryDeserializeDriverBlob =
          st_deserialise_tgsi_program;
    }
+}
+
+
+struct st_context *
+st_create_context(gl_api api, struct pipe_context *pipe,
+                  const struct gl_config *visual,
+                  struct st_context *share,
+                  const struct st_config_options *options,
+                  bool no_error)
+{
+   struct gl_context *ctx;
+   struct gl_context *shareCtx = share ? share->ctx : NULL;
+   struct dd_function_table funcs;
+   struct st_context *st;
+
+   util_cpu_detect();
+
+   memset(&funcs, 0, sizeof(funcs));
+   st_init_driver_functions(pipe->screen, &funcs);
+
+   ctx = calloc(1, sizeof(struct gl_context));
+   if (!ctx)
+      return NULL;
+
+   if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
+      free(ctx);
+      return NULL;
+   }
+
+   st_debug_init();
+
+   if (pipe->screen->get_disk_shader_cache &&
+       !(ST_DEBUG & DEBUG_TGSI))
+      ctx->Cache = pipe->screen->get_disk_shader_cache(pipe->screen);
+
+   /* XXX: need a capability bit in gallium to query if the pipe
+    * driver prefers DP4 or MUL/MAD for vertex transformation.
+    */
+   if (debug_get_option_mesa_mvp_dp4())
+      ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].OptimizeForAOS = GL_TRUE;
+
+   st = st_create_context_priv(ctx, pipe, options, no_error);
+   if (!st) {
+      _mesa_destroy_context(ctx);
+   }
+
+   return st;
+}
+
+
+/**
+ * When we destroy a context, we must examine all texture objects to
+ * find/release any sampler views created by that context.
+ *
+ * This callback is called per-texture object.  It releases all the
+ * texture's sampler views which belong to the context.
+ */
+static void
+destroy_tex_sampler_cb(GLuint id, void *data, void *userData)
+{
+   struct gl_texture_object *texObj = (struct gl_texture_object *) data;
+   struct st_context *st = (struct st_context *) userData;
+
+   st_texture_release_sampler_view(st, st_texture_object(texObj));
+}
+
+
+void
+st_destroy_context(struct st_context *st)
+{
+   struct gl_context *ctx = st->ctx;
+   struct st_framebuffer *stfb, *next;
+
+   GET_CURRENT_CONTEXT(curctx);
+
+   if (curctx == NULL) {
+      /* No current context, but we need one to release
+       * renderbuffer surface when we release framebuffer.
+       * So temporarily bind the context.
+       */
+      _mesa_make_current(ctx, NULL, NULL);
+   }
+
+   /* This must be called first so that glthread has a chance to finish */
+   _mesa_glthread_destroy(ctx);
+
+   _mesa_HashWalk(ctx->Shared->TexObjects, destroy_tex_sampler_cb, st);
+
+   st_reference_fragprog(st, &st->fp, NULL);
+   st_reference_prog(st, &st->gp, NULL);
+   st_reference_vertprog(st, &st->vp, NULL);
+   st_reference_prog(st, &st->tcp, NULL);
+   st_reference_prog(st, &st->tep, NULL);
+   st_reference_compprog(st, &st->cp, NULL);
+
+   /* release framebuffer in the winsys buffers list */
+   LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {
+      st_framebuffer_reference(&stfb, NULL);
+   }
+
+   pipe_sampler_view_reference(&st->pixel_xfer.pixelmap_sampler_view, NULL);
+   pipe_resource_reference(&st->pixel_xfer.pixelmap_texture, NULL);
+
+   _vbo_DestroyContext(ctx);
+
+   st_destroy_program_variants(st);
+
+   _mesa_free_context_data(ctx);
+
+   /* This will free the st_context too, so 'st' must not be accessed
+    * afterwards. */
+   st_destroy_context_priv(st, true);
+   st = NULL;
+
+   free(ctx);
 }
