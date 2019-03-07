@@ -2023,11 +2023,13 @@ iris_set_tess_state(struct pipe_context *ctx,
                     const float default_inner_level[2])
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_CTRL];
 
    memcpy(&ice->state.default_outer_level[0], &default_outer_level[0], 4 * sizeof(float));
    memcpy(&ice->state.default_inner_level[0], &default_inner_level[0], 2 * sizeof(float));
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
+   shs->cbuf0_needs_upload = true;
 }
 
 static void
@@ -2492,6 +2494,14 @@ upload_uniforms(struct iris_context *ice,
 
             value = tcs_info->tess.tcs_vertices_out;
          }
+      } else if (sysval >= BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X &&
+                 sysval <= BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_W) {
+         unsigned i = sysval - BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X;
+         value = fui(ice->state.default_outer_level[i]);
+      } else if (sysval == BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_X) {
+         value = fui(ice->state.default_inner_level[0]);
+      } else if (sysval == BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_Y) {
+         value = fui(ice->state.default_inner_level[1]);
       } else {
          assert(!"unhandled system value");
       }
@@ -4347,43 +4357,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          ptr.ColorCalcStatePointer = cc_offset;
          ptr.ColorCalcStatePointerValid = true;
       }
-   }
-
-   /* Upload constants for TCS passthrough. */
-   if ((dirty & IRIS_DIRTY_CONSTANTS_TCS) &&
-       ice->shaders.prog[MESA_SHADER_TESS_CTRL] &&
-       !ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL]) {
-      struct iris_compiled_shader *tes_shader = ice->shaders.prog[MESA_SHADER_TESS_EVAL];
-      assert(tes_shader);
-
-      /* Passthrough always copies 2 vec4s, so when uploading data we ensure
-       * it is in the right layout for TES.
-       */
-      float hdr[8] = {};
-      struct brw_tes_prog_data *tes_prog_data = (void *) tes_shader->prog_data;
-      switch (tes_prog_data->domain) {
-      case BRW_TESS_DOMAIN_QUAD:
-         for (int i = 0; i < 4; i++)
-            hdr[7 - i] = ice->state.default_outer_level[i];
-         hdr[3] = ice->state.default_inner_level[0];
-         hdr[2] = ice->state.default_inner_level[1];
-         break;
-      case BRW_TESS_DOMAIN_TRI:
-         for (int i = 0; i < 3; i++)
-            hdr[7 - i] = ice->state.default_outer_level[i];
-         hdr[4] = ice->state.default_inner_level[0];
-         break;
-      case BRW_TESS_DOMAIN_ISOLINE:
-         hdr[7] = ice->state.default_outer_level[1];
-         hdr[6] = ice->state.default_outer_level[0];
-         break;
-      }
-
-      struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_CTRL];
-      struct iris_const_buffer *cbuf = &shs->constbuf[0];
-      u_upload_data(ice->ctx.const_uploader, 0, sizeof(hdr), 32,
-                    &hdr[0], &cbuf->data.offset,
-                    &cbuf->data.res);
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {

@@ -727,8 +727,29 @@ iris_compile_tcs(struct iris_context *ice,
       nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, key);
 
       /* Reserve space for passing the default tess levels as constants. */
-      prog_data->param = rzalloc_array(mem_ctx, uint32_t, 8);
-      prog_data->nr_params = 8;
+      num_system_values = 8;
+      system_values =
+         rzalloc_array(mem_ctx, enum brw_param_builtin, num_system_values);
+      prog_data->param = rzalloc_array(mem_ctx, uint32_t, num_system_values);
+      prog_data->nr_params = num_system_values;
+
+      if (key->tes_primitive_mode == GL_QUADS) {
+         for (int i = 0; i < 4; i++)
+            system_values[7 - i] = BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X + i;
+
+         system_values[3] = BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_X;
+         system_values[2] = BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_Y;
+      } else if (key->tes_primitive_mode == GL_TRIANGLES) {
+         for (int i = 0; i < 3; i++)
+            system_values[7 - i] = BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X + i;
+
+         system_values[4] = BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_X;
+      } else {
+         assert(key->tes_primitive_mode == GL_ISOLINES);
+         system_values[7] = BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_Y;
+         system_values[6] = BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X;
+      }
+
       prog_data->ubo_ranges[0].length = 1;
    }
 
