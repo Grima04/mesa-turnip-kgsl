@@ -344,20 +344,33 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
       swizzle = ISL_SWIZZLE(RED, GREEN, BLUE, ONE);
    }
 
-   if (usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) {
-      if (isl_format_is_rgbx(format) &&
-          !isl_format_supports_rendering(devinfo, format)) {
-         format = isl_format_rgbx_to_rgba(format);
-      } else if (pformat == PIPE_FORMAT_A8_UNORM) {
-         /* Most of the hardware A/LA formats are not renderable, except
-          * for A8_UNORM.  SURFACE_STATE's shader channel select fields
-          * cannot be used to swap RGB and A channels when rendering (as
-          * it could impact alpha blending), so we have to use the actual
-          * A8_UNORM format when rendering.
-          */
-         format = ISL_FORMAT_A8_UNORM;
-         swizzle = ISL_SWIZZLE_IDENTITY;
-      }
+   if ((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
+       pformat == PIPE_FORMAT_A8_UNORM) {
+      /* Most of the hardware A/LA formats are not renderable, except
+       * for A8_UNORM.  SURFACE_STATE's shader channel select fields
+       * cannot be used to swap RGB and A channels when rendering (as
+       * it could impact alpha blending), so we have to use the actual
+       * A8_UNORM format when rendering.
+       */
+      format = ISL_FORMAT_A8_UNORM;
+      swizzle = ISL_SWIZZLE_IDENTITY;
+   }
+
+   /* We choose RGBA over RGBX for rendering the hardware doesn't support
+    * rendering to RGBX. However, when this internal override is used on Gen9+,
+    * fast clears don't work correctly.
+    *
+    * i965 fixes this by pretending to not support RGBX formats, and the higher
+    * layers of Mesa pick the RGBA format instead. Gallium doesn't work that
+    * way, and might choose a different format, like BGRX instead of RGBX,
+    * which will also cause problems when sampling from a surface fast cleared
+    * as RGBX. So we always choose RGBA instead of RGBX explicitly
+    * here.
+    */
+   if (isl_format_is_rgbx(format) &&
+       !isl_format_supports_rendering(devinfo, format)) {
+      format = isl_format_rgbx_to_rgba(format);
+      swizzle = ISL_SWIZZLE(RED, GREEN, BLUE, ONE);
    }
 
    return (struct iris_format_info) { .fmt = format, .swizzle = swizzle };
