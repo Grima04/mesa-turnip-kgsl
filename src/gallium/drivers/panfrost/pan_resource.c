@@ -197,10 +197,28 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         if (template->height0) sz *= template->height0;
         if (template->depth0) sz *= template->depth0;
 
-        /* Tiling textures is almost always faster, unless we only use it once */
-        bo->tiled = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
+        /* Based on the usage, figure out what storing will be used. There are
+         * various tradeoffs:
+         *
+         * Linear: the basic format, bad for memory bandwidth, bad for cache
+         * use. Zero-copy, though. Renderable.
+         *
+         * Tiled: Not compressed, but cache-optimized. Expensive to write into
+         * (due to software tiling), but cheap to sample from. Ideal for most
+         * textures. 
+         *
+         * AFBC: Compressed and renderable (so always desirable for non-scanout
+         * rendertargets). Cheap to sample from. The format is black box, so we
+         * can't read/write from software.
+         */
 
-        if (bo->tiled) {
+        /* Tiling textures is almost always faster, unless we only use it once */
+        bool should_tile = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
+
+        /* Set the layout appropriately */
+        bo->layout = should_tile ? PAN_TILED : PAN_LINEAR;
+
+        if (bo->layout == PAN_TILED) {
                 /* For tiled, we don't map directly, so just malloc any old buffer */
 
                 for (int l = 0; l < (template->last_level + 1); ++l) {
@@ -293,7 +311,7 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
                 }
         }
 
-        if (bo->tiled) {
+        if (bo->layout == PAN_TILED) {
                 /* Tiled has a malloc'd CPU, so just plain ol' free needed */
 
                 for (int l = 0; l < MAX_MIP_LEVELS; ++l) {
@@ -301,7 +319,7 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
                 }
         }
 
-        if (bo->has_afbc) {
+        if (bo->layout == PAN_AFBC) {
                 /* TODO */
                 DBG("--leaking afbc (%d bytes)--\n", bo->afbc_metadata_size);
         }
@@ -340,8 +358,8 @@ panfrost_map_bo(struct panfrost_context *ctx, struct pipe_transfer *transfer)
         /* If non-zero level, it's a mipmapped resource and needs to be treated as such */
         bo->is_mipmap |= transfer->level;
 
-        if (transfer->usage & PIPE_TRANSFER_MAP_DIRECTLY && bo->tiled) {
-                /* We cannot directly map tiled textures */
+        if (transfer->usage & PIPE_TRANSFER_MAP_DIRECTLY && bo->layout != PAN_LINEAR) {
+                /* We can only directly map linear resources */
                 return NULL;
         }
 
@@ -446,9 +464,9 @@ panfrost_unmap_bo(struct panfrost_context *ctx,
                         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
 
                         /* Gallium thinks writeback happens here; instead, this is our cue to tile */
-                        if (bo->has_afbc) {
+                        if (bo->layout == PAN_AFBC) {
                                 DBG("Warning: writes to afbc surface can't possibly work out well for you...\n");
-                        } else if (bo->tiled) {
+                        } else if (bo->layout == PAN_TILED) {
                                 struct pipe_context *gallium = (struct pipe_context *) ctx;
                                 struct panfrost_screen *screen = pan_screen(gallium->screen);
                                 panfrost_tile_texture(screen, prsrc, transfer->level);

@@ -107,8 +107,7 @@ panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsr
                                (rsrc->bo->afbc_metadata_size + main_size + 4095) / 4096,
                                true, 0, 0, 0);
 
-        rsrc->bo->has_afbc = true;
-        rsrc->bo->gem_handle = rsrc->bo->afbc_slab.gem_handle;
+        rsrc->bo->layout = PAN_AFBC;
 
         /* Compressed textured reads use a tagged pointer to the metadata */
 
@@ -142,7 +141,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[cb]->texture;
 
                 /* Non-AFBC is the default */
-                if (!rsrc->bo->has_afbc)
+                if (rsrc->bo->layout != PAN_AFBC)
                         continue;
 
                 if (ctx->require_sfbd) {
@@ -168,7 +167,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
         if (ctx->pipe_framebuffer.zsbuf) {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.zsbuf->texture;
 
-                if (rsrc->bo->has_afbc) {
+                if (rsrc->bo->layout == PAN_AFBC) {
                         if (ctx->require_sfbd) {
                                 DBG("Depth AFBC not supported on SFBD\n");
                                 assert(0);
@@ -2235,6 +2234,23 @@ panfrost_create_sampler_view(
 
         enum mali_format format = panfrost_find_format(desc);
 
+        unsigned usage2_layout = 0x10;
+
+        switch (prsrc->bo->layout) {
+                case PAN_AFBC:
+                        usage2_layout |= 0xc;
+                        break;
+                case PAN_TILED:
+                        usage2_layout |= 0x1;
+                        break;
+                case PAN_LINEAR:
+                        usage2_layout |= 0x2;
+                        break;
+                default:
+                        assert(0);
+                        break;
+        }
+
         struct mali_texture_descriptor texture_descriptor = {
                 .width = MALI_POSITIVE(texture->width0),
                 .height = MALI_POSITIVE(texture->height0),
@@ -2248,11 +2264,7 @@ panfrost_create_sampler_view(
                         .usage1 = 0x0,
                         .is_not_cubemap = 1,
 
-                        /* 0x11 - regular texture 2d, uncompressed tiled */
-                        /* 0x12 - regular texture 2d, uncompressed linear */
-                        /* 0x1c - AFBC compressed (internally tiled, probably) texture 2D */
-
-                        .usage2 = prsrc->bo->has_afbc ? 0x1c : (prsrc->bo->tiled ? 0x11 : 0x12),
+                        .usage2 = usage2_layout
                 },
 
                 .swizzle = panfrost_translate_swizzle_4(user_swizzle)
@@ -2344,7 +2356,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[i]->texture);
                 bool is_scanout = panfrost_is_scanout(ctx);
 
-                if (!is_scanout && !tex->bo->has_afbc) {
+                if (!is_scanout && tex->bo->layout != PAN_AFBC) {
                         /* The blob is aggressive about enabling AFBC. As such,
                          * it's pretty much necessary to use it here, since we
                          * have no traces of non-compressed FBO. */
@@ -2378,7 +2390,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
                                 struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.zsbuf->texture);
 
-                                if (!tex->bo->has_afbc && !panfrost_is_scanout(ctx))
+                                if (tex->bo->layout != PAN_AFBC && !panfrost_is_scanout(ctx))
                                         panfrost_enable_afbc(ctx, tex, true);
                         }
                 }

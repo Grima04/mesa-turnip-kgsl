@@ -31,6 +31,14 @@
 #include "pan_allocate.h"
 #include "drm-uapi/drm.h"
 
+/* Describes the memory layout of a BO */
+
+enum panfrost_memory_layout {
+        PAN_LINEAR,
+        PAN_TILED,
+        PAN_AFBC
+};
+
 struct panfrost_bo {
         /* Address to the BO in question */
 
@@ -51,21 +59,23 @@ struct panfrost_bo {
         /* Number of bytes of the imported allocation */
         size_t imported_size;
 
-        /* Set for tiled, clear for linear. */
-        bool tiled;
+        /* Internal layout (tiled?) */
+        enum panfrost_memory_layout layout;
 
         /* Is something other than level 0 ever written? */
         bool is_mipmap;
 
         /* If AFBC is enabled for this resource, we lug around an AFBC
          * metadata buffer as well. The actual AFBC resource is also in
-         * afbc_slab (only defined for AFBC) at position afbc_main_offset */
+         * afbc_slab (only defined for AFBC) at position afbc_main_offset
+         */
 
-        bool has_afbc;
         struct panfrost_memory afbc_slab;
         int afbc_metadata_size;
 
-        /* Similarly for TE */
+        /* If transaciton elimination is enabled, we have a dedicated
+         * buffer for that as well. */
+
         bool has_checksum;
         struct panfrost_memory checksum_slab;
         int checksum_stride;
