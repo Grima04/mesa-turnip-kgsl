@@ -145,7 +145,7 @@ decode_batch(struct iris_batch *batch)
 {
    void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
    gen_print_batch(&batch->decoder, map, batch->primary_batch_size,
-                   batch->exec_bos[0]->gtt_offset);
+                   batch->exec_bos[0]->gtt_offset, false);
 }
 
 void
