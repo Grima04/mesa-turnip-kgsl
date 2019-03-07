@@ -78,6 +78,7 @@
 #include "st_shader_cache.h"
 #include "st_vdpau.h"
 #include "st_texture.h"
+#include "st_util.h"
 #include "pipe/p_context.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
@@ -132,7 +133,7 @@ st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 }
 
 
-uint64_t
+static uint64_t
 st_get_active_states(struct gl_context *ctx)
 {
    struct st_vertex_program *vp =
@@ -181,6 +182,14 @@ st_invalidate_buffers(struct st_context *st)
                 ST_NEW_RASTERIZER |
                 ST_NEW_SCISSOR |
                 ST_NEW_WINDOW_RECTANGLES;
+}
+
+
+static inline bool
+st_vp_uses_current_values(const struct gl_context *ctx)
+{
+   const uint64_t inputs = ctx->VertexProgram._Current->info.inputs_read;
+   return _mesa_draw_current_bits(ctx) & inputs;
 }
 
 

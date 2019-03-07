@@ -600,6 +600,7 @@ files_libmesa_gallium = files(
   'state_tracker/st_texture.h',
   'state_tracker/st_tgsi_lower_yuv.c',
   'state_tracker/st_tgsi_lower_yuv.h',
+  'state_tracker/st_util.h',
   'state_tracker/st_vdpau.c',
   'state_tracker/st_vdpau.h',
 )

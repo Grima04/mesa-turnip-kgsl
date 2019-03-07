@@ -65,6 +65,7 @@
 #include "st_sampler_view.h"
 #include "st_scissor.h"
 #include "st_texture.h"
+#include "st_util.h"
 #include "st_nir.h"
 
 #include "pipe/p_context.h"

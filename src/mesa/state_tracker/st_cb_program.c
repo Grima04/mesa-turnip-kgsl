@@ -47,6 +47,7 @@
 #include "st_cb_program.h"
 #include "st_glsl_to_ir.h"
 #include "st_atifs_to_tgsi.h"
+#include "st_util.h"
 
 
 /**
