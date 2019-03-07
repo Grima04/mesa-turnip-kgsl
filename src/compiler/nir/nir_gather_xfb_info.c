@@ -123,9 +123,21 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
 }
 
 static int
+compare_xfb_varying_offsets(const void *_a, const void *_b)
+{
+   const nir_xfb_varying_info *a = _a, *b = _b;
+
+   if (a->buffer != b->buffer)
+      return a->buffer - b->buffer;
+
+   return a->offset - b->offset;
+}
+
+static int
 compare_xfb_output_offsets(const void *_a, const void *_b)
 {
    const nir_xfb_output_info *a = _a, *b = _b;
+
    return a->offset - b->offset;
 }
 
@@ -199,11 +211,14 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
       }
    }
 
-   /* Everything is easier in the state setup code if the list is sorted in
-    * order of output offset.
+   /* Everything is easier in the state setup code if outputs and varyings are
+    * sorted in order of output offset (and buffer for varyings).
     */
    qsort(xfb->outputs, xfb->output_count, sizeof(xfb->outputs[0]),
          compare_xfb_output_offsets);
+
+   qsort(xfb->varyings, xfb->varying_count, sizeof(xfb->varyings[0]),
+         compare_xfb_varying_offsets);
 
 #ifndef NDEBUG
    /* Finally, do a sanity check */
