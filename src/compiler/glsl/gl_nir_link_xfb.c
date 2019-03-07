@@ -156,7 +156,8 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
       varying->Name = NULL;
       varying->Type = glsl_get_gl_type(xfb_varying->type);
       varying->BufferIndex = buffer_index;
-      varying->Size = glsl_get_length(xfb_varying->type);
+      varying->Size = glsl_type_is_array(xfb_varying->type) ?
+         glsl_get_length(xfb_varying->type) : 1;
       varying->Offset = xfb_varying->offset;
    }
 
