@@ -313,7 +313,7 @@ def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
         platform_define[name] = define
 
     for ext_elem in xml.findall('./extensions/extension[@supported="vulkan"]'):
-        platform = None
+        define = None
         if "platform" in ext_elem.attrib:
             define = platform_define[ext_elem.attrib['platform']]
         extension = ext_factory(ext_elem.attrib['name'],
