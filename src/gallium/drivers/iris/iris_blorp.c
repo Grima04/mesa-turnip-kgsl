@@ -249,6 +249,12 @@ blorp_emit_urb_config(struct blorp_batch *blorp_batch,
 
    unsigned size[4] = { vs_entry_size, 1, 1, 1 };
 
+   /* If last VS URB size is good enough for what the BLORP operation needed,
+    * then we can skip reconfiguration
+    */
+   if (ice->shaders.last_vs_entry_size >= vs_entry_size)
+      return;
+
    genX(emit_urb_setup)(ice, batch, size, false, false);
    ice->state.dirty |= IRIS_DIRTY_URB;
 }

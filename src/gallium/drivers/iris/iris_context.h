@@ -502,6 +502,9 @@ struct iris_context {
 
       unsigned urb_size;
 
+      /* Track last VS URB entry size */
+      unsigned last_vs_entry_size;
+
       /**
        * Scratch buffers for various sizes and stages.
        *

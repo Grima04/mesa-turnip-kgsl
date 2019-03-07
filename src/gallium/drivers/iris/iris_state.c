@@ -5866,6 +5866,8 @@ genX(emit_urb_setup)(struct iris_context *ice,
    unsigned entries[4];
    unsigned start[4];
 
+   ice->shaders.last_vs_entry_size = size[MESA_SHADER_VERTEX];
+
    gen_get_urb_config(devinfo, 1024 * push_size_kB,
                       1024 * ice->shaders.urb_size,
                       tess_present, gs_present,
