@@ -1069,6 +1069,8 @@ iris_render_condition(struct pipe_context *ctx,
 
    /* The old condition isn't relevant; we'll update it if necessary */
    ice->state.compute_predicate = NULL;
+   ice->condition.query = q;
+   ice->condition.condition = condition;
 
    if (!q) {
       ice->state.predicate = IRIS_PREDICATE_STATE_RENDER;
@@ -1087,6 +1089,23 @@ iris_render_condition(struct pipe_context *ctx,
       }
       set_predicate_for_result(ice, q, condition);
    }
+}
+
+void
+iris_resolve_conditional_render(struct iris_context *ice)
+{
+   struct pipe_context *ctx = (void *) ice;
+   struct iris_query *q = ice->condition.query;
+   struct pipe_query *query = (void *) q;
+   union pipe_query_result result;
+
+   if (ice->state.predicate != IRIS_PREDICATE_STATE_USE_BIT)
+      return;
+
+   assert(q);
+
+   iris_get_query_result(ctx, query, true, &result);
+   set_predicate_enable(ice, (q->result != 0) ^ ice->condition.condition);
 }
 
 void

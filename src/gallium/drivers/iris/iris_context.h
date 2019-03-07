@@ -515,6 +515,11 @@ struct iris_context {
    } shaders;
 
    struct {
+      struct iris_query *query;
+      bool condition;
+   } condition;
+
+   struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
 
@@ -781,6 +786,7 @@ void iris_math_div32_gpr0(struct iris_context *ice,
 
 uint64_t iris_timebase_scale(const struct gen_device_info *devinfo,
                              uint64_t gpu_timestamp);
+void iris_resolve_conditional_render(struct iris_context *ice);
 
 /* iris_resolve.c */
 
