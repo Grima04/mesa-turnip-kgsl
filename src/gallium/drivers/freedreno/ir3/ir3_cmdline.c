@@ -51,6 +51,8 @@
 
 #include "pipe/p_context.h"
 
+#include "main/mtypes.h"
+
 static void dump_info(struct ir3_shader_variant *so, const char *str)
 {
 	uint32_t *bin;
