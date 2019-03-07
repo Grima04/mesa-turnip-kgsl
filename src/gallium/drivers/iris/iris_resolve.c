@@ -1371,12 +1371,10 @@ iris_resource_render_aux_usage(struct iris_context *ice,
        * formats.  However, there are issues with blending where it doesn't
        * properly apply the sRGB curve to the clear color when blending.
        */
-      /* XXX:
       if (devinfo->gen >= 9 && blend_enabled &&
           isl_format_is_srgb(render_format) &&
-          !isl_color_value_is_zero_one(res->fast_clear_color, render_format))
+          !isl_color_value_is_zero_one(res->aux.clear_color, render_format))
          return ISL_AUX_USAGE_NONE;
-         */
 
       if (res->aux.usage == ISL_AUX_USAGE_CCS_E &&
           format_ccs_e_compat_with_resource(devinfo, res, render_format))
