@@ -303,7 +303,7 @@ pb_debug_buffer_validate(struct pb_buffer *_buf,
 {
    struct pb_debug_buffer *buf = pb_debug_buffer(_buf);
    
-   assert((flags & ~PB_ALL_USAGE_FLAGS) == 0);
+   assert((flags & ~PB_USAGE_ALL) == 0);
 
    mtx_lock(&buf->mutex);
    if(buf->map_count) {
