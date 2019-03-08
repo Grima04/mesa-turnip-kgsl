@@ -156,6 +156,7 @@ files_libnir = files(
   'nir_move_load_const.c',
   'nir_move_vec_src_uses_to_dest.c',
   'nir_normalize_cubemap_coords.c',
+  'nir_opt_combine_stores.c',
   'nir_opt_conditional_discard.c',
   'nir_opt_constant_folding.c',
   'nir_opt_copy_prop_vars.c',

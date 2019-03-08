@@ -49,6 +49,10 @@ protected:
       return create_var(mode, glsl_vector_type(GLSL_TYPE_INT, 2), name);
    }
 
+   nir_variable *create_ivec4(nir_variable_mode mode, const char *name) {
+      return create_var(mode, glsl_vector_type(GLSL_TYPE_INT, 4), name);
+   }
+
    nir_variable **create_many_int(nir_variable_mode mode, const char *prefix, unsigned count) {
       nir_variable **result = (nir_variable **)linear_alloc_child(lin_ctx, sizeof(nir_variable *) * count);
       for (unsigned i = 0; i < count; i++)
@@ -60,6 +64,13 @@ protected:
       nir_variable **result = (nir_variable **)linear_alloc_child(lin_ctx, sizeof(nir_variable *) * count);
       for (unsigned i = 0; i < count; i++)
          result[i] = create_ivec2(mode, linear_asprintf(lin_ctx, "%s%u", prefix, i));
+      return result;
+   }
+
+   nir_variable **create_many_ivec4(nir_variable_mode mode, const char *prefix, unsigned count) {
+      nir_variable **result = (nir_variable **)linear_alloc_child(lin_ctx, sizeof(nir_variable *) * count);
+      for (unsigned i = 0; i < count; i++)
+         result[i] = create_ivec4(mode, linear_asprintf(lin_ctx, "%s%u", prefix, i));
       return result;
    }
 
@@ -132,6 +143,7 @@ nir_vars_test::get_intrinsic(nir_intrinsic_op intrinsic,
 class nir_redundant_load_vars_test : public nir_vars_test {};
 class nir_copy_prop_vars_test : public nir_vars_test {};
 class nir_dead_write_vars_test : public nir_vars_test {};
+class nir_combine_stores_test : public nir_vars_test {};
 
 } // namespace
 
@@ -952,4 +964,166 @@ TEST_F(nir_dead_write_vars_test, DISABLED_unrelated_barrier_in_two_blocks)
 
    nir_intrinsic_instr *third_store = get_intrinsic(nir_intrinsic_store_deref, 2);
    EXPECT_EQ(nir_intrinsic_get_var(third_store, 0), v[0]);
+}
+
+TEST_F(nir_combine_stores_test, non_overlapping_stores)
+{
+   nir_variable **v = create_many_ivec4(nir_var_mem_ssbo, "v", 4);
+   nir_variable *out = create_ivec4(nir_var_shader_out, "out");
+
+   for (int i = 0; i < 4; i++)
+      nir_store_var(b, out, nir_load_var(b, v[i]), 1 << i);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_combine_stores(b->shader, nir_var_shader_out);
+   ASSERT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   /* Clean up to verify from where the values in combined store are coming. */
+   nir_copy_prop(b->shader);
+   nir_opt_dce(b->shader);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 1);
+   nir_intrinsic_instr *combined = get_intrinsic(nir_intrinsic_store_deref, 0);
+   ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
+   ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
+
+   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   ASSERT_TRUE(vec);
+   for (int i = 0; i < 4; i++) {
+      nir_intrinsic_instr *load =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[i].src));
+      ASSERT_EQ(load->intrinsic, nir_intrinsic_load_deref);
+      ASSERT_EQ(nir_intrinsic_get_var(load, 0), v[i])
+         << "Source value for component " << i << " of store is wrong";
+      ASSERT_EQ(vec->src[i].swizzle[0], i)
+         << "Source component for component " << i << " of store is wrong";
+   }
+}
+
+TEST_F(nir_combine_stores_test, overlapping_stores)
+{
+   nir_variable **v = create_many_ivec4(nir_var_mem_ssbo, "v", 3);
+   nir_variable *out = create_ivec4(nir_var_shader_out, "out");
+
+   /* Make stores with xy, yz and zw masks. */
+   for (int i = 0; i < 3; i++) {
+      nir_component_mask_t mask = (1 << i) | (1 << (i + 1));
+      nir_store_var(b, out, nir_load_var(b, v[i]), mask);
+   }
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_combine_stores(b->shader, nir_var_shader_out);
+   ASSERT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   /* Clean up to verify from where the values in combined store are coming. */
+   nir_copy_prop(b->shader);
+   nir_opt_dce(b->shader);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 1);
+   nir_intrinsic_instr *combined = get_intrinsic(nir_intrinsic_store_deref, 0);
+   ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
+   ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
+
+   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   ASSERT_TRUE(vec);
+
+   /* Component x comes from v[0]. */
+   nir_intrinsic_instr *load_for_x =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[0].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_x, 0), v[0]);
+   ASSERT_EQ(vec->src[0].swizzle[0], 0);
+
+   /* Component y comes from v[1]. */
+   nir_intrinsic_instr *load_for_y =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[1].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_y, 0), v[1]);
+   ASSERT_EQ(vec->src[1].swizzle[0], 1);
+
+   /* Components z and w come from v[2]. */
+   nir_intrinsic_instr *load_for_z =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[2].src));
+   nir_intrinsic_instr *load_for_w =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[3].src));
+   ASSERT_EQ(load_for_z, load_for_w);
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_z, 0), v[2]);
+   ASSERT_EQ(vec->src[2].swizzle[0], 2);
+   ASSERT_EQ(vec->src[3].swizzle[0], 3);
+}
+
+TEST_F(nir_combine_stores_test, direct_array_derefs)
+{
+   nir_variable **v = create_many_ivec4(nir_var_mem_ssbo, "vec", 2);
+   nir_variable **s = create_many_int(nir_var_mem_ssbo, "scalar", 2);
+   nir_variable *out = create_ivec4(nir_var_mem_ssbo, "out");
+
+   nir_deref_instr *out_deref = nir_build_deref_var(b, out);
+
+   /* Store to vector with mask x. */
+   nir_store_deref(b, out_deref, nir_load_var(b, v[0]),
+                   1 << 0);
+
+   /* Store to vector with mask yz. */
+   nir_store_deref(b, out_deref, nir_load_var(b, v[1]),
+                   (1 << 2) | (1 << 1));
+
+   /* Store to vector[2], overlapping with previous store. */
+   nir_store_deref(b,
+                   nir_build_deref_array_imm(b, out_deref, 2),
+                   nir_load_var(b, s[0]),
+                   1 << 0);
+
+   /* Store to vector[3], no overlap. */
+   nir_store_deref(b,
+                   nir_build_deref_array_imm(b, out_deref, 3),
+                   nir_load_var(b, s[1]),
+                   1 << 0);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_combine_stores(b->shader, nir_var_mem_ssbo);
+   ASSERT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   /* Clean up to verify from where the values in combined store are coming. */
+   nir_copy_prop(b->shader);
+   nir_opt_dce(b->shader);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 1);
+   nir_intrinsic_instr *combined = get_intrinsic(nir_intrinsic_store_deref, 0);
+   ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
+   ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
+
+   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   ASSERT_TRUE(vec);
+
+   /* Component x comes from v[0]. */
+   nir_intrinsic_instr *load_for_x =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[0].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_x, 0), v[0]);
+   ASSERT_EQ(vec->src[0].swizzle[0], 0);
+
+   /* Component y comes from v[1]. */
+   nir_intrinsic_instr *load_for_y =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[1].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_y, 0), v[1]);
+   ASSERT_EQ(vec->src[1].swizzle[0], 1);
+
+   /* Components z comes from s[0]. */
+   nir_intrinsic_instr *load_for_z =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[2].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_z, 0), s[0]);
+   ASSERT_EQ(vec->src[2].swizzle[0], 0);
+
+   /* Component w comes from s[1]. */
+   nir_intrinsic_instr *load_for_w =
+         nir_instr_as_intrinsic(nir_src_instr(&vec->src[3].src));
+   ASSERT_EQ(nir_intrinsic_get_var(load_for_w, 0), s[1]);
+   ASSERT_EQ(vec->src[3].swizzle[0], 0);
 }

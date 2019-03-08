@@ -555,6 +555,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       }
       OPT(nir_opt_copy_prop_vars);
       OPT(nir_opt_dead_write_vars);
+      OPT(nir_opt_combine_stores, nir_var_all);
 
       if (is_scalar) {
          OPT(nir_lower_alu_to_scalar);

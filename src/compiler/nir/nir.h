@@ -3329,6 +3329,8 @@ bool nir_opt_algebraic_before_ffma(nir_shader *shader);
 bool nir_opt_algebraic_late(nir_shader *shader);
 bool nir_opt_constant_folding(nir_shader *shader);
 
+bool nir_opt_combine_stores(nir_shader *shader, nir_variable_mode modes);
+
 bool nir_opt_global_to_local(nir_shader *shader);
 
 bool nir_copy_prop(nir_shader *shader);
