@@ -21,7 +21,6 @@ matrix:
     - env:
         - LABEL="macOS meson"
         - BUILD=meson
-        - UNWIND="false"
         - DRI_LOADERS="-Dplatforms=x11"
       os: osx
 
@@ -73,10 +72,8 @@ script:
       ../autogen.sh
         --enable-autotools
         --enable-debug
-        $LIBUNWIND_FLAGS
         $DRI_LOADERS
         --with-dri-drivers=$DRI_DRIVERS
-        $GALLIUM_ST
         --with-gallium-drivers=$GALLIUM_DRIVERS
         --with-vulkan-drivers=$VULKAN_DRIVERS
         --disable-llvm-shared-libs
@@ -101,10 +98,8 @@ script:
       meson _build \
                    --native-file=native.file \
                    -Dbuild-tests=true \
-                   -Dlibunwind=${UNWIND} \
                    ${DRI_LOADERS} \
                    -Ddri-drivers=${DRI_DRIVERS:-[]} \
-                   ${GALLIUM_ST} \
                    -Dgallium-drivers=${GALLIUM_DRIVERS:-[]} \
                    -Dvulkan-drivers=${VULKAN_DRIVERS:-[]}
       meson configure _build
