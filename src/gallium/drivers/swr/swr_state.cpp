@@ -302,11 +302,6 @@ swr_set_sampler_views(struct pipe_context *pipe,
    /* set the new sampler views */
    ctx->num_sampler_views[shader] = num;
    for (i = 0; i < num; i++) {
-      /* Note: we're using pipe_sampler_view_release() here to work around
-       * a possible crash when the old view belongs to another context that
-       * was already destroyed.
-       */
-      pipe_sampler_view_release(pipe, &ctx->sampler_views[shader][start + i]);
       pipe_sampler_view_reference(&ctx->sampler_views[shader][start + i],
                                   views[i]);
    }
