@@ -1772,7 +1772,10 @@ st_get_cp_variant(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct st_basic_variant *v;
-   struct st_basic_variant_key key = {0};
+   struct st_basic_variant_key key;
+
+   /* use memset, not an initializer to be sure all memory is zeroed */
+   memset(&key, 0, sizeof(key));
 
    key.st = st->has_shareable_shaders ? NULL : st;
 
@@ -1995,7 +1998,9 @@ st_precompile_shader_variant(struct st_context *st,
    switch (prog->Target) {
    case GL_VERTEX_PROGRAM_ARB: {
       struct st_vertex_program *p = (struct st_vertex_program *)prog;
-      struct st_vp_variant_key key = {0};
+      struct st_vp_variant_key key;
+
+      memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
       st_get_vp_variant(st, p, &key);
@@ -2022,7 +2027,9 @@ st_precompile_shader_variant(struct st_context *st,
 
    case GL_FRAGMENT_PROGRAM_ARB: {
       struct st_fragment_program *p = (struct st_fragment_program *)prog;
-      struct st_fp_variant_key key = {0};
+      struct st_fp_variant_key key;
+
+      memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
       st_get_fp_variant(st, p, &key);

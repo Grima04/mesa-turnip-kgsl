@@ -112,7 +112,10 @@ st_update_fp( struct st_context *st )
        !stfp->variants->key.bitmap) {
       shader = stfp->variants->driver_shader;
    } else {
-      struct st_fp_variant_key key = {0};
+      struct st_fp_variant_key key;
+
+      /* use memset, not an initializer to be sure all memory is zeroed */
+      memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
 
@@ -168,7 +171,9 @@ st_update_vp( struct st_context *st )
        stvp->variants->key.passthrough_edgeflags == st->vertdata_edgeflags) {
       st->vp_variant = stvp->variants;
    } else {
-      struct st_vp_variant_key key = {0};
+      struct st_vp_variant_key key;
+
+      memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
 
