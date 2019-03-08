@@ -41,6 +41,7 @@
 #include "pan_screen.h"
 #include "pan_blending.h"
 #include "pan_blend_shaders.h"
+#include "pan_util.h"
 #include "pan_wallpaper.h"
 
 static int performance_counter_number = 0;
@@ -85,7 +86,7 @@ static void
 panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsrc, bool ds)
 {
         if (ctx->require_sfbd) {
-                printf("AFBC not supported yet on SFBD\n");
+                DBG("AFBC not supported yet on SFBD\n");
                 assert(0);
         }
 
@@ -145,7 +146,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
                         continue;
 
                 if (ctx->require_sfbd) {
-                        fprintf(stderr, "Color AFBC not supported on SFBD\n");
+                        DBG("Color AFBC not supported on SFBD\n");
                         assert(0);
                 }
 
@@ -169,7 +170,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
 
                 if (rsrc->bo->has_afbc) {
                         if (ctx->require_sfbd) {
-                                fprintf(stderr, "Depth AFBC not supported on SFBD\n");
+                                DBG("Depth AFBC not supported on SFBD\n");
                                 assert(0);
                         }
 
@@ -193,7 +194,7 @@ panfrost_set_fragment_afbc(struct panfrost_context *ctx)
 
         if (ctx->pipe_framebuffer.nr_cbufs == 0) {
                 if (ctx->require_sfbd) {
-                        fprintf(stderr, "Depth-only FBO not supported on SFBD\n");
+                        DBG("Depth-only FBO not supported on SFBD\n");
                         assert(0);
                 }
 
@@ -598,7 +599,7 @@ static void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
         unsigned transient_count = ctx->transient_pools[ctx->cmdstream_i].entry_index*ctx->transient_pools[0].entry_size + ctx->transient_pools[ctx->cmdstream_i].entry_offset;
-	printf("Uploaded transient %d bytes\n", transient_count);
+	DBG("Uploaded transient %d bytes\n", transient_count);
 
         /* Rotate cmdstream */
         if ((++ctx->cmdstream_i) == (sizeof(ctx->transient_pools) / sizeof(ctx->transient_pools[0])))
@@ -958,7 +959,7 @@ panfrost_fragment_job(struct panfrost_context *ctx)
 
                 if (rsrc->bo->has_checksum) {
                         if (ctx->require_sfbd) {
-                                fprintf(stderr, "Checksumming not supported on SFBD\n");
+                                DBG("Checksumming not supported on SFBD\n");
                                 assert(0);
                         }
 
@@ -1428,7 +1429,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 break;
 
                         default:
-                                printf("Unknown shader stage %d in uniform upload\n", i);
+                                DBG("Unknown shader stage %d in uniform upload\n", i);
                                 assert(0);
                         }
 
@@ -1459,7 +1460,7 @@ panfrost_queue_draw(struct panfrost_context *ctx)
 {
         /* TODO: Expand the array? */
         if (ctx->draw_count >= MAX_DRAW_CALLS) {
-                printf("Job buffer overflow, ignoring draw\n");
+                DBG("Job buffer overflow, ignoring draw\n");
                 assert(0);
         }
 
@@ -1612,7 +1613,7 @@ g2m_draw_mode(enum pipe_prim_type mode)
                 DEFINE_CASE(POLYGON);
 
         default:
-                printf("Illegal draw mode %d\n", mode);
+                DBG("Illegal draw mode %d\n", mode);
                 assert(0);
                 return MALI_LINE_LOOP;
         }
@@ -1634,7 +1635,7 @@ panfrost_translate_index_size(unsigned size)
                 return MALI_DRAW_INDEXED_UINT32;
 
         default:
-                printf("Unknown index size %d\n", size);
+                DBG("Unknown index size %d\n", size);
                 assert(0);
                 return 0;
         }
@@ -1911,7 +1912,7 @@ panfrost_delete_vertex_elements_state(struct pipe_context *pctx, void *hwcso)
 {
         struct panfrost_vertex_state *so = (struct panfrost_vertex_state *) hwcso;
         unsigned bytes = sizeof(struct mali_attr_meta) * so->num_elements;
-        printf("Vertex elements delete leaks descriptor (%d bytes)\n", bytes);
+        DBG("Vertex elements delete leaks descriptor (%d bytes)\n", bytes);
         free(hwcso);
 }
 
@@ -1939,11 +1940,11 @@ panfrost_delete_shader_state(
         struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
 
         if (cso->base.type == PIPE_SHADER_IR_TGSI) {
-                printf("Deleting TGSI shader leaks duplicated tokens\n");
+                DBG("Deleting TGSI shader leaks duplicated tokens\n");
         }
 
         unsigned leak = cso->variant_count * sizeof(struct mali_shader_meta);
-        printf("Deleting shader state leaks descriptors (%d bytes), and shader bytecode\n", leak);
+        DBG("Deleting shader state leaks descriptors (%d bytes), and shader bytecode\n", leak);
 
         free(so);
 }
@@ -2172,7 +2173,7 @@ panfrost_set_constant_buffer(
         } else if (buf->user_buffer) {
                 cpu = buf->user_buffer;
         } else {
-                printf("No constant buffer?\n");
+                DBG("No constant buffer?\n");
                 return;
         }
 
@@ -2321,7 +2322,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 if (ctx->pipe_framebuffer.cbufs[i] == cb) continue;
 
                 if (cb && (i != 0)) {
-                        printf("XXX: Multiple render targets not supported before t7xx!\n");
+                        DBG("XXX: Multiple render targets not supported before t7xx!\n");
                         assert(0);
                 }
 
@@ -2436,7 +2437,7 @@ panfrost_delete_blend_state(struct pipe_context *pipe,
         struct panfrost_blend_state *so = (struct panfrost_blend_state *) blend;
 
         if (so->has_blend_shader) {
-                printf("Deleting blend state leak blend shaders bytecode\n");
+                DBG("Deleting blend state leak blend shaders bytecode\n");
         }
 
         free(blend);
@@ -2637,7 +2638,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 }
 
                 default:
-                        fprintf(stderr, "Skipping query %d\n", query->type);
+                        DBG("Skipping query %d\n", query->type);
                         break;
         }
 
@@ -2683,7 +2684,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                         break;
                 }
                 default:
-                        fprintf(stderr, "Skipped query get %d\n", query->type);
+                        DBG("Skipped query get %d\n", query->type);
                         break;
         }
 

@@ -42,6 +42,7 @@
 #include "pan_screen.h"
 #include "pan_resource.h"
 #include "pan_swizzle.h"
+#include "pan_util.h"
 
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
@@ -125,7 +126,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 static void
 panfrost_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
-        //fprintf(stderr, "TODO %s\n", __func__);
+        //DBG("TODO %s\n", __func__);
 }
 
 static void
@@ -133,7 +134,7 @@ panfrost_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info)
 {
         /* STUB */
-        printf("Skipping blit XXX\n");
+        DBG("Skipping blit XXX\n");
         return;
 }
 
@@ -243,7 +244,7 @@ panfrost_resource_create(struct pipe_screen *screen,
                 case PIPE_TEXTURE_RECT:
                         break;
                 default:
-                        fprintf(stderr, "Unknown texture target %d\n", template->target);
+                        DBG("Unknown texture target %d\n", template->target);
                         assert(0);
         }
 
@@ -306,12 +307,12 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
 
         if (bo->has_afbc) {
                 /* TODO */
-                printf("--leaking afbc (%d bytes)--\n", bo->afbc_metadata_size);
+                DBG("--leaking afbc (%d bytes)--\n", bo->afbc_metadata_size);
         }
 
         if (bo->has_checksum) {
                 /* TODO */
-                printf("--leaking checksum (%zd bytes)--\n", bo->checksum_slab.size);
+                DBG("--leaking checksum (%zd bytes)--\n", bo->checksum_slab.size);
         }
 
         if (bo->imported) {
@@ -450,7 +451,7 @@ panfrost_unmap_bo(struct panfrost_context *ctx,
 
                         /* Gallium thinks writeback happens here; instead, this is our cue to tile */
                         if (bo->has_afbc) {
-                                printf("Warning: writes to afbc surface can't possibly work out well for you...\n");
+                                DBG("Warning: writes to afbc surface can't possibly work out well for you...\n");
                         } else if (bo->tiled) {
                                 struct pipe_context *gallium = (struct pipe_context *) ctx;
                                 struct panfrost_screen *screen = pan_screen(gallium->screen);
@@ -525,7 +526,7 @@ panfrost_slab_free(void *priv, struct pb_slab *slab)
 static void
 panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
-        //fprintf(stderr, "TODO %s\n", __func__);
+        //DBG("TODO %s\n", __func__);
 }
 
 static enum pipe_format

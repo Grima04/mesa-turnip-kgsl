@@ -25,6 +25,7 @@
 #include "pan_wallpaper.h"
 #include "pan_context.h"
 #include "pan_screen.h"
+#include "pan_util.h"
 //#include "include/panfrost-job.h"
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
@@ -78,7 +79,8 @@ panfrost_build_wallpaper_program()
 
         nir_store_var(b, c_out, texel, 0xFF);
 
-        nir_print_shader(shader, stdout);
+	if (pan_debug & PAN_DBG_SHADERS)
+	        nir_print_shader(shader, stdout);
 
         return shader;
 }

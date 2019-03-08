@@ -28,6 +28,7 @@
  **************************************************************************/
 
 
+#include "util/u_debug.h"
 #include "util/u_memory.h"
 #include "util/u_format.h"
 #include "util/u_format_s3tc.h"
@@ -46,9 +47,20 @@
 #include "pan_screen.h"
 #include "pan_resource.h"
 #include "pan_public.h"
+#include "pan_util.h"
 
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"
+
+static const struct debug_named_value debug_options[] = {
+	{"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
+	{"shaders",   PAN_DBG_SHADERS,	"Dump shaders in NIR"},
+	DEBUG_NAMED_VALUE_END
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(pan_debug, "PAN_MESA_DEBUG", debug_options, 0)
+
+int pan_debug = 0;
 
 struct panfrost_driver *panfrost_create_drm_driver(int fd);
 struct panfrost_driver *panfrost_create_nondrm_driver(int fd);
@@ -530,6 +542,8 @@ struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm)
 {
         struct panfrost_screen *screen = CALLOC_STRUCT(panfrost_screen);
+
+	pan_debug = debug_get_option_pan_debug();
 
         if (!screen)
                 return NULL;

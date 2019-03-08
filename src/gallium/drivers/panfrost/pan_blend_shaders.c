@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include "pan_blend_shaders.h"
+#include "pan_util.h"
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
 //#include "gallium/auxiliary/nir/nir_lower_blend.h"
@@ -130,7 +131,8 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, nir_blending_f(blend, b, s_src, s_dst, s_con), 0xFF);
 
-        nir_print_shader(shader, stdout);
+	if (pan_debug & PAN_DBG_SHADERS)
+	        nir_print_shader(shader, stdout);
 
         /* Compile the built shader */
 
