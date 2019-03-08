@@ -169,46 +169,66 @@ Developers will often want to install Mesa to a testing directory rather
 than the system library directory.
 This can be done with the --prefix option.  For example:
 </p>
-<code>
+<pre>
 meson --prefix="${PWD}/build/install" build/
-</code>
+</pre>
 <p>
 will put the final libraries and drivers into the build/install/
 directory.
 Then you can set LD_LIBRARY_PATH and LIBGL_DRIVERS_PATH to that location
 to run/test the driver.
 </p>
+<p>
+Meson also honors <code>DESTDIR</code> for installs.
+</p>
 </dd>
 
-<dt>Environment Variables</dt>
-<dd><p>Meson supports the standard CC and CXX environment variables for
-changing the default compiler. Meson does support CFLAGS, CXXFLAGS, etc. But
-their use is discouraged because of the many caveats in using them. Instead it
-is recomended to use <code>-D${lang}_args</code> and
-<code>-D${lang}_link_args</code> instead. Among the benefits of these options
+<dt>Compiler Options</dt>
+<dd>
+<p>Meson supports the common CFLAGS, CXXFLAGS, etc. environment
+variables but their use is discouraged because of the many caveats
+in using them.
+</p>
+<p>Instead, it is recomended to use <code>-D${lang}_args</code> and
+<code>-D${lang}_link_args</code>. Among the benefits of these options
 is that they are guaranteed to persist across rebuilds and reconfigurations.
+</p>
+This example sets -fmax-errors for compiling C sources and -DMAGIC=123
+for C++ sources:
+</p>
+<p>
+<pre>
+meson builddir/ -Dc_args=-fmax-errors=10 -Dcpp_args=-DMAGIC=123
+</pre>
+</p>
+</dd>
 
-Meson does not allow changing compiler in a configured builddir, you will need
+
+<dt>Compiler Specification</dt>
+<dd>
+<p>
+Meson supports the standard CC and CXX environment variables for
+changing the default compiler.  Note that Meson does not allow
+changing the compilers in a configured builddir so you will need
 to create a new build dir for a different compiler.
 </p>
-
+<p>
+This is an example of specifying the clang compilers and cleaning
+the build directory before reconfiguring with an extra C option:
+</p>
 <pre>
-    CC=clang CXX=clang++ meson build-clang
-    ninja -C build-clang
-    ninja -C build-clang clean
-    meson configure build -Dc_args="-Wno-typedef-redefinition"
-    ninja -C build-clang
+CC=clang CXX=clang++ meson build-clang
+ninja -C build-clang
+ninja -C build-clang clean
+meson configure build -Dc_args="-Wno-typedef-redefinition"
+ninja -C build-clang
 </pre>
-
 <p>
 The default compilers depends on your operating system. Meson supports most of
 the popular compilers, a complete list is available
 <a href="http://mesonbuild.com/Reference-tables.html#compiler-ids">here</a>.
 </p>
-
-<p>Meson also honors <code>DESTDIR</code> for installs</p>
 </dd>
-
 
 <dt>LLVM</dt>
 <dd><p>Meson includes upstream logic to wrap llvm-config using its standard
