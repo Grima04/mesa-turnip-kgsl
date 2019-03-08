@@ -414,7 +414,7 @@ vec4_visitor::opt_vector_float()
 
       foreach_inst_in_block_safe(vec4_instruction, inst, block) {
          int vf = -1;
-         enum brw_reg_type need_type;
+         enum brw_reg_type need_type = BRW_REGISTER_TYPE_LAST;
 
          /* Look for unconditional MOVs from an immediate with a partial
           * writemask.  Skip type-conversion MOVs other than integer 0,
