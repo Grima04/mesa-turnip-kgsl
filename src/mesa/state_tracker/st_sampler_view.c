@@ -74,7 +74,7 @@ st_texture_set_sampler_view(struct st_context *st,
       if (sv->view) {
          /* check if the context matches */
          if (sv->view->context == st->pipe) {
-            pipe_sampler_view_release(st->pipe, &sv->view);
+            pipe_sampler_view_reference(&sv->view, NULL);
             goto found;
          }
       } else {
@@ -94,13 +94,13 @@ st_texture_set_sampler_view(struct st_context *st,
 
          if (new_max < views->max ||
              new_max > (UINT_MAX - sizeof(*views)) / sizeof(views->views[0])) {
-            pipe_sampler_view_release(st->pipe, &view);
+            pipe_sampler_view_reference(&view, NULL);
             goto out;
          }
 
          struct st_sampler_views *new_views = malloc(new_size);
          if (!new_views) {
-            pipe_sampler_view_release(st->pipe, &view);
+            pipe_sampler_view_reference(&view, NULL);
             goto out;
          }
 

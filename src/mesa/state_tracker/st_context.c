@@ -434,8 +434,7 @@ st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
    st_destroy_bound_image_handles(st);
 
    for (i = 0; i < ARRAY_SIZE(st->state.frag_sampler_views); i++) {
-      pipe_sampler_view_release(st->pipe,
-                                &st->state.frag_sampler_views[i]);
+      pipe_sampler_view_reference(&st->state.frag_sampler_views[i], NULL);
    }
 
    /* free glReadPixels cache data */
