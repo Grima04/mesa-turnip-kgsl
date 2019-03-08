@@ -791,6 +791,7 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    }
 
    NIR_PASS_V(*producer, nir_lower_io_to_vector, nir_var_shader_out);
+   NIR_PASS_V(*producer, nir_opt_combine_stores, nir_var_shader_out);
    NIR_PASS_V(*consumer, nir_lower_io_to_vector, nir_var_shader_in);
 
    if ((*producer)->info.stage != MESA_SHADER_TESS_CTRL) {
