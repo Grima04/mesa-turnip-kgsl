@@ -17,7 +17,7 @@
 # at "01" unless you have multiple updates on the same day :)
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-04-16"
+  DEBIAN_TAG: "2019-05-01"
   DEBIAN_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
@@ -327,3 +327,9 @@ scons-swr:
     SCONS_TARGET: "swr=1"
     SCONS_CHECK_COMMAND: "true"
     LLVM_VERSION: "6.0"
+
+scons-win64:
+  extends: .scons-build
+  variables:
+    SCONS_TARGET: platform=windows machine=x86_64
+    SCONS_CHECK_COMMAND: "true"

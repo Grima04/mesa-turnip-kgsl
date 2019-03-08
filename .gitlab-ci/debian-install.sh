@@ -68,6 +68,11 @@ apt-get install -y \
       gettext \
       make
 
+# for 64bit windows cross-builds
+apt-get install -y \
+      wine64 \
+      mingw-w64
+
 # dependencies where we want a specific version
 export              XORG_RELEASES=https://xorg.freedesktop.org/releases/individual
 export               XCB_RELEASES=https://xcb.freedesktop.org/dist
