@@ -14,8 +14,6 @@ matrix:
     - env:
         - LABEL="macOS make"
         - BUILD=make
-        - MAKEFLAGS="-j4"
-        - MAKE_CHECK_COMMAND="make check"
         - DRI_LOADERS="--with-platforms=x11 --disable-egl"
       os: osx
     - env:
@@ -66,6 +64,7 @@ install:
 script:
   - if test "x$BUILD" = xmake; then
       export CFLAGS="$CFLAGS -isystem`pwd`";
+      export MAKEFLAGS="-j4";
 
       mkdir build &&
       cd build &&
@@ -78,7 +77,7 @@ script:
         --with-vulkan-drivers=$VULKAN_DRIVERS
         --disable-llvm-shared-libs
         &&
-      make && eval $MAKE_CHECK_COMMAND;
+      make && make check;
     fi
 
   - |
