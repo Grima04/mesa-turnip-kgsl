@@ -874,9 +874,9 @@ gen_print_batch(struct gen_batch_decode_ctx *ctx,
       }
 
       if (strcmp(inst_name, "MI_BATCH_BUFFER_START") == 0) {
-         uint64_t next_batch_addr;
+         uint64_t next_batch_addr = 0;
          bool ppgtt = false;
-         bool second_level;
+         bool second_level = false;
          struct gen_field_iterator iter;
          gen_field_iterator_init(&iter, inst, p, 0, false);
          while (gen_field_iterator_next(&iter)) {
