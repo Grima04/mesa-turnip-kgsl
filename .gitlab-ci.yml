@@ -423,7 +423,7 @@ make-gallium-st-clover-llvm:
       --disable-gallium-osmesa
     LIBUNWIND_FLAGS: --enable-libunwind
     GALLIUM_DRIVERS: "r600,radeonsi"
-    LLVM_VERSION: "7.0"
+    LLVM_VERSION: "7"
 
 make-gallium-st-clover-llvm-39:
   extends: make-gallium-st-clover-llvm
