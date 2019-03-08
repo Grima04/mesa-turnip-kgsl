@@ -2266,17 +2266,19 @@ panfrost_create_sampler_view(
 
         enum mali_format format = panfrost_find_format(desc);
 
+        bool is_depth = desc->format == PIPE_FORMAT_Z32_UNORM;
+
         unsigned usage2_layout = 0x10;
 
         switch (prsrc->bo->layout) {
                 case PAN_AFBC:
-                        usage2_layout |= 0xc;
+                        usage2_layout |= 0x8 | 0x4;
                         break;
                 case PAN_TILED:
                         usage2_layout |= 0x1;
                         break;
                 case PAN_LINEAR:
-                        usage2_layout |= 0x2;
+                        usage2_layout |= is_depth ? 0x1 : 0x2;
                         break;
                 default:
                         assert(0);
