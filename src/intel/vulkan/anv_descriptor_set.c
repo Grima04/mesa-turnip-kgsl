@@ -614,6 +614,8 @@ void anv_DestroyDescriptorPool(
       anv_descriptor_set_destroy(device, pool, set);
    }
 
+   util_vma_heap_finish(&pool->bo_heap);
+
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
