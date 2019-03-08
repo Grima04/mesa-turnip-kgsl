@@ -30,6 +30,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MIDGARD_DBG_MSGS		0x0001
+#define MIDGARD_DBG_SHADERS		0x0002
+
+extern int midgard_debug;
+
 typedef enum {
         midgard_word_type_alu,
         midgard_word_type_load_store,
