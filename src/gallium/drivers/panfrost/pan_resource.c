@@ -223,17 +223,20 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
 
                 for (int l = 0; l < (template->last_level + 1); ++l) {
                         bo->cpu[l] = malloc(sz);
+                        bo->size[l] = sz;
                         sz >>= 2;
                 }
         } else {
-                /* But for linear, we can! */
+                /* For a linear resource, allocate a block of memory from
+                 * kernel space */
 
-                struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, sz, HEAP_TEXTURE);
-                struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
-                struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
-                bo->entry[0] = p_entry;
-                bo->cpu[0] = backing->cpu + p_entry->offset;
-                bo->gpu[0] = backing->gpu + p_entry->offset;
+                struct panfrost_memory mem;
+
+                bo->size[0] = ALIGN(sz, 4096);
+                screen->driver->allocate_slab(screen, &mem, bo->size[0] / 4096, true, 0, 0, 0);
+
+                bo->cpu[0] = mem.cpu;
+                bo->gpu[0] = mem.gpu;
 
                 /* TODO: Mipmap */
         }
@@ -303,12 +306,16 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
 {
 	struct panfrost_bo *bo = (struct panfrost_bo *)pbo;
 
-        for (int l = 0; l < MAX_MIP_LEVELS; ++l) {
-                if (bo->entry[l] != NULL) {
-                        /* Most allocations have an entry to free */
-                        bo->entry[l]->freed = true;
-                        pb_slab_free(&screen->slabs, &bo->entry[l]->base);
-                }
+        if (bo->layout == PAN_LINEAR && !bo->imported) {
+                /* Construct a memory object for all mip levels */
+
+                struct panfrost_memory mem = {
+                        .cpu = bo->cpu[0],
+                        .gpu = bo->gpu[0],
+                        .size = bo->size[0]
+                };
+
+                screen->driver->free_slab(screen, &mem);
         }
 
         if (bo->layout == PAN_TILED) {

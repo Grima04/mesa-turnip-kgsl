@@ -56,8 +56,8 @@ struct panfrost_bo {
         /* Set if this bo was imported rather than allocated */
         bool imported;
 
-        /* Number of bytes of the imported allocation */
-        size_t imported_size;
+        /* Number of bytes of allocation */
+        size_t size[MAX_MIP_LEVELS];
 
         /* Internal layout (tiled?) */
         enum panfrost_memory_layout layout;
