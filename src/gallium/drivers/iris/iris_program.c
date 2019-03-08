@@ -912,6 +912,13 @@ iris_update_compiled_tes(struct iris_context *ice)
                           IRIS_DIRTY_BINDINGS_TES |
                           IRIS_DIRTY_CONSTANTS_TES;
    }
+
+   /* TODO: Could compare and avoid flagging this. */
+   const struct shader_info *tes_info = &ish->nir->info;
+   if (tes_info->system_values_read & (1ull << SYSTEM_VALUE_VERTICES_IN)) {
+      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TES;
+      ice->state.shaders[MESA_SHADER_TESS_EVAL].cbuf0_needs_upload = true;
+   }
 }
 
 /**

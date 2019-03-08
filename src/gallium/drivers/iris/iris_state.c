@@ -2490,9 +2490,10 @@ upload_uniforms(struct iris_context *ice,
             assert(stage == MESA_SHADER_TESS_EVAL);
             const struct shader_info *tcs_info =
                iris_get_shader_info(ice, MESA_SHADER_TESS_CTRL);
-            assert(tcs_info);
-
-            value = tcs_info->tess.tcs_vertices_out;
+            if (tcs_info)
+               value = tcs_info->tess.tcs_vertices_out;
+            else
+               value = ice->state.vertices_per_patch;
          }
       } else if (sysval >= BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_X &&
                  sysval <= BRW_PARAM_BUILTIN_TESS_LEVEL_OUTER_W) {
