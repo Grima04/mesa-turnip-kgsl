@@ -69,6 +69,8 @@ struct panfrost_bo {
         bool has_checksum;
         struct panfrost_memory checksum_slab;
         int checksum_stride;
+
+        int gem_handle;
 };
 
 struct panfrost_resource {

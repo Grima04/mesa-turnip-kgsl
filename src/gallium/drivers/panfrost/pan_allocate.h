@@ -67,6 +67,7 @@ struct panfrost_memory {
         mali_ptr gpu;
         int stack_bottom;
         size_t size;
+        int gem_handle;
 };
 
 /* Slab entry sizes range from 2^min to 2^max. In this case, we range from 1k
