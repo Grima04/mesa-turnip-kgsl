@@ -537,7 +537,8 @@ iris_hiz_exec(struct iris_context *ice,
               struct iris_batch *batch,
               struct iris_resource *res,
               unsigned int level, unsigned int start_layer,
-              unsigned int num_layers, enum isl_aux_op op)
+              unsigned int num_layers, enum isl_aux_op op,
+              bool update_clear_depth)
 {
    assert(iris_resource_level_has_hiz(res, level));
    assert(op != ISL_AUX_OP_NONE);
@@ -600,8 +601,9 @@ iris_hiz_exec(struct iris_context *ice,
                                 ISL_AUX_USAGE_HIZ, level, true);
 
    struct blorp_batch blorp_batch;
-   blorp_batch_init(&ice->blorp, &blorp_batch, batch,
-                    BLORP_BATCH_NO_UPDATE_CLEAR_COLOR);
+   enum blorp_batch_flags flags = 0;
+   flags |= update_clear_depth ? 0 : BLORP_BATCH_NO_UPDATE_CLEAR_COLOR;
+   blorp_batch_init(&ice->blorp, &blorp_batch, batch, flags);
    blorp_hiz_op(&blorp_batch, &surf, level, start_layer, num_layers, op);
    blorp_batch_finish(&blorp_batch);
 
@@ -997,7 +999,7 @@ iris_resource_prepare_hiz_access(struct iris_context *ice,
    }
 
    if (hiz_op != ISL_AUX_OP_NONE) {
-      iris_hiz_exec(ice, batch, res, level, layer, 1, hiz_op);
+      iris_hiz_exec(ice, batch, res, level, layer, 1, hiz_op, false);
 
       switch (hiz_op) {
       case ISL_AUX_OP_FULL_RESOLVE:

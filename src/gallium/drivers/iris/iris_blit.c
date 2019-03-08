@@ -255,6 +255,12 @@ iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
       };
       surf->clear_color =
          iris_resource_get_clear_color(res, NULL, NULL);
+      surf->clear_color_addr = (struct blorp_address) {
+         .buffer = res->aux.clear_color_bo,
+         .offset = res->aux.clear_color_offset,
+         .reloc_flags = 0,
+         .mocs = vtbl->mocs(res->aux.clear_color_bo),
+      };
    }
 
    // XXX: ASTC

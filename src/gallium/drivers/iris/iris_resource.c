@@ -1401,29 +1401,6 @@ iris_resource_set_clear_color(struct iris_context *ice,
 {
    if (memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
       res->aux.clear_color = color;
-      struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-      /* We can't update the clear color while the hardware is still using
-       * the previous one for a resolve or sampling from it. Make sure that
-       * there are no pending commands at this point.
-       */
-      /* TODO: Make these pipe controls gen-specific?
-       *
-       * We don't really need them on gen <= 9 where we are reading the
-       * clear color from the surface state and clear_params, so they
-       * shouldn't be needed. On gen11, the clear color is read from this
-       * buffer, but the clear depth is still read from CLEAR_PARAMS, so we
-       * could probably skip it in the HiZ case as well.
-       *
-       * Need to also check that for i965.
-       */
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
-      for (int i = 0; i < 4; i++) {
-         ice->vtbl.store_data_imm32(batch, res->aux.clear_color_bo,
-                                    res->aux.clear_color_offset + i * 4,
-                                    color.u32[i]);
-      }
-      iris_emit_pipe_control_flush(batch,
-                                   PIPE_CONTROL_STATE_CACHE_INVALIDATE);
       return true;
    }
 

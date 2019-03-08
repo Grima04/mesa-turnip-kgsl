@@ -249,7 +249,8 @@ iris_hiz_exec(struct iris_context *ice,
               struct iris_batch *batch,
               struct iris_resource *res,
               unsigned int level, unsigned int start_layer,
-              unsigned int num_layers, enum isl_aux_op op);
+              unsigned int num_layers, enum isl_aux_op op,
+              bool update_clear_depth);
 
 /**
  * Prepare a miptree for access

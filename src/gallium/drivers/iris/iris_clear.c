@@ -201,7 +201,10 @@ fast_clear_color(struct iris_context *ice,
 
    color = convert_fast_clear_color(ice, res, color, swizzle);
 
-   if (memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
+   bool color_changed = !!memcmp(&res->aux.clear_color, &color,
+                                 sizeof(color));
+
+   if (color_changed) {
       /* We decided that we are going to fast clear, and the color is
        * changing. But if we have a predicate bit set, the predication
        * affects whether we should clear or not, and if we shouldn't, we
@@ -222,10 +225,10 @@ fast_clear_color(struct iris_context *ice,
 
    iris_resource_set_clear_color(ice, res, color);
 
-   /* If the buffer is already in ISL_AUX_STATE_CLEAR, the clear
-    * is redundant and can be skipped.
+   /* If the buffer is already in ISL_AUX_STATE_CLEAR, and the color hasn't
+    * changed, the clear is redundant and can be skipped.
     */
-   if (aux_state == ISL_AUX_STATE_CLEAR)
+   if (!color_changed && aux_state == ISL_AUX_STATE_CLEAR)
       return;
 
    /* Ivybrigde PRM Vol 2, Part 1, "11.7 MCS Buffer for Render Target(s)":
@@ -241,6 +244,11 @@ fast_clear_color(struct iris_context *ice,
     * do any more regular drawing.
     */
    iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   /* If we reach this point, we need to fast clear to change the state to
+    * ISL_AUX_STATE_CLEAR, or to update the fast clear color (or both).
+    */
+   blorp_flags |= color_changed ? 0 : BLORP_BATCH_NO_UPDATE_CLEAR_COLOR;
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
@@ -276,7 +284,7 @@ clear_color(struct iris_context *ice,
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   enum blorp_batch_flags blorp_flags = BLORP_BATCH_NO_UPDATE_CLEAR_COLOR;
+   enum blorp_batch_flags blorp_flags = 0;
 
    if (render_condition_enabled) {
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
@@ -370,6 +378,8 @@ fast_clear_depth(struct iris_context *ice,
    depth = p_res->format == PIPE_FORMAT_Z32_FLOAT ? depth :
       (unsigned)(depth * depth_max) / (float)depth_max;
 
+   bool update_clear_depth = false;
+
    /* If we're clearing to a new clear value, then we need to resolve any clear
     * flags out of the HiZ buffer into the real depth buffer.
     */
@@ -425,13 +435,14 @@ fast_clear_depth(struct iris_context *ice,
              * value so this shouldn't happen often.
              */
             iris_hiz_exec(ice, batch, res, res_level, layer, 1,
-                          ISL_AUX_OP_FULL_RESOLVE);
+                          ISL_AUX_OP_FULL_RESOLVE, false);
             iris_resource_set_aux_state(ice, res, res_level, layer, 1,
                                         ISL_AUX_STATE_RESOLVED);
          }
       }
       const union isl_color_value clear_value = { .f32 = {depth, } };
       iris_resource_set_clear_color(ice, res, clear_value);
+      update_clear_depth = true;
    }
 
    for (unsigned l = 0; l < box->depth; l++) {
@@ -439,7 +450,8 @@ fast_clear_depth(struct iris_context *ice,
          iris_resource_get_aux_state(res, level, box->z + l);
       if (aux_state != ISL_AUX_STATE_CLEAR) {
          iris_hiz_exec(ice, batch, res, level,
-                       box->z + l, 1, ISL_AUX_OP_FAST_CLEAR);
+                       box->z + l, 1, ISL_AUX_OP_FAST_CLEAR,
+                       update_clear_depth);
       }
    }
 
