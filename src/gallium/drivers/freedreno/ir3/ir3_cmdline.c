@@ -43,6 +43,8 @@
 #include "ir3/instr-a3xx.h"
 #include "ir3/ir3.h"
 
+#include "main/mtypes.h"
+
 #include "compiler/glsl/standalone.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/glsl/gl_nir.h"
@@ -50,8 +52,6 @@
 #include "compiler/spirv/nir_spirv.h"
 
 #include "pipe/p_context.h"
-
-#include "main/mtypes.h"
 
 static void dump_info(struct ir3_shader_variant *so, const char *str)
 {
