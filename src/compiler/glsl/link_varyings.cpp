@@ -678,17 +678,15 @@ validate_explicit_variable_location(struct gl_context *ctx,
 
 /**
  * Validate explicit locations for the inputs to the first stage and the
- * outputs of the last stage in an SSO program (everything in between is
- * validated in cross_validate_outputs_to_inputs).
+ * outputs of the last stage in a program, if those are not the VS and FS
+ * shaders.
  */
 void
-validate_sso_explicit_locations(struct gl_context *ctx,
-                                struct gl_shader_program *prog,
-                                gl_shader_stage first_stage,
-                                gl_shader_stage last_stage)
+validate_first_and_last_interface_explicit_locations(struct gl_context *ctx,
+                                                     struct gl_shader_program *prog,
+                                                     gl_shader_stage first_stage,
+                                                     gl_shader_stage last_stage)
 {
-   assert(prog->SeparateShader);
-
    /* VS inputs and FS outputs are validated in
     * assign_attribute_or_color_locations()
     */
