@@ -122,6 +122,10 @@ debian:
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't limit the total run time.
+#
+# We also put softpipe (and therefore gallium nine, which requires
+# it) here, since softpipe/llvmpipe can't be built alongside classic
+# swrast.
 meson-gallium-swr:
   extends: .meson-build
   variables:
@@ -131,15 +135,16 @@ meson-gallium-swr:
       -D egl=false
       -D gbm=false
     GALLIUM_ST: >
-      -D dri3=false
+      -D dri3=true
       -D gallium-vdpau=false
       -D gallium-xvmc=false
       -D gallium-omx=disabled
       -D gallium-va=false
       -D gallium-xa=false
-      -D gallium-nine=false
+      -D gallium-nine=true
       -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "swr"
+      -D osmesa=gallium
+    GALLIUM_DRIVERS: "swr,swrast,iris"
     LLVM_VERSION: "6.0"
 
 meson-clang:
@@ -179,10 +184,10 @@ meson-vulkan:
     VULKAN_DRIVERS: intel,amd,freedreno
     LLVM_VERSION: "7"
 
-meson-loader-classic-dri:
+meson-main:
   extends: .meson-build
   variables:
-    UNWIND: "false"
+    UNWIND: "true"
     DRI_LOADERS: >
       -D glx=dri
       -D gbm=true
@@ -192,13 +197,16 @@ meson-loader-classic-dri:
     DRI_DRIVERS: "i915,i965,r100,r200,swrast,nouveau"
     GALLIUM_ST: >
       -D dri3=true
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
+      -D gallium-extra-hud=true
+      -D gallium-vdpau=true
+      -D gallium-xvmc=true
+      -D gallium-omx=bellagio
+      -D gallium-va=true
+      -D gallium-xa=true
       -D gallium-nine=false
       -D gallium-opencl=disabled
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
+    LLVM_VERSION: "7"
 
 meson-glvnd:
   extends: .meson-build
@@ -239,26 +247,6 @@ meson-gallium-radeonsi:
     GALLIUM_DRIVERS: "radeonsi"
     LLVM_VERSION: "7"
 
-meson-gallium-drivers-other:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=false
-      -D gbm=false
-    GALLIUM_ST: >
-      -D dri3=false
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,r300,r600,freedreno,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima"
-    LLVM_VERSION: "5.0"
-
 meson-gallium-clover-llvm:
   extends: .meson-build
   variables:
@@ -281,30 +269,8 @@ meson-gallium-clover-llvm:
 meson-gallium-clover-llvm39:
   extends: meson-gallium-clover-llvm
   variables:
-    GALLIUM_DRIVERS: "r600"
+    GALLIUM_DRIVERS: "i915,r600"
     LLVM_VERSION: "3.9"
-
-meson-gallium-st-other:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=false
-      -D gbm=false
-    GALLIUM_ST: >
-      -D dri3=true
-      -D gallium-extra-hud=true
-      -D gallium-vdpau=true
-      -D gallium-xvmc=true
-      -D gallium-omx=bellagio
-      -D gallium-va=true
-      -D gallium-xa=true
-      -D gallium-nine=true
-      -D gallium-opencl=disabled
-      -D osmesa=gallium
-    GALLIUM_DRIVERS: "nouveau,swrast"
-    LLVM_VERSION: "5.0"
 
 scons-nollvm:
   extends: .scons-build
