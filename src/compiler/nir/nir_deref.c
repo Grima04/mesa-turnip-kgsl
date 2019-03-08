@@ -697,10 +697,44 @@ opt_remove_cast_cast(nir_deref_instr *cast)
    return true;
 }
 
+/**
+ * Is this casting a struct to a contained struct.
+ * struct a { struct b field0 };
+ * ssa_5 is structa;
+ * deref_cast (structb *)ssa_5 (function_temp structb);
+ * converts to
+ * deref_struct &ssa_5->field0 (function_temp structb);
+ * This allows subsequent copy propagation to work.
+ */
 static bool
-opt_deref_cast(nir_deref_instr *cast)
+opt_replace_struct_wrapper_cast(nir_builder *b, nir_deref_instr *cast)
+{
+   nir_deref_instr *parent = nir_src_as_deref(cast->parent);
+   if (!parent)
+      return false;
+
+   if (!glsl_type_is_struct(parent->type))
+      return false;
+
+   if (glsl_get_struct_field_offset(parent->type, 0) != 0)
+      return false;
+
+   if (cast->type != glsl_get_struct_field(parent->type, 0))
+      return false;
+
+   nir_deref_instr *replace = nir_build_deref_struct(b, parent, 0);
+   nir_ssa_def_rewrite_uses(&cast->dest.ssa, nir_src_for_ssa(&replace->dest.ssa));
+   nir_deref_instr_remove_if_unused(cast);
+   return true;
+}
+
+static bool
+opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
 {
    bool progress;
+
+   if (opt_replace_struct_wrapper_cast(b, cast))
+      return true;
 
    progress = opt_remove_cast_cast(cast);
    if (!is_trivial_deref_cast(cast))
@@ -798,7 +832,7 @@ nir_opt_deref_impl(nir_function_impl *impl)
             break;
 
          case nir_deref_type_cast:
-            if (opt_deref_cast(deref))
+            if (opt_deref_cast(&b, deref))
                progress = true;
             break;
 
