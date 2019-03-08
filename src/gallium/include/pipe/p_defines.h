@@ -890,7 +890,7 @@ enum pipe_cap
  * return a bitmask of the supported priorities.  If the driver does not
  * support prioritized contexts, it can return 0.
  *
- * Note that these match __DRI2_RENDER_HAS_CONTEXT_PRIORITY_*
+ * Note that these match __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_*
  */
 #define PIPE_CONTEXT_PRIORITY_LOW     (1 << 0)
 #define PIPE_CONTEXT_PRIORITY_MEDIUM  (1 << 1)
