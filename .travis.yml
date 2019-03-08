@@ -22,8 +22,7 @@ matrix:
         - LABEL="macOS meson"
         - BUILD=meson
         - UNWIND="false"
-        - DRI_LOADERS="-Dglx=dri -Dgbm=false -Degl=false -Dplatforms=x11 -Dosmesa=none"
-        - GALLIUM_ST="-Ddri3=true -Dgallium-vdpau=false -Dgallium-xvmc=false -Dgallium-omx=disabled -Dgallium-va=false -Dgallium-xa=false -Dgallium-nine=false -Dgallium-opencl=disabled"
+        - DRI_LOADERS="-Dplatforms=x11"
       os: osx
 
 before_install:
