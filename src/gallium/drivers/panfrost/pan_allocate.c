@@ -41,7 +41,7 @@ panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap
         size = ALIGN(size, ALIGNMENT);
 
         struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = panfrost_screen(gallium->screen);
+        struct panfrost_screen *screen = pan_screen(gallium->screen);
 
         struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, size, heap_id);
         struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
@@ -81,7 +81,7 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                 if (pool->entry_index >= pool->entry_count) {
                         /* Don't overflow the pool -- allocate a new one */
                         struct pipe_context *gallium = (struct pipe_context *) ctx;
-                        struct panfrost_screen *screen = panfrost_screen(gallium->screen);
+                        struct panfrost_screen *screen = pan_screen(gallium->screen);
                         struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, pool->entry_size, HEAP_TRANSIENT);
 
                         pool->entry_count++;

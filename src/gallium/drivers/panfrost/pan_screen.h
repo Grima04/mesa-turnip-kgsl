@@ -49,9 +49,11 @@ struct panfrost_screen;
 
 struct panfrost_driver {
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
+	int (*export_bo) (struct panfrost_screen *screen, int gem_handle, struct winsys_handle *whandle);
 
 	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws, bool is_scanout);
-	void (*force_flush_fragment) (struct panfrost_context *ctx);
+	void (*force_flush_fragment) (struct panfrost_context *ctx,
+				      struct pipe_fence_handle **fence);
 	void (*allocate_slab) (struct panfrost_screen *screen,
 		               struct panfrost_memory *mem,
 		               size_t pages,
@@ -65,6 +67,15 @@ struct panfrost_driver {
                              struct panfrost_bo *bo);
         void (*enable_counters) (struct panfrost_screen *screen);
         void (*dump_counters) (struct panfrost_screen *screen);
+	unsigned (*query_gpu_version) (struct panfrost_screen *screen);
+	int (*init_context) (struct panfrost_context *ctx);
+	void (*fence_reference) (struct pipe_screen *screen,
+                         struct pipe_fence_handle **ptr,
+                         struct pipe_fence_handle *fence);
+	boolean (*fence_finish) (struct pipe_screen *screen,
+                      struct pipe_context *ctx,
+                      struct pipe_fence_handle *fence,
+                      uint64_t timeout);
 };
 
 struct panfrost_screen {
@@ -84,11 +95,5 @@ struct panfrost_screen {
 	int last_fragment_id;
 	int last_fragment_flushed;
 };
-
-static inline struct panfrost_screen *
-panfrost_screen( struct pipe_screen *pipe )
-{
-        return (struct panfrost_screen *)pipe;
-}
 
 #endif /* PAN_SCREEN_H */

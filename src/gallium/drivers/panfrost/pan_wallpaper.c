@@ -181,7 +181,7 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
                 .normalized_coords = 1
         };
 
-        struct pipe_resource *rsrc = panfrost_screen(pipe->screen)->display_target;
+        struct pipe_resource *rsrc = pan_screen(pipe->screen)->display_target;
         struct pipe_sampler_state *sampler_state = pipe->create_sampler_state(pipe, &state);
         struct pipe_sampler_view *sampler_view = pipe->create_sampler_view(pipe, rsrc, &tmpl);
 

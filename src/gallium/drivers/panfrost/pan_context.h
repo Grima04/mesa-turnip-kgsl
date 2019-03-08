@@ -74,6 +74,11 @@ struct panfrost_query {
         struct panfrost_transfer transfer;
 };
 
+struct panfrost_fence {
+        struct pipe_reference reference;
+        int fd;
+};
+
 #define PANFROST_MAX_TRANSIENT_ENTRIES 64
 
 struct panfrost_transient_pool {
@@ -208,6 +213,18 @@ struct panfrost_context {
         struct pipe_blend_color blend_color;
         struct pipe_depth_stencil_alpha_state *depth_stencil;
         struct pipe_stencil_ref stencil_ref;
+
+        /* True for t6XX, false for t8xx. */
+        bool is_t6xx;
+
+        /* If set, we'll require the use of single render-target framebuffer
+         * descriptors (SFBD), for older hardware -- specifically, <T760 hardware, If
+         * false, we'll use the MFBD no matter what. New hardware -does- retain support
+         * for SFBD, and in theory we could flip between them on a per-RT basis, but
+         * there's no real advantage to doing so */
+        bool require_sfbd;
+
+	uint32_t out_sync;
 };
 
 /* Corresponds to the CSO */

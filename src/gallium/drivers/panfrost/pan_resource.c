@@ -68,6 +68,12 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
 	rsc->bo = screen->driver->import_bo(screen, whandle);
 
+	if (screen->ro) {
+		rsc->scanout =
+			renderonly_create_gpu_import_for_resource(prsc, screen->ro, NULL);
+		/* failure is expected in some cases.. */
+	}
+
         return prsc;
 }
 
@@ -87,17 +93,15 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         handle->stride = stride;
         handle->modifier = DRM_FORMAT_MOD_INVALID;
 
-        if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
-                printf("Missed shared handle\n");
-                return FALSE;
-        } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
-                if (renderonly_get_handle(scanout, handle)) {
-                        return TRUE;
-                } else {
-                        printf("Missed nonrenderonly KMS handle for resource %p with scanout %p\n", pt, scanout);
-                        return FALSE;
-                }
-        } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
+	if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
+		return FALSE;
+	} else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
+		if (renderonly_get_handle(scanout, handle))
+			return TRUE;
+
+		handle->handle = rsrc->bo->gem_handle;
+		return TRUE;
+	} else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
                 if (scanout) {
                         struct drm_prime_handle args = {
                                 .handle = scanout->handle,
@@ -111,14 +115,11 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                         handle->handle = args.fd;
 
                         return TRUE;
-                } else {
-                        printf("Missed nonscanout FD handle\n");
-                        assert(0);
-                        return FALSE;
-                }
-        }
+                } else
+			return screen->driver->export_bo(screen, rsrc->bo->gem_handle, handle);
+	}
 
-        return FALSE;
+	return FALSE;
 }
 
 static void
@@ -322,7 +323,7 @@ static void
 panfrost_resource_destroy(struct pipe_screen *screen,
                           struct pipe_resource *pt)
 {
-        struct panfrost_screen *pscreen = panfrost_screen(screen);
+        struct panfrost_screen *pscreen = pan_screen(screen);
         struct panfrost_resource *rsrc = (struct panfrost_resource *) pt;
 
 	if (rsrc->scanout)

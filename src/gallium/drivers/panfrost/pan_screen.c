@@ -500,21 +500,22 @@ panfrost_get_timestamp(struct pipe_screen *_screen)
 }
 
 static void
-panfrost_fence_reference(struct pipe_screen *screen,
+panfrost_fence_reference(struct pipe_screen *pscreen,
                          struct pipe_fence_handle **ptr,
                          struct pipe_fence_handle *fence)
 {
-        *ptr = fence;
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        screen->driver->fence_reference(pscreen, ptr, fence);
 }
 
 static boolean
-panfrost_fence_finish(struct pipe_screen *screen,
+panfrost_fence_finish(struct pipe_screen *pscreen,
                       struct pipe_context *ctx,
                       struct pipe_fence_handle *fence,
                       uint64_t timeout)
 {
-        assert(fence);
-        return TRUE;
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        return screen->driver->fence_finish(pscreen, ctx, fence, timeout);
 }
 
 static const void *
