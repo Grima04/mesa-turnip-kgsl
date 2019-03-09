@@ -3944,9 +3944,9 @@ iris_use_optional_res(struct iris_batch *batch,
 }
 
 static void
-pin_depth_and_stencil_buffers(struct iris_context *ice,
-                              struct iris_batch *batch,
-                              struct pipe_surface *zsbuf)
+pin_depth_and_stencil_buffers(struct iris_batch *batch,
+                              struct pipe_surface *zsbuf,
+                              struct iris_depth_stencil_alpha_state *cso_zsa)
 {
    if (!zsbuf)
       return;
@@ -3955,17 +3955,15 @@ pin_depth_and_stencil_buffers(struct iris_context *ice,
    iris_get_depth_stencil_resources(zsbuf->texture, &zres, &sres);
 
    if (zres) {
-      iris_use_pinned_bo(batch, zres->bo,
-                         ice->state.depth_writes_enabled);
+      iris_use_pinned_bo(batch, zres->bo, cso_zsa->depth_writes_enabled);
       if (zres->aux.bo) {
          iris_use_pinned_bo(batch, zres->aux.bo,
-                            ice->state.depth_writes_enabled);
+                            cso_zsa->depth_writes_enabled);
       }
    }
 
    if (sres) {
-      iris_use_pinned_bo(batch, sres->bo,
-                         ice->state.stencil_writes_enabled);
+      iris_use_pinned_bo(batch, sres->bo, cso_zsa->stencil_writes_enabled);
    }
 }
 
@@ -4087,9 +4085,10 @@ iris_restore_render_saved_bos(struct iris_context *ice,
       }
    }
 
-   if (clean & IRIS_DIRTY_DEPTH_BUFFER) {
+   if ((clean & IRIS_DIRTY_DEPTH_BUFFER) &&
+       (clean & IRIS_DIRTY_WM_DEPTH_STENCIL)) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-      pin_depth_and_stencil_buffers(ice, batch, cso_fb->zsbuf);
+      pin_depth_and_stencil_buffers(batch, cso_fb->zsbuf, ice->state.cso_zsa);
    }
 
    if (draw->index_size == 0 && ice->state.last_res.index_buffer) {
@@ -4633,12 +4632,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_DEPTH_BUFFER) {
-      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
       struct iris_depth_buffer_state *cso_z = &ice->state.genx->depth_buffer;
 
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
+   }
 
-      pin_depth_and_stencil_buffers(ice, batch, cso_fb->zsbuf);
+   if (dirty & (IRIS_DIRTY_DEPTH_BUFFER | IRIS_DIRTY_WM_DEPTH_STENCIL)) {
+      /* Listen for buffer changes, and also write enable changes. */
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      pin_depth_and_stencil_buffers(batch, cso_fb->zsbuf, ice->state.cso_zsa);
    }
 
    if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
