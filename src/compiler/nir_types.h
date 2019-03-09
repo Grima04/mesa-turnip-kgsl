@@ -145,6 +145,7 @@ bool glsl_type_is_array(const struct glsl_type *type);
 bool glsl_type_is_array_of_arrays(const struct glsl_type *type);
 bool glsl_type_is_array_or_matrix(const struct glsl_type *type);
 bool glsl_type_is_struct(const struct glsl_type *type);
+bool glsl_type_is_interface(const struct glsl_type *type);
 bool glsl_type_is_struct_or_ifc(const struct glsl_type *type);
 bool glsl_type_is_sampler(const struct glsl_type *type);
 bool glsl_type_is_image(const struct glsl_type *type);
