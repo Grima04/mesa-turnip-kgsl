@@ -53,7 +53,7 @@ namespace {
 class nir_visitor : public ir_visitor
 {
 public:
-   nir_visitor(nir_shader *shader);
+   nir_visitor(gl_context *ctx, nir_shader *shader);
    ~nir_visitor();
 
    virtual void visit(ir_variable *);
@@ -91,6 +91,7 @@ private:
                        nir_ssa_def *src2, nir_ssa_def *src3);
 
    bool supports_ints;
+   bool supports_std430;
 
    nir_shader *shader;
    nir_function_impl *impl;
@@ -205,7 +206,7 @@ glsl_to_nir(struct gl_context *ctx,
    nir_shader *shader = nir_shader_create(NULL, stage, options,
                                           &sh->Program->info);
 
-   nir_visitor v1(shader);
+   nir_visitor v1(ctx, shader);
    nir_function_visitor v2(&v1);
    v2.run(sh->ir);
    visit_exec_list(sh->ir, &v1);
@@ -260,9 +261,10 @@ glsl_to_nir(struct gl_context *ctx,
    return shader;
 }
 
-nir_visitor::nir_visitor(nir_shader *shader)
+nir_visitor::nir_visitor(gl_context *ctx, nir_shader *shader)
 {
    this->supports_ints = shader->options->native_integers;
+   this->supports_std430 = ctx->Const.UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;
    this->var_table = _mesa_pointer_hash_table_create(NULL);
@@ -380,6 +382,17 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
    return ret;
 }
 
+static const glsl_type *
+wrap_type_in_array(const glsl_type *elem_type, const glsl_type *array_type)
+{
+   if (!array_type->is_array())
+      return elem_type;
+
+   elem_type = wrap_type_in_array(elem_type, array_type->fields.array);
+
+   return glsl_type::get_array_instance(elem_type, array_type->length);
+}
+
 void
 nir_visitor::visit(ir_variable *ir)
 {
@@ -486,6 +499,56 @@ nir_visitor::visit(ir_variable *ir)
       unreachable("not reached");
    }
 
+   unsigned image_access = 0;
+   if (ir->data.memory_read_only)
+      image_access |= ACCESS_NON_WRITEABLE;
+   if (ir->data.memory_write_only)
+      image_access |= ACCESS_NON_READABLE;
+   if (ir->data.memory_coherent)
+      image_access |= ACCESS_COHERENT;
+   if (ir->data.memory_volatile)
+      image_access |= ACCESS_VOLATILE;
+   if (ir->data.memory_restrict)
+      image_access |= ACCESS_RESTRICT;
+
+   /* For UBO and SSBO variables, we need explicit types */
+   if (var->data.mode & (nir_var_mem_ubo | nir_var_mem_ssbo)) {
+      const glsl_type *explicit_ifc_type =
+         ir->get_interface_type()->get_explicit_interface_type(supports_std430);
+
+      if (ir->type->without_array()->is_interface()) {
+         /* If the type contains the interface, wrap the explicit type in the
+          * right number of arrays.
+          */
+         var->type = wrap_type_in_array(explicit_ifc_type, ir->type);
+      } else {
+         /* Otherwise, this variable is one entry in the interface */
+         UNUSED bool found;
+         for (unsigned i = 0; i < explicit_ifc_type->length; i++) {
+            const glsl_struct_field *field =
+               &explicit_ifc_type->fields.structure[i];
+            if (strcmp(ir->name, field->name) != 0)
+               continue;
+
+            var->type = field->type;
+            if (field->memory_read_only)
+               image_access |= ACCESS_NON_WRITEABLE;
+            if (field->memory_write_only)
+               image_access |= ACCESS_NON_READABLE;
+            if (field->memory_coherent)
+               image_access |= ACCESS_COHERENT;
+            if (field->memory_volatile)
+               image_access |= ACCESS_VOLATILE;
+            if (field->memory_restrict)
+               image_access |= ACCESS_RESTRICT;
+
+            found = true;
+            break;
+         }
+         assert(found);
+      }
+   }
+
    var->data.interpolation = ir->data.interpolation;
    var->data.location_frac = ir->data.location_frac;
 
@@ -516,17 +579,6 @@ nir_visitor::visit(ir_variable *ir)
    var->data.bindless = ir->data.bindless;
    var->data.offset = ir->data.offset;
 
-   unsigned image_access = 0;
-   if (ir->data.memory_read_only)
-      image_access |= ACCESS_NON_WRITEABLE;
-   if (ir->data.memory_write_only)
-      image_access |= ACCESS_NON_READABLE;
-   if (ir->data.memory_coherent)
-      image_access |= ACCESS_COHERENT;
-   if (ir->data.memory_volatile)
-      image_access |= ACCESS_VOLATILE;
-   if (ir->data.memory_restrict)
-      image_access |= ACCESS_RESTRICT;
    var->data.image.access = (gl_access_qualifier)image_access;
    var->data.image.format = ir->data.image_format;
 
@@ -2432,7 +2484,7 @@ glsl_float64_funcs_to_nir(struct gl_context *ctx,
 
    nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_VERTEX, options, NULL);
 
-   nir_visitor v1(nir);
+   nir_visitor v1(ctx, nir);
    nir_function_visitor v2(&v1);
    v2.run(sh->ir);
    visit_exec_list(sh->ir, &v1);
