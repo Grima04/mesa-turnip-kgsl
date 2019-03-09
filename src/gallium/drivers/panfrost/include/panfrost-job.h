@@ -1419,12 +1419,19 @@ struct bifrost_render_target {
  * - TODO: Anything else?
  */
 
+/* Flags field: note, these are guesses */
+
+#define MALI_EXTRA_PRESENT      (0x400)
+#define MALI_EXTRA_AFBC         (0x20)
+#define MALI_EXTRA_AFBC_ZS      (0x10)
+#define MALI_EXTRA_ZS           (0x4)
+
 struct bifrost_fb_extra {
         mali_ptr checksum;
         /* Each tile has an 8 byte checksum, so the stride is "width in tiles * 8" */
         u32 checksum_stride;
 
-        u32 unk;
+        u32 flags;
 
         union {
                 /* Note: AFBC is only allowed for 24/8 combined depth/stencil. */

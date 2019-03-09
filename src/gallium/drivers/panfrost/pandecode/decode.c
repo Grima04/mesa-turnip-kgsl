@@ -209,6 +209,15 @@ static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
+static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
+        FLAG_INFO(PRESENT),
+        FLAG_INFO(AFBC),
+        FLAG_INFO(ZS),
+        {}
+};
+#undef FLAG_INFO
+
 extern char *replace_fragment;
 extern char *replace_vertex;
 
@@ -604,12 +613,11 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
                 if (fbx->checksum_stride)
                         pandecode_prop("checksum_stride = %d", fbx->checksum_stride);
 
-                pandecode_prop("unk = 0x%x", fbx->unk);
+                pandecode_log(".flags = ");
+                pandecode_log_decoded_flags(mfbd_extra_flag_info, fbx->flags);
+                pandecode_log_cont(",\n");
 
-                /* TODO figure out if this is actually the right way to
-                 * determine whether AFBC is enabled
-                 */
-                if (fbx->unk & 0x10) {
+                if (fbx->flags & MALI_EXTRA_AFBC_ZS) {
                         pandecode_log(".ds_afbc = {\n");
                         pandecode_indent++;
 

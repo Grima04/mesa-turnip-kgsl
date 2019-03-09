@@ -247,6 +247,13 @@ panfrost_set_fragment_target(struct panfrost_context *ctx)
 
                         ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
 
+                        ctx->fragment_extra.flags =
+                                MALI_EXTRA_PRESENT |
+                                MALI_EXTRA_AFBC |
+                                MALI_EXTRA_AFBC_ZS |
+                                MALI_EXTRA_ZS |
+                                0x1; /* unknown */
+
                         ctx->fragment_extra.ds_afbc.depth_stencil_afbc_metadata = rsrc->bo->afbc_slab.gpu;
                         ctx->fragment_extra.ds_afbc.depth_stencil_afbc_stride = 0;
 
@@ -254,8 +261,6 @@ panfrost_set_fragment_target(struct panfrost_context *ctx)
 
                         ctx->fragment_extra.ds_afbc.zero1 = 0x10009;
                         ctx->fragment_extra.ds_afbc.padding = 0x1000;
-
-                        ctx->fragment_extra.unk = 0x435; /* General 0x400 in all unks. 0x5 for depth/stencil. 0x10 for AFBC encoded depth stencil. Unclear where the 0x20 is from */
 
                         ctx->fragment_mfbd.unk3 |= MALI_MFBD_DEPTH_WRITE;
                 }
@@ -504,7 +509,7 @@ panfrost_clear_mfbd(struct panfrost_job *job)
         if (job->clear & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
                 /* Setup combined 24/8 depth/stencil */
                 ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
-                ctx->fragment_extra.unk = 0x405;
+                ctx->fragment_extra.flags = 0x405;
                 ctx->fragment_extra.ds_linear.depth = ctx->depth_stencil_buffer.gpu;
                 ctx->fragment_extra.ds_linear.depth_stride = ctx->pipe_framebuffer.width * 4;
         }
@@ -997,7 +1002,7 @@ panfrost_fragment_job(struct panfrost_context *ctx)
                         int stride = util_format_get_stride(rsrc->base.format, rsrc->base.width0);
 
                         ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
-                        ctx->fragment_extra.unk |= 0x420;
+                        ctx->fragment_extra.flags |= MALI_EXTRA_PRESENT;
                         ctx->fragment_extra.checksum_stride = rsrc->bo->checksum_stride;
                         ctx->fragment_extra.checksum = rsrc->bo->gpu[0] + stride * rsrc->base.height0;
                 }
