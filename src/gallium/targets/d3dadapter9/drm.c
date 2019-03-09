@@ -205,7 +205,6 @@ drm_create_adapter( int fd,
     struct d3dadapter9drm_context *ctx = CALLOC_STRUCT(d3dadapter9drm_context);
     HRESULT hr;
     bool different_device;
-    bool software_device;
     const struct drm_conf_ret *throttle_ret = NULL;
     const struct drm_conf_ret *dmabuf_ret = NULL;
     driOptionCache defaultInitOptions;
@@ -223,11 +222,7 @@ drm_create_adapter( int fd,
     ctx->fd = fd;
     ctx->base.linear_framebuffer = different_device;
 
-    const char *force_sw = getenv("D3D_ALWAYS_SOFTWARE");
-    software_device = force_sw && !strcmp(force_sw, "1");
-
-    if ((software_device && !pipe_loader_sw_probe_kms(&ctx->dev, fd)) ||
-        (!software_device && !pipe_loader_drm_probe_fd(&ctx->dev, fd))) {
+    if (!pipe_loader_drm_probe_fd(&ctx->dev, fd)) {
         ERR("Failed to probe drm fd %d.\n", fd);
         FREE(ctx);
         close(fd);
@@ -241,20 +236,13 @@ drm_create_adapter( int fd,
         return D3DERR_DRIVERINTERNALERROR;
     }
 
-    if (!software_device) {
-        /*
-         * The software renderer isn't a DRM device and doesn't support
-         * pipe_loader_configuration.
-         * The KMS winsys supports SHARE_FD, so skip this check.
-         */
-        dmabuf_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_SHARE_FD);
-        throttle_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_THROTTLE);
-        if (!dmabuf_ret || !dmabuf_ret->val.val_bool) {
-            ERR("The driver is not capable of dma-buf sharing."
-                "Abandon to load nine state tracker\n");
-            drm_destroy(&ctx->base);
-            return D3DERR_DRIVERINTERNALERROR;
-        }
+    dmabuf_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_SHARE_FD);
+    throttle_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_THROTTLE);
+    if (!dmabuf_ret || !dmabuf_ret->val.val_bool) {
+        ERR("The driver is not capable of dma-buf sharing."
+            "Abandon to load nine state tracker\n");
+        drm_destroy(&ctx->base);
+        return D3DERR_DRIVERINTERNALERROR;
     }
 
     if (throttle_ret && throttle_ret->val.val_int != -1) {
