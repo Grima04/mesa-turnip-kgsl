@@ -1759,8 +1759,6 @@ glsl_type::std140_size(bool row_major) const
          array_len = 1;
       }
 
-      assert(element_type->explicit_stride == 0);
-
       if (row_major) {
          vec_type = get_instance(element_type->base_type,
                                  element_type->matrix_columns, 1);
@@ -1788,15 +1786,19 @@ glsl_type::std140_size(bool row_major) const
     *      the array are laid out in order, according to rule (9).
     */
    if (this->is_array()) {
-      assert(this->explicit_stride == 0);
+      unsigned stride;
       if (this->without_array()->is_struct()) {
-	 return this->arrays_of_arrays_size() *
-            this->without_array()->std140_size(row_major);
+	 stride = this->without_array()->std140_size(row_major);
       } else {
 	 unsigned element_base_align =
 	    this->without_array()->std140_base_alignment(row_major);
-	 return this->arrays_of_arrays_size() * MAX2(element_base_align, 16);
+         stride = MAX2(element_base_align, 16);
       }
+
+      unsigned size = this->arrays_of_arrays_size() * stride;
+      assert(this->explicit_stride == 0 ||
+             size == this->length * this->explicit_stride);
+      return size;
    }
 
    /* (9) If the member is a structure, the base alignment of the
@@ -1846,6 +1848,79 @@ glsl_type::std140_size(bool row_major) const
 
    assert(!"not reached");
    return -1;
+}
+
+const glsl_type *
+glsl_type::get_explicit_std140_type(bool row_major) const
+{
+   if (this->is_vector() || this->is_scalar()) {
+      return this;
+   } else if (this->is_matrix()) {
+      const glsl_type *vec_type;
+      if (row_major)
+         vec_type = get_instance(this->base_type, this->matrix_columns, 1);
+      else
+         vec_type = get_instance(this->base_type, this->vector_elements, 1);
+      unsigned elem_size = vec_type->std140_size(false);
+      unsigned stride = glsl_align(elem_size, 16);
+      return get_instance(this->base_type, this->vector_elements,
+                          this->matrix_columns, stride, row_major);
+   } else if (this->is_array()) {
+      unsigned elem_size = this->fields.array->std140_size(row_major);
+      const glsl_type *elem_type =
+         this->fields.array->get_explicit_std140_type(row_major);
+      unsigned stride = glsl_align(elem_size, 16);
+      return get_array_instance(elem_type, this->length, stride);
+   } else if (this->is_struct() || this->is_interface()) {
+      glsl_struct_field *fields = new glsl_struct_field[this->length];
+      unsigned offset = 0;
+      for (unsigned i = 0; i < length; i++) {
+         fields[i] = this->fields.structure[i];
+
+         bool field_row_major = row_major;
+         if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
+            field_row_major = false;
+         } else if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
+            field_row_major = true;
+         }
+         fields[i].type =
+            fields[i].type->get_explicit_std140_type(field_row_major);
+
+         unsigned fsize = fields[i].type->std140_size(field_row_major);
+         unsigned falign = fields[i].type->std140_base_alignment(field_row_major);
+         /* From the GLSL 460 spec section "Uniform and Shader Storage Block
+          * Layout Qualifiers":
+          *
+          *    "The actual offset of a member is computed as follows: If
+          *    offset was declared, start with that offset, otherwise start
+          *    with the next available offset. If the resulting offset is not
+          *    a multiple of the actual alignment, increase it to the first
+          *    offset that is a multiple of the actual alignment. This results
+          *    in the actual offset the member will have."
+          */
+         if (fields[i].offset >= 0) {
+            assert((unsigned)fields[i].offset >= offset);
+            offset = fields[i].offset;
+         }
+         offset = glsl_align(offset, falign);
+         fields[i].offset = offset;
+         offset += fsize;
+      }
+
+      const glsl_type *type;
+      if (this->is_struct())
+         type = get_struct_instance(fields, this->length, this->name);
+      else
+         type = get_interface_instance(fields, this->length,
+                                       (enum glsl_interface_packing)this->interface_packing,
+                                       this->interface_row_major,
+                                       this->name);
+
+      delete[] fields;
+      return type;
+   } else {
+      unreachable("Invalid type for UBO or SSBO");
+   }
 }
 
 unsigned
@@ -1963,8 +2038,6 @@ glsl_type::std430_array_stride(bool row_major) const
 {
    unsigned N = is_64bit() ? 8 : 4;
 
-   assert(explicit_stride == 0);
-
    /* Notice that the array stride of a vec3 is not 3 * N but 4 * N.
     * See OpenGL 4.30 spec, section 7.6.2.2 "Standard Uniform Block Layout"
     *
@@ -1975,7 +2048,9 @@ glsl_type::std430_array_stride(bool row_major) const
       return 4 * N;
 
    /* By default use std430_size(row_major) */
-   return this->std430_size(row_major);
+   unsigned stride = this->std430_size(row_major);
+   assert(this->explicit_stride == 0 || this->explicit_stride == stride);
+   return stride;
 }
 
 unsigned
@@ -2009,8 +2084,6 @@ glsl_type::std430_size(bool row_major) const
          array_len = 1;
       }
 
-      assert(element_type->explicit_stride == 0);
-
       if (row_major) {
          vec_type = get_instance(element_type->base_type,
                                  element_type->matrix_columns, 1);
@@ -2028,13 +2101,16 @@ glsl_type::std430_size(bool row_major) const
    }
 
    if (this->is_array()) {
-      assert(this->explicit_stride == 0);
+      unsigned stride;
       if (this->without_array()->is_struct())
-         return this->arrays_of_arrays_size() *
-            this->without_array()->std430_size(row_major);
+         stride = this->without_array()->std430_size(row_major);
       else
-         return this->arrays_of_arrays_size() *
-            this->without_array()->std430_base_alignment(row_major);
+         stride = this->without_array()->std430_base_alignment(row_major);
+
+      unsigned size = this->arrays_of_arrays_size() * stride;
+      assert(this->explicit_stride == 0 ||
+             size == this->length * this->explicit_stride);
+      return size;
    }
 
    if (this->is_struct() || this->is_interface()) {
@@ -2064,6 +2140,90 @@ glsl_type::std430_size(bool row_major) const
 
    assert(!"not reached");
    return -1;
+}
+
+const glsl_type *
+glsl_type::get_explicit_std430_type(bool row_major) const
+{
+   if (this->is_vector() || this->is_scalar()) {
+      return this;
+   } else if (this->is_matrix()) {
+      const glsl_type *vec_type;
+      if (row_major)
+         vec_type = get_instance(this->base_type, this->matrix_columns, 1);
+      else
+         vec_type = get_instance(this->base_type, this->vector_elements, 1);
+      unsigned stride = vec_type->std430_array_stride(false);
+      return get_instance(this->base_type, this->vector_elements,
+                          this->matrix_columns, stride, row_major);
+   } else if (this->is_array()) {
+      const glsl_type *elem_type =
+         this->fields.array->get_explicit_std430_type(row_major);
+      unsigned stride = this->fields.array->std430_array_stride(row_major);
+      return get_array_instance(elem_type, this->length, stride);
+   } else if (this->is_struct() || this->is_interface()) {
+      glsl_struct_field *fields = new glsl_struct_field[this->length];
+      unsigned offset = 0;
+      for (unsigned i = 0; i < length; i++) {
+         fields[i] = this->fields.structure[i];
+
+         bool field_row_major = row_major;
+         if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
+            field_row_major = false;
+         } else if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
+            field_row_major = true;
+         }
+         fields[i].type =
+            fields[i].type->get_explicit_std430_type(field_row_major);
+
+         unsigned fsize = fields[i].type->std430_size(field_row_major);
+         unsigned falign = fields[i].type->std430_base_alignment(field_row_major);
+         /* From the GLSL 460 spec section "Uniform and Shader Storage Block
+          * Layout Qualifiers":
+          *
+          *    "The actual offset of a member is computed as follows: If
+          *    offset was declared, start with that offset, otherwise start
+          *    with the next available offset. If the resulting offset is not
+          *    a multiple of the actual alignment, increase it to the first
+          *    offset that is a multiple of the actual alignment. This results
+          *    in the actual offset the member will have."
+          */
+         if (fields[i].offset >= 0) {
+            assert((unsigned)fields[i].offset >= offset);
+            offset = fields[i].offset;
+         }
+         offset = glsl_align(offset, falign);
+         fields[i].offset = offset;
+         offset += fsize;
+      }
+
+      const glsl_type *type;
+      if (this->is_struct())
+         type = get_struct_instance(fields, this->length, this->name);
+      else
+         type = get_interface_instance(fields, this->length,
+                                       (enum glsl_interface_packing)this->interface_packing,
+                                       this->interface_row_major,
+                                       this->name);
+
+      delete[] fields;
+      return type;
+   } else {
+      unreachable("Invalid type for SSBO");
+   }
+}
+
+const glsl_type *
+glsl_type::get_explicit_interface_type(bool supports_std430) const
+{
+   enum glsl_interface_packing packing =
+      this->get_internal_ifc_packing(supports_std430);
+   if (packing == GLSL_INTERFACE_PACKING_STD140) {
+      return this->get_explicit_std140_type(this->interface_row_major);
+   } else {
+      assert(packing == GLSL_INTERFACE_PACKING_STD430);
+      return this->get_explicit_std430_type(this->interface_row_major);
+   }
 }
 
 unsigned

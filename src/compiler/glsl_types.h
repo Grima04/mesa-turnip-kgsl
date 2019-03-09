@@ -413,6 +413,11 @@ public:
    unsigned std140_size(bool row_major) const;
 
    /**
+    * Gets an explicitly laid out type with the std140 layout.
+    */
+   const glsl_type *get_explicit_std140_type(bool row_major) const;
+
+   /**
     * Alignment in bytes of the start of this type in a std430 shader
     * storage block.
     */
@@ -430,6 +435,16 @@ public:
     * Note that this is not GL_BUFFER_SIZE
     */
    unsigned std430_size(bool row_major) const;
+
+   /**
+    * Gets an explicitly laid out type with the std430 layout.
+    */
+   const glsl_type *get_explicit_std430_type(bool row_major) const;
+
+   /**
+    * Gets an explicitly laid out interface type.
+    */
+   const glsl_type *get_explicit_interface_type(bool supports_std430) const;
 
    /**
     * \brief Can this type be implicitly converted to another?
