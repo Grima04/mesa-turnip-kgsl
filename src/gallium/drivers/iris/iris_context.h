@@ -792,8 +792,8 @@ void iris_resolve_conditional_render(struct iris_context *ice);
 
 void iris_predraw_resolve_inputs(struct iris_context *ice,
                                  struct iris_batch *batch,
-                                 struct iris_shader_state *shs,
                                  bool *draw_aux_buffer_disabled,
+                                 gl_shader_stage stage,
                                  bool consider_framebuffer);
 void iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                       struct iris_batch *batch,

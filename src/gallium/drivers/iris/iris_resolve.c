@@ -149,12 +149,21 @@ resolve_image_views(struct iris_context *ice,
 void
 iris_predraw_resolve_inputs(struct iris_context *ice,
                             struct iris_batch *batch,
-                            struct iris_shader_state *shs,
                             bool *draw_aux_buffer_disabled,
+                            gl_shader_stage stage,
                             bool consider_framebuffer)
 {
-   resolve_sampler_views(ice, batch, shs, draw_aux_buffer_disabled, consider_framebuffer);
-   resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled, consider_framebuffer);
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+
+   uint64_t dirty = (IRIS_DIRTY_BINDINGS_VS << stage) |
+                    (consider_framebuffer ? IRIS_DIRTY_BINDINGS_FS : 0);
+
+   if (ice->state.dirty & dirty) {
+      resolve_sampler_views(ice, batch, shs, draw_aux_buffer_disabled,
+                            consider_framebuffer);
+      resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled,
+                          consider_framebuffer);
+   }
 
    // XXX: ASTC hacks
 }

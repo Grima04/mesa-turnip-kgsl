@@ -135,9 +135,10 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    bool draw_aux_buffer_disabled[BRW_MAX_DRAW_BUFFERS] = { };
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_COMPUTE; stage++) {
-      if (ice->shaders.prog[stage])
-         iris_predraw_resolve_inputs(ice,batch, &ice->state.shaders[stage],
-                                     draw_aux_buffer_disabled, true);
+      if (ice->shaders.prog[stage]) {
+         iris_predraw_resolve_inputs(ice, batch, draw_aux_buffer_disabled,
+                                     stage, true);
+      }
    }
    iris_predraw_resolve_framebuffer(ice, batch, draw_aux_buffer_disabled);
 
@@ -214,9 +215,8 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    /* We can't do resolves on the compute engine, so awkwardly, we have to
     * do them on the render batch...
     */
-   iris_predraw_resolve_inputs(ice, &ice->batches[IRIS_BATCH_RENDER],
-                               &ice->state.shaders[MESA_SHADER_COMPUTE],
-                               NULL, false);
+   iris_predraw_resolve_inputs(ice, &ice->batches[IRIS_BATCH_RENDER], NULL,
+                               MESA_SHADER_COMPUTE, false);
 
    iris_batch_maybe_flush(batch, 1500);
 
