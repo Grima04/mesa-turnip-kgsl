@@ -2986,7 +2986,9 @@ Converter::visit(nir_alu_instr *insn)
       break;
    case nir_op_vec2:
    case nir_op_vec3:
-   case nir_op_vec4: {
+   case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16: {
       LValues &newDefs = convert(&insn->dest);
       for (LValues::size_type c = 0u; c < newDefs.size(); ++c) {
          mkMov(newDefs[c], getSrc(&insn->src[c]), dType);
