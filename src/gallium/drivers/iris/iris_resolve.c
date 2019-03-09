@@ -176,6 +176,11 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
       if (z_res) {
          iris_resource_prepare_depth(ice, batch, z_res, zs_surf->u.tex.level,
                                      zs_surf->u.tex.first_layer, num_layers);
+         iris_cache_flush_for_depth(batch, z_res->bo);
+      }
+
+      if (s_res) {
+         iris_cache_flush_for_depth(batch, s_res->bo);
       }
    }
 
