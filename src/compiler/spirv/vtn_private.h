@@ -777,6 +777,9 @@ nir_op vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
 void vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
                     const uint32_t *w, unsigned count);
 
+void vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w,
+                        unsigned count);
+
 void vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
                          const uint32_t *w, unsigned count);
 
