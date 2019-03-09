@@ -1457,6 +1457,14 @@ struct bifrost_fb_extra {
 } __attribute__((packed));
 
 /* flags for unk3 */
+
+/* Enables writing depth results back to main memory (rather than keeping them
+ * on-chip in the tile buffer and then discarding) */
+
+#define MALI_MFBD_DEPTH_WRITE (1 << 10)
+
+/* The MFBD contains the extra bifrost_fb_extra section */
+
 #define MALI_MFBD_EXTRA (1 << 13)
 
 struct bifrost_framebuffer {

@@ -257,7 +257,7 @@ panfrost_set_fragment_target(struct panfrost_context *ctx)
 
                         ctx->fragment_extra.unk = 0x435; /* General 0x400 in all unks. 0x5 for depth/stencil. 0x10 for AFBC encoded depth stencil. Unclear where the 0x20 is from */
 
-                        ctx->fragment_mfbd.unk3 |= 0x400;
+                        ctx->fragment_mfbd.unk3 |= MALI_MFBD_DEPTH_WRITE;
                 }
         }
 
