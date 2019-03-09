@@ -543,7 +543,8 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    case nir_intrinsic_copy_deref: {
       nir_deref_instr *dst = nir_src_as_deref(instr->src[0]);
       nir_deref_instr *src = nir_src_as_deref(instr->src[1]);
-      validate_assert(state, dst->type == src->type);
+      validate_assert(state, glsl_get_bare_type(dst->type) ==
+                             glsl_get_bare_type(src->type));
       validate_assert(state, (dst->mode & (nir_var_shader_in |
                                            nir_var_uniform)) == 0);
       break;
