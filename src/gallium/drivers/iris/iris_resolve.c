@@ -174,50 +174,57 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                  bool *draw_aux_buffer_disabled)
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-   struct pipe_surface *zs_surf = cso_fb->zsbuf;
 
-   if (zs_surf) {
-      struct iris_resource *z_res, *s_res;
-      iris_get_depth_stencil_resources(zs_surf->texture, &z_res, &s_res);
-      unsigned num_layers =
-         zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
+   if (ice->state.dirty & IRIS_DIRTY_DEPTH_BUFFER) {
+      struct pipe_surface *zs_surf = cso_fb->zsbuf;
 
-      if (z_res) {
-         iris_resource_prepare_depth(ice, batch, z_res, zs_surf->u.tex.level,
-                                     zs_surf->u.tex.first_layer, num_layers);
-         iris_cache_flush_for_depth(batch, z_res->bo);
-      }
+      if (zs_surf) {
+         struct iris_resource *z_res, *s_res;
+         iris_get_depth_stencil_resources(zs_surf->texture, &z_res, &s_res);
+         unsigned num_layers =
+            zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
 
-      if (s_res) {
-         iris_cache_flush_for_depth(batch, s_res->bo);
+         if (z_res) {
+            iris_resource_prepare_depth(ice, batch, z_res,
+                                        zs_surf->u.tex.level,
+                                        zs_surf->u.tex.first_layer,
+                                        num_layers);
+            iris_cache_flush_for_depth(batch, z_res->bo);
+         }
+
+         if (s_res) {
+            iris_cache_flush_for_depth(batch, s_res->bo);
+         }
       }
    }
 
-   for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-      struct iris_surface *surf = (void *) cso_fb->cbufs[i];
-      if (!surf)
-         continue;
+   if (ice->state.dirty & (IRIS_DIRTY_BINDINGS_FS | IRIS_DIRTY_BLEND_STATE)) {
+      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+         struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+         if (!surf)
+            continue;
 
-      struct iris_resource *res = (void *) surf->base.texture;
+         struct iris_resource *res = (void *) surf->base.texture;
 
-      enum isl_aux_usage aux_usage =
-         iris_resource_render_aux_usage(ice, res, surf->view.format,
-                                        ice->state.blend_enables & (1u << i),
-                                        draw_aux_buffer_disabled[i]);
+         enum isl_aux_usage aux_usage =
+            iris_resource_render_aux_usage(ice, res, surf->view.format,
+                                           ice->state.blend_enables & (1u << i),
+                                           draw_aux_buffer_disabled[i]);
 
-      if (ice->state.draw_aux_usage[i] != aux_usage) {
-         ice->state.draw_aux_usage[i] = aux_usage;
-         /* XXX: Need to track which bindings to make dirty */
-         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+         if (ice->state.draw_aux_usage[i] != aux_usage) {
+            ice->state.draw_aux_usage[i] = aux_usage;
+            /* XXX: Need to track which bindings to make dirty */
+            ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+         }
+
+         iris_resource_prepare_render(ice, batch, res, surf->view.base_level,
+                                      surf->view.base_array_layer,
+                                      surf->view.array_len,
+                                      aux_usage);
+
+         iris_cache_flush_for_render(batch, res->bo, surf->view.format,
+                                     aux_usage);
       }
-
-      iris_resource_prepare_render(ice, batch, res, surf->view.base_level,
-                                   surf->view.base_array_layer,
-                                   surf->view.array_len,
-                                   aux_usage);
-
-      iris_cache_flush_for_render(batch, res->bo, surf->view.format,
-                                  aux_usage);
    }
 }
 
@@ -238,50 +245,57 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
                                       struct iris_batch *batch)
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-   struct pipe_surface *zs_surf = cso_fb->zsbuf;
 
    // XXX: front buffer drawing?
 
-   if (zs_surf) {
-      struct iris_resource *z_res, *s_res;
-      iris_get_depth_stencil_resources(zs_surf->texture, &z_res, &s_res);
-      unsigned num_layers =
-         zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
+   if (ice->state.dirty & (IRIS_DIRTY_DEPTH_BUFFER |
+                           IRIS_DIRTY_WM_DEPTH_STENCIL)) {
+      struct pipe_surface *zs_surf = cso_fb->zsbuf;
+      if (zs_surf) {
+         struct iris_resource *z_res, *s_res;
+         iris_get_depth_stencil_resources(zs_surf->texture, &z_res, &s_res);
+         unsigned num_layers =
+            zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
 
-      if (z_res) {
-         iris_resource_finish_depth(ice, z_res, zs_surf->u.tex.level,
-                                    zs_surf->u.tex.first_layer, num_layers,
-                                    ice->state.depth_writes_enabled);
+         if (z_res) {
+            iris_resource_finish_depth(ice, z_res, zs_surf->u.tex.level,
+                                       zs_surf->u.tex.first_layer, num_layers,
+                                       ice->state.depth_writes_enabled);
 
-         if (ice->state.depth_writes_enabled)
-            iris_depth_cache_add_bo(batch, z_res->bo);
-      }
+            if (ice->state.depth_writes_enabled)
+               iris_depth_cache_add_bo(batch, z_res->bo);
+         }
 
-      if (s_res) {
-         iris_resource_finish_write(ice, s_res, zs_surf->u.tex.level,
-                                    zs_surf->u.tex.first_layer, num_layers,
-                                    ISL_AUX_USAGE_NONE);
+         if (s_res) {
+            iris_resource_finish_write(ice, s_res, zs_surf->u.tex.level,
+                                       zs_surf->u.tex.first_layer, num_layers,
+                                       ISL_AUX_USAGE_NONE);
 
-         if (ice->state.stencil_writes_enabled)
-            iris_depth_cache_add_bo(batch, s_res->bo);
+            if (ice->state.stencil_writes_enabled)
+               iris_depth_cache_add_bo(batch, s_res->bo);
+         }
       }
    }
 
-   for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
-      struct iris_surface *surf = (void *) cso_fb->cbufs[i];
-      if (!surf)
-         continue;
+   if (ice->state.dirty & (IRIS_DIRTY_BINDINGS_FS | IRIS_DIRTY_BLEND_STATE)) {
+      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+         struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+         if (!surf)
+            continue;
 
-      struct iris_resource *res = (void *) surf->base.texture;
-      union pipe_surface_desc *desc = &surf->base.u;
-      unsigned num_layers = desc->tex.last_layer - desc->tex.first_layer + 1;
-      enum isl_aux_usage aux_usage = ice->state.draw_aux_usage[i];
+         struct iris_resource *res = (void *) surf->base.texture;
+         union pipe_surface_desc *desc = &surf->base.u;
+         unsigned num_layers =
+            desc->tex.last_layer - desc->tex.first_layer + 1;
+         enum isl_aux_usage aux_usage = ice->state.draw_aux_usage[i];
 
-      iris_render_cache_add_bo(batch, res->bo, surf->view.format, aux_usage);
-
-      iris_resource_finish_render(ice, res, desc->tex.level,
-                                  desc->tex.first_layer, num_layers,
+         iris_render_cache_add_bo(batch, res->bo, surf->view.format,
                                   aux_usage);
+
+         iris_resource_finish_render(ice, res, desc->tex.level,
+                                     desc->tex.first_layer, num_layers,
+                                     aux_usage);
+      }
    }
 }
 

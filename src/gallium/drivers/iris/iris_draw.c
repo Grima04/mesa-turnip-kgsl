@@ -147,9 +147,9 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
    ice->vtbl.upload_render_state(ice, batch, info);
 
-   ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
-
    iris_postdraw_update_resolve_tracking(ice, batch);
+
+   ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
 }
 
 static void
