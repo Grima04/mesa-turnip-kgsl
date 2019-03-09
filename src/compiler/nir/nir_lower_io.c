@@ -599,7 +599,7 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return nir_iadd(b, addr, offset);
 
-   case nir_address_format_vk_index_offset:
+   case nir_address_format_32bit_index_offset:
       assert(addr->num_components == 2);
       return nir_vec2(b, nir_channel(b, addr, 0),
                          nir_iadd(b, nir_channel(b, addr, 1), offset));
@@ -619,7 +619,7 @@ static nir_ssa_def *
 addr_to_index(nir_builder *b, nir_ssa_def *addr,
               nir_address_format addr_format)
 {
-   assert(addr_format == nir_address_format_vk_index_offset);
+   assert(addr_format == nir_address_format_32bit_index_offset);
    assert(addr->num_components == 2);
    return nir_channel(b, addr, 0);
 }
@@ -628,7 +628,7 @@ static nir_ssa_def *
 addr_to_offset(nir_builder *b, nir_ssa_def *addr,
                nir_address_format addr_format)
 {
-   assert(addr_format == nir_address_format_vk_index_offset);
+   assert(addr_format == nir_address_format_32bit_index_offset);
    assert(addr->num_components == 2);
    return nir_channel(b, addr, 1);
 }
@@ -651,7 +651,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return addr;
 
-   case nir_address_format_vk_index_offset:
+   case nir_address_format_32bit_index_offset:
       unreachable("Cannot get a 64-bit address with this address format");
    }
 

@@ -600,7 +600,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
       NIR_PASS_V(nir, nir_lower_explicit_io,
                  nir_var_mem_ubo | nir_var_mem_ssbo,
-                 nir_address_format_vk_index_offset);
+                 nir_address_format_32bit_index_offset);
 
       NIR_PASS_V(nir, nir_opt_constant_folding);
    }

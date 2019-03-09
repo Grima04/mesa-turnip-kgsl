@@ -3021,9 +3021,9 @@ typedef enum {
 
    /**
     * An address format which is comprised of a vec2 where the first
-    * component is a vulkan descriptor index and the second is an offset.
+    * component is a buffer index and the second is an offset.
     */
-   nir_address_format_vk_index_offset,
+   nir_address_format_32bit_index_offset,
 } nir_address_format;
 bool nir_lower_explicit_io(nir_shader *shader,
                            nir_variable_mode modes,

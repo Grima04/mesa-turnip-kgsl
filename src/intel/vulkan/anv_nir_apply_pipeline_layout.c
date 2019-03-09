@@ -168,7 +168,7 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
       index = nir_imm_ivec2(b, state->set[set].desc_offset,
                                bind_layout->descriptor_offset);
    } else {
-      /* We're using nir_address_format_vk_index_offset */
+      /* We're using nir_address_format_32bit_index_offset */
       index = nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
                           nir_imm_int(b, 0));
    }
@@ -211,7 +211,7 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   /* We follow the nir_address_format_vk_index_offset model */
+   /* We follow the nir_address_format_32bit_index_offset model */
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *index = intrin->src[0].ssa;
 
@@ -231,7 +231,7 @@ lower_get_buffer_size(nir_intrinsic_instr *intrin,
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *index = intrin->src[0].ssa;
 
-   /* We're following the nir_address_format_vk_index_offset model so the
+   /* We're following the nir_address_format_32bit_index_offset model so the
     * binding table index is the first component of the address.  The
     * back-end wants a scalar binding table index source.
     */
