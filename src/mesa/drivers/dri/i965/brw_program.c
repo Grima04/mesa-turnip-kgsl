@@ -121,6 +121,10 @@ brw_create_nir(struct brw_context *brw,
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
 
+   NIR_PASS_V(nir, gl_nir_lower_buffers, shader_prog);
+   /* Do a round of constant folding to clean up address calculations */
+   NIR_PASS_V(nir, nir_opt_constant_folding);
+
    if (stage == MESA_SHADER_TESS_CTRL) {
       /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */
       static const gl_state_index16 tokens[STATE_LENGTH] =
