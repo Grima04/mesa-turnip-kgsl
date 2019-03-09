@@ -1027,7 +1027,7 @@ iris_create_zsa_state(struct pipe_context *ctx,
    cso->depth_writes_enabled = state->depth.writemask;
    cso->stencil_writes_enabled =
       state->stencil[0].writemask != 0 ||
-      (two_sided_stencil && state->stencil[1].writemask != 1);
+      (two_sided_stencil && state->stencil[1].writemask != 0);
 
    /* The state tracker needs to optimize away EQUAL writes for us. */
    assert(!(state->depth.func == PIPE_FUNC_EQUAL && state->depth.writemask));
