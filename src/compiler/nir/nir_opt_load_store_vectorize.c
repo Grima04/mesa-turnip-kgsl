@@ -643,7 +643,7 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
       return false;
 
    unsigned new_num_components = size / new_bit_size;
-   if (new_num_components > NIR_MAX_VEC_COMPONENTS)
+   if (!nir_num_components_valid(new_num_components))
       return false;
 
    unsigned high_offset = high->offset_signed - low->offset_signed;

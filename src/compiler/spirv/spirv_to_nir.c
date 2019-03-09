@@ -3819,10 +3819,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityInputAttachment:
       case SpvCapabilityImageGatherExtended:
       case SpvCapabilityStorageImageExtendedFormats:
+      case SpvCapabilityVector16:
          break;
 
       case SpvCapabilityLinkage:
-      case SpvCapabilityVector16:
       case SpvCapabilityFloat16Buffer:
       case SpvCapabilitySparseResidency:
          vtn_warn("Unsupported SPIR-V capability: %s",
