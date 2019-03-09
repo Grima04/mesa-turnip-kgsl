@@ -3943,6 +3943,32 @@ iris_use_optional_res(struct iris_batch *batch,
    }
 }
 
+static void
+pin_depth_and_stencil_buffers(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              struct pipe_surface *zsbuf)
+{
+   if (!zsbuf)
+      return;
+
+   struct iris_resource *zres, *sres;
+   iris_get_depth_stencil_resources(zsbuf->texture, &zres, &sres);
+
+   if (zres) {
+      iris_use_pinned_bo(batch, zres->bo,
+                         ice->state.depth_writes_enabled);
+      if (zres->aux.bo) {
+         iris_use_pinned_bo(batch, zres->aux.bo,
+                            ice->state.depth_writes_enabled);
+      }
+   }
+
+   if (sres) {
+      iris_use_pinned_bo(batch, sres->bo,
+                         ice->state.stencil_writes_enabled);
+   }
+}
+
 /* ------------------------------------------------------------------- */
 
 /**
@@ -4063,25 +4089,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
 
    if (clean & IRIS_DIRTY_DEPTH_BUFFER) {
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
-
-      if (cso_fb->zsbuf) {
-         struct iris_resource *zres, *sres;
-         iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
-                                          &zres, &sres);
-         if (zres) {
-            iris_use_pinned_bo(batch, zres->bo,
-                               ice->state.depth_writes_enabled);
-            if (zres->aux.bo) {
-               iris_use_pinned_bo(batch, zres->aux.bo,
-                                  ice->state.depth_writes_enabled);
-            }
-         }
-
-         if (sres) {
-            iris_use_pinned_bo(batch, sres->bo,
-                               ice->state.stencil_writes_enabled);
-         }
-      }
+      pin_depth_and_stencil_buffers(ice, batch, cso_fb->zsbuf);
    }
 
    if (draw->index_size == 0 && ice->state.last_res.index_buffer) {
@@ -4630,24 +4638,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
 
-      if (cso_fb->zsbuf) {
-         struct iris_resource *zres, *sres;
-         iris_get_depth_stencil_resources(cso_fb->zsbuf->texture,
-                                          &zres, &sres);
-         if (zres) {
-            iris_use_pinned_bo(batch, zres->bo,
-                               ice->state.depth_writes_enabled);
-            if (zres->aux.bo) {
-               iris_use_pinned_bo(batch, zres->aux.bo,
-                                  ice->state.depth_writes_enabled);
-            }
-         }
-
-         if (sres) {
-            iris_use_pinned_bo(batch, sres->bo,
-                               ice->state.stencil_writes_enabled);
-         }
-      }
+      pin_depth_and_stencil_buffers(ice, batch, cso_fb->zsbuf);
    }
 
    if (dirty & IRIS_DIRTY_POLYGON_STIPPLE) {
