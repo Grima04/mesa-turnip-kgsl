@@ -21,13 +21,13 @@
  * SOFTWARE.
  */
 
+#include "main/mtypes.h"
 #include "compiler/glsl/standalone.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
 #include "midgard_compile.h"
 #include "disassemble.h"
 #include "util/u_dynarray.h"
-#include "main/mtypes.h"
 
 bool c_do_mat_op_to_vec(struct exec_list *instructions);
 
