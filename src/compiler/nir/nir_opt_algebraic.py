@@ -439,6 +439,12 @@ optimizations = [
    (('uge', '#a', ('umax', '#b', c)), ('iand', ('uge', a, b), ('uge', a, c))),
    (('uge', ('umin', '#a', b), '#c'), ('iand', ('uge', a, c), ('uge', b, c))),
 
+   # Thanks to sign extension, the ishr(a, b) is negative if and only if a is
+   # negative.
+   (('bcsel', ('ilt', a, 0), ('ineg', ('ishr', a, b)), ('ishr', a, b)),
+    ('iabs', ('ishr', a, b))),
+   (('iabs', ('ishr', ('iabs', a), b)), ('ishr', ('iabs', a), b)),
+
    (('fabs', ('slt', a, b)), ('slt', a, b)),
    (('fabs', ('sge', a, b)), ('sge', a, b)),
    (('fabs', ('seq', a, b)), ('seq', a, b)),
