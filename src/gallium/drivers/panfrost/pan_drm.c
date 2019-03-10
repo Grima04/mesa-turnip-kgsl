@@ -206,7 +206,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_panfrost_submit submit = {0,};
 
-        submit.in_syncs = &ctx->out_sync;
+        submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
         submit.in_sync_count = 1;
 
         submit.out_sync = ctx->out_sync;
