@@ -329,7 +329,13 @@ void st_init_limits(struct pipe_screen *screen,
       if (!screen->get_param(screen, PIPE_CAP_NIR_COMPACT_ARRAYS))
          options->LowerCombinedClipCullDistance = true;
 
-      options->LowerBufferInterfaceBlocks = true;
+      bool prefer_nir = PIPE_SHADER_IR_NIR ==
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR);
+
+      /* NIR can do the lowering on our behalf and we'll get better results
+       * because it can actually optimize SSBO access.
+       */
+      options->LowerBufferInterfaceBlocks = !prefer_nir;
    }
 
    c->MaxUserAssignableUniformLocations =

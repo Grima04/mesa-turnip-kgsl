@@ -415,6 +415,10 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
 
    st_nir_opts(nir, is_scalar);
 
+   NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
+   /* Do a round of constant folding to clean up address calculations */
+   NIR_PASS_V(nir, nir_opt_constant_folding);
+
    if (lower_64bit) {
       bool lowered_64bit_ops = false;
       bool progress = false;
