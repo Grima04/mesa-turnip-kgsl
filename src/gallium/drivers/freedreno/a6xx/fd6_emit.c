@@ -162,10 +162,10 @@ struct PACKED bcolor_entry {
 	uint32_t rgb10a2;
 	uint32_t z24; /* also s8? */
 	uint16_t srgb[4];      /* appears to duplicate fp16[], but clamped, used for srgb */
-	uint8_t  __pad1[24];
+	uint8_t  __pad1[56];
 };
 
-#define FD6_BORDER_COLOR_SIZE        0x60
+#define FD6_BORDER_COLOR_SIZE        sizeof(struct bcolor_entry)
 #define FD6_BORDER_COLOR_UPLOAD_SIZE (2 * PIPE_MAX_SAMPLERS * FD6_BORDER_COLOR_SIZE)
 
 static void
