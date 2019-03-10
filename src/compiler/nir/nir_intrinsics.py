@@ -156,6 +156,10 @@ intrinsic("interp_deref_at_sample", src_comp=[1, 1], dest_comp=0,
 intrinsic("interp_deref_at_offset", src_comp=[1, 2], dest_comp=0,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Gets the length of an unsized array at the end of a buffer
+intrinsic("deref_buffer_array_length", src_comp=[-1], dest_comp=1,
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # Ask the driver for the size of a given buffer. It takes the buffer index
 # as source.
 intrinsic("get_buffer_size", src_comp=[-1], dest_comp=1,
