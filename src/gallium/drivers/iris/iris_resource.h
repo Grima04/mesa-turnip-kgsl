@@ -421,9 +421,6 @@ void iris_resource_prepare_texture(struct iris_context *ice,
                                    uint32_t start_level, uint32_t num_levels,
                                    uint32_t start_layer, uint32_t num_layers,
                                    enum gen9_astc5x5_wa_tex_type);
-void iris_resource_prepare_image(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res);
 
 static inline bool
 iris_resource_unfinished_aux_import(struct iris_resource *res)
