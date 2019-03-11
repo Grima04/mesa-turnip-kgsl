@@ -38,6 +38,16 @@ public:
    struct brw_wm_prog_data *prog_data;
    struct gl_shader_program *shader_prog;
    fs_visitor *v;
+
+   void test_positive_float_saturate_prop(enum brw_conditional_mod before,
+                                          enum brw_conditional_mod after,
+                                          enum opcode op);
+
+   void test_negative_float_saturate_prop(enum brw_conditional_mod before,
+                                          enum opcode op);
+
+   void test_negative_int_saturate_prop(enum brw_conditional_mod before,
+                                        enum opcode op);
 };
 
 class cmod_propagation_fs_visitor : public fs_visitor
@@ -920,4 +930,480 @@ TEST_F(cmod_propagation_test, signed_unsigned_comparison_mismatch)
    EXPECT_EQ(BRW_OPCODE_ASR, instruction(block0, 0)->opcode);
    EXPECT_EQ(BRW_OPCODE_CMP, instruction(block0, 1)->opcode);
    EXPECT_EQ(BRW_CONDITIONAL_LE, instruction(block0, 1)->conditional_mod);
+}
+
+void
+cmod_propagation_test::test_positive_float_saturate_prop(enum brw_conditional_mod before,
+                                                         enum brw_conditional_mod after,
+                                                         enum opcode op)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   bld.ADD(dest, src0, src1)->saturate = true;
+
+   assert(op == BRW_OPCODE_CMP || op == BRW_OPCODE_MOV);
+   if (op == BRW_OPCODE_CMP)
+      bld.CMP(bld.null_reg_f(), dest, zero, before);
+   else
+      bld.MOV(bld.null_reg_f(), dest)->conditional_mod = before;
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(0, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_TRUE(instruction(block0, 0)->saturate);
+   EXPECT_EQ(after, instruction(block0, 0)->conditional_mod);
+}
+
+void
+cmod_propagation_test::test_negative_float_saturate_prop(enum brw_conditional_mod before,
+                                                         enum opcode op)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   bld.ADD(dest, src0, src1)->saturate = true;
+
+   assert(op == BRW_OPCODE_CMP || op == BRW_OPCODE_MOV);
+   if (op == BRW_OPCODE_CMP)
+      bld.CMP(bld.null_reg_f(), dest, zero, before);
+   else
+      bld.MOV(bld.null_reg_f(), dest)->conditional_mod = before;
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_TRUE(instruction(block0, 0)->saturate);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(op, instruction(block0, 1)->opcode);
+   EXPECT_FALSE(instruction(block0, 1)->saturate);
+   EXPECT_EQ(before, instruction(block0, 1)->conditional_mod);
+}
+
+void
+cmod_propagation_test::test_negative_int_saturate_prop(enum brw_conditional_mod before,
+                                                       enum opcode op)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::int_type);
+   fs_reg src0 = v->vgrf(glsl_type::int_type);
+   fs_reg src1 = v->vgrf(glsl_type::int_type);
+   fs_reg zero(brw_imm_d(0));
+   bld.ADD(dest, src0, src1)->saturate = true;
+
+   assert(op == BRW_OPCODE_CMP || op == BRW_OPCODE_MOV);
+   if (op == BRW_OPCODE_CMP)
+      bld.CMP(bld.null_reg_d(), dest, zero, before);
+   else
+      bld.MOV(bld.null_reg_d(), dest)->conditional_mod = before;
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_TRUE(instruction(block0, 0)->saturate);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(op, instruction(block0, 1)->opcode);
+   EXPECT_FALSE(instruction(block0, 1)->saturate);
+   EXPECT_EQ(before, instruction(block0, 1)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_nz_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) != 0) == (x > 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.nz.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * 0: add.sat.g.f0(8)  dest  src0  src1
+    */
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_G,
+                                     BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_nz_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) != 0) == (x > 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.nz.f0(8)  null  dest
+    *
+    * = After =
+    * 0: add.sat.g.f0(8)  dest  src0  src1
+    */
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_NZ, BRW_CONDITIONAL_G,
+                            BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_z_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) == 0) == (x <= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.z.f0(8)   null  dest  0.0f
+    *
+    * = After =
+    * 0: add.sat.le.f0(8)  dest  src0  src1
+    */
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_LE,
+                                     BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_z_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) == 0) == (x <= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.z.f0(8)   null  dest
+    *
+    * = After =
+    * 0: add.sat.le.f0(8)  dest  src0  src1
+    */
+#if 1
+   /* cmod propagation bails on every MOV except MOV.NZ. */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_Z, BRW_OPCODE_MOV);
+#else
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_LE,
+                                     BRW_OPCODE_MOV);
+#endif
+}
+
+TEST_F(cmod_propagation_test, float_saturate_g_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) > 0) == (x > 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.g.f0(8)   null  dest  0.0f
+    *
+    * = After =
+    * 0: add.sat.g.f0(8)  dest  src0  src1
+    */
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_G, BRW_CONDITIONAL_G,
+                                     BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_g_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) > 0) == (x > 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.g.f0(8)   null  dest
+    *
+    * = After =
+    * 0: add.sat.g.f0(8)  dest  src0  src1
+    */
+#if 1
+   /* cmod propagation bails on every MOV except MOV.NZ. */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_G, BRW_OPCODE_MOV);
+#else
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_G, BRW_CONDITIONAL_G,
+                                     BRW_OPCODE_MOV);
+#endif
+}
+
+TEST_F(cmod_propagation_test, float_saturate_le_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) <= 0) == (x <= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.le.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * 0: add.sat.le.f0(8)  dest  src0  src1
+    */
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_LE, BRW_CONDITIONAL_LE,
+                                     BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_le_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) <= 0) == (x <= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.le.f0(8)  null  dest
+    *
+    * = After =
+    * 0: add.sat.le.f0(8)  dest  src0  src1
+    */
+#if 1
+   /* cmod propagation bails on every MOV except MOV.NZ. */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_LE, BRW_OPCODE_MOV);
+#else
+   test_positive_float_saturate_prop(BRW_CONDITIONAL_LE, BRW_CONDITIONAL_LE,
+                                     BRW_OPCODE_MOV);
+#endif
+}
+
+TEST_F(cmod_propagation_test, float_saturate_l_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  There is no before / after equivalence for (sat(x) < 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.l.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * No change
+    */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_L, BRW_OPCODE_CMP);
+}
+
+#if 0
+TEST_F(cmod_propagation_test, float_saturate_l_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  There is no before / after equivalence for (sat(x) < 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.l.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * No change
+    */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_L, BRW_OPCODE_MOV);
+}
+#endif
+
+TEST_F(cmod_propagation_test, float_saturate_ge_cmp)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  There is no before / after equivalence for (sat(x) >= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.ge.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * No change
+    */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_GE, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, float_saturate_ge_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  There is no before / after equivalence for (sat(x) >= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.ge.f0(8)  null  dest  0.0f
+    *
+    * = After =
+    * No change
+    */
+   test_negative_float_saturate_prop(BRW_CONDITIONAL_GE, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_nz_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.nz.f0(8)  null  dest  0
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_NZ, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_nz_mov)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.nz.f0(8)  null  dest
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_NZ, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_z_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.z.f0(8)   null  dest  0
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_Z, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_z_mov)
+{
+   /* With the saturate modifier, the comparison happens before clamping to
+    * [0, 1].  (sat(x) == 0) == (x <= 0).
+    *
+    * = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.z.f0(8)   null  dest
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_Z, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_g_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.g.f0(8)   null  dest  0
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_G, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_g_mov)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.g.f0(8)   null  dest
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_G, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_le_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.le.f0(8)  null  dest  0
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_LE, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_le_mov)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.le.f0(8)  null  dest
+    *
+    * = After =
+    * No change.
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_LE, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_l_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.l.f0(8)  null  dest  0
+    *
+    * = After =
+    * No change
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_L, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_l_mov)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.l.f0(8)  null  dest  0
+    *
+    * = After =
+    * No change
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_L, BRW_OPCODE_MOV);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_ge_cmp)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: cmp.ge.f0(8)  null  dest  0
+    *
+    * = After =
+    * No change
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_GE, BRW_OPCODE_CMP);
+}
+
+TEST_F(cmod_propagation_test, int_saturate_ge_mov)
+{
+   /* = Before =
+    *
+    * 0: add.sat(8)    dest  src0  src1
+    * 1: mov.ge.f0(8)  null  dest
+    *
+    * = After =
+    * No change
+    */
+   test_negative_int_saturate_prop(BRW_CONDITIONAL_GE, BRW_OPCODE_MOV);
 }
