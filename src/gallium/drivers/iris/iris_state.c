@@ -971,6 +971,7 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
 
    ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+   ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
 }
 
@@ -1082,6 +1083,9 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       if (cso_changed(alpha.func))
          ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
+
+      if (cso_changed(depth_writes_enabled))
+         ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
       ice->state.depth_writes_enabled = new_cso->depth_writes_enabled;
       ice->state.stencil_writes_enabled = new_cso->stencil_writes_enabled;
@@ -1986,6 +1990,9 @@ iris_set_shader_images(struct pipe_context *ctx,
    }
 
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+   ice->state.dirty |=
+      stage == MESA_SHADER_COMPUTE ? IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES
+                                   : IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
    /* Broadwell also needs brw_image_params re-uploaded */
    if (GEN_GEN < 9) {
@@ -2021,6 +2028,9 @@ iris_set_sampler_views(struct pipe_context *ctx,
    }
 
    ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
+   ice->state.dirty |=
+      stage == MESA_SHADER_COMPUTE ? IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES
+                                   : IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 }
 
 /**
@@ -2358,6 +2368,8 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    /* Render target change */
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
+
+   ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
    ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
 
