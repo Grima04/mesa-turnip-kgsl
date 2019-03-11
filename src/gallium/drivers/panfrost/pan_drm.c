@@ -125,7 +125,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
 	struct drm_panfrost_mmap_bo mmap_bo = {0,};
-        int ret, size;
+        int ret;
         unsigned gem_handle;
 
 	ret = drmPrimeFDToHandle(drm->fd, whandle->handle, &gem_handle);
@@ -146,9 +146,9 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 		assert(0);
 	}
 
-	size = lseek(whandle->handle, 0, SEEK_END);
-	assert(size > 0);
-        bo->cpu[0] = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+        bo->size[0] = lseek(whandle->handle, 0, SEEK_END);
+        assert(bo->size[0] > 0);
+        bo->cpu[0] = mmap(NULL, bo->size[0], PROT_READ | PROT_WRITE, MAP_SHARED,
                        drm->fd, mmap_bo.offset);
         if (bo->cpu[0] == MAP_FAILED) {
                 fprintf(stderr, "mmap failed: %p\n", bo->cpu[0]);
@@ -156,7 +156,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 	}
 
         /* Record the mmap if we're tracing */
-        pantrace_mmap(bo->gpu[0], bo->cpu[0], size, NULL);
+        pantrace_mmap(bo->gpu[0], bo->cpu[0], bo->size[0], NULL);
 
         return bo;
 }

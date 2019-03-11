@@ -27,7 +27,6 @@ extern "C" {
 #define DRM_IOCTL_PANFROST_GET_BO_OFFSET	DRM_IOWR(DRM_COMMAND_BASE + DRM_PANFROST_GET_BO_OFFSET, struct drm_panfrost_get_bo_offset)
 
 #define PANFROST_JD_REQ_FS (1 << 0)
-
 /**
  * struct drm_panfrost_submit - ioctl argument for submitting commands to the 3D
  * engine.
