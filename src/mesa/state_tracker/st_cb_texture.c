@@ -794,6 +794,7 @@ st_get_blit_mask(GLenum srcFormat, GLenum dstFormat)
 
    case GL_STENCIL_INDEX:
       switch (srcFormat) {
+      case GL_DEPTH_STENCIL:
       case GL_STENCIL_INDEX:
          return PIPE_MASK_S;
       default:
