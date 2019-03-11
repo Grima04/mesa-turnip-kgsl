@@ -570,6 +570,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_copy_prop);
       OPT(nir_opt_dce);
       OPT(nir_opt_cse);
+      OPT(nir_opt_combine_stores, nir_var_all);
 
       /* Passing 0 to the peephole select pass causes it to convert
        * if-statements that contain only move instructions in the branches
