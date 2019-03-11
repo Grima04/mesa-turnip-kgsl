@@ -237,6 +237,7 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
 
                 bo->cpu[0] = mem.cpu;
                 bo->gpu[0] = mem.gpu;
+                bo->gem_handle = mem.gem_handle;
 
                 /* TODO: Mipmap */
         }
@@ -312,7 +313,8 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
                 struct panfrost_memory mem = {
                         .cpu = bo->cpu[0],
                         .gpu = bo->gpu[0],
-                        .size = bo->size[0]
+                        .size = bo->size[0],
+                        .gem_handle = bo->gem_handle,
                 };
 
                 screen->driver->free_slab(screen, &mem);
