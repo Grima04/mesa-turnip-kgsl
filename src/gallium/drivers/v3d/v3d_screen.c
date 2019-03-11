@@ -131,6 +131,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
                 return 1;
 
+        case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
+           return 0;
+
         case PIPE_CAP_GENERATE_MIPMAP:
                 return v3d_has_feature(screen, DRM_V3D_PARAM_SUPPORTS_TFU);
 
