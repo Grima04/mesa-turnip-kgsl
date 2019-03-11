@@ -625,6 +625,13 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    MAttrs.push_back("-avx512vl");
 #endif
 #endif
+#if defined(PIPE_ARCH_ARM)
+   if (!util_cpu_caps.has_neon) {
+      MAttrs.push_back("-neon");
+      MAttrs.push_back("-crypto");
+      MAttrs.push_back("-vfp2");
+   }
+#endif
 
 #if defined(PIPE_ARCH_PPC)
    MAttrs.push_back(util_cpu_caps.has_altivec ? "+altivec" : "-altivec");
