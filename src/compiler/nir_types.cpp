@@ -78,6 +78,14 @@ glsl_get_struct_field_offset(const struct glsl_type *type,
    return type->fields.structure[index].offset;
 }
 
+const struct glsl_struct_field *
+glsl_get_struct_field_data(const struct glsl_type *type, unsigned index)
+{
+   assert(type->is_struct() || type->is_interface());
+   assert(index < type->length);
+   return &type->fields.structure[index];
+}
+
 unsigned
 glsl_get_explicit_stride(const struct glsl_type *type)
 {

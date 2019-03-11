@@ -49,6 +49,9 @@ const struct glsl_type *glsl_get_struct_field(const struct glsl_type *type,
 int glsl_get_struct_field_offset(const struct glsl_type *type,
                                  unsigned index);
 
+const struct glsl_struct_field *
+glsl_get_struct_field_data(const struct glsl_type *type, unsigned index);
+
 unsigned glsl_get_explicit_stride(const struct glsl_type *type);
 const struct glsl_type *glsl_get_array_element(const struct glsl_type *type);
 const struct glsl_type *glsl_without_array(const struct glsl_type *type);
