@@ -140,7 +140,6 @@ struct panfrost_context {
          * e.g. clearing information */
 
         union {
-                struct mali_single_framebuffer fragment_sfbd;
                 struct {
                         struct bifrost_framebuffer fragment_mfbd;
                         struct bifrost_fb_extra fragment_extra;
@@ -371,10 +370,10 @@ bool
 panfrost_is_scanout(struct panfrost_context *ctx);
 
 mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx);
+panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y);
 
 mali_ptr
-panfrost_mfbd_fragment(struct panfrost_context *ctx);
+panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y);
 
 struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx);

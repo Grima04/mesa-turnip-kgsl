@@ -234,7 +234,7 @@ panfrost_mfbd_upload(struct panfrost_context *ctx)
 /* Creates an MFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_mfbd_fragment(struct panfrost_context *ctx)
+panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 

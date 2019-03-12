@@ -36,16 +36,11 @@ panfrost_sfbd_format(struct pipe_surface *surf)
 }
 
 static void
-panfrost_sfbd_enable_msaa(struct panfrost_context *ctx)
-{
-        ctx->fragment_sfbd.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
-}
-
-static void
-panfrost_sfbd_clear(struct panfrost_job *job)
+panfrost_sfbd_clear(
+                struct panfrost_job *job,
+                struct mali_single_framebuffer *sfbd)
 {
         struct panfrost_context *ctx = job->ctx;
-        struct mali_single_framebuffer *sfbd = &ctx->fragment_sfbd;
 
         if (job->clear & PIPE_CLEAR_COLOR) {
                 sfbd->clear_color_1 = job->clear_color;
@@ -91,60 +86,54 @@ panfrost_sfbd_clear(struct panfrost_job *job)
 
 static void
 panfrost_sfbd_set_cbuf(
-                struct panfrost_context *ctx,
-                struct pipe_surface *surf)
+                struct mali_single_framebuffer *fb,
+                struct pipe_surface *surf,
+                bool flip_y)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         signed stride =
                 util_format_get_stride(surf->format, surf->texture->width0);
 
-        ctx->fragment_sfbd.format = panfrost_sfbd_format(surf);
+        fb->format = panfrost_sfbd_format(surf);
 
         if (rsrc->bo->layout == PAN_LINEAR) {
                 mali_ptr framebuffer = rsrc->bo->gpu[0];
 
                 /* The default is upside down from OpenGL's perspective. */
-                if (panfrost_is_scanout(ctx)) {
+                if (flip_y) {
                         framebuffer += stride * (surf->texture->height0 - 1);
                         stride = -stride;
                 }
 
-                ctx->fragment_sfbd.framebuffer = framebuffer;
-                ctx->fragment_sfbd.stride = stride;
+                fb->framebuffer = framebuffer;
+                fb->stride = stride;
         } else {
                 fprintf(stderr, "Invalid render layout\n");
                 assert(0);
         }
 }
 
-static void
-panfrost_sfbd_set_targets(struct panfrost_context *ctx)
+/* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
+
+mali_ptr
+panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y)
 {
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
+
+        panfrost_sfbd_clear(job, &fb);
+
+        /* SFBD does not support MRT natively; sanity check */
         assert(ctx->pipe_framebuffer.nr_cbufs == 1);
-        panfrost_sfbd_set_cbuf(ctx, ctx->pipe_framebuffer.cbufs[0]);
+        panfrost_sfbd_set_cbuf(&fb, ctx->pipe_framebuffer.cbufs[0], flip_y);
 
         if (ctx->pipe_framebuffer.zsbuf) {
                 /* TODO */
         }
-}
-
-/* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
-
-mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx)
-{
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
-
-        struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
-        memcpy(&ctx->fragment_sfbd, &fb, sizeof(fb));
-
-        panfrost_sfbd_clear(job);
-        panfrost_sfbd_set_targets(ctx);
 
         if (job->msaa)
-                panfrost_sfbd_enable_msaa(ctx);
+                fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
 
-        return MALI_SFBD |
-                panfrost_upload_transient(ctx, &ctx->fragment_sfbd, sizeof(fb));
+        return panfrost_upload_transient(ctx, &fb, sizeof(fb)) | MALI_SFBD;
 }
