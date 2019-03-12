@@ -670,11 +670,9 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
             if (is_access_out_of_bounds(term, nir_src_as_deref(intrin->src[0]),
                                         trip_count)) {
                if (intrin->intrinsic == nir_intrinsic_load_deref) {
-                  assert(intrin->src[0].is_ssa);
-                  nir_ssa_def *a_ssa = intrin->src[0].ssa;
                   nir_ssa_def *undef =
-                     nir_ssa_undef(&b, intrin->num_components,
-                                   a_ssa->bit_size);
+                     nir_ssa_undef(&b, intrin->dest.ssa.num_components,
+                                   intrin->dest.ssa.bit_size);
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                            nir_src_for_ssa(undef));
                } else {
@@ -686,14 +684,6 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
             if (intrin->intrinsic == nir_intrinsic_copy_deref &&
                 is_access_out_of_bounds(term, nir_src_as_deref(intrin->src[1]),
                                         trip_count)) {
-               assert(intrin->src[1].is_ssa);
-               nir_ssa_def *a_ssa = intrin->src[1].ssa;
-               nir_ssa_def *undef =
-                  nir_ssa_undef(&b, intrin->num_components, a_ssa->bit_size);
-
-               /* Replace the copy with a store of the undefined value */
-               b.cursor = nir_before_instr(instr);
-               nir_store_deref(&b, nir_src_as_deref(intrin->src[0]), undef, ~0);
                nir_instr_remove(instr);
             }
          }
