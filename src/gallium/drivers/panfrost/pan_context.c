@@ -2408,8 +2408,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         unsigned gpu_id;
 
         gpu_id = pscreen->driver->query_gpu_version(pscreen);
-        ctx->is_t6xx = gpu_id <= 0x0750; /* For now, this flag means t76x or less */
-        ctx->require_sfbd = gpu_id < 0x0750; /* t76x is the first to support MFD */
+
+        ctx->is_t6xx = gpu_id <= 0x0750; /* For now, this flag means T760 or less */
+        ctx->require_sfbd = gpu_id < 0x0750; /* T760 is the first to support MFBD */
 
         gallium->screen = screen;
 
