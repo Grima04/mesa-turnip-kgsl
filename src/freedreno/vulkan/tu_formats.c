@@ -45,9 +45,7 @@
 #define TU_FORMAT_TABLE(var)                                                 \
    static const VkFormat var##_first = TU_FORMAT_TABLE_FIRST;                \
    static const VkFormat var##_last = TU_FORMAT_TABLE_LAST;                  \
-   static const size_t var##_count =                                         \
-      TU_FORMAT_TABLE_LAST - TU_FORMAT_TABLE_FIRST + 1;                      \
-   static const struct tu_native_format var[var##_count]
+   static const struct tu_native_format var[TU_FORMAT_TABLE_LAST - TU_FORMAT_TABLE_FIRST + 1]
 #undef TU_FORMAT_TABLE_FIRST
 #undef TU_FORMAT_TABLE_LAST
 
@@ -321,9 +319,8 @@ tu6_get_native_format(VkFormat format)
 {
    const struct tu_native_format *fmt = NULL;
 
-   static_assert(tu6_format_table0_first == 0, "");
-   if (format <= tu6_format_table0_last)
-      fmt = &tu6_format_table0[format];
+   if (format >= tu6_format_table0_first && format <= tu6_format_table0_last)
+      fmt = &tu6_format_table0[format - tu6_format_table0_first];
 
    return (fmt && fmt->present) ? fmt : NULL;
 }
