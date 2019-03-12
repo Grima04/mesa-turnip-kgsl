@@ -229,9 +229,15 @@ delete_ir(struct pipe_shader_state *ir)
 static void
 delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
 {
-   if (vpv->driver_shader) 
-      cso_delete_vertex_shader(st->cso_context, vpv->driver_shader);
-      
+   if (vpv->driver_shader) {
+      if (st->has_shareable_shaders || vpv->key.st == st) {
+         cso_delete_vertex_shader(st->cso_context, vpv->driver_shader);
+      } else {
+         st_save_zombie_shader(vpv->key.st, PIPE_SHADER_VERTEX,
+                               vpv->driver_shader);
+      }
+   }
+
    if (vpv->draw_shader)
       draw_delete_vertex_shader( st->draw, vpv->draw_shader );
 
@@ -271,8 +277,15 @@ st_release_vp_variants( struct st_context *st,
 static void
 delete_fp_variant(struct st_context *st, struct st_fp_variant *fpv)
 {
-   if (fpv->driver_shader) 
-      cso_delete_fragment_shader(st->cso_context, fpv->driver_shader);
+   if (fpv->driver_shader) {
+      if (st->has_shareable_shaders || fpv->key.st == st) {
+         cso_delete_fragment_shader(st->cso_context, fpv->driver_shader);
+      } else {
+         st_save_zombie_shader(fpv->key.st, PIPE_SHADER_FRAGMENT,
+                               fpv->driver_shader);
+      }
+   }
+
    free(fpv);
 }
 
@@ -306,21 +319,45 @@ delete_basic_variant(struct st_context *st, struct st_basic_variant *v,
                      GLenum target)
 {
    if (v->driver_shader) {
-      switch (target) {
-      case GL_TESS_CONTROL_PROGRAM_NV:
-         cso_delete_tessctrl_shader(st->cso_context, v->driver_shader);
-         break;
-      case GL_TESS_EVALUATION_PROGRAM_NV:
-         cso_delete_tesseval_shader(st->cso_context, v->driver_shader);
-         break;
-      case GL_GEOMETRY_PROGRAM_NV:
-         cso_delete_geometry_shader(st->cso_context, v->driver_shader);
-         break;
-      case GL_COMPUTE_PROGRAM_NV:
-         cso_delete_compute_shader(st->cso_context, v->driver_shader);
-         break;
-      default:
-         assert(!"this shouldn't occur");
+      if (st->has_shareable_shaders || v->key.st == st) {
+         /* The shader's context matches the calling context, or we
+          * don't care.
+          */
+         switch (target) {
+         case GL_TESS_CONTROL_PROGRAM_NV:
+            cso_delete_tessctrl_shader(st->cso_context, v->driver_shader);
+            break;
+         case GL_TESS_EVALUATION_PROGRAM_NV:
+            cso_delete_tesseval_shader(st->cso_context, v->driver_shader);
+            break;
+         case GL_GEOMETRY_PROGRAM_NV:
+            cso_delete_geometry_shader(st->cso_context, v->driver_shader);
+            break;
+         case GL_COMPUTE_PROGRAM_NV:
+            cso_delete_compute_shader(st->cso_context, v->driver_shader);
+            break;
+         default:
+            unreachable("bad shader type in delete_basic_variant");
+         }
+      } else {
+         /* We can't delete a shader with a context different from the one
+          * that created it.  Add it to the creating context's zombie list.
+          */
+         enum pipe_shader_type type;
+         switch (target) {
+         case GL_TESS_CONTROL_PROGRAM_NV:
+            type = PIPE_SHADER_TESS_CTRL;
+            break;
+         case GL_TESS_EVALUATION_PROGRAM_NV:
+            type = PIPE_SHADER_TESS_EVAL;
+            break;
+         case GL_GEOMETRY_PROGRAM_NV:
+            type = PIPE_SHADER_GEOMETRY;
+            break;
+         default:
+            unreachable("");
+         }
+         st_save_zombie_shader(v->key.st, type, v->driver_shader);
       }
    }
 

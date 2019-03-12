@@ -294,6 +294,39 @@ st_save_zombie_sampler_view(struct st_context *st,
 
 
 /*
+ * Since OpenGL shaders may be shared among contexts, we can wind up
+ * with variants of a shader created with different contexts.
+ * When we go to destroy a gallium shader, we want to free it with the
+ * same context that it was created with, unless the driver reports
+ * PIPE_CAP_SHAREABLE_SHADERS = TRUE.
+ */
+void
+st_save_zombie_shader(struct st_context *st,
+                      enum pipe_shader_type type,
+                      struct pipe_shader_state *shader)
+{
+   struct st_zombie_shader_node *entry;
+
+   /* we shouldn't be here if the driver supports shareable shaders */
+   assert(!st->has_shareable_shaders);
+
+   entry = MALLOC_STRUCT(st_zombie_shader_node);
+   if (!entry)
+      return;
+
+   entry->shader = shader;
+   entry->type = type;
+
+   /* We need a mutex since this function may be called from one thread
+    * while free_zombie_shaders() is called from another.
+    */
+   mtx_lock(&st->zombie_shaders.mutex);
+   LIST_ADDTAIL(&entry->node, &st->zombie_shaders.list.node);
+   mtx_unlock(&st->zombie_shaders.mutex);
+}
+
+
+/*
  * Free any zombie sampler views that may be attached to this context.
  */
 static void
@@ -324,6 +357,55 @@ free_zombie_sampler_views(struct st_context *st)
 
 
 /*
+ * Free any zombie shaders that may be attached to this context.
+ */
+static void
+free_zombie_shaders(struct st_context *st)
+{
+   struct st_zombie_shader_node *entry, *next;
+
+   if (LIST_IS_EMPTY(&st->zombie_shaders.list.node)) {
+      return;
+   }
+
+   mtx_lock(&st->zombie_shaders.mutex);
+
+   LIST_FOR_EACH_ENTRY_SAFE(entry, next,
+                            &st->zombie_shaders.list.node, node) {
+      LIST_DEL(&entry->node);  // remove this entry from the list
+
+      switch (entry->type) {
+      case PIPE_SHADER_VERTEX:
+         cso_delete_vertex_shader(st->cso_context, entry->shader);
+         break;
+      case PIPE_SHADER_FRAGMENT:
+         cso_delete_fragment_shader(st->cso_context, entry->shader);
+         break;
+      case PIPE_SHADER_GEOMETRY:
+         cso_delete_geometry_shader(st->cso_context, entry->shader);
+         break;
+      case PIPE_SHADER_TESS_CTRL:
+         cso_delete_tessctrl_shader(st->cso_context, entry->shader);
+         break;
+      case PIPE_SHADER_TESS_EVAL:
+         cso_delete_tesseval_shader(st->cso_context, entry->shader);
+         break;
+      case PIPE_SHADER_COMPUTE:
+         cso_delete_compute_shader(st->cso_context, entry->shader);
+         break;
+      default:
+         unreachable("invalid shader type in free_zombie_shaders()");
+      }
+      free(entry);
+   }
+
+   assert(LIST_IS_EMPTY(&st->zombie_shaders.list.node));
+
+   mtx_unlock(&st->zombie_shaders.mutex);
+}
+
+
+/*
  * This function is called periodically to free any zombie objects
  * which are attached to this context.
  */
@@ -331,6 +413,7 @@ void
 st_context_free_zombie_objects(struct st_context *st)
 {
    free_zombie_sampler_views(st);
+   free_zombie_shaders(st);
 }
 
 
@@ -643,6 +726,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    LIST_INITHEAD(&st->zombie_sampler_views.list.node);
    mtx_init(&st->zombie_sampler_views.mutex, mtx_plain);
+   LIST_INITHEAD(&st->zombie_shaders.list.node);
+   mtx_init(&st->zombie_shaders.mutex, mtx_plain);
 
    return st;
 }
@@ -847,6 +932,7 @@ st_destroy_context(struct st_context *st)
    st_context_free_zombie_objects(st);
 
    mtx_destroy(&st->zombie_sampler_views.mutex);
+   mtx_destroy(&st->zombie_shaders.mutex);
 
    /* This must be called first so that glthread has a chance to finish */
    _mesa_glthread_destroy(ctx);
