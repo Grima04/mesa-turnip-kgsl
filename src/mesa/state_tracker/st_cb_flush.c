@@ -39,6 +39,7 @@
 #include "st_cb_flush.h"
 #include "st_cb_clear.h"
 #include "st_cb_fbo.h"
+#include "st_context.h"
 #include "st_manager.h"
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
@@ -52,6 +53,11 @@ st_flush(struct st_context *st,
          unsigned flags)
 {
    st_flush_bitmap_cache(st);
+
+   /* We want to call this function periodically.
+    * Typically, it has nothing to do so it shouldn't be expensive.
+    */
+   st_context_free_zombie_objects(st);
 
    st->pipe->flush(st->pipe, fence, flags);
 }

@@ -37,6 +37,7 @@
 #include "util/u_inlines.h"
 #include "util/list.h"
 #include "vbo/vbo.h"
+#include "util/list.h"
 
 
 #ifdef __cplusplus
@@ -92,6 +93,16 @@ struct drawpix_cache_entry
    void *image;               /**< Copy of the glDrawPixels image data */
    struct pipe_resource *texture;
    unsigned age;
+};
+
+
+/*
+ * Node for a linked list of dead sampler views.
+ */
+struct st_zombie_sampler_view_node
+{
+   struct pipe_sampler_view *view;
+   struct list_head node;
 };
 
 
@@ -306,6 +317,11 @@ struct st_context
     * the estimated allocated size needed to execute those operations.
     */
    struct util_throttle throttle;
+
+   struct {
+      struct st_zombie_sampler_view_node list;
+      mtx_t mutex;
+   } zombie_sampler_views;
 };
 
 
@@ -332,6 +348,15 @@ st_destroy_context(struct st_context *st);
 
 extern void
 st_invalidate_buffers(struct st_context *st);
+
+
+extern void
+st_save_zombie_sampler_view(struct st_context *st,
+                            struct pipe_sampler_view *view);
+
+void
+st_context_free_zombie_objects(struct st_context *st);
+
 
 
 /**

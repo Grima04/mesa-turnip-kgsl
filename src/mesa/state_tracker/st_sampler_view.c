@@ -150,6 +150,7 @@ found:
    sv->glsl130_or_later = glsl130_or_later;
    sv->srgb_skip_decode = srgb_skip_decode;
    sv->view = view;
+   sv->st = st;
 
 out:
    simple_mtx_unlock(&stObj->validate_mutex);
@@ -213,8 +214,6 @@ void
 st_texture_release_all_sampler_views(struct st_context *st,
                                      struct st_texture_object *stObj)
 {
-   GLuint i;
-
    /* TODO: This happens while a texture is deleted, because the Driver API
     * is asymmetric: the driver allocates the texture object memory, but
     * mesa/main frees it.
@@ -224,8 +223,21 @@ st_texture_release_all_sampler_views(struct st_context *st,
 
    simple_mtx_lock(&stObj->validate_mutex);
    struct st_sampler_views *views = stObj->sampler_views;
-   for (i = 0; i < views->count; ++i)
-      pipe_sampler_view_release(st->pipe, &views->views[i].view);
+   for (unsigned i = 0; i < views->count; ++i) {
+      struct st_sampler_view *stsv = &views->views[i];
+      if (stsv->view) {
+         if (stsv->st != st) {
+            /* Transfer this reference to the zombie list.  It will
+             * likely be freed when the zombie list is freed.
+             */
+            st_save_zombie_sampler_view(stsv->st, stsv->view);
+            stsv->view = NULL;
+         } else {
+            pipe_sampler_view_reference(&stsv->view, NULL);
+         }
+      }
+   }
+   views->count = 0;
    simple_mtx_unlock(&stObj->validate_mutex);
 }
 
@@ -241,6 +253,7 @@ st_delete_texture_sampler_views(struct st_context *st,
    st_texture_release_all_sampler_views(st, stObj);
 
    /* Free the container of the current per-context sampler views */
+   assert(stObj->sampler_views->count == 0);
    free(stObj->sampler_views);
    stObj->sampler_views = NULL;
 

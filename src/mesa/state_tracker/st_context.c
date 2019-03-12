@@ -261,6 +261,79 @@ st_invalidate_state(struct gl_context *ctx)
 }
 
 
+/*
+ * In some circumstances (such as running google-chrome) the state
+ * tracker may try to delete a resource view from a context different
+ * than when it was created.  We don't want to do that.
+ *
+ * In that situation, st_texture_release_all_sampler_views() calls this
+ * function to transfer the sampler view reference to this context (expected
+ * to be the context which created the view.)
+ */
+void
+st_save_zombie_sampler_view(struct st_context *st,
+                            struct pipe_sampler_view *view)
+{
+   struct st_zombie_sampler_view_node *entry;
+
+   assert(view->context == st->pipe);
+
+   entry = MALLOC_STRUCT(st_zombie_sampler_view_node);
+   if (!entry)
+      return;
+
+   entry->view = view;
+
+   /* We need a mutex since this function may be called from one thread
+    * while free_zombie_resource_views() is called from another.
+    */
+   mtx_lock(&st->zombie_sampler_views.mutex);
+   LIST_ADDTAIL(&entry->node, &st->zombie_sampler_views.list.node);
+   mtx_unlock(&st->zombie_sampler_views.mutex);
+}
+
+
+/*
+ * Free any zombie sampler views that may be attached to this context.
+ */
+static void
+free_zombie_sampler_views(struct st_context *st)
+{
+   struct st_zombie_sampler_view_node *entry, *next;
+
+   if (LIST_IS_EMPTY(&st->zombie_sampler_views.list.node)) {
+      return;
+   }
+
+   mtx_lock(&st->zombie_sampler_views.mutex);
+
+   LIST_FOR_EACH_ENTRY_SAFE(entry, next,
+                            &st->zombie_sampler_views.list.node, node) {
+      LIST_DEL(&entry->node);  // remove this entry from the list
+
+      assert(entry->view->context == st->pipe);
+      pipe_sampler_view_reference(&entry->view, NULL);
+
+      free(entry);
+   }
+
+   assert(LIST_IS_EMPTY(&st->zombie_sampler_views.list.node));
+
+   mtx_unlock(&st->zombie_sampler_views.mutex);
+}
+
+
+/*
+ * This function is called periodically to free any zombie objects
+ * which are attached to this context.
+ */
+void
+st_context_free_zombie_objects(struct st_context *st)
+{
+   free_zombie_sampler_views(st);
+}
+
+
 static void
 st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
 {
@@ -568,6 +641,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    /* Initialize context's winsys buffers list */
    LIST_INITHEAD(&st->winsys_buffers);
 
+   LIST_INITHEAD(&st->zombie_sampler_views.list.node);
+   mtx_init(&st->zombie_sampler_views.mutex, mtx_plain);
+
    return st;
 }
 
@@ -767,6 +843,10 @@ st_destroy_context(struct st_context *st)
        */
       _mesa_make_current(ctx, NULL, NULL);
    }
+
+   st_context_free_zombie_objects(st);
+
+   mtx_destroy(&st->zombie_sampler_views.mutex);
 
    /* This must be called first so that glthread has a chance to finish */
    _mesa_glthread_destroy(ctx);
