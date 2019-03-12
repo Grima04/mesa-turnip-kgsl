@@ -97,6 +97,9 @@ static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
    else
       res->target = PIPE_TEXTURE_2D;
 
+   if (res->target != PIPE_BUFFER)
+      res->bind = PIPE_BIND_RENDER_TARGET;
+
    switch (res->target) {
    case PIPE_TEXTURE_1D_ARRAY:
    case PIPE_TEXTURE_2D_ARRAY:
