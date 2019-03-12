@@ -59,6 +59,12 @@ struct prim_convert_context;
 #define PAN_DIRTY_SAMPLERS   (1 << 8)
 #define PAN_DIRTY_TEXTURES   (1 << 9)
 
+#define SET_BIT(lval, bit, cond) \
+	if (cond) \
+		lval |= (bit); \
+	else \
+		lval &= ~(bit);
+
 struct panfrost_constant_buffer {
         bool dirty;
         size_t size;
@@ -360,6 +366,21 @@ panfrost_flush(
         struct pipe_context *pipe,
         struct pipe_fence_handle **fence,
         unsigned flags);
+
+bool
+panfrost_is_scanout(struct panfrost_context *ctx);
+
+mali_ptr
+panfrost_sfbd_fragment(struct panfrost_context *ctx);
+
+mali_ptr
+panfrost_mfbd_fragment(struct panfrost_context *ctx);
+
+struct bifrost_framebuffer
+panfrost_emit_mfbd(struct panfrost_context *ctx);
+
+struct mali_single_framebuffer
+panfrost_emit_sfbd(struct panfrost_context *ctx);
 
 mali_ptr
 panfrost_fragment_job(struct panfrost_context *ctx);

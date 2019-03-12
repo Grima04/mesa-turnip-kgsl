@@ -47,6 +47,9 @@ struct panfrost_job {
         uint32_t clear_color;
         float clear_depth;
         unsigned clear_stencil;
+
+        /* Whether this job uses MSAA */
+        bool msaa;
 };
 
 /* Functions for managing the above */
