@@ -1628,9 +1628,46 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
                                       const nir_intrinsic_instr *instr)
 {
-	const char *name;
-	LLVMValueRef params[6];
+	const char *atomic_name;
+	char intrinsic_name[64];
+	LLVMValueRef params[7];
 	int arg_count = 0;
+	int length;
+
+	switch (instr->intrinsic) {
+	case nir_intrinsic_ssbo_atomic_add:
+		atomic_name = "add";
+		break;
+	case nir_intrinsic_ssbo_atomic_imin:
+		atomic_name = "smin";
+		break;
+	case nir_intrinsic_ssbo_atomic_umin:
+		atomic_name = "umin";
+		break;
+	case nir_intrinsic_ssbo_atomic_imax:
+		atomic_name = "smax";
+		break;
+	case nir_intrinsic_ssbo_atomic_umax:
+		atomic_name = "umax";
+		break;
+	case nir_intrinsic_ssbo_atomic_and:
+		atomic_name = "and";
+		break;
+	case nir_intrinsic_ssbo_atomic_or:
+		atomic_name = "or";
+		break;
+	case nir_intrinsic_ssbo_atomic_xor:
+		atomic_name = "xor";
+		break;
+	case nir_intrinsic_ssbo_atomic_exchange:
+		atomic_name = "swap";
+		break;
+	case nir_intrinsic_ssbo_atomic_comp_swap:
+		atomic_name = "cmpswap";
+		break;
+	default:
+		abort();
+	}
 
 	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
 		params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
@@ -1639,46 +1676,27 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 	params[arg_count++] = ctx->abi->load_ssbo(ctx->abi,
 						 get_src(ctx, instr->src[0]),
 						 true);
-	params[arg_count++] = ctx->ac.i32_0; /* vindex */
-	params[arg_count++] = get_src(ctx, instr->src[1]);      /* voffset */
-	params[arg_count++] = ctx->ac.i1false;  /* slc */
 
-	switch (instr->intrinsic) {
-	case nir_intrinsic_ssbo_atomic_add:
-		name = "llvm.amdgcn.buffer.atomic.add";
-		break;
-	case nir_intrinsic_ssbo_atomic_imin:
-		name = "llvm.amdgcn.buffer.atomic.smin";
-		break;
-	case nir_intrinsic_ssbo_atomic_umin:
-		name = "llvm.amdgcn.buffer.atomic.umin";
-		break;
-	case nir_intrinsic_ssbo_atomic_imax:
-		name = "llvm.amdgcn.buffer.atomic.smax";
-		break;
-	case nir_intrinsic_ssbo_atomic_umax:
-		name = "llvm.amdgcn.buffer.atomic.umax";
-		break;
-	case nir_intrinsic_ssbo_atomic_and:
-		name = "llvm.amdgcn.buffer.atomic.and";
-		break;
-	case nir_intrinsic_ssbo_atomic_or:
-		name = "llvm.amdgcn.buffer.atomic.or";
-		break;
-	case nir_intrinsic_ssbo_atomic_xor:
-		name = "llvm.amdgcn.buffer.atomic.xor";
-		break;
-	case nir_intrinsic_ssbo_atomic_exchange:
-		name = "llvm.amdgcn.buffer.atomic.swap";
-		break;
-	case nir_intrinsic_ssbo_atomic_comp_swap:
-		name = "llvm.amdgcn.buffer.atomic.cmpswap";
-		break;
-	default:
-		abort();
+	if (HAVE_LLVM >= 0x0800) {
+		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
+		params[arg_count++] = ctx->ac.i32_0; /* soffset */
+		params[arg_count++] = ctx->ac.i32_0; /* slc */
+
+		length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+			          "llvm.amdgcn.raw.buffer.atomic.%s.i32",
+				  atomic_name);
+	} else {
+		params[arg_count++] = ctx->ac.i32_0; /* vindex */
+		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
+		params[arg_count++] = ctx->ac.i1false; /* slc */
+
+		length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+			          "llvm.amdgcn.buffer.atomic.%s", atomic_name);
 	}
 
-	return ac_build_intrinsic(&ctx->ac, name, ctx->ac.i32, params, arg_count, 0);
+	assert(length < sizeof(intrinsic_name));
+	return ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32,
+				  params, arg_count, 0);
 }
 
 static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
