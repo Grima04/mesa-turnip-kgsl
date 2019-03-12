@@ -843,7 +843,7 @@ try_find_trip_count_vars_in_iand(nir_alu_instr **alu,
    }
 
    /* Try the other iand src if needed */
-   if (*ind == NULL || *ind && (*ind)->type != basic_induction ||
+   if (*ind == NULL || (*ind && (*ind)->type != basic_induction) ||
        !is_var_constant(*limit)) {
       src = iand->src[1].src.ssa;
       if (src->parent_instr->type == nir_instr_type_alu) {
