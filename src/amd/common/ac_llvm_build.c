@@ -1412,6 +1412,14 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 		return ac_build_gather_values(ctx, result, num_channels);
 	}
 
+	if (HAVE_LLVM >= 0x0800) {
+		return ac_build_llvm8_buffer_load_common(ctx, rsrc, vindex,
+							 offset, ctx->i32_0,
+							 num_channels, glc, slc,
+							 can_speculate, false,
+							 false);
+	}
+
 	return ac_build_buffer_load_common(ctx, rsrc, vindex, offset,
 					   num_channels, glc, slc,
 					   can_speculate, false);
