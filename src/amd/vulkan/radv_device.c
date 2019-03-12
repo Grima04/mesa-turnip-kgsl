@@ -2815,7 +2815,7 @@ VkResult radv_QueueSubmit(
 	struct radeon_winsys_fence *base_fence = fence ? fence->fence : NULL;
 	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
 	int ret;
-	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : UINT32_MAX;
+	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
 	uint32_t scratch_size = 0;
 	uint32_t compute_scratch_size = 0;
 	uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
