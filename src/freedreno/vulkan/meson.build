@@ -39,8 +39,8 @@ tu_extensions_c = custom_target(
   ],
 )
 
-vk_format_table_c = custom_target(
-  'vk_format_table.c',
+tu_format_table_c = custom_target(
+  'tu_format_table.c',
   input : ['vk_format_table.py', 'vk_format_layout.csv'],
   output : 'vk_format_table.c',
   command : [prog_python, '@INPUT@'],
@@ -86,7 +86,7 @@ endif
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
-  [libtu_files, tu_entrypoints, tu_extensions_c, vk_format_table_c],
+  [libtu_files, tu_entrypoints, tu_extensions_c, tu_format_table_c],
   include_directories : [
     inc_common,
     inc_compiler,
