@@ -58,8 +58,6 @@ panfrost_mfbd_clear(
                 struct bifrost_fb_extra *fbx,
                 struct bifrost_render_target *rt)
 {
-        struct panfrost_context *ctx = job->ctx;
-
         if (job->clear & PIPE_CLEAR_COLOR) {
                 rt->clear_color_1 = job->clear_color;
                 rt->clear_color_2 = job->clear_color;
@@ -73,14 +71,6 @@ panfrost_mfbd_clear(
 
         if (job->clear & PIPE_CLEAR_STENCIL) {
                 fb->clear_stencil = job->clear_stencil;
-        }
-
-        if (job->clear & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
-                /* Setup combined 24/8 depth/stencil */
-                fb->unk3 |= MALI_MFBD_EXTRA;
-                fbx->flags = 0x405;
-                fbx->ds_linear.depth = ctx->depth_stencil_buffer.gpu;
-                fbx->ds_linear.depth_stride = ctx->pipe_framebuffer.width * 4;
         }
 }
 
@@ -155,6 +145,15 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.padding = 0x1000;
 
                 fb->unk3 |= MALI_MFBD_DEPTH_WRITE;
+        } else if (rsrc->bo->layout == PAN_LINEAR) {
+                fb->unk3 |= MALI_MFBD_EXTRA;
+                fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
+
+                fbx->ds_linear.depth = rsrc->bo->gpu[0];
+                fbx->ds_linear.depth_stride =
+                        util_format_get_stride(surf->format, surf->texture->width0);
+        } else {
+                assert(0);
         }
 }
 
