@@ -1593,7 +1593,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 				ctx->ac.i1false,
 			};
 			ac_build_intrinsic(&ctx->ac, store_name,
-					   ctx->ac.voidt, tbuffer_params, 10, 0);
+					   ctx->ac.voidt, tbuffer_params, 10,
+					   ac_get_store_intr_attribs(writeonly_memory));
 		} else {
 			switch (num_bytes) {
 			case 16: /* v4f32 */
@@ -1621,7 +1622,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 				ctx->ac.i1false,  /* slc */
 			};
 			ac_build_intrinsic(&ctx->ac, store_name,
-					   ctx->ac.voidt, params, 6, 0);
+					   ctx->ac.voidt, params, 6,
+					   ac_get_store_intr_attribs(writeonly_memory));
 		}
 	}
 }
@@ -2548,7 +2550,8 @@ static void visit_image_store(struct ac_nir_context *ctx,
 			params[4] = LLVMConstInt(ctx->ac.i1, !!(args.cache_policy & ac_glc), 0);
 			params[5] = ctx->ac.i1false;  /* slc */
 		}
-		ac_build_intrinsic(&ctx->ac, name, ctx->ac.voidt, params, 6, 0);
+		ac_build_intrinsic(&ctx->ac, name, ctx->ac.voidt, params, 6,
+				   ac_get_store_intr_attribs(writeonly_memory));
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
