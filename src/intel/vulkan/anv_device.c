@@ -833,7 +833,7 @@ VkResult anv_EnumeratePhysicalDeviceGroups(
       memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
       p->physicalDevices[0] =
          anv_physical_device_to_handle(&instance->physicalDevice);
-      p->subsetAllocation = VK_FALSE;
+      p->subsetAllocation = false;
 
       vk_foreach_struct(ext, p->pNext)
          anv_debug_ignored_stype(ext->sType);
@@ -967,7 +967,7 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
          VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
-         features->depthClipEnable = VK_TRUE;
+         features->depthClipEnable = true;
          break;
       }
 
@@ -990,7 +990,7 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features = (void *)ext;
-         features->protectedMemory = VK_FALSE;
+         features->protectedMemory = false;
          break;
       }
 
@@ -1024,23 +1024,23 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
          VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
             (VkPhysicalDeviceTransformFeedbackFeaturesEXT *)ext;
-         features->transformFeedback = VK_TRUE;
-         features->geometryStreams = VK_TRUE;
+         features->transformFeedback = true;
+         features->geometryStreams = true;
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
          VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
             (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
-         features->vertexAttributeInstanceRateDivisor = VK_TRUE;
-         features->vertexAttributeInstanceRateZeroDivisor = VK_TRUE;
+         features->vertexAttributeInstanceRateDivisor = true;
+         features->vertexAttributeInstanceRateZeroDivisor = true;
          break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
          VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *features =
             (VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *)ext;
-         features->ycbcrImageArrays = VK_TRUE;
+         features->ycbcrImageArrays = true;
          break;
       }
 
@@ -1234,8 +1234,8 @@ void anv_GetPhysicalDeviceProperties2(
                VK_RESOLVE_MODE_MAX_BIT_KHR;
          }
 
-         props->independentResolveNone = VK_TRUE;
-         props->independentResolve = VK_TRUE;
+         props->independentResolveNone = true;
+         props->independentResolve = true;
          break;
       }
 
@@ -1372,7 +1372,7 @@ void anv_GetPhysicalDeviceProperties2(
                                            VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
                                            VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
                                            VK_SUBGROUP_FEATURE_QUAD_BIT;
-         properties->quadOperationsInAllStages = VK_TRUE;
+         properties->quadOperationsInAllStages = true;
          break;
       }
 
@@ -1386,10 +1386,10 @@ void anv_GetPhysicalDeviceProperties2(
          props->maxTransformFeedbackStreamDataSize = 128 * 4;
          props->maxTransformFeedbackBufferDataSize = 128 * 4;
          props->maxTransformFeedbackBufferDataStride = 2048;
-         props->transformFeedbackQueries = VK_TRUE;
-         props->transformFeedbackStreamsLinesTriangles = VK_FALSE;
-         props->transformFeedbackRasterizationStreamSelect = VK_FALSE;
-         props->transformFeedbackDraw = VK_TRUE;
+         props->transformFeedbackQueries = true;
+         props->transformFeedbackStreamsLinesTriangles = false;
+         props->transformFeedbackRasterizationStreamSelect = false;
+         props->transformFeedbackDraw = true;
          break;
       }
 
@@ -2961,8 +2961,8 @@ void anv_GetBufferMemoryRequirements2(
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *requirements = (void *)ext;
-         requirements->prefersDedicatedAllocation = VK_FALSE;
-         requirements->requiresDedicatedAllocation = VK_FALSE;
+         requirements->prefersDedicatedAllocation = false;
+         requirements->requiresDedicatedAllocation = false;
          break;
       }
 
@@ -3067,11 +3067,11 @@ void anv_GetImageMemoryRequirements2(
              *
              * See also anv_AllocateMemory.
              */
-            requirements->prefersDedicatedAllocation = VK_TRUE;
-            requirements->requiresDedicatedAllocation = VK_TRUE;
+            requirements->prefersDedicatedAllocation = true;
+            requirements->requiresDedicatedAllocation = true;
          } else {
-            requirements->prefersDedicatedAllocation = VK_FALSE;
-            requirements->requiresDedicatedAllocation = VK_FALSE;
+            requirements->prefersDedicatedAllocation = false;
+            requirements->requiresDedicatedAllocation = false;
          }
          break;
       }
