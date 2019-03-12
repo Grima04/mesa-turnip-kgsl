@@ -5461,6 +5461,130 @@ iris_destroy_state(struct iris_context *ice)
 /* ------------------------------------------------------------------- */
 
 static void
+iris_rebind_buffer(struct iris_context *ice,
+                   struct iris_resource *res,
+                   uint64_t old_address)
+{
+   struct pipe_context *ctx = &ice->ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_genx_state *genx = ice->state.genx;
+
+   assert(res->base.target == PIPE_BUFFER);
+
+   /* Buffers can't be framebuffer attachments, nor display related,
+    * and we don't have upstream Clover support.
+    */
+   assert(!(res->bind_history & (PIPE_BIND_DEPTH_STENCIL |
+                                 PIPE_BIND_RENDER_TARGET |
+                                 PIPE_BIND_BLENDABLE |
+                                 PIPE_BIND_DISPLAY_TARGET |
+                                 PIPE_BIND_CURSOR |
+                                 PIPE_BIND_COMPUTE_RESOURCE |
+                                 PIPE_BIND_GLOBAL)));
+
+   if (res->bind_history & PIPE_BIND_VERTEX_BUFFER) {
+      uint64_t bound_vbs = ice->state.bound_vertex_buffers;
+      while (bound_vbs) {
+         const int i = u_bit_scan64(&bound_vbs);
+         struct iris_vertex_buffer_state *state = &genx->vertex_buffers[i];
+
+         /* Update the CPU struct */
+         STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_start) == 32);
+         STATIC_ASSERT(GENX(VERTEX_BUFFER_STATE_BufferStartingAddress_bits) == 64);
+         uint64_t *addr = (uint64_t *) &state->state[1];
+
+         if (*addr == old_address) {
+            *addr = res->bo->gtt_offset;
+            ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
+         }
+      }
+   }
+
+   /* No need to handle these:
+    * - PIPE_BIND_INDEX_BUFFER (emitted for every indexed draw)
+    * - PIPE_BIND_COMMAND_ARGS_BUFFER (emitted for every indirect draw)
+    * - PIPE_BIND_QUERY_BUFFER (no persistent state references)
+    */
+
+   if (res->bind_history & PIPE_BIND_STREAM_OUTPUT) {
+      /* XXX: be careful about resetting vs appending... */
+      assert(false);
+   }
+
+   for (int s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {
+      struct iris_shader_state *shs = &ice->state.shaders[s];
+      enum pipe_shader_type p_stage = stage_to_pipe(s);
+
+      if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
+         /* Skip constant buffer 0, it's for regular uniforms, not UBOs */
+         uint32_t bound_cbufs = shs->bound_cbufs & ~1u;
+         while (bound_cbufs) {
+            const int i = u_bit_scan(&bound_cbufs);
+            struct pipe_shader_buffer *cbuf = &shs->constbuf[i];
+            struct iris_state_ref *surf_state = &shs->constbuf_surf_state[i];
+
+            if (res->bo == iris_resource_bo(cbuf->buffer)) {
+               upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
+               ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << s;
+            }
+         }
+      }
+
+      if (res->bind_history & PIPE_BIND_SHADER_BUFFER) {
+         uint32_t bound_ssbos = shs->bound_ssbos;
+         while (bound_ssbos) {
+            const int i = u_bit_scan(&bound_ssbos);
+            struct pipe_shader_buffer *ssbo = &shs->ssbo[i];
+
+            if (res->bo == iris_resource_bo(ssbo->buffer)) {
+               struct pipe_shader_buffer buf = {
+                  .buffer = &res->base,
+                  .buffer_offset = ssbo->buffer_offset,
+                  .buffer_size = ssbo->buffer_size,
+               };
+               iris_set_shader_buffers(ctx, p_stage, i, 1, &buf,
+                                       (shs->writable_ssbos >> i) & 1);
+            }
+         }
+      }
+
+      if (res->bind_history & PIPE_BIND_SAMPLER_VIEW) {
+         uint32_t bound_sampler_views = shs->bound_sampler_views;
+         while (bound_sampler_views) {
+            const int i = u_bit_scan(&bound_sampler_views);
+            struct iris_sampler_view *isv = shs->textures[i];
+
+            if (res->bo == iris_resource_bo(isv->base.texture)) {
+               void *map = alloc_surface_states(ice->state.surface_uploader,
+                                                &isv->surface_state,
+                                                isv->res->aux.sampler_usages);
+               assert(map);
+               fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
+                                         isv->view.format, isv->view.swizzle,
+                                         isv->base.u.buf.offset,
+                                         isv->base.u.buf.size);
+               ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << s;
+            }
+         }
+      }
+
+      if (res->bind_history & PIPE_BIND_SHADER_IMAGE) {
+         uint32_t bound_image_views = shs->bound_image_views;
+         while (bound_image_views) {
+            const int i = u_bit_scan(&bound_image_views);
+            struct iris_image_view *iv = &shs->image[i];
+
+            if (res->bo == iris_resource_bo(iv->base.resource)) {
+               iris_set_shader_images(ctx, p_stage, i, 1, &iv->base);
+            }
+         }
+      }
+   }
+}
+
+/* ------------------------------------------------------------------- */
+
+static void
 iris_load_register_reg32(struct iris_batch *batch, uint32_t dst,
                          uint32_t src)
 {
@@ -6075,6 +6199,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.update_surface_base_address = iris_update_surface_base_address;
    ice->vtbl.upload_compute_state = iris_upload_compute_state;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
+   ice->vtbl.rebind_buffer = iris_rebind_buffer;
    ice->vtbl.load_register_reg32 = iris_load_register_reg32;
    ice->vtbl.load_register_reg64 = iris_load_register_reg64;
    ice->vtbl.load_register_imm32 = iris_load_register_imm32;

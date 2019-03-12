@@ -355,6 +355,9 @@ struct iris_vtable {
    void (*upload_compute_state)(struct iris_context *ice,
                                 struct iris_batch *batch,
                                 const struct pipe_grid_info *grid);
+   void (*rebind_buffer)(struct iris_context *ice,
+                         struct iris_resource *res,
+                         uint64_t old_address);
    void (*load_register_reg32)(struct iris_batch *batch, uint32_t dst,
                                uint32_t src);
    void (*load_register_reg64)(struct iris_batch *batch, uint32_t dst,

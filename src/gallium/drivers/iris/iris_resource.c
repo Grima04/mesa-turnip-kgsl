@@ -38,6 +38,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
+#include "util/u_threaded_context.h"
 #include "util/u_transfer.h"
 #include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
@@ -878,6 +879,37 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 }
 
 static void
+iris_invalidate_resource(struct pipe_context *ctx,
+                         struct pipe_resource *resource)
+{
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_context *ice = (void *) ctx;
+   struct iris_resource *res = (void *) resource;
+
+   if (resource->target != PIPE_BUFFER)
+      return;
+
+   /* We can't reallocate memory we didn't allocate in the first place. */
+   if (res->bo->userptr)
+      return;
+
+   // XXX: We should support this.
+   if (res->bind_history & PIPE_BIND_STREAM_OUTPUT)
+      return;
+
+   struct iris_bo *old_bo = res->bo;
+   struct iris_bo *new_bo =
+      iris_bo_alloc(screen->bufmgr, res->bo->name, resource->width0,
+                    iris_memzone_for_address(old_bo->gtt_offset));
+   if (!new_bo)
+      return;
+
+   res->bo = new_bo;
+   ice->vtbl.rebind_buffer(ice, res, old_bo->gtt_offset);
+   iris_bo_unreference(old_bo);
+}
+
+static void
 iris_flush_staging_region(struct pipe_transfer *xfer,
                           const struct pipe_box *flush_box)
 {
@@ -1280,11 +1312,15 @@ iris_transfer_map(struct pipe_context *ctx,
    struct iris_resource *res = (struct iris_resource *)resource;
    struct isl_surf *surf = &res->surf;
 
-    /* If we can discard the whole resource, we can also discard the
-     * subrange being accessed.
-     */
-    if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE)
-       usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+      /* Replace the backing storage with a fresh buffer for non-async maps */
+      if (!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED |
+                     TC_TRANSFER_MAP_NO_INVALIDATE)))
+         iris_invalidate_resource(ctx, resource);
+
+      /* If we can discard the whole resource, we can discard the range. */
+      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   }
 
    bool map_would_stall = false;
 
@@ -1536,6 +1572,7 @@ void
 iris_init_resource_functions(struct pipe_context *ctx)
 {
    ctx->flush_resource = iris_flush_resource;
+   ctx->invalidate_resource = iris_invalidate_resource;
    ctx->transfer_map = u_transfer_helper_transfer_map;
    ctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    ctx->transfer_unmap = u_transfer_helper_transfer_unmap;
