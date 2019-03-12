@@ -141,6 +141,11 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
         .create_screen = pipe_tegra_create_screen,
         .configuration = pipe_default_configuration_query,
     },
+    {
+        .driver_name = "lima",
+        .create_screen = pipe_lima_create_screen,
+        .configuration = pipe_default_configuration_query,
+    },
 };
 
 static const struct drm_driver_descriptor default_driver_descriptor = {
