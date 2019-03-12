@@ -1593,34 +1593,29 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 					   ctx->ac.voidt, tbuffer_params, 10,
 					   ac_get_store_intr_attribs(writeonly_memory));
 		} else {
+			int num_channels = num_bytes / 4;
+
 			switch (num_bytes) {
 			case 16: /* v4f32 */
-				store_name = "llvm.amdgcn.buffer.store.v4f32";
 				data_type = ctx->ac.v4f32;
 				break;
 			case 8: /* v2f32 */
-				store_name = "llvm.amdgcn.buffer.store.v2f32";
 				data_type = ctx->ac.v2f32;
 				break;
 			case 4: /* f32 */
-				store_name = "llvm.amdgcn.buffer.store.f32";
 				data_type = ctx->ac.f32;
 				break;
 			default:
 				unreachable("Malformed vector store.");
 			}
 			data = LLVMBuildBitCast(ctx->ac.builder, data, data_type, "");
-			LLVMValueRef params[] = {
-				data,
-				rsrc,
-				ctx->ac.i32_0, /* vindex */
-				offset,
-				glc,
-				ctx->ac.i1false,  /* slc */
-			};
-			ac_build_intrinsic(&ctx->ac, store_name,
-					   ctx->ac.voidt, params, 6,
-					   ac_get_store_intr_attribs(writeonly_memory));
+
+			ac_build_buffer_store_dword(&ctx->ac, rsrc, data,
+						    num_channels, offset,
+						    ctx->ac.i32_0, 0,
+						    cache_policy & ac_glc,
+						    false, writeonly_memory,
+						    false);
 		}
 	}
 }
