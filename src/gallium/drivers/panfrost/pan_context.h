@@ -134,19 +134,6 @@ struct panfrost_context {
 
         struct panfrost_query *occlusion_query;
 
-        /* Each render job has multiple framebuffer descriptors associated with
-         * it, used for various purposes with more or less the same format. The
-         * most obvious is the fragment framebuffer descriptor, which carries
-         * e.g. clearing information */
-
-        union {
-                struct {
-                        struct bifrost_framebuffer fragment_mfbd;
-                        struct bifrost_fb_extra fragment_extra;
-                        struct bifrost_render_target fragment_rts[4];
-                };
-        };
-
         /* Each draw has corresponding vertex and tiler payloads */
         struct midgard_payload_vertex_tiler payload_vertex;
         struct midgard_payload_vertex_tiler payload_tiler;

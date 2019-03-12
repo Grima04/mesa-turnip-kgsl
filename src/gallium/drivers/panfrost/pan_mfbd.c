@@ -50,159 +50,135 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         return fmt;
 }
 
-static void
-panfrost_mfbd_enable_msaa(struct panfrost_context *ctx)
-{
-        ctx->fragment_rts[0].format.flags |= MALI_MFBD_FORMAT_MSAA;
-
-        /* XXX */
-        ctx->fragment_mfbd.unk1 |= (1 << 4) | (1 << 1);
-        ctx->fragment_mfbd.rt_count_2 = 4;
-}
 
 static void
-panfrost_mfbd_clear(struct panfrost_job *job)
+panfrost_mfbd_clear(
+                struct panfrost_job *job,
+                struct bifrost_framebuffer *fb,
+                struct bifrost_fb_extra *fbx,
+                struct bifrost_render_target *rt)
 {
         struct panfrost_context *ctx = job->ctx;
-        struct bifrost_render_target *buffer_color = &ctx->fragment_rts[0];
-        struct bifrost_framebuffer *buffer_ds = &ctx->fragment_mfbd;
 
         if (job->clear & PIPE_CLEAR_COLOR) {
-                buffer_color->clear_color_1 = job->clear_color;
-                buffer_color->clear_color_2 = job->clear_color;
-                buffer_color->clear_color_3 = job->clear_color;
-                buffer_color->clear_color_4 = job->clear_color;
+                rt->clear_color_1 = job->clear_color;
+                rt->clear_color_2 = job->clear_color;
+                rt->clear_color_3 = job->clear_color;
+                rt->clear_color_4 = job->clear_color;
         }
 
         if (job->clear & PIPE_CLEAR_DEPTH) {
-                buffer_ds->clear_depth = job->clear_depth;
+                fb->clear_depth = job->clear_depth;
         }
 
         if (job->clear & PIPE_CLEAR_STENCIL) {
-                buffer_ds->clear_stencil = job->clear_stencil;
+                fb->clear_stencil = job->clear_stencil;
         }
 
         if (job->clear & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
                 /* Setup combined 24/8 depth/stencil */
-                ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
-                ctx->fragment_extra.flags = 0x405;
-                ctx->fragment_extra.ds_linear.depth = ctx->depth_stencil_buffer.gpu;
-                ctx->fragment_extra.ds_linear.depth_stride = ctx->pipe_framebuffer.width * 4;
+                fb->unk3 |= MALI_MFBD_EXTRA;
+                fbx->flags = 0x405;
+                fbx->ds_linear.depth = ctx->depth_stencil_buffer.gpu;
+                fbx->ds_linear.depth_stride = ctx->pipe_framebuffer.width * 4;
         }
 }
 
 static void
 panfrost_mfbd_set_cbuf(
-                struct panfrost_context *ctx,
+                struct bifrost_render_target *rt,
                 struct pipe_surface *surf,
-                unsigned cb)
+                bool flip_y)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         signed stride =
                 util_format_get_stride(surf->format, surf->texture->width0);
 
-        ctx->fragment_rts[cb].format = panfrost_mfbd_format(surf);
+        rt->format = panfrost_mfbd_format(surf);
 
         /* Now, we set the layout specific pieces */
 
         if (rsrc->bo->layout == PAN_LINEAR) {
                 mali_ptr framebuffer = rsrc->bo->gpu[0];
 
-                /* The default is upside down from OpenGL's perspective. */
-                if (panfrost_is_scanout(ctx)) {
+                if (flip_y) {
                         framebuffer += stride * (surf->texture->height0 - 1);
                         stride = -stride;
                 }
 
                 /* MFBD specifies stride in tiles */
-                ctx->fragment_rts[cb].framebuffer = framebuffer;
-                ctx->fragment_rts[cb].framebuffer_stride = stride / 16;
+                rt->framebuffer = framebuffer;
+                rt->framebuffer_stride = stride / 16;
         } else if (rsrc->bo->layout == PAN_AFBC) {
-                ctx->fragment_rts[cb].afbc.metadata = rsrc->bo->afbc_slab.gpu;
-                ctx->fragment_rts[cb].afbc.stride = 0;
-                ctx->fragment_rts[cb].afbc.unk = 0x30009;
+                rt->afbc.metadata = rsrc->bo->afbc_slab.gpu;
+                rt->afbc.stride = 0;
+                rt->afbc.unk = 0x30009;
 
-                ctx->fragment_rts[cb].format.flags |= MALI_MFBD_FORMAT_AFBC;
+                rt->format.flags |= MALI_MFBD_FORMAT_AFBC;
 
                 mali_ptr afbc_main = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
-                ctx->fragment_rts[cb].framebuffer = afbc_main;
+                rt->framebuffer = afbc_main;
 
                 /* TODO: Investigate shift */
-                ctx->fragment_rts[cb].framebuffer_stride = stride << 1;
+                rt->framebuffer_stride = stride << 1;
         } else {
-                fprintf(stderr, "Invalid render layout (cbuf %d)", cb);
+                fprintf(stderr, "Invalid render layout (cbuf)");
                 assert(0);
         }
 }
 
 static void
-panfrost_mfbd_set_targets(struct panfrost_context *ctx)
+panfrost_mfbd_set_zsbuf(
+                struct bifrost_framebuffer *fb,
+                struct bifrost_fb_extra *fbx,
+                struct pipe_surface *surf)
 {
-        for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
-                struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
-                panfrost_mfbd_set_cbuf(ctx, surf, cb);
-        }
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        /* Enable depth/stencil AFBC for the framebuffer (not the render target) */
-        if (ctx->pipe_framebuffer.zsbuf) {
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.zsbuf->texture;
+        if (rsrc->bo->layout == PAN_AFBC) {
+                fb->unk3 |= MALI_MFBD_EXTRA;
 
-                if (rsrc->bo->layout == PAN_AFBC) {
-                        ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
+                fbx->flags =
+                        MALI_EXTRA_PRESENT |
+                        MALI_EXTRA_AFBC |
+                        MALI_EXTRA_AFBC_ZS |
+                        MALI_EXTRA_ZS |
+                        0x1; /* unknown */
 
-                        ctx->fragment_extra.flags =
-                                MALI_EXTRA_PRESENT |
-                                MALI_EXTRA_AFBC |
-                                MALI_EXTRA_AFBC_ZS |
-                                MALI_EXTRA_ZS |
-                                0x1; /* unknown */
+                fbx->ds_afbc.depth_stencil_afbc_metadata = rsrc->bo->afbc_slab.gpu;
+                fbx->ds_afbc.depth_stencil_afbc_stride = 0;
 
-                        ctx->fragment_extra.ds_afbc.depth_stencil_afbc_metadata = rsrc->bo->afbc_slab.gpu;
-                        ctx->fragment_extra.ds_afbc.depth_stencil_afbc_stride = 0;
+                fbx->ds_afbc.depth_stencil = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
 
-                        ctx->fragment_extra.ds_afbc.depth_stencil = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
+                fbx->ds_afbc.zero1 = 0x10009;
+                fbx->ds_afbc.padding = 0x1000;
 
-                        ctx->fragment_extra.ds_afbc.zero1 = 0x10009;
-                        ctx->fragment_extra.ds_afbc.padding = 0x1000;
-
-                        ctx->fragment_mfbd.unk3 |= MALI_MFBD_DEPTH_WRITE;
-                }
-        }
-
-        /* For the special case of a depth-only FBO, we need to attach a dummy render target */
-
-        if (ctx->pipe_framebuffer.nr_cbufs == 0) {
-                struct mali_rt_format null_rt = {
-                        .unk1 = 0x4000000,
-                        .unk4 = 0x8
-                };
-
-                ctx->fragment_rts[0].format = null_rt;
-                ctx->fragment_rts[0].framebuffer = 0;
-                ctx->fragment_rts[0].framebuffer_stride = 0;
+                fb->unk3 |= MALI_MFBD_DEPTH_WRITE;
         }
 }
 
 /* Helper for sequential uploads used for MFBD */
 
 #define UPLOAD(dest, offset, src, max) { \
-        size_t sz = sizeof(src); \
-        memcpy(dest.cpu + offset, &src, sz); \
+        size_t sz = sizeof(*src); \
+        memcpy(dest.cpu + offset, src, sz); \
         assert((offset + sz) <= max); \
         offset += sz; \
 }
 
 static mali_ptr
-panfrost_mfbd_upload(struct panfrost_context *ctx)
+panfrost_mfbd_upload(
+                struct panfrost_context *ctx,
+                struct bifrost_framebuffer *fb,
+                struct bifrost_fb_extra *fbx,
+                struct bifrost_render_target *rts,
+                unsigned cbufs)
 {
         off_t offset = 0;
 
-        /* We always upload at least one (dummy) cbuf */
-        unsigned cbufs = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
-
         /* There may be extra data stuck in the middle */
-        bool has_extra = ctx->fragment_mfbd.unk3 & MALI_MFBD_EXTRA;
+        bool has_extra = fb->unk3 & MALI_MFBD_EXTRA;
 
         /* Compute total size for transfer */
 
@@ -216,13 +192,13 @@ panfrost_mfbd_upload(struct panfrost_context *ctx)
 
         /* Do the transfer */
 
-        UPLOAD(m_f_trans, offset, ctx->fragment_mfbd, total_sz);
+        UPLOAD(m_f_trans, offset, fb, total_sz);
 
         if (has_extra)
-                UPLOAD(m_f_trans, offset, ctx->fragment_extra, total_sz);
+                UPLOAD(m_f_trans, offset, fbx, total_sz);
 
         for (unsigned c = 0; c < cbufs; ++c) {
-                UPLOAD(m_f_trans, offset, ctx->fragment_rts[c], total_sz);
+                UPLOAD(m_f_trans, offset, &rts[c], total_sz);
         }
 
         /* Return pointer suitable for the fragment seciton */
@@ -239,22 +215,45 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
         struct bifrost_framebuffer fb = panfrost_emit_mfbd(ctx);
+        struct bifrost_fb_extra fbx = {};
+        struct bifrost_render_target rts[4] = {};
 
         /* XXX: MRT case */
         fb.rt_count_2 = 1;
         fb.unk3 = 0x100;
 
-        struct bifrost_render_target rt = {};
+        /* TODO: MRT clear */
+        panfrost_mfbd_clear(job, &fb, &fbx, &rts[0]);
 
-        memcpy(&ctx->fragment_rts[0], &rt, sizeof(rt));
-        memset(&ctx->fragment_extra, 0, sizeof(ctx->fragment_extra));
-        memcpy(&ctx->fragment_mfbd, &fb, sizeof(fb));
+        for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
+                struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
+                panfrost_mfbd_set_cbuf(&rts[cb], surf, flip_y);
+        }
 
-        panfrost_mfbd_clear(job);
-        panfrost_mfbd_set_targets(ctx);
+        if (ctx->pipe_framebuffer.zsbuf) {
+                panfrost_mfbd_set_zsbuf(&fb, &fbx, ctx->pipe_framebuffer.zsbuf);
+        }
 
-        if (job->msaa)
-                panfrost_mfbd_enable_msaa(ctx);
+        /* For the special case of a depth-only FBO, we need to attach a dummy render target */
+
+        if (ctx->pipe_framebuffer.nr_cbufs == 0) {
+                struct mali_rt_format null_rt = {
+                        .unk1 = 0x4000000,
+                        .unk4 = 0x8
+                };
+
+                rts[0].format = null_rt;
+                rts[0].framebuffer = 0;
+                rts[0].framebuffer_stride = 0;
+        }
+
+        if (job->msaa) {
+                rts[0].format.flags |= MALI_MFBD_FORMAT_MSAA;
+
+                /* XXX */
+                fb.unk1 |= (1 << 4) | (1 << 1);
+                fb.rt_count_2 = 4;
+        }
 
         if (ctx->pipe_framebuffer.nr_cbufs == 1) {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;
@@ -262,12 +261,15 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
                 if (rsrc->bo->has_checksum) {
                         int stride = util_format_get_stride(rsrc->base.format, rsrc->base.width0);
 
-                        ctx->fragment_mfbd.unk3 |= MALI_MFBD_EXTRA;
-                        ctx->fragment_extra.flags |= MALI_EXTRA_PRESENT;
-                        ctx->fragment_extra.checksum_stride = rsrc->bo->checksum_stride;
-                        ctx->fragment_extra.checksum = rsrc->bo->gpu[0] + stride * rsrc->base.height0;
+                        fb.unk3 |= MALI_MFBD_EXTRA;
+                        fbx.flags |= MALI_EXTRA_PRESENT;
+                        fbx.checksum_stride = rsrc->bo->checksum_stride;
+                        fbx.checksum = rsrc->bo->gpu[0] + stride * rsrc->base.height0;
                 }
         }
 
-        return panfrost_mfbd_upload(ctx);
+        /* We always upload at least one (dummy) cbuf */
+        unsigned cbufs = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
+
+        return panfrost_mfbd_upload(ctx, &fb, &fbx, rts, cbufs);
 }
