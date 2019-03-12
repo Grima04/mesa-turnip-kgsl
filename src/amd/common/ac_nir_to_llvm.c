@@ -2512,7 +2512,6 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 static void visit_image_store(struct ac_nir_context *ctx,
 			      nir_intrinsic_instr *instr)
 {
-	LLVMValueRef params[8];
 	const nir_deref_instr *image_deref = get_image_deref(instr);
 	const struct glsl_type *type = image_deref->type;
 	const nir_variable *var = nir_deref_instr_get_variable(image_deref);
@@ -2524,34 +2523,22 @@ static void visit_image_store(struct ac_nir_context *ctx,
 					     writeonly_memory);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
-		char name[48];
-		const char *types[] = { "f32", "v2f32", "v4f32" };
 		LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, true);
 		LLVMValueRef src = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
 		unsigned src_channels = ac_get_llvm_num_components(src);
+		LLVMValueRef vindex;
 
 		if (src_channels == 3)
 			src = ac_build_expand_to_vec4(&ctx->ac, src, 3);
 
-		params[0] = src; /* data */
-		params[1] = rsrc;
-		params[2] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
-						    ctx->ac.i32_0, ""); /* vindex */
-		params[3] = ctx->ac.i32_0; /* voffset */
-		snprintf(name, sizeof(name), "%s.%s",
-		         HAVE_LLVM >= 0x800 ? "llvm.amdgcn.struct.buffer.store.format"
-		                            : "llvm.amdgcn.buffer.store.format",
-		         types[CLAMP(src_channels, 1, 3) - 1]);
+		vindex = LLVMBuildExtractElement(ctx->ac.builder,
+						 get_src(ctx, instr->src[1]),
+						 ctx->ac.i32_0, "");
 
-		if (HAVE_LLVM >= 0x800) {
-			params[4] = ctx->ac.i32_0; /* soffset */
-			params[5] = (args.cache_policy & ac_glc) ? ctx->ac.i32_1 : ctx->ac.i32_0;
-		} else {
-			params[4] = LLVMConstInt(ctx->ac.i1, !!(args.cache_policy & ac_glc), 0);
-			params[5] = ctx->ac.i1false;  /* slc */
-		}
-		ac_build_intrinsic(&ctx->ac, name, ctx->ac.voidt, params, 6,
-				   ac_get_store_intr_attribs(writeonly_memory));
+		ac_build_buffer_store_format(&ctx->ac, rsrc, src, vindex,
+					     ctx->ac.i32_0, src_channels,
+					     args.cache_policy & ac_glc,
+					     writeonly_memory);
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));

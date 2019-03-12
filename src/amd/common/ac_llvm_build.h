@@ -266,6 +266,17 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 		            bool slc,
 			    bool writeonly_memory,
 			    bool swizzle_enable_hint);
+
+void
+ac_build_buffer_store_format(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef data,
+			     LLVMValueRef vindex,
+			     LLVMValueRef voffset,
+			     unsigned num_channels,
+			     bool glc,
+			     bool writeonly_memory);
+
 LLVMValueRef
 ac_build_buffer_load(struct ac_llvm_context *ctx,
 		     LLVMValueRef rsrc,
