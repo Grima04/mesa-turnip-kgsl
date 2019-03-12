@@ -1227,59 +1227,45 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 	if (!swizzle_enable_hint) {
 		LLVMValueRef offset = soffset;
 
-		static const char *types[] = {"f32", "v2f32", "v4f32"};
-
 		if (inst_offset)
 			offset = LLVMBuildAdd(ctx->builder, offset,
 					      LLVMConstInt(ctx->i32, inst_offset, 0), "");
-		if (voffset)
-			offset = LLVMBuildAdd(ctx->builder, offset, voffset, "");
 
-		LLVMValueRef args[] = {
-			ac_to_float(ctx, vdata),
-			LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, ""),
-			ctx->i32_0,
-			offset,
-			LLVMConstInt(ctx->i1, glc, 0),
-			LLVMConstInt(ctx->i1, slc, 0),
-		};
+		if (HAVE_LLVM >= 0x800) {
+			ac_build_llvm8_buffer_store_common(ctx, rsrc,
+							   ac_to_float(ctx, vdata),
+							   ctx->i32_0,
+							   voffset, offset,
+							   num_channels,
+							   glc, slc,
+							   writeonly_memory,
+							   false, false);
+		} else {
+			if (voffset)
+				offset = LLVMBuildAdd(ctx->builder, offset, voffset, "");
 
-		char name[256];
-		snprintf(name, sizeof(name), "llvm.amdgcn.buffer.store.%s",
-			 types[CLAMP(num_channels, 1, 3) - 1]);
-
-		ac_build_intrinsic(ctx, name, ctx->voidt,
-				   args, ARRAY_SIZE(args),
-				   ac_get_store_intr_attribs(writeonly_memory));
+			ac_build_buffer_store_common(ctx, rsrc,
+						     ac_to_float(ctx, vdata),
+						     ctx->i32_0, offset,
+						     num_channels, glc, slc,
+						     writeonly_memory, false);
+		}
 		return;
 	}
 
-	static const unsigned dfmt[] = {
+	static const unsigned dfmts[] = {
 		V_008F0C_BUF_DATA_FORMAT_32,
 		V_008F0C_BUF_DATA_FORMAT_32_32,
 		V_008F0C_BUF_DATA_FORMAT_32_32_32,
 		V_008F0C_BUF_DATA_FORMAT_32_32_32_32
 	};
-	static const char *types[] = {"i32", "v2i32", "v4i32"};
-	LLVMValueRef args[] = {
-		vdata,
-		LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, ""),
-		ctx->i32_0,
-		voffset ? voffset : ctx->i32_0,
-		soffset,
-		LLVMConstInt(ctx->i32, inst_offset, 0),
-		LLVMConstInt(ctx->i32, dfmt[num_channels - 1], 0),
-		LLVMConstInt(ctx->i32, V_008F0C_BUF_NUM_FORMAT_UINT, 0),
-		LLVMConstInt(ctx->i1, glc, 0),
-		LLVMConstInt(ctx->i1, slc, 0),
-	};
-	char name[256];
-	snprintf(name, sizeof(name), "llvm.amdgcn.tbuffer.store.%s",
-		 types[CLAMP(num_channels, 1, 3) - 1]);
+	unsigned dfmt = dfmts[num_channels - 1];
+	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+	LLVMValueRef immoffset = LLVMConstInt(ctx->i32, inst_offset, 0);
 
-	ac_build_intrinsic(ctx, name, ctx->voidt,
-			   args, ARRAY_SIZE(args),
-			   ac_get_store_intr_attribs(writeonly_memory));
+	ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
+			           immoffset, num_channels, dfmt, nfmt, glc,
+				   slc, writeonly_memory);
 }
 
 static LLVMValueRef
