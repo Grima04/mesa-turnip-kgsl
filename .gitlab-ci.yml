@@ -106,6 +106,7 @@ ubuntu:
             ${GALLIUM_ST}
             -D gallium-drivers=${GALLIUM_DRIVERS:-[]}
             -D vulkan-drivers=${VULKAN_DRIVERS:-[]}
+            -D I-love-half-baked-turnips=true
     - cd _build
     - meson configure
     - ninja -j4
@@ -164,7 +165,7 @@ meson-vulkan:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=disabled
-    VULKAN_DRIVERS: intel,amd
+    VULKAN_DRIVERS: intel,amd,freedreno
     LLVM_VERSION: "7"
 
 meson-loader-classic-dri:
