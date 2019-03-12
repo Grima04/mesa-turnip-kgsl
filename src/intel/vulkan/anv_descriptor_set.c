@@ -627,6 +627,11 @@ VkResult anv_ResetDescriptorPool(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_descriptor_pool, pool, descriptorPool);
 
+   list_for_each_entry_safe(struct anv_descriptor_set, set,
+                            &pool->desc_sets, pool_link) {
+      anv_descriptor_set_destroy(device, pool, set);
+   }
+
    pool->next = 0;
    pool->free_list = EMPTY;
 
@@ -636,12 +641,6 @@ VkResult anv_ResetDescriptorPool(
    }
 
    anv_state_stream_finish(&pool->surface_state_stream);
-
-   list_for_each_entry_safe(struct anv_descriptor_set, set,
-                            &pool->desc_sets, pool_link) {
-      anv_descriptor_set_destroy(device, pool, set);
-   }
-
    anv_state_stream_init(&pool->surface_state_stream,
                          &device->surface_state_pool, 4096);
    pool->surface_state_free_list = NULL;
