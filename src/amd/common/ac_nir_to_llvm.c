@@ -1569,12 +1569,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 		}
 		data = extract_vector_range(&ctx->ac, base_data, start, count);
 
-		if (start == 0) {
-			offset = base_offset;
-		} else {
-			offset = LLVMBuildAdd(ctx->ac.builder, base_offset,
-					      LLVMConstInt(ctx->ac.i32, start * elem_size_bytes, false), "");
-		}
+		offset = LLVMBuildAdd(ctx->ac.builder, base_offset,
+				      LLVMConstInt(ctx->ac.i32, start * elem_size_bytes, false), "");
+
 		if (num_bytes == 2) {
 			store_name = "llvm.amdgcn.tbuffer.store.i32";
 			data_type = ctx->ac.i32;
