@@ -50,19 +50,6 @@ extern const char *pan_counters_base;
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
 
-/* TODO: Sample size, etc */
-
-static void
-panfrost_set_framebuffer_msaa(struct panfrost_context *ctx, bool enabled)
-{
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
-
-        job->msaa |= enabled;
-
-        SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_HAS_MSAA, enabled);
-        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_MSAA, !enabled);
-}
-
 /* AFBC is enabled on a per-resource basis (AFBC enabling is theoretically
  * indepdent between color buffers and depth/stencil). To enable, we allocate
  * the AFBC metadata buffer and mark that it is enabled. We do -not- actually
@@ -789,14 +776,29 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
 void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 {
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+
         if (with_vertex_data) {
                 panfrost_emit_vertex_data(ctx);
         }
 
+        bool msaa = ctx->rasterizer->base.multisample;
+
         if (ctx->dirty & PAN_DIRTY_RASTERIZER) {
                 ctx->payload_tiler.gl_enables = ctx->rasterizer->tiler_gl_enables;
-                panfrost_set_framebuffer_msaa(ctx, ctx->rasterizer->base.multisample);
+
+                /* TODO: Sample size */
+                SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_HAS_MSAA, msaa);
+                SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_MSAA, !msaa);
         }
+
+        /* Enable job requirements at draw-time */
+
+        if (msaa)
+                job->requirements |= PAN_REQ_MSAA;
+
+        if (ctx->depth_stencil->depth.writemask)
+                job->requirements |= PAN_REQ_DEPTH_WRITE;
 
         if (ctx->occlusion_query) {
                 ctx->payload_tiler.gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;

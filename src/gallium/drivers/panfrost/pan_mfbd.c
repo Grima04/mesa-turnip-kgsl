@@ -143,8 +143,6 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
-
-                fb->unk3 |= MALI_MFBD_DEPTH_WRITE;
         } else if (rsrc->bo->layout == PAN_LINEAR) {
                 fb->unk3 |= MALI_MFBD_EXTRA;
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
@@ -246,13 +244,30 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
                 rts[0].framebuffer_stride = 0;
         }
 
-        if (job->msaa) {
+        /* When scanning out, the depth buffer is immediately invalidated, so
+         * we don't need to waste bandwidth writing it out. This can improve
+         * performance substantially (Z32_UNORM 1080p @ 60fps is 475 MB/s of
+         * memory bandwidth!).
+         *
+         * The exception is ReadPixels, but this is not supported on GLES so we
+         * can safely ignore it. */
+
+        if (panfrost_is_scanout(ctx)) {
+                job->requirements &= ~PAN_REQ_DEPTH_WRITE;
+        }
+
+        /* Actualize the requirements */
+
+        if (job->requirements & PAN_REQ_MSAA) {
                 rts[0].format.flags |= MALI_MFBD_FORMAT_MSAA;
 
                 /* XXX */
                 fb.unk1 |= (1 << 4) | (1 << 1);
                 fb.rt_count_2 = 4;
         }
+
+        if (job->requirements & PAN_REQ_DEPTH_WRITE)
+                fb.unk3 |= MALI_MFBD_DEPTH_WRITE;
 
         if (ctx->pipe_framebuffer.nr_cbufs == 1) {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;

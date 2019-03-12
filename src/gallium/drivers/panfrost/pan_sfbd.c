@@ -132,7 +132,7 @@ panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y)
                 /* TODO */
         }
 
-        if (job->msaa)
+        if (job->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
 
         return panfrost_upload_transient(ctx, &fb, sizeof(fb)) | MALI_SFBD;
