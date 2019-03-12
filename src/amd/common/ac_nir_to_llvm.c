@@ -1706,7 +1706,6 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 	int num_components = instr->num_components;
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
 	unsigned cache_policy = get_cache_policy(ctx, access, false, false);
-	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef offset = get_src(ctx, instr->src[1]);
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
@@ -1736,34 +1735,12 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 							  immoffset,
 							  cache_policy & ac_glc);
 		} else {
-			const char *load_name;
-			LLVMTypeRef data_type;
-			switch (load_bytes) {
-			case 16:
-			case 12:
-				load_name = "llvm.amdgcn.buffer.load.v4f32";
-				data_type = ctx->ac.v4f32;
-				break;
-			case 8:
-			case 6:
-				load_name = "llvm.amdgcn.buffer.load.v2f32";
-				data_type = ctx->ac.v2f32;
-				break;
-			case 4:
-				load_name = "llvm.amdgcn.buffer.load.f32";
-				data_type = ctx->ac.f32;
-				break;
-			default:
-				unreachable("Malformed load buffer.");
-			}
-			LLVMValueRef params[] = {
-				rsrc,
-				vindex,
-				LLVMBuildAdd(ctx->ac.builder, offset, immoffset, ""),
-				glc,
-				ctx->ac.i1false,
-			};
-			ret = ac_build_intrinsic(&ctx->ac, load_name, data_type, params, 5, 0);
+			int num_channels = util_next_power_of_two(load_bytes) / 4;
+
+			ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels,
+						   vindex, offset, immoffset, 0,
+						   cache_policy & ac_glc, 0,
+						   false, false);
 		}
 
 		LLVMTypeRef byte_vec = LLVMVectorType(ctx->ac.i8, ac_get_type_size(LLVMTypeOf(ret)));
