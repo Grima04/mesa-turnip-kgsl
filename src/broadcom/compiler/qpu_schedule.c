@@ -1338,7 +1338,7 @@ qpu_schedule_instructions_block(struct v3d_compile *c,
                                 uint32_t *next_uniform)
 {
         void *mem_ctx = ralloc_context(NULL);
-        scoreboard->dag = dag_create(NULL);
+        scoreboard->dag = dag_create(mem_ctx);
         struct list_head setup_list;
 
         list_inithead(&setup_list);
@@ -1366,7 +1366,7 @@ qpu_schedule_instructions_block(struct v3d_compile *c,
                                                 orig_uniform_data,
                                                 next_uniform);
 
-        ralloc_free(scoreboard->dag);
+        ralloc_free(mem_ctx);
         scoreboard->dag = NULL;
 
         return cycles;
