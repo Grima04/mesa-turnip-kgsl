@@ -1150,9 +1150,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 
 		ac_build_intrinsic(ctx, name, ctx->voidt,
 				   args, ARRAY_SIZE(args),
-				   writeonly_memory ?
-				   AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY :
-				   AC_FUNC_ATTR_WRITEONLY);
+				   ac_get_store_intr_attribs(writeonly_memory));
 		return;
 	}
 
@@ -1181,9 +1179,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 
 	ac_build_intrinsic(ctx, name, ctx->voidt,
 			   args, ARRAY_SIZE(args),
-			   writeonly_memory ?
-				   AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY :
-				   AC_FUNC_ATTR_WRITEONLY);
+			   ac_get_store_intr_attribs(writeonly_memory));
 }
 
 static LLVMValueRef
