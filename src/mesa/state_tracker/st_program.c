@@ -206,6 +206,22 @@ st_set_prog_affected_state_flags(struct gl_program *prog)
    }
 }
 
+static void
+delete_ir(struct pipe_shader_state *ir)
+{
+   if (ir->tokens)
+      ureg_free_tokens(ir->tokens);
+
+   /* Note: Any setup of ->ir.nir that has had pipe->create_*_state called on
+    * it has resulted in the driver taking ownership of the NIR.  Those
+    * callers should be NULLing out the nir field in any pipe_shader_state
+    * that might have this called in order to indicate that.
+    *
+    * GLSL IR and ARB programs will have set gl_program->nir to the same
+    * shader as ir->ir.nir, so it will be freed by _mesa_delete_program().
+    */
+}
+
 /**
  * Delete a vertex program variant.  Note the caller must unlink
  * the variant from the linked list.
@@ -219,8 +235,7 @@ delete_vp_variant(struct st_context *st, struct st_vp_variant *vpv)
    if (vpv->draw_shader)
       draw_delete_vertex_shader( st->draw, vpv->draw_shader );
 
-   if (((vpv->tgsi.type == PIPE_SHADER_IR_TGSI)) && vpv->tgsi.tokens)
-      ureg_free_tokens(vpv->tgsi.tokens);
+   delete_ir(&vpv->tgsi);
 
    free( vpv );
 }
@@ -244,10 +259,7 @@ st_release_vp_variants( struct st_context *st,
 
    stvp->variants = NULL;
 
-   if ((stvp->tgsi.type == PIPE_SHADER_IR_TGSI) && stvp->tgsi.tokens) {
-      tgsi_free_tokens(stvp->tgsi.tokens);
-      stvp->tgsi.tokens = NULL;
-   }
+   delete_ir(&stvp->tgsi);
 }
 
 
@@ -281,10 +293,7 @@ st_release_fp_variants(struct st_context *st, struct st_fragment_program *stfp)
 
    stfp->variants = NULL;
 
-   if ((stfp->tgsi.type == PIPE_SHADER_IR_TGSI) && stfp->tgsi.tokens) {
-      ureg_free_tokens(stfp->tgsi.tokens);
-      stfp->tgsi.tokens = NULL;
-   }
+   delete_ir(&stfp->tgsi);
 }
 
 
@@ -337,10 +346,7 @@ st_release_basic_variants(struct st_context *st, GLenum target,
 
    *variants = NULL;
 
-   if (tgsi->tokens) {
-      ureg_free_tokens(tgsi->tokens);
-      tgsi->tokens = NULL;
-   }
+   delete_ir(tgsi);
 }
 
 
