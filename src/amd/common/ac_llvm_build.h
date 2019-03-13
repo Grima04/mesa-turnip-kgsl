@@ -344,6 +344,15 @@ ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx,
 		          bool can_speculate);
 
 void
+ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef vdata,
+			     LLVMValueRef voffset,
+			     LLVMValueRef soffset,
+			     bool glc,
+			     bool writeonly_memory);
+
+void
 ac_build_struct_tbuffer_store(struct ac_llvm_context *ctx,
 			      LLVMValueRef rsrc,
 			      LLVMValueRef vdata,

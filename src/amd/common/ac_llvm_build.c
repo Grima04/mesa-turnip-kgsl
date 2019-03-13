@@ -1741,6 +1741,26 @@ ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx,
 			       writeonly_memory, false);
 }
 
+void
+ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef vdata,
+			     LLVMValueRef voffset,
+			     LLVMValueRef soffset,
+			     bool glc,
+			     bool writeonly_memory)
+{
+	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
+	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+
+	vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i16, "");
+	vdata = LLVMBuildZExt(ctx->builder, vdata, ctx->i32, "");
+
+	ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
+				   ctx->i32_0, 1, dfmt, nfmt, glc, false,
+				   writeonly_memory);
+}
+
 /**
  * Set range metadata on an instruction.  This can only be used on load and
  * call instructions.  If you know an instruction can only produce the values

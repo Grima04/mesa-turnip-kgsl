@@ -1523,14 +1523,12 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 static void visit_store_ssbo(struct ac_nir_context *ctx,
                              nir_intrinsic_instr *instr)
 {
-	const char *store_name;
 	LLVMValueRef src_data = get_src(ctx, instr->src[0]);
 	int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
 	unsigned writemask = nir_intrinsic_write_mask(instr);
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
 	bool writeonly_memory = access & ACCESS_NON_READABLE;
 	unsigned cache_policy = get_cache_policy(ctx, access, false, writeonly_memory);
-	LLVMValueRef glc = (cache_policy & ac_glc) ? ctx->ac.i1true : ctx->ac.i1false;
 
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
 				        get_src(ctx, instr->src[1]), true);
@@ -1573,25 +1571,10 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 				      LLVMConstInt(ctx->ac.i32, start * elem_size_bytes, false), "");
 
 		if (num_bytes == 2) {
-			store_name = "llvm.amdgcn.tbuffer.store.i32";
-			data_type = ctx->ac.i32;
-			data = LLVMBuildBitCast(ctx->ac.builder, data, ctx->ac.i16, "");
-			data = LLVMBuildZExt(ctx->ac.builder, data, data_type, "");
-			LLVMValueRef tbuffer_params[] = {
-				data,
-				rsrc,
-				ctx->ac.i32_0, /* vindex */
-				offset,        /* voffset */
-				ctx->ac.i32_0,
-				ctx->ac.i32_0,
-				LLVMConstInt(ctx->ac.i32, 2, false), // dfmt (= 16bit)
-				LLVMConstInt(ctx->ac.i32, 4, false), // nfmt (= uint)
-				glc,
-				ctx->ac.i1false,
-			};
-			ac_build_intrinsic(&ctx->ac, store_name,
-					   ctx->ac.voidt, tbuffer_params, 10,
-					   ac_get_store_intr_attribs(writeonly_memory));
+			ac_build_tbuffer_store_short(&ctx->ac, rsrc, data,
+						     offset, ctx->ac.i32_0,
+						     cache_policy & ac_glc,
+						     writeonly_memory);
 		} else {
 			int num_channels = num_bytes / 4;
 
