@@ -1545,13 +1545,10 @@ EGLBoolean
 dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
 {
    _EGLDevice *dev;
+   bool device_opened = false;
    struct dri2_egl_display *dri2_dpy;
    const char *err;
    int ret;
-
-   /* Not supported yet */
-   if (disp->Options.ForceSoftware)
-      return EGL_FALSE;
 
    dri2_dpy = calloc(1, sizeof(*dri2_dpy));
    if (!dri2_dpy)
@@ -1566,8 +1563,12 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
    }
 
    disp->DriverData = (void *) dri2_dpy;
+   if (!disp->Options.ForceSoftware)
+      device_opened = droid_open_device(disp, false);
+   if (!device_opened)
+      device_opened = droid_open_device(disp, true);
 
-   if (!droid_open_device(disp, false)) {
+   if (!device_opened) {
       err = "DRI2: failed to open device";
       goto cleanup;
    }
