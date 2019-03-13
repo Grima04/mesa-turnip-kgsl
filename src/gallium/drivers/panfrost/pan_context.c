@@ -2058,10 +2058,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                                 panfrost_attach_vt_framebuffer(ctx);
                                 panfrost_set_scissor(ctx);
 
-                                struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.zsbuf->texture);
-
-                                if (tex->bo->layout != PAN_AFBC && !panfrost_is_scanout(ctx))
-                                        panfrost_enable_afbc(ctx, tex, true);
+                                /* Keep the depth FBO linear */
                         }
                 }
         }

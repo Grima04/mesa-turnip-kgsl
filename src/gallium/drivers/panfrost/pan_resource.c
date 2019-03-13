@@ -220,6 +220,12 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         /* Tiling textures is almost always faster, unless we only use it once */
         bool should_tile = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
 
+        /* For unclear reasons, depth/stencil is faster linear than AFBC, so
+         * make sure it's linear */
+
+        if (template->bind & PIPE_BIND_DEPTH_STENCIL)
+                should_tile = false;
+
         /* Set the layout appropriately */
         bo->layout = should_tile ? PAN_TILED : PAN_LINEAR;
 
