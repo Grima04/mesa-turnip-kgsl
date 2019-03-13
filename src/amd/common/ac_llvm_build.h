@@ -307,18 +307,31 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    bool glc);
 
 LLVMValueRef
-ac_build_tbuffer_load(struct ac_llvm_context *ctx,
-		      LLVMValueRef rsrc,
-		      LLVMValueRef vindex,
-		      LLVMValueRef voffset,
-		      LLVMValueRef soffset,
-		      LLVMValueRef immoffset,
-		      unsigned num_channels,
-		      unsigned dfmt,
-		      unsigned nfmt,
-		      bool glc,
-		      bool slc,
-		      bool can_speculate);
+ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef vindex,
+			     LLVMValueRef voffset,
+			     LLVMValueRef soffset,
+			     LLVMValueRef immoffset,
+			     unsigned num_channels,
+			     unsigned dfmt,
+			     unsigned nfmt,
+			     bool glc,
+			     bool slc,
+			     bool can_speculate);
+
+LLVMValueRef
+ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx,
+			  LLVMValueRef rsrc,
+			  LLVMValueRef voffset,
+			  LLVMValueRef soffset,
+			  LLVMValueRef immoffset,
+			  unsigned num_channels,
+			  unsigned dfmt,
+			  unsigned nfmt,
+			  bool glc,
+			  bool slc,
+		          bool can_speculate);
 
 LLVMValueRef
 ac_get_thread_id(struct ac_llvm_context *ctx);

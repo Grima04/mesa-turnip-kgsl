@@ -2181,12 +2181,13 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		t_offset = LLVMConstInt(ctx->ac.i32, attrib_binding, false);
 		t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
 
-		input = ac_build_tbuffer_load(&ctx->ac, t_list, buffer_index,
-					      LLVMConstInt(ctx->ac.i32, attrib_offset, false),
-					      ctx->ac.i32_0, ctx->ac.i32_0,
-					      num_channels,
-					      data_format, num_format,
-					      false, false, true);
+		input = ac_build_struct_tbuffer_load(&ctx->ac, t_list,
+						     buffer_index,
+						     LLVMConstInt(ctx->ac.i32, attrib_offset, false),
+						     ctx->ac.i32_0, ctx->ac.i32_0,
+						     num_channels,
+						     data_format, num_format,
+						     false, false, true);
 
 		if (ctx->options->key.vs.post_shuffle & (1 << attrib_index)) {
 			if (num_channels > 1) {

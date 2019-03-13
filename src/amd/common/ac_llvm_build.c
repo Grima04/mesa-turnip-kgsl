@@ -1407,7 +1407,7 @@ ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
 				  ac_get_load_intr_attribs(can_speculate));
 }
 
-LLVMValueRef
+static LLVMValueRef
 ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,
 			    LLVMValueRef vindex,
@@ -1419,7 +1419,8 @@ ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 			    unsigned nfmt,
 			    bool glc,
 			    bool slc,
-			    bool can_speculate)
+			    bool can_speculate,
+			    bool structurized) /* only matters for LLVM 8+ */
 {
 	if (HAVE_LLVM >= 0x800) {
 		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
@@ -1427,12 +1428,12 @@ ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 		return ac_build_llvm8_tbuffer_load(ctx, rsrc, vindex, voffset,
 						   soffset, num_channels,
 						   dfmt, nfmt, glc, slc,
-						   can_speculate, true);
+						   can_speculate, structurized);
 	}
 
 	LLVMValueRef args[] = {
 		rsrc,
-		vindex,
+		vindex ? vindex : ctx->i32_0,
 		voffset,
 		soffset,
 		immoffset,
@@ -1454,6 +1455,43 @@ ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 }
 
 LLVMValueRef
+ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef vindex,
+			     LLVMValueRef voffset,
+			     LLVMValueRef soffset,
+			     LLVMValueRef immoffset,
+			     unsigned num_channels,
+			     unsigned dfmt,
+			     unsigned nfmt,
+			     bool glc,
+			     bool slc,
+			     bool can_speculate)
+{
+	return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset,
+				     immoffset, num_channels, dfmt, nfmt, glc,
+				     slc, can_speculate, true);
+}
+
+LLVMValueRef
+ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx,
+			  LLVMValueRef rsrc,
+			  LLVMValueRef voffset,
+			  LLVMValueRef soffset,
+			  LLVMValueRef immoffset,
+			  unsigned num_channels,
+			  unsigned dfmt,
+			  unsigned nfmt,
+			  bool glc,
+			  bool slc,
+		          bool can_speculate)
+{
+	return ac_build_tbuffer_load(ctx, rsrc, NULL, voffset, soffset,
+				     immoffset, num_channels, dfmt, nfmt, glc,
+				     slc, can_speculate, false);
+}
+
+LLVMValueRef
 ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,
 			    LLVMValueRef vindex,
@@ -1467,7 +1505,7 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 	LLVMValueRef res;
 
 	res = ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset,
-				    immoffset, 1, dfmt, nfmt, glc, false, false);
+				    immoffset, 1, dfmt, nfmt, glc, false, false, true);
 
 	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
 }
