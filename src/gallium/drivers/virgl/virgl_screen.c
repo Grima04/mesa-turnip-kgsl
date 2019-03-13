@@ -217,7 +217,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_CULL_DISTANCE:
       return vscreen->caps.caps.v1.bset.has_cull;
    case PIPE_CAP_MAX_VERTEX_STREAMS:
-      return vscreen->caps.caps.v1.glsl_level >= 400 ? 4 : 1;
+      return ((vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_TRANSFORM_FEEDBACK3) ||
+              (vscreen->caps.caps.v2.host_feature_check_version < 2)) ? 4 : 1;
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
       return vscreen->caps.caps.v1.bset.conditional_render_inverted;
    case PIPE_CAP_TGSI_FS_FINE_DERIVATIVE:
