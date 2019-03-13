@@ -147,9 +147,18 @@ optimizations = [
    (('fadd', a, ('fneg', ('ffract', a))), ('ffloor', a), '!options->lower_ffloor'),
    (('ffract', a), ('fsub', a, ('ffloor', a)), 'options->lower_ffract'),
    (('fceil', a), ('fneg', ('ffloor', ('fneg', a))), 'options->lower_fceil'),
-   (('~fadd', ('fmul', a, ('fadd', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
-   (('~fadd@32', ('fmul', a, ('fadd', 1.0, ('fneg',         c ))), ('fmul', b,         c )), ('flrp', a, b, c), '!options->lower_flrp32'),
-   (('~fadd@64', ('fmul', a, ('fadd', 1.0, ('fneg',         c ))), ('fmul', b,         c )), ('flrp', a, b, c), '!options->lower_flrp64'),
+   (('~fadd',    ('fmul', a,          ('fadd', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul', b, ('b2f',  c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd@32', ('fmul', a,          ('fadd', 1.0, ('fneg',          c   ) )), ('fmul', b,          c )), ('flrp', a, b, c), '!options->lower_flrp32'),
+   (('~fadd@64', ('fmul', a,          ('fadd', 1.0, ('fneg',          c   ) )), ('fmul', b,          c )), ('flrp', a, b, c), '!options->lower_flrp64'),
+   # These are the same as the previous three rules, but it depends on
+   # 1-fsat(x) <=> fsat(1-x):
+   #
+   # If x >= 0 and x <= 1: fsat(1 - x) == 1 - fsat(x) trivially
+   # If x < 0: 1 - fsat(x) => 1 - 0 => 1 and fsat(1 - x) => fsat(> 1) => 1
+   # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0
+   (('~fadd@32', ('fmul', a, ('fsat', ('fadd', 1.0, ('fneg',          c   )))), ('fmul', b, ('fsat', c))), ('flrp', a, b, ('fsat', c)), '!options->lower_flrp32'),
+   (('~fadd@64', ('fmul', a, ('fsat', ('fadd', 1.0, ('fneg',          c   )))), ('fmul', b, ('fsat', c))), ('flrp', a, b, ('fsat', c)), '!options->lower_flrp64'),
+
    (('~fadd', a, ('fmul', ('b2f', 'c@1'), ('fadd', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp32'),
    (('~fadd@32', a, ('fmul',         c , ('fadd', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp32'),
    (('~fadd@64', a, ('fmul',         c , ('fadd', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp64'),
