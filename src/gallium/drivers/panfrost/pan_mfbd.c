@@ -198,7 +198,7 @@ panfrost_mfbd_upload(
                 UPLOAD(m_f_trans, offset, &rts[c], total_sz);
         }
 
-        /* Return pointer suitable for the fragment seciton */
+        /* Return pointer suitable for the fragment section */
         return m_f_trans.gpu | MALI_MFBD | (has_extra ? 2 : 0);
 }
 
