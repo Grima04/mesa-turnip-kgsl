@@ -228,6 +228,7 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_frcp]		 = UNIT_VLUT,
         [midgard_alu_op_frsqrt]		 = UNIT_VLUT,
         [midgard_alu_op_fsqrt]		 = UNIT_VLUT,
+        [midgard_alu_op_fpow]		 = UNIT_VLUT,
         [midgard_alu_op_fexp2]		 = UNIT_VLUT,
         [midgard_alu_op_flog2]		 = UNIT_VLUT,
 

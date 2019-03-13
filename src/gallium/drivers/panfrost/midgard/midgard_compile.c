@@ -990,6 +990,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
                 ALU_CASE(fsqrt, fsqrt);
+                ALU_CASE(fpow, fpow);
                 ALU_CASE(fexp2, fexp2);
                 ALU_CASE(flog2, flog2);
 
