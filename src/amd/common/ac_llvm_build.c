@@ -1614,6 +1614,133 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
 }
 
+static void
+ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
+			     LLVMValueRef rsrc,
+			     LLVMValueRef vdata,
+			     LLVMValueRef vindex,
+			     LLVMValueRef voffset,
+			     LLVMValueRef soffset,
+			     unsigned num_channels,
+			     unsigned dfmt,
+			     unsigned nfmt,
+			     bool glc,
+			     bool slc,
+			     bool writeonly_memory,
+			     bool structurized)
+{
+	LLVMValueRef args[7];
+	int idx = 0;
+	args[idx++] = vdata;
+	args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
+	if (structurized)
+		args[idx++] = vindex ? vindex : ctx->i32_0;
+	args[idx++] = voffset ? voffset : ctx->i32_0;
+	args[idx++] = soffset ? soffset : ctx->i32_0;
+	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
+	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	unsigned func = CLAMP(num_channels, 1, 3) - 1;
+
+	const char *type_names[] = {"i32", "v2i32", "v4i32"};
+	const char *indexing_kind = structurized ? "struct" : "raw";
+	char name[256];
+
+	snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.store.%s",
+		 indexing_kind, type_names[func]);
+
+	ac_build_intrinsic(ctx, name, ctx->voidt, args, idx,
+			   ac_get_store_intr_attribs(writeonly_memory));
+}
+
+static void
+ac_build_tbuffer_store(struct ac_llvm_context *ctx,
+		       LLVMValueRef rsrc,
+		       LLVMValueRef vdata,
+		       LLVMValueRef vindex,
+		       LLVMValueRef voffset,
+		       LLVMValueRef soffset,
+		       LLVMValueRef immoffset,
+		       unsigned num_channels,
+		       unsigned dfmt,
+		       unsigned nfmt,
+		       bool glc,
+		       bool slc,
+		       bool writeonly_memory,
+		       bool structurized) /* only matters for LLVM 8+ */
+{
+	if (HAVE_LLVM >= 0x800) {
+		voffset = LLVMBuildAdd(ctx->builder,
+				       voffset ? voffset : ctx->i32_0,
+				       immoffset, "");
+
+		ac_build_llvm8_tbuffer_store(ctx, rsrc, vdata, vindex, voffset,
+					     soffset, num_channels, dfmt, nfmt,
+					     glc, slc, writeonly_memory,
+					     structurized);
+	} else {
+		LLVMValueRef params[] = {
+			vdata,
+			rsrc,
+			vindex ? vindex : ctx->i32_0,
+			voffset ? voffset : ctx->i32_0,
+			soffset ? soffset : ctx->i32_0,
+			immoffset,
+			LLVMConstInt(ctx->i32, dfmt, false),
+			LLVMConstInt(ctx->i32, nfmt, false),
+			LLVMConstInt(ctx->i32, glc, false),
+			LLVMConstInt(ctx->i32, slc, false),
+		};
+		unsigned func = CLAMP(num_channels, 1, 3) - 1;
+		const char *type_names[] = {"i32", "v2i32", "v4i32"};
+		char name[256];
+
+		snprintf(name, sizeof(name), "llvm.amdgcn.tbuffer.store.%s",
+			 type_names[func]);
+
+		ac_build_intrinsic(ctx, name, ctx->voidt, params, 10,
+				   ac_get_store_intr_attribs(writeonly_memory));
+	}
+}
+
+void
+ac_build_struct_tbuffer_store(struct ac_llvm_context *ctx,
+			      LLVMValueRef rsrc,
+			      LLVMValueRef vdata,
+			      LLVMValueRef vindex,
+			      LLVMValueRef voffset,
+			      LLVMValueRef soffset,
+			      LLVMValueRef immoffset,
+			      unsigned num_channels,
+			      unsigned dfmt,
+			      unsigned nfmt,
+			      bool glc,
+			      bool slc,
+			      bool writeonly_memory)
+{
+	ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset,
+			       immoffset, num_channels, dfmt, nfmt, glc, slc,
+			       writeonly_memory, true);
+}
+
+void
+ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx,
+			   LLVMValueRef rsrc,
+			   LLVMValueRef vdata,
+			   LLVMValueRef voffset,
+			   LLVMValueRef soffset,
+			   LLVMValueRef immoffset,
+			   unsigned num_channels,
+			   unsigned dfmt,
+			   unsigned nfmt,
+			   bool glc,
+			   bool slc,
+			   bool writeonly_memory)
+{
+	ac_build_tbuffer_store(ctx, rsrc, vdata, NULL, voffset, soffset,
+			       immoffset, num_channels, dfmt, nfmt, glc, slc,
+			       writeonly_memory, false);
+}
+
 /**
  * Set range metadata on an instruction.  This can only be used on load and
  * call instructions.  If you know an instruction can only produce the values
