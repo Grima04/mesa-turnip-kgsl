@@ -814,6 +814,33 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_in);
 }
 
+static uint32_t
+vir_get_max_temps(struct v3d_compile *c)
+{
+        int max_ip = 0;
+        vir_for_each_inst_inorder(inst, c)
+                max_ip++;
+
+        uint32_t *pressure = rzalloc_array(NULL, uint32_t, max_ip);
+
+        for (int t = 0; t < c->num_temps; t++) {
+                for (int i = c->temp_start[t]; (i < c->temp_end[t] &&
+                                                i < max_ip); i++) {
+                        if (i > max_ip)
+                                break;
+                        pressure[i]++;
+                }
+        }
+
+        uint32_t max_temps = 0;
+        for (int i = 0; i < max_ip; i++)
+                max_temps = MAX2(max_temps, pressure[i]);
+
+        ralloc_free(pressure);
+
+        return max_temps;
+}
+
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       struct v3d_key *key,
                       struct v3d_prog_data **out_prog_data,
@@ -876,12 +903,13 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         char *shaderdb;
         int ret = asprintf(&shaderdb,
                            "%s shader: %d inst, %d threads, %d loops, "
-                           "%d uniforms, %d:%d spills:fills",
+                           "%d uniforms, %d max-temps, %d:%d spills:fills",
                            vir_get_stage_name(c),
                            c->qpu_inst_count,
                            c->threads,
                            c->loops,
                            c->num_uniforms,
+                           vir_get_max_temps(c),
                            c->spills,
                            c->fills);
         if (ret >= 0) {
