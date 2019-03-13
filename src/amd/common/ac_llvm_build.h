@@ -74,6 +74,8 @@ struct ac_llvm_context {
 	LLVMTypeRef v4f32;
 	LLVMTypeRef v8i32;
 
+	LLVMValueRef i8_0;
+	LLVMValueRef i8_1;
 	LLVMValueRef i16_0;
 	LLVMValueRef i16_1;
 	LLVMValueRef i32_0;

@@ -87,6 +87,8 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->v4f32 = LLVMVectorType(ctx->f32, 4);
 	ctx->v8i32 = LLVMVectorType(ctx->i32, 8);
 
+	ctx->i8_0 = LLVMConstInt(ctx->i8, 0, false);
+	ctx->i8_1 = LLVMConstInt(ctx->i8, 1, false);
 	ctx->i16_0 = LLVMConstInt(ctx->i16, 0, false);
 	ctx->i16_1 = LLVMConstInt(ctx->i16, 1, false);
 	ctx->i32_0 = LLVMConstInt(ctx->i32, 0, false);
@@ -201,7 +203,9 @@ ac_get_type_size(LLVMTypeRef type)
 
 static LLVMTypeRef to_integer_type_scalar(struct ac_llvm_context *ctx, LLVMTypeRef t)
 {
-	if (t == ctx->f16 || t == ctx->i16)
+	if (t == ctx->i8)
+		return ctx->i8;
+	else if (t == ctx->f16 || t == ctx->i16)
 		return ctx->i16;
 	else if (t == ctx->f32 || t == ctx->i32)
 		return ctx->i32;
@@ -253,7 +257,9 @@ ac_to_integer_or_pointer(struct ac_llvm_context *ctx, LLVMValueRef v)
 
 static LLVMTypeRef to_float_type_scalar(struct ac_llvm_context *ctx, LLVMTypeRef t)
 {
-	if (t == ctx->i16 || t == ctx->f16)
+	if (t == ctx->i8)
+		return ctx->i8;
+	else if (t == ctx->i16 || t == ctx->f16)
 		return ctx->f16;
 	else if (t == ctx->i32 || t == ctx->f32)
 		return ctx->f32;
