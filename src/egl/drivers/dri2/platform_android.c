@@ -1346,7 +1346,7 @@ static const __DRIextension *droid_image_loader_extensions[] = {
 };
 
 static EGLBoolean
-droid_load_driver(_EGLDisplay *disp)
+droid_load_driver(_EGLDisplay *disp, bool swrast)
 {
    struct dri2_egl_display *dri2_dpy = disp->DriverData;
    const char *err;
@@ -1408,13 +1408,13 @@ droid_filter_device(_EGLDisplay *disp, int fd, const char *vendor)
 }
 
 static EGLBoolean
-droid_probe_device(_EGLDisplay *disp)
+droid_probe_device(_EGLDisplay *disp, bool swrast)
 {
   /* Check that the device is supported, by attempting to:
    * - load the dri module
    * - and, create a screen
    */
-   if (!droid_load_driver(disp))
+   if (!droid_load_driver(disp, swrast))
       return EGL_FALSE;
 
    if (!dri2_create_screen(disp)) {
@@ -1427,7 +1427,7 @@ droid_probe_device(_EGLDisplay *disp)
 
 #ifdef HAVE_DRM_GRALLOC
 static EGLBoolean
-droid_open_device(_EGLDisplay *disp)
+droid_open_device(_EGLDisplay *disp, bool swrast)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    int fd = -1, err = -EINVAL;
@@ -1448,11 +1448,11 @@ droid_open_device(_EGLDisplay *disp)
    if (drmGetNodeTypeFromFd(dri2_dpy->fd) == DRM_NODE_RENDER)
       return EGL_FALSE;
 
-   return droid_probe_device(disp);
+   return droid_probe_device(disp, swrast);
 }
 #else
 static EGLBoolean
-droid_open_device(_EGLDisplay *disp)
+droid_open_device(_EGLDisplay *disp, bool swrast)
 {
 #define MAX_DRM_DEVICES 64
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -1495,14 +1495,14 @@ droid_open_device(_EGLDisplay *disp)
          /* If the requested device matches - use it. Regardless if
           * init fails, do not fall-back to any other device.
           */
-         if (!droid_probe_device(disp)) {
+         if (!droid_probe_device(disp, false)) {
             close(dri2_dpy->fd);
             dri2_dpy->fd = -1;
          }
 
          break;
       }
-      if (droid_probe_device(disp))
+      if (droid_probe_device(disp, swrast))
          break;
 
       /* No explicit request - attempt the next device */
@@ -1549,7 +1549,7 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
 
    disp->DriverData = (void *) dri2_dpy;
 
-   if (!droid_open_device(disp)) {
+   if (!droid_open_device(disp, false)) {
       err = "DRI2: failed to open device";
       goto cleanup;
    }
