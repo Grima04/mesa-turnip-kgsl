@@ -579,8 +579,11 @@ st_translate_vertex_program(struct st_context *st,
       nir_shader *nir =
          st_translate_prog_to_nir(st, &stvp->Base, MESA_SHADER_VERTEX);
 
+      if (stvp->tgsi.ir.nir)
+         ralloc_free(stvp->tgsi.ir.nir);
       stvp->tgsi.type = PIPE_SHADER_IR_NIR;
       stvp->tgsi.ir.nir = nir;
+      stvp->Base.nir = nir;
       return true;
    }
 
@@ -763,8 +766,11 @@ st_translate_fragment_program(struct st_context *st,
       nir_shader *nir =
          st_translate_prog_to_nir(st, &stfp->Base, MESA_SHADER_FRAGMENT);
 
+      if (stfp->tgsi.ir.nir)
+         ralloc_free(stfp->tgsi.ir.nir);
       stfp->tgsi.type = PIPE_SHADER_IR_NIR;
       stfp->tgsi.ir.nir = nir;
+      stfp->Base.nir = nir;
       return true;
    }
 
