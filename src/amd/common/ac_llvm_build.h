@@ -300,7 +300,6 @@ LLVMValueRef ac_build_buffer_load_format_gfx9_safe(struct ac_llvm_context *ctx,
 LLVMValueRef
 ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,
-			    LLVMValueRef vindex,
 			    LLVMValueRef voffset,
 			    LLVMValueRef soffset,
 			    LLVMValueRef immoffset,
