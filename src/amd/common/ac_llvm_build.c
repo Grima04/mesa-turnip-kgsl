@@ -1606,6 +1606,24 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
 }
 
+LLVMValueRef
+ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
+			   LLVMValueRef rsrc,
+			   LLVMValueRef voffset,
+			   LLVMValueRef soffset,
+			   LLVMValueRef immoffset,
+			   bool glc)
+{
+	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;
+	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+	LLVMValueRef res;
+
+	res = ac_build_raw_tbuffer_load(ctx, rsrc, voffset, soffset,
+					immoffset, 1, dfmt, nfmt, glc, false,
+					false);
+
+	return LLVMBuildTrunc(ctx->builder, res, ctx->i8, "");
+}
 static void
 ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
 			     LLVMValueRef rsrc,

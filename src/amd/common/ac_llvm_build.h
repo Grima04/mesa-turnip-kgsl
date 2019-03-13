@@ -319,6 +319,14 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    bool glc);
 
 LLVMValueRef
+ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
+			   LLVMValueRef rsrc,
+			   LLVMValueRef voffset,
+			   LLVMValueRef soffset,
+			   LLVMValueRef immoffset,
+			   bool glc);
+
+LLVMValueRef
 ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx,
 			     LLVMValueRef rsrc,
 			     LLVMValueRef vindex,
