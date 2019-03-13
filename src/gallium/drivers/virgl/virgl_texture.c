@@ -108,13 +108,13 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    void *ptr;
    boolean readback = TRUE;
    struct virgl_hw_res *hw_res;
-   bool doflushwait;
+   bool flush;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
 
-   doflushwait = virgl_res_needs_flush_wait(vctx, trans);
-   if (doflushwait)
+   flush = virgl_res_needs_flush(vctx, trans);
+   if (flush)
       ctx->flush(ctx, NULL, 0);
 
    if (resource->nr_samples > 1) {
@@ -138,12 +138,12 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    }
 
    readback = virgl_res_needs_readback(vctx, vtex, usage, level);
-   if (readback)
+   if (readback) {
       vs->vws->transfer_get(vs->vws, hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
 
-   if (doflushwait || readback)
       vs->vws->resource_wait(vs->vws, vtex->hw_res);
+   }
 
    ptr = vs->vws->resource_map(vs->vws, hw_res);
    if (!ptr) {

@@ -230,7 +230,7 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    res->size = size;
    res->stride = stride;
    pipe_reference_init(&res->reference, 1);
-   res->num_cs_references = 0;
+   p_atomic_set(&res->num_cs_references, 0);
    res->fence_fd = -1;
    return res;
 }
@@ -564,54 +564,6 @@ static void virgl_drm_resource_wait(struct virgl_winsys *qws,
       goto again;
 }
 
-static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
-                                                      uint32_t size)
-{
-   struct virgl_drm_cmd_buf *cbuf;
-
-   cbuf = CALLOC_STRUCT(virgl_drm_cmd_buf);
-   if (!cbuf)
-      return NULL;
-
-   cbuf->ws = qws;
-
-   cbuf->nres = 512;
-   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
-   if (!cbuf->res_bo) {
-      FREE(cbuf);
-      return NULL;
-   }
-   cbuf->res_hlist = MALLOC(cbuf->nres * sizeof(uint32_t));
-   if (!cbuf->res_hlist) {
-      FREE(cbuf->res_bo);
-      FREE(cbuf);
-      return NULL;
-   }
-
-   cbuf->buf = CALLOC(size, sizeof(uint32_t));
-   if (!cbuf->buf) {
-      FREE(cbuf->res_hlist);
-      FREE(cbuf->res_bo);
-      FREE(cbuf);
-      return NULL;
-   }
-
-   cbuf->base.buf = cbuf->buf;
-   cbuf->base.in_fence_fd = -1;
-   return &cbuf->base;
-}
-
-static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
-{
-   struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
-
-   FREE(cbuf->res_hlist);
-   FREE(cbuf->res_bo);
-   FREE(cbuf->buf);
-   FREE(cbuf);
-
-}
-
 static boolean virgl_drm_lookup_res(struct virgl_drm_cmd_buf *cbuf,
                                     struct virgl_hw_res *res)
 {
@@ -702,10 +654,59 @@ static boolean virgl_drm_res_is_ref(struct virgl_winsys *qws,
                                     struct virgl_cmd_buf *_cbuf,
                                     struct virgl_hw_res *res)
 {
-   if (!res->num_cs_references)
+   if (!p_atomic_read(&res->num_cs_references))
       return FALSE;
 
    return TRUE;
+}
+
+static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
+                                                      uint32_t size)
+{
+   struct virgl_drm_cmd_buf *cbuf;
+
+   cbuf = CALLOC_STRUCT(virgl_drm_cmd_buf);
+   if (!cbuf)
+      return NULL;
+
+   cbuf->ws = qws;
+
+   cbuf->nres = 512;
+   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
+   if (!cbuf->res_bo) {
+      FREE(cbuf);
+      return NULL;
+   }
+   cbuf->res_hlist = MALLOC(cbuf->nres * sizeof(uint32_t));
+   if (!cbuf->res_hlist) {
+      FREE(cbuf->res_bo);
+      FREE(cbuf);
+      return NULL;
+   }
+
+   cbuf->buf = CALLOC(size, sizeof(uint32_t));
+   if (!cbuf->buf) {
+      FREE(cbuf->res_hlist);
+      FREE(cbuf->res_bo);
+      FREE(cbuf);
+      return NULL;
+   }
+
+   cbuf->base.buf = cbuf->buf;
+   cbuf->base.in_fence_fd = -1;
+   return &cbuf->base;
+}
+
+static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
+{
+   struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
+
+   virgl_drm_release_all_res(virgl_drm_winsys(cbuf->ws), cbuf);
+   FREE(cbuf->res_hlist);
+   FREE(cbuf->res_bo);
+   FREE(cbuf->buf);
+   FREE(cbuf);
+
 }
 
 static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,

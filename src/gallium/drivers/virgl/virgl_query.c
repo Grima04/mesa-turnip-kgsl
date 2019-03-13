@@ -113,7 +113,7 @@ static struct pipe_query *virgl_create_query(struct pipe_context *ctx,
    query->type = pipe_to_virgl_query(query_type);
    query->index = index;
    query->handle = handle;
-   query->buf->clean[0] = FALSE;
+   query->buf->clean_mask &= ~1;
    virgl_encoder_create_query(vctx, handle, query->type, index, query->buf, 0);
 
    return (struct pipe_query *)query;

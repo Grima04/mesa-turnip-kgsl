@@ -46,7 +46,7 @@ struct virgl_resource_metadata
 
 struct virgl_resource {
    struct u_resource u;
-   boolean clean[VR_MAX_TEXTURE_2D_LEVELS];
+   uint16_t clean_mask;
    struct virgl_hw_res *hw_res;
    struct virgl_resource_metadata metadata;
 };
@@ -112,8 +112,8 @@ static inline unsigned pipe_to_virgl_bind(unsigned pbind)
    return outbind;
 }
 
-bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
-                                struct virgl_transfer *transfer);
+bool virgl_res_needs_flush(struct virgl_context *vctx,
+                           struct virgl_transfer *transfer);
 bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
                               unsigned usage, unsigned level);

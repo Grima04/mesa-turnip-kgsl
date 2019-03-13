@@ -27,8 +27,8 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
-bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
-                                struct virgl_transfer *trans)
+bool virgl_res_needs_flush(struct virgl_context *vctx,
+                           struct virgl_transfer *trans)
 {
    struct virgl_screen *vs = virgl_screen(vctx->base.screen);
    struct virgl_resource *res = virgl_resource(trans->base.resource);
@@ -37,7 +37,7 @@ bool virgl_res_needs_flush_wait(struct virgl_context *vctx,
       return false;
    if (!vs->vws->res_is_referenced(vs->vws, vctx->cbuf, res->hw_res))
       return false;
-   if (res->clean[trans->base.level]) {
+   if (res->clean_mask & (1 << trans->base.level)) {
       if (vctx->num_draws == 0 && vctx->num_compute == 0)
          return false;
       if (!virgl_transfer_queue_is_queued(&vctx->queue, trans))
@@ -52,7 +52,7 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
                               unsigned usage, unsigned level)
 {
    bool readback = true;
-   if (res->clean[level])
+   if (res->clean_mask & (1 << level))
       readback = false;
    else if (usage & PIPE_TRANSFER_DISCARD_RANGE)
       readback = false;
@@ -88,8 +88,7 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
       return NULL;
    }
 
-   for (uint32_t i = 0; i < VR_MAX_TEXTURE_2D_LEVELS; i++)
-      res->clean[i] = TRUE;
+   res->clean_mask = (1 << VR_MAX_TEXTURE_2D_LEVELS) - 1;
 
    if (templ->target == PIPE_BUFFER)
       virgl_buffer_init(res);
@@ -290,8 +289,8 @@ void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
 {
    if (res) {
       if (res->u.b.target == PIPE_BUFFER)
-         res->clean[0] = FALSE;
+         res->clean_mask &= ~1;
       else
-         res->clean[level] = FALSE;
+         res->clean_mask &= ~(1 << level);
    }
 }

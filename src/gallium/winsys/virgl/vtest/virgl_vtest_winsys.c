@@ -247,6 +247,7 @@ virgl_vtest_winsys_resource_create(struct virgl_winsys *vws,
 
    res->res_handle = handle++;
    pipe_reference_init(&res->reference, 1);
+   p_atomic_set(&res->num_cs_references, 0);
    return res;
 }
 
@@ -394,35 +395,6 @@ alloc:
    return res;
 }
 
-static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws,
-                                                        uint32_t size)
-{
-   struct virgl_vtest_cmd_buf *cbuf;
-
-   cbuf = CALLOC_STRUCT(virgl_vtest_cmd_buf);
-   if (!cbuf)
-      return NULL;
-
-   cbuf->nres = 512;
-   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
-   if (!cbuf->res_bo) {
-      FREE(cbuf);
-      return NULL;
-   }
-   cbuf->ws = vws;
-   cbuf->base.buf = cbuf->buf;
-   cbuf->base.in_fence_fd = -1;
-   return &cbuf->base;
-}
-
-static void virgl_vtest_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
-{
-   struct virgl_vtest_cmd_buf *cbuf = virgl_vtest_cmd_buf(_cbuf);
-
-   FREE(cbuf->res_bo);
-   FREE(cbuf);
-}
-
 static boolean virgl_vtest_lookup_res(struct virgl_vtest_cmd_buf *cbuf,
                                       struct virgl_hw_res *res)
 {
@@ -485,6 +457,36 @@ static void virgl_vtest_add_res(struct virgl_vtest_winsys *vtws,
    cbuf->cres++;
 }
 
+static struct virgl_cmd_buf *virgl_vtest_cmd_buf_create(struct virgl_winsys *vws,
+                                                        uint32_t size)
+{
+   struct virgl_vtest_cmd_buf *cbuf;
+
+   cbuf = CALLOC_STRUCT(virgl_vtest_cmd_buf);
+   if (!cbuf)
+      return NULL;
+
+   cbuf->nres = 512;
+   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
+   if (!cbuf->res_bo) {
+      FREE(cbuf);
+      return NULL;
+   }
+   cbuf->ws = vws;
+   cbuf->base.buf = cbuf->buf;
+   cbuf->base.in_fence_fd = -1;
+   return &cbuf->base;
+}
+
+static void virgl_vtest_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
+{
+   struct virgl_vtest_cmd_buf *cbuf = virgl_vtest_cmd_buf(_cbuf);
+
+   virgl_vtest_release_all_res(virgl_vtest_winsys(cbuf->ws), cbuf);
+   FREE(cbuf->res_bo);
+   FREE(cbuf);
+}
+
 static int virgl_vtest_winsys_submit_cmd(struct virgl_winsys *vws,
                                          struct virgl_cmd_buf *_cbuf,
                                          int in_fence_fd, int *out_fence_fd)
@@ -525,7 +527,7 @@ static boolean virgl_vtest_res_is_ref(struct virgl_winsys *vws,
                                       struct virgl_cmd_buf *_cbuf,
                                       struct virgl_hw_res *res)
 {
-   if (!res->num_cs_references)
+   if (!p_atomic_read(&res->num_cs_references))
       return FALSE;
 
    return TRUE;
