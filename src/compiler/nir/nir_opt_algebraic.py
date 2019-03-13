@@ -1128,9 +1128,6 @@ late_optimizations = [
    (('~flrp@32', ('fadd(is_used_once)', a, b), ('fadd(is_used_once)', a, c), d), ('fadd', ('flrp', b, c, d), a)),
    (('~flrp@64', ('fadd(is_used_once)', a, b), ('fadd(is_used_once)', a, c), d), ('fadd', ('flrp', b, c, d), a)),
 
-   (('b2f(is_used_more_than_once)', ('inot', 'a@1')), ('bcsel', a, 0.0, 1.0)),
-   (('fneg(is_used_more_than_once)', ('b2f', ('inot', 'a@1'))), ('bcsel', a, -0.0, -1.0)),
-
    (('~fadd@32', 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp32'),
    (('~fadd@64', 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp64'),
 
