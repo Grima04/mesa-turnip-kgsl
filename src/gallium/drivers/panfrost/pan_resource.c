@@ -197,6 +197,11 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         if (template->height0) sz *= template->height0;
         if (template->depth0) sz *= template->depth0;
 
+        /* Depth buffers require extra space for unknown reasons */
+
+        if (template->bind & PIPE_BIND_DEPTH_STENCIL)
+                sz = sz + sz/256;
+
         /* Based on the usage, figure out what storing will be used. There are
          * various tradeoffs:
          *
