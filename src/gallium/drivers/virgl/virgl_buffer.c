@@ -88,7 +88,6 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
          trans->offset = transfer->box.x;
       }
 
-      vctx->num_transfers++;
       virgl_transfer_queue_unmap(&vctx->queue, trans);
    } else
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);

@@ -755,7 +755,7 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
       u_upload_unmap(ctx->uploader);
 
    /* send the buffer to the remote side for decoding */
-   ctx->num_transfers = ctx->num_draws = ctx->num_compute = 0;
+   ctx->num_draws = ctx->num_compute = 0;
 
    virgl_transfer_queue_clear(&ctx->queue, ctx->cbuf);
    rs->vws->submit_cmd(rs->vws, ctx->cbuf, fence);

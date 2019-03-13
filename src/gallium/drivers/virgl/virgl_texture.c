@@ -178,7 +178,6 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (trans->base.usage & PIPE_TRANSFER_WRITE) {
       if (!(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
          struct virgl_screen *vs = virgl_screen(ctx->screen);
-         vctx->num_transfers++;
 
          if (trans->resolve_tmp) {
             vs->vws->transfer_put(vs->vws, vtex->hw_res,
