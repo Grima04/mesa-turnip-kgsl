@@ -250,6 +250,7 @@ typedef struct rvcn_enc_quality_params_s
     uint32_t	vbaq_mode;
     uint32_t	scene_change_sensitivity;
     uint32_t	scene_change_min_idr_interval;
+    uint32_t	two_pass_search_center_map_mode;
 } rvcn_enc_quality_params_t;
 
 typedef struct rvcn_enc_direct_output_nalu_s

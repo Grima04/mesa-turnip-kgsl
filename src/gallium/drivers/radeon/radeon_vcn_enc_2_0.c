@@ -36,7 +36,7 @@
 #include "radeon_vcn_enc.h"
 
 #define RENCODE_FW_INTERFACE_MAJOR_VERSION		0
-#define RENCODE_FW_INTERFACE_MINOR_VERSION		0
+#define RENCODE_FW_INTERFACE_MINOR_VERSION		2
 
 #define RENCODE_IB_PARAM_SESSION_INFO				0x00000001
 #define RENCODE_IB_PARAM_TASK_INFO  				0x00000002
@@ -71,11 +71,13 @@ static void radeon_enc_quality_params(struct radeon_encoder *enc)
 	enc->enc_pic.quality_params.vbaq_mode = 0;
 	enc->enc_pic.quality_params.scene_change_sensitivity = 0;
 	enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
+	enc->enc_pic.quality_params.two_pass_search_center_map_mode = 0;
 
 	RADEON_ENC_BEGIN(enc->cmd.quality_params);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_sensitivity);
 	RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_min_idr_interval);
+	RADEON_ENC_CS(enc->enc_pic.quality_params.two_pass_search_center_map_mode);
 	RADEON_ENC_END();
 }
 
