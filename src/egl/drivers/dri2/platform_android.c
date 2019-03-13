@@ -1365,6 +1365,21 @@ droid_load_driver(_EGLDisplay *disp, bool swrast)
       goto error;
    }
 #else
+   if (swrast) {
+      /* Use kms swrast only with vgem / virtio_gpu.
+       * virtio-gpu fallbacks to software rendering when 3D features
+       * are unavailable since 6c5ab.
+       */
+      if (strcmp(dri2_dpy->driver_name, "vgem") == 0 ||
+          strcmp(dri2_dpy->driver_name, "virtio_gpu") == 0) {
+         free(dri2_dpy->driver_name);
+         dri2_dpy->driver_name = strdup("kms_swrast");
+      } else {
+         err = "DRI3: failed to find software capable driver";
+         goto error;
+      }
+   }
+
    dri2_dpy->loader_extensions = droid_image_loader_extensions;
    if (!dri2_load_driver_dri3(disp)) {
       err = "DRI3: failed to load driver";
@@ -1431,6 +1446,9 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    int fd = -1, err = -EINVAL;
+
+   if (swrast)
+      return EGL_FALSE;
 
    if (dri2_dpy->gralloc->perform)
       err = dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
