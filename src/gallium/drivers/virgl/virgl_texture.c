@@ -154,7 +154,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       vs->vws->transfer_get(vs->vws, src_res->hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
 
-      vs->vws->resource_wait(vs->vws, vtex->hw_res);
+      vs->vws->resource_wait(vs->vws, src_res->hw_res);
    }
 
    ptr = vs->vws->resource_map(vs->vws, src_res->hw_res);
