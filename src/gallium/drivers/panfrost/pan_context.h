@@ -170,7 +170,6 @@ struct panfrost_context {
 
         unsigned varying_height;
 
-        struct mali_viewport *viewport;
         struct mali_single_framebuffer vt_framebuffer_sfbd;
         struct bifrost_framebuffer vt_framebuffer_mfbd;
 

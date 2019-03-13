@@ -311,39 +311,6 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
         ctx->payload_tiler.postfix.framebuffer = framebuffer;
 }
 
-static void
-panfrost_viewport(struct panfrost_context *ctx,
-                  float depth_clip_near,
-                  float depth_clip_far,
-                  int viewport_x0, int viewport_y0,
-                  int viewport_x1, int viewport_y1)
-{
-        /* Clip bounds are encoded as floats. The viewport itself is encoded as
-         * (somewhat) asymmetric ints. */
-
-        struct mali_viewport ret = {
-                /* By default, do no viewport clipping, i.e. clip to (-inf,
-                 * inf) in each direction. Clipping to the viewport in theory
-                 * should work, but in practice causes issues when we're not
-                 * explicitly trying to scissor */
-
-                .clip_minx = -inff,
-                .clip_miny = -inff,
-                .clip_maxx = inff,
-                .clip_maxy = inff,
-
-                /* We always perform depth clipping (TODO: Can this be disabled?) */
-
-                .clip_minz = depth_clip_near,
-                .clip_maxz = depth_clip_far,
-
-                .viewport0 = { viewport_x0, viewport_y0 },
-                .viewport1 = { MALI_POSITIVE(viewport_x1), MALI_POSITIVE(viewport_y1) },
-        };
-
-        memcpy(ctx->viewport, &ret, sizeof(ret));
-}
-
 /* Reset per-frame context, called on context initialisation as well as after
  * flushing a frame */
 
@@ -412,11 +379,6 @@ panfrost_emit_tiler_payload(struct panfrost_context *ctx)
                         .zero1 = 0xffff, /* Why is this only seen on test-quad-textured? */
                 },
         };
-
-        /* Reserve the viewport */
-        struct panfrost_transfer t = panfrost_allocate_chunk(ctx, sizeof(struct mali_viewport), HEAP_DESCRIPTOR);
-        ctx->viewport = (struct mali_viewport *) t.cpu;
-        payload.postfix.viewport = t.gpu;
 
         memcpy(&ctx->payload_tiler, &payload, sizeof(payload));
 }
@@ -1119,6 +1081,44 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 }
         }
 
+        /* TODO: Upload the viewport somewhere more appropriate */
+
+        /* Clip bounds are encoded as floats. The viewport itself is encoded as
+         * (somewhat) asymmetric ints. */
+        const struct pipe_scissor_state *ss = &ctx->scissor;
+
+        struct mali_viewport view = {
+                /* By default, do no viewport clipping, i.e. clip to (-inf,
+                 * inf) in each direction. Clipping to the viewport in theory
+                 * should work, but in practice causes issues when we're not
+                 * explicitly trying to scissor */
+
+                .clip_minx = -inff,
+                .clip_miny = -inff,
+                .clip_maxx = inff,
+                .clip_maxy = inff,
+
+                .clip_minz = 0.0,
+                .clip_maxz = 1.0,
+        };
+
+        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor && 0) {
+                view.viewport0[0] = ss->minx;
+                view.viewport0[1] = ss->miny;
+                view.viewport1[0] = MALI_POSITIVE(ss->maxx);
+                view.viewport1[1] = MALI_POSITIVE(ss->maxy);
+        } else {
+                view.viewport0[0] = 0;
+                view.viewport0[1] = 0;
+                view.viewport1[0] = MALI_POSITIVE(ctx->pipe_framebuffer.width);
+                view.viewport1[1] = MALI_POSITIVE(ctx->pipe_framebuffer.height);
+        }
+
+        ctx->payload_tiler.postfix.viewport =
+                panfrost_upload_transient(ctx,
+                                &view,
+                                sizeof(struct mali_viewport));
+
         ctx->dirty = 0;
 }
 
@@ -1463,24 +1463,6 @@ panfrost_generic_cso_delete(struct pipe_context *pctx, void *hwcso)
         free(hwcso);
 }
 
-static void
-panfrost_set_scissor(struct panfrost_context *ctx)
-{
-        const struct pipe_scissor_state *ss = &ctx->scissor;
-
-        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor && 0) {
-                ctx->viewport->viewport0[0] = ss->minx;
-                ctx->viewport->viewport0[1] = ss->miny;
-                ctx->viewport->viewport1[0] = MALI_POSITIVE(ss->maxx);
-                ctx->viewport->viewport1[1] = MALI_POSITIVE(ss->maxy);
-        } else {
-                ctx->viewport->viewport0[0] = 0;
-                ctx->viewport->viewport0[1] = 0;
-                ctx->viewport->viewport1[0] = MALI_POSITIVE(ctx->pipe_framebuffer.width);
-                ctx->viewport->viewport1[1] = MALI_POSITIVE(ctx->pipe_framebuffer.height);
-        }
-}
-
 static void *
 panfrost_create_rasterizer_state(
         struct pipe_context *pctx,
@@ -1512,21 +1494,12 @@ panfrost_bind_rasterizer_state(
         void *hwcso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        struct pipe_rasterizer_state *cso = hwcso;
 
         /* TODO: Why can't rasterizer be NULL ever? Other drivers are fine.. */
         if (!hwcso)
                 return;
 
-        /* If scissor test has changed, we'll need to update that now */
-        bool update_scissor = !ctx->rasterizer || ctx->rasterizer->base.scissor != cso->scissor;
-
         ctx->rasterizer = hwcso;
-
-        /* Actualise late changes */
-        if (update_scissor)
-                panfrost_set_scissor(ctx);
-
         ctx->dirty |= PAN_DIRTY_RASTERIZER;
 }
 
@@ -2022,7 +1995,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx);
 
                 panfrost_attach_vt_framebuffer(ctx);
-                panfrost_set_scissor(ctx);
 
                 struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[i]->texture);
                 bool is_scanout = panfrost_is_scanout(ctx);
@@ -2056,7 +2028,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx);
 
                                 panfrost_attach_vt_framebuffer(ctx);
-                                panfrost_set_scissor(ctx);
 
                                 /* Keep the depth FBO linear */
                         }
@@ -2244,8 +2215,6 @@ panfrost_set_scissor_states(struct pipe_context *pipe,
         assert(num_scissors == 1);
 
         ctx->scissor = *scissors;
-
-        panfrost_set_scissor(ctx);
 }
 
 static void
@@ -2499,7 +2468,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_emit_vertex_payload(ctx);
         panfrost_emit_tiler_payload(ctx);
         panfrost_invalidate_frame(ctx);
-        panfrost_viewport(ctx, 0.0, 1.0, 0, 0, ctx->pipe_framebuffer.width, ctx->pipe_framebuffer.height);
         panfrost_default_shader_backend(ctx);
         panfrost_generate_space_filler_indices();
 
