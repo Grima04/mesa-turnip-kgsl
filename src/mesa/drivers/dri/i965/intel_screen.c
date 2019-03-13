@@ -289,11 +289,11 @@ static const struct intel_image_format intel_image_formats[] = {
 
    { __DRI_IMAGE_FOURCC_P010, __DRI_IMAGE_COMPONENTS_Y_UV, 2,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
-       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } , 65535.0f/1023.0f },
+       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } },
 
    { __DRI_IMAGE_FOURCC_P012, __DRI_IMAGE_COMPONENTS_Y_UV, 2,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
-       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } , 65535.0f/4095.0f },
+       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } },
 
    { __DRI_IMAGE_FOURCC_P016, __DRI_IMAGE_COMPONENTS_Y_UV, 2,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
