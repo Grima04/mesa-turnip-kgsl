@@ -2061,6 +2061,84 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 }
 
 /**
+ * The pipe->texture_subdata() driver hook.
+ *
+ * Mesa's state tracker takes this path whenever possible, even with
+ * PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER set.
+ */
+static void
+iris_texture_subdata(struct pipe_context *ctx,
+                     struct pipe_resource *resource,
+                     unsigned level,
+                     unsigned usage,
+                     const struct pipe_box *box,
+                     const void *data,
+                     unsigned stride,
+                     unsigned layer_stride)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_resource *res = (struct iris_resource *)resource;
+   const struct isl_surf *surf = &res->surf;
+
+   assert(resource->target != PIPE_BUFFER);
+
+   if (iris_resource_unfinished_aux_import(res))
+      iris_resource_finish_aux_import(ctx->screen, res);
+
+   /* Just use the transfer-based path for linear buffers - it will already
+    * do a direct mapping, or a simple linear staging buffer.
+    *
+    * Linear staging buffers appear to be better than tiled ones, too, so
+    * take that path if we need the GPU to perform color compression, or
+    * stall-avoidance blits.
+    */
+   if (surf->tiling == ISL_TILING_LINEAR ||
+       res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+       resource_is_busy(ice, res)) {
+      return u_default_texture_subdata(ctx, resource, level, usage, box,
+                                       data, stride, layer_stride);
+   }
+
+   /* No state trackers pass any flags other than PIPE_TRANSFER_WRITE */
+
+   iris_resource_access_raw(ice, res, level, box->z, box->depth, true);
+
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      if (iris_batch_references(&ice->batches[i], res->bo))
+         iris_batch_flush(&ice->batches[i]);
+   }
+
+   uint8_t *dst = iris_bo_map(&ice->dbg, res->bo, MAP_WRITE | MAP_RAW);
+
+   for (int s = 0; s < box->depth; s++) {
+      const uint8_t *src = data + s * layer_stride;
+
+      if (surf->tiling == ISL_TILING_W) {
+         unsigned x0_el, y0_el;
+         get_image_offset_el(surf, level, box->z + s, &x0_el, &y0_el);
+
+         for (unsigned y = 0; y < box->height; y++) {
+            for (unsigned x = 0; x < box->width; x++) {
+               ptrdiff_t offset = s8_offset(surf->row_pitch_B,
+                                            x0_el + box->x + x,
+                                            y0_el + box->y + y);
+               dst[offset] = src[y * stride + x];
+            }
+         }
+      } else {
+         unsigned x1, x2, y1, y2;
+
+         tile_extents(surf, box, level, s, &x1, &x2, &y1, &y2);
+
+         isl_memcpy_linear_to_tiled(x1, x2, y1, y2,
+                                    (void *)dst, (void *)src,
+                                    surf->row_pitch_B, stride,
+                                    false, surf->tiling, ISL_MEMCPY);
+      }
+   }
+}
+
+/**
  * Mark state dirty that needs to be re-emitted when a resource is written.
  */
 void
@@ -2190,5 +2268,5 @@ iris_init_resource_functions(struct pipe_context *ctx)
    ctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    ctx->transfer_unmap = u_transfer_helper_transfer_unmap;
    ctx->buffer_subdata = u_default_buffer_subdata;
-   ctx->texture_subdata = u_default_texture_subdata;
+   ctx->texture_subdata = iris_texture_subdata;
 }
