@@ -2092,6 +2092,25 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+         VkPhysicalDeviceSampleLocationsPropertiesEXT *props =
+            (VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
+
+         props->sampleLocationSampleCounts =
+            isl_device_get_sample_counts(&pdevice->isl_dev);
+
+         /* See also anv_GetPhysicalDeviceMultisamplePropertiesEXT */
+         props->maxSampleLocationGridSize.width = 1;
+         props->maxSampleLocationGridSize.height = 1;
+
+         props->sampleLocationCoordinateRange[0] = 0;
+         props->sampleLocationCoordinateRange[1] = 0.9375;
+         props->sampleLocationSubPixelBits = 4;
+
+         props->variableSampleLocations = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
          VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *props =
             (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
@@ -4613,6 +4632,30 @@ VkResult anv_GetCalibratedTimestampsEXT(
    *pMaxDeviation = sample_interval + max_clock_period;
 
    return VK_SUCCESS;
+}
+
+void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
+    VkPhysicalDevice                            physicalDevice,
+    VkSampleCountFlagBits                       samples,
+    VkMultisamplePropertiesEXT*                 pMultisampleProperties)
+{
+   ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
+
+   assert(pMultisampleProperties->sType ==
+          VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT);
+
+   VkExtent2D grid_size;
+   if (samples & isl_device_get_sample_counts(&physical_device->isl_dev)) {
+      grid_size.width = 1;
+      grid_size.height = 1;
+   } else {
+      grid_size.width = 0;
+      grid_size.height = 0;
+   }
+   pMultisampleProperties->maxSampleLocationGridSize = grid_size;
+
+   vk_foreach_struct(ext, pMultisampleProperties->pNext)
+      anv_debug_ignored_stype(ext->sType);
 }
 
 /* vk_icd.h does not declare this function, so we declare it here to
