@@ -1058,7 +1058,7 @@ iris_map_copy_region(struct iris_transfer *map)
 }
 
 static void
-get_image_offset_el(struct isl_surf *surf, unsigned level, unsigned z,
+get_image_offset_el(const struct isl_surf *surf, unsigned level, unsigned z,
                     unsigned *out_x0_el, unsigned *out_y0_el)
 {
    if (surf->dim == ISL_SURF_DIM_3D) {
@@ -1212,7 +1212,7 @@ iris_map_s8(struct iris_transfer *map)
  * xs are in units of bytes and ys are in units of strides.
  */
 static inline void
-tile_extents(struct isl_surf *surf,
+tile_extents(const struct isl_surf *surf,
              const struct pipe_box *box,
              unsigned level, int z,
              unsigned *x1_B, unsigned *x2_B,
