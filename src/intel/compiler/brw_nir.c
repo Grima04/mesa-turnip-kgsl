@@ -742,6 +742,17 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       brw_nir_no_indirect_mask(compiler, nir->info.stage);
    OPT(nir_lower_indirect_derefs, indirect_mask);
 
+   /* Lower array derefs of vectors for SSBO and UBO loads.  For both UBOs and
+    * SSBOs, our back-end is capable of loading an entire vec4 at a time and
+    * we would like to take advantage of that whenever possible regardless of
+    * whether or not the app gives us full loads.  This should allow the
+    * optimizer to combine UBO and SSBO load operations and save us some send
+    * messages.
+    */
+   OPT(nir_lower_array_deref_of_vec,
+       nir_var_mem_ubo | nir_var_mem_ssbo,
+       nir_lower_direct_array_deref_of_vec_load);
+
    /* Get rid of split copies */
    nir = brw_nir_optimize(nir, compiler, is_scalar, false);
 
