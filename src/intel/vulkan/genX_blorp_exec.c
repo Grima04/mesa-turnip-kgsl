@@ -31,7 +31,6 @@
 #undef __gen_combine_address
 
 #include "common/gen_l3_config.h"
-#include "common/gen_sample_positions.h"
 #include "blorp/blorp_genX_exec.h"
 
 static void *
