@@ -31,6 +31,7 @@
 #include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_format_zs.h"
+#include "util/u_drm.h"
 
 #include "drm-uapi/drm_fourcc.h"
 #include "v3d_screen.h"
@@ -685,19 +686,6 @@ v3d_resource_setup(struct pipe_screen *pscreen,
         return rsc;
 }
 
-static bool
-find_modifier(uint64_t needle, const uint64_t *haystack, int count)
-{
-        int i;
-
-        for (i = 0; i < count; i++) {
-                if (haystack[i] == needle)
-                        return true;
-        }
-
-        return false;
-}
-
 static struct pipe_resource *
 v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                    const struct pipe_resource *tmpl,
@@ -741,7 +729,7 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
                 return prsc;
         }
 
-        bool linear_ok = find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
+        bool linear_ok = drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
         struct v3d_resource *rsc = v3d_resource_setup(pscreen, tmpl);
         struct pipe_resource *prsc = &rsc->base;
         /* Use a tiled layout if we can, for better 3D performance. */
@@ -773,7 +761,7 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
                 linear_ok = true;
                 rsc->tiled = should_tile;
         } else if (should_tile &&
-                   find_modifier(DRM_FORMAT_MOD_BROADCOM_UIF,
+                   drm_find_modifier(DRM_FORMAT_MOD_BROADCOM_UIF,
                                  modifiers, count)) {
                 rsc->tiled = true;
         } else if (linear_ok) {
