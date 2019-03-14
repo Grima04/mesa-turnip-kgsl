@@ -738,7 +738,7 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
 {
    uint32_t samples = info ? info->rasterizationSamples : 1;
 
-   genX(emit_multisample)(&pipeline->base.batch, samples);
+   genX(emit_multisample)(&pipeline->base.batch, samples, NULL);
 
    /* From the Vulkan 1.0 spec:
     *    If pSampleMask is NULL, it is treated as if the mask has all bits

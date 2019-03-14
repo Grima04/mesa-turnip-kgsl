@@ -97,9 +97,11 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                      const unsigned entry_size[4],
                      enum gen_urb_deref_block_size *deref_block_size);
 
-void genX(emit_multisample)(struct anv_batch *batch, uint32_t samples);
+void genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
+                            const VkSampleLocationEXT *locations);
 
-void genX(emit_sample_pattern)(struct anv_batch *batch);
+void genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
+                               const VkSampleLocationEXT *locations);
 
 void genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
                                 struct anv_address dst, struct anv_address src,

@@ -156,7 +156,7 @@ genX(init_device_state)(struct anv_device *device)
 #if GEN_GEN >= 8
    anv_batch_emit(&batch, GENX(3DSTATE_WM_CHROMAKEY), ck);
 
-   genX(emit_sample_pattern)(&batch);
+   genX(emit_sample_pattern)(&batch, 0, NULL);
 
    /* The BDW+ docs describe how to use the 3DSTATE_WM_HZ_OP instruction in the
     * section titled, "Optimized Depth Buffer Clear and/or Stencil Buffer
@@ -310,7 +310,8 @@ genX(init_device_state)(struct anv_device *device)
 }
 
 void
-genX(emit_multisample)(struct anv_batch *batch, uint32_t samples)
+genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
+                       const VkSampleLocationEXT *locations)
 {
    anv_batch_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
       ms.NumberofMultisamples       = __builtin_ffs(samples) - 1;
@@ -325,21 +326,40 @@ genX(emit_multisample)(struct anv_batch *batch, uint32_t samples)
       ms.PixelPositionOffsetEnable  = false;
 #else
 
-      switch (samples) {
-      case 1:
-         GEN_SAMPLE_POS_1X(ms.Sample);
-         break;
-      case 2:
-         GEN_SAMPLE_POS_2X(ms.Sample);
-         break;
-      case 4:
-         GEN_SAMPLE_POS_4X(ms.Sample);
-         break;
-      case 8:
-         GEN_SAMPLE_POS_8X(ms.Sample);
-         break;
-      default:
-         break;
+      if (locations) {
+         switch (samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X_ARRAY(ms.Sample, locations);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X_ARRAY(ms.Sample, locations);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X_ARRAY(ms.Sample, locations);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X_ARRAY(ms.Sample, locations);
+            break;
+         default:
+            break;
+         }
+      } else {
+         switch (samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X(ms.Sample);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X(ms.Sample);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X(ms.Sample);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X(ms.Sample);
+            break;
+         default:
+            break;
+         }
       }
 #endif
    }
@@ -347,19 +367,62 @@ genX(emit_multisample)(struct anv_batch *batch, uint32_t samples)
 
 #if GEN_GEN >= 8
 void
-genX(emit_sample_pattern)(struct anv_batch *batch)
+genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
+                          const VkSampleLocationEXT *locations)
 {
    /* See the Vulkan 1.0 spec Table 24.1 "Standard sample locations" and
     * VkPhysicalDeviceFeatures::standardSampleLocations.
     */
    anv_batch_emit(batch, GENX(3DSTATE_SAMPLE_PATTERN), sp) {
-      GEN_SAMPLE_POS_1X(sp._1xSample);
-      GEN_SAMPLE_POS_2X(sp._2xSample);
-      GEN_SAMPLE_POS_4X(sp._4xSample);
-      GEN_SAMPLE_POS_8X(sp._8xSample);
+      if (locations) {
+         /* The Skylake PRM Vol. 2a "3DSTATE_SAMPLE_PATTERN" says:
+          *
+          *    "When programming the sample offsets (for NUMSAMPLES_4 or _8
+          *    and MSRASTMODE_xxx_PATTERN), the order of the samples 0 to 3
+          *    (or 7 for 8X, or 15 for 16X) must have monotonically increasing
+          *    distance from the pixel center. This is required to get the
+          *    correct centroid computation in the device."
+          *
+          * However, the Vulkan spec seems to require that the the samples
+          * occur in the order provided through the API. The standard sample
+          * patterns have the above property that they have monotonically
+          * increasing distances from the center but client-provided ones do
+          * not. As long as this only affects centroid calculations as the
+          * docs say, we should be ok because OpenGL and Vulkan only require
+          * that the centroid be some lit sample and that it's the same for
+          * all samples in a pixel; they have no requirement that it be the
+          * one closest to center.
+          */
+         switch (samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X_ARRAY(sp._1xSample, locations);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X_ARRAY(sp._2xSample, locations);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X_ARRAY(sp._4xSample, locations);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X_ARRAY(sp._8xSample, locations);
+            break;
 #if GEN_GEN >= 9
-      GEN_SAMPLE_POS_16X(sp._16xSample);
+         case 16:
+            GEN_SAMPLE_POS_16X_ARRAY(sp._16xSample, locations);
+            break;
 #endif
+         default:
+            break;
+         }
+      } else {
+         GEN_SAMPLE_POS_1X(sp._1xSample);
+         GEN_SAMPLE_POS_2X(sp._2xSample);
+         GEN_SAMPLE_POS_4X(sp._4xSample);
+         GEN_SAMPLE_POS_8X(sp._8xSample);
+#if GEN_GEN >= 9
+         GEN_SAMPLE_POS_16X(sp._16xSample);
+#endif
+      }
    }
 }
 #endif

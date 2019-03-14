@@ -28,6 +28,63 @@
  * Vulkan.  These correspond to the Vulkan "standard sample locations".
  */
 
+/* Examples:
+ * in case of GEN_GEN < 8:
+ * GEN_SAMPLE_POS_ELEM(ms.Sample, info->pSampleLocations, 0); expands to:
+ *    ms.Sample0XOffset = info->pSampleLocations[0].x;
+ *    ms.Sample0YOffset = info->pSampleLocations[0].y;
+ *
+ * in case of GEN_GEN >= 8:
+ * GEN_SAMPLE_POS_ELEM(sp._16xSample, info->pSampleLocations, 0); expands to:
+ *    sp._16xSample0XOffset = info->pSampleLocations[0].x;
+ *    sp._16xSample0YOffset = info->pSampleLocations[0].y;
+ */
+
+#define GEN_SAMPLE_POS_ELEM(prefix, arr, sample_idx) \
+prefix##sample_idx##XOffset = arr[sample_idx].x; \
+prefix##sample_idx##YOffset = arr[sample_idx].y;
+
+#define GEN_SAMPLE_POS_1X_ARRAY(prefix, arr)\
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 0);
+
+#define GEN_SAMPLE_POS_2X_ARRAY(prefix, arr) \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 1);
+
+#define GEN_SAMPLE_POS_4X_ARRAY(prefix, arr) \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 3);
+
+#define GEN_SAMPLE_POS_8X_ARRAY(prefix, arr) \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 3); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 4); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 5); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 6); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 7);
+
+#define GEN_SAMPLE_POS_16X_ARRAY(prefix, arr) \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 3); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 4); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 5); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 6); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 7); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 8); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 9); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 10); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 11); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 12); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 13); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 14); \
+   GEN_SAMPLE_POS_ELEM(prefix, arr, 15);
+
 /**
  * 1x MSAA has a single sample at the center: (0.5, 0.5) -> (0x8, 0x8).
  */
