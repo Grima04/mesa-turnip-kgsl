@@ -961,13 +961,10 @@ static void si_init_renderer_string(struct si_screen *sscreen)
 			 ", %s", uname_data.release);
 
 	snprintf(sscreen->renderer_string, sizeof(sscreen->renderer_string),
-		 "%s (%sDRM %i.%i.%i%s, LLVM %i.%i.%i)",
+		 "%s (%sDRM %i.%i.%i%s, LLVM " MESA_LLVM_VERSION_STRING ")",
 		 first_name, second_name, sscreen->info.drm_major,
 		 sscreen->info.drm_minor, sscreen->info.drm_patchlevel,
-		 kernel_version,
-		 (HAVE_LLVM >> 8) & 0xff,
-		 HAVE_LLVM & 0xff,
-		 MESA_LLVM_VERSION_PATCH);
+		 kernel_version);
 }
 
 void si_init_screen_get_functions(struct si_screen *sscreen)

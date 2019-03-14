@@ -2936,7 +2936,7 @@ dnl
 dnl Set defines and buildtime variables only when using LLVM.
 dnl
 if test "x$enable_llvm" = xyes; then
-    DEFINES="${DEFINES} -DHAVE_LLVM=0x0$LLVM_VERSION_INT -DMESA_LLVM_VERSION_PATCH=$LLVM_VERSION_PATCH"
+    DEFINES="${DEFINES} -DHAVE_LLVM=0x0$LLVM_VERSION_INT -DMESA_LLVM_VERSION_STRING=\\\"$LLVM_VERSION\\\""
 
     LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
     LLVM_CFLAGS=$LLVM_CPPFLAGS   # CPPFLAGS seem to be sufficient

@@ -47,10 +47,6 @@
 #include <llvm-c/TargetMachine.h>
 #endif
 
-#ifndef MESA_LLVM_VERSION_PATCH
-#define MESA_LLVM_VERSION_PATCH 0
-#endif
-
 struct r600_multi_fence {
 	struct pipe_reference reference;
 	struct pipe_fence_handle *gfx;
@@ -1271,7 +1267,7 @@ struct pipe_resource *r600_resource_create_common(struct pipe_screen *screen,
 bool r600_common_screen_init(struct r600_common_screen *rscreen,
 			     struct radeon_winsys *ws)
 {
-	char family_name[32] = {}, llvm_string[32] = {}, kernel_version[128] = {};
+	char family_name[32] = {}, kernel_version[128] = {};
 	struct utsname uname_data;
 	const char *chip_name;
 
@@ -1288,17 +1284,15 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		snprintf(kernel_version, sizeof(kernel_version),
 			 " / %s", uname_data.release);
 
-	if (HAVE_LLVM > 0) {
-		snprintf(llvm_string, sizeof(llvm_string),
-			 ", LLVM %i.%i.%i", (HAVE_LLVM >> 8) & 0xff,
-			 HAVE_LLVM & 0xff, MESA_LLVM_VERSION_PATCH);
-	}
-
 	snprintf(rscreen->renderer_string, sizeof(rscreen->renderer_string),
-		 "%s (%sDRM %i.%i.%i%s%s)",
+		 "%s (%sDRM %i.%i.%i%s"
+#if HAVE_LLVM > 0
+		 ", LLVM " MESA_LLVM_VERSION_STRING
+#endif
+		 ")",
 		 chip_name, family_name, rscreen->info.drm_major,
 		 rscreen->info.drm_minor, rscreen->info.drm_patchlevel,
-		 kernel_version, llvm_string);
+		 kernel_version);
 
 	rscreen->b.get_name = r600_get_name;
 	rscreen->b.get_vendor = r600_get_vendor;

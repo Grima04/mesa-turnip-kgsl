@@ -87,7 +87,6 @@ static void
 radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
 {
 	const char *chip_string;
-	char llvm_string[32] = {};
 
 	switch (family) {
 	case CHIP_TAHITI: chip_string = "AMD RADV TAHITI"; break;
@@ -116,10 +115,7 @@ radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
 	default: chip_string = "AMD RADV unknown"; break;
 	}
 
-	snprintf(llvm_string, sizeof(llvm_string),
-		 " (LLVM %i.%i.%i)", (HAVE_LLVM >> 8) & 0xff,
-		 HAVE_LLVM & 0xff, MESA_LLVM_VERSION_PATCH);
-	snprintf(name, name_len, "%s%s", chip_string, llvm_string);
+	snprintf(name, name_len, "%s (LLVM " MESA_LLVM_VERSION_STRING ")", chip_string);
 }
 
 static uint64_t
@@ -1267,9 +1263,7 @@ void radv_GetPhysicalDeviceProperties2(
 			memset(driver_props->driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE_KHR);
 			snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
 				"Mesa " PACKAGE_VERSION MESA_GIT_SHA1
-				" (LLVM %d.%d.%d)",
-				 (HAVE_LLVM >> 8) & 0xff, HAVE_LLVM & 0xff,
-				 MESA_LLVM_VERSION_PATCH);
+				" (LLVM " MESA_LLVM_VERSION_STRING ")");
 
 			driver_props->conformanceVersion = (VkConformanceVersionKHR) {
 				.major = 1,
