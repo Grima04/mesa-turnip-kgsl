@@ -705,6 +705,14 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 		return;
 
 	mtx_destroy(&sscreen->aux_context_lock);
+
+	struct u_log_context *aux_log = ((struct si_context *)sscreen->aux_context)->log;
+	if (aux_log) {
+		sscreen->aux_context->set_log_context(sscreen->aux_context, NULL);
+		u_log_context_destroy(aux_log);
+		FREE(aux_log);
+	}
+
 	sscreen->aux_context->destroy(sscreen->aux_context);
 
 	util_queue_destroy(&sscreen->shader_compiler_queue);
@@ -1190,7 +1198,13 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 		si_init_compiler(sscreen, &sscreen->compiler_lowp[i]);
 
 	/* Create the auxiliary context. This must be done last. */
-	sscreen->aux_context = si_create_context(&sscreen->b, 0);
+	sscreen->aux_context = si_create_context(
+		&sscreen->b, sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0);
+	if (sscreen->options.aux_debug) {
+		struct u_log_context *log = CALLOC_STRUCT(u_log_context);
+		u_log_context_init(log);
+		sscreen->aux_context->set_log_context(sscreen->aux_context, log);
+	}
 
 	if (sscreen->debug_flags & DBG(TEST_DMA))
 		si_test_dma(sscreen);
