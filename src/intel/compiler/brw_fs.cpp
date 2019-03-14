@@ -5604,6 +5604,49 @@ fs_visitor::lower_logical_sends()
    return progress;
 }
 
+static bool
+is_mixed_float_with_fp32_dst(const fs_inst *inst)
+{
+   /* This opcode sometimes uses :W type on the source even if the operand is
+    * a :HF, because in gen7 there is no support for :HF, and thus it uses :W.
+    */
+   if (inst->opcode == BRW_OPCODE_F16TO32)
+      return true;
+
+   if (inst->dst.type != BRW_REGISTER_TYPE_F)
+      return false;
+
+   for (int i = 0; i < inst->sources; i++) {
+      if (inst->src[i].type == BRW_REGISTER_TYPE_HF)
+         return true;
+   }
+
+   return false;
+}
+
+static bool
+is_mixed_float_with_packed_fp16_dst(const fs_inst *inst)
+{
+   /* This opcode sometimes uses :W type on the destination even if the
+    * destination is a :HF, because in gen7 there is no support for :HF, and
+    * thus it uses :W.
+    */
+   if (inst->opcode == BRW_OPCODE_F32TO16 &&
+       inst->dst.stride == 1)
+      return true;
+
+   if (inst->dst.type != BRW_REGISTER_TYPE_HF ||
+       inst->dst.stride != 1)
+      return false;
+
+   for (int i = 0; i < inst->sources; i++) {
+      if (inst->src[i].type == BRW_REGISTER_TYPE_F)
+         return true;
+   }
+
+   return false;
+}
+
 /**
  * Get the closest allowed SIMD width for instruction \p inst accounting for
  * some common regioning and execution control restrictions that apply to FPU
@@ -5765,6 +5808,35 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
           (exec_type_size == 8 || type_sz(inst->dst.type) == 8))
          max_width = MIN2(max_width, 4);
    }
+
+   /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+    * Float Operations:
+    *
+    *    "No SIMD16 in mixed mode when destination is f32. Instruction
+    *     execution size must be no more than 8."
+    *
+    * FIXME: the simulator doesn't seem to complain if we don't do this and
+    * empirical testing with existing CTS tests show that they pass just fine
+    * without implementing this, however, since our interpretation of the PRM
+    * is that conversion MOVs between HF and F are still mixed-float
+    * instructions (and therefore subject to this restriction) we decided to
+    * split them to be safe. Might be useful to do additional investigation to
+    * lift the restriction if we can ensure that it is safe though, since these
+    * conversions are common when half-float types are involved since many
+    * instructions do not support HF types and conversions from/to F are
+    * required.
+    */
+   if (is_mixed_float_with_fp32_dst(inst))
+      max_width = MIN2(max_width, 8);
+
+   /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
+    * Float Operations:
+    *
+    *    "No SIMD16 in mixed mode when destination is packed f16 for both
+    *     Align1 and Align16."
+    */
+   if (is_mixed_float_with_packed_fp16_dst(inst))
+      max_width = MIN2(max_width, 8);
 
    /* Only power-of-two execution sizes are representable in the instruction
     * control fields.
