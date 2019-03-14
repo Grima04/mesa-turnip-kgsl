@@ -490,6 +490,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_performance_query                              DONE (anv/gen8+)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv)
   VK_KHR_push_descriptor                                DONE (anv, radv)
+  VK_EXT_sample_locations                               DONE (anv, radv)
   VK_KHR_shader_clock                                   DONE (anv, radv)
   VK_KHR_shader_non_semantic_info                       DONE (anv, radv)
   VK_KHR_shader_terminate_invocation                    DONE (anv, radv)
