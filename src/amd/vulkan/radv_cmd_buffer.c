@@ -4477,8 +4477,7 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 	if (!radv_image_has_htile(image))
 		return;
 
-	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
-	           radv_layout_has_htile(image, dst_layout, dst_queue_mask)) {
+	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		/* TODO: merge with the clear if applicable */
 		radv_initialize_htile(cmd_buffer, image, range, 0);
 	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_queue_mask) &&
