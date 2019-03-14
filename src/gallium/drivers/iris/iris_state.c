@@ -2032,9 +2032,10 @@ iris_set_sampler_views(struct pipe_context *ctx,
    shs->bound_sampler_views &= ~u_bit_consecutive(start, count);
 
    for (unsigned i = 0; i < count; i++) {
+      struct pipe_sampler_view *pview = views ? views[i] : NULL;
       pipe_sampler_view_reference((struct pipe_sampler_view **)
-                                  &shs->textures[start + i], views[i]);
-      struct iris_sampler_view *view = (void *) views[i];
+                                  &shs->textures[start + i], pview);
+      struct iris_sampler_view *view = (void *) pview;
       if (view) {
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
          shs->bound_sampler_views |= 1 << (start + i);
