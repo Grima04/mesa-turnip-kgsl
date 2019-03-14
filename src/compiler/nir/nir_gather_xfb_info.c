@@ -27,11 +27,15 @@
 
 static void
 add_var_xfb_varying(nir_xfb_info *xfb,
+                    nir_xfb_varyings_info *varyings,
                     nir_variable *var,
                     unsigned offset,
                     const struct glsl_type *type)
 {
-   nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
+   if (varyings == NULL)
+      return;
+
+   nir_xfb_varying_info *varying = &varyings->varyings[varyings->varying_count++];
 
    varying->type = type;
    varying->buffer = var->data.xfb_buffer;
@@ -41,18 +45,26 @@ add_var_xfb_varying(nir_xfb_info *xfb,
 
 
 static nir_xfb_info *
-nir_gather_xfb_info_create(void *mem_ctx, uint16_t output_count, uint16_t varying_count)
+nir_xfb_info_create(void *mem_ctx, uint16_t output_count)
 {
-   nir_xfb_info *xfb = rzalloc_size(mem_ctx, sizeof(nir_xfb_info));
+   return rzalloc_size(mem_ctx, nir_xfb_info_size(output_count));
+}
 
-   xfb->varyings = rzalloc_size(xfb, sizeof(nir_xfb_varying_info) * varying_count);
-   xfb->outputs = rzalloc_size(xfb, sizeof(nir_xfb_output_info) * output_count);
+static size_t
+nir_xfb_varyings_info_size(uint16_t varying_count)
+{
+   return sizeof(nir_xfb_info) + sizeof(nir_xfb_varying_info) * varying_count;
+}
 
-   return xfb;
+static nir_xfb_varyings_info *
+nir_xfb_varyings_info_create(void *mem_ctx, uint16_t varying_count)
+{
+   return rzalloc_size(mem_ctx, nir_xfb_varyings_info_size(varying_count));
 }
 
 static void
 add_var_xfb_outputs(nir_xfb_info *xfb,
+                    nir_xfb_varyings_info *varyings,
                     nir_variable *var,
                     unsigned buffer,
                     unsigned *location,
@@ -71,17 +83,19 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       if (!glsl_type_is_array(child_type) &&
           !glsl_type_is_struct(child_type)) {
 
-         add_var_xfb_varying(xfb, var, *offset, type);
+         add_var_xfb_varying(xfb, varyings, var, *offset, type);
          varying_added = true;
       }
 
       for (unsigned i = 0; i < length; i++)
-         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type, varying_added);
+         add_var_xfb_outputs(xfb, varyings, var, buffer, location, offset,
+                             child_type, varying_added);
    } else if (glsl_type_is_struct_or_ifc(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);
-         add_var_xfb_outputs(xfb, var, buffer, location, offset, child_type, varying_added);
+         add_var_xfb_outputs(xfb, varyings, var, buffer, location, offset,
+                             child_type, varying_added);
       }
    } else {
       assert(buffer < NIR_MAX_XFB_BUFFERS);
@@ -124,7 +138,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       unsigned comp_offset = var->data.location_frac;
 
       if (!varying_added) {
-         add_var_xfb_varying(xfb, var, *offset, type);
+         add_var_xfb_varying(xfb, varyings, var, *offset, type);
       }
 
       while (comp_mask) {
@@ -166,6 +180,14 @@ compare_xfb_output_offsets(const void *_a, const void *_b)
 nir_xfb_info *
 nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
 {
+   return nir_gather_xfb_info_with_varyings(shader, mem_ctx, NULL);
+}
+
+nir_xfb_info *
+nir_gather_xfb_info_with_varyings(const nir_shader *shader,
+                                  void *mem_ctx,
+                                  nir_xfb_varyings_info **varyings_info_out)
+{
    assert(shader->info.stage == MESA_SHADER_VERTEX ||
           shader->info.stage == MESA_SHADER_TESS_EVAL ||
           shader->info.stage == MESA_SHADER_GEOMETRY);
@@ -179,6 +201,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
     */
    unsigned num_outputs = 0;
    unsigned num_varyings = 0;
+   nir_xfb_varyings_info *varyings_info = NULL;
    nir_foreach_variable(var, &shader->outputs) {
       if (var->data.explicit_xfb_buffer) {
          num_outputs += glsl_count_attribute_slots(var->type, false);
@@ -188,7 +211,11 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
    if (num_outputs == 0 || num_varyings == 0)
       return NULL;
 
-   nir_xfb_info *xfb = nir_gather_xfb_info_create(mem_ctx, num_outputs, num_varyings);
+   nir_xfb_info *xfb = nir_xfb_info_create(mem_ctx, num_outputs);
+   if (varyings_info_out != NULL) {
+      *varyings_info_out = nir_xfb_varyings_info_create(mem_ctx, num_varyings);
+      varyings_info = *varyings_info_out;
+   }
 
    /* Walk the list of outputs and add them to the array */
    nir_foreach_variable(var, &shader->outputs) {
@@ -208,7 +235,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
 
       if (var->data.explicit_offset && !is_array_block) {
          unsigned offset = var->data.offset;
-         add_var_xfb_outputs(xfb, var, var->data.xfb_buffer,
+         add_var_xfb_outputs(xfb, varyings_info, var, var->data.xfb_buffer,
                              &location, &offset, var->type, false);
       } else if (is_array_block) {
          assert(glsl_type_is_struct_or_ifc(var->interface_type));
@@ -226,7 +253,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
                }
 
                unsigned offset = foffset;
-               add_var_xfb_outputs(xfb, var, var->data.xfb_buffer + b,
+               add_var_xfb_outputs(xfb, varyings_info, var, var->data.xfb_buffer + b,
                                    &location, &offset, ftype, false);
             }
          }
@@ -239,8 +266,11 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
    qsort(xfb->outputs, xfb->output_count, sizeof(xfb->outputs[0]),
          compare_xfb_output_offsets);
 
-   qsort(xfb->varyings, xfb->varying_count, sizeof(xfb->varyings[0]),
-         compare_xfb_varying_offsets);
+   if (varyings_info != NULL) {
+      qsort(varyings_info->varyings, varyings_info->varying_count,
+            sizeof(varyings_info->varyings[0]),
+            compare_xfb_varying_offsets);
+   }
 
 #ifndef NDEBUG
    /* Finally, do a sanity check */

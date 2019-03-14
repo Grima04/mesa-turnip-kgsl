@@ -68,13 +68,14 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
    free(prog->TransformFeedback.VaryingNames);
 
    nir_xfb_info *xfb_info = NULL;
+   nir_xfb_varyings_info *varyings_info = NULL;
 
    /* Find last stage before fragment shader */
    for (int stage = MESA_SHADER_FRAGMENT - 1; stage >= 0; stage--) {
       struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
 
       if (sh && stage != MESA_SHADER_TESS_CTRL) {
-         xfb_info = nir_gather_xfb_info(sh->Program->nir, NULL);
+         xfb_info = nir_gather_xfb_info_with_varyings(sh->Program->nir, NULL, &varyings_info);
          break;
       }
    }
@@ -94,9 +95,9 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
    for (unsigned buf = 0; buf < MAX_FEEDBACK_BUFFERS; buf++)
       prog->TransformFeedback.BufferStride[buf] = xfb_info->buffers[buf].stride;
 
-   prog->TransformFeedback.NumVarying = xfb_info->varying_count;
+   prog->TransformFeedback.NumVarying = varyings_info->varying_count;
    prog->TransformFeedback.VaryingNames =
-      malloc(sizeof(GLchar *) * xfb_info->varying_count);
+      malloc(sizeof(GLchar *) * varyings_info->varying_count);
 
    linked_xfb->Outputs =
       rzalloc_array(xfb_prog,
@@ -107,16 +108,16 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
    linked_xfb->Varyings =
       rzalloc_array(xfb_prog,
                     struct gl_transform_feedback_varying_info,
-                    xfb_info->varying_count);
-   linked_xfb->NumVarying = xfb_info->varying_count;
+                    varyings_info->varying_count);
+   linked_xfb->NumVarying = varyings_info->varying_count;
 
    int buffer_index = 0; /* Corresponds to GL_TRANSFORM_FEEDBACK_BUFFER_INDEX */
    int xfb_buffer =
-      (xfb_info->varying_count > 0) ?
+      (varyings_info->varying_count > 0) ?
       xfb_info->outputs[0].buffer : 0;
 
-   for (unsigned i = 0; i < xfb_info->varying_count; i++) {
-      nir_xfb_varying_info *xfb_varying = &xfb_info->varyings[i];
+   for (unsigned i = 0; i < varyings_info->varying_count; i++) {
+      nir_xfb_varying_info *xfb_varying = &varyings_info->varyings[i];
 
       /* From ARB_gl_spirv spec:
        *

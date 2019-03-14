@@ -55,16 +55,15 @@ typedef struct nir_xfb_info {
    nir_xfb_buffer_info buffers[NIR_MAX_XFB_BUFFERS];
    uint8_t buffer_to_stream[NIR_MAX_XFB_STREAMS];
 
-   uint16_t varying_count;
-   nir_xfb_varying_info *varyings;
-
    uint16_t output_count;
-   nir_xfb_output_info *outputs;
+   nir_xfb_output_info outputs[0];
 } nir_xfb_info;
 
-/* This method doesn't take into account varyings, as it is used to compute
- * how much size is needed to copy only the outputs.
- */
+typedef struct nir_xfb_varyings_info {
+   uint16_t varying_count;
+   nir_xfb_varying_info varyings[0];
+} nir_xfb_varyings_info;
+
 static inline size_t
 nir_xfb_info_size(uint16_t output_count)
 {
@@ -74,4 +73,8 @@ nir_xfb_info_size(uint16_t output_count)
 nir_xfb_info *
 nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx);
 
+nir_xfb_info *
+nir_gather_xfb_info_with_varyings(const nir_shader *shader,
+                                  void *mem_ctx,
+                                  nir_xfb_varyings_info **varyings_info);
 #endif /* NIR_XFB_INFO_H */
