@@ -826,6 +826,49 @@ nir_visitor::visit(ir_call *ir)
       nir_intrinsic_op op;
 
       switch (ir->callee->intrinsic_id) {
+      case ir_intrinsic_generic_atomic_add:
+         op = ir->return_deref->type->is_integer_32_64()
+            ? nir_intrinsic_deref_atomic_add : nir_intrinsic_deref_atomic_fadd;
+         break;
+      case ir_intrinsic_generic_atomic_and:
+         op = nir_intrinsic_deref_atomic_and;
+         break;
+      case ir_intrinsic_generic_atomic_or:
+         op = nir_intrinsic_deref_atomic_or;
+         break;
+      case ir_intrinsic_generic_atomic_xor:
+         op = nir_intrinsic_deref_atomic_xor;
+         break;
+      case ir_intrinsic_generic_atomic_min:
+         assert(ir->return_deref);
+         if (ir->return_deref->type == glsl_type::int_type)
+            op = nir_intrinsic_deref_atomic_imin;
+         else if (ir->return_deref->type == glsl_type::uint_type)
+            op = nir_intrinsic_deref_atomic_umin;
+         else if (ir->return_deref->type == glsl_type::float_type)
+            op = nir_intrinsic_deref_atomic_fmin;
+         else
+            unreachable("Invalid type");
+         break;
+      case ir_intrinsic_generic_atomic_max:
+         assert(ir->return_deref);
+         if (ir->return_deref->type == glsl_type::int_type)
+            op = nir_intrinsic_deref_atomic_imax;
+         else if (ir->return_deref->type == glsl_type::uint_type)
+            op = nir_intrinsic_deref_atomic_umax;
+         else if (ir->return_deref->type == glsl_type::float_type)
+            op = nir_intrinsic_deref_atomic_fmax;
+         else
+            unreachable("Invalid type");
+         break;
+      case ir_intrinsic_generic_atomic_exchange:
+         op = nir_intrinsic_deref_atomic_exchange;
+         break;
+      case ir_intrinsic_generic_atomic_comp_swap:
+         op = ir->return_deref->type->is_integer_32_64()
+            ? nir_intrinsic_deref_atomic_comp_swap
+            : nir_intrinsic_deref_atomic_fcomp_swap;
+         break;
       case ir_intrinsic_atomic_counter_read:
          op = nir_intrinsic_atomic_counter_read_deref;
          break;
@@ -1049,6 +1092,63 @@ nir_visitor::visit(ir_call *ir)
       nir_ssa_def *ret = &instr->dest.ssa;
 
       switch (op) {
+      case nir_intrinsic_deref_atomic_add:
+      case nir_intrinsic_deref_atomic_imin:
+      case nir_intrinsic_deref_atomic_umin:
+      case nir_intrinsic_deref_atomic_imax:
+      case nir_intrinsic_deref_atomic_umax:
+      case nir_intrinsic_deref_atomic_and:
+      case nir_intrinsic_deref_atomic_or:
+      case nir_intrinsic_deref_atomic_xor:
+      case nir_intrinsic_deref_atomic_exchange:
+      case nir_intrinsic_deref_atomic_comp_swap:
+      case nir_intrinsic_deref_atomic_fadd:
+      case nir_intrinsic_deref_atomic_fmin:
+      case nir_intrinsic_deref_atomic_fmax:
+      case nir_intrinsic_deref_atomic_fcomp_swap: {
+         int param_count = ir->actual_parameters.length();
+         assert(param_count == 2 || param_count == 3);
+
+         /* Deref */
+         exec_node *param = ir->actual_parameters.get_head();
+         ir_rvalue *rvalue = (ir_rvalue *) param;
+         ir_dereference *deref = rvalue->as_dereference();
+         ir_swizzle *swizzle = NULL;
+         if (!deref) {
+            /* We may have a swizzle to pick off a single vec4 component */
+            swizzle = rvalue->as_swizzle();
+            assert(swizzle && swizzle->type->vector_elements == 1);
+            deref = swizzle->val->as_dereference();
+            assert(deref);
+         }
+         nir_deref_instr *nir_deref = evaluate_deref(deref);
+         if (swizzle) {
+            nir_deref = nir_build_deref_array_imm(&b, nir_deref,
+                                                  swizzle->mask.x);
+         }
+         instr->src[0] = nir_src_for_ssa(&nir_deref->dest.ssa);
+
+         /* data1 parameter (this is always present) */
+         param = param->get_next();
+         ir_instruction *inst = (ir_instruction *) param;
+         instr->src[1] = nir_src_for_ssa(evaluate_rvalue(inst->as_rvalue()));
+
+         /* data2 parameter (only with atomic_comp_swap) */
+         if (param_count == 3) {
+            assert(op == nir_intrinsic_deref_atomic_comp_swap ||
+                   op == nir_intrinsic_deref_atomic_fcomp_swap);
+            param = param->get_next();
+            inst = (ir_instruction *) param;
+            instr->src[2] = nir_src_for_ssa(evaluate_rvalue(inst->as_rvalue()));
+         }
+
+         /* Atomic result */
+         assert(ir->return_deref);
+         nir_ssa_dest_init(&instr->instr, &instr->dest,
+                           ir->return_deref->type->vector_elements, 32, NULL);
+         nir_builder_instr_insert(&b, &instr->instr);
+         break;
+      }
       case nir_intrinsic_atomic_counter_read_deref:
       case nir_intrinsic_atomic_counter_inc_deref:
       case nir_intrinsic_atomic_counter_pre_dec_deref:
@@ -1735,6 +1835,18 @@ nir_visitor::visit(ir_expression *ir)
                               swizzle->type->vector_elements, false);
       }
 
+      return;
+   }
+
+   case ir_unop_ssbo_unsized_array_length: {
+      nir_intrinsic_instr *intrin =
+         nir_intrinsic_instr_create(b.shader,
+                                    nir_intrinsic_deref_buffer_array_length);
+
+      ir_dereference *deref = ir->operands[0]->as_dereference();
+      intrin->src[0] = nir_src_for_ssa(&evaluate_deref(deref)->dest.ssa);
+
+      add_instr(&intrin->instr, 1, 32);
       return;
    }
 
