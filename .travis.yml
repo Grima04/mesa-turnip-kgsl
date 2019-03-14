@@ -20,6 +20,7 @@ matrix:
         - LABEL="macOS meson"
         - BUILD=meson
         - DRI_LOADERS="-Dplatforms=x11"
+        - GALLIUM_DRIVERS=swrast
       os: osx
 
 before_install:
