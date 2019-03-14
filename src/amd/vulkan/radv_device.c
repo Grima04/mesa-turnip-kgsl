@@ -919,6 +919,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderSharedInt64Atomics = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+			VkPhysicalDeviceInlineUniformBlockFeaturesEXT *features =
+				(VkPhysicalDeviceInlineUniformBlockFeaturesEXT *)ext;
+
+			features->inlineUniformBlock = true;
+			features->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1213,7 +1221,8 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->robustBufferAccessUpdateAfterBind = false;
 			properties->quadDivergentImplicitLod = false;
 
-			size_t max_descriptor_set_size = ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS) /
+			size_t max_descriptor_set_size = ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS -
+				MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_INLINE_UNIFORM_BLOCK_COUNT) /
 			          (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
 			           32 /* storage buffer, 32 due to potential space wasted on alignment */ +
 			           32 /* sampler, largest when combined with image */ +
@@ -1299,6 +1308,17 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->transformFeedbackStreamsLinesTriangles = false;
 			properties->transformFeedbackRasterizationStreamSelect = false;
 			properties->transformFeedbackDraw = true;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+			VkPhysicalDeviceInlineUniformBlockPropertiesEXT *props =
+				(VkPhysicalDeviceInlineUniformBlockPropertiesEXT *)ext;
+
+			props->maxInlineUniformBlockSize = MAX_INLINE_UNIFORM_BLOCK_SIZE;
+			props->maxPerStageDescriptorInlineUniformBlocks = MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_SETS;
+			props->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_SETS;
+			props->maxDescriptorSetInlineUniformBlocks = MAX_INLINE_UNIFORM_BLOCK_COUNT;
+			props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_INLINE_UNIFORM_BLOCK_COUNT;
 			break;
 		}
 		default:
