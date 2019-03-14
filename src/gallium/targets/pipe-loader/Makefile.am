@@ -53,16 +53,14 @@ endif
 
 PIPE_LIBS += \
 	$(top_builddir)/src/gallium/auxiliary/libgallium.la \
-	$(top_builddir)/src/compiler/nir/libnir.la \
-	$(top_builddir)/src/util/libmesautil.la \
+	$(top_builddir)/src/compiler/glsl/libglsl.la \
 	$(GALLIUM_COMMON_LIB_DEPS)
 
 AM_LDFLAGS = \
 	-module \
 	-no-undefined \
 	-avoid-version \
-	$(GC_SECTIONS) \
-	$(LD_NO_UNDEFINED)
+	$(GC_SECTIONS)
 
 if HAVE_LD_VERSION_SCRIPT
 AM_LDFLAGS += \
