@@ -736,8 +736,9 @@ static void
 emit_ms_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info)
 {
-   uint32_t samples = 1;
-   uint32_t log2_samples = 0;
+   uint32_t samples = info ? info->rasterizationSamples : 1;
+
+   genX(emit_multisample)(&pipeline->base.batch, samples);
 
    /* From the Vulkan 1.0 spec:
     *    If pSampleMask is NULL, it is treated as if the mask has all bits
@@ -751,45 +752,8 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    uint32_t sample_mask = 0xff;
 #endif
 
-   if (info) {
-      samples = info->rasterizationSamples;
-      log2_samples = __builtin_ffs(samples) - 1;
-   }
-
    if (info && info->pSampleMask)
       sample_mask &= info->pSampleMask[0];
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MULTISAMPLE), ms) {
-      ms.NumberofMultisamples       = log2_samples;
-
-      ms.PixelLocation              = CENTER;
-#if GEN_GEN >= 8
-      /* The PRM says that this bit is valid only for DX9:
-       *
-       *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
-       *    should not have any effect by setting or not setting this bit.
-       */
-      ms.PixelPositionOffsetEnable  = false;
-#else
-
-      switch (samples) {
-      case 1:
-         GEN_SAMPLE_POS_1X(ms.Sample);
-         break;
-      case 2:
-         GEN_SAMPLE_POS_2X(ms.Sample);
-         break;
-      case 4:
-         GEN_SAMPLE_POS_4X(ms.Sample);
-         break;
-      case 8:
-         GEN_SAMPLE_POS_8X(ms.Sample);
-         break;
-      default:
-         break;
-      }
-#endif
-   }
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
       sm.SampleMask = sample_mask;
