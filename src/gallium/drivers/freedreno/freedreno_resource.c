@@ -32,6 +32,7 @@
 #include "util/u_string.h"
 #include "util/u_surface.h"
 #include "util/set.h"
+#include "util/u_drm.h"
 
 #include "freedreno_resource.h"
 #include "freedreno_batch_cache.h"
@@ -830,19 +831,6 @@ has_depth(enum pipe_format format)
 	}
 }
 
-static bool
-find_modifier(uint64_t needle, const uint64_t *haystack, int count)
-{
-	int i;
-
-	for (i = 0; i < count; i++) {
-		if (haystack[i] == needle)
-			return true;
-	}
-
-	return false;
-}
-
 /**
  * Create a new texture object, using the given template info.
  */
@@ -906,7 +894,7 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	 PIPE_BIND_LINEAR  | \
 	 PIPE_BIND_DISPLAY_TARGET)
 
-	bool linear = find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
+	bool linear = drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
 	if (tmpl->bind & LINEAR)
 		linear = true;
 
@@ -918,9 +906,9 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	 * except we don't have a format modifier for tiled.  (We probably
 	 * should.)
 	 */
-	bool allow_ubwc = find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
+	bool allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
 	if (tmpl->bind & PIPE_BIND_SHARED)
-		allow_ubwc = find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
+		allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
 
 	/* TODO turn on UBWC for all internal buffers
 	 * Manhattan benchmark shows artifacts when enabled.  Once this
