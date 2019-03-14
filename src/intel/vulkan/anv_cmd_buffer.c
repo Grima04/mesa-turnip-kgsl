@@ -188,6 +188,14 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
    ANV_CMP_COPY(dyn_vbo_stride, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
    ANV_CMP_COPY(dyn_vbo_size, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
 
+   if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
+      dest->sample_locations.samples = src->sample_locations.samples;
+      typed_memcpy(dest->sample_locations.locations,
+                   src->sample_locations.locations,
+                   dest->sample_locations.samples);
+      changed |= ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
+   }
+
 #undef ANV_CMP_COPY
 
    return changed;
@@ -685,6 +693,22 @@ void anv_CmdSetStencilReference(
       cmd_buffer->state.gfx.dynamic.stencil_reference.back = reference;
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+}
+
+void anv_CmdSetSampleLocationsEXT(
+    VkCommandBuffer                             commandBuffer,
+    const VkSampleLocationsInfoEXT*             pSampleLocationsInfo)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   struct anv_dynamic_state *dyn_state = &cmd_buffer->state.gfx.dynamic;
+   uint32_t samples = pSampleLocationsInfo->sampleLocationsPerPixel;
+
+   dyn_state->sample_locations.samples = samples;
+   typed_memcpy(dyn_state->sample_locations.locations,
+                pSampleLocationsInfo->pSampleLocations, samples);
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
 }
 
 void anv_CmdSetLineStippleEXT(

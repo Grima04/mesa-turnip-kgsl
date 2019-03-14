@@ -345,6 +345,13 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.gfx.primitive_topology = topology;
    }
 
+   if (cmd_buffer->device->enabled_extensions.EXT_sample_locations &&
+       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
+      genX(emit_multisample)(&cmd_buffer->batch,
+                             cmd_buffer->state.gfx.dynamic.sample_locations.samples,
+                             cmd_buffer->state.gfx.dynamic.sample_locations.locations);
+   }
+
    cmd_buffer->state.gfx.dirty = 0;
 }
 
