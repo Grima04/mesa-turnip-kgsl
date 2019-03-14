@@ -680,17 +680,5 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
 
         ralloc_free(g);
 
-        if (V3D_DEBUG & V3D_DEBUG_SHADERDB) {
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d spills\n",
-                        vir_get_stage_name(c),
-                        c->program_id, c->variant_id,
-                        c->spills);
-
-                fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d fills\n",
-                        vir_get_stage_name(c),
-                        c->program_id, c->variant_id,
-                        c->fills);
-        }
-
         return temp_registers;
 }

@@ -913,6 +913,9 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                            c->spills,
                            c->fills);
         if (ret >= 0) {
+                if (V3D_DEBUG & V3D_DEBUG_SHADERDB)
+                        fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
+
                 c->debug_output(shaderdb, c->debug_output_data);
                 free(shaderdb);
         }
