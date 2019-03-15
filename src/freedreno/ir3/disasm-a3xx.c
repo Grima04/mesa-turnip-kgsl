@@ -827,10 +827,7 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 
 static void print_instr_cat6(struct disasm_ctx *ctx, instr_t *instr)
 {
-	// TODO not sure if this is the best way to figure
-	// out if new vs old encoding, but it kinda seems
-	// to work:
-	if ((ctx->gpu_id >= 600) && (instr->cat6.opc == 0)) {
+	if (!is_cat6_legacy(instr, ctx->gpu_id)) {
 		print_instr_cat6_a6xx(ctx, instr);
 		if (debug & PRINT_VERBOSE)
 			fprintf(ctx->out, " NEW");
