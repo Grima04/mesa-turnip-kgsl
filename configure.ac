@@ -1574,6 +1574,12 @@ if test "x$enable_libglvnd" = xyes -a "x$EGL_LIB_SUFFIX" != x; then
     AC_MSG_ERROR([EGL lib suffix can't be used with libglvnd])
 fi
 
+AC_ARG_WITH([platform-sdk-version],
+  [AS_HELP_STRING([--with-platform-sdk-version@<:@=NAME@:>@],
+    [specify Android platform SDK version @<:@default=none@:>@])],
+  [platform_sdk_version=$withval],
+  [platform_sdk_version=""])
+
 dnl
 dnl Mangled Mesa support
 dnl
@@ -1908,7 +1914,12 @@ for plat in $platforms; do
         ;;
 
     android)
-        PKG_CHECK_MODULES([ANDROID], [cutils hardware sync])
+        if test -n "$platform_sdk_version" && test "$platform_sdk_version" -ge 26; then
+            PKG_CHECK_MODULES([ANDROID], [cutils hardware nativewindow sync])
+        else
+            PKG_CHECK_MODULES([ANDROID], [cutils hardware sync])
+        fi
+
         if test -n "$with_gallium_drivers"; then
             PKG_CHECK_MODULES([BACKTRACE], [backtrace])
         fi

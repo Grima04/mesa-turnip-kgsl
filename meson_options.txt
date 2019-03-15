@@ -347,3 +347,11 @@ option(
   value : '',
   description : 'Suffix to append to GLES library names.  Default: none.'
 )
+option(
+  'platform-sdk-version',
+  type : 'integer',
+  min : 25,
+  max : 28,
+  value : 25,
+  description : 'Android Platform SDK version. Default: Nougat version.'
+)
