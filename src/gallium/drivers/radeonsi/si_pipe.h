@@ -147,7 +147,6 @@ enum {
 
 	/* Shader compiler options (with no effect on the shader cache): */
 	DBG_CHECK_IR,
-	DBG_NIR,
 	DBG_MONOLITHIC_SHADERS,
 	DBG_NO_OPT_VARIANT,
 
@@ -469,13 +468,17 @@ struct si_screen {
 	bool				has_out_of_order_rast;
 	bool				assume_no_z_fights;
 	bool				commutative_blend_add;
-	bool				clear_db_cache_before_clear;
 	bool				has_msaa_sample_loc_bug;
 	bool				has_ls_vgpr_init_bug;
 	bool				has_dcc_constant_encode;
 	bool				dpbb_allowed;
 	bool				dfsm_allowed;
 	bool				llvm_has_working_vgpr_indexing;
+
+	struct {
+#define OPT_BOOL(name, dflt, description) bool name:1;
+#include "si_debug_options.h"
+	} options;
 
 	/* Whether shaders are monolithic (1-part) or separate (3-part). */
 	bool				use_monolithic_shaders;

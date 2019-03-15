@@ -638,7 +638,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 		 * This hack decreases back-to-back ClearDepth performance.
 		 */
 		if ((sctx->db_depth_clear || sctx->db_stencil_clear) &&
-		    sctx->screen->clear_db_cache_before_clear)
+		    sctx->screen->options.clear_db_cache_before_clear)
 			sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB;
 	}
 
