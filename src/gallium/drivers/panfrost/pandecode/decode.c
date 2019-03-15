@@ -1357,7 +1357,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 /* Number of descriptors depends on whether there are
                  * non-internal varyings */
 
-                pandecode_replay_attributes(attr_mem, p->varyings, job_no, suffix, varying_count > 1 ? 2 : 1, true);
+                pandecode_replay_attributes(attr_mem, p->varyings, job_no, suffix, varying_count > 1 ? 4 : 1, true);
         }
 
         if (p->varying_meta) {
