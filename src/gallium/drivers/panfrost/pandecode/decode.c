@@ -1692,7 +1692,11 @@ pandecode_replay_primitive_size(union midgard_primitive_size u, bool constant)
         pandecode_log(".primitive_size = {\n");
         pandecode_indent++;
 
-        pandecode_prop("constant = %f", u.constant);
+        if (constant) {
+                pandecode_prop("constant = %f", u.constant);
+        } else {
+                MEMORY_PROP((&u), pointer);
+        }
 
         pandecode_indent--;
         pandecode_log("},\n");
@@ -1802,8 +1806,8 @@ pandecode_replay_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header
         pandecode_log("struct midgard_payload_vertex_tiler payload_%d = {\n", job_no);
         pandecode_indent++;
 
-        /* TODO: gl_PointSize */
-        pandecode_replay_primitive_size(v->primitive_size, true);
+        bool has_primitive_pointer = v->prefix.unknown_draw & MALI_DRAW_VARYING_SIZE;
+        pandecode_replay_primitive_size(v->primitive_size, !has_primitive_pointer);
 
         pandecode_log(".prefix = ");
         pandecode_replay_vertex_tiler_prefix(&v->prefix, job_no);
