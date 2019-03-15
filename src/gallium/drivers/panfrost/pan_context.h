@@ -241,27 +241,6 @@ struct panfrost_blend_state {
         int blend_work_count;
 };
 
-/* Internal varyings descriptor */
-struct panfrost_varyings {
-        /* Varyings information: stride of each chunk of memory used for
-         * varyings (similar structure with attributes). Count is just the
-         * number of vec4's. Buffer count is the number of varying chunks (<=
-         * count). Height is used to calculate gl_Position's position ("it's
-         * not a pun, Alyssa!"). Vertex-only varyings == descriptor for
-         * gl_Position and something else apparently occupying the same space.
-         * Varyings == main varyings descriptors following typical mali_attr
-         * conventions. */
-
-        unsigned varyings_stride[MAX_VARYINGS];
-        unsigned varying_count;
-        unsigned varying_buffer_count;
-
-        /* Map of the actual varyings buffer */
-        uint8_t *varyings_buffer_cpu;
-        mali_ptr varyings_descriptor;
-        mali_ptr varyings_descriptor_fragment;
-};
-
 /* Variants bundle together to form the backing CSO, bundling multiple
  * shaders with varying emulated features baked in (alpha test
  * parameters, etc) */
@@ -280,9 +259,10 @@ struct panfrost_shader_state {
         int uniform_count;
         bool can_discard;
         bool writes_point_size;
+        bool reads_point_coord;
 
-        /* Valid for vertex shaders only due to when this is calculated */
-        struct panfrost_varyings varyings;
+        unsigned general_varying_stride;
+        struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
 
         /* Information on this particular shader variant */
         struct pipe_alpha_state alpha_state;

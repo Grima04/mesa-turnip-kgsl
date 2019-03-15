@@ -754,6 +754,13 @@ enum mali_attr_mode {
 	MALI_ATTR_NPOT_DIVIDE = 4,
 };
 
+/* This magic "pseudo-address" is used as `elements` to implement
+ * gl_PointCoord. When read from a fragment shader, it generates a point
+ * coordinate per the OpenGL ES 2.0 specification. Flipped coordinate spaces
+ * require an affine transformation in the shader. */
+
+#define MALI_VARYING_POINT_COORD (0x60)
+
 union mali_attr {
 	/* This is used for actual attributes. */
 	struct {

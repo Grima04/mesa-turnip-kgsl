@@ -35,6 +35,8 @@ typedef struct {
         int attribute_count;
         int varying_count;
 
+        unsigned varyings[32];
+
         /* Boolean properties of the program */
         bool can_discard;
         bool writes_point_size;

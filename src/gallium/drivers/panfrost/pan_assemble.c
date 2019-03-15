@@ -88,125 +88,55 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
 
         state->can_discard = program.can_discard;
         state->writes_point_size = program.writes_point_size;
+        state->reads_point_coord = false;
 
         /* Separate as primary uniform count is truncated */
         state->uniform_count = program.uniform_count;
 
-        /* gl_Position eats up an extra spot */
-        if (type == JOB_TYPE_VERTEX)
-                meta->varying_count += 1;
-
-	/* Note: gl_FragCoord does -not- eat an extra spot; it will be included
-	 * in our count if we need it */
-
         meta->midgard1.unknown2 = 8; /* XXX */
 
-        /* Varyings are known only through the shader. We choose to upload this
-         * information with the vertex shader, though the choice is perhaps
-         * arbitrary */
+        unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
+        unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
+        unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
 
-        if (type == JOB_TYPE_VERTEX) {
-                struct panfrost_varyings *varyings = &state->varyings;
+        /* Iterate the varyings and emit the corresponding descriptor */
+        unsigned general_purpose_count = 0;
 
-                /* Measured in vec4 words. Don't include gl_Position */
-                int varying_count = program.varying_count;
+        for (unsigned i = 0; i < program.varying_count; ++i) {
+                unsigned location = program.varyings[i];
 
-                /* Setup two buffers, one for position, the other for normal
-                 * varyings, as seen in traces. TODO: Are there other
-                 * configurations we might use? */
-
-                varyings->varying_buffer_count = 2;
-
-                /* mediump vec4s sequentially */
-                varyings->varyings_stride[0] = (2 * sizeof(float)) * varying_count;
-
-                /* highp gl_Position */
-                varyings->varyings_stride[1] = 4 * sizeof(float);
-
-                /* mediump gl_PointSize */
-                if (program.writes_point_size) {
-                        ++varyings->varying_buffer_count;
-                        varyings->varyings_stride[2] = 2; /* sizeof(fp16) */
-                }
-
-                /* Setup gl_Position, its weirdo analogue, and gl_PointSize (optionally) */
-                unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
-                unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
-
-                struct mali_attr_meta vertex_special_varyings[] = {
-                        {
-                                .index = 1,
-                                .format = MALI_VARYING_POS,
-
-                                .swizzle = default_vec4_swizzle,
-                                .unknown1 = 0x2,
-                        },
-                        {
-                                .index = 1,
-                                .format = MALI_RGBA16F,
-
-                                /* TODO: Wat? yyyy swizzle? */
-                                .swizzle = 0x249,
-                                .unknown1 = 0x0,
-                        },
-                        {
-                                .index = 2,
-                                .format = MALI_R16F,
-                                .swizzle =  default_vec1_swizzle,
-                                .unknown1 = 0x2
-                        }
+                /* Default to a vec4 varying */
+                struct mali_attr_meta v = {
+                        .format = MALI_RGBA16F,
+                        .swizzle = default_vec4_swizzle,
+                        .unknown1 = 0x2,
                 };
 
-                /* How many special vertex varyings are actually required? */
-                int vertex_special_count = 2 + (program.writes_point_size ? 1 : 0);
+                /* Check for special cases, otherwise assume general varying */
 
-                /* Setup actual varyings. XXX: Don't assume vec4 */
+                if (location == VARYING_SLOT_POS) {
+                        v.index = 1;
+                        v.format = MALI_VARYING_POS;
+                } else if (location == VARYING_SLOT_PSIZ) {
+                        v.index = 2;
+                        v.format = MALI_R16F;
+                        v.swizzle = default_vec1_swizzle;
 
-                struct mali_attr_meta mali_varyings[PIPE_MAX_ATTRIBS];
+                        state->writes_point_size = true;
+                } else if (location == VARYING_SLOT_PNTC) {
+                        v.index = 3;
+                        v.format = MALI_RG16F;
+                        v.swizzle = default_vec2_swizzle;
 
-                for (int i = 0; i < varying_count; ++i) {
-                        struct mali_attr_meta vec4_varying_meta = {
-                                .index = 0,
-                                .format = MALI_RGBA16F,
-                                .swizzle = default_vec4_swizzle,
-                                .unknown1 = 0x2,
-
-                                /* Set offset to keep everything back-to-back in
-                                 * the same buffer */
-                                .src_offset = 8 * i,
-                        };
-
-                        mali_varyings[i] = vec4_varying_meta;
+                        state->reads_point_coord = true;
+                } else {
+                        v.index = 0;
+                        v.src_offset = 8 * (general_purpose_count++);
                 }
 
-                /* We don't count the weirdo gl_Position in our varying count */
-                varyings->varying_count = varying_count - 1;
-
-                /* In this context, position_meta represents the implicit
-                 * gl_FragCoord varying. So, upload all the varyings */
-
-                unsigned varyings_size = sizeof(struct mali_attr_meta) * varyings->varying_count;
-                unsigned vertex_special_size = sizeof(struct mali_attr_meta) * vertex_special_count;
-                unsigned vertex_size = vertex_special_size + varyings_size;
-                unsigned fragment_size = varyings_size + sizeof(struct mali_attr_meta);
-
-                struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, vertex_size + fragment_size, HEAP_DESCRIPTOR);
-
-                /* Copy varyings in the follow order:
-                 *  - Position 1, 2
-                 *  - Varyings 1, 2, ..., n
-                 *  - Varyings 1, 2, ..., n (duplicate)
-                 *  - Position 1
-                 */
-
-                memcpy(transfer.cpu, vertex_special_varyings, vertex_special_size);
-                memcpy(transfer.cpu + vertex_special_size, mali_varyings, varyings_size);
-                memcpy(transfer.cpu + vertex_size, mali_varyings, varyings_size);
-                memcpy(transfer.cpu + vertex_size + varyings_size, &vertex_special_varyings[0], sizeof(struct mali_attr_meta));
-
-                /* Point to the descriptor */
-                varyings->varyings_buffer_cpu = transfer.cpu;
-                varyings->varyings_descriptor = transfer.gpu;
-                varyings->varyings_descriptor_fragment = transfer.gpu + vertex_size;
+                state->varyings[i] = v;
         }
+
+        /* Set the stride for the general purpose fp16 vec4 varyings */
+        state->general_varying_stride = (2 * 4) * general_purpose_count;
 }

@@ -431,9 +431,6 @@ typedef struct compiler_context {
         struct hash_table_u64 *uniform_nir_to_mdg;
         int uniform_count;
 
-        struct hash_table_u64 *varying_nir_to_mdg;
-        int varying_count;
-
         /* Just the count of the max register used. Higher count => higher
          * register pressure */
         int work_registers;
@@ -1397,17 +1394,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                          * dedicated cleanup pass is the only way to
                          * guarantee correctness when considering some
                          * (common) edge cases XXX: FIXME */
-
-                        /* Look up how it was actually laid out */
-
-                        void *entry = _mesa_hash_table_u64_search(ctx->varying_nir_to_mdg, offset + 1);
-
-                        if (!entry) {
-                                DBG("WARNING: skipping varying\n");
-                                break;
-                        }
-
-                        offset = (uintptr_t) (entry) - 1;
 
                         /* If this varying corresponds to a constant (why?!),
                          * emit that now since it won't get picked up by
@@ -3455,41 +3441,15 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 }
         }
 
-        if (ctx->stage == MESA_SHADER_VERTEX) {
-                ctx->varying_nir_to_mdg = _mesa_hash_table_u64_create(NULL);
+        /* Record the varying mapping for the command stream's bookkeeping */
 
-                /* First, collect the special varyings */
-                nir_foreach_variable(var, &nir->outputs) {
-                        if (var->data.location == VARYING_SLOT_POS) {
-                                /* Set position first, always. It takes up two
-                                 * spots, the latter one is de facto unused (at
-                                 * least from the shader's perspective), we
-                                 * just need to skip over the spot*/
+        struct exec_list *varyings =
+                ctx->stage == MESA_SHADER_VERTEX ? &nir->outputs : &nir->inputs;
 
-                                _mesa_hash_table_u64_insert(ctx->varying_nir_to_mdg, var->data.driver_location + 1, (void *) ((uintptr_t) (0 + 1)));
-                                ctx->varying_count = MAX2(ctx->varying_count, 2);
-                        } else if (var->data.location == VARYING_SLOT_PSIZ) {
-                                /* Set point size second (third, see above) */
-                                _mesa_hash_table_u64_insert(ctx->varying_nir_to_mdg, var->data.driver_location + 1, (void *) ((uintptr_t) (2 + 1)));
-                                ctx->varying_count = MAX2(ctx->varying_count, 3);
-
-                                program->writes_point_size = true;
-                        }
-                }
-
-                /* Now, collect normal varyings */
- 
-                nir_foreach_variable(var, &nir->outputs) {
-                        if (var->data.location == VARYING_SLOT_POS || var->data.location == VARYING_SLOT_PSIZ) continue;
-
-                        for (int col = 0; col < glsl_get_matrix_columns(var->type); ++col) {
-                                int id = ctx->varying_count++;
-                                _mesa_hash_table_u64_insert(ctx->varying_nir_to_mdg, var->data.driver_location + col + 1, (void *) ((uintptr_t) (id + 1)));
-                        }
-                }
+        nir_foreach_variable(var, varyings) {
+                unsigned loc = var->data.driver_location;
+                program->varyings[loc] = var->data.location;
         }
-
-
 
         /* Lower vars -- not I/O -- before epilogue */
 

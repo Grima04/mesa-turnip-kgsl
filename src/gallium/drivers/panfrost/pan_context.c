@@ -647,6 +647,90 @@ panfrost_set_value_job(struct panfrost_context *ctx)
         ctx->set_value_job = transfer.gpu;
 }
 
+static mali_ptr
+panfrost_emit_varyings(
+                struct panfrost_context *ctx,
+                union mali_attr *slot,
+                unsigned stride,
+                unsigned count)
+{
+        mali_ptr varying_address = ctx->varying_mem.gpu + ctx->varying_height;
+
+        /* Fill out the descriptor */
+        slot->elements = varying_address | MALI_ATTR_LINEAR;
+        slot->stride = stride;
+        slot->size = stride * count;
+
+        ctx->varying_height += ALIGN(slot->size, 64);
+        assert(ctx->varying_height < ctx->varying_mem.size);
+
+        return varying_address;
+}
+
+static void
+panfrost_emit_point_coord(union mali_attr *slot)
+{
+        slot->elements = MALI_VARYING_POINT_COORD | MALI_ATTR_LINEAR;
+        slot->stride = slot->size = 0;
+}
+
+static void
+panfrost_emit_varying_descriptor(
+                struct panfrost_context *ctx,
+                unsigned invocation_count)
+{
+        /* Load the shaders */
+
+        struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
+        struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
+
+        /* Allocate the varying descriptor */
+
+        size_t vs_size = sizeof(struct mali_attr_meta) * vs->tripipe->varying_count;
+        size_t fs_size = sizeof(struct mali_attr_meta) * fs->tripipe->varying_count;
+
+        struct panfrost_transfer trans = panfrost_allocate_transient(ctx,
+                        vs_size + fs_size);
+
+        memcpy(trans.cpu, vs->varyings, vs_size);
+        memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
+
+        ctx->payload_vertex.postfix.varying_meta = trans.gpu;
+        ctx->payload_tiler.postfix.varying_meta = trans.gpu + vs_size;
+
+        /* Buffer indices must be in this order per our convention */
+        union mali_attr varyings[PIPE_MAX_ATTRIBS];
+        unsigned idx = 0;
+
+        /* General varyings -- use the VS's, since those are more likely to be
+         * accurate on desktop */
+
+        panfrost_emit_varyings(ctx, &varyings[idx++],
+                        vs->general_varying_stride, invocation_count);
+
+        /* fp32 vec4 gl_Position */
+        ctx->payload_tiler.postfix.position_varying =
+                panfrost_emit_varyings(ctx, &varyings[idx++],
+                                sizeof(float) * 4, invocation_count);
+
+
+        if (vs->writes_point_size || fs->reads_point_coord) {
+                /* fp16 vec1 gl_PointSize */
+                ctx->payload_tiler.primitive_size.pointer =
+                        panfrost_emit_varyings(ctx, &varyings[idx++],
+                                        2, invocation_count);
+        }
+
+        if (fs->reads_point_coord) {
+                /* Special descriptor */
+                panfrost_emit_point_coord(&varyings[idx++]);
+        }
+
+        mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, idx * sizeof(union mali_attr));
+        ctx->payload_vertex.postfix.varyings = varyings_p;
+        ctx->payload_tiler.postfix.varyings = varyings_p;
+}
+
 /* Emits attributes and varying descriptors, which should be called every draw,
  * excepting some obscure circumstances */
 
@@ -655,7 +739,6 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
 {
         /* TODO: Only update the dirtied buffers */
         union mali_attr attrs[PIPE_MAX_ATTRIBS];
-        union mali_attr varyings[PIPE_MAX_ATTRIBS];
 
         unsigned invocation_count = MALI_NEGATIVE(ctx->payload_tiler.prefix.invocation_count);
 
@@ -698,39 +781,9 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
                 }
         }
 
-        struct panfrost_varyings *vars = &ctx->vs->variants[ctx->vs->active_variant].varyings;
-
-        for (int i = 0; i < vars->varying_buffer_count; ++i) {
-                mali_ptr varying_address = ctx->varying_mem.gpu + ctx->varying_height;
-
-                varyings[i].elements = varying_address | 1;
-                varyings[i].stride = vars->varyings_stride[i];
-                varyings[i].size = vars->varyings_stride[i] * invocation_count;
-
-                /* If this varying has to be linked somewhere, do it now. See
-                 * pan_assemble.c for the indices. TODO: Use a more generic
-                 * linking interface */
-
-                if (i == 1) {
-                        /* gl_Position */
-                        ctx->payload_tiler.postfix.position_varying = varying_address;
-                } else if (i == 2) {
-                        /* gl_PointSize */
-                        ctx->payload_tiler.primitive_size.pointer = varying_address;
-                }
-
-                /* Varyings appear to need 64-byte alignment */
-                ctx->varying_height += ALIGN(varyings[i].size, 64);
-
-                /* Ensure that we fit */
-                assert(ctx->varying_height < ctx->varying_mem.size);
-        }
-
         ctx->payload_vertex.postfix.attributes = panfrost_upload_transient(ctx, attrs, ctx->vertex_buffer_count * sizeof(union mali_attr));
 
-        mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, vars->varying_buffer_count * sizeof(union mali_attr));
-        ctx->payload_vertex.postfix.varyings = varyings_p;
-        ctx->payload_tiler.postfix.varyings = varyings_p;
+        panfrost_emit_varying_descriptor(ctx, invocation_count);
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -773,6 +826,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
                 /* Late shader descriptor assignments */
+
                 vs->tripipe->texture_count = ctx->sampler_view_count[PIPE_SHADER_VERTEX];
                 vs->tripipe->sampler_count = ctx->sampler_count[PIPE_SHADER_VERTEX];
 
@@ -780,15 +834,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 vs->tripipe->midgard1.unknown1 = 0x2201;
 
                 ctx->payload_vertex.postfix._shader_upper = vs->tripipe_gpu >> 4;
-
-                /* Varying descriptor is tied to the vertex shader. Also the
-                 * fragment shader, I suppose, but it's generated with the
-                 * vertex shader so */
-
-                struct panfrost_varyings *varyings = &ctx->vs->variants[ctx->vs->active_variant].varyings;
-
-                ctx->payload_vertex.postfix.varying_meta = varyings->varyings_descriptor;
-                ctx->payload_tiler.postfix.varying_meta = varyings->varyings_descriptor_fragment;
         }
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
