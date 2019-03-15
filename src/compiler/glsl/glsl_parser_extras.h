@@ -1010,6 +1010,8 @@ extern int glcpp_preprocess(void *ctx, const char **shader, char **info_log,
                             struct _mesa_glsl_parse_state *state,
                             struct gl_context *gl_ctx);
 
+extern void _mesa_init_shader_compiler_types(void);
+extern void _mesa_destroy_shader_compiler_types(void);
 extern void _mesa_destroy_shader_compiler(void);
 extern void _mesa_destroy_shader_compiler_caches(void);
 

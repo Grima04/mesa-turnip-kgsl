@@ -41,6 +41,7 @@
 #include "git_sha1.h"
 #include "vk_util.h"
 #include "common/gen_defines.h"
+#include "compiler/glsl_types.h"
 
 #include "genxml/gen7_pack.h"
 
@@ -716,6 +717,7 @@ VkResult anv_CreateInstance(
       env_var_as_boolean("ANV_ENABLE_PIPELINE_CACHE", true);
 
    _mesa_locale_init();
+   glsl_type_singleton_init_or_ref();
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
@@ -746,6 +748,7 @@ void anv_DestroyInstance(
 
    vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
+   glsl_type_singleton_decref();
    _mesa_locale_fini();
 
    vk_free(&instance->alloc, instance);

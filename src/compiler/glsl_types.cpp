@@ -37,6 +37,12 @@ hash_table *glsl_type::interface_types = NULL;
 hash_table *glsl_type::function_types = NULL;
 hash_table *glsl_type::subroutine_types = NULL;
 
+/* There might be multiple users for types (e.g. application using OpenGL
+ * and Vulkan simultanously or app using multiple Vulkan instances). Counter
+ * is used to make sure we don't release the types if a user is still present.
+ */
+static uint32_t glsl_type_users = 0;
+
 glsl_type::glsl_type(GLenum gl_type,
                      glsl_base_type base_type, unsigned vector_elements,
                      unsigned matrix_columns, const char *name,
@@ -469,12 +475,26 @@ hash_free_type_function(struct hash_entry *entry)
 }
 
 void
-_mesa_glsl_release_types(void)
+glsl_type_singleton_init_or_ref()
 {
-   /* Should only be called during atexit (either when unloading shared
-    * object, or if process terminates), so no mutex-locking should be
-    * necessary.
-    */
+   mtx_lock(&glsl_type::hash_mutex);
+   glsl_type_users++;
+   mtx_unlock(&glsl_type::hash_mutex);
+}
+
+void
+glsl_type_singleton_decref()
+{
+   mtx_lock(&glsl_type::hash_mutex);
+
+   assert(glsl_type_users > 0);
+
+   /* Do not release glsl_types if they are still used. */
+   if (--glsl_type_users) {
+      mtx_unlock(&glsl_type::hash_mutex);
+      return;
+   }
+
    if (glsl_type::explicit_matrix_types != NULL) {
       _mesa_hash_table_destroy(glsl_type::explicit_matrix_types,
                                hash_free_type_function);
@@ -505,6 +525,8 @@ _mesa_glsl_release_types(void)
       _mesa_hash_table_destroy(glsl_type::subroutine_types, hash_free_type_function);
       glsl_type::subroutine_types = NULL;
    }
+
+   mtx_unlock(&glsl_type::hash_mutex);
 }
 
 

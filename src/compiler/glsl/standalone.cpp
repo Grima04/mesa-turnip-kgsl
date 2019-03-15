@@ -132,6 +132,7 @@ static void
 initialize_context(struct gl_context *ctx, gl_api api)
 {
    initialize_context_to_defaults(ctx, api);
+   glsl_type_singleton_init_or_ref();
 
    /* The standalone compiler needs to claim support for almost
     * everything in order to compile the built-in functions.
@@ -617,6 +618,6 @@ standalone_compiler_cleanup(struct gl_shader_program *whole_program)
    delete whole_program->FragDataIndexBindings;
 
    ralloc_free(whole_program);
-   _mesa_glsl_release_types();
+   glsl_type_singleton_decref();
    _mesa_glsl_release_builtin_functions();
 }

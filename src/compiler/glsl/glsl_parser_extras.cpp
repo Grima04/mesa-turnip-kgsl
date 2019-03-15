@@ -2325,6 +2325,24 @@ do_common_optimization(exec_list *ir, bool linked,
 extern "C" {
 
 /**
+ * To be called at GL context ctor.
+ */
+void
+_mesa_init_shader_compiler_types(void)
+{
+   glsl_type_singleton_init_or_ref();
+}
+
+/**
+ * To be called at GL context dtor.
+ */
+void
+_mesa_destroy_shader_compiler_types(void)
+{
+   glsl_type_singleton_decref();
+}
+
+/**
  * To be called at GL teardown time, this frees compiler datastructures.
  *
  * After calling this, any previously compiled shaders and shader
@@ -2335,8 +2353,6 @@ void
 _mesa_destroy_shader_compiler(void)
 {
    _mesa_destroy_shader_compiler_caches();
-
-   _mesa_glsl_release_types();
 }
 
 /**

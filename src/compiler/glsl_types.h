@@ -47,10 +47,13 @@ struct _mesa_glsl_parse_state;
 struct glsl_symbol_table;
 
 extern void
-_mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
+glsl_type_singleton_init_or_ref();
 
 extern void
-_mesa_glsl_release_types(void);
+glsl_type_singleton_decref();
+
+extern void
+_mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
 
 void encode_type_to_blob(struct blob *blob, const struct glsl_type *type);
 
@@ -1062,8 +1065,9 @@ private:
     * data.
     */
    /*@{*/
+   friend void glsl_type_singleton_init_or_ref(void);
+   friend void glsl_type_singleton_decref(void);
    friend void _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *);
-   friend void _mesa_glsl_release_types(void);
    /*@}*/
 };
 
