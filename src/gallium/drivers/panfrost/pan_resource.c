@@ -235,7 +235,6 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
                 for (int l = 0; l < (template->last_level + 1); ++l) {
                         bo->cpu[l] = malloc(sz);
                         bo->size[l] = sz;
-                        sz >>= 2;
                 }
         } else {
                 /* For a linear resource, allocate a block of memory from
