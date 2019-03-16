@@ -1332,18 +1332,16 @@ INSTR1(DSY)
 
 static inline struct ir3_instruction *
 ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
-		unsigned wrmask, unsigned flags, unsigned samp, unsigned tex,
+		unsigned wrmask, unsigned flags, struct ir3_instruction *samp_tex,
 		struct ir3_instruction *src0, struct ir3_instruction *src1)
 {
 	struct ir3_instruction *sam;
 	struct ir3_register *reg;
 
 	sam = ir3_instr_create(block, opc);
-	sam->flags |= flags;
+	sam->flags |= flags | IR3_INSTR_S2EN;
 	ir3_reg_create(sam, 0, 0)->wrmask = wrmask;
-	// temporary step, extra dummy src which will become the
-	// hvec2(samp, tex) argument:
-	ir3_reg_create(sam, 0, 0);
+	__ssa_src(sam, samp_tex, IR3_REG_HALF);
 	if (src0) {
 		reg = ir3_reg_create(sam, 0, IR3_REG_SSA);
 		reg->wrmask = (1 << (src0->regs_count - 1)) - 1;
@@ -1354,8 +1352,6 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 		reg->instr = src1;
 		reg->wrmask = (1 << (src1->regs_count - 1)) - 1;
 	}
-	sam->cat5.samp = samp;
-	sam->cat5.tex  = tex;
 	sam->cat5.type  = type;
 
 	return sam;

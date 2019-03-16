@@ -885,6 +885,25 @@ emit_intrinsic_atomic_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	return atomic;
 }
 
+/* TODO handle actual indirect/dynamic case.. which is going to be weird
+ * to handle with the image_mapping table..
+ */
+static struct ir3_instruction *
+get_image_samp_tex_src(struct ir3_context *ctx, nir_intrinsic_instr *intr)
+{
+	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
+	unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
+	struct ir3_instruction *texture, *sampler;
+
+	texture = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
+	sampler = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
+
+	return ir3_create_collect(ctx, (struct ir3_instruction*[]){
+		sampler,
+		texture,
+	}, 2);
+}
+
 /* src[] = { deref, coord, sample_index }. const_index[] = {} */
 static void
 emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -892,12 +911,11 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
+	struct ir3_instruction *samp_tex = get_image_samp_tex_src(ctx, intr);
 	struct ir3_instruction *sam;
 	struct ir3_instruction * const *src0 = ir3_get_src(ctx, &intr->src[1]);
 	struct ir3_instruction *coords[4];
 	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
-	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
-	unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
 	type_t type = ir3_get_image_type(var);
 
 	/* hmm, this seems a bit odd, but it is what blob does and (at least
@@ -915,7 +933,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		coords[ncoords++] = create_immed(b, 0);
 
 	sam = ir3_SAM(b, OPC_ISAM, type, 0b1111, flags,
-			tex_idx, tex_idx, ir3_create_collect(ctx, coords, ncoords), NULL);
+			samp_tex, ir3_create_collect(ctx, coords, ncoords), NULL);
 
 	sam->barrier_class = IR3_BARRIER_IMAGE_R;
 	sam->barrier_conflict = IR3_BARRIER_IMAGE_W;
@@ -929,14 +947,13 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	const nir_variable *var = nir_intrinsic_get_var(intr, 0);
-	unsigned slot = ir3_get_image_slot(nir_src_as_deref(intr->src[0]));
-	unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
+	struct ir3_instruction *samp_tex = get_image_samp_tex_src(ctx, intr);
 	struct ir3_instruction *sam, *lod;
 	unsigned flags, ncoords = ir3_get_image_coords(var, &flags);
 
 	lod = create_immed(b, 0);
 	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
-			tex_idx, tex_idx, lod, NULL);
+			samp_tex, lod, NULL);
 
 	/* Array size actually ends up in .w rather than .z. This doesn't
 	 * matter for miplevel 0, but for higher mips the value in z is
@@ -1439,6 +1456,43 @@ tex_info(nir_tex_instr *tex, unsigned *flagsp, unsigned *coordsp)
 	*coordsp = coords;
 }
 
+/* Gets the sampler/texture idx as a hvec2.  Which could either be dynamic
+ * or immediate (in which case it will get lowered later to a non .s2en
+ * version of the tex instruction which encode tex/samp as immediates:
+ */
+static struct ir3_instruction *
+get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
+{
+	int texture_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_offset);
+	int sampler_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
+	struct ir3_instruction *texture, *sampler;
+
+	if (texture_idx >= 0) {
+		texture = ir3_get_src(ctx, &tex->src[texture_idx].src)[0];
+		texture = ir3_COV(ctx->block, texture, TYPE_U32, TYPE_U16);
+	} else {
+		/* TODO what to do for dynamic case? I guess we only need the
+		 * max index for astc srgb workaround so maybe not a problem
+		 * to worry about if we don't enable indirect samplers for
+		 * a4xx?
+		 */
+		ctx->max_texture_index = MAX2(ctx->max_texture_index, tex->texture_index);
+		texture = create_immed_typed(ctx->block, tex->texture_index, TYPE_U16);
+	}
+
+	if (sampler_idx >= 0) {
+		sampler = ir3_get_src(ctx, &tex->src[sampler_idx].src)[0];
+		sampler = ir3_COV(ctx->block, sampler, TYPE_U32, TYPE_U16);
+	} else {
+		sampler = create_immed_typed(ctx->block, tex->sampler_index, TYPE_U16);
+	}
+
+	return ir3_create_collect(ctx, (struct ir3_instruction*[]){
+		sampler,
+		texture,
+	}, 2);
+}
+
 static void
 emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 {
@@ -1491,6 +1545,10 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 			break;
 		case nir_tex_src_ms_index:
 			sample_index = ir3_get_src(ctx, &tex->src[i].src)[0];
+			break;
+		case nir_tex_src_texture_offset:
+		case nir_tex_src_sampler_offset:
+			/* handled in get_tex_samp_src() */
 			break;
 		default:
 			ir3_context_error(ctx, "Unhandled NIR tex src type: %d\n",
@@ -1659,17 +1717,14 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (opc == OPC_GETLOD)
 		type = TYPE_U32;
 
-	unsigned tex_idx = tex->texture_index;
-
-	ctx->max_texture_index = MAX2(ctx->max_texture_index, tex_idx);
-
+	struct ir3_instruction *samp_tex = get_tex_samp_tex_src(ctx, tex);
 	struct ir3_instruction *col0 = ir3_create_collect(ctx, src0, nsrc0);
 	struct ir3_instruction *col1 = ir3_create_collect(ctx, src1, nsrc1);
 
 	sam = ir3_SAM(b, opc, type, MASK(ncomp), flags,
-			tex_idx, tex_idx, col0, col1);
+			samp_tex, col0, col1);
 
-	if ((ctx->astc_srgb & (1 << tex_idx)) && !nir_tex_instr_is_query(tex)) {
+	if ((ctx->astc_srgb & (1 << tex->texture_index)) && !nir_tex_instr_is_query(tex)) {
 		/* only need first 3 components: */
 		sam->regs[0]->wrmask = 0x7;
 		ir3_split_dest(b, dst, sam, 0, 3);
@@ -1678,7 +1733,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		 * texture state:
 		 */
 		sam = ir3_SAM(b, opc, type, 0b1000, flags,
-				tex_idx, tex_idx, col0, col1);
+				samp_tex, col0, col1);
 
 		array_insert(ctx->ir, ctx->ir->astc_srgb, sam);
 
@@ -1712,7 +1767,7 @@ emit_tex_query_levels(struct ir3_context *ctx, nir_tex_instr *tex)
 	dst = ir3_get_dst(ctx, &tex->dest, 1);
 
 	sam = ir3_SAM(b, OPC_GETINFO, TYPE_U32, 0b0100, 0,
-			tex->texture_index, tex->texture_index, NULL, NULL);
+			get_tex_samp_tex_src(ctx, tex), NULL, NULL);
 
 	/* even though there is only one component, since it ends
 	 * up in .z rather than .x, we need a split_dest()
@@ -1752,7 +1807,7 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 	lod = ir3_get_src(ctx, &tex->src[0].src)[0];
 
 	sam = ir3_SAM(b, OPC_GETSIZE, TYPE_U32, 0b1111, flags,
-			tex->texture_index, tex->texture_index, lod, NULL);
+			get_tex_samp_tex_src(ctx, tex), lod, NULL);
 
 	ir3_split_dest(b, dst, sam, 0, 4);
 
