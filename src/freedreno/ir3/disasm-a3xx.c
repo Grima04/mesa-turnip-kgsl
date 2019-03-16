@@ -463,9 +463,11 @@ static void print_instr_cat5(struct disasm_ctx *ctx, instr_t *instr)
 	}
 
 	if (cat5->is_s2en) {
-		fprintf(ctx->out, ", ");
-		print_reg_src(ctx, (reg_t)(cat5->s2en.src2), cat5->full, false, false, false,
-				false, false, false);
+		if (cat5->is_o || info[cat5->opc].src2) {
+			fprintf(ctx->out, ", ");
+			print_reg_src(ctx, (reg_t)(cat5->s2en.src2), cat5->full,
+					false, false, false, false, false, false);
+		}
 		fprintf(ctx->out, ", ");
 		print_reg_src(ctx, (reg_t)(cat5->s2en.src3), false, false, false, false,
 				false, false, false);
