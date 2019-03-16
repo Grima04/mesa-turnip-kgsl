@@ -98,11 +98,13 @@ struct ir3_register {
 
 	} flags;
 
+	bool merged : 1;    /* half-regs conflict with full regs (ie >= a6xx) */
+
 	/* normal registers:
 	 * the component is in the low two bits of the reg #, so
 	 * rN.x becomes: (N << 2) | x
 	 */
-	int   num;
+	uint16_t num;
 	union {
 		/* immediate: */
 		int32_t  iim_val;
@@ -1426,8 +1428,13 @@ static inline unsigned regmask_idx(struct ir3_register *reg)
 {
 	unsigned num = (reg->flags & IR3_REG_RELATIV) ? reg->array.offset : reg->num;
 	debug_assert(num < MAX_REG);
-	if (reg->flags & IR3_REG_HALF)
-		num += MAX_REG;
+	if (reg->flags & IR3_REG_HALF) {
+		if (reg->merged) {
+			num /= 2;
+		} else {
+			num += MAX_REG;
+		}
+	}
 	return num;
 }
 

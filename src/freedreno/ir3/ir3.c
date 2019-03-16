@@ -35,6 +35,7 @@
 #include "util/u_math.h"
 
 #include "instr-a3xx.h"
+#include "ir3_compiler.h"
 
 /* simple allocator to carve allocations out of an up-front allocated heap,
  * so that we can free everything easily in one shot.
@@ -899,6 +900,8 @@ static struct ir3_register * reg_create(struct ir3 *shader,
 	reg->wrmask = 1;
 	reg->flags = flags;
 	reg->num = num;
+	if (shader->compiler->gpu_id >= 600)
+		reg->merged = true;
 	return reg;
 }
 
