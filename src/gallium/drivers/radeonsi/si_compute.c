@@ -804,7 +804,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 		 * allow launching waves out-of-order. (same as Vulkan) */
 		S_00B800_ORDER_MODE(sctx->chip_class >= CIK);
 
-	uint *last_block = info->last_block;
+	const uint *last_block = info->last_block;
 	bool partial_block_en = last_block[0] || last_block[1] || last_block[2];
 
 	radeon_set_sh_reg_seq(cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
