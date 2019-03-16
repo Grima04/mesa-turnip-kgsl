@@ -753,8 +753,8 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    VkImageMemoryBarrier imb;
    imb.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
    imb.pNext = nullptr;
-   imb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
    imb.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+   imb.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
    imb.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
    imb.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
    imb.image = data->images[image_index];
@@ -766,8 +766,8 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    imb.srcQueueFamilyIndex = device_data->graphic_queue->family_index;
    imb.dstQueueFamilyIndex = device_data->graphic_queue->family_index;
    device_data->vtable.CmdPipelineBarrier(command_buffer,
-                                          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                          VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+                                          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
                                           0,          /* dependency flags */
                                           0, nullptr, /* memory barriers */
                                           0, nullptr, /* buffer memory barriers */
@@ -912,9 +912,11 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    check_vk_result(err);
 
    VkSubmitInfo submit_info = {};
+   VkPipelineStageFlags stage_wait = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    submit_info.commandBufferCount = 1;
    submit_info.pCommandBuffers = &command_buffer;
+   submit_info.pWaitDstStageMask = &stage_wait;
    submit_info.signalSemaphoreCount = 1;
    submit_info.pSignalSemaphores = &data->submission_semaphore;
 
@@ -1372,8 +1374,6 @@ static void shutdown_swapchain_data(struct swapchain_data *data)
    device_data->vtable.DestroyPipeline(device_data->device, data->pipeline, NULL);
    device_data->vtable.DestroyPipelineLayout(device_data->device, data->pipeline_layout, NULL);
 
-   device_data->vtable.FreeDescriptorSets(device_data->device, data->descriptor_pool,
-                                          1, &data->descriptor_set);
    device_data->vtable.DestroyDescriptorPool(device_data->device,
                                              data->descriptor_pool, NULL);
    device_data->vtable.DestroyDescriptorSetLayout(device_data->device,
