@@ -1255,18 +1255,21 @@ static void setup_swapchain_data(struct swapchain_data *data,
 
    setup_swapchain_data_pipeline(data);
 
-   device_data->vtable.GetSwapchainImagesKHR(device_data->device,
-                                             data->swapchain,
-                                             &data->n_images,
-                                             NULL);
+   err = device_data->vtable.GetSwapchainImagesKHR(device_data->device,
+                                                   data->swapchain,
+                                                   &data->n_images,
+                                                   NULL);
+   check_vk_result(err);
+
    data->images = ralloc_array(data, VkImage, data->n_images);
    data->image_views = ralloc_array(data, VkImageView, data->n_images);
    data->framebuffers = ralloc_array(data, VkFramebuffer, data->n_images);
 
-   device_data->vtable.GetSwapchainImagesKHR(device_data->device,
-                                             data->swapchain,
-                                             &data->n_images,
-                                             data->images);
+   err = device_data->vtable.GetSwapchainImagesKHR(device_data->device,
+                                                   data->swapchain,
+                                                   &data->n_images,
+                                                   data->images);
+   check_vk_result(err);
 
    /* Image views */
    VkImageViewCreateInfo view_info = {};
