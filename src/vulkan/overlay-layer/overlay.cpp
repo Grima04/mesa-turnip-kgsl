@@ -58,6 +58,8 @@ struct queue_data;
 struct device_data {
    struct instance_data *instance;
 
+   PFN_vkSetDeviceLoaderData set_device_loader_data;
+
    struct vk_device_dispatch_table vtable;
    VkPhysicalDevice physical_device;
    VkDevice device;
@@ -198,6 +200,14 @@ static void unmap_object(void *obj)
 
 /**/
 
+static void check_vk_result(VkResult err)
+{
+   if (err != VK_SUCCESS)
+      printf("ERROR!\n");
+}
+
+/**/
+
 static VkLayerInstanceCreateInfo *get_instance_chain_info(const VkInstanceCreateInfo *pCreateInfo,
                                                           VkLayerFunction func)
 {
@@ -316,6 +326,10 @@ static void device_map_queues(struct device_data *data,
          data->vtable.GetDeviceQueue(data->device,
                                      pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex,
                                      j, &queue);
+
+         VkResult err = data->set_device_loader_data(data->device, queue);
+         check_vk_result(err);
+
          data->queues[queue_index++] =
             new_queue_data(queue, &family_props[pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex],
                            pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex, data);
@@ -335,12 +349,6 @@ static void destroy_device_data(struct device_data *data)
 {
    unmap_object(data->device);
    ralloc_free(data);
-}
-
-static void check_vk_result(VkResult err)
-{
-   if (err != VK_SUCCESS)
-      printf("ERROR!\n");
 }
 
 /**/
@@ -1314,9 +1322,13 @@ static void setup_swapchain_data(struct swapchain_data *data,
                                                     cmd_bufs);
    check_vk_result(err);
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(data->frame_data); i++)
-      data->frame_data[i].command_buffer = cmd_bufs[i];
+   for (uint32_t i = 0; i < ARRAY_SIZE(data->frame_data); i++) {
+      err = device_data->set_device_loader_data(device_data->device,
+                                                cmd_bufs[i]);
+      check_vk_result(err);
 
+      data->frame_data[i].command_buffer = cmd_bufs[i];
+   }
 
    /* Submission fence */
    VkFenceCreateInfo fence_info = {};
@@ -1325,7 +1337,6 @@ static void setup_swapchain_data(struct swapchain_data *data,
    err = device_data->vtable.CreateFence(device_data->device, &fence_info,
                                          NULL, &data->fence);
    check_vk_result(err);
-
 }
 
 static void shutdown_swapchain_data(struct swapchain_data *data)
@@ -1691,6 +1702,10 @@ VKAPI_ATTR VkResult VKAPI_CALL overlay_CreateDevice(
 
    instance_data->vtable.GetPhysicalDeviceProperties(device_data->physical_device,
                                                      &device_data->properties);
+
+   VkLayerDeviceCreateInfo *load_data_info =
+      get_device_chain_info(pCreateInfo, VK_LOADER_DATA_CALLBACK);
+   device_data->set_device_loader_data = load_data_info->u.pfnSetDeviceLoaderData;
 
    device_map_queues(device_data, pCreateInfo);
 
