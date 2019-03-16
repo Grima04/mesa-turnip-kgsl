@@ -1339,6 +1339,9 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 	sam = ir3_instr_create(block, opc);
 	sam->flags |= flags;
 	ir3_reg_create(sam, 0, 0)->wrmask = wrmask;
+	// temporary step, extra dummy src which will become the
+	// hvec2(samp, tex) argument:
+	ir3_reg_create(sam, 0, 0);
 	if (src0) {
 		reg = ir3_reg_create(sam, 0, IR3_REG_SSA);
 		reg->wrmask = (1 << (src0->regs_count - 1)) - 1;
