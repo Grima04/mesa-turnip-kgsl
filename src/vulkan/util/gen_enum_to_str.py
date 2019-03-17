@@ -65,6 +65,9 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
 
     % for enum in enums:
 
+      % if enum.guard:
+#ifdef ${enum.guard}
+      % endif
     const char *
     vk_${enum.name[2:]}_to_str(${enum.name} input)
     {
@@ -86,6 +89,10 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
             unreachable("Undefined enum value.");
         }
     }
+
+      % if enum.guard:
+#endif
+      % endif
     %endfor
 
     void vk_load_instance_commands(VkInstance instance,
@@ -150,7 +157,13 @@ H_TEMPLATE = Template(textwrap.dedent(u"""\
     % endfor
 
     % for enum in enums:
+      % if enum.guard:
+#ifdef ${enum.guard}
+      % endif
     const char * vk_${enum.name[2:]}_to_str(${enum.name} input);
+      % if enum.guard:
+#endif
+      % endif
     % endfor
 
     struct vk_instance_dispatch_table {
@@ -235,6 +248,7 @@ class VkEnum(object):
         # Maps numbers to names
         self.values = values or dict()
         self.name_to_value = dict()
+        self.guard = None
 
     def add_value(self, name, value=None,
                   extnum=None, offset=None,
@@ -268,6 +282,9 @@ class VkEnum(object):
                            extnum=extnum,
                            offset=int(elem.attrib['offset']),
                            error=error)
+
+    def set_guard(self, g):
+        self.guard = g
 
 
 class VkCommand(object):
@@ -324,6 +341,12 @@ def parse_xml(cmd_factory, enum_factory, ext_factory, filename):
             enum = enum_factory.get(value.attrib['extends'])
             if enum is not None:
                 enum.add_value_from_xml(value, extension)
+
+        if define:
+            for value in ext_elem.findall('./require/type[@name]'):
+                enum = enum_factory.get(value.attrib['name'])
+                if enum is not None:
+                    enum.set_guard(define)
 
         for t in ext_elem.findall('./require/command'):
             command = cmd_factory.get(t.attrib['name'])
