@@ -37,8 +37,13 @@ LOCAL_SRC_FILES := \
 	$(NVC0_C_SOURCES)
 
 LOCAL_C_INCLUDES := \
-	$(MESA_TOP)/include
+	$(MESA_TOP)/include \
+	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_nir,,)/nir \
+	$(MESA_TOP)/src/compiler/nir \
+	$(MESA_TOP)/src/mapi \
+	$(MESA_TOP)/src/mesa
 
+LOCAL_STATIC_LIBRARIES := libmesa_nir
 LOCAL_SHARED_LIBRARIES := libdrm_nouveau
 LOCAL_MODULE := libmesa_pipe_nouveau
 
