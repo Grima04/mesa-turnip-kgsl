@@ -972,6 +972,7 @@ virgl_drm_screen_destroy(struct pipe_screen *pscreen)
    if (destroy) {
       int fd = virgl_drm_winsys(screen->vws)->fd;
       util_hash_table_remove(fd_tab, intptr_to_pointer(fd));
+      close(fd);
    }
    mtx_unlock(&virgl_screen_mutex);
 
