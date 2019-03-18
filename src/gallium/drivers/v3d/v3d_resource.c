@@ -462,7 +462,8 @@ v3d_get_ub_pad(struct v3d_resource *rsc, uint32_t height)
 }
 
 static void
-v3d_setup_slices(struct v3d_resource *rsc, uint32_t winsys_stride)
+v3d_setup_slices(struct v3d_resource *rsc, uint32_t winsys_stride,
+                 bool uif_top)
 {
         struct pipe_resource *prsc = &rsc->base;
         uint32_t width = prsc->width0;
@@ -484,10 +485,11 @@ v3d_setup_slices(struct v3d_resource *rsc, uint32_t winsys_stride)
         uint32_t block_width = util_format_get_blockwidth(prsc->format);
         uint32_t block_height = util_format_get_blockheight(prsc->format);
         bool msaa = prsc->nr_samples > 1;
+
         /* MSAA textures/renderbuffers are always laid out as single-level
          * UIF.
          */
-        bool uif_top = msaa;
+        uif_top |= msaa;
 
         /* Check some easy mistakes to make in a resource_create() call that
          * will break our setup.
@@ -773,7 +775,7 @@ v3d_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
         rsc->internal_format = prsc->format;
 
-        v3d_setup_slices(rsc, 0);
+        v3d_setup_slices(rsc, 0, tmpl->bind & PIPE_BIND_SHARED);
 
         if (!v3d_resource_bo_alloc(rsc))
            goto fail;
@@ -849,7 +851,7 @@ v3d_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->internal_format = prsc->format;
 
-        v3d_setup_slices(rsc, whandle->stride);
+        v3d_setup_slices(rsc, whandle->stride, true);
         v3d_debug_resource_layout(rsc, "import");
 
         if (screen->ro) {
