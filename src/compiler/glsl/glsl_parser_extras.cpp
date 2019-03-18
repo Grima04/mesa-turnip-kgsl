@@ -735,6 +735,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
    EXT_AEP(EXT_texture_buffer),
    EXT_AEP(EXT_texture_cube_map_array),
    EXT(EXT_texture_query_lod),
+   EXT(EXT_texture_shadow_lod),
    EXT(INTEL_conservative_rasterization),
    EXT(INTEL_shader_atomic_float_minmax),
    EXT(MESA_shader_integer_functions),

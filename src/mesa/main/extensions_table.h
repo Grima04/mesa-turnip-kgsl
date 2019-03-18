@@ -315,6 +315,7 @@ EXT(EXT_texture_rg                          , ARB_texture_rg                    
 EXT(EXT_texture_sRGB                        , EXT_texture_sRGB                       , GLL, GLC,  x ,  x , 2004)
 EXT(EXT_texture_sRGB_R8                     , EXT_texture_sRGB_R8                    , GLL ,GLC,  x ,  30, 2018)
 EXT(EXT_texture_sRGB_decode                 , EXT_texture_sRGB_decode                , GLL, GLC,  x ,  30, 2006)
+EXT(EXT_texture_shadow_lod                  , EXT_texture_shadow_lod                 , GLL, GLC,  x ,  30, 2018)
 EXT(EXT_texture_shared_exponent             , EXT_texture_shared_exponent            , GLL, GLC,  x ,  x , 2004)
 EXT(EXT_texture_snorm                       , EXT_texture_snorm                      , GLL, GLC,  x ,  x , 2009)
 EXT(EXT_texture_swizzle                     , EXT_texture_swizzle                    , GLL, GLC,  x ,  x , 2008)
