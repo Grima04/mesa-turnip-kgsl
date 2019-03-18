@@ -92,8 +92,7 @@ panfrost_sfbd_set_cbuf(
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        signed stride =
-                util_format_get_stride(surf->format, surf->texture->width0);
+        signed stride = rsrc->bo->stride;
 
         fb->format = panfrost_sfbd_format(surf);
 

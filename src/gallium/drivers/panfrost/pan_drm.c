@@ -162,7 +162,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 }
 
 static int
-panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle, struct winsys_handle *whandle)
+panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle, unsigned int stride, struct winsys_handle *whandle)
 {
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_prime_handle args = {
@@ -175,6 +175,7 @@ panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle, struct wi
                 return FALSE;
 
         whandle->handle = args.fd;
+        whandle->stride = stride;
 
         return TRUE;
 }

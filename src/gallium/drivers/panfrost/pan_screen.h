@@ -49,7 +49,7 @@ struct panfrost_screen;
 
 struct panfrost_driver {
 	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
-	int (*export_bo) (struct panfrost_screen *screen, int gem_handle, struct winsys_handle *whandle);
+	int (*export_bo) (struct panfrost_screen *screen, int gem_handle, unsigned int stride, struct winsys_handle *whandle);
 
 	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws, bool is_scanout);
 	void (*force_flush_fragment) (struct panfrost_context *ctx,

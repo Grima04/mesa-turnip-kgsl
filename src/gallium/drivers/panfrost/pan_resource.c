@@ -68,6 +68,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         prsc->screen = pscreen;
 
 	rsc->bo = screen->driver->import_bo(screen, whandle);
+	rsc->bo->stride = whandle->stride;
 
 	if (screen->ro) {
 		rsc->scanout =
@@ -88,10 +89,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_resource *rsrc = (struct panfrost_resource *) pt;
         struct renderonly_scanout *scanout = rsrc->scanout;
-        int bytes_per_pixel = util_format_get_blocksize(rsrc->base.format);
-        int stride = bytes_per_pixel * rsrc->base.width0; /* TODO: Alignment? */
 
-        handle->stride = stride;
         handle->modifier = DRM_FORMAT_MOD_INVALID;
 
 	if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
@@ -101,6 +99,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 			return TRUE;
 
 		handle->handle = rsrc->bo->gem_handle;
+		handle->stride = rsrc->bo->stride;
 		return TRUE;
 	} else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
                 if (scanout) {
@@ -113,11 +112,12 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                         if (ret == -1)
                                 return FALSE;
 
+                        handle->stride = scanout->stride;
                         handle->handle = args.fd;
 
                         return TRUE;
                 } else
-			return screen->driver->export_bo(screen, rsrc->bo->gem_handle, handle);
+			return screen->driver->export_bo(screen, rsrc->bo->gem_handle, rsrc->bo->stride, handle);
 	}
 
 	return FALSE;
@@ -191,7 +191,7 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         /* Calculate the size of the bo */
 
         int bytes_per_pixel = util_format_get_blocksize(template->format);
-        int stride = bytes_per_pixel * template->width0; /* TODO: Alignment? */
+        int stride = ALIGN(template->width0, 16) * bytes_per_pixel;
         size_t sz = stride;
 
         if (template->height0) sz *= template->height0;
@@ -252,6 +252,8 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
                 /* TODO: Mipmap */
         }
 
+        bo->stride = stride;
+
         return bo;
 }
 
@@ -286,8 +288,6 @@ panfrost_resource_create(struct pipe_screen *screen,
                 struct pipe_resource scanout_templat = *template;
                 struct renderonly_scanout *scanout;
                 struct winsys_handle handle;
-
-                /* TODO: align width0 and height0? */
 
                 scanout = renderonly_scanout_for_resource(&scanout_templat,
                                                           pscreen->ro, &handle);
@@ -403,14 +403,14 @@ panfrost_transfer_map(struct pipe_context *pctx,
 {
         struct panfrost_context *ctx = pan_context(pctx);
         int bytes_per_pixel = util_format_get_blocksize(resource->format);
-        int stride = bytes_per_pixel * resource->width0; /* TODO: Alignment? */
+        struct panfrost_bo *bo = pan_resource(resource)->bo;
 	uint8_t *cpu;
 
         struct pipe_transfer *transfer = CALLOC_STRUCT(pipe_transfer);
         transfer->level = level;
         transfer->usage = usage;
         transfer->box = *box;
-        transfer->stride = stride;
+        transfer->stride = bo->stride;
         assert(!transfer->box.z);
 
         pipe_resource_reference(&transfer->resource, resource);
@@ -431,7 +431,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 	if (cpu == NULL)
 		return NULL;
 
-        return cpu + transfer->box.x * bytes_per_pixel + transfer->box.y * stride;
+        return cpu + transfer->box.x * bytes_per_pixel + transfer->box.y * bo->stride;
 }
 
 static void
@@ -439,7 +439,6 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
 {
 	struct panfrost_bo *bo = (struct panfrost_bo *)rsrc->bo;
         int bytes_per_pixel = util_format_get_blocksize(rsrc->base.format);
-        int stride = bytes_per_pixel * rsrc->base.width0; /* TODO: Alignment? */
 
         int width = rsrc->base.width0 >> level;
         int height = rsrc->base.height0 >> level;
@@ -469,7 +468,7 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
         /* Run actual texture swizzle, writing directly to the mapped
          * GPU chunk we allocated */
 
-        panfrost_texture_swizzle(width, height, bytes_per_pixel, stride, bo->cpu[level], swizzled);
+        panfrost_texture_swizzle(width, height, bytes_per_pixel, bo->stride, bo->cpu[level], swizzled);
 }
 
 static void

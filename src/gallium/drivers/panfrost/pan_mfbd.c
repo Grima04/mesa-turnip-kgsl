@@ -81,9 +81,7 @@ panfrost_mfbd_set_cbuf(
                 bool flip_y)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
-
-        signed stride =
-                util_format_get_stride(surf->format, surf->texture->width0);
+        int stride = rsrc->bo->stride;
 
         rt->format = panfrost_mfbd_format(surf);
 
@@ -148,8 +146,7 @@ panfrost_mfbd_set_zsbuf(
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
 
                 fbx->ds_linear.depth = rsrc->bo->gpu[0];
-                fbx->ds_linear.depth_stride =
-                        util_format_get_stride(surf->format, surf->texture->width0);
+                fbx->ds_linear.depth_stride = rsrc->bo->stride;
         } else {
                 assert(0);
         }
@@ -273,12 +270,10 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;
 
                 if (rsrc->bo->has_checksum) {
-                        int stride = util_format_get_stride(rsrc->base.format, rsrc->base.width0);
-
                         fb.unk3 |= MALI_MFBD_EXTRA;
                         fbx.flags |= MALI_EXTRA_PRESENT;
                         fbx.checksum_stride = rsrc->bo->checksum_stride;
-                        fbx.checksum = rsrc->bo->gpu[0] + stride * rsrc->base.height0;
+                        fbx.checksum = rsrc->bo->gpu[0] + rsrc->bo->stride * rsrc->base.height0;
                 }
         }
 

@@ -70,7 +70,7 @@ panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsr
         int tile_w = (rsrc->base.width0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
         int tile_h = (rsrc->base.height0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
         int bytes_per_pixel = util_format_get_blocksize(rsrc->base.format);
-        int stride = bytes_per_pixel * rsrc->base.width0; /* TODO: Alignment? */
+        int stride = bytes_per_pixel * ALIGN(rsrc->base.width0, 16);
 
         stride *= 2;  /* TODO: Should this be carried over? */
         int main_size = stride * rsrc->base.height0;

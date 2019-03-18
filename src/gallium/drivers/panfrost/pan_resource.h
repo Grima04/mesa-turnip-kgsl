@@ -81,6 +81,7 @@ struct panfrost_bo {
         int checksum_stride;
 
         int gem_handle;
+        unsigned int stride;
 };
 
 struct panfrost_resource {
