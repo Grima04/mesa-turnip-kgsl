@@ -183,6 +183,10 @@ spirv_builder_emit_selection_merge(struct spirv_builder *b, SpvId merge_block,
                                    SpvSelectionControlMask selection_control);
 
 void
+spirv_builder_loop_merge(struct spirv_builder *b, SpvId merge_block,
+                         SpvId cont_target, SpvLoopControlMask loop_control);
+
+void
 spirv_builder_emit_branch_conditional(struct spirv_builder *b, SpvId condition,
                                       SpvId true_label, SpvId false_label);
 
