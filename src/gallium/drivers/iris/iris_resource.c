@@ -1256,9 +1256,11 @@ iris_transfer_map(struct pipe_context *ctx,
       iris_map_copy_region(map);
    } else {
       /* Otherwise we're free to map on the CPU.  Flush if needed. */
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-         if (iris_batch_references(&ice->batches[i], res->bo))
-            iris_batch_flush(&ice->batches[i]);
+      if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+         for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+            if (iris_batch_references(&ice->batches[i], res->bo))
+               iris_batch_flush(&ice->batches[i]);
+         }
       }
 
       if (surf->tiling == ISL_TILING_W) {
