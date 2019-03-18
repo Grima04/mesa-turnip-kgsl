@@ -40,6 +40,7 @@
 #include "v3d_context.h"
 #include "v3d_resource.h"
 #include "compiler/v3d_compiler.h"
+#include "drm-uapi/drm_fourcc.h"
 
 static const char *
 v3d_screen_get_name(struct pipe_screen *pscreen)
@@ -512,6 +513,33 @@ v3d_screen_get_compiler_options(struct pipe_screen *pscreen,
         return &v3d_nir_options;
 }
 
+static void
+v3d_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
+                                  enum pipe_format format, int max,
+                                  uint64_t *modifiers,
+                                  unsigned int *external_only,
+                                  int *count)
+{
+        int i;
+        uint64_t available_modifiers[] = {
+                DRM_FORMAT_MOD_BROADCOM_UIF,
+                DRM_FORMAT_MOD_LINEAR,
+        };
+        int num_modifiers = ARRAY_SIZE(available_modifiers);
+
+        if (!modifiers) {
+                *count = num_modifiers;
+                return;
+        }
+
+        *count = MIN2(max, num_modifiers);
+        for (i = 0; i < *count; i++) {
+                modifiers[i] = available_modifiers[i];
+                if (external_only)
+                        external_only[i] = false;
+       }
+}
+
 struct pipe_screen *
 v3d_screen_create(int fd, struct renderonly *ro)
 {
@@ -561,6 +589,7 @@ v3d_screen_create(int fd, struct renderonly *ro)
         pscreen->get_vendor = v3d_screen_get_vendor;
         pscreen->get_device_vendor = v3d_screen_get_vendor;
         pscreen->get_compiler_options = v3d_screen_get_compiler_options;
+        pscreen->query_dmabuf_modifiers = v3d_screen_query_dmabuf_modifiers;
 
         return pscreen;
 
