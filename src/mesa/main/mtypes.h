@@ -4332,6 +4332,7 @@ struct gl_extensions
    GLboolean EXT_shader_framebuffer_fetch_non_coherent;
    GLboolean MESA_shader_integer_functions;
    GLboolean MESA_ycbcr_texture;
+   GLboolean NV_compute_shader_derivatives;
    GLboolean NV_conditional_render;
    GLboolean NV_fill_rectangle;
    GLboolean NV_fog_distance;

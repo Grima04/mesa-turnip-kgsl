@@ -842,6 +842,8 @@ struct _mesa_glsl_parse_state {
    bool INTEL_shader_atomic_float_minmax_warn;
    bool MESA_shader_integer_functions_enable;
    bool MESA_shader_integer_functions_warn;
+   bool NV_compute_shader_derivatives_enable;
+   bool NV_compute_shader_derivatives_warn;
    bool NV_fragment_shader_interlock_enable;
    bool NV_fragment_shader_interlock_warn;
    bool NV_image_formats_enable;

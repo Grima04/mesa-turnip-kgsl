@@ -356,6 +356,7 @@ EXT(MESA_ycbcr_texture                      , MESA_ycbcr_texture                
 EXT(NVX_gpu_memory_info                     , NVX_gpu_memory_info                    , GLL, GLC,  x ,  x , 2013)
 
 EXT(NV_blend_square                         , dummy_true                             , GLL,  x ,  x ,  x , 1999)
+EXT(NV_compute_shader_derivatives           , NV_compute_shader_derivatives          , GLL, GLC,  x ,  32, 2018)
 EXT(NV_conditional_render                   , NV_conditional_render                  , GLL, GLC,  x , ES2, 2008)
 EXT(NV_conservative_raster                  , NV_conservative_raster                 , GLL, GLC, ES1, ES2, 2015)
 EXT(NV_conservative_raster_dilate           , NV_conservative_raster_dilate          , GLL, GLC, ES1, ES2, 2015)
