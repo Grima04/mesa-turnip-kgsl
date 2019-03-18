@@ -984,6 +984,14 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
       fprintf(fp, "%u (gather_component), ", instr->component);
    }
 
+   if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
+      fprintf(fp, "{ (%i, %i)", instr->tg4_offsets[0][0], instr->tg4_offsets[0][1]);
+      for (unsigned i = 1; i < 4; ++i)
+         fprintf(fp, ", (%i, %i)", instr->tg4_offsets[i][0],
+                 instr->tg4_offsets[i][1]);
+      fprintf(fp, " } (offsets), ");
+   }
+
    if (!has_texture_deref) {
       fprintf(fp, "%u (texture), ", instr->texture_index);
    }

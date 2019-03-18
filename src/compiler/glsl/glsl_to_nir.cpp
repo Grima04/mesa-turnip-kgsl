@@ -2378,7 +2378,8 @@ nir_visitor::visit(ir_texture *ir)
       num_srcs++;
    if (ir->shadow_comparator != NULL)
       num_srcs++;
-   if (ir->offset != NULL)
+   /* offsets are constants we store inside nir_tex_intrs.offsets */
+   if (ir->offset != NULL && !ir->offset->type->is_array())
       num_srcs++;
 
    /* Add one for the texture deref */
@@ -2439,13 +2440,25 @@ nir_visitor::visit(ir_texture *ir)
    }
 
    if (ir->offset != NULL) {
-      /* we don't support multiple offsets yet */
-      assert(ir->offset->type->is_vector() || ir->offset->type->is_scalar());
+      if (ir->offset->type->is_array()) {
+         for (int i = 0; i < ir->offset->type->array_size(); i++) {
+            const ir_constant *c =
+               ir->offset->as_constant()->get_array_element(i);
 
-      instr->src[src_number].src =
-         nir_src_for_ssa(evaluate_rvalue(ir->offset));
-      instr->src[src_number].src_type = nir_tex_src_offset;
-      src_number++;
+            for (unsigned j = 0; j < 2; ++j) {
+               int val = c->get_int_component(j);
+               assert(val <= 31 && val >= -32);
+               instr->tg4_offsets[i][j] = val;
+            }
+         }
+      } else {
+         assert(ir->offset->type->is_vector() || ir->offset->type->is_scalar());
+
+         instr->src[src_number].src =
+            nir_src_for_ssa(evaluate_rvalue(ir->offset));
+         instr->src[src_number].src_type = nir_tex_src_offset;
+         src_number++;
+      }
    }
 
    switch (ir->op) {

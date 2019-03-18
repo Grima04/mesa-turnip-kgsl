@@ -200,6 +200,9 @@ hash_tex(uint32_t hash, const nir_tex_instr *instr)
    hash = HASH(hash, instr->is_new_style_shadow);
    unsigned component = instr->component;
    hash = HASH(hash, component);
+   for (unsigned i = 0; i < 4; ++i)
+      for (unsigned j = 0; j < 2; ++j)
+         hash = HASH(hash, instr->tg4_offsets[i][j]);
    hash = HASH(hash, instr->texture_index);
    hash = HASH(hash, instr->texture_array_size);
    hash = HASH(hash, instr->sampler_index);
@@ -402,6 +405,10 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
          tex1->sampler_index != tex2->sampler_index) {
          return false;
       }
+
+      if (memcmp(tex1->tg4_offsets, tex2->tg4_offsets,
+                 sizeof(tex1->tg4_offsets)))
+         return false;
 
       return true;
    }

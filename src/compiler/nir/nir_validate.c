@@ -598,6 +598,11 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
                    0, nir_tex_instr_src_size(instr, i));
    }
 
+   if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
+      validate_assert(state, instr->op == nir_texop_tg4);
+      validate_assert(state, !src_type_seen[nir_tex_src_offset]);
+   }
+
    validate_dest(&instr->dest, state, 0, nir_tex_instr_dest_size(instr));
 }
 

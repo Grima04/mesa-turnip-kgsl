@@ -617,6 +617,7 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
    blob_write_uint32(ctx->blob, tex->texture_index);
    blob_write_uint32(ctx->blob, tex->texture_array_size);
    blob_write_uint32(ctx->blob, tex->sampler_index);
+   blob_write_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
    STATIC_ASSERT(sizeof(union packed_tex_data) == sizeof(uint32_t));
    union packed_tex_data packed = {
@@ -647,6 +648,7 @@ read_tex(read_ctx *ctx)
    tex->texture_index = blob_read_uint32(ctx->blob);
    tex->texture_array_size = blob_read_uint32(ctx->blob);
    tex->sampler_index = blob_read_uint32(ctx->blob);
+   blob_copy_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
    union packed_tex_data packed;
    packed.u32 = blob_read_uint32(ctx->blob);

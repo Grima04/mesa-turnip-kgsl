@@ -531,6 +531,14 @@ nir_call_instr_create(nir_shader *shader, nir_function *callee)
    return instr;
 }
 
+static int8_t default_tg4_offsets[4][2] =
+{
+   { 0, 1 },
+   { 1, 1 },
+   { 1, 0 },
+   { 0, 0 },
+};
+
 nir_tex_instr *
 nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
 {
@@ -547,6 +555,7 @@ nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
    instr->texture_index = 0;
    instr->texture_array_size = 0;
    instr->sampler_index = 0;
+   memcpy(instr->tg4_offsets, default_tg4_offsets, sizeof(instr->tg4_offsets));
 
    return instr;
 }
@@ -587,6 +596,15 @@ nir_tex_instr_remove_src(nir_tex_instr *tex, unsigned src_idx)
       nir_instr_move_src(&tex->instr, &tex->src[i-1].src, &tex->src[i].src);
    }
    tex->num_srcs--;
+}
+
+bool
+nir_tex_instr_has_explicit_tg4_offsets(nir_tex_instr *tex)
+{
+   if (tex->op != nir_texop_tg4)
+      return false;
+   return memcmp(tex->tg4_offsets, default_tg4_offsets,
+                 sizeof(tex->tg4_offsets)) != 0;
 }
 
 nir_phi_instr *
