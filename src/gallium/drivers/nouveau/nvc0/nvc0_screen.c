@@ -235,6 +235,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_USER_VERTEX_BUFFERS:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
    case PIPE_CAP_SAMPLE_SHADING:
+   case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
    case PIPE_CAP_TEXTURE_GATHER_SM5:
    case PIPE_CAP_TGSI_FS_FINE_DERIVATIVE:
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
@@ -299,9 +300,6 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES:
       return class_3d >= GP100_3D_CLASS;
 
-   case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
-      /* TODO: nir doesn't support tg4 with multiple offsets */
-      return screen->prefer_nir ? 0 : 1;
    /* caps has to be turned on with nir */
    case PIPE_CAP_INT64_DIVMOD:
       return screen->prefer_nir ? 1 : 0;

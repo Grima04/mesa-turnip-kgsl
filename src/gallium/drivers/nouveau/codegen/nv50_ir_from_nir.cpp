@@ -36,6 +36,7 @@
 #else
 #include <tr1/unordered_map>
 #endif
+#include <cstring>
 #include <list>
 #include <vector>
 
@@ -3202,6 +3203,20 @@ Converter::visit(nir_tex_instr *insn)
                texi->offset[s][c].set(getSrc(offsets[s], s2));
                texi->offset[s][c].setInsn(texi);
             }
+         }
+      }
+
+      if (op == OP_TXG && offsetIdx == -1) {
+         if (nir_tex_instr_has_explicit_tg4_offsets(insn)) {
+            texi->tex.useOffsets = 4;
+            setPosition(texi, false);
+            for (uint8_t i = 0; i < 4; ++i) {
+               for (uint8_t j = 0; j < 2; ++j) {
+                  texi->offset[i][j].set(loadImm(NULL, insn->tg4_offsets[i][j]));
+                  texi->offset[i][j].setInsn(texi);
+               }
+            }
+            setPosition(texi, true);
          }
       }
 
