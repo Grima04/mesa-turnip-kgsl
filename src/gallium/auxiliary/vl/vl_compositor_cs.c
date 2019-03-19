@@ -201,7 +201,7 @@ const char *compute_shader_weave =
          "TEX_LZ TEMP[11].y, TEMP[13], SAMP[1], 2D_ARRAY\n"
          "TEX_LZ TEMP[11].z, TEMP[13], SAMP[2], 2D_ARRAY\n"
 
-         "LRP TEMP[6], TEMP[14], TEMP[11], TEMP[10]\n"
+         "LRP TEMP[6], TEMP[14], TEMP[10], TEMP[11]\n"
          "MOV TEMP[6].w, IMM[1].xxxx\n"
 
          /* Color Space Conversion */
