@@ -197,6 +197,9 @@ void glsl_get_natural_size_align_bytes(const struct glsl_type *type,
 
 const struct glsl_type *glsl_atomic_uint_type(void);
 
+unsigned glsl_type_get_sampler_count(const struct glsl_type *type);
+unsigned glsl_type_get_image_count(const struct glsl_type *type);
+
 #ifdef __cplusplus
 }
 #endif
