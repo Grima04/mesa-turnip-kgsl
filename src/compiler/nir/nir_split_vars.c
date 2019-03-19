@@ -341,7 +341,6 @@ init_var_list_array_infos(struct exec_list *vars,
 
       const struct glsl_type *type = var->type;
       for (int i = 0; i < num_levels; i++) {
-         assert(glsl_get_explicit_stride(type) == 0);
          info->levels[i].array_len = glsl_get_length(type);
          type = glsl_get_array_element(type);
 

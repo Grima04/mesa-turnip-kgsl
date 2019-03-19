@@ -2054,7 +2054,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          /* Private variables don't have any explicit layout but some layouts
           * may have leaked through due to type deduplication in the SPIR-V.
           */
-         var->var->type = glsl_get_bare_type(var->type->type);
+         var->var->type = var->type->type;
       }
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
@@ -2072,7 +2072,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
           * layouts may have leaked through due to type deduplication in the
           * SPIR-V.
           */
-         var->var->type = glsl_get_bare_type(var->type->type);
+         var->var->type = var->type->type;
          var->var->data.mode = nir_var_mem_shared;
       }
       break;
@@ -2130,7 +2130,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * the SPIR-V.  We do, however, keep the layouts in the variable's
        * interface_type because we need offsets for XFB arrays of blocks.
        */
-      var->var->type = glsl_get_bare_type(var->type->type);
+      var->var->type = var->type->type;
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
 
