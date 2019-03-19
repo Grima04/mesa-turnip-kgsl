@@ -2395,6 +2395,16 @@ emit_instructions(struct ir3_context *ctx)
 		setup_output(ctx, var);
 	}
 
+	/* Find # of samplers: */
+	nir_foreach_variable(var, &ctx->s->uniforms) {
+		ctx->so->num_samp += glsl_type_get_sampler_count(var->type);
+		/* just assume that we'll be reading from images.. if it
+		 * is write-only we don't have to count it, but not sure
+		 * if there is a good way to know?
+		 */
+		ctx->so->num_samp += glsl_type_get_image_count(var->type);
+	}
+
 	/* Setup registers (which should only be arrays): */
 	nir_foreach_register(reg, &ctx->s->registers) {
 		ir3_declare_array(ctx, reg);
@@ -2700,7 +2710,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* We need to do legalize after (for frag shader's) the "bary.f"
 	 * offsets (inloc) have been assigned.
 	 */
-	ir3_legalize(ir, &so->num_samp, &so->has_ssbo, &max_bary);
+	ir3_legalize(ir, &so->has_ssbo, &max_bary);
 
 	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER LEGALIZE:\n");

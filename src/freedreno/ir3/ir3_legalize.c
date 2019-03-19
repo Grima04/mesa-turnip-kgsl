@@ -41,7 +41,6 @@
 
 struct ir3_legalize_ctx {
 	struct ir3_compiler *compiler;
-	int num_samp;
 	bool has_ssbo;
 	int max_bary;
 };
@@ -218,14 +217,6 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			regmask_set(&state->needs_ss, n->regs[0]);
 
 		if (is_tex(n)) {
-			/* this ends up being the # of samp instructions.. but that
-			 * is ok, everything else only cares whether it is zero or
-			 * not.  We do this here, rather than when we encounter a
-			 * SAMP decl, because (especially in binning pass shader)
-			 * the samp instruction(s) could get eliminated if the
-			 * result is not used.
-			 */
-			ctx->num_samp = MAX2(ctx->num_samp, n->cat5.samp + 1);
 			regmask_set(&state->needs_sy, n->regs[0]);
 		} else if (n->opc == OPC_RESINFO) {
 			regmask_set(&state->needs_ss, n->regs[0]);
@@ -480,7 +471,7 @@ mark_convergence_points(struct ir3 *ir)
 }
 
 void
-ir3_legalize(struct ir3 *ir, int *num_samp, bool *has_ssbo, int *max_bary)
+ir3_legalize(struct ir3 *ir, bool *has_ssbo, int *max_bary)
 {
 	struct ir3_legalize_ctx *ctx = rzalloc(ir, struct ir3_legalize_ctx);
 	bool progress;
@@ -501,7 +492,6 @@ ir3_legalize(struct ir3 *ir, int *num_samp, bool *has_ssbo, int *max_bary)
 		}
 	} while (progress);
 
-	*num_samp = ctx->num_samp;
 	*has_ssbo = ctx->has_ssbo;
 	*max_bary = ctx->max_bary;
 
