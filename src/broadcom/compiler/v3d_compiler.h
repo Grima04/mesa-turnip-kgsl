@@ -318,25 +318,6 @@ static inline uint8_t v3d_slot_get_component(struct v3d_varying_slot slot)
         return slot.slot_and_component & 3;
 }
 
-struct v3d_ubo_range {
-        /**
-         * offset in bytes from the start of the ubo where this range is
-         * uploaded.
-         *
-         * Only set once used is set.
-         */
-        uint32_t dst_offset;
-
-        /**
-         * offset in bytes from the start of the gallium uniforms where the
-         * data comes from.
-         */
-        uint32_t src_offset;
-
-        /** size in bytes of this ubo range */
-        uint32_t size;
-};
-
 struct v3d_key {
         void *shader_state;
         struct {
@@ -533,13 +514,6 @@ struct v3d_compile {
         bool uses_center_w;
         bool writes_z;
 
-        struct v3d_ubo_range *ubo_ranges;
-        bool *ubo_range_used;
-        uint32_t ubo_ranges_array_size;
-        /** Number of uniform areas tracked in ubo_ranges. */
-        uint32_t num_ubo_ranges;
-        uint32_t next_ubo_dst_offset;
-
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
          */
@@ -674,9 +648,6 @@ struct v3d_uniform_list {
 struct v3d_prog_data {
         struct v3d_uniform_list uniforms;
 
-        struct v3d_ubo_range *ubo_ranges;
-        uint32_t num_ubo_ranges;
-        uint32_t ubo_size;
         uint32_t spill_size;
 
         uint8_t threads;

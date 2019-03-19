@@ -582,41 +582,6 @@ v3d_set_prog_data_uniforms(struct v3d_compile *c,
                count * sizeof(*ulist->contents));
 }
 
-/* Copy the compiler UBO range state to the compiled shader, dropping out
- * arrays that were never referenced by an indirect load.
- *
- * (Note that QIR dead code elimination of an array access still leaves that
- * array alive, though)
- */
-static void
-v3d_set_prog_data_ubo(struct v3d_compile *c,
-                      struct v3d_prog_data *prog_data)
-{
-        if (!c->num_ubo_ranges)
-                return;
-
-        prog_data->num_ubo_ranges = 0;
-        prog_data->ubo_ranges = ralloc_array(prog_data, struct v3d_ubo_range,
-                                             c->num_ubo_ranges);
-        for (int i = 0; i < c->num_ubo_ranges; i++) {
-                if (!c->ubo_range_used[i])
-                        continue;
-
-                struct v3d_ubo_range *range = &c->ubo_ranges[i];
-                prog_data->ubo_ranges[prog_data->num_ubo_ranges++] = *range;
-                prog_data->ubo_size += range->size;
-        }
-
-        if (prog_data->ubo_size) {
-                if (V3D_DEBUG & V3D_DEBUG_SHADERDB) {
-                        fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d UBO uniforms\n",
-                                vir_get_stage_name(c),
-                                c->program_id, c->variant_id,
-                                prog_data->ubo_size / 4);
-                }
-        }
-}
-
 static void
 v3d_vs_set_prog_data(struct v3d_compile *c,
                      struct v3d_vs_prog_data *prog_data)
@@ -713,7 +678,6 @@ v3d_set_prog_data(struct v3d_compile *c,
         prog_data->spill_size = c->spill_size;
 
         v3d_set_prog_data_uniforms(c, prog_data);
-        v3d_set_prog_data_ubo(c, prog_data);
 
         if (c->s->info.stage == MESA_SHADER_VERTEX) {
                 v3d_vs_set_prog_data(c, (struct v3d_vs_prog_data *)prog_data);
