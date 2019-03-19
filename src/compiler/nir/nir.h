@@ -3236,6 +3236,11 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_tg4_broadcom_swizzle;
 
+   /**
+    * If true, lowers tg4 with 4 constant offsets to 4 tg4 calls
+    */
+   bool lower_tg4_offsets;
+
    enum nir_lower_tex_packing lower_tex_packing[32];
 } nir_lower_tex_options;
 
