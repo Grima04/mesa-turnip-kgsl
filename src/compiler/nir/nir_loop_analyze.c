@@ -847,9 +847,11 @@ try_find_trip_count_vars_in_iand(nir_alu_instr **alu,
        !is_var_constant(*limit)) {
       src = iand->src[1].src.ssa;
       if (src->parent_instr->type == nir_instr_type_alu) {
-         *alu = nir_instr_as_alu(src->parent_instr);
-         if (is_supported_terminator_condition(*alu))
+         nir_alu_instr *tmp_alu = nir_instr_as_alu(src->parent_instr);
+         if (is_supported_terminator_condition(tmp_alu)) {
+            *alu = tmp_alu;
             *limit_rhs = get_induction_and_limit_vars(*alu, ind, limit, state);
+         }
       }
    }
 }
