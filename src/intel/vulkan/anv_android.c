@@ -98,6 +98,7 @@ anv_hal_close(struct hw_device_t *dev)
    return -1;
 }
 
+#if ANDROID_API_LEVEL >= 26
 static VkResult
 get_ahw_buffer_format_properties(
    VkDevice device_h,
@@ -243,6 +244,8 @@ anv_GetMemoryAndroidHardwareBufferANDROID(
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
+#endif
+
 /* Construct ahw usage mask from image usage bits, see
  * 'AHardwareBuffer Usage Equivalence' in Vulkan spec.
  */
@@ -251,7 +254,7 @@ anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                             const VkImageUsageFlags vk_usage)
 {
    uint64_t ahw_usage = 0;
-
+#if ANDROID_API_LEVEL >= 26
    if (vk_usage & VK_IMAGE_USAGE_SAMPLED_BIT)
       ahw_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
@@ -270,7 +273,7 @@ anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
    /* No usage bits set - set at least one GPU usage. */
    if (ahw_usage == 0)
       ahw_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
+#endif
    return ahw_usage;
 }
 
@@ -282,6 +285,7 @@ anv_import_ahw_memory(VkDevice device_h,
                       struct anv_device_memory *mem,
                       const VkImportAndroidHardwareBufferInfoANDROID *info)
 {
+#if ANDROID_API_LEVEL >= 26
    ANV_FROM_HANDLE(anv_device, device, device_h);
 
    /* Import from AHardwareBuffer to anv_device_memory. */
@@ -316,6 +320,9 @@ anv_import_ahw_memory(VkDevice device_h,
    mem->ahw = info->buffer;
 
    return VK_SUCCESS;
+#else
+   return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
 }
 
 VkResult
@@ -323,6 +330,7 @@ anv_create_ahw_memory(VkDevice device_h,
                       struct anv_device_memory *mem,
                       const VkMemoryAllocateInfo *pAllocateInfo)
 {
+#if ANDROID_API_LEVEL >= 26
    ANV_FROM_HANDLE(anv_device, dev, device_h);
 
    const VkMemoryDedicatedAllocateInfo *dedicated_info =
@@ -369,8 +377,11 @@ anv_create_ahw_memory(VkDevice device_h,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    mem->ahw = ahw;
-
    return VK_SUCCESS;
+#else
+   return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
+
 }
 
 VkResult
@@ -381,6 +392,7 @@ anv_image_from_external(
    const VkAllocationCallbacks *alloc,
    VkImage *out_image_h)
 {
+#if ANDROID_API_LEVEL >= 26
    ANV_FROM_HANDLE(anv_device, device, device_h);
 
    const struct VkExternalFormatANDROID *ext_info =
@@ -407,7 +419,11 @@ anv_image_from_external(
    *out_image_h = image_h;
 
    return VK_SUCCESS;
+#else
+   return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
 }
+
 
 VkResult
 anv_image_from_gralloc(VkDevice device_h,
