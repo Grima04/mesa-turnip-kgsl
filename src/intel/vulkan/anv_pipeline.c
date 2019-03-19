@@ -28,6 +28,7 @@
 #include <fcntl.h>
 
 #include "util/mesa-sha1.h"
+#include "util/os_time.h"
 #include "common/gen_l3_config.h"
 #include "anv_private.h"
 #include "compiler/brw_nir.h"
@@ -421,6 +422,8 @@ struct anv_pipeline_stage {
    struct anv_pipeline_bind_map bind_map;
 
    union brw_any_prog_data prog_data;
+
+   VkPipelineCreationFeedbackEXT feedback;
 };
 
 static void
@@ -906,6 +909,11 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                               struct anv_pipeline_cache *cache,
                               const VkGraphicsPipelineCreateInfo *info)
 {
+   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   };
+   int64_t pipeline_start = os_time_get_nano();
+
    const struct brw_compiler *compiler =
       pipeline->device->instance->physicalDevice.compiler;
    struct anv_pipeline_stage stages[MESA_SHADER_STAGES] = {};
@@ -918,6 +926,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       pipeline->active_stages |= sinfo->stage;
+
+      int64_t stage_start = os_time_get_nano();
 
       stages[stage].stage = stage;
       stages[stage].module = anv_shader_module_from_handle(sinfo->module);
@@ -953,6 +963,9 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
       default:
          unreachable("Invalid graphics shader stage");
       }
+
+      stages[stage].feedback.duration += os_time_get_nano() - stage_start;
+      stages[stage].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
    }
 
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
@@ -966,24 +979,39 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
    anv_pipeline_hash_graphics(pipeline, layout, stages, sha1);
 
    unsigned found = 0;
+   unsigned cache_hits = 0;
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
          continue;
 
+      int64_t stage_start = os_time_get_nano();
+
       stages[s].cache_key.stage = s;
       memcpy(stages[s].cache_key.sha1, sha1, sizeof(sha1));
 
+      bool cache_hit;
       struct anv_shader_bin *bin =
          anv_device_search_for_kernel(pipeline->device, cache,
                                       &stages[s].cache_key,
-                                      sizeof(stages[s].cache_key));
+                                      sizeof(stages[s].cache_key), &cache_hit);
       if (bin) {
          found++;
          pipeline->shaders[s] = bin;
       }
+
+      if (cache_hit) {
+         cache_hits++;
+         stages[s].feedback.flags |=
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      }
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
 
    if (found == __builtin_popcount(pipeline->active_stages)) {
+      if (cache_hits == found) {
+         pipeline_feedback.flags |=
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      }
       /* We found all our shaders in the cache.  We're done. */
       goto done;
    } else if (found > 0) {
@@ -1008,6 +1036,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
        * cache again as part of the compilation process.
        */
       for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+         stages[s].feedback.flags = 0;
          if (pipeline->shaders[s]) {
             anv_shader_bin_unref(pipeline->device, pipeline->shaders[s]);
             pipeline->shaders[s] = NULL;
@@ -1020,6 +1049,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
          continue;
+
+      int64_t stage_start = os_time_get_nano();
 
       assert(stages[s].stage == s);
       assert(pipeline->shaders[s] == NULL);
@@ -1036,6 +1067,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
       }
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
 
    /* Walk backwards to link */
@@ -1071,6 +1104,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
          continue;
+
+      int64_t stage_start = os_time_get_nano();
 
       void *stage_ctx = ralloc_context(NULL);
 
@@ -1132,6 +1167,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
       pipeline->shaders[s] = bin;
       ralloc_free(stage_ctx);
 
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+
       prev_stage = &stages[s];
    }
 
@@ -1148,6 +1185,20 @@ done:
                            pipeline->shaders[MESA_SHADER_FRAGMENT]);
       pipeline->shaders[MESA_SHADER_FRAGMENT] = NULL;
       pipeline->active_stages &= ~VK_SHADER_STAGE_FRAGMENT_BIT;
+   }
+
+   pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
+
+   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   if (create_feedback) {
+      *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
+
+      assert(info->stageCount == create_feedback->pipelineStageCreationFeedbackCount);
+      for (uint32_t i = 0; i < info->stageCount; i++) {
+         gl_shader_stage s = vk_to_mesa_shader_stage(info->pStages[i].stage);
+         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
+      }
    }
 
    return VK_SUCCESS;
@@ -1171,6 +1222,11 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
                         const char *entrypoint,
                         const VkSpecializationInfo *spec_info)
 {
+   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   };
+   int64_t pipeline_start = os_time_get_nano();
+
    const struct brw_compiler *compiler =
       pipeline->device->instance->physicalDevice.compiler;
 
@@ -1181,7 +1237,10 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       .spec_info = spec_info,
       .cache_key = {
          .stage = MESA_SHADER_COMPUTE,
-      }
+      },
+      .feedback = {
+         .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+      },
    };
    anv_pipeline_hash_shader(stage.module,
                             stage.entrypoint,
@@ -1196,10 +1255,13 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
 
    anv_pipeline_hash_compute(pipeline, layout, &stage, stage.cache_key.sha1);
+   bool cache_hit;
    bin = anv_device_search_for_kernel(pipeline->device, cache, &stage.cache_key,
-                                      sizeof(stage.cache_key));
+                                      sizeof(stage.cache_key), &cache_hit);
 
    if (bin == NULL) {
+      int64_t stage_start = os_time_get_nano();
+
       stage.bind_map = (struct anv_pipeline_bind_map) {
          .surface_to_descriptor = stage.surface_to_descriptor,
          .sampler_to_descriptor = stage.sampler_to_descriptor
@@ -1247,6 +1309,25 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       }
 
       ralloc_free(mem_ctx);
+
+      stage.feedback.duration = os_time_get_nano() - stage_start;
+   }
+
+   if (cache_hit) {
+      stage.feedback.flags |=
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      pipeline_feedback.flags |=
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+   }
+   pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
+
+   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   if (create_feedback) {
+      *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
+
+      assert(create_feedback->pipelineStageCreationFeedbackCount == 1);
+      create_feedback->pPipelineStageCreationFeedbacks[0] = stage.feedback;
    }
 
    pipeline->active_stages = VK_SHADER_STAGE_COMPUTE_BIT;

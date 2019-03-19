@@ -611,14 +611,19 @@ VkResult anv_MergePipelineCaches(
 struct anv_shader_bin *
 anv_device_search_for_kernel(struct anv_device *device,
                              struct anv_pipeline_cache *cache,
-                             const void *key_data, uint32_t key_size)
+                             const void *key_data, uint32_t key_size,
+                             bool *user_cache_hit)
 {
    struct anv_shader_bin *bin;
 
+   *user_cache_hit = false;
+
    if (cache) {
       bin = anv_pipeline_cache_search(cache, key_data, key_size);
-      if (bin)
+      if (bin) {
+         *user_cache_hit = true;
          return bin;
+      }
    }
 
 #ifdef ENABLE_SHADER_CACHE

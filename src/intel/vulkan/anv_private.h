@@ -1040,7 +1040,8 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
 struct anv_shader_bin *
 anv_device_search_for_kernel(struct anv_device *device,
                              struct anv_pipeline_cache *cache,
-                             const void *key_data, uint32_t key_size);
+                             const void *key_data, uint32_t key_size,
+                             bool *user_cache_bit);
 
 struct anv_shader_bin *
 anv_device_upload_kernel(struct anv_device *device,
