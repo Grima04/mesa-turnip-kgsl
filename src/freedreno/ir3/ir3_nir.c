@@ -152,6 +152,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 {
 	struct nir_lower_tex_options tex_options = {
 			.lower_rect = 0,
+			.lower_tg4_offsets = true,
 	};
 
 	if (key) {

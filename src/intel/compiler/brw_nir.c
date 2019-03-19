@@ -683,6 +683,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       .lower_txb_shadow_clamp = true,
       .lower_txd_shadow_clamp = true,
       .lower_txd_offset_clamp = true,
+      .lower_tg4_offsets = true,
    };
 
    OPT(nir_lower_tex, &tex_options);
