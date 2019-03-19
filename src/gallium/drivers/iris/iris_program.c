@@ -712,7 +712,7 @@ iris_compile_tcs(struct iris_context *ice,
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
    enum brw_param_builtin *system_values = NULL;
    unsigned num_system_values = 0;
-   unsigned num_cbufs;
+   unsigned num_cbufs = 0;
 
    nir_shader *nir;
 
