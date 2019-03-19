@@ -200,11 +200,14 @@ static void unmap_object(void *obj)
 
 /**/
 
-static void check_vk_result(VkResult err)
-{
-   if (err != VK_SUCCESS)
-      printf("ERROR!\n");
-}
+#define VK_CHECK(expr) \
+   do { \
+      VkResult __result = (expr); \
+      if (__result != VK_SUCCESS) { \
+         fprintf(stderr, "'%s' line %i failed with %s\n", \
+                 #expr, __LINE__, vk_Result_to_str(__result)); \
+      } \
+   } while (0)
 
 /**/
 
@@ -327,8 +330,7 @@ static void device_map_queues(struct device_data *data,
                                      pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex,
                                      j, &queue);
 
-         VkResult err = data->set_device_loader_data(data->device, queue);
-         check_vk_result(err);
+         VK_CHECK(data->set_device_loader_data(data->device, queue));
 
          data->queues[queue_index++] =
             new_queue_data(queue, &family_props[pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex],
@@ -579,7 +581,6 @@ static void ensure_swapchain_fonts(struct swapchain_data *data,
    data->font_uploaded = true;
 
    struct device_data *device_data = data->device;
-   VkResult err;
    ImGuiIO& io = ImGui::GetIO();
    unsigned char* pixels;
    int width, height;
@@ -592,9 +593,8 @@ static void ensure_swapchain_fonts(struct swapchain_data *data,
    buffer_info.size = upload_size;
    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-   err = device_data->vtable.CreateBuffer(device_data->device, &buffer_info,
-                                          NULL, &data->upload_font_buffer);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateBuffer(device_data->device, &buffer_info,
+                                             NULL, &data->upload_font_buffer));
    VkMemoryRequirements upload_buffer_req;
    device_data->vtable.GetBufferMemoryRequirements(device_data->device,
                                                    data->upload_font_buffer,
@@ -605,29 +605,25 @@ static void ensure_swapchain_fonts(struct swapchain_data *data,
    upload_alloc_info.memoryTypeIndex = vk_memory_type(device_data,
                                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
                                                       upload_buffer_req.memoryTypeBits);
-   err = device_data->vtable.AllocateMemory(device_data->device,
-                                            &upload_alloc_info,
-                                            NULL,
-                                            &data->upload_font_buffer_mem);
-   check_vk_result(err);
-   err = device_data->vtable.BindBufferMemory(device_data->device,
-                                              data->upload_font_buffer,
-                                              data->upload_font_buffer_mem, 0);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.AllocateMemory(device_data->device,
+                                               &upload_alloc_info,
+                                               NULL,
+                                               &data->upload_font_buffer_mem));
+   VK_CHECK(device_data->vtable.BindBufferMemory(device_data->device,
+                                                 data->upload_font_buffer,
+                                                 data->upload_font_buffer_mem, 0));
 
    /* Upload to Buffer */
    char* map = NULL;
-   err = device_data->vtable.MapMemory(device_data->device,
-                                       data->upload_font_buffer_mem,
-                                       0, upload_size, 0, (void**)(&map));
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.MapMemory(device_data->device,
+                                          data->upload_font_buffer_mem,
+                                          0, upload_size, 0, (void**)(&map)));
    memcpy(map, pixels, upload_size);
    VkMappedMemoryRange range[1] = {};
    range[0].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
    range[0].memory = data->upload_font_buffer_mem;
    range[0].size = upload_size;
-   err = device_data->vtable.FlushMappedMemoryRanges(device_data->device, 1, range);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.FlushMappedMemoryRanges(device_data->device, 1, range));
    device_data->vtable.UnmapMemory(device_data->device,
                                    data->upload_font_buffer_mem);
 
@@ -691,7 +687,6 @@ static void CreateOrResizeBuffer(struct device_data *data,
                                  VkDeviceSize *buffer_size,
                                  size_t new_size, VkBufferUsageFlagBits usage)
 {
-    VkResult err;
     if (*buffer != VK_NULL_HANDLE)
         data->vtable.DestroyBuffer(data->device, *buffer, NULL);
     if (*buffer_memory)
@@ -702,8 +697,7 @@ static void CreateOrResizeBuffer(struct device_data *data,
     buffer_info.size = new_size;
     buffer_info.usage = usage;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    err = data->vtable.CreateBuffer(data->device, &buffer_info, NULL, buffer);
-    check_vk_result(err);
+    VK_CHECK(data->vtable.CreateBuffer(data->device, &buffer_info, NULL, buffer));
 
     VkMemoryRequirements req;
     data->vtable.GetBufferMemoryRequirements(data->device, *buffer, &req);
@@ -712,11 +706,9 @@ static void CreateOrResizeBuffer(struct device_data *data,
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex =
        vk_memory_type(data, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, req.memoryTypeBits);
-    err = data->vtable.AllocateMemory(data->device, &alloc_info, NULL, buffer_memory);
-    check_vk_result(err);
+    VK_CHECK(data->vtable.AllocateMemory(data->device, &alloc_info, NULL, buffer_memory));
 
-    err = data->vtable.BindBufferMemory(data->device, *buffer, *buffer_memory, 0);
-    check_vk_result(err);
+    VK_CHECK(data->vtable.BindBufferMemory(data->device, *buffer, *buffer_memory, 0));
     *buffer_size = new_size;
 }
 
@@ -729,7 +721,6 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    struct device_data *device_data = data->device;
    uint32_t idx = data->n_frames % ARRAY_SIZE(data->frame_data);
    VkCommandBuffer command_buffer = data->frame_data[idx].command_buffer;
-   VkResult err;
 
    device_data->vtable.ResetCommandBuffer(command_buffer, 0);
 
@@ -801,12 +792,10 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
     VkDeviceMemory index_mem = data->frame_data[idx].index_buffer_mem;
     ImDrawVert* vtx_dst = NULL;
     ImDrawIdx* idx_dst = NULL;
-    err = device_data->vtable.MapMemory(device_data->device, vertex_mem,
-                                        0, vertex_size, 0, (void**)(&vtx_dst));
-    check_vk_result(err);
-    err = device_data->vtable.MapMemory(device_data->device, index_mem,
-                                        0, index_size, 0, (void**)(&idx_dst));
-    check_vk_result(err);
+    VK_CHECK(device_data->vtable.MapMemory(device_data->device, vertex_mem,
+                                           0, vertex_size, 0, (void**)(&vtx_dst)));
+    VK_CHECK(device_data->vtable.MapMemory(device_data->device, index_mem,
+                                           0, index_size, 0, (void**)(&idx_dst)));
     for (int n = 0; n < draw_data->CmdListsCount; n++)
         {
            const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -822,8 +811,7 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
     range[1].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     range[1].memory = index_mem;
     range[1].size = VK_WHOLE_SIZE;
-    err = device_data->vtable.FlushMappedMemoryRanges(device_data->device, 2, range);
-    check_vk_result(err);
+    VK_CHECK(device_data->vtable.FlushMappedMemoryRanges(device_data->device, 2, range));
     device_data->vtable.UnmapMemory(device_data->device, vertex_mem);
     device_data->vtable.UnmapMemory(device_data->device, index_mem);
 
@@ -907,9 +895,8 @@ static void render_swapchain_display(struct swapchain_data *data, unsigned image
    /* Submission semaphore */
    VkSemaphoreCreateInfo semaphore_info = {};
    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-   err = device_data->vtable.CreateSemaphore(device_data->device, &semaphore_info,
-                                             NULL, &data->submission_semaphore);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateSemaphore(device_data->device, &semaphore_info,
+                                                NULL, &data->submission_semaphore));
 
    VkSubmitInfo submit_info = {};
    VkPipelineStageFlags stage_wait = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -936,23 +923,20 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
 {
    struct device_data *device_data = data->device;
    VkShaderModule vert_module, frag_module;
-   VkResult err;
 
    /* Create shader modules */
    VkShaderModuleCreateInfo vert_info = {};
    vert_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
    vert_info.codeSize = sizeof(overlay_vert_spv);
    vert_info.pCode = overlay_vert_spv;
-   err = device_data->vtable.CreateShaderModule(device_data->device,
-                                                &vert_info, NULL, &vert_module);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateShaderModule(device_data->device,
+                                                   &vert_info, NULL, &vert_module));
    VkShaderModuleCreateInfo frag_info = {};
    frag_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
    frag_info.codeSize = sizeof(overlay_frag_spv);
    frag_info.pCode = (uint32_t*)overlay_frag_spv;
-   err = device_data->vtable.CreateShaderModule(device_data->device,
-                                                &frag_info, NULL, &frag_module);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateShaderModule(device_data->device,
+                                                   &frag_info, NULL, &frag_module));
 
    /* Font sampler */
    VkSamplerCreateInfo sampler_info = {};
@@ -966,9 +950,8 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    sampler_info.minLod = -1000;
    sampler_info.maxLod = 1000;
    sampler_info.maxAnisotropy = 1.0f;
-   err = device_data->vtable.CreateSampler(device_data->device, &sampler_info,
-                                           NULL, &data->font_sampler);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateSampler(device_data->device, &sampler_info,
+                                              NULL, &data->font_sampler));
 
    /* Descriptor pool */
    VkDescriptorPoolSize sampler_pool_size = {};
@@ -979,10 +962,9 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    desc_pool_info.maxSets = 1;
    desc_pool_info.poolSizeCount = 1;
    desc_pool_info.pPoolSizes = &sampler_pool_size;
-   err = device_data->vtable.CreateDescriptorPool(device_data->device,
-                                                  &desc_pool_info,
-                                                  NULL, &data->descriptor_pool);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateDescriptorPool(device_data->device,
+                                                     &desc_pool_info,
+                                                     NULL, &data->descriptor_pool));
 
    /* Descriptor layout */
    VkSampler sampler[1] = { data->font_sampler };
@@ -995,10 +977,9 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
    set_layout_info.bindingCount = 1;
    set_layout_info.pBindings = binding;
-   err = device_data->vtable.CreateDescriptorSetLayout(device_data->device,
-                                                       &set_layout_info,
-                                                       NULL, &data->descriptor_layout);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateDescriptorSetLayout(device_data->device,
+                                                          &set_layout_info,
+                                                          NULL, &data->descriptor_layout));
 
    /* Descriptor set */
    VkDescriptorSetAllocateInfo alloc_info = {};
@@ -1006,10 +987,9 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    alloc_info.descriptorPool = data->descriptor_pool;
    alloc_info.descriptorSetCount = 1;
    alloc_info.pSetLayouts = &data->descriptor_layout;
-   err = device_data->vtable.AllocateDescriptorSets(device_data->device,
-                                                    &alloc_info,
-                                                    &data->descriptor_set);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.AllocateDescriptorSets(device_data->device,
+                                                       &alloc_info,
+                                                       &data->descriptor_set));
 
    /* Constants: we are using 'vec2 offset' and 'vec2 scale' instead of a full
     * 3d projection matrix
@@ -1024,11 +1004,9 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    layout_info.pSetLayouts = &data->descriptor_layout;
    layout_info.pushConstantRangeCount = 1;
    layout_info.pPushConstantRanges = push_constants;
-   err = device_data->vtable.CreatePipelineLayout(device_data->device,
-                                                  &layout_info,
-                                                  NULL, &data->pipeline_layout);
-   check_vk_result(err);
-
+   VK_CHECK(device_data->vtable.CreatePipelineLayout(device_data->device,
+                                                     &layout_info,
+                                                     NULL, &data->pipeline_layout));
 
    VkPipelineShaderStageCreateInfo stage[2] = {};
    stage[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1125,10 +1103,10 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    info.pDynamicState = &dynamic_state;
    info.layout = data->pipeline_layout;
    info.renderPass = data->render_pass;
-   err = device_data->vtable.CreateGraphicsPipelines(device_data->device, VK_NULL_HANDLE,
-                                                     1, &info,
-                                                     NULL, &data->pipeline);
-   check_vk_result(err);
+   VK_CHECK(
+      device_data->vtable.CreateGraphicsPipelines(device_data->device, VK_NULL_HANDLE,
+                                                  1, &info,
+                                                  NULL, &data->pipeline));
 
    device_data->vtable.DestroyShaderModule(device_data->device, vert_module, NULL);
    device_data->vtable.DestroyShaderModule(device_data->device, frag_module, NULL);
@@ -1153,9 +1131,8 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-   err = device_data->vtable.CreateImage(device_data->device, &image_info,
-                                         NULL, &data->font_image);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateImage(device_data->device, &image_info,
+                                            NULL, &data->font_image));
    VkMemoryRequirements font_image_req;
    device_data->vtable.GetImageMemoryRequirements(device_data->device,
                                                   data->font_image, &font_image_req);
@@ -1165,13 +1142,11 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    image_alloc_info.memoryTypeIndex = vk_memory_type(device_data,
                                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                                      font_image_req.memoryTypeBits);
-   err = device_data->vtable.AllocateMemory(device_data->device, &image_alloc_info,
-                                            NULL, &data->font_mem);
-   check_vk_result(err);
-   err = device_data->vtable.BindImageMemory(device_data->device,
-                                             data->font_image,
-                                             data->font_mem, 0);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.AllocateMemory(device_data->device, &image_alloc_info,
+                                               NULL, &data->font_mem));
+   VK_CHECK(device_data->vtable.BindImageMemory(device_data->device,
+                                                data->font_image,
+                                                data->font_mem, 0));
 
    /* Font image view */
    VkImageViewCreateInfo view_info = {};
@@ -1182,9 +1157,8 @@ static void setup_swapchain_data_pipeline(struct swapchain_data *data)
    view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
    view_info.subresourceRange.levelCount = 1;
    view_info.subresourceRange.layerCount = 1;
-   err = device_data->vtable.CreateImageView(device_data->device, &view_info,
-                                             NULL, &data->font_image_view);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateImageView(device_data->device, &view_info,
+                                                NULL, &data->font_image_view));
 
    /* Descriptor set */
    VkDescriptorImageInfo desc_image[1] = {};
@@ -1214,7 +1188,6 @@ static void setup_swapchain_data(struct swapchain_data *data,
    ImGui::GetIO().DisplaySize = ImVec2((float)data->width, (float)data->height);
 
    struct device_data *device_data = data->device;
-   VkResult err;
 
    /* Render pass */
    VkAttachmentDescription attachment_desc = {};
@@ -1248,28 +1221,25 @@ static void setup_swapchain_data(struct swapchain_data *data,
    render_pass_info.pSubpasses = &subpass;
    render_pass_info.dependencyCount = 1;
    render_pass_info.pDependencies = &dependency;
-   err = device_data->vtable.CreateRenderPass(device_data->device,
-                                              &render_pass_info,
-                                              NULL, &data->render_pass);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateRenderPass(device_data->device,
+                                                 &render_pass_info,
+                                                 NULL, &data->render_pass));
 
    setup_swapchain_data_pipeline(data);
 
-   err = device_data->vtable.GetSwapchainImagesKHR(device_data->device,
-                                                   data->swapchain,
-                                                   &data->n_images,
-                                                   NULL);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.GetSwapchainImagesKHR(device_data->device,
+                                                      data->swapchain,
+                                                      &data->n_images,
+                                                      NULL));
 
    data->images = ralloc_array(data, VkImage, data->n_images);
    data->image_views = ralloc_array(data, VkImageView, data->n_images);
    data->framebuffers = ralloc_array(data, VkFramebuffer, data->n_images);
 
-   err = device_data->vtable.GetSwapchainImagesKHR(device_data->device,
-                                                   data->swapchain,
-                                                   &data->n_images,
-                                                   data->images);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.GetSwapchainImagesKHR(device_data->device,
+                                                      data->swapchain,
+                                                      &data->n_images,
+                                                      data->images));
 
    /* Image views */
    VkImageViewCreateInfo view_info = {};
@@ -1283,9 +1253,9 @@ static void setup_swapchain_data(struct swapchain_data *data,
    view_info.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
    for (uint32_t i = 0; i < data->n_images; i++) {
       view_info.image = data->images[i];
-      err = device_data->vtable.CreateImageView(device_data->device, &view_info,
-                                                NULL, &data->image_views[i]);
-      check_vk_result(err);
+      VK_CHECK(device_data->vtable.CreateImageView(device_data->device,
+                                                   &view_info, NULL,
+                                                   &data->image_views[i]));
    }
 
    /* Framebuffers */
@@ -1300,9 +1270,8 @@ static void setup_swapchain_data(struct swapchain_data *data,
    fb_info.layers = 1;
    for (uint32_t i = 0; i < data->n_images; i++) {
       attachment[0] = data->image_views[i];
-      err = device_data->vtable.CreateFramebuffer(device_data->device, &fb_info,
-                                                  NULL, &data->framebuffers[i]);
-      check_vk_result(err);
+      VK_CHECK(device_data->vtable.CreateFramebuffer(device_data->device, &fb_info,
+                                                     NULL, &data->framebuffers[i]));
    }
 
    /* Command buffer */
@@ -1310,10 +1279,9 @@ static void setup_swapchain_data(struct swapchain_data *data,
    cmd_buffer_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cmd_buffer_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
    cmd_buffer_pool_info.queueFamilyIndex = device_data->graphic_queue->family_index;
-   err = device_data->vtable.CreateCommandPool(device_data->device,
-                                               &cmd_buffer_pool_info,
-                                               NULL, &data->command_pool);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateCommandPool(device_data->device,
+                                                  &cmd_buffer_pool_info,
+                                                  NULL, &data->command_pool));
 
    VkCommandBuffer cmd_bufs[ARRAY_SIZE(data->frame_data)];
 
@@ -1322,15 +1290,12 @@ static void setup_swapchain_data(struct swapchain_data *data,
    cmd_buffer_info.commandPool = data->command_pool;
    cmd_buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cmd_buffer_info.commandBufferCount = 2;
-   err = device_data->vtable.AllocateCommandBuffers(device_data->device,
-                                                    &cmd_buffer_info,
-                                                    cmd_bufs);
-   check_vk_result(err);
-
+   VK_CHECK(device_data->vtable.AllocateCommandBuffers(device_data->device,
+                                                       &cmd_buffer_info,
+                                                       cmd_bufs));
    for (uint32_t i = 0; i < ARRAY_SIZE(data->frame_data); i++) {
-      err = device_data->set_device_loader_data(device_data->device,
-                                                cmd_bufs[i]);
-      check_vk_result(err);
+      VK_CHECK(device_data->set_device_loader_data(device_data->device,
+                                                   cmd_bufs[i]));
 
       data->frame_data[i].command_buffer = cmd_bufs[i];
    }
@@ -1339,9 +1304,8 @@ static void setup_swapchain_data(struct swapchain_data *data,
    VkFenceCreateInfo fence_info = {};
    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-   err = device_data->vtable.CreateFence(device_data->device, &fence_info,
-                                         NULL, &data->fence);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateFence(device_data->device, &fence_info,
+                                            NULL, &data->fence));
 }
 
 static void shutdown_swapchain_data(struct swapchain_data *data)
