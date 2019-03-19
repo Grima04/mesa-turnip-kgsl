@@ -301,6 +301,7 @@ meson-gallium-st-other:
       -D gbm=false
     GALLIUM_ST: >
       -D dri3=true
+      -D gallium-extra-hud=true
       -D gallium-vdpau=true
       -D gallium-xvmc=true
       -D gallium-omx=bellagio
