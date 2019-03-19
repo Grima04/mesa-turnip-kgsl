@@ -399,9 +399,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    unsigned main_mask;
-   if (info->dst.format == PIPE_FORMAT_S8_UINT)
-      main_mask = PIPE_MASK_S;
-   else if (util_format_is_depth_or_stencil(info->dst.format))
+   if (util_format_is_depth_or_stencil(info->dst.format))
       main_mask = PIPE_MASK_Z;
    else
       main_mask = PIPE_MASK_RGBA;
@@ -422,7 +420,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    }
 
    if ((info->mask & PIPE_MASK_S) &&
-       util_format_is_depth_and_stencil(info->dst.format) &&
+       util_format_has_stencil(util_format_description(info->dst.format)) &&
        util_format_has_stencil(util_format_description(info->src.format))) {
       struct iris_resource *src_res, *dst_res, *junk;
       iris_get_depth_stencil_resources(info->src.resource, &junk, &src_res);
