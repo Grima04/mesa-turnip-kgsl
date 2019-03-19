@@ -281,17 +281,17 @@ enum quniform_contents {
         QUNIFORM_SHARED_OFFSET,
 };
 
-static inline uint32_t v3d_tmu_config_data_create(uint32_t unit, uint32_t value)
+static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
 {
         return unit << 24 | value;
 }
 
-static inline uint32_t v3d_tmu_config_data_get_unit(uint32_t data)
+static inline uint32_t v3d_unit_data_get_unit(uint32_t data)
 {
         return data >> 24;
 }
 
-static inline uint32_t v3d_tmu_config_data_get_value(uint32_t data)
+static inline uint32_t v3d_unit_data_get_offset(uint32_t data)
 {
         return data & 0xffffff;
 }

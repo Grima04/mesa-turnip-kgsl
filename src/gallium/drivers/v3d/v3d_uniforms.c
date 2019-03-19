@@ -172,13 +172,13 @@ write_tmu_p0(struct v3d_job *job,
              struct v3d_texture_stateobj *texstate,
              uint32_t data)
 {
-        int unit  = v3d_tmu_config_data_get_unit(data);
+        int unit = v3d_unit_data_get_unit(data);
         struct pipe_sampler_view *psview = texstate->textures[unit];
         struct v3d_sampler_view *sview = v3d_sampler_view(psview);
         struct v3d_resource *rsc = v3d_resource(sview->texture);
 
         cl_aligned_reloc(&job->indirect, uniforms, sview->bo,
-                         v3d_tmu_config_data_get_value(data));
+                         v3d_unit_data_get_offset(data));
         v3d_job_add_bo(job, rsc->bo);
 }
 
@@ -210,7 +210,7 @@ write_tmu_p1(struct v3d_job *job,
              struct v3d_texture_stateobj *texstate,
              uint32_t data)
 {
-        uint32_t unit = v3d_tmu_config_data_get_unit(data);
+        uint32_t unit = v3d_unit_data_get_unit(data);
         struct pipe_sampler_state *psampler = texstate->samplers[unit];
         struct v3d_sampler_state *sampler = v3d_sampler_state(psampler);
         struct pipe_sampler_view *psview = texstate->textures[unit];
@@ -223,7 +223,7 @@ write_tmu_p1(struct v3d_job *job,
         cl_aligned_reloc(&job->indirect, uniforms,
                          v3d_resource(sampler->sampler_state)->bo,
                          sampler->sampler_state_offset[variant] |
-                         v3d_tmu_config_data_get_value(data));
+                         v3d_unit_data_get_offset(data));
 }
 
 struct v3d_cl_reloc
