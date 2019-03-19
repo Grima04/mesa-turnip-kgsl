@@ -2155,19 +2155,18 @@ LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 	char *intr;
 
 	if (bitsize == 32) {
-		intr = "llvm.floor.f32";
+		intr = "llvm.amdgcn.fract.f32";
 		type = ctx->f32;
 	} else {
-		intr = "llvm.floor.f64";
+		intr = "llvm.amdgcn.fract.f64";
 		type = ctx->f64;
 	}
 
 	LLVMValueRef params[] = {
 		src0,
 	};
-	LLVMValueRef floor = ac_build_intrinsic(ctx, intr, type, params, 1,
-						AC_FUNC_ATTR_READNONE);
-	return LLVMBuildFSub(ctx->builder, src0, floor, "");
+	return ac_build_intrinsic(ctx, intr, type, params, 1,
+				  AC_FUNC_ATTR_READNONE);
 }
 
 LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0,
