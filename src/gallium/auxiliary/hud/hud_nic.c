@@ -192,14 +192,14 @@ query_nic_load(struct hud_graph *gr, struct pipe_context *pipe)
                   ((bytes - nic->last_nic_bytes) / 1000000) * 8;
 
                float speedMbps = nic->speedMbps;
-               float periodMs = gr->pane->period / 1000;
+               float periodMs = gr->pane->period / 1000.0;
                float bits = nic_mbps;
                float period_factor = periodMs / 1000;
                float period_speed = speedMbps * period_factor;
                float pct = (bits / period_speed) * 100;
 
                /* Scaling bps with a narrow time period into a second,
-                * potentially suffers from routing errors at higher
+                * potentially suffers from rounding errors at higher
                 * periods. Eg 104%. Compensate.
                 */
                if (pct > 100)
