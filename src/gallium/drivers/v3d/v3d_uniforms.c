@@ -334,13 +334,14 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_compiled_shader *shader,
                                 cl_aligned_reloc(&job->indirect, &uniforms,
                                                  ubo, 0);
                         } else {
-                                int ubo_index = data;
+                                int ubo_index = v3d_unit_data_get_unit(data);
                                 struct v3d_resource *rsc =
                                         v3d_resource(cb->cb[ubo_index].buffer);
 
                                 cl_aligned_reloc(&job->indirect, &uniforms,
                                                  rsc->bo,
-                                                 cb->cb[ubo_index].buffer_offset);
+                                                 cb->cb[ubo_index].buffer_offset +
+                                                 v3d_unit_data_get_offset(data));
                         }
                         break;
 

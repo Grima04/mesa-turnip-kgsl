@@ -99,7 +99,9 @@ vir_dump_uniform(enum quniform_contents contents,
                 break;
 
         case QUNIFORM_UBO_ADDR:
-                fprintf(stderr, "ubo[%d]", data);
+                fprintf(stderr, "ubo[%d]+0x%x",
+                        v3d_unit_data_get_unit(data),
+                        v3d_unit_data_get_offset(data));
                 break;
 
         case QUNIFORM_SSBO_OFFSET:

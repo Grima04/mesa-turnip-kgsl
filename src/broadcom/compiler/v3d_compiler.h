@@ -283,6 +283,7 @@ enum quniform_contents {
 
 static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
 {
+        assert(value < (1 << 24));
         return unit << 24 | value;
 }
 

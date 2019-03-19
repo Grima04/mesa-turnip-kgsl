@@ -219,6 +219,10 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 }
         }
 
+        uint32_t const_offset = 0;
+        if (nir_src_is_const(instr->src[offset_src]))
+                const_offset = nir_src_as_uint(instr->src[offset_src]);
+
         /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
          * storing at the same time.
          */
@@ -227,8 +231,6 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
 
         struct qreg offset;
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
-                offset = vir_uniform(c, QUNIFORM_UBO_ADDR, 0);
-
                 /* Find what variable in the default uniform block this
                  * uniform load is coming from.
                  */
@@ -252,16 +254,19 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         c->next_ubo_dst_offset += range->size;
                 }
 
-                base = base - range->src_offset + range->dst_offset;
+                const_offset += base - range->src_offset + range->dst_offset;
 
-                if (base != 0)
-                        offset = vir_ADD(c, offset, vir_uniform_ui(c, base));
+                offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                     v3d_unit_data_create(0, const_offset));
+                const_offset = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ubo) {
+                uint32_t index = nir_src_as_uint(instr->src[0]) + 1;
                 /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
                  * 1 (0 is gallium's constant buffer 0).
                  */
                 offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
-                                     nir_src_as_uint(instr->src[0]) + 1);
+                                     v3d_unit_data_create(index, const_offset));
+                const_offset = 0;
         } else if (is_shared) {
                 /* Shared variables have no buffer index, and all start from a
                  * common base that we set up at the start of dispatch
@@ -295,8 +300,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 dest = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
 
         struct qinst *tmu;
-        if (nir_src_is_const(instr->src[offset_src]) &&
-            nir_src_as_uint(instr->src[offset_src]) == 0) {
+        if (nir_src_is_const(instr->src[offset_src]) && const_offset == 0) {
                 tmu = vir_MOV_dest(c, dest, offset);
         } else {
                 tmu = vir_ADD_dest(c, dest,
