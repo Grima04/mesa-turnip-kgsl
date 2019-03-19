@@ -4492,7 +4492,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
 
 static nir_function *
 vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
-                                    const nir_function *entry_point)
+                                    nir_function *entry_point)
 {
    vtn_assert(entry_point == b->entry_point->func->impl->function);
    vtn_fail_if(!entry_point->name, "entry points are required to have a name");

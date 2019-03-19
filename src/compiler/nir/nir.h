@@ -1084,7 +1084,7 @@ unsigned nir_deref_instr_ptr_as_array_stride(nir_deref_instr *instr);
 typedef struct {
    nir_instr instr;
 
-   const struct nir_function *callee;
+   struct nir_function *callee;
 
    unsigned num_params;
    nir_src params[];
@@ -2435,7 +2435,7 @@ nir_intrinsic_instr *nir_intrinsic_instr_create(nir_shader *shader,
                                                 nir_intrinsic_op op);
 
 nir_call_instr *nir_call_instr_create(nir_shader *shader,
-                                      const nir_function *callee);
+                                      nir_function *callee);
 
 nir_tex_instr *nir_tex_instr_create(nir_shader *shader, unsigned num_srcs);
 
