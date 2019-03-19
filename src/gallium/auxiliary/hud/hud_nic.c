@@ -114,7 +114,7 @@ query_wifi_bitrate(const struct nic_info *nic, uint64_t *bitrate)
    memset(&stats, 0, sizeof(stats));
    memset(&req, 0, sizeof(req));
 
-   strcpy(req.ifr_name, nic->name);
+   snprintf(req.ifr_name, sizeof(req.ifr_name), "%s", nic->name);
    req.u.data.pointer = &stats;
    req.u.data.flags = 1;
    req.u.data.length = sizeof(struct iw_statistics);
@@ -145,7 +145,7 @@ query_nic_rssi(const struct nic_info *nic, uint64_t *leveldBm)
    memset(&stats, 0, sizeof(stats));
    memset(&req, 0, sizeof(req));
 
-   strcpy(req.ifr_name, nic->name);
+   snprintf(req.ifr_name, sizeof(req.ifr_name), "%s", nic->name);
    req.u.data.pointer = &stats;
    req.u.data.flags = 1;
    req.u.data.length = sizeof(struct iw_statistics);

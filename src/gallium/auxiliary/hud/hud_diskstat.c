@@ -213,7 +213,7 @@ add_object_part(const char *basename, const char *name, int objmode)
 {
    struct diskstat_info *dsi = CALLOC_STRUCT(diskstat_info);
 
-   strcpy(dsi->name, name);
+   snprintf(dsi->name, sizeof(dsi->name), "%s", name);
    snprintf(dsi->sysfs_filename, sizeof(dsi->sysfs_filename), "%s/%s/stat",
       basename, name);
    dsi->mode = objmode;
@@ -226,7 +226,7 @@ add_object(const char *basename, const char *name, int objmode)
 {
    struct diskstat_info *dsi = CALLOC_STRUCT(diskstat_info);
 
-   strcpy(dsi->name, name);
+   snprintf(dsi->name, sizeof(dsi->name), "%s", name);
    snprintf(dsi->sysfs_filename, sizeof(dsi->sysfs_filename), "%s/stat",
       basename);
    dsi->mode = objmode;
