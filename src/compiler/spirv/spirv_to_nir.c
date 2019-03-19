@@ -2318,7 +2318,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_lod);
 
    /* Now we need to handle some number of optional arguments */
-   const struct vtn_ssa_value *gather_offsets = NULL;
+   struct vtn_value *gather_offsets = NULL;
    if (idx < count) {
       uint32_t operands = w[idx++];
 
@@ -2346,9 +2346,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
          (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_offset);
 
       if (operands & SpvImageOperandsConstOffsetsMask) {
-         nir_tex_src none = {0};
-         gather_offsets = vtn_ssa_value(b, w[idx++]);
-         (*p++) = none;
+         vtn_assert(texop == nir_texop_tg4);
+         gather_offsets = vtn_value(b, w[idx++], vtn_value_type_constant);
       }
 
       if (operands & SpvImageOperandsSampleMask) {
@@ -2395,63 +2394,40 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    vtn_assert(glsl_get_vector_elements(ret_type->type) ==
               nir_tex_instr_dest_size(instr));
 
-   nir_ssa_def *def;
-   nir_instr *instruction;
    if (gather_offsets) {
-      vtn_assert(glsl_get_base_type(gather_offsets->type) == GLSL_TYPE_ARRAY);
-      vtn_assert(glsl_get_length(gather_offsets->type) == 4);
-      nir_tex_instr *instrs[4] = {instr, NULL, NULL, NULL};
+      vtn_fail_if(gather_offsets->type->base_type != vtn_base_type_array ||
+                  gather_offsets->type->length != 4,
+                  "ConstOffsets must be an array of size four of vectors "
+                  "of two integer components");
 
-      /* Copy the current instruction 4x */
-      for (uint32_t i = 1; i < 4; i++) {
-         instrs[i] = nir_tex_instr_create(b->shader, instr->num_srcs);
-         instrs[i]->op = instr->op;
-         instrs[i]->coord_components = instr->coord_components;
-         instrs[i]->sampler_dim = instr->sampler_dim;
-         instrs[i]->is_array = instr->is_array;
-         instrs[i]->is_shadow = instr->is_shadow;
-         instrs[i]->is_new_style_shadow = instr->is_new_style_shadow;
-         instrs[i]->component = instr->component;
-         instrs[i]->dest_type = instr->dest_type;
+      struct vtn_type *vec_type = gather_offsets->type->array_element;
+      vtn_fail_if(vec_type->base_type != vtn_base_type_vector ||
+                  vec_type->length != 2 ||
+                  !glsl_type_is_integer(vec_type->type),
+                  "ConstOffsets must be an array of size four of vectors "
+                  "of two integer components");
 
-         memcpy(instrs[i]->src, srcs, instr->num_srcs * sizeof(*instr->src));
-
-         nir_ssa_dest_init(&instrs[i]->instr, &instrs[i]->dest,
-                           nir_tex_instr_dest_size(instr), 32, NULL);
-      }
-
-      /* Fill in the last argument with the offset from the passed in offsets
-       * and insert the instruction into the stream.
-       */
+      unsigned bit_size = glsl_get_bit_size(vec_type->type);
       for (uint32_t i = 0; i < 4; i++) {
-         nir_tex_src src;
-         src.src = nir_src_for_ssa(gather_offsets->elems[i]->def);
-         src.src_type = nir_tex_src_offset;
-         instrs[i]->src[instrs[i]->num_srcs - 1] = src;
-         nir_builder_instr_insert(&b->nb, &instrs[i]->instr);
+         const nir_const_value *cvec =
+            &gather_offsets->constant->elements[i]->values[0];
+         for (uint32_t j = 0; j < 2; j++) {
+            switch (bit_size) {
+            case 8:  instr->tg4_offsets[i][j] = cvec->i8[j];    break;
+            case 16: instr->tg4_offsets[i][j] = cvec->i16[j];   break;
+            case 32: instr->tg4_offsets[i][j] = cvec->i32[j];   break;
+            case 64: instr->tg4_offsets[i][j] = cvec->i64[j];   break;
+            default:
+               vtn_fail("Unsupported bit size");
+            }
+         }
       }
-
-      /* Combine the results of the 4 instructions by taking their .w
-       * components
-       */
-      nir_alu_instr *vec4 = nir_alu_instr_create(b->shader, nir_op_vec4);
-      nir_ssa_dest_init(&vec4->instr, &vec4->dest.dest, 4, 32, NULL);
-      vec4->dest.write_mask = 0xf;
-      for (uint32_t i = 0; i < 4; i++) {
-         vec4->src[i].src = nir_src_for_ssa(&instrs[i]->dest.ssa);
-         vec4->src[i].swizzle[0] = 3;
-      }
-      def = &vec4->dest.dest.ssa;
-      instruction = &vec4->instr;
-   } else {
-      def = &instr->dest.ssa;
-      instruction = &instr->instr;
    }
 
    val->ssa = vtn_create_ssa_value(b, ret_type->type);
-   val->ssa->def = def;
+   val->ssa->def = &instr->dest.ssa;
 
-   nir_builder_instr_insert(&b->nb, instruction);
+   nir_builder_instr_insert(&b->nb, &instr->instr);
 }
 
 static void
