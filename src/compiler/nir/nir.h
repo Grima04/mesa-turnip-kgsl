@@ -4194,6 +4194,13 @@ bool nir_opt_vectorize(nir_shader *shader);
 
 bool nir_opt_conditional_discard(nir_shader *shader);
 
+typedef bool (*nir_should_vectorize_mem_func)(unsigned align, unsigned bit_size,
+                                              unsigned num_components, unsigned high_offset,
+                                              nir_intrinsic_instr *low, nir_intrinsic_instr *high);
+
+bool nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,
+                                  nir_should_vectorize_mem_func callback);
+
 void nir_sweep(nir_shader *shader);
 
 void nir_remap_dual_slot_attributes(nir_shader *shader,
