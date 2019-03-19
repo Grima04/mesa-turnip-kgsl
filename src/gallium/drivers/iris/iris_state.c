@@ -2704,9 +2704,9 @@ iris_create_vertex_elements(struct pipe_context *ctx,
                            VFCOMP_STORE_SRC, VFCOMP_STORE_SRC };
 
       switch (isl_format_get_num_channels(fmt.fmt)) {
-      case 0: comp[0] = VFCOMP_STORE_0;
-      case 1: comp[1] = VFCOMP_STORE_0;
-      case 2: comp[2] = VFCOMP_STORE_0;
+      case 0: comp[0] = VFCOMP_STORE_0; /* fallthrough */
+      case 1: comp[1] = VFCOMP_STORE_0; /* fallthrough */
+      case 2: comp[2] = VFCOMP_STORE_0; /* fallthrough */
       case 3:
          comp[3] = isl_format_has_int_channel(fmt.fmt) ? VFCOMP_STORE_1_INT
                                                        : VFCOMP_STORE_1_FP;
