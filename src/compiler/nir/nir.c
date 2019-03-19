@@ -515,7 +515,7 @@ nir_intrinsic_instr_create(nir_shader *shader, nir_intrinsic_op op)
 }
 
 nir_call_instr *
-nir_call_instr_create(nir_shader *shader, nir_function *callee)
+nir_call_instr_create(nir_shader *shader, const nir_function *callee)
 {
    const unsigned num_params = callee->num_params;
    nir_call_instr *instr =
