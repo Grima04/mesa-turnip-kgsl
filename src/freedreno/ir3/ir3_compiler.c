@@ -29,12 +29,13 @@
 #include "ir3_compiler.h"
 
 static const struct debug_named_value shader_debug_options[] = {
-		{"vs", IR3_DBG_SHADER_VS, "Print shader disasm for vertex shaders"},
-		{"fs", IR3_DBG_SHADER_FS, "Print shader disasm for fragment shaders"},
-		{"cs", IR3_DBG_SHADER_CS, "Print shader disasm for compute shaders"},
-		{"disasm",  IR3_DBG_DISASM, "Dump NIR and adreno shader disassembly"},
-		{"optmsgs", IR3_DBG_OPTMSGS,"Enable optimizer debug messages"},
-		DEBUG_NAMED_VALUE_END
+	{"vs",         IR3_DBG_SHADER_VS,  "Print shader disasm for vertex shaders"},
+	{"fs",         IR3_DBG_SHADER_FS,  "Print shader disasm for fragment shaders"},
+	{"cs",         IR3_DBG_SHADER_CS,  "Print shader disasm for compute shaders"},
+	{"disasm",     IR3_DBG_DISASM,     "Dump NIR and adreno shader disassembly"},
+	{"optmsgs",    IR3_DBG_OPTMSGS,    "Enable optimizer debug messages"},
+	{"forces2en",  IR3_DBG_FORCES2EN,  "Force s2en mode for tex sampler instructions"},
+	DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(ir3_shader_debug, "IR3_SHADER_DEBUG", shader_debug_options, 0)

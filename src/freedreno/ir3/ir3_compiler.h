@@ -76,6 +76,7 @@ enum ir3_shader_debug {
 	IR3_DBG_SHADER_CS = 0x04,
 	IR3_DBG_DISASM    = 0x08,
 	IR3_DBG_OPTMSGS   = 0x10,
+	IR3_DBG_FORCES2EN = 0x20,
 };
 
 extern enum ir3_shader_debug ir3_shader_debug;
