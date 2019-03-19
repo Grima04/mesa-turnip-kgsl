@@ -59,6 +59,7 @@ extern "C" {
 #define NIR_FALSE 0u
 #define NIR_TRUE (~0u)
 #define NIR_MAX_VEC_COMPONENTS 4
+#define NIR_MAX_MATRIX_COLUMNS 4
 typedef uint8_t nir_component_mask_t;
 
 /** Defines a cast function
@@ -141,7 +142,7 @@ typedef struct nir_constant {
     * by the type associated with the \c nir_variable.  Constants may be
     * scalars, vectors, or matrices.
     */
-   nir_const_value values[NIR_MAX_VEC_COMPONENTS];
+   nir_const_value values[NIR_MAX_MATRIX_COLUMNS];
 
    /* we could get this from the var->type but makes clone *much* easier to
     * not have to care about the type.
