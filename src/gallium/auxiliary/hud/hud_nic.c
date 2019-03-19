@@ -272,8 +272,10 @@ hud_nic_graph_install(struct hud_pane *pane, const char *nic_name,
    }
    else if (nic->mode == NIC_RSSI_DBM)
       snprintf(gr->name, sizeof(gr->name), "%s-rssi", nic->name);
-   else
+   else {
+      free(gr);
       return;
+   }
 
    gr->query_data = nic;
    gr->query_new_value = query_nic_load;

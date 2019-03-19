@@ -196,8 +196,10 @@ hud_diskstat_graph_install(struct hud_pane *pane, const char *dev_name,
    else if (dsi->mode == DISKSTAT_WR) {
       snprintf(gr->name, sizeof(gr->name), "%s-Write-MB/s", dsi->name);
    }
-   else
+   else {
+      free(gr);
       return;
+   }
 
    gr->query_data = dsi;
    gr->query_new_value = query_dsi_load;
