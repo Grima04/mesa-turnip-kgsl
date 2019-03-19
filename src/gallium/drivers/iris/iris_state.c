@@ -1651,6 +1651,7 @@ fill_surface_state(struct isl_device *isl_dev,
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
       f.aux_address = res->aux.bo->gtt_offset + res->aux.offset;
+      f.clear_color = res->aux.clear_color;
    }
 
    isl_surf_fill_state_s(isl_dev, map, &f);
@@ -1705,6 +1706,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    const struct iris_format_info fmt =
       iris_format_for_usage(devinfo, tmpl->format, usage);
+
+   isv->clear_color = isv->res->aux.clear_color;
 
    isv->view = (struct isl_view) {
       .format = fmt.fmt,
@@ -1821,6 +1824,8 @@ iris_create_surface(struct pipe_context *ctx,
       .swizzle = ISL_SWIZZLE_IDENTITY,
       .usage = usage,
    };
+
+   surf->clear_color = res->aux.clear_color;
 
    /* Bail early for depth/stencil - we don't want SURFACE_STATE for them. */
    if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
@@ -3747,6 +3752,20 @@ surf_state_update_clear_value(struct iris_batch *batch,
                              isl_dev->ss.clear_value_size);
 }
 
+static void
+update_clear_value(struct iris_batch *batch,
+                   struct iris_resource *res,
+                   struct iris_state_ref *state)
+{
+   unsigned aux_modes = res->aux.possible_usages;
+   aux_modes &= ~ISL_AUX_USAGE_NONE;
+
+   while (aux_modes) {
+      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+      surf_state_update_clear_value(batch, res, state, aux_usage);
+   }
+}
+
 /**
  * Add a surface to the validation list, as well as the buffer containing
  * the corresponding SURFACE_STATE.
@@ -3768,7 +3787,12 @@ use_surface(struct iris_batch *batch,
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable);
       iris_use_pinned_bo(batch, res->aux.clear_color_bo, false);
-      surf_state_update_clear_value(batch, res, &surf->surface_state, aux_usage);
+
+      if (memcmp(&res->aux.clear_color, &surf->clear_color,
+                 sizeof(surf->clear_color)) != 0) {
+         update_clear_value(batch, res, &surf->surface_state);
+         surf->clear_color = res->aux.clear_color;
+      }
    }
 
    return surf->surface_state.offset +
@@ -3790,8 +3814,11 @@ use_sampler_view(struct iris_context *ice,
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo, false);
       iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
-      surf_state_update_clear_value(batch, isv->res,
-                                    &isv->surface_state, aux_usage);
+      if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
+                 sizeof(isv->clear_color)) != 0) {
+         update_clear_value(batch, isv->res, &isv->surface_state);
+         isv->clear_color = isv->res->aux.clear_color;
+      }
    }
 
    return isv->surface_state.offset +
