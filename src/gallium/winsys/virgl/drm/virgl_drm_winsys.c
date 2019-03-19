@@ -76,9 +76,10 @@ static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
       FREE(res);
 }
 
-static boolean virgl_drm_resource_is_busy(struct virgl_drm_winsys *qdws,
+static boolean virgl_drm_resource_is_busy(struct virgl_winsys *vws,
                                           struct virgl_hw_res *res)
 {
+   struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
    struct drm_virtgpu_3d_wait waitcmd;
    int ret;
 
@@ -86,7 +87,7 @@ static boolean virgl_drm_resource_is_busy(struct virgl_drm_winsys *qdws,
    waitcmd.handle = res->bo_handle;
    waitcmd.flags = VIRTGPU_WAIT_NOWAIT;
 
-   ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
+   ret = drmIoctl(vdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
    if (ret && errno == EBUSY)
       return TRUE;
    return FALSE;
@@ -239,7 +240,7 @@ static inline int virgl_is_res_compat(struct virgl_drm_winsys *qdws,
    if (res->size > size * 2)
       return 0;
 
-   if (virgl_drm_resource_is_busy(qdws, res)) {
+   if (virgl_drm_resource_is_busy(&qdws->base, res)) {
       return -1;
    }
 
@@ -862,7 +863,6 @@ static bool virgl_fence_wait(struct virgl_winsys *vws,
                              struct pipe_fence_handle *_fence,
                              uint64_t timeout)
 {
-   struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
    struct virgl_drm_fence *fence = virgl_drm_fence(_fence);
 
    if (vws->supports_fences) {
@@ -883,12 +883,12 @@ static bool virgl_fence_wait(struct virgl_winsys *vws,
    }
 
    if (timeout == 0)
-      return !virgl_drm_resource_is_busy(vdws, fence->hw_res);
+      return !virgl_drm_resource_is_busy(vws, fence->hw_res);
 
    if (timeout != PIPE_TIMEOUT_INFINITE) {
       int64_t start_time = os_time_get();
       timeout /= 1000;
-      while (virgl_drm_resource_is_busy(vdws, fence->hw_res)) {
+      while (virgl_drm_resource_is_busy(vws, fence->hw_res)) {
          if (os_time_get() - start_time >= timeout)
             return FALSE;
          os_time_sleep(10);
@@ -1008,6 +1008,7 @@ virgl_drm_winsys_create(int drmFD)
    qdws->base.resource_get_handle = virgl_drm_winsys_resource_get_handle;
    qdws->base.resource_map = virgl_drm_resource_map;
    qdws->base.resource_wait = virgl_drm_resource_wait;
+   qdws->base.resource_is_busy = virgl_drm_resource_is_busy;
    qdws->base.cmd_buf_create = virgl_drm_cmd_buf_create;
    qdws->base.cmd_buf_destroy = virgl_drm_cmd_buf_destroy;
    qdws->base.submit_cmd = virgl_drm_winsys_submit_cmd;

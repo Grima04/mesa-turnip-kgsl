@@ -179,9 +179,11 @@ static void virgl_hw_res_destroy(struct virgl_vtest_winsys *vtws,
    FREE(res);
 }
 
-static boolean virgl_vtest_resource_is_busy(struct virgl_vtest_winsys *vtws,
+static boolean virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
                                             struct virgl_hw_res *res)
 {
+   struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
+
    /* implement busy check */
    int ret;
    ret = virgl_vtest_busy_wait(vtws, res->res_handle, 0);
@@ -391,7 +393,7 @@ static inline int virgl_is_res_compat(struct virgl_vtest_winsys *vtws,
    if (res->size > size * 2)
       return 0;
 
-   if (virgl_vtest_resource_is_busy(vtws, res)) {
+   if (virgl_vtest_resource_is_busy(&vtws->base, res)) {
       return -1;
    }
 
@@ -660,16 +662,15 @@ static bool virgl_fence_wait(struct virgl_winsys *vws,
                              struct pipe_fence_handle *fence,
                              uint64_t timeout)
 {
-   struct virgl_vtest_winsys *vdws = virgl_vtest_winsys(vws);
    struct virgl_hw_res *res = virgl_hw_res(fence);
 
    if (timeout == 0)
-      return !virgl_vtest_resource_is_busy(vdws, res);
+      return !virgl_vtest_resource_is_busy(vws, res);
 
    if (timeout != PIPE_TIMEOUT_INFINITE) {
       int64_t start_time = os_time_get();
       timeout /= 1000;
-      while (virgl_vtest_resource_is_busy(vdws, res)) {
+      while (virgl_vtest_resource_is_busy(vws, res)) {
          if (os_time_get() - start_time >= timeout)
             return FALSE;
          os_time_sleep(10);
@@ -757,6 +758,7 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
    vtws->base.resource_unref = virgl_vtest_winsys_resource_unref;
    vtws->base.resource_map = virgl_vtest_resource_map;
    vtws->base.resource_wait = virgl_vtest_resource_wait;
+   vtws->base.resource_is_busy = virgl_vtest_resource_is_busy;
    vtws->base.cmd_buf_create = virgl_vtest_cmd_buf_create;
    vtws->base.cmd_buf_destroy = virgl_vtest_cmd_buf_destroy;
    vtws->base.submit_cmd = virgl_vtest_winsys_submit_cmd;
