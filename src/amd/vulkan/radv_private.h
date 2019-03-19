@@ -396,7 +396,8 @@ bool
 radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
 					        struct radv_pipeline_cache *cache,
 					        const unsigned char *sha1,
-					        struct radv_shader_variant **variants);
+					        struct radv_shader_variant **variants,
+						bool *found_in_application_cache);
 
 void
 radv_pipeline_cache_insert_shaders(struct radv_device *device,
@@ -1960,6 +1961,8 @@ void radv_nir_shader_info_pass(const struct nir_shader *nir,
 void radv_nir_shader_info_init(struct radv_shader_info *info);
 
 struct radeon_winsys_sem;
+
+uint64_t radv_get_current_time(void);
 
 #define RADV_DEFINE_HANDLE_CASTS(__radv_type, __VkType)		\
 								\

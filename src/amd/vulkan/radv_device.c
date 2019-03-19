@@ -3647,7 +3647,7 @@ void radv_DestroyFence(
 }
 
 
-static uint64_t radv_get_current_time()
+uint64_t radv_get_current_time(void)
 {
 	struct timespec tv;
 	clock_gettime(CLOCK_MONOTONIC, &tv);
