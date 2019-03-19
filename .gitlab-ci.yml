@@ -208,6 +208,15 @@ meson-glvnd:
       -D gallium-nine=false
       -D gallium-opencl=disabled
 
+meson-clang:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_DRIVERS: "auto"
+    GALLIUM_DRIVERS: "auto"
+    CC: clang-7
+    CXX: clang++-7
+
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't hunder the run time.
