@@ -215,6 +215,34 @@ anv_GetAndroidHardwareBufferPropertiesANDROID(
    return VK_SUCCESS;
 }
 
+VkResult
+anv_GetMemoryAndroidHardwareBufferANDROID(
+   VkDevice device_h,
+   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
+   struct AHardwareBuffer **pBuffer)
+{
+   ANV_FROM_HANDLE(anv_device_memory, mem, pInfo->memory);
+
+   /* Some quotes from Vulkan spec:
+    *
+    * "If the device memory was created by importing an Android hardware
+    * buffer, vkGetMemoryAndroidHardwareBufferANDROID must return that same
+    * Android hardware buffer object."
+    *
+    * "VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID must
+    * have been included in VkExportMemoryAllocateInfo::handleTypes when
+    * memory was created."
+    */
+   if (mem->ahw) {
+      *pBuffer = mem->ahw;
+      /* Increase refcount. */
+      AHardwareBuffer_acquire(mem->ahw);
+      return VK_SUCCESS;
+   }
+
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
 /* Construct ahw usage mask from image usage bits, see
  * 'AHardwareBuffer Usage Equivalence' in Vulkan spec.
  */
@@ -244,34 +272,6 @@ anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
       ahw_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
    return ahw_usage;
-}
-
-VkResult
-anv_GetMemoryAndroidHardwareBufferANDROID(
-   VkDevice device_h,
-   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
-   struct AHardwareBuffer **pBuffer)
-{
-   ANV_FROM_HANDLE(anv_device_memory, mem, pInfo->memory);
-
-   /* Some quotes from Vulkan spec:
-    *
-    * "If the device memory was created by importing an Android hardware
-    * buffer, vkGetMemoryAndroidHardwareBufferANDROID must return that same
-    * Android hardware buffer object."
-    *
-    * "VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID must
-    * have been included in VkExportMemoryAllocateInfo::handleTypes when
-    * memory was created."
-    */
-   if (mem->ahw) {
-      *pBuffer = mem->ahw;
-      /* Increase refcount. */
-      AHardwareBuffer_acquire(mem->ahw);
-      return VK_SUCCESS;
-   }
-
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
 /*
