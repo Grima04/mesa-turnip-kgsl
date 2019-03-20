@@ -586,6 +586,8 @@ vtn_cfg_walk_blocks(struct vtn_builder *b, struct list_head *cf_list,
          if (block->merge &&
              (*block->merge & SpvOpCodeMask) == SpvOpSelectionMerge) {
             if_stmt->control = block->merge[2];
+         } else {
+            if_stmt->control = SpvSelectionControlMaskNone;
          }
 
          if_stmt->then_type = vtn_get_branch_type(b, then_block,
@@ -895,6 +897,19 @@ vtn_loop_control(struct vtn_builder *b, struct vtn_loop *vtn_loop)
    }
 }
 
+static nir_selection_control
+vtn_selection_control(struct vtn_builder *b, struct vtn_if *vtn_if)
+{
+   if (vtn_if->control == SpvSelectionControlMaskNone)
+      return nir_selection_control_none;
+   else if (vtn_if->control & SpvSelectionControlDontFlattenMask)
+      return nir_selection_control_dont_flatten;
+   else if (vtn_if->control & SpvSelectionControlFlattenMask)
+      return nir_selection_control_flatten;
+   else
+      vtn_fail("Invalid selection control");
+}
+
 static void
 vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
                  nir_variable *switch_fall_var, bool *has_switch_break,
@@ -946,6 +961,9 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
 
          nir_if *nif =
             nir_push_if(&b->nb, vtn_ssa_value(b, vtn_if->condition)->def);
+
+         nif->control = vtn_selection_control(b, vtn_if);
+
          if (vtn_if->then_type == vtn_branch_type_none) {
             vtn_emit_cf_list(b, &vtn_if->then_body,
                              switch_fall_var, &sw_break, handler);
