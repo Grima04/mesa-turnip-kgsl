@@ -762,6 +762,9 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_builtin_binop(ctx, spirv_op, dest_type, src[0], src[1]); \
       break;
 
+   BINOP(nir_op_iadd, SpvOpIAdd)
+   BINOP(nir_op_isub, SpvOpISub)
+   BINOP(nir_op_imul, SpvOpIMul)
    BINOP(nir_op_fadd, SpvOpFAdd)
    BINOP(nir_op_fsub, SpvOpFSub)
    BINOP(nir_op_fmul, SpvOpFMul)
