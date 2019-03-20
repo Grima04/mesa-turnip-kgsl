@@ -1319,7 +1319,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
        * declaration.
        */
       val = vtn_untyped_value(b, w[1]);
-      struct vtn_type *deref_type = vtn_untyped_value(b, w[3])->type;
 
       SpvStorageClass storage_class = w[2];
 
@@ -1348,19 +1347,13 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             break;
          case SpvStorageClassWorkgroup:
             val->type->type = b->options->shared_ptr_type;
-            if (b->physical_ptrs)
-               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
             break;
          case SpvStorageClassCrossWorkgroup:
             val->type->type = b->options->global_ptr_type;
-            if (b->physical_ptrs)
-               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
             break;
          case SpvStorageClassFunction:
-            if (b->physical_ptrs) {
+            if (b->physical_ptrs)
                val->type->type = b->options->temp_ptr_type;
-               val->type->stride = align(glsl_get_cl_size(deref_type->type), glsl_get_cl_alignment(deref_type->type));
-            }
             break;
          default:
             /* In this case, no variable pointers are allowed so all deref
@@ -1385,6 +1378,19 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          val->type->deref = vtn_value(b, w[3], vtn_value_type_type)->type;
 
          vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
+
+         if (b->physical_ptrs) {
+            switch (storage_class) {
+            case SpvStorageClassFunction:
+            case SpvStorageClassWorkgroup:
+            case SpvStorageClassCrossWorkgroup:
+               val->type->stride = align(glsl_get_cl_size(val->type->deref->type),
+                                         glsl_get_cl_alignment(val->type->deref->type));
+               break;
+            default:
+               break;
+            }
+         }
 
          if (storage_class == SpvStorageClassWorkgroup &&
              b->options->lower_workgroup_access_to_offsets) {
