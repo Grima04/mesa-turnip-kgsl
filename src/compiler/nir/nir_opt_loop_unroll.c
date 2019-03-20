@@ -770,11 +770,20 @@ partial_unroll(nir_shader *shader, nir_loop *loop, unsigned trip_count)
    _mesa_hash_table_destroy(remap_table, NULL);
 }
 
+/*
+ * Returns true if we should unroll the loop, otherwise false.
+ */
 static bool
-is_loop_small_enough_to_unroll(nir_shader *shader, nir_loop_info *li)
+check_unrolling_restrictions(nir_shader *shader, nir_loop *loop)
 {
-   unsigned max_iter = shader->options->max_unroll_iterations;
+   if (loop->control == nir_loop_control_unroll)
+      return true;
 
+   if (loop->control == nir_loop_control_dont_unroll)
+      return false;
+
+   nir_loop_info *li = loop->info;
+   unsigned max_iter = shader->options->max_unroll_iterations;
    unsigned trip_count =
       li->max_trip_count ? li->max_trip_count : li->guessed_trip_count;
 
@@ -822,7 +831,7 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
    /* Don't attempt to unroll a second inner loop in this pass, wait until the
     * next pass as we have altered the cf.
     */
-   if (!progress) {
+   if (!progress && loop->control != nir_loop_control_dont_unroll) {
 
       /* Check for the classic
        *
@@ -848,7 +857,7 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
          unsigned num_lt = list_length(&loop->info->loop_terminator_list);
          if (!has_nested_loop && num_lt == 1 && !loop->partially_unrolled &&
              loop->info->guessed_trip_count &&
-             is_loop_small_enough_to_unroll(sh, loop->info)) {
+             check_unrolling_restrictions(sh, loop)) {
             partial_unroll(sh, loop, loop->info->guessed_trip_count);
             progress = true;
          }
@@ -857,7 +866,7 @@ process_loops(nir_shader *sh, nir_cf_node *cf_node, bool *has_nested_loop_out)
       if (has_nested_loop || !loop->info->limiting_terminator)
          goto exit;
 
-      if (!is_loop_small_enough_to_unroll(sh, loop->info))
+      if (!check_unrolling_restrictions(sh, loop))
          goto exit;
 
       if (loop->info->exact_trip_count_known) {

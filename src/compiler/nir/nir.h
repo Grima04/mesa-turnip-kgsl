@@ -1968,12 +1968,19 @@ typedef struct {
    struct list_head loop_terminator_list;
 } nir_loop_info;
 
+typedef enum {
+   nir_loop_control_none = 0x0,
+   nir_loop_control_unroll = 0x1,
+   nir_loop_control_dont_unroll = 0x2,
+} nir_loop_control;
+
 typedef struct {
    nir_cf_node cf_node;
 
    struct exec_list body; /** < list of nir_cf_node */
 
    nir_loop_info *info;
+   nir_loop_control control;
    bool partially_unrolled;
 } nir_loop;
 
