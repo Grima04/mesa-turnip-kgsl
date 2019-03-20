@@ -862,6 +862,18 @@ nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
 nir_op nir_type_conversion_op(nir_alu_type src, nir_alu_type dst,
                               nir_rounding_mode rnd);
 
+static inline nir_op
+nir_op_vec(unsigned components)
+{
+   switch (components) {
+   case  1: return nir_op_imov;
+   case  2: return nir_op_vec2;
+   case  3: return nir_op_vec3;
+   case  4: return nir_op_vec4;
+   default: unreachable("bad component count");
+   }
+}
+
 typedef enum {
    NIR_OP_IS_COMMUTATIVE = (1 << 0),
    NIR_OP_IS_ASSOCIATIVE = (1 << 1),
