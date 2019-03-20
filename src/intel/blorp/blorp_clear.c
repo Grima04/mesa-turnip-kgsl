@@ -361,7 +361,7 @@ blorp_fast_clear(struct blorp_batch *batch,
    batch->blorp->exec(batch, &params);
 }
 
-static union isl_color_value
+union isl_color_value
 swizzle_color_value(union isl_color_value src, struct isl_swizzle swizzle)
 {
    union isl_color_value dst = { .u32 = { 0, } };
