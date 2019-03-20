@@ -365,6 +365,8 @@ nir_if_create(nir_shader *shader)
 {
    nir_if *if_stmt = ralloc(shader, nir_if);
 
+   if_stmt->control = nir_selection_control_none;
+
    cf_init(&if_stmt->cf_node, nir_cf_node_if);
    src_init(&if_stmt->condition);
 

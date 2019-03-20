@@ -537,6 +537,7 @@ static nir_if *
 clone_if(clone_state *state, struct exec_list *cf_list, const nir_if *i)
 {
    nir_if *ni = nir_if_create(state->ns);
+   ni->control = i->control;
 
    __clone_src(state, ni, &ni->condition, &i->condition);
 

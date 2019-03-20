@@ -1902,9 +1902,16 @@ nir_block_ends_in_jump(nir_block *block)
 #define nir_foreach_instr_reverse_safe(instr, block) \
    foreach_list_typed_reverse_safe(nir_instr, instr, node, &(block)->instr_list)
 
+typedef enum {
+   nir_selection_control_none = 0x0,
+   nir_selection_control_flatten = 0x1,
+   nir_selection_control_dont_flatten = 0x2,
+} nir_selection_control;
+
 typedef struct nir_if {
    nir_cf_node cf_node;
    nir_src condition;
+   nir_selection_control control;
 
    struct exec_list then_list; /** < list of nir_cf_node */
    struct exec_list else_list; /** < list of nir_cf_node */
