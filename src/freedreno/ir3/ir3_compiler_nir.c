@@ -694,8 +694,8 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		base_lo = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz));
 		base_hi = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz) + 1);
 	} else {
-		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr(ctx, src0, 4));
-		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr(ctx, src0, 4));
+		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr(ctx, src0, ptrsz));
+		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr(ctx, src0, ptrsz));
 	}
 
 	/* note: on 32bit gpu's base_hi is ignored and DCE'd */
