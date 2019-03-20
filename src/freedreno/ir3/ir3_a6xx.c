@@ -152,7 +152,7 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 */
 	dummy = create_immed(b, 0);
 
-	if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
+	if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap_ir3) {
 		src0 = ir3_get_src(ctx, &intr->src[4])[0];
 		struct ir3_instruction *compare = ir3_get_src(ctx, &intr->src[3])[0];
 		src1 = ir3_create_collect(ctx, (struct ir3_instruction*[]){
