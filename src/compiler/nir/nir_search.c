@@ -326,7 +326,17 @@ match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
          return false;
 
       switch (const_val->type) {
-      case nir_type_float:
+      case nir_type_float: {
+         nir_load_const_instr *const load =
+            nir_instr_as_load_const(instr->src[src].src.ssa->parent_instr);
+
+         /* There are 8-bit and 1-bit integer types, but there are no 8-bit or
+          * 1-bit float types.  This prevents potential assertion failures in
+          * nir_src_comp_as_float.
+          */
+         if (load->def.bit_size < 16)
+            return false;
+
          for (unsigned i = 0; i < num_components; ++i) {
             double val = nir_src_comp_as_float(instr->src[src].src,
                                                new_swizzle[i]);
@@ -334,6 +344,7 @@ match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
                return false;
          }
          return true;
+      }
 
       case nir_type_int:
       case nir_type_uint:
