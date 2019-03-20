@@ -123,6 +123,53 @@ ubuntu:
     - scons $SCONS_TARGET
     - eval $SCONS_CHECK_COMMAND
 
+autotools:
+  extends: .build
+  variables:
+    MAKEFLAGS: "-j4"
+    LLVM_CONFIG: llvm-config-7
+  script:
+    - mkdir build
+    - cd build
+    - ../autogen.sh
+        --enable-autotools
+        --enable-debug
+        --disable-llvm-shared-libs
+    - make
+    - make check
+
+# NOTE: Building SWR is 2x (yes two) times slower than all the other
+# gallium drivers combined.
+# Start this early so that it doesn't limit the total run time.
+meson-gallium-swr:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=false
+      -D gbm=false
+    GALLIUM_ST: >
+      -D dri3=false
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+    GALLIUM_DRIVERS: "swr"
+    LLVM_VERSION: "6.0"
+
+meson-clang:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_DRIVERS: "auto"
+    GALLIUM_DRIVERS: "auto"
+    CC: clang-7
+    CXX: clang++-7
+
 meson-vulkan:
   extends: .meson-build
   variables:
@@ -184,38 +231,6 @@ meson-glvnd:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=disabled
-
-meson-clang:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_DRIVERS: "auto"
-    GALLIUM_DRIVERS: "auto"
-    CC: clang-7
-    CXX: clang++-7
-
-# NOTE: Building SWR is 2x (yes two) times slower than all the other
-# gallium drivers combined.
-# Start this early so that it doesn't hunder the run time.
-meson-gallium-swr:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=false
-      -D gbm=false
-    GALLIUM_ST: >
-      -D dri3=false
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "swr"
-    LLVM_VERSION: "6.0"
 
 meson-gallium-radeonsi:
   extends: .meson-build
@@ -302,21 +317,6 @@ meson-gallium-st-other:
       -D osmesa=gallium
     GALLIUM_DRIVERS: "nouveau,swrast"
     LLVM_VERSION: "5.0"
-
-autotools:
-  extends: .build
-  variables:
-    MAKEFLAGS: "-j4"
-    LLVM_CONFIG: llvm-config-7
-  script:
-    - mkdir build
-    - cd build
-    - ../autogen.sh
-        --enable-autotools
-        --enable-debug
-        --disable-llvm-shared-libs
-    - make
-    - make check
 
 scons-nollvm:
   extends: .scons-build
