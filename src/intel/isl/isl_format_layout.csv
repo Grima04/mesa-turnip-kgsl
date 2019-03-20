@@ -343,3 +343,8 @@ GEN7_CCS_128BPP_Y           ,   1,  2,  4,  1,     ,     ,     ,     ,     ,    
 GEN9_CCS_32BPP              ,   2,  8,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
 GEN9_CCS_64BPP              ,   2,  4,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
 GEN9_CCS_128BPP             ,   2,  2,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
+GEN12_CCS_8BPP_Y0           ,   4, 32,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
+GEN12_CCS_16BPP_Y0          ,   4, 16,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
+GEN12_CCS_32BPP_Y0          ,   4,  8,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
+GEN12_CCS_64BPP_Y0          ,   4,  4,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs
+GEN12_CCS_128BPP_Y0         ,   4,  2,  4,  1,     ,     ,     ,     ,     ,     ,    ,      ,       ,   ccs

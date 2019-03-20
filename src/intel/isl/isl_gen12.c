@@ -36,6 +36,14 @@ isl_gen12_choose_image_alignment_el(const struct isl_device *dev,
    /* Handled by isl_choose_image_alignment_el */
    assert(info->format != ISL_FORMAT_HIZ);
 
+   const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
+   if (fmtl->txc == ISL_TXC_CCS) {
+      /* This CCS compresses a 2D-view of the entire surface. */
+      assert(info->levels == 1 && info->array_len == 1 && info->depth == 1);
+      *image_align_el = isl_extent3d(1, 1, 1);
+      return;
+   }
+
    if (isl_surf_usage_is_depth(info->usage)) {
       /* The alignment parameters for depth buffers are summarized in the
        * following table:
