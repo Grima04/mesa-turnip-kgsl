@@ -616,9 +616,30 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
 		break;
 	}
-	case nir_op_bit_count:
-		dst[0] = ir3_CBITS_B(b, src[0], 0);
+	case nir_op_bit_count: {
+		// TODO, we need to do this 16b at a time on a5xx+a6xx.. need to
+		// double check on earlier gen's.  Once half-precision support is
+		// in place, this should probably move to a NIR lowering pass:
+		struct ir3_instruction *hi, *lo;
+
+		hi = ir3_COV(b, ir3_SHR_B(b, src[0], 0, create_immed(b, 16), 0),
+				TYPE_U32, TYPE_U16);
+		lo = ir3_COV(b, src[0], TYPE_U32, TYPE_U16);
+
+		hi = ir3_CBITS_B(b, hi, 0);
+		lo = ir3_CBITS_B(b, lo, 0);
+
+		// TODO maybe the builders should default to making dst half-precision
+		// if the src's were half precision, to make this less awkward.. otoh
+		// we should probably just do this lowering in NIR.
+		hi->regs[0]->flags |= IR3_REG_HALF;
+		lo->regs[0]->flags |= IR3_REG_HALF;
+
+		dst[0] = ir3_ADD_S(b, hi, 0, lo, 0);
+		dst[0]->regs[0]->flags |= IR3_REG_HALF;
+		dst[0] = ir3_COV(b, dst[0], TYPE_U16, TYPE_U32);
 		break;
+	}
 	case nir_op_ifind_msb: {
 		struct ir3_instruction *cmp;
 		dst[0] = ir3_CLZ_S(b, src[0], 0);
