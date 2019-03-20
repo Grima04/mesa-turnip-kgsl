@@ -35,7 +35,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.isabs(args.libdir):
-        to = os.path.join(os.environ.get('DESTDIR', '/'), args.libdir[1:])
+        to = os.path.join(os.environ.get('DESTDIR', ''), args.libdir)
     else:
         to = os.path.join(os.environ['MESON_INSTALL_DESTDIR_PREFIX'], args.libdir)
 
