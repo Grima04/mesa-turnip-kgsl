@@ -877,6 +877,24 @@ vtn_switch_case_condition(struct vtn_builder *b, struct vtn_switch *swtch,
    }
 }
 
+static nir_loop_control
+vtn_loop_control(struct vtn_builder *b, struct vtn_loop *vtn_loop)
+{
+   if (vtn_loop->control == SpvLoopControlMaskNone)
+      return nir_loop_control_none;
+   else if (vtn_loop->control & SpvLoopControlDontUnrollMask)
+      return nir_loop_control_dont_unroll;
+   else if (vtn_loop->control & SpvLoopControlUnrollMask)
+      return nir_loop_control_unroll;
+   else if (vtn_loop->control & SpvLoopControlDependencyInfiniteMask ||
+            vtn_loop->control & SpvLoopControlDependencyLengthMask) {
+      /* We do not do anything special with these yet. */
+      return nir_loop_control_none;
+   } else {
+      vtn_fail("Invalid loop control");
+   }
+}
+
 static void
 vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
                  nir_variable *switch_fall_var, bool *has_switch_break,
@@ -962,6 +980,8 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
          struct vtn_loop *vtn_loop = (struct vtn_loop *)node;
 
          nir_loop *loop = nir_push_loop(&b->nb);
+         loop->control = vtn_loop_control(b, vtn_loop);
+
          vtn_emit_cf_list(b, &vtn_loop->body, NULL, NULL, handler);
 
          if (!list_empty(&vtn_loop->cont_body)) {
