@@ -126,7 +126,7 @@ ubuntu:
 autotools:
   extends: .build
   variables:
-    MAKEFLAGS: "-j4"
+    MAKEFLAGS: "-j8"
     LLVM_CONFIG: llvm-config-7
   script:
     - mkdir build
