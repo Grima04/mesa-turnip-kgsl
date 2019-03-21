@@ -1141,11 +1141,8 @@ VkResult radv_GetQueryPoolResults(
 				available = *(uint64_t *)src != TIMESTAMP_NOT_READY;
 			}
 
-			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT)) {
+			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
 				result = VK_NOT_READY;
-				break;
-
-			}
 
 			if (flags & VK_QUERY_RESULT_64_BIT) {
 				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
@@ -1178,11 +1175,8 @@ VkResult radv_GetQueryPoolResults(
 				}
 			}
 
-			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT)) {
+			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
 				result = VK_NOT_READY;
-				break;
-
-			}
 
 			if (flags & VK_QUERY_RESULT_64_BIT) {
 				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
@@ -1196,11 +1190,8 @@ VkResult radv_GetQueryPoolResults(
 			break;
 		}
 		case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
-			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT)) {
+			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
 				result = VK_NOT_READY;
-				break;
-
-			}
 
 			const uint64_t *start = (uint64_t*)src;
 			const uint64_t *stop = (uint64_t*)(src + pipelinestat_block_size);
@@ -1247,10 +1238,8 @@ VkResult radv_GetQueryPoolResults(
 					available = 0;
 			}
 
-			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT)) {
+			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
 				result = VK_NOT_READY;
-				break;
-			}
 
 			num_primitives_written = src64[3] - src64[1];
 			primitive_storage_needed = src64[2] - src64[0];
