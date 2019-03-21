@@ -2754,6 +2754,7 @@ do_swizzling(const struct pipe_sampler_view *sview,
    const unsigned swizzle_g = sview->swizzle_g;
    const unsigned swizzle_b = sview->swizzle_b;
    const unsigned swizzle_a = sview->swizzle_a;
+   float oneval = util_format_is_pure_integer(sview->format) ? uif(1) : 1.0f;
 
    switch (swizzle_r) {
    case PIPE_SWIZZLE_0:
@@ -2762,7 +2763,7 @@ do_swizzling(const struct pipe_sampler_view *sview,
       break;
    case PIPE_SWIZZLE_1:
       for (j = 0; j < 4; j++)
-         out[0][j] = 1.0f;
+         out[0][j] = oneval;
       break;
    default:
       assert(swizzle_r < 4);
@@ -2777,7 +2778,7 @@ do_swizzling(const struct pipe_sampler_view *sview,
       break;
    case PIPE_SWIZZLE_1:
       for (j = 0; j < 4; j++)
-         out[1][j] = 1.0f;
+         out[1][j] = oneval;
       break;
    default:
       assert(swizzle_g < 4);
@@ -2792,7 +2793,7 @@ do_swizzling(const struct pipe_sampler_view *sview,
       break;
    case PIPE_SWIZZLE_1:
       for (j = 0; j < 4; j++)
-         out[2][j] = 1.0f;
+         out[2][j] = oneval;
       break;
    default:
       assert(swizzle_b < 4);
@@ -2807,7 +2808,7 @@ do_swizzling(const struct pipe_sampler_view *sview,
       break;
    case PIPE_SWIZZLE_1:
       for (j = 0; j < 4; j++)
-         out[3][j] = 1.0f;
+         out[3][j] = oneval;
       break;
    default:
       assert(swizzle_a < 4);
