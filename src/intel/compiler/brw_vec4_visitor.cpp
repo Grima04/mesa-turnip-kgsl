@@ -611,6 +611,7 @@ type_size_xvec4(const struct glsl_type *type, bool as_vec4)
       assert(type->length > 0);
       return type_size_xvec4(type->fields.array, as_vec4) * type->length;
    case GLSL_TYPE_STRUCT:
+   case GLSL_TYPE_INTERFACE:
       size = 0;
       for (i = 0; i < type->length; i++) {
 	 size += type_size_xvec4(type->fields.structure[i].type, as_vec4);
@@ -630,7 +631,6 @@ type_size_xvec4(const struct glsl_type *type, bool as_vec4)
       return DIV_ROUND_UP(BRW_IMAGE_PARAM_SIZE, 4);
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_FUNCTION:
       unreachable("not reached");
    }

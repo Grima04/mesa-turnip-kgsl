@@ -55,6 +55,7 @@ brw_type_for_base_type(const struct glsl_type *type)
    case GLSL_TYPE_ARRAY:
       return brw_type_for_base_type(type->fields.array);
    case GLSL_TYPE_STRUCT:
+   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_ATOMIC_UINT:
       /* These should be overridden with the type of the member when
@@ -72,7 +73,6 @@ brw_type_for_base_type(const struct glsl_type *type)
       return BRW_REGISTER_TYPE_Q;
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
-   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_FUNCTION:
       unreachable("not reached");
    }
