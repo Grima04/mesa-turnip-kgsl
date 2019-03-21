@@ -123,6 +123,7 @@ EXTENSIONS = [
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_AMD_draw_indirect_count',               1, True),
     Extension('VK_AMD_gcn_shader',                        1, True),
+    Extension('VK_AMD_gpu_shader_half_float',             1, 'device->rad_info.chip_class >= VI && HAVE_LLVM >= 0x0800'),
     Extension('VK_AMD_gpu_shader_int16',                  1, 'device->rad_info.chip_class >= VI'),
     Extension('VK_AMD_rasterization_order',               1, 'device->has_out_of_order_rast'),
     Extension('VK_AMD_shader_core_properties',            1, True),
