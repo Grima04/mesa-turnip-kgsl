@@ -2274,7 +2274,6 @@ exec_tex(struct tgsi_exec_machine *mach,
          FETCH(&r[last], 0, TGSI_CHAN_W);
       }
       else {
-         assert(shadow_ref != 4);
          FETCH(&r[last], 1, TGSI_CHAN_X);
       }
 
