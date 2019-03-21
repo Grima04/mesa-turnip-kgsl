@@ -2472,7 +2472,11 @@ LLVMValueRef ac_build_fsign(struct ac_llvm_context *ctx, LLVMValueRef src0,
 	LLVMValueRef cmp, val, zero, one;
 	LLVMTypeRef type;
 
-	if (bitsize == 32) {
+	if (bitsize == 16) {
+		type = ctx->f16;
+		zero = ctx->f16_0;
+		one = ctx->f16_1;
+	} else if (bitsize == 32) {
 		type = ctx->f32;
 		zero = ctx->f32_0;
 		one = ctx->f32_1;
