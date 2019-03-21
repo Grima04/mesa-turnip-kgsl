@@ -1056,6 +1056,8 @@ void st_init_extensions(struct pipe_screen *screen,
    consts->GLSLVersionCompat =
       screen->get_param(screen, PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY);
 
+   const unsigned ESSLVersion =
+      screen->get_param(screen, PIPE_CAP_ESSL_FEATURE_LEVEL);
    const unsigned GLSLVersion =
       api == API_OPENGL_COMPAT ? consts->GLSLVersionCompat :
                                  consts->GLSLVersion;
@@ -1076,6 +1078,13 @@ void st_init_extensions(struct pipe_screen *screen,
    consts->dri_config_options_sha1 = options->config_options_sha1;
 
    consts->AllowGLSLCrossStageInterpolationMismatch = options->allow_glsl_cross_stage_interpolation_mismatch;
+
+   /* Technically we are turning on the EXT_gpu_shader5 extension,
+    * ARB_gpu_shader5 does not exist in GLES, but this flag is what
+    * switches on EXT_gpu_shader5:
+    */
+   if (api == API_OPENGLES2 && ESSLVersion >= 320)
+      extensions->ARB_gpu_shader5 = GL_TRUE;
 
    if (GLSLVersion >= 400)
       extensions->ARB_gpu_shader5 = GL_TRUE;
@@ -1540,16 +1549,18 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->EXT_shader_integer_mix;
 
    extensions->OES_texture_cube_map_array =
-      extensions->ARB_ES3_1_compatibility &&
+      (extensions->ARB_ES3_1_compatibility || ESSLVersion >= 310) &&
       extensions->OES_geometry_shader &&
       extensions->ARB_texture_cube_map_array;
 
    extensions->OES_viewport_array =
-      extensions->ARB_ES3_1_compatibility &&
+      (extensions->ARB_ES3_1_compatibility || ESSLVersion >= 310) &&
       extensions->OES_geometry_shader &&
       extensions->ARB_viewport_array;
 
-   extensions->OES_primitive_bounding_box = extensions->ARB_ES3_1_compatibility;
+   extensions->OES_primitive_bounding_box =
+      extensions->ARB_ES3_1_compatibility || ESSLVersion >= 310;
+
    consts->NoPrimitiveBoundingBoxOutput = true;
 
    extensions->ANDROID_extension_pack_es31a =
