@@ -82,6 +82,8 @@ struct ac_llvm_context {
 	LLVMValueRef i32_1;
 	LLVMValueRef i64_0;
 	LLVMValueRef i64_1;
+	LLVMValueRef f16_0;
+	LLVMValueRef f16_1;
 	LLVMValueRef f32_0;
 	LLVMValueRef f32_1;
 	LLVMValueRef f64_0;
