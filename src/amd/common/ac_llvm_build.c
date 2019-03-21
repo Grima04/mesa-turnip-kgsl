@@ -2436,7 +2436,10 @@ LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 	LLVMTypeRef type;
 	char *intr;
 
-	if (bitsize == 32) {
+	if (bitsize == 16) {
+		intr = "llvm.amdgcn.fract.f16";
+		type = ctx->f16;
+	} else if (bitsize == 32) {
 		intr = "llvm.amdgcn.fract.f32";
 		type = ctx->f32;
 	} else {
