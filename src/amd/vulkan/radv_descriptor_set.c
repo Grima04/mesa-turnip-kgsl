@@ -30,6 +30,7 @@
 #include "util/mesa-sha1.h"
 #include "radv_private.h"
 #include "sid.h"
+#include "vk_format.h"
 #include "vk_util.h"
 
 
@@ -82,17 +83,31 @@ VkResult radv_CreateDescriptorSetLayout(
 
 	uint32_t max_binding = 0;
 	uint32_t immutable_sampler_count = 0;
+	uint32_t ycbcr_sampler_count = 0;
 	for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
 		max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
 		if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
 		     pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
-		     pCreateInfo->pBindings[j].pImmutableSamplers)
+		     pCreateInfo->pBindings[j].pImmutableSamplers) {
 			immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
+
+			bool has_ycbcr_sampler = false;
+			for (unsigned i = 0; i < pCreateInfo->pBindings[j].descriptorCount; ++i) {
+				if (radv_sampler_from_handle(pCreateInfo->pBindings[j].pImmutableSamplers[i])->ycbcr_sampler)
+					has_ycbcr_sampler = true;
+			}
+
+			if (has_ycbcr_sampler)
+				ycbcr_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
+		}
 	}
 
 	uint32_t samplers_offset = sizeof(struct radv_descriptor_set_layout) +
 		(max_binding + 1) * sizeof(set_layout->binding[0]);
 	size_t size = samplers_offset + immutable_sampler_count * 4 * sizeof(uint32_t);
+	if (ycbcr_sampler_count > 0) {
+		size += ycbcr_sampler_count * sizeof(struct radv_sampler_ycbcr_conversion) + (max_binding + 1) * sizeof(uint32_t);
+	}
 
 	set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
 				 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -103,6 +118,15 @@ VkResult radv_CreateDescriptorSetLayout(
 
 	/* We just allocate all the samplers at the end of the struct */
 	uint32_t *samplers = (uint32_t*)&set_layout->binding[max_binding + 1];
+	struct radv_sampler_ycbcr_conversion *ycbcr_samplers = NULL;
+	uint32_t *ycbcr_sampler_offsets = NULL;
+
+	if (ycbcr_sampler_count > 0) {
+		ycbcr_sampler_offsets = samplers + 4 * immutable_sampler_count;
+		set_layout->ycbcr_sampler_offsets_offset = (char*)ycbcr_sampler_offsets - (char*)set_layout;
+		ycbcr_samplers = (struct radv_sampler_ycbcr_conversion *)(ycbcr_sampler_offsets + max_binding + 1);
+	} else
+		set_layout->ycbcr_sampler_offsets_offset = 0;
 
 	VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
 	                                                                pCreateInfo->bindingCount);
@@ -128,6 +152,24 @@ VkResult radv_CreateDescriptorSetLayout(
 		uint32_t alignment;
 		unsigned binding_buffer_count = 0;
 		uint32_t descriptor_count = binding->descriptorCount;
+		bool has_ycbcr_sampler = false;
+
+		/* main image + fmask */
+		uint32_t max_sampled_image_descriptors = 2;
+
+		if (binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER &&
+		    binding->pImmutableSamplers) {
+			for (unsigned i = 0; i < binding->descriptorCount; ++i) {
+				struct radv_sampler_ycbcr_conversion *conversion =
+					radv_sampler_from_handle(binding->pImmutableSamplers[i])->ycbcr_sampler;
+
+				if (conversion) {
+					has_ycbcr_sampler = true;
+					max_sampled_image_descriptors = MAX2(max_sampled_image_descriptors,
+					                                     vk_format_get_plane_count(conversion->format));
+				}
+			}
+		}
 
 		switch (binding->descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -157,7 +199,7 @@ VkResult radv_CreateDescriptorSetLayout(
 			break;
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			/* main descriptor + fmask descriptor + sampler */
-			set_layout->binding[b].size = 96;
+			set_layout->binding[b].size = 32 + 32 * max_sampled_image_descriptors;
 			binding_buffer_count = 1;
 			alignment = 32;
 			break;
@@ -211,6 +253,17 @@ VkResult radv_CreateDescriptorSetLayout(
 			}
 			samplers += 4 * binding->descriptorCount;
 			samplers_offset += 4 * sizeof(uint32_t) * binding->descriptorCount;
+
+			if (has_ycbcr_sampler) {
+				ycbcr_sampler_offsets[b] = (const char*)ycbcr_samplers - (const char*)set_layout;
+				for (uint32_t i = 0; i < binding->descriptorCount; i++) {
+					if (radv_sampler_from_handle(binding->pImmutableSamplers[i])->ycbcr_sampler)
+						ycbcr_samplers[i] = *radv_sampler_from_handle(binding->pImmutableSamplers[i])->ycbcr_sampler;
+					else
+						ycbcr_samplers[i].format = VK_FORMAT_UNDEFINED;
+				}
+				ycbcr_samplers += binding->descriptorCount;
+			}
 		}
 
 		set_layout->size += descriptor_count * set_layout->binding[b].size;
