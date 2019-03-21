@@ -1537,8 +1537,8 @@ ac_build_tbuffer_load(struct ac_llvm_context *ctx,
 		immoffset,
 		LLVMConstInt(ctx->i32, dfmt, false),
 		LLVMConstInt(ctx->i32, nfmt, false),
-		LLVMConstInt(ctx->i32, glc, false),
-		LLVMConstInt(ctx->i32, slc, false),
+		LLVMConstInt(ctx->i1, glc, false),
+		LLVMConstInt(ctx->i1, slc, false),
 	};
 	unsigned func = CLAMP(num_channels, 1, 3) - 1;
 	LLVMTypeRef types[] = {ctx->i32, ctx->v2i32, ctx->v4i32};
@@ -1699,8 +1699,8 @@ ac_build_tbuffer_store(struct ac_llvm_context *ctx,
 			immoffset,
 			LLVMConstInt(ctx->i32, dfmt, false),
 			LLVMConstInt(ctx->i32, nfmt, false),
-			LLVMConstInt(ctx->i32, glc, false),
-			LLVMConstInt(ctx->i32, slc, false),
+			LLVMConstInt(ctx->i1, glc, false),
+			LLVMConstInt(ctx->i1, slc, false),
 		};
 		unsigned func = CLAMP(num_channels, 1, 3) - 1;
 		const char *type_names[] = {"i32", "v2i32", "v4i32"};
