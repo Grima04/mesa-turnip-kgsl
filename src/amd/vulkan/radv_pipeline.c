@@ -3669,7 +3669,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	VkPipelineCreationFeedbackEXT *pipeline_feedback = creation_feedback ? creation_feedback->pPipelineCreationFeedback : NULL;
 
 	const VkPipelineShaderStageCreateInfo *pStages[MESA_SHADER_STAGES] = { 0, };
-	VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES];
+	VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		gl_shader_stage stage = ffs(pCreateInfo->pStages[i].stage) - 1;
 		pStages[stage] = &pCreateInfo->pStages[i];
@@ -3901,7 +3901,7 @@ static VkResult radv_compute_pipeline_create(
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
 	const VkPipelineShaderStageCreateInfo *pStages[MESA_SHADER_STAGES] = { 0, };
-	VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES];
+	VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
 	struct radv_pipeline *pipeline;
 	VkResult result;
 
