@@ -502,6 +502,20 @@ optimizations = [
    (('iand', ('uge(is_used_once)', a, b), ('uge', a, c)), ('uge', a, ('umax', b, c))),
    (('iand', ('uge(is_used_once)', a, c), ('uge', b, c)), ('uge', ('umin', a, b), c)),
 
+   # These derive from the previous patterns with the application of b < 0 <=>
+   # 0 < -b.  The transformation should be applied if either comparison is
+   # used once as this ensures that the number of comparisons will not
+   # increase.  The sources to the ior and iand are not symmetric, so the
+   # rules have to be duplicated to get this behavior.
+   (('~ior', ('flt(is_used_once)', 0.0, 'a@32'), ('flt', 'b@32', 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
+   (('~ior', ('flt', 0.0, 'a@32'), ('flt(is_used_once)', 'b@32', 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
+   (('~ior', ('fge(is_used_once)', 0.0, 'a@32'), ('fge', 'b@32', 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
+   (('~ior', ('fge', 0.0, 'a@32'), ('fge(is_used_once)', 'b@32', 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
+   (('~iand', ('flt(is_used_once)', 0.0, 'a@32'), ('flt', 'b@32', 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
+   (('~iand', ('flt', 0.0, 'a@32'), ('flt(is_used_once)', 'b@32', 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
+   (('~iand', ('fge(is_used_once)', 0.0, 'a@32'), ('fge', 'b@32', 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
+   (('~iand', ('fge', 0.0, 'a@32'), ('fge(is_used_once)', 'b@32', 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
+
    # Common pattern like 'if (i == 0 || i == 1 || ...)'
    (('ior', ('ieq', a, 0), ('ieq', a, 1)), ('uge', 1, a)),
    (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
