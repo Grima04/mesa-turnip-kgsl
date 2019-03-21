@@ -917,26 +917,45 @@ st_destroy_context(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
    struct st_framebuffer *stfb, *next;
+   struct gl_framebuffer *save_drawbuffer;
+   struct gl_framebuffer *save_readbuffer;
 
-   GET_CURRENT_CONTEXT(curctx);
+   /* Save the current context and draw/read buffers*/
+   GET_CURRENT_CONTEXT(save_ctx);
+   if (save_ctx) {
+      save_drawbuffer = save_ctx->WinSysDrawBuffer;
+      save_readbuffer = save_ctx->WinSysReadBuffer;
+   } else {
+      save_drawbuffer = save_readbuffer = NULL;
+   }
 
-   if (curctx == NULL) {
-      /* No current context, but we need one to release
-       * renderbuffer surface when we release framebuffer.
-       * So temporarily bind the context.
-       */
-      _mesa_make_current(ctx, NULL, NULL);
+   /*
+    * We need to bind the context we're deleting so that
+    * _mesa_reference_texobj_() uses this context when deleting textures.
+    * Similarly for framebuffer objects, etc.
+    */
+   _mesa_make_current(ctx, NULL, NULL);
+
+   /* This must be called first so that glthread has a chance to finish */
+   _mesa_glthread_destroy(ctx);
+
+   _mesa_HashWalk(ctx->Shared->TexObjects, destroy_tex_sampler_cb, st);
+
+   /* For the fallback textures, free any sampler views belonging to this
+    * context.
+    */
+   for (unsigned i = 0; i < NUM_TEXTURE_TARGETS; i++) {
+      struct st_texture_object *stObj =
+         st_texture_object(ctx->Shared->FallbackTex[i]);
+      if (stObj) {
+         st_texture_release_context_sampler_view(st, stObj);
+      }
    }
 
    st_context_free_zombie_objects(st);
 
    mtx_destroy(&st->zombie_sampler_views.mutex);
    mtx_destroy(&st->zombie_shaders.mutex);
-
-   /* This must be called first so that glthread has a chance to finish */
-   _mesa_glthread_destroy(ctx);
-
-   _mesa_HashWalk(ctx->Shared->TexObjects, destroy_tex_sampler_cb, st);
 
    st_reference_fragprog(st, &st->fp, NULL);
    st_reference_prog(st, &st->gp, NULL);
@@ -965,4 +984,12 @@ st_destroy_context(struct st_context *st)
    st = NULL;
 
    free(ctx);
+
+   if (save_ctx == ctx) {
+      /* unbind the context we just deleted */
+      _mesa_make_current(NULL, NULL, NULL);
+   } else {
+      /* Restore the current context and draw/read buffers (may be NULL) */
+      _mesa_make_current(save_ctx, save_drawbuffer, save_readbuffer);
+   }
 }
