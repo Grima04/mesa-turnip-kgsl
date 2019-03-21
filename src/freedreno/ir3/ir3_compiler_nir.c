@@ -1395,7 +1395,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		array_insert(ctx->ir, ctx->ir->predicates, kill);
 
 		array_insert(b, b->keeps, kill);
-		ctx->so->has_kill = true;
+		ctx->so->no_earlyz = true;
 
 		break;
 	}

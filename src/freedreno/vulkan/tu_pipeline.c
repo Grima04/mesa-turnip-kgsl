@@ -785,7 +785,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    uint32_t gras_su_depth_plane_cntl = 0;
    uint32_t rb_depth_plane_cntl = 0;
-   if (fs->has_kill | fs->writes_pos) {
+   if (fs->no_earlyz | fs->writes_pos) {
       gras_su_depth_plane_cntl |= A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
       rb_depth_plane_cntl |= A6XX_RB_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
    }

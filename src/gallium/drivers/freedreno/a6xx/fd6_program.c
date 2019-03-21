@@ -614,7 +614,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	OUT_RING(ring, 0x0000fcfc);   /* VFD_CONTROL_5 */
 	OUT_RING(ring, 0x00000000);   /* VFD_CONTROL_6 */
 
-	bool fragz = s[FS].v->has_kill | s[FS].v->writes_pos;
+	bool fragz = s[FS].v->no_earlyz | s[FS].v->writes_pos;
 
 	OUT_PKT4(ring, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
 	OUT_RING(ring, COND(fragz, A6XX_RB_DEPTH_PLANE_CNTL_FRAG_WRITES_Z));

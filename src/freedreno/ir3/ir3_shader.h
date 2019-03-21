@@ -431,8 +431,8 @@ struct ir3_shader_variant {
 	/* do we have one or more SSBO instructions: */
 	bool has_ssbo;
 
-	/* do we have kill instructions: */
-	bool has_kill;
+	/* do we have kill, image write, etc (which prevents early-z): */
+	bool no_earlyz;
 
 	/* Layout of constant registers, each section (in vec4). Pointer size
 	 * is 32b (a3xx, a4xx), or 64b (a5xx+), which effects the size of the

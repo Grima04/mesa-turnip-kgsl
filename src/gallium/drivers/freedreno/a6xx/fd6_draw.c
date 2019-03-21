@@ -200,7 +200,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	/* figure out whether we need to disable LRZ write for binning
 	 * pass using draw pass's fp:
 	 */
-	emit.no_lrz_write = fp->writes_pos || fp->has_kill;
+	emit.no_lrz_write = fp->writes_pos || fp->no_earlyz;
 
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 	enum pc_di_primtype primtype = ctx->primtypes[info->mode];
