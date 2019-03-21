@@ -1202,6 +1202,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		ctx->funcs->emit_intrinsic_load_ssbo(ctx, intr, dst);
 		break;
 	case nir_intrinsic_store_ssbo_ir3:
+		if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+				!ctx->s->info.fs.early_fragment_tests)
+			ctx->so->no_earlyz = true;
 		ctx->funcs->emit_intrinsic_store_ssbo(ctx, intr);
 		break;
 	case nir_intrinsic_get_buffer_size:
@@ -1217,6 +1220,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_ssbo_atomic_xor_ir3:
 	case nir_intrinsic_ssbo_atomic_exchange_ir3:
 	case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
+		if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+				!ctx->s->info.fs.early_fragment_tests)
+			ctx->so->no_earlyz = true;
 		dst[0] = ctx->funcs->emit_intrinsic_atomic_ssbo(ctx, intr);
 		break;
 	case nir_intrinsic_load_shared:
@@ -1241,6 +1247,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		emit_intrinsic_load_image(ctx, intr, dst);
 		break;
 	case nir_intrinsic_image_deref_store:
+		if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+				!ctx->s->info.fs.early_fragment_tests)
+			ctx->so->no_earlyz = true;
 		ctx->funcs->emit_intrinsic_store_image(ctx, intr);
 		break;
 	case nir_intrinsic_image_deref_size:
@@ -1254,6 +1263,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_image_deref_atomic_xor:
 	case nir_intrinsic_image_deref_atomic_exchange:
 	case nir_intrinsic_image_deref_atomic_comp_swap:
+		if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+				!ctx->s->info.fs.early_fragment_tests)
+			ctx->so->no_earlyz = true;
 		dst[0] = ctx->funcs->emit_intrinsic_atomic_image(ctx, intr);
 		break;
 	case nir_intrinsic_barrier:
