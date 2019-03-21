@@ -490,6 +490,7 @@ vtn_ssa_offset_pointer_dereference(struct vtn_builder *b,
          break;
       }
 
+      case GLSL_TYPE_INTERFACE:
       case GLSL_TYPE_STRUCT: {
          vtn_assert(deref_chain->link[idx].mode == vtn_access_mode_literal);
          unsigned member = deref_chain->link[idx].id;
@@ -934,6 +935,7 @@ _vtn_block_load_store(struct vtn_builder *b, nir_intrinsic_op op, bool load,
       return;
    }
 
+   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_STRUCT: {
       unsigned elems = glsl_get_length(type->type);
       for (unsigned i = 0; i < elems; i++) {
@@ -1058,6 +1060,7 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
       }
       /* Fall through */
 
+   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_ARRAY:
    case GLSL_TYPE_STRUCT: {
       unsigned elems = glsl_get_length(ptr->type->type);
@@ -1140,6 +1143,7 @@ _vtn_variable_copy(struct vtn_builder *b, struct vtn_pointer *dest,
       vtn_variable_store(b, vtn_variable_load(b, src), dest);
       return;
 
+   case GLSL_TYPE_INTERFACE:
    case GLSL_TYPE_ARRAY:
    case GLSL_TYPE_STRUCT: {
       struct vtn_access_chain chain = {

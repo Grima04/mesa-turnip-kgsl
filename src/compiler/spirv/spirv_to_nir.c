@@ -908,6 +908,21 @@ struct_member_matrix_stride_cb(struct vtn_builder *b,
 }
 
 static void
+struct_block_decoration_cb(struct vtn_builder *b,
+                           struct vtn_value *val, int member,
+                           const struct vtn_decoration *dec, void *ctx)
+{
+   if (member != -1)
+      return;
+
+   struct vtn_type *type = val->type;
+   if (dec->decoration == SpvDecorationBlock)
+      type->block = true;
+   else if (dec->decoration == SpvDecorationBufferBlock)
+      type->buffer_block = true;
+}
+
+static void
 type_decoration_cb(struct vtn_builder *b,
                    struct vtn_value *val, int member,
                     const struct vtn_decoration *dec, void *ctx)
@@ -928,11 +943,11 @@ type_decoration_cb(struct vtn_builder *b,
       break;
    case SpvDecorationBlock:
       vtn_assert(type->base_type == vtn_base_type_struct);
-      type->block = true;
+      vtn_assert(type->block);
       break;
    case SpvDecorationBufferBlock:
       vtn_assert(type->base_type == vtn_base_type_struct);
-      type->buffer_block = true;
+      vtn_assert(type->buffer_block);
       break;
    case SpvDecorationGLSLShared:
    case SpvDecorationGLSLPacked:
@@ -1291,9 +1306,21 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       vtn_foreach_decoration(b, val, struct_member_decoration_cb, &ctx);
       vtn_foreach_decoration(b, val, struct_member_matrix_stride_cb, &ctx);
 
-      const char *name = val->name ? val->name : "struct";
+      vtn_foreach_decoration(b, val, struct_block_decoration_cb, NULL);
 
-      val->type->type = glsl_struct_type(fields, num_fields, name, false);
+      const char *name = val->name;
+
+      if (val->type->block || val->type->buffer_block) {
+         /* Packing will be ignored since types coming from SPIR-V are
+          * explicitly laid out.
+          */
+         val->type->type = glsl_interface_type(fields, num_fields,
+                                               /* packing */ 0, false,
+                                               name ? name : "block");
+      } else {
+         val->type->type = glsl_struct_type(fields, num_fields,
+                                            name ? name : "struct", false);
+      }
       break;
    }
 
@@ -2069,6 +2096,7 @@ vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
             child_type = glsl_get_array_element(type);
             break;
          case GLSL_TYPE_STRUCT:
+         case GLSL_TYPE_INTERFACE:
             child_type = glsl_get_struct_field(type, i);
             break;
          default:
