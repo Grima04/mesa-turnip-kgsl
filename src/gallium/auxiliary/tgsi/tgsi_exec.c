@@ -4912,8 +4912,13 @@ micro_ibfe(union tgsi_exec_channel *dst,
 {
    int i;
    for (i = 0; i < 4; i++) {
-      int width = src2->i[i] & 0x1f;
+      int width = src2->i[i];
       int offset = src1->i[i] & 0x1f;
+      if (width == 32 && offset == 0) {
+         dst->i[i] = src0->i[i];
+         continue;
+      }
+      width &= 0x1f;
       if (width == 0)
          dst->i[i] = 0;
       else if (width + offset < 32)
@@ -4934,8 +4939,13 @@ micro_ubfe(union tgsi_exec_channel *dst,
 {
    int i;
    for (i = 0; i < 4; i++) {
-      int width = src2->u[i] & 0x1f;
+      int width = src2->u[i];
       int offset = src1->u[i] & 0x1f;
+      if (width == 32 && offset == 0) {
+         dst->u[i] = src0->u[i];
+         continue;
+      }
+      width &= 0x1f;
       if (width == 0)
          dst->u[i] = 0;
       else if (width + offset < 32)
