@@ -3926,3 +3926,28 @@ ac_build_shuffle(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef ind
 		  AC_FUNC_ATTR_READNONE |
 		  AC_FUNC_ATTR_CONVERGENT);
 }
+
+LLVMValueRef
+ac_build_frexp_mant(struct ac_llvm_context *ctx, LLVMValueRef src0,
+		    unsigned bitsize)
+{
+	LLVMTypeRef type;
+	char *intr;
+
+	if (bitsize == 16) {
+		intr = "llvm.amdgcn.frexp.mant.f16";
+		type = ctx->f16;
+	} else if (bitsize == 32) {
+		intr = "llvm.amdgcn.frexp.mant.f32";
+		type = ctx->f32;
+	} else {
+		intr = "llvm.amdgcn.frexp.mant.f64";
+		type = ctx->f64;
+	}
+
+	LLVMValueRef params[] = {
+		src0,
+	};
+	return ac_build_intrinsic(ctx, intr, type, params, 1,
+				  AC_FUNC_ATTR_READNONE);
+}

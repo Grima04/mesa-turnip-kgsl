@@ -809,8 +809,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	case nir_op_frexp_sig:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
-		result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.frexp.mant.f64",
-					    ctx->ac.f64, src, 1, AC_FUNC_ATTR_READNONE);
+		result = ac_build_frexp_mant(&ctx->ac, src[0],
+					     instr->dest.dest.ssa.bit_size);
 		break;
 	case nir_op_fpow:
 		result = emit_intrin_2f_param(&ctx->ac, "llvm.pow",
