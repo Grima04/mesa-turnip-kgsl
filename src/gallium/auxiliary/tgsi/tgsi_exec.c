@@ -4967,10 +4967,14 @@ micro_bfi(union tgsi_exec_channel *dst,
 {
    int i;
    for (i = 0; i < 4; i++) {
-      int width = src3->u[i] & 0x1f;
+      int width = src3->u[i];
       int offset = src2->u[i] & 0x1f;
-      int bitmask = ((1 << width) - 1) << offset;
-      dst->u[i] = ((src1->u[i] << offset) & bitmask) | (src0->u[i] & ~bitmask);
+      if (width == 32) {
+         dst->u[i] = src1->u[i];
+      } else {
+         int bitmask = ((1 << width) - 1) << offset;
+         dst->u[i] = ((src1->u[i] << offset) & bitmask) | (src0->u[i] & ~bitmask);
+      }
    }
 }
 
