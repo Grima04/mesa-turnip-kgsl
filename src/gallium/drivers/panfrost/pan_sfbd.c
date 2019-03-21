@@ -92,12 +92,12 @@ panfrost_sfbd_set_cbuf(
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        signed stride = rsrc->bo->stride;
+        signed stride = rsrc->bo->slices[0].stride;
 
         fb->format = panfrost_sfbd_format(surf);
 
         if (rsrc->bo->layout == PAN_LINEAR) {
-                mali_ptr framebuffer = rsrc->bo->gpu[0];
+                mali_ptr framebuffer = rsrc->bo->gpu;
 
                 /* The default is upside down from OpenGL's perspective. */
                 if (flip_y) {

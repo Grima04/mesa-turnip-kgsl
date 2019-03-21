@@ -85,8 +85,8 @@ panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsr
 
         /* Compressed textured reads use a tagged pointer to the metadata */
 
-        rsrc->bo->gpu[0] = rsrc->bo->afbc_slab.gpu | (ds ? 0 : 1);
-        rsrc->bo->cpu[0] = rsrc->bo->afbc_slab.cpu;
+        rsrc->bo->gpu = rsrc->bo->afbc_slab.gpu | (ds ? 0 : 1);
+        rsrc->bo->cpu = rsrc->bo->afbc_slab.cpu;
 }
 
 static void
@@ -772,10 +772,10 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
                  * rsrc->gpu. However, attribute buffers must be 64 aligned. If
                  * it is not, for now we have to duplicate the buffer. */
 
-                mali_ptr effective_address = (rsrc->bo->gpu[0] + buf->buffer_offset);
+                mali_ptr effective_address = (rsrc->bo->gpu + buf->buffer_offset);
 
                 if (effective_address & 0x3F) {
-                        attrs[i].elements = panfrost_upload_transient(ctx, rsrc->bo->cpu[0] + buf->buffer_offset, attrs[i].size) | 1;
+                        attrs[i].elements = panfrost_upload_transient(ctx, rsrc->bo->cpu + buf->buffer_offset, attrs[i].size) | 1;
                 } else {
                         attrs[i].elements = effective_address | 1;
                 }
@@ -1018,31 +1018,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
 
                                 /* Inject the address in. */
-                                for (int l = 0; l < (tex_rsrc->last_level + 1); ++l)
-                                        ctx->sampler_views[t][i]->hw.swizzled_bitmaps[l] = rsrc->bo->gpu[l];
-
-                                /* Workaround maybe-errata (?) with non-mipmaps */
-                                int s = ctx->sampler_views[t][i]->hw.nr_mipmap_levels;
-
-                                if (!rsrc->bo->is_mipmap) {
-                                        if (ctx->is_t6xx) {
-                                                /* HW ERRATA, not needed after t6XX */
-                                                ctx->sampler_views[t][i]->hw.swizzled_bitmaps[1] = rsrc->bo->gpu[0];
-
-                                                ctx->sampler_views[t][i]->hw.unknown3A = 1;
-                                        }
-
-                                        ctx->sampler_views[t][i]->hw.nr_mipmap_levels = 0;
+                                for (int l = 0; l <= tex_rsrc->last_level; ++l) {
+                                        ctx->sampler_views[t][i]->hw.swizzled_bitmaps[l] =
+                                                rsrc->bo->gpu + rsrc->bo->slices[l].offset;
                                 }
 
                                 trampolines[i] = panfrost_upload_transient(ctx, &ctx->sampler_views[t][i]->hw, sizeof(struct mali_texture_descriptor));
-
-                                /* Restore */
-                                ctx->sampler_views[t][i]->hw.nr_mipmap_levels = s;
-
-				if (ctx->is_t6xx) {
-					ctx->sampler_views[t][i]->hw.unknown3A = 0;
-				}
                         }
 
                         mali_ptr trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
@@ -1381,7 +1362,7 @@ panfrost_get_index_buffer_raw(const struct pipe_draw_info *info)
                 return (const uint8_t *) info->index.user;
         } else {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
-                return (const uint8_t *) rsrc->bo->cpu[0];
+                return (const uint8_t *) rsrc->bo->cpu;
         }
 }
 
@@ -1397,7 +1378,7 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
-                return rsrc->bo->gpu[0] + offset;
+                return rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */
                 const uint8_t *ibuf8 = panfrost_get_index_buffer_raw(info);
@@ -1681,8 +1662,8 @@ panfrost_create_sampler_state(
                         cso->border_color.f[2],
                         cso->border_color.f[3]
                 },
-                .min_lod = FIXED_16(0.0),
-                .max_lod = FIXED_16(31.0),
+                .min_lod = FIXED_16(cso->min_lod),
+                .max_lod = FIXED_16(cso->max_lod),
                 .unknown2 = 1,
         };
 
@@ -1875,7 +1856,7 @@ panfrost_set_constant_buffer(
         struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer);
 
         if (rsrc) {
-                cpu = rsrc->bo->cpu[0];
+                cpu = rsrc->bo->cpu;
         } else if (buf->user_buffer) {
                 cpu = buf->user_buffer;
         } else {
@@ -1982,7 +1963,11 @@ panfrost_create_sampler_view(
         /* TODO: Other base levels require adjusting dimensions / level numbers / etc */
         assert (template->u.tex.first_level == 0);
 
-        texture_descriptor.nr_mipmap_levels = template->u.tex.last_level - template->u.tex.first_level;
+        /* Disable mipmapping for now to avoid regressions while automipmapping
+         * is being implemented. TODO: Remove me once automipmaps work */
+
+        //texture_descriptor.nr_mipmap_levels = template->u.tex.last_level - template->u.tex.first_level;
+        texture_descriptor.nr_mipmap_levels = 0;
 
         so->hw = texture_descriptor;
 

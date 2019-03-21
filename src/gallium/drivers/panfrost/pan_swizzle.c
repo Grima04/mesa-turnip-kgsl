@@ -147,7 +147,9 @@ swizzle_bpp4_align16(int width, int height, int source_stride, int block_pitch,
 }
 
 void
-panfrost_texture_swizzle(int width, int height, int bytes_per_pixel, int source_stride,
+panfrost_texture_swizzle(unsigned off_x,
+                         unsigned off_y,
+                         int width, int height, int bytes_per_pixel, int source_stride,
                          const uint8_t *pixels,
                          uint8_t *ldest)
 {
@@ -155,25 +157,27 @@ panfrost_texture_swizzle(int width, int height, int bytes_per_pixel, int source_
         int block_pitch = ALIGN(width, 16) >> 4;
 
         /* Use fast path if available */
-        if (bytes_per_pixel == 4 /* && (ALIGN(width, 16) == width) */) {
-                swizzle_bpp4_align16(width, height, source_stride >> 2, (block_pitch * 256 >> 4), (const uint32_t *) pixels, (uint32_t *) ldest);
-                return;
-        } else if (bytes_per_pixel == 1 /* && (ALIGN(width, 16) == width) */) {
-                swizzle_bpp1_align16(width, height, source_stride, (block_pitch * 256 >> 4), pixels, (uint8_t *) ldest);
-                return;
+        if (!(off_x || off_y)) {
+                if (bytes_per_pixel == 4 /* && (ALIGN(width, 16) == width) */) {
+                        swizzle_bpp4_align16(width, height, source_stride >> 2, (block_pitch * 256 >> 4), (const uint32_t *) pixels, (uint32_t *) ldest);
+                        return;
+                } else if (bytes_per_pixel == 1 /* && (ALIGN(width, 16) == width) */) {
+                        swizzle_bpp1_align16(width, height, source_stride, (block_pitch * 256 >> 4), pixels, (uint8_t *) ldest);
+                        return;
+                }
         }
 
         /* Otherwise, default back on generic path */
 
         for (int y = 0; y < height; ++y) {
-                int block_y = y >> 4;
-                int rem_y = y & 0x0F;
+                int block_y = (y + off_y) >> 4;
+                int rem_y = (y + off_y) & 0x0F;
                 int block_start_s = block_y * block_pitch * 256;
                 int source_start = y * source_stride;
 
                 for (int x = 0; x < width; ++x) {
-                        int block_x_s = (x >> 4) * 256;
-                        int rem_x = x & 0x0F;
+                        int block_x_s = ((x + off_x) >> 4) * 256;
+                        int rem_x = (x + off_x) & 0x0F;
 
                         int index = space_filler[rem_y][rem_x];
                         const uint8_t *source = &pixels[source_start + bytes_per_pixel * x];
@@ -183,15 +187,4 @@ panfrost_texture_swizzle(int width, int height, int bytes_per_pixel, int source_
                                 dest[b] = source[b];
                 }
         }
-}
-
-
-unsigned
-panfrost_swizzled_size(int width, int height, int bytes_per_pixel)
-{
-        /* Calculate maximum size, overestimating a bit */
-        int block_pitch = ALIGN(width, 16) >> 4;
-        unsigned sz = bytes_per_pixel * 256 * ((height >> 4) + 1) * block_pitch;
-
-        return sz;
 }

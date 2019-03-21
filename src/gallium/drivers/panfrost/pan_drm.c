@@ -136,7 +136,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
         assert(!ret);
 
 	bo->gem_handle = gem_handle;
-        bo->gpu[0] = (mali_ptr) get_bo_offset.offset;
+        bo->gpu = (mali_ptr) get_bo_offset.offset;
 
 	// TODO map and unmap on demand?
 	mmap_bo.handle = gem_handle;
@@ -146,17 +146,17 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 		assert(0);
 	}
 
-        bo->size[0] = lseek(whandle->handle, 0, SEEK_END);
-        assert(bo->size[0] > 0);
-        bo->cpu[0] = mmap(NULL, bo->size[0], PROT_READ | PROT_WRITE, MAP_SHARED,
+        bo->size = lseek(whandle->handle, 0, SEEK_END);
+        assert(bo->size > 0);
+        bo->cpu = mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
                        drm->fd, mmap_bo.offset);
-        if (bo->cpu[0] == MAP_FAILED) {
-                fprintf(stderr, "mmap failed: %p\n", bo->cpu[0]);
+        if (bo->cpu == MAP_FAILED) {
+                fprintf(stderr, "mmap failed: %p\n", bo->cpu);
 		assert(0);
 	}
 
         /* Record the mmap if we're tracing */
-        pantrace_mmap(bo->gpu[0], bo->cpu[0], bo->size[0], NULL);
+        pantrace_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 
         return bo;
 }
@@ -196,7 +196,7 @@ panfrost_drm_free_imported_bo(struct panfrost_screen *screen, struct panfrost_bo
 	}
 
 	bo->gem_handle = -1;
-	bo->gpu[0] = (mali_ptr)NULL;
+	bo->gpu = (mali_ptr)NULL;
 }
 
 static int

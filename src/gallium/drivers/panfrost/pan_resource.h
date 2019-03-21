@@ -39,31 +39,28 @@ enum panfrost_memory_layout {
         PAN_AFBC
 };
 
+struct panfrost_slice {
+        unsigned offset;
+        unsigned stride;
+};
+
 struct panfrost_bo {
-        /* Address to the BO in question */
+        struct panfrost_slice slices[MAX_MIP_LEVELS];
 
-        uint8_t *cpu[MAX_MIP_LEVELS];
+        /* Mapping for the entire object (all levels) */
+        uint8_t *cpu;
 
-        /* Not necessarily a GPU mapping of cpu! In case of texture tiling, gpu
-         * points to the GPU-side, tiled texture, while cpu points to the
-         * CPU-side, untiled texture from mesa */
+        /* GPU address for the object */
+        mali_ptr gpu;
 
-        mali_ptr gpu[MAX_MIP_LEVELS];
-
-        /* Memory entry corresponding to gpu above */
-        struct panfrost_memory_entry *entry[MAX_MIP_LEVELS];
+        /* Size of the entire tree */
+        size_t size;
 
         /* Set if this bo was imported rather than allocated */
         bool imported;
 
-        /* Number of bytes of allocation */
-        size_t size[MAX_MIP_LEVELS];
-
         /* Internal layout (tiled?) */
         enum panfrost_memory_layout layout;
-
-        /* Is something other than level 0 ever written? */
-        bool is_mipmap;
 
         /* If AFBC is enabled for this resource, we lug around an AFBC
          * metadata buffer as well. The actual AFBC resource is also in
@@ -81,7 +78,6 @@ struct panfrost_bo {
         int checksum_stride;
 
         int gem_handle;
-        unsigned int stride;
 };
 
 struct panfrost_resource {
@@ -97,6 +93,17 @@ static inline struct panfrost_resource *
 pan_resource(struct pipe_resource *p)
 {
    return (struct panfrost_resource *)p;
+}
+
+struct panfrost_gtransfer {
+        struct pipe_transfer base;
+        void *map;
+};
+
+static inline struct panfrost_gtransfer *
+pan_transfer(struct pipe_transfer *p)
+{
+   return (struct panfrost_gtransfer *)p;
 }
 
 void panfrost_resource_screen_init(struct panfrost_screen *screen);
