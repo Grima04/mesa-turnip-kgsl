@@ -105,6 +105,15 @@ The integer capabilities:
   The only legacy features that Gallium drivers must implement are
   the legacy shader inputs and outputs (colors, texcoords, fog, clipvertex,
   edgeflag).
+* ``PIPE_CAP_ESSL_FEATURE_LEVEL``: An optional cap to allow drivers to
+  report a higher GLSL version for GLES contexts.  This is useful when a
+  driver does not support all the required features for a higher GL version,
+  but does support the required features for a higher GLES version.  A driver
+  is allowed to return ``0`` in which case ``PIPE_CAP_GLSL_FEATURE_LEVEL`` is
+  used.
+  Note that simply returning the same value as the GLSL feature level cap is
+  incorrect.  For example, GLSL version 3.30 does not require ``ARB_gpu_shader5``,
+  but ESSL version 3.20 es does require ``EXT_gpu_shader5``
 * ``PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION``: Whether quads adhere to
   the flatshade_first setting in ``pipe_rasterizer_state``.
 * ``PIPE_CAP_USER_VERTEX_BUFFERS``: Whether the driver supports user vertex
