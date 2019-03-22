@@ -3928,6 +3928,30 @@ ac_build_shuffle(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef ind
 }
 
 LLVMValueRef
+ac_build_frexp_exp(struct ac_llvm_context *ctx, LLVMValueRef src0,
+		   unsigned bitsize)
+{
+	LLVMTypeRef type;
+	char *intr;
+
+	if (bitsize == 16) {
+		intr = "llvm.amdgcn.frexp.exp.i16.f16";
+		type = ctx->i16;
+	} else if (bitsize == 32) {
+		intr = "llvm.amdgcn.frexp.exp.i32.f32";
+		type = ctx->i32;
+	} else {
+		intr = "llvm.amdgcn.frexp.exp.i32.f64";
+		type = ctx->i64;
+	}
+
+	LLVMValueRef params[] = {
+		src0,
+	};
+	return ac_build_intrinsic(ctx, intr, type, params, 1,
+				  AC_FUNC_ATTR_READNONE);
+}
+LLVMValueRef
 ac_build_frexp_mant(struct ac_llvm_context *ctx, LLVMValueRef src0,
 		    unsigned bitsize)
 {

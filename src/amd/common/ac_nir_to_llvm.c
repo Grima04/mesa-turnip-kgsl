@@ -803,9 +803,11 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	case nir_op_frexp_exp:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
-		result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.frexp.exp.i32.f64",
-					    ctx->ac.i32, src, 1, AC_FUNC_ATTR_READNONE);
-
+		result = ac_build_frexp_exp(&ctx->ac, src[0],
+					    ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])));
+		if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])) == 16)
+			result = LLVMBuildSExt(ctx->ac.builder, result,
+					       ctx->ac.i32, "");
 		break;
 	case nir_op_frexp_sig:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
