@@ -114,6 +114,7 @@ static const ${val.c_type} ${val.name} = {
    ${val.cond if val.cond else 'NULL'},
 % elif isinstance(val, Expression):
    ${'true' if val.inexact else 'false'},
+   ${val.comm_expr_idx}, ${val.comm_exprs},
    ${val.c_opcode()},
    { ${', '.join(src.c_ptr for src in val.sources)} },
    ${val.cond if val.cond else 'NULL'},
@@ -307,6 +308,25 @@ class Expression(Value):
                 'Expression cannot use an unsized conversion opcode with ' \
                 'an explicit size; that\'s silly.'
 
+      self.__index_comm_exprs(0)
+
+   def __index_comm_exprs(self, base_idx):
+      """Recursively count and index commutative expressions
+      """
+      self.comm_exprs = 0
+      if self.opcode not in conv_opcode_types and \
+         "commutative" in opcodes[self.opcode].algebraic_properties:
+         self.comm_expr_idx = base_idx
+         self.comm_exprs += 1
+      else:
+         self.comm_expr_idx = -1
+
+      for s in self.sources:
+         if isinstance(s, Expression):
+            s.__index_comm_exprs(base_idx + self.comm_exprs)
+            self.comm_exprs += s.comm_exprs
+
+      return self.comm_exprs
 
    def c_opcode(self):
       if self.opcode in conv_opcode_types:
