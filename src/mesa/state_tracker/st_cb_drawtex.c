@@ -127,7 +127,7 @@ lookup_shader(struct st_context *st,
    }
 
    enum pipe_shader_ir preferred_ir =
-      screen->get_shader_param(screen, MESA_SHADER_VERTEX,
+      screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
                                PIPE_SHADER_CAP_PREFERRED_IR);
 
    if (preferred_ir == PIPE_SHADER_IR_NIR) {
