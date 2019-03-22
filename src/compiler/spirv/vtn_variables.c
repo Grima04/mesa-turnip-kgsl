@@ -100,6 +100,8 @@ static nir_ssa_def *
 vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
                             nir_ssa_def *desc_array_index)
 {
+   vtn_assert(b->options->environment == NIR_SPIRV_VULKAN);
+
    if (!desc_array_index) {
       vtn_assert(glsl_type_is_struct_or_ifc(var->type->type));
       desc_array_index = nir_imm_int(&b->nb, 0);
@@ -134,6 +136,8 @@ static nir_ssa_def *
 vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
                      nir_ssa_def *base_index, nir_ssa_def *offset_index)
 {
+   vtn_assert(b->options->environment == NIR_SPIRV_VULKAN);
+
    nir_intrinsic_instr *instr =
       nir_intrinsic_instr_create(b->nb.shader,
                                  nir_intrinsic_vulkan_resource_reindex);
@@ -161,6 +165,8 @@ static nir_ssa_def *
 vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
                     nir_ssa_def *desc_index)
 {
+   vtn_assert(b->options->environment == NIR_SPIRV_VULKAN);
+
    nir_intrinsic_instr *desc_load =
       nir_intrinsic_instr_create(b->nb.shader,
                                  nir_intrinsic_load_vulkan_descriptor);
@@ -196,7 +202,8 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
    nir_deref_instr *tail;
    if (base->deref) {
       tail = base->deref;
-   } else if (vtn_pointer_is_external_block(b, base)) {
+   } else if (b->options->environment == NIR_SPIRV_VULKAN &&
+              vtn_pointer_is_external_block(b, base)) {
       nir_ssa_def *block_index = base->block_index;
 
       /* We dereferencing an external block pointer.  Correctness of this
