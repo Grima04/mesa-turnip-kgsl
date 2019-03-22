@@ -248,8 +248,8 @@ unop("fsin", tfloat, "bit_size == 64 ? sin(src0) : sinf(src0)")
 unop("fcos", tfloat, "bit_size == 64 ? cos(src0) : cosf(src0)")
 
 # dfrexp
-unop_convert("frexp_exp", tint32, tfloat64, "frexp(src0, &dst);")
-unop_convert("frexp_sig", tfloat64, tfloat64, "int n; dst = frexp(src0, &n);")
+unop_convert("frexp_exp", tint32, tfloat, "frexp(src0, &dst);")
+unop_convert("frexp_sig", tfloat, tfloat, "int n; dst = frexp(src0, &n);")
 
 # Partial derivatives.
 
