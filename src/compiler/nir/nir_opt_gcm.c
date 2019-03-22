@@ -109,6 +109,67 @@ gcm_build_block_info(struct exec_list *cf_list, struct gcm_state *state,
    }
 }
 
+static bool
+is_src_scalarizable(nir_src *src)
+{
+   assert(src->is_ssa);
+
+   nir_instr *src_instr = src->ssa->parent_instr;
+   switch (src_instr->type) {
+   case nir_instr_type_alu: {
+      nir_alu_instr *src_alu = nir_instr_as_alu(src_instr);
+
+      /* ALU operations with output_size == 0 should be scalarized.  We
+       * will also see a bunch of vecN operations from scalarizing ALU
+       * operations and, since they can easily be copy-propagated, they
+       * are ok too.
+       */
+      return nir_op_infos[src_alu->op].output_size == 0 ||
+             src_alu->op == nir_op_vec2 ||
+             src_alu->op == nir_op_vec3 ||
+             src_alu->op == nir_op_vec4;
+   }
+
+   case nir_instr_type_load_const:
+      /* These are trivially scalarizable */
+      return true;
+
+   case nir_instr_type_ssa_undef:
+      return true;
+
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *src_intrin = nir_instr_as_intrinsic(src_instr);
+
+      switch (src_intrin->intrinsic) {
+      case nir_intrinsic_load_deref: {
+         nir_deref_instr *deref = nir_src_as_deref(src_intrin->src[0]);
+         return deref->mode == nir_var_shader_in ||
+                deref->mode == nir_var_uniform ||
+                deref->mode == nir_var_mem_ubo ||
+                deref->mode == nir_var_mem_ssbo ||
+                deref->mode == nir_var_mem_global;
+      }
+
+      case nir_intrinsic_interp_deref_at_centroid:
+      case nir_intrinsic_interp_deref_at_sample:
+      case nir_intrinsic_interp_deref_at_offset:
+      case nir_intrinsic_load_uniform:
+      case nir_intrinsic_load_ubo:
+      case nir_intrinsic_load_ssbo:
+      case nir_intrinsic_load_global:
+      case nir_intrinsic_load_input:
+         return true;
+      default:
+         break;
+      }
+   }
+
+   default:
+      /* We can't scalarize this type of instruction */
+      return false;
+   }
+}
+
 /* Walks the instruction list and marks immovable instructions as pinned
  *
  * This function also serves to initialize the instr->pass_flags field.
@@ -137,6 +198,12 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
                /* These can only go in uniform control flow */
                instr->pass_flags = GCM_INSTR_SCHEDULE_EARLIER_ONLY;
                break;
+
+         case nir_op_mov:
+            if (!is_src_scalarizable(&(nir_instr_as_alu(instr)->src[0].src))) {
+               instr->pass_flags = GCM_INSTR_PINNED;
+               break;
+            }
 
             default:
                instr->pass_flags = 0;
