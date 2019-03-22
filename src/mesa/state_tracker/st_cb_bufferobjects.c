@@ -223,7 +223,7 @@ storage_flags_to_buffer_flags(GLbitfield storageFlags)
  * usage hint, return a pipe_resource_usage value (PIPE_USAGE_DYNAMIC,
  * STREAM, etc).
  */
-static const enum pipe_resource_usage
+static enum pipe_resource_usage
 buffer_usage(GLenum target, GLboolean immutable,
              GLbitfield storageFlags, GLenum usage)
 {
