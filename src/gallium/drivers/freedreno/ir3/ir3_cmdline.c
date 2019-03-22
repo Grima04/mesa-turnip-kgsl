@@ -181,6 +181,7 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 			ir3_glsl_type_size);
 
 	NIR_PASS_V(nir, nir_lower_system_values);
+	NIR_PASS_V(nir, nir_lower_frexp);
 	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
 	NIR_PASS_V(nir, gl_nir_lower_samplers, prog);
 

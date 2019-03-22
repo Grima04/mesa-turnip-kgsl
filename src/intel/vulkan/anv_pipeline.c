@@ -226,6 +226,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               entry_point->impl, true, false);
 
+   NIR_PASS_V(nir, nir_lower_frexp);
+
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 

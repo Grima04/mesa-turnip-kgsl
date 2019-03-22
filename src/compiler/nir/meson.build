@@ -123,6 +123,7 @@ files_libnir = files(
   'nir_lower_constant_initializers.c',
   'nir_lower_double_ops.c',
   'nir_lower_drawpixels.c',
+  'nir_lower_frexp.c',
   'nir_lower_global_vars_to_local.c',
   'nir_lower_gs_intrinsics.c',
   'nir_lower_load_const_to_scalar.c',

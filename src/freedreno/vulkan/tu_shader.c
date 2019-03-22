@@ -173,6 +173,7 @@ tu_shader_create(struct tu_device *dev,
                             ir3_glsl_type_size);
 
    NIR_PASS_V(nir, nir_lower_system_values);
+   NIR_PASS_V(nir, nir_lower_frexp);
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
 
    nir_shader_gather_info(nir, entry_point->impl);
