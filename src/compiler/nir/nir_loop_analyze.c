@@ -480,9 +480,12 @@ find_array_access_via_induction(loop_info_state *state,
          *array_index_out = array_index;
 
       nir_deref_instr *parent = nir_deref_instr_parent(d);
-      assert(glsl_type_is_array_or_matrix(parent->type));
-
-      return glsl_get_length(parent->type);
+      if (glsl_type_is_array_or_matrix(parent->type)) {
+         return glsl_get_length(parent->type);
+      } else {
+         assert(glsl_type_is_vector(parent->type));
+         return glsl_get_vector_elements(parent->type);
+      }
    }
 
    return 0;
