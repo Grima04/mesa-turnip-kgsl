@@ -519,7 +519,7 @@ split_var_list_arrays(nir_shader *shader,
          exec_node_remove(&var->node);
          exec_list_push_tail(&split_vars, &var->node);
       } else {
-         assert(split_type == var->type);
+         assert(split_type == glsl_get_bare_type(var->type));
          /* If we're not modifying this variable, delete the info so we skip
           * it faster in later passes.
           */
@@ -915,7 +915,6 @@ get_vec_var_usage(nir_variable *var,
    const struct glsl_type *type = var->type;
    for (unsigned i = 0; i < num_levels; i++) {
       usage->levels[i].array_len = glsl_get_length(type);
-      assert(glsl_get_explicit_stride(type) == 0);
       type = glsl_get_array_element(type);
    }
    assert(glsl_type_is_vector_or_scalar(type));
