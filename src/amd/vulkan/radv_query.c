@@ -1148,10 +1148,12 @@ VkResult radv_GetQueryPoolResults(
 			}
 
 			if (flags & VK_QUERY_RESULT_64_BIT) {
-				*(uint64_t*)dest = *(uint64_t*)src;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint64_t*)dest = *(uint64_t*)src;
 				dest += 8;
 			} else {
-				*(uint32_t*)dest = *(uint32_t*)src;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint32_t*)dest = *(uint32_t*)src;
 				dest += 4;
 			}
 			break;
@@ -1183,10 +1185,12 @@ VkResult radv_GetQueryPoolResults(
 			}
 
 			if (flags & VK_QUERY_RESULT_64_BIT) {
-				*(uint64_t*)dest = sample_count;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint64_t*)dest = sample_count;
 				dest += 8;
 			} else {
-				*(uint32_t*)dest = sample_count;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint32_t*)dest = sample_count;
 				dest += 4;
 			}
 			break;
@@ -1203,18 +1207,26 @@ VkResult radv_GetQueryPoolResults(
 			if (flags & VK_QUERY_RESULT_64_BIT) {
 				uint64_t *dst = (uint64_t*)dest;
 				dest += util_bitcount(pool->pipeline_stats_mask) * 8;
-				for(int i = 0; i < 11; ++i)
-					if(pool->pipeline_stats_mask & (1u << i))
-						*dst++ = stop[pipeline_statistics_indices[i]] -
-						         start[pipeline_statistics_indices[i]];
+				for(int i = 0; i < 11; ++i) {
+					if(pool->pipeline_stats_mask & (1u << i)) {
+						if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+							*dst = stop[pipeline_statistics_indices[i]] -
+							       start[pipeline_statistics_indices[i]];
+						dst++;
+					}
+				}
 
 			} else {
 				uint32_t *dst = (uint32_t*)dest;
 				dest += util_bitcount(pool->pipeline_stats_mask) * 4;
-				for(int i = 0; i < 11; ++i)
-					if(pool->pipeline_stats_mask & (1u << i))
-						*dst++ = stop[pipeline_statistics_indices[i]] -
-						         start[pipeline_statistics_indices[i]];
+				for(int i = 0; i < 11; ++i) {
+					if(pool->pipeline_stats_mask & (1u << i)) {
+						if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+							*dst = stop[pipeline_statistics_indices[i]] -
+							       start[pipeline_statistics_indices[i]];
+						dst++;
+					}
+				}
 			}
 			break;
 		}
@@ -1244,14 +1256,18 @@ VkResult radv_GetQueryPoolResults(
 			primitive_storage_needed = src64[2] - src64[0];
 
 			if (flags & VK_QUERY_RESULT_64_BIT) {
-				*(uint64_t *)dest = num_primitives_written;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint64_t *)dest = num_primitives_written;
 				dest += 8;
-				*(uint64_t *)dest = primitive_storage_needed;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint64_t *)dest = primitive_storage_needed;
 				dest += 8;
 			} else {
-				*(uint32_t *)dest = num_primitives_written;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint32_t *)dest = num_primitives_written;
 				dest += 4;
-				*(uint32_t *)dest = primitive_storage_needed;
+				if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+					*(uint32_t *)dest = primitive_storage_needed;
 				dest += 4;
 			}
 			break;
