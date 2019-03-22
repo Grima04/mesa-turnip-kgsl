@@ -1142,11 +1142,31 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 static void
 start_block(struct ntv_context *ctx, SpvId label)
 {
-   assert(!ctx->block_started);
+   /* terminate previous block if needed */
+   if (ctx->block_started)
+      spirv_builder_emit_branch(&ctx->builder, label);
 
    /* start new block */
    spirv_builder_label(&ctx->builder, label);
    ctx->block_started = true;
+}
+
+static void
+branch(struct ntv_context *ctx, SpvId label)
+{
+   assert(ctx->block_started);
+   spirv_builder_emit_branch(&ctx->builder, label);
+   ctx->block_started = false;
+}
+
+static void
+branch_conditional(struct ntv_context *ctx, SpvId condition, SpvId then_id,
+                   SpvId else_id)
+{
+   assert(ctx->block_started);
+   spirv_builder_emit_branch_conditional(&ctx->builder, condition,
+                                         then_id, else_id);
+   ctx->block_started = false;
 }
 
 static void
@@ -1190,6 +1210,50 @@ emit_block(struct ntv_context *ctx, struct nir_block *block)
 }
 
 static void
+emit_cf_list(struct ntv_context *ctx, struct exec_list *list);
+
+static SpvId
+get_src_bool(struct ntv_context *ctx, nir_src *src)
+{
+   SpvId def = get_src_uint(ctx, src);
+   assert(nir_src_bit_size(*src) == 32);
+   unsigned num_components = nir_src_num_components(*src);
+   return uvec_to_bvec(ctx, def, num_components);
+}
+
+static void
+emit_if(struct ntv_context *ctx, nir_if *if_stmt)
+{
+   SpvId condition = get_src_bool(ctx, &if_stmt->condition);
+
+   SpvId header_id = spirv_builder_new_id(&ctx->builder);
+   SpvId then_id = block_label(ctx, nir_if_first_then_block(if_stmt));
+   SpvId endif_id = spirv_builder_new_id(&ctx->builder);
+   SpvId else_id = endif_id;
+
+   bool has_else = !exec_list_is_empty(&if_stmt->else_list);
+   if (has_else) {
+      assert(nir_if_first_else_block(if_stmt)->index < ctx->num_blocks);
+      else_id = block_label(ctx, nir_if_first_else_block(if_stmt));
+   }
+
+   /* create a header-block */
+   start_block(ctx, header_id);
+   spirv_builder_emit_selection_merge(&ctx->builder, endif_id,
+                                      SpvSelectionControlMaskNone);
+   branch_conditional(ctx, condition, then_id, else_id);
+
+   emit_cf_list(ctx, &if_stmt->then_list);
+
+   if (has_else) {
+      branch(ctx, endif_id);
+      emit_cf_list(ctx, &if_stmt->else_list);
+   }
+
+   start_block(ctx, endif_id);
+}
+
+static void
 emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
 {
    foreach_list_typed(nir_cf_node, node, node, list) {
@@ -1199,7 +1263,7 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
          break;
 
       case nir_cf_node_if:
-         unreachable("nir_cf_node_if not supported");
+         emit_if(ctx, nir_cf_node_as_if(node));
          break;
 
       case nir_cf_node_loop:

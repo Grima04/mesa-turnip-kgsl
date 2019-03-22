@@ -432,6 +432,61 @@ spirv_builder_emit_vector_shuffle(struct spirv_builder *b, SpvId result_type,
    return result;
 }
 
+void
+spirv_builder_emit_branch(struct spirv_builder *b, SpvId label)
+{
+   spirv_buffer_prepare(&b->instructions, 2);
+   spirv_buffer_emit_word(&b->instructions, SpvOpBranch | (2 << 16));
+   spirv_buffer_emit_word(&b->instructions, label);
+}
+
+void
+spirv_builder_emit_selection_merge(struct spirv_builder *b, SpvId merge_block,
+                                   SpvSelectionControlMask selection_control)
+{
+   spirv_buffer_prepare(&b->instructions, 3);
+   spirv_buffer_emit_word(&b->instructions, SpvOpSelectionMerge | (3 << 16));
+   spirv_buffer_emit_word(&b->instructions, merge_block);
+   spirv_buffer_emit_word(&b->instructions, selection_control);
+}
+
+void
+spirv_builder_emit_branch_conditional(struct spirv_builder *b, SpvId condition,
+                                      SpvId true_label, SpvId false_label)
+{
+   spirv_buffer_prepare(&b->instructions, 4);
+   spirv_buffer_emit_word(&b->instructions, SpvOpBranchConditional | (4 << 16));
+   spirv_buffer_emit_word(&b->instructions, condition);
+   spirv_buffer_emit_word(&b->instructions, true_label);
+   spirv_buffer_emit_word(&b->instructions, false_label);
+}
+
+SpvId
+spirv_builder_emit_phi(struct spirv_builder *b, SpvId result_type,
+                       size_t num_vars, size_t *position)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   assert(num_vars > 0);
+   int words = 3 + 2 * num_vars;
+   spirv_buffer_prepare(&b->instructions, words);
+   spirv_buffer_emit_word(&b->instructions, SpvOpPhi | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   *position = b->instructions.num_words;
+   for (int i = 0; i < 2 * num_vars; ++i)
+      spirv_buffer_emit_word(&b->instructions, 0);
+   return result;
+}
+
+void
+spirv_builder_set_phi_operand(struct spirv_builder *b, size_t position,
+                              size_t index, SpvId variable, SpvId parent)
+{
+   b->instructions.words[position + index * 2 + 0] = variable;
+   b->instructions.words[position + index * 2 + 1] = parent;
+}
+
 SpvId
 spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,
                                              SpvId result_type,

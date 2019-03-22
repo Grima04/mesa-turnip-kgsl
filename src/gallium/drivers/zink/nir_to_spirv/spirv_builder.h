@@ -175,6 +175,26 @@ spirv_builder_emit_vector_shuffle(struct spirv_builder *b, SpvId result_type,
                                   const uint32_t components[],
                                   size_t num_components);
 
+void
+spirv_builder_emit_branch(struct spirv_builder *b, SpvId label);
+
+void
+spirv_builder_emit_selection_merge(struct spirv_builder *b, SpvId merge_block,
+                                   SpvSelectionControlMask selection_control);
+
+void
+spirv_builder_emit_branch_conditional(struct spirv_builder *b, SpvId condition,
+                                      SpvId true_label, SpvId false_label);
+
+SpvId
+spirv_builder_emit_phi(struct spirv_builder *b, SpvId result_type,
+                       size_t num_vars, size_t *position);
+
+void
+spirv_builder_set_phi_operand(struct spirv_builder *b, size_t position,
+                              size_t index, SpvId variable, SpvId parent);
+
+
 SpvId
 spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,
                                              SpvId result_type,
