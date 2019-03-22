@@ -410,7 +410,7 @@ iris_chain_to_new_batch(struct iris_batch *batch)
 
    uint32_t *cmd = batch->map_next;
    uint64_t *addr = batch->map_next + 4;
-   batch->map_next += 8;
+   batch->map_next += 12;
 
    /* No longer held by batch->bo, still held by validation list */
    iris_bo_unreference(batch->bo);
