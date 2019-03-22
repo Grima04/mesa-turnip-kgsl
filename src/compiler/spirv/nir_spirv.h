@@ -50,7 +50,15 @@ enum nir_spirv_debug_level {
    NIR_SPIRV_DEBUG_LEVEL_ERROR,
 };
 
+enum nir_spirv_execution_environment {
+   NIR_SPIRV_VULKAN = 0,
+   NIR_SPIRV_OPENCL,
+   NIR_SPIRV_OPENGL,
+};
+
 struct spirv_to_nir_options {
+   enum nir_spirv_execution_environment environment;
+
    /* Whether or not to lower all workgroup variable access to offsets
     * up-front.  This means you will _shared intrinsics instead of _var
     * for workgroup data access.
