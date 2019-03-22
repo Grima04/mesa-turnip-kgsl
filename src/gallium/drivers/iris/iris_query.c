@@ -503,6 +503,15 @@ iris_math_div32_gpr0(struct iris_context *ice,
    }
 }
 
+void
+iris_math_add32_gpr0(struct iris_context *ice,
+                     struct iris_batch *batch,
+                     uint32_t x)
+{
+   emit_lri32(batch, CS_GPR(1), x);
+   emit_alu_add(batch, MI_ALU_R0, MI_ALU_R0, MI_ALU_R1);
+}
+
 /*
  * GPR0 = (GPR0 == 0) ? 0 : 1;
  */
