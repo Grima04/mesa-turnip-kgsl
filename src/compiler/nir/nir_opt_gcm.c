@@ -54,10 +54,11 @@ struct gcm_instr_info {
 
 /* Flags used in the instr->pass_flags field for various instruction states */
 enum {
-   GCM_INSTR_PINNED =            (1 << 0),
-   GCM_INSTR_SCHEDULED_EARLY =   (1 << 1),
-   GCM_INSTR_SCHEDULED_LATE =    (1 << 2),
-   GCM_INSTR_PLACED =            (1 << 3),
+   GCM_INSTR_PINNED =                (1 << 0),
+   GCM_INSTR_SCHEDULE_EARLIER_ONLY = (1 << 1),
+   GCM_INSTR_SCHEDULED_EARLY =       (1 << 2),
+   GCM_INSTR_SCHEDULED_LATE =        (1 << 3),
+   GCM_INSTR_PLACED =                (1 << 4),
 };
 
 struct gcm_state {
@@ -133,8 +134,8 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
             case nir_op_fddy_fine:
             case nir_op_fddx_coarse:
             case nir_op_fddy_coarse:
-               /* These can only go in uniform control flow; pin them for now */
-               instr->pass_flags = GCM_INSTR_PINNED;
+               /* These can only go in uniform control flow */
+               instr->pass_flags = GCM_INSTR_SCHEDULE_EARLIER_ONLY;
                break;
 
             default:
@@ -145,7 +146,7 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
 
          case nir_instr_type_tex:
             if (nir_tex_instr_has_implicit_derivative(nir_instr_as_tex(instr)))
-               instr->pass_flags = GCM_INSTR_PINNED;
+               instr->pass_flags = GCM_INSTR_SCHEDULE_EARLIER_ONLY;
             break;
 
          case nir_instr_type_deref:
@@ -351,6 +352,12 @@ gcm_schedule_late_def(nir_ssa_def *def, void *void_state)
    if (lca == NULL) {
       def->parent_instr->block = NULL;
       return true;
+   }
+
+   if (def->parent_instr->pass_flags & GCM_INSTR_SCHEDULE_EARLIER_ONLY &&
+       lca != def->parent_instr->block &&
+       nir_block_dominates(def->parent_instr->block, lca)) {
+      lca = def->parent_instr->block;
    }
 
    /* We now have the LCA of all of the uses.  If our invariants hold,
