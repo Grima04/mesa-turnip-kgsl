@@ -117,6 +117,21 @@ atomic_add_unless(int *v, int add, int unless)
    return c == unless;
 }
 
+static const char *
+memzone_name(enum iris_memory_zone memzone)
+{
+   const char *names[] = {
+      [IRIS_MEMZONE_SHADER]  = "shader",
+      [IRIS_MEMZONE_BINDER]  = "binder",
+      [IRIS_MEMZONE_SURFACE] = "surface",
+      [IRIS_MEMZONE_DYNAMIC] = "dynamic",
+      [IRIS_MEMZONE_OTHER]   = "other",
+      [IRIS_MEMZONE_BORDER_COLOR_POOL] = "bordercolor",
+   };
+   assert(memzone < ARRAY_SIZE(names));
+   return names[memzone];
+}
+
 /**
  * Iris fixed-size bucketing VMA allocator.
  *
@@ -662,8 +677,8 @@ skip_cache:
       }
    }
 
-   DBG("bo_create: buf %d (%s) %llub\n", bo->gem_handle, bo->name,
-       (unsigned long long) size);
+   DBG("bo_create: buf %d (%s) (%s memzone) %llub\n", bo->gem_handle,
+       bo->name, memzone_name(memzone), (unsigned long long) size);
 
    return bo;
 
