@@ -154,3 +154,21 @@ i965_asm = executable(
    c_args : [c_vis_args, no_override_init_args],
    install : true
 )
+
+asm_testcases = [
+   ['brw', 'tests/gen4'],
+   ['g4x', 'tests/gen4.5'],
+   ['ilk', 'tests/gen5'],
+   ['snb', 'tests/gen6'],
+   ['ivb', 'tests/gen7'],
+   ['hsw', 'tests/gen7.5'],
+   ['bdw', 'tests/gen8'],
+   ['skl', 'tests/gen9'],
+]
+
+test_runner = find_program('tests/run-test.sh')
+foreach testcase : asm_testcases
+   test('i965_asm : ' + testcase[1], test_runner,
+        args : [i965_asm, testcase[1], testcase[0]],
+        env : ['srcdir=' + meson.current_source_dir()])
+endforeach
