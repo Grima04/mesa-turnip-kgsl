@@ -1194,10 +1194,10 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			}
 		}
 		break;
-		/* All SSBO intrinsics should have been lowered by 'lower_io_offsets'
-		 * pass and replaced by an ir3-specifc version that adds the
-		 * dword-offset in the last source.
-		 */
+	/* All SSBO intrinsics should have been lowered by 'lower_io_offsets'
+	 * pass and replaced by an ir3-specifc version that adds the
+	 * dword-offset in the last source.
+	 */
 	case nir_intrinsic_load_ssbo_ir3:
 		ctx->funcs->emit_intrinsic_load_ssbo(ctx, intr, dst);
 		break;
