@@ -49,11 +49,12 @@ static const nir_shader_compiler_options options = {
 		.vertex_id_zero_based = true,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
-		.lower_all_io_to_temps = true,
+		.lower_all_io_to_elements = true,
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
 		.lower_bfm = true,
+		.use_interpolated_input_intrinsics = true,
 };
 
 /* we don't want to lower vertex_id to _zero_based on newer gpus: */
@@ -75,11 +76,12 @@ static const nir_shader_compiler_options options_a6xx = {
 		.vertex_id_zero_based = false,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
-		.lower_all_io_to_temps = true,
+		.lower_all_io_to_elements = true,
 		.lower_helper_invocation = true,
 		.lower_bitfield_insert_to_shifts = true,
 		.lower_bitfield_extract_to_shifts = true,
 		.lower_bfm = true,
+		.use_interpolated_input_intrinsics = true,
 };
 
 const nir_shader_compiler_options *

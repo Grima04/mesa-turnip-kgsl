@@ -1172,6 +1172,34 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
 		break;
+	case nir_intrinsic_load_barycentric_centroid:
+	case nir_intrinsic_load_barycentric_pixel:
+		ir3_split_dest(b, dst, ctx->frag_vcoord, 0, 2);
+		break;
+	case nir_intrinsic_load_interpolated_input:
+		idx = nir_intrinsic_base(intr);
+		comp = nir_intrinsic_component(intr);
+		src = ir3_get_src(ctx, &intr->src[0]);
+		const_offset = nir_src_as_const_value(intr->src[1]);
+		if (const_offset) {
+			struct ir3_instruction *coord = ir3_create_collect(ctx, src, 2);
+			idx += const_offset->u32[0];
+			for (int i = 0; i < intr->num_components; i++) {
+				unsigned inloc = idx * 4 + i + comp;
+				if (ctx->so->inputs[idx * 4].bary) {
+					dst[i] = ir3_BARY_F(b, create_immed(b, inloc), 0, coord, 0);
+				} else {
+					/* for non-varyings use the pre-setup input, since
+					 * that is easier than mapping things back to a
+					 * nir_variable to figure out what it is.
+					 */
+					dst[i] = ctx->ir->inputs[inloc];
+				}
+			}
+		} else {
+			ir3_context_error(ctx, "unhandled");
+		}
+		break;
 	case nir_intrinsic_load_input:
 		idx = nir_intrinsic_base(intr);
 		comp = nir_intrinsic_component(intr);
@@ -1181,6 +1209,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			for (int i = 0; i < intr->num_components; i++) {
 				unsigned n = idx * 4 + i + comp;
 				dst[i] = ctx->ir->inputs[n];
+				compile_assert(ctx, ctx->ir->inputs[n]);
 			}
 		} else {
 			src = ir3_get_src(ctx, &intr->src[0]);
