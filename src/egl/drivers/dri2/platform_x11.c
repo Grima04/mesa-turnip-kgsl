@@ -862,13 +862,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
          0,
       };
 
-      /* Check that we've found single-sample, no depth, no stencil. */
+      /* Check that we've found single-sample, no depth, no stencil,
+       * and single-buffered.
+       */
       if (!dri2_x11_config_match_attrib(dri2_dpy, config,
                                         __DRI_ATTRIB_DEPTH_SIZE, 0) ||
           !dri2_x11_config_match_attrib(dri2_dpy, config,
                                         __DRI_ATTRIB_STENCIL_SIZE, 0) ||
           !dri2_x11_config_match_attrib(dri2_dpy, config,
-                                        __DRI_ATTRIB_SAMPLES, 0)) {
+                                        __DRI_ATTRIB_SAMPLES, 0) ||
+          !dri2_x11_config_match_attrib(dri2_dpy, config,
+                                        __DRI_ATTRIB_DOUBLE_BUFFER, 0)) {
          continue;
       }
 
