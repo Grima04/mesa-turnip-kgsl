@@ -349,6 +349,7 @@ bo_calloc(void)
 static struct iris_bo *
 alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
                     struct bo_cache_bucket *bucket,
+                    uint32_t alignment,
                     enum iris_memory_zone memzone,
                     unsigned flags,
                     bool match_zone)
@@ -385,10 +386,11 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    if (!bo)
       return NULL;
 
-   /* If the cached BO isn't in the right memory zone, free the old
-    * memory and assign it a new address.
+   /* If the cached BO isn't in the right memory zone, or the alignment
+    * isn't sufficient, free the old memory and assign it a new address.
     */
-   if (memzone != iris_memzone_for_address(bo->gtt_offset)) {
+   if (memzone != iris_memzone_for_address(bo->gtt_offset) ||
+       bo->gtt_offset % alignment != 0) {
       vma_free(bufmgr, bo->gtt_offset, bo->size);
       bo->gtt_offset = 0ull;
    }
@@ -456,6 +458,7 @@ static struct iris_bo *
 bo_alloc_internal(struct iris_bufmgr *bufmgr,
                   const char *name,
                   uint64_t size,
+                  uint32_t alignment,
                   enum iris_memory_zone memzone,
                   unsigned flags,
                   uint32_t tiling_mode,
@@ -476,11 +479,13 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    /* Get a buffer out of the cache if available.  First, we try to find
     * one with a matching memory zone so we can avoid reallocating VMA.
     */
-   bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, true);
+   bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, flags, true);
 
    /* If that fails, we try for any cached BO, without matching memzone. */
-   if (!bo)
-      bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, false);
+   if (!bo) {
+      bo = alloc_bo_from_cache(bufmgr, bucket, alignment, memzone, flags,
+                               false);
+   }
 
    mtx_unlock(&bufmgr->lock);
 
@@ -492,7 +497,7 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 
    if (bo->gtt_offset == 0ull) {
       mtx_lock(&bufmgr->lock);
-      bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
+      bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, alignment);
       mtx_unlock(&bufmgr->lock);
 
       if (bo->gtt_offset == 0ull)
@@ -542,16 +547,17 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
               uint64_t size,
               enum iris_memory_zone memzone)
 {
-   return bo_alloc_internal(bufmgr, name, size, memzone,
+   return bo_alloc_internal(bufmgr, name, size, 1, memzone,
                             0, I915_TILING_NONE, 0);
 }
 
 struct iris_bo *
 iris_bo_alloc_tiled(struct iris_bufmgr *bufmgr, const char *name,
-                    uint64_t size, enum iris_memory_zone memzone,
+                    uint64_t size, uint32_t alignment,
+                    enum iris_memory_zone memzone,
                     uint32_t tiling_mode, uint32_t pitch, unsigned flags)
 {
-   return bo_alloc_internal(bufmgr, name, size, memzone,
+   return bo_alloc_internal(bufmgr, name, size, alignment, memzone,
                             flags, tiling_mode, pitch);
 }
 

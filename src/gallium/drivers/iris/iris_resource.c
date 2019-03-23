@@ -426,7 +426,7 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
     * of bytes instead of trying to recalculate based on different format
     * block sizes.
     */
-   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size,
+   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size, 4096,
                                      IRIS_MEMZONE_OTHER, I915_TILING_Y,
                                      res->aux.surf.row_pitch_B, alloc_flags);
    if (!res->aux.bo) {
@@ -666,7 +666,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
                             IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
 
-   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B,
+   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B, 4096,
                                  memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, flags);
