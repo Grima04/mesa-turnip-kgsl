@@ -246,6 +246,13 @@ anv_gem_supports_syncobj_wait(int fd)
 }
 
 int
+anv_i915_query(int fd, uint64_t query_id, void *buffer,
+               int32_t *buffer_len)
+{
+   unreachable("Unused");
+}
+
+int
 anv_gem_syncobj_wait(struct anv_device *device,
                      const uint32_t *handles, uint32_t num_handles,
                      int64_t abs_timeout_ns, bool wait_all)

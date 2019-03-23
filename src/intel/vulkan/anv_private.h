@@ -1660,6 +1660,8 @@ int anv_gem_syncobj_timeline_signal(struct anv_device *device,
 int anv_gem_syncobj_timeline_query(struct anv_device *device,
                                    const uint32_t *handles, uint64_t *points,
                                    uint32_t num_items);
+int anv_i915_query(int fd, uint64_t query_id, void *buffer,
+                   int32_t *buffer_len);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,

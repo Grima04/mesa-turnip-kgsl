@@ -660,3 +660,24 @@ anv_gem_syncobj_timeline_query(struct anv_device *device,
 
    return gen_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_QUERY, &args);
 }
+
+int
+anv_i915_query(int fd, uint64_t query_id, void *buffer,
+               int32_t *buffer_len)
+{
+   struct drm_i915_query_item item = {
+      .query_id = query_id,
+      .length = *buffer_len,
+      .data_ptr = (uintptr_t)buffer,
+   };
+
+   struct drm_i915_query args = {
+      .num_items = 1,
+      .flags = 0,
+      .items_ptr = (uintptr_t)&item,
+   };
+
+   int ret = gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &args);
+   *buffer_len = item.length;
+   return ret;
+}
