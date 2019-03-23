@@ -681,3 +681,25 @@ anv_i915_query(int fd, uint64_t query_id, void *buffer,
    *buffer_len = item.length;
    return ret;
 }
+
+struct drm_i915_query_engine_info *
+anv_gem_get_engine_info(int fd)
+{
+   int32_t length = 0;
+   int ret = anv_i915_query(fd, DRM_I915_QUERY_ENGINE_INFO, NULL, &length);
+   assert(ret == 0);
+
+   if (ret == -1 && errno == EINVAL)
+      return NULL;
+
+   struct drm_i915_query_engine_info *info = calloc(1, length);
+   ret = anv_i915_query(fd, DRM_I915_QUERY_ENGINE_INFO, info, &length);
+   assert(ret == 0);
+
+   if (ret != 0) {
+      free(info);
+      return NULL;
+   }
+
+   return info;
+}

@@ -563,11 +563,12 @@ anv_physical_device_try_create(struct anv_instance *instance,
    }
    device->master_fd = master_fd;
 
+   device->engine_info = anv_gem_get_engine_info(fd);
    anv_physical_device_init_queue_families(device);
 
    result = anv_init_wsi(device);
    if (result != VK_SUCCESS)
-      goto fail_disk_cache;
+      goto fail_engine_info;
 
    device->perf = anv_get_perf(&device->info, fd);
 
@@ -581,7 +582,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    return VK_SUCCESS;
 
-fail_disk_cache:
+fail_engine_info:
+   free(device->engine_info);
    anv_physical_device_free_disk_cache(device);
 fail_compiler:
    ralloc_free(device->compiler);
@@ -598,6 +600,7 @@ static void
 anv_physical_device_destroy(struct anv_physical_device *device)
 {
    anv_finish_wsi(device);
+   free(device->engine_info);
    anv_physical_device_free_disk_cache(device);
    ralloc_free(device->compiler);
    ralloc_free(device->perf);

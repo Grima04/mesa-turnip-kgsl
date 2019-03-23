@@ -252,6 +252,12 @@ anv_i915_query(int fd, uint64_t query_id, void *buffer,
    unreachable("Unused");
 }
 
+struct drm_i915_query_engine_info *
+anv_gem_get_engine_info(int fd)
+{
+   unreachable("Unused");
+}
+
 int
 anv_gem_syncobj_wait(struct anv_device *device,
                      const uint32_t *handles, uint32_t num_handles,

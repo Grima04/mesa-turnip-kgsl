@@ -1162,6 +1162,7 @@ struct anv_physical_device {
     struct wsi_device                       wsi_device;
     int                                         local_fd;
     int                                         master_fd;
+    struct drm_i915_query_engine_info *         engine_info;
 };
 
 struct anv_app_info {
@@ -1662,6 +1663,7 @@ int anv_gem_syncobj_timeline_query(struct anv_device *device,
                                    uint32_t num_items);
 int anv_i915_query(int fd, uint64_t query_id, void *buffer,
                    int32_t *buffer_len);
+struct drm_i915_query_engine_info *anv_gem_get_engine_info(int fd);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,
