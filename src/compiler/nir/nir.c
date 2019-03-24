@@ -1991,12 +1991,14 @@ nir_get_single_slot_attribs_mask(uint64_t attribs, uint64_t dual_slot)
 }
 
 void
-nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src)
+nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
+                            bool bindless)
 {
    switch (intrin->intrinsic) {
 #define CASE(op) \
    case nir_intrinsic_image_deref_##op: \
-      intrin->intrinsic = nir_intrinsic_image_##op; \
+      intrin->intrinsic = bindless ? nir_intrinsic_bindless_image_##op \
+                                   : nir_intrinsic_image_##op; \
       break;
    CASE(load)
    CASE(store)

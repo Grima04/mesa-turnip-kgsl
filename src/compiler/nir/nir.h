@@ -1409,7 +1409,7 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
 
 /* Converts a image_deref_* intrinsic into a image_* one */
 void nir_rewrite_image_intrinsic(nir_intrinsic_instr *instr,
-                                 nir_ssa_def *handle);
+                                 nir_ssa_def *handle, bool bindless);
 
 /**
  * \group texture information

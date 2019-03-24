@@ -26,6 +26,7 @@ LIBGLSL_FILES = \
 	glsl/builtin_variables.cpp \
 	glsl/generate_ir.cpp \
 	glsl/gl_nir_lower_atomics.c \
+	glsl/gl_nir_lower_bindless_images.c \
 	glsl/gl_nir_lower_buffers.c \
 	glsl/gl_nir_lower_samplers.c \
 	glsl/gl_nir_lower_samplers_as_deref.c \
