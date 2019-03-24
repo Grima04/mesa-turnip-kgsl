@@ -71,6 +71,7 @@ private:
    typedef unordered_map<unsigned, uint32_t> NirArrayLMemOffsets;
    typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
+   CacheMode convert(enum gl_access_qualifier);
    TexTarget convert(glsl_sampler_dim, bool isArray, bool isShadow);
    LValues& convert(nir_alu_dest *);
    BasicBlock* convert(nir_block *);
@@ -503,20 +504,44 @@ Converter::getOperation(nir_intrinsic_op op)
       return OP_EMIT;
    case nir_intrinsic_end_primitive:
       return OP_RESTART;
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_max:
+   case nir_intrinsic_image_atomic_max:
    case nir_intrinsic_image_deref_atomic_max:
+   case nir_intrinsic_bindless_image_atomic_min:
+   case nir_intrinsic_image_atomic_min:
    case nir_intrinsic_image_deref_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_deref_atomic_xor:
       return OP_SUREDP;
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_image_load:
    case nir_intrinsic_image_deref_load:
       return OP_SULDP;
+   case nir_intrinsic_bindless_image_samples:
+   case nir_intrinsic_image_samples:
    case nir_intrinsic_image_deref_samples:
+   case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_image_size:
    case nir_intrinsic_image_deref_size:
       return OP_SUQ;
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_image_store:
    case nir_intrinsic_image_deref_store:
       return OP_SUSTP;
    default:
@@ -554,38 +579,54 @@ int
 Converter::getSubOp(nir_intrinsic_op op)
 {
    switch (op) {
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_ssbo_atomic_add:
       return  NV50_IR_SUBOP_ATOM_ADD;
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_shared_atomic_and:
    case nir_intrinsic_ssbo_atomic_and:
       return  NV50_IR_SUBOP_ATOM_AND;
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_shared_atomic_comp_swap:
    case nir_intrinsic_ssbo_atomic_comp_swap:
       return  NV50_IR_SUBOP_ATOM_CAS;
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_exchange:
       return  NV50_IR_SUBOP_ATOM_EXCH;
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_deref_atomic_or:
    case nir_intrinsic_shared_atomic_or:
    case nir_intrinsic_ssbo_atomic_or:
       return  NV50_IR_SUBOP_ATOM_OR;
+   case nir_intrinsic_bindless_image_atomic_max:
+   case nir_intrinsic_image_atomic_max:
    case nir_intrinsic_image_deref_atomic_max:
    case nir_intrinsic_shared_atomic_imax:
    case nir_intrinsic_shared_atomic_umax:
    case nir_intrinsic_ssbo_atomic_imax:
    case nir_intrinsic_ssbo_atomic_umax:
       return  NV50_IR_SUBOP_ATOM_MAX;
+   case nir_intrinsic_bindless_image_atomic_min:
+   case nir_intrinsic_image_atomic_min:
    case nir_intrinsic_image_deref_atomic_min:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_shared_atomic_umin:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
       return  NV50_IR_SUBOP_ATOM_MIN;
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_deref_atomic_xor:
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_ssbo_atomic_xor:
@@ -2317,6 +2358,104 @@ Converter::visit(nir_intrinsic_instr *insn)
       info->io.globalAccess |= 0x2;
       break;
    }
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_max:
+   case nir_intrinsic_bindless_image_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_samples:
+   case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_bindless_image_store: {
+      std::vector<Value*> srcs, defs;
+      Value *indirect = getSrc(&insn->src[0], 0);
+      DataType ty;
+
+      uint32_t mask = 0;
+      TexInstruction::Target target =
+         convert(nir_intrinsic_image_dim(insn), !!nir_intrinsic_image_array(insn), false);
+      unsigned int argCount = getNIRArgCount(target);
+      uint16_t location = 0;
+
+      if (opInfo.has_dest) {
+         LValues &newDefs = convert(&insn->dest);
+         for (uint8_t i = 0u; i < newDefs.size(); ++i) {
+            defs.push_back(newDefs[i]);
+            mask |= 1 << i;
+         }
+      }
+
+      switch (op) {
+      case nir_intrinsic_bindless_image_atomic_add:
+      case nir_intrinsic_bindless_image_atomic_and:
+      case nir_intrinsic_bindless_image_atomic_comp_swap:
+      case nir_intrinsic_bindless_image_atomic_exchange:
+      case nir_intrinsic_bindless_image_atomic_max:
+      case nir_intrinsic_bindless_image_atomic_min:
+      case nir_intrinsic_bindless_image_atomic_or:
+      case nir_intrinsic_bindless_image_atomic_xor:
+         ty = getDType(insn);
+         mask = 0x1;
+         info->io.globalAccess |= 0x2;
+         break;
+      case nir_intrinsic_bindless_image_load:
+         ty = TYPE_U32;
+         info->io.globalAccess |= 0x1;
+         break;
+      case nir_intrinsic_bindless_image_store:
+         ty = TYPE_U32;
+         mask = 0xf;
+         info->io.globalAccess |= 0x2;
+         break;
+      case nir_intrinsic_bindless_image_samples:
+         mask = 0x8;
+         ty = TYPE_U32;
+         break;
+      case nir_intrinsic_bindless_image_size:
+         ty = TYPE_U32;
+         break;
+      default:
+         unreachable("unhandled image opcode");
+         break;
+      }
+
+      // coords
+      if (opInfo.num_srcs >= 2)
+         for (unsigned int i = 0u; i < argCount; ++i)
+            srcs.push_back(getSrc(&insn->src[1], i));
+
+      // the sampler is just another src added after coords
+      if (opInfo.num_srcs >= 3 && target.isMS())
+         srcs.push_back(getSrc(&insn->src[2], 0));
+
+      if (opInfo.num_srcs >= 4) {
+         unsigned components = opInfo.src_components[3] ? opInfo.src_components[3] : insn->num_components;
+         for (uint8_t i = 0u; i < components; ++i)
+            srcs.push_back(getSrc(&insn->src[3], i));
+      }
+
+      if (opInfo.num_srcs >= 5)
+         // 1 for aotmic swap
+         for (uint8_t i = 0u; i < opInfo.src_components[4]; ++i)
+            srcs.push_back(getSrc(&insn->src[4], i));
+
+      TexInstruction *texi = mkTex(getOperation(op), target.getEnum(), location, 0, defs, srcs);
+      texi->tex.bindless = false;
+      texi->tex.format = &nv50_ir::TexInstruction::formatTable[convertGLImgFormat(nir_intrinsic_format(insn))];
+      texi->tex.mask = mask;
+      texi->tex.bindless = true;
+      texi->cache = convert(nir_intrinsic_access(insn));
+      texi->setType(ty);
+      texi->subOp = getSubOp(op);
+
+      if (indirect)
+         texi->setIndirectR(indirect);
+
+      break;
+   }
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_deref_atomic_comp_swap:
@@ -3065,13 +3204,22 @@ Converter::handleDeref(nir_deref_instr *deref, Value * &indirect, const nir_vari
 }
 
 CacheMode
+Converter::convert(enum gl_access_qualifier access)
+{
+   switch (access) {
+   case ACCESS_VOLATILE:
+      return CACHE_CV;
+   case ACCESS_COHERENT:
+      return CACHE_CG;
+   default:
+      return CACHE_CA;
+   }
+}
+
+CacheMode
 Converter::getCacheModeFromVar(const nir_variable *var)
 {
-   if (var->data.image.access == ACCESS_VOLATILE)
-      return CACHE_CV;
-   if (var->data.image.access == ACCESS_COHERENT)
-      return CACHE_CG;
-   return CACHE_CA;
+   return convert(var->data.image.access);
 }
 
 bool
