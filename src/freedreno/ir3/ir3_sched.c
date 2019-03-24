@@ -452,7 +452,7 @@ find_instr_recursive(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 
 	/* find unscheduled srcs: */
 	foreach_ssa_src(src, instr) {
-		if (!is_scheduled(src)) {
+		if (!is_scheduled(src) && (src->block == instr->block)) {
 			debug_assert(nsrcs < ARRAY_SIZE(srcs));
 			srcs[nsrcs++] = src;
 		}
