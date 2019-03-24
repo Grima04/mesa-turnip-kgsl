@@ -251,8 +251,8 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_ilsr]		 = UNITS_ADD,
         [midgard_alu_op_ilsr]		 = UNITS_ADD,
 
-        [midgard_alu_op_fball_eq]	 = UNITS_MOST,
-        [midgard_alu_op_fbany_neq]	 = UNITS_MOST,
-        [midgard_alu_op_iball_eq]	 = UNITS_MOST,
-        [midgard_alu_op_ibany_neq]	 = UNITS_MOST
+        [midgard_alu_op_fball_eq]	 = UNITS_VECTOR,
+        [midgard_alu_op_fbany_neq]	 = UNITS_VECTOR,
+        [midgard_alu_op_iball_eq]	 = UNITS_VECTOR,
+        [midgard_alu_op_ibany_neq]	 = UNITS_VECTOR
 };
