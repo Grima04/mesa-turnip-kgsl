@@ -596,6 +596,17 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
       src_type_seen[instr->src[i].src_type] = true;
       validate_src(&instr->src[i].src, state,
                    0, nir_tex_instr_src_size(instr, i));
+
+      switch (instr->src[i].src_type) {
+      case nir_tex_src_texture_deref:
+      case nir_tex_src_sampler_deref:
+         validate_assert(state, instr->src[i].src.is_ssa);
+         validate_assert(state,
+                         instr->src[i].src.ssa->parent_instr->type == nir_instr_type_deref);
+         break;
+      default:
+         break;
+      }
    }
 
    if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
