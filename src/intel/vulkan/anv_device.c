@@ -299,14 +299,37 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
 static void
 anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 {
-   pdevice->queue.family_count = 1;
-   pdevice->queue.families[0] = (struct anv_queue_family) {
-      .queueFlags = VK_QUEUE_GRAPHICS_BIT |
-                    VK_QUEUE_COMPUTE_BIT |
-                    VK_QUEUE_TRANSFER_BIT,
-      .queueCount = 1,
-      .engine_class = I915_ENGINE_CLASS_RENDER,
-   };
+   uint32_t family_count = 0;
+
+   if (pdevice->engine_info) {
+      int render_count = anv_gem_count_engines(pdevice->engine_info,
+                                               I915_ENGINE_CLASS_RENDER);
+      if (render_count > 0) {
+         pdevice->queue.families[family_count++] = (struct anv_queue_family) {
+            .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                          VK_QUEUE_COMPUTE_BIT |
+                          VK_QUEUE_TRANSFER_BIT,
+            .queueCount = render_count,
+            .engine_class = I915_ENGINE_CLASS_RENDER,
+         };
+      }
+      /* Increase count below when other families are added as a reminder to
+       * increase the ANV_MAX_QUEUE_FAMILIES value.
+       */
+      STATIC_ASSERT(ANV_MAX_QUEUE_FAMILIES >= 1);
+   } else {
+      /* Default to a single render queue */
+      pdevice->queue.families[family_count++] = (struct anv_queue_family) {
+         .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                       VK_QUEUE_COMPUTE_BIT |
+                       VK_QUEUE_TRANSFER_BIT,
+         .queueCount = 1,
+         .engine_class = I915_ENGINE_CLASS_RENDER,
+      };
+      family_count = 1;
+   }
+   assert(family_count <= ANV_MAX_QUEUE_FAMILIES);
+   pdevice->queue.family_count = family_count;
 }
 
 static VkResult
@@ -2864,17 +2887,41 @@ VkResult anv_CreateDevice(
       goto fail_device;
    }
 
-   device->context_id = anv_gem_create_context(device);
+   uint32_t num_queues = 0;
+   for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
+      num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
+
+   if (device->physical->engine_info) {
+      /* The kernel API supports at most 64 engines */
+      assert(num_queues <= 64);
+      uint16_t engine_classes[64];
+      int engine_count = 0;
+      for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
+         const VkDeviceQueueCreateInfo *queueCreateInfo =
+            &pCreateInfo->pQueueCreateInfos[i];
+
+         assert(queueCreateInfo->queueFamilyIndex <
+                physical_device->queue.family_count);
+         struct anv_queue_family *queue_family =
+            &physical_device->queue.families[queueCreateInfo->queueFamilyIndex];
+
+         for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
+            engine_classes[engine_count++] = queue_family->engine_class;
+      }
+      device->context_id =
+         anv_gem_create_context_engines(device,
+                                        physical_device->engine_info,
+                                        engine_count, engine_classes);
+   } else {
+      assert(num_queues == 1);
+      device->context_id = anv_gem_create_context(device);
+   }
    if (device->context_id == -1) {
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
 
    device->has_thread_submit = physical_device->has_thread_submit;
-
-   uint32_t num_queues = 0;
-   for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
-      num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
 
    device->queues =
       vk_zalloc(&device->vk.alloc, num_queues * sizeof(*device->queues), 8,
@@ -2890,8 +2937,15 @@ VkResult anv_CreateDevice(
          &pCreateInfo->pQueueCreateInfos[i];
 
       for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++) {
+         /* When using legacy contexts, we use I915_EXEC_RENDER but, with
+          * engine-based contexts, the bottom 6 bits of exec_flags are used
+          * for the engine ID.
+          */
+         uint32_t exec_flags = device->physical->engine_info ?
+                               device->queue_count : I915_EXEC_RENDER;
+
          result = anv_queue_init(device, &device->queues[device->queue_count],
-                                 I915_EXEC_RENDER, queueCreateInfo);
+                                 exec_flags, queueCreateInfo);
          if (result != VK_SUCCESS)
             goto fail_queues;
 
