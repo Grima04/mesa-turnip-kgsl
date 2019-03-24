@@ -703,3 +703,15 @@ anv_gem_get_engine_info(int fd)
 
    return info;
 }
+
+int
+anv_gem_count_engines(const struct drm_i915_query_engine_info *info,
+                      uint16_t engine_class)
+{
+   int count = 0;
+   for (int i = 0; i < info->num_engines; i++) {
+      if (info->engines[i].engine.engine_class == engine_class)
+         count++;
+   }
+   return count;
+}

@@ -259,6 +259,13 @@ anv_gem_get_engine_info(int fd)
 }
 
 int
+anv_gem_count_engines(const struct drm_i915_query_engine_info *info,
+                      uint16_t engine_class)
+{
+   unreachable("Unused");
+}
+
+int
 anv_gem_syncobj_wait(struct anv_device *device,
                      const uint32_t *handles, uint32_t num_handles,
                      int64_t abs_timeout_ns, bool wait_all)
