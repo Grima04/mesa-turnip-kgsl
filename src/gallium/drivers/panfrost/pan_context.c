@@ -1059,12 +1059,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         /* Generate the viewport vector of the form: <width/2, height/2, centerx, centery> */
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 
+        /* For flipped-Y buffers (signaled by negative scale), the translate is
+         * flipped as well */
+
+        float translate_y =
+                vp->scale[1] >= 0.0 ? vp->translate[1] :
+                (ctx->pipe_framebuffer.height - vp->translate[1]);
+
         float viewport_vec4[] = {
                 vp->scale[0],
                 fabsf(vp->scale[1]),
 
                 vp->translate[0],
-                /* -1.0 * vp->translate[1] */ fabs(1.0 * vp->scale[1]) /* XXX */
+                translate_y
         };
 
         for (int i = 0; i < PIPE_SHADER_TYPES; ++i) {
@@ -1147,17 +1154,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 .clip_maxz = 1.0,
         };
 
+        /* Always scissor to the viewport by default. */
+        view.viewport0[0] = (int) (vp->translate[0] - vp->scale[0]);
+        view.viewport1[0] = MALI_POSITIVE((int) (vp->translate[0] + vp->scale[0]));
+
+        view.viewport0[1] = (int) (translate_y - fabs(vp->scale[1]));
+        view.viewport1[1] = MALI_POSITIVE((int) (translate_y + fabs(vp->scale[1])));
+
         if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor && 0) {
                 view.viewport0[0] = ss->minx;
                 view.viewport0[1] = ss->miny;
                 view.viewport1[0] = MALI_POSITIVE(ss->maxx);
                 view.viewport1[1] = MALI_POSITIVE(ss->maxy);
-        } else {
-                view.viewport0[0] = 0;
-                view.viewport0[1] = 0;
-                view.viewport1[0] = MALI_POSITIVE(ctx->pipe_framebuffer.width);
-                view.viewport1[1] = MALI_POSITIVE(ctx->pipe_framebuffer.height);
-        }
+        } 
 
         ctx->payload_tiler.postfix.viewport =
                 panfrost_upload_transient(ctx,
