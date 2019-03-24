@@ -83,12 +83,12 @@ create_input(struct ir3_context *ctx, unsigned n)
 }
 
 static struct ir3_instruction *
-create_frag_input(struct ir3_context *ctx, bool use_ldlv)
+create_frag_input(struct ir3_context *ctx, bool use_ldlv, unsigned n)
 {
 	struct ir3_block *block = ctx->block;
 	struct ir3_instruction *instr;
-	/* actual inloc is assigned and fixed up later: */
-	struct ir3_instruction *inloc = create_immed(block, 0);
+	/* packed inloc is fixed up later: */
+	struct ir3_instruction *inloc = create_immed(block, n);
 
 	if (use_ldlv) {
 		instr = ir3_LDLV(block, inloc, 0, create_immed(block, 1), 0);
@@ -2275,7 +2275,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 				 */
 				so->inputs[n].slot = VARYING_SLOT_VAR8;
 				so->inputs[n].bary = true;
-				instr = create_frag_input(ctx, false);
+				instr = create_frag_input(ctx, false, idx);
 			} else {
 				bool use_ldlv = false;
 
@@ -2304,7 +2304,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 
 				so->inputs[n].bary = true;
 
-				instr = create_frag_input(ctx, use_ldlv);
+				instr = create_frag_input(ctx, use_ldlv, idx);
 			}
 
 			compile_assert(ctx, idx < ctx->ir->ninputs);
@@ -2323,6 +2323,92 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 
 	if (so->inputs[n].bary || (ctx->so->type == MESA_SHADER_VERTEX)) {
 		so->total_in += ncomp;
+	}
+}
+
+/* Initially we assign non-packed inloc's for varyings, as we don't really
+ * know up-front which components will be unused.  After all the compilation
+ * stages we scan the shader to see which components are actually used, and
+ * re-pack the inlocs to eliminate unneeded varyings.
+ */
+static void
+pack_inlocs(struct ir3_context *ctx)
+{
+	struct ir3_shader_variant *so = ctx->so;
+	uint8_t used_components[so->inputs_count];
+
+	memset(used_components, 0, sizeof(used_components));
+
+	/*
+	 * First Step: scan shader to find which bary.f/ldlv remain:
+	 */
+
+	list_for_each_entry (struct ir3_block, block, &ctx->ir->block_list, node) {
+		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+			if (is_input(instr)) {
+				unsigned inloc = instr->regs[1]->iim_val;
+				unsigned i = inloc / 4;
+				unsigned j = inloc % 4;
+
+				compile_assert(ctx, instr->regs[1]->flags & IR3_REG_IMMED);
+				compile_assert(ctx, i < so->inputs_count);
+
+				used_components[i] |= 1 << j;
+			}
+		}
+	}
+
+	/*
+	 * Second Step: reassign varying inloc/slots:
+	 */
+
+	unsigned actual_in = 0;
+	unsigned inloc = 0;
+
+	for (unsigned i = 0; i < so->inputs_count; i++) {
+		unsigned compmask = 0, maxcomp = 0;
+
+		so->inputs[i].ncomp = 0;
+		so->inputs[i].inloc = inloc;
+		so->inputs[i].bary = false;
+
+		for (unsigned j = 0; j < 4; j++) {
+			if (!(used_components[i] & (1 << j)))
+				continue;
+
+			compmask |= (1 << j);
+			actual_in++;
+			so->inputs[i].ncomp++;
+			maxcomp = j + 1;
+
+			/* at this point, since used_components[i] mask is only
+			 * considering varyings (ie. not sysvals) we know this
+			 * is a varying:
+			 */
+			so->inputs[i].bary = true;
+		}
+
+		if (so->inputs[i].bary) {
+			so->varying_in++;
+			so->inputs[i].compmask = (1 << maxcomp) - 1;
+			inloc += maxcomp;
+		}
+	}
+
+	/*
+	 * Third Step: reassign packed inloc's:
+	 */
+
+	list_for_each_entry (struct ir3_block, block, &ctx->ir->block_list, node) {
+		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+			if (is_input(instr)) {
+				unsigned inloc = instr->regs[1]->iim_val;
+				unsigned i = inloc / 4;
+				unsigned j = inloc % 4;
+
+				instr->regs[1]->iim_val = so->inputs[i].inloc + j;
+			}
+		}
 	}
 }
 
@@ -2596,7 +2682,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	struct ir3_context *ctx;
 	struct ir3 *ir;
 	struct ir3_instruction **inputs;
-	unsigned i, actual_in, inloc;
+	unsigned i;
 	int ret = 0, max_bary;
 
 	assert(!so->ir);
@@ -2741,6 +2827,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
+	if (so->type == MESA_SHADER_FRAGMENT)
+		pack_inlocs(ctx);
+
 	/* fixup input/outputs: */
 	for (i = 0; i < so->outputs_count; i++) {
 		/* sometimes we get outputs that don't write the .x coord, like:
@@ -2761,33 +2850,14 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	/* Note that some or all channels of an input may be unused: */
-	actual_in = 0;
-	inloc = 0;
 	for (i = 0; i < so->inputs_count; i++) {
-		unsigned j, reg = regid(63,0), compmask = 0, maxcomp = 0;
-		so->inputs[i].ncomp = 0;
-		so->inputs[i].inloc = inloc;
+		unsigned j, reg = regid(63,0);
 		for (j = 0; j < 4; j++) {
 			struct ir3_instruction *in = inputs[(i*4) + j];
+
 			if (in && !(in->flags & IR3_INSTR_UNUSED)) {
-				compmask |= (1 << j);
 				reg = in->regs[0]->num - j;
-				actual_in++;
-				so->inputs[i].ncomp++;
-				if ((so->type == MESA_SHADER_FRAGMENT) && so->inputs[i].bary) {
-					/* assign inloc: */
-					assert(in->regs[1]->flags & IR3_REG_IMMED);
-					in->regs[1]->iim_val = inloc + j;
-					maxcomp = j + 1;
-				}
 			}
-		}
-		if ((so->type == MESA_SHADER_FRAGMENT) && compmask && so->inputs[i].bary) {
-			so->varying_in++;
-			so->inputs[i].compmask = (1 << maxcomp) - 1;
-			inloc += maxcomp;
-		} else if (!so->inputs[i].sysval) {
-			so->inputs[i].compmask = compmask;
 		}
 		so->inputs[i].regid = reg;
 	}
@@ -2808,9 +2878,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	so->branchstack = ctx->max_stack;
 
 	/* Note that actual_in counts inputs that are not bary.f'd for FS: */
-	if (so->type == MESA_SHADER_VERTEX)
-		so->total_in = actual_in;
-	else
+	if (so->type == MESA_SHADER_FRAGMENT)
 		so->total_in = max_bary + 1;
 
 	so->max_sun = ir->max_sun;
