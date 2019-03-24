@@ -204,6 +204,10 @@ const midgard_vector_alu_src blank_alu_src = {
         .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
 };
 
+const midgard_vector_alu_src blank_alu_src_xxxx = {
+        .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X),
+};
+
 const midgard_scalar_alu_src blank_scalar_alu_src = {
         .full = true
 };
@@ -904,10 +908,6 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
         /* XXX: Force component correct */
         int condition = nir_src_index(ctx, src);
 
-        const midgard_vector_alu_src alu_src = {
-                .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X),
-        };
-
         /* There is no boolean move instruction. Instead, we simulate a move by
          * ANDing the condition with itself to get it into r31.w */
 
@@ -924,8 +924,8 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
                         .reg_mode = midgard_reg_mode_full,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
-                        .src1 = vector_alu_srco_unsigned(alu_src),
-                        .src2 = vector_alu_srco_unsigned(alu_src)
+                        .src1 = vector_alu_srco_unsigned(blank_alu_src_xxxx),
+                        .src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx)
                 },
         };
 
@@ -1130,6 +1130,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                 ins.has_constants = true;
                 ins.constants[0] = 1.0;
+
+                ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
         }
 
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
