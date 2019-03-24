@@ -1062,9 +1062,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         /* For flipped-Y buffers (signaled by negative scale), the translate is
          * flipped as well */
 
-        float translate_y =
-                vp->scale[1] >= 0.0 ? vp->translate[1] :
-                (ctx->pipe_framebuffer.height - vp->translate[1]);
+        bool invert_y = vp->scale[1] < 0.0;
+        float translate_y = vp->translate[1];
+
+        if (invert_y)
+                translate_y = ctx->pipe_framebuffer.height - translate_y;
 
         float viewport_vec4[] = {
                 vp->scale[0],
@@ -1161,11 +1163,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         view.viewport0[1] = (int) (translate_y - fabs(vp->scale[1]));
         view.viewport1[1] = MALI_POSITIVE((int) (translate_y + fabs(vp->scale[1])));
 
-        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor && 0) {
+        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
+                /* Invert scissor if needed */
+                unsigned miny = invert_y ?
+                        ctx->pipe_framebuffer.height - ss->maxy : ss->miny;
+
+                unsigned maxy = invert_y ?
+                        ctx->pipe_framebuffer.height - ss->miny : ss->maxy;
+
+                /* Set the actual scissor */
                 view.viewport0[0] = ss->minx;
-                view.viewport0[1] = ss->miny;
+                view.viewport0[1] = miny;
                 view.viewport1[0] = MALI_POSITIVE(ss->maxx);
-                view.viewport1[1] = MALI_POSITIVE(ss->maxy);
+                view.viewport1[1] = MALI_POSITIVE(maxy);
         } 
 
         ctx->payload_tiler.postfix.viewport =
