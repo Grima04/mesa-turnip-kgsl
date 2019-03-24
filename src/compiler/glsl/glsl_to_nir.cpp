@@ -2410,10 +2410,21 @@ nir_visitor::visit(ir_texture *ir)
    }
 
    nir_deref_instr *sampler_deref = evaluate_deref(ir->sampler);
-   instr->src[0].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
-   instr->src[0].src_type = nir_tex_src_texture_deref;
-   instr->src[1].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
-   instr->src[1].src_type = nir_tex_src_sampler_deref;
+
+   /* check for bindless handles */
+   if (sampler_deref->mode != nir_var_uniform ||
+       nir_deref_instr_get_variable(sampler_deref)->data.bindless) {
+      nir_ssa_def *load = nir_load_deref(&b, sampler_deref);
+      instr->src[0].src = nir_src_for_ssa(load);
+      instr->src[0].src_type = nir_tex_src_texture_handle;
+      instr->src[1].src = nir_src_for_ssa(load);
+      instr->src[1].src_type = nir_tex_src_sampler_handle;
+   } else {
+      instr->src[0].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
+      instr->src[0].src_type = nir_tex_src_texture_deref;
+      instr->src[1].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
+      instr->src[1].src_type = nir_tex_src_sampler_deref;
+   }
 
    unsigned src_number = 2;
 

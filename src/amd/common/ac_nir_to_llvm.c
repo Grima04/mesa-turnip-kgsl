@@ -3498,9 +3498,17 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 	bool bindless = false;
 
 	if (!deref_instr) {
-		assert(tex_instr && !image);
+		int sampSrcIdx = nir_tex_instr_src_index(tex_instr,
+							 nir_tex_src_sampler_handle);
 		descriptor_set = 0;
-		base_index = tex_instr->sampler_index;
+		if (sampSrcIdx != -1) {
+			base_index = 0;
+			bindless = true;
+			index = get_src(ctx, tex_instr->src[sampSrcIdx].src);
+		} else {
+			assert(tex_instr && !image);
+			base_index = tex_instr->sampler_index;
+		}
 	} else {
 		while(deref_instr->deref_type != nir_deref_type_var) {
 			if (deref_instr->deref_type == nir_deref_type_array) {
