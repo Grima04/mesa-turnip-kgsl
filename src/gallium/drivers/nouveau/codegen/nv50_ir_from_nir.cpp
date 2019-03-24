@@ -3111,6 +3111,11 @@ Converter::visit(nir_tex_instr *insn)
       int projIdx = nir_tex_instr_src_index(insn, nir_tex_src_projector);
       int sampOffIdx = nir_tex_instr_src_index(insn, nir_tex_src_sampler_offset);
       int texOffIdx = nir_tex_instr_src_index(insn, nir_tex_src_texture_offset);
+      int sampHandleIdx = nir_tex_instr_src_index(insn, nir_tex_src_sampler_handle);
+      int texHandleIdx = nir_tex_instr_src_index(insn, nir_tex_src_texture_handle);
+
+      bool bindless = sampHandleIdx != -1 || texHandleIdx != -1;
+      assert((sampHandleIdx != -1) == (texHandleIdx != -1));
 
       if (projIdx != -1)
          proj = mkOp1v(OP_RCP, TYPE_F32, getScratch(), getSrc(&insn->src[projIdx].src, 0));
@@ -3154,9 +3159,19 @@ Converter::visit(nir_tex_instr *insn)
          srcs.push_back(getSrc(&insn->src[sampOffIdx].src, 0));
          sampOffIdx = srcs.size() - 1;
       }
+      if (bindless) {
+         // currently we use the lower bits
+         Value *split[2];
+         Value *handle = getSrc(&insn->src[sampHandleIdx].src, 0);
 
-      r = insn->texture_index;
-      s = insn->sampler_index;
+         mkSplit(split, 4, handle);
+
+         srcs.push_back(split[0]);
+         texOffIdx = srcs.size() - 1;
+      }
+
+      r = bindless ? 0xff : insn->texture_index;
+      s = bindless ? 0x1f : insn->sampler_index;
 
       defs.resize(newDefs.size());
       for (uint8_t d = 0u; d < newDefs.size(); ++d) {
@@ -3169,6 +3184,7 @@ Converter::visit(nir_tex_instr *insn)
       TexInstruction *texi = mkTex(op, target.getEnum(), r, s, defs, srcs);
       texi->tex.levelZero = lz;
       texi->tex.mask = mask;
+      texi->tex.bindless = bindless;
 
       if (texOffIdx != -1)
          texi->tex.rIndirectSrc = texOffIdx;
