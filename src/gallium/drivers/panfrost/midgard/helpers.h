@@ -223,6 +223,7 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_ile]		 = UNITS_MOST,
 
         [midgard_alu_op_icsel]		 = UNITS_ADD,
+        [midgard_alu_op_fcsel_i]	 = UNITS_ADD,
         [midgard_alu_op_fcsel]		 = UNITS_ADD | UNIT_SMUL,
 
         [midgard_alu_op_frcp]		 = UNIT_VLUT,
