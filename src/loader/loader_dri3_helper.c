@@ -1841,7 +1841,9 @@ dri3_get_buffer(__DRIdrawable *driDrawable,
          if (!loader_dri3_blit_image(draw,
                                      new_buffer->image,
                                      buffer->image,
-                                     0, 0, draw->width, draw->height,
+                                     0, 0,
+                                     MIN2(buffer->width, new_buffer->width),
+                                     MIN2(buffer->height, new_buffer->height),
                                      0, 0, 0) &&
              !buffer->linear_buffer) {
             dri3_fence_reset(draw->conn, new_buffer);
