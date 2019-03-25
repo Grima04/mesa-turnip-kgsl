@@ -750,6 +750,24 @@ zink_bind_vertex_buffers(VkCommandBuffer cmdbuf, struct zink_context *ctx)
 }
 
 static void
+begin_render_pass(struct zink_cmdbuf *cmdbuf, struct zink_render_pass *rp,
+                  struct zink_framebuffer *fb, unsigned width, unsigned height)
+{
+   VkRenderPassBeginInfo rpbi = {};
+   rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+   rpbi.renderPass = rp->render_pass;
+   rpbi.renderArea.offset.x = 0;
+   rpbi.renderArea.offset.y = 0;
+   rpbi.renderArea.extent.width = width;
+   rpbi.renderArea.extent.height = height;
+   rpbi.clearValueCount = 0;
+   rpbi.pClearValues = NULL;
+   rpbi.framebuffer = fb->fb;
+
+   vkCmdBeginRenderPass(cmdbuf->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+static void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo)
 {
@@ -813,18 +831,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!cmdbuf)
       return;
 
-   VkRenderPassBeginInfo rpbi = {};
-   rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-   rpbi.renderPass = ctx->render_pass->render_pass;
-   rpbi.renderArea.offset.x = 0;
-   rpbi.renderArea.offset.y = 0;
-   rpbi.renderArea.extent.width = ctx->fb_state.width;
-   rpbi.renderArea.extent.height = ctx->fb_state.height;
-   rpbi.clearValueCount = 0;
-   rpbi.pClearValues = NULL;
-   rpbi.framebuffer = ctx->framebuffer->fb;
-
-   vkCmdBeginRenderPass(cmdbuf->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+   begin_render_pass(cmdbuf, ctx->render_pass, ctx->framebuffer,
+                     ctx->fb_state.width, ctx->fb_state.height);
 
    vkCmdSetViewport(cmdbuf->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
 
