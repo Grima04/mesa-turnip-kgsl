@@ -6,16 +6,22 @@
 
 #include "util/u_debug.h"
 
+static void
+reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
+{
+   // cmdbuf hasn't been submitted before
+   if (!cmdbuf->fence)
+      return;
+
+   zink_fence_finish(screen, cmdbuf->fence, PIPE_TIMEOUT_INFINITE);
+   zink_fence_reference(screen, &cmdbuf->fence, NULL);
+}
+
 struct zink_cmdbuf *
 zink_start_cmdbuf(struct zink_context *ctx)
 {
    struct zink_cmdbuf *cmdbuf = &ctx->cmdbuf;
-
-   if (cmdbuf->fence) {
-      struct zink_screen *screen = zink_screen(ctx->base.screen);
-      zink_fence_finish(screen, cmdbuf->fence, PIPE_TIMEOUT_INFINITE);
-      zink_fence_reference(screen, &cmdbuf->fence, NULL);
-   }
+   reset_cmdbuf(zink_screen(ctx->base.screen), cmdbuf);
 
    VkCommandBufferBeginInfo cbbi = {};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
