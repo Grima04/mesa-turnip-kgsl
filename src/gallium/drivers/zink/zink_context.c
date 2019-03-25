@@ -798,7 +798,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkPipeline pipeline = zink_create_gfx_pipeline(screen->dev,
                                                   gfx_program,
                                                   &ctx->gfx_pipeline_state,
-                                                  ctx->render_pass->render_pass);
+                                                  ctx->render_pass);
 
    bool depth_bias = false;
    switch (u_reduced_prim(dinfo->mode)) {

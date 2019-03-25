@@ -26,6 +26,7 @@
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_program.h"
+#include "zink_render_pass.h"
 #include "zink_screen.h"
 #include "zink_state.h"
 
@@ -35,7 +36,7 @@
 VkPipeline
 zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
                          struct zink_gfx_pipeline_state *state,
-                         VkRenderPass render_pass)
+                         struct zink_render_pass *rp)
 {
    VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -113,7 +114,7 @@ zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    pci.layout = prog->layout;
-   pci.renderPass = render_pass;
+   pci.renderPass = rp->render_pass;
    pci.pVertexInputState = &vertex_input_state;
    pci.pInputAssemblyState = &primitive_state;
    pci.pRasterizationState = &rast_state;

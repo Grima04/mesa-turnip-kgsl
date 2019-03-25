@@ -32,7 +32,7 @@ struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
 struct zink_gfx_program;
 struct zink_rasterizer_state;
-struct zink_shader;
+struct zink_render_pass;
 struct zink_vertex_elements_state;
 
 struct zink_gfx_pipeline_state {
@@ -54,6 +54,6 @@ struct zink_gfx_pipeline_state {
 VkPipeline
 zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
                          struct zink_gfx_pipeline_state *state,
-                         VkRenderPass render_pass);
+                         struct zink_render_pass *rp);
 
 #endif
