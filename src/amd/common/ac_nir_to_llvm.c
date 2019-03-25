@@ -1111,14 +1111,11 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = emit_minmax_int(&ctx->ac, LLVMIntSGT, result, src[2]);
 		break;
 	case nir_op_fmed3: {
-		LLVMValueRef tmp1 = emit_intrin_2f_param(&ctx->ac, "llvm.minnum",
-						ac_to_float_type(&ctx->ac, def_type), src[0], src[1]);
-		LLVMValueRef tmp2 = emit_intrin_2f_param(&ctx->ac, "llvm.maxnum",
-						ac_to_float_type(&ctx->ac, def_type), src[0], src[1]);
-		tmp2 = emit_intrin_2f_param(&ctx->ac, "llvm.minnum",
-						ac_to_float_type(&ctx->ac, def_type), tmp2, src[2]);
-		result = emit_intrin_2f_param(&ctx->ac, "llvm.maxnum",
-						ac_to_float_type(&ctx->ac, def_type), tmp1, tmp2);
+		src[0] = ac_to_float(&ctx->ac, src[0]);
+		src[1] = ac_to_float(&ctx->ac, src[1]);
+		src[2] = ac_to_float(&ctx->ac, src[2]);
+		result = ac_build_fmed3(&ctx->ac, src[0], src[1], src[2],
+					instr->dest.dest.ssa.bit_size);
 		break;
 	}
 	case nir_op_imed3: {

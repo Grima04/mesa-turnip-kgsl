@@ -2430,6 +2430,33 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned simm16)
 			   ctx->voidt, args, 1, 0);
 }
 
+LLVMValueRef ac_build_fmed3(struct ac_llvm_context *ctx, LLVMValueRef src0,
+			    LLVMValueRef src1, LLVMValueRef src2,
+			    unsigned bitsize)
+{
+	LLVMTypeRef type;
+	char *intr;
+
+	if (bitsize == 16) {
+		intr = "llvm.amdgcn.fmed3.f16";
+		type = ctx->f16;
+	} else if (bitsize == 32) {
+		intr = "llvm.amdgcn.fmed3.f32";
+		type = ctx->f32;
+	} else {
+		intr = "llvm.amdgcn.fmed3.f64";
+		type = ctx->f64;
+	}
+
+	LLVMValueRef params[] = {
+		src0,
+		src1,
+		src2,
+	};
+	return ac_build_intrinsic(ctx, intr, type, params, 3,
+				  AC_FUNC_ATTR_READNONE);
+}
+
 LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 			    unsigned bitsize)
 {
