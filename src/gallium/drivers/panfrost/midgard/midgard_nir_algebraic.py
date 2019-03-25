@@ -30,7 +30,7 @@ a = 'a'
 b = 'b'
 
 algebraic = [
-    (('b2i32', a), ('iand@32', "a@32", 1)),
+    # TODO: Should really be a fle, maybe not lowered in algebraic?
     (('fge', a, b), ('flt', b, a)),
 
     # XXX: We have hw ops for this, just unknown atm..
