@@ -277,8 +277,22 @@ gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
 
    nir_block *best = late_block;
    for (nir_block *block = late_block; block != NULL; block = block->imm_dom) {
+      /* Being too aggressive with how we pull instructions out of loops can
+       * result in extra register pressure and spilling. For example its fairly
+       * common for loops in compute shaders to calculate SSBO offsets using
+       * the workgroup id, subgroup id and subgroup invocation, pulling all
+       * these calculations outside the loop causes register pressure.
+       *
+       * To work around these issues for now we only allow constant and texture
+       * instructions to be moved outside their original loops.
+       *
+       * TODO: figure out some heuristics to allow more to be moved out of loops.
+       */
       if (state->blocks[block->index].loop_depth <
-          state->blocks[best->index].loop_depth)
+          state->blocks[best->index].loop_depth &&
+          (nir_block_dominates(instr->block, block) ||
+           instr->type == nir_instr_type_load_const ||
+           instr->type == nir_instr_type_tex))
          best = block;
       else if (block == instr->block)
          best = block;
