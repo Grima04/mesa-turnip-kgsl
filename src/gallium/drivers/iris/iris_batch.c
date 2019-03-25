@@ -491,17 +491,10 @@ submit_batch(struct iris_batch *batch)
          (uintptr_t)util_dynarray_begin(&batch->exec_fences);
    }
 
-   int ret = batch->screen->no_hw ? 0 : drm_ioctl(batch->screen->fd,
-                       DRM_IOCTL_I915_GEM_EXECBUFFER2,
-                       &execbuf);
-   if (ret != 0) {
+   int ret = 0;
+   if (!batch->screen->no_hw &&
+       drm_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf))
       ret = -errno;
-      DBG("execbuf FAILED: errno = %d\n", -ret);
-      fprintf(stderr, "execbuf FAILED: errno = %d\n", -ret);
-      abort();
-   } else {
-      DBG("execbuf succeeded\n");
-   }
 
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
@@ -569,23 +562,6 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    int ret = submit_batch(batch);
 
-   if (ret >= 0) {
-      //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
-         //iris_check_for_reset(ice);
-
-      if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
-         dbg_printf("waiting for idle\n");
-         iris_bo_wait_rendering(batch->bo);
-      }
-   } else {
-#ifdef DEBUG
-      const bool color = INTEL_DEBUG & DEBUG_COLOR;
-      fprintf(stderr, "%siris: Failed to submit batchbuffer: %-80s%s\n",
-              color ? "\e[1;41m" : "", strerror(-ret), color ? "\e[0m" : "");
-      abort();
-#endif
-   }
-
    batch->exec_count = 0;
    batch->aperture_space = 0;
 
@@ -599,8 +575,25 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    util_dynarray_clear(&batch->exec_fences);
 
+   if (unlikely(INTEL_DEBUG & DEBUG_SYNC)) {
+      dbg_printf("waiting for idle\n");
+      iris_bo_wait_rendering(batch->bo); /* if execbuf failed; this is a nop */
+   }
+
    /* Start a new batch buffer. */
    iris_batch_reset(batch);
+
+   if (ret >= 0) {
+      //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
+         //iris_check_for_reset(ice);
+   } else {
+#ifdef DEBUG
+      const bool color = INTEL_DEBUG & DEBUG_COLOR;
+      fprintf(stderr, "%siris: Failed to submit batchbuffer: %-80s%s\n",
+              color ? "\e[1;41m" : "", strerror(-ret), color ? "\e[0m" : "");
+#endif
+      abort();
+   }
 }
 
 /**
