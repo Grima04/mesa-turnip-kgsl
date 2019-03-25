@@ -754,6 +754,9 @@ optimise_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_copy_prop);
         NIR_PASS(progress, nir, nir_opt_dce);
 
+        /* We implement booleans as 32-bit 0/~0 */
+        NIR_PASS(progress, nir, nir_lower_bool_to_int32);
+
         /* Take us out of SSA */
         NIR_PASS(progress, nir, nir_lower_locals_to_regs);
         NIR_PASS(progress, nir, nir_convert_from_ssa, true);
@@ -977,12 +980,12 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * issues with texture precision? XXX research */
                 ALU_CASE(imov, fmov);
 
-                ALU_CASE(feq, feq);
-                ALU_CASE(fne, fne);
-                ALU_CASE(flt, flt);
-                ALU_CASE(ieq, ieq);
-                ALU_CASE(ine, ine);
-                ALU_CASE(ilt, ilt);
+                ALU_CASE(feq32, feq);
+                ALU_CASE(fne32, fne);
+                ALU_CASE(flt32, flt);
+                ALU_CASE(ieq32, ieq);
+                ALU_CASE(ine32, ine);
+                ALU_CASE(ilt32, ilt);
 
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
@@ -1007,26 +1010,26 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ishr, iasr);
                 ALU_CASE(ushr, ilsr);
 
-                ALU_CASE(ball_fequal2, fball_eq);
-                ALU_CASE(ball_fequal3, fball_eq);
-                ALU_CASE(ball_fequal4, fball_eq);
+                ALU_CASE(b32all_fequal2, fball_eq);
+                ALU_CASE(b32all_fequal3, fball_eq);
+                ALU_CASE(b32all_fequal4, fball_eq);
 
-                ALU_CASE(bany_fnequal2, fbany_neq);
-                ALU_CASE(bany_fnequal3, fbany_neq);
-                ALU_CASE(bany_fnequal4, fbany_neq);
+                ALU_CASE(b32any_fnequal2, fbany_neq);
+                ALU_CASE(b32any_fnequal3, fbany_neq);
+                ALU_CASE(b32any_fnequal4, fbany_neq);
 
-                ALU_CASE(ball_iequal2, iball_eq);
-                ALU_CASE(ball_iequal3, iball_eq);
-                ALU_CASE(ball_iequal4, iball_eq);
+                ALU_CASE(b32all_iequal2, iball_eq);
+                ALU_CASE(b32all_iequal3, iball_eq);
+                ALU_CASE(b32all_iequal4, iball_eq);
 
-                ALU_CASE(bany_inequal2, ibany_neq);
-                ALU_CASE(bany_inequal3, ibany_neq);
-                ALU_CASE(bany_inequal4, ibany_neq);
+                ALU_CASE(b32any_inequal2, ibany_neq);
+                ALU_CASE(b32any_inequal3, ibany_neq);
+                ALU_CASE(b32any_inequal4, ibany_neq);
 
         /* For greater-or-equal, we use less-or-equal and flip the
          * arguments */
 
-        case nir_op_ige: {
+        case nir_op_ige32: {
                 op = midgard_alu_op_ile;
 
                 /* Swap via temporary */
@@ -1037,7 +1040,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 break;
         }
 
-        case nir_op_bcsel: {
+        case nir_op_b32csel: {
                 op = midgard_alu_op_fcsel;
 
                 /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
