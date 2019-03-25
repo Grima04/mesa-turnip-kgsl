@@ -987,6 +987,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ine32, ine);
                 ALU_CASE(ilt32, ilt);
 
+                /* Likewise, we don't have a dedicated f2b32 instruction, but
+                 * we can do a "not equal to 0.0" test. Since an inline
+                 * constant vec4(0.0) is the default, we don't need to do any
+                 * special lowering */
+
+                ALU_CASE(f2b32, fne);
+
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
                 ALU_CASE(fsqrt, fsqrt);
