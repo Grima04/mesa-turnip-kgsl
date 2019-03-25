@@ -987,10 +987,22 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ine32, ine);
                 ALU_CASE(ilt32, ilt);
 
+                /* We don't have a native b2f32 instruction. Instead, like many
+                 * GPUs, we exploit booleans as 0/~0 for false/true, and
+                 * correspondingly AND
+                 * by 1.0 to do the type conversion. For the moment, prime us
+                 * to emit:
+                 *
+                 * iand [whatever], #0
+                 *
+                 * At the end of emit_alu (as MIR), we'll fix-up the constant
+                 */
+
+                ALU_CASE(b2f32, iand);
+                ALU_CASE(b2i32, iand);
+
                 /* Likewise, we don't have a dedicated f2b32 instruction, but
-                 * we can do a "not equal to 0.0" test. Since an inline
-                 * constant vec4(0.0) is the default, we don't need to do any
-                 * special lowering */
+                 * we can do a "not equal to 0.0" test. */
 
                 ALU_CASE(f2b32, fne);
                 ALU_CASE(i2b32, ine);
@@ -1064,19 +1076,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 break;
         }
 
-        /* We don't have a native b2f32 instruction. Instead, like many GPUs,
-         * we exploit booleans as 0/~0 for false/true, and correspondingly AND
-         * by 1.0 to do the type conversion. For the moment, prime us to emit:
-         *
-         * iand [whatever], #0
-         *
-         * At the end of emit_alu (as MIR), we'll fix-up the constant */
-
-        case nir_op_b2f32: {
-                op = midgard_alu_op_iand;
-                break;
-        }
-
         default:
                 DBG("Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 assert(0);
@@ -1142,7 +1141,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         /* Late fixup for emulated instructions */
 
-        if (instr->op == nir_op_b2f32) {
+        if (instr->op == nir_op_b2f32 || instr->op == nir_op_b2i32) {
                 /* Presently, our second argument is an inline #0 constant.
                  * Switch over to an embedded 1.0 constant (that can't fit
                  * inline, since we're 32-bit, not 16-bit like the inline
@@ -1151,8 +1150,21 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.ssa_args.inline_constant = false;
                 ins.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                 ins.has_constants = true;
-                ins.constants[0] = 1.0;
 
+                if (instr->op == nir_op_b2f32) {
+                        ins.constants[0] = 1.0f;
+                } else {
+                        /* Type pun it into place */
+                        uint32_t one = 0x1;
+                        memcpy(&ins.constants[0], &one, sizeof(uint32_t));
+                }
+
+                ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
+        } else if (instr->op == nir_op_f2b32) {
+                ins.ssa_args.inline_constant = false;
+                ins.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                ins.has_constants = true;
+                ins.constants[0] = 0.0f;
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
         }
 
