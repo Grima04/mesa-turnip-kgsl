@@ -53,7 +53,8 @@ zink_context_destroy(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
-   vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->cmdbuf.cmdbuf);
+   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i)
+      vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->cmdbufs[i].cmdbuf);
    vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
 
    util_primconvert_destroy(ctx->primconvert);
@@ -1197,8 +1198,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    cbai.commandPool = ctx->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
-   if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->cmdbuf.cmdbuf) != VK_SUCCESS)
-      goto fail;
+   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i)
+      if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->cmdbufs[i].cmdbuf) != VK_SUCCESS)
+         goto fail;
 
    VkDescriptorPoolSize sizes[] = {
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}

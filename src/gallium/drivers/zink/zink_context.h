@@ -60,7 +60,7 @@ struct zink_context {
    struct blitter_context *blitter;
 
    VkCommandPool cmdpool;
-   struct zink_cmdbuf cmdbuf;
+   struct zink_cmdbuf cmdbufs[1];
 
    VkQueue queue;
 

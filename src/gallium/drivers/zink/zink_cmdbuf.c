@@ -20,7 +20,7 @@ reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
 struct zink_cmdbuf *
 zink_start_cmdbuf(struct zink_context *ctx)
 {
-   struct zink_cmdbuf *cmdbuf = &ctx->cmdbuf;
+   struct zink_cmdbuf *cmdbuf = &ctx->cmdbufs[0];
    reset_cmdbuf(zink_screen(ctx->base.screen), cmdbuf);
 
    VkCommandBufferBeginInfo cbbi = {};
