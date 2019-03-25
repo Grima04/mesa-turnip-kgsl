@@ -2485,9 +2485,29 @@ get_ccs_compatible_uint_format(const struct isl_format_layout *fmtl)
    case ISL_FORMAT_B10G10R10A2_UNORM:
    case ISL_FORMAT_B10G10R10A2_UNORM_SRGB:
    case ISL_FORMAT_R10G10B10A2_UNORM:
+   case ISL_FORMAT_R10G10B10A2_UNORM_SRGB:
    case ISL_FORMAT_R10G10B10_FLOAT_A2_UNORM:
    case ISL_FORMAT_R10G10B10A2_UINT:
       return ISL_FORMAT_R10G10B10A2_UINT;
+
+   case ISL_FORMAT_R16_UNORM:
+   case ISL_FORMAT_R16_SNORM:
+   case ISL_FORMAT_R16_SINT:
+   case ISL_FORMAT_R16_UINT:
+   case ISL_FORMAT_R16_FLOAT:
+      return ISL_FORMAT_R16_UINT;
+
+   case ISL_FORMAT_R8G8_UNORM:
+   case ISL_FORMAT_R8G8_SNORM:
+   case ISL_FORMAT_R8G8_SINT:
+   case ISL_FORMAT_R8G8_UINT:
+      return ISL_FORMAT_R8G8_UINT;
+
+   case ISL_FORMAT_R8_UNORM:
+   case ISL_FORMAT_R8_SNORM:
+   case ISL_FORMAT_R8_SINT:
+   case ISL_FORMAT_R8_UINT:
+      return ISL_FORMAT_R8_UINT;
 
    default:
       unreachable("Not a compressible format");
