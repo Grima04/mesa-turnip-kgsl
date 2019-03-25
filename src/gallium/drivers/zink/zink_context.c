@@ -424,7 +424,7 @@ zink_set_clip_state(struct pipe_context *pctx,
 }
 
 static struct zink_render_pass *
-get_render_pass(struct zink_screen *screen,
+get_render_pass(struct zink_context *ctx,
                 const struct pipe_framebuffer_state *fb)
 {
    struct zink_render_pass_state state;
@@ -441,7 +441,17 @@ get_render_pass(struct zink_screen *screen,
    }
    state.have_zsbuf = fb->zsbuf != NULL;
 
-   return zink_create_render_pass(screen, &state);
+   // TODO: cache instead!
+   return zink_create_render_pass(zink_screen(ctx->base.screen), &state);
+}
+
+static struct zink_framebuffer *
+get_framebuffer(struct zink_context *ctx,
+                const struct pipe_framebuffer_state *fb,
+                struct zink_render_pass *rp)
+{
+   // TODO: cache!
+   return zink_create_framebuffer(zink_screen(ctx->base.screen), fb, rp);
 }
 
 static void
@@ -451,10 +461,10 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
-   struct zink_render_pass *rp = get_render_pass(screen, state);
+   struct zink_render_pass *rp = get_render_pass(ctx, state);
    zink_render_pass_reference(screen, &ctx->render_pass, rp);
 
-   struct zink_framebuffer *fb = zink_create_framebuffer(screen, state, rp);
+   struct zink_framebuffer *fb = get_framebuffer(ctx, state, rp);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_framebuffer_reference(screen, &fb, NULL);
    zink_render_pass_reference(screen, &rp, NULL);
