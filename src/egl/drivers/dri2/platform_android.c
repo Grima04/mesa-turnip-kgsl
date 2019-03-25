@@ -1434,7 +1434,7 @@ droid_probe_device(_EGLDisplay *disp)
 
 #ifdef HAVE_DRM_GRALLOC
 static EGLBoolean
-droid_open_device_drm_gralloc(_EGLDisplay *disp)
+droid_open_device(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    int fd = -1, err = -EINVAL;
@@ -1454,8 +1454,7 @@ droid_open_device_drm_gralloc(_EGLDisplay *disp)
 
    return droid_probe_device(disp);
 }
-#endif /* HAVE_DRM_GRALLOC */
-
+#else
 static EGLBoolean
 droid_open_device(_EGLDisplay *disp)
 {
@@ -1526,6 +1525,8 @@ droid_open_device(_EGLDisplay *disp)
 #undef MAX_DRM_DEVICES
 }
 
+#endif
+
 EGLBoolean
 dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
 {
@@ -1552,11 +1553,7 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
 
    disp->DriverData = (void *) dri2_dpy;
 
-#ifdef HAVE_DRM_GRALLOC
-   if (!droid_open_device_drm_gralloc(disp)) {
-#else
    if (!droid_open_device(disp)) {
-#endif
       err = "DRI2: failed to open device";
       goto cleanup;
    }
