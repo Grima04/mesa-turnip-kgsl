@@ -748,9 +748,13 @@ optimise_nir(nir_shader *nir)
         } while (progress);
 
         NIR_PASS(progress, nir, nir_opt_algebraic_late);
+        NIR_PASS(progress, nir, midgard_nir_lower_algebraic_late);
 
-        /* Lower mods */
-        NIR_PASS(progress, nir, nir_lower_to_source_mods, nir_lower_all_source_mods);
+        /* Lower mods for float ops only. Integer ops don't support modifiers
+         * (saturate doesn't make sense on integers, neg/abs require dedicated
+         * instructions) */
+
+        NIR_PASS(progress, nir, nir_lower_to_source_mods, nir_lower_float_source_mods);
         NIR_PASS(progress, nir, nir_copy_prop);
         NIR_PASS(progress, nir, nir_opt_dce);
 
@@ -975,6 +979,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(iadd, iadd);
                 ALU_CASE(isub, isub);
                 ALU_CASE(imul, imul);
+                ALU_CASE(iabs, iabs);
 
                 /* XXX: Use fmov, not imov, since imov was causing major
                  * issues with texture precision? XXX research */

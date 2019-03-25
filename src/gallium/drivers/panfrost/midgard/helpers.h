@@ -142,6 +142,7 @@ midgard_is_integer_op(int op)
         //case midgard_alu_op_f2i:
         //case midgard_alu_op_f2u:
         case midgard_alu_op_ieq:
+        case midgard_alu_op_iabs:
         case midgard_alu_op_ine:
         case midgard_alu_op_ilt:
         case midgard_alu_op_ile:
@@ -209,6 +210,7 @@ static unsigned alu_opcode_props[256] = {
 
         /* Incredibly, iadd can run on vmul, etc */
         [midgard_alu_op_iadd]		 = UNITS_MOST,
+        [midgard_alu_op_iabs]		 = UNITS_MOST,
         [midgard_alu_op_isub]		 = UNITS_MOST,
         [midgard_alu_op_imul]		 = UNITS_MOST,
         [midgard_alu_op_imov]		 = UNITS_MOST | QUIRK_FLIPPED_R24,
