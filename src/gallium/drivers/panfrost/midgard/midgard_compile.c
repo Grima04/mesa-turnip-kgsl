@@ -1007,9 +1007,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ishr, iasr);
                 ALU_CASE(ushr, ilsr);
 
+                ALU_CASE(ball_fequal2, fball_eq);
+                ALU_CASE(ball_fequal3, fball_eq);
                 ALU_CASE(ball_fequal4, fball_eq);
+
+                ALU_CASE(bany_fnequal2, fbany_neq);
+                ALU_CASE(bany_fnequal3, fbany_neq);
                 ALU_CASE(bany_fnequal4, fbany_neq);
+
+                ALU_CASE(ball_iequal2, iball_eq);
+                ALU_CASE(ball_iequal3, iball_eq);
                 ALU_CASE(ball_iequal4, iball_eq);
+
+                ALU_CASE(bany_inequal2, ibany_neq);
+                ALU_CASE(bany_inequal3, ibany_neq);
                 ALU_CASE(bany_inequal4, ibany_neq);
 
         /* For greater-or-equal, we use less-or-equal and flip the
