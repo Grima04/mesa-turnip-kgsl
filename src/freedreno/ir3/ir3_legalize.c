@@ -42,6 +42,7 @@
 struct ir3_legalize_ctx {
 	struct ir3_compiler *compiler;
 	bool has_ssbo;
+	bool need_pixlod;
 	int max_bary;
 };
 
@@ -218,6 +219,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 
 		if (is_tex(n)) {
 			regmask_set(&state->needs_sy, n->regs[0]);
+			ctx->need_pixlod = true;
 		} else if (n->opc == OPC_RESINFO) {
 			regmask_set(&state->needs_ss, n->regs[0]);
 			ir3_NOP(block)->flags |= IR3_INSTR_SS;
@@ -471,7 +473,7 @@ mark_convergence_points(struct ir3 *ir)
 }
 
 void
-ir3_legalize(struct ir3 *ir, bool *has_ssbo, int *max_bary)
+ir3_legalize(struct ir3 *ir, bool *has_ssbo, bool *need_pixlod, int *max_bary)
 {
 	struct ir3_legalize_ctx *ctx = rzalloc(ir, struct ir3_legalize_ctx);
 	bool progress;
@@ -493,6 +495,7 @@ ir3_legalize(struct ir3 *ir, bool *has_ssbo, int *max_bary)
 	} while (progress);
 
 	*has_ssbo = ctx->has_ssbo;
+	*need_pixlod = ctx->need_pixlod;
 	*max_bary = ctx->max_bary;
 
 	do {

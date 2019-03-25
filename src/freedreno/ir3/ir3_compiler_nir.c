@@ -2798,7 +2798,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* We need to do legalize after (for frag shader's) the "bary.f"
 	 * offsets (inloc) have been assigned.
 	 */
-	ir3_legalize(ir, &so->has_ssbo, &max_bary);
+	ir3_legalize(ir, &so->has_ssbo, &so->need_pixlod, &max_bary);
 
 	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
 		printf("AFTER LEGALIZE:\n");

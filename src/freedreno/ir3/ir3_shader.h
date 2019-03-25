@@ -431,6 +431,9 @@ struct ir3_shader_variant {
 	/* do we have one or more SSBO instructions: */
 	bool has_ssbo;
 
+	/* do we need derivatives: */
+	bool need_pixlod;
+
 	/* do we have kill, image write, etc (which prevents early-z): */
 	bool no_earlyz;
 

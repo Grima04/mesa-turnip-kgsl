@@ -96,7 +96,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
 			A6XX_SP_CS_CTRL_REG0_FULLREGFOOTPRINT(i->max_reg + 1) |
 			A6XX_SP_CS_CTRL_REG0_MERGEDREGS |
 			A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(v->branchstack) |
-			COND(v->num_samp > 0, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE));
+			COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE));
 
 	OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
 	OUT_RING(ring, 0x41);

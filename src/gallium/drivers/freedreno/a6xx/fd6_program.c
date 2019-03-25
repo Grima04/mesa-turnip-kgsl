@@ -396,7 +396,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(s[VS].i->max_reg + 1) |
 			A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
 			A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(s[VS].v->branchstack) |
-			COND(s[VS].v->num_samp > 0, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
+			COND(s[VS].v->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, s[VS].v, s[FS].v);
@@ -518,7 +518,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(s[FS].i->max_reg + 1) |
 			A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
 			A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(s[FS].v->branchstack) |
-			COND(s[FS].v->num_samp > 0, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
+			COND(s[FS].v->need_pixlod, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A982, 1);
 	OUT_RING(ring, 0);        /* XXX */
