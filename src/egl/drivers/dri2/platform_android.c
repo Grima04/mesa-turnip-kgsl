@@ -1206,33 +1206,6 @@ droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
    return (config_count != 0);
 }
 
-static EGLBoolean
-droid_probe_device(_EGLDisplay *disp);
-
-#ifdef HAVE_DRM_GRALLOC
-static EGLBoolean
-droid_open_device_drm_gralloc(_EGLDisplay *disp)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   int fd = -1, err = -EINVAL;
-
-   if (dri2_dpy->gralloc->perform)
-         err = dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
-                                          GRALLOC_MODULE_PERFORM_GET_DRM_FD,
-                                          &fd);
-   if (err || fd < 0) {
-      _eglLog(_EGL_WARNING, "fail to get drm fd");
-      return EGL_FALSE;
-   }
-
-   dri2_dpy->fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
-   if (dri2_dpy->fd < 0)
-     return EGL_FALSE;
-
-   return droid_probe_device(disp);
-}
-#endif /* HAVE_DRM_GRALLOC */
-
 static const struct dri2_egl_display_vtbl droid_display_vtbl = {
    .authenticate = NULL,
    .create_window_surface = droid_create_window_surface,
@@ -1458,6 +1431,30 @@ droid_probe_device(_EGLDisplay *disp)
    }
    return EGL_TRUE;
 }
+
+#ifdef HAVE_DRM_GRALLOC
+static EGLBoolean
+droid_open_device_drm_gralloc(_EGLDisplay *disp)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   int fd = -1, err = -EINVAL;
+
+   if (dri2_dpy->gralloc->perform)
+         err = dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
+                                          GRALLOC_MODULE_PERFORM_GET_DRM_FD,
+                                          &fd);
+   if (err || fd < 0) {
+      _eglLog(_EGL_WARNING, "fail to get drm fd");
+      return EGL_FALSE;
+   }
+
+   dri2_dpy->fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+   if (dri2_dpy->fd < 0)
+     return EGL_FALSE;
+
+   return droid_probe_device(disp);
+}
+#endif /* HAVE_DRM_GRALLOC */
 
 static EGLBoolean
 droid_open_device(_EGLDisplay *disp)
