@@ -1952,6 +1952,10 @@ current_not_ready:
 		/* Use the default (unoptimized) shader for now. */
 		memset(&key->opt, 0, sizeof(key->opt));
 		mtx_unlock(&sel->mutex);
+
+		if (sscreen->options.sync_compile)
+			util_queue_fence_wait(&shader->ready);
+
 		goto again;
 	}
 
@@ -2164,12 +2168,12 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 	util_queue_fence_init(ready_fence);
 
 	struct util_async_debug_callback async_debug;
-	bool wait =
+	bool debug =
 		(sctx->debug.debug_message && !sctx->debug.async) ||
 		sctx->is_debug ||
 		si_can_dump_shader(sctx->screen, processor);
 
-	if (wait) {
+	if (debug) {
 		u_async_debug_init(&async_debug);
 		compiler_ctx_state->debug = async_debug.base;
 	}
@@ -2177,11 +2181,14 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 	util_queue_add_job(&sctx->screen->shader_compiler_queue, job,
 			   ready_fence, execute, NULL);
 
-	if (wait) {
+	if (debug) {
 		util_queue_fence_wait(ready_fence);
 		u_async_debug_drain(&async_debug, &sctx->debug);
 		u_async_debug_cleanup(&async_debug);
 	}
+
+	if (sctx->screen->options.sync_compile)
+		util_queue_fence_wait(ready_fence);
 }
 
 /* Return descriptor slot usage masks from the given shader info. */
