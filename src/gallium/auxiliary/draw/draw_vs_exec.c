@@ -128,18 +128,17 @@ vs_exec_run_linear(struct draw_vertex_shader *shader,
                          input[slot][3]);
          }
 #endif
+	 int basevertex = shader->draw->pt.user.eltSize ? shader->draw->pt.user.eltBias : shader->draw->start_index;
 
          if (shader->info.uses_vertexid) {
             unsigned vid = machine->SysSemanticToIndex[TGSI_SEMANTIC_VERTEXID];
             assert(vid < ARRAY_SIZE(machine->SystemValue));
-            machine->SystemValue[vid].xyzw[0].i[j] = i + j;
-            /* XXX this should include base vertex. Where to get it??? */
+            machine->SystemValue[vid].xyzw[0].i[j] = i + j + basevertex;
          }
          if (shader->info.uses_basevertex) {
             unsigned vid = machine->SysSemanticToIndex[TGSI_SEMANTIC_BASEVERTEX];
             assert(vid < ARRAY_SIZE(machine->SystemValue));
-            machine->SystemValue[vid].xyzw[0].i[j] = 0;
-            /* XXX Where to get it??? */
+            machine->SystemValue[vid].xyzw[0].i[j] = basevertex;
          }
          if (shader->info.uses_vertexid_nobase) {
             unsigned vid = machine->SysSemanticToIndex[TGSI_SEMANTIC_VERTEXID_NOBASE];
