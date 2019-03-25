@@ -993,6 +993,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * special lowering */
 
                 ALU_CASE(f2b32, fne);
+                ALU_CASE(i2b32, ine);
 
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
