@@ -1268,17 +1268,7 @@ static const __DRIdri2LoaderExtension droid_dri2_loader_extension = {
    .getBuffersWithFormat = droid_get_buffers_with_format,
    .getCapability        = droid_get_capability,
 };
-#endif /* HAVE_DRM_GRALLOC */
 
-static const __DRIimageLoaderExtension droid_image_loader_extension = {
-   .base = { __DRI_IMAGE_LOADER, 2 },
-
-   .getBuffers          = droid_image_get_buffers,
-   .flushFrontBuffer    = droid_flush_front_buffer,
-   .getCapability       = droid_get_capability,
-};
-
-#ifdef HAVE_DRM_GRALLOC
 static const __DRIextension *droid_dri2_loader_extensions[] = {
    &droid_dri2_loader_extension.base,
    &image_lookup_extension.base,
@@ -1289,6 +1279,14 @@ static const __DRIextension *droid_dri2_loader_extensions[] = {
    NULL,
 };
 #endif /* HAVE_DRM_GRALLOC */
+
+static const __DRIimageLoaderExtension droid_image_loader_extension = {
+   .base = { __DRI_IMAGE_LOADER, 2 },
+
+   .getBuffers          = droid_image_get_buffers,
+   .flushFrontBuffer    = droid_flush_front_buffer,
+   .getCapability       = droid_get_capability,
+};
 
 static void
 droid_display_shared_buffer(__DRIdrawable *driDrawable, int fence_fd,
