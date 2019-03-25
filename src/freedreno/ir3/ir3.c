@@ -455,6 +455,21 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 	struct ir3_register *src2 = instr->regs[3];
 	instr_cat5_t *cat5 = ptr;
 
+	switch (instr->opc) {
+	case OPC_DSX:
+	case OPC_DSXPP_1:
+	case OPC_DSY:
+	case OPC_DSYPP_1:
+		iassert((instr->flags & IR3_INSTR_S2EN) == 0);
+		src1 = instr->regs[1];
+		src2 = instr->regs[2];
+		break;
+	default:
+		src1 = instr->regs[2];
+		src2 = instr->regs[3];
+		break;
+	}
+
 	iassert_type(dst, type_size(instr->cat5.type) == 32)
 
 	assume(src1 || !src2);
