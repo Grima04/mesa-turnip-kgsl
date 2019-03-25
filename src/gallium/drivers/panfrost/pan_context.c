@@ -2403,6 +2403,46 @@ panfrost_get_query_result(struct pipe_context *pipe,
         return true;
 }
 
+static struct pipe_stream_output_target *
+panfrost_create_stream_output_target(struct pipe_context *pctx,
+                                struct pipe_resource *prsc,
+                                unsigned buffer_offset,
+                                unsigned buffer_size)
+{
+        struct pipe_stream_output_target *target;
+
+        target = CALLOC_STRUCT(pipe_stream_output_target);
+
+        if (!target)
+                return NULL;
+
+        pipe_reference_init(&target->reference, 1);
+        pipe_resource_reference(&target->buffer, prsc);
+
+        target->context = pctx;
+        target->buffer_offset = buffer_offset;
+        target->buffer_size = buffer_size;
+
+        return target;
+}
+
+static void
+panfrost_stream_output_target_destroy(struct pipe_context *pctx,
+                                 struct pipe_stream_output_target *target)
+{
+        pipe_resource_reference(&target->buffer, NULL);
+        free(target);
+}
+
+static void
+panfrost_set_stream_output_targets(struct pipe_context *pctx,
+                              unsigned num_targets,
+                              struct pipe_stream_output_target **targets,
+                              const unsigned *offsets)
+{
+        /* STUB */
+}
+
 static void
 panfrost_setup_hardware(struct panfrost_context *ctx)
 {
@@ -2506,6 +2546,10 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->begin_query = panfrost_begin_query;
         gallium->end_query = panfrost_end_query;
         gallium->get_query_result = panfrost_get_query_result;
+
+        gallium->create_stream_output_target = panfrost_create_stream_output_target;
+        gallium->stream_output_target_destroy = panfrost_stream_output_target_destroy;
+        gallium->set_stream_output_targets = panfrost_set_stream_output_targets;
 
         panfrost_resource_context_init(gallium);
 

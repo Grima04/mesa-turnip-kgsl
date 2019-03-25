@@ -111,6 +111,14 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TEXTURE_SWIZZLE:
                 return 1;
 
+        /* TODO: ES3. We expose these caps so we can access higher dEQP
+         * tests; in actuality they are nonfunctional */
+        case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+                return 4;
+        case PIPE_CAP_TGSI_INSTANCEID:
+        case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+                return 1;
+
         case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
@@ -285,6 +293,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
+                return 0;
         case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
@@ -306,7 +315,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 16 * 1024 * sizeof(float);
 
         case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
-                return 1;
+                return 4;
 
         case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
                 return 0;
