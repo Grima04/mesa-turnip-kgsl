@@ -48,6 +48,12 @@ struct zink_sampler_view {
    VkImageView image_view;
 };
 
+static inline struct zink_sampler_view *
+zink_sampler_view(struct pipe_sampler_view *pview)
+{
+   return (struct zink_sampler_view *)pview;
+}
+
 struct zink_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;
