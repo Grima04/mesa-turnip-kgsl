@@ -2881,7 +2881,7 @@ struct anv_surface {
 };
 
 struct anv_image {
-   VkImageType type;
+   VkImageType type; /**< VkImageCreateInfo::imageType */
    /* The original VkFormat provided by the client.  This may not match any
     * of the actual surface formats.
     */
