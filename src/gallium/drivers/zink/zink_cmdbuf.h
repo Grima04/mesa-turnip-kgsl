@@ -28,10 +28,15 @@
 
 struct zink_context;
 struct zink_fence;
+struct zink_framebuffer;
+struct zink_render_pass;
 
 struct zink_cmdbuf {
    VkCommandBuffer cmdbuf;
    struct zink_fence *fence;
+
+   struct zink_render_pass *rp;
+   struct zink_framebuffer *fb;
 };
 
 struct zink_cmdbuf *

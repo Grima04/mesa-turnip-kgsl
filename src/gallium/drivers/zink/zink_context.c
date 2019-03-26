@@ -760,8 +760,9 @@ zink_bind_vertex_buffers(VkCommandBuffer cmdbuf, struct zink_context *ctx)
 }
 
 static void
-begin_render_pass(struct zink_cmdbuf *cmdbuf, struct zink_render_pass *rp,
-                  struct zink_framebuffer *fb, unsigned width, unsigned height)
+begin_render_pass(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf,
+                  struct zink_render_pass *rp, struct zink_framebuffer *fb,
+                  unsigned width, unsigned height)
 {
    VkRenderPassBeginInfo rpbi = {};
    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -773,6 +774,11 @@ begin_render_pass(struct zink_cmdbuf *cmdbuf, struct zink_render_pass *rp,
    rpbi.clearValueCount = 0;
    rpbi.pClearValues = NULL;
    rpbi.framebuffer = fb->fb;
+
+   assert(rp && fb);
+   assert(!cmdbuf->rp && !cmdbuf->fb);
+   zink_render_pass_reference(screen, &cmdbuf->rp, rp);
+   zink_framebuffer_reference(screen, &cmdbuf->fb, fb);
 
    vkCmdBeginRenderPass(cmdbuf->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 }
@@ -872,7 +878,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!cmdbuf)
       return;
 
-   begin_render_pass(cmdbuf, ctx->gfx_pipeline_state.render_pass,
+   begin_render_pass(screen, cmdbuf, ctx->gfx_pipeline_state.render_pass,
                      ctx->framebuffer,
                      ctx->fb_state.width, ctx->fb_state.height);
 

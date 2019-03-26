@@ -2,6 +2,8 @@
 
 #include "zink_context.h"
 #include "zink_fence.h"
+#include "zink_framebuffer.h"
+#include "zink_render_pass.h"
 #include "zink_screen.h"
 
 #include "util/u_debug.h"
@@ -15,6 +17,9 @@ reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
 
    zink_fence_finish(screen, cmdbuf->fence, PIPE_TIMEOUT_INFINITE);
    zink_fence_reference(screen, &cmdbuf->fence, NULL);
+
+   zink_render_pass_reference(screen, &cmdbuf->rp, NULL);
+   zink_framebuffer_reference(screen, &cmdbuf->fb, NULL);
 }
 
 struct zink_cmdbuf *
