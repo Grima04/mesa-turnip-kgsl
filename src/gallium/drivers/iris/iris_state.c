@@ -3839,7 +3839,8 @@ use_surface(struct iris_context *ice,
 
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable);
-      iris_use_pinned_bo(batch, res->aux.clear_color_bo, false);
+      if (res->aux.clear_color_bo)
+         iris_use_pinned_bo(batch, res->aux.clear_color_bo, false);
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
@@ -3867,7 +3868,8 @@ use_sampler_view(struct iris_context *ice,
 
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo, false);
-      iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
+      if (isv->res->aux.clear_color_bo)
+         iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
          update_clear_value(ice, batch, isv->res,

@@ -335,8 +335,7 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
    const struct gen_device_info *devinfo = &screen->devinfo;
    const unsigned clear_color_state_size = devinfo->gen >= 10 ?
       screen->isl_dev.ss.clear_color_state_size :
-      screen->isl_dev.ss.clear_value_size;
-
+      (devinfo->gen >= 9 ? screen->isl_dev.ss.clear_value_size : 0);
 
    assert(!res->aux.bo);
 
@@ -437,8 +436,10 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
       iris_bo_unmap(res->aux.bo);
    }
 
-   res->aux.clear_color_bo = res->aux.bo;
-   iris_bo_reference(res->aux.clear_color_bo);
+   if (clear_color_state_size > 0) {
+      res->aux.clear_color_bo = res->aux.bo;
+      iris_bo_reference(res->aux.clear_color_bo);
+   }
 
    if (res->aux.usage == ISL_AUX_USAGE_HIZ) {
       for (unsigned level = 0; level < res->surf.levels; ++level) {
