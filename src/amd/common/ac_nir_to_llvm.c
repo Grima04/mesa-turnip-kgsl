@@ -344,10 +344,16 @@ static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx,
 {
 	LLVMValueRef result = LLVMBuildAnd(ctx->builder, src0, ctx->i32_1, "");
 
-	if (bitsize == 32)
+	switch (bitsize) {
+	case 16:
+		return LLVMBuildTrunc(ctx->builder, result, ctx->i16, "");
+	case 32:
 		return result;
-
-	return LLVMBuildZExt(ctx->builder, result, ctx->i64, "");
+	case 64:
+		return LLVMBuildZExt(ctx->builder, result, ctx->i64, "");
+	default:
+		unreachable("Unsupported bit size.");
+	}
 }
 
 static LLVMValueRef emit_i2b(struct ac_llvm_context *ctx,
