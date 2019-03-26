@@ -1603,15 +1603,28 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef immoffset,
 			    bool glc)
 {
-	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
-	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
 	LLVMValueRef res;
 
-	res = ac_build_raw_tbuffer_load(ctx, rsrc, voffset, soffset,
-					immoffset, 1, dfmt, nfmt, glc, false,
-					false);
+	if (HAVE_LLVM >= 0x900) {
+		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
 
-	return LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
+		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
+		res = ac_build_llvm8_buffer_load_common(ctx, rsrc, NULL,
+							voffset, soffset,
+							1, ctx->i16, glc, false,
+							false, false, false);
+	} else {
+		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
+		unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+
+		res = ac_build_raw_tbuffer_load(ctx, rsrc, voffset, soffset,
+						immoffset, 1, dfmt, nfmt, glc, false,
+						false);
+
+		res = LLVMBuildTrunc(ctx->builder, res, ctx->i16, "");
+	}
+
+	return res;
 }
 
 LLVMValueRef
@@ -1622,15 +1635,28 @@ ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
 			   LLVMValueRef immoffset,
 			   bool glc)
 {
-	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;
-	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
 	LLVMValueRef res;
 
-	res = ac_build_raw_tbuffer_load(ctx, rsrc, voffset, soffset,
-					immoffset, 1, dfmt, nfmt, glc, false,
-					false);
+	if (HAVE_LLVM >= 0x900) {
+		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
 
-	return LLVMBuildTrunc(ctx->builder, res, ctx->i8, "");
+		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
+		res = ac_build_llvm8_buffer_load_common(ctx, rsrc, NULL,
+							voffset, soffset,
+							1, ctx->i8, glc, false,
+							false, false, false);
+	} else {
+		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;
+		unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+
+		res = ac_build_raw_tbuffer_load(ctx, rsrc, voffset, soffset,
+						immoffset, 1, dfmt, nfmt, glc, false,
+						false);
+
+		res = LLVMBuildTrunc(ctx->builder, res, ctx->i8, "");
+	}
+
+	return res;
 }
 static void
 ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
