@@ -64,6 +64,7 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radeon_decoder *dec,
 	memset(&result, 0, sizeof(result));
 	switch (pic->base.profile) {
 	case PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE:
+	case PIPE_VIDEO_PROFILE_MPEG4_AVC_CONSTRAINED_BASELINE:
 		result.profile = RDECODE_H264_PROFILE_BASELINE;
 		break;
 
