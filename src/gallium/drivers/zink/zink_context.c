@@ -472,7 +472,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
 
    struct zink_render_pass *rp = get_render_pass(ctx, state);
-   zink_render_pass_reference(screen, &ctx->render_pass, rp);
+   zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, rp);
 
    struct zink_framebuffer *fb = get_framebuffer(ctx, state, rp);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
@@ -837,8 +837,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    VkPipeline pipeline = zink_create_gfx_pipeline(screen->dev,
                                                   gfx_program,
-                                                  &ctx->gfx_pipeline_state,
-                                                  ctx->render_pass);
+                                                  &ctx->gfx_pipeline_state);
 
    bool depth_bias = false;
    switch (u_reduced_prim(dinfo->mode)) {
@@ -874,7 +873,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!cmdbuf)
       return;
 
-   begin_render_pass(cmdbuf, ctx->render_pass, ctx->framebuffer,
+   begin_render_pass(cmdbuf, ctx->gfx_pipeline_state.render_pass,
+                     ctx->framebuffer,
                      ctx->fb_state.width, ctx->fb_state.height);
 
    vkCmdSetViewport(cmdbuf->cmdbuf, 0, ctx->num_viewports, ctx->viewports);

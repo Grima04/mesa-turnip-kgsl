@@ -37,6 +37,7 @@ struct zink_vertex_elements_state;
 
 struct zink_gfx_pipeline_state {
    VkPrimitiveTopology primitive_topology;
+   struct zink_render_pass *render_pass;
 
    struct zink_vertex_elements_state *element_state;
    VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
@@ -53,7 +54,6 @@ struct zink_gfx_pipeline_state {
 
 VkPipeline
 zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
-                         struct zink_gfx_pipeline_state *state,
-                         struct zink_render_pass *rp);
+                         struct zink_gfx_pipeline_state *state);
 
 #endif

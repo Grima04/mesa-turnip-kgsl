@@ -35,8 +35,7 @@
 
 VkPipeline
 zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
-                         struct zink_gfx_pipeline_state *state,
-                         struct zink_render_pass *rp)
+                         struct zink_gfx_pipeline_state *state)
 {
    VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -114,7 +113,7 @@ zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    pci.layout = prog->layout;
-   pci.renderPass = rp->render_pass;
+   pci.renderPass = state->render_pass->render_pass;
    pci.pVertexInputState = &vertex_input_state;
    pci.pInputAssemblyState = &primitive_state;
    pci.pRasterizationState = &rast_state;

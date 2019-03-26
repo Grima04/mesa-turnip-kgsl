@@ -80,7 +80,6 @@ struct zink_context {
 
    struct primconvert_context *primconvert;
 
-   struct zink_render_pass *render_pass;
    struct zink_framebuffer *framebuffer;
 
    VkViewport viewports[PIPE_MAX_VIEWPORTS];
