@@ -30,9 +30,6 @@ a = 'a'
 b = 'b'
 
 algebraic = [
-    # TODO: Should really be a fle, maybe not lowered in algebraic?
-    (('fge', a, b), ('flt', b, a)),
-
     # XXX: We have hw ops for this, just unknown atm..
     #(('fsign@32', a), ('i2f32@32', ('isign', ('f2i32@32', ('fmul', a, 0x43800000)))))
     #(('fsign', a), ('fcsel', ('fge', a, 0), 1.0, ('fcsel', ('flt', a, 0.0), -1.0, 0.0)))

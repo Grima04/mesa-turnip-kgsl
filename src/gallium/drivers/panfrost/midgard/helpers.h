@@ -218,6 +218,7 @@ static unsigned alu_opcode_props[256] = {
         /* For vector comparisons, use ball etc */
         [midgard_alu_op_feq]		 = UNITS_MOST,
         [midgard_alu_op_fne]		 = UNITS_MOST,
+        [midgard_alu_op_fle]		 = UNITS_MOST,
         [midgard_alu_op_flt]		 = UNITS_MOST,
         [midgard_alu_op_ieq]		 = UNITS_MOST,
         [midgard_alu_op_ine]		 = UNITS_MOST,

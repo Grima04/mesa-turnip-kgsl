@@ -1052,11 +1052,19 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(b32any_inequal3, ibany_neq);
                 ALU_CASE(b32any_inequal4, ibany_neq);
 
-        /* For greater-or-equal, we use less-or-equal and flip the
+        /* For greater-or-equal, we lower to less-or-equal and flip the
          * arguments */
 
-        case nir_op_ige32: {
-                op = midgard_alu_op_ile;
+        case nir_op_fge:
+        case nir_op_fge32:
+        case nir_op_ige32:
+        case nir_op_uge32: {
+                op =
+                        instr->op == nir_op_fge   ? midgard_alu_op_fle :
+                        instr->op == nir_op_fge32 ? midgard_alu_op_fle :
+                        instr->op == nir_op_ige32 ? midgard_alu_op_ile :
+                        instr->op == nir_op_uge32 ? midgard_alu_op_ule :
+                        0;
 
                 /* Swap via temporary */
                 nir_alu_src temp = instr->src[1];
