@@ -29,6 +29,11 @@ reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
       pipe_resource_reference(&pres, NULL);
    }
    _mesa_set_clear(cmdbuf->resources, NULL);
+
+   util_dynarray_foreach(&cmdbuf->zombie_samplers, VkSampler, samp) {
+      vkDestroySampler(screen->dev, *samp, NULL);
+   }
+   util_dynarray_clear(&cmdbuf->zombie_samplers);
 }
 
 struct zink_cmdbuf *

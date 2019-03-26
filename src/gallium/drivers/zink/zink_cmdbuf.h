@@ -26,6 +26,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "util/u_dynarray.h"
+
 struct zink_context;
 struct zink_fence;
 struct zink_framebuffer;
@@ -40,6 +42,8 @@ struct zink_cmdbuf {
    struct zink_framebuffer *fb;
 
    struct set *resources;
+
+   struct util_dynarray zombie_samplers;
 };
 
 struct zink_cmdbuf *

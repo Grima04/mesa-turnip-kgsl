@@ -164,8 +164,9 @@ static void
 zink_delete_sampler_state(struct pipe_context *pctx,
                           void *sampler_state)
 {
-   struct zink_screen *screen = zink_screen(pctx->screen);
-   vkDestroySampler(screen->dev, sampler_state, NULL);
+   struct zink_cmdbuf *cmdbuf = zink_context_curr_cmdbuf(zink_context(pctx));
+   util_dynarray_append(&cmdbuf->zombie_samplers,
+                        VkSampler, sampler_state);
 }
 
 
@@ -1271,6 +1272,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                    _mesa_key_pointer_equal);
       if (!ctx->cmdbufs[i].resources)
          goto fail;
+
+      util_dynarray_init(&ctx->cmdbufs[i].zombie_samplers, NULL);
    }
 
    VkDescriptorPoolSize sizes[] = {
