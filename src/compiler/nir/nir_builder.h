@@ -1044,7 +1044,8 @@ nir_load_reg(nir_builder *build, nir_register *reg)
 }
 
 static inline nir_ssa_def *
-nir_load_deref(nir_builder *build, nir_deref_instr *deref)
+nir_load_deref_with_access(nir_builder *build, nir_deref_instr *deref,
+                           enum gl_access_qualifier access)
 {
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(build->shader, nir_intrinsic_load_deref);
@@ -1052,13 +1053,21 @@ nir_load_deref(nir_builder *build, nir_deref_instr *deref)
    load->src[0] = nir_src_for_ssa(&deref->dest.ssa);
    nir_ssa_dest_init(&load->instr, &load->dest, load->num_components,
                      glsl_get_bit_size(deref->type), NULL);
+   nir_intrinsic_set_access(load, access);
    nir_builder_instr_insert(build, &load->instr);
    return &load->dest.ssa;
 }
 
+static inline nir_ssa_def *
+nir_load_deref(nir_builder *build, nir_deref_instr *deref)
+{
+   return nir_load_deref_with_access(build, deref, (enum gl_access_qualifier)0);
+}
+
 static inline void
-nir_store_deref(nir_builder *build, nir_deref_instr *deref,
-                nir_ssa_def *value, unsigned writemask)
+nir_store_deref_with_access(nir_builder *build, nir_deref_instr *deref,
+                            nir_ssa_def *value, unsigned writemask,
+                            enum gl_access_qualifier access)
 {
    nir_intrinsic_instr *store =
       nir_intrinsic_instr_create(build->shader, nir_intrinsic_store_deref);
@@ -1067,7 +1076,16 @@ nir_store_deref(nir_builder *build, nir_deref_instr *deref,
    store->src[1] = nir_src_for_ssa(value);
    nir_intrinsic_set_write_mask(store,
                                 writemask & ((1 << store->num_components) - 1));
+   nir_intrinsic_set_access(store, access);
    nir_builder_instr_insert(build, &store->instr);
+}
+
+static inline void
+nir_store_deref(nir_builder *build, nir_deref_instr *deref,
+                nir_ssa_def *value, unsigned writemask)
+{
+   nir_store_deref_with_access(build, deref, value, writemask,
+                               (enum gl_access_qualifier)0);
 }
 
 static inline void
