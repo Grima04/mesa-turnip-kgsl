@@ -4,9 +4,11 @@
 #include "zink_fence.h"
 #include "zink_framebuffer.h"
 #include "zink_render_pass.h"
+#include "zink_resource.h"
 #include "zink_screen.h"
 
 #include "util/u_debug.h"
+#include "util/set.h"
 
 static void
 reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
@@ -20,6 +22,13 @@ reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
 
    zink_render_pass_reference(screen, &cmdbuf->rp, NULL);
    zink_framebuffer_reference(screen, &cmdbuf->fb, NULL);
+
+   /* unref all used resources */
+   set_foreach(cmdbuf->resources, entry) {
+      struct pipe_resource *pres = (struct pipe_resource *)entry->key;
+      pipe_resource_reference(&pres, NULL);
+   }
+   _mesa_set_clear(cmdbuf->resources, NULL);
 }
 
 struct zink_cmdbuf *
@@ -78,4 +87,16 @@ zink_end_cmdbuf(struct zink_context *ctx, struct zink_cmdbuf *cmdbuf)
 
    if (vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
+}
+
+void
+zink_cmdbuf_reference_resoure(struct zink_cmdbuf *cmdbuf,
+                              struct zink_resource *res)
+{
+   struct set_entry *entry = _mesa_set_search(cmdbuf->resources, res);
+   if (!entry) {
+      struct pipe_resource *tmp = NULL;
+      entry = _mesa_set_add(cmdbuf->resources, res);
+      pipe_resource_reference(&tmp, &res->base);
+   }
 }

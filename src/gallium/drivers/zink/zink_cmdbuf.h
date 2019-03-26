@@ -30,6 +30,7 @@ struct zink_context;
 struct zink_fence;
 struct zink_framebuffer;
 struct zink_render_pass;
+struct zink_resource;
 
 struct zink_cmdbuf {
    VkCommandBuffer cmdbuf;
@@ -37,6 +38,8 @@ struct zink_cmdbuf {
 
    struct zink_render_pass *rp;
    struct zink_framebuffer *fb;
+
+   struct set *resources;
 };
 
 struct zink_cmdbuf *
@@ -44,5 +47,9 @@ zink_start_cmdbuf(struct zink_context *ctx);
 
 void
 zink_end_cmdbuf(struct zink_context *ctx, struct zink_cmdbuf *cmdbuf);
+
+void
+zink_cmdbuf_reference_resoure(struct zink_cmdbuf *cmdbuf,
+                              struct zink_resource *res);
 
 #endif

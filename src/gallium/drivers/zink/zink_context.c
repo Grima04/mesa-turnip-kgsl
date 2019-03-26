@@ -743,7 +743,7 @@ zink_primitive_topology(enum pipe_prim_type mode)
 }
 
 static void
-zink_bind_vertex_buffers(VkCommandBuffer cmdbuf, struct zink_context *ctx)
+zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
 {
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_offsets[PIPE_MAX_ATTRIBS];
@@ -754,10 +754,11 @@ zink_bind_vertex_buffers(VkCommandBuffer cmdbuf, struct zink_context *ctx)
       struct zink_resource *res = zink_resource(vb->buffer.resource);
       buffers[i] = res->buffer;
       buffer_offsets[i] = vb->buffer_offset;
+      zink_cmdbuf_reference_resoure(cmdbuf, res);
    }
 
    if (elems->num_bindings > 0)
-      vkCmdBindVertexBuffers(cmdbuf, 0, elems->num_bindings, buffers, buffer_offsets);
+      vkCmdBindVertexBuffers(cmdbuf->cmdbuf, 0, elems->num_bindings, buffers, buffer_offsets);
 }
 
 static void
@@ -955,12 +956,14 @@ zink_draw_vbo(struct pipe_context *pctx,
    vkCmdBindPipeline(cmdbuf->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
    vkCmdBindDescriptorSets(cmdbuf->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                            gfx_program->layout, 0, 1, &desc_set, 0, NULL);
-   zink_bind_vertex_buffers(cmdbuf->cmdbuf, ctx);
+   zink_bind_vertex_buffers(cmdbuf, ctx);
 
    if (dinfo->index_size > 0) {
       assert(dinfo->index_size != 1);
       VkIndexType index_type = dinfo->index_size == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-      vkCmdBindIndexBuffer(cmdbuf->cmdbuf, zink_resource(index_buffer)->buffer, index_offset, index_type);
+      struct zink_resource *res = zink_resource(index_buffer);
+      vkCmdBindIndexBuffer(cmdbuf->cmdbuf, res->buffer, index_offset, index_type);
+      zink_cmdbuf_reference_resoure(cmdbuf, res);
       vkCmdDrawIndexed(cmdbuf->cmdbuf,
          dinfo->count, dinfo->instance_count,
          dinfo->start, dinfo->index_bias, dinfo->start_instance);
@@ -1247,9 +1250,15 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    cbai.commandPool = ctx->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
-   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i)
+   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i) {
       if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->cmdbufs[i].cmdbuf) != VK_SUCCESS)
          goto fail;
+
+      ctx->cmdbufs[i].resources = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                                   _mesa_key_pointer_equal);
+      if (!ctx->cmdbufs[i].resources)
+         goto fail;
+   }
 
    VkDescriptorPoolSize sizes[] = {
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
