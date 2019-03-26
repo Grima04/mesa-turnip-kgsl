@@ -2576,6 +2576,8 @@ LLVMValueRef ac_build_bitfield_reverse(struct ac_llvm_context *ctx,
 		result = ac_build_intrinsic(ctx, "llvm.bitreverse.i16", ctx->i16,
 					    (LLVMValueRef []) { src0 }, 1,
 					    AC_FUNC_ATTR_READNONE);
+
+		result = LLVMBuildZExt(ctx->builder, result, ctx->i32, "");
 		break;
 	default:
 		unreachable(!"invalid bitsize");
