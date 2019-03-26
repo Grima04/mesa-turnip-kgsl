@@ -458,11 +458,27 @@ fs_oes_derivatives(const _mesa_glsl_parse_state *state)
 }
 
 static bool
+derivatives(const _mesa_glsl_parse_state *state)
+{
+   return fs_oes_derivatives(state) ||
+          (state->stage == MESA_SHADER_COMPUTE &&
+           state->NV_compute_shader_derivatives_enable);
+}
+
+static bool
 fs_derivative_control(const _mesa_glsl_parse_state *state)
 {
    return state->stage == MESA_SHADER_FRAGMENT &&
           (state->is_version(450, 0) ||
            state->ARB_derivative_control_enable);
+}
+
+static bool
+derivative_control(const _mesa_glsl_parse_state *state)
+{
+   return fs_derivative_control(state) ||
+      (state->stage == MESA_SHADER_COMPUTE &&
+       state->NV_compute_shader_derivatives_enable);
 }
 
 static bool
@@ -5542,18 +5558,18 @@ builtin_builder::_textureSamplesIdentical(builtin_available_predicate avail,
    return sig;
 }
 
-UNOP(dFdx, ir_unop_dFdx, fs_oes_derivatives)
-UNOP(dFdxCoarse, ir_unop_dFdx_coarse, fs_derivative_control)
-UNOP(dFdxFine, ir_unop_dFdx_fine, fs_derivative_control)
-UNOP(dFdy, ir_unop_dFdy, fs_oes_derivatives)
-UNOP(dFdyCoarse, ir_unop_dFdy_coarse, fs_derivative_control)
-UNOP(dFdyFine, ir_unop_dFdy_fine, fs_derivative_control)
+UNOP(dFdx, ir_unop_dFdx, derivatives)
+UNOP(dFdxCoarse, ir_unop_dFdx_coarse, derivative_control)
+UNOP(dFdxFine, ir_unop_dFdx_fine, derivative_control)
+UNOP(dFdy, ir_unop_dFdy, derivatives)
+UNOP(dFdyCoarse, ir_unop_dFdy_coarse, derivative_control)
+UNOP(dFdyFine, ir_unop_dFdy_fine, derivative_control)
 
 ir_function_signature *
 builtin_builder::_fwidth(const glsl_type *type)
 {
    ir_variable *p = in_var(type, "p");
-   MAKE_SIG(type, fs_oes_derivatives, 1, p);
+   MAKE_SIG(type, derivatives, 1, p);
 
    body.emit(ret(add(abs(expr(ir_unop_dFdx, p)), abs(expr(ir_unop_dFdy, p)))));
 
@@ -5564,7 +5580,7 @@ ir_function_signature *
 builtin_builder::_fwidthCoarse(const glsl_type *type)
 {
    ir_variable *p = in_var(type, "p");
-   MAKE_SIG(type, fs_derivative_control, 1, p);
+   MAKE_SIG(type, derivative_control, 1, p);
 
    body.emit(ret(add(abs(expr(ir_unop_dFdx_coarse, p)),
                      abs(expr(ir_unop_dFdy_coarse, p)))));
@@ -5576,7 +5592,7 @@ ir_function_signature *
 builtin_builder::_fwidthFine(const glsl_type *type)
 {
    ir_variable *p = in_var(type, "p");
-   MAKE_SIG(type, fs_derivative_control, 1, p);
+   MAKE_SIG(type, derivative_control, 1, p);
 
    body.emit(ret(add(abs(expr(ir_unop_dFdx_fine, p)),
                      abs(expr(ir_unop_dFdy_fine, p)))));
