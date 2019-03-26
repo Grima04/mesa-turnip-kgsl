@@ -41,7 +41,7 @@ struct constant_fold_state {
 static bool
 constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
 {
-   nir_const_value src[NIR_MAX_VEC_COMPONENTS];
+   nir_const_value src[NIR_MAX_VEC_COMPONENTS][NIR_MAX_VEC_COMPONENTS];
 
    if (!instr->dest.dest.is_ssa)
       return false;
@@ -77,19 +77,19 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
            j++) {
          switch(load_const->def.bit_size) {
          case 64:
-            src[i].u64[j] = load_const->value.u64[instr->src[i].swizzle[j]];
+            src[i][j].u64 = load_const->value[instr->src[i].swizzle[j]].u64;
             break;
          case 32:
-            src[i].u32[j] = load_const->value.u32[instr->src[i].swizzle[j]];
+            src[i][j].u32 = load_const->value[instr->src[i].swizzle[j]].u32;
             break;
          case 16:
-            src[i].u16[j] = load_const->value.u16[instr->src[i].swizzle[j]];
+            src[i][j].u16 = load_const->value[instr->src[i].swizzle[j]].u16;
             break;
          case 8:
-            src[i].u8[j] = load_const->value.u8[instr->src[i].swizzle[j]];
+            src[i][j].u8 = load_const->value[instr->src[i].swizzle[j]].u8;
             break;
          case 1:
-            src[i].b[j] = load_const->value.b[instr->src[i].swizzle[j]];
+            src[i][j].b = load_const->value[instr->src[i].swizzle[j]].b;
             break;
          default:
             unreachable("Invalid bit size");
@@ -106,16 +106,20 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
    /* We shouldn't have any saturate modifiers in the optimization loop. */
    assert(!instr->dest.saturate);
 
-   nir_const_value dest =
-      nir_eval_const_opcode(instr->op, instr->dest.dest.ssa.num_components,
-                            bit_size, src);
+   nir_const_value dest[NIR_MAX_VEC_COMPONENTS];
+   nir_const_value *srcs[NIR_MAX_VEC_COMPONENTS];
+   memset(dest, 0, sizeof(dest));
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; ++i)
+      srcs[i] = src[i];
+   nir_eval_const_opcode(instr->op, dest, instr->dest.dest.ssa.num_components,
+                         bit_size, srcs);
 
    nir_load_const_instr *new_instr =
       nir_load_const_instr_create(mem_ctx,
                                   instr->dest.dest.ssa.num_components,
                                   instr->dest.dest.ssa.bit_size);
 
-   new_instr->value = dest;
+   memcpy(new_instr->value, dest, sizeof(*new_instr->value) * new_instr->def.num_components);
 
    nir_instr_insert_before(&instr->instr, &new_instr->instr);
 

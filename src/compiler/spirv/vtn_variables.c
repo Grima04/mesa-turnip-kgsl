@@ -2356,16 +2356,16 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             chain->link[idx].mode = vtn_access_mode_literal;
             switch (glsl_get_bit_size(link_val->type->type)) {
             case 8:
-               chain->link[idx].id = link_val->constant->values[0].i8[0];
+               chain->link[idx].id = link_val->constant->values[0][0].i8;
                break;
             case 16:
-               chain->link[idx].id = link_val->constant->values[0].i16[0];
+               chain->link[idx].id = link_val->constant->values[0][0].i16;
                break;
             case 32:
-               chain->link[idx].id = link_val->constant->values[0].i32[0];
+               chain->link[idx].id = link_val->constant->values[0][0].i32;
                break;
             case 64:
-               chain->link[idx].id = link_val->constant->values[0].i64[0];
+               chain->link[idx].id = link_val->constant->values[0][0].i64;
                break;
             default:
                vtn_fail("Invalid bit size");

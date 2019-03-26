@@ -781,7 +781,7 @@ Converter::getIndirect(nir_src *src, uint8_t idx, Value *&indirect)
 
    if (offset) {
       indirect = NULL;
-      return offset->u32[0];
+      return offset[0].u32;
    }
 
    indirect = getSrc(src, idx, true);
@@ -2655,16 +2655,16 @@ Converter::convert(nir_load_const_instr *insn, uint8_t idx)
 
    switch (insn->def.bit_size) {
    case 64:
-      val = loadImm(getSSA(8), insn->value.u64[idx]);
+      val = loadImm(getSSA(8), insn->value[idx].u64);
       break;
    case 32:
-      val = loadImm(getSSA(4), insn->value.u32[idx]);
+      val = loadImm(getSSA(4), insn->value[idx].u32);
       break;
    case 16:
-      val = loadImm(getSSA(2), insn->value.u16[idx]);
+      val = loadImm(getSSA(2), insn->value[idx].u16);
       break;
    case 8:
-      val = loadImm(getSSA(1), insn->value.u8[idx]);
+      val = loadImm(getSSA(1), insn->value[idx].u8);
       break;
    default:
       unreachable("unhandled bit size!\n");

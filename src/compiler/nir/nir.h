@@ -121,18 +121,24 @@ typedef enum {
 } nir_rounding_mode;
 
 typedef union {
-   bool b[NIR_MAX_VEC_COMPONENTS];
-   float f32[NIR_MAX_VEC_COMPONENTS];
-   double f64[NIR_MAX_VEC_COMPONENTS];
-   int8_t i8[NIR_MAX_VEC_COMPONENTS];
-   uint8_t u8[NIR_MAX_VEC_COMPONENTS];
-   int16_t i16[NIR_MAX_VEC_COMPONENTS];
-   uint16_t u16[NIR_MAX_VEC_COMPONENTS];
-   int32_t i32[NIR_MAX_VEC_COMPONENTS];
-   uint32_t u32[NIR_MAX_VEC_COMPONENTS];
-   int64_t i64[NIR_MAX_VEC_COMPONENTS];
-   uint64_t u64[NIR_MAX_VEC_COMPONENTS];
+   bool b;
+   float f32;
+   double f64;
+   int8_t i8;
+   uint8_t u8;
+   int16_t i16;
+   uint16_t u16;
+   int32_t i32;
+   uint32_t u32;
+   int64_t i64;
+   uint64_t u64;
 } nir_const_value;
+
+#define nir_const_value_to_array(arr, c, components, m) \
+{ \
+   for (unsigned i = 0; i < components; ++i) \
+      arr[i] = c[i].m; \
+} while (false)
 
 typedef struct nir_constant {
    /**
@@ -142,7 +148,7 @@ typedef struct nir_constant {
     * by the type associated with the \c nir_variable.  Constants may be
     * scalars, vectors, or matrices.
     */
-   nir_const_value values[NIR_MAX_MATRIX_COLUMNS];
+   nir_const_value values[NIR_MAX_MATRIX_COLUMNS][NIR_MAX_VEC_COMPONENTS];
 
    /* we could get this from the var->type but makes clone *much* easier to
     * not have to care about the type.
@@ -1715,10 +1721,15 @@ bool nir_tex_instr_has_explicit_tg4_offsets(nir_tex_instr *tex);
 typedef struct {
    nir_instr instr;
 
-   nir_const_value value;
-
    nir_ssa_def def;
+
+   nir_const_value value[];
 } nir_load_const_instr;
+
+#define nir_const_load_to_arr(arr, l, m) \
+{ \
+   nir_const_value_to_array(arr, l->value, l->def.num_components, m); \
+} while (false);
 
 typedef enum {
    nir_jump_return,

@@ -74,9 +74,9 @@ phi_has_constant_from_outside_and_one_from_inside_loop(nir_phi_instr *phi,
           return false;
 
        if (src->pred != entry_block) {
-          *continue_val = const_src->u32[0];
+          *continue_val = const_src[0].u32;
        } else {
-          *entry_val = const_src->u32[0];
+          *entry_val = const_src[0].u32;
        }
     }
 

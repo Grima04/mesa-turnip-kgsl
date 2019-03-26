@@ -353,18 +353,18 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
 
       for (unsigned j = i; j < instr->def.num_components; j++) {
          if ((instr->def.bit_size == 32 &&
-              instr->value.u32[i] == instr->value.u32[j]) ||
+              instr->value[i].u32 == instr->value[j].u32) ||
              (instr->def.bit_size == 64 &&
-              instr->value.f64[i] == instr->value.f64[j])) {
+              instr->value[i].f64 == instr->value[j].f64)) {
             writemask |= 1 << j;
          }
       }
 
       reg.writemask = writemask;
       if (instr->def.bit_size == 64) {
-         emit(MOV(reg, setup_imm_df(ibld, instr->value.f64[i])));
+         emit(MOV(reg, setup_imm_df(ibld, instr->value[i].f64)));
       } else {
-         emit(MOV(reg, brw_imm_d(instr->value.i32[i])));
+         emit(MOV(reg, brw_imm_d(instr->value[i].i32)));
       }
 
       remaining &= ~writemask;

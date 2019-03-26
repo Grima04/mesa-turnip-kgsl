@@ -308,9 +308,9 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
 
       for (unsigned r = 0; r < rows; r++)
          if (supports_ints)
-            ret->values[0].u32[r] = ir->value.u[r];
+            ret->values[0][r].u32 = ir->value.u[r];
          else
-            ret->values[0].f32[r] = ir->value.u[r];
+            ret->values[0][r].f32 = ir->value.u[r];
 
       break;
 
@@ -320,23 +320,23 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
 
       for (unsigned r = 0; r < rows; r++)
          if (supports_ints)
-            ret->values[0].i32[r] = ir->value.i[r];
+            ret->values[0][r].i32 = ir->value.i[r];
          else
-            ret->values[0].f32[r] = ir->value.i[r];
+            ret->values[0][r].f32 = ir->value.i[r];
 
       break;
 
    case GLSL_TYPE_FLOAT:
       for (unsigned c = 0; c < cols; c++) {
          for (unsigned r = 0; r < rows; r++)
-            ret->values[c].f32[r] = ir->value.f[c * rows + r];
+            ret->values[c][r].f32 = ir->value.f[c * rows + r];
       }
       break;
 
    case GLSL_TYPE_DOUBLE:
       for (unsigned c = 0; c < cols; c++) {
          for (unsigned r = 0; r < rows; r++)
-            ret->values[c].f64[r] = ir->value.d[c * rows + r];
+            ret->values[c][r].f64 = ir->value.d[c * rows + r];
       }
       break;
 
@@ -345,7 +345,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0].u64[r] = ir->value.u64[r];
+         ret->values[0][r].u64 = ir->value.u64[r];
       break;
 
    case GLSL_TYPE_INT64:
@@ -353,7 +353,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0].i64[r] = ir->value.i64[r];
+         ret->values[0][r].i64 = ir->value.i64[r];
       break;
 
    case GLSL_TYPE_BOOL:
@@ -361,7 +361,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0].b[r] = ir->value.b[r];
+         ret->values[0][r].b = ir->value.b[r];
 
       break;
 

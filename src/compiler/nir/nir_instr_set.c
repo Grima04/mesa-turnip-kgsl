@@ -124,12 +124,12 @@ hash_load_const(uint32_t hash, const nir_load_const_instr *instr)
 
    if (instr->def.bit_size == 1) {
       for (unsigned i = 0; i < instr->def.num_components; i++) {
-         uint8_t b = instr->value.b[i];
+         uint8_t b = instr->value[i].b;
          hash = HASH(hash, b);
       }
    } else {
-      unsigned size = instr->def.num_components * (instr->def.bit_size / 8);
-      hash = _mesa_fnv32_1a_accumulate_block(hash, instr->value.f32, size);
+      unsigned size = instr->def.num_components * sizeof(*instr->value);
+      hash = _mesa_fnv32_1a_accumulate_block(hash, instr->value, size);
    }
 
    return hash;
@@ -309,8 +309,8 @@ nir_const_value_negative_equal(const nir_const_value *c1,
       switch (bits) {
       case 16:
          for (unsigned i = 0; i < components; i++) {
-            if (_mesa_half_to_float(c1->u16[i]) !=
-                -_mesa_half_to_float(c2->u16[i])) {
+            if (_mesa_half_to_float(c1[i].u16) !=
+                -_mesa_half_to_float(c2[i].u16)) {
                return false;
             }
          }
@@ -319,7 +319,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
       case 32:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->f32[i] != -c2->f32[i])
+            if (c1[i].f32 != -c2[i].f32)
                return false;
          }
 
@@ -327,7 +327,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
       case 64:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->f64[i] != -c2->f64[i])
+            if (c1[i].f64 != -c2[i].f64)
                return false;
          }
 
@@ -344,7 +344,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
       switch (bits) {
       case 8:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->i8[i] != -c2->i8[i])
+            if (c1[i].i8 != -c2[i].i8)
                return false;
          }
 
@@ -352,7 +352,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
       case 16:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->i16[i] != -c2->i16[i])
+            if (c1[i].i16 != -c2[i].i16)
                return false;
          }
 
@@ -361,7 +361,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
       case 32:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->i32[i] != -c2->i32[i])
+            if (c1[i].i32 != -c2[i].i32)
                return false;
          }
 
@@ -369,7 +369,7 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
       case 64:
          for (unsigned i = 0; i < components; i++) {
-            if (c1->i64[i] != -c2->i64[i])
+            if (c1[i].i64 != -c2[i].i64)
                return false;
          }
 
@@ -628,13 +628,31 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       if (load1->def.bit_size != load2->def.bit_size)
          return false;
 
-      if (load1->def.bit_size == 1) {
-         unsigned size = load1->def.num_components * sizeof(bool);
-         return memcmp(load1->value.b, load2->value.b, size) == 0;
-      } else {
-         unsigned size = load1->def.num_components * (load1->def.bit_size / 8);
-         return memcmp(load1->value.f32, load2->value.f32, size) == 0;
+      for (unsigned i = 0; i < load1->def.num_components; ++i) {
+         switch (load1->def.bit_size) {
+         case 1:
+            if (load1->value[i].b != load2->value[i].b)
+               return false;
+            break;
+         case 8:
+            if (load1->value[i].u8 != load2->value[i].u8)
+               return false;
+            break;
+         case 16:
+            if (load1->value[i].u16 != load2->value[i].u16)
+               return false;
+            break;
+         case 32:
+            if (load1->value[i].u32 != load2->value[i].u32)
+               return false;
+            break;
+         case 64:
+            if (load1->value[i].u64 != load2->value[i].u64)
+               return false;
+            break;
+         }
       }
+      return true;
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi1 = nir_instr_as_phi(instr1);

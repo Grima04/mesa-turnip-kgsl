@@ -217,7 +217,7 @@ static bool gpir_emit_load_const(gpir_block *block, nir_instr *ni)
    assert(instr->def.bit_size == 32);
    assert(instr->def.num_components == 1);
 
-   node->value.i = instr->value.i32[0];
+   node->value.i = instr->value[0].i32;
 
    return true;
 }

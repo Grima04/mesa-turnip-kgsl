@@ -234,7 +234,9 @@ make_src(struct ir2_context *ctx, nir_src src)
 
 	if (const_value) {
 		assert(src.is_ssa);
-		return load_const(ctx, &const_value->f32[0], src.ssa->num_components);
+		float c[src.ssa->num_components];
+		nir_const_value_to_array(c, const_value, src.ssa->num_components, f32);
+		return load_const(ctx, c, src.ssa->num_components);
 	}
 
 	if (!src.is_ssa) {
@@ -620,7 +622,7 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 		const_offset = nir_src_as_const_value(intr->src[0]);
 		assert(const_offset); /* TODO can be false in ES2? */
 		idx = nir_intrinsic_base(intr);
-		idx += (uint32_t) nir_src_as_const_value(intr->src[0])->f32[0];
+		idx += (uint32_t) nir_src_as_const_value(intr->src[0])[0].f32;
 		instr = instr_create_alu_dest(ctx, nir_op_fmov, &intr->dest);
 		instr->src[0] = ir2_src(idx, 0, IR2_SRC_CONST);
 		break;

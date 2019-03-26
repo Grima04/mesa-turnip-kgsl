@@ -1694,17 +1694,17 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
    switch (instr->def.bit_size) {
    case 8:
       for (unsigned i = 0; i < instr->def.num_components; i++)
-         bld.MOV(offset(reg, bld, i), setup_imm_b(bld, instr->value.i8[i]));
+         bld.MOV(offset(reg, bld, i), setup_imm_b(bld, instr->value[i].i8));
       break;
 
    case 16:
       for (unsigned i = 0; i < instr->def.num_components; i++)
-         bld.MOV(offset(reg, bld, i), brw_imm_w(instr->value.i16[i]));
+         bld.MOV(offset(reg, bld, i), brw_imm_w(instr->value[i].i16));
       break;
 
    case 32:
       for (unsigned i = 0; i < instr->def.num_components; i++)
-         bld.MOV(offset(reg, bld, i), brw_imm_d(instr->value.i32[i]));
+         bld.MOV(offset(reg, bld, i), brw_imm_d(instr->value[i].i32));
       break;
 
    case 64:
@@ -1713,11 +1713,11 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
          /* We don't get 64-bit integer types until gen8 */
          for (unsigned i = 0; i < instr->def.num_components; i++) {
             bld.MOV(retype(offset(reg, bld, i), BRW_REGISTER_TYPE_DF),
-                    setup_imm_df(bld, instr->value.f64[i]));
+                    setup_imm_df(bld, instr->value[i].f64));
          }
       } else {
          for (unsigned i = 0; i < instr->def.num_components; i++)
-            bld.MOV(offset(reg, bld, i), brw_imm_q(instr->value.i64[i]));
+            bld.MOV(offset(reg, bld, i), brw_imm_q(instr->value[i].i64));
       }
       break;
 
@@ -3383,8 +3383,8 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
       if (const_offset) {
          assert(nir_src_bit_size(instr->src[0]) == 32);
-         unsigned off_x = MIN2((int)(const_offset->f32[0] * 16), 7) & 0xf;
-         unsigned off_y = MIN2((int)(const_offset->f32[1] * 16), 7) & 0xf;
+         unsigned off_x = MIN2((int)(const_offset[0].f32 * 16), 7) & 0xf;
+         unsigned off_y = MIN2((int)(const_offset[1].f32 * 16), 7) & 0xf;
 
          emit_pixel_interpolater_send(bld,
                                       FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET,
@@ -3674,14 +3674,14 @@ brw_nir_reduction_op_identity(const fs_builder &bld,
    switch (type_sz(type)) {
    case 2:
       assert(type != BRW_REGISTER_TYPE_HF);
-      return retype(brw_imm_uw(value.u16[0]), type);
+      return retype(brw_imm_uw(value.u16), type);
    case 4:
-      return retype(brw_imm_ud(value.u32[0]), type);
+      return retype(brw_imm_ud(value.u32), type);
    case 8:
       if (type == BRW_REGISTER_TYPE_DF)
-         return setup_imm_df(bld, value.f64[0]);
+         return setup_imm_df(bld, value.f64);
       else
-         return retype(brw_imm_u64(value.u64[0]), type);
+         return retype(brw_imm_u64(value.u64), type);
    default:
       unreachable("Invalid type size");
    }

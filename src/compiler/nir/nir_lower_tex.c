@@ -356,10 +356,10 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
                    nir_ssa_def *y, nir_ssa_def *u, nir_ssa_def *v,
                    nir_ssa_def *a)
 {
-   nir_const_value m[3] = {
-      { .f32 = { 1.0f,  0.0f,         1.59602678f, 0.0f } },
-      { .f32 = { 1.0f, -0.39176229f, -0.81296764f, 0.0f } },
-      { .f32 = { 1.0f,  2.01723214f,  0.0f,        0.0f } }
+   nir_const_value m[3][4] = {
+      { { .f32 = 1.0f }, { .f32 =  0.0f        }, { .f32 =  1.59602678f }, { .f32 = 0.0f } },
+      { { .f32 = 1.0f }, { .f32 = -0.39176229f }, { .f32 = -0.81296764f }, { .f32 = 0.0f } },
+      { { .f32 = 1.0f }, { .f32 =  2.01723214f }, { .f32 =  0.0f        }, { .f32 = 0.0f } },
    };
 
    nir_ssa_def *yuv =
@@ -755,18 +755,18 @@ saturate_src(nir_builder *b, nir_tex_instr *tex, unsigned sat_mask)
 static nir_ssa_def *
 get_zero_or_one(nir_builder *b, nir_alu_type type, uint8_t swizzle_val)
 {
-   nir_const_value v;
+   nir_const_value v[4];
 
    memset(&v, 0, sizeof(v));
 
    if (swizzle_val == 4) {
-      v.u32[0] = v.u32[1] = v.u32[2] = v.u32[3] = 0;
+      v[0].u32 = v[1].u32 = v[2].u32 = v[3].u32 = 0;
    } else {
       assert(swizzle_val == 5);
       if (type == nir_type_float)
-         v.f32[0] = v.f32[1] = v.f32[2] = v.f32[3] = 1.0;
+         v[0].f32 = v[1].f32 = v[2].f32 = v[3].f32 = 1.0;
       else
-         v.u32[0] = v.u32[1] = v.u32[2] = v.u32[3] = 1;
+         v[0].u32 = v[1].u32 = v[2].u32 = v[3].u32 = 1;
    }
 
    return nir_build_imm(b, 4, 32, v);

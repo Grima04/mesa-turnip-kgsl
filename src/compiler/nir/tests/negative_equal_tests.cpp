@@ -25,18 +25,18 @@
 #include "nir_builder.h"
 #include "util/half_float.h"
 
-static nir_const_value count_sequence(nir_alu_type base_type, unsigned bits,
-                                      int first);
-static nir_const_value negate(const nir_const_value &src,
-                              nir_alu_type base_type, unsigned bits,
-                              unsigned components);
+static void count_sequence(nir_const_value c[NIR_MAX_VEC_COMPONENTS],
+                           nir_alu_type base_type, unsigned bits, int first);
+static void negate(nir_const_value dst[NIR_MAX_VEC_COMPONENTS],
+                   const nir_const_value src[NIR_MAX_VEC_COMPONENTS],
+                   nir_alu_type base_type, unsigned bits, unsigned components);
 
 class const_value_negative_equal_test : public ::testing::Test {
 protected:
    const_value_negative_equal_test()
    {
-      memset(&c1, 0, sizeof(c1));
-      memset(&c2, 0, sizeof(c2));
+      memset(c1, 0, sizeof(c1));
+      memset(c2, 0, sizeof(c2));
    }
 
    ~const_value_negative_equal_test()
@@ -44,8 +44,8 @@ protected:
       /* empty */
    }
 
-   nir_const_value c1;
-   nir_const_value c2;
+   nir_const_value c1[NIR_MAX_VEC_COMPONENTS];
+   nir_const_value c2[NIR_MAX_VEC_COMPONENTS];
 };
 
 class alu_srcs_negative_equal_test : public ::testing::Test {
@@ -67,15 +67,15 @@ protected:
 TEST_F(const_value_negative_equal_test, float32_zero)
 {
    /* Verify that 0.0 negative-equals 0.0. */
-   EXPECT_TRUE(nir_const_value_negative_equal(&c1, &c1,
-                                              4, nir_type_float, 32));
+   EXPECT_TRUE(nir_const_value_negative_equal(c1, c1, NIR_MAX_VEC_COMPONENTS,
+                                              nir_type_float, 32));
 }
 
 TEST_F(const_value_negative_equal_test, float64_zero)
 {
    /* Verify that 0.0 negative-equals 0.0. */
-   EXPECT_TRUE(nir_const_value_negative_equal(&c1, &c1,
-                                              4, nir_type_float, 64));
+   EXPECT_TRUE(nir_const_value_negative_equal(c1, c1, NIR_MAX_VEC_COMPONENTS,
+                                              nir_type_float, 64));
 }
 
 /* Compare an object with non-zero values to itself.  This should always be
@@ -84,8 +84,10 @@ TEST_F(const_value_negative_equal_test, float64_zero)
 #define compare_with_self(base_type, bits) \
 TEST_F(const_value_negative_equal_test, base_type ## bits ## _self)     \
 {                                                                       \
-   c1 = count_sequence(base_type, bits, 1);                             \
-   EXPECT_FALSE(nir_const_value_negative_equal(&c1, &c1, 4, base_type, bits)); \
+   count_sequence(c1, base_type, bits, 1);                              \
+   EXPECT_FALSE(nir_const_value_negative_equal(c1, c1,                  \
+                                               NIR_MAX_VEC_COMPONENTS,  \
+                                               base_type, bits));       \
 }
 
 compare_with_self(nir_type_float, 16)
@@ -105,9 +107,11 @@ compare_with_self(nir_type_uint, 64)
 #define compare_with_negation(base_type, bits) \
 TEST_F(const_value_negative_equal_test, base_type ## bits ## _trivially_true) \
 {                                                                       \
-   c1 = count_sequence(base_type, bits, 1);                             \
-   c2 = negate(c1, base_type, bits, 4);                                 \
-   EXPECT_TRUE(nir_const_value_negative_equal(&c1, &c2, 4, base_type, bits)); \
+   count_sequence(c1, base_type, bits, 1);                              \
+   negate(c2, c1, base_type, bits, NIR_MAX_VEC_COMPONENTS);             \
+   EXPECT_TRUE(nir_const_value_negative_equal(c1, c2,                   \
+                                              NIR_MAX_VEC_COMPONENTS,   \
+                                              base_type, bits));        \
 }
 
 compare_with_negation(nir_type_float, 16)
@@ -128,10 +132,12 @@ compare_with_negation(nir_type_uint, 64)
 #define compare_fewer_components(base_type, bits) \
 TEST_F(const_value_negative_equal_test, base_type ## bits ## _fewer_components) \
 {                                                                       \
-   c1 = count_sequence(base_type, bits, 1);                             \
-   c2 = negate(c1, base_type, bits, 3);                                 \
-   EXPECT_TRUE(nir_const_value_negative_equal(&c1, &c2, 3, base_type, bits)); \
-   EXPECT_FALSE(nir_const_value_negative_equal(&c1, &c2, 4, base_type, bits)); \
+   count_sequence(c1, base_type, bits, 1);                              \
+   negate(c2, c1, base_type, bits, 3);                                  \
+   EXPECT_TRUE(nir_const_value_negative_equal(c1, c2, 3, base_type, bits)); \
+   EXPECT_FALSE(nir_const_value_negative_equal(c1, c2,                  \
+                                               NIR_MAX_VEC_COMPONENTS,  \
+                                               base_type, bits));       \
 }
 
 compare_fewer_components(nir_type_float, 16)
@@ -214,29 +220,27 @@ TEST_F(alu_srcs_negative_equal_test, trivial_negation_int)
    EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
 }
 
-static nir_const_value
-count_sequence(nir_alu_type base_type, unsigned bits, int first)
+static void
+count_sequence(nir_const_value c[NIR_MAX_VEC_COMPONENTS], nir_alu_type base_type, unsigned bits, int first)
 {
-   nir_const_value c;
-
    switch (base_type) {
    case nir_type_float:
       switch (bits) {
       case 16:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.u16); i++)
-            c.u16[i] = _mesa_float_to_half(float(i + first));
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].u16 = _mesa_float_to_half(float(i + first));
 
          break;
 
       case 32:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.f32); i++)
-            c.f32[i] = float(i + first);
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].f32 = float(i + first);
 
          break;
 
       case 64:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.f64); i++)
-            c.f64[i] = double(i + first);
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].f64 = double(i + first);
 
          break;
 
@@ -250,26 +254,26 @@ count_sequence(nir_alu_type base_type, unsigned bits, int first)
    case nir_type_uint:
       switch (bits) {
       case 8:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.i8); i++)
-            c.i8[i] = i + first;
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].i8 = i + first;
 
          break;
 
       case 16:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.i16); i++)
-            c.i16[i] = i + first;
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].i16 = i + first;
 
          break;
 
       case 32:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.i32); i++)
-            c.i32[i] = i + first;
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].i32 = i + first;
 
          break;
 
       case 64:
-         for (unsigned i = 0; i < ARRAY_SIZE(c.i64); i++)
-            c.i64[i] = i + first;
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+            c[i].i64 = i + first;
 
          break;
 
@@ -283,34 +287,31 @@ count_sequence(nir_alu_type base_type, unsigned bits, int first)
    default:
       unreachable("invalid base type");
    }
-
-   return c;
 }
 
-static nir_const_value
-negate(const nir_const_value &src, nir_alu_type base_type, unsigned bits,
-       unsigned components)
+static void
+negate(nir_const_value dst[NIR_MAX_VEC_COMPONENTS],
+       const nir_const_value src[NIR_MAX_VEC_COMPONENTS],
+       nir_alu_type base_type, unsigned bits, unsigned components)
 {
-   nir_const_value c = src;
-
    switch (base_type) {
    case nir_type_float:
       switch (bits) {
       case 16:
          for (unsigned i = 0; i < components; i++)
-            c.u16[i] = _mesa_float_to_half(-_mesa_half_to_float(c.u16[i]));
+            dst[i].u16 = _mesa_float_to_half(-_mesa_half_to_float(src[i].u16));
 
          break;
 
       case 32:
          for (unsigned i = 0; i < components; i++)
-            c.f32[i] = -c.f32[i];
+            dst[i].f32 = -src[i].f32;
 
          break;
 
       case 64:
          for (unsigned i = 0; i < components; i++)
-            c.f64[i] = -c.f64[i];
+            dst[i].f64 = -src[i].f64;
 
          break;
 
@@ -325,25 +326,25 @@ negate(const nir_const_value &src, nir_alu_type base_type, unsigned bits,
       switch (bits) {
       case 8:
          for (unsigned i = 0; i < components; i++)
-            c.i8[i] = -c.i8[i];
+            dst[i].i8 = -src[i].i8;
 
          break;
 
       case 16:
          for (unsigned i = 0; i < components; i++)
-            c.i16[i] = -c.i16[i];
+            dst[i].i16 = -src[i].i16;
 
          break;
 
       case 32:
          for (unsigned i = 0; i < components; i++)
-            c.i32[i] = -c.i32[i];
+            dst[i].i32 = -src[i].i32;
 
          break;
 
       case 64:
          for (unsigned i = 0; i < components; i++)
-            c.i64[i] = -c.i64[i];
+            dst[i].i64 = -src[i].i64;
 
          break;
 
@@ -357,6 +358,4 @@ negate(const nir_const_value &src, nir_alu_type base_type, unsigned bits,
    default:
       unreachable("invalid base type");
    }
-
-   return c;
 }

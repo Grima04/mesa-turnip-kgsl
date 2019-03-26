@@ -268,7 +268,7 @@ static ppir_node *ppir_emit_load_const(ppir_block *block, nir_instr *ni)
    assert(instr->def.bit_size == 32);
 
    for (int i = 0; i < instr->def.num_components; i++)
-      node->constant.value[i].i = instr->value.i32[i];
+      node->constant.value[i].i = instr->value[i].i32;
    node->constant.num = instr->def.num_components;
 
    return &node->node;

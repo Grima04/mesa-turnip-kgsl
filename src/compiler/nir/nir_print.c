@@ -300,7 +300,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
 
       for (i = 0; i < rows; i++) {
          if (i > 0) fprintf(fp, ", ");
-         fprintf(fp, "%s", c->values[0].b[i] ? "true" : "false");
+         fprintf(fp, "%s", c->values[0][i].b ? "true" : "false");
       }
       break;
 
@@ -311,7 +311,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
 
       for (i = 0; i < rows; i++) {
          if (i > 0) fprintf(fp, ", ");
-         fprintf(fp, "0x%02x", c->values[0].u8[i]);
+         fprintf(fp, "0x%02x", c->values[0][i].u8);
       }
       break;
 
@@ -322,7 +322,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
 
       for (i = 0; i < rows; i++) {
          if (i > 0) fprintf(fp, ", ");
-         fprintf(fp, "0x%04x", c->values[0].u16[i]);
+         fprintf(fp, "0x%04x", c->values[0][i].u16);
       }
       break;
 
@@ -333,7 +333,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
 
       for (i = 0; i < rows; i++) {
          if (i > 0) fprintf(fp, ", ");
-         fprintf(fp, "0x%08x", c->values[0].u32[i]);
+         fprintf(fp, "0x%08x", c->values[0][i].u32);
       }
       break;
 
@@ -341,7 +341,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
       for (i = 0; i < cols; i++) {
          for (j = 0; j < rows; j++) {
             if (i + j > 0) fprintf(fp, ", ");
-            fprintf(fp, "%f", _mesa_half_to_float(c->values[i].u16[j]));
+            fprintf(fp, "%f", _mesa_half_to_float(c->values[i][j].u16));
          }
       }
       break;
@@ -350,7 +350,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
       for (i = 0; i < cols; i++) {
          for (j = 0; j < rows; j++) {
             if (i + j > 0) fprintf(fp, ", ");
-            fprintf(fp, "%f", c->values[i].f32[j]);
+            fprintf(fp, "%f", c->values[i][j].f32);
          }
       }
       break;
@@ -359,7 +359,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
       for (i = 0; i < cols; i++) {
          for (j = 0; j < rows; j++) {
             if (i + j > 0) fprintf(fp, ", ");
-            fprintf(fp, "%f", c->values[i].f64[j]);
+            fprintf(fp, "%f", c->values[i][j].f64);
          }
       }
       break;
@@ -371,7 +371,7 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
 
       for (i = 0; i < cols; i++) {
          if (i > 0) fprintf(fp, ", ");
-         fprintf(fp, "0x%08" PRIx64, c->values[0].u64[i]);
+         fprintf(fp, "0x%08" PRIx64, c->values[0][i].u64);
       }
       break;
 
@@ -1038,21 +1038,21 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
 
       switch (instr->def.bit_size) {
       case 64:
-         fprintf(fp, "0x%16" PRIx64 " /* %f */", instr->value.u64[i],
-                 instr->value.f64[i]);
+         fprintf(fp, "0x%16" PRIx64 " /* %f */", instr->value[i].u64,
+                 instr->value[i].f64);
          break;
       case 32:
-         fprintf(fp, "0x%08x /* %f */", instr->value.u32[i], instr->value.f32[i]);
+         fprintf(fp, "0x%08x /* %f */", instr->value[i].u32, instr->value[i].f32);
          break;
       case 16:
-         fprintf(fp, "0x%04x /* %f */", instr->value.u16[i],
-                 _mesa_half_to_float(instr->value.u16[i]));
+         fprintf(fp, "0x%04x /* %f */", instr->value[i].u16,
+                 _mesa_half_to_float(instr->value[i].u16));
          break;
       case 8:
-         fprintf(fp, "0x%02x", instr->value.u8[i]);
+         fprintf(fp, "0x%02x", instr->value[i].u8);
          break;
       case 1:
-         fprintf(fp, "%s", instr->value.b[i] ? "true" : "false");
+         fprintf(fp, "%s", instr->value[i].b ? "true" : "false");
          break;
       }
    }
