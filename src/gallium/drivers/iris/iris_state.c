@@ -3785,8 +3785,17 @@ update_clear_value(struct iris_batch *batch,
                    struct iris_resource *res,
                    struct iris_state_ref *state)
 {
+   struct iris_screen *screen = batch->screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   /* We only need to update the clear color in the surface state for gen8 and
+    * gen9. Newer gens can read it directly from the clear color state buffer.
+    */
+   if (devinfo->gen > 9)
+      return;
+
    unsigned aux_modes = res->aux.possible_usages;
-   aux_modes &= ~ISL_AUX_USAGE_NONE;
+   aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
 
    while (aux_modes) {
       enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
