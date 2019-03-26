@@ -508,11 +508,11 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	OUT_RING(ring, 0xfc);              /* XXX */
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
-	OUT_RING(ring, s[FS].v->total_in > 0 ? 3 : 1);
+	OUT_RING(ring, enable_varyings ? 3 : 1);
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_CTRL_REG0, 1);
 	OUT_RING(ring, A6XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
-			COND(s[FS].v->total_in > 0, A6XX_SP_FS_CTRL_REG0_VARYING) |
+			COND(enable_varyings, A6XX_SP_FS_CTRL_REG0_VARYING) |
 			COND(s[FS].v->frag_coord, A6XX_SP_FS_CTRL_REG0_VARYING) |
 			0x1000000 |
 			A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(s[FS].i->max_reg + 1) |
