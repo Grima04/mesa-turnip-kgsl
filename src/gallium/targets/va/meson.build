@@ -65,8 +65,7 @@ foreach d : [[with_gallium_r600, 'r600'],
 endforeach
 
 meson.add_install_script(
-  prog_python.path(),
-  join_paths(meson.source_root(), 'bin/install_megadrivers.py'),
+  install_megadrivers_py.path(),
   libva_gallium.full_path(),
   va_drivers_path,
   va_drivers,

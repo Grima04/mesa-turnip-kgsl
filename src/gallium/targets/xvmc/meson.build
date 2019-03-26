@@ -60,8 +60,7 @@ foreach d : [[with_gallium_r600, 'r600'], [with_gallium_nouveau, 'nouveau']]
 endforeach
 
 meson.add_install_script(
-  prog_python.path(),
-  join_paths(meson.source_root(), 'bin/install_megadrivers.py'),
+  install_megadrivers_py.path(),
   libxvmc_gallium.full_path(),
   xvmc_drivers_path,
   xvmc_drivers,
