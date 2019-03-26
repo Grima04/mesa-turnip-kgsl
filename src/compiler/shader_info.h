@@ -252,6 +252,12 @@ typedef struct shader_info {
           *   AddressingModelPhysical64: 64
           */
          unsigned ptr_size;
+
+         /*
+          * Arrangement of invocations used to calculate derivatives in a compute
+          * shader.  From NV_compute_shader_derivatives.
+          */
+         enum gl_derivative_group derivative_group;
       } cs;
 
       /* Applies to both TCS and TES. */

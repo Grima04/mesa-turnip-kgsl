@@ -2516,6 +2516,12 @@ struct gl_shader_info
        * ARB_compute_variable_group_size.
        */
       bool LocalSizeVariable;
+
+      /*
+       * Arrangement of invocations used to calculate derivatives in a compute
+       * shader.  From NV_compute_shader_derivatives.
+       */
+      enum gl_derivative_group DerivativeGroup;
    } Comp;
 };
 
