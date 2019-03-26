@@ -67,6 +67,8 @@ enum ir3_driver_param {
 #define IR3_MAX_SHADER_IMAGES    32
 #define IR3_MAX_SO_BUFFERS        4
 #define IR3_MAX_SO_OUTPUTS       64
+#define IR3_MAX_CONSTANT_BUFFERS 32
+
 
 /**
  * For consts needed to pass internal values to shader which may or may not
@@ -474,6 +476,19 @@ struct ir3_shader_variant {
 	struct ir3_shader *shader;
 };
 
+struct ir3_ubo_range {
+	uint32_t offset; /* start offset of this block in const register file */
+	uint32_t start, end; /* range of block that's actually used */
+};
+
+struct ir3_ubo_analysis_state
+{
+	struct ir3_ubo_range range[IR3_MAX_CONSTANT_BUFFERS];
+	uint32_t size;
+	uint32_t lower_count;
+};
+
+
 struct ir3_shader {
 	gl_shader_stage type;
 
@@ -485,6 +500,8 @@ struct ir3_shader {
 	bool from_tgsi;
 
 	struct ir3_compiler *compiler;
+
+	struct ir3_ubo_analysis_state ubo_state;
 
 	struct nir_shader *nir;
 	struct ir3_stream_output_info stream_output;

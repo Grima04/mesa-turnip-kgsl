@@ -254,6 +254,22 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 					cb->user_buffer, cb->buffer);
 		}
 	}
+
+	struct ir3_ubo_analysis_state *state;
+	state = &v->shader->ubo_state;
+
+	for (uint32_t i = 1; i < ARRAY_SIZE(state->range); i++) {
+		struct pipe_constant_buffer *cb = &constbuf->cb[i];
+
+		if (state->range[i].start < state->range[i].end &&
+			constbuf->enabled_mask & (1 << i)) {
+
+			ctx->emit_const(ring, v->type, state->range[i].offset / 4,
+							cb->buffer_offset + state->range[i].start,
+							(state->range[i].end - state->range[i].start) / 4,
+							cb->user_buffer, cb->buffer);
+		}
+	}
 }
 
 static void

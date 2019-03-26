@@ -27,9 +27,38 @@
 #include "util/u_dynarray.h"
 #include "mesa/main/macros.h"
 
-struct ir3_ubo_analysis_state {
-	unsigned lower_count;
-};
+static inline struct ir3_ubo_range
+get_ubo_load_range(nir_intrinsic_instr *instr)
+{
+	struct ir3_ubo_range r;
+
+	const int bytes = nir_intrinsic_dest_components(instr) *
+		(nir_dest_bit_size(instr->dest) / 8);
+
+	r.start = ROUND_DOWN_TO(nir_src_as_uint(instr->src[1]), 16 * 4);
+	r.end = ALIGN(r.start + bytes, 16 * 4);
+
+	return r;
+}
+
+static void
+gather_ubo_ranges(nir_intrinsic_instr *instr,
+				  struct ir3_ubo_analysis_state *state)
+{
+	if (!nir_src_is_const(instr->src[0]))
+		return;
+
+	if (!nir_src_is_const(instr->src[1]))
+		return;
+
+	const struct ir3_ubo_range r = get_ubo_load_range(instr);
+	const uint32_t block = nir_src_as_uint(instr->src[0]);
+
+	if (r.start < state->range[block].start)
+		state->range[block].start = r.start;
+	if (state->range[block].end < r.end)
+		state->range[block].end = r.end;
+}
 
 static void
 lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
@@ -43,15 +72,37 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		return;
 
 	const uint32_t block = nir_src_as_uint(instr->src[0]);
-	if (block > 0)
-		return;
+
+	if (block > 0) {
+		/* We don't lower dynamic array indexing either, but we definitely should.
+		 * We don't have a good way of determining the range of the dynamic
+		 * access, so for now just fall back to pulling.
+		 */
+		if (!nir_src_is_const(instr->src[1]))
+			return;
+
+		/* After gathering the UBO access ranges, we limit the total
+		 * upload. Reject if we're now outside the range.
+		 */
+		const struct ir3_ubo_range r = get_ubo_load_range(instr);
+		if (!(state->range[block].start <= r.start &&
+			  r.end <= state->range[block].end))
+			return;
+	}
 
 	b->cursor = nir_before_instr(&instr->instr);
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
-	nir_ssa_def *uniform_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
-	if (uniform_offset == NULL)
-		uniform_offset = nir_ushr(b, ubo_offset, nir_imm_int(b, 2));
+	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
+	if (new_offset)
+		ubo_offset = new_offset;
+	else
+		ubo_offset = nir_ushr(b, ubo_offset, nir_imm_int(b, 2));
+
+	const int range_offset =
+		(state->range[block].offset - state->range[block].start) / 4;
+	nir_ssa_def *uniform_offset =
+		nir_iadd(b, ubo_offset, nir_imm_int(b, range_offset));
 
 	nir_intrinsic_instr *uniform =
 		nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
@@ -72,7 +123,45 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 bool
 ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 {
-	struct ir3_ubo_analysis_state state = { 0 };
+	struct ir3_ubo_analysis_state *state = &shader->ubo_state;
+
+	memset(state, 0, sizeof(*state));
+	state->range[0].end = nir->num_uniforms * 16;
+
+	nir_foreach_function(function, nir) {
+		if (function->impl) {
+			nir_foreach_block(block, function->impl) {
+				nir_foreach_instr(instr, block) {
+					if (instr->type == nir_instr_type_intrinsic &&
+						nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_ubo)
+						gather_ubo_ranges(nir_instr_as_intrinsic(instr), state);
+				}
+			}
+		}
+	}
+
+	/* For now, everything we upload is accessed statically and thus will be
+	 * used by the shader. Once we can upload dynamically indexed data, we may
+	 * upload sparsely accessed arrays, at which point we probably want to
+	 * give priority to smaller UBOs, on the assumption that big UBOs will be
+	 * accessed dynamically.  Alternatively, we can track statically and
+	 * dynamically accessed ranges separately and upload static rangtes
+	 * first.
+	 */
+	const uint32_t max_upload = 16 * 1024;
+	uint32_t offset = 0;
+	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
+		uint32_t range_size = state->range[i].end - state->range[i].start;
+
+		debug_assert(offset <= max_upload);
+		state->range[i].offset = offset;
+		if (offset + range_size > max_upload) {
+			range_size = max_upload - offset;
+			state->range[i].end = state->range[i].start + range_size;
+		}
+		offset += range_size;
+	}
+	state->size = offset;
 
 	nir_foreach_function(function, nir) {
 		if (function->impl) {
@@ -82,7 +171,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 				nir_foreach_instr_safe(instr, block) {
 					if (instr->type == nir_instr_type_intrinsic &&
 						nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_ubo)
-						lower_ubo_load_to_uniform(nir_instr_as_intrinsic(instr), &builder, &state);
+						lower_ubo_load_to_uniform(nir_instr_as_intrinsic(instr), &builder, state);
 				}
 			}
 
@@ -91,5 +180,5 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 		}
 	}
 
-	return state.lower_count > 0;
+	return state->lower_count > 0;
 }
