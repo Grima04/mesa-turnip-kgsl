@@ -707,6 +707,13 @@ iris_init_render_context(struct iris_screen *screen,
       }
       iris_emit_lri(batch, SAMPLER_MODE, reg_val);
 
+      /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
+      iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
+         reg.EnabledTexelOffsetPrecisionFix = 1;
+         reg.EnabledTexelOffsetPrecisionFixMask = 1;
+      }
+      iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
+
       // XXX: 3D_MODE?
 #endif
 
