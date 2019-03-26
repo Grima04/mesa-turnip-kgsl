@@ -923,21 +923,24 @@ zink_draw_vbo(struct pipe_context *pctx,
          if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
             assert(ctx->ubos[i][index].buffer_size > 0);
             assert(ctx->ubos[i][index].buffer);
-            buffer_infos[num_buffer_info].buffer = zink_resource(ctx->ubos[i][index].buffer)->buffer;
+            struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
+            buffer_infos[num_buffer_info].buffer = res->buffer;
             buffer_infos[num_buffer_info].offset = ctx->ubos[i][index].buffer_offset;
             buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
+            zink_cmdbuf_reference_resoure(cmdbuf, res);
          } else {
             struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
             assert(psampler_view);
             struct zink_sampler_view *sampler_view = (struct zink_sampler_view *)psampler_view;
-            struct zink_resource *resource = zink_resource(psampler_view->texture);
-            image_infos[num_image_info].imageLayout = resource->layout;
+            struct zink_resource *res = zink_resource(psampler_view->texture);
+            image_infos[num_image_info].imageLayout = res->layout;
             image_infos[num_image_info].imageView = sampler_view->image_view;
             image_infos[num_image_info].sampler = ctx->samplers[i][index];
             wds[num_wds].pImageInfo = image_infos + num_image_info;
             ++num_image_info;
+            zink_cmdbuf_reference_resoure(cmdbuf, res);
          }
 
          wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
