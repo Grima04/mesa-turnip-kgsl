@@ -66,7 +66,7 @@ zink_render_pass_reference(struct zink_screen *screen,
    struct zink_render_pass *old_dst = *dst;
 
    if (pipe_reference_described(&old_dst->reference, &src->reference,
-                                (debug_reference_descriptor) debug_describe_zink_render_pass))
+                                (debug_reference_descriptor)debug_describe_zink_render_pass))
       zink_destroy_render_pass(screen, old_dst);
    *dst = src;
 }

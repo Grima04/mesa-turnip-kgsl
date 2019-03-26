@@ -60,7 +60,7 @@ zink_framebuffer_reference(struct zink_screen *screen,
    struct zink_framebuffer *old_dst = *dst;
 
    if (pipe_reference_described(&old_dst->reference, &src->reference,
-                                (debug_reference_descriptor) debug_describe_zink_framebuffer))
+                                (debug_reference_descriptor)debug_describe_zink_framebuffer))
       zink_destroy_framebuffer(screen, old_dst);
    *dst = src;
 }
