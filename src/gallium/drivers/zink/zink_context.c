@@ -25,6 +25,7 @@
 
 #include "zink_cmdbuf.h"
 #include "zink_compiler.h"
+#include "zink_fence.h"
 #include "zink_framebuffer.h"
 #include "zink_pipeline.h"
 #include "zink_program.h"
@@ -979,6 +980,11 @@ zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
            enum pipe_flush_flags flags)
 {
+   struct zink_context *ctx = zink_context(pctx);
+
+   if (pfence)
+      zink_fence_reference(zink_screen(pctx->screen), (struct zink_fence **)pfence,
+                           ctx->cmdbufs[0].fence);
 }
 
 static void
