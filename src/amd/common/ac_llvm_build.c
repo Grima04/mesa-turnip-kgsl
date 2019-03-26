@@ -2547,6 +2547,8 @@ LLVMValueRef ac_build_bit_count(struct ac_llvm_context *ctx, LLVMValueRef src0)
 		result = ac_build_intrinsic(ctx, "llvm.ctpop.i16", ctx->i16,
 					    (LLVMValueRef []) { src0 }, 1,
 					    AC_FUNC_ATTR_READNONE);
+
+		result = LLVMBuildZExt(ctx->builder, result, ctx->i32, "");
 		break;
 	default:
 		unreachable(!"invalid bitsize");
