@@ -54,6 +54,10 @@ zink_context_destroy(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
+
+   if (vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
+      debug_printf("vkQueueWaitIdle failed\n");
+
    for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i)
       vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->cmdbufs[i].cmdbuf);
    vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
