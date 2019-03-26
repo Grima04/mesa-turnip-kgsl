@@ -240,9 +240,8 @@ st_nir_lookup_parameter_index(const struct gl_program_parameter_list *params,
 static void
 st_nir_assign_uniform_locations(struct gl_context *ctx,
                                 struct gl_program *prog,
-                                struct exec_list *uniform_list, unsigned *size)
+                                struct exec_list *uniform_list)
 {
-   int max = 0;
    int shaderidx = 0;
    int imageidx = 0;
 
@@ -298,9 +297,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
       }
 
       uniform->data.driver_location = loc;
-      max = MAX2(max, loc + type_size(uniform->type));
    }
-   *size = max;
 }
 
 void
@@ -934,7 +931,10 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
          st->ctx->Const.Program[nir->info.stage].MaxAtomicBuffers);
 
    st_nir_assign_uniform_locations(st->ctx, prog,
-                                   &nir->uniforms, &nir->num_uniforms);
+                                   &nir->uniforms);
+
+   /* Set num_uniforms in number of attribute slots (vec4s) */
+   nir->num_uniforms = DIV_ROUND_UP(prog->Parameters->NumParameterValues, 4);
 
    if (st->ctx->Const.PackedDriverUniformStorage) {
       NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, st_glsl_type_dword_size,
