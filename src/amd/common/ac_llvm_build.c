@@ -1970,7 +1970,12 @@ ac_build_umsb(struct ac_llvm_context *ctx,
 	/* The HW returns the last bit index from MSB, but TGSI/NIR wants
 	 * the index from LSB. Invert it by doing "31 - msb". */
 	msb = LLVMBuildSub(ctx->builder, highest_bit, msb, "");
-	msb = LLVMBuildTruncOrBitCast(ctx->builder, msb, ctx->i32, "");
+
+	if (bitsize == 64) {
+		msb = LLVMBuildTrunc(ctx->builder, msb, ctx->i32, "");
+	} else if (bitsize == 16) {
+		msb = LLVMBuildSExt(ctx->builder, msb, ctx->i32, "");
+	}
 
 	/* check for zero */
 	return LLVMBuildSelect(ctx->builder,
