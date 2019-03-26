@@ -70,15 +70,29 @@ static const uint64_t priority_to_modifier[] = {
 
 static bool
 modifier_is_supported(const struct gen_device_info *devinfo,
-                      uint64_t modifier)
+                      enum pipe_format pfmt, uint64_t modifier)
 {
    /* XXX: do something real */
    switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_CCS: {
+      if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
+         return false;
+
+      enum isl_format rt_format =
+         iris_format_for_usage(devinfo, pfmt,
+                               ISL_SURF_USAGE_RENDER_TARGET_BIT).fmt;
+
+      enum isl_format linear_format = isl_format_srgb_to_linear(rt_format);
+
+      if (!isl_format_supports_ccs_e(devinfo, linear_format))
+         return false;
+
+      return true;
+   }
    case I915_FORMAT_MOD_Y_TILED:
    case I915_FORMAT_MOD_X_TILED:
    case DRM_FORMAT_MOD_LINEAR:
       return true;
-   case I915_FORMAT_MOD_Y_TILED_CCS:
    case DRM_FORMAT_MOD_INVALID:
    default:
       return false;
@@ -86,14 +100,14 @@ modifier_is_supported(const struct gen_device_info *devinfo,
 }
 
 static uint64_t
-select_best_modifier(struct gen_device_info *devinfo,
+select_best_modifier(struct gen_device_info *devinfo, enum pipe_format pfmt,
                      const uint64_t *modifiers,
                      int count)
 {
    enum modifier_priority prio = MODIFIER_PRIORITY_INVALID;
 
    for (int i = 0; i < count; i++) {
-      if (!modifier_is_supported(devinfo, modifiers[i]))
+      if (!modifier_is_supported(devinfo, pfmt, modifiers[i]))
          continue;
 
       switch (modifiers[i]) {
@@ -161,7 +175,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    int supported_mods = 0;
 
    for (int i = 0; i < ARRAY_SIZE(all_modifiers); i++) {
-      if (!modifier_is_supported(devinfo, all_modifiers[i]))
+      if (!modifier_is_supported(devinfo, pfmt, all_modifiers[i]))
          continue;
 
       if (supported_mods < max) {
@@ -599,7 +613,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       util_format_description(templ->format);
    const bool has_depth = util_format_has_depth(format_desc);
    uint64_t modifier =
-      select_best_modifier(devinfo, modifiers, modifiers_count);
+      select_best_modifier(devinfo, templ->format, modifiers, modifiers_count);
 
    isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
 
