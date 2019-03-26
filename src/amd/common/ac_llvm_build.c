@@ -1794,15 +1794,25 @@ ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
 			     bool glc,
 			     bool writeonly_memory)
 {
-	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
-	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
-
 	vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i16, "");
-	vdata = LLVMBuildZExt(ctx->builder, vdata, ctx->i32, "");
 
-	ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
-				   ctx->i32_0, 1, dfmt, nfmt, glc, false,
-				   writeonly_memory);
+	if (HAVE_LLVM >= 0x900) {
+		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
+		ac_build_llvm8_buffer_store_common(ctx, rsrc, vdata, NULL,
+						   voffset, soffset, 1,
+						   ctx->i16, glc, false,
+						   writeonly_memory, false,
+						   false);
+	} else {
+		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
+		unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+
+		vdata = LLVMBuildZExt(ctx->builder, vdata, ctx->i32, "");
+
+		ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
+					   ctx->i32_0, 1, dfmt, nfmt, glc, false,
+					   writeonly_memory);
+	}
 }
 
 void
@@ -1814,15 +1824,25 @@ ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx,
 			    bool glc,
 			    bool writeonly_memory)
 {
-	unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;
-	unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
-
 	vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i8, "");
-	vdata = LLVMBuildZExt(ctx->builder, vdata, ctx->i32, "");
 
-	ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
-				   ctx->i32_0, 1, dfmt, nfmt, glc, false,
-				   writeonly_memory);
+	if (HAVE_LLVM >= 0x900) {
+		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
+		ac_build_llvm8_buffer_store_common(ctx, rsrc, vdata, NULL,
+						   voffset, soffset, 1,
+						   ctx->i8, glc, false,
+						   writeonly_memory, false,
+						   false);
+	} else {
+		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;
+		unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
+
+		vdata = LLVMBuildZExt(ctx->builder, vdata, ctx->i32, "");
+
+		ac_build_raw_tbuffer_store(ctx, rsrc, vdata, voffset, soffset,
+					   ctx->i32_0, 1, dfmt, nfmt, glc, false,
+					   writeonly_memory);
+	}
 }
 /**
  * Set range metadata on an instruction.  This can only be used on load and
