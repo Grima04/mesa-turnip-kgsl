@@ -139,6 +139,44 @@ target_to_isl_surf_dim(enum pipe_texture_target target)
    unreachable("invalid texture type");
 }
 
+static void
+iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
+                            enum pipe_format pfmt,
+                            int max,
+                            uint64_t *modifiers,
+                            unsigned int *external_only,
+                            int *count)
+{
+   struct iris_screen *screen = (void *) pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   uint64_t all_modifiers[] = {
+      DRM_FORMAT_MOD_LINEAR,
+      I915_FORMAT_MOD_X_TILED,
+      I915_FORMAT_MOD_Y_TILED,
+      // XXX: (broken) I915_FORMAT_MOD_Y_TILED_CCS,
+   };
+
+   int supported_mods = 0;
+
+   for (int i = 0; i < ARRAY_SIZE(all_modifiers); i++) {
+      if (!modifier_is_supported(devinfo, all_modifiers[i]))
+         continue;
+
+      if (supported_mods < max) {
+         if (modifiers)
+            modifiers[supported_mods] = all_modifiers[i];
+
+         if (external_only)
+            external_only[supported_mods] = util_format_is_yuv(pfmt);
+      }
+
+      supported_mods++;
+   }
+
+   *count = supported_mods;
+}
+
 static isl_surf_usage_flags_t
 pipe_bind_to_isl_usage(unsigned bindings)
 {
@@ -1442,6 +1480,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
 void
 iris_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
+   pscreen->query_dmabuf_modifiers = iris_query_dmabuf_modifiers;
    pscreen->resource_create_with_modifiers =
       iris_resource_create_with_modifiers;
    pscreen->resource_create = u_transfer_helper_resource_create;
