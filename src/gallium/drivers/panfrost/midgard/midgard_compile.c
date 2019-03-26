@@ -991,6 +991,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ieq32, ieq);
                 ALU_CASE(ine32, ine);
                 ALU_CASE(ilt32, ilt);
+                ALU_CASE(ult32, ult);
 
                 /* We don't have a native b2f32 instruction. Instead, like many
                  * GPUs, we exploit booleans as 0/~0 for false/true, and

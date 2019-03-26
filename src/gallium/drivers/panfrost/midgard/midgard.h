@@ -103,6 +103,8 @@ typedef enum {
 
         midgard_alu_op_ieq        = 0xA0,
         midgard_alu_op_ine        = 0xA1,
+        midgard_alu_op_ult        = 0xA2,
+        midgard_alu_op_ule        = 0xA3,
         midgard_alu_op_ilt        = 0xA4,
         midgard_alu_op_ile        = 0xA5,
         midgard_alu_op_iball_eq   = 0xA8,
@@ -470,6 +472,8 @@ static char *alu_opcode_names[256] = {
         [midgard_alu_op_f2u8]       = "f2u8",
         [midgard_alu_op_ieq]        = "ieq",
         [midgard_alu_op_ine]        = "ine",
+        [midgard_alu_op_ult]        = "ult",
+        [midgard_alu_op_ule]        = "ule",
         [midgard_alu_op_ilt]        = "ilt",
         [midgard_alu_op_ile]        = "ile",
         [midgard_alu_op_iball_eq]   = "iball_eq",
