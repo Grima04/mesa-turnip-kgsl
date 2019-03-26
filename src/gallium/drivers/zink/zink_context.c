@@ -835,9 +835,8 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    ctx->gfx_pipeline_state.primitive_topology = zink_primitive_topology(dinfo->mode);
 
-   VkPipeline pipeline = zink_create_gfx_pipeline(screen->dev,
-                                                  gfx_program,
-                                                  &ctx->gfx_pipeline_state);
+   VkPipeline pipeline = zink_get_gfx_pipeline(screen->dev, gfx_program,
+                                               &ctx->gfx_pipeline_state);
 
    bool depth_bias = false;
    switch (u_reduced_prim(dinfo->mode)) {
@@ -964,8 +963,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    vkCmdEndRenderPass(cmdbuf->cmdbuf);
 
    zink_end_cmdbuf(ctx, cmdbuf);
-
-   vkDestroyPipeline(screen->dev, pipeline, NULL);
 
    if (dinfo->index_size > 0 && dinfo->has_user_indices)
       pipe_resource_reference(&index_buffer, NULL);

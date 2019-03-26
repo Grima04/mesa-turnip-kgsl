@@ -25,7 +25,9 @@
 
 #include "zink_compiler.h"
 #include "zink_context.h"
+#include "zink_screen.h"
 
+#include "util/hash_table.h"
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 
@@ -89,15 +91,30 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
    return layout;
 }
 
+static uint32_t
+hash_gfx_pipeline_state(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct zink_gfx_pipeline_state));
+}
+
+static bool
+equals_gfx_pipeline_state(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct zink_gfx_pipeline_state)) == 0;
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(VkDevice dev,
                         struct zink_shader *stages[PIPE_SHADER_TYPES - 1])
 {
    struct zink_gfx_program *prog = CALLOC_STRUCT(zink_gfx_program);
-   if (!prog) {
-      debug_printf("failed to allocate gfx-program\n");
+   if (!prog)
       goto fail;
-   }
+
+   prog->pipelines = _mesa_hash_table_create(NULL, hash_gfx_pipeline_state,
+                                             equals_gfx_pipeline_state);
+   if (!prog->pipelines)
+      goto fail;
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i)
       prog->stages[i] = stages[i];
@@ -130,3 +147,33 @@ zink_destroy_gfx_program(VkDevice dev, struct zink_gfx_program *prog)
    FREE(prog);
 }
 
+struct pipeline_cache_entry {
+   struct zink_gfx_pipeline_state state;
+   VkPipeline pipeline;
+};
+
+VkPipeline
+zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
+                      struct zink_gfx_pipeline_state *state)
+{
+   /* TODO: use pre-hashed versions to save some time (can re-hash only when
+      state changes) */
+   struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines, state);
+   if (!entry) {
+      VkPipeline pipeline = zink_create_gfx_pipeline(dev, prog, state);
+      if (pipeline == VK_NULL_HANDLE)
+         return VK_NULL_HANDLE;
+
+      struct pipeline_cache_entry *pc_entry = CALLOC_STRUCT(pipeline_cache_entry);
+      if (!pc_entry)
+         return NULL;
+
+      memcpy(&pc_entry->state, state, sizeof(*state));
+      pc_entry->pipeline = pipeline;
+
+      entry = _mesa_hash_table_insert(prog->pipelines, &pc_entry->state, pc_entry);
+      assert(entry);
+   }
+
+   return ((struct pipeline_cache_entry *)(entry->data))->pipeline;
+}
