@@ -232,7 +232,7 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
    if (ret_type->base_type == vtn_base_type_void) {
       vtn_push_value(b, w[2], vtn_value_type_undef);
    } else {
-      vtn_push_ssa(b, w[2], res_type, vtn_local_load(b, ret_deref));
+      vtn_push_ssa(b, w[2], res_type, vtn_local_load(b, ret_deref, 0));
    }
 }
 
@@ -794,7 +794,7 @@ vtn_handle_phis_first_pass(struct vtn_builder *b, SpvOp opcode,
    _mesa_hash_table_insert(b->phi_table, w, phi_var);
 
    vtn_push_ssa(b, w[2], type,
-                vtn_local_load(b, nir_build_deref_var(&b->nb, phi_var)));
+                vtn_local_load(b, nir_build_deref_var(&b->nb, phi_var), 0));
 
    return true;
 }
@@ -818,7 +818,7 @@ vtn_handle_phi_second_pass(struct vtn_builder *b, SpvOp opcode,
 
       struct vtn_ssa_value *src = vtn_ssa_value(b, w[i]);
 
-      vtn_local_store(b, src, nir_build_deref_var(&b->nb, phi_var));
+      vtn_local_store(b, src, nir_build_deref_var(&b->nb, phi_var), 0);
    }
 
    return true;
@@ -943,7 +943,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
             nir_deref_instr *ret_deref =
                nir_build_deref_cast(&b->nb, nir_load_param(&b->nb, 0),
                                     nir_var_function_temp, ret_type, 0);
-            vtn_local_store(b, src, ret_deref);
+            vtn_local_store(b, src, ret_deref, 0);
          }
 
          if (block->branch_type != vtn_branch_type_none) {

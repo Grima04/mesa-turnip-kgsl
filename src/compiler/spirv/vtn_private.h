@@ -730,10 +730,12 @@ vtn_pointer_to_offset(struct vtn_builder *b, struct vtn_pointer *ptr,
                       nir_ssa_def **index_out);
 
 struct vtn_ssa_value *
-vtn_local_load(struct vtn_builder *b, nir_deref_instr *src);
+vtn_local_load(struct vtn_builder *b, nir_deref_instr *src,
+               enum gl_access_qualifier access);
 
 void vtn_local_store(struct vtn_builder *b, struct vtn_ssa_value *src,
-                     nir_deref_instr *dest);
+                     nir_deref_instr *dest,
+                     enum gl_access_qualifier access);
 
 struct vtn_ssa_value *
 vtn_variable_load(struct vtn_builder *b, struct vtn_pointer *src);
