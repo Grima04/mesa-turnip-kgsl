@@ -38,6 +38,7 @@ void ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_driver_const_layo
 bool ir3_nir_apply_trig_workarounds(nir_shader *shader);
 bool ir3_nir_lower_tg4_to_tex(nir_shader *shader);
 bool ir3_nir_lower_io_offsets(nir_shader *shader);
+bool ir3_nir_move_varying_inputs(nir_shader *shader);
 
 const nir_shader_compiler_options * ir3_get_compiler_options(struct ir3_compiler *compiler);
 bool ir3_key_lowers_nir(const struct ir3_shader_key *key);
