@@ -36,12 +36,13 @@
 
 struct blitter_context;
 struct primconvert_context;
-struct zink_resource;
 
-struct zink_vertex_elements_state;
-struct zink_rasterizer_state;
 struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
+struct zink_gfx_program;
+struct zink_rasterizer_state;
+struct zink_resource;
+struct zink_vertex_elements_state;
 
 struct zink_sampler_view {
    struct pipe_sampler_view base;
@@ -53,6 +54,8 @@ zink_sampler_view(struct pipe_sampler_view *pview)
 {
    return (struct zink_sampler_view *)pview;
 }
+
+#define ZINK_DIRTY_PROGRAM (1 << 0)
 
 struct zink_context {
    struct pipe_context base;
@@ -71,6 +74,9 @@ struct zink_context {
 
    struct zink_shader *gfx_stages[PIPE_SHADER_TYPES - 1];
    struct zink_gfx_pipeline_state gfx_pipeline_state;
+   struct hash_table *program_cache;
+   struct zink_gfx_program *curr_program;
+   unsigned dirty;
 
    struct primconvert_context *primconvert;
 

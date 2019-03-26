@@ -258,11 +258,19 @@ zink_create_vs_state(struct pipe_context *pctx,
 }
 
 static void
+bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
+           struct zink_shader *shader)
+{
+   assert(stage < PIPE_SHADER_COMPUTE);
+   ctx->gfx_stages[stage] = shader;
+   ctx->dirty |= ZINK_DIRTY_PROGRAM;
+}
+
+static void
 zink_bind_vs_state(struct pipe_context *pctx,
                    void *cso)
 {
-   struct zink_context *ctx = zink_context(pctx);
-   ctx->gfx_stages[PIPE_SHADER_VERTEX] = cso;
+   bind_stage(zink_context(pctx), PIPE_SHADER_VERTEX, cso);
 }
 
 static void
@@ -289,8 +297,7 @@ static void
 zink_bind_fs_state(struct pipe_context *pctx,
                    void *cso)
 {
-   struct zink_context *ctx = zink_context(pctx);
-   ctx->gfx_stages[PIPE_SHADER_FRAGMENT] = cso;
+   bind_stage(zink_context(pctx), PIPE_SHADER_FRAGMENT, cso);
 }
 
 static void
@@ -770,6 +777,40 @@ begin_render_pass(struct zink_cmdbuf *cmdbuf, struct zink_render_pass *rp,
    vkCmdBeginRenderPass(cmdbuf->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 }
 
+static uint32_t
+hash_gfx_program(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct zink_shader *) * (PIPE_SHADER_TYPES - 1));
+}
+
+static bool
+equals_gfx_program(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct zink_shader *) * (PIPE_SHADER_TYPES - 1)) == 0;
+}
+
+static struct zink_gfx_program *
+get_gfx_program(struct zink_context *ctx)
+{
+   if (ctx->dirty & ZINK_DIRTY_PROGRAM) {
+      struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
+                                                         ctx->gfx_stages);
+      if (!entry) {
+         struct zink_gfx_program *prog;
+         prog = zink_create_gfx_program(zink_screen(ctx->base.screen)->dev,
+                                                     ctx->gfx_stages);
+         entry = _mesa_hash_table_insert(ctx->program_cache, prog->stages, prog);
+         if (!entry)
+            return NULL;
+      }
+      ctx->curr_program = entry->data;
+      ctx->dirty &= ~ZINK_DIRTY_PROGRAM;
+   }
+
+   assert(ctx->curr_program);
+   return ctx->curr_program;
+}
+
 static void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo)
@@ -788,8 +829,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       return;
    }
 
-   struct zink_gfx_program *gfx_program = zink_create_gfx_program(screen->dev,
-                                                                  ctx->gfx_stages);
+   struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
    if (!gfx_program)
       return;
 
@@ -1216,6 +1256,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
+
+   ctx->program_cache = _mesa_hash_table_create(NULL, hash_gfx_program, equals_gfx_program);
+   if (!ctx->program_cache)
+      goto fail;
+
+   ctx->dirty = ZINK_DIRTY_PROGRAM;
 
    return &ctx->base;
 
