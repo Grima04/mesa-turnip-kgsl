@@ -78,8 +78,7 @@ can_fast_clear_color(struct iris_context *ice,
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
-   /* XXX: Need to fix channel select for gen8 before enabling this. */
-   if (devinfo->gen != 9)
+   if (devinfo->gen > 9)
       return false;
 
    if (res->aux.usage == ISL_AUX_USAGE_NONE)
