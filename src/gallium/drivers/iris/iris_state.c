@@ -714,6 +714,13 @@ iris_init_render_context(struct iris_screen *screen,
       }
       iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
 
+      /* WA_2204188704: Pixel Shader Panic dispatch must be disabled. */
+      iris_pack_state(GENX(COMMON_SLICE_CHICKEN3), &reg_val, reg) {
+         reg.PSThreadPanicDispatch = 0x3;
+         reg.PSThreadPanicDispatchMask = 0x3;
+      }
+      iris_emit_lri(batch, COMMON_SLICE_CHICKEN3, reg_val);
+
       // XXX: 3D_MODE?
 #endif
 
