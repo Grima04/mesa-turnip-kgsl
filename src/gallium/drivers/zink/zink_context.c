@@ -1032,6 +1032,9 @@ zink_blit(struct pipe_context *pctx,
    if (!cmdbuf)
       return;
 
+   zink_cmdbuf_reference_resoure(cmdbuf, src);
+   zink_cmdbuf_reference_resoure(cmdbuf, dst);
+
    if (is_resolve) {
       VkImageResolve region = {};
 
@@ -1164,6 +1167,9 @@ zink_resource_copy_region(struct pipe_context *pctx,
       struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
       if (!cmdbuf)
          return;
+
+      zink_cmdbuf_reference_resoure(cmdbuf, src);
+      zink_cmdbuf_reference_resoure(cmdbuf, dst);
 
       vkCmdCopyImage(cmdbuf->cmdbuf, src->image, src->layout,
                      dst->image, dst->layout,
