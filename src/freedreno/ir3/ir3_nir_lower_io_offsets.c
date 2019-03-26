@@ -124,8 +124,8 @@ check_and_propagate_bit_shift32(nir_builder *b, nir_ssa_def *offset,
 	return shift_ssa;
 }
 
-static nir_ssa_def *
-try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift)
+nir_ssa_def *
+ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift)
 {
 	nir_instr *offset_instr = offset->parent_instr;
 	if (offset_instr->type != nir_instr_type_alu)
@@ -187,7 +187,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	 * Here we use the convention that shifting right is negative while shifting
 	 * left is positive. So 'x / 4' ~ 'x >> 2' or 'x << -2'.
 	 */
-	nir_ssa_def *new_offset = try_propagate_bit_shift(b, offset, -2);
+	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, offset, -2);
 
 	/* The new source that will hold the dword-offset is always the last
 	 * one for every intrinsic.

@@ -50,6 +50,7 @@ libfreedreno_ir3_files = files(
   'ir3_legalize.c',
   'ir3_nir.c',
   'ir3_nir.h',
+  'ir3_nir_analyze_ubo_ranges.c',
   'ir3_nir_lower_io_offsets.c',
   'ir3_nir_lower_tg4_to_tex.c',
   'ir3_print.c',

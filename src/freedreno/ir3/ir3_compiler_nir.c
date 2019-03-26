@@ -681,8 +681,10 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *base_lo, *base_hi, *addr, *src0, *src1;
 	nir_const_value *const_offset;
-	/* UBO addresses are the first driver params: */
-	unsigned ubo = regid(ctx->so->constbase.ubo, 0);
+	/* UBO addresses are the first driver params, but subtract 2 here to
+	 * account for nir_lower_uniforms_to_ubo rebasing the UBOs such that UBO 0
+	 * is the uniforms: */
+	unsigned ubo = regid(ctx->so->constbase.ubo, 0) - 2;
 	const unsigned ptrsz = ir3_pointer_size(ctx);
 
 	int off = 0;
@@ -1151,15 +1153,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		if (const_offset) {
 			idx += const_offset->u32[0];
 			for (int i = 0; i < intr->num_components; i++) {
-				unsigned n = idx * 4 + i;
-				dst[i] = create_uniform(b, n);
+				dst[i] = create_uniform(b, idx + i);
 			}
 		} else {
 			src = ir3_get_src(ctx, &intr->src[0]);
 			for (int i = 0; i < intr->num_components; i++) {
-				int n = idx * 4 + i;
-				dst[i] = create_uniform_indirect(b, n,
-						ir3_get_addr(ctx, src[0], 4));
+				dst[i] = create_uniform_indirect(b, idx + i,
+						ir3_get_addr(ctx, src[0], 1));
 			}
 			/* NOTE: if relative addressing is used, we set
 			 * constlen in the compiler (to worst-case value)

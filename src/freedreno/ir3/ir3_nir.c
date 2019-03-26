@@ -224,10 +224,13 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 
 	ir3_optimize_loop(s);
 
-	/* do idiv lowering after first opt loop to give a chance for
-	 * divide by immed power-of-two to be caught first:
+	/* do ubo load and idiv lowering after first opt loop to get a chance to
+	 * propagate constants for divide by immed power-of-two and constant ubo
+	 * block/offsets:
 	 */
-	if (OPT(s, nir_lower_idiv))
+	const bool ubo_progress = OPT(s, ir3_nir_analyze_ubo_ranges, shader);
+	const bool idiv_progress = OPT(s, nir_lower_idiv);
+	if (ubo_progress || idiv_progress)
 		ir3_optimize_loop(s);
 
 	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp);
