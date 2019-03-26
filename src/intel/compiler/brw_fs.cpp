@@ -4076,6 +4076,9 @@ fs_visitor::lower_integer_multiplication()
             mul->src[1].type = BRW_REGISTER_TYPE_UW;
             mul->src[1].stride *= 2;
 
+            if (mul->src[1].file == IMM) {
+               mul->src[1] = brw_imm_uw(mul->src[1].ud);
+            }
          } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
                     inst->group > 0) {
             /* Among other things the quarter control bits influence which

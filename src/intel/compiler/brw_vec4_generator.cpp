@@ -443,6 +443,9 @@ generate_gs_set_write_offset(struct brw_codegen *p,
       brw_MOV(p, suboffset(stride(dst, 2, 2, 1), 3),
               brw_imm_ud(src0.ud * src1.ud));
    } else {
+      if (src1.file == BRW_IMMEDIATE_VALUE) {
+         src1 = brw_imm_uw(src1.ud);
+      }
       brw_MUL(p, suboffset(stride(dst, 2, 2, 1), 3), stride(src0, 8, 2, 4),
               retype(src1, BRW_REGISTER_TYPE_UW));
    }
