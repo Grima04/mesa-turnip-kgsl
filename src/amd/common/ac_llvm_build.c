@@ -2944,6 +2944,8 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx,
 
 	if (src0_bitsize == 64) {
 		lsb = LLVMBuildTrunc(ctx->builder, lsb, ctx->i32, "");
+	} else if (src0_bitsize == 16) {
+		lsb = LLVMBuildSExt(ctx->builder, lsb, ctx->i32, "");
 	}
 
 	/* TODO: We need an intrinsic to skip this conditional. */
