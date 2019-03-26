@@ -105,6 +105,12 @@ zink_context(struct pipe_context *context)
    return (struct zink_context *)context;
 }
 
+static inline struct zink_cmdbuf *
+zink_context_curr_cmdbuf(struct zink_context *ctx)
+{
+   return ctx->cmdbufs + 0;
+}
+
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageAspectFlags aspect, VkImageLayout new_layout);

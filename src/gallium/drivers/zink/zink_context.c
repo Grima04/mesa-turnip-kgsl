@@ -994,7 +994,7 @@ zink_flush(struct pipe_context *pctx,
 
    if (pfence)
       zink_fence_reference(zink_screen(pctx->screen), (struct zink_fence **)pfence,
-                           ctx->cmdbufs[0].fence);
+                           zink_context_curr_cmdbuf(ctx)->fence);
 }
 
 static void
