@@ -167,8 +167,8 @@ meson-clang:
     UNWIND: "true"
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "auto"
-    CC: clang-7
-    CXX: clang++-7
+    CC: "ccache clang-7"
+    CXX: "ccache clang++-7"
 
 meson-vulkan:
   extends: .meson-build
