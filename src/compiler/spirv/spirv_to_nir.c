@@ -1748,28 +1748,8 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
       switch (val->type->base_type) {
       case vtn_base_type_vector: {
          assert(glsl_type_is_vector(val->type->type));
-         int bit_size = glsl_get_bit_size(val->type->type);
-         for (unsigned i = 0; i < elem_count; i++) {
-            switch (bit_size) {
-            case 64:
-               val->constant->values[0][i].u64 = elems[i]->values[0][0].u64;
-               break;
-            case 32:
-               val->constant->values[0][i].u32 = elems[i]->values[0][0].u32;
-               break;
-            case 16:
-               val->constant->values[0][i].u16 = elems[i]->values[0][0].u16;
-               break;
-            case 8:
-               val->constant->values[0][i].u8 = elems[i]->values[0][0].u8;
-               break;
-            case 1:
-               val->constant->values[0][i].b = elems[i]->values[0][0].b;
-               break;
-            default:
-               vtn_fail("Invalid SpvOpConstantComposite bit size");
-            }
-         }
+         for (unsigned i = 0; i < elem_count; i++)
+            val->constant->values[0][i] = elems[i]->values[0][0];
          break;
       }
 
@@ -1928,27 +1908,8 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
                val->constant = *c;
             } else {
                unsigned num_components = type->length;
-               unsigned bit_size = glsl_get_bit_size(type->type);
                for (unsigned i = 0; i < num_components; i++)
-                  switch(bit_size) {
-                  case 64:
-                     val->constant->values[0][i].u64 = (*c)->values[col][elem + i].u64;
-                     break;
-                  case 32:
-                     val->constant->values[0][i].u32 = (*c)->values[col][elem + i].u32;
-                     break;
-                  case 16:
-                     val->constant->values[0][i].u16 = (*c)->values[col][elem + i].u16;
-                     break;
-                  case 8:
-                     val->constant->values[0][i].u8 = (*c)->values[col][elem + i].u8;
-                     break;
-                  case 1:
-                     val->constant->values[0][i].b = (*c)->values[col][elem + i].b;
-                     break;
-                  default:
-                     vtn_fail("Invalid SpvOpCompositeExtract bit size");
-                  }
+                  val->constant->values[0][i] = (*c)->values[col][elem + i];
             }
          } else {
             struct vtn_value *insert =
@@ -1958,27 +1919,8 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
                *c = insert->constant;
             } else {
                unsigned num_components = type->length;
-               unsigned bit_size = glsl_get_bit_size(type->type);
                for (unsigned i = 0; i < num_components; i++)
-                  switch (bit_size) {
-                  case 64:
-                     (*c)->values[col][elem + i].u64 = insert->constant->values[0][i].u64;
-                     break;
-                  case 32:
-                     (*c)->values[col][elem + i].u32 = insert->constant->values[0][i].u32;
-                     break;
-                  case 16:
-                     (*c)->values[col][elem + i].u16 = insert->constant->values[0][i].u16;
-                     break;
-                  case 8:
-                     (*c)->values[col][elem + i].u8 = insert->constant->values[0][i].u8;
-                     break;
-                  case 1:
-                     (*c)->values[col][elem + i].b = insert->constant->values[0][i].b;
-                     break;
-                  default:
-                     vtn_fail("Invalid SpvOpCompositeInsert bit size");
-                  }
+                  (*c)->values[col][elem + i] = insert->constant->values[0][i];
             }
          }
          break;
