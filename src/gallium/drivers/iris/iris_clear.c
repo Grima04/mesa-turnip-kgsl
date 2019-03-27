@@ -121,8 +121,7 @@ can_fast_clear_color(struct iris_context *ice,
 static union isl_color_value
 convert_fast_clear_color(struct iris_context *ice,
                          struct iris_resource *res,
-                         const union isl_color_value color,
-                         struct isl_swizzle swizzle)
+                         const union isl_color_value color)
 {
    union isl_color_value override_color = color;
    struct pipe_resource *p_res = (void *) res;
@@ -132,7 +131,19 @@ convert_fast_clear_color(struct iris_context *ice,
       util_format_description(format);
    unsigned colormask = util_format_colormask(desc);
 
-   override_color = swizzle_color_value(color, swizzle);
+   if (util_format_is_intensity(format) ||
+       util_format_is_luminance(format) ||
+       util_format_is_luminance_alpha(format)) {
+      override_color.u32[1] = override_color.u32[0];
+      override_color.u32[2] = override_color.u32[0];
+      if (util_format_is_intensity(format))
+         override_color.u32[3] = override_color.u32[0];
+   } else {
+      for (int chan = 0; chan < 3; chan++) {
+         if (!(colormask & (1 << chan)))
+            override_color.u32[chan] = 0;
+      }
+   }
 
    if (util_format_is_unorm(format)) {
       for (int i = 0; i < 4; i++)
@@ -191,7 +202,6 @@ fast_clear_color(struct iris_context *ice,
                  const struct pipe_box *box,
                  enum isl_format format,
                  union isl_color_value color,
-                 struct isl_swizzle swizzle,
                  enum blorp_batch_flags blorp_flags)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
@@ -199,7 +209,7 @@ fast_clear_color(struct iris_context *ice,
    const enum isl_aux_state aux_state =
       iris_resource_get_aux_state(res, level, box->z);
 
-   color = convert_fast_clear_color(ice, res, color, swizzle);
+   color = convert_fast_clear_color(ice, res, color);
 
    bool color_changed = !!memcmp(&res->aux.clear_color, &color,
                                  sizeof(color));
@@ -300,7 +310,7 @@ clear_color(struct iris_context *ice,
                                               res->surf.format, format, color);
    if (can_fast_clear) {
       fast_clear_color(ice, res, level, box, format, color,
-                       swizzle, blorp_flags);
+                       blorp_flags);
       return;
    }
 
