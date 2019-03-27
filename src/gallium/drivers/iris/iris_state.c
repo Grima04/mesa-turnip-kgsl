@@ -1712,7 +1712,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    void *map = alloc_surface_states(ice->state.surface_uploader,
                                     &isv->surface_state,
-                                    isv->res->aux.possible_usages);
+                                    isv->res->aux.sampler_usages);
    if (!unlikely(map))
       return NULL;
 
@@ -1747,17 +1747,15 @@ iris_create_sampler_view(struct pipe_context *ctx,
       isv->view.array_len =
          tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
-      unsigned aux_modes = isv->res->aux.possible_usages;
+      unsigned aux_modes = isv->res->aux.sampler_usages;
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
 
          /* If we have a multisampled depth buffer, do not create a sampler
           * surface state with HiZ.
           */
-         if (!(aux_usage == ISL_AUX_USAGE_HIZ && isv->res->surf.samples > 1)) {
-            fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view,
-                               aux_usage);
-         }
+         fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view,
+                            aux_usage);
 
          map += SURFACE_STATE_ALIGNMENT;
       }
@@ -3753,6 +3751,7 @@ use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
 
 static uint32_t
 surf_state_offset_for_aux(struct iris_resource *res,
+                          unsigned aux_modes,
                           enum isl_aux_usage aux_usage)
 {
    return SURFACE_STATE_ALIGNMENT *
@@ -3763,6 +3762,7 @@ static void
 surf_state_update_clear_value(struct iris_batch *batch,
                               struct iris_resource *res,
                               struct iris_state_ref *state,
+                              unsigned aux_modes,
                               enum isl_aux_usage aux_usage)
 {
    struct isl_device *isl_dev = &batch->screen->isl_dev;
@@ -3772,7 +3772,7 @@ surf_state_update_clear_value(struct iris_batch *batch,
    uint32_t offset_into_bo = real_offset - state_bo->gtt_offset;
    uint32_t clear_offset = offset_into_bo +
       isl_dev->ss.clear_value_offset +
-      surf_state_offset_for_aux(res, aux_usage);
+      surf_state_offset_for_aux(res, aux_modes, aux_usage);
 
    batch->vtbl->copy_mem_mem(batch, state_bo, clear_offset,
                              res->aux.clear_color_bo,
@@ -3785,6 +3785,7 @@ update_clear_value(struct iris_context *ice,
                    struct iris_batch *batch,
                    struct iris_resource *res,
                    struct iris_state_ref *state,
+                   unsigned aux_modes,
                    struct isl_view *view)
 {
    struct iris_screen *screen = batch->screen;
@@ -3796,15 +3797,15 @@ update_clear_value(struct iris_context *ice,
    if (devinfo->gen > 9)
       return;
 
-   unsigned aux_modes = res->aux.possible_usages;
-
    if (devinfo->gen == 9) {
       /* Skip updating the ISL_AUX_USAGE_NONE surface state */
       aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
 
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         surf_state_update_clear_value(batch, res, state, aux_usage);
+
+         surf_state_update_clear_value(batch, res, state, aux_modes,
+                                       aux_usage);
       }
    } else if (devinfo->gen == 8) {
       pipe_resource_reference(&state->res, NULL);
@@ -3844,14 +3845,14 @@ use_surface(struct iris_context *ice,
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
-         update_clear_value(ice, batch, res,
-                            &surf->surface_state, &surf->view);
+         update_clear_value(ice, batch, res, &surf->surface_state,
+                            res->aux.possible_usages, &surf->view);
          surf->clear_color = res->aux.clear_color;
       }
    }
 
    return surf->surface_state.offset +
-          surf_state_offset_for_aux(res, aux_usage);
+          surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
 }
 
 static uint32_t
@@ -3872,14 +3873,15 @@ use_sampler_view(struct iris_context *ice,
          iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
-         update_clear_value(ice, batch, isv->res,
-                            &isv->surface_state, &isv->view);
+         update_clear_value(ice, batch, isv->res, &isv->surface_state,
+                            isv->res->aux.sampler_usages, &isv->view);
          isv->clear_color = isv->res->aux.clear_color;
       }
    }
 
    return isv->surface_state.offset +
-          surf_state_offset_for_aux(isv->res, aux_usage);
+          surf_state_offset_for_aux(isv->res, isv->res->aux.sampler_usages,
+                                    aux_usage);
 }
 
 static uint32_t

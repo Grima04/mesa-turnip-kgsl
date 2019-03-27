@@ -117,6 +117,11 @@ struct iris_resource {
       unsigned possible_usages;
 
       /**
+       * Same as possible_usages, but only with modes supported for sampling.
+       */
+      unsigned sampler_usages;
+
+      /**
        * \brief Maps miptree slices to their current aux state.
        *
        * This two-dimensional array is indexed as [level][layer] and stores an

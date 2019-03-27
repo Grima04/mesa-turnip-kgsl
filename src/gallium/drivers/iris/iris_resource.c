@@ -243,6 +243,7 @@ iris_resource_disable_aux(struct iris_resource *res)
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
+   res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
    res->aux.clear_color_bo = NULL;
@@ -274,6 +275,7 @@ iris_alloc_resource(struct pipe_screen *pscreen,
    pipe_reference_init(&res->base.reference, 1);
 
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
+   res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
 
    return res;
 }
@@ -644,6 +646,15 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
+
+   res->aux.sampler_usages = res->aux.possible_usages;
+
+   /* We don't always support sampling with hiz. But when we do, it must be
+    * single sampled.
+    */
+   if (!devinfo->has_sample_with_hiz || res->surf.samples > 1) {
+      res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
+   }
 
    const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
