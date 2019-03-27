@@ -2061,19 +2061,12 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          break;
       }
 
-      case nir_tex_src_offset: {
-         nir_const_value *const_offset =
-            nir_src_as_const_value(instr->src[i].src);
-         assert(nir_src_bit_size(instr->src[i].src) == 32);
-         if (!const_offset ||
-             !brw_texture_offset(const_offset->i32,
-                                 nir_tex_instr_src_size(instr, i),
-                                 &constant_offset)) {
+      case nir_tex_src_offset:
+         if (!brw_texture_offset(instr, i, &constant_offset)) {
             offset_value =
                get_nir_src(instr->src[i].src, BRW_REGISTER_TYPE_D, 2);
          }
          break;
-      }
 
       case nir_tex_src_texture_offset: {
          /* Emit code to evaluate the actual indexing expression */
