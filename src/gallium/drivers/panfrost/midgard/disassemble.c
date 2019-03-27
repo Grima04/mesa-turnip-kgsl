@@ -794,6 +794,7 @@ print_texture_format(int format)
         switch (format) {
                 DEFINE_CASE(TEXTURE_2D, "2d");
                 DEFINE_CASE(TEXTURE_3D, "3d");
+                DEFINE_CASE(TEXTURE_CUBE, "cube");
 
         default:
                 printf("fmt_%d", format);
