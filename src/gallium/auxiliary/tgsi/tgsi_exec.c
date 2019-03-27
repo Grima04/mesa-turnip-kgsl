@@ -3942,6 +3942,38 @@ exec_load(struct tgsi_exec_machine *mach,
       exec_load_mem(mach, inst);
 }
 
+static uint
+fetch_store_img_unit(struct tgsi_exec_machine *mach,
+                     const struct tgsi_full_dst_register *dst)
+{
+   uint unit = 0;
+   int i;
+   if (dst->Register.Indirect) {
+      union tgsi_exec_channel indir_index, index2;
+      const uint execmask = mach->ExecMask;
+      index2.i[0] =
+      index2.i[1] =
+      index2.i[2] =
+      index2.i[3] = dst->Indirect.Index;
+
+      fetch_src_file_channel(mach,
+                             dst->Indirect.File,
+                             dst->Indirect.Swizzle,
+                             &index2,
+                             &ZeroVec,
+                             &indir_index);
+      for (i = 0; i < TGSI_QUAD_SIZE; i++) {
+         if (execmask & (1 << i)) {
+            unit = dst->Register.Index + indir_index.i[i];
+            break;
+         }
+      }
+   } else {
+      unit = dst->Register.Index;
+   }
+   return unit;
+}
+
 static void
 exec_store_img(struct tgsi_exec_machine *mach,
                const struct tgsi_full_instruction *inst)
@@ -3955,7 +3987,7 @@ exec_store_img(struct tgsi_exec_machine *mach,
    int i, j;
    uint unit;
    int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
-   unit = inst->Dst[0].Register.Index;
+   unit = fetch_store_img_unit(mach, &inst->Dst[0]);
    dim = get_image_coord_dim(inst->Memory.Texture);
    sample = get_image_coord_sample(inst->Memory.Texture);
    assert(dim <= 3);
@@ -3999,7 +4031,7 @@ exec_store_buf(struct tgsi_exec_machine *mach,
    uint unit;
    int kilmask = mach->Temps[TEMP_KILMASK_I].xyzw[TEMP_KILMASK_C].u[0];
 
-   unit = inst->Dst[0].Register.Index;
+   unit = fetch_store_img_unit(mach, &inst->Dst[0]);
 
    params.execmask = mach->ExecMask & mach->NonHelperMask & ~kilmask;
    params.unit = unit;
