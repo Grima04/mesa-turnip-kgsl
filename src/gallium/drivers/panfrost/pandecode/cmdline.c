@@ -126,7 +126,7 @@ pandecode_read_mmap(const char *base, const char *line)
         mali_ptr addr;
         char name[512];
 
-        sscanf(line, "MMAP %lx %s", &addr, name);
+        sscanf(line, "MMAP %" PRIx64 " %s", &addr, name);
         pandecode_read_memory(base, name, addr);
 }
 
@@ -137,7 +137,7 @@ pandecode_read_job_submit(const char *base, const char *line)
         unsigned core_req;
         unsigned is_bifrost;
 
-        sscanf(line, "JS %lx %x %x", &addr, &core_req, &is_bifrost);
+        sscanf(line, "JS %" PRIx64 " %x %x", &addr, &core_req, &is_bifrost);
         pandecode_replay_jc(addr, is_bifrost);
 }
 
