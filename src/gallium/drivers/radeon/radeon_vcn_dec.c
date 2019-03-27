@@ -491,7 +491,7 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
 
 	assert(dec->base.max_references + 1 <= 16);
 
-	for (i = 0 ; i < dec->base.max_references + 1 ; ++i) {
+	for (i = 0 ; i < 16 ; ++i) {
 		if (dec->render_pic_list[i] && dec->render_pic_list[i] == target) {
 			result.curr_pic_idx =
 				(uintptr_t)vl_video_buffer_get_associated_data(target, &dec->base);
