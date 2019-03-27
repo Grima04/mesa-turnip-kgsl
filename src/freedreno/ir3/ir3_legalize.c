@@ -41,6 +41,7 @@
 
 struct ir3_legalize_ctx {
 	struct ir3_compiler *compiler;
+	gl_shader_stage type;
 	bool has_ssbo;
 	bool need_pixlod;
 	int max_bary;
@@ -212,7 +213,20 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			}
 		}
 
-		list_addtail(&n->node, &block->instr_list);
+		if (ctx->compiler->samgq_workaround &&
+			ctx->type == MESA_SHADER_VERTEX && n->opc == OPC_SAMGQ) {
+			struct ir3_instruction *samgp;
+
+			for (i = 0; i < 4; i++) {
+				samgp = ir3_instr_clone(n);
+				samgp->opc = OPC_SAMGP0 + i;
+				if (i > 1)
+					samgp->flags |= IR3_INSTR_SY;
+			}
+			list_delinit(&n->node);
+		} else {
+			list_addtail(&n->node, &block->instr_list);
+		}
 
 		if (is_sfu(n))
 			regmask_set(&state->needs_ss, n->regs[0]);
@@ -480,6 +494,7 @@ ir3_legalize(struct ir3 *ir, bool *has_ssbo, bool *need_pixlod, int *max_bary)
 
 	ctx->max_bary = -1;
 	ctx->compiler = ir->compiler;
+	ctx->type = ir->type;
 
 	/* allocate per-block data: */
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {

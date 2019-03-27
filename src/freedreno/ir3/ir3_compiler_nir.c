@@ -2438,7 +2438,7 @@ emit_instructions(struct ir3_context *ctx)
 	 */
 	ninputs += max_sysvals[ctx->so->type];
 
-	ctx->ir = ir3_create(ctx->compiler, ninputs, noutputs);
+	ctx->ir = ir3_create(ctx->compiler, ctx->so->type, ninputs, noutputs);
 
 	/* Create inputs in first block: */
 	ctx->block = get_block(ctx, nir_start_block(fxn));

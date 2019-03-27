@@ -63,6 +63,10 @@ struct ir3_compiler {
 	 * index coordinate:
 	 */
 	bool array_index_add_half;
+
+	/* on a6xx, rewrite samgp to sequence of samgq0-3 in vertex shaders:
+	 */
+	bool samgq_workaround;
 };
 
 struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id);

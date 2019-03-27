@@ -408,6 +408,7 @@ static inline int ir3_neighbor_count(struct ir3_instruction *instr)
 
 struct ir3 {
 	struct ir3_compiler *compiler;
+	gl_shader_stage type;
 
 	unsigned ninputs, noutputs;
 	struct ir3_instruction **inputs;
@@ -523,7 +524,7 @@ block_id(struct ir3_block *block)
 }
 
 struct ir3 * ir3_create(struct ir3_compiler *compiler,
-		unsigned nin, unsigned nout);
+		gl_shader_stage type, unsigned nin, unsigned nout);
 void ir3_destroy(struct ir3 *shader);
 void * ir3_assemble(struct ir3 *shader,
 		struct ir3_info *info, uint32_t gpu_id);
