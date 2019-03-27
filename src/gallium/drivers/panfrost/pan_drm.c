@@ -206,7 +206,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_panfrost_submit submit = {0,};
-        int bo_handles[2];
+        int bo_handles[7];
 
         submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
         submit.in_sync_count = 1;
@@ -216,8 +216,6 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	submit.jc = job_desc;
 	submit.requirements = reqs;
 
-	/* TODO: We should be passing the transient data as a BO, so the kernel doesn't unmap while in use */
-
 	if (surf) {
 		struct panfrost_resource *res = pan_resource(surf->texture);
 		assert(res->bo->gem_handle > 0);
@@ -226,6 +224,14 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 		if (res->bo->checksum_slab.gem_handle)
 			bo_handles[submit.bo_handle_count++] = res->bo->checksum_slab.gem_handle;
 	}
+
+	/* TODO: Add here the transient pools */
+	bo_handles[submit.bo_handle_count++] = ctx->shaders.gem_handle;
+	bo_handles[submit.bo_handle_count++] = ctx->scratchpad.gem_handle;
+	bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.gem_handle;
+	bo_handles[submit.bo_handle_count++] = ctx->varying_mem.gem_handle;
+	bo_handles[submit.bo_handle_count++] = ctx->misc_0.gem_handle;
+	submit.bo_handles = (u64)bo_handles;
 
         /* Dump memory _before_ submitting so we're not corrupted with actual GPU results */
         pantrace_dump_memory();
