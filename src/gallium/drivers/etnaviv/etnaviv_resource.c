@@ -238,7 +238,7 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    if (!screen->specs.use_blt && templat->target != PIPE_BUFFER)
       etna_adjust_rs_align(screen->specs.pixel_pipes, NULL, &paddingY);
 
-   if (templat->bind & PIPE_BIND_SCANOUT) {
+   if (templat->bind & PIPE_BIND_SCANOUT && screen->ro->kms_fd >= 0) {
       struct pipe_resource scanout_templat = *templat;
       struct renderonly_scanout *scanout;
       struct winsys_handle handle;
