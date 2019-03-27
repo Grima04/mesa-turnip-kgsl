@@ -205,6 +205,7 @@ static void
 draw_vertex_shader_run(struct draw_vertex_shader *vshader,
                        const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
                        unsigned const_size[PIPE_MAX_CONSTANT_BUFFERS],
+                       const struct draw_fetch_info *fetch_info,
                        const struct draw_vertex_info *input_verts,
                        struct draw_vertex_info *output_verts)
 {
@@ -222,7 +223,8 @@ draw_vertex_shader_run(struct draw_vertex_shader *vshader,
                        const_size,
                        input_verts->count,
                        input_verts->vertex_size,
-                       input_verts->vertex_size);
+                       input_verts->vertex_size,
+                       fetch_info->elts);
 }
 
 
@@ -267,24 +269,27 @@ fetch_pipeline_generic(struct draw_pt_middle_end *middle,
     */
    fetch( fpme->fetch, fetch_info, (char *)fetched_vert_info.verts );
 
-   /* Finished with fetch:
-    */
-   fetch_info = NULL;
    vert_info = &fetched_vert_info;
 
    /* Run the shader, note that this overwrites the data[] parts of
     * the pipeline verts.
+    * Need fetch info to get vertex id correct.
     */
    if (fpme->opt & PT_SHADE) {
       draw_vertex_shader_run(vshader,
                              draw->pt.user.vs_constants,
                              draw->pt.user.vs_constants_size,
+                             fetch_info,
                              vert_info,
                              &vs_vert_info);
 
       FREE(vert_info->verts);
       vert_info = &vs_vert_info;
    }
+
+   /* Finished with fetch:
+    */
+   fetch_info = NULL;
 
    if ((fpme->opt & PT_SHADE) && gshader) {
       draw_geometry_shader_run(gshader,
