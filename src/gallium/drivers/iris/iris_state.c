@@ -3781,9 +3781,11 @@ surf_state_update_clear_value(struct iris_batch *batch,
 }
 
 static void
-update_clear_value(struct iris_batch *batch,
+update_clear_value(struct iris_context *ice,
+                   struct iris_batch *batch,
                    struct iris_resource *res,
-                   struct iris_state_ref *state)
+                   struct iris_state_ref *state,
+                   struct isl_view *view)
 {
    struct iris_screen *screen = batch->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
@@ -3795,11 +3797,24 @@ update_clear_value(struct iris_batch *batch,
       return;
 
    unsigned aux_modes = res->aux.possible_usages;
-   aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
 
-   while (aux_modes) {
-      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-      surf_state_update_clear_value(batch, res, state, aux_usage);
+   if (devinfo->gen == 9) {
+      /* Skip updating the ISL_AUX_USAGE_NONE surface state */
+      aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
+
+      while (aux_modes) {
+         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+         surf_state_update_clear_value(batch, res, state, aux_usage);
+      }
+   } else if (devinfo->gen == 8) {
+      pipe_resource_reference(&state->res, NULL);
+      void *map = alloc_surface_states(ice->state.surface_uploader,
+                                       state, res->aux.possible_usages);
+      while (aux_modes) {
+         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+         fill_surface_state(&screen->isl_dev, map, res, view, aux_usage);
+         map += SURFACE_STATE_ALIGNMENT;
+      }
    }
 }
 
@@ -3810,7 +3825,8 @@ update_clear_value(struct iris_batch *batch,
  * Returns the binding table entry (offset to SURFACE_STATE).
  */
 static uint32_t
-use_surface(struct iris_batch *batch,
+use_surface(struct iris_context *ice,
+            struct iris_batch *batch,
             struct pipe_surface *p_surf,
             bool writeable,
             enum isl_aux_usage aux_usage)
@@ -3827,7 +3843,8 @@ use_surface(struct iris_batch *batch,
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
-         update_clear_value(batch, res, &surf->surface_state);
+         update_clear_value(ice, batch, res,
+                            &surf->surface_state, &surf->view);
          surf->clear_color = res->aux.clear_color;
       }
    }
@@ -3853,7 +3870,8 @@ use_sampler_view(struct iris_context *ice,
       iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
-         update_clear_value(batch, isv->res, &isv->surface_state);
+         update_clear_value(ice, batch, isv->res,
+                            &isv->surface_state, &isv->view);
          isv->clear_color = isv->res->aux.clear_color;
       }
    }
@@ -3969,7 +3987,7 @@ iris_populate_binding_table(struct iris_context *ice,
          for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
             uint32_t addr;
             if (cso_fb->cbufs[i]) {
-               addr = use_surface(batch, cso_fb->cbufs[i], true,
+               addr = use_surface(ice, batch, cso_fb->cbufs[i], true,
                                   ice->state.draw_aux_usage[i]);
             } else {
                addr = use_null_fb_surface(batch, ice);
