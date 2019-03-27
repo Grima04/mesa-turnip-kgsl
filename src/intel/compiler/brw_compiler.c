@@ -45,7 +45,6 @@
    .lower_flrp64 = true,                                                      \
    .lower_isign = true,                                                       \
    .lower_ldexp = true,                                                       \
-   .lower_cs_local_id_from_index = true,                                      \
    .lower_device_index_to_zero = true,                                        \
    .native_integers = true,                                                   \
    .use_interpolated_input_intrinsics = true,                                 \
