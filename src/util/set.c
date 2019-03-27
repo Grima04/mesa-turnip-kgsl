@@ -247,7 +247,7 @@ _mesa_set_search_pre_hashed(const struct set *set, uint32_t hash,
 }
 
 static struct set_entry *
-set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced);
+set_add(struct set *ht, uint32_t hash, const void *key);
 
 static void
 set_rehash(struct set *ht, unsigned new_size_index)
@@ -274,7 +274,7 @@ set_rehash(struct set *ht, unsigned new_size_index)
    ht->deleted_entries = 0;
 
    set_foreach(&old_ht, entry) {
-      set_add(ht, entry->hash, entry->key, NULL);
+      set_add(ht, entry->hash, entry->key);
    }
 
    ralloc_free(old_ht.table);
@@ -295,13 +295,14 @@ _mesa_set_resize(struct set *set, uint32_t entries)
 }
 
 /**
- * Inserts the key with the given hash into the table.
+ * Find a matching entry for the given key, or insert it if it doesn't already
+ * exist.
  *
  * Note that insertion may rearrange the table on a resize or rehash,
  * so previously found hash_entries are no longer valid after this function.
  */
 static struct set_entry *
-set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced)
+set_search_or_add(struct set *ht, uint32_t hash, const void *key, bool *found)
 {
    uint32_t hash_address;
    struct set_entry *available_entry = NULL;
@@ -325,22 +326,11 @@ set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced)
             break;
       }
 
-      /* Implement replacement when another insert happens
-       * with a matching key.  This is a relatively common
-       * feature of hash tables, with the alternative
-       * generally being "insert the new value as well, and
-       * return it first when the key is searched for".
-       *
-       * Note that the hash table doesn't have a delete callback.
-       * If freeing of old keys is required to avoid memory leaks,
-       * perform a search before inserting.
-       */
       if (!entry_is_deleted(entry) &&
           entry->hash == hash &&
           ht->key_equals_function(key, entry->key)) {
-         entry->key = key;
-         if (replaced)
-            *replaced = true;
+         if (found)
+            *found = true;
          return entry;
       }
 
@@ -350,13 +340,14 @@ set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced)
    } while (hash_address != hash % ht->size);
 
    if (available_entry) {
+      /* There is no matching entry, create it. */
       if (entry_is_deleted(available_entry))
          ht->deleted_entries--;
       available_entry->hash = hash;
       available_entry->key = key;
       ht->entries++;
-      if (replaced)
-         *replaced = false;
+      if (found)
+         *found = false;
       return available_entry;
    }
 
@@ -366,11 +357,38 @@ set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced)
    return NULL;
 }
 
+/**
+ * Inserts the key with the given hash into the table.
+ *
+ * Note that insertion may rearrange the table on a resize or rehash,
+ * so previously found hash_entries are no longer valid after this function.
+ */
+static struct set_entry *
+set_add(struct set *ht, uint32_t hash, const void *key)
+{
+   struct set_entry *entry = set_search_or_add(ht, hash, key, NULL);
+
+   if (unlikely(!entry))
+      return NULL;
+
+   /* Note: If a matching entry already exists, this will replace it.  This is
+    * a relatively common feature of hash tables, with the alternative
+    * generally being "insert the new value as well, and return it first when
+    * the key is searched for".
+    *
+    * Note that the hash table doesn't have a delete callback.  If freeing of
+    * old keys is required to avoid memory leaks, use the alternative
+    * _mesa_set_search_or_add function and implement the replacement yourself.
+    */
+   entry->key = key;
+   return entry;
+}
+
 struct set_entry *
 _mesa_set_add(struct set *set, const void *key)
 {
    assert(set->key_hash_function);
-   return set_add(set, set->key_hash_function(key), key, NULL);
+   return set_add(set, set->key_hash_function(key), key);
 }
 
 struct set_entry *
@@ -378,14 +396,16 @@ _mesa_set_add_pre_hashed(struct set *set, uint32_t hash, const void *key)
 {
    assert(set->key_hash_function == NULL ||
           hash == set->key_hash_function(key));
-   return set_add(set, hash, key, NULL);
+   return set_add(set, hash, key);
 }
 
 struct set_entry *
 _mesa_set_search_and_add(struct set *set, const void *key, bool *replaced)
 {
    assert(set->key_hash_function);
-   return set_add(set, set->key_hash_function(key), key, replaced);
+   return _mesa_set_search_and_add_pre_hashed(set,
+                                              set->key_hash_function(key),
+                                              key, replaced);
 }
 
 struct set_entry *
@@ -394,7 +414,32 @@ _mesa_set_search_and_add_pre_hashed(struct set *set, uint32_t hash,
 {
    assert(set->key_hash_function == NULL ||
           hash == set->key_hash_function(key));
-   return set_add(set, hash, key, replaced);
+   struct set_entry *entry = set_search_or_add(set, hash, key, replaced);
+
+   if (unlikely(!entry))
+      return NULL;
+
+   /* This implements the replacement, same as _mesa_set_add(). The user will
+    * be notified if we're overwriting a found entry.
+    */
+   entry->key = key;
+   return entry;
+}
+
+struct set_entry *
+_mesa_set_search_or_add(struct set *set, const void *key)
+{
+   assert(set->key_hash_function);
+   return set_search_or_add(set, set->key_hash_function(key), key, NULL);
+}
+
+struct set_entry *
+_mesa_set_search_or_add_pre_hashed(struct set *set, uint32_t hash,
+                                   const void *key)
+{
+   assert(set->key_hash_function == NULL ||
+          hash == set->key_hash_function(key));
+   return set_search_or_add(set, hash, key, NULL);
 }
 
 /**
