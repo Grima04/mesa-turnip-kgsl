@@ -87,6 +87,7 @@ panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsr
 
         rsrc->bo->gpu = rsrc->bo->afbc_slab.gpu | (ds ? 0 : 1);
         rsrc->bo->cpu = rsrc->bo->afbc_slab.cpu;
+        rsrc->bo->gem_handle = rsrc->bo->afbc_slab.gem_handle;
 }
 
 static void
