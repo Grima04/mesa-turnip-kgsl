@@ -206,6 +206,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_panfrost_submit submit = {0,};
+        int bo_handles[2];
 
         submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
         submit.in_sync_count = 1;
@@ -215,10 +216,15 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	submit.jc = job_desc;
 	submit.requirements = reqs;
 
+	/* TODO: We should be passing the transient data as a BO, so the kernel doesn't unmap while in use */
+
 	if (surf) {
 		struct panfrost_resource *res = pan_resource(surf->texture);
-		submit.bo_handles = (u64) &res->bo->gem_handle;
-		submit.bo_handle_count = 1;
+		assert(res->bo->gem_handle > 0);
+		bo_handles[submit.bo_handle_count++] = res->bo->gem_handle;
+
+		if (res->bo->checksum_slab.gem_handle)
+			bo_handles[submit.bo_handle_count++] = res->bo->checksum_slab.gem_handle;
 	}
 
         /* Dump memory _before_ submitting so we're not corrupted with actual GPU results */
@@ -248,9 +254,8 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
 	}
 
 	ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx), PANFROST_JD_REQ_FS, surf);
-	assert(!ret);
 
-        return 0;
+        return ret;
 }
 
 static struct panfrost_fence *
