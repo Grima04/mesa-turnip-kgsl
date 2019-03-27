@@ -278,6 +278,14 @@ midgard_writeout;
 
 typedef enum {
         midgard_op_ld_st_noop   = 0x03,
+
+        /* Unclear why this is on the L/S unit, but (with an address of 0,
+         * appropriate swizzle, magic constant 0x24, and xy mask?) moves fp32 cube
+         * map coordinates in r27 to its cube map texture coordinate
+         * destination (e.g r29). 0x4 magic for loading from fp16 instead */
+
+        midgard_op_store_cubemap_coords = 0x0E,
+
         midgard_op_load_attr_16 = 0x95,
         midgard_op_load_attr_32 = 0x94,
         midgard_op_load_vary_16 = 0x99,
@@ -507,6 +515,7 @@ static char *alu_opcode_names[256] = {
 };
 
 static char *load_store_opcode_names[256] = {
+        [midgard_op_store_cubemap_coords] = "st_cubemap_coords",
         [midgard_op_load_attr_16] = "ld_attr_16",
         [midgard_op_load_attr_32] = "ld_attr_32",
         [midgard_op_load_vary_16] = "ld_vary_16",
