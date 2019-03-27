@@ -75,25 +75,7 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
 
       for (unsigned j = 0; j < nir_ssa_alu_instr_src_components(instr, i);
            j++) {
-         switch(load_const->def.bit_size) {
-         case 64:
-            src[i][j].u64 = load_const->value[instr->src[i].swizzle[j]].u64;
-            break;
-         case 32:
-            src[i][j].u32 = load_const->value[instr->src[i].swizzle[j]].u32;
-            break;
-         case 16:
-            src[i][j].u16 = load_const->value[instr->src[i].swizzle[j]].u16;
-            break;
-         case 8:
-            src[i][j].u8 = load_const->value[instr->src[i].swizzle[j]].u8;
-            break;
-         case 1:
-            src[i][j].b = load_const->value[instr->src[i].swizzle[j]].b;
-            break;
-         default:
-            unreachable("Invalid bit size");
-         }
+         src[i][j] = load_const->value[instr->src[i].swizzle[j]];
       }
 
       /* We shouldn't have any source modifiers in the optimization loop. */
