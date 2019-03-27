@@ -26,6 +26,7 @@
  */
 
 #include "nir.h"
+#include "c11/threads.h"
 #include <assert.h>
 
 /*
@@ -1180,10 +1181,17 @@ destroy_validate_state(validate_state *state)
    _mesa_hash_table_destroy(state->errors, NULL);
 }
 
+mtx_t fail_dump_mutex = _MTX_INITIALIZER_NP;
+
 static void
 dump_errors(validate_state *state, const char *when)
 {
    struct hash_table *errors = state->errors;
+
+   /* Lock around dumping so that we get clean dumps in a multi-threaded
+    * scenario
+    */
+   mtx_lock(&fail_dump_mutex);
 
    if (when) {
       fprintf(stderr, "NIR validation failed %s\n", when);
@@ -1202,6 +1210,8 @@ dump_errors(validate_state *state, const char *when)
          fprintf(stderr, "%s\n", (char *)entry->data);
       }
    }
+
+   mtx_unlock(&fail_dump_mutex);
 
    abort();
 }
