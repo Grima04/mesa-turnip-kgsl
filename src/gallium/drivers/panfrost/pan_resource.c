@@ -218,7 +218,10 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
                 height = u_minify(height, 1);
         }
 
-        bo->size = ALIGN(offset, 4096);
+        assert(tmpl->array_size);
+
+        bo->cubemap_stride = ALIGN(offset, 64);
+        bo->size = ALIGN(bo->cubemap_stride * tmpl->array_size, 4096);
 }
 
 static struct panfrost_bo *
@@ -286,6 +289,7 @@ panfrost_resource_create(struct pipe_screen *screen,
                 case PIPE_TEXTURE_1D:
                 case PIPE_TEXTURE_2D:
                 case PIPE_TEXTURE_3D:
+                case PIPE_TEXTURE_CUBE:
                 case PIPE_TEXTURE_RECT:
                         break;
                 default:
@@ -388,7 +392,6 @@ panfrost_transfer_map(struct pipe_context *pctx,
         transfer->base.box = *box;
         transfer->base.stride = bo->slices[level].stride;
         transfer->base.layer_stride = bytes_per_pixel * resource->width0; /* TODO: Cubemaps */
-        assert(!transfer->base.box.z);
 
         pipe_resource_reference(&transfer->base.resource, resource);
 
@@ -417,6 +420,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         } else {
                 return bo->cpu
                         + bo->slices[level].offset
+                        + transfer->base.box.z * bo->cubemap_stride
                         + transfer->base.box.y * bo->slices[level].stride
                         + transfer->base.box.x * bytes_per_pixel;
         }

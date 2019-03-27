@@ -53,8 +53,11 @@ struct panfrost_bo {
         /* GPU address for the object */
         mali_ptr gpu;
 
-        /* Size of the entire tree */
+        /* Size of all entire trees */
         size_t size;
+
+        /* Distance from tree to tree */
+        unsigned cubemap_stride;
 
         /* Set if this bo was imported rather than allocated */
         bool imported;

@@ -1907,9 +1907,6 @@ panfrost_create_sampler_view(
          * (data) itself. So, we serialise the descriptor here and cache it for
          * later. */
 
-        /* TODO: Other types of textures */
-        assert(template->target == PIPE_TEXTURE_2D);
-
         /* Make sure it's something with which we're familiar */
         assert(bytes_per_pixel >= 1 && bytes_per_pixel <= 4);
 
