@@ -773,12 +773,14 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
                  * rsrc->gpu. However, attribute buffers must be 64 aligned. If
                  * it is not, for now we have to duplicate the buffer. */
 
-                mali_ptr effective_address = (rsrc->bo->gpu + buf->buffer_offset);
+                mali_ptr effective_address = rsrc ? (rsrc->bo->gpu + buf->buffer_offset) : 0;
 
-                if (effective_address & 0x3F) {
-                        attrs[i].elements = panfrost_upload_transient(ctx, rsrc->bo->cpu + buf->buffer_offset, attrs[i].size) | 1;
+                if (effective_address) {
+                        attrs[i].elements = panfrost_upload_transient(ctx, rsrc->bo->cpu + buf->buffer_offset, attrs[i].size) | MALI_ATTR_LINEAR;
+                } else if (effective_address) {
+                        attrs[i].elements = effective_address | MALI_ATTR_LINEAR;
                 } else {
-                        attrs[i].elements = effective_address | 1;
+                        /* Leave unset? */
                 }
         }
 
