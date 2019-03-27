@@ -1480,6 +1480,12 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
    char *vendor_name = NULL;
    char vendor_buf[PROPERTY_VALUE_MAX];
 
+#ifdef EGL_FORCE_RENDERNODE
+   const unsigned node_type = DRM_NODE_RENDER;
+#else
+   const unsigned node_type = swrast ? DRM_NODE_PRIMARY : DRM_NODE_RENDER;
+#endif
+
    if (property_get("drm.gpu.vendor_name", vendor_buf, NULL) > 0)
       vendor_name = vendor_buf;
 
@@ -1490,13 +1496,13 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
    for (int i = 0; i < num_devices; i++) {
       device = devices[i];
 
-      if (!(device->available_nodes & (1 << DRM_NODE_RENDER)))
+      if (!(device->available_nodes & (1 << node_type)))
          continue;
 
-      dri2_dpy->fd = loader_open_device(device->nodes[DRM_NODE_RENDER]);
+      dri2_dpy->fd = loader_open_device(device->nodes[node_type]);
       if (dri2_dpy->fd < 0) {
          _eglLog(_EGL_WARNING, "%s() Failed to open DRM device %s",
-                 __func__, device->nodes[DRM_NODE_RENDER]);
+                 __func__, device->nodes[node_type]);
          continue;
       }
 
