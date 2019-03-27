@@ -1355,29 +1355,22 @@ droid_load_driver(_EGLDisplay *disp)
    if (dri2_dpy->driver_name == NULL)
       return false;
 
-   dri2_dpy->is_render_node = drmGetNodeTypeFromFd(dri2_dpy->fd) == DRM_NODE_RENDER;
-
-   if (!dri2_dpy->is_render_node) {
 #ifdef HAVE_DRM_GRALLOC
-       /* Handle control nodes using __DRI_DRI2_LOADER extension and GEM names
-        * for backwards compatibility with drm_gralloc. (Do not use on new
-        * systems.) */
-       dri2_dpy->loader_extensions = droid_dri2_loader_extensions;
-       if (!dri2_load_driver(disp)) {
-          err = "DRI2: failed to load driver";
-          goto error;
-       }
+   /* Handle control nodes using __DRI_DRI2_LOADER extension and GEM names
+    * for backwards compatibility with drm_gralloc. (Do not use on new
+    * systems.) */
+   dri2_dpy->loader_extensions = droid_dri2_loader_extensions;
+   if (!dri2_load_driver(disp)) {
+      err = "DRI2: failed to load driver";
+      goto error;
+   }
 #else
-       err = "DRI2: handle is not for a render node";
-       goto error;
+   dri2_dpy->loader_extensions = droid_image_loader_extensions;
+   if (!dri2_load_driver_dri3(disp)) {
+      err = "DRI3: failed to load driver";
+      goto error;
+   }
 #endif
-   } else {
-       dri2_dpy->loader_extensions = droid_image_loader_extensions;
-       if (!dri2_load_driver_dri3(disp)) {
-          err = "DRI3: failed to load driver";
-          goto error;
-       }
-    }
 
    return true;
 
@@ -1440,9 +1433,9 @@ droid_open_device(_EGLDisplay *disp)
    int fd = -1, err = -EINVAL;
 
    if (dri2_dpy->gralloc->perform)
-         err = dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
-                                          GRALLOC_MODULE_PERFORM_GET_DRM_FD,
-                                          &fd);
+      err = dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
+                                       GRALLOC_MODULE_PERFORM_GET_DRM_FD,
+                                       &fd);
    if (err || fd < 0) {
       _eglLog(_EGL_WARNING, "fail to get drm fd");
       return EGL_FALSE;
@@ -1450,7 +1443,10 @@ droid_open_device(_EGLDisplay *disp)
 
    dri2_dpy->fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
    if (dri2_dpy->fd < 0)
-     return EGL_FALSE;
+      return EGL_FALSE;
+
+   if (drmGetNodeTypeFromFd(dri2_dpy->fd) == DRM_NODE_RENDER)
+      return EGL_FALSE;
 
    return droid_probe_device(disp);
 }
