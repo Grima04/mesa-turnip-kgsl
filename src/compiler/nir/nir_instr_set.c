@@ -824,11 +824,10 @@ nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr)
    if (!instr_can_rewrite(instr))
       return false;
 
-   uint32_t hash = hash_instr(instr);
-   struct set_entry *e = _mesa_set_search_pre_hashed(instr_set, hash, instr);
-   if (e) {
+   struct set_entry *e = _mesa_set_search_or_add(instr_set, instr);
+   nir_instr *match = (nir_instr *) e->key;
+   if (match != instr) {
       nir_ssa_def *def = nir_instr_get_dest_ssa_def(instr);
-      nir_instr *match = (nir_instr *) e->key;
       nir_ssa_def *new_def = nir_instr_get_dest_ssa_def(match);
 
       /* It's safe to replace an exact instruction with an inexact one as
@@ -843,7 +842,6 @@ nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr)
       return true;
    }
 
-   _mesa_set_add_pre_hashed(instr_set, hash, instr);
    return false;
 }
 
