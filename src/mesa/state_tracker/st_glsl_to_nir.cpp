@@ -839,6 +839,10 @@ st_link_nir(struct gl_context *ctx,
       }
 
       nir_sweep(shader->Program->nir);
+
+      /* The GLSL IR won't be needed anymore. */
+      ralloc_free(shader->ir);
+      shader->ir = NULL;
    }
 
    return true;
