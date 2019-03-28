@@ -1208,10 +1208,10 @@ nir_visitor::visit(ir_call *ir)
          /* Set the image variable dereference. */
          exec_node *param = ir->actual_parameters.get_head();
          ir_dereference *image = (ir_dereference *)param;
-         const glsl_type *type =
-            image->variable_referenced()->type->without_array();
+         nir_deref_instr *deref = evaluate_deref(image);
+         const glsl_type *type = deref->type;
 
-         instr->src[0] = nir_src_for_ssa(&evaluate_deref(image)->dest.ssa);
+         instr->src[0] = nir_src_for_ssa(&deref->dest.ssa);
          param = param->get_next();
 
          /* Set the intrinsic destination. */
