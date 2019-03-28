@@ -3776,6 +3776,11 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(physical_storage_buffer_address, cap);
          break;
 
+      case SpvCapabilityComputeDerivativeGroupQuadsNV:
+      case SpvCapabilityComputeDerivativeGroupLinearNV:
+         spv_check_supported(derivative_group, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability");
       }
@@ -4017,6 +4022,16 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
 
    case SpvExecutionModeStencilRefReplacingEXT:
       vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      break;
+
+   case SpvExecutionModeDerivativeGroupQuadsNV:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      b->shader->info.cs.derivative_group = DERIVATIVE_GROUP_QUADS;
+      break;
+
+   case SpvExecutionModeDerivativeGroupLinearNV:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      b->shader->info.cs.derivative_group = DERIVATIVE_GROUP_LINEAR;
       break;
 
    default:
