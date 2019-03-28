@@ -815,6 +815,21 @@ fail:
    return NULL;
 }
 
+static void
+iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct iris_resource *res = (void *) resource;
+   const struct isl_drm_modifier_info *mod = res->mod_info;
+
+   iris_resource_prepare_access(ice, render_batch, res,
+                                0, INTEL_REMAINING_LEVELS,
+                                0, INTEL_REMAINING_LAYERS,
+                                mod ? mod->aux_usage : ISL_AUX_USAGE_NONE,
+                                mod ? mod->supports_clear_color : false);
+}
+
 static boolean
 iris_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *ctx,
@@ -1383,21 +1398,6 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 
    pipe_resource_reference(&xfer->resource, NULL);
    slab_free(&ice->transfer_pool, map);
-}
-
-static void
-iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
-{
-   struct iris_context *ice = (struct iris_context *)ctx;
-   struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
-   struct iris_resource *res = (void *) resource;
-   const struct isl_drm_modifier_info *mod = res->mod_info;
-
-   iris_resource_prepare_access(ice, render_batch, res,
-                                0, INTEL_REMAINING_LEVELS,
-                                0, INTEL_REMAINING_LAYERS,
-                                mod ? mod->aux_usage : ISL_AUX_USAGE_NONE,
-                                mod ? mod->supports_clear_color : false);
 }
 
 void
