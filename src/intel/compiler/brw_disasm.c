@@ -1661,7 +1661,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       format(file, "Pop: %"PRIu64, brw_inst_gen4_pop_count(devinfo, inst));
    } else if (devinfo->gen < 6 && (opcode == BRW_OPCODE_IF ||
                                    opcode == BRW_OPCODE_IFF ||
-                                   opcode == BRW_OPCODE_HALT)) {
+                                   opcode == BRW_OPCODE_HALT ||
+                                   opcode == BRW_OPCODE_WHILE)) {
       pad(file, 16);
       format(file, "Jump: %d", brw_inst_gen4_jump_count(devinfo, inst));
    } else if (devinfo->gen < 6 && opcode == BRW_OPCODE_ENDIF) {
