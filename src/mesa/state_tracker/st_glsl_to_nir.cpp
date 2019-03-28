@@ -922,6 +922,7 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
    if (options->lower_all_io_to_temps ||
+       options->lower_all_io_to_elements ||
        nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_GEOMETRY) {
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
