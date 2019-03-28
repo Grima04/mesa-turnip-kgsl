@@ -787,7 +787,7 @@ vtn_handle_glsl450_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case GLSLstd450InterpolateAtCentroid:
    case GLSLstd450InterpolateAtSample:
    case GLSLstd450InterpolateAtOffset:
-      handle_glsl450_interpolation(b, ext_opcode, w, count);
+      handle_glsl450_interpolation(b, (enum GLSLstd450)ext_opcode, w, count);
       break;
 
    default:
