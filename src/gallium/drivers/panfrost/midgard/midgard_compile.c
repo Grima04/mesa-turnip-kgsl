@@ -284,6 +284,7 @@ M_LOAD(load_uniform_32);
 M_LOAD(load_color_buffer_8);
 //M_STORE(store_vary_16);
 M_STORE(store_vary_32);
+M_STORE(store_cubemap_coords);
 
 static midgard_instruction
 v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, unsigned cond)
@@ -1544,10 +1545,31 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         int index = nir_src_index(ctx, &instr->src[i].src);
 
                         midgard_vector_alu_src alu_src = blank_alu_src;
-                        alu_src.swizzle = (COMPONENT_Y << 2);
 
-                        midgard_instruction ins = v_fmov(index, alu_src, SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg));
-                        emit_mir_instruction(ctx, ins);
+                        int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
+
+                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                /* For cubemaps, we need to load coords into
+                                 * special r27, and then use a special ld/st op
+                                 * to copy into the texture register */
+
+                                alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X);
+
+                                midgard_instruction move = v_fmov(index, alu_src, SSA_FIXED_REGISTER(27));
+                                emit_mir_instruction(ctx, move);
+
+                                midgard_instruction st = m_store_cubemap_coords(reg, 0);
+                                st.load_store.unknown = 0x24; /* XXX: What is this? */
+                                st.load_store.mask = 0x3; /* xy? */
+                                st.load_store.swizzle = alu_src.swizzle;
+                                emit_mir_instruction(ctx, st);
+
+                        } else {
+                                alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X);
+
+                                midgard_instruction ins = v_fmov(index, alu_src, reg);
+                                emit_mir_instruction(ctx, ins);
+                        }
 
                         //midgard_pin_output(ctx, index, REGISTER_TEXTURE_BASE + in_reg);
 
@@ -1927,7 +1949,7 @@ allocate_registers(compiler_context *ctx)
                                 break;
 
                         case TAG_LOAD_STORE_4: {
-                                if (OP_IS_STORE(ins->load_store.op)) {
+                                if (OP_IS_STORE_VARY(ins->load_store.op)) {
                                         /* TODO: use ssa_args for store_vary */
                                         ins->load_store.reg = 0;
                                 } else {

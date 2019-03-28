@@ -24,9 +24,14 @@
 
 /* Some constants and macros not found in the disassembler */
 
-#define OP_IS_STORE(op) (\
+#define OP_IS_STORE_VARY(op) (\
 		op == midgard_op_store_vary_16 || \
 		op == midgard_op_store_vary_32 \
+	)
+
+#define OP_IS_STORE(op) (\
+                OP_IS_STORE_VARY(op) || \
+                op == midgard_op_store_cubemap_coords \
 	)
 
 /* ALU control words are single bit fields with a lot of space */
