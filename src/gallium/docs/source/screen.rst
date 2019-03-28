@@ -503,6 +503,7 @@ The integer capabilities:
   cases may be a smaller number.
 * ``PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK``: Whether pipe_grid_info::last_block
   is implemented by the driver. See struct pipe_grid_info for more details.
+* ``PIPE_CAP_COMPUTE_SHADER_DERIVATIVE``: True if the driver supports derivatives (and texture lookups with implicit derivatives) in compute shaders.
 
 .. _pipe_capf:
 
