@@ -1835,9 +1835,7 @@ get_deref_offset(struct ac_nir_context *ctx, nir_deref_instr *instr,
 			if (vertex_index_out)
 				*vertex_index_out = 0;
 		} else {
-			nir_const_value *v = nir_src_as_const_value(path.path[idx_lvl]->arr.index);
-			assert(v);
-			*vertex_index_out = v->u32[0];
+			*vertex_index_out = nir_src_as_uint(path.path[idx_lvl]->arr.index);
 		}
 		++idx_lvl;
 	}
@@ -1847,9 +1845,7 @@ get_deref_offset(struct ac_nir_context *ctx, nir_deref_instr *instr,
 
 	if (var->data.compact) {
 		assert(instr->deref_type == nir_deref_type_array);
-		nir_const_value *v = nir_src_as_const_value(instr->arr.index);
-		assert(v);
-		const_offset = v->u32[0];
+		const_offset = nir_src_as_uint(instr->arr.index);
 		goto out;
 	}
 
@@ -3038,9 +3034,8 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 			unsigned array_size = glsl_count_attribute_slots(deref_instr->type, false);
 
 			LLVMValueRef offset;
-			nir_const_value *const_value = nir_src_as_const_value(deref_instr->arr.index);
-			if (const_value) {
-				offset = LLVMConstInt(ctx->ac.i32, array_size * const_value->u32[0], false);
+			if (nir_src_is_const(deref_instr->arr.index)) {
+				offset = LLVMConstInt(ctx->ac.i32, array_size * nir_src_as_uint(deref_instr->arr.index), false);
 			} else {
 				LLVMValueRef indirect = get_src(ctx, deref_instr->arr.index);
 
@@ -3410,7 +3405,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 				instr->const_index[0]);
 		break;
 	case nir_intrinsic_quad_broadcast: {
-		unsigned lane = nir_src_as_const_value(instr->src[1])->u32[0];
+		unsigned lane = nir_src_as_uint(instr->src[1]);
 		result = ac_build_quad_swizzle(&ctx->ac, get_src(ctx, instr->src[0]),
 				lane, lane, lane, lane);
 		break;
@@ -3495,9 +3490,8 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 				if (!array_size)
 					array_size = 1;
 
-				nir_const_value *const_value = nir_src_as_const_value(deref_instr->arr.index);
-				if (const_value) {
-					constant_index += array_size * const_value->u32[0];
+				if (nir_src_is_const(deref_instr->arr.index)) {
+					constant_index += array_size * nir_src_as_uint(deref_instr->arr.index);
 				} else {
 					LLVMValueRef indirect = get_src(ctx, deref_instr->arr.index);
 
@@ -3651,9 +3645,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 				args.bias = get_src(ctx, instr->src[i].src);
 			break;
 		case nir_tex_src_lod: {
-			nir_const_value *val = nir_src_as_const_value(instr->src[i].src);
-
-			if (val && val->i32[0] == 0)
+			if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0)
 				args.level_zero = true;
 			else
 				args.lod = get_src(ctx, instr->src[i].src);
@@ -3842,15 +3834,12 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	}
 
 	if (args.offset && instr->op == nir_texop_txf) {
-		nir_const_value *const_offset =
-			nir_src_as_const_value(instr->src[offset_src].src);
 		int num_offsets = instr->src[offset_src].src.ssa->num_components;
-		assert(const_offset);
 		num_offsets = MIN2(num_offsets, instr->coord_components);
 		for (unsigned i = 0; i < num_offsets; ++i) {
 			args.coords[i] = LLVMBuildAdd(
 				ctx->ac.builder, args.coords[i],
-				LLVMConstInt(ctx->ac.i32, const_offset->i32[i], false), "");
+				LLVMConstInt(ctx->ac.i32, nir_src_comp_as_uint(instr->src[offset_src].src, i), false), "");
 		}
 		args.offset = NULL;
 	}
