@@ -433,8 +433,6 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
 
         unsigned level = trans->base.level;
 
-        assert(!trans->base.box.z);
-
         panfrost_texture_swizzle(
                         trans->base.box.x,
                         trans->base.box.y,
@@ -443,7 +441,10 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
                         util_format_get_blocksize(rsrc->base.format),
                         bo->slices[level].stride,
                         trans->map,
-                        bo->cpu + bo->slices[level].offset);
+                        bo->cpu
+                                + bo->slices[level].offset
+                                + bo->cubemap_stride * trans->base.box.z
+                        );
 }
 
 static void
@@ -454,17 +455,16 @@ panfrost_unmap_bo(struct panfrost_context *ctx,
 	struct panfrost_bo *bo = (struct panfrost_bo *)pan_resource(transfer->resource)->bo;
 
         if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                if (transfer->resource->target == PIPE_TEXTURE_2D) {
-                        struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
+                struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
 
-                        /* Gallium thinks writeback happens here; instead, this is our cue to tile */
-                        if (bo->layout == PAN_AFBC) {
-                                DBG("Warning: writes to afbc surface can't possibly work out well for you...\n");
-                        } else if (bo->layout == PAN_TILED) {
-                                struct pipe_context *gallium = (struct pipe_context *) ctx;
-                                struct panfrost_screen *screen = pan_screen(gallium->screen);
-                                panfrost_tile_texture(screen, prsrc, trans);
-                        }
+                /* Gallium thinks writeback happens here; instead, this is our cue to tile */
+                if (bo->layout == PAN_AFBC) {
+                        DBG("Warning: writes to afbc surface can't possibly work out well for you...\n");
+                } else if (bo->layout == PAN_TILED) {
+                        struct pipe_context *gallium = (struct pipe_context *) ctx;
+                        struct panfrost_screen *screen = pan_screen(gallium->screen);
+                        assert(transfer->box.depth == 1);
+                        panfrost_tile_texture(screen, prsrc, trans);
                 }
         }
 
