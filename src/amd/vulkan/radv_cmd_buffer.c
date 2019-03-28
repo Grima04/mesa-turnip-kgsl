@@ -1275,7 +1275,7 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
 		++reg_count;
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + reg_count, 0));
+	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + reg_count, cmd_buffer->state.predicating));
 	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
 			S_370_WR_CONFIRM(1) |
 			S_370_ENGINE_SEL(V_370_PFP));
@@ -1299,7 +1299,7 @@ radv_set_tc_compat_zrange_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint64_t va = radv_buffer_get_va(image->bo);
 	va += image->offset + image->tc_compat_zrange_offset;
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, cmd_buffer->state.predicating));
 	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
 			S_370_WR_CONFIRM(1) |
 			S_370_ENGINE_SEL(V_370_PFP));
@@ -1493,7 +1493,7 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 
 	assert(radv_image_has_cmask(image) || radv_image_has_dcc(image));
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 4, 0));
+	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 4, cmd_buffer->state.predicating));
 	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
 			S_370_WR_CONFIRM(1) |
 			S_370_ENGINE_SEL(V_370_PFP));
