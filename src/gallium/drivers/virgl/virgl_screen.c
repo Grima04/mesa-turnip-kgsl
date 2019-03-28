@@ -625,6 +625,12 @@ virgl_is_format_supported( struct pipe_screen *screen,
        target != PIPE_BUFFER)
       return FALSE;
 
+   if ((format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC ||
+        format_desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
+        format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) &&
+       target == PIPE_TEXTURE_3D)
+      return FALSE;
+
    if (bind & PIPE_BIND_RENDER_TARGET) {
       /* For ARB_framebuffer_no_attachments. */
       if (format == PIPE_FORMAT_NONE)
