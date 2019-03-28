@@ -1021,9 +1021,15 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
 
                                 /* Inject the address in. */
-                                for (int l = 0; l <= tex_rsrc->last_level; ++l) {
-                                        ctx->sampler_views[t][i]->hw.swizzled_bitmaps[l] =
-                                                rsrc->bo->gpu + rsrc->bo->slices[l].offset;
+                                for (int f = 0; f < tex_rsrc->array_size; ++f) {
+                                        for (int l = 0; l <= tex_rsrc->last_level; ++l) {
+                                                unsigned idx = f * (tex_rsrc->last_level + 1) + l;
+
+                                                ctx->sampler_views[t][i]->hw.swizzled_bitmaps[idx] =
+                                                        rsrc->bo->gpu +
+                                                        rsrc->bo->slices[l].offset +
+                                                        f * rsrc->bo->cubemap_stride;
+                                        }
                                 }
 
                                 trampolines[i] = panfrost_upload_transient(ctx, &ctx->sampler_views[t][i]->hw, sizeof(struct mali_texture_descriptor));
