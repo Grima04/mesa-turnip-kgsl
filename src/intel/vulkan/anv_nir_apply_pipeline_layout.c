@@ -292,7 +292,7 @@ lower_image_intrinsic(nir_intrinsic_instr *intrin,
    } else {
       unsigned binding_offset = state->set[set].surface_offsets[binding];
       index = nir_iadd(b, index, nir_imm_int(b, binding_offset));
-      brw_nir_rewrite_image_intrinsic(intrin, index);
+      nir_rewrite_image_intrinsic(intrin, index);
    }
 }
 

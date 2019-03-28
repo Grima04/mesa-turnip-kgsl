@@ -146,7 +146,7 @@ iris_lower_storage_image_derefs(nir_shader *nir)
             nir_ssa_def *index =
                nir_iadd(&b, nir_imm_int(&b, var->data.driver_location),
                             get_aoa_deref_offset(&b, deref, 1));
-            brw_nir_rewrite_image_intrinsic(intrin, index);
+            nir_rewrite_image_intrinsic(intrin, index);
             break;
          }
 

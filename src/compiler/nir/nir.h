@@ -1407,6 +1407,10 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
    return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
 }
 
+/* Converts a image_deref_* intrinsic into a image_* one */
+void nir_rewrite_image_intrinsic(nir_intrinsic_instr *instr,
+                                 nir_ssa_def *handle);
+
 /**
  * \group texture information
  *

@@ -347,7 +347,7 @@ brw_nir_lower_gl_images(nir_shader *shader,
             b.cursor = nir_before_instr(&intrin->instr);
             nir_ssa_def *index = nir_iadd(&b, nir_imm_int(&b, image_var_idx),
                                           get_aoa_deref_offset(&b, deref, 1));
-            brw_nir_rewrite_image_intrinsic(intrin, index);
+            nir_rewrite_image_intrinsic(intrin, index);
             break;
          }
 
