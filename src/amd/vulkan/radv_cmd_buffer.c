@@ -4478,8 +4478,14 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 		return;
 
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		/* TODO: merge with the clear if applicable */
-		radv_initialize_htile(cmd_buffer, image, range, 0);
+		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
+
+		if (radv_layout_is_htile_compressed(image, dst_layout,
+						    dst_queue_mask)) {
+			clear_value = 0;
+		}
+
+		radv_initialize_htile(cmd_buffer, image, range, clear_value);
 	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_queue_mask) &&
 	           radv_layout_is_htile_compressed(image, dst_layout, dst_queue_mask)) {
 		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
