@@ -229,7 +229,11 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 	if (constbuf->enabled_mask & (1 << index)) {
 		struct pipe_constant_buffer *cb = &constbuf->cb[index];
-		unsigned size = align(cb->buffer_size, 4) / 4; /* size in dwords */
+		/* size in dwords, aligned to vec4.  (This works at least
+		 * with mesa/st, which seems to align constant buffer to
+		 * 16 bytes)
+		 */
+		unsigned size = align(cb->buffer_size, 16) / 4;
 
 		/* in particular, with binning shader we may end up with
 		 * unused consts, ie. we could end up w/ constlen that is
@@ -238,9 +242,6 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		 * writing too many consts
 		 */
 		uint32_t max_const = MIN2(v->num_uniforms, v->constlen);
-
-		// I expect that size should be a multiple of vec4's:
-		assert(size == align(size, 4));
 
 		/* and even if the start of the const buffer is before
 		 * first_immediate, the end may not be:
