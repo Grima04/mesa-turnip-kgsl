@@ -391,7 +391,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         transfer->base.usage = usage;
         transfer->base.box = *box;
         transfer->base.stride = bo->slices[level].stride;
-        transfer->base.layer_stride = bytes_per_pixel * resource->width0; /* TODO: Cubemaps */
+        transfer->base.layer_stride = bo->cubemap_stride;
 
         pipe_resource_reference(&transfer->base.resource, resource);
 

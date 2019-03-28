@@ -1020,10 +1020,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 struct pipe_resource *tex_rsrc = ctx->sampler_views[t][i]->base.texture;
                                 struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
 
-                                /* Inject the address in. */
-                                for (int f = 0; f < tex_rsrc->array_size; ++f) {
-                                        for (int l = 0; l <= tex_rsrc->last_level; ++l) {
-                                                unsigned idx = f * (tex_rsrc->last_level + 1) + l;
+                                /* Inject the addresses in, interleaving cube
+                                 * faces and mip levels appropriately. */
+
+                                for (int l = 0; l <= tex_rsrc->last_level; ++l) {
+                                        for (int f = 0; f < tex_rsrc->array_size; ++f) {
+                                                unsigned idx = (l * tex_rsrc->array_size) + f;
 
                                                 ctx->sampler_views[t][i]->hw.swizzled_bitmaps[idx] =
                                                         rsrc->bo->gpu +
@@ -1958,7 +1960,7 @@ panfrost_create_sampler_view(
                         .format = format,
 
                         .usage1 = 0x0,
-                        .is_not_cubemap = 1,
+                        .is_not_cubemap = texture->target != PIPE_TEXTURE_CUBE,
 
                         .usage2 = usage2_layout
                 },
