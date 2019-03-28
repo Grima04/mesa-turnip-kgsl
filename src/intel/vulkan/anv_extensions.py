@@ -143,6 +143,7 @@ EXTENSIONS = [
     Extension('VK_ANDROID_native_buffer',                 5, 'ANDROID'),
     Extension('VK_GOOGLE_decorate_string',                1, True),
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
+    Extension('VK_NV_compute_shader_derivatives',         1, True),
 ]
 
 # Sort the extension list the way we expect: KHR, then EXT, then vendors

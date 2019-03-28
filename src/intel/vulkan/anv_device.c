@@ -1051,6 +1051,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: {
+         VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *features =
+            (VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *)ext;
+         features->computeDerivativeGroupQuads = true;
+         features->computeDerivativeGroupLinear = true;
+         break;
+      }
+
       default:
          anv_debug_ignored_stype(ext->sType);
          break;

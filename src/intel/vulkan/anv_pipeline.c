@@ -137,6 +137,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
       .caps = {
+         .derivative_group = true,
          .device_group = true,
          .draw_parameters = true,
          .float64 = pdevice->info.gen >= 8,
