@@ -142,7 +142,9 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
 
 #define DESC_SET(x, y) buf[(TEXDESC_##x)>>2] = (y)
    DESC_SET(CONFIG0, COND(!ext && !astc, VIVS_TE_SAMPLER_CONFIG0_FORMAT(format))
-                   | VIVS_TE_SAMPLER_CONFIG0_TYPE(target_hw));
+                   | VIVS_TE_SAMPLER_CONFIG0_TYPE(target_hw) |
+                   COND(res->layout == ETNA_LAYOUT_LINEAR && !util_format_is_compressed(so->format),
+                        VIVS_TE_SAMPLER_CONFIG0_ADDRESSING_MODE(TEXTURE_ADDRESSING_MODE_LINEAR)));
    DESC_SET(CONFIG1, COND(ext, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(format)) |
                      COND(astc, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(TEXTURE_FORMAT_EXT_ASTC)) |
                             VIVS_TE_SAMPLER_CONFIG1_HALIGN(res->halign) | swiz);
