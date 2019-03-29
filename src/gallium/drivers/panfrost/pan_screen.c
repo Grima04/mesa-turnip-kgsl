@@ -440,6 +440,9 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (format == PIPE_FORMAT_Z24X8_UNORM || format == PIPE_FORMAT_X8Z24_UNORM)
                 return FALSE;
 
+        if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
+                return FALSE;
+
         if (bind & PIPE_BIND_RENDER_TARGET) {
                 /* We don't support rendering into anything but RGBA8 yet. We
                  * need more formats for spec compliance, but for now, honesty
@@ -467,7 +470,8 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         }
 
         if (format_desc->layout == UTIL_FORMAT_LAYOUT_BPTC ||
-                        format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
+                        format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
+                        format_desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
                 /* Compressed formats not yet hooked up. */
                 return FALSE;
         }
