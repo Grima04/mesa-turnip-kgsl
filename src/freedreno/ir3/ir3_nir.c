@@ -268,7 +268,7 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 
 				switch (intr->intrinsic) {
 				case nir_intrinsic_get_buffer_size:
-					idx = nir_src_as_const_value(intr->src[0])->u32[0];
+					idx = nir_src_as_uint(intr->src[0]);
 					if (layout->ssbo_size.mask & (1 << idx))
 						break;
 					layout->ssbo_size.mask |= (1 << idx);
