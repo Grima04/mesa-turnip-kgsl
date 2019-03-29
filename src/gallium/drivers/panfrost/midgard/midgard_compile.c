@@ -1314,7 +1314,6 @@ emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-        nir_const_value *const_offset;
         unsigned offset, reg;
 
         switch (instr->intrinsic) {
@@ -1335,10 +1334,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_input:
-                const_offset = nir_src_as_const_value(instr->src[0]);
-                assert (const_offset && "no indirect inputs");
+                assert(nir_src_is_const(instr->src[0]) && "no indirect inputs");
 
-                offset = nir_intrinsic_base(instr) + const_offset->u32[0];
+                offset = nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0]);
 
                 reg = nir_dest_index(ctx, &instr->dest);
 
@@ -1473,10 +1471,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_store_output:
-                const_offset = nir_src_as_const_value(instr->src[1]);
-                assert(const_offset && "no indirect outputs");
+                assert(nir_src_is_const(instr->src[1]) && "no indirect outputs");
 
-                offset = nir_intrinsic_base(instr) + const_offset->u32[0];
+                offset = nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[1]);
 
                 reg = nir_src_index(ctx, &instr->src[0]);
 
