@@ -743,18 +743,6 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
    return nir_load_var(b, color);
 }
 
-static inline nir_ssa_def *
-nir_imm_vec2(nir_builder *build, float x, float y)
-{
-   nir_const_value v;
-
-   memset(&v, 0, sizeof(v));
-   v.f32[0] = x;
-   v.f32[1] = y;
-
-   return nir_build_imm(build, 4, 32, v);
-}
-
 static nir_ssa_def *
 blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
                                 unsigned tex_samples,

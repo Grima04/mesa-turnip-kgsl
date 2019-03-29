@@ -280,6 +280,18 @@ nir_imm_floatN_t(nir_builder *build, double x, unsigned bit_size)
 }
 
 static inline nir_ssa_def *
+nir_imm_vec2(nir_builder *build, float x, float y)
+{
+   nir_const_value v;
+
+   memset(&v, 0, sizeof(v));
+   v.f32[0] = x;
+   v.f32[1] = y;
+
+   return nir_build_imm(build, 2, 32, v);
+}
+
+static inline nir_ssa_def *
 nir_imm_vec4(nir_builder *build, float x, float y, float z, float w)
 {
    nir_const_value v;
