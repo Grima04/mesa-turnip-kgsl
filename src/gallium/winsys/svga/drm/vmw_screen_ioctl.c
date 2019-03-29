@@ -107,7 +107,7 @@ vmw_ioctl_extended_context_create(struct vmw_winsys_screen *vws,
 
    VMW_FUNC;
    memset(&c_arg, 0, sizeof(c_arg));
-   c_arg.req = (vgpu10 ? drm_vmw_context_vgpu10 : drm_vmw_context_legacy);
+   c_arg.req = (vgpu10 ? drm_vmw_context_dx : drm_vmw_context_legacy);
    ret = drmCommandWriteRead(vws->ioctl.drm_fd,
                              DRM_VMW_CREATE_EXTENDED_CONTEXT,
                              &c_arg, sizeof(c_arg));
@@ -1057,7 +1057,7 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
 
       if (vws->ioctl.have_drm_2_9) {
          memset(&gp_arg, 0, sizeof(gp_arg));
-         gp_arg.param = DRM_VMW_PARAM_VGPU10;
+         gp_arg.param = DRM_VMW_PARAM_DX;
          ret = drmCommandWriteRead(vws->ioctl.drm_fd, DRM_VMW_GET_PARAM,
                                    &gp_arg, sizeof(gp_arg));
          if (ret == 0 && gp_arg.value != 0) {
