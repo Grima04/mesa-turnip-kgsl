@@ -3942,7 +3942,7 @@ ac_build_frexp_exp(struct ac_llvm_context *ctx, LLVMValueRef src0,
 		type = ctx->i32;
 	} else {
 		intr = "llvm.amdgcn.frexp.exp.i32.f64";
-		type = ctx->i64;
+		type = ctx->i32;
 	}
 
 	LLVMValueRef params[] = {
