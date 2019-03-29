@@ -307,8 +307,6 @@ iris_get_shader_param(struct pipe_screen *pscreen,
                       enum pipe_shader_type p_stage,
                       enum pipe_shader_cap param)
 {
-   struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct brw_compiler *compiler = screen->compiler;
    gl_shader_stage stage = stage_from_pipe(p_stage);
 
    /* this is probably not totally correct.. but it's a start: */
@@ -388,7 +386,6 @@ iris_get_compute_param(struct pipe_screen *pscreen,
                        void *ret)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct brw_compiler *compiler = screen->compiler;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
@@ -500,13 +497,6 @@ iris_getparam(struct iris_screen *screen, int param, int *value)
       return -errno;
 
    return 0;
-}
-
-static bool
-iris_getparam_boolean(struct iris_screen *screen, int param)
-{
-   int value = 0;
-   return (iris_getparam(screen, param, &value) == 0) && value;
 }
 
 static int

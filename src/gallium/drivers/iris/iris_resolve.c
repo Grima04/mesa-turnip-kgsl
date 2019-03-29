@@ -565,7 +565,7 @@ iris_hiz_exec(struct iris_context *ice,
 {
    assert(iris_resource_level_has_hiz(res, level));
    assert(op != ISL_AUX_OP_NONE);
-   const char *name = NULL;
+   UNUSED const char *name = NULL;
 
    switch (op) {
    case ISL_AUX_OP_FULL_RESOLVE:
