@@ -1314,6 +1314,48 @@ trace_context_flush(struct pipe_context *_pipe,
 }
 
 
+static void
+trace_context_create_fence_fd(struct pipe_context *_pipe,
+                              struct pipe_fence_handle **fence,
+                              int fd,
+                              enum pipe_fd_type type)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", "create_fence_fd");
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(int, fd);
+   trace_dump_arg(uint, type);
+
+   pipe->create_fence_fd(pipe, fence, fd, type);
+
+   if (fence)
+      trace_dump_ret(ptr, *fence);
+
+   trace_dump_call_end();
+}
+
+
+static void
+trace_context_fence_server_sync(struct pipe_context *_pipe,
+                                struct pipe_fence_handle *fence)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", "fence_server_sync");
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(ptr, fence);
+
+   pipe->fence_server_sync(pipe, fence);
+
+   trace_dump_call_end();
+}
+
+
 static inline boolean
 trace_context_generate_mipmap(struct pipe_context *_pipe,
                               struct pipe_resource *res,
@@ -1949,6 +1991,8 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(clear_depth_stencil);
    TR_CTX_INIT(clear_texture);
    TR_CTX_INIT(flush);
+   TR_CTX_INIT(create_fence_fd);
+   TR_CTX_INIT(fence_server_sync);
    TR_CTX_INIT(generate_mipmap);
    TR_CTX_INIT(texture_barrier);
    TR_CTX_INIT(memory_barrier);
