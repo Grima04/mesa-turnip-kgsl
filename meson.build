@@ -834,6 +834,10 @@ if cc.compiles('int foo(void) __attribute__((__noreturn__));',
                name : '__attribute__((__noreturn__))')
   pre_args += '-DHAVE_FUNC_ATTRIBUTE_NORETURN'
 endif
+if cc.compiles('__uint128_t foo(void) { return 0; }',
+               name : '__uint128_t')
+  pre_args += '-DHAVE_UINT128'
+endif
 
 # TODO: this is very incomplete
 if ['linux', 'cygwin', 'gnu'].contains(host_machine.system())
