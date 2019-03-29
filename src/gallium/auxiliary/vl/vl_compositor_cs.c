@@ -362,7 +362,6 @@ draw_layers(struct vl_compositor       *c,
             struct u_rect              *dirty)
 {
    unsigned i;
-   static struct cs_viewport old_drawn;
 
    assert(c);
 
@@ -381,11 +380,7 @@ draw_layers(struct vl_compositor       *c,
          drawn.translate_y = (int)layer->viewport.translate[1];
          drawn.sampler0_w = (float)layer->sampler_views[0]->texture->width0;
          drawn.sampler0_h = (float)layer->sampler_views[0]->texture->height0;
-
-         if (memcmp(&drawn, &old_drawn, sizeof(struct cs_viewport))) {
-            set_viewport(s, &drawn);
-            old_drawn = drawn;
-         }
+         set_viewport(s, &drawn);
 
          c->pipe->bind_sampler_states(c->pipe, PIPE_SHADER_COMPUTE, 0,
                         num_sampler_views, layer->samplers);
