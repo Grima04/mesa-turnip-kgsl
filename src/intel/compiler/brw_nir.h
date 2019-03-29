@@ -32,20 +32,20 @@
 extern "C" {
 #endif
 
-int type_size_scalar(const struct glsl_type *type);
-int type_size_vec4(const struct glsl_type *type);
-int type_size_dvec4(const struct glsl_type *type);
+int type_size_scalar(const struct glsl_type *type, bool bindless);
+int type_size_vec4(const struct glsl_type *type, bool bindless);
+int type_size_dvec4(const struct glsl_type *type, bool bindless);
 
 static inline int
-type_size_scalar_bytes(const struct glsl_type *type)
+type_size_scalar_bytes(const struct glsl_type *type, bool bindless)
 {
-   return type_size_scalar(type) * 4;
+   return type_size_scalar(type, bindless) * 4;
 }
 
 static inline int
-type_size_vec4_bytes(const struct glsl_type *type)
+type_size_vec4_bytes(const struct glsl_type *type, bool bindless)
 {
-   return type_size_vec4(type) * 16;
+   return type_size_vec4(type, bindless) * 16;
 }
 
 /* Flags set in the instr->pass_flags field by i965 analysis passes */

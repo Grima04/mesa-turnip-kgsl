@@ -53,7 +53,7 @@ using std::tr1::unordered_map;
 using namespace nv50_ir;
 
 int
-type_size(const struct glsl_type *type)
+type_size(const struct glsl_type *type, bool bindless)
 {
    return glsl_count_attribute_slots(type, false);
 }
@@ -3028,7 +3028,7 @@ Converter::handleDeref(nir_deref_instr *deref, Value * &indirect, const nir_vari
       switch (deref->deref_type) {
       case nir_deref_type_array: {
          Value *indirect;
-         uint8_t size = type_size(deref->type);
+         uint8_t size = type_size(deref->type, true);
          result += size * getIndirect(&deref->arr.index, 0, indirect);
 
          if (indirect) {

@@ -169,7 +169,7 @@ v3d_set_transform_feedback_outputs(struct v3d_uncompiled_shader *so,
 }
 
 static int
-type_size(const struct glsl_type *type)
+type_size(const struct glsl_type *type, bool bindless)
 {
         return glsl_count_attribute_slots(type, false);
 }

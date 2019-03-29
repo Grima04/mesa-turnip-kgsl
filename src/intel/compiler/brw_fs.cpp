@@ -518,7 +518,7 @@ fs_reg::component_size(unsigned width) const
 }
 
 extern "C" int
-type_size_scalar(const struct glsl_type *type)
+type_size_scalar(const struct glsl_type *type, bool bindless)
 {
    unsigned int size, i;
 
@@ -540,17 +540,19 @@ type_size_scalar(const struct glsl_type *type)
    case GLSL_TYPE_INT64:
       return type->components() * 2;
    case GLSL_TYPE_ARRAY:
-      return type_size_scalar(type->fields.array) * type->length;
+      return type_size_scalar(type->fields.array, bindless) * type->length;
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
       size = 0;
       for (i = 0; i < type->length; i++) {
-	 size += type_size_scalar(type->fields.structure[i].type);
+	 size += type_size_scalar(type->fields.structure[i].type, bindless);
       }
       return size;
    case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_IMAGE:
+      if (bindless)
+         return type->components() * 2;
+   case GLSL_TYPE_ATOMIC_UINT:
       /* Samplers, atomics, and images take up no register space, since
        * they're baked in at link time.
        */
@@ -1135,7 +1137,8 @@ fs_reg
 fs_visitor::vgrf(const glsl_type *const type)
 {
    int reg_width = dispatch_width / 8;
-   return fs_reg(VGRF, alloc.allocate(type_size_scalar(type) * reg_width),
+   return fs_reg(VGRF,
+                 alloc.allocate(type_size_scalar(type, false) * reg_width),
                  brw_type_for_base_type(type));
 }
 

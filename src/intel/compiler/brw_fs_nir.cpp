@@ -58,7 +58,7 @@ fs_visitor::nir_setup_outputs()
       const int loc = var->data.driver_location;
       const unsigned var_vec4s =
          var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
-                           : type_size_vec4(var->type);
+                           : type_size_vec4(var->type, true);
       vec4s[loc] = MAX2(vec4s[loc], var_vec4s);
    }
 

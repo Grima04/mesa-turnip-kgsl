@@ -640,15 +640,15 @@ attach_constants(compiler_context *ctx, midgard_instruction *ins, void *constant
 }
 
 static int
-glsl_type_size(const struct glsl_type *type)
+glsl_type_size(const struct glsl_type *type, bool bindless)
 {
         return glsl_count_attribute_slots(type, false);
 }
 
 static int
-uniform_type_size(const struct glsl_type *type)
+uniform_type_size(const struct glsl_type *type, bool bindless)
 {
-        return st_glsl_storage_type_size(type, false);
+        return st_glsl_storage_type_size(type, bindless);
 }
 
 /* Lower fdot2 to a vector multiplication followed by channel addition  */

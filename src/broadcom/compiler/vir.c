@@ -525,7 +525,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
 }
 
 static int
-type_size_vec4(const struct glsl_type *type)
+type_size_vec4(const struct glsl_type *type, bool bindless)
 {
         return glsl_count_attribute_slots(type, false);
 }

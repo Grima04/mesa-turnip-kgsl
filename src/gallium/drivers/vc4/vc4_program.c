@@ -45,7 +45,7 @@ static void
 ntq_emit_cf_list(struct vc4_compile *c, struct exec_list *list);
 
 static int
-type_size(const struct glsl_type *type)
+type_size(const struct glsl_type *type, bool bindless)
 {
    return glsl_count_attribute_slots(type, false);
 }
