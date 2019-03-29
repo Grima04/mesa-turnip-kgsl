@@ -615,6 +615,9 @@ virgl_is_format_supported( struct pipe_screen *screen,
       return virgl_is_vertex_format_supported(screen, format);
    }
 
+   if (util_format_is_compressed(format) && target == PIPE_BUFFER)
+      return FALSE;
+
    /* Allow 3-comp 32 bit textures only for TBOs (needed for ARB_tbo_rgb32) */
    if ((format == PIPE_FORMAT_R32G32B32_FLOAT ||
        format == PIPE_FORMAT_R32G32B32_SINT ||
