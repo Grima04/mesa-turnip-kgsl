@@ -1339,9 +1339,18 @@ imm(FILE *file, const struct gen_device_info *devinfo, enum brw_reg_type type,
       format(file, "0x%08xV", brw_inst_imm_ud(devinfo, inst));
       break;
    case BRW_REGISTER_TYPE_F:
-      format(file, "0x%"PRIx64"F", brw_inst_bits(inst, 127, 96));
-      pad(file, 48);
-      format(file, " /* %-gF */", brw_inst_imm_f(devinfo, inst));
+      /* The DIM instruction's src0 uses an F type but contains a
+       * 64-bit immediate
+       */
+      if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_DIM) {
+         format(file, "0x%"PRIx64"F", brw_inst_bits(inst, 127, 64));
+         pad(file, 48);
+         format(file, "/* %-gF */", brw_inst_imm_df(devinfo, inst));
+      } else {
+         format(file, "0x%"PRIx64"F", brw_inst_bits(inst, 127, 96));
+         pad(file, 48);
+         format(file, " /* %-gF */", brw_inst_imm_f(devinfo, inst));
+      }
       break;
    case BRW_REGISTER_TYPE_DF:
       format(file, "0x%016"PRIx64"DF", brw_inst_bits(inst, 127, 64));
