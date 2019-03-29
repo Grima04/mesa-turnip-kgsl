@@ -292,6 +292,10 @@ cs_launch(struct vl_compositor *c,
    info.grid[2] = 1;
 
    ctx->launch_grid(ctx, &info);
+
+   /* Make the result visible to all clients. */
+   ctx->memory_barrier(ctx, PIPE_BARRIER_ALL);
+
 }
 
 static inline struct u_rect
@@ -388,6 +392,15 @@ draw_layers(struct vl_compositor       *c,
                         num_sampler_views, samplers);
 
          cs_launch(c, layer->cs, &(drawn.area));
+
+         /* Unbind. */
+         c->pipe->set_shader_images(c->pipe, PIPE_SHADER_COMPUTE, 0, 1, NULL);
+         c->pipe->set_constant_buffer(c->pipe, PIPE_SHADER_COMPUTE, 0, NULL);
+         c->pipe->set_sampler_views(c->pipe, PIPE_SHADER_FRAGMENT, 0,
+                        num_sampler_views, NULL);
+         c->pipe->bind_compute_state(c->pipe, NULL);
+         c->pipe->bind_sampler_states(c->pipe, PIPE_SHADER_COMPUTE, 0,
+                        num_sampler_views, NULL);
 
          if (dirty) {
             struct u_rect drawn = calc_drawn_area(s, layer);
