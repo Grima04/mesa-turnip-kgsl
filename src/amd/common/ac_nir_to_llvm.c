@@ -56,7 +56,7 @@ struct ac_nir_context {
 static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 				     nir_deref_instr *deref_instr,
 				     enum ac_descriptor_type desc_type,
-				     const nir_tex_instr *instr,
+				     const nir_instr *instr,
 				     bool image, bool write);
 
 static void
@@ -2415,7 +2415,7 @@ static LLVMValueRef get_image_descriptor(struct ac_nir_context *ctx,
                                          enum ac_descriptor_type desc_type,
                                          bool write)
 {
-	return get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), desc_type, NULL, true, write);
+	return get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), desc_type, &instr->instr, true, write);
 }
 
 static void get_image_coords(struct ac_nir_context *ctx,
@@ -2465,7 +2465,7 @@ static void get_image_coords(struct ac_nir_context *ctx,
 							       fmask_load_address[2],
 							       sample_index,
 							       get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
-										AC_DESC_FMASK, NULL, false, false));
+										AC_DESC_FMASK, &instr->instr, false, false));
 	}
 	if (count == 1 && !gfx9_1d) {
 		if (instr->src[1].ssa->num_components)
@@ -3488,7 +3488,7 @@ static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx,
 static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 				     nir_deref_instr *deref_instr,
 				     enum ac_descriptor_type desc_type,
-				     const nir_tex_instr *tex_instr,
+				     const nir_instr *instr,
 				     bool image, bool write)
 {
 	LLVMValueRef index = NULL;
@@ -3498,16 +3498,19 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 	bool bindless = false;
 
 	if (!deref_instr) {
-		int sampSrcIdx = nir_tex_instr_src_index(tex_instr,
-							 nir_tex_src_sampler_handle);
-		descriptor_set = 0;
-		if (sampSrcIdx != -1) {
-			base_index = 0;
-			bindless = true;
-			index = get_src(ctx, tex_instr->src[sampSrcIdx].src);
-		} else {
-			assert(tex_instr && !image);
-			base_index = tex_instr->sampler_index;
+		if (!image) {
+			nir_tex_instr *tex_instr = nir_instr_as_tex(instr);
+			int sampSrcIdx = nir_tex_instr_src_index(tex_instr,
+								 nir_tex_src_sampler_handle);
+			descriptor_set = 0;
+			if (sampSrcIdx != -1) {
+				base_index = 0;
+				bindless = true;
+				index = get_src(ctx, tex_instr->src[sampSrcIdx].src);
+			} else {
+				assert(tex_instr && !image);
+				base_index = tex_instr->sampler_index;
+			}
 		}
 	} else {
 		while(deref_instr->deref_type != nir_deref_type_var) {
@@ -3617,17 +3620,17 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 		sampler_deref_instr = texture_deref_instr;
 
 	if (instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF)
-		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_BUFFER, instr, false, false);
+		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_BUFFER, &instr->instr, false, false);
 	else
-		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_IMAGE, instr, false, false);
+		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_IMAGE, &instr->instr, false, false);
 	if (samp_ptr) {
-		*samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, AC_DESC_SAMPLER, instr, false, false);
+		*samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, AC_DESC_SAMPLER, &instr->instr, false, false);
 		if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
 			*samp_ptr = sici_fix_sampler_aniso(ctx, *res_ptr, *samp_ptr);
 	}
 	if (fmask_ptr && (instr->op == nir_texop_txf_ms ||
 	                  instr->op == nir_texop_samples_identical))
-		*fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_FMASK, instr, false, false);
+		*fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_FMASK, &instr->instr, false, false);
 }
 
 static LLVMValueRef apply_round_slice(struct ac_llvm_context *ctx,
