@@ -116,6 +116,19 @@ libvulkan_freedreno = shared_library(
   install : true,
 )
 
+if with_tests and prog_nm.found()
+  test(
+    'tu symbols check',
+    symbols_check,
+    args : [
+      '--lib', libvulkan_freedreno,
+      '--symbols-file', vulkan_icd_symbols,
+      '--nm', prog_nm.path(),
+    ],
+    suite : ['freedreno'],
+  )
+endif
+
 freedreno_icd = custom_target(
   'freedreno_icd',
   input : 'tu_icd.py',
