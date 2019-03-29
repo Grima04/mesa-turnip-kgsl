@@ -357,6 +357,36 @@ ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx,
 			  bool slc,
 		          bool can_speculate);
 
+/* For ac_build_fetch_format.
+ *
+ * Note: FLOAT must be 0 (used for convenience of encoding in radeonsi).
+ */
+enum {
+	AC_FETCH_FORMAT_FLOAT = 0,
+	AC_FETCH_FORMAT_FIXED,
+	AC_FETCH_FORMAT_UNORM,
+	AC_FETCH_FORMAT_SNORM,
+	AC_FETCH_FORMAT_USCALED,
+	AC_FETCH_FORMAT_SSCALED,
+	AC_FETCH_FORMAT_UINT,
+	AC_FETCH_FORMAT_SINT,
+};
+
+LLVMValueRef
+ac_build_opencoded_load_format(struct ac_llvm_context *ctx,
+			       unsigned log_size,
+			       unsigned num_channels,
+			       unsigned format,
+			       bool reverse,
+			       bool known_aligned,
+			       LLVMValueRef rsrc,
+			       LLVMValueRef vindex,
+			       LLVMValueRef voffset,
+			       LLVMValueRef soffset,
+			       bool glc,
+			       bool slc,
+			       bool can_speculate);
+
 void
 ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
 			     LLVMValueRef rsrc,
