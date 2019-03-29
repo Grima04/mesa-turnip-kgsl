@@ -675,6 +675,25 @@ dd_context_resource_commit(struct pipe_context *_pipe,
 }
 
 static void
+dd_context_set_compute_resources(struct pipe_context *_pipe,
+				 unsigned start, unsigned count,
+				 struct pipe_surface **resources)
+{
+   struct pipe_context *pipe = dd_context(_pipe)->pipe;
+   return pipe->set_compute_resources(pipe, start, count, resources);
+}
+
+static void
+dd_context_set_global_binding(struct pipe_context *_pipe,
+			      unsigned first, unsigned count,
+			      struct pipe_resource **resources,
+			      uint32_t **handles)
+{
+   struct pipe_context *pipe = dd_context(_pipe)->pipe;
+   return pipe->set_global_binding(pipe, first, count, resources, handles);
+}
+
+static void
 dd_context_get_sample_position(struct pipe_context *_pipe,
                                unsigned sample_count, unsigned sample_index,
                                float *out_value)
@@ -884,10 +903,10 @@ dd_context_create(struct dd_screen *dscreen, struct pipe_context *pipe)
    CTX_INIT(texture_barrier);
    CTX_INIT(memory_barrier);
    CTX_INIT(resource_commit);
+   CTX_INIT(set_compute_resources);
+   CTX_INIT(set_global_binding);
    /* create_video_codec */
    /* create_video_buffer */
-   /* set_compute_resources */
-   /* set_global_binding */
    CTX_INIT(get_sample_position);
    CTX_INIT(invalidate_resource);
    CTX_INIT(get_device_reset_status);
