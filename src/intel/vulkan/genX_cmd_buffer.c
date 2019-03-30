@@ -40,15 +40,6 @@
 #include "common/gen_mi_builder.h"
 
 static void
-emit_lrm(struct anv_batch *batch, uint32_t reg, struct anv_address addr)
-{
-   anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-      lrm.RegisterAddress  = reg;
-      lrm.MemoryAddress    = addr;
-   }
-}
-
-static void
 emit_lri(struct anv_batch *batch, uint32_t reg, uint32_t imm)
 {
    anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
@@ -56,17 +47,6 @@ emit_lri(struct anv_batch *batch, uint32_t reg, uint32_t imm)
       lri.DataDWord        = imm;
    }
 }
-
-#if GEN_IS_HASWELL || GEN_GEN >= 8
-static void
-emit_lrr(struct anv_batch *batch, uint32_t dst, uint32_t src)
-{
-   anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_REG), lrr) {
-      lrr.SourceRegisterAddress        = src;
-      lrr.DestinationRegisterAddress   = dst;
-   }
-}
-#endif
 
 void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
@@ -550,8 +530,6 @@ mi_alu(uint32_t opcode, uint32_t operand1, uint32_t operand2)
    return dw;
 }
 #endif
-
-#define CS_GPR(n) (0x2600 + (n) * 8)
 
 /* This is only really practical on haswell and above because it requires
  * MI math in order to get it correct.
@@ -1485,8 +1463,10 @@ genX(CmdExecuteCommands)(
              * with conditional rendering, we should satisfy this dependency
              * regardless of conditional rendering being enabled in primary.
              */
-            emit_lri(&primary->batch, CS_GPR(ANV_PREDICATE_RESULT_REG), UINT32_MAX);
-            emit_lri(&primary->batch, CS_GPR(ANV_PREDICATE_RESULT_REG) + 4, UINT32_MAX);
+            struct gen_mi_builder b;
+            gen_mi_builder_init(&b, &primary->batch);
+            gen_mi_store(&b, gen_mi_reg64(ANV_PREDICATE_RESULT_REG),
+                             gen_mi_imm(UINT64_MAX));
          }
       }
 #endif
@@ -3090,26 +3070,29 @@ void genX(CmdDrawIndexedIndirect)(
    }
 }
 
-#define TMP_DRAW_COUNT_REG MI_ALU_REG14
+#define TMP_DRAW_COUNT_REG 0x2670 /* MI_ALU_REG14 */
 
 static void
 prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  struct anv_address count_address,
                                  const bool conditional_render_enabled)
 {
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
    if (conditional_render_enabled) {
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-      emit_lrm(&cmd_buffer->batch, CS_GPR(TMP_DRAW_COUNT_REG), count_address);
-      emit_lri(&cmd_buffer->batch, CS_GPR(TMP_DRAW_COUNT_REG) + 4, 0);
+      gen_mi_store(&b, gen_mi_reg64(TMP_DRAW_COUNT_REG),
+                       gen_mi_mem32(count_address));
 #endif
    } else {
       /* Upload the current draw count from the draw parameters buffer to
        * MI_PREDICATE_SRC0.
        */
-      emit_lrm(&cmd_buffer->batch, MI_PREDICATE_SRC0, count_address);
-      emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
+      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
+                       gen_mi_mem32(count_address));
 
-      emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+      gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC1 + 4), gen_mi_imm(0));
    }
 }
 
@@ -3117,8 +3100,11 @@ static void
 emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
                           uint32_t draw_index)
 {
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
    /* Upload the index of the current primitive to MI_PREDICATE_SRC1. */
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1, draw_index);
+   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC1), gen_mi_imm(draw_index));
 
    if (draw_index == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
@@ -3148,38 +3134,22 @@ emit_draw_count_predicate_with_conditional_render(
                           struct anv_cmd_buffer *cmd_buffer,
                           uint32_t draw_index)
 {
-   const int draw_index_reg = MI_ALU_REG0;
-   const int tmp_result_reg = MI_ALU_REG1;
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
 
-   emit_lri(&cmd_buffer->batch, CS_GPR(draw_index_reg), draw_index);
-   emit_lri(&cmd_buffer->batch, CS_GPR(draw_index_reg) + 4, 0);
-
-   uint32_t *dw;
-   /* Compute (draw_index < draw_count).
-    * We do this by subtracting and storing the carry bit.
-    */
-   dw = anv_batch_emitn(&cmd_buffer->batch, 9, GENX(MI_MATH));
-   dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, draw_index_reg);
-   dw[2] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, TMP_DRAW_COUNT_REG);
-   dw[3] = mi_alu(MI_ALU_SUB, 0, 0);
-   dw[4] = mi_alu(MI_ALU_STORE, tmp_result_reg, MI_ALU_CF);
-   /* & condition */
-   dw[5] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, tmp_result_reg);
-   dw[6] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, ANV_PREDICATE_RESULT_REG);
-   dw[7] = mi_alu(MI_ALU_AND, 0, 0);
-   dw[8] = mi_alu(MI_ALU_STORE, tmp_result_reg, MI_ALU_ACCU);
+   struct gen_mi_value pred = gen_mi_ult(&b, gen_mi_imm(draw_index),
+                                         gen_mi_reg64(TMP_DRAW_COUNT_REG));
+   pred = gen_mi_iand(&b, pred, gen_mi_reg64(ANV_PREDICATE_RESULT_REG));
 
 #if GEN_GEN >= 8
-   emit_lrr(&cmd_buffer->batch, MI_PREDICATE_RESULT, CS_GPR(tmp_result_reg));
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_RESULT), pred);
 #else
    /* MI_PREDICATE_RESULT is not whitelisted in i915 command parser
     * so we emit MI_PREDICATE to set it.
     */
 
-   emit_lrr(&cmd_buffer->batch, MI_PREDICATE_SRC0, CS_GPR(tmp_result_reg));
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), pred);
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -3711,8 +3681,9 @@ void genX(CmdDispatchIndirect)(
 
 #if GEN_IS_HASWELL
    if (cmd_buffer->state.conditional_render_enabled) {
-      emit_lrr(batch, MI_PREDICATE_SRC0, CS_GPR(ANV_PREDICATE_RESULT_REG));
       /* predicate &= !(conditional_rendering_predicate == 0); */
+      gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0),
+                       gen_mi_reg32(ANV_PREDICATE_RESULT_REG));
       anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
          mip.LoadOperation    = LOAD_LOADINV;
          mip.CombineOperation = COMBINE_AND;
@@ -4690,10 +4661,12 @@ void
 genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buffer)
 {
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-   emit_lrr(&cmd_buffer->batch, MI_PREDICATE_SRC0, CS_GPR(ANV_PREDICATE_RESULT_REG));
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
+                    gen_mi_reg32(ANV_PREDICATE_RESULT_REG));
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -4721,6 +4694,9 @@ void genX(CmdBeginConditionalRenderingEXT)(
 
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
    /* Section 19.4 of the Vulkan 1.1.85 spec says:
     *
     *    If the value of the predicate in buffer memory changes
@@ -4732,20 +4708,15 @@ void genX(CmdBeginConditionalRenderingEXT)(
     *
     * So it's perfectly fine to read a value from the buffer once.
     */
-   emit_lrm(&cmd_buffer->batch, CS_GPR(MI_ALU_REG0), value_address);
-   /* Zero the top 32-bits of MI_PREDICATE_SRC0 */
-   emit_lri(&cmd_buffer->batch, CS_GPR(MI_ALU_REG0) + 4, 0);
+   struct gen_mi_value value =  gen_mi_mem32(value_address);
 
    /* Precompute predicate result, it is necessary to support secondary
     * command buffers since it is unknown if conditional rendering is
     * inverted when populating them.
     */
-   uint32_t *dw = anv_batch_emitn(&cmd_buffer->batch, 5, GENX(MI_MATH));
-   dw[1] = mi_alu(MI_ALU_LOAD0, MI_ALU_SRCA, 0);
-   dw[2] = mi_alu(MI_ALU_LOAD,  MI_ALU_SRCB, MI_ALU_REG0);
-   dw[3] = mi_alu(MI_ALU_SUB, 0, 0);
-   dw[4] = mi_alu(isInverted ? MI_ALU_STOREINV : MI_ALU_STORE,
-                  ANV_PREDICATE_RESULT_REG, MI_ALU_CF);
+   gen_mi_store(&b, gen_mi_reg64(ANV_PREDICATE_RESULT_REG),
+                    isInverted ? gen_mi_uge(&b, gen_mi_imm(0), value) :
+                                 gen_mi_ult(&b, gen_mi_imm(0), value));
 }
 
 void genX(CmdEndConditionalRenderingEXT)(

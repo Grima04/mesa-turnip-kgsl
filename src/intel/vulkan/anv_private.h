@@ -191,7 +191,7 @@ struct gen_l3_config;
 /* We reserve this MI ALU register for the purpose of handling predication.
  * Other code which uses the MI ALU should leave it alone.
  */
-#define ANV_PREDICATE_RESULT_REG MI_ALU_REG15
+#define ANV_PREDICATE_RESULT_REG 0x2678 /* MI_ALU_REG15 */
 
 #define anv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
