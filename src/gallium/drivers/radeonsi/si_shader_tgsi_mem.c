@@ -1089,6 +1089,13 @@ LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 		list = LLVMBuildPointerCast(builder, list,
 					    ac_array_in_const32_addr_space(ctx->v4i32), "");
 		break;
+	case AC_DESC_PLANE_0:
+	case AC_DESC_PLANE_1:
+	case AC_DESC_PLANE_2:
+		/* Only used for the multiplane image support for Vulkan. Should
+		 * never be reached in radeonsi.
+		 */
+		unreachable("Plane descriptor requested in radeonsi.");
 	}
 
 	return ac_build_load_to_sgpr(&ctx->ac, list, index);

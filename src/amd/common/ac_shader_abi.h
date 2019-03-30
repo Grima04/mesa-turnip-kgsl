@@ -39,6 +39,9 @@ enum ac_descriptor_type {
 	AC_DESC_FMASK,
 	AC_DESC_SAMPLER,
 	AC_DESC_BUFFER,
+	AC_DESC_PLANE_0,
+	AC_DESC_PLANE_1,
+	AC_DESC_PLANE_2,
 };
 
 /* Document the shader ABI during compilation. This is what allows radeonsi and

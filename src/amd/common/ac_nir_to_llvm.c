@@ -3593,6 +3593,7 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 {
 	nir_deref_instr *texture_deref_instr = NULL;
 	nir_deref_instr *sampler_deref_instr = NULL;
+	int plane = -1;
 
 	for (unsigned i = 0; i < instr->num_srcs; i++) {
 		switch (instr->src[i].src_type) {
@@ -3602,6 +3603,9 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 		case nir_tex_src_sampler_deref:
 			sampler_deref_instr = nir_src_as_deref(instr->src[i].src);
 			break;
+		case nir_tex_src_plane:
+			plane = nir_src_as_int(instr->src[i].src);
+			break;
 		default:
 			break;
 		}
@@ -3610,10 +3614,18 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 	if (!sampler_deref_instr)
 		sampler_deref_instr = texture_deref_instr;
 
-	if (instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF)
-		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_BUFFER, &instr->instr, false, false);
-	else
-		*res_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_IMAGE, &instr->instr, false, false);
+	enum ac_descriptor_type main_descriptor = instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
+
+	if (plane >= 0) {
+		assert(instr->op != nir_texop_txf_ms &&
+		       instr->op != nir_texop_samples_identical);
+		assert(instr->sampler_dim  != GLSL_SAMPLER_DIM_BUF);
+
+		main_descriptor = AC_DESC_PLANE_0 + plane;
+	}
+
+	*res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr, false, false);
+
 	if (samp_ptr) {
 		*samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, AC_DESC_SAMPLER, &instr->instr, false, false);
 		if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
