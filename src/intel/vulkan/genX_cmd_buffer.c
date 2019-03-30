@@ -2907,58 +2907,6 @@ void genX(CmdDrawIndexed)(
 #define GEN7_3DPRIM_START_INSTANCE      0x243C
 #define GEN7_3DPRIM_BASE_VERTEX         0x2440
 
-/* MI_MATH only exists on Haswell+ */
-#if GEN_IS_HASWELL || GEN_GEN >= 8
-
-/* Emit dwords to multiply GPR0 by N */
-static void
-build_alu_multiply_gpr0(uint32_t *dw, unsigned *dw_count, uint32_t N)
-{
-   VK_OUTARRAY_MAKE(out, dw, dw_count);
-
-#define append_alu(opcode, operand1, operand2) \
-   vk_outarray_append(&out, alu_dw) *alu_dw = mi_alu(opcode, operand1, operand2)
-
-   assert(N > 0);
-   unsigned top_bit = 31 - __builtin_clz(N);
-   for (int i = top_bit - 1; i >= 0; i--) {
-      /* We get our initial data in GPR0 and we write the final data out to
-       * GPR0 but we use GPR1 as our scratch register.
-       */
-      unsigned src_reg = i == top_bit - 1 ? MI_ALU_REG0 : MI_ALU_REG1;
-      unsigned dst_reg = i == 0 ? MI_ALU_REG0 : MI_ALU_REG1;
-
-      /* Shift the current value left by 1 */
-      append_alu(MI_ALU_LOAD, MI_ALU_SRCA, src_reg);
-      append_alu(MI_ALU_LOAD, MI_ALU_SRCB, src_reg);
-      append_alu(MI_ALU_ADD, 0, 0);
-
-      if (N & (1 << i)) {
-         /* Store ACCU to R1 and add R0 to R1 */
-         append_alu(MI_ALU_STORE, MI_ALU_REG1, MI_ALU_ACCU);
-         append_alu(MI_ALU_LOAD, MI_ALU_SRCA, MI_ALU_REG0);
-         append_alu(MI_ALU_LOAD, MI_ALU_SRCB, MI_ALU_REG1);
-         append_alu(MI_ALU_ADD, 0, 0);
-      }
-
-      append_alu(MI_ALU_STORE, dst_reg, MI_ALU_ACCU);
-   }
-
-#undef append_alu
-}
-
-static void
-emit_mul_gpr0(struct anv_batch *batch, uint32_t N)
-{
-   uint32_t num_dwords;
-   build_alu_multiply_gpr0(NULL, &num_dwords, N);
-
-   uint32_t *dw = anv_batch_emitn(batch, 1 + num_dwords, GENX(MI_MATH));
-   build_alu_multiply_gpr0(dw + 1, &num_dwords, N);
-}
-
-#endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
-
 void genX(CmdDrawIndirectByteCountEXT)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    instanceCount,
@@ -3024,33 +2972,36 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                          struct anv_address addr,
                          bool indexed)
 {
-   struct anv_batch *batch = &cmd_buffer->batch;
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
 
-   emit_lrm(batch, GEN7_3DPRIM_VERTEX_COUNT, anv_address_add(addr, 0));
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_VERTEX_COUNT),
+                    gen_mi_mem32(anv_address_add(addr, 0)));
 
+   struct gen_mi_value instance_count = gen_mi_mem32(anv_address_add(addr, 4));
    unsigned view_count = anv_subpass_view_count(cmd_buffer->state.subpass);
    if (view_count > 1) {
 #if GEN_IS_HASWELL || GEN_GEN >= 8
-      emit_lrm(batch, CS_GPR(0), anv_address_add(addr, 4));
-      emit_mul_gpr0(batch, view_count);
-      emit_lrr(batch, GEN7_3DPRIM_INSTANCE_COUNT, CS_GPR(0));
+      instance_count = gen_mi_imul_imm(&b, instance_count, view_count);
 #else
       anv_finishme("Multiview + indirect draw requires MI_MATH; "
                    "MI_MATH is not supported on Ivy Bridge");
-      emit_lrm(batch, GEN7_3DPRIM_INSTANCE_COUNT, anv_address_add(addr, 4));
 #endif
-   } else {
-      emit_lrm(batch, GEN7_3DPRIM_INSTANCE_COUNT, anv_address_add(addr, 4));
    }
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), instance_count);
 
-   emit_lrm(batch, GEN7_3DPRIM_START_VERTEX, anv_address_add(addr, 8));
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_VERTEX),
+                    gen_mi_mem32(anv_address_add(addr, 8)));
 
    if (indexed) {
-      emit_lrm(batch, GEN7_3DPRIM_BASE_VERTEX, anv_address_add(addr, 12));
-      emit_lrm(batch, GEN7_3DPRIM_START_INSTANCE, anv_address_add(addr, 16));
+      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX),
+                       gen_mi_mem32(anv_address_add(addr, 12)));
+      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+                       gen_mi_mem32(anv_address_add(addr, 16)));
    } else {
-      emit_lrm(batch, GEN7_3DPRIM_START_INSTANCE, anv_address_add(addr, 12));
-      emit_lri(batch, GEN7_3DPRIM_BASE_VERTEX, 0);
+      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+                       gen_mi_mem32(anv_address_add(addr, 12)));
+      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX), gen_mi_imm(0));
    }
 }
 
