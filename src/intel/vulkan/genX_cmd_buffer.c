@@ -3665,40 +3665,37 @@ void genX(CmdDispatchIndirect)(
 
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
 
-   emit_lrm(batch, GPGPU_DISPATCHDIMX, anv_address_add(addr, 0));
-   emit_lrm(batch, GPGPU_DISPATCHDIMY, anv_address_add(addr, 4));
-   emit_lrm(batch, GPGPU_DISPATCHDIMZ, anv_address_add(addr, 8));
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
+   struct gen_mi_value size_x = gen_mi_mem32(anv_address_add(addr, 0));
+   struct gen_mi_value size_y = gen_mi_mem32(anv_address_add(addr, 4));
+   struct gen_mi_value size_z = gen_mi_mem32(anv_address_add(addr, 8));
+
+   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMX), size_x);
+   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMY), size_y);
+   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
 
 #if GEN_GEN <= 7
-   /* Clear upper 32-bits of SRC0 and all 64-bits of SRC1 */
-   emit_lri(batch, MI_PREDICATE_SRC0 + 4, 0);
-   emit_lri(batch, MI_PREDICATE_SRC1 + 0, 0);
-   emit_lri(batch, MI_PREDICATE_SRC1 + 4, 0);
-
-   /* Load compute_dispatch_indirect_x_size into SRC0 */
-   emit_lrm(batch, MI_PREDICATE_SRC0, anv_address_add(addr, 0));
-
    /* predicate = (compute_dispatch_indirect_x_size == 0); */
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), size_x);
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_SET;
       mip.CompareOperation = COMPARE_SRCS_EQUAL;
    }
 
-   /* Load compute_dispatch_indirect_y_size into SRC0 */
-   emit_lrm(batch, MI_PREDICATE_SRC0, anv_address_add(addr, 4));
-
    /* predicate |= (compute_dispatch_indirect_y_size == 0); */
+   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0), size_y);
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_OR;
       mip.CompareOperation = COMPARE_SRCS_EQUAL;
    }
 
-   /* Load compute_dispatch_indirect_z_size into SRC0 */
-   emit_lrm(batch, MI_PREDICATE_SRC0, anv_address_add(addr, 8));
-
    /* predicate |= (compute_dispatch_indirect_z_size == 0); */
+   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0), size_z);
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_OR;
