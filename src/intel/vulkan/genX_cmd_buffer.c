@@ -33,6 +33,12 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
+/* We reserve GPR 14 and 15 for conditional rendering */
+#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 14
+#define __gen_get_batch_dwords anv_batch_emit_dwords
+#define __gen_address_offset anv_address_add
+#include "common/gen_mi_builder.h"
+
 static void
 emit_lrm(struct anv_batch *batch, uint32_t reg, struct anv_address addr)
 {
@@ -3009,98 +3015,6 @@ emit_mul_gpr0(struct anv_batch *batch, uint32_t N)
    build_alu_multiply_gpr0(dw + 1, &num_dwords, N);
 }
 
-static void
-emit_alu_add(struct anv_batch *batch, unsigned dst_reg,
-             unsigned reg_a, unsigned reg_b)
-{
-   uint32_t *dw = anv_batch_emitn(batch, 1 + 4, GENX(MI_MATH));
-   dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, reg_a);
-   dw[2] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, reg_b);
-   dw[3] = mi_alu(MI_ALU_ADD, 0, 0);
-   dw[4] = mi_alu(MI_ALU_STORE, dst_reg, MI_ALU_ACCU);
-}
-
-static void
-emit_add32_gpr0(struct anv_batch *batch, uint32_t N)
-{
-   emit_lri(batch, CS_GPR(1), N);
-   emit_alu_add(batch, MI_ALU_REG0, MI_ALU_REG0, MI_ALU_REG1);
-}
-
-static void
-emit_alu_shl(struct anv_batch *batch, unsigned dst_reg,
-             unsigned src_reg, unsigned shift)
-{
-   assert(shift > 0);
-
-   uint32_t *dw = anv_batch_emitn(batch, 1 + 4 * shift, GENX(MI_MATH));
-   for (unsigned i = 0; i < shift; i++) {
-      unsigned add_src = (i == 0) ? src_reg : dst_reg;
-      dw[1 + (i * 4) + 0] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, add_src);
-      dw[1 + (i * 4) + 1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, add_src);
-      dw[1 + (i * 4) + 2] = mi_alu(MI_ALU_ADD, 0, 0);
-      dw[1 + (i * 4) + 3] = mi_alu(MI_ALU_STORE, dst_reg, MI_ALU_ACCU);
-   }
-}
-
-static void
-emit_div32_gpr0(struct anv_batch *batch, uint32_t D)
-{
-   /* Zero out the top of GPR0 */
-   emit_lri(batch, CS_GPR(0) + 4, 0);
-
-   if (D == 0) {
-      /* This invalid, but we should do something so we set GPR0 to 0. */
-      emit_lri(batch, CS_GPR(0), 0);
-   } else if (util_is_power_of_two_or_zero(D)) {
-      unsigned log2_D = util_logbase2(D);
-      assert(log2_D < 32);
-      /* We right-shift by log2(D) by left-shifting by 32 - log2(D) and taking
-       * the top 32 bits of the result.
-       */
-      emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - log2_D);
-      emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-      emit_lri(batch, CS_GPR(0) + 4, 0);
-   } else {
-      struct util_fast_udiv_info m = util_compute_fast_udiv_info(D, 32, 32);
-      assert(m.multiplier <= UINT32_MAX);
-
-      if (m.pre_shift) {
-         /* We right-shift by L by left-shifting by 32 - l and taking the top
-          * 32 bits of the result.
-          */
-         if (m.pre_shift < 32)
-            emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - m.pre_shift);
-         emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-         emit_lri(batch, CS_GPR(0) + 4, 0);
-      }
-
-      /* Do the 32x32 multiply  into gpr0 */
-      emit_mul_gpr0(batch, m.multiplier);
-
-      if (m.increment) {
-         /* If we need to increment, save off a copy of GPR0 */
-         emit_lri(batch, CS_GPR(1) + 0, m.multiplier);
-         emit_lri(batch, CS_GPR(1) + 4, 0);
-         emit_alu_add(batch, MI_ALU_REG0, MI_ALU_REG0, MI_ALU_REG1);
-      }
-
-      /* Shift by 32 */
-      emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-      emit_lri(batch, CS_GPR(0) + 4, 0);
-
-      if (m.post_shift) {
-         /* We right-shift by L by left-shifting by 32 - l and taking the top
-          * 32 bits of the result.
-          */
-         if (m.post_shift < 32)
-            emit_alu_shl(batch, MI_ALU_REG0, MI_ALU_REG0, 32 - m.post_shift);
-         emit_lrr(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-         emit_lri(batch, CS_GPR(0) + 4, 0);
-      }
-   }
-}
-
 #endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
 
 void genX(CmdDrawIndirectByteCountEXT)(
@@ -3137,17 +3051,23 @@ void genX(CmdDrawIndirectByteCountEXT)(
     */
    instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
-   emit_lrm(&cmd_buffer->batch, CS_GPR(0),
-            anv_address_add(counter_buffer->address, counterBufferOffset));
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct gen_mi_value count =
+      gen_mi_mem32(anv_address_add(counter_buffer->address,
+                                   counterBufferOffset));
    if (counterOffset)
-      emit_add32_gpr0(&cmd_buffer->batch, -counterOffset);
-   emit_div32_gpr0(&cmd_buffer->batch, vertexStride);
-   emit_lrr(&cmd_buffer->batch, GEN7_3DPRIM_VERTEX_COUNT, CS_GPR(0));
+      count = gen_mi_iadd(&b, count, gen_mi_imm(-counterOffset));
+   count = gen_mi_udiv32_imm(&b, count, vertexStride);
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_VERTEX_COUNT), count);
 
-   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_START_VERTEX, firstVertex);
-   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_INSTANCE_COUNT, instanceCount);
-   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_START_INSTANCE, firstInstance);
-   emit_lri(&cmd_buffer->batch, GEN7_3DPRIM_BASE_VERTEX, 0);
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_VERTEX),
+                    gen_mi_imm(firstVertex));
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT),
+                    gen_mi_imm(instanceCount));
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+                    gen_mi_imm(firstInstance));
+   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX), gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.IndirectParameterEnable  = true;
