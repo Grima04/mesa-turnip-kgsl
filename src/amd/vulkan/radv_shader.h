@@ -347,7 +347,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const char *entrypoint_name,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
-			   const VkPipelineCreateFlags flags);
+			   const VkPipelineCreateFlags flags,
+			   const struct radv_pipeline_layout *layout);
 
 void *
 radv_alloc_shader_memory(struct radv_device *device,

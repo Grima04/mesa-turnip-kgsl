@@ -2155,7 +2155,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		nir[i] = radv_shader_compile_to_nir(device, modules[i],
 						    stage ? stage->pName : "main", i,
 						    stage ? stage->pSpecializationInfo : NULL,
-						    flags);
+						    flags, pipeline->layout);
 
 		/* We don't want to alter meta shaders IR directly so clone it
 		 * first.

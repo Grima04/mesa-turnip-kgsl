@@ -181,7 +181,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const char *entrypoint_name,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
-			   const VkPipelineCreateFlags flags)
+			   const VkPipelineCreateFlags flags,
+			   const struct radv_pipeline_layout *layout)
 {
 	nir_shader *nir;
 	nir_function *entry_point;
@@ -310,6 +311,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 		NIR_PASS_V(nir, nir_lower_system_values);
 		NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
+		NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
 	}
 
 	/* Vulkan uses the separate-shader linking model */
