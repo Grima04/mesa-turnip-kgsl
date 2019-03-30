@@ -809,7 +809,8 @@ struct radv_descriptor_update_template_entry {
 	uint32_t buffer_offset;
 
 	/* Only valid for combined image samplers and samplers */
-	uint16_t has_sampler;
+	uint8_t has_sampler;
+	uint8_t sampler_offset;
 
 	/* In bytes */
 	size_t src_offset;

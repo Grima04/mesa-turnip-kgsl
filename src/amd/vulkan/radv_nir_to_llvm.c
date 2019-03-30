@@ -1978,14 +1978,22 @@ static LLVMValueRef radv_get_sampler_desc(struct ac_shader_abi *abi,
 		break;
 	case AC_DESC_SAMPLER:
 		type = ctx->ac.v4i32;
-		if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-			offset += 64;
+		if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+			offset += radv_combined_image_descriptor_sampler_offset(binding);
+		}
 
 		type_size = 16;
 		break;
 	case AC_DESC_BUFFER:
 		type = ctx->ac.v4i32;
 		type_size = 16;
+		break;
+	case AC_DESC_PLANE_0:
+	case AC_DESC_PLANE_1:
+	case AC_DESC_PLANE_2:
+		type = ctx->ac.v8i32;
+		type_size = 32;
+		offset += 32 * (desc_type - AC_DESC_PLANE_0);
 		break;
 	default:
 		unreachable("invalid desc_type\n");
