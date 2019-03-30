@@ -565,15 +565,12 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                   enum isl_aux_op resolve_op,
                                   enum anv_fast_clear_type fast_clear_supported)
 {
-   struct anv_address fast_clear_type_addr =
-      anv_image_get_fast_clear_type_addr(cmd_buffer->device, image, aspect);
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
 
-   /* Name some registers */
-   const int image_fc_reg = MI_ALU_REG0;
-   const int fc_imm_reg = MI_ALU_REG1;
-   const int pred_reg = MI_ALU_REG2;
-
-   uint32_t *dw;
+   const struct gen_mi_value fast_clear_type =
+      gen_mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+                                                      image, aspect));
 
    if (resolve_op == ISL_AUX_OP_FULL_RESOLVE) {
       /* In this case, we're doing a full resolve which means we want the
@@ -584,17 +581,13 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
        * if the first slice has been fast-cleared, it is also marked as
        * compressed.  See also set_image_fast_clear_state.
        */
-      struct anv_address compression_state_addr =
-         anv_image_get_compression_state_addr(cmd_buffer->device, image,
-                                              aspect, level, array_layer);
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress  = MI_PREDICATE_SRC0;
-         lrm.MemoryAddress    = compression_state_addr;
-      }
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
-         sdi.Address       = compression_state_addr;
-         sdi.ImmediateData = 0;
-      }
+      const struct gen_mi_value compression_state =
+         gen_mi_mem32(anv_image_get_compression_state_addr(cmd_buffer->device,
+                                                           image, aspect,
+                                                           level, array_layer));
+      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
+                       compression_state);
+      gen_mi_store(&b, compression_state, gen_mi_imm(0));
 
       if (level == 0 && array_layer == 0) {
          /* If the predicate is true, we want to write 0 to the fast clear type
@@ -602,25 +595,10 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
           *
           * clear_type = clear_type & ~predicate;
           */
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-            lrm.RegisterAddress  = CS_GPR(image_fc_reg);
-            lrm.MemoryAddress    = fast_clear_type_addr;
-         }
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_REG), lrr) {
-            lrr.DestinationRegisterAddress   = CS_GPR(pred_reg);
-            lrr.SourceRegisterAddress        = MI_PREDICATE_SRC0;
-         }
-
-         dw = anv_batch_emitn(&cmd_buffer->batch, 5, GENX(MI_MATH));
-         dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, image_fc_reg);
-         dw[2] = mi_alu(MI_ALU_LOADINV, MI_ALU_SRCB, pred_reg);
-         dw[3] = mi_alu(MI_ALU_AND, 0, 0);
-         dw[4] = mi_alu(MI_ALU_STORE, image_fc_reg, MI_ALU_ACCU);
-
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_REGISTER_MEM), srm) {
-            srm.MemoryAddress    = fast_clear_type_addr;
-            srm.RegisterAddress  = CS_GPR(image_fc_reg);
-         }
+         struct gen_mi_value new_fast_clear_type =
+            gen_mi_iand(&b, fast_clear_type,
+                            gen_mi_inot(&b, gen_mi_reg64(MI_PREDICATE_SRC0)));
+         gen_mi_store(&b, fast_clear_type, new_fast_clear_type);
       }
    } else if (level == 0 && array_layer == 0) {
       /* In this case, we are doing a partial resolve to get rid of fast-clear
@@ -630,42 +608,20 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       assert(resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE);
       assert(fast_clear_supported < ANV_FAST_CLEAR_ANY);
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress  = CS_GPR(image_fc_reg);
-         lrm.MemoryAddress    = fast_clear_type_addr;
-      }
-      emit_lri(&cmd_buffer->batch, CS_GPR(image_fc_reg) + 4, 0);
-
-      emit_lri(&cmd_buffer->batch, CS_GPR(fc_imm_reg), fast_clear_supported);
-      emit_lri(&cmd_buffer->batch, CS_GPR(fc_imm_reg) + 4, 0);
-
-      /* We need to compute (fast_clear_supported < image->fast_clear).
-       * We do this by subtracting and storing the carry bit.
-       */
-      dw = anv_batch_emitn(&cmd_buffer->batch, 5, GENX(MI_MATH));
-      dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, fc_imm_reg);
-      dw[2] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCB, image_fc_reg);
-      dw[3] = mi_alu(MI_ALU_SUB, 0, 0);
-      dw[4] = mi_alu(MI_ALU_STORE, pred_reg, MI_ALU_CF);
-
-      /* Store the predicate */
-      emit_lrr(&cmd_buffer->batch, MI_PREDICATE_SRC0, CS_GPR(pred_reg));
+      /* We need to compute (fast_clear_supported < image->fast_clear) */
+      struct gen_mi_value pred =
+         gen_mi_ult(&b, gen_mi_imm(fast_clear_supported), fast_clear_type);
+      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
+                       gen_mi_value_ref(&b, pred));
 
       /* If the predicate is true, we want to write 0 to the fast clear type
        * and, if it's false, leave it alone.  We can do this by writing
        *
        * clear_type = clear_type & ~predicate;
        */
-      dw = anv_batch_emitn(&cmd_buffer->batch, 5, GENX(MI_MATH));
-      dw[1] = mi_alu(MI_ALU_LOAD, MI_ALU_SRCA, image_fc_reg);
-      dw[2] = mi_alu(MI_ALU_LOADINV, MI_ALU_SRCB, pred_reg);
-      dw[3] = mi_alu(MI_ALU_AND, 0, 0);
-      dw[4] = mi_alu(MI_ALU_STORE, image_fc_reg, MI_ALU_ACCU);
-
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_REGISTER_MEM), srm) {
-         srm.RegisterAddress  = CS_GPR(image_fc_reg);
-         srm.MemoryAddress    = fast_clear_type_addr;
-      }
+      struct gen_mi_value new_fast_clear_type =
+         gen_mi_iand(&b, fast_clear_type, gen_mi_inot(&b, pred));
+      gen_mi_store(&b, fast_clear_type, new_fast_clear_type);
    } else {
       /* In this case, we're trying to do a partial resolve on a slice that
        * doesn't have clear color.  There's nothing to do.
@@ -674,13 +630,8 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       return;
    }
 
-   /* We use the first half of src0 for the actual predicate.  Set the second
-    * half of src0 and all of src1 to 0 as the predicate operation will be
-    * doing an implicit src0 != src1.
-    */
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1    , 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+   /* Set src1 to 0 and use a != condition */
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -699,8 +650,12 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  enum isl_aux_op resolve_op,
                                  enum anv_fast_clear_type fast_clear_supported)
 {
-   struct anv_address fast_clear_type_addr =
-      anv_image_get_fast_clear_type_addr(cmd_buffer->device, image, aspect);
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
+   struct gen_mi_value fast_clear_type_mem =
+      gen_mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+                                                      image, aspect));
 
    /* This only works for partial resolves and only when the clear color is
     * all or nothing.  On the upside, this emits less command streamer code
@@ -717,22 +672,9 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
     * can't sample from CCS surfaces.  It's enough to just load the fast clear
     * state into the predicate register.
     */
-   anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-      lrm.RegisterAddress  = MI_PREDICATE_SRC0;
-      lrm.MemoryAddress    = fast_clear_type_addr;
-   }
-   anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
-      sdi.Address          = fast_clear_type_addr;
-      sdi.ImmediateData    = 0;
-   }
-
-   /* We use the first half of src0 for the actual predicate.  Set the second
-    * half of src0 and all of src1 to 0 as the predicate operation will be
-    * doing an implicit src0 != src1.
-    */
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC0 + 4, 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1    , 0);
-   emit_lri(&cmd_buffer->batch, MI_PREDICATE_SRC1 + 4, 0);
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), fast_clear_type_mem);
+   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   gen_mi_store(&b, fast_clear_type_mem, gen_mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
