@@ -312,7 +312,7 @@ optimizations = [
    (('bcsel', a, ('bcsel(is_used_once)', b, c, d), ('bcsel', b, c, 'e')), ('bcsel', b, c, ('bcsel', a, d, 'e'))),
    (('bcsel', a, ('bcsel', b, c, d), ('bcsel(is_used_once)', b, 'e', d)), ('bcsel', b, ('bcsel', a, c, 'e'), d)),
    (('bcsel', a, ('bcsel(is_used_once)', b, c, d), ('bcsel', b, 'e', d)), ('bcsel', b, ('bcsel', a, c, 'e'), d)),
-   (('bcsel', a, True, 'b@bool'), ('ior', a, b)),
+   (('bcsel', a, True, b), ('ior', a, b)),
    (('fmin', a, a), a),
    (('fmax', a, a), a),
    (('imin', a, a), a),
@@ -390,7 +390,7 @@ optimizations = [
    (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
    (('ior', ('uge', 2, a), ('ieq', a, 3)), ('uge', 3, a)),
 
-   (('ior', 'a@bool', ('ieq', a, False)), True),
+   (('ior', a, ('ieq', a, False)), True),
    (('ior', a, ('inot', a)), -1),
 
    (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('ior', 'a@32', 'b@32'), 0)),
@@ -535,10 +535,10 @@ optimizations = [
    # Boolean simplifications
    (('i2b32(is_used_by_if)', a), ('ine32', a, 0)),
    (('i2b1(is_used_by_if)', a), ('ine', a, 0)),
-   (('ieq', 'a@bool', True), a),
-   (('ine(is_not_used_by_if)', 'a@bool', True), ('inot', a)),
-   (('ine', 'a@bool', False), a),
-   (('ieq(is_not_used_by_if)', 'a@bool', False), ('inot', 'a')),
+   (('ieq', a, True), a),
+   (('ine(is_not_used_by_if)', a, True), ('inot', a)),
+   (('ine', a, False), a),
+   (('ieq(is_not_used_by_if)', a, False), ('inot', 'a')),
    (('bcsel', a, True, False), a),
    (('bcsel', a, False, True), ('inot', a)),
    (('bcsel@32', a, 1.0, 0.0), ('b2f', a)),
@@ -1018,7 +1018,7 @@ late_optimizations = [
    (('fmin', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmin', a, b))),
    (('fmax', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmax', a, b))),
 
-   (('bcsel', 'a@bool', 0, ('b2f32', ('inot', 'b@bool'))), ('b2f32', ('inot', ('ior', a, b)))),
+   (('bcsel', a, 0, ('b2f32', ('inot', 'b@bool'))), ('b2f32', ('inot', ('ior', a, b)))),
 ]
 
 print(nir_algebraic.AlgebraicPass("nir_opt_algebraic", optimizations).render())
