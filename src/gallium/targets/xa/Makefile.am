@@ -37,16 +37,14 @@ libxatracker_la_LIBADD = \
 	$(top_builddir)/src/gallium/state_trackers/xa/libxatracker.la \
 	$(top_builddir)/src/gallium/auxiliary/libgalliumvl_stub.la \
 	$(top_builddir)/src/gallium/auxiliary/libgallium.la \
-	$(top_builddir)/src/compiler/nir/libnir.la \
-	$(top_builddir)/src/util/libmesautil.la \
+	$(top_builddir)/src/compiler/glsl/libglsl.la \
 	$(LIBDRM_LIBS) \
 	$(GALLIUM_COMMON_LIB_DEPS)
 
 libxatracker_la_LDFLAGS = \
 	-no-undefined \
 	-version-number $(XA_MAJOR):$(XA_MINOR):$(XA_PATCH) \
-	$(GC_SECTIONS) \
-	$(LD_NO_UNDEFINED)
+	$(GC_SECTIONS)
 
 if HAVE_LD_VERSION_SCRIPT
 libxatracker_la_LDFLAGS += \
