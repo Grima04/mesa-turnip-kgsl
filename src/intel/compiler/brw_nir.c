@@ -70,10 +70,9 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
       if ((mode == nir_var_shader_in && is_input(intrin)) ||
           (mode == nir_var_shader_out && is_output(intrin))) {
          nir_src *offset = nir_get_io_offset_src(intrin);
-         nir_const_value *const_offset = nir_src_as_const_value(*offset);
 
-         if (const_offset) {
-            intrin->const_index[0] += const_offset->u32[0];
+         if (nir_src_is_const(*offset)) {
+            intrin->const_index[0] += nir_src_as_uint(*offset);
             b->cursor = nir_before_instr(&intrin->instr);
             nir_instr_rewrite_src(&intrin->instr, offset,
                                   nir_src_for_ssa(nir_imm_int(b, 0)));
@@ -181,9 +180,8 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
 
          nir_src *vertex = nir_get_io_vertex_index_src(intrin);
          if (vertex) {
-            nir_const_value *const_vertex = nir_src_as_const_value(*vertex);
-            if (const_vertex) {
-               intrin->const_index[0] += const_vertex->u32[0] *
+            if (nir_src_is_const(*vertex)) {
+               intrin->const_index[0] += nir_src_as_uint(*vertex) *
                                          vue_map->num_per_vertex_slots;
             } else {
                b->cursor = nir_before_instr(&intrin->instr);
