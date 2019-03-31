@@ -985,6 +985,8 @@ pandecode_replay_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job
         if (p->index_count)
                 pandecode_prop("index_count = MALI_POSITIVE(%" PRId32 ")", p->index_count + 1);
 
+        pandecode_prop("negative_start = %d", p->negative_start);
+
         DYN_MEMORY_PROP(p, job_no, indices);
 
         if (p->zero1) {
