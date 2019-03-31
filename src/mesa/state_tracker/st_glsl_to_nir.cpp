@@ -410,6 +410,8 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
      NIR_PASS_V(nir, nir_lower_alu_to_scalar);
    }
 
+   /* before buffers and vars_to_ssa */
+   NIR_PASS_V(nir, gl_nir_lower_bindless_images);
    st_nir_opts(nir, is_scalar);
 
    NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
