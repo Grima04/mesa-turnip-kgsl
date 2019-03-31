@@ -1452,6 +1452,9 @@ panfrost_draw_vbo(
         ctx->payload_tiler.prefix.unknown_draw &= ~(0x3000 | 0x18000);
         ctx->payload_tiler.prefix.unknown_draw |= (mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
 
+        /* Clean index state */
+        ctx->payload_tiler.prefix.unknown_draw &= ~MALI_DRAW_INDEXED_UINT32;
+
         if (info->index_size) {
                 /* Calculate the min/max index used so we can figure out how
                  * many times to invoke the vertex shader */
@@ -1500,7 +1503,6 @@ panfrost_draw_vbo(
                 ctx->payload_tiler.prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
 
                 /* Reverse index state */
-                ctx->payload_tiler.prefix.unknown_draw &= ~MALI_DRAW_INDEXED_UINT32;
                 ctx->payload_tiler.prefix.indices = (uintptr_t) NULL;
         }
 
