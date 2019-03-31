@@ -194,6 +194,15 @@ panfrost_find_format(const struct util_format_description *desc)
                         assert(0);
                         break;
 
+                case PIPE_FORMAT_R32_FIXED:
+                        return MALI_R32_FIXED;
+                case PIPE_FORMAT_R32G32_FIXED:
+                        return MALI_RG32_FIXED;
+                case PIPE_FORMAT_R32G32B32_FIXED:
+                        return MALI_RGB32_FIXED;
+                case PIPE_FORMAT_R32G32B32A32_FIXED:
+                        return MALI_RGBA32_FIXED;
+
                 default:
                         /* Fallthrough to default */
                         break;
