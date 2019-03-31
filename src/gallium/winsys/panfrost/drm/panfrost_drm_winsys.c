@@ -32,11 +32,11 @@
 struct pipe_screen *
 panfrost_drm_screen_create(int fd)
 {
-   return panfrost_create_screen(fcntl(fd, F_DUPFD_CLOEXEC, 3), NULL, true);
+   return panfrost_create_screen(fcntl(fd, F_DUPFD_CLOEXEC, 3), NULL);
 }
 
 struct pipe_screen *
-panfrost_drm_screen_create_renderonly(struct renderonly *ro, bool is_drm)
+panfrost_drm_screen_create_renderonly(struct renderonly *ro)
 {
-   return panfrost_create_screen(fcntl(ro->gpu_fd, F_DUPFD_CLOEXEC, 3), ro, is_drm);
+   return panfrost_create_screen(fcntl(ro->gpu_fd, F_DUPFD_CLOEXEC, 3), ro);
 }

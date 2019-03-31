@@ -298,7 +298,6 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
         struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
-        int ret;
 
         if (!screen->last_fragment_flushed) {
 		drmSyncobjWait(drm->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);

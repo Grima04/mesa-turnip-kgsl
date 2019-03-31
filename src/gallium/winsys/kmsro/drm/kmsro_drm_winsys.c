@@ -86,18 +86,9 @@ struct pipe_screen *kmsro_drm_screen_create(int fd)
 #if defined(GALLIUM_PANFROST)
    ro.gpu_fd = drmOpenWithType("panfrost", NULL, DRM_NODE_RENDER);
 
-   bool is_drm = true;
-   if (ro.gpu_fd < 0) {
-      /* For compatibility with legacy kernels, fallback on the non-DRM
-       * interface */
-
-      ro.gpu_fd = open("/dev/mali0", O_RDWR | O_CLOEXEC);
-      is_drm = false;
-   }
-
    if (ro.gpu_fd >= 0) {
       ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
-      screen = panfrost_drm_screen_create_renderonly(&ro, is_drm);
+      screen = panfrost_drm_screen_create_renderonly(&ro);
       if (!screen)
          close(ro.gpu_fd);
 

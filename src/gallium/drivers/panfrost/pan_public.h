@@ -32,7 +32,7 @@ struct pipe_screen;
 struct renderonly;
 
 struct pipe_screen *
-panfrost_create_screen(int fd, struct renderonly *ro, bool is_drm);
+panfrost_create_screen(int fd, struct renderonly *ro);
 
 #ifdef __cplusplus
 }

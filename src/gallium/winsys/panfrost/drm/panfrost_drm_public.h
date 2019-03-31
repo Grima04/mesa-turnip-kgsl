@@ -31,6 +31,6 @@ struct pipe_screen;
 struct renderonly;
 
 struct pipe_screen *panfrost_drm_screen_create(int drmFD);
-struct pipe_screen *panfrost_drm_screen_create_renderonly(struct renderonly *ro, bool is_drm);
+struct pipe_screen *panfrost_drm_screen_create_renderonly(struct renderonly *ro);
 
 #endif /* __PAN_DRM_PUBLIC_H__ */
