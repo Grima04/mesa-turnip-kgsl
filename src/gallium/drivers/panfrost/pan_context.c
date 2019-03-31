@@ -1461,8 +1461,8 @@ panfrost_draw_vbo(
 
                 const uint8_t *ibuf8 = panfrost_get_index_buffer_raw(info);
 
-                int min_index = INT_MAX;
-                int max_index = 0;
+                unsigned min_index = UINT_MAX;
+                unsigned max_index = 0;
 
                 if (info->index_size == 1) {
                         CALCULATE_MIN_MAX_INDEX(uint8_t, ibuf8, info->start, info->count);
@@ -1477,9 +1477,8 @@ panfrost_draw_vbo(
                 }
 
                 /* Make sure we didn't go crazy */
-                assert(min_index < INT_MAX);
-                assert(max_index > 0);
-                assert(max_index > min_index);
+                assert(min_index < UINT_MAX);
+                assert(max_index >= min_index);
 
                 /* Use the corresponding values */
                 invocation_count = max_index - min_index + 1;
