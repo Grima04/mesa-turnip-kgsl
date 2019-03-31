@@ -2950,7 +2950,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
       gen_mi_mem32(anv_address_add(counter_buffer->address,
                                    counterBufferOffset));
    if (counterOffset)
-      count = gen_mi_iadd(&b, count, gen_mi_imm(-counterOffset));
+      count = gen_mi_isub(&b, count, gen_mi_imm(counterOffset));
    count = gen_mi_udiv32_imm(&b, count, vertexStride);
    gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_VERTEX_COUNT), count);
 
