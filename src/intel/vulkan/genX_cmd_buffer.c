@@ -822,12 +822,35 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
       anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
    unsigned copy_size = cmd_buffer->device->isl_dev.ss.clear_value_size;
 
+#if GEN_GEN == 7
+   /* On gen7, the combination of commands used here(MI_LOAD_REGISTER_MEM
+    * and MI_STORE_REGISTER_MEM) can cause GPU hangs if any rendering is
+    * in-flight when they are issued even if the memory touched is not
+    * currently active for rendering.  The weird bit is that it is not the
+    * MI_LOAD/STORE_REGISTER_MEM commands which hang but rather the in-flight
+    * rendering hangs such that the next stalling command after the
+    * MI_LOAD/STORE_REGISTER_MEM commands will catch the hang.
+    *
+    * It is unclear exactly why this hang occurs.  Both MI commands come with
+    * warnings about the 3D pipeline but that doesn't seem to fully explain
+    * it.  My (Jason's) best theory is that it has something to do with the
+    * fact that we're using a GPU state register as our temporary and that
+    * something with reading/writing it is causing problems.
+    *
+    * In order to work around this issue, we emit a PIPE_CONTROL with the
+    * command streamer stall bit set.
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+#endif
+
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
    if (copy_from_surface_state) {
-      genX(cmd_buffer_mi_memcpy)(cmd_buffer, entry_addr,
-                                 ss_clear_addr, copy_size);
+      gen_mi_memcpy(&b, entry_addr, ss_clear_addr, copy_size);
    } else {
-      genX(cmd_buffer_mi_memcpy)(cmd_buffer, ss_clear_addr,
-                                 entry_addr, copy_size);
+      gen_mi_memcpy(&b, ss_clear_addr, entry_addr, copy_size);
 
       /* Updating a surface state object may require that the state cache be
        * invalidated. From the SKL PRM, Shared Functions -> State -> State

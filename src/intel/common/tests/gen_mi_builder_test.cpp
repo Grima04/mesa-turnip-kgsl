@@ -422,6 +422,36 @@ TEST_F(gen_mi_builder_test, mem_reg)
    EXPECT_EQ(*(uint64_t *)(output + 24), (uint64_t)(uint32_t)value);
 }
 
+TEST_F(gen_mi_builder_test, memset)
+{
+   const unsigned memset_size = 256;
+
+   gen_mi_memset(&b, out_addr(0), 0xdeadbeef, memset_size);
+
+   submit_batch();
+
+   uint32_t *out_u32 = (uint32_t *)output;
+   for (unsigned i = 0; i <  memset_size / sizeof(*out_u32); i++)
+      EXPECT_EQ(out_u32[i], 0xdeadbeef);
+}
+
+TEST_F(gen_mi_builder_test, memcpy)
+{
+   const unsigned memcpy_size = 256;
+
+   uint8_t *in_u8 = (uint8_t *)input;
+   for (unsigned i = 0; i < memcpy_size; i++)
+      in_u8[i] = i;
+
+   gen_mi_memcpy(&b, out_addr(0), in_addr(0), 256);
+
+   submit_batch();
+
+   uint8_t *out_u8 = (uint8_t *)output;
+   for (unsigned i = 0; i < memcpy_size; i++)
+      EXPECT_EQ(out_u8[i], i);
+}
+
 /* Start of MI_MATH section */
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
 

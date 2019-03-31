@@ -363,14 +363,13 @@ emit_query_availability(struct anv_cmd_buffer *cmd_buffer,
  */
 static void
 emit_zero_queries(struct anv_cmd_buffer *cmd_buffer,
-                  struct anv_query_pool *pool,
+                  struct gen_mi_builder *b, struct anv_query_pool *pool,
                   uint32_t first_index, uint32_t num_queries)
 {
    for (uint32_t i = 0; i < num_queries; i++) {
       struct anv_address slot_addr =
          anv_query_address(pool, first_index + i);
-      genX(cmd_buffer_mi_memset)(cmd_buffer, anv_address_add(slot_addr, 8),
-                                 0, pool->stride - 8);
+      gen_mi_memset(b, anv_address_add(slot_addr, 8), 0, pool->stride - 8);
       emit_query_availability(cmd_buffer, slot_addr);
    }
 }
@@ -574,7 +573,7 @@ void genX(CmdEndQueryIndexedEXT)(
       const uint32_t num_queries =
          util_bitcount(cmd_buffer->state.subpass->view_mask);
       if (num_queries > 1)
-         emit_zero_queries(cmd_buffer, pool, query + 1, num_queries - 1);
+         emit_zero_queries(cmd_buffer, &b, pool, query + 1, num_queries - 1);
    }
 }
 
@@ -628,7 +627,7 @@ void genX(CmdWriteTimestamp)(
       const uint32_t num_queries =
          util_bitcount(cmd_buffer->state.subpass->view_mask);
       if (num_queries > 1)
-         emit_zero_queries(cmd_buffer, pool, query + 1, num_queries - 1);
+         emit_zero_queries(cmd_buffer, &b, pool, query + 1, num_queries - 1);
    }
 }
 
