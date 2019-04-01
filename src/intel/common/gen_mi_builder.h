@@ -644,6 +644,26 @@ gen_mi_iand(struct gen_mi_builder *b,
                             MI_ALU_STORE, MI_ALU_ACCU);
 }
 
+/**
+ * Returns (src != 0) ? 1 : 0.
+ */
+static inline struct gen_mi_value
+gen_mi_nz(struct gen_mi_builder *b, struct gen_mi_value src)
+{
+   return gen_mi_math_binop(b, MI_ALU_ADD, src, gen_mi_imm(0),
+                            MI_ALU_STOREINV, MI_ALU_ZF);
+}
+
+/**
+ * Returns (src == 0) ? 1 : 0.
+ */
+static inline struct gen_mi_value
+gen_mi_z(struct gen_mi_builder *b, struct gen_mi_value src)
+{
+   return gen_mi_math_binop(b, MI_ALU_ADD, src, gen_mi_imm(0),
+                            MI_ALU_STORE, MI_ALU_ZF);
+}
+
 static inline struct gen_mi_value
 gen_mi_ior(struct gen_mi_builder *b,
            struct gen_mi_value src0, struct gen_mi_value src1)
