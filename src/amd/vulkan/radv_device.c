@@ -902,6 +902,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->storagePushConstant8 = enabled;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+			VkPhysicalDeviceFloat16Int8FeaturesKHR *features =
+				(VkPhysicalDeviceFloat16Int8FeaturesKHR*)ext;
+			bool enabled = pdevice->rad_info.chip_class >= VI;
+			features->shaderFloat16 = VK_FALSE;
+			features->shaderInt8 = enabled;
+			break;
+		}
 		default:
 			break;
 		}
