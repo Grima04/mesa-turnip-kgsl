@@ -1617,6 +1617,21 @@ iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
    return ret;
 }
 
+static uint64_t
+iris_gtt_size(int fd)
+{
+   /* We use the default (already allocated) context to determine
+    * the default configuration of the virtual address space.
+    */
+   struct drm_i915_gem_context_param p = {
+      .param = I915_CONTEXT_PARAM_GTT_SIZE,
+   };
+   if (!drm_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p))
+      return p.value;
+
+   return 0;
+}
+
 /**
  * Initializes the GEM buffer manager, which uses the kernel to allocate, map,
  * and manage map buffer objections.
@@ -1626,6 +1641,10 @@ iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
 struct iris_bufmgr *
 iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
 {
+   uint64_t gtt_size = iris_gtt_size(fd);
+   if (gtt_size <= IRIS_MEMZONE_OTHER_START)
+      return NULL;
+
    struct iris_bufmgr *bufmgr = calloc(1, sizeof(*bufmgr));
    if (bufmgr == NULL)
       return NULL;
@@ -1661,7 +1680,7 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
                       _4GB - IRIS_BORDER_COLOR_POOL_SIZE);
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
                       IRIS_MEMZONE_OTHER_START,
-                      (1ull << 48) - IRIS_MEMZONE_OTHER_START);
+                      gtt_size - IRIS_MEMZONE_OTHER_START);
 
    // XXX: driconf
    bufmgr->bo_reuse = env_var_as_boolean("bo_reuse", true);
