@@ -345,6 +345,8 @@ static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx,
 	LLVMValueRef result = LLVMBuildAnd(ctx->builder, src0, ctx->i32_1, "");
 
 	switch (bitsize) {
+	case 8:
+		return LLVMBuildTrunc(ctx->builder, result, ctx->i8, "");
 	case 16:
 		return LLVMBuildTrunc(ctx->builder, result, ctx->i16, "");
 	case 32:
@@ -978,6 +980,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	case nir_op_f2b32:
 		result = emit_f2b(&ctx->ac, src[0]);
 		break;
+	case nir_op_b2i8:
 	case nir_op_b2i16:
 	case nir_op_b2i32:
 	case nir_op_b2i64:
