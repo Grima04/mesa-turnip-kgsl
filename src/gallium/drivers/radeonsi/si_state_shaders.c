@@ -1379,19 +1379,18 @@ static void si_shader_selector_key_vs(struct si_context *sctx,
 	    vs->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS])
 		return;
 
-	prolog_key->instance_divisor_is_one =
-		sctx->vertex_elements->instance_divisor_is_one;
-	prolog_key->instance_divisor_is_fetched =
-		sctx->vertex_elements->instance_divisor_is_fetched;
+	struct si_vertex_elements *elts = sctx->vertex_elements;
+
+	prolog_key->instance_divisor_is_one = elts->instance_divisor_is_one;
+	prolog_key->instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
 
 	/* Prefer a monolithic shader to allow scheduling divisions around
 	 * VBO loads. */
 	if (prolog_key->instance_divisor_is_fetched)
 		key->opt.prefer_mono = 1;
 
-	unsigned count = MIN2(vs->info.num_inputs,
-			      sctx->vertex_elements->count);
-	memcpy(key->mono.vs_fix_fetch, sctx->vertex_elements->fix_fetch, count);
+	unsigned count = MIN2(vs->info.num_inputs, elts->count);
+	memcpy(key->mono.vs_fix_fetch, elts->fix_fetch, count);
 }
 
 static void si_shader_selector_key_hw_vs(struct si_context *sctx,
