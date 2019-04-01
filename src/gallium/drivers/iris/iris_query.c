@@ -677,7 +677,6 @@ static void
 calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 {
    struct iris_batch *batch = &ice->batches[q->batch_idx];
-   struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
    uint32_t offset = q->query_state_ref.offset;
@@ -696,7 +695,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
        * We would need to do a bit of fixed point math on the CS ALU, or
        * launch an actual shader to calculate this with full precision.
        */
-      emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
+      emit_mul_gpr0(batch, (1000000000ull / devinfo->timestamp_frequency));
       keep_gpr0_lower_n_bits(ice, 36);
       return;
    }
@@ -729,7 +728,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
 
    if (q->type == PIPE_QUERY_TIME_ELAPSED) {
       /* TODO: This discards fractional bits (see above). */
-      emit_mul_gpr0(batch, (1000000000ull / screen->devinfo.timestamp_frequency));
+      emit_mul_gpr0(batch, (1000000000ull / devinfo->timestamp_frequency));
    }
 }
 
