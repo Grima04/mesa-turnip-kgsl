@@ -414,9 +414,11 @@ _gen_mi_copy_no_unref(struct gen_mi_builder *b,
       case GEN_MI_VALUE_TYPE_REG32:
       case GEN_MI_VALUE_TYPE_REG64:
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-         gen_mi_builder_emit(b, GENX(MI_LOAD_REGISTER_REG), lrr) {
-            lrr.SourceRegisterAddress = src.reg;
-            lrr.DestinationRegisterAddress = dst.reg;
+         if (src.reg != dst.reg) {
+            gen_mi_builder_emit(b, GENX(MI_LOAD_REGISTER_REG), lrr) {
+               lrr.SourceRegisterAddress = src.reg;
+               lrr.DestinationRegisterAddress = dst.reg;
+            }
          }
 #else
          unreachable("Cannot do reg <-> reg copy on IVB and earlier");
