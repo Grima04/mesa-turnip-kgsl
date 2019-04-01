@@ -2585,6 +2585,13 @@ LLVMValueRef ac_build_bitfield_reverse(struct ac_llvm_context *ctx,
 	bitsize = ac_get_elem_bits(ctx, LLVMTypeOf(src0));
 
 	switch (bitsize) {
+	case 64:
+		result = ac_build_intrinsic(ctx, "llvm.bitreverse.i64", ctx->i64,
+					    (LLVMValueRef []) { src0 }, 1,
+					    AC_FUNC_ATTR_READNONE);
+
+		result = LLVMBuildTrunc(ctx->builder, result, ctx->i32, "");
+		break;
 	case 32:
 		result = ac_build_intrinsic(ctx, "llvm.bitreverse.i32", ctx->i32,
 					    (LLVMValueRef []) { src0 }, 1,
@@ -2592,6 +2599,13 @@ LLVMValueRef ac_build_bitfield_reverse(struct ac_llvm_context *ctx,
 		break;
 	case 16:
 		result = ac_build_intrinsic(ctx, "llvm.bitreverse.i16", ctx->i16,
+					    (LLVMValueRef []) { src0 }, 1,
+					    AC_FUNC_ATTR_READNONE);
+
+		result = LLVMBuildZExt(ctx->builder, result, ctx->i32, "");
+		break;
+	case 8:
+		result = ac_build_intrinsic(ctx, "llvm.bitreverse.i8", ctx->i8,
 					    (LLVMValueRef []) { src0 }, 1,
 					    AC_FUNC_ATTR_READNONE);
 
