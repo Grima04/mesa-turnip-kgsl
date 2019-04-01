@@ -139,6 +139,25 @@ struct si_vertex_elements
 	uint8_t				format_size[SI_MAX_ATTRIBS];
 	uint8_t				vertex_buffer_index[SI_MAX_ATTRIBS];
 
+	/* Bitmask of elements that always need a fixup to be applied. */
+	uint16_t			fix_fetch_always;
+
+	/* Bitmask of elements whose fetch should always be opencoded. */
+	uint16_t			fix_fetch_opencode;
+
+	/* Bitmask of elements which need to be opencoded if the vertex buffer
+	 * is unaligned. */
+	uint16_t			fix_fetch_unaligned;
+
+	/* For elements in fix_fetch_unaligned: whether the effective
+	 * element load size as seen by the hardware is a dword (as opposed
+	 * to a short).
+	 */
+	uint16_t			hw_load_is_dword;
+
+	/* Bitmask of vertex buffers requiring alignment check */
+	uint16_t			vb_alignment_check_mask;
+
 	uint8_t				count;
 	bool				uses_instance_divisors;
 

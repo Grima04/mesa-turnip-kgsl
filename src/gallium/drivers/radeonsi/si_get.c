@@ -197,7 +197,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
 	case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
 	case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
-		return !sscreen->info.has_unaligned_shader_loads;
+		return HAVE_LLVM < 0x0900 && !sscreen->info.has_unaligned_shader_loads;
 
 	case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
 		return sscreen->info.has_sparse_vm_mappings ?

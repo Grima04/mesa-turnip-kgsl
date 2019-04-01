@@ -430,21 +430,6 @@ static LLVMValueRef get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
 	}
 }
 
-/* Bitcast <4 x float> to <2 x double>, extract the component, and convert
- * to float. */
-static LLVMValueRef extract_double_to_float(struct si_shader_context *ctx,
-					    LLVMValueRef vec4,
-					    unsigned double_index)
-{
-	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMTypeRef f64 = LLVMDoubleTypeInContext(ctx->ac.context);
-	LLVMValueRef dvec2 = LLVMBuildBitCast(builder, vec4,
-					      LLVMVectorType(f64, 2), "");
-	LLVMValueRef index = LLVMConstInt(ctx->i32, double_index, 0);
-	LLVMValueRef value = LLVMBuildExtractElement(builder, dvec2, index, "");
-	return LLVMBuildFPTrunc(builder, value, ctx->f32, "");
-}
-
 static LLVMValueRef unpack_sint16(struct si_shader_context *ctx,
 				 LLVMValueRef i32, unsigned index)
 {
@@ -536,17 +521,12 @@ void si_llvm_load_input_vs(
 		return;
 	}
 
-	unsigned chan;
-	unsigned fix_fetch;
-	unsigned num_fetches;
-	unsigned fetch_stride;
-	unsigned num_channels;
-
+	union si_vs_fix_fetch fix_fetch;
 	LLVMValueRef t_list_ptr;
 	LLVMValueRef t_offset;
 	LLVMValueRef t_list;
 	LLVMValueRef vertex_index;
-	LLVMValueRef input[3];
+	LLVMValueRef tmp;
 
 	/* Load the T list */
 	t_list_ptr = LLVMGetParam(ctx->main_fn, ctx->param_vertex_buffers);
@@ -559,74 +539,84 @@ void si_llvm_load_input_vs(
 				    ctx->param_vertex_index0 +
 				    input_index);
 
-	fix_fetch = ctx->shader->key.mono.vs_fix_fetch[input_index];
+	/* Use the open-coded implementation for all loads of doubles and
+	 * of dword-sized data that needs fixups. We need to insert conversion
+	 * code anyway, and the amd/common code does it for us.
+	 *
+	 * Note: On LLVM <= 8, we can only open-code formats with
+	 * channel size >= 4 bytes.
+	 */
+	bool opencode = ctx->shader->key.mono.vs_fetch_opencode & (1 << input_index);
+	fix_fetch.bits = ctx->shader->key.mono.vs_fix_fetch[input_index].bits;
+	if (opencode ||
+	    (fix_fetch.u.log_size == 3 && fix_fetch.u.format == AC_FETCH_FORMAT_FLOAT) ||
+	    (fix_fetch.u.log_size == 2)) {
+		tmp = ac_build_opencoded_load_format(
+				&ctx->ac, fix_fetch.u.log_size, fix_fetch.u.num_channels_m1 + 1,
+				fix_fetch.u.format, fix_fetch.u.reverse, !opencode,
+				t_list, vertex_index, ctx->ac.i32_0, ctx->ac.i32_0,
+				false, false, true);
+		for (unsigned i = 0; i < 4; ++i)
+			out[i] = LLVMBuildExtractElement(ctx->ac.builder, tmp, LLVMConstInt(ctx->i32, i, false), "");
+		return;
+	}
 
 	/* Do multiple loads for special formats. */
-	switch (fix_fetch) {
-	case SI_FIX_FETCH_RG_64_FLOAT:
-		num_fetches = 1; /* 1 2-dword or 4-dword load */
-		fetch_stride = 0;
-		if (util_last_bit(info->input_usage_mask[input_index]) >= 2)
-			num_channels = 4; /* 2 doubles in 4 dwords */
-		else
-			num_channels = 2; /* 1 double in 2 dwords */
-		break;
-	case SI_FIX_FETCH_RGB_64_FLOAT:
-		num_fetches = 3; /* 3 2-dword loads */
-		fetch_stride = 8;
-		num_channels = 2;
-		break;
-	case SI_FIX_FETCH_RGBA_64_FLOAT:
-		num_fetches = 2; /* 2 4-dword loads */
-		fetch_stride = 16;
-		num_channels = 4;
-		break;
-	case SI_FIX_FETCH_RGB_8:
-	case SI_FIX_FETCH_RGB_8_INT:
-		num_fetches = 3;
-		fetch_stride = 1;
-		num_channels = 1;
-		break;
-	case SI_FIX_FETCH_RGB_16:
-	case SI_FIX_FETCH_RGB_16_INT:
-		num_fetches = 3;
-		fetch_stride = 2;
-		num_channels = 1;
-		break;
-	default:
+	unsigned required_channels = util_last_bit(info->input_usage_mask[input_index]);
+	LLVMValueRef fetches[4];
+	unsigned num_fetches;
+	unsigned fetch_stride;
+	unsigned channels_per_fetch;
+
+	if (fix_fetch.u.log_size <= 1 && fix_fetch.u.num_channels_m1 == 2) {
+		num_fetches = MIN2(required_channels, 3);
+		fetch_stride = 1 << fix_fetch.u.log_size;
+		channels_per_fetch = 1;
+	} else {
 		num_fetches = 1;
 		fetch_stride = 0;
-		num_channels = util_last_bit(info->input_usage_mask[input_index]);
+		channels_per_fetch = required_channels;
 	}
 
-	for (unsigned i = 0; i < num_fetches; i++) {
+	for (unsigned i = 0; i < num_fetches; ++i) {
 		LLVMValueRef voffset = LLVMConstInt(ctx->i32, fetch_stride * i, 0);
-
-		input[i] = ac_build_buffer_load_format(&ctx->ac, t_list,
-						       vertex_index, voffset,
-						       num_channels, false, true);
-		input[i] = ac_build_expand_to_vec4(&ctx->ac, input[i], num_channels);
+		fetches[i] = ac_build_buffer_load_format(&ctx->ac, t_list, vertex_index, voffset,
+							 channels_per_fetch, false, true);
 	}
 
-	/* Break up the vec4 into individual components */
-	for (chan = 0; chan < 4; chan++) {
-		LLVMValueRef llvm_chan = LLVMConstInt(ctx->i32, chan, 0);
-		out[chan] = LLVMBuildExtractElement(ctx->ac.builder,
-						    input[0], llvm_chan, "");
+	if (num_fetches == 1 && channels_per_fetch > 1) {
+		LLVMValueRef fetch = fetches[0];
+		for (unsigned i = 0; i < channels_per_fetch; ++i) {
+			tmp = LLVMConstInt(ctx->i32, i, false);
+			fetches[i] = LLVMBuildExtractElement(
+				ctx->ac.builder, fetch, tmp, "");
+		}
+		num_fetches = channels_per_fetch;
+		channels_per_fetch = 1;
 	}
 
-	switch (fix_fetch) {
-	case SI_FIX_FETCH_A2_SNORM:
-	case SI_FIX_FETCH_A2_SSCALED:
-	case SI_FIX_FETCH_A2_SINT: {
-		/* The hardware returns an unsigned value; convert it to a
-		 * signed one.
+	for (unsigned i = num_fetches; i < 4; ++i)
+		fetches[i] = LLVMGetUndef(ctx->f32);
+
+	if (fix_fetch.u.log_size <= 1 && fix_fetch.u.num_channels_m1 == 2 &&
+	    required_channels == 4) {
+		if (fix_fetch.u.format == AC_FETCH_FORMAT_UINT || fix_fetch.u.format == AC_FETCH_FORMAT_SINT)
+			fetches[3] = ctx->ac.i32_1;
+		else
+			fetches[3] = ctx->ac.f32_1;
+	} else if (fix_fetch.u.log_size == 3 &&
+		   (fix_fetch.u.format == AC_FETCH_FORMAT_SNORM ||
+		    fix_fetch.u.format == AC_FETCH_FORMAT_SSCALED ||
+		    fix_fetch.u.format == AC_FETCH_FORMAT_SINT) &&
+		   required_channels == 4) {
+		/* For 2_10_10_10, the hardware returns an unsigned value;
+		 * convert it to a signed one.
 		 */
-		LLVMValueRef tmp = out[3];
+		LLVMValueRef tmp = fetches[3];
 		LLVMValueRef c30 = LLVMConstInt(ctx->i32, 30, 0);
 
 		/* First, recover the sign-extended signed integer value. */
-		if (fix_fetch == SI_FIX_FETCH_A2_SSCALED)
+		if (fix_fetch.u.format == AC_FETCH_FORMAT_SSCALED)
 			tmp = LLVMBuildFPToUI(ctx->ac.builder, tmp, ctx->i32, "");
 		else
 			tmp = ac_to_integer(&ctx->ac, tmp);
@@ -638,110 +628,26 @@ void si_llvm_load_input_vs(
 		 * exponent.
 		 */
 		tmp = LLVMBuildShl(ctx->ac.builder, tmp,
-				   fix_fetch == SI_FIX_FETCH_A2_SNORM ?
+				   fix_fetch.u.format == AC_FETCH_FORMAT_SNORM ?
 				   LLVMConstInt(ctx->i32, 7, 0) : c30, "");
 		tmp = LLVMBuildAShr(ctx->ac.builder, tmp, c30, "");
 
 		/* Convert back to the right type. */
-		if (fix_fetch == SI_FIX_FETCH_A2_SNORM) {
+		if (fix_fetch.u.format == AC_FETCH_FORMAT_SNORM) {
 			LLVMValueRef clamp;
 			LLVMValueRef neg_one = LLVMConstReal(ctx->f32, -1.0);
 			tmp = LLVMBuildSIToFP(ctx->ac.builder, tmp, ctx->f32, "");
 			clamp = LLVMBuildFCmp(ctx->ac.builder, LLVMRealULT, tmp, neg_one, "");
 			tmp = LLVMBuildSelect(ctx->ac.builder, clamp, neg_one, tmp, "");
-		} else if (fix_fetch == SI_FIX_FETCH_A2_SSCALED) {
+		} else if (fix_fetch.u.format == AC_FETCH_FORMAT_SSCALED) {
 			tmp = LLVMBuildSIToFP(ctx->ac.builder, tmp, ctx->f32, "");
 		}
 
-		out[3] = tmp;
-		break;
+		fetches[3] = tmp;
 	}
-	case SI_FIX_FETCH_RGBA_32_UNORM:
-	case SI_FIX_FETCH_RGBX_32_UNORM:
-		for (chan = 0; chan < 4; chan++) {
-			out[chan] = ac_to_integer(&ctx->ac, out[chan]);
-			out[chan] = LLVMBuildUIToFP(ctx->ac.builder,
-						    out[chan], ctx->f32, "");
-			out[chan] = LLVMBuildFMul(ctx->ac.builder, out[chan],
-						  LLVMConstReal(ctx->f32, 1.0 / UINT_MAX), "");
-		}
-		/* RGBX UINT returns 1 in alpha, which would be rounded to 0 by normalizing. */
-		if (fix_fetch == SI_FIX_FETCH_RGBX_32_UNORM)
-			out[3] = LLVMConstReal(ctx->f32, 1);
-		break;
-	case SI_FIX_FETCH_RGBA_32_SNORM:
-	case SI_FIX_FETCH_RGBX_32_SNORM:
-	case SI_FIX_FETCH_RGBA_32_FIXED:
-	case SI_FIX_FETCH_RGBX_32_FIXED: {
-		double scale;
-		if (fix_fetch >= SI_FIX_FETCH_RGBA_32_FIXED)
-			scale = 1.0 / 0x10000;
-		else
-			scale = 1.0 / INT_MAX;
 
-		for (chan = 0; chan < 4; chan++) {
-			out[chan] = ac_to_integer(&ctx->ac, out[chan]);
-			out[chan] = LLVMBuildSIToFP(ctx->ac.builder,
-						    out[chan], ctx->f32, "");
-			out[chan] = LLVMBuildFMul(ctx->ac.builder, out[chan],
-						  LLVMConstReal(ctx->f32, scale), "");
-		}
-		/* RGBX SINT returns 1 in alpha, which would be rounded to 0 by normalizing. */
-		if (fix_fetch == SI_FIX_FETCH_RGBX_32_SNORM ||
-		    fix_fetch == SI_FIX_FETCH_RGBX_32_FIXED)
-			out[3] = LLVMConstReal(ctx->f32, 1);
-		break;
-	}
-	case SI_FIX_FETCH_RGBA_32_USCALED:
-		for (chan = 0; chan < 4; chan++) {
-			out[chan] = ac_to_integer(&ctx->ac, out[chan]);
-			out[chan] = LLVMBuildUIToFP(ctx->ac.builder,
-						    out[chan], ctx->f32, "");
-		}
-		break;
-	case SI_FIX_FETCH_RGBA_32_SSCALED:
-		for (chan = 0; chan < 4; chan++) {
-			out[chan] = ac_to_integer(&ctx->ac, out[chan]);
-			out[chan] = LLVMBuildSIToFP(ctx->ac.builder,
-						    out[chan], ctx->f32, "");
-		}
-		break;
-	case SI_FIX_FETCH_RG_64_FLOAT:
-		for (chan = 0; chan < 2; chan++)
-			out[chan] = extract_double_to_float(ctx, input[0], chan);
-
-		out[2] = LLVMConstReal(ctx->f32, 0);
-		out[3] = LLVMConstReal(ctx->f32, 1);
-		break;
-	case SI_FIX_FETCH_RGB_64_FLOAT:
-		for (chan = 0; chan < 3; chan++)
-			out[chan] = extract_double_to_float(ctx, input[chan], 0);
-
-		out[3] = LLVMConstReal(ctx->f32, 1);
-		break;
-	case SI_FIX_FETCH_RGBA_64_FLOAT:
-		for (chan = 0; chan < 4; chan++) {
-			out[chan] = extract_double_to_float(ctx, input[chan / 2],
-							    chan % 2);
-		}
-		break;
-	case SI_FIX_FETCH_RGB_8:
-	case SI_FIX_FETCH_RGB_8_INT:
-	case SI_FIX_FETCH_RGB_16:
-	case SI_FIX_FETCH_RGB_16_INT:
-		for (chan = 0; chan < 3; chan++) {
-			out[chan] = LLVMBuildExtractElement(ctx->ac.builder,
-							    input[chan],
-							    ctx->i32_0, "");
-		}
-		if (fix_fetch == SI_FIX_FETCH_RGB_8 ||
-		    fix_fetch == SI_FIX_FETCH_RGB_16) {
-			out[3] = LLVMConstReal(ctx->f32, 1);
-		} else {
-			out[3] = ac_to_float(&ctx->ac, ctx->i32_1);
-		}
-		break;
-	}
+	for (unsigned i = 0; i < 4; ++i)
+		out[i] = ac_to_float(&ctx->ac, fetches[i]);
 }
 
 static void declare_input_vs(
@@ -5777,9 +5683,18 @@ static void si_dump_shader_key_vs(const struct si_shader_key *key,
 	fprintf(f, "  %s.ls_vgpr_fix = %u\n",
 		prefix, prolog->ls_vgpr_fix);
 
+	fprintf(f, "  mono.vs.fetch_opencode = %x\n", key->mono.vs_fetch_opencode);
 	fprintf(f, "  mono.vs.fix_fetch = {");
-	for (int i = 0; i < SI_MAX_ATTRIBS; i++)
-		fprintf(f, !i ? "%u" : ", %u", key->mono.vs_fix_fetch[i]);
+	for (int i = 0; i < SI_MAX_ATTRIBS; i++) {
+		union si_vs_fix_fetch fix = key->mono.vs_fix_fetch[i];
+		if (i)
+			fprintf(f, ", ");
+		if (!fix.bits)
+			fprintf(f, "0");
+		else
+			fprintf(f, "%u.%u.%u.%u", fix.u.reverse, fix.u.log_size,
+				fix.u.num_channels_m1, fix.u.format);
+	}
 	fprintf(f, "}\n");
 }
 

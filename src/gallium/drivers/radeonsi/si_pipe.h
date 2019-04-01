@@ -939,6 +939,7 @@ struct si_context {
 	bool				vertex_buffers_dirty;
 	bool				vertex_buffer_pointer_dirty;
 	struct pipe_vertex_buffer	vertex_buffer[SI_NUM_VERTEX_BUFFERS];
+	uint16_t			vertex_buffer_unaligned; /* bitmask of not dword-aligned buffers */
 
 	/* MSAA config state. */
 	int				ps_iter_samples;

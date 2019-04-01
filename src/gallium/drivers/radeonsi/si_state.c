@@ -4459,10 +4459,8 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 	for (i = 0; i < count; ++i) {
 		const struct util_format_description *desc;
 		const struct util_format_channel_description *channel;
-		unsigned data_format, num_format;
 		int first_non_void;
 		unsigned vbo_index = elements[i].vertex_buffer_index;
-		unsigned char swizzle[4];
 
 		if (vbo_index >= SI_NUM_VERTEX_BUFFERS) {
 			FREE(v);
@@ -4489,105 +4487,137 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 
 		desc = util_format_description(elements[i].src_format);
 		first_non_void = util_format_get_first_non_void_channel(elements[i].src_format);
-		data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
-		num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
 		channel = first_non_void >= 0 ? &desc->channel[first_non_void] : NULL;
-		memcpy(swizzle, desc->swizzle, sizeof(swizzle));
 
 		v->format_size[i] = desc->block.bits / 8;
 		v->src_offset[i] = elements[i].src_offset;
 		v->vertex_buffer_index[i] = vbo_index;
 
-		/* The hardware always treats the 2-bit alpha channel as
-		 * unsigned, so a shader workaround is needed. The affected
-		 * chips are VI and older except Stoney (GFX8.1).
-		 */
-		if (data_format == V_008F0C_BUF_DATA_FORMAT_2_10_10_10 &&
-		    sscreen->info.chip_class <= VI &&
-		    sscreen->info.family != CHIP_STONEY) {
-			if (num_format == V_008F0C_BUF_NUM_FORMAT_SNORM) {
-				v->fix_fetch[i] = SI_FIX_FETCH_A2_SNORM;
-			} else if (num_format == V_008F0C_BUF_NUM_FORMAT_SSCALED) {
-				v->fix_fetch[i] = SI_FIX_FETCH_A2_SSCALED;
-			} else if (num_format == V_008F0C_BUF_NUM_FORMAT_SINT) {
-				/* This isn't actually used in OpenGL. */
-				v->fix_fetch[i] = SI_FIX_FETCH_A2_SINT;
-			}
-		} else if (channel && channel->type == UTIL_FORMAT_TYPE_FIXED) {
-			if (desc->swizzle[3] == PIPE_SWIZZLE_1)
-				v->fix_fetch[i] = SI_FIX_FETCH_RGBX_32_FIXED;
-			else
-				v->fix_fetch[i] = SI_FIX_FETCH_RGBA_32_FIXED;
-		} else if (channel && channel->size == 32 && !channel->pure_integer) {
-			if (channel->type == UTIL_FORMAT_TYPE_SIGNED) {
-				if (channel->normalized) {
-					if (desc->swizzle[3] == PIPE_SWIZZLE_1)
-						v->fix_fetch[i] = SI_FIX_FETCH_RGBX_32_SNORM;
-					else
-						v->fix_fetch[i] = SI_FIX_FETCH_RGBA_32_SNORM;
-				} else {
-					v->fix_fetch[i] = SI_FIX_FETCH_RGBA_32_SSCALED;
-				}
-			} else if (channel->type == UTIL_FORMAT_TYPE_UNSIGNED) {
-				if (channel->normalized) {
-					if (desc->swizzle[3] == PIPE_SWIZZLE_1)
-						v->fix_fetch[i] = SI_FIX_FETCH_RGBX_32_UNORM;
-					else
-						v->fix_fetch[i] = SI_FIX_FETCH_RGBA_32_UNORM;
-				} else {
-					v->fix_fetch[i] = SI_FIX_FETCH_RGBA_32_USCALED;
-				}
-			}
-		} else if (channel && channel->size == 64 &&
-			   channel->type == UTIL_FORMAT_TYPE_FLOAT) {
-			switch (desc->nr_channels) {
-			case 1:
-			case 2:
-				v->fix_fetch[i] = SI_FIX_FETCH_RG_64_FLOAT;
-				swizzle[0] = PIPE_SWIZZLE_X;
-				swizzle[1] = PIPE_SWIZZLE_Y;
-				swizzle[2] = desc->nr_channels == 2 ? PIPE_SWIZZLE_Z : PIPE_SWIZZLE_0;
-				swizzle[3] = desc->nr_channels == 2 ? PIPE_SWIZZLE_W : PIPE_SWIZZLE_0;
-				break;
-			case 3:
-				v->fix_fetch[i] = SI_FIX_FETCH_RGB_64_FLOAT;
-				swizzle[0] = PIPE_SWIZZLE_X; /* 3 loads */
-				swizzle[1] = PIPE_SWIZZLE_Y;
-				swizzle[2] = PIPE_SWIZZLE_0;
-				swizzle[3] = PIPE_SWIZZLE_0;
-				break;
-			case 4:
-				v->fix_fetch[i] = SI_FIX_FETCH_RGBA_64_FLOAT;
-				swizzle[0] = PIPE_SWIZZLE_X; /* 2 loads */
-				swizzle[1] = PIPE_SWIZZLE_Y;
-				swizzle[2] = PIPE_SWIZZLE_Z;
-				swizzle[3] = PIPE_SWIZZLE_W;
-				break;
-			default:
-				assert(0);
-			}
-		} else if (channel && desc->nr_channels == 3) {
-			assert(desc->swizzle[0] == PIPE_SWIZZLE_X);
+		bool always_fix = false;
+		union si_vs_fix_fetch fix_fetch;
+		unsigned log_hw_load_size; /* the load element size as seen by the hardware */
 
-			if (channel->size == 8) {
+		fix_fetch.bits = 0;
+		log_hw_load_size = MIN2(2, util_logbase2(desc->block.bits) - 3);
+
+		if (channel) {
+			switch (channel->type) {
+			case UTIL_FORMAT_TYPE_FLOAT: fix_fetch.u.format = AC_FETCH_FORMAT_FLOAT; break;
+			case UTIL_FORMAT_TYPE_FIXED: fix_fetch.u.format = AC_FETCH_FORMAT_FIXED; break;
+			case UTIL_FORMAT_TYPE_SIGNED: {
 				if (channel->pure_integer)
-					v->fix_fetch[i] = SI_FIX_FETCH_RGB_8_INT;
+					fix_fetch.u.format = AC_FETCH_FORMAT_SINT;
+				else if (channel->normalized)
+					fix_fetch.u.format = AC_FETCH_FORMAT_SNORM;
 				else
-					v->fix_fetch[i] = SI_FIX_FETCH_RGB_8;
-			} else if (channel->size == 16) {
+					fix_fetch.u.format = AC_FETCH_FORMAT_SSCALED;
+				break;
+			}
+			case UTIL_FORMAT_TYPE_UNSIGNED: {
 				if (channel->pure_integer)
-					v->fix_fetch[i] = SI_FIX_FETCH_RGB_16_INT;
+					fix_fetch.u.format = AC_FETCH_FORMAT_UINT;
+				else if (channel->normalized)
+					fix_fetch.u.format = AC_FETCH_FORMAT_UNORM;
 				else
-					v->fix_fetch[i] = SI_FIX_FETCH_RGB_16;
+					fix_fetch.u.format = AC_FETCH_FORMAT_USCALED;
+				break;
+			}
+			default: unreachable("bad format type");
+			}
+		} else {
+			switch (elements[i].src_format) {
+			case PIPE_FORMAT_R11G11B10_FLOAT: fix_fetch.u.format = AC_FETCH_FORMAT_FLOAT; break;
+			default: unreachable("bad other format");
 			}
 		}
 
-		v->rsrc_word3[i] = S_008F0C_DST_SEL_X(si_map_swizzle(swizzle[0])) |
-				   S_008F0C_DST_SEL_Y(si_map_swizzle(swizzle[1])) |
-				   S_008F0C_DST_SEL_Z(si_map_swizzle(swizzle[2])) |
-				   S_008F0C_DST_SEL_W(si_map_swizzle(swizzle[3])) |
-				   S_008F0C_NUM_FORMAT(num_format) |
-				   S_008F0C_DATA_FORMAT(data_format);
+		if (desc->channel[0].size == 10) {
+			fix_fetch.u.log_size = 3; /* special encoding for 2_10_10_10 */
+			log_hw_load_size = 2;
+
+			/* The hardware always treats the 2-bit alpha channel as
+			 * unsigned, so a shader workaround is needed. The affected
+			 * chips are VI and older except Stoney (GFX8.1).
+			 */
+			always_fix = sscreen->info.chip_class <= VI &&
+				     sscreen->info.family != CHIP_STONEY &&
+				     channel->type == UTIL_FORMAT_TYPE_SIGNED;
+		} else if (elements[i].src_format == PIPE_FORMAT_R11G11B10_FLOAT) {
+			fix_fetch.u.log_size = 3; /* special encoding */
+			fix_fetch.u.format = AC_FETCH_FORMAT_FIXED;
+			log_hw_load_size = 2;
+		} else {
+			fix_fetch.u.log_size = util_logbase2(channel->size) - 3;
+			fix_fetch.u.num_channels_m1 = desc->nr_channels - 1;
+
+			/* Always fix up:
+			 * - doubles (multiple loads + truncate to float)
+			 * - 32-bit requiring a conversion
+			 */
+			always_fix =
+				(fix_fetch.u.log_size == 3) ||
+				(fix_fetch.u.log_size == 2 &&
+				 fix_fetch.u.format != AC_FETCH_FORMAT_FLOAT &&
+				 fix_fetch.u.format != AC_FETCH_FORMAT_UINT &&
+				 fix_fetch.u.format != AC_FETCH_FORMAT_SINT);
+
+			/* Also fixup 8_8_8 and 16_16_16. */
+			if (desc->nr_channels == 3 && fix_fetch.u.log_size <= 1) {
+				always_fix = true;
+				log_hw_load_size = fix_fetch.u.log_size;
+			}
+		}
+
+		if (desc->swizzle[0] != PIPE_SWIZZLE_X) {
+			assert(desc->swizzle[0] == PIPE_SWIZZLE_Z &&
+			       (desc->swizzle[2] == PIPE_SWIZZLE_X || desc->swizzle[2] == PIPE_SWIZZLE_0));
+			fix_fetch.u.reverse = 1;
+		}
+
+		/* Force the workaround for unaligned access here already if the
+		 * offset relative to the vertex buffer base is unaligned.
+		 *
+		 * There is a theoretical case in which this is too conservative:
+		 * if the vertex buffer's offset is also unaligned in just the
+		 * right way, we end up with an aligned address after all.
+		 * However, this case should be extremely rare in practice (it
+		 * won't happen in well-behaved applications), and taking it
+		 * into account would complicate the fast path (where everything
+		 * is nicely aligned).
+		 */
+		bool check_alignment = log_hw_load_size >= 1 && sscreen->info.chip_class == SI;
+		bool opencode = sscreen->options.vs_fetch_always_opencode;
+
+		if (check_alignment &&
+		    (elements[i].src_offset & ((1 << log_hw_load_size) - 1)) != 0)
+			opencode = true;
+
+		if (always_fix || check_alignment || opencode)
+			v->fix_fetch[i] = fix_fetch.bits;
+
+		if (opencode)
+			v->fix_fetch_opencode |= 1 << i;
+		if (opencode || always_fix)
+			v->fix_fetch_always |= 1 << i;
+
+		if (check_alignment && !opencode) {
+			assert(log_hw_load_size == 1 || log_hw_load_size == 2);
+
+			v->fix_fetch_unaligned |= 1 << i;
+			v->hw_load_is_dword |= (log_hw_load_size - 1) << i;
+			v->vb_alignment_check_mask |= 1 << vbo_index;
+		}
+
+		v->rsrc_word3[i] = S_008F0C_DST_SEL_X(si_map_swizzle(desc->swizzle[0])) |
+				   S_008F0C_DST_SEL_Y(si_map_swizzle(desc->swizzle[1])) |
+				   S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
+				   S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
+
+		unsigned data_format, num_format;
+		data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
+		num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
+		v->rsrc_word3[i] |= S_008F0C_NUM_FORMAT(num_format) |
+				    S_008F0C_DATA_FORMAT(data_format);
 	}
 
 	if (v->instance_divisor_is_fetched) {
@@ -4621,7 +4651,17 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
 	    (!old ||
 	     old->count != v->count ||
 	     old->uses_instance_divisors != v->uses_instance_divisors ||
-	     v->uses_instance_divisors || /* we don't check which divisors changed */
+	     /* we don't check which divisors changed */
+	     v->uses_instance_divisors ||
+	     (old->vb_alignment_check_mask ^ v->vb_alignment_check_mask) & sctx->vertex_buffer_unaligned ||
+	     ((v->vb_alignment_check_mask & sctx->vertex_buffer_unaligned) &&
+	      memcmp(old->vertex_buffer_index, v->vertex_buffer_index,
+		     sizeof(v->vertex_buffer_index[0]) * v->count)) ||
+	     /* fix_fetch_{always,opencode,unaligned} and hw_load_is_dword are
+	      * functions of fix_fetch and the src_offset alignment.
+	      * If they change and fix_fetch doesn't, it must be due to different
+	      * src_offset alignment, which is reflected in fix_fetch_opencode. */
+	     old->fix_fetch_opencode != v->fix_fetch_opencode ||
 	     memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) * v->count)))
 		sctx->do_update_shaders = true;
 
@@ -4653,6 +4693,8 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct pipe_vertex_buffer *dst = sctx->vertex_buffer + start_slot;
+	uint32_t orig_unaligned = sctx->vertex_buffer_unaligned;
+	uint32_t unaligned = orig_unaligned;
 	int i;
 
 	assert(start_slot + count <= ARRAY_SIZE(sctx->vertex_buffer));
@@ -4666,6 +4708,11 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 			pipe_resource_reference(&dsti->buffer.resource, buf);
 			dsti->buffer_offset = src->buffer_offset;
 			dsti->stride = src->stride;
+			if (dsti->buffer_offset & 3 || dsti->stride & 3)
+				unaligned |= 1 << (start_slot + i);
+			else
+				unaligned &= ~(1 << (start_slot + i));
+
 			si_context_add_resource_size(sctx, buf);
 			if (buf)
 				si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
@@ -4674,8 +4721,22 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 		for (i = 0; i < count; i++) {
 			pipe_resource_reference(&dst[i].buffer.resource, NULL);
 		}
+		unaligned &= ~u_bit_consecutive(start_slot, count);
 	}
 	sctx->vertex_buffers_dirty = true;
+	sctx->vertex_buffer_unaligned = unaligned;
+
+	/* Check whether alignment may have changed in a way that requires
+	 * shader changes. This check is conservative: a vertex buffer can only
+	 * trigger a shader change if the misalignment amount changes (e.g.
+	 * from byte-aligned to short-aligned), but we only keep track of
+	 * whether buffers are at least dword-aligned, since that should always
+	 * be the case in well-behaved applications anyway.
+	 */
+	if (sctx->vertex_elements &&
+	    (sctx->vertex_elements->vb_alignment_check_mask &
+	     (unaligned | orig_unaligned) & u_bit_consecutive(start_slot, count)))
+		sctx->do_update_shaders = true;
 }
 
 /*

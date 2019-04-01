@@ -1390,7 +1390,31 @@ static void si_shader_selector_key_vs(struct si_context *sctx,
 		key->opt.prefer_mono = 1;
 
 	unsigned count = MIN2(vs->info.num_inputs, elts->count);
-	memcpy(key->mono.vs_fix_fetch, elts->fix_fetch, count);
+	unsigned count_mask = (1 << count) - 1;
+	unsigned fix = elts->fix_fetch_always & count_mask;
+	unsigned opencode = elts->fix_fetch_opencode & count_mask;
+
+	if (sctx->vertex_buffer_unaligned & elts->vb_alignment_check_mask) {
+		uint32_t mask = elts->fix_fetch_unaligned & count_mask;
+		while (mask) {
+			unsigned i = u_bit_scan(&mask);
+			unsigned log_hw_load_size = 1 + ((elts->hw_load_is_dword >> i) & 1);
+			unsigned vbidx = elts->vertex_buffer_index[i];
+			struct pipe_vertex_buffer *vb = &sctx->vertex_buffer[vbidx];
+			unsigned align_mask = (1 << log_hw_load_size) - 1;
+			if (vb->buffer_offset & align_mask ||
+			    vb->stride & align_mask) {
+				fix |= 1 << i;
+				opencode |= 1 << i;
+			}
+		}
+	}
+
+	while (fix) {
+		unsigned i = u_bit_scan(&fix);
+		key->mono.vs_fix_fetch[i].bits = elts->fix_fetch[i];
+	}
+	key->mono.vs_fetch_opencode = opencode;
 }
 
 static void si_shader_selector_key_hw_vs(struct si_context *sctx,
