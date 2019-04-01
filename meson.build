@@ -1260,6 +1260,8 @@ if with_llvm
   endif
 elif with_amd_vk or with_gallium_radeonsi or with_gallium_swr
   error('The following drivers require LLVM: Radv, RadeonSI, SWR. One of these is enabled, but LLVM is disabled.')
+elif with_gallium_opencl
+  error('The OpenCL "Clover" state tracker requires LLVM, but LLVM is disabled.')
 endif
 
 if (with_amd_vk or with_gallium_radeonsi or with_gallium_opencl or
