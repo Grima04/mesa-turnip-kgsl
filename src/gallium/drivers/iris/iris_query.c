@@ -23,8 +23,12 @@
 /**
  * @file iris_query.c
  *
+ * ============================= GENXML CODE =============================
+ *              [This file is compiled once per generation.]
+ * =======================================================================
+ *
  * Query object support.  This allows measuring various simple statistics
- * via counters on the GPU.
+ * via counters on the GPU.  We use GenX code for MI_MATH calculations.
  */
 
 #include <stdio.h>
@@ -43,42 +47,12 @@
 #include "iris_screen.h"
 #include "vulkan/util/vk_util.h"
 
-#define IA_VERTICES_COUNT          0x2310
-#define IA_PRIMITIVES_COUNT        0x2318
-#define VS_INVOCATION_COUNT        0x2320
-#define HS_INVOCATION_COUNT        0x2300
-#define DS_INVOCATION_COUNT        0x2308
-#define GS_INVOCATION_COUNT        0x2328
-#define GS_PRIMITIVES_COUNT        0x2330
-#define CL_INVOCATION_COUNT        0x2338
-#define CL_PRIMITIVES_COUNT        0x2340
-#define PS_INVOCATION_COUNT        0x2348
-#define CS_INVOCATION_COUNT        0x2290
-#define PS_DEPTH_COUNT             0x2350
+#include "iris_genx_macros.h"
 
-#define SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
-
-#define SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
+#define SO_PRIM_STORAGE_NEEDED(n) (GENX(SO_PRIM_STORAGE_NEEDED0_num) + (n) * 8)
+#define SO_NUM_PRIMS_WRITTEN(n)   (GENX(SO_NUM_PRIMS_WRITTEN0_num) + (n) * 8)
 
 #define MI_MATH (0x1a << 23)
-
-#define MI_ALU_LOAD      0x080
-#define MI_ALU_LOADINV   0x480
-#define MI_ALU_LOAD0     0x081
-#define MI_ALU_LOAD1     0x481
-#define MI_ALU_ADD       0x100
-#define MI_ALU_SUB       0x101
-#define MI_ALU_AND       0x102
-#define MI_ALU_OR        0x103
-#define MI_ALU_XOR       0x104
-#define MI_ALU_STORE     0x180
-#define MI_ALU_STOREINV  0x580
-
-#define MI_ALU_SRCA      0x20
-#define MI_ALU_SRCB      0x21
-#define MI_ALU_ACCU      0x31
-#define MI_ALU_ZF        0x32
-#define MI_ALU_CF        0x33
 
 #define emit_lri32 ice->vtbl.load_register_imm32
 #define emit_lri64 ice->vtbl.load_register_imm64
@@ -173,7 +147,7 @@ iris_pipelined_write(struct iris_batch *batch,
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    const unsigned optional_cs_stall =
-      devinfo->gen == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
+      GEN_GEN == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    iris_emit_pipe_control_write(batch, "query: pipelined snapshot write",
@@ -185,7 +159,6 @@ static void
 write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 {
    struct iris_batch *batch = &ice->batches[q->batch_idx];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    if (!iris_is_query_pipelined(q)) {
@@ -200,7 +173,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      if (devinfo->gen >= 10) {
+      if (GEN_GEN >= 10) {
          /* "Driver must program PIPE_CONTROL with only Depth Stall Enable
           *  bit set prior to programming a PIPE_CONTROL with Write PS Depth
           *  Count sync operation."
@@ -224,7 +197,8 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       break;
    case PIPE_QUERY_PRIMITIVES_GENERATED:
       ice->vtbl.store_register_mem64(batch,
-                                     q->index == 0 ? CL_INVOCATION_COUNT :
+                                     q->index == 0 ?
+                                     GENX(CL_INVOCATION_COUNT_num) :
                                      SO_PRIM_STORAGE_NEEDED(q->index),
                                      bo, offset, false);
       break;
@@ -235,17 +209,17 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE: {
       static const uint32_t index_to_reg[] = {
-         IA_VERTICES_COUNT,
-         IA_PRIMITIVES_COUNT,
-         VS_INVOCATION_COUNT,
-         GS_INVOCATION_COUNT,
-         GS_PRIMITIVES_COUNT,
-         CL_INVOCATION_COUNT,
-         CL_PRIMITIVES_COUNT,
-         PS_INVOCATION_COUNT,
-         HS_INVOCATION_COUNT,
-         DS_INVOCATION_COUNT,
-         CS_INVOCATION_COUNT,
+         GENX(IA_VERTICES_COUNT_num),
+         GENX(IA_PRIMITIVES_COUNT_num),
+         GENX(VS_INVOCATION_COUNT_num),
+         GENX(GS_INVOCATION_COUNT_num),
+         GENX(GS_PRIMITIVES_COUNT_num),
+         GENX(CL_INVOCATION_COUNT_num),
+         GENX(CL_PRIMITIVES_COUNT_num),
+         GENX(PS_INVOCATION_COUNT_num),
+         GENX(HS_INVOCATION_COUNT_num),
+         GENX(DS_INVOCATION_COUNT_num),
+         GENX(CS_INVOCATION_COUNT_num),
       };
       const uint32_t reg = index_to_reg[q->index];
 
@@ -332,7 +306,7 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       q->result = q->map->end - q->map->start;
 
       /* WaDividePSInvocationCountBy4:HSW,BDW */
-      if (devinfo->gen == 8 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+      if (GEN_GEN == 8 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
          q->result /= 4;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -429,9 +403,9 @@ emit_mul_gpr0(struct iris_batch *batch, uint32_t N)
 }
 
 void
-iris_math_div32_gpr0(struct iris_context *ice,
-                     struct iris_batch *batch,
-                     uint32_t D)
+genX(math_div32_gpr0)(struct iris_context *ice,
+                      struct iris_batch *batch,
+                      uint32_t D)
 {
    /* Zero out the top of GPR0 */
    emit_lri32(batch, CS_GPR(0) + 4, 0);
@@ -489,9 +463,9 @@ iris_math_div32_gpr0(struct iris_context *ice,
 }
 
 void
-iris_math_add32_gpr0(struct iris_context *ice,
-                     struct iris_batch *batch,
-                     uint32_t x)
+genX(math_add32_gpr0)(struct iris_context *ice,
+                      struct iris_batch *batch,
+                      uint32_t x)
 {
    emit_lri32(batch, CS_GPR(1), x);
    emit_alu_add(batch, MI_ALU_R0, MI_ALU_R0, MI_ALU_R1);
@@ -710,7 +684,7 @@ calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
    iris_batch_emit(batch, math, sizeof(math));
 
    /* WaDividePSInvocationCountBy4:HSW,BDW */
-   if (devinfo->gen == 8 &&
+   if (GEN_GEN == 8 &&
        q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
       shr_gpr0_by_2_bits(ice);
@@ -1111,9 +1085,9 @@ iris_resolve_conditional_render(struct iris_context *ice)
 }
 
 void
-iris_init_query_functions(struct pipe_context *ctx)
+genX(init_query)(struct iris_context *ice)
 {
-   struct iris_context *ice = (void *) ctx;
+   struct pipe_context *ctx = &ice->ctx;
 
    ctx->create_query = iris_create_query;
    ctx->destroy_query = iris_destroy_query;

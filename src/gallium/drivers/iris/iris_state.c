@@ -5336,9 +5336,11 @@ iris_upload_render_state(struct iris_context *ice,
          lrm.MemoryAddress =
             ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
       }
+
       if (so->base.buffer_offset)
-         iris_math_add32_gpr0(ice, batch, -so->base.buffer_offset);
-      iris_math_div32_gpr0(ice, batch, so->stride);
+         genX(math_add32_gpr0)(ice, batch, -so->base.buffer_offset);
+      genX(math_div32_gpr0)(ice, batch, so->stride);
+
       _iris_emit_lrr(batch, _3DPRIM_VERTEX_COUNT, CS_GPR(0));
 
       _iris_emit_lri(batch, _3DPRIM_START_VERTEX, 0);

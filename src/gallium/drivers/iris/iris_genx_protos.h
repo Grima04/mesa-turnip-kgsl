@@ -37,3 +37,12 @@ void genX(emit_urb_setup)(struct iris_context *ice,
 /* iris_blorp.c */
 void genX(init_blorp)(struct iris_context *ice);
 
+/* iris_query.c */
+void genX(init_query)(struct iris_context *ice);
+void genX(math_add32_gpr0)(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           uint32_t x);
+void genX(math_div32_gpr0)(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           uint32_t D);
+
