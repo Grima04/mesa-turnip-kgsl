@@ -1093,7 +1093,7 @@ iris_render_condition(struct pipe_context *ctx,
    }
 }
 
-void
+static void
 iris_resolve_conditional_render(struct iris_context *ice)
 {
    struct pipe_context *ctx = (void *) ice;
@@ -1113,6 +1113,8 @@ iris_resolve_conditional_render(struct iris_context *ice)
 void
 iris_init_query_functions(struct pipe_context *ctx)
 {
+   struct iris_context *ice = (void *) ctx;
+
    ctx->create_query = iris_create_query;
    ctx->destroy_query = iris_destroy_query;
    ctx->begin_query = iris_begin_query;
@@ -1121,4 +1123,6 @@ iris_init_query_functions(struct pipe_context *ctx)
    ctx->get_query_result_resource = iris_get_query_result_resource;
    ctx->set_active_query_state = iris_set_active_query_state;
    ctx->render_condition = iris_render_condition;
+
+   ice->vtbl.resolve_conditional_render = iris_resolve_conditional_render;
 }

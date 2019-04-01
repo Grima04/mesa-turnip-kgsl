@@ -426,6 +426,7 @@ struct iris_vtable {
    void (*rebind_buffer)(struct iris_context *ice,
                          struct iris_resource *res,
                          uint64_t old_address);
+   void (*resolve_conditional_render)(struct iris_context *ice);
    void (*load_register_reg32)(struct iris_batch *batch, uint32_t dst,
                                uint32_t src);
    void (*load_register_reg64)(struct iris_batch *batch, uint32_t dst,
@@ -861,8 +862,6 @@ void iris_math_div32_gpr0(struct iris_context *ice,
 void iris_math_add32_gpr0(struct iris_context *ice,
                           struct iris_batch *batch,
                           uint32_t x);
-
-void iris_resolve_conditional_render(struct iris_context *ice);
 
 /* iris_resolve.c */
 
