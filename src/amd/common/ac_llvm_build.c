@@ -1953,6 +1953,12 @@ ac_build_umsb(struct ac_llvm_context *ctx,
 		highest_bit = LLVMConstInt(ctx->i16, 15, false);
 		zero = ctx->i16_0;
 		break;
+	case 8:
+		intrin_name = "llvm.ctlz.i8";
+		type = ctx->i8;
+		highest_bit = LLVMConstInt(ctx->i8, 7, false);
+		zero = ctx->i8_0;
+		break;
 	default:
 		unreachable(!"invalid bitsize");
 		break;
@@ -1973,7 +1979,7 @@ ac_build_umsb(struct ac_llvm_context *ctx,
 
 	if (bitsize == 64) {
 		msb = LLVMBuildTrunc(ctx->builder, msb, ctx->i32, "");
-	} else if (bitsize == 16) {
+	} else if (bitsize < 32) {
 		msb = LLVMBuildSExt(ctx->builder, msb, ctx->i32, "");
 	}
 
