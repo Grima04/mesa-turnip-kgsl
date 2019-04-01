@@ -1253,6 +1253,8 @@ if with_llvm
   if dep_llvm.get_configtool_variable('has-rtti') == 'NO'
     if with_gallium_nouveau
       error('The Nouveau driver requires rtti. You either need to turn off nouveau or use an LLVM built with LLVM_ENABLE_RTTI.')
+    elif with_gallium_opencl
+      error('The Clover OpenCL state tracker requires rtti, you need to turn off clover or use an LLVM built with LLVM_ENABLE_RTTI.')
     endif
     cpp_args += '-fno-rtti'
   endif
