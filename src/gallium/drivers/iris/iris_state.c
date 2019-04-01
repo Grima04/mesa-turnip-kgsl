@@ -5224,37 +5224,19 @@ iris_upload_render_state(struct iris_context *ice,
                                       PIPE_CONTROL_FLUSH_ENABLE);
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-            static const uint32_t math[] = {
-               MI_MATH | (9 - 2),
-               /* Compute (draw index < draw count).
-                * We do this by subtracting and storing the carry bit.
-                */
-               MI_ALU2(LOAD, SRCA, R0),
-               MI_ALU2(LOAD, SRCB, R1),
-               MI_ALU0(SUB),
-               MI_ALU2(STORE, R3, CF),
-               /* Compute (subtracting result & MI_PREDICATE). */
-               MI_ALU2(LOAD, SRCA, R3),
-               MI_ALU2(LOAD, SRCB, R2),
-               MI_ALU0(AND),
-               MI_ALU2(STORE, R3, ACCU),
-            };
+            struct gen_mi_builder b;
+            gen_mi_builder_init(&b, batch);
 
-            /* Upload the current draw count from the draw parameters
-             * buffer to GPR1.
-             */
-            ice->vtbl.load_register_mem32(batch, CS_GPR(1), draw_count_bo,
-                                          draw_count_offset);
-            /* Zero the top 32-bits of GPR1. */
-            ice->vtbl.load_register_imm32(batch, CS_GPR(1) + 4, 0);
-            /* Upload the id of the current primitive to GPR0. */
-            ice->vtbl.load_register_imm64(batch, CS_GPR(0), draw->drawid);
+            /* comparison = draw id < draw count */
+            struct gen_mi_value comparison =
+               gen_mi_ult(&b, gen_mi_imm(draw->drawid),
+                              gen_mi_mem32(ro_bo(draw_count_bo,
+                                                 draw_count_offset)));
 
-            iris_batch_emit(batch, math, sizeof(math));
-
-            /* Store result of MI_MATH computations to MI_PREDICATE_RESULT. */
-            ice->vtbl.load_register_reg64(batch,
-                                          MI_PREDICATE_RESULT, CS_GPR(3));
+            /* predicate = comparison & conditional rendering predicate */
+            gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_RESULT),
+                             gen_mi_iand(&b, comparison,
+                                             gen_mi_reg32(CS_GPR(15))));
          } else {
             uint32_t mi_predicate;
 
@@ -5331,17 +5313,16 @@ iris_upload_render_state(struct iris_context *ice,
                                    "draw count from stream output stall",
                                    PIPE_CONTROL_CS_STALL);
 
-      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress = CS_GPR(0);
-         lrm.MemoryAddress =
-            ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
-      }
+      struct gen_mi_builder b;
+      gen_mi_builder_init(&b, batch);
 
-      if (so->base.buffer_offset)
-         genX(math_add32_gpr0)(ice, batch, -so->base.buffer_offset);
-      genX(math_div32_gpr0)(ice, batch, so->stride);
+      struct iris_address addr =
+         ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
+      struct gen_mi_value offset =
+         gen_mi_iadd_imm(&b, gen_mi_mem64(addr), -so->base.buffer_offset);
 
-      _iris_emit_lrr(batch, _3DPRIM_VERTEX_COUNT, CS_GPR(0));
+      gen_mi_store(&b, gen_mi_reg32(_3DPRIM_VERTEX_COUNT),
+                       gen_mi_udiv32_imm(&b, offset, so->stride));
 
       _iris_emit_lri(batch, _3DPRIM_START_VERTEX, 0);
       _iris_emit_lri(batch, _3DPRIM_BASE_VERTEX, 0);

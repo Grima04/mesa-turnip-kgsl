@@ -52,26 +52,6 @@
 
 #define CS_GPR(n) (0x2600 + (n) * 8)
 
-/* MI_MATH registers */
-#define MI_ALU_R0        0x00
-#define MI_ALU_R1        0x01
-#define MI_ALU_R2        0x02
-#define MI_ALU_R3        0x03
-#define MI_ALU_R4        0x04
-
-/* MI_MATH operations */
-#define MI_MATH (0x1a << 23)
-
-#define _MI_ALU(op, x, y)  (((op) << 20) | ((x) << 10) | (y))
-
-#define _MI_ALU0(op)       _MI_ALU(MI_ALU_##op, 0, 0)
-#define _MI_ALU1(op, x)    _MI_ALU(MI_ALU_##op, x, 0)
-#define _MI_ALU2(op, x, y) _MI_ALU(MI_ALU_##op, x, y)
-
-#define MI_ALU0(op)        _MI_ALU0(op)
-#define MI_ALU1(op, x)     _MI_ALU1(op, MI_ALU_##x)
-#define MI_ALU2(op, x, y)  _MI_ALU2(op, MI_ALU_##x, MI_ALU_##y)
-
 /* The number of bits in our TIMESTAMP queries. */
 #define TIMESTAMP_BITS 36
 

@@ -37,7 +37,6 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
-#include "util/fast_idiv_by_const.h"
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
 #include "iris_context.h"
@@ -45,18 +44,11 @@
 #include "iris_fence.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
-#include "vulkan/util/vk_util.h"
 
 #include "iris_genx_macros.h"
 
 #define SO_PRIM_STORAGE_NEEDED(n) (GENX(SO_PRIM_STORAGE_NEEDED0_num) + (n) * 8)
 #define SO_NUM_PRIMS_WRITTEN(n)   (GENX(SO_NUM_PRIMS_WRITTEN0_num) + (n) * 8)
-
-#define MI_MATH (0x1a << 23)
-
-#define emit_lri32 ice->vtbl.load_register_imm32
-#define emit_lri64 ice->vtbl.load_register_imm64
-#define emit_lrr32 ice->vtbl.load_register_reg32
 
 struct iris_query {
    enum pipe_query_type type;
@@ -96,6 +88,17 @@ struct iris_query_so_overflow {
       uint64_t num_prims[2];
    } stream[4];
 };
+
+static struct gen_mi_value
+query_mem64(struct iris_query *q, uint32_t offset)
+{
+   struct iris_address addr = {
+      .bo = iris_resource_bo(q->query_state_ref.res),
+      .offset = q->query_state_ref.offset + offset,
+      .write = true
+   };
+   return gen_mi_mem64(addr);
+}
 
 /**
  * Is this type of query written by PIPE_CONTROL?
@@ -320,383 +323,108 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
    q->ready = true;
 }
 
-static void
-emit_alu_add(struct iris_batch *batch, unsigned dst_reg,
-             unsigned reg_a, unsigned reg_b)
-{
-   uint32_t *math = iris_get_command_space(batch, 5 * sizeof(uint32_t));
-
-   math[0] = MI_MATH | (5 - 2);
-   math[1] = _MI_ALU2(LOAD, MI_ALU_SRCA, reg_a);
-   math[2] = _MI_ALU2(LOAD, MI_ALU_SRCB, reg_b);
-   math[3] = _MI_ALU0(ADD);
-   math[4] = _MI_ALU2(STORE, dst_reg, MI_ALU_ACCU);
-}
-
-static void
-emit_alu_shl(struct iris_batch *batch, unsigned dst_reg,
-             unsigned src_reg, unsigned shift)
-{
-   assert(shift > 0);
-
-   int dwords = 1 + 4 * shift;
-
-   uint32_t *math = iris_get_command_space(batch, sizeof(uint32_t) * dwords);
-
-   math[0] = MI_MATH | ((1 + 4 * shift) - 2);
-
-   for (unsigned i = 0; i < shift; i++) {
-      unsigned add_src = (i == 0) ? src_reg : dst_reg;
-      math[1 + (i * 4) + 0] = _MI_ALU2(LOAD, MI_ALU_SRCA, add_src);
-      math[1 + (i * 4) + 1] = _MI_ALU2(LOAD, MI_ALU_SRCB, add_src);
-      math[1 + (i * 4) + 2] = _MI_ALU0(ADD);
-      math[1 + (i * 4) + 3] = _MI_ALU2(STORE, dst_reg, MI_ALU_ACCU);
-   }
-}
-
-/* Emit dwords to multiply GPR0 by N */
-static void
-build_alu_multiply_gpr0(uint32_t *dw, unsigned *dw_count, uint32_t N)
-{
-   VK_OUTARRAY_MAKE(out, dw, dw_count);
-
-#define APPEND_ALU(op, x, y) \
-   vk_outarray_append(&out, alu_dw) *alu_dw = _MI_ALU(MI_ALU_##op, x, y)
-
-   assert(N > 0);
-   unsigned top_bit = 31 - __builtin_clz(N);
-   for (int i = top_bit - 1; i >= 0; i--) {
-      /* We get our initial data in GPR0 and we write the final data out to
-       * GPR0 but we use GPR1 as our scratch register.
-       */
-      unsigned src_reg = i == top_bit - 1 ? MI_ALU_R0 : MI_ALU_R1;
-      unsigned dst_reg = i == 0 ? MI_ALU_R0 : MI_ALU_R1;
-
-      /* Shift the current value left by 1 */
-      APPEND_ALU(LOAD, MI_ALU_SRCA, src_reg);
-      APPEND_ALU(LOAD, MI_ALU_SRCB, src_reg);
-      APPEND_ALU(ADD, 0, 0);
-
-      if (N & (1 << i)) {
-         /* Store ACCU to R1 and add R0 to R1 */
-         APPEND_ALU(STORE, MI_ALU_R1, MI_ALU_ACCU);
-         APPEND_ALU(LOAD, MI_ALU_SRCA, MI_ALU_R0);
-         APPEND_ALU(LOAD, MI_ALU_SRCB, MI_ALU_R1);
-         APPEND_ALU(ADD, 0, 0);
-      }
-
-      APPEND_ALU(STORE, dst_reg, MI_ALU_ACCU);
-   }
-
-#undef APPEND_ALU
-}
-
-static void
-emit_mul_gpr0(struct iris_batch *batch, uint32_t N)
-{
-   uint32_t num_dwords;
-   build_alu_multiply_gpr0(NULL, &num_dwords, N);
-
-   uint32_t *math = iris_get_command_space(batch, 4 * num_dwords);
-   math[0] = MI_MATH | (num_dwords - 2);
-   build_alu_multiply_gpr0(&math[1], &num_dwords, N);
-}
-
-void
-genX(math_div32_gpr0)(struct iris_context *ice,
-                      struct iris_batch *batch,
-                      uint32_t D)
-{
-   /* Zero out the top of GPR0 */
-   emit_lri32(batch, CS_GPR(0) + 4, 0);
-
-   if (D == 0) {
-      /* This invalid, but we should do something so we set GPR0 to 0. */
-      emit_lri32(batch, CS_GPR(0), 0);
-   } else if (util_is_power_of_two_or_zero(D)) {
-      unsigned log2_D = util_logbase2(D);
-      assert(log2_D < 32);
-      /* We right-shift by log2(D) by left-shifting by 32 - log2(D) and taking
-       * the top 32 bits of the result.
-       */
-      emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - log2_D);
-      emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-      emit_lri32(batch, CS_GPR(0) + 4, 0);
-   } else {
-      struct util_fast_udiv_info m = util_compute_fast_udiv_info(D, 32, 32);
-      assert(m.multiplier <= UINT32_MAX);
-
-      if (m.pre_shift) {
-         /* We right-shift by L by left-shifting by 32 - l and taking the top
-          * 32 bits of the result.
-          */
-         if (m.pre_shift < 32)
-            emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - m.pre_shift);
-         emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-         emit_lri32(batch, CS_GPR(0) + 4, 0);
-      }
-
-      /* Do the 32x32 multiply into gpr0 */
-      emit_mul_gpr0(batch, m.multiplier);
-
-      if (m.increment) {
-         /* If we need to increment, save off a copy of GPR0 */
-         emit_lri32(batch, CS_GPR(1) + 0, m.multiplier);
-         emit_lri32(batch, CS_GPR(1) + 4, 0);
-         emit_alu_add(batch, MI_ALU_R0, MI_ALU_R0, MI_ALU_R1);
-      }
-
-      /* Shift by 32 */
-      emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-      emit_lri32(batch, CS_GPR(0) + 4, 0);
-
-      if (m.post_shift) {
-         /* We right-shift by L by left-shifting by 32 - l and taking the top
-          * 32 bits of the result.
-          */
-         if (m.post_shift < 32)
-            emit_alu_shl(batch, MI_ALU_R0, MI_ALU_R0, 32 - m.post_shift);
-         emit_lrr32(batch, CS_GPR(0) + 0, CS_GPR(0) + 4);
-         emit_lri32(batch, CS_GPR(0) + 4, 0);
-      }
-   }
-}
-
-void
-genX(math_add32_gpr0)(struct iris_context *ice,
-                      struct iris_batch *batch,
-                      uint32_t x)
-{
-   emit_lri32(batch, CS_GPR(1), x);
-   emit_alu_add(batch, MI_ALU_R0, MI_ALU_R0, MI_ALU_R1);
-}
-
-/*
- * GPR0 = (GPR0 == 0) ? 0 : 1;
- */
-static void
-gpr0_to_bool(struct iris_context *ice)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-
-   ice->vtbl.load_register_imm64(batch, CS_GPR(1), 1ull);
-
-   static const uint32_t math[] = {
-      MI_MATH | (9 - 2),
-      MI_ALU2(LOAD, SRCA, R0),
-      MI_ALU1(LOAD0, SRCB),
-      MI_ALU0(ADD),
-      MI_ALU2(STOREINV, R0, ZF),
-      MI_ALU2(LOAD, SRCA, R0),
-      MI_ALU2(LOAD, SRCB, R1),
-      MI_ALU0(AND),
-      MI_ALU2(STORE, R0, ACCU),
-   };
-   iris_batch_emit(batch, math, sizeof(math));
-}
-
-static void
-load_overflow_data_to_cs_gprs(struct iris_context *ice,
-                              struct iris_query *q,
-                              int idx)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
-   uint32_t offset = q->query_state_ref.offset;
-
-   ice->vtbl.load_register_mem64(batch, CS_GPR(1), bo, offset +
-                                 offsetof(struct iris_query_so_overflow,
-                                          stream[idx].prim_storage_needed[0]));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(2), bo, offset +
-                                 offsetof(struct iris_query_so_overflow,
-                                          stream[idx].prim_storage_needed[1]));
-
-   ice->vtbl.load_register_mem64(batch, CS_GPR(3), bo, offset +
-                                 offsetof(struct iris_query_so_overflow,
-                                          stream[idx].num_prims[0]));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(4), bo, offset +
-                                 offsetof(struct iris_query_so_overflow,
-                                          stream[idx].num_prims[1]));
-}
-
-/*
- * R3 = R4 - R3;
- * R1 = R2 - R1;
- * R1 = R3 - R1;
- * R0 = R0 | R1;
- */
-static void
-calc_overflow_for_stream(struct iris_context *ice)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   static const uint32_t maths[] = {
-      MI_MATH | (17 - 2),
-      MI_ALU2(LOAD, SRCA, R4),
-      MI_ALU2(LOAD, SRCB, R3),
-      MI_ALU0(SUB),
-      MI_ALU2(STORE, R3, ACCU),
-      MI_ALU2(LOAD, SRCA, R2),
-      MI_ALU2(LOAD, SRCB, R1),
-      MI_ALU0(SUB),
-      MI_ALU2(STORE, R1, ACCU),
-      MI_ALU2(LOAD, SRCA, R3),
-      MI_ALU2(LOAD, SRCB, R1),
-      MI_ALU0(SUB),
-      MI_ALU2(STORE, R1, ACCU),
-      MI_ALU2(LOAD, SRCA, R1),
-      MI_ALU2(LOAD, SRCB, R0),
-      MI_ALU0(OR),
-      MI_ALU2(STORE, R0, ACCU),
-   };
-
-   iris_batch_emit(batch, maths, sizeof(maths));
-}
-
-static void
-overflow_result_to_gpr0(struct iris_context *ice, struct iris_query *q)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-
-   ice->vtbl.load_register_imm64(batch, CS_GPR(0), 0ull);
-
-   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
-      load_overflow_data_to_cs_gprs(ice, q, q->index);
-      calc_overflow_for_stream(ice);
-   } else {
-      for (int i = 0; i < MAX_VERTEX_STREAMS; i++) {
-         load_overflow_data_to_cs_gprs(ice, q, i);
-         calc_overflow_for_stream(ice);
-      }
-   }
-
-   gpr0_to_bool(ice);
-}
-
-/*
- * GPR0 = GPR0 & ((1ull << n) -1);
- */
-static void
-keep_gpr0_lower_n_bits(struct iris_context *ice, uint32_t n)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-
-   ice->vtbl.load_register_imm64(batch, CS_GPR(1), (1ull << n) - 1);
-   static const uint32_t math[] = {
-      MI_MATH | (5 - 2),
-      MI_ALU2(LOAD, SRCA, R0),
-      MI_ALU2(LOAD, SRCB, R1),
-      MI_ALU0(AND),
-      MI_ALU2(STORE, R0, ACCU),
-   };
-   iris_batch_emit(batch, math, sizeof(math));
-}
-
-/*
- * GPR0 = GPR0 << 30;
- */
-static void
-shl_gpr0_by_30_bits(struct iris_context *ice)
-{
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   /* First we mask 34 bits of GPR0 to prevent overflow */
-   keep_gpr0_lower_n_bits(ice, 34);
-
-   static const uint32_t shl_math[] = {
-      MI_ALU2(LOAD, SRCA, R0),
-      MI_ALU2(LOAD, SRCB, R0),
-      MI_ALU0(ADD),
-      MI_ALU2(STORE, R0, ACCU),
-   };
-
-   const uint32_t outer_count = 5;
-   const uint32_t inner_count = 6;
-   const uint32_t cmd_len = 1 + inner_count * ARRAY_SIZE(shl_math);
-   const uint32_t batch_len = cmd_len * outer_count;
-   uint32_t *map = iris_get_command_space(batch, batch_len * 4);
-   uint32_t offset = 0;
-   for (int o = 0; o < outer_count; o++) {
-      map[offset++] = MI_MATH | (cmd_len - 2);
-      for (int i = 0; i < inner_count; i++) {
-         memcpy(&map[offset], shl_math, sizeof(shl_math));
-         offset += 4;
-      }
-   }
-}
-
-/*
- * GPR0 = GPR0 >> 2;
+/**
+ * Calculate the streamout overflow for stream \p idx:
  *
- * Note that the upper 30 bits of GPR0 are lost!
+ * (num_prims[1] - num_prims[0]) - (storage_needed[1] - storage_needed[0])
  */
-static void
-shr_gpr0_by_2_bits(struct iris_context *ice)
+static struct gen_mi_value
+calc_overflow_for_stream(struct gen_mi_builder *b,
+                         struct iris_query *q,
+                         int idx)
 {
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   shl_gpr0_by_30_bits(ice);
-   ice->vtbl.load_register_reg32(batch, CS_GPR(0) + 4, CS_GPR(0));
-   ice->vtbl.load_register_imm32(batch, CS_GPR(0) + 4, 0);
+#define C(counter, i) query_mem64(q, \
+   offsetof(struct iris_query_so_overflow, stream[idx].counter[i]))
+
+   return gen_mi_isub(b, gen_mi_isub(b, C(num_prims, 1), C(num_prims, 0)),
+                         gen_mi_isub(b, C(prim_storage_needed, 1),
+                                        C(prim_storage_needed, 0)));
+#undef C
 }
 
 /**
- * Calculate the result and store it to CS_GPR0.
+ * Calculate whether any stream has overflowed.
  */
-static void
-calculate_result_on_gpu(struct iris_context *ice, struct iris_query *q)
+static struct gen_mi_value
+calc_overflow_any_stream(struct gen_mi_builder *b, struct iris_query *q)
 {
-   struct iris_batch *batch = &ice->batches[q->batch_idx];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
-   uint32_t offset = q->query_state_ref.offset;
+   struct gen_mi_value stream_result[MAX_VERTEX_STREAMS];
+   for (int i = 0; i < MAX_VERTEX_STREAMS; i++)
+      stream_result[i] = calc_overflow_for_stream(b, q, i);
 
-   if (q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
-       q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-      overflow_result_to_gpr0(ice, q);
-      return;
+   struct gen_mi_value result = stream_result[0];
+   for (int i = 1; i < MAX_VERTEX_STREAMS; i++)
+      result = gen_mi_ior(b, result, stream_result[i]);
+
+   return result;
+}
+
+static bool
+query_is_boolean(enum pipe_query_type type)
+{
+   switch (type) {
+   case PIPE_QUERY_OCCLUSION_PREDICATE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      return true;
+   default:
+      return false;
    }
+}
 
-   if (q->type == PIPE_QUERY_TIMESTAMP) {
-      ice->vtbl.load_register_mem64(batch, CS_GPR(0), bo,
-                                    offset +
-                                    offsetof(struct iris_query_snapshots, start));
+/**
+ * Calculate the result using MI_MATH.
+ */
+static struct gen_mi_value
+calculate_result_on_gpu(const struct gen_device_info *devinfo,
+                        struct gen_mi_builder *b,
+                        struct iris_query *q)
+{
+   struct gen_mi_value result;
+   struct gen_mi_value start_val =
+      query_mem64(q, offsetof(struct iris_query_snapshots, start));
+   struct gen_mi_value end_val =
+      query_mem64(q, offsetof(struct iris_query_snapshots, end));
+
+   switch (q->type) {
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+      result = calc_overflow_for_stream(b, q, q->index);
+      break;
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      result = calc_overflow_any_stream(b, q);
+      break;
+   case PIPE_QUERY_TIMESTAMP: {
       /* TODO: This discards any fractional bits of the timebase scale.
        * We would need to do a bit of fixed point math on the CS ALU, or
        * launch an actual shader to calculate this with full precision.
        */
-      emit_mul_gpr0(batch, (1000000000ull / devinfo->timestamp_frequency));
-      keep_gpr0_lower_n_bits(ice, 36);
-      return;
+      uint32_t scale = 1000000000ull / devinfo->timestamp_frequency;
+      result = gen_mi_iand(b, gen_mi_imm((1ull << 36) - 1),
+                           gen_mi_imul_imm(b, start_val, scale));
+      break;
    }
-
-   ice->vtbl.load_register_mem64(batch, CS_GPR(1), bo,
-                                 offset +
-                                 offsetof(struct iris_query_snapshots, start));
-   ice->vtbl.load_register_mem64(batch, CS_GPR(2), bo,
-                                 offset +
-                                 offsetof(struct iris_query_snapshots, end));
-
-   static const uint32_t math[] = {
-      MI_MATH | (5 - 2),
-      MI_ALU2(LOAD, SRCA, R2),
-      MI_ALU2(LOAD, SRCB, R1),
-      MI_ALU0(SUB),
-      MI_ALU2(STORE, R0, ACCU),
-   };
-   iris_batch_emit(batch, math, sizeof(math));
+   case PIPE_QUERY_TIME_ELAPSED: {
+      /* TODO: This discards fractional bits (see above). */
+      uint32_t scale = 1000000000ull / devinfo->timestamp_frequency;
+      result = gen_mi_imul_imm(b, gen_mi_isub(b, end_val, start_val), scale);
+      break;
+   }
+   default:
+      result = gen_mi_isub(b, end_val, start_val);
+      break;
+   }
 
    /* WaDividePSInvocationCountBy4:HSW,BDW */
    if (GEN_GEN == 8 &&
        q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
-      shr_gpr0_by_2_bits(ice);
+      result = gen_mi_ushr32_imm(b, result, 2);
 
-   if (q->type == PIPE_QUERY_OCCLUSION_PREDICATE ||
-       q->type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE)
-      gpr0_to_bool(ice);
+   if (query_is_boolean(q->type))
+      result = gen_mi_iand(b, gen_mi_nz(b, result), gen_mi_imm(1));
 
-   if (q->type == PIPE_QUERY_TIME_ELAPSED) {
-      /* TODO: This discards fractional bits (see above). */
-      emit_mul_gpr0(batch, (1000000000ull / devinfo->timestamp_frequency));
-   }
+   return result;
 }
 
 static struct pipe_query *
@@ -873,7 +601,8 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct iris_batch *batch = &ice->batches[q->batch_idx];
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    struct iris_resource *res = (void *) p_res;
-   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+   struct iris_bo *query_bo = iris_resource_bo(q->query_state_ref.res);
+   struct iris_bo *dst_bo = iris_resource_bo(p_res);
    unsigned snapshots_landed_offset =
       offsetof(struct iris_query_snapshots, snapshots_landed);
 
@@ -888,8 +617,8 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       if (q->syncpt == iris_batch_get_signal_syncpt(batch))
          iris_batch_flush(batch);
 
-      ice->vtbl.copy_mem_mem(batch, iris_resource_bo(p_res), offset,
-                             bo, snapshots_landed_offset,
+      ice->vtbl.copy_mem_mem(batch, dst_bo, offset,
+                             query_bo, snapshots_landed_offset,
                              result_type <= PIPE_QUERY_TYPE_U32 ? 4 : 8);
       return;
    }
@@ -904,11 +633,9 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    if (q->ready) {
       /* We happen to have the result on the CPU, so just copy it. */
       if (result_type <= PIPE_QUERY_TYPE_U32) {
-         ice->vtbl.store_data_imm32(batch, iris_resource_bo(p_res), offset,
-                                    q->result);
+         ice->vtbl.store_data_imm32(batch, dst_bo, offset, q->result);
       } else {
-         ice->vtbl.store_data_imm64(batch, iris_resource_bo(p_res), offset,
-                                    q->result);
+         ice->vtbl.store_data_imm64(batch, dst_bo, offset, q->result);
       }
 
       /* Make sure the result lands before they use bind the QBO elsewhere
@@ -921,30 +648,22 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       return;
    }
 
-   /* Calculate the result to CS_GPR0 */
-   calculate_result_on_gpu(ice, q);
-
    bool predicated = !wait && !q->stalled;
 
-   if (predicated) {
-      ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, bo,
-                                    snapshots_landed_offset);
-      uint32_t predicate = MI_PREDICATE |
-                           MI_PREDICATE_LOADOP_LOADINV |
-                           MI_PREDICATE_COMBINEOP_SET |
-                           MI_PREDICATE_COMPAREOP_SRCS_EQUAL;
-      iris_batch_emit(batch, &predicate, sizeof(uint32_t));
-   }
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, batch);
 
-   if (result_type <= PIPE_QUERY_TYPE_U32) {
-      ice->vtbl.store_register_mem32(batch, CS_GPR(0),
-                                     iris_resource_bo(p_res),
-                                     offset, predicated);
+   struct gen_mi_value result = calculate_result_on_gpu(devinfo, &b, q);
+   struct gen_mi_value dst =
+      result_type <= PIPE_QUERY_TYPE_U32 ? gen_mi_mem32(rw_bo(dst_bo, offset))
+                                         : gen_mi_mem64(rw_bo(dst_bo, offset));
+
+   if (predicated) {
+      gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_RESULT),
+                   gen_mi_mem64(ro_bo(query_bo, snapshots_landed_offset)));
+      gen_mi_store_if(&b, dst, result);
    } else {
-      ice->vtbl.store_register_mem64(batch, CS_GPR(0),
-                                     iris_resource_bo(p_res),
-                                     offset, predicated);
+      gen_mi_store(&b, dst, result);
    }
 }
 
@@ -995,31 +714,31 @@ set_predicate_for_result(struct iris_context *ice,
                                 PIPE_CONTROL_FLUSH_ENABLE);
    q->stalled = true;
 
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, batch);
+
+   struct gen_mi_value result;
+
    switch (q->type) {
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
-   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
-      overflow_result_to_gpr0(ice, q);
-
-      ice->vtbl.load_register_reg64(batch, MI_PREDICATE_SRC0, CS_GPR(0));
-      ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1, 0ull);
+      result = calc_overflow_for_stream(&b, q, q->index);
       break;
-   default:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      result = calc_overflow_any_stream(&b, q);
+      break;
+   default: {
       /* PIPE_QUERY_OCCLUSION_* */
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC0, bo,
-         offsetof(struct iris_query_snapshots, start) +
-         q->query_state_ref.offset);
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_SRC1, bo,
-         offsetof(struct iris_query_snapshots, end) +
-         q->query_state_ref.offset);
+      struct gen_mi_value start =
+         query_mem64(q, offsetof(struct iris_query_snapshots, start));
+      struct gen_mi_value end =
+         query_mem64(q, offsetof(struct iris_query_snapshots, end));
+      result = gen_mi_isub(&b, end, start);
       break;
    }
+   }
 
-   uint32_t mi_predicate = MI_PREDICATE |
-                           MI_PREDICATE_COMBINEOP_SET |
-                           MI_PREDICATE_COMPAREOP_SRCS_EQUAL |
-                           (inverted ? MI_PREDICATE_LOADOP_LOAD
-                                     : MI_PREDICATE_LOADOP_LOADINV);
-   iris_batch_emit(batch, &mi_predicate, sizeof(uint32_t));
+   result = inverted ? gen_mi_z(&b, result) : gen_mi_nz(&b, result);
+   result = gen_mi_iand(&b, result, gen_mi_imm(1));
 
    /* We immediately set the predicate on the render batch, as all the
     * counters come from 3D operations.  However, we may need to predicate
@@ -1027,10 +746,10 @@ set_predicate_for_result(struct iris_context *ice,
     * a different MI_PREDICATE_RESULT register.  So, we save the result to
     * memory and reload it in iris_launch_grid.
     */
-   unsigned offset = q->query_state_ref.offset +
-                     offsetof(struct iris_query_snapshots, predicate_result);
-   ice->vtbl.store_register_mem64(batch, MI_PREDICATE_RESULT,
-                                  bo, offset, false);
+   gen_mi_value_ref(&b, result);
+   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_RESULT), result);
+   gen_mi_store(&b, query_mem64(q, offsetof(struct iris_query_snapshots,
+                                            predicate_result)), result);
    ice->state.compute_predicate = bo;
 }
 

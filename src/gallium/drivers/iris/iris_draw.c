@@ -157,8 +157,8 @@ iris_indirect_draw_vbo(struct iris_context *ice,
 
    if (info.indirect->indirect_draw_count &&
        ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-      /* Upload MI_PREDICATE_RESULT to GPR2.*/
-      ice->vtbl.load_register_reg64(batch, CS_GPR(2), MI_PREDICATE_RESULT);
+      /* Upload MI_PREDICATE_RESULT to GPR15.*/
+      ice->vtbl.load_register_reg64(batch, CS_GPR(15), MI_PREDICATE_RESULT);
    }
 
    uint64_t orig_dirty = ice->state.dirty;
@@ -180,7 +180,7 @@ iris_indirect_draw_vbo(struct iris_context *ice,
    if (info.indirect->indirect_draw_count &&
        ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
       /* Restore MI_PREDICATE_RESULT. */
-      ice->vtbl.load_register_reg64(batch, MI_PREDICATE_RESULT, CS_GPR(2));
+      ice->vtbl.load_register_reg64(batch, MI_PREDICATE_RESULT, CS_GPR(15));
    }
 
    /* Put this back for post-draw resolves, we'll clear it again after. */

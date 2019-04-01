@@ -853,15 +853,6 @@ bool iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
                               uint32_t *kernel_out,
                               void *prog_data_out);
 
-/* iris_query.c */
-
-void iris_math_div32_gpr0(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          uint32_t D);
-void iris_math_add32_gpr0(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          uint32_t x);
-
 /* iris_resolve.c */
 
 void iris_predraw_resolve_inputs(struct iris_context *ice,

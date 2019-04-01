@@ -72,6 +72,12 @@ __gen_combine_address(struct iris_batch *batch, void *location,
 #include "genxml/gen_macros.h"
 #include "genxml/genX_bits.h"
 
+/* CS_GPR(15) is reserved for combining conditional rendering predicates
+ * with GL_ARB_indirect_parameters draw number predicates.
+ */
+#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
+#include "common/gen_mi_builder.h"
+
 #define _iris_pack_command(batch, cmd, dst, name)                 \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \
         *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
