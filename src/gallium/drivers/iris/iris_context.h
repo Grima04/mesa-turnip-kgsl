@@ -779,12 +779,6 @@ void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
 
 void iris_init_flush_functions(struct pipe_context *ctx);
 
-/* iris_blorp.c */
-void gen8_init_blorp(struct iris_context *ice);
-void gen9_init_blorp(struct iris_context *ice);
-void gen10_init_blorp(struct iris_context *ice);
-void gen11_init_blorp(struct iris_context *ice);
-
 /* iris_border_color.c */
 
 void iris_init_border_color_pool(struct iris_context *ice);
@@ -792,28 +786,6 @@ void iris_destroy_border_color_pool(struct iris_context *ice);
 void iris_border_color_pool_reserve(struct iris_context *ice, unsigned count);
 uint32_t iris_upload_border_color(struct iris_context *ice,
                                   union pipe_color_union *color);
-
-/* iris_state.c */
-void gen8_init_state(struct iris_context *ice);
-void gen9_init_state(struct iris_context *ice);
-void gen10_init_state(struct iris_context *ice);
-void gen11_init_state(struct iris_context *ice);
-void gen8_emit_urb_setup(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          const unsigned size[4],
-                          bool tess_present, bool gs_present);
-void gen9_emit_urb_setup(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          const unsigned size[4],
-                          bool tess_present, bool gs_present);
-void gen10_emit_urb_setup(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          const unsigned size[4],
-                          bool tess_present, bool gs_present);
-void gen11_emit_urb_setup(struct iris_context *ice,
-                          struct iris_batch *batch,
-                          const unsigned size[4],
-                          bool tess_present, bool gs_present);
 
 /* iris_program.c */
 void iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
@@ -922,4 +894,37 @@ void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 void gen9_toggle_preemption(struct iris_context *ice,
                             struct iris_batch *batch,
                             const struct pipe_draw_info *draw);
+
+#ifdef genX
+#  include "iris_genx_protos.h"
+#else
+#  define genX(x) gen4_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen5_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen6_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen7_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen75_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen8_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen9_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen10_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#  define genX(x) gen11_##x
+#  include "iris_genx_protos.h"
+#  undef genX
+#endif
+
 #endif
