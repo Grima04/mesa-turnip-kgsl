@@ -4970,7 +4970,9 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		 * into account would complicate the fast path (where everything
 		 * is nicely aligned).
 		 */
-		bool check_alignment = log_hw_load_size >= 1 && sscreen->info.chip_class == GFX6;
+		bool check_alignment =
+			log_hw_load_size >= 1 &&
+			(sscreen->info.chip_class == GFX6 || sscreen->info.chip_class == GFX10);
 		bool opencode = sscreen->options.vs_fetch_always_opencode;
 
 		if (check_alignment &&
