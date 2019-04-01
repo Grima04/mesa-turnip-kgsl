@@ -2931,6 +2931,11 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx,
 		type = ctx->i16;
 		zero = ctx->i16_0;
 		break;
+	case 8:
+		intrin_name = "llvm.cttz.i8";
+		type = ctx->i8;
+		zero = ctx->i8_0;
+		break;
 	default:
 		unreachable(!"invalid bitsize");
 	}
@@ -2956,7 +2961,7 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx,
 
 	if (src0_bitsize == 64) {
 		lsb = LLVMBuildTrunc(ctx->builder, lsb, ctx->i32, "");
-	} else if (src0_bitsize == 16) {
+	} else if (src0_bitsize < 32) {
 		lsb = LLVMBuildSExt(ctx->builder, lsb, ctx->i32, "");
 	}
 
