@@ -131,7 +131,7 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs,
 	 * indices. If we wanted to execute CP DMA in PFP, this packet
 	 * should precede it.
 	 */
-	if (flags & CP_DMA_PFP_SYNC_ME) {
+	if (sctx->has_graphics && flags & CP_DMA_PFP_SYNC_ME) {
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
 	}
