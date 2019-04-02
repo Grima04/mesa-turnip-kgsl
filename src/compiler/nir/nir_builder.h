@@ -209,6 +209,19 @@ nir_build_imm(nir_builder *build, unsigned num_components,
 }
 
 static inline nir_ssa_def *
+nir_imm_zero(nir_builder *build, unsigned num_components, unsigned bit_size)
+{
+   nir_load_const_instr *load_const =
+      nir_load_const_instr_create(build->shader, num_components, bit_size);
+
+   /* nir_load_const_instr_create uses rzalloc so it's already zero */
+
+   nir_builder_instr_insert(build, &load_const->instr);
+
+   return &load_const->def;
+}
+
+static inline nir_ssa_def *
 nir_imm_bool(nir_builder *build, bool x)
 {
    nir_const_value v;

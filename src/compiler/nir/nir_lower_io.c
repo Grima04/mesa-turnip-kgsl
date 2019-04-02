@@ -754,10 +754,8 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
        * as to what we can do with an OOB read.  Unfortunately, returning
        * undefined values isn't one of them so we return an actual zero.
        */
-      nir_const_value zero_val;
-      memset(&zero_val, 0, sizeof(zero_val));
-      nir_ssa_def *zero = nir_build_imm(b, load->num_components,
-                                        load->dest.ssa.bit_size, zero_val);
+      nir_ssa_def *zero = nir_imm_zero(b, load->num_components,
+                                          load->dest.ssa.bit_size);
 
       const unsigned load_size =
          (load->dest.ssa.bit_size / 8) * load->num_components;

@@ -313,15 +313,6 @@ get_format_info(enum isl_format fmt)
 }
 
 static nir_ssa_def *
-nir_zero_vec(nir_builder *b, unsigned num_components)
-{
-   nir_const_value v;
-   memset(&v, 0, sizeof(v));
-
-   return nir_build_imm(b, num_components, 32, v);
-}
-
-static nir_ssa_def *
 convert_color_for_load(nir_builder *b, const struct gen_device_info *devinfo,
                        nir_ssa_def *color,
                        enum isl_format image_fmt, enum isl_format lower_fmt,
@@ -498,7 +489,7 @@ lower_image_load_instr(nir_builder *b,
 
       nir_push_else(b, NULL);
 
-      nir_ssa_def *zero = nir_zero_vec(b, load->num_components);
+      nir_ssa_def *zero = nir_imm_zero(b, load->num_components, 32);
 
       nir_pop_if(b, NULL);
 
