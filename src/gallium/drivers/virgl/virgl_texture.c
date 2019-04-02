@@ -181,7 +181,8 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (trans->resolve_tmp) {
       pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
-   }
+   } else if (!(trans->base.usage & PIPE_TRANSFER_WRITE))
+      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
 }
 
 static const struct u_resource_vtbl virgl_texture_vtbl =
