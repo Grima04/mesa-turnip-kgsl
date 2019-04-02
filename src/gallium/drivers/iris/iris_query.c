@@ -117,8 +117,8 @@ struct iris_query {
 };
 
 struct iris_query_snapshots {
-   /** iris_render_condition's saved MI_PREDICATE_DATA value. */
-   uint64_t predicate_data;
+   /** iris_render_condition's saved MI_PREDICATE_RESULT value. */
+   uint64_t predicate_result;
 
    /** Have the start/end snapshots landed? */
    uint64_t snapshots_landed;
@@ -129,7 +129,7 @@ struct iris_query_snapshots {
 };
 
 struct iris_query_so_overflow {
-   uint64_t predicate_data;
+   uint64_t predicate_result;
    uint64_t snapshots_landed;
 
    struct {
@@ -1048,12 +1048,12 @@ set_predicate_for_result(struct iris_context *ice,
    /* We immediately set the predicate on the render batch, as all the
     * counters come from 3D operations.  However, we may need to predicate
     * a compute dispatch, which executes in a different GEM context and has
-    * a different MI_PREDICATE_DATA register.  So, we save the result to
+    * a different MI_PREDICATE_RESULT register.  So, we save the result to
     * memory and reload it in iris_launch_grid.
     */
    unsigned offset = q->query_state_ref.offset +
-                     offsetof(struct iris_query_snapshots, predicate_data);
-   ice->vtbl.store_register_mem64(batch, MI_PREDICATE_DATA,
+                     offsetof(struct iris_query_snapshots, predicate_result);
+   ice->vtbl.store_register_mem64(batch, MI_PREDICATE_RESULT,
                                   bo, offset, false);
    ice->state.compute_predicate = bo;
 }

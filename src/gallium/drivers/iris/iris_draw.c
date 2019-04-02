@@ -232,7 +232,7 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
 
    if (ice->state.compute_predicate) {
-      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_DATA,
+      ice->vtbl.load_register_mem64(batch, MI_PREDICATE_RESULT,
                                     ice->state.compute_predicate, 0);
       ice->state.compute_predicate = NULL;
    }

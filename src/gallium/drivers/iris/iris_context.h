@@ -598,7 +598,7 @@ struct iris_context {
       enum iris_predicate_state predicate;
 
       /**
-       * Query BO with a MI_PREDICATE_DATA snapshot calculated on the
+       * Query BO with a MI_PREDICATE_RESULT snapshot calculated on the
        * render context that needs to be uploaded to the compute context.
        */
       struct iris_bo *compute_predicate;
