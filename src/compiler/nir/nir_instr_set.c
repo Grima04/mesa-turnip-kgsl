@@ -628,29 +628,15 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       if (load1->def.bit_size != load2->def.bit_size)
          return false;
 
-      for (unsigned i = 0; i < load1->def.num_components; ++i) {
-         switch (load1->def.bit_size) {
-         case 1:
+      if (load1->def.bit_size == 1) {
+         for (unsigned i = 0; i < load1->def.num_components; ++i) {
             if (load1->value[i].b != load2->value[i].b)
                return false;
-            break;
-         case 8:
-            if (load1->value[i].u8 != load2->value[i].u8)
-               return false;
-            break;
-         case 16:
-            if (load1->value[i].u16 != load2->value[i].u16)
-               return false;
-            break;
-         case 32:
-            if (load1->value[i].u32 != load2->value[i].u32)
-               return false;
-            break;
-         case 64:
-            if (load1->value[i].u64 != load2->value[i].u64)
-               return false;
-            break;
          }
+      } else {
+         unsigned size = load1->def.num_components * sizeof(*load1->value);
+         if (memcmp(load1->value, load2->value, size) != 0)
+            return false;
       }
       return true;
    }
