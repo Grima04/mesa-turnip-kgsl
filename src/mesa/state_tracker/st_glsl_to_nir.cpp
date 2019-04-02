@@ -436,7 +436,7 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
          lowered_64bit_ops |= progress;
       } while (progress);
 
-      if (progress)
+      if (lowered_64bit_ops)
          st_nir_opts(nir, is_scalar);
    }
 
