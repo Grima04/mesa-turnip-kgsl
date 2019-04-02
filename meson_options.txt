@@ -277,6 +277,12 @@ option(
   description : 'Build unit tests. Currently this will build *all* unit tests, which may build more than expected.'
 )
 option(
+  'install-intel-gpu-tests',
+  type : 'boolean',
+  value : false,
+  description : 'Build and install Intel unit tests which require the GPU.  This option is for developers and the Intel CI system only.'
+)
+option(
   'selinux',
   type : 'boolean',
   value : false,
