@@ -1532,8 +1532,8 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
           * back into A.
           */
          union pipe_color_union *color = &state->border_color;
+         union pipe_color_union tmp;
          if (tex) {
-            union pipe_color_union tmp;
             enum pipe_format internal_format = tex->res->internal_format;
 
             if (util_format_is_alpha(internal_format)) {
