@@ -16,9 +16,15 @@
 # The format of the tag is "%Y-%m-%d-${counter}" where ${counter} stays
 # at "01" unless you have multiple updates on the same day :)
 variables:
-  UBUNTU_TAG: 2019-03-05-01
-  UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu:$UBUNTU_TAG"
-  UBUNTU_IMAGE_MAIN: "registry.freedesktop.org/mesa/mesa/ubuntu:$UBUNTU_TAG"
+  UPSTREAM_REPO: mesa/mesa
+  UBUNTU_TAG: "2019-04-02"
+  UBUNTU_VERSION: bionic
+  UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu/$UBUNTU_VERSION:$UBUNTU_TAG"
+
+include:
+  - project: 'wayland/ci-templates'
+    ref: c73dae8b84697ef18e2dbbf4fed7386d9652b0cd
+    file: '/templates/ubuntu.yml'
 
 stages:
   - containers-build
@@ -26,7 +32,7 @@ stages:
 
 
 # When to automatically run the CI
-.ci-run-policy:
+.ci-run-policy: &ci-run-policy
   only:
     - master
     - merge_requests
@@ -40,33 +46,18 @@ stages:
 # CONTAINERS
 
 ubuntu:
-  extends: .ci-run-policy
+  extends: .ubuntu@container-ifnot-exists
   stage: containers-build
-  image: docker:stable
-  services:
-    - docker:dind
+  <<: *ci-run-policy
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_DRIVER: overlay2
-  script:
-    # Enable experimental features such as `docker manifest inspect`
-    - mkdir -p ~/.docker
-    - "echo '{\"experimental\": \"enabled\"}' > ~/.docker/config.json"
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    # Check if the image (with the specific tag) already exists
-    - docker manifest inspect $UBUNTU_IMAGE && exit || true
-    # Try to re-use the image from the main repository's registry
-    - docker image pull $UBUNTU_IMAGE_MAIN &&
-      docker image tag $UBUNTU_IMAGE_MAIN $UBUNTU_IMAGE &&
-      docker image push $UBUNTU_IMAGE && exit || true
-    - docker build -t $UBUNTU_IMAGE -f .gitlab-ci/Dockerfile.ubuntu .
-    - docker push $UBUNTU_IMAGE
+    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
+    UBUNTU_EXEC: 'bash .gitlab-ci/ubuntu-install.sh'
 
 
 # BUILD
 
 .build:
-  extends: .ci-run-policy
+  <<: *ci-run-policy
   image: $UBUNTU_IMAGE
   stage: build+test
   cache:
