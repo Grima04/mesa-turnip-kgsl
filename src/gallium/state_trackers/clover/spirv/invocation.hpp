@@ -24,6 +24,8 @@
 #define CLOVER_SPIRV_INVOCATION_HPP
 
 #include "core/context.hpp"
+#include "core/module.hpp"
+#include "core/program.hpp"
 
 namespace clover {
    namespace spirv {
@@ -32,9 +34,18 @@ namespace clover {
       //
       // It uses SPIRV-Tools validator to do the validation, and potential
       // warnings and errors are appended to |r_log|.
-      bool is_valid_spirv(const uint32_t *binary, size_t length,
+      bool is_valid_spirv(const std::vector<char> &binary,
                           const std::string &opencl_version,
                           std::string &r_log);
+
+      // Creates a clover module out of the given SPIR-V binary.
+      module compile_program(const std::vector<char> &binary,
+                             const device &dev, std::string &r_log);
+
+      // Combines multiple clover modules into a single one, resolving
+      // link dependencies between them.
+      module link_program(const std::vector<module> &modules, const device &dev,
+                          const std::string &opts, std::string &r_log);
    }
 }
 
