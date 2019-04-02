@@ -12,10 +12,14 @@ apt-get install -y \
       software-properties-common
 
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-7 main"
+add-apt-repository "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main"
+
+echo 'deb http://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
 
 apt-get update
-apt-get install -y \
+apt-get install -y -t stretch-backports \
+      bzip2 \
+      zlib1g-dev \
       pkg-config \
       libdrm-dev \
       libpciaccess-dev \

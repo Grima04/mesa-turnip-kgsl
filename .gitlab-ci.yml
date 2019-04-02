@@ -17,14 +17,14 @@
 # at "01" unless you have multiple updates on the same day :)
 variables:
   UPSTREAM_REPO: mesa/mesa
-  UBUNTU_TAG: "2019-04-02"
-  UBUNTU_VERSION: bionic
-  UBUNTU_IMAGE: "$CI_REGISTRY_IMAGE/ubuntu/$UBUNTU_VERSION:$UBUNTU_TAG"
+  DEBIAN_TAG: "2019-04-16"
+  DEBIAN_VERSION: stretch-slim
+  DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
 include:
   - project: 'wayland/ci-templates'
     ref: c73dae8b84697ef18e2dbbf4fed7386d9652b0cd
-    file: '/templates/ubuntu.yml'
+    file: '/templates/debian.yml'
 
 stages:
   - containers-build
@@ -45,20 +45,20 @@ stages:
 
 # CONTAINERS
 
-ubuntu:
-  extends: .ubuntu@container-ifnot-exists
+debian:
+  extends: .debian@container-ifnot-exists
   stage: containers-build
   <<: *ci-run-policy
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
-    UBUNTU_EXEC: 'bash .gitlab-ci/ubuntu-install.sh'
+    DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
 
 # BUILD
 
 .build:
   <<: *ci-run-policy
-  image: $UBUNTU_IMAGE
+  image: $DEBIAN_IMAGE
   stage: build+test
   cache:
     paths:
