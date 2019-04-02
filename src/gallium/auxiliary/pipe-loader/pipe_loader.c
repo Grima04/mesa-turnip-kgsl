@@ -31,6 +31,7 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "util/u_dl.h"
+#include "util/u_file.h"
 #include "util/xmlconfig.h"
 #include "util/xmlpool.h"
 
@@ -158,11 +159,13 @@ pipe_loader_find_module(const char *driver_name,
          ret = util_snprintf(path, sizeof(path), "%s%s%s",
                              MODULE_PREFIX, driver_name, UTIL_DL_EXT);
 
-      if (ret > 0 && ret < sizeof(path)) {
+      if (ret > 0 && ret < sizeof(path) && u_file_access(path, 0) != -1) {
          lib = util_dl_open(path);
          if (lib) {
             return lib;
          }
+         fprintf(stderr, "ERROR: Failed to load pipe driver at `%s': %s\n",
+                         path, util_dl_error());
       }
    }
 
