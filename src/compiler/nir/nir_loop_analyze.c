@@ -656,7 +656,7 @@ test_iterations(int32_t iter_int, nir_const_value *step,
    /* Evaluate the loop exit condition */
    nir_const_value result = nir_eval_const_opcode(cond_op, 1, bit_size, src);
 
-   return invert_cond ? (result.u32[0] == 0) : (result.u32[0] != 0);
+   return invert_cond ? !result.b[0] : result.b[0];
 }
 
 static int
