@@ -547,10 +547,15 @@ system_value("work_dim", 1)
 # VC4 and V3D need to emit a scaled version of the position in the vertex
 # shaders for binning, and having system values lets us move the math for that
 # into NIR.
+#
+# Panfrost needs to implement all coordinate transformation in the
+# vertex shader; system values allow us to share this routine in NIR.
 system_value("viewport_x_scale", 1)
 system_value("viewport_y_scale", 1)
 system_value("viewport_z_scale", 1)
 system_value("viewport_z_offset", 1)
+system_value("viewport_scale", 3)
+system_value("viewport_offset", 3)
 
 # Blend constant color values.  Float values are clamped.#
 system_value("blend_const_color_r_float", 1)
