@@ -42,15 +42,9 @@ apt-get install -y \
       bzip2 \
       zlib1g-dev \
       pkg-config \
-      libdrm-dev \
-      libpciaccess-dev \
-      libxrandr-dev \
+      libxrender-dev \
       libxdamage-dev \
-      libxfixes-dev \
-      libxshmfence-dev \
       libxxf86vm-dev \
-      libvdpau-dev \
-      libva-dev \
       gcc \
       libclc-dev \
       libxvmc-dev \
@@ -58,7 +52,6 @@ apt-get install -y \
       xz-utils \
       libexpat1-dev \
       libx11-xcb-dev \
-      x11proto-xf86vidmode-dev \
       libelf-dev \
       libunwind-dev \
       libglvnd-dev \
@@ -67,14 +60,9 @@ apt-get install -y \
       meson \
       scons
 
-apt-get install -y \
-      libxcb-randr0
-
 # autotools build deps
 apt-get install -y \
-      autoconf \
       automake \
-      xutils-dev \
       libtool \
       bison \
       flex \
