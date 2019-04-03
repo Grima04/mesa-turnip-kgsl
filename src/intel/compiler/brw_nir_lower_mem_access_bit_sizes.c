@@ -85,7 +85,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
    const unsigned bytes_read = num_components * (bit_size / 8);
    const unsigned align = nir_intrinsic_align(intrin);
 
-   nir_ssa_def *result[4] = { NULL, };
+   nir_ssa_def *result[NIR_MAX_VEC_COMPONENTS] = { NULL, };
 
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    if (bit_size < 32 && nir_src_is_const(*offset_src)) {
