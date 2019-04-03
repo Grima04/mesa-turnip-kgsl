@@ -90,6 +90,23 @@ TYPE_IDX(GLenum t)
 }
 
 
+/*
+ * Convert normalized/integer/double to the range [0, 3].
+ */
+static inline int
+vertex_format_to_index(const struct gl_vertex_format *vformat)
+{
+   if (vformat->Doubles)
+      return 3;
+   else if (vformat->Integer)
+      return 2;
+   else if (vformat->Normalized)
+      return 1;
+   else
+      return 0;
+}
+
+
 bool
 _ae_is_state_dirty(struct gl_context *ctx)
 {
@@ -1610,7 +1627,6 @@ _ae_update_state(struct gl_context *ctx)
       if (vao->Enabled & VERT_BIT_GENERIC(i)) {
          struct gl_array_attributes *attribArray =
             &vao->VertexAttrib[VERT_ATTRIB_GENERIC(i)];
-         GLint intOrNorm;
          at->array = attribArray;
          at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
          /* Note: we can't grab the _glapi_Dispatch->VertexAttrib1fvNV
@@ -1618,16 +1634,7 @@ _ae_update_state(struct gl_context *ctx)
           * change from one execution of _ae_ArrayElement() to
           * the next.  Doing so caused UT to break.
           */
-         if (at->array->Format.Doubles)
-            intOrNorm = 3;
-         else if (at->array->Format.Integer)
-            intOrNorm = 2;
-         else if (at->array->Format.Normalized)
-            intOrNorm = 1;
-         else
-            intOrNorm = 0;
-
-         at->func = AttribFuncsARB[intOrNorm]
+         at->func = AttribFuncsARB[vertex_format_to_index(&at->array->Format)]
             [at->array->Format.Size-1]
             [TYPE_IDX(at->array->Format.Type)];
 
