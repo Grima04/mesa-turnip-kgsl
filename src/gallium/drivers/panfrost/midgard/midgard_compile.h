@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ * Copyright (C) 2018-2019 Alyssa Rosenzweig <alyssa@rosenzweig.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,11 +21,28 @@
  * SOFTWARE.
  */
 
+#ifndef __MIDGARD_H_
+#define __MIDGARD_H_
 
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
 
 /* Define the general compiler entry point */
+
+#define MAX_SYSVAL_COUNT 32
+
+/* Allow 2D of sysval IDs, while allowing nonparametric sysvals to equal
+ * their class for equal comparison */
+
+#define PAN_SYSVAL(type, no) ((no << 16) | PAN_SYSVAL_##type)
+
+/* Define some common types. We start at one for easy indexing of hash
+ * tables internal to the compiler */
+
+enum {
+        PAN_SYSVAL_VIEWPORT_SCALE = 1,
+        PAN_SYSVAL_VIEWPORT_OFFSET = 2,
+} pan_sysval;
 
 typedef struct {
         int work_register_count;
@@ -34,6 +51,12 @@ typedef struct {
 
         int attribute_count;
         int varying_count;
+
+        /* Prepended before uniforms, mapping to SYSVAL_ names for the
+         * sysval */
+
+        unsigned sysval_count;
+        unsigned sysvals[MAX_SYSVAL_COUNT];
 
         unsigned varyings[32];
 
@@ -81,3 +104,5 @@ static const nir_shader_compiler_options midgard_nir_options = {
 
         .native_integers = true
 };
+
+#endif

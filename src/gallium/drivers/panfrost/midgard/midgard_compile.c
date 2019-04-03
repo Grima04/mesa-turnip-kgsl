@@ -32,6 +32,7 @@
 
 #include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
+#include "mesa/state_tracker/st_glsl_types.h"
 #include "compiler/nir_types.h"
 #include "main/imports.h"
 #include "compiler/nir/nir_builder.h"
@@ -176,6 +177,7 @@ typedef struct midgard_block {
  * driver seems to do it that way */
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
+#define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
 
 #define M_LOAD_STORE(name, rname, uname) \
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
@@ -189,7 +191,7 @@ typedef struct midgard_block {
 			.load_store = { \
 				.op = midgard_op_##name, \
 				.mask = 0xF, \
-				.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W), \
+				.swizzle = SWIZZLE_XYZW, \
 				.address = address \
 			} \
 		}; \
@@ -432,10 +434,6 @@ typedef struct compiler_context {
         int temp_count;
         int max_hash;
 
-        /* Uniform IDs for mdg */
-        struct hash_table_u64 *uniform_nir_to_mdg;
-        int uniform_count;
-
         /* Just the count of the max register used. Higher count => higher
          * register pressure */
         int work_registers;
@@ -446,9 +444,6 @@ typedef struct compiler_context {
 
         /* Mapping of texture register -> SSA index for unaliasing */
         int texture_index[2];
-
-        /* Count of special uniforms (viewport, etc) in vec4 units */
-        int special_uniforms;
 
         /* If any path hits a discard instruction */
         bool can_discard;
@@ -464,6 +459,11 @@ typedef struct compiler_context {
 
         /* The index corresponding to the fragment output */
         unsigned fragment_output;
+
+        /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
+        unsigned sysvals[MAX_SYSVAL_COUNT];
+        unsigned sysval_count;
+        struct hash_table_u64 *sysval_to_id;
 } compiler_context;
 
 /* Append instruction to end of current block */
@@ -645,6 +645,12 @@ glsl_type_size(const struct glsl_type *type)
         return glsl_count_attribute_slots(type, false);
 }
 
+static int
+uniform_type_size(const struct glsl_type *type)
+{
+        return st_glsl_storage_type_size(type, false);
+}
+
 /* Lower fdot2 to a vector multiplication followed by channel addition  */
 static void
 midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
@@ -665,6 +671,60 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
 
         /* Replace the fdot2 with this sum */
         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
+}
+
+static int
+midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
+{
+        switch (instr->intrinsic) {
+        case nir_intrinsic_load_viewport_scale:
+                return PAN_SYSVAL_VIEWPORT_SCALE;
+        case nir_intrinsic_load_viewport_offset:
+                return PAN_SYSVAL_VIEWPORT_OFFSET;
+        default:
+                return -1;
+        }
+}
+
+static void
+midgard_nir_assign_sysval_body(compiler_context *ctx, nir_instr *instr)
+{
+        int sysval = -1;
+
+        if (instr->type == nir_instr_type_intrinsic) {
+                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+                sysval = midgard_nir_sysval_for_intrinsic(intr);
+        }
+
+        if (sysval < 0)
+                return;
+
+        /* We have a sysval load; check if it's already been assigned */
+
+        if (_mesa_hash_table_u64_search(ctx->sysval_to_id, sysval))
+                return;
+
+        /* It hasn't -- so assign it now! */
+
+        unsigned id = ctx->sysval_count++;
+        _mesa_hash_table_u64_insert(ctx->sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
+        ctx->sysvals[id] = sysval;
+}
+
+static void
+midgard_nir_assign_sysvals(compiler_context *ctx, nir_shader *shader)
+{
+        ctx->sysval_count = 0;
+
+        nir_foreach_function(function, shader) {
+                if (!function->impl) continue;
+
+                nir_foreach_block(block, function->impl) {
+                        nir_foreach_instr_safe(instr, block) {
+                                midgard_nir_assign_sysval_body(ctx, instr);
+                        }
+                }
+        }
 }
 
 static bool
@@ -715,7 +775,6 @@ optimise_nir(nir_shader *nir)
                 progress = false;
 
                 NIR_PASS(progress, nir, midgard_nir_lower_algebraic);
-                NIR_PASS(progress, nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
                 NIR_PASS(progress, nir, nir_lower_var_copies);
                 NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
 
@@ -1207,6 +1266,52 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 #undef ALU_CASE
 
 static void
+emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset)
+{
+        /* TODO: half-floats */
+
+        if (offset < ctx->uniform_cutoff) {
+                /* Fast path: For the first 16 uniform,
+                 * accesses are 0-cycle, since they're
+                 * just a register fetch in the usual
+                 * case.  So, we alias the registers
+                 * while we're still in SSA-space */
+
+                int reg_slot = 23 - offset;
+                alias_ssa(ctx, dest, SSA_FIXED_REGISTER(reg_slot));
+        } else {
+                /* Otherwise, read from the 'special'
+                 * UBO to access higher-indexed
+                 * uniforms, at a performance cost */
+
+                midgard_instruction ins = m_load_uniform_32(dest, offset);
+
+                /* TODO: Don't split */
+                ins.load_store.varying_parameters = (offset & 7) << 7;
+                ins.load_store.address = offset >> 3;
+
+                ins.load_store.unknown = 0x1E00; /* xxx: what is this? */
+                emit_mir_instruction(ctx, ins);
+        }
+}
+
+static void
+emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
+{
+        /* First, pull out the destination */
+        unsigned dest = nir_dest_index(ctx, &instr->dest);
+
+        /* Now, figure out which uniform this is */
+        int sysval = midgard_nir_sysval_for_intrinsic(instr);
+        void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
+
+        /* Sysvals are prefix uniforms */
+        unsigned uniform = ((uintptr_t) val) - 1;
+
+        emit_uniform_read(ctx, dest, uniform);
+}
+
+static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
         nir_const_value *const_offset;
@@ -1238,52 +1343,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
-                        /* TODO: half-floats */
-
-                        int uniform_offset = 0;
-
-                        if (offset >= SPECIAL_UNIFORM_BASE) {
-                                /* XXX: Resolve which uniform */
-                                uniform_offset = 0;
-                        } else {
-                                /* Offset away from the special
-                                 * uniform block */
-
-                                void *entry = _mesa_hash_table_u64_search(ctx->uniform_nir_to_mdg, offset + 1);
-
-                                /* XXX */
-                                if (!entry) {
-                                        DBG("WARNING: Unknown uniform %d\n", offset);
-                                        break;
-                                }
-
-                                uniform_offset = (uintptr_t) (entry) - 1;
-                                uniform_offset += ctx->special_uniforms;
-                        }
-
-                        if (uniform_offset < ctx->uniform_cutoff) {
-                                /* Fast path: For the first 16 uniform,
-                                 * accesses are 0-cycle, since they're
-                                 * just a register fetch in the usual
-                                 * case.  So, we alias the registers
-                                 * while we're still in SSA-space */
-
-                                int reg_slot = 23 - uniform_offset;
-                                alias_ssa(ctx, reg, SSA_FIXED_REGISTER(reg_slot));
-                        } else {
-                                /* Otherwise, read from the 'special'
-                                 * UBO to access higher-indexed
-                                 * uniforms, at a performance cost */
-
-                                midgard_instruction ins = m_load_uniform_32(reg, uniform_offset);
-
-                                /* TODO: Don't split */
-                                ins.load_store.varying_parameters = (uniform_offset & 7) << 7;
-                                ins.load_store.address = uniform_offset >> 3;
-
-                                ins.load_store.unknown = 0x1E00; /* xxx: what is this? */
-                                emit_mir_instruction(ctx, ins);
-                        }
+                        emit_uniform_read(ctx, reg, ctx->sysval_count + offset);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         /* XXX: Half-floats? */
                         /* TODO: swizzle, mask */
@@ -1490,6 +1550,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 _mesa_hash_table_u64_insert(ctx->ssa_constants, instr->dest.ssa.index + 1, v);
                 break;
 
+        case nir_intrinsic_load_viewport_scale:
+        case nir_intrinsic_load_viewport_offset:
+                emit_sysval_read(ctx, instr);
+                break;
 
         default:
                 printf ("Unhandled intrinsic\n");
@@ -3005,41 +3069,17 @@ actualise_ssa_to_alias(compiler_context *ctx)
  * */
 
 static void
-write_transformed_position(nir_builder *b, nir_src input_point_src, int uniform_no)
+write_transformed_position(nir_builder *b, nir_src input_point_src)
 {
         nir_ssa_def *input_point = nir_ssa_for_src(b, input_point_src, 4);
+        nir_ssa_def *scale = nir_load_viewport_scale(b);
+        nir_ssa_def *offset = nir_load_viewport_offset(b);
 
-        /* Get viewport from the uniforms */
-        nir_intrinsic_instr *load;
-        load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
-        load->num_components = 4;
-        load->src[0] = nir_src_for_ssa(nir_imm_int(b, uniform_no));
-        nir_ssa_dest_init(&load->instr, &load->dest, 4, 32, NULL);
-        nir_builder_instr_insert(b, &load->instr);
-
-        /* Formatted as <width, height, centerx, centery> */
-        nir_ssa_def *viewport_vec4 = &load->dest.ssa;
-        nir_ssa_def *viewport_width_2 = nir_channel(b, viewport_vec4, 0);
-        nir_ssa_def *viewport_height_2 = nir_channel(b, viewport_vec4, 1);
-        nir_ssa_def *viewport_offset = nir_channels(b, viewport_vec4, 0x8 | 0x4);
-
-        /* XXX: From uniforms? */
-        nir_ssa_def *depth_near = nir_imm_float(b, 0.0);
-        nir_ssa_def *depth_far = nir_imm_float(b, 1.0);
-
-        /* World space to normalised device coordinates */
+        /* World space to normalised device coordinates to screen space */
 
         nir_ssa_def *w_recip = nir_frcp(b, nir_channel(b, input_point, 3));
         nir_ssa_def *ndc_point = nir_fmul(b, nir_channels(b, input_point, 0x7), w_recip);
-
-        /* Normalised device coordinates to screen space */
-
-        nir_ssa_def *viewport_multiplier = nir_vec2(b, viewport_width_2, viewport_height_2);
-        nir_ssa_def *viewport_xy = nir_fadd(b, nir_fmul(b, nir_channels(b, ndc_point, 0x3), viewport_multiplier), viewport_offset);
-
-        nir_ssa_def *depth_multiplier = nir_fmul(b, nir_fsub(b, depth_far, depth_near), nir_imm_float(b, 0.5f));
-        nir_ssa_def *depth_offset     = nir_fmul(b, nir_fadd(b, depth_far, depth_near), nir_imm_float(b, 0.5f));
-        nir_ssa_def *screen_depth     = nir_fadd(b, nir_fmul(b, nir_channel(b, ndc_point, 2), depth_multiplier), depth_offset);
+        nir_ssa_def *screen = nir_fadd(b, nir_fmul(b, ndc_point, scale), offset);
 
         /* gl_Position will be written out in screenspace xyz, with w set to
          * the reciprocal we computed earlier. The transformed w component is
@@ -3048,9 +3088,9 @@ write_transformed_position(nir_builder *b, nir_src input_point_src, int uniform_
          * used in depth clipping computations */
 
         nir_ssa_def *screen_space = nir_vec4(b,
-                                             nir_channel(b, viewport_xy, 0),
-                                             nir_channel(b, viewport_xy, 1),
-                                             screen_depth,
+                                             nir_channel(b, screen, 0),
+                                             nir_channel(b, screen, 1),
+                                             nir_channel(b, screen, 2),
                                              w_recip);
 
         /* Finally, write out the transformed values to the varying */
@@ -3107,7 +3147,7 @@ transform_position_writes(nir_shader *shader)
                                 nir_builder_init(&b, func->impl);
                                 b.cursor = nir_before_instr(instr);
 
-                                write_transformed_position(&b, intr->src[0], UNIFORM_VIEWPORT);
+                                write_transformed_position(&b, intr->src[0]);
                                 nir_instr_remove(instr);
                         }
                 }
@@ -3457,28 +3497,11 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* TODO: Decide this at runtime */
         ctx->uniform_cutoff = 8;
 
-        switch (ctx->stage) {
-        case MESA_SHADER_VERTEX:
-                ctx->special_uniforms = 1;
-                break;
-
-        default:
-                ctx->special_uniforms = 0;
-                break;
-        }
-
-        /* Append epilogue uniforms if necessary. The cmdstream depends on
-         * these being at the -end-; see assign_var_locations. */
-
-        if (ctx->stage == MESA_SHADER_VERTEX) {
-                nir_variable_create(nir, nir_var_uniform, glsl_vec4_type(), "viewport");
-        }
-
         /* Assign var locations early, so the epilogue can use them if necessary */
 
         nir_assign_var_locations(&nir->outputs, &nir->num_outputs, glsl_type_size);
         nir_assign_var_locations(&nir->inputs, &nir->num_inputs, glsl_type_size);
-        nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms, glsl_type_size);
+        nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms, uniform_type_size);
 
         /* Initialize at a global (not block) level hash tables */
 
@@ -3487,30 +3510,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         ctx->ssa_to_alias = _mesa_hash_table_u64_create(NULL);
         ctx->ssa_to_register = _mesa_hash_table_u64_create(NULL);
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
+        ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
         ctx->leftover_ssa_to_alias = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-
-        /* Assign actual uniform location, skipping over samplers */
-
-        ctx->uniform_nir_to_mdg = _mesa_hash_table_u64_create(NULL);
-
-        nir_foreach_variable(var, &nir->uniforms) {
-                if (glsl_get_base_type(var->type) == GLSL_TYPE_SAMPLER) continue;
-
-                unsigned length = glsl_get_aoa_size(var->type);
-
-                if (!length) {
-                        length = glsl_get_length(var->type);
-                }
-
-                if (!length) {
-                        length = glsl_get_matrix_columns(var->type);
-                }
-
-                for (int col = 0; col < length; ++col) {
-                        int id = ctx->uniform_count++;
-                        _mesa_hash_table_u64_insert(ctx->uniform_nir_to_mdg, var->data.driver_location + col + 1, (void *) ((uintptr_t) (id + 1)));
-                }
-        }
 
         /* Record the varying mapping for the command stream's bookkeeping */
 
@@ -3531,7 +3532,9 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         NIR_PASS_V(nir, nir_lower_global_vars_to_local);
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-        NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
+
+        NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, uniform_type_size, 0);
+        NIR_PASS_V(nir, nir_lower_io, nir_var_all & ~nir_var_uniform, glsl_type_size, 0);
 
         /* Append vertex epilogue before optimisation, so the epilogue itself
          * is optimised */
@@ -3547,12 +3550,17 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 	        nir_print_shader(nir, stdout);
 	}
 
-        /* Assign counts, now that we're sure (post-optimisation) */
+        /* Assign sysvals and counts, now that we're sure
+         * (post-optimisation) */
+
+        midgard_nir_assign_sysvals(ctx, nir);
+
         program->uniform_count = nir->num_uniforms;
+        program->sysval_count = ctx->sysval_count;
+        memcpy(program->sysvals, ctx->sysvals, sizeof(ctx->sysvals[0]) * ctx->sysval_count);
 
         program->attribute_count = (ctx->stage == MESA_SHADER_VERTEX) ? nir->num_inputs : 0;
         program->varying_count = (ctx->stage == MESA_SHADER_VERTEX) ? nir->num_outputs : ((ctx->stage == MESA_SHADER_FRAGMENT) ? nir->num_inputs : 0);
-
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)

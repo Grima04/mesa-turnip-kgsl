@@ -81,6 +81,11 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
 
         util_dynarray_fini(&program.compiled);
 
+        /* Sysvals are prepended */
+        program.uniform_count += program.sysval_count;
+        state->sysval_count = program.sysval_count;
+        memcpy(state->sysval, program.sysvals, sizeof(state->sysval[0]) * state->sysval_count);
+
         meta->midgard1.uniform_count = MIN2(program.uniform_count, program.uniform_cutoff);
         meta->attribute_count = program.attribute_count;
         meta->varying_count = program.varying_count;

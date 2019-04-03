@@ -1048,7 +1048,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 }
         }
 
-        /* Generate the viewport vector of the form: <width/2, height/2, centerx, centery> */
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 
         /* For flipped-Y buffers (signaled by negative scale), the translate is
@@ -1060,71 +1059,73 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         if (invert_y)
                 translate_y = ctx->pipe_framebuffer.height - translate_y;
 
-        float viewport_vec4[] = {
-                vp->scale[0],
-                fabsf(vp->scale[1]),
-
-                vp->translate[0],
-                translate_y
-        };
-
-        for (int i = 0; i < PIPE_SHADER_TYPES; ++i) {
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
-                if (i == PIPE_SHADER_VERTEX || i == PIPE_SHADER_FRAGMENT) {
-                        /* It doesn't matter if we don't use all the memory;
-                         * we'd need a dummy UBO anyway. Compute the max */
+                struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
+                struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
+                struct panfrost_shader_state *ss = (i == PIPE_SHADER_FRAGMENT) ? fs : vs;
 
-                        size_t size = sizeof(viewport_vec4) + buf->size;
-                        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
+                /* Allocate room for the sysval and the uniforms */
+                size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
+                size_t size = sys_size + buf->size;
+                struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
 
-                        /* Keep track how much we've uploaded */
-                        off_t offset = 0;
+                /* Upload sysvals requested by the shader */
+                float *uniforms = (float *) transfer.cpu;
+                for (unsigned i = 0; i < ss->sysval_count; ++i) {
+                        int sysval = ss->sysval[i];
 
-                        if (i == PIPE_SHADER_VERTEX) {
-                                /* Upload viewport */
-                                memcpy(transfer.cpu + offset, viewport_vec4, sizeof(viewport_vec4));
-                                offset += sizeof(viewport_vec4);
-                        }
-
-                        /* Upload uniforms */
-                        memcpy(transfer.cpu + offset, buf->buffer, buf->size);
-
-                        int uniform_count = 0;
-
-                        struct mali_vertex_tiler_postfix *postfix;
-
-                        switch (i) {
-                        case PIPE_SHADER_VERTEX:
-                                uniform_count = ctx->vs->variants[ctx->vs->active_variant].uniform_count;
-                                postfix = &ctx->payload_vertex.postfix;
-                                break;
-
-                        case PIPE_SHADER_FRAGMENT:
-                                uniform_count = ctx->fs->variants[ctx->fs->active_variant].uniform_count;
-                                postfix = &ctx->payload_tiler.postfix;
-                                break;
-
-                        default:
-                                DBG("Unknown shader stage %d in uniform upload\n", i);
+                        if (sysval == PAN_SYSVAL_VIEWPORT_SCALE) {
+                                uniforms[4*i + 0] = vp->scale[0];
+                                uniforms[4*i + 1] = fabsf(vp->scale[1]);
+                                uniforms[4*i + 2] = vp->scale[2];
+                        } else if (sysval == PAN_SYSVAL_VIEWPORT_OFFSET) {
+                                uniforms[4*i + 0] = vp->translate[0];
+                                uniforms[4*i + 1] = translate_y;
+                                uniforms[4*i + 2] = vp->translate[2];
+                        } else {
                                 assert(0);
                         }
-
-                        /* Also attach the same buffer as a UBO for extended access */
-
-                        struct mali_uniform_buffer_meta uniform_buffers[] = {
-                                {
-                                        .size = MALI_POSITIVE((2 + uniform_count)),
-                                        .ptr = transfer.gpu >> 2,
-                                },
-                        };
-
-                        mali_ptr ubufs = panfrost_upload_transient(ctx, uniform_buffers, sizeof(uniform_buffers));
-                        postfix->uniforms = transfer.gpu;
-                        postfix->uniform_buffers = ubufs;
-
-                        buf->dirty = 0;
                 }
+
+                /* Upload uniforms */
+                memcpy(transfer.cpu + sys_size, buf->buffer, buf->size);
+
+                int uniform_count = 0;
+
+                struct mali_vertex_tiler_postfix *postfix;
+
+                switch (i) {
+                case PIPE_SHADER_VERTEX:
+                        uniform_count = ctx->vs->variants[ctx->vs->active_variant].uniform_count;
+                        postfix = &ctx->payload_vertex.postfix;
+                        break;
+
+                case PIPE_SHADER_FRAGMENT:
+                        uniform_count = ctx->fs->variants[ctx->fs->active_variant].uniform_count;
+                        postfix = &ctx->payload_tiler.postfix;
+                        break;
+
+                default:
+                        DBG("Unknown shader stage %d in uniform upload\n", i);
+                        assert(0);
+                }
+
+                /* Also attach the same buffer as a UBO for extended access */
+
+                struct mali_uniform_buffer_meta uniform_buffers[] = {
+                        {
+                                .size = MALI_POSITIVE((2 + uniform_count)),
+                                .ptr = transfer.gpu >> 2,
+                        },
+                };
+
+                mali_ptr ubufs = panfrost_upload_transient(ctx, uniform_buffers, sizeof(uniform_buffers));
+                postfix->uniforms = transfer.gpu;
+                postfix->uniform_buffers = ubufs;
+
+                buf->dirty = 0;
         }
 
         /* TODO: Upload the viewport somewhere more appropriate */

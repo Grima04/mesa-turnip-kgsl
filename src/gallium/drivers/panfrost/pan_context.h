@@ -42,6 +42,8 @@
 #include "util/u_blitter.h"
 #include "util/hash_table.h"
 
+#include "midgard/midgard_compile.h"
+
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
 
@@ -263,6 +265,9 @@ struct panfrost_shader_state {
 
         unsigned general_varying_stride;
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
+
+        unsigned sysval_count;
+        unsigned sysval[MAX_SYSVAL_COUNT];
 
         /* Information on this particular shader variant */
         struct pipe_alpha_state alpha_state;

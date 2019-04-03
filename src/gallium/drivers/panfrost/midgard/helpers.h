@@ -95,10 +95,6 @@
 #define REGISTER_TEXTURE_BASE 28
 #define REGISTER_SELECT 31
 
-/* Special uniforms used for e.g. vertex epilogues */
-#define SPECIAL_UNIFORM_BASE (1 << 24)
-#define UNIFORM_VIEWPORT (SPECIAL_UNIFORM_BASE + 0)
-
 /* SSA helper aliases to mimic the registers. UNUSED_0 encoded as an inline
  * constant. UNUSED_1 encoded as REGISTER_UNUSED */
 
