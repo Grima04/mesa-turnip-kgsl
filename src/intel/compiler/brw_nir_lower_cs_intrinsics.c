@@ -193,11 +193,10 @@ brw_nir_lower_cs_intrinsics(nir_shader *nir,
 {
    assert(nir->info.stage == MESA_SHADER_COMPUTE);
 
-   bool progress = false;
-   struct lower_intrinsics_state state;
-   memset(&state, 0, sizeof(state));
-   state.nir = nir;
-   state.dispatch_width = dispatch_width;
+   struct lower_intrinsics_state state = {
+      .nir = nir,
+      .dispatch_width = dispatch_width,
+   };
 
    assert(!nir->info.cs.local_size_variable);
    state.local_workgroup_size = nir->info.cs.local_size[0] *
@@ -212,16 +211,12 @@ brw_nir_lower_cs_intrinsics(nir_shader *nir,
       assert(state.local_workgroup_size % 4 == 0);
    }
 
-   do {
-      state.progress = false;
-      nir_foreach_function(function, nir) {
-         if (function->impl) {
-            state.impl = function->impl;
-            lower_cs_intrinsics_convert_impl(&state);
-         }
+   nir_foreach_function(function, nir) {
+      if (function->impl) {
+         state.impl = function->impl;
+         lower_cs_intrinsics_convert_impl(&state);
       }
-      progress |= state.progress;
-   } while (state.progress);
+   }
 
-   return progress;
+   return state.progress;
 }
