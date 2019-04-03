@@ -486,7 +486,7 @@ VertexAttrib4dvNV(GLuint index, const GLdouble *v)
 /*
  * Array [size][type] of VertexAttrib functions
  */
-static attrib_func AttribFuncsNV[2][4][NUM_TYPES] = {
+static const attrib_func AttribFuncsNV[2][4][NUM_TYPES] = {
    {
       /* non-normalized */
       {
