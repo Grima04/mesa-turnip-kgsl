@@ -1728,7 +1728,15 @@ fill_surface_state(struct isl_device *isl_dev,
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
       f.aux_address = res->aux.bo->gtt_offset + res->aux.offset;
-      f.clear_color = res->aux.clear_color;
+
+      struct iris_bo *clear_bo = NULL;
+      uint64_t clear_offset = 0;
+      f.clear_color =
+         iris_resource_get_clear_color(res, &clear_bo, &clear_offset);
+      if (clear_bo) {
+         f.clear_address = clear_bo->gtt_offset + clear_offset;
+         f.use_clear_address = isl_dev->info->gen > 9;
+      }
    }
 
    isl_surf_fill_state_s(isl_dev, map, &f);
