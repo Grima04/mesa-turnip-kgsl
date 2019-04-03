@@ -414,7 +414,8 @@ panfrost_transfer_map(struct pipe_context *pctx,
                         return NULL;
 
                 /* TODO: Reads */
-                transfer->map = malloc(ALIGN(box->width, 16) * ALIGN(box->height, 16) * bytes_per_pixel);
+                /* TODO: Only allocate "just" enough, shortening the stride */
+                transfer->map = malloc(transfer->base.stride * box->height);
 
                 return transfer->map;
         } else {
@@ -440,6 +441,7 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
                         trans->base.box.height,
                         util_format_get_blocksize(rsrc->base.format),
                         bo->slices[level].stride,
+                        u_minify(rsrc->base.width0, level),
                         trans->map,
                         bo->cpu
                                 + bo->slices[level].offset
