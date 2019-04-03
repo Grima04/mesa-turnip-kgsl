@@ -4444,7 +4444,7 @@ struct gl_matrix_stack
 #define _NEW_TRANSFORM         (1u << 17)  /**< gl_context::Transform */
 #define _NEW_VIEWPORT          (1u << 18)  /**< gl_context::Viewport */
 #define _NEW_TEXTURE_STATE     (1u << 19)  /**< gl_context::Texture (states only) */
-#define _NEW_ARRAY             (1u << 20)  /**< gl_context::Array */
+/* gap */
 #define _NEW_RENDERMODE        (1u << 21)  /**< gl_context::RenderMode, etc */
 #define _NEW_BUFFERS           (1u << 22)  /**< gl_context::Visual, DrawBuffer, */
 #define _NEW_CURRENT_ATTRIB    (1u << 23)  /**< gl_context::Current */
