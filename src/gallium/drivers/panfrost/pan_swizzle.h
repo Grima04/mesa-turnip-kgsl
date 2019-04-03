@@ -32,7 +32,7 @@ panfrost_generate_space_filler_indices(void);
 
 void
 panfrost_texture_swizzle(unsigned off_x, unsigned off_y,
-                        int width, int height, int bytes_per_pixel, int source_stride, int dest_width,
+                        int width, int height, int bytes_per_pixel, int dest_width,
                          const uint8_t *pixels,
                          uint8_t *ldest);
 

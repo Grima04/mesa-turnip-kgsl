@@ -390,8 +390,6 @@ panfrost_transfer_map(struct pipe_context *pctx,
         transfer->base.level = level;
         transfer->base.usage = usage;
         transfer->base.box = *box;
-        transfer->base.stride = bo->slices[level].stride;
-        transfer->base.layer_stride = bo->cubemap_stride;
 
         pipe_resource_reference(&transfer->base.resource, resource);
 
@@ -413,12 +411,17 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 if (usage & PIPE_TRANSFER_MAP_DIRECTLY)
                         return NULL;
 
+                transfer->base.stride = box->width * bytes_per_pixel;
+                transfer->base.layer_stride = transfer->base.stride * box->height;
+
                 /* TODO: Reads */
-                /* TODO: Only allocate "just" enough, shortening the stride */
-                transfer->map = malloc(transfer->base.stride * box->height);
+                transfer->map = malloc(transfer->base.layer_stride * box->depth);
 
                 return transfer->map;
         } else {
+                transfer->base.stride = bo->slices[level].stride;
+                transfer->base.layer_stride = bo->cubemap_stride;
+
                 return bo->cpu
                         + bo->slices[level].offset
                         + transfer->base.box.z * bo->cubemap_stride
@@ -440,7 +443,6 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
                         trans->base.box.width,
                         trans->base.box.height,
                         util_format_get_blocksize(rsrc->base.format),
-                        bo->slices[level].stride,
                         u_minify(rsrc->base.width0, level),
                         trans->map,
                         bo->cpu

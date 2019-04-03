@@ -149,15 +149,18 @@ swizzle_bpp4_align16(int width, int height, int source_stride, int block_pitch,
 void
 panfrost_texture_swizzle(unsigned off_x,
                          unsigned off_y,
-                         int width, int height, int bytes_per_pixel, int source_stride, int dest_width,
+                         int width, int height, int bytes_per_pixel, int dest_width,
                          const uint8_t *pixels,
                          uint8_t *ldest)
 {
         /* Calculate maximum size, overestimating a bit */
         int block_pitch = ALIGN(dest_width, 16) >> 4;
 
+        /* Strides must be tight, since we're only ever called indirectly */
+        int source_stride = width * bytes_per_pixel;
+
         /* Use fast path if available */
-        if (!(off_x || off_y)) {
+        if (!(off_x || off_y) && (width == dest_width)) {
                 if (bytes_per_pixel == 4 /* && (ALIGN(width, 16) == width) */) {
                         swizzle_bpp4_align16(width, height, source_stride >> 2, (block_pitch * 256 >> 4), (const uint32_t *) pixels, (uint32_t *) ldest);
                         return;
