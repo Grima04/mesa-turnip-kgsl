@@ -3570,6 +3570,17 @@ bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
                        nir_lower_doubles_options options);
 bool nir_lower_pack(nir_shader *shader);
 
+typedef enum {
+   nir_lower_interpolation_at_sample = (1 << 1),
+   nir_lower_interpolation_at_offset = (1 << 2),
+   nir_lower_interpolation_centroid  = (1 << 3),
+   nir_lower_interpolation_pixel     = (1 << 4),
+   nir_lower_interpolation_sample    = (1 << 5),
+} nir_lower_interpolation_options;
+
+bool nir_lower_interpolation(nir_shader *shader,
+                             nir_lower_interpolation_options options);
+
 bool nir_normalize_cubemap_coords(nir_shader *shader);
 
 void nir_live_ssa_defs_impl(nir_function_impl *impl);
