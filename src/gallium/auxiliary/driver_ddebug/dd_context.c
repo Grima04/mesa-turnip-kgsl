@@ -575,6 +575,31 @@ dd_context_set_stream_output_targets(struct pipe_context *_pipe,
    pipe->set_stream_output_targets(pipe, num_targets, tgs, offsets);
 }
 
+
+static void
+dd_context_fence_server_sync(struct pipe_context *_pipe,
+                             struct pipe_fence_handle *fence)
+{
+   struct dd_context *dctx = dd_context(_pipe);
+   struct pipe_context *pipe = dctx->pipe;
+
+   pipe->fence_server_sync(pipe, fence);
+}
+
+
+static void
+dd_context_create_fence_fd(struct pipe_context *_pipe,
+                           struct pipe_fence_handle **fence,
+                           int fd,
+                           enum pipe_fd_type type)
+{
+   struct dd_context *dctx = dd_context(_pipe);
+   struct pipe_context *pipe = dctx->pipe;
+
+   pipe->create_fence_fd(pipe, fence, fd, type);
+}
+
+
 void
 dd_thread_join(struct dd_context *dctx)
 {
@@ -848,6 +873,8 @@ dd_context_create(struct dd_screen *dscreen, struct pipe_context *pipe)
    CTX_INIT(create_stream_output_target);
    CTX_INIT(stream_output_target_destroy);
    CTX_INIT(set_stream_output_targets);
+   CTX_INIT(create_fence_fd);
+   CTX_INIT(fence_server_sync);
    CTX_INIT(create_sampler_view);
    CTX_INIT(sampler_view_destroy);
    CTX_INIT(create_surface);
