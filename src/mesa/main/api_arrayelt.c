@@ -117,89 +117,6 @@ _ae_is_state_dirty(struct gl_context *ctx)
 #define NUM_TYPES 8
 
 
-static const int ColorFuncs[2][NUM_TYPES] = {
-   {
-      _gloffset_Color3bv,
-      _gloffset_Color3ubv,
-      _gloffset_Color3sv,
-      _gloffset_Color3usv,
-      _gloffset_Color3iv,
-      _gloffset_Color3uiv,
-      _gloffset_Color3fv,
-      _gloffset_Color3dv,
-   },
-   {
-      _gloffset_Color4bv,
-      _gloffset_Color4ubv,
-      _gloffset_Color4sv,
-      _gloffset_Color4usv,
-      _gloffset_Color4iv,
-      _gloffset_Color4uiv,
-      _gloffset_Color4fv,
-      _gloffset_Color4dv,
-   },
-};
-
-static const int VertexFuncs[3][NUM_TYPES] = {
-   {
-      -1,
-      -1,
-      _gloffset_Vertex2sv,
-      -1,
-      _gloffset_Vertex2iv,
-      -1,
-      _gloffset_Vertex2fv,
-      _gloffset_Vertex2dv,
-   },
-   {
-      -1,
-      -1,
-      _gloffset_Vertex3sv,
-      -1,
-      _gloffset_Vertex3iv,
-      -1,
-      _gloffset_Vertex3fv,
-      _gloffset_Vertex3dv,
-   },
-   {
-      -1,
-      -1,
-      _gloffset_Vertex4sv,
-      -1,
-      _gloffset_Vertex4iv,
-      -1,
-      _gloffset_Vertex4fv,
-      _gloffset_Vertex4dv,
-   },
-};
-
-static const int IndexFuncs[NUM_TYPES] = {
-   -1,
-   _gloffset_Indexubv,
-   _gloffset_Indexsv,
-   -1,
-   _gloffset_Indexiv,
-   -1,
-   _gloffset_Indexfv,
-   _gloffset_Indexdv,
-};
-
-static const int NormalFuncs[NUM_TYPES] = {
-   _gloffset_Normal3bv,
-   -1,
-   _gloffset_Normal3sv,
-   -1,
-   _gloffset_Normal3iv,
-   -1,
-   _gloffset_Normal3fv,
-   _gloffset_Normal3dv,
-};
-
-/* Note: _gloffset_* for these may not be a compile-time constant. */
-static int SecondaryColorFuncs[NUM_TYPES];
-static int FogCoordFuncs[NUM_TYPES];
-
-
 /**
  ** GL_NV_vertex_program
  **/
@@ -1508,25 +1425,6 @@ _ae_create_context(struct gl_context *ctx)
    if (ctx->aelt_context)
       return GL_TRUE;
 
-   /* These _gloffset_* values may not be compile-time constants */
-   SecondaryColorFuncs[0] = _gloffset_SecondaryColor3bv;
-   SecondaryColorFuncs[1] = _gloffset_SecondaryColor3ubv;
-   SecondaryColorFuncs[2] = _gloffset_SecondaryColor3sv;
-   SecondaryColorFuncs[3] = _gloffset_SecondaryColor3usv;
-   SecondaryColorFuncs[4] = _gloffset_SecondaryColor3iv;
-   SecondaryColorFuncs[5] = _gloffset_SecondaryColor3uiv;
-   SecondaryColorFuncs[6] = _gloffset_SecondaryColor3fvEXT;
-   SecondaryColorFuncs[7] = _gloffset_SecondaryColor3dv;
-
-   FogCoordFuncs[0] = -1;
-   FogCoordFuncs[1] = -1;
-   FogCoordFuncs[2] = -1;
-   FogCoordFuncs[3] = -1;
-   FogCoordFuncs[4] = -1;
-   FogCoordFuncs[5] = -1;
-   FogCoordFuncs[6] = _gloffset_FogCoordfvEXT;
-   FogCoordFuncs[7] = _gloffset_FogCoorddv;
-
    ctx->aelt_context = calloc(1, sizeof(AEcontext));
    if (!ctx->aelt_context)
       return GL_FALSE;
@@ -1562,52 +1460,10 @@ _ae_update_state(struct gl_context *ctx)
    struct gl_vertex_array_object *vao = ctx->Array.VAO;
 
    /* conventional vertex arrays */
-   if (vao->Enabled & VERT_BIT_COLOR_INDEX) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = IndexFuncs[TYPE_IDX(aa->array->Format.Type)];
-      aa++;
-   }
-
-   if (vao->Enabled & VERT_BIT_EDGEFLAG) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_EDGEFLAG];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = _gloffset_EdgeFlagv;
-      aa++;
-   }
-
-   if (vao->Enabled & VERT_BIT_NORMAL) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_NORMAL];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = NormalFuncs[TYPE_IDX(aa->array->Format.Type)];
-      aa++;
-   }
-
-   if (vao->Enabled & VERT_BIT_COLOR0) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR0];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = ColorFuncs[aa->array->Format.Size-3][TYPE_IDX(aa->array->Format.Type)];
-      aa++;
-   }
-
-   if (vao->Enabled & VERT_BIT_COLOR1) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_COLOR1];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = SecondaryColorFuncs[TYPE_IDX(aa->array->Format.Type)];
-      aa++;
-   }
-
-   if (vao->Enabled & VERT_BIT_FOG) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_FOG];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = FogCoordFuncs[TYPE_IDX(aa->array->Format.Type)];
-      aa++;
-   }
-
-   for (i = 0; i < ctx->Const.MaxTextureCoordUnits; i++) {
-      if (vao->Enabled & VERT_BIT_TEX(i)) {
+  for (i = 1; i < VERT_ATTRIB_FF_MAX; i++) {  /* skip zero! */
+      if (vao->Enabled & VERT_BIT_FF(i)) {
          struct gl_array_attributes *attribArray =
-            &vao->VertexAttrib[VERT_ATTRIB_TEX(i)];
+            &vao->VertexAttrib[VERT_ATTRIB_FF(i)];
          /* NOTE: we use generic glVertexAttribNV functions here.
           * If we ever remove GL_NV_vertex_program this will have to change.
           */
@@ -1617,7 +1473,7 @@ _ae_update_state(struct gl_context *ctx)
          at->func = AttribFuncsNV[at->array->Format.Normalized]
                                  [at->array->Format.Size-1]
                                  [TYPE_IDX(at->array->Format.Type)];
-         at->index = VERT_ATTRIB_TEX0 + i;
+         at->index = VERT_ATTRIB_FF(i);
          at++;
       }
    }
@@ -1645,20 +1501,35 @@ _ae_update_state(struct gl_context *ctx)
 
    /* finally, vertex position */
    if (vao->Enabled & VERT_BIT_GENERIC0) {
+      struct gl_array_attributes *attribArray =
+         &vao->VertexAttrib[VERT_ATTRIB_GENERIC0];
       /* Use glVertex(v) instead of glVertexAttrib(0, v) to be sure it's
        * issued as the last (provoking) attribute).
        */
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_GENERIC0];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      assert(aa->array->Format.Size >= 2); /* XXX fix someday? */
-      aa->offset = VertexFuncs[aa->array->Format.Size-2][TYPE_IDX(aa->array->Format.Type)];
-      aa++;
+      at->array = attribArray;
+      at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
+      /* Note: we can't grab the _glapi_Dispatch->VertexAttrib1fvNV
+       * function pointer here (for float arrays) since the pointer may
+       * change from one execution of _ae_ArrayElement() to
+       * the next.  Doing so caused UT to break.
+       */
+      at->func = AttribFuncsNV[at->array->Format.Normalized]
+                              [at->array->Format.Size-1]
+                              [TYPE_IDX(at->array->Format.Type)];
+
+      at->index = 0;
+      at++;
    }
    else if (vao->Enabled & VERT_BIT_POS) {
-      aa->array = &vao->VertexAttrib[VERT_ATTRIB_POS];
-      aa->binding = &vao->BufferBinding[aa->array->BufferBindingIndex];
-      aa->offset = VertexFuncs[aa->array->Format.Size-2][TYPE_IDX(aa->array->Format.Type)];
-      aa++;
+      struct gl_array_attributes *attribArray =
+         &vao->VertexAttrib[VERT_ATTRIB_POS];
+      at->array = attribArray;
+      at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
+      at->func = AttribFuncsNV[at->array->Format.Normalized]
+                              [at->array->Format.Size-1]
+                              [TYPE_IDX(at->array->Format.Type)];
+      at->index = 0;
+      at++;
    }
 
    assert(at - actx->attribs <= VERT_ATTRIB_MAX);
