@@ -56,15 +56,10 @@ apt-get install -y -t stretch-backports \
       libelf-dev \
       libunwind8-dev \
       libglvnd-dev \
-      python2.7 \
-      python-pip \
-      python-setuptools \
-      python-wheel \
-      python3.5 \
-      python3-pip \
-      python3-setuptools \
-      python3-wheel \
-      ninja-build
+      python-mako \
+      python3-mako \
+      meson \
+      scons
 
 apt-get install -y \
       libxcb-randr0
@@ -155,12 +150,6 @@ tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
 wget $WAYLAND_RELEASES/$WAYLAND_PROTOCOLS_VERSION.tar.xz
 tar -xvf $WAYLAND_PROTOCOLS_VERSION.tar.xz && rm $WAYLAND_PROTOCOLS_VERSION.tar.xz
 (cd $WAYLAND_PROTOCOLS_VERSION && ./configure && make install) && rm -rf $WAYLAND_PROTOCOLS_VERSION
-
-pip3 install 'meson>=0.49'
-pip2 install 'scons>=2.4'
-
-pip2 install mako
-pip3 install mako
 
 # Use ccache to speed up builds
 apt-get install -y ccache

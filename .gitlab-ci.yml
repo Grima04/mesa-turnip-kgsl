@@ -104,7 +104,7 @@ debian:
     - cd _build
     - meson configure
     - ninja -j4
-    - ninja test
+    - LC_ALL=C.UTF-8 ninja test
 
 .scons-build:
   extends: .build
