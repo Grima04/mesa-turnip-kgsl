@@ -689,6 +689,18 @@ gen_mi_ushr32_imm(struct gen_mi_builder *b,
    /* We right-shift by left-shifting by 32 - shift and taking the top 32 bits
     * of the result.  This assumes the top 32 bits are zero.
     */
+   if (shift > 64)
+      return gen_mi_imm(0);
+
+   if (shift > 32) {
+      struct gen_mi_value tmp = gen_mi_new_gpr(b);
+      _gen_mi_copy_no_unref(b, gen_mi_value_half(tmp, false),
+                               gen_mi_value_half(src, true));
+      _gen_mi_copy_no_unref(b, gen_mi_value_half(tmp, true), gen_mi_imm(0));
+      gen_mi_value_unref(b, src);
+      src = tmp;
+      shift -= 32;
+   }
    assert(shift <= 32);
    struct gen_mi_value tmp = gen_mi_ishl_imm(b, src, 32 - shift);
    struct gen_mi_value dst = gen_mi_new_gpr(b);

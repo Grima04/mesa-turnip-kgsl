@@ -625,15 +625,20 @@ TEST_F(gen_mi_builder_test, ushr32_imm)
    const uint64_t value = 0x0123456789abcdef;
    memcpy(input, &value, sizeof(value));
 
-   const unsigned max_shift = 31;
+   const unsigned max_shift = 64;
 
    for (unsigned i = 0; i <= max_shift; i++)
       gen_mi_store(&b, out_mem64(i * 8), gen_mi_ushr32_imm(&b, in_mem64(0), i));
 
    submit_batch();
 
-   for (unsigned i = 0; i <= max_shift; i++)
-      EXPECT_EQ(*(uint64_t *)(output + i * 8), (value >> i) & UINT32_MAX);
+   for (unsigned i = 0; i <= max_shift; i++) {
+      if (i >= 64) {
+         EXPECT_EQ(*(uint64_t *)(output + i * 8), 0);
+      } else {
+         EXPECT_EQ(*(uint64_t *)(output + i * 8), (value >> i) & UINT32_MAX);
+      }
+   }
 }
 
 TEST_F(gen_mi_builder_test, udiv32_imm)
