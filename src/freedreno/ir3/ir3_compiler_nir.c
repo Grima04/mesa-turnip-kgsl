@@ -2577,7 +2577,7 @@ emit_instructions(struct ir3_context *ctx)
 	 * because sysvals need to be appended after varyings:
 	 */
 	if (vcoord) {
-		add_sysval_input_compmask(ctx, SYSTEM_VALUE_VARYING_COORD,
+		add_sysval_input_compmask(ctx, SYSTEM_VALUE_BARYCENTRIC_PIXEL,
 				0x3, vcoord);
 	}
 

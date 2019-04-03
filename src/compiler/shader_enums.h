@@ -621,10 +621,16 @@ typedef enum
    SYSTEM_VALUE_VERTEX_CNT,
 
    /**
-    * Driver internal varying-coord, used for varying-fetch instructions.
+    * Driver internal varying-coords, used for varying-fetch instructions.
     * Not externally visible.
+    *
+    * The _SIZE value is "primitive size", used to scale i/j in primitive
+    * space to pixel space.
     */
-   SYSTEM_VALUE_VARYING_COORD,
+   SYSTEM_VALUE_BARYCENTRIC_PIXEL,
+   SYSTEM_VALUE_BARYCENTRIC_SAMPLE,
+   SYSTEM_VALUE_BARYCENTRIC_CENTROID,
+   SYSTEM_VALUE_BARYCENTRIC_SIZE,
 
    SYSTEM_VALUE_MAX             /**< Number of values */
 } gl_system_value;

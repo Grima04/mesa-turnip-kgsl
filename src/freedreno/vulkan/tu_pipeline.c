@@ -690,7 +690,7 @@ tu6_emit_fs_system_values(struct tu_cs *cs,
                                           ? (fragcoord_xy_regid + 2)
                                           : fragcoord_xy_regid;
    const uint32_t varyingcoord_regid =
-      ir3_find_sysval_regid(fs, SYSTEM_VALUE_VARYING_COORD);
+      ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PIXEL);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
    tu_cs_emit(cs, 0x7);

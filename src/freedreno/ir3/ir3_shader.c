@@ -408,7 +408,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 		break;
 	case MESA_SHADER_FRAGMENT:
 		dump_reg(out, "pos (bary)",
-			ir3_find_sysval_regid(so, SYSTEM_VALUE_VARYING_COORD));
+			ir3_find_sysval_regid(so, SYSTEM_VALUE_BARYCENTRIC_PIXEL));
 		dump_output(out, so, FRAG_RESULT_DEPTH, "posz");
 		if (so->color0_mrt) {
 			dump_output(out, so, FRAG_RESULT_COLOR, "color");
