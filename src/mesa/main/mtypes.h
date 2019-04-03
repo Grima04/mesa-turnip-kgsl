@@ -2169,6 +2169,11 @@ struct gl_program
          struct gl_uniform_block **UniformBlocks;
          struct gl_uniform_block **ShaderStorageBlocks;
 
+         /**
+          * Bitmask of shader storage blocks not declared as read-only.
+          */
+         unsigned ShaderStorageBlocksWriteAccess;
+
          /** Which texture target is being sampled
           * (TEXTURE_1D/2D/3D/etc_INDEX)
           */

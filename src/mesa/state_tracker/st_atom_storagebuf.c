@@ -82,7 +82,8 @@ st_bind_ssbos(struct st_context *st, struct gl_program *prog,
       }
    }
    st->pipe->set_shader_buffers(st->pipe, shader_type, buffer_base,
-                                prog->info.num_ssbos, buffers, ~0);
+                                prog->info.num_ssbos, buffers,
+                                prog->sh.ShaderStorageBlocksWriteAccess);
    /* clear out any stale shader buffers */
    if (prog->info.num_ssbos < c->MaxShaderStorageBlocks)
       st->pipe->set_shader_buffers(
