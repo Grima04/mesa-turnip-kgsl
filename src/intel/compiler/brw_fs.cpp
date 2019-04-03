@@ -8016,11 +8016,12 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
 {
    nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
    shader = brw_nir_apply_sampler_key(shader, compiler, &key->tex, true);
-   brw_nir_lower_cs_intrinsics(shader, dispatch_width);
+
+   NIR_PASS_V(shader, brw_nir_lower_cs_intrinsics, dispatch_width);
 
    /* Clean up after the local index and ID calculations. */
-   nir_opt_constant_folding(shader);
-   nir_opt_dce(shader);
+   NIR_PASS_V(shader, nir_opt_constant_folding);
+   NIR_PASS_V(shader, nir_opt_dce);
 
    return brw_postprocess_nir(shader, compiler, true);
 }
