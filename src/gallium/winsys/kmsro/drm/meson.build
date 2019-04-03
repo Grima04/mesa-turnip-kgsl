@@ -25,6 +25,9 @@ endif
 if with_gallium_lima
   kmsro_c_args += '-DGALLIUM_LIMA'
 endif
+if with_gallium_v3d
+  kmsro_c_args += '-DGALLIUM_V3D'
+endif
 if with_gallium_vc4
   kmsro_c_args += '-DGALLIUM_VC4'
 endif

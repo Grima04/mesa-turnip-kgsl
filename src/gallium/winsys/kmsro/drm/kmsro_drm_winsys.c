@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "kmsro_drm_public.h"
+#include "v3d/drm/v3d_drm_public.h"
 #include "vc4/drm/vc4_drm_public.h"
 #include "etnaviv/drm/etnaviv_drm_public.h"
 #include "freedreno/drm/freedreno_drm_public.h"
@@ -102,6 +103,18 @@ struct pipe_screen *kmsro_drm_screen_create(int fd)
    if (ro.gpu_fd >= 0) {
       ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
       screen = lima_drm_screen_create_renderonly(&ro);
+      if (!screen)
+         close(ro.gpu_fd);
+
+      return screen;
+   }
+#endif
+
+#if defined(GALLIUM_V3D)
+   ro.gpu_fd = drmOpenWithType("v3d", NULL, DRM_NODE_RENDER);
+   if (ro.gpu_fd >= 0) {
+      ro.create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+      screen = v3d_drm_screen_create_renderonly(&ro);
       if (!screen)
          close(ro.gpu_fd);
 
