@@ -448,36 +448,33 @@ panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *
 }
 
 static void
-panfrost_unmap_bo(struct panfrost_context *ctx,
-                         struct pipe_transfer *transfer)
-{
-        struct panfrost_gtransfer *trans = pan_transfer(transfer);
-	struct panfrost_bo *bo = (struct panfrost_bo *)pan_resource(transfer->resource)->bo;
-
-        if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
-
-                /* Gallium thinks writeback happens here; instead, this is our cue to tile */
-                if (bo->layout == PAN_AFBC) {
-                        DBG("Warning: writes to afbc surface can't possibly work out well for you...\n");
-                } else if (bo->layout == PAN_TILED) {
-                        struct pipe_context *gallium = (struct pipe_context *) ctx;
-                        struct panfrost_screen *screen = pan_screen(gallium->screen);
-                        assert(transfer->box.depth == 1);
-                        panfrost_tile_texture(screen, prsrc, trans);
-                }
-        }
-
-        free(trans->map);
-}
-
-static void
 panfrost_transfer_unmap(struct pipe_context *pctx,
                         struct pipe_transfer *transfer)
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-	panfrost_unmap_bo(ctx, transfer);
+        /* Gallium expects writeback here, so we tile */
+
+        struct panfrost_gtransfer *trans = pan_transfer(transfer);
+
+        if (trans->map) {
+                struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
+                struct panfrost_bo *bo = prsrc->bo;
+
+                if (transfer->usage & PIPE_TRANSFER_WRITE) {
+
+                        if (bo->layout == PAN_AFBC) {
+                                DBG("Unimplemented: writes to AFBC\n");
+                        } else if (bo->layout == PAN_TILED) {
+                                struct pipe_context *gallium = (struct pipe_context *) ctx;
+                                struct panfrost_screen *screen = pan_screen(gallium->screen);
+                                assert(transfer->box.depth == 1);
+                                panfrost_tile_texture(screen, prsrc, trans);
+                        }
+                }
+
+                free(trans->map);
+        }
 
         /* Derefence the resource */
         pipe_resource_reference(&transfer->resource, NULL);
