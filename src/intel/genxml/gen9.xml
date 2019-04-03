@@ -137,6 +137,40 @@
     <value name="STORE_PID" value="7"/>
   </enum>
 
+  <enum name="Atomic_OPCODE" prefix="MI_ATOMIC_OP">
+    <value name="AND" value="0x01"/>
+    <value name="OR" value="0x02"/>
+    <value name="XOR" value="0x03"/>
+    <value name="MOVE" value="0x04"/>
+    <value name="INC" value="0x05"/>
+    <value name="DEC" value="0x06"/>
+    <value name="ADD" value="0x07"/>
+    <value name="SUB" value="0x08"/>
+    <value name="RSUB" value="0x09"/>
+    <value name="IMAX" value="0x0a"/>
+    <value name="IMIN" value="0x0b"/>
+    <value name="UMAX" value="0x0c"/>
+    <value name="UMIN" value="0x0d"/>
+    <value name="CMP_WR" value="0x0e"/>
+    <value name="PREDEC" value="0x0f"/>
+    <value name="AND8B" value="0x21"/>
+    <value name="OR8B" value="0x22"/>
+    <value name="XOR8B" value="0x23"/>
+    <value name="MOVE8B" value="0x24"/>
+    <value name="INC8B" value="0x25"/>
+    <value name="DEC8B" value="0x26"/>
+    <value name="ADD8B" value="0x27"/>
+    <value name="SUB8B" value="0x28"/>
+    <value name="RSUB8B" value="0x29"/>
+    <value name="IMAX8B" value="0x2a"/>
+    <value name="IMIN8B" value="0x2b"/>
+    <value name="UMAX8B" value="0x2c"/>
+    <value name="UMIN8B" value="0x2d"/>
+    <value name="CMP_WR8B" value="0x2e"/>
+    <value name="PREDEC8B" value="0x2f"/>
+    <value name="CMP_WR16B" value="0x4e"/>
+  </enum>
+
   <enum name="Attribute_Component_Format" prefix="ACF">
     <value name="disabled" value="0"/>
     <value name=".xy" value="1"/>
@@ -5383,11 +5417,11 @@
 
   <instruction name="MI_ATOMIC" bias="2" length="3">
     <field name="DWord Length" start="0" end="7" type="uint" default="1"/>
-    <field name="ATOMIC OPCODE" start="8" end="15" type="uint"/>
-    <field name="Return Data Control" start="16" end="16" type="uint"/>
-    <field name="CS STALL" start="17" end="17" type="uint"/>
-    <field name="Inline Data" start="18" end="18" type="uint"/>
-    <field name="Data Size" start="19" end="20" type="uint">
+    <field name="ATOMIC OPCODE" start="8" end="15" type="Atomic_OPCODE"/>
+    <field name="Return Data Control" start="16" end="16" type="bool"/>
+    <field name="CS STALL" start="17" end="17" type="bool"/>
+    <field name="Inline Data" start="18" end="18" type="bool"/>
+    <field name="Data Size" start="19" end="20" type="uint" prefix="MI_ATOMIC">
       <value name="DWORD" value="0"/>
       <value name="QWORD" value="1"/>
       <value name="OCTWORD" value="2"/>
