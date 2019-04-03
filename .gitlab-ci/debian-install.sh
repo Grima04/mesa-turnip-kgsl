@@ -150,3 +150,14 @@ apt-get install -y ccache
 
 # We need xmllint to validate the XML files in Mesa
 apt-get install -y libxml2-utils
+
+# Remove unused packages
+apt-get purge -y \
+      automake \
+      libtool \
+      make \
+      curl \
+      wget \
+      gnupg \
+      software-properties-common
+apt-get autoremove -y --purge
