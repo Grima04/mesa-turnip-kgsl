@@ -32,8 +32,7 @@
 
 struct _glapi_table;
 
-extern void _mesa_array_element(struct gl_context *ctx,
-                                struct _glapi_table *disp, GLint elt);
+extern void _mesa_array_element(struct gl_context *ctx, GLint elt);
 extern void GLAPIENTRY _ae_ArrayElement( GLint elt );
 
 extern void

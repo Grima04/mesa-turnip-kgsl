@@ -1422,8 +1422,7 @@ attrib_src(const struct gl_vertex_array_object *vao,
 
 
 void
-_mesa_array_element(struct gl_context *ctx,
-                    struct _glapi_table *disp, GLint elt)
+_mesa_array_element(struct gl_context *ctx, GLint elt)
 {
    const struct gl_vertex_array_object *vao = ctx->Array.VAO;
    GLbitfield mask;
@@ -1474,21 +1473,20 @@ void GLAPIENTRY
 _ae_ArrayElement(GLint elt)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const struct _glapi_table * const disp = GET_DISPATCH();
    struct gl_vertex_array_object *vao;
 
    /* If PrimitiveRestart is enabled and the index is the RestartIndex
     * then we call PrimitiveRestartNV and return.
     */
    if (ctx->Array.PrimitiveRestart && (elt == ctx->Array.RestartIndex)) {
-      CALL_PrimitiveRestartNV((struct _glapi_table *)disp, ());
+      CALL_PrimitiveRestartNV(GET_DISPATCH(), ());
       return;
    }
 
    vao = ctx->Array.VAO;
    _mesa_vao_map_arrays(ctx, vao, GL_MAP_READ_BIT);
 
-   _mesa_array_element(ctx, (struct _glapi_table *)disp, elt);
+   _mesa_array_element(ctx, elt);
 
    _mesa_vao_unmap_arrays(ctx, vao);
 }
