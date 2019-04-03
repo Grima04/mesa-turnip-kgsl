@@ -409,10 +409,10 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
 
    nir_emit_cf_list(&if_stmt->then_list);
 
-   /* note: if the else is empty, dead CF elimination will remove it */
-   bld.emit(BRW_OPCODE_ELSE);
-
-   nir_emit_cf_list(&if_stmt->else_list);
+   if (!nir_cf_list_is_empty_block(&if_stmt->else_list)) {
+      bld.emit(BRW_OPCODE_ELSE);
+      nir_emit_cf_list(&if_stmt->else_list);
+   }
 
    bld.emit(BRW_OPCODE_ENDIF);
 
