@@ -1419,125 +1419,43 @@ static const attrib_func AttribFuncsARB[4][4][NUM_TYPES] = {
 };
 
 
-GLboolean
-_ae_create_context(struct gl_context *ctx)
-{
-   if (ctx->aelt_context)
-      return GL_TRUE;
-
-   ctx->aelt_context = calloc(1, sizeof(AEcontext));
-   if (!ctx->aelt_context)
-      return GL_FALSE;
-
-   AE_CONTEXT(ctx)->dirty_state = true;
-   return GL_TRUE;
-}
-
-
-void
-_ae_destroy_context(struct gl_context *ctx)
-{
-   if (AE_CONTEXT(ctx)) {
-      free(ctx->aelt_context);
-      ctx->aelt_context = NULL;
-   }
-}
-
-
-/**
- * Make a list of per-vertex functions to call for each glArrayElement call.
- * These functions access the array data (i.e. glVertex, glColor, glNormal,
- * etc).
- * Note: this may be called during display list construction.
+/*
+ * Return VertexAttrib*NV function pointer matching the provided vertex format.
  */
-static void
-_ae_update_state(struct gl_context *ctx)
+static inline attrib_func
+func_nv(const struct gl_vertex_format *vformat)
 {
-   AEcontext *actx = AE_CONTEXT(ctx);
-   AEarray *aa = actx->arrays;  /* non-indexed arrays (ex: glNormal) */
-   AEattrib *at = actx->attribs;  /* indexed arrays (ex: glMultiTexCoord) */
-   GLuint i;
-   struct gl_vertex_array_object *vao = ctx->Array.VAO;
+   return AttribFuncsNV[vformat->Normalized][vformat->Size-1]
+      [TYPE_IDX(vformat->Type)];
+}
 
-   /* conventional vertex arrays */
-  for (i = 1; i < VERT_ATTRIB_FF_MAX; i++) {  /* skip zero! */
-      if (vao->Enabled & VERT_BIT_FF(i)) {
-         struct gl_array_attributes *attribArray =
-            &vao->VertexAttrib[VERT_ATTRIB_FF(i)];
-         /* NOTE: we use generic glVertexAttribNV functions here.
-          * If we ever remove GL_NV_vertex_program this will have to change.
-          */
-         at->array = attribArray;
-         at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
-         assert(!at->array->Format.Normalized);
-         at->func = AttribFuncsNV[at->array->Format.Normalized]
-                                 [at->array->Format.Size-1]
-                                 [TYPE_IDX(at->array->Format.Type)];
-         at->index = VERT_ATTRIB_FF(i);
-         at++;
-      }
-   }
 
-   /* generic vertex attribute arrays */
-   for (i = 1; i < VERT_ATTRIB_GENERIC_MAX; i++) {  /* skip zero! */
-      if (vao->Enabled & VERT_BIT_GENERIC(i)) {
-         struct gl_array_attributes *attribArray =
-            &vao->VertexAttrib[VERT_ATTRIB_GENERIC(i)];
-         at->array = attribArray;
-         at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
-         /* Note: we can't grab the _glapi_Dispatch->VertexAttrib1fvNV
-          * function pointer here (for float arrays) since the pointer may
-          * change from one execution of _ae_ArrayElement() to
-          * the next.  Doing so caused UT to break.
-          */
-         at->func = AttribFuncsARB[vertex_format_to_index(&at->array->Format)]
-            [at->array->Format.Size-1]
-            [TYPE_IDX(at->array->Format.Type)];
+/*
+ * Return VertexAttrib*ARB function pointer matching the provided vertex format.
+ */
+static inline attrib_func
+func_arb(const struct gl_vertex_format *vformat)
+{
+   return AttribFuncsARB[vertex_format_to_index(vformat)][vformat->Size-1]
+      [TYPE_IDX(vformat->Type)];
+}
 
-         at->index = i;
-         at++;
-      }
-   }
 
-   /* finally, vertex position */
-   if (vao->Enabled & VERT_BIT_GENERIC0) {
-      struct gl_array_attributes *attribArray =
-         &vao->VertexAttrib[VERT_ATTRIB_GENERIC0];
-      /* Use glVertex(v) instead of glVertexAttrib(0, v) to be sure it's
-       * issued as the last (provoking) attribute).
-       */
-      at->array = attribArray;
-      at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
-      /* Note: we can't grab the _glapi_Dispatch->VertexAttrib1fvNV
-       * function pointer here (for float arrays) since the pointer may
-       * change from one execution of _ae_ArrayElement() to
-       * the next.  Doing so caused UT to break.
-       */
-      at->func = AttribFuncsNV[at->array->Format.Normalized]
-                              [at->array->Format.Size-1]
-                              [TYPE_IDX(at->array->Format.Type)];
-
-      at->index = 0;
-      at++;
-   }
-   else if (vao->Enabled & VERT_BIT_POS) {
-      struct gl_array_attributes *attribArray =
-         &vao->VertexAttrib[VERT_ATTRIB_POS];
-      at->array = attribArray;
-      at->binding = &vao->BufferBinding[attribArray->BufferBindingIndex];
-      at->func = AttribFuncsNV[at->array->Format.Normalized]
-                              [at->array->Format.Size-1]
-                              [TYPE_IDX(at->array->Format.Type)];
-      at->index = 0;
-      at++;
-   }
-
-   assert(at - actx->attribs <= VERT_ATTRIB_MAX);
-   assert(aa - actx->arrays < 32);
-   at->func = NULL;  /* terminate the list */
-   aa->offset = -1;  /* terminate the list */
-
-   actx->dirty_state = false;
+/*
+ * Return the address of the array attribute array at elt in the
+ * vertex array object vao.
+ */
+static inline const void *
+attrib_src(const struct gl_vertex_array_object *vao,
+           const struct gl_array_attributes *array, GLint elt)
+{
+   const struct gl_vertex_buffer_binding *binding =
+      &vao->BufferBinding[array->BufferBindingIndex];
+   const GLubyte *src
+      = ADD_POINTERS(binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
+                     _mesa_vertex_attrib_address(array, binding))
+      + elt * binding->Stride;
+   return src;
 }
 
 
@@ -1545,28 +1463,42 @@ void
 _mesa_array_element(struct gl_context *ctx,
                     struct _glapi_table *disp, GLint elt)
 {
-   const AEcontext *actx = AE_CONTEXT(ctx);
-
-   if (actx->dirty_state)
-      _ae_update_state(ctx);
-
-   /* emit generic attribute elements */
-   for (const AEattrib *at = actx->attribs; at->func; at++) {
-      const GLubyte *src
-         = ADD_POINTERS(at->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
-                        _mesa_vertex_attrib_address(at->array, at->binding))
-         + elt * at->binding->Stride;
-      at->func(at->index, src);
-   }
+   const struct gl_vertex_array_object *vao = ctx->Array.VAO;
+   GLbitfield mask;
 
    /* emit conventional arrays elements */
-   for (const AEarray *aa = actx->arrays; aa->offset != -1 ; aa++) {
-      const GLubyte *src
-         = ADD_POINTERS(aa->binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
-                        _mesa_vertex_attrib_address(aa->array, aa->binding))
-         + elt * aa->binding->Stride;
-      CALL_by_offset(disp, (array_func), aa->offset, ((const void *) src));
+   mask = (VERT_BIT_FF_ALL & ~VERT_BIT_POS) & vao->Enabled;
+   while (mask) {
+      const gl_vert_attrib attrib = u_bit_scan(&mask);
+      const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
+      const void *src = attrib_src(vao, array, elt);
+      func_nv(&array->Format)(attrib, src);
    }
+
+   /* emit generic attribute elements */
+   mask = (VERT_BIT_GENERIC_ALL & ~VERT_BIT_GENERIC0) & vao->Enabled;
+   while (mask) {
+      const gl_vert_attrib attrib = u_bit_scan(&mask);
+      const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
+      const void *src = attrib_src(vao, array, elt);
+      func_arb(&array->Format)(attrib - VERT_ATTRIB_GENERIC0, src);
+   }
+
+   /* finally, vertex position */
+   if (vao->Enabled & VERT_BIT_GENERIC0) {
+      const gl_vert_attrib attrib = VERT_ATTRIB_GENERIC0;
+      const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
+      const void *src = attrib_src(vao, array, elt);
+      /* Use glVertex(v) instead of glVertexAttrib(0, v) to be sure it's
+       * issued as the last (provoking) attribute).
+       */
+      func_nv(&array->Format)(0, src);
+   } else if (vao->Enabled & VERT_BIT_POS) {
+      const gl_vert_attrib attrib = VERT_ATTRIB_POS;
+      const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
+      const void *src = attrib_src(vao, array, elt);
+      func_nv(&array->Format)(0, src);
+    }
 }
 
 
