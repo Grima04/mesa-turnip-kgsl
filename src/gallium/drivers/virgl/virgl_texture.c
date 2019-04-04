@@ -174,19 +174,15 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    struct virgl_transfer *trans = virgl_transfer(transfer);
    struct virgl_resource *vtex = virgl_resource(transfer->resource);
 
-   if (trans->base.usage & PIPE_TRANSFER_WRITE) {
-      if (!(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
-         struct virgl_screen *vs = virgl_screen(ctx->screen);
-
-         if (trans->resolve_tmp) {
-            vs->vws->transfer_put(vs->vws, vtex->hw_res,
-                                  &transfer->box, trans->base.stride,
-                                  trans->l_stride, trans->offset,
-                                  transfer->level);
-         } else {
-            virgl_transfer_queue_unmap(&vctx->queue, trans);
-         }
-      }
+   if (transfer->usage & PIPE_TRANSFER_WRITE &&
+       (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) == 0) {
+      if (trans->resolve_tmp) {
+         struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
+         vws->transfer_put(vws, vtex->hw_res, &transfer->box,
+                           trans->base.stride, trans->l_stride,
+                           trans->offset, transfer->level);
+      } else
+         virgl_transfer_queue_unmap(&vctx->queue, trans);
    }
 
    if (trans->resolve_tmp) {
