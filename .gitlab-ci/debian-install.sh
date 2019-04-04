@@ -6,15 +6,18 @@ set -o xtrace
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
       curl \
       wget \
       gnupg \
       software-properties-common
 
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-add-apt-repository "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main"
+add-apt-repository "deb https://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main"
 
-echo 'deb http://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
+sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
+echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
 
 apt-get update
 apt-get install -y -t stretch-backports \
