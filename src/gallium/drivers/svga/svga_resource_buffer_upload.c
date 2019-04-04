@@ -448,6 +448,9 @@ svga_buffer_upload_gb_command(struct svga_context *svga,
    struct pipe_resource *dummy;
    unsigned i;
 
+   if (swc->force_coherent)
+      return PIPE_OK;
+
    assert(svga_have_gb_objects(svga));
    assert(numBoxes);
    assert(sbuf->dma.updates == NULL);
@@ -645,7 +648,7 @@ svga_buffer_upload_flush(struct svga_context *svga, struct svga_buffer *sbuf)
    unsigned i;
    struct pipe_resource *dummy;
 
-   if (!sbuf->dma.pending) {
+   if (!sbuf->dma.pending || svga->swc->force_coherent) {
       //debug_printf("no dma pending on buffer\n");
       return;
    }
@@ -659,6 +662,7 @@ svga_buffer_upload_flush(struct svga_context *svga, struct svga_buffer *sbuf)
     */
    if (svga_have_gb_objects(svga)) {
       struct svga_3d_update_gb_image *update = sbuf->dma.updates;
+
       assert(update);
 
       for (i = 0; i < sbuf->map.num_ranges; ++i, ++update) {
@@ -871,6 +875,9 @@ svga_buffer_update_hw(struct svga_context *svga, struct svga_buffer *sbuf,
          memcpy((uint8_t *) map + start, (uint8_t *) sbuf->swbuf + start, len);
       }
 
+      if (svga->swc->force_coherent)
+         sbuf->map.num_ranges = 0;
+
       svga_buffer_hw_storage_unmap(svga, sbuf);
 
       /* This user/malloc buffer is now indistinguishable from a gpu buffer */
@@ -1029,6 +1036,8 @@ svga_buffer_handle(struct svga_context *svga, struct pipe_resource *buf,
    }
 
    assert(sbuf->handle);
+   if (svga->swc->force_coherent)
+      return sbuf->handle;
 
    if (sbuf->map.num_ranges) {
       if (!sbuf->dma.pending) {

@@ -243,6 +243,9 @@ vmw_ioctl_gb_surface_create(struct vmw_winsys_screen *vws,
       if (usage & SVGA_SURFACE_USAGE_SHARED)
          req->base.drm_surface_flags |= drm_vmw_surface_flag_shareable;
 
+      if (vws->force_coherent)
+         req->base.drm_surface_flags |= drm_vmw_surface_flag_coherent;
+
       req->base.drm_surface_flags |= drm_vmw_surface_flag_create_buffer;
       req->base.base_size.width = size.width;
       req->base.base_size.height = size.height;
@@ -969,6 +972,7 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
    drmVersionPtr version;
    boolean drm_gb_capable;
    boolean have_drm_2_5;
+   boolean have_drm_2_16;
    const char *getenv_val;
 
    VMW_FUNC;
@@ -985,6 +989,8 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
       (version->version_major == 2 && version->version_minor > 8);
    vws->ioctl.have_drm_2_15 = version->version_major > 2 ||
       (version->version_major == 2 && version->version_minor > 14);
+   have_drm_2_16 = version->version_major > 2 ||
+      (version->version_major == 2 && version->version_minor > 15);
 
    vws->ioctl.drm_execbuf_version = vws->ioctl.have_drm_2_9 ? 2 : 1;
 
@@ -1108,6 +1114,12 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
          vws->ioctl.num_cap_3d = size / sizeof(uint32_t);
       else
          vws->ioctl.num_cap_3d = SVGA3D_DEVCAP_MAX;
+
+      if (have_drm_2_16) {
+         getenv_val = getenv("SVGA_FORCE_COHERENT");
+         if (getenv_val && strcmp(getenv_val, "0") != 0)
+            vws->force_coherent = TRUE;
+      }
    } else {
       vws->ioctl.num_cap_3d = SVGA3D_DEVCAP_MAX;
 

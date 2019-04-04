@@ -385,6 +385,7 @@ struct svga_winsys_context
     **/
 
    boolean have_gb_objects;
+   boolean force_coherent;
 
    /**
     * Map a guest-backed surface.

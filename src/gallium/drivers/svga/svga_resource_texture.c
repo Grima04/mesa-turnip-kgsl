@@ -401,21 +401,23 @@ svga_texture_transfer_map_direct(struct svga_context *svga,
 
       svga_surfaces_flush(svga);
 
-      for (i = 0; i < st->box.d; i++) {
-         if (svga_have_vgpu10(svga)) {
-            ret = readback_image_vgpu10(svga, surf, st->slice + i, level,
-                                        tex->b.b.last_level + 1);
-         } else {
-            ret = readback_image_vgpu9(svga, surf, st->slice + i, level);
+      if (!svga->swc->force_coherent || tex->imported) {
+         for (i = 0; i < st->box.d; i++) {
+            if (svga_have_vgpu10(svga)) {
+               ret = readback_image_vgpu10(svga, surf, st->slice + i, level,
+                                           tex->b.b.last_level + 1);
+            } else {
+               ret = readback_image_vgpu9(svga, surf, st->slice + i, level);
+            }
          }
+         svga->hud.num_readbacks++;
+         SVGA_STATS_COUNT_INC(sws, SVGA_STATS_COUNT_TEXREADBACK);
+
+         assert(ret == PIPE_OK);
+         (void) ret;
+
+         svga_context_flush(svga, NULL);
       }
-      svga->hud.num_readbacks++;
-      SVGA_STATS_COUNT_INC(sws, SVGA_STATS_COUNT_TEXREADBACK);
-
-      assert(ret == PIPE_OK);
-      (void) ret;
-
-      svga_context_flush(svga, NULL);
       /*
        * Note: if PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE were specified
        * we could potentially clear the flag for all faces/layers/mips.
@@ -694,6 +696,15 @@ svga_texture_surface_unmap(struct svga_context *svga,
          ret = SVGA3D_BindGBSurface(swc, surf);
          assert(ret == PIPE_OK);
       }
+      if (swc->force_coherent) {
+         ret = SVGA3D_UpdateGBSurface(swc, surf);
+         if (ret != PIPE_OK) {
+            /* flush and retry */
+            svga_context_flush(svga, NULL);
+            ret = SVGA3D_UpdateGBSurface(swc, surf);
+            assert(ret == PIPE_OK);
+         }
+      }
    }
 }
 
@@ -816,19 +827,22 @@ svga_texture_transfer_unmap_direct(struct svga_context *svga,
                       box.x, box.y, box.z,
                       box.w, box.h, box.d);
 
-      if (svga_have_vgpu10(svga)) {
-         unsigned i;
+      if (!svga->swc->force_coherent || tex->imported) {
+         if (svga_have_vgpu10(svga)) {
+            unsigned i;
 
-         for (i = 0; i < nlayers; i++) {
-            ret = update_image_vgpu10(svga, surf, &box,
-                                      st->slice + i, transfer->level,
-                                      tex->b.b.last_level + 1);
+            for (i = 0; i < nlayers; i++) {
+               ret = update_image_vgpu10(svga, surf, &box,
+                                         st->slice + i, transfer->level,
+                                         tex->b.b.last_level + 1);
+               assert(ret == PIPE_OK);
+            }
+         } else {
+            assert(nlayers == 1);
+            ret = update_image_vgpu9(svga, surf, &box, st->slice,
+                                     transfer->level);
             assert(ret == PIPE_OK);
          }
-      } else {
-         assert(nlayers == 1);
-         ret = update_image_vgpu9(svga, surf, &box, st->slice, transfer->level);
-         assert(ret == PIPE_OK);
       }
       (void) ret;
    }

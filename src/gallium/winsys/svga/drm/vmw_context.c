@@ -852,6 +852,7 @@ vmw_svga_winsys_context_create(struct svga_winsys_screen *sws)
    vswc->fctx = debug_flush_ctx_create(TRUE, VMW_DEBUG_FLUSH_STACK);
 #endif
 
+   vswc->base.force_coherent = vws->force_coherent;
    return &vswc->base;
 
 out_no_hash:
