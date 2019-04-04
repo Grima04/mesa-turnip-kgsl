@@ -135,6 +135,10 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       virgl_init_temp_resource_from_box(&templ, resource, box, level, 0);
 
       trans->resolve_tmp = (struct virgl_resource *)ctx->screen->resource_create(ctx->screen, &templ);
+      if (!trans->resolve_tmp) {
+         virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+         return NULL;
+      }
 
       virgl_copy_region_with_blit(ctx, &trans->resolve_tmp->u.b, 0, 0, 0, 0, resource, level, box);
       ctx->flush(ctx, NULL, 0);
