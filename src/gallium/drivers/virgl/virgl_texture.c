@@ -149,7 +149,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       trans->resolve_tmp = NULL;
    }
 
-   readback = virgl_res_needs_readback(vctx, vtex, usage, level);
+   readback = virgl_res_needs_readback(vctx, src_res, usage, level);
    if (readback) {
       vs->vws->transfer_get(vs->vws, src_res->hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
