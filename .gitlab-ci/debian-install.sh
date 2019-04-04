@@ -21,6 +21,24 @@ echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/source
 
 apt-get update
 apt-get install -y -t stretch-backports \
+      llvm-3.9-dev \
+      libclang-3.9-dev \
+      llvm-5.0-dev \
+      llvm-6.0-dev \
+      llvm-7-dev \
+      clang-5.0 \
+      libclang-5.0-dev \
+      clang-6.0 \
+      libclang-6.0-dev \
+      g++ \
+      clang-7 \
+      libclang-7-dev
+
+# Install remaining packages from Debian buster to get newer versions
+add-apt-repository "deb https://deb.debian.org/debian/ buster main"
+add-apt-repository "deb https://deb.debian.org/debian/ buster-updates main"
+apt-get update
+apt-get install -y \
       bzip2 \
       zlib1g-dev \
       pkg-config \
@@ -33,19 +51,7 @@ apt-get install -y -t stretch-backports \
       libxxf86vm-dev \
       libvdpau-dev \
       libva-dev \
-      llvm-3.9-dev \
-      libclang-3.9-dev \
-      llvm-5.0-dev \
-      llvm-6.0-dev \
-      llvm-7-dev \
-      clang-5.0 \
-      libclang-5.0-dev \
-      clang-6.0 \
-      libclang-6.0-dev \
-      g++ \
       gcc \
-      clang-7 \
-      libclang-7-dev \
       libclc-dev \
       libxvmc-dev \
       libomxil-bellagio-dev \
@@ -54,7 +60,7 @@ apt-get install -y -t stretch-backports \
       libx11-xcb-dev \
       x11proto-xf86vidmode-dev \
       libelf-dev \
-      libunwind8-dev \
+      libunwind-dev \
       libglvnd-dev \
       python-mako \
       python3-mako \

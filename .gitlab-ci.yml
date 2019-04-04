@@ -66,12 +66,13 @@ debian:
   artifacts:
     when: on_failure
     untracked: true
+  variables:
+    CCACHE_COMPILERCHECK: "content"
   # Use ccache transparently, and print stats before/after
   before_script:
     - export PATH="/usr/lib/ccache:$PATH"
     - export CCACHE_BASEDIR="$PWD"
     - export CCACHE_DIR="$PWD/ccache"
-    - export CCACHE_COMPILERCHECK=content
     - ccache --zero-stats || true
     - ccache --show-stats || true
   after_script:
@@ -148,6 +149,11 @@ meson-clang:
     GALLIUM_DRIVERS: "auto"
     CC: "ccache clang-7"
     CXX: "ccache clang++-7"
+  before_script:
+    - export CCACHE_BASEDIR="$PWD" CCACHE_DIR="$PWD/ccache"
+    - ccache --zero-stats --show-stats || true
+     # clang++ breaks if it picks up the GCC 8 directory without libstdc++.so
+    - apt-get remove -y libgcc-8-dev
 
 meson-vulkan:
   extends: .meson-build
