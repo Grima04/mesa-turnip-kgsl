@@ -2642,7 +2642,8 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
          continue;
       }
 
-      assert(!buffer->is_user_buffer);
+      /* We may see user buffers that are NULL bindings. */
+      assert(!(buffer->is_user_buffer && buffer->buffer.user != NULL));
 
       pipe_resource_reference(&state->resource, buffer->buffer.resource);
       struct iris_resource *res = (void *) state->resource;
