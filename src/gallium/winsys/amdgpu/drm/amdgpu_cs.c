@@ -1031,7 +1031,8 @@ static bool amdgpu_cs_validate(struct radeon_cmdbuf *rcs)
    return true;
 }
 
-static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
+static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
+                                  bool force_chaining)
 {
    struct amdgpu_ib *ib = amdgpu_ib(rcs);
    struct amdgpu_cs *cs = amdgpu_cs_from_ib(ib);
@@ -1048,16 +1049,21 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    ib->max_check_space_size = MAX2(ib->max_check_space_size,
                                    safe_byte_size);
 
-   if (requested_size > amdgpu_ib_max_submit_dwords(ib->ib_type))
+   /* If force_chaining is true, we can't return. We have to chain. */
+   if (!force_chaining) {
+      if (requested_size > amdgpu_ib_max_submit_dwords(ib->ib_type))
+         return false;
+
+      ib->max_ib_size = MAX2(ib->max_ib_size, requested_size);
+
+      if (rcs->current.max_dw - rcs->current.cdw >= dw)
+         return true;
+   }
+
+   if (!amdgpu_cs_has_chaining(cs)) {
+      assert(!force_chaining);
       return false;
-
-   ib->max_ib_size = MAX2(ib->max_ib_size, requested_size);
-
-   if (rcs->current.max_dw - rcs->current.cdw >= dw)
-      return true;
-
-   if (!amdgpu_cs_has_chaining(cs))
-      return false;
+   }
 
    /* Allocate a new chunk */
    if (rcs->num_prev >= rcs->max_prev) {

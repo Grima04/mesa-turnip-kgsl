@@ -55,7 +55,7 @@ void si_need_gfx_cs_space(struct si_context *ctx)
 	ctx->vram = 0;
 
 	unsigned need_dwords = si_get_minimum_num_gfx_cs_dwords(ctx);
-	if (!ctx->ws->cs_check_space(cs, need_dwords))
+	if (!ctx->ws->cs_check_space(cs, need_dwords, false))
 		si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }
 

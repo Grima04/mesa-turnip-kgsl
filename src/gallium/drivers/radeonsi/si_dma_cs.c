@@ -164,7 +164,7 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw,
 	 */
 	num_dw++; /* for emit_wait_idle below */
 	if (!ctx->sdma_uploads_in_progress &&
-	    (!ws->cs_check_space(ctx->dma_cs, num_dw) ||
+	    (!ws->cs_check_space(ctx->dma_cs, num_dw, false) ||
 	     ctx->dma_cs->used_vram + ctx->dma_cs->used_gart > 64 * 1024 * 1024 ||
 	     !radeon_cs_memory_below_limit(ctx->screen, ctx->dma_cs, vram, gtt))) {
 		si_flush_dma_cs(ctx, PIPE_FLUSH_ASYNC, NULL);
