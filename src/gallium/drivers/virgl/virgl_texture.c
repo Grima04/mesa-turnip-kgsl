@@ -31,12 +31,16 @@
 static void virgl_copy_region_with_blit(struct pipe_context *pipe,
                                         struct pipe_resource *dst,
                                         unsigned dst_level,
-                                        unsigned dstx, unsigned dsty, unsigned dstz,
+                                        const struct pipe_box *dst_box,
                                         struct pipe_resource *src,
                                         unsigned src_level,
                                         const struct pipe_box *src_box)
 {
    struct pipe_blit_info blit;
+
+   assert(src_box->width == dst_box->width);
+   assert(src_box->height == dst_box->height);
+   assert(src_box->depth == dst_box->depth);
 
    memset(&blit, 0, sizeof(blit));
    blit.src.resource = src;
@@ -46,9 +50,9 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
    blit.dst.resource = dst;
    blit.dst.format = dst->format;
    blit.dst.level = dst_level;
-   blit.dst.box.x = dstx;
-   blit.dst.box.y = dsty;
-   blit.dst.box.z = dstz;
+   blit.dst.box.x = dst_box->x;
+   blit.dst.box.y = dst_box->y;
+   blit.dst.box.z = dst_box->z;
    blit.dst.box.width = src_box->width;
    blit.dst.box.height = src_box->height;
    blit.dst.box.depth = src_box->depth;
@@ -159,7 +163,10 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
    if (!resolve_tmp)
       return NULL;
 
-   virgl_copy_region_with_blit(ctx, resolve_tmp, 0, 0, 0, 0, resource, level, box);
+   struct pipe_box dst_box = *box;
+   dst_box.x = dst_box.y = dst_box.z = 0;
+
+   virgl_copy_region_with_blit(ctx, resolve_tmp, 0, &dst_box, resource, level, box);
    ctx->flush(ctx, NULL, 0);
 
    void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, box,
