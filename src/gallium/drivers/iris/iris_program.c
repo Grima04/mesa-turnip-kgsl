@@ -1620,12 +1620,54 @@ iris_create_compute_state(struct pipe_context *ctx,
  * Frees the iris_uncompiled_shader.
  */
 static void
-iris_delete_shader_state(struct pipe_context *ctx, void *state)
+iris_delete_shader_state(struct pipe_context *ctx, void *state, gl_shader_stage stage)
 {
    struct iris_uncompiled_shader *ish = state;
+   struct iris_context *ice = (void *) ctx;
+
+   if (ice->shaders.uncompiled[stage] == ish) {
+      ice->shaders.uncompiled[stage] = NULL;
+      ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_VS << stage;
+   }
 
    ralloc_free(ish->nir);
    free(ish);
+}
+
+static void
+iris_delete_vs_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_VERTEX);
+}
+
+static void
+iris_delete_tcs_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_TESS_CTRL);
+}
+
+static void
+iris_delete_tes_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_TESS_EVAL);
+}
+
+static void
+iris_delete_gs_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_GEOMETRY);
+}
+
+static void
+iris_delete_fs_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_FRAGMENT);
+}
+
+static void
+iris_delete_cs_state(struct pipe_context *ctx, void *state)
+{
+   iris_delete_shader_state(ctx, state, MESA_SHADER_COMPUTE);
 }
 
 /**
@@ -1737,12 +1779,12 @@ iris_init_program_functions(struct pipe_context *ctx)
    ctx->create_fs_state  = iris_create_fs_state;
    ctx->create_compute_state = iris_create_compute_state;
 
-   ctx->delete_vs_state  = iris_delete_shader_state;
-   ctx->delete_tcs_state = iris_delete_shader_state;
-   ctx->delete_tes_state = iris_delete_shader_state;
-   ctx->delete_gs_state  = iris_delete_shader_state;
-   ctx->delete_fs_state  = iris_delete_shader_state;
-   ctx->delete_compute_state = iris_delete_shader_state;
+   ctx->delete_vs_state  = iris_delete_vs_state;
+   ctx->delete_tcs_state = iris_delete_tcs_state;
+   ctx->delete_tes_state = iris_delete_tes_state;
+   ctx->delete_gs_state  = iris_delete_gs_state;
+   ctx->delete_fs_state  = iris_delete_fs_state;
+   ctx->delete_compute_state = iris_delete_cs_state;
 
    ctx->bind_vs_state  = iris_bind_vs_state;
    ctx->bind_tcs_state = iris_bind_tcs_state;
