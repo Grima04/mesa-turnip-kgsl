@@ -107,7 +107,7 @@ static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
    }
 }
 
-static void *virgl_texture_transfer_map(struct pipe_context *ctx,
+static void *texture_transfer_map_plain(struct pipe_context *ctx,
                                         struct pipe_resource *resource,
                                         unsigned level,
                                         unsigned usage,
@@ -115,53 +115,27 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
                                         struct pipe_transfer **transfer)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   struct virgl_screen *vs = virgl_screen(ctx->screen);
+   struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
    struct virgl_resource *vtex = virgl_resource(resource);
-   struct virgl_resource *src_res;
    struct virgl_transfer *trans;
-   void *ptr;
-   boolean readback = TRUE;
-   bool flush;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
+   trans->resolve_tmp = NULL;
 
-   flush = virgl_res_needs_flush(vctx, trans);
-   if (flush)
+   assert(resource->nr_samples <= 1);
+
+   if (virgl_res_needs_flush(vctx, trans))
       ctx->flush(ctx, NULL, 0);
 
-   if (resource->nr_samples > 1) {
-      struct pipe_resource templ;
-      virgl_init_temp_resource_from_box(&templ, resource, box, level, 0);
+   if (virgl_res_needs_readback(vctx, vtex, usage, level)) {
+      vws->transfer_get(vws, vtex->hw_res, box, trans->base.stride,
+                        trans->l_stride, trans->offset, level);
 
-      trans->resolve_tmp = (struct virgl_resource *)ctx->screen->resource_create(ctx->screen, &templ);
-      if (!trans->resolve_tmp) {
-         virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
-         return NULL;
-      }
-
-      virgl_copy_region_with_blit(ctx, &trans->resolve_tmp->u.b, 0, 0, 0, 0, resource, level, box);
-      ctx->flush(ctx, NULL, 0);
-      /* we want to do a resolve blit into the temporary */
-      src_res = trans->resolve_tmp;
-      struct virgl_resource_metadata *data = &trans->resolve_tmp->metadata;
-      trans->base.stride = data->stride[level];
-      trans->base.layer_stride = data->layer_stride[level];
-      trans->offset = 0;
-   } else {
-      src_res = vtex;
-      trans->resolve_tmp = NULL;
+      vws->resource_wait(vws, vtex->hw_res);
    }
 
-   readback = virgl_res_needs_readback(vctx, src_res, usage, level);
-   if (readback) {
-      vs->vws->transfer_get(vs->vws, src_res->hw_res, box, trans->base.stride,
-                            trans->l_stride, trans->offset, level);
-
-      vs->vws->resource_wait(vs->vws, src_res->hw_res);
-   }
-
-   ptr = vs->vws->resource_map(vs->vws, src_res->hw_res);
+   void *ptr = vws->resource_map(vws, vtex->hw_res);
    if (!ptr) {
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
@@ -169,6 +143,54 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
 
    *transfer = &trans->base;
    return ptr + trans->offset;
+}
+
+static void *texture_transfer_map_resolve(struct pipe_context *ctx,
+                                          struct pipe_resource *resource,
+                                          unsigned level,
+                                          unsigned usage,
+                                          const struct pipe_box *box,
+                                          struct pipe_transfer **transfer)
+{
+   struct pipe_resource templ, *resolve_tmp;
+   virgl_init_temp_resource_from_box(&templ, resource, box, level, 0);
+
+   resolve_tmp = ctx->screen->resource_create(ctx->screen, &templ);
+   if (!resolve_tmp)
+      return NULL;
+
+   virgl_copy_region_with_blit(ctx, resolve_tmp, 0, 0, 0, 0, resource, level, box);
+   ctx->flush(ctx, NULL, 0);
+
+   void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, box,
+                                          transfer);
+   if (!ptr) {
+      pipe_resource_reference(&resolve_tmp, NULL);
+      return NULL;
+   }
+
+   virgl_transfer(*transfer)->resolve_tmp = virgl_resource(resolve_tmp);
+
+   struct virgl_resource_metadata *data = &virgl_resource(resolve_tmp)->metadata;
+   assert((*transfer)->stride == data->stride[0]);
+   assert((*transfer)->layer_stride == data->layer_stride[0]);
+   assert(virgl_transfer(*transfer)->offset == 0);
+
+   return ptr;
+}
+
+static void *virgl_texture_transfer_map(struct pipe_context *ctx,
+                                        struct pipe_resource *resource,
+                                        unsigned level,
+                                        unsigned usage,
+                                        const struct pipe_box *box,
+                                        struct pipe_transfer **transfer)
+{
+   if (resource->nr_samples > 1)
+      return texture_transfer_map_resolve(ctx, resource, level, usage, box,
+                                          transfer);
+
+   return texture_transfer_map_plain(ctx, resource, level, usage, box, transfer);
 }
 
 static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
