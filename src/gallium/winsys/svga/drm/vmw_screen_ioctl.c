@@ -564,7 +564,9 @@ vmw_ioctl_command(struct vmw_winsys_screen *vws, int32_t cid,
                 offsetof(struct drm_vmw_execbuf_arg, context_handle);
    do {
        ret = drmCommandWrite(vws->ioctl.drm_fd, DRM_VMW_EXECBUF, &arg, argsize);
-   } while(ret == -ERESTART);
+       if (ret == -EBUSY)
+          usleep(1000);
+   } while(ret == -ERESTART || ret == -EBUSY);
    if (ret) {
       vmw_error("%s error %s.\n", __FUNCTION__, strerror(-ret));
       abort();
