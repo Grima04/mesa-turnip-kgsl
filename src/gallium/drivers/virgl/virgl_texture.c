@@ -125,7 +125,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
-   trans->resolve_tmp = NULL;
+   trans->resolve_transfer = NULL;
 
    assert(resource->nr_samples <= 1);
 
@@ -156,7 +156,16 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
                                           const struct pipe_box *box,
                                           struct pipe_transfer **transfer)
 {
+   struct virgl_context *vctx = virgl_context(ctx);
    struct pipe_resource templ, *resolve_tmp;
+   struct virgl_transfer *trans;
+
+   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+                                          &virgl_resource(resource)->metadata,
+                                          level, usage, box);
+   if (!trans)
+      return NULL;
+
    virgl_init_temp_resource_from_box(&templ, resource, box, level, 0);
 
    resolve_tmp = ctx->screen->resource_create(ctx->screen, &templ);
@@ -169,21 +178,20 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
    virgl_copy_region_with_blit(ctx, resolve_tmp, 0, &dst_box, resource, level, box);
    ctx->flush(ctx, NULL, 0);
 
-   void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, box,
-                                          transfer);
-   if (!ptr) {
-      pipe_resource_reference(&resolve_tmp, NULL);
-      return NULL;
-   }
+   void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, &dst_box,
+                                          &trans->resolve_transfer);
+   if (!ptr)
+      goto fail;
 
-   virgl_transfer(*transfer)->resolve_tmp = virgl_resource(resolve_tmp);
-
-   struct virgl_resource_metadata *data = &virgl_resource(resolve_tmp)->metadata;
-   assert((*transfer)->stride == data->stride[0]);
-   assert((*transfer)->layer_stride == data->layer_stride[0]);
-   assert(virgl_transfer(*transfer)->offset == 0);
-
+   *transfer = &trans->base;
+   trans->base.stride = trans->resolve_transfer->stride;
+   trans->base.layer_stride = trans->resolve_transfer->layer_stride;
    return ptr;
+
+fail:
+   pipe_resource_reference(&resolve_tmp, NULL);
+   virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+   return NULL;
 }
 
 static void *virgl_texture_transfer_map(struct pipe_context *ctx,
@@ -200,26 +208,45 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    return texture_transfer_map_plain(ctx, resource, level, usage, box, transfer);
 }
 
+static void flush_data(struct pipe_context *ctx,
+                       struct virgl_transfer *trans,
+                       const struct pipe_box *box)
+{
+   struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
+   vws->transfer_put(vws, virgl_resource(trans->base.resource)->hw_res, box,
+                     trans->base.stride, trans->l_stride, trans->offset,
+                     trans->base.level);
+}
+
 static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
                                          struct pipe_transfer *transfer)
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
-   struct virgl_resource *vtex = virgl_resource(transfer->resource);
    bool queue_unmap = false;
 
    if (transfer->usage & PIPE_TRANSFER_WRITE &&
        (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) == 0) {
-      if (trans->resolve_tmp) {
-         struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
-         vws->transfer_put(vws, vtex->hw_res, &transfer->box,
-                           trans->base.stride, trans->l_stride,
-                           trans->offset, transfer->level);
+
+      if (trans->resolve_transfer) {
+         flush_data(ctx, virgl_transfer(trans->resolve_transfer),
+                    &trans->resolve_transfer->box);
+
+         virgl_copy_region_with_blit(ctx,
+                                     trans->base.resource, trans->base.level,
+                                     &transfer->box,
+                                     trans->resolve_transfer->resource, 0,
+                                     &trans->resolve_transfer->box);
+         ctx->flush(ctx, NULL, 0);
       } else
          queue_unmap = true;
    }
 
-   pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
+   if (trans->resolve_transfer) {
+      pipe_resource_reference(&trans->resolve_transfer->resource, NULL);
+      virgl_resource_destroy_transfer(&vctx->transfer_pool,
+                                      virgl_transfer(trans->resolve_transfer));
+   }
 
    if (queue_unmap)
       virgl_transfer_queue_unmap(&vctx->queue, trans);

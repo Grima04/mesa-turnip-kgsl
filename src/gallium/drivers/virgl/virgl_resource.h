@@ -57,7 +57,7 @@ struct virgl_transfer {
    uint32_t offset, l_stride;
    struct util_range range;
    struct list_head queue_link;
-   struct virgl_resource *resolve_tmp;
+   struct pipe_transfer *resolve_transfer;
 };
 
 void virgl_resource_destroy(struct pipe_screen *screen,
