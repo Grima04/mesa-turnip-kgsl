@@ -117,10 +117,10 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_resource *vtex = virgl_resource(resource);
+   struct virgl_resource *src_res;
    struct virgl_transfer *trans;
    void *ptr;
    boolean readback = TRUE;
-   struct virgl_hw_res *hw_res;
    bool flush;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
@@ -139,25 +139,25 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       virgl_copy_region_with_blit(ctx, &trans->resolve_tmp->u.b, 0, 0, 0, 0, resource, level, box);
       ctx->flush(ctx, NULL, 0);
       /* we want to do a resolve blit into the temporary */
-      hw_res = trans->resolve_tmp->hw_res;
+      src_res = trans->resolve_tmp;
       struct virgl_resource_metadata *data = &trans->resolve_tmp->metadata;
       trans->base.stride = data->stride[level];
       trans->base.layer_stride = data->layer_stride[level];
       trans->offset = 0;
    } else {
-      hw_res = vtex->hw_res;
+      src_res = vtex;
       trans->resolve_tmp = NULL;
    }
 
    readback = virgl_res_needs_readback(vctx, vtex, usage, level);
    if (readback) {
-      vs->vws->transfer_get(vs->vws, hw_res, box, trans->base.stride,
+      vs->vws->transfer_get(vs->vws, src_res->hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
 
       vs->vws->resource_wait(vs->vws, vtex->hw_res);
    }
 
-   ptr = vs->vws->resource_map(vs->vws, hw_res);
+   ptr = vs->vws->resource_map(vs->vws, src_res->hw_res);
    if (!ptr) {
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
