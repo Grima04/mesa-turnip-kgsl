@@ -173,6 +173,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
    struct virgl_resource *vtex = virgl_resource(transfer->resource);
+   bool queue_unmap = false;
 
    if (transfer->usage & PIPE_TRANSFER_WRITE &&
        (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) == 0) {
@@ -182,13 +183,14 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
                            trans->base.stride, trans->l_stride,
                            trans->offset, transfer->level);
       } else
-         virgl_transfer_queue_unmap(&vctx->queue, trans);
+         queue_unmap = true;
    }
 
-   if (trans->resolve_tmp) {
-      pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
-      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
-   } else if (!(trans->base.usage & PIPE_TRANSFER_WRITE))
+   pipe_resource_reference((struct pipe_resource **)&trans->resolve_tmp, NULL);
+
+   if (queue_unmap)
+      virgl_transfer_queue_unmap(&vctx->queue, trans);
+   else
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
 }
 
