@@ -253,6 +253,7 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_iand]		 = UNITS_ADD, /* XXX: Test case where it's right on smul but not sadd */
         [midgard_alu_op_ior]		 = UNITS_ADD,
         [midgard_alu_op_ixor]		 = UNITS_ADD,
+        [midgard_alu_op_ilzcnt]		 = UNITS_ADD,
         [midgard_alu_op_inot]		 = UNITS_MOST,
         [midgard_alu_op_ishl]		 = UNITS_ADD,
         [midgard_alu_op_iasr]		 = UNITS_ADD,
