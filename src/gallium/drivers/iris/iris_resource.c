@@ -839,6 +839,14 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 {
    struct iris_resource *res = (struct iris_resource *)resource;
 
+   /* Disable aux usage if explicit flush not set and this is the
+    * first time we are dealing with this resource.
+    */
+   if ((!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) && res->aux.usage != 0)) {
+      if (p_atomic_read(&resource->reference.count) == 1)
+         iris_resource_disable_aux(res);
+   }
+
    /* If this is a buffer, stride should be 0 - no need to special case */
    whandle->stride = res->surf.row_pitch_B;
    whandle->modifier =
