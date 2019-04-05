@@ -178,8 +178,11 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
    struct pipe_box dst_box = *box;
    dst_box.x = dst_box.y = dst_box.z = 0;
 
-   virgl_copy_region_with_blit(ctx, resolve_tmp, 0, &dst_box, resource, level, box);
-   ctx->flush(ctx, NULL, 0);
+   if (usage & PIPE_TRANSFER_READ) {
+      virgl_copy_region_with_blit(ctx, resolve_tmp, 0, &dst_box, resource,
+                                  level, box);
+      ctx->flush(ctx, NULL, 0);
+   }
 
    void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, &dst_box,
                                           &trans->resolve_transfer);
