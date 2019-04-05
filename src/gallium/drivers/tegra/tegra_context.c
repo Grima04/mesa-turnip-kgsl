@@ -589,7 +589,7 @@ tegra_set_shader_buffers(struct pipe_context *pcontext, unsigned int shader,
    struct tegra_context *context = to_tegra_context(pcontext);
 
    context->gpu->set_shader_buffers(context->gpu, shader, start, count,
-                                    buffers);
+                                    buffers, writable_bitmask);
 }
 
 static void
