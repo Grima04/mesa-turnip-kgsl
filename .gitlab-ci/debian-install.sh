@@ -88,59 +88,73 @@ export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.8
 
 wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
-(cd $XORGMACROS_VERSION && ./configure && make install) && rm -rf $XORGMACROS_VERSION
+cd $XORGMACROS_VERSION; ./configure; make install; cd ..
+rm -rf $XORGMACROS_VERSION
 
 wget $XORG_RELEASES/proto/$GLPROTO_VERSION.tar.bz2
 tar -xvf $GLPROTO_VERSION.tar.bz2 && rm $GLPROTO_VERSION.tar.bz2
-(cd $GLPROTO_VERSION && ./configure && make install) && rm -rf $GLPROTO_VERSION
+cd $GLPROTO_VERSION; ./configure; make install; cd ..
+rm -rf $GLPROTO_VERSION
 
 wget $XORG_RELEASES/proto/$DRI2PROTO_VERSION.tar.bz2
 tar -xvf $DRI2PROTO_VERSION.tar.bz2 && rm $DRI2PROTO_VERSION.tar.bz2
-(cd $DRI2PROTO_VERSION && ./configure && make install) && rm -rf $DRI2PROTO_VERSION
+cd $DRI2PROTO_VERSION; ./configure; make install; cd ..
+rm -rf $DRI2PROTO_VERSION
 
 wget $XCB_RELEASES/$XCBPROTO_VERSION.tar.bz2
 tar -xvf $XCBPROTO_VERSION.tar.bz2 && rm $XCBPROTO_VERSION.tar.bz2
-(cd $XCBPROTO_VERSION && ./configure && make install) && rm -rf $XCBPROTO_VERSION
+cd $XCBPROTO_VERSION; ./configure; make install; cd ..
+rm -rf $XCBPROTO_VERSION
 
 wget $XCB_RELEASES/$LIBXCB_VERSION.tar.bz2
 tar -xvf $LIBXCB_VERSION.tar.bz2 && rm $LIBXCB_VERSION.tar.bz2
-(cd $LIBXCB_VERSION && ./configure && make install) && rm -rf $LIBXCB_VERSION
+cd $LIBXCB_VERSION; ./configure; make install; cd ..
+rm -rf $LIBXCB_VERSION
 
 wget $XORG_RELEASES/lib/$LIBPCIACCESS_VERSION.tar.bz2
 tar -xvf $LIBPCIACCESS_VERSION.tar.bz2 && rm $LIBPCIACCESS_VERSION.tar.bz2
-(cd $LIBPCIACCESS_VERSION && ./configure && make install) && rm -rf $LIBPCIACCESS_VERSION
+cd $LIBPCIACCESS_VERSION; ./configure; make install; cd ..
+rm -rf $LIBPCIACCESS_VERSION
 
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
-(cd $LIBDRM_VERSION && ./configure --enable-vc4 --enable-freedreno --enable-etnaviv-experimental-api && make install) && rm -rf $LIBDRM_VERSION
+cd $LIBDRM_VERSION; ./configure --enable-vc4 --enable-freedreno --enable-etnaviv-experimental-api; make install; cd ..
+rm -rf $LIBDRM_VERSION
 
 wget $XORG_RELEASES/proto/$RANDRPROTO_VERSION.tar.bz2
 tar -xvf $RANDRPROTO_VERSION.tar.bz2 && rm $RANDRPROTO_VERSION.tar.bz2
-(cd $RANDRPROTO_VERSION && ./configure && make install) && rm -rf $RANDRPROTO_VERSION
+cd $RANDRPROTO_VERSION; ./configure; make install; cd ..
+rm -rf $RANDRPROTO_VERSION
 
 wget $XORG_RELEASES/lib/$LIBXRANDR_VERSION.tar.bz2
 tar -xvf $LIBXRANDR_VERSION.tar.bz2 && rm $LIBXRANDR_VERSION.tar.bz2
-(cd $LIBXRANDR_VERSION && ./configure && make install) && rm -rf $LIBXRANDR_VERSION
+cd $LIBXRANDR_VERSION; ./configure; make install; cd ..
+rm -rf $LIBXRANDR_VERSION
 
 wget $XORG_RELEASES/lib/$LIBXSHMFENCE_VERSION.tar.bz2
 tar -xvf $LIBXSHMFENCE_VERSION.tar.bz2 && rm $LIBXSHMFENCE_VERSION.tar.bz2
-(cd $LIBXSHMFENCE_VERSION && ./configure && make install) && rm -rf $LIBXSHMFENCE_VERSION
+cd $LIBXSHMFENCE_VERSION; ./configure; make install; cd ..
+rm -rf $LIBXSHMFENCE_VERSION
 
 wget https://people.freedesktop.org/~aplattner/vdpau/$LIBVDPAU_VERSION.tar.bz2
 tar -xvf $LIBVDPAU_VERSION.tar.bz2 && rm $LIBVDPAU_VERSION.tar.bz2
-(cd $LIBVDPAU_VERSION && ./configure && make install) && rm -rf $LIBVDPAU_VERSION
+cd $LIBVDPAU_VERSION; ./configure; make install; cd ..
+rm -rf $LIBVDPAU_VERSION
 
 wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVA_VERSION.tar.bz2
 tar -xvf $LIBVA_VERSION.tar.bz2 && rm $LIBVA_VERSION.tar.bz2
-(cd $LIBVA_VERSION && ./configure --disable-wayland --disable-dummy-driver && make install) && rm -rf $LIBVA_VERSION
+cd $LIBVA_VERSION; ./configure --disable-wayland --disable-dummy-driver; make install; cd ..
+rm -rf $LIBVA_VERSION
 
 wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
 tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
-(cd $LIBWAYLAND_VERSION && ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation && make install) && rm -rf $LIBWAYLAND_VERSION
+cd $LIBWAYLAND_VERSION; ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation; make install; cd ..
+rm -rf $LIBWAYLAND_VERSION
 
 wget $WAYLAND_RELEASES/$WAYLAND_PROTOCOLS_VERSION.tar.xz
 tar -xvf $WAYLAND_PROTOCOLS_VERSION.tar.xz && rm $WAYLAND_PROTOCOLS_VERSION.tar.xz
-(cd $WAYLAND_PROTOCOLS_VERSION && ./configure && make install) && rm -rf $WAYLAND_PROTOCOLS_VERSION
+cd $WAYLAND_PROTOCOLS_VERSION; ./configure; make install; cd ..
+rm -rf $WAYLAND_PROTOCOLS_VERSION
 
 # Use ccache to speed up builds
 apt-get install -y ccache
