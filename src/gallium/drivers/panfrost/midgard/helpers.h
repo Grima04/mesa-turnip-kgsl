@@ -254,6 +254,7 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_ior]		 = UNITS_ADD,
         [midgard_alu_op_ixor]		 = UNITS_ADD,
         [midgard_alu_op_ilzcnt]		 = UNITS_ADD,
+        [midgard_alu_op_ibitcount8]	 = UNITS_ADD,
         [midgard_alu_op_inot]		 = UNITS_MOST,
         [midgard_alu_op_ishl]		 = UNITS_ADD,
         [midgard_alu_op_iasr]		 = UNITS_ADD,

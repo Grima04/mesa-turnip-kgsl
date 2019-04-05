@@ -86,6 +86,7 @@ typedef enum {
         midgard_alu_op_iandnot    = 0x74, /* (a, b) -> a & ~b, used for not/b2f */
         midgard_alu_op_ixor       = 0x76,
         midgard_alu_op_ilzcnt     = 0x78, /* Number of zeroes on left. 31 - ilzcnt(x) = findMSB(x) */
+        midgard_alu_op_ibitcount8 = 0x7A, /* Counts bits in 8-bit increments */
         midgard_alu_op_imov       = 0x7B,
         midgard_alu_op_iabs       = 0x7C,
         midgard_alu_op_feq        = 0x80,
@@ -501,6 +502,7 @@ static char *alu_opcode_names[256] = {
         [midgard_alu_op_iandnot]    = "iandnot",
         [midgard_alu_op_ixor]       = "ixor",
         [midgard_alu_op_ilzcnt]     = "ilzcnt",
+        [midgard_alu_op_ibitcount8] = "ibitcount8",
         [midgard_alu_op_feq]        = "feq",
         [midgard_alu_op_fne]        = "fne",
         [midgard_alu_op_flt]        = "flt",
