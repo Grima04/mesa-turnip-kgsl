@@ -147,8 +147,8 @@ meson-clang:
     UNWIND: "true"
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "auto"
-    CC: "ccache clang-7"
-    CXX: "ccache clang++-7"
+    CC: "ccache clang-8"
+    CXX: "ccache clang++-8"
   before_script:
     - export CCACHE_BASEDIR="$PWD" CCACHE_DIR="$PWD/ccache"
     - ccache --zero-stats --show-stats || true

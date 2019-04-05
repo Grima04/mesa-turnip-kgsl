@@ -15,6 +15,7 @@ apt-get install -y \
 
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 add-apt-repository "deb https://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main"
+add-apt-repository "deb https://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main"
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
@@ -31,7 +32,7 @@ apt-get install -y -t stretch-backports \
       clang-6.0 \
       libclang-6.0-dev \
       g++ \
-      clang-7 \
+      clang-8 \
       libclang-7-dev
 
 # Install remaining packages from Debian buster to get newer versions
