@@ -5135,11 +5135,15 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(instr->coord_components);
    srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(lod_components);
 
+   bool shader_supports_implicit_lod = stage == MESA_SHADER_FRAGMENT ||
+      (stage == MESA_SHADER_COMPUTE &&
+       nir->info.cs.derivative_group != DERIVATIVE_GROUP_NONE);
+
    enum opcode opcode;
    switch (instr->op) {
    case nir_texop_tex:
-      opcode = (stage == MESA_SHADER_FRAGMENT ? SHADER_OPCODE_TEX_LOGICAL :
-                SHADER_OPCODE_TXL_LOGICAL);
+      opcode = shader_supports_implicit_lod ?
+         SHADER_OPCODE_TEX_LOGICAL : SHADER_OPCODE_TXL_LOGICAL;
       break;
    case nir_texop_txb:
       opcode = FS_OPCODE_TXB_LOGICAL;
