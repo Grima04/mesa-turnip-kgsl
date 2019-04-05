@@ -550,6 +550,8 @@ svga_screen_surface_create(struct svga_screen *svgascreen,
          usage |= SVGA_SURFACE_USAGE_SHARED;
       if (key->scanout)
          usage |= SVGA_SURFACE_USAGE_SCANOUT;
+      if (key->coherent)
+         usage |= SVGA_SURFACE_USAGE_COHERENT;
 
       handle = sws->surface_create(sws,
                                    key->flags,

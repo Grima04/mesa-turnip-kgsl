@@ -246,7 +246,7 @@ vmw_ioctl_gb_surface_create(struct vmw_winsys_screen *vws,
       if (usage & SVGA_SURFACE_USAGE_SHARED)
          req->base.drm_surface_flags |= drm_vmw_surface_flag_shareable;
 
-      if (vws->force_coherent)
+      if ((usage & SVGA_SURFACE_USAGE_COHERENT) || vws->force_coherent)
          req->base.drm_surface_flags |= drm_vmw_surface_flag_coherent;
 
       req->base.drm_surface_flags |= drm_vmw_surface_flag_create_buffer;
@@ -1117,6 +1117,7 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
          vws->ioctl.num_cap_3d = SVGA3D_DEVCAP_MAX;
 
       if (have_drm_2_16) {
+         vws->base.have_coherent = TRUE;
          getenv_val = getenv("SVGA_FORCE_COHERENT");
          if (getenv_val && strcmp(getenv_val, "0") != 0)
             vws->force_coherent = TRUE;
