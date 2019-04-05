@@ -1029,6 +1029,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fmax, fmax);
                 ALU_CASE(imin, imin);
                 ALU_CASE(imax, imax);
+                ALU_CASE(umin, umin);
+                ALU_CASE(umax, umax);
                 ALU_CASE(fmov, fmov);
                 ALU_CASE(ffloor, ffloor);
                 ALU_CASE(fround_even, froundeven);
