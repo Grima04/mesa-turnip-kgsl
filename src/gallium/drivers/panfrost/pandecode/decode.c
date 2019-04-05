@@ -218,6 +218,15 @@ static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
+static const struct pandecode_flag_info shader_unknown1_flag_info [] = {
+        FLAG_INFO(NO_ALPHA_TO_COVERAGE),
+        FLAG_INFO(READS_TILEBUFFER),
+        FLAG_INFO(READS_ZS),
+        {}
+};
+#undef FLAG_INFO
+
 extern char *replace_fragment;
 extern char *replace_vertex;
 
@@ -1163,9 +1172,11 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                         pandecode_prop("uniform_count = %" PRId16, s->midgard1.uniform_count);
                         pandecode_prop("work_count = %" PRId16, s->midgard1.work_count);
-                        pandecode_prop("unknown1 = %s0x%" PRIx32,
-                                     s->midgard1.unknown1 & MALI_NO_ALPHA_TO_COVERAGE ? "MALI_NO_ALPHA_TO_COVERAGE | " : "",
-                                     s->midgard1.unknown1 & ~MALI_NO_ALPHA_TO_COVERAGE);
+
+                        pandecode_log(".unknown1 = ");
+                        pandecode_log_decoded_flags(shader_unknown1_flag_info, s->midgard1.unknown1);
+                        pandecode_log_cont(",\n");
+
                         pandecode_prop("unknown2 = 0x%" PRIx32, s->midgard1.unknown2);
 
                         pandecode_indent--;
