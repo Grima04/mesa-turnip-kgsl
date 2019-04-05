@@ -385,6 +385,10 @@ print_branch_op(int op)
                 printf("write.");
                 break;
 
+        case midgard_jmp_writeout_op_tilebuffer_pending:
+                printf("tilebuffer.");
+                break;
+
         case midgard_jmp_writeout_op_discard:
                 printf("discard.");
                 break;
