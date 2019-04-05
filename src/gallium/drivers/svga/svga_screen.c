@@ -351,6 +351,8 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return sws->have_sm4_1 ? 1 : 0; /* only single-channel textures */
    case PIPE_CAP_MAX_VARYINGS:
       return sws->have_vgpu10 ? VGPU10_MAX_FS_INPUTS : 10;
+   case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
+      return sws->have_coherent;
 
    /* Unsupported features */
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
@@ -366,7 +368,6 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS:
    case PIPE_CAP_TGSI_VS_LAYER_VIEWPORT:
    case PIPE_CAP_TEXTURE_GATHER_SM5:
-   case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
    case PIPE_CAP_TEXTURE_GATHER_OFFSETS:
    case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
    case PIPE_CAP_DRAW_INDIRECT:

@@ -1354,6 +1354,9 @@ svga_texture_transfer_map_upload_create(struct svga_context *svga)
 {
    svga->tex_upload = u_upload_create(&svga->pipe, TEX_UPLOAD_DEFAULT_SIZE,
                                       PIPE_BIND_CUSTOM, PIPE_USAGE_STAGING, 0);
+   if (svga->tex_upload)
+      u_upload_disable_persistent(svga->tex_upload);
+
    return svga->tex_upload != NULL;
 }
 
