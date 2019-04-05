@@ -2009,6 +2009,9 @@ iris_set_shader_images(struct pipe_context *ctx,
                                       &image_params[start_slot + i],
                                       &res->surf, &view);
          } else {
+            util_range_add(&res->valid_buffer_range, img->u.buf.offset,
+                           img->u.buf.offset + img->u.buf.size);
+
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
                                       isl_fmt, ISL_SWIZZLE_IDENTITY,
                                       img->u.buf.offset, img->u.buf.size);
@@ -2626,6 +2629,9 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          upload_ubo_ssbo_surf_state(ice, ssbo, surf_state, true);
 
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
+
+         util_range_add(&res->valid_buffer_range, ssbo->buffer_offset,
+                        ssbo->buffer_offset + ssbo->buffer_size);
       } else {
          pipe_resource_reference(&shs->ssbo[start_slot + i].buffer, NULL);
          pipe_resource_reference(&shs->ssbo_surf_state[start_slot + i].res,
@@ -2865,6 +2871,9 @@ iris_create_stream_output_target(struct pipe_context *ctx,
    cso->base.buffer_offset = buffer_offset;
    cso->base.buffer_size = buffer_size;
    cso->base.context = ctx;
+
+   util_range_add(&res->valid_buffer_range, buffer_offset,
+                  buffer_offset + buffer_size);
 
    upload_state(ctx->stream_uploader, &cso->offset, sizeof(uint32_t), 4);
 

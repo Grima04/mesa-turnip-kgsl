@@ -25,6 +25,7 @@
 
 #include "pipe/p_state.h"
 #include "util/u_inlines.h"
+#include "util/u_range.h"
 #include "intel/isl/isl.h"
 
 struct iris_batch;
@@ -72,6 +73,16 @@ struct iris_resource {
     * in the past.  Only meaningful for PIPE_BUFFER; used for flushing.
     */
    unsigned bind_history;
+
+   /**
+    * For PIPE_BUFFER resources, a range which may contain valid data.
+    *
+    * This is a conservative estimate of what part of the buffer contains
+    * valid data that we have to preserve.  The rest of the buffer is
+    * considered invalid, and we can promote writes to that region to
+    * be unsynchronized writes, avoiding blit copies.
+    */
+   struct util_range valid_buffer_range;
 
    /**
     * Auxiliary buffer information (CCS, MCS, or HiZ).

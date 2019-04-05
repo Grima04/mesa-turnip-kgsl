@@ -303,6 +303,9 @@ clear_color(struct iris_context *ice,
          blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
    }
 
+   if (p_res->target == PIPE_BUFFER)
+      util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
+
    iris_batch_maybe_flush(batch, 1500);
 
    bool can_fast_clear = can_fast_clear_color(ice, p_res, level, box,

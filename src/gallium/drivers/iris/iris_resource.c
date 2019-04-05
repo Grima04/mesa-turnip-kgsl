@@ -257,6 +257,9 @@ iris_resource_destroy(struct pipe_screen *screen,
 {
    struct iris_resource *res = (struct iris_resource *)resource;
 
+   if (resource->target == PIPE_BUFFER)
+      util_range_destroy(&res->valid_buffer_range);
+
    iris_resource_disable_aux(res);
 
    iris_bo_unreference(res->bo);
@@ -277,6 +280,9 @@ iris_alloc_resource(struct pipe_screen *pscreen,
 
    res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
+
+   if (templ->target == PIPE_BUFFER)
+      util_range_init(&res->valid_buffer_range);
 
    return res;
 }
@@ -735,6 +741,8 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
       return NULL;
    }
 
+   util_range_add(&res->valid_buffer_range, 0, templ->width0);
+
    return &res->base;
 }
 
@@ -901,6 +909,16 @@ iris_invalidate_resource(struct pipe_context *ctx,
    if (resource->target != PIPE_BUFFER)
       return;
 
+   if (!resource_is_busy(ice, res)) {
+      /* The resource is idle, so just mark that it contains no data and
+       * keep using the same underlying buffer object.
+       */
+      util_range_set_empty(&res->valid_buffer_range);
+      return;
+   }
+
+   /* Otherwise, try and replace the backing storage with a new BO. */
+
    /* We can't reallocate memory we didn't allocate in the first place. */
    if (res->bo->userptr)
       return;
@@ -916,8 +934,16 @@ iris_invalidate_resource(struct pipe_context *ctx,
    if (!new_bo)
       return;
 
+   /* Swap out the backing storage */
    res->bo = new_bo;
+
+   /* Rebind the buffer, replacing any state referring to the old BO's
+    * address, and marking state dirty so it's reemitted.
+    */
    ice->vtbl.rebind_buffer(ice, res, old_bo->gtt_offset);
+
+   util_range_set_empty(&res->valid_buffer_range);
+
    iris_bo_unreference(old_bo);
 }
 
@@ -1312,6 +1338,21 @@ iris_map_direct(struct iris_transfer *map)
    }
 }
 
+static bool
+can_promote_to_async(const struct iris_resource *res,
+                     const struct pipe_box *box,
+                     enum pipe_transfer_usage usage)
+{
+   /* If we're writing to a section of the buffer that hasn't even been
+    * initialized with useful data, then we can safely promote this write
+    * to be unsynchronized.  This helps the common pattern of appending data.
+    */
+   return res->base.target == PIPE_BUFFER && (usage & PIPE_TRANSFER_WRITE) &&
+          !(usage & TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED) &&
+          !util_ranges_intersect(&res->valid_buffer_range, box->x,
+                                 box->x + box->width);
+}
+
 static void *
 iris_transfer_map(struct pipe_context *ctx,
                   struct pipe_resource *resource,
@@ -1342,6 +1383,11 @@ iris_transfer_map(struct pipe_context *ctx,
                                usage & PIPE_TRANSFER_WRITE);
    }
 
+   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+       can_promote_to_async(res, box, usage)) {
+      usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+   }
+
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
       map_would_stall = resource_is_busy(ice, res);
 
@@ -1368,6 +1414,9 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->usage = usage;
    xfer->box = *box;
    *ptransfer = xfer;
+
+   if (usage & PIPE_TRANSFER_WRITE)
+      util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
     * there is to access them simultaneously on the CPU & GPU.  This also
