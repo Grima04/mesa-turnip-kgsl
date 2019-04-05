@@ -531,6 +531,27 @@ virgl_get_compute_param(struct pipe_screen *screen,
 }
 
 static boolean
+has_format_bit(struct virgl_supported_format_mask *mask,
+               enum virgl_formats fmt)
+{
+   assert(fmt < VIRGL_FORMAT_MAX);
+   unsigned val = (unsigned)fmt;
+   unsigned idx = val / 32;
+   unsigned bit = val % 32;
+   assert(idx < ARRAY_SIZE(mask->bitmask));
+   return (mask->bitmask[val / 32] & (1u << bit)) != 0;
+}
+
+boolean
+virgl_has_readback_format(struct pipe_screen *screen,
+                          enum virgl_formats fmt)
+{
+   struct virgl_screen *vscreen = virgl_screen(screen);
+   return has_format_bit(&vscreen->caps.caps.v2.supported_readback_formats,
+                         fmt);
+}
+
+static boolean
 virgl_is_vertex_format_supported(struct pipe_screen *screen,
                                  enum pipe_format format)
 {
@@ -779,6 +800,24 @@ virgl_destroy_screen(struct pipe_screen *screen)
    FREE(vscreen);
 }
 
+static void
+fixup_readback_format(union virgl_caps *caps)
+{
+   const size_t size = ARRAY_SIZE(caps->v2.supported_readback_formats.bitmask);
+   for (int i = 0; i < size; ++i) {
+      if (caps->v2.supported_readback_formats.bitmask[i] != 0)
+         return; /* we got some formats, we definately have a new protocol */
+   }
+
+   /* old protocol used; fall back to considering all sampleable formats valid
+    * readback-formats
+    */
+   for (int i = 0; i < size; ++i) {
+      caps->v2.supported_readback_formats.bitmask[i] =
+         caps->v1.sampler.bitmask[i];
+   }
+}
+
 struct pipe_screen *
 virgl_create_screen(struct virgl_winsys *vws)
 {
@@ -809,6 +848,7 @@ virgl_create_screen(struct virgl_winsys *vws)
    virgl_init_screen_resource_functions(&screen->base);
 
    vws->get_caps(vws, &screen->caps);
+   fixup_readback_format(&screen->caps.caps);
 
    screen->refcnt = 1;
 
