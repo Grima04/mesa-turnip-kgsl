@@ -5132,7 +5132,12 @@ ast_declarator_list::hir(exec_list *instructions,
           && !state->has_explicit_attrib_location()
           && !state->has_separate_shader_objects()
           && !state->ARB_fragment_coord_conventions_enable) {
-         if (this->type->qualifier.flags.q.out) {
+         /* GL_EXT_gpu_shader4 only allows "varying out" on fragment shader
+          * outputs. (the varying flag is not set by the parser)
+          */
+         if (this->type->qualifier.flags.q.out &&
+             (!state->EXT_gpu_shader4_enable ||
+              state->stage != MESA_SHADER_FRAGMENT)) {
             _mesa_glsl_error(& loc, state,
                              "`out' qualifier in declaration of `%s' "
                              "only valid for function parameters in %s",

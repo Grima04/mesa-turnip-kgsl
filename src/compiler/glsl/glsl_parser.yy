@@ -2086,8 +2086,13 @@ type_qualifier:
       /* Section 4.3 of the GLSL 1.20 specification states:
        * "Variable declarations may have a storage qualifier specified..."
        *  1.30 clarifies this to "may have one storage qualifier".
+       *
+       * GL_EXT_gpu_shader4 allows "varying out" in fragment shaders.
        */
-      if ($2.has_storage())
+      if ($2.has_storage() &&
+          (!state->EXT_gpu_shader4_enable ||
+           state->stage != MESA_SHADER_FRAGMENT ||
+           !$1.flags.q.varying || !$2.flags.q.out))
          _mesa_glsl_error(&@1, state, "duplicate storage qualifier");
 
       if (!state->has_420pack_or_es31() &&
