@@ -21,6 +21,8 @@
 # TODO: android?
 
 files_libintel_dev = files(
+  'gen_debug.c',
+  'gen_debug.h',
   'gen_device_info.c',
   'gen_device_info.h',
 )

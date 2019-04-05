@@ -23,7 +23,7 @@
 
 #include "brw_nir.h"
 #include "brw_shader.h"
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/u_math.h"

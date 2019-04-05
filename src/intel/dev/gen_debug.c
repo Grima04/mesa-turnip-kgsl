@@ -31,7 +31,7 @@
 
 #include <stdlib.h>
 
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "util/macros.h"
 #include "util/debug.h"
 #include "c11/threads.h"

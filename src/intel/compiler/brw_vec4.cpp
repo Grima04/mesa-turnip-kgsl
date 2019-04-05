@@ -29,7 +29,7 @@
 #include "brw_vec4_live_variables.h"
 #include "brw_vec4_vs.h"
 #include "brw_dead_control_flow.h"
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "program/prog_parameter.h"
 #include "util/u_math.h"
 

@@ -83,7 +83,7 @@ struct gen_l3_config;
 #include "anv_extensions.h"
 #include "isl/isl.h"
 
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "common/intel_log.h"
 #include "wsi_common.h"
 

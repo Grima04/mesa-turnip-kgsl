@@ -23,8 +23,6 @@
 files_libintel_common = files(
   'gen_clflush.h',
   'gen_batch_decoder.c',
-  'gen_debug.c',
-  'gen_debug.h',
   'gen_decoder.c',
   'gen_decoder.h',
   'gen_disasm.c',

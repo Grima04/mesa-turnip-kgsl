@@ -24,7 +24,7 @@
 #include "brw_compiler.h"
 #include "brw_shader.h"
 #include "brw_eu.h"
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "compiler/nir/nir.h"
 #include "main/errors.h"
 #include "util/debug.h"

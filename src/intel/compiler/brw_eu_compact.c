@@ -75,7 +75,7 @@
 #include "brw_eu.h"
 #include "brw_shader.h"
 #include "brw_disasm_info.h"
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 
 static const uint32_t g45_control_index_table[32] = {
    0b00000000000000000,

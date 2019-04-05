@@ -53,7 +53,7 @@
 #define ETIME ETIMEDOUT
 #endif
 #include "common/gen_clflush.h"
-#include "common/gen_debug.h"
+#include "dev/gen_debug.h"
 #include "common/gen_gem.h"
 #include "dev/gen_device_info.h"
 #include "libdrm_macros.h"

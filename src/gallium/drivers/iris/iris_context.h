@@ -27,7 +27,7 @@
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
 #include "intel/blorp/blorp.h"
-#include "intel/common/gen_debug.h"
+#include "intel/dev/gen_debug.h"
 #include "intel/compiler/brw_compiler.h"
 #include "iris_batch.h"
 #include "iris_binder.h"
