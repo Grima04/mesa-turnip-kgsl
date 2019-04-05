@@ -755,6 +755,16 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
+#ifdef DEBUG
+   /*
+    * TODO: We need to implement this
+    */
+   if (info->timeout != 0 && info->timeout != UINT64_MAX)
+   {
+      fprintf(stderr, "timeout not supported; ignoring");
+   }
+#endif
+
    int ret = wl_display_dispatch_queue_pending(chain->display->wl_display,
                                                chain->display->queue);
    /* XXX: I'm not sure if out-of-date is the right error here.  If
