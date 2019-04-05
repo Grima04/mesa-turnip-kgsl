@@ -27,10 +27,6 @@ apt-get install -y -t stretch-backports \
       llvm-5.0-dev \
       llvm-6.0-dev \
       llvm-7-dev \
-      clang-5.0 \
-      libclang-5.0-dev \
-      clang-6.0 \
-      libclang-6.0-dev \
       g++ \
       clang-8 \
       libclang-7-dev
