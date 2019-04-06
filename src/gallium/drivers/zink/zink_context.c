@@ -134,6 +134,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
    sci.mipLodBias = state->lod_bias;
    sci.compareOp = VK_COMPARE_OP_NEVER; // TODO
    sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO
+   sci.unnormalizedCoordinates = !state->normalized_coords;
 
    if (state->max_anisotropy > 1) {
       sci.maxAnisotropy = state->max_anisotropy;

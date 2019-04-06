@@ -146,6 +146,7 @@ zink_resource_create(struct pipe_screen *pscreen,
       case PIPE_TEXTURE_2D_ARRAY:
       case PIPE_TEXTURE_CUBE:
       case PIPE_TEXTURE_CUBE_ARRAY:
+      case PIPE_TEXTURE_RECT:
          ici.imageType = VK_IMAGE_TYPE_2D;
          /* cube and 2D array needs some quirks here */
          if (templ->target == PIPE_TEXTURE_CUBE)
@@ -160,9 +161,6 @@ zink_resource_create(struct pipe_screen *pscreen,
       case PIPE_TEXTURE_3D:
          ici.imageType = VK_IMAGE_TYPE_3D;
          break;
-
-      case PIPE_TEXTURE_RECT:
-         unreachable("texture rects not supported");
 
       case PIPE_BUFFER:
          unreachable("PIPE_BUFFER should already be handled");
