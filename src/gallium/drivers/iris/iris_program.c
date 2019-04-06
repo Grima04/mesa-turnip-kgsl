@@ -310,7 +310,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                     unsigned *out_num_system_values,
                     unsigned *out_num_cbufs)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   UNUSED const struct gen_device_info *devinfo = compiler->devinfo;
 
    /* The intel compiler assumes that num_uniforms is in bytes. For
     * scalar that means 4 bytes per uniform slot.
@@ -1336,11 +1336,10 @@ void
 iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
                                uint32_t *dst)
 {
-   struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
    assert(cs_prog_data->push.total.size > 0);
    assert(cs_prog_data->push.cross_thread.size == 0);
    assert(cs_prog_data->push.per_thread.dwords == 1);
-   assert(prog_data->param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
+   assert(cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
    for (unsigned t = 0; t < cs_prog_data->threads; t++)
       dst[8 * t] = t;
 }
