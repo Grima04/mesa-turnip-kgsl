@@ -1263,6 +1263,8 @@ struct anv_queue {
    VkDeviceQueueCreateFlags                  flags;
    struct anv_queue_family *                 family;
 
+   uint32_t                                  exec_flags;
+
    /* Set once from the device api calls. */
    bool                                      lost_signaled;
 
@@ -1591,6 +1593,7 @@ VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
                          int64_t timeout);
 
 VkResult anv_queue_init(struct anv_device *device, struct anv_queue *queue,
+                        uint32_t exec_flags,
                         const VkDeviceQueueCreateInfo *pCreateInfo);
 void anv_queue_finish(struct anv_queue *queue);
 

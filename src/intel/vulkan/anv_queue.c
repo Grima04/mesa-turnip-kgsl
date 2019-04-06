@@ -486,6 +486,7 @@ _anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit,
 
 VkResult
 anv_queue_init(struct anv_device *device, struct anv_queue *queue,
+               uint32_t exec_flags,
                const VkDeviceQueueCreateInfo *pCreateInfo)
 {
    struct anv_physical_device *pdevice = device->physical;
@@ -497,6 +498,7 @@ anv_queue_init(struct anv_device *device, struct anv_queue *queue,
    assert(pCreateInfo->queueFamilyIndex < pdevice->queue.family_count);
    queue->family = &pdevice->queue.families[pCreateInfo->queueFamilyIndex];
 
+   queue->exec_flags = exec_flags;
    queue->lost = false;
    queue->quit = false;
 

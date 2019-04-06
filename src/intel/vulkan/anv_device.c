@@ -2869,7 +2869,7 @@ VkResult anv_CreateDevice(
 
    device->has_thread_submit = physical_device->has_thread_submit;
 
-   result = anv_queue_init(device, &device->queue,
+   result = anv_queue_init(device, &device->queue, I915_EXEC_RENDER,
                            &pCreateInfo->pQueueCreateInfos[0]);
    if (result != VK_SUCCESS)
       goto fail_context_id;

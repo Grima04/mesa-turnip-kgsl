@@ -1456,6 +1456,7 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
 
 static VkResult
 setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
+                             struct anv_queue *queue,
                              struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_batch *batch = &cmd_buffer->batch;
@@ -1607,7 +1608,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       .num_cliprects = 0,
       .DR1 = 0,
       .DR4 = 0,
-      .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_RENDER,
+      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags,
       .rsvd1 = cmd_buffer->device->context_id,
       .rsvd2 = 0,
    };
@@ -1656,8 +1657,9 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 }
 
 static VkResult
-setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
+setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue)
 {
+   struct anv_device *device = queue->device;
    VkResult result = anv_execbuf_add_bo(device, execbuf,
                                         device->trivial_batch_bo,
                                         NULL, 0);
@@ -1669,7 +1671,7 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
       .buffer_count = execbuf->bo_count,
       .batch_start_offset = 0,
       .batch_len = 8, /* GEN7_MI_BATCH_BUFFER_END and NOOP */
-      .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_RENDER | I915_EXEC_NO_RELOC,
+      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
       .rsvd1 = device->context_id,
       .rsvd2 = 0,
    };
@@ -1731,7 +1733,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    }
 
    if (submit->cmd_buffer) {
-      result = setup_execbuf_for_cmd_buffer(&execbuf, submit->cmd_buffer);
+      result = setup_execbuf_for_cmd_buffer(&execbuf, queue, submit->cmd_buffer);
    } else if (submit->simple_bo) {
       result = anv_execbuf_add_bo(device, &execbuf, submit->simple_bo, NULL, 0);
       if (result != VK_SUCCESS)
@@ -1742,12 +1744,12 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          .buffer_count = execbuf.bo_count,
          .batch_start_offset = 0,
          .batch_len = submit->simple_bo_size,
-         .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_RENDER | I915_EXEC_NO_RELOC,
+         .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
          .rsvd1 = device->context_id,
          .rsvd2 = 0,
       };
    } else {
-      result = setup_empty_execbuf(&execbuf, queue->device);
+      result = setup_empty_execbuf(&execbuf, queue);
    }
 
    if (result != VK_SUCCESS)
@@ -1848,7 +1850,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          .buffer_count = 1,
          .batch_start_offset = khr_perf_query_preamble_offset(query_pool,
                                                               submit->perf_query_pass),
-         .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_RENDER,
+         .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags,
          .rsvd1 = device->context_id,
       };
 
