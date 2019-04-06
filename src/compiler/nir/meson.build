@@ -171,7 +171,6 @@ files_libnir = files(
   'nir_opt_dead_write_vars.c',
   'nir_opt_find_array_copies.c',
   'nir_opt_gcm.c',
-  'nir_opt_global_to_local.c',
   'nir_opt_idiv_const.c',
   'nir_opt_if.c',
   'nir_opt_intrinsics.c',

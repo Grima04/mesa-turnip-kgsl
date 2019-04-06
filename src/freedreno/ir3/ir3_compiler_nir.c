@@ -2608,11 +2608,6 @@ emit_instructions(struct ir3_context *ctx)
 		ctx->so->num_samp += glsl_type_get_image_count(var->type);
 	}
 
-	/* Setup registers (which should only be arrays): */
-	nir_foreach_register(reg, &ctx->s->registers) {
-		ir3_declare_array(ctx, reg);
-	}
-
 	/* NOTE: need to do something more clever when we support >1 fxn */
 	nir_foreach_register(reg, &fxn->registers) {
 		ir3_declare_array(ctx, reg);

@@ -285,7 +285,6 @@ nir_lower_regs_to_ssa_impl(nir_function_impl *impl)
 bool
 nir_lower_regs_to_ssa(nir_shader *shader)
 {
-   assert(exec_list_is_empty(&shader->registers));
    bool progress = false;
 
    nir_foreach_function(function, shader) {

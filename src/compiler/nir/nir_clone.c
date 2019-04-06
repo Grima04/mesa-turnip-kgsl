@@ -115,7 +115,7 @@ remap_global(clone_state *state, const void *ptr)
 static nir_register *
 remap_reg(clone_state *state, const nir_register *reg)
 {
-   return _lookup_ptr(state, reg, reg->is_global);
+   return _lookup_ptr(state, reg, false);
 }
 
 static nir_variable *
@@ -206,7 +206,6 @@ clone_register(clone_state *state, const nir_register *reg)
    nreg->num_array_elems = reg->num_array_elems;
    nreg->index = reg->index;
    nreg->name = ralloc_strdup(nreg, reg->name);
-   nreg->is_global = reg->is_global;
 
    /* reconstructing uses/defs/if_uses handled by nir_instr_insert() */
    list_inithead(&nreg->uses);
@@ -726,9 +725,6 @@ nir_shader_clone(void *mem_ctx, const nir_shader *s)
       nfxn->impl = clone_function_impl(&state, fxn->impl);
       nfxn->impl->function = nfxn;
    }
-
-   clone_reg_list(&state, &ns->registers, &s->registers);
-   ns->reg_alloc = s->reg_alloc;
 
    ns->info = s->info;
    ns->info.name = ralloc_strdup(ns, ns->info.name);

@@ -2217,7 +2217,6 @@ nir_to_qir(struct vc4_compile *c)
         ntq_setup_inputs(c);
         ntq_setup_outputs(c);
         ntq_setup_uniforms(c);
-        ntq_setup_registers(c, &c->s->registers);
 
         /* Find the main function and emit the body. */
         nir_foreach_function(function, c->s) {
@@ -2508,7 +2507,6 @@ vc4_shader_state_create(struct pipe_context *pctx,
                    type_size,
                    (nir_lower_io_options)0);
 
-        NIR_PASS_V(s, nir_opt_global_to_local);
         NIR_PASS_V(s, nir_lower_regs_to_ssa);
         NIR_PASS_V(s, nir_normalize_cubemap_coords);
 

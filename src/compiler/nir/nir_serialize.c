@@ -236,7 +236,6 @@ write_register(write_ctx *ctx, const nir_register *reg)
    blob_write_uint32(ctx->blob, !!(reg->name));
    if (reg->name)
       blob_write_string(ctx->blob, reg->name);
-   blob_write_uint32(ctx->blob, reg->is_global << 1);
 }
 
 static nir_register *
@@ -255,8 +254,6 @@ read_register(read_ctx *ctx)
    } else {
       reg->name = NULL;
    }
-   unsigned flags = blob_read_uint32(ctx->blob);
-   reg->is_global = flags & 0x2;
 
    list_inithead(&reg->uses);
    list_inithead(&reg->defs);
@@ -1121,8 +1118,6 @@ nir_serialize(struct blob *blob, const nir_shader *nir)
    write_var_list(&ctx, &nir->globals);
    write_var_list(&ctx, &nir->system_values);
 
-   write_reg_list(&ctx, &nir->registers);
-   blob_write_uint32(blob, nir->reg_alloc);
    blob_write_uint32(blob, nir->num_inputs);
    blob_write_uint32(blob, nir->num_uniforms);
    blob_write_uint32(blob, nir->num_outputs);
@@ -1180,8 +1175,6 @@ nir_deserialize(void *mem_ctx,
    read_var_list(&ctx, &ctx.nir->globals);
    read_var_list(&ctx, &ctx.nir->system_values);
 
-   read_reg_list(&ctx, &ctx.nir->registers);
-   ctx.nir->reg_alloc = blob_read_uint32(blob);
    ctx.nir->num_inputs = blob_read_uint32(blob);
    ctx.nir->num_uniforms = blob_read_uint32(blob);
    ctx.nir->num_outputs = blob_read_uint32(blob);

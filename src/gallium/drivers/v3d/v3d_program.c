@@ -285,7 +285,6 @@ v3d_shader_state_create(struct pipe_context *pctx,
                    type_size,
                    (nir_lower_io_options)0);
 
-        NIR_PASS_V(s, nir_opt_global_to_local);
         NIR_PASS_V(s, nir_lower_regs_to_ssa);
         NIR_PASS_V(s, nir_normalize_cubemap_coords);
 

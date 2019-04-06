@@ -81,10 +81,7 @@ print_register(nir_register *reg, print_state *state)
    FILE *fp = state->fp;
    if (reg->name != NULL)
       fprintf(fp, "/* %s */ ", reg->name);
-   if (reg->is_global)
-      fprintf(fp, "gr%u", reg->index);
-   else
-      fprintf(fp, "r%u", reg->index);
+   fprintf(fp, "r%u", reg->index);
 }
 
 static const char *sizes[] = { "error", "vec1", "vec2", "vec3", "vec4",
@@ -1402,10 +1399,6 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
 
    nir_foreach_variable(var, &shader->system_values) {
       print_var_decl(var, &state);
-   }
-
-   foreach_list_typed(nir_register, reg, node, &shader->registers) {
-      print_register_decl(reg, &state);
    }
 
    foreach_list_typed(nir_function, func, node, &shader->functions) {

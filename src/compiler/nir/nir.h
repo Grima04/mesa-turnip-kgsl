@@ -453,9 +453,6 @@ typedef struct nir_register {
    /** only for debug purposes, can be NULL */
    const char *name;
 
-   /** whether this register is local (per-function) or global (per-shader) */
-   bool is_global;
-
    /** set of nir_srcs where this register is used (read from) */
    struct list_head uses;
 
@@ -2352,12 +2349,6 @@ typedef struct nir_shader {
 
    struct exec_list functions; /** < list of nir_function */
 
-   /** list of global register in the shader */
-   struct exec_list registers;
-
-   /** next available global register index */
-   unsigned reg_alloc;
-
    /**
     * the highest index a load_input_*, load_uniform_*, etc. intrinsic can
     * access plus one
@@ -2403,9 +2394,6 @@ nir_shader *nir_shader_create(void *mem_ctx,
                               gl_shader_stage stage,
                               const nir_shader_compiler_options *options,
                               shader_info *si);
-
-/** creates a register, including assigning it an index and adding it to the list */
-nir_register *nir_global_reg_create(nir_shader *shader);
 
 nir_register *nir_local_reg_create(nir_function_impl *impl);
 
@@ -2841,7 +2829,6 @@ nir_if *nir_block_get_following_if(nir_block *block);
 nir_loop *nir_block_get_following_loop(nir_block *block);
 
 void nir_index_local_regs(nir_function_impl *impl);
-void nir_index_global_regs(nir_shader *shader);
 void nir_index_ssa_defs(nir_function_impl *impl);
 unsigned nir_index_instrs(nir_function_impl *impl);
 
@@ -3399,8 +3386,6 @@ bool nir_opt_algebraic_late(nir_shader *shader);
 bool nir_opt_constant_folding(nir_shader *shader);
 
 bool nir_opt_combine_stores(nir_shader *shader, nir_variable_mode modes);
-
-bool nir_opt_global_to_local(nir_shader *shader);
 
 bool nir_copy_prop(nir_shader *shader);
 
