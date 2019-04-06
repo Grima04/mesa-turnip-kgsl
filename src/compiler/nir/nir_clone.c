@@ -207,7 +207,6 @@ clone_register(clone_state *state, const nir_register *reg)
    nreg->index = reg->index;
    nreg->name = ralloc_strdup(nreg, reg->name);
    nreg->is_global = reg->is_global;
-   nreg->is_packed = reg->is_packed;
 
    /* reconstructing uses/defs/if_uses handled by nir_instr_insert() */
    list_inithead(&nreg->uses);

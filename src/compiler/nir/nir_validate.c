@@ -156,12 +156,10 @@ validate_reg_src(nir_src *src, validate_state *state,
              "using a register declared in a different function");
    }
 
-   if (!src->reg.reg->is_packed) {
-      if (bit_sizes)
-         validate_assert(state, src->reg.reg->bit_size & bit_sizes);
-      if (num_components)
-         validate_assert(state, src->reg.reg->num_components == num_components);
-   }
+   if (bit_sizes)
+      validate_assert(state, src->reg.reg->bit_size & bit_sizes);
+   if (num_components)
+      validate_assert(state, src->reg.reg->num_components == num_components);
 
    validate_assert(state, (src->reg.reg->num_array_elems == 0 ||
           src->reg.base_offset < src->reg.reg->num_array_elems) &&
@@ -230,8 +228,6 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
    nir_alu_src *src = &instr->src[index];
 
    unsigned num_components = nir_src_num_components(src->src);
-   if (!src->src.is_ssa && src->src.reg.reg->is_packed)
-      num_components = NIR_MAX_VEC_COMPONENTS; /* can't check anything */
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
       validate_assert(state, src->swizzle[i] < NIR_MAX_VEC_COMPONENTS);
 
@@ -263,12 +259,10 @@ validate_reg_dest(nir_reg_dest *dest, validate_state *state,
              "writing to a register declared in a different function");
    }
 
-   if (!dest->reg->is_packed) {
-      if (bit_sizes)
-         validate_assert(state, dest->reg->bit_size & bit_sizes);
-      if (num_components)
-         validate_assert(state, dest->reg->num_components == num_components);
-   }
+   if (bit_sizes)
+      validate_assert(state, dest->reg->bit_size & bit_sizes);
+   if (num_components)
+      validate_assert(state, dest->reg->num_components == num_components);
 
    validate_assert(state, (dest->reg->num_array_elems == 0 ||
           dest->base_offset < dest->reg->num_array_elems) &&
@@ -327,12 +321,11 @@ validate_alu_dest(nir_alu_instr *instr, validate_state *state)
    nir_alu_dest *dest = &instr->dest;
 
    unsigned dest_size = nir_dest_num_components(dest->dest);
-   bool is_packed = !dest->dest.is_ssa && dest->dest.reg.reg->is_packed;
    /*
     * validate that the instruction doesn't write to components not in the
     * register/SSA value
     */
-   validate_assert(state, is_packed || !(dest->write_mask & ~((1 << dest_size) - 1)));
+   validate_assert(state, !(dest->write_mask & ~((1 << dest_size) - 1)));
 
    /* validate that saturate is only ever used on instructions with
     * destinations of type float

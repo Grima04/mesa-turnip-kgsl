@@ -230,7 +230,7 @@ nir_lower_regs_to_ssa_impl(nir_function_impl *impl)
    NIR_VLA(BITSET_WORD, defs, block_set_words);
 
    nir_foreach_register(reg, &impl->registers) {
-      if (reg->num_array_elems != 0 || reg->is_packed) {
+      if (reg->num_array_elems != 0) {
          /* This pass only really works on "plain" registers.  If it's a
           * packed or array register, just set the value to NULL so that the
           * rewrite portion of the pass will know to ignore it.

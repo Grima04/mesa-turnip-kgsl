@@ -97,8 +97,6 @@ print_register_decl(nir_register *reg, print_state *state)
 {
    FILE *fp = state->fp;
    fprintf(fp, "decl_reg %s %u ", sizes[reg->num_components], reg->bit_size);
-   if (reg->is_packed)
-      fprintf(fp, "(packed) ");
    print_register(reg, state);
    if (reg->num_array_elems != 0)
       fprintf(fp, "[%u]", reg->num_array_elems);

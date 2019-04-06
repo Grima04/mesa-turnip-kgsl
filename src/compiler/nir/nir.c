@@ -83,7 +83,6 @@ reg_create(void *mem_ctx, struct exec_list *list)
    reg->num_components = 0;
    reg->bit_size = 32;
    reg->num_array_elems = 0;
-   reg->is_packed = false;
    reg->name = NULL;
 
    exec_list_push_tail(list, &reg->node);

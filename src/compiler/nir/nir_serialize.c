@@ -236,7 +236,7 @@ write_register(write_ctx *ctx, const nir_register *reg)
    blob_write_uint32(ctx->blob, !!(reg->name));
    if (reg->name)
       blob_write_string(ctx->blob, reg->name);
-   blob_write_uint32(ctx->blob, reg->is_global << 1 | reg->is_packed);
+   blob_write_uint32(ctx->blob, reg->is_global << 1);
 }
 
 static nir_register *
@@ -257,7 +257,6 @@ read_register(read_ctx *ctx)
    }
    unsigned flags = blob_read_uint32(ctx->blob);
    reg->is_global = flags & 0x2;
-   reg->is_packed = flags & 0x1;
 
    list_inithead(&reg->uses);
    list_inithead(&reg->defs);

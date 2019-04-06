@@ -456,17 +456,6 @@ typedef struct nir_register {
    /** whether this register is local (per-function) or global (per-shader) */
    bool is_global;
 
-   /**
-    * If this flag is set to true, then accessing channels >= num_components
-    * is well-defined, and simply spills over to the next array element. This
-    * is useful for backends that can do per-component accessing, in
-    * particular scalar backends. By setting this flag and making
-    * num_components equal to 1, structures can be packed tightly into
-    * registers and then registers can be accessed per-component to get to
-    * each structure member, even if it crosses vec4 boundaries.
-    */
-   bool is_packed;
-
    /** set of nir_srcs where this register is used (read from) */
    struct list_head uses;
 
