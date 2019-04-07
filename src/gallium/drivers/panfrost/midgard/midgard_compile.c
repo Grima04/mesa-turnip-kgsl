@@ -3052,100 +3052,6 @@ actualise_ssa_to_alias(compiler_context *ctx)
         emit_leftover_move(ctx);
 }
 
-/* Vertex shaders do not write gl_Position as is; instead, they write a
- * transformed screen space position as a varying. See section 12.5 "Coordinate
- * Transformation" of the ES 3.2 full specification for details.
- *
- * This transformation occurs early on, as NIR and prior to optimisation, in
- * order to take advantage of NIR optimisation passes of the transform itself.
- * */
-
-static void
-write_transformed_position(nir_builder *b, nir_src input_point_src)
-{
-        nir_ssa_def *input_point = nir_ssa_for_src(b, input_point_src, 4);
-        nir_ssa_def *scale = nir_load_viewport_scale(b);
-        nir_ssa_def *offset = nir_load_viewport_offset(b);
-
-        /* World space to normalised device coordinates to screen space */
-
-        nir_ssa_def *w_recip = nir_frcp(b, nir_channel(b, input_point, 3));
-        nir_ssa_def *ndc_point = nir_fmul(b, nir_channels(b, input_point, 0x7), w_recip);
-        nir_ssa_def *screen = nir_fadd(b, nir_fmul(b, ndc_point, scale), offset);
-
-        /* gl_Position will be written out in screenspace xyz, with w set to
-         * the reciprocal we computed earlier. The transformed w component is
-         * then used for perspective-correct varying interpolation. The
-         * transformed w component must preserve its original sign; this is
-         * used in depth clipping computations */
-
-        nir_ssa_def *screen_space = nir_vec4(b,
-                                             nir_channel(b, screen, 0),
-                                             nir_channel(b, screen, 1),
-                                             nir_channel(b, screen, 2),
-                                             w_recip);
-
-        /* Finally, write out the transformed values to the varying */
-
-        nir_intrinsic_instr *store;
-        store = nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_output);
-        store->num_components = 4;
-        nir_intrinsic_set_base(store, 0);
-        nir_intrinsic_set_write_mask(store, 0xf);
-        store->src[0].ssa = screen_space;
-        store->src[0].is_ssa = true;
-        store->src[1] = nir_src_for_ssa(nir_imm_int(b, 0));
-        nir_builder_instr_insert(b, &store->instr);
-}
-
-static void
-transform_position_writes(nir_shader *shader)
-{
-        nir_foreach_function(func, shader) {
-                nir_foreach_block(block, func->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                if (instr->type != nir_instr_type_intrinsic) continue;
-
-                                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-                                nir_variable *out = NULL;
-
-                                switch (intr->intrinsic) {
-                                case nir_intrinsic_store_output:
-                                        /* already had i/o lowered.. lookup the matching output var: */
-                                        nir_foreach_variable(var, &shader->outputs) {
-                                                int drvloc = var->data.driver_location;
-
-                                                if (nir_intrinsic_base(intr) == drvloc) {
-                                                        out = var;
-                                                        break;
-                                                }
-                                        }
-
-                                        break;
-
-                                default:
-                                        break;
-                                }
-
-                                if (!out) continue;
-
-                                if (out->data.mode != nir_var_shader_out)
-                                        continue;
-
-                                if (out->data.location != VARYING_SLOT_POS)
-                                        continue;
-
-                                nir_builder b;
-                                nir_builder_init(&b, func->impl);
-                                b.cursor = nir_before_instr(instr);
-
-                                write_transformed_position(&b, intr->src[0]);
-                                nir_instr_remove(instr);
-                        }
-                }
-        }
-}
-
 static void
 emit_fragment_epilogue(compiler_context *ctx)
 {
@@ -3515,7 +3421,10 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 program->varyings[loc] = var->data.location;
         }
 
-        /* Lower vars -- not I/O -- before epilogue */
+        /* Lower gl_Position pre-optimisation */
+
+        if (ctx->stage == MESA_SHADER_VERTEX)
+                NIR_PASS_V(nir, nir_lower_viewport_transform);
 
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
@@ -3526,12 +3435,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
         NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
-
-        /* Append vertex epilogue before optimisation, so the epilogue itself
-         * is optimised */
-
-        if (ctx->stage == MESA_SHADER_VERTEX)
-                transform_position_writes(nir);
 
         /* Optimisation passes */
 
