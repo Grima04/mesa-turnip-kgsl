@@ -574,6 +574,21 @@ compute_lambda_vert(const struct sp_sampler_view *sview,
 
 
 
+static inline const float *
+get_texel_buffer_no_border(const struct sp_sampler_view *sp_sview,
+                           union tex_tile_address addr, int x, unsigned elmsize)
+{
+   const struct softpipe_tex_cached_tile *tile;
+   addr.bits.x = x * elmsize / TEX_TILE_SIZE;
+   assert(x * elmsize / TEX_TILE_SIZE == addr.bits.x);
+
+   x %= TEX_TILE_SIZE / elmsize;
+
+   tile = sp_get_cached_tile_tex(sp_sview->cache, addr);
+
+   return &tile->data.color[0][x][0];
+}
+
 
 static inline const float *
 get_texel_2d_no_border(const struct sp_sampler_view *sp_sview,
@@ -3264,7 +3279,7 @@ sp_get_texels(const struct sp_sampler_view *sp_sview,
                              first_element,
                              first_element,
                              last_element);
-         tx = get_texel_2d_no_border(sp_sview, addr, x, 0);
+         tx = get_texel_buffer_no_border(sp_sview, addr, x, elem_size);
          for (c = 0; c < 4; c++) {
             rgba[c][j] = tx[c];
          }
