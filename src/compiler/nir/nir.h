@@ -3554,6 +3554,8 @@ uint64_t nir_get_single_slot_attribs_mask(uint64_t attribs, uint64_t dual_slot);
 nir_intrinsic_op nir_intrinsic_from_system_value(gl_system_value val);
 gl_system_value nir_system_value_from_intrinsic(nir_intrinsic_op intrin);
 
+bool nir_lower_sincos(nir_shader *shader);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

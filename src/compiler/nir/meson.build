@@ -150,6 +150,7 @@ files_libnir = files(
   'nir_lower_returns.c',
   'nir_lower_scratch.c',
   'nir_lower_subgroups.c',
+  'nir_lower_sincos.c',
   'nir_lower_system_values.c',
   'nir_lower_tex.c',
   'nir_lower_to_source_mods.c',
