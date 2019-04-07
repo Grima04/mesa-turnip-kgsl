@@ -1221,14 +1221,6 @@ struct mali_viewport {
         u16 viewport1[2];
 } __attribute__((packed));
 
-/* TODO: Varying meta is symmetrical with attr_meta, but there is some
- * weirdness associated. Figure it out. */
-
-struct mali_unknown6 {
-        u64 unknown0;
-        u64 unknown1;
-};
-
 /* From presentations, 16x16 tiles externally. Use shift for fast computation
  * of tile numbers. */
 
