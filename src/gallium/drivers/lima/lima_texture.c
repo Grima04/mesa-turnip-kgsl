@@ -40,9 +40,11 @@
 #include <drm-uapi/lima_drm.h>
 
 #define LIMA_TEXEL_FORMAT_BGR_565      0x0e
+#define LIMA_TEXEL_FORMAT_Z16          0x12
 #define LIMA_TEXEL_FORMAT_RGB_888      0x15
 #define LIMA_TEXEL_FORMAT_RGBA_8888    0x16
 #define LIMA_TEXEL_FORMAT_RGBX_8888    0x17
+#define LIMA_TEXEL_FORMAT_Z24S8        0x2c
 
 #define lima_tex_list_size 64
 
@@ -67,6 +69,13 @@ static uint32_t pipe_format_to_lima(enum pipe_format pformat)
       break;
    case PIPE_FORMAT_B5G6R5_UNORM:
       format = LIMA_TEXEL_FORMAT_BGR_565;
+      break;
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+      format = LIMA_TEXEL_FORMAT_Z24S8;
+      break;
+   case PIPE_FORMAT_Z16_UNORM:
+      format = LIMA_TEXEL_FORMAT_Z16;
       break;
    default:
       assert(0);

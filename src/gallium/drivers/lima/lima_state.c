@@ -47,7 +47,7 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 
    fb->base.samples = framebuffer->samples;
 
-   fb->base.nr_cbufs = 1;
+   fb->base.nr_cbufs = framebuffer->nr_cbufs;
    pipe_surface_reference(&fb->base.cbufs[0], framebuffer->cbufs[0]);
    pipe_surface_reference(&fb->base.zsbuf, framebuffer->zsbuf);
 

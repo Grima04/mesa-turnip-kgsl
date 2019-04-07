@@ -273,3 +273,15 @@ lima_need_flush(struct lima_context *ctx, struct lima_bo *bo, bool write)
    return lima_submit_has_bo(ctx->gp_submit, bo, write) ||
       lima_submit_has_bo(ctx->pp_submit, bo, write);
 }
+
+bool
+lima_is_scanout(struct lima_context *ctx)
+{
+        /* If there is no color buffer, it's an FBO */
+        if (!ctx->framebuffer.base.nr_cbufs)
+                return false;
+
+        return ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_DISPLAY_TARGET ||
+               ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_SCANOUT ||
+               ctx->framebuffer.base.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
+}

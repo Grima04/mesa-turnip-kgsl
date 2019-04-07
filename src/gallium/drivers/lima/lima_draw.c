@@ -116,6 +116,10 @@ struct lima_render_state {
    uint32_t varyings_address;
 };
 
+#define LIMA_PIXEL_FORMAT_B8G8R8A8     0x03
+#define LIMA_PIXEL_FORMAT_Z16          0x0e
+#define LIMA_PIXEL_FORMAT_Z24S8        0x0f
+
 /* plbu commands */
 #define PLBU_CMD_BEGIN(max) { \
    int i = 0, max_n = max; \
@@ -211,6 +215,9 @@ lima_ctx_dirty(struct lima_context *ctx)
 static bool
 lima_fb_need_reload(struct lima_context *ctx)
 {
+   /* Depth buffer is always discarded */
+   if (!ctx->framebuffer.base.nr_cbufs)
+      return false;
    if (ctx->damage.region) {
       /* for EGL_KHR_partial_update we just want to reload the
        * region not aligned to tile boundary */
@@ -670,8 +677,14 @@ lima_update_submit_bo(struct lima_context *ctx)
    else
       ctx->pp_stream.bo = NULL;
 
-   struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
-   lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+   if (ctx->framebuffer.base.nr_cbufs) {
+      struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
+      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+   }
+   if (ctx->framebuffer.base.zsbuf) {
+      struct lima_resource *res = lima_resource(ctx->framebuffer.base.zsbuf->texture);
+      lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
+   }
    lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
@@ -688,7 +701,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
       lima_flush(ctx);
 
       /* no need to reload if cleared */
-      if (buffers & PIPE_CLEAR_COLOR0) {
+      if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
          struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
          surf->reload = false;
       }
@@ -1421,13 +1434,47 @@ lima_finish_plbu_cmd(struct lima_context *ctx)
 }
 
 static void
-lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
-                       uint32_t *wb_reg)
+lima_pack_wb_zsbuf_reg(struct lima_context *ctx, uint32_t *wb_reg, int wb_idx)
 {
-   struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct lima_resource *res = lima_resource(fb->base.zsbuf->texture);
+
+   uint32_t format;
+
+   switch (fb->base.zsbuf->format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      format = LIMA_PIXEL_FORMAT_Z16;
+      break;
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+   default:
+      /* Assume Z24S8 */
+      format = LIMA_PIXEL_FORMAT_Z24S8;
+      break;
+   }
+
+   struct lima_pp_wb_reg *wb = (void *)wb_reg;
+   wb[wb_idx].type = 0x01; /* 1 for depth, stencil */
+   wb[wb_idx].address = res->bo->va;
+   wb[wb_idx].pixel_format = format;
+   if (res->tiled) {
+      wb[wb_idx].pixel_layout = 0x2;
+      wb[wb_idx].pitch = fb->tiled_w;
+   } else {
+      wb[wb_idx].pixel_layout = 0x0;
+      wb[wb_idx].pitch = res->levels[0].stride / 8;
+   }
+   wb[wb_idx].mrt_bits = 0;
+}
+
+static void
+lima_pack_wb_cbuf_reg(struct lima_context *ctx, uint32_t *wb_reg, int wb_idx)
+{
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct lima_resource *res = lima_resource(fb->base.cbufs[0]->texture);
 
    bool swap_channels = false;
-   switch (ctx->framebuffer.base.cbufs[0]->format) {
+   switch (fb->base.cbufs[0]->format) {
    case PIPE_FORMAT_R8G8B8A8_UNORM:
    case PIPE_FORMAT_R8G8B8X8_UNORM:
       swap_channels = true;
@@ -1436,9 +1483,30 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
       break;
    }
 
+   struct lima_pp_wb_reg *wb = (void *)wb_reg;
+   wb[wb_idx].type = 0x02; /* 2 for color buffer */
+   wb[wb_idx].address = res->bo->va;
+   wb[wb_idx].pixel_format = LIMA_PIXEL_FORMAT_B8G8R8A8;
+   if (res->tiled) {
+      wb[wb_idx].pixel_layout = 0x2;
+      wb[wb_idx].pitch = fb->tiled_w;
+   } else {
+      wb[wb_idx].pixel_layout = 0x0;
+      wb[wb_idx].pitch = res->levels[0].stride / 8;
+   }
+   wb[wb_idx].mrt_bits = swap_channels ? 0x4 : 0x0;
+}
+
+
+static void
+lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
+                       uint32_t *wb_reg)
+{
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct lima_pp_frame_reg *frame = (void *)frame_reg;
    struct lima_screen *screen = lima_screen(ctx->base.screen);
+   int wb_idx = 0;
+
    frame->render_address = screen->pp_buffer->va + pp_frame_rsw_offset;
    frame->flags = 0x02;
    frame->clear_value_depth = ctx->clear.depth;
@@ -1469,18 +1537,15 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
    frame->blocking = (fb->shift_min << 28) | (fb->shift_h << 16) | fb->shift_w;
    frame->foureight = 0x8888;
 
-   struct lima_pp_wb_reg *wb = (void *)wb_reg;
-   wb[0].type = 0x02; /* 1 for depth, stencil */
-   wb[0].address = res->bo->va;
-   wb[0].pixel_format = 0x03; /* BGRA8888 */
-   if (res->tiled) {
-      wb[0].pixel_layout = 0x2;
-      wb[0].pitch = fb->tiled_w;
-   } else {
-      wb[0].pixel_layout = 0x0;
-      wb[0].pitch = res->levels[0].stride / 8;
-   }
-   wb[0].mrt_bits = swap_channels ? 0x4 : 0x0;
+   if (fb->base.nr_cbufs)
+      lima_pack_wb_cbuf_reg(ctx, wb_reg, wb_idx++);
+
+   /* Mali4x0 can use on-tile buffer for depth/stencil, so to save some
+    * memory bandwidth don't write depth/stencil back to memory if we're
+    * rendering to scanout
+    */
+   if (!lima_is_scanout(ctx) && fb->base.zsbuf)
+      lima_pack_wb_zsbuf_reg(ctx, wb_reg, wb_idx++);
 }
 
 static void
@@ -1609,9 +1674,11 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
-   /* this surface may need reload when next draw if not end of frame */
-   struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
-   surf->reload = !end_of_frame;
+   if (ctx->framebuffer.base.nr_cbufs) {
+      /* this surface may need reload when next draw if not end of frame */
+      struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
+      surf->reload = !end_of_frame;
+   }
 }
 
 void

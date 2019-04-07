@@ -192,7 +192,8 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!should_tile && !drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
       return NULL;
 
-   if (should_tile || (templat->bind & PIPE_BIND_RENDER_TARGET)) {
+   if (should_tile || (templat->bind & PIPE_BIND_RENDER_TARGET) ||
+       (templat->bind & PIPE_BIND_DEPTH_STENCIL)) {
       should_align_dimensions = true;
       width = align(templat->width0, 16);
       height = align(templat->height0, 16);

@@ -292,5 +292,6 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 void lima_flush(struct lima_context *ctx);
 
 bool lima_need_flush(struct lima_context *ctx, struct lima_bo *bo, bool write);
+bool lima_is_scanout(struct lima_context *ctx);
 
 #endif
