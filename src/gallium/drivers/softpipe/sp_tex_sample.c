@@ -1956,7 +1956,7 @@ mip_filter_linear(const struct sp_sampler_view *sp_sview,
       args.p = p[j];
       args.face_id = filt_args->faces[j];
 
-      if (lod[j] <= 0.0) {
+      if (lod[j] <= 0.0 && !args.gather_only) {
          args.level = psview->u.tex.first_level;
          mag_filter(sp_sview, sp_samp, &args, &rgba[0][j]);
       }
@@ -2040,7 +2040,7 @@ mip_filter_nearest(const struct sp_sampler_view *sp_sview,
       args.p = p[j];
       args.face_id = filt_args->faces[j];
 
-      if (lod[j] <= 0.0) {
+      if (lod[j] <= 0.0 && !args.gather_only) {
          args.level = psview->u.tex.first_level;
          mag_filter(sp_sview, sp_samp, &args, &rgba[0][j]);
       } else {
@@ -2100,7 +2100,7 @@ mip_filter_none(const struct sp_sampler_view *sp_sview,
       args.t = t[j];
       args.p = p[j];
       args.face_id = filt_args->faces[j];
-      if (lod[j] <= 0.0f) {
+      if (lod[j] <= 0.0f && !args.gather_only) {
          mag_filter(sp_sview, sp_samp, &args, &rgba[0][j]);
       }
       else {
