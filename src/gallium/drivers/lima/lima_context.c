@@ -139,6 +139,8 @@ lima_context_destroy(struct pipe_context *pctx)
    for (int i = 0; i < LIMA_CTX_PLB_MAX_NUM; i++) {
       if (ctx->plb[i])
          lima_bo_free(ctx->plb[i]);
+      if (ctx->gp_tile_heap[i])
+         lima_bo_free(ctx->gp_tile_heap[i]);
    }
 
    if (ctx->plb_gp_stream)
@@ -222,6 +224,9 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    for (int i = 0; i < lima_ctx_num_plb; i++) {
       ctx->plb[i] = lima_bo_create(screen, ctx->plb_size, 0);
       if (!ctx->plb[i])
+         goto err_out;
+      ctx->gp_tile_heap[i] = lima_bo_create(screen, gp_tile_heap_size, 0);
+      if (!ctx->gp_tile_heap[i])
          goto err_out;
    }
 

@@ -656,7 +656,7 @@ lima_update_submit_bo(struct lima_context *ctx)
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    lima_submit_add_bo(ctx->gp_submit, ctx->plb_gp_stream, LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->gp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
-   lima_submit_add_bo(ctx->gp_submit, screen->gp_buffer, LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->gp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_WRITE);
 
    lima_dump_command_stream_print(
       ctx->plb_gp_stream->map + ctx->plb_index * ctx->plb_gp_size,
@@ -673,6 +673,7 @@ lima_update_submit_bo(struct lima_context *ctx)
    struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
    lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
+   lima_submit_add_bo(ctx->pp_submit, ctx->gp_tile_heap[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
 }
 
@@ -1521,8 +1522,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    gp_frame_reg->vs_cmd_end = vs_cmd_va + vs_cmd_size;
    gp_frame_reg->plbu_cmd_start = plbu_cmd_va;
    gp_frame_reg->plbu_cmd_end = plbu_cmd_va + plbu_cmd_size;
-   gp_frame_reg->tile_heap_start = screen->gp_buffer->va + gp_tile_heap_offset;
-   gp_frame_reg->tile_heap_end = screen->gp_buffer->va + gp_buffer_size;
+   gp_frame_reg->tile_heap_start = ctx->gp_tile_heap[ctx->plb_index]->va;
+   gp_frame_reg->tile_heap_end = ctx->gp_tile_heap[ctx->plb_index]->va + gp_tile_heap_size;
 
    lima_dump_command_stream_print(
       &gp_frame, sizeof(gp_frame), false, "add gp frame\n");

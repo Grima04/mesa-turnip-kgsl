@@ -227,7 +227,10 @@ struct lima_context {
    unsigned plb_gp_size;
 
    struct lima_bo *plb[LIMA_CTX_PLB_MAX_NUM];
+   struct lima_bo *gp_tile_heap[LIMA_CTX_PLB_MAX_NUM];
+   #define gp_tile_heap_size         0x100000
    struct lima_bo *plb_gp_stream;
+
    struct hash_table *plb_pp_stream;
    uint32_t plb_index;
 
