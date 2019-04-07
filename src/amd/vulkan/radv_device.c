@@ -953,6 +953,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->computeDerivativeGroupLinear = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
+			VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *features =
+				(VkPhysicalDeviceYcbcrImageArraysFeaturesEXT*)ext;
+			features->ycbcrImageArrays = true;
+			break;
+		}
 		default:
 			break;
 		}
