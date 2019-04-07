@@ -109,12 +109,13 @@ VkResult radv_CreateDescriptorSetLayout(
 		size += ycbcr_sampler_count * sizeof(struct radv_sampler_ycbcr_conversion) + (max_binding + 1) * sizeof(uint32_t);
 	}
 
-	set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
-				 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+	set_layout = vk_zalloc2(&device->alloc, pAllocator, size, 8,
+	                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!set_layout)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	set_layout->flags = pCreateInfo->flags;
+	set_layout->layout_size = size;
 
 	/* We just allocate all the samplers at the end of the struct */
 	uint32_t *samplers = (uint32_t*)&set_layout->binding[max_binding + 1];
@@ -429,12 +430,8 @@ VkResult radv_CreatePipelineLayout(
 		for (uint32_t b = 0; b < set_layout->binding_count; b++) {
 			dynamic_offset_count += set_layout->binding[b].array_size * set_layout->binding[b].dynamic_offset_count;
 			dynamic_shader_stages |= set_layout->dynamic_shader_stages;
-			if (set_layout->binding[b].immutable_samplers_offset)
-				_mesa_sha1_update(&ctx, radv_immutable_samplers(set_layout, set_layout->binding + b),
-				                  set_layout->binding[b].array_size * 4 * sizeof(uint32_t));
 		}
-		_mesa_sha1_update(&ctx, set_layout->binding,
-				  sizeof(set_layout->binding[0]) * set_layout->binding_count);
+		_mesa_sha1_update(&ctx, set_layout, set_layout->layout_size);
 	}
 
 	layout->dynamic_offset_count = dynamic_offset_count;
