@@ -878,24 +878,37 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 }
 
 static void
-iris_unmap_copy_region(struct iris_transfer *map)
+iris_flush_staging_region(struct pipe_transfer *xfer,
+                          const struct pipe_box *flush_box)
 {
-   struct pipe_transfer *xfer = &map->base;
-   struct pipe_box *dst_box = &xfer->box;
-   struct pipe_box src_box = (struct pipe_box) {
-      .x = xfer->resource->target == PIPE_BUFFER ?
-           xfer->box.x % IRIS_MAP_BUFFER_ALIGNMENT : 0,
-      .width = dst_box->width,
-      .height = dst_box->height,
-      .depth = dst_box->depth,
+   if (!(xfer->usage & PIPE_TRANSFER_WRITE))
+      return;
+
+   struct iris_transfer *map = (void *) xfer;
+
+   struct pipe_box src_box = *flush_box;
+
+   /* Account for extra alignment padding in staging buffer */
+   if (xfer->resource->target == PIPE_BUFFER)
+      src_box.x += xfer->box.x % IRIS_MAP_BUFFER_ALIGNMENT;
+
+   struct pipe_box dst_box = (struct pipe_box) {
+      .x = xfer->box.x + flush_box->x,
+      .y = xfer->box.y + flush_box->y,
+      .z = xfer->box.z + flush_box->z,
+      .width = flush_box->width,
+      .height = flush_box->height,
+      .depth = flush_box->depth,
    };
 
-   if (xfer->usage & PIPE_TRANSFER_WRITE) {
-      iris_copy_region(map->blorp, map->batch, xfer->resource, xfer->level,
-                       dst_box->x, dst_box->y, dst_box->z, map->staging, 0,
-                       &src_box);
-   }
+   iris_copy_region(map->blorp, map->batch, xfer->resource, xfer->level,
+                    dst_box.x, dst_box.y, dst_box.z, map->staging, 0,
+                    &src_box);
+}
 
+static void
+iris_unmap_copy_region(struct iris_transfer *map)
+{
    iris_resource_destroy(map->staging->screen, map->staging);
 
    map->ptr = NULL;
@@ -1372,6 +1385,10 @@ iris_transfer_flush_region(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
+   struct iris_transfer *map = (void *) xfer;
+
+   if (map->staging)
+      iris_flush_staging_region(xfer, box);
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       if (ice->batches[i].contains_draw ||
@@ -1387,18 +1404,19 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
-   struct iris_resource *res = (struct iris_resource *) xfer->resource;
+
+   if (!(xfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
+      struct pipe_box flush_box = {
+         .x = 0, .y = 0, .z = 0,
+         .width  = xfer->box.width,
+         .height = xfer->box.height,
+         .depth  = xfer->box.depth,
+      };
+      iris_transfer_flush_region(ctx, xfer, &flush_box);
+   }
 
    if (map->unmap)
       map->unmap(map);
-
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw ||
-          ice->batches[i].cache.render->entries) {
-         iris_batch_maybe_flush(&ice->batches[i], 24);
-         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
-      }
-   }
 
    pipe_resource_reference(&xfer->resource, NULL);
    slab_free(&ice->transfer_pool, map);
