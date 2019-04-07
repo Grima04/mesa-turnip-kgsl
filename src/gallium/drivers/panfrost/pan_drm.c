@@ -231,7 +231,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->varying_mem.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->misc_0.gem_handle;
-	submit.bo_handles = (u64)bo_handles;
+	submit.bo_handles = (u64) (uintptr_t) bo_handles;
 
         /* Dump memory _before_ submitting so we're not corrupted with actual GPU results */
         pantrace_dump_memory();
