@@ -821,7 +821,13 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
                            header_size);
 
          fs_inst *inst = abld.emit(opcode, reg_undef, payload);
-         inst->eot = slot == last_slot && stage != MESA_SHADER_GEOMETRY;
+
+         /* For ICL WA 1805992985 one needs additional write in the end. */
+         if (devinfo->gen == 11 && stage == MESA_SHADER_TESS_EVAL)
+            inst->eot = false;
+         else
+            inst->eot = slot == last_slot && stage != MESA_SHADER_GEOMETRY;
+
          inst->mlen = length + header_size;
          inst->offset = urb_offset;
          urb_offset = starting_urb_offset + slot + 1;
@@ -857,6 +863,49 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       inst->mlen = 2;
       inst->offset = 1;
       return;
+   } 
+ 
+   /* ICL WA 1805992985:
+    *
+    * ICLLP GPU hangs on one of tessellation vkcts tests with DS not done. The
+    * send cycle, which is a urb write with an eot must be 4 phases long and
+    * all 8 lanes must valid.
+    */
+   if (devinfo->gen == 11 && stage == MESA_SHADER_TESS_EVAL) {
+      fs_reg payload = fs_reg(VGRF, alloc.allocate(6), BRW_REGISTER_TYPE_UD);
+
+      /* Workaround requires all 8 channels (lanes) to be valid. This is
+       * understood to mean they all need to be alive. First trick is to find
+       * a live channel and copy its urb handle for all the other channels to
+       * make sure all handles are valid.
+       */
+      bld.exec_all().MOV(payload, bld.emit_uniformize(urb_handle));
+
+      /* Second trick is to use masked URB write where one can tell the HW to
+       * actually write data only for selected channels even though all are
+       * active.
+       * Third trick is to take advantage of the must-be-zero (MBZ) area in
+       * the very beginning of the URB.
+       *
+       * One masks data to be written only for the first channel and uses
+       * offset zero explicitly to land data to the MBZ area avoiding trashing
+       * any other part of the URB.
+       *
+       * Since the WA says that the write needs to be 4 phases long one uses
+       * 4 slots data. All are explicitly zeros in order to to keep the MBZ
+       * area written as zeros.
+       */
+      bld.exec_all().MOV(offset(payload, bld, 1), brw_imm_ud(0x10000u));
+      bld.exec_all().MOV(offset(payload, bld, 2), brw_imm_ud(0u));
+      bld.exec_all().MOV(offset(payload, bld, 3), brw_imm_ud(0u));
+      bld.exec_all().MOV(offset(payload, bld, 4), brw_imm_ud(0u));
+      bld.exec_all().MOV(offset(payload, bld, 5), brw_imm_ud(0u));
+
+      fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED,
+                                          reg_undef, payload);
+      inst->eot = true;
+      inst->mlen = 6;
+      inst->offset = 0;
    }
 }
 
