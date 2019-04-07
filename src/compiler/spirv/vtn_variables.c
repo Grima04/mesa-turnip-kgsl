@@ -783,7 +783,8 @@ _vtn_load_store_tail(struct vtn_builder *b, nir_intrinsic_op op, bool load,
       nir_intrinsic_set_range(instr, access_size);
    }
 
-   if (op == nir_intrinsic_load_ssbo ||
+   if (op == nir_intrinsic_load_ubo ||
+       op == nir_intrinsic_load_ssbo ||
        op == nir_intrinsic_store_ssbo) {
       nir_intrinsic_set_access(instr, access);
    }

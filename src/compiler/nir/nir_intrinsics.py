@@ -618,7 +618,7 @@ def load(name, num_srcs, indices=[], flags=[]):
 # src[] = { offset }. const_index[] = { base, range }
 load("uniform", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { buffer_index, offset }. const_index[] = { align_mul, align_offset }
-load("ubo", 2, [ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
+load("ubo", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }. const_index[] = { base, component }
 load("input", 1, [BASE, COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { vertex, offset }. const_index[] = { base, component }
