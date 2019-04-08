@@ -1862,8 +1862,15 @@ ac_build_ddxy(struct ac_llvm_context *ctx,
 	      LLVMValueRef val)
 {
 	unsigned tl_lanes[4], trbl_lanes[4];
+	char name[32], type[8];
 	LLVMValueRef tl, trbl;
+	LLVMTypeRef result_type;
 	LLVMValueRef result;
+
+	result_type = ac_to_float_type(ctx, LLVMTypeOf(val));
+
+	if (result_type == ctx->f16)
+		val = LLVMBuildZExt(ctx->builder, val, ctx->i32, "");
 
 	for (unsigned i = 0; i < 4; ++i) {
 		tl_lanes[i] = i & mask;
@@ -1877,14 +1884,19 @@ ac_build_ddxy(struct ac_llvm_context *ctx,
 				     trbl_lanes[0], trbl_lanes[1],
 				     trbl_lanes[2], trbl_lanes[3]);
 
-	tl = LLVMBuildBitCast(ctx->builder, tl, ctx->f32, "");
-	trbl = LLVMBuildBitCast(ctx->builder, trbl, ctx->f32, "");
+	if (result_type == ctx->f16) {
+		tl = LLVMBuildTrunc(ctx->builder, tl, ctx->i16, "");
+		trbl = LLVMBuildTrunc(ctx->builder, trbl, ctx->i16, "");
+	}
+
+	tl = LLVMBuildBitCast(ctx->builder, tl, result_type, "");
+	trbl = LLVMBuildBitCast(ctx->builder, trbl, result_type, "");
 	result = LLVMBuildFSub(ctx->builder, trbl, tl, "");
 
-	result = ac_build_intrinsic(ctx, "llvm.amdgcn.wqm.f32", ctx->f32,
-				    &result, 1, 0);
+	ac_build_type_name_for_intr(result_type, type, sizeof(type));
+	snprintf(name, sizeof(name), "llvm.amdgcn.wqm.%s", type);
 
-	return result;
+	return ac_build_intrinsic(ctx, name, result_type, &result, 1, 0);
 }
 
 void
