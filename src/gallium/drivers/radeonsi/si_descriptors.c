@@ -949,7 +949,7 @@ static void si_bind_sampler_states(struct pipe_context *ctx,
 	struct si_sampler_state **sstates = (struct si_sampler_state**)states;
 	int i;
 
-	if (!count || shader >= SI_NUM_SHADERS)
+	if (!count || shader >= SI_NUM_SHADERS || !sstates)
 		return;
 
 	for (i = 0; i < count; i++) {
