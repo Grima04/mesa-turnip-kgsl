@@ -544,8 +544,12 @@ public:
          assert(buffer_block_index != -1);
 
          if (var->is_in_shader_storage_block() &&
-             !var->data.memory_read_only)
-            shader_storage_blocks_write_access |= 1 << buffer_block_index;
+             !var->data.memory_read_only) {
+            shader_storage_blocks_write_access |=
+               u_bit_consecutive(buffer_block_index,
+                                 var->type->is_array() ?
+                                    var->type->array_size() : 1);
+         }
 
          /* Uniform blocks that were specified with an instance name must be
           * handled a little bit differently.  The name of the variable is the
