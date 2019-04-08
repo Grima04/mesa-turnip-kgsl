@@ -2127,6 +2127,21 @@ nir_loop_last_block(nir_loop *loop)
    return nir_cf_node_as_block(exec_node_data(nir_cf_node, tail, node));
 }
 
+/**
+ * Return true if this list of cf_nodes contains a single empty block.
+ */
+static inline bool
+nir_cf_list_is_empty_block(struct exec_list *cf_list)
+{
+   if (exec_list_is_singular(cf_list)) {
+      struct exec_node *head = exec_list_get_head(cf_list);
+      nir_block *block =
+         nir_cf_node_as_block(exec_node_data(nir_cf_node, head, node));
+      return exec_list_is_empty(&block->instr_list);
+   }
+   return false;
+}
+
 typedef struct {
    uint8_t num_components;
    uint8_t bit_size;
