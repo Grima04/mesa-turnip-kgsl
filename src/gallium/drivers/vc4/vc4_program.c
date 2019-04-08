@@ -2487,10 +2487,6 @@ vc4_shader_state_create(struct pipe_context *pctx,
                  * creation.
                  */
                 s = cso->ir.nir;
-
-                NIR_PASS_V(s, nir_lower_io, nir_var_uniform,
-                           uniforms_type_size,
-                           (nir_lower_io_options)0);
        } else {
                 assert(cso->type == PIPE_SHADER_IR_TGSI);
 
@@ -2503,8 +2499,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
                 s = tgsi_to_nir(cso->tokens, pctx->screen);
         }
 
-        NIR_PASS_V(s, nir_lower_io, nir_var_all & ~nir_var_uniform,
-                   type_size,
+        NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size,
                    (nir_lower_io_options)0);
 
         NIR_PASS_V(s, nir_lower_regs_to_ssa);

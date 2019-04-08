@@ -3532,8 +3532,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-        NIR_PASS_V(nir, nir_lower_io, nir_var_uniform, uniform_type_size, 0);
-        NIR_PASS_V(nir, nir_lower_io, nir_var_all & ~nir_var_uniform, glsl_type_size, 0);
+        NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
 
         /* Append vertex epilogue before optimisation, so the epilogue itself
          * is optimised */

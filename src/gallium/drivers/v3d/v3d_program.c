@@ -36,7 +36,6 @@
 #include "compiler/v3d_compiler.h"
 #include "v3d_context.h"
 #include "broadcom/cle/v3d_packet_v33_pack.h"
-#include "mesa/state_tracker/st_glsl_types.h"
 
 static struct v3d_compiled_shader *
 v3d_get_compiled_shader(struct v3d_context *v3d, struct v3d_key *key);
@@ -175,12 +174,6 @@ type_size(const struct glsl_type *type)
         return glsl_count_attribute_slots(type, false);
 }
 
-static int
-uniforms_type_size(const struct glsl_type *type)
-{
-        return st_glsl_storage_type_size(type, false);
-}
-
 /**
  * Precompiles a shader variant at shader state creation time if
  * V3D_DEBUG=precompile is set.  Used for shader-db
@@ -262,10 +255,6 @@ v3d_shader_state_create(struct pipe_context *pctx,
                  * creation.
                  */
                 s = cso->ir.nir;
-
-                NIR_PASS_V(s, nir_lower_io, nir_var_uniform,
-                           uniforms_type_size,
-                           (nir_lower_io_options)0);
         } else {
                 assert(cso->type == PIPE_SHADER_IR_TGSI);
 

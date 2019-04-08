@@ -155,3 +155,14 @@ st_glsl_type_dword_size(const struct glsl_type *type)
 
    return 0;
 }
+
+/**
+ * Returns the type size of uniforms when !PIPE_CAP_PACKED_UNIFORMS -- each
+ * value or array element is aligned to a vec4 offset and expanded out to a
+ * vec4.
+ */
+int
+st_glsl_uniforms_type_size(const struct glsl_type *type)
+{
+   return st_glsl_storage_type_size(type, false);
+}
