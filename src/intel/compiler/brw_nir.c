@@ -609,7 +609,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
          OPT(nir_copy_prop);
          OPT(nir_opt_dce);
       }
-      OPT(nir_opt_if);
+      OPT(nir_opt_if, false);
       if (nir->options->max_unroll_iterations != 0) {
          OPT(nir_opt_loop_unroll, indirect_mask);
       }

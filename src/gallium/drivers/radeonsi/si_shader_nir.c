@@ -880,7 +880,7 @@ si_lower_nir(struct si_shader_selector* sel)
 			NIR_PASS(progress, sel->nir, nir_copy_prop);
 			NIR_PASS(progress, sel->nir, nir_opt_dce);
 		}
-		NIR_PASS(progress, sel->nir, nir_opt_if);
+		NIR_PASS(progress, sel->nir, nir_opt_if, true);
 		NIR_PASS(progress, sel->nir, nir_opt_dead_cf);
 		NIR_PASS(progress, sel->nir, nir_opt_cse);
 		NIR_PASS(progress, sel->nir, nir_opt_peephole_select, 8, true, true);
