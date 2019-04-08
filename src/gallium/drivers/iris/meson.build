@@ -71,7 +71,7 @@ libiris = static_library(
   ],
   c_args : [c_vis_args, c_sse2_args],
   cpp_args : [cpp_vis_args, c_sse2_args],
-  dependencies : [dep_libdrm, dep_valgrind],
+  dependencies : [dep_libdrm, dep_valgrind, idep_genxml],
   link_with : [
     iris_gen_libs, libintel_common, libintel_compiler, libintel_dev, libisl,
     libblorp
