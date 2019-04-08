@@ -60,12 +60,22 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
       pipe->blit(pipe, &blit);
    }
 }
+
+static unsigned int temp_bind(unsigned int orig)
+{
+   if (orig & ~(PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL |
+                PIPE_BIND_SAMPLER_VIEW))
+      fprintf(stderr, "Waring, possibly unhandled bind: %x\n", orig);
+   return orig & (PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_RENDER_TARGET);
+}
+
 static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
                                               struct pipe_resource *orig,
                                               const struct pipe_box *box,
                                               unsigned level, unsigned flags)
 {
    memset(res, 0, sizeof(*res));
+   res->bind = temp_bind(orig->bind);
    res->format = orig->format;
    res->width0 = box->width;
    res->height0 = box->height;
