@@ -968,7 +968,8 @@ iris_map_copy_region(struct iris_transfer *map)
    if (iris_batch_references(map->batch, staging_bo))
       iris_batch_flush(map->batch);
 
-   map->ptr = iris_bo_map(map->dbg, staging_bo, xfer->usage) + extra;
+   map->ptr =
+      iris_bo_map(map->dbg, staging_bo, xfer->usage & MAP_FLAGS) + extra;
 
    map->unmap = iris_unmap_copy_region;
 }
@@ -1052,7 +1053,7 @@ iris_unmap_s8(struct iris_transfer *map)
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
       uint8_t *untiled_s8_map = map->ptr;
       uint8_t *tiled_s8_map =
-         iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+         iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
          unsigned x0_el, y0_el;
@@ -1102,7 +1103,7 @@ iris_map_s8(struct iris_transfer *map)
    if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
       uint8_t *untiled_s8_map = map->ptr;
       uint8_t *tiled_s8_map =
-         iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+         iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
          unsigned x0_el, y0_el;
@@ -1160,7 +1161,8 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
    const bool has_swizzling = false;
 
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
-      char *dst = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+      char *dst =
+         iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
          unsigned x1, x2, y1, y2;
@@ -1204,7 +1206,8 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
    // XXX: PIPE_TRANSFER_READ?
    if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
-      char *src = iris_bo_map(map->dbg, res->bo, xfer->usage | MAP_RAW);
+      char *src =
+         iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
          unsigned x1, x2, y1, y2;
@@ -1229,7 +1232,7 @@ iris_map_direct(struct iris_transfer *map)
    struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
 
-   void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage);
+   void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage & MAP_FLAGS);
 
    if (res->base.target == PIPE_BUFFER) {
       xfer->stride = 0;
@@ -1307,13 +1310,6 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->usage = usage;
    xfer->box = *box;
    *ptransfer = xfer;
-
-   xfer->usage &= (PIPE_TRANSFER_READ |
-                   PIPE_TRANSFER_WRITE |
-                   PIPE_TRANSFER_UNSYNCHRONIZED |
-                   PIPE_TRANSFER_PERSISTENT |
-                   PIPE_TRANSFER_COHERENT |
-                   PIPE_TRANSFER_DISCARD_RANGE);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
     * there is to access them simultaneously on the CPU & GPU.  This also

@@ -251,6 +251,9 @@ void iris_bo_unreference(struct iris_bo *bo);
 #define MAP_INTERNAL_MASK (0xff << 24)
 #define MAP_RAW           (0x01 << 24)
 
+#define MAP_FLAGS         (MAP_READ | MAP_WRITE | MAP_ASYNC | \
+                           MAP_PERSISTENT | MAP_COHERENT | MAP_INTERNAL_MASK)
+
 /**
  * Maps the buffer into userspace.
  *
