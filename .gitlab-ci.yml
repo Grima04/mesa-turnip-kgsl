@@ -117,21 +117,6 @@ ubuntu:
     - scons $SCONS_TARGET
     - eval $SCONS_CHECK_COMMAND
 
-autotools:
-  extends: .build
-  variables:
-    MAKEFLAGS: "-j8"
-    LLVM_CONFIG: llvm-config-7
-  script:
-    - mkdir build
-    - cd build
-    - ../autogen.sh
-        --enable-autotools
-        --enable-debug
-        --disable-llvm-shared-libs
-    - make
-    - make check
-
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't limit the total run time.
