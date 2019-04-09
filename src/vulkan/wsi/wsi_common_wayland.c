@@ -1009,7 +1009,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.get_wsi_image = wsi_wl_swapchain_get_wsi_image;
    chain->base.acquire_next_image = wsi_wl_swapchain_acquire_next_image;
    chain->base.queue_present = wsi_wl_swapchain_queue_present;
-   chain->base.present_mode = pCreateInfo->presentMode;
+   chain->base.present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
    chain->base.image_count = num_images;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
