@@ -750,7 +750,6 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
 			   struct pipe_fence_handle **fence)
 {
    struct virgl_screen *rs = virgl_screen(ctx->base.screen);
-   int out_fence_fd = -1;
 
    if (ctx->num_draws)
       u_upload_unmap(ctx->uploader);
@@ -759,11 +758,7 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
    ctx->num_transfers = ctx->num_draws = ctx->num_compute = 0;
 
    virgl_transfer_queue_clear(&ctx->queue, ctx->cbuf);
-   rs->vws->submit_cmd(rs->vws, ctx->cbuf,
-                       ctx->cbuf->needs_out_fence_fd ? &out_fence_fd : NULL);
-
-   if (fence)
-      *fence = rs->vws->cs_create_fence(rs->vws, out_fence_fd);
+   rs->vws->submit_cmd(rs->vws, ctx->cbuf, fence);
 
    /* Reserve some space for transfers. */
    if (ctx->encoded_transfers)
@@ -781,12 +776,7 @@ static void virgl_flush_from_st(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
 
-   if (flags & PIPE_FLUSH_FENCE_FD)
-       vctx->cbuf->needs_out_fence_fd = true;
-
    virgl_flush_eq(vctx, vctx, fence);
-
-   vctx->cbuf->needs_out_fence_fd = false;
 }
 
 static struct pipe_sampler_view *virgl_create_sampler_view(struct pipe_context *ctx,
