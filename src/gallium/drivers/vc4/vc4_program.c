@@ -135,7 +135,7 @@ indirect_uniform_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 
         qir_ADD_dest(c, qir_reg(QFILE_TEX_S_DIRECT, 0),
                      indirect_offset,
-                     qir_uniform(c, QUNIFORM_UBO_ADDR, 0));
+                     qir_uniform(c, QUNIFORM_UBO0_ADDR, 0));
 
         c->num_texture_samples++;
 
@@ -147,7 +147,7 @@ indirect_uniform_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 static struct qreg
 vc4_ubo_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 {
-        unsigned buffer_index = nir_src_as_uint(intr->src[0]);
+        int buffer_index = nir_src_as_uint(intr->src[0]);
         assert(buffer_index == 1);
         assert(c->stage == QSTAGE_FRAG);
 
@@ -160,7 +160,7 @@ vc4_ubo_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 
         qir_ADD_dest(c, qir_reg(QFILE_TEX_S_DIRECT, 0),
                      offset,
-                     qir_uniform(c, QUNIFORM_UBO_ADDR, buffer_index));
+                     qir_uniform(c, QUNIFORM_UBO1_ADDR, 0));
 
         c->num_texture_samples++;
 

@@ -269,7 +269,8 @@ enum quniform_contents {
 
         QUNIFORM_TEXTURE_MSAA_ADDR,
 
-        QUNIFORM_UBO_ADDR,
+        QUNIFORM_UBO0_ADDR,
+        QUNIFORM_UBO1_ADDR,
 
         QUNIFORM_TEXRECT_SCALE_X,
         QUNIFORM_TEXRECT_SCALE_Y,

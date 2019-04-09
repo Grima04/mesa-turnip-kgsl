@@ -271,21 +271,20 @@ vc4_write_uniforms(struct vc4_context *vc4, struct vc4_compiled_shader *shader,
                                                   data);
                         break;
 
-                case QUNIFORM_UBO_ADDR:
-                        if (data == 0) {
-                                cl_aligned_reloc(job, &job->uniforms,
-                                                 &uniforms, ubo, 0);
-                        } else {
-                                struct pipe_constant_buffer *c =
-                                        &cb->cb[data];
-                                struct vc4_resource *rsc =
-                                        vc4_resource(c->buffer);
-
-                                cl_aligned_reloc(job, &job->uniforms,
-                                                 &uniforms,
-                                                 rsc->bo, c->buffer_offset);
-                        }
+                case QUNIFORM_UBO0_ADDR:
+                        cl_aligned_reloc(job, &job->uniforms,
+                                         &uniforms, ubo, data);
                         break;
+
+                case QUNIFORM_UBO1_ADDR: {
+                        struct vc4_resource *rsc =
+                                vc4_resource(cb->cb[1].buffer);
+
+                        cl_aligned_reloc(job, &job->uniforms,
+                                         &uniforms,
+                                         rsc->bo, cb->cb[1].buffer_offset);
+                        break;
+                }
 
                 case QUNIFORM_TEXTURE_MSAA_ADDR:
                         write_texture_msaa_addr(job, &uniforms, texstate, data);
@@ -390,7 +389,8 @@ vc4_set_shader_uniform_dirty_flags(struct vc4_compiled_shader *shader)
                 case QUNIFORM_UNIFORMS_ADDRESS:
                         break;
                 case QUNIFORM_UNIFORM:
-                case QUNIFORM_UBO_ADDR:
+                case QUNIFORM_UBO0_ADDR:
+                case QUNIFORM_UBO1_ADDR:
                         dirty |= VC4_DIRTY_CONSTBUF;
                         break;
 
