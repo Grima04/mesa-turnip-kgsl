@@ -52,6 +52,8 @@ struct iris_screen {
    /** PCI ID for our GPU device */
    int pci_id;
 
+   bool no_hw;
+
    /** Global program_string_id counter (see get_program_string_id()) */
    unsigned program_id;
 

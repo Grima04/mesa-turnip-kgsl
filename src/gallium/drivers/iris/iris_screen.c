@@ -560,6 +560,9 @@ iris_screen_create(int fd)
    screen->devinfo.timestamp_frequency =
       iris_getparam_integer(screen, I915_PARAM_CS_TIMESTAMP_FREQUENCY);
 
+   if (getenv("INTEL_NO_HW") != NULL)
+      screen->no_hw = true;
+
    screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd);
    if (!screen->bufmgr)
       return NULL;

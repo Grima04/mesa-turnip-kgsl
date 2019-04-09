@@ -491,7 +491,7 @@ submit_batch(struct iris_batch *batch)
          (uintptr_t)util_dynarray_begin(&batch->exec_fences);
    }
 
-   int ret = drm_ioctl(batch->screen->fd,
+   int ret = batch->screen->no_hw ? 0 : drm_ioctl(batch->screen->fd,
                        DRM_IOCTL_I915_GEM_EXECBUFFER2,
                        &execbuf);
    if (ret != 0) {
