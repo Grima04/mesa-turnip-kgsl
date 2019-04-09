@@ -564,9 +564,6 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
                           nir_alu_type dst_type,
                           enum blorp_filter filter)
 {
-   /* If non-null, this is the outer-most if statement */
-   nir_if *outer_if = NULL;
-
    nir_variable *color =
       nir_local_variable_create(b->impl, glsl_vec4_type(), "color");
 
@@ -602,6 +599,10 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
    default:
       unreachable("Invalid filter");
    }
+
+   /* If true, we inserted an if statement that we need to pop at at the end.
+    */
+   bool inserted_if = false;
 
    /* We add together samples using a binary tree structure, e.g. for 4x MSAA:
     *
@@ -674,15 +675,11 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
          nir_ssa_def *mcs_clear =
             blorp_nir_mcs_is_clear_color(b, mcs, tex_samples);
 
-         nir_if *if_stmt = nir_if_create(b->shader);
-         if_stmt->condition = nir_src_for_ssa(nir_ior(b, mcs_zero, mcs_clear));
-         nir_cf_node_insert(b->cursor, &if_stmt->cf_node);
-
-         b->cursor = nir_after_cf_list(&if_stmt->then_list);
+         nir_push_if(b, nir_ior(b, mcs_zero, mcs_clear));
          nir_store_var(b, color, texture_data[0], 0xf);
 
-         b->cursor = nir_after_cf_list(&if_stmt->else_list);
-         outer_if = if_stmt;
+         nir_push_else(b, NULL);
+         inserted_if = true;
       }
 
       for (int j = 0; j < count_trailing_one_bits(i); j++) {
@@ -708,8 +705,8 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    nir_store_var(b, color, texture_data[0], 0xf);
 
-   if (outer_if)
-      b->cursor = nir_after_cf_node(&outer_if->cf_node);
+   if (inserted_if)
+      nir_pop_if(b, NULL);
 
    return nir_load_var(b, color);
 }
