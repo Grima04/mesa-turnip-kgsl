@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -75,9 +76,6 @@ static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
 
       if (res->ptr)
          os_munmap(res->ptr, res->size);
-
-      if (res->fence_fd != -1)
-         close(res->fence_fd);
 
       memset(&args, 0, sizeof(args));
       args.handle = res->bo_handle;
@@ -231,7 +229,6 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    res->stride = stride;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->num_cs_references, 0);
-   res->fence_fd = -1;
    return res;
 }
 
@@ -467,7 +464,6 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    res->stride = info_arg.stride;
    pipe_reference_init(&res->reference, 1);
    res->num_cs_references = 0;
-   res->fence_fd = -1;
 
    util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)handle, res);
 
@@ -710,18 +706,54 @@ static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
 }
 
 static struct pipe_fence_handle *
-virgl_drm_fence_create(struct virgl_winsys *vws, int fd)
+virgl_drm_fence_create(struct virgl_winsys *vws, int fd, bool external)
 {
-   struct virgl_hw_res *res;
+   struct virgl_drm_fence *fence;
 
-   res = virgl_drm_winsys_resource_cache_create(vws,
-                                                PIPE_BUFFER,
-                                                PIPE_FORMAT_R8_UNORM,
-                                                VIRGL_BIND_CUSTOM,
-                                                8, 1, 1, 0, 0, 0, 8);
+   assert(vws->supports_fences);
 
-   res->fence_fd = fd;
-   return (struct pipe_fence_handle *)res;
+   if (external) {
+      fd = dup(fd);
+      if (fd < 0)
+         return NULL;
+   }
+
+   fence = CALLOC_STRUCT(virgl_drm_fence);
+   if (!fence) {
+      close(fd);
+      return NULL;
+   }
+
+   fence->fd = fd;
+   fence->external = external;
+
+   pipe_reference_init(&fence->reference, 1);
+
+   return (struct pipe_fence_handle *)fence;
+}
+
+static struct pipe_fence_handle *
+virgl_drm_fence_create_legacy(struct virgl_winsys *vws)
+{
+   struct virgl_drm_fence *fence;
+
+   assert(!vws->supports_fences);
+
+   fence = CALLOC_STRUCT(virgl_drm_fence);
+   if (!fence)
+      return NULL;
+   fence->fd = -1;
+
+   fence->hw_res = virgl_drm_winsys_resource_cache_create(vws, PIPE_BUFFER,
+         PIPE_FORMAT_R8_UNORM, VIRGL_BIND_CUSTOM, 8, 1, 1, 0, 0, 0, 8);
+   if (!fence->hw_res) {
+      FREE(fence);
+      return NULL;
+   }
+
+   pipe_reference_init(&fence->reference, 1);
+
+   return (struct pipe_fence_handle *)fence;
 }
 
 static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
@@ -767,10 +799,10 @@ static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
       }
 
       if (fence != NULL && ret == 0)
-         *fence = virgl_drm_fence_create(qws, eb.fence_fd);
+         *fence = virgl_drm_fence_create(qws, eb.fence_fd, false);
    } else {
       if (fence != NULL && ret == 0)
-         *fence = virgl_drm_fence_create(qws, -1);
+         *fence = virgl_drm_fence_create_legacy(qws);
    }
 
    virgl_drm_release_all_res(qdws, cbuf);
@@ -826,35 +858,50 @@ static int handle_compare(void *key1, void *key2)
 static struct pipe_fence_handle *
 virgl_cs_create_fence(struct virgl_winsys *vws, int fd)
 {
-   return virgl_drm_fence_create(vws, fd);
+   if (!vws->supports_fences)
+      return NULL;
+
+   return virgl_drm_fence_create(vws, fd, true);
 }
 
 static bool virgl_fence_wait(struct virgl_winsys *vws,
-                             struct pipe_fence_handle *fence,
+                             struct pipe_fence_handle *_fence,
                              uint64_t timeout)
 {
    struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
-   struct virgl_hw_res *res = virgl_hw_res(fence);
+   struct virgl_drm_fence *fence = virgl_drm_fence(_fence);
+
+   if (vws->supports_fences) {
+      uint64_t timeout_ms;
+      int timeout_poll;
+
+      if (timeout == 0)
+         return sync_wait(fence->fd, 0) == 0;
+
+      timeout_ms = timeout / 1000000;
+      /* round up */
+      if (timeout_ms * 1000000 < timeout)
+         timeout_ms++;
+
+      timeout_poll = timeout_ms <= INT_MAX ? (int) timeout_ms : -1;
+
+      return sync_wait(fence->fd, timeout_poll) == 0;
+   }
 
    if (timeout == 0)
-      return !virgl_drm_resource_is_busy(vdws, res);
+      return !virgl_drm_resource_is_busy(vdws, fence->hw_res);
 
    if (timeout != PIPE_TIMEOUT_INFINITE) {
       int64_t start_time = os_time_get();
       timeout /= 1000;
-      while (virgl_drm_resource_is_busy(vdws, res)) {
+      while (virgl_drm_resource_is_busy(vdws, fence->hw_res)) {
          if (os_time_get() - start_time >= timeout)
             return FALSE;
          os_time_sleep(10);
       }
       return TRUE;
    }
-   virgl_drm_resource_wait(vws, res);
-
-   if (res->fence_fd != -1) {
-      int ret = sync_wait(res->fence_fd, timeout / 1000000);
-      return ret == 0;
-   }
+   virgl_drm_resource_wait(vws, fence->hw_res);
 
    return TRUE;
 }
@@ -863,31 +910,48 @@ static void virgl_fence_reference(struct virgl_winsys *vws,
                                   struct pipe_fence_handle **dst,
                                   struct pipe_fence_handle *src)
 {
-   struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
-   virgl_drm_resource_reference(vdws, (struct virgl_hw_res **)dst,
-                                virgl_hw_res(src));
+   struct virgl_drm_fence *dfence = virgl_drm_fence(*dst);
+   struct virgl_drm_fence *sfence = virgl_drm_fence(src);
+
+   if (pipe_reference(&dfence->reference, &sfence->reference)) {
+      if (vws->supports_fences) {
+         close(dfence->fd);
+      } else {
+         struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
+         virgl_hw_res_destroy(vdws, dfence->hw_res);
+      }
+      FREE(dfence);
+   }
+
+   *dst = src;
 }
 
 static void virgl_fence_server_sync(struct virgl_winsys *vws,
-		                    struct virgl_cmd_buf *_cbuf,
-                                    struct pipe_fence_handle *fence)
+                                    struct virgl_cmd_buf *_cbuf,
+                                    struct pipe_fence_handle *_fence)
 {
    struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
-   struct virgl_hw_res *hw_res = virgl_hw_res(fence);
+   struct virgl_drm_fence *fence = virgl_drm_fence(_fence);
 
-   /* if not an external fence, then nothing more to do without preemption: */
-   if (hw_res->fence_fd == -1)
+   if (!vws->supports_fences)
       return;
 
-   sync_accumulate("virgl", &cbuf->in_fence_fd, hw_res->fence_fd);
+   /* if not an external fence, then nothing more to do without preemption: */
+   if (!fence->external)
+      return;
+
+   sync_accumulate("virgl", &cbuf->in_fence_fd, fence->fd);
 }
 
 static int virgl_fence_get_fd(struct virgl_winsys *vws,
-                               struct pipe_fence_handle *fence)
+                              struct pipe_fence_handle *_fence)
 {
-        struct virgl_hw_res *hw_res = virgl_hw_res(fence);
+   struct virgl_drm_fence *fence = virgl_drm_fence(_fence);
 
-        return dup(hw_res->fence_fd);
+   if (!vws->supports_fences)
+      return -1;
+
+   return dup(fence->fd);
 }
 
 static int virgl_drm_get_version(int fd)

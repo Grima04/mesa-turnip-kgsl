@@ -50,7 +50,6 @@ struct virgl_hw_res {
    int64_t start, end;
    boolean flinked;
    uint32_t flink;
-   int fence_fd;
 };
 
 struct virgl_drm_winsys
@@ -66,6 +65,13 @@ struct virgl_drm_winsys
    struct util_hash_table *bo_names;
    mtx_t bo_handles_mutex;
    bool has_capset_query_fix;
+};
+
+struct virgl_drm_fence {
+   struct pipe_reference reference;
+   bool external;
+   int fd;
+   struct virgl_hw_res *hw_res;
 };
 
 struct virgl_drm_cmd_buf {
@@ -86,16 +92,16 @@ struct virgl_drm_cmd_buf {
 
 };
 
-static inline struct virgl_hw_res *
-virgl_hw_res(struct pipe_fence_handle *f)
-{
-   return (struct virgl_hw_res *)f;
-}
-
 static inline struct virgl_drm_winsys *
 virgl_drm_winsys(struct virgl_winsys *iws)
 {
    return (struct virgl_drm_winsys *)iws;
+}
+
+static inline struct virgl_drm_fence *
+virgl_drm_fence(struct pipe_fence_handle *f)
+{
+   return (struct virgl_drm_fence *)f;
 }
 
 static inline struct virgl_drm_cmd_buf *
