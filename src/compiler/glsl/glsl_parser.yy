@@ -2538,6 +2538,15 @@ statement_list:
       $$ = $1;
       $$->link.insert_before(& $2->link);
    }
+   | statement_list extension_statement
+   {
+      if (!state->allow_extension_directive_midshader) {
+         _mesa_glsl_error(& @1, state,
+                          "#extension directive is not allowed "
+                          "in the middle of a shader");
+         YYERROR;
+      }
+   }
    ;
 
 expression_statement:
