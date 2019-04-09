@@ -438,6 +438,7 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
          goto done;
       }
       res->bo_handle = open_arg.handle;
+      res->flink_name = whandle->handle;
    }
 
    memset(&info_arg, 0, sizeof(info_arg));
@@ -457,7 +458,9 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    pipe_reference_init(&res->reference, 1);
    res->num_cs_references = 0;
 
-   util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)handle, res);
+   if (res->flink_name)
+      util_hash_table_set(qdws->bo_names, (void *)(uintptr_t)res->flink_name, res);
+   util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
 
 done:
    mtx_unlock(&qdws->bo_handles_mutex);
