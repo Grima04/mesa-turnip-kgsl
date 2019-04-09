@@ -759,7 +759,7 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
    ctx->num_transfers = ctx->num_draws = ctx->num_compute = 0;
 
    virgl_transfer_queue_clear(&ctx->queue, ctx->cbuf);
-   rs->vws->submit_cmd(rs->vws, ctx->cbuf, ctx->cbuf->in_fence_fd,
+   rs->vws->submit_cmd(rs->vws, ctx->cbuf,
                        ctx->cbuf->needs_out_fence_fd ? &out_fence_fd : NULL);
 
    if (fence)
@@ -786,10 +786,6 @@ static void virgl_flush_from_st(struct pipe_context *ctx,
 
    virgl_flush_eq(vctx, vctx, fence);
 
-   if (vctx->cbuf->in_fence_fd != -1) {
-      close(vctx->cbuf->in_fence_fd);
-      vctx->cbuf->in_fence_fd = -1;
-   }
    vctx->cbuf->needs_out_fence_fd = false;
 }
 

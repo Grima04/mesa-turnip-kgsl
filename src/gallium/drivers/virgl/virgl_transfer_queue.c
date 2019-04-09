@@ -206,7 +206,7 @@ static void add_internal(struct virgl_transfer_queue *queue,
          iter.data = queue->tbuf;
          perform_action(queue, &iter);
 
-         vws->submit_cmd(vws, queue->tbuf, -1, NULL);
+         vws->submit_cmd(vws, queue->tbuf, NULL);
          queue->num_dwords = 0;
       }
    }

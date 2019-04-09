@@ -73,6 +73,8 @@ struct virgl_drm_cmd_buf {
 
    uint32_t *buf;
 
+   int in_fence_fd;
+
    unsigned nres;
    unsigned cres;
    struct virgl_hw_res **res_bo;

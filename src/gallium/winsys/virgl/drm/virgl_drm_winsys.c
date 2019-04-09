@@ -692,8 +692,8 @@ static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
       return NULL;
    }
 
+   cbuf->in_fence_fd = -1;
    cbuf->base.buf = cbuf->buf;
-   cbuf->base.in_fence_fd = -1;
    return &cbuf->base;
 }
 
@@ -711,7 +711,7 @@ static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
 
 static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
                                        struct virgl_cmd_buf *_cbuf,
-                                       int in_fence_fd, int *out_fence_fd)
+                                       int *out_fence_fd)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
@@ -726,20 +726,32 @@ static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
    eb.size = cbuf->base.cdw * 4;
    eb.num_bo_handles = cbuf->cres;
    eb.bo_handles = (unsigned long)(void *)cbuf->res_hlist;
+
    eb.fence_fd = -1;
+   if (qws->supports_fences) {
+      if (cbuf->in_fence_fd >= 0) {
+         eb.flags |= VIRTGPU_EXECBUF_FENCE_FD_IN;
+         eb.fence_fd = cbuf->in_fence_fd;
+      }
 
-   if (in_fence_fd != -1) {
-       eb.flags |= VIRTGPU_EXECBUF_FENCE_FD_IN;
-       eb.fence_fd = in_fence_fd;
+      if (out_fence_fd != NULL)
+         eb.flags |= VIRTGPU_EXECBUF_FENCE_FD_OUT;
+   } else {
+      assert(cbuf->in_fence_fd < 0);
+      assert(out_fence_fd == NULL);
    }
-
-   if (out_fence_fd != NULL)
-       eb.flags |= VIRTGPU_EXECBUF_FENCE_FD_OUT;
 
    ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
    if (ret == -1)
       fprintf(stderr,"got error from kernel - expect bad rendering %d\n", errno);
    cbuf->base.cdw = 0;
+
+   if (qws->supports_fences) {
+      if (cbuf->in_fence_fd >= 0) {
+         close(cbuf->in_fence_fd);
+         cbuf->in_fence_fd = -1;
+      }
+   }
 
    if (out_fence_fd != NULL)
       *out_fence_fd = eb.fence_fd;
@@ -849,9 +861,10 @@ static void virgl_fence_reference(struct virgl_winsys *vws,
 }
 
 static void virgl_fence_server_sync(struct virgl_winsys *vws,
-		                    struct virgl_cmd_buf *cbuf,
+		                    struct virgl_cmd_buf *_cbuf,
                                     struct pipe_fence_handle *fence)
 {
+   struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
    struct virgl_hw_res *hw_res = virgl_hw_res(fence);
 
    /* if not an external fence, then nothing more to do without preemption: */
