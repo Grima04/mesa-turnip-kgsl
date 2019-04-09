@@ -2652,11 +2652,23 @@ dri2_export_dma_buf_image_mesa(_EGLDriver *drv, _EGLDisplay *disp, _EGLImage *im
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img = dri2_egl_image(img);
+   EGLint nplanes;
 
    (void) drv;
 
    if (!dri2_can_export_dma_buf_image(disp, img))
       return EGL_FALSE;
+
+   /* EGL_MESA_image_dma_buf_export spec says:
+    *    "If the number of fds is less than the number of planes, then
+    *    subsequent fd slots should contain -1."
+    */
+   if (fds) {
+      /* Query nplanes so that we know how big the given array is. */
+      dri2_dpy->image->queryImage(dri2_img->dri_image,
+                                  __DRI_IMAGE_ATTRIB_NUM_PLANES, &nplanes);
+      memset(fds, -1, nplanes * sizeof(int));
+   }
 
    /* rework later to provide multiple fds/strides/offsets */
    if (fds)
