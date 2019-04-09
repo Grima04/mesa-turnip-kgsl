@@ -476,6 +476,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"sisched", RADV_PERFTEST_SISCHED},
 	{"localbos", RADV_PERFTEST_LOCAL_BOS},
 	{"dccmsaa", RADV_PERFTEST_DCC_MSAA},
+	{"bolist", RADV_PERFTEST_BO_LIST},
 	{NULL, 0}
 };
 
@@ -1729,6 +1730,7 @@ VkResult radv_CreateDevice(
 	 * from the descriptor set anymore, so we have to use a global BO list.
 	 */
 	device->use_global_bo_list =
+		(device->instance->perftest_flags & RADV_PERFTEST_BO_LIST) ||
 		device->enabled_extensions.EXT_descriptor_indexing ||
 		device->enabled_extensions.EXT_buffer_device_address;
 
