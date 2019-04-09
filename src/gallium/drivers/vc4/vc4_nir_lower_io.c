@@ -339,6 +339,8 @@ vc4_nir_lower_uniform(struct vc4_compile *c, nir_builder *b,
                 nir_intrinsic_set_base(intr_comp,
                                        nir_intrinsic_base(intr) * 16 +
                                        i * 4);
+                nir_intrinsic_set_range(intr_comp,
+                                        nir_intrinsic_range(intr) * 16 - i * 4);
 
                 intr_comp->src[0] =
                         nir_src_for_ssa(nir_ishl(b, intr->src[0].ssa,
