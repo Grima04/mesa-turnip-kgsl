@@ -35,6 +35,8 @@
 #include "nir_builder.h"
 #include "nir_deref.h"
 
+#include "util/u_math.h"
+
 struct lower_io_state {
    void *dead_ctx;
    nir_builder builder;
@@ -1327,6 +1329,111 @@ nir_lower_explicit_io(nir_shader *shader, nir_variable_mode modes,
       if (function->impl &&
           nir_lower_explicit_io_impl(function->impl, modes, addr_format))
          progress = true;
+   }
+
+   return progress;
+}
+
+static bool
+nir_lower_vars_to_explicit_types_impl(nir_function_impl *impl,
+                                      nir_variable_mode modes,
+                                      glsl_type_size_align_func type_info)
+{
+   bool progress = false;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_deref)
+            continue;
+
+         nir_deref_instr *deref = nir_instr_as_deref(instr);
+         if (!(deref->mode & modes))
+            continue;
+
+         unsigned size, alignment;
+         const struct glsl_type *new_type =
+            glsl_get_explicit_type_for_size_align(deref->type, type_info, &size, &alignment);
+         if (new_type != deref->type) {
+            progress = true;
+            deref->type = new_type;
+         }
+         if (deref->deref_type == nir_deref_type_cast) {
+            /* See also glsl_type::get_explicit_type_for_size_align() */
+            unsigned new_stride = align(size, alignment);
+            if (new_stride != deref->cast.ptr_stride) {
+               deref->cast.ptr_stride = new_stride;
+               progress = true;
+            }
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance |
+                                  nir_metadata_live_ssa_defs |
+                                  nir_metadata_loop_analysis);
+   }
+
+   return progress;
+}
+
+static bool
+lower_vars_to_explicit(nir_shader *shader,
+                       struct exec_list *vars, nir_variable_mode mode,
+                       glsl_type_size_align_func type_info)
+{
+   bool progress = false;
+   unsigned offset = 0;
+   nir_foreach_variable(var, vars) {
+      unsigned size, align;
+      const struct glsl_type *explicit_type =
+         glsl_get_explicit_type_for_size_align(var->type, type_info, &size, &align);
+
+      if (explicit_type != var->type) {
+         progress = true;
+         var->type = explicit_type;
+      }
+
+      var->data.driver_location = ALIGN_POT(offset, align);
+      offset = var->data.driver_location + size;
+   }
+
+   if (mode == nir_var_mem_shared) {
+      shader->info.cs.shared_size = offset;
+      shader->num_shared = offset;
+   }
+
+   return progress;
+}
+
+bool
+nir_lower_vars_to_explicit_types(nir_shader *shader,
+                                 nir_variable_mode modes,
+                                 glsl_type_size_align_func type_info)
+{
+   /* TODO: Situations which need to be handled to support more modes:
+    * - row-major matrices
+    * - compact shader inputs/outputs
+    * - interface types
+    */
+   nir_variable_mode supported = nir_var_mem_shared | nir_var_shader_temp | nir_var_function_temp;
+   assert(!(modes & ~supported) && "unsupported");
+
+   bool progress = false;
+
+   if (modes & nir_var_mem_shared)
+      progress |= lower_vars_to_explicit(shader, &shader->shared, nir_var_mem_shared, type_info);
+   if (modes & nir_var_shader_temp)
+      progress |= lower_vars_to_explicit(shader, &shader->globals, nir_var_shader_temp, type_info);
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         if (modes & nir_var_function_temp)
+            progress |= lower_vars_to_explicit(shader, &function->impl->locals, nir_var_function_temp, type_info);
+
+         progress |= nir_lower_vars_to_explicit_types_impl(function->impl, modes, type_info);
+      }
    }
 
    return progress;
