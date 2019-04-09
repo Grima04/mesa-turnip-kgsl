@@ -996,9 +996,10 @@ vtn_selection_control(struct vtn_builder *b, struct vtn_if *vtn_if)
 }
 
 static void
-vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
-                 nir_variable *switch_fall_var, bool *has_switch_break,
-                 vtn_instruction_handler handler)
+vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
+                            nir_variable *switch_fall_var,
+                            bool *has_switch_break,
+                            vtn_instruction_handler handler)
 {
    vtn_foreach_cf_node(node, cf_list) {
       switch (node->type) {
@@ -1050,16 +1051,16 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
          nif->control = vtn_selection_control(b, vtn_if);
 
          if (vtn_if->then_type == vtn_branch_type_none) {
-            vtn_emit_cf_list(b, &vtn_if->then_body,
-                             switch_fall_var, &sw_break, handler);
+            vtn_emit_cf_list_structured(b, &vtn_if->then_body,
+                                        switch_fall_var, &sw_break, handler);
          } else {
             vtn_emit_branch(b, vtn_if->then_type, switch_fall_var, &sw_break);
          }
 
          nir_push_else(&b->nb, nif);
          if (vtn_if->else_type == vtn_branch_type_none) {
-            vtn_emit_cf_list(b, &vtn_if->else_body,
-                             switch_fall_var, &sw_break, handler);
+            vtn_emit_cf_list_structured(b, &vtn_if->else_body,
+                                        switch_fall_var, &sw_break, handler);
          } else {
             vtn_emit_branch(b, vtn_if->else_type, switch_fall_var, &sw_break);
          }
@@ -1085,7 +1086,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
          nir_loop *loop = nir_push_loop(&b->nb);
          loop->control = vtn_loop_control(b, vtn_loop);
 
-         vtn_emit_cf_list(b, &vtn_loop->body, NULL, NULL, handler);
+         vtn_emit_cf_list_structured(b, &vtn_loop->body, NULL, NULL, handler);
 
          if (!list_is_empty(&vtn_loop->cont_body)) {
             /* If we have a non-trivial continue body then we need to put
@@ -1103,7 +1104,8 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
             nir_if *cont_if =
                nir_push_if(&b->nb, nir_load_var(&b->nb, do_cont));
 
-            vtn_emit_cf_list(b, &vtn_loop->cont_body, NULL, NULL, handler);
+            vtn_emit_cf_list_structured(b, &vtn_loop->cont_body, NULL, NULL,
+                                        handler);
 
             nir_pop_if(&b->nb, cont_if);
 
@@ -1148,7 +1150,8 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
 
             bool has_break = false;
             nir_store_var(&b->nb, fall_var, nir_imm_true(&b->nb), 1);
-            vtn_emit_cf_list(b, &cse->body, fall_var, &has_break, handler);
+            vtn_emit_cf_list_structured(b, &cse->body, fall_var, &has_break,
+                                        handler);
             (void)has_break; /* We don't care */
 
             nir_pop_if(&b->nb, case_if);
@@ -1174,7 +1177,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    b->has_loop_continue = false;
    b->phi_table = _mesa_pointer_hash_table_create(b);
 
-   vtn_emit_cf_list(b, &func->body, NULL, NULL, instruction_handler);
+   vtn_emit_cf_list_structured(b, &func->body, NULL, NULL, instruction_handler);
 
    vtn_foreach_instruction(b, func->start_block->label, func->end,
                            vtn_handle_phi_second_pass);
