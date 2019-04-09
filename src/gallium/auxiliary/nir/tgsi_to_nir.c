@@ -85,27 +85,6 @@ struct ttn_compile {
    nir_variable *input_var_position;
    nir_variable *input_var_point;
 
-   /**
-    * Stack of nir_cursors where instructions should be pushed as we pop
-    * back out of the control flow stack.
-    *
-    * For each IF/ELSE/ENDIF block, if_stack[if_stack_pos] has where the else
-    * instructions should be placed, and if_stack[if_stack_pos - 1] has where
-    * the next instructions outside of the if/then/else block go.
-    */
-   nir_cursor *if_stack;
-   unsigned if_stack_pos;
-
-   /**
-    * Stack of nir_cursors where instructions should be pushed as we pop
-    * back out of the control flow stack.
-    *
-    * loop_stack[loop_stack_pos - 1] contains the cf_node_list for the outside
-    * of the loop.
-    */
-   nir_cursor *loop_stack;
-   unsigned loop_stack_pos;
-
    /* How many TGSI_FILE_IMMEDIATE vec4s have been parsed so far. */
    unsigned next_imm;
 
@@ -1161,85 +1140,6 @@ ttn_kill_if(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 }
 
 static void
-ttn_if(struct ttn_compile *c, nir_ssa_def *src, bool is_uint)
-{
-   nir_builder *b = &c->build;
-   nir_ssa_def *src_x = ttn_channel(b, src, X);
-
-   nir_if *if_stmt = nir_if_create(b->shader);
-   if (is_uint) {
-      /* equivalent to TGSI UIF, src is interpreted as integer */
-      if_stmt->condition = nir_src_for_ssa(nir_ine(b, src_x, nir_imm_int(b, 0)));
-   } else {
-      /* equivalent to TGSI IF, src is interpreted as float */
-      if_stmt->condition = nir_src_for_ssa(nir_fneu(b, src_x, nir_imm_float(b, 0.0)));
-   }
-   nir_builder_cf_insert(b, &if_stmt->cf_node);
-
-   c->if_stack[c->if_stack_pos] = nir_after_cf_node(&if_stmt->cf_node);
-   c->if_stack_pos++;
-
-   b->cursor = nir_after_cf_list(&if_stmt->then_list);
-
-   c->if_stack[c->if_stack_pos] = nir_after_cf_list(&if_stmt->else_list);
-   c->if_stack_pos++;
-}
-
-static void
-ttn_else(struct ttn_compile *c)
-{
-   nir_builder *b = &c->build;
-
-   b->cursor = c->if_stack[c->if_stack_pos - 1];
-}
-
-static void
-ttn_endif(struct ttn_compile *c)
-{
-   nir_builder *b = &c->build;
-
-   c->if_stack_pos -= 2;
-   b->cursor = c->if_stack[c->if_stack_pos];
-}
-
-static void
-ttn_bgnloop(struct ttn_compile *c)
-{
-   nir_builder *b = &c->build;
-
-   nir_loop *loop = nir_loop_create(b->shader);
-   nir_builder_cf_insert(b, &loop->cf_node);
-
-   c->loop_stack[c->loop_stack_pos] = nir_after_cf_node(&loop->cf_node);
-   c->loop_stack_pos++;
-
-   b->cursor = nir_after_cf_list(&loop->body);
-}
-
-static void
-ttn_cont(nir_builder *b)
-{
-   nir_jump_instr *instr = nir_jump_instr_create(b->shader, nir_jump_continue);
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
-static void
-ttn_brk(nir_builder *b)
-{
-   nir_jump_instr *instr = nir_jump_instr_create(b->shader, nir_jump_break);
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
-static void
-ttn_endloop(struct ttn_compile *c)
-{
-   nir_builder *b = &c->build;
-
-   c->loop_stack_pos--;
-   b->cursor = c->loop_stack[c->loop_stack_pos];
-}
-
-static void
 get_texture_info(unsigned texture,
                  enum glsl_sampler_dim *dim,
                  bool *is_shadow,
@@ -2222,35 +2122,35 @@ ttn_emit_instruction(struct ttn_compile *c)
       break;
 
    case TGSI_OPCODE_IF:
-      ttn_if(c, src[0], false);
+      nir_push_if(b, nir_fneu(b, src[0], nir_imm_float(b, 0.0)));
       break;
 
    case TGSI_OPCODE_UIF:
-      ttn_if(c, src[0], true);
+      nir_push_if(b, nir_ine(b, src[0], nir_imm_int(b, 0)));
       break;
 
    case TGSI_OPCODE_ELSE:
-      ttn_else(c);
+      nir_push_else(&c->build, NULL);
       break;
 
    case TGSI_OPCODE_ENDIF:
-      ttn_endif(c);
+      nir_pop_if(&c->build, NULL);
       break;
 
    case TGSI_OPCODE_BGNLOOP:
-      ttn_bgnloop(c);
+      nir_push_loop(&c->build);
       break;
 
    case TGSI_OPCODE_BRK:
-      ttn_brk(b);
+      nir_jump(b, nir_jump_break);
       break;
 
    case TGSI_OPCODE_CONT:
-      ttn_cont(b);
+      nir_jump(b, nir_jump_continue);
       break;
 
    case TGSI_OPCODE_ENDLOOP:
-      ttn_endloop(c);
+      nir_pop_loop(&c->build, NULL);
       break;
 
    case TGSI_OPCODE_BARRIER:
@@ -2496,13 +2396,6 @@ ttn_compile_init(const void *tgsi_tokens,
 
    c->num_samp_types = scan.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
    c->samp_types = rzalloc_array(c, nir_alu_type, c->num_samp_types);
-
-   c->if_stack = rzalloc_array(c, nir_cursor,
-                               (scan.opcode_count[TGSI_OPCODE_IF] +
-                                scan.opcode_count[TGSI_OPCODE_UIF]) * 2);
-   c->loop_stack = rzalloc_array(c, nir_cursor,
-                                 scan.opcode_count[TGSI_OPCODE_BGNLOOP]);
-
 
    ttn_parse_tgsi(c, tgsi_tokens);
    ttn_add_output_stores(c);
