@@ -3189,8 +3189,12 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		if (mem_type_index == RADV_MEM_TYPE_GTT_WRITE_COMBINE)
 			flags |= RADEON_FLAG_GTT_WC;
 
-		if (!dedicate_info && !import_info && (!export_info || !export_info->handleTypes))
+		if (!dedicate_info && !import_info && (!export_info || !export_info->handleTypes)) {
 			flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
+			if (device->use_global_bo_list) {
+				flags |= RADEON_FLAG_PREFER_LOCAL_BO;
+			}
+		}
 
 		mem->bo = device->ws->buffer_create(device->ws, alloc_size, device->physical_device->rad_info.max_alignment,
 		                                    domain, flags, priority);
