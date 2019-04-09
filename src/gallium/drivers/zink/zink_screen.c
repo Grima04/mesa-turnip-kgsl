@@ -361,7 +361,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
                   PIPE_MAX_SAMPLERS);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
-      return screen->props.limits.maxUniformBufferRange;
+      return MIN2(screen->props.limits.maxUniformBufferRange, INT_MAX);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return screen->props.limits.maxPerStageDescriptorUniformBuffers;
@@ -408,7 +408,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-      return screen->props.limits.maxPerStageDescriptorStorageImages;
+      return MIN2(screen->props.limits.maxPerStageDescriptorStorageImages,
+                  PIPE_MAX_SHADER_IMAGES);
 
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
    case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
