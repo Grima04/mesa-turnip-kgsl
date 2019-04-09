@@ -37,7 +37,6 @@ struct virgl_hw_res {
    struct pipe_reference reference;
    uint32_t res_handle;
    uint32_t bo_handle;
-   uint32_t name;
    int num_cs_references;
    uint32_t size;
    void *ptr;

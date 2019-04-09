@@ -394,7 +394,7 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct drm_gem_open open_arg = {};
    struct drm_virtgpu_resource_info info_arg = {};
-   struct virgl_hw_res *res;
+   struct virgl_hw_res *res = NULL;
    uint32_t handle = whandle->handle;
 
    if (whandle->offset != 0) {
@@ -405,25 +405,25 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
 
    mtx_lock(&qdws->bo_handles_mutex);
 
+   /* We must maintain a list of pairs <handle, bo>, so that we always return
+    * the same BO for one particular handle. If we didn't do that and created
+    * more than one BO for the same handle and then relocated them in a CS,
+    * we would hit a deadlock in the kernel.
+    *
+    * The list of pairs is guarded by a mutex, of course. */
    if (whandle->type == WINSYS_HANDLE_TYPE_SHARED) {
       res = util_hash_table_get(qdws->bo_names, (void*)(uintptr_t)handle);
-      if (res) {
-         struct virgl_hw_res *r = NULL;
-         virgl_drm_resource_reference(qdws, &r, res);
-         goto done;
-      }
-   }
-
-   if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+   } else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
       int r;
       r = drmPrimeFDToHandle(qdws->fd, whandle->handle, &handle);
-      if (r) {
-         res = NULL;
+      if (r)
          goto done;
-      }
+      res = util_hash_table_get(qdws->bo_handles, (void*)(uintptr_t)handle);
+   } else {
+      /* Unknown handle type */
+      goto done;
    }
 
-   res = util_hash_table_get(qdws->bo_handles, (void*)(uintptr_t)handle);
    if (res) {
       struct virgl_hw_res *r = NULL;
       virgl_drm_resource_reference(qdws, &r, res);
@@ -446,7 +446,6 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
       }
       res->bo_handle = open_arg.handle;
    }
-   res->name = handle;
 
    memset(&info_arg, 0, sizeof(info_arg));
    info_arg.bo_handle = res->bo_handle;
