@@ -298,6 +298,12 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
          flush_data(ctx, virgl_transfer(trans->resolve_transfer),
                     &trans->resolve_transfer->box);
 
+         /* FINISHME: In case the destination format isn't renderable here, the
+          * blit here will currently fail. This could for instance happen if the
+          * mapped resource is of a compressed format, and it's mapped with both
+          * read and write usage.
+          */
+
          virgl_copy_region_with_blit(ctx,
                                      trans->base.resource, trans->base.level,
                                      &transfer->box,
