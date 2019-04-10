@@ -2307,6 +2307,14 @@ typedef struct nir_shader_compiler_options {
     */
    bool lower_helper_invocation;
 
+   /**
+    * Convert gl_SampleMaskIn to gl_HelperInvocation as follows:
+    *
+    *   gl_SampleMaskIn == 0 ---> gl_HelperInvocation
+    *   gl_SampleMaskIn != 0 ---> !gl_HelperInvocation
+    */
+   bool optimize_sample_mask_in;
+
    bool lower_cs_local_index_from_id;
    bool lower_cs_local_id_from_index;
 

@@ -506,6 +506,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    NIR_PASS_V(nir, st_nir_lower_builtin);
    NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
+   NIR_PASS_V(nir, nir_opt_intrinsics);
 
    nir_variable_mode mask = nir_var_function_temp;
    nir_remove_dead_variables(nir, mask);
