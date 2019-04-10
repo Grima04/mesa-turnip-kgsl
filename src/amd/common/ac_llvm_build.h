@@ -689,6 +689,9 @@ ac_build_frexp_mant(struct ac_llvm_context *ctx, LLVMValueRef src0,
 LLVMValueRef
 ac_build_ddxy_interp(struct ac_llvm_context *ctx, LLVMValueRef interp_ij);
 
+LLVMValueRef
+ac_build_load_helper_invocation(struct ac_llvm_context *ctx);
+
 #ifdef __cplusplus
 }
 #endif

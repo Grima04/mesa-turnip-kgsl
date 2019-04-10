@@ -2218,12 +2218,7 @@ void si_load_system_value(struct si_shader_context *ctx,
 		break;
 
 	case TGSI_SEMANTIC_HELPER_INVOCATION:
-		value = ac_build_intrinsic(&ctx->ac,
-					   "llvm.amdgcn.ps.live",
-					   ctx->i1, NULL, 0,
-					   AC_FUNC_ATTR_READNONE);
-		value = LLVMBuildNot(ctx->ac.builder, value, "");
-		value = LLVMBuildSExt(ctx->ac.builder, value, ctx->i32, "");
+		value = ac_build_load_helper_invocation(&ctx->ac);
 		break;
 
 	case TGSI_SEMANTIC_SUBGROUP_SIZE:

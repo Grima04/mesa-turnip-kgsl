@@ -2860,17 +2860,6 @@ static void emit_discard(struct ac_nir_context *ctx,
 }
 
 static LLVMValueRef
-visit_load_helper_invocation(struct ac_nir_context *ctx)
-{
-	LLVMValueRef result = ac_build_intrinsic(&ctx->ac,
-						 "llvm.amdgcn.ps.live",
-						 ctx->ac.i1, NULL, 0,
-						 AC_FUNC_ATTR_READNONE);
-	result = LLVMBuildNot(ctx->ac.builder, result, "");
-	return LLVMBuildSExt(ctx->ac.builder, result, ctx->ac.i32, "");
-}
-
-static LLVMValueRef
 visit_load_local_invocation_index(struct ac_nir_context *ctx)
 {
 	LLVMValueRef result;
@@ -3283,7 +3272,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		result = ctx->abi->front_face;
 		break;
 	case nir_intrinsic_load_helper_invocation:
-		result = visit_load_helper_invocation(ctx);
+		result = ac_build_load_helper_invocation(&ctx->ac);
 		break;
 	case nir_intrinsic_load_instance_id:
 		result = ctx->abi->instance_id;

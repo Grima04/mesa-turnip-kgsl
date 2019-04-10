@@ -4057,3 +4057,13 @@ ac_build_ddxy_interp(struct ac_llvm_context *ctx, LLVMValueRef interp_ij)
 	}
 	return ac_build_gather_values(ctx, result, 4);
 }
+
+LLVMValueRef
+ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
+{
+	LLVMValueRef result = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live",
+						 ctx->i1, NULL, 0,
+						 AC_FUNC_ATTR_READNONE);
+	result = LLVMBuildNot(ctx->builder, result, "");
+	return LLVMBuildSExt(ctx->builder, result, ctx->i32, "");
+}
