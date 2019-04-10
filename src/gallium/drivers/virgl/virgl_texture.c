@@ -63,9 +63,10 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
 
 static unsigned temp_bind(unsigned orig)
 {
-   if (orig & ~(PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL |
-                PIPE_BIND_SAMPLER_VIEW))
-      fprintf(stderr, "Waring, possibly unhandled bind: %x\n", orig);
+   unsigned warn = ~(PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL |
+                     PIPE_BIND_SAMPLER_VIEW);
+   if (orig & warn)
+      fprintf(stderr, "Waring, possibly unhandled bind: %x\n", orig & warn);
    return orig & (PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_RENDER_TARGET);
 }
 
