@@ -2550,7 +2550,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 
 		res = ac_build_image_opcode(&ctx->ac, &args);
 	}
-	return ac_to_integer(&ctx->ac, res);
+	return res;
 }
 
 static void visit_image_store(struct ac_nir_context *ctx,
