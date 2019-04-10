@@ -757,7 +757,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, src[0], src[1]);
 		break;
 	case nir_op_umin:
-		result = emit_minmax_int(&ctx->ac, LLVMIntULT, src[0], src[1]);
+		result = ac_build_umin(&ctx->ac, src[0], src[1]);
 		break;
 	case nir_op_isign:
 		result = ac_build_isign(&ctx->ac, src[0],
@@ -1105,8 +1105,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 						ac_to_float_type(&ctx->ac, def_type), result, src[2]);
 		break;
 	case nir_op_umin3:
-		result = emit_minmax_int(&ctx->ac, LLVMIntULT, src[0], src[1]);
-		result = emit_minmax_int(&ctx->ac, LLVMIntULT, result, src[2]);
+		result = ac_build_umin(&ctx->ac, src[0], src[1]);
+		result = ac_build_umin(&ctx->ac, result, src[2]);
 		break;
 	case nir_op_imin3:
 		result = ac_build_imin(&ctx->ac, src[0], src[1]);
@@ -1142,9 +1142,9 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	}
 	case nir_op_umed3: {
-		LLVMValueRef tmp1 = emit_minmax_int(&ctx->ac, LLVMIntULT, src[0], src[1]);
+		LLVMValueRef tmp1 = ac_build_umin(&ctx->ac, src[0], src[1]);
 		LLVMValueRef tmp2 = emit_minmax_int(&ctx->ac, LLVMIntUGT, src[0], src[1]);
-		tmp2 = emit_minmax_int(&ctx->ac, LLVMIntULT, tmp2, src[2]);
+		tmp2 = ac_build_umin(&ctx->ac, tmp2, src[2]);
 		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, tmp1, tmp2);
 		break;
 	}
