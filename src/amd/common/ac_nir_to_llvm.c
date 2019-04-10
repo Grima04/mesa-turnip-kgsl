@@ -540,27 +540,6 @@ static LLVMValueRef emit_ddxy(struct ac_nir_context *ctx,
 	return result;
 }
 
-/*
- * this takes an I,J coordinate pair,
- * and works out the X and Y derivatives.
- * it returns DDX(I), DDX(J), DDY(I), DDY(J).
- */
-static LLVMValueRef emit_ddxy_interp(
-	struct ac_nir_context *ctx,
-	LLVMValueRef interp_ij)
-{
-	LLVMValueRef result[4], a;
-	unsigned i;
-
-	for (i = 0; i < 2; i++) {
-		a = LLVMBuildExtractElement(ctx->ac.builder, interp_ij,
-					    LLVMConstInt(ctx->ac.i32, i, false), "");
-		result[i] = emit_ddxy(ctx, nir_op_fddx, a);
-		result[2+i] = emit_ddxy(ctx, nir_op_fddy, a);
-	}
-	return ac_build_gather_values(&ctx->ac, result, 4);
-}
-
 static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 {
 	LLVMValueRef src[4], result = NULL;
@@ -3107,7 +3086,7 @@ static LLVMValueRef visit_interp(struct ac_nir_context *ctx,
 
 	if (location == INTERP_CENTER) {
 		LLVMValueRef ij_out[2];
-		LLVMValueRef ddxy_out = emit_ddxy_interp(ctx, interp_param);
+		LLVMValueRef ddxy_out = ac_build_ddxy_interp(&ctx->ac, interp_param);
 
 		/*
 		 * take the I then J parameters, and the DDX/Y for it, and
