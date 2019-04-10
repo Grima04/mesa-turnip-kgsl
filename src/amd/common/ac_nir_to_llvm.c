@@ -1013,8 +1013,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	}
 
 	case nir_op_pack_64_2x32_split: {
-		LLVMValueRef tmp = LLVMGetUndef(ctx->ac.v2i32);
-		tmp = ac_build_gather_values(&ctx->ac, src, 2);
+		LLVMValueRef tmp = ac_build_gather_values(&ctx->ac, src, 2);
 		result = LLVMBuildBitCast(ctx->ac.builder, tmp, ctx->ac.i64, "");
 		break;
 	}
