@@ -415,7 +415,7 @@ vtn_handle_extension(struct vtn_builder *b, SpvOp opcode,
    }
 
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 }
 
@@ -846,7 +846,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
       break;
 
    default:
-      vtn_fail("Unhandled decoration");
+      vtn_fail_with_decoration("Unhandled decoration", dec->decoration);
    }
 }
 
@@ -1022,7 +1022,7 @@ type_decoration_cb(struct vtn_builder *b,
       break;
 
    default:
-      vtn_fail("Unhandled decoration");
+      vtn_fail_with_decoration("Unhandled decoration", dec->decoration);
    }
 }
 
@@ -1071,7 +1071,8 @@ translate_image_format(struct vtn_builder *b, SpvImageFormat format)
    case SpvImageFormatR16ui:        return 0x8234; /* GL_R16UI */
    case SpvImageFormatR8ui:         return 0x8232; /* GL_R8UI */
    default:
-      vtn_fail("Invalid image format");
+      vtn_fail("Invalid image format: %s (%u)",
+               spirv_imageformat_to_string(format), format);
    }
 }
 
@@ -1179,7 +1180,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          val->type->type = (signedness ? glsl_int8_t_type() : glsl_uint8_t_type());
          break;
       default:
-         vtn_fail("Invalid int bit size");
+         vtn_fail("Invalid int bit size: %u", bit_size);
       }
       val->type->length = 1;
       break;
@@ -1199,7 +1200,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          val->type->type = glsl_double_type();
          break;
       default:
-         vtn_fail("Invalid float bit size");
+         vtn_fail("Invalid float bit size: %u", bit_size);
       }
       val->type->length = 1;
       break;
@@ -1453,7 +1454,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       case SpvDimBuffer:   dim = GLSL_SAMPLER_DIM_BUF;   break;
       case SpvDimSubpassData: dim = GLSL_SAMPLER_DIM_SUBPASS; break;
       default:
-         vtn_fail("Invalid SPIR-V image dimensionality");
+         vtn_fail("Invalid SPIR-V image dimensionality: %s (%u)",
+                  spirv_dim_to_string((SpvDim)w[3]), w[3]);
       }
 
       /* w[4]: as per Vulkan spec "Validation Rules within a Module",
@@ -1518,7 +1520,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeQueue:
    case SpvOpTypePipe:
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 
    vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
@@ -1693,7 +1695,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
          val->constant->values[0][0].u8 = w[3];
          break;
       default:
-         vtn_fail("Unsupported SpvOpConstant bit size");
+         vtn_fail("Unsupported SpvOpConstant bit size: %u", bit_size);
       }
       break;
    }
@@ -2008,7 +2010,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 
    /* Now that we have the value, update the workgroup size if needed */
@@ -2162,7 +2164,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 
    nir_tex_src srcs[10]; /* 10 should be enough */
@@ -2402,7 +2404,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
             case 32: instr->tg4_offsets[i][j] = cvec[j].i32;   break;
             case 64: instr->tg4_offsets[i][j] = cvec[j].i64;   break;
             default:
-               vtn_fail("Unsupported bit size");
+               vtn_fail("Unsupported bit size: %u", bit_size);
             }
          }
       }
@@ -2450,7 +2452,7 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Invalid SPIR-V atomic");
+      vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
    }
 }
 
@@ -2554,7 +2556,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Invalid image opcode");
+      vtn_fail_with_opcode("Invalid image opcode", opcode);
    }
 
    nir_intrinsic_op op;
@@ -2580,7 +2582,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    OP(AtomicXor,              atomic_xor)
 #undef OP
    default:
-      vtn_fail("Invalid image opcode");
+      vtn_fail_with_opcode("Invalid image opcode", opcode);
    }
 
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->shader, op);
@@ -2630,7 +2632,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Invalid image opcode");
+      vtn_fail_with_opcode("Invalid image opcode", opcode);
    }
 
    if (opcode != SpvOpImageWrite && opcode != SpvOpAtomicStore) {
@@ -2680,7 +2682,7 @@ get_ssbo_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicXor,              atomic_xor)
 #undef OP
    default:
-      vtn_fail("Invalid SSBO atomic");
+      vtn_fail_with_opcode("Invalid SSBO atomic", opcode);
    }
 }
 
@@ -2735,7 +2737,7 @@ get_shared_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicXor,              atomic_xor)
 #undef OP
    default:
-      vtn_fail("Invalid shared atomic");
+      vtn_fail_with_opcode("Invalid shared atomic", opcode);
    }
 }
 
@@ -2761,7 +2763,7 @@ get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicXor,              atomic_xor)
 #undef OP
    default:
-      vtn_fail("Invalid shared atomic");
+      vtn_fail_with_opcode("Invalid shared atomic", opcode);
    }
 }
 
@@ -2799,7 +2801,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Invalid SPIR-V atomic");
+      vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
    }
 
    /*
@@ -2909,7 +2911,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          break;
 
       default:
-         vtn_fail("Invalid SPIR-V atomic");
+         vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
       }
    } else {
       nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
@@ -2947,7 +2949,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          break;
 
       default:
-         vtn_fail("Invalid SPIR-V atomic");
+         vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
       }
    }
 
@@ -2976,7 +2978,7 @@ create_vec(struct vtn_builder *b, unsigned num_components, unsigned bit_size)
    case 2: op = nir_op_vec2; break;
    case 3: op = nir_op_vec3; break;
    case 4: op = nir_op_vec4; break;
-   default: vtn_fail("bad vector size");
+   default: vtn_fail("bad vector size: %u", num_components);
    }
 
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, op);
@@ -3266,7 +3268,7 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("unknown composite operation");
+      vtn_fail_with_opcode("unknown composite operation", opcode);
    }
 }
 
@@ -3423,7 +3425,8 @@ gl_primitive_from_spv_execution_mode(struct vtn_builder *b,
    case SpvExecutionModeOutputTriangleStrip:
       return 5; /* GL_TRIANGLE_STRIP */
    default:
-      vtn_fail("Invalid primitive type");
+      vtn_fail("Invalid primitive type: %s (%u)",
+               spirv_executionmode_to_string(mode), mode);
    }
 }
 
@@ -3443,7 +3446,8 @@ vertices_in_from_spv_execution_mode(struct vtn_builder *b,
    case SpvExecutionModeInputTrianglesAdjacency:
       return 6;
    default:
-      vtn_fail("Invalid GS input mode");
+      vtn_fail("Invalid GS input mode: %s (%u)",
+               spirv_executionmode_to_string(mode), mode);
    }
 }
 
@@ -3466,14 +3470,15 @@ stage_for_execution_model(struct vtn_builder *b, SpvExecutionModel model)
    case SpvExecutionModelKernel:
       return MESA_SHADER_KERNEL;
    default:
-      vtn_fail("Unsupported execution model");
+      vtn_fail("Unsupported execution model: %s (%u)",
+               spirv_executionmodel_to_string(model), model);
    }
 }
 
-#define spv_check_supported(name, cap) do {		\
-      if (!(b->options && b->options->caps.name))	\
-         vtn_warn("Unsupported SPIR-V capability: %s",  \
-                  spirv_capability_to_string(cap));     \
+#define spv_check_supported(name, cap) do {                 \
+      if (!(b->options && b->options->caps.name))           \
+         vtn_warn("Unsupported SPIR-V capability: %s (%u)", \
+                  spirv_capability_to_string(cap), cap);    \
    } while(0)
 
 
@@ -3735,7 +3740,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       default:
-         vtn_fail("Unhandled capability");
+         vtn_fail("Unhandled capability: %s (%u)",
+                  spirv_capability_to_string(cap), cap);
       }
       break;
    }
@@ -3776,7 +3782,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
                      "AddressingModelPhysicalStorageBuffer64EXT not supported");
          break;
       default:
-         vtn_fail("Unknown addressing model");
+         vtn_fail("Unknown addressing model: %s (%u)",
+                  spirv_addressingmodel_to_string(w[1]), w[1]);
          break;
       }
 
@@ -3988,7 +3995,9 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    default:
-      vtn_fail("Unhandled execution mode");
+      vtn_fail("Unhandled execution mode: %s (%u)",
+               spirv_executionmode_to_string(mode->exec_mode),
+               mode->exec_mode);
    }
 }
 
@@ -4406,7 +4415,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 
    return true;

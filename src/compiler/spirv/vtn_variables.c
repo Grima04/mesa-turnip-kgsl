@@ -1422,7 +1422,8 @@ vtn_get_builtin_location(struct vtn_builder *b,
       set_mode_system_value(b, mode);
       break;
    default:
-      vtn_fail("unsupported builtin: %u", builtin);
+      vtn_fail("Unsupported builtin: %s (%u)",
+               spirv_builtin_to_string(builtin), builtin);
    }
 }
 
@@ -1564,7 +1565,7 @@ apply_var_decoration(struct vtn_builder *b,
       break;
 
    default:
-      vtn_fail("Unhandled decoration");
+      vtn_fail_with_decoration("Unhandled decoration", dec->decoration);
    }
 }
 
@@ -1779,7 +1780,8 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassGeneric:
    default:
-      vtn_fail("Unhandled variable storage class");
+      vtn_fail("Unhandled variable storage class: %s (%u)",
+               spirv_storageclass_to_string(class), class);
    }
 
    if (nir_mode_out)
@@ -2354,7 +2356,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          struct vtn_value *link_val = vtn_untyped_value(b, w[i]);
          if (link_val->value_type == vtn_value_type_constant) {
             chain->link[idx].mode = vtn_access_mode_literal;
-            switch (glsl_get_bit_size(link_val->type->type)) {
+            const unsigned bit_size = glsl_get_bit_size(link_val->type->type);
+            switch (bit_size) {
             case 8:
                chain->link[idx].id = link_val->constant->values[0][0].i8;
                break;
@@ -2368,7 +2371,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                chain->link[idx].id = link_val->constant->values[0][0].i64;
                break;
             default:
-               vtn_fail("Invalid bit size");
+               vtn_fail("Invalid bit size: %u", bit_size);
             }
          } else {
             chain->link[idx].mode = vtn_access_mode_id;
@@ -2570,6 +2573,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpCopyMemorySized:
    default:
-      vtn_fail("Unhandled opcode");
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 }
