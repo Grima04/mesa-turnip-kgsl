@@ -839,8 +839,8 @@ static bool
 opt_if_loop_last_continue(nir_loop *loop, bool aggressive_last_continue)
 {
    nir_if *nif;
-   bool then_ends_in_continue;
-   bool else_ends_in_continue;
+   bool then_ends_in_continue = false;
+   bool else_ends_in_continue = false;
 
    /* Scan the control flow of the loop from the last to the first node
     * looking for an if-statement we can optimise.
