@@ -61,7 +61,7 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
    }
 }
 
-static unsigned int temp_bind(unsigned int orig)
+static unsigned temp_bind(unsigned orig)
 {
    if (orig & ~(PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL |
                 PIPE_BIND_SAMPLER_VIEW))
