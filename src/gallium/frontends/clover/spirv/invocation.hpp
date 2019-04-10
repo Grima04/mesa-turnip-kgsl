@@ -38,11 +38,12 @@ namespace clover {
       // warnings and errors are appended to |r_log|.
       bool is_valid_spirv(const std::vector<char> &binary,
                           const std::string &opencl_version,
-                          std::string &r_log);
+                          std::string &r_log, bool validate = true);
 
       // Creates a clover module out of the given SPIR-V binary.
       module compile_program(const std::vector<char> &binary,
-                             const device &dev, std::string &r_log);
+                             const device &dev, std::string &r_log,
+                             bool validate = true);
 
       // Combines multiple clover modules into a single one, resolving
       // link dependencies between them.
@@ -59,6 +60,9 @@ namespace clover {
       // Returns a vector (sorted in increasing order) of supported SPIR-V
       // versions.
       std::vector<uint32_t> supported_versions();
+
+      // Load the SPIR-V for the CLC module.
+      module load_clc(const device &dev);
    }
 }
 

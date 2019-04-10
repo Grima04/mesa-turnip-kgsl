@@ -37,6 +37,10 @@
 #include <compiler/spirv/nir_spirv.h>
 #include <util/u_math.h>
 
+extern "C" {
+#include "nir_lower_libclc.h"
+}
+
 using namespace clover;
 
 #ifdef HAVE_CLOVER_SPIRV
@@ -132,8 +136,8 @@ clover_lower_nir(nir_shader *nir, std::vector<module::argument> &args, uint32_t 
       clover_lower_nir_filter, clover_lower_nir_instr, &state);
 }
 
-module clover::nir::spirv_to_nir(const module &mod, const device &dev,
-                                 std::string &r_log)
+static spirv_to_nir_options
+create_spirv_options(const device &dev, std::string &r_log)
 {
    struct spirv_to_nir_options spirv_options = {};
    spirv_options.environment = NIR_SPIRV_OPENCL;
@@ -157,6 +161,87 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    spirv_options.caps.int64_atomics = dev.has_int64_atomics();
    spirv_options.debug.func = &debug_function;
    spirv_options.debug.private_data = &r_log;
+   return spirv_options;
+}
+
+struct disk_cache *clover::nir::create_clc_disk_cache(void)
+{
+   struct mesa_sha1 ctx;
+   unsigned char sha1[20];
+   char cache_id[20 * 2 + 1];
+   _mesa_sha1_init(&ctx);
+
+   if (!disk_cache_get_function_identifier((void *)clover::nir::create_clc_disk_cache, &ctx))
+      return NULL;
+
+   _mesa_sha1_final(&ctx, sha1);
+
+   disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+   return disk_cache_create("clover-clc", cache_id, 0);
+}
+
+nir_shader *clover::nir::libclc_spirv_to_nir(const module &mod, const device &dev,
+                                             std::string &r_log)
+{
+   spirv_to_nir_options spirv_options = create_spirv_options(dev, r_log);
+   spirv_options.create_library = true;
+
+   auto &section = mod.secs[0];
+   const auto *binary =
+      reinterpret_cast<const pipe_binary_program_header *>(section.data.data());
+   const uint32_t *data = reinterpret_cast<const uint32_t *>(binary->blob);
+   const size_t num_words = binary->num_bytes / 4;
+   auto *compiler_options = dev_get_nir_compiler_options(dev);
+   unsigned char clc_cache_key[20];
+   unsigned char sha1[CACHE_KEY_SIZE];
+   /* caching ftw. */
+   struct mesa_sha1 ctx;
+
+   size_t binary_size = 0;
+   uint8_t *buffer = NULL;
+   if (dev.clc_cache) {
+      _mesa_sha1_init(&ctx);
+      _mesa_sha1_update(&ctx, data, num_words * 4);
+      _mesa_sha1_final(&ctx, clc_cache_key);
+
+      disk_cache_compute_key(dev.clc_cache, clc_cache_key, 20, sha1);
+
+      buffer = (uint8_t *)disk_cache_get(dev.clc_cache, sha1, &binary_size);
+   }
+
+   nir_shader *nir;
+   if (!buffer) {
+      nir = spirv_to_nir(data, num_words, nullptr, 0,
+                                     MESA_SHADER_KERNEL, "clcspirv",
+                                     &spirv_options, compiler_options);
+      nir_validate_shader(nir, "clover-libclc");
+      nir->info.internal = true;
+      NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
+      NIR_PASS_V(nir, nir_lower_returns);
+
+      if (dev.clc_cache) {
+         struct blob blob = { 0 };
+         blob_init(&blob);
+         nir_serialize(&blob, nir, true);
+         disk_cache_put(dev.clc_cache, sha1, blob.data, blob.size, NULL);
+         blob_finish(&blob);
+      }
+   } else {
+      struct blob_reader blob_read;
+      blob_reader_init(&blob_read, buffer, binary_size);
+      nir = nir_deserialize(NULL, compiler_options, &blob_read);
+      free(buffer);
+   }
+
+   return nir;
+}
+
+module clover::nir::spirv_to_nir(const module &mod, const device &dev,
+                                 std::string &r_log)
+{
+   spirv_to_nir_options spirv_options = create_spirv_options(dev, r_log);
+   std::shared_ptr<nir_shader> nir = dev.clc_nir;
+   spirv_options.clc_shader = nir.get();
 
    module m;
    // We only insert one section.
@@ -190,6 +275,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       // according to the comment on nir_inline_functions
       NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
       NIR_PASS_V(nir, nir_lower_returns);
+      NIR_PASS_V(nir, nir_lower_libclc, spirv_options.clc_shader);
+
       NIR_PASS_V(nir, nir_inline_functions);
       NIR_PASS_V(nir, nir_copy_prop);
       NIR_PASS_V(nir, nir_opt_deref);
