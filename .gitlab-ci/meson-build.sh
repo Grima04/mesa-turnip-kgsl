@@ -33,3 +33,8 @@ meson configure
 ninja -j4
 LC_ALL=C.UTF-8 ninja test
 DESTDIR=$PWD/../install ninja install
+cd ..
+
+if test -n "$MESON_SHADERDB"; then
+    ./.gitlab-ci/run-shader-db.sh;
+fi
