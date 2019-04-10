@@ -2334,7 +2334,6 @@ static LLVMValueRef adjust_sample_index_using_fmask(struct ac_llvm_context *ctx,
 
 	res = ac_build_image_opcode(ctx, &args);
 
-	res = ac_to_integer(ctx, res);
 	LLVMValueRef four = LLVMConstInt(ctx->i32, 4, false);
 	LLVMValueRef F = LLVMConstInt(ctx->i32, 0xf, false);
 
