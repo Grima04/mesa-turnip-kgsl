@@ -443,6 +443,7 @@ LLVMValueRef ac_build_imin(struct ac_llvm_context *ctx, LLVMValueRef a,
 LLVMValueRef ac_build_imax(struct ac_llvm_context *ctx, LLVMValueRef a,
 			   LLVMValueRef b);
 LLVMValueRef ac_build_umin(struct ac_llvm_context *ctx, LLVMValueRef a, LLVMValueRef b);
+LLVMValueRef ac_build_umax(struct ac_llvm_context *ctx, LLVMValueRef a, LLVMValueRef b);
 LLVMValueRef ac_build_clamp(struct ac_llvm_context *ctx, LLVMValueRef value);
 
 struct ac_export_args {

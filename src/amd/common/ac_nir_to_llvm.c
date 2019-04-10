@@ -277,16 +277,6 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 			       ac_to_integer_or_pointer(ctx, src2), "");
 }
 
-static LLVMValueRef emit_minmax_int(struct ac_llvm_context *ctx,
-				    LLVMIntPredicate pred,
-				    LLVMValueRef src0, LLVMValueRef src1)
-{
-	return LLVMBuildSelect(ctx->builder,
-			       LLVMBuildICmp(ctx->builder, pred, src0, src1, ""),
-			       src0,
-			       src1, "");
-
-}
 static LLVMValueRef emit_iabs(struct ac_llvm_context *ctx,
 			      LLVMValueRef src0)
 {
@@ -754,7 +744,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = ac_build_imin(&ctx->ac, src[0], src[1]);
 		break;
 	case nir_op_umax:
-		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, src[0], src[1]);
+		result = ac_build_umax(&ctx->ac, src[0], src[1]);
 		break;
 	case nir_op_umin:
 		result = ac_build_umin(&ctx->ac, src[0], src[1]);
@@ -1119,8 +1109,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 						ac_to_float_type(&ctx->ac, def_type), result, src[2]);
 		break;
 	case nir_op_umax3:
-		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, src[0], src[1]);
-		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, result, src[2]);
+		result = ac_build_umax(&ctx->ac, src[0], src[1]);
+		result = ac_build_umax(&ctx->ac, result, src[2]);
 		break;
 	case nir_op_imax3:
 		result = ac_build_imax(&ctx->ac, src[0], src[1]);
@@ -1143,9 +1133,9 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	}
 	case nir_op_umed3: {
 		LLVMValueRef tmp1 = ac_build_umin(&ctx->ac, src[0], src[1]);
-		LLVMValueRef tmp2 = emit_minmax_int(&ctx->ac, LLVMIntUGT, src[0], src[1]);
+		LLVMValueRef tmp2 = ac_build_umax(&ctx->ac, src[0], src[1]);
 		tmp2 = ac_build_umin(&ctx->ac, tmp2, src[2]);
-		result = emit_minmax_int(&ctx->ac, LLVMIntUGT, tmp1, tmp2);
+		result = ac_build_umax(&ctx->ac, tmp1, tmp2);
 		break;
 	}
 
