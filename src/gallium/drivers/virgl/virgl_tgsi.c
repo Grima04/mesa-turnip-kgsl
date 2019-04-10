@@ -85,7 +85,7 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
    if (vtctx->fake_fp64 &&
        (tgsi_opcode_infer_src_type(inst->Instruction.Opcode, 0) == TGSI_TYPE_DOUBLE ||
         tgsi_opcode_infer_dst_type(inst->Instruction.Opcode, 0) == TGSI_TYPE_DOUBLE)) {
-      fprintf(stderr, "ARB_gpu_shader_fp64 is exposed but not supported.");
+      debug_printf("VIRGL: ARB_gpu_shader_fp64 is exposed but not supported.");
       return;
    }
 
