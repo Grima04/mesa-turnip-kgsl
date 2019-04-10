@@ -2720,11 +2720,6 @@ fs_visitor::opt_algebraic()
             inst->opcode = BRW_OPCODE_ADD;
             inst->src[2] = reg_undef;
             progress = true;
-         } else if (inst->src[1].file == IMM && inst->src[2].file == IMM) {
-            inst->opcode = BRW_OPCODE_ADD;
-            inst->src[1].f *= inst->src[2].f;
-            inst->src[2] = reg_undef;
-            progress = true;
          }
          break;
       case SHADER_OPCODE_BROADCAST:
