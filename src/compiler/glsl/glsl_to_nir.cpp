@@ -523,7 +523,7 @@ nir_visitor::visit(ir_variable *ir)
          var->type = wrap_type_in_array(explicit_ifc_type, ir->type);
       } else {
          /* Otherwise, this variable is one entry in the interface */
-         UNUSED bool found;
+         UNUSED bool found = false;
          for (unsigned i = 0; i < explicit_ifc_type->length; i++) {
             const glsl_struct_field *field =
                &explicit_ifc_type->fields.structure[i];
