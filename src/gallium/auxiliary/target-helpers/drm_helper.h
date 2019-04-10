@@ -249,9 +249,13 @@ pipe_virgl_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = virgl_drm_screen_create(fd);
+   screen = virgl_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
+
+const char *virgl_driconf_xml =
+      #include "virgl/virgl_driinfo.h"
+      ;
 
 #else
 
@@ -261,6 +265,8 @@ pipe_virgl_create_screen(int fd, const struct pipe_screen_config *config)
    fprintf(stderr, "virgl: driver missing\n");
    return NULL;
 }
+
+const char *virgl_driconf_xml = NULL;
 
 #endif
 

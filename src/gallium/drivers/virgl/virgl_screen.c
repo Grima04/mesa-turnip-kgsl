@@ -822,7 +822,7 @@ fixup_readback_format(union virgl_caps *caps)
 }
 
 struct pipe_screen *
-virgl_create_screen(struct virgl_winsys *vws)
+virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *config)
 {
    struct virgl_screen *screen = CALLOC_STRUCT(virgl_screen);
 

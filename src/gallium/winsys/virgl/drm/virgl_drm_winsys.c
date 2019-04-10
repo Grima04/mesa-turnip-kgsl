@@ -1057,7 +1057,7 @@ static int compare_fd(void *key1, void *key2)
 }
 
 struct pipe_screen *
-virgl_drm_screen_create(int fd)
+virgl_drm_screen_create(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *pscreen = NULL;
 
@@ -1081,7 +1081,7 @@ virgl_drm_screen_create(int fd)
          goto unlock;
       }
 
-      pscreen = virgl_create_screen(vws);
+      pscreen = virgl_create_screen(vws, config);
       if (pscreen) {
          util_hash_table_set(fd_tab, intptr_to_pointer(dup_fd), pscreen);
 

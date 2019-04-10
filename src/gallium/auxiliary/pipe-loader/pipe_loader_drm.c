@@ -107,6 +107,7 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
     {
         .driver_name = "virtio_gpu",
         .create_screen = pipe_virgl_create_screen,
+        .driconf_xml = &virgl_driconf_xml,
     },
     {
         .driver_name = "v3d",
