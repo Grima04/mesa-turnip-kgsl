@@ -25,7 +25,6 @@
  */
 
 #include "ir2_private.h"
-#include "nir/tgsi_to_nir.h"
 
 #include "freedreno_util.h"
 #include "fd2_program.h"
@@ -41,17 +40,6 @@ static const nir_shader_compiler_options options = {
 	.lower_all_io_to_temps = true,
 	.vertex_id_zero_based = true, /* its not implemented anyway */
 };
-
-struct nir_shader *
-ir2_tgsi_to_nir(const struct tgsi_token *tokens,
-		struct pipe_screen *screen)
-{
-	if (!screen) {
-		return tgsi_to_nir_noscreen(tokens, &options);
-	}
-
-	return tgsi_to_nir(tokens, screen);
-}
 
 const nir_shader_compiler_options *
 ir2_get_compiler_options(void)
@@ -598,7 +586,6 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir2_instr *instr;
 	nir_const_value *const_offset;
-	nir_deref_instr *deref;
 	unsigned idx;
 
 	switch (intr->intrinsic) {
@@ -607,16 +594,6 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_store_output:
 		store_output(ctx, intr->src[0], output_slot(ctx, intr), intr->num_components);
-		break;
-	case nir_intrinsic_load_deref:
-		deref = nir_src_as_deref(intr->src[0]);
-		assert(deref->deref_type == nir_deref_type_var);
-		load_input(ctx, &intr->dest, deref->var->data.driver_location);
-		break;
-	case nir_intrinsic_store_deref:
-		deref = nir_src_as_deref(intr->src[0]);
-		assert(deref->deref_type == nir_deref_type_var);
-		store_output(ctx, intr->src[1], deref->var->data.location, intr->num_components);
 		break;
 	case nir_intrinsic_load_uniform:
 		const_offset = nir_src_as_const_value(intr->src[0]);
@@ -1066,21 +1043,10 @@ static void cleanup_binning(struct ir2_context *ctx)
 				continue;
 
 			nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-			unsigned slot;
-			switch (intr->intrinsic) {
-			case nir_intrinsic_store_deref: {
-				nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-				assert(deref->deref_type == nir_deref_type_var);
-				slot = deref->var->data.location;
-			} break;
-			case nir_intrinsic_store_output:
-				slot = output_slot(ctx, intr);
-				break;
-			default:
+			if (intr->intrinsic != nir_intrinsic_store_output)
 				continue;
-			}
 
-			if (slot != VARYING_SLOT_POS)
+			if (output_slot(ctx, intr) != VARYING_SLOT_POS)
 				nir_instr_remove(instr);
 		}
 	}
