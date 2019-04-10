@@ -621,7 +621,7 @@ anv_device_search_for_kernel(struct anv_device *device,
    if (cache) {
       bin = anv_pipeline_cache_search(cache, key_data, key_size);
       if (bin) {
-         *user_cache_hit = true;
+         *user_cache_hit = cache != &device->default_pipeline_cache;
          return bin;
       }
    }
