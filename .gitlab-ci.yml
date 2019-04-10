@@ -34,7 +34,7 @@ stages:
 # When to automatically run the CI
 .ci-run-policy: &ci-run-policy
   only:
-    - master
+    - branches@mesa/mesa
     - merge_requests
     - /^ci([-/].*)?$/
   retry:
