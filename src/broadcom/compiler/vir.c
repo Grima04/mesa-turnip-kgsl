@@ -628,7 +628,7 @@ v3d_vs_set_prog_data(struct v3d_compile *c,
          * batches.
          */
         assert(c->devinfo->vpm_size);
-        int sector_size = 16 * sizeof(uint32_t) * 8;
+        int sector_size = V3D_CHANNELS * sizeof(uint32_t) * 8;
         int vpm_size_in_sectors = c->devinfo->vpm_size / sector_size;
         int half_vpm = vpm_size_in_sectors / 2;
         int vpm_output_sectors = half_vpm - prog_data->vpm_input_size;

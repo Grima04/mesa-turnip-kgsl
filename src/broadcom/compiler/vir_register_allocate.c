@@ -205,7 +205,7 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
 
         if (!is_uniform) {
                 uint32_t spill_offset = c->spill_size;
-                c->spill_size += 16 * sizeof(uint32_t);
+                c->spill_size += V3D_CHANNELS * sizeof(uint32_t);
 
                 if (spill_offset == 0)
                         v3d_setup_spill_base(c);
@@ -624,7 +624,8 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
          * conformance tests to make sure that spilling works.
          */
         int force_register_spills = 0;
-        if (c->spill_size < 16 * sizeof(uint32_t) * force_register_spills) {
+        if (c->spill_size <
+            V3D_CHANNELS * sizeof(uint32_t) * force_register_spills) {
                 int node = v3d_choose_spill_node(c, g, temp_to_node);
                 if (node != -1) {
                         v3d_spill_reg(c, map[node].temp);
