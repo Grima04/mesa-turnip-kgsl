@@ -163,7 +163,6 @@ public:
    bool lower_pack();
    bool lower_regioning();
    bool lower_logical_sends();
-   bool lower_linterp();
    bool lower_integer_multiplication();
    bool lower_minmax();
    bool lower_simd_width();

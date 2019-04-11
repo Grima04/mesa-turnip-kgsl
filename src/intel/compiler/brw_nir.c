@@ -452,6 +452,8 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
       lower_io_options |= nir_lower_io_force_sample_interpolation;
 
    nir_lower_io(nir, nir_var_shader_in, type_size_vec4, lower_io_options);
+   if (devinfo->gen >= 11)
+      nir_lower_interpolation(nir, ~0);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);

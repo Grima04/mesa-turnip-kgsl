@@ -822,7 +822,7 @@ fs_generator::generate_linterp(fs_inst *inst,
    struct brw_reg interp = stride(src[1], 0, 1, 0);
    brw_inst *i[2];
 
-   /* fs_visitor::lower_linterp() will do the lowering to MAD instructions for
+   /* nir_lower_interpolation() will do the lowering to MAD instructions for
     * us on gen11+
     */
    assert(devinfo->gen < 11);
