@@ -4593,8 +4593,16 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
       if (shader) {
+         struct brw_stage_prog_data *prog_data = shader->prog_data;
          struct iris_resource *cache = (void *) shader->assembly.res;
          iris_use_pinned_bo(batch, cache->bo, false);
+
+         if (prog_data->total_scratch > 0) {
+            struct iris_bo *bo =
+               iris_get_scratch_space(ice, prog_data->total_scratch, stage);
+            iris_use_pinned_bo(batch, bo, true);
+         }
+
          iris_batch_emit(batch, shader->derived_data,
                          iris_derived_program_state_size(stage));
       } else {
