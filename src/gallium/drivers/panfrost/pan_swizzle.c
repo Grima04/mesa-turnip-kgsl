@@ -97,6 +97,9 @@ swizzle_bpp1_align16(int width, int height, int source_stride, int block_pitch,
 
                 ++y;
 
+                if (y >= height)
+                        break;
+
                 {
                         int block_y = y & ~(0x0f);
                         int rem_y = y & 0x0f;
