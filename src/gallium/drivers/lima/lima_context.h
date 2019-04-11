@@ -32,13 +32,11 @@
 #include "pipe/p_state.h"
 
 struct lima_context_framebuffer {
-   struct pipe_surface *cbuf, *zsbuf;
-   int width, height;
+   struct pipe_framebuffer_state base;
    int tiled_w, tiled_h;
    int shift_w, shift_h;
    int block_w, block_h;
    int shift_min;
-   int samples;
 };
 
 struct lima_context_clear {

@@ -45,14 +45,15 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
 
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
 
-   fb->samples = framebuffer->samples;
+   fb->base.samples = framebuffer->samples;
 
-   pipe_surface_reference(&fb->cbuf, framebuffer->cbufs[0]);
-   pipe_surface_reference(&fb->zsbuf, framebuffer->zsbuf);
+   fb->base.nr_cbufs = 1;
+   pipe_surface_reference(&fb->base.cbufs[0], framebuffer->cbufs[0]);
+   pipe_surface_reference(&fb->base.zsbuf, framebuffer->zsbuf);
 
    /* need align here? */
-   fb->width = framebuffer->width;
-   fb->height = framebuffer->height;
+   fb->base.width = framebuffer->width;
+   fb->base.height = framebuffer->height;
 
    int width = align(framebuffer->width, 16) >> 4;
    int height = align(framebuffer->height, 16) >> 4;
@@ -509,6 +510,6 @@ lima_state_fini(struct lima_context *ctx)
    util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, NULL,
                                 0, ARRAY_SIZE(so->vb));
 
-   pipe_surface_reference(&ctx->framebuffer.cbuf, NULL);
-   pipe_surface_reference(&ctx->framebuffer.zsbuf, NULL);
+   pipe_surface_reference(&ctx->framebuffer.base.cbufs[0], NULL);
+   pipe_surface_reference(&ctx->framebuffer.base.zsbuf, NULL);
 }

@@ -218,7 +218,7 @@ lima_fb_need_reload(struct lima_context *ctx)
          return true;
    }
    else {
-      struct lima_surface *surf = lima_surface(ctx->framebuffer.cbuf);
+      struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       if (surf->reload)
          return true;
    }
@@ -270,7 +270,7 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    uint32_t *td = cpu + lima_reload_tex_desc_offset;
    memset(td, 0, lima_tex_desc_size);
-   lima_texture_desc_set_res(ctx, td, fb->cbuf->texture, 0, 0);
+   lima_texture_desc_set_res(ctx, td, fb->base.cbufs[0]->texture, 0, 0);
    td[1] = 0x00000480;
    td[2] |= 0x00093800;
    td[4] = 0x00000000;
@@ -280,16 +280,16 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    ta[0] = va + lima_reload_tex_desc_offset;
 
    float reload_gl_pos[] = {
-      fb->width, 0,          0, 1,
-      0,         0,          0, 1,
-      0,         fb->height, 0, 1,
+      fb->base.width, 0,               0, 1,
+      0,              0,               0, 1,
+      0,              fb->base.height, 0, 1,
    };
    memcpy(cpu + lima_reload_gl_pos_offset, reload_gl_pos,
           sizeof(reload_gl_pos));
 
    float reload_varying[] = {
-      fb->width, 0,          0, 0,
-      0,         fb->height, 0, 0,
+      fb->base.width, 0,               0, 0,
+      0,              fb->base.height, 0, 0,
    };
    memcpy(cpu + lima_reload_varying_offset, reload_varying,
           sizeof(reload_varying));
@@ -300,9 +300,9 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
    PLBU_CMD_BEGIN(20);
 
    PLBU_CMD_VIEWPORT_X(0);
-   PLBU_CMD_VIEWPORT_W(fui(fb->width));
+   PLBU_CMD_VIEWPORT_W(fui(fb->base.width));
    PLBU_CMD_VIEWPORT_Y(0);
-   PLBU_CMD_VIEWPORT_H(fui(fb->height));
+   PLBU_CMD_VIEWPORT_H(fui(fb->base.height));
 
    PLBU_CMD_RSW_VERTEX_ARRAY(
       va + lima_reload_render_state_offset,
@@ -433,8 +433,8 @@ lima_is_scissor_full_fb(struct lima_context *ctx)
    struct pipe_scissor_state *scissor = &ctx->scissor;
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
    return
-      scissor->minx == 0 && scissor->maxx == fb->width &&
-      scissor->miny == 0 && scissor->maxy == fb->height;
+      scissor->minx == 0 && scissor->maxx == fb->base.width &&
+      scissor->miny == 0 && scissor->maxy == fb->base.height;
 }
 
 static void
@@ -670,7 +670,7 @@ lima_update_submit_bo(struct lima_context *ctx)
    else
       ctx->pp_stream.bo = NULL;
 
-   struct lima_resource *res = lima_resource(ctx->framebuffer.cbuf->texture);
+   struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_WRITE);
    lima_submit_add_bo(ctx->pp_submit, ctx->plb[ctx->plb_index], LIMA_SUBMIT_BO_READ);
    lima_submit_add_bo(ctx->pp_submit, screen->pp_buffer, LIMA_SUBMIT_BO_READ);
@@ -688,7 +688,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
 
       /* no need to reload if cleared */
       if (buffers & PIPE_CLEAR_COLOR0) {
-         struct lima_surface *surf = lima_surface(ctx->framebuffer.cbuf);
+         struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
          surf->reload = false;
       }
    }
@@ -1122,7 +1122,7 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
       render->multi_sample = 0x0000F407;
    else
       render->multi_sample = 0x0000F807;
-   if (ctx->framebuffer.samples)
+   if (ctx->framebuffer.base.samples)
       render->multi_sample |= 0x68;
 
    render->shader_address =
@@ -1423,10 +1423,10 @@ static void
 lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
                        uint32_t *wb_reg)
 {
-   struct lima_resource *res = lima_resource(ctx->framebuffer.cbuf->texture);
+   struct lima_resource *res = lima_resource(ctx->framebuffer.base.cbufs[0]->texture);
 
    bool swap_channels = false;
-   switch (ctx->framebuffer.cbuf->format) {
+   switch (ctx->framebuffer.base.cbufs[0]->format) {
    case PIPE_FORMAT_R8G8B8A8_UNORM:
    case PIPE_FORMAT_R8G8B8X8_UNORM:
       swap_channels = true;
@@ -1448,8 +1448,8 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
    frame->clear_value_color_3 = ctx->clear.color_8pc;
    frame->one = 1;
 
-   frame->width = fb->width - 1;
-   frame->height = fb->height - 1;
+   frame->width = fb->base.width - 1;
+   frame->height = fb->base.height - 1;
 
    /* frame->fragment_stack_address is overwritten per-pp in the kernel
     * by the values of pp_frame.fragment_stack_address[i] */
@@ -1460,7 +1460,7 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
    frame->fragment_stack_size = fs_stack_size << 16 | fs_stack_size;
 
    /* related with MSAA and different value when r4p0/r7p0 */
-   frame->supersampled_height = fb->height * 2 - 1;
+   frame->supersampled_height = fb->base.height * 2 - 1;
    frame->scale = 0xE0C;
 
    frame->dubya = 0x77;
@@ -1609,7 +1609,7 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
    /* this surface may need reload when next draw if not end of frame */
-   struct lima_surface *surf = lima_surface(ctx->framebuffer.cbuf);
+   struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
    surf->reload = !end_of_frame;
 }
 
