@@ -219,8 +219,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 }
         }
 
+        bool dynamic_src = !nir_src_is_const(instr->src[offset_src]);
         uint32_t const_offset = 0;
-        if (nir_src_is_const(instr->src[offset_src]))
+        if (!dynamic_src)
                 const_offset = nir_src_as_uint(instr->src[offset_src]);
 
         /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
@@ -244,6 +245,8 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                      v3d_unit_data_create(index, const_offset));
                 const_offset = 0;
         } else if (is_shared) {
+                const_offset += nir_intrinsic_base(instr);
+
                 /* Shared variables have no buffer index, and all start from a
                  * common base that we set up at the start of dispatch
                  */
@@ -269,19 +272,27 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                            V3D_QPU_PF_PUSHZ);
         }
 
-        struct qreg dest;
+        struct qreg tmua;
         if (config == ~0)
-                dest = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA);
+                tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA);
         else
-                dest = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
+                tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
 
         struct qinst *tmu;
-        if (nir_src_is_const(instr->src[offset_src]) && const_offset == 0) {
-                tmu = vir_MOV_dest(c, dest, offset);
-        } else {
-                tmu = vir_ADD_dest(c, dest,
-                                   offset,
+        if (dynamic_src) {
+                if (const_offset != 0) {
+                        offset = vir_ADD(c, offset,
+                                         vir_uniform_ui(c, const_offset));
+                }
+                tmu = vir_ADD_dest(c, tmua, offset,
                                    ntq_get_src(c, instr->src[offset_src], 0));
+        } else {
+                if (const_offset != 0) {
+                        tmu = vir_ADD_dest(c, tmua, offset,
+                                           vir_uniform_ui(c, const_offset));
+                } else {
+                        tmu = vir_MOV_dest(c, tmua, offset);
+                }
         }
 
         if (config != ~0) {
