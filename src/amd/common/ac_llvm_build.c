@@ -3291,6 +3291,7 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask,
 	fmask_load.resource = fmask;
 	fmask_load.dmask = 0xf;
 	fmask_load.dim = is_array_tex ? ac_image_2darray : ac_image_2d;
+	fmask_load.attributes = AC_FUNC_ATTR_READNONE;
 
 	fmask_load.coords[0] = addr[0];
 	fmask_load.coords[1] = addr[1];
