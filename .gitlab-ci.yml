@@ -315,7 +315,9 @@ scons-llvm:
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
-    LLVM_VERSION: "3.9"
+    LLVM_VERSION: "3.4"
+    # LLVM 3.4 packages were built with an old libstdc++ ABI
+    CXX: "g++ -D_GLIBCXX_USE_CXX11_ABI=0"
 
 scons-swr:
   extends: .scons-build
