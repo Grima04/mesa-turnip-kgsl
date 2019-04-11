@@ -455,6 +455,12 @@ lima_set_damage_region(struct pipe_context *pctx, unsigned num_rects, int *rects
    return true;
 }
 
+static void
+lima_set_sample_mask(struct pipe_context *pctx,
+                     unsigned sample_mask)
+{
+}
+
 void
 lima_state_init(struct lima_context *ctx)
 {
@@ -491,6 +497,8 @@ lima_state_init(struct lima_context *ctx)
    ctx->base.create_sampler_view = lima_create_sampler_view;
    ctx->base.sampler_view_destroy = lima_sampler_view_destroy;
    ctx->base.set_sampler_views = lima_set_sampler_views;
+
+   ctx->base.set_sample_mask = lima_set_sample_mask;
 }
 
 void
