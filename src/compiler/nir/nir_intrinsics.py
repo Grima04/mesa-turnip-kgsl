@@ -595,13 +595,13 @@ barycentric("at_offset", [2])
 # operations operate in terms of offsets into some piece of theoretical
 # memory.  Loads from externally visible memory (UBO and SSBO) simply take a
 # byte offset as a source.  Loads from opaque memory (uniforms, inputs, etc.)
-# take a base+offset pair where the base (const_index[0]) gives the location
+# take a base+offset pair where the nir_intrinsic_base() gives the location
 # of the start of the variable being loaded and and the offset source is a
 # offset into that variable.
 #
-# Uniform load operations have a second "range" index that specifies the
+# Uniform load operations have a nir_intrinsic_range() index that specifies the
 # range (starting at base) of the data from which we are loading.  If
-# const_index[1] == 0, then the range is unknown.
+# range == 0, then the range is unknown.
 #
 # Some load operations such as UBO/SSBO load and per_vertex loads take an
 # additional source to specify which UBO/SSBO/vertex to load from.
@@ -646,8 +646,8 @@ load("kernel_input", 1, [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, 
 
 # Stores work the same way as loads, except now the first source is the value
 # to store and the second (and possibly third) source specify where to store
-# the value.  SSBO and shared memory stores also have a write mask as
-# const_index[0].
+# the value.  SSBO and shared memory stores also have a
+# nir_intrinsic_write_mask()
 
 def store(name, num_srcs, indices=[], flags=[]):
     intrinsic("store_" + name, [0] + ([1] * (num_srcs - 1)), indices=indices, flags=flags)
