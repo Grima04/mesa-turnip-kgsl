@@ -793,9 +793,11 @@ NineDevice9_SetCursorPosition( struct NineDevice9 *This,
 
     DBG("This=%p X=%d Y=%d Flags=%d\n", This, X, Y, Flags);
 
-    if (This->cursor.pos.x == X &&
-        This->cursor.pos.y == Y)
-        return;
+    /* present >= v1.4 handles this itself */
+    if (This->minor_version_num < 4) {
+        if (This->cursor.pos.x == X && This->cursor.pos.y == Y)
+            return;
+    }
 
     This->cursor.pos.x = X;
     This->cursor.pos.y = Y;
