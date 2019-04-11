@@ -128,6 +128,17 @@ CAN_REORDER   = "NIR_INTRINSIC_CAN_REORDER"
 
 INTR_OPCODES = {}
 
+# Defines a new NIR intrinsic.  By default, the intrinsic will have no sources
+# and no destination.
+#
+# You can set dest_comp=n to enable a destination for the intrinsic, in which
+# case it will have that many components, or =0 for "as many components as the
+# NIR destination value."
+#
+# Set src_comp=n to enable sources for the intruction.  It can be an array of
+# component counts, or (for convenience) a scalar component count if there's
+# only one source.  If a component count is 0, it will be as many components as
+# the intrinsic has based on the dest_comp.
 def intrinsic(name, src_comp=[], dest_comp=-1, indices=[],
               flags=[], sysval=False, bit_sizes=[]):
     assert name not in INTR_OPCODES
