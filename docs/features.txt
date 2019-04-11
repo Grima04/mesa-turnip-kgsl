@@ -289,7 +289,7 @@ GLES3.2, GLSL ES 3.2 -- all DONE: i965/gen9+, radeonsi, virgl
   GL_OES_shader_multisample_interpolation               DONE (i965, nvc0, r600)
   GL_OES_tessellation_shader                            DONE (all drivers that support GL_ARB_tessellation_shader)
   GL_OES_texture_border_clamp                           DONE (all drivers)
-  GL_OES_texture_buffer                                 DONE (freedreno, i965, nvc0)
+  GL_OES_texture_buffer                                 DONE (freedreno, i965, nvc0, softpipe)
   GL_OES_texture_cube_map_array                         DONE (i965/hsw+, nvc0)
   GL_OES_texture_stencil8                               DONE (all drivers that support GL_ARB_texture_stencil8)
   GL_OES_texture_storage_multisample_2d_array           DONE (all drivers that support GL_ARB_texture_multisample)
@@ -323,7 +323,9 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_EXT_semaphore                                      DONE (radeonsi)
   GL_EXT_semaphore_fd                                   DONE (radeonsi)
   GL_EXT_semaphore_win32                                not started
+  GL_EXT_sRGB_write_control                             DONE (all drivers that support GLES 3.0+)
   GL_EXT_texture_norm16                                 DONE (i965, r600, radeonsi, nvc0)
+  GL_EXT_texture_sRGB_R8                                Done (all drivers that support GLES 3.0+)
   GL_KHR_blend_equation_advanced_coherent               DONE (i965/gen9+)
   GL_KHR_texture_compression_astc_hdr                   DONE (i965/bxt)
   GL_KHR_texture_compression_astc_sliced_3d             DONE (i965/gen9+, radeonsi)
