@@ -147,9 +147,8 @@ static int nir_to_ppir_opcodes[nir_num_opcodes] = {
    [nir_op_sne] = ppir_op_ne,
    [nir_op_fne] = ppir_op_ne,
    [nir_op_fnot] = ppir_op_not,
-   [nir_op_bcsel] = ppir_op_select,
+   [nir_op_fcsel] = ppir_op_select,
    [nir_op_inot] = ppir_op_not,
-   [nir_op_b2f32] = ppir_op_mov,
 };
 
 static ppir_node *ppir_emit_alu(ppir_block *block, nir_instr *ni)
