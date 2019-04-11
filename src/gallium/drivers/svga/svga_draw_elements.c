@@ -120,7 +120,9 @@ translate_indices(struct svga_hwtnl *hwtnl,
          goto fail;
 
       *out_offset = 0;
-      src_map = pipe_buffer_map(pipe, info->index.resource, PIPE_TRANSFER_READ,
+      src_map = pipe_buffer_map(pipe, info->index.resource,
+                                PIPE_TRANSFER_READ |
+                                PIPE_TRANSFER_UNSYNCHRONIZED,
                                 &src_transfer);
       if (!src_map)
          goto fail;
