@@ -3651,6 +3651,18 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       break;
    }
 
+   case nir_intrinsic_load_fs_input_interp_deltas: {
+      assert(stage == MESA_SHADER_FRAGMENT);
+      assert(nir_src_as_uint(instr->src[0]) == 0);
+      fs_reg interp = interp_reg(nir_intrinsic_base(instr),
+                                 nir_intrinsic_component(instr));
+      dest.type = BRW_REGISTER_TYPE_F;
+      bld.MOV(offset(dest, bld, 0), component(interp, 3));
+      bld.MOV(offset(dest, bld, 1), component(interp, 1));
+      bld.MOV(offset(dest, bld, 2), component(interp, 0));
+      break;
+   }
+
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_sample: {
