@@ -1889,6 +1889,9 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
    this->max_grf = devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
 
    this->uniforms = 0;
+
+   this->nir_locals = NULL;
+   this->nir_ssa_values = NULL;
 }
 
 
