@@ -121,12 +121,9 @@ struct gen_l3_config;
 #define INSTRUCTION_STATE_POOL_MIN_ADDRESS 0x000180000000ULL /* 6 GiB */
 #define INSTRUCTION_STATE_POOL_MAX_ADDRESS 0x0001bfffffffULL
 #define HIGH_HEAP_MIN_ADDRESS              0x0001c0000000ULL /* 7 GiB */
-#define HIGH_HEAP_MAX_ADDRESS              0xfffeffffffffULL
 
 #define LOW_HEAP_SIZE               \
    (LOW_HEAP_MAX_ADDRESS - LOW_HEAP_MIN_ADDRESS + 1)
-#define HIGH_HEAP_SIZE              \
-   (HIGH_HEAP_MAX_ADDRESS - HIGH_HEAP_MIN_ADDRESS + 1)
 #define DYNAMIC_STATE_POOL_SIZE     \
    (DYNAMIC_STATE_POOL_MAX_ADDRESS - DYNAMIC_STATE_POOL_MIN_ADDRESS + 1)
 #define BINDING_TABLE_POOL_SIZE     \
@@ -901,6 +898,8 @@ struct anv_memory_heap {
    VkMemoryHeapFlags flags;
 
    /* Driver-internal book-keeping */
+   uint64_t          vma_start;
+   uint64_t          vma_size;
    bool              supports_48bit_addresses;
 };
 

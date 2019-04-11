@@ -149,6 +149,8 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
        */
       device->memory.heap_count = 1;
       device->memory.heaps[0] = (struct anv_memory_heap) {
+         .vma_start = LOW_HEAP_MIN_ADDRESS,
+         .vma_size = LOW_HEAP_SIZE,
          .size = heap_size,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = false,
@@ -168,11 +170,15 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 
       device->memory.heap_count = 2;
       device->memory.heaps[0] = (struct anv_memory_heap) {
+         .vma_start = HIGH_HEAP_MIN_ADDRESS,
+         .vma_size = gtt_size - HIGH_HEAP_MIN_ADDRESS,
          .size = heap_size_48bit,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = true,
       };
       device->memory.heaps[1] = (struct anv_memory_heap) {
+         .vma_start = LOW_HEAP_MIN_ADDRESS,
+         .vma_size = LOW_HEAP_SIZE,
          .size = heap_size_32bit,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .supports_48bit_addresses = false,
@@ -1977,18 +1983,20 @@ VkResult anv_CreateDevice(
       }
 
       /* keep the page with address zero out of the allocator */
-      util_vma_heap_init(&device->vma_lo, LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
-      device->vma_lo_available =
-         physical_device->memory.heaps[physical_device->memory.heap_count - 1].size;
+      struct anv_memory_heap *low_heap =
+         &physical_device->memory.heaps[physical_device->memory.heap_count - 1];
+      util_vma_heap_init(&device->vma_lo, low_heap->vma_start, low_heap->vma_size);
+      device->vma_lo_available = low_heap->size;
 
       /* Leave the last 4GiB out of the high vma range, so that no state base
        * address + size can overflow 48 bits. For more information see the
        * comment about Wa32bitGeneralStateOffset in anv_allocator.c
        */
-      util_vma_heap_init(&device->vma_hi, HIGH_HEAP_MIN_ADDRESS,
-                         HIGH_HEAP_SIZE);
+      struct anv_memory_heap *high_heap =
+         &physical_device->memory.heaps[0];
+      util_vma_heap_init(&device->vma_hi, high_heap->vma_start, high_heap->vma_size);
       device->vma_hi_available = physical_device->memory.heap_count == 1 ? 0 :
-         physical_device->memory.heaps[0].size;
+         high_heap->size;
    }
 
    /* As per spec, the driver implementation may deny requests to acquire
@@ -2455,8 +2463,11 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
       util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
       device->vma_lo_available += bo->size;
    } else {
-      assert(addr_48b >= HIGH_HEAP_MIN_ADDRESS &&
-             addr_48b <= HIGH_HEAP_MAX_ADDRESS);
+      MAYBE_UNUSED const struct anv_physical_device *physical_device =
+         &device->instance->physicalDevice;
+      assert(addr_48b >= physical_device->memory.heaps[0].vma_start &&
+             addr_48b < (physical_device->memory.heaps[0].vma_start +
+                         physical_device->memory.heaps[0].vma_size));
       util_vma_heap_free(&device->vma_hi, addr_48b, bo->size);
       device->vma_hi_available += bo->size;
    }
