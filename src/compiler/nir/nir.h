@@ -2350,6 +2350,12 @@ typedef struct nir_shader_compiler_options {
    bool lower_add_sat;
 
    /**
+    * Should IO be re-vectorized?  Some scalar ISAs still operate on vec4's
+    * for IO purposes and would prefer loads/stores be vectorized.
+    */
+   bool vectorize_io;
+
+   /**
     * Should nir_lower_io() create load_interpolated_input intrinsics?
     *
     * If not, it generates regular load_input intrinsics and interpolation
