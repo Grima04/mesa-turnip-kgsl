@@ -54,9 +54,8 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
         if (!mem)
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
 
-        if (!mem ||
-                        size + (gpu_va - mem->gpu_va) > mem->length)
-                assert(0);
+        assert(mem);
+        assert(size + (gpu_va - mem->gpu_va) <= mem->length);
 
         return mem->addr + gpu_va - mem->gpu_va;
 }
