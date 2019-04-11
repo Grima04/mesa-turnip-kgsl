@@ -193,6 +193,7 @@ struct lima_context {
 
    struct u_upload_mgr *uploader;
    struct u_suballocator *suballocator;
+   struct blitter_context *blitter;
 
    struct slab_child_pool transfer_pool;
 

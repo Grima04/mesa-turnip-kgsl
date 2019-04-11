@@ -23,6 +23,7 @@
  */
 
 #include "util/u_memory.h"
+#include "util/u_blitter.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_math.h"
 #include "util/u_debug.h"
@@ -124,6 +125,9 @@ lima_context_destroy(struct pipe_context *pctx)
 
    lima_state_fini(ctx);
 
+   if (ctx->blitter)
+      util_blitter_destroy(ctx->blitter);
+
    if (ctx->suballocator)
       u_suballocator_destroy(ctx->suballocator);
 
@@ -187,6 +191,10 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    lima_query_init(ctx);
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
+
+   ctx->blitter = util_blitter_create(&ctx->base);
+   if (!ctx->blitter)
+      goto err_out;
 
    ctx->uploader = u_upload_create_default(&ctx->base);
    if (!ctx->uploader)

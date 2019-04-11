@@ -23,6 +23,7 @@
  */
 
 #include "util/u_memory.h"
+#include "util/u_blitter.h"
 #include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
@@ -554,9 +555,57 @@ lima_transfer_unmap(struct pipe_context *pctx,
 }
 
 static void
+lima_util_blitter_save_states(struct lima_context *ctx)
+{
+   util_blitter_save_blend(ctx->blitter, (void *)ctx->blend);
+   util_blitter_save_depth_stencil_alpha(ctx->blitter, (void *)ctx->zsa);
+   util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
+   util_blitter_save_rasterizer(ctx->blitter, (void *)ctx->rasterizer);
+   util_blitter_save_fragment_shader(ctx->blitter, ctx->fs);
+   util_blitter_save_vertex_shader(ctx->blitter, ctx->vs);
+   util_blitter_save_viewport(ctx->blitter,
+                              &ctx->viewport.transform);
+   util_blitter_save_scissor(ctx->blitter, &ctx->scissor);
+   util_blitter_save_vertex_elements(ctx->blitter,
+                                     ctx->vertex_elements);
+   util_blitter_save_vertex_buffer_slot(ctx->blitter,
+                                        ctx->vertex_buffers.vb);
+
+   util_blitter_save_framebuffer(ctx->blitter, &ctx->framebuffer.base);
+
+   util_blitter_save_fragment_sampler_states(ctx->blitter,
+                                             ctx->tex_stateobj.num_samplers,
+                                             (void**)ctx->tex_stateobj.samplers);
+   util_blitter_save_fragment_sampler_views(ctx->blitter,
+                                            ctx->tex_stateobj.num_textures,
+                                            ctx->tex_stateobj.textures);
+}
+
+static void
 lima_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
-   debug_error("lima_blit not implemented\n");
+   struct lima_context *ctx = lima_context(pctx);
+   struct pipe_blit_info info = *blit_info;
+
+   if (util_try_blit_via_copy_region(pctx, &info)) {
+      return; /* done */
+   }
+
+   if (info.mask & PIPE_MASK_S) {
+      debug_printf("lima: cannot blit stencil, skipping\n");
+      info.mask &= ~PIPE_MASK_S;
+   }
+
+   if (!util_blitter_is_blit_supported(ctx->blitter, &info)) {
+      debug_printf("lima: blit unsupported %s -> %s\n",
+                   util_format_short_name(info.src.resource->format),
+                   util_format_short_name(info.dst.resource->format));
+      return;
+   }
+
+   lima_util_blitter_save_states(ctx);
+
+   util_blitter_blit(ctx->blitter, &info);
 }
 
 static void
