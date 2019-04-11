@@ -579,6 +579,12 @@ v3d_lower_nir(struct v3d_compile *c)
 
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
         NIR_PASS_V(c->s, nir_lower_system_values);
+
+        NIR_PASS_V(c->s, nir_lower_vars_to_scratch,
+                   nir_var_function_temp,
+                   0,
+                   glsl_get_natural_size_align_bytes);
+        NIR_PASS_V(c->s, v3d_nir_lower_scratch);
 }
 
 static void

@@ -156,7 +156,7 @@ v3d_choose_spill_node(struct v3d_compile *c, struct ra_graph *g,
 /* The spill offset for this thread takes a bit of setup, so do it once at
  * program start.
  */
-static void
+void
 v3d_setup_spill_base(struct v3d_compile *c)
 {
         c->cursor = vir_before_block(vir_entry_block(c));
@@ -185,6 +185,8 @@ v3d_setup_spill_base(struct v3d_compile *c)
         /* Make sure that we don't spill the spilling setup instructions. */
         for (int i = start_num_temps; i < c->num_temps; i++)
                 BITSET_CLEAR(c->spillable, i);
+
+        c->cursor = vir_after_block(c->cur_block);
 }
 
 static void

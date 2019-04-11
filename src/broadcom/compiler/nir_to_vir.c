@@ -132,9 +132,11 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_shared:
+        case nir_intrinsic_load_scratch:
                 return GENERAL_TMU_READ_OP_READ;
         case nir_intrinsic_store_ssbo:
         case nir_intrinsic_store_shared:
+        case nir_intrinsic_store_scratch:
                 return GENERAL_TMU_WRITE_OP_WRITE;
         case nir_intrinsic_ssbo_atomic_add:
         case nir_intrinsic_shared_atomic_add:
@@ -177,7 +179,7 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
  */
 static void
 ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
-                     bool is_shared)
+                     bool is_shared_or_scratch)
 {
         /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
          * wants to have support for inc/dec?
@@ -185,8 +187,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
 
         uint32_t tmu_op = v3d_general_tmu_op(instr);
         bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
+                         instr->intrinsic == nir_intrinsic_store_scratch ||
                          instr->intrinsic == nir_intrinsic_store_shared);
-        bool has_index = !is_shared;
+        bool has_index = !is_shared_or_scratch;
 
         int offset_src;
         int tmu_writes = 1; /* address */
@@ -194,6 +197,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 offset_src = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
                    instr->intrinsic == nir_intrinsic_load_ubo ||
+                   instr->intrinsic == nir_intrinsic_load_scratch ||
                    instr->intrinsic == nir_intrinsic_load_shared) {
                 offset_src = 0 + has_index;
         } else if (is_store) {
@@ -244,13 +248,18 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
                                      v3d_unit_data_create(index, const_offset));
                 const_offset = 0;
-        } else if (is_shared) {
-                const_offset += nir_intrinsic_base(instr);
-
-                /* Shared variables have no buffer index, and all start from a
-                 * common base that we set up at the start of dispatch
+        } else if (is_shared_or_scratch) {
+                /* Shared and scratch variables have no buffer index, and all
+                 * start from a common base that we set up at the start of
+                 * dispatch.
                  */
-                offset = c->cs_shared_offset;
+                if (instr->intrinsic == nir_intrinsic_load_scratch ||
+                    instr->intrinsic == nir_intrinsic_store_scratch) {
+                        offset = c->spill_base;
+                } else {
+                        offset = c->cs_shared_offset;
+                        const_offset += nir_intrinsic_base(instr);
+                }
         } else {
                 offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
                                      nir_src_as_uint(instr->src[is_store ?
@@ -1629,6 +1638,8 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_shared_atomic_comp_swap:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_store_shared:
+        case nir_intrinsic_load_scratch:
+        case nir_intrinsic_store_scratch:
                 ntq_emit_tmu_general(c, instr, true);
                 break;
 
@@ -2308,6 +2319,11 @@ nir_to_vir(struct v3d_compile *c)
                 break;
         }
 
+        if (c->s->scratch_size) {
+                v3d_setup_spill_base(c);
+                c->spill_size += V3D_CHANNELS * c->s->scratch_size;
+        }
+
         if (c->s->info.stage == MESA_SHADER_FRAGMENT)
                 ntq_setup_fs_inputs(c);
         else
@@ -2524,7 +2540,7 @@ v3d_nir_to_vir(struct v3d_compile *c)
                         vir_remove_thrsw(c);
         }
 
-        if (c->spill_size &&
+        if (c->spills &&
             (V3D_DEBUG & (V3D_DEBUG_VIR |
                           v3d_debug_flag_for_shader_stage(c->s->info.stage)))) {
                 fprintf(stderr, "%s prog %d/%d spilled VIR:\n",
