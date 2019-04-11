@@ -273,7 +273,7 @@ static bool gpir_instr_insert_store_check(gpir_instr *instr, gpir_node *node)
     * already in this instr's alu slot, so instr must have some free
     * alu slot to insert this node's child
     */
-   if (instr->alu_num_slot_free <= instr->alu_num_slot_needed_by_store)
+   if (gpir_instr_alu_slot_is_full(instr))
       return false;
 
    instr->alu_num_slot_needed_by_store++;

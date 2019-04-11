@@ -464,16 +464,33 @@ static gpir_node *gpir_sched_instr_pass(gpir_instr *instr,
 
    /* schedule node used by previous instr when count > 5 */
    int count = 0;
+   gpir_node *two_slot_node = NULL;
    list_for_each_entry(gpir_node, node, ready_list, list) {
       if (gpir_is_input_node(node)) {
          int min = gpir_get_min_scheduled_succ(node);
          assert(min >= instr->index - 1);
-         if (min == instr->index - 1)
-            count += gpir_op_infos[node->op].may_consume_two_slots ? 2 : 1;
+         if (min == instr->index - 1) {
+            if (gpir_op_infos[node->op].may_consume_two_slots) {
+               two_slot_node = node;
+               count += 2;
+            }
+            else
+               count++;
+         }
       }
    }
 
    if (count > 5) {
+      /* When no slot avaible, must schedule a move for two slot node
+       * to reduce the count. This results from the dummy_m/f method.
+       */
+      if (gpir_instr_alu_slot_is_full(instr)) {
+         assert(two_slot_node);
+         gpir_debug("instr is full, schedule move node for two slot node %d\n",
+                    two_slot_node->index);
+         return gpir_sched_node(instr, two_slot_node);
+      }
+
       /* schedule fully ready node first */
       list_for_each_entry(gpir_node, node, ready_list, list) {
          if (gpir_is_input_node(node)) {
