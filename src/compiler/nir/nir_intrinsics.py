@@ -582,13 +582,13 @@ def barycentric(name, src_comp=[]):
     intrinsic("load_barycentric_" + name, src_comp=src_comp, dest_comp=2,
               indices=[INTERP_MODE], flags=[CAN_ELIMINATE, CAN_REORDER])
 
-# no sources.  const_index[] = { interp_mode }
+# no sources.
 barycentric("pixel")
 barycentric("centroid")
 barycentric("sample")
-# src[] = { sample_id }.  const_index[] = { interp_mode }
+# src[] = { sample_id }.
 barycentric("at_sample", [1])
-# src[] = { offset.xy }.  const_index[] = { interp_mode }
+# src[] = { offset.xy }.
 barycentric("at_offset", [2])
 
 # Load operations pull data from some piece of GPU memory.  All load
@@ -615,35 +615,33 @@ def load(name, num_srcs, indices=[], flags=[]):
     intrinsic("load_" + name, [1] * num_srcs, dest_comp=0, indices=indices,
               flags=flags)
 
-# src[] = { offset }. const_index[] = { base, range }
+# src[] = { offset }.
 load("uniform", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
-# src[] = { buffer_index, offset }. const_index[] = { align_mul, align_offset }
+# src[] = { buffer_index, offset }.
 load("ubo", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
-# src[] = { offset }. const_index[] = { base, component }
+# src[] = { offset }.
 load("input", 1, [BASE, COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
-# src[] = { vertex, offset }. const_index[] = { base, component }
+# src[] = { vertex, offset }.
 load("per_vertex_input", 2, [BASE, COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
-# src[] = { barycoord, offset }. const_index[] = { base, component }
+# src[] = { barycoord, offset }.
 intrinsic("load_interpolated_input", src_comp=[2, 1], dest_comp=0,
           indices=[BASE, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # src[] = { buffer_index, offset }.
-# const_index[] = { access, align_mul, align_offset }
 load("ssbo", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
-# src[] = { offset }. const_index[] = { base, component }
+# src[] = { offset }.
 load("output", 1, [BASE, COMPONENT], flags=[CAN_ELIMINATE])
-# src[] = { vertex, offset }. const_index[] = { base }
+# src[] = { vertex, offset }.
 load("per_vertex_output", 2, [BASE, COMPONENT], [CAN_ELIMINATE])
-# src[] = { offset }. const_index[] = { base, align_mul, align_offset }
+# src[] = { offset }.
 load("shared", 1, [BASE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
-# src[] = { offset }. const_index[] = { base, range }
+# src[] = { offset }.
 load("push_constant", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
-# src[] = { offset }. const_index[] = { base, range }
+# src[] = { offset }.
 load("constant", 1, [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { address }.
-# const_index[] = { access, align_mul, align_offset }
 load("global", 1, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
-# src[] = { address }. const_index[] = { base, range, align_mul, align_offset }
+# src[] = { address }.
 load("kernel_input", 1, [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, CAN_REORDER])
 
 # Stores work the same way as loads, except now the first source is the value
@@ -654,19 +652,15 @@ load("kernel_input", 1, [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE, 
 def store(name, num_srcs, indices=[], flags=[]):
     intrinsic("store_" + name, [0] + ([1] * (num_srcs - 1)), indices=indices, flags=flags)
 
-# src[] = { value, offset }. const_index[] = { base, write_mask, component }
+# src[] = { value, offset }.
 store("output", 2, [BASE, WRMASK, COMPONENT])
 # src[] = { value, vertex, offset }.
-# const_index[] = { base, write_mask, component }
 store("per_vertex_output", 3, [BASE, WRMASK, COMPONENT])
 # src[] = { value, block_index, offset }
-# const_index[] = { write_mask, access, align_mul, align_offset }
 store("ssbo", 3, [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
-# const_index[] = { base, write_mask, align_mul, align_offset }
 store("shared", 2, [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, address }.
-# const_index[] = { write_mask, align_mul, align_offset }
 store("global", 2, [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 
 
