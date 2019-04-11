@@ -3434,6 +3434,44 @@ alloc_frag_output(fs_visitor *v, unsigned location)
       unreachable("Invalid location");
 }
 
+/* Annoyingly, we get the barycentrics into the shader in a layout that's
+ * optimized for PLN but it doesn't work nearly as well as one would like for
+ * manual interpolation.
+ */
+static void
+shuffle_from_pln_layout(const fs_builder &bld, fs_reg dest, fs_reg pln_data)
+{
+   dest.type = BRW_REGISTER_TYPE_F;
+   pln_data.type = BRW_REGISTER_TYPE_F;
+   const fs_reg dest_u = offset(dest, bld, 0);
+   const fs_reg dest_v = offset(dest, bld, 1);
+
+   for (unsigned g = 0; g < bld.dispatch_width() / 8; g++) {
+      const fs_builder gbld = bld.group(8, g);
+      gbld.MOV(horiz_offset(dest_u, g * 8),
+               byte_offset(pln_data, (g * 2 + 0) * REG_SIZE));
+      gbld.MOV(horiz_offset(dest_v, g * 8),
+               byte_offset(pln_data, (g * 2 + 1) * REG_SIZE));
+   }
+}
+
+static void
+shuffle_to_pln_layout(const fs_builder &bld, fs_reg pln_data, fs_reg src)
+{
+   pln_data.type = BRW_REGISTER_TYPE_F;
+   src.type = BRW_REGISTER_TYPE_F;
+   const fs_reg src_u = offset(src, bld, 0);
+   const fs_reg src_v = offset(src, bld, 1);
+
+   for (unsigned g = 0; g < bld.dispatch_width() / 8; g++) {
+      const fs_builder gbld = bld.group(8, g);
+      gbld.MOV(byte_offset(pln_data, (g * 2 + 0) * REG_SIZE),
+               horiz_offset(src_u, g * 8));
+      gbld.MOV(byte_offset(pln_data, (g * 2 + 1) * REG_SIZE),
+               horiz_offset(src_v, g * 8));
+   }
+}
+
 void
 fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                   nir_intrinsic_instr *instr)
@@ -3615,20 +3653,28 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_centroid:
-   case nir_intrinsic_load_barycentric_sample:
-      /* Do nothing - load_interpolated_input handling will handle it later. */
+   case nir_intrinsic_load_barycentric_sample: {
+      /* Use the delta_xy values computed from the payload */
+      const glsl_interp_mode interp_mode =
+         (enum glsl_interp_mode) nir_intrinsic_interp_mode(instr);
+      enum brw_barycentric_mode bary =
+         brw_barycentric_mode(interp_mode, instr->intrinsic);
+
+      shuffle_from_pln_layout(bld, dest, this->delta_xy[bary]);
       break;
+   }
 
    case nir_intrinsic_load_barycentric_at_sample: {
       const glsl_interp_mode interpolation =
          (enum glsl_interp_mode) nir_intrinsic_interp_mode(instr);
 
+      fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
       if (nir_src_is_const(instr->src[0])) {
          unsigned msg_data = nir_src_as_uint(instr->src[0]) << 4;
 
          emit_pixel_interpolater_send(bld,
                                       FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                      dest,
+                                      tmp,
                                       fs_reg(), /* src */
                                       brw_imm_ud(msg_data),
                                       interpolation);
@@ -3643,7 +3689,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                .SHL(msg_data, sample_id, brw_imm_ud(4u));
             emit_pixel_interpolater_send(bld,
                                          FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                         dest,
+                                         tmp,
                                          fs_reg(), /* src */
                                          msg_data,
                                          interpolation);
@@ -3671,7 +3717,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
             fs_inst *inst =
                emit_pixel_interpolater_send(bld,
                                             FS_OPCODE_INTERPOLATE_AT_SAMPLE,
-                                            dest,
+                                            tmp,
                                             fs_reg(), /* src */
                                             component(msg_data, 0),
                                             interpolation);
@@ -3683,6 +3729,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                               bld.emit(BRW_OPCODE_WHILE));
          }
       }
+      shuffle_from_pln_layout(bld, dest, tmp);
       break;
    }
 
@@ -3692,6 +3739,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
       nir_const_value *const_offset = nir_src_as_const_value(instr->src[0]);
 
+      fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
       if (const_offset) {
          assert(nir_src_bit_size(instr->src[0]) == 32);
          unsigned off_x = MIN2((int)(const_offset[0].f32 * 16), 7) & 0xf;
@@ -3699,7 +3747,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
          emit_pixel_interpolater_send(bld,
                                       FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET,
-                                      dest,
+                                      tmp,
                                       fs_reg(), /* src */
                                       brw_imm_ud(off_x | (off_y << 4)),
                                       interpolation);
@@ -3736,11 +3784,12 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          const enum opcode opcode = FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET;
          emit_pixel_interpolater_send(bld,
                                       opcode,
-                                      dest,
+                                      tmp,
                                       src,
                                       brw_imm_ud(0u),
                                       interpolation);
       }
+      shuffle_from_pln_layout(bld, dest, tmp);
       break;
    }
 
@@ -3761,8 +3810,13 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
       if (bary_intrin == nir_intrinsic_load_barycentric_at_offset ||
           bary_intrin == nir_intrinsic_load_barycentric_at_sample) {
-         /* Use the result of the PI message */
-         dst_xy = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_F);
+         /* Use the result of the PI message.  Because the load_barycentric
+          * intrinsics return a regular vec2 and we need it in PLN layout, we
+          * have to do a translation.  Fortunately, copy-prop cleans this up
+          * reliably.
+          */
+         dst_xy = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
+         shuffle_to_pln_layout(bld, dst_xy, get_nir_src(instr->src[0]));
       } else {
          /* Use the delta_xy values computed from the payload */
          enum brw_barycentric_mode bary =
