@@ -376,11 +376,13 @@ v3d_get_compiled_shader(struct v3d_context *v3d,
 
         if (shader->prog_data.base->spill_size >
             v3d->prog.spill_size_per_thread) {
-                /* Max 4 QPUs per slice, 3 slices per core. We only do single
-                 * core so far.  This overallocates memory on smaller cores.
+                /* The TIDX register we use for choosing the area to access
+                 * for scratch space is: (core << 6) | (qpu << 2) | thread.
+                 * Even at minimum threadcount in a particular shader, that
+                 * means we still multiply by qpus by 4.
                  */
-                int total_spill_size =
-                        4 * 3 * shader->prog_data.base->spill_size;
+                int total_spill_size = (v3d->screen->devinfo.qpu_count * 4 *
+                                        shader->prog_data.base->spill_size);
 
                 v3d_bo_unreference(&v3d->prog.spill_bo);
                 v3d->prog.spill_bo = v3d_bo_alloc(v3d->screen,

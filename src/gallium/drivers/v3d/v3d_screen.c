@@ -594,6 +594,10 @@ v3d_get_device_info(struct v3d_screen *screen)
 
         screen->devinfo.vpm_size = (ident1.value >> 28 & 0xf) * 8192;
 
+        int nslc = (ident1.value >> 4) & 0xf;
+        int qups = (ident1.value >> 8) & 0xf;
+        screen->devinfo.qpu_count = nslc * qups;
+
         switch (screen->devinfo.ver) {
         case 33:
         case 41:
