@@ -2281,77 +2281,18 @@ static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
 	return 0;
 }
 
-
-/* Adjust the sample index according to FMASK.
- *
- * For uncompressed MSAA surfaces, FMASK should return 0x76543210,
- * which is the identity mapping. Each nibble says which physical sample
- * should be fetched to get that sample.
- *
- * For example, 0x11111100 means there are only 2 samples stored and
- * the second sample covers 3/4 of the pixel. When reading samples 0
- * and 1, return physical sample 0 (determined by the first two 0s
- * in FMASK), otherwise return physical sample 1.
- *
- * The sample index should be adjusted as follows:
- *   sample_index = (fmask >> (sample_index * 4)) & 0xF;
- */
 static LLVMValueRef adjust_sample_index_using_fmask(struct ac_llvm_context *ctx,
 						    LLVMValueRef coord_x, LLVMValueRef coord_y,
 						    LLVMValueRef coord_z,
 						    LLVMValueRef sample_index,
 						    LLVMValueRef fmask_desc_ptr)
 {
-	struct ac_image_args args = {0};
-	LLVMValueRef res;
+	unsigned sample_chan = coord_z ? 3 : 2;
+	LLVMValueRef addr[4] = {coord_x, coord_y, coord_z};
+	addr[sample_chan] = sample_index;
 
-	args.coords[0] = coord_x;
-	args.coords[1] = coord_y;
-	if (coord_z)
-		args.coords[2] = coord_z;
-
-	args.opcode = ac_image_load;
-	args.dim = coord_z ? ac_image_2darray : ac_image_2d;
-	args.resource = fmask_desc_ptr;
-	args.dmask = 0xf;
-	args.attributes = AC_FUNC_ATTR_READNONE;
-
-	res = ac_build_image_opcode(ctx, &args);
-
-	LLVMValueRef four = LLVMConstInt(ctx->i32, 4, false);
-	LLVMValueRef F = LLVMConstInt(ctx->i32, 0xf, false);
-
-	LLVMValueRef fmask = LLVMBuildExtractElement(ctx->builder,
-						     res,
-						     ctx->i32_0, "");
-
-	LLVMValueRef sample_index4 =
-		LLVMBuildMul(ctx->builder, sample_index, four, "");
-	LLVMValueRef shifted_fmask =
-		LLVMBuildLShr(ctx->builder, fmask, sample_index4, "");
-	LLVMValueRef final_sample =
-		LLVMBuildAnd(ctx->builder, shifted_fmask, F, "");
-
-	/* Don't rewrite the sample index if WORD1.DATA_FORMAT of the FMASK
-	 * resource descriptor is 0 (invalid),
-	 */
-	LLVMValueRef fmask_desc =
-		LLVMBuildBitCast(ctx->builder, fmask_desc_ptr,
-				 ctx->v8i32, "");
-
-	LLVMValueRef fmask_word1 =
-		LLVMBuildExtractElement(ctx->builder, fmask_desc,
-					ctx->i32_1, "");
-
-	LLVMValueRef word1_is_nonzero =
-		LLVMBuildICmp(ctx->builder, LLVMIntNE,
-			      fmask_word1, ctx->i32_0, "");
-
-	/* Replace the MSAA sample index. */
-	sample_index =
-		LLVMBuildSelect(ctx->builder, word1_is_nonzero,
-				final_sample, sample_index, "");
-	return sample_index;
+	ac_apply_fmask_to_sample(ctx, fmask_desc_ptr, addr, coord_z != NULL);
+	return addr[sample_chan];
 }
 
 static nir_deref_instr *get_image_deref(const nir_intrinsic_instr *instr)
