@@ -6278,3 +6278,32 @@ genX(init_state)(struct iris_context *ice)
       };
    }
 }
+
+#if GEN_GEN >= 9
+/* not called externally */
+void gen11_iris_enable_obj_preemption(struct iris_context *ice, struct iris_batch *batch, bool enable);
+
+void
+genX(iris_enable_obj_preemption)(struct iris_context *ice, struct iris_batch *batch, bool enable)
+{
+   uint32_t reg_val;
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+
+   assert(screen->devinfo.gen >= 9);
+
+   if (enable == ice->state.object_preemption)
+      return;
+   ice->state.object_preemption = enable;
+
+   /* A fixed function pipe flush is required before modifying this field */
+   iris_emit_end_of_pipe_sync(batch,
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   /* enable object level preemption */
+   iris_pack_state(GENX(CS_CHICKEN1), &reg_val, reg) {
+      reg.ReplayMode = enable;
+      reg.ReplayModeMask = true;
+   }
+   iris_emit_lri(batch, CS_CHICKEN1, reg_val);
+}
+#endif

@@ -542,6 +542,8 @@ struct iris_context {
       /** Bitfield of which vertex buffers are bound (non-null). */
       uint64_t bound_vertex_buffers;
 
+      bool object_preemption; /**< Object level preemption enabled. */
+
       bool primitive_restart;
       unsigned cut_index;
       enum pipe_prim_type prim_mode:8;
@@ -816,4 +818,7 @@ void iris_render_cache_add_bo(struct iris_batch *batch,
 void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
 void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
 
+/* iris_state.c */
+void gen9_iris_enable_obj_preemption(struct iris_context *ice, struct iris_batch *batch, bool enable);
+void gen10_iris_enable_obj_preemption(struct iris_context *ice, struct iris_batch *batch, bool enable);
 #endif

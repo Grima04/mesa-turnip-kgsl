@@ -40,6 +40,67 @@
 #include "iris_defines.h"
 
 /**
+ * Implement workarounds for preemption:
+ *    - WaDisableMidObjectPreemptionForGSLineStripAdj
+ *    - WaDisableMidObjectPreemptionForTrifanOrPolygon
+ *    - WaDisableMidObjectPreemptionForLineLoop
+ *    - WA#0798
+ */
+static void
+gen9_emit_preempt_wa(struct iris_context *ice, struct iris_batch *batch,
+                     const struct pipe_draw_info *info)
+{
+   bool object_preemption = true;
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+
+   /* Only apply these workarounds for gen9 */
+   assert(screen->devinfo.gen == 9);
+
+   /* WaDisableMidObjectPreemptionForGSLineStripAdj
+    *
+    *    WA: Disable mid-draw preemption when draw-call is a linestrip_adj and
+    *    GS is enabled.
+    */
+   if (ice->state.prim_mode == PIPE_PRIM_LINE_STRIP_ADJACENCY &&
+       ice->shaders.prog[MESA_SHADER_GEOMETRY])
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForTrifanOrPolygon
+    *
+    *    TriFan miscompare in Execlist Preemption test. Cut index that is on a
+    *    previous context. End the previous, the resume another context with a
+    *    tri-fan or polygon, and the vertex count is corrupted. If we prempt
+    *    again we will cause corruption.
+    *
+    *    WA: Disable mid-draw preemption when draw-call has a tri-fan.
+    */
+   if (ice->state.prim_mode == PIPE_PRIM_TRIANGLE_FAN)
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForLineLoop
+    *
+    *    VF Stats Counters Missing a vertex when preemption enabled.
+    *
+    *    WA: Disable mid-draw preemption when the draw uses a lineloop
+    *    topology.
+    */
+   if (ice->state.prim_mode == PIPE_PRIM_LINE_LOOP)
+      object_preemption = false;
+
+   /* WA#0798
+    *
+    *    VF is corrupting GAFS data when preempted on an instance boundary and
+    *    replayed with instancing enabled.
+    *
+    *    WA: Disable preemption when using instanceing.
+    */
+   if (info->instance_count > 1)
+      object_preemption = false;
+
+   gen9_iris_enable_obj_preemption(ice, batch, object_preemption);
+}
+
+/**
  * Record the current primitive mode and restart information, flagging
  * related packets as dirty if necessary.
  */
@@ -116,6 +177,7 @@ void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen*)ice->ctx.screen;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
@@ -130,6 +192,9 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_batch_maybe_flush(batch, 1500);
 
    iris_update_draw_info(ice, info);
+
+   if (screen->devinfo.gen == 9)
+     gen9_emit_preempt_wa(ice, batch, info);
 
    iris_update_compiled_shaders(ice);
 
