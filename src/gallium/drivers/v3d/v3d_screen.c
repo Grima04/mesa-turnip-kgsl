@@ -133,6 +133,13 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
                 return 1;
 
+        case PIPE_CAP_PACKED_UNIFORMS:
+                /* We can't enable this flag, because it results in load_ubo
+                 * intrinsics across a 16b boundary, but v3d's TMU general
+                 * memory accesses wrap on 16b boundaries.
+                 */
+                return 0;
+
         case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
            return 0;
 
