@@ -593,6 +593,18 @@ virgl_is_vertex_format_supported(struct pipe_screen *screen,
    return TRUE;
 }
 
+static boolean
+virgl_format_check_bitmask(enum pipe_format format,
+                           uint32_t bitmask[16])
+{
+   int big = format / 32;
+   int small = format % 32;
+   if ((bitmask[big] & (1 << small)))
+      return TRUE;
+
+   return FALSE;
+}
+
 /**
  * Query format support for creating a texture, drawing surface, etc.
  * \param format  the format to test
@@ -680,12 +692,9 @@ virgl_is_format_supported( struct pipe_screen *screen,
           format_desc->block.height != 1)
          return FALSE;
 
-      {
-         int big = format / 32;
-         int small = format % 32;
-         if (!(vscreen->caps.caps.v1.render.bitmask[big] & (1 << small)))
-            return FALSE;
-      }
+      if (!virgl_format_check_bitmask(format,
+                                      vscreen->caps.caps.v1.render.bitmask))
+         return FALSE;
    }
 
    if (bind & PIPE_BIND_DEPTH_STENCIL) {
@@ -728,16 +737,8 @@ virgl_is_format_supported( struct pipe_screen *screen,
       return FALSE;
 
  out_lookup:
-   {
-      int big = format / 32;
-      int small = format % 32;
-      if (!(vscreen->caps.caps.v1.sampler.bitmask[big] & (1 << small)))
-         return FALSE;
-   }
-   /*
-    * Everything else should be supported by u_format.
-    */
-   return TRUE;
+   return virgl_format_check_bitmask(format,
+                                     vscreen->caps.caps.v1.sampler.bitmask);
 }
 
 static void virgl_flush_frontbuffer(struct pipe_screen *screen,
