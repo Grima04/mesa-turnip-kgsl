@@ -91,46 +91,46 @@ endif
 
 system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'dragonfly', 'linux'].contains(host_machine.system())
 
-_drivers = get_option('dri-drivers')
-if _drivers.contains('auto')
+dri_drivers = get_option('dri-drivers')
+if dri_drivers.contains('auto')
   if system_has_kms_drm
     # TODO: PPC, Sparc
     if ['x86', 'x86_64'].contains(host_machine.cpu_family())
-      _drivers = ['i915', 'i965', 'r100', 'r200', 'nouveau']
+      dri_drivers = ['i915', 'i965', 'r100', 'r200', 'nouveau']
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
-      _drivers = []
+      dri_drivers = []
     else
       error('Unknown architecture @0@. Please pass -Ddri-drivers to set driver options. Patches gladly accepted to fix this.'.format(
             host_machine.cpu_family()))
     endif
   elif ['darwin', 'windows', 'cygwin', 'haiku'].contains(host_machine.system())
     # only swrast would make sense here, but gallium swrast is a much better default
-    _drivers = []
+    dri_drivers = []
   else
     error('Unknown OS @0@. Please pass -Ddri-drivers to set driver options. Patches gladly accepted to fix this.'.format(
           host_machine.system()))
   endif
 endif
 
-with_dri_i915 = _drivers.contains('i915')
-with_dri_i965 = _drivers.contains('i965')
-with_dri_r100 = _drivers.contains('r100')
-with_dri_r200 = _drivers.contains('r200')
-with_dri_nouveau = _drivers.contains('nouveau')
-with_dri_swrast = _drivers.contains('swrast')
+with_dri_i915 = dri_drivers.contains('i915')
+with_dri_i965 = dri_drivers.contains('i965')
+with_dri_r100 = dri_drivers.contains('r100')
+with_dri_r200 = dri_drivers.contains('r200')
+with_dri_nouveau = dri_drivers.contains('nouveau')
+with_dri_swrast = dri_drivers.contains('swrast')
 
-with_dri = _drivers.length() != 0 and _drivers != ['']
+with_dri = dri_drivers.length() != 0 and dri_drivers != ['']
 
-_drivers = get_option('gallium-drivers')
-if _drivers.contains('auto')
+gallium_drivers = get_option('gallium-drivers')
+if gallium_drivers.contains('auto')
   if system_has_kms_drm
     # TODO: PPC, Sparc
     if ['x86', 'x86_64'].contains(host_machine.cpu_family())
-      _drivers = [
+      gallium_drivers = [
         'r300', 'r600', 'radeonsi', 'nouveau', 'virgl', 'svga', 'swrast'
       ]
     elif ['arm', 'aarch64'].contains(host_machine.cpu_family())
-      _drivers = [
+      gallium_drivers = [
         'kmsro', 'v3d', 'vc4', 'freedreno', 'etnaviv', 'nouveau',
         'tegra', 'virgl', 'lima', 'swrast'
       ]
@@ -139,30 +139,30 @@ if _drivers.contains('auto')
             host_machine.cpu_family()))
     endif
   elif ['darwin', 'windows', 'cygwin', 'haiku'].contains(host_machine.system())
-    _drivers = ['swrast']
+    gallium_drivers = ['swrast']
   else
     error('Unknown OS @0@. Please pass -Dgallium-drivers to set driver options. Patches gladly accepted to fix this.'.format(
           host_machine.system()))
   endif
 endif
-with_gallium_kmsro = _drivers.contains('kmsro')
-with_gallium_radeonsi = _drivers.contains('radeonsi')
-with_gallium_r300 = _drivers.contains('r300')
-with_gallium_r600 = _drivers.contains('r600')
-with_gallium_nouveau = _drivers.contains('nouveau')
-with_gallium_freedreno = _drivers.contains('freedreno')
-with_gallium_softpipe = _drivers.contains('swrast')
-with_gallium_vc4 = _drivers.contains('vc4')
-with_gallium_v3d = _drivers.contains('v3d')
-with_gallium_panfrost = _drivers.contains('panfrost')
-with_gallium_etnaviv = _drivers.contains('etnaviv')
-with_gallium_tegra = _drivers.contains('tegra')
-with_gallium_iris = _drivers.contains('iris')
-with_gallium_i915 = _drivers.contains('i915')
-with_gallium_svga = _drivers.contains('svga')
-with_gallium_virgl = _drivers.contains('virgl')
-with_gallium_swr = _drivers.contains('swr')
-with_gallium_lima = _drivers.contains('lima')
+with_gallium_kmsro = gallium_drivers.contains('kmsro')
+with_gallium_radeonsi = gallium_drivers.contains('radeonsi')
+with_gallium_r300 = gallium_drivers.contains('r300')
+with_gallium_r600 = gallium_drivers.contains('r600')
+with_gallium_nouveau = gallium_drivers.contains('nouveau')
+with_gallium_freedreno = gallium_drivers.contains('freedreno')
+with_gallium_softpipe = gallium_drivers.contains('swrast')
+with_gallium_vc4 = gallium_drivers.contains('vc4')
+with_gallium_v3d = gallium_drivers.contains('v3d')
+with_gallium_panfrost = gallium_drivers.contains('panfrost')
+with_gallium_etnaviv = gallium_drivers.contains('etnaviv')
+with_gallium_tegra = gallium_drivers.contains('tegra')
+with_gallium_iris = gallium_drivers.contains('iris')
+with_gallium_i915 = gallium_drivers.contains('i915')
+with_gallium_svga = gallium_drivers.contains('svga')
+with_gallium_virgl = gallium_drivers.contains('virgl')
+with_gallium_swr = gallium_drivers.contains('swr')
+with_gallium_lima = gallium_drivers.contains('lima')
 
 if cc.get_id() == 'intel'
   if meson.version().version_compare('< 0.49.0')
@@ -172,7 +172,7 @@ if cc.get_id() == 'intel'
   endif
 endif
 
-with_gallium = _drivers.length() != 0 and _drivers != ['']
+with_gallium = gallium_drivers.length() != 0 and gallium_drivers != ['']
 
 if with_gallium and system_has_kms_drm
   _glx = get_option('glx')
