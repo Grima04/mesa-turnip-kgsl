@@ -902,7 +902,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			VkPhysicalDeviceFloat16Int8FeaturesKHR *features =
 				(VkPhysicalDeviceFloat16Int8FeaturesKHR*)ext;
 			bool enabled = pdevice->rad_info.chip_class >= VI;
-			features->shaderFloat16 = VK_FALSE;
+			features->shaderFloat16 = enabled && HAVE_LLVM >= 0x0800;
 			features->shaderInt8 = enabled;
 			break;
 		}
