@@ -2553,11 +2553,11 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 	MAYBE_UNUSED int length;
 
 	enum glsl_sampler_dim dim;
-	bool is_unsigned;
+	bool is_unsigned = false;
 	bool is_array;
 	if (bindless) {
-		if (instr->intrinsic == nir_intrinsic_image_atomic_min ||
-		    instr->intrinsic == nir_intrinsic_image_atomic_max) {
+		if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_min ||
+		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_max) {
 			const GLenum format = nir_intrinsic_format(instr);
 			assert(format == GL_R32UI || format == GL_R32I);
 			is_unsigned = format == GL_R32UI;
