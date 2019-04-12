@@ -142,7 +142,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                                 if (instr->coord_components >= 2)
                                         p2_unpacked.offset_t =
                                                 nir_src_comp_as_int(instr->src[i].src, 1);
-                                if (instr->coord_components >= 3)
+                                if (non_array_components >= 3)
                                         p2_unpacked.offset_r =
                                                 nir_src_comp_as_int(instr->src[i].src, 2);
                         } else {
