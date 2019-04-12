@@ -523,6 +523,7 @@ iris_copy_region(struct blorp_context *blorp,
       };
       struct blorp_address dst_addr = {
          .buffer = iris_resource_bo(dst), .offset = dstx,
+         .reloc_flags = EXEC_OBJECT_WRITE,
       };
 
       iris_batch_maybe_flush(batch, 1500);
