@@ -70,6 +70,7 @@ struct spirv_supported_capabilities {
    bool transform_feedback;
    bool trinary_minmax;
    bool variable_pointers;
+   bool float16;
 };
 
 typedef struct shader_info {
