@@ -5055,6 +5055,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
+   if (dirty & IRIS_DIRTY_VF_STATISTICS) {
+      iris_emit_cmd(batch, GENX(3DSTATE_VF_STATISTICS), vf) {
+         vf.StatisticsEnable = true;
+      }
+   }
+
    /* TODO: Gen8 PMA fix */
 }
 

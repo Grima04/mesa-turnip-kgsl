@@ -928,6 +928,22 @@ const struct brw_tracked_state genX(cut_index) = {
 };
 #endif
 
+static void
+genX(upload_vf_statistics)(struct brw_context *brw)
+{
+   brw_batch_emit(brw, GENX(3DSTATE_VF_STATISTICS), vf) {
+      vf.StatisticsEnable = true;
+   }
+}
+
+const struct brw_tracked_state genX(vf_statistics) = {
+   .dirty = {
+      .mesa  = 0,
+      .brw   = BRW_NEW_BLORP | BRW_NEW_CONTEXT,
+   },
+   .emit = genX(upload_vf_statistics),
+};
+
 #if GEN_GEN >= 6
 /**
  * Determine the appropriate attribute override value to store into the
@@ -5640,6 +5656,8 @@ genX(init_atoms)(struct brw_context *brw)
 #if GEN_GEN < 6
    static const struct brw_tracked_state *render_atoms[] =
    {
+      &genX(vf_statistics),
+
       /* Once all the programs are done, we know how large urb entry
        * sizes need to be and can decide if we need to change the urb
        * layout.
@@ -5696,6 +5714,8 @@ genX(init_atoms)(struct brw_context *brw)
 #elif GEN_GEN == 6
    static const struct brw_tracked_state *render_atoms[] =
    {
+      &genX(vf_statistics),
+
       &genX(sf_clip_viewport),
 
       /* Command packets: */
@@ -5760,6 +5780,8 @@ genX(init_atoms)(struct brw_context *brw)
 #elif GEN_GEN == 7
    static const struct brw_tracked_state *render_atoms[] =
    {
+      &genX(vf_statistics),
+
       /* Command packets: */
 
       &genX(cc_vp),
@@ -5850,6 +5872,8 @@ genX(init_atoms)(struct brw_context *brw)
 #elif GEN_GEN >= 8
    static const struct brw_tracked_state *render_atoms[] =
    {
+      &genX(vf_statistics),
+
       &genX(cc_vp),
       &genX(sf_clip_viewport),
 

@@ -513,6 +513,10 @@ blorp_emit_vertex_elements(struct blorp_batch *batch,
       dw += GENX(VERTEX_ELEMENT_STATE_length);
    }
 
+   blorp_emit(batch, GENX(3DSTATE_VF_STATISTICS), vf) {
+      vf.StatisticsEnable = false;
+   }
+
 #if GEN_GEN >= 8
    /* Overwrite Render Target Array Index (2nd dword) in the VUE header with
     * primitive instance identifier. This is used for layered clears.
