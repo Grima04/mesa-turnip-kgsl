@@ -4720,7 +4720,7 @@ static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)
 }
 
 /* This only ensures coherency for shader image/buffer stores. */
-void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
+static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
@@ -4785,6 +4785,15 @@ static void *si_create_blend_custom(struct si_context *sctx, unsigned mode)
 
 static void si_init_config(struct si_context *sctx);
 
+void si_init_state_compute_functions(struct si_context *sctx)
+{
+	sctx->b.create_sampler_state = si_create_sampler_state;
+	sctx->b.delete_sampler_state = si_delete_sampler_state;
+	sctx->b.create_sampler_view = si_create_sampler_view;
+	sctx->b.sampler_view_destroy = si_sampler_view_destroy;
+	sctx->b.memory_barrier = si_memory_barrier;
+}
+
 void si_init_state_functions(struct si_context *sctx)
 {
 	sctx->atoms.s.framebuffer.emit = si_emit_framebuffer_state;
@@ -4822,12 +4831,6 @@ void si_init_state_functions(struct si_context *sctx)
 	sctx->b.set_stencil_ref = si_set_stencil_ref;
 
 	sctx->b.set_framebuffer_state = si_set_framebuffer_state;
-
-	sctx->b.create_sampler_state = si_create_sampler_state;
-	sctx->b.delete_sampler_state = si_delete_sampler_state;
-
-	sctx->b.create_sampler_view = si_create_sampler_view;
-	sctx->b.sampler_view_destroy = si_sampler_view_destroy;
 
 	sctx->b.set_sample_mask = si_set_sample_mask;
 
