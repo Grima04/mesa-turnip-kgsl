@@ -186,7 +186,8 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 		     uint64_t offset, uint64_t size, uint32_t *clear_value,
-		     uint32_t clear_value_size, enum si_coherency coher)
+		     uint32_t clear_value_size, enum si_coherency coher,
+		     bool force_cpdma)
 {
 	if (!size)
 		return;
@@ -250,7 +251,8 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 		 * about buffer placements.
 		 */
 		if (clear_value_size > 4 ||
-		    (clear_value_size == 4 &&
+		    (!force_cpdma &&
+		     clear_value_size == 4 &&
 		     offset % 4 == 0 &&
 		     (size > 32*1024 || sctx->chip_class <= VI))) {
 			si_compute_do_clear_or_copy(sctx, dst, offset, NULL, 0,
@@ -284,7 +286,7 @@ static void si_pipe_clear_buffer(struct pipe_context *ctx,
 				 int clear_value_size)
 {
 	si_clear_buffer((struct si_context*)ctx, dst, offset, size, (uint32_t*)clear_value,
-			clear_value_size, SI_COHERENCY_SHADER);
+			clear_value_size, SI_COHERENCY_SHADER, false);
 }
 
 void si_copy_buffer(struct si_context *sctx,
