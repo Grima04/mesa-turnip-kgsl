@@ -1482,3 +1482,130 @@ gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 subdir('include')
 subdir('bin')
 subdir('src')
+
+# Meson 0.49 and earlier seems to have a bug that fails to evaluate the string-
+# formatting below unless the first argument is passed as a variable. This has
+# been fixed in Meson 0.50 and beyond, but we need to keep it like this for now
+# for backwards compatibility.
+_with_opengl_string = with_opengl ? 'yes' : 'no'
+
+lines = ['',
+  'prefix:          ' + get_option('prefix'),
+  'libdir:          ' + get_option('libdir'),
+  'includedir:      ' + get_option('includedir'),
+  '',
+  'OpenGL:          @0@ (ES1: @1@ ES2: @2@)'.format(_with_opengl_string,
+                                                    with_gles1 ? 'yes' : 'no',
+                                                    with_gles2 ? 'yes' : 'no'),
+]
+
+lines += ''
+if with_osmesa != 'none'
+  suffix = ''
+  if with_osmesa == 'gallium'
+    suffix = '(Gallium)'
+  endif
+  lines += 'OSMesa:          lib' + osmesa_lib_name + suffix
+else
+  lines += 'OSMesa:          no'
+endif
+
+lines += ''
+if with_dri
+  lines += 'DRI platform:    ' + with_dri_platform
+  if dri_drivers.length() != 0 and dri_drivers != ['']
+    lines += 'DRI drivers:     ' + ' '.join(dri_drivers)
+  else
+    lines += 'DRI drivers:     no'
+  endif
+  lines += 'DRI driver dir:  ' + dri_drivers_path
+endif
+
+lines += ''
+if with_glx != 'disabled'
+  if with_glx == 'dri'
+    lines += 'GLX:             DRI-based'
+  elif with_glx == 'xlib'
+    lines += 'GLX:             Xlib-based'
+  elif with_glx == 'gallium-xlib'
+    lines += 'GLX:             Xlib-based (Gallium)'
+  else
+    lines += 'GLX:             ' + with_glx
+  endif
+endif
+
+lines += ''
+lines += 'EGL:             ' + (with_egl ? 'yes' : 'no')
+if with_egl
+  egl_drivers = []
+  if with_dri
+    egl_drivers += 'builtin:egl_dri2'
+  endif
+  if with_dri3
+    egl_drivers += 'builtin:egl_dri3'
+  endif
+  lines += 'EGL drivers:     ' + ' '.join(egl_drivers)
+endif
+lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
+if with_platforms
+  lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
+endif
+
+lines += ''
+if with_any_vk
+  lines += 'Vulkan drivers:  ' + ' '.join(_vulkan_drivers)
+  lines += 'Vulkan ICD dir:  ' + with_vulkan_icd_dir
+else
+  lines += 'Vulkan drivers:  no'
+endif
+
+lines += ''
+if with_llvm
+  lines += 'llvm:            yes'
+  lines += 'llvm-version:    ' + dep_llvm.version()
+else
+  lines += 'llvm:            no'
+endif
+
+lines += ''
+if with_gallium
+  lines += 'Gallium drivers: ' + ' '.join(gallium_drivers)
+  gallium_st = ['mesa']
+  if with_gallium_xa
+    gallium_st += 'xa'
+  endif
+  if with_gallium_xvmc
+    gallium_st += 'xvmc'
+  endif
+  if with_gallium_xvmc
+    gallium_st += 'xvmc'
+  endif
+  if with_gallium_vdpau
+    gallium_st += 'vdpau'
+  endif
+  if with_gallium_omx != 'disabled'
+    gallium_st += 'omx' + with_gallium_omx
+  endif
+  if with_gallium_va
+    gallium_st += 'va'
+  endif
+  if with_gallium_st_nine
+    gallium_st += 'nine'
+  endif
+  if with_gallium_opencl
+    gallium_st += 'clover'
+  endif
+  lines += 'Gallium st:      ' + ' '.join(gallium_st)
+else
+  lines += 'Gallium:         no'
+endif
+
+lines += 'HUD lmsensors:   ' + (dep_lmsensors.found() ? 'yes' : 'no')
+
+lines += ''
+lines += 'Shared-glapi:    ' + (with_shared_glapi ? 'yes' : 'no')
+
+
+indent = '        '
+summary = indent + ('\n' + indent).join(lines)
+message('Configuration summary:\n@0@\n'.format(summary))
