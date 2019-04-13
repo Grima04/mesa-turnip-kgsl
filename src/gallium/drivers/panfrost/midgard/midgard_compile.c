@@ -32,7 +32,6 @@
 
 #include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
-#include "mesa/state_tracker/st_glsl_types.h"
 #include "compiler/nir_types.h"
 #include "main/imports.h"
 #include "compiler/nir/nir_builder.h"
@@ -643,12 +642,6 @@ static int
 glsl_type_size(const struct glsl_type *type, bool bindless)
 {
         return glsl_count_attribute_slots(type, false);
-}
-
-static int
-uniform_type_size(const struct glsl_type *type, bool bindless)
-{
-        return st_glsl_storage_type_size(type, bindless);
 }
 
 /* Lower fdot2 to a vector multiplication followed by channel addition  */
@@ -3500,7 +3493,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         nir_assign_var_locations(&nir->outputs, &nir->num_outputs, glsl_type_size);
         nir_assign_var_locations(&nir->inputs, &nir->num_inputs, glsl_type_size);
-        nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms, uniform_type_size);
+        nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms, glsl_type_size);
 
         /* Initialize at a global (not block) level hash tables */
 

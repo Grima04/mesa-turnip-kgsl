@@ -109,7 +109,6 @@ midgard_compiler = executable(
   link_with : [
     libgallium,
     libglsl_standalone,
-    libmesa_gallium, # for st_glsl_storage_type_size
     libmesa_util
   ],
   build_by_default : true
