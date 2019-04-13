@@ -209,7 +209,6 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    unsigned mask = 0;
    ppir_load_node *lnode;
    ppir_store_node *snode;
-   nir_const_value *const_offset;
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
@@ -234,10 +233,7 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
 
       lnode->num_components = instr->num_components;
       lnode->index = nir_intrinsic_base(instr);
-
-      const_offset = nir_src_as_const_value(instr->src[0]);
-      assert(const_offset);
-      lnode->index += (uint32_t)const_offset->f32[0];
+      lnode->index += (uint32_t)nir_src_as_float(instr->src[0]);
 
       return &lnode->node;
 

@@ -177,10 +177,7 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
          return false;
 
       int offset = nir_intrinsic_base(instr);
-
-      nir_const_value *const_offset = nir_src_as_const_value(instr->src[0]);
-      assert(const_offset);
-      offset += (int)const_offset->f32[0];
+      offset += (int)nir_src_as_float(instr->src[0]);
 
       load->index = offset / 4;
       load->component = offset % 4;
