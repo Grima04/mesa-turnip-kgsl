@@ -34,6 +34,7 @@
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_memory.h"
+#include "util/u_vbuf.h"
 #include "util/half_float.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
@@ -789,6 +790,15 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx)
         panfrost_emit_varying_descriptor(ctx, invocation_count);
 }
 
+static bool
+panfrost_writes_point_size(struct panfrost_context *ctx)
+{
+        assert(ctx->vs);
+        struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
+
+        return vs->writes_point_size && ctx->payload_tiler.prefix.draw_mode == MALI_POINTS;
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -841,21 +851,13 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
                 /* Check if we need to link the gl_PointSize varying */
-                assert(ctx->vs);
-                struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
-
-                bool needs_gl_point_size = vs->writes_point_size && ctx->payload_tiler.prefix.draw_mode == MALI_POINTS;
-
-                if (!needs_gl_point_size) {
+                if (!panfrost_writes_point_size(ctx)) {
                         /* If the size is constant, write it out. Otherwise,
                          * don't touch primitive_size (since we would clobber
                          * the pointer there) */
 
                         ctx->payload_tiler.primitive_size.constant = ctx->rasterizer->base.line_width;
                 }
-
-                /* Set the flag for varying (pointer) point size if the shader needs that */
-                SET_BIT(ctx->payload_tiler.prefix.unknown_draw, MALI_DRAW_VARYING_SIZE, needs_gl_point_size);
         }
 
         /* TODO: Maybe dirty track FS, maybe not. For now, it's transient. */
@@ -1367,17 +1369,6 @@ panfrost_translate_index_size(unsigned size)
         }
 }
 
-static const uint8_t *
-panfrost_get_index_buffer_raw(const struct pipe_draw_info *info)
-{
-        if (info->has_user_indices) {
-                return (const uint8_t *) info->index.user;
-        } else {
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
-                return (const uint8_t *) rsrc->bo->cpu;
-        }
-}
-
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
  * good for the duration of the draw (transient), could last longer */
 
@@ -1393,17 +1384,10 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
                 return rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */
-                const uint8_t *ibuf8 = panfrost_get_index_buffer_raw(info);
+                const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
                 return panfrost_upload_transient(ctx, ibuf8 + offset, info->count * info->index_size);
         }
 }
-
-#define CALCULATE_MIN_MAX_INDEX(T, buffer, start, count) \
-        for (unsigned _idx = (start); _idx < (start + count); ++_idx) { \
-                T idx = buffer[_idx]; \
-                if (idx > max_index) max_index = idx; \
-                if (idx < min_index) min_index = idx; \
-        }
 
 static void
 panfrost_draw_vbo(
@@ -1446,40 +1430,32 @@ panfrost_draw_vbo(
         /* For non-indexed draws, they're the same */
         unsigned invocation_count = ctx->vertex_count;
 
+        unsigned draw_flags = 0;
+
+        /* The draw flags interpret how primitive size is interpreted */
+
+        if (panfrost_writes_point_size(ctx))
+                draw_flags |= MALI_DRAW_VARYING_SIZE;
+
         /* For higher amounts of vertices (greater than what fits in a 16-bit
          * short), the other value is needed, otherwise there will be bizarre
          * rendering artefacts. It's not clear what these values mean yet. */
 
-        ctx->payload_tiler.prefix.unknown_draw &= ~(0x3000 | 0x18000);
-        ctx->payload_tiler.prefix.unknown_draw |= (mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
-
-        /* Clean index state */
-        ctx->payload_tiler.prefix.unknown_draw &= ~MALI_DRAW_INDEXED_UINT32;
+        draw_flags |= (mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
 
         if (info->index_size) {
                 /* Calculate the min/max index used so we can figure out how
                  * many times to invoke the vertex shader */
 
-                const uint8_t *ibuf8 = panfrost_get_index_buffer_raw(info);
+                /* Fetch / calculate index bounds */
+                unsigned min_index = 0, max_index = 0;
 
-                unsigned min_index = UINT_MAX;
-                unsigned max_index = 0;
-
-                if (info->index_size == 1) {
-                        CALCULATE_MIN_MAX_INDEX(uint8_t, ibuf8, info->start, info->count);
-                } else if (info->index_size == 2) {
-                        const uint16_t *ibuf16 = (const uint16_t *) ibuf8;
-                        CALCULATE_MIN_MAX_INDEX(uint16_t, ibuf16, info->start, info->count);
-                } else if (info->index_size == 4) {
-                        const uint32_t *ibuf32 = (const uint32_t *) ibuf8;
-                        CALCULATE_MIN_MAX_INDEX(uint32_t, ibuf32, info->start, info->count);
+                if (info->max_index == ~0u) {
+                        u_vbuf_get_minmax_index(pipe, info, &min_index, &max_index);
                 } else {
-                        assert(0);
+                        min_index = info->min_index;
+                        max_index = info->max_index;
                 }
-
-                /* Make sure we didn't go crazy */
-                assert(min_index < UINT_MAX);
-                assert(max_index >= min_index);
 
                 /* Use the corresponding values */
                 invocation_count = max_index - min_index + 1;
@@ -1491,9 +1467,8 @@ panfrost_draw_vbo(
 
                 //assert(!info->restart_index); /* TODO: Research */
                 assert(!info->index_bias);
-                //assert(!info->min_index); /* TODO: Use value */
 
-                ctx->payload_tiler.prefix.unknown_draw |= panfrost_translate_index_size(info->index_size);
+                draw_flags |= panfrost_translate_index_size(info->index_size);
                 ctx->payload_tiler.prefix.indices = panfrost_get_index_buffer_mapped(ctx, info);
         } else {
                 /* Index count == vertex count, if no indexing is applied, as
@@ -1508,6 +1483,7 @@ panfrost_draw_vbo(
 
         ctx->payload_vertex.prefix.invocation_count = MALI_POSITIVE(invocation_count);
         ctx->payload_tiler.prefix.invocation_count = MALI_POSITIVE(invocation_count);
+        ctx->payload_tiler.prefix.unknown_draw = draw_flags;
 
         /* Fire off the draw itself */
         panfrost_queue_draw(ctx);
