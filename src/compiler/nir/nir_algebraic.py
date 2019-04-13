@@ -102,25 +102,6 @@ class Value(object):
       elif isinstance(val, (bool, float) + integer_types):
          return Constant(val, name_base)
 
-   __template = mako.template.Template("""
-static const ${val.c_type} ${val.name} = {
-   { ${val.type_enum}, ${val.c_bit_size} },
-% if isinstance(val, Constant):
-   ${val.type()}, { ${val.hex()} /* ${val.value} */ },
-% elif isinstance(val, Variable):
-   ${val.index}, /* ${val.var_name} */
-   ${'true' if val.is_constant else 'false'},
-   ${val.type() or 'nir_type_invalid' },
-   ${val.cond if val.cond else 'NULL'},
-% elif isinstance(val, Expression):
-   ${'true' if val.inexact else 'false'},
-   ${val.comm_expr_idx}, ${val.comm_exprs},
-   ${val.c_opcode()},
-   { ${', '.join(src.c_ptr for src in val.sources)} },
-   ${val.cond if val.cond else 'NULL'},
-% endif
-};""")
-
    def __init__(self, val, name, type_str):
       self.in_val = str(val)
       self.name = name
@@ -189,6 +170,25 @@ static const ${val.c_type} ${val.name} = {
          # case we'd reject it), or it equals the bit-size of the search value
          # We represent these cases with a 0 bit-size.
          return 0
+
+   __template = mako.template.Template("""
+static const ${val.c_type} ${val.name} = {
+   { ${val.type_enum}, ${val.c_bit_size} },
+% if isinstance(val, Constant):
+   ${val.type()}, { ${val.hex()} /* ${val.value} */ },
+% elif isinstance(val, Variable):
+   ${val.index}, /* ${val.var_name} */
+   ${'true' if val.is_constant else 'false'},
+   ${val.type() or 'nir_type_invalid' },
+   ${val.cond if val.cond else 'NULL'},
+% elif isinstance(val, Expression):
+   ${'true' if val.inexact else 'false'},
+   ${val.comm_expr_idx}, ${val.comm_exprs},
+   ${val.c_opcode()},
+   { ${', '.join(src.c_ptr for src in val.sources)} },
+   ${val.cond if val.cond else 'NULL'},
+% endif
+};""")
 
    def render(self):
       return self.__template.render(val=self,
