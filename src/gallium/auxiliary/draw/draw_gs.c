@@ -737,7 +737,7 @@ draw_gs_init( struct draw_context *draw )
             MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector), 16);
          draw->gs.tgsi.machine->PrimitiveOffsets[i] = align_malloc(
             MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector), 16);
-         if (!draw->gs.tgsi.machine->Primitives[i] || !draw->gs.tgsi.machine->PrimitiveOffsets)
+         if (!draw->gs.tgsi.machine->Primitives[i] || !draw->gs.tgsi.machine->PrimitiveOffsets[i])
             return FALSE;
          memset(draw->gs.tgsi.machine->Primitives[i], 0,
                 MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector));
