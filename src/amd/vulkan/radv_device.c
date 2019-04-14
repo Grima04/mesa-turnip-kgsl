@@ -49,6 +49,7 @@
 #include "util/debug.h"
 #include "util/mesa-sha1.h"
 #include "compiler/glsl_types.h"
+#include "util/xmlpool.h"
 
 static int
 radv_device_get_cache_uuid(enum radeon_family family, void *uuid)
@@ -520,6 +521,17 @@ static int radv_get_instance_extension_index(const char *name)
 	return -1;
 }
 
+static const char radv_dri_options_xml[] =
+DRI_CONF_BEGIN
+DRI_CONF_END;
+
+static void  radv_init_dri_options(struct radv_instance *instance)
+{
+	driParseOptionInfo(&instance->available_dri_options, radv_dri_options_xml);
+	driParseConfigFiles(&instance->dri_options,
+	                    &instance->available_dri_options,
+	                    0, "radv", NULL);
+}
 
 VkResult radv_CreateInstance(
 	const VkInstanceCreateInfo*                 pCreateInfo,
@@ -587,6 +599,7 @@ VkResult radv_CreateInstance(
 
 	VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
+	radv_init_dri_options(instance);
 	radv_handle_per_app_options(instance, pCreateInfo->pApplicationInfo);
 
 	*pInstance = radv_instance_to_handle(instance);
@@ -611,6 +624,9 @@ void radv_DestroyInstance(
 
 	glsl_type_singleton_decref();
 	_mesa_locale_fini();
+
+	driDestroyOptionCache(&instance->dri_options);
+	driDestroyOptionInfo(&instance->available_dri_options);
 
 	vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
