@@ -152,6 +152,7 @@ files_libnir = files(
   'nir_lower_vars_to_ssa.c',
   'nir_lower_var_copies.c',
   'nir_lower_vec_to_movs.c',
+  'nir_lower_viewport_transform.c',
   'nir_lower_wpos_center.c',
   'nir_lower_wpos_ytransform.c',
   'nir_lower_bit_size.c',
