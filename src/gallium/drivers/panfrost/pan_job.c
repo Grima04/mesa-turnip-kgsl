@@ -35,7 +35,30 @@ panfrost_create_job(struct panfrost_context *ctx)
 
         job->ctx = ctx;
 
+        job->bos = _mesa_set_create(job,
+                                    _mesa_hash_pointer,
+                                    _mesa_key_pointer_equal);
+ 
         return job;
+}
+
+void
+panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
+{
+        if (!job)
+                return;
+
+        set_foreach(job->bos, entry) {
+                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+                panfrost_bo_unreference(ctx->base.screen, bo);
+        }
+
+        _mesa_hash_table_remove_key(ctx->jobs, &job->key);
+
+        if (ctx->job == job)
+                ctx->job = NULL;
+
+        ralloc_free(job);
 }
 
 struct panfrost_job *
@@ -90,6 +113,53 @@ panfrost_get_job_for_fbo(struct panfrost_context *ctx)
         return job;
 }
 
+void
+panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo)
+{
+        if (!bo)
+                return;
+
+        if (_mesa_set_search(job->bos, bo))
+                return;
+
+        panfrost_bo_reference(bo);
+        _mesa_set_add(job->bos, bo);
+}
+
+void
+panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
+                                struct pipe_resource *prsc)
+{
+#if 0
+        struct hash_entry *entry = _mesa_hash_table_search(panfrost->write_jobs,
+                                                           prsc);
+        if (entry) {
+                struct panfrost_job *job = entry->data;
+                panfrost_job_submit(panfrost, job);
+        }
+#endif
+        /* TODO stub */
+}
+
+void
+panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
+                                struct pipe_resource *prsc)
+{
+        struct panfrost_resource *rsc = pan_resource(prsc);
+
+        panfrost_flush_jobs_writing_resource(panfrost, prsc);
+
+        hash_table_foreach(panfrost->jobs, entry) {
+                struct panfrost_job *job = entry->data;
+
+                if (_mesa_set_search(job->bos, rsc->bo)) {
+                        printf("TODO: submit job for flush\n");
+                        //panfrost_job_submit(panfrost, job);
+                        continue;
+                }
+        }
+}
+
 static bool
 panfrost_job_compare(const void *a, const void *b)
 {
@@ -109,4 +179,9 @@ panfrost_job_init(struct panfrost_context *ctx)
         ctx->jobs = _mesa_hash_table_create(NULL,
                                             panfrost_job_hash,
                                             panfrost_job_compare);
+
+        ctx->write_jobs = _mesa_hash_table_create(NULL,
+                                            _mesa_hash_pointer,
+                                            _mesa_key_pointer_equal);
+
 }

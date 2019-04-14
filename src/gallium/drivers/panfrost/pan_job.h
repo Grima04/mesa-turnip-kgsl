@@ -55,12 +55,17 @@ struct panfrost_job {
          * bitmask) */
         unsigned requirements;
 
+        /* BOs referenced -- will be used for flushing logic */
+        struct set *bos;
 };
 
 /* Functions for managing the above */
 
 struct panfrost_job *
 panfrost_create_job(struct panfrost_context *ctx);
+
+void
+panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job);
 
 struct panfrost_job *
 panfrost_get_job(struct panfrost_context *ctx,
@@ -71,5 +76,16 @@ panfrost_get_job_for_fbo(struct panfrost_context *ctx);
 
 void
 panfrost_job_init(struct panfrost_context *ctx);
+
+void
+panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo);
+
+void
+panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
+                                struct pipe_resource *prsc);
+
+void
+panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
+                                struct pipe_resource *prsc);
 
 #endif

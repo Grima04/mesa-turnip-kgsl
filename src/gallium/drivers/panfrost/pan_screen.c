@@ -597,8 +597,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.fence_reference = panfrost_fence_reference;
         screen->base.fence_finish = panfrost_fence_finish;
 
-	screen->last_fragment_id = -1;
 	screen->last_fragment_flushed = true;
+        screen->last_job = NULL;
 
         panfrost_resource_screen_init(screen);
 

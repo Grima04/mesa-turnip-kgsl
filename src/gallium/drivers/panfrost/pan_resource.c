@@ -228,6 +228,7 @@ static struct panfrost_bo *
 panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *template)
 {
 	struct panfrost_bo *bo = CALLOC_STRUCT(panfrost_bo);
+        pipe_reference_init(&bo->reference, 1);
 
         /* Based on the usage, figure out what storing will be used. There are
          * various tradeoffs:
@@ -297,6 +298,8 @@ panfrost_resource_create(struct pipe_screen *screen,
                         assert(0);
         }
 
+        util_range_init(&so->valid_buffer_range);
+
         if (template->bind & PIPE_BIND_DISPLAY_TARGET ||
             template->bind & PIPE_BIND_SCANOUT ||
             template->bind & PIPE_BIND_SHARED) {
@@ -359,6 +362,22 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
         }
 }
 
+void
+panfrost_bo_reference(struct panfrost_bo *bo)
+{
+        pipe_reference(NULL, &bo->reference);
+}
+
+void
+panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
+{
+        /* When the reference count goes to zero, we need to cleanup */
+
+        if (pipe_reference(&bo->reference, NULL)) {
+                panfrost_destroy_bo(pan_screen(screen), bo);
+        }
+}
+
 static void
 panfrost_resource_destroy(struct pipe_screen *screen,
                           struct pipe_resource *pt)
@@ -370,8 +389,9 @@ panfrost_resource_destroy(struct pipe_screen *screen,
 		renderonly_scanout_destroy(rsrc->scanout, pscreen->ro);
 
 	if (rsrc->bo)
-		panfrost_destroy_bo(pscreen, rsrc->bo);
+                panfrost_bo_unreference(screen, rsrc->bo);
 
+        util_range_destroy(&rsrc->valid_buffer_range);
 	FREE(rsrc);
 }
 
@@ -384,7 +404,8 @@ panfrost_transfer_map(struct pipe_context *pctx,
                       struct pipe_transfer **out_transfer)
 {
         int bytes_per_pixel = util_format_get_blocksize(resource->format);
-        struct panfrost_bo *bo = pan_resource(resource)->bo;
+        struct panfrost_resource *rsrc = pan_resource(resource);
+        struct panfrost_bo *bo = rsrc->bo;
 
         struct panfrost_gtransfer *transfer = CALLOC_STRUCT(panfrost_gtransfer);
         transfer->base.level = level;
@@ -403,6 +424,25 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 /* Force a flush -- kill the pipeline */
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+        }
+
+        if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+                /* TODO: reallocate */
+                //printf("debug: Missed reallocate\n");
+        } else if ((usage & PIPE_TRANSFER_WRITE)
+                        && resource->target == PIPE_BUFFER
+                        && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) {
+                /* No flush for writes to uninitialized */
+        } else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+                if (usage & PIPE_TRANSFER_WRITE) {
+                        /* STUB: flush reading */
+                        //printf("debug: missed reading flush %d\n", resource->target);
+                } else if (usage & PIPE_TRANSFER_READ) {
+                        /* STUB: flush writing */
+                        //printf("debug: missed writing flush %d (%d-%d)\n", resource->target, box->x, box->x + box->width);
+                } else {
+                        /* Why are you even mapping?! */
+                }
         }
 
         if (bo->layout != PAN_LINEAR) {
@@ -460,9 +500,9 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
         /* Gallium expects writeback here, so we tile */
 
         struct panfrost_gtransfer *trans = pan_transfer(transfer);
+        struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
 
         if (trans->map) {
-                struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
@@ -480,11 +520,30 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                 free(trans->map);
         }
 
+
+	util_range_add(&prsrc->valid_buffer_range,
+                        transfer->box.x,
+                        transfer->box.x + transfer->box.width);
+
         /* Derefence the resource */
         pipe_resource_reference(&transfer->resource, NULL);
 
         /* Transfer itself is CALLOCed at the moment */
         free(transfer);
+}
+
+static void
+panfrost_transfer_flush_region(struct pipe_context *pctx,
+		struct pipe_transfer *transfer,
+		const struct pipe_box *box)
+{
+	struct panfrost_resource *rsc = pan_resource(transfer->resource);
+
+	if (transfer->resource->target == PIPE_BUFFER) {
+		util_range_add(&rsc->valid_buffer_range,
+					   transfer->box.x + box->x,
+					   transfer->box.x + box->x + box->width);
+        }
 }
 
 static struct pb_slab *
@@ -564,7 +623,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
         .resource_destroy         = panfrost_resource_destroy,
         .transfer_map             = panfrost_transfer_map,
         .transfer_unmap           = panfrost_transfer_unmap,
-        .transfer_flush_region    = u_default_transfer_flush_region,
+        .transfer_flush_region    = panfrost_transfer_flush_region,
         .get_internal_format      = panfrost_resource_get_internal_format,
         .set_stencil              = panfrost_resource_set_stencil,
         .get_stencil              = panfrost_resource_get_stencil,

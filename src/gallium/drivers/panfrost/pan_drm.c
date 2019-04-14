@@ -1,5 +1,6 @@
 /*
  * © Copyright 2019 Collabora, Ltd.
+ * Copyright 2019 Alyssa Rosenzweig
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -138,6 +139,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 
 	bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
+        pipe_reference_init(&bo->reference, 1);
 
 	// TODO map and unmap on demand?
 	mmap_bo.handle = gem_handle;
@@ -227,6 +229,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	}
 
 	/* TODO: Add here the transient pools */
+        /* TODO: Add here the BOs listed in the panfrost_job */
 	bo_handles[submit.bo_handle_count++] = ctx->shaders.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->scratchpad.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.gem_handle;
@@ -303,6 +306,9 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
         if (!screen->last_fragment_flushed) {
 		drmSyncobjWait(drm->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
                 screen->last_fragment_flushed = true;
+
+                /* The job finished up, so we're safe to clean it up now */
+                panfrost_free_job(ctx, screen->last_job);
 	}
 
         if (fence) {

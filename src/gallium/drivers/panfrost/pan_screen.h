@@ -92,8 +92,11 @@ struct panfrost_screen {
         /* TODO: Where? */
         struct panfrost_resource *display_target;
 
-	int last_fragment_id;
+        /* While we're busy building up the job for frame N, the GPU is
+         * still busy executing frame N-1. So hold a reference to
+         * yesterjob */
 	int last_fragment_flushed;
+        struct panfrost_job *last_job;
 };
 
 #endif /* PAN_SCREEN_H */

@@ -30,6 +30,7 @@
 #include "pan_screen.h"
 #include "pan_allocate.h"
 #include "drm-uapi/drm.h"
+#include "util/u_range.h"
 
 /* Describes the memory layout of a BO */
 
@@ -45,6 +46,9 @@ struct panfrost_slice {
 };
 
 struct panfrost_bo {
+        struct pipe_reference reference;
+
+        /* Description of the mip levels */
         struct panfrost_slice slices[MAX_MIP_LEVELS];
 
         /* Mapping for the entire object (all levels) */
@@ -83,6 +87,12 @@ struct panfrost_bo {
         int gem_handle;
 };
 
+void
+panfrost_bo_reference(struct panfrost_bo *bo);
+
+void
+panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo);
+
 struct panfrost_resource {
         struct pipe_resource base;
 
@@ -90,6 +100,8 @@ struct panfrost_resource {
         struct renderonly_scanout *scanout;
 
         struct panfrost_resource *separate_stencil;
+
+        struct util_range valid_buffer_range;
 };
 
 static inline struct panfrost_resource *
