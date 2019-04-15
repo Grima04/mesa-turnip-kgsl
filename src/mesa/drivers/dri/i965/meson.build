@@ -162,6 +162,3 @@ libi965 = static_library(
   ],
   dependencies : [dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml],
 )
-
-dri_drivers += libi965
-dri_link += 'i965_dri.so'
