@@ -614,6 +614,18 @@ static inline bool is_nop(struct ir3_instruction *instr)
 	return instr->opc == OPC_NOP;
 }
 
+static inline bool is_same_type_reg(struct ir3_register *reg1,
+		struct ir3_register *reg2)
+{
+	unsigned type_reg1 = (reg1->flags & (IR3_REG_HIGH | IR3_REG_HALF));
+	unsigned type_reg2 = (reg1->flags & (IR3_REG_HIGH | IR3_REG_HALF));
+
+	if (type_reg1 ^ type_reg2)
+		return false;
+	else
+		return true;
+}
+
 /* Is it a non-transformative (ie. not type changing) mov?  This can
  * also include absneg.s/absneg.f, which for the most part can be
  * treated as a mov (single src argument).
@@ -630,6 +642,10 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 	case OPC_ABSNEG_F:
 	case OPC_ABSNEG_S:
 		if (instr->flags & IR3_INSTR_SAT)
+			return false;
+		/* If the type of dest reg and src reg are different,
+		 * it shouldn't be considered as same type mov */
+		if (!is_same_type_reg(instr->regs[0], instr->regs[1]))
 			return false;
 		break;
 	default:
