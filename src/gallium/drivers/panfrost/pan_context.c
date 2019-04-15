@@ -735,6 +735,15 @@ panfrost_emit_varying_descriptor(
         ctx->payload_tiler.postfix.varyings = varyings_p;
 }
 
+static mali_ptr
+panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i)
+{
+        struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[i];
+        struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
+
+        return rsrc->bo->gpu + buf->buffer_offset;
+}
+
 /* Emits attributes and varying descriptors, which should be called every draw,
  * excepting some obscure circumstances */
 
@@ -754,42 +763,20 @@ panfrost_emit_vertex_data(struct panfrost_context *ctx, struct panfrost_job *job
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[i];
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
 
-                /* Let's figure out the layout of the attributes in memory so
-                 * we can be smart about size computation. The idea is to
-                 * figure out the maximum src_offset, which tells us the latest
-                 * spot a vertex could start. Meanwhile, we figure out the size
-                 * of the attribute memory (assuming interleaved
-                 * representation) and tack on the max src_offset for a
-                 * reasonably good upper bound on the size.
-                 *
-                 * Proving correctness is left as an exercise to the reader.
-                 */
+                if (!rsrc) continue;
 
-                unsigned max_src_offset = 0;
+                /* Align to 64 bytes by masking off the lower bits. This
+                 * will be adjusted back when we fixup the src_offset in
+                 * mali_attr_meta */
 
-                for (unsigned j = 0; j < ctx->vertex->num_elements; ++j) {
-                        if (ctx->vertex->pipe[j].vertex_buffer_index != i) continue;
-                        max_src_offset = MAX2(max_src_offset, ctx->vertex->pipe[j].src_offset);
-                }
+                mali_ptr addr = panfrost_vertex_buffer_address(ctx, i) & ~63;
 
                 /* Offset vertex count by draw_start to make sure we upload enough */
                 attrs[k].stride = buf->stride;
-                attrs[k].size = buf->stride * (ctx->payload_vertex.draw_start + invocation_count) + max_src_offset;
+                attrs[k].size = rsrc->base.width0;
 
-                /* Vertex elements are -already- GPU-visible, at
-                 * rsrc->gpu. However, attribute buffers must be 64 aligned. If
-                 * it is not, for now we have to duplicate the buffer. */
-
-                mali_ptr effective_address = rsrc ? (rsrc->bo->gpu + buf->buffer_offset) : 0;
-
-                if (effective_address & 63) {
-                        attrs[k].elements = panfrost_upload_transient(ctx, rsrc->bo->cpu + buf->buffer_offset, attrs[i].size) | MALI_ATTR_LINEAR;
-                } else if (effective_address) {
-                        panfrost_job_add_bo(job, rsrc->bo);
-                        attrs[k].elements = effective_address | MALI_ATTR_LINEAR;
-                } else {
-                        /* Leave unset? */
-                }
+                panfrost_job_add_bo(job, rsrc->bo);
+                attrs[k].elements = addr | MALI_ATTR_LINEAR;
 
                 ++k;
         }
@@ -806,6 +793,53 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
         return vs->writes_point_size && ctx->payload_tiler.prefix.draw_mode == MALI_POINTS;
+}
+
+/* Stage the attribute descriptors so we can adjust src_offset
+ * to let BOs align nicely */
+
+static void
+panfrost_stage_attributes(struct panfrost_context *ctx)
+{
+        struct panfrost_vertex_state *so = ctx->vertex;
+
+        size_t sz = sizeof(struct mali_attr_meta) * so->num_elements;
+        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sz);
+        struct mali_attr_meta *target = (struct mali_attr_meta *) transfer.cpu;
+
+        /* Copy as-is for the first pass */
+        memcpy(target, so->hw, sz);
+
+        /* Fixup offsets for the second pass. Recall that the hardware
+         * calculates attribute addresses as:
+         *
+         *      addr = base + (stride * vtx) + src_offset;
+         *
+         * However, on Mali, base must be aligned to 64-bytes, so we
+         * instead let:
+         *
+         *      base' = base & ~63 = base - (base & 63)
+         * 
+         * To compensate when using base' (see emit_vertex_data), we have
+         * to adjust src_offset by the masked off piece:
+         *
+         *      addr' = base' + (stride * vtx) + (src_offset + (base & 63))
+         *            = base - (base & 63) + (stride * vtx) + src_offset + (base & 63)
+         *            = base + (stride * vtx) + src_offset
+         *            = addr;
+         *
+         * QED.
+         */
+
+        for (unsigned i = 0; i < so->num_elements; ++i) {
+                unsigned vbi = so->pipe[i].vertex_buffer_index;
+                mali_ptr addr = panfrost_vertex_buffer_address(ctx, vbi);
+
+                /* Adjust by the masked off bits of the offset */
+                target[i].src_offset += (addr & 63);
+        }
+
+        ctx->payload_vertex.postfix.attribute_meta = transfer.gpu;
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -991,9 +1025,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 }
         }
 
-        if (ctx->dirty & PAN_DIRTY_VERTEX) {
-                ctx->payload_vertex.postfix.attribute_meta = ctx->vertex->descriptor_ptr;
-        }
+        /* We stage to transient, so always dirty.. */
+        panfrost_stage_attributes(ctx);
 
         if (ctx->dirty & PAN_DIRTY_SAMPLERS) {
                 /* Upload samplers back to back, no padding */
@@ -1553,15 +1586,10 @@ panfrost_create_vertex_elements_state(
         unsigned num_elements,
         const struct pipe_vertex_element *elements)
 {
-        struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_vertex_state *so = CALLOC_STRUCT(panfrost_vertex_state);
 
         so->num_elements = num_elements;
         memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
-
-        struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, sizeof(struct mali_attr_meta) * num_elements, HEAP_DESCRIPTOR);
-        so->hw = (struct mali_attr_meta *) transfer.cpu;
-        so->descriptor_ptr = transfer.gpu;
 
         /* Allocate memory for the descriptor state */
 

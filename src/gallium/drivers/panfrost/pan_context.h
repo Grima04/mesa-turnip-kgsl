@@ -291,11 +291,7 @@ struct panfrost_vertex_state {
         unsigned num_elements;
 
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
-        int nr_components[PIPE_MAX_ATTRIBS];
-
-        /* The actual attribute meta, prebaked and GPU mapped. TODO: Free memory */
-        struct mali_attr_meta *hw;
-        mali_ptr descriptor_ptr;
+        struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
 };
 
 struct panfrost_sampler_state {
