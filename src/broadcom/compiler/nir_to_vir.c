@@ -2273,16 +2273,8 @@ nir_to_vir(struct v3d_compile *c)
                                                       V3D_QPU_WADDR_SYNC));
                 }
 
-                if (c->s->info.system_values_read &
-                    ((1ull << SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) |
-                     (1ull << SYSTEM_VALUE_WORK_GROUP_ID))) {
-                        c->cs_payload[0] = vir_MOV(c, vir_reg(QFILE_REG, 0));
-                }
-                if ((c->s->info.system_values_read &
-                     ((1ull << SYSTEM_VALUE_WORK_GROUP_ID))) ||
-                    c->s->info.cs.shared_size) {
-                        c->cs_payload[1] = vir_MOV(c, vir_reg(QFILE_REG, 2));
-                }
+                c->cs_payload[0] = vir_MOV(c, vir_reg(QFILE_REG, 0));
+                c->cs_payload[1] = vir_MOV(c, vir_reg(QFILE_REG, 2));
 
                 /* Set up the division between gl_LocalInvocationIndex and
                  * wg_in_mem in the payload reg.
