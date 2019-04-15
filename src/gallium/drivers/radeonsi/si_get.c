@@ -161,6 +161,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_TGSI_VOTE:
 	case PIPE_CAP_TGSI_FS_FBFETCH:
 	case PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK:
+	case PIPE_CAP_IMAGE_LOAD_FORMATTED:
 		return 1;
 
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
