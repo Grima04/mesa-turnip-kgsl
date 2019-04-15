@@ -1183,7 +1183,7 @@ gen_get_device_info(int devid, struct gen_device_info *devinfo)
       case id: *devinfo = gen_device_info_##family; break;
 #include "pci_ids/i965_pci_ids.h"
    default:
-      fprintf(stderr, "i965_dri.so does not support the 0x%x PCI ID.\n", devid);
+      fprintf(stderr, "Driver does not support the 0x%x PCI ID.\n", devid);
       return false;
    }
 
