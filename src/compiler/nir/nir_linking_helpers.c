@@ -309,7 +309,8 @@ get_unmoveable_components_masks(struct exec_list *var_list,
             comps[location + i].interp_type =
                get_interp_type(var, type, default_to_smooth_interp);
             comps[location + i].interp_loc = get_interp_loc(var);
-            comps[location + i].is_32bit = glsl_type_is_32bit(type);
+            comps[location + i].is_32bit =
+               glsl_type_is_32bit(glsl_without_array(type));
          }
       }
    }
