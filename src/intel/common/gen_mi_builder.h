@@ -519,9 +519,9 @@ static inline uint32_t
 _gen_mi_pack_alu(uint32_t opcode, uint32_t operand1, uint32_t operand2)
 {
    struct GENX(MI_MATH_ALU_INSTRUCTION) instr = {
-      .ALUOpcode = opcode,
-      .Operand1 = operand1,
       .Operand2 = operand2,
+      .Operand1 = operand1,
+      .ALUOpcode = opcode,
    };
 
    uint32_t dw;
