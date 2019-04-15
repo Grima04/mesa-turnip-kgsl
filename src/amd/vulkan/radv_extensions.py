@@ -82,7 +82,7 @@ EXTENSIONS = [
     Extension('VK_KHR_relaxed_block_layout',              1, True),
     Extension('VK_KHR_sampler_mirror_clamp_to_edge',      1, True),
     Extension('VK_KHR_shader_draw_parameters',            1, True),
-    Extension('VK_KHR_shader_float16_int8',               1, 'device->rad_info.chip_class >= VI'),
+    Extension('VK_KHR_shader_float16_int8',               1, True),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_surface',                          25, 'RADV_HAS_SURFACE'),
     Extension('VK_KHR_surface_protected_capabilities',    1, 'RADV_HAS_SURFACE'),
