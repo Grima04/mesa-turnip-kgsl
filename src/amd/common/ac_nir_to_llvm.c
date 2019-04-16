@@ -1648,17 +1648,6 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 	LLVMValueRef params[6];
 	int arg_count = 0;
 
-	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
-		params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
-	}
-	params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
-	params[arg_count++] = ctx->abi->load_ssbo(ctx->abi,
-						 get_src(ctx, instr->src[0]),
-						 true);
-	params[arg_count++] = ctx->ac.i32_0; /* vindex */
-	params[arg_count++] = get_src(ctx, instr->src[1]);      /* voffset */
-	params[arg_count++] = ctx->ac.i1false;  /* slc */
-
 	switch (instr->intrinsic) {
 	case nir_intrinsic_ssbo_atomic_add:
 		op = "add";
@@ -1694,11 +1683,27 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 		abort();
 	}
 
-	if (HAVE_LLVM >= 0x900 &&
+	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
+		params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
+	}
+	params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
+	params[arg_count++] = ctx->abi->load_ssbo(ctx->abi,
+						  get_src(ctx, instr->src[0]),
+						  true);
+
+	if (HAVE_LLVM >= 0x800 &&
 	    instr->intrinsic != nir_intrinsic_ssbo_atomic_comp_swap) {
+		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
+		params[arg_count++] = ctx->ac.i32_0; /* soffset */
+		params[arg_count++] = ctx->ac.i32_0; /* slc */
+
 		snprintf(name, sizeof(name),
-			 "llvm.amdgcn.buffer.atomic.%s.i32", op);
+			 "llvm.amdgcn.raw.buffer.atomic.%s.i32", op);
 	} else {
+		params[arg_count++] = ctx->ac.i32_0; /* vindex */
+		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
+		params[arg_count++] = ctx->ac.i1false; /* slc */
+
 		snprintf(name, sizeof(name),
 			 "llvm.amdgcn.buffer.atomic.%s", op);
 	}
