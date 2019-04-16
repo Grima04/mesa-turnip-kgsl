@@ -181,39 +181,48 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_load_tess_level_outer:
 			info->reads_tess_factors = true;
 			break;
-		case nir_intrinsic_image_deref_load: {
-			nir_variable *var = intrinsic_get_var(intr);
-			if (var->data.bindless) {
-				info->uses_bindless_images = true;
+		case nir_intrinsic_bindless_image_load:
+			info->uses_bindless_images = true;
 
-				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
-					info->uses_bindless_buffer_load = true;
-				else
-					info->uses_bindless_image_load = true;
-			}
+			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
+				info->uses_bindless_buffer_load = true;
+			else
+				info->uses_bindless_image_load = true;
 			break;
-		}
-		case nir_intrinsic_image_deref_size:
-		case nir_intrinsic_image_deref_samples: {
-			nir_variable *var = intrinsic_get_var(intr);
-			if (var->data.bindless)
-				info->uses_bindless_images = true;
+		case nir_intrinsic_bindless_image_size:
+		case nir_intrinsic_bindless_image_samples:
+			info->uses_bindless_images = true;
 			break;
-		}
-		case nir_intrinsic_image_deref_store: {
-			const nir_deref_instr *image_deref = nir_instr_as_deref(intr->src[0].ssa->parent_instr);
-			nir_variable *var = intrinsic_get_var(intr);
-			if (var->data.bindless) {
-				info->uses_bindless_images = true;
+		case nir_intrinsic_bindless_image_store:
+			info->uses_bindless_images = true;
 
-				if (glsl_get_sampler_dim(image_deref->type) == GLSL_SAMPLER_DIM_BUF)
-					info->uses_bindless_buffer_store = true;
-				else
-					info->uses_bindless_image_store = true;
-			}
+			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
+				info->uses_bindless_buffer_store = true;
+			else
+				info->uses_bindless_image_store = true;
+
 			info->writes_memory = true;
 			break;
-		}
+		case nir_intrinsic_image_deref_store:
+			info->writes_memory = true;
+			break;
+		case nir_intrinsic_bindless_image_atomic_add:
+		case nir_intrinsic_bindless_image_atomic_min:
+		case nir_intrinsic_bindless_image_atomic_max:
+		case nir_intrinsic_bindless_image_atomic_and:
+		case nir_intrinsic_bindless_image_atomic_or:
+		case nir_intrinsic_bindless_image_atomic_xor:
+		case nir_intrinsic_bindless_image_atomic_exchange:
+		case nir_intrinsic_bindless_image_atomic_comp_swap:
+			info->uses_bindless_images = true;
+
+			if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
+				info->uses_bindless_buffer_atomic = true;
+			else
+				info->uses_bindless_image_atomic = true;
+
+			info->writes_memory = true;
+			break;
 		case nir_intrinsic_image_deref_atomic_add:
 		case nir_intrinsic_image_deref_atomic_min:
 		case nir_intrinsic_image_deref_atomic_max:
@@ -221,19 +230,9 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_image_deref_atomic_or:
 		case nir_intrinsic_image_deref_atomic_xor:
 		case nir_intrinsic_image_deref_atomic_exchange:
-		case nir_intrinsic_image_deref_atomic_comp_swap: {
-			nir_variable *var = intrinsic_get_var(intr);
-			if (var->data.bindless) {
-				info->uses_bindless_images = true;
-
-				if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
-					info->uses_bindless_buffer_atomic = true;
-				else
-					info->uses_bindless_image_atomic = true;
-			}
+		case nir_intrinsic_image_deref_atomic_comp_swap:
 			info->writes_memory = true;
 			break;
-		}
 		case nir_intrinsic_store_ssbo:
 		case nir_intrinsic_ssbo_atomic_add:
 		case nir_intrinsic_ssbo_atomic_imin:
