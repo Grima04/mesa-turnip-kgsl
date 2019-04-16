@@ -1230,77 +1230,76 @@ opt_if_merge(nir_if *nif)
    bool progress = false;
 
    nir_block *next_blk = nir_cf_node_cf_tree_next(&nif->cf_node);
-   if (next_blk && nif->condition.is_ssa) {
-      nir_if *next_if = nir_block_get_following_if(next_blk);
-      if (next_if && next_if->condition.is_ssa) {
+   if (!next_blk || !nif->condition.is_ssa)
+      return false;
 
-         /* Here we merge two consecutive ifs that have the same
-          * condition e.g:
-          *
-          *   if ssa_12 {
-          *      ...
-          *   } else {
-          *      ...
-          *   }
-          *   if ssa_12 {
-          *      ...
-          *   } else {
-          *      ...
-          *   }
-          *
-          * Note: This only merges if-statements when the block between them
-          * is empty. The reason we don't try to merge ifs that just have phis
-          * between them is because this can results in increased register
-          * pressure. For example when merging if ladders created by indirect
-          * indexing.
-          */
-         if (nif->condition.ssa == next_if->condition.ssa &&
-             exec_list_is_empty(&next_blk->instr_list)) {
+   nir_if *next_if = nir_block_get_following_if(next_blk);
+   if (!next_if || !next_if->condition.is_ssa)
+      return false;
 
-            /* This optimization isn't made to work in this case and
-             * opt_if_evaluate_condition_use will optimize it later.
-             */
-            if (nir_block_ends_in_jump(nir_if_last_then_block(nif)) ||
-                nir_block_ends_in_jump(nir_if_last_else_block(nif)))
-               return false;
+   /* Here we merge two consecutive ifs that have the same condition e.g:
+    *
+    *   if ssa_12 {
+    *      ...
+    *   } else {
+    *      ...
+    *   }
+    *   if ssa_12 {
+    *      ...
+    *   } else {
+    *      ...
+    *   }
+    *
+    * Note: This only merges if-statements when the block between them is
+    * empty. The reason we don't try to merge ifs that just have phis between
+    * them is because this can result in increased register pressure. For
+    * example when merging if ladders created by indirect indexing.
+    */
+   if (nif->condition.ssa == next_if->condition.ssa &&
+       exec_list_is_empty(&next_blk->instr_list)) {
 
-            simple_merge_if(nif, next_if, true, true);
-            simple_merge_if(nif, next_if, false, false);
+      /* This optimization isn't made to work in this case and
+       * opt_if_evaluate_condition_use will optimize it later.
+       */
+      if (nir_block_ends_in_jump(nir_if_last_then_block(nif)) ||
+          nir_block_ends_in_jump(nir_if_last_else_block(nif)))
+         return false;
 
-            nir_block *new_then_block = nir_if_last_then_block(nif);
-            nir_block *new_else_block = nir_if_last_else_block(nif);
+      simple_merge_if(nif, next_if, true, true);
+      simple_merge_if(nif, next_if, false, false);
 
-            nir_block *old_then_block = nir_if_last_then_block(next_if);
-            nir_block *old_else_block = nir_if_last_else_block(next_if);
+      nir_block *new_then_block = nir_if_last_then_block(nif);
+      nir_block *new_else_block = nir_if_last_else_block(nif);
 
-            /* Rewrite the predecessor block for any phis following the second
-             * if-statement.
-             */
-            rewrite_phi_predecessor_blocks(next_if, old_then_block,
-                                           old_else_block,
-                                           new_then_block,
-                                           new_else_block);
+      nir_block *old_then_block = nir_if_last_then_block(next_if);
+      nir_block *old_else_block = nir_if_last_else_block(next_if);
 
-            /* Move phis after merged if to avoid them being deleted when we
-             * remove the merged if-statement.
-             */
-            nir_block *after_next_if_block =
-               nir_cf_node_as_block(nir_cf_node_next(&next_if->cf_node));
+      /* Rewrite the predecessor block for any phis following the second
+       * if-statement.
+       */
+      rewrite_phi_predecessor_blocks(next_if, old_then_block,
+                                     old_else_block,
+                                     new_then_block,
+                                     new_else_block);
 
-            nir_foreach_instr_safe(instr, after_next_if_block) {
-               if (instr->type != nir_instr_type_phi)
-                  break;
+      /* Move phis after merged if to avoid them being deleted when we remove
+       * the merged if-statement.
+       */
+      nir_block *after_next_if_block =
+         nir_cf_node_as_block(nir_cf_node_next(&next_if->cf_node));
 
-               exec_node_remove(&instr->node);
-               exec_list_push_tail(&next_blk->instr_list, &instr->node);
-               instr->block = next_blk;
-            }
+      nir_foreach_instr_safe(instr, after_next_if_block) {
+         if (instr->type != nir_instr_type_phi)
+            break;
 
-            nir_cf_node_remove(&next_if->cf_node);
-
-            progress = true;
-         }
+         exec_node_remove(&instr->node);
+         exec_list_push_tail(&next_blk->instr_list, &instr->node);
+         instr->block = next_blk;
       }
+
+      nir_cf_node_remove(&next_if->cf_node);
+
+      progress = true;
    }
 
    return progress;
