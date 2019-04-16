@@ -126,14 +126,16 @@ debian:
 # We also put softpipe (and therefore gallium nine, which requires
 # it) here, since softpipe/llvmpipe can't be built alongside classic
 # swrast.
-meson-swr:
+#
+# Putting glvnd here is arbitrary, but we want it in one of the builds
+# for coverage.
+meson-swr-glvnd:
   extends: .meson-build
   variables:
     UNWIND: "true"
     DRI_LOADERS: >
-      -D glx=disabled
-      -D egl=false
-      -D gbm=false
+      -D glvnd=true
+      -D egl=true
     GALLIUM_ST: >
       -D dri3=true
       -D gallium-vdpau=false
@@ -207,25 +209,6 @@ meson-main:
       -D gallium-opencl=disabled
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
     LLVM_VERSION: "7"
-
-meson-glvnd:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D glvnd=true
-      -D egl=true
-      -D gbm=true
-      -D glx=dri
-    DRI_DRIVERS: "i965"
-    GALLIUM_ST: >
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
 
 meson-clover-llvm:
   extends: .meson-build
