@@ -1643,8 +1643,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
                                       const nir_intrinsic_instr *instr)
 {
+	LLVMTypeRef return_type = LLVMTypeOf(get_src(ctx, instr->src[2]));
 	const char *op;
-	char name[64];
+	char name[64], type[8];
 	LLVMValueRef params[6];
 	int arg_count = 0;
 
@@ -1697,18 +1698,21 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 		params[arg_count++] = ctx->ac.i32_0; /* soffset */
 		params[arg_count++] = ctx->ac.i32_0; /* slc */
 
+		ac_build_type_name_for_intr(return_type, type, sizeof(type));
 		snprintf(name, sizeof(name),
-			 "llvm.amdgcn.raw.buffer.atomic.%s.i32", op);
+		         "llvm.amdgcn.raw.buffer.atomic.%s.%s", op, type);
 	} else {
 		params[arg_count++] = ctx->ac.i32_0; /* vindex */
 		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
 		params[arg_count++] = ctx->ac.i1false; /* slc */
 
+		assert(return_type == ctx->ac.i32);
 		snprintf(name, sizeof(name),
 			 "llvm.amdgcn.buffer.atomic.%s", op);
 	}
 
-	return ac_build_intrinsic(&ctx->ac, name, ctx->ac.i32, params, arg_count, 0);
+	return ac_build_intrinsic(&ctx->ac, name, return_type, params,
+				  arg_count, 0);
 }
 
 static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
