@@ -126,7 +126,7 @@ debian:
 # We also put softpipe (and therefore gallium nine, which requires
 # it) here, since softpipe/llvmpipe can't be built alongside classic
 # swrast.
-meson-gallium-swr:
+meson-swr:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -227,7 +227,7 @@ meson-glvnd:
       -D gallium-nine=false
       -D gallium-opencl=disabled
 
-meson-gallium-clover-llvm:
+meson-clover-llvm:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -246,8 +246,8 @@ meson-gallium-clover-llvm:
       -D gallium-opencl=icd
     GALLIUM_DRIVERS: "r600,radeonsi"
 
-meson-gallium-clover-llvm39:
-  extends: meson-gallium-clover-llvm
+meson-clover-llvm39:
+  extends: meson-clover-llvm
   variables:
     GALLIUM_DRIVERS: "i915,r600"
     LLVM_VERSION: "3.9"
