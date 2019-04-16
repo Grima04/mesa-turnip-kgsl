@@ -493,16 +493,8 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
          /* Modify all readers of the original ALU instruction to read the
           * result of the phi.
           */
-         nir_foreach_use_safe(use_src, &alu->dest.dest.ssa) {
-            nir_instr_rewrite_src(use_src->parent_instr,
-                                  use_src,
+         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
                                   nir_src_for_ssa(&phi->dest.ssa));
-         }
-
-         nir_foreach_if_use_safe(use_src, &alu->dest.dest.ssa) {
-            nir_if_rewrite_condition(use_src->parent_if,
-                                     nir_src_for_ssa(&phi->dest.ssa));
-         }
 
          /* Since the original ALU instruction no longer has any readers, just
           * remove it.
@@ -713,16 +705,8 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
       /* Modify all readers of the bcsel instruction to read the result of
        * the phi.
        */
-      nir_foreach_use_safe(use_src, &bcsel->dest.dest.ssa) {
-         nir_instr_rewrite_src(use_src->parent_instr,
-                               use_src,
+      nir_ssa_def_rewrite_uses(&bcsel->dest.dest.ssa,
                                nir_src_for_ssa(&phi->dest.ssa));
-      }
-
-      nir_foreach_if_use_safe(use_src, &bcsel->dest.dest.ssa) {
-         nir_if_rewrite_condition(use_src->parent_if,
-                                  nir_src_for_ssa(&phi->dest.ssa));
-      }
 
       /* Since the original bcsel instruction no longer has any readers,
        * just remove it.
