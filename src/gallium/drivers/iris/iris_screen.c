@@ -63,7 +63,7 @@ iris_flush_frontbuffer(struct pipe_screen *_screen,
 static const char *
 iris_get_vendor(struct pipe_screen *pscreen)
 {
-   return "Mesa Project";
+   return "Intel";
 }
 
 static const char *
@@ -76,6 +76,7 @@ static const char *
 iris_get_name(struct pipe_screen *pscreen)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   static char buf[128];
    const char *chipset;
 
    switch (screen->pci_id) {
@@ -86,6 +87,8 @@ iris_get_name(struct pipe_screen *pscreen)
       chipset = "Unknown Intel Chipset";
       break;
    }
+
+   snprintf(buf, sizeof(buf), "Mesa %s", chipset);
    return chipset;
 }
 
