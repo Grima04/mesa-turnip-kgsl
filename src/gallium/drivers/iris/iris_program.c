@@ -594,6 +594,12 @@ iris_compile_vs(struct iris_context *ice,
       return false;
    }
 
+   if (ish->compiled_once) {
+      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
+   } else {
+      ish->compiled_once = true;
+   }
+
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
@@ -602,12 +608,6 @@ iris_compile_vs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_VS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          num_cbufs);
-
-   if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
-   } else {
-      ish->compiled_once = true;
-   }
 
    ralloc_free(mem_ctx);
    return shader;
@@ -787,11 +787,6 @@ iris_compile_tcs(struct iris_context *ice,
       return false;
    }
 
-   struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_TCS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         num_cbufs);
-
    if (ish) {
       if (ish->compiled_once) {
          iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
@@ -799,6 +794,11 @@ iris_compile_tcs(struct iris_context *ice,
          ish->compiled_once = true;
       }
    }
+
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, IRIS_CACHE_TCS, sizeof(*key), key, program,
+                         prog_data, NULL, system_values, num_system_values,
+                         num_cbufs);
 
    ralloc_free(mem_ctx);
    return shader;
@@ -886,6 +886,12 @@ iris_compile_tes(struct iris_context *ice,
       return false;
    }
 
+   if (ish->compiled_once) {
+      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
+   } else {
+      ish->compiled_once = true;
+   }
+
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
@@ -895,12 +901,6 @@ iris_compile_tes(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_TES, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          num_cbufs);
-
-   if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
-   } else {
-      ish->compiled_once = true;
-   }
 
    ralloc_free(mem_ctx);
    return shader;
@@ -987,6 +987,12 @@ iris_compile_gs(struct iris_context *ice,
       return false;
    }
 
+   if (ish->compiled_once) {
+      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
+   } else {
+      ish->compiled_once = true;
+   }
+
    uint32_t *so_decls =
       ice->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
@@ -995,12 +1001,6 @@ iris_compile_gs(struct iris_context *ice,
       iris_upload_shader(ice, IRIS_CACHE_GS, sizeof(*key), key, program,
                          prog_data, so_decls, system_values, num_system_values,
                          num_cbufs);
-
-   if (ish->compiled_once) {
-      iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
-   } else {
-      ish->compiled_once = true;
-   }
 
    ralloc_free(mem_ctx);
    return shader;
@@ -1081,16 +1081,16 @@ iris_compile_fs(struct iris_context *ice,
       return false;
    }
 
-   struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_FS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         num_cbufs);
-
    if (ish->compiled_once) {
       iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
    } else {
       ish->compiled_once = true;
    }
+
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, IRIS_CACHE_FS, sizeof(*key), key, program,
+                         prog_data, NULL, system_values, num_system_values,
+                         num_cbufs);
 
    ralloc_free(mem_ctx);
    return shader;
@@ -1315,16 +1315,16 @@ iris_compile_cs(struct iris_context *ice,
       return false;
    }
 
-   struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, IRIS_CACHE_CS, sizeof(*key), key, program,
-                         prog_data, NULL, system_values, num_system_values,
-                         num_cbufs);
-
    if (ish->compiled_once) {
       iris_debug_recompile(ice, &nir->info, key->program_string_id, key);
    } else {
       ish->compiled_once = true;
    }
+
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, IRIS_CACHE_CS, sizeof(*key), key, program,
+                         prog_data, NULL, system_values, num_system_values,
+                         num_cbufs);
 
    ralloc_free(mem_ctx);
    return shader;
