@@ -532,12 +532,19 @@ iris_shader_perf_log(void *data, const char *fmt, ...)
    struct pipe_debug_callback *dbg = data;
    unsigned id = 0;
    va_list args;
-
-   if (!dbg->debug_message)
-      return;
-
    va_start(args, fmt);
-   dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
+
+   if (unlikely(INTEL_DEBUG & DEBUG_PERF)) {
+      va_list args_copy;
+      va_copy(args_copy, args);
+      vfprintf(stderr, fmt, args_copy);
+      va_end(args_copy);
+   }
+
+   if (dbg->debug_message) {
+      dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
+   }
+
    va_end(args);
 }
 
