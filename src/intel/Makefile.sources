@@ -38,6 +38,7 @@ COMPILER_FILES = \
 	compiler/brw_compiler.h \
 	compiler/brw_dead_control_flow.cpp \
 	compiler/brw_dead_control_flow.h \
+	compiler/brw_debug_recompile.c \
 	compiler/brw_disasm.c \
 	compiler/brw_disasm_info.c \
 	compiler/brw_disasm_info.h \

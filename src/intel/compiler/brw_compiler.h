@@ -1348,6 +1348,10 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                int shader_time_index,
                char **error_str);
 
+void brw_debug_key_recompile(const struct brw_compiler *c, void *log,
+                             gl_shader_stage stage,
+                             const void *old_key, const void *key);
+
 static inline uint32_t
 encode_slm_size(unsigned gen, uint32_t bytes)
 {

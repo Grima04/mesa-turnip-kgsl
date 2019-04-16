@@ -1456,26 +1456,6 @@ void brw_validate_textures( struct brw_context *brw );
 /*======================================================================
  * brw_program.c
  */
-static inline bool
-key_debug(struct brw_context *brw, const char *name, int a, int b)
-{
-   if (a != b) {
-      perf_debug("  %s %d->%d\n", name, a, b);
-      return true;
-   }
-   return false;
-}
-
-static inline bool
-key_debug_float(struct brw_context *brw, const char *name, float a, float b)
-{
-   if (a != b) {
-      perf_debug("  %s %f->%f\n", name, a, b);
-      return true;
-   }
-   return false;
-}
-
 void brwInitFragProgFuncs( struct dd_function_table *functions );
 
 void brw_get_scratch_bo(struct brw_context *brw,
