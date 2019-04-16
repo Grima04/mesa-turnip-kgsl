@@ -57,6 +57,7 @@ static const nir_shader_compiler_options fs_nir_options = {
    .lower_sub = true,
    .lower_flrp32 = true,
    .lower_flrp64 = true,
+   .lower_fsign = true,
 };
 
 const void *
