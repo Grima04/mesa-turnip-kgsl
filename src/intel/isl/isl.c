@@ -122,7 +122,8 @@ isl_device_init(struct isl_device *dev,
    dev->ss.size = RENDER_SURFACE_STATE_length(info) * 4;
    dev->ss.align = isl_align(dev->ss.size, 32);
 
-   dev->ss.clear_color_state_size = CLEAR_COLOR_length(info) * 4;
+   dev->ss.clear_color_state_size =
+      isl_align(CLEAR_COLOR_length(info) * 4, 64);
    dev->ss.clear_color_state_offset =
       RENDER_SURFACE_STATE_ClearValueAddress_start(info) / 32 * 4;
 
