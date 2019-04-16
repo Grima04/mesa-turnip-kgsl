@@ -335,6 +335,8 @@ TEST_F(gen_mi_builder_test, imm_mem)
    EXPECT_EQ(*(uint32_t *)(output + 12), (uint32_t)canary);
 }
 
+/* mem -> mem copies are only supported on HSW+ */
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
 TEST_F(gen_mi_builder_test, mem_mem)
 {
    const uint64_t value = 0x0123456789abcdef;
@@ -361,6 +363,7 @@ TEST_F(gen_mi_builder_test, mem_mem)
    // 32 -> 64
    EXPECT_EQ(*(uint64_t *)(output + 24), (uint64_t)(uint32_t)value);
 }
+#endif
 
 TEST_F(gen_mi_builder_test, imm_reg)
 {
