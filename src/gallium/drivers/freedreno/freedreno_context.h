@@ -228,6 +228,14 @@ struct fd_context {
 	 */
 	struct pipe_fence_handle *last_fence;
 
+	/* track last known reset status globally and per-context to
+	 * determine if more resets occurred since then.  If global reset
+	 * count increases, it means some other context crashed.  If
+	 * per-context reset count increases, it means we crashed the
+	 * gpu.
+	 */
+	uint32_t context_reset_count, global_reset_count;
+
 	/* Are we in process of shadowing a resource? Used to detect recursion
 	 * in transfer_map, and skip unneeded synchronization.
 	 */
