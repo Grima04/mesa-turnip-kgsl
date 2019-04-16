@@ -52,6 +52,9 @@ enum fd_param_id {
 	FD_MAX_FREQ,
 	FD_TIMESTAMP,
 	FD_NR_RINGS,      /* # of rings == # of distinct priority levels */
+	FD_PP_PGTABLE,    /* are per-process pagetables used for the pipe/ctx */
+	FD_CTX_FAULTS,    /* # of per context faults */
+	FD_GLOBAL_FAULTS, /* # of global (all context) faults */
 };
 
 /* bo flags: */
@@ -88,6 +91,7 @@ enum fd_version {
 	FD_VERSION_SUBMIT_QUEUES = 3,      /* submit queues and multiple priority levels */
 	FD_VERSION_BO_IOVA = 3,            /* supports fd_bo_get/put_iova() */
 	FD_VERSION_SOFTPIN = 4,            /* adds softpin, bo name, and dump flag */
+	FD_VERSION_ROBUSTNESS = 5,         /* adds FD_NR_FAULTS and FD_PP_PGTABLE */
 };
 enum fd_version fd_device_version(struct fd_device *dev);
 

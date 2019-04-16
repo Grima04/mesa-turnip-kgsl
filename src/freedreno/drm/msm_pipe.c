@@ -48,6 +48,26 @@ static int query_param(struct fd_pipe *pipe, uint32_t param,
 	return 0;
 }
 
+static int query_queue_param(struct fd_pipe *pipe, uint32_t param,
+		uint64_t *value)
+{
+	struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
+	struct drm_msm_submitqueue_query req = {
+			.data = value,
+			.id = msm_pipe->queue_id,
+			.param = param,
+			.len = sizeof(*value),
+	};
+	int ret;
+
+	ret = drmCommandWriteRead(pipe->dev->fd, DRM_MSM_SUBMITQUEUE_QUERY,
+			&req, sizeof(req));
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static int msm_pipe_get_param(struct fd_pipe *pipe,
 		enum fd_param_id param, uint64_t *value)
 {
@@ -69,6 +89,12 @@ static int msm_pipe_get_param(struct fd_pipe *pipe,
 		return query_param(pipe, MSM_PARAM_TIMESTAMP, value);
 	case FD_NR_RINGS:
 		return query_param(pipe, MSM_PARAM_NR_RINGS, value);
+	case FD_PP_PGTABLE:
+		return query_param(pipe, MSM_PARAM_PP_PGTABLE, value);
+	case FD_CTX_FAULTS:
+		return query_queue_param(pipe, MSM_SUBMITQUEUE_PARAM_FAULTS, value);
+	case FD_GLOBAL_FAULTS:
+		return query_param(pipe, MSM_PARAM_FAULTS, value);
 	default:
 		ERROR_MSG("invalid param id: %d", param);
 		return -1;
