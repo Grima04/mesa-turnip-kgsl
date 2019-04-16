@@ -300,6 +300,9 @@ static void ppir_codegen_encode_vec_add(ppir_node *node, void *code)
    case ppir_op_floor:
       f->op = ppir_codegen_vec4_acc_op_floor;
       break;
+   case ppir_op_ceil:
+      f->op = ppir_codegen_vec4_acc_op_ceil;
+      break;
    case ppir_op_fract:
       f->op = ppir_codegen_vec4_acc_op_fract;
       break;
@@ -372,6 +375,9 @@ static void ppir_codegen_encode_scl_add(ppir_node *node, void *code)
       break;
    case ppir_op_floor:
       f->op = ppir_codegen_float_acc_op_floor;
+      break;
+   case ppir_op_ceil:
+      f->op = ppir_codegen_float_acc_op_ceil;
       break;
    case ppir_op_fract:
       f->op = ppir_codegen_float_acc_op_fract;

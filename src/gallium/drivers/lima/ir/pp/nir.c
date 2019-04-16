@@ -134,6 +134,7 @@ static int nir_to_ppir_opcodes[nir_num_opcodes] = {
    [nir_op_fmin] = ppir_op_min,
    [nir_op_frcp] = ppir_op_rcp,
    [nir_op_ffloor] = ppir_op_floor,
+   [nir_op_fceil] = ppir_op_ceil,
    [nir_op_ffract] = ppir_op_fract,
    [nir_op_fand] = ppir_op_and,
    [nir_op_for] = ppir_op_or,
