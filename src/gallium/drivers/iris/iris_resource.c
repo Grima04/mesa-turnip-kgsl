@@ -878,6 +878,18 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    return false;
 }
 
+static bool
+resource_is_busy(struct iris_context *ice,
+                 struct iris_resource *res)
+{
+   bool busy = iris_bo_busy(res->bo);
+
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
+      busy |= iris_batch_references(&ice->batches[i], res->bo);
+
+   return busy;
+}
+
 static void
 iris_invalidate_resource(struct pipe_context *ctx,
                          struct pipe_resource *resource)
@@ -1331,10 +1343,7 @@ iris_transfer_map(struct pipe_context *ctx,
    }
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      map_would_stall = iris_bo_busy(res->bo);
-
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++)
-         map_would_stall |= iris_batch_references(&ice->batches[i], res->bo);
+      map_would_stall = resource_is_busy(ice, res);
 
       if (map_would_stall && (usage & PIPE_TRANSFER_DONTBLOCK) &&
                              (usage & PIPE_TRANSFER_MAP_DIRECTLY))
