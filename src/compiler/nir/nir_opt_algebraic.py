@@ -840,6 +840,7 @@ optimizations.extend([
      'options->lower_unpack_snorm_4x8'),
 
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
+   (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
 ])
 
 # bit_size dependent lowerings

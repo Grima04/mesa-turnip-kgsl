@@ -2242,6 +2242,9 @@ typedef struct nir_shader_compiler_options {
    /** enables rules to lower isign to imin+imax */
    bool lower_isign;
 
+   /** enables rules to lower fsign to fsub and flt */
+   bool lower_fsign;
+
    /* Does the native fdot instruction replicate its result for four
     * components?  If so, then opt_algebraic_late will turn all fdotN
     * instructions into fdot_replicatedN instructions.
