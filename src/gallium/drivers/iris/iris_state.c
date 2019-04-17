@@ -2465,6 +2465,8 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    struct iris_const_buffer *cbuf = &shs->constbuf[index];
 
    if (input && input->buffer) {
+      shs->bound_cbufs |= 1u << index;
+
       assert(index > 0);
 
       pipe_resource_reference(&cbuf->data.res, input->buffer);
@@ -2475,6 +2477,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
       upload_ubo_surf_state(ice, cbuf, input->buffer_size);
    } else {
+      shs->bound_cbufs &= ~(1u << index);
       pipe_resource_reference(&cbuf->data.res, NULL);
       pipe_resource_reference(&cbuf->surface_state.res, NULL);
    }

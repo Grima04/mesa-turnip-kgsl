@@ -322,6 +322,9 @@ struct iris_shader_state {
    struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];
    struct iris_sampler_view *textures[IRIS_MAX_TEXTURE_SAMPLERS];
 
+   /** Bitfield of which constant buffers are bound (non-null). */
+   uint32_t bound_cbufs;
+
    /** Bitfield of which image views are bound (non-null). */
    uint32_t bound_image_views;
 
