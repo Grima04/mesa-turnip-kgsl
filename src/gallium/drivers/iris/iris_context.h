@@ -284,29 +284,19 @@ struct iris_compiled_shader {
 };
 
 /**
- * Constant buffer (UBO) information.  See iris_set_const_buffer().
- */
-struct iris_const_buffer {
-   /** The resource and offset for the actual constant data */
-   struct iris_state_ref data;
-
-   /** The resource and offset for the SURFACE_STATE for pull access. */
-   struct iris_state_ref surface_state;
-};
-
-/**
  * API context state that is replicated per shader stage.
  */
 struct iris_shader_state {
    /** Uniform Buffers */
-   struct iris_const_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
+   struct pipe_shader_buffer constbuf[PIPE_MAX_CONSTANT_BUFFERS];
+   struct iris_state_ref constbuf_surf_state[PIPE_MAX_CONSTANT_BUFFERS];
 
    struct pipe_constant_buffer cbuf0;
    bool cbuf0_needs_upload;
 
    /** Shader Storage Buffers */
-   struct pipe_resource *ssbo[PIPE_MAX_SHADER_BUFFERS];
-   struct iris_state_ref ssbo_surface_state[PIPE_MAX_SHADER_BUFFERS];
+   struct pipe_shader_buffer ssbo[PIPE_MAX_SHADER_BUFFERS];
+   struct iris_state_ref ssbo_surf_state[PIPE_MAX_SHADER_BUFFERS];
 
    /** Shader Storage Images (image load store) */
    struct {
