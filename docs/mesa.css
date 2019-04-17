@@ -43,7 +43,7 @@ iframe {
 
 .header {
 	background: url('gears.png') 15px no-repeat, black url('gears.png') right no-repeat;
-	height: 80px;
+	padding: 2em;
 	display: flex;
 	text-align: center;
 }
