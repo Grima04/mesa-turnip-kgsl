@@ -327,6 +327,12 @@ struct iris_shader_state {
 
    /** Bitfield of which sampler views are bound (non-null). */
    uint32_t bound_sampler_views;
+
+   /** Bitfield of which shader storage buffers are bound (non-null). */
+   uint32_t bound_ssbos;
+
+   /** Bitfield of which shader storage buffers are writable. */
+   uint32_t writable_ssbos;
 };
 
 /**

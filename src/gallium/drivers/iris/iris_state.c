@@ -2581,11 +2581,19 @@ iris_set_shader_buffers(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
+   unsigned modified_bits = u_bit_consecutive(start_slot, count);
+
+   shs->bound_ssbos &= ~modified_bits;
+   shs->writable_ssbos &= ~modified_bits;
+   shs->writable_ssbos |= writable_bitmask << start_slot;
+
    for (unsigned i = 0; i < count; i++) {
       if (buffers && buffers[i].buffer) {
          const struct pipe_shader_buffer *buffer = &buffers[i];
          struct iris_resource *res = (void *) buffer->buffer;
          pipe_resource_reference(&shs->ssbo[start_slot + i], &res->base);
+
+         shs->bound_ssbos |= 1 << (start_slot + i);
 
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
 
@@ -3926,7 +3934,8 @@ use_ssbo(struct iris_batch *batch, struct iris_context *ice,
 
    struct iris_state_ref *surf_state = &shs->ssbo_surface_state[i];
 
-   iris_use_pinned_bo(batch, iris_resource_bo(shs->ssbo[i]), true);
+   iris_use_pinned_bo(batch, iris_resource_bo(shs->ssbo[i]),
+                      shs->writable_ssbos & (1 << i));
    iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
 
    return surf_state->offset;
