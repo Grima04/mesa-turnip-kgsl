@@ -330,6 +330,8 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
       }
    }
 
+   ret->info = nir->info;
+
    struct spirv_shader *spirv = nir_to_spirv(nir);
    assert(spirv);
 

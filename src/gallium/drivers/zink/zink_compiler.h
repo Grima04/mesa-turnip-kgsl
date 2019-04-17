@@ -27,6 +27,8 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 
+#include "compiler/shader_info.h"
+
 #include <vulkan/vulkan.h>
 
 struct pipe_screen;
@@ -47,6 +49,8 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
 struct zink_shader {
    VkShaderModule shader_module;
+
+   shader_info info;
 
    struct {
       int index;
