@@ -266,14 +266,24 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                                                 1 : 0]));
         }
 
+        /* The spec says that for atomics, the TYPE field is ignored, but that
+         * doesn't seem to be the case for CMPXCHG.  Just use the number of
+         * tmud writes we did to decide the type (or choose "32bit" for atomic
+         * reads, which has been fine).
+         */
+        int num_components;
+        if (tmu_op == GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG)
+                num_components = 2;
+        else
+                num_components = instr->num_components;
+
         uint32_t config = (0xffffff00 |
                            tmu_op |
                            GENERAL_TMU_LOOKUP_PER_PIXEL);
-        if (instr->num_components == 1) {
+        if (num_components == 1) {
                 config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
         } else {
-                config |= (GENERAL_TMU_LOOKUP_TYPE_VEC2 +
-                           instr->num_components - 2);
+                config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 + num_components - 2;
         }
 
         if (vir_in_nonuniform_control_flow(c)) {
