@@ -42,14 +42,11 @@ iframe {
 }
 
 .header {
-	background: black url('gears.png') 15px no-repeat;
-	margin:0;
-	padding: 5px;
-	clear:both;
+	background: url('gears.png') 15px no-repeat, black url('gears.png') right no-repeat;
+	height: 80px;
 }
 
 .header h1 {
-	background: url('gears.png') right no-repeat;
 	color: white;
 	font: x-large sans-serif;
 	text-align: center;
