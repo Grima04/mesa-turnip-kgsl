@@ -362,11 +362,11 @@ static void si_set_viewport_states(struct pipe_context *pctx,
 		 * but also leave enough space for the guardband.
 		 *
 		 * Note that primitive binning requires QUANT_MODE == 16_8 on Vega10
-		 * and Raven1. What we do depends on the chip:
-		 * - Vega10: Never use primitive binning.
-		 * - Raven1: Always use QUANT_MODE == 16_8.
+		 * and Raven1 for line and rectangle primitive types to work correctly.
+		 * Always use 16_8 if primitive binning is possible to occur.
 		 */
-		if (ctx->family == CHIP_RAVEN)
+		if ((ctx->family == CHIP_VEGA10 || ctx->family == CHIP_RAVEN) &&
+		    ctx->screen->dpbb_allowed)
 			max_extent = 16384; /* Use QUANT_MODE == 16_8. */
 
 		/* Another constraint is that all coordinates in the viewport
