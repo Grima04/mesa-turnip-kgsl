@@ -44,13 +44,12 @@ iframe {
 .header {
 	background: url('gears.png') 15px no-repeat, black url('gears.png') right no-repeat;
 	height: 80px;
+	display: flex;
+	text-align: center;
 }
 
 .header h1 {
 	color: white;
 	font: x-large sans-serif;
-	text-align: center;
-	height: 50px;
-	margin: 0;
-	padding-top: 30px;
+	margin: auto;
 }
