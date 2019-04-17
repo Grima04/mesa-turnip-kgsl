@@ -40,6 +40,20 @@ stage_from_pipe(enum pipe_shader_type pstage)
    return stages[pstage];
 }
 
+static inline enum pipe_shader_type
+stage_to_pipe(gl_shader_stage stage)
+{
+   static const enum pipe_shader_type pstages[MESA_SHADER_STAGES] = {
+      [MESA_SHADER_VERTEX] = PIPE_SHADER_VERTEX,
+      [MESA_SHADER_TESS_CTRL] = PIPE_SHADER_TESS_CTRL,
+      [MESA_SHADER_TESS_EVAL] = PIPE_SHADER_TESS_EVAL,
+      [MESA_SHADER_GEOMETRY] = PIPE_SHADER_GEOMETRY,
+      [MESA_SHADER_FRAGMENT] = PIPE_SHADER_FRAGMENT,
+      [MESA_SHADER_COMPUTE] = PIPE_SHADER_COMPUTE,
+   };
+   return pstages[stage];
+}
+
 /**
  * Convert an swizzle enumeration (i.e. PIPE_SWIZZLE_X) to one of the HW's
  * "Shader Channel Select" enumerations (i.e. SCS_RED).  The mappings are
