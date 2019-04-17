@@ -224,7 +224,8 @@ static inline unsigned si_atoms_that_always_roll_context(void)
 		SI_ATOM_BIT(scissors) |
 		SI_ATOM_BIT(viewports) |
 		SI_ATOM_BIT(stencil_ref) |
-		SI_ATOM_BIT(scratch_state));
+		SI_ATOM_BIT(scratch_state) |
+		SI_ATOM_BIT(window_rectangles));
 }
 
 struct si_shader_data {
