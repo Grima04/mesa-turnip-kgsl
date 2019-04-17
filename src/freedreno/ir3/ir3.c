@@ -464,6 +464,8 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 	case OPC_DSXPP_1:
 	case OPC_DSY:
 	case OPC_DSYPP_1:
+	case OPC_RGETPOS:
+	case OPC_RGETINFO:
 		iassert((instr->flags & IR3_INSTR_S2EN) == 0);
 		src1 = instr->regs[1];
 		src2 = instr->regs_count > 2 ? instr->regs[2] : NULL;
