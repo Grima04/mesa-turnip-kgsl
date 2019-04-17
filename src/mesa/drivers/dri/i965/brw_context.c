@@ -990,6 +990,13 @@ brwCreateContext(gl_api api,
    if (notify_reset)
       functions.GetGraphicsResetStatus = brw_get_graphics_reset_status;
 
+   brw_process_driconf_options(brw);
+
+   if (api == API_OPENGL_CORE &&
+       driQueryOptionb(&screen->optionCache, "force_compat_profile")) {
+      api = API_OPENGL_COMPAT;
+   }
+
    struct gl_context *ctx = &brw->ctx;
 
    if (!_mesa_initialize_context(ctx, api, mesaVis, shareCtx, &functions)) {
@@ -1023,8 +1030,6 @@ brwCreateContext(gl_api api,
    }
 
    _mesa_meta_init(ctx);
-
-   brw_process_driconf_options(brw);
 
    if (INTEL_DEBUG & DEBUG_PERF)
       brw->perf_debug = true;
