@@ -2748,12 +2748,6 @@ bool nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state);
 
 nir_const_value *nir_src_as_const_value(nir_src src);
 
-static inline struct nir_instr *
-nir_src_instr(const struct nir_src *src)
-{
-   return src->is_ssa ? src->ssa->parent_instr : NULL;
-}
-
 #define NIR_SRC_AS_(name, c_type, type_enum, cast_macro)                \
 static inline c_type *                                                  \
 nir_src_as_ ## name (nir_src src)                                       \
@@ -2763,6 +2757,8 @@ nir_src_as_ ## name (nir_src src)                                       \
 }
 
 NIR_SRC_AS_(alu_instr, nir_alu_instr, nir_instr_type_alu, nir_instr_as_alu)
+NIR_SRC_AS_(intrinsic, nir_intrinsic_instr,
+            nir_instr_type_intrinsic, nir_instr_as_intrinsic)
 
 bool nir_src_is_dynamically_uniform(nir_src src);
 bool nir_srcs_equal(nir_src src1, nir_src src2);

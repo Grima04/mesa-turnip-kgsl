@@ -558,14 +558,8 @@ bool
 fs_visitor::optimize_frontfacing_ternary(nir_alu_instr *instr,
                                          const fs_reg &result)
 {
-   if (!instr->src[0].src.is_ssa ||
-       instr->src[0].src.ssa->parent_instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *src0 =
-      nir_instr_as_intrinsic(instr->src[0].src.ssa->parent_instr);
-
-   if (src0->intrinsic != nir_intrinsic_load_front_face)
+   nir_intrinsic_instr *src0 = nir_src_as_intrinsic(instr->src[0].src);
+   if (src0 == NULL || src0->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
    if (!nir_src_is_const(instr->src[1].src) ||
@@ -2527,9 +2521,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                  retype(brw_vec1_grf(1 + (vertex >> 3), vertex & 7),
                         BRW_REGISTER_TYPE_UD));
       } else if (tcs_prog_data->instances == 1 &&
-                 vertex_src.is_ssa &&
-                 vertex_src.ssa->parent_instr->type == nir_instr_type_intrinsic &&
-                 nir_instr_as_intrinsic(vertex_src.ssa->parent_instr)->intrinsic == nir_intrinsic_load_invocation_id) {
+                 nir_src_as_intrinsic(vertex_src) != NULL &&
+                 nir_src_as_intrinsic(vertex_src)->intrinsic == nir_intrinsic_load_invocation_id) {
          /* For the common case of only 1 instance, an array index of
           * gl_InvocationID means reading g1.  Skip all the indirect work.
           */

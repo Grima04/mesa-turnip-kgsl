@@ -993,8 +993,7 @@ TEST_F(nir_combine_stores_test, non_overlapping_stores)
    nir_alu_instr *vec = nir_src_as_alu_instr(combined->src[1]);
    ASSERT_TRUE(vec);
    for (int i = 0; i < 4; i++) {
-      nir_intrinsic_instr *load =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[i].src));
+      nir_intrinsic_instr *load = nir_src_as_intrinsic(vec->src[i].src);
       ASSERT_EQ(load->intrinsic, nir_intrinsic_load_deref);
       ASSERT_EQ(nir_intrinsic_get_var(load, 0), v[i])
          << "Source value for component " << i << " of store is wrong";
@@ -1034,22 +1033,18 @@ TEST_F(nir_combine_stores_test, overlapping_stores)
    ASSERT_TRUE(vec);
 
    /* Component x comes from v[0]. */
-   nir_intrinsic_instr *load_for_x =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[0].src));
+   nir_intrinsic_instr *load_for_x = nir_src_as_intrinsic(vec->src[0].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_x, 0), v[0]);
    ASSERT_EQ(vec->src[0].swizzle[0], 0);
 
    /* Component y comes from v[1]. */
-   nir_intrinsic_instr *load_for_y =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[1].src));
+   nir_intrinsic_instr *load_for_y = nir_src_as_intrinsic(vec->src[1].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_y, 0), v[1]);
    ASSERT_EQ(vec->src[1].swizzle[0], 1);
 
    /* Components z and w come from v[2]. */
-   nir_intrinsic_instr *load_for_z =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[2].src));
-   nir_intrinsic_instr *load_for_w =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[3].src));
+   nir_intrinsic_instr *load_for_z = nir_src_as_intrinsic(vec->src[2].src);
+   nir_intrinsic_instr *load_for_w = nir_src_as_intrinsic(vec->src[3].src);
    ASSERT_EQ(load_for_z, load_for_w);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_z, 0), v[2]);
    ASSERT_EQ(vec->src[2].swizzle[0], 2);
@@ -1104,26 +1099,22 @@ TEST_F(nir_combine_stores_test, direct_array_derefs)
    ASSERT_TRUE(vec);
 
    /* Component x comes from v[0]. */
-   nir_intrinsic_instr *load_for_x =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[0].src));
+   nir_intrinsic_instr *load_for_x = nir_src_as_intrinsic(vec->src[0].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_x, 0), v[0]);
    ASSERT_EQ(vec->src[0].swizzle[0], 0);
 
    /* Component y comes from v[1]. */
-   nir_intrinsic_instr *load_for_y =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[1].src));
+   nir_intrinsic_instr *load_for_y = nir_src_as_intrinsic(vec->src[1].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_y, 0), v[1]);
    ASSERT_EQ(vec->src[1].swizzle[0], 1);
 
    /* Components z comes from s[0]. */
-   nir_intrinsic_instr *load_for_z =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[2].src));
+   nir_intrinsic_instr *load_for_z = nir_src_as_intrinsic(vec->src[2].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_z, 0), s[0]);
    ASSERT_EQ(vec->src[2].swizzle[0], 0);
 
    /* Component w comes from s[1]. */
-   nir_intrinsic_instr *load_for_w =
-         nir_instr_as_intrinsic(nir_src_instr(&vec->src[3].src));
+   nir_intrinsic_instr *load_for_w = nir_src_as_intrinsic(vec->src[3].src);
    ASSERT_EQ(nir_intrinsic_get_var(load_for_w, 0), s[1]);
    ASSERT_EQ(vec->src[3].swizzle[0], 0);
 }
