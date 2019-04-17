@@ -281,10 +281,10 @@ nir_srcs_equal(nir_src src1, nir_src src2)
  * that instruction is returned as a \c nir_alu_instr.  Otherwise \c NULL is
  * returned.
  */
-static const nir_alu_instr *
-get_neg_instr(const nir_src *s)
+static nir_alu_instr *
+get_neg_instr(nir_src s)
 {
-   const nir_alu_instr *const alu = nir_src_as_alu_instr_const(s);
+   nir_alu_instr *alu = nir_src_as_alu_instr(s);
 
    return alu != NULL && (alu->op == nir_op_fneg || alu->op == nir_op_ineg)
           ? alu : NULL;
@@ -440,7 +440,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
 
    uint8_t alu1_swizzle[4] = {0};
    nir_src alu1_actual_src;
-   const nir_alu_instr *const neg1 = get_neg_instr(&alu1->src[src1].src);
+   nir_alu_instr *neg1 = get_neg_instr(alu1->src[src1].src);
 
    if (neg1) {
       parity = !parity;
@@ -457,7 +457,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
 
    uint8_t alu2_swizzle[4] = {0};
    nir_src alu2_actual_src;
-   const nir_alu_instr *const neg2 = get_neg_instr(&alu2->src[src2].src);
+   nir_alu_instr *neg2 = get_neg_instr(alu2->src[src2].src);
 
    if (neg2) {
       parity = !parity;

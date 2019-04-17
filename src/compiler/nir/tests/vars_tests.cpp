@@ -509,7 +509,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previou
    ASSERT_TRUE(store->src[1].is_ssa);
 
    /* NOTE: The ALU instruction is how we get the vec.y. */
-   ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
+   ASSERT_TRUE(nir_src_as_alu_instr(store->src[1]));
 }
 
 TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_reuses_previous_copy)
@@ -567,7 +567,7 @@ TEST_F(nir_copy_prop_vars_test, load_direct_array_deref_on_vector_gets_reused)
 
    nir_intrinsic_instr *store = get_intrinsic(nir_intrinsic_store_deref, 1);
    ASSERT_TRUE(store->src[1].is_ssa);
-   ASSERT_TRUE(nir_src_as_alu_instr(&store->src[1]));
+   ASSERT_TRUE(nir_src_as_alu_instr(store->src[1]));
 }
 
 TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
@@ -612,7 +612,7 @@ TEST_F(nir_copy_prop_vars_test, store_load_direct_array_deref_on_vector)
    /* Fourth store will compose first and second store values. */
    nir_intrinsic_instr *fourth_store = get_intrinsic(nir_intrinsic_store_deref, 3);
    ASSERT_TRUE(fourth_store->src[1].is_ssa);
-   EXPECT_TRUE(nir_src_as_alu_instr(&fourth_store->src[1]));
+   EXPECT_TRUE(nir_src_as_alu_instr(fourth_store->src[1]));
 }
 
 TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref_on_vector)
@@ -990,7 +990,7 @@ TEST_F(nir_combine_stores_test, non_overlapping_stores)
    ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
    ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
 
-   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   nir_alu_instr *vec = nir_src_as_alu_instr(combined->src[1]);
    ASSERT_TRUE(vec);
    for (int i = 0; i < 4; i++) {
       nir_intrinsic_instr *load =
@@ -1030,7 +1030,7 @@ TEST_F(nir_combine_stores_test, overlapping_stores)
    ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
    ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
 
-   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   nir_alu_instr *vec = nir_src_as_alu_instr(combined->src[1]);
    ASSERT_TRUE(vec);
 
    /* Component x comes from v[0]. */
@@ -1100,7 +1100,7 @@ TEST_F(nir_combine_stores_test, direct_array_derefs)
    ASSERT_EQ(nir_intrinsic_write_mask(combined), 0xf);
    ASSERT_EQ(nir_intrinsic_get_var(combined, 0), out);
 
-   nir_alu_instr *vec = nir_src_as_alu_instr(&combined->src[1]);
+   nir_alu_instr *vec = nir_src_as_alu_instr(combined->src[1]);
    ASSERT_TRUE(vec);
 
    /* Component x comes from v[0]. */

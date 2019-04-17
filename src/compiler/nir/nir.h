@@ -2756,16 +2756,10 @@ nir_src_instr(const struct nir_src *src)
 
 #define NIR_SRC_AS_(name, c_type, type_enum, cast_macro)                \
 static inline c_type *                                                  \
-nir_src_as_ ## name (nir_src *src)                                      \
+nir_src_as_ ## name (nir_src src)                                       \
 {                                                                       \
-    return src->is_ssa && src->ssa->parent_instr->type == type_enum     \
-           ? cast_macro(src->ssa->parent_instr) : NULL;                 \
-}                                                                       \
-static inline const c_type *                                            \
-nir_src_as_ ## name ## _const(const nir_src *src)                       \
-{                                                                       \
-    return src->is_ssa && src->ssa->parent_instr->type == type_enum     \
-           ? cast_macro(src->ssa->parent_instr) : NULL;                 \
+    return src.is_ssa && src.ssa->parent_instr->type == type_enum       \
+           ? cast_macro(src.ssa->parent_instr) : NULL;                  \
 }
 
 NIR_SRC_AS_(alu_instr, nir_alu_instr, nir_instr_type_alu, nir_instr_as_alu)

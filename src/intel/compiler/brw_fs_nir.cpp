@@ -387,7 +387,7 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
    /* If the condition has the form !other_condition, use other_condition as
     * the source, but invert the predicate on the if instruction.
     */
-   nir_alu_instr *const cond = nir_src_as_alu_instr(&if_stmt->condition);
+   nir_alu_instr *cond = nir_src_as_alu_instr(if_stmt->condition);
    if (cond != NULL && cond->op == nir_op_inot) {
       assert(!cond->src[0].negate);
       assert(!cond->src[0].abs);
@@ -754,8 +754,7 @@ fs_visitor::resolve_inot_sources(const fs_builder &bld, nir_alu_instr *instr,
                                  fs_reg *op)
 {
    for (unsigned i = 0; i < 2; i++) {
-      nir_alu_instr *const inot_instr =
-         nir_src_as_alu_instr(&instr->src[i].src);
+      nir_alu_instr *inot_instr = nir_src_as_alu_instr(instr->src[i].src);
 
       if (inot_instr != NULL && inot_instr->op == nir_op_inot &&
           !inot_instr->src[0].abs && !inot_instr->src[0].negate) {
@@ -778,7 +777,7 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
    if (devinfo->gen < 6 || devinfo->gen >= 12)
       return false;
 
-   nir_alu_instr *const inot_instr = nir_src_as_alu_instr(&instr->src[0].src);
+   nir_alu_instr *inot_instr = nir_src_as_alu_instr(instr->src[0].src);
 
    if (inot_instr == NULL || inot_instr->op != nir_op_inot)
       return false;
@@ -1242,8 +1241,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
    case nir_op_inot:
       if (devinfo->gen >= 8) {
-         nir_alu_instr *const inot_src_instr =
-            nir_src_as_alu_instr(&instr->src[0].src);
+         nir_alu_instr *inot_src_instr = nir_src_as_alu_instr(instr->src[0].src);
 
          if (inot_src_instr != NULL &&
              (inot_src_instr->op == nir_op_ior ||
