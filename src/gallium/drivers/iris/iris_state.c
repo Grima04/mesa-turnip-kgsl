@@ -1153,6 +1153,7 @@ struct iris_rasterizer_state {
    bool poly_stipple_enable;
    bool multisample;
    bool force_persample_interp;
+   bool conservative_rasterization;
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
    uint16_t sprite_coord_enable;
 };
@@ -1212,6 +1213,8 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->sprite_coord_enable = state->sprite_coord_enable;
    cso->line_stipple_enable = state->line_stipple_enable;
    cso->poly_stipple_enable = state->poly_stipple_enable;
+   cso->conservative_rasterization =
+      state->conservative_raster_mode == PIPE_CONSERVATIVE_RASTER_POST_SNAP;
 
    if (state->clip_plane_enable != 0)
       cso->num_clip_plane_consts = util_logbase2(state->clip_plane_enable) + 1;
@@ -1260,10 +1263,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
 #if GEN_GEN >= 9
       rr.ViewportZNearClipTestEnable = state->depth_clip_near;
       rr.ViewportZFarClipTestEnable = state->depth_clip_far;
+      rr.ConservativeRasterizationEnable =
+         cso->conservative_rasterization;
 #else
       rr.ViewportZClipTestEnable = (state->depth_clip_near || state->depth_clip_far);
 #endif
-      /* TODO: ConservativeRasterizationEnable */
    }
 
    iris_pack_command(GENX(3DSTATE_CLIP), cso->clip, cl) {
@@ -1349,6 +1353,9 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
           cso_changed(sprite_coord_mode) ||
           cso_changed(light_twoside))
          ice->state.dirty |= IRIS_DIRTY_SBE;
+
+      if (cso_changed(conservative_rasterization))
+         ice->state.dirty |= IRIS_DIRTY_FS;
    }
 
    ice->state.cso_rast = new_cso;
@@ -3653,14 +3660,6 @@ iris_store_fs_state(struct iris_context *ice,
       psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
 
 #if GEN_GEN >= 9
-      if (wm_prog_data->uses_sample_mask) {
-         /* TODO: conservative rasterization */
-         if (wm_prog_data->post_depth_coverage)
-            psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
-         else
-            psx.InputCoverageMaskState = ICMS_NORMAL;
-      }
-
       psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
       psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
 #else
@@ -4631,9 +4630,32 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                iris_get_scratch_space(ice, prog_data->total_scratch, stage);
             iris_use_pinned_bo(batch, bo, true);
          }
+#if GEN_GEN >= 9
+         if (stage == MESA_SHADER_FRAGMENT && wm_prog_data->uses_sample_mask) {
+            uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
+            uint32_t *shader_psx = ((uint32_t*)shader->derived_data) +
+               GENX(3DSTATE_PS_length);
+            struct iris_rasterizer_state *cso = ice->state.cso_rast;
 
-         iris_batch_emit(batch, shader->derived_data,
-                         iris_derived_program_state_size(stage));
+            iris_pack_command(GENX(3DSTATE_PS_EXTRA), &psx_state, psx) {
+               if (wm_prog_data->post_depth_coverage)
+                  psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
+               else if (wm_prog_data->inner_coverage && cso->conservative_rasterization)
+                  psx.InputCoverageMaskState = ICMS_INNER_CONSERVATIVE;
+               else
+                  psx.InputCoverageMaskState = ICMS_NORMAL;
+            }
+
+            iris_batch_emit(batch, shader->derived_data,
+                            sizeof(uint32_t) * GENX(3DSTATE_PS_length));
+            iris_emit_merge(batch,
+                            shader_psx,
+                            psx_state,
+                            GENX(3DSTATE_PS_EXTRA_length));
+         } else
+#endif
+            iris_batch_emit(batch, shader->derived_data,
+                            iris_derived_program_state_size(stage));
       } else {
          if (stage == MESA_SHADER_TESS_EVAL) {
             iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
