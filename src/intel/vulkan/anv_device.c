@@ -938,8 +938,6 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
          VkPhysicalDevice8BitStorageFeaturesKHR *features =
             (VkPhysicalDevice8BitStorageFeaturesKHR *)ext;
-         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-
          features->storageBuffer8BitAccess = pdevice->info.gen >= 8;
          features->uniformAndStorageBuffer8BitAccess = pdevice->info.gen >= 8;
          features->storagePushConstant8 = pdevice->info.gen >= 8;
@@ -976,8 +974,6 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
-         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-
          features->conditionalRendering = pdevice->info.gen >= 8 ||
                                           pdevice->info.is_haswell;
          features->inheritedConditionalRendering = pdevice->info.gen >= 8 ||
@@ -994,8 +990,6 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
          VkPhysicalDeviceFloat16Int8FeaturesKHR *features = (void *)ext;
-         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-
          features->shaderFloat16 = pdevice->info.gen >= 8;
          features->shaderInt8 = pdevice->info.gen >= 8;
          break;
