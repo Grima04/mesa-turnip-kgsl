@@ -134,6 +134,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
       }
    }
 
+   nir_address_format ssbo_addr_format =
+      anv_nir_ssbo_addr_format(pdevice, device->robust_buffer_access);
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
       .caps = {
@@ -169,19 +171,12 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .variable_pointers = true,
       },
       .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .ssbo_ptr_type = nir_address_format_to_glsl_type(ssbo_addr_format),
       .phys_ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT64, 1),
       .push_const_ptr_type = glsl_uint_type(),
       .shared_ptr_type = glsl_uint_type(),
    };
 
-   if (pdevice->has_a64_buffer_access) {
-      if (device->robust_buffer_access)
-         spirv_options.ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 4);
-      else
-         spirv_options.ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT64, 1);
-   } else {
-      spirv_options.ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2);
-   }
 
    nir_function *entry_point =
       spirv_to_nir(spirv, module->size / 4,
@@ -626,18 +621,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
                  nir_address_format_32bit_index_offset);
-
-      nir_address_format ssbo_address_format;
-      if (pdevice->has_a64_buffer_access) {
-         if (pipeline->device->robust_buffer_access)
-            ssbo_address_format = nir_address_format_64bit_bounded_global;
-         else
-            ssbo_address_format = nir_address_format_64bit_global;
-      } else {
-         ssbo_address_format = nir_address_format_32bit_index_offset;
-      }
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-                 ssbo_address_format);
+                 anv_nir_ssbo_addr_format(pdevice,
+                    pipeline->device->robust_buffer_access));
 
       NIR_PASS_V(nir, nir_opt_constant_folding);
 

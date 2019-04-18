@@ -41,6 +41,7 @@ struct apply_pipeline_layout_state {
 
    struct anv_pipeline_layout *layout;
    bool add_bounds_checks;
+   nir_address_format ssbo_addr_format;
 
    /* Place to flag lowered instructions so we don't lower them twice */
    struct set *lowered_instrs;
@@ -338,6 +339,15 @@ lower_direct_buffer_access(nir_function_impl *impl,
    }
 }
 
+static nir_address_format
+desc_addr_format(VkDescriptorType desc_type,
+                 struct apply_pipeline_layout_state *state)
+{
+   return (desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+           desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) ?
+           state->ssbo_addr_format : nir_address_format_32bit_index_offset;
+}
+
 static void
 lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
                           struct apply_pipeline_layout_state *state)
@@ -383,7 +393,8 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
          dynamic_offset_index;
 
       if (state->add_bounds_checks) {
-         /* We're using nir_address_format_64bit_bounded_global */
+         assert(desc_addr_format(desc_type, state) ==
+                nir_address_format_64bit_bounded_global);
          assert(intrin->dest.ssa.num_components == 4);
          assert(intrin->dest.ssa.bit_size == 32);
          index = nir_vec4(b, nir_imm_int(b, desc_offset),
@@ -391,7 +402,8 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
                              nir_imm_int(b, array_size - 1),
                              nir_ssa_undef(b, 1, 32));
       } else {
-         /* We're using nir_address_format_64bit_global */
+         assert(desc_addr_format(desc_type, state) ==
+                nir_address_format_64bit_global);
          assert(intrin->dest.ssa.num_components == 1);
          assert(intrin->dest.ssa.bit_size == 64);
          index = nir_pack_64_2x32_split(b, nir_imm_int(b, desc_offset),
@@ -399,15 +411,17 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
       }
    } else if (bind_layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM) {
       /* This is an inline uniform block.  Just reference the descriptor set
-       * and use the descriptor offset as the base.  Inline uniforms always
-       * use  nir_address_format_32bit_index_offset
+       * and use the descriptor offset as the base.
        */
+      assert(desc_addr_format(desc_type, state) ==
+             nir_address_format_32bit_index_offset);
       assert(intrin->dest.ssa.num_components == 2);
       assert(intrin->dest.ssa.bit_size == 32);
       index = nir_imm_ivec2(b, state->set[set].desc_offset,
                                bind_layout->descriptor_offset);
    } else {
-      /* We're using nir_address_format_32bit_index_offset */
+      assert(desc_addr_format(desc_type, state) ==
+             nir_address_format_32bit_index_offset);
       assert(intrin->dest.ssa.num_components == 2);
       assert(intrin->dest.ssa.bit_size == 32);
       index = nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
@@ -438,32 +452,37 @@ lower_res_reindex_intrinsic(nir_intrinsic_instr *intrin,
    nir_ssa_def *offset = intrin->src[1].ssa;
 
    nir_ssa_def *new_index;
-   if (state->pdevice->has_a64_buffer_access &&
-       (desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-        desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)) {
-      if (state->add_bounds_checks) {
-         /* We're using nir_address_format_64bit_bounded_global */
-         assert(intrin->dest.ssa.num_components == 4);
-         assert(intrin->dest.ssa.bit_size == 32);
-         new_index = nir_vec4(b, nir_channel(b, old_index, 0),
-                                 nir_iadd(b, nir_channel(b, old_index, 1),
-                                             offset),
-                                 nir_channel(b, old_index, 2),
-                                 nir_ssa_undef(b, 1, 32));
-      } else {
-         /* We're using nir_address_format_64bit_global */
-         assert(intrin->dest.ssa.num_components == 1);
-         assert(intrin->dest.ssa.bit_size == 64);
-         nir_ssa_def *base = nir_unpack_64_2x32_split_x(b, old_index);
-         nir_ssa_def *arr_idx = nir_unpack_64_2x32_split_y(b, old_index);
-         new_index = nir_pack_64_2x32_split(b, base, nir_iadd(b, arr_idx, offset));
-      }
-   } else {
-      /* We're using nir_address_format_32bit_index_offset */
+   switch (desc_addr_format(desc_type, state)) {
+   case nir_address_format_64bit_bounded_global:
+      /* See also lower_res_index_intrinsic() */
+      assert(intrin->dest.ssa.num_components == 4);
+      assert(intrin->dest.ssa.bit_size == 32);
+      new_index = nir_vec4(b, nir_channel(b, old_index, 0),
+                              nir_iadd(b, nir_channel(b, old_index, 1),
+                                          offset),
+                              nir_channel(b, old_index, 2),
+                              nir_ssa_undef(b, 1, 32));
+      break;
+
+   case nir_address_format_64bit_global: {
+      /* See also lower_res_index_intrinsic() */
+      assert(intrin->dest.ssa.num_components == 1);
+      assert(intrin->dest.ssa.bit_size == 64);
+      nir_ssa_def *base = nir_unpack_64_2x32_split_x(b, old_index);
+      nir_ssa_def *arr_idx = nir_unpack_64_2x32_split_y(b, old_index);
+      new_index = nir_pack_64_2x32_split(b, base, nir_iadd(b, arr_idx, offset));
+      break;
+   }
+
+   case nir_address_format_32bit_index_offset:
       assert(intrin->dest.ssa.num_components == 2);
       assert(intrin->dest.ssa.bit_size == 32);
       new_index = nir_vec2(b, nir_iadd(b, nir_channel(b, old_index, 0), offset),
                               nir_channel(b, old_index, 1));
+      break;
+
+   default:
+      unreachable("Uhandled address format");
    }
 
    assert(intrin->dest.is_ssa);
@@ -479,14 +498,22 @@ build_ssbo_descriptor_load(const VkDescriptorType desc_type,
    nir_builder *b = &state->builder;
 
    nir_ssa_def *desc_offset, *array_index;
-   if (state->add_bounds_checks) {
-      /* We're using nir_address_format_64bit_bounded_global */
+   switch (state->ssbo_addr_format) {
+   case nir_address_format_64bit_bounded_global:
+      /* See also lower_res_index_intrinsic() */
       desc_offset = nir_channel(b, index, 0);
       array_index = nir_umin(b, nir_channel(b, index, 1),
                                 nir_channel(b, index, 2));
-   } else {
+      break;
+
+   case nir_address_format_64bit_global:
+      /* See also lower_res_index_intrinsic() */
       desc_offset = nir_unpack_64_2x32_split_x(b, index);
       array_index = nir_unpack_64_2x32_split_y(b, index);
+      break;
+
+   default:
+      unreachable("Unhandled address format for SSBO");
    }
 
    /* The desc_offset is actually 16.8.8 */
@@ -541,14 +568,22 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
           * dynamic offset.
           */
          nir_ssa_def *desc_offset, *array_index;
-         if (state->add_bounds_checks) {
-            /* We're using nir_address_format_64bit_bounded_global */
+         switch (state->ssbo_addr_format) {
+         case nir_address_format_64bit_bounded_global:
+            /* See also lower_res_index_intrinsic() */
             desc_offset = nir_channel(b, index, 0);
             array_index = nir_umin(b, nir_channel(b, index, 1),
                                       nir_channel(b, index, 2));
-         } else {
+            break;
+
+         case nir_address_format_64bit_global:
+            /* See also lower_res_index_intrinsic() */
             desc_offset = nir_unpack_64_2x32_split_x(b, index);
             array_index = nir_unpack_64_2x32_split_y(b, index);
+            break;
+
+         default:
+            unreachable("Unhandled address format for SSBO");
          }
 
          nir_ssa_def *dyn_offset_base =
@@ -573,11 +608,10 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
             nir_bcsel(b, nir_ieq(b, dyn_offset_base, nir_imm_int(b, 0xff)),
                          nir_imm_int(b, 0), &dyn_load->dest.ssa);
 
-         if (state->add_bounds_checks) {
+         switch (state->ssbo_addr_format) {
+         case nir_address_format_64bit_bounded_global: {
             /* The dynamic offset gets added to the base pointer so that we
              * have a sliding window range.
-             *
-             * We're using nir_address_format_64bit_bounded_global.
              */
             nir_ssa_def *base_ptr =
                nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
@@ -586,9 +620,15 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
                                nir_unpack_64_2x32_split_y(b, base_ptr),
                                nir_channel(b, desc, 2),
                                nir_channel(b, desc, 3));
-         } else {
-            /* We're using nir_address_format_64bit_global */
+            break;
+         }
+
+         case nir_address_format_64bit_global:
             desc = nir_iadd(b, desc, nir_u2u64(b, dynamic_offset));
+            break;
+
+         default:
+            unreachable("Unhandled address format for SSBO");
          }
       }
    } else {
@@ -967,6 +1007,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       .shader = shader,
       .layout = layout,
       .add_bounds_checks = robust_buffer_access,
+      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
       .dynamic_offset_uniform_start = -1,
    };
