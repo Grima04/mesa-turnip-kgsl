@@ -3089,6 +3089,39 @@ typedef enum {
    nir_address_format_32bit_index_offset,
 } nir_address_format;
 
+static inline unsigned
+nir_address_format_bit_size(nir_address_format addr_format)
+{
+   switch (addr_format) {
+   case nir_address_format_32bit_global:           return 32;
+   case nir_address_format_64bit_global:           return 64;
+   case nir_address_format_64bit_bounded_global:   return 32;
+   case nir_address_format_32bit_index_offset:     return 32;
+   }
+   unreachable("Invalid address format");
+}
+
+static inline unsigned
+nir_address_format_num_components(nir_address_format addr_format)
+{
+   switch (addr_format) {
+   case nir_address_format_32bit_global:           return 1;
+   case nir_address_format_64bit_global:           return 1;
+   case nir_address_format_64bit_bounded_global:   return 4;
+   case nir_address_format_32bit_index_offset:     return 2;
+   }
+   unreachable("Invalid address format");
+}
+
+static inline const struct glsl_type *
+nir_address_format_to_glsl_type(nir_address_format addr_format)
+{
+   unsigned bit_size = nir_address_format_bit_size(addr_format);
+   assert(bit_size == 32 || bit_size == 64);
+   return glsl_vector_type(bit_size == 32 ? GLSL_TYPE_UINT : GLSL_TYPE_UINT64,
+                           nir_address_format_num_components(addr_format));
+}
+
 nir_ssa_def * nir_explicit_io_address_from_deref(struct nir_builder *b,
                                                  nir_deref_instr *deref,
                                                  nir_ssa_def *base_addr,
