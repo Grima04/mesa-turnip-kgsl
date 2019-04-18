@@ -1692,8 +1692,11 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 						  get_src(ctx, instr->src[0]),
 						  true);
 
-	if (HAVE_LLVM >= 0x800 &&
+	if (HAVE_LLVM >= 0x900 &&
 	    instr->intrinsic != nir_intrinsic_ssbo_atomic_comp_swap) {
+		/* XXX: The new raw/struct atomic intrinsics are buggy with
+		 * LLVM 8, see r358579.
+		 */
 		params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
 		params[arg_count++] = ctx->ac.i32_0; /* soffset */
 		params[arg_count++] = ctx->ac.i32_0; /* slc */
