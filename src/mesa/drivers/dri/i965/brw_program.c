@@ -105,7 +105,6 @@ brw_create_nir(struct brw_context *brw,
    } else {
       nir = prog_to_nir(prog, options);
       NIR_PASS_V(nir, nir_lower_regs_to_ssa); /* turn registers into SSA */
-      NIR_PASS_V(nir, gl_nir_lower_samplers, NULL);
    }
    nir_validate_shader(nir, "before brw_preprocess_nir");
 
@@ -119,6 +118,10 @@ brw_create_nir(struct brw_context *brw,
    }
 
    nir = brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
+
+   NIR_PASS_V(nir, gl_nir_lower_samplers, shader_prog);
+   prog->info.textures_used = nir->info.textures_used;
+   prog->info.textures_used_by_txf = nir->info.textures_used_by_txf;
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
 
