@@ -513,6 +513,7 @@ st_init_driver_flags(struct st_context *st)
    f->NewViewport = ST_NEW_VIEWPORT;
    f->NewNvConservativeRasterization = ST_NEW_RASTERIZER;
    f->NewNvConservativeRasterizationParams = ST_NEW_RASTERIZER;
+   f->NewIntelConservativeRasterization = ST_NEW_RASTERIZER;
 }
 
 
