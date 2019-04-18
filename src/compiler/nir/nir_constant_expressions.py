@@ -66,6 +66,8 @@ template = """\
 #include "util/bigmath.h"
 #include "nir_constant_expressions.h"
 
+#define MAX_UINT_FOR_SIZE(bits) (UINT64_MAX >> (64 - (bits)))
+
 /**
  * Evaluate one component of packSnorm4x8.
  */
