@@ -466,6 +466,8 @@ static void virgl_hw_set_vertex_buffers(struct virgl_context *vctx)
          virgl_encoder_set_vertex_buffers(vctx, vctx->num_vertex_buffers, vctx->vertex_buffer);
 
       virgl_attach_res_vertex_buffers(vctx);
+
+      vctx->vertex_array_dirty = FALSE;
    }
 }
 
