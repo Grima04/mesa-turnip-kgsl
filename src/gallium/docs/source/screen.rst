@@ -464,6 +464,8 @@ The integer capabilities:
   ``PIPE_CONSERVATIVE_RASTER_PRE_SNAP`` mode is supported for points and lines.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_POST_DEPTH_COVERAGE``: Whether
   ``PIPE_CAP_POST_DEPTH_COVERAGE`` works with conservative rasterization.
+* ``PIPE_CAP_CONSERVATIVE_RASTER_INNER_COVERAGE``: Whether
+  inner_coverage from GL_INTEL_conservative_rasterization is supported.
 * ``PIPE_CAP_MAX_CONSERVATIVE_RASTER_SUBPIXEL_PRECISION_BIAS``: The maximum
   subpixel precision bias in bits during conservative rasterization.
 * ``PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS``: True is the driver supports
