@@ -2051,7 +2051,7 @@ VkResult anv_CreateDevice(
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
-   if (pthread_cond_init(&device->queue_submit, NULL) != 0) {
+   if (pthread_cond_init(&device->queue_submit, &condattr) != 0) {
       pthread_condattr_destroy(&condattr);
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
