@@ -722,3 +722,71 @@ TEST_F(saturate_propagation_test, mul_neg_mov_sat_mov_sat)
    EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 2)->opcode);
    EXPECT_TRUE(instruction(block0, 2)->saturate);
 }
+
+TEST_F(saturate_propagation_test, smaller_exec_size_consumer)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dst0 = v->vgrf(glsl_type::float_type);
+   fs_reg dst1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   bld.ADD(dst0, src0, src1);
+   set_saturate(true, bld.group(8, 0).MOV(dst1, dst0));
+
+   /* = Before =
+    *
+    * 0: add(16)       dst0  src0  src1
+    * 1: mov.sat(8)    dst1  dst0
+    *
+    * = After =
+    * (no changes)
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(saturate_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_FALSE(instruction(block0, 0)->saturate);
+   EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 1)->opcode);
+   EXPECT_TRUE(instruction(block0, 1)->saturate);
+}
+
+TEST_F(saturate_propagation_test, larger_exec_size_consumer)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dst0 = v->vgrf(glsl_type::float_type);
+   fs_reg dst1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   bld.group(8, 0).ADD(dst0, src0, src1);
+   set_saturate(true, bld.MOV(dst1, dst0));
+
+   /* = Before =
+    *
+    * 0: add(8)        dst0  src0  src1
+    * 1: mov.sat(16)   dst1  dst0
+    *
+    * = After =
+    * (no changes)
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(saturate_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_FALSE(instruction(block0, 0)->saturate);
+   EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 1)->opcode);
+   EXPECT_TRUE(instruction(block0, 1)->saturate);
+}
