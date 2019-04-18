@@ -1015,10 +1015,8 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 	si_update_poly_offset_state(sctx);
 
 	if (!old_rs ||
-	    old_rs->scissor_enable != rs->scissor_enable) {
-		sctx->scissors.dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
+	    old_rs->scissor_enable != rs->scissor_enable)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.scissors);
-	}
 
 	if (!old_rs ||
 	    old_rs->line_width != rs->line_width ||
@@ -1027,10 +1025,8 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
 
 	if (!old_rs ||
-	    old_rs->clip_halfz != rs->clip_halfz) {
-		sctx->viewports.depth_range_dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
+	    old_rs->clip_halfz != rs->clip_halfz)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.viewports);
-	}
 
 	if (!old_rs ||
 	    old_rs->clip_plane_enable != rs->clip_plane_enable ||

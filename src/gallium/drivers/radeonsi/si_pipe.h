@@ -672,14 +672,7 @@ struct si_signed_scissor {
 	enum si_quant_mode quant_mode;
 };
 
-struct si_scissors {
-	unsigned			dirty_mask;
-	struct pipe_scissor_state	states[SI_MAX_VIEWPORTS];
-};
-
 struct si_viewports {
-	unsigned			dirty_mask;
-	unsigned			depth_range_dirty_mask;
 	struct pipe_viewport_state	states[SI_MAX_VIEWPORTS];
 	struct si_signed_scissor	as_scissor[SI_MAX_VIEWPORTS];
 };
@@ -883,7 +876,7 @@ struct si_context {
 	struct si_clip_state		clip_state;
 	struct si_shader_data		shader_pointers;
 	struct si_stencil_ref		stencil_ref;
-	struct si_scissors		scissors;
+	struct pipe_scissor_state	scissors[SI_MAX_VIEWPORTS];
 	struct si_streamout		streamout;
 	struct si_viewports		viewports;
 	unsigned			num_window_rectangles;

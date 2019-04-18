@@ -1487,10 +1487,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		if (has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
-		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
-			sctx->scissors.dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
+		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
 			sctx->atoms.s.scissors.emit(sctx);
-		}
+
 		sctx->dirty_atoms = 0;
 
 		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset);
@@ -1519,10 +1518,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		if (has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
-		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
-			sctx->scissors.dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
+		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
 			sctx->atoms.s.scissors.emit(sctx);
-		}
+
 		sctx->dirty_atoms = 0;
 
 		si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset);

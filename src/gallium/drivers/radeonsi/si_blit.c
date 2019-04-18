@@ -58,7 +58,7 @@ void si_blitter_begin(struct si_context *sctx, enum si_blitter_op op)
 		util_blitter_save_stencil_ref(sctx->blitter, &sctx->stencil_ref.state);
 		util_blitter_save_fragment_shader(sctx->blitter, sctx->ps_shader.cso);
 		util_blitter_save_sample_mask(sctx->blitter, sctx->sample_mask);
-		util_blitter_save_scissor(sctx->blitter, &sctx->scissors.states[0]);
+		util_blitter_save_scissor(sctx->blitter, &sctx->scissors[0]);
 		util_blitter_save_window_rectangles(sctx->blitter,
 						    sctx->window_rectangles_include,
 						    sctx->num_window_rectangles,

@@ -315,9 +315,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 	if (!has_clear_state || ctx->num_window_rectangles > 0)
 		si_mark_atom_dirty(ctx, &ctx->atoms.s.window_rectangles);
 
-	ctx->scissors.dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
-	ctx->viewports.dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
-	ctx->viewports.depth_range_dirty_mask = (1 << SI_MAX_VIEWPORTS) - 1;
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.guardband);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.scissors);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.viewports);
