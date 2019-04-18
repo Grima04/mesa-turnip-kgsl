@@ -756,6 +756,12 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
 {
    struct virgl_screen *rs = virgl_screen(ctx->base.screen);
 
+   /* skip empty cbuf */
+   if (ctx->cbuf->cdw == ctx->cbuf_initial_cdw &&
+       ctx->queue.num_dwords == 0 &&
+       !fence)
+      return;
+
    if (ctx->num_draws)
       u_upload_unmap(ctx->uploader);
 
@@ -773,6 +779,8 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
 
    /* add back current framebuffer resources to reference list? */
    virgl_reemit_res(ctx);
+
+   ctx->cbuf_initial_cdw = ctx->cbuf->cdw;
 }
 
 static void virgl_flush_from_st(struct pipe_context *ctx,
