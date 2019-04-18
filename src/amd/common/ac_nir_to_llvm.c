@@ -1692,8 +1692,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 						  get_src(ctx, instr->src[0]),
 						  true);
 
-	if (HAVE_LLVM >= 0x900 &&
-	    instr->intrinsic != nir_intrinsic_ssbo_atomic_comp_swap) {
+	if (HAVE_LLVM >= 0x900) {
 		/* XXX: The new raw/struct atomic intrinsics are buggy with
 		 * LLVM 8, see r358579.
 		 */
