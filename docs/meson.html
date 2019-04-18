@@ -258,29 +258,29 @@ Then configure meson:
 For selecting llvm-config for cross compiling a
 <a href="https://mesonbuild.com/Cross-compilation.html#defining-the-environment">"cross file"</a>
 should be used. It uses the same format as the native file above:
+</p>
 
-cross-llvm.ini
+<p>cross-llvm.ini</p>
 <pre>
     [binaries]
     ...
     llvm-config = '/usr/lib/llvm-config-32'
 </pre>
 
-Then configure meson:
-
+<p>Then configure meson:</p>
 <pre>
     meson builddir/ --cross-file cross-llvm.ini
 </pre>
 
 See the <a href="#cross-compilation">Cross Compilation</a> section for more information.
-</dd></p>
+</dd>
 
 <dd><p>
 For older versions of meson <code>$PATH</code> (or <code>%PATH%</code> on
 windows) will be searched for llvm-config (and llvm-config$version and
 llvm-config-$version), you can override this environment variable to control
 the search: <code>PATH=/path/with/llvm-config:$PATH meson build</code>.
-</dd></p>
+</p></dd>
 
 <dt><code>PKG_CONFIG_PATH</code></dt>
 <dd><p>The
