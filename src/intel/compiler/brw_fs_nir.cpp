@@ -871,7 +871,27 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
       }
 
       set_predicate(BRW_PREDICATE_NORMAL, inst);
-   } else if (type_sz(op[0].type) < 8) {
+   } else if (type_sz(op[0].type) == 2) {
+      /* AND(val, 0x8000) gives the sign bit.
+       *
+       * Predicated OR ORs 1.0 (0x3c00) with the sign bit if val is not zero.
+       */
+      fs_reg zero = retype(brw_imm_uw(0), BRW_REGISTER_TYPE_HF);
+      bld.CMP(bld.null_reg_f(), op[0], zero, BRW_CONDITIONAL_NZ);
+
+      op[0].type = BRW_REGISTER_TYPE_UW;
+      result.type = BRW_REGISTER_TYPE_UW;
+      bld.AND(result, op[0], brw_imm_uw(0x8000u));
+
+      if (instr->op == nir_op_fsign)
+         inst = bld.OR(result, result, brw_imm_uw(0x3c00u));
+      else {
+         /* Use XOR here to get the result sign correct. */
+         inst = bld.XOR(result, result, retype(op[1], BRW_REGISTER_TYPE_UW));
+      }
+
+      inst->predicate = BRW_PREDICATE_NORMAL;
+   } else if (type_sz(op[0].type) == 4) {
       /* AND(val, 0x80000000) gives the sign bit.
        *
        * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
@@ -879,17 +899,15 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
        */
       bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
 
-      fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
       op[0].type = BRW_REGISTER_TYPE_UD;
       result.type = BRW_REGISTER_TYPE_UD;
-      bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
+      bld.AND(result, op[0], brw_imm_ud(0x80000000u));
 
       if (instr->op == nir_op_fsign)
-         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+         inst = bld.OR(result, result, brw_imm_ud(0x3f800000u));
       else {
          /* Use XOR here to get the result sign correct. */
-         inst = bld.XOR(result_int, result_int,
-                        retype(op[1], BRW_REGISTER_TYPE_UD));
+         inst = bld.XOR(result, result, retype(op[1], BRW_REGISTER_TYPE_UD));
       }
 
       inst->predicate = BRW_PREDICATE_NORMAL;
