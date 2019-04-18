@@ -721,6 +721,13 @@ iris_init_render_context(struct iris_screen *screen,
       }
       iris_emit_lri(batch, COMMON_SLICE_CHICKEN3, reg_val);
 
+      iris_pack_state(GENX(SLICE_COMMON_ECO_CHICKEN1), &reg_val, reg) {
+         reg.StateCacheRedirectToCSSectionEnable = true;
+         reg.StateCacheRedirectToCSSectionEnableMask = true;
+      }
+      iris_emit_lri(batch, SLICE_COMMON_ECO_CHICKEN1, reg_val);
+
+
       // XXX: 3D_MODE?
 #endif
 

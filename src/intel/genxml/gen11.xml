@@ -7015,6 +7015,11 @@
     <field name="SFBE Done" start="25" end="25" type="bool"/>
   </register>
 
+  <register name="SLICE_COMMON_ECO_CHICKEN1" length="1" num="0x731c">
+    <field name="State Cache Redirect To CS Section Enable" start="11" end="11" type="bool"/>
+    <field name="State Cache Redirect To CS Section Enable Mask" start="27" end="27" type="bool"/>
+  </register>
+
   <register name="SO_NUM_PRIMS_WRITTEN0" length="2" num="0x5200">
     <field name="Num Prims Written Count" start="0" end="63" type="uint"/>
   </register>
