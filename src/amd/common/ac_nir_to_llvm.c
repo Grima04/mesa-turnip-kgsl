@@ -2634,7 +2634,10 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 								ctx->ac.i32_0, ""); /* vindex */
 		params[param_count++] = ctx->ac.i32_0; /* voffset */
-		if (HAVE_LLVM >= 0x800) {
+		if (HAVE_LLVM >= 0x900) {
+			/* XXX: The new raw/struct atomic intrinsics are buggy
+			 * with LLVM 8, see r358579.
+			 */
 			params[param_count++] = ctx->ac.i32_0; /* soffset */
 			params[param_count++] = ctx->ac.i32_0;  /* slc */
 
