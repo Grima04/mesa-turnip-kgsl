@@ -468,6 +468,7 @@ struct si_screen {
 	bool				has_out_of_order_rast;
 	bool				assume_no_z_fights;
 	bool				commutative_blend_add;
+	bool				has_gfx9_scissor_bug;
 	bool				has_msaa_sample_loc_bug;
 	bool				has_ls_vgpr_init_bug;
 	bool				has_dcc_constant_encode;
@@ -1075,7 +1076,7 @@ struct si_context {
 	unsigned			num_resident_handles;
 	uint64_t			num_alloc_tex_transfer_bytes;
 	unsigned			last_tex_ps_draw_ratio; /* for query */
-	unsigned			context_roll_counter;
+	unsigned			context_roll;
 
 	/* Queries. */
 	/* Maintain the list of active queries for pausing between IBs. */

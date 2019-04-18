@@ -576,7 +576,7 @@ static void si_emit_shader_es(struct si_context *sctx)
 					   shader->vgt_vertex_reuse_block_cntl);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
@@ -825,7 +825,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
 	}
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
@@ -1002,7 +1002,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
 					   shader->vgt_vertex_reuse_block_cntl);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 /**
@@ -1194,7 +1194,7 @@ static void si_emit_shader_ps(struct si_context *sctx)
 				   shader->ctx_reg.ps.cb_shader_mask);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 static void si_shader_ps(struct si_shader *shader)
@@ -2877,7 +2877,7 @@ static void si_emit_spi_map(struct si_context *sctx)
 				    sctx->tracked_regs.spi_ps_input_cntl, num_interp);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 /**

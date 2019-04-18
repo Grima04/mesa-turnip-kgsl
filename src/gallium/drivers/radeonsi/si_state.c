@@ -256,7 +256,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 					    sx_blend_opt_control);
 	}
 	if (initial_cdw != cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 /*
@@ -793,7 +793,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
 		S_028810_CLIP_DISABLE(window_space));
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 /*
@@ -1455,7 +1455,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
 				   SI_TRACKED_DB_SHADER_CONTROL, db_shader_control);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 }
 
 /*
@@ -3544,7 +3544,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
 				   SI_TRACKED_PA_SC_MODE_CNTL_1, sc_mode_cntl_1);
 
 	if (initial_cdw != cs->current.cdw) {
-		sctx->context_roll_counter++;
+		sctx->context_roll = true;
 
 		/* GFX9: Flush DFSM when the AA mode changes. */
 		if (sctx->screen->dfsm_allowed) {

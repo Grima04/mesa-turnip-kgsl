@@ -1097,6 +1097,8 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 #include "si_debug_options.h"
 	}
 
+	sscreen->has_gfx9_scissor_bug = sscreen->info.family == CHIP_VEGA10 ||
+					sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_msaa_sample_loc_bug = (sscreen->info.family >= CHIP_POLARIS10 &&
 					    sscreen->info.family <= CHIP_POLARIS12) ||
 					   sscreen->info.family == CHIP_VEGA10 ||
