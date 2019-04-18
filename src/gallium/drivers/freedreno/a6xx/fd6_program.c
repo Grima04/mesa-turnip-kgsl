@@ -287,6 +287,15 @@ setup_stages(struct fd6_program_state *state, struct stage *s, bool binning_pass
 	}
 }
 
+static inline uint32_t
+next_regid(uint32_t reg, uint32_t increment)
+{
+	if (reg == regid(63,0))
+		return regid(63,0);
+	else
+		return reg + increment;
+}
+
 static void
 setup_stateobj(struct fd_ringbuffer *ring,
                struct fd6_program_state *state, bool binning_pass)
@@ -327,7 +336,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	samp_mask_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_MASK_IN);
 	face_regid      = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
-	zwcoord_regid   = (coord_regid == regid(63,0)) ? regid(63,0) : (coord_regid + 2);
+	zwcoord_regid   = next_regid(coord_regid, 2);
 	vcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_VARYING_COORD);
 	posz_regid      = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DEPTH);
 
