@@ -212,6 +212,17 @@ genX(init_device_state)(struct anv_device *device)
       lri.DataDWord      = common_slice_chicken3;
    }
 
+   /* WaEnableStateCacheRedirectToCS:icl */
+   uint32_t slice_common_eco_chicken1;
+   anv_pack_struct(&slice_common_eco_chicken1,
+                   GENX(SLICE_COMMON_ECO_CHICKEN1),
+                   .StateCacheRedirectToCSSectionEnable = true,
+                   .StateCacheRedirectToCSSectionEnableMask = true);
+
+   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      lri.RegisterOffset = GENX(SLICE_COMMON_ECO_CHICKEN1_num);
+      lri.DataDWord      = slice_common_eco_chicken1;
+   }
 #endif
 
    /* Set the "CONSTANT_BUFFER Address Offset Disable" bit, so
