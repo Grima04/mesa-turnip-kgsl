@@ -218,6 +218,8 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ice->vtbl.init_render_context(screen, &ice->batches[IRIS_BATCH_RENDER],
                                  &ice->vtbl, &ice->dbg);
+   if (screen->devinfo.gen == 10)
+      gen10_iris_enable_obj_preemption(ice, &ice->batches[IRIS_BATCH_RENDER], true);
    ice->vtbl.init_compute_context(screen, &ice->batches[IRIS_BATCH_COMPUTE],
                                   &ice->vtbl, &ice->dbg);
 
