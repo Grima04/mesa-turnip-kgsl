@@ -88,6 +88,7 @@
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
+#include "util/u_dual_blend.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
 #include "util/u_framebuffer.h"
@@ -860,6 +861,9 @@ struct iris_blend_state {
 
    /** Bitfield of whether color writes are enabled for RT[i] */
    uint8_t color_write_enables;
+
+   /** Does RT[0] use dual color blending? */
+   bool dual_color_blending;
 };
 
 static enum pipe_blendfactor
@@ -972,6 +976,7 @@ iris_create_blend_state(struct pipe_context *ctx,
       /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
    }
 
+   cso->dual_color_blending = util_blend_state_is_dual(state, 0);
 
    return cso;
 }
@@ -3348,6 +3353,7 @@ static void
 iris_populate_fs_key(const struct iris_context *ice,
                      struct brw_wm_prog_key *key)
 {
+   struct iris_screen *screen = (void *) ice->ctx.screen;
    const struct pipe_framebuffer_state *fb = &ice->state.framebuffer;
    const struct iris_depth_stencil_alpha_state *zsa = ice->state.cso_zsa;
    const struct iris_rasterizer_state *rast = ice->state.cso_rast;
@@ -3368,6 +3374,10 @@ iris_populate_fs_key(const struct iris_context *ice,
    key->multisample_fbo = rast->multisample && fb->samples > 1;
 
    key->coherent_fb_fetch = true;
+
+   key->force_dual_color_blend =
+      screen->driconf.dual_color_blend_by_location &&
+      (blend->blend_enables & 1) && blend->dual_color_blending;
 
    /* TODO: support key->force_dual_color_blend for Unigine */
    /* TODO: Respect glHint for key->high_quality_derivatives */

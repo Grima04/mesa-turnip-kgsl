@@ -60,6 +60,12 @@ struct iris_screen {
    /** Precompile shaders at link time?  (Can be disabled for debugging.) */
    bool precompile;
 
+   /** driconf options and application workarounds */
+   struct {
+      /** Dual color blend by location instead of index (for broken apps) */
+      bool dual_color_blend_by_location;
+   } driconf;
+
    unsigned subslice_total;
 
    struct gen_device_info devinfo;

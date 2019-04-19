@@ -43,6 +43,7 @@
 #include "util/u_transfer_helper.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
+#include "util/xmlconfig.h"
 #include "drm-uapi/i915_drm.h"
 #include "iris_context.h"
 #include "iris_defines.h"
@@ -583,6 +584,9 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       return NULL;
 
    brw_process_intel_debug_variable();
+
+   screen->driconf.dual_color_blend_by_location =
+      driQueryOptionb(config->options, "dual_color_blend_by_location");
 
    screen->precompile = env_var_as_boolean("shader_precompile", true);
 
