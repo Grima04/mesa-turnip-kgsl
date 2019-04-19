@@ -927,6 +927,13 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: {
+			VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *features =
+				(VkPhysicalDeviceComputeShaderDerivativesFeaturesNV *)ext;
+			features->computeDerivativeGroupQuads = false;
+			features->computeDerivativeGroupLinear = true;
+			break;
+		}
 		default:
 			break;
 		}
