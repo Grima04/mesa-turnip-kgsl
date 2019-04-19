@@ -493,7 +493,8 @@ iris_mcs_partial_resolve(struct iris_context *ice,
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_mcs_partial_resolve(&blorp_batch, &surf, res->surf.format,
+   blorp_mcs_partial_resolve(&blorp_batch, &surf,
+                             isl_format_srgb_to_linear(res->surf.format),
                              start_layer, num_layers);
    blorp_batch_finish(&blorp_batch);
 }

@@ -104,8 +104,10 @@ can_fast_clear_color(struct iris_context *ice,
     * during resolves because the resolve operations only know about the
     * resource and not the renderbuffer.
     */
-   if (render_format != format)
+   if (isl_format_srgb_to_linear(render_format) !=
+       isl_format_srgb_to_linear(format)) {
       return false;
+   }
 
    /* XXX: if (irb->mt->supports_fast_clear)
     * see intel_miptree_create_for_dri_image()
@@ -120,6 +122,7 @@ can_fast_clear_color(struct iris_context *ice,
 static union isl_color_value
 convert_fast_clear_color(struct iris_context *ice,
                          struct iris_resource *res,
+                         enum isl_format render_format,
                          const union isl_color_value color)
 {
    union isl_color_value override_color = color;
@@ -184,7 +187,7 @@ convert_fast_clear_color(struct iris_context *ice,
    }
 
    /* Handle linear to SRGB conversion */
-   if (util_format_is_srgb(format)) {
+   if (isl_format_is_srgb(render_format)) {
       for (int i = 0; i < 3; i++) {
          override_color.f32[i] =
             util_format_linear_to_srgb_float(override_color.f32[i]);
@@ -208,7 +211,7 @@ fast_clear_color(struct iris_context *ice,
    const enum isl_aux_state aux_state =
       iris_resource_get_aux_state(res, level, box->z);
 
-   color = convert_fast_clear_color(ice, res, color);
+   color = convert_fast_clear_color(ice, res, format, color);
 
    bool color_changed = !!memcmp(&res->aux.clear_color, &color,
                                  sizeof(color));
