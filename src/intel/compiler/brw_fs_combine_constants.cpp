@@ -303,7 +303,7 @@ needs_negate(const struct fs_reg *reg, const struct imm *imm)
    case BRW_REGISTER_TYPE_HF:
       return (reg->d & 0x8000u) != (imm->w & 0x8000u);
    case BRW_REGISTER_TYPE_W:
-      return ((reg->d & 0xffffu) < 0) != (imm->w < 0);
+      return ((int16_t)reg->d < 0) != (imm->w < 0);
    case BRW_REGISTER_TYPE_UQ:
    case BRW_REGISTER_TYPE_UD:
    case BRW_REGISTER_TYPE_UW:
