@@ -1932,9 +1932,11 @@ compute_lod(const struct pipe_sampler_state *sampler,
    switch (control) {
    case TGSI_SAMPLER_LOD_NONE:
    case TGSI_SAMPLER_LOD_ZERO:
-   /* XXX FIXME */
-   case TGSI_SAMPLER_DERIVS_EXPLICIT:
       lod[0] = lod[1] = lod[2] = lod[3] = CLAMP(biased_lambda, min_lod, max_lod);
+      break;
+   case TGSI_SAMPLER_DERIVS_EXPLICIT:
+      for (i = 0; i < TGSI_QUAD_SIZE; i++)
+         lod[i] = lod_in[i];
       break;
    case TGSI_SAMPLER_LOD_BIAS:
       for (i = 0; i < TGSI_QUAD_SIZE; i++) {
