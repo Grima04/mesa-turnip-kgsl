@@ -74,7 +74,7 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
     {
         .driver_name = "iris",
         .create_screen = pipe_iris_create_screen,
-        .configuration = pipe_default_configuration_query,
+        .configuration = pipe_iris_configuration_query,
     },
     {
         .driver_name = "nouveau",

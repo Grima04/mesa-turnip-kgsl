@@ -68,8 +68,26 @@ pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = iris_drm_screen_create(fd);
+   screen = iris_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
+}
+
+const struct drm_conf_ret *
+pipe_iris_configuration_query(enum drm_conf conf)
+{
+   static const struct drm_conf_ret xml_options_ret = {
+      .type = DRM_CONF_POINTER,
+      .val.val_pointer =
+#include "iris/iris_driinfo.h"
+   };
+
+   switch (conf) {
+   case DRM_CONF_XML_OPTIONS:
+      return &xml_options_ret;
+   default:
+      break;
+   }
+   return pipe_default_configuration_query(conf);
 }
 
 #else
@@ -78,6 +96,12 @@ struct pipe_screen *
 pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
 {
    fprintf(stderr, "iris: driver missing\n");
+   return NULL;
+}
+
+const struct drm_conf_ret *
+pipe_iris_configuration_query(enum drm_conf conf)
+{
    return NULL;
 }
 

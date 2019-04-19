@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 files_libiris = files(
+  'driinfo_iris.h',
   'iris_batch.c',
   'iris_batch.h',
   'iris_binder.c',
@@ -46,6 +47,17 @@ files_libiris = files(
   'iris_screen.h',
 )
 
+iris_driinfo_h = custom_target(
+  'iris_driinfo.h',
+  input : files(
+    '../../../util/merge_driinfo.py',
+    '../../auxiliary/pipe-loader/driinfo_gallium.h', 'driinfo_iris.h'
+  ),
+  output : 'iris_driinfo.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
 iris_gen_libs = []
 foreach v : ['80', '90', '100', '110']
   iris_gen_libs += static_library(
@@ -62,7 +74,8 @@ endforeach
 
 libiris = static_library(
   'iris',
-  [files_libiris, gen_xml_pack, nir_opcodes_h, nir_builder_opcodes_h],
+  [files_libiris, gen_xml_pack, nir_opcodes_h, nir_builder_opcodes_h,
+   iris_driinfo_h],
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_intel, inc_nir,
     inc_gallium_drivers,
@@ -80,5 +93,6 @@ libiris = static_library(
 
 driver_iris = declare_dependency(
   compile_args : '-DGALLIUM_IRIS',
+  sources : iris_driinfo_h,
   link_with : [libiris, libiriswinsys],
 )

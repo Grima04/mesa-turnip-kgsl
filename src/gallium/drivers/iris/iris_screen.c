@@ -552,7 +552,7 @@ iris_shader_perf_log(void *data, const char *fmt, ...)
 }
 
 struct pipe_screen *
-iris_screen_create(int fd)
+iris_screen_create(int fd, const struct pipe_screen_config *config)
 {
    struct iris_screen *screen = rzalloc(NULL, struct iris_screen);
    if (!screen)

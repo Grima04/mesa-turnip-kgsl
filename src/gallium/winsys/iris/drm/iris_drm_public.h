@@ -25,7 +25,9 @@
 #define IRIS_DRM_PUBLIC_H
 
 struct pipe_screen;
+struct pipe_screen_config;
 
-struct pipe_screen *iris_drm_screen_create(int drm_fd);
+struct pipe_screen *
+iris_drm_screen_create(int drm_fd, const struct pipe_screen_config *config);
 
 #endif /* IRIS_DRM_PUBLIC_H */

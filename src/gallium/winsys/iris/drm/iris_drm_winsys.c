@@ -28,7 +28,7 @@
 #include "iris/iris_screen.h"
 
 struct pipe_screen *
-iris_drm_screen_create(int fd)
+iris_drm_screen_create(int fd, const struct pipe_screen_config *config)
 {
-   return iris_screen_create(fcntl(fd, F_DUPFD_CLOEXEC, 3));
+   return iris_screen_create(fcntl(fd, F_DUPFD_CLOEXEC, 3), config);
 }

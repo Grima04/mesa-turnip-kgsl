@@ -74,7 +74,8 @@ struct iris_screen {
    struct iris_bo *workaround_bo;
 };
 
-struct pipe_screen *iris_screen_create(int fd);
+struct pipe_screen *
+iris_screen_create(int fd, const struct pipe_screen_config *config);
 
 boolean
 iris_is_format_supported(struct pipe_screen *pscreen,
