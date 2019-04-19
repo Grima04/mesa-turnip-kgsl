@@ -848,9 +848,19 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
              src2.file == BRW_IMMEDIATE_VALUE);
 
       if (devinfo->gen >= 12) {
-         brw_inst_set_3src_a1_src0_reg_file(devinfo, inst, src0.file);
+         if (src0.file == BRW_IMMEDIATE_VALUE) {
+            brw_inst_set_3src_a1_src0_is_imm(devinfo, inst, 1);
+         } else {
+            brw_inst_set_3src_a1_src0_reg_file(devinfo, inst, src0.file);
+         }
+
          brw_inst_set_3src_a1_src1_reg_file(devinfo, inst, src1.file);
-         brw_inst_set_3src_a1_src2_reg_file(devinfo, inst, src2.file);
+
+         if (src2.file == BRW_IMMEDIATE_VALUE) {
+            brw_inst_set_3src_a1_src2_is_imm(devinfo, inst, 1);
+         } else {
+            brw_inst_set_3src_a1_src2_reg_file(devinfo, inst, src2.file);
+         }
       } else {
          brw_inst_set_3src_a1_src0_reg_file(devinfo, inst,
                                             src0.file == BRW_GENERAL_REGISTER_FILE ?
