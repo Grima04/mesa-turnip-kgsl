@@ -198,8 +198,6 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    if (strcmp(version->name, "msm")) {
       drmFreeVersion(version);
-      if (master_fd != -1)
-         close(master_fd);
       close(fd);
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                        "device %s does not use the msm kernel driver", path);
