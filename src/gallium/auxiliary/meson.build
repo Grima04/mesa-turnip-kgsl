@@ -136,7 +136,6 @@ files_libgallium = files(
   'pipebuffer/pb_bufmgr.h',
   'pipebuffer/pb_bufmgr_mm.c',
   'pipebuffer/pb_bufmgr_ondemand.c',
-  'pipebuffer/pb_bufmgr_pool.c',
   'pipebuffer/pb_bufmgr_slab.c',
   'pipebuffer/pb_cache.c',
   'pipebuffer/pb_cache.h',
