@@ -108,6 +108,7 @@ EXTENSIONS = [
     Extension('VK_KHR_sampler_ycbcr_conversion',          1, True),
     Extension('VK_KHR_shader_atomic_int64',               1,
               'device->info.gen >= 9 && device->use_softpin'),
+    Extension('VK_KHR_shader_clock',                      1, True),
     Extension('VK_KHR_shader_draw_parameters',            1, True),
     Extension('VK_KHR_shader_float16_int8',               1, 'device->info.gen >= 8'),
     Extension('VK_KHR_shader_float_controls',             1, 'device->info.gen >= 8'),

@@ -1201,6 +1201,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+         VkPhysicalDeviceShaderClockFeaturesKHR *features =
+            (VkPhysicalDeviceShaderClockFeaturesKHR *)ext;
+         features->shaderSubgroupClock = true;
+         features->shaderDeviceClock = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
          VkPhysicalDeviceShaderDrawParametersFeatures *features = (void *)ext;
          features->shaderDrawParameters = true;
