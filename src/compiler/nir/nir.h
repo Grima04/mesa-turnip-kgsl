@@ -3265,6 +3265,12 @@ typedef struct nir_lower_tex_options {
    unsigned lower_srgb;
 
    /**
+    * If true, lower nir_texop_tex on shaders that doesn't support implicit
+    * LODs to nir_texop_txl.
+    */
+   bool lower_tex_without_implicit_lod;
+
+   /**
     * If true, lower nir_texop_txd on cube maps with nir_texop_txl.
     */
    bool lower_txd_cube_map;

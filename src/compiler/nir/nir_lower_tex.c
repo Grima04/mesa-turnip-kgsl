@@ -1127,6 +1127,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
            (tex->op == nir_texop_tex && !shader_supports_implicit_lod))) {
          b->cursor = nir_before_instr(&tex->instr);
          nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(nir_imm_int(b, 0)));
+         if (tex->op == nir_texop_tex && options->lower_tex_without_implicit_lod)
+            tex->op = nir_texop_txl;
          progress = true;
          continue;
       }
