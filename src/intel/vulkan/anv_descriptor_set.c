@@ -362,8 +362,6 @@ VkResult anv_CreateDescriptorSetLayout(
    const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT *binding_flags_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
-   if (binding_flags_info)
-      assert(binding_flags_info->bindingCount == pCreateInfo->bindingCount);
 
    for (uint32_t b = 0; b <= max_binding; b++) {
       const VkDescriptorSetLayoutBinding *binding =
@@ -385,7 +383,8 @@ VkResult anv_CreateDescriptorSetLayout(
       set_layout->binding[b].type = binding->descriptorType;
 #endif
 
-      if (binding_flags_info) {
+      if (binding_flags_info && binding_flags_info->bindingCount > 0) {
+         assert(binding_flags_info->bindingCount == pCreateInfo->bindingCount);
          uint32_t binding_strct_idx = binding - pCreateInfo->pBindings;
          assert(binding_strct_idx < binding_flags_info->bindingCount);
          set_layout->binding[b].flags =
