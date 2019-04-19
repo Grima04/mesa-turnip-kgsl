@@ -2395,6 +2395,8 @@ glsl_to_tgsi_visitor::visit_expression(ir_expression* ir, st_src_reg *op)
    case ir_binop_avg:
    case ir_binop_avg_round:
    case ir_binop_mul_32x16:
+   case ir_unop_f162f:
+   case ir_unop_f2f16:
       /* This operation is not supported, or should have already been handled.
        */
       assert(!"Invalid ir opcode in glsl_to_tgsi_visitor::visit()");

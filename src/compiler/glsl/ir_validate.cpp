@@ -579,6 +579,14 @@ ir_validate::visit_leave(ir_expression *ir)
       assert(ir->operands[0]->type->is_float());
       assert(ir->type->is_double());
       break;
+   case ir_unop_f162f:
+      assert(ir->operands[0]->type->base_type == GLSL_TYPE_FLOAT16);
+      assert(ir->type->is_float());
+      break;
+   case ir_unop_f2f16:
+      assert(ir->operands[0]->type->is_float());
+      assert(ir->type->base_type == GLSL_TYPE_FLOAT16);
+      break;
    case ir_unop_d2i:
       assert(ir->operands[0]->type->is_double());
       assert(ir->type->base_type == GLSL_TYPE_INT);

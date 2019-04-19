@@ -1347,6 +1347,8 @@ ir_to_mesa_visitor::visit(ir_expression *ir)
    case ir_unop_atan:
    case ir_binop_atan2:
    case ir_unop_clz:
+   case ir_unop_f162f:
+   case ir_unop_f2f16:
       assert(!"not supported");
       break;
 

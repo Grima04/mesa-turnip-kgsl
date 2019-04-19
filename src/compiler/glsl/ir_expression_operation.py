@@ -452,6 +452,12 @@ ir_expression_operation = [
    operation("d2f", 1, source_types=(double_type,), dest_type=float_type, c_expression="{src0}"),
    # Float-to-double conversion.
    operation("f2d", 1, source_types=(float_type,), dest_type=double_type, c_expression="{src0}"),
+   # Half-float conversions. These all operate on and return float types,
+   # since the framework expands half to full float before calling in.  We
+   # still have to handle them here so that we can constant propagate through
+   # them, but they are no-ops.
+   operation("f2f16", 1, source_types=(float_type,), dest_type=float_type, c_expression="{src0}"),
+   operation("f162f", 1, source_types=(float_type,), dest_type=float_type, c_expression="{src0}"),
    # Double-to-integer conversion.
    operation("d2i", 1, source_types=(double_type,), dest_type=int_type, c_expression="{src0}"),
    # Integer-to-double conversion.

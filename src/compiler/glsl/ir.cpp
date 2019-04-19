@@ -283,11 +283,17 @@ ir_expression::ir_expression(int op, ir_rvalue *op0)
    case ir_unop_i2f:
    case ir_unop_u2f:
    case ir_unop_d2f:
+   case ir_unop_f162f:
    case ir_unop_bitcast_i2f:
    case ir_unop_bitcast_u2f:
    case ir_unop_i642f:
    case ir_unop_u642f:
       this->type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
+					   op0->type->vector_elements, 1);
+      break;
+
+   case ir_unop_f2f16:
+      this->type = glsl_type::get_instance(GLSL_TYPE_FLOAT16,
 					   op0->type->vector_elements, 1);
       break;
 
