@@ -509,7 +509,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
 			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samp_mask_regid) |
 			 0xfc000000);               /* XXX */
-	OUT_RING(ring, A6XX_HLSQ_CONTROL_3_REG_FRAGCOORDXYREGID(vcoord_regid) |
+	OUT_RING(ring, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(vcoord_regid) |
 			0xfcfcfc00);               /* XXX */
 	OUT_RING(ring, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
 			A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
@@ -546,23 +546,23 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	OUT_PKT4(ring, REG_A6XX_GRAS_CNTL, 1);
 	OUT_RING(ring, COND(enable_varyings, A6XX_GRAS_CNTL_VARYING) |
 			COND(s[FS].v->frag_coord,
-					A6XX_GRAS_CNTL_UNK3 |
+					A6XX_GRAS_CNTL_SIZE |
 					A6XX_GRAS_CNTL_XCOORD |
 					A6XX_GRAS_CNTL_YCOORD |
 					A6XX_GRAS_CNTL_ZCOORD |
 					A6XX_GRAS_CNTL_WCOORD) |
-			COND(s[FS].v->frag_face, A6XX_GRAS_CNTL_UNK3));
+			COND(s[FS].v->frag_face, A6XX_GRAS_CNTL_SIZE));
 
 	OUT_PKT4(ring, REG_A6XX_RB_RENDER_CONTROL0, 2);
 	OUT_RING(ring, COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_VARYING |
 			A6XX_RB_RENDER_CONTROL0_UNK10) |
 			COND(s[FS].v->frag_coord,
-					A6XX_RB_RENDER_CONTROL0_UNK3 |
+					A6XX_RB_RENDER_CONTROL0_SIZE |
 					A6XX_RB_RENDER_CONTROL0_XCOORD |
 					A6XX_RB_RENDER_CONTROL0_YCOORD |
 					A6XX_RB_RENDER_CONTROL0_ZCOORD |
 					A6XX_RB_RENDER_CONTROL0_WCOORD) |
-			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL0_UNK3));
+			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
 
 	OUT_RING(ring,
 			COND(samp_mask_regid != regid(63, 0),
