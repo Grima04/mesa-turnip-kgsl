@@ -99,6 +99,10 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .lower_fpow = true,
         .lower_find_lsb = true,
 
+        /* TODO: We have native ops to help here, which we'll want to look into
+         * eventually */
+        .lower_fsign = true,
+
         .vertex_id_zero_based = true,
         .lower_extract_byte = true,
         .lower_extract_word = true,

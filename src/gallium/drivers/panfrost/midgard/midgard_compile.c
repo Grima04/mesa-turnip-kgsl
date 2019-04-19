@@ -767,7 +767,6 @@ optimise_nir(nir_shader *nir)
         do {
                 progress = false;
 
-                NIR_PASS(progress, nir, midgard_nir_lower_algebraic);
                 NIR_PASS(progress, nir, nir_lower_var_copies);
                 NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
 
