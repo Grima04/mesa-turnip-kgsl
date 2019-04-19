@@ -484,6 +484,29 @@ coord_to_layer(float coord, unsigned first_layer, unsigned last_layer)
    return CLAMP(c, (int)first_layer, (int)last_layer);
 }
 
+static void
+compute_gradient_1d(const float s[TGSI_QUAD_SIZE],
+                    const float t[TGSI_QUAD_SIZE],
+                    const float p[TGSI_QUAD_SIZE],
+                    float derivs[3][2][TGSI_QUAD_SIZE])
+{
+   memset(derivs, 0, 6 * TGSI_QUAD_SIZE * sizeof(float));
+   derivs[0][0][0] = s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT];
+   derivs[0][1][0] = s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT];
+}
+
+static float
+compute_lambda_1d_explicit_gradients(const struct sp_sampler_view *sview,
+                                     const float derivs[3][2][TGSI_QUAD_SIZE],
+                                     uint quad)
+{
+   const struct pipe_resource *texture = sview->base.texture;
+   const float dsdx = fabsf(derivs[0][0][quad]);
+   const float dsdy = fabsf(derivs[0][1][quad]);
+   const float rho = MAX2(dsdx, dsdy) * u_minify(texture->width0, sview->base.u.tex.first_level);
+   return util_fast_log2(rho);
+}
+
 
 /**
  * Examine the quad's texture coordinates to compute the partial
@@ -495,11 +518,38 @@ compute_lambda_1d(const struct sp_sampler_view *sview,
                   const float t[TGSI_QUAD_SIZE],
                   const float p[TGSI_QUAD_SIZE])
 {
-   const struct pipe_resource *texture = sview->base.texture;
-   const float dsdx = fabsf(s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT]);
-   const float dsdy = fabsf(s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT]);
-   const float rho = MAX2(dsdx, dsdy) * u_minify(texture->width0, sview->base.u.tex.first_level);
+   float derivs[3][2][TGSI_QUAD_SIZE];
+   compute_gradient_1d(s, t, p, derivs);
+   return compute_lambda_1d_explicit_gradients(sview, derivs, 0);
+}
 
+
+static void
+compute_gradient_2d(const float s[TGSI_QUAD_SIZE],
+                    const float t[TGSI_QUAD_SIZE],
+                    const float p[TGSI_QUAD_SIZE],
+                    float derivs[3][2][TGSI_QUAD_SIZE])
+{
+   memset(derivs, 0, 6 * TGSI_QUAD_SIZE * sizeof(float));
+   derivs[0][0][0] = s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT];
+   derivs[0][1][0] = s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT];
+   derivs[1][0][0] = t[QUAD_BOTTOM_RIGHT] - t[QUAD_BOTTOM_LEFT];
+   derivs[1][1][0] = t[QUAD_TOP_LEFT]     - t[QUAD_BOTTOM_LEFT];
+}
+
+static float
+compute_lambda_2d_explicit_gradients(const struct sp_sampler_view *sview,
+                                     const float derivs[3][2][TGSI_QUAD_SIZE],
+                                     uint quad)
+{
+   const struct pipe_resource *texture = sview->base.texture;
+   const float dsdx = fabsf(derivs[0][0][quad]);
+   const float dsdy = fabsf(derivs[0][1][quad]);
+   const float dtdx = fabsf(derivs[1][0][quad]);
+   const float dtdy = fabsf(derivs[1][1][quad]);
+   const float maxx = MAX2(dsdx, dsdy) * u_minify(texture->width0, sview->base.u.tex.first_level);
+   const float maxy = MAX2(dtdx, dtdy) * u_minify(texture->height0, sview->base.u.tex.first_level);
+   const float rho  = MAX2(maxx, maxy);
    return util_fast_log2(rho);
 }
 
@@ -510,14 +560,43 @@ compute_lambda_2d(const struct sp_sampler_view *sview,
                   const float t[TGSI_QUAD_SIZE],
                   const float p[TGSI_QUAD_SIZE])
 {
+   float derivs[3][2][TGSI_QUAD_SIZE];
+   compute_gradient_2d(s, t, p, derivs);
+   return compute_lambda_2d_explicit_gradients(sview, derivs, 0);
+}
+
+
+static void
+compute_gradient_3d(const float s[TGSI_QUAD_SIZE],
+                    const float t[TGSI_QUAD_SIZE],
+                    const float p[TGSI_QUAD_SIZE],
+                    float derivs[3][2][TGSI_QUAD_SIZE])
+{
+   memset(derivs, 0, 6 * TGSI_QUAD_SIZE * sizeof(float));
+   derivs[0][0][0] = fabsf(s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT]);
+   derivs[0][1][0] = fabsf(s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT]);
+   derivs[1][0][0] = fabsf(t[QUAD_BOTTOM_RIGHT] - t[QUAD_BOTTOM_LEFT]);
+   derivs[1][1][0] = fabsf(t[QUAD_TOP_LEFT]     - t[QUAD_BOTTOM_LEFT]);
+   derivs[2][0][0] = fabsf(p[QUAD_BOTTOM_RIGHT] - p[QUAD_BOTTOM_LEFT]);
+   derivs[2][1][0] = fabsf(p[QUAD_TOP_LEFT]     - p[QUAD_BOTTOM_LEFT]);
+}
+
+static float
+compute_lambda_3d_explicit_gradients(const struct sp_sampler_view *sview,
+                                     const float derivs[3][2][TGSI_QUAD_SIZE],
+                                     uint quad)
+{
    const struct pipe_resource *texture = sview->base.texture;
-   const float dsdx = fabsf(s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT]);
-   const float dsdy = fabsf(s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT]);
-   const float dtdx = fabsf(t[QUAD_BOTTOM_RIGHT] - t[QUAD_BOTTOM_LEFT]);
-   const float dtdy = fabsf(t[QUAD_TOP_LEFT]     - t[QUAD_BOTTOM_LEFT]);
+   const float dsdx = fabsf(derivs[0][0][quad]);
+   const float dsdy = fabsf(derivs[0][1][quad]);
+   const float dtdx = fabsf(derivs[1][0][quad]);
+   const float dtdy = fabsf(derivs[1][1][quad]);
+   const float dpdx = fabsf(derivs[2][0][quad]);
+   const float dpdy = fabsf(derivs[2][1][quad]);
    const float maxx = MAX2(dsdx, dsdy) * u_minify(texture->width0, sview->base.u.tex.first_level);
    const float maxy = MAX2(dtdx, dtdy) * u_minify(texture->height0, sview->base.u.tex.first_level);
-   const float rho  = MAX2(maxx, maxy);
+   const float maxz = MAX2(dpdx, dpdy) * u_minify(texture->depth0, sview->base.u.tex.first_level);
+   const float rho = MAX3(maxx, maxy, maxz);
 
    return util_fast_log2(rho);
 }
@@ -529,21 +608,42 @@ compute_lambda_3d(const struct sp_sampler_view *sview,
                   const float t[TGSI_QUAD_SIZE],
                   const float p[TGSI_QUAD_SIZE])
 {
+   float derivs[3][2][TGSI_QUAD_SIZE];
+   compute_gradient_3d(s, t, p, derivs);
+   return compute_lambda_3d_explicit_gradients(sview, derivs, 0);
+}
+
+
+static float
+compute_lambda_cube_explicit_gradients(const struct sp_sampler_view *sview,
+                                       const float derivs[3][2][TGSI_QUAD_SIZE],
+                                       uint quad)
+{
    const struct pipe_resource *texture = sview->base.texture;
-   const float dsdx = fabsf(s[QUAD_BOTTOM_RIGHT] - s[QUAD_BOTTOM_LEFT]);
-   const float dsdy = fabsf(s[QUAD_TOP_LEFT]     - s[QUAD_BOTTOM_LEFT]);
-   const float dtdx = fabsf(t[QUAD_BOTTOM_RIGHT] - t[QUAD_BOTTOM_LEFT]);
-   const float dtdy = fabsf(t[QUAD_TOP_LEFT]     - t[QUAD_BOTTOM_LEFT]);
-   const float dpdx = fabsf(p[QUAD_BOTTOM_RIGHT] - p[QUAD_BOTTOM_LEFT]);
-   const float dpdy = fabsf(p[QUAD_TOP_LEFT]     - p[QUAD_BOTTOM_LEFT]);
-   const float maxx = MAX2(dsdx, dsdy) * u_minify(texture->width0, sview->base.u.tex.first_level);
-   const float maxy = MAX2(dtdx, dtdy) * u_minify(texture->height0, sview->base.u.tex.first_level);
-   const float maxz = MAX2(dpdx, dpdy) * u_minify(texture->depth0, sview->base.u.tex.first_level);
-   const float rho = MAX3(maxx, maxy, maxz);
+   const float dsdx = fabsf(derivs[0][0][quad]);
+   const float dsdy = fabsf(derivs[0][1][quad]);
+   const float dtdx = fabsf(derivs[1][0][quad]);
+   const float dtdy = fabsf(derivs[1][1][quad]);
+   const float dpdx = fabsf(derivs[2][0][quad]);
+   const float dpdy = fabsf(derivs[2][1][quad]);
+   const float maxx = MAX2(dsdx, dsdy);
+   const float maxy = MAX2(dtdx, dtdy);
+   const float maxz = MAX2(dpdx, dpdy);
+   const float rho = MAX3(maxx, maxy, maxz) * u_minify(texture->width0, sview->base.u.tex.first_level) / 2.0f;
 
    return util_fast_log2(rho);
 }
 
+static float
+compute_lambda_cube(const struct sp_sampler_view *sview,
+                    const float s[TGSI_QUAD_SIZE],
+                    const float t[TGSI_QUAD_SIZE],
+                    const float p[TGSI_QUAD_SIZE])
+{
+   float derivs[3][2][TGSI_QUAD_SIZE];
+   compute_gradient_3d(s, t, p, derivs);
+   return compute_lambda_cube_explicit_gradients(sview, derivs, 0);
+}
 
 /**
  * Compute lambda for a vertex texture sampler.
