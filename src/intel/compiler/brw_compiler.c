@@ -69,34 +69,7 @@ static const struct nir_shader_compiler_options scalar_nir_options = {
    COMMON_SCALAR_OPTIONS,
 };
 
-static const struct nir_shader_compiler_options scalar_nir_options_gen11 = {
-   COMMON_OPTIONS,
-   COMMON_SCALAR_OPTIONS,
-   .lower_flrp32 = true,
-};
-
 static const struct nir_shader_compiler_options vector_nir_options = {
-   COMMON_OPTIONS,
-
-   /* In the vec4 backend, our dpN instruction replicates its result to all the
-    * components of a vec4.  We would like NIR to give us replicated fdot
-    * instructions because it can optimize better for us.
-    */
-   .fdot_replicates = true,
-
-   /* Prior to Gen6, there are no three source operations for SIMD4x2. */
-   .lower_flrp32 = true,
-
-   .lower_pack_snorm_2x16 = true,
-   .lower_pack_unorm_2x16 = true,
-   .lower_unpack_snorm_2x16 = true,
-   .lower_unpack_unorm_2x16 = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .max_unroll_iterations = 32,
-};
-
-static const struct nir_shader_compiler_options vector_nir_options_gen6 = {
    COMMON_OPTIONS,
 
    /* In the vec4 backend, our dpN instruction replicates its result to all the
@@ -197,11 +170,18 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       struct nir_shader_compiler_options *nir_options =
          rzalloc(compiler, struct nir_shader_compiler_options);
       if (is_scalar) {
-         *nir_options =
-            devinfo->gen < 11 ? scalar_nir_options : scalar_nir_options_gen11;
+         *nir_options = scalar_nir_options;
+
+         if (devinfo->gen >= 11) {
+            nir_options->lower_flrp32 = true;
+         }
       } else {
-         *nir_options =
-            devinfo->gen < 6 ? vector_nir_options : vector_nir_options_gen6;
+         *nir_options = vector_nir_options;
+
+         if (devinfo->gen < 6) {
+            /* Prior to Gen6, there are no three source operations. */
+            nir_options->lower_flrp32 = true;
+         }
       }
       nir_options->lower_int64_options = int64_options;
       nir_options->lower_doubles_options = fp64_options;
