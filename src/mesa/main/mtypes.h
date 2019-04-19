@@ -3180,6 +3180,12 @@ struct gl_shader_compiler_options
                                            **/
 
    /**
+    * If we can lower the precision of variables based on precision
+    * qualifiers
+    */
+   GLboolean LowerPrecision;
+
+   /**
     * \name Forms of indirect addressing the driver cannot do.
     */
    /*@{*/

@@ -112,6 +112,7 @@ LIBGLSL_FILES = \
 	glsl/lower_packed_varyings.cpp \
 	glsl/lower_named_interface_blocks.cpp \
 	glsl/lower_packing_builtins.cpp \
+	glsl/lower_precision.cpp \
 	glsl/lower_subroutine.cpp \
 	glsl/lower_tess_level.cpp \
 	glsl/lower_texture_projection.cpp \

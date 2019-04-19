@@ -338,6 +338,12 @@ void st_init_limits(struct pipe_screen *screen,
          if (screen->get_param(screen, PIPE_CAP_PSIZ_CLAMPED))
             options->LowerBuiltinVariablesXfb |= VARYING_BIT_PSIZ;
       }
+
+      /* Initialize lower precision shader compiler option based on
+       * the value of PIPE_SHADER_CAP_FP16.
+       */
+      options->LowerPrecision =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
    }
 
    c->MaxUserAssignableUniformLocations =

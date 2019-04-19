@@ -188,4 +188,6 @@ ir_variable *compare_index_block(ir_builder::ir_factory &body,
 bool lower_64bit_integer_instructions(exec_list *instructions,
                                       unsigned what_to_lower);
 
+bool lower_precision(exec_list *instructions);
+
 #endif /* GLSL_IR_OPTIMIZATION_H */

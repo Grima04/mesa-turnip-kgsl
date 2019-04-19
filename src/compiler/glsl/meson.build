@@ -162,6 +162,7 @@ files_libglsl = files(
   'lower_packed_varyings.cpp',
   'lower_named_interface_blocks.cpp',
   'lower_packing_builtins.cpp',
+  'lower_precision.cpp',
   'lower_subroutine.cpp',
   'lower_tess_level.cpp',
   'lower_texture_projection.cpp',

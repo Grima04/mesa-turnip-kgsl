@@ -2559,6 +2559,9 @@ nir_visitor::visit(ir_texture *ir)
    case GLSL_TYPE_FLOAT:
       instr->dest_type = nir_type_float;
       break;
+   case GLSL_TYPE_FLOAT16:
+      instr->dest_type = nir_type_float16;
+      break;
    case GLSL_TYPE_INT:
       instr->dest_type = nir_type_int;
       break;
