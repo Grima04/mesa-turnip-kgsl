@@ -3253,45 +3253,36 @@ convert_cube(const struct sp_sampler_view *sp_sview,
     * deriviates to compute the LOD.  Doing so (near cube edges
     * anyway) gives us pretty much random values.
     */
-   {
-      /* use the average of the four pixel's texcoords to choose the face */
-      const float rx = 0.25F * (s[0] + s[1] + s[2] + s[3]);
-      const float ry = 0.25F * (t[0] + t[1] + t[2] + t[3]);
-      const float rz = 0.25F * (p[0] + p[1] + p[2] + p[3]);
+   for (j = 0; j < TGSI_QUAD_SIZE; j++)  {
+      const float rx = s[j], ry = t[j], rz = p[j];
       const float arx = fabsf(rx), ary = fabsf(ry), arz = fabsf(rz);
 
       if (arx >= ary && arx >= arz) {
          const float sign = (rx >= 0.0F) ? 1.0F : -1.0F;
          const uint face = (rx >= 0.0F) ?
             PIPE_TEX_FACE_POS_X : PIPE_TEX_FACE_NEG_X;
-         for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-            const float ima = -0.5F / fabsf(s[j]);
-            ssss[j] = sign *  p[j] * ima + 0.5F;
-            tttt[j] =         t[j] * ima + 0.5F;
-            faces[j] = face;
-         }
+         const float ima = -0.5F / fabsf(s[j]);
+         ssss[j] = sign *  p[j] * ima + 0.5F;
+         tttt[j] =         t[j] * ima + 0.5F;
+         faces[j] = face;
       }
       else if (ary >= arx && ary >= arz) {
          const float sign = (ry >= 0.0F) ? 1.0F : -1.0F;
          const uint face = (ry >= 0.0F) ?
             PIPE_TEX_FACE_POS_Y : PIPE_TEX_FACE_NEG_Y;
-         for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-            const float ima = -0.5F / fabsf(t[j]);
-            ssss[j] =        -s[j] * ima + 0.5F;
-            tttt[j] = sign * -p[j] * ima + 0.5F;
-            faces[j] = face;
-         }
+         const float ima = -0.5F / fabsf(t[j]);
+         ssss[j] =        -s[j] * ima + 0.5F;
+         tttt[j] = sign * -p[j] * ima + 0.5F;
+         faces[j] = face;
       }
       else {
          const float sign = (rz >= 0.0F) ? 1.0F : -1.0F;
          const uint face = (rz >= 0.0F) ?
             PIPE_TEX_FACE_POS_Z : PIPE_TEX_FACE_NEG_Z;
-         for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-            const float ima = -0.5F / fabsf(p[j]);
-            ssss[j] = sign * -s[j] * ima + 0.5F;
-            tttt[j] =         t[j] * ima + 0.5F;
-            faces[j] = face;
-         }
+         const float ima = -0.5F / fabsf(p[j]);
+         ssss[j] = sign * -s[j] * ima + 0.5F;
+         tttt[j] =         t[j] * ima + 0.5F;
+         faces[j] = face;
       }
    }
 }
@@ -3571,9 +3562,10 @@ softpipe_get_lambda_func(const struct pipe_sampler_view *view,
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_RECT:
+      return compute_lambda_2d;
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
-      return compute_lambda_2d;
+      return compute_lambda_cube;
    case PIPE_TEXTURE_3D:
       return compute_lambda_3d;
    default:
