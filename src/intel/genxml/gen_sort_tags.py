@@ -36,10 +36,10 @@ def get_name(element):
     return element.attrib['name']
 
 def get_value(element):
-    return int(element.attrib['value'])
+    return int(element.attrib['value'], 0)
 
 def get_start(element):
-    return int(element.attrib['start'])
+    return int(element.attrib['start'], 0)
 
 
 base_types = [
