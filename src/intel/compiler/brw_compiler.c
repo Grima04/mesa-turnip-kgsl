@@ -183,6 +183,10 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
             nir_options->lower_flrp32 = true;
          }
       }
+
+      /* Prior to Gen6, there are no three source operations. */
+      nir_options->lower_ffma = devinfo->gen < 6;
+
       nir_options->lower_int64_options = int64_options;
       nir_options->lower_doubles_options = fp64_options;
       compiler->glsl_compiler_options[i].NirOptions = nir_options;
