@@ -456,10 +456,15 @@ The integer capabilities:
   as opposed to padding to vec4s.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_TRIANGLES``: Whether the
   ``PIPE_CONSERVATIVE_RASTER_POST_SNAP`` mode is supported for triangles.
+  The post-snap mode means the conservative rasterization occurs after
+  the conversion from floating-point to fixed-point coordinates
+  on the subpixel grid.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_POINTS_LINES``: Whether the
   ``PIPE_CONSERVATIVE_RASTER_POST_SNAP`` mode is supported for points and lines.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES``: Whether the
   ``PIPE_CONSERVATIVE_RASTER_PRE_SNAP`` mode is supported for triangles.
+  The pre-snap mode means the conservative rasterization occurs before
+  the conversion from floating-point to fixed-point coordinates.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_POINTS_LINES``: Whether the
   ``PIPE_CONSERVATIVE_RASTER_PRE_SNAP`` mode is supported for points and lines.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_POST_DEPTH_COVERAGE``: Whether

@@ -644,7 +644,18 @@ enum pipe_reset_status
 enum pipe_conservative_raster_mode
 {
    PIPE_CONSERVATIVE_RASTER_OFF,
+
+   /**
+    * The post-snap mode means the conservative rasterization occurs after
+    * the conversion from floating-point to fixed-point coordinates
+    * on the subpixel grid.
+    */
    PIPE_CONSERVATIVE_RASTER_POST_SNAP,
+
+   /**
+    * The pre-snap mode means the conservative rasterization occurs before
+    * the conversion from floating-point to fixed-point coordinates.
+    */
    PIPE_CONSERVATIVE_RASTER_PRE_SNAP,
 };
 
