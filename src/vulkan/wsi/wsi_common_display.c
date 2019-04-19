@@ -974,8 +974,8 @@ static void
 wsi_display_destroy_buffer(struct wsi_display *wsi,
                            uint32_t buffer)
 {
-   (void) drmIoctl(wsi->fd, DRM_IOCTL_MODE_DESTROY_DUMB,
-                   &((struct drm_mode_destroy_dumb) { .handle = buffer }));
+   (void) drmIoctl(wsi->fd, DRM_IOCTL_GEM_CLOSE,
+                   &((struct drm_gem_close) { .handle = buffer }));
 }
 
 static VkResult
