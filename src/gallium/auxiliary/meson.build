@@ -129,7 +129,6 @@ files_libgallium = files(
   'pipebuffer/pb_buffer_fenced.c',
   'pipebuffer/pb_buffer_fenced.h',
   'pipebuffer/pb_buffer.h',
-  'pipebuffer/pb_buffer_malloc.c',
   'pipebuffer/pb_bufmgr_cache.c',
   'pipebuffer/pb_bufmgr_debug.c',
   'pipebuffer/pb_bufmgr.h',
