@@ -3652,6 +3652,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(demote_to_helper_invocation, cap);
          break;
 
+      case SpvCapabilityShaderClockKHR:
+         spv_check_supported(shader_clock, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -4551,6 +4555,37 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       val->def = &intrin->dest.ssa;
 
       vtn_push_ssa(b, w[2], res_type, val);
+      break;
+   }
+
+   case SpvOpReadClockKHR: {
+      assert(vtn_constant_uint(b, w[3]) == SpvScopeSubgroup);
+
+      /* Operation supports two result types: uvec2 and uint64_t.  The NIR
+       * intrinsic gives uvec2, so pack the result for the other case.
+       */
+      nir_intrinsic_instr *intrin =
+         nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_shader_clock);
+      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 2, 32, NULL);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+
+      struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
+      const struct glsl_type *dest_type = type->type;
+      nir_ssa_def *result;
+
+      if (glsl_type_is_vector(dest_type)) {
+         assert(dest_type == glsl_vector_type(GLSL_TYPE_UINT, 2));
+         result = &intrin->dest.ssa;
+      } else {
+         assert(glsl_type_is_scalar(dest_type));
+         assert(glsl_get_base_type(dest_type) == GLSL_TYPE_UINT64);
+         result = nir_pack_64_2x32(&b->nb, &intrin->dest.ssa);
+      }
+
+      struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
+      val->type = type;
+      val->ssa = vtn_create_ssa_value(b, dest_type);
+      val->ssa->def = result;
       break;
    }
 
