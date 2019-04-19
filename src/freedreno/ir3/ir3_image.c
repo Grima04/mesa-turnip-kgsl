@@ -96,7 +96,6 @@ ir3_get_image_slot(nir_deref_instr *deref)
 	while (deref->deref_type != nir_deref_type_var) {
 		assert(deref->deref_type == nir_deref_type_array);
 		unsigned const_index = nir_src_as_uint(deref->arr.index);
-		assert(const_index);
 
 		/* Go to the next instruction */
 		deref = nir_deref_instr_parent(deref);
