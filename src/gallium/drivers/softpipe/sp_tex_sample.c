@@ -659,6 +659,39 @@ compute_lambda_vert(const struct sp_sampler_view *sview,
 }
 
 
+static float
+compute_lambda_vert_explicite_gradients(UNUSED const struct sp_sampler_view *sview,
+                                        UNUSED const float derivs[3][2][TGSI_QUAD_SIZE],
+                                        UNUSED int quad)
+{
+   return 0.0f;
+}
+
+
+compute_lambda_from_grad_func
+softpipe_get_lambda_from_grad_func(const struct pipe_sampler_view *view,
+                                   enum pipe_shader_type shader)
+{
+   switch (view->target) {
+   case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
+      return compute_lambda_1d_explicit_gradients;
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_RECT:
+      return compute_lambda_2d_explicit_gradients;
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return compute_lambda_cube_explicit_gradients;
+   case PIPE_TEXTURE_3D:
+      return compute_lambda_3d_explicit_gradients;
+   default:
+      assert(0);
+      return compute_lambda_1d_explicit_gradients;
+   }
+}
+
 
 /**
  * Get a texel from a texture, using the texture tile cache.
