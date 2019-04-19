@@ -2080,6 +2080,7 @@ mip_filter_linear(const struct sp_sampler_view *sp_sview,
                   const float s[TGSI_QUAD_SIZE],
                   const float t[TGSI_QUAD_SIZE],
                   const float p[TGSI_QUAD_SIZE],
+                  int gather_comp,
                   const float c0[TGSI_QUAD_SIZE],
                   const float lod_in[TGSI_QUAD_SIZE],
                   const struct filter_args *filt_args,
@@ -2094,7 +2095,7 @@ mip_filter_linear(const struct sp_sampler_view *sp_sview,
 
    args.offset = filt_args->offset;
    args.gather_only = filt_args->control == TGSI_SAMPLER_GATHER;
-   args.gather_comp = get_gather_component(lod_in);
+   args.gather_comp = gather_comp;
 
    for (j = 0; j < TGSI_QUAD_SIZE; j++) {
       const int level0 = psview->u.tex.first_level + (int)lod[j];
@@ -2166,6 +2167,7 @@ mip_filter_nearest(const struct sp_sampler_view *sp_sview,
                    const float s[TGSI_QUAD_SIZE],
                    const float t[TGSI_QUAD_SIZE],
                    const float p[TGSI_QUAD_SIZE],
+                   int gather_component,
                    const float c0[TGSI_QUAD_SIZE],
                    const float lod_in[TGSI_QUAD_SIZE],
                    const struct filter_args *filt_args,
@@ -2178,7 +2180,7 @@ mip_filter_nearest(const struct sp_sampler_view *sp_sview,
 
    args.offset = filt_args->offset;
    args.gather_only = filt_args->control == TGSI_SAMPLER_GATHER;
-   args.gather_comp = get_gather_component(lod_in);
+   args.gather_comp = gather_component;
 
    compute_lambda_lod(sp_sview, sp_samp, s, t, p, lod_in, filt_args->control, lod);
 
@@ -2228,6 +2230,7 @@ mip_filter_none(const struct sp_sampler_view *sp_sview,
                 const float s[TGSI_QUAD_SIZE],
                 const float t[TGSI_QUAD_SIZE],
                 const float p[TGSI_QUAD_SIZE],
+                int gather_component,
                 const float c0[TGSI_QUAD_SIZE],
                 const float lod_in[TGSI_QUAD_SIZE],
                 const struct filter_args *filt_args,
@@ -2240,6 +2243,7 @@ mip_filter_none(const struct sp_sampler_view *sp_sview,
    args.level = sp_sview->base.u.tex.first_level;
    args.offset = filt_args->offset;
    args.gather_only = filt_args->control == TGSI_SAMPLER_GATHER;
+   args.gather_comp = gather_component;
 
    compute_lambda_lod(sp_sview, sp_samp, s, t, p, lod_in, filt_args->control, lod);
 
@@ -2278,6 +2282,7 @@ mip_filter_none_no_filter_select(const struct sp_sampler_view *sp_sview,
                                  const float s[TGSI_QUAD_SIZE],
                                  const float t[TGSI_QUAD_SIZE],
                                  const float p[TGSI_QUAD_SIZE],
+                                 int gather_comp,
                                  const float c0[TGSI_QUAD_SIZE],
                                  const float lod_in[TGSI_QUAD_SIZE],
                                  const struct filter_args *filt_args,
@@ -2288,6 +2293,7 @@ mip_filter_none_no_filter_select(const struct sp_sampler_view *sp_sview,
    args.level = sp_sview->base.u.tex.first_level;
    args.offset = filt_args->offset;
    args.gather_only = filt_args->control == TGSI_SAMPLER_GATHER;
+   args.gather_comp = gather_comp;
    for (j = 0; j < TGSI_QUAD_SIZE; j++) {
       args.s = s[j];
       args.t = t[j];
@@ -2546,6 +2552,7 @@ mip_filter_linear_aniso(const struct sp_sampler_view *sp_sview,
                         const float s[TGSI_QUAD_SIZE],
                         const float t[TGSI_QUAD_SIZE],
                         const float p[TGSI_QUAD_SIZE],
+                        UNUSED int gather_comp,
                         const float c0[TGSI_QUAD_SIZE],
                         const float lod_in[TGSI_QUAD_SIZE],
                         const struct filter_args *filt_args,
@@ -2679,6 +2686,7 @@ mip_filter_linear_2d_linear_repeat_POT(
    const float s[TGSI_QUAD_SIZE],
    const float t[TGSI_QUAD_SIZE],
    const float p[TGSI_QUAD_SIZE],
+   int gather_comp,
    const float c0[TGSI_QUAD_SIZE],
    const float lod_in[TGSI_QUAD_SIZE],
    const struct filter_args *filt_args,
@@ -2701,6 +2709,7 @@ mip_filter_linear_2d_linear_repeat_POT(
       args.face_id = filt_args->faces[j];
       args.offset = filt_args->offset;
       args.gather_only = filt_args->control == TGSI_SAMPLER_GATHER;
+      args.gather_comp = gather_comp;
       if ((unsigned)level0 >= psview->u.tex.last_level) {
          if (level0 < 0)
             args.level = psview->u.tex.first_level;
@@ -3196,6 +3205,7 @@ sample_mip(const struct sp_sampler_view *sp_sview,
            const float t[TGSI_QUAD_SIZE],
            const float p[TGSI_QUAD_SIZE],
            const float c0[TGSI_QUAD_SIZE],
+           int gather_comp,
            const float lod[TGSI_QUAD_SIZE],
            const struct filter_args *filt_args,
            float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE])
@@ -3208,7 +3218,7 @@ sample_mip(const struct sp_sampler_view *sp_sview,
                &funcs, &min_img_filter, &mag_img_filter);
 
    funcs->filter(sp_sview, sp_samp, min_img_filter, mag_img_filter,
-                 s, t, p, c0, lod, filt_args, rgba);
+                 s, t, p, gather_comp, c0, lod, filt_args, rgba);
 
    if (sp_samp->base.compare_mode != PIPE_TEX_COMPARE_NONE) {
       sample_compare(sp_sview, sp_samp, s, t, p, c0,
@@ -3729,6 +3739,8 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
 
    filt_args.control = control;
    filt_args.offset = offset;
+   int gather_comp = get_gather_component(lod);
+
 
    if (sp_sview->need_cube_convert) {
       float cs[TGSI_QUAD_SIZE];
@@ -3739,12 +3751,12 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
       convert_cube(sp_sview, sp_samp, s, t, p, c0, cs, ct, cp, faces);
 
       filt_args.faces = faces;
-      sample_mip(sp_sview, sp_samp, cs, ct, cp, c0, lod, &filt_args, rgba);
+      sample_mip(sp_sview, sp_samp, cs, ct, cp, c0, gather_comp, lod, &filt_args, rgba);
    } else {
       static const uint zero_faces[TGSI_QUAD_SIZE] = {0, 0, 0, 0};
 
       filt_args.faces = zero_faces;
-      sample_mip(sp_sview, sp_samp, s, t, p, c0, lod, &filt_args, rgba);
+      sample_mip(sp_sview, sp_samp, s, t, p, c0, gather_comp, lod, &filt_args, rgba);
    }
 }
 
