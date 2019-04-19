@@ -2775,11 +2775,7 @@ static const struct sp_filter_funcs funcs_linear_2d_linear_repeat_POT = {
 static void
 sample_compare(const struct sp_sampler_view *sp_sview,
                const struct sp_sampler *sp_samp,
-               const float s[TGSI_QUAD_SIZE],
-               const float t[TGSI_QUAD_SIZE],
-               const float p[TGSI_QUAD_SIZE],
                const float c0[TGSI_QUAD_SIZE],
-               const float c1[TGSI_QUAD_SIZE],
                enum tgsi_sampler_control control,
                float rgba[TGSI_NUM_CHANNELS][TGSI_QUAD_SIZE])
 {
@@ -2803,23 +2799,7 @@ sample_compare(const struct sp_sampler_view *sp_sview,
     * RGBA channels.  We look at the red channel here.
     */
 
-   if (sp_sview->base.target == PIPE_TEXTURE_2D_ARRAY ||
-       sp_sview->base.target == PIPE_TEXTURE_CUBE) {
-      pc[0] = c0[0];
-      pc[1] = c0[1];
-      pc[2] = c0[2];
-      pc[3] = c0[3];
-   } else if (sp_sview->base.target == PIPE_TEXTURE_CUBE_ARRAY) {
-      pc[0] = c1[0];
-      pc[1] = c1[1];
-      pc[2] = c1[2];
-      pc[3] = c1[3];
-   } else {
-      pc[0] = p[0];
-      pc[1] = p[1];
-      pc[2] = p[2];
-      pc[3] = p[3];
-   }
+
 
    if (chan_type != UTIL_FORMAT_TYPE_FLOAT) {
       /*
@@ -2827,10 +2807,15 @@ sample_compare(const struct sp_sampler_view *sp_sview,
        * doesn't happen with floats. Technically also should do comparison
        * in texture format (quantization!).
        */
-      pc[0] = CLAMP(pc[0], 0.0F, 1.0F);
-      pc[1] = CLAMP(pc[1], 0.0F, 1.0F);
-      pc[2] = CLAMP(pc[2], 0.0F, 1.0F);
-      pc[3] = CLAMP(pc[3], 0.0F, 1.0F);
+      pc[0] = CLAMP(c0[0], 0.0F, 1.0F);
+      pc[1] = CLAMP(c0[1], 0.0F, 1.0F);
+      pc[2] = CLAMP(c0[2], 0.0F, 1.0F);
+      pc[3] = CLAMP(c0[3], 0.0F, 1.0F);
+   } else {
+      pc[0] = c0[0];
+      pc[1] = c0[1];
+      pc[2] = c0[2];
+      pc[3] = c0[3];
    }
 
    for (v = 0; v < (is_gather ? TGSI_NUM_CHANNELS : 1); v++) {
@@ -3221,8 +3206,7 @@ sample_mip(const struct sp_sampler_view *sp_sview,
                  s, t, p, gather_comp, c0, lod, filt_args, rgba);
 
    if (sp_samp->base.compare_mode != PIPE_TEX_COMPARE_NONE) {
-      sample_compare(sp_sview, sp_samp, s, t, p, c0,
-                     lod, filt_args->control, rgba);
+      sample_compare(sp_sview, sp_samp, c0, filt_args->control, rgba);
    }
 
    if (sp_sview->need_swizzle && filt_args->control != TGSI_SAMPLER_GATHER) {
@@ -3700,6 +3684,32 @@ sp_tgsi_get_dims(struct tgsi_sampler *tgsi_sampler,
 }
 
 
+static void prepare_compare_values(enum pipe_texture_target target,
+                                   const float p[TGSI_QUAD_SIZE],
+                                   const float c0[TGSI_QUAD_SIZE],
+                                   const float c1[TGSI_QUAD_SIZE],
+                                   float pc[TGSI_QUAD_SIZE])
+{
+   if (target == PIPE_TEXTURE_2D_ARRAY ||
+       target == PIPE_TEXTURE_CUBE) {
+      pc[0] = c0[0];
+      pc[1] = c0[1];
+      pc[2] = c0[2];
+      pc[3] = c0[3];
+   } else if (target == PIPE_TEXTURE_CUBE_ARRAY) {
+      pc[0] = c1[0];
+      pc[1] = c1[1];
+      pc[2] = c1[2];
+      pc[3] = c1[3];
+   } else {
+      pc[0] = p[0];
+      pc[1] = p[1];
+      pc[2] = p[2];
+      pc[3] = p[3];
+   }
+
+}
+
 static void
 sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
                     const unsigned sview_index,
@@ -3719,6 +3729,7 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
    const struct sp_sampler_view *sp_sview;
    const struct sp_sampler *sp_samp;
    struct filter_args filt_args;
+   float compare_values[TGSI_QUAD_SIZE];
 
    assert(sview_index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
    assert(sampler_index < PIPE_MAX_SAMPLERS);
@@ -3737,6 +3748,9 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
       return;
    }
 
+   if (sp_samp->base.compare_mode != PIPE_TEX_COMPARE_NONE)
+      prepare_compare_values(sp_sview->base.target, p, c0, lod, compare_values);
+
    filt_args.control = control;
    filt_args.offset = offset;
    int gather_comp = get_gather_component(lod);
@@ -3751,12 +3765,12 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
       convert_cube(sp_sview, sp_samp, s, t, p, c0, cs, ct, cp, faces);
 
       filt_args.faces = faces;
-      sample_mip(sp_sview, sp_samp, cs, ct, cp, c0, gather_comp, lod, &filt_args, rgba);
+      sample_mip(sp_sview, sp_samp, cs, ct, cp, compare_values, gather_comp, lod, &filt_args, rgba);
    } else {
       static const uint zero_faces[TGSI_QUAD_SIZE] = {0, 0, 0, 0};
 
       filt_args.faces = zero_faces;
-      sample_mip(sp_sview, sp_samp, s, t, p, c0, gather_comp, lod, &filt_args, rgba);
+      sample_mip(sp_sview, sp_samp, s, t, p, compare_values, gather_comp, lod, &filt_args, rgba);
    }
 }
 
