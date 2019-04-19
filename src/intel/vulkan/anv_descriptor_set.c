@@ -352,11 +352,11 @@ VkResult anv_CreateDescriptorSetLayout(
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[j];
       uint32_t b = binding->binding;
-      /* We temporarily store the pointer to the binding in the
+      /* We temporarily store pCreateInfo->pBindings[] index (plus one) in the
        * immutable_samplers pointer.  This provides us with a quick-and-dirty
        * way to sort the bindings by binding number.
        */
-      set_layout->binding[b].immutable_samplers = (void *)binding;
+      set_layout->binding[b].immutable_samplers = (void *)(uintptr_t)(j + 1);
    }
 
    const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT *binding_flags_info =
@@ -364,17 +364,18 @@ VkResult anv_CreateDescriptorSetLayout(
                            DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
 
    for (uint32_t b = 0; b <= max_binding; b++) {
-      const VkDescriptorSetLayoutBinding *binding =
-         (void *)set_layout->binding[b].immutable_samplers;
-
-      if (binding == NULL)
-         continue;
-
-      /* We temporarily stashed the pointer to the binding in the
-       * immutable_samplers pointer.  Now that we've pulled it back out
-       * again, we reset immutable_samplers to NULL.
+      /* We stashed the pCreateInfo->pBindings[] index (plus one) in the
+       * immutable_samplers pointer.  Check for NULL (empty binding) and then
+       * reset it and compute the index.
        */
+      if (set_layout->binding[b].immutable_samplers == NULL)
+         continue;
+      const uint32_t info_idx =
+         (uintptr_t)(void *)set_layout->binding[b].immutable_samplers - 1;
       set_layout->binding[b].immutable_samplers = NULL;
+
+      const VkDescriptorSetLayoutBinding *binding =
+         &pCreateInfo->pBindings[info_idx];
 
       if (binding->descriptorCount == 0)
          continue;
@@ -385,10 +386,8 @@ VkResult anv_CreateDescriptorSetLayout(
 
       if (binding_flags_info && binding_flags_info->bindingCount > 0) {
          assert(binding_flags_info->bindingCount == pCreateInfo->bindingCount);
-         uint32_t binding_strct_idx = binding - pCreateInfo->pBindings;
-         assert(binding_strct_idx < binding_flags_info->bindingCount);
          set_layout->binding[b].flags =
-            binding_flags_info->pBindingFlags[binding_strct_idx];
+            binding_flags_info->pBindingFlags[info_idx];
       }
 
       set_layout->binding[b].data =
