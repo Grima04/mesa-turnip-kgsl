@@ -602,6 +602,13 @@ barycentric("at_sample", [1])
 # src[] = { offset.xy }.
 barycentric("at_offset", [2])
 
+# Load sample position:
+#
+# Takes a sample # and returns a sample position.  Used for lowering
+# interpolateAtSample() to interpolateAtOffset()
+intrinsic("load_sample_pos_from_id", src_comp=[1], dest_comp=2,
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # Load operations pull data from some piece of GPU memory.  All load
 # operations operate in terms of offsets into some piece of theoretical
 # memory.  Loads from externally visible memory (UBO and SSBO) simply take a
