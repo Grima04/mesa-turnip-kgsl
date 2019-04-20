@@ -3417,7 +3417,11 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         nir_foreach_variable(var, varyings) {
                 unsigned loc = var->data.driver_location;
-                program->varyings[loc] = var->data.location;
+                unsigned sz = glsl_type_size(var->type, FALSE);
+
+                for (int c = 0; c < sz; ++c) {
+                        program->varyings[loc + c] = var->data.location;
+                }
         }
 
         /* Lower gl_Position pre-optimisation */
