@@ -759,7 +759,7 @@ print_load_store_instr(uint64_t data,
 
         print_swizzle(word->swizzle);
 
-        printf(", 0x%X\n", word->unknown);
+        printf(", 0x%X /* %X */\n", word->unknown, word->varying_parameters);
 }
 
 static void
