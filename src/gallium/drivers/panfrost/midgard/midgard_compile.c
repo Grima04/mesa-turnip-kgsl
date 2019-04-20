@@ -991,6 +991,34 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
         emit_mir_instruction(ctx, ins);
 }
 
+/* Likewise, indirect offsets are put in r27.w. TODO: Allow componentwise
+ * pinning to eliminate this move in all known cases */
+
+static void
+emit_indirect_offset(compiler_context *ctx, nir_src *src)
+{
+        int offset = nir_src_index(ctx, src);
+
+        midgard_instruction ins = {
+                .type = TAG_ALU_4,
+                .ssa_args = {
+                        .src0 = SSA_UNUSED_1,
+                        .src1 = offset,
+                        .dest = SSA_FIXED_REGISTER(REGISTER_OFFSET),
+                },
+                .alu = {
+                        .op = midgard_alu_op_imov,
+                        .reg_mode = midgard_reg_mode_full,
+                        .dest_override = midgard_dest_override_none,
+                        .mask = (0x3 << 6), /* w */
+                        .src1 = vector_alu_srco_unsigned(zero_alu_src),
+                        .src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx)
+                },
+        };
+
+        emit_mir_instruction(ctx, ins);
+}
+
 #define ALU_CASE(nir, _op) \
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
@@ -1260,23 +1288,22 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 #undef ALU_CASE
 
 static void
-emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset)
+emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset, nir_src *indirect_offset)
 {
         /* TODO: half-floats */
 
-        if (offset < ctx->uniform_cutoff) {
-                /* Fast path: For the first 16 uniform,
-                 * accesses are 0-cycle, since they're
-                 * just a register fetch in the usual
-                 * case.  So, we alias the registers
-                 * while we're still in SSA-space */
+        if (!indirect_offset && offset < ctx->uniform_cutoff) {
+                /* Fast path: For the first 16 uniforms, direct accesses are
+                 * 0-cycle, since they're just a register fetch in the usual
+                 * case.  So, we alias the registers while we're still in
+                 * SSA-space */
 
                 int reg_slot = 23 - offset;
                 alias_ssa(ctx, dest, SSA_FIXED_REGISTER(reg_slot));
         } else {
-                /* Otherwise, read from the 'special'
-                 * UBO to access higher-indexed
-                 * uniforms, at a performance cost */
+                /* Otherwise, read from the 'special' UBO to access
+                 * higher-indexed uniforms, at a performance cost. More
+                 * generally, we're emitting a UBO read instruction. */
 
                 midgard_instruction ins = m_load_uniform_32(dest, offset);
 
@@ -1284,7 +1311,13 @@ emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset)
                 ins.load_store.varying_parameters = (offset & 7) << 7;
                 ins.load_store.address = offset >> 3;
 
-                ins.load_store.unknown = 0x1E00; /* xxx: what is this? */
+                if (indirect_offset) {
+                        emit_indirect_offset(ctx, indirect_offset);
+                        ins.load_store.unknown = 0x8700; /* xxx: what is this? */
+                } else {
+                        ins.load_store.unknown = 0x1E00; /* xxx: what is this? */
+                }
+
                 emit_mir_instruction(ctx, ins);
         }
 }
@@ -1302,7 +1335,8 @@ emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
         /* Sysvals are prefix uniforms */
         unsigned uniform = ((uintptr_t) val) - 1;
 
-        emit_uniform_read(ctx, dest, uniform);
+        /* Emit the read itself -- this is never indirect */
+        emit_uniform_read(ctx, dest, uniform, NULL);
 }
 
 static void
@@ -1328,14 +1362,18 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_input:
-                assert(nir_src_is_const(instr->src[0]) && "no indirect inputs");
+                offset = nir_intrinsic_base(instr);
 
-                offset = nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0]);
+                bool direct = nir_src_is_const(instr->src[0]);
+
+                if (direct) {
+                        offset += nir_src_as_uint(instr->src[0]);
+                }
 
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
-                        emit_uniform_read(ctx, reg, ctx->sysval_count + offset);
+                        emit_uniform_read(ctx, reg, ctx->sysval_count + offset, !direct ? &instr->src[0] : NULL);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         /* XXX: Half-floats? */
                         /* TODO: swizzle, mask */
@@ -1352,7 +1390,16 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         memcpy(&u, &p, sizeof(p));
                         ins.load_store.varying_parameters = u;
 
-                        ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
+                        if (direct) {
+                                /* We have the offset totally ready */
+                                ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
+                        } else {
+                                /* We have it partially ready, but we need to
+                                 * add in the dynamic index, moved to r27.w */
+                                emit_indirect_offset(ctx, &instr->src[0]);
+                                ins.load_store.unknown = 0x79e; /* xxx: what is this? */
+                        }
+
                         emit_mir_instruction(ctx, ins);
                 } else if (ctx->is_blend && instr->intrinsic == nir_intrinsic_load_uniform) {
                         /* Constant encoded as a pinned constant */
@@ -2978,7 +3025,18 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 
                                 if (c->type != TAG_LOAD_STORE_4) continue;
 
+                                /* Stores cannot be reordered, since they have
+                                 * dependencies. For the same reason, indirect
+                                 * loads cannot be reordered as their index is
+                                 * loaded in r27.w */
+
                                 if (OP_IS_STORE(c->load_store.op)) continue;
+
+                                /* It appears the 0x800 bit is set whenever a
+                                 * load is direct, unset when it is indirect.
+                                 * Skip indirect loads. */
+
+                                if (!(c->load_store.unknown & 0x800)) continue;
 
                                 /* We found one! Move it up to pair and remove it from the old location */
 
