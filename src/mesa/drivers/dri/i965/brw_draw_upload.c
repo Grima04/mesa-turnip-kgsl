@@ -418,7 +418,7 @@ copy_array_to_vbo_array(struct brw_context *brw,
     *
     * In this case, let's the dst with undefined values
     */
-   if (src != NULL) {
+   if (ptr != NULL) {
       if (dst_stride == src_stride) {
          memcpy(dst, src, size);
       } else {
