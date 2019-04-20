@@ -461,9 +461,11 @@ brw_prepare_vertices(struct brw_context *brw)
    /* BRW_NEW_VS_PROG_DATA */
    const struct brw_vs_prog_data *vs_prog_data =
       brw_vs_prog_data(brw->vs.base.prog_data);
-   GLbitfield64 vs_inputs =
+   const uint64_t vs_inputs64 =
       nir_get_single_slot_attribs_mask(vs_prog_data->inputs_read,
                                        vp->DualSlotInputs);
+   assert((vs_inputs64 & ~(uint64_t)VERT_BIT_ALL) == 0);
+   unsigned vs_inputs = (unsigned)vs_inputs64;
    const unsigned char *ptr = NULL;
    GLuint interleaved = 0;
    unsigned int min_index = brw->vb.min_index + brw->basevertex;
@@ -491,15 +493,15 @@ brw_prepare_vertices(struct brw_context *brw)
 
    /* Accumulate the list of enabled arrays. */
    brw->vb.nr_enabled = 0;
-   while (vs_inputs) {
-      const unsigned index = ffsll(vs_inputs) - 1;
-      assert(index < 64);
 
-      struct brw_vertex_element *input = &brw->vb.inputs[index];
-      input->is_dual_slot = (vp->DualSlotInputs & BITFIELD64_BIT(index)) != 0;
-      vs_inputs &= ~BITFIELD64_BIT(index);
+   unsigned mask = vs_inputs;
+   while (mask) {
+      const gl_vert_attrib attr = u_bit_scan(&mask);
+      struct brw_vertex_element *input = &brw->vb.inputs[attr];
+      input->is_dual_slot = (vp->DualSlotInputs & BITFIELD64_BIT(attr)) != 0;
       brw->vb.enabled[brw->vb.nr_enabled++] = input;
    }
+   assert(brw->vb.nr_enabled <= VERT_ATTRIB_MAX);
 
    if (brw->vb.nr_enabled == 0)
       return;
