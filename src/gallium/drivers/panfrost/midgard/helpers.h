@@ -215,7 +215,7 @@ static unsigned alu_opcode_props[256] = {
         [midgard_alu_op_iadd]		 = UNITS_MOST,
         [midgard_alu_op_iabs]		 = UNITS_MOST,
         [midgard_alu_op_isub]		 = UNITS_MOST,
-        [midgard_alu_op_imul]		 = UNITS_MOST,
+        [midgard_alu_op_imul]		 = UNITS_MUL,
         [midgard_alu_op_imov]		 = UNITS_MOST | QUIRK_FLIPPED_R24,
 
         /* For vector comparisons, use ball etc */
